@@ -348,6 +348,7 @@ function buildWeaponBonusTabHtml(flags, item) {
 								<strong>Target HP %</strong> - Target's health percentage<br>
 								<strong>Attacker HP %</strong> - Your health percentage<br>
 								<strong>Target Ancestry</strong> - Target's ancestry<br>
+								<strong>Target Alignment</strong> - Target's alignment (chaotic, neutral, lawful)<br>
 								${game.settings.get(MODULE_ID, "enableNpcCreatureType") ? '<strong>Target Subtype</strong> - Target\'s creature type' : ''}
 							</div>
 						</div>
@@ -423,7 +424,8 @@ function buildHitBonusRequirementRowHtml(req, bonusIndex, reqIndex) {
 		{ value: "targetCondition", label: "Target Has Condition" },
 		{ value: "targetHpPercent", label: "Target HP %" },
 		{ value: "attackerHpPercent", label: "Attacker HP %" },
-		{ value: "targetAncestry", label: "Target Ancestry" }
+		{ value: "targetAncestry", label: "Target Ancestry" },
+		{ value: "targetAlignment", label: "Target Alignment" }
 	];
 
 	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
@@ -533,7 +535,8 @@ function buildDamageBonusRequirementRowHtml(req, bonusIndex, reqIndex) {
 		{ value: "targetCondition", label: "Target Has Condition" },
 		{ value: "targetHpPercent", label: "Target HP %" },
 		{ value: "attackerHpPercent", label: "Attacker HP %" },
-		{ value: "targetAncestry", label: "Target Ancestry" }
+		{ value: "targetAncestry", label: "Target Ancestry" },
+		{ value: "targetAlignment", label: "Target Alignment" }
 	];
 
 	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
@@ -574,7 +577,8 @@ function buildCriticalRequirementRowHtml(req, criticalType, reqIndex) {
 		{ value: "targetCondition", label: "Target Has Condition" },
 		{ value: "targetHpPercent", label: "Target HP %" },
 		{ value: "attackerHpPercent", label: "Attacker HP %" },
-		{ value: "targetAncestry", label: "Target Ancestry" }
+		{ value: "targetAncestry", label: "Target Ancestry" },
+		{ value: "targetAlignment", label: "Target Alignment" }
 	];
 
 	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
@@ -613,6 +617,7 @@ function buildRequirementRowHtml(req, index) {
 		{ value: "targetHpPercent", label: "Target HP %" },
 		{ value: "attackerHpPercent", label: "Attacker HP %" },
 		{ value: "targetAncestry", label: "Target Ancestry" },
+		{ value: "targetAlignment", label: "Target Alignment" },
 		{ value: "attackerCondition", label: "Attacker Has Condition/Effect" }
 	];
 
@@ -672,6 +677,7 @@ function getPlaceholderForType(type) {
 		case "targetHpPercent": return "e.g., 30";
 		case "attackerHpPercent": return "e.g., 50";
 		case "targetAncestry": return "e.g., Undead, Humanoid";
+		case "targetAlignment": return "e.g., chaotic, neutral, lawful";
 		case "targetSubtype": return "e.g., Beast, Ooze, Undead";
 		case "attackerCondition": return "e.g., Blessed, Inspired";
 		default: return "";
@@ -756,7 +762,8 @@ function buildEffectRequirementRowHtml(req, effectIndex, reqIndex) {
 		{ value: "targetCondition", label: "Target Has Condition" },
 		{ value: "targetHpPercent", label: "Target HP %" },
 		{ value: "attackerHpPercent", label: "Attacker HP %" },
-		{ value: "targetAncestry", label: "Target Ancestry" }
+		{ value: "targetAncestry", label: "Target Ancestry" },
+		{ value: "targetAlignment", label: "Target Alignment" }
 	];
 
 	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
@@ -1604,6 +1611,10 @@ function evaluateSingleRequirement(req, attacker, target) {
 
 		case "targetAncestry":
 			testValue = target?.system?.ancestry?.name || target?.system?.details?.ancestry || "";
+			break;
+
+		case "targetAlignment":
+			testValue = target?.system?.alignment || "";
 			break;
 
 		case "targetSubtype":
