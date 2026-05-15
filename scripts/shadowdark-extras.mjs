@@ -1202,136 +1202,6 @@ function setupUnidentifiedItemNameWrapper() {
 }
 
 /**
- * Wrap buildWeaponDisplay to ensure unidentified items show in bold
- */
-function wrapBuildWeaponDisplayForUnidentified() {
-	// Only setup if unidentified feature is enabled (with guard)
-	try {
-		if (!game.settings.get(MODULE_ID, "enableUnidentified")) return;
-	} catch {
-		return; // Setting not registered yet
-	}
-
-	//console.log(`${MODULE_ID} | Wrapping ActorSD.buildWeaponDisplay for unidentified items`);
-
-	if (!globalThis.shadowdark?.documents?.ActorSD) {
-		console.warn(`${MODULE_ID} | ActorSD not found, cannot wrap buildWeaponDisplay`);
-		return;
-	}
-
-	const ActorSD = globalThis.shadowdark.documents.ActorSD;
-	const original = ActorSD.prototype.buildWeaponDisplay;
-
-	ActorSD.prototype.buildWeaponDisplay = async function (options) {
-		// --- SDX Enhancement: Inject Extra Damage/Types ---
-		const item = this.items.get(options.weaponId);
-		if (item) {
-			const sdxFlags = item.flags?.[MODULE_ID] || {};
-			const itemUnidentified = isUnidentified(item);
-			const showDetails = !itemUnidentified || game.user?.isGM;
-
-			if (showDetails) {
-				// 1. Base Damage Type
-				const baseDamageType = sdxFlags.baseDamageType;
-				if (baseDamageType && baseDamageType !== "physical") {
-					const typeLabel = game.i18n.localize(`SHADOWDARK_EXTRAS.damage_type.${baseDamageType}`);
-					options.baseDamage += ` [${typeLabel}]`;
-				}
-
-				// 2. Extra Damages (from Item Details)
-				const extraDamages = sdxFlags.extraDamages || [];
-				const extraParts = (Array.isArray(extraDamages) ? extraDamages : Object.values(extraDamages))
-					.filter(d => d.formula)
-					.map(d => {
-						const label = game.i18n.localize(`SHADOWDARK_EXTRAS.damage_type.${d.damageType}`);
-						return `${d.formula} [${label}]`;
-					});
-
-				// 3. Special Bonuses (from Bonuses tab)
-				const weaponBonusConfig = sdxFlags.weaponBonus;
-				const hitParts = [];
-				if (weaponBonusConfig?.enabled) {
-					// Damage Bonuses
-					if (weaponBonusConfig.damageBonuses) {
-						for (const bonus of weaponBonusConfig.damageBonuses) {
-							// Show if no requirements OR if it has a label (Phase 2)
-							const hasRequirements = bonus.requirements && bonus.requirements.length > 0;
-							if (bonus.formula && (!hasRequirements || bonus.label)) {
-								const typeLabel = bonus.damageType ? game.i18n.localize(`SHADOWDARK_EXTRAS.damage_type.${bonus.damageType}`) : "";
-								const typeSuffix = typeLabel ? ` [${typeLabel}]` : "";
-								const labelSuffix = bonus.label ? ` (${bonus.label})` : "";
-								extraParts.push(`${bonus.formula}${typeSuffix}${labelSuffix}`);
-							}
-						}
-					}
-
-					// Hit Bonuses (Phase 2 & 3)
-					if (weaponBonusConfig.hitBonuses) {
-						for (const bonus of weaponBonusConfig.hitBonuses) {
-							const hasRequirements = bonus.requirements && bonus.requirements.length > 0;
-							// Only show if labeled and has formula
-							if (bonus.formula && bonus.label) {
-								hitParts.push(`${bonus.formula} ${bonus.label}`);
-							}
-						}
-					}
-					// Critical Hit Bonuses
-					if (weaponBonusConfig.criticalExtraDice) {
-						const hasReqs = weaponBonusConfig.criticalDiceRequirements && weaponBonusConfig.criticalDiceRequirements.length > 0;
-						if (!hasReqs) {
-							extraParts.push(`${weaponBonusConfig.criticalExtraDice} extra dice (Crit)`);
-						}
-					}
-					if (weaponBonusConfig.criticalExtraDamage) {
-						const hasReqs = weaponBonusConfig.criticalDamageRequirements && weaponBonusConfig.criticalDamageRequirements.length > 0;
-						if (!hasReqs) {
-							extraParts.push(`${weaponBonusConfig.criticalExtraDamage} extra damage (Crit)`);
-						}
-					}
-				}
-
-				// Final Layout Assembly (Phase 3)
-				if (hitParts.length > 0) {
-					const hitString = hitParts.join(", ");
-					options.baseDamage = `${hitString} | DMG: ${options.baseDamage}`;
-				}
-
-				if (extraParts.length > 0) {
-					const extraText = extraParts.join(" + ");
-					if (options.extraDamageDice) {
-						options.extraDamageDice += ` + ${extraText}`;
-					} else {
-						options.extraDamageDice = extraText;
-					}
-				}
-			}
-		}
-		// --------------------------------------------------
-
-		// Call the original function
-		const result = await original.call(this, options);
-
-		// Check if the weapon is unidentified by looking up the item
-		// The weaponName might be a custom unidentified name or the default
-		if (options.item && isUnidentified(options.item) && !game.user?.isGM) {
-			const maskedName = getUnidentifiedName(options.item);
-			// Check if the bold tag is missing or if it's just plain text
-			const escapedName = maskedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-			const boldPattern = new RegExp(`<b[^>]*>${escapedName}<\\/b>`);
-			if (!boldPattern.test(result)) {
-				// Replace any occurrence of plain masked name with bolded version
-				return result.replace(
-					new RegExp(escapedName, 'g'),
-					`<b style="font-size:16px">${maskedName}</b>`
-				);
-			}
-		}
-
-		return result;
-	};
-}
-
-/**
  * Setup hooks to mask unidentified item names in item-piles UI
  * Item-piles reads item names from source data, bypassing our getter override
  */
@@ -1751,13 +1621,13 @@ function setupItemPilesUnidentifiedHooks() {
 	});
 
 	// Hook into chat message rendering to mask item names from item-piles
-	Hooks.on("renderChatMessage", (message, html, data) => {
+	Hooks.on("renderChatMessageHTML", (message, html, context) => {
 		if (game.user?.isGM) return;
 
 		// Check if this is an item-piles message
 		const isItemPilesMessage = message.flags?.["item-piles"] ||
-			html.find(".item-piles").length > 0 ||
-			html.find("[class*='item-piles']").length > 0;
+			html.querySelector(".item-piles") !== null ||
+			html.querySelector("[class*='item-piles']") !== null;
 
 		if (!isItemPilesMessage) return;
 
@@ -1767,7 +1637,7 @@ function setupItemPilesUnidentifiedHooks() {
 
 /**
  * Mask all unidentified item names in an HTML element
- * @param {jQuery} html - The HTML element to process
+ * @param {HTMLElement} html - The HTML element to process
  * @param {Function} getDefaultMaskedName - Function to get the default masked name string
  */
 function maskUnidentifiedNamesInElement(html, getDefaultMaskedName) {
@@ -10499,7 +10369,6 @@ Hooks.once("ready", async () => {
 	patchToggleItemDetailsForUnidentified();
 	setupUnidentifiedItemNameWrapper();
 	setupItemPilesUnidentifiedHooks();
-	wrapBuildWeaponDisplayForUnidentified();
 
 	// Patch NPC sheets to add _toggleLightSource method
 	// The Shadowdark system's ActorSheetSD._deleteItem tries to call this method,
@@ -16325,7 +16194,7 @@ Hooks.on("preUpdateItem", (item, updateData, options, userId) => {
 });
 
 // Mask unidentified item names in chat messages (attack rolls, item cards, etc.)
-Hooks.on("renderChatMessage", (message, html, data) => {
+Hooks.on("renderChatMessageHTML", (message, html, context) => {
 	// Check if unidentified items are enabled (with guard for setting not yet registered)
 	try {
 		if (!game.settings.get(MODULE_ID, "enableUnidentified")) return;
@@ -16336,12 +16205,12 @@ Hooks.on("renderChatMessage", (message, html, data) => {
 	if (game.user?.isGM) return; // GM sees real names
 
 	// Check if this is an item-related chat card
-	const $card = html.find('.item-card, .chat-card');
-	if (!$card.length) return;
+	const card = html.querySelector('.item-card, .chat-card');
+	if (!card) return;
 
 	// Get the item from the message flags or data attributes
-	const actorId = $card.data('actorId') ?? message.speaker?.actor;
-	const itemId = $card.data('itemId');
+	const actorId = card.dataset.actorId ?? message.speaker?.actor;
+	const itemId = card.dataset.itemId;
 
 	if (!actorId || !itemId) return;
 
@@ -16619,9 +16488,9 @@ Hooks.on("preCreateChatMessage", (message, data, options, userId) => {
 });
 
 // Inject damage card into chat messages
-Hooks.on("renderChatMessage", (message, html, data) => {
+Hooks.on("renderChatMessageHTML", (message, html, context) => {
 	try {
-		injectDamageCard(message, html, data);
+		injectDamageCard(message, html, context);
 	} catch (err) {
 		console.error(`${MODULE_ID} | Failed to inject damage card`, err);
 	}
@@ -16638,8 +16507,8 @@ Hooks.on("renderChatMessage", (message, html, data) => {
 		const combatSettings = game.settings.get(MODULE_ID, "combatSettings");
 		if (combatSettings?.hideItemDescription) {
 			// Hide the card-content which contains weapon/spell descriptions
-			const $html = $(html);
-			$html.find('.card-content').hide();
+			const cardContent = html.querySelector('.card-content');
+			if (cardContent) cardContent.style.display = 'none';
 		}
 	} catch (err) {
 		// Settings may not be registered yet, ignore
@@ -18136,33 +18005,9 @@ Hooks.once("ready", () => {
 
 	//console.log(`${MODULE_ID} | Applying consolidated ActorSD and RollSD patches`);
 
-	// ============================================
-	// EXTRA DAMAGE DICE SUPPORT
-	// ============================================
-	if (ActorSD.prototype.getExtraDamageDiceForWeapon) {
-		const _originalGetExtraDamageDiceForWeapon = ActorSD.prototype.getExtraDamageDiceForWeapon;
-		ActorSD.prototype.getExtraDamageDiceForWeapon = async function (item, data) {
-			await _originalGetExtraDamageDiceForWeapon.call(this, item, data);
-
-			if (this.type === "Player") {
-				if (item.system.type === "melee") {
-					let bonus = this.getFlag(MODULE_ID, "meleeDamageDice");
-					if (bonus) {
-						if (typeof bonus === "string" && bonus.startsWith("d=")) bonus = bonus.substring(2);
-						data.sdxMeleeDamageDice = bonus;
-						if (data.damageParts) data.damageParts.push("@sdxMeleeDamageDice");
-					}
-				} else if (item.system.type === "ranged") {
-					let bonus = this.getFlag(MODULE_ID, "rangedDamageDice");
-					if (bonus) {
-						if (typeof bonus === "string" && bonus.startsWith("d=")) bonus = bonus.substring(2);
-						data.sdxRangedDamageDice = bonus;
-						if (data.damageParts) data.damageParts.push("@sdxRangedDamageDice");
-					}
-				}
-			}
-		};
-	}
+	// EXTRA DAMAGE DICE SUPPORT removed: getExtraDamageDiceForWeapon was
+	// removed from ActorSD in Shadowdark 4.x. The SDX wrap was a silent
+	// no-op on the supported system; deleted to reduce dead code.
 
 	// Legacy distance helper and rollAttack target/range patches removed - migrated to setupRollAttackPatches()
 
@@ -19008,17 +18853,16 @@ Hooks.once("ready", () => {
 /**
  * Hook into chat message rendering to bind Shapechanger revert button
  */
-Hooks.on("renderChatMessage", (message, html, data) => {
-	const revertBtn = html.find(".sdx-revert-shape-btn");
-	if (revertBtn.length === 0) return;
+Hooks.on("renderChatMessageHTML", (message, html, context) => {
+	const revertBtn = html.querySelector(".sdx-revert-shape-btn");
+	if (!revertBtn) return;
 
-	revertBtn.on("click", async (event) => {
+	revertBtn.addEventListener("click", async (event) => {
 		event.preventDefault();
 		event.stopPropagation();
 
-		const btn = event.currentTarget;
-		const actorId = btn.dataset.actorId;
-		const tokenId = btn.dataset.tokenId;
+		const actorId = revertBtn.dataset.actorId;
+		const tokenId = revertBtn.dataset.tokenId;
 		if (!actorId) return;
 
 		// Try token-based resolution first (unlinked tokens), then world actor
@@ -19030,8 +18874,8 @@ Hooks.on("renderChatMessage", (message, html, data) => {
 		}
 
 		// Disable button to prevent double-clicks
-		btn.disabled = true;
-		btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reverting...';
+		revertBtn.disabled = true;
+		revertBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reverting...';
 
 		const sdxModule = game.modules.get(MODULE_ID);
 		if (sdxModule?.api?.revertShapechanger) {
@@ -21611,33 +21455,10 @@ Hooks.once('ready', () => {
 		console.log("shadowdark-extras | Patched NpcSD.prototype.buildNpcSpecialDisplays");
 	}
 
-	// buildWeaponDisplay was removed in Shadowdark 4.x. Skip the patch entirely
-	// on systems that no longer expose it. Kept behind a guard so that older
-	// SD 3.x worlds still receive the enhancement if someone is on a back-rev.
-	const ActorSD = CONFIG.Actor.documentClass;
-	if (ActorSD?.prototype?.buildWeaponDisplay) {
-		const originalBuildWeaponDisplay = ActorSD.prototype.buildWeaponDisplay;
-
-		ActorSD.prototype.buildWeaponDisplay = async function (options) {
-			const baseHtml = await originalBuildWeaponDisplay.call(this, options);
-
-			// Get the weapon item to access its image
-			const item = this.getEmbeddedDocument("Item", options.weaponId);
-			if (!item) return baseHtml;
-
-			// Add item image if available and not the default
-			const defaultIcon = "icons/svg/sword.svg";
-			if (item.img && item.img !== defaultIcon) {
-				const imgHtml = `<img src="${item.img}" alt="${item.name}" class="sdx-player-weapon-img" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 3px; border: none; border-radius: 2px;" />`;
-				// Prepend image to the weapon display
-				return imgHtml + baseHtml;
-			}
-
-			return baseHtml;
-		};
-
-		console.log("shadowdark-extras | Patched ActorSD.prototype.buildWeaponDisplay");
-	}
+	// PLAYER WEAPON IMAGES (buildWeaponDisplay) removed: the underlying
+	// ActorSD.prototype.buildWeaponDisplay method no longer exists in
+	// Shadowdark 4.x. The guard ensured the patch was a silent no-op on the
+	// supported system; deleted to reduce dead code.
 });
 
 /**
