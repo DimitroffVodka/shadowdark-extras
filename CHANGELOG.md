@@ -4,7 +4,7 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased] — Foundry v14 / Shadowdark 4.0.x compatibility
+## [6.9.1] — 2026-05-15 — Foundry v14 / Shadowdark 4.0.x compatibility
 
 This series of changes brings the module forward from its last upstream release
 (6.90, verified Foundry 13 / Shadowdark 3.x) to run on Foundry 14.361 and
