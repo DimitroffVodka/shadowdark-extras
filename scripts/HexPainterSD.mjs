@@ -147,9 +147,15 @@ export async function loadTileAssets() {
 }
 
 /**
- * Ensure the custom hexes folder structure exists
+ * Ensure the custom hexes folder structure exists.
+ * Only GMs can create directories or browse the data folder, so skip
+ * non-GM users entirely. Even for GMs, Foundry v14 sometimes rejects
+ * the FilePicker calls during early boot phases — downgrade the
+ * fallback message to console.log so it doesn't surface as a warning
+ * in the noise.
  */
 async function ensureCustomFolderStructure() {
+    if (!game.user?.isGM) return;
     try {
         // Check if data/hexes folder exists
         let hexesExists = false;
@@ -178,7 +184,7 @@ async function ensureCustomFolderStructure() {
             }
         }
     } catch (err) {
-        console.warn(`${MODULE_ID} | Could not create custom tile folder structure:`, err);
+        console.log(`${MODULE_ID} | Skipped custom tile folder setup (filesystem permission deferred):`, err?.message || err);
     }
 }
 
@@ -194,6 +200,10 @@ async function loadCustomTileAssets() {
         _customTiles = cached;
         return;
     }
+
+    // FilePicker.browse requires GM permission. Skip for non-GMs; they'll
+    // get whatever the GM has cached, but never produce permission warnings.
+    if (!game.user?.isGM) return;
 
     // First ensure the folder structure exists
     await ensureCustomFolderStructure();
@@ -240,7 +250,10 @@ async function loadCustomTileAssets() {
         _customTiles.sort((a, b) => a.key.localeCompare(b.key));
         console.log(`${MODULE_ID} | Loaded ${_customTiles.length} custom tiles`);
     } catch (err) {
-        console.warn(`${MODULE_ID} | Could not load custom tiles:`, err);
+        // Filesystem browse can fail during early boot phases even for GMs
+        // in Foundry v14. Recoverable — downgrade to log so we don't add
+        // noise to the console.
+        console.log(`${MODULE_ID} | Skipped custom tile load (filesystem permission deferred):`, err?.message || err);
         _customTiles = [];
     }
 }

@@ -5,7 +5,7 @@ import { TomStore as Store } from './TomStore.mjs';
 export class TomSocketHandler {
   static initialize() {
     game.socket.on(CONFIG.SOCKET_NAME, this._handleSocketMessage.bind(this));
-    console.warn(`${CONFIG.MODULE_NAME} | Socket Handler Initialized | Socket Name: ${CONFIG.SOCKET_NAME}`);
+    console.log(`${CONFIG.MODULE_NAME} | Socket Handler Initialized | Socket Name: ${CONFIG.SOCKET_NAME}`);
   }
 
   static _handleSocketMessage(payload) {
