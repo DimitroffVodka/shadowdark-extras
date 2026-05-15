@@ -1,0 +1,16 @@
+# Foundry LevelDB pack runtime artifacts (regenerated per-install)
+packs/**/*.log
+packs/**/LOG.old
+packs/**/MANIFEST-*
+packs/**/lost/
+
+# Editor / agent scratch
+.claude/
+.gemini/
+Geminis-*.txt
+*.tmp
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store

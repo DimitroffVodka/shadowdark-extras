@@ -666,6 +666,7 @@ async function createInteractiveTemplateCard(templateDoc, token, trigger, config
     await ChatMessage.create({
         content,
         speaker: ChatMessage.getSpeaker({ actor }),
+        style: CONST.CHAT_MESSAGE_STYLES.OTHER,
         flags: {
             [MODULE_ID]: {
                 isTemplateEffectCard: true,
@@ -863,19 +864,12 @@ async function runTemplateItemMacro(templateDoc, token, trigger, config) {
             return;
         }
 
-        // Check if Item Macro module is available and spell has a macro
-        const itemMacro = spellItem.flags?.["itemacro"]?.macro;
-        if (!itemMacro?.command) {
-            console.log(`shadowdark-extras | No item macro configured for ${spellItem.name}`);
-            return;
-        }
+        // Import the native macro executor
+        const { executeItemMacro, hasItemMacro } = await import("./shadowdark-extras.mjs");
+        if (!hasItemMacro(spellItem)) return;
 
         // Get caster token
         const casterToken = config.casterTokenId ? canvas.tokens.get(config.casterTokenId) : null;
-
-        // Build the macro context similar to Item Macro's standard variables
-        const speaker = ChatMessage.getSpeaker({ actor: token.actor });
-        const character = game.user?.character || null;
 
         // Build args object with template-specific data
         const args = {
@@ -884,35 +878,17 @@ async function runTemplateItemMacro(templateDoc, token, trigger, config) {
             config: config,
             casterActor: casterActor,
             casterToken: casterToken,
-            saved: false,  // Could be passed in if we want to track this
-            damageApplied: 0  // Could be passed in if we want to track this
+            saved: false,
+            damageApplied: 0
         };
 
         console.log(`shadowdark-extras | Running item macro for ${spellItem.name} on ${token.name} (trigger: ${trigger})`);
 
-        // Execute the macro
-        // Use similar approach to Item Macro module
-        const macroBody = `(async () => {
-            ${itemMacro.command}
-        })();`;
-
-        // Create a function with the macro variables in scope
-        const fn = new Function(
-            "item", "actor", "token", "speaker", "character", "args",
-            `return ${macroBody}`
-        );
-
-        await fn.call(
-            null,
-            spellItem,        // item - the spell
-            token.actor,      // actor - the target actor
-            token,            // token - the target token
-            speaker,          // speaker
-            character,        // character
-            args              // args - template-specific data
-        );
-
-        console.log(`shadowdark-extras | Item macro completed for ${spellItem.name}`);
+        return executeItemMacro(spellItem, {
+            actor: token.actor,
+            token: token,
+            args: args
+        });
     } catch (err) {
         console.error(`shadowdark-extras | Error running item macro:`, err);
         ui.notifications.error(`Error running item macro: ${err.message}`);

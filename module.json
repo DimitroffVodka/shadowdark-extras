@@ -4,7 +4,7 @@
   "version": "6.90",
   "compatibility": {
     "minimum": "13",
-    "verified": "13"
+    "verified": "14"
   },
   "description": "<p>Adds extra features to the Shadowdark RPG system: Party management sheet, Renown tracking for players, additional light sources (Candle), and Inventory tab for NPCs.</p>",
   "authors": [
@@ -19,7 +19,8 @@
         "id": "shadowdark",
         "type": "system",
         "compatibility": {
-          "minimum": "3.0.0"
+          "minimum": "3.0.0",
+          "verified": "4.0.4"
         }
       }
     ],
@@ -50,11 +51,6 @@
         "compatibility": {
           "minimum": "0.7.5.1"
         }
-      },
-      {
-        "id": "itemacro",
-        "type": "module",
-        "compatibility": {}
       }
     ],
     "recommends": [
@@ -62,6 +58,12 @@
         "id": "JB2A_DnD5e",
         "type": "module",
         "compatibility": {}
+      },
+      {
+        "id": "autoanimations",
+        "type": "module",
+        "compatibility": {},
+        "reason": "Required for attack/spell animations on roll. SDX's AutoAnimationsSD only filters AA's animations (suppress on failed rolls); it does not generate them."
       }
     ]
   },

@@ -80,8 +80,14 @@ export function injectWeaponBonusTab(app, html, item) {
 		return;
 	}
 
-	// Check if tab already exists
-	if ($nav.find('[data-tab="tab-bonuses"]').length) return;
+	// Shadowdark 4.x now ships a native `tab-bonuses` on weapon sheets, so
+	// our nav-tab + content injection is redundant when it exists. Still
+	// inject the animation button (it's a separate icon-only tab) and bail
+	// out of the SDX bonus content injection.
+	if ($nav.find('[data-tab="tab-bonuses"]').length) {
+		injectWeaponAnimationButton(html, item);
+		return;
+	}
 
 	// Add the Bonuses tab to navigation (before Source tab)
 	const bonusTabNav = `<a class="navigation-tab" data-tab="tab-bonuses"><i class="fas fa-dice-d20"></i> Bonuses</a>`;
@@ -175,7 +181,7 @@ function buildWeaponBonusTabHtml(flags, item) {
 
 	// Item Macro configuration
 	const itemMacro = flags.itemMacro || { enabled: false, runAsGm: false, triggers: [] };
-	const itemMacroModuleActive = game.modules.get("itemacro")?.active;
+	const itemMacroCommand = item.getFlag(MODULE_ID, "macroCommand") || item.flags?.itemacro?.macro?.command || "";
 
 	// Handle hit bonuses
 	let hitBonuses = flags.hitBonuses || [];

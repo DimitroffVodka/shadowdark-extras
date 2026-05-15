@@ -4163,6 +4163,13 @@ function registerSettings() {
 	registerTravelSpeedsSettings();
 
 	// Inventory Styles data setting (hidden)
+	game.settings.register(MODULE_ID, "itemacroMigrationDone", {
+		scope: "world",
+		config: false,
+		default: false,
+		type: Boolean
+	});
+
 	game.settings.register(MODULE_ID, "inventoryStyles", {
 		name: "Inventory Styles Configuration",
 		scope: "world",
@@ -7749,10 +7756,8 @@ async function injectEnhancedHeader(app, html, actor) {
 	let abilitiesHtml = '';
 	for (const key of abilityOrder) {
 		const ab = abilities[key] || {};
-		const base = ab.base ?? 10;
-		const bonus = ab.bonus ?? 0;
-		const total = base + bonus;
-		const mod = ab.mod ?? Math.floor((total - 10) / 2);
+		const value = ab.value ?? 10;
+		const mod = ab.mod ?? Math.floor((value - 10) / 2);
 		const modSign = mod >= 0 ? '+' : '';
 
 		abilitiesHtml += `
@@ -8751,7 +8756,7 @@ function prepareNpcInventory(actor) {
 		if (!item.system.isPhysical) continue;
 
 		const itemData = item.toObject();
-		itemData.uuid = `Actor.${actor._id}.Item.${item._id}`;
+		itemData.uuid = item.uuid;
 		const itemSlots = calculateSlotsCostForItemData(itemData);
 		if (Number.isFinite(itemSlots)) {
 			slotsUsed += Math.max(0, itemSlots);
@@ -8778,13 +8783,13 @@ function prepareNpcInventory(actor) {
 }
 
 /**
- * Get NPC coins from system data
+ * Get NPC coins from system data or module flags
  */
 function getNpcCoins(actor) {
 	return {
-		gp: actor.system?.coins?.gp ?? 0,
-		sp: actor.system?.coins?.sp ?? 0,
-		cp: actor.system?.coins?.cp ?? 0
+		gp: actor.system?.coins?.gp ?? actor.getFlag(MODULE_ID, "coins.gp") ?? 0,
+		sp: actor.system?.coins?.sp ?? actor.getFlag(MODULE_ID, "coins.sp") ?? 0,
+		cp: actor.system?.coins?.cp ?? actor.getFlag(MODULE_ID, "coins.cp") ?? 0
 	};
 }
 
@@ -10456,6 +10461,15 @@ Hooks.once("ready", async () => {
 		setupWandUsesBlocker();
 		//console.log(`${MODULE_ID} | Wand Uses Blocker initialized`);
 	}
+
+	// Setup silenced casting blocking
+	setupSilencedCastingBlocker();
+
+	// Setup consolidated rollAttack patches
+	setupRollAttackPatches();
+
+	// Setup roll config generators and dialog hooks
+	setupRollConfigPatches();
 
 	// Setup scrolling combat text (floating damage/healing numbers)
 	setupScrollingCombatText();
@@ -14032,39 +14046,473 @@ function injectWandUsesUI(html, item) {
 }
 
 /**
- * Setup a wrapper to prevent casting depleted wands
- * Wraps the Actor.castSpell method to check wand uses before casting
+ * Setup a wrapper to prevent casting depleted wands.
+ *
+ * Shadowdark 4.x moved castSpell from ActorSD.prototype to the PlayerSD and
+ * NpcSD data models. Inside the wrapped method `this` is the data model, and
+ * the actor is reached via `this.parent`. The first arg is now a spell/item
+ * UUID rather than an item ID.
  */
 function setupWandUsesBlocker() {
-	const ActorClass = CONFIG.Actor.documentClass;
-	const originalCastSpell = ActorClass.prototype.castSpell;
+	const patchModel = (model, label) => {
+		if (!model?.prototype?.castSpell) return false;
+		if (model.prototype.__sdxCastSpellWandPatched) return true;
+		const original = model.prototype.castSpell;
+		model.prototype.castSpell = async function (spellUuid, config = {}) {
+			const actor = this.parent;
+			// Resolve the item the user is invoking. New API passes an item UUID;
+			// legacy callers may still pass an item id. Cover both.
+			let item = null;
+			if (typeof spellUuid === "string") {
+				if (spellUuid.includes(".")) {
+					try { item = await fromUuid(spellUuid); } catch (_) { item = null; }
+				}
+				if (!item) item = actor?.items.get(spellUuid) ?? null;
+			}
 
-	if (!originalCastSpell) {
-		console.warn(`${MODULE_ID} | Could not find castSpell method on Actor prototype`);
-		return;
-	}
-
-	ActorClass.prototype.castSpell = async function (itemId, options = {}) {
-		const item = this.items.get(itemId);
-
-		// Check if this is a wand with uses tracking enabled
-		if (item?.type === "Wand") {
-			const wandUsesFlags = item.flags?.[MODULE_ID]?.wandUses;
-			if (wandUsesFlags?.enabled) {
-				const currentUses = wandUsesFlags.current ?? 0;
-
-				if (currentUses <= 0) {
+			if (item?.type === "Wand") {
+				const wandUsesFlags = item.flags?.[MODULE_ID]?.wandUses;
+				if (wandUsesFlags?.enabled && (wandUsesFlags.current ?? 0) <= 0) {
 					ui.notifications.warn(game.i18n.format("SHADOWDARK_EXTRAS.wand.no_uses_remaining", { name: item.name }));
 					return null;
 				}
 			}
-		}
+			return original.call(this, spellUuid, config);
+		};
+		model.prototype.__sdxCastSpellWandPatched = true;
+		return true;
+	};
+	const playerOK = patchModel(CONFIG.Actor.dataModels?.Player, "Player");
+	const npcOK = patchModel(CONFIG.Actor.dataModels?.NPC, "NPC");
+	if (!playerOK && !npcOK) {
+		console.warn(`${MODULE_ID} | Could not find castSpell on PlayerSD/NpcSD data models; wand uses blocking inactive`);
+	}
+}
 
-		// Call the original method
-		return originalCastSpell.call(this, itemId, options);
+/**
+ * Setup a wrapper to prevent spellcasting when silenced.
+ *
+ * Shadowdark 4.x moved castSpell from ActorSD.prototype to the PlayerSD and
+ * NpcSD data models. Inside the wrapped method `this` is the data model, and
+ * the actor is reached via `this.parent`. The first arg is now a spell/item
+ * UUID rather than an item ID.
+ */
+function setupSilencedCastingBlocker() {
+	const patchModel = (model) => {
+		if (!model?.prototype?.castSpell) return false;
+		if (model.prototype.__sdxCastSpellSilencedPatched) return true;
+		const original = model.prototype.castSpell;
+		model.prototype.castSpell = async function (spellUuid, config = {}) {
+			const actor = this.parent;
+			const isSilenced = actor?.getFlag(MODULE_ID, "silenced");
+			if (isSilenced) {
+				// Resolve the item the user is invoking
+				let item = null;
+				if (typeof spellUuid === "string") {
+					if (spellUuid.includes(".")) {
+						try { item = await fromUuid(spellUuid); } catch (_) { item = null; }
+					}
+					if (!item) item = actor?.items.get(spellUuid) ?? null;
+				}
+
+				if (item) {
+					const effectsSettings = game.settings.get(MODULE_ID, "effectsSettings");
+					let shouldBlock = false;
+					let blockedType = "";
+
+					if (item.type === "Spell" || item.type === "NPC Spell") {
+						shouldBlock = effectsSettings.silenced.blocksSpells;
+						blockedType = "spells";
+					} else if (item.type === "Scroll") {
+						shouldBlock = effectsSettings.silenced.blocksScrolls;
+						blockedType = "scrolls";
+					} else if (item.type === "Wand") {
+						shouldBlock = effectsSettings.silenced.blocksWands;
+						blockedType = "wands";
+					}
+
+					if (shouldBlock) {
+						ui.notifications.warn(`You are silenced and cannot cast ${blockedType}!`);
+						return null;
+					}
+				}
+			}
+			return original.call(this, spellUuid, config);
+		};
+		model.prototype.__sdxCastSpellSilencedPatched = true;
+		return true;
+	};
+	patchModel(CONFIG.Actor.dataModels?.Player);
+	patchModel(CONFIG.Actor.dataModels?.NPC);
+}
+
+/**
+ * Calculate the edge-to-edge distance between two tokens.
+ * Unlike center-to-center, this properly handles different token sizes.
+ * @param {Token} token1 - First token
+ * @param {Token} token2 - Second token
+ * @returns {number} Distance in grid units (feet)
+ */
+function getEdgeToEdgeDistance(token1, token2) {
+	const gridSize = canvas.grid.size;
+
+	// Get token bounds in pixels
+	const t1 = {
+		left: token1.x,
+		right: token1.x + (token1.document.width * gridSize),
+		top: token1.y,
+		bottom: token1.y + (token1.document.height * gridSize)
+	};
+	const t2 = {
+		left: token2.x,
+		right: token2.x + (token2.document.width * gridSize),
+		top: token2.y,
+		bottom: token2.y + (token2.document.height * gridSize)
 	};
 
-	//console.log(`${MODULE_ID} | Wrapped castSpell for wand uses blocking`);
+	// Find the nearest point on t1's edge to t2
+	const t1CenterX = (t1.left + t1.right) / 2;
+	const t1CenterY = (t1.top + t1.bottom) / 2;
+	const t2CenterX = (t2.left + t2.right) / 2;
+	const t2CenterY = (t2.top + t2.bottom) / 2;
+
+	const p1x = Math.max(t1.left, Math.min(t2CenterX, t1.right));
+	const p1y = Math.max(t1.top, Math.min(t2CenterY, t1.bottom));
+	const p2x = Math.max(t2.left, Math.min(t1CenterX, t2.right));
+	const p2y = Math.max(t2.top, Math.min(t1CenterY, t2.bottom));
+
+	// Check if tokens are overlapping/adjacent
+	const overlapsX = !(t2.left > t1.right || t1.left > t2.right);
+	const overlapsY = !(t2.top > t1.bottom || t1.top > t2.bottom);
+
+	if (overlapsX && overlapsY) return 0;
+
+	// Use Foundry's measurePath for proper grid-based distance
+	const path = canvas.grid.measurePath([{ x: p1x, y: p1y }, { x: p2x, y: p2y }]);
+	return path.distance;
+}
+
+/**
+ * Setup consolidated patches for ActorSD.prototype.rollAttack (and data models)
+ * Covers: Target required, Range check, and Ammunition selection.
+ */
+function setupRollAttackPatches() {
+	const patchModel = (model) => {
+		if (!model?.prototype?.rollAttack) return false;
+		if (model.prototype.__sdxRollAttackPatched) return true;
+		const originalRollAttack = model.prototype.rollAttack;
+
+		model.prototype.rollAttack = async function (itemId, options = {}) {
+			const actor = this.parent || this; // Handle both ActorSD and Data Model
+			if (options._sdxChecked) return originalRollAttack.call(this, itemId, options);
+			options._sdxChecked = true;
+
+			const item = actor.items.get(itemId);
+			const itemName = item?.name || "weapon";
+
+			try {
+				const combatSettings = game.settings.get(MODULE_ID, "combatSettings");
+				const requireTarget = combatSettings?.requireTargetForAttack || "none";
+				const checkRange = combatSettings?.checkWeaponRange || "none";
+				const hasTargets = game.user.targets && game.user.targets.size > 0;
+
+				// --- TARGET REQUIREMENT ---
+				if (requireTarget !== "none" && !hasTargets) {
+					if (requireTarget === "block") {
+						ui.notifications.warn(game.i18n.format("SHADOWDARK_EXTRAS.combat.require_target.blocked", { itemName }));
+						return null;
+					} else if (requireTarget === "warn") {
+						ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.combat.require_target.warning", { itemName }));
+					}
+				}
+
+				// --- RANGE CHECK ---
+				if (checkRange !== "none" && hasTargets && item) {
+					const attackerToken = actor.getActiveTokens()[0] || canvas.tokens?.placeables?.find(t => t.actor?.id === actor.id);
+					if (attackerToken) {
+						const targets = Array.from(game.user.targets);
+						const weaponType = item.system?.type || "melee";
+						const isThrown = await item.isThrownWeapon?.() || false;
+
+						let maxRange;
+						let rangeLabel;
+						if (weaponType === "melee" && !isThrown) {
+							maxRange = 0;
+							rangeLabel = "Close (Adjacent)";
+						} else if (isThrown) {
+							maxRange = 25;
+							rangeLabel = "Near (30 ft)";
+						} else {
+							maxRange = Infinity;
+							rangeLabel = "Far";
+						}
+
+						for (const targetToken of targets) {
+							const distance = getEdgeToEdgeDistance(attackerToken, targetToken);
+							const displayDistance = distance + 5;
+							if (distance > maxRange) {
+								if (checkRange === "block") {
+									ui.notifications.warn(game.i18n.format("SHADOWDARK_EXTRAS.combat.range_check.blocked", { itemName, range: rangeLabel, distance: displayDistance.toFixed(0) }));
+									return null;
+								} else if (checkRange === "warn") {
+									ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.combat.range_check.warning", { itemName, range: rangeLabel, distance: displayDistance.toFixed(0) }));
+								}
+							}
+						}
+					}
+				}
+
+				// --- AMMUNITION SELECTION ---
+				if (item && item.type === "Weapon" && item.system.type === "ranged" && item.usesAmmunition) {
+					if (options?._sdxAmmoSelected) return originalRollAttack.call(this, itemId, options);
+					const ammoItem = await AmmunitionSelector.select(actor, item);
+
+					if (ammoItem) {
+						options._sdxAmmoSelected = true;
+						const originalAvailableAmmunition = item.availableAmmunition;
+						item.availableAmmunition = function () { return [ammoItem]; };
+
+						try {
+							// Temporarily monkeypatch item.rollItem to inject bonuses
+							// TODO: Update this if ItemSD.prototype.rollItem signature changed in 4.x
+							const originalRollItem = item.rollItem;
+							item.rollItem = function (parts, data, options) {
+								if (!data._sdxAmmoBonusesApplied) {
+									const ammoHitBonus = String(ammoItem.getFlag(MODULE_ID, "ammoHitBonus") || "").trim();
+									const ammoDamageBonus = String(ammoItem.getFlag(MODULE_ID, "ammoDamageBonus") || "").trim();
+									const damageMultiplier = Math.max(
+										parseInt(data.item?.system?.bonuses?.damageMultiplier || 0, 10),
+										parseInt(data.actor?.system?.bonuses?.damageMultiplier || 0, 10),
+										1
+									);
+
+									if (ammoHitBonus) {
+										let h = ammoHitBonus;
+										if (h.startsWith("+")) h = h.substring(1).trim();
+										if (h) {
+											if (h.toLowerCase().startsWith("d")) h = "1" + h;
+											if (!parts.includes("@ammoHitBonus")) {
+												parts.push("@ammoHitBonus");
+												data.ammoHitBonus = h;
+											}
+										}
+									}
+
+									if (ammoDamageBonus) {
+										let d = ammoDamageBonus;
+										if (d.startsWith("+")) d = d.substring(1).trim();
+										if (d) {
+											if (d.toLowerCase().startsWith("d")) d = "1" + d;
+											let bonusValue = d;
+											if (!d.toLowerCase().includes("d")) {
+												bonusValue = parseInt(d, 10) * damageMultiplier;
+											} else if (damageMultiplier > 1) {
+												bonusValue = `(${d}) * ${damageMultiplier}`;
+											}
+											if (!data.damageParts.includes("@ammoDamageBonus")) {
+												data.damageParts.push("@ammoDamageBonus");
+												data.ammoDamageBonus = bonusValue;
+											}
+										}
+									}
+									data._sdxAmmoBonusesApplied = true;
+								}
+								return originalRollItem.call(this, parts, data, options);
+							};
+
+							return await originalRollAttack.call(this, itemId, options);
+						} finally {
+							item.availableAmmunition = originalAvailableAmmunition;
+							if (typeof originalRollItem === 'function') item.rollItem = originalRollItem;
+						}
+					} else {
+						return ui.notifications.warn(game.i18n.localize("SHADOWDARK.item.errors.no_available_ammunition"));
+					}
+				}
+			} catch (err) {
+				// Continue normally on error
+			}
+
+			return originalRollAttack.call(this, itemId, options);
+		};
+
+		model.prototype.__sdxRollAttackPatched = true;
+		return true;
+	};
+
+	patchModel(globalThis.shadowdark?.documents?.ActorSD);
+	patchModel(CONFIG.Actor.dataModels?.Player);
+	patchModel(CONFIG.Actor.dataModels?.NPC);
+
+	// Patch ammunitionItems to return all ammunition prioritized by key
+	const ActorSD = globalThis.shadowdark?.documents?.ActorSD;
+	if (ActorSD && !ActorSD.prototype.__sdxAmmunitionItemsPatched) {
+		const originalAmmunitionItems = ActorSD.prototype.ammunitionItems;
+		ActorSD.prototype.ammunitionItems = function (key) {
+			const allAmmo = this.items.filter(i => i.system.isAmmunition && i.system.quantity > 0);
+			if (key) {
+				allAmmo.sort((a, b) => {
+					const aMatch = a.name.slugify() === key;
+					const bMatch = b.name.slugify() === key;
+					if (aMatch && !bMatch) return -1;
+					if (!aMatch && bMatch) return 1;
+					return a.name.localeCompare(b.name);
+				});
+			}
+			return allAmmo;
+		};
+		ActorSD.prototype.__sdxAmmunitionItemsPatched = true;
+	}
+}
+
+/**
+ * Setup monkeypatches for rollConfigGenerators and hooks for the Roll Dialog.
+ * This is the Shadowdark 4.x way to inject advantage and promptable bonuses.
+ */
+function setupRollConfigPatches() {
+	const wrapActorGenerators = (actor) => {
+		const generators = actor.system?.rollConfigGenerators;
+		if (!generators || actor.__sdxRollConfigPatched) return;
+
+		for (const [type, original] of Object.entries(generators)) {
+			generators[type] = async function (config) {
+				await original.call(this, config);
+				if (actor.type !== "Player") return;
+
+				// --- 1. ADVANTAGE / DISADVANTAGE ---
+				const bonuses = actor.system.bonuses || {};
+				const advFlags = bonuses.advantage || [];
+				const disFlags = bonuses.disadvantage || [];
+
+				let hasAdv = false;
+				let hasDis = false;
+
+				if (type === "spell" && advFlags.includes("spellcasting")) hasAdv = true;
+				if ((type === "ability" || type === "check") && config.check?.stat) {
+					if (advFlags.includes(config.check.stat)) hasAdv = true;
+					if (disFlags.includes(config.check.stat)) hasDis = true;
+				}
+				if (type === "attack") {
+					const weaponType = config.attack?.type; // melee/ranged
+					if (weaponType) {
+						if (advFlags.includes(weaponType)) hasAdv = true;
+						if (disFlags.includes(weaponType)) hasDis = true;
+					}
+					// Item specific
+					if (config.itemUuid) {
+						const item = await fromUuid(config.itemUuid);
+						if (item) {
+							const slug = item.name.slugify();
+							if (advFlags.includes(slug)) hasAdv = true;
+							if (disFlags.includes(slug)) hasDis = true;
+						}
+					}
+				}
+
+				if (hasAdv && !hasDis) {
+					config.mainRoll.advantage = 1;
+					config.mainRoll.tooltips = (config.mainRoll.tooltips || "").concat(", SDX Talent Advantage");
+				} else if (hasDis && !hasAdv) {
+					config.mainRoll.advantage = -1;
+					config.mainRoll.tooltips = (config.mainRoll.tooltips || "").concat(", SDX Talent Disadvantage");
+				}
+
+				// --- 2. PROMPTABLE BONUSES ---
+				if (type === "attack" && config.itemUuid) {
+					const weapon = await fromUuid(config.itemUuid);
+					const targetToken = game.user.targets.first();
+					const targetActor = targetToken?.actor || null;
+
+					if (weapon && actor) {
+						const hitBonuses = getPromptableHitBonuses(weapon, actor, targetActor);
+						const damageBonuses = getPromptableDamageBonuses(weapon, actor, targetActor);
+						config._sdxPromptable = { hitBonuses, damageBonuses };
+
+						// Apply selected hit bonuses
+						const selectedHit = config._sdxSelectedHitBonuses || [];
+						selectedHit.forEach(b => {
+							const bonus = shadowdark.dice.formatBonus(b.formula);
+							config.mainRoll.bonus = (config.mainRoll.bonus || "").concat(bonus);
+							config.mainRoll.formula = `${config.mainRoll.base}${config.mainRoll.bonus}`;
+							config.mainRoll.tooltips = (config.mainRoll.tooltips || "").concat(`, ${b.label || "Bonus"}`);
+						});
+
+						// Apply selected damage bonuses
+						const selectedDamage = config._sdxSelectedDamageBonuses || [];
+						selectedDamage.forEach(b => {
+							if (!config.damageRoll) return;
+							const bonus = shadowdark.dice.formatBonus(b.formula);
+							// Damage formulas in 4.x config don't have separate bonus field, they are strings
+							config.damageRoll.formula = (config.damageRoll.formula || "").concat(bonus);
+							config.damageRoll.tooltips = (config.damageRoll.tooltips || "").concat(`, ${b.label || "Bonus"}`);
+						});
+					}
+				}
+			};
+		}
+		actor.__sdxRollConfigPatched = true;
+	};
+
+	// Wrap existing actors. setupRollConfigPatches() itself runs inside an
+	// outer Hooks.once("ready") (see line ~10427), so ready has already fired
+	// by the time we get here — registering another Hooks.once("ready") would
+	// never trigger. Iterate directly.
+	for (const actor of game.actors) wrapActorGenerators(actor);
+
+	// Wrap new actors going forward
+	Hooks.on("createActor", (actor) => wrapActorGenerators(actor));
+
+	// --- 3. ROLL DIALOG HOOK ---
+	Hooks.on("renderRollDialogSD", (app, html, context) => {
+		const config = app.config;
+		if (!config?._sdxPromptable) return;
+
+		const { hitBonuses, damageBonuses } = config._sdxPromptable;
+		if (hitBonuses.length === 0 && damageBonuses.length === 0) return;
+
+		// Create container for prompt bonuses
+		const promptContainer = document.createElement('div');
+		promptContainer.className = 'sdx-prompt-bonuses';
+		promptContainer.innerHTML = '<hr>';
+
+		const createSection = (title, bonuses, type, selectedKey) => {
+			if (bonuses.length === 0) return;
+			const section = document.createElement('div');
+			section.className = 'sdx-prompt-section';
+			section.innerHTML = `<label class="sdx-prompt-section-label">${title}</label>`;
+
+			bonuses.forEach((bonus, i) => {
+				const isChecked = config[selectedKey]?.some(b => b.index === bonus.index) ?? false;
+				const row = document.createElement('div');
+				row.className = `sdx-prompt-bonus-row ${isChecked ? 'sdx-bonus-checked' : ''}`;
+				row.innerHTML = `
+					<i class="fas ${isChecked ? 'fa-check-square' : 'fa-square'} sdx-toggle-icon"></i>
+					<span class="sdx-prompt-bonus-label">+${bonus.label ? `${bonus.formula} (${bonus.label})` : bonus.formula}</span>
+				`;
+
+				row.addEventListener('click', async () => {
+					config[selectedKey] ??= [];
+					const idx = config[selectedKey].findIndex(b => b.index === bonus.index);
+					if (idx >= 0) config[selectedKey].splice(idx, 1);
+					else config[selectedKey].push(bonus);
+
+					// Re-trigger generator and re-render app
+					const actor = game.actors.get(config.actorId);
+					await actor?.system.rollConfigGenerators[config.type]?.(config);
+					app.render(true);
+				});
+				section.appendChild(row);
+			});
+			promptContainer.appendChild(section);
+		};
+
+		createSection('Optional To Hit Bonuses', hitBonuses, 'hit', '_sdxSelectedHitBonuses');
+		createSection('Optional Damage Bonuses', damageBonuses, 'damage', '_sdxSelectedDamageBonuses');
+
+		// Inject before the footer
+		const footer = html.querySelector('footer');
+		if (footer) footer.before(promptContainer);
+	});
 }
 
 /**
@@ -15651,33 +16099,44 @@ function injectWeaponSpellRechargeButtons(app, html, actor) {
  * Patch the canUseMagicItems() method to also check for wands, scrolls, and equipped weapons with spells
  */
 function patchCanUseMagicItems() {
-	libWrapper.register(MODULE_ID, "CONFIG.Actor.documentClass.prototype.canUseMagicItems", async function (wrapped, ...args) {
-		// Call the original method
-		const originalResult = await wrapped(...args);
+	// Shadowdark 4.x moved canUseMagicItems from ActorSD instance method to a
+	// getter on the PlayerSD data model. libWrapper does not cleanly support
+	// getter wrapping across all versions, so we override the descriptor
+	// directly. Inside the getter `this` is the data model; the actor is
+	// reached via `this.parent`.
+	const Player = CONFIG.Actor.dataModels?.Player;
+	const desc = Player?.prototype && Object.getOwnPropertyDescriptor(Player.prototype, "canUseMagicItems");
+	if (!desc?.get) {
+		console.warn(`${MODULE_ID} | canUseMagicItems getter not found on PlayerSD; skipping patch`);
+		return;
+	}
+	if (Player.prototype.__sdxCanUseMagicItemsPatched) return;
+	const originalGet = desc.get;
+	Object.defineProperty(Player.prototype, "canUseMagicItems", {
+		configurable: true,
+		enumerable: desc.enumerable,
+		set: desc.set,
+		get() {
+			const originalResult = originalGet.call(this);
+			if (originalResult) return true;
 
-		// If already true, no need to check further
-		if (originalResult) return true;
+			const actor = this.parent;
+			if (!actor) return originalResult;
 
-		// Check if actor has any wands, scrolls, or equipped weapons with spells
-		const hasWands = this.items.some(item => item.type === "Wand" && !item.system?.stashed);
-		const hasScrolls = this.items.some(item => item.type === "Scroll" && !item.system?.stashed);
+			const hasWands = actor.items.some(item => item.type === "Wand" && !item.system?.stashed);
+			const hasScrolls = actor.items.some(item => item.type === "Scroll" && !item.system?.stashed);
+			const equippedWeapons = actor.items.filter(item =>
+				item.type === "Weapon" && item.system?.equipped === true
+			);
+			const hasWeaponSpells = equippedWeapons.some(weapon => {
+				const spellRefs = weapon.getFlag(MODULE_ID, "staffSpells") || [];
+				return spellRefs.length > 0;
+			});
 
-		// Check for equipped weapons with spells
-		const equippedWeapons = this.items.filter(item =>
-			item.type === "Weapon" &&
-			item.system?.equipped === true
-		);
-
-		const hasWeaponSpells = equippedWeapons.some(weapon => {
-			const spellRefs = weapon.getFlag(MODULE_ID, "staffSpells") || [];
-			return spellRefs.length > 0;
-		});
-
-		// Return true if any magic items are present
-		return hasWands || hasScrolls || hasWeaponSpells;
-	}, "WRAPPER");
-
-	//console.log(`${MODULE_ID} | Patched canUseMagicItems() to detect wands, scrolls, and weapon spells`);
+			return hasWands || hasScrolls || hasWeaponSpells;
+		}
+	});
+	Player.prototype.__sdxCanUseMagicItemsPatched = true;
 }
 
 // Re-render weapon sheet when staff spells are updated
@@ -17178,121 +17637,10 @@ Hooks.on("updateItem", (item, changes, options, userId) => {
 });
 
 
-// ============================================
-// FLEXIBLE AMMUNITION SELECTION
-// ============================================
-Hooks.once("init", () => {
-	const originalRollAttack = shadowdark.documents.ActorSD.prototype.rollAttack;
-	shadowdark.documents.ActorSD.prototype.rollAttack = async function (itemId, options = {}) {
-		if (options?._sdxAmmoSelected) return originalRollAttack.call(this, itemId, options);
-
-		const item = this.items.get(itemId);
-		if (item && item.type === "Weapon" && item.system.type === "ranged" && item.usesAmmunition) {
-			const ammoItem = await AmmunitionSelector.select(this, item);
-
-			if (ammoItem) {
-				options._sdxAmmoSelected = true;
-				// Temporarily override availableAmmunition to return the selected item
-				const originalAvailableAmmunition = item.availableAmmunition;
-				item.availableAmmunition = function () {
-					return [ammoItem];
-				};
-
-				try {
-					// Temporarily monkeypatch item.rollItem to inject bonuses
-					const originalRollItem = item.rollItem;
-					item.rollItem = function (parts, data, options) {
-						if (!data._sdxAmmoBonusesApplied) {
-							const ammoHitBonus = String(ammoItem.getFlag(MODULE_ID, "ammoHitBonus") || "").trim();
-							const ammoDamageBonus = String(ammoItem.getFlag(MODULE_ID, "ammoDamageBonus") || "").trim();
-
-							const damageMultiplier = Math.max(
-								parseInt(data.item?.system?.bonuses?.damageMultiplier || 0, 10),
-								parseInt(data.actor?.system?.bonuses?.damageMultiplier || 0, 10),
-								1
-							);
-
-							// Inject hit bonus formula
-							if (ammoHitBonus) {
-								let h = ammoHitBonus;
-								if (h.startsWith("+")) h = h.substring(1).trim();
-								if (h) {
-									// Normalize d... to 1d... for parseInt check in _digestParts
-									if (h.toLowerCase().startsWith("d")) h = "1" + h;
-
-									if (!parts.includes("@ammoHitBonus")) {
-										parts.push("@ammoHitBonus");
-										data.ammoHitBonus = h;
-									}
-								}
-							}
-
-							// Inject damage bonus formula
-							if (ammoDamageBonus) {
-								let d = ammoDamageBonus;
-								if (d.startsWith("+")) d = d.substring(1).trim();
-								if (d) {
-									// Normalize d... to 1d...
-									if (d.toLowerCase().startsWith("d")) d = "1" + d;
-
-									let bonusValue = d;
-									if (!d.toLowerCase().includes("d")) {
-										// It's a number, apply multiplier
-										bonusValue = parseInt(d, 10) * damageMultiplier;
-									} else if (damageMultiplier > 1) {
-										// It's a formula, wrap and multiply
-										bonusValue = `(${d}) * ${damageMultiplier}`;
-									}
-
-									if (!data.damageParts.includes("@ammoDamageBonus")) {
-										data.damageParts.push("@ammoDamageBonus");
-										data.ammoDamageBonus = bonusValue;
-									}
-								}
-							}
-							data._sdxAmmoBonusesApplied = true;
-						}
-						return originalRollItem.call(this, parts, data, options);
-					};
-
-					// Call original rollAttack - it will follow the chain and call our patched rollItem
-					return await originalRollAttack.call(this, itemId, options);
-				} finally {
-					// CLEANUP: Restore original methods after the roll sequence
-					item.availableAmmunition = originalAvailableAmmunition;
-					if (typeof originalRollItem === 'function') {
-						item.rollItem = originalRollItem;
-					}
-				}
-			} else {
-				// User cancelled or no ammo available
-				return ui.notifications.warn(game.i18n.localize("SHADOWDARK.item.errors.no_available_ammunition"));
-			}
-		}
-
-		return originalRollAttack.call(this, itemId, options);
-	};
-
-	// Also patch ammunitionItems to return all ammunition when key is provided, 
-	// but prioritized by key match. This helps the weapon sheet dropdown.
-	const originalAmmunitionItems = shadowdark.documents.ActorSD.prototype.ammunitionItems;
-	shadowdark.documents.ActorSD.prototype.ammunitionItems = function (key) {
-		const allAmmo = this.items.filter(i => i.system.isAmmunition && i.system.quantity > 0);
-
-		if (key) {
-			allAmmo.sort((a, b) => {
-				const aIsPreferred = a.name.slugify() === key;
-				const bIsPreferred = b.name.slugify() === key;
-				if (aIsPreferred && !bIsPreferred) return -1;
-				if (!aIsPreferred && bIsPreferred) return 1;
-				return a.name.localeCompare(b.name);
-			});
-		}
-
-		return allAmmo;
-	};
-
-	// Simplify usesAmmunition to include all ranged weapons
+// Simplify usesAmmunition to include all ranged weapons (and add weapon-sheet
+// ammunition enhancement). Wrapped in `ready` because both rely on the system's
+// `shadowdark` global being initialised.
+Hooks.once("ready", () => {
 	Object.defineProperty(shadowdark.documents.ItemSD.prototype, "usesAmmunition", {
 		get: function () {
 			return (game.settings.get("shadowdark", "autoConsumeAmmunition")
@@ -17730,8 +18078,14 @@ Hooks.once("init", () => {
 	// ============================================
 	// SPELL DISADVANTAGE HANDLER PATCH
 	// ============================================
-	// Add disadvantage to EFFECT_ASK_INPUT so the system knows to prompt for selection
-	if (!CONFIG.SHADOWDARK.EFFECT_ASK_INPUT.includes("system.bonuses.disadvantage")) {
+	// SD 3.x used a `CONFIG.SHADOWDARK.EFFECT_ASK_INPUT` array of change keys
+	// that should prompt for input. SD 4.x removed it — the decision now lives
+	// in switch logic inside `shadowdark.effects.handlePredefinedEffect`,
+	// keyed by effect name (see src/system/ActiveEffectsSD.mjs). Guard the
+	// legacy array so we don't crash on 4.x; only push when it actually
+	// exists (SD 3.x).
+	if (Array.isArray(CONFIG.SHADOWDARK.EFFECT_ASK_INPUT)
+		&& !CONFIG.SHADOWDARK.EFFECT_ASK_INPUT.includes("system.bonuses.disadvantage")) {
 		CONFIG.SHADOWDARK.EFFECT_ASK_INPUT.push("system.bonuses.disadvantage");
 	}
 
@@ -17783,41 +18137,6 @@ Hooks.once("ready", () => {
 	//console.log(`${MODULE_ID} | Applying consolidated ActorSD and RollSD patches`);
 
 	// ============================================
-	// SILENCED EFFECT - PREVENT SPELL CASTING
-	// ============================================
-	if (ActorSD.prototype.castSpell) {
-		const _originalCastSpell = ActorSD.prototype.castSpell;
-		ActorSD.prototype.castSpell = async function (itemId, options = {}) {
-			const isSilenced = this.getFlag(MODULE_ID, "silenced");
-			if (isSilenced) {
-				const item = this.items.get(itemId);
-				if (item) {
-					const effectsSettings = game.settings.get(MODULE_ID, "effectsSettings");
-					let shouldBlock = false;
-					let blockedType = "";
-
-					if (item.type === "Spell" || item.type === "NPC Spell") {
-						shouldBlock = effectsSettings.silenced.blocksSpells;
-						blockedType = "spells";
-					} else if (item.type === "Scroll") {
-						shouldBlock = effectsSettings.silenced.blocksScrolls;
-						blockedType = "scrolls";
-					} else if (item.type === "Wand") {
-						shouldBlock = effectsSettings.silenced.blocksWands;
-						blockedType = "wands";
-					}
-
-					if (shouldBlock) {
-						ui.notifications.warn(`You are silenced and cannot cast ${blockedType}!`);
-						return null;
-					}
-				}
-			}
-			return _originalCastSpell.call(this, itemId, options);
-		};
-	}
-
-	// ============================================
 	// EXTRA DAMAGE DICE SUPPORT
 	// ============================================
 	if (ActorSD.prototype.getExtraDamageDiceForWeapon) {
@@ -17845,588 +18164,9 @@ Hooks.once("ready", () => {
 		};
 	}
 
-	// ============================================
-	// EDGE-TO-EDGE DISTANCE HELPER
-	// ============================================
-	/**
-	 * Calculate the edge-to-edge distance between two tokens.
-	 * Unlike center-to-center, this properly handles different token sizes.
-	 * @param {Token} token1 - First token
-	 * @param {Token} token2 - Second token
-	 * @returns {number} Distance in grid units (feet)
-	 */
-	function getEdgeToEdgeDistance(token1, token2) {
-		const gridSize = canvas.grid.size;
+	// Legacy distance helper and rollAttack target/range patches removed - migrated to setupRollAttackPatches()
 
-		// Get token bounds in pixels
-		const t1 = {
-			left: token1.x,
-			right: token1.x + (token1.document.width * gridSize),
-			top: token1.y,
-			bottom: token1.y + (token1.document.height * gridSize)
-		};
-		const t2 = {
-			left: token2.x,
-			right: token2.x + (token2.document.width * gridSize),
-			top: token2.y,
-			bottom: token2.y + (token2.document.height * gridSize)
-		};
-
-		// Find the closest edge points between the two bounding boxes
-		// For X: clamp t2's center to t1's horizontal range, and vice versa
-		const t1CenterX = (t1.left + t1.right) / 2;
-		const t1CenterY = (t1.top + t1.bottom) / 2;
-		const t2CenterX = (t2.left + t2.right) / 2;
-		const t2CenterY = (t2.top + t2.bottom) / 2;
-
-		// Find the nearest point on t1's edge to t2
-		const p1x = Math.max(t1.left, Math.min(t2CenterX, t1.right));
-		const p1y = Math.max(t1.top, Math.min(t2CenterY, t1.bottom));
-
-		// Find the nearest point on t2's edge to t1
-		const p2x = Math.max(t2.left, Math.min(t1CenterX, t2.right));
-		const p2y = Math.max(t2.top, Math.min(t1CenterY, t2.bottom));
-
-		// Check if tokens are overlapping/adjacent (distance would be 0)
-		const overlapsX = !(t2.left > t1.right || t1.left > t2.right);
-		const overlapsY = !(t2.top > t1.bottom || t1.top > t2.bottom);
-
-		if (overlapsX && overlapsY) {
-			// Tokens are overlapping or adjacent
-			//console.log(`${MODULE_ID} | Edge distance calc: tokens overlap/adjacent, distance = 0`);
-			return 0;
-		}
-
-		// Use Foundry's measurePath for proper grid-based distance (respects 5-10-5 rule)
-		const path = canvas.grid.measurePath([{ x: p1x, y: p1y }, { x: p2x, y: p2y }]);
-		const result = path.distance;
-
-		//console.log(`${MODULE_ID} | Edge distance calc:`, {
-		//	token1: token1.name,
-		//	token2: token2.name,
-		//	p1: { x: p1x, y: p1y },
-		//	p2: { x: p2x, y: p2y },
-		//	measurePathDistance: result
-		//});
-
-		return result;
-	}
-
-	// ============================================
-	// REQUIRE TARGET FOR ATTACK + RANGE CHECK
-	// ============================================
-	if (ActorSD.prototype.rollAttack) {
-		const _originalRollAttack = ActorSD.prototype.rollAttack;
-		ActorSD.prototype.rollAttack = async function (itemId, options = {}) {
-			// Prevent double-checking when Shadowdark recurses for multiple targets
-			if (options._sdxChecked) return _originalRollAttack.call(this, itemId, options);
-			options._sdxChecked = true;
-
-			const item = this.items.get(itemId);
-			const itemName = item?.name || "weapon";
-
-			try {
-				const combatSettings = game.settings.get(MODULE_ID, "combatSettings");
-				const requireTarget = combatSettings?.requireTargetForAttack || "none";
-				const checkRange = combatSettings?.checkWeaponRange || "none";
-
-				// Check if user has targets
-				const hasTargets = game.user.targets && game.user.targets.size > 0;
-
-				// Feature 2: Check if target is required
-				if (requireTarget !== "none" && !hasTargets) {
-					if (requireTarget === "block") {
-						ui.notifications.warn(game.i18n.format("SHADOWDARK_EXTRAS.combat.require_target.blocked", {
-							itemName: itemName
-						}) || `You must target a token before attacking with ${itemName}!`);
-						return null;
-					} else if (requireTarget === "warn") {
-						ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.combat.require_target.warning", {
-							itemName: itemName
-						}) || `No target selected for ${itemName} attack.`);
-					}
-				}
-
-				// Feature 3: Check weapon range vs target distance
-				if (checkRange !== "none" && hasTargets && item) {
-					// Get the attacker's token
-					const attackerToken = this.getActiveTokens()[0] || canvas.tokens?.placeables?.find(t => t.actor?.id === this.id);
-
-					if (attackerToken) {
-						const targets = Array.from(game.user.targets);
-
-						// Determine weapon range type
-						const weaponType = item.system?.type || "melee"; // melee or ranged
-						const isThrown = await item.isThrownWeapon?.() || false;
-
-						// Edge-to-edge distance (in feet based on Shadowdark distances)
-						// Close = adjacent (0 ft edge-to-edge), Near = ~25 ft edge, Far = beyond
-						let maxRange;
-						let rangeLabel;
-						if (weaponType === "melee" && !isThrown) {
-							maxRange = 0; // Close range = must be adjacent (edge-to-edge 0)
-							rangeLabel = "Close (Adjacent)";
-						} else if (isThrown) {
-							maxRange = 25; // Near range for thrown (5 squares edge-to-edge)
-							rangeLabel = "Near (30 ft)";
-						} else {
-							maxRange = Infinity; // Ranged weapons have no limit
-							rangeLabel = "Far";
-						}
-
-						// Check distance to each target  
-						for (const targetToken of targets) {
-							// Calculate edge-to-edge distance (properly handles different token sizes)
-							const distance = getEdgeToEdgeDistance(attackerToken, targetToken);
-							// Convert to traditional D&D distance for display (add 5 ft for target's space)
-							const displayDistance = distance + 5;
-
-							//console.log(`${MODULE_ID} | Range check: ${itemName} (${rangeLabel}) vs target at ${distance.toFixed(1)} ft edge-to-edge (${displayDistance.toFixed(0)} ft display)`);
-
-							if (distance > maxRange) {
-								if (checkRange === "block") {
-									ui.notifications.warn(game.i18n.format("SHADOWDARK_EXTRAS.combat.range_check.blocked", {
-										itemName: itemName,
-										range: rangeLabel,
-										distance: displayDistance.toFixed(0)
-									}) || `${itemName} cannot reach target at ${displayDistance.toFixed(0)} ft! Max range: ${rangeLabel}`);
-									return null;
-								} else if (checkRange === "warn") {
-									ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.combat.range_check.warning", {
-										itemName: itemName,
-										range: rangeLabel,
-										distance: displayDistance.toFixed(0)
-									}) || `Target is at ${displayDistance.toFixed(0)} ft, beyond ${itemName}'s ${rangeLabel} range.`);
-								}
-							}
-						}
-					}
-				}
-			} catch (err) {
-				//console.log(`${MODULE_ID} | Range check error:`, err);
-				// Settings not available yet, continue normally
-			}
-
-			return _originalRollAttack.call(this, itemId, options);
-		};
-	}
-
-	// ============================================
-	// ABILITY ADVANTAGE SUPPORT
-	// ============================================
-
-	// 1. Patch rollAbility to include abilityId in the data object
-	if (ActorSD.prototype.rollAbility) {
-		ActorSD.prototype.rollAbility = async function (abilityId, options = {}) {
-			const parts = ["1d20", "@abilityBonus"];
-			const abilityBonus = this.abilityModifier(abilityId);
-			const ability = CONFIG.SHADOWDARK.ABILITIES_LONG[abilityId];
-
-			const data = {
-				rollType: "ability",
-				abilityId: abilityId, // ← Inject abilityId
-				abilityBonus,
-				ability,
-				actor: this,
-			};
-
-			options.title = game.i18n.localize(`SHADOWDARK.dialog.ability_check.${abilityId}`);
-			options.flavor = options.title;
-			options.speaker = ChatMessage.getSpeaker({ actor: this });
-			options.dialogTemplate = "systems/shadowdark/templates/dialog/roll-ability-check-dialog.hbs";
-			options.chatCardTemplate = "systems/shadowdark/templates/chat/ability-card.hbs";
-
-			return await CONFIG.DiceSD.RollDialog(parts, data, options);
-		};
-	}
-
-	// 2. Patch hasAdvantage to check for custom advantages
-	const _originalHasAdvantage = ActorSD.prototype.hasAdvantage;
-	ActorSD.prototype.hasAdvantage = function (data) {
-		if (this.type === "Player") {
-			const bonuses = this.system.bonuses || {};
-			const adv = bonuses.advantage || [];
-
-			// Spellcasting advantage
-			if (data.item?.isSpell?.() && adv.includes("spellcasting")) {
-				return true;
-			}
-
-			// Ability-specific advantage
-			if (data.rollType === "ability" && data.abilityId) {
-				if (adv.includes(data.abilityId)) return true;
-			}
-
-			// Attack type (melee/ranged/slugified weapon) advantage
-			if (data.rollType && adv.includes(data.rollType)) {
-				return true;
-			}
-
-			// Additional attack type check for flexibility
-			if (data.attackType && adv.includes(data.attackType)) {
-				return true;
-			}
-		}
-
-		return _originalHasAdvantage.call(this, data);
-	};
-
-	// 3. Implement hasDisadvantage
-	ActorSD.prototype.hasDisadvantage = function (data) {
-		if (this.type === "Player") {
-			const bonuses = this.system.bonuses || {};
-			const dis = bonuses.disadvantage || [];
-
-			// Spellcasting disadvantage
-			if (data.item?.isSpell?.() && dis.includes("spellcasting")) {
-				return true;
-			}
-
-			// Ability-specific disadvantage
-			if (data.rollType === "ability" && data.abilityId) {
-				if (dis.includes(data.abilityId)) return true;
-			}
-
-			// Attack type disadvantage
-			if (data.rollType && dis.includes(data.rollType)) {
-				return true;
-			}
-
-			if (data.attackType && dis.includes(data.attackType)) {
-				return true;
-			}
-
-			// Standard rollType check (for cases not handled above)
-			if (dis.includes(data.rollType)) {
-				return true;
-			}
-		}
-
-		return false;
-	};
-
-	// 4. Override RollDialog to add disadvantage highlights and promptable bonuses
-	if (CONFIG.DiceSD?.RollDialog) {
-		//console.log(`${MODULE_ID} | Overriding CONFIG.DiceSD.RollDialog for highlights and promptable bonuses`);
-		CONFIG.DiceSD.RollDialog = async function (parts, data, options = {}) {
-			if (options.skipPrompt) {
-				return await this.Roll(parts, data, false, options.adv ?? 0, options);
-			}
-
-			if (!options.title) {
-				options.title = game.i18n.localize("SHADOWDARK.dialog.roll");
-			}
-
-			// Render the HTML for the dialog
-			let content = await this._getRollDialogContent(parts, data, options);
-
-			// Check for promptable bonuses if this is a weapon attack
-			let promptableHitBonuses = [];
-			let promptableDamageBonuses = [];
-
-			// The weapon item could be in data.item or we need to find it from options
-			const weaponItem = data.item || options.item;
-			const actor = data.actor;
-
-			//console.log(`${MODULE_ID} | RollDialog - checking for prompt bonuses:`, {
-			//	hasWeaponItem: !!weaponItem,
-			//	weaponType: weaponItem?.type,
-			//	hasActor: !!actor,
-			//	dataKeys: Object.keys(data),
-			//	optionsKeys: Object.keys(options)
-			//});
-
-			if (weaponItem?.type === "Weapon" && actor) {
-				const targetToken = game.user.targets.first();
-				const targetActor = targetToken?.actor || null;
-
-				promptableHitBonuses = getPromptableHitBonuses(weaponItem, actor, targetActor);
-				promptableDamageBonuses = getPromptableDamageBonuses(weaponItem, actor, targetActor);
-
-				//console.log(`${MODULE_ID} | Promptable bonuses found:`, {
-				//	hitBonuses: promptableHitBonuses,
-				//		damageBonuses: promptableDamageBonuses
-				//	});
-
-				// Note: Checkbox injection moved to render callback to bypass HTML sanitization
-			}
-
-
-			// Store promptable bonuses in data for later access
-			data._sdxPromptableHitBonuses = promptableHitBonuses;
-			data._sdxPromptableDamageBonuses = promptableDamageBonuses;
-
-			const dialogData = {
-				title: options.title,
-				content,
-				classes: ["shadowdark-dialog"],
-				buttons: {
-					advantage: {
-						label: game.i18n.localize("SHADOWDARK.roll.advantage"),
-						callback: async html => {
-							// Process selected promptable bonuses
-							await this._processPromptableBonuses(html, data, parts);
-							return this.Roll(parts, data, html, 1, options);
-						},
-					},
-					normal: {
-						label: game.i18n.localize("SHADOWDARK.roll.normal"),
-						callback: async html => {
-							// Process selected promptable bonuses
-							await this._processPromptableBonuses(html, data, parts);
-							return this.Roll(parts, data, html, 0, options);
-						},
-					},
-					disadvantage: {
-						label: game.i18n.localize("SHADOWDARK.roll.disadvantage"),
-						callback: async html => {
-							// Process selected promptable bonuses
-							await this._processPromptableBonuses(html, data, parts);
-							return this.Roll(parts, data, html, -1, options);
-						},
-					},
-				},
-				close: () => null,
-				default: "normal",
-				render: html => {
-					// Check if the actor has advantage, and add highlight if that
-					// is the case (Standard System Logic)
-					if (data.actor?.hasAdvantage(data)) {
-						html.find("button.advantage")
-							.attr("title", game.i18n.localize(
-								"SHADOWDARK.dialog.tooltip.talent_advantage"
-							))
-							.addClass("talent-highlight");
-					}
-
-					// Custom Disadvantage Highlight Logic (Shadowdark Extras)
-					if (data.actor?.hasDisadvantage?.(data)) {
-						html.find("button.disadvantage")
-							.attr("title", game.i18n.localize(
-								"SHADOWDARK.dialog.tooltip.talent_advantage"
-							))
-							.addClass("talent-highlight");
-					}
-
-					// Inject promptable bonus checkboxes directly into DOM (bypasses sanitization)
-					if (promptableHitBonuses.length > 0 || promptableDamageBonuses.length > 0) {
-						const dialogContent = html.find('.shadowdark-dialog')[0];
-						if (dialogContent) {
-							// Create container for prompt bonuses using native DOM
-							const promptContainer = document.createElement('div');
-							promptContainer.className = 'sdx-prompt-bonuses';
-							const hr = document.createElement('hr');
-							promptContainer.appendChild(hr);
-
-							// Add hit bonus checkboxes (using custom div toggles)
-							if (promptableHitBonuses.length > 0) {
-								const hitSection = document.createElement('div');
-								hitSection.className = 'sdx-prompt-section';
-								hitSection.innerHTML = '<label class="sdx-prompt-section-label"><i class="fas fa-bullseye"></i> Optional To Hit Bonuses</label>';
-
-								promptableHitBonuses.forEach((bonus, i) => {
-									const displayLabel = bonus.label ? `${bonus.formula} (${bonus.label})` : bonus.formula;
-									const row = document.createElement('div');
-									row.className = 'sdx-prompt-bonus-row sdx-bonus-checked';
-									row.setAttribute('data-bonus-type', 'hit');
-									row.setAttribute('data-bonus-index', i);
-									row.setAttribute('data-formula', bonus.formula);
-									row.setAttribute('data-original-index', bonus.index);
-
-									// Create custom checkbox icon
-									const checkIcon = document.createElement('i');
-									checkIcon.className = 'fas fa-check-square sdx-toggle-icon';
-
-									const span = document.createElement('span');
-									span.className = 'sdx-prompt-bonus-label';
-									span.textContent = `+${displayLabel}`;
-
-									row.appendChild(checkIcon);
-									row.appendChild(span);
-
-									// Add click handler to toggle
-									row.addEventListener('click', function () {
-										this.classList.toggle('sdx-bonus-checked');
-										const icon = this.querySelector('.sdx-toggle-icon');
-										if (this.classList.contains('sdx-bonus-checked')) {
-											icon.className = 'fas fa-check-square sdx-toggle-icon';
-										} else {
-											icon.className = 'far fa-square sdx-toggle-icon';
-										}
-									});
-
-									hitSection.appendChild(row);
-								});
-								promptContainer.appendChild(hitSection);
-							}
-
-							// Add damage bonus checkboxes (using custom div toggles)
-							if (promptableDamageBonuses.length > 0) {
-								const damageSection = document.createElement('div');
-								damageSection.className = 'sdx-prompt-section';
-								damageSection.innerHTML = '<label class="sdx-prompt-section-label"><i class="fas fa-burst"></i> Optional Damage Bonuses</label>';
-
-								promptableDamageBonuses.forEach((bonus, i) => {
-									let displayLabel = bonus.label ? `${bonus.formula} (${bonus.label})` : bonus.formula;
-									if (bonus.damageType) {
-										displayLabel += ` [${bonus.damageType}]`;
-									}
-									const row = document.createElement('div');
-									row.className = 'sdx-prompt-bonus-row sdx-bonus-checked';
-									row.setAttribute('data-bonus-type', 'damage');
-									row.setAttribute('data-bonus-index', i);
-									row.setAttribute('data-formula', bonus.formula);
-									row.setAttribute('data-original-index', bonus.index);
-									row.setAttribute('data-damage-type', bonus.damageType || '');
-
-									// Create custom checkbox icon
-									const checkIcon = document.createElement('i');
-									checkIcon.className = 'fas fa-check-square sdx-toggle-icon';
-
-									const span = document.createElement('span');
-									span.className = 'sdx-prompt-bonus-label';
-									span.textContent = `+${displayLabel}`;
-
-									row.appendChild(checkIcon);
-									row.appendChild(span);
-
-									// Add click handler to toggle
-									row.addEventListener('click', function () {
-										this.classList.toggle('sdx-bonus-checked');
-										const icon = this.querySelector('.sdx-toggle-icon');
-										if (this.classList.contains('sdx-bonus-checked')) {
-											icon.className = 'fas fa-check-square sdx-toggle-icon';
-										} else {
-											icon.className = 'far fa-square sdx-toggle-icon';
-										}
-									});
-
-									damageSection.appendChild(row);
-								});
-								promptContainer.appendChild(damageSection);
-							}
-
-							// Insert before the last hr (before the buttons)
-							const lastHr = dialogContent.querySelectorAll('hr');
-							if (lastHr.length > 0) {
-								lastHr[lastHr.length - 1].before(promptContainer);
-							} else {
-								dialogContent.appendChild(promptContainer);
-							}
-
-							//console.log(`${MODULE_ID} | Injected prompt bonuses via custom toggles`);
-						}
-					}
-				},
-
-			};
-
-			return Dialog.wait(dialogData, options.dialogOptions);
-		};
-
-		// Add helper function to process promptable bonuses from dialog
-		CONFIG.DiceSD._processPromptableBonuses = async function (html, data, parts) {
-
-			if (!data._sdxPromptableHitBonuses?.length && !data._sdxPromptableDamageBonuses?.length) {
-				return;
-			}
-
-			// Process selected hit bonuses (from custom div toggles)
-			if (data._sdxPromptableHitBonuses?.length) {
-				const selectedHitBonuses = [];
-				html.find('.sdx-prompt-bonus-row.sdx-bonus-checked[data-bonus-type="hit"]').each(function () {
-					const formula = $(this).attr('data-formula');
-					if (formula) {
-						selectedHitBonuses.push(String(formula));
-					}
-				});
-
-				if (selectedHitBonuses.length > 0) {
-					// Add to the roll - evaluate dice and add to data
-					const combinedFormula = selectedHitBonuses.join(' + ');
-					try {
-						const roll = new Roll(combinedFormula);
-						await roll.evaluate();
-
-						// Show Dice So Nice animation with gold appearance if available
-						if (game.dice3d) {
-							// Set gold appearance for prompt hit bonus dice
-							roll.options.appearance = {
-								colorset: "custom",
-								foreground: "#000000",
-								background: "#FFD700",
-								outline: "#B8860B",
-								edge: "#B8860B",
-								material: "metal"
-							};
-							await game.dice3d.showForRoll(roll, game.user, true);
-						}
-
-						data.sdxPromptHitBonus = roll.total;
-						if (!parts.includes("@sdxPromptHitBonus")) {
-							parts.push("@sdxPromptHitBonus");
-						}
-						//console.log(`${MODULE_ID} | Applied prompted hit bonuses: ${combinedFormula} = ${roll.total}`);
-					} catch (err) {
-						console.warn(`${MODULE_ID} | Failed to evaluate prompted hit bonus: ${combinedFormula}`, err);
-					}
-				}
-
-			}
-
-
-			// Store selected damage bonuses for later application (from custom div toggles)
-			if (data._sdxPromptableDamageBonuses?.length) {
-				const selectedDamageBonuses = [];
-				html.find('.sdx-prompt-bonus-row.sdx-bonus-checked[data-bonus-type="damage"]').each(function () {
-					const formula = String($(this).attr('data-formula'));
-					const damageType = $(this).attr('data-damage-type') || "";
-					const index = parseInt($(this).attr('data-original-index'));
-					if (formula) {
-						selectedDamageBonuses.push({ formula, damageType, index });
-					}
-				});
-
-				// Store in global map keyed by weapon ID for access by calculateWeaponBonusDamage
-				const weaponItem = data.item;
-				if (weaponItem?.id) {
-					if (!window._sdxSelectedPromptDamageBonuses) {
-						window._sdxSelectedPromptDamageBonuses = new Map();
-					}
-					window._sdxSelectedPromptDamageBonuses.set(weaponItem.id, selectedDamageBonuses);
-					//console.log(`${MODULE_ID} | Stored prompted damage bonuses for weapon ${weaponItem.id}:`, selectedDamageBonuses);
-				}
-			}
-
-		};
-
-	}
-
-	// ============================================
-	// FREYA'S OMEN - PREVENT SPELL LOSS
-	// ============================================
-	if (RollSD?.Roll) {
-		const _originalRoll = RollSD.Roll;
-		RollSD.Roll = async function (parts, data, $form, adv = 0, options = {}) {
-			const hasFreyasOmen = data.actor?.getFlag && data.actor.getFlag(MODULE_ID, "freyasOmen");
-
-			if (data.item?.isSpell() && hasFreyasOmen) {
-				const originalUpdate = data.item.update;
-				data.item.update = async function (updates, options = {}) {
-					if (updates["system.lost"]) {
-						//console.log(`${MODULE_ID} | Freya's Omen prevented spell loss for ${data.item.name}`);
-						delete updates["system.lost"];
-						if (foundry.utils.isEmpty(updates)) return;
-					}
-					return originalUpdate.call(this, updates, options);
-				};
-			}
-
-			return _originalRoll.call(this, parts, data, $form, adv, options);
-		};
-	}
-
-	//console.log(`${MODULE_ID} | Consolidated ActorSD and RollSD patches applied`);
+	// Legacy ABILITY ADVANTAGE SUPPORT and RollDialog overrides removed - migrated to setupRollConfigPatches()
 });
 
 // ============================================
@@ -18598,7 +18338,32 @@ Hooks.on("deleteItem", async (item, options, userId) => {
 let macroExecuteSocket;
 
 // Register socketlib handler on ready hook
-Hooks.once("ready", () => {
+Hooks.once("ready", async () => {
+	// Run one-time itemacro data migration if not already done
+	if (!game.settings.get(MODULE_ID, "itemacroMigrationDone")) {
+		console.log(`${MODULE_ID} | Starting itemacro data migration...`);
+		
+		const migrateItem = async (item) => {
+			const legacy = item.flags?.itemacro?.macro?.command;
+			if (legacy && !item.getFlag(MODULE_ID, "macroCommand")) {
+				await item.setFlag(MODULE_ID, "macroCommand", legacy);
+				await item.setFlag(MODULE_ID, "macroName", item.flags?.itemacro?.macro?.name || item.name);
+				await item.setFlag(MODULE_ID, "macroRunAsGM", item.flags?.itemacro?.macro?.runAsGM || false);
+			}
+		};
+
+		// Migrate world items
+		for (const item of game.items) await migrateItem(item);
+
+		// Migrate actor items
+		for (const actor of game.actors) {
+			for (const item of actor.items) await migrateItem(item);
+		}
+
+		await game.settings.set(MODULE_ID, "itemacroMigrationDone", true);
+		console.log(`${MODULE_ID} | itemacro data migration complete.`);
+	}
+
 	// Register socketlib socket if available
 	if (game.modules.get("socketlib")?.active) {
 		macroExecuteSocket = socketlib.registerModule(MODULE_ID);
@@ -18627,6 +18392,12 @@ Hooks.once("ready", () => {
 
 			// Execute the macro as GM
 			await macro.execute(context);
+		});
+
+		macroExecuteSocket.register("sdxExecuteItemMacro", async (itemUuid, contextData) => {
+			const item = await fromUuid(itemUuid);
+			if (!item) return null;
+			return executeItemMacro(item, contextData);
 		});
 
 		// Register handler to sync template targets to GM
@@ -18869,6 +18640,60 @@ Hooks.on("updateItem", async (item, changes, options, userId) => {
 });
 
 // ============================================
+// NATIVE ITEM MACRO ENGINE
+// ============================================
+
+/**
+ * Check if an item has an attached macro (native or legacy itemacro)
+ * @param {Item} item - The item to check
+ * @returns {boolean}
+ */
+export function hasItemMacro(item) {
+	return !!(item?.getFlag(MODULE_ID, "macroCommand")
+		?? item?.flags?.itemacro?.macro?.command);
+}
+
+/**
+ * Execute an item's macro script
+ * @param {Item} item - The item whose macro to execute
+ * @param {Object} context - Execution context (actor, token, args, etc)
+ * @returns {Promise<any>}
+ */
+export async function executeItemMacro(item, context = {}) {
+	const command = item.getFlag(MODULE_ID, "macroCommand")
+		?? item.flags?.itemacro?.macro?.command;
+	if (!command) return null;
+
+	const runAsGM = item.getFlag(MODULE_ID, "macroRunAsGM")
+		?? item.flags?.itemacro?.macro?.runAsGM;
+	
+	if (runAsGM && !game.user.isGM) {
+		if (macroExecuteSocket) {
+			return macroExecuteSocket.executeAsGM("sdxExecuteItemMacro", item.uuid, context);
+		} else {
+			ui.notifications.warn("Run as GM requested but socketlib not available.");
+		}
+	}
+
+	const actor = context.actor ?? item.parent ?? null;
+	const token = context.token ?? actor?.getActiveTokens()?.[0]?.document ?? null;
+	const character = game.user.character ?? null;
+	const speaker = ChatMessage.getSpeaker({ actor });
+
+	// Mirror itemacro's available variables
+	const AsyncFunction = (async () => { }).constructor;
+	const fn = new AsyncFunction("actor", "token", "character", "speaker", "item", "args", "scope", command);
+
+	try {
+		return await fn(actor, token, character, speaker, item, context.args ?? [], context);
+	} catch (err) {
+		ui.notifications.error(`Macro error on ${item.name}: ${err.message}`);
+		console.error(`${MODULE_ID} | Item macro error:`, err);
+		return null;
+	}
+}
+
+// ============================================
 // WEAPON ITEM MACRO EXECUTION SYSTEM
 // ============================================
 
@@ -18880,149 +18705,26 @@ Hooks.on("updateItem", async (item, changes, options, userId) => {
  * @param {Object} context - Additional context for the macro
  */
 async function executeWeaponItemMacro(weapon, actor, trigger, context = {}) {
-	// Check if Item Macro module is available
-	if (!game.modules.get("itemacro")?.active) {
-		//console.log(`${MODULE_ID} | Item Macro module not active, skipping weapon macro execution`);
-		return;
-	}
-
-	// Check if the weapon has a macro using Item Macro's API
-	if (typeof weapon.hasMacro !== "function" || !weapon.hasMacro()) {
-		//console.log(`${MODULE_ID} | No Item Macro attached to weapon ${weapon.name}`);
-		return;
-	}
+	// Check if the weapon has a macro
+	if (!hasItemMacro(weapon)) return;
 
 	// Get the weapon item macro config
 	const macroConfig = getWeaponItemMacroConfig(weapon);
 	if (!macroConfig.enabled) return;
 
 	// Verify the trigger is enabled
-	if (!macroConfig.triggers.includes(trigger)) {
-		//console.log(`${MODULE_ID} | Trigger ${trigger} not enabled for weapon ${weapon.name}`);
-		return;
-	}
+	if (!macroConfig.triggers.includes(trigger)) return;
 
-	// Get the actor's token
-	const token = actor.token || canvas.tokens?.placeables.find(t => t.actor?.id === actor.id);
-
-	// Get targets
-	const targets = Array.from(game.user.targets);
-	const target = targets[0] || null;
-	const targetActor = target?.actor || null;
-
-	// Build the comprehensive scope object
-	// Note: Item Macro expects certain properties to be available
-	const scope = {
+	// Build context for the macro
+	const macroContext = {
+		...context,
 		actor,
-		token,
-		item: weapon,
-		targets,
-		target,
-		targetActor,
 		trigger,
-		isHit: context.isHit ?? false,
-		isMiss: context.isMiss ?? false,
-		isCritical: context.isCritical ?? false,
-		isCriticalMiss: context.isCriticalMiss ?? false,
-		rollResult: context.rollResult ?? null,
-		rollData: context.rollData ?? null,
-		damageRoll: context.damageRoll ?? null,
-		speaker: ChatMessage.getSpeaker({ actor }),
-		flags: weapon.flags?.[MODULE_ID]?.weaponBonus || {},
-		// Add SDX-specific properties that macros can use
-		sdx: {
-			trigger,
-			isHit: context.isHit ?? false,
-			isMiss: context.isMiss ?? false,
-			isCritical: context.isCritical ?? false,
-			isCriticalMiss: context.isCriticalMiss ?? false,
-			rollResult: context.rollResult ?? null
-		}
+		args: context.args ?? []
 	};
 
-	try {
-		//console.log(`${MODULE_ID} | Executing weapon Item Macro for ${weapon.name} on trigger "${trigger}"`, scope);
-
-		// Check if we need to run as GM
-		if (macroConfig.runAsGm && !game.user.isGM && macroExecuteSocket) {
-			// Serialize context for socket transmission
-			const serializedContext = {
-				actorId: actor.id,
-				tokenId: token?.id,
-				itemId: weapon.id,
-				targetIds: targets.map(t => t.id),
-				trigger,
-				isHit: scope.isHit,
-				isMiss: scope.isMiss,
-				isCritical: scope.isCritical,
-				isCriticalMiss: scope.isCriticalMiss,
-				rollResult: scope.rollResult,
-				rollDataJson: scope.rollData ? JSON.stringify(scope.rollData) : null
-			};
-
-			//console.log(`${MODULE_ID} | Executing weapon Item Macro via GM (socketlib)`);
-			await macroExecuteSocket.executeAsGM("executeWeaponItemMacroAsGM", serializedContext);
-		} else {
-			// Execute the macro locally using Item Macro's API
-			// The executeMacro method is added to Item.prototype by the itemacro module
-			//console.log(`${MODULE_ID} | Executing weapon Item Macro locally using weapon.executeMacro()`);
-			await weapon.executeMacro(scope);
-		}
-	} catch (error) {
-		console.error(`${MODULE_ID} | Error executing weapon Item Macro for ${weapon.name}:`, error);
-		ui.notifications.error(`Failed to execute macro for ${weapon.name}: ${error.message}`);
-	}
+	return executeItemMacro(weapon, macroContext);
 }
-
-// Register additional socketlib handler for weapon item macro GM execution
-Hooks.once("ready", () => {
-	if (macroExecuteSocket) {
-		macroExecuteSocket.register("executeWeaponItemMacroAsGM", async (serializedContext) => {
-			// This runs on the GM's client
-			const actor = game.actors.get(serializedContext.actorId);
-			if (!actor) return;
-
-			const weapon = actor.items.get(serializedContext.itemId);
-			if (!weapon) return;
-
-			const token = serializedContext.tokenId ? canvas.tokens?.get(serializedContext.tokenId) : null;
-			const targets = serializedContext.targetIds?.map(id => canvas.tokens?.get(id)).filter(Boolean) || [];
-
-			const scope = {
-				actor,
-				token,
-				item: weapon,
-				targets,
-				target: targets[0] || null,
-				targetActor: targets[0]?.actor || null,
-				trigger: serializedContext.trigger,
-				isHit: serializedContext.isHit,
-				isMiss: serializedContext.isMiss,
-				isCritical: serializedContext.isCritical,
-				isCriticalMiss: serializedContext.isCriticalMiss,
-				rollResult: serializedContext.rollResult,
-				rollData: serializedContext.rollDataJson ? JSON.parse(serializedContext.rollDataJson) : null,
-				damageRoll: null,
-				speaker: ChatMessage.getSpeaker({ actor }),
-				flags: weapon.flags?.[MODULE_ID]?.weaponBonus || {}
-			};
-
-			try {
-				// Use Item Macro's API
-				if (typeof weapon.executeMacro === "function") {
-					//console.log(`${MODULE_ID} | GM executing weapon Item Macro using weapon.executeMacro()`);
-					await weapon.executeMacro(scope);
-				} else {
-					console.error(`${MODULE_ID} | weapon.executeMacro is not available on GM client`);
-				}
-			} catch (error) {
-				console.error(`${MODULE_ID} | GM execution of weapon Item Macro failed:`, error);
-			}
-		});
-
-		//console.log(`${MODULE_ID} | Registered weapon Item Macro GM execution handler`);
-	}
-});
 
 // ============================================
 // SPELL ITEM MACRO EXECUTION SYSTEM
@@ -19050,15 +18752,10 @@ function getSpellItemMacroConfig(item) {
  * @param {Object} context - Additional context for the macro
  */
 async function executeSpellItemMacro(spellItem, actor, trigger, context = {}) {
-	// Check if Item Macro module is active
-	if (!game.modules.get("itemacro")?.active) {
-		console.warn(`${MODULE_ID} | Item Macro module not active, cannot execute spell macro`);
-		return;
-	}
-
-	// Check if the item has a macro attached
-	if (typeof spellItem.hasMacro !== "function" || !spellItem.hasMacro()) {
-		//console.log(`${MODULE_ID} | Spell ${spellItem.name} has triggers configured but no Item Macro attached`);
+	// Native executor — no longer requires the itemacro module. Falls back to
+	// reading legacy `flags.itemacro.macro.command` so pre-Phase-4 worlds keep
+	// working until the migration hook runs.
+	if (!hasItemMacro(spellItem)) {
 		return;
 	}
 
@@ -19116,23 +18813,39 @@ async function executeSpellItemMacro(spellItem, actor, trigger, context = {}) {
 		return;
 	}
 
-	// Execute locally using Item Macro's API
+	// Execute locally. Inline AsyncFunction preserves the rich scope variables
+	// (target, targets, isSuccess, etc.) that existing trigger macros may rely
+	// on. Reads SDX flag first, falls back to legacy itemacro flag.
 	try {
-		if (typeof spellItem.executeMacro === "function") {
-			await spellItem.executeMacro(scope);
-			//console.log(`${MODULE_ID} | Spell Item Macro executed successfully`);
-		} else {
-			console.warn(`${MODULE_ID} | spellItem.executeMacro is not available`);
-		}
+		const macroCommand = spellItem.getFlag(MODULE_ID, "macroCommand")
+			?? spellItem.flags?.itemacro?.macro?.command;
+		if (!macroCommand) return;
+
+		const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
+		const macroFn = new AsyncFunction(
+			"actor", "token", "item", "targets", "target", "targetActor",
+			"trigger", "isSuccess", "isFailure", "isCritical", "isCriticalFail",
+			"rollResult", "rollData", "speaker", "flags",
+			macroCommand
+		);
+		await macroFn.call(scope,
+			scope.actor, scope.token, scope.item, scope.targets, scope.target, scope.targetActor,
+			scope.trigger, scope.isSuccess, scope.isFailure, scope.isCritical, scope.isCriticalFail,
+			scope.rollResult, scope.rollData, scope.speaker, scope.flags
+		);
 	} catch (error) {
-		console.error(`${MODULE_ID} | Error executing spell Item Macro:`, error);
+		console.error(`${MODULE_ID} | Error executing spell macro:`, error);
 		ui.notifications.error("There was an error in your macro syntax. See the console (F12) for details");
 	}
 }
 
-// Register socket handler for GM execution of spell Item Macros
+// Register socket handlers for Spell API functions
 Hooks.once("ready", () => {
-	if (macroExecuteSocket) {
+	// Note: macroExecuteSocket is defined in the closure above, but we need to access it.
+	// However, since it was defined in a previous ready hook, it might not be available here if this hook runs before that one completes?
+	// Actually, hooks run sequentially. But macroExecuteSocket is let-scoped in the file, so it IS available.
+
+	if (game.modules.get("socketlib")?.active && macroExecuteSocket) {
 		macroExecuteSocket.register("executeSpellItemMacroAsGM", async (serializedContext) => {
 			const actor = game.actors.get(serializedContext.actorId);
 			if (!actor) return;
@@ -19140,7 +18853,7 @@ Hooks.once("ready", () => {
 			const spellItem = actor.items.get(serializedContext.itemId);
 			if (!spellItem) return;
 
-			// Resolve token and targets from UUIDs to ensure cross-scene support
+			// Resolve token and targets from UUIDs
 			const tokenDoc = serializedContext.tokenUuid ? await fromUuid(serializedContext.tokenUuid) : null;
 			const token = tokenDoc?.object || null;
 
@@ -19152,13 +18865,8 @@ Hooks.once("ready", () => {
 				}
 			}
 
-			const scope = {
-				actor,
-				token,
-				item: spellItem,
+			const context = {
 				targets,
-				target: targets[0] || null,
-				targetActor: targets[0]?.actor || null,
 				trigger: serializedContext.trigger,
 				isSuccess: serializedContext.isSuccess,
 				isFailure: serializedContext.isFailure,
@@ -19166,35 +18874,12 @@ Hooks.once("ready", () => {
 				isCriticalFail: serializedContext.isCriticalFail,
 				rollResult: serializedContext.rollResult,
 				rollData: serializedContext.rollDataJson ? JSON.parse(serializedContext.rollDataJson) : null,
-				speaker: ChatMessage.getSpeaker({ actor }),
-				flags: spellItem.flags?.[MODULE_ID] || {},
-				originatingUserId: serializedContext.originatingUserId  // For dialog routing back to player
+				originatingUserId: serializedContext.originatingUserId
 			};
 
-			try {
-				if (typeof spellItem.executeMacro === "function") {
-					// DEBUG: Log scope to find ReferenceError cause
-					// console.log(`${MODULE_ID} | GM executing macro with scope:`, scope);
-					await spellItem.executeMacro(scope);
-				} else {
-					console.error(`${MODULE_ID} | spellItem.executeMacro is not available on GM client`);
-				}
-			} catch (error) {
-				console.error(`${MODULE_ID} | GM execution of spell Item Macro failed:`, error);
-			}
+			return executeSpellItemMacro(spellItem, actor, serializedContext.trigger, context);
 		});
 
-		//console.log(`${MODULE_ID} | Registered spell Item Macro GM execution handler`);
-	}
-});
-
-// Register socket handlers for Spell API functions
-Hooks.once("ready", () => {
-	// Note: macroExecuteSocket is defined in the closure above, but we need to access it.
-	// However, since it was defined in a previous ready hook, it might not be available here if this hook runs before that one completes?
-	// Actually, hooks run sequentially. But macroExecuteSocket is let-scoped in the file, so it IS available.
-
-	if (game.modules.get("socketlib")?.active && macroExecuteSocket) {
 		macroExecuteSocket.register("applyHolyWeaponAsGM", async (weaponUuid, casterUuid, itemUuid, targetActorUuid, targetTokenUuid) => {
 			// Items return the document directly from fromUuid, not a wrapper
 			const weapon = await fromUuid(weaponUuid);
@@ -19592,132 +19277,28 @@ Hooks.on("renderChatMessage", async (message, html, data) => {
  * @param {Object} context - Additional context
  */
 async function executeNPCFeatureItemMacro(item, actor, context = {}) {
-	// Check if Item Macro module is active
-	if (!game.modules.get("itemacro")?.active) return;
+	// Check if the item has a macro
+	if (!hasItemMacro(item)) return;
 
 	// Check if the item has a macro and if executeOnUse is enabled
 	const macroConfig = item.getFlag(MODULE_ID, "itemMacro") || {};
-	const executeOnUse = macroConfig.executeOnUse ?? true; // Default to true for backwards compatibility
+	const executeOnUse = macroConfig.executeOnUse ?? true;
 
-	if (!executeOnUse) {
-		//console.log(`${MODULE_ID} | NPC Feature macro execution disabled for ${item.name}`);
-		return;
-	}
+	if (!executeOnUse) return;
 
-	// Check if the item has a macro using Item Macro's API
-	if (typeof item.hasMacro !== "function" || !item.hasMacro()) {
-		//console.log(`${MODULE_ID} | NPC Feature ${item.name} has no macro`);
-		return;
-	}
-
-	// Get selected token
-	const selectedTokens = canvas.tokens?.controlled || [];
-	const token = selectedTokens.find(t => t.actor?.id === actor.id) || null;
-
-	// Get targeted tokens
-	const targets = Array.from(game.user?.targets || []);
-
-	// Build scope for the macro
-	const scope = {
+	// Build context for the macro
+	const macroContext = {
+		...context,
 		actor,
-		token,
-		item,
-		targets,
-		target: targets[0] || null,
-		targetActor: targets[0]?.actor || null,
-		speaker: ChatMessage.getSpeaker({ actor }),
-		flags: item.flags?.[MODULE_ID] || {},
-		...context
+		args: context.args ?? []
 	};
 
-	// If running as GM and we're not the GM, send via socket
-	if (macroConfig.runAsGm && !game.user.isGM) {
-		const serializedContext = {
-			actorId: actor.id,
-			itemId: item.id,
-			tokenUuid: token?.document?.uuid,
-			targetUuids: targets.map(t => t.document.uuid),
-			originatingUserId: game.user.id
-		};
-
-		//console.log(`${MODULE_ID} | Sending NPC Feature Item Macro to GM for execution`);
-		if (macroExecuteSocket) {
-			await macroExecuteSocket.executeAsGM("executeNPCFeatureMacroAsGM", serializedContext);
-		}
-		return;
-	}
-
-	// Execute the macro directly (bypassing Item Macro's validation which requires name)
-	try {
-		const macroCommand = item.getFlag("itemacro", "macro.command");
-		if (!macroCommand) {
-			console.warn(`${MODULE_ID} | NPC Feature ${item.name} has no macro command`);
-			return;
-		}
-
-		// Create and execute an async function with the scope variables
-		const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
-		const macroFn = new AsyncFunction("actor", "token", "item", "targets", "target", "targetActor", "speaker", "flags",
-			macroCommand);
-
-		await macroFn.call(scope, scope.actor, scope.token, scope.item, scope.targets, scope.target, scope.targetActor, scope.speaker, scope.flags);
-		//console.log(`${MODULE_ID} | NPC Feature Item Macro executed successfully`);
-	} catch (error) {
-		console.error(`${MODULE_ID} | Error executing NPC Feature Item Macro:`, error);
-		ui.notifications.error("There was an error in your macro syntax. See the console (F12) for details");
-	}
-
-
+	return executeItemMacro(item, macroContext);
 }
 
 // Register socket handler for GM execution of NPC Feature Item Macros
 Hooks.once("ready", () => {
-
-	if (macroExecuteSocket) {
-		macroExecuteSocket.register("executeNPCFeatureMacroAsGM", async (serializedContext) => {
-			const actor = game.actors.get(serializedContext.actorId);
-			if (!actor) return;
-
-			const item = actor.items.get(serializedContext.itemId);
-			if (!item) return;
-
-			// Resolve token and targets from UUIDs
-			const tokenDoc = serializedContext.tokenUuid ? await fromUuid(serializedContext.tokenUuid) : null;
-			const token = tokenDoc?.object || null;
-
-			const targets = [];
-			if (serializedContext.targetUuids) {
-				for (const uuid of serializedContext.targetUuids) {
-					const tDoc = await fromUuid(uuid);
-					if (tDoc?.object) targets.push(tDoc.object);
-				}
-			}
-
-			const scope = {
-				actor,
-				token,
-				item,
-				targets,
-				target: targets[0] || null,
-				targetActor: targets[0]?.actor || null,
-				speaker: ChatMessage.getSpeaker({ actor }),
-				flags: item.flags?.[MODULE_ID] || {},
-				originatingUserId: serializedContext.originatingUserId
-			};
-
-			try {
-				if (typeof item.executeMacro === "function") {
-					await item.executeMacro(scope);
-				} else {
-					console.error(`${MODULE_ID} | item.executeMacro is not available on GM client`);
-				}
-			} catch (error) {
-				console.error(`${MODULE_ID} | GM execution of NPC Feature Item Macro failed:`, error);
-			}
-		});
-
-		//console.log(`${MODULE_ID} | Registered NPC Feature Item Macro GM execution handler`);
-	}
+	// Redundant handler removed
 });
 
 /**
@@ -20015,46 +19596,6 @@ Hooks.once("ready", () => {
 	}, 100);
 });
 
-// Fix shadowdark.chat._renderChatMessage for Foundry v13+ compatibility
-// In Foundry v13+, CONST.CHAT_MESSAGE_STYLES.OTHER (= 0) is no longer a valid ChatMessage type.
-// The schema coerces numeric 0 to the string "0" which is not a registered sub-type, causing
-// DataModelValidationError. This patch replaces the method to omit the type field when the
-// legacy numeric value would be used, letting Foundry fall back to its default type.
-Hooks.once("ready", () => {
-	setTimeout(() => {
-		if (!shadowdark?.chat?._renderChatMessage) {
-			console.warn(`${MODULE_ID} | shadowdark.chat._renderChatMessage not found, cannot patch for v13+ compat`);
-			return;
-		}
-
-		shadowdark.chat._renderChatMessage = async function(actor, data, template, mode) {
-			const html = await foundry.applications.handlebars.renderTemplate(template, data.templateData);
-
-			if (!mode) mode = game.settings.get("core", "rollMode");
-
-			const chatData = {
-				content: html,
-				flags: { "core.canPopout": true },
-				flavor: data.flavor ?? undefined,
-				rollMode: mode,
-				speaker: ChatMessage.getSpeaker({ actor }),
-				user: game.user.id,
-			};
-
-			// Only set type when it is a valid string sub-type; numeric legacy constants
-			// (CONST.CHAT_MESSAGE_STYLES.OTHER = 0 etc.) are not valid in Foundry v13+.
-			if (data.type && typeof data.type === "string") {
-				chatData.type = data.type;
-			}
-
-			ChatMessage.applyRollMode(chatData, mode);
-			await ChatMessage.create(chatData);
-		};
-
-		console.log(`${MODULE_ID} | Patched shadowdark.chat._renderChatMessage for Foundry v13+ type compatibility`);
-	}, 150);
-});
-
 //console.log(`${MODULE_ID} | Module loaded - NPC Feature item macro hooks registered`);
 
 
@@ -20069,8 +19610,6 @@ Hooks.once("ready", () => {
  * @param {Object} context - Additional context (rollResult, success, critical)
  */
 async function executeClassAbilityItemMacro(item, actor, context = {}) {
-	if (!game.modules.get("itemacro")?.active) return;
-
 	const macroConfig = item.getFlag(MODULE_ID, "itemMacro") || {};
 	const macroTrigger = macroConfig.macroTrigger ?? "all";
 
@@ -20088,8 +19627,8 @@ async function executeClassAbilityItemMacro(item, actor, context = {}) {
 		if (macroTrigger === "onFailure" && !isFailure) return;
 	}
 
-	// Check if the item has a macro
-	if (typeof item.hasMacro !== "function" || !item.hasMacro()) return;
+	// Check if the item has a macro (native check; no itemacro dependency)
+	if (!hasItemMacro(item)) return;
 
 	const token = canvas.tokens?.placeables?.find(t => t.actor?.id === actor.id)
 		|| canvas.tokens?.controlled?.find(t => t.actor?.id === actor.id) || null;
@@ -20131,9 +19670,11 @@ async function executeClassAbilityItemMacro(item, actor, context = {}) {
 		return;
 	}
 
-	// Execute the macro directly
+	// Execute the macro directly. Read from SDX flag namespace first, fall
+	// back to legacy itemacro namespace for unmigrated worlds.
 	try {
-		const macroCommand = item.getFlag("itemacro", "macro.command");
+		const macroCommand = item.getFlag(MODULE_ID, "macroCommand")
+			?? item.flags?.itemacro?.macro?.command;
 		if (!macroCommand) return;
 
 		const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
@@ -20148,7 +19689,7 @@ async function executeClassAbilityItemMacro(item, actor, context = {}) {
 			scope.speaker, scope.flags, scope.success, scope.critical, scope.rolled, scope.scene, scope.game
 		);
 	} catch (error) {
-		console.error(`${MODULE_ID} | Error executing Class Ability Item Macro:`, error);
+		console.error(`${MODULE_ID} | Error executing Class Ability macro:`, error);
 		ui.notifications.error("There was an error in your macro syntax. See the console (F12) for details");
 	}
 }
@@ -20192,25 +19733,22 @@ Hooks.once("ready", () => {
 			};
 
 			try {
-				if (typeof item.executeMacro === "function") {
-					await item.executeMacro(scope);
-				} else {
-					const macroCommand = item.getFlag("itemacro", "macro.command");
-					if (macroCommand) {
-						const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
-						const macroFn = new AsyncFunction(
-							"actor", "token", "item", "targets", "target", "targetActor",
-							"speaker", "flags", "success", "critical", "rolled", "scene", "game",
-							macroCommand
-						);
-						await macroFn.call(scope,
-							scope.actor, scope.token, scope.item, scope.targets, scope.target, scope.targetActor,
-							scope.speaker, scope.flags, scope.success, scope.critical, scope.rolled, scope.scene, scope.game
-						);
-					}
-				}
+				const macroCommand = item.getFlag(MODULE_ID, "macroCommand")
+					?? item.flags?.itemacro?.macro?.command;
+				if (!macroCommand) return;
+
+				const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
+				const macroFn = new AsyncFunction(
+					"actor", "token", "item", "targets", "target", "targetActor",
+					"speaker", "flags", "success", "critical", "rolled", "scene", "game",
+					macroCommand
+				);
+				await macroFn.call(scope,
+					scope.actor, scope.token, scope.item, scope.targets, scope.target, scope.targetActor,
+					scope.speaker, scope.flags, scope.success, scope.critical, scope.rolled, scope.scene, scope.game
+				);
 			} catch (error) {
-				console.error(`${MODULE_ID} | GM execution of Class Ability Item Macro failed:`, error);
+				console.error(`${MODULE_ID} | GM execution of Class Ability macro failed:`, error);
 			}
 		});
 	}
@@ -21948,20 +21486,21 @@ Hooks.on("createItem", async (item, options, userId) => {
 /*  NPC Attack Display Patch                        */
 /* ------------------------------------------------ */
 Hooks.once('ready', () => {
-	// Monkey Patch ActorSD.prototype.buildNpcAttackDisplays to include SDX extra damage info and item image
-	// This allows the NPC Sheet "Abilities" tab and "Attacks" list to show typed damage and extra components
-	const ActorSD = CONFIG.Actor.documentClass;
+	// Shadowdark 4.x: NPC display builders moved from ActorSD.prototype to the
+	// NPC data model (CONFIG.Actor.dataModels.NPC.prototype). Inside these
+	// methods `this` is the data model, and the parent actor is `this.parent`.
+	const NpcModel = CONFIG.Actor.dataModels?.NPC;
 
-	// Guard against re-patching or missing class
-	if (!ActorSD || !ActorSD.prototype.buildNpcAttackDisplays) {
-		console.warn("shadowdark-extras | Could not patch ActorSD.prototype.buildNpcAttackDisplays");
+	if (!NpcModel?.prototype || !NpcModel.prototype.buildNpcAttackDisplays) {
+		console.warn("shadowdark-extras | Could not patch NpcSD.prototype.buildNpcAttackDisplays");
 		return;
 	}
 
-	const originalBuildNpcAttackDisplays = ActorSD.prototype.buildNpcAttackDisplays;
+	const originalBuildNpcAttackDisplays = NpcModel.prototype.buildNpcAttackDisplays;
 
-	ActorSD.prototype.buildNpcAttackDisplays = async function (itemId) {
-		const item = this.getEmbeddedDocument("Item", itemId);
+	NpcModel.prototype.buildNpcAttackDisplays = async function (itemId) {
+		const actor = this.parent;
+		const item = actor?.items.get(itemId);
 
 		// If getting item fails, fallback to original ensuring failure consistency
 		if (!item) return originalBuildNpcAttackDisplays.call(this, itemId);
@@ -22041,14 +21580,15 @@ Hooks.once('ready', () => {
 		return baseHtml;
 	};
 
-	console.log("shadowdark-extras | Patched ActorSD.prototype.buildNpcAttackDisplays");
+	console.log("shadowdark-extras | Patched NpcSD.prototype.buildNpcAttackDisplays");
 
 	// Also patch buildNpcSpecialDisplays to include item images
-	if (ActorSD.prototype.buildNpcSpecialDisplays) {
-		const originalBuildNpcSpecialDisplays = ActorSD.prototype.buildNpcSpecialDisplays;
+	if (NpcModel.prototype.buildNpcSpecialDisplays) {
+		const originalBuildNpcSpecialDisplays = NpcModel.prototype.buildNpcSpecialDisplays;
 
-		ActorSD.prototype.buildNpcSpecialDisplays = async function (itemId) {
-			const item = this.getEmbeddedDocument("Item", itemId);
+		NpcModel.prototype.buildNpcSpecialDisplays = async function (itemId) {
+			const actor = this.parent;
+			const item = actor?.items.get(itemId);
 
 			// If getting item fails, fallback to original
 			if (!item) return originalBuildNpcSpecialDisplays.call(this, itemId);
@@ -22066,11 +21606,14 @@ Hooks.once('ready', () => {
 			return baseHtml;
 		};
 
-		console.log("shadowdark-extras | Patched ActorSD.prototype.buildNpcSpecialDisplays");
+		console.log("shadowdark-extras | Patched NpcSD.prototype.buildNpcSpecialDisplays");
 	}
 
-	// Also patch buildWeaponDisplay for player sheet weapon images
-	if (ActorSD.prototype.buildWeaponDisplay) {
+	// buildWeaponDisplay was removed in Shadowdark 4.x. Skip the patch entirely
+	// on systems that no longer expose it. Kept behind a guard so that older
+	// SD 3.x worlds still receive the enhancement if someone is on a back-rev.
+	const ActorSD = CONFIG.Actor.documentClass;
+	if (ActorSD?.prototype?.buildWeaponDisplay) {
 		const originalBuildWeaponDisplay = ActorSD.prototype.buildWeaponDisplay;
 
 		ActorSD.prototype.buildWeaponDisplay = async function (options) {

@@ -106,21 +106,20 @@ async function handleChatMessageRender(message, html, data) {
 	// Only process if current user is the author to avoid duplicate processing
 	if (message.author?.id !== game.user.id) return;
 
-	// Check if this is a Shadowdark roll message
+	// Check if this is a Shadowdark roll message (uses rollConfig in v4)
 	const sdFlags = message.flags?.shadowdark;
-	if (!sdFlags?.isRoll) return;
+	const rollConfig = sdFlags?.rollConfig;
+	if (!rollConfig) return;
 
-	// Get actor and item IDs from the chat card HTML
+	// Get actor and item IDs from the chat card HTML or rollConfig
 	const chatCard = html.find('.chat-card');
-	if (!chatCard.length) return;
+	const actorId = rollConfig.actorId || chatCard.data('actorId');
+	const itemUuid = rollConfig.itemUuid || chatCard.data('itemId'); // In v4 itemId often holds UUID
 
-	const actorId = chatCard.data('actorId');
-	const itemId = chatCard.data('itemId');
-
-	if (!actorId || !itemId) return;
+	if (!actorId) return;
 
 	const actor = game.actors.get(actorId);
-	const item = actor?.items.get(itemId);
+	const item = itemUuid ? (itemUuid.includes(".") ? await fromUuid(itemUuid) : actor?.items.get(itemUuid)) : null;
 
 	if (!actor || !item) return;
 
@@ -133,8 +132,13 @@ async function handleChatMessageRender(message, html, data) {
 
 	const spellId = item.id;
 	const casterId = actor.id;
-	const success = sdFlags.success === true;
-	const critical = sdFlags.critical;
+
+	// Get success/critical from the actual roll instances in v4
+	const mainRoll = message.rolls.find(r => r.options?.type === "main");
+	if (!mainRoll) return;
+
+	const success = mainRoll.success === true;
+	const critical = mainRoll.criticalSuccess ? "success" : (mainRoll.criticalFailure ? "failure" : null);
 
 	// Check if this is a focus roll (maintenance) or initial cast
 	// Focus rolls have "Focus Check" in the flavor
@@ -211,8 +215,8 @@ async function startFocusSpell(actor, spell, perTurnConfig = null) {
 	// Cache spell data so we can still roll focus checks even if the item is deleted (e.g., scrolls)
 	const spellData = {
 		tier: spell.system?.tier ?? 1,
-		ability: spell.system?.spellcasting?.ability ?? actor.system?.spellcastingAbility ?? "INT",
-		dc: spell.system?.dc ?? spell.system?.tier ? (10 + spell.system.tier) : 11,
+		ability: spell.system?.spellcasting?.ability ?? actor.system?.spellcastingAbility ?? actor.system?.ability ?? "INT",
+		dc: spell.system?.dc ?? (spell.system?.tier ? (10 + spell.system.tier) : 11),
 		type: spell.type,
 		description: spell.system?.description ?? "",
 		// Cache the spell's class UUIDs - important for focus rolls to use correct ability
@@ -1306,7 +1310,11 @@ async function rollFocusSpellWithTargets(actor, spellId) {
 	if (spell) {
 		// Spell item still exists - use normal method
 		console.log(`shadowdark-extras | Rolling focus check for spell ${spellId} on actor ${actor.name}`);
-		actor.castSpell(spellId, { isFocusRoll: true });
+		if (actor.system.castSpell) {
+			actor.system.castSpell(spellId, { isFocusRoll: true });
+		} else {
+			actor.castSpell(spellId, { isFocusRoll: true });
+		}
 	} else if (focusEntry?.spellData) {
 		// Spell item no longer exists (e.g., scroll was consumed) - use cached data
 		console.log(`shadowdark-extras | Spell item ${spellId} no longer exists, using cached data for focus roll`);
@@ -1375,7 +1383,11 @@ async function rollFocusCheckFromCachedData(actor, focusEntry) {
 
 		// Use the native Shadowdark spell casting mechanism
 		// The { isFocusRoll: true } option tells the system this is a focus check
-		await actor.castSpell(tempSpell.id, { isFocusRoll: true });
+		if (actor.system.castSpell) {
+			await actor.system.castSpell(tempSpell.id, { isFocusRoll: true });
+		} else {
+			await actor.castSpell(tempSpell.id, { isFocusRoll: true });
+		}
 
 		// Delete the temporary spell item after a brief delay to allow the roll to complete
 		// We need to wait because castSpell is async but we need the roll to process first

@@ -11,8 +11,6 @@ const WALL_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/wall_tiles`;
 const DOOR_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/door_tiles`;
 const BG_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/backgrounds`;
 
-// Grid size for dungeon tiles (matches scene grid)
-const GRID_SIZE = 100;
 const WALL_THICKNESS = 20;
 
 // State
@@ -783,7 +781,7 @@ function updateSelectionRect(start, end, isDelete) {
     // Safety check - if selection rect couldn't be created or was destroyed
     if (!_selectionRect || _selectionRect.destroyed) return;
 
-    const gridSize = canvas?.grid?.size || GRID_SIZE;
+    const gridSize = canvas?.grid?.size || canvas.grid.size;
 
     // Calculate grid range
     const minX = Math.min(start.x, end.x);
@@ -957,7 +955,7 @@ async function handleIntWallClick(clickPos) {
     const scene = canvas.scene;
     if (!scene) return;
 
-    const gridSize = canvas.grid.size || GRID_SIZE;
+    const gridSize = canvas.grid.size || canvas.grid.size;
     const clickX = clickPos.x;
     const clickY = clickPos.y;
 
@@ -1397,7 +1395,7 @@ export async function ensureBackgroundDrawing(scene, elevation, backgroundSettin
     // canvas.dimensions may be stale if the scene was just resized by the generator.
     // Foundry snaps the padding offset to the nearest grid cell (ceiling), so we do the same.
     const scenePadFraction = scene.padding ?? 0;
-    const gridSize = scene.grid?.size || GRID_SIZE;
+    const gridSize = scene.grid?.size || canvas.grid.size;
     const sceneX = Math.ceil(scene.width * scenePadFraction / gridSize) * gridSize;
     const sceneY = Math.ceil(scene.height * scenePadFraction / gridSize) * gridSize;
     const sceneWidth = scene.width;
@@ -1464,7 +1462,7 @@ async function handleRectangleFill(startPos, endPos, isDeleting) {
     const scene = canvas.scene;
     if (!scene || !startPos || !endPos) return;
 
-    const gridSize = canvas.grid.size || GRID_SIZE;
+    const gridSize = canvas.grid.size || canvas.grid.size;
 
     // Calculate grid bounds
     const minPx = Math.min(startPos.x, endPos.x);
@@ -1512,7 +1510,7 @@ async function handleRectangleFill(startPos, endPos, isDeleting) {
 
         // Create and immediately delete a probe tile to detect Levels' current elevation
         const probeTile = await scene.createEmbeddedDocuments("Tile", [{
-            texture: { src: _selectedFloorTile || `modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.png` },
+            texture: { src: _selectedFloorTile || `modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.png`, anchorX: 0, anchorY: 0 },
             x: minGx * gridSize,
             y: minGy * gridSize,
             width: gridSize,
@@ -1585,7 +1583,7 @@ async function handleRectangleFill(startPos, endPos, isDeleting) {
 
         // Create a probe tile to detect what elevation Levels will assign
         const probeTile = await scene.createEmbeddedDocuments("Tile", [{
-            texture: { src: _selectedFloorTile },
+            texture: { src: _selectedFloorTile, anchorX: 0, anchorY: 0 },
             x: minGx * gridSize,
             y: minGy * gridSize,
             width: gridSize,
@@ -1612,8 +1610,8 @@ async function handleRectangleFill(startPos, endPos, isDeleting) {
 
                 // Only find existing tile if it's at the SAME elevation (allow stacking at different levels)
                 const existing = scene.tiles.find(t =>
-                    Math.floor(t.x / gridSize) === gx &&
-                    Math.floor(t.y / gridSize) === gy &&
+                    Math.round(t.x / gridSize) === gx &&
+                    Math.round(t.y / gridSize) === gy &&
                     t.texture?.src?.includes("Dungeon/floor_tiles") &&
                     Math.abs((t.elevation ?? 0) - currentElevation) < ELEVATION_TOLERANCE
                 );
@@ -1624,9 +1622,9 @@ async function handleRectangleFill(startPos, endPos, isDeleting) {
                 } else {
                     // Create new tile (allows stacking floors at different elevations)
                     tilesToCreate.push({
-                        texture: { src: _selectedFloorTile },
-                        x: gx * gridSize,
-                        y: gy * gridSize,
+                        texture: { src: _selectedFloorTile, anchorX: 0, anchorY: 0 },
+                        x: Math.round(gx * gridSize),
+                        y: Math.round(gy * gridSize),
                         width: gridSize,
                         height: gridSize,
                         sort: 0,
@@ -1660,7 +1658,7 @@ async function handleRectangleDelete(startPos, endPos, doorsOnly) {
     const scene = canvas.scene;
     if (!scene) return;
 
-    const gridSize = canvas.grid.size || GRID_SIZE;
+    const gridSize = canvas.grid.size || canvas.grid.size;
     const minPx = Math.min(startPos.x, endPos.x);
     const maxPx = Math.max(startPos.x, endPos.x);
     const minPy = Math.min(startPos.y, endPos.y);
@@ -1710,7 +1708,7 @@ async function handleDoorClick(event, isDeleting) {
     const scene = canvas.scene;
     if (!scene) return;
 
-    const gridSize = canvas.grid.size || GRID_SIZE;
+    const gridSize = canvas.grid.size || canvas.grid.size;
     const pos = event.data?.getLocalPosition(canvas.stage) || event;
 
     const gx = Math.floor(pos.x / gridSize);
@@ -1882,7 +1880,7 @@ function scheduleWallRebuild(scene) {
 async function rebuildWalls(scene) {
     if (!scene) return;
 
-    const gridSize = canvas.grid.size || GRID_SIZE;
+    const gridSize = canvas.grid.size || canvas.grid.size;
     const LEVEL_HEIGHT = 10; // Each level is 10 units tall
 
     // 1. Scan all floor tiles and group by elevation
@@ -1890,8 +1888,8 @@ async function rebuildWalls(scene) {
 
     for (const tile of scene.tiles) {
         if (tile.texture?.src?.includes("Dungeon/floor_tiles")) {
-            const gx = Math.floor(tile.x / gridSize);
-            const gy = Math.floor(tile.y / gridSize);
+            const gx = Math.round(tile.x / gridSize);
+            const gy = Math.round(tile.y / gridSize);
             const elevation = tile.elevation ?? 0;
             const key = `${gx},${gy}`;
 
@@ -2376,12 +2374,12 @@ async function _gmFillRectangle(data) {
     const scene = game.scenes.get(sceneId);
     if (!scene) return { success: false, error: "Scene not found" };
 
-    const gridSize = scene.grid.size || GRID_SIZE;
+    const gridSize = scene.grid.size || canvas.grid.size;
 
     // Detect elevation via probe tile (same pattern as handleRectangleFill)
     let elevation = 0;
     const probeTile = await scene.createEmbeddedDocuments("Tile", [{
-        texture: { src: floorTilePath },
+        texture: { src: floorTilePath, anchorX: 0, anchorY: 0 },
         x: minGx * gridSize,
         y: minGy * gridSize,
         width: gridSize,
@@ -2409,7 +2407,7 @@ async function _gmFillRectangle(data) {
                 tilesToUpdate.push({ _id: existing.id, texture: { src: floorTilePath } });
             } else {
                 tilesToCreate.push({
-                    texture: { src: floorTilePath },
+                    texture: { src: floorTilePath, anchorX: 0, anchorY: 0 },
                     x: gx * gridSize,
                     y: gy * gridSize,
                     width: gridSize,
@@ -2449,7 +2447,7 @@ async function _gmDeleteRectangle(data) {
     const scene = game.scenes.get(sceneId);
     if (!scene) return { success: false, error: "Scene not found" };
 
-    const gridSize = scene.grid.size || GRID_SIZE;
+    const gridSize = scene.grid.size || canvas.grid.size;
 
     if (!doorsOnly) {
         // Delete floor tiles in range
@@ -2596,7 +2594,7 @@ async function _gmRebuildWalls(data) {
  * Internal wall rebuild function used by GM handlers (elevation-aware for Levels compatibility)
  */
 async function _gmRebuildWallsInternal(scene, wallTilePath, noWalls) {
-    const gridSize = scene.grid.size || GRID_SIZE;
+    const gridSize = scene.grid.size || canvas.grid.size;
     const LEVEL_HEIGHT = 10; // Each level is 10 units tall
 
     // Store the wall tile path for use by generate functions
@@ -2610,8 +2608,8 @@ async function _gmRebuildWallsInternal(scene, wallTilePath, noWalls) {
 
     for (const tile of scene.tiles) {
         if (tile.texture?.src?.includes("Dungeon/floor_tiles")) {
-            const gx = Math.floor(tile.x / gridSize);
-            const gy = Math.floor(tile.y / gridSize);
+            const gx = Math.round(tile.x / gridSize);
+            const gy = Math.round(tile.y / gridSize);
             const elevation = tile.elevation ?? 0;
             const key = `${gx},${gy}`;
 

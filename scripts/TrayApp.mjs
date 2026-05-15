@@ -194,6 +194,13 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const elem = document.querySelector(".sdx-tray");
         if (elem) {
             elem.classList.toggle("expanded", this._isExpanded);
+            // Flip the chevron so the user has a visual cue: right when
+            // collapsed (click to open), left when expanded (click to close).
+            const icon = elem.querySelector(".tray-handle-button-toggle i");
+            if (icon) {
+                icon.classList.toggle("fa-chevron-right", !this._isExpanded);
+                icon.classList.toggle("fa-chevron-left", this._isExpanded);
+            }
         }
 
         const viewMode = getViewMode();

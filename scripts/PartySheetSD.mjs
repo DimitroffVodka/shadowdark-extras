@@ -272,9 +272,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			if (!member) continue;
 			const isNPC = member.type === "NPC";
 			const slotsUsed = isNPC ? 0 : this._calculateActorInventorySlotsUsed(member);
-			// Use the actor's numGearSlots() method which correctly calculates max slots
+			// Use the actor's system.slots which correctly calculates max slots
 			// based on STR, talents (like Hauler), and effects
-			const slotsMax = isNPC ? 0 : (typeof member.numGearSlots === 'function' ? member.numGearSlots() : 10);
+			const slotsMax = isNPC ? 0 : (member.system?.slots ?? 10);
 			const slotsFree = Math.max(0, slotsMax - slotsUsed);
 
 			// Use UUID for compendium actors, ID for world actors (consistent with storage)
@@ -333,12 +333,12 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				},
 				// Ability modifiers
 				abilities: {
-					str: member.system.abilities?.str?.mod ?? this._calculateMod(member.system.abilities?.str?.base ?? 10),
-					dex: member.system.abilities?.dex?.mod ?? this._calculateMod(member.system.abilities?.dex?.base ?? 10),
-					con: member.system.abilities?.con?.mod ?? this._calculateMod(member.system.abilities?.con?.base ?? 10),
-					int: member.system.abilities?.int?.mod ?? this._calculateMod(member.system.abilities?.int?.base ?? 10),
-					wis: member.system.abilities?.wis?.mod ?? this._calculateMod(member.system.abilities?.wis?.base ?? 10),
-					cha: member.system.abilities?.cha?.mod ?? this._calculateMod(member.system.abilities?.cha?.base ?? 10),
+					str: member.system.abilities?.str?.mod ?? this._calculateMod(member.system.abilities?.str?.value ?? 10),
+					dex: member.system.abilities?.dex?.mod ?? this._calculateMod(member.system.abilities?.dex?.value ?? 10),
+					con: member.system.abilities?.con?.mod ?? this._calculateMod(member.system.abilities?.con?.value ?? 10),
+					int: member.system.abilities?.int?.mod ?? this._calculateMod(member.system.abilities?.int?.value ?? 10),
+					wis: member.system.abilities?.wis?.mod ?? this._calculateMod(member.system.abilities?.wis?.value ?? 10),
+					cha: member.system.abilities?.cha?.mod ?? this._calculateMod(member.system.abilities?.cha?.value ?? 10),
 				}
 			};
 
@@ -2239,18 +2239,19 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 
 		for (const { actor, ability } of rolls) {
 			const abilityId = ability.toLowerCase();
-			if (actor.rollAbility) {
-				try {
-					const abilityLabel = game.i18n.localize(CONFIG.SHADOWDARK.ABILITIES_LONG[abilityId]);
-					await actor.rollAbility(abilityId, {
-						target: dc,
+			const abilityLabel = game.i18n.localize(CONFIG.SHADOWDARK.ABILITIES_LONG[abilityId]);
+
+			try {
+				if (actor.system.rollStatCheck) {
+					await actor.system.rollStatCheck(abilityId, {
+						mainRoll: { dc: dc },
 						title: `${task.name} Check - ${abilityLabel}`
 					});
-				} catch (err) {
-					console.error("Shadowdark Extras | Error rolling ability:", err);
+				} else {
+					ui.notifications.warn("Cannot roll ability for actor type: " + actor.type);
 				}
-			} else {
-				ui.notifications.warn("Cannot roll ability for actor type: " + actor.type);
+			} catch (err) {
+				console.error("Shadowdark Extras | Error rolling ability:", err);
 			}
 		}
 	}

@@ -1193,10 +1193,10 @@ async function runAuraItemMacro(sourceToken, targetToken, trigger, config) {
         const spellItem = casterActor.items.get(config.spellId);
         if (!spellItem) return;
 
-        const itemMacro = spellItem.flags?.["itemacro"]?.macro;
-        if (!itemMacro?.command) return;
+        // Import the native macro executor
+        const { executeItemMacro, hasItemMacro } = await import("./shadowdark-extras.mjs");
+        if (!hasItemMacro(spellItem)) return;
 
-        const speaker = ChatMessage.getSpeaker({ actor: targetToken.actor });
         const args = {
             trigger: trigger,
             sourceToken: sourceToken,
@@ -1205,11 +1205,11 @@ async function runAuraItemMacro(sourceToken, targetToken, trigger, config) {
             isAura: true
         };
 
-
-        const macroBody = `(async () => { ${itemMacro.command} })();`;
-        const fn = new Function("item", "actor", "token", "speaker", "character", "args", `return ${macroBody}`);
-
-        await fn.call(null, spellItem, targetToken.actor, targetToken, speaker, game.user?.character, args);
+        return executeItemMacro(spellItem, {
+            actor: targetToken.actor,
+            token: targetToken,
+            args: args
+        });
     } catch (err) {
         console.error(`shadowdark-extras | Error running aura item macro:`, err);
     }

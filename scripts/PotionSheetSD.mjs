@@ -98,15 +98,13 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
     _getHeaderControls() {
         const controls = super._getHeaderControls();
 
-        // Add Item Macro button if the module is active
-        if (game.modules.get("itemacro")?.active) {
-            controls.unshift({
-                icon: "fas fa-code",
-                label: "Item Macro",
-                action: "itemMacro",
-                class: "item-macro-header-btn"
-            });
-        }
+        // Add Item Macro button
+        controls.unshift({
+            icon: "fas fa-code",
+            label: "Item Macro",
+            action: "itemMacro",
+            class: "item-macro-header-btn"
+        });
 
         return controls;
     }
@@ -197,8 +195,8 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 
         // Item Macro content
         context.macroId = item.id;
-        context.macroCommand = item.getFlag("itemacro", "macro.command") || "";
-        context.macroName = item.getFlag("itemacro", "macro.name") || item.name;
+        context.macroCommand = item.getFlag(MODULE_ID, "macroCommand") ?? item.flags?.itemacro?.macro?.command ?? "";
+        context.macroName = item.getFlag(MODULE_ID, "macroName") ?? item.flags?.itemacro?.macro?.name ?? item.name;
 
         // Tabs
         context.tabs = this._prepareTabs();

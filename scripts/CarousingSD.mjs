@@ -1479,8 +1479,8 @@ async function applyOutcomeEffect(actor, effect) {
         }
 
         case "luckToken": {
-            const currentLuck = actor.system?.luck || 0;
-            await actor.update({ "system.luck": currentLuck + effect.amount });
+            const currentLuck = actor.system?.luck?.remaining ?? actor.system?.luck ?? 0;
+            await actor.update({ "system.luck.remaining": currentLuck + effect.amount });
             return game.i18n.format("SHADOWDARK_EXTRAS.carousing.gained_luck", { amount: effect.amount });
         }
 
