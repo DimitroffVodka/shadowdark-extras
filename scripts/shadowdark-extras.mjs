@@ -18986,10 +18986,12 @@ Hooks.on("renderChatMessageHTML", async (message, html, context) => {
 	if (!actor) return;
 
 	// Get item from chat card data (like CombatSettingsSD does)
-	const cardData = html.find('.chat-card').data();
+	// v14: html is HTMLElement, not jQuery
+	const cardEl = html.querySelector('.chat-card');
+	const cardData = cardEl?.dataset || {};
 	let item = null;
 
-	if (cardData?.itemId) {
+	if (cardData.itemId) {
 		item = actor.items.get(cardData.itemId);
 	} else {
 		// Fallback: Try to detect weapon from message content

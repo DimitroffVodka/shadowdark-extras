@@ -2843,11 +2843,12 @@ async function handleWandUsesTracking(message, html, data) {
 	if (!sdFlags?.isRoll) return;
 
 	// Get actor and item IDs from the chat card HTML
-	const chatCard = html.find('.chat-card');
-	if (!chatCard.length) return;
+	// v14: html is a raw HTMLElement
+	const chatCard = html.querySelector('.chat-card');
+	if (!chatCard) return;
 
-	const actorId = chatCard.data('actorId');
-	const itemId = chatCard.data('itemId');
+	const actorId = chatCard.dataset?.actorId;
+	const itemId = chatCard.dataset?.itemId;
 
 	if (!actorId || !itemId) return;
 

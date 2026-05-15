@@ -1580,12 +1580,16 @@ async function showEffectSelectionDialog(effectOptions) {
  */
 export async function injectDamageCard(message, html, data) {
 
+	// v14: renderChatMessageHTML passes a raw HTMLElement, not jQuery.
+	// Re-wrap so the existing jQuery API inside this large function keeps working.
+	if (html instanceof HTMLElement) html = $(html);
+
 	// Prevent duplicate injection for the same message
 	const messageKey = message.id;
 	const isAuthor = message.author.id === game.user.id;
 
 	// Skip if the message is being deleted or closed
-	if (html.hasClass('deleting') || data.canClose) {
+	if (html.hasClass('deleting') || data?.canClose) {
 		return;
 	}
 
