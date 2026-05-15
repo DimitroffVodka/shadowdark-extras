@@ -69,6 +69,8 @@
   },
   "socket": true,
   "scripts": [
+    "greensock/dist/gsap.min.js",
+    "greensock/dist/PixiPlugin.min.js",
     "libs/jszip.min.js",
     "libs/fontsloader.min.js"
   ],
