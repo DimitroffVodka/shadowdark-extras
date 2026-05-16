@@ -15697,7 +15697,7 @@ async function injectStaffSpellsUI(sheet, html, data) {
 				actor: actor,
 				abilityBonus: abilityBonus,
 				baseDifficulty: baseDifficulty,
-				talentBonus: actor.system.bonuses.spellcastingCheckBonus || 0,
+				talentBonus: actor.system.spellcasting?.bonus || 0,
 			};
 
 			const parts = ["1d20", "@abilityBonus", "@talentBonus"];
@@ -15852,7 +15852,7 @@ async function injectStaffSpellsUI(sheet, html, data) {
 				actor: actor,
 				abilityBonus: abilityBonus,
 				baseDifficulty: baseDifficulty,
-				talentBonus: actor.system.bonuses.spellcastingCheckBonus || 0,
+				talentBonus: actor.system.spellcasting?.bonus || 0,
 			};
 
 			const parts = ["1d20", "@abilityBonus", "@talentBonus"];
@@ -17932,16 +17932,10 @@ Hooks.once("init", () => {
 	// ============================================
 	// SPELL DISADVANTAGE HANDLER PATCH
 	// ============================================
-	// SD 3.x used a `CONFIG.SHADOWDARK.EFFECT_ASK_INPUT` array of change keys
-	// that should prompt for input. SD 4.x removed it — the decision now lives
-	// in switch logic inside `shadowdark.effects.handlePredefinedEffect`,
-	// keyed by effect name (see src/system/ActiveEffectsSD.mjs). Guard the
-	// legacy array so we don't crash on 4.x; only push when it actually
-	// exists (SD 3.x).
-	if (Array.isArray(CONFIG.SHADOWDARK.EFFECT_ASK_INPUT)
-		&& !CONFIG.SHADOWDARK.EFFECT_ASK_INPUT.includes("system.bonuses.disadvantage")) {
-		CONFIG.SHADOWDARK.EFFECT_ASK_INPUT.push("system.bonuses.disadvantage");
-	}
+	// SD 4.x removed `CONFIG.SHADOWDARK.EFFECT_ASK_INPUT` — the decision now
+	// lives in switch logic inside `shadowdark.effects.handlePredefinedEffect`,
+	// keyed by effect name (see src/system/ActiveEffectsSD.mjs). The legacy
+	// SD 3.x push has been dropped here as part of the SD 4.x compat sweep.
 
 	// Patch handlePredefinedEffect to support spellDisadvantage (like spellAdvantage)
 	const originalHandlePredefinedEffect = shadowdark.effects.handlePredefinedEffect;
