@@ -4,6 +4,181 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.0] — 2026-05-16 — Shadowdark 4.x / Foundry v14.361 compat sweep
+
+Multi-day sweep landing SD 4.x compatibility across every spell, weapon,
+chat-card, and template flow. 12-commit chain (`0006a89` → `3e65f27`)
+with per-phase commits preserved for revertability. Cross-reviewed by
+Codex and Gemini through 9 + 2 rounds respectively before execution.
+
+### Added
+
+- **`scripts/sd4Compat.mjs`** — central compatibility helper module
+  (`747a0ad`). 201 lines, four exports consumed by every other sweep
+  target so the SD 3.x → 4.x shape change is read in exactly one place:
+  - `readSdRollOutcome(message)` →
+    `{mainRoll, total, isSuccess, isCriticalSuccess, isCriticalFailure, isMasked}`.
+    Uses `message.rolls.find(r => r.type === "main")` (NOT `rolls[0]` —
+    index is not guaranteed). `isMasked` distinguishes "can't see this
+    whispered roll" from "the roll failed" so actor-mutating side
+    effects can skip silently on non-recipient clients.
+  - `readSdDamageRoll(message)` → `{roll, total}`. Separates the
+    damage-typed roll from the main roll; mixing them used to
+    silently feed the main attack roll into damage formulas.
+  - `resolveCardContext(message, html)` →
+    `{actorId, itemUuid, itemId, rollConfig}`. SD 4.x `rollConfig`
+    flag takes precedence over the legacy `.chat-card` / `.item-card`
+    DOM lookup; tolerates `cast.spellUuid` as well as `itemUuid`.
+  - `getActorStats(actor)` → `{hp, hpMax, ac}` reading
+    `system.attributes.*` (v4) with `system.hp.*` / `system.ac.*`
+    fallback.
+- **Chat-card apply-state persistence** (`3e65f27`) — `damageApplied`
+  and `conditionsApplied` flags on the chat message survive re-renders
+  so the buttons render as disabled "APPLIED" and the click handler
+  hard-blocks a second apply. DOM `data-already-applied` attribute
+  provides a parallel guard across tab-switch rebuilds.
+
+### Fixed — SD 4.x roll-shape migration
+
+- **15 main-roll callsites + 3 damage-roll callsites** routed through
+  `sd4Compat` helpers:
+  - `CombatSettingsSD.mjs` (`ee7d266`) — 12 main + 2 damage spread
+    across the wand-success gate, crit-double-duration, item-give,
+    template gate, save-DC extraction, aura cast, spell-effects gate,
+    crit-damage doubling, damage total, crit-hit bonus dice,
+    auto-apply guard, duration-tracker start, and damage breakdown.
+    Each callsite now decides explicitly what to do on
+    `isMasked === true`; actor-mutating sites skip silently.
+  - `shadowdark-extras.mjs` (`25fb915`) — 3 sites in
+    `executeWeaponItemMacro`, `executeSpellItemMacro`, and the
+    recent-cast lookup.
+  - `MysteriousCasting.mjs` (`25fb915`) — content-structure gate
+    extended to recognize SD 4.x markers (`.dice-roll` + `rollConfig`)
+    instead of failing closed when the legacy `.chat-card` / `.item-card`
+    containers aren't present; damage feature-detect uses
+    `readSdDamageRoll`.
+- **10 `.chat-card` DOM lookups** migrated to `resolveCardContext`:
+  - `CombatSettingsSD.mjs` (`ee7d266`) — 5 sites including the
+    `hasWeaponCard` feature detect (now also recognizes the new
+    `rollConfig` flag) and three visual-hide ops guarded so they
+    no-op safely on SD 4.x messages.
+  - `shadowdark-extras.mjs` (`25fb915`) — 3 sites.
+  - `FocusSpellTrackerSD.mjs` (`a2e0bf7`) — 2 sites including a full
+    rewrite of the wand-use tracking lookup at L2847.
+
+### Fixed — SD 4.x data model migration
+
+- **`actor.system.bonuses` removed in SD 4.x** — migrated reads
+  (`05ea30e`):
+  - `actor.system.bonuses.spellcastingCheckBonus` →
+    `actor.system.spellcasting.bonus` at `shadowdark-extras.mjs:15699`
+    and `:15854`.
+  - Generic `actor.system.bonuses` read at `:14254` updated for
+    new sub-bonus paths.
+  - `TomSD.mjs:52` HP read switched from `system.hp.value` to
+    `system.attributes.hp.value`.
+- **`CONFIG.SHADOWDARK.EFFECT_ASK_INPUT` is gone** — the two
+  `.push()` calls at `shadowdark-extras.mjs:17941-17942` and
+  `:17962-17966` were silent no-ops on v4. Removed (`05ea30e`).
+  SD 4.x handles REPLACEME placeholders without external registration.
+- **17 predefined Active Effect entries renamed** to v4 paths
+  (`d848303`). Disadvantage entries map to the SAME `.advantage.*` path
+  as their advantage counterpart but with `value: -1` — SD's
+  `applyAdvantage(formula, adv)` takes a signed integer (positive →
+  2d20kh, negative → 2d20kl). Mapping table:
+  - `abilityAdvantage<Ability>` →
+    `system.roll.stat.advantage.<ability>` (value +1)
+  - `abilityDisadvantage<Ability>` →
+    `system.roll.stat.advantage.<ability>` (value -1)
+  - `meleeAdvantage` → `system.roll.melee.advantage.all`
+  - `rangedAdvantage` → `system.roll.ranged.advantage.all`
+  - `spellAdvantageAll` → `system.roll.spell.advantage.all`
+  - `spellDisadvantageAll` →
+    `system.roll.spell.advantage.all` (value -1)
+  - `spellDisadvantage` →
+    `system.roll.spell.advantage.REPLACEME` (value -1)
+  - The remaining 7 entries (`meleeDamageDice`, `rangedDamageDice`,
+    `freyasOmen`, `macroExecute`, `silenced`, `glassbones`,
+    `invisibility`) target SDX module flags — already v4-safe.
+
+### Fixed — Foundry v14 template hardening
+
+- **`MeasuredTemplate` setFlag is silently dropped after creation**
+  in v14 (`5185106`). All SDX template flags
+  (`templateEffects`, `templateExpiry`, etc.) must be written at
+  create time. `SDX.templates.place()` now accepts a `templateFlags`
+  option that gets merged into the document data before
+  `createEmbeddedDocuments`. Fireball templates now expire as
+  configured instead of lingering forever.
+- **Template expiry off-by-one** (`5977927`) — a spell cast in
+  round 1 with `duration: 1` was being marked to expire at the start
+  of round 3 instead of round 2. Calculation switched from
+  `currentRound + expiryRounds` to `currentRound + expiryRounds - 1`.
+
+### Fixed — SD 4.x combat regressions
+
+- **Actors not marked defeated on HP→0** (`01a0008`) — SD 4.x's
+  `ActorSD._onUpdate` only animates the HP change; it no longer calls
+  `_setDefeated()`. Added an `updateActor` hook that watches for
+  `system.attributes.hp.value` going to 0 and invokes
+  `actor._setDefeated()` explicitly. Player characters get prone +
+  unconscious per SD design; NPCs get the dead status.
+- **Chat-card "Apply Condition" double-apply** (`3e65f27`, task #7) —
+  the auto-apply on first render was firing the button click, then
+  any re-render (scroll, tab-switch, settings change) rebuilt the
+  button with a fresh `applying` data state, letting a manual click
+  fire the handler again. Persistent message-flag guard described in
+  the "Added" section blocks the second apply.
+- **Chat-card "Apply Damage" silent double-apply** (`3e65f27`,
+  task #8) — same root cause, same fix. The `setTimeout` that
+  re-enabled the button 2 seconds after success was the actual
+  re-entry path; that path now only re-enables when no damage was
+  applied (so the user can fix targets and retry).
+
+### Changed
+
+- `SDX.templates.place()` signature extended with optional
+  `templateFlags = null` — v14 module flags written at create-time
+  only. Internal callers (`placeAndTarget` in `CombatSettingsSD.mjs`)
+  now pass a pre-built `sdxTemplateFlags` object so
+  `templateEffects` + `templateExpiry` persist on the
+  `MeasuredTemplateDocument`.
+- Damage-card and effects-card buttons display "APPLIED" with a check
+  icon when the message already had its corresponding apply flag set,
+  instead of always rendering "APPLY DAMAGE" / "APPLY CONDITION".
+
+### Verified
+
+Five paths exercised programmatically against the live world via the
+foundry-vtt MCP bridge after the sweep landed:
+
+- Fireball cast — damage card injected, `autoApplied` flag set, main
+  success: true.
+- Longsword attack — main + damage rolls both flow through helpers.
+- Sleep regression check — old casts inspected via flags only (fresh
+  cast required UI interaction).
+- HP→0 defeat (Druchor 1→0 HP) — prone + unconscious + combatant
+  `defeated` flag applied via the new `updateActor` hook.
+- AE rename — `system.roll.stat.advantage.dex` went 0→1 with
+  SD-native AE structure.
+
+### Out of scope (tracked separately)
+
+- **Task #14** — `MeasuredTemplate` → `RegionDocument` migration
+  (the original "switch templates to regions" goal from before the
+  power-outage session loss). Foundry v14.361 ships
+  `ApplyActiveEffectRegionBehaviorType`, `RegionDocument#hidden`,
+  region-to-token attachment, and `Region#_onAnimationStateChange` —
+  enough native machinery to retire most of `TemplateEffectsSD.mjs`.
+  Detailed feature-mapping required before any rewrite commits.
+- **Task #11** — DialogV2 default-button collision in
+  `FocusSpellTrackerSD.mjs` (V2 migration follow-up).
+- **Task #15** — repackage SDX advantage/disadvantage AEs as a v14
+  compendium pack instead of constructing them inline. Optional
+  architectural cleanup.
+
+---
+
 ## [6.9.4] — 2026-05-15 — pin style defaults & more deprecation cleanup
 
 Surfaced while exercising journal pins and carousing in v14.
