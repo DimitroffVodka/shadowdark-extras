@@ -1948,14 +1948,23 @@ export async function injectDamageCard(message, html, data) {
 		const mainRoll = shadowdarkRolls?.main;
 		let isMainRollSuccess = mainRoll?.success === true;
 
-		// SD 4.x fallback: rolls.main no longer exists. Compute success from total vs DC.
+		// SD 4.x fallback: rolls.main no longer exists. Read success from the typed Roll instance.
+		// Prefer .success on the Roll (SD 4.x sets it natively); fall back to total≥DC for safety.
 		if (!mainRoll) {
-			const rc = message.flags?.shadowdark?.rollConfig?.mainRoll;
-			const dc = rc?.dc;
-			const total = message.rolls?.[0]?.total;
-			if (typeof dc === "number" && typeof total === "number") {
-				isMainRollSuccess = total >= dc;
-				console.log(`${MODULE_ID} | template gate SD4 success: total=${total} dc=${dc} -> ${isMainRollSuccess}`);
+			const v4MainRoll = message.rolls?.find(r => (r.type ?? r.options?.type) === "main")
+				?? message.rolls?.[0];
+			if (v4MainRoll) {
+				if (typeof v4MainRoll.success === "boolean") {
+					isMainRollSuccess = v4MainRoll.success;
+				} else {
+					const dc = v4MainRoll.options?.dc
+						?? message.flags?.shadowdark?.rollConfig?.mainRoll?.dc;
+					const total = v4MainRoll.total;
+					if (typeof dc === "number" && typeof total === "number") {
+						isMainRollSuccess = total >= dc;
+					}
+				}
+				console.log(`${MODULE_ID} | template gate SD4 success: ${isMainRollSuccess}`);
 			}
 		}
 
