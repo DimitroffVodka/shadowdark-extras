@@ -336,32 +336,43 @@ const DEFAULT_INVENTORY_STYLES = {
 /**
  * Application for editing inventory item styles
  */
-class InventoryStylesApp extends FormApplication {
-	static get defaultOptions() {
-		return foundry.utils.mergeObject(super.defaultOptions, {
-			id: "sdx-inventory-styles",
-			title: game.i18n.localize("SHADOWDARK_EXTRAS.inventory_styles.title"),
-			template: `modules/${MODULE_ID}/templates/inventory-styles.hbs`,
-			classes: ["shadowdark", "shadowdark-extras", "inventory-styles-app"],
-			width: 900,
-			height: 750,
-			resizable: true,
-			closeOnSubmit: false,
-			submitOnChange: true
-		});
-	}
-
+class InventoryStylesApp extends foundry.applications.api.HandlebarsApplicationMixin(foundry.applications.api.ApplicationV2) {
 	static _instance = null;
+
+	static DEFAULT_OPTIONS = {
+		id: "sdx-inventory-styles",
+		classes: ["shadowdark", "shadowdark-extras", "inventory-styles-app"],
+		tag: "form",
+		window: {
+			title: "SHADOWDARK_EXTRAS.inventory_styles.title",
+			resizable: true
+		},
+		position: {
+			width: 900,
+			height: 750
+		},
+		form: {
+			handler: InventoryStylesApp.formHandler,
+			submitOnChange: true,
+			closeOnSubmit: false
+		}
+	};
+
+	static PARTS = {
+		form: {
+			template: `modules/shadowdark-extras/templates/inventory-styles.hbs`
+		}
+	};
 
 	static show() {
 		if (!this._instance) {
 			this._instance = new InventoryStylesApp();
 		}
-		this._instance.render(true);
+		this._instance.render({ force: true });
 		return this._instance;
 	}
 
-	getData(options = {}) {
+	async _prepareContext(options) {
 		// Get saved settings and merge with defaults to ensure all properties exist
 		const savedStyles = game.settings.get(MODULE_ID, "inventoryStyles");
 		const styles = foundry.utils.mergeObject(
@@ -406,8 +417,11 @@ class InventoryStylesApp extends FormApplication {
 		};
 	}
 
-	activateListeners(html) {
-		super.activateListeners(html);
+	_onRender(context, options) {
+		const root = this.element;
+		if (!root) return;
+		// Pragmatic bridge: wrap with jQuery so the existing handler block keeps working.
+		const html = $(root);
 
 		// ---- Tab Navigation ----
 		html.find(".sdx-tab").on("click", (ev) => {
@@ -567,11 +581,10 @@ class InventoryStylesApp extends FormApplication {
 		// ---- Reset Button ----
 		html.find(".sdx-reset-styles").on("click", async (ev) => {
 			ev.preventDefault();
-			const confirm = await Dialog.confirm({
-				title: game.i18n.localize("SHADOWDARK_EXTRAS.inventory_styles.reset_confirm_title"),
+			const confirm = await foundry.applications.api.DialogV2.confirm({
+				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.inventory_styles.reset_confirm_title") },
 				content: `<p>${game.i18n.localize("SHADOWDARK_EXTRAS.inventory_styles.reset_confirm_content")}</p>`,
-				yes: () => true,
-				no: () => false
+				modal: true
 			});
 			if (confirm) {
 				await game.settings.set(MODULE_ID, "inventoryStyles", foundry.utils.deepClone(DEFAULT_INVENTORY_STYLES));
@@ -856,23 +869,18 @@ class InventoryStylesApp extends FormApplication {
 		this._updateLivePreview(html);
 	}
 
-	async _updateObject(event, formData) {
-		const expandedData = foundry.utils.expandObject(formData);
+	static async formHandler(event, form, formData) {
+		const expandedData = foundry.utils.expandObject(formData.object);
 
-		// Get current settings and merge
 		const currentStyles = game.settings.get(MODULE_ID, "inventoryStyles") || foundry.utils.deepClone(DEFAULT_INVENTORY_STYLES);
 
-		// Update enabled state (checkbox: absent means false)
 		currentStyles.enabled = expandedData.enabled === true;
 
-		// Update categories
 		if (expandedData.categories) {
 			for (const [key, updates] of Object.entries(expandedData.categories)) {
 				if (currentStyles.categories[key]) {
-					// Handle checkbox fields - absent means false
 					updates.enabled = updates.enabled === true;
 					updates.useGradient = updates.useGradient === true;
-
 					Object.assign(currentStyles.categories[key], updates);
 				}
 			}
@@ -2319,8 +2327,8 @@ async function editUnidentifiedDescription(item, app) {
 	const title = game.i18n.localize("SHADOWDARK_EXTRAS.item.unidentified.edit_description_title");
 	const label = game.i18n.localize("SHADOWDARK_EXTRAS.item.unidentified.description_label");
 
-	new Dialog({
-		title: `${title}: ${item.name}`,
+	new foundry.applications.api.DialogV2({
+		window: { title: `${title}: ${item.name}` },
 		content: `
 			<form>
 				<div class="form-group stacked">
@@ -2329,23 +2337,25 @@ async function editUnidentifiedDescription(item, app) {
 				</div>
 			</form>
 		`,
-		buttons: {
-			save: {
-				icon: '<i class="fas fa-save"></i>',
+		buttons: [
+			{
+				action: "save",
+				icon: "fas fa-save",
 				label: game.i18n.localize("SHADOWDARK_EXTRAS.party.save"),
-				callback: async (html) => {
-					const newDesc = html.find('textarea[name="unidentifiedDescription"]').val();
+				default: true,
+				callback: async (event, button) => {
+					const newDesc = button.form.elements.unidentifiedDescription.value;
 					await item.setFlag(MODULE_ID, "unidentifiedDescription", newDesc);
 					app.render();
 				}
 			},
-			cancel: {
-				icon: '<i class="fas fa-times"></i>',
+			{
+				action: "cancel",
+				icon: "fas fa-times",
 				label: game.i18n.localize("SHADOWDARK_EXTRAS.party.cancel")
 			}
-		},
-		default: "save"
-	}).render(true);
+		]
+	}).render({ force: true });
 }
 
 function injectBasicContainerUI(app, html) {
@@ -3325,12 +3335,10 @@ function patchContextMenuForMultiDelete(app, html) {
 						name: game.i18n.format("SHADOWDARK_EXTRAS.inventory.delete_selected", { count: selected.size }),
 						icon: '<i class="fas fa-trash"></i>',
 						callback: async () => {
-							const confirmed = await Dialog.confirm({
-								title: game.i18n.localize("SHADOWDARK_EXTRAS.inventory.delete_confirm_title"),
+							const confirmed = await foundry.applications.api.DialogV2.confirm({
+								window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.inventory.delete_confirm_title") },
 								content: `<p>${game.i18n.format("SHADOWDARK_EXTRAS.inventory.delete_confirm_multiple", { count: selected.size })}</p>`,
-								yes: () => true,
-								no: () => false,
-								defaultYes: false
+								modal: true
 							});
 
 							if (confirmed) {
@@ -3500,27 +3508,38 @@ export function getCustomLightSources() {
 /**
  * Application for editing custom light templates
  */
-class LightTemplateEditor extends FormApplication {
-	constructor(object, options) {
-		super(object, options);
-		this.editData = null; // Data for the template currently being edited
-	}
-
-	static get defaultOptions() {
-		return foundry.utils.mergeObject(super.defaultOptions, {
-			id: "sdx-light-editor",
+class LightTemplateEditor extends foundry.applications.api.HandlebarsApplicationMixin(foundry.applications.api.ApplicationV2) {
+	static DEFAULT_OPTIONS = {
+		id: "sdx-light-editor",
+		classes: ["shadowdark-extras", "light-editor"],
+		tag: "form",
+		window: {
 			title: "Light Template Editor",
-			template: `modules/${MODULE_ID}/templates/light-template-editor.hbs`,
-			classes: ["shadowdark-extras", "light-editor"],
+			resizable: true
+		},
+		position: {
 			width: 600,
-			height: "auto",
-			resizable: true,
-			closeOnSubmit: false,
-			submitOnChange: false // Only submit when Save is clicked
-		});
+			height: "auto"
+		},
+		form: {
+			handler: LightTemplateEditor.formHandler,
+			submitOnChange: false,
+			closeOnSubmit: false
+		}
+	};
+
+	static PARTS = {
+		form: {
+			template: `modules/shadowdark-extras/templates/light-template-editor.hbs`
+		}
+	};
+
+	constructor(options = {}) {
+		super(options);
+		this.editData = null;
 	}
 
-	getData() {
+	async _prepareContext(options) {
 		const templates = game.settings.get(MODULE_ID, "customLightTemplates") || foundry.utils.deepClone(DEFAULT_LIGHT_TEMPLATES);
 
 		// Animation types for select dropdown
@@ -3566,8 +3585,10 @@ class LightTemplateEditor extends FormApplication {
 		};
 	}
 
-	activateListeners(html) {
-		super.activateListeners(html);
+	_onRender(context, options) {
+		const root = this.element;
+		if (!root) return;
+		const html = $(root);
 
 		// Add Template
 		html.find('[data-action="addTemplate"]').on('click', () => {
@@ -3624,12 +3645,10 @@ class LightTemplateEditor extends FormApplication {
 			const index = $(ev.currentTarget).data('index');
 			const templates = game.settings.get(MODULE_ID, "customLightTemplates") || DEFAULT_LIGHT_TEMPLATES;
 
-			const confirmed = await Dialog.confirm({
-				title: "Delete Light Template",
+			const confirmed = await foundry.applications.api.DialogV2.confirm({
+				window: { title: "Delete Light Template" },
 				content: `<p>Are you sure you want to delete <strong>${templates[index].name}</strong>?</p>`,
-				yes: () => true,
-				no: () => false,
-				defaultYes: false
+				modal: true
 			});
 
 			if (confirmed) {
@@ -3647,17 +3666,18 @@ class LightTemplateEditor extends FormApplication {
 
 		// Tab navigation
 		if (this.editData) {
-			const tabs = new Tabs({
+			const tabs = new foundry.applications.ux.Tabs({
 				navSelector: ".sheet-tabs",
 				contentSelector: ".content",
 				initial: "basic",
 				callback: () => { }
 			});
-			tabs.bind(html[0]);
+			tabs.bind(root);
 		}
 	}
 
-	async _updateObject(event, formData) {
+	static async formHandler(event, form, formData) {
+		const flat = formData.object;
 		if (!this.editData) return; // Only process submit in edit mode
 
 		const templates = game.settings.get(MODULE_ID, "customLightTemplates") || foundry.utils.deepClone(DEFAULT_LIGHT_TEMPLATES);
@@ -3703,7 +3723,7 @@ class LightTemplateEditor extends FormApplication {
 			};
 		};
 
-		const newTemplateData = processFormData(formData);
+		const newTemplateData = processFormData(flat);
 
 		// Validate Key
 		if (!newTemplateData.key.match(/^[a-zA-Z0-9_]+$/)) {
@@ -3712,23 +3732,19 @@ class LightTemplateEditor extends FormApplication {
 		}
 
 		if (this.editData.id !== undefined) {
-			// Update existing
 			templates[this.editData.id] = newTemplateData;
 		} else {
-			// Check for duplicate key
 			if (templates.some(t => t.key === newTemplateData.key)) {
 				ui.notifications.error(`Template with key "${newTemplateData.key}" already exists.`);
 				return;
 			}
-			// Add new
 			templates.push(newTemplateData);
 		}
 
 		await game.settings.set(MODULE_ID, "customLightTemplates", templates);
 
-		// Return to list view
 		this.editData = null;
-		this.render(true);
+		this.render({ force: true });
 	}
 }
 
@@ -4849,8 +4865,9 @@ function registerSettings() {
 		label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.manage_tables"),
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.manage_tables_hint"),
 		icon: "fas fa-beer",
-		type: class extends FormApplication {
-			render() { openCarousingTablesEditor(); }
+		type: class extends foundry.applications.api.ApplicationV2 {
+			static DEFAULT_OPTIONS = { id: "sdx-carousing-tables-menu-stub", window: { title: "" } };
+			async render() { openCarousingTablesEditor(); return this; }
 		},
 		restricted: true
 	});
@@ -4861,8 +4878,9 @@ function registerSettings() {
 		label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.manage_expanded_tables") || "Edit Expanded Tables",
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.manage_expanded_tables_hint") || "Edit the Expanded Carousing mode tables (tiers, outcomes, benefits, mishaps)",
 		icon: "fas fa-dice-d20",
-		type: class extends FormApplication {
-			render() { openExpandedCarousingTablesEditor(); }
+		type: class extends foundry.applications.api.ApplicationV2 {
+			static DEFAULT_OPTIONS = { id: "sdx-expanded-carousing-tables-menu-stub", window: { title: "" } };
+			async render() { openExpandedCarousingTablesEditor(); return this; }
 		},
 		restricted: true
 	});
@@ -5432,11 +5450,10 @@ function activateJournalListeners(app, html, actor) {
 		const page = pages.find(p => p.id === pageId);
 
 		// Confirm deletion
-		const confirmed = await Dialog.confirm({
-			title: game.i18n.localize("SHADOWDARK_EXTRAS.journal.delete_page_title"),
+		const confirmed = await foundry.applications.api.DialogV2.confirm({
+			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.journal.delete_page_title") },
 			content: `<p>${game.i18n.format("SHADOWDARK_EXTRAS.journal.delete_page_confirm", { name: page?.name || "Page" })}</p>`,
-			yes: () => true,
-			no: () => false
+			modal: true
 		});
 
 		if (confirmed) {
@@ -5801,11 +5818,10 @@ function addInlineEffectControls($effectsTab, actor) {
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
 			if (item) {
-				const confirm = await Dialog.confirm({
-					title: "Delete Effect",
+				const confirm = await foundry.applications.api.DialogV2.confirm({
+					window: { title: "Delete Effect" },
 					content: `<p>Are you sure you want to delete <strong>${item.name}</strong>?</p>`,
-					yes: () => true,
-					no: () => false
+					modal: true
 				});
 
 				if (confirm) {
@@ -6903,11 +6919,10 @@ function addInlineTalentControls($talentsTab, actor) {
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
 			if (item) {
-				const confirm = await Dialog.confirm({
-					title: "Delete Talent",
+				const confirm = await foundry.applications.api.DialogV2.confirm({
+					window: { title: "Delete Talent" },
 					content: `<p>Are you sure you want to delete <strong>${item.name}</strong>?</p>`,
-					yes: () => true,
-					no: () => false
+					modal: true
 				});
 
 				if (confirm) {
@@ -7046,15 +7061,17 @@ function enhanceSpellsTab(app, html, actor) {
 					</form>
 				`;
 
-				new Dialog({
-					title: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.transfer_spell_title"),
-					content: content,
-					buttons: {
-						transfer: {
-							icon: '<i class="fas fa-share"></i>',
+				new foundry.applications.api.DialogV2({
+					window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.transfer_spell_title") },
+					content,
+					buttons: [
+						{
+							action: "transfer",
+							icon: "fas fa-share",
 							label: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.transfer"),
-							callback: async (html) => {
-								const playerId = html.find('[name="playerId"]').val();
+							default: true,
+							callback: async (event, button) => {
+								const playerId = button.form.elements.playerId.value;
 								const player = game.users.get(playerId);
 								const targetActor = player?.character;
 
@@ -7072,13 +7089,13 @@ function enhanceSpellsTab(app, html, actor) {
 								}));
 							}
 						},
-						cancel: {
-							icon: '<i class="fas fa-times"></i>',
+						{
+							action: "cancel",
+							icon: "fas fa-times",
 							label: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.cancel")
 						}
-					},
-					default: "transfer"
-				}).render(true);
+					]
+				}).render({ force: true });
 			}
 		});
 
@@ -7089,9 +7106,10 @@ function enhanceSpellsTab(app, html, actor) {
 			const item = actor.items.get(itemId);
 			if (!item) return;
 
-			const confirmed = await Dialog.confirm({
-				title: game.i18n.localize("SHADOWDARK_EXTRAS.inventory.delete_spell_title"),
-				content: `<p>${game.i18n.format("SHADOWDARK_EXTRAS.inventory.delete_spell_text", { name: item.name })}</p>`
+			const confirmed = await foundry.applications.api.DialogV2.confirm({
+				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.inventory.delete_spell_title") },
+				content: `<p>${game.i18n.format("SHADOWDARK_EXTRAS.inventory.delete_spell_text", { name: item.name })}</p>`,
+				modal: true
 			});
 
 			if (confirmed) {
@@ -7126,28 +7144,32 @@ async function createItemMacro(actor, item) {
 	// For focus spells, ask if they want Cast or Focus macro
 	if (isFocusSpell && itemType === "Spell") {
 		const choice = await new Promise((resolve) => {
-			new Dialog({
-				title: game.i18n.localize("SHADOWDARK_EXTRAS.macro.focus_choice_title"),
+			new foundry.applications.api.DialogV2({
+				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.macro.focus_choice_title") },
 				content: `<p>${game.i18n.format("SHADOWDARK_EXTRAS.macro.focus_choice_content", { name: itemName })}</p>`,
-				buttons: {
-					cast: {
-						icon: '<i class="fas fa-magic"></i>',
+				buttons: [
+					{
+						action: "cast",
+						icon: "fas fa-magic",
 						label: game.i18n.localize("SHADOWDARK_EXTRAS.macro.cast_spell"),
+						default: true,
 						callback: () => resolve("cast")
 					},
-					focus: {
-						icon: '<i class="fas fa-brain"></i>',
+					{
+						action: "focus",
+						icon: "fas fa-brain",
 						label: game.i18n.localize("SHADOWDARK_EXTRAS.macro.focus_roll"),
 						callback: () => resolve("focus")
 					},
-					cancel: {
-						icon: '<i class="fas fa-times"></i>',
+					{
+						action: "cancel",
+						icon: "fas fa-times",
 						label: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.cancel"),
 						callback: () => resolve(null)
 					}
-				},
-				default: "cast"
-			}).render(true);
+				],
+				close: () => resolve(null)
+			}).render({ force: true });
 		});
 
 		if (!choice) return; // User cancelled
@@ -7375,13 +7397,15 @@ function enhanceGemBag(app, html) {
 			{ name: item.name }
 		);
 
-		new Dialog({
-			title: `${game.i18n.localize("SHADOWDARK.dialog.item.confirm_sale")}`,
+		new foundry.applications.api.DialogV2({
+			window: { title: game.i18n.localize("SHADOWDARK.dialog.item.confirm_sale") },
 			content: confirmHtml,
-			buttons: {
-				Yes: {
-					icon: '<i class="fa fa-check"></i>',
-					label: `${game.i18n.localize("SHADOWDARK.dialog.general.yes")}`,
+			buttons: [
+				{
+					action: "yes",
+					icon: "fa fa-check",
+					label: game.i18n.localize("SHADOWDARK.dialog.general.yes"),
+					default: true,
 					callback: async () => {
 						const qty = item.system.quantity ?? 1;
 						const coins = foundry.utils.deepClone(actor.system.coins);
@@ -7395,20 +7419,19 @@ function enhanceGemBag(app, html) {
 							"system.coins": coins,
 						}]);
 
-						// Close gem bag if empty
 						const remaining = actor.items.filter(i => i.type === "Gem");
 						if (remaining.length === 0) {
 							app.close();
 						}
-					},
+					}
 				},
-				Cancel: {
-					icon: '<i class="fa fa-times"></i>',
-					label: `${game.i18n.localize("SHADOWDARK.dialog.general.cancel")}`,
-				},
-			},
-			default: "Yes",
-		}).render(true);
+				{
+					action: "cancel",
+					icon: "fa fa-times",
+					label: game.i18n.localize("SHADOWDARK.dialog.general.cancel")
+				}
+			]
+		}).render({ force: true });
 	});
 
 	// Override sell-all-gems to account for quantity
@@ -7420,13 +7443,15 @@ function enhanceGemBag(app, html) {
 			{ name: "Gems" }
 		);
 
-		new Dialog({
-			title: `${game.i18n.localize("SHADOWDARK.dialog.item.confirm_sale")}`,
+		new foundry.applications.api.DialogV2({
+			window: { title: game.i18n.localize("SHADOWDARK.dialog.item.confirm_sale") },
 			content: confirmHtml,
-			buttons: {
-				Yes: {
-					icon: '<i class="fa fa-check"></i>',
-					label: `${game.i18n.localize("SHADOWDARK.dialog.general.yes")}`,
+			buttons: [
+				{
+					action: "yes",
+					icon: "fa fa-check",
+					label: game.i18n.localize("SHADOWDARK.dialog.general.yes"),
+					default: true,
 					callback: async () => {
 						const allGems = actor.items.filter(i => i.type === "Gem");
 						const coins = foundry.utils.deepClone(actor.system.coins);
@@ -7447,15 +7472,15 @@ function enhanceGemBag(app, html) {
 						}]);
 
 						app.close();
-					},
+					}
 				},
-				Cancel: {
-					icon: '<i class="fa fa-times"></i>',
-					label: `${game.i18n.localize("SHADOWDARK.dialog.general.cancel")}`,
-				},
-			},
-			default: "Yes",
-		}).render(true);
+				{
+					action: "cancel",
+					icon: "fa fa-times",
+					label: game.i18n.localize("SHADOWDARK.dialog.general.cancel")
+				}
+			]
+		}).render({ force: true });
 	});
 }
 
@@ -8527,16 +8552,18 @@ async function showAddCoinsDialog(actor) {
 		</form>
 	`;
 
-	const result = await Dialog.prompt({
-		title: game.i18n.localize("SHADOWDARK_EXTRAS.party.add_coins_title"),
-		content: content,
-		callback: (html) => {
-			const form = html[0].querySelector("form");
-			return {
-				gp: parseInt(form.gp.value) || 0,
-				sp: parseInt(form.sp.value) || 0,
-				cp: parseInt(form.cp.value) || 0
-			};
+	const result = await foundry.applications.api.DialogV2.prompt({
+		window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.party.add_coins_title") },
+		content,
+		ok: {
+			callback: (event, button, dialog) => {
+				const form = dialog.element.querySelector("form");
+				return {
+					gp: parseInt(form.gp.value) || 0,
+					sp: parseInt(form.sp.value) || 0,
+					cp: parseInt(form.cp.value) || 0
+				};
+			}
 		},
 		rejectClose: false
 	});
@@ -9646,20 +9673,22 @@ async function showCoinTransferDialog(sourceActor) {
 	`;
 
 	return new Promise((resolve) => {
-		const dialog = new Dialog({
-			title: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.transfer_coins_title"),
-			content: content,
-			buttons: {
-				transfer: {
-					icon: '<i class="fas fa-coins"></i>',
+		const dialog = new foundry.applications.api.DialogV2({
+			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.transfer_coins_title") },
+			content,
+			buttons: [
+				{
+					action: "transfer",
+					icon: "fas fa-coins",
 					label: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.transfer"),
-					callback: (html) => {
-						const targetActorId = html.find('[name="targetActorId"]').val();
-						const gp = parseInt(html.find('#sdx-coin-gp').val()) || 0;
-						const sp = parseInt(html.find('#sdx-coin-sp').val()) || 0;
-						const cp = parseInt(html.find('#sdx-coin-cp').val()) || 0;
+					default: true,
+					callback: (event, button, dlg) => {
+						const root = dlg.element;
+						const targetActorId = root.querySelector('[name="targetActorId"]')?.value;
+						const gp = parseInt(root.querySelector('#sdx-coin-gp')?.value) || 0;
+						const sp = parseInt(root.querySelector('#sdx-coin-sp')?.value) || 0;
+						const cp = parseInt(root.querySelector('#sdx-coin-cp')?.value) || 0;
 
-						// Validate at least some coins are being transferred
 						if (gp <= 0 && sp <= 0 && cp <= 0) {
 							ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.dialog.no_coins_selected"));
 							resolve(null);
@@ -9669,69 +9698,64 @@ async function showCoinTransferDialog(sourceActor) {
 						resolve({ targetActorId, coins: { gp, sp, cp } });
 					}
 				},
-				cancel: {
-					icon: '<i class="fas fa-times"></i>',
+				{
+					action: "cancel",
+					icon: "fas fa-times",
 					label: game.i18n.localize("Cancel"),
 					callback: () => resolve(null)
 				}
-			},
-			default: "transfer",
-			render: (html) => {
-				const $select = html.find('#sdx-transfer-target');
-				const $filterCheckbox = html.find('#sdx-filter-connected');
-				const $searchInput = html.find('#sdx-transfer-search');
+			],
+			close: () => resolve(null)
+		});
+		dialog.render({ force: true }).then(() => {
+			const root = dialog.element;
+			const select = root.querySelector('#sdx-transfer-target');
+			const filterCheckbox = root.querySelector('#sdx-filter-connected');
+			const searchInput = root.querySelector('#sdx-transfer-search');
 
-				const updateFilter = () => {
-					const showOnlyConnected = $filterCheckbox.is(':checked');
-					const searchText = $searchInput.val().toLowerCase().trim();
+			const updateFilter = () => {
+				const showOnlyConnected = !!filterCheckbox?.checked;
+				const searchText = (searchInput?.value || "").toLowerCase().trim();
 
-					$select.find('optgroup').each(function () {
-						const $group = $(this);
-						const groupType = $group.data('group');
-
-						if (groupType === 'other' && showOnlyConnected) {
-							$group.hide();
-							return;
-						}
-
-						let visibleCount = 0;
-						$group.find('option').each(function () {
-							const $option = $(this);
-							const optionSearch = $option.data('search') || '';
-
-							if (searchText === '' || optionSearch.includes(searchText)) {
-								$option.show();
-								visibleCount++;
-							} else {
-								$option.hide();
-							}
-						});
-
-						$group.toggle(visibleCount > 0);
-					});
-
-					const $selectedOption = $select.find('option:selected');
-					if (!$selectedOption.is(':visible') || $selectedOption.parent('optgroup').is(':hidden')) {
-						$select.find('option:visible').first().prop('selected', true);
+				root.querySelectorAll('#sdx-transfer-target optgroup').forEach(group => {
+					const groupType = group.dataset.group;
+					if (groupType === 'other' && showOnlyConnected) {
+						group.hidden = true;
+						return;
 					}
-				};
-
-				updateFilter();
-				$filterCheckbox.on('change', updateFilter);
-				$searchInput.on('input', updateFilter);
-
-				// Validate coin inputs don't exceed available
-				html.find('#sdx-coin-gp, #sdx-coin-sp, #sdx-coin-cp').on('change', function () {
-					const max = parseInt(this.max) || 0;
-					let val = parseInt(this.value) || 0;
-					if (val < 0) val = 0;
-					if (val > max) val = max;
-					this.value = val;
+					let visibleCount = 0;
+					group.querySelectorAll('option').forEach(option => {
+						const optionSearch = option.dataset.search || '';
+						const visible = searchText === '' || optionSearch.includes(searchText);
+						option.hidden = !visible;
+						if (visible) visibleCount++;
+					});
+					group.hidden = visibleCount === 0;
 				});
 
-				setTimeout(() => $searchInput.focus(), 100);
-			}
-		}).render(true);
+				const selected = select?.options[select.selectedIndex];
+				if (selected && (selected.hidden || selected.parentElement?.hidden)) {
+					const firstVisible = Array.from(select.options).find(o => !o.hidden && !o.parentElement?.hidden);
+					if (firstVisible) firstVisible.selected = true;
+				}
+			};
+
+			updateFilter();
+			filterCheckbox?.addEventListener('change', updateFilter);
+			searchInput?.addEventListener('input', updateFilter);
+
+			root.querySelectorAll('#sdx-coin-gp, #sdx-coin-sp, #sdx-coin-cp').forEach(input => {
+				input.addEventListener('change', () => {
+					const max = parseInt(input.max) || 0;
+					let val = parseInt(input.value) || 0;
+					if (val < 0) val = 0;
+					if (val > max) val = max;
+					input.value = val;
+				});
+			});
+
+			setTimeout(() => searchInput?.focus(), 100);
+		});
 	});
 }
 
@@ -9836,78 +9860,68 @@ async function showTransferDialog(sourceActor, item) {
 	`;
 
 	return new Promise((resolve) => {
-		const dialog = new Dialog({
-			title: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.transfer_item_title"),
-			content: content,
-			buttons: {
-				transfer: {
-					icon: '<i class="fas fa-exchange-alt"></i>',
+		const dialog = new foundry.applications.api.DialogV2({
+			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.transfer_item_title") },
+			content,
+			buttons: [
+				{
+					action: "transfer",
+					icon: "fas fa-exchange-alt",
 					label: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.transfer"),
-					callback: (html) => {
-						const targetActorId = html.find('[name="targetActorId"]').val();
+					default: true,
+					callback: (event, button, dlg) => {
+						const targetActorId = dlg.element.querySelector('[name="targetActorId"]')?.value;
 						resolve(targetActorId);
 					}
 				},
-				cancel: {
-					icon: '<i class="fas fa-times"></i>',
+				{
+					action: "cancel",
+					icon: "fas fa-times",
 					label: game.i18n.localize("Cancel"),
 					callback: () => resolve(null)
 				}
-			},
-			default: "transfer",
-			render: (html) => {
-				const $select = html.find('#sdx-transfer-target');
-				const $filterCheckbox = html.find('#sdx-filter-connected');
-				const $searchInput = html.find('#sdx-transfer-search');
+			],
+			close: () => resolve(null)
+		});
+		dialog.render({ force: true }).then(() => {
+			const root = dialog.element;
+			const select = root.querySelector('#sdx-transfer-target');
+			const filterCheckbox = root.querySelector('#sdx-filter-connected');
+			const searchInput = root.querySelector('#sdx-transfer-search');
 
-				// Combined filter function for both checkbox and search
-				const updateFilter = () => {
-					const showOnlyConnected = $filterCheckbox.is(':checked');
-					const searchText = $searchInput.val().toLowerCase().trim();
+			const updateFilter = () => {
+				const showOnlyConnected = !!filterCheckbox?.checked;
+				const searchText = (searchInput?.value || "").toLowerCase().trim();
 
-					$select.find('optgroup').each(function () {
-						const $group = $(this);
-						const groupType = $group.data('group');
-
-						// First, apply connected filter to groups
-						if (groupType === 'other' && showOnlyConnected) {
-							$group.hide();
-							return;
-						}
-
-						// Then apply search filter to options within visible groups
-						let visibleCount = 0;
-						$group.find('option').each(function () {
-							const $option = $(this);
-							const optionSearch = $option.data('search') || '';
-
-							if (searchText === '' || optionSearch.includes(searchText)) {
-								$option.show();
-								visibleCount++;
-							} else {
-								$option.hide();
-							}
-						});
-
-						// Hide group if no visible options
-						$group.toggle(visibleCount > 0);
-					});
-
-					// If current selection is now hidden, select first visible option
-					const $selectedOption = $select.find('option:selected');
-					if (!$selectedOption.is(':visible') || $selectedOption.parent('optgroup').is(':hidden')) {
-						$select.find('option:visible').first().prop('selected', true);
+				root.querySelectorAll('#sdx-transfer-target optgroup').forEach(group => {
+					const groupType = group.dataset.group;
+					if (groupType === 'other' && showOnlyConnected) {
+						group.hidden = true;
+						return;
 					}
-				};
+					let visibleCount = 0;
+					group.querySelectorAll('option').forEach(option => {
+						const optionSearch = option.dataset.search || '';
+						const visible = searchText === '' || optionSearch.includes(searchText);
+						option.hidden = !visible;
+						if (visible) visibleCount++;
+					});
+					group.hidden = visibleCount === 0;
+				});
 
-				updateFilter();
-				$filterCheckbox.on('change', updateFilter);
-				$searchInput.on('input', updateFilter);
+				const selected = select?.options[select.selectedIndex];
+				if (selected && (selected.hidden || selected.parentElement?.hidden)) {
+					const firstVisible = Array.from(select.options).find(o => !o.hidden && !o.parentElement?.hidden);
+					if (firstVisible) firstVisible.selected = true;
+				}
+			};
 
-				// Focus search input for immediate typing
-				setTimeout(() => $searchInput.focus(), 100);
-			}
-		}).render(true);
+			updateFilter();
+			filterCheckbox?.addEventListener('change', updateFilter);
+			searchInput?.addEventListener('input', updateFilter);
+
+			setTimeout(() => searchInput?.focus(), 100);
+		});
 	});
 }
 
@@ -19711,7 +19725,8 @@ SDX.templates = {
 			textureOpacity = 0.5,
 			tmfxPreset = null,
 			tmfxTint = null,
-			excludeCasterTokenId = null  // Token ID to exclude from highlighting
+			excludeCasterTokenId = null,  // Token ID to exclude from highlighting
+			templateFlags = null  // v14: module flags written at create-time only (post-create setFlag silently drops)
 		} = options;
 
 		// Build template data based on type
@@ -19721,7 +19736,8 @@ SDX.templates = {
 			fillColor,
 			borderColor,
 			angle: 0,
-			direction: 0
+			direction: 0,
+			flags: templateFlags ? foundry.utils.deepClone(templateFlags) : {}
 		};
 
 		// Add texture if provided
@@ -20608,20 +20624,26 @@ Hooks.once("ready", () => {
 				"systems/shadowdark/templates/dialog/choose-spellbook.hbs",
 				{ classes: playerSpellcasterClasses }
 			).then(html => {
-				const dialog = new Dialog({
-					title: game.i18n.localize("SHADOWDARK.dialog.spellbook.open_which_class.title"),
+				const dialog = new foundry.applications.api.DialogV2({
+					window: { title: game.i18n.localize("SHADOWDARK.dialog.spellbook.open_which_class.title") },
 					content: html,
-					buttons: {},
-					render: html => {
-						html.find("[data-action='open-class-spellbook']").click(
-							event => {
-								event.preventDefault();
-								openChosenSpellbook(event.currentTarget.dataset.uuid);
-								dialog.close();
-							}
-						);
-					},
-				}).render(true);
+					buttons: [
+						{
+							action: "cancel",
+							icon: "fas fa-times",
+							label: game.i18n.localize("Cancel")
+						}
+					]
+				});
+				dialog.render({ force: true }).then(() => {
+					dialog.element.querySelectorAll("[data-action='open-class-spellbook']").forEach(el => {
+						el.addEventListener("click", event => {
+							event.preventDefault();
+							openChosenSpellbook(event.currentTarget.dataset.uuid);
+							dialog.close();
+						});
+					});
+				});
 			});
 		}
 	};

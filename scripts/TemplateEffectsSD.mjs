@@ -1401,8 +1401,61 @@ function getTemplatesContainingPoint(x, y, scene) {
 }
 
 /**
- * Store template effect configuration on a template
- * Call this when placing a template from a spell with effects configured
+ * Build the templateEffects flag-data object (no I/O — pure).
+ *
+ * Returns the shape that's written to `templateDoc.flags[MODULE_ID].templateEffects`,
+ * OR null when the config is disabled. Used by the v14 path where the flag must
+ * be written at template creation time (Foundry v14 silently drops post-create
+ * setFlag on MeasuredTemplate documents as part of the template→region deprecation).
+ *
+ * @param {Object} config - The effect configuration from the spell
+ * @returns {Object|null}
+ */
+export function buildTemplateEffectsFlag(config) {
+    if (!config?.enabled) return null;
+    return {
+        enabled: true,
+        spellName: config.spellName || "Spell",
+        casterActorId: config.casterActorId,
+        casterTokenId: config.casterTokenId,
+        triggers: {
+            onEnter: config.onEnter || false,
+            onTurnStart: config.onTurnStart || false,
+            onTurnEnd: config.onTurnEnd || false,
+            onLeave: config.onLeave || false
+        },
+        damage: {
+            formula: config.damageFormula || "",
+            type: config.damageType || ""
+        },
+        save: {
+            enabled: config.saveEnabled || false,
+            dcFormula: config.saveDCFormula || config.saveDC?.toString() || "10",
+            ability: config.saveAbility || "dex",
+            halfOnSuccess: config.halfOnSuccess || false
+        },
+        casterData: {
+            spellcastingCheck: config.spellcastingCheckTotal || 0,
+            level: config.casterLevel || 1,
+            abilities: config.casterAbilities || {}
+        },
+        effects: config.effects || [],
+        excludeCaster: config.excludeCaster || false,
+        runItemMacro: config.runItemMacro || false,
+        spellId: config.spellId || null,
+        initialEnterTriggered: config.initialEnterTriggered || false,
+        effectsRequirement: config.effectsRequirement || ""
+    };
+}
+
+/**
+ * Store template effect configuration on a template (SD 3.x / pre-v14 path).
+ * Call this when placing a template from a spell with effects configured.
+ *
+ * @deprecated v14 silently drops post-create setFlag on MeasuredTemplate documents.
+ *   Prefer `buildTemplateEffectsFlag(config)` and include the result in templateData.flags
+ *   passed to createEmbeddedDocuments (the v14-safe path).
+ *
  * @param {MeasuredTemplateDocument} templateDoc - The template
  * @param {Object} config - The effect configuration from the spell
  */

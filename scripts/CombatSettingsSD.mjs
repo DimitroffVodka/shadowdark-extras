@@ -5,7 +5,7 @@
 
 import { getWeaponBonuses, getWeaponEffectsToApply, evaluateRequirements, calculateWeaponBonusDamage, decrementDamageBonusUsage } from "./WeaponBonusConfig.mjs";
 import { startDurationSpell, linkEffectToDurationSpell, linkEffectToFocusSpell, linkTargetToFocusSpell, startFocusSpellIfNeeded, getActiveDurationSpells, endFocusSpell } from "./FocusSpellTrackerSD.mjs";
-import { setupTemplateEffectFlags, applyTemplateEffect, getTokensInTemplate } from "./TemplateEffectsSD.mjs";
+import { setupTemplateEffectFlags, buildTemplateEffectsFlag, applyTemplateEffect, getTokensInTemplate } from "./TemplateEffectsSD.mjs";
 import { createAuraOnActor } from "./AuraEffectsSD.mjs";
 import { readSdRollOutcome, readSdDamageRoll, resolveCardContext } from "./sd4Compat.mjs";
 
@@ -893,12 +893,11 @@ export function setupCombatSocket() {
 		}
 
 		// Show confirmation dialog to the target player
-		const accepted = await Dialog.confirm({
-			title: game.i18n.localize("SHADOWDARK_EXTRAS.trade.request_title"),
+		const accepted = await foundry.applications.api.DialogV2.confirm({
+			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.trade.request_title") },
 			content: `<p>${game.i18n.format("SHADOWDARK_EXTRAS.trade.request_prompt", { player: initiatorActor.name })}</p>`,
-			yes: () => true,
-			no: () => false,
-			defaultYes: false
+			modal: true,
+			rejectClose: false
 		});
 
 		return { accepted };
@@ -1546,33 +1545,35 @@ async function showEffectSelectionDialog(effectOptions) {
 			</form>
 		`;
 
-		new Dialog({
-			title: "Select Effects",
+		new foundry.applications.api.DialogV2({
+			window: { title: "Select Effects" },
 			content: dialogContent,
-			buttons: {
-				apply: {
-					icon: '<i class="fas fa-check"></i>',
+			buttons: [
+				{
+					action: "apply",
+					icon: "fas fa-check",
 					label: "Apply Selected",
-					callback: (html) => {
+					default: true,
+					callback: (event, button, dialog) => {
 						const selectedEffects = [];
 						for (let i = 0; i < effectOptions.length; i++) {
-							const checkbox = html.find(`input[name="effect-${i}"]`);
-							if (checkbox.is(':checked')) {
+							const checkbox = dialog.element.querySelector(`input[name="effect-${i}"]`);
+							if (checkbox?.checked) {
 								selectedEffects.push(effectOptions[i].data);
 							}
 						}
 						resolve(selectedEffects);
 					}
 				},
-				cancel: {
-					icon: '<i class="fas fa-times"></i>',
+				{
+					action: "cancel",
+					icon: "fas fa-times",
 					label: "Cancel",
 					callback: () => resolve(null)
 				}
-			},
-			default: "apply",
+			],
 			close: () => resolve(null)
-		}).render(true);
+		}).render({ force: true });
 	});
 }
 
@@ -1672,6 +1673,7 @@ export async function injectDamageCard(message, html, data) {
 	let item = null; // The spell/potion item
 
 	// Get the item from the chat card if it exists (SD 3.x DOM or SD 4.x rollConfig).
+	// Helper resolves both legacy `.chat-card` DOM data and v4 `flags.shadowdark.rollConfig`.
 	const ctx = resolveCardContext(message, html);
 	let cardData = ctx?.itemId ? { actorId: ctx.actorId, itemId: ctx.itemId } : null;
 	let itemType = null; // Track the item type
@@ -1981,6 +1983,60 @@ export async function injectDamageCard(message, html, data) {
 			expiryRounds = null;
 		}
 
+		// Build SDX template flags to write at CREATE time.
+		// Foundry v14 silently drops post-create setFlag on MeasuredTemplate documents
+		// (template→region deprecation hardening), so we must include flags in the
+		// templateData passed to createEmbeddedDocuments — see SDX.templates.place.
+		const templateEffectsConfigForFlag = item?.flags?.[MODULE_ID]?.templateEffects;
+		const spellDamageConfigForFlag = item?.flags?.[MODULE_ID]?.spellDamage;
+		const sdxTemplateFlags = { [MODULE_ID]: {} };
+		if (templateEffectsConfigForFlag?.enabled) {
+			const effectsFlag = buildTemplateEffectsFlag({
+				enabled: true,
+				spellName: item.name,
+				casterActorId: casterActor?.id,
+				casterTokenId: speaker?.token,
+				onEnter: templateEffectsConfigForFlag.triggers?.onEnter || false,
+				onTurnStart: templateEffectsConfigForFlag.triggers?.onTurnStart || false,
+				onTurnEnd: templateEffectsConfigForFlag.triggers?.onTurnEnd || false,
+				onLeave: templateEffectsConfigForFlag.triggers?.onLeave || false,
+				damageFormula: templateEffectsConfigForFlag.damage?.formula || '',
+				damageType: templateEffectsConfigForFlag.damage?.type || '',
+				saveEnabled: templateEffectsConfigForFlag.save?.enabled || false,
+				saveDCFormula: templateEffectsConfigForFlag.save?.dc || '12',
+				spellcastingCheckTotal: readSdRollOutcome(message).total ?? 0,
+				casterLevel: casterActor?.system?.level?.value || 1,
+				casterAbilities: {
+					str: casterActor?.system?.abilities?.str?.mod || 0,
+					dex: casterActor?.system?.abilities?.dex?.mod || 0,
+					con: casterActor?.system?.abilities?.con?.mod || 0,
+					int: casterActor?.system?.abilities?.int?.mod || 0,
+					wis: casterActor?.system?.abilities?.wis?.mod || 0,
+					cha: casterActor?.system?.abilities?.cha?.mod || 0
+				},
+				saveAbility: templateEffectsConfigForFlag.save?.ability || 'dex',
+				halfOnSuccess: templateEffectsConfigForFlag.save?.halfOnSuccess || false,
+				effects: templateEffectsConfigForFlag.applyConfiguredEffects
+					? (spellDamageConfigForFlag?.effects || [])
+					: [],
+				excludeCaster: excludeCaster,
+				runItemMacro: templateEffectsConfigForFlag.runItemMacro || false,
+				spellId: item.id,
+				initialEnterTriggered: false,
+				effectsRequirement: spellDamageConfigForFlag?.effectsRequirement || ""
+			});
+			if (effectsFlag) sdxTemplateFlags[MODULE_ID].templateEffects = effectsFlag;
+		}
+		if (expiryRounds && expiryRounds > 0) {
+			const currentRound = game.combat?.round || 0;
+			sdxTemplateFlags[MODULE_ID].templateExpiry = {
+				spellName: item.name,
+				createdRound: currentRound,
+				expiryRound: currentRound + expiryRounds,
+				duration: expiryRounds
+			};
+		}
+
 		try {
 			// Use SDX.templates API if available
 			if (typeof SDX !== 'undefined' && SDX.templates) {
@@ -2003,7 +2059,8 @@ export async function injectDamageCard(message, html, data) {
 							textureOpacity: tmOpacity,
 							tmfxPreset: tmPreset,
 							tmfxTint: tmTint,
-							excludeCasterTokenId: excludeCaster ? casterTokenId : null
+							excludeCasterTokenId: excludeCaster ? casterTokenId : null,
+							templateFlags: sdxTemplateFlags
 						});
 					}
 				} else if (placement === 'caster') {
@@ -2024,7 +2081,8 @@ export async function injectDamageCard(message, html, data) {
 							textureOpacity: tmOpacity,
 							tmfxPreset: tmPreset,
 							tmfxTint: tmTint,
-							excludeCasterTokenId: excludeCaster ? casterTokenId : null
+							excludeCasterTokenId: excludeCaster ? casterTokenId : null,
+							templateFlags: sdxTemplateFlags
 						});
 					} else {
 						// No caster token found, fall back to choose location
@@ -2038,7 +2096,8 @@ export async function injectDamageCard(message, html, data) {
 							textureOpacity: tmOpacity,
 							tmfxPreset: tmPreset,
 							tmfxTint: tmTint,
-							excludeCasterTokenId: excludeCaster ? speaker?.token : null
+							excludeCasterTokenId: excludeCaster ? speaker?.token : null,
+							templateFlags: sdxTemplateFlags
 						});
 					}
 				} else {
@@ -2052,7 +2111,8 @@ export async function injectDamageCard(message, html, data) {
 						textureOpacity: tmOpacity,
 						tmfxPreset: tmPreset,
 						tmfxTint: tmTint,
-						excludeCasterTokenId: excludeCaster ? speaker?.token : null
+						excludeCasterTokenId: excludeCaster ? speaker?.token : null,
+						templateFlags: sdxTemplateFlags
 					});
 				}
 
@@ -2064,49 +2124,11 @@ export async function injectDamageCard(message, html, data) {
 						targets = targets.filter(t => t.id !== speaker.token);
 					}
 
-					// Apply template effects configuration if enabled
+					// Template flags (templateEffects + templateExpiry) were already written at create-time
+					// via placeAndTarget's templateFlags option — see sdxTemplateFlags build block above
+					// (v14 silently drops post-create setFlag on MeasuredTemplate documents).
 					const templateEffectsConfig = item?.flags?.[MODULE_ID]?.templateEffects;
 					if (result.template && templateEffectsConfig?.enabled) {
-						// Get spell damage config to access effectsRequirement
-						const spellDamageConfig = item?.flags?.[MODULE_ID]?.spellDamage;
-
-						await setupTemplateEffectFlags(result.template, {
-							enabled: true,
-							spellName: item.name,
-							casterActorId: casterActor?.id,
-							casterTokenId: speaker?.token,
-							onEnter: templateEffectsConfig.triggers?.onEnter || false,
-							onTurnStart: templateEffectsConfig.triggers?.onTurnStart || false,
-							onTurnEnd: templateEffectsConfig.triggers?.onTurnEnd || false,
-							onLeave: templateEffectsConfig.triggers?.onLeave || false,
-							damageFormula: templateEffectsConfig.damage?.formula || '',
-							damageType: templateEffectsConfig.damage?.type || '',
-							saveEnabled: templateEffectsConfig.save?.enabled || false,
-							saveDCFormula: templateEffectsConfig.save?.dc || '12',  // Store as formula string
-							spellcastingCheckTotal: readSdRollOutcome(message).total ?? 0, // Caster's spell roll
-							casterLevel: casterActor?.system?.level?.value || 1,
-							casterAbilities: {
-								str: casterActor?.system?.abilities?.str?.mod || 0,
-								dex: casterActor?.system?.abilities?.dex?.mod || 0,
-								con: casterActor?.system?.abilities?.con?.mod || 0,
-								int: casterActor?.system?.abilities?.int?.mod || 0,
-								wis: casterActor?.system?.abilities?.wis?.mod || 0,
-								cha: casterActor?.system?.abilities?.cha?.mod || 0
-							},
-							saveAbility: templateEffectsConfig.save?.ability || 'dex',
-							halfOnSuccess: templateEffectsConfig.save?.halfOnSuccess || false,
-							effects: templateEffectsConfig.applyConfiguredEffects ?
-								(spellDamageConfig?.effects || []) : [],
-							excludeCaster: excludeCaster,
-							runItemMacro: templateEffectsConfig.runItemMacro || false,
-							spellId: item.id,
-							initialEnterTriggered: false, // Let the hook handle this naturally to avoid duplicates/race conditions
-							effectsRequirement: spellDamageConfig?.effectsRequirement || "" // Persist requirement for On Enter checks
-						});
-
-						// Manual "On Enter" Trigger removed to prevent duplicates with the createMeasuredTemplate hook.
-						// The improved origin tracking in TemplateEffectsSD.mjs ensures reliable application/removal.
-
 						// Trigger Automated Animations for the template
 						// AA often fires too early (on chat message) before template exists.
 						// We manually trigger it here on the placed template.
@@ -2144,18 +2166,10 @@ export async function injectDamageCard(message, html, data) {
 					}
 
 					// Note: Aura effects are now applied after target gathering (see below)
-					// to work for both template and targeted modes
-					// Store round-based expiry info on template for combat-based deletion
-					if (result.template && expiryRounds && expiryRounds > 0) {
-						const currentRound = game.combat?.round || 0;
-						const expiryRound = currentRound + expiryRounds;
-						await result.template.setFlag(MODULE_ID, 'templateExpiry', {
-							spellName: item.name,
-							createdRound: currentRound,
-							expiryRound: expiryRound,
-							duration: expiryRounds
-						});
-					}
+					// to work for both template and targeted modes.
+					// templateExpiry flag was already written at create-time via placeAndTarget's
+					// templateFlags option — see sdxTemplateFlags build block above
+					// (v14 silently drops post-create setFlag on MeasuredTemplate documents).
 
 					// Store template ID for duration spell linking
 					if (result.template) {
@@ -4658,8 +4672,8 @@ async function applyCoatingPoison(casterActor, targetActor, config, potionName) 
 		`<option value="${w.id}">${w.name}</option>`
 	).join('');
 
-	new Dialog({
-		title: `${potionName} - Coat Weapon`,
+	new foundry.applications.api.DialogV2({
+		window: { title: `${potionName} - Coat Weapon` },
 		content: `
 			<form>
 				<div class="form-group">
@@ -4671,12 +4685,14 @@ async function applyCoatingPoison(casterActor, targetActor, config, potionName) 
 				</p>
 			</form>
 		`,
-		buttons: {
-			coat: {
-				icon: '<i class="fas fa-skull-crossbones"></i>',
+		buttons: [
+			{
+				action: "coat",
+				icon: "fas fa-skull-crossbones",
 				label: "Coat Weapon",
-				callback: async (html) => {
-					const weaponId = html.find('[name="weaponId"]').val();
+				default: true,
+				callback: async (event, button) => {
+					const weaponId = button.form.elements.weaponId.value;
 					const weapon = targetActor.items.get(weaponId);
 					if (!weapon) {
 						ui.notifications.error("Weapon not found!");
@@ -4724,10 +4740,9 @@ async function applyCoatingPoison(casterActor, targetActor, config, potionName) 
 					});
 				}
 			},
-			cancel: { icon: '<i class="fas fa-times"></i>', label: "Cancel" }
-		},
-		default: "coat"
-	}).render(true);
+			{ action: "cancel", icon: "fas fa-times", label: "Cancel" }
+		]
+	}).render({ force: true });
 }
 
 /**
