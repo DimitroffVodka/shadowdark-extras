@@ -38,6 +38,9 @@ const DEFAULT_PIN_STYLE = {
     imagePath: "", // Path to image for "image" shape
     contentType: "number", // "number", "icon", "text"
     iconClass: "fa-solid fa-book-open",
+    iconColor: "#ffffff",
+    symbolColor: "#ffffff",
+    customIconPath: "",
     customText: "",
     fontSize: 14,
     fontFamily: "Arial",

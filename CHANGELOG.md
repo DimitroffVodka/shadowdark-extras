@@ -4,6 +4,40 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.9.4] — 2026-05-15 — pin style defaults & more deprecation cleanup
+
+Surfaced while exercising journal pins and carousing in v14.
+
+### Fixed — Runtime correctness
+
+- **Pin Style Editor color inputs** — `<input type="color">` requires a
+  valid `#rrggbb` value and rejects empty strings with a render-time
+  warning. The template references `style.symbolColor`,
+  `style.iconColor`, and `style.customIconPath` but those keys weren't
+  in `DEFAULT_PIN_STYLE`, so they rendered as `value=""` and broke
+  `_renderHTML`. Added defaults: `iconColor: "#ffffff"`,
+  `symbolColor: "#ffffff"`, `customIconPath: ""`.
+
+### Fixed — Deprecation warnings
+
+- **`CONST.DICE_ROLL_MODES`** (V16 removal) — `LightTrackerAppSD.mjs`
+  used `CONST.DICE_ROLL_MODES.PUBLIC` to set roll mode on its
+  "disable all lights" chat card. Switched to the new string value
+  `"publicroll"`.
+- **Legacy `-=` deletion key syntax** (V16 removal) — three call sites
+  in `CarousingSD.mjs` used `flags.shadowdark-extras.-=carousingDrops`
+  / `-=carousingSession` to wipe carousing state on journal updates.
+  Migrated to the v14+ sentinel
+  `foundry.data.operators.ForcedDeletion`:
+  ```js
+  { [`flags.${MODULE_ID}.carousingDrops`]: foundry.data.operators.ForcedDeletion }
+  ```
+  Simplified the matching watcher hook — the ForcedDeletion sentinel
+  appears under the actual key, not as a `-=`-prefixed entry, so the
+  parallel `flagChanges["-=..."]` checks were dropped.
+
+---
+
 ## [6.9.3] — 2026-05-15 — more v14 deprecation cleanup
 
 Follow-up to 6.9.2 — cleans up deprecation warnings surfaced when
