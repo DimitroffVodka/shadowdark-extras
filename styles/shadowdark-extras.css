@@ -18615,3 +18615,49 @@ footer.sdx-coords-footer {
 .sdx-coords-footer button i {
     margin-right: 4px;
 }
+
+/* -----------------------------------------------------------------------
+ * V2 ApplicationV2 header control FontAwesome fix (global).
+ *
+ * Multiple stylesheets in this stack apply font-family !important to all
+ * <button> elements inside specific containers:
+ *   - Shadowdark system: `.shadowdark button { font-family: "Old Newspaper Font" !important; }`
+ *   - SDX dark-mode: dialog-specific button rules using `var(--font-primary)`
+ *   - others not yet found
+ *
+ * In V1 these rules were harmless because window close buttons were <a> tags.
+ * V2 ApplicationV2 renders header controls (close, toggleControls, etc.) as
+ * real <button> elements with FontAwesome classes (.fa-solid, .fa-xmark, etc.).
+ * Any button-targeting rule with !important now clobbers the FA font, so the
+ * icon glyphs render as garbage characters from the wrong font.
+ *
+ * Restore the FA font on ALL V2 header controls and the toggle-controls
+ * dropdown menu, in any SDX-related context. Scope is broad on purpose:
+ * we never need a non-FA font on a `.header-control` button.
+ * ----------------------------------------------------------------------- */
+.window-header .header-control,
+.window-header .header-control::before,
+.controls-dropdown button.control,
+.controls-dropdown button.control::before {
+    font-family: var(--font-awesome) !important;
+}
+.window-header .header-control.fa-light,
+.window-header .header-control.fa-light::before {
+    font-family: var(--fa-font-light) !important;
+}
+.window-header .header-control.fa-regular,
+.window-header .header-control.fa-regular::before {
+    font-family: var(--fa-font-regular) !important;
+}
+.window-header .header-control.fa-thin,
+.window-header .header-control.fa-thin::before {
+    font-family: var(--fa-font-thin) !important;
+}
+.window-header .header-control.fa-duotone,
+.window-header .header-control.fa-duotone::before {
+    font-family: var(--fa-font-duotone) !important;
+}
+.window-header .header-control.fa-brands,
+.window-header .header-control.fa-brands::before {
+    font-family: var(--fa-font-brands) !important;
+}

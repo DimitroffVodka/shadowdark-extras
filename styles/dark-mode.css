@@ -283,7 +283,10 @@ body.sdx-dark-mode .sdx-movement-option {
     transition: all 0.2s ease;
 }
 
-body.sdx-dark-mode .sdx-movement-mode-dialog button {
+/* Scoped to content/footer buttons — :not(.header-control) prevents this from
+ * clobbering V2 window-header chrome (close, toggleControls) which need the
+ * FontAwesome font for their glyph rendering. */
+body.sdx-dark-mode .sdx-movement-mode-dialog button:not(.header-control) {
     width: 49%;
     margin: 0 1px;
     background: rgb(0 0 0 / 80%);
