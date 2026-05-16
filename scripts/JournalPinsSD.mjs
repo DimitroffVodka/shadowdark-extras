@@ -7,14 +7,24 @@ const MODULE_ID = "shadowdark-extras";
 const FLAG_KEY = "journalPins";
 const LAYER_NAME = "sdx-journal-pins-layer";
 
-// GSAP PixiPlugin registration. Without this, tweens of the `pixi` property
-// (brightness/hue filters) warn "Missing plugin? gsap.registerPlugin()" on every
-// hover. Scripts (gsap.min.js, PixiPlugin.min.js) load before esmodules, so the
-// globals are available at module-load time. PIXI is a Foundry global.
-if (window.gsap && window.PixiPlugin) {
-    window.gsap.registerPlugin(window.PixiPlugin);
-    if (window.PIXI) window.PixiPlugin.registerPIXI(window.PIXI);
+// GSAP PixiPlugin registration. PixiPlugin.min.js auto-registers itself with
+// gsap on load, but it needs `PixiPlugin.registerPIXI(PIXI)` to know which PIXI
+// instance to operate on. Without that, tweens of the `pixi` property
+// (brightness/hue filters) warn "Missing plugin? gsap.registerPlugin()" every
+// frame. Defer to "init" so window.PIXI is guaranteed to be set up.
+function _registerGsapPixiPlugin() {
+    if (!window.gsap || !window.PixiPlugin || !window.PIXI) return;
+    try {
+        window.gsap.registerPlugin(window.PixiPlugin);
+        window.PixiPlugin.registerPIXI(window.PIXI);
+    } catch (e) {
+        console.warn("SDX Journal Pins | GSAP PixiPlugin registration failed:", e);
+    }
 }
+// Try at module load (usually PIXI is already a global by then)…
+_registerGsapPixiPlugin();
+// …and again at init, in case PIXI wasn't ready yet.
+Hooks.once("init", _registerGsapPixiPlugin);
 
 // ================================================================
 // PIN SCHEMA & DEFAULTS
@@ -645,7 +655,8 @@ class JournalPinGraphics extends PIXI.Container {
 
     async unsetFlag(scope, key) {
         const updateData = {};
-        updateData[`flags.${scope}.-=${key}`] = null;
+        // v14+: use ForcedDeletion sentinel instead of legacy "-=" deletion key syntax.
+        updateData[`flags.${scope}.${key}`] = foundry.data.operators.ForcedDeletion;
         return await JournalPinManager.update(this.pinData.id, updateData);
     }
 

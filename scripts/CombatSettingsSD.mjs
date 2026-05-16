@@ -1123,45 +1123,81 @@ export function getSocket() {
 	return socketlibSocket;
 }
 
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+
 /**
- * Combat Settings Configuration Application
+ * Combat Settings Configuration Application (ApplicationV2)
  */
-export class CombatSettingsApp extends FormApplication {
-	static get defaultOptions() {
-		return foundry.utils.mergeObject(super.defaultOptions, {
-			id: "shadowdark-combat-settings",
-			classes: ["shadowdark-extras", "combat-settings"],
+export class CombatSettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
+	static DEFAULT_OPTIONS = {
+		id: "shadowdark-combat-settings",
+		classes: ["shadowdark-extras", "combat-settings"],
+		tag: "form",
+		window: {
 			title: "Automatic Combat Settings",
-			template: "modules/shadowdark-extras/templates/combat-settings.hbs",
+			resizable: true
+		},
+		position: {
 			width: 600,
-			height: "auto",
-			closeOnSubmit: true,
+			height: "auto"
+		},
+		form: {
+			handler: CombatSettingsApp.formHandler,
 			submitOnChange: false,
-			submitOnClose: false,
-			tabs: []
+			closeOnSubmit: true
+		},
+		actions: {
+			reset: CombatSettingsApp._onReset
+		}
+	};
+
+	static PARTS = {
+		form: {
+			template: "modules/shadowdark-extras/templates/combat-settings.hbs",
+			scrollable: [""]
+		}
+	};
+
+	async _prepareContext(options) {
+		return {
+			settings: game.settings.get(MODULE_ID, "combatSettings")
+		};
+	}
+
+	_onRender(context, options) {
+		// Wire the "showDamageCard" subsetting opacity/pointer toggle. Lives here
+		// instead of an inline <script> in the HBS so it re-binds on every render.
+		const root = this.element;
+		if (!root) return;
+		const parent = root.querySelector('#showDamageCard');
+		const sub = root.querySelector('[data-parent="showDamageCard"]');
+		if (!parent || !sub) return;
+		const sync = () => {
+			sub.style.opacity = parent.checked ? '1' : '0.5';
+			sub.style.pointerEvents = parent.checked ? 'auto' : 'none';
+		};
+		parent.addEventListener('change', sync);
+		sync();
+	}
+
+	static async _onReset(event, target) {
+		event?.preventDefault?.();
+		const confirmed = await foundry.applications.api.DialogV2.confirm({
+			window: { title: "Reset Combat Settings" },
+			content: "<p>Reset all combat settings to their defaults?</p>",
+			modal: true,
+			yes: { default: false }
 		});
+		if (!confirmed) return;
+		await game.settings.set(MODULE_ID, "combatSettings", foundry.utils.deepClone(DEFAULT_COMBAT_SETTINGS));
+		ui.notifications.info("Combat settings reset to defaults");
+		// Re-render to reflect the new values in the form
+		this.render({ force: true });
 	}
 
-	async getData(options = {}) {
-		const data = await super.getData(options);
-
-		// Get current combat settings
-		data.settings = game.settings.get(MODULE_ID, "combatSettings");
-
-		return data;
-	}
-
-	activateListeners(html) {
-		super.activateListeners(html);
-
-		// Add any custom listeners here
-	}
-
-	async _updateObject(event, formData) {
-		// Save the combat settings
-		const settings = foundry.utils.expandObject(formData);
+	static async formHandler(event, form, formData) {
+		const settings = foundry.utils.expandObject(formData.object);
 		await game.settings.set(MODULE_ID, "combatSettings", settings);
-
 		ui.notifications.info("Combat settings saved successfully");
 	}
 }

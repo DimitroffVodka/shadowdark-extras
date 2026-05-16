@@ -2262,11 +2262,12 @@ function injectFocusSpellsUI(sheet, html, data) {
 
 			// Confirm adding targets
 			const targetNames = targets.map(t => t.name).join(", ");
-			const confirmed = await Dialog.confirm({
-				title: "Add Targets to Spell",
+			const confirmed = await foundry.applications.api.DialogV2.confirm({
+				window: { title: "Add Targets to Spell" },
 				content: `<p>Add <strong>${targetNames}</strong> to <strong>${durationEntry.spellName}</strong>?</p>
 				          <p>They will receive the spell's effects and start taking per-turn damage.</p>`,
-				defaultYes: true
+				modal: true,
+				yes: { default: true }
 			});
 
 			if (confirmed) {
@@ -2292,11 +2293,12 @@ function injectFocusSpellsUI(sheet, html, data) {
 
 			if (!target) return;
 
-			const confirmed = await Dialog.confirm({
-				title: "Remove Target from Spell",
+			const confirmed = await foundry.applications.api.DialogV2.confirm({
+				window: { title: "Remove Target from Spell" },
 				content: `<p>Remove <strong>${target.name}</strong> from <strong>${durationEntry.spellName}</strong>?</p>
 				          <p>Any effects applied by this spell will be removed from them.</p>`,
-				defaultYes: true
+				modal: true,
+				yes: { default: true }
 			});
 
 			if (confirmed) {
@@ -2365,13 +2367,13 @@ function injectFocusSpellsUI(sheet, html, data) {
 			const spellId = event.currentTarget.dataset.spellId;
 
 			const focusEntry = activeFocus.find(f => f.spellId === spellId);
-			const confirmed = await Dialog.confirm({
-				title: game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.end_focus_title"),
+			const confirmed = await foundry.applications.api.DialogV2.confirm({
+				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.end_focus_title") },
 				content: `<p>${game.i18n.format("SHADOWDARK_EXTRAS.focus_tracker.end_focus_confirm", {
 					spellName: focusEntry?.spellName ?? "Unknown",
 					targetCount: focusEntry?.targetEffects?.length ?? 0
 				})}</p>`,
-				defaultYes: false
+				modal: true
 			});
 
 			if (confirmed) {

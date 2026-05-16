@@ -5,6 +5,8 @@
 
 const MODULE_ID = "shadowdark-extras";
 
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+
 /**
  * Default creature types (D&D standard types)
  */
@@ -61,70 +63,72 @@ export async function saveCreatureTypes(types) {
 /**
  * Application for managing custom creature types
  */
-export class CreatureTypesApp extends FormApplication {
-    static get defaultOptions() {
-        return foundry.utils.mergeObject(super.defaultOptions, {
-            id: "creature-types-app",
-            title: game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.editor_title"),
-            template: "modules/shadowdark-extras/templates/creature-types-app.hbs",
+export class CreatureTypesApp extends HandlebarsApplicationMixin(ApplicationV2) {
+    static DEFAULT_OPTIONS = {
+        id: "creature-types-app",
+        classes: ["shadowdark-extras", "creature-types-app"],
+        window: {
+            title: "SHADOWDARK_EXTRAS.creature_types.editor_title",
+            resizable: true
+        },
+        position: {
             width: 400,
-            height: 500,
-            resizable: true,
-            closeOnSubmit: false,
-            classes: ["shadowdark-extras", "creature-types-app"]
-        });
-    }
+            height: 500
+        }
+    };
 
-    constructor(options = {}) {
-        super({}, options);
-    }
+    static PARTS = {
+        form: {
+            template: "modules/shadowdark-extras/templates/creature-types-app.hbs",
+            scrollable: [".types-list"]
+        }
+    };
 
-    /**
-     * Get data for the template
-     */
-    getData() {
-        const types = getCreatureTypes().filter(t => t !== ""); // Exclude empty for display
+    async _prepareContext(options) {
+        const types = getCreatureTypes().filter(t => t !== "");
         return {
-            types: types,
+            types,
             hasTypes: types.length > 0
         };
     }
 
-    /**
-     * Activate listeners
-     */
-    activateListeners(html) {
-        super.activateListeners(html);
+    _onRender(context, options) {
+        const html = this.element;
+        if (!html) return;
 
         // Add new type
-        html.find('[data-action="add-type"]').click(() => {
-            const input = html.find('#new-type-input');
-            const newType = input.val()?.trim();
+        html.querySelector('[data-action="add-type"]')?.addEventListener("click", () => {
+            const input = html.querySelector("#new-type-input");
+            const newType = input?.value?.trim();
             if (newType) {
                 this._addType(newType);
-                input.val('');
+                if (input) input.value = "";
             }
         });
 
         // Allow Enter key to add
-        html.find('#new-type-input').on('keypress', (e) => {
-            if (e.key === 'Enter') {
+        html.querySelector("#new-type-input")?.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
                 e.preventDefault();
-                html.find('[data-action="add-type"]').click();
+                html.querySelector('[data-action="add-type"]')?.click();
             }
         });
 
-        // Delete type
-        html.on('click', '[data-action="delete-type"]', (event) => {
-            const typeToDelete = $(event.currentTarget).data('type');
-            this._deleteType(typeToDelete);
+        // Delete type (event delegation)
+        html.addEventListener("click", (event) => {
+            const deleteBtn = event.target.closest('[data-action="delete-type"]');
+            if (deleteBtn) {
+                const typeToDelete = deleteBtn.dataset.type;
+                this._deleteType(typeToDelete);
+            }
         });
 
         // Reset to defaults
-        html.find('[data-action="reset-defaults"]').click(async () => {
-            const confirmed = await Dialog.confirm({
-                title: game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.reset_confirm_title"),
-                content: `<p>${game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.reset_confirm_content")}</p>`
+        html.querySelector('[data-action="reset-defaults"]')?.addEventListener("click", async () => {
+            const confirmed = await foundry.applications.api.DialogV2.confirm({
+                window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.reset_confirm_title") },
+                content: `<p>${game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.reset_confirm_content")}</p>`,
+                modal: true
             });
             if (confirmed) {
                 await saveCreatureTypes(DEFAULT_CREATURE_TYPES.filter(t => t !== ""));
@@ -134,14 +138,10 @@ export class CreatureTypesApp extends FormApplication {
         });
 
         // Export types
-        html.find('[data-action="export-types"]').click(() => {
-            this._exportTypes();
-        });
+        html.querySelector('[data-action="export-types"]')?.addEventListener("click", () => this._exportTypes());
 
         // Import types
-        html.find('[data-action="import-types"]').click(() => {
-            this._importTypes();
-        });
+        html.querySelector('[data-action="import-types"]')?.addEventListener("click", () => this._importTypes());
     }
 
     /**
@@ -192,9 +192,9 @@ export class CreatureTypesApp extends FormApplication {
      * Import types from JSON
      */
     async _importTypes() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json";
 
         input.onchange = async (event) => {
             const file = event.target.files[0];
@@ -204,7 +204,6 @@ export class CreatureTypesApp extends FormApplication {
                 const text = await file.text();
                 const importData = JSON.parse(text);
 
-                // Validate import data
                 if (importData.type !== "shadowdark-creature-types" || !Array.isArray(importData.creatureTypes)) {
                     ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.invalid_import"));
                     return;
@@ -223,18 +222,11 @@ export class CreatureTypesApp extends FormApplication {
 
         input.click();
     }
-
-    /**
-     * Handle form submission (not used but required by FormApplication)
-     */
-    async _updateObject(event, formData) {
-        // Form submission handled by individual actions
-    }
 }
 
 /**
  * Open the creature types editor
  */
 export function openCreatureTypesEditor() {
-    new CreatureTypesApp().render(true);
+    new CreatureTypesApp().render({ force: true });
 }

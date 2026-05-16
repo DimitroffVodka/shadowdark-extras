@@ -790,23 +790,24 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     `<option value="${el}">Elevation ${el} — ${byElevation[el].length} tiles</option>`
                 ).join('');
                 elevation = await new Promise(resolve => {
-                    new Dialog({
-                        title: "Flatten Dungeon Level",
+                    new foundry.applications.api.DialogV2({
+                        window: { title: "Flatten Dungeon Level" },
                         content: `<div style="padding:8px 0"><label style="display:block;margin-bottom:6px">Select level to flatten:</label><select id="sdx-fl-sel" style="width:100%">${options}</select></div>`,
-                        buttons: {
-                            ok: {
-                                icon: '<i class="fas fa-layer-group"></i>',
+                        buttons: [
+                            {
+                                action: "ok",
+                                icon: "fas fa-layer-group",
                                 label: "Flatten",
-                                callback: (html) => {
-                                    const el = (html instanceof HTMLElement ? html : html[0]).querySelector("#sdx-fl-sel");
+                                default: true,
+                                callback: (event, button, dlg) => {
+                                    const el = dlg.element.querySelector("#sdx-fl-sel");
                                     resolve(el ? Number(el.value) : null);
                                 }
                             },
-                            cancel: { label: "Cancel", callback: () => resolve(null) }
-                        },
-                        default: "ok",
+                            { action: "cancel", label: "Cancel", callback: () => resolve(null) }
+                        ],
                         close: () => resolve(null)
-                    }).render(true);
+                    }).render({ force: true });
                 });
             }
             if (elevation !== null && elevation !== undefined) {
@@ -833,24 +834,25 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     return `<option value="${t.id}">Elevation ${el} (${cnt} tiles)</option>`;
                 }).join('');
                 tileDoc = await new Promise(resolve => {
-                    new Dialog({
-                        title: "Unflatten Dungeon Level",
+                    new foundry.applications.api.DialogV2({
+                        window: { title: "Unflatten Dungeon Level" },
                         content: `<div style="padding:8px 0"><label style="display:block;margin-bottom:6px">Select level to unflatten:</label><select id="sdx-ufl-sel" style="width:100%">${options}</select></div>`,
-                        buttons: {
-                            ok: {
-                                icon: '<i class="fas fa-layer-group"></i>',
+                        buttons: [
+                            {
+                                action: "ok",
+                                icon: "fas fa-layer-group",
                                 label: "Unflatten",
-                                callback: (html) => {
-                                    const el = (html instanceof HTMLElement ? html : html[0]).querySelector("#sdx-ufl-sel");
+                                default: true,
+                                callback: (event, button, dlg) => {
+                                    const el = dlg.element.querySelector("#sdx-ufl-sel");
                                     const id = el?.value;
                                     resolve(flattenedTiles.find(t => t.id === id) ?? null);
                                 }
                             },
-                            cancel: { label: "Cancel", callback: () => resolve(null) }
-                        },
-                        default: "ok",
+                            { action: "cancel", label: "Cancel", callback: () => resolve(null) }
+                        ],
                         close: () => resolve(null)
-                    }).render(true);
+                    }).render({ force: true });
                 });
             }
             if (tileDoc) {
@@ -1030,12 +1032,10 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 e.stopPropagation();
                 const folderId = btn.dataset.folderId;
                 const folderName = btn.dataset.folderName;
-                const confirmed = await Dialog.confirm({
-                    title: "Delete Folder",
+                const confirmed = await foundry.applications.api.DialogV2.confirm({
+                    window: { title: "Delete Folder" },
                     content: `<p>Delete folder <strong>${folderName}</strong>?</p><p>Scenes inside will become uncategorized.</p>`,
-                    yes: () => true,
-                    no: () => false,
-                    defaultYes: false
+                    modal: true
                 });
                 if (!confirmed) return;
                 const { TomStore } = await import("./data/TomStore.mjs");
@@ -1125,12 +1125,10 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 e.stopPropagation();
                 const sceneName = card.querySelector(".scene-name").textContent;
 
-                const confirmed = await Dialog.confirm({
-                    title: "Delete Scene",
+                const confirmed = await foundry.applications.api.DialogV2.confirm({
+                    window: { title: "Delete Scene" },
                     content: `<p>Are you sure you want to delete <strong>${sceneName}</strong>?</p><p>This action cannot be undone.</p>`,
-                    yes: () => true,
-                    no: () => false,
-                    defaultYes: false
+                    modal: true
                 });
 
                 if (confirmed) {
@@ -1276,14 +1274,12 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         }
                     }
                 } else if (action === "delete-pin") {
-                    Dialog.confirm({
-                        title: "Delete Pin",
+                    const confirmed = await foundry.applications.api.DialogV2.confirm({
+                        window: { title: "Delete Pin" },
                         content: "<p>Are you sure you want to delete this pin?</p>",
-                        yes: async () => {
-                            await JournalPinManager.delete(id);
-                        },
-                        defaultYes: false
+                        modal: true
                     });
+                    if (confirmed) await JournalPinManager.delete(id);
                 } else if (action === "copy-style") {
                     const pinData = JournalPinManager.get(id);
                     if (pinData) {
@@ -1342,8 +1338,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     canvas.animatePan({ x, y, scale: 1.5, duration: 500 });
                 } else if (action === "rename") {
                     const currentName = doc.getFlag("shadowdark-extras", "customName") || doc.name || "";
-                    new Dialog({
-                        title: "Rename Placeable Note",
+                    new foundry.applications.api.DialogV2({
+                        window: { title: "Rename Placeable Note" },
                         content: `
                             <form>
                                 <div class="form-group">
@@ -1352,43 +1348,40 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                                 </div>
                             </form>
                         `,
-                        buttons: {
-                            save: {
+                        buttons: [
+                            {
+                                action: "save",
                                 label: "Save",
-                                icon: '<i class="fas fa-check"></i>',
-                                callback: async (html) => {
-                                    const newName = html.find("input[name='name']").val();
+                                icon: "fas fa-check",
+                                default: true,
+                                callback: async (event, button) => {
+                                    const newName = button.form.elements.name.value;
                                     await doc.setFlag("shadowdark-extras", "customName", newName);
-                                    // Tray will auto-update via hooks
                                 }
                             },
-                            reset: {
+                            {
+                                action: "reset",
                                 label: "Reset",
-                                icon: '<i class="fas fa-undo"></i>',
+                                icon: "fas fa-undo",
                                 callback: async () => {
                                     await doc.unsetFlag("shadowdark-extras", "customName");
                                 }
                             }
-                        },
-                        default: "save"
-                    }).render(true);
+                        ]
+                    }).render({ force: true });
                 } else if (action === "toggle-visibility") {
                     const isVisible = !!doc.getFlag("shadowdark-extras", "noteVisible");
                     await doc.setFlag("shadowdark-extras", "noteVisible", !isVisible);
                 } else if (action === "delete") {
-                    Dialog.confirm({
-                        title: "Delete Note",
+                    const ok = await foundry.applications.api.DialogV2.confirm({
+                        window: { title: "Delete Note" },
                         content: `<p>Are you sure you want to delete the note for <strong>${doc.name}</strong>?</p>`,
-                        yes: async () => {
-                            // If we are deleting a note on a token, and it was displaying fallback actor notes...
-                            // Actually, 'doc' is already resolved to the correct document (Token or Actor)
-                            // So we just delete the flag from 'doc'.
-                            await doc.unsetFlag("shadowdark-extras", "notes");
-                            // Also clear visibility flag? Yes.
-                            await doc.unsetFlag("shadowdark-extras", "noteVisible");
-                        },
-                        defaultYes: false
+                        modal: true
                     });
+                    if (ok) {
+                        await doc.unsetFlag("shadowdark-extras", "notes");
+                        await doc.unsetFlag("shadowdark-extras", "noteVisible");
+                    }
                 }
             });
         });
@@ -1480,12 +1473,12 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     const note = fromUuidSync(uuid);
                     if (!note) return;
 
-                    Dialog.confirm({
-                        title: "Delete Map Note",
+                    const ok = await foundry.applications.api.DialogV2.confirm({
+                        window: { title: "Delete Map Note" },
                         content: `<p>Are you sure you want to delete the map note <strong>${note.text || note.name}</strong>?</p>`,
-                        yes: () => note.delete(),
-                        defaultYes: false
+                        modal: true
                     });
+                    if (ok) await note.delete();
                 } else if (action === "open") {
                     const note = fromUuidSync(uuid);
                     if (note) note.sheet.render(true);
@@ -1608,12 +1601,10 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const tileDocs = allTiles.map(p => p.document).filter(d => d);
 
             // Ask for confirmation
-            const confirmed = await Dialog.confirm({
-                title: "Flatten All Tiles",
+            const confirmed = await foundry.applications.api.DialogV2.confirm({
+                window: { title: "Flatten All Tiles" },
                 content: `<p>This will flatten all <strong>${tileDocs.length}</strong> tiles on the scene into a single image.</p><p>You can unflatten later from the Tile HUD.</p>`,
-                yes: () => true,
-                no: () => false,
-                defaultYes: false
+                modal: true
             });
 
             if (!confirmed) return;
@@ -2375,12 +2366,10 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             deleteBtn.addEventListener("click", async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const confirmed = await Dialog.confirm({
-                    title: "Delete Scene",
+                const confirmed = await foundry.applications.api.DialogV2.confirm({
+                    window: { title: "Delete Scene" },
                     content: `<p>Are you sure you want to delete <strong>${scene.name}</strong>?</p><p>This action cannot be undone.</p>`,
-                    yes: () => true,
-                    no: () => false,
-                    defaultYes: false
+                    modal: true
                 });
                 if (!confirmed) return;
                 panel.remove();
@@ -2498,12 +2487,10 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             deleteFolderBtn.addEventListener("click", async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const confirmed = await Dialog.confirm({
-                    title: "Delete Folder",
+                const confirmed = await foundry.applications.api.DialogV2.confirm({
+                    window: { title: "Delete Folder" },
                     content: `<p>Delete folder <strong>${folder.name}</strong>?</p><p>Scenes inside will become uncategorized.</p>`,
-                    yes: () => true,
-                    no: () => false,
-                    defaultYes: false
+                    modal: true
                 });
                 if (!confirmed) return;
                 TomStore.deleteFolder(folder.id);
@@ -2621,30 +2608,32 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     async _promptFolderName(title, defaultName = "") {
         return new Promise((resolve) => {
-            new Dialog({
-                title,
+            const dialog = new foundry.applications.api.DialogV2({
+                window: { title },
                 content: `<div class="form-group"><label>Folder Name</label><input type="text" name="folderName" value="${defaultName}" autofocus></div>`,
-                buttons: {
-                    ok: {
-                        icon: '<i class="fas fa-check"></i>',
+                buttons: [
+                    {
+                        action: "ok",
+                        icon: "fas fa-check",
                         label: "OK",
-                        callback: (html) => {
-                            const name = html.find('[name="folderName"]').val()?.trim();
+                        default: true,
+                        callback: (event, button) => {
+                            const name = button.form.elements.folderName.value?.trim();
                             resolve(name || null);
                         }
                     },
-                    cancel: {
-                        icon: '<i class="fas fa-times"></i>',
+                    {
+                        action: "cancel",
+                        icon: "fas fa-times",
                         label: "Cancel",
                         callback: () => resolve(null)
                     }
-                },
-                default: "ok",
-                render: (html) => {
-                    // Auto-select text in input
-                    html.find('[name="folderName"]').select();
-                }
-            }).render(true);
+                ],
+                close: () => resolve(null)
+            });
+            dialog.render({ force: true }).then(() => {
+                dialog.element.querySelector('[name="folderName"]')?.select();
+            });
         });
     }
 }

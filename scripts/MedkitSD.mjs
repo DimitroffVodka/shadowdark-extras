@@ -307,11 +307,10 @@ export class MedkitApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (buttons.length === 0) return;
 
-        const confirm = await Dialog.confirm({
-            title: "Update All Items?",
+        const confirm = await foundry.applications.api.DialogV2.confirm({
+            window: { title: "Update All Items?" },
             content: `<p>Are you sure you want to update ${buttons.length} items from the Shadowdark Extras compendium? This will overwrite their data.</p>`,
-            yes: () => true,
-            no: () => false
+            modal: true
         });
 
         if (!confirm) return;

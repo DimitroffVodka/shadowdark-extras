@@ -370,7 +370,7 @@ export function showMovementModeDialog() {
         window: { title: "Configure Movement Mode" },
         content,
         classes: ["sdx-movement-mode-dialog"],
-        position: { width: 480, height: 245 },
+        position: { width: 520, height: "auto" },
         buttons: [
             {
                 action: "apply",

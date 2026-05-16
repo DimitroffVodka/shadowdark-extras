@@ -32,6 +32,12 @@ Codex and Gemini through 9 + 2 rounds respectively before execution.
   - `getActorStats(actor)` → `{hp, hpMax, ac}` reading
     `system.attributes.*` (v4) with `system.hp.*` / `system.ac.*`
     fallback.
+- **Active Effect Compendium (`pack-sdxeffects`)** — native Foundry v14
+  `ActiveEffect` primary document library. Contains 114 drag-and-drop
+  effects:
+  - 17 custom SDX advantages/disadvantages mapped to v4 data paths.
+  - 97 cloned predefined system effects for unified library access.
+  - Manual 404 audit fix for 16 core icon paths (teal potions, red scrolls).
 - **Chat-card apply-state persistence** (`3e65f27`) — `damageApplied`
   and `conditionsApplied` flags on the chat message survive re-renders
   so the buttons render as disabled "APPLIED" and the click handler

@@ -1443,7 +1443,11 @@ async function _stampAtPointer(ev, forceStamp = false) {
             src: chosenTile,
             tint: tintData,
             scaleX: isSymbolTile && _poiMirror ? -1 : 1,
-            scaleY: 1
+            scaleY: 1,
+            // v14: default texture anchor changed to (0.5, 0.5). Explicit (0, 0)
+            // matches V1 behavior so tile (x, y) is the top-left, not the center.
+            anchorX: 0,
+            anchorY: 0
         },
         x: (isSymbolTile ? pos.x : center.x) - tw / 2,
         y: (isSymbolTile ? pos.y : center.y) - th / 2 - verticalNudge,

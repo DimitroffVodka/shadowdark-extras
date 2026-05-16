@@ -5479,148 +5479,142 @@ function activateJournalListeners(app, html, actor) {
 }
 
 /**
- * Open the ProseMirror editor for a journal page
- * Uses a custom FormApplication to properly initialize the editor
+ * ApplicationV2-based journal page editor.
+ *
+ * Uses the native `<prose-mirror>` custom element (v14) instead of the legacy
+ * `{{editor}}` Handlebars helper + `this.editors` map. The submit handler reads
+ * the editor's serialized content from `formData.object.content`.
+ */
+class SdxJournalPageEditor extends foundry.applications.api.HandlebarsApplicationMixin(foundry.applications.api.ApplicationV2) {
+
+	static SNIPPETS = {
+		'callout-info': '<div class="sdx-callout sdx-callout-info"><p>Information text here...</p></div>',
+		'callout-warning': '<div class="sdx-callout sdx-callout-warning"><p>Warning text here...</p></div>',
+		'callout-danger': '<div class="sdx-callout sdx-callout-danger"><p>Danger text here...</p></div>',
+		'callout-success': '<div class="sdx-callout sdx-callout-success"><p>Success text here...</p></div>',
+		'callout-quest': '<div class="sdx-callout sdx-callout-quest"><p><strong>Quest:</strong> Quest details here...</p></div>',
+		'callout-loot': '<div class="sdx-callout sdx-callout-loot"><p><strong>Loot:</strong> Treasure description here...</p></div>',
+		'callout-npc': '<div class="sdx-callout sdx-callout-npc"><p>"NPC dialogue or quote here..."</p></div>',
+		'divider-swords': '<div class="sdx-divider sdx-divider-swords"></div>',
+		'divider-stars': '<div class="sdx-divider sdx-divider-stars"></div>',
+		'divider-skulls': '<div class="sdx-divider sdx-divider-skulls"></div>',
+		'divider-crowns': '<div class="sdx-divider sdx-divider-crowns"></div>',
+		'divider-simple': '<div class="sdx-divider sdx-divider-simple"></div>'
+	};
+
+	static DEFAULT_OPTIONS = {
+		id: "sdx-journal-page-editor-{id}",
+		classes: ["shadowdark", "shadowdark-extras", "sdx-journal-editor-dialog"],
+		tag: "form",
+		window: {
+			title: "SHADOWDARK_EXTRAS.journal.edit_page_title",
+			resizable: true
+		},
+		position: {
+			width: 650,
+			height: 500
+		},
+		form: {
+			handler: SdxJournalPageEditor.formHandler,
+			submitOnChange: false,
+			closeOnSubmit: true
+		},
+		actions: {
+			insertSnippet: SdxJournalPageEditor._onInsertSnippet
+		}
+	};
+
+	static PARTS = {
+		form: {
+			template: `modules/${MODULE_ID}/templates/journal-editor.hbs`,
+			scrollable: [""]
+		}
+	};
+
+	constructor({ actor, page, sheetApp, ...options } = {}) {
+		super(options);
+		this.actorDoc = actor;
+		this.page = page;
+		this.sheetApp = sheetApp;
+	}
+
+	// Resolve i18n title with the page name at render time.
+	get title() {
+		return game.i18n.format("SHADOWDARK_EXTRAS.journal.edit_page_title", { name: this.page?.name ?? "" });
+	}
+
+	async _prepareContext(options) {
+		return {
+			content: this.page?.content ?? "",
+			pageName: this.page?.name ?? ""
+		};
+	}
+
+	_onRender(context, options) {
+		// V2 actions don't bubble out of the prose-mirror toolbar, so the snippet
+		// buttons are wired here. Action attribute on the buttons (data-action=
+		// "insertSnippet") drops through to `_onInsertSnippet` automatically;
+		// this block is only a defensive backup if action dispatch isn't set up
+		// on the form root.
+	}
+
+	static _onInsertSnippet(event, target) {
+		event?.preventDefault?.();
+		const insertType = target?.dataset?.insert;
+		const snippet = SdxJournalPageEditor.SNIPPETS[insertType];
+		if (!snippet) return;
+
+		// `<prose-mirror>` element exposes its ProseMirror view via the `editor`
+		// property once initialized.
+		const root = this.element;
+		const pmEl = root?.querySelector('prose-mirror[name="content"]');
+		const view = pmEl?.editor?.view;
+		if (view) {
+			try {
+				const state = view.state;
+				const schema = state.schema;
+				const PMDOMParser = view.constructor.DOMParser || pmEl.editor.constructor?.DOMParser || globalThis.ProseMirror?.DOMParser;
+				if (PMDOMParser) {
+					const parser = PMDOMParser.fromSchema(schema);
+					const tmp = document.createElement('div');
+					tmp.innerHTML = snippet;
+					const doc = parser.parse(tmp);
+					const tr = state.tr;
+					tr.insert(state.doc.content.size, doc.content);
+					view.dispatch(tr);
+					view.focus();
+					return;
+				}
+			} catch (err) {
+				console.warn("SDX Journal: ProseMirror insertion failed:", err);
+			}
+		}
+
+		// Last-resort fallback: append to the element's value attribute.
+		if (pmEl) {
+			const existing = pmEl.value ?? pmEl.getAttribute('value') ?? '';
+			const next = existing + snippet;
+			pmEl.value = next;
+			pmEl.setAttribute('value', next);
+		}
+	}
+
+	static async formHandler(event, form, formData) {
+		const content = formData.object?.content ?? "";
+		await updateJournalPage(this.actorDoc, this.page.id, { content });
+		this.sheetApp.render(false);
+	}
+}
+
+/**
+ * Open the V2 journal page editor for a given actor + page id.
  */
 async function openJournalPageEditor(actor, pageId, sheetApp) {
 	const pages = getJournalPages(actor);
 	const page = pages.find(p => p.id === pageId);
 	if (!page) return;
-
-	// Create a custom FormApplication for the editor
-	class JournalPageEditor extends FormApplication {
-		constructor(actor, page, sheetApp) {
-			// Pass the page content as the object data for the form
-			super({ content: page.content || "" }, {
-				title: game.i18n.format("SHADOWDARK_EXTRAS.journal.edit_page_title", { name: page.name }),
-				width: 650,
-				height: 500,
-				resizable: true,
-				classes: ["shadowdark", "shadowdark-extras", "sdx-journal-editor-dialog"]
-			});
-			this.actorDoc = actor;
-			this.page = page;
-			this.sheetApp = sheetApp;
-		}
-
-		static get defaultOptions() {
-			return foundry.utils.mergeObject(super.defaultOptions, {
-				template: `modules/${MODULE_ID}/templates/journal-editor.hbs`,
-				closeOnSubmit: true,
-				submitOnClose: false
-			});
-		}
-
-		async getData() {
-			// The object.content is passed from constructor, we return it for the template
-			return {
-				content: this.object.content || this.page.content || "",
-				pageName: this.page.name
-			};
-		}
-
-		async _updateObject(event, formData) {
-			const content = formData.content || "";
-			await updateJournalPage(this.actorDoc, this.page.id, { content: content });
-			this.sheetApp.render(false);
-		}
-
-		activateListeners(html) {
-			super.activateListeners(html);
-
-			const form = html[0] ?? html;
-
-			// HTML snippets for quick-insert
-			const snippets = {
-				'callout-info': '<div class="sdx-callout sdx-callout-info"><p>Information text here...</p></div>',
-				'callout-warning': '<div class="sdx-callout sdx-callout-warning"><p>Warning text here...</p></div>',
-				'callout-danger': '<div class="sdx-callout sdx-callout-danger"><p>Danger text here...</p></div>',
-				'callout-success': '<div class="sdx-callout sdx-callout-success"><p>Success text here...</p></div>',
-				'callout-quest': '<div class="sdx-callout sdx-callout-quest"><p><strong>Quest:</strong> Quest details here...</p></div>',
-				'callout-loot': '<div class="sdx-callout sdx-callout-loot"><p><strong>Loot:</strong> Treasure description here...</p></div>',
-				'callout-npc': '<div class="sdx-callout sdx-callout-npc"><p>"NPC dialogue or quote here..."</p></div>',
-				'divider-swords': '<div class="sdx-divider sdx-divider-swords"></div>',
-				'divider-stars': '<div class="sdx-divider sdx-divider-stars"></div>',
-				'divider-skulls': '<div class="sdx-divider sdx-divider-skulls"></div>',
-				'divider-crowns': '<div class="sdx-divider sdx-divider-crowns"></div>',
-				'divider-simple': '<div class="sdx-divider sdx-divider-simple"></div>'
-			};
-
-			// Store reference to 'this' for use in event handlers
-			const editorApp = this;
-
-			// Quick-insert button handlers
-			form.querySelectorAll('.sdx-quick-insert-btn[data-insert]').forEach(btn => {
-				btn.addEventListener('click', (e) => {
-					e.preventDefault();
-					e.stopPropagation();
-					const insertType = btn.dataset.insert;
-					const snippet = snippets[insertType];
-					if (!snippet) return;
-
-					// Try to access ProseMirror through Foundry's editor reference
-					// The editors are stored in this.editors by target name
-					const contentEditor = editorApp.editors?.content;
-
-					if (contentEditor?.instance) {
-						// Foundry v12+ stores the ProseMirror instance
-						const pm = contentEditor.instance;
-						if (pm.view) {
-							const view = pm.view;
-							const state = view.state;
-							const schema = state.schema;
-
-							// Parse the HTML snippet into ProseMirror nodes
-							const domParser = pm.constructor.DOMParser || ProseMirror?.DOMParser;
-							if (domParser) {
-								try {
-									const parser = domParser.fromSchema(schema);
-									const tempDiv = document.createElement('div');
-									tempDiv.innerHTML = snippet;
-									const doc = parser.parse(tempDiv);
-
-									// Create transaction to insert at end of document
-									const tr = state.tr;
-									const endPos = state.doc.content.size;
-									tr.insert(endPos, doc.content);
-									view.dispatch(tr);
-									view.focus();
-
-									//console.log("SDX Journal: Inserted via ProseMirror transaction");
-									return;
-								} catch (err) {
-									console.warn("SDX Journal: ProseMirror insertion failed:", err);
-								}
-							}
-						}
-					}
-
-					// Simply append to the end of the HTML content
-					const sourceBtn = form.querySelector('button[data-action="source-code"]');
-					if (sourceBtn) {
-						//console.log("SDX Journal: Inserting snippet at end");
-						sourceBtn.click();
-
-						// Wait for source mode to activate, then insert at end
-						setTimeout(() => {
-							const textarea = form.querySelector('.editor-content textarea');
-							if (textarea) {
-								textarea.value = textarea.value + snippet;
-								textarea.dispatchEvent(new Event('input', { bubbles: true }));
-
-								// Switch back to rich text mode
-								setTimeout(() => sourceBtn.click(), 100);
-							}
-						}, 100);
-					}
-				});
-			});
-
-		}
-	}
-
-	const editor = new JournalPageEditor(actor, page, sheetApp);
-	editor.render(true);
+	const editor = new SdxJournalPageEditor({ actor, page, sheetApp });
+	editor.render({ force: true });
 }
 
 /**

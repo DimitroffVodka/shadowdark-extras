@@ -200,6 +200,17 @@
         "ASSISTANT": "OWNER"
       },
       "system": "shadowdark"
+    },
+    {
+      "name": "pack-sdxeffects",
+      "label": "SDX Effects Library",
+      "path": "packs/pack-sdxeffects",
+      "type": "ActiveEffect",
+      "system": "shadowdark",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
     }
   ],
   "flags": {}

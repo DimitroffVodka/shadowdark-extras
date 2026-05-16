@@ -847,15 +847,17 @@ export async function showTradeDialog(localActor) {
 	`;
 
 	return new Promise((resolve) => {
-		const dialog = new Dialog({
-			title: game.i18n.localize("SHADOWDARK_EXTRAS.trade.initiate_title"),
-			content: content,
-			buttons: {
-				trade: {
-					icon: '<i class="fas fa-exchange-alt"></i>',
+		const dialog = new foundry.applications.api.DialogV2({
+			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.trade.initiate_title") },
+			content,
+			buttons: [
+				{
+					action: "trade",
+					icon: "fas fa-exchange-alt",
 					label: game.i18n.localize("SHADOWDARK_EXTRAS.trade.start_trade"),
-					callback: async (html) => {
-						const targetActorId = html.find('[name="targetActorId"]').val();
+					default: true,
+					callback: async (event, button, dlg) => {
+						const targetActorId = dlg.element.querySelector('[name="targetActorId"]')?.value;
 						const targetActor = game.actors.get(targetActorId);
 						if (targetActor) {
 							await initiateTradeWithPlayer(localActor, targetActor);
@@ -863,65 +865,53 @@ export async function showTradeDialog(localActor) {
 						resolve(true);
 					}
 				},
-				cancel: {
-					icon: '<i class="fas fa-times"></i>',
+				{
+					action: "cancel",
+					icon: "fas fa-times",
 					label: game.i18n.localize("Cancel"),
 					callback: () => resolve(false)
 				}
-			},
-			default: "trade",
-			render: (html) => {
-				const $select = html.find('#sdx-trade-target');
-				const $filterCheckbox = html.find('#sdx-filter-connected');
-				const $searchInput = html.find('#sdx-trade-search');
+			],
+			close: () => resolve(false)
+		});
+		dialog.render({ force: true }).then(() => {
+			const root = dialog.element;
+			const select = root.querySelector('#sdx-trade-target');
+			const filterCheckbox = root.querySelector('#sdx-filter-connected');
+			const searchInput = root.querySelector('#sdx-trade-search');
 
-				// Combined filter function for both checkbox and search
-				const updateFilter = () => {
-					const showOnlyConnected = $filterCheckbox.is(':checked');
-					const searchText = $searchInput.val().toLowerCase().trim();
+			const updateFilter = () => {
+				const showOnlyConnected = !!filterCheckbox?.checked;
+				const searchText = (searchInput?.value || "").toLowerCase().trim();
 
-					$select.find('optgroup').each(function () {
-						const $group = $(this);
-						const groupType = $group.data('group');
-
-						// First, apply connected filter to groups
-						if (groupType === 'other' && showOnlyConnected) {
-							$group.hide();
-							return;
-						}
-
-						// Then apply search filter to options within visible groups
-						let visibleCount = 0;
-						$group.find('option').each(function () {
-							const $option = $(this);
-							const optionSearch = $option.data('search') || '';
-
-							if (searchText === '' || optionSearch.includes(searchText)) {
-								$option.show();
-								visibleCount++;
-							} else {
-								$option.hide();
-							}
-						});
-
-						// Hide group if no visible options
-						$group.toggle(visibleCount > 0);
-					});
-
-					// If current selection is now hidden, select first visible option
-					const $selectedOption = $select.find('option:selected');
-					if (!$selectedOption.is(':visible') || $selectedOption.parent('optgroup').is(':hidden')) {
-						$select.find('option:visible').first().prop('selected', true);
+				root.querySelectorAll('#sdx-trade-target optgroup').forEach(group => {
+					const groupType = group.dataset.group;
+					if (groupType === 'other' && showOnlyConnected) {
+						group.hidden = true;
+						return;
 					}
-				};
+					let visibleCount = 0;
+					group.querySelectorAll('option').forEach(option => {
+						const optionSearch = option.dataset.search || '';
+						const visible = searchText === '' || optionSearch.includes(searchText);
+						option.hidden = !visible;
+						if (visible) visibleCount++;
+					});
+					group.hidden = visibleCount === 0;
+				});
 
-				updateFilter();
-				$filterCheckbox.on('change', updateFilter);
-				$searchInput.on('input', updateFilter);
+				const selected = select?.options[select.selectedIndex];
+				if (selected && (selected.hidden || selected.parentElement?.hidden)) {
+					const firstVisible = Array.from(select.options).find(o => !o.hidden && !o.parentElement?.hidden);
+					if (firstVisible) firstVisible.selected = true;
+				}
+			};
 
-				// Focus search input for immediate typing
-				setTimeout(() => $searchInput.focus(), 100);
-			}
-		}).render(true);
+			updateFilter();
+			filterCheckbox?.addEventListener('change', updateFilter);
+			searchInput?.addEventListener('input', updateFilter);
+
+			setTimeout(() => searchInput?.focus(), 100);
+		});
 	});
 }
