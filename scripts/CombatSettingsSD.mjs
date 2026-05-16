@@ -2029,10 +2029,14 @@ export async function injectDamageCard(message, html, data) {
 		}
 		if (expiryRounds && expiryRounds > 0) {
 			const currentRound = game.combat?.round || 0;
+			// expiryRound is the LAST round the template stays active.
+			// updateCombat hook deletes when `expiryRound < currentRound`, i.e.,
+			// at the START of the round AFTER expiryRound.
+			// For "duration: 1" → template lasts only the cast round, deletes at start of next round.
 			sdxTemplateFlags[MODULE_ID].templateExpiry = {
 				spellName: item.name,
 				createdRound: currentRound,
-				expiryRound: currentRound + expiryRounds,
+				expiryRound: currentRound + expiryRounds - 1,
 				duration: expiryRounds
 			};
 		}
