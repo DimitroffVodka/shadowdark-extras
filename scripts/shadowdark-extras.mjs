@@ -13,6 +13,7 @@ import { TravelActivitiesSettingsApp, registerTravelActivitiesSettings, getTrave
 import { TravelSpeedsSettingsApp, registerTravelSpeedsSettings, getTravelSpeeds } from "./TravelSpeedsSettingsSD.mjs";
 import { generateSpellConfig, generatePotionConfig, generateScrollConfig, generateWandConfig } from "./templates/ItemTypeConfigs.mjs";
 import { activateTemplateTargetingListeners } from "./templates/TemplateTargetingConfig.mjs";
+import { readSdRollOutcome, resolveCardContext } from "./sd4Compat.mjs";
 import {
 	injectWeaponBonusTab,
 	getWeaponBonuses,
@@ -18880,15 +18881,13 @@ Hooks.on("renderChatMessageHTML", async (message, html, context) => {
 	if (message.author?.id !== game.user.id) return;
 
 	// Check if this is a spell-type item
-	const chatCard = html.querySelector('.chat-card');
-	const itemId = chatCard?.dataset.itemId;
-	const actorId = chatCard?.dataset.actorId;
-	if (!itemId || !actorId) return;
+	const spellCtx = resolveCardContext(message, html);
+	if (!spellCtx?.itemId || !spellCtx?.actorId) return;
 
-	const actor = game.actors.get(actorId);
+	const actor = game.actors.get(spellCtx.actorId);
 	if (!actor) return;
 
-	const item = actor.items.get(itemId);
+	const item = actor.items.get(spellCtx.itemId);
 	if (!item) return;
 
 	// Only process spell-type items
@@ -18899,17 +18898,16 @@ Hooks.on("renderChatMessageHTML", async (message, html, context) => {
 	const macroConfig = getSpellItemMacroConfig(item);
 	if (!macroConfig.enabled || macroConfig.triggers.length === 0) return;
 
-	// Get roll result from Shadowdark's flags
-	const shadowdarkRolls = message.flags?.shadowdark?.rolls;
-	const mainRoll = shadowdarkRolls?.main;
+	const rollOutcome = readSdRollOutcome(message);
 
 	// Determine success/failure from roll data
 	// Potions, Scrolls, Wands don't require a roll - they always succeed
 	const noRollNeeded = ["Potion", "Scroll", "Wand"].includes(item.type);
-	const isSuccess = noRollNeeded || (mainRoll?.success === true);
-	const isFailure = !noRollNeeded && (mainRoll?.success === false);
-	const isCritical = mainRoll?.critical === "success";
-	const isCriticalFail = mainRoll?.critical === "failure";
+	const hasVisibleRoll = rollOutcome.mainRoll && !rollOutcome.isMasked;
+	const isSuccess = noRollNeeded || (hasVisibleRoll && rollOutcome.isSuccess);
+	const isFailure = !noRollNeeded && hasVisibleRoll && !rollOutcome.isSuccess;
+	const isCritical = hasVisibleRoll && rollOutcome.isCriticalSuccess;
+	const isCriticalFail = hasVisibleRoll && rollOutcome.isCriticalFailure;
 
 	// Get stored targets
 	const storedTargetIds = message.flags?.[MODULE_ID]?.targetIds || [];
@@ -18920,8 +18918,8 @@ Hooks.on("renderChatMessageHTML", async (message, html, context) => {
 		isFailure,
 		isCritical,
 		isCriticalFail,
-		rollResult: mainRoll?.roll?.total ?? null,
-		rollData: mainRoll?.roll ?? null,
+		rollResult: rollOutcome.total,
+		rollData: rollOutcome.mainRoll?.roll ?? rollOutcome.mainRoll ?? null,
 		targets
 	};
 
@@ -18968,31 +18966,28 @@ Hooks.on("renderChatMessageHTML", async (message, html, context) => {
 	// Check for rolls using HTML elements (like CombatSettingsSD does)
 	const hasDiceTotal = html.querySelector('.dice-total') !== null;
 	const hasD20Roll = html.querySelector('.d20-roll') !== null;
-	const flags = message.flags;
 
 	// Debug logging for troubleshooting
 	//console.log(`${MODULE_ID} | [DEBUG] Item Macro hook - checking message:`, {
 	//	hasDiceTotal,
 	//	hasD20Roll,
-	//	shadowdarkRolls: flags?.shadowdark?.rolls,
+	//	rollOutcome: readSdRollOutcome(message),
 	//	flavor: message.flavor?.substring(0, 50)
 	//});
 
-	// Get actor from speaker
-	const actorId = message.speaker?.actor;
+	const cardCtx = resolveCardContext(message, html);
+
+	// Get actor from speaker or SD 4.x roll config
+	const actorId = cardCtx?.actorId || message.speaker?.actor;
 	if (!actorId) return;
 
 	const actor = game.actors.get(actorId);
 	if (!actor) return;
 
-	// Get item from chat card data (like CombatSettingsSD does)
-	// v14: html is HTMLElement, not jQuery
-	const cardEl = html.querySelector('.chat-card');
-	const cardData = cardEl?.dataset || {};
 	let item = null;
 
-	if (cardData.itemId) {
-		item = actor.items.get(cardData.itemId);
+	if (cardCtx?.itemId) {
+		item = actor.items.get(cardCtx.itemId);
 	} else {
 		// Fallback: Try to detect weapon from message content
 		const content = message.content || "";
@@ -19034,26 +19029,24 @@ Hooks.on("renderChatMessageHTML", async (message, html, context) => {
 		return;
 	}
 
-	// Get roll result from Shadowdark's flags (this is the reliable source)
-	const shadowdarkRolls = flags?.shadowdark?.rolls;
-	const mainRoll = shadowdarkRolls?.main;
+	const rollOutcome = readSdRollOutcome(message);
 
 	//console.log(`${MODULE_ID} | [DEBUG] Shadowdark roll data:`, {
-	//	mainRoll,
-	//	success: mainRoll?.success,
-	//	critical: mainRoll?.critical
+	//	mainRoll: rollOutcome.mainRoll,
+	//	success: rollOutcome.isSuccess,
+	//	critical: rollOutcome.isCriticalSuccess ? "success" : rollOutcome.isCriticalFailure ? "failure" : null
 	//});
 
-	if (!mainRoll) {
+	if (!rollOutcome.mainRoll || rollOutcome.isMasked) {
 		//console.log(`${MODULE_ID} | [DEBUG] No main roll in shadowdark flags`);
 		return;
 	}
 
 	// Determine hit/miss/critical from Shadowdark's roll data
-	const isCritical = mainRoll.critical === "success";
-	const isCriticalMiss = mainRoll.critical === "failure";
-	const isHit = mainRoll.success === true && !isCriticalMiss;
-	const isMiss = mainRoll.success === false || isCriticalMiss;
+	const isCritical = rollOutcome.isCriticalSuccess;
+	const isCriticalMiss = rollOutcome.isCriticalFailure;
+	const isHit = rollOutcome.isSuccess && !isCriticalMiss;
+	const isMiss = !rollOutcome.isSuccess || isCriticalMiss;
 
 	//console.log(`${MODULE_ID} | [DEBUG] Roll analysis:`, {
 	//	isCritical,
@@ -19063,7 +19056,7 @@ Hooks.on("renderChatMessageHTML", async (message, html, context) => {
 	//});
 
 	// Get roll result from the mainRoll data
-	const rollResult = mainRoll.roll?.total ?? null;
+	const rollResult = rollOutcome.total;
 
 	const macroContext = {
 		isHit: isHit && !isCriticalMiss,
@@ -19071,7 +19064,7 @@ Hooks.on("renderChatMessageHTML", async (message, html, context) => {
 		isCritical,
 		isCriticalMiss,
 		rollResult: rollResult,
-		rollData: mainRoll.roll
+		rollData: rollOutcome.mainRoll?.roll ?? rollOutcome.mainRoll
 	};
 
 	// Trigger macros based on which triggers are enabled
@@ -19079,13 +19072,13 @@ Hooks.on("renderChatMessageHTML", async (message, html, context) => {
 
 	if (macroConfig.triggers.includes("onCritical") && isCritical) {
 		triggersToFire.push("onCritical");
-	} else if (macroConfig.triggers.includes("onHit") && context.isHit) {
+	} else if (macroConfig.triggers.includes("onHit") && isHit) {
 		triggersToFire.push("onHit");
 	}
 
 	if (macroConfig.triggers.includes("onCriticalMiss") && isCriticalMiss) {
 		triggersToFire.push("onCriticalMiss");
-	} else if (macroConfig.triggers.includes("onMiss") && context.isMiss && !isCriticalMiss) {
+	} else if (macroConfig.triggers.includes("onMiss") && isMiss && !isCriticalMiss) {
 		triggersToFire.push("onMiss");
 	}
 
@@ -19622,10 +19615,14 @@ Hooks.once("ready", () => {
 				const recentMessages = game.messages.contents.slice(-5);
 				for (let i = recentMessages.length - 1; i >= 0; i--) {
 					const msg = recentMessages[i];
-					const rollData = msg.flags?.shadowdark?.rolls?.main;
-					if (rollData && msg.speaker?.actor === this.id) {
-						success = rollData.success ?? true;
-						critical = rollData.critical ?? null;
+					const rollData = readSdRollOutcome(msg);
+					if (rollData.mainRoll && !rollData.isMasked && msg.speaker?.actor === this.id) {
+						success = rollData.isSuccess;
+						critical = rollData.isCriticalSuccess
+							? "success"
+							: rollData.isCriticalFailure
+								? "failure"
+								: null;
 						break;
 					}
 				}
