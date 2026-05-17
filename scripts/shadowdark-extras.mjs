@@ -14300,7 +14300,7 @@ function setupRollConfigPatches() {
 					config.mainRoll.tooltips = (config.mainRoll.tooltips || "").concat(", SDX Talent Disadvantage");
 				}
 
-				// --- 2. PROMPTABLE BONUSES ---
+				// --- 2. PROMPTABLE + AUTO-APPLY BONUSES ---
 				if (type === "attack" && config.itemUuid) {
 					const weapon = await fromUuid(config.itemUuid);
 					const targetToken = game.user.targets.first();
@@ -14311,7 +14311,7 @@ function setupRollConfigPatches() {
 						const damageBonuses = getPromptableDamageBonuses(weapon, actor, targetActor);
 						config._sdxPromptable = { hitBonuses, damageBonuses };
 
-						// Apply selected hit bonuses
+						// Apply selected hit bonuses (from the prompt dialog)
 						const selectedHit = config._sdxSelectedHitBonuses || [];
 						selectedHit.forEach(b => {
 							const bonus = shadowdark.dice.formatBonus(b.formula);
@@ -14320,15 +14320,39 @@ function setupRollConfigPatches() {
 							config.mainRoll.tooltips = (config.mainRoll.tooltips || "").concat(`, ${b.label || "Bonus"}`);
 						});
 
-						// Apply selected damage bonuses
+						// Apply selected damage bonuses (from the prompt dialog)
 						const selectedDamage = config._sdxSelectedDamageBonuses || [];
 						selectedDamage.forEach(b => {
 							if (!config.damageRoll) return;
 							const bonus = shadowdark.dice.formatBonus(b.formula);
-							// Damage formulas in 4.x config don't have separate bonus field, they are strings
 							config.damageRoll.formula = (config.damageRoll.formula || "").concat(bonus);
 							config.damageRoll.tooltips = (config.damageRoll.tooltips || "").concat(`, ${b.label || "Bonus"}`);
 						});
+
+						// --- AUTO-APPLY: bonuses without the Prompt checkbox ---
+						// Walk every configured hit/damage bonus on the weapon. Skip
+						// the promptable ones (handled above). For each remaining
+						// bonus, evaluate its requirements (alignment, target type,
+						// caster level, etc.) and apply the bonus in-place if met.
+						const wbFlags = weapon.flags?.["shadowdark-extras"]?.weaponBonus;
+						if (wbFlags?.enabled) {
+							for (const bonus of wbFlags.hitBonuses || []) {
+								if (!bonus.formula || bonus.prompt) continue;
+								if (!evaluateRequirements(bonus.requirements || [], actor, targetActor)) continue;
+								const formatted = shadowdark.dice.formatBonus(bonus.formula);
+								config.mainRoll.bonus = (config.mainRoll.bonus || "").concat(formatted);
+								config.mainRoll.formula = `${config.mainRoll.base}${config.mainRoll.bonus}`;
+								config.mainRoll.tooltips = (config.mainRoll.tooltips || "").concat(`, ${bonus.label || "Weapon Bonus"}`);
+							}
+							for (const bonus of wbFlags.damageBonuses || []) {
+								if (!bonus.formula || bonus.prompt) continue;
+								if (!config.damageRoll) continue;
+								if (!evaluateRequirements(bonus.requirements || [], actor, targetActor)) continue;
+								const formatted = shadowdark.dice.formatBonus(bonus.formula);
+								config.damageRoll.formula = (config.damageRoll.formula || "").concat(formatted);
+								config.damageRoll.tooltips = (config.damageRoll.tooltips || "").concat(`, ${bonus.label || "Weapon Damage Bonus"}`);
+							}
+						}
 					}
 				}
 			};
