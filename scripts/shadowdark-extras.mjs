@@ -13103,14 +13103,9 @@ function setupRollConfigPatches() {
 								config.mainRoll.formula = `${config.mainRoll.base}${config.mainRoll.bonus}`;
 								config.mainRoll.tooltips = (config.mainRoll.tooltips || "").concat(`, ${bonus.label || "Weapon Bonus"}`);
 							}
-							for (const bonus of wbFlags.damageBonuses || []) {
-								if (!bonus.formula || bonus.prompt) continue;
-								if (!config.damageRoll) continue;
-								if (!evaluateRequirements(bonus.requirements || [], actor, targetActor)) continue;
-								const formatted = shadowdark.dice.formatBonus(bonus.formula);
-								config.damageRoll.formula = (config.damageRoll.formula || "").concat(formatted);
-								config.damageRoll.tooltips = (config.damageRoll.tooltips || "").concat(`, ${bonus.label || "Weapon Damage Bonus"}`);
-							}
+							// SDX damage bonuses are handled exclusively by calculateWeaponBonusDamage()
+							// in CombatSettingsSD.mjs. Do NOT also bake them into the damage roll
+							// formula here — that causes double-counting (formula + separate calc).
 						}
 					}
 				}
@@ -13186,34 +13181,77 @@ function setupRollConfigPatches() {
 				hitBonus    += shadowdark.dice.formatBonus(bonus.formula);
 				hitTooltips += `, ${bonus.label || "Weapon Bonus"}`;
 			}
-			for (const bonus of wbFlags.damageBonuses || []) {
-				if (!bonus.formula || bonus.prompt || dmgFormula == null || !config.damageRoll) continue;
-				if (!evaluateRequirements(bonus.requirements || [], rollActor, targetActor)) continue;
-				dmgFormula  += shadowdark.dice.formatBonus(bonus.formula);
-				dmgTooltips += `, ${bonus.label || "Weapon Damage Bonus"}`;
+			// SDX auto-apply damage bonuses: add to dmgFormula (so the player sees the full
+			// expected damage in the dialog) AND to dmgTooltips (with the label). The flag
+			// _sdxDamageBonusInFormula tells CombatSettingsSD.mjs not to re-add the bonus
+			// when it calls calculateWeaponBonusDamage(), preventing double-counting.
+			if (dmgFormula != null) {
+				for (const bonus of wbFlags.damageBonuses || []) {
+					if (!bonus.formula || bonus.prompt) continue;
+					if (!evaluateRequirements(bonus.requirements || [], rollActor, targetActor)) continue;
+					const formatted = shadowdark.dice.formatBonus(bonus.formula);
+					dmgFormula  += formatted;
+					const bonusStr = formatted.trim();
+					const sep = dmgTooltips ? ", " : "";
+					dmgTooltips += `${sep}${bonus.label || "Weapon Bonus"} (${bonusStr})`;
+				}
+				// Signal that the bonus is now inside the rolled formula so
+				// CombatSettingsSD.mjs skips the double-add. Set both the
+				// underscore form and a plain-name form in case DataModel
+				// cleaning strips one of them during ChatMessage serialisation.
+				if (dmgFormula !== systemDmgFmt) {
+					config._sdxDamageBonusInFormula = true;
+					config.sdxBonusInDamageFormula  = true;
+				}
 			}
 		}
 
-		// Write reconstructed values back to config
-		config.mainRoll.bonus    = hitBonus;
-		config.mainRoll.formula  = `${systemBase}${hitBonus}`;
-		config.mainRoll.tooltips = hitTooltips;
+			// Write reconstructed values back to config
+			config.mainRoll.bonus    = hitBonus;
+			config.mainRoll.formula  = `${systemBase}${hitBonus}`;
+			config.mainRoll.tooltips = hitTooltips;
 
-		if (dmgFormula != null && config.damageRoll) {
-			config.damageRoll.formula  = dmgFormula;
-			config.damageRoll.tooltips = dmgTooltips;
-		}
+			if (dmgFormula != null && config.damageRoll) {
+				config.damageRoll.formula  = dmgFormula;
+				config.damageRoll.tooltips = dmgTooltips;
+			}
 
-		// Update formula inputs in the already-rendered dialog so the display
-		// matches config (necessary when the generator wrapper didn't modify them).
-		const hitInput = html.querySelector('input[name="mainRoll.formula"]');
-		if (hitInput && hitInput.value !== config.mainRoll.formula) {
-			hitInput.value = config.mainRoll.formula;
-		}
-		const dmgInput = html.querySelector('input[name="damageRoll.formula"]');
-		if (dmgInput && dmgFormula != null && config.damageRoll) {
-			dmgInput.value = config.damageRoll.formula;
-		}
+			// Update formula inputs and tooltip text in the already-rendered dialog.
+			// The template has already been rendered with stale values; we patch the DOM
+			// directly. The tooltip lives in <p class="tooltips"> inside .roll-input.
+			const hitInput = html.querySelector(`input[name="mainRoll.formula"]`);
+			if (hitInput && hitInput.value !== config.mainRoll.formula) {
+				hitInput.value = config.mainRoll.formula;
+			}
+			if (hitTooltips) {
+				const hitRollDiv = hitInput?.closest(".roll-input");
+				if (hitRollDiv) {
+					let tooltipEl = hitRollDiv.querySelector("p.tooltips");
+					if (!tooltipEl) {
+						tooltipEl = document.createElement("p");
+						tooltipEl.className = "tooltips";
+						hitRollDiv.appendChild(tooltipEl);
+					}
+					tooltipEl.textContent = hitTooltips;
+				}
+			}
+
+			const dmgInput = html.querySelector(`input[name="damageRoll.formula"]`);
+			if (dmgInput && dmgFormula != null && config.damageRoll) {
+				dmgInput.value = config.damageRoll.formula;
+			}
+			if (dmgTooltips && dmgInput) {
+				const dmgRollDiv = dmgInput.closest(".roll-input");
+				if (dmgRollDiv) {
+					let tooltipEl = dmgRollDiv.querySelector("p.tooltips");
+					if (!tooltipEl) {
+						tooltipEl = document.createElement("p");
+						tooltipEl.className = "tooltips";
+						dmgRollDiv.appendChild(tooltipEl);
+					}
+					tooltipEl.textContent = dmgTooltips;
+				}
+			}
 
 		// Inject promptable bonus UI (optional bonuses the user can toggle)
 		if (hitBonuses.length === 0 && damageBonuses.length === 0) return;

@@ -2870,14 +2870,13 @@ export async function injectDamageCard(message, html, data) {
 
 							let roll;
 
-							// Try to use existing roll from message if available (prevents double DSN and mismatched values)
+							// Try to use an existing roll from message.rolls if its formula matches.
+							// Do NOT fall back to the last roll — that would pick up the spell
+							// cast roll (d20) for healing spells like Cure Wounds whose damage
+							// formula (e.g. 2d6) doesn't match the cast formula.
 							if (message.rolls?.length > 0) {
-								// Sanitize formula for comparison (remove spaces)
 								const cleanFinal = finalFormula.replace(/\s/g, '');
-
-								// Find matching roll or default to the last one (usually damage in a multi-roll sequence)
-								roll = message.rolls.find(r => r.formula.replace(/\s/g, '') === cleanFinal) ||
-									message.rolls[message.rolls.length - 1];
+								roll = message.rolls.find(r => r.formula?.replace(/\s/g, '') === cleanFinal) ?? null;
 							}
 
 							if (roll) {
@@ -3052,6 +3051,15 @@ export async function injectDamageCard(message, html, data) {
 			if (typeof damageRollData.total === "number") {
 				totalDamage = damageRollData.total;
 			} else {
+				// SD 4.x: the damage roll is added to message.rolls asynchronously by
+				// rollDamageFromMessage(), which runs after ChatMessage.create() resolves.
+				// If the rollConfig has a damage formula but the roll isn't in message.rolls
+				// yet, bail out here — the re-render triggered when rollDamageFromMessage
+				// calls msg.update({rolls}) will have the damage roll available.
+				const hasPendingDamageRoll = !!(message.rollConfig?.damageRoll?.formula)
+					&& !message.getRoll?.("damage");
+				if (hasPendingDamageRoll) return;
+
 				// Last resort: try to parse from the displayed total in the damage section
 				const $damageTotal = html.find('.card-damage-roll-single .dice-total, .card-damage-rolls .dice-total').first();
 				if ($damageTotal.length) {
@@ -3165,6 +3173,14 @@ export async function injectDamageCard(message, html, data) {
 						}
 					}
 
+					// Detect whether the SDX damage bonus was already baked into the damage
+					// roll formula by the renderRollDialogSD hook. Try both the underscore
+					// and non-underscore forms in case one gets stripped by DataModel cleaning.
+					const bonusInFormula = !!(
+						message.rollConfig?.sdxBonusInDamageFormula ||
+						message.rollConfig?._sdxDamageBonusInFormula
+					);
+
 					// Prepare results for flag (must be plain objects/JSON compatible)
 					const persistData = {
 						totalBonus: weaponBonusDamage.totalBonus,
@@ -3182,7 +3198,10 @@ export async function injectDamageCard(message, html, data) {
 						// Track usage info for decrementing after damage is applied
 						appliedBonusIndicesWithUsage: weaponBonusDamage.appliedBonusIndicesWithUsage || [],
 						weaponItemId: item?.id,
-						actorId: actor?.id
+						actorId: actor?.id,
+						// Persisted so the final render can skip the double-add without
+						// reading from rollConfig (which may strip underscore props).
+						bonusInFormula
 					};
 
 					await message.setFlag(MODULE_ID, "weaponBonusResults", persistData);
@@ -3198,8 +3217,26 @@ export async function injectDamageCard(message, html, data) {
 			}
 
 			if (weaponBonusDamage?.requirementsMet && (weaponBonusDamage.totalBonus !== 0 || weaponBonusDamage.criticalBonus !== 0)) {
-				// Add bonus damage to total (but show it separately in the card)
-				totalDamage += weaponBonusDamage.totalBonus + weaponBonusDamage.criticalBonus;
+				// bonusInFormula is stored inside weaponBonusResults (a module flag that
+				// survives Foundry DataModel serialisation reliably). When true, the SDX
+				// bonus is already counted in readSdDamageRoll.total, so we must not add
+				// it again. Critical-hit extra dice are always separate.
+				const bonusAlreadyRolled = !!(weaponBonusDamage.bonusInFormula);
+				totalDamage += (bonusAlreadyRolled ? 0 : weaponBonusDamage.totalBonus)
+				             + weaponBonusDamage.criticalBonus;
+
+				// If the bonus is already in the formula, strip its roll-result data so
+				// buildRollBreakdown() doesn't also render it as an extra breakdown term
+				// (that would show the correct total but display one extra +N in the UI).
+				if (bonusAlreadyRolled) {
+					weaponBonusDamage = {
+						...weaponBonusDamage,
+						totalBonus: 0,
+						bonusFormula: "",
+						bonusRollResults: [],
+						damageComponents: []
+					};
+				}
 
 				// If weapon has specific damage types, override the generic "damage" type
 				if (weaponBonusDamage.damageTypes && weaponBonusDamage.damageTypes.length > 0) {
@@ -3369,6 +3406,26 @@ export async function injectDamageCard(message, html, data) {
 		} else {
 			const $messageContent = html.find('.message-content');
 			$messageContent.append(cardHtml);
+		}
+	}
+
+	// Integrate the SD roll card with SDX theming when the SDX damage card is shown
+	if (!hideDamageCardFromPlayer) {
+		const $sdCard = html.find('.shadowdark.chat-card, .chat-card').first();
+		if ($sdCard.length) {
+			// Move the weapon icon/name row above the "Attack Roll" heading so it reads
+			// as the card's own header rather than a separate floating section below.
+			const $itemWrapper = $sdCard.find('.item-wrapper');
+			const $firstHeading = $sdCard.find('h3.sub-heading').first();
+			if ($itemWrapper.length && $firstHeading.length) {
+				$firstHeading.before($itemWrapper.detach());
+			}
+			// Hide the Targets sub-section — the SDX card already lists targets.
+			const $targetWrapper = $sdCard.find('.target-wrapper');
+			$targetWrapper.prev('h3.sub-heading').hide();
+			$targetWrapper.hide();
+			// Mark the card so CSS can apply the integrated theme.
+			$sdCard.addClass('sdx-integrated');
 		}
 	}
 
