@@ -18668,7 +18668,11 @@ async function executeSpellItemMacro(spellItem, actor, trigger, context = {}) {
 		rollResult: context.rollResult ?? null,
 		rollData: context.rollData ?? null,
 		speaker: ChatMessage.getSpeaker({ actor }),
-		flags: spellItem.flags?.[MODULE_ID] || {}
+		flags: spellItem.flags?.[MODULE_ID] || {},
+		// Originating user — Holy Weapon and other dialog-routing macros use
+		// this to remote-trigger the caller's dialog from a GM-side
+		// `runAsGm` execution. Socket path overrides via serializedContext.
+		originatingUserId: context.originatingUserId ?? game.user.id
 	};
 
 	const macroConfig = getSpellItemMacroConfig(spellItem);
@@ -18706,17 +18710,47 @@ async function executeSpellItemMacro(spellItem, actor, trigger, context = {}) {
 			?? spellItem.flags?.itemacro?.macro?.command;
 		if (!macroCommand) return;
 
+		// `args` is a back-compat object for macros written against the older
+		// `executeItemMacro` API, which exposed everything under args.*
+		// Verified surface across the 7 bundled SDX scripted spells:
+		//   Cloud Kill        → args.trigger
+		//   Turn Undead       → args.rollResult
+		//   Wrath             → args.isCritical
+		//   Prismatic Orb     → args.isCritical
+		//   Holy Weapon       → args.isCritical, args.originatingUserId
+		//   Cleansing Weapon  → args.isCritical
+		//   Burning Hands     → args.isCritical
+		// Bundle every scope field so future macros can use any of them.
+		const args = {
+			actor: scope.actor,
+			token: scope.token,
+			item: scope.item,
+			targets: scope.targets,
+			target: scope.target,
+			targetActor: scope.targetActor,
+			trigger: scope.trigger,
+			isSuccess: scope.isSuccess,
+			isFailure: scope.isFailure,
+			isCritical: scope.isCritical,
+			isCriticalFail: scope.isCriticalFail,
+			rollResult: scope.rollResult,
+			rollData: scope.rollData,
+			speaker: scope.speaker,
+			flags: scope.flags,
+			originatingUserId: scope.originatingUserId
+		};
+
 		const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
 		const macroFn = new AsyncFunction(
 			"actor", "token", "item", "targets", "target", "targetActor",
 			"trigger", "isSuccess", "isFailure", "isCritical", "isCriticalFail",
-			"rollResult", "rollData", "speaker", "flags",
+			"rollResult", "rollData", "speaker", "flags", "args",
 			macroCommand
 		);
 		await macroFn.call(scope,
 			scope.actor, scope.token, scope.item, scope.targets, scope.target, scope.targetActor,
 			scope.trigger, scope.isSuccess, scope.isFailure, scope.isCritical, scope.isCriticalFail,
-			scope.rollResult, scope.rollData, scope.speaker, scope.flags
+			scope.rollResult, scope.rollData, scope.speaker, scope.flags, args
 		);
 	} catch (error) {
 		console.error(`${MODULE_ID} | Error executing spell macro:`, error);
