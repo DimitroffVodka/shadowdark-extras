@@ -4,6 +4,28 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.1] — 2026-05-17 — FilePicker deprecation cleanup
+
+Foundry v13+ namespaces `FilePicker` under `foundry.applications.apps.
+FilePicker.implementation`. The legacy global still works but emits a
+deprecation warning on every use — and SDX uses FilePicker in 21 files
+(asset browsing for hex painter, dungeon painter, scene exporter,
+sheet image pickers, etc.).
+
+Fix: each file aliases `const FilePicker = foundry.applications.apps.
+FilePicker?.implementation ?? globalThis.FilePicker;` near the top, so
+the rest of the file uses the local non-deprecated reference with no
+per-callsite rewrites. Falls back to the global on older Foundry
+versions.
+
+Files touched: DungeonPainterSD, DungeonGeneratorSD, DungeonGenerator,
+HexTooltipSD, PinStyleEditorSD, MaphubViewerApp, IconPickerSD,
+SheetEditorConfig, SceneExporter, SceneImporter, NPCAttackSheetSD,
+NPCFeatureSheetSD, ClassAbilitySheetSD, BackgroundSheetSD,
+PotionSheetSD, WeaponAnimationSD, apps/TomEditors, shadowdark-extras.
+
+---
+
 ## [6.10.0] — 2026-05-16 — Shadowdark 4.x / Foundry v14.361 compat sweep
 
 Multi-day sweep landing SD 4.x compatibility across every spell, weapon,

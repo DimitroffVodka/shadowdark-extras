@@ -1,3 +1,6 @@
+// v13+ FilePicker namespaced under foundry.applications.apps.
+const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
+
 /**
  * SDX Dungeon Generator - Procedural dungeon layout generation
  * Spine-walker algorithm for room placement with corridors, doors, and wall visuals

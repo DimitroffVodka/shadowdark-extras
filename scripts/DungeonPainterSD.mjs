@@ -5,6 +5,11 @@ import { cache } from "./SDXCache.mjs";
  * Supports player painting via socket when GM is online
  */
 
+// v13+ FilePicker is namespaced under foundry.applications.apps. Bind the
+// new path to a local const so the rest of this file uses the
+// non-deprecated reference without per-callsite rewrites.
+const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
+
 const MODULE_ID = "shadowdark-extras";
 const FLOOR_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/floor_tiles`;
 const WALL_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/wall_tiles`;

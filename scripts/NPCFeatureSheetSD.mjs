@@ -1,3 +1,6 @@
+// v13+ FilePicker namespaced under foundry.applications.apps.
+const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
+
 /**
  * NPC Feature Item Sheet - AppV2
  * Modern redesigned NPC Feature sheet with Activity, Description, and Macro tabs

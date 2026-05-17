@@ -1,3 +1,6 @@
+// v13+ FilePicker namespaced under foundry.applications.apps.
+const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
+
 /**
  * Shadowdark Extras Module
  * Adds Renown tracking, additional light sources, NPC inventory, and Party management to Shadowdark RPG

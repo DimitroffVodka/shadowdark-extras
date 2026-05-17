@@ -1,3 +1,6 @@
+// v13+ FilePicker namespaced under foundry.applications.apps.
+const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
+
 
 
 import { getAvailableBiomes, generateHexHtml } from "./HexContentGenerator.mjs";
