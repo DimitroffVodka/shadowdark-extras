@@ -1331,13 +1331,18 @@ export function getTokensInTemplate(templateDoc) {
     const tokens = [];
     const scene = templateDoc.parent;
 
+    // v14: placeable.x/y can stay at (0,0) until first refresh. Use the
+    // document's coordinates as the anchor — they're the persistent values.
+    const anchorX = templateDoc.x ?? template.x;
+    const anchorY = templateDoc.y ?? template.y;
+
     for (const tokenDoc of scene.tokens) {
         const token = tokenDoc.object;
         if (!token) continue;
 
         // Check if token center is inside template shape
-        const localX = token.center.x - template.x;
-        const localY = token.center.y - template.y;
+        const localX = token.center.x - anchorX;
+        const localY = token.center.y - anchorY;
 
         if (template.shape.contains(localX, localY)) {
             tokens.push(token);
@@ -1356,13 +1361,17 @@ export function getTemplatesContainingToken(token) {
     if (!token || !canvas.scene) return [];
 
     const templates = [];
-
-    for (const templateDoc of canvas.scene.templates) {
+    const collection = canvas.scene.getEmbeddedCollection?.("MeasuredTemplate") ?? canvas.scene.templates;
+    for (const templateDoc of collection) {
         const template = templateDoc.object;
         if (!ensureTemplateShape(template)) continue;
 
-        const localX = token.center.x - template.x;
-        const localY = token.center.y - template.y;
+        // v14: placeable.x/y can stay at (0,0) until first refresh. Use the
+        // document coords for the local-space conversion.
+        const anchorX = templateDoc.x ?? template.x;
+        const anchorY = templateDoc.y ?? template.y;
+        const localX = token.center.x - anchorX;
+        const localY = token.center.y - anchorY;
 
         if (template.shape.contains(localX, localY)) {
             templates.push(templateDoc);
@@ -1384,13 +1393,16 @@ function getTemplatesContainingPoint(x, y, scene) {
     if (!scene) return [];
 
     const templates = [];
-
-    for (const templateDoc of scene.templates) {
+    const collection = scene.getEmbeddedCollection?.("MeasuredTemplate") ?? scene.templates;
+    for (const templateDoc of collection) {
         const template = templateDoc.object;
         if (!ensureTemplateShape(template)) continue;
 
-        const localX = x - template.x;
-        const localY = y - template.y;
+        // v14: placeable.x/y can stay at (0,0) until first refresh.
+        const anchorX = templateDoc.x ?? template.x;
+        const anchorY = templateDoc.y ?? template.y;
+        const localX = x - anchorX;
+        const localY = y - anchorY;
 
         if (template.shape.contains(localX, localY)) {
             templates.push(templateDoc);
