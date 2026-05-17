@@ -1337,8 +1337,12 @@ export function getTokensInTemplate(templateDoc) {
     const tokens = [];
     const scene = templateDoc.parent;
 
-    // v14: placeable.x/y can stay at (0,0) until first refresh. Use the
-    // document's coordinates as the anchor — they're the persistent values.
+    // v14: prefer the placeable's testPoint(worldX, worldY) — it handles the
+    // shape↔world coordinate transform internally and stays correct even when
+    // the placeable was just created (raw shape.contains() with local coords
+    // is unreliable at hook-fire time for createMeasuredTemplate). Fall back
+    // to the local-coord shape.contains() if testPoint isn't available.
+    const useTestPoint = typeof template.testPoint === "function";
     const anchorX = templateDoc.x ?? template.x;
     const anchorY = templateDoc.y ?? template.y;
 
@@ -1346,13 +1350,11 @@ export function getTokensInTemplate(templateDoc) {
         const token = tokenDoc.object;
         if (!token) continue;
 
-        // Check if token center is inside template shape
-        const localX = token.center.x - anchorX;
-        const localY = token.center.y - anchorY;
+        const inside = useTestPoint
+            ? template.testPoint(token.center)
+            : template.shape.contains(token.center.x - anchorX, token.center.y - anchorY);
 
-        if (template.shape.contains(localX, localY)) {
-            tokens.push(token);
-        }
+        if (inside) tokens.push(token);
     }
 
     return tokens;
@@ -1372,16 +1374,16 @@ export function getTemplatesContainingToken(token) {
         const template = templateDoc.object;
         if (!ensureTemplateShape(template)) continue;
 
-        // v14: placeable.x/y can stay at (0,0) until first refresh. Use the
-        // document coords for the local-space conversion.
+        // Prefer placeable.testPoint (see getTokensInTemplate for rationale).
+        const useTestPoint = typeof template.testPoint === "function";
         const anchorX = templateDoc.x ?? template.x;
         const anchorY = templateDoc.y ?? template.y;
-        const localX = token.center.x - anchorX;
-        const localY = token.center.y - anchorY;
 
-        if (template.shape.contains(localX, localY)) {
-            templates.push(templateDoc);
-        }
+        const inside = useTestPoint
+            ? template.testPoint(token.center)
+            : template.shape.contains(token.center.x - anchorX, token.center.y - anchorY);
+
+        if (inside) templates.push(templateDoc);
     }
 
     return templates;
@@ -1400,19 +1402,21 @@ function getTemplatesContainingPoint(x, y, scene) {
 
     const templates = [];
     const collection = scene.getEmbeddedCollection?.("MeasuredTemplate") ?? scene.templates;
+    const pt = { x, y };
     for (const templateDoc of collection) {
         const template = templateDoc.object;
         if (!ensureTemplateShape(template)) continue;
 
-        // v14: placeable.x/y can stay at (0,0) until first refresh.
+        // Prefer placeable.testPoint (see getTokensInTemplate for rationale).
+        const useTestPoint = typeof template.testPoint === "function";
         const anchorX = templateDoc.x ?? template.x;
         const anchorY = templateDoc.y ?? template.y;
-        const localX = x - anchorX;
-        const localY = y - anchorY;
 
-        if (template.shape.contains(localX, localY)) {
-            templates.push(templateDoc);
-        }
+        const inside = useTestPoint
+            ? template.testPoint(pt)
+            : template.shape.contains(x - anchorX, y - anchorY);
+
+        if (inside) templates.push(templateDoc);
     }
 
     return templates;

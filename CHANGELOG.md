@@ -4,6 +4,45 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.10] — 2026-05-17 — TemplateEffects containment alignment
+
+Defensive consistency change — not a confirmed bug fix. A tester
+reported template effects not applying on initial drop until tokens
+exited and re-entered the area, but the issue could not be reliably
+reproduced. Either way, the underlying difference in containment
+math was worth straightening out.
+
+### Changed — TemplateEffectsSD containment uses `placeable.testPoint`
+
+`TemplateEffectsSD.mjs` had three containment helpers
+(`getTokensInTemplate`, `getTemplatesContainingToken`,
+`getTemplatesContainingPoint`) that tested membership via the raw
+PIXI shape:
+
+```js
+template.shape.contains(token.center.x - anchorX, token.center.y - anchorY)
+```
+
+This worked in v13 where `shape` was a PIXI primitive centered at
+origin, but in v14 the placeable's shape can be in a different
+coordinate space — particularly when the placeable was just created
+and its first refresh hasn't completed. Meanwhile, SDX's own
+`getTokensInTemplate` in `shadowdark-extras.mjs` uses
+`templateObject.testPoint(t.center)` directly, which delegates to the
+PlaceableObject's `testPoint` method that handles the shape↔world
+transform internally and remains correct from creation onward.
+
+All three helpers now mirror SDX's pattern: prefer
+`template.testPoint(worldPoint)`, fall back to the local-coord
+`shape.contains()` if `testPoint` isn't available (older Foundry
+builds). Initial-drop and movement-enter paths now share the same
+proven-working containment math.
+
+No behavioural change expected for users who weren't seeing the
+phantom bug. The fallback guarantees backward compat.
+
+---
+
 ## [6.10.9] — 2026-05-17 — Template effects on-drop + non-damage spell chat card
 
 Two fixes around template-based spells:
