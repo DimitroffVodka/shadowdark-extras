@@ -4,6 +4,92 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.6] — 2026-05-17 — AE library expansion, multi-level dungeons, live weapon-anim preview
+
+Three feature drops bundled together; no breaking changes.
+
+### Added — pack-sdxeffects: 13 new Active Effects (`7353f9b`)
+
+Cross-referenced the [official Shadowdark AE wiki](https://github.com/Muttley/foundryvtt-shadowdark/wiki/Active-Effects)
+against our pack inventory and filled coverage gaps the system actually
+reads. Pack now ships 127 effects (was 114).
+
+New entries:
+
+- **Extra Damage Die** family (5 variants) — `system.roll.attack.extra-damage-die.{all|melee|ranged|<weapon-name>|<property>}`
+  for adding a bonus damage die on top of the base damage roll
+- **Attack Bonus — property-targeted** (3 variants) — bonus to-hit
+  scoped to weapons with a specific property (e.g. `finesse`, `loading`,
+  `versatile`)
+- **Damage Bonus — property-targeted** (3 variants) — same idea on the
+  damage roll
+- **Upgrade Damage Die (this)** — bumps the equipped weapon's damage
+  die one step (d6 → d8 → d10 → d12)
+- **Shield AC Bonus** — `system.bonuses.acBonus` keyed for shields
+
+All entries use the SD 4.x change format (`{type: "add", phase:
+"initial", priority: 0}`), not legacy numeric modes. Verified live
+against `system.roll.attack.extra-damage-die.all` resolution path.
+
+### Added — Multi-level dungeon generator (`b910a2c`)
+
+Dungeon generator and painter now place rooms, walls, tiles, and tokens
+at the correct scene level when the Levels module is active OR when
+Foundry v14's native `flags.levels` field is set on the scene.
+
+New exports in `DungeonPainterSD.mjs`:
+
+- `getSceneLevelContext(scene)` — returns `{levelId, elevation, rangeTop}`
+- `applySceneLevelData(doc, type, ctx)` — tags placeables with
+  `elevation`, `levels[]`, `flags.levels.rangeTop`,
+  `flags['wall-height'].{bottom, top}`
+- `getCurrentElevation()`, `getDungeonBackground()`,
+  `ensureBackgroundDrawing()` — helpers for the painter UI
+
+New helpers in `DungeonGeneratorSD.mjs`:
+
+- `clearSceneAtLevel(scene, levelContext, levelsActive)` — only deletes
+  dungeon-flagged docs at the matching level, leaving other levels'
+  content untouched
+- `waitForDungeonCanvasReady` / `waitForDocumentLayerReady` — prevents
+  `createEmbeddedDocuments` race against scene resize
+- `createWithElevation(type, docs, chunkSize)` — post-create batch
+  update for `wall-height` and `levels.rangeTop`
+
+Tested on a scene with native v14 `levelId: "defaultLevel0000"`,
+`rangeTop: 20`. Sample tile tagged correctly; sample wall got
+`flags['wall-height']: {bottom: 0, top: 20}`. Backward-compatible —
+on scenes without level data the generator behaves exactly as before.
+
+### Changed — Live preview for weapon animations (`18eac6f`)
+
+The WeaponAnimationConfig dialog now plays the animation on the active
+token(s) as you tweak the form. No more save → unequip → re-equip
+cycle to see what a rotation/scale/glow change looks like.
+
+`WeaponAnimationSD.mjs::playWeaponAnimation(token, item, configOverride)`
+now accepts an optional `configOverride` — when present, that object
+is used as the animation config instead of reading `item.getFlag(...)`.
+That lets the dialog hand the in-progress form values to the same
+playback function the saved flag uses, so preview and saved behaviour
+are pixel-identical.
+
+`WeaponAnimationConfig.mjs` gains:
+
+- `_readCurrentConfig()` — reads the form into a config object
+  (single source of truth — also reused on Save)
+- `_scheduleLivePreview()` — 350ms debounce on input/change events
+  so dragging a slider doesn't spam Sequencer
+- `_livePreviewAnimation()` — finds every active token for the item's
+  parent actor and replays the animation with the override config
+
+On Cancel, the animation replays from the **saved** flag so any
+unsaved tweaks revert visually. Verified live: 3 rapid input events
+collapsed to 1 preview call; rotation=90 propagated through
+`_readCurrentConfig` → `_livePreviewAnimation` correctly.
+
+---
+
 ## [6.10.1] — 2026-05-17 — FilePicker deprecation cleanup
 
 Foundry v13+ namespaces `FilePicker` under `foundry.applications.apps.
