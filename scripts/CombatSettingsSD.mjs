@@ -3732,18 +3732,22 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 		}
 	}
 
-	// Use whichever roll we can find (prioritize synced flags, then Shadowdark rolls, then window global)
-	const roll = spellRollFromFlag || damageRollData || messageRoll || spellRoll || npcBaseRoll;
+	// Use whichever roll we can find (prioritize synced flags, then Shadowdark rolls, then window global).
+	// IMPORTANT: do NOT fall back to messageRoll here. messageRoll is the SD "main" roll
+	// (the attack / spellcast d20) — it belongs to the SD card above. Rendering it as
+	// the SDX damage card's breakdown produces a misleading duplicate for non-damage
+	// effect spells like Sleep / Web (the dialog ends up showing "22 = 8 + 14" labelled
+	// as a damage breakdown when it's actually the cast roll). If we can't find a real
+	// damage roll, return null so the breakdown section is omitted entirely.
+	const roll = spellRollFromFlag || damageRollData || spellRoll || npcBaseRoll;
 
 	if (!roll) {
-		// Check for spell roll breakdown stored in window (fallback for per-target)
-		if (window._lastSpellRollBreakdown && !window._perTargetDamage) {
-			return {
-				formula: window._lastSpellRollBreakdown.split(' = ')[0] || '',
-				total: window._lastSpellRollBreakdown.split(' = ')[1] || '',
-				breakdownHtml: ''
-			};
-		}
+		// Previously fell back to window._lastSpellRollBreakdown here. That global
+		// gets set for damage rolls but can also leak the cast roll for effects-only
+		// spells (Sleep, Web), producing a stale "1d20 + 14" formula bar inside the
+		// SDX card. Per-target damage uses window._perTargetDamage which is read
+		// elsewhere, so dropping this fallback is safe — return null instead so the
+		// breakdown section is omitted entirely for effect-only spells.
 		return null;
 	}
 

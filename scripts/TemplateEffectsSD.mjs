@@ -60,22 +60,29 @@ export function initTemplateEffects() {
     Hooks.on("createMeasuredTemplate", async (templateDoc, options, userId) => {
         if (!game.user.isGM) return;
 
-        // Small delay to ensure template is fully rendered
-        await new Promise(r => setTimeout(r, 100));
+        // Read config BEFORE any setFlag (v14 silently drops post-create setFlag on templates)
+        const config = templateDoc.flags?.[MODULE_ID]?.templateEffects;
+
+        // Wait for the template placeable and its shape to be ready (retry up to 1s)
+        let attempts = 0;
+        while (!templateDoc.object?.shape && attempts < 10) {
+            await new Promise(r => setTimeout(r, 100));
+            attempts++;
+        }
 
         const tokens = getTokensInTemplate(templateDoc);
+
         if (tokens.length > 0) {
             await templateDoc.setFlag(MODULE_ID, 'containedTokens', tokens.map(t => t.id));
             console.log(`shadowdark-extras | Template created with ${tokens.length} tokens inside`);
+        }
 
-            // Trigger onEnter effects if enabled
-            // SKIP if already triggered manually (to avoid duplicate effects)
-            const config = templateDoc.flags?.[MODULE_ID]?.templateEffects;
-            if (config?.enabled && config.triggers?.onEnter && !config.initialEnterTriggered) {
-                console.log(`shadowdark-extras | Triggering onEnter effects for new template ${config.spellName || 'template'}`);
-                for (const token of tokens) {
-                    await applyTemplateEffect(templateDoc, token, 'enter');
-                }
+        // Trigger onEnter for tokens already inside — deduplication is handled inside
+        // applyTemplateConditions, so no need to guard on initialEnterTriggered here.
+        if (config?.enabled && config.triggers?.onEnter && tokens.length > 0) {
+            console.log(`shadowdark-extras | Triggering onEnter effects for new template ${config.spellName || 'template'}`);
+            for (const token of tokens) {
+                await applyTemplateEffect(templateDoc, token, 'enter');
             }
         }
     });
@@ -517,8 +524,8 @@ export async function applyTemplateEffect(templateDoc, token, trigger) {
         damageApplied = damageResult.damage;
     }
 
-    // Apply effects if configured
-    if (config.effects?.length > 0 && !savedSuccessfully) {
+    // Apply effects if configured — never on 'leave' (removeTemplateEffects handles that)
+    if (config.effects?.length > 0 && !savedSuccessfully && trigger !== 'leave') {
         await applyTemplateConditions(templateDoc, token, config.effects);
     }
 

@@ -4,6 +4,59 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.9] — 2026-05-17 — Template effects on-drop + non-damage spell chat card
+
+Two fixes around template-based spells:
+
+### Fixed — template effects (Web, Sleep, etc.) now apply on initial placement
+
+Dev-provided patch to `TemplateEffectsSD.mjs`. Previously, dropping a
+template on top of existing tokens (e.g. casting Web over a group)
+did NOT apply the spell's effect — tokens had to exit and re-enter
+the template area to receive it.
+
+Two interlocking causes:
+
+- The `createMeasuredTemplate` hook gated initial-enter triggers on a
+  `!config.initialEnterTriggered` flag that was set by the casting
+  code, so the very first enter never fired. Guard removed —
+  deduplication already lives inside `applyTemplateConditions`.
+- The hook's wait-for-shape-ready was a fixed 100 ms sleep; v14
+  template `.shape` resolution sometimes takes longer. Replaced with
+  a polling loop that retries up to 1 s.
+
+Side benefit: read the template `flags` BEFORE any `setFlag` call,
+since v14 silently drops post-create `setFlag` on MeasuredTemplate
+documents (part of the template→region deprecation).
+
+### Fixed — non-damage spells no longer show cast roll as damage breakdown
+
+SDX damage card was rendering the spell **cast** roll (e.g. `1d20 + 14`
+for Sleep's spellcasting check) as the damage breakdown for effect-only
+spells like Sleep and Web. Result was a misleading `22 = 8 + 14` line
+inside the SDX card, duplicating the cast roll already shown in the SD
+card above.
+
+Root cause was a fallback chain in `buildRollBreakdown()` (`CombatSettingsSD.mjs`):
+
+```js
+const roll = spellRollFromFlag || damageRollData || messageRoll || spellRoll || npcBaseRoll;
+//                                                  ^^^^^^^^^^^ wrong
+```
+
+`messageRoll` is the SD "main" roll (cast/attack d20), not damage —
+that belongs to the SD card above. For non-damage spells where
+`damageRollData` is null, this fallback caught the cast roll and
+rendered it as damage. A secondary fallback to
+`window._lastSpellRollBreakdown` had the same leak.
+
+Both fallbacks removed. `buildRollBreakdown` now returns null when no
+real damage roll exists, and the breakdown section is omitted from
+the card entirely. The "APPLY EFFECTS" header + target list still
+render for effect-only spells, since those are legitimately useful.
+
+---
+
 ## [6.10.8] — 2026-05-17 — Dark-mode CSS hotfixes (chat text + pause font)
 
 Three CSS regressions in dark-mode that were visible since SD's 4.x
