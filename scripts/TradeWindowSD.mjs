@@ -499,11 +499,9 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 			return;
 		}
 
-		// Check if Item Piles is available
-		if (!game.modules.get("item-piles")?.active || !game.itempiles?.API) {
-			ui.notifications.error("Item Piles module is required for trading.");
-			return;
-		}
+		// Pick a transfer backend: Item Piles if installed and active,
+		// otherwise the native fallback (no module dependency).
+		const useItemPiles = game.modules.get("item-piles")?.active && !!game.itempiles?.API;
 
 		try {
 			// Get actors
@@ -517,31 +515,47 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 			// Transfer items from A to B
 			if (state.itemsA.length > 0) {
 				const itemsA = state.itemsA.map(i => ({ _id: i._id, quantity: i.system?.quantity ?? 1 }));
-				await game.itempiles.API.transferItems(actorA, actorB, itemsA, { interactionId: false });
+				if (useItemPiles) {
+					await game.itempiles.API.transferItems(actorA, actorB, itemsA, { interactionId: false });
+				} else {
+					await this._nativeTransferItems(actorA, actorB, itemsA);
+				}
 			}
 
 			// Transfer items from B to A
 			if (state.itemsB.length > 0) {
 				const itemsB = state.itemsB.map(i => ({ _id: i._id, quantity: i.system?.quantity ?? 1 }));
-				await game.itempiles.API.transferItems(actorB, actorA, itemsB, { interactionId: false });
+				if (useItemPiles) {
+					await game.itempiles.API.transferItems(actorB, actorA, itemsB, { interactionId: false });
+				} else {
+					await this._nativeTransferItems(actorB, actorA, itemsB);
+				}
 			}
 
-			// Transfer coins from A to B using Item Piles transferAttributes API
+			// Transfer coins from A to B
 			const coinsA = state.coinsA || { gp: 0, sp: 0, cp: 0 };
 			if (coinsA.gp > 0 || coinsA.sp > 0 || coinsA.cp > 0) {
-				const attributesA = this._buildCurrencyAttributes(coinsA);
-				console.log(`${MODULE_ID} | Transferring currencies from ${actorA.name} to ${actorB.name}:`, attributesA);
-				const result = await game.itempiles.API.transferAttributes(actorA, actorB, attributesA, { interactionId: false });
-				console.log(`${MODULE_ID} | Currency transfer A->B result:`, result);
+				if (useItemPiles) {
+					const attributesA = this._buildCurrencyAttributes(coinsA);
+					console.log(`${MODULE_ID} | Transferring currencies from ${actorA.name} to ${actorB.name}:`, attributesA);
+					const result = await game.itempiles.API.transferAttributes(actorA, actorB, attributesA, { interactionId: false });
+					console.log(`${MODULE_ID} | Currency transfer A->B result:`, result);
+				} else {
+					await this._nativeTransferCoins(actorA, actorB, coinsA);
+				}
 			}
 
-			// Transfer coins from B to A using Item Piles transferAttributes API
+			// Transfer coins from B to A
 			const coinsB = state.coinsB || { gp: 0, sp: 0, cp: 0 };
 			if (coinsB.gp > 0 || coinsB.sp > 0 || coinsB.cp > 0) {
-				const attributesB = this._buildCurrencyAttributes(coinsB);
-				console.log(`${MODULE_ID} | Transferring currencies from ${actorB.name} to ${actorA.name}:`, attributesB);
-				const result = await game.itempiles.API.transferAttributes(actorB, actorA, attributesB, { interactionId: false });
-				console.log(`${MODULE_ID} | Currency transfer B->A result:`, result);
+				if (useItemPiles) {
+					const attributesB = this._buildCurrencyAttributes(coinsB);
+					console.log(`${MODULE_ID} | Transferring currencies from ${actorB.name} to ${actorA.name}:`, attributesB);
+					const result = await game.itempiles.API.transferAttributes(actorB, actorA, attributesB, { interactionId: false });
+					console.log(`${MODULE_ID} | Currency transfer B->A result:`, result);
+				} else {
+					await this._nativeTransferCoins(actorB, actorA, coinsB);
+				}
 			}
 
 			// Mark trade as complete
@@ -564,6 +578,95 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 		if (coins.sp > 0) attributes["system.coins.sp"] = coins.sp;
 		if (coins.cp > 0) attributes["system.coins.cp"] = coins.cp;
 		return attributes;
+	}
+
+	/**
+	 * Native item-transfer fallback used when Item Piles isn't installed.
+	 *
+	 * For each item to transfer:
+	 *  - Read the source item (`{_id, quantity}` from the trade state).
+	 *  - If the target already has an item with the same name + matching
+	 *    compendium source, merge by bumping the existing quantity.
+	 *  - Otherwise create a fresh copy on the target via
+	 *    `createEmbeddedDocuments`.
+	 *  - Reduce source quantity by the transferred amount; delete the
+	 *    source item if quantity reaches 0.
+	 *
+	 * Doesn't replicate every Item Piles feature (stack limits, slot
+	 * checks, currency conversion). For SDX trades — which the chat-card
+	 * style trade window does — the simple stack-merge behavior matches
+	 * what users expect.
+	 */
+	async _nativeTransferItems(fromActor, toActor, transferList) {
+		for (const entry of transferList) {
+			const srcItem = fromActor.items.get(entry._id);
+			if (!srcItem) {
+				console.warn(`${MODULE_ID} | _nativeTransferItems: source item ${entry._id} not found on ${fromActor.name}`);
+				continue;
+			}
+			const transferQty = Math.max(1, Number(entry.quantity ?? 1));
+			const srcQty = Number(srcItem.system?.quantity ?? 1);
+			if (transferQty > srcQty) {
+				console.warn(`${MODULE_ID} | _nativeTransferItems: requested ${transferQty} of ${srcItem.name} but source has ${srcQty}; clamping`);
+			}
+			const actualTransfer = Math.min(transferQty, srcQty);
+
+			// Try to merge into an existing stack on the target.
+			const sourceUuid = srcItem._stats?.compendiumSource ?? srcItem.flags?.core?.sourceId ?? null;
+			const existingStack = toActor.items.find(it =>
+				it.type === srcItem.type
+				&& it.name === srcItem.name
+				&& (it._stats?.compendiumSource ?? it.flags?.core?.sourceId ?? null) === sourceUuid
+			);
+
+			if (existingStack) {
+				const newQty = Number(existingStack.system?.quantity ?? 1) + actualTransfer;
+				await existingStack.update({ "system.quantity": newQty });
+			} else {
+				const data = srcItem.toObject();
+				data.system = data.system ?? {};
+				data.system.quantity = actualTransfer;
+				delete data._id;
+				await toActor.createEmbeddedDocuments("Item", [data]);
+			}
+
+			// Reduce source — delete if we transferred everything, else decrement.
+			const remaining = srcQty - actualTransfer;
+			if (remaining <= 0) {
+				await srcItem.delete();
+			} else {
+				await srcItem.update({ "system.quantity": remaining });
+			}
+		}
+	}
+
+	/**
+	 * Native coin-transfer fallback. Reads source coins, subtracts the
+	 * transfer amounts, reads target coins, adds them. Single `update()`
+	 * per actor to keep history clean.
+	 */
+	async _nativeTransferCoins(fromActor, toActor, coins) {
+		const types = ["gp", "sp", "cp"];
+		const fromCoins = fromActor.system?.coins ?? {};
+		const toCoins = toActor.system?.coins ?? {};
+
+		const fromUpdate = {};
+		const toUpdate = {};
+		for (const t of types) {
+			const amt = Math.max(0, Number(coins[t] ?? 0));
+			if (amt === 0) continue;
+			const fromCurrent = Number(fromCoins[t] ?? 0);
+			if (amt > fromCurrent) {
+				console.warn(`${MODULE_ID} | _nativeTransferCoins: ${fromActor.name} has ${fromCurrent} ${t} but transfer asks for ${amt}; clamping`);
+			}
+			const actualAmt = Math.min(amt, fromCurrent);
+			if (actualAmt <= 0) continue;
+			fromUpdate[`system.coins.${t}`] = fromCurrent - actualAmt;
+			toUpdate[`system.coins.${t}`] = Number(toCoins[t] ?? 0) + actualAmt;
+		}
+
+		if (Object.keys(fromUpdate).length) await fromActor.update(fromUpdate);
+		if (Object.keys(toUpdate).length) await toActor.update(toUpdate);
 	}
 
 	/**
