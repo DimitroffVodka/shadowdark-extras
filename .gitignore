@@ -4,6 +4,12 @@ packs/**/LOG.old
 packs/**/MANIFEST-*
 packs/**/lost/
 
+# Exception: pack-sdxeffects ships its AE library content via the .log file
+# until LevelDB compaction produces a .ldb segment. Without these the
+# compendium loads empty for end users.
+!packs/pack-sdxeffects/*.log
+!packs/pack-sdxeffects/MANIFEST-*
+
 # Editor / agent scratch
 .claude/
 .gemini/
