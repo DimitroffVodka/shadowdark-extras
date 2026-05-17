@@ -17495,15 +17495,38 @@ Hooks.on("renderSidebarTab", (app, html, data) => {
 // Hook into compendium rendering for Item compendiums
 Hooks.on("renderCompendium", async (app, html, data) => {
 	try {
-		//console.log(`${MODULE_ID} | renderCompendium hook fired for`, app.collection?.documentName);
-		// Only process Item compendiums
 		if (app.collection?.documentName !== "Item") return;
 
-		// Get the items from the compendium index with the unidentified flag field
-		const index = await app.collection.getIndex({ fields: [`flags.${MODULE_ID}.unidentified`] });
-		if (!index) return;
+		// v14 quirk: `getIndex({fields})` mutates the cached index entries by
+		// merging the requested fields in. Foundry then marks entries non-
+		// extensible somewhere in the pipeline. If our call requests
+		// `flags.shadowdark-extras.unidentified` and the SD system later calls
+		// `getIndex({fields: ["predefinedEffects", ...]})` on the same pack
+		// (which happens when opening an SDX spell sheet that uses the spell
+		// selector), the merge into our frozen entries throws
+		// `Cannot add property predefinedEffects, object is not extensible`
+		// and the entire spell sheet fails to render.
+		//
+		// Workaround: snapshot the index entries before the cache traps them,
+		// and rebuild the index without our fields after we're done so the
+		// next caller starts fresh.
+		const augmented = await app.collection.getIndex({ fields: [`flags.${MODULE_ID}.unidentified`] });
+		if (!augmented) return;
 
-		markUnidentifiedItemsInDirectory(html, index);
+		// Clone each entry so the markup function holds non-cached references.
+		const snapshot = new foundry.utils.Collection();
+		for (const entry of augmented) {
+			snapshot.set(entry._id, foundry.utils.deepClone(entry));
+		}
+
+		markUnidentifiedItemsInDirectory(html, snapshot);
+
+		// Reset the index cache so subsequent getIndex calls (from SD's
+		// spell-selector etc.) rebuild without colliding with our fields.
+		try {
+			if (typeof app.collection._indexCache !== "undefined") app.collection._indexCache = null;
+			if (typeof app.collection.index?.clear === "function") app.collection.index.clear();
+		} catch (e) { /* best-effort cache reset */ }
 	} catch (err) {
 		console.error(`${MODULE_ID} | Failed to mark unidentified items in compendium`, err);
 	}
