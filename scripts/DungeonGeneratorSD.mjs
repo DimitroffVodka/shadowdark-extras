@@ -6,12 +6,47 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  * Spine-walker algorithm for room placement with corridors, doors, and wall visuals
  */
 
-import { getSelectedFloorTile, getSelectedWallTile, getSelectedDoorTile, getCurrentElevation, getDungeonBackground, ensureBackgroundDrawing } from "./DungeonPainterSD.mjs";
+import { getSelectedFloorTile, getSelectedWallTile, getSelectedDoorTile, getCurrentElevation, getSceneLevelContext, applySceneLevelData, getDungeonBackground, ensureBackgroundDrawing } from "./DungeonPainterSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
+const GRID_SIZE = 100;
 const LEVEL_HEIGHT = 10;
 const ELEVATION_TOLERANCE = 5;
-const GRID_SIZE = 100;
+const CANVAS_READY_TIMEOUT_MS = 3000;
+
+function makeTopLeftTileTexture(src) {
+    return { src, anchorX: 0, anchorY: 0 };
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isDocumentLayerReady(type) {
+    const layerName = { Tile: "tiles", Wall: "walls", Drawing: "drawings" }[type];
+    const layer = layerName ? canvas?.[layerName] : null;
+    return !!(canvas?.ready && layer?.objects && typeof layer.objects.addChild === "function");
+}
+
+async function waitForDocumentLayerReady(type, sceneId, timeoutMs = CANVAS_READY_TIMEOUT_MS) {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+        if (canvas?.scene?.id === sceneId && isDocumentLayerReady(type)) return true;
+        await sleep(50);
+    }
+    return false;
+}
+
+async function waitForDungeonCanvasReady(scene, timeoutMs = CANVAS_READY_TIMEOUT_MS) {
+    const started = Date.now();
+    const requiredTypes = ["Tile", "Wall", "Drawing"];
+    while (Date.now() - started < timeoutMs) {
+        const activeSceneReady = canvas?.scene?.id === scene.id && canvas?.ready;
+        if (activeSceneReady && requiredTypes.every(type => isDocumentLayerReady(type))) return true;
+        await sleep(50);
+    }
+    return false;
+}
 
 // ═══════════════════════════════════════════════════════
 //  STATE
@@ -604,9 +639,10 @@ function addRoomFloorsTo(room, floors) {
 //  WALL BUILDER (logical walls for Foundry)
 // ═══════════════════════════════════════════════════════
 
-function generateWalls(floors, offset, entranceEdges, wallThickness, gridSize) {
+function generateWalls(floors, offset, entranceEdges, wallThickness) {
     const wallsData = [];
     const entranceSet = new Set(entranceEdges.map(e => `${e.x},${e.y},${e.dir}`));
+    const gridSize = GRID_SIZE;
 
     const dirs = [
         { dx: 0, dy: -1, ax: 0, ay: 0, bx: 1, by: 0, name: 'N', ox: 0, oy: -1 },
@@ -674,10 +710,10 @@ function generateWalls(floors, offset, entranceEdges, wallThickness, gridSize) {
                 }
 
                 wallsData.push({
-                    c: [Math.round(x1), Math.round(y1), Math.round(x2), Math.round(y2)],
-                    light: CONST.WALL_SENSE_TYPES.NORMAL,
-                    move: CONST.WALL_SENSE_TYPES.NORMAL,
-                    sound: CONST.WALL_SENSE_TYPES.NORMAL,
+                    c: [x1, y1, x2, y2],
+                    light: 20,
+                    move: 20,
+                    sound: 20,
                     flags: { [MODULE_ID]: { dungeonGenWall: true } }
                 });
             }
@@ -690,8 +726,9 @@ function generateWalls(floors, offset, entranceEdges, wallThickness, gridSize) {
 //  WALL VISUAL BUILDER (Drawing documents)
 // ═══════════════════════════════════════════════════════
 
-function generateWallVisuals(floors, offset, options, entranceEdges, gridSize) {
+function generateWallVisuals(floors, offset, options, entranceEdges) {
     const { useTexture, wallColor, wallThickness, wallTilePath } = options;
+    const gridSize = GRID_SIZE;
     const drawingsData = [];
     const entranceSet = new Set(entranceEdges.map(e => `${e.x},${e.y},${e.dir}`));
 
@@ -763,16 +800,17 @@ function generateWallVisuals(floors, offset, options, entranceEdges, gridSize) {
         }
     }
 
-    // Create rectangle drawing (more stable than polygons in v14)
-    const createRect = (px, py, w, h, isHorizontal) => {
+    // Create polygon drawing
+    const createPoly = (px, py, w, h, isHorizontal) => {
         const drawing = {
             author: game.user.id,
-            x: Math.round(px),
-            y: Math.round(py),
+            x: px,
+            y: py,
             shape: {
-                type: "r", // Rectangle
-                width: Math.round(w),
-                height: Math.round(h)
+                type: "p",
+                width: w,
+                height: h,
+                points: [0, 0, w, 0, w, h, 0, h, 0, 0]
             },
             strokeWidth: 0,
             strokeAlpha: 0,
@@ -800,28 +838,28 @@ function generateWallVisuals(floors, offset, options, entranceEdges, gridSize) {
     for (const seg of Object.values(segments.N)) {
         const px = (seg.gx + offset.x) * gridSize;
         const py = (seg.gy + offset.y) * gridSize - thickness;
-        createRect(px, py, seg.len * gridSize, thickness, true);
+        createPoly(px, py, seg.len * gridSize, thickness, true);
     }
 
     // South walls
     for (const seg of Object.values(segments.S)) {
         const px = (seg.gx + offset.x) * gridSize;
         const py = (seg.gy + offset.y) * gridSize + gridSize;
-        createRect(px, py, seg.len * gridSize, thickness, true);
+        createPoly(px, py, seg.len * gridSize, thickness, true);
     }
 
     // East walls
     for (const seg of Object.values(segments.E)) {
         const px = (seg.gx + offset.x) * gridSize + gridSize;
         const py = (seg.gy + offset.y) * gridSize;
-        createRect(px, py, thickness, seg.len * gridSize, false);
+        createPoly(px, py, thickness, seg.len * gridSize, false);
     }
 
     // West walls
     for (const seg of Object.values(segments.W)) {
         const px = (seg.gx + offset.x) * gridSize - thickness;
         const py = (seg.gy + offset.y) * gridSize;
-        createRect(px, py, thickness, seg.len * gridSize, false);
+        createPoly(px, py, thickness, seg.len * gridSize, false);
     }
 
     // Corners
@@ -835,10 +873,10 @@ function generateWallVisuals(floors, offset, options, entranceEdges, gridSize) {
         const hasE = !floors.has(`${gx + 1},${gy}`);
         const hasW = !floors.has(`${gx - 1},${gy}`);
 
-        if (hasN && hasW) createRect(px - thickness, py - thickness, thickness, thickness, true);
-        if (hasN && hasE) createRect(px + gridSize, py - thickness, thickness, thickness, true);
-        if (hasS && hasW) createRect(px - thickness, py + gridSize, thickness, thickness, true);
-        if (hasS && hasE) createRect(px + gridSize, py + gridSize, thickness, thickness, true);
+        if (hasN && hasW) createPoly(px - thickness, py - thickness, thickness, thickness, true);
+        if (hasN && hasE) createPoly(px + gridSize, py - thickness, thickness, thickness, true);
+        if (hasS && hasW) createPoly(px - thickness, py + gridSize, thickness, thickness, true);
+        if (hasS && hasE) createPoly(px + gridSize, py + gridSize, thickness, thickness, true);
     }
 
     return drawingsData;
@@ -848,7 +886,8 @@ function generateWallVisuals(floors, offset, options, entranceEdges, gridSize) {
 //  DOOR BUILDER
 // ═══════════════════════════════════════════════════════
 
-function generateDoors(doorPositions, offset, wallThickness, doorTilePath, gridSize) {
+function generateDoors(doorPositions, offset, wallThickness, doorTilePath) {
+    const gridSize = GRID_SIZE;
     const wallsData = [];
 
     for (const door of doorPositions) {
@@ -878,34 +917,29 @@ function generateDoors(doorPositions, offset, wallThickness, doorTilePath, gridS
         }
 
         // Resolve door texture variant (horizontal/vertical) matching the door orientation
-        const isHorizontalDoor = (Math.round(y1) === Math.round(y2));
+        const isHorizontalDoor = (y1 === y2);
         let doorTexture = doorTilePath;
         if (doorTexture) {
             if (isHorizontalDoor && !doorTexture.toLowerCase().includes("horizontal")) {
-                const hVariant = doorTexture.replace(/vertical/i, "horizontal");
-                doorTexture = hVariant;
+                doorTexture = doorTexture.replace(/vertical/i, "horizontal");
             } else if (!isHorizontalDoor && !doorTexture.toLowerCase().includes("vertical")) {
-                const vVariant = doorTexture.replace(/horizontal/i, "vertical");
-                doorTexture = vVariant;
+                doorTexture = doorTexture.replace(/horizontal/i, "vertical");
             }
         }
 
         // Door wall with swing animation
         const doorWall = {
-            c: [Math.round(x1), Math.round(y1), Math.round(x2), Math.round(y2)],
-            door: CONST.WALL_DOOR_TYPES.DOOR,
-            ds: CONST.WALL_DOOR_STATES.CLOSED,
-            light: CONST.WALL_SENSE_TYPES.NORMAL,
-            move: CONST.WALL_SENSE_TYPES.NORMAL,
-            sound: CONST.WALL_SENSE_TYPES.NORMAL,
+            c: [x1, y1, x2, y2],
+            door: 1,
+            ds: 0,
+            light: 20,
+            move: 20,
+            sound: 20,
             doorSound: "woodBasic",
             flags: { [MODULE_ID]: { dungeonGenWall: true } }
         };
         if (doorTexture) {
-            doorWall.animation = {
-                type: "swing",
-                texture: doorTexture
-            };
+            doorWall.animation = { type: "swing", texture: doorTexture };
         }
         wallsData.push(doorWall);
 
@@ -913,21 +947,21 @@ function generateDoors(doorPositions, offset, wallThickness, doorTilePath, gridS
         const fillerFlags = { [MODULE_ID]: { dungeonGenWall: true } };
         if (isHorizontalDoor) {
             wallsData.push({
-                c: [Math.round(x1 - wallThickness), Math.round(y1), Math.round(x1), Math.round(y1)],
-                light: CONST.WALL_SENSE_TYPES.NORMAL, move: CONST.WALL_SENSE_TYPES.NORMAL, sound: CONST.WALL_SENSE_TYPES.NORMAL, flags: fillerFlags
+                c: [x1 - wallThickness, y1, x1, y1],
+                light: 20, move: 20, sound: 20, flags: fillerFlags
             });
             wallsData.push({
-                c: [Math.round(x2), Math.round(y2), Math.round(x2 + wallThickness), Math.round(y2)],
-                light: CONST.WALL_SENSE_TYPES.NORMAL, move: CONST.WALL_SENSE_TYPES.NORMAL, sound: CONST.WALL_SENSE_TYPES.NORMAL, flags: fillerFlags
+                c: [x2, y2, x2 + wallThickness, y2],
+                light: 20, move: 20, sound: 20, flags: fillerFlags
             });
         } else {
             wallsData.push({
-                c: [Math.round(x1), Math.round(y1 - wallThickness), Math.round(x1), Math.round(y1)],
-                light: CONST.WALL_SENSE_TYPES.NORMAL, move: CONST.WALL_SENSE_TYPES.NORMAL, sound: CONST.WALL_SENSE_TYPES.NORMAL, flags: fillerFlags
+                c: [x1, y1 - wallThickness, x1, y1],
+                light: 20, move: 20, sound: 20, flags: fillerFlags
             });
             wallsData.push({
-                c: [Math.round(x2), Math.round(y2), Math.round(x2), Math.round(y2 + wallThickness)],
-                light: CONST.WALL_SENSE_TYPES.NORMAL, move: CONST.WALL_SENSE_TYPES.NORMAL, sound: CONST.WALL_SENSE_TYPES.NORMAL, flags: fillerFlags
+                c: [x2, y2, x2, y2 + wallThickness],
+                light: 20, move: 20, sound: 20, flags: fillerFlags
             });
         }
     }
@@ -940,23 +974,24 @@ function generateDoors(doorPositions, offset, wallThickness, doorTilePath, gridS
 // ═══════════════════════════════════════════════════════
 
 /**
- * Clear only dungeon-generated documents at the given elevation.
- * If elevation is 0 and Levels is not active, clears all dungeon documents.
+ * Clear only dungeon-generated documents at the given level context.
+ * Supports both Foundry v14 native levels (levelId) and the Levels module (elevation).
+ * If levelsActive is false and no levelId, clears all dungeon documents.
  */
-async function clearSceneAtLevel(scene, elevation, levelsActive) {
+async function clearSceneAtLevel(scene, levelContext, levelsActive) {
     const isDungeonTile = (t) => {
         const f = t.flags?.[MODULE_ID];
         return f?.dungeonFloor || f?.dungeonStairs || f?.dungeonStairsDown || f?.dungeonClutter;
     };
-    const isDungeonWall = (w) => {
-        return w.flags?.[MODULE_ID]?.dungeonGenWall;
-    };
-    const isDungeonDrawing = (d) => {
-        return d.flags?.[MODULE_ID]?.dungeonWall;
-    };
+    const isDungeonWall = (w) => w.flags?.[MODULE_ID]?.dungeonGenWall;
+    const isDungeonDrawing = (d) => d.flags?.[MODULE_ID]?.dungeonWall;
 
     const matchesLevel = (doc, type) => {
+        // v14 native levels: match by levelId stored in doc.levels collection/array
+        if (levelContext?.levelId && doc.levels?.size) return doc.levels.has(levelContext.levelId);
+        if (levelContext?.levelId && Array.isArray(doc.levels)) return doc.levels.includes(levelContext.levelId);
         if (!levelsActive) return true;
+        const elevation = levelContext?.elevation ?? 0;
         if (type === "Wall") {
             const bottom = doc.flags?.["wall-height"]?.bottom ?? 0;
             return Math.abs(bottom - elevation) < ELEVATION_TOLERANCE;
@@ -979,10 +1014,10 @@ async function clearSceneAtLevel(scene, elevation, levelsActive) {
     if (drawingIds.length > 0) await scene.deleteEmbeddedDocuments("Drawing", drawingIds);
 }
 
-async function configureScene(scene, gridSize) {
+async function configureScene(scene) {
     await scene.update({
-        "grid.size": gridSize,
-        "grid.type": CONST.GRID_TYPES.SQUARE,
+        "grid.size": GRID_SIZE,
+        "grid.type": 1,
         "backgroundColor": "#1a1a1a"
     });
 }
@@ -1014,15 +1049,16 @@ function fitToContent(floors, gridSize, padding) {
 //  TILE RENDERER
 // ═══════════════════════════════════════════════════════
 
-async function renderFloorTilesWithElevation(scene, floors, rng, offset, floorTexture, createWithElevation, gridSize) {
+async function renderFloorTilesWithElevation(scene, floors, rng, offset, floorTexture, createWithElevation) {
+    const gridSize = GRID_SIZE;
     const tileDocs = [];
 
     for (const coord of floors) {
         const [gx, gy] = coord.split(',').map(Number);
         tileDocs.push({
-            texture: { src: floorTexture, anchorX: 0, anchorY: 0 },
-            x: Math.round((gx + offset.x) * gridSize),
-            y: Math.round((gy + offset.y) * gridSize),
+            texture: makeTopLeftTileTexture(floorTexture),
+            x: (gx + offset.x) * gridSize,
+            y: (gy + offset.y) * gridSize,
             width: gridSize,
             height: gridSize,
             sort: 0,
@@ -1051,10 +1087,6 @@ export async function generateDungeon(config) {
         return;
     }
 
-    // Local alias so the many `gridSize` references in this function resolve;
-    // helper functions also take gridSize as a parameter.
-    const gridSize = GRID_SIZE;
-
     const {
         seed = "abc123",
         roomCount = 10,
@@ -1078,17 +1110,18 @@ export async function generateDungeon(config) {
         return;
     }
 
-    // Detect Levels module and current elevation
+    // Detect Foundry v14 native levels and/or third-party Levels module
     const levelsActive = game.modules.get("levels")?.active ?? false;
-    let elevation = 0;
-    let wallHeightBottom = 0;
-    let wallHeightTop = LEVEL_HEIGHT - 1;
+    const levelContext = getSceneLevelContext(scene);
+    let elevation = levelContext.elevation;
+    let wallHeightBottom = levelContext.elevation;
+    let wallHeightTop = levelContext.rangeTop;
 
-    if (levelsActive) {
-        // Use probe tile to reliably detect Levels-assigned elevation
+    if (levelsActive && !levelContext.levelId) {
+        // Levels module active but no native level — use probe tile for reliable elevation
         try {
             const probe = await scene.createEmbeddedDocuments("Tile", [{
-                texture: { src: `modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.png`, anchorX: 0, anchorY: 0 },
+                texture: makeTopLeftTileTexture(`modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.png`),
                 x: 0, y: 0, width: GRID_SIZE, height: GRID_SIZE,
                 hidden: true,
                 flags: { [MODULE_ID]: { probe: true } }
@@ -1103,16 +1136,18 @@ export async function generateDungeon(config) {
         wallHeightBottom = elevation;
         wallHeightTop = elevation + LEVEL_HEIGHT - 1;
         console.log(`${MODULE_ID} | Generator: Levels detected, elevation ${elevation} (${wallHeightBottom}/${wallHeightTop})`);
+    } else if (levelContext.levelId) {
+        console.log(`${MODULE_ID} | Generator: Foundry level detected, ${levelContext.levelId} elevation ${elevation} (${wallHeightBottom}/${wallHeightTop})`);
     }
 
-    ui.notifications.info(`SDX | Generating dungeon${levelsActive ? ` at level ${elevation}` : ""}...`);
+    ui.notifications.info(`SDX | Generating dungeon${(levelsActive || levelContext.levelId) ? ` at level ${elevation}` : ""}...`);
 
     try {
         // 1. Clear only dungeon-generated content at current level
-        await clearSceneAtLevel(scene, elevation, levelsActive);
+        await clearSceneAtLevel(scene, levelContext, levelsActive || !!levelContext.levelId);
 
         // 2. Configure scene
-        await configureScene(scene, GRID_SIZE);
+        await configureScene(scene);
 
         // 3. Create seeded RNG
         const rng = seedrandom(seed);
@@ -1127,7 +1162,7 @@ export async function generateDungeon(config) {
         }, rng);
 
         // 5. Fit scene to content (expand only if Levels is active to preserve other levels)
-        let { offset, width, height } = fitToContent(layout.floors, gridSize, 300);
+        let { offset, width, height } = fitToContent(layout.floors, GRID_SIZE, 300);
         if (levelsActive) {
             const newWidth = Math.max(scene.width, width);
             const newHeight = Math.max(scene.height, height);
@@ -1138,28 +1173,40 @@ export async function generateDungeon(config) {
 
         // Ensure dungeon content stays inside the scene interior with a 1-cell gap on all sides.
         // Wall visuals extend wallThickness px outward from floor tiles, so floor tiles must
-        // start at least (scenePadX + gridSize + wallThickness) px from the canvas corner.
+        // start at least (scenePadX + GRID_SIZE + wallThickness) px from the canvas corner.
         {
-            const scenePadX = Math.ceil(scene.width * scene.padding / gridSize) * gridSize;
-            const scenePadY = Math.ceil(scene.height * scene.padding / gridSize) * gridSize;
-            const minStartX = scenePadX + gridSize + wallThickness;
-            const minStartY = scenePadY + gridSize + wallThickness;
-            const extraX = Math.max(0, Math.ceil((minStartX - 300) / gridSize));
-            const extraY = Math.max(0, Math.ceil((minStartY - 300) / gridSize));
+            const scenePadX = Math.ceil(scene.width * scene.padding / GRID_SIZE) * GRID_SIZE;
+            const scenePadY = Math.ceil(scene.height * scene.padding / GRID_SIZE) * GRID_SIZE;
+            const minStartX = scenePadX + GRID_SIZE + wallThickness;
+            const minStartY = scenePadY + GRID_SIZE + wallThickness;
+            const extraX = Math.max(0, Math.ceil((minStartX - 300) / GRID_SIZE));
+            const extraY = Math.max(0, Math.ceil((minStartY - 300) / GRID_SIZE));
             if (extraX > 0 || extraY > 0) {
                 offset = { x: offset.x + extraX, y: offset.y + extraY };
+                console.log(`${MODULE_ID} | Scene padding adjustment: +${extraX},+${extraY} cells (scenePad ${scenePadX}x${scenePadY}px)`);
             }
+        }
+
+        // Scene size changes can briefly leave canvas layers without display containers.
+        // Wait until all required layers are ready before creating embedded documents.
+        if (!(await waitForDungeonCanvasReady(scene))) {
+            console.warn(`${MODULE_ID} | Dungeon generation continuing before all canvas layers reported ready.`);
         }
 
         // 6. Get selected textures
         const floorTexture = getSelectedFloorTile() || `modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.png`;
         const wallTilePath = getSelectedWallTile();
 
-        // Helper: create documents in batches and apply elevation if Levels is active
+        // Helper: create documents in batches, apply level data (elevation + levelId), then
+        // post-update wall-height/levels flags so the Levels module reads them correctly.
         async function createWithElevation(type, docs, chunkSize = 100) {
             for (let i = 0; i < docs.length; i += chunkSize) {
-                const created = await scene.createEmbeddedDocuments(type, docs.slice(i, i + chunkSize));
-                if (levelsActive && created.length > 0) {
+                if (!(await waitForDocumentLayerReady(type, scene.id))) {
+                    throw new Error(`Canvas ${type} layer was not ready for dungeon generation.`);
+                }
+                const batch = docs.slice(i, i + chunkSize).map(doc => applySceneLevelData(doc, type, levelContext));
+                const created = await scene.createEmbeddedDocuments(type, batch);
+                if ((levelsActive || levelContext.levelId) && created.length > 0) {
                     if (type === "Wall") {
                         const updates = created.map(w => ({
                             _id: w.id,
@@ -1187,10 +1234,10 @@ export async function generateDungeon(config) {
         }
 
         // 7. Render floor tiles
-        await renderFloorTilesWithElevation(scene, layout.floors, rng, offset, floorTexture, createWithElevation, gridSize);
+        await renderFloorTilesWithElevation(scene, layout.floors, rng, offset, floorTexture, createWithElevation);
 
         // 8. Generate logical walls
-        const wallsData = generateWalls(layout.floors, offset, layout.entranceEdges, wallThickness, gridSize);
+        const wallsData = generateWalls(layout.floors, offset, layout.entranceEdges, wallThickness);
 
         // 9. Generate wall visuals
         const drawingsData = generateWallVisuals(layout.floors, offset, {
@@ -1198,11 +1245,11 @@ export async function generateDungeon(config) {
             wallColor,
             wallThickness,
             wallTilePath
-        }, layout.entranceEdges, gridSize);
+        }, layout.entranceEdges);
 
         // 10. Generate doors (using selected door tile for swing animation)
         const doorTilePath = getSelectedDoorTile();
-        const doorsData = generateDoors(layout.doorPositions, offset, wallThickness, doorTilePath, gridSize);
+        const doorsData = generateDoors(layout.doorPositions, offset, wallThickness, doorTilePath);
 
         // 11. Create all walls (logical + doors)
         const allWalls = [...wallsData, ...doorsData];
@@ -1227,7 +1274,7 @@ export async function generateDungeon(config) {
             }];
             const wallDrawings = canvas.drawings.placeables.filter(d => {
                 if (!d.document.flags?.[MODULE_ID]?.dungeonWall) return false;
-                if (levelsActive) return Math.abs((d.document.elevation ?? 0) - elevation) < ELEVATION_TOLERANCE;
+                if (levelsActive || levelContext.levelId) return Math.abs((d.document.elevation ?? 0) - elevation) < ELEVATION_TOLERANCE;
                 return true;
             });
             for (const drawing of wallDrawings) {
@@ -1271,9 +1318,9 @@ export async function generateDungeon(config) {
                     } while (usedPositions.has(key) && tries < 10);
                     usedPositions.add(key);
                     stairsTiles.push({
-                        texture: { src: `modules/${MODULE_ID}/assets/Dungeon/${textureName}`, anchorX: 0, anchorY: 0 },
-                        x: Math.round((sx + offset.x) * gridSize + (gridSize - 50) / 2),
-                        y: Math.round((sy + offset.y) * gridSize + (gridSize - 50) / 2),
+                        texture: makeTopLeftTileTexture(`modules/${MODULE_ID}/assets/Dungeon/${textureName}`),
+                        x: (sx + offset.x) * GRID_SIZE + (GRID_SIZE - 50) / 2,
+                        y: (sy + offset.y) * GRID_SIZE + (GRID_SIZE - 50) / 2,
                         width: 50,
                         height: 50,
                         sort: 2,
@@ -1347,10 +1394,10 @@ export async function generateDungeon(config) {
                             }
                         }
 
-                        const pixelX = Math.round((gx + offset.x) * gridSize + (cellsW * gridSize - item.w) / 2);
-                        const pixelY = Math.round((gy + offset.y) * gridSize + (cellsH * gridSize - item.h) / 2);
+                        const pixelX = (gx + offset.x) * GRID_SIZE + (cellsW * GRID_SIZE - item.w) / 2;
+                        const pixelY = (gy + offset.y) * GRID_SIZE + (cellsH * GRID_SIZE - item.h) / 2;
                         clutterTiles.push({
-                            texture: { src: item.src, anchorX: 0, anchorY: 0 },
+                            texture: makeTopLeftTileTexture(item.src),
                             x: pixelX,
                             y: pixelY,
                             width: item.w,
