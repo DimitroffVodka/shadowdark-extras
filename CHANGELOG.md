@@ -4,6 +4,127 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.12] — 2026-05-18 — Dungeon elevation fix + multi-level orchestration API
+
+Two related drops shipped together.
+
+### Fixed — dungeon-generator tiles now use `elevation: 0` instead of the level's bottom
+
+Reported by upstream dev: "creates the tiles at wrong elevation
+(right level, but elevation should be 0, instead it reads the
+elevation of the level)."
+
+Tiles and drawings should sit at `elevation: 0` and carry their level
+membership through `doc.levels = [levelId]` — that's how v14 native
+levels expect the data. The dungeon generator was instead writing
+`elevation: levelContext.elevation` (the level's bottom, e.g. 20 for
+Second Floor), double-encoding the slab.
+
+Fix had two leak points; both plugged:
+
+1. `scripts/DungeonPainterSD.mjs::applySceneLevelData` — the obvious
+   source. Non-Wall branch now writes `doc.elevation = 0`. Wall
+   branch unchanged (walls correctly need absolute `wall-height`
+   coordinates).
+
+2. `scripts/DungeonGeneratorSD.mjs::createWithElevation` — the
+   silent override. After `createEmbeddedDocuments` resolved, this
+   helper was post-updating Tile and Drawing docs with
+   `elevation: <captured level bottom>`, undoing fix #1. Both
+   branches now write `elevation: 0`.
+
+Validated end-to-end on Restored Keep across all 4 floors including
+the basement (elevation -20 to 0): newly-generated tiles all came
+back with `elevation: 0`. Walls retained `wall-height: {bottom: 20,
+top: 40}` on Second Floor, correctly absolute. No regression on
+single-level scenes (the fix is a no-op when `levelContext.elevation
+=== 0`).
+
+### Added — `module.api` helpers for multi-level dungeon orchestration
+
+Three additions to support fully-autonomous multi-level dungeon
+generation (where an agent or external integration can build a scene
+with multiple floors, generate dungeons per floor, and link stairs
+between floors without human clicks).
+
+**1. `generateDungeon` now returns stair positions**
+
+The function previously returned nothing. It now returns:
+
+```js
+{
+  stairsUp:   [{ x, y, gridX, gridY }, ...],
+  stairsDown: [{ x, y, gridX, gridY }, ...]
+}
+```
+
+Caller can now know where stair tiles were placed, which makes it
+possible to drop `changeLevel` regions at the correct positions to
+make the stairs actually transition tokens between floors.
+
+**2. `placeChangeLevelRegion(opts)` — new helper on `module.api`**
+
+Wrapper that creates a Region with the v14-native `changeLevel`
+behavior at a given position, bridging two specified levels.
+Companion to `generateDungeon`'s stair-position output.
+
+```js
+const api = game.modules.get("shadowdark-extras").api;
+const { stairsUp } = await api.generateDungeon({ stairs: 1, ... });
+const stair = stairsUp[0];
+await api.placeChangeLevelRegion({
+  sceneId, x: stair.x, y: stair.y,
+  levels: [groundLevelId, upperLevelId],
+  movementActions: []   // [] = walk, ["climb"] = ladders
+});
+// Token walking onto that region now triggers "Move to Upper?" dialog.
+```
+
+**3. `placeDungeonSurface(opts)` — new helper on `module.api`**
+
+Walks every dungeon-generated tile on a given level and creates a
+single Region with the `defineSurface` behavior whose `shapes[]` is
+one rectangle per tile. This tells Foundry v14 "this is the walkable
+floor of this level" — used by token spawn/movement logic.
+
+```js
+await api.placeDungeonSurface({ sceneId, levelId: groundFloorId });
+// → { id, name, tileCount }
+```
+
+Implementation lives in new module `scripts/DungeonRegionsSD.mjs`.
+
+**End-state flow** (fully autonomous via the foundry-mcp-live MCP
+server's tools + this API):
+
+```js
+const { id: sceneId } = await create_scene({ name: "Procedural Dungeon" });
+await add_scene_level({ sceneId, name: "Ground",   bottom: 0,  top: 20 });
+await add_scene_level({ sceneId, name: "Upper",    bottom: 20, top: 40 });
+
+const { levels } = await get_scene_levels({ sceneId });
+
+for (const floor of levels) {
+  await set_canvas_level({ sceneId, levelId: floor.id });
+  const { stairsUp, stairsDown } = await api.generateDungeon({
+    seed: floor.name, roomCount: 5, stairs: 1, stairsDown: 1
+  });
+  await api.placeDungeonSurface({ sceneId, levelId: floor.id });
+  for (const s of [...stairsUp, ...stairsDown]) {
+    await api.placeChangeLevelRegion({
+      sceneId, x: s.x, y: s.y,
+      levels: [floor.id, adjacentFloor.id]
+    });
+  }
+}
+```
+
+Phase 4 of the roadmap (cross-floor stair *alignment* — picking
+room layouts so the up-stair on floor N lands at the same (x, y)
+as the down-stair on floor N+1) remains future work.
+
+---
+
 ## [6.10.11] — 2026-05-18 — Levels-aware spell regions + elevation badge + GM unidentified-item display + AA overhaul + public module.api
 
 Five drops shipped together.

@@ -90,6 +90,7 @@ import { initTemplateElevationBadge } from "./TemplateElevationBadgeSD.mjs";
 import { generateDungeon, getGeneratorSettings, setGeneratorSettings, generateRandomSeed } from "./DungeonGeneratorSD.mjs";
 import { generateHexMap, clearGeneratedTiles } from "./HexGeneratorSD.mjs";
 import { getSceneLevelContext, applySceneLevelData, getDungeonBackground } from "./DungeonPainterSD.mjs";
+import { placeChangeLevelRegion, placeDungeonSurface } from "./DungeonRegionsSD.mjs";
 
 
 const MODULE_ID = "shadowdark-extras";
@@ -19069,13 +19070,18 @@ Hooks.on("setup", () => {
 			getGeneratorSettings: getGeneratorSettings,
 			setGeneratorSettings: setGeneratorSettings,
 			generateRandomSeed: generateRandomSeed,
+			placeChangeLevelRegion: placeChangeLevelRegion,
+			placeDungeonSurface: placeDungeonSurface,
 			// --- Hex generator ---
 			generateHexMap: generateHexMap,
 			clearGeneratedTiles: clearGeneratedTiles,
 			// --- Scene level context (for Levels integration / MCP tests) ---
 			getSceneLevelContext: getSceneLevelContext,
 			applySceneLevelData: applySceneLevelData,
-			getDungeonBackground: getDungeonBackground
+			getDungeonBackground: getDungeonBackground,
+			// --- Dungeon Regions ---
+			placeChangeLevelRegion: placeChangeLevelRegion,
+			placeDungeonSurface: placeDungeonSurface
 		};
 		//console.log(`${MODULE_ID} | Module API registered`);
 	}

@@ -67,11 +67,21 @@ export function applySceneLevelData(doc, type, levelContext = getSceneLevelConte
     if (!doc || !levelContext) return doc;
     if (levelContext.levelId) doc.levels = [levelContext.levelId];
     if (type === "Wall") {
+        // Walls use absolute Z range — `wall-height.bottom` IS the slab floor.
         doc.flags = foundry.utils.mergeObject(doc.flags ?? {}, {
             "wall-height": { bottom: levelContext.elevation, top: levelContext.rangeTop }
         }, { inplace: false });
     } else {
-        doc.elevation = levelContext.elevation;
+        // Tiles / Drawings / etc. sit at the floor of their assigned level.
+        // Level membership is encoded by `doc.levels = [levelId]`, so setting
+        // `doc.elevation = levelContext.elevation` double-encodes the slab
+        // offset — making the placeable render at level.bottom + level.bottom.
+        // The correct semantics: elevation = 0 relative to whichever level
+        // the doc is on. Special-case layering (e.g. background drawing one
+        // step below the floor) is handled by callers writing `doc.elevation`
+        // explicitly BEFORE this point — but applySceneLevelData itself owns
+        // the default and that default is 0.
+        doc.elevation = 0;
         doc.flags = foundry.utils.mergeObject(doc.flags ?? {}, {
             levels: { rangeTop: levelContext.rangeTop }
         }, { inplace: false });

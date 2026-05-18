@@ -1208,6 +1208,7 @@ export async function generateDungeon(config) {
                 const created = await scene.createEmbeddedDocuments(type, batch);
                 if ((levelsActive || levelContext.levelId) && created.length > 0) {
                     if (type === "Wall") {
+                        // Walls use absolute Z range — `wall-height.bottom`/`top` IS the slab.
                         const updates = created.map(w => ({
                             _id: w.id,
                             "flags.wall-height.bottom": wallHeightBottom,
@@ -1215,16 +1216,21 @@ export async function generateDungeon(config) {
                         }));
                         await scene.updateEmbeddedDocuments("Wall", updates);
                     } else if (type === "Tile") {
+                        // Tiles sit at the floor of their assigned level (elevation 0);
+                        // level membership is encoded by `doc.levels = [levelId]` already.
+                        // Writing the level's bottom into `elevation` double-encodes the
+                        // slab and renders the tile at 2× the intended height.
                         const updates = created.map(t => ({
                             _id: t.id,
-                            elevation: elevation,
+                            elevation: 0,
                             "flags.levels.rangeTop": wallHeightTop
                         }));
                         await scene.updateEmbeddedDocuments("Tile", updates);
                     } else if (type === "Drawing") {
+                        // Same reasoning as Tile — base-of-level elevation.
                         const updates = created.map(d => ({
                             _id: d.id,
-                            elevation: elevation,
+                            elevation: 0,
                             "flags.levels.rangeTop": wallHeightTop
                         }));
                         await scene.updateEmbeddedDocuments("Drawing", updates);
@@ -1287,6 +1293,8 @@ export async function generateDungeon(config) {
         }
 
         // 13. Place stairs tiles in random rooms
+        const placedStairsUp = [];
+        const placedStairsDown = [];
         if ((stairs > 0 || stairsDown > 0) && layout.roomData.length > 0) {
             const stairsTiles = [];
             const usedPositions = new Set(); // track "gx,gy" to avoid overlap
@@ -1300,7 +1308,7 @@ export async function generateDungeon(config) {
 
             let roomIdx = 0;
 
-            const placeStairs = (count, textureName, flagKey) => {
+            const placeStairs = (count, textureName, flagKey, results) => {
                 for (let n = 0; n < count && roomIdx < candidateRooms.length; n++, roomIdx++) {
                     const room = candidateRooms[roomIdx].room;
                     const interiorLeft = room.left + 1;
@@ -1317,20 +1325,27 @@ export async function generateDungeon(config) {
                         tries++;
                     } while (usedPositions.has(key) && tries < 10);
                     usedPositions.add(key);
+
+                    const gridX = sx + offset.x;
+                    const gridY = sy + offset.y;
+                    const x = gridX * GRID_SIZE + (GRID_SIZE - 50) / 2;
+                    const y = gridY * GRID_SIZE + (GRID_SIZE - 50) / 2;
+
                     stairsTiles.push({
                         texture: makeTopLeftTileTexture(`modules/${MODULE_ID}/assets/Dungeon/${textureName}`),
-                        x: (sx + offset.x) * GRID_SIZE + (GRID_SIZE - 50) / 2,
-                        y: (sy + offset.y) * GRID_SIZE + (GRID_SIZE - 50) / 2,
+                        x, y,
                         width: 50,
                         height: 50,
                         sort: 2,
                         flags: { [MODULE_ID]: { [flagKey]: true } }
                     });
+
+                    results.push({ x, y, gridX, gridY });
                 }
             };
 
-            placeStairs(stairs, "stairs.webp", "dungeonStairs");
-            placeStairs(stairsDown, "stairsdown.webp", "dungeonStairsDown");
+            placeStairs(stairs, "stairs.webp", "dungeonStairs", placedStairsUp);
+            placeStairs(stairsDown, "stairsdown.webp", "dungeonStairsDown", placedStairsDown);
 
             if (stairsTiles.length > 0) {
                 await createWithElevation("Tile", stairsTiles);
@@ -1419,6 +1434,11 @@ export async function generateDungeon(config) {
         }
 
         ui.notifications.info(`SDX | Dungeon generated! ${layout.placedRooms.length} rooms, seed: ${seed}`);
+
+        return {
+            stairsUp: placedStairsUp,
+            stairsDown: placedStairsDown
+        };
     } catch (err) {
         console.error(`${MODULE_ID} | Dungeon generation failed:`, err);
         ui.notifications.error("SDX | Dungeon generation failed. Check console for details.");
