@@ -2056,12 +2056,28 @@ export async function injectDamageCard(message, html, data) {
 		const templateEffectsConfigForFlag = item?.flags?.[MODULE_ID]?.templateEffects;
 		const spellDamageConfigForFlag = item?.flags?.[MODULE_ID]?.spellDamage;
 		const sdxTemplateFlags = { [MODULE_ID]: {} };
+
+		// Native v14: Region.levels must be in the creation data — post-create
+		// updates are silently dropped.  Read token.document.level directly.
+		let casterLevels = null;
+		try {
+			const casterToken = canvas.tokens?.get(speaker?.token);
+			const casterLevelId = casterToken?.document?.level ?? null;
+			if (casterLevelId) {
+				casterLevels = [casterLevelId];
+				console.log(`shadowdark-extras | Caster level id=${casterLevelId} — will pass to Region creation`);
+			}
+		} catch (e) {
+			console.warn("shadowdark-extras | Failed to detect caster level:", e);
+		}
+
 		if (templateEffectsConfigForFlag?.enabled) {
 			const effectsFlag = buildTemplateEffectsFlag({
 				enabled: true,
 				spellName: item.name,
 				casterActorId: casterActor?.id,
 				casterTokenId: speaker?.token,
+				onCreation: templateEffectsConfigForFlag.triggers?.onCreation || false,
 				onEnter: templateEffectsConfigForFlag.triggers?.onEnter || false,
 				onTurnStart: templateEffectsConfigForFlag.triggers?.onTurnStart || false,
 				onTurnEnd: templateEffectsConfigForFlag.triggers?.onTurnEnd || false,
@@ -2125,6 +2141,8 @@ export async function injectDamageCard(message, html, data) {
 							autoDelete: autoDelete,
 							x: casterToken.center.x,
 							y: casterToken.center.y,
+							elevation: casterToken.document.elevation ?? 0,
+							levels: casterLevels,
 							texture: tmTexture || null,
 							textureOpacity: tmOpacity,
 							tmfxPreset: tmPreset,
@@ -2145,8 +2163,10 @@ export async function injectDamageCard(message, html, data) {
 							autoDelete: autoDelete,
 							originFromCaster: {
 								x: casterToken.center.x,
-								y: casterToken.center.y
+								y: casterToken.center.y,
+								elevation: casterToken.document.elevation ?? 0
 							},
+							levels: casterLevels,
 							texture: tmTexture || null,
 							textureOpacity: tmOpacity,
 							tmfxPreset: tmPreset,
@@ -2162,6 +2182,7 @@ export async function injectDamageCard(message, html, data) {
 							size: templateSize,
 							fillColor: fillColor,
 							autoDelete: autoDelete,
+							levels: casterLevels,
 							texture: tmTexture || null,
 							textureOpacity: tmOpacity,
 							tmfxPreset: tmPreset,
@@ -2171,12 +2192,15 @@ export async function injectDamageCard(message, html, data) {
 						});
 					}
 				} else {
-					// Choose location - user clicks to place
+					// Choose location — seed elevation and level from caster
+					const casterToken = canvas.tokens?.get(speaker?.token);
 					result = await SDX.templates.placeAndTarget({
 						type: templateType,
 						size: templateSize,
 						fillColor: fillColor,
 						autoDelete: autoDelete,
+						elevation: casterToken?.document?.elevation ?? 0,
+						levels: casterLevels,
 						texture: tmTexture || null,
 						textureOpacity: tmOpacity,
 						tmfxPreset: tmPreset,
@@ -4245,7 +4269,7 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 	}
 
 	const finalHtml = `
-						<div class="sdx-damage-card" data-message-id="${message.id}" data-caster-actor-id="${actor?.id || ''}" data-caster-token-id="${casterTokenId}" data-base-damage="${totalDamage}" data-damage-type="${damageType}" data-base-damage-type="${baseDamageType}" data-is-magical-weapon="${isMagicalWeapon}">
+						<div class="sdx-damage-card" data-message-id="${message.id}" data-item-id="${spellItem?.id || ''}" data-caster-actor-id="${actor?.id || ''}" data-caster-token-id="${casterTokenId}" data-base-damage="${totalDamage}" data-damage-type="${damageType}" data-base-damage-type="${baseDamageType}" data-is-magical-weapon="${isMagicalWeapon}">
 							<div class="sdx-damage-card-header">
 								<i class="fas ${headerIcon}"></i> ${headerText} <i class="fas fa-chevron-down"></i>
 							</div>

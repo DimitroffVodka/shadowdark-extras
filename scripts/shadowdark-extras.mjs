@@ -82,6 +82,14 @@ import { SDXCoordsSettingsApp } from "./SDXCoordsSettingsSD.mjs";
 import { initHexTooltip, HEX_JOURNAL_NAME } from "./HexTooltipSD.mjs";
 import { initHexFog } from "./SDXHexFogSD.mjs";
 import { registerMaphubHooks } from "./MaphubSD.mjs";
+import { initUnidentifiedGMDisplay } from "./UnidentifiedDisplaySD.mjs";
+import { initTemplateElevationBadge } from "./TemplateElevationBadgeSD.mjs";
+// Map-builder entry points — pulled in so we can expose them on module.api
+// for MCP / external automation. None of these modules register hooks at import
+// time (verified), so this only adds the named exports to the bundle graph.
+import { generateDungeon, getGeneratorSettings, setGeneratorSettings, generateRandomSeed } from "./DungeonGeneratorSD.mjs";
+import { generateHexMap, clearGeneratedTiles } from "./HexGeneratorSD.mjs";
+import { getSceneLevelContext, applySceneLevelData, getDungeonBackground } from "./DungeonPainterSD.mjs";
 
 
 const MODULE_ID = "shadowdark-extras";
@@ -107,6 +115,8 @@ initSDXCoords();
 initHexTooltip();
 initHexFog();
 registerMaphubHooks();
+initUnidentifiedGMDisplay();
+initTemplateElevationBadge();
 Hooks.once("init", () => {
 	// Register GSAP Plugins (GSAP is loaded by Foundry core)
 	try {
@@ -18352,8 +18362,47 @@ foundry.canvas.placeables.MeasuredTemplate.getRectShape = function (distance, di
 //console.log(`${MODULE_ID} | Square template rotation fix applied`);
 
 /**
+ * Return the scene Level ID that contains the given absolute elevation.
+ * Prefers named levels with finite bounds over the defaultLevel0000 catch-all.
+ */
+function _sdxLevelIdForElevation(elevation) {
+	const sceneLevels = canvas.scene?.levels;
+	if (!sceneLevels?.size) return null;
+	let catchAll = null;
+	for (const level of sceneLevels) {
+		const bottom = level.elevation?.bottom ?? -Infinity;
+		const top    = level.elevation?.top   ??  Infinity;
+		if (elevation < bottom || elevation > top) continue;
+		// Never return defaultLevel0000 as a specific match — treat it as catch-all
+		// regardless of whatever elevation values Foundry gives it.
+		if (level.id === "defaultLevel0000") { catchAll = level.id; continue; }
+		if (isFinite(bottom) || isFinite(top)) return level.id;
+		catchAll = level.id;
+	}
+	return catchAll;
+}
+
+/**
+ * Returns true when the token is on the same scene level as a template whose
+ * elevation is `templateElevation`.  Falls back to exact numeric elevation
+ * comparison on scenes without named levels.
+ */
+function _sdxTokenMatchesTemplateLevel(token, templateElevation) {
+	const sceneLevels = canvas.scene?.levels;
+	if (sceneLevels?.size > 1) {
+		const tokenLevelId    = token.document?.level ?? null;
+		const templateLevelId = _sdxLevelIdForElevation(templateElevation);
+		if (tokenLevelId && templateLevelId) {
+			return tokenLevelId === templateLevelId;
+		}
+	}
+	// Fallback: exact elevation match (flat scenes or no level data)
+	return (token.document?.elevation ?? 0) === templateElevation;
+}
+
+/**
  * SDX.templates - Template placement and targeting API
- * 
+ *
  * Usage:
  *   const template = await SDX.templates.place({ type: "rect", size: 30 });
  *   const tokens = SDX.templates.getTokensInTemplate(template);
@@ -18387,12 +18436,14 @@ SDX.templates = {
 			borderColor = "#000000",
 			autoDelete = null,
 			originFromCaster = null,
+			elevation = null,  // Initial elevation; defaults to caster elevation when provided
 			texture = null,
 			textureOpacity = 0.5,
 			tmfxPreset = null,
 			tmfxTint = null,
 			excludeCasterTokenId = null,  // Token ID to exclude from highlighting
-			templateFlags = null  // v14: module flags written at create-time only (post-create setFlag silently drops)
+			templateFlags = null,  // v14: module flags written at create-time only (post-create setFlag silently drops)
+			levels = null  // v14: Region.levels array of Level IDs — must be in creation data
 		} = options;
 
 		// Build template data based on type
@@ -18468,7 +18519,7 @@ SDX.templates = {
 		return new Promise((resolve) => {
 			let resolved = false;
 			let highlightedTokens = new Set(); // Track highlighted tokens
-			let currentElevation = originFromCaster?.elevation || 0; // Track template elevation
+			let currentElevation = elevation ?? originFromCaster?.elevation ?? 0; // Track template elevation
 
 			// Clear all existing targets before starting template preview
 			// This prevents previously targeted tokens from interfering with template targeting
@@ -18580,9 +18631,14 @@ SDX.templates = {
 					// Skip caster token if excludeCasterTokenId is set
 					if (excludeCasterTokenId && token.id === excludeCasterTokenId) continue;
 
-					// Skip tokens at different elevation
-					const tokenElevation = token.document.elevation || 0;
-					if (tokenElevation !== currentElevation) continue;
+					// Level filter: levels[0] is the caster's Level ID set at cast time
+					const casterLevelId = levels?.[0] ?? null;
+					if (casterLevelId) {
+						if ((token.document?.level ?? null) !== casterLevelId) continue;
+					} else {
+						// No level system — fall back to exact elevation match
+						if ((token.document?.elevation ?? 0) !== currentElevation) continue;
+					}
 
 					// Test if token center is inside the template shape
 					const localX = token.center.x - template.document.x;
@@ -18789,16 +18845,40 @@ SDX.templates = {
 				clearTokenHighlighting(); // Clear visual highlights on placement
 				cleanup();
 
+				// Snapshot existing region IDs before creation so we can identify
+				// the Region that Foundry auto-creates from the MeasuredTemplate.
+				const existingRegionIds = new Set(
+					[...(canvas.scene.regions ?? [])].map(r => r.id)
+				);
+
 				// Create the actual template document in the scene
-				const created = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
+				const creationData = {
 					...templateData,
 					x: finalX,
 					y: finalY,
 					direction: finalDirection,
-					elevation: currentElevation // Store elevation in template
-				}]);
+					elevation: currentElevation
+				};
+				const created = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [creationData]);
 
 				const placedTemplate = created[0];
+
+				// v14: The MeasuredTemplate creation auto-produces a RegionDocument
+				// with a different ID. Find that new Region and set levels on it.
+				if (levels?.length) {
+					try {
+						const newRegion = [...(canvas.scene.regions ?? [])]
+							.find(r => !existingRegionIds.has(r.id));
+						if (newRegion) {
+							await newRegion.update({ levels });
+							console.log(`shadowdark-extras | Set region.levels=${JSON.stringify(levels)} on ${newRegion.id}`);
+						} else {
+							console.warn("shadowdark-extras | Could not find auto-created Region to set levels");
+						}
+					} catch (e) {
+						console.warn("shadowdark-extras | Failed to set region.levels:", e);
+					}
+				}
 
 				// Auto-delete if specified
 				if (autoDelete && autoDelete > 0) {
@@ -18860,7 +18940,7 @@ SDX.templates = {
 	 * @param {MeasuredTemplateDocument} templateDoc - The template document
 	 * @returns {Token[]} - Array of Token objects inside the template
 	 */
-	getTokensInTemplate(templateDoc) {
+	getTokensInTemplate(templateDoc, overrideLevelId = null) {
 		if (!templateDoc?.object) {
 			console.warn(`${MODULE_ID} | getTokensInTemplate: Template object not found`);
 			return [];
@@ -18878,12 +18958,20 @@ SDX.templates = {
 			return [];
 		}
 
-		return canvas.tokens.placeables.filter(t => {
-			// Check elevation match
-			const tokenElevation = t.document.elevation || 0;
-			if (tokenElevation !== templateElevation) return false;
+		// Level ID priority: caller-supplied → template flags → elevation fallback
+		const casterLevelId = overrideLevelId
+			?? templateDoc.flags?.["shadowdark-extras"]?.casterLevelId
+			?? null;
 
-			// Check if token is inside template shape
+		return canvas.tokens.placeables.filter(t => {
+			// Level filter
+			if (casterLevelId) {
+				if ((t.document?.level ?? null) !== casterLevelId) return false;
+			} else if (!_sdxTokenMatchesTemplateLevel(t, templateElevation)) {
+				return false;
+			}
+
+			// Shape containment
 			return templateObject.testPoint(t.center);
 		});
 	},
@@ -18907,7 +18995,9 @@ SDX.templates = {
 		// Wait one tick for the placeable to be attached, then force-compute its shape.
 		// (v14: placeable.shape is lazy and not auto-computed; getTokensInTemplate will _refreshShape internally)
 		await new Promise(r => setTimeout(r, 50));
-		let tokens = this.getTokensInTemplate(template);
+		// Pass the caster's level ID directly so level filtering doesn't depend on flag lookup
+		const casterLevelId = options.levels?.[0] ?? null;
+		let tokens = this.getTokensInTemplate(template, casterLevelId);
 
 		// Filter out caster if excludeCasterTokenId is set
 		if (excludeCasterTokenId) {
@@ -18967,12 +19057,25 @@ Hooks.on("setup", () => {
 	const module = game.modules.get("shadowdark-extras");
 	if (module) {
 		module.api = {
+			// --- Spells / Focus tracker ---
 			startDurationSpell: startDurationSpell,
 			endDurationSpell: endDurationSpell,
 			registerSpellModification: registerSpellModification,
 			getActiveDurationSpells: getActiveDurationSpells,
 			showConditionsModal: showConditionsModal,
-			getConditionsData: getConditionsData
+			getConditionsData: getConditionsData,
+			// --- Dungeon generator ---
+			generateDungeon: generateDungeon,
+			getGeneratorSettings: getGeneratorSettings,
+			setGeneratorSettings: setGeneratorSettings,
+			generateRandomSeed: generateRandomSeed,
+			// --- Hex generator ---
+			generateHexMap: generateHexMap,
+			clearGeneratedTiles: clearGeneratedTiles,
+			// --- Scene level context (for Levels integration / MCP tests) ---
+			getSceneLevelContext: getSceneLevelContext,
+			applySceneLevelData: applySceneLevelData,
+			getDungeonBackground: getDungeonBackground
 		};
 		//console.log(`${MODULE_ID} | Module API registered`);
 	}

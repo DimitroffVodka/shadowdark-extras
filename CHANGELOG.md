@@ -4,6 +4,179 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.11] — 2026-05-18 — Levels-aware spell regions + elevation badge + GM unidentified-item display + AA overhaul + public module.api
+
+Five drops shipped together.
+
+### Fixed — spell templates now respect Levels (caster's floor only)
+
+Dev-provided fix for the bug originally reported in 6.10.9/6.10.10:
+when the caster was on an upper level, AoE spells (Fireball, Lightning,
+Sleep, Web, etc.) silently affected nobody — the template placed at
+elevation 0 while caster + targets were at elevation 20.
+
+Rather than a band-aid elevation default, the dev's solution is a
+proper v14 Region-aware rewrite of `TemplateEffectsSD.mjs`:
+
+- `_isSameLevel(tokenLevelId, doc)` — checks `RegionDocument.levels`
+  (which v14 auto-populates when a Region is created from a
+  MeasuredTemplate) AND `flags.shadowdark-extras.casterLevelId`
+  (a new flag written at template-creation time by the casting code,
+  for the MeasuredTemplate path)
+- `getTokensInTemplate` walks the auto-created Region when present
+  to read levels; falls back to the MeasuredTemplate placeable otherwise
+- `getTemplatesContainingToken` and `getTemplatesContainingPoint` now
+  prefer `RegionDocument#testPoint({x, y, elevation})` — the v14-native
+  API that handles elevation slabs natively. Falls back to the
+  placeable's `testPoint` (and finally to raw `shape.contains`) for
+  pre-v14 Foundry
+- Token movement detection now also fires on `level` and `elevation`
+  changes, not just `x`/`y`. A token moving between floors triggers
+  the same `onEnter`/`onLeave` logic as walking into/out of a region
+- New `onCreation` trigger separate from `onEnter` — fires for tokens
+  already inside a template *at placement time*, distinct from tokens
+  that walk in afterwards. Resolves the long-standing "drop Web on
+  enemies, conditions don't apply" report cleanly
+- `deleteRegion` hook added alongside `deleteMeasuredTemplate` so
+  effect cleanup happens whichever document gets removed first
+
+End-user behaviour: tokens visible on a balcony two floors up are no
+longer caught by a Fireball cast on the ground floor. Tokens on the
+caster's own floor (matching `level` ID or matching `elevation`
+exactly) are affected as before.
+
+### Changed — Automated Animations integration overhaul
+
+`AutoAnimationsSD.mjs` rewritten by the dev (~2KB larger). Properly
+integrates via the `AutomatedAnimations-WorkflowStart` hook to gate
+animations on roll outcome:
+
+- Critical failures: never animate
+- Critical successes: always animate
+- Attack/spell with target: animate only on success
+- Spells without target: configurable via new `aaAnimateSpellsWithoutTarget`
+  setting (defaults true)
+- Weapons without target: always animate (they were used)
+- Item-card pre-roll messages: blocked (these are the "Roll Attack"
+  preview cards, not actual rolls)
+- System-native messages (healing, etc.) without `flags.shadowdark.isRoll`
+  pass through to AA unchanged
+
+New world setting `SDX.Settings.AAIntegration.Name` (default on,
+`requiresReload`) toggles the whole integration. The
+`preCreateChatMessage` hook also injects `data-item-id` into messages
+that ship only `data-uuid="Actor.X.Item.Y"`, so AA can resolve the
+item without monkey-patching SD's templates.
+
+### Added — persistent elevation badge on placed templates
+
+SDX's `place()` already shows an elevation overlay during placement
+(adjusted via Alt+wheel), but the overlay was destroyed once the
+template committed. Without it the only feedback for "this template
+is at the wrong z" was "the spell affected no one" — silent failure.
+
+New module `TemplateElevationBadgeSD.mjs` attaches a small `el N`
+label as a PIXI child of the placeable's container whenever
+`elevation !== 0`. The label moves with the template, cleans up on
+delete, and stays out of the way at ground level (no badge for
+elevation 0, to avoid cluttering single-floor scenes).
+
+### Added — GM-side display of unidentified items (restored)
+
+When SDX dropped its custom identification UI in 6.10.5 (in favour of
+SD 4.x's native system), the visual hint that flagged unidentified
+items in the GM's inventory view went with it. Restored via a small
+new module `UnidentifiedDisplaySD.mjs`:
+
+- Hooks `renderActorSheet`, `renderItemDirectory`,
+  `renderCompendium(Directory)`
+- For GM viewers only, rewrites the visible item name to
+  `Unidentified Armor (Chainmail)` — the unidentified name with the
+  real name in parens
+- Players continue to see just the unidentified name
+- DOM-only patch — no data is mutated, no flags written
+
+### Added — Public `module.api` surface for automation / scripting / MCP
+
+**New feature, not previously available.** SDX now exposes a documented
+set of functions on `game.modules.get("shadowdark-extras").api`, so
+macros, third-party modules, the `foundry-mcp-live` server, or any
+external automation can drive SDX features directly — no monkey-patching
+or reaching into internals required.
+
+The previous `module.api` only exposed a small handful of spell helpers
+intended for spell macros. This release widens it to cover the dungeon
+generator, hex generator, scene-level helpers, and the existing
+weapon/identify/shapechanger entry points that were registered
+elsewhere in the codebase.
+
+**Available functions** (call any of them as
+`game.modules.get("shadowdark-extras").api.<fn>(...args)`):
+
+- **Map generation**
+  - `generateDungeon(config)` — procedural dungeon on the active scene.
+    Takes `{seed, roomCount, density, branching, roomSizeBias, symmetry,
+    stairs, stairsDown, clutter, useTexture, wallShadows, wallColor,
+    wallThickness}`. GM only.
+  - `generateHexMap(params)` — procedural hex map
+  - `clearGeneratedTiles()` — wipe generated tiles on the active scene
+  - `getGeneratorSettings()` / `setGeneratorSettings(settings)` —
+    read/write the dungeon generator's stored config
+  - `generateRandomSeed()` — fresh seed string for the generator
+
+- **Scene / levels helpers**
+  - `getSceneLevelContext(scene?, preferredLevelId?)` — returns
+    `{levelId, elevation, rangeTop}` for the active or supplied scene
+  - `applySceneLevelData(doc, type, levelContext?)` — annotates a
+    placeable doc with level/elevation flags so it lives on the
+    intended floor (used by the dungeon generator internally; callable
+    for custom tooling)
+  - `getDungeonBackground()` — returns the configured dungeon
+    background tile path
+
+- **Spells / focus tracker**
+  - `startDurationSpell(...)`, `endDurationSpell(...)`,
+    `registerSpellModification(...)`, `getActiveDurationSpells(...)`,
+    `showConditionsModal(...)`, `getConditionsData()`
+
+- **Magic weapon dialogs**
+  - `showHolyWeaponDialog()`, `applyHolyWeapon(...)`,
+    `applyWrathWeapon(...)`, `applyWrathToAllWeapons(...)`,
+    `showWrathWeaponDialog()`, `applyCleansingWeapon(...)`,
+    `showCleansingWeaponDialog()`
+
+- **Shapechanger**
+  - `showShapechangerDialog()`, `applyShapechanger(...)`,
+    `revertShapechanger(...)`
+
+- **Identification**
+  - `isUnidentified(item)`, `getUnidentifiedName(item)`,
+    `identifyItem(item)`, `showIdentifyDialog(...)`,
+    `showItemReveal(...)`
+
+**Reachable via foundry-mcp-live ≥ v0.11.1:** the MCP's
+`call_module_api({moduleId, fn, args})` tool routes directly to this
+surface. Example test that's now possible end-to-end:
+
+```jsonc
+call_module_api({
+  moduleId: "shadowdark-extras",
+  fn: "generateDungeon",
+  args: [{ seed: "mcp-001", roomCount: 6, density: 0.7, stairs: 1 }]
+})
+```
+
+Discovery affordance: passing an unknown `fn` name returns an error
+listing every callable function on the surface, so agents (and humans)
+can introspect what's available without reading source.
+
+**Author note:** anything not on this list is internal and may change
+without warning. If you depend on something that isn't exposed,
+open an issue — it's easier to add it cleanly than to monkey-patch
+around it.
+
+---
+
 ## [6.10.10] — 2026-05-17 — TemplateEffects containment alignment
 
 Defensive consistency change — not a confirmed bug fix. A tester
