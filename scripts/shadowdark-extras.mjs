@@ -3034,6 +3034,14 @@ function registerSettings() {
 		default: foundry.utils.deepClone(DEFAULT_LIGHT_TEMPLATES)
 	});
 
+	game.settings.register(MODULE_ID, "customDecorAssets", {
+		name: "Custom Decor Assets",
+		scope: "world",
+		config: false,
+		type: Array,
+		default: []
+	});
+
 	// Custom Light Templates Menu
 	game.settings.registerMenu(MODULE_ID, "customLightTemplatesMenu", {
 		name: "Light Templates",

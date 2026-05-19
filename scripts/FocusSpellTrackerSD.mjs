@@ -119,7 +119,19 @@ async function handleChatMessageRender(message, html, context) {
 	if (!actorId) return;
 
 	const actor = game.actors.get(actorId);
-	const item = itemUuid ? (itemUuid.includes(".") ? await fromUuid(itemUuid) : actor?.items.get(itemUuid)) : null;
+	let item = itemUuid
+		? (itemUuid.includes(".") ? await fromUuid(itemUuid) : actor?.items.get(itemUuid))
+		: null;
+
+	// Compendium/item-card UUIDs can resolve to a source item instead of the
+	// actor-owned copy. Store the local item id so later actor.items lookups work.
+	if (item && actor && !actor.items.has(item.id)) {
+		const localCopy = actor.items.find(i => i.name === item.name && i.type === item.type);
+		if (localCopy) {
+			console.log(`shadowdark-extras | Resolved ${item.id} to actor-local spell ${localCopy.id} (${localCopy.name})`);
+			item = localCopy;
+		}
+	}
 
 	if (!actor || !item) return;
 
@@ -1304,12 +1316,13 @@ async function rollFocusSpellWithTargets(actor, spellId) {
 	const spell = actor.items.get(spellId);
 
 	if (spell) {
-		// Spell item still exists - use normal method
-		console.log(`shadowdark-extras | Rolling focus check for spell ${spellId} on actor ${actor.name}`);
+		// Shadowdark v4 expects the full item UUID, not just the local item id.
+		const spellUuid = spell.uuid;
+		console.log(`shadowdark-extras | Rolling focus check for spell ${spell.name} (${spellUuid}) on actor ${actor.name}`);
 		if (actor.system.castSpell) {
-			actor.system.castSpell(spellId, { isFocusRoll: true });
+			actor.system.castSpell(spellUuid, { isFocusRoll: true });
 		} else {
-			actor.castSpell(spellId, { isFocusRoll: true });
+			actor.castSpell(spellUuid, { isFocusRoll: true });
 		}
 	} else if (focusEntry?.spellData) {
 		// Spell item no longer exists (e.g., scroll was consumed) - use cached data
@@ -1377,12 +1390,12 @@ async function rollFocusCheckFromCachedData(actor, focusEntry) {
 
 		console.log(`shadowdark-extras | Created temporary spell: ${tempSpell.name} (${tempSpell.id}) for focus roll`);
 
-		// Use the native Shadowdark spell casting mechanism
-		// The { isFocusRoll: true } option tells the system this is a focus check
+		// Shadowdark v4 expects the full item UUID, not just the local item id.
+		const tempSpellUuid = tempSpell.uuid;
 		if (actor.system.castSpell) {
-			await actor.system.castSpell(tempSpell.id, { isFocusRoll: true });
+			await actor.system.castSpell(tempSpellUuid, { isFocusRoll: true });
 		} else {
-			await actor.castSpell(tempSpell.id, { isFocusRoll: true });
+			await actor.castSpell(tempSpellUuid, { isFocusRoll: true });
 		}
 
 		// Delete the temporary spell item after a brief delay to allow the roll to complete

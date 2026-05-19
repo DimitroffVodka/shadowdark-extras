@@ -891,28 +891,51 @@
                     </div>
 
                     <!-- Custom Tiles Grid -->
-                    <div class="hex-tile-grid {{#unless (eq activeTileTab 'custom')}}hidden{{/unless}}"
+                    <div class="hex-tile-custom-panel {{#unless (eq activeTileTab 'custom')}}hidden{{/unless}}"
                         data-tile-panel="custom">
-                        {{#if hexCustomTiles.length}}
-                        {{#each hexCustomTiles}}
-                        <div class="hex-tile-thumb {{#if this.active}}active{{/if}}" data-tile="{{this.path}}"
-                            title="{{this.label}}{{#if this.biome}} ({{this.biome}}){{/if}}">
-                            <img src="{{this.src}}" alt="{{this.label}}" loading="lazy" />
-                            <span class="hex-tile-label">{{this.label}}</span>
-                            {{#if this.biome}}<span class="hex-tile-biome">{{this.biome}}</span>{{/if}}
+                        <div class="hex-custom-breadcrumb">
+                            {{#each customNavBreadcrumb}}
+                            <button type="button" class="hex-custom-breadcrumb-segment"
+                                data-segments="{{#each this.segments}}{{this}}/{{/each}}">{{this.label}}</button>
+                            {{#unless @last}}<span class="hex-custom-breadcrumb-sep">&rsaquo;</span>{{/unless}}
+                            {{/each}}
+                            {{#if customNavPath.length}}
+                            <button type="button" class="hex-custom-up-btn" title="Back to parent folder">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                            {{/if}}
+                            <button type="button" class="hex-custom-reload-btn" title="Re-scan Data/hexes/">
+                                <i class="fas fa-rotate"></i>
+                            </button>
                         </div>
-                        {{/each}}
-                        {{else}}
-                        <div class="hex-no-custom-tiles">
-                            <p><i class="fas fa-folder-open"></i></p>
-                            <p>No custom tiles found</p>
-                            <p class="hex-custom-hint">Add .png or .webp files to:<br><code>Data/hexes/</code></p>
-                            <p class="hex-custom-hint">Biome folders:<br>
-                                <code>water</code>, <code>vegetation</code>, <code>mountains</code>,<br>
-                                <code>desert</code>, <code>swamp</code>, <code>badlands</code>
-                            </p>
+                        {{#if customNavChips.length}}
+                        <div class="hex-custom-chip-row">
+                            {{#each customNavChips}}
+                            <button type="button" class="hex-custom-chip"
+                                data-chip-name="{{this.name}}">{{this.label}} <span class="hex-custom-chip-count">{{this.count}}</span></button>
+                            {{/each}}
                         </div>
                         {{/if}}
+                        <div class="hex-tile-grid">
+                            {{#if hexCustomTiles.length}}
+                            {{#each hexCustomTiles}}
+                            <div class="hex-tile-thumb {{#if this.active}}active{{/if}}" data-tile="{{this.path}}"
+                                title="{{this.label}}{{#if this.biome}} ({{this.biome}}){{/if}}">
+                                <img src="{{this.src}}" alt="{{this.label}}" loading="lazy" />
+                                <span class="hex-tile-label">{{this.label}}</span>
+                                {{#if this.biome}}<span class="hex-tile-biome">{{this.biome}}</span>{{/if}}
+                            </div>
+                            {{/each}}
+                            {{else}}
+                            {{#unless customNavChips.length}}
+                            <div class="hex-no-custom-tiles">
+                                <p><i class="fas fa-folder-open"></i></p>
+                                <p>No tiles found.</p>
+                                <p class="hex-custom-hint">Drop .png or .webp files into<br><code>Data/hexes/</code> (any subfolder depth).</p>
+                            </div>
+                            {{/unless}}
+                            {{/if}}
+                        </div>
                     </div>
 
                     <!-- Symbol Tiles Grid (folder-based) -->
@@ -1279,6 +1302,13 @@
                 <div class="hex-search-section">
                     <input type="text" class="decor-search-input" placeholder="Search decor tiles..."
                         value="{{decorSearchFilter}}" />
+                </div>
+
+                <div class="decor-import-section">
+                    <button type="button" class="decor-import-btn">
+                        <i class="fas fa-folder-open"></i> Add Decor Asset
+                    </button>
+                    <span class="decor-import-hint">Uploads selected files to <code>decor/</code></span>
                 </div>
 
                 <!-- POI info -->
