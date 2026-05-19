@@ -1,22 +1,31 @@
+# Releases
+module.zip
+*.zip
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Editor / agent scratch
+.claude/
+.gemini/
+.planning/
+Geminis-*.txt
+AGENTS.md
+GEMINI.md
+CLAUDE.md
+*.tmp
+*.swp
+
 # Foundry LevelDB pack runtime artifacts (regenerated per-install)
 packs/**/*.log
 packs/**/LOG.old
 packs/**/MANIFEST-*
 packs/**/lost/
+packs/**/LOCK
 
 # Exception: pack-sdxeffects ships its AE library content via the .log file
 # until LevelDB compaction produces a .ldb segment. Without these the
 # compendium loads empty for end users.
 !packs/pack-sdxeffects/*.log
 !packs/pack-sdxeffects/MANIFEST-*
-
-# Editor / agent scratch
-.claude/
-.gemini/
-Geminis-*.txt
-*.tmp
-*.swp
-
-# OS
-Thumbs.db
-.DS_Store
