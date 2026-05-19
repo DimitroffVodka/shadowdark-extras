@@ -17,7 +17,14 @@ behavior changes, or as fast falsification when a bug is suspected.
 | `formula-requirement-eval.mjs` | After source-requirement logic changes | GM bridge |
 | `chat-light-source-injection.mjs` | After render-hook or chat-card changes | GM bridge |
 | `template-region-pair.mjs` | After template/region code changes | GM bridge, active scene |
-| `duration-spell-linkage.mjs` | After injectDamageCard / template-id wiring changes | GM bridge, configured spell |
+| `duration-spell-linkage.mjs` | After injectDamageCard / template-id wiring changes (direct API test) | GM bridge, configured spell |
+| `cast-spell-headless.mjs` | After castSpell / rollDialog / rollFromConfig changes (full cast pipeline) | GM bridge, fixtures setup |
+
+`duration-spell-linkage` and `cast-spell-headless` are complementary:
+- `duration-spell-linkage` exercises `startDurationSpell` directly and verifies the actor-flag round-trip.
+- `cast-spell-headless` exercises the full cast pipeline (`pc.system.castSpell` → `rollFromConfig` → chat-card) via `SDX.dev.castSpell` with `skipPrompt: true`.
+
+The cast pipeline still hits interactive template placement when targeting.placement is `"choose"`; the headless probe documents the spell roll succeeded and the chat message rendered, but does not currently exercise the full template→duration tracking chain end-to-end without UI input.
 
 ## How to run
 

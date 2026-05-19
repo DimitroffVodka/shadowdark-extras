@@ -19157,6 +19157,45 @@ SDX.templates = {
 //console.log(`${MODULE_ID} | SDX.templates API loaded`);
 
 // ============================================
+// DEV HELPERS — headless test affordances
+// These bypass interactive UI gates so probes / fixtures can drive the
+// real cast pipeline without a sheet click or dialog. Wraps SD's actor
+// data-model methods, NOT a reimplementation — so when SD changes the
+// internals, the helper benefits without us patching anything.
+// ============================================
+
+SDX.dev = {
+	/**
+	 * Headless spell cast. Wraps `actor.system.castSpell(spellUuid, { skipPrompt: true, ...opts })`
+	 * — `skipPrompt` short-circuits `shadowdark.dice.rollDialog` so the cast proceeds
+	 * straight to `rollFromConfig` (the real roll + chat-card render path).
+	 *
+	 * @param {Actor|string} actorOrId  Actor doc or id/name to look up.
+	 * @param {Item|string}  spellOrId  Spell item doc, id, or name on the actor.
+	 * @param {Object}       opts       Forwarded to castSpell — e.g. `{ rollMode }`.
+	 *                                  `skipPrompt: true` is always injected.
+	 * @returns {Promise<boolean>}      castSpell's return — true on successful roll, false on cancel/fail.
+	 */
+	async castSpell(actorOrId, spellOrId, opts = {}) {
+		const actor = actorOrId instanceof Actor
+			? actorOrId
+			: (game.actors.get(actorOrId) ?? game.actors.getName(actorOrId));
+		if (!actor) throw new Error(`SDX.dev.castSpell: actor not found (${actorOrId})`);
+
+		const spell = spellOrId instanceof Item
+			? spellOrId
+			: (actor.items.get(spellOrId) ?? actor.items.getName(spellOrId));
+		if (!spell) throw new Error(`SDX.dev.castSpell: spell not found on ${actor.name} (${spellOrId})`);
+
+		if (typeof actor.system?.castSpell !== "function") {
+			throw new Error(`SDX.dev.castSpell: actor.system.castSpell unavailable — is ${actor.name} a Player type?`);
+		}
+
+		return actor.system.castSpell(spell.uuid, { skipPrompt: true, ...opts });
+	},
+};
+
+// ============================================
 // MODULE API
 // Export functions for use in item macros
 // ============================================
@@ -19185,6 +19224,9 @@ Hooks.on("setup", () => {
 		module.api = {
 			// --- Templates ---
 			templates: SDX.templates,
+
+			// --- Dev / test helpers ---
+			dev: SDX.dev,
 
 			// --- Spells / Focus tracker ---
 			startDurationSpell: audited("startDurationSpell", gmOnly("startDurationSpell", startDurationSpell)),
