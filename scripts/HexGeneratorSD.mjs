@@ -671,8 +671,11 @@ export async function generateHexMap(params = {}) {
 
 /**
  * Remove all SDX-painted tiles from the current scene.
+ *
+ * @param {Object} [options]
+ * @param {boolean} [options.force=false] - Bypass confirmation dialog
  */
-export async function clearGeneratedTiles() {
+export async function clearGeneratedTiles({ force = false } = {}) {
     const scene = canvas.scene;
     if (!scene) return;
 
@@ -683,6 +686,15 @@ export async function clearGeneratedTiles() {
     if (!ids.length) {
         ui.notifications.info("SDX | No generated tiles to clear.");
         return;
+    }
+
+    if (!force) {
+        const proceed = await foundry.applications.api.DialogV2.confirm({
+            window: { title: "Clear Generated Tiles?" },
+            content: `<p>This will delete ${ids.length} generated hex tiles on the active scene. Proceed?</p>`,
+            classes: [MODULE_ID, "dialog-confirm-clear"]
+        });
+        if (!proceed) return { cancelled: true };
     }
 
     setGenerating(true);

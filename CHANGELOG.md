@@ -4,6 +4,129 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.14] — 2026-05-18 — Module API security hardening
+
+Implements all of `SECURITY-PLAN-Module-API.md`. Five coordinated additions
+that tighten the `module.api` surface against malicious modules and accidental
+destructive automation, without breaking any legitimate caller.
+
+The 6.10.13 work (clutter return + `placeDungeonDecor`) is bundled into this
+release — both sets of changes ship together as 6.10.14.
+
+### Added — `gmOnly()` wrapper on destructive functions
+
+12+ mutating functions on `module.api` are now wrapped to refuse non-GM
+callers with a clean error:
+
+```
+SDX | <name>: requires GM permission
+```
+
+Read-only functions (`getConditionsData`, `generateRandomSeed`, etc.) stay
+open to all users. Players running macros, third-party player modules, or
+socket-driven calls can no longer call destructive SDX operations even when
+the bridge accepts the call.
+
+Verified end-to-end with a Player1 user connected via the bridge:
+- `generateDungeon` from Player1 → rejected with the permission error
+- `getSceneLevelContext` from Player1 → succeeded as expected
+- `getConditionsData` from Player1 → returned the full conditions registry
+
+### Added — input validation and clamping on `generateDungeon`
+
+Absurd values are now silently clamped at function entry instead of letting
+the generator hang Foundry. The new `safeConfig` block in
+`DungeonGeneratorSD.mjs` enforces:
+
+| Field | Min | Max |
+|---|---|---|
+| `roomCount` | 1 | 50 |
+| `stairs` | 0 | 10 |
+| `stairsDown` | 0 | 10 |
+| `clutter` | 0 | 20 |
+| `density` | 0 | 1 |
+| `branching` | 0 | 1 |
+| `roomSizeBias` | 0 | 1 |
+| `wallThickness` | 1 | 100 |
+| `wallColor` | hex format `/^#[0-9a-f]{6}$/i` | (rejected → default `#5C3D3D`) |
+| `seed` | string, max 100 chars | (non-string → "default") |
+
+Verified: `generateDungeon({roomCount: 99999})` clamps to 50 rooms (~1500
+tiles) instead of attempting 99,999 rooms (would crash Foundry).
+
+### Added — asset path allowlist on `placeDungeonDecor`
+
+The `src` parameter is now validated against a prefix allowlist before any
+tile is created:
+
+- `modules/shadowdark-extras/`
+- `worlds/`
+- `fa-nexus-assets/`
+- `systems/shadowdark/`
+
+A call with `src: "https://evil.com/tracker.png"` or any unallowed path
+throws cleanly:
+
+```
+SDX.placeDungeonDecor: src "..." not in allowlist
+```
+
+Closes a real attack vector: a malicious macro that called
+`placeDungeonDecor` with a remote URL would have caused Foundry to fetch
+the URL, leaking the GM's IP and revealing the world's state.
+
+### Added — `api.internal.*` namespace for unstable helpers
+
+The `module.api` top-level surface is now the **stable public contract**.
+Implementation helpers that were exposed for cross-module use but aren't
+part of the long-term API have been moved to `module.api.internal.*`:
+
+- `internal.applySceneLevelData`
+- `internal.getSceneLevelContext`
+- `internal.getDungeonBackground`
+
+Anything under `internal.*` may change without notice. Anything at the top
+level is a stable contract.
+
+**MCP caveat:** the current `foundry-mcp-live` `call_module_api` tool does
+flat key lookup (`api[fn]`), so dotted paths like `internal.getSceneLevelContext`
+aren't reachable through MCP yet. Reported upstream; the bridge handler
+needs `resolveDotted()` traversal to support nested namespaces. Direct
+callers (macros, other modules) reach `internal.*` normally.
+
+### Added — `audited()` wrapper for forensics
+
+Every entry on `module.api` (public + internal) now logs to console on
+invocation:
+
+```
+[SDX.api] generateDungeon called by: <caller stack frame>
+```
+
+Searchable when investigating "who clobbered scene X?" — zero behavior
+change, just paper trail.
+
+### Added — `force` flag on `clearGeneratedTiles`
+
+`clearGeneratedTiles` now shows a confirmation `DialogV2` by default
+(safer for accidental clicks). Autonomous callers pass `{ force: true }`
+to bypass:
+
+```js
+await api.clearGeneratedTiles({ force: true });   // skips dialog
+await api.clearGeneratedTiles();                  // prompts user → { cancelled: true } if dismissed
+```
+
+### Documentation updates
+
+`SDX-MCP-DUNGEON-API.md` now documents:
+- The GM-permission requirement (with the exact error string)
+- The hard caps on every numeric config parameter
+- The `force: true` opt-out pattern for `clearGeneratedTiles`
+- The `internal.*` namespace and its instability promise
+
+---
+
 ## [6.10.13] — 2026-05-18 — Dungeon clutter return value + `placeDungeonDecor` helper
 
 Extends 6.10.12's multi-level orchestration API with clutter (decor)

@@ -4,20 +4,38 @@ This document provides the API contract and workflow instructions required for a
 
 ## 1. Accessing the API
 
-All SDX dungeon helpers are exposed on the public module API surface.
+All SDX dungeon helpers are exposed on the public module API surface. Note that **destructive or scene-modifying functions now require GM permissions**.
 
 *   **Module ID:** `shadowdark-extras`
-*   **MCP Tool:** `mcp_foundry_call_module_api`
+*   **MCP Tool:** `mcp__foundry-vtt__call_module_api`
 *   **Target Function:** The `fn` parameter should be one of the functions listed below.
+*   **Permissions:** If called by a non-GM user, these functions will throw an Error: `SDX | <name>: requires GM permission`.
+*   **Destructive Operations:** Functions that delete data (like `clearGeneratedTiles`) will show a confirmation dialog to the user. To bypass this for autonomous scripts, pass `{ force: true }` in the arguments.
 
-## 2. API Reference
+## 2. API Reference (Stable)
+
+These functions are part of the stable public contract and are safe for long-term use.
 
 ### `generateDungeon(settings)`
 Triggers procedural dungeon generation on the **currently active scene**.
 
 *   **Function Name:** `generateDungeon`
 *   **Arguments:** `[settings]` (Object, optional). Pass an empty object `{}` or omit to use defaults.
-*   **Return Value:** Returns a JSON object containing the pixel and grid coordinates of placed stairs and clutter. The pixel coordinates (`x`, `y`) are centered on the tiles.
+*   **Config parameters** (all optional, sensible defaults applied):
+    *   `seed` (string) — RNG seed for deterministic layout.
+    *   `roomCount` (number, default 10) — target number of rooms. **Hard-capped to 50.**
+    *   `density` (number 0–1, default 0.8) — fill density of placed rooms.
+    *   `branching` (number 0–1, default 0.5) — corridor branching tendency.
+    *   `roomSizeBias` (number 0–1, default 0.5) — bias toward larger rooms.
+    *   `symmetry` (boolean, default true) — mirror layout where possible.
+    *   `stairs` (number, default 0) — count of stairs-up tiles to place. **Hard-capped to 10.**
+    *   `stairsDown` (number, default 0) — count of stairs-down tiles to place. **Hard-capped to 10.**
+    *   `clutter` (number, default 0) — decor items per room. **Hard-capped to 20.**
+    *   `useTexture` (boolean, default false) — apply floor texture instead of solid fill.
+    *   `wallShadows` (boolean, default false) — drop-shadow on walls.
+    *   `wallColor` (string hex, default `#5C3D3D`) — wall color.
+    *   `wallThickness` (number px, default 20) — wall stroke width.
+*   **Return Value:** Returns a JSON object with placed stairs and clutter coordinates. The pixel coordinates (`x`, `y`) are the **top-left of the placed tile after it has been centered within the 100px grid cell** — not the geometric center of the tile. For a 50×50 stair tile in a 100×100 grid cell, the geometric tile center is at `(x + 25, y + 25)`.
     ```json
     {
       "stairsUp": [
@@ -60,22 +78,38 @@ Places a decorative tile (clutter, furniture, or trap) on a specific level. Ensu
 *   **Arguments:** `[opts]` (Object)
     *   `sceneId` (string)
     *   `levelId` (string)
-    *   `src` (string): Image path.
+    *   `src` (string): Image path. **Validated against allowlist** (`modules/shadowdark-extras/`, `worlds/`, or `fa-nexus-assets/`).
     *   `x`, `y` (number): Pixel coordinates.
     *   `width`, `height` (number, optional): Override image dimensions.
     *   `centered` (boolean, optional): Default `true`. If true, (x, y) is treated as the center.
 *   **Return Value:** `{ id: string, x: number, y: number, width: number, height: number }`
 
-## 3. Orchestration Workflow
+### `clearGeneratedTiles(opts)`
+Removes all SDX-generated hex tiles from the active scene.
+
+*   **Function Name:** `clearGeneratedTiles`
+*   **Arguments:** `[opts]` (Object)
+    *   `force` (boolean, optional): Default `false`. Set to `true` to bypass the user confirmation dialog.
+*   **Return Value:** `Promise<void>` or `{ cancelled: true }`
+
+## 3. Internal API (Unstable)
+
+The following helpers have been moved to the `internal` namespace. These are subject to change without notice and are primarily used for low-level orchestration.
+
+*   `internal.applySceneLevelData`: Maps elevation/level flags to a document (GM Only).
+*   `internal.getSceneLevelContext`: Detects the current active level/elevation context.
+*   `internal.getDungeonBackground`: Retrieves the current background setting from the painter.
+
+## 4. Orchestration Workflow
 
 To generate a multi-level dungeon, follow this sequence:
 
 1.  **Preparation:**
-    *   Ensure the target Scene is active (`mcp_foundry_activate_scene`).
-    *   Ensure the scene has defined Levels (`mcp_foundry_get_scene_levels`).
+    *   Ensure the target Scene is active (`mcp__foundry-vtt__activate_scene`).
+    *   Ensure the scene has defined Levels (`mcp__foundry-vtt__get_scene_levels`).
 2.  **Generate a Floor:**
-    *   Set the canvas to the desired level (`mcp_foundry_set_canvas_level`).
-    *   Call `mcp_foundry_call_module_api` with `fn: "generateDungeon"`.
+    *   Set the canvas to the desired level (`mcp__foundry-vtt__set_canvas_level`).
+    *   Call `mcp__foundry-vtt__call_module_api` with `fn: "generateDungeon"`.
     *   Store the returned `stairsUp` and `stairsDown` coordinates in your context.
 3.  **Define the Surface:**
     *   Immediately call `placeDungeonSurface` for the current `sceneId` and `levelId` to ensure region-aware visibility works correctly for that floor.
@@ -87,7 +121,7 @@ To generate a multi-level dungeon, follow this sequence:
     *   For every set of stairs intended to connect two floors, call `placeChangeLevelRegion`.
     *   Pass the `x` and `y` coordinates of the stair tile, and provide both `levelId` strings in the `levels` array.
 
-## 4. Technical Details
+## 5. Technical Details
 *   **Grid Size:** Hardcoded to 100px.
 *   **Stair Tile Size:** 50x50px, automatically centered within the 100px grid cell.
 *   **Tile Flags:** Generated tiles are marked with `flags["shadowdark-extras"].dungeonFloor = true`, which `placeDungeonSurface` uses to identify footprint geometries.

@@ -1087,6 +1087,19 @@ export async function generateDungeon(config) {
         return;
     }
 
+    // Hard caps to prevent abuse / accidents
+    const safeConfig = {
+        ...config,
+        roomCount: Math.min(Math.max(1, config.roomCount ?? 10), 50),
+        stairs:    Math.min(Math.max(0, config.stairs ?? 0), 10),
+        stairsDown:Math.min(Math.max(0, config.stairsDown ?? 0), 10),
+        clutter:   Math.min(Math.max(0, config.clutter ?? 0), 20),
+        density:   Math.min(Math.max(0, config.density ?? 0.8), 1),
+        // string fields: validate or fall back
+        wallColor: /^#[0-9a-f]{6}$/i.test(config.wallColor) ? config.wallColor : "#5C3D3D",
+        seed:      typeof config.seed === "string" ? config.seed.slice(0, 100) : "default",
+    };
+
     const {
         seed = "abc123",
         roomCount = 10,
@@ -1101,7 +1114,7 @@ export async function generateDungeon(config) {
         wallShadows = false,
         wallColor = "#5C3D3D",
         wallThickness = 20
-    } = config;
+    } = safeConfig;
 
     // Validate stairs fit in requested rooms (exclude start room)
     const totalStairs = stairs + stairsDown;

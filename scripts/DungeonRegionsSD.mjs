@@ -126,6 +126,13 @@ export async function placeDungeonSurface({ sceneId, levelId, name = "Dungeon Su
     return { id: region.id, name: region.name, tileCount: tiles.length };
 }
 
+function isAllowedAssetPath(src) {
+    if (typeof src !== "string") return false;
+    return src.startsWith(`modules/${MODULE_ID}/`)
+        || src.startsWith("worlds/")
+        || src.startsWith("fa-nexus-assets/");
+}
+
 /**
  * Place a decorative tile (clutter, furniture, or trap) on a specific level.
  * Ensures correct SDX flags and elevation logic for v14/Levels.
@@ -144,6 +151,10 @@ export async function placeDungeonSurface({ sceneId, levelId, name = "Dungeon Su
 export async function placeDungeonDecor({
     sceneId, levelId, src, x, y, width, height, centered = true
 }) {
+    if (!isAllowedAssetPath(src)) {
+        throw new Error(`SDX.placeDungeonDecor: src "${src}" not in allowlist`);
+    }
+
     const scene = game.scenes.get(sceneId);
     if (!scene) throw new Error(`Scene ${sceneId} not found`);
     const level = scene.levels.get(levelId);

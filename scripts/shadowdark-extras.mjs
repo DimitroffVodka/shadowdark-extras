@@ -19057,30 +19057,54 @@ SDX.templates = {
 Hooks.on("setup", () => {
 	const module = game.modules.get("shadowdark-extras");
 	if (module) {
+		function gmOnly(name, fn) {
+			return async function(...args) {
+				if (!game.user.isGM) {
+					console.warn(`SDX.api.${name}: blocked, GM required (caller: ${game.user.name})`);
+					throw new Error(`SDX | ${name}: requires GM permission`);
+				}
+				return fn.apply(this, args);
+			};
+		}
+
+		function audited(name, fn) {
+			return function(...args) {
+				const caller = (new Error().stack || "").split("\n")[2]?.trim() ?? "?";
+				console.log(`SDX.api.${name} called by`, caller);
+				return fn.apply(this, args);
+			};
+		}
+
 		module.api = {
 			// --- Spells / Focus tracker ---
-			startDurationSpell: startDurationSpell,
-			endDurationSpell: endDurationSpell,
-			registerSpellModification: registerSpellModification,
-			getActiveDurationSpells: getActiveDurationSpells,
-			showConditionsModal: showConditionsModal,
-			getConditionsData: getConditionsData,
+			startDurationSpell: audited("startDurationSpell", gmOnly("startDurationSpell", startDurationSpell)),
+			endDurationSpell: audited("endDurationSpell", gmOnly("endDurationSpell", endDurationSpell)),
+			registerSpellModification: audited("registerSpellModification", gmOnly("registerSpellModification", registerSpellModification)),
+			getActiveDurationSpells: audited("getActiveDurationSpells", getActiveDurationSpells),
+			showConditionsModal: audited("showConditionsModal", showConditionsModal),
+			getConditionsData: audited("getConditionsData", getConditionsData),
+
 			// --- Dungeon generator ---
-			generateDungeon: generateDungeon,
-			getGeneratorSettings: getGeneratorSettings,
-			setGeneratorSettings: setGeneratorSettings,
-			generateRandomSeed: generateRandomSeed,
+			generateDungeon: audited("generateDungeon", gmOnly("generateDungeon", generateDungeon)),
+			getGeneratorSettings: audited("getGeneratorSettings", getGeneratorSettings),
+			setGeneratorSettings: audited("setGeneratorSettings", gmOnly("setGeneratorSettings", setGeneratorSettings)),
+			generateRandomSeed: audited("generateRandomSeed", generateRandomSeed),
+
 			// --- Hex generator ---
-			generateHexMap: generateHexMap,
-			clearGeneratedTiles: clearGeneratedTiles,
-			// --- Scene level context (for Levels integration / MCP tests) ---
-			getSceneLevelContext: getSceneLevelContext,
-			applySceneLevelData: applySceneLevelData,
-			getDungeonBackground: getDungeonBackground,
+			generateHexMap: audited("generateHexMap", gmOnly("generateHexMap", generateHexMap)),
+			clearGeneratedTiles: audited("clearGeneratedTiles", gmOnly("clearGeneratedTiles", clearGeneratedTiles)),
+
 			// --- Dungeon Regions / Decor (multi-level orchestration) ---
-			placeChangeLevelRegion: placeChangeLevelRegion,
-			placeDungeonSurface: placeDungeonSurface,
-			placeDungeonDecor: placeDungeonDecor
+			placeChangeLevelRegion: audited("placeChangeLevelRegion", gmOnly("placeChangeLevelRegion", placeChangeLevelRegion)),
+			placeDungeonSurface: audited("placeDungeonSurface", gmOnly("placeDungeonSurface", placeDungeonSurface)),
+			placeDungeonDecor: audited("placeDungeonDecor", gmOnly("placeDungeonDecor", placeDungeonDecor)),
+
+			// --- INTERNAL — subject to change without notice ---
+			internal: {
+				applySceneLevelData: audited("internal.applySceneLevelData", gmOnly("internal.applySceneLevelData", applySceneLevelData)),
+				getSceneLevelContext: audited("internal.getSceneLevelContext", getSceneLevelContext),
+				getDungeonBackground: audited("internal.getDungeonBackground", getDungeonBackground)
+			}
 		};
 		//console.log(`${MODULE_ID} | Module API registered`);
 	}
