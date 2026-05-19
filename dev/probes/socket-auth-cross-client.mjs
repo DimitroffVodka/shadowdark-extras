@@ -1,33 +1,44 @@
 // PROBE: Verify the GM auth gate fires when a non-owner player invokes a handler.
-// Two parts:
-//   1. GM side (default targetUser): register the probe handler.
-//   2. Player side (set targetUser to player name): call the probe.
-// Then check GM console for "Unauthorized" warning.
+// Uses dev/fixtures: _SDX TestPC (owned by all players) and _SDX TestNPC (owned by none).
+// Run dev/fixtures/setup.mjs first if fixtures are missing.
 //
-// Replace ownedItemUuid / notOwnedItemUuid with real items in your world.
+// Two-part probe:
+//   1. GM side (default targetUser): register the probe handler.
+//   2. Player side (targetUser=Player1 or any non-GM): call the probe twice
+//      — once with TestPC.uuid (should AUTHORIZE) and once with TestNPC.uuid
+//      (should REJECT-unauthorized).
 
 // --- PART 1: run on GM side ---
 const SDX = game.modules.get("shadowdark-extras");
 if (!SDX?.socket) return { error: "no module.socket" };
 
 const probeName = "__sdxXClientAuthProbe";
-SDX.socket.register(probeName, async function(itemUuid) {
+SDX.socket.register(probeName, async function(docUuid) {
   const sender = game.users.get(this.socketdata?.userId);
   if (!sender) return { phase: "REJECTED-no-sender" };
-  const item = itemUuid ? await fromUuid(itemUuid) : null;
-  if (!sender.isGM && (!item || !item.testUserPermission(sender, "OWNER"))) {
-    console.warn(`shadowdark-extras | Unauthorized test from ${sender.name}`);
-    return { phase: "REJECTED-unauthorized", senderName: sender.name };
+  const doc = docUuid ? await fromUuid(docUuid) : null;
+  if (!sender.isGM && (!doc || !doc.testUserPermission(sender, "OWNER"))) {
+    console.warn(`shadowdark-extras | Unauthorized test from ${sender.name} on ${doc?.name ?? docUuid}`);
+    return { phase: "REJECTED-unauthorized", senderName: sender.name, docName: doc?.name ?? null };
   }
-  return { phase: "AUTHORIZED", senderName: sender.name };
+  return { phase: "AUTHORIZED", senderName: sender.name, docName: doc?.name ?? null };
 });
 
-return { registered: true, probeName, instructions: "Now run from a player client with executeAsGM" };
+const pc = game.actors.find(a => a.name === "_SDX TestPC");
+const npc = game.actors.find(a => a.name === "_SDX TestNPC");
+if (!pc || !npc) return {
+  error: "fixtures missing — run dev/fixtures/setup.mjs first",
+  pcFound: !!pc, npcFound: !!npc,
+};
 
-// --- PART 2: run on Player side (separate evaluate call with targetUser=player) ---
-// const ownedItemUuid    = "Actor.<actorId>.Item.<itemId>";   // an item the player owns
-// const notOwnedItemUuid = "Actor.<otherId>.Item.<itemId>";   // an item the player does NOT own
-// const SDX = game.modules.get("shadowdark-extras");
-// const owned = await SDX.socket.executeAsGM("__sdxXClientAuthProbe", ownedItemUuid);
-// const notOwned = await SDX.socket.executeAsGM("__sdxXClientAuthProbe", notOwnedItemUuid);
-// return { owned, notOwned };
+return {
+  registered: true,
+  probeName,
+  testPcUuid: pc.uuid,
+  testNpcUuid: npc.uuid,
+  instructions: `Now run from a player client with targetUser=<player name>:
+    const SDX = game.modules.get("shadowdark-extras");
+    const owned    = await SDX.socket.executeAsGM("${probeName}", "${pc.uuid}");
+    const notOwned = await SDX.socket.executeAsGM("${probeName}", "${npc.uuid}");
+    return { owned, notOwned };`,
+};
