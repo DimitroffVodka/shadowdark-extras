@@ -55,8 +55,8 @@
                 <i class="far fa-globe"></i>
             </button>
             <button class="tray-handle-button-tool{{#unless isHexagonal}} disabled{{/unless}}"
-                data-action="sdx-hex-tooltip" title="Hexplorer">
-                <i class="fa-solid fa-hexagon-image"></i>
+                data-action="sdx-hex-tooltip" title="Hex Tooltip / Hexplorer">
+                <i class="fa-solid fa-circle-info"></i>
             </button>
             {{#if isGM}}
             <button class="tray-handle-button-tool{{#if hexFogActive}} active{{/if}}" data-action="sdx-hex-fog"
@@ -1308,7 +1308,10 @@
                     <button type="button" class="decor-import-btn">
                         <i class="fas fa-folder-open"></i> Add Decor Asset
                     </button>
-                    <span class="decor-import-hint">Uploads selected files to <code>decor/</code></span>
+                    <button type="button" class="decor-ddpack-btn">
+                        <i class="fas fa-cubes"></i> Dungeondraft Packs
+                    </button>
+                    <span class="decor-import-hint">Add files, folders, URLs, or Dungeondraft object packs</span>
                 </div>
 
                 <!-- POI info -->

@@ -2,6 +2,7 @@ import { cache } from "./SDXCache.mjs";
 import { BIOME_TILES, BIOME_TINTS } from "./HexGeneratorSD.mjs";
 import { getDoorTiles } from "./DungeonPainterSD.mjs";
 import { setHexTerrain } from "./HexTooltipSD.mjs";
+import { loadDDPackDecorTiles } from "./DDPackManagerSD.mjs";
 
 // Maps default-tile biome keys to user-friendly terrain labels
 const BIOME_TO_TERRAIN = {
@@ -26,6 +27,7 @@ const CUSTOM_TILE_FOLDER = "hexes";
 const COLORED_TILE_FOLDER = `modules/${MODULE_ID}/assets/Hexes`;
 const SYMBOLS_TILE_FOLDER = `modules/${MODULE_ID}/assets/symbols`;
 const DECOR_IMPORT_FOLDER = "decor";
+const DECOR_DDPACK_FOLDER = "decor/ddpacks";
 const DECOR_IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"];
 const HEX_TILE_W = 296;
 const HEX_TILE_H = 256;
@@ -47,6 +49,7 @@ let _customTiles = null;     // Custom tiles from data/hexes
 let _coloredTiles = null;    // Colored tiles from assets/Hexes
 let _symbolTiles = null;     // Symbol tiles from assets/symbols
 let _importedDecorTiles = null; // Decor images imported into data/decor
+let _ddPackDecorTiles = null; // Dungeondraft decor images extracted into data/decor/ddpacks
 let _customTileBoundsCache = new Map();
 let _chosenTiles = new Set();
 let _searchFilter = "";
@@ -490,6 +493,10 @@ function decorFolderLabel(folderKey) {
 }
 
 async function browseDecorFolderRecursive(folderPath, out = []) {
+    const normalizedFolder = String(folderPath || "").replace(/\\/g, "/").replace(/\/+$/, "");
+    if (normalizedFolder === DECOR_DDPACK_FOLDER || normalizedFolder.startsWith(`${DECOR_DDPACK_FOLDER}/`)) {
+        return out;
+    }
     const FP = foundry.applications.apps.FilePicker.implementation;
     const listing = await FP.browse("data", folderPath);
     for (const file of listing.files || []) {
@@ -503,6 +510,8 @@ async function browseDecorFolderRecursive(folderPath, out = []) {
         });
     }
     for (const dir of listing.dirs || []) {
+        const normalizedDir = String(dir || "").replace(/\\/g, "/").replace(/\/+$/, "");
+        if (normalizedDir === DECOR_DDPACK_FOLDER || normalizedDir.startsWith(`${DECOR_DDPACK_FOLDER}/`)) continue;
         await browseDecorFolderRecursive(dir, out);
     }
     return out;
@@ -525,7 +534,20 @@ export async function loadImportedDecorAssets({ force = false } = {}) {
 
 export async function reloadDecorAssets() {
     _importedDecorTiles = null;
+    _ddPackDecorTiles = null;
     await loadImportedDecorAssets({ force: true });
+    await getDDPackDecorAssets({ force: true });
+}
+
+async function getDDPackDecorAssets({ force = false } = {}) {
+    if (_ddPackDecorTiles && !force) return _ddPackDecorTiles;
+    try {
+        _ddPackDecorTiles = await loadDDPackDecorTiles();
+    } catch (err) {
+        console.warn(`${MODULE_ID} | Dungeondraft decor packs not available yet:`, err?.message || err);
+        _ddPackDecorTiles = [];
+    }
+    return _ddPackDecorTiles;
 }
 
 /**
@@ -977,6 +999,7 @@ export async function getDecorTileFolders() {
     let tiles = [
         ...((_symbolTiles || []).filter(t => t.category === "dysonstyle")),
         ...(_importedDecorTiles || []),
+        ...(await getDDPackDecorAssets()),
         ...getRegisteredDecorTiles()
     ];
     const seenPaths = new Set();
@@ -997,7 +1020,8 @@ export async function getDecorTileFolders() {
             key: tile.key, label: tile.label, path: tile.path,
             active: _chosenTiles.has(tile.path), category: tile.category,
             imported: !!tile.imported,
-            registered: !!tile.registered
+            registered: !!tile.registered,
+            isDDPack: !!tile.isDDPack
         });
     }
 
@@ -1020,7 +1044,8 @@ export async function getDecorTileFolders() {
 
     const folders = [];
     for (const [key, folderTiles] of folderMap) {
-        const label = decorFolderLabel(key);
+        const customLabel = folderTiles.find(t => t.categoryLabel)?.categoryLabel;
+        const label = customLabel || decorFolderLabel(key);
 
         const processedTiles = await Promise.all(folderTiles.map(async t => ({
             ...t,
@@ -1608,9 +1633,11 @@ async function _stampAtPointer(ev, forceStamp = false) {
 
     if (_activeTileTab === "symbols" || _decorMode) {
         const doorTiles = getDoorTiles();
+        const ddPackDecorTiles = _decorMode ? await getDDPackDecorAssets() : [];
         availableTiles = availableTiles.filter(path =>
             (_symbolTiles && _symbolTiles.some(t => t.path === path)) ||
             (_decorMode && _importedDecorTiles && _importedDecorTiles.some(t => t.path === path)) ||
+            (_decorMode && ddPackDecorTiles.some(t => t.path === path)) ||
             (_decorMode && getRegisteredDecorTiles().some(t => t.path === path)) ||
             (_decorMode && doorTiles.some(t => t.path === path))
         );
@@ -1645,8 +1672,9 @@ async function _stampAtPointer(ev, forceStamp = false) {
     // Check if the chosen tile is a symbol, custom, or colored tile
     const isDoorTile = _decorMode && getDoorTiles().some(t => t.path === chosenTile);
     const isImportedDecorTile = _decorMode && _importedDecorTiles && _importedDecorTiles.some(t => t.path === chosenTile);
+    const isDDPackDecorTile = _decorMode && _ddPackDecorTiles && _ddPackDecorTiles.some(t => t.path === chosenTile);
     const isRegisteredDecorTile = _decorMode && getRegisteredDecorTiles().some(t => t.path === chosenTile);
-    const isSymbolTile = isDoorTile || isImportedDecorTile || isRegisteredDecorTile || (_symbolTiles && _symbolTiles.some(t => t.path === chosenTile));
+    const isSymbolTile = isDoorTile || isImportedDecorTile || isDDPackDecorTile || isRegisteredDecorTile || (_symbolTiles && _symbolTiles.some(t => t.path === chosenTile));
     const isCustomTile = _customTiles && _customTiles.some(t => t.path === chosenTile);
     const isColoredTile = _coloredTiles && _coloredTiles.some(t => t.path === chosenTile);
 
@@ -2224,6 +2252,7 @@ function _getAvailablePoiTiles() {
     return Array.from(_chosenTiles).filter(path =>
         (_symbolTiles && _symbolTiles.some(t => t.path === path)) ||
         (_decorMode && _importedDecorTiles && _importedDecorTiles.some(t => t.path === path)) ||
+        (_decorMode && _ddPackDecorTiles && _ddPackDecorTiles.some(t => t.path === path)) ||
         (_decorMode && getRegisteredDecorTiles().some(t => t.path === path)) ||
         (_decorMode && doorTiles.some(t => t.path === path))
     );
@@ -2238,6 +2267,7 @@ async function preloadHexImages() {
         ...(_coloredTiles || []),
         ...(_symbolTiles || []),
         ...(_importedDecorTiles || []),
+        ...(_ddPackDecorTiles || []),
         ...getRegisteredDecorTiles()
     ];
 

@@ -3042,6 +3042,30 @@ function registerSettings() {
 		default: []
 	});
 
+	game.settings.register(MODULE_ID, "decorDungeondraftPacks", {
+		name: "Dungeondraft Decor Packs",
+		scope: "world",
+		config: false,
+		type: Array,
+		default: []
+	});
+
+	game.settings.registerMenu(MODULE_ID, "decorDungeondraftPacksMenu", {
+		name: "Dungeondraft Decor Packs",
+		label: "Manage Packs",
+		hint: "Import, enable, or hide Dungeondraft object packs in the SDX Decor tray.",
+		icon: "fas fa-cubes",
+		type: class extends foundry.applications.api.ApplicationV2 {
+			static DEFAULT_OPTIONS = { id: "sdx-ddpack-settings-menu-stub", window: { title: "" } };
+			async render() {
+				const { DDPackSettingsApp } = await import("./DDPackSettingsAppSD.mjs");
+				new DDPackSettingsApp().render(true);
+				return this;
+			}
+		},
+		restricted: true
+	});
+
 	// Custom Light Templates Menu
 	game.settings.registerMenu(MODULE_ID, "customLightTemplatesMenu", {
 		name: "Light Templates",

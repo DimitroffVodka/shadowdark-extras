@@ -43,6 +43,11 @@ function isSupportedDecorImage(file) {
     return DECOR_IMAGE_EXTENSIONS.some(ext => lower.endsWith(ext));
 }
 
+function isSupportedDecorPath(path) {
+    const lower = String(path || "").toLowerCase().split("?")[0];
+    return DECOR_IMAGE_EXTENSIONS.some(ext => lower.endsWith(ext));
+}
+
 function normalizeDecorPathPart(part) {
     return String(part || "")
         .replace(/\\/g, "/")
@@ -263,14 +268,20 @@ class DecorImportApp extends ApplicationV2 {
         const browseButton = document.createElement("button");
         browseButton.type = "button";
         browseButton.className = "sdx-decor-folder-label";
-        browseButton.textContent = "Browse Foundry";
+        browseButton.textContent = "Browse Image";
         browseButton.addEventListener("click", () => this._browseFoundry());
+
+        const browseFolderButton = document.createElement("button");
+        browseFolderButton.type = "button";
+        browseFolderButton.className = "sdx-decor-folder-label";
+        browseFolderButton.textContent = "Browse Folder";
+        browseFolderButton.addEventListener("click", () => this._browseFoundryFolder());
 
         const pathInput = document.createElement("input");
         pathInput.type = "text";
         pathInput.className = "sdx-decor-source-input";
         pathInput.value = this.foundryPath;
-        pathInput.placeholder = "decor/path/to/image.webp";
+        pathInput.placeholder = "decor/path/to/image.webp or decor/folder";
         pathInput.addEventListener("change", event => {
             this.foundryPath = event.currentTarget.value.trim();
             this._renderContent();
@@ -279,11 +290,18 @@ class DecorImportApp extends ApplicationV2 {
         const addButton = document.createElement("button");
         addButton.type = "button";
         addButton.className = "sdx-decor-import-selected";
-        addButton.disabled = !this.foundryPath;
-        addButton.textContent = "Add to Decor";
+        addButton.disabled = !isSupportedDecorPath(this.foundryPath);
+        addButton.textContent = "Add Image";
         addButton.addEventListener("click", () => this._registerServerAsset(this.foundryPath, "foundry"));
 
-        controls.append(browseButton, pathInput, addButton);
+        const addFolderButton = document.createElement("button");
+        addFolderButton.type = "button";
+        addFolderButton.className = "sdx-decor-import-selected";
+        addFolderButton.disabled = !this.foundryPath;
+        addFolderButton.textContent = "Add Folder";
+        addFolderButton.addEventListener("click", () => this._registerFoundryFolder(this.foundryPath));
+
+        controls.append(browseButton, browseFolderButton, pathInput, addButton, addFolderButton);
     }
 
     _renderWebControls(controls) {
@@ -317,6 +335,21 @@ class DecorImportApp extends ApplicationV2 {
                 : "Choose an image from Foundry to preview it here.";
             return wrapper;
         }
+
+        if (this.sourceMode === "foundry" && !isSupportedDecorPath(path)) {
+            const icon = document.createElement("i");
+            icon.className = "fas fa-folder-open";
+            icon.style.fontSize = "36px";
+            icon.style.color = "#c9aa58";
+            const label = document.createElement("div");
+            label.className = "sdx-decor-source-path";
+            label.textContent = path;
+            const hint = document.createElement("small");
+            hint.textContent = "Folder selected. Use Add Folder to register supported images inside it.";
+            wrapper.append(icon, label, hint);
+            return wrapper;
+        }
+
         const img = document.createElement("img");
         img.src = path;
         img.alt = path.split("/").pop() || "Decor asset";
@@ -405,7 +438,24 @@ class DecorImportApp extends ApplicationV2 {
         const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
         new FilePicker({
             type: "image",
-            current: this.foundryPath || DECOR_IMPORT_DESTINATION,
+            current: isSupportedDecorPath(this.foundryPath)
+                ? this.foundryPath
+                : (this.foundryPath || DECOR_IMPORT_DESTINATION),
+            callback: path => {
+                this.foundryPath = path;
+                this._renderContent();
+            }
+        }).browse();
+    }
+
+    _browseFoundryFolder() {
+        const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
+        const current = isSupportedDecorPath(this.foundryPath)
+            ? this.foundryPath.split("/").slice(0, -1).join("/")
+            : this.foundryPath;
+        new FilePicker({
+            type: "folder",
+            current: current || DECOR_IMPORT_DESTINATION,
             callback: path => {
                 this.foundryPath = path;
                 this._renderContent();
@@ -426,6 +476,59 @@ class DecorImportApp extends ApplicationV2 {
             console.error(`${MODULE_ID} | Failed to add decor asset:`, err);
             ui.notifications.error(`Failed to add decor asset: ${err?.message || err}`);
         }
+    }
+
+    async _registerFoundryFolder(path) {
+        if (!game.user?.isGM) {
+            ui.notifications.warn("Only GMs can add decor folders.");
+            return;
+        }
+        const FP = foundry.applications.apps.FilePicker.implementation;
+        const root = String(path || "").replace(/\/+$/, "");
+        if (!root) return;
+
+        try {
+            const images = await this._scanFoundryFolder(root);
+            if (!images.length) {
+                ui.notifications.warn("No supported image files found in that folder.");
+                return;
+            }
+            for (const imagePath of images) {
+                await registerDecorAsset(imagePath, {
+                    source: "foundry-folder",
+                    category: this._decorCategoryForFoundryFolder(root, imagePath)
+                });
+            }
+            await reloadDecorAssets();
+            Hooks.callAll("sdx.decorAssetsImported");
+            ui.notifications.info(`Added ${images.length} decor asset${images.length === 1 ? "" : "s"} from Foundry folder.`);
+        } catch (err) {
+            console.error(`${MODULE_ID} | Failed to add decor folder:`, err);
+            ui.notifications.error(`Failed to add decor folder: ${err?.message || err}`);
+        }
+    }
+
+    async _scanFoundryFolder(folderPath, out = []) {
+        const FP = foundry.applications.apps.FilePicker.implementation;
+        const listing = await FP.browse("data", folderPath);
+        for (const filePath of listing.files || []) {
+            if (DECOR_IMAGE_EXTENSIONS.some(ext => filePath.toLowerCase().split("?")[0].endsWith(ext))) {
+                out.push(filePath);
+            }
+        }
+        for (const dir of listing.dirs || []) {
+            await this._scanFoundryFolder(dir, out);
+        }
+        return out;
+    }
+
+    _decorCategoryForFoundryFolder(root, imagePath) {
+        const cleanRoot = String(root || "").replace(/\/+$/, "");
+        const cleanPath = String(imagePath || "");
+        const parent = cleanPath.split("/").slice(0, -1).join("/");
+        let relative = parent.startsWith(cleanRoot) ? parent.slice(cleanRoot.length).replace(/^\/+/, "") : parent;
+        const rootLabel = cleanRoot.split("/").filter(Boolean).pop() || "Foundry Folder";
+        return relative ? `${rootLabel}/${relative}` : rootLabel;
     }
 }
 
@@ -2360,6 +2463,16 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return;
             }
             new DecorImportApp().render(true);
+        });
+
+        elem.querySelector(".decor-ddpack-btn")?.addEventListener("click", async (e) => {
+            e.preventDefault();
+            if (!game.user?.isGM) {
+                ui.notifications.warn("Only GMs can manage Dungeondraft packs.");
+                return;
+            }
+            const { DDPackSettingsApp } = await import("./DDPackSettingsAppSD.mjs");
+            new DDPackSettingsApp().render(true);
         });
 
         // Decor folder toggle (expand/collapse)

@@ -3778,7 +3778,8 @@ body.sdx-tray-enabled #camera-views.vertical.left {
     background: rgba(0, 0, 0, 0.22);
 }
 
-.sdx-tray .decor-import-btn {
+.sdx-tray .decor-import-btn,
+.sdx-tray .decor-ddpack-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -3793,9 +3794,21 @@ body.sdx-tray-enabled #camera-views.vertical.left {
     font-size: 12px;
 }
 
-.sdx-tray .decor-import-btn:hover {
+.sdx-tray .decor-ddpack-btn {
+    border-color: rgba(201, 170, 88, 0.42);
+    background: rgba(145, 110, 45, 0.18);
+    color: #e7d49c;
+}
+
+.sdx-tray .decor-import-btn:hover,
+.sdx-tray .decor-ddpack-btn:hover {
     background: rgba(140, 105, 190, 0.28);
     border-color: rgba(190, 165, 230, 0.55);
+}
+
+.sdx-tray .decor-ddpack-btn:hover {
+    background: rgba(160, 120, 45, 0.28);
+    border-color: rgba(230, 200, 130, 0.55);
 }
 
 .sdx-tray .decor-import-hint {

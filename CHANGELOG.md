@@ -4,6 +4,58 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.17] — 2026-05-20 — Dungeondraft decor packs and Hexplorer marker polish
+
+This release expands the Decor tray into a fuller custom-art workflow:
+Dungeondraft object packs can be imported, previewed, selectively
+extracted, enabled, disabled, and browsed from the SDX Decor tab. It
+also adds Foundry folder import for decor assets and improves Hexplorer
+with visible hex-state markers.
+
+### Added — Dungeondraft object pack importer for Decor
+
+GM-only `ApplicationV2` tools now scan `.dungeondraft_pack` files,
+preview pack contents, and extract selected object images into
+`Data/decor/ddpacks/<packId>/objects/`. Extracted Dungeondraft assets
+appear in the Decor browser under pack/category folders and paint using
+the same decor placement controls as other imported decor.
+
+Imported packs can be hidden or shown from the Dungeondraft pack manager.
+Disabling a pack hides its assets from the Decor tray while leaving the
+extracted files in place.
+
+### Added — Foundry folder import for Decor assets
+
+The Decor import dialog can now browse a Foundry-accessible folder and
+register every supported image inside it. Folder selection previews as a
+folder instead of trying to load the folder path as an image, preventing
+404s for paths such as system token directories.
+
+### Added — Hexplorer state markers
+
+When Hexplorer is enabled, hexes now show small map markers for visible
+state:
+
+- **Explored / Mapped** — white marker
+- **Claimed** — teal marker
+- **Show to Players** — green marker
+
+The tray handle button now uses a Font Awesome icon that renders reliably
+and its title is clearer: `Hex Tooltip / Hexplorer`.
+
+### Fixed
+
+- Dungeondraft decor assets selected in the tray are now accepted by the
+  decor stamp logic instead of being filtered out with `No tiles selected
+  in the "symbols" tab`.
+- Disabled Dungeondraft packs no longer leak back into the Decor tray via
+  the generic `Data/decor/` folder scan.
+- The Dungeondraft pack visibility control is now a clickable
+  `Shown` / `Hidden` button instead of an inert checkbox affected by
+  Foundry's `.disabled` CSS.
+- Hexplorer marker-layer teardown is now safe across `canvasReady`
+  redraws, avoiding stale PIXI `refCount` errors.
+
 ## [6.10.16] — 2026-05-19 — Hex tray navigation, decor import dialog, deterministic Region pairing
 
 Two user-visible features, one architecture cleanup, and a build-format
