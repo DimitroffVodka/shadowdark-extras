@@ -105,7 +105,7 @@ const PERPENDICULAR = {
 //  SEEDED RNG
 // ═══════════════════════════════════════════════════════
 
-function seedrandom(seed) {
+export function seedrandom(seed) {
     let s = 0;
     for (let i = 0; i < seed.length; i++) {
         s = ((s << 5) - s + seed.charCodeAt(i)) | 0;
@@ -167,7 +167,7 @@ class SpineWalker {
 //  LAYOUT GENERATOR
 // ═══════════════════════════════════════════════════════
 
-function generateLayout(params, rng) {
+export function generateLayout(params, rng) {
     const {
         roomCount = 10,
         density = 0.8,
@@ -639,7 +639,7 @@ function addRoomFloorsTo(room, floors) {
 //  WALL BUILDER (logical walls for Foundry)
 // ═══════════════════════════════════════════════════════
 
-function generateWalls(floors, offset, entranceEdges, wallThickness) {
+export function generateWalls(floors, offset, entranceEdges, wallThickness) {
     const wallsData = [];
     const entranceSet = new Set(entranceEdges.map(e => `${e.x},${e.y},${e.dir}`));
     const gridSize = GRID_SIZE;
@@ -726,7 +726,7 @@ function generateWalls(floors, offset, entranceEdges, wallThickness) {
 //  WALL VISUAL BUILDER (Drawing documents)
 // ═══════════════════════════════════════════════════════
 
-function generateWallVisuals(floors, offset, options, entranceEdges) {
+export function generateWallVisuals(floors, offset, options, entranceEdges) {
     const { useTexture, wallColor, wallThickness, wallTilePath } = options;
     const gridSize = GRID_SIZE;
     const drawingsData = [];
@@ -886,7 +886,7 @@ function generateWallVisuals(floors, offset, options, entranceEdges) {
 //  DOOR BUILDER
 // ═══════════════════════════════════════════════════════
 
-function generateDoors(doorPositions, offset, wallThickness, doorTilePath) {
+export function generateDoors(doorPositions, offset, wallThickness, doorTilePath) {
     const gridSize = GRID_SIZE;
     const wallsData = [];
 
@@ -978,7 +978,7 @@ function generateDoors(doorPositions, offset, wallThickness, doorTilePath) {
  * Supports both Foundry v14 native levels (levelId) and the Levels module (elevation).
  * If levelsActive is false and no levelId, clears all dungeon documents.
  */
-async function clearSceneAtLevel(scene, levelContext, levelsActive) {
+export async function clearSceneAtLevel(scene, levelContext, levelsActive) {
     const isDungeonTile = (t) => {
         const f = t.flags?.[MODULE_ID];
         return f?.dungeonFloor || f?.dungeonStairs || f?.dungeonStairsDown || f?.dungeonClutter;
@@ -1014,7 +1014,7 @@ async function clearSceneAtLevel(scene, levelContext, levelsActive) {
     if (drawingIds.length > 0) await scene.deleteEmbeddedDocuments("Drawing", drawingIds);
 }
 
-async function configureScene(scene) {
+export async function configureScene(scene) {
     await scene.update({
         "grid.size": GRID_SIZE,
         "grid.type": 1,
@@ -1022,7 +1022,7 @@ async function configureScene(scene) {
     });
 }
 
-function fitToContent(floors, gridSize, padding) {
+export function fitToContent(floors, gridSize, padding) {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
     for (const coord of floors) {
@@ -1049,7 +1049,7 @@ function fitToContent(floors, gridSize, padding) {
 //  TILE RENDERER
 // ═══════════════════════════════════════════════════════
 
-async function renderFloorTilesWithElevation(scene, floors, rng, offset, floorTexture, createWithElevation) {
+export async function renderFloorTilesWithElevation(scene, floors, rng, offset, floorTexture, createWithElevation) {
     const gridSize = GRID_SIZE;
     const tileDocs = [];
 

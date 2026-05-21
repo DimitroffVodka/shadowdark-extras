@@ -27,6 +27,9 @@ import { generateHexMap, clearGeneratedTiles } from "./HexGeneratorSD.mjs";
 import { flattenTiles, unflattenTile, getDungeonFloorLevels, getFlattendDungeonLevels, flattenDungeonLevel } from "./TileFlattenSD.mjs";
 import { setDungeonMode, selectFloorTile, selectWallTile, selectDoorTile, selectIntWallTile, selectIntDoorTile, enableDungeonPainting, disableDungeonPainting, setNoFoundryWalls, setWallShadows, setDungeonBackground } from "./DungeonPainterSD.mjs";
 import { toggleGeneratorPanel, isGeneratorExpanded, generateDungeon, generateRandomSeed, getGeneratorSeed, setGeneratorSeed, getGeneratorSettings, setGeneratorSettings } from "./DungeonGeneratorSD.mjs";
+// Side-effect import: loads the multi-level engine at startup so it can register the standalone
+// mlSliders client setting + the renderTrayApp persistence hook (Levels/Links/Variation/Variety).
+import "./DungeonMultiLevelSD.mjs";
 import { isHexFogEnabled, setHexFogEnabled, getActiveHexFogEffect, setHexFogEffect, getAvailableHexFogEffects, isFogEffectsEnabled } from "./SDXHexFogSD.mjs";
 import { isSoloMode, toggleSoloMode } from "./SoloHexMode.mjs";
 
@@ -1405,6 +1408,20 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         }
 
+        // Multi-level (Levels >= 2) uses inter-floor connection stairs instead of the
+        // decorative Stairs Up/Down, so hide those rows. Clutter still applies (it's decor).
+        const levelsSlider = elem.querySelector(".dgen-levels");
+        if (levelsSlider) {
+            const decorRows = [".dgen-stairs", ".dgen-stairsdown"]
+                .map(s => elem.querySelector(s)?.closest(".dgen-row")).filter(Boolean);
+            const updateMultiLevelUI = (n) => {
+                const multi = parseInt(n) >= 2;
+                for (const row of decorRows) row.style.display = multi ? "none" : "";
+            };
+            updateMultiLevelUI(levelsSlider.value);
+            levelsSlider.addEventListener("input", (e) => updateMultiLevelUI(e.target.value));
+        }
+
         // Generator seed refresh
         elem.querySelector(".dgen-seed-refresh")?.addEventListener("click", (e) => {
             e.preventDefault();
@@ -1460,7 +1477,19 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 wallThickness: thick
             };
 
-            await generateDungeon(config);
+            const levels = parseInt(elem.querySelector(".dgen-levels")?.value || "1");
+            const links = parseInt(elem.querySelector(".dgen-links")?.value || "1");
+            if (levels >= 2) {
+                // Multi-level dungeon — standalone engine, loaded on demand.
+                const variation = parseFloat(elem.querySelector(".dgen-variation")?.value ?? "1");
+                const connectorVariety = parseFloat(elem.querySelector(".dgen-variety")?.value ?? "0.4");
+                const { generateMultiLevelDungeon } = await import("./DungeonMultiLevelSD.mjs");
+                await generateMultiLevelDungeon({
+                    ...config, levelCount: levels, connectionsPerPair: links, variation, connectorVariety,
+                });
+            } else {
+                await generateDungeon(config);
+            }
         });
 
 
