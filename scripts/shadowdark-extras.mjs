@@ -47,7 +47,7 @@ import { registerDisplayNpcEnricher } from "./DisplayNpc.mjs";
 import { registerDisplayTableEnricher } from "./DisplayTable.mjs";
 import { registerDisplayItemEnricher } from "./DisplayItem.mjs";
 import { initEasyReferenceMenu, registerEasyReferenceSettings } from "./easy-reference/EasyReferenceMenu.mjs";
-import { CreatureTypesApp, getCreatureTypes, getEffectiveCreatureType } from "./CreatureTypesApp.mjs";
+import { CreatureTypesApp, getCreatureTypes, getEffectiveCreatureType, getMappedType } from "./CreatureTypesApp.mjs";
 import SheetEditorConfig from "./SheetEditorConfig.mjs";
 import PotionSheetSD from "./PotionSheetSD.mjs";
 import BackgroundSheetSD from "./BackgroundSheetSD.mjs";
@@ -19261,6 +19261,12 @@ Hooks.on("setup", () => {
 
 			// --- Dev / test helpers ---
 			dev: SDX.dev,
+
+			// --- Creature types (read-only; safe for all users) ---
+			// Effective type for an actor: manual flag override > bestiary map > "".
+			getCreatureType: getEffectiveCreatureType,
+			// Bestiary-mapped type for a raw name (ignores per-actor overrides).
+			getMappedCreatureType: getMappedType,
 
 			// --- Spells / Focus tracker ---
 			startDurationSpell: audited("startDurationSpell", gmOnly("startDurationSpell", startDurationSpell)),
