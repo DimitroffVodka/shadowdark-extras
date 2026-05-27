@@ -6801,6 +6801,40 @@ async function injectEnhancedHeader(app, html, actor) {
 		});
 	}
 
+	// XP inline edit on click — the SD system's editable XP input lives on
+	// the Details tab and is easy to miss; mirror the luck container pattern.
+	const $xpRow = $enhancedContent.find('.sdx-xp-row');
+	$xpRow.on('click', async (e) => {
+		if (!actor.isOwner) return;
+		e.stopPropagation();
+		if ($xpRow.find('.sdx-xp-input').length > 0) return;
+
+		const $xpValue = $xpRow.find('.sdx-xp-value');
+		const currentXp = sys.level?.xp ?? 0;
+
+		const $input = $(`<input type="number" class="sdx-xp-input" value="${currentXp}" min="0" />`);
+		$xpValue.replaceWith($input);
+		$input.focus().select();
+
+		const saveXp = async () => {
+			const newXp = Math.max(0, parseInt($input.val()) || 0);
+			const $newXpValue = $(`<span class="sdx-xp-value">${newXp}</span>`);
+			$input.replaceWith($newXpValue);
+			await actor.update({ "system.level.xp": newXp });
+		};
+
+		$input.on('blur', saveXp);
+		$input.on('keydown', (ev) => {
+			if (ev.key === 'Enter') {
+				ev.preventDefault();
+				$input.blur();
+			} else if (ev.key === 'Escape') {
+				const $newXpValue = $(`<span class="sdx-xp-value">${currentXp}</span>`);
+				$input.replaceWith($newXpValue);
+			}
+		});
+	});
+
 	// Actor name change
 	$enhancedContent.find('.sdx-actor-name').on('change', async function () {
 		if (!actor.isOwner) return;

@@ -5146,6 +5146,21 @@ li.entry.sdx-sidebar-unidentified {
     gap: 6px;
     padding: 0 4px;
     font-size: 10px;
+    cursor: pointer;
+}
+
+.sdx-enhanced-content .sdx-xp-row:hover .sdx-xp-value {
+    text-decoration: underline;
+}
+
+.sdx-enhanced-content .sdx-xp-input {
+    width: 4em;
+    font-size: 10px;
+    background: rgba(0, 0, 0, 0.35);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 2px;
+    padding: 0 3px;
 }
 
 .sdx-enhanced-content .sdx-xp-label {
