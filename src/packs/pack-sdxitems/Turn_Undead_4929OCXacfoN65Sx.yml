@@ -231,7 +231,12 @@ flags:
         const targets = canvas.tokens.placeables.filter(t => {
             if (t.id === casterToken.id) return false;
             
-            const dist = canvas.grid.measureDistance(casterToken, t);
+            // Foundry v13+ removed canvas.grid.measureDistance; use measurePath (point-based).
+            const a = casterToken.center ?? { x: casterToken.x, y: casterToken.y };
+            const b = t.center ?? { x: t.x, y: t.y };
+            const dist = (typeof canvas.grid.measurePath === "function")
+                ? canvas.grid.measurePath([a, b]).distance
+                : canvas.grid.measureDistance(a, b);
             if (dist > RANGE_FEET) return false;
             
             const tActor = t.actor;

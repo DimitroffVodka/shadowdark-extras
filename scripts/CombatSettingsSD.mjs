@@ -623,8 +623,10 @@ export function setupCombatSocket() {
 			// Apply duration overrides to embedded effects if provided
 			if (data.duration && Object.keys(data.duration).length > 0 && effectData.effects) {
 				effectData.effects = effectData.effects.map(effect => {
-					effect.duration = effect.duration || {};
-					Object.assign(effect.duration, data.duration);
+					// SD 4.x / Foundry v14: effect.duration may expose getter-only fields
+					// (e.g. `rounds`), so Object.assign onto it throws. Spread into a fresh
+					// plain object instead — reads via getter are fine, writes go to a new obj.
+					effect.duration = { ...(effect.duration ?? {}), ...data.duration };
 					return effect;
 				});
 			}
