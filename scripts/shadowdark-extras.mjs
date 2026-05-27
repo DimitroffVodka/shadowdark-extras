@@ -6826,8 +6826,10 @@ async function injectEnhancedHeader(app, html, actor) {
 			console.warn("shadowdark-extras | Could not fetch actor class:", err);
 		}
 
-		// Level 0 -> Level 1 uses Character Generator
-		if (level === 0 && actorClass?.name?.includes("Level 0")) {
+		// Route to Character Generator if (a) no class is assigned, or (b) Level 0 funnel actor.
+		// SD's LevelUpSD.getData reads `class.system.classTalentTable` and crashes
+		// with `Cannot read properties of null` when actor.system.class is empty.
+		if (!actorClass || (level === 0 && actorClass?.name?.includes("Level 0"))) {
 			new shadowdark.apps.CharacterGeneratorSD(actor._id).render(true);
 		} else {
 			// Standard level up
