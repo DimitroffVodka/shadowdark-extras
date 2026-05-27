@@ -8906,31 +8906,26 @@ function patchCharacterGeneratorRolls() {
 		for (const key of ABILITY_ORDER) {
 			const roll = await new Roll("3d6").evaluate();
 			rolls[key] = roll;
-			if (roll._total >= 14) hasHighStat = true;
+			if (roll.total >= 14) hasHighStat = true;
 		}
 
 		// Collect message IDs if we need to update them
 		const messageIds = [];
 
-		// Send messages one at a time - ChatMessage with rolls array triggers DSN automatically
+		// Send messages one at a time. roll.toMessage() handles render() +
+		// ChatMessage.create + DSN hook properly (ChatMessage.create with just
+		// `rolls: [...]` leaves the dice unrendered in v13+, only the formula shows).
 		for (const key of ABILITY_ORDER) {
 			const roll = rolls[key];
-
-			// Create chat message - DSN hooks into this automatically.
-			// Foundry v13+ removed CONST.CHAT_MESSAGE_TYPES; messages with a `rolls`
-			// array are auto-classified as roll messages, no `type` field needed.
-			const messageData = {
+			const message = await roll.toMessage({
 				speaker: ChatMessage.getSpeaker({ user: game.user }),
-				flavor: `<b>Character Generator</b> - ${ABILITY_NAMES[key]}`,
-				rolls: [roll]
-			};
+				flavor: `<b>Character Generator</b> - ${ABILITY_NAMES[key]}`
+			});
+			if (message) messageIds.push(message.id);
 
-			const message = await ChatMessage.create(messageData);
-			if (message) {
-				messageIds.push(message.id);
-			}
-
-			this.formData.actor.system.abilities[key].base = roll._total;
+			// SD 4.x migrated abilities.base -> abilities.value (PlayerSD.mjs:15);
+			// _calculateModifiers() reads `.value` to compute the modifier.
+			this.formData.actor.system.abilities[key].value = roll.total;
 		}
 
 		// If no high stat, update all messages to show red totals
@@ -8953,7 +8948,7 @@ function patchCharacterGeneratorRolls() {
 	// Override _randomizeGold to show gold roll
 	CharacterGeneratorSD.prototype._randomizeGold = async function () {
 		const roll = await new Roll("2d6").evaluate();
-		const startingGold = roll._total * 5;
+		const startingGold = roll.total * 5;
 
 		// roll.toMessage triggers DSN automatically via Foundry hooks
 		await roll.toMessage({
@@ -8969,7 +8964,7 @@ function patchCharacterGeneratorRolls() {
 		const roll = await new Roll("d6").evaluate();
 		let alignment;
 
-		switch (roll._total) {
+		switch (roll.total) {
 			case 1:
 			case 2:
 			case 3:
