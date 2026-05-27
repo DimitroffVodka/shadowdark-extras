@@ -494,6 +494,12 @@ body.sdx-dark-mode .dice-roll .dice-total.critical {
 body.sdx-dark-mode .dice-roll .dice-result {
     background-color: var(--lights-out-color-chat-message-background-secondary);
     padding: 1px 1px;
+    /* Force vertical stack: formula on top, tooltip middle, total at bottom.
+       Some layouts (e.g. plain ChatMessage with rolls but no chat-card class)
+       leave dice-result as flex-direction: row, which makes dice-formula eat
+       the full width and pushes dice-total off the right edge of the chat panel. */
+    display: flex;
+    flex-direction: column;
 }
 
 body.sdx-dark-mode .dice-roll .dice-formula,
