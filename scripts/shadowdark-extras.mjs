@@ -6835,11 +6835,18 @@ async function injectEnhancedHeader(app, html, actor) {
 		}
 	});
 
-	// Ability rolls on click
-	$enhancedContent.find('.sdx-ability').on('click', async function () {
+	// Ability rolls on click — SD 4.x uses actor.system.rollStatCheck (rollAbility was removed)
+	$enhancedContent.find('.sdx-ability').on('click', async function (event) {
 		const ability = $(this).data('ability');
-		if (actor.rollAbility) {
+		if (!ability) return;
+		const skipPrompt = event?.shiftKey === true;
+		if (typeof actor.system?.rollStatCheck === 'function') {
+			await actor.system.rollStatCheck(String(ability).toLowerCase(), { skipPrompt });
+		} else if (typeof actor.rollAbility === 'function') {
+			// Legacy SD <4.x
 			actor.rollAbility(ability);
+		} else {
+			console.warn(`${MODULE_ID} | No ability-roll API on actor for "${ability}"`);
 		}
 	});
 
@@ -6854,8 +6861,10 @@ async function injectEnhancedHeader(app, html, actor) {
 				return;
 			}
 		}
-		// Fallback: just roll a dex check if not in combat
-		if (actor.rollAbility) {
+		// Fallback: just roll a dex stat check if not in combat (SD 4.x: rollStatCheck)
+		if (typeof actor.system?.rollStatCheck === 'function') {
+			await actor.system.rollStatCheck('dex');
+		} else if (typeof actor.rollAbility === 'function') {
 			actor.rollAbility('dex');
 		}
 	});
