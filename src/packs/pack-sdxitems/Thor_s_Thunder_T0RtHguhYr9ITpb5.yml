@@ -16,6 +16,8 @@ system:
   range: far
   tier: 4
   lost: false
+  formula: '3d6'
+  damageType: damage
   predefinedEffects: ''
 type: Spell
 _stats:

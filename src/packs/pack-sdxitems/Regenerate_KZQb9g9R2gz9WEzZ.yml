@@ -18,6 +18,8 @@ system:
   range: close
   tier: 4
   lost: false
+  formula: '1d4'
+  damageType: healing
   predefinedEffects: ''
 type: Spell
 _stats:

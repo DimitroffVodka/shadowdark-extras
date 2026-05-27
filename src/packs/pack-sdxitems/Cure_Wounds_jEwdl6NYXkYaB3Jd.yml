@@ -17,6 +17,8 @@ system:
   range: close
   tier: 1
   lost: false
+  formula: '(1 + (floor(@level.value/2)))d6'
+  damageType: healing
   predefinedEffects: ''
 type: Spell
 _stats:

@@ -18,6 +18,8 @@ system:
   tier: 1
   lost: false
   magicItem: false
+  formula: '1d4'
+  damageType: damage
   predefinedEffects: ''
 type: Spell
 _stats:

@@ -14,6 +14,8 @@ system:
   range: near
   tier: 3
   lost: false
+  formula: '2d6'
+  damageType: healing
   predefinedEffects: ''
 type: Spell
 _stats:

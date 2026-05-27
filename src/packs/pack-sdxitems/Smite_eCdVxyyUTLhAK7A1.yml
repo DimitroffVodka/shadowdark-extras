@@ -16,6 +16,8 @@ system:
   range: near
   tier: 2
   lost: false
+  formula: '1d6'
+  damageType: damage
   predefinedEffects: ''
 type: Spell
 _stats:

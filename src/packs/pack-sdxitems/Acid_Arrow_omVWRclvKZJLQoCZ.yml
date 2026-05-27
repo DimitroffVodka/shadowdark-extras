@@ -19,6 +19,8 @@ system:
   tier: 2
   lost: false
   magicItem: false
+  formula: '1d6'
+  damageType: damage
   predefinedEffects: ''
 type: Spell
 _stats:
