@@ -461,6 +461,10 @@ body.sdx-dark-mode .dice-roll .dice-total {
     font-family: var(--font-header);
     font-size: 22px;
     line-height: 140%;
+    align-self: center;
+    text-align: center;
+    width: 100%;
+    justify-content: center;
 }
 
 body.sdx-dark-mode .dice-roll .dice-total.success,
