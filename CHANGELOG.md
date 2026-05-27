@@ -4,6 +4,138 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.20] — 2026-05-27 — Foundry v14 / Shadowdark 4.x compatibility sweep
+
+A maintenance release fixing twelve regressions exposed by Foundry v13/v14
+and Shadowdark 4.x. None of these change existing behavior beyond making
+broken things work again. Verified against Foundry 14.363 / Shadowdark 4.0.6.
+
+### Fixed
+
+- **Enhanced-header ability checks were silent (`7abdee2`).** Clicking
+  STR/DEX/CON/INT/WIS/CHA chips on the PC sheet's enhanced header did
+  nothing. The handler called the legacy `actor.rollAbility(...)`, which
+  SD 4.x removed in favor of `actor.system.rollStatCheck(abilityId, {skipPrompt})`.
+  Swapped to the SD 4.x call, with Shift-click → `skipPrompt` and a
+  legacy fallback for SD &lt;4 worlds. Initiative was unaffected because it
+  routes through Foundry core `game.combat.rollInitiative`.
+
+- **Turn Undead spell threw on cast (`71dc819`, `53d93b0`).** Two
+  separate v14/SD-4.x breakages in the bundled macro:
+  - `actor.rollAbility("cha", {chatMessage:false})` for the opposed CHA
+    check no longer exists; its SD 4.x replacement (`rollStatCheck` →
+    `rollFromConfig`) always posts a chat card, which would spam one
+    card per undead and break the aggregated single-card UX. Replaced
+    with a direct `1d20 + CHA mod` roll via core `Roll`, staying silent
+    so the existing aggregated chat card still works.
+  - `canvas.grid.measureDistance(casterToken, t)` for the range filter
+    was removed in Foundry v13+. Replaced with
+    `canvas.grid.measurePath([a, b]).distance` + a v12 fallback.
+
+- **Condition application threw setting `rounds` (`53d93b0`).** When a
+  spell applied a duration condition,
+  `Object.assign(effect.duration, data.duration)` in `CombatSettingsSD.mjs`
+  threw `Cannot set property rounds of #<Object> which has only a getter`.
+  The embedded-effect duration object exposes getter-only fields in v14.
+  Switched to spread into a fresh plain object instead — reads via the
+  getter are fine, writes go to the new object.
+
+- **Medkit looped "Update Available" forever (`56adc0f`).** Items packed
+  under SD 3.6.1 lacked schema fields added in SD 4.x (e.g. `system.formula`).
+  After Update, the actor copy carried the schema default `""` while
+  the compendium source still had the key absent — `foundry.utils.equals("", undefined)`
+  is `false`, so the diff persisted. Added a `_stripEmpty` recursive pass to
+  the Medkit's `_cleanData` that drops `undefined`/`null`/`""`/`[]`/`{}`
+  from both sides before comparison.
+
+- **Level-up crashed for class-less actors (`413ffa2`).** The enhanced
+  header's Level icon routed every actor other than literal "Level 0
+  funnel" characters straight to `LevelUpSD`, but the system's
+  `LevelUpSD.getData` does `fromUuid(actor.system.class)` and then reads
+  `.system` on the result with no null-check — so any actor with an empty
+  `system.class` threw `Cannot read properties of null (reading 'system')`
+  on open. Now routes class-less actors to `CharacterGeneratorSD`, which
+  is meant for class selection anyway. (The underlying null-handling
+  bug is in the SD system itself and is worth a separate report.)
+
+- **Character Generator dice button threw on click (`b304e4c`).** SDX's
+  patched `_randomizeStats` set `type: CONST.CHAT_MESSAGE_TYPES.ROLL` on
+  per-ability roll messages, but Foundry v13+ removed
+  `CONST.CHAT_MESSAGE_TYPES` entirely (only `CHAT_MESSAGE_STYLES` remains,
+  and it has no `ROLL` value — roll messages are now auto-classified by
+  the presence of a `rolls` array). Dropped the `type` field.
+
+- **Character Generator stats didn't update + chat showed only "3d6" (`d96c258`).**
+  Three layered regressions: (1) `roll._total` (legacy private field) is
+  `undefined` in v14, the public getter is `.total`; (2) wrote to
+  `system.abilities[key].base` but SD 4.x migrated `abilities.base →
+  abilities.value` so the form input stayed at the default 10;
+  (3) `ChatMessage.create({rolls:[…]})` in v13+ doesn't render the dice
+  content, only the formula. Switched to `roll.toMessage(...)` to match
+  the sibling `_randomizeGold` / `_randomizeAlignment` methods in the
+  same patch.
+
+- **Dark-mode chat cards clipped the dice total (`c3df0a4`, `c3ffb17`).**
+  `.dice-result` inherited `flex-direction: row` from upstream CSS in
+  `sdx-dark-mode`, which let `.dice-formula` eat the full container
+  width and pushed `.dice-total` off the right edge of the chat panel —
+  visible as cards showing only "3d6" with no rolled total. Forced
+  `flex-direction: column` so children stack vertically, then centered
+  `.dice-total` horizontally for visual balance.
+
+- **Legacy `.base` field swept module-wide (`f13251e`).** SD 4.x migrated
+  both `abilities.X.base → abilities.X.value` and
+  `attributes.hp.base → attributes.hp.max`. Migration runs once on data
+  load, so existing copies get converted — but **new writes** to `.base`
+  land in nonexistent schema fields (silently dropped on save) and
+  **reads** return `undefined`. Fixed:
+  - `CombatSettingsSD.mjs` (6 reads across target/baseRoll/casterRoll
+    contexts). `@strBase`/`@dexBase`/etc. roll variables had been
+    silently undefined, quietly breaking any weapon-bonus formula keyed
+    on raw ability scores.
+  - 3 Wolfshape AE specs (Dire Wolf / Winter Wolf / Wolf). Shapechange
+    wrote `system.abilities.{str,dex,con}.base` and
+    `system.attributes.hp.base` — all nonexistent in SD 4.x — so stats
+    stayed unchanged when transforming. Now write `.value` and `.max`.
+
+- **22 SDX spell items missing damage formulas (`eeb719c`).** SDX spell
+  YAMLs were packed under SD 3.6.1 without `system.formula`; SD 4.x
+  added that field, so the actor copy carries the default `""` while
+  the compendium source has the key absent. Real content drift, beyond
+  what the Medkit's empty-default fix can resolve. Sourced canonical
+  formulas + `damageType` from `shadowdark.spells` by name match.
+  Twenty-two spells now have proper values: Acid Arrow `1d6`,
+  Burning Hands `1d6`, Cloud Kill `2d6`,
+  Cure Wounds `(1 + (floor(@level.value/2)))d6` (healing),
+  Disintegrate `3d8`, Eyebite `1d4`, Fate `1d10`, Fireball `4d6`,
+  Flame Strike `2d6`, Frog Rain `1d6`, Lightning Bolt `3d6`,
+  Magic Missile `1d4`, Mass Cure `2d6` (healing), Moonbeam `3d6`,
+  Pin Doll `2d6`, Poison `1d6`, Prismatic Orb `3d8`,
+  Regenerate `1d4` (healing), Smite `1d6`, Swarm `2d6`,
+  Thor's Thunder `3d6`, Toadstool `1d6` (healing).
+
+### Added
+
+- **Click the XP row in the enhanced header to edit (`0d7fe5b`).** The
+  enhanced header rendered XP as read-only display, but the editable
+  input lived on the SD system's Details tab and was easy to miss.
+  Clicking the XP row now swaps it for a focused number input;
+  Enter / click-away saves to `system.level.xp`, Escape cancels.
+  Cursor is `pointer` with a hover underline so the affordance is
+  obvious.
+
+### Upgrade notes
+
+- After installing 6.10.20, open the **Shadowdark Extras Medkit** on any
+  caster with SDX spells (sheet header → Medkit icon) and click
+  **Update All**. This propagates the new `formula` / `damageType` /
+  Wolfshape AE-key fixes onto actor-owned spell copies. New imports
+  get the values automatically.
+- The `LevelUpSD` null-class crash is technically a Shadowdark system
+  bug. SDX now routes around it from its own Level icon, but opening
+  Level Up from the system's native UI on a class-less actor will
+  still crash until the system itself null-guards.
+
 ## [6.10.19] — 2026-05-21 — Hotfix: include `data/` in the release package
 
 ### Fixed
