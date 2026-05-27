@@ -8916,11 +8916,12 @@ function patchCharacterGeneratorRolls() {
 		for (const key of ABILITY_ORDER) {
 			const roll = rolls[key];
 
-			// Create chat message - DSN hooks into this automatically
+			// Create chat message - DSN hooks into this automatically.
+			// Foundry v13+ removed CONST.CHAT_MESSAGE_TYPES; messages with a `rolls`
+			// array are auto-classified as roll messages, no `type` field needed.
 			const messageData = {
 				speaker: ChatMessage.getSpeaker({ user: game.user }),
 				flavor: `<b>Character Generator</b> - ${ABILITY_NAMES[key]}`,
-				type: CONST.CHAT_MESSAGE_TYPES.ROLL,
 				rolls: [roll]
 			};
 
