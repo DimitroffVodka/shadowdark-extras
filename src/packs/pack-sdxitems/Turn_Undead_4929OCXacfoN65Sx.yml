@@ -272,19 +272,19 @@ flags:
             let chaTotal = NaN;
             
             try {
-                const chaRoll = await tActor.rollAbility("cha", {
-                    fastForward: true,
-                    skipPrompt: true,
-                    chatMessage: false
-                });
-                
-                // Extract the total from the Shadowdark roll structure
-                // Structure: chaRoll.rolls.main.roll.total
-                if (chaRoll?.rolls?.main?.roll?.total !== undefined) {
-                    chaTotal = Number(chaRoll.rolls.main.roll.total);
-                } else if (chaRoll?.rolls?.main?.roll?._total !== undefined) {
-                    chaTotal = Number(chaRoll.rolls.main.roll._total);
-                }
+                // SD 4.x removed actor.rollAbility; its replacement
+                // (actor.system.rollStatCheck) always posts a chat card, which would
+                // spam one message per undead. Roll CHA directly so we stay silent
+                // and feed the aggregated Turn Undead chat card built below.
+                const rollData = tActor.getRollData?.() ?? {};
+                const chaMod = Number(
+                    tActor.system?.abilities?.cha?.mod
+                    ?? rollData?.abilities?.cha?.mod
+                    ?? rollData?.cha
+                    ?? 0
+                );
+                const chaRoll = await (new Roll(`1d20 + ${chaMod}`)).evaluate();
+                chaTotal = Number(chaRoll.total);
             } catch (e) {
                 console.error(`Turn Undead: System roll failed for ${tName}`, e);
             }
