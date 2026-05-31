@@ -4,6 +4,27 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.22] — 2026-05-31 — Journal page editor data-loss fix
+
+A patch release fixing data loss introduced by 6.10.21: editing a journal
+page through the SDX editor erased the existing content. Verified live
+against Foundry 14.362 / Shadowdark 4.0.6.
+
+### Fixed
+
+- **Editing a journal page erased all existing content on save.** The
+  `<prose-mirror>` element in `journal-editor.hbs` placed the page content
+  as innerHTML but set **no `value` attribute**. Foundry's
+  `HTMLProseMirrorElement` treats innerHTML purely as the *enriched display*
+  and reads the editable raw text from the `value` attribute / `_value`
+  (see its own `create()`: `setAttribute("value", config.value ?? "")`).
+  With no `value`, the editor's raw value was `""`, so `formHandler` wrote
+  an empty string back to the page — wiping it — whether or not the editor
+  was even opened. Fixed by setting `value="{{content}}"` (raw, HTML-escaped)
+  and rendering the content as the enriched display. Verified live: save
+  preserves content with the editor closed or open, and the editor loads
+  existing content on activate.
+
 ## [6.10.21] — 2026-05-30 — Journal page editor crash fix
 
 A patch release fixing a crash when editing a journal page through the SDX
