@@ -544,7 +544,13 @@ export async function generateHexMap(params = {}) {
                 tileData.push({
                     texture: {
                         src: tilePath,
-                        tint: tintData
+                        tint: tintData,
+                        // v14 defaults the texture anchor to (0.5, 0.5) which treats
+                        // (x, y) as the tile centre. Our placement math computes a
+                        // top-left origin, so pin the anchor to (0, 0) to match the
+                        // painter and keep tiles aligned to their grid cells.
+                        anchorX: 0,
+                        anchorY: 0
                     },
                     x: px,
                     y: py,
