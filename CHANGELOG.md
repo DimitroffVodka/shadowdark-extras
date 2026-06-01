@@ -4,6 +4,30 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.23] — 2026-05-31 — Hex map tile alignment
+
+Fixes for hex tiles not lining up with the Foundry hex grid. Verified live
+against Foundry 14.363 / Shadowdark 4.0.6.
+
+### Fixed
+
+- **Procedural Generator tiles were offset by half a tile.** Generated hex
+  tiles were created without an explicit texture anchor, so Foundry v14
+  defaulted it to `(0.5, 0.5)` — treating the tile's `(x, y)` as its centre
+  while the placement math computes a top-left origin. Every generated tile
+  therefore rendered shifted by half its size (e.g. −286, −250 for colored
+  tiles). Pinned the anchor to `(0, 0)` to match the painter; tiles now sit
+  exactly on their grid cells. No tile resizing — the seamless art is
+  untouched.
+
+- **Painted hex tiles were shoved inward at the map's left/top edge.**
+  Foundry v14's `TileDocument#prepareDerivedData` clamps tile `x/y` into
+  `[0, sceneWidth/Height]`, so an edge hex (whose tile overhangs the border)
+  got pushed inward, misaligning the first column / top row. Added a
+  lib-wrapper that, for SDX-painted tiles only, restores the true position
+  after core prep, so the visible hex stays on its grid cell and only the
+  transparent overhang clips at the boundary.
+
 ## [6.10.22] — 2026-05-31 — Journal page editor data-loss fix
 
 A patch release fixing data loss introduced by 6.10.21: editing a journal
