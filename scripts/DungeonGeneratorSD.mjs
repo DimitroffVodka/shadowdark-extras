@@ -549,7 +549,7 @@ export function generateLayout(params, rng) {
         }
     }
 
-    return { floors, corridors, placedRooms, doorPositions, entranceEdges, roomData };
+    return { floors, corridors, placedRooms, doorPositions, entranceEdges, roomData, adjacency };
 }
 
 // Place a single room from a walker's current position
@@ -1464,7 +1464,13 @@ export async function generateDungeon(config) {
         return {
             stairsUp: placedStairsUp,
             stairsDown: placedStairsDown,
-            clutter: placedClutter
+            clutter: placedClutter,
+            // ── Room-for-room bridge data (additive; existing callers ignore) ──
+            scene,
+            layout,
+            offset,
+            gridSize: GRID_SIZE,
+            seed
         };
     } catch (err) {
         console.error(`${MODULE_ID} | Dungeon generation failed:`, err);

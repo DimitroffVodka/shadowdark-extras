@@ -6,6 +6,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
 import { getAvailableBiomes, generateHexHtml } from "./HexContentGenerator.mjs";
 import { getSettlementTypes, generateSettlementHtml } from "./SettlementGenerator.mjs";
 import { getDungeonTypes, getDungeonSizes, generateDungeonHtml } from "./DungeonGenerator.mjs";
+import { buildHexDungeonScene } from "./HexDungeonBridgeSD.mjs";
 import { formatHexCoord } from "./SDXCoordsSD.mjs";
 import { registerContentRegistrySetting, registerContent } from "./ContentRegistry.mjs";
 import { MaphubViewerApp } from "./MaphubViewerApp.mjs";
@@ -529,6 +530,11 @@ export class SDXHexTooltip {
 			f => f.type === "journal" && f.journalId && (isGM || f.discovered)
 		);
 
+		// Collect dungeon-map scene features (GM-only quick-open of the playable map)
+		const sceneFeats = (record?.features ?? []).filter(
+			f => f.type === "scene" && f.sceneId && isGM
+		);
+
 		// Players get no menu if there's nothing to show
 		if (!isGM && journalFeats.length === 0) return;
 
@@ -559,6 +565,16 @@ export class SDXHexTooltip {
 			}
 		}
 
+		// Dungeon-map scene shortcuts (GM-only)
+		for (const f of sceneFeats) {
+			const sc = game.scenes.get(f.sceneId);
+			if (!sc) continue;
+			const label = f.name || sc.name;
+			html += `<div class="sdx-hex-ctx-item sdx-hex-ctx-scene" data-sid="${f.sceneId}">
+				<i class="fas fa-map-marked-alt"></i>${label}
+			</div>`;
+		}
+
 		// GM-only: Generate options
 		if (isGM) {
 			html += `<div class="sdx-hex-ctx-divider"></div>`;
@@ -570,6 +586,9 @@ export class SDXHexTooltip {
 			</div>`;
 			html += `<div class="sdx-hex-ctx-item sdx-hex-ctx-generate-dungeon" data-action="generate-dungeon">
 				<i class="fas fa-dungeon"></i>Generate Dungeon
+			</div>`;
+			html += `<div class="sdx-hex-ctx-item sdx-hex-ctx-generate-dungeon-map" data-action="generate-dungeon-map">
+				<i class="fas fa-map-marked-alt"></i>Generate Dungeon Map
 			</div>`;
 		}
 
@@ -585,7 +604,7 @@ export class SDXHexTooltip {
 		menu.style.top = `${Math.min(clientY, H - menu.offsetHeight - 8)}px`;
 
 		// Journal click handlers
-		menu.querySelectorAll(".sdx-hex-ctx-item:not(.sdx-hex-ctx-generate):not(.sdx-hex-ctx-generate-settlement):not(.sdx-hex-ctx-generate-dungeon)").forEach(item => {
+		menu.querySelectorAll(".sdx-hex-ctx-item:not(.sdx-hex-ctx-generate):not(.sdx-hex-ctx-generate-settlement):not(.sdx-hex-ctx-generate-dungeon):not(.sdx-hex-ctx-generate-dungeon-map):not(.sdx-hex-ctx-scene)").forEach(item => {
 			item.addEventListener("click", async () => {
 				const j = game.journal.get(item.dataset.jid);
 				if (!j) { this.#closeContextMenu(); return; }
@@ -630,6 +649,15 @@ export class SDXHexTooltip {
 			});
 		});
 
+		// Dungeon-map scene shortcut handlers (GM views the playable map scene)
+		menu.querySelectorAll(".sdx-hex-ctx-scene").forEach(item => {
+			item.addEventListener("click", async () => {
+				const sc = game.scenes.get(item.dataset.sid);
+				this.#closeContextMenu();
+				if (sc) await sc.view();
+			});
+		});
+
 		// Generate Wilderness click handler
 		menu.querySelector(".sdx-hex-ctx-generate")?.addEventListener("click", () => {
 			this.#closeContextMenu();
@@ -645,7 +673,13 @@ export class SDXHexTooltip {
 		// Generate Dungeon click handler
 		menu.querySelector(".sdx-hex-ctx-generate-dungeon")?.addEventListener("click", () => {
 			this.#closeContextMenu();
-			this.#showDungeonTypePicker(hexKey, clientX, clientY);
+			this.#showDungeonTypePicker(hexKey, clientX, clientY, "text");
+		});
+
+		// Generate Dungeon Map click handler (playable scene, room-for-room)
+		menu.querySelector(".sdx-hex-ctx-generate-dungeon-map")?.addEventListener("click", () => {
+			this.#closeContextMenu();
+			this.#showDungeonTypePicker(hexKey, clientX, clientY, "map");
 		});
 
 		// Close on outside click
@@ -943,7 +977,7 @@ export class SDXHexTooltip {
 		ui.notifications.info(`Generated settlement "${settlementName}" for Hex ${hexLabel}`);
 	}
 
-	async #showDungeonTypePicker(hexKey, clientX, clientY) {
+	async #showDungeonTypePicker(hexKey, clientX, clientY, mode = "text") {
 		this.#closeContextMenu();
 
 		let types;
@@ -976,7 +1010,7 @@ export class SDXHexTooltip {
 			item.addEventListener("click", () => {
 				const typeKey = item.dataset.dtype;
 				this.#closeContextMenu();
-				this.#showDungeonSizePicker(hexKey, typeKey, clientX, clientY);
+				this.#showDungeonSizePicker(hexKey, typeKey, clientX, clientY, mode);
 			});
 		});
 
@@ -989,7 +1023,7 @@ export class SDXHexTooltip {
 		setTimeout(() => document.addEventListener("mousedown", onClose, true), 0);
 	}
 
-	#showDungeonSizePicker(hexKey, typeKey, clientX, clientY) {
+	#showDungeonSizePicker(hexKey, typeKey, clientX, clientY, mode = "text") {
 		this.#closeContextMenu();
 
 		const sizes = getDungeonSizes();
@@ -1016,7 +1050,11 @@ export class SDXHexTooltip {
 			item.addEventListener("click", async () => {
 				const sizeKey = item.dataset.dsize;
 				this.#closeContextMenu();
-				await this.#generateDungeonAndSave(hexKey, typeKey, sizeKey);
+				if (mode === "map") {
+					await this.#generateDungeonMapAndSave(hexKey, typeKey, sizeKey);
+				} else {
+					await this.#generateDungeonAndSave(hexKey, typeKey, sizeKey);
+				}
 			});
 		});
 
@@ -1111,6 +1149,69 @@ export class SDXHexTooltip {
 		updatedJournal.sheet.render(true, { pageId: page?.id });
 
 		ui.notifications.info(`Generated dungeon "${dungeonName}" for Hex ${hexLabel}`);
+	}
+
+	async #generateDungeonMapAndSave(hexKey, typeKey, sizeKey) {
+		const hexLabel = hexKeyToLabel(hexKey);
+		const sceneId = canvas.scene?.id;
+
+		let scene, journal, dungeonName, roomCount;
+		try {
+			ui.notifications.info(`SDX | Generating dungeon map for Hex ${hexLabel}…`);
+			({ scene, journal, dungeonName, roomCount } = await buildHexDungeonScene({
+				hexLabel, hexKey, typeKey, sizeKey,
+			}));
+		} catch (err) {
+			console.error("SDX | Dungeon map generation failed:", err);
+			ui.notifications.error("SDX | Dungeon map generation failed. Check console for details.");
+			return;
+		}
+
+		// Update the hex record — add both a journal feature (player-discoverable,
+		// uses the existing render/click path) and a scene feature (GM quick-open).
+		const record = foundry.utils.deepClone(
+			this.#allData[sceneId]?.[hexKey] ?? {
+				name: "", zone: "", terrain: "", travel: "",
+				exploration: "unexplored", cleared: false, claimed: false,
+				revealRadius: -1, revealCells: "",
+				rollTable: "", rollTableChance: 100, rollTableFirstOnly: false,
+				showToPlayers: false, features: [], notes: [],
+			}
+		);
+		if (!record.features) record.features = [];
+		if (!record.notes) record.notes = [];
+		if (!record.name) record.name = dungeonName;
+
+		const overviewPage = journal.pages.find(p => p.name === "Overview") ?? journal.pages.contents[0];
+
+		record.features.push({
+			id: foundry.utils.randomID(),
+			type: "journal",
+			journalId: journal.id,
+			pageId: overviewPage?.id ?? "",
+			name: dungeonName,
+			discovered: false,
+		});
+		record.features.push({
+			id: foundry.utils.randomID(),
+			type: "scene",
+			sceneId: scene.id,
+			journalId: journal.id,
+			name: `${dungeonName} (Map)`,
+			discovered: false,
+		});
+
+		await saveHexRecord(sceneId, hexKey, record);
+		this.notifyDataChanged(sceneId, hexKey, record);
+
+		await registerContent({
+			hexKey, sceneId, type: "dungeon", subType: typeKey,
+			name: dungeonName, roomCount: roomCount,
+			journalId: journal.id, pageId: overviewPage?.id || "",
+			dungeonSceneId: scene.id,
+		});
+
+		ui.notifications.info(`Generated dungeon map "${dungeonName}" (${roomCount} rooms) for Hex ${hexLabel}`);
 	}
 
 	#show(hexKey, record) {

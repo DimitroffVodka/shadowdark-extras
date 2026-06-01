@@ -88,6 +88,7 @@ import { initTemplateElevationBadge } from "./TemplateElevationBadgeSD.mjs";
 // for MCP / external automation. None of these modules register hooks at import
 // time (verified), so this only adds the named exports to the bundle graph.
 import { generateDungeon, getGeneratorSettings, setGeneratorSettings, generateRandomSeed } from "./DungeonGeneratorSD.mjs";
+import { buildHexDungeonScene } from "./HexDungeonBridgeSD.mjs";
 import { generateHexMap, clearGeneratedTiles } from "./HexGeneratorSD.mjs";
 import { getSceneLevelContext, applySceneLevelData, getDungeonBackground } from "./DungeonPainterSD.mjs";
 import { placeChangeLevelRegion, placeDungeonSurface, placeDungeonDecor } from "./DungeonRegionsSD.mjs";
@@ -19386,6 +19387,7 @@ Hooks.on("setup", () => {
 			getGeneratorSettings: audited("getGeneratorSettings", getGeneratorSettings),
 			setGeneratorSettings: audited("setGeneratorSettings", gmOnly("setGeneratorSettings", setGeneratorSettings)),
 			generateRandomSeed: audited("generateRandomSeed", generateRandomSeed),
+			buildHexDungeonScene: audited("buildHexDungeonScene", gmOnly("buildHexDungeonScene", buildHexDungeonScene)),
 
 			// --- Hex generator ---
 			generateHexMap: audited("generateHexMap", gmOnly("generateHexMap", generateHexMap)),

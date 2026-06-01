@@ -821,3 +821,81 @@ export async function generateDungeonHtml(typeKey, sizeKey, hexLabel, hexKey) {
 
 	return { html, dungeonName, roomCount };
 }
+
+/**
+ * Structured per-room generation for the playable-map bridge.
+ *
+ * Unlike generateDungeonHtml (which invents its own abstract room graph and a
+ * schematic SVG), this drives off the REAL room count and adjacency produced by
+ * the scene generator, so journal "Room N" corresponds to map "Room N".
+ *
+ * @param {object} opts
+ * @param {string} opts.typeKey      - "temple" | "tomb" | "dungeon"
+ * @param {string} opts.sizeKey      - "small" | "medium" | "large"
+ * @param {number} opts.roomCount    - actual number of rooms placed on the map
+ * @param {object} opts.connections  - connections[roomNum] = [{ toRoom, direction }]
+ *                                      (1-based; index 0 unused), built from real geometry
+ * @returns {Promise<{ dungeonName: string, typeLabel: string, overviewHtml: string,
+ *                     rooms: Array<{ num: number, label: string, html: string }> }>}
+ */
+export async function generateDungeonRooms({ typeKey, sizeKey, roomCount, connections }) {
+	const data = await loadDungeonData();
+	const dungeonType = data.dungeonTypes[typeKey];
+	if (!dungeonType) {
+		return { dungeonName: typeKey, typeLabel: typeKey, overviewHtml: "<p>Unknown dungeon type.</p>", rooms: [] };
+	}
+
+	const dungeonName = generateDungeonName(data);
+	const description = pick(dungeonType.descriptions);
+	const treasureTier = sizeKey === "small" ? 1 : sizeKey === "medium" ? 2 : 3;
+
+	const keyMap = buildKeyMap(data, roomCount);
+
+	const roomTypePool = dungeonType.roomTypes || data.roomTypes;
+	const roomTypes = pickWeightedUnique(roomTypePool, roomCount);
+	while (roomTypes.length < roomCount) roomTypes.push(pickWeighted(roomTypePool));
+
+	// ── Overview page ─────────────────────────────────────────────────────────
+	let overviewHtml = `<p><em>${dungeonType.label}</em></p>`;
+	overviewHtml += `<p>${description}</p>`;
+	if (typeKey === "dungeon") {
+		const motData = await loadMotivationsData();
+		const pickedMots = pickN(motData.motivations, 3);
+		overviewHtml += `<h3>Peculiar Motivations</h3>`;
+		overviewHtml += `<p>There is someone here with some peculiar motivations, choose one or make your own:</p><ul>`;
+		for (const mot of pickedMots) overviewHtml += `<li>${mot}</li>`;
+		overviewHtml += `</ul>`;
+	}
+	overviewHtml += `<h2>Wandering Monsters</h2>`;
+	overviewHtml += `<p>Check <strong>${data.wanderingMonsters.chance}</strong> (${data.wanderingMonsters.checkFrequency}) for a wandering encounter:</p>`;
+	overviewHtml += await generateWanderingTable(data, typeKey);
+	overviewHtml += `<hr><p style="font-size:0.75em;opacity:0.6;">Generated from <a href="https://hexroll.app">Hexroll</a> data</p>`;
+
+	// ── Per-room pages ──────────────────────────────────────────────────────────
+	const bookRoomIndex = randRange(0, roomCount - 1);
+	const bookData = await loadBookData();
+
+	let wellRoomIndex = -1;
+	if ((typeKey === "dungeon" || typeKey === "temple") && Math.random() < 0.5) {
+		wellRoomIndex = randRange(0, roomCount - 1);
+	}
+	const statueRoomIndex = randRange(0, roomCount - 1);
+
+	const rooms = [];
+	for (let i = 0; i < roomCount; i++) {
+		let html = await generateRoom(
+			data, i + 1, roomTypes[i], connections, keyMap, typeKey, treasureTier,
+			sizeKey !== "small",
+			i === wellRoomIndex,
+			i === statueRoomIndex
+		);
+		if (i === bookRoomIndex) {
+			const chosenBook = pick(bookData.books);
+			const chosenLocation = pick(bookData.bookLocations);
+			html += `<p><strong>Rare Find (Book):</strong> You notice a book ${chosenLocation}. The cover reads: <em>"${chosenBook}"</em>.</p>`;
+		}
+		rooms.push({ num: i + 1, label: roomTypes[i].label, html });
+	}
+
+	return { dungeonName, typeLabel: dungeonType.label, overviewHtml, rooms };
+}
