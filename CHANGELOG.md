@@ -4,6 +4,38 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.24] — 2026-06-01 — Hex dungeon maps + SD 4.x attack/spell/ability fixes
+
+Verified live against Foundry 14.363 / Shadowdark 4.0.6.
+
+### Added
+
+- **Generate Dungeon Map from a hex (room-for-room).** The Hexplorer hex
+  context menu gains a "Generate Dungeon Map" action alongside the existing
+  text-only "Generate Dungeon". It creates a dedicated playable scene
+  (floors/walls/doors via the procedural generator), then generates the room
+  descriptions, encounters, treasure and doorways **keyed to the rooms that
+  were actually placed** — so journal "Room N" corresponds to map "Room N" —
+  and drops a numbered map pin in each room linking to that room's journal
+  page. Doorway text reflects the map's real room connections.
+
+### Fixed
+
+- **Token HUD weapon click did nothing ("rollAttack: Invalid weaponId or
+  type").** Shadowdark 4.x changed `actor.system.rollAttack` to take a weapon
+  **UUID** (resolved via `fromUuid`), but the HUD passed a bare item id. The
+  attack wrapper now accepts either form and forwards the UUID, so HUD weapon
+  clicks open the attack roll dialog again. This also restores the wrapper's
+  target-requirement / range-check / ammunition-selection features for the
+  normal sheet attack flow, which had silently stopped resolving the item.
+- **Class abilities couldn't be used from the player sheet.** The SDX
+  `_onUseAbility` patch still read `data-item-id` and called the removed
+  actor-level `useAbility`; it now reads `data-item-uuid` and calls
+  `actor.system.useAbility(uuid)` (matching the system).
+- **Item → hotbar macros for spells, wands and scrolls threw on use.** The
+  generated macros called nonexistent actor-level methods with bare ids; they
+  now use `actor.system.castSpell(uuid)` (and the wand/scroll spell-UUID path).
+
 ## [6.10.23] — 2026-05-31 — Hex map tile alignment
 
 Fixes for hex tiles not lining up with the Foundry hex grid. Verified live
