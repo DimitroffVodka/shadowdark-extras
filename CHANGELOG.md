@@ -4,6 +4,30 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.25] — 2026-06-02 — Dungeon generation styles + targeting crash fix
+
+Verified live against Foundry 14.363 / Shadowdark 4.0.6.
+
+### Fixed
+
+- **Template / AoE / healing items crashed and did nothing whenever a token was
+  targeted.** `forceClearTargets` called `.catch()` on `Token#setTarget`, which
+  is synchronous and returns `void` in Foundry v13/v14, throwing
+  "Cannot read properties of undefined (reading 'catch')" and aborting template
+  placement. This resolves the reports of healing potions doing nothing,
+  fireball templates not appearing while a token was targeted, and potions not
+  creating a chat message after the 4.06 update — all the same root cause.
+
+### Added
+
+- **New dungeon generation styles** in the Procedural Dungeon tray (Style
+  selector): **Organic Cave** and **Mixed (rooms + caves)** with smoothed,
+  curve-following cave walls; plus **Maze**, **Classic Rooms**, **Digger**, and
+  **Uniform** powered by a vendored rot.js. The original Rooms & Corridors style
+  is unchanged.
+- Generated hex-dungeon room markers now use SDX journal pins (matching your
+  configured pin style) instead of default Foundry notes.
+
 ## [6.10.24] — 2026-06-01 — Hex dungeon maps + SD 4.x attack/spell/ability fixes
 
 Verified live against Foundry 14.363 / Shadowdark 4.0.6.
