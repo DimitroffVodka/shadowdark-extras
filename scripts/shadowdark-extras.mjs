@@ -6123,7 +6123,7 @@ if (!item) {
 	ui.notifications.error("Spell not found on actor!");
 	return;
 }
-actor.castSpell("${itemId}");`;
+actor.system.castSpell(item.uuid);`;
 			macroName = `${game.i18n.localize("SHADOWDARK_EXTRAS.macro.cast_prefix")} ${itemName}`;
 			break;
 
@@ -6139,7 +6139,7 @@ if (!item) {
 	ui.notifications.error("Spell not found on actor!");
 	return;
 }
-actor.castSpell("${itemId}", { isFocusRoll: true });`;
+actor.system.castSpell(item.uuid, { isFocusRoll: true });`;
 			macroName = `${game.i18n.localize("SHADOWDARK_EXTRAS.macro.focus_prefix")} ${itemName}`;
 			break;
 
@@ -6155,7 +6155,13 @@ if (!item) {
 	ui.notifications.error("Wand not found on actor!");
 	return;
 }
-actor.useWand("${itemId}");`;
+// SD 4.x: wands cast a spell stored on the item; there is no actor.useWand().
+const wandSpell = (item.system.spells || []).find(s => !s.lost) || (item.system.spells || [])[0];
+if (!wandSpell) {
+	ui.notifications.warn("This wand has no spells to cast.");
+	return;
+}
+actor.system.castSpell(wandSpell.uuid, { itemUuid: item.uuid });`;
 			macroName = `${game.i18n.localize("SHADOWDARK_EXTRAS.macro.wand_prefix")} ${itemName}`;
 			break;
 
@@ -6171,7 +6177,8 @@ if (!item) {
 	ui.notifications.error("Scroll not found on actor!");
 	return;
 }
-actor.useScroll("${itemId}");`;
+// SD 4.x: scrolls cast their stored spell; there is no actor.useScroll().
+actor.system.castSpell(item.system.spellUuid, { itemUuid: item.uuid });`;
 			macroName = `${game.i18n.localize("SHADOWDARK_EXTRAS.macro.scroll_prefix")} ${itemName}`;
 			break;
 
@@ -8923,9 +8930,18 @@ function patchPlayerSheetUseAbility() {
 
 	PlayerSheetSD.prototype._onUseAbility = async function (event) {
 		event.preventDefault();
-		const itemId = $(event.currentTarget).data("item-id");
-		const options = this.actor.buildOptionsForSkipPrompt(event);
-		this.actor.useAbility(itemId, options);
+		// SD 4.x: abilities live on the data model and are resolved by UUID.
+		// The system's own handler reads dataset.itemUuid and calls
+		// actor.system.useAbility(uuid). Mirror that, with a bare-id fallback
+		// for older templates that only expose data-item-id.
+		const ds = event.currentTarget.dataset;
+		let abilityUuid = ds.itemUuid;
+		if (!abilityUuid && ds.itemId) {
+			abilityUuid = this.actor.items.get(ds.itemId)?.uuid;
+		}
+		if (!abilityUuid) return;
+		const options = this.actor.buildOptionsForSkipPrompt?.(event) ?? { skipPrompt: event.shiftKey };
+		this.actor.system.useAbility(abilityUuid, options);
 	};
 
 	console.log(`${MODULE_ID} | Patched PlayerSheetSD._onUseAbility (getSkipPrompt fix)`);
@@ -12979,10 +12995,20 @@ function setupRollAttackPatches() {
 
 		model.prototype.rollAttack = async function (itemId, options = {}) {
 			const actor = this.parent || this; // Handle both ActorSD and Data Model
-			if (options._sdxChecked) return originalRollAttack.call(this, itemId, options);
+
+			// SD 4.x rollAttack(weaponUuid) resolves its weapon via fromUuid(), so a
+			// bare embedded-item id (passed by the SDX token HUD) yields null →
+			// "Invalid weaponId or type". Accept either a bare id or a full uuid here,
+			// and forward the uuid so the underlying system call always resolves.
+			let item = actor.items.get(itemId);
+			if (!item && typeof itemId === "string") {
+				try { item = await fromUuid(itemId); } catch (_e) { item = null; }
+			}
+			const weaponUuid = item?.uuid ?? itemId;
+
+			if (options._sdxChecked) return originalRollAttack.call(this, weaponUuid, options);
 			options._sdxChecked = true;
 
-			const item = actor.items.get(itemId);
 			const itemName = item?.name || "weapon";
 
 			try {
@@ -13039,7 +13065,7 @@ function setupRollAttackPatches() {
 
 				// --- AMMUNITION SELECTION ---
 				if (item && item.type === "Weapon" && item.system.type === "ranged" && item.usesAmmunition) {
-					if (options?._sdxAmmoSelected) return originalRollAttack.call(this, itemId, options);
+					if (options?._sdxAmmoSelected) return originalRollAttack.call(this, weaponUuid, options);
 					const ammoItem = await AmmunitionSelector.select(actor, item);
 
 					if (ammoItem) {
@@ -13097,7 +13123,7 @@ function setupRollAttackPatches() {
 								return originalRollItem.call(this, parts, data, options);
 							};
 
-							return await originalRollAttack.call(this, itemId, options);
+							return await originalRollAttack.call(this, weaponUuid, options);
 						} finally {
 							item.availableAmmunition = originalAvailableAmmunition;
 							if (typeof originalRollItem === 'function') item.rollItem = originalRollItem;
@@ -13110,7 +13136,7 @@ function setupRollAttackPatches() {
 				// Continue normally on error
 			}
 
-			return originalRollAttack.call(this, itemId, options);
+			return originalRollAttack.call(this, weaponUuid, options);
 		};
 
 		model.prototype.__sdxRollAttackPatched = true;
