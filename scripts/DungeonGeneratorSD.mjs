@@ -7,7 +7,9 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  */
 
 import { getSelectedFloorTile, getSelectedWallTile, getSelectedDoorTile, getCurrentElevation, getSceneLevelContext, applySceneLevelData, getDungeonBackground, ensureBackgroundDrawing } from "./DungeonPainterSD.mjs";
-import { generateCaveLayout, buildCaveLoops, buildMixedLoops, generateCurvedWalls, generateCurvedWallVisuals, generateFringeCaves } from "./DungeonCaveSD.mjs";
+import { generateCaveLayout, buildCaveLoops, buildMixedLoops, generateCurvedWalls, generateCurvedWallVisuals, generateFringeCaves, rotjsLayout } from "./DungeonCaveSD.mjs";
+
+const ROTJS_STYLES = ["maze", "rogue", "digger", "uniform"];
 
 const MODULE_ID = "shadowdark-extras";
 const GRID_SIZE = 100;
@@ -1170,7 +1172,7 @@ export async function generateDungeon(config) {
         // string fields: validate or fall back
         wallColor: /^#[0-9a-f]{6}$/i.test(config.wallColor) ? config.wallColor : "#5C3D3D",
         seed:      typeof config.seed === "string" ? config.seed.slice(0, 100) : "default",
-        style:     ["cave", "mixed"].includes(config.style) ? config.style : "rooms",
+        style:     ["cave", "mixed", ...ROTJS_STYLES].includes(config.style) ? config.style : "rooms",
     };
 
     const {
@@ -1191,6 +1193,7 @@ export async function generateDungeon(config) {
     } = safeConfig;
     const isCave = style === "cave";
     const isMixed = style === "mixed";
+    const isRotjs = ROTJS_STYLES.includes(style);
 
     // Validate stairs fit in requested rooms (exclude start room)
     const totalStairs = stairs + stairsDown;
@@ -1247,7 +1250,9 @@ export async function generateDungeon(config) {
             ? generateCaveLayout({ roomCount, density }, rng)
             : isMixed
                 ? generateMixedLayout(roomParams, rng)
-                : generateLayout(roomParams, rng);
+                : isRotjs
+                    ? await rotjsLayout(style, { roomCount, density }, seed)
+                    : generateLayout(roomParams, rng);
 
         // 5. Fit scene to content (expand only if Levels is active to preserve other levels)
         let { offset, width, height } = fitToContent(layout.floors, GRID_SIZE, 300);

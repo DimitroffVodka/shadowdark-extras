@@ -11,5 +11,8 @@
   },
   "devDependencies": {
     "@foundryvtt/foundryvtt-cli": "^1.0.4"
+  },
+  "dependencies": {
+    "rot-js": "^2.2.1"
   }
 }

@@ -1459,7 +1459,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const thick = isTextured ? 20 : parseInt(elem.querySelector(".dgen-thickness")?.value || "20");
 
             const styleVal = elem.querySelector(".dgen-style")?.value;
-            const style = ["cave", "mixed"].includes(styleVal) ? styleVal : "rooms";
+            const style = ["cave", "mixed", "maze", "rogue", "digger", "uniform"].includes(styleVal) ? styleVal : "rooms";
 
             // Persist settings
             setGeneratorSettings({

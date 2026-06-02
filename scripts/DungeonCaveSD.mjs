@@ -629,3 +629,90 @@ function chamberAnchor(placed) {
     for (const [x, y] of placed) { const d = (x - cx) ** 2 + (y - cy) ** 2; if (d < bd) { bd = d; best = [x, y]; } }
     return { x: best[0], y: best[1] };
 }
+
+// ═══════════════════════════════════════════════════════
+//  rot.js GENERATORS (additional dungeon styles)
+// ═══════════════════════════════════════════════════════
+// Vendored rot.js (libs/rot.min.js, UMD) is loaded on demand and exposes its
+// generators as additional Style options. Each returns the same layout shape
+// as generateLayout so the existing floor/wall/stairs pipeline is reused. The
+// inline cave generator above is untouched.
+
+let _rotPromise = null;
+async function ensureRot() {
+    if (globalThis.ROT) return globalThis.ROT;
+    if (!_rotPromise) _rotPromise = import(`/modules/${MODULE_ID}/libs/rot.min.js`);
+    await _rotPromise;
+    return globalThis.ROT;
+}
+
+/** Deterministic 32-bit hash of a (string) seed for ROT.RNG.setSeed. */
+function hashSeed(s) {
+    let h = 2166136261;
+    const str = String(s);
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return (h >>> 0) || 1;
+}
+
+/** Largest 4-connected component of a floor-cell Set. */
+function largestFloorRegion(set) {
+    const seen = new Set();
+    let best = new Set();
+    for (const k0 of set) {
+        if (seen.has(k0)) continue;
+        const region = new Set();
+        const q = [k0]; seen.add(k0);
+        while (q.length) {
+            const k = q.pop(); region.add(k);
+            const [x, y] = k.split(",").map(Number);
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                const nk = `${x + dx},${y + dy}`;
+                if (set.has(nk) && !seen.has(nk)) { seen.add(nk); q.push(nk); }
+            }
+        }
+        if (region.size > best.size) best = region;
+    }
+    return best;
+}
+
+/**
+ * Generate a layout with a rot.js generator. `kind` is "maze" | "rogue" |
+ * "digger" | "uniform". Returns the standard layout shape (straight-walled).
+ */
+export async function rotjsLayout(kind, params, seed) {
+    const ROT = await ensureRot();
+    ROT.RNG.setSeed(hashSeed(seed ?? "default"));
+
+    const roomCount = Math.min(Math.max(params.roomCount ?? 10, 3), 40);
+    let side = Math.round(Math.min(64, Math.max(24, roomCount * 3)));
+
+    let gen;
+    switch (kind) {
+        case "maze": { const s = side | 1; gen = new ROT.Map.EllerMaze(s, s); side = s; break; }
+        case "rogue": gen = new ROT.Map.Rogue(side, side); break;
+        case "digger": gen = new ROT.Map.Digger(side, side); break;
+        case "uniform":
+        default: gen = new ROT.Map.Uniform(side, side, {}); break;
+    }
+
+    const floors = new Set();
+    gen.create((x, y, val) => { if (val === 0) floors.add(`${x},${y}`); }); // 0 = floor for these generators
+    const connected = largestFloorRegion(floors);
+
+    const rng = () => ROT.RNG.getUniform();
+    const chambers = pickChambers(connected, Math.min(roomCount, 12), side, side, rng);
+    const placedRooms = chambers.map(c => makePseudoRoom(c.x, c.y));
+    const roomData = placedRooms.map((room, i) => ({ room, isStart: i === 0 }));
+    const adjacency = chainAdjacency(chambers.length);
+
+    return {
+        floors: connected,
+        corridors: new Set(),
+        placedRooms,
+        doorPositions: [],
+        entranceEdges: [],
+        roomData,
+        adjacency,
+        _rotjs: kind,
+    };
+}
