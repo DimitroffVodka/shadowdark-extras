@@ -14,6 +14,7 @@
 
 import { generateDungeon } from "./DungeonGeneratorSD.mjs";
 import { generateDungeonRooms, getDungeonSizes } from "./DungeonGenerator.mjs";
+import { JournalPinManager } from "./JournalPinsSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -148,29 +149,30 @@ export async function buildHexDungeonScene({ hexLabel, hexKey, typeKey, sizeKey 
 	}
 	await JournalEntryPage.create(pageData, { parent: journal });
 
-	// 6. Numbered map pins, each linking to its room page.
+	// 6. Numbered SDX journal pins, each linking to its room page. Uses the
+	//    module's custom pin system (JournalPinManager) rather than core Foundry
+	//    Notes, so the markers match the user's configured SDX pin style. The
+	//    room number is shown via a per-pin text override; shape/colors inherit
+	//    the global pin style.
 	const refreshed = game.journal.get(journal.id);
 	const half = gridSize / 2;
-	const notes = [];
 	for (const r of content.rooms) {
 		const room = placedRooms[r.num - 1];
 		if (!room) continue;
 		const page = refreshed.pages.find(p => p.name === `Room ${r.num}: ${r.label}`);
-		notes.push({
-			x: (room.cx + offset.x) * gridSize + half,
-			y: (room.cy + offset.y) * gridSize + half,
-			entryId: journal.id,
-			pageId: page?.id ?? null,
-			text: String(r.num),
-			fontSize: 48,
-			iconSize: 80,
-			texture: { src: "icons/svg/book.svg", tint: "#e8c66a" },
-			textAnchor: CONST.TEXT_ANCHOR_POINTS.CENTER,
-			flags: { [MODULE_ID]: { hexDungeon: true } },
-		});
-	}
-	if (notes.length) {
-		await scene.createEmbeddedDocuments("Note", notes);
+		try {
+			await JournalPinManager.create({
+				x: (room.cx + offset.x) * gridSize + half,
+				y: (room.cy + offset.y) * gridSize + half,
+				journalId: journal.id,
+				pageId: page?.id ?? null,
+				label: `Room ${r.num}: ${r.label}`,
+				style: { contentType: "text", customText: String(r.num) },
+				flags: { [MODULE_ID]: { hexDungeon: true } },
+			}, { sceneId: scene.id });
+		} catch (err) {
+			console.warn(`${MODULE_ID} | Failed to create SDX pin for room ${r.num}:`, err);
+		}
 	}
 
 	// 7. Restore the GM's previous view (non-fatal if it fails).
