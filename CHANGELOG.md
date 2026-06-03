@@ -4,6 +4,44 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.26] — 2026-06-02 — Dungeon biomes, decor & lighting, bake/sketch upgrades, multi-level styles
+
+Verified live against Foundry 14.363 / Shadowdark 4.0.6.
+
+### Added
+
+- **Biome theming for generated dungeons.** Each room is themed (crypt, library,
+  temple, laboratory, barracks, prison, storage, ruins, hall…) with its own floor
+  texture and scattered props. Toggle with the **Biomes** checkbox in the
+  Procedural Dungeon tray.
+- **Biome editor + selection.** A new editor (tray **Biomes → Edit…**) lets you
+  add, override, rename, and remove biomes — picking floor/prop art with the file
+  picker — and **enable/disable** which biomes a dungeon may use. Custom biomes
+  persist per world.
+- **Dungeon decor: wall sconces.** A **Sconces** slider places wall-mounted torch
+  lights (and matching sconce art) in generated rooms — door/corner/floor aware
+  and level-aware.
+- **Curved/organic walls in the manual painter.** A **Curved Walls** toggle walls
+  hand-painted floors with smoothed, Dyson-style walls instead of straight ones.
+- **Cave / Mixed / rot.js styles now work in multi-level dungeons** (previously
+  rooms-only). Each level can be an organic cave, mixed rooms+caves, or a rot.js
+  maze/rogue/digger/uniform, with inter-level stairs landing correctly on any
+  style.
+- **Bake more layers.** The Flatten ("bake to background") tool now folds the wall
+  and decor layers into the baked image too, not just floors; Unflatten restores
+  them. Collision walls, doors, regions and lights stay live and interactive.
+
+### Changed
+
+- Generated clutter, biome props, stairs, multi-level connectors and sconces now
+  share one placement map, so nothing spawns in doorways or overlaps (this also
+  fixes clutter occasionally blocking doorways).
+
+### Fixed
+
+- **NPC attack rolls, special-attack sheet saving, and summons** restored.
+- Flatten no longer hangs if the Foundry tab is backgrounded mid-bake.
+
 ## [6.10.25] — 2026-06-02 — Dungeon generation styles + targeting crash fix
 
 Verified live against Foundry 14.363 / Shadowdark 4.0.6.
