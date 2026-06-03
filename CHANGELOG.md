@@ -4,6 +4,27 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.32] — 2026-06-03 — v14 alignment & unidentified-name fixes
+
+Verified live against Foundry 14.363 / Shadowdark 4.0.6 via MCP.
+
+### Fixed
+
+- **Solo hex tiles align to their cell again.** Auto-placed solo-mode hex tiles
+  had no texture anchor, so v14's default (0.5, 0.5) treated the computed
+  top-left origin as the tile centre and rendered every tile ~half a hex
+  up-left. Now pinned to `anchorX/anchorY: 0` to match the painter/generator.
+  (Verified: on a real HexagonalGrid the fixed tile centre offset from the hex
+  centre is 0,0 for both pointy- and flat-top; the old default was off by half
+  a hex.)
+- **GMs see the identified name of unidentified items in the sidebar and
+  compendium again.** v14 renamed the directory DOM (`data-document-id` →
+  `data-entry-id`, `.document-name` → `.entry-name`), so the GM display patch
+  matched nothing there. Updated the selectors, and for compendiums the patch
+  now requests `system.identification` via `getIndex({ fields })` (the default
+  index omits it). Items now show **Unidentified Name (Identified Name)** for
+  the GM in the actor inventory, the items sidebar tab, and open compendiums.
+
 ## [6.10.31] — 2026-06-03 — Interactive HP quick-adjust
 
 Verified live against Foundry 14 / Shadowdark 4.0.6 (world `shadowdark-test`)
