@@ -77,11 +77,15 @@ function _patchActorSheet(app, html) {
 function _patchItemDirectory(app, html) {
     if (!game.user.isGM) return;
 
-    _root(html).querySelectorAll(".directory-item[data-document-id]").forEach(el => {
-        const item = game.items.get(el.dataset.documentId);
+    // v14 renamed the sidebar directory attrs/classes: data-document-id →
+    // data-entry-id, .document-name → .entry-name. Match both so the patch
+    // works on v12/v13 and v14.
+    _root(html).querySelectorAll(".directory-item[data-entry-id], .directory-item[data-document-id]").forEach(el => {
+        const id = el.dataset.entryId ?? el.dataset.documentId;
+        const item = game.items.get(id);
         if (!item || !_isSystemUnidentified(item)) return;
 
-        const nameEl = el.querySelector(".document-name") ?? el.querySelector(".entry-name");
+        const nameEl = el.querySelector(".entry-name") ?? el.querySelector(".document-name");
         if (!nameEl) return;
 
         _setNameText(nameEl, _gmName(item.name, item.system.identification.name));
@@ -90,23 +94,33 @@ function _patchItemDirectory(app, html) {
 
 // ─── Compendium browser ───────────────────────────────────────────────
 
-function _patchCompendiumDirectory(app, html) {
+async function _patchCompendiumDirectory(app, html) {
     if (!game.user.isGM) return;
 
     const pack = app.collection ?? app.compendium;
-    if (!pack) return;
+    if (!pack || pack.documentName !== "Item") return;
 
-    _root(html).querySelectorAll("[data-document-id]").forEach(el => {
-        const docId = el.dataset.documentId;
+    const root = _root(html);
+
+    // The default compendium index does NOT include system.identification, so the
+    // real name is unavailable from it. Request those fields explicitly — v14's
+    // getIndex({ fields }) merges them into pack.index — otherwise the identified
+    // name can never be shown for compendium entries.
+    let index = pack.index;
+    try {
+        index = await pack.getIndex({
+            fields: ["system.identification.identified", "system.identification.name"]
+        });
+    } catch (_e) { /* fall back to whatever is already indexed */ }
+
+    root.querySelectorAll(".directory-item[data-entry-id], .directory-item[data-document-id]").forEach(el => {
+        const docId = el.dataset.entryId ?? el.dataset.documentId;
         if (!docId) return;
 
-        const entry = pack.index?.get(docId);
-        if (!entry) return;
+        const entry = index?.get(docId) ?? pack.index?.get(docId);
+        if (entry?.system?.identification?.identified !== false) return;
 
-        // system.identification may not be indexed — skip gracefully if absent
-        if (entry.system?.identification?.identified !== false) return;
-
-        const nameEl = el.querySelector(".document-name") ?? el.querySelector(".entry-name");
+        const nameEl = el.querySelector(".entry-name") ?? el.querySelector(".document-name");
         if (!nameEl) return;
 
         _setNameText(nameEl, _gmName(entry.name, entry.system.identification.name));
