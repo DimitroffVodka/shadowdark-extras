@@ -1872,7 +1872,10 @@ export async function injectDamageCard(message, html, data) {
 
 	// Check for summoning configuration (independent of damage/effects)
 	const summoningConfig = item?.flags?.[MODULE_ID]?.summoning;
-	if (summoningConfig?.enabled && summoningConfig?.profiles && summoningConfig.profiles.length > 0) {
+	const summoningProfiles = Array.isArray(summoningConfig?.profiles)
+		? summoningConfig.profiles
+		: (summoningConfig?.profiles && typeof summoningConfig.profiles === "object" ? Object.values(summoningConfig.profiles) : []);
+	if (summoningConfig?.enabled && summoningProfiles.length > 0) {
 
 		// Only spawn for the user who created the message (the caster)
 		if (message.author.id !== game.user.id) {
@@ -1898,7 +1901,7 @@ export async function injectDamageCard(message, html, data) {
 
 
 			// Parse profiles if it's a string
-			let profiles = summoningConfig.profiles;
+			let profiles = summoningProfiles;
 			if (typeof profiles === 'string') {
 				try {
 					profiles = JSON.parse(profiles);
@@ -4649,6 +4652,10 @@ async function _resolveActorForSummon(uuid) {
 export async function spawnSummonedCreatures(casterActor, item, profiles, summoningConfig = {}, isCriticalSuccess = false) {
 
 	try {
+		profiles = Array.isArray(profiles)
+			? profiles
+			: (profiles && typeof profiles === "object" ? Object.values(profiles) : []);
+
 		// Check if Portal library is available
 		if (typeof Portal === 'undefined') {
 			ui.notifications.error("Portal library not found. Please install the 'portal-lib' module.");
@@ -4673,12 +4680,18 @@ export async function spawnSummonedCreatures(casterActor, item, profiles, summon
 		// game.actors.get(actorId) succeeds inside item-piles' hook.
 		const resolvedProfiles = [];
 		for (const profile of profiles) {
-			if (!profile.creatureUuid) {
-				console.warn(`${MODULE_ID} | Skipping summon profile with no UUID`);
+			const creatureUuid = profile?.creatureUuid || profile?.creature || profile?.uuid || "";
+			if (!creatureUuid) {
+				console.warn(`${MODULE_ID} | Skipping summon profile with no UUID`, profile);
 				continue;
 			}
-			const worldUuid = await _resolveActorForSummon(profile.creatureUuid);
-			resolvedProfiles.push({ ...profile, worldUuid });
+			const worldUuid = await _resolveActorForSummon(creatureUuid);
+			resolvedProfiles.push({ ...profile, creatureUuid, worldUuid });
+		}
+
+		if (resolvedProfiles.length === 0) {
+			ui.notifications.warn("No summon creatures are configured. Drop an actor into the summon row first.");
+			return;
 		}
 
 		// Create Portal instance and set origin
@@ -4707,7 +4720,11 @@ export async function spawnSummonedCreatures(casterActor, item, profiles, summon
 				count = parseInt(countFormula) || 1;
 			}
 
-			portal.addCreature(profile.worldUuid, { count });
+			portal.addCreature({
+				creature: profile.worldUuid,
+				count,
+				displayName: profile.displayName || ''
+			});
 		}
 
 		// Spawn — shows placement UI and creates the tokens on the scene
@@ -5837,6 +5854,8 @@ function attachDamageCardListeners(html, messageId) {
 				profiles = JSON.parse(profilesJson);
 			} else if (Array.isArray(profilesJson)) {
 				profiles = profilesJson;
+			} else if (profilesJson && typeof profilesJson === 'object') {
+				profiles = Object.values(profilesJson);
 			}
 
 
@@ -5872,18 +5891,28 @@ function attachDamageCardListeners(html, messageId) {
 			portal.origin(casterToken);
 
 			// Add all creature profiles
+			let validProfileCount = 0;
 			for (const profile of profiles) {
-				if (!profile.creatureUuid) {
+				const creatureUuid = profile?.creatureUuid || profile?.creature || profile?.uuid || "";
+				if (!creatureUuid) {
 					console.warn("shadowdark-extras | Skipping profile with no creature UUID:", profile);
 					continue;
 				}
+				validProfileCount += 1;
 
 				// Add creature with count and display name
 				portal.addCreature({
-					creature: profile.creatureUuid,
+					creature: creatureUuid,
 					count: profile.count || '1',
 					displayName: profile.displayName || ''
 				});
+			}
+
+			if (validProfileCount === 0) {
+				ui.notifications.warn("No summon creatures are configured. Drop an actor into the summon row first.");
+				$btn.prop('disabled', false);
+				$btn.data('summoning', false);
+				return;
 			}
 
 			// Show dialog and spawn

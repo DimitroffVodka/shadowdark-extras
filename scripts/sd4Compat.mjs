@@ -9,6 +9,8 @@
  * Background:
  *   - SD 4.0.0 (May 2026) replaced `.chat-card` containers + `flags.shadowdark.rolls.main`
  *     with `flags.shadowdark.rollConfig` and typed Roll instances on `message.rolls`.
+ *     Some plain item cards are rendered as `.item-wrapper` with only a
+ *     `data-link` anchor carrying the item UUID.
  *   - Foundry v14 retains MeasuredTemplate during a deprecation window; long-term
  *     migration to Regions is tracked separately (Phase 8 in SD4-COMPAT-SWEEP-PLAN.md).
  *
@@ -19,8 +21,8 @@
  *     on `isMasked: true`.
  *   - `readSdDamageRoll` uses `r.type === "damage"` (NOT `rolls[1]` index — order
  *     is not guaranteed).
- *   - `resolveCardContext` queries both `.item-card` and `.chat-card` for the
- *     legacy DOM path to preserve the multi-selector at shadowdark-extras:16210.
+ *   - `resolveCardContext` queries SD4 item links plus `.item-card` and
+ *     `.chat-card` for legacy DOM paths.
  *   - `getActorStats` checks `system.attributes` first (v4) with fallback to flat
  *     `system.hp` / `system.ac` (v3).
  */
@@ -117,7 +119,8 @@ export function readSdDamageRoll(message) {
 /**
  * Resolve {actorId, itemId, itemUuid, rollConfig} from a chat message + its DOM.
  * Tries SD 4.x `flags.shadowdark.rollConfig` first (with `itemUuid` OR `cast.spellUuid`),
- * then legacy `.item-card, .chat-card` DOM data, then `message.speaker.actor` as a
+ * then SD4 `.item-wrapper a[data-link][data-uuid]`, then legacy
+ * `.item-card, .chat-card` DOM data, then `message.speaker.actor` as a
  * last-resort fallback (item identification will be null).
  *
  * Callers must tolerate `itemId === null` when only speaker info was available —
@@ -141,10 +144,31 @@ export function resolveCardContext(message, html) {
 		};
 	}
 
+	const $html = (html instanceof HTMLElement) ? $(html) : html;
+
+	// SD 4.x plain item cards have no .chat-card/.item-card wrapper. They keep
+	// the document reference on the item image link, e.g.
+	// Scene.<scene>.Token.<token>.Actor.<actor>.Item.<item>.
+	const linkedUuid = $html?.find?.('a[data-link][data-uuid*=".Item."]')?.first?.().attr?.("data-uuid");
+	if (linkedUuid) {
+		const parts = linkedUuid.split(".");
+		const itemIndex = parts.lastIndexOf("Item");
+		const actorIndex = parts.lastIndexOf("Actor", itemIndex);
+		const itemId = itemIndex >= 0 ? parts[itemIndex + 1] : null;
+		const linkedActorId = actorIndex >= 0 ? parts[actorIndex + 1] : actorId;
+		if (linkedActorId && itemId) {
+			return {
+				actorId: linkedActorId,
+				itemUuid: linkedUuid,
+				itemId,
+				rollConfig: rc ?? null
+			};
+		}
+	}
+
 	// Legacy SD 3.x DOM lookup — accepts jQuery OR raw HTMLElement.
 	// Matches both `.item-card` and `.chat-card` to preserve the multi-selector
 	// pattern used at shadowdark-extras.mjs:16210.
-	const $html = (html instanceof HTMLElement) ? $(html) : html;
 	const $card = $html?.find?.('.item-card, .chat-card');
 	const data = $card?.data?.();
 	if (data?.actorId && data?.itemId) {

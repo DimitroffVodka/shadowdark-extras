@@ -10,6 +10,14 @@ const MODULE_ID = "shadowdark-extras";
 
 const { DocumentSheetV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
+const TextEditorImpl = foundry.applications?.ux?.TextEditor?.implementation ?? TextEditor;
+
+function normalizeProfiles(profiles) {
+    if (Array.isArray(profiles)) return [...profiles];
+    if (profiles && typeof profiles === "object") return Object.values(profiles);
+    return [];
+}
+
 /**
  * AppV2-based Item Sheet for Potion items
  */
@@ -184,13 +192,13 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
         context.unidentifiedDescription = item.getFlag(MODULE_ID, "unidentifiedDescription") || "";
 
         // Enrich description
-        context.enrichedDescription = await TextEditor.enrichHTML(item.system.description, {
+        context.enrichedDescription = await TextEditorImpl.enrichHTML(item.system.description, {
             secrets: item.isOwner,
             async: true,
             relativeTo: item
         });
 
-        context.enrichedUnidentifiedDescription = await TextEditor.enrichHTML(context.unidentifiedDescription, {
+        context.enrichedUnidentifiedDescription = await TextEditorImpl.enrichHTML(context.unidentifiedDescription, {
             secrets: item.isOwner,
             async: true,
             relativeTo: item
@@ -243,7 +251,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
             // Summoning
             summoning: {
                 enabled: flags.summoning?.enabled ?? false,
-                profiles: flags.summoning?.profiles ?? [],
+                profiles: normalizeProfiles(flags.summoning?.profiles),
                 deleteAtExpiry: flags.summoning?.deleteAtExpiry ?? false
             },
 
@@ -513,7 +521,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
                 return;
             }
 
-            const profiles = this.item.getFlag(MODULE_ID, "summoning.profiles") || [];
+            const profiles = normalizeProfiles(this.item.getFlag(MODULE_ID, "summoning.profiles"));
             if (profiles[index]) {
                 profiles[index] = {
                     ...profiles[index],
@@ -704,7 +712,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 
     static async #onAddSummonProfile(event, target) {
         const rawProfiles = this.item.getFlag(MODULE_ID, "summoning.profiles");
-        const profiles = Array.isArray(rawProfiles) ? [...rawProfiles] : [];
+        const profiles = normalizeProfiles(rawProfiles);
         profiles.push({
             creatureUuid: "",
             creatureName: "",
@@ -718,7 +726,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
     static async #onRemoveSummonProfile(event, target) {
         const index = parseInt(target.dataset.index);
         const rawProfiles = this.item.getFlag(MODULE_ID, "summoning.profiles");
-        const profiles = Array.isArray(rawProfiles) ? [...rawProfiles] : [];
+        const profiles = normalizeProfiles(rawProfiles);
         profiles.splice(index, 1);
         await this.item.setFlag(MODULE_ID, "summoning.profiles", profiles);
     }

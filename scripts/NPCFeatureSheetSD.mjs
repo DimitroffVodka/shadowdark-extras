@@ -10,6 +10,14 @@ const MODULE_ID = "shadowdark-extras";
 
 const { DocumentSheetV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
+const TextEditorImpl = foundry.applications?.ux?.TextEditor?.implementation ?? TextEditor;
+
+function normalizeProfiles(profiles) {
+    if (Array.isArray(profiles)) return [...profiles];
+    if (profiles && typeof profiles === "object") return Object.values(profiles);
+    return [];
+}
+
 /**
  * AppV2-based Item Sheet for NPC Feature items
  */
@@ -185,7 +193,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
         context.itemGiveProfiles = context.sdxFlags.itemGive?.profiles || [];
 
         // Enrich description
-        context.enrichedDescription = await TextEditor.enrichHTML(item.system.description, {
+        context.enrichedDescription = await TextEditorImpl.enrichHTML(item.system.description, {
             secrets: item.isOwner,
             async: true,
             relativeTo: item
@@ -247,7 +255,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
             // Summoning
             summoning: {
                 enabled: flags.summoning?.enabled ?? false,
-                profiles: flags.summoning?.profiles ?? [],
+                profiles: normalizeProfiles(flags.summoning?.profiles),
                 deleteAtExpiry: flags.summoning?.deleteAtExpiry ?? false
             },
 
@@ -505,7 +513,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
                 return;
             }
 
-            const profiles = this.item.getFlag(MODULE_ID, "summoning.profiles") || [];
+            const profiles = normalizeProfiles(this.item.getFlag(MODULE_ID, "summoning.profiles"));
             if (profiles[index]) {
                 profiles[index] = {
                     ...profiles[index],
@@ -667,7 +675,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 
     static async #onAddSummonProfile(event, target) {
         const rawProfiles = this.item.getFlag(MODULE_ID, "summoning.profiles");
-        const profiles = Array.isArray(rawProfiles) ? [...rawProfiles] : [];
+        const profiles = normalizeProfiles(rawProfiles);
         profiles.push({
             creatureUuid: "",
             creatureName: "",
@@ -681,7 +689,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
     static async #onRemoveSummonProfile(event, target) {
         const index = parseInt(target.dataset.index);
         const rawProfiles = this.item.getFlag(MODULE_ID, "summoning.profiles");
-        const profiles = Array.isArray(rawProfiles) ? [...rawProfiles] : [];
+        const profiles = normalizeProfiles(rawProfiles);
         profiles.splice(index, 1);
         await this.item.setFlag(MODULE_ID, "summoning.profiles", profiles);
     }

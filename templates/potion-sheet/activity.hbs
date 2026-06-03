@@ -292,6 +292,12 @@
                             {{/if}}
                         </div>
                         <div class="summon-options">
+                            <input type="hidden" name="flags.shadowdark-extras.summoning.profiles.{{@index}}.creatureUuid"
+                                value="{{creatureUuid}}" />
+                            <input type="hidden" name="flags.shadowdark-extras.summoning.profiles.{{@index}}.creatureName"
+                                value="{{creatureName}}" />
+                            <input type="hidden" name="flags.shadowdark-extras.summoning.profiles.{{@index}}.creatureImg"
+                                value="{{creatureImg}}" />
                             <input type="number" name="flags.shadowdark-extras.summoning.profiles.{{@index}}.count"
                                 value="{{count}}" min="1" placeholder="Count" />
                             <input type="text" name="flags.shadowdark-extras.summoning.profiles.{{@index}}.displayName"

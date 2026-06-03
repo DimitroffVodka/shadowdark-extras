@@ -1,5 +1,6 @@
 // v13+ FilePicker namespaced under foundry.applications.apps.
 const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
+const TextEditorImpl = foundry.applications?.ux?.TextEditor?.implementation ?? TextEditor;
 
 /**
  * NPC Attack Item Sheet - AppV2
@@ -151,7 +152,7 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
         context.extraDamages = context.sdxFlags.extraDamages || [];
 
         // Enrich description
-        context.enrichedDescription = await TextEditor.enrichHTML(item.system.description, {
+        context.enrichedDescription = await TextEditorImpl.enrichHTML(item.system.description, {
             secrets: item.isOwner,
             async: true,
             relativeTo: item

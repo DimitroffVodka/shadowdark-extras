@@ -1,5 +1,6 @@
 // v13+ FilePicker namespaced under foundry.applications.apps.
 const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
+const TextEditorImpl = foundry.applications?.ux?.TextEditor?.implementation ?? TextEditor;
 
 /**
  * Background Item Sheet - AppV2
@@ -120,7 +121,7 @@ export default class BackgroundSheetSD extends HandlebarsApplicationMixin(Docume
         context.advancementEntries = await this._prepareAdvancementEntries(context.sdxFlags.advancement || []);
 
         // Enrich description
-        context.enrichedDescription = await TextEditor.enrichHTML(item.system.description, {
+        context.enrichedDescription = await TextEditorImpl.enrichHTML(item.system.description, {
             secrets: item.isOwner,
             async: true,
             relativeTo: item

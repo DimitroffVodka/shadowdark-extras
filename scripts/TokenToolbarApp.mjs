@@ -13,6 +13,20 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 // Local storage key for position
 const POSITION_KEY = "sdx-token-toolbar-position";
 
+async function useNpcActivityItem(actor, item) {
+    if (typeof item?.rollItem === "function") {
+        await item.rollItem(null, { actor, item }, {});
+        return true;
+    }
+
+    if (typeof item?.displayCard === "function") {
+        await item.displayCard();
+        return true;
+    }
+
+    return false;
+}
+
 export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static DEFAULT_OPTIONS = {
         id: "sdx-token-toolbar",
@@ -298,17 +312,15 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         item.sheet.render(true);
                     }
                 } else if (itemType === "NPC Special Attack") {
-                    // NPC Special Attack - these are generally not rolled, just displayed
-                    if (typeof item.displayCard === "function") {
-                        await item.displayCard();
-                    } else {
+                    // NPC Special Attack - use the roll/activity path so SDX macros,
+                    // effects, and summoning run instead of just opening the sheet.
+                    if (!await useNpcActivityItem(actor, item)) {
                         item.sheet.render(true);
                     }
                 } else if (itemType === "NPC Feature") {
-                    // NPC Feature - display card or open sheet
-                    if (typeof item.displayCard === "function") {
-                        await item.displayCard();
-                    } else {
+                    // NPC Feature - use the roll/activity path so SDX macros,
+                    // effects, and summoning run instead of just opening the sheet.
+                    if (!await useNpcActivityItem(actor, item)) {
                         item.sheet.render(true);
                     }
                 } else {

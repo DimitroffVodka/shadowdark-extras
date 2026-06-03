@@ -9382,7 +9382,8 @@ Hooks.once("ready", async () => {
 		const ItemSD = globalThis.shadowdark.documents.ItemSD;
 		const original_rollItem = ItemSD.prototype.rollItem;
 
-		ItemSD.prototype.rollItem = async function (parts, data, options = {}) {
+		if (typeof original_rollItem === "function") {
+			ItemSD.prototype.rollItem = async function (parts, data, options = {}) {
 			// Only process weapon attacks
 			if (this.type === "Weapon" && data?.actor && data?.item) {
 				try {
@@ -9424,7 +9425,8 @@ Hooks.once("ready", async () => {
 
 			// Call original method
 			return original_rollItem.call(this, parts, data, options);
-		};
+			};
+		}
 
 		//console.log(`${MODULE_ID} | Wrapped ItemSD.rollItem to inject weapon hit bonuses`);
 	}
@@ -18138,8 +18140,11 @@ async function processNPCFeatureActivities(item, actor, token) {
 	*/
 
 	// 3. Process Summoning
-	if (summoning.enabled && summoning.profiles?.length > 0) {
-		await processNPCFeatureSummoning(item, actor, token, summoning);
+	const summoningProfiles = Array.isArray(summoning.profiles)
+		? summoning.profiles
+		: (summoning.profiles && typeof summoning.profiles === "object" ? Object.values(summoning.profiles) : []);
+	if (summoning.enabled && summoningProfiles.length > 0) {
+		await processNPCFeatureSummoning(item, actor, token, { ...summoning, profiles: summoningProfiles });
 	}
 
 	// 4. Process Item Give
@@ -18301,7 +18306,9 @@ async function processNPCFeatureEffects(item, actor, token, targetToken, targetA
  * Process summoning for NPC Feature
  */
 async function processNPCFeatureSummoning(item, actor, token, summoning) {
-	const profiles = summoning.profiles || [];
+	const profiles = Array.isArray(summoning.profiles)
+		? summoning.profiles
+		: (summoning.profiles && typeof summoning.profiles === "object" ? Object.values(summoning.profiles) : []);
 	if (profiles.length === 0) return;
 
 	// Use the same summoning logic as spells (Portal library)
@@ -18347,14 +18354,15 @@ async function processNPCFeatureItemGive(item, actor, token, targetToken, target
 	}
 }
 
-// SD 4.x has no Item#displayCard; NPC Features/Spells post their card via
-// Item#rollItem, so wrap that to run their macros + activities on use.
+// SD 4.x may not provide Item#rollItem/displayCard for NPC Features/Spells/
+// Special Attacks. Install a small rollItem path so sheet/tool callers can run
+// their configured macros + activities on use.
 Hooks.once("ready", () => {
 	// Wait a short time to ensure the system is fully loaded
 	setTimeout(() => {
 		const itemDocClass = CONFIG.Item.documentClass;
-		if (!itemDocClass?.prototype?.rollItem) {
-			console.warn(`${MODULE_ID} | Item.rollItem not found, cannot patch NPC Feature macro execution`);
+		if (!itemDocClass?.prototype) {
+			console.warn(`${MODULE_ID} | Item document class not found, cannot patch NPC Feature macro execution`);
 			return;
 		}
 		if (itemDocClass.prototype.__sdxNpcFeatureMacroPatched) return;
@@ -18363,11 +18371,14 @@ Hooks.once("ready", () => {
 		const originalRollItem = itemDocClass.prototype.rollItem;
 
 		itemDocClass.prototype.rollItem = async function (...args) {
-			// Call the original (possibly already-wrapped) rollItem first.
-			const result = await originalRollItem.apply(this, args);
+			// Call the original (possibly already-wrapped) rollItem first, when
+			// the current Shadowdark system version provides one.
+			const result = typeof originalRollItem === "function"
+				? await originalRollItem.apply(this, args)
+				: null;
 
-			// Only process NPC Features and NPC Spells.
-			if (this.type === "NPC Feature" || this.type === "NPC Spell") {
+			// Only process NPC Features, NPC Spells, and NPC Special Attacks.
+			if (this.type === "NPC Feature" || this.type === "NPC Spell" || this.type === "NPC Special Attack") {
 				try {
 					const actor = this.actor;
 					const selectedTokens = canvas.tokens?.controlled || [];

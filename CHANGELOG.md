@@ -4,6 +4,32 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.27] — 2026-06-02 — NPC summon toolbar and Shadowdark 4 sheet fixes
+
+Verified live against Foundry 14.363 / Shadowdark 4.0.6.
+
+### Fixed
+
+- **NPC Feature and NPC Special Attack summons now work from the token toolbar.**
+  Toolbar icons now use the same item activity path as the sheet, so configured
+  SDX macros, effects, item-give, and summoning run instead of opening the item
+  sheet.
+- **Summon profile data is preserved on NPC Feature, NPC Special Attack, and
+  potion sheets.** Editing count/display name no longer strips the dropped
+  creature UUID/name/image from the summon row.
+- **Summon profiles saved as object-shaped form data are normalized** before
+  rendering or spawning, fixing cases where valid dropped actors were not shown
+  or used consistently.
+- **Blank summon rows now stop with a clearer warning** instead of calling
+  Portal with no creatures configured.
+- **Portal summon calls now use the object-form creature payload**, matching the
+  working Portal API shape.
+- **Shadowdark 4 item cards for NPC Feature/Special Attack summons are resolved
+  from their linked item UUIDs**, so chat-card driven summon processing can find
+  the correct token actor item.
+- **Foundry v14 TextEditor deprecation warnings removed** from SDX AppV2 item
+  sheets by using the namespaced TextEditor implementation.
+
 ## [6.10.26] — 2026-06-02 — Dungeon biomes, decor & lighting, bake/sketch upgrades, multi-level styles
 
 Verified live against Foundry 14.363 / Shadowdark 4.0.6.
