@@ -4,7 +4,7 @@
   "version": "6.10.31",
   "compatibility": {
     "minimum": "13",
-    "verified": "14"
+    "verified": "13"
   },
   "description": "<p>Adds extra features to the Shadowdark RPG system: Party management sheet, Renown tracking for players, additional light sources (Candle), and Inventory tab for NPCs.</p>",
   "authors": [
@@ -200,17 +200,6 @@
         "ASSISTANT": "OWNER"
       },
       "system": "shadowdark"
-    },
-    {
-      "name": "pack-sdxeffects",
-      "label": "SDX Effects Library",
-      "path": "packs/pack-sdxeffects",
-      "type": "ActiveEffect",
-      "system": "shadowdark",
-      "ownership": {
-        "PLAYER": "OBSERVER",
-        "ASSISTANT": "OWNER"
-      }
     }
   ],
   "flags": {}
