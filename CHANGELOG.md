@@ -4,6 +4,18 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.28] — 2026-06-03 — NPC sheet summon hotfix
+
+Verified live against Foundry 14.363 / Shadowdark 4.0.6.
+
+### Fixed
+
+- **NPC Feature and NPC Special Attack summons now work from NPC character
+  sheets.** Shadowdark's NPC sheet was calling `shadowdark.chat.showItemCard`
+  directly, bypassing `Item#rollItem` and therefore bypassing SDX summon
+  activity hooks. SDX now routes NPC sheet feature/special-attack clicks through
+  the same roll/activity path used by the working token toolbar.
+
 ## [6.10.27] — 2026-06-02 — NPC summon toolbar and Shadowdark 4 sheet fixes
 
 Verified live against Foundry 14.363 / Shadowdark 4.0.6.

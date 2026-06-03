@@ -18397,6 +18397,43 @@ Hooks.once("ready", () => {
 	}, 100);
 });
 
+// Shadowdark's NPC sheet displays NPC Feature / Special Attack cards directly via
+// shadowdark.chat.showItemCard(item.uuid), bypassing Item#rollItem. Route those
+// clicks through rollItem so SDX macro/effect/summon activity hooks run too.
+Hooks.once("ready", () => {
+	setTimeout(() => {
+		const npcSheetClass = globalThis.shadowdark?.applications?.NpcSheetSD
+			|| globalThis.shadowdark?.applications?.sheets?.NpcSheetSD
+			|| Object.values(CONFIG.Actor.sheetClasses?.NPC || {})
+				.map(entry => entry?.cls)
+				.find(cls => cls?.name === "NpcSheetSD");
+
+		if (!npcSheetClass?.prototype?._displayFeature) {
+			console.warn(`${MODULE_ID} | NpcSheetSD._displayFeature not found, cannot patch NPC sheet feature activity execution`);
+			return;
+		}
+		if (npcSheetClass.prototype.__sdxNpcSheetFeatureActivityPatched) return;
+		npcSheetClass.prototype.__sdxNpcSheetFeatureActivityPatched = true;
+
+		const originalDisplayFeature = npcSheetClass.prototype._displayFeature;
+		npcSheetClass.prototype._displayFeature = async function (event) {
+			event?.preventDefault?.();
+			const itemId = event?.currentTarget?.dataset?.itemId;
+			const item = itemId ? this.actor?.items?.get(itemId) : null;
+			if (
+				item
+				&& ["NPC Feature", "NPC Spell", "NPC Special Attack"].includes(item.type)
+				&& typeof item.rollItem === "function"
+			) {
+				return item.rollItem(null, { actor: this.actor, item }, {});
+			}
+			return originalDisplayFeature.call(this, event);
+		};
+
+		console.log(`${MODULE_ID} | Patched NpcSheetSD._displayFeature for NPC Feature activity execution`);
+	}, 100);
+});
+
 //console.log(`${MODULE_ID} | Module loaded - NPC Feature item macro hooks registered`);
 
 
