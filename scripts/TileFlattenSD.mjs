@@ -15,9 +15,16 @@ const UPLOAD_DIR = 'flattened-tiles';
 
 // ─── Utility helpers ─────────────────────────────────────────────────────────
 
-/** Wait one animation frame */
+/** Wait one animation frame. Races requestAnimationFrame against a short timer
+ *  so the bake never hangs when the tab is backgrounded (rAF is paused while
+ *  document.hidden, which would otherwise stall the render mid-flatten). */
 function nextFrame() {
-    return new Promise(resolve => requestAnimationFrame(resolve));
+    return new Promise(resolve => {
+        let done = false;
+        const finish = () => { if (!done) { done = true; resolve(); } };
+        try { requestAnimationFrame(finish); } catch (_) { /* fall through to timer */ }
+        setTimeout(finish, 50);
+    });
 }
 
 /** Get controlled tile documents from the tiles layer */
@@ -46,8 +53,9 @@ function computeBounds(tiles) {
     for (const doc of tiles) {
         const x = Number(doc.x) || 0;
         const y = Number(doc.y) || 0;
-        const w = Number(doc.width) || 0;
-        const h = Number(doc.height) || 0;
+        // Tiles carry width/height directly; Drawings carry them under shape.
+        const w = Number(doc.shape?.width ?? doc.width) || 0;
+        const h = Number(doc.shape?.height ?? doc.height) || 0;
         const rot = Number(doc.rotation) || 0;
 
         if (rot !== 0) {
@@ -86,8 +94,8 @@ function computeBounds(tiles) {
 
 // ─── Visibility isolation ────────────────────────────────────────────────────
 
-function isolateVisibility(tiles, bounds) {
-    const selectedIds = new Set(tiles.map(d => d.id).filter(Boolean));
+function isolateVisibility(docs, bounds) {
+    const selectedIds = new Set(docs.map(d => d.id).filter(Boolean));
     const hidden = [];
 
     const hide = (obj) => {
@@ -95,6 +103,8 @@ function isolateVisibility(tiles, bounds) {
         hidden.push({ obj, visible: obj.visible });
         obj.visible = false;
     };
+
+    const drawingsLayer = canvas?.drawings ?? null;
 
     for (const p of (canvas?.tiles?.placeables ?? [])) {
         const doc = p?.document;
@@ -127,8 +137,26 @@ function isolateVisibility(tiles, bounds) {
     hide(primary?.foreground?.mesh);
     hide(primary?.foreground?.sprite);
 
+    // Wall visuals are Drawings, which live under the InterfaceCanvasGroup
+    // (canvas.interface) on the DrawingsLayer (canvas.drawings). We must NOT
+    // blanket-hide canvas.interface — PIXI would then skip the drawings layer
+    // regardless of its own visibility. Instead, hide every interface child
+    // EXCEPT the drawings layer, then hide only the non-selected drawings.
+    const iface = canvas?.interface;
+    if (iface?.children) {
+        for (const child of iface.children) {
+            if (!child || child === drawingsLayer) continue;
+            hide(child);
+        }
+    }
+    for (const p of (drawingsLayer?.placeables ?? [])) {
+        const doc = p?.document;
+        if (!doc || selectedIds.has(doc.id)) continue;
+        hide(p);
+    }
+
     const hiddenFrames = [];
-    for (const doc of tiles) {
+    for (const doc of docs) {
         const p = doc?.object;
         if (p?.frame) {
             hiddenFrames.push({ frame: p.frame, visible: p.frame.visible });
@@ -152,11 +180,14 @@ function isolateVisibility(tiles, bounds) {
     const effectsVis = effects?.visible ?? null;
     if (effects) effects.visible = false;
 
-    const iface = canvas?.interface;
-    const ifaceVis = iface?.visible ?? null;
-    if (iface) iface.visible = false;
+    // Keep the drawings layer itself visible (its non-selected children are
+    // already hidden above) so selected wall drawings render into the bake.
+    if (drawingsLayer && drawingsLayer.visible === false) {
+        hidden.push({ obj: drawingsLayer, visible: drawingsLayer.visible });
+        drawingsLayer.visible = true;
+    }
 
-    for (const doc of tiles) {
+    for (const doc of docs) {
         const p = doc?.object;
         if (p) {
             p.visible = true;
@@ -179,7 +210,6 @@ function isolateVisibility(tiles, bounds) {
         if (gridVis !== null && grid) grid.visible = gridVis;
         if (iGridVis !== null && iGrid) iGrid.visible = iGridVis;
         if (effectsVis !== null && effects) effects.visible = effectsVis;
-        if (ifaceVis !== null && iface) iface.visible = ifaceVis;
     };
 }
 
@@ -545,7 +575,7 @@ async function unflattenTile(tileDoc) {
     if (!tileDoc) return;
 
     const flags = tileDoc.flags?.[MODULE_ID];
-    if (!flags?.flattenedTile || !flags?.tiles?.length) {
+    if (!flags?.flattenedTile || (!flags?.tiles?.length && !flags?.drawings?.length)) {
         ui.notifications.warn('This tile does not contain stored tile data.');
         return;
     }
@@ -553,43 +583,53 @@ async function unflattenTile(tileDoc) {
     try {
         ui.notifications.info('Restoring original tiles…');
 
-        const storedTiles = flags.tiles;
+        const storedTiles = flags.tiles || [];
+        const storedDrawings = flags.drawings || [];
         const origin = flags.originalPosition || { x: tileDoc.x, y: tileDoc.y };
 
         // Calculate offset if the flattened tile was moved
         const offsetX = tileDoc.x - origin.x;
         const offsetY = tileDoc.y - origin.y;
 
-        const toCreate = [];
-        for (const entry of storedTiles) {
-            if (!entry.data) continue;
+        const prepare = (entry) => {
+            if (!entry.data) return null;
             const data = foundry.utils.deepClone(entry.data);
-
             // Remove ID and stats to create fresh
             delete data._id;
             delete data._stats;
-
             // Apply offset
             if (typeof data.x === 'number') data.x += offsetX;
             if (typeof data.y === 'number') data.y += offsetY;
+            return data;
+        };
 
+        const toCreateTiles = [];
+        for (const entry of storedTiles) {
+            const data = prepare(entry);
+            if (!data) continue;
             // Always restore floor tiles at sort 0 to prevent sort inflation
             if (data.flags?.[MODULE_ID]?.dungeonFloor) data.sort = 0;
-
-            toCreate.push(data);
+            toCreateTiles.push(data);
         }
 
-        if (!toCreate.length) {
-            throw new Error('No valid tile data found to restore.');
+        const toCreateDrawings = [];
+        for (const entry of storedDrawings) {
+            const data = prepare(entry);
+            if (data) toCreateDrawings.push(data);
         }
 
-        // Create restored tiles
-        await canvas.scene.createEmbeddedDocuments('Tile', toCreate);
+        if (!toCreateTiles.length && !toCreateDrawings.length) {
+            throw new Error('No valid data found to restore.');
+        }
+
+        // Create restored documents by type
+        if (toCreateTiles.length) await canvas.scene.createEmbeddedDocuments('Tile', toCreateTiles);
+        if (toCreateDrawings.length) await canvas.scene.createEmbeddedDocuments('Drawing', toCreateDrawings);
 
         // Delete the flattened tile
         await canvas.scene.deleteEmbeddedDocuments('Tile', [tileDoc.id]);
 
-        ui.notifications.info(`Restored ${toCreate.length} tiles successfully!`);
+        ui.notifications.info(`Restored ${toCreateTiles.length} tiles + ${toCreateDrawings.length} drawings successfully!`);
 
     } catch (error) {
         console.error(`${MODULE_ID} | Unflatten failed:`, error);
@@ -747,25 +787,63 @@ export function getFlattendDungeonLevels() {
 }
 
 /**
- * Flatten all dungeon floor tiles at the given elevation into one tile.
- * Stores original data for unflatten; marks result with dungeonFlattenedLevel.
- * @param {number} elevation
+ * Collect the bakeable VISUAL documents at a given elevation, by layer.
+ * Floors + decor/clutter (incl. biome props & sconce tiles) are Tiles;
+ * wall visuals are Drawings (flag `dungeonWall`). Stairs are intentionally
+ * excluded (kept as distinct markers). Already-flattened tiles are excluded.
+ * Functional docs (Wall collision, Regions, AmbientLights, Notes) are never
+ * included.
+ * @returns {{ tiles: TileDocument[], drawings: DrawingDocument[] }}
  */
-export async function flattenDungeonLevel(elevation) {
-    const byElevation = getDungeonFloorLevels();
-    const tiles = byElevation[elevation];
-    if (!tiles?.length) {
-        ui.notifications.warn('No dungeon floor tiles found at that elevation.');
+export function getDungeonVisualDocs(elevation, { floors = true, walls = true, decor = true } = {}) {
+    const scene = canvas?.scene;
+    if (!scene) return { tiles: [], drawings: [] };
+    const atElev = (e) => Number(e ?? 0) === Number(elevation);
+
+    const tiles = scene.tiles.contents.filter(t => {
+        const f = t.flags?.[MODULE_ID];
+        if (!f || f.flattenedTile) return false;
+        if (!atElev(t.elevation)) return false;
+        if (floors && f.dungeonFloor) return true;
+        if (decor && f.dungeonClutter) return true; // clutter + biome props + sconce tiles
+        return false;
+    });
+
+    const drawings = walls
+        ? scene.drawings.contents.filter(d => {
+            const f = d.flags?.[MODULE_ID];
+            if (!f || !f.dungeonWall) return false;
+            return atElev(d.elevation);
+        })
+        : [];
+
+    return { tiles, drawings };
+}
+
+/**
+ * Flatten the dungeon's visual layers at the given elevation into one image tile.
+ * Bakes floor + decor Tiles AND wall Drawings (by default); stores originals of
+ * both types for a faithful Unflatten; marks result with dungeonFlattenedLevel.
+ * Collision Walls, Regions, AmbientLights and Notes are left untouched.
+ * @param {number} elevation
+ * @param {{floors?:boolean, walls?:boolean, decor?:boolean}} [options]
+ */
+export async function flattenDungeonLevel(elevation, options = {}) {
+    const { floors = true, walls = true, decor = true } = options;
+    const { tiles, drawings } = getDungeonVisualDocs(elevation, { floors, walls, decor });
+    const docs = [...tiles, ...drawings];
+    if (!docs.length) {
+        ui.notifications.warn('No dungeon visual documents found at that elevation.');
         return;
     }
 
     try {
-        ui.notifications.info(`Flattening ${tiles.length} floor tiles at elevation ${elevation}…`);
-        const bounds = computeBounds(tiles);
-        if (!bounds) throw new Error('Could not compute tile bounds');
+        ui.notifications.info(`Flattening ${tiles.length} tiles + ${drawings.length} wall drawings at elevation ${elevation}…`);
+        const bounds = computeBounds(docs);
+        if (!bounds) throw new Error('Could not compute bounds');
 
-        const result = await renderTilesToCanvas(tiles, bounds);
-        if (!result?.canvas) throw new Error('Failed to render tiles');
+        const result = await renderTilesToCanvas(docs, bounds);
+        if (!result?.canvas) throw new Error('Failed to render');
 
         const cropped = cropTransparentBorders(result.canvas, bounds);
         if (cropped.canvas !== result.canvas) {
@@ -776,7 +854,8 @@ export async function flattenDungeonLevel(elevation) {
         const filePath = await saveAsWebP(cropped.canvas, 1.0);
         try { cropped.canvas.width = 0; cropped.canvas.height = 0; } catch (_) {}
 
-        const originalData = tiles.map(t => ({ data: t.toObject(false) }));
+        const originalTiles = tiles.map(t => ({ data: t.toObject(false) }));
+        const originalDrawings = drawings.map(d => ({ data: d.toObject(false) }));
 
         const tileData = {
             texture: { src: filePath },
@@ -797,16 +876,19 @@ export async function flattenDungeonLevel(elevation) {
                     dungeonFloor: true,
                     dungeonFlattenedLevel: elevation,
                     originalTileCount: tiles.length,
+                    originalDrawingCount: drawings.length,
                     flattenedAt: Date.now(),
                     originalPosition: { x: bounds.x, y: bounds.y },
-                    tiles: originalData
+                    tiles: originalTiles,
+                    drawings: originalDrawings
                 }
             }
         };
 
         await canvas.scene.createEmbeddedDocuments('Tile', [tileData]);
-        await canvas.scene.deleteEmbeddedDocuments('Tile', tiles.map(t => t.id).filter(Boolean));
-        ui.notifications.info(`Flattened elevation ${elevation} (${tiles.length} tiles) successfully!`);
+        if (tiles.length) await canvas.scene.deleteEmbeddedDocuments('Tile', tiles.map(t => t.id).filter(Boolean));
+        if (drawings.length) await canvas.scene.deleteEmbeddedDocuments('Drawing', drawings.map(d => d.id).filter(Boolean));
+        ui.notifications.info(`Flattened elevation ${elevation} (${tiles.length} tiles + ${drawings.length} drawings) successfully!`);
     } catch (error) {
         console.error(`${MODULE_ID} | FlattenDungeonLevel failed:`, error);
         ui.notifications.error(`Failed to flatten level: ${error.message}`);
