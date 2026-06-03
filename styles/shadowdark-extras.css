@@ -5063,6 +5063,25 @@ li.entry.sdx-sidebar-unidentified {
     color: rgba(255, 255, 255, 0.9) !important;
 }
 
+.shadowdark.sheet.npc.sdx-npc-player-theme .inline-roll {
+    background: rgba(255, 255, 255, 0.16) !important;
+    border: 1px solid rgba(255, 255, 255, 0.28) !important;
+    border-radius: 3px;
+    color: rgba(255, 255, 255, 0.95) !important;
+    padding: 0 4px;
+    text-shadow: none;
+}
+
+.shadowdark.sheet.npc.sdx-npc-player-theme .inline-roll i {
+    color: rgba(226, 196, 121, 0.95) !important;
+}
+
+.shadowdark.sheet.npc.sdx-npc-player-theme .inline-roll:hover {
+    background: rgba(226, 196, 121, 0.22) !important;
+    border-color: rgba(226, 196, 121, 0.55) !important;
+    color: #ffffff !important;
+}
+
 .shadowdark.sheet.npc.sdx-npc-player-theme input,
 .shadowdark.sheet.npc.sdx-npc-player-theme select,
 .shadowdark.sheet.npc.sdx-npc-player-theme textarea {
@@ -5080,6 +5099,33 @@ li.entry.sdx-sidebar-unidentified {
 .shadowdark.sheet.npc.sdx-npc-player-theme button,
 .shadowdark.sheet.npc.sdx-npc-player-theme .item-control {
     color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.shadowdark.sheet.npc.sdx-npc-player-theme #context-menu,
+.shadowdark.sheet.npc.sdx-npc-player-theme .context-menu {
+    background: rgba(18, 16, 20, 0.98) !important;
+    border: 1px solid rgba(226, 196, 121, 0.35) !important;
+    border-radius: 4px;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+    color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.shadowdark.sheet.npc.sdx-npc-player-theme #context-menu .context-item,
+.shadowdark.sheet.npc.sdx-npc-player-theme .context-menu .context-item {
+    color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.shadowdark.sheet.npc.sdx-npc-player-theme #context-menu .context-item i,
+.shadowdark.sheet.npc.sdx-npc-player-theme #context-menu .context-item span,
+.shadowdark.sheet.npc.sdx-npc-player-theme .context-menu .context-item i,
+.shadowdark.sheet.npc.sdx-npc-player-theme .context-menu .context-item span {
+    color: inherit !important;
+}
+
+.shadowdark.sheet.npc.sdx-npc-player-theme #context-menu .context-item:hover,
+.shadowdark.sheet.npc.sdx-npc-player-theme .context-menu .context-item:hover {
+    background: rgba(226, 196, 121, 0.18) !important;
+    color: #ffffff !important;
 }
 
 .shadowdark.sheet.npc.sdx-npc-player-theme a:hover,

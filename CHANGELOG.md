@@ -4,6 +4,21 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.30] — 2026-06-03 — NPC sheet theme readability patch
+
+Verified static-only. Live MCP was pointed at a Shadowfoundry install where the
+new NPC theme setting was not registered yet, so the fix could not be inspected
+in that runtime during this patch.
+
+### Fixed
+
+- **Inline rolls are readable on themed NPC sheets.** Roll chips such as `1d4`
+  now use a dark chip background, readable text, and a gold dice icon instead
+  of inheriting white link text on a pale roll chip.
+- **NPC sheet item context menus are readable in the player theme.** Edit/delete
+  context menus now use a dark menu surface with readable item text and hover
+  states.
+
 ## [6.10.29] — 2026-06-03 — NPC sheet player theme styling
 
 Verified live against Foundry 14.363 / Shadowdark 4.0.6.
