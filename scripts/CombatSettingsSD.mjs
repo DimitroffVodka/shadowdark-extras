@@ -1919,7 +1919,12 @@ export async function injectDamageCard(message, html, data) {
 	}
 
 	const itemGiveConfig = item?.flags?.[MODULE_ID]?.itemGive;
-	if (itemGiveConfig?.enabled && itemGiveConfig?.profiles && itemGiveConfig.profiles.length > 0) {
+	// Skip during the load-time chat re-render (game/canvas not yet ready):
+	// creating items there throws in the dependent-token render-flag update
+	// ("Cannot read properties of undefined (reading 'OBJECTS')") and would also
+	// re-grant items from historical cards on every reload (the dedup set is
+	// in-memory). Item-give only needs to fire for cards created during live play.
+	if (game.ready && itemGiveConfig?.enabled && itemGiveConfig?.profiles && itemGiveConfig.profiles.length > 0) {
 		if (message.author.id !== game.user.id) {
 		} else if (_itemGiveMessages.has(message.id)) {
 		} else {
