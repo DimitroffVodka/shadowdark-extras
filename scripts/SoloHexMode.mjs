@@ -266,7 +266,15 @@ async function placeTileForBiome(offset, biomeKey) {
     const py = center.y - tileH / 2;
 
     const tileData = {
-        texture: { src: tilePath },
+        texture: {
+            src: tilePath,
+            // v14 defaults the texture anchor to (0.5, 0.5), treating (x, y) as the
+            // tile centre. px/py are a top-left origin, so pin the anchor to (0, 0)
+            // to match HexPainterSD / HexGeneratorSD — otherwise solo tiles render
+            // half a hex up-left of their cell.
+            anchorX: 0,
+            anchorY: 0
+        },
         x: px,
         y: py,
         width: tileW,
