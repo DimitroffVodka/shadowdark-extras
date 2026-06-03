@@ -18347,37 +18347,41 @@ async function processNPCFeatureItemGive(item, actor, token, targetToken, target
 	}
 }
 
-// Patch ItemSD.displayCard to execute macros and activities for NPC Features
+// SD 4.x has no Item#displayCard; NPC Features/Spells post their card via
+// Item#rollItem, so wrap that to run their macros + activities on use.
 Hooks.once("ready", () => {
 	// Wait a short time to ensure the system is fully loaded
 	setTimeout(() => {
 		const itemDocClass = CONFIG.Item.documentClass;
-		if (!itemDocClass?.prototype?.displayCard) {
-			console.warn(`${MODULE_ID} | ItemSD.displayCard not found, cannot patch NPC Feature macro execution`);
+		if (!itemDocClass?.prototype?.rollItem) {
+			console.warn(`${MODULE_ID} | Item.rollItem not found, cannot patch NPC Feature macro execution`);
 			return;
 		}
+		if (itemDocClass.prototype.__sdxNpcFeatureMacroPatched) return;
+		itemDocClass.prototype.__sdxNpcFeatureMacroPatched = true;
 
-		const originalDisplayCard = itemDocClass.prototype.displayCard;
+		const originalRollItem = itemDocClass.prototype.rollItem;
 
-		itemDocClass.prototype.displayCard = async function (options = {}) {
-			// Call original method first
-			await originalDisplayCard.call(this, options);
+		itemDocClass.prototype.rollItem = async function (...args) {
+			// Call the original (possibly already-wrapped) rollItem first.
+			const result = await originalRollItem.apply(this, args);
 
-			// Only process NPC Features and NPC Spells
-			if (this.type !== "NPC Feature" && this.type !== "NPC Spell") return;
-
-			// Get token for context
-			const selectedTokens = canvas.tokens?.controlled || [];
-			const token = selectedTokens.find(t => t.actor?.id === this.actor?.id) || null;
-
-			// Execute the macro first
-			await executeNPCFeatureItemMacro(this, this.actor, {});
-
-			// Then process activities
-			await processNPCFeatureActivities(this, this.actor, token);
+			// Only process NPC Features and NPC Spells.
+			if (this.type === "NPC Feature" || this.type === "NPC Spell") {
+				try {
+					const actor = this.actor;
+					const selectedTokens = canvas.tokens?.controlled || [];
+					const token = selectedTokens.find(t => t.actor?.id === actor?.id) || null;
+					await executeNPCFeatureItemMacro(this, actor, {});
+					await processNPCFeatureActivities(this, actor, token);
+				} catch (err) {
+					console.error(`${MODULE_ID} | NPC Feature macro/activity execution failed:`, err);
+				}
+			}
+			return result;
 		};
 
-		console.log(`${MODULE_ID} | Patched ItemSD.displayCard for NPC Feature macro and activity execution`);
+		console.log(`${MODULE_ID} | Patched Item.rollItem for NPC Feature macro and activity execution`);
 
 	}, 100);
 });
@@ -18540,44 +18544,46 @@ Hooks.once("ready", () => {
 	}
 });
 
-// Patch ActorSD.useAbility to execute Class Ability item macros
+// Patch Player#useAbility for Class Ability item macros. SD 4.x: useAbility
+// lives on the Player data model (actor.system), takes an ability UUID, and
+// runs with `this` = the data model (so the actor is `this.parent`).
 Hooks.once("ready", () => {
 	setTimeout(() => {
-		const actorDocClass = CONFIG.Actor.documentClass;
-		if (!actorDocClass?.prototype?.useAbility) {
-			console.warn(`${MODULE_ID} | ActorSD.useAbility not found, cannot patch Class Ability macro execution`);
+		const PlayerDM = CONFIG.Actor.dataModels?.Player;
+		if (!PlayerDM?.prototype?.useAbility) {
+			console.warn(`${MODULE_ID} | Player.useAbility not found, cannot patch Class Ability macro execution`);
 			return;
 		}
+		if (PlayerDM.prototype.__sdxUseAbilityMacroPatched) return;
+		PlayerDM.prototype.__sdxUseAbilityMacroPatched = true;
 
-		const originalUseAbility = actorDocClass.prototype.useAbility;
+		const originalUseAbility = PlayerDM.prototype.useAbility;
 
-		actorDocClass.prototype.useAbility = async function (itemId, options = {}) {
-			const item = this.items.get(itemId);
+		PlayerDM.prototype.useAbility = async function (abilityUuid, config = {}) {
+			const actor = this.parent;
+			let item = null;
+			try { item = await fromUuid(abilityUuid); } catch (_) { }
 
 			// Only intercept Class Ability items
 			if (!item || item.type !== "Class Ability") {
-				return originalUseAbility.call(this, itemId, options);
+				return originalUseAbility.call(this, abilityUuid, config);
 			}
 
 			// Call original method first
-			const result = await originalUseAbility.call(this, itemId, options);
+			const result = await originalUseAbility.call(this, abilityUuid, config);
 
-			// If the ability had a roll check, determine the outcome
+			// If the ability had a roll check, derive the outcome from the latest roll card.
 			let rolled = false;
 			let success = true;
 			let critical = null;
 
 			if (item.system.ability) {
 				rolled = true;
-				// Re-derive success from the same logic the system uses:
-				// useAbility calls rollAbility which returns { rolls: { main: { success, critical } } }
-				// But the result from useAbility is the chat message, not the roll result.
-				// We need to check the most recent chat message for this actor's roll result.
 				const recentMessages = game.messages.contents.slice(-5);
 				for (let i = recentMessages.length - 1; i >= 0; i--) {
 					const msg = recentMessages[i];
 					const rollData = readSdRollOutcome(msg);
-					if (rollData.mainRoll && !rollData.isMasked && msg.speaker?.actor === this.id) {
+					if (rollData.mainRoll && !rollData.isMasked && msg.speaker?.actor === actor?.id) {
 						success = rollData.isSuccess;
 						critical = rollData.isCriticalSuccess
 							? "success"
@@ -18590,12 +18596,12 @@ Hooks.once("ready", () => {
 			}
 
 			// Execute the macro
-			await executeClassAbilityItemMacro(item, this, { rolled, success, critical });
+			await executeClassAbilityItemMacro(item, actor, { rolled, success, critical });
 
 			return result;
 		};
 
-		console.log(`${MODULE_ID} | Patched ActorSD.useAbility for Class Ability macro execution`);
+		console.log(`${MODULE_ID} | Patched Player.useAbility for Class Ability macro execution`);
 	}, 100);
 });
 
