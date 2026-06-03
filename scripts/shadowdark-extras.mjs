@@ -13009,7 +13009,16 @@ function setupRollAttackPatches() {
 			}
 			const weaponUuid = item?.uuid ?? itemId;
 
-			if (options._sdxChecked) return originalRollAttack.call(this, weaponUuid, options);
+			// The two underlying rollAttack implementations resolve their argument
+			// DIFFERENTLY: PlayerSD.rollAttack(weaponUuid) uses fromUuid() and needs a
+			// UUID, but NpcSD.rollAttack(attackId) uses this.parent.items.get() and needs
+			// a BARE embedded id. Forwarding a UUID to an NPC makes items.get() return
+			// undefined → "invalid attack ID" → the card never posts (silently breaking
+			// every NPC attack, special attack, and downstream summon/effect handling).
+			// Forward whichever identifier the target model expects.
+			const forwardId = (actor?.type === "NPC") ? (item?.id ?? itemId) : weaponUuid;
+
+			if (options._sdxChecked) return originalRollAttack.call(this, forwardId, options);
 			options._sdxChecked = true;
 
 			const itemName = item?.name || "weapon";
@@ -13068,7 +13077,7 @@ function setupRollAttackPatches() {
 
 				// --- AMMUNITION SELECTION ---
 				if (item && item.type === "Weapon" && item.system.type === "ranged" && item.usesAmmunition) {
-					if (options?._sdxAmmoSelected) return originalRollAttack.call(this, weaponUuid, options);
+					if (options?._sdxAmmoSelected) return originalRollAttack.call(this, forwardId, options);
 					const ammoItem = await AmmunitionSelector.select(actor, item);
 
 					if (ammoItem) {
@@ -13126,7 +13135,7 @@ function setupRollAttackPatches() {
 								return originalRollItem.call(this, parts, data, options);
 							};
 
-							return await originalRollAttack.call(this, weaponUuid, options);
+							return await originalRollAttack.call(this, forwardId, options);
 						} finally {
 							item.availableAmmunition = originalAvailableAmmunition;
 							if (typeof originalRollItem === 'function') item.rollItem = originalRollItem;
@@ -13139,7 +13148,7 @@ function setupRollAttackPatches() {
 				// Continue normally on error
 			}
 
-			return originalRollAttack.call(this, weaponUuid, options);
+			return originalRollAttack.call(this, forwardId, options);
 		};
 
 		model.prototype.__sdxRollAttackPatched = true;

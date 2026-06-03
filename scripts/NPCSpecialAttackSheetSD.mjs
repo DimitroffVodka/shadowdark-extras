@@ -31,16 +31,15 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
         },
         actions: {
             addExtraDamage: NPCSpecialAttackSheetSD.#onAddExtraDamage,
-            removeExtraDamage: NPCSpecialAttackSheetSD.#onRemoveExtraDamage,
-            // Inherit actions from NPCFeatureSheetSD
-            addEffect: NPCFeatureSheetSD._onAddEffect,
-            removeEffect: NPCFeatureSheetSD._onRemoveEffect,
-            addCriticalEffect: NPCFeatureSheetSD._onAddCriticalEffect,
-            removeCriticalEffect: NPCFeatureSheetSD._onRemoveCriticalEffect,
-            addSummonProfile: NPCFeatureSheetSD._onAddSummonProfile,
-            removeSummonProfile: NPCFeatureSheetSD._onRemoveSummonProfile,
-            addItemGiveProfile: NPCFeatureSheetSD._onAddItemGiveProfile,
-            removeItemGiveProfile: NPCFeatureSheetSD._onRemoveItemGiveProfile
+            removeExtraDamage: NPCSpecialAttackSheetSD.#onRemoveExtraDamage
+            // NOTE: Summon / effect / item-give actions are inherited from
+            // NPCFeatureSheetSD via AppV2's DEFAULT_OPTIONS merge (same path as
+            // `itemMacro`). Do NOT redeclare them here: the real handlers are
+            // private static (#onAddSummonProfile, #onRemoveEffect, etc.) and
+            // cannot be referenced by a public `_on...` name. Doing so resolves
+            // to `undefined`, which the merge then writes over the inherited
+            // handlers — silently breaking Add Summon, the effect remove-X, and
+            // the item-give buttons on this sheet.
         }
     };
 
@@ -324,32 +323,32 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
     }
 
     /**
-     * Prepare update data for form submission
-     */
-    async _prepareSubmitData(event, form, formData) {
-        const submitData = await super._prepareSubmitData(event, form, formData);
-
-        // Clean up managed fields to avoid array index issues
-        for (const key in submitData) {
-            if (key.startsWith(`flags.${MODULE_ID}.extraDamages.`)) {
-                delete submitData[key];
-            }
-        }
-        if ("system.ranges" in submitData) {
-            delete submitData["system.ranges"];
-        }
-
-        return submitData;
-    }
-
-    /**
-     * Process the form submission and update the document
+     * Process raw form data into the document update payload.
+     *
+     * IMPORTANT: this MUST stay synchronous. The base DocumentSheetV2 submit
+     * handler calls `_prepareSubmitData` (which calls this) synchronously and
+     * hands the result straight to `_processSubmitData`. A previous version
+     * overrode `_prepareSubmitData` as `async`, so it returned a Promise; the
+     * base then passed that Promise to `_processSubmitData`, whose key check saw
+     * zero keys, and `document.update` never ran. Result: every field without a
+     * dedicated change-handler (e.g. the Self/Target radio, the enable toggles)
+     * silently failed to save. We do the field cleanup here — the correct, sync,
+     * expanded-data extension point — and let the base class perform the update.
+     *
      * @override
      */
-    async _processSubmitData(event, form, submitData) {
-        // Explicitly update the document with the prepared submit data
-        if (submitData && Object.keys(submitData).length > 0) {
-            await this.document.update(submitData);
-        }
+    _processFormData(event, form, formData) {
+        const submitData = super._processFormData(event, form, formData);
+
+        // These fields are written directly by dedicated change-handlers
+        // (_setupRangeHandlers, _setupExtraDamageHandlers). The raw form
+        // representation is unreliable (same-named range checkboxes collapse to
+        // garbage), so strip them so the form submit can't clobber the managed
+        // values.
+        if (submitData?.system) delete submitData.system.ranges;
+        const sdxFlags = submitData?.flags?.[MODULE_ID];
+        if (sdxFlags) delete sdxFlags.extraDamages;
+
+        return submitData;
     }
 }

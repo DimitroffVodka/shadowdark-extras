@@ -1883,7 +1883,12 @@ export async function injectDamageCard(message, html, data) {
 			// Check if the spell cast was successful (skip this check for potions and scrolls which always succeed)
 			// Wands have spell rolls, so they need the success check
 			const summonOutcome = readSdRollOutcome(message);
-			if (!["Potion", "Scroll"].includes(itemType)) {
+			// NPC Special Attack / NPC Feature are GM-activated abilities: the SD system
+			// never stamps a hit/miss `success` flag on their attack roll, so
+			// readSdRollOutcome always reports isMasked/!isSuccess for them. Treat them
+			// like Potion/Scroll and summon on use. The author-only guard above
+			// (message.author.id === game.user.id) still prevents multi-client spawns.
+			if (!["Potion", "Scroll", "NPC Special Attack", "NPC Feature"].includes(itemType)) {
 				if (summonOutcome.isMasked) return;   // private roll — don't auto-spawn on non-recipient clients
 				if (!summonOutcome.isSuccess) return;
 			}
@@ -1919,7 +1924,9 @@ export async function injectDamageCard(message, html, data) {
 		} else if (_itemGiveMessages.has(message.id)) {
 		} else {
 			let shouldGive = true;
-			if (!["Potion", "Scroll"].includes(itemType)) {
+			// See the summoning gate above: NPC Special Attack / NPC Feature have no
+			// system-determined attack success, so they grant on use like Potion/Scroll.
+			if (!["Potion", "Scroll", "NPC Special Attack", "NPC Feature"].includes(itemType)) {
 				const itemGiveOutcome = readSdRollOutcome(message);
 				if (itemGiveOutcome.isMasked) shouldGive = false;   // private roll — skip on non-recipient clients
 				else if (!itemGiveOutcome.isSuccess) shouldGive = false;
@@ -4809,7 +4816,7 @@ async function giveItemsToCaster(casterActor, item, profiles) {
 				console.warn(`shadowdark - extras | Skipping item give for invalid source: ${profile.itemName} `);
 				continue;
 			}
-			const itemData = duplicate(sourceItem.toObject());
+			const itemData = foundry.utils.duplicate(sourceItem.toObject());
 			delete itemData._id;
 			if (!itemData.system) itemData.system = {};
 			itemData.system.quantity = quantity;
