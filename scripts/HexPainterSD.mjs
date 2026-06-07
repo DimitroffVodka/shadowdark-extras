@@ -33,7 +33,6 @@ const HEX_TILE_W = 296;
 const HEX_TILE_H = 256;
 const COLORED_HEX_TILE_W = 572;
 const COLORED_HEX_TILE_H = 500;
-const SCENE_BUFFER = 768;
 
 // Biome subdirectories for custom tiles (matching the 6 sliders)
 const BIOME_SUBDIRS = ["water", "vegetation", "mountains", "desert", "swamp", "badlands"];
@@ -1382,8 +1381,23 @@ export async function formatActiveScene() {
         return;
     }
 
-    const pxW = Math.ceil(HEX_TILE_W * 0.75 * _mapColumns + HEX_TILE_W * 0.25) + SCENE_BUFFER;
-    const pxH = (_mapRows * HEX_TILE_H) + Math.ceil(HEX_TILE_H / 2) + SCENE_BUFFER;
+    // Size the scene to EXACTLY _mapColumns × _mapRows hex cells, with edge hexes
+    // rendered whole rather than sliced flat by the rectangular scene boundary.
+    // Verified against HexagonalGrid#calculateDimensions (HEXODDQ, N = 5..50):
+    //   • columns (flat-top hexes point left/right): width = floor((N + 1/3)·p),
+    //     where the column pitch p = 0.75·hexWidth and hexWidth = S·(2/√3). This is
+    //     the MAX width Foundry still counts as N columns — it lands on the last
+    //     column's right vertices, so the right edge shows whole hexes. (Sizing to
+    //     the pitch boundary N·p instead clips the last column to ~75% — flat-cut.)
+    //   • rows (flat-top hexes are flat top/bottom): height = N·S − S/2, the MAX
+    //     height Foundry counts as N rows.
+    // The old formula added a fit-padding hex AND a 768px SCENE_BUFFER, gridded into
+    // ~3-4 unpredictable phantom cells per side (a 5×5 request → 9×9).
+    // NOTE: top/bottom edges still show half-hexes on alternating columns — that is
+    // Foundry's fixed columnar-hex origin, not removable via scene sizing.
+    const hexWidth = HEX_TILE_H * (2 / Math.sqrt(3));
+    const pxW = Math.floor((_mapColumns + (1 / 3)) * 0.75 * hexWidth);
+    const pxH = (_mapRows * HEX_TILE_H) - (HEX_TILE_H / 2);
 
     const sceneData = {
         width: pxW,
