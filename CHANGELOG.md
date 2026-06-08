@@ -4,6 +4,33 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.36] — 2026-06-07 — AOE template saves + Format Map edges + TMFX stack editor
+
+Verified live via MCP against Foundry v14 / Shadowdark 4.x.
+
+### Fixed
+
+- **AOE / template attacks now trigger their configured saving throw on cast.**
+  In Foundry v14 a template's effects are driven by its auto-paired Region, and the
+  cast flow only played the animation — it never rolled the save against the caught
+  tokens. The creation-effects pass is now a guarded, exported step invoked from the
+  cast flow with the actual targets, so the save + (half) damage card appears
+  reliably. (Verified live: an AOE with a Wis save DC 12 produced the Wisdom save +
+  half-damage card.)
+- **Format Map sizes a hex scene to exactly the chosen W×H, with whole edge hexes.**
+  The old sizing added a fit-padding hex plus a 768px buffer that Foundry gridded into
+  ~3–4 phantom cells per side (a 5×5 request became 9×9) and sliced the far column to
+  ~¾. Sizing now lands on the last column's vertices: the reported grid equals the
+  slider and the left/right edges render whole hexes. (Top/bottom keep Foundry's
+  inherent half-hex offset on alternating columns.)
+
+### Added
+
+- **TokenMagic FX stack editor on template effects.** An "Edit TMFX Stack" button on a
+  template/spell's TokenMagic Effects opens the full TMFX filter editor, letting you
+  build and save stacked TMFX presets that apply to the template's region. (Verified
+  live: the editor window opens with TokenMagic active.)
+
 ## [6.10.35] — 2026-06-06 — Spell/inventory enriched-link readability
 
 Verified live against Foundry 14.363 / Shadowdark 4.0.6 via MCP.
