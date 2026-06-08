@@ -4,6 +4,16 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.37] — 2026-06-07 — Hotfix: restore module loading
+
+### Fixed
+
+- **6.10.36 failed to load.** `scripts/HexcrawlBuilderSD.mjs` is imported by the
+  module but was an untracked file, so it was left out of the 6.10.36 release
+  package — Foundry hit a 404 on startup that aborted the whole module. The file is
+  now committed and shipped. If you installed 6.10.36, update to 6.10.37 to restore
+  Shadowdark Extras.
+
 ## [6.10.36] — 2026-06-07 — AOE template saves + Format Map edges + TMFX stack editor
 
 Verified live via MCP against Foundry v14 / Shadowdark 4.x.
