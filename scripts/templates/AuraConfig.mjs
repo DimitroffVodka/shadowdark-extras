@@ -5,6 +5,101 @@
 
 const MODULE_ID = "shadowdark-extras";
 
+function normalizeTokenMagicPresetEntries(source, allowedLibraries = null) {
+    const entries = [];
+    const pushEntry = (value, fallbackName = null) => {
+        if (!value) return;
+        if (typeof value === 'string') {
+            entries.push({ name: value });
+            return;
+        }
+        if (typeof value !== 'object') return;
+        if (allowedLibraries && value.library && !allowedLibraries.has(value.library)) return;
+        const name = value.name || value.label || value.title || value.id || fallbackName;
+        if (!name || name === 'NOFX') return;
+        entries.push({ name: String(name) });
+    };
+
+    if (Array.isArray(source)) {
+        for (const entry of source) pushEntry(entry);
+    } else if (source instanceof Map) {
+        for (const [key, value] of source.entries()) pushEntry(value, key);
+    } else if (source && typeof source === 'object') {
+        for (const [key, value] of Object.entries(source)) pushEntry(value, key);
+    }
+
+    return entries;
+}
+
+function getTokenMagicRegionPresets() {
+    if (!globalThis.TokenMagic) return [];
+
+    const presets = [];
+    const allowedLibraries = new Set(['tmfx-region', 'tmfx-template', 'tmfx-main']);
+    const addPresets = (source) => presets.push(...normalizeTokenMagicPresetEntries(source, allowedLibraries));
+    const tokenMagic = globalThis.TokenMagic;
+
+    try {
+        if (typeof tokenMagic.getPresets === 'function') {
+            addPresets(tokenMagic.getPresets('tmfx-region'));
+            addPresets(tokenMagic.getPresets('tmfx-template'));
+            addPresets(tokenMagic.getPresets('tmfx-main'));
+        }
+    } catch (e) {
+        console.warn('shadowdark-extras | Failed to read TokenMagic aura presets:', e);
+    }
+
+    for (const key of ['presets', 'Presets', 'defaultPresets', 'templatePresets', 'tmfxPresets', '_presets']) {
+        try {
+            addPresets(tokenMagic[key]);
+        } catch (e) {
+            // Ignore unstable TokenMagic internals.
+        }
+    }
+
+    for (const settingKey of ['presets', 'templatePresets', 'defaultPresets', 'customPresets', 'tmfxPresets']) {
+        try {
+            addPresets(game.settings.get('tokenmagic', settingKey));
+        } catch (e) {
+            // Setting may not exist in this TokenMagic version.
+        }
+    }
+
+    const seen = new Set();
+    return presets
+        .filter(p => {
+            const name = p?.name?.trim?.();
+            if (!name || seen.has(name)) return false;
+            seen.add(name);
+            return true;
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function getIndyFxShaderChoices() {
+    try {
+        const choices = globalThis.game?.indyFX?.shaders?.choices?.();
+        if (!choices || typeof choices !== 'object') return [];
+        return Object.entries(choices)
+            .map(([id, label]) => ({ id: String(id), label: String(label || id) }))
+            .filter(shader => shader.id)
+            .sort((a, b) => a.label.localeCompare(b.label));
+    } catch (e) {
+        console.warn('shadowdark-extras | Failed to read Indy FX aura shader choices:', e);
+        return [];
+    }
+}
+
+function escapeAttribute(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[c]));
+}
+
 /**
  * Generate the Aura Effects configuration HTML
  * @param {string} MODULE_ID - The module ID
@@ -32,10 +127,24 @@ export function generateAuraConfigHTML(moduleId, flags) {
             ability: 'con',
             halfOnSuccess: false
         },
-        animation: {
+        nativeRegion: {
             enabled: true,
-            style: 'circle',
-            tint: '#4488ff'
+            color: '#ffffff'
+        },
+        visualFx: {
+            engine: 'none',
+            tmfx: {
+                preset: 'NOFX',
+                tint: '',
+                opacity: 0.5
+            },
+            indy: {
+                shaderId: '',
+                alpha: 1,
+                speed: 1,
+                scale: 1,
+                layer: 'inherit'
+            }
         },
         tokenFilters: {
             enabled: false,
@@ -70,7 +179,12 @@ export function generateAuraConfigHTML(moduleId, flags) {
     const triggers = auraConfig.triggers || {};
     const damage = auraConfig.damage || {};
     const save = auraConfig.save || {};
-    const animation = auraConfig.animation || {};
+    const nativeRegion = auraConfig.nativeRegion || {};
+    const nativeRegionEnabled = nativeRegion.enabled !== false;
+    const nativeRegionColor = nativeRegion.color || '#ffffff';
+    const visualFx = auraConfig.visualFx || {};
+    const tmfx = visualFx.tmfx || {};
+    const indyFx = visualFx.indy || {};
     const tokenFilters = auraConfig.tokenFilters || {};
     const disposition = auraConfig.disposition || 'all';
     const includeSelf = auraConfig.includeSelf || false;
@@ -84,16 +198,35 @@ export function generateAuraConfigHTML(moduleId, flags) {
 
     // Check if TokenMagic module is active for token filters
     const tokenMagicActive = game.modules.get('tokenmagic')?.active ?? false;
+    const indyFxActive = game.modules.get('indy-fx')?.active && Boolean(game.indyFX?.shaders?.choices);
+    const auraFxEngine = visualFx.engine || (tokenMagicActive ? 'tmfx' : (indyFxActive ? 'indy' : 'none'));
+    const tmPreset = tmfx.preset || 'NOFX';
+    const tmTint = tmfx.tint || '';
+    const tmOpacity = tmfx.opacity ?? 0.5;
+    const indyShaderId = indyFx.shaderId || '';
+    const indyAlpha = indyFx.alpha ?? 1;
+    const indySpeed = indyFx.speed ?? 1;
+    const indyScale = indyFx.scale ?? 1;
+    const indyLayer = indyFx.layer || 'inherit';
 
     // Get TokenMagic presets for token filters
     let tmTokenPresets = [];
     if (tokenMagicActive && globalThis.TokenMagic?.getPresets) {
         try {
-            // Get token presets (different from template presets)
-            tmTokenPresets = TokenMagic.getPresets() || [];
+            tmTokenPresets = TokenMagic.getPresets('tmfx-main') || [];
         } catch (e) {
             console.warn('shadowdark-extras | Failed to get TokenMagic token presets:', e);
         }
+    }
+
+    let tmRegionPresets = tokenMagicActive ? getTokenMagicRegionPresets() : [];
+    if (tmPreset && tmPreset !== 'NOFX' && !tmRegionPresets.some(p => p.name === tmPreset)) {
+        tmRegionPresets = [{ name: tmPreset }, ...tmRegionPresets];
+    }
+
+    let indyShaders = indyFxActive ? getIndyFxShaderChoices() : [];
+    if (indyShaderId && !indyShaders.some(s => s.id === indyShaderId)) {
+        indyShaders = [{ id: indyShaderId, label: indyShaderId }, ...indyShaders];
     }
 
     return `
@@ -142,6 +275,90 @@ export function generateAuraConfigHTML(moduleId, flags) {
                     </div>
                 </div>
 
+                <div class="SD-grid" style="grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <label class="sdx-checkbox-option" style="display: flex; align-items: center; gap: 6px;" title="Create a native Foundry Region attached to the aura bearer, so the visible area follows the caster or target token.">
+                        <input type="checkbox"
+                            name="flags.${moduleId}.auraEffects.nativeRegion.enabled"
+                            ${nativeRegionEnabled ? 'checked' : ''}>
+                        <span>Follow with Region</span>
+                    </label>
+                    <div>
+                        <label style="font-size: 11px; color: #999;">Region Color</label>
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                            <input type="color"
+                                name="flags.${moduleId}.auraEffects.nativeRegion.color"
+                                value="${nativeRegionColor}"
+                                style="width: 100%;">
+                        </div>
+                    </div>
+                </div>
+
+                ${(tokenMagicActive || indyFxActive) ? `
+                <div class="sdx-aura-visual-fx-section" style="margin-bottom: 12px; padding-top: 8px; border-top: 1px dashed var(--color-border-light-tertiary);">
+                    <h4 style="margin: 0 0 8px 0;">
+                        <i class="fas fa-magic"></i> Aura Visual FX
+                    </h4>
+                    <div class="SD-grid" style="grid-template-columns: 1fr 2fr; gap: 8px; align-items: center;">
+                        <label>Engine</label>
+                        <select name="flags.${moduleId}.auraEffects.visualFx.engine" class="sdx-aura-fx-engine-select">
+                            <option value="none" ${auraFxEngine === 'none' ? 'selected' : ''}>None</option>
+                            ${tokenMagicActive ? `<option value="tmfx" ${auraFxEngine === 'tmfx' ? 'selected' : ''}>TokenMagic FX</option>` : ''}
+                            ${indyFxActive ? `<option value="indy" ${auraFxEngine === 'indy' ? 'selected' : ''}>Indy FX</option>` : ''}
+                        </select>
+                    </div>
+
+                    ${tokenMagicActive ? `
+                    <div class="SD-grid sdx-aura-tmfx-settings" style="grid-template-columns: 1fr 2fr; gap: 8px; align-items: center; margin-top: 8px; ${auraFxEngine === 'tmfx' ? '' : 'display: none;'}">
+                        <label>Special Effect</label>
+                        <select name="flags.${moduleId}.auraEffects.visualFx.tmfx.preset">
+                            <option value="NOFX" ${tmPreset === 'NOFX' ? 'selected' : ''}>None</option>
+                            ${tmRegionPresets.map(p => `<option value="${escapeAttribute(p.name)}" ${tmPreset === p.name ? 'selected' : ''}>${escapeAttribute(p.name)}</option>`).join('')}
+                        </select>
+
+                        <label>Effect Tint</label>
+                        <input type="color"
+                            name="flags.${moduleId}.auraEffects.visualFx.tmfx.tint"
+                            value="${tmTint || '#ffffff'}">
+
+                        <label>Opacity</label>
+                        <input type="number"
+                            name="flags.${moduleId}.auraEffects.visualFx.tmfx.opacity"
+                            value="${tmOpacity}"
+                            min="0" max="1" step="0.05">
+                    </div>
+                    ` : ''}
+
+                    ${indyFxActive ? `
+                    <div class="SD-grid sdx-aura-indyfx-settings" style="grid-template-columns: 1fr 2fr; gap: 8px; align-items: center; margin-top: 8px; ${auraFxEngine === 'indy' ? '' : 'display: none;'}">
+                        <label>Shader</label>
+                        <select name="flags.${moduleId}.auraEffects.visualFx.indy.shaderId">
+                            <option value="" ${!indyShaderId ? 'selected' : ''}>Choose shader...</option>
+                            ${indyShaders.map(s => `<option value="${escapeAttribute(s.id)}" ${indyShaderId === s.id ? 'selected' : ''}>${escapeAttribute(s.label)}</option>`).join('')}
+                        </select>
+
+                        <label>Alpha</label>
+                        <input type="number" name="flags.${moduleId}.auraEffects.visualFx.indy.alpha" value="${indyAlpha}" min="0" max="1" step="0.05">
+
+                        <label>Speed</label>
+                        <input type="number" name="flags.${moduleId}.auraEffects.visualFx.indy.speed" value="${indySpeed}" min="0" max="10" step="0.05">
+
+                        <label>Scale</label>
+                        <input type="number" name="flags.${moduleId}.auraEffects.visualFx.indy.scale" value="${indyScale}" min="0.1" max="10" step="0.05">
+
+                        <label>Layer</label>
+                        <select name="flags.${moduleId}.auraEffects.visualFx.indy.layer">
+                            <option value="inherit" ${indyLayer === 'inherit' ? 'selected' : ''}>Inherit</option>
+                            <option value="interfacePrimary" ${indyLayer === 'interfacePrimary' ? 'selected' : ''}>Above tokens</option>
+                            <option value="belowTokens" ${indyLayer === 'belowTokens' ? 'selected' : ''}>Below tokens</option>
+                            <option value="belowTiles" ${indyLayer === 'belowTiles' ? 'selected' : ''}>Below tiles</option>
+                            <option value="sceneRaw" ${indyLayer === 'sceneRaw' ? 'selected' : ''}>Scene raw</option>
+                            <option value="drawings" ${indyLayer === 'drawings' ? 'selected' : ''}>Drawings</option>
+                        </select>
+                    </div>
+                    ` : ''}
+                </div>
+                ` : ''}
+
                 <!-- Triggers Row -->
                 <div style="margin-bottom: 12px;">
                     <label style="font-size: 11px; color: #999; display: block; margin-bottom: 2px;">When to Apply Effects</label>
@@ -157,7 +374,7 @@ export function generateAuraConfigHTML(moduleId, flags) {
                             <input type="checkbox" 
                                 name="flags.${moduleId}.auraEffects.triggers.onLeave"
                                 ${triggers.onLeave ? 'checked' : ''}>
-                            <span>On Leave (remove effects)</span>
+                            <span>Remove effect on leave</span>
                         </label>
                     </div>
                     <div class="SD-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
@@ -320,61 +537,9 @@ export function generateAuraConfigHTML(moduleId, flags) {
                     </div>
                 </div>
 
-                <!-- Animation & Token Filters Section (side-by-side) -->
+                ${tokenMagicActive ? `
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-border-light-tertiary);">
-                    <div class="SD-grid" style="grid-template-columns: ${tokenMagicActive ? '1fr 1fr' : '1fr'}; gap: 16px;">
-                        <!-- Left: Show Animation -->
-                        <div class="sdx-animation-column">
-                            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                                <input type="checkbox" 
-                                    name="flags.${moduleId}.auraEffects.animation.enabled"
-                                    class="sdx-aura-animation-enabled"
-                                    ${animation.enabled !== false ? 'checked' : ''}>
-                                <span style="font-weight: bold;"><i class="fas fa-magic"></i> Show Animation</span>
-                            </label>
-                            
-                            <div class="sdx-aura-animation-config" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; ${animation.enabled !== false ? '' : 'opacity: 0.5; pointer-events: none;'}">
-                                <div>
-                                    <label style="font-size: 11px; color: #999;">Animation Path</label>
-                                    <input type="text" 
-                                        name="flags.${moduleId}.auraEffects.animation.style"
-                                        value="${animation.style || ''}"
-                                        placeholder="e.g., jb2a.shield_aura.01.blue"
-                                        style="width: 100%;"
-                                        title="Sequencer database path (browse with Sequencer Effect Manager)">
-                                </div>
-
-                                <div>
-                                    <label style="font-size: 11px; color: #999;">Tint Color</label>
-                                    <input type="color" 
-                                        name="flags.${moduleId}.auraEffects.animation.tint"
-                                        value="${animation.tint || '#4488ff'}"
-                                        style="width: 100%; height: 26px;">
-                                </div>
-                                <div>
-                                    <label style="font-size: 11px; color: #999;">Scale</label>
-                                    <input type="number" 
-                                        name="flags.${moduleId}.auraEffects.animation.scaleMultiplier"
-                                        value="${animation.scaleMultiplier ?? 1.0}"
-                                        min="0.1" max="5" step="0.1"
-                                        style="width: 100%;"
-                                        title="Adjust animation size (1.0 = matches radius)">
-                                </div>
-                                <div>
-                                    <label style="font-size: 11px; color: #999;">Opacity: <span class="sdx-opacity-value">${Math.round((animation.opacity ?? 0.6) * 100)}%</span></label>
-                                    <input type="range" 
-                                        name="flags.${moduleId}.auraEffects.animation.opacity"
-                                        class="sdx-aura-opacity-slider"
-                                        min="0.1" max="1" step="0.1"
-                                        value="${animation.opacity ?? 0.6}"
-                                        style="width: 100%;">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        ${tokenMagicActive ? `
-                        <!-- Right: Apply Token Filters (only if TokenMagic is installed) -->
-                        <div class="sdx-token-filters-column" style="border-left: 1px dashed var(--color-border-light-tertiary); padding-left: 16px;">
+                        <div class="sdx-token-filters-column">
                             <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                                 <input type="checkbox" 
                                     name="flags.${moduleId}.auraEffects.tokenFilters.enabled"
@@ -396,9 +561,8 @@ export function generateAuraConfigHTML(moduleId, flags) {
                                 </p>
                             </div>
                         </div>
-                        ` : ''}
-                    </div>
                 </div>
+                ` : ''}
 
                 <!-- Effects Section -->
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-border-light-tertiary);">
@@ -495,6 +659,17 @@ export function setupAuraConfigHandlers(html) {
         });
     }
 
+    const auraFxEngineSelect = element.querySelector('.sdx-aura-fx-engine-select');
+    if (auraFxEngineSelect) {
+        auraFxEngineSelect.addEventListener('change', (e) => {
+            const engine = e.target.value;
+            const tmfxSettings = element.querySelector('.sdx-aura-tmfx-settings');
+            const indySettings = element.querySelector('.sdx-aura-indyfx-settings');
+            if (tmfxSettings) tmfxSettings.style.display = engine === 'tmfx' ? '' : 'none';
+            if (indySettings) indySettings.style.display = engine === 'indy' ? '' : 'none';
+        });
+    }
+
     // Toggle save config visibility
     const saveEnabledCheckbox = element.querySelector('.sdx-aura-save-enabled');
     const saveConfig = element.querySelector('.sdx-aura-save-config');
@@ -507,22 +682,6 @@ export function setupAuraConfigHandlers(html) {
             } else {
                 saveConfig.style.opacity = '0.5';
                 saveConfig.style.pointerEvents = 'none';
-            }
-        });
-    }
-
-    // Toggle animation config visibility
-    const animEnabledCheckbox = element.querySelector('.sdx-aura-animation-enabled');
-    const animConfig = element.querySelector('.sdx-aura-animation-config');
-
-    if (animEnabledCheckbox && animConfig) {
-        animEnabledCheckbox.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                animConfig.style.opacity = '1';
-                animConfig.style.pointerEvents = 'auto';
-            } else {
-                animConfig.style.opacity = '0.5';
-                animConfig.style.pointerEvents = 'none';
             }
         });
     }
@@ -540,15 +699,6 @@ export function setupAuraConfigHandlers(html) {
                 tokenFiltersConfig.style.opacity = '0.5';
                 tokenFiltersConfig.style.pointerEvents = 'none';
             }
-        });
-    }
-
-    // Update opacity slider value display
-    const opacitySlider = element.querySelector('.sdx-aura-opacity-slider');
-    const opacityValue = element.querySelector('.sdx-opacity-value');
-    if (opacitySlider && opacityValue) {
-        opacitySlider.addEventListener('input', (e) => {
-            opacityValue.textContent = Math.round(e.target.value * 100) + '%';
         });
     }
 }

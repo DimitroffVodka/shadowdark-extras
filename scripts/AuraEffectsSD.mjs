@@ -21,6 +21,22 @@ const _auraAffectedThisTurn = new Map();
 // Track previous token positions for enter/leave detection
 const _previousPositions = new Map();
 
+// Suppress duplicate aura trigger bursts from repeated movement/update hooks.
+const _recentAuraTriggers = new Map();
+const AURA_TRIGGER_DEDUPE_MS = 1000;
+
+// Track tokens currently inside each logical aura to avoid repeated enter triggers.
+const _auraInsideState = new Set();
+
+// Track aura membership even when a save prevents configured effects from being applied.
+const _auraMembership = new Set();
+
+// Avoid repeated cleanup jobs/log spam for orphaned aura effects.
+const _staleAuraCleanupQueued = new Set();
+
+// Prevent duplicate aura creation when Foundry re-renders the same cast message.
+const _auraCreationInFlight = new Set();
+
 /**
  * Apply TokenMagic filter to a token when entering an aura
  * @param {Token} token - The token to apply filter to
@@ -37,25 +53,78 @@ async function applyTokenMagicFilter(token, presetName, auraEffectId) {
     }
 
     try {
-        // Get the preset from TokenMagic library
-        const preset = TokenMagic.getPreset(presetName);
-        if (!preset) {
+        const preset = getTokenMagicMainPresetParams(presetName);
+        if (!(Array.isArray(preset) && preset.length)) {
             console.warn(`shadowdark-extras | TokenMagic preset '${presetName}' not found`);
             return;
         }
 
         // Create a unique filter ID for this aura so we can remove it later
         const filterId = `sdx-aura-${auraEffectId}`;
+        await removeAllSdxAuraTokenMagicFilters(token);
 
         // Clone the preset and add our custom filter ID
-        const params = preset.map(p => ({
-            ...p,
-            filterId: filterId
-        }));
+        const params = preset.map((p, index) => {
+            const originalFilterId = p.filterId || p.filterType || index;
+            return {
+                ...p,
+                filterId: `${filterId}-${originalFilterId}`
+            };
+        });
 
         await TokenMagic.addUpdateFilters(token, params);
     } catch (e) {
         console.error("shadowdark-extras | Error applying TokenMagic filter:", e);
+    }
+}
+
+function getTokenMagicMainPresetParams(presetName) {
+    const name = String(presetName || '');
+    if (!name) return null;
+
+    try {
+        const presets = game.settings.get('tokenmagic', 'presets') || [];
+        const match = Array.isArray(presets)
+            ? presets.find(p => p?.name === name && p?.library === 'tmfx-main')
+            : null;
+        if (Array.isArray(match?.params)) return foundry.utils.deepClone(match.params);
+    } catch (e) {
+        // Fall through to the public list fallback.
+    }
+
+    try {
+        const presets = TokenMagic.getPresets?.('tmfx-main') || [];
+        const match = Array.isArray(presets) ? presets.find(p => p?.name === name) : null;
+        if (Array.isArray(match?.params)) return foundry.utils.deepClone(match.params);
+    } catch (e) {
+        // No usable TokenMagic preset source.
+    }
+
+    return null;
+}
+
+function getTokenMagicFilterIds(token) {
+    const flags = token.document?.getFlag?.('tokenmagic', 'filters') || [];
+    if (!Array.isArray(flags)) return [];
+
+    return flags
+        .flatMap(flag => [
+            flag?.tmFilters?.tmFilterId,
+            flag?.tmFilterId,
+            flag?.filterId,
+            flag?.id
+        ])
+        .filter(id => typeof id === 'string');
+}
+
+async function removeAllSdxAuraTokenMagicFilters(token) {
+    if (!game.modules.get('tokenmagic')?.active) return;
+
+    const filterIds = getTokenMagicFilterIds(token)
+        .filter(id => id.startsWith('sdx-aura-'));
+
+    for (const id of filterIds) {
+        await TokenMagic.deleteFilters(token, id);
     }
 }
 
@@ -73,15 +142,56 @@ async function removeTokenMagicFilter(token, auraEffectId) {
     try {
         const filterId = `sdx-aura-${auraEffectId}`;
 
-        // Check if the token has this filter applied
-        const hasFilter = TokenMagic.hasFilterId(token, filterId);
-        if (!hasFilter) {
-            return;
-        }
+        const filterIds = getTokenMagicFilterIds(token)
+            .filter(id => id.startsWith(filterId));
 
-        await TokenMagic.deleteFilters(token, filterId);
+        for (const id of filterIds) {
+            await TokenMagic.deleteFilters(token, id);
+        }
     } catch (e) {
         console.error("shadowdark-extras | Error removing TokenMagic filter:", e);
+    }
+}
+
+function shouldKeepAnySdxAuraTokenMagicFilter(token, removedAuraEffect) {
+    try {
+        for (const { effect, token: sourceToken, config } of getActiveAuras()) {
+            if (!effect || effect.id === removedAuraEffect?.id) continue;
+            if (!config?.tokenFilters?.enabled) continue;
+            if (sourceToken.id === token.id && !config.includeSelf) continue;
+            if (!checkDisposition(sourceToken, token, config.disposition)) continue;
+            if (config.checkVisibility && !checkAuraVisibility(sourceToken, token)) continue;
+            if (isTokenInAura(sourceToken, token, config.radius || 30)) return true;
+        }
+    } catch (err) {
+        console.warn("shadowdark-extras | Could not check remaining aura filters:", err);
+    }
+    return false;
+}
+
+async function syncAuraTrackerTarget(config, targetToken, mode) {
+    const casterActorId = config?.casterActorId;
+    const trackerType = config?.trackerType;
+    const trackerInstanceId = config?.trackerInstanceId;
+    if (!(casterActorId && trackerType && trackerInstanceId && targetToken?.actor)) return;
+
+    try {
+        const tracker = await import("./FocusSpellTrackerSD.mjs");
+        if (trackerType === "focus") {
+            if (mode === "enter") {
+                await tracker.linkTargetToFocusSpell(casterActorId, trackerInstanceId, targetToken.actor.id, targetToken.id);
+            } else if (mode === "leave") {
+                await tracker.unlinkTargetFromFocusSpell(casterActorId, trackerInstanceId, targetToken.id, targetToken.actor.id);
+            }
+        } else if (trackerType === "duration") {
+            if (mode === "enter") {
+                await tracker.linkTargetToDurationSpell(casterActorId, trackerInstanceId, targetToken.actor.id, targetToken.id);
+            } else if (mode === "leave") {
+                await tracker.unlinkTargetFromDurationSpell(casterActorId, trackerInstanceId, targetToken.id, targetToken.actor.id);
+            }
+        }
+    } catch (err) {
+        console.warn("shadowdark-extras | Failed to sync aura target with spell tracker:", err);
     }
 }
 
@@ -129,6 +239,7 @@ export function initAuraEffects() {
     Hooks.on("updateCombat", async (combat, changes, options, userId) => {
         if (changes.turn !== undefined || changes.round !== undefined) {
             _auraAffectedThisTurn.clear();
+            _recentAuraTriggers.clear();
         }
 
         if (!game.user.isGM) return;
@@ -293,20 +404,20 @@ export function initAuraEffects() {
         }
     });
 
-    // Clean up aura animations when effect is deleted
+    // Clean up aura Region and applied effects when the source effect is deleted.
     Hooks.on("deleteActiveEffect", async (effect, options, userId) => {
         if (!game.user.isGM) return;
 
         const auraConfig = effect.flags?.[MODULE_ID]?.aura;
         if (!auraConfig?.enabled) return;
 
-        // Stop animation if using Sequencer
-        const token = effect.parent?.token ||
-            canvas.tokens.placeables.find(t => t.actor?.id === effect.parent?.id);
-
-        if (token && typeof Sequencer !== 'undefined') {
-            Sequencer.EffectManager.endEffects({ name: `aura-${effect.id}`, object: token });
+        const staleKey = `${effect.parent?.id || "actor"}:${effect.id}`;
+        if (_staleAuraCleanupQueued.has(staleKey)) {
+            _staleAuraCleanupQueued.delete(staleKey);
+            return;
         }
+
+        await deleteAuraRegion(effect);
 
         // Remove aura effects from all tokens
         await removeAuraEffectsFromAll(effect);
@@ -338,10 +449,10 @@ export async function refreshSceneAuras() {
                 isInside = checkAuraVisibility(sourceToken, targetToken);
             }
 
-            // Check existing effects to see "previous" state
-            const hasEffect = targetToken.actor.items.some(i =>
-                i.type === "Effect" && i.flags?.[MODULE_ID]?.auraOrigin === effect.id
-            );
+            // Check existing membership to see "previous" state. A successful save may
+            // leave no Effect item, but the token is still already inside this aura.
+            const insideStateKey = getAuraInsideStateKey(sourceToken, targetToken, config, effect);
+            const hasEffect = hasAuraAppliedToToken(effect, targetToken, insideStateKey);
 
             if (!hasEffect && isInside && shouldAnyComponentTrigger(config, 'enter')) {
                 await applyAuraEffect(sourceToken, targetToken, "enter", config, effect);
@@ -364,6 +475,7 @@ export async function refreshSceneAuras() {
  */
 export function getActiveAuras() {
     const auras = [];
+    const seenAuras = new Set();
 
     for (const token of canvas.tokens.placeables) {
         if (!token.actor) continue;
@@ -373,6 +485,9 @@ export function getActiveAuras() {
         for (const effect of effects) {
             const auraConfig = effect.flags?.[MODULE_ID]?.aura;
             if (auraConfig?.enabled) {
+                const auraKey = `${token.id}:${auraConfig.spellId || effect.origin || effect.id}`;
+                if (seenAuras.has(auraKey)) continue;
+                seenAuras.add(auraKey);
                 auras.push({
                     effect: effect,
                     token: token,
@@ -488,21 +603,26 @@ async function processAuraMovement(tokenDoc, changes = {}) {
             isInside = checkAuraVisibility(sourceToken, token, null, newCenter);
         }
 
-        // Check if token currently has the effect from this aura
-        const hasEffect = token.actor.items.some(i =>
-            i.type === "Effect" && i.flags?.[MODULE_ID]?.auraOrigin === effect.id
-        );
+        const insideStateKey = getAuraInsideStateKey(sourceToken, token, config, effect);
 
+        // Check if token currently has the effect/membership from this aura
+        const hasEffect = hasAuraAppliedToToken(effect, token, insideStateKey);
 
-        if (!hasEffect && isInside && shouldAnyComponentTrigger(config, 'enter')) {
-            await applyAuraEffect(sourceToken, token, 'enter', config, effect);
-        } else if (!isInside && hasEffect) {
-            // Token LEFT the aura (it had effect, now it's outside)
-            // First, apply any 'leave' triggered effects (damage, effects, macro)
-            if (shouldAnyComponentTrigger(config, 'leave')) {
-                await applyAuraEffect(sourceToken, token, 'leave', config, effect);
+        let wasInside = hasEffect;
+        if (previousPos?.center) {
+            wasInside = isPositionInAuraAtPosition(sourceToken.center, previousPos.center, config.radius);
+            if (wasInside && config.checkVisibility) {
+                wasInside = checkAuraVisibility(sourceToken, token, null, previousPos.center);
             }
-            // Then, remove existing effects if Standard 'On Leave (remove)' is checked
+        }
+
+        if (!wasInside && isInside && shouldAnyComponentTrigger(config, 'enter')) {
+            await applyAuraEffect(sourceToken, token, 'enter', config, effect);
+        } else if (!isInside && (wasInside || hasEffect)) {
+            _auraInsideState.delete(insideStateKey);
+            _auraMembership.delete(insideStateKey);
+            // Token LEFT the aura. Leaving is cleanup-only; do not roll saves or
+            // apply configured effects again.
             if (config.triggers?.onLeave) {
                 await removeAuraEffectsFromToken(effect, token);
             }
@@ -563,15 +683,30 @@ async function processAuraSourceMovement(sourceTokenDoc, changes = {}) {
                 isInside = checkAuraVisibility(sourceToken, otherToken, newSourceCenter, otherCenter);
             }
 
-            // Check if token currently has the effect from this aura
-            const hasEffect = otherToken.actor.items.some(i =>
-                i.type === "Effect" && i.flags?.[MODULE_ID]?.auraOrigin === effect.id
-            );
+            const insideStateKey = getAuraInsideStateKey(sourceToken, otherToken, config, effect);
 
-            if (!hasEffect && isInside && shouldAnyComponentTrigger(config, 'enter')) {
+            // Check if token currently has the effect/membership from this aura
+            const hasEffect = hasAuraAppliedToToken(effect, otherToken, insideStateKey);
+
+            let wasInside = hasEffect;
+            if (oldSourceCenter) {
+                wasInside = isPositionInAuraAtPosition(oldSourceCenter, otherCenter, config.radius);
+                if (wasInside && config.checkVisibility) {
+                    wasInside = checkAuraVisibility(sourceToken, otherToken, oldSourceCenter, otherCenter);
+                }
+            }
+
+            if (!wasInside && isInside && shouldAnyComponentTrigger(config, 'enter')) {
                 await applyAuraEffect(sourceToken, otherToken, 'enter', config, effect);
-            } else if (hasEffect && !isInside && config.triggers?.onLeave) {
-                await removeAuraEffectsFromToken(effect, otherToken);
+            } else if ((wasInside || hasEffect) && !isInside) {
+                _auraInsideState.delete(insideStateKey);
+                _auraMembership.delete(insideStateKey);
+                if (config.triggers?.onLeave) {
+                    await removeAuraEffectsFromToken(effect, otherToken);
+                }
+                if (config.tokenFilters?.enabled) {
+                    await removeTokenMagicFilter(otherToken, effect.id);
+                }
             } else if (!isInside) {
                 // Token is outside aura - always remove TokenMagic filter even if onLeave trigger isn't configured
                 if (config.tokenFilters?.enabled) {
@@ -867,7 +1002,142 @@ function shouldAnyComponentTrigger(config, eventType) {
     // Macro
     if (config.runItemMacro && config.macroTriggers?.[key]) return true;
 
+    // Token filters are applied on enter and removed independently on leave.
+    if (eventType === 'enter' && config.tokenFilters?.enabled) return true;
+
     return false;
+}
+
+function shouldSuppressDuplicateAuraTrigger(auraEffect, targetToken, trigger) {
+    const key = `${auraEffect?.id || "aura"}:${targetToken?.id || "token"}:${trigger}`;
+    const now = Date.now();
+    const last = _recentAuraTriggers.get(key) || 0;
+    if (now - last < AURA_TRIGGER_DEDUPE_MS) return true;
+
+    _recentAuraTriggers.set(key, now);
+
+    for (const [storedKey, storedAt] of _recentAuraTriggers.entries()) {
+        if (now - storedAt > AURA_TRIGGER_DEDUPE_MS * 5) _recentAuraTriggers.delete(storedKey);
+    }
+
+    return false;
+}
+
+function getAuraInsideStateKey(sourceToken, targetToken, config, auraEffect) {
+    const logicalAuraId = config?.spellId || auraEffect?.origin || auraEffect?.id || "aura";
+    return `${sourceToken?.id || "source"}:${logicalAuraId}:${targetToken?.id || "target"}`;
+}
+
+function hasAuraAppliedToToken(auraEffect, token, insideStateKey = null) {
+    const actor = token?.actor;
+    if (!actor) return false;
+
+    if (insideStateKey && _auraMembership.has(insideStateKey)) return true;
+
+    const hasEffectItem = actor.items.some(i =>
+        i.type === "Effect" &&
+        i.flags?.[MODULE_ID]?.auraOrigin === auraEffect.id
+    );
+    if (hasEffectItem) return true;
+
+    return actor.effects.some(e =>
+        e.flags?.[MODULE_ID]?.auraOrigin === auraEffect.id
+    );
+}
+
+function sanitizeClonedAuraEffectData(effectData, auraEffect) {
+    if (!effectData || typeof effectData !== "object") return effectData;
+
+    delete effectData._id;
+    delete effectData.id;
+
+    effectData.flags = effectData.flags || {};
+    effectData.flags[MODULE_ID] = effectData.flags[MODULE_ID] || {};
+    effectData.flags[MODULE_ID].auraOrigin = auraEffect.id;
+
+    // Do not keep source/Region origins on cloned Effect items. Foundry v14 may
+    // try to resolve deleted Region UUIDs during embedded document creation.
+    delete effectData.origin;
+    if (effectData._stats) {
+        delete effectData._stats.compendiumSource;
+        delete effectData._stats.duplicateSource;
+    }
+
+    if (Array.isArray(effectData.effects)) {
+        effectData.effects = effectData.effects.map(embedded => {
+            const cloned = foundry.utils.deepClone(embedded);
+            delete cloned._id;
+            delete cloned.id;
+            delete cloned.origin;
+            if (cloned._stats) {
+                delete cloned._stats.compendiumSource;
+                delete cloned._stats.duplicateSource;
+            }
+            cloned.flags = cloned.flags || {};
+            cloned.flags[MODULE_ID] = cloned.flags[MODULE_ID] || {};
+            cloned.flags[MODULE_ID].auraOrigin = auraEffect.id;
+            return cloned;
+        });
+    }
+
+    return effectData;
+}
+
+function clearAuraMembershipForToken(auraEffect, token) {
+    const auraConfig = auraEffect?.flags?.[MODULE_ID]?.aura || {};
+    const logicalAuraId = auraConfig.spellId || auraEffect?.origin || auraEffect?.id || "aura";
+    const suffix = `:${logicalAuraId}:${token?.id || "target"}`;
+
+    for (const key of [..._auraInsideState]) {
+        if (key.endsWith(suffix)) _auraInsideState.delete(key);
+    }
+
+    for (const key of [..._auraMembership]) {
+        if (key.endsWith(suffix)) _auraMembership.delete(key);
+    }
+}
+
+async function getCurrentAuraTokenFilters(sourceToken, config, auraEffect) {
+    const snapshot = config?.tokenFilters || auraEffect?.flags?.[MODULE_ID]?.aura?.tokenFilters || {};
+    const region = getAuraRegionForEffect(auraEffect);
+    const regionFilters = region?.flags?.[MODULE_ID]?.tokenFilters || null;
+    const usesNativeRegion = (config?.nativeRegion || auraEffect?.flags?.[MODULE_ID]?.aura?.nativeRegion)?.enabled !== false;
+    const selected = regionFilters?.enabled && regionFilters?.preset
+        ? regionFilters
+        : (usesNativeRegion ? {} : snapshot);
+
+    console.log("shadowdark-extras | aura token filter debug", {
+        sourceToken: sourceToken?.name,
+        auraEffectId: auraEffect?.id,
+        auraEffectName: auraEffect?.name,
+        regionId: auraEffect?.flags?.[MODULE_ID]?.aura?.regionId,
+        regionName: region?.name,
+        regionSdxFlags: region?.flags?.[MODULE_ID],
+        usesNativeRegion,
+        hasRegion: !!region,
+        regionTokenFilters: regionFilters,
+        effectTokenFilters: auraEffect?.flags?.[MODULE_ID]?.aura?.tokenFilters,
+        runtimeTokenFilters: config?.tokenFilters,
+        selectedTokenFilters: selected
+    });
+
+    return selected || {};
+}
+
+function getAuraRegionForEffect(auraEffect) {
+    const scene = canvas?.scene;
+    const auraConfig = auraEffect?.flags?.[MODULE_ID]?.aura;
+    if (!scene || !auraConfig) return null;
+
+    const regions = [...(scene.regions || [])];
+    const regionId = auraConfig.regionId;
+    const region = (regionId ? regions.find(r => r.id === regionId) : null)
+        || regions.find(r =>
+            r.flags?.[MODULE_ID]?.auraRegion &&
+            r.flags?.[MODULE_ID]?.auraEffectId === auraEffect.id
+        );
+
+    return region || null;
 }
 
 /**
@@ -896,6 +1166,24 @@ export async function applyAuraEffect(sourceToken, targetToken, trigger, config,
 
     console.log(`shadowdark-extras | applyAuraEffect: source=${sourceToken.name}, target=${targetToken.name}, trigger=${trigger}`);
 
+    if (shouldSuppressDuplicateAuraTrigger(auraEffect, targetToken, trigger)) {
+        console.log(`shadowdark-extras | applyAuraEffect: duplicate ${trigger} suppressed for ${targetToken.name}`);
+        return;
+    }
+
+    const insideStateKey = getAuraInsideStateKey(sourceToken, targetToken, config, auraEffect);
+    if (trigger === 'enter') {
+        if (_auraInsideState.has(insideStateKey)) {
+            console.log(`shadowdark-extras | applyAuraEffect: repeated enter suppressed for ${targetToken.name}`);
+            return;
+        }
+        _auraInsideState.add(insideStateKey);
+        _auraMembership.add(insideStateKey);
+    } else if (trigger === 'leave') {
+        _auraInsideState.delete(insideStateKey);
+        _auraMembership.delete(insideStateKey);
+    }
+
     // Skip if target is source and includeSelf is false
     if (sourceToken.id === targetToken.id && !config.includeSelf) {
         console.log(`shadowdark-extras | applyAuraEffect: Self-target skipped (includeSelf=false)`);
@@ -908,10 +1196,15 @@ export async function applyAuraEffect(sourceToken, targetToken, trigger, config,
         return;
     }
 
+    if (trigger === 'enter') {
+        await syncAuraTrackerTarget(config, targetToken, "enter");
+    }
+
     // Apply TokenMagic filter if configured (independent of damage/effects settings)
-    if (config.tokenFilters?.enabled && config.tokenFilters?.preset) {
-        console.log(`shadowdark-extras | applyAuraEffect: Applying TokenMagic filter: ${config.tokenFilters.preset}`);
-        await applyTokenMagicFilter(targetToken, config.tokenFilters.preset, auraEffect.id);
+    const tokenFilters = await getCurrentAuraTokenFilters(sourceToken, config, auraEffect);
+    if (trigger === "enter" && tokenFilters?.enabled && tokenFilters?.preset) {
+        console.log(`shadowdark-extras | applyAuraEffect: Applying TokenMagic filter: ${tokenFilters.preset}`);
+        await applyTokenMagicFilter(targetToken, tokenFilters.preset, auraEffect.id);
     }
 
     // Get auto-apply settings
@@ -924,12 +1217,16 @@ export async function applyAuraEffect(sourceToken, targetToken, trigger, config,
     } catch (e) {
     }
 
-    // Apply effects/conditions immediately if autoApplyConditions is on (regardless of damage setting)
     const triggerEffects = shouldTriggerComponent(config.effectsTriggers, config.triggers, trigger);
-    console.log(`shadowdark-extras | applyAuraEffect: triggerEffects=${triggerEffects}, autoApplyConditions=${autoApplyConditions}`);
-    if (triggerEffects && autoApplyConditions && config.effects?.length > 0) {
-        await applyAuraConditions(auraEffect, targetToken, config.effects);
-    }
+    console.log("shadowdark-extras | applyAuraEffect effects debug", {
+        trigger,
+        triggerEffects,
+        autoApplyConditions,
+        applyConfiguredEffects: config.applyConfiguredEffects,
+        effects: config.effects,
+        effectsTriggers: config.effectsTriggers,
+        save: config.save
+    });
 
     // If auto-apply damage is OFF, OR if auto-apply conditions is OFF (and we have effects), create interactive card
     const triggerDamage = shouldTriggerComponent(config.damageTriggers, config.triggers, trigger);
@@ -976,8 +1273,8 @@ export async function applyAuraEffect(sourceToken, targetToken, trigger, config,
         damageApplied = await applyAuraDamage(targetToken, config, savedSuccessfully);
     }
 
-    // Apply effects if configured and not saved
-    // We check autoApplyConditions here as a safeguard, though the block above should catch it
+    // Apply configured effects after the save is resolved. If a save is enabled,
+    // a successful save with no half-on-save damage prevents condition effects.
     if (triggerEffects && config.effects?.length > 0 && !savedSuccessfully && autoApplyConditions) {
         await applyAuraConditions(auraEffect, targetToken, config.effects);
     }
@@ -989,14 +1286,22 @@ export async function applyAuraEffect(sourceToken, targetToken, trigger, config,
     }
 
     // Create chat message
-    await createAuraEffectMessage(sourceToken, targetToken, trigger, {
-        damage: damageApplied,
-        saved: savedSuccessfully,
-        saveResult: saveResult,
-        halfDamage: savedSuccessfully && config.save?.halfOnSuccess,
-        damageType: config.damage?.type,
-        auraName: auraEffect.name
-    });
+    const hasReportableOutcome = !!(
+        damageApplied ||
+        saveResult ||
+        (triggerEffects && config.effects?.length > 0) ||
+        (config.runItemMacro && triggerMacro)
+    );
+    if (hasReportableOutcome) {
+        await createAuraEffectMessage(sourceToken, targetToken, trigger, {
+            damage: damageApplied,
+            saved: savedSuccessfully,
+            saveResult: saveResult,
+            halfDamage: savedSuccessfully && config.save?.halfOnSuccess,
+            damageType: config.damage?.type,
+            auraName: auraEffect.name
+        });
+    }
 }
 
 /**
@@ -1077,13 +1382,27 @@ export async function applyAuraConditions(auraEffect, token, effectUuids) {
     const actor = token.actor;
     if (!actor) return;
 
-    for (const effectUuid of effectUuids) {
+    for (const effectEntry of effectUuids) {
         try {
+            const effectUuid = typeof effectEntry === "string" ? effectEntry : effectEntry?.uuid;
+            if (!effectUuid) continue;
+
             const effectDoc = await fromUuid(effectUuid);
             if (!effectDoc) {
+                console.warn("shadowdark-extras | Aura configured effect could not be resolved:", effectUuid);
                 continue;
             }
 
+            if (effectEntry?.name && effectDoc.name !== effectEntry.name) {
+                console.warn("shadowdark-extras | Aura configured effect UUID resolved to a different item", {
+                    configuredName: effectEntry.name,
+                    resolvedName: effectDoc.name,
+                    uuid: effectUuid
+                });
+            }
+
+            const documentName = effectDoc.documentName || effectDoc.constructor?.documentName || "";
+            const isActiveEffect = documentName === "ActiveEffect";
 
             // Check if already has this effect from this aura (by name + aura origin flag)
             const existingItem = actor.items.find(i =>
@@ -1091,27 +1410,33 @@ export async function applyAuraConditions(auraEffect, token, effectUuids) {
                 i.name === effectDoc.name &&
                 i.flags?.[MODULE_ID]?.auraOrigin === auraEffect.id
             );
+            const existingActiveEffect = actor.effects.find(e =>
+                e.name === effectDoc.name &&
+                e.flags?.[MODULE_ID]?.auraOrigin === auraEffect.id
+            );
 
-            if (existingItem) {
+            if (existingItem || existingActiveEffect) {
                 continue;
             }
 
-            // Create the Effect Item on the actor (not ActiveEffect!)
-            // This is the correct approach for Shadowdark - Effect Items have embedded ActiveEffects
-            // with transfer: true that Foundry automatically applies to the actor
-            const effectData = effectDoc.toObject();
-            effectData.flags = effectData.flags || {};
-            effectData.flags[MODULE_ID] = effectData.flags[MODULE_ID] || {};
-            effectData.flags[MODULE_ID].auraOrigin = auraEffect.id;
+            const effectData = sanitizeClonedAuraEffectData(effectDoc.toObject(), auraEffect);
 
-            // Link the embedded effects to the original source spell if possible
-            if (effectData.effects && auraEffect.origin) {
-                effectData.effects.forEach(e => {
-                    e.origin = auraEffect.origin;
+            if (isActiveEffect) {
+                await actor.createEmbeddedDocuments("ActiveEffect", [effectData]);
+                console.log("shadowdark-extras | Applied aura ActiveEffect", {
+                    aura: auraEffect.name,
+                    target: token.name,
+                    effect: effectDoc.name
+                });
+            } else {
+                // Shadowdark condition/effect rows are Effect Items with embedded transfer effects.
+                await actor.createEmbeddedDocuments("Item", [effectData]);
+                console.log("shadowdark-extras | Applied aura Effect item", {
+                    aura: auraEffect.name,
+                    target: token.name,
+                    effect: effectDoc.name
                 });
             }
-
-            await actor.createEmbeddedDocuments("Item", [effectData]);
         } catch (err) {
             console.error(`shadowdark-extras | Error applying aura condition:`, err);
         }
@@ -1138,6 +1463,10 @@ export async function removeAuraEffectsFromToken(auraEffect, token) {
     const actor = token.actor;
     if (!actor) return;
 
+    const auraConfig = auraEffect.flags?.[MODULE_ID]?.aura || {};
+    await syncAuraTrackerTarget(auraConfig, token, "leave");
+    clearAuraMembershipForToken(auraEffect, token);
+
     // Remove Effect Items that came from this aura
     const itemsToRemove = actor.items.filter(i =>
         i.type === "Effect" &&
@@ -1148,6 +1477,15 @@ export async function removeAuraEffectsFromToken(auraEffect, token) {
         const ids = itemsToRemove.map(i => i.id);
         await actor.deleteEmbeddedDocuments("Item", ids);
     } else {
+    }
+
+    const activeEffectsToRemove = actor.effects.filter(e =>
+        e.flags?.[MODULE_ID]?.auraOrigin === auraEffect.id
+    );
+
+    if (activeEffectsToRemove.length > 0) {
+        const ids = activeEffectsToRemove.map(e => e.id);
+        await actor.deleteEmbeddedDocuments("ActiveEffect", ids);
     }
 
     // Remove TokenMagic filter if any was applied by this aura
@@ -1173,6 +1511,15 @@ export async function removeAuraEffectsFromAll(auraEffect) {
     for (const token of canvas.tokens.placeables) {
         if (!token.actor) continue;
         await removeAuraEffectsFromToken(auraEffect, token);
+        if (!shouldKeepAnySdxAuraTokenMagicFilter(token, auraEffect)) {
+            await removeAllSdxAuraTokenMagicFilters(token);
+        }
+    }
+
+    const auraConfig = auraEffect.flags?.[MODULE_ID]?.aura || {};
+    const logicalAuraId = auraConfig.spellId || auraEffect.origin || auraEffect.id;
+    for (const key of [..._auraInsideState]) {
+        if (key.includes(`:${logicalAuraId}:`)) _auraInsideState.delete(key);
     }
 }
 
@@ -1306,6 +1653,197 @@ async function createAuraEffectMessage(sourceToken, targetToken, trigger, result
     });
 }
 
+function getAuraBearerToken(actor, bearerTokenId = null) {
+    if (!canvas?.tokens) return null;
+    if (bearerTokenId) {
+        const explicit = canvas.tokens.get(bearerTokenId);
+        if (explicit?.actor?.id === actor?.id) return explicit;
+    }
+    return canvas.tokens.placeables.find(t => t.actor?.id === actor?.id) || null;
+}
+
+async function createAuraRegion(token, effect, config, sourceItem) {
+    try {
+        if (!game.user.isGM) return null;
+
+        const tokenDoc = token?.document;
+        if (!tokenDoc?.persisted || !canvas?.scene) return null;
+
+        const RegionDocument = foundry.documents?.RegionDocument?.implementation ?? foundry.documents?.RegionDocument;
+        if (typeof RegionDocument?.createTokenEmanation !== "function") return null;
+
+        const nativeRegion = config.nativeRegion || {};
+        const color = nativeRegion.color || "#ffffff";
+        const radius = Number(config.radius) || 30;
+        const auraRegionVisibility = CONST.REGION_VISIBILITY?.LAYER_UNLOCKED ?? 4;
+
+        const region = await RegionDocument.createTokenEmanation(tokenDoc, radius, {
+            name: `${sourceItem.name} (Aura)`,
+            color,
+            visibility: auraRegionVisibility,
+            restriction: {
+                enabled: true,
+                type: "move",
+                priority: 0
+            },
+            hidden: !!tokenDoc.hidden,
+            locked: false,
+            flags: {
+                [MODULE_ID]: {
+                    auraRegion: true,
+                    auraEffectId: effect.id,
+                    auraActorId: effect.parent?.id,
+                    sourceItemUuid: sourceItem.uuid,
+                    tokenFilters: foundry.utils.deepClone(config.tokenFilters || {})
+                }
+            }
+        }, {
+            excludeToken: false,
+            gridBased: false
+        });
+
+        if (region) {
+            await region.update({
+                [`flags.${MODULE_ID}.auraRegion`]: true,
+                [`flags.${MODULE_ID}.auraEffectId`]: effect.id,
+                [`flags.${MODULE_ID}.auraActorId`]: effect.parent?.id,
+                [`flags.${MODULE_ID}.sourceItemUuid`]: sourceItem.uuid,
+                [`flags.${MODULE_ID}.tokenFilters`]: foundry.utils.deepClone(config.tokenFilters || {}),
+                visibility: auraRegionVisibility,
+                "restriction.enabled": true,
+                "restriction.type": "move",
+                "restriction.priority": 0
+            });
+            await effect.update({ [`flags.${MODULE_ID}.aura.regionId`]: region.id });
+            await applyAuraRegionVisualFx(region, config.visualFx);
+        }
+
+        return region;
+    } catch (err) {
+        console.warn("shadowdark-extras | Failed to create attached aura Region:", err);
+        return null;
+    }
+}
+
+function getTokenMagicTintValue(tint) {
+    if (!tint) return null;
+    if (typeof tint === 'number') return tint;
+    const parsed = parseInt(String(tint).replace('#', ''), 16);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function applyTokenMagicAuraRegionFx(region, visualFx) {
+    const tmfx = visualFx?.tmfx || {};
+    const preset = tmfx.preset || 'NOFX';
+    if (!(preset && preset !== 'NOFX')) return;
+    if (!game.modules.get('tokenmagic')?.active || !globalThis.TokenMagic?.addFilters) return;
+
+    await region.update({
+        'flags.tokenmagic.regionData': { opacity: Number(tmfx.opacity ?? 0.5) }
+    });
+
+    const tintValue = getTokenMagicTintValue(tmfx.tint);
+    const withTint = (request) => tintValue === null ? request : { ...request, color: tintValue };
+
+    let presetParams = null;
+    if (typeof globalThis.TokenMagic.getPreset === 'function') {
+        const candidates = [
+            { name: preset, library: 'tmfx-region' },
+            { name: preset, library: 'tmfx-template' },
+            { name: preset, library: 'tmfx-main' },
+            preset
+        ];
+
+        for (const candidate of candidates) {
+            presetParams = globalThis.TokenMagic.getPreset(withTint(candidate));
+            if (Array.isArray(presetParams) && presetParams.length) break;
+        }
+
+        if (!(Array.isArray(presetParams) && presetParams.length)) {
+            try {
+                const presets = game.settings.get('tokenmagic', 'presets') || [];
+                const match = presets.find(p =>
+                    String(p?.name || '').toLowerCase() === String(preset).toLowerCase()
+                    && ['tmfx-region', 'tmfx-template', 'tmfx-main'].includes(p?.library)
+                );
+                if (match) presetParams = globalThis.TokenMagic.getPreset(withTint({ name: match.name, library: match.library }));
+            } catch (e) {
+                // The setting is not guaranteed to exist across TokenMagic versions.
+            }
+        }
+    }
+
+    if (Array.isArray(presetParams) && presetParams.length) {
+        await globalThis.TokenMagic.addFilters(region, presetParams, true);
+    } else {
+        console.warn(`shadowdark-extras | TokenMagic aura preset not found or has no filters: ${preset}`);
+    }
+}
+
+function applyIndyFxAuraRegion(region, visualFx) {
+    const indyFx = visualFx?.indy || {};
+    if (!indyFx.shaderId) return;
+    if (!game.modules.get('indy-fx')?.active || typeof game.indyFX?.shaderOnRegion !== 'function') return;
+
+    game.indyFX.shaderOnRegion(region.id, {
+        shaderId: indyFx.shaderId,
+        layer: indyFx.layer || 'inherit',
+        alpha: Number(indyFx.alpha ?? 1),
+        speed: Number(indyFx.speed ?? 1),
+        scale: Number(indyFx.scale ?? 1),
+        scaleX: Number(indyFx.scale ?? 1),
+        scaleY: Number(indyFx.scale ?? 1),
+        displayTimeMs: 0
+    });
+}
+
+async function applyAuraRegionVisualFx(region, visualFx) {
+    try {
+        const engine = visualFx?.engine || 'none';
+        if (engine === 'tmfx') await applyTokenMagicAuraRegionFx(region, visualFx);
+        else if (engine === 'indy') applyIndyFxAuraRegion(region, visualFx);
+    } catch (err) {
+        console.warn("shadowdark-extras | Failed to apply aura Region visual FX:", err);
+    }
+}
+
+async function deleteAuraRegion(effect) {
+    try {
+        const scene = canvas?.scene;
+        if (!scene) return;
+
+        const auraConfig = effect.flags?.[MODULE_ID]?.aura;
+        const regionId = auraConfig?.regionId;
+        const flaggedRegions = [...(scene.regions || [])].filter(r =>
+            r.id === regionId
+            || (r.flags?.[MODULE_ID]?.auraRegion && r.flags?.[MODULE_ID]?.auraEffectId === effect.id)
+        );
+
+        const ids = flaggedRegions.map(r => r.id);
+        if (ids.length) await scene.deleteEmbeddedDocuments("Region", ids);
+    } catch (err) {
+        console.warn("shadowdark-extras | Failed to delete attached aura Region:", err);
+    }
+}
+
+async function removeExistingAurasForSource(actor, sourceItem) {
+    if (!game.user.isGM || !actor || !sourceItem) return;
+
+    const existing = [...(actor.effects || [])].filter(effect => {
+        const auraConfig = effect.flags?.[MODULE_ID]?.aura;
+        if (!auraConfig?.enabled) return false;
+        return auraConfig.spellId === sourceItem.id || effect.origin === sourceItem.uuid;
+    });
+
+    for (const effect of existing) {
+        await deleteAuraRegion(effect);
+        await removeAuraEffectsFromAll(effect);
+    }
+
+    const ids = existing.map(effect => effect.id).filter(Boolean);
+    if (ids.length) await actor.deleteEmbeddedDocuments("ActiveEffect", ids);
+}
+
 /**
  * Create aura effect on an actor
  * @param {Actor} actor - The actor to receive the aura
@@ -1314,10 +1852,26 @@ async function createAuraEffectMessage(sourceToken, targetToken, trigger, result
  * @returns {ActiveEffect} The created effect
  */
 export async function createAuraOnActor(actor, auraConfig, sourceItem, duration = null, expiryRounds = null) {
-    // Generate a unique status ID for this aura
-    const auraStatusId = `sdx-aura-${sourceItem.id}`;
+    const creationKey = `${actor?.id || "actor"}:${sourceItem?.uuid || sourceItem?.id || "source"}`;
+    if (_auraCreationInFlight.has(creationKey)) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        const existing = [...(actor.effects || [])].find(effect => {
+            const existingConfig = effect.flags?.[MODULE_ID]?.aura;
+            if (!existingConfig?.enabled) return false;
+            return existingConfig.spellId === sourceItem.id || existingConfig.sourceItemUuid === sourceItem.uuid || effect.origin === sourceItem.uuid;
+        });
+        if (existing) return existing;
+    }
 
-    const effectData = {
+    _auraCreationInFlight.add(creationKey);
+
+    try {
+        await removeExistingAurasForSource(actor, sourceItem);
+
+        // Generate a unique status ID for this aura
+        const auraStatusId = `sdx-aura-${sourceItem.id}`;
+
+        const effectData = {
         name: sourceItem.name + " (Aura)",
         img: sourceItem.img,
         origin: sourceItem.uuid,
@@ -1337,8 +1891,9 @@ export async function createAuraOnActor(actor, auraConfig, sourceItem, duration 
                     damage: auraConfig.damage || {},
                     save: auraConfig.save || {},
                     effects: auraConfig.effects || [],
-                    animation: auraConfig.animation || {},
                     tokenFilters: auraConfig.tokenFilters || {},
+                    nativeRegion: auraConfig.nativeRegion || {},
+                    visualFx: auraConfig.visualFx || {},
                     disposition: auraConfig.disposition || 'all',
                     includeSelf: auraConfig.includeSelf || false,
                     checkVisibility: auraConfig.checkVisibility || false,
@@ -1347,26 +1902,26 @@ export async function createAuraOnActor(actor, auraConfig, sourceItem, duration 
                     damageTriggers: auraConfig.damageTriggers || {},
                     runItemMacro: auraConfig.runItemMacro || false,
                     macroTriggers: auraConfig.macroTriggers || {},
-                    spellId: sourceItem.id
+                    spellId: sourceItem.id,
+                    sourceItemUuid: sourceItem.uuid,
+                    casterActorId: auraConfig.casterActorId || sourceItem.actor?.id || null,
+                    trackerType: auraConfig.trackerType || null,
+                    trackerInstanceId: auraConfig.trackerInstanceId || null
                 }
             }
         }
-    };
+        };
 
-    const [effect] = await actor.createEmbeddedDocuments("ActiveEffect", [effectData]);
+        const [effect] = await actor.createEmbeddedDocuments("ActiveEffect", [effectData]);
 
-    // Create animation if configured
-    if (auraConfig.animation?.enabled) {
-        const token = actor.token || canvas.tokens.placeables.find(t => t.actor?.id === actor.id);
-        if (token) {
-            await createAuraAnimation(token, effect, auraConfig);
+        const bearerToken = getAuraBearerToken(actor, auraConfig.bearerTokenId);
+        if (bearerToken && auraConfig.nativeRegion?.enabled !== false) {
+            await createAuraRegion(bearerToken, effect, auraConfig, sourceItem);
         }
-    }
-
 
     // Process initial tokens in aura range (apply effects immediately on creation)
     // IMPORTANT: Use canvas.tokens.placeables to get Token objects (with .center), NOT actor.token (TokenDocument)
-    const sourceToken = canvas.tokens.placeables.find(t => t.actor?.id === actor.id);
+    const sourceToken = getAuraBearerToken(actor, auraConfig.bearerTokenId);
     if (sourceToken && shouldAnyComponentTrigger(auraConfig, 'enter')) {
 
         const config = {
@@ -1375,8 +1930,9 @@ export async function createAuraOnActor(actor, auraConfig, sourceItem, duration 
             damage: auraConfig.damage || {},
             save: auraConfig.save || {},
             effects: auraConfig.effects || [],
-            animation: auraConfig.animation || {},
             tokenFilters: auraConfig.tokenFilters || {},
+            nativeRegion: auraConfig.nativeRegion || {},
+            visualFx: auraConfig.visualFx || {},
             disposition: auraConfig.disposition || 'all',
             includeSelf: auraConfig.includeSelf || false,
             checkVisibility: auraConfig.checkVisibility || false,
@@ -1385,7 +1941,11 @@ export async function createAuraOnActor(actor, auraConfig, sourceItem, duration 
             damageTriggers: auraConfig.damageTriggers || {},
             runItemMacro: auraConfig.runItemMacro || false,
             macroTriggers: auraConfig.macroTriggers || {},
-            spellId: sourceItem.id
+            spellId: sourceItem.id,
+            sourceItemUuid: sourceItem.uuid,
+            casterActorId: auraConfig.casterActorId || sourceItem.actor?.id || null,
+            trackerType: auraConfig.trackerType || null,
+            trackerInstanceId: auraConfig.trackerInstanceId || null
         };
 
         // Get all tokens in scene
@@ -1418,64 +1978,8 @@ export async function createAuraOnActor(actor, auraConfig, sourceItem, duration 
     } else if (!sourceToken) {
     }
 
-    return effect;
-}
-
-/**
- * Create visual animation for aura (using Sequencer if available)
- */
-async function createAuraAnimation(token, effect, config) {
-    if (typeof Sequencer === 'undefined') {
-        return;
+        return effect;
+    } finally {
+        _auraCreationInFlight.delete(creationKey);
     }
-
-    const animation = config.animation || {};
-    const radius = config.radius || 30;
-    const tint = animation.tint || '#ffffff';
-    const style = animation.style || 'circle';
-    const opacity = Number(animation.opacity) || 0.6;
-    const scaleMultiplier = Number(animation.scaleMultiplier) || 1.0;
-
-    // Calculate scale based on radius (radius in grid squares)
-    const gridDistance = canvas.scene.grid.distance || 5;
-    const radiusInSquares = radius / gridDistance;
-    // Apply user scale multiplier
-    const finalScale = radiusInSquares * scaleMultiplier;
-
-    // Select animation file based on style
-    // Select animation file based on style
-    let animationFile;
-    const legacyStyles = {
-        'darkness': 'jb2a.darkness.black',
-        'pulse': 'jb2a.template_circle.out_pulse.01.burst.bluewhite',
-        'glow': 'jb2a.extras.tmfx.outpulse.circle.01.normal',
-        'circle': 'jb2a.template_circle.aura.01.complete.small.blue'
-    };
-
-    if (legacyStyles[style]) {
-        animationFile = legacyStyles[style];
-    } else {
-        // Assume it's a direct Sequencer path if not a legacy keyword
-        // If the user typed something custom, use it directly
-        animationFile = style;
-    }
-
-
-    // Try to use JB2A if available
-    if (typeof Sequencer !== 'undefined') {
-        new Sequence()
-            .effect()
-            .name(`aura-${effect.id}`)
-            .file(animationFile)
-            .attachTo(token)
-            .scaleToObject(finalScale)
-            .tint(tint)
-            .opacity(opacity)
-            .belowTokens()
-            .persist()
-            .fadeIn(500)
-            .fadeOut(500)
-            .play();
-    }
-
 }
