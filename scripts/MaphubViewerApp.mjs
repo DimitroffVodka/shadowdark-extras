@@ -631,6 +631,13 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 	/** Build the iframe src. */
 	async _buildSrc() {
+		const ext = this._queryString ? `${this._externalBase}?${this._queryString}` : this._externalBase;
+		const useLocal = game.settings.get(MODULE_ID, "settlement.useLocalMaphub");
+		if (!useLocal) {
+			console.log(`${MODULE_ID} | MaphubViewerApp: using external URL ${ext}`);
+			return ext;
+		}
+
 		// Use the direct server URL for local maphub files.
 		// Static module files are served by express.static and do NOT carry
 		// FoundryVTT's X-Frame-Options: deny header (that only applies to the
@@ -651,7 +658,6 @@ export class MaphubViewerApp extends ApplicationV2 {
 		} catch (_) { /* network error → fall through */ }
 
 		// Local files not present — fall back to external URL.
-		const ext = this._queryString ? `${this._externalBase}?${this._queryString}` : this._externalBase;
 		console.warn(`${MODULE_ID} | MaphubViewerApp: local files missing, using external: ${ext}`);
 		return ext;
 	}

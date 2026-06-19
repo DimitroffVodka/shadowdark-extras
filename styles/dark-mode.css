@@ -169,16 +169,24 @@ body.sdx-dark-mode .sheet.journal-entry .journal-entry-page table {
 }
 
 body.sdx-dark-mode .ProseMirror table thead tr,
-body.sdx-dark-mode .ProseMirror table tr:first-child,
+body.sdx-dark-mode .ProseMirror table:not(:has(thead)) tr:first-child,
 body.sdx-dark-mode .sheet.journal-entry .journal-entry-page table thead tr,
-body.sdx-dark-mode .sheet.journal-entry .journal-entry-page table tr:first-child {
+body.sdx-dark-mode .sheet.journal-entry .journal-entry-page table:not(:has(thead)) tr:first-child {
+    /* Header styling: the table's <thead> row, OR the first row of a table
+       that has no <thead> (de-facto header). `:not(:has(thead))` stops a plain
+       `tr:first-child` from also catching the first <tbody> data row — which
+       made the roll-1 row of encounter tables render like a second header. */
     background: linear-gradient(180deg, rgba(80, 65, 40, 0.9) 0%, rgba(60, 50, 35, 0.9) 100%);
 }
 
 body.sdx-dark-mode .ProseMirror table thead th,
+body.sdx-dark-mode .ProseMirror table thead td,
+body.sdx-dark-mode .ProseMirror table:not(:has(thead)) tr:first-child th,
+body.sdx-dark-mode .ProseMirror table:not(:has(thead)) tr:first-child td,
+body.sdx-dark-mode .sheet.journal-entry .journal-entry-page table thead th,
 body.sdx-dark-mode .sheet.journal-entry .journal-entry-page table thead td,
-body.sdx-dark-mode .sheet.journal-entry .journal-entry-page table tr:first-child th,
-body.sdx-dark-mode .sheet.journal-entry .journal-entry-page table tr:first-child td {
+body.sdx-dark-mode .sheet.journal-entry .journal-entry-page table:not(:has(thead)) tr:first-child th,
+body.sdx-dark-mode .sheet.journal-entry .journal-entry-page table:not(:has(thead)) tr:first-child td {
     padding: 10px 12px;
     text-align: center !important;
     font-family: 'Montserrat-medium', 'Modesto Condensed', serif !important;
@@ -196,6 +204,15 @@ body.sdx-dark-mode .sheet.journal-entry .journal-entry-page table td {
     color: #e0dcd4 !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     font-family: 'Montserrat-medium', 'Modesto Condensed', serif !important;
+}
+
+/* The Shadowdark system bolds `table tbody tr:first-child`, which makes the
+   roll-1 row of an encounter table look like a header. For tables that have a
+   real <thead>, keep the first <tbody> row at normal weight (it's a data row).
+   `:has(thead)` leaves header-less tables — where row 1 IS the header — alone. */
+body.sdx-dark-mode .ProseMirror table:has(thead) tbody tr:first-child td,
+body.sdx-dark-mode .sheet.journal-entry .journal-entry-page table:has(thead) tbody tr:first-child td {
+    font-weight: normal;
 }
 
 body.sdx-dark-mode .ProseMirror table tbody tr:nth-child(even),

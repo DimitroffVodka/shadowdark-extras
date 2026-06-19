@@ -954,6 +954,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         elem.querySelector(".tray-handle-button-tool[data-action='sdx-maphub-launcher']")?.addEventListener("click", async (e) => {
             e.preventDefault();
             e.stopPropagation();
+            if (!game.user.isGM) return;
             const { MaphubLauncherApp } = await import("./MaphubLauncherApp.mjs");
             new MaphubLauncherApp().render(true);
         });

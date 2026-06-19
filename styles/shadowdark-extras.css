@@ -7734,6 +7734,40 @@ section[data-tab="tab-notes"].sdx-journal-active>div:not(.sdx-journal-notes) {
     font-size: 11px;
 }
 
+/* Dark Mode: keep SDX settings dialogs readable when the Foundry application
+   theme is dark. The base settings styles above were written for light sheets
+   and used black label/hint text, which disappears on dark ApplicationV2
+   windows such as Automatic Combat Settings. */
+body.sdx-dark-mode .shadowdark-extras .sdx-combat-settings-form,
+body.sdx-dark-mode .shadowdark-extras .sdx-effects-settings-form,
+body.sdx-dark-mode .shadowdark-extras .sdx-hp-waves-settings {
+    color: #e8e0d0;
+}
+
+body.sdx-dark-mode .shadowdark-extras .sdx-setting-header label,
+body.sdx-dark-mode .shadowdark-extras .sdx-setting-header strong,
+body.sdx-dark-mode .shadowdark-extras .sdx-multiplier-item label,
+body.sdx-dark-mode .shadowdark-extras .sdx-mult-label {
+    color: #f0ede6;
+}
+
+body.sdx-dark-mode .shadowdark-extras .sdx-settings-hint,
+body.sdx-dark-mode .shadowdark-extras .sdx-setting-hint,
+body.sdx-dark-mode .shadowdark-extras .sdx-mult-value {
+    color: #b8aa9a;
+}
+
+body.sdx-dark-mode .shadowdark-extras .sdx-setting-item,
+body.sdx-dark-mode .shadowdark-extras .sdx-multiplier-item {
+    background: rgba(0, 0, 0, 0.28);
+}
+
+body.sdx-dark-mode .shadowdark-extras .sdx-setting-header select {
+    color: #f0ede6;
+    background: rgba(35, 29, 35, 0.95);
+    border-color: rgba(201, 170, 88, 0.35);
+}
+
 /* ============================================
    ACTIVITY TAB - PROFESSIONAL UI STYLES
    ============================================ */

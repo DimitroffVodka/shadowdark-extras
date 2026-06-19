@@ -10,6 +10,7 @@ const DISPLAY_STATES = {
     HIDDEN: 1,
     MARGIN: 2,
     CELL: 3,
+    ZINE: 4,
 };
 
 /**
@@ -55,6 +56,7 @@ class SDXCoord {
     #overrideState;
     #marginContainer;
     #cellContainer;
+    #zineContainer;
 
     constructor() {
         const settings = getSettings();
@@ -101,12 +103,15 @@ class SDXCoord {
         // Create PIXI containers
         this.#marginContainer = canvas.controls.addChild(new PIXI.Container());
         this.#cellContainer = canvas.controls.addChild(new PIXI.Container());
+        this.#zineContainer = canvas.controls.addChild(new PIXI.Container());
         this.#marginContainer.visible = false;
         this.#cellContainer.visible = false;
+        this.#zineContainer.visible = false;
 
         // Render labels
         this._renderMarginLabels();
         this._renderCellLabels();
+        this._renderZineLabels();
 
         // Click listener for one-click coordinate display
         this._addClickListener();
@@ -125,6 +130,23 @@ class SDXCoord {
         // Letters: A, B, ..., Z, AA, AB, ...
         if (index < 26) return String.fromCharCode(65 + index);
         return SDXCoord._numberToLetters(index + 1);
+    }
+
+    _formatColumnHeader(index, style = "standard") {
+        if (style === "zine") return String(index * 100).padStart(3, "0");
+        return this._generateLabel(this._xValue, this._standardColumn(index));
+    }
+
+    _formatRowHeader(index, style = "standard") {
+        if (style === "zine") return String(index + 1).padStart(2, "0");
+        return this._generateLabel(this._yValue, index);
+    }
+
+    _formatCellLabel(row, col, style = "standard") {
+        if (style === "zine") return `${this._zineColumn(col)}${String(this._zineRow(row, col)).padStart(2, "0")}`;
+        const rowLabel = this._generateLabel(this._yValue, row);
+        const colLabel = this._generateLabel(this._xValue, this._standardColumn(col));
+        return SDXCoord._formatPair(rowLabel, colLabel);
     }
 
     static _numberToLetters(num) {
@@ -167,9 +189,67 @@ class SDXCoord {
             : col;
     }
 
+    /**
+     * Map a (already _adjustCol-ed) grid column index to the zine axis column.
+     *
+     * On hex-column maps the printed zine "000" axis header sits over the first
+     * FULL playable hex column; the cropped/partial edge column to its left is
+     * not counted. The top axis labels are shifted right by one column for this
+     * reason (see _renderMarginLabels), so the per-cell column number must drop
+     * by one to stay aligned with the header above it — e.g. a cell our raw grid
+     * would call 202 prints as 102 in the zine. Square / hex-row maps are not
+     * shifted, so they are returned unchanged.
+     *
+     * @param {number} col - column index after _adjustCol
+     * @returns {number} zine axis column (may be -1 for the cropped edge column)
+     */
+    _zineColumn(col) {
+        if (canvas.grid.isHexagonal && canvas.grid.columns) return col - 1;
+        return col;
+    }
+
+    /**
+     * Per-cell zine row number (1-based) for the given cell.
+     *
+     * Hex-column zine maps stagger in two phases: after the _zineColumn shift,
+     * the even zine columns (200/400/600...) are the half-hex-LOWER phase, while
+     * the odd columns (100/300/500...) are the raised phase. A raw `row + 1`
+     * already prints the odd columns correctly, but on the staggered even
+     * columns the per-cell row index runs one step ahead, so it prints one too
+     * high (a cell that should read 203 prints 204). Journal pins are ground
+     * truth — e.g. x=690 y=776 is "203. Marker Stone" — so drop the even zine
+     * columns by one to realign both phases. Square / hex-row maps don't stagger
+     * this way and are returned unchanged.
+     *
+     * @param {number} row - row index after _adjustRow
+     * @param {number} col - column index after _adjustCol
+     * @returns {number} 1-based row number to print in the zine hex ID
+     */
+    _zineRow(row, col) {
+        const base = row + 1;
+        if (canvas.grid.isHexagonal && canvas.grid.columns && this._zineColumn(col) % 2 === 0) {
+            return base - 1;
+        }
+        return base;
+    }
+
+    /**
+     * Standard lettered coordinate maps should also ignore the cropped/blank
+     * edge column on hex-column scenes: A starts on the first full playable
+     * column, matching the zine axis shift. Numeric X labels keep their
+     * existing behavior for backwards compatibility.
+     *
+     * @param {number} col - column index after _adjustCol
+     * @returns {number} displayed standard column index
+     */
+    _standardColumn(col) {
+        if (this._xValue === "let" && canvas.grid.isHexagonal && canvas.grid.columns) return col - 1;
+        return col;
+    }
+
     // ---- Rendering ----
 
-    _renderMarginLabels() {
+    _renderMarginLabels(container = this.#marginContainer, style = "standard") {
         const PT = getPreciseText();
         let pos, label, text;
 
@@ -177,25 +257,42 @@ class SDXCoord {
         let c = 0;
         do {
             const adjCol = this._adjustCol(c);
-            label = this._generateLabel(this._xValue, adjCol);
+            label = this._formatColumnHeader(adjCol, style);
             text = new PT(label, this._style);
             text.resolution = 4;
             text.anchor.set(0.5);
             const tl = canvas.grid.getTopLeftPoint({ i: this._row0, j: c + this._col0 });
             pos = [tl.x + this._cellWidth / 2, this._rect.top - this._marginOffset - this._size / 4];
+
+            if (style === "zine" && canvas.grid.isHexagonal && canvas.grid.columns) {
+                // The printed zine coordinate axes start over the first full
+                // playable hex column, not the cropped/partial edge column.
+                // Move the top labels one column step to the right so 000 is
+                // over that first real column, then 100/200/etc. follow.
+                pos[0] += this._cellWidth * 0.75;
+            }
+
+            // Shadowdark zine hex maps stagger the top coordinate headers:
+            // 000/200/400 sit lower in the valleys, while 100/300/500 sit
+            // higher above the top edge of the raised hex columns.
+            if (style === "zine" && canvas.grid.isHexagonal && canvas.grid.columns && adjCol % 2 === 0) {
+                pos[1] += this._size * 0.28;
+            }
             text.position.set(pos[0], pos[1]);
 
-            if (pos[0] >= this._rect.left && pos[0] <= this._rect.right && adjCol >= 0) {
-                this.#marginContainer.addChild(text);
+            const displayCol = style === "zine" ? adjCol : this._standardColumn(adjCol);
+            if (pos[0] >= this._rect.left && pos[0] <= this._rect.right && displayCol >= 0) {
+                container.addChild(text);
             }
             c += 1;
         } while (pos[0] + text.width < this._rect.right);
 
         // Row headers (left)
         let r = 0;
+        let zineRow = 0;
         do {
             const adjRow = this._adjustRow(r);
-            label = this._generateLabel(this._yValue, adjRow);
+            label = style === "zine" ? String(zineRow + 1).padStart(2, "0") : this._formatRowHeader(adjRow, style);
             text = new PT(label, this._style);
             text.resolution = 4;
             text.anchor.set(0.5, 0.5);
@@ -204,13 +301,14 @@ class SDXCoord {
             text.position.set(pos[0], pos[1]);
 
             if (pos[1] >= this._rect.top && pos[1] <= this._rect.bottom && adjRow >= 0) {
-                this.#marginContainer.addChild(text);
+                container.addChild(text);
+                zineRow += 1;
             }
             r += 1;
         } while (pos[1] + text.height < this._rect.bottom);
     }
 
-    _renderCellLabels() {
+    _renderCellLabels(container = this.#cellContainer, style = "standard") {
         const PT = getPreciseText();
         const cellStyle = this._style.clone();
         const fontScale = Math.max(10, this._cellFontScale) / 100;
@@ -220,7 +318,7 @@ class SDXCoord {
         let pos = [this._rect.x, this._rect.y];
         do {
             const absCol = c + this._col0;
-            const colLabel = this._generateLabel(this._xValue, this._adjustCol(c));
+            const adjCol = this._adjustCol(c);
             let r = 0;
             do {
                 const tl = canvas.grid.getTopLeftPoint({ i: r + this._row0, j: c + this._col0 });
@@ -229,8 +327,12 @@ class SDXCoord {
                 const adjRow = this._adjustRow(r, absCol);
                 if (adjRow < 0) { r += 1; continue; }
 
-                const rowLabel = this._generateLabel(this._yValue, adjRow);
-                const text = new PT(SDXCoord._formatPair(rowLabel, colLabel), cellStyle);
+                // In zine mode the cropped/partial edge column is not numbered
+                // (its zine column would be -1); skip it to match the shifted axis.
+                if (style === "zine" && this._zineColumn(adjCol) < 0) { r += 1; continue; }
+                if (style !== "zine" && this._standardColumn(adjCol) < 0) { r += 1; continue; }
+
+                const text = new PT(this._formatCellLabel(adjRow, adjCol, style), cellStyle);
                 text.resolution = 4;
                 text.alpha = this._cellAlpha;
 
@@ -241,13 +343,18 @@ class SDXCoord {
 
                 if (this._rect.contains(pos[0], pos[1])) {
                     text.position.set(pos[0], pos[1]);
-                    this.#cellContainer.addChild(text);
+                    container.addChild(text);
                 }
 
                 r += 1;
             } while (pos[1] < this._rect.bottom);
             c += 1;
         } while (pos[0] < this._rect.right);
+    }
+
+    _renderZineLabels() {
+        this._renderMarginLabels(this.#zineContainer, "zine");
+        this._renderCellLabels(this.#zineContainer, "zine");
     }
 
     // ---- Click Coordinate ----
@@ -269,10 +376,8 @@ class SDXCoord {
         const offset = canvas.grid.getOffset({ x: pos.x, y: pos.y });
         const row = this._adjustRow(offset.i - this._row0, offset.j);
         const col = this._adjustCol(offset.j - this._col0);
-        const rowLabel = this._generateLabel(this._yValue, row);
-        const colLabel = this._generateLabel(this._xValue, col);
-
-        const text = new PT(SDXCoord._formatPair(rowLabel, colLabel), this._style);
+        const style = this._readSceneState() === DISPLAY_STATES.ZINE ? "zine" : "standard";
+        const text = new PT(this._formatCellLabel(row, col, style), this._style);
         text.resolution = 4;
         text.anchor.set(0.2);
         text.position.set(pos.x, pos.y);
@@ -289,18 +394,21 @@ class SDXCoord {
     }
 
     _applyState(state) {
+        this.#marginContainer.visible = false;
+        this.#cellContainer.visible = false;
+        this.#zineContainer.visible = false;
+
         switch (state) {
             case DISPLAY_STATES.MARGIN:
                 this.#marginContainer.visible = true;
-                this.#cellContainer.visible = false;
                 break;
             case DISPLAY_STATES.CELL:
-                this.#marginContainer.visible = false;
                 this.#cellContainer.visible = true;
                 break;
+            case DISPLAY_STATES.ZINE:
+                this.#zineContainer.visible = true;
+                break;
             default:
-                this.#marginContainer.visible = false;
-                this.#cellContainer.visible = false;
                 break;
         }
     }
@@ -314,6 +422,9 @@ class SDXCoord {
                 break;
             case DISPLAY_STATES.MARGIN:
                 next = DISPLAY_STATES.CELL;
+                break;
+            case DISPLAY_STATES.CELL:
+                next = DISPLAY_STATES.ZINE;
                 break;
             default:
                 next = DISPLAY_STATES.HIDDEN;
@@ -331,8 +442,10 @@ class SDXCoord {
     finalize() {
         canvas.controls.removeChild(this.#marginContainer);
         canvas.controls.removeChild(this.#cellContainer);
+        canvas.controls.removeChild(this.#zineContainer);
         this.#marginContainer.visible = false;
         this.#cellContainer.visible = false;
+        this.#zineContainer.visible = false;
     }
 
     static get isSupported() {
@@ -451,6 +564,8 @@ export function formatHexCoord(offset) {
         if (index < 26) return String.fromCharCode(65 + index);
         return SDXCoord._numberToLetters(index + 1);
     }
+
+    if (settings.xValue === "let" && canvas.grid.isHexagonal && canvas.grid.columns) adjCol -= 1;
 
     const colLabel = genLabel(settings.xValue, adjCol);
     const rowLabel = genLabel(settings.yValue, adjRow);

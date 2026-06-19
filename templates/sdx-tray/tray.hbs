@@ -48,9 +48,11 @@
             <button class="tray-handle-button-tool" data-action="sdx-drawing" title="Drawing Tools">
                 <i class="fa-solid fa-pencil"></i>
             </button>
+            {{#if isGM}}
             <button class="tray-handle-button-tool" data-action="sdx-maphub-launcher" title="Map Generators">
                 <i class="fa-solid fa-map-location-dot"></i>
             </button>
+            {{/if}}
             <button class="tray-handle-button-tool" data-action="sdx-coords" title="Toggle Coordinates">
                 <i class="far fa-globe"></i>
             </button>

@@ -27,6 +27,14 @@ export class MaphubLauncherApp extends HandlebarsApplicationMixin(ApplicationV2)
         super(options);
     }
 
+    async _preFirstRender(context, options) {
+        await super._preFirstRender?.(context, options);
+        if (!game.user.isGM) {
+            ui.notifications.warn("Only a GM can open map generators.");
+            return false;
+        }
+    }
+
     _onRender(context, options) {
         super._onRender(context, options);
 
