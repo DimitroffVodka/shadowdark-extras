@@ -151,7 +151,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
             { value: "circle", label: game.i18n.localize("SDX.pinStyleEditor.shapeCircle") },
             { value: "square", label: game.i18n.localize("SDX.pinStyleEditor.shapeSquare") },
             { value: "diamond", label: game.i18n.localize("SDX.pinStyleEditor.shapeDiamond") },
-            { value: "hexagon", label: game.i18n.localize("SDX.pinStyleEditor.shapeHexagon") },
+            { value: "hexagon", label: "Hexagon (Point)" },
+            { value: "hexagonFlat", label: "Hexagon (Flat)" },
             { value: "image", label: game.i18n.localize("SDX.pinStyleEditor.shapeImage") }
         ];
 
@@ -578,8 +579,14 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
                 case "hexagon":
                     previewPin.style.borderRadius = "0";
                     previewPin.style.transform = "rotate(0deg)";
-                    // Use clip-path for true hexagon shape
+                    // Pointy-top hexagon
                     previewPin.style.clipPath = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
+                    break;
+                case "hexagonFlat":
+                    previewPin.style.borderRadius = "0";
+                    previewPin.style.transform = "rotate(0deg)";
+                    // Flat-top hexagon
+                    previewPin.style.clipPath = "polygon(0% 50%, 25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%)";
                     break;
                 case "image":
                     previewPin.style.backgroundColor = "transparent";
@@ -758,6 +765,9 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 
         const formData = {
             size: parseInt(form.querySelector('[name="size"]')?.value) || 32,
+            fitToHexGrid: form.querySelector('[name="fitToHexGrid"]')?.checked || false,
+            tooltipTitleFontSize: parseInt(form.querySelector('[name="tooltipTitleFontSize"]')?.value) || 17,
+            tooltipContentFontSize: parseInt(form.querySelector('[name="tooltipContentFontSize"]')?.value) || 13,
             shape: form.querySelector('[name="shape"]')?.value || "circle",
             imagePath: form.querySelector('[name="imagePath"]')?.value || "",
             hoverAnimation: form.querySelector('[name="hoverAnimation"]')?.value || "none",

@@ -34,6 +34,7 @@ const PIN_SCHEMA_VERSION = 1;
 
 const DEFAULT_PIN_STYLE = {
     size: 32,
+    fitToHexGrid: false, // when true, size the pin to the active scene's grid hex so it covers the tile
     shape: "circle",
     ringColor: "#ffffff",
     fillColor: "#000000",
@@ -82,6 +83,9 @@ const DEFAULT_PIN_STYLE = {
     labelBorderSliceLeft: 54,
     labelAnchor: "bottom", // "top", "bottom", "left", "right", "center"
     labelOffset: 5,
+    // Hover tooltip popup text sizes (px)
+    tooltipTitleFontSize: 17,
+    tooltipContentFontSize: 13,
     hideTooltip: false
 };
 
@@ -860,7 +864,17 @@ class JournalPinGraphics extends PIXI.Container {
         // Merge: global defaults < pin-specific style overrides
         const style = { ...globalStyle, ...(this.pinData.style || {}) };
 
-        const size = style.size || 32;
+        // Pin size: normally the style's size slider, but "Fit to hex grid"
+        // overrides it with the active scene's grid cell so the pin covers the
+        // whole hex (image/hexagon overlays). Math.max picks the larger hex
+        // axis (flat-top width vs pointy height); falls back to grid.size for
+        // square grids.
+        let size = style.size || 32;
+        if (style.fitToHexGrid && canvas?.grid) {
+            const g = canvas.grid;
+            const cell = Math.max(Number(g.sizeX) || 0, Number(g.sizeY) || 0, Number(g.size) || 0);
+            if (cell > 0) size = cell;
+        }
         const radius = size / 2;
 
         const fillColor = style.fillColor || "#000000";
@@ -984,9 +998,13 @@ class JournalPinGraphics extends PIXI.Container {
                     this._circle.closePath();
                     break;
                 case "hexagon":
+                case "hexagonFlat": {
+                    // "hexagon" = pointy-top (vertex up); "hexagonFlat" = flat-top
+                    // (flat edge up). The 30° offset rotates the vertex set.
                     const hexRadius = radius;
+                    const hexOffset = shape === "hexagonFlat" ? 0 : -Math.PI / 2;
                     for (let i = 0; i < 6; i++) {
-                        const angle = (Math.PI / 3) * i - Math.PI / 2;
+                        const angle = (Math.PI / 3) * i + hexOffset;
                         const hx = Math.cos(angle) * hexRadius;
                         const hy = Math.sin(angle) * hexRadius;
                         if (i === 0) this._circle.moveTo(hx, hy);
@@ -994,6 +1012,7 @@ class JournalPinGraphics extends PIXI.Container {
                     }
                     this._circle.closePath();
                     break;
+                }
                 default:
                     this._circle.drawCircle(0, 0, radius);
             }
@@ -1216,7 +1235,7 @@ class JournalPinGraphics extends PIXI.Container {
             // Position container relative to pin
             const bgW = bg ? bg.width : labelText.width;
             const bgH = bg ? bg.height : labelText.height;
-            const pinRadius = style.size / 2;
+            const pinRadius = radius; // effective radius (honors Fit to hex grid)
             const padding = style.labelOffset ?? 5;
 
             let posX = 0;
@@ -1536,9 +1555,10 @@ class JournalPinGraphics extends PIXI.Container {
                 points.push({ x: -radius, y: -radius }, { x: radius, y: -radius }, { x: radius, y: radius }, { x: -radius, y: radius }, { x: -radius, y: -radius });
             } else if (shape === "diamond") {
                 points.push({ x: 0, y: -radius }, { x: radius, y: 0 }, { x: 0, y: radius }, { x: -radius, y: 0 }, { x: 0, y: -radius });
-            } else if (shape === "hexagon") {
+            } else if (shape === "hexagon" || shape === "hexagonFlat") {
+                const hexOffset = shape === "hexagonFlat" ? 0 : -Math.PI / 2;
                 for (let i = 0; i <= 6; i++) {
-                    const angle = (Math.PI / 3) * i - Math.PI / 2;
+                    const angle = (Math.PI / 3) * i + hexOffset;
                     points.push({ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius });
                 }
             }
@@ -2193,9 +2213,14 @@ class JournalPinTooltip {
         this._element = document.createElement("div");
         this._element.id = "sdx-journal-pin-tooltip";
         this._element.className = "sdx-journal-pin-tooltip";
+        // Tooltip text sizes come from the pin's resolved style (global default
+        // merged with any per-pin override), applied inline to override the CSS.
+        const tStyle = { ...getPinStyle(), ...(pinData.style || {}) };
+        const titlePx = tStyle.tooltipTitleFontSize || 17;
+        const bodyPx = tStyle.tooltipContentFontSize || 13;
         this._element.innerHTML = `
-            <div class="sdx-journal-pin-tooltip-title">${title}</div>
-            ${content ? `<div class="sdx-journal-pin-tooltip-content">${content}</div>` : ""}
+            <div class="sdx-journal-pin-tooltip-title" style="font-size:${titlePx}px">${title}</div>
+            ${content ? `<div class="sdx-journal-pin-tooltip-content" style="font-size:${bodyPx}px">${content}</div>` : ""}
         `;
 
         // Calculate position BEFORE appending to prevent flash at top-left
