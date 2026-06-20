@@ -4,6 +4,33 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.39] — 2026-06-19 — Journal pin styling + zine map coordinates
+
+### Added
+
+- **Journal pins can fit the hex grid.** A new "Fit to hex grid" option sizes a
+  pin to the active scene's grid cell so it covers the whole hex — best paired
+  with the Image or Hexagon shape. Pin labels follow the fitted size.
+- **Flat-top hexagon pin shape.** The shape picker now offers "Hexagon (Flat)"
+  alongside the existing pointy-top "Hexagon (Point)", on both the canvas pin and
+  its hover hit area.
+- **Configurable tooltip text size.** Pin styles now expose title and body font
+  sizes for the hover tooltip popup.
+- **Zine-style map coordinates.** The coordinate overlay can render Shadowdark
+  zine hex IDs (000/100/200 staggered column headers with two-digit rows) aligned
+  to the printed zine maps.
+
+### Fixed
+
+- **Coordinate alignment on hex-column maps.** Standard lettered coordinates and
+  the new zine mode now skip the cropped/partial edge column so axis headers and
+  per-cell IDs line up with the printed map; per-cell row numbers account for the
+  staggered hex columns.
+- **Map Generators are GM-only.** The Map Generators (Maphub) launcher is now
+  hidden from the tray for non-GMs and guarded on open.
+- **Maphub honors the local/external map source setting** when building the
+  viewer URL.
+
 ## [6.10.38] — 2026-06-13 — Imported gear and SDX Roller fixes
 
 Verified live against Foundry 14.364 / Shadowdark 4.0.6.
