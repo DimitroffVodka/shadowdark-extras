@@ -868,26 +868,37 @@ export class MaphubViewerApp extends ApplicationV2 {
 				// cell + the level pair it bridges.
 				const floorToUnit = new Map(units.map(u => [u.floor, u]));
 				const regionByKey = new Map();
-				for (const u of units) {
-					for (const s of (u.floor.stairs || [])) {
-						if (!s?.cell || typeof s.cell.i !== "number") continue;
-						const other = s.to?.plan ? floorToUnit.get(s.to.plan) : null;
-						if (!other || other === u) continue;
-						const lo = u.bottom <= other.bottom ? u : other, hi = u.bottom <= other.bottom ? other : u;
-						const key = `${s.cell.i},${s.cell.j}|${lo.bottom}|${hi.bottom}`;
-						if (regionByKey.has(key)) continue;
-						const cc = nodeToScene(s.cell.j + 0.5, s.cell.i + 0.5);
-						regionByKey.set(key, {
-							name: `Stairs: ${lo.name} ↔ ${hi.name}`,
-							color: "#28c9cc",
-							shapes: [{ type: "rectangle", x: cc.x - gridPx / 2, y: cc.y - gridPx / 2, width: gridPx, height: gridPx, hole: false }],
-							elevation: { bottom: lo.bottom, top: hi.top, topInclusive: false },
-							levels: [lo.level.id, hi.level.id],
-							visibility: 1, locked: false,
-							behaviors: [{ name: "Change Level", type: "changeLevel", system: { movementActions: [] } }],
-						});
-					}
+				const addStairRegion = (cell, uA, uB) => {
+					if (!cell || typeof cell.i !== "number" || !uA || !uB || uA === uB) return;
+					const lo = uA.bottom <= uB.bottom ? uA : uB, hi = uA.bottom <= uB.bottom ? uB : uA;
+					const key = `${cell.i},${cell.j}|${lo.bottom}|${hi.bottom}`;
+					if (regionByKey.has(key)) return;
+					const cc = nodeToScene(cell.j + 0.5, cell.i + 0.5);
+					regionByKey.set(key, {
+						name: `Stairs: ${lo.name} ↔ ${hi.name}`,
+						color: "#28c9cc",
+						shapes: [{ type: "rectangle", x: cc.x - gridPx / 2, y: cc.y - gridPx / 2, width: gridPx, height: gridPx, hole: false }],
+						elevation: { bottom: lo.bottom, top: hi.top, topInclusive: false },
+						levels: [lo.level.id, hi.level.id],
+						visibility: 1, locked: false,
+						behaviors: [{ name: "Change Level", type: "changeLevel", system: { movementActions: [] } }],
+					});
+				};
+				// Regular stairs: each stair's cell bridges its floor and s.to.plan's floor.
+				for (const u of units) for (const s of (u.floor.stairs || [])) {
+					const other = s?.to?.plan ? floorToUnit.get(s.to.plan) : null;
+					if (other) addStairRegion(s.cell, u, other);
 				}
+				// Spiral tower: one shared shaft (house.spiral.landing) that connects every
+				// adjacent above-ground floor — it REPLACES per-floor stairs, so floor.stairs
+				// is empty for spiral houses. Add a region at the landing for each pair.
+				try {
+					const sp = (view.house.floors || []).map(f => f?.spiral).find(Boolean)?.landing;
+					if (sp && typeof sp.i === "number") {
+						const fu = units.filter(u => u.setIdx >= 0).sort((a, b) => a.bottom - b.bottom);
+						for (let k = 0; k < fu.length - 1; k++) addStairRegion(sp, fu[k], fu[k + 1]);
+					}
+				} catch (_) { }
 				const regions = [...regionByKey.values()];
 				if (regions.length) await scene.createEmbeddedDocuments("Region", regions);
 
