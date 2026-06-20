@@ -559,6 +559,13 @@ export class MaphubViewerApp extends ApplicationV2 {
 				return;
 			}
 		}
+		// Dwelling: build a v14 multi-level scene (one elevation Level per floor,
+		// per-floor walls, changeLevel stair regions). Falls through to the generic
+		// image import only if the live generator controller isn't reachable.
+		if (isDwellings) {
+			const handled = await this._importDwellingScene();
+			if (handled) return;
+		}
 		await this._dismissGeneratorContextMenu();
 		const oldState = await this._maximizeForCapture();
 		// Force the dungeon to render axis-aligned before capture so the walls
@@ -666,6 +673,227 @@ export class MaphubViewerApp extends ApplicationV2 {
 			console.error(`${MODULE_ID} | Failed to import Maphub scene`, e);
 			ui.notifications.error(`Failed to import scene: ${e.message}`);
 			if (isDwellings) this._restoreAfterCapture(oldState);
+		}
+	}
+
+	/** Live raw-Dwellings view controller (Dwellings.js is patched to expose it). */
+	_getDwellView() {
+		try { return this._iframe?.contentWindow?.__sdxDwellView ?? null; } catch (_) { return null; }
+	}
+
+	/**
+	 * Import a dwelling as a single v14 multi-level scene: one elevation Level per
+	 * floor, each floor's map as a Level-scoped Tile, per-floor walls, and a
+	 * changeLevel Region at every staircase bridging the two floors it connects.
+	 * Returns true when handled (so _importScene skips the generic image path),
+	 * false only when the controller isn't reachable (→ generic image fallback).
+	 */
+	async _importDwellingScene() {
+		const view = this._getDwellView();
+		const floors = view?.house?.floors;
+		if (!view || !Array.isArray(floors) || !floors.length || typeof view.setFloor !== "function") return false;
+
+		try {
+			const n = floors.length;
+			ui.notifications.info(`Importing ${n}-floor dwelling…`);
+			// NOTE: do NOT call _dismissGeneratorContextMenu here — its corner click
+			// lands on the dwelling generator's menu button and OPENS the menu.
+			// NOTE: do NOT maximize — the window-resize half-applies across the
+			// per-floor capture loop and desyncs the per-floor transforms (floors then
+			// don't stack). Capture at native size (consistent transform) and upscale
+			// the grid below for resolution.
+
+			// 1. Capture each floor + its live render transform.
+			const caps = [];
+			for (let i = 0; i < n; i++) {
+				view.setFloor(i);
+				// Wait for the per-floor re-fit to SETTLE before reading the transform —
+				// the generator re-fits/zooms each floor over several frames, and a
+				// transform read mid-fit doesn't match the captured frame (walls then
+				// mismatch the image). Poll until map scale is stable, then capture.
+				let prevA = null, stable = 0;
+				for (let t = 0; t < 30; t++) {
+					await new Promise(r => setTimeout(r, 150));
+					const a = view.map.__getRenderTransform()?.a;
+					if (a && prevA && Math.abs(a - prevA) < 0.01) { if (++stable >= 3) break; } else stable = 0;
+					prevA = a;
+				}
+				const m = view.map.__getRenderTransform();
+				if (!m || !Number.isFinite(m.a) || !m.a) return false;
+				// Full BUILDING extent of THIS floor in node/local coords, from the
+				// roof + plan layers only (the roof/outer walls reach ~2 cells beyond
+				// the floor contour). Excludes the generator's menu/labels/toast so
+				// they don't inflate the scene or get baked in.
+				let b = null;
+				try {
+					const kids = (view.map.__children || []).filter(k => /RoofStack|PlanView/i.test(k?.__class__?.__name__ || k?.constructor?.name || ""));
+					let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+					for (const k of kids) { const r = k.getBounds(view.map); x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y); x1 = Math.max(x1, r.x + r.width); y1 = Math.max(y1, r.y + r.height); }
+					if (Number.isFinite(x0)) b = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+				} catch (_) { }
+				const imgPath = await this._captureAndUploadMap();
+				if (!imgPath) return false;
+				caps.push({ M: { a: m.a, b: m.b, c: m.c, d: m.d, tx: m.tx, ty: m.ty }, b, imgPath, floor: floors[i] });
+			}
+
+			// 2. Shared building grid = union of every floor's FULL drawn extent (map
+			// bounds incl. roof/walls) and contour, so the outer shell isn't clipped.
+			// (x = node.j, y = node.i.) Snap to integers so the grid stays cell-aligned.
+			let mi = Infinity, mj = Infinity, Mi = -Infinity, Mj = -Infinity;
+			for (const c of caps) {
+				if (c.b && Number.isFinite(c.b.x)) {
+					mj = Math.min(mj, c.b.x); Mj = Math.max(Mj, c.b.x + c.b.w);
+					mi = Math.min(mi, c.b.y); Mi = Math.max(Mi, c.b.y + c.b.h);
+				}
+				for (const e of (c.floor.contour || [])) for (const nd of [e.a, e.b]) {
+					if (!nd) continue;
+					mi = Math.min(mi, nd.i); Mi = Math.max(Mi, nd.i);
+					mj = Math.min(mj, nd.j); Mj = Math.max(Mj, nd.j);
+				}
+			}
+			if (!Number.isFinite(mi)) return false;
+			mi = Math.floor(mi); mj = Math.floor(mj); Mi = Math.ceil(Mi); Mj = Math.ceil(Mj);
+
+			const MARGIN = 0; // tight to the building bounds (clips the generator's corner UI)
+			const nativeCell = Math.min(...caps.map(c => Math.hypot(c.M.a, c.M.b)));
+				const gridPx = Math.max(40, Math.min(130, Math.round(nativeCell * 1.8)));
+			const sceneW = Math.round((Mj - mj + 2 * MARGIN) * gridPx);
+			const sceneH = Math.round((Mi - mi + 2 * MARGIN) * gridPx);
+			const nodeToScene = (j, i) => ({ x: Math.round((j - mj + MARGIN) * gridPx), y: Math.round((i - mi + MARGIN) * gridPx) });
+
+			// 3. Warp each floor image into the shared grid (clips the generator's corner UI).
+			for (const c of caps) {
+				c.bg = await this._warpFloorImage(c.imgPath, c.M, mj, mi, MARGIN, gridPx, sceneW, sceneH);
+			}
+
+			// 4. Scene + one elevation Level per floor (floor 0 = bottom, ascending).
+			const LH = 10; // ft per floor
+			const sceneName = `${this._getMapLabel()} ${new Date().toLocaleString()}`;
+			const sceneData = {
+				name: sceneName, width: sceneW, height: sceneH,
+				grid: { size: gridPx }, padding: 0, backgroundColor: "#000000",
+				fogExploration: true, tokenVision: true,
+				levels: caps.map((c, i) => ({ name: `Floor ${i + 1}`, elevation: { bottom: i * LH, top: (i + 1) * LH } })),
+			};
+			const scene = await Scene.create(sceneData);
+			await scene.activate();
+			const levelFor = (i) => scene.levels.find(l => (l.elevation?.bottom ?? null) === i * LH) ?? scene.levels.contents[i];
+
+			// 5. Per floor: a full-scene floor Tile + walls, both scoped to that Level.
+			let wallTotal = 0;
+			for (let i = 0; i < n; i++) {
+				const lvl = levelFor(i);
+				await scene.createEmbeddedDocuments("Tile", [{
+					texture: { src: caps[i].bg }, x: 0, y: 0, width: sceneW, height: sceneH, sort: 0,
+					elevation: i * LH,
+					levels: [lvl.id],
+					flags: { levels: { rangeTop: (i + 1) * LH }, [MODULE_ID]: { dwellFloorTile: true } },
+				}]);
+				const walls = this._buildDwellWalls(caps[i].floor, nodeToScene, { id: lvl.id, bottom: i * LH, top: (i + 1) * LH });
+				if (walls.length) { await scene.createEmbeddedDocuments("Wall", walls); wallTotal += walls.length; }
+			}
+
+			// 6. Stairs as changeLevel Regions. The generator's per-stair floor
+				// connectivity is unreliable (some stair lists are empty; a stair's `to`
+				// can point at the basement, which isn't in house.floors). A staircase is
+				// a VERTICAL shaft at one building cell, so collect every known stairwell
+				// cell and bridge each ADJACENT floor pair there.
+				const stairCells = new Map();
+				for (const c of caps) for (const s of (c.floor?.stairs || [])) {
+					if (s?.cell && typeof s.cell.i === "number") stairCells.set(`${s.cell.i},${s.cell.j}`, { i: s.cell.i, j: s.cell.j });
+				}
+				try {
+					for (const s of (view.house?.basement?.stairs || [])) {
+						if (s?.cell && typeof s.cell.i === "number") stairCells.set(`${s.cell.i},${s.cell.j}`, { i: s.cell.i, j: s.cell.j });
+					}
+				} catch (_) { }
+				const regions = [];
+				for (const cell of stairCells.values()) {
+					const cc = nodeToScene(cell.j + 0.5, cell.i + 0.5);
+					for (let i = 0; i < n - 1; i++) {
+						regions.push({
+							name: `Stairs F${i + 1}-F${i + 2}`,
+							color: "#28c9cc",
+							shapes: [{ type: "rectangle", x: cc.x - gridPx / 2, y: cc.y - gridPx / 2, width: gridPx, height: gridPx, hole: false }],
+							elevation: { bottom: i * LH, top: (i + 1) * LH + 5, topInclusive: false },
+							levels: [levelFor(i).id, levelFor(i + 1).id],
+							visibility: 1, locked: false,
+							behaviors: [{ name: "Change Level", type: "changeLevel", system: { movementActions: [] } }],
+						});
+					}
+				}
+				if (regions.length) await scene.createEmbeddedDocuments("Region", regions);
+
+			ui.notifications.info(`Imported ${scene.name} — ${n} floors, ${wallTotal} walls, ${regions.length} stairs.`);
+			this.close();
+			return true;
+		} catch (err) {
+			console.error(`${MODULE_ID} | Multi-level dwelling import failed`, err);
+			ui.notifications.error(`Multi-level dwelling import failed: ${err.message}`);
+			return true; // handled (don't fall through to a second import)
+		}
+	}
+
+	/** Build wall docs for one dwelling floor (outer contour + room contours), scoped to a Level. */
+	_buildDwellWalls(floor, nodeToScene, levelCtx) {
+		const walls = [];
+		const used = new Set();
+		const add = (a, b) => {
+			if (!a || !b) return;
+			const A = nodeToScene(a.j, a.i), B = nodeToScene(b.j, b.i);
+			if (A.x === B.x && A.y === B.y) return;
+			const k = [[A.x, A.y], [B.x, B.y]].sort((p, q) => p[0] - q[0] || p[1] - q[1]).map(p => p.join(",")).join("|");
+			if (used.has(k)) return;
+			used.add(k);
+			walls.push({
+				c: [A.x, A.y, B.x, B.y],
+				levels: [levelCtx.id],
+				flags: { "wall-height": { bottom: levelCtx.bottom, top: levelCtx.top } },
+			});
+		};
+		for (const e of (floor.contour || [])) add(e?.a, e?.b);
+		for (const rm of (floor.rooms || [])) for (const e of (rm.contour || [])) add(e?.a, e?.b);
+		return walls;
+	}
+
+	/**
+	 * Warp a floor's captured image into the shared building grid: scale by
+	 * gridPx/M.a and translate so building-node (j,i) lands at the same scene pixel
+	 * as nodeToScene(j,i). Content outside the scene (the generator's corner menu /
+	 * floor indicators) is clipped off. Returns the uploaded warped-image path.
+	 */
+	async _warpFloorImage(imgPath, M, mj, mi, MARGIN, gridPx, sceneW, sceneH) {
+		try {
+			const img = await new Promise((res, rej) => {
+				const im = new Image(); im.crossOrigin = "anonymous";
+				im.onload = () => res(im); im.onerror = rej; im.src = "/" + imgPath;
+			});
+			const sx = gridPx / M.a, sy = gridPx / M.d;
+			const offX = (-(M.tx) / M.a - mj + MARGIN) * gridPx;
+			const offY = (-(M.ty) / M.d - mi + MARGIN) * gridPx;
+			const canvas = document.createElement("canvas");
+			canvas.width = sceneW; canvas.height = sceneH;
+			const ctx = canvas.getContext("2d");
+			// Parchment fill (sample top-centre of source — away from the corner UI and the building).
+			try {
+				const probe = document.createElement("canvas"); probe.width = probe.height = 1;
+				const pctx = probe.getContext("2d");
+				pctx.drawImage(img, Math.round(img.naturalWidth / 2), 2, 1, 1, 0, 0, 1, 1);
+				const d = pctx.getImageData(0, 0, 1, 1).data;
+				ctx.fillStyle = `rgb(${d[0]},${d[1]},${d[2]})`;
+				ctx.fillRect(0, 0, sceneW, sceneH);
+			} catch (_) { /* leave transparent */ }
+			ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, offX, offY, img.naturalWidth * sx, img.naturalHeight * sy);
+			const blob = await new Promise(r => canvas.toBlob(r, "image/png"));
+			const FP = foundry.applications.apps.FilePicker?.implementation ?? FilePicker;
+			await FP.createDirectory("data", "maps").catch(() => { });
+			await FP.createDirectory("data", "maps/maphub").catch(() => { });
+			const file = new File([blob], `dwellfloor_${Date.now()}.png`, { type: "image/png" });
+			const resp = await FP.upload("data", "maps/maphub", file, {});
+			return resp?.path || imgPath;
+		} catch (err) {
+			console.warn(`${MODULE_ID} | Failed to warp dwelling floor image`, err);
+			return imgPath;
 		}
 	}
 
