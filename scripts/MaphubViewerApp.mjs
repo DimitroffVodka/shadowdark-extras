@@ -814,10 +814,14 @@ export class MaphubViewerApp extends ApplicationV2 {
 				// the image up with the walls regardless of the animation state.
 				for (const u of units) {
 					let M = null, off = null;
-					for (let attempt = 0; attempt < 8 && !off; attempt++) {
+					for (let attempt = 0; attempt < 14 && !off; attempt++) {
 						view.setFloor(u.setIdx);
 						this._setDwellUiVisible(view, false);
-						await new Promise(r => setTimeout(r, attempt === 0 ? 700 : 220));
+						// Nudge OpenFL/Lime to repaint — the WebGL buffer can stay blank
+						// mid-fit or when the window isn't focused, which otherwise drops the
+						// whole dwelling to the flat generic fallback.
+						if (attempt > 0) { try { this._iframe?.contentWindow?.dispatchEvent(new Event("resize")); } catch (_) { } }
+						await new Promise(r => setTimeout(r, attempt === 0 ? 900 : 350));
 						const m = view.map.__getRenderTransform();
 						const cap = this._grabCanvas();
 						if (!m || !Number.isFinite(m.a) || !m.a || !cap) continue;
