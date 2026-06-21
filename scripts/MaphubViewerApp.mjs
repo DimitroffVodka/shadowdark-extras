@@ -895,11 +895,20 @@ export class MaphubViewerApp extends ApplicationV2 {
 				// prompts). Use ONE region spanning all the spiral's levels with a custom
 				// up/down chooser (executeScript) instead.
 				try {
-					const sp = (view.house.floors || []).map(f => f?.spiral).find(Boolean)?.landing;
+					const spObj = (view.house.floors || []).map(f => f?.spiral).find(Boolean);
+					const sp = spObj?.landing;
 					const fu = units.filter(u => u.setIdx >= 0).sort((a, b) => a.bottom - b.bottom);
 					if (sp && typeof sp.i === "number" && fu.length >= 2) {
-						const conn = fu.map(u => ({ name: u.name, bottom: u.bottom }));
-						const cc = nodeToScene(sp.j + 0.5, sp.i + 0.5);
+						const conn = fu.map(u => ({ name: u.name, bottom: u.bottom, id: u.level.id }));
+						// Place the region ON the spiral shaft — the tower cell diagonally
+						// opposite the landing across the corner — so a token must stand on the
+						// stairs to use them.
+						let cell = sp;
+						try {
+							const C = [spObj.entrance.a, spObj.entrance.b].find(n1 => [spObj.exit.a, spObj.exit.b].some(n2 => n2 && n1 && n2.i === n1.i && n2.j === n1.j));
+							if (C) cell = { i: 2 * C.i - 1 - sp.i, j: 2 * C.j - 1 - sp.j };
+						} catch (_) { }
+						const cc = nodeToScene(cell.j + 0.5, cell.i + 0.5);
 						regionByKey.set(`spiral|${sp.i},${sp.j}`, {
 							name: "Spiral Staircase",
 							color: "#28c9cc",
@@ -937,23 +946,28 @@ export class MaphubViewerApp extends ApplicationV2 {
 	 */
 	_spiralRegionScript() {
 		return [
-			'const t = event?.data?.token; if (!t) return;',
-			'const conn = region?.flags?.["shadowdark-extras"]?.spiral;',
-			'if (!Array.isArray(conn) || conn.length < 2) return;',
-			'const cur = t.elevation ?? 0;',
-			'const up = conn.filter(c => c.bottom > cur + 0.5).sort((a,b)=>a.bottom-b.bottom)[0];',
-			'const down = conn.filter(c => c.bottom < cur - 0.5).sort((a,b)=>b.bottom-a.bottom)[0];',
-			'if (!up && !down) return;',
-			'const D = foundry.applications.api.DialogV2;',
-			'const btns = [];',
-			'if (up) btns.push({ action:"up", label:"Up to " + up.name, default: !down });',
-			'if (down) btns.push({ action:"down", label:"Down to " + down.name, default: !up });',
-			'btns.push({ action:"stay", label:"Stay" });',
-			'let pick = "stay";',
-			'try { pick = await D.wait({ window:{ title:"Spiral Staircase" }, content:"<p>Take the spiral staircase?</p>", buttons: btns, modal: true }); } catch (e) { pick = "stay"; }',
-			'if (pick === "up" && up) await t.update({ elevation: up.bottom });',
-			'else if (pick === "down" && down) await t.update({ elevation: down.bottom });',
-		].join("\n");
+			'if (!event?.user?.isSelf) return;',
+				'const t = event?.data?.token; if (!t) return;',
+				'const conn = region?.flags?.["shadowdark-extras"]?.spiral;',
+				'if (!Array.isArray(conn) || conn.length < 2) return;',
+				'const origin = t.level;',
+				'const here = conn.find(c => c.id === origin) ?? conn.slice().sort((a,b)=>Math.abs(a.bottom-(t.elevation??0))-Math.abs(b.bottom-(t.elevation??0)))[0];',
+				'const cur = here?.bottom ?? (t.elevation ?? 0);',
+				'const up = conn.filter(c => c.bottom > cur + 0.5).sort((a,b)=>a.bottom-b.bottom)[0];',
+				'const down = conn.filter(c => c.bottom < cur - 0.5).sort((a,b)=>b.bottom-a.bottom)[0];',
+				'if (!up && !down) return;',
+				'const D = foundry.applications.api.DialogV2;',
+				'const btns = [];',
+				'if (up) btns.push({ action:"up", label:"Up to " + up.name, default: !down });',
+				'if (down) btns.push({ action:"down", label:"Down to " + down.name, default: !up });',
+				'btns.push({ action:"stay", label:"Stay" });',
+				'let pick = "stay";',
+				'try { pick = await D.wait({ window:{ title:"Spiral Staircase" }, content:"<p>Take the spiral staircase?</p>", buttons: btns, modal: true }); } catch (e) { pick = "stay"; }',
+				'const dest = pick === "up" ? up : (pick === "down" ? down : null);',
+				'if (!dest || dest.id === origin) return;',
+				'await t.update({ level: dest.id, elevation: dest.bottom });',
+				'try { if (t.parent?.isView && canvas.level?.id === origin) await t.parent.view({ level: dest.id, controlledTokens: [t.id] }); } catch (e) {}',
+			].join("\n");
 	}
 
 	/** Build wall docs for one dwelling floor (outer contour + room contours), scoped to a Level. */
