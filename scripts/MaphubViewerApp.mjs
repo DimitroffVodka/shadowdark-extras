@@ -761,7 +761,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 	 * read in the same frame as `off`, so they agree even mid-animation. Returns the
 	 * uploaded scene-sized image path (used as the Level background).
 	 */
-	async _warpFloorImage(off, M, mj, mi, Mj, Mi, sceneW, sceneH) {
+	async _warpFloorImage(off, M, mj, mi, Mj, Mi, sceneW, sceneH, dpr = 1) {
 		try {
 			const out = document.createElement("canvas");
 			out.width = sceneW; out.height = sceneH;
@@ -773,8 +773,12 @@ export class MaphubViewerApp extends ApplicationV2 {
 				ctx.fillStyle = `rgb(${d[0]},${d[1]},${d[2]})`;
 				ctx.fillRect(0, 0, sceneW, sceneH);
 			} catch (_) { }
-			const srcX = M.a * mj + M.tx, srcY = M.d * mi + M.ty;
-			const srcW = (Mj - mj) * M.a, srcH = (Mi - mi) * M.d;
+			// M maps node -> stage(CSS) px, but `off` is the canvas BACKING store (HiDPI:
+			// backing = CSS * devicePixelRatio). Read the node region in BACKING px by
+			// scaling M by dpr — otherwise the source rect is undersized and the floor
+			// image lands shifted/clipped and out of register with the (grid-space) walls.
+			const srcX = (M.a * mj + M.tx) * dpr, srcY = (M.d * mi + M.ty) * dpr;
+			const srcW = (Mj - mj) * M.a * dpr, srcH = (Mi - mi) * M.d * dpr;
 			ctx.drawImage(off, srcX, srcY, srcW, srcH, 0, 0, sceneW, sceneH);
 			return await this._uploadCanvas(out, `dwellfloor_${Date.now()}.png`);
 		} catch (e) { console.warn(`${MODULE_ID} | dwelling warp failed`, e); return null; }
@@ -840,8 +844,12 @@ export class MaphubViewerApp extends ApplicationV2 {
 				const nodeToScene = (j, i) => ({ x: Math.round((j - mj) * gridPx), y: Math.round((i - mi) * gridPx) });
 
 				// 2b. Warp each level's capture into the shared grid (cell (j,i) -> nodeToScene).
+				// The captures are the canvas BACKING store (HiDPI), so pass the
+				// backing/CSS ratio so the warp samples the right region.
+				const srcCanvas = this._iframe?.contentDocument?.querySelector("canvas");
+				const dpr = (srcCanvas && srcCanvas.clientWidth > 0) ? (srcCanvas.width / srcCanvas.clientWidth) : (this._iframe?.contentWindow?.devicePixelRatio || 1);
 				for (const u of units) {
-					u.bg = await this._warpFloorImage(u.off, u.M, mj, mi, Mj, Mi, sceneW, sceneH);
+					u.bg = await this._warpFloorImage(u.off, u.M, mj, mi, Mj, Mi, sceneW, sceneH, dpr);
 					if (!u.bg) return false;
 				}
 
