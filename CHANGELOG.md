@@ -4,6 +4,44 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.40] — 2026-06-20 — Map Generators overhaul + multi-level dwelling import
+
+Verified live against Foundry 14.
+
+### Added
+
+- **Six map generators** in the Map Generators (Maphub) launcher, matching
+  watabou.github.io — Realm, City, Village, Cave/Glade, Dungeon, and Dwelling —
+  bundled locally with full Watabou credit (see README).
+- **A visible "Import Scene" button** on the generator window header (no longer
+  only under the ellipsis menu).
+- **Dwellings import as a single v14 multi-level scene** — one scene with an
+  elevation Level per floor, each carrying its own floor image as the Level
+  background:
+  - Named levels — Basement / Ground Floor / 1st Floor / 2nd Floor …
+  - Per-level walls tracing every room, with doors at the room connections and a
+    front-door entrance (open passages left as gaps).
+  - The basement imported as its own level.
+  - Staircases as `changeLevel` Regions wired from the generator's own
+    connectivity, so each links the correct two levels — a floor with both up and
+    down stairs gets both.
+  - Spiral staircases: one region on the shaft with a custom **Up / Down chooser**
+    that moves the token to the chosen floor, and the round tower walled off.
+
+### Fixed
+
+- **One Page Dungeon walls align with the imported background.** Walls and notes
+  use the generator's own render transform; the image and grid are rescaled and
+  cropped so cells are integer pixels anchored at the origin.
+- **Cave / Glade generator** imports with aligned walls and grid.
+- **Dwelling floor images are centred** — each floor is the Level's background
+  (`fit: "fill"`) instead of a Tile, so Foundry fills and centres it rather than
+  leaving the image stuck in a corner.
+
+### Changed
+
+- "One Page Dungeon Generator" renamed to **"Dungeon Generator"**.
+
 ## [6.10.39] — 2026-06-19 — Journal pin styling + zine map coordinates
 
 ### Added
