@@ -316,7 +316,7 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
         const html = this.element;
         if (!html) return;
 
-        const basePath = `/modules/${MODULE_ID}/art/PNG/Default`;
+        const basePath = `modules/${MODULE_ID}/art/PNG/Default`;
 
         // Update preview CSS variables on the preview element
         const preview = html.querySelector('.sheet-editor-preview');
@@ -380,7 +380,7 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
      * Apply styles live to actual sheets without saving to settings
      */
     _applyLiveStyles() {
-        const basePath = `/modules/${MODULE_ID}/art/PNG/Default`;
+        const basePath = `modules/${MODULE_ID}/art/PNG/Default`;
 
         // Build paths
         const borderPath = `${basePath}/Border/${this._previewState.sheetBorderStyle}`;

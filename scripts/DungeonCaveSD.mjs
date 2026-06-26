@@ -641,7 +641,7 @@ function chamberAnchor(placed) {
 let _rotPromise = null;
 async function ensureRot() {
     if (globalThis.ROT) return globalThis.ROT;
-    if (!_rotPromise) _rotPromise = import(`/modules/${MODULE_ID}/libs/rot.min.js`);
+    if (!_rotPromise) _rotPromise = import(`../libs/rot.min.js`);
     await _rotPromise;
     return globalThis.ROT;
 }

@@ -119,7 +119,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 		try {
 			const mapId = this._getMapIdFromQuery();
 			const saveStr = `data/maps/maphub/maphub_${mapId}.json`;
-			const reqUrl = window.location.origin + "/" + saveStr.replace("data/", "");
+			const reqUrl = window.location.origin + foundry.utils.getRoute("/" + saveStr.replace("data/", ""));
 			const headRes = this._mapType === "dungeon" ? null : await fetch(reqUrl, { method: "HEAD" });
 			if (headRes?.ok) {
 				const res = await fetch(reqUrl);
@@ -1915,8 +1915,10 @@ export class MaphubViewerApp extends ApplicationV2 {
 		// bundled voluminor/maphub fork builds never draw to the canvas.
 		const RAW_BUNDLE_DIRS = { dwellings: "dwellings-raw", mfcg: "mfcg-raw", village: "village-raw" };
 		const bundleDir = RAW_BUNDLE_DIRS[this._mapType] ?? this._mapType;
-		const localBase = `${window.location.origin}/${BASE}/to/${bundleDir}/index.html`;
-		const localBaseDir = `${window.location.origin}/${BASE}/to/${bundleDir}/`;
+		const localBase = `${window.location.origin}${foundry.utils.getRoute(`/${BASE}/to/${bundleDir}/index.html`)}`;
+		let routeDir = foundry.utils.getRoute(`/${BASE}/to/${bundleDir}`);
+		if (!routeDir.endsWith('/')) routeDir += '/';
+		const localBaseDir = `${window.location.origin}${routeDir}`;
 		const localParams = this._queryString ? `cb=${Date.now()}&${this._queryString}` : `cb=${Date.now()}`;
 		const localUrl = `${localBase}?${localParams}`;
 

@@ -27,7 +27,7 @@ async function replacePlaceholder(div) {
 
 	// Try the local maphub files first (express.static has no X-Frame-Options).
 	// Fall back to the external watabou URL if the local files aren't present.
-	const localUrl = `${window.location.origin}/${LOCAL_MAPHUB_BASE}/to/${type}/index.html?${qs}`;
+	const localUrl = `${window.location.origin}${foundry.utils.getRoute(`/${LOCAL_MAPHUB_BASE}/to/${type}/index.html`)}?${qs}`;
 	let src = `${extBase}?${qs}`;
 	try {
 		const r = await fetch(localUrl, { method: "HEAD" });
