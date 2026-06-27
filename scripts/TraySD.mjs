@@ -209,6 +209,11 @@ export function initTray() {
         if (setting.key === `${MODULE_ID}.tom-scenes`) {
             renderTray();
         }
+        // GM toggled player dungeon-painting access: show/hide the Dungeons tab.
+        // Fires on every client, so players' trays refresh in real time.
+        if (setting.key === `${MODULE_ID}.allowPlayerDungeonPainting`) {
+            renderTray();
+        }
     });
 
     // Hook to reload dungeon tiles when GM comes online (for players)
@@ -696,36 +701,21 @@ export function getPinsData() {
 
     // Enrich pin data
     const enrichedPins = pins.map(pin => {
-        let pinName = pin.label || "Unnamed Pin";
+        // Resolve display name honoring the pin's nameSource preference
+        let pinName = JournalPinManager.getDisplayName(pin);
         let pageName = "";
 
-        // If the pin is linked to a journal/page, try to get its name
+        // Subtitle: show "Journal • Page" when linked
         if (pin.journalId) {
             const journal = game.journal.get(pin.journalId);
             if (journal) {
                 if (pin.pageId) {
                     const page = journal.pages.get(pin.pageId);
-                    if (page) {
-                        // If label is default "New Pin" or "Journal Pin", use page name
-                        if (pinName === "New Pin" || pinName === "Journal Pin") {
-                            pinName = page.name;
-                        }
-                        // Or maybe show Journal Name > Page Name
-                        pageName = `${journal.name} • ${page.name}`;
-                    } else {
-                        pageName = journal.name;
-                    }
+                    pageName = page ? `${journal.name} • ${page.name}` : journal.name;
                 } else {
-                    if (pinName === "New Pin" || pinName === "Journal Pin") {
-                        pinName = journal.name;
-                    }
+                    pageName = journal.name;
                 }
             }
-        }
-
-        // Fallback: If still default name "New Pin", try to use Tooltip Title
-        if ((pinName === "New Pin" || pinName === "Journal Pin") && pin.tooltipTitle) {
-            pinName = pin.tooltipTitle;
         }
 
         // Determine Display Type & Content

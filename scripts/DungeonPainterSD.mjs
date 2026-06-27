@@ -12,6 +12,9 @@ import { buildCaveLoops, generateCurvedWalls, generateCurvedWallVisuals } from "
 const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
 
 const MODULE_ID = "shadowdark-extras";
+// World setting (GM-only) that opts players into the Dungeon Painter tab.
+// Default off: players cannot see or use the Dungeons tab unless the GM enables this.
+const SETTING_ALLOW_PLAYER_PAINT = "allowPlayerDungeonPainting";
 const FLOOR_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/floor_tiles`;
 const WALL_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/wall_tiles`;
 const DOOR_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/door_tiles`;
@@ -20,6 +23,22 @@ const BG_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/backgrounds`;
 const GRID_SIZE = 100;
 const WALL_THICKNESS = 20;
 const LEVEL_HEIGHT = 10;
+
+// Register the GM-only opt-in for player dungeon painting. World scope so the
+// GM's choice applies to everyone; config:true exposes it in module settings.
+// Default false → players have no access to the Dungeons tab until enabled.
+Hooks.once("init", () => {
+    game.settings.register(MODULE_ID, SETTING_ALLOW_PLAYER_PAINT, {
+        name: "Allow Players to Paint Dungeons",
+        hint: "When enabled, players can see and use the Dungeons tab in the SDX tray (painting via the GM connection while a GM is online). When disabled, the Dungeons tab is GM-only.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: false
+        // Tray re-render on change is handled by the updateSetting hook in TraySD.mjs,
+        // which fires on every client (so players' trays refresh too).
+    });
+});
 
 function makeTopLeftTileTexture(src) {
     return { src, anchorX: 0, anchorY: 0 };
@@ -268,10 +287,23 @@ export function isGMOnline() {
 }
 
 /**
- * Check if player can use dungeon painter (GM online + socket available)
+ * Whether the GM has opted players into the Dungeon Painter.
+ * Defensive: returns false if the setting isn't registered yet (pre-init).
+ */
+export function isPlayerPaintingAllowed() {
+    try {
+        return game.settings.get(MODULE_ID, SETTING_ALLOW_PLAYER_PAINT) === true;
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
+ * Check if player can use dungeon painter.
+ * Requires the GM to have enabled player painting, a GM online, and a live socket.
  */
 export function canPlayerPaint() {
-    return !game.user.isGM && isGMOnline() && _dungeonSocket !== null;
+    return !game.user.isGM && isPlayerPaintingAllowed() && isGMOnline() && _dungeonSocket !== null;
 }
 
 /**
