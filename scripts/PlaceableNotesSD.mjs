@@ -47,8 +47,13 @@ export default class PlaceableNotesSD extends foundry.applications.api.Handlebar
     }
 
     static async _onSave(event, target) {
-        const formData = new FormDataExtended(this.element).object;
-        await this.object.setFlag(MODULE_ID, "notes", formData.notes);
+        // The editor field is named with the full flag path
+        // (`flags.shadowdark-extras.notes`), so read it from the expanded form
+        // data rather than a top-level `notes` key (which is always undefined).
+        const formData = new foundry.applications.ux.FormDataExtended(this.element).object;
+        const expanded = foundry.utils.expandObject(formData);
+        const content = foundry.utils.getProperty(expanded, `flags.${MODULE_ID}.notes`) ?? "";
+        await this.object.setFlag(MODULE_ID, "notes", content);
         ui.notifications.info("SHADOWDARK_EXTRAS.placeable_notes.saved", { localize: true });
         this.close();
     }
@@ -58,9 +63,18 @@ export default class PlaceableNotesSD extends foundry.applications.api.Handlebar
     // ============================================
 
     /**
-     * Add the notes button to supported application headers
+     * Add the notes control to supported document sheet headers.
+     *
+     * Foundry v14 made the placeable config sheets ApplicationV2, which no
+     * longer fire the legacy `get<App>ConfigHeaderButtons` hooks. Header
+     * actions are now contributed via `getHeaderControls<ClassName>` and read
+     * from the returned controls array (rendered in the window's ⋮ menu).
+     * `getHeaderControlsDocumentSheetV2` is the shared-ancestor hook that fires
+     * for every document sheet (Tile/Wall/Light/Sound/Token/Actor), so a single
+     * registration covers all supported types. A control's `onClick` callback is
+     * honored by ApplicationV2 (`_renderHeaderControl` / `_headerControlContextEntries`).
      */
-    static addHeaderButton(app, buttons) {
+    static addHeaderControl(app, controls) {
         if (!game.user.isGM) return;
 
         const object = app.document || app.object || app.token;
@@ -71,71 +85,40 @@ export default class PlaceableNotesSD extends foundry.applications.api.Handlebar
 
         const hasNotes = !!object.getFlag(MODULE_ID, "notes");
 
-        const noteButton = {
+        controls.unshift({
+            label: "SDX Notes",
+            action: "open-sdx-notes",
+            icon: hasNotes ? "fas fa-sticky-note" : "far fa-sticky-note",
+            onClick: () => {
+                new PlaceableNotesSD(object).render(true);
+            }
+        });
+    }
+
+    /**
+     * Add the notes button to V1 Actor sheets.
+     *
+     * Shadowdark's actor sheets still extend the V1 `ActorSheet` framework, so
+     * the ApplicationV2 `getHeaderControls*` hooks never fire for them. The
+     * legacy `getActorSheetHeaderButtons` hook still fires for V1 sheets and
+     * expects the V1 button shape (`class`/`onclick`).
+     */
+    static addActorHeaderButton(app, buttons) {
+        if (!game.user.isGM) return;
+
+        const object = app.document || app.actor || app.object;
+        if (!object || object.documentName !== "Actor") return;
+
+        const hasNotes = !!object.getFlag(MODULE_ID, "notes");
+
+        buttons.unshift({
             label: "SDX Notes",
             class: "open-sdx-notes",
             icon: hasNotes ? "fas fa-sticky-note" : "far fa-sticky-note",
             onclick: () => {
                 new PlaceableNotesSD(object).render(true);
-            },
-            onClick: () => {
-                new PlaceableNotesSD(object).render(true);
-            },
-            // For V2 controls compatibility if passed as controls
-            action: "open-sdx-notes",
-            handler: () => {
-                new PlaceableNotesSD(object).render(true);
             }
-        };
-
-        // Add to beginning
-        buttons.unshift(noteButton);
-    }
-
-    static _updateHeaderButton(app, html) {
-        if (!game.user.isGM) return;
-
-        // In V1 html is [elem], in V2 it is elem
-        const elem = Array.isArray(html) ? html[0] : html;
-
-        const object = app.document || app.object || app.token;
-        if (!object) return;
-
-        const supportedTypes = ["AmbientLight", "AmbientSound", "Token", "Wall", "Tile", "Actor"];
-        if (!object.documentName || !supportedTypes.includes(object.documentName)) return;
-
-        setTimeout(() => {
-            // Find the element
-            // In V2, elem might be the HTML content, so we look up to window-app
-            let appElem = elem instanceof HTMLElement ? elem.closest(".window-app") : null;
-            if (!appElem && app.element) appElem = app.element instanceof HTMLElement ? app.element : (app.element[0] || app.element);
-
-            if (!appElem) return;
-
-            const header = appElem.querySelector(".window-header");
-            if (!header) return;
-
-            // Find by class or action
-            let button = header.querySelector(".open-sdx-notes");
-            if (!button) button = header.querySelector("[data-action='open-sdx-notes']");
-
-            if (!button) return;
-
-            const hasNotes = !!object.getFlag(MODULE_ID, "notes");
-
-            // Update icon
-            const icon = button.querySelector("i");
-            if (icon) {
-                icon.className = hasNotes ? "fas fa-sticky-note" : "far fa-sticky-note";
-            }
-
-            // Update Color (Green if notes exist)
-            if (hasNotes) {
-                button.style.color = "#4ade80";
-            } else {
-                button.style.color = "";
-            }
-        }, 100);
+        });
     }
 }
 
@@ -144,19 +127,13 @@ export { PlaceableNotesSD };
 export function initPlaceableNotes() {
     if (!game.settings.get(MODULE_ID, "enablePlaceableNotes")) return;
 
-    // Hook into both V1 and V2 application header generation
-    Hooks.on("getAmbientLightConfigHeaderButtons", PlaceableNotesSD.addHeaderButton);
-    Hooks.on("getAmbientSoundConfigHeaderButtons", PlaceableNotesSD.addHeaderButton);
-    Hooks.on("getTokenConfigHeaderButtons", PlaceableNotesSD.addHeaderButton);
-    Hooks.on("getWallConfigHeaderButtons", PlaceableNotesSD.addHeaderButton);
-    Hooks.on("getTileConfigHeaderButtons", PlaceableNotesSD.addHeaderButton);
-    Hooks.on("getActorSheetHeaderButtons", PlaceableNotesSD.addHeaderButton);
+    // Foundry v14 ApplicationV2 header-controls hook. Fires for every document
+    // sheet via the shared DocumentSheetV2 ancestor, covering the placeable config
+    // sheets (Tile/Wall/AmbientLight/AmbientSound/Token). The control's icon/state
+    // is recomputed on each render, so no separate post-render refresh is needed.
+    Hooks.on("getHeaderControlsDocumentSheetV2", PlaceableNotesSD.addHeaderControl);
 
-    // Update buttons after render to reflect saved state
-    Hooks.on("renderAmbientLightConfig", PlaceableNotesSD._updateHeaderButton);
-    Hooks.on("renderAmbientSoundConfig", PlaceableNotesSD._updateHeaderButton);
-    Hooks.on("renderTokenConfig", PlaceableNotesSD._updateHeaderButton);
-    Hooks.on("renderWallConfig", PlaceableNotesSD._updateHeaderButton);
-    Hooks.on("renderTileConfig", PlaceableNotesSD._updateHeaderButton);
-    Hooks.on("renderActorSheet", PlaceableNotesSD._updateHeaderButton);
+    // Shadowdark actor sheets are still V1 Applications, so the V2 hook never fires
+    // for them — use the legacy header-buttons hook for Actor sheets.
+    Hooks.on("getActorSheetHeaderButtons", PlaceableNotesSD.addActorHeaderButton);
 }
