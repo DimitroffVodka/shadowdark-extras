@@ -62,6 +62,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
         let tooltipTitle = "";
         let tooltipContent = "";
         let hideTooltip = false;
+        let nameSource = "auto";
 
         if (this.pinId) {
             const pin = JournalPinManager.get(this.pinId);
@@ -85,6 +86,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
             tooltipTitle = pin.tooltipTitle || "";
             tooltipContent = pin.tooltipContent || "";
             hideTooltip = pin.hideTooltip || false;
+            nameSource = pin.nameSource || "auto";
 
             // Load journal pages for individual pin editor
             if (pin?.journalId) {
@@ -214,8 +216,10 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
             allJournals,
             requiresVision,
             aboveFog,
+            tooltipTitle,
             tooltipContent,
             hideTooltip,
+            nameSource,
             isGM: game.user?.isGM,
             pinId: this.pinId,
             tmfxPresets: this._getTMFXPresets(),
@@ -874,6 +878,11 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
             if (tooltipContentInput) {
                 formData.tooltipContent = tooltipContentInput.value || "";
             }
+
+            const nameSourceSelect = form.querySelector('[name="nameSource"]');
+            if (nameSourceSelect) {
+                formData.nameSource = nameSourceSelect.value || "auto";
+            }
         }
 
         return formData;
@@ -922,6 +931,11 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
                 if (style.tooltipContent !== undefined) {
                     updateData.tooltipContent = style.tooltipContent;
                     delete style.tooltipContent;
+                }
+
+                if (style.nameSource !== undefined) {
+                    updateData.nameSource = style.nameSource;
+                    delete style.nameSource;
                 }
 
                 if (style.hideTooltip !== undefined) {

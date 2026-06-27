@@ -36,6 +36,17 @@
                 {{/each}}
             </select>
         </div>
+
+        <div class="form-group">
+            <label>{{localize "SDX.pinStyleEditor.pinNameSource"}}</label>
+            <select name="nameSource">
+                <option value="auto" {{#if (eq nameSource "auto")}}selected{{/if}}>{{localize "SDX.pinStyleEditor.pinNameAuto"}}</option>
+                <option value="journal" {{#if (eq nameSource "journal")}}selected{{/if}}>{{localize "SDX.pinStyleEditor.pinNameJournal"}}</option>
+                <option value="tooltip" {{#if (eq nameSource "tooltip")}}selected{{/if}}>{{localize "SDX.pinStyleEditor.pinNameTooltip"}}</option>
+                <option value="label" {{#if (eq nameSource "label")}}selected{{/if}}>{{localize "SDX.pinStyleEditor.pinNameLabel"}}</option>
+            </select>
+            <p class="notes">{{localize "SDX.pinStyleEditor.pinNameHint"}}</p>
+        </div>
     </section>
     {{/if}}
 

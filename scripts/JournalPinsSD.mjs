@@ -193,6 +193,7 @@ class JournalPinManager {
             journalId: pinData.journalId,
             pageId: pinData.pageId ?? null,
             label: pinData.label ?? "Journal Pin",
+            nameSource: pinData.nameSource ?? "auto", // "auto" | "journal" | "tooltip" | "label"
             size: pinData.size,
             style: pinData.style || {},
             gmOnly: pinData.gmOnly ?? false,
@@ -240,6 +241,7 @@ class JournalPinManager {
         if (patch.x !== undefined) updated.x = patch.x;
         if (patch.y !== undefined) updated.y = patch.y;
         if (patch.label !== undefined) updated.label = patch.label;
+        if (patch.nameSource !== undefined) updated.nameSource = patch.nameSource;
         if (patch.size !== undefined) updated.size = patch.size;
         if (patch.pageId !== undefined) updated.pageId = patch.pageId;
         if (patch.journalId !== undefined) updated.journalId = patch.journalId;
@@ -292,6 +294,46 @@ class JournalPinManager {
         const pins = this._getScenePins(scene);
         const pin = pins.find(p => p.id === pinId);
         return pin ? foundry.utils.deepClone(pin) : null;
+    }
+
+    /**
+     * Resolve the display name for a pin based on its nameSource preference.
+     * Candidate sources:
+     *   - journal: linked page name, else journal name
+     *   - tooltip: the pin's Tooltip Title
+     *   - label:   the pin's canvas Label text (style.labelText)
+     * "auto" (default) prefers an explicitly-set label, then journal, tooltip, label.
+     * A non-"auto" source is tried first, then the others as fallbacks so a pin
+     * never renders blank.
+     * @param {Object} pin
+     * @returns {string}
+     */
+    static getDisplayName(pin) {
+        if (!pin) return "Unnamed Pin";
+
+        // Journal / page name
+        let journalName = "";
+        if (pin.journalId) {
+            const journal = game.journal.get(pin.journalId);
+            if (journal) {
+                const page = pin.pageId ? journal.pages.get(pin.pageId) : null;
+                journalName = page?.name || journal.name || "";
+            }
+        }
+
+        const tooltip = (pin.tooltipTitle || "").trim();
+        const label = (pin.style?.labelText || "").trim();
+
+        // A label the user set explicitly (not a placeholder default)
+        const explicit = (pin.label && pin.label !== "New Pin" && pin.label !== "Journal Pin")
+            ? pin.label.trim() : "";
+
+        switch (pin.nameSource || "auto") {
+            case "journal": return journalName || explicit || tooltip || label || "Unnamed Pin";
+            case "tooltip": return tooltip || explicit || journalName || label || "Unnamed Pin";
+            case "label":   return label || explicit || journalName || tooltip || "Unnamed Pin";
+            default:        return explicit || journalName || tooltip || label || "Unnamed Pin";
+        }
     }
 
     static _styleClipboard = null;

@@ -50,34 +50,21 @@ export class PinListApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Enrich pin data
         const enrichedPins = pins.map(pin => {
-            let pinName = pin.label || "Unnamed Pin";
+            // Resolve display name honoring the pin's nameSource preference
+            let pinName = JournalPinManager.getDisplayName(pin);
             let pageName = "";
 
-            // If the pin is linked to a journal/page, try to get its name
+            // Subtitle: show "Journal • Page" when linked
             if (pin.journalId) {
                 const journal = game.journal.get(pin.journalId);
                 if (journal) {
                     if (pin.pageId) {
                         const page = journal.pages.get(pin.pageId);
-                        if (page) {
-                            if (pinName === "New Pin" || pinName === "Journal Pin") {
-                                pinName = page.name;
-                            }
-                            pageName = `${journal.name} • ${page.name}`;
-                        } else {
-                            pageName = journal.name;
-                        }
+                        pageName = page ? `${journal.name} • ${page.name}` : journal.name;
                     } else {
-                        if (pinName === "New Pin" || pinName === "Journal Pin") {
-                            pinName = journal.name;
-                        }
+                        pageName = journal.name;
                     }
                 }
-            }
-
-            // Fallback: If still default name, try to use Tooltip Title
-            if ((pinName === "New Pin" || pinName === "Journal Pin") && pin.tooltipTitle) {
-                pinName = pin.tooltipTitle;
             }
 
             // Determine Display Type & Content
