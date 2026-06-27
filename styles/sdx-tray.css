@@ -1008,13 +1008,24 @@ body.sdx-tray-enabled #camera-views.vertical.left {
 }
 
 .sdx-tray .pin-controls {
-    flex: 0 0 24px;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    gap: 2px;
+    margin-top: 3px;
+    flex: 0 0 auto;
+}
+
+.sdx-tray .pin-controls .pin-control {
+    flex: 1 1 0;
     text-align: center;
 }
 
 .sdx-tray .pin-control {
     color: #666;
-    font-size: 14px;
+    font-size: 13px;
+    line-height: 1;
+    padding: 1px 2px;
     cursor: pointer;
 }
 

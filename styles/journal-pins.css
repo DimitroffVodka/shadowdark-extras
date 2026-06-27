@@ -187,11 +187,10 @@
 .pin-controls {
     display: flex;
     flex-direction: row;
-    gap: 12px;
+    flex-wrap: nowrap;
+    gap: 4px;
     margin-top: 6px;
     justify-content: flex-start;
-    flex-wrap: wrap;
-    /* Safety wrap */
 }
 
 .pin-control {
