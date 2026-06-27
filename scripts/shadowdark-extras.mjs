@@ -2937,7 +2937,7 @@ function applySheetDecorationStyles() {
 		tabGradientEnd = "#2f2b2b";
 	}
 
-	// Build paths - use absolute paths from Foundry root to avoid relative path issues
+	// Build paths - use relative paths so they resolve under a Foundry route prefix
 	const borderPath = `modules/${MODULE_ID}/art/PNG/Default/Border/${sheetBorder}`;
 	const abilityPanelPath = `modules/${MODULE_ID}/art/PNG/Default/Panel/${abilityPanel}`;
 	const acPanelPath = `modules/${MODULE_ID}/art/PNG/Default/Transparent center/${acPanel}`;
