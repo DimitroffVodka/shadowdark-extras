@@ -4,6 +4,59 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.42] — 2026-06-27 — Notes on v14 + marching-order fixes + pin naming
+
+Verified live against Foundry 14.364.
+
+### Added
+
+- **Configurable pin name source.** A new "Pin Name" dropdown in the Pin Style
+  Editor lets each pin choose where its display name comes from — `auto`,
+  journal/page, tooltip title, or canvas label. Auto resolves journal/page name
+  → tooltip title → canvas label, never falling back to the "New Pin" /
+  "Journal Pin" placeholders.
+- **GM gate for the Dungeon Painter.** A new world-scope setting,
+  *Allow Player Dungeon Painting* (default off), hides the Dungeons tab from
+  players unless the GM opts them in. Previously any player could paint whenever
+  a GM was online. The tray re-renders on every client when the toggle changes,
+  so players' tabs show/hide in real time.
+- **Map-marker note icons.** A new SVG icon set under
+  `assets/icons/map-numbers/` matching the GM dungeon-map markers — numbers
+  01–60 plus blank, legend markers (secret, barricaded, locked, in/out,
+  acid/quicksand), and gray room/area label pills.
+
+### Fixed
+
+- **Placeable Notes work on Foundry v14.** The "add note" header button never
+  appeared and notes never persisted. The button now registers on the v14
+  `getHeaderControlsDocumentSheetV2` hook (Tile / Wall / Light / Sound / Token),
+  and the save path reads the prose-mirror value from its real field
+  (`flags.shadowdark-extras.notes`) so notes persist end-to-end.
+- **Marching order no longer blocks the wrong people.** Players were blocked
+  from moving even in Free Movement, and the party leader could not move in
+  Marching Mode. Mode and leader changes now sync to every client, the leader's
+  owner can move the leader token, and a move to x/y = 0 is no longer skipped.
+- **Tooltip Title persists in the Pin Style Editor.** The field reloaded blank
+  because `_prepareContext` never returned `tooltipTitle`, even though the value
+  was saved. It is now returned.
+- **Unlinked pins show a real name.** Pins without a journal fall back to the
+  tooltip title or canvas label text instead of displaying "New Pin".
+- **Map Notes label fallback.** `getMapNotesData()` looked up the linked journal
+  via the wrong field (`journalId` instead of `entryId`), so a blank Text Label
+  fell through to "Unnamed Note". It now falls back text → page name → journal
+  name as intended.
+- **Pin control icons stay on one row.** The tray's pin/map-note control row
+  inherited a flex-wrap that pushed the 8th control (trash) onto a second line;
+  the controls are now an explicit nowrap row that fills the width evenly.
+
+### Internal
+
+- **Self-verifying release pipeline.** `npm run release:check` and a rewritten
+  CI workflow now fail the build on empty/missing packs, missing declared files,
+  or `module.json` ↔ `package.json` version drift, and verify the archive
+  contains pack data and `greensock/` before publishing — preventing the
+  broken-artifact releases seen in earlier versions.
+
 ## [6.10.40] — 2026-06-20 — Map Generators overhaul + multi-level dwelling import
 
 Verified live against Foundry 14.
