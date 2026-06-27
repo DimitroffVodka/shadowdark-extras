@@ -57,7 +57,12 @@ function registerMarchingSettings() {
         scope: "world",
         config: false,
         type: String,
-        default: ""
+        default: "",
+        // Keep every client (players included) in sync when the GM changes the leader.
+        onChange: (value) => {
+            leaderTokenId = value || null;
+            updateButtonStates();
+        }
     });
 
     game.settings.register(MODULE_ID, SETTING_KEY_ENABLED, {
@@ -65,7 +70,18 @@ function registerMarchingSettings() {
         scope: "world",
         config: false,
         type: Boolean,
-        default: false
+        default: false,
+        // Keep every client (players included) in sync when the GM toggles the mode.
+        // Without this, players' local marchingModeEnabled stays stale and keeps
+        // blocking their movement even after the GM switches to Free Movement.
+        onChange: (value) => {
+            marchingModeEnabled = !!value;
+            if (!marchingModeEnabled) {
+                leaderMovementPath = [];
+                tokenFollowers.clear();
+            }
+            updateButtonStates();
+        }
     });
 }
 
@@ -534,8 +550,8 @@ function getTokenOwnerName(token) {
  * Hook: Before token update
  */
 function onPreUpdateToken(tokenDoc, changes, options, userId) {
-    // Skip if no position change
-    if (!changes.x && !changes.y) return true;
+    // Skip if no position change (use === undefined so a move to x/y === 0 still counts)
+    if (changes.x === undefined && changes.y === undefined) return true;
 
     if (!marchingModeEnabled) return true;
     if (!leaderTokenId) return true;
@@ -543,21 +559,12 @@ function onPreUpdateToken(tokenDoc, changes, options, userId) {
     // Allow GM to move any token
     if (game.user.isGM) return true;
 
+    // The party leader moves freely; the GM client records the path and drives the
+    // followers via processCongaMovement (see onUpdateToken).
+    if (tokenDoc.id === leaderTokenId) return true;
 
-
-    // Allow players to move their own tokens (to join the formation)
-    const token = canvas.tokens.get(tokenDoc.id);
-    if (token?.actor?.hasPlayerOwner) {
-        const isOwner = token.actor.testUserPermission(game.user, "OWNER");
-        if (isOwner) {
-            // New logic: BLOCK ALL player movement causing Marching Mode glitch
-            ui.notifications.warn("Only the GM can move tokens in Marching Mode.");
-            return false;
-        }
-    }
-
-    // Non-owned tokens can't be moved manually in marching mode
-    ui.notifications.warn("In Marching Mode, only the leader can move tokens freely. Other tokens will follow automatically.");
+    // Followers move automatically — block manual movement of any other token.
+    ui.notifications.warn("In Marching Mode, only the leader can move. Other tokens follow automatically.");
     return false;
 }
 
