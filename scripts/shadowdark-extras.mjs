@@ -2938,13 +2938,13 @@ function applySheetDecorationStyles() {
 	}
 
 	// Build paths - use absolute paths from Foundry root to avoid relative path issues
-	const borderPath = `/modules/${MODULE_ID}/art/PNG/Default/Border/${sheetBorder}`;
-	const abilityPanelPath = `/modules/${MODULE_ID}/art/PNG/Default/Panel/${abilityPanel}`;
-	const acPanelPath = `/modules/${MODULE_ID}/art/PNG/Default/Transparent center/${acPanel}`;
-	const statPanelPath = `/modules/${MODULE_ID}/art/PNG/Default/Transparent center/${statPanel}`;
-	const boxBorderPath = `/modules/${MODULE_ID}/art/PNG/Default/Border/${boxBorder}`;
-	const journalBorderPath = `/modules/${MODULE_ID}/art/PNG/Default/Border/${journalBorder}`;
-	const conditionModalBorderPath = `/modules/${MODULE_ID}/art/PNG/Default/Border/${conditionModalBorder}`;
+	const borderPath = `modules/${MODULE_ID}/art/PNG/Default/Border/${sheetBorder}`;
+	const abilityPanelPath = `modules/${MODULE_ID}/art/PNG/Default/Panel/${abilityPanel}`;
+	const acPanelPath = `modules/${MODULE_ID}/art/PNG/Default/Transparent center/${acPanel}`;
+	const statPanelPath = `modules/${MODULE_ID}/art/PNG/Default/Transparent center/${statPanel}`;
+	const boxBorderPath = `modules/${MODULE_ID}/art/PNG/Default/Border/${boxBorder}`;
+	const journalBorderPath = `modules/${MODULE_ID}/art/PNG/Default/Border/${journalBorder}`;
+	const conditionModalBorderPath = `modules/${MODULE_ID}/art/PNG/Default/Border/${conditionModalBorder}`;
 
 	// Create style element with CSS custom properties
 	const style = document.createElement('style');

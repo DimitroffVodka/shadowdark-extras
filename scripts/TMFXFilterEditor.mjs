@@ -14,7 +14,7 @@ const PlaceableType = {
 };
 
 const getFilterType = () => window.TokenMagic?.filterTypes || {};
-import { ANIM_PARAM_CONTROLS, FILTER_PARAM_CONTROLS } from '/modules/tokenmagic/gui/apps/data/fxControls.js';
+import { ANIM_PARAM_CONTROLS, FILTER_PARAM_CONTROLS } from '../../tokenmagic/gui/apps/data/fxControls.js';
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 const { deepClone, getType, isEmpty, mergeObject, diffObject } = foundry.utils;
@@ -488,9 +488,9 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const loadPresetSearch = async () => {
             try {
-                return await import('/modules/tokenmagic/gui/apps/editor/PresetSearch.js');
+                return await import('../../tokenmagic/gui/apps/editor/PresetSearch.js');
             } catch {
-                return await import('/modules/tokenmagic/gui/apps/PresetSearch.js');
+                return await import('../../tokenmagic/gui/apps/PresetSearch.js');
             }
         };
         loadPresetSearch().then((module) => {

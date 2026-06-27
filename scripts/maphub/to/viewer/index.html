@@ -21,7 +21,7 @@
                 return _getContext.call(this, type, options);
             };
 
-            const BASE = "/modules/shadowdark-extras/scripts/maphub";
+            const BASE = new URL('.', document.baseURI || location.href).pathname.replace(/\/to\/[^\/]+\/?$/, '');
             const RX = /^\/to\/(cave|dwellings|mfcg|village|viewer)(\/.*)?$/;
             function rewrite(url) {
                 try {
@@ -62,12 +62,12 @@
                 routes: {
                     primary_source: { url: "watabou.github.io", type: 2 },
                     github: { url: "github.com/voluminor/maphub", type: 2 },
-                    homepage: { url: "/modules/shadowdark-extras/scripts/maphub/to/viewer/index.html", type: 1 },
-                    cave: { url: "/modules/shadowdark-extras/scripts/maphub/to/cave/index.html", type: 1 },
-                    dwellings: { url: "/modules/shadowdark-extras/scripts/maphub/to/dwellings/index.html", type: 1 },
-                    mfcg: { url: "/modules/shadowdark-extras/scripts/maphub/to/mfcg/index.html", type: 1 },
-                    village: { url: "/modules/shadowdark-extras/scripts/maphub/to/village/index.html", type: 1 },
-                    viewer: { url: "/modules/shadowdark-extras/scripts/maphub/to/viewer/index.html", type: 1 },
+                    homepage: { url: BASE + "/to/viewer/index.html", type: 1 },
+                    cave: { url: BASE + "/to/cave/index.html", type: 1 },
+                    dwellings: { url: BASE + "/to/dwellings/index.html", type: 1 },
+                    mfcg: { url: BASE + "/to/mfcg/index.html", type: 1 },
+                    village: { url: BASE + "/to/village/index.html", type: 1 },
+                    viewer: { url: BASE + "/to/viewer/index.html", type: 1 },
                 },
                 flags: {},
                 meta: {
