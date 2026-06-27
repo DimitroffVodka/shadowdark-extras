@@ -938,8 +938,11 @@ export function getMapNotesData() {
     const notes = canvas.scene.notes.filter(n => n.testUserPermission(game.user, "LIMITED"));
 
     const enrichedNotes = notes.map(note => {
-        const journal = game.journal.get(note.journalId);
-        const page = journal?.pages.get(note.pageId);
+        // NoteDocument links to a JournalEntry via `entryId` (not `journalId`)
+        // and to a page via `pageId`. Use those getters so a blank Text Label
+        // falls back to the linked page name, then the journal name.
+        const journal = note.entry;
+        const page = note.page;
 
         let name = note.text || page?.name || journal?.name || "Unnamed Note";
 
@@ -950,7 +953,7 @@ export function getMapNotesData() {
             img: note.texture?.src || "icons/svg/book.svg",
             x: note.x,
             y: note.y,
-            journalId: note.journalId,
+            journalId: note.entryId,
             pageId: note.pageId,
             global: note.global,
             canDelete: note.canUserModify(game.user, "delete")
