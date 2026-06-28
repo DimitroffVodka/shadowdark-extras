@@ -13,7 +13,7 @@ const { DocumentSheetV2, HandlebarsApplicationMixin } = foundry.applications.api
 
 export default class ClassAbilitySheetSD extends HandlebarsApplicationMixin(DocumentSheetV2) {
 	static DEFAULT_OPTIONS = {
-		classes: ["shadowdark-extras", "potion-sheet"],
+		classes: ["shadowdark-extras", "potion-sheet", "class-ability-sheet"],
 		tag: "form",
 		window: {
 			frame: true,

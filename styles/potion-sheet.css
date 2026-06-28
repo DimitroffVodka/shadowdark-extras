@@ -570,6 +570,45 @@
 }
 
 /* ============================================
+   Class Ability sheet: let the Description
+   editor grow to fill the window instead of
+   leaving empty space below a fixed 150px box.
+   Scoped to .class-ability-sheet so the potion
+   sheet layout is unaffected.
+   ============================================ */
+.class-ability-sheet .tab-content[data-tab="description"].active {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.class-ability-sheet .tab-content[data-tab="description"] .description-fieldset {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+}
+
+.class-ability-sheet .tab-content[data-tab="description"] .editor-wrapper {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.class-ability-sheet .tab-content[data-tab="description"] prose-mirror.sized {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.class-ability-sheet .tab-content[data-tab="description"] .editor-container {
+    height: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* ============================================
    Checkbox/Radio Labels
    ============================================ */
 .checkbox-label,
