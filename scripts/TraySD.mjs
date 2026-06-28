@@ -215,6 +215,10 @@ export function initTray() {
         if (setting.key === `${MODULE_ID}.allowPlayerDungeonPainting`) {
             renderTray();
         }
+        // World-shared pin folders changed — refresh the Pins tab on every client.
+        if (setting.key === `${MODULE_ID}.pinFoldersWorld`) {
+            renderTray();
+        }
     });
 
     // Hook to reload dungeon tiles when GM comes online (for players)

@@ -512,6 +512,9 @@
                 <div class="pin-folder-toolbar">
                     <button type="button" class="pin-folder-newbtn" data-action="folder-new"
                         title="Create a new pin folder"><i class="fa-solid fa-folder-plus"></i> New Folder</button>
+                    <button type="button" class="pin-folder-newbtn" data-action="convert-notes"
+                        title="Convert this scene's Map Notes into pins"><i class="fa-solid fa-map-pin"></i>
+                        Notes&rarr;Pins</button>
                 </div>
 
                 <!-- Pin List Content -->
@@ -535,6 +538,8 @@
                                     class="{{this.icon}}"></i>{{/if}}{{else}}<i class="fa-solid fa-folder"></i>{{/if}}</span>
                             <span class="pin-folder-name">{{this.name}}</span>
                             <span class="pin-folder-count">{{this.count}}</span>
+                            {{#if (eq this.scope "world")}}<i class="fa-solid fa-earth-americas pin-folder-scope"
+                                title="World folder (shared across scenes)"></i>{{/if}}
                             <span class="pin-folder-controls">
                                 <a class="pin-folder-control" data-action="folder-add-child" title="New Subfolder"><i
                                         class="fa-solid fa-folder-plus"></i></a>
@@ -640,6 +645,8 @@
                                     <a class="map-note-control" data-action="pan" title="Pan to Note"><i
                                             class="fas fa-crosshairs"></i></a>
                                     {{#if this.canDelete}}
+                                    <a class="map-note-control" data-action="convert" title="Convert to Pin"><i
+                                            class="fa-solid fa-map-pin"></i></a>
                                     <a class="map-note-control danger" data-action="delete" title="Delete Note"><i
                                             class="fa-solid fa-trash" style="color: #ff3333;"></i></a>
                                     {{/if}}

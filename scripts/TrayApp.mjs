@@ -1867,6 +1867,12 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     <input type="text" name="name" value="${esc(f.name)}"></div>
                 <div class="form-group"><label>Color</label>
                     <input type="color" name="color" value="${esc(f.color || "#85733f")}"></div>
+                <div class="form-group"><label>Scope</label>
+                    <select name="scope">
+                        <option value="scene" ${f.scope !== "world" ? "selected" : ""}>This scene only</option>
+                        <option value="world" ${f.scope === "world" ? "selected" : ""}>All scenes (world)</option>
+                    </select>
+                    <p class="notes">World folders appear on every scene; pins still belong to their own scene.</p></div>
                 <div class="form-group"><label>Icon</label>
                     <div class="form-fields">
                         <input type="text" name="icon" value="${esc(f.icon || "")}"
@@ -1899,7 +1905,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         return {
                             name: fm.name.value.trim() || f.name,
                             color: fm.color.value || null,
-                            icon: (fm.icon.value || "").trim() || null
+                            icon: (fm.icon.value || "").trim() || null,
+                            scope: fm.scope?.value === "world" ? "world" : "scene"
                         };
                     }
                 }
@@ -1912,6 +1919,42 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             e.preventDefault();
             const name = await promptFolderName("New Folder", "New Folder");
             if (name) await JournalPinManager.createFolder({ name });
+        });
+
+        // Convert Map Notes -> pins (shared by the toolbar = all, and per-note buttons)
+        const runConvertDialog = async (noteIds = null) => {
+            const noteCount = noteIds ? noteIds.length : (canvas.scene?.notes?.size ?? 0);
+            if (!noteCount) { ui.notifications.info("No map notes on this scene to convert."); return; }
+            const folderOpts = JournalPinManager.listFolders()
+                .map(f => `<option value="${esc(f.id)}">${esc(f.name)}${f.scope === "world" ? " (world)" : ""}</option>`)
+                .join("");
+            const content = `
+                <p>Convert <strong>${noteCount}</strong> map note${noteCount === 1 ? "" : "s"} into journal pins.</p>
+                <div class="form-group"><label>Target folder</label>
+                    <select name="folderId"><option value="">Ungrouped</option>${folderOpts}</select></div>
+                <div class="form-group"><label><input type="checkbox" name="deleteOriginals"> Delete the original map note${noteCount === 1 ? "" : "s"} after converting</label></div>`;
+            const data = await foundry.applications.api.DialogV2.prompt({
+                window: { title: "Convert Map Notes → Pins" },
+                content,
+                ok: {
+                    label: "Convert", callback: (event, button) => {
+                        const fm = button.form.elements;
+                        return { folderId: fm.folderId.value || null, deleteOriginals: fm.deleteOriginals.checked };
+                    }
+                }
+            }).catch(() => null);
+            if (!data) return;
+            const res = await JournalPinManager.convertNotesToPins({
+                noteIds: noteIds || undefined, folderId: data.folderId, deleteOriginals: data.deleteOriginals
+            });
+            ui.notifications.info(`Created ${res.created} pin${res.created === 1 ? "" : "s"}` +
+                (res.deleted ? `, removed ${res.deleted} note${res.deleted === 1 ? "" : "s"}.` : "."));
+        };
+        this._runConvertDialog = runConvertDialog;
+
+        elem.querySelector(".pin-folder-newbtn[data-action='convert-notes']")?.addEventListener("click", (e) => {
+            e.preventDefault();
+            runConvertDialog(null);
         });
 
         // Folder header controls + collapse toggle
@@ -2192,6 +2235,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 } else if (action === "open") {
                     const note = fromUuidSync(uuid);
                     if (note) note.sheet.render(true);
+                } else if (action === "convert") {
+                    await runConvertDialog([id]);
                 }
             });
         });

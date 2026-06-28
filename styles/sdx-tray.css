@@ -1121,6 +1121,12 @@ body.sdx-tray-enabled #camera-views.vertical.left {
     color: #9f9275;
 }
 
+.sdx-tray .pin-folder-scope {
+    flex: 0 0 auto;
+    color: #6fa8c7;
+    font-size: 0.75em;
+}
+
 .sdx-tray .pin-folder-controls {
     flex: 0 0 auto;
     display: flex;

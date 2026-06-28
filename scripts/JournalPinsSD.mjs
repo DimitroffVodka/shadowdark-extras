@@ -27,6 +27,17 @@ _registerGsapPixiPlugin();
 // …and again at init, in case PIXI wasn't ready yet.
 Hooks.once("init", _registerGsapPixiPlugin);
 
+// World-shared pin folders (P2). Definitions live here and appear on every
+// scene; pins always remain per-scene, grouped under the shared folder.
+Hooks.once("init", () => {
+    game.settings.register(MODULE_ID, "pinFoldersWorld", {
+        scope: "world",
+        config: false,
+        type: Array,
+        default: []
+    });
+});
+
 // ================================================================
 // PIN SCHEMA & DEFAULTS
 // ================================================================
@@ -342,7 +353,10 @@ class JournalPinManager {
     }
 
     // ============================================================
-    // PIN FOLDERS (tray Pins tab organization) — scene-scoped (P1)
+    // PIN FOLDERS (tray Pins tab organization)
+    // Scene folders live in the scene flag `pinFolders`; world folders live in
+    // the world setting `pinFoldersWorld` and appear on every scene. Pins are
+    // always per-scene and reference a folder by id (in either store).
     // ============================================================
 
     static FOLDER_FLAG_KEY = FOLDER_FLAG_KEY;
@@ -350,11 +364,32 @@ class JournalPinManager {
     static _getSceneFolders(scene) {
         return scene?.getFlag(MODULE_ID, FOLDER_FLAG_KEY) || [];
     }
+    static async _setSceneFolders(scene, arr) {
+        await scene.setFlag(MODULE_ID, FOLDER_FLAG_KEY, arr);
+    }
+    static _getWorldFolders() {
+        try { return game.settings.get(MODULE_ID, "pinFoldersWorld") || []; }
+        catch (e) { return []; }
+    }
+    static async _setWorldFolders(arr) {
+        await game.settings.set(MODULE_ID, "pinFoldersWorld", arr);
+    }
 
-    /** All folders for a scene (clone). */
+    /** Merged folder list (world first, then scene), each tagged with scope. */
     static listFolders(options = {}) {
         const scene = this._getScene(options.sceneId);
-        return foundry.utils.deepClone(this._getSceneFolders(scene));
+        const world = this._getWorldFolders().map(f => ({ ...f, scope: "world" }));
+        const sc = this._getSceneFolders(scene).map(f => ({ ...f, scope: "scene" }));
+        return foundry.utils.deepClone([...world, ...sc]);
+    }
+
+    /** Locate a folder across both stores -> {folder, store} or null. */
+    static _locateFolder(folderId, scene) {
+        const wf = this._getWorldFolders().find(f => f.id === folderId);
+        if (wf) return { folder: wf, store: "world" };
+        const sf = this._getSceneFolders(scene).find(f => f.id === folderId);
+        if (sf) return { folder: sf, store: "scene" };
+        return null;
     }
 
     /** True if candidateId is folderId itself or a descendant of it (cycle guard). */
@@ -371,71 +406,132 @@ class JournalPinManager {
         return false;
     }
 
+    static _nextSort(arr, parentId) {
+        const sibs = arr.filter(f => (f.parentId ?? null) === (parentId ?? null));
+        return sibs.length ? Math.max(...sibs.map(f => f.sort ?? 0)) + 1 : 0;
+    }
+
     static async createFolder(data = {}, options = {}) {
         if (!game.user?.isGM) throw new Error("Only GMs can create pin folders");
         const scene = this._getScene(options.sceneId);
-        const folders = this._getSceneFolders(scene);
+        const scope = data.scope === "world" ? "world" : "scene";
         const parentId = data.parentId ?? null;
-        const siblings = folders.filter(f => (f.parentId ?? null) === parentId);
+
+        // A world folder may only nest under another world folder.
+        if (scope === "world" && parentId && !this._getWorldFolders().some(f => f.id === parentId)) {
+            ui.notifications?.warn("A world folder can only be nested under another world folder.");
+            return null;
+        }
+
+        const store = scope === "world" ? this._getWorldFolders() : this._getSceneFolders(scene);
         const folder = {
             id: foundry.utils.randomID(),
             name: data.name || "New Folder",
             parentId,
-            sort: siblings.length ? Math.max(...siblings.map(f => f.sort ?? 0)) + 1 : 0,
+            sort: this._nextSort(store, parentId),
             collapsed: false,
             color: data.color ?? null,
             icon: data.icon ?? null,
-            scope: "scene"
+            scope
         };
-        await scene.setFlag(MODULE_ID, FOLDER_FLAG_KEY, [...folders, folder]);
+        if (scope === "world") await this._setWorldFolders([...store, folder]);
+        else await this._setSceneFolders(scene, [...store, folder]);
         return foundry.utils.deepClone(folder);
     }
 
     static async updateFolder(folderId, patch = {}, options = {}) {
         if (!game.user?.isGM) throw new Error("Only GMs can update pin folders");
         const scene = this._getScene(options.sceneId);
-        const folders = this._getSceneFolders(scene);
-        const idx = folders.findIndex(f => f.id === folderId);
-        if (idx === -1) throw new Error(`Folder not found: ${folderId}`);
+        const located = this._locateFolder(folderId, scene);
+        if (!located) throw new Error(`Folder not found: ${folderId}`);
 
-        // Cycle guard on re-parenting
+        // Scope change -> move the record between stores.
+        if (patch.scope !== undefined && patch.scope !== located.store) {
+            await this.setFolderScope(folderId, patch.scope, options);
+        }
+
+        const merged = this.listFolders({ sceneId: options.sceneId });
         if (patch.parentId !== undefined) {
             const newParent = patch.parentId ?? null;
-            if (newParent && this._isSelfOrDescendant(folders, newParent, folderId)) {
+            if (newParent && this._isSelfOrDescendant(merged, newParent, folderId)) {
                 ui.notifications?.warn("Cannot move a folder into itself or its own subfolder.");
+                return null;
+            }
+            const cur = this._locateFolder(folderId, scene); // may have moved store above
+            if (cur?.store === "world" && newParent && merged.find(f => f.id === newParent)?.scope !== "world") {
+                ui.notifications?.warn("A world folder can only be nested under another world folder.");
                 return null;
             }
         }
 
-        const updated = { ...folders[idx] };
+        const cur = this._locateFolder(folderId, scene);
+        const arr = cur.store === "world" ? this._getWorldFolders() : this._getSceneFolders(scene);
+        const idx = arr.findIndex(f => f.id === folderId);
+        const updated = { ...arr[idx] };
         for (const key of ["name", "parentId", "sort", "collapsed", "color", "icon"]) {
             if (patch[key] !== undefined) updated[key] = patch[key];
         }
-        const next = [...folders];
+        const next = [...arr];
         next[idx] = updated;
-        await scene.setFlag(MODULE_ID, FOLDER_FLAG_KEY, next);
+        if (cur.store === "world") await this._setWorldFolders(next);
+        else await this._setSceneFolders(scene, next);
         return foundry.utils.deepClone(updated);
+    }
+
+    /** Move a folder between the scene store and the world store. */
+    static async setFolderScope(folderId, scope, options = {}) {
+        if (!game.user?.isGM) throw new Error("Only GMs can change folder scope");
+        scope = scope === "world" ? "world" : "scene";
+        const scene = this._getScene(options.sceneId);
+        const located = this._locateFolder(folderId, scene);
+        if (!located) throw new Error(`Folder not found: ${folderId}`);
+        if (located.store === scope) return foundry.utils.deepClone(located.folder);
+
+        const world = this._getWorldFolders();
+        const sc = this._getSceneFolders(scene);
+        const moving = { ...located.folder, scope };
+
+        // A world folder cannot keep a non-world parent; detach to top level.
+        if (scope === "world" && moving.parentId && !world.some(f => f.id === moving.parentId)) {
+            moving.parentId = null;
+        }
+        const dest = scope === "world" ? world : sc;
+        moving.sort = this._nextSort(dest, moving.parentId);
+
+        const newWorld = (located.store === "world" ? world.filter(f => f.id !== folderId) : [...world]);
+        const newScene = (located.store === "scene" ? sc.filter(f => f.id !== folderId) : [...sc]);
+        if (scope === "world") newWorld.push(moving); else newScene.push(moving);
+
+        // Moving to scene scope would orphan any world children (a world folder
+        // can't sit under a scene parent across scenes) — detach them to top level.
+        if (scope === "scene") {
+            for (const wf of newWorld) if (wf.parentId === folderId) wf.parentId = null;
+        }
+
+        await this._setWorldFolders(newWorld);
+        await this._setSceneFolders(scene, newScene);
+        return foundry.utils.deepClone(moving);
     }
 
     static async setFolderCollapsed(folderId, collapsed, options = {}) {
         return this.updateFolder(folderId, { collapsed: !!collapsed }, options);
     }
 
-    /** Delete a folder: its child folders + pins reparent to the folder's parent / null. */
+    /** Delete a folder: child folders + this scene's pins reparent to the folder's parent / null. */
     static async deleteFolder(folderId, options = {}) {
         if (!game.user?.isGM) throw new Error("Only GMs can delete pin folders");
         const scene = this._getScene(options.sceneId);
-        const folders = this._getSceneFolders(scene);
-        const target = folders.find(f => f.id === folderId);
-        if (!target) throw new Error(`Folder not found: ${folderId}`);
-        const newParent = target.parentId ?? null;
+        const located = this._locateFolder(folderId, scene);
+        if (!located) throw new Error(`Folder not found: ${folderId}`);
+        const newParent = located.folder.parentId ?? null;
 
-        const nextFolders = folders
+        const reparent = (arr) => arr
             .filter(f => f.id !== folderId)
             .map(f => (f.parentId === folderId ? { ...f, parentId: newParent } : f));
-        await scene.setFlag(MODULE_ID, FOLDER_FLAG_KEY, nextFolders);
+        await this._setWorldFolders(reparent(this._getWorldFolders()));
+        await this._setSceneFolders(scene, reparent(this._getSceneFolders(scene)));
 
-        // Reparent pins that were in this folder -> Ungrouped (null)
+        // Reparent this scene's pins that were in this folder -> Ungrouped (null)
         const pins = this._getScenePins(scene);
         let changed = false;
         const nextPins = pins.map(p => {
@@ -448,13 +544,13 @@ class JournalPinManager {
     static async reorderFolders(parentId, orderedIds, options = {}) {
         if (!game.user?.isGM) throw new Error("Only GMs can reorder pin folders");
         const scene = this._getScene(options.sceneId);
-        const folders = this._getSceneFolders(scene);
         const pid = parentId ?? null;
         const orderMap = new Map(orderedIds.map((id, i) => [id, i]));
-        const next = folders.map(f =>
+        const apply = (arr) => arr.map(f =>
             (f.parentId ?? null) === pid && orderMap.has(f.id) ? { ...f, sort: orderMap.get(f.id) } : f
         );
-        await scene.setFlag(MODULE_ID, FOLDER_FLAG_KEY, next);
+        await this._setWorldFolders(apply(this._getWorldFolders()));
+        await this._setSceneFolders(scene, apply(this._getSceneFolders(scene)));
     }
 
     /**
@@ -483,6 +579,69 @@ class JournalPinManager {
             return p;
         });
         await scene.setFlag(MODULE_ID, FLAG_KEY, next);
+    }
+
+    /**
+     * Convert this scene's Foundry Map Notes into journal pins.
+     * Each pin keeps the note's position, journal/page link, text label, and
+     * icon. Created in one write for efficiency.
+     * @param {object} opts
+     * @param {string} [opts.sceneId]
+     * @param {string[]} [opts.noteIds]  convert only these notes (default: all)
+     * @param {string|null} [opts.folderId]  target folder for the new pins
+     * @param {boolean} [opts.deleteOriginals]  remove the converted notes afterward
+     * @returns {Promise<{created:number, deleted:number}>}
+     */
+    static async convertNotesToPins(opts = {}) {
+        if (!game.user?.isGM) throw new Error("Only GMs can convert map notes");
+        const scene = this._getScene(opts.sceneId);
+        let notes = scene?.notes?.contents ?? [];
+        if (opts.noteIds?.length) {
+            const want = new Set(opts.noteIds);
+            notes = notes.filter(n => want.has(n.id));
+        }
+        if (!notes.length) return { created: 0, deleted: 0 };
+        const folderId = opts.folderId ?? null;
+
+        const existing = this._getScenePins(scene);
+        const made = notes.map(note => {
+            const src = note.texture?.src;
+            // Keep the note's icon choice (path), tint, and size.
+            const style = {};
+            if (src) {
+                style.contentType = "customIcon";
+                style.customIconPath = src;
+                const tint = note.texture?.tint;
+                if (tint) style.iconColor = (typeof tint === "string") ? tint : (tint.css ?? tint.toString?.());
+            }
+            return {
+                id: foundry.utils.randomID(),
+                x: note.x, y: note.y,
+                journalId: note.entryId ?? null,   // NoteDocument links via entryId
+                pageId: note.pageId ?? null,
+                label: note.text || "Journal Pin", // note's own text label, if any
+                nameSource: "auto",
+                folderId,
+                sort: 0,
+                size: note.iconSize ?? undefined,  // keep the note's icon size
+                style,
+                gmOnly: false,
+                requiresVision: false,
+                aboveFog: false,
+                hideTooltip: false,
+                flags: {},
+                version: PIN_SCHEMA_VERSION
+            };
+        });
+        await scene.setFlag(MODULE_ID, FLAG_KEY, [...existing, ...made]);
+
+        let deleted = 0;
+        if (opts.deleteOriginals) {
+            const ids = notes.map(n => n.id);
+            await scene.deleteEmbeddedDocuments("Note", ids);
+            deleted = ids.length;
+        }
+        return { created: made.length, deleted };
     }
 
     static _styleClipboard = null;
