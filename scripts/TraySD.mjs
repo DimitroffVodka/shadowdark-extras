@@ -197,8 +197,9 @@ export function initTray() {
 
     // Hook to update tray when pins change on scene
     Hooks.on("updateScene", (document, change, options, userId) => {
-        // Check if the update involves the flags for this module (pins)
-        if (change.flags?.[MODULE_ID]?.journalPins) {
+        // Check if the update involves the flags for this module (pins or pin folders)
+        const sdxFlags = change.flags?.[MODULE_ID];
+        if (sdxFlags && ("journalPins" in sdxFlags || "pinFolders" in sdxFlags)) {
             renderTray();
         }
     });
@@ -797,13 +798,85 @@ export function getPinsData() {
             borderColor,
             borderRadius,
             gmOnly: pin.gmOnly,
-            requiresVision: pin.requiresVision
+            requiresVision: pin.requiresVision,
+            folderId: pin.folderId ?? null,
+            sort: pin.sort ?? 0
         };
     });
 
-    // Sort alphabetically
-    enrichedPins.sort((a, b) => a.name.localeCompare(b.name));
-    return enrichedPins;
+    // --- Group pins under folders into a flat, depth-ordered row list ---
+    // Each row is either {rowType:"folder", ...} or {rowType:"pin", ...}.
+    // `ancestors` is a space-joined list of ancestor folder ids (NOT incl self
+    // for folders; incl parent folder for pins) used for client-side collapse
+    // hiding and search. `hidden` reflects a currently-collapsed ancestor.
+    const folders = JournalPinManager.listFolders({ sceneId: canvas.scene.id });
+
+    const pinsByFolder = new Map();
+    for (const p of enrichedPins) {
+        const key = p.folderId ?? null;
+        if (!pinsByFolder.has(key)) pinsByFolder.set(key, []);
+        pinsByFolder.get(key).push(p);
+    }
+    for (const arr of pinsByFolder.values()) {
+        arr.sort((a, b) => (a.sort - b.sort) || a.name.localeCompare(b.name));
+    }
+
+    const foldersByParent = new Map();
+    for (const f of folders) {
+        const key = f.parentId ?? null;
+        if (!foldersByParent.has(key)) foldersByParent.set(key, []);
+        foldersByParent.get(key).push(f);
+    }
+    for (const arr of foldersByParent.values()) {
+        arr.sort((a, b) => ((a.sort ?? 0) - (b.sort ?? 0)) || a.name.localeCompare(b.name));
+    }
+
+    const collapsedSet = new Set(folders.filter(f => f.collapsed).map(f => f.id));
+    const countPins = (folderId) => {
+        let n = (pinsByFolder.get(folderId) || []).length;
+        for (const child of (foldersByParent.get(folderId) || [])) n += countPins(child.id);
+        return n;
+    };
+
+    const INDENT = 14;
+    const isImagePath = (s) => !!s && (/\.(svg|png|jpe?g|webp|gif|avif)$/i.test(s) || s.includes("/"));
+    const rows = [];
+    const emitFolder = (folder, depth, ancestors) => {
+        const selfAncestors = ancestors.concat(folder.id);
+        rows.push({
+            rowType: "folder",
+            id: folder.id,
+            name: folder.name,
+            depth,
+            indent: depth * INDENT,
+            parentId: folder.parentId ?? null,
+            ancestors: ancestors.join(" "),
+            hidden: ancestors.some(a => collapsedSet.has(a)),
+            collapsed: !!folder.collapsed,
+            color: folder.color || null,
+            icon: folder.icon || null,
+            iconIsImage: isImagePath(folder.icon),
+            count: countPins(folder.id),
+            scope: folder.scope || "scene"
+        });
+        for (const child of (foldersByParent.get(folder.id) || [])) {
+            emitFolder(child, depth + 1, selfAncestors);
+        }
+        for (const p of (pinsByFolder.get(folder.id) || [])) {
+            rows.push({
+                ...p, rowType: "pin", depth: depth + 1, indent: (depth + 1) * INDENT,
+                parentId: folder.id, ancestors: selfAncestors.join(" "),
+                hidden: selfAncestors.some(a => collapsedSet.has(a))
+            });
+        }
+    };
+
+    for (const f of (foldersByParent.get(null) || [])) emitFolder(f, 0, []);
+    for (const p of (pinsByFolder.get(null) || [])) {
+        rows.push({ ...p, rowType: "pin", depth: 0, indent: 0, parentId: null, ancestors: "", hidden: false });
+    }
+
+    return rows;
 }
 
 /**

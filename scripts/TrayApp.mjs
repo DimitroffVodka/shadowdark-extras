@@ -1837,9 +1837,171 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     await JournalPinManager.pasteStyle(id);
                 } else if (action === "duplicate-pin") {
                     await JournalPinManager.duplicate(id);
+                } else if (action === "ungroup-pin") {
+                    if (game.user.isGM) await JournalPinManager.movePin(id, null);
                 }
             });
         });
+
+        // ───────────────────────── PIN FOLDERS (GM) ─────────────────────────
+        const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+            .replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+        const promptFolderName = async (title, initial = "") => {
+            return foundry.applications.api.DialogV2.prompt({
+                window: { title },
+                content: `<div class="form-group"><label>Folder Name</label>
+                    <input type="text" name="name" value="${esc(initial)}" autofocus></div>`,
+                ok: { label: "OK", callback: (event, button) => button.form.elements.name.value.trim() }
+            }).catch(() => null);
+        };
+
+        const ICON_DIR = "modules/shadowdark-extras/assets/icons/";
+        const FilePickerImpl = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
+
+        const editFolderDialog = async (folderId) => {
+            const f = JournalPinManager.listFolders().find(x => x.id === folderId);
+            if (!f) return;
+            const content = `
+                <div class="form-group"><label>Name</label>
+                    <input type="text" name="name" value="${esc(f.name)}"></div>
+                <div class="form-group"><label>Color</label>
+                    <input type="color" name="color" value="${esc(f.color || "#85733f")}"></div>
+                <div class="form-group"><label>Icon</label>
+                    <div class="form-fields">
+                        <input type="text" name="icon" value="${esc(f.icon || "")}"
+                            placeholder="image path or fa-solid fa-skull">
+                        <button type="button" class="sdx-folder-icon-browse" title="Browse Files">
+                            <i class="fas fa-file-import fa-fw"></i></button>
+                    </div>
+                    <p class="notes">Pick an image, or type a FontAwesome class.</p></div>`;
+
+            // Wire the Browse button once the dialog renders (FilePicker starts in assets/icons/)
+            Hooks.once("renderDialogV2", (app, html) => {
+                const root = html instanceof HTMLElement ? html : (html?.[0] ?? app.element);
+                const input = root?.querySelector('[name="icon"]');
+                root?.querySelector(".sdx-folder-icon-browse")?.addEventListener("click", () => {
+                    const cur = (input?.value && input.value.includes("/")) ? input.value : ICON_DIR;
+                    new FilePickerImpl({
+                        type: "image",
+                        current: cur,
+                        callback: (path) => { if (input) input.value = path; }
+                    }).browse();
+                });
+            });
+
+            const data = await foundry.applications.api.DialogV2.prompt({
+                window: { title: "Edit Folder" },
+                content,
+                ok: {
+                    label: "Save", callback: (event, button) => {
+                        const fm = button.form.elements;
+                        return {
+                            name: fm.name.value.trim() || f.name,
+                            color: fm.color.value || null,
+                            icon: (fm.icon.value || "").trim() || null
+                        };
+                    }
+                }
+            }).catch(() => null);
+            if (data) await JournalPinManager.updateFolder(folderId, data);
+        };
+
+        // New top-level folder
+        elem.querySelector(".pin-folder-newbtn[data-action='folder-new']")?.addEventListener("click", async (e) => {
+            e.preventDefault();
+            const name = await promptFolderName("New Folder", "New Folder");
+            if (name) await JournalPinManager.createFolder({ name });
+        });
+
+        // Folder header controls + collapse toggle
+        elem.querySelectorAll(".pin-folder-header").forEach(header => {
+            const folderId = header.dataset.folderId;
+            const toggle = async (e) => {
+                e.preventDefault(); e.stopPropagation();
+                const f = JournalPinManager.listFolders().find(x => x.id === folderId);
+                await JournalPinManager.setFolderCollapsed(folderId, !(f?.collapsed));
+            };
+            header.querySelector(".pin-folder-caret")?.addEventListener("click", toggle);
+            header.querySelector(".pin-folder-name")?.addEventListener("click", toggle);
+
+            header.querySelectorAll(".pin-folder-control").forEach(btn => {
+                btn.addEventListener("click", async (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    const action = btn.dataset.action;
+                    if (action === "folder-add-child") {
+                        const name = await promptFolderName("New Subfolder", "New Folder");
+                        if (name) await JournalPinManager.createFolder({ name, parentId: folderId });
+                    } else if (action === "folder-edit") {
+                        await editFolderDialog(folderId);
+                    } else if (action === "folder-delete") {
+                        const ok = await foundry.applications.api.DialogV2.confirm({
+                            window: { title: "Delete Folder" },
+                            content: "<p>Delete this folder? Its pins move to <strong>Ungrouped</strong> (pins are not deleted).</p>",
+                            modal: true
+                        });
+                        if (ok) await JournalPinManager.deleteFolder(folderId);
+                    }
+                });
+            });
+        });
+
+        // Drag & drop (GM only): assign/reorder pins, re-nest folders
+        const pinsList = elem.querySelector(".pins-view .sdx-pin-list:not(.map-notes-list)");
+        if (game.user.isGM && pinsList) {
+            let drag = null;
+            const clearOver = () => pinsList.querySelectorAll(".drag-over").forEach(n => n.classList.remove("drag-over"));
+
+            pinsList.querySelectorAll(".pin-entry[draggable='true'], .pin-folder-header[draggable='true']").forEach(row => {
+                row.addEventListener("dragstart", (e) => {
+                    drag = row.classList.contains("pin-folder-header")
+                        ? { type: "folder", id: row.dataset.folderId }
+                        : { type: "pin", id: row.dataset.id };
+                    e.dataTransfer.effectAllowed = "move";
+                    try { e.dataTransfer.setData("text/plain", drag.id); } catch (_) { }
+                    row.classList.add("sdx-dragging");
+                });
+                row.addEventListener("dragend", () => { row.classList.remove("sdx-dragging"); clearOver(); drag = null; });
+            });
+
+            pinsList.addEventListener("dragover", (e) => {
+                if (!drag) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                clearOver();
+                const target = e.target.closest(".pin-folder-header, .pin-entry");
+                if (target) target.classList.add("drag-over");
+            });
+            pinsList.addEventListener("dragleave", (e) => { if (e.target === pinsList) clearOver(); });
+
+            pinsList.addEventListener("drop", async (e) => {
+                if (!drag) return;
+                e.preventDefault();
+                clearOver();
+                const folderHeader = e.target.closest(".pin-folder-header");
+                const pinRow = e.target.closest(".pin-entry");
+                const dragged = drag; drag = null;
+                try {
+                    if (dragged.type === "pin") {
+                        if (folderHeader) {
+                            await JournalPinManager.movePin(dragged.id, folderHeader.dataset.folderId);
+                        } else if (pinRow && pinRow.dataset.id !== dragged.id) {
+                            await JournalPinManager.movePin(dragged.id, pinRow.dataset.folderId || null, pinRow.dataset.id);
+                        } else if (!folderHeader && !pinRow) {
+                            await JournalPinManager.movePin(dragged.id, null);
+                        }
+                    } else if (dragged.type === "folder") {
+                        if (folderHeader && folderHeader.dataset.folderId !== dragged.id) {
+                            await JournalPinManager.updateFolder(dragged.id, { parentId: folderHeader.dataset.folderId });
+                        } else if (!folderHeader && !pinRow) {
+                            await JournalPinManager.updateFolder(dragged.id, { parentId: null });
+                        }
+                    }
+                } catch (err) {
+                    console.error("SDX | pin folder DnD error", err);
+                }
+            });
+        }
 
         // Note Actions
         elem.querySelectorAll(".note-control").forEach(btn => {
@@ -2068,20 +2230,37 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
     _filterPins(term) {
         const elem = document.querySelector(".sdx-tray");
         if (!elem) return;
+        const lowerTerm = (term || "").toLowerCase().trim();
 
-        const entries = elem.querySelectorAll(".pin-entry");
-        const lowerTerm = term.toLowerCase();
+        // Map-note entries: simple name filter (unchanged behavior)
+        elem.querySelectorAll(".map-notes-list .pin-entry").forEach(entry => {
+            const name = entry.querySelector(".pin-name")?.textContent.toLowerCase() || "";
+            entry.style.display = (!lowerTerm || name.includes(lowerTerm)) ? "" : "none";
+        });
 
-        entries.forEach(entry => {
+        const pinsList = elem.querySelector(".pins-view .sdx-pin-list:not(.map-notes-list)");
+        if (!pinsList) return;
+        const pinRows = pinsList.querySelectorAll(".pin-entry");
+        const folderRows = pinsList.querySelectorAll(".pin-folder-header");
+
+        if (!lowerTerm) {
+            // Restore collapse-based visibility (clear inline display; CSS .sdx-row-hidden handles collapse)
+            pinRows.forEach(r => { r.style.display = ""; });
+            folderRows.forEach(r => { r.style.display = ""; });
+            return;
+        }
+
+        // Match pins; reveal matches even inside collapsed folders (inline display wins over CSS).
+        const matchedAncestors = new Set();
+        pinRows.forEach(entry => {
             const name = entry.querySelector(".pin-name")?.textContent.toLowerCase() || "";
             const page = entry.querySelector(".pin-page-name")?.textContent.toLowerCase() || "";
-
-            if (name.includes(lowerTerm) || page.includes(lowerTerm)) {
-                entry.style.display = "flex";
-            } else {
-                entry.style.display = "none";
-            }
+            const match = name.includes(lowerTerm) || page.includes(lowerTerm);
+            entry.style.display = match ? "flex" : "none";
+            if (match) (entry.dataset.ancestors || "").split(" ").filter(Boolean).forEach(a => matchedAncestors.add(a));
         });
+        // A folder is shown only if it is an ancestor of a matched pin.
+        folderRows.forEach(f => { f.style.display = matchedAncestors.has(f.dataset.folderId) ? "flex" : "none"; });
     }
 
     /**

@@ -5,6 +5,7 @@
 
 const MODULE_ID = "shadowdark-extras";
 const FLAG_KEY = "journalPins";
+const FOLDER_FLAG_KEY = "pinFolders";
 const LAYER_NAME = "sdx-journal-pins-layer";
 
 // GSAP PixiPlugin registration. PixiPlugin.min.js auto-registers itself with
@@ -194,6 +195,8 @@ class JournalPinManager {
             pageId: pinData.pageId ?? null,
             label: pinData.label ?? "Journal Pin",
             nameSource: pinData.nameSource ?? "auto", // "auto" | "journal" | "tooltip" | "label"
+            folderId: pinData.folderId ?? null,       // pin-folder grouping (tray Pins tab)
+            sort: pinData.sort ?? 0,                   // order within its folder
             size: pinData.size,
             style: pinData.style || {},
             gmOnly: pinData.gmOnly ?? false,
@@ -242,6 +245,8 @@ class JournalPinManager {
         if (patch.y !== undefined) updated.y = patch.y;
         if (patch.label !== undefined) updated.label = patch.label;
         if (patch.nameSource !== undefined) updated.nameSource = patch.nameSource;
+        if (patch.folderId !== undefined) updated.folderId = patch.folderId;
+        if (patch.sort !== undefined) updated.sort = patch.sort;
         if (patch.size !== undefined) updated.size = patch.size;
         if (patch.pageId !== undefined) updated.pageId = patch.pageId;
         if (patch.journalId !== undefined) updated.journalId = patch.journalId;
@@ -334,6 +339,150 @@ class JournalPinManager {
             case "label":   return label || explicit || journalName || tooltip || "Unnamed Pin";
             default:        return explicit || journalName || tooltip || label || "Unnamed Pin";
         }
+    }
+
+    // ============================================================
+    // PIN FOLDERS (tray Pins tab organization) — scene-scoped (P1)
+    // ============================================================
+
+    static FOLDER_FLAG_KEY = FOLDER_FLAG_KEY;
+
+    static _getSceneFolders(scene) {
+        return scene?.getFlag(MODULE_ID, FOLDER_FLAG_KEY) || [];
+    }
+
+    /** All folders for a scene (clone). */
+    static listFolders(options = {}) {
+        const scene = this._getScene(options.sceneId);
+        return foundry.utils.deepClone(this._getSceneFolders(scene));
+    }
+
+    /** True if candidateId is folderId itself or a descendant of it (cycle guard). */
+    static _isSelfOrDescendant(folders, candidateId, folderId) {
+        const byId = Object.fromEntries(folders.map(f => [f.id, f]));
+        let cur = candidateId;
+        const seen = new Set();
+        while (cur) {
+            if (cur === folderId) return true;
+            if (seen.has(cur)) break; // defensive against pre-existing cycles
+            seen.add(cur);
+            cur = byId[cur]?.parentId ?? null;
+        }
+        return false;
+    }
+
+    static async createFolder(data = {}, options = {}) {
+        if (!game.user?.isGM) throw new Error("Only GMs can create pin folders");
+        const scene = this._getScene(options.sceneId);
+        const folders = this._getSceneFolders(scene);
+        const parentId = data.parentId ?? null;
+        const siblings = folders.filter(f => (f.parentId ?? null) === parentId);
+        const folder = {
+            id: foundry.utils.randomID(),
+            name: data.name || "New Folder",
+            parentId,
+            sort: siblings.length ? Math.max(...siblings.map(f => f.sort ?? 0)) + 1 : 0,
+            collapsed: false,
+            color: data.color ?? null,
+            icon: data.icon ?? null,
+            scope: "scene"
+        };
+        await scene.setFlag(MODULE_ID, FOLDER_FLAG_KEY, [...folders, folder]);
+        return foundry.utils.deepClone(folder);
+    }
+
+    static async updateFolder(folderId, patch = {}, options = {}) {
+        if (!game.user?.isGM) throw new Error("Only GMs can update pin folders");
+        const scene = this._getScene(options.sceneId);
+        const folders = this._getSceneFolders(scene);
+        const idx = folders.findIndex(f => f.id === folderId);
+        if (idx === -1) throw new Error(`Folder not found: ${folderId}`);
+
+        // Cycle guard on re-parenting
+        if (patch.parentId !== undefined) {
+            const newParent = patch.parentId ?? null;
+            if (newParent && this._isSelfOrDescendant(folders, newParent, folderId)) {
+                ui.notifications?.warn("Cannot move a folder into itself or its own subfolder.");
+                return null;
+            }
+        }
+
+        const updated = { ...folders[idx] };
+        for (const key of ["name", "parentId", "sort", "collapsed", "color", "icon"]) {
+            if (patch[key] !== undefined) updated[key] = patch[key];
+        }
+        const next = [...folders];
+        next[idx] = updated;
+        await scene.setFlag(MODULE_ID, FOLDER_FLAG_KEY, next);
+        return foundry.utils.deepClone(updated);
+    }
+
+    static async setFolderCollapsed(folderId, collapsed, options = {}) {
+        return this.updateFolder(folderId, { collapsed: !!collapsed }, options);
+    }
+
+    /** Delete a folder: its child folders + pins reparent to the folder's parent / null. */
+    static async deleteFolder(folderId, options = {}) {
+        if (!game.user?.isGM) throw new Error("Only GMs can delete pin folders");
+        const scene = this._getScene(options.sceneId);
+        const folders = this._getSceneFolders(scene);
+        const target = folders.find(f => f.id === folderId);
+        if (!target) throw new Error(`Folder not found: ${folderId}`);
+        const newParent = target.parentId ?? null;
+
+        const nextFolders = folders
+            .filter(f => f.id !== folderId)
+            .map(f => (f.parentId === folderId ? { ...f, parentId: newParent } : f));
+        await scene.setFlag(MODULE_ID, FOLDER_FLAG_KEY, nextFolders);
+
+        // Reparent pins that were in this folder -> Ungrouped (null)
+        const pins = this._getScenePins(scene);
+        let changed = false;
+        const nextPins = pins.map(p => {
+            if ((p.folderId ?? null) === folderId) { changed = true; return { ...p, folderId: null }; }
+            return p;
+        });
+        if (changed) await scene.setFlag(MODULE_ID, FLAG_KEY, nextPins);
+    }
+
+    static async reorderFolders(parentId, orderedIds, options = {}) {
+        if (!game.user?.isGM) throw new Error("Only GMs can reorder pin folders");
+        const scene = this._getScene(options.sceneId);
+        const folders = this._getSceneFolders(scene);
+        const pid = parentId ?? null;
+        const orderMap = new Map(orderedIds.map((id, i) => [id, i]));
+        const next = folders.map(f =>
+            (f.parentId ?? null) === pid && orderMap.has(f.id) ? { ...f, sort: orderMap.get(f.id) } : f
+        );
+        await scene.setFlag(MODULE_ID, FOLDER_FLAG_KEY, next);
+    }
+
+    /**
+     * Move a pin into a folder (folderId=null for Ungrouped), optionally before
+     * another pin in that folder. Re-sequences `sort` for the target group.
+     */
+    static async movePin(pinId, folderId = null, beforePinId = null, options = {}) {
+        if (!game.user?.isGM) throw new Error("Only GMs can move pins");
+        const scene = this._getScene(options.sceneId);
+        const pins = this._getScenePins(scene);
+        const moving = pins.find(p => p.id === pinId);
+        if (!moving) throw new Error(`Pin not found: ${pinId}`);
+        folderId = folderId ?? null;
+
+        const group = pins
+            .filter(p => p.id !== pinId && (p.folderId ?? null) === folderId)
+            .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+        let insertIdx = beforePinId ? group.findIndex(p => p.id === beforePinId) : group.length;
+        if (insertIdx < 0) insertIdx = group.length;
+        group.splice(insertIdx, 0, moving);
+
+        const sortMap = new Map(group.map((p, i) => [p.id, i]));
+        const next = pins.map(p => {
+            if (p.id === pinId) return { ...p, folderId, sort: sortMap.get(p.id) };
+            if (sortMap.has(p.id)) return { ...p, sort: sortMap.get(p.id) };
+            return p;
+        });
+        await scene.setFlag(MODULE_ID, FLAG_KEY, next);
     }
 
     static _styleClipboard = null;

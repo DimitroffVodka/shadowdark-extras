@@ -508,14 +508,47 @@
                     <input type="text" class="pin-search-input" placeholder="Search pins..." value="{{pinSearchTerm}}">
                 </div>
 
+                <!-- Folder toolbar -->
+                <div class="pin-folder-toolbar">
+                    <button type="button" class="pin-folder-newbtn" data-action="folder-new"
+                        title="Create a new pin folder"><i class="fa-solid fa-folder-plus"></i> New Folder</button>
+                </div>
+
                 <!-- Pin List Content -->
                 <div class="pin-list-scroll-container"
                     style="flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.2) rgba(0, 0, 0, 0.1);">
                     {{#if pins.length}}
                     <ul class="sdx-pin-list">
                         {{#each pins}}
-                        <li class="pin-entry flexrow" data-id="{{this.id}}" data-x="{{this.x}}" data-y="{{this.y}}"
-                            style="align-items: stretch; padding: 0;">
+                        {{#if (eq this.rowType "folder")}}
+                        <li class="pin-folder-header{{#if this.hidden}} sdx-row-hidden{{/if}}{{#if this.collapsed}} collapsed{{/if}}"
+                            data-folder-id="{{this.id}}" data-parent-id="{{this.parentId}}"
+                            data-ancestors="{{this.ancestors}}" data-depth="{{this.depth}}" draggable="true"
+                            style="margin-left: {{this.indent}}px;">
+                            <span class="pin-folder-caret" data-action="folder-toggle"><i
+                                    class="fa-solid {{#if this.collapsed}}fa-caret-right{{else}}fa-caret-down{{/if}}"></i></span>
+                            <span class="pin-folder-icon"{{#if this.color}} style="color: {{this.color}};"{{/if}}>{{#if
+                                this.icon}}{{#if this.iconIsImage}}{{#if this.color}}<span class="pin-folder-img-tinted"
+                                        style="display:inline-block;width:16px;height:16px;vertical-align:middle;background-color:{{this.color}};-webkit-mask:url('{{this.icon}}') center / contain no-repeat;mask:url('{{this.icon}}') center / contain no-repeat;"></span>{{else}}<img
+                                        class="pin-folder-img" src="{{this.icon}}" alt=""
+                                        style="width:16px;height:16px;object-fit:contain;vertical-align:middle;" />{{/if}}{{else}}<i
+                                    class="{{this.icon}}"></i>{{/if}}{{else}}<i class="fa-solid fa-folder"></i>{{/if}}</span>
+                            <span class="pin-folder-name">{{this.name}}</span>
+                            <span class="pin-folder-count">{{this.count}}</span>
+                            <span class="pin-folder-controls">
+                                <a class="pin-folder-control" data-action="folder-add-child" title="New Subfolder"><i
+                                        class="fa-solid fa-folder-plus"></i></a>
+                                <a class="pin-folder-control" data-action="folder-edit" title="Edit Folder"><i
+                                        class="fa-solid fa-pen"></i></a>
+                                <a class="pin-folder-control danger" data-action="folder-delete" title="Delete Folder"><i
+                                        class="fa-solid fa-trash"></i></a>
+                            </span>
+                        </li>
+                        {{else}}
+                        <li class="pin-entry flexrow{{#if this.hidden}} sdx-row-hidden{{/if}}" data-id="{{this.id}}"
+                            data-folder-id="{{this.parentId}}" data-ancestors="{{this.ancestors}}"
+                            data-x="{{this.x}}" data-y="{{this.y}}" draggable="true"
+                            style="align-items: stretch; padding: 0; margin-left: {{this.indent}}px;">
                             <div
                                 style="flex: 0 0 50px; width: 50px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #85733f;">
                                 <div class="pin-icon"
@@ -553,6 +586,10 @@
                                             class="fa-solid fa-clone"></i></a>
                                     <a class="pin-control" data-action="edit-pin" title="Edit Pin"><i
                                             class="fa-solid fa-pen"></i></a>
+                                    {{#if this.parentId}}
+                                    <a class="pin-control" data-action="ungroup-pin" title="Remove from Folder"><i
+                                            class="fa-solid fa-folder-minus"></i></a>
+                                    {{/if}}
                                     <a class="pin-control danger" data-action="delete-pin" title="Delete Pin"><i
                                             class="fa-solid fa-trash" style="color: #ff3333;"></i></a>
                                 </div>
@@ -572,6 +609,7 @@
                                 </a>
                             </div>
                         </li>
+                        {{/if}}
                         {{/each}}
                     </ul>
                     {{/if}}
