@@ -8,27 +8,13 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
-- **Pin folders.** The tray Pins tab can now organize pins into optional,
-  nestable folders with drag-and-drop. Create folders, drag pins in to assign
-  them, drag to reorder, and nest folders inside folders. Each folder has an
-  optional color and icon (a FontAwesome class, or an image via the file picker
-  which defaults to `assets/icons/`); the color also tints image icons. A
-  per-pin "Remove from Folder" control (and drag-to-empty) sends a pin back to
-  Ungrouped, and search reveals matches inside collapsed folders. GM only.
-- **Scene or world folders.** Each folder can be scoped to the current scene or
-  shared across the whole world — a globe badge marks world folders. World
-  folder definitions appear on every scene; pins always stay with their own
-  scene, grouped under the shared folder.
-- **Convert Map Notes to Pins.** A "Notes→Pins" toolbar button converts every
-  map note on the scene into pins, and each map note in the tray has its own
-  "Convert to Pin" control. Converted pins keep the note's position,
-  journal/page link, text label, and icon (path, tint, size); a dialog lets you
-  choose a target folder and optionally delete the original notes.
+- **Pin folders.** The tray Pins tab can now organize pins into optional, nestable folders with drag-and-drop. Create folders, drag pins in to assign them, drag to reorder, and nest folders inside folders. Each folder has an optional color and icon (a FontAwesome class, or an image via the file picker which defaults to `assets/icons/`); the color also tints image icons. A per-pin "Remove from Folder" control (and drag-to-empty) sends a pin back to Ungrouped, and search reveals matches inside collapsed folders. GM only.
+- **Scene or world folders.** Each folder can be scoped to the current scene or shared across the whole world — a globe badge marks world folders. World folder definitions appear on every scene; pins always stay with their own scene, grouped under the shared folder.
+- **Convert Map Notes to Pins.** A "Notes→Pins" toolbar button converts every map note on the scene into pins, and each map note in the tray has its own "Convert to Pin" control. Converted pins keep the note's position, journal/page link, text label, and icon (path, tint, size); a dialog lets you choose a target folder and optionally delete the original notes.
 
 ### Fixed
 
-- **Class ability description editor** now fills the sheet window instead of a
-  fixed 150px box.
+- **Class ability description editor** now fills the sheet window instead of a fixed 150px box.
 
 ## [6.10.42] — 2026-06-27 — Notes on v14 + marching-order fixes + pin naming
 
