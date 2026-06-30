@@ -4,6 +4,14 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.45] — 2026-06-30 — Show NPC multi-attack count on the sheet
+
+Verified live against Foundry 14.364 / Shadowdark 4.0.6.
+
+### Fixed
+
+- **NPC attack count is visible again.** An NPC's attack line dropped its leading multiplier (e.g. "Claw Attack +8" instead of "3 Claw Attack +8"), so you couldn't tell a creature had multi-attack without opening its description. The module's NPC-attack display override ran the count through `enrichHTML`, which returns an empty string for non-string input — and Shadowdark 4.x now stores `attack.num` as a number. The value is now coerced to a string before enriching, so the count renders while free-form values like "1d4" attacks still work.
+
 ## [6.10.44] — 2026-06-30 — Fix sheet-decoration & dark-mode asset 404s
 
 Verified live against Foundry 14.364 / Shadowdark 4.0.6.

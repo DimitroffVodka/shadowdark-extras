@@ -21012,9 +21012,13 @@ Hooks.once('ready', () => {
 				CONFIG.SHADOWDARK.RANGES[s])).join("/"),
 		};
 
+		// Coerce to a string first: enrichHTML returns "" for non-string input,
+		// and Shadowdark 4.x stores attack.num as a NumberField (e.g. 3). Without
+		// this, the attack count silently vanishes from the display. Enriching the
+		// string still preserves free-form values like "1d4" attacks.
 		attackOptions.numAttacks =
 			await foundry.applications.ux.TextEditor.implementation.enrichHTML(
-				item.system.attack.num,
+				String(item.system.attack.num ?? ""),
 				{
 					async: true,
 				}
