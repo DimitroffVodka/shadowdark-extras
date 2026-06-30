@@ -2937,14 +2937,20 @@ function applySheetDecorationStyles() {
 		tabGradientEnd = "#2f2b2b";
 	}
 
-	// Build paths - use relative paths so they resolve under a Foundry route prefix
-	const borderPath = `modules/${MODULE_ID}/art/PNG/Default/Border/${sheetBorder}`;
-	const abilityPanelPath = `modules/${MODULE_ID}/art/PNG/Default/Panel/${abilityPanel}`;
-	const acPanelPath = `modules/${MODULE_ID}/art/PNG/Default/Transparent center/${acPanel}`;
-	const statPanelPath = `modules/${MODULE_ID}/art/PNG/Default/Transparent center/${statPanel}`;
-	const boxBorderPath = `modules/${MODULE_ID}/art/PNG/Default/Border/${boxBorder}`;
-	const journalBorderPath = `modules/${MODULE_ID}/art/PNG/Default/Border/${journalBorder}`;
-	const conditionModalBorderPath = `modules/${MODULE_ID}/art/PNG/Default/Border/${conditionModalBorder}`;
+	// Build paths via getRoute so they resolve under a Foundry route prefix AND
+	// stay correct when consumed through a CSS variable. A url() carried in a
+	// custom property is resolved by the browser relative to the stylesheet that
+	// *references* the variable (styles/shadowdark-extras.css), so a bare relative
+	// path like "modules/..." would double to "styles/modules/...". getRoute()
+	// returns a root-absolute, prefix-aware path that resolves the same everywhere.
+	const artBase = `modules/${MODULE_ID}/art/PNG/Default`;
+	const borderPath = foundry.utils.getRoute(`${artBase}/Border/${sheetBorder}`);
+	const abilityPanelPath = foundry.utils.getRoute(`${artBase}/Panel/${abilityPanel}`);
+	const acPanelPath = foundry.utils.getRoute(`${artBase}/Transparent center/${acPanel}`);
+	const statPanelPath = foundry.utils.getRoute(`${artBase}/Transparent center/${statPanel}`);
+	const boxBorderPath = foundry.utils.getRoute(`${artBase}/Border/${boxBorder}`);
+	const journalBorderPath = foundry.utils.getRoute(`${artBase}/Border/${journalBorder}`);
+	const conditionModalBorderPath = foundry.utils.getRoute(`${artBase}/Border/${conditionModalBorder}`);
 
 	// Create style element with CSS custom properties
 	const style = document.createElement('style');

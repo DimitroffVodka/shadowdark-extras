@@ -316,7 +316,9 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
         const html = this.element;
         if (!html) return;
 
-        const basePath = `modules/${MODULE_ID}/art/PNG/Default`;
+        // getRoute -> root-absolute path: these feed CSS url() via custom props that
+        // are consumed in an external stylesheet, so a bare relative path would double.
+        const basePath = foundry.utils.getRoute(`modules/${MODULE_ID}/art/PNG/Default`);
 
         // Update preview CSS variables on the preview element
         const preview = html.querySelector('.sheet-editor-preview');
@@ -380,7 +382,9 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
      * Apply styles live to actual sheets without saving to settings
      */
     _applyLiveStyles() {
-        const basePath = `modules/${MODULE_ID}/art/PNG/Default`;
+        // getRoute -> root-absolute path so the injected <style> url() resolves
+        // correctly when consumed via var() in the external stylesheet.
+        const basePath = foundry.utils.getRoute(`modules/${MODULE_ID}/art/PNG/Default`);
 
         // Build paths
         const borderPath = `${basePath}/Border/${this._previewState.sheetBorderStyle}`;

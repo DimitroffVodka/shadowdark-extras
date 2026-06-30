@@ -4,6 +4,16 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.44] — 2026-06-30 — Fix sheet-decoration & dark-mode asset 404s
+
+Verified live against Foundry 14.364 / Shadowdark 4.0.6.
+
+### Fixed
+
+- **Sheet decoration art no longer 404s.** Border, panel, and stat art paths were built as bare relative URLs and injected into CSS custom properties; because those variables are consumed from `styles/shadowdark-extras.css`, the browser resolved them against the stylesheet folder and produced a doubled `styles/modules/...` path that 404'd. Paths are now built with `foundry.utils.getRoute()`, which yields a root-absolute, route-prefix-aware URL that resolves correctly everywhere. Same fix applied to the Sheet Editor live-preview and preview-pane art.
+- **Dark-mode whisper icon no longer depends on an uninstalled module.** The whisper indicator referenced `eye-slash-solid.svg` from the external `lights-out-theme-shadowdark` module, 404ing in worlds without it; it now uses an inline SVG data URI with no external dependency.
+- **Parchment backgrounds no longer 404.** The carousing tab referenced `ui/parchment.jpg` without a leading slash (resolving under `styles/`), and a tab handle referenced a `systems/shadowdark` asset that no longer ships; both now point at the core `/ui/parchment.jpg`.
+
 ## [6.10.43] — 2026-06-28 — Pin folders + map-note converter
 
 ### Added

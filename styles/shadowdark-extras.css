@@ -11268,7 +11268,7 @@ body.sdx-dark-mode .shadowdark-extras .sdx-setting-header select {
 .tab-carousing {
     height: 100%;
     background: #0a0a0a;
-    background-image: url("ui/parchment.jpg");
+    background-image: url("/ui/parchment.jpg");
     background-blend-mode: overlay;
     background-size: cover;
     position: relative;
@@ -17958,7 +17958,7 @@ body:not(.game-master) .sdx-carousing-chat .sdx-player-only {
     /* Position below tabs (usually ~130px+, adjusted for visual alignment) */
     width: 40px;
     height: 40px;
-    background-image: url(../../../systems/shadowdark/assets/ui/parchment_texture.webp);
+    background-image: url(/ui/parchment.jpg);
     background-color: #d4a574;
     /* Fallback parchment color */
     border: 1px solid #000;
