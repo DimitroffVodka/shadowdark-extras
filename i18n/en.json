@@ -252,6 +252,7 @@
   "SHADOWDARK_EXTRAS.notifications.transfer_no_target": "Target character not found",
   "SHADOWDARK_EXTRAS.notifications.transfer_no_owner": "No owner found for target character",
   "SHADOWDARK_EXTRAS.notifications.transfer_failed": "Transfer failed - please try again",
+  "SHADOWDARK_EXTRAS.notifications.transfer_no_gm": "An active GM is required to transfer to a character you don't own",
   "SHADOWDARK_EXTRAS.notifications.no_players_available": "No other player characters available for transfer",
   "SHADOWDARK_EXTRAS.notifications.no_active_players": "No active players to transfer to",
   "SHADOWDARK_EXTRAS.notifications.no_character_assigned": "Selected player has no assigned character",

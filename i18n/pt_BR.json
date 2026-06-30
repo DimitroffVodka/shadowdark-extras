@@ -195,6 +195,7 @@
   "SHADOWDARK_EXTRAS.notifications.transfer_no_target": "Personagem alvo não encontrado",
   "SHADOWDARK_EXTRAS.notifications.transfer_no_owner": "Nenhum proprietário encontrado para o personagem alvo",
   "SHADOWDARK_EXTRAS.notifications.transfer_failed": "Transferência falhou - por favor, tente novamente",
+  "SHADOWDARK_EXTRAS.notifications.transfer_no_gm": "Um GM ativo é necessário para transferir a um personagem que você não possui",
   "SHADOWDARK_EXTRAS.notifications.no_players_available": "Nenhum outro personagem de jogador disponível para transferência",
   "SHADOWDARK_EXTRAS.notifications.no_active_players": "Nenhum jogador ativo para transferir",
   "SHADOWDARK_EXTRAS.notifications.no_character_assigned": "O jogador selecionado não tem personagem atribuído",

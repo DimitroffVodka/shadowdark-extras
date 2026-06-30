@@ -1146,6 +1146,45 @@ export function setupCombatSocket() {
 		}
 	});
 
+	// Cross-owner item transfer ("Transfer to Player"). Runs on the GM so a
+	// player can hand an item to a PC they don't own. Replaces the Item Piles
+	// dependency — see nativeTransferItems in TradeWindowSD.mjs.
+	socketlibSocket.register("transferItemsAsGM", async ({ sourceActorId, targetActorId, items }) => {
+		const sourceActor = game.actors.get(sourceActorId);
+		const targetActor = game.actors.get(targetActorId);
+		if (!sourceActor || !targetActor) {
+			console.warn(`${MODULE_ID} | transferItemsAsGM: actor(s) not found`, { sourceActorId, targetActorId });
+			return false;
+		}
+		try {
+			const { nativeTransferItems } = await import("./TradeWindowSD.mjs");
+			await nativeTransferItems(sourceActor, targetActor, items);
+			return true;
+		} catch (err) {
+			console.error(`${MODULE_ID} | transferItemsAsGM failed:`, err);
+			return false;
+		}
+	});
+
+	// Cross-owner coin transfer ("Transfer to Player"). Runs on the GM.
+	// Replaces the Item Piles dependency — see nativeTransferCoins in TradeWindowSD.mjs.
+	socketlibSocket.register("transferCoinsAsGM", async ({ sourceActorId, targetActorId, coins }) => {
+		const sourceActor = game.actors.get(sourceActorId);
+		const targetActor = game.actors.get(targetActorId);
+		if (!sourceActor || !targetActor) {
+			console.warn(`${MODULE_ID} | transferCoinsAsGM: actor(s) not found`, { sourceActorId, targetActorId });
+			return false;
+		}
+		try {
+			const { nativeTransferCoins } = await import("./TradeWindowSD.mjs");
+			await nativeTransferCoins(sourceActor, targetActor, coins);
+			return true;
+		} catch (err) {
+			console.error(`${MODULE_ID} | transferCoinsAsGM failed:`, err);
+			return false;
+		}
+	});
+
 }
 
 /**

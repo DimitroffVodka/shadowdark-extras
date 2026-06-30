@@ -598,46 +598,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 	 * what users expect.
 	 */
 	async _nativeTransferItems(fromActor, toActor, transferList) {
-		for (const entry of transferList) {
-			const srcItem = fromActor.items.get(entry._id);
-			if (!srcItem) {
-				console.warn(`${MODULE_ID} | _nativeTransferItems: source item ${entry._id} not found on ${fromActor.name}`);
-				continue;
-			}
-			const transferQty = Math.max(1, Number(entry.quantity ?? 1));
-			const srcQty = Number(srcItem.system?.quantity ?? 1);
-			if (transferQty > srcQty) {
-				console.warn(`${MODULE_ID} | _nativeTransferItems: requested ${transferQty} of ${srcItem.name} but source has ${srcQty}; clamping`);
-			}
-			const actualTransfer = Math.min(transferQty, srcQty);
-
-			// Try to merge into an existing stack on the target.
-			const sourceUuid = srcItem._stats?.compendiumSource ?? srcItem.flags?.core?.sourceId ?? null;
-			const existingStack = toActor.items.find(it =>
-				it.type === srcItem.type
-				&& it.name === srcItem.name
-				&& (it._stats?.compendiumSource ?? it.flags?.core?.sourceId ?? null) === sourceUuid
-			);
-
-			if (existingStack) {
-				const newQty = Number(existingStack.system?.quantity ?? 1) + actualTransfer;
-				await existingStack.update({ "system.quantity": newQty });
-			} else {
-				const data = srcItem.toObject();
-				data.system = data.system ?? {};
-				data.system.quantity = actualTransfer;
-				delete data._id;
-				await toActor.createEmbeddedDocuments("Item", [data]);
-			}
-
-			// Reduce source — delete if we transferred everything, else decrement.
-			const remaining = srcQty - actualTransfer;
-			if (remaining <= 0) {
-				await srcItem.delete();
-			} else {
-				await srcItem.update({ "system.quantity": remaining });
-			}
-		}
+		return nativeTransferItems(fromActor, toActor, transferList);
 	}
 
 	/**
@@ -646,27 +607,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 	 * per actor to keep history clean.
 	 */
 	async _nativeTransferCoins(fromActor, toActor, coins) {
-		const types = ["gp", "sp", "cp"];
-		const fromCoins = fromActor.system?.coins ?? {};
-		const toCoins = toActor.system?.coins ?? {};
-
-		const fromUpdate = {};
-		const toUpdate = {};
-		for (const t of types) {
-			const amt = Math.max(0, Number(coins[t] ?? 0));
-			if (amt === 0) continue;
-			const fromCurrent = Number(fromCoins[t] ?? 0);
-			if (amt > fromCurrent) {
-				console.warn(`${MODULE_ID} | _nativeTransferCoins: ${fromActor.name} has ${fromCurrent} ${t} but transfer asks for ${amt}; clamping`);
-			}
-			const actualAmt = Math.min(amt, fromCurrent);
-			if (actualAmt <= 0) continue;
-			fromUpdate[`system.coins.${t}`] = fromCurrent - actualAmt;
-			toUpdate[`system.coins.${t}`] = Number(toCoins[t] ?? 0) + actualAmt;
-		}
-
-		if (Object.keys(fromUpdate).length) await fromActor.update(fromUpdate);
-		if (Object.keys(toUpdate).length) await toActor.update(toUpdate);
+		return nativeTransferCoins(fromActor, toActor, coins);
 	}
 
 	/**
@@ -715,6 +656,111 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 
 		return super.close(options);
 	}
+}
+
+// ============================================
+// NATIVE TRANSFER HELPERS (no Item Piles dependency)
+// ============================================
+
+/**
+ * Native item-transfer used by the trade window AND by the "Transfer to
+ * Player" context-menu feature. Replaces Item Piles' `transferItems`.
+ *
+ * For each item to transfer:
+ *  - Read the source item (`{_id, quantity}`).
+ *  - If the target already has a matching item (same type + name +
+ *    compendium source), merge by bumping the existing quantity.
+ *  - Otherwise create a fresh copy on the target.
+ *  - Reduce source quantity by the transferred amount; delete the source
+ *    item if quantity reaches 0.
+ *
+ * Both actors must be writable by the executing user. For cross-owner
+ * transfers (giving to a PC you don't own) this runs on the GM via the
+ * `transferItemsAsGM` socket handler; the GM owns every actor.
+ *
+ * @param {Actor} fromActor
+ * @param {Actor} toActor
+ * @param {Array<{_id: string, quantity?: number}>} transferList
+ */
+export async function nativeTransferItems(fromActor, toActor, transferList) {
+	// Sanctioned-transfer marker so SheetLockManager lets these writes through
+	// even when the source/target sheet is locked (mirrors the old Item Piles
+	// "runs as GM" bypass).
+	const opts = { sdxBypassLock: true };
+	for (const entry of transferList) {
+		const srcItem = fromActor.items.get(entry._id);
+		if (!srcItem) {
+			console.warn(`${MODULE_ID} | nativeTransferItems: source item ${entry._id} not found on ${fromActor.name}`);
+			continue;
+		}
+		const transferQty = Math.max(1, Number(entry.quantity ?? 1));
+		const srcQty = Number(srcItem.system?.quantity ?? 1);
+		if (transferQty > srcQty) {
+			console.warn(`${MODULE_ID} | nativeTransferItems: requested ${transferQty} of ${srcItem.name} but source has ${srcQty}; clamping`);
+		}
+		const actualTransfer = Math.min(transferQty, srcQty);
+
+		// Try to merge into an existing stack on the target.
+		const sourceUuid = srcItem._stats?.compendiumSource ?? srcItem.flags?.core?.sourceId ?? null;
+		const existingStack = toActor.items.find(it =>
+			it.type === srcItem.type
+			&& it.name === srcItem.name
+			&& (it._stats?.compendiumSource ?? it.flags?.core?.sourceId ?? null) === sourceUuid
+		);
+
+		if (existingStack) {
+			const newQty = Number(existingStack.system?.quantity ?? 1) + actualTransfer;
+			await existingStack.update({ "system.quantity": newQty }, opts);
+		} else {
+			const data = srcItem.toObject();
+			data.system = data.system ?? {};
+			data.system.quantity = actualTransfer;
+			delete data._id;
+			await toActor.createEmbeddedDocuments("Item", [data], opts);
+		}
+
+		// Reduce source — delete if we transferred everything, else decrement.
+		const remaining = srcQty - actualTransfer;
+		if (remaining <= 0) {
+			await srcItem.delete(opts);
+		} else {
+			await srcItem.update({ "system.quantity": remaining }, opts);
+		}
+	}
+}
+
+/**
+ * Native coin-transfer used by the trade window AND by the "Transfer to
+ * Player" feature. Replaces Item Piles' `transferAttributes`. Reads source
+ * coins, subtracts the transfer amounts, reads target coins, adds them.
+ * Single `update()` per actor to keep history clean.
+ *
+ * @param {Actor} fromActor
+ * @param {Actor} toActor
+ * @param {{gp?: number, sp?: number, cp?: number}} coins
+ */
+export async function nativeTransferCoins(fromActor, toActor, coins) {
+	const types = ["gp", "sp", "cp"];
+	const fromCoins = fromActor.system?.coins ?? {};
+	const toCoins = toActor.system?.coins ?? {};
+
+	const fromUpdate = {};
+	const toUpdate = {};
+	for (const t of types) {
+		const amt = Math.max(0, Number(coins[t] ?? 0));
+		if (amt === 0) continue;
+		const fromCurrent = Number(fromCoins[t] ?? 0);
+		if (amt > fromCurrent) {
+			console.warn(`${MODULE_ID} | nativeTransferCoins: ${fromActor.name} has ${fromCurrent} ${t} but transfer asks for ${amt}; clamping`);
+		}
+		const actualAmt = Math.min(amt, fromCurrent);
+		if (actualAmt <= 0) continue;
+		fromUpdate[`system.coins.${t}`] = fromCurrent - actualAmt;
+		toUpdate[`system.coins.${t}`] = Number(toCoins[t] ?? 0) + actualAmt;
+	}
+
+	if (Object.keys(fromUpdate).length) await fromActor.update(fromUpdate);
+	if (Object.keys(toUpdate).length) await toActor.update(toUpdate);
 }
 
 // ============================================

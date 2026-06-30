@@ -325,6 +325,9 @@ export default class SheetLockManager {
 
     static _onPreCreateItem(item, data, options, userId) {
         if (game.users.get(userId).isGM) return;
+        // Sanctioned transfers (trade window, Transfer to Player) bypass the
+        // lock, matching the prior Item-Piles-runs-as-GM behavior.
+        if (options?.sdxBypassLock) return;
         if (!item.actor || !this.isLocked(item.actor)) return;
 
         const config = this.getConfig();
@@ -346,6 +349,8 @@ export default class SheetLockManager {
 
     static _onPreDeleteItem(item, options, userId) {
         if (game.users.get(userId).isGM) return;
+        // Sanctioned transfers (trade window, Transfer to Player) bypass the lock.
+        if (options?.sdxBypassLock) return;
         if (!item.actor || !this.isLocked(item.actor)) return;
 
         const config = this.getConfig();
@@ -363,6 +368,8 @@ export default class SheetLockManager {
 
     static _onPreUpdateItem(item, changes, options, userId) {
         if (game.users.get(userId).isGM) return;
+        // Sanctioned transfers (trade window, Transfer to Player) bypass the lock.
+        if (options?.sdxBypassLock) return;
         if (!item.actor || !this.isLocked(item.actor)) return;
 
         const config = this.getConfig();

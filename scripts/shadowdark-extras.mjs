@@ -7,8 +7,8 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  */
 
 import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor } from "./PartySheetSD.mjs";
-import TradeWindowSD, { initializeTradeSocket, showTradeDialog, ensureTradeJournal } from "./TradeWindowSD.mjs";
-import { CombatSettingsApp, registerCombatSettings, injectDamageCard, setupCombatSocket, setupScrollingCombatText, setupSummonExpiryHook, trackSummonedTokensForExpiry, spawnSummonedCreatures } from "./CombatSettingsSD.mjs";
+import TradeWindowSD, { initializeTradeSocket, showTradeDialog, ensureTradeJournal, nativeTransferItems, nativeTransferCoins } from "./TradeWindowSD.mjs";
+import { CombatSettingsApp, registerCombatSettings, injectDamageCard, setupCombatSocket, setupScrollingCombatText, setupSummonExpiryHook, trackSummonedTokensForExpiry, spawnSummonedCreatures, getSocket } from "./CombatSettingsSD.mjs";
 import { EffectsSettingsApp, registerEffectsSettings } from "./EffectsSettingsSD.mjs";
 import { patchArmorActiveEffects } from "./ArmorAEPatchSD.mjs";
 import { HpWavesSettingsApp, registerHpWavesSettings, getHpWaveColor, isHpWavesEnabled } from "./HpWavesSettingsSD.mjs";
@@ -8510,21 +8510,15 @@ function patchNpcSheetForItemDrops(app) {
 }
 
 // ============================================
-// PLAYER-TO-PLAYER TRANSFERS (context menu + Item Piles API)
+// PLAYER-TO-PLAYER TRANSFERS (context menu + native GM-relay transfer)
 // ============================================
 
 /**
- * Transfer an item to another player's character using Item Piles API
+ * Transfer an item to another player's character. Moves the item natively
+ * when the user owns the target, otherwise relays through a GM. No Item Piles.
  */
 async function transferItemToPlayer(sourceActor, item, targetActorId) {
 	if (!sourceActor || !item) return;
-
-	// Check if Item Piles is available
-	if (!game.modules.get("item-piles")?.active || !game.itempiles?.API) {
-		ui.notifications.error("Item Piles module is required for player-to-player transfers.");
-		console.error(`${MODULE_ID} | Item Piles API not available`);
-		return;
-	}
 
 	const targetActor = game.actors.get(targetActorId);
 	if (!targetActor) {
@@ -8539,28 +8533,47 @@ async function transferItemToPlayer(sourceActor, item, targetActorId) {
 		? getUnidentifiedName(item)
 		: item.name;
 
+	const payload = [{ _id: item.id, quantity: item.system?.quantity || 1 }];
+
 	try {
-		//console.log(`${MODULE_ID} | Transferring ${item.name} from ${sourceActor.name} to ${targetActor.name}`);
-
-		// Use Item Piles API to transfer the item
-		const result = await game.itempiles.API.transferItems(
-			sourceActor,
-			targetActor,
-			[{ _id: item.id, quantity: item.system.quantity || 1 }],
-			{ interactionId: false }
-		);
-
-		if (result && result.length > 0) {
-			ui.notifications.info(
-				game.i18n.format("SHADOWDARK_EXTRAS.notifications.item_transferred", {
-					item: itemName,
-					target: targetActor.name
-				})
-			);
+		// If we own the target we can move the item directly; otherwise relay
+		// the whole transfer through a GM (who owns every actor). No Item Piles.
+		if (game.user.isGM || targetActor.isOwner) {
+			await nativeTransferItems(sourceActor, targetActor, payload);
 		} else {
-			console.warn(`${MODULE_ID} | Transfer returned no results`);
-			ui.notifications.warn("Transfer may not have completed successfully.");
+			const socket = getSocket();
+			if (!socket) {
+				ui.notifications.error(
+					game.i18n.localize("SHADOWDARK_EXTRAS.notifications.transfer_failed")
+				);
+				console.error(`${MODULE_ID} | transferItemToPlayer: socket unavailable`);
+				return;
+			}
+			if (!game.users.some(u => u.isGM && u.active)) {
+				ui.notifications.error(
+					game.i18n.localize("SHADOWDARK_EXTRAS.notifications.transfer_no_gm")
+				);
+				return;
+			}
+			const ok = await socket.executeAsGM("transferItemsAsGM", {
+				sourceActorId: sourceActor.id,
+				targetActorId: targetActor.id,
+				items: payload
+			});
+			if (!ok) {
+				ui.notifications.error(
+					game.i18n.localize("SHADOWDARK_EXTRAS.notifications.transfer_failed")
+				);
+				return;
+			}
 		}
+
+		ui.notifications.info(
+			game.i18n.format("SHADOWDARK_EXTRAS.notifications.item_transferred", {
+				item: itemName,
+				target: targetActor.name
+			})
+		);
 	} catch (error) {
 		console.error(`${MODULE_ID} | Error during transfer:`, error);
 		ui.notifications.error(
@@ -8570,17 +8583,11 @@ async function transferItemToPlayer(sourceActor, item, targetActorId) {
 }
 
 /**
- * Transfer coins to another player's character using Item Piles API
+ * Transfer coins to another player's character. Party storage uses module
+ * flags; player targets move natively (or via GM relay). No Item Piles.
  */
 async function transferCoinsToPlayer(sourceActor, coins, targetActorId) {
 	if (!sourceActor || !coins) return;
-
-	// Check if Item Piles is available
-	if (!game.modules.get("item-piles")?.active || !game.itempiles?.API) {
-		ui.notifications.error("Item Piles module is required for player-to-player transfers.");
-		console.error(`${MODULE_ID} | Item Piles API not available`);
-		return;
-	}
 
 	const targetActor = game.actors.get(targetActorId);
 	if (!targetActor) {
@@ -8626,23 +8633,42 @@ async function transferCoinsToPlayer(sourceActor, coins, targetActorId) {
 			await targetActor.setFlag(MODULE_ID, "coins.sp", partySp);
 			await targetActor.setFlag(MODULE_ID, "coins.cp", partyCp);
 		} else {
-			// Regular player-to-player transfer via Item Piles API
-			const attributes = {};
-			if (coins.gp > 0) attributes["system.coins.gp"] = coins.gp;
-			if (coins.sp > 0) attributes["system.coins.sp"] = coins.sp;
-			if (coins.cp > 0) attributes["system.coins.cp"] = coins.cp;
+			// Regular player-to-player coin transfer. Move directly if we own
+			// the target, otherwise relay through a GM. No Item Piles.
+			const coinPayload = {
+				gp: coins.gp || 0,
+				sp: coins.sp || 0,
+				cp: coins.cp || 0
+			};
 
-			const result = await game.itempiles.API.transferAttributes(
-				sourceActor,
-				targetActor,
-				attributes,
-				{ interactionId: false }
-			);
-
-			if (!result) {
-				console.warn(`${MODULE_ID} | Coin transfer returned no results`);
-				ui.notifications.warn("Transfer may not have completed successfully.");
-				return;
+			if (game.user.isGM || targetActor.isOwner) {
+				await nativeTransferCoins(sourceActor, targetActor, coinPayload);
+			} else {
+				const socket = getSocket();
+				if (!socket) {
+					ui.notifications.error(
+						game.i18n.localize("SHADOWDARK_EXTRAS.notifications.transfer_failed")
+					);
+					console.error(`${MODULE_ID} | transferCoinsToPlayer: socket unavailable`);
+					return;
+				}
+				if (!game.users.some(u => u.isGM && u.active)) {
+					ui.notifications.error(
+						game.i18n.localize("SHADOWDARK_EXTRAS.notifications.transfer_no_gm")
+					);
+					return;
+				}
+				const ok = await socket.executeAsGM("transferCoinsAsGM", {
+					sourceActorId: sourceActor.id,
+					targetActorId: targetActor.id,
+					coins: coinPayload
+				});
+				if (!ok) {
+					ui.notifications.error(
+						game.i18n.localize("SHADOWDARK_EXTRAS.notifications.transfer_failed")
+					);
+					return;
+				}
 			}
 		}
 
