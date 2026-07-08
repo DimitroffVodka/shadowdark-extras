@@ -18356,6 +18356,43 @@ Hooks.on("renderChatMessageHTML", (message, html, context) => {
 });
 
 /**
+ * Once-per-message dedupe, keyed by message id.
+ *
+ * `renderChatMessageHTML` fires many times for the same message (measured 6x
+ * per weapon attack), and Foundry may re-instantiate the ChatMessage document
+ * — which drops any expando flag set on it and lets the handler run again.
+ * Callers pass their own Set so each concern claims a message independently.
+ *
+ * @param {Set<string>} seen - caller-owned set of claimed message ids
+ * @param {string} messageId
+ * @returns {boolean} true if this call claimed the message (first time)
+ */
+function sdxClaimMessageOnce(seen, messageId) {
+	if (!messageId) return false;
+	if (seen.has(messageId)) return false;
+	seen.add(messageId);
+	if (seen.size > 500) {
+		// Bound growth; older messages are no longer rendering.
+		const keep = [...seen].slice(-250);
+		seen.clear();
+		for (const id of keep) seen.add(id);
+	}
+	return true;
+}
+
+const _sdxSpellMacroProcessedMessages = new Set();
+const _sdxItemMacroProcessedMessages = new Set();
+
+/**
+ * Chat history re-renders on every page load, and the dedupe Sets above only live for the
+ * lifetime of that page. Without an age gate, every historical cast/attack card in the
+ * rendered backlog re-fires its Item Macro on reload — re-applying spell effects, damage,
+ * etc. Only act on messages created after this client loaded.
+ */
+const SDX_MACRO_EPOCH = Date.now();
+const sdxIsHistoricalMessage = (message) => (message?.timestamp ?? 0) < SDX_MACRO_EPOCH;
+
+/**
  * Hook into spell cast messages to trigger Item Macros
  */
 Hooks.on("renderChatMessageHTML", async (message, html, context) => {
@@ -18421,43 +18458,6 @@ Hooks.on("renderChatMessageHTML", async (message, html, context) => {
 
 	// Success-based triggers
 	if (macroConfig.triggers.includes("onCritical") && isCritical) {
-/**
- * Once-per-message dedupe, keyed by message id.
- *
- * `renderChatMessageHTML` fires many times for the same message (measured 6x
- * per weapon attack), and Foundry may re-instantiate the ChatMessage document
- * — which drops any expando flag set on it and lets the handler run again.
- * Callers pass their own Set so each concern claims a message independently.
- *
- * @param {Set<string>} seen - caller-owned set of claimed message ids
- * @param {string} messageId
- * @returns {boolean} true if this call claimed the message (first time)
- */
-function sdxClaimMessageOnce(seen, messageId) {
-	if (!messageId) return false;
-	if (seen.has(messageId)) return false;
-	seen.add(messageId);
-	if (seen.size > 500) {
-		// Bound growth; older messages are no longer rendering.
-		const keep = [...seen].slice(-250);
-		seen.clear();
-		for (const id of keep) seen.add(id);
-	}
-	return true;
-}
-
-const _sdxSpellMacroProcessedMessages = new Set();
-const _sdxItemMacroProcessedMessages = new Set();
-
-/**
- * Chat history re-renders on every page load, and the dedupe Sets above only live for the
- * lifetime of that page. Without an age gate, every historical cast/attack card in the
- * rendered backlog re-fires its Item Macro on reload — re-applying spell effects, damage,
- * etc. Only act on messages created after this client loaded.
- */
-const SDX_MACRO_EPOCH = Date.now();
-const sdxIsHistoricalMessage = (message) => (message?.timestamp ?? 0) < SDX_MACRO_EPOCH;
-
 		triggersToFire.push("onCritical");
 	} else if (macroConfig.triggers.includes("onSuccess") && isSuccess) {
 		triggersToFire.push("onSuccess");
@@ -18486,6 +18486,12 @@ const sdxIsHistoricalMessage = (message) => (message?.timestamp ?? 0) < SDX_MACR
 /** Message ids already animated, so repeated re-renders never replay the FX. */
 const _sdxFxProcessedMessages = new Set();
 Hooks.on("renderChatMessageHTML", async (message, html, context) => {
+	// Chat history re-renders on every page load, and _sdxFxProcessedMessages only
+	// lives for the lifetime of that page. Without this age gate every historical
+	// attack/cast card in the backlog replays its animation AND its sound on reload.
+	// Checked before the dedupe claim so the backlog never fills the Set.
+	if (sdxIsHistoricalMessage(message)) return;
+
 	// Dedupe by message id, not an expando (see sdxClaimMessageOnce).
 	if (!sdxClaimMessageOnce(_sdxFxProcessedMessages, message?.id)) return;
 
