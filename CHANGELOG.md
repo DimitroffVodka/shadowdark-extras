@@ -4,6 +4,13 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Fixed
+
+- **Animation FX cleanup no longer throws (and no longer strands other effects).** When a Sequencer effect failed to finish initializing — its `_tickerMethods` array was never assigned, which happens silently if the canvas is torn down mid-play — ending it later threw `can't access property "forEach", this._tickerMethods is undefined`. Because Sequencer removes each effect from its manager before destroying it, that throw aborted the rest of a batch, so one half-initialized effect could strand every other effect in a wildcard sweep (e.g. "Clear FX"). All animation-FX cleanup now routes through a guard that seeds the missing array before ending, so destruction always completes.
+- **Item Macros no longer re-fire for chat history.** Foundry re-renders the chat backlog on every page load, and both macro hooks (spell casts and weapon attacks) deduplicated using an expando set on the `ChatMessage` document. That expando does not survive a reload — and is also dropped whenever Foundry re-instantiates the document — so every historical cast or attack card in the backlog re-ran its Item Macro, re-applying spell effects and damage. The same gap let a macro re-fire mid-session, since `renderChatMessageHTML` fires several times per message. Deduplication is now keyed by message id in a bounded Set that survives re-instantiation, and a load-time epoch skips any message created before the client loaded. Affects shipped spells that use Item Macros (Turn Undead, Holy Weapon) and weapon-attack macros.
+
 ## [6.10.45] — 2026-06-30 — Show NPC multi-attack count on the sheet
 
 Verified live against Foundry 14.364 / Shadowdark 4.0.6.

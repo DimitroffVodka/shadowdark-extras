@@ -21,6 +21,7 @@
 
 import { DEFAULT_WEAPON_PRESETS } from "./data/weapon-animation-presets.mjs";
 import { DEFAULT_SPELL_PRESETS } from "./data/spell-animation-presets.mjs";
+import { DEFAULT_WEAPON_SPRITE_PRESETS } from "./data/weapon-sprite-presets.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -60,7 +61,15 @@ export const DEFAULT_ANIMATION_FX_CONFIG = {
 			}
 		}
 	},
-	npcActions: {}
+	npcActions: {},
+
+	/**
+	 * Equipped-weapon sprites. NOT attack effects — these are persistent images
+	 * pinned to the token by WeaponAnimationSD while the weapon is equipped.
+	 * Rows use a different schema (imagePath/offsetX/offsetY/rotation/
+	 * animationType) than the transient FX categories above.
+	 */
+	weaponSprites: {}
 };
 
 export const AnimationFxSD = {
@@ -88,7 +97,7 @@ export const AnimationFxSD = {
 		});
 
 		// Per-category enable toggles (world)
-		for (const cat of ["spells", "weapons", "npcActions"]) {
+		for (const cat of ["spells", "weapons", "npcActions", "weaponSprites"]) {
 			game.settings.register(MODULE_ID, `animationFxCategory_${cat}`, {
 				scope: "world", config: false, type: Boolean, default: true
 			});
@@ -155,6 +164,36 @@ export const AnimationFxSD = {
 	/** Seed the bundled JB2A spell presets (Sequencer DB keys). */
 	async seedSpellPresets(opts = {}) {
 		return this.seedPresets("spells", DEFAULT_SPELL_PRESETS, opts);
+	},
+
+	/** Seed the bundled equipped-weapon sprite presets (SDX `assets/Weapons` art). */
+	async seedWeaponSpritePresets(opts = {}) {
+		return this.seedPresets("weaponSprites", DEFAULT_WEAPON_SPRITE_PRESETS, opts);
+	},
+
+	// ── Equipped-weapon sprite resolution (tier 2 for WeaponAnimationSD) ──────
+
+	/**
+	 * Resolve the persistent sprite config for an equipped weapon from the master
+	 * list. Tier 1 (the per-item `weaponAnimation` flag, set via the Weapon
+	 * Animation dialog) is handled by the caller and always wins.
+	 *
+	 * @param {Item} item
+	 * @returns {object|null} a config `playWeaponAnimation()` can consume
+	 */
+	resolveWeaponSprite(item) {
+		if (!item || item.type !== "Weapon") return null;
+		if (!this._isCategoryEnabled("weaponSprites")) return null;
+
+		const map = this.getConfig().weaponSprites;
+		if (!map) return null;
+
+		const name = item.name ?? "";
+		const best = this._pickBestPattern(name, map) ?? map._default;
+		if (!best?.imagePath) return null;
+
+		// Never auto-enable if the preset itself is switched off.
+		return best.enabled === false ? null : { ...best, enabled: true };
 	},
 
 	_isCategoryEnabled(category) {
@@ -389,7 +428,7 @@ export const AnimationFxSD = {
 			try {
 				const existing = Sequencer.EffectManager.getEffects({ name: effectName });
 				if (existing.length > 0) {
-					await Sequencer.EffectManager.endEffects({ name: effectName });
+					await this._endEffectsSafe({ name: effectName });
 					return;
 				}
 			} catch (e) { /* ignore */ }
@@ -492,12 +531,7 @@ export const AnimationFxSD = {
 				await seq.play();
 				// Safety net: guarantee cleanup even for looped / endless webms.
 				const cleanupAfter = hardDuration + fadeOut + 200;
-				setTimeout(() => {
-					try {
-						const existing = Sequencer.EffectManager?.getEffects?.({ name: safetyName }) ?? [];
-						if (existing.length > 0) Sequencer.EffectManager.endEffects({ name: safetyName });
-					} catch (e) { /* silent */ }
-				}, cleanupAfter);
+				setTimeout(() => this._endEffectsSafe({ name: safetyName }), cleanupAfter);
 			} catch (e) {
 				console.warn(`${MODULE_ID} | AnimationFx play failed:`, e);
 			}
@@ -506,13 +540,38 @@ export const AnimationFxSD = {
 		}
 	},
 
+	/**
+	 * End Sequencer effects matching `filter`, tolerating effects that never
+	 * finished initializing.
+	 *
+	 * Sequencer registers an effect in its EffectManager before
+	 * CanvasEffect#_initializeVariables() completes. If that call throws (its
+	 * last statement reads `canvas.app.ticker`, which explodes while the canvas
+	 * is torn down), the effect is left in the manager with `_tickerMethods`
+	 * undefined — and the async Promise executor in CanvasEffect#play swallows
+	 * the error, so nothing is logged. Later, _destroyDependencies() does an
+	 * unguarded `this._tickerMethods.forEach(...)` and throws
+	 * "can't access property forEach". Because _endManyEffects removes each
+	 * effect before destroying it, that throw aborts the rest of a batch, so one
+	 * half-dead effect can strand every sibling in a wildcard sweep.
+	 *
+	 * Seeding the missing array lets destroy() run to completion.
+	 */
+	async _endEffectsSafe(filter) {
+		try {
+			const existing = Sequencer.EffectManager?.getEffects?.(filter) ?? [];
+			if (existing.length === 0) return;
+			for (const effect of existing) {
+				if (!Array.isArray(effect?._tickerMethods)) effect._tickerMethods = [];
+			}
+			await Sequencer.EffectManager.endEffects(filter);
+		} catch (e) { /* silent */ }
+	},
+
 	// ── Persistent helpers (for weapon glows etc.) ───────────────────────────
 
 	async clearAllFx() {
-		try {
-			const all = Sequencer.EffectManager.getEffects({ name: `${MODULE_ID}-fx-*` }) ?? [];
-			if (all.length > 0) await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-fx-*` });
-		} catch (e) { /* silent */ }
+		await this._endEffectsSafe({ name: `${MODULE_ID}-fx-*` });
 	}
 };
 
