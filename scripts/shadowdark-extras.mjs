@@ -37,6 +37,7 @@ import { initWeaponAnimations } from "./WeaponAnimationSD.mjs";
 import { initLevelUpAnimations } from "./LevelUpAnimationSD.mjs";
 import { openWeaponAnimationConfig } from "./WeaponAnimationConfig.mjs";
 import { initFocusSpellTracker, endFocusSpell, linkEffectToFocusSpell, getActiveFocusSpells, isFocusingOnSpell, startDurationSpell, endDurationSpell, registerSpellModification, getActiveDurationSpells } from "./FocusSpellTrackerSD.mjs";
+import { initBreakOnDamage, breakEffectOnDamage, clearBreakOnDamage } from "./BreakOnDamageSD.mjs";
 import { initCarousing, injectCarousingButton, ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, getCustomCarousingTables, getCarousingTableById, setCarousingTable } from "./CarousingSD.mjs";
 import { openCarousingOverlay, refreshCarousingOverlay } from "./CarousingOverlaySD.mjs";
 import { openCarousingTablesEditor } from "./CarousingTablesApp.mjs";
@@ -9496,6 +9497,10 @@ Hooks.once("ready", async () => {
 		//console.log(`${MODULE_ID} | Focus Spell Tracker initialized`);
 	}
 
+	// Break-on-damage effect expiry (marker-driven; hooks are inert until an
+	// effect carries flags.shadowdark-extras.breakOnDamage). Safe to run always.
+	initBreakOnDamage();
+
 	// Setup wand uses blocking (prevent casting depleted wands)
 	if (game.settings.get(MODULE_ID, "enableWandUses")) {
 		setupWandUsesBlocker();
@@ -10369,6 +10374,7 @@ async function enhanceSpellSheet(app, html) {
 	// Combine all flags for template
 	const flags = {
 		...spellDamageFlags,
+		macroCommand: item.getFlag(MODULE_ID, "macroCommand") ?? item.flags?.itemacro?.macro?.command,
 		summoning: summoningFlags,
 		itemGive: itemGiveFlags,
 		itemMacro: itemMacroFlags,
@@ -11543,6 +11549,7 @@ async function enhancePotionSheet(app, html) {
 	// Combine all flags for template
 	const flags = {
 		...spellDamageFlags,
+		macroCommand: item.getFlag(MODULE_ID, "macroCommand") ?? item.flags?.itemacro?.macro?.command,
 		summoning: summoningFlags,
 		itemGive: itemGiveFlags,
 		itemMacro: itemMacroFlags,
@@ -12402,6 +12409,7 @@ async function enhanceScrollSheet(app, html) {
 	// Combine all flags for template
 	const flags = {
 		...spellDamageFlags,
+		macroCommand: item.getFlag(MODULE_ID, "macroCommand") ?? item.flags?.itemacro?.macro?.command,
 		summoning: summoningFlags,
 		itemGive: itemGiveFlags,
 		itemMacro: itemMacroFlags,
@@ -14064,6 +14072,7 @@ async function enhanceWandSheet(app, html) {
 	// Combine all flags for template
 	const flags = {
 		...spellDamageFlags,
+		macroCommand: item.getFlag(MODULE_ID, "macroCommand") ?? item.flags?.itemacro?.macro?.command,
 		summoning: summoningFlags,
 		itemGive: itemGiveFlags,
 		itemMacro: itemMacroFlags,
@@ -19922,6 +19931,11 @@ Hooks.on("setup", () => {
 			getCreatureType: getEffectiveCreatureType,
 			// Bestiary-mapped type for a raw name (ignores per-actor overrides).
 			getMappedCreatureType: getMappedType,
+
+			// --- Break-on-damage (mark an applied effect to expire on the bearer's next HP loss) ---
+			// NOT gmOnly: a player's own effects must be able to break too.
+			breakEffectOnDamage: audited("breakEffectOnDamage", breakEffectOnDamage),
+			clearBreakOnDamage: audited("clearBreakOnDamage", clearBreakOnDamage),
 
 			// --- Spells / Focus tracker ---
 			startDurationSpell: audited("startDurationSpell", gmOnly("startDurationSpell", startDurationSpell)),

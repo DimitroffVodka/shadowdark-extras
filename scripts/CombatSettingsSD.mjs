@@ -769,6 +769,46 @@ export function setupCombatSocket() {
 		return true;
 	});
 
+	// Stamp/clear the break-on-damage marker so non-owners (e.g. a player targeting
+	// an NPC) can register an effect for auto-removal on the bearer's next HP loss.
+	// Flag key ("breakOnDamage") is shared with BreakOnDamageSD.mjs. reason === null clears.
+	socketlibSocket.register("markBreakOnDamage", async ({ targetActorId, targetTokenId, effectItemId, reason }) => {
+		let targetActor = null;
+
+		// Try to get the actor from the token first (for unlinked tokens)
+		if (targetTokenId) {
+			const token = canvas.tokens?.get(targetTokenId);
+			if (token?.actor) {
+				targetActor = token.actor;
+			}
+		}
+
+		// Fall back to game.actors
+		if (!targetActor) {
+			targetActor = game.actors.get(targetActorId);
+		}
+
+		if (!targetActor) {
+			console.warn("shadowdark-extras | markBreakOnDamage: target actor not found");
+			return false;
+		}
+
+		// Check for Item first, then ActiveEffect (e.g. Auras)
+		let effectDoc = targetActor.items.get(effectItemId) ?? targetActor.effects.get(effectItemId);
+
+		if (!effectDoc) {
+			console.warn("shadowdark-extras | markBreakOnDamage: effect item/document not found");
+			return false;
+		}
+
+		if (reason === null) {
+			await effectDoc.unsetFlag(MODULE_ID, "breakOnDamage");
+		} else {
+			await effectDoc.setFlag(MODULE_ID, "breakOnDamage", { reason });
+		}
+		return true;
+	});
+
 	socketlibSocket.register("applyEffectToTarget", async ({ targetActorId, targetTokenId, effectUuid, casterId, spellId, templateId }) => {
 		let targetActor = null;
 
