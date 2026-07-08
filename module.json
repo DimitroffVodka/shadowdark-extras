@@ -63,7 +63,7 @@
         "id": "autoanimations",
         "type": "module",
         "compatibility": {},
-        "reason": "Required for attack/spell animations on roll. SDX's AutoAnimationsSD only filters AA's animations (suppress on failed rolls); it does not generate them."
+        "reason": "Optional. SDX now has its own Sequencer-based Animation FX engine (Configure Animations), so AA is not needed. If AA is installed, SDX filters it to successful rolls and suppresses it for any item its own FX engine already animates (SDX takes precedence)."
       }
     ]
   },

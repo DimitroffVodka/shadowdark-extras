@@ -17,10 +17,29 @@
  * Only successful rolls trigger animations.
  */
 
+import { AnimationFxSD } from "./AnimationFxSD.mjs";
+
 const MODULE_ID = "shadowdark-extras";
 
 // Store item cards (non-rolls) to block animations on them
 let recentItemCards = new Map();
+
+/**
+ * Resolve the live Foundry Item that AA is about to animate, so we can ask the
+ * SDX FX engine whether it owns this item. AA usually hands us the real Item
+ * doc in `clonedData.item`; if not, fall back to the item on the originating
+ * chat message's actor, matched by name.
+ * @returns {Item|null}
+ */
+function resolveAnimatingItem(clonedData) {
+	const it = clonedData?.item;
+	if (it && typeof it.getFlag === "function" && it.type) return it;
+	const msg = clonedData?.workflow;
+	const actorId = msg?.speaker?.actor;
+	const actor = actorId ? game.actors.get(actorId) : null;
+	if (actor && it?.name) return actor.items.getName(it.name) ?? null;
+	return null;
+}
 
 /**
  * Debug logging helper
@@ -238,7 +257,24 @@ function setupAAIntegration() {
 			debug("No item name found, allowing animation");
 			return;
 		}
-		
+
+		// SDX-primary: if the SDX-native FX engine will animate this item, suppress
+		// AA so the two don't double up. AA still handles items SDX doesn't match,
+		// so this degrades cleanly as the SDX master list grows.
+		try {
+			if (game.settings.get(MODULE_ID, "animationFxEnabled")) {
+				const sdxItem = resolveAnimatingItem(clonedData);
+				if (sdxItem && AnimationFxSD.resolvePreset(sdxItem)) {
+					debug("SDX FX owns this item — suppressing AA:", animatingItemName);
+					clonedData.stopWorkflow = true;
+					return;
+				}
+			}
+		} catch (e) {
+			// Fall through to normal AA gating if anything goes sideways.
+			debug("SDX-primary check failed, deferring to AA gating:", e?.message);
+		}
+
 		// FIRST: Check if this is an item card (pre-roll) - ALWAYS block these
 		const itemCard = recentItemCards.get(animatingItemName);
 		if (itemCard && (Date.now() - itemCard.timestamp < 3000)) {
