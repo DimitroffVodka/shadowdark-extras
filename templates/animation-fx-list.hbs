@@ -122,6 +122,7 @@
 						<th>Type</th>
 						<th>Anchor</th>
 						<th>File</th>
+						<th>Sound</th>
 						<th>Scale</th>
 						<th>Dur</th>
 						<th></th>
@@ -153,6 +154,7 @@
 							</select>
 						</td>
 						<td><input type="text" name="preset.{{cat.key}}.{{p.key}}.file" value="{{p.file}}" placeholder="jb2a.magic_missile" /></td>
+						<td><input type="text" name="preset.{{cat.key}}.{{p.key}}.sound" value="{{p.sound}}" placeholder="(none)" data-tooltip="Sound file path, e.g. modules/psfx/…ogg — blank = silent" /></td>
 						<td><input type="number" step="0.1" min="0" name="preset.{{cat.key}}.{{p.key}}.scale" value="{{p.scale}}" /></td>
 						<td><input type="number" step="50" min="0" name="preset.{{cat.key}}.{{p.key}}.duration" value="{{p.duration}}" /></td>
 						<td style="white-space:nowrap">
@@ -173,6 +175,13 @@
 	</div>
 
 	<footer class="sdx-animfx-footer">
+		<label class="sdx-toggle-label" data-tooltip="Play preset sounds (per-client)">
+			<input type="checkbox" name="sound.enabled" {{#if sound.enabled}}checked{{/if}} />
+			<i class="fas fa-volume-high"></i> Sound
+		</label>
+		<label data-tooltip="Sound volume (per-client)" style="display:flex;align-items:center;gap:4px;">
+			<input type="range" name="sound.volume" min="0" max="1" step="0.05" value="{{sound.volume}}" style="width:80px;" />
+		</label>
 		<button type="button" class="sdx-animfx-open-db"><i class="fas fa-database"></i> Sequencer Database</button>
 		<button type="button" class="sdx-animfx-seed-weapons" data-tooltip="Add the bundled JB2A weapon + spell presets (existing entries are kept)">
 			<i class="fas fa-wand-sparkles"></i> Seed Default Presets

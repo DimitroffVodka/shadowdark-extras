@@ -61,6 +61,9 @@ function mergePresetFromForm(base, key, vals, isSprite = false) {
 		hit: {
 			...(base.hit || {}),
 			file: (vals.file ?? base.hit?.file ?? "").trim(),
+			// Empty sound field clears it; otherwise trim. Falls back to the
+			// existing value only when the field wasn't in the form at all.
+			sound: vals.sound !== undefined ? (vals.sound.trim() || undefined) : base.hit?.sound,
 			scale: Number(vals.scale) || base.hit?.scale || 1,
 			duration: parseInt(vals.duration, 10) || base.hit?.duration || 1500
 		}
@@ -198,6 +201,7 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 					targetTarget: (p.target || "target") === "target",
 					targetSelf: p.target === "self",
 					file: hit.file ?? "",
+					sound: hit.sound ?? "",
 					scale: hit.scale ?? 1,
 					duration: hit.duration ?? 1500
 				};
@@ -206,7 +210,10 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 			presets.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
 			return { key: cat.key, label: cat.label, icon: cat.icon, sprite: !!cat.sprite, enabled, presets };
 		});
-		return { categories };
+		let soundEnabled = true, volume = 0.8;
+		try { soundEnabled = game.settings.get(MODULE_ID, "animationFxSoundEnabled"); } catch (e) { /* default */ }
+		try { volume = game.settings.get(MODULE_ID, "animationFxVolume"); } catch (e) { /* default */ }
+		return { categories, sound: { enabled: soundEnabled, volume } };
 	}
 
 	/** Read current DOM inputs into the working config (without saving). */
@@ -398,6 +405,13 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 			// Category enable toggle
 			const enabled = !!expanded.enabled?.[cat.key];
 			await game.settings.set(MODULE_ID, `animationFxCategory_${cat.key}`, enabled);
+		}
+
+		// Global (per-client) sound controls from the footer
+		if (expanded.sound) {
+			await game.settings.set(MODULE_ID, "animationFxSoundEnabled", !!expanded.sound.enabled);
+			const vol = Number(expanded.sound.volume);
+			if (!Number.isNaN(vol)) await game.settings.set(MODULE_ID, "animationFxVolume", Math.min(1, Math.max(0, vol)));
 		}
 
 		await AnimationFxSD.setConfig(working);
