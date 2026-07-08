@@ -4,6 +4,8 @@
  * Uses Sequencer module for animations and JB2A for animation files
  */
 
+import { AnimationFxSD } from "./AnimationFxSD.mjs";
+
 const MODULE_ID = "shadowdark-extras";
 
 /**
@@ -112,6 +114,16 @@ function getAnimationConfig(item) {
 		config.flameOffsetX = 0.50;
 		config.flameOffsetY = -0.07;
 	}
+
+	// Flame file is user-overridable via the Animation FX manager (Ambient &
+	// Events). Geometry/scale above stays per-type; only the animation swaps.
+	// Falls back to the hardcoded default when no override is set.
+	try {
+		const ambient = AnimationFxSD.getAmbient?.() ?? {};
+		if (config.type === "spell") config.flameFile = ambient.lightSpellGlow?.file || config.flameFile;
+		else if (config.type === "candle") config.flameFile = ambient.candleFlame?.file || config.flameFile;
+		else config.flameFile = ambient.torchFlame?.file || config.flameFile; // torch / lantern / oil
+	} catch (e) { /* keep hardcoded default */ }
 
 	return config;
 }

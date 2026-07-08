@@ -4,6 +4,8 @@
  * Uses Sequencer module for animations
  */
 
+import { AnimationFxSD } from "./AnimationFxSD.mjs";
+
 const MODULE_ID = "shadowdark-extras";
 
 /**
@@ -91,10 +93,15 @@ export async function playLevelUpAnimation(token) {
     // Build the animation sequence
     const seq = new Sequence();
 
+    // Animation file is configurable via the Animation FX manager (Ambient & Events);
+    // falls back to the Foundry built-in upgrade icon.
+    const ambient = AnimationFxSD.getAmbient?.() ?? {};
+    const levelUpFile = ambient.levelUp?.file || "icons/svg/upgrade.svg";
+
     // Create the level-up icon effect
     seq.effect()
         .name(effectName)
-        .file("icons/svg/upgrade.svg") // Foundry built-in upgrade icon
+        .file(levelUpFile)
         .atLocation(token)
         .attachTo(token, { bindRotation: false, local: true, bindVisibility: true })
         .scaleToObject(0.35, { considerTokenScale: true })

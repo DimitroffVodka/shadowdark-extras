@@ -172,6 +172,45 @@
 		</div>
 	</div>
 	{{/each}}
+
+	<div class="sdx-animfx-category SD-box" data-ambient-section>
+		<div class="header light">
+			<label class="sdx-section-label">
+				<i class="fas fa-fire-flame-curved"></i>
+				<span>Ambient &amp; Events</span>
+			</label>
+		</div>
+		<div class="content">
+			<p class="notes">
+				SDX-native effects that fire on world events (a light toggled on, a level gained) &mdash;
+				not on casts, so they aren't name-matched. Only the animation file is editable here;
+				changes save immediately.
+			</p>
+			<table class="sdx-animfx-table">
+				<thead>
+					<tr><th>Preview</th><th>Effect</th><th>Animation File</th><th>Scale</th></tr>
+				</thead>
+				<tbody>
+					{{#each ambient as |a|}}
+					<tr data-ambient="{{a.key}}">
+						<td>
+							{{#if a.isImage}}
+							<img class="sdx-animfx-thumb sdx-animfx-thumb-img" src="{{a.imgSrc}}" alt="{{a.label}}" />
+							{{else if a.videoSrc}}
+							<video class="sdx-animfx-thumb" src="{{a.videoSrc}}" muted loop preload="none" playsinline></video>
+							{{else}}
+							<div class="sdx-animfx-thumb-missing">no preview</div>
+							{{/if}}
+						</td>
+						<td>{{a.label}}</td>
+						<td><input type="text" class="sdx-animfx-ambient-input" name="ambient.{{a.key}}.file" value="{{a.file}}" placeholder="jb2a.flames.01.orange or modules/…" /></td>
+						<td>{{#if a.hasScale}}<input type="number" step="0.05" min="0" class="sdx-animfx-ambient-input" name="ambient.{{a.key}}.scale" value="{{a.scale}}" />{{/if}}</td>
+					</tr>
+					{{/each}}
+				</tbody>
+			</table>
+		</div>
+	</div>
 	</div>
 
 	<footer class="sdx-animfx-footer">

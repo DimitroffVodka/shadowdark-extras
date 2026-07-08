@@ -213,7 +213,20 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 		let soundEnabled = true, volume = 0.8;
 		try { soundEnabled = game.settings.get(MODULE_ID, "animationFxSoundEnabled"); } catch (e) { /* default */ }
 		try { volume = game.settings.get(MODULE_ID, "animationFxVolume"); } catch (e) { /* default */ }
-		return { categories, sound: { enabled: soundEnabled, volume } };
+
+		// Ambient & Events (Torch, Level-Up) — SDX-native effects, file-only editable.
+		const amb = AnimationFxSD.getAmbient();
+		const ambient = Object.entries(amb).map(([key, v]) => {
+			const isImage = /\.(svg|png|webp|jpe?g|gif)$/i.test(v.file || "");
+			return {
+				key, label: v.label ?? key, file: v.file ?? "",
+				hasScale: key === "levelUp", scale: v.scale ?? 1,
+				isImage, imgSrc: isImage ? foundry.utils.getRoute(v.file) : "",
+				videoSrc: isImage ? "" : AnimationFxListApp.resolveVideoSrc(v.file)
+			};
+		});
+
+		return { categories, sound: { enabled: soundEnabled, volume }, ambient };
 	}
 
 	/** Read current DOM inputs into the working config (without saving). */
@@ -340,6 +353,20 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 					console.warn(`${MODULE_ID} | preview failed:`, e);
 					ui.notifications.error("Preview failed — see console.");
 				}
+			});
+		});
+
+		// Ambient & Events rows save immediately on change (singletons, no Save needed).
+		root.querySelectorAll(".sdx-animfx-ambient-input").forEach(inp => {
+			inp.addEventListener("change", async () => {
+				const amb = AnimationFxSD.getAmbient();
+				root.querySelectorAll(".sdx-animfx-ambient-input").forEach(i => {
+					const [, key, field] = i.name.split(".");
+					if (!amb[key]) amb[key] = {};
+					amb[key][field] = field === "scale" ? (Number(i.value) || 1) : i.value.trim();
+				});
+				await AnimationFxSD.setAmbient(amb);
+				ui.notifications.info("Ambient effect saved.");
 			});
 		});
 

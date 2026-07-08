@@ -73,6 +73,19 @@ export const DEFAULT_ANIMATION_FX_CONFIG = {
 	weaponSprites: {}
 };
 
+/**
+ * Ambient / event effects — SDX-native systems (Torch, Level-Up) that fire on
+ * world events, not item casts, so they aren't name-matched. Only their
+ * animation file (and level-up scale) is user-editable; everything else stays
+ * in the owning system. Keys are read by TorchAnimationSD / LevelUpAnimationSD.
+ */
+export const DEFAULT_AMBIENT_FX = {
+	levelUp: { label: "Level Up", file: "icons/svg/upgrade.svg", scale: 1 },
+	torchFlame: { label: "Torch / Lantern / Oil Flame", file: "jb2a.flames.01.orange" },
+	candleFlame: { label: "Candle Flame", file: "jb2a.flames.04.loop.orange" },
+	lightSpellGlow: { label: "Light Spell Glow", file: "jb2a.energy_strands.complete.blue.01" }
+};
+
 export const AnimationFxSD = {
 
 	// ── Settings ─────────────────────────────────────────────────────────────
@@ -95,6 +108,14 @@ export const AnimationFxSD = {
 		game.settings.register(MODULE_ID, "animationFxConfig", {
 			scope: "world", config: false, type: Object,
 			default: foundry.utils.deepClone(DEFAULT_ANIMATION_FX_CONFIG)
+		});
+
+		// Ambient / event effects (Torch, Level-Up) — SDX-native systems whose
+		// animation *files* are surfaced here for one-place management. Geometry
+		// (offsets/scale per light type) stays in TorchAnimationSD.
+		game.settings.register(MODULE_ID, "animationFxAmbient", {
+			scope: "world", config: false, type: Object,
+			default: foundry.utils.deepClone(DEFAULT_AMBIENT_FX)
 		});
 
 		// Per-category enable toggles (world)
@@ -121,6 +142,17 @@ export const AnimationFxSD = {
 		return (stored && typeof stored === "object")
 			? stored
 			: foundry.utils.deepClone(DEFAULT_ANIMATION_FX_CONFIG);
+	},
+
+	/** Ambient/event effect config, merged over defaults so new keys always resolve. */
+	getAmbient() {
+		let stored = {};
+		try { stored = game.settings.get(MODULE_ID, "animationFxAmbient") || {}; } catch (e) { /* not registered yet */ }
+		return foundry.utils.mergeObject(foundry.utils.deepClone(DEFAULT_AMBIENT_FX), stored, { inplace: false });
+	},
+
+	async setAmbient(ambient) {
+		await game.settings.set(MODULE_ID, "animationFxAmbient", ambient);
 	},
 
 	async setConfig(config) {
