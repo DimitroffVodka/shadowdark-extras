@@ -6,6 +6,7 @@ import { generateSummoningConfigHTML } from './SummoningConfig.mjs';
 import { generateItemGiveConfigHTML } from './ItemGiveConfig.mjs';
 import { generateItemMacroConfigHTML } from './ItemMacroConfig.mjs';
 import { generateTemplateTargetingConfigHTML } from './TemplateTargetingConfig.mjs';
+import { generateAnimationFxConfigHTML } from './AnimationFxConfig.mjs';
 
 /**
  * Generate Spell damage config (with target variables)
@@ -28,7 +29,9 @@ export function generateSpellConfig(MODULE_ID, flags, effectsListHtml, effectsAr
 
 	const itemMacroConfig = generateItemMacroConfigHTML(MODULE_ID, flags, 'spell');
 
-	return targetingConfig + damageConfig + summoningConfig + itemGiveConfig + itemMacroConfig;
+	const animationFxConfig = generateAnimationFxConfigHTML(MODULE_ID, flags);
+
+	return targetingConfig + damageConfig + summoningConfig + itemGiveConfig + itemMacroConfig + animationFxConfig;
 }
 
 /**
@@ -77,7 +80,9 @@ export function generateScrollConfig(MODULE_ID, flags, effectsListHtml, effectsA
 
 	const itemMacroConfig = generateItemMacroConfigHTML(MODULE_ID, flags, 'spell');
 
-	return targetingConfig + damageConfig + summoningConfig + itemGiveConfig + itemMacroConfig;
+	const animationFxConfig = generateAnimationFxConfigHTML(MODULE_ID, flags);
+
+	return targetingConfig + damageConfig + summoningConfig + itemGiveConfig + itemMacroConfig + animationFxConfig;
 }
 
 /**
@@ -101,6 +106,8 @@ export function generateWandConfig(MODULE_ID, flags, effectsListHtml, effectsArr
 
 	const itemMacroConfig = generateItemMacroConfigHTML(MODULE_ID, flags, 'spell');
 
-	return targetingConfig + damageConfig + summoningConfig + itemGiveConfig + itemMacroConfig;
+	const animationFxConfig = generateAnimationFxConfigHTML(MODULE_ID, flags);
+
+	return targetingConfig + damageConfig + summoningConfig + itemGiveConfig + itemMacroConfig + animationFxConfig;
 }
 

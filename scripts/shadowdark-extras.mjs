@@ -32,6 +32,8 @@ import {
 } from "./WeaponBonusConfig.mjs";
 
 import { initAutoAnimationsIntegration } from "./AutoAnimationsSD.mjs";
+import { AnimationFxSD } from "./AnimationFxSD.mjs";
+import { registerAnimationFxMenu } from "./AnimationFxListApp.mjs";
 import { initTorchAnimations } from "./TorchAnimationSD.mjs";
 import { initWeaponAnimations } from "./WeaponAnimationSD.mjs";
 import { initLevelUpAnimations } from "./LevelUpAnimationSD.mjs";
@@ -9312,6 +9314,10 @@ Hooks.once("init", () => {
 	// Initialize Automated Animations integration
 	initAutoAnimationsIntegration();
 
+	// Register SDX-native Sequencer animation FX settings + master-list menu
+	AnimationFxSD.registerSettings();
+	registerAnimationFxMenu();
+
 	// Patch CharacterGeneratorSD to show rolls in chat
 	patchCharacterGeneratorRolls();
 
@@ -10375,6 +10381,7 @@ async function enhanceSpellSheet(app, html) {
 	const flags = {
 		...spellDamageFlags,
 		macroCommand: item.getFlag(MODULE_ID, "macroCommand") ?? item.flags?.itemacro?.macro?.command,
+		animationFx: item.flags?.[MODULE_ID]?.animationFx,
 		summoning: summoningFlags,
 		itemGive: itemGiveFlags,
 		itemMacro: itemMacroFlags,
@@ -11450,6 +11457,9 @@ async function enhanceSpellSheet(app, html) {
 		});
 	});
 
+	// ===== ANIMATION FX HANDLERS =====
+	activateAnimationFxListeners(html, item);
+
 	// Setup activity toggles as radio buttons (only one can be active at a time)
 	setupActivityRadioToggles(html, item);
 
@@ -11458,6 +11468,57 @@ async function enhanceSpellSheet(app, html) {
 	activateTemplateTokenMagicStackHandlers(html, item);
 
 	//console.log(`${MODULE_ID} | Spell sheet enhanced for`, item.name);
+}
+
+/**
+ * Wire the per-item Animation FX section (Activity tab) to persist into
+ * flags.shadowdark-extras.animationFx = { enabled, preset }.
+ */
+function activateAnimationFxListeners(html, item) {
+	const $box = html.find('.sdx-animation-fx-box');
+	if (!$box.length) return;
+
+	function saveAnimationFx() {
+		const enabled = $box.find('.sdx-animfx-enabled').prop('checked');
+		const preset = {
+			label: item.name,
+			type: $box.find('.sdx-animfx-type').val() || 'projectile',
+			target: $box.find('.sdx-animfx-target').val() || 'target',
+			opacity: parseFloat($box.find('.sdx-animfx-opacity').val()) || 1,
+			hit: {
+				file: ($box.find('.sdx-animfx-file').val() || '').trim(),
+				scale: parseFloat($box.find('.sdx-animfx-scale').val()) || 1,
+				duration: parseInt($box.find('.sdx-animfx-duration').val(), 10) || 1500
+			}
+		};
+		const updateData = {};
+		updateData[`flags.${MODULE_ID}.animationFx`] = { enabled, preset };
+		item.update(updateData, { render: false }).catch(err => {
+			console.error(`${MODULE_ID} | Failed to save animationFx:`, err);
+		});
+	}
+
+	$box.on('change', '.sdx-animfx-enabled, .sdx-animfx-type, .sdx-animfx-target, .sdx-animfx-file, .sdx-animfx-scale, .sdx-animfx-duration, .sdx-animfx-opacity', function (e) {
+		e.stopPropagation();
+		saveAnimationFx();
+	});
+
+	// Sequencer Database browser button
+	$box.on('click', '.sdx-animfx-pick-file', function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		try {
+			if (globalThis.Sequencer?.DatabaseViewer?.show) {
+				globalThis.Sequencer.DatabaseViewer.show();
+			} else if (globalThis.Sequencer?.Database?.show) {
+				globalThis.Sequencer.Database.show();
+			} else {
+				ui.notifications.warn('Sequencer Database viewer is not available.');
+			}
+		} catch (err) {
+			console.warn(`${MODULE_ID} | Could not open Sequencer Database:`, err);
+		}
+	});
 }
 
 /**
@@ -11550,6 +11611,7 @@ async function enhancePotionSheet(app, html) {
 	const flags = {
 		...spellDamageFlags,
 		macroCommand: item.getFlag(MODULE_ID, "macroCommand") ?? item.flags?.itemacro?.macro?.command,
+		animationFx: item.flags?.[MODULE_ID]?.animationFx,
 		summoning: summoningFlags,
 		itemGive: itemGiveFlags,
 		itemMacro: itemMacroFlags,
@@ -12410,6 +12472,7 @@ async function enhanceScrollSheet(app, html) {
 	const flags = {
 		...spellDamageFlags,
 		macroCommand: item.getFlag(MODULE_ID, "macroCommand") ?? item.flags?.itemacro?.macro?.command,
+		animationFx: item.flags?.[MODULE_ID]?.animationFx,
 		summoning: summoningFlags,
 		itemGive: itemGiveFlags,
 		itemMacro: itemMacroFlags,
@@ -14073,6 +14136,7 @@ async function enhanceWandSheet(app, html) {
 	const flags = {
 		...spellDamageFlags,
 		macroCommand: item.getFlag(MODULE_ID, "macroCommand") ?? item.flags?.itemacro?.macro?.command,
+		animationFx: item.flags?.[MODULE_ID]?.animationFx,
 		summoning: summoningFlags,
 		itemGive: itemGiveFlags,
 		itemMacro: itemMacroFlags,
@@ -18409,6 +18473,68 @@ const sdxIsHistoricalMessage = (message) => (message?.timestamp ?? 0) < SDX_MACR
 	// Execute all applicable triggers
 	for (const trigger of triggersToFire) {
 		await executeSpellItemMacro(item, actor, trigger, macroContext);
+	}
+});
+
+/**
+ * Hook into spell casts and weapon attacks to fire SDX-native Sequencer FX.
+ * Independent of the Item Macro path (runs even when no macro is configured)
+ * and of Automated Animations. Resolves the animation via AnimationFxSD's
+ * two-tier model (per-item override -> master pattern list).
+ */
+
+/** Message ids already animated, so repeated re-renders never replay the FX. */
+const _sdxFxProcessedMessages = new Set();
+Hooks.on("renderChatMessageHTML", async (message, html, context) => {
+	// Dedupe by message id, not an expando (see sdxClaimMessageOnce).
+	if (!sdxClaimMessageOnce(_sdxFxProcessedMessages, message?.id)) return;
+
+	// Only the message author drives playback (each client plays for itself).
+	if (message.author?.id !== game.user.id) return;
+
+	try {
+		if (!game.settings.get(MODULE_ID, "animationFxEnabled")) return;
+	} catch (e) { return; }
+
+	const ctx = resolveCardContext(message, html);
+	const actorId = ctx?.actorId || message.speaker?.actor;
+	if (!actorId) return;
+	const actor = game.actors.get(actorId);
+	if (!actor) return;
+
+	let item = ctx?.itemId ? actor.items.get(ctx.itemId) : null;
+	if (!item) return;
+
+	// Only item types the FX engine understands
+	if (!AnimationFxSD.categoryForItem(item)) return;
+
+	// A resolvable animation must exist before we bother computing outcome
+	if (!AnimationFxSD.resolvePreset(item)) return;
+
+	// Determine hit/miss. Scrolls/Wands/Potions auto-succeed (no roll).
+	const noRollNeeded = ["Potion", "Scroll", "Wand"].includes(item.type);
+	const rollOutcome = readSdRollOutcome(message);
+	const hasVisibleRoll = rollOutcome.mainRoll && !rollOutcome.isMasked;
+	let outcome = "hit";
+	if (!noRollNeeded && hasVisibleRoll && !rollOutcome.isSuccess) outcome = "miss";
+
+	// Only require a roll for types that actually roll to hit
+	const rollingType = ["Weapon", "Spell", "NPC Spell", "NPC Attack", "NPC Special Attack"].includes(item.type);
+	if (rollingType && !hasVisibleRoll) return;
+
+	// Targets: stored SDX target ids, else the user's current targets
+	const storedTargetIds = message.flags?.[MODULE_ID]?.targetIds || [];
+	let targets = canvas?.tokens
+		? storedTargetIds.map(id => canvas.tokens.get(id)).filter(Boolean)
+		: [];
+	if (targets.length === 0) targets = Array.from(game.user.targets ?? []);
+
+	const tokenId = message.speaker?.token ?? null;
+
+	try {
+		await AnimationFxSD.playForItem({ item, actor, targets, outcome, tokenId });
+	} catch (e) {
+		console.warn(`${MODULE_ID} | AnimationFx trigger failed:`, e);
 	}
 });
 

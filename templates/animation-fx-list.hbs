@@ -1,0 +1,129 @@
+{{!-- NOTE: do NOT wrap this in a <form>. DEFAULT_OPTIONS.tag is already "form",
+      so the application root is the form element. A nested <form> makes every
+      input belong to the inner form, and FormDataExtended(rootForm) then
+      collects nothing — silently discarding the whole preset list on save. --}}
+<div class="sdx-animfx-list-app">
+	{{!-- Scoped styles must live INSIDE the single root element: ApplicationV2
+	      requires each template part to render exactly one HTML element. --}}
+	<style>
+		/* Root fills the window; only the middle section scrolls, so the footer
+		   buttons stay reachable with 80+ preset rows. */
+		.sdx-animfx-list-app { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+		.sdx-animfx-list-app .sdx-animfx-scroll { flex: 1 1 auto; overflow-y: auto; min-height: 0; padding-right: 4px; }
+		.sdx-animfx-list-app .sdx-animfx-footer {
+			flex: 0 0 auto; position: sticky; bottom: 0;
+			padding-top: 6px; margin-top: 6px;
+			border-top: 1px solid rgba(0,0,0,0.25);
+			background: inherit;
+		}
+		.sdx-animfx-list-app .sdx-animfx-category { margin-bottom: 8px; }
+		.sdx-animfx-list-app .sdx-animfx-table { width: 100%; border-collapse: collapse; }
+		.sdx-animfx-list-app .sdx-animfx-table th { font-size: 11px; text-align: left; opacity: 0.75; }
+		.sdx-animfx-list-app .sdx-animfx-table td { vertical-align: middle; padding: 2px 3px; }
+		.sdx-animfx-list-app .sdx-animfx-thumb {
+			width: 96px; height: 54px; background: #000; border-radius: 3px;
+			object-fit: cover; display: block; cursor: pointer; border: 1px solid rgba(0,0,0,0.4);
+		}
+		.sdx-animfx-list-app .sdx-animfx-thumb-missing {
+			width: 96px; height: 54px; display: flex; align-items: center; justify-content: center;
+			background: rgba(0,0,0,0.15); border-radius: 3px; font-size: 10px; opacity: 0.6;
+		}
+		.sdx-animfx-list-app .sdx-animfx-table input[type="text"] { min-width: 90px; }
+		.sdx-animfx-list-app .sdx-animfx-table input[type="number"] { width: 62px; }
+		.sdx-animfx-list-app .sdx-animfx-preview { cursor: pointer; }
+		.sdx-animfx-list-app .sdx-animfx-footer { display: flex; gap: 6px; margin-top: 8px; }
+	</style>
+
+	<p class="notes">
+		Master animation list. Each preset matches items by name (regex, most-specific
+		match wins). A per-item override on an item's Activity tab takes precedence over
+		this list. Files are Sequencer Database paths (e.g. <code>jb2a.magic_missile</code>)
+		or <code>modules/&hellip;</code> file paths.
+		<br />
+		<strong>Hover</strong> a thumbnail to play it. <strong>&#9654;</strong> plays the preset on canvas
+		from your selected token (shift-click for the miss variant).
+	</p>
+
+	<div class="sdx-animfx-scroll">
+	{{#each categories as |cat|}}
+	<div class="sdx-animfx-category SD-box" data-category="{{cat.key}}">
+		<div class="header light">
+			<label class="sdx-section-label">
+				<i class="fas {{cat.icon}}"></i>
+				<span>{{cat.label}}</span>
+			</label>
+			<label class="sdx-toggle-label">
+				<input type="checkbox" name="enabled.{{cat.key}}" {{#if cat.enabled}}checked{{/if}} />
+				<span>Enabled</span>
+			</label>
+		</div>
+		<div class="content">
+			<table class="sdx-animfx-table">
+				<thead>
+					<tr>
+						<th>Preview</th>
+						<th>Label</th>
+						<th>Name Pattern (regex)</th>
+						<th>Type</th>
+						<th>Anchor</th>
+						<th>File</th>
+						<th>Scale</th>
+						<th>Dur</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody>
+					{{#each cat.presets as |p|}}
+					<tr data-key="{{p.key}}" data-category="{{cat.key}}">
+						<td>
+							{{#if p.videoSrc}}
+							<video class="sdx-animfx-thumb" src="{{p.videoSrc}}" muted loop preload="none" playsinline></video>
+							{{else}}
+							<div class="sdx-animfx-thumb-missing" data-tooltip="No previewable file">no preview</div>
+							{{/if}}
+						</td>
+						<td><input type="text" name="preset.{{cat.key}}.{{p.key}}.label" value="{{p.label}}" /></td>
+						<td><input type="text" name="preset.{{cat.key}}.{{p.key}}.patterns" value="{{p.patterns}}" placeholder="{{#if p.isDefault}}(fallback){{/if}}" {{#if p.isDefault}}disabled{{/if}} /></td>
+						<td>
+							<select name="preset.{{cat.key}}.{{p.key}}.type">
+								<option value="projectile" {{#if p.typeProjectile}}selected{{/if}}>Projectile</option>
+								<option value="onToken" {{#if p.typeOnToken}}selected{{/if}}>On Token</option>
+								<option value="cone" {{#if p.typeCone}}selected{{/if}}>Cone</option>
+							</select>
+						</td>
+						<td>
+							<select name="preset.{{cat.key}}.{{p.key}}.target">
+								<option value="target" {{#if p.targetTarget}}selected{{/if}}>Target</option>
+								<option value="self" {{#if p.targetSelf}}selected{{/if}}>Caster</option>
+							</select>
+						</td>
+						<td><input type="text" name="preset.{{cat.key}}.{{p.key}}.file" value="{{p.file}}" placeholder="jb2a.magic_missile" /></td>
+						<td><input type="number" step="0.1" min="0" name="preset.{{cat.key}}.{{p.key}}.scale" value="{{p.scale}}" /></td>
+						<td><input type="number" step="50" min="0" name="preset.{{cat.key}}.{{p.key}}.duration" value="{{p.duration}}" /></td>
+						<td style="white-space:nowrap">
+							<a class="sdx-animfx-preview" data-category="{{cat.key}}" data-key="{{p.key}}" data-tooltip="Play on canvas (shift = miss variant)"><i class="fas fa-play"></i></a>
+							{{#unless p.isDefault}}
+							<a class="sdx-animfx-delete" data-category="{{cat.key}}" data-key="{{p.key}}" data-tooltip="Delete"><i class="fas fa-trash"></i></a>
+							{{/unless}}
+						</td>
+					</tr>
+					{{/each}}
+				</tbody>
+			</table>
+			<a class="sdx-animfx-add" data-category="{{cat.key}}"><i class="fas fa-plus"></i> Add preset</a>
+		</div>
+	</div>
+	{{/each}}
+	</div>
+
+	<footer class="sdx-animfx-footer">
+		<button type="button" class="sdx-animfx-open-db"><i class="fas fa-database"></i> Sequencer Database</button>
+		<button type="button" class="sdx-animfx-seed-weapons" data-tooltip="Add the bundled JB2A weapon + spell presets (existing entries are kept)">
+			<i class="fas fa-wand-sparkles"></i> Seed Default Presets
+		</button>
+		<button type="button" class="sdx-animfx-clear-fx" data-tooltip="End any lingering SDX effects on the canvas">
+			<i class="fas fa-broom"></i> Clear FX
+		</button>
+		<button type="submit"><i class="fas fa-save"></i> Save</button>
+	</footer>
+</div>
