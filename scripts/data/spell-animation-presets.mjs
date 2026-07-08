@@ -1,302 +1,220 @@
 /**
- * Default spell animation presets for the Animation FX master list.
+ * Default spell animation presets for the Animation FX master list (`spells`).
  *
- * Unlike the weapon presets (which use raw `modules/JB2A_DnD5e/...` file paths
- * from a curated CSV), spells use **Sequencer Database keys** (`jb2a.*`). That
- * matters for projectiles: a DB key that owns `05ft/15ft/30ft/60ft/90ft`
- * variants lets Sequencer pick the correct-length file for `stretchTo`, whereas
- * a fixed-distance file gets stretched and distorted.
+ * REBUILT against the actual Shadowdark spell corpus — the union of the system
+ * pack (`shadowdark.spells`, 156), the world/Enhancer pack (`world.spells`, 105)
+ * and SDX's own bundled spells (83) = ~240 distinct spells — NOT the JB2A D&D
+ * folder list. Presets are organised by *effect archetype*; each `patterns`
+ * regex lists the real Shadowdark / Shadowdark Enhancer spell names that fit,
+ * mapped to a JB2A (free) animation. Longest-matched-substring wins, so a
+ * specific name (e.g. "fireball") beats a broad keyword (e.g. "fire").
  *
- * Every key below was validated against the installed JB2A free pack with
- * `Sequencer.Database.entryExists()`. Keys with no explicit variant (e.g.
- * `jb2a.condition.curse`) intentionally let Sequencer pick a random child.
- *
- * Coverage: Shadowdark has ~143 spells; JB2A free ships ~49 spell folders, so
- * most entries here are *shape-mapped* (ranged bolt / cone / burst / buff /
- * heal) rather than a dedicated per-spell animation. Patterns are grouped so a
- * single preset covers a family (e.g. all the divination spells share one).
- * Anything unmatched falls through to `spells._default`.
- *
- * Resolution scores by longest matched substring, so specific patterns beat
- * generic ones. Per-item overrides on a spell's Activity tab beat this list.
+ * All `file` keys are verified present in the installed free JB2A_DnD5e pack.
+ * Utility spells with no meaningful visual (Alchemy, Fabricate, Naming, Scrying,
+ * Sending, Identify, Commune…) are intentionally omitted — they fall to the
+ * generic `_default` or, if that is removed, to nothing.
  */
 
 export const DEFAULT_SPELL_PRESETS = {
-	// ── Ranged attack spells (projectile: stretchTo target) ──────────────────
-	magic_missile: {
-		label: "Magic Missile",
-		patterns: "magic missile",
-		type: "projectile",
-		target: "target",
-		hit: { file: "jb2a.magic_missile.purple", scale: 1, duration: 1500 }
+	// ── generic fallback ─────────────────────────────────────────────────────
+	_default: {
+		label: "Generic Arcane Bolt", patterns: "",
+		type: "projectile", target: "target",
+		hit: { file: "jb2a.magic_missile", scale: 1, duration: 1500 }
 	},
-	acid_arrow: {
-		label: "Acid Arrow",
-		patterns: "acid arrow",
-		type: "projectile",
-		target: "target",
+
+	// ── force / arcane ───────────────────────────────────────────────────────
+	force_bolt: {
+		label: "Force / Arcane Bolt",
+		patterns: "magic missile|eldritch|force bolt|witch bolt|anima|push\\/pull|magnetize|telekinesis|arcane|\\bwish\\b",
+		type: "projectile", target: "target",
+		hit: { file: "jb2a.magic_missile", scale: 1, duration: 1500 }
+	},
+	disintegrate: {
+		label: "Disintegrate / Decay",
+		patterns: "disintegrat|dismember|excoriate|wrack|oxidize|dust to dust|ashes to ashes|acid arrow|corrode|envenom",
+		type: "projectile", target: "target",
 		hit: { file: "jb2a.disintegrate.green", scale: 1, duration: 1500 }
 	},
-	fire_bolt: {
-		label: "Fire Bolt",
-		patterns: "fire bolt|firebolt",
-		type: "projectile",
-		target: "target",
-		hit: { file: "jb2a.fire_bolt.orange", scale: 1, duration: 1500 }
-	},
-	chaos_orb: {
-		label: "Chaos / Prismatic Orb",
-		patterns: "chaos orb|prismatic orb",
-		type: "projectile",
-		target: "target",
-		hit: { file: "jb2a.overcharged_sphere.01.01.dark_purple", scale: 1, duration: 1500 }
-	},
-	witchlight_bolt: {
-		label: "Witch Bolt",
-		patterns: "witch bolt",
-		type: "projectile",
-		target: "target",
-		hit: { file: "jb2a.witch_bolt.blue", scale: 1, duration: 1500 }
-	},
-	lightning_bolt: {
-		label: "Lightning Bolt",
-		patterns: "lightning bolt",
-		type: "projectile",
-		target: "target",
-		hit: { file: "jb2a.lightning_bolt.narrow.blue", scale: 1, duration: 1500 }
-	},
-	thors_thunder: {
-		label: "Thor's Thunder (chain lightning)",
-		patterns: "thor's thunder|thors thunder",
-		type: "projectile",
-		target: "target",
-		hit: { file: "jb2a.chain_lightning.primary.blue", scale: 1, duration: 1500 }
-	},
-	finger_of_death: {
-		label: "Finger of Death / Void Stare",
-		patterns: "finger of death|void stare|disintegrate",
-		type: "projectile",
-		target: "target",
-		hit: { file: "jb2a.energy_beam.normal.bluepink.02", scale: 1, duration: 1500 }
-	},
 
-	// ── Cones ────────────────────────────────────────────────────────────────
-	burning_hands: {
-		label: "Burning Hands",
-		patterns: "burning hands",
-		type: "cone",
-		target: "target",
-		hit: { file: "jb2a.burning_hands.01.orange", scale: 1, duration: 1500 }
-	},
-	howl: {
-		label: "Howl",
-		patterns: "\\bhowl\\b",
-		type: "cone",
-		target: "target",
-		hit: { file: "jb2a.breath_weapons.cold.cone.blue", scale: 1, duration: 1500 }
-	},
-
-	// ── Bursts on the target ─────────────────────────────────────────────────
+	// ── fire ─────────────────────────────────────────────────────────────────
 	fireball: {
 		label: "Fireball / Flame Strike",
-		patterns: "fireball|flame strike",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.explosion.01.orange", scale: 1, duration: 1500 }
+		patterns: "fireball|flame strike|inferno|fire blast|wheel of flames|chaos orb|prismatic orb|meteor",
+		type: "projectile", target: "target",
+		hit: { file: "jb2a.fireball", scale: 1, duration: 1800 }
 	},
-	smite: {
-		label: "Smite / Judgment",
-		patterns: "\\bsmite\\b|judgment|divine vengeance",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.divine_smite.caster.reversed.blueyellow", scale: 1, duration: 1200 }
+	fire_bolt: {
+		label: "Fire Bolt / Flare",
+		patterns: "fire bolt|firebolt|flare|scorch|ember|cinder|blazing",
+		type: "projectile", target: "target",
+		hit: { file: "jb2a.fire_bolt.orange", scale: 1, duration: 1500 }
 	},
-	turn_undead: {
-		label: "Turn Undead / Rebuke Unholy",
-		patterns: "turn undead|rebuke unholy|lay to rest|cast out",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.spirit_guardians.blueyellow.ring", scale: 1, duration: 1500 }
+	burning_hands: {
+		label: "Burning Hands (cone)",
+		patterns: "burning hands|dragon breath|cone of fire|fire breath",
+		type: "cone", target: "target",
+		hit: { file: "jb2a.burning_hands", scale: 1, duration: 1500 }
 	},
-	swarm: {
-		label: "Swarm / Frog Rain",
-		patterns: "\\bswarm\\b|frog rain",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.cloud_of_daggers.daggers.blue", scale: 1, duration: 1500 }
+	wall_of_fire: {
+		label: "Wall of Fire",
+		patterns: "wall of fire|firewall|ring of fire",
+		type: "onToken", target: "target",
+		hit: { file: "jb2a.wall_of_fire", scale: 1, duration: 1800 }
 	},
 
-	// ── Healing ──────────────────────────────────────────────────────────────
-	cure_wounds: {
-		label: "Cure Wounds / Heal",
-		patterns: "cure wounds|mass cure|\\bheal\\b|restoration|regenerate",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.cure_wounds.200px.blue", scale: 1, duration: 1200 }
+	// ── lightning / storm ────────────────────────────────────────────────────
+	lightning_bolt: {
+		label: "Lightning Bolt",
+		patterns: "lightning bolt|shock|electrocute",
+		type: "projectile", target: "target",
+		hit: { file: "jb2a.lightning_bolt.narrow.blue", scale: 1, duration: 1200 }
+	},
+	chain_lightning: {
+		label: "Chain Lightning / Thor's Thunder",
+		patterns: "chain lightning|thor's thunder|thors thunder|thunderbolt",
+		type: "projectile", target: "target",
+		hit: { file: "jb2a.chain_lightning.primary.blue", scale: 1, duration: 1500 }
+	},
+	call_lightning: {
+		label: "Call Lightning / Storm",
+		patterns: "call lightning|summon storm|\\bstorm\\b|tempest|maelstrom",
+		type: "onToken", target: "target",
+		hit: { file: "jb2a.call_lightning", scale: 1, duration: 1800 }
+	},
+	thunderwave: {
+		label: "Thunderwave / Shatter / Earthquake",
+		patterns: "thunderwave|shatter|earthquake|tremor|sonic|screech",
+		type: "onToken", target: "target",
+		hit: { file: "jb2a.shatter", scale: 1, duration: 1200 }
 	},
 
-	// ── Self buffs ───────────────────────────────────────────────────────────
-	bless: {
-		label: "Bless / Chant / Shield of Faith",
-		patterns: "\\bbless\\b|\\bchant\\b|shield of faith",
-		type: "onToken",
-		target: "self",
-		hit: { file: "jb2a.bless.200px.intro.yellow", scale: 1, duration: 1200 }
+	// ── cold ─────────────────────────────────────────────────────────────────
+	frost: {
+		label: "Frost / Cold",
+		patterns: "ray of frost|frost|\\bice\\b|freeze|\\bcold\\b|chill|rime|glacial|avalanche",
+		type: "projectile", target: "target",
+		hit: { file: "jb2a.ray_of_frost.blue", scale: 1, duration: 1400 }
 	},
-	mage_armor: {
-		label: "Mage Armor / Stoneskin",
-		patterns: "mage armor|stoneskin|antimagic shell|resilient sphere",
-		type: "onToken",
-		target: "self",
-		hit: { file: "jb2a.shield.01.complete.01.blue", scale: 1, duration: 1500 }
+	cone_of_cold: {
+		label: "Cone of Cold",
+		patterns: "cone of cold|frost breath|blizzard",
+		type: "cone", target: "target",
+		hit: { file: "jb2a.cone_of_cold", scale: 1, duration: 1500 }
 	},
-	holy_weapon: {
-		label: "Holy / Cleansing Weapon / Wrath",
-		patterns: "holy weapon|cleansing weapon|\\bwrath\\b",
-		type: "onToken",
-		target: "self",
-		hit: { file: "jb2a.ward.rune.yellow.01", scale: 1, duration: 1500 }
+
+	// ── necrotic / death / drain ─────────────────────────────────────────────
+	necrotic_bolt: {
+		label: "Necrotic / Death Bolt",
+		patterns: "finger of death|void stare|power word kill|reap the soul|seal soul|summon soul|soul jar|soulbind|siphon|drain life|\\bdrain\\b|\\bharm\\b|inflict|wither|withermark|blight|contagion|damnation|defile|\\bbane\\b|ghoul touch|unlife|undeath|create undead|speak with dead|final toll|lamentation|necronom|cacklerot|enfeeble|\\bcurse\\b|anathema|cast out|wrack|nightmare|revenant|\\bpoison\\b|glassbones|sacrifice|ragnarok|\\brend\\b",
+		type: "projectile", target: "target",
+		hit: { file: "jb2a.toll_the_dead.green", scale: 1, duration: 1500 }
 	},
-	invisibility: {
-		label: "Invisibility / Cloak of Night",
-		patterns: "invisibility|cloak of night|shadowdance|mirror image",
-		type: "onToken",
-		target: "self",
-		hit: { file: "jb2a.on_token_buff.001.001.blue", scale: 1, duration: 1500 }
-	},
-	polymorph: {
-		label: "Polymorph / Shapechanger",
-		patterns: "polymorph|shapechanger|wolfshape|alter self|gaseous form",
-		type: "onToken",
-		target: "self",
-		hit: { file: "jb2a.on_token_buff.001.001.purple", scale: 1, duration: 1500 }
-	},
-	fly: {
-		label: "Fly / Levitate",
-		patterns: "\\bfly\\b|levitate|feather fall|broomstick",
-		type: "onToken",
-		target: "self",
-		hit: { file: "jb2a.on_token_buff.001.001.green", scale: 1, duration: 1500 }
-	},
-	animate_dead: {
-		label: "Animate Dead / Undeath",
-		patterns: "animate dead|create undead|undeath|soul jar|soulbind|speak with dead",
-		type: "onToken",
-		target: "self",
+	necrotic_burst: {
+		label: "Necrotic Burst",
+		patterns: "arms of hadar|plague|blood rite|contagion|excoriate",
+		type: "onToken", target: "target",
 		hit: { file: "jb2a.arms_of_hadar.dark_purple", scale: 1, duration: 1500 }
 	},
-
-	// ── Divination / utility (cast flourish on self) ─────────────────────────
-	detect_magic: {
-		label: "Detect Magic / Divination",
-		patterns: "detect magic|detect thoughts|arcane eye|scrying|divination|commune|augury|prophecy|read the runes",
-		type: "onToken",
-		target: "self",
-		hit: { file: "jb2a.detect_magic.circle.blue", scale: 1, duration: 1500 }
-	},
-	identify: {
-		label: "Identify / Knock / Dispel",
-		patterns: "identify|\\bknock\\b|dispel magic|hold portal|\\balarm\\b",
-		type: "onToken",
-		target: "self",
-		hit: { file: "jb2a.on_token_cast.initiate.001.instant.combined.blue.0", scale: 1, duration: 1200 }
-	},
-	light: {
-		label: "Light",
-		patterns: "\\blight\\b|witchlight",
-		type: "onToken",
-		target: "self",
-		hit: { file: "jb2a.dancing_light.blueteal", scale: 1, duration: 1500 }
+	swarm_bats: {
+		label: "Bats / Raven / Swarm",
+		patterns: "\\braven\\b|\\bbats\\b|crows|murder of|\\bflock\\b|\\bcoven\\b|locusts|\\bswarm\\b|frog rain",
+		type: "onToken", target: "target",
+		hit: { file: "jb2a.bats", scale: 1, duration: 1500 }
 	},
 
-	// ── Teleports ────────────────────────────────────────────────────────────
-	misty_step: {
-		label: "Misty Step",
-		patterns: "misty step",
-		type: "onToken",
-		target: "self",
-		hit: { file: "jb2a.misty_step.01.blue", scale: 1, duration: 1200 }
+	// ── radiant / holy ───────────────────────────────────────────────────────
+	holy_smite: {
+		label: "Holy / Smite / Judgment",
+		patterns: "smite|judgment|judgement|turn undead|rebuke unholy|rebuke|divine vengeance|holy weapon|cleansing weapon|\\bwrath\\b|consecrate|\\bhalo\\b|rapture|prayer|\\bchant\\b|sacred|divine|cleanse|abjure|excommunicate",
+		type: "onToken", target: "target",
+		hit: { file: "jb2a.divine_smite.caster", scale: 1, duration: 1500 }
 	},
-	teleport: {
-		label: "Teleport / Dimension Door",
-		patterns: "teleport|dimension door|plane shift|dreamwalk|passwall",
-		type: "onToken",
-		target: "self",
-		hit: { file: "jb2a.teleport.01.blue", scale: 1, duration: 1500 }
+	spiritual_weapon: {
+		label: "Spiritual / Summoned Weapon",
+		patterns: "spiritual weapon|spirit blade|dancing blade",
+		type: "onToken", target: "target",
+		hit: { file: "jb2a.spiritual_weapon", scale: 1, duration: 1500 }
 	},
 
-	// ── Debuffs / controls on the target ─────────────────────────────────────
-	sleep: {
-		label: "Sleep / Charm",
-		patterns: "\\bsleep\\b|charm person|beguile|hypnotize|puppet|\\bcommand\\b|confusion|dominion",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.sleep.target.pink", scale: 1, duration: 1500 }
-	},
-	hold_person: {
-		label: "Hold Person / Enfeeble / Curse",
-		patterns: "hold person|hold monster|glassbones|enfeeble|\\bcurse\\b|\\bpoison\\b",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.condition.curse", scale: 1, duration: 1500 }
+	// ── healing / restoration ────────────────────────────────────────────────
+	heal: {
+		label: "Cure Wounds / Heal",
+		patterns: "cure wounds|\\bcure\\b|\\bheal\\b|mass cure|regenerate|restoration|revitalize|regrowth|lay to rest|\\bfeast\\b|restore|death ward",
+		type: "onToken", target: "target",
+		hit: { file: "jb2a.cure_wounds", scale: 1, duration: 1500 }
 	},
 
-	// ── Zones / walls placed at the target ───────────────────────────────────
-	web: {
-		label: "Web / Spidersilk",
-		patterns: "\\bweb\\b|spidersilk",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.web.01", scale: 1, duration: 1500 }
-	},
+	// ── nature / druid ───────────────────────────────────────────────────────
 	entangle: {
-		label: "Entangle / Oak, Ash, Thorn",
-		patterns: "entangle|oak, ash, thorn|mistletoe|toadstool|bogboil",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.entangle.brown", scale: 1, duration: 1500 }
+		label: "Entangle / Roots / Thorns",
+		patterns: "entangle|oak, ash, thorn|oak ash thorn|\\bthorn\\b|\\broot\\b|barkskin|spidersilk|\\bweb\\b|grease|mycelium|treeshape|bear shape|world tree|world serpent|\\bserpent\\b|riverwalk|mistletoe|toadstool|willowman",
+		type: "onToken", target: "self",
+		hit: { file: "jb2a.entangle", scale: 1, duration: 1800 }
 	},
+
+	// ── enchant / mind / illusion ────────────────────────────────────────────
+	enchant: {
+		label: "Charm / Mind / Illusion",
+		patterns: "charm|beguile|befriend|hypnotize|hypnotise|dominate|dominion|subjugate|pacify|\\bpeace\\b|command|puppet|pin doll|confusion|feeblemind|hallucinate|phantoms|illusion|mirror image|instill|betrayal|mischief|mesmerism|loki's trickery|lokis trickery|\\btrance\\b|\\bsleep\\b|whisper|beckon|glamour|forbid|unhinge|hold person|hold monster|\\bhold\\b|\\bsilence\\b|zone of truth|evoke rage|\\bhowl\\b",
+		type: "onToken", target: "target",
+		hit: { file: "jb2a.sleep", scale: 1, duration: 1500 }
+	},
+
+	// ── buff / ward / self ───────────────────────────────────────────────────
+	buff: {
+		label: "Bless / Ward / Buff",
+		patterns: "bless|shield of faith|mage armor|mage armour|stoneskin|fortify|\\bward\\b|absorb|anchor|stasis|balance|\\bfate\\b|freya's omen|freyas omen|odin's wisdom|odins wisdom|covenant|permanence|protection from|protection|aegis|fortitude|fifth gate|fourth gate|third gate|second gate|first gate|prophecy|invisibility|\\bfly\\b|levitate|feather fall|witchlight|barkskin",
+		type: "onToken", target: "self",
+		hit: { file: "jb2a.bless", scale: 1, duration: 1500 }
+	},
+	arcane_shield: {
+		label: "Shield / Force Barrier",
+		patterns: "^shield$|force shield|wall of force|antimagic|resilient sphere|magic circle|\\bglyph\\b|\\bseal\\b|\\bhold portal\\b",
+		type: "onToken", target: "self",
+		hit: { file: "jb2a.shield.01", scale: 1, duration: 1500 }
+	},
+
+	// ── summon / gate / teleport ─────────────────────────────────────────────
+	summon_gate: {
+		label: "Gate / Summon / Teleport",
+		patterns: "\\bgate\\b|\\bsummon\\b|teleport|dimension door|plane shift|misty step|conjure|banish|valkyrie|planar|portal|dreamwalk|shadowdance|gaseous form|polymorph|shapechanger|wolfshape|alter self|passwall",
+		type: "onToken", target: "self",
+		hit: { file: "jb2a.misty_step", scale: 1, duration: 1500 }
+	},
+
+	// ── control / area (fog, wind, darkness, beam) ───────────────────────────
 	fog: {
-		label: "Fog / Cloud Kill",
-		patterns: "\\bfog\\b|cloud kill",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.fog_cloud.01.white", scale: 1, duration: 1500 }
+		label: "Fog / Cloud",
+		patterns: "\\bfog\\b|cloud kill|cloudkill|fog cloud|obscuring|\\bmist\\b",
+		type: "onToken", target: "target",
+		hit: { file: "jb2a.fog_cloud", scale: 1, duration: 1800 }
 	},
 	darkness: {
-		label: "Darkness / Mother of Night",
-		patterns: "darkness|mother of night",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.darkness.black", scale: 1, duration: 1500 }
+		label: "Darkness / Night / Blind",
+		patterns: "darkness|mother of night|cloak of night|\\bshadow\\b|blind\\/deafen|\\bblind\\b|eyebite|\\bvoid\\b",
+		type: "onToken", target: "target",
+		hit: { file: "jb2a.darkness", scale: 1, duration: 1500 }
+	},
+	wind: {
+		label: "Wind / Whirlwind",
+		patterns: "gust of wind|whirlwind|\\bgust\\b|cyclone|wind wall|control water|riptide",
+		type: "onToken", target: "target",
+		hit: { file: "jb2a.gust_of_wind", scale: 1, duration: 1500 }
 	},
 	moonbeam: {
-		label: "Moonbeam",
-		patterns: "moonbeam",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.moonbeam.01.complete.blue", scale: 1, duration: 1500 }
+		label: "Moonbeam / Radiant Beam",
+		patterns: "moonbeam|\\bbeam\\b|pillar of|column of light|flame strike",
+		type: "onToken", target: "target",
+		hit: { file: "jb2a.moonbeam.01", scale: 1, duration: 1800 }
 	},
-	wall_of_force: {
-		label: "Wall of Force",
-		patterns: "wall of force",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.wall_of_force.horizontal.grey", scale: 1, duration: 1500 }
-	},
-	silence: {
-		label: "Silence / Zone of Truth",
-		patterns: "silence|zone of truth|magic circle",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.template_circle.aura.01.complete.small.bluepurple", scale: 1, duration: 1500 }
-	},
-	floating_disk: {
-		label: "Floating Disk / Telekinesis",
-		patterns: "floating disk|telekinesis|fixed object",
-		type: "onToken",
-		target: "target",
-		hit: { file: "jb2a.arcane_hand.blue", scale: 1, duration: 1500 }
+
+	// ── divination / detection (subtle self) ─────────────────────────────────
+	detect: {
+		label: "Detect / Divination",
+		patterns: "detect magic|\\bdetect\\b|divination|augury|scrying|\\bscry\\b|commune|reveal|\\bvision\\b|read the runes|truespeech|clairvoyance|arcane eye|see invis|cat's eye|cats eye|dispel magic|\\bdispel\\b",
+		type: "onToken", target: "self",
+		hit: { file: "jb2a.detect_magic", scale: 1, duration: 1500 }
 	}
 };
 
