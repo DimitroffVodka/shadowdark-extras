@@ -24,6 +24,8 @@
 			width: 96px; height: 54px; background: #000; border-radius: 3px;
 			object-fit: cover; display: block; cursor: pointer; border: 1px solid rgba(0,0,0,0.4);
 		}
+		/* Sprite rows show a static image, contained (not cropped) on a dark plate. */
+		.sdx-animfx-list-app .sdx-animfx-thumb-img { object-fit: contain; background: rgba(0,0,0,0.35); }
 		.sdx-animfx-list-app .sdx-animfx-thumb-missing {
 			width: 96px; height: 54px; display: flex; align-items: center; justify-content: center;
 			background: rgba(0,0,0,0.15); border-radius: 3px; font-size: 10px; opacity: 0.6;
@@ -58,6 +60,59 @@
 			</label>
 		</div>
 		<div class="content">
+			{{#if cat.sprite}}
+			<p class="notes">
+				Persistent images pinned to the token while the weapon is equipped &mdash; not attack effects.
+				A weapon's own <em>Weapon Animation</em> dialog overrides anything here.
+			</p>
+			<table class="sdx-animfx-table">
+				<thead>
+					<tr>
+						<th>Image</th>
+						<th>Label</th>
+						<th>Name Pattern (regex)</th>
+						<th>Image Path</th>
+						<th>Off X</th>
+						<th>Off Y</th>
+						<th>Rot&deg;</th>
+						<th>Scale</th>
+						<th>Motion</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody>
+					{{#each cat.presets as |p|}}
+					<tr data-key="{{p.key}}" data-category="{{cat.key}}">
+						<td>
+							{{#if p.imgSrc}}
+							<img class="sdx-animfx-thumb sdx-animfx-thumb-img" src="{{p.imgSrc}}" alt="{{p.label}}" />
+							{{else}}
+							<div class="sdx-animfx-thumb-missing">no image</div>
+							{{/if}}
+						</td>
+						<td><input type="text" name="preset.{{cat.key}}.{{p.key}}.label" value="{{p.label}}" /></td>
+						<td><input type="text" name="preset.{{cat.key}}.{{p.key}}.patterns" value="{{p.patterns}}" /></td>
+						<td><input type="text" name="preset.{{cat.key}}.{{p.key}}.imagePath" value="{{p.imagePath}}" /></td>
+						<td><input type="number" step="0.05" name="preset.{{cat.key}}.{{p.key}}.offsetX" value="{{p.offsetX}}" /></td>
+						<td><input type="number" step="0.05" name="preset.{{cat.key}}.{{p.key}}.offsetY" value="{{p.offsetY}}" /></td>
+						<td><input type="number" step="5" min="0" max="360" name="preset.{{cat.key}}.{{p.key}}.rotation" value="{{p.rotation}}" /></td>
+						<td><input type="number" step="0.1" min="0" name="preset.{{cat.key}}.{{p.key}}.scale" value="{{p.scale}}" /></td>
+						<td>
+							<select name="preset.{{cat.key}}.{{p.key}}.animationType">
+								{{#each p.animTypes as |t|}}
+								<option value="{{t.value}}" {{#if t.selected}}selected{{/if}}>{{t.label}}</option>
+								{{/each}}
+							</select>
+						</td>
+						<td style="white-space:nowrap">
+							<a class="sdx-animfx-delete" data-category="{{cat.key}}" data-key="{{p.key}}" data-tooltip="Delete"><i class="fas fa-trash"></i></a>
+						</td>
+					</tr>
+					{{/each}}
+				</tbody>
+			</table>
+			<a class="sdx-animfx-add" data-category="{{cat.key}}"><i class="fas fa-plus"></i> Add preset</a>
+			{{else}}
 			<table class="sdx-animfx-table">
 				<thead>
 					<tr>
@@ -111,6 +166,7 @@
 				</tbody>
 			</table>
 			<a class="sdx-animfx-add" data-category="{{cat.key}}"><i class="fas fa-plus"></i> Add preset</a>
+			{{/if}}
 		</div>
 	</div>
 	{{/each}}

@@ -7,6 +7,8 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  * Uses Sequencer module for animations
  */
 
+import { AnimationFxSD } from "./AnimationFxSD.mjs";
+
 const MODULE_ID = "shadowdark-extras";
 
 /**
@@ -171,10 +173,17 @@ export async function playWeaponAnimation(token, item, configOverride = null) {
         return;
     }
 
-    // Use the provided override (for live preview in the config dialog) or read from saved flags
-    const animConfig = configOverride ?? item.getFlag(MODULE_ID, "weaponAnimation");
+    // Resolution order:
+    //   1. configOverride  — live preview from the config dialog
+    //   2. per-item flag   — what the Weapon Animation dialog saved
+    //   3. master list     — pattern-matched default from the Animation FX list
+    // Without (3) every weapon had to be configured by hand, one dialog at a time.
+    let animConfig = configOverride ?? item.getFlag(MODULE_ID, "weaponAnimation");
     if (!animConfig?.enabled || !animConfig?.imagePath) {
-        return; // No animation configured
+        animConfig = AnimationFxSD.resolveWeaponSprite(item);
+    }
+    if (!animConfig?.enabled || !animConfig?.imagePath) {
+        return; // No animation configured and no master-list match
     }
 
     const effectName = getEffectName(token, item.id);

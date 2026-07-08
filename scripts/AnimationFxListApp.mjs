@@ -10,11 +10,20 @@ import { AnimationFxSD, DEFAULT_ANIMATION_FX_CONFIG } from "./AnimationFxSD.mjs"
 
 const MODULE_ID = "shadowdark-extras";
 
+/**
+ * `sprite: true` categories are persistent equipped-weapon images (handled by
+ * WeaponAnimationSD), not transient attack FX. They use a different row schema:
+ * imagePath / offsetX / offsetY / rotation / animationType, and an <img>
+ * thumbnail instead of a <video>.
+ */
 const CATEGORY_META = [
 	{ key: "spells", label: "Spells / Scrolls / Wands", icon: "fa-wand-magic-sparkles" },
-	{ key: "weapons", label: "Weapons", icon: "fa-gavel" },
-	{ key: "npcActions", label: "NPC Attacks", icon: "fa-dragon" }
+	{ key: "weapons", label: "Weapons (attack FX)", icon: "fa-gavel" },
+	{ key: "npcActions", label: "NPC Attacks", icon: "fa-dragon" },
+	{ key: "weaponSprites", label: "Equipped Weapon Sprites", icon: "fa-hand-fist", sprite: true }
 ];
+
+const ANIMATION_TYPES = ["none", "wobble", "bobbing", "floating", "rotating"];
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -26,7 +35,23 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
  * @param {string} key  preset key ("_default" has no editable pattern)
  * @param {object} vals raw form values for this row
  */
-function mergePresetFromForm(base, key, vals) {
+function mergePresetFromForm(base, key, vals, isSprite = false) {
+	// Equipped-weapon sprites have a completely different shape than attack FX.
+	// Merging them with the FX schema would silently destroy imagePath/offsets.
+	if (isSprite) {
+		return {
+			...base,
+			label: vals.label ?? base.label ?? "",
+			patterns: key === "_default" ? "" : (vals.patterns ?? base.patterns ?? ""),
+			enabled: base.enabled !== false,
+			imagePath: (vals.imagePath ?? base.imagePath ?? "").trim(),
+			offsetX: Number(vals.offsetX ?? base.offsetX ?? 0.35),
+			offsetY: Number(vals.offsetY ?? base.offsetY ?? 0.1),
+			rotation: Number(vals.rotation ?? base.rotation ?? 0),
+			scale: Number(vals.scale) || base.scale || 1,
+			animationType: vals.animationType ?? base.animationType ?? "wobble"
+		};
+	}
 	return {
 		...base,
 		label: vals.label ?? base.label ?? "",
@@ -40,6 +65,11 @@ function mergePresetFromForm(base, key, vals) {
 			duration: parseInt(vals.duration, 10) || base.hit?.duration || 1500
 		}
 	};
+}
+
+/** Is this category one of the sprite (persistent image) categories? */
+function isSpriteCategory(key) {
+	return !!CATEGORY_META.find(c => c.key === key)?.sprite;
 }
 
 export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2) {
@@ -136,6 +166,25 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 
 			const map = working[cat.key] || {};
 			const presets = Object.entries(map).map(([key, p]) => {
+				if (cat.sprite) {
+					return {
+						key,
+						isDefault: key === "_default",
+						imgSrc: p.imagePath ? foundry.utils.getRoute(p.imagePath) : "",
+						label: p.label ?? "",
+						patterns: p.patterns ?? "",
+						imagePath: p.imagePath ?? "",
+						offsetX: p.offsetX ?? 0.35,
+						offsetY: p.offsetY ?? 0.1,
+						rotation: p.rotation ?? 0,
+						scale: p.scale ?? 1,
+						animTypes: ANIMATION_TYPES.map(t => ({
+							value: t,
+							label: t.charAt(0).toUpperCase() + t.slice(1),
+							selected: (p.animationType || "wobble") === t
+						}))
+					};
+				}
 				const hit = p.hit || {};
 				return {
 					key,
@@ -155,7 +204,7 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 			});
 			// _default first for readability
 			presets.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
-			return { key: cat.key, label: cat.label, icon: cat.icon, enabled, presets };
+			return { key: cat.key, label: cat.label, icon: cat.icon, sprite: !!cat.sprite, enabled, presets };
 		});
 		return { categories };
 	}
@@ -177,7 +226,7 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 
 			for (const [key, vals] of Object.entries(presetInputs)) {
 				const base = working[cat.key]?.[key] || {};
-				working[cat.key][key] = mergePresetFromForm(base, key, vals);
+				working[cat.key][key] = mergePresetFromForm(base, key, vals, !!cat.sprite);
 			}
 		}
 	}
@@ -193,13 +242,25 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 				const cat = btn.dataset.category;
 				const working = this._getWorking();
 				const key = `p${foundry.utils.randomID(6)}`;
-				working[cat][key] = {
-					label: "New Preset",
-					patterns: "",
-					type: "projectile",
-					target: "target",
-					hit: { file: "", scale: 1, duration: 1500 }
-				};
+				working[cat][key] = isSpriteCategory(cat)
+					? {
+						label: "New Sprite",
+						patterns: "",
+						enabled: true,
+						imagePath: "",
+						offsetX: 0.35,
+						offsetY: 0.1,
+						rotation: 0,
+						scale: 1,
+						animationType: "wobble"
+					}
+					: {
+						label: "New Preset",
+						patterns: "",
+						type: "projectile",
+						target: "target",
+						hit: { file: "", scale: 1, duration: 1500 }
+					};
 				this.render();
 			});
 		});
@@ -293,10 +354,12 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 				await AnimationFxSD.setConfig(this._getWorking());
 				const w = await AnimationFxSD.seedWeaponPresets();
 				const s = await AnimationFxSD.seedSpellPresets();
+				const sp = await AnimationFxSD.seedWeaponSpritePresets();
 				this._working = null; // re-read the merged config
 				ui.notifications.info(
 					`Presets seeded — weapons: ${w.added} added / ${w.skipped} existing; ` +
-					`spells: ${s.added} added / ${s.skipped} existing.`
+					`spells: ${s.added} added / ${s.skipped} existing; ` +
+					`sprites: ${sp.added} added / ${sp.skipped} existing.`
 				);
 				this.render();
 			});
@@ -328,7 +391,7 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 			if (presetInputs && Object.keys(presetInputs).length > 0) {
 				for (const [key, vals] of Object.entries(presetInputs)) {
 					const base = working[cat.key]?.[key] || {};
-					working[cat.key][key] = mergePresetFromForm(base, key, vals);
+					working[cat.key][key] = mergePresetFromForm(base, key, vals, !!cat.sprite);
 				}
 			}
 
