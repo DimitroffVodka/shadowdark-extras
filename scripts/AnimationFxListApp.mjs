@@ -361,11 +361,13 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 				await AnimationFxSD.setConfig(this._getWorking());
 				const w = await AnimationFxSD.seedWeaponPresets();
 				const s = await AnimationFxSD.seedSpellPresets();
+				const n = await AnimationFxSD.seedNpcAttackPresets();
 				const sp = await AnimationFxSD.seedWeaponSpritePresets();
 				this._working = null; // re-read the merged config
 				ui.notifications.info(
 					`Presets seeded — weapons: ${w.added} added / ${w.skipped} existing; ` +
 					`spells: ${s.added} added / ${s.skipped} existing; ` +
+					`NPC attacks: ${n.added} added / ${n.skipped} existing; ` +
 					`sprites: ${sp.added} added / ${sp.skipped} existing.`
 				);
 				this.render();

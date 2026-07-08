@@ -21,6 +21,7 @@
 
 import { DEFAULT_WEAPON_PRESETS } from "./data/weapon-animation-presets.mjs";
 import { DEFAULT_SPELL_PRESETS } from "./data/spell-animation-presets.mjs";
+import { DEFAULT_NPC_ATTACK_PRESETS } from "./data/npc-attack-presets.mjs";
 import { DEFAULT_WEAPON_SPRITE_PRESETS } from "./data/weapon-sprite-presets.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -166,6 +167,11 @@ export const AnimationFxSD = {
 		return this.seedPresets("spells", DEFAULT_SPELL_PRESETS, opts);
 	},
 
+	/** Seed the bundled NPC/monster natural-attack presets. */
+	async seedNpcAttackPresets(opts = {}) {
+		return this.seedPresets("npcActions", DEFAULT_NPC_ATTACK_PRESETS, opts);
+	},
+
 	/** Seed the bundled equipped-weapon sprite presets (SDX `assets/Weapons` art). */
 	async seedWeaponSpritePresets(opts = {}) {
 		return this.seedPresets("weaponSprites", DEFAULT_WEAPON_SPRITE_PRESETS, opts);
@@ -267,7 +273,16 @@ export const AnimationFxSD = {
 		const best = this._pickBestPattern(name, presetMap);
 		if (best?.hit?.file) return best;
 
-		// Tier 2b: category default
+		// Tier 2b: NPC attacks named after a weapon (Longsword, Spear, Longbow…)
+		// reuse the weapons list rather than duplicating those presets here.
+		// Specific match only — the weapons `_default` must not turn every
+		// unrecognised natural attack into a greatsword swing.
+		if (category === "npcActions" && this._isCategoryEnabled("weapons")) {
+			const weaponMatch = this._pickBestPattern(name, config.weapons);
+			if (weaponMatch?.hit?.file) return weaponMatch;
+		}
+
+		// Tier 2c: category default
 		if (presetMap._default?.hit?.file) return presetMap._default;
 
 		return null;
