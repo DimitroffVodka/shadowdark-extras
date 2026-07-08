@@ -6,10 +6,29 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [6.10.46] — 2026-07-08 — Animation FX: SDX-native Sequencer engine (Automated Animations now optional)
+
+Verified live against Foundry 14.364 / Shadowdark 4.0.6.
+
+### Added
+
+- **SDX-native Animation FX engine.** A Sequencer-driven animation system built into the module — SDX now plays JB2A effects directly, so it owns both *which* animation an item uses and *when* it plays. Automated Animations is no longer required (see below); Sequencer + a JB2A pack are. Effects resolve on a successful cast/attack and cover projectiles (distance-aware beams), cones, on-token strikes, and persistent effects.
+- **Animation FX master list ("Configure Animations").** A new GM settings menu (Game Settings → Configure Settings → Shadowdark Extras → Configure Animations) where you assign animations to items by name. Each preset matches many items via a regex pattern (most-specific match wins), with inline video/image thumbnails (hover to play), a preview button that plays a preset on the selected token, add/delete, per-category enable toggles, a Sequencer Database browser, and a scrollable list. Categories: Spells/Scrolls/Wands, Weapons (attack FX), NPC Attacks, and Equipped Weapon Sprites.
+- **Per-item animation override.** Every spell/scroll/wand gets an "Animation FX" section on its Activity tab; when enabled it overrides the master list for that item. Resolution order is per-item override, then master pattern match, then category default.
+- **Bundled weapon attack presets.** A curated set of JB2A (free) + psfx weapon animations mapped to Shadowdark weapon names (magical variants match by substring), each with its own sound.
+- **Bundled spell presets from the Shadowdark corpus.** Effect archetypes (force, fire, lightning, cold, necrotic, radiant, nature, mind, buff, summon, control) whose patterns cover about 93% of the ~240 spells across the Shadowdark system, the world/Shadowdark Enhancer pack, and SDX's own spells — including Enhancer content such as First–Fifth Gate, Loki's Trickery, Odin's Wisdom, Ragnarok, Withermark, and Wheel of Flames.
+- **Bundled monster attack presets.** Natural-attack animations (Bite, Claw/Rend, Slam, Fist, Pincer, Gore, Tentacle, Tail/Sting, Constrict, Rock, Fire Breath) mapped from the most common attack names across the bestiary; weapon-named NPC attacks reuse the weapon presets automatically.
+- **Equipped weapon sprites.** A master-list category that pins a weapon image to the token while equipped (idle wobble/bob/float/rotate), with bundled presets using the module's own weapon art, driven by the existing Weapon Animation system which still overrides per item.
+- **Ambient & Events effects.** The Torch and Level-Up animations are now editable in the manager (choose the JB2A file per torch/lantern/oil/candle/light-spell, and the level-up effect) instead of being hardcoded.
+- **Sound controls.** A Sound column per attack-FX preset (blank to silence) plus a per-client Sound on/off toggle and volume slider in the manager.
+- **Automated Animations is now optional.** When installed, SDX filters AA to successful rolls and suppresses it for any item its own FX engine already animates, so the two never double up; when absent, SDX's engine covers everything on its own.
+- **Break-on-damage effect expiry primitive.** Effects can now be configured to end when their bearer takes damage.
+
 ### Fixed
 
 - **Animation FX cleanup no longer throws (and no longer strands other effects).** When a Sequencer effect failed to finish initializing — its `_tickerMethods` array was never assigned, which happens silently if the canvas is torn down mid-play — ending it later threw `can't access property "forEach", this._tickerMethods is undefined`. Because Sequencer removes each effect from its manager before destroying it, that throw aborted the rest of a batch, so one half-initialized effect could strand every other effect in a wildcard sweep (e.g. "Clear FX"). All animation-FX cleanup now routes through a guard that seeds the missing array before ending, so destruction always completes.
 - **Item Macros no longer re-fire for chat history.** Foundry re-renders the chat backlog on every page load, and both macro hooks (spell casts and weapon attacks) deduplicated using an expando set on the `ChatMessage` document. That expando does not survive a reload — and is also dropped whenever Foundry re-instantiates the document — so every historical cast or attack card in the backlog re-ran its Item Macro, re-applying spell effects and damage. The same gap let a macro re-fire mid-session, since `renderChatMessageHTML` fires several times per message. Deduplication is now keyed by message id in a bounded Set that survives re-instantiation, and a load-time epoch skips any message created before the client loaded. Affects shipped spells that use Item Macros (Turn Undead, Holy Weapon) and weapon-attack macros.
+- **Animation FX no longer replays on reload.** The new FX hook had the same chat-history flaw as the macro hooks — every historical attack/cast card in the reloaded backlog replayed its animation and sound (heard as "random" weapon or spell sounds after a refresh). It now uses the same load-time epoch guard, so only messages created after the client loaded animate.
 
 ## [6.10.45] — 2026-06-30 — Show NPC multi-attack count on the sheet
 

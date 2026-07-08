@@ -155,6 +155,30 @@ Execute Item Macro scripts with configurable triggers:
 ---
 
 
+### 🎬 Animation FX
+
+A built-in, Sequencer-driven animation system. SDX plays JB2A effects directly on a successful cast or attack, so it owns both *which* animation an item uses and *when* it fires. **Automated Animations is optional** — if installed it's filtered to successful rolls and suppressed for anything SDX already animates (no double effects); if absent, SDX covers everything on its own. Requires **Sequencer** and a **JB2A** pack (the free pack works; sounds use **psfx** if present).
+
+#### Master Animation List
+A GM menu at **Game Settings → Configure Settings → Shadowdark Extras → Configure Animations**. Assign animations to items by name — each preset matches many items via a regex pattern (most-specific match wins):
+- Inline video/image thumbnails (hover to play) and a preview button that fires a preset on the selected token
+- Categories: **Spells / Scrolls / Wands**, **Weapons (attack FX)**, **NPC Attacks**, and **Equipped Weapon Sprites**
+- Add/delete presets, per-category enable toggles, a Sequencer Database browser, and a **Seed Default Presets** button
+- **Sound** per preset, plus a per-client sound on/off toggle and volume slider
+- **Ambient & Events**: editable Torch (per light type) and Level-Up animations
+
+#### Bundled Presets
+Ships name-matched defaults so most content animates out of the box:
+- **Weapons** — curated JB2A + psfx mapping to Shadowdark weapon names (magical variants match by substring)
+- **Spells** — effect archetypes covering ~93% of the Shadowdark system + Shadowdark Enhancer + SDX spell corpus
+- **Monsters** — common natural attacks (Bite, Claw, Slam, Tentacle, Fire Breath…); weapon-named NPC attacks reuse the weapon presets
+
+#### Per-Item Override
+Every spell/scroll/wand has an **Animation FX** section on its Activity tab. When enabled it overrides the master list for that one item. Resolution order: per-item override → master pattern match → category default.
+
+---
+
+
 ### 🎭 Character Sheet Enhancements
 
 #### Enhanced Header
