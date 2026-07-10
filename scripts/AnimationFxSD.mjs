@@ -135,6 +135,48 @@ export const AnimationFxSD = {
 		game.settings.register(MODULE_ID, "animationFxVolume", {
 			scope: "client", config: false, type: Number, default: 0.8
 		});
+
+		// One-time auto-seed guard (world). Once true we never re-seed this
+		// world, so any preset a GM later deletes stays deleted.
+		game.settings.register(MODULE_ID, "animationFxSeeded", {
+			scope: "world", config: false, type: Boolean, default: false
+		});
+	},
+
+	/**
+	 * First-run seed. On a world that has never been seeded, merge the bundled
+	 * preset libraries (weapons/spells/NPC attacks/sprites) into the master
+	 * list so every new world comes up fully populated with no button press.
+	 * Guarded by the `animationFxSeeded` world flag: runs at most once per
+	 * world, and merges (never overwrites), so it can't clobber user edits.
+	 * GM-only — it writes world settings.
+	 *
+	 * @returns {Promise<void>}
+	 */
+	async autoSeedIfNeeded() {
+		if (!game.user?.isGM) return;
+		let seeded = false;
+		try { seeded = game.settings.get(MODULE_ID, "animationFxSeeded"); }
+		catch (e) { return; } // settings not registered yet
+		if (seeded) return;
+
+		try {
+			const w = await this.seedWeaponPresets();
+			const s = await this.seedSpellPresets();
+			const n = await this.seedNpcAttackPresets();
+			const sp = await this.seedWeaponSpritePresets();
+			await game.settings.set(MODULE_ID, "animationFxSeeded", true);
+			const total = w.added + s.added + n.added + sp.added;
+			if (total > 0) {
+				console.log(
+					`${MODULE_ID} | Animation FX first-run seed — ` +
+					`weapons: ${w.added}, spells: ${s.added}, ` +
+					`NPC attacks: ${n.added}, sprites: ${sp.added}`
+				);
+			}
+		} catch (e) {
+			console.error(`${MODULE_ID} | Animation FX auto-seed failed`, e);
+		}
 	},
 
 	getConfig() {

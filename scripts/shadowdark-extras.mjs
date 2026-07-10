@@ -9318,6 +9318,11 @@ Hooks.once("init", () => {
 	AnimationFxSD.registerSettings();
 	registerAnimationFxMenu();
 
+	// First-run: seed the bundled preset libraries into any world that has
+	// never been seeded, so new worlds come up fully populated (GM-only,
+	// one-time, merge-not-overwrite — see AnimationFxSD.autoSeedIfNeeded).
+	Hooks.once("ready", () => AnimationFxSD.autoSeedIfNeeded());
+
 	// Patch CharacterGeneratorSD to show rolls in chat
 	patchCharacterGeneratorRolls();
 

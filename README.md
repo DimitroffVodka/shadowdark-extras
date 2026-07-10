@@ -168,7 +168,7 @@ A GM menu at **Game Settings → Configure Settings → Shadowdark Extras → Co
 - **Ambient & Events**: editable Torch (per light type) and Level-Up animations
 
 #### Bundled Presets
-Ships name-matched defaults so most content animates out of the box:
+Ships name-matched defaults so most content animates out of the box. Every **new world seeds these automatically on first load** (GM-side, one-time), so the master list comes up fully populated without pressing **Seed Default Presets** — and because seeding merges rather than overwrites, presets you delete stay deleted:
 - **Weapons** — curated JB2A + psfx mapping to Shadowdark weapon names (magical variants match by substring)
 - **Spells** — effect archetypes covering ~93% of the Shadowdark system + Shadowdark Enhancer + SDX spell corpus
 - **Monsters** — common natural attacks (Bite, Claw, Slam, Tentacle, Fire Breath…); weapon-named NPC attacks reuse the weapon presets
