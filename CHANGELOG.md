@@ -10,6 +10,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 - **Animation FX presets now auto-seed new worlds.** The bundled preset libraries (weapons, spells, NPC attacks, equipped-weapon sprites) are merged into any world that has never been seeded, on the GM's first load — so a fresh world's master list comes up fully populated without pressing **Seed Default Presets**. Previously these settings are `scope: "world"`, so each new world started with only placeholder defaults and the libraries had to be seeded by hand. Seeding runs at most once per world (guarded by a new `animationFxSeeded` world flag) and *merges* rather than overwrites, so any preset a GM later deletes stays deleted and existing edits are never clobbered. Verified live against Foundry 14.364 / Shadowdark 4.0.6: a fresh world went from 1/1/0/0 to 29 spells / 46 weapons / 12 NPC attacks / 23 sprites on reload, and a deleted preset was not re-added on the next load.
 
+### Fixed
+
+- **Spell animations and previews no longer break when JB2A fails to register.** Every bundled spell preset references Sequencer Database keys (`jb2a.*`), which only resolve if JB2A has registered its `jb2a` namespace via its own `sequencer.ready` hook. That registration is load-order sensitive and intermittently doesn't run in a given world — leaving *every* spell preview blank in the Animation FX master list and, worse, spell animations unable to play, while weapons (raw file paths) kept working. SDX now registers JB2A's own `api.freeDatabase` itself when it detects the `jb2a` namespace missing on `sequencer.ready`/`ready`. Idempotent: no-op when JB2A already registered, when Sequencer/JB2A is absent, or when the Patreon pack is active. Verified live against Foundry 14.364 / Shadowdark 4.0.6: in a world where JB2A had not registered (`Sequencer.Database` held only `autoanimations`), a reload brought up `jb2a` automatically and all 29 spell presets resolved a preview with no double-registration warning.
+
 ## [6.10.46] — 2026-07-08 — Animation FX: SDX-native Sequencer engine (Automated Animations now optional)
 
 Verified live against Foundry 14.364 / Shadowdark 4.0.6.

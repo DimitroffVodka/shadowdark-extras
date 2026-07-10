@@ -179,6 +179,40 @@ export const AnimationFxSD = {
 		}
 	},
 
+	/**
+	 * Defensive JB2A registration. Every bundled spell preset references
+	 * Sequencer Database keys (`jb2a.*`), which only resolve if JB2A registered
+	 * its `jb2a` namespace via its own `sequencer.ready` hook. That
+	 * registration is load-order sensitive and intermittently doesn't run,
+	 * leaving spell previews blank and — worse — spell animations unable to
+	 * play, while weapons (raw file paths) keep working. When we detect that
+	 * gap, we register JB2A's own `api.freeDatabase` ourselves from its module
+	 * API. Idempotent: no-op when `jb2a` is already registered, when
+	 * Sequencer/JB2A is absent, or when the Patreon pack is active (JB2A's own
+	 * merge logic owns that case — we stay out of its way). Safe to call more
+	 * than once and from both `sequencer.ready` and `ready`.
+	 */
+	ensureJb2aRegistered() {
+		const db = globalThis.Sequencer?.Database;
+		if (!db || typeof db.registerEntries !== "function") return;
+		try {
+			// Already registered (JB2A did its job, or a prior call of ours).
+			if (db.entryExists?.("jb2a.magic_missile")) return;
+			// Patreon pack present → let JB2A's own merge path handle `jb2a`.
+			if (game.modules.get("jb2a_patreon")?.active) return;
+			const jb2a = game.modules.get("JB2A_DnD5e");
+			const freeDb = jb2a?.active ? jb2a.api?.freeDatabase : null;
+			if (!freeDb || typeof freeDb !== "object") return;
+			db.registerEntries("jb2a", freeDb);
+			console.log(
+				`${MODULE_ID} | Registered JB2A Sequencer database (fallback — ` +
+				`JB2A's own registration did not run in this world)`
+			);
+		} catch (e) {
+			console.error(`${MODULE_ID} | JB2A fallback registration failed`, e);
+		}
+	},
+
 	getConfig() {
 		const stored = game.settings.get(MODULE_ID, "animationFxConfig");
 		return (stored && typeof stored === "object")
