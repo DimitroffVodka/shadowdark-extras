@@ -9312,21 +9312,24 @@ Hooks.once("init", () => {
 	AnimationFxSD.registerSettings();
 	registerAnimationFxMenu();
 
-	// Defensive JB2A registration: the spell presets reference `jb2a.*`
-	// Sequencer DB keys, and JB2A's own registration is load-order flaky. Run
-	// on sequencer.ready (normal path) AND on ready (catch-all if that hook
-	// already fired before our listener attached). Idempotent — see
-	// AnimationFxSD.ensureJb2aRegistered.
-	Hooks.on("sequencer.ready", () => AnimationFxSD.ensureJb2aRegistered());
-
-	// First-run: register JB2A if still missing, then seed the bundled preset
-	// libraries into any world that has never been seeded, so new worlds come
-	// up fully populated (GM-only, one-time, merge-not-overwrite — see
-	// AnimationFxSD.autoSeedIfNeeded).
-	Hooks.once("ready", () => {
-		AnimationFxSD.ensureJb2aRegistered();
-		AnimationFxSD.autoSeedIfNeeded();
+	// Defensive JB2A registration: spell presets reference `jb2a.*` Sequencer
+	// DB keys, and JB2A's own sequencer.ready registration is load-order flaky.
+	// We listen on the same hook but DEFER to a microtask so JB2A's own
+	// registration (and every other sequencer.ready listener) runs first — our
+	// entryExists guard then no-ops in the normal case and only registers when
+	// JB2A genuinely didn't. Deferring makes us immune to listener attach-order,
+	// so we never race JB2A into a duplicate-registration warning. Do NOT also
+	// call this from `ready`: in some worlds that hook fires before Sequencer's
+	// own ready emits sequencer.ready, which is exactly the race that warns.
+	// See AnimationFxSD.ensureJb2aRegistered.
+	Hooks.on("sequencer.ready", () => {
+		Promise.resolve().then(() => AnimationFxSD.ensureJb2aRegistered());
 	});
+
+	// First-run: seed the bundled preset libraries into any world that has
+	// never been seeded, so new worlds come up fully populated (GM-only,
+	// one-time, merge-not-overwrite — see AnimationFxSD.autoSeedIfNeeded).
+	Hooks.once("ready", () => AnimationFxSD.autoSeedIfNeeded());
 
 	// Patch CharacterGeneratorSD to show rolls in chat
 	patchCharacterGeneratorRolls();
