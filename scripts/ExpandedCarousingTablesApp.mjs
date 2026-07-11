@@ -3,13 +3,14 @@ import {
     saveExpandedCarousingTables,
     getDefaultExpandedData
 } from "./CarousingSD.mjs";
+import { pickFoundryTable, pickMultipleFoundryTables, tableResultsToRows, tableResultsToExpandedOutcomes, tableResultsToEventTiers, resolveLinkedData, describeLinks } from "./CarousingFoundryImport.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static DEFAULT_OPTIONS = {
         id: "shadowdark-expanded-carousing-tables",
-        classes: ["shadowdark-extras", "expanded-carousing-tables-app"],
+        classes: ["shadowdark-extras", "carousing-tables-app", "expanded-carousing-tables-app"],
         tag: "form",
         window: {
             title: "Expanded Carousing Tables Editor",
@@ -45,6 +46,7 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
             tables,
             isEditing: !!this.editingTable,
             editingTable: this.editingTable,
+            linkedInfo: this.editingTable?.links ? describeLinks(this.editingTable.links) : null,
             activeTab: this._currentTab,
             defaultTiers: getDefaultExpandedData().tiers,
             defaultOutcomes: getDefaultExpandedData().outcomes,
@@ -64,6 +66,17 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
         html.find('[data-action="delete-table"]').click(this._onDeleteTable.bind(this));
         html.find('[data-action="export-table"]').click(this._onExportTable.bind(this));
         html.find('[data-action="import-table"]').click(this._onImportTable.bind(this));
+        html.find('[data-action="import-foundry-table"]').click(this._onBuildFromFoundry.bind(this));
+
+        // Mode switch (Original <-> Expanded) — swaps to the other editor
+        // at the same window position. Already-active mode is a no-op.
+        html.find('[data-action="switch-mode"]').click(async (event) => {
+            if (event.currentTarget.dataset.mode !== "original") return;
+            const position = foundry.utils.deepClone(this.position);
+            await this.close();
+            const mod = await import("./CarousingTablesApp.mjs");
+            mod.openCarousingTablesEditor(position);
+        });
 
         // Editor Actions (Edit View)
         html.find('[data-action="cancel-edit"]').click(this._onCancelEdit.bind(this));
@@ -86,6 +99,13 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
         html.find('[data-action="import-outcomes"]').click(this._onImportOutcomes.bind(this));
         html.find('[data-action="import-benefits"]').click(this._onImportBenefits.bind(this));
         html.find('[data-action="import-mishaps"]').click(this._onImportMishaps.bind(this));
+
+        // Import Benefit/Mishap description tables from a Foundry RollTable
+        html.find('[data-action="import-foundry-benefits"]').click(() => this._onImportFoundryTable("benefits"));
+        html.find('[data-action="import-foundry-mishaps"]').click(() => this._onImportFoundryTable("mishaps"));
+        html.find('[data-action="import-foundry-outcomes"]').click(this._onImportFoundryOutcomes.bind(this));
+        html.find('[data-action="import-foundry-event"]').click(this._onImportFoundryEvent.bind(this));
+        html.find('[data-action="sync-linked"]').click(this._onSyncLinked.bind(this));
 
         // Tab switching (manual jQuery approach like CarousingTablesApp)
         html.find('.tabs .item').click((event) => {
@@ -587,8 +607,125 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
             }
         }
     }
+
+    /**
+     * Populate the Benefit or Mishap (d100) description table from a Foundry
+     * RollTable. Both are simple roll -> description tables, matching the
+     * shared RollTable -> rows mapping.
+     * @param {"benefits"|"mishaps"} section
+     */
+    async _onImportFoundryTable(section) {
+        if (!this.editingTable) return;
+        const table = await pickFoundryTable();
+        if (!table) return;
+
+        const rows = tableResultsToRows(table);
+        this.editingTable[section] = rows.map(r => ({ roll: parseInt(r.roll) || 0, description: r.description }));
+        this.render(true);
+        ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: rows.length }));
+    }
+
+    /**
+     * Populate the Outcome (d8) table from a Foundry RollTable. This table has
+     * no description column — it holds numeric mishap/benefit counts, a d100
+     * modifier and XP. So each result seeds a row's roll (from the range), and
+     * any "mishaps/benefits/modifier/xp N" values found in the result text are
+     * parsed out; anything absent defaults to 0 for the GM to fill in.
+     */
+    async _onImportFoundryOutcomes() {
+        if (!this.editingTable) return;
+        const table = await pickFoundryTable();
+        if (!table) return;
+
+        this.editingTable.outcomes = tableResultsToExpandedOutcomes(table);
+        this.render(true);
+        ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: this.editingTable.outcomes.length }));
+    }
+
+    /**
+     * Build a whole Expanded carousing table from Foundry RollTables — one
+     * picker with a dropdown for each of the four sub-tables. Any left blank
+     * fall back to the default (empty) template for that section.
+     */
+    async _onBuildFromFoundry() {
+        const picked = await pickMultipleFoundryTables([
+            { key: "event", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_event") },
+            { key: "outcome", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_outcome") },
+            { key: "benefit", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_benefit") },
+            { key: "mishap", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_mishap") }
+        ]);
+        if (!picked) return;
+
+        const defaults = getDefaultExpandedData();
+        const t = picked.tables;
+        const toDescRows = (tbl) => tableResultsToRows(tbl).map(r => ({ roll: parseInt(r.roll) || 0, description: r.description }));
+
+        const tableData = {
+            id: foundry.utils.randomID(),
+            name: picked.name || game.i18n.localize("SHADOWDARK_EXTRAS.carousing.new_table"),
+            // Persistent references to the source RollTables — the carousing
+            // engine re-resolves these live, and the editor can re-sync.
+            links: {
+                event: picked.uuids.event || "",
+                outcome: picked.uuids.outcome || "",
+                benefit: picked.uuids.benefit || "",
+                mishap: picked.uuids.mishap || ""
+            },
+            tiers: t.event ? tableResultsToEventTiers(t.event) : foundry.utils.deepClone(defaults.tiers),
+            outcomes: t.outcome ? tableResultsToExpandedOutcomes(t.outcome) : foundry.utils.deepClone(defaults.outcomes),
+            benefits: t.benefit ? toDescRows(t.benefit) : foundry.utils.deepClone(defaults.benefits),
+            mishaps: t.mishap ? toDescRows(t.mishap) : foundry.utils.deepClone(defaults.mishaps)
+        };
+
+        const tables = getExpandedCarousingTables();
+        tables.push(tableData);
+        await saveExpandedCarousingTables(tables);
+
+        // Open the new table in the editor.
+        this.editingTable = foundry.utils.deepClone(tableData);
+        this.render(true);
+        ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.table_saved"));
+    }
+
+    /**
+     * Re-resolve the editing table's linked RollTables into the working copy
+     * and persist the refreshed data.
+     */
+    async _onSyncLinked() {
+        if (!this.editingTable?.links) return;
+
+        const data = await resolveLinkedData(this.editingTable.links, "expanded");
+        for (const key of ["tiers", "outcomes", "benefits", "mishaps"]) {
+            if (data[key]) this.editingTable[key] = data[key];
+        }
+
+        // Persist to the stored record too (the table was saved when linked)
+        const tables = getExpandedCarousingTables();
+        const idx = tables.findIndex(t => t.id === this.editingTable.id);
+        if (idx >= 0) {
+            tables[idx] = foundry.utils.deepClone(this.editingTable);
+            await saveExpandedCarousingTables(tables);
+        }
+
+        this.render(true);
+        ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.linked_synced"));
+    }
+
+    /**
+     * Populate the Carousing Event (tiers) table from a Foundry RollTable.
+     */
+    async _onImportFoundryEvent() {
+        if (!this.editingTable) return;
+        const table = await pickFoundryTable();
+        if (!table) return;
+
+        this.editingTable.tiers = tableResultsToEventTiers(table);
+        this.render(true);
+        ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: this.editingTable.tiers.length }));
+    }
 }
 
-export function openExpandedCarousingTablesEditor() {
-    new ExpandedCarousingTablesApp().render({ force: true });
+export function openExpandedCarousingTablesEditor(position = null) {
+    const options = position ? { position } : {};
+    new ExpandedCarousingTablesApp(options).render({ force: true });
 }

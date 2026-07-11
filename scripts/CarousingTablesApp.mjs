@@ -6,6 +6,7 @@
 const MODULE_ID = "shadowdark-extras";
 
 import { getCustomCarousingTables, saveCustomCarousingTables } from "./CarousingSD.mjs";
+import { pickFoundryTable, pickMultipleFoundryTables, tableResultsToOriginalOutcomes, tableResultsToEventTiers, resolveLinkedData, describeLinks } from "./CarousingFoundryImport.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -45,11 +46,13 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 
     async _prepareContext(options) {
         const tables = getCustomCarousingTables();
+        const editingTable = this.editingTable ? tables.find(t => t.id === this.editingTable) : null;
         return {
             tables,
-            editingTable: this.editingTable ? tables.find(t => t.id === this.editingTable) : null,
+            editingTable,
             isEditing: !!this.editingTable,
-            isNew: this.editingTable === "new"
+            isNew: this.editingTable === "new",
+            linkedInfo: editingTable?.links ? describeLinks(editingTable.links) : null
         };
     }
 
@@ -57,6 +60,16 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
         const root = this.element;
         if (!root) return;
         const html = $(root);
+
+        // Mode switch (Original <-> Expanded) — swaps to the other editor
+        // at the same window position. Already-active mode is a no-op.
+        html.find('[data-action="switch-mode"]').click(async (event) => {
+            if (event.currentTarget.dataset.mode !== "expanded") return;
+            const position = foundry.utils.deepClone(this.position);
+            await this.close();
+            const mod = await import("./ExpandedCarousingTablesApp.mjs");
+            mod.openExpandedCarousingTablesEditor(position);
+        });
 
         // Tab switching
         html.find('.tabs .item').click((event) => {
@@ -108,6 +121,18 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 
         // Import table button
         html.find('[data-action="import-table"]').click(() => this._importTable());
+
+        // Import a Foundry RollTable as a new carousing table (seeds outcomes)
+        html.find('[data-action="import-foundry-table"]').click(() => this._importFoundryTableAsNew());
+
+        // Populate the Outcomes tab from a Foundry RollTable
+        html.find('[data-action="import-foundry-outcomes"]').click(() => this._importFoundryOutcomes(html));
+
+        // Populate the Carousing Event (tiers) tab from a Foundry RollTable
+        html.find('[data-action="import-foundry-event"]').click(() => this._importFoundryEvent(html));
+
+        // Re-pull data from the linked RollTables
+        html.find('[data-action="sync-linked"]').click(() => this._syncLinkedTables());
 
         // Cancel edit
         html.find('[data-action="cancel-edit"]').click(() => {
@@ -185,9 +210,12 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
             outcomeIndex++;
         }
 
+        const existing = isNew ? null : tables.find(t => t.id === this.editingTable);
         const tableData = {
             id: isNew ? foundry.utils.randomID() : this.editingTable,
             name: flat.name || "Unnamed Table",
+            // Keep RollTable links across manual edits
+            ...(existing?.links ? { links: existing.links } : {}),
             tiers,
             outcomes
         };
@@ -402,6 +430,104 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
     }
 
     /**
+     * Map a Foundry RollTable's results to Original-mode outcome rows
+     * (roll, description, empty benefit).
+     * @param {RollTable} table
+     * @returns {Array<{roll: string, description: string, benefit: string}>}
+     */
+    _tableResultsToOutcomes(table) {
+        return tableResultsToOriginalOutcomes(table);
+    }
+
+    /**
+     * Build a new carousing table from Foundry RollTables — one picker with a
+     * dropdown for the Carousing Event and Carousing Outcome source tables.
+     */
+    async _importFoundryTableAsNew() {
+        const picked = await pickMultipleFoundryTables([
+            { key: "event", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_event") },
+            { key: "outcome", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_outcome") }
+        ]);
+        if (!picked) return;
+
+        const tiers = picked.tables.event ? tableResultsToEventTiers(picked.tables.event) : [];
+        const outcomes = picked.tables.outcome ? tableResultsToOriginalOutcomes(picked.tables.outcome) : [];
+
+        const tableData = {
+            id: foundry.utils.randomID(),
+            name: picked.name || picked.tables.outcome?.name || picked.tables.event?.name || game.i18n.localize("SHADOWDARK_EXTRAS.carousing.new_table"),
+            // Persistent references to the source RollTables — the carousing
+            // engine re-resolves these live, and the editor can re-sync.
+            links: { event: picked.uuids.event || "", outcome: picked.uuids.outcome || "" },
+            tiers,
+            outcomes
+        };
+
+        const tables = getCustomCarousingTables();
+        tables.push(tableData);
+        await saveCustomCarousingTables(tables);
+
+        ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.foundry_table_imported", {
+            name: tableData.name,
+            count: outcomes.length
+        }));
+
+        // Drop straight into the editor.
+        this.editingTable = tableData.id;
+        this.render();
+    }
+
+    /**
+     * Populate the Outcomes tab of the current editor from a Foundry RollTable.
+     */
+    async _importFoundryOutcomes(html) {
+        const table = await pickFoundryTable();
+        if (!table) return;
+
+        const outcomes = this._tableResultsToOutcomes(table);
+        const outcomesContainer = html.find('.outcomes-list');
+        outcomesContainer.empty();
+        outcomes.forEach((outcome, index) => {
+            outcomesContainer.append(this._createOutcomeRowHtml(index, outcome));
+        });
+
+        ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: outcomes.length }));
+    }
+
+    /**
+     * Re-resolve the editing table's linked RollTables and persist the result.
+     */
+    async _syncLinkedTables() {
+        const tables = getCustomCarousingTables();
+        const rec = tables.find(t => t.id === this.editingTable);
+        if (!rec?.links) return;
+
+        const data = await resolveLinkedData(rec.links, "original");
+        if (data.tiers) rec.tiers = data.tiers;
+        if (data.outcomes) rec.outcomes = data.outcomes;
+        await saveCustomCarousingTables(tables);
+        this.render();
+        ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.linked_synced"));
+    }
+
+    /**
+     * Populate the Carousing Event (tiers) tab from a Foundry RollTable.
+     */
+    async _importFoundryEvent(html) {
+        const table = await pickFoundryTable();
+        if (!table) return;
+
+        const tiers = tableResultsToEventTiers(table);
+        const tiersContainer = html.find('.tiers-list');
+        tiersContainer.empty();
+        tiers.forEach((tier, index) => {
+            tiersContainer.append(this._createTierRowHtml(index, tier));
+        });
+
+        ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: tiers.length }));
+    }
+
+    /**
      * Import a table from JSON file
      */
     async _importTable() {
@@ -446,7 +572,10 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 
 /**
  * Open the carousing tables editor
+ * @param {object} [position] - Optional window position to restore (used when
+ *   switching from the Expanded editor so the window stays put).
  */
-export function openCarousingTablesEditor() {
-    new CarousingTablesApp().render({ force: true });
+export function openCarousingTablesEditor(position = null) {
+    const options = position ? { position } : {};
+    new CarousingTablesApp(options).render({ force: true });
 }

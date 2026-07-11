@@ -25,7 +25,8 @@ import {
     resetCarousingSession,
     pruneOfflineCarousingData,
     addCarousingResult,
-    removeCarousingResult
+    removeCarousingResult,
+    refreshLinkedCarousingTables
 } from "./CarousingSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -169,6 +170,10 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
         if (game.user.isGM) {
             await pruneOfflineCarousingData();
         }
+
+        // Re-resolve any linked Foundry RollTables so the overlay always
+        // shows the current contents of the linked tables
+        await refreshLinkedCarousingTables();
 
         const carousingMode = getCarousingMode();
         const session = getCarousingSession();
@@ -349,6 +354,30 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
             if (!game.user.isGM) return;
             const tableId = event.target.value || "default";
             await setCarousingTable(tableId);
+        });
+
+        // GM: Switch carousing mode (Original <-> Expanded) from the overlay
+        on('[data-action="switch-carousing-mode"]', "click", async (event) => {
+            event.preventDefault();
+            if (!game.user.isGM) return;
+            const mode = event.currentTarget.dataset.mode;
+            if (!mode || mode === game.settings.get(MODULE_ID, "carousingMode")) return;
+            await game.settings.set(MODULE_ID, "carousingMode", mode);
+            this.render();
+        });
+
+        // GM: Open the Carousing Tables editor for the active mode
+        on('[data-action="edit-carousing-tables"]', "click", async (event) => {
+            event.preventDefault();
+            if (!game.user.isGM) return;
+            const mode = game.settings.get(MODULE_ID, "carousingMode") || "original";
+            if (mode === "expanded") {
+                const mod = await import("./ExpandedCarousingTablesApp.mjs");
+                mod.openExpandedCarousingTablesEditor();
+            } else {
+                const mod = await import("./CarousingTablesApp.mjs");
+                mod.openCarousingTablesEditor();
+            }
         });
 
         // GM: Tier selection

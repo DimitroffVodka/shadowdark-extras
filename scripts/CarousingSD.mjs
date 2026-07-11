@@ -15,6 +15,43 @@ const carousingActiveTabTracker = new Map();
 let _carousingJournal = null;
 let _carousingTablesJournal = null;
 
+// Live data resolved from linked Foundry RollTables (tableId -> partial data).
+// Refreshed by refreshLinkedCarousingTables(); overlaid onto stored records by
+// the sync getters so linked tables always reflect the current RollTables.
+const _linkedDataCache = new Map();
+
+/**
+ * Re-resolve every linked carousing table for the active mode from its source
+ * RollTables. Async (compendium loads); call before rendering the overlay or
+ * executing rolls. Sync getters then serve the refreshed data.
+ */
+export async function refreshLinkedCarousingTables() {
+    const { resolveLinkedData } = await import("./CarousingFoundryImport.mjs");
+    const mode = getCarousingMode();
+    const records = mode === "expanded" ? getExpandedCarousingTables() : getCustomCarousingTables();
+    for (const rec of records) {
+        if (!rec?.links || !Object.values(rec.links).some(Boolean)) continue;
+        try {
+            _linkedDataCache.set(rec.id, await resolveLinkedData(rec.links, mode));
+        } catch (err) {
+            console.warn(`${MODULE_ID} | Failed to refresh linked carousing table "${rec.name}"`, err);
+        }
+    }
+}
+
+/**
+ * Overlay live linked data (if any) onto a stored carousing table record.
+ */
+function applyLinkedData(record) {
+    const cached = record?.id ? _linkedDataCache.get(record.id) : null;
+    if (!cached) return record;
+    const merged = { ...record };
+    for (const key of ["tiers", "outcomes", "benefits", "mishaps"]) {
+        if (cached[key]) merged[key] = cached[key];
+    }
+    return merged;
+}
+
 // ============================================
 // CAROUSING DATA TABLES
 // Original mode uses ONLY custom tables created by GM
@@ -237,11 +274,11 @@ export function getExpandedCarousingData() {
 
     if (session && session.selectedTableId) {
         const table = tables.find(t => t.id === session.selectedTableId);
-        if (table) return table;
+        if (table) return applyLinkedData(table);
     }
 
     // Fallback to first table or default
-    return tables[0] || getDefaultExpandedData();
+    return applyLinkedData(tables[0]) || getDefaultExpandedData();
 }
 
 /**
@@ -410,13 +447,13 @@ export function getCarousingTableById(tableId) {
     if (tableId && tableId !== "default") {
         const table = customTables.find(t => t.id === tableId);
         if (table) {
-            return table;
+            return applyLinkedData(table);
         }
     }
 
     // Default table is now empty - auto-select first custom table if available
     if (customTables.length > 0) {
-        return customTables[0];
+        return applyLinkedData(customTables[0]);
     }
 
     // Fallback to empty default (will show "no tables" message)
@@ -672,47 +709,27 @@ export async function addCarousingResult(userId, type) {
         return null;
     }
 
-    // Roll 1d100 for the new result
-    const roll = await new Roll("1d100").evaluate();
-
-    // Show 3D dice animation if Dice So Nice is available
-    if (game.dice3d) {
-        await game.dice3d.showForRoll(roll, game.user, true);
-    }
-
-    const rollTotal = roll.total;
-
-    let newResult;
-    if (type === "benefit") {
-        const benefit = getExpandedBenefit(rollTotal);
-        newResult = {
-            diceRoll: rollTotal,
-            percentMod: 0,
-            adjustment: 0,
-            finalRoll: rollTotal,
-            description: benefit.description
-        };
-        if (!session.results[userId].benefits) {
-            session.results[userId].benefits = [];
-        }
-        session.results[userId].benefits.push(newResult);
-    } else if (type === "mishap") {
-        const mishap = getExpandedMishap(rollTotal);
-        newResult = {
-            diceRoll: rollTotal,
-            percentMod: 0,
-            adjustment: 0,
-            finalRoll: rollTotal,
-            description: mishap.description
-        };
-        if (!session.results[userId].mishaps) {
-            session.results[userId].mishaps = [];
-        }
-        session.results[userId].mishaps.push(newResult);
-    } else {
+    if (type !== "benefit" && type !== "mishap") {
         console.warn("Invalid type:", type);
         return null;
     }
+
+    // Roll 1d100, honoring the "re-roll this benefit as a mishap" (and
+    // vice-versa) special rows — the result may land in the other list.
+    const rolled = await rollExpandedD100(type, 0, {});
+    const newResult = {
+        diceRoll: rolled.diceRoll,
+        percentMod: 0,
+        adjustment: 0,
+        finalRoll: rolled.finalRoll,
+        description: rolled.description,
+        renownDelta: await applyRenownDelta(getParticipantActor(userId), parseRenownDelta(rolled.description))
+    };
+    const arrayKey = rolled.type === "benefit" ? "benefits" : "mishaps";
+    if (!session.results[userId][arrayKey]) {
+        session.results[userId][arrayKey] = [];
+    }
+    session.results[userId][arrayKey].push(newResult);
 
     await saveCarousingSession(session);
     rerenderPlayerSheets();
@@ -748,8 +765,11 @@ export async function removeCarousingResult(userId, type, index) {
         return false;
     }
 
-    // Remove the item
-    arr.splice(index, 1);
+    // Remove the item, reverting any renown it auto-applied
+    const [removed] = arr.splice(index, 1);
+    if (removed?.renownDelta) {
+        await applyRenownDelta(getParticipantActor(userId), -removed.renownDelta);
+    }
 
     await saveCarousingSession(session);
     rerenderPlayerSheets();
@@ -1031,6 +1051,80 @@ function _showRollAnnouncement(message) {
 // EXPANDED CAROUSING ROLL LOGIC
 // ============================================
 
+// Special table rows that redirect to the other d100 table
+// (CS6/Western Reaches: Benefit 01 and Mishap 100)
+const REROLL_AS_MISHAP = /re-?roll\s+this\s+benefit\s+as\s+a\s+mishap/i;
+const REROLL_AS_BENEFIT = /re-?roll\s+this\s+mishap\s+as\s+a\s+benefit/i;
+
+// "+N renown" / "-N renown" in a result description. The lookahead skips
+// conditional grants like "-1 renown if anyone sees it", which stay manual.
+const RENOWN_DELTA = /([+-]\d+)\s+renown(?!\s+if)/i;
+
+/**
+ * Extract the renown adjustment from a benefit/mishap description, if any.
+ * @returns {number} the delta, or 0 when none applies
+ */
+function parseRenownDelta(description) {
+    const m = String(description || "").match(RENOWN_DELTA);
+    return m ? (parseInt(m[1]) || 0) : 0;
+}
+
+/**
+ * Apply a renown change to an actor, clamped to [0, renownMaximum].
+ * @returns {Promise<number>} the delta actually applied (0 if clamped away)
+ */
+async function applyRenownDelta(actor, delta) {
+    if (!actor || !delta) return 0;
+    let max = 12;
+    try { max = game.settings.get(MODULE_ID, "renownMaximum") ?? 12; } catch { /* setting unregistered */ }
+    const current = actor.getFlag(MODULE_ID, "renown") ?? 0;
+    const next = Math.max(0, Math.min(max, current + delta));
+    if (next === current) return 0;
+    await actor.setFlag(MODULE_ID, "renown", next);
+    return next - current;
+}
+
+/**
+ * Resolve the actor behind a carousing participant id
+ * (a user id with a dropped actor, or "actor-<id>" for GM-managed ones).
+ */
+function getParticipantActor(participantId) {
+    const actorId = participantId?.startsWith("actor-")
+        ? participantId.slice(6)
+        : getCarousingDrops()[participantId];
+    return actorId ? game.actors.get(actorId) : null;
+}
+
+/**
+ * Roll a d100 Benefit/Mishap result, automatically honoring the "re-roll this
+ * benefit as a mishap" / "re-roll this mishap as a benefit" rows by rolling
+ * again on the other table. Bounded to avoid ping-pong loops.
+ * @param {"benefit"|"mishap"} type - the table to roll on first
+ * @param {number} outcomeModifier - the outcome row's d100 modifier
+ * @param {object} playerMods - per-player custom modifiers ({benefits, mishaps})
+ * @returns {Promise<{type: string, diceRoll: number, modifier: number, finalRoll: number, description: string}>}
+ */
+async function rollExpandedD100(type, outcomeModifier, playerMods = {}) {
+    let result = null;
+    for (let hop = 0; hop < 4; hop++) {
+        const extra = playerMods[type === "benefit" ? "benefits" : "mishaps"];
+        const roll = await new Roll(`1d100${extra ? ` + ${extra}` : ""}`).evaluate();
+        await showDSNRoll(roll, type);
+
+        const diceRoll = roll.total;
+        const finalRoll = Math.max(1, Math.min(100, diceRoll + outcomeModifier));
+        const entry = type === "benefit" ? getExpandedBenefit(finalRoll) : getExpandedMishap(finalRoll);
+        result = { type, diceRoll, modifier: outcomeModifier, finalRoll, description: entry.description };
+
+        const redirect = type === "benefit"
+            ? REROLL_AS_MISHAP.test(entry.description)
+            : REROLL_AS_BENEFIT.test(entry.description);
+        if (!redirect || hop === 3) return result;
+        type = type === "benefit" ? "mishap" : "benefit";
+    }
+    return result;
+}
+
 /**
  * Execute expanded carousing rolls for all participants
  * Uses d8 for outcome table, then d100 for benefits/mishaps
@@ -1082,50 +1176,20 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
         const currentXp = actor.system?.level?.xp || 0;
         await actor.update({ "system.level.xp": currentXp + outcome.xp });
 
-        // Helper to apply modifier to d100 roll
-        // Modifier is added directly to the roll, e.g., -20 + 40 = 20
-        const applyModifier = (diceRoll, modifier) => {
-            return Math.max(1, Math.min(100, diceRoll + modifier));
-        };
-
-        // Roll for benefits
+        // Roll for benefits and mishaps. rollExpandedD100 handles the special
+        // "re-roll this benefit as a mishap" (and vice-versa) rows, so a roll
+        // may land in the opposite list from the one that triggered it.
         const benefitResults = [];
-        const benefitMod = playerMods.benefits ? ` + ${playerMods.benefits}` : "";
-        for (let i = 0; i < outcome.benefits; i++) {
-            const benefitRoll = await new Roll(`1d100${benefitMod}`).evaluate();
-
-            // Show 3D dice animation with green dice for benefits
-            await showDSNRoll(benefitRoll, 'benefit');
-
-            const diceResult = benefitRoll.total;
-            const finalResult = applyModifier(diceResult, outcome.modifier);
-            const benefit = getExpandedBenefit(finalResult);
-            benefitResults.push({
-                diceRoll: diceResult,
-                modifier: outcome.modifier,
-                finalRoll: finalResult,
-                description: benefit.description
-            });
-        }
-
-        // Roll for mishaps
         const mishapResults = [];
-        const mishapMod = playerMods.mishaps ? ` + ${playerMods.mishaps}` : "";
+        for (let i = 0; i < outcome.benefits; i++) {
+            const r = await rollExpandedD100("benefit", outcome.modifier, playerMods);
+            r.renownDelta = await applyRenownDelta(actor, parseRenownDelta(r.description));
+            (r.type === "benefit" ? benefitResults : mishapResults).push(r);
+        }
         for (let i = 0; i < outcome.mishaps; i++) {
-            const mishapRoll = await new Roll(`1d100${mishapMod}`).evaluate();
-
-            // Show 3D dice animation with red dice for mishaps
-            await showDSNRoll(mishapRoll, 'mishap');
-
-            const diceResult = mishapRoll.total;
-            const finalResult = applyModifier(diceResult, outcome.modifier);
-            const mishap = getExpandedMishap(finalResult);
-            mishapResults.push({
-                diceRoll: diceResult,
-                modifier: outcome.modifier,
-                finalRoll: finalResult,
-                description: mishap.description
-            });
+            const r = await rollExpandedD100("mishap", outcome.modifier, playerMods);
+            r.renownDelta = await applyRenownDelta(actor, parseRenownDelta(r.description));
+            (r.type === "mishap" ? mishapResults : benefitResults).push(r);
         }
 
         // Store result
@@ -1183,10 +1247,12 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
             playerContent += `<div class="sdx-results-section sdx-benefits-section">
                 <div class="sdx-section-header sdx-benefit-header"><i class="fas fa-star"></i> Benefits (${benefitResults.length})</div>`;
             for (const b of benefitResults) {
+                const renownNote = b.renownDelta
+                    ? ` <span class="sdx-renown-applied">(${b.renownDelta > 0 ? "+" : ""}${b.renownDelta} renown applied)</span>` : "";
                 // If benefits should be hidden from players, add both visible (GM) and hidden (player) versions
                 const descHtml = showBenefitsToPlayers
-                    ? `<div class="sdx-result-desc">${b.description}</div>`
-                    : `<div class="sdx-result-desc sdx-gm-only">${b.description}</div><div class="sdx-result-desc sdx-player-only">${hiddenText}</div>`;
+                    ? `<div class="sdx-result-desc">${b.description}${renownNote}</div>`
+                    : `<div class="sdx-result-desc sdx-gm-only">${b.description}${renownNote}</div><div class="sdx-result-desc sdx-player-only">${hiddenText}</div>`;
                 playerContent += `
                     <div class="sdx-result-row sdx-benefit-row">
                         <div class="sdx-roll-breakdown">${buildRollBreakdown(b)}</div>
@@ -1201,10 +1267,12 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
             playerContent += `<div class="sdx-results-section sdx-mishaps-section">
                 <div class="sdx-section-header sdx-mishap-header"><i class="fas fa-skull"></i> Mishaps (${mishapResults.length})</div>`;
             for (const m of mishapResults) {
+                const renownNote = m.renownDelta
+                    ? ` <span class="sdx-renown-applied">(${m.renownDelta > 0 ? "+" : ""}${m.renownDelta} renown applied)</span>` : "";
                 // If mishaps should be hidden from players, add both visible (GM) and hidden (player) versions
                 const descHtml = showMishapsToPlayers
-                    ? `<div class="sdx-result-desc">${m.description}</div>`
-                    : `<div class="sdx-result-desc sdx-gm-only">${m.description}</div><div class="sdx-result-desc sdx-player-only">${hiddenText}</div>`;
+                    ? `<div class="sdx-result-desc">${m.description}${renownNote}</div>`
+                    : `<div class="sdx-result-desc sdx-gm-only">${m.description}${renownNote}</div><div class="sdx-result-desc sdx-player-only">${hiddenText}</div>`;
                 playerContent += `
                     <div class="sdx-result-row sdx-mishap-row">
                         <div class="sdx-roll-breakdown">${buildRollBreakdown(m)}</div>
@@ -1277,6 +1345,9 @@ export async function executeCarousingRolls() {
         console.error(`${MODULE_ID} | Carousing journal not found!`);
         return;
     }
+
+    // Pull fresh data from any linked Foundry RollTables before rolling
+    await refreshLinkedCarousingTables();
 
     const session = getCarousingSession();
     const drops = getCarousingDrops();

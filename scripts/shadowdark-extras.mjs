@@ -3884,6 +3884,8 @@ function registerSettings() {
 	});
 
 	// Carousing Tables Editor Menu Button
+	// Opens a single editor that hosts both modes via an in-window Original/Expanded
+	// switch. It opens on the mode currently selected in the Carousing Mode setting.
 	game.settings.registerMenu(MODULE_ID, "carousingTablesMenu", {
 		name: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.manage_tables"),
 		label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.manage_tables"),
@@ -3891,20 +3893,12 @@ function registerSettings() {
 		icon: "fas fa-beer",
 		type: class extends foundry.applications.api.ApplicationV2 {
 			static DEFAULT_OPTIONS = { id: "sdx-carousing-tables-menu-stub", window: { title: "" } };
-			async render() { openCarousingTablesEditor(); return this; }
-		},
-		restricted: true
-	});
-
-	// Expanded Carousing Tables Editor Menu Button
-	game.settings.registerMenu(MODULE_ID, "expandedCarousingTablesMenu", {
-		name: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.manage_expanded_tables") || "Edit Expanded Carousing Tables",
-		label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.manage_expanded_tables") || "Edit Expanded Tables",
-		hint: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.manage_expanded_tables_hint") || "Edit the Expanded Carousing mode tables (tiers, outcomes, benefits, mishaps)",
-		icon: "fas fa-dice-d20",
-		type: class extends foundry.applications.api.ApplicationV2 {
-			static DEFAULT_OPTIONS = { id: "sdx-expanded-carousing-tables-menu-stub", window: { title: "" } };
-			async render() { openExpandedCarousingTablesEditor(); return this; }
+			async render() {
+				const mode = game.settings.get(MODULE_ID, "carousingMode") || "original";
+				if (mode === "expanded") openExpandedCarousingTablesEditor();
+				else openCarousingTablesEditor();
+				return this;
+			}
 		},
 		restricted: true
 	});

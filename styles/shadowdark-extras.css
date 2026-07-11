@@ -11388,6 +11388,131 @@ body.sdx-dark-mode .shadowdark-extras .sdx-setting-header select {
     overflow: hidden;
 }
 
+.carousing-tables-app .sdx-carousing-mode-switch {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #333;
+    flex: 0 0 auto;
+}
+
+.carousing-tables-app .sdx-carousing-mode-switch .sdx-mode-label {
+    color: #999;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 2px;
+}
+
+.carousing-tables-app .sdx-carousing-mode-switch .sdx-mode-btn {
+    flex: 0 0 auto;
+    width: auto;
+    padding: 3px 14px;
+    background: #262626;
+    color: #bbb;
+    border: 1px solid #444;
+    border-radius: 4px;
+    cursor: pointer;
+    line-height: 1.4;
+}
+
+.carousing-tables-app .sdx-carousing-mode-switch .sdx-mode-btn:hover {
+    background: #333;
+    color: #fff;
+}
+
+.carousing-tables-app .sdx-carousing-mode-switch .sdx-mode-btn.active {
+    background: #d4af37;
+    color: #1a1a1a;
+    border-color: #d4af37;
+    font-weight: 600;
+    cursor: default;
+}
+
+.carousing-tables-app .sdx-carousing-linked-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 6px 10px;
+    background: #22222a;
+    border: 1px solid #3a3a4a;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.carousing-tables-app .sdx-carousing-linked-bar .sdx-linked-info {
+    color: #9ab;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.carousing-tables-app .sdx-carousing-linked-bar .sdx-linked-info i {
+    color: #d4af37;
+    margin-right: 4px;
+}
+
+.carousing-tables-app .sdx-carousing-linked-bar button {
+    flex: 0 0 auto;
+    width: auto;
+    padding: 3px 10px;
+    background: #262626;
+    color: #bbb;
+    border: 1px solid #444;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.carousing-tables-app .sdx-carousing-linked-bar button:hover {
+    background: #333;
+    color: #fff;
+}
+
+.sdx-carousing-overlay-header .sdx-carousing-mode-switch-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+.sdx-carousing-overlay-header .sdx-carousing-mode-switch-inline .sdx-mode-btn {
+    width: auto;
+    padding: 2px 12px;
+    font-size: 14px;
+    background: #262626;
+    color: #bbb;
+    border: 1px solid #444;
+    border-radius: 4px;
+    cursor: pointer;
+    line-height: 1.4;
+}
+
+.sdx-carousing-overlay-header .sdx-carousing-mode-switch-inline .sdx-mode-btn:hover {
+    background: #333;
+    color: #fff;
+}
+
+.sdx-carousing-overlay-header .sdx-carousing-mode-switch-inline .sdx-mode-btn.active {
+    background: #d4af37;
+    color: #1a1a1a;
+    border-color: #d4af37;
+    font-weight: 600;
+    cursor: default;
+}
+
+/* Auto-applied renown badge on benefit/mishap results (chat + overlay) */
+.sdx-renown-applied {
+    color: #d4af37;
+    font-size: 0.85em;
+    font-style: italic;
+    white-space: nowrap;
+}
+
 .carousing-tables-app h2,
 .carousing-tables-app h3 {
     color: #d4af37;
@@ -14349,6 +14474,10 @@ body:not(.game-master) .sdx-carousing-chat .sdx-player-only {
 .sdx-carousing-flip-front {
     background: #141414;
     position: relative;
+    /* Explicit transform restores backface culling in Chromium — without it
+       the overflow clip flattens the face and it bleeds through mirrored
+       when the card is flipped */
+    transform: rotateY(0deg);
 }
 
 /* Back face (results) - rotated 180deg */

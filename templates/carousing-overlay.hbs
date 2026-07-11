@@ -14,7 +14,18 @@
             <h1>
                 <i class="fas fa-beer"></i>
                 {{localize "SHADOWDARK_EXTRAS.carousing.title"}}
+                {{#if isGM}}
+                <span class="sdx-carousing-mode-switch-inline">
+                    <button type="button" class="sdx-mode-btn {{#unless isExpandedMode}}active{{/unless}}"
+                        data-action="switch-carousing-mode" data-mode="original">{{localize
+                        "SHADOWDARK_EXTRAS.settings.carousing_mode.original"}}</button>
+                    <button type="button" class="sdx-mode-btn {{#if isExpandedMode}}active{{/if}}"
+                        data-action="switch-carousing-mode" data-mode="expanded">{{localize
+                        "SHADOWDARK_EXTRAS.settings.carousing_mode.expanded"}}</button>
+                </span>
+                {{else}}
                 <span class="sdx-carousing-mode-badge">{{#if isExpandedMode}}Expanded{{else}}Original{{/if}}</span>
+                {{/if}}
             </h1>
         </header>
 
@@ -37,6 +48,10 @@
                         {{localize "SHADOWDARK_EXTRAS.carousing.no_tables_found"}}
                     </div>
                     {{/if}}
+                    <button type="button" class="sdx-carousing-edit-tables-btn" data-action="edit-carousing-tables"
+                        data-tooltip="{{localize 'SHADOWDARK_EXTRAS.carousing.manage_tables'}}">
+                        <i class="fas fa-cog"></i> {{localize "SHADOWDARK_EXTRAS.carousing.manage_tables"}}
+                    </button>
                 </div>
 
                 <div class="sdx-carousing-tier-select">
@@ -209,7 +224,10 @@
                                             </button>
                                             {{/if}}
                                             <span class="sdx-result-roll">({{this.finalRoll}})</span>
-                                            <span class="sdx-result-desc">{{this.description}}</span>
+                                            <span class="sdx-result-desc">{{this.description}}{{#if
+                                                this.renownDelta}} <span class="sdx-renown-applied">({{#if (gt
+                                                    this.renownDelta 0)}}+{{/if}}{{this.renownDelta}} renown
+                                                    applied)</span>{{/if}}</span>
                                         </div>
                                         {{/each}}
                                         {{else}}
@@ -243,7 +261,10 @@
                                             </button>
                                             {{/if}}
                                             <span class="sdx-result-roll">({{this.finalRoll}})</span>
-                                            <span class="sdx-result-desc">{{this.description}}</span>
+                                            <span class="sdx-result-desc">{{this.description}}{{#if
+                                                this.renownDelta}} <span class="sdx-renown-applied">({{#if (gt
+                                                    this.renownDelta 0)}}+{{/if}}{{this.renownDelta}} renown
+                                                    applied)</span>{{/if}}</span>
                                         </div>
                                         {{/each}}
                                         {{else}}
