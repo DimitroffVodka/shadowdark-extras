@@ -19099,3 +19099,14 @@ footer.sdx-coords-footer {
 .chat-message .message-content .sub-heading {
     color: white;
 }
+
+/* ============================================
+   CONFIGURE COMBAT SETTINGS — scrollable content
+   The dialog uses position height "auto", so with a long list of settings the
+   window grows past the viewport and the lower settings (and Save button) are
+   clipped off-screen with no way to reach them. Cap the content height and let
+   it scroll internally instead. */
+#shadowdark-combat-settings .window-content {
+    max-height: 80vh;
+    overflow-y: auto;
+}
