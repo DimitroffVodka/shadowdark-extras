@@ -47,7 +47,8 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
             removeSummonProfile: PotionSheetSD.#onRemoveSummonProfile,
             addItemGiveProfile: PotionSheetSD.#onAddItemGiveProfile,
             removeItemGiveProfile: PotionSheetSD.#onRemoveItemGiveProfile,
-            itemMacro: PotionSheetSD.#onItemMacro
+            itemMacro: PotionSheetSD.#onItemMacro,
+            toggleIdentified: PotionSheetSD.#onToggleIdentified
         }
     };
 
@@ -186,10 +187,18 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
         // Load item give profiles
         context.itemGiveProfiles = context.sdxFlags.itemGive?.profiles || [];
 
-        // Unidentified settings from SDX
-        context.isUnidentified = item.getFlag(MODULE_ID, "unidentified") || false;
-        context.unidentifiedName = item.getFlag(MODULE_ID, "unidentifiedName") || "";
-        context.unidentifiedDescription = item.getFlag(MODULE_ID, "unidentifiedDescription") || "";
+        // Identification (native SD 4.x). The item's real name/description live in
+        // item.name / system.description while identified; the "other" copy is held
+        // in system.identification.{name,description}. system.toggleIdentified()
+        // swaps them and disables/enables the item's Active Effects. The rest of the
+        // module (and the base system) mask items for players off system.isIdentified,
+        // so the sheet MUST drive that native state — the old
+        // flags.shadowdark-extras.unidentified flag is no longer read anywhere.
+        context.isUnidentified = item.system?.identification
+            ? !item.system.isIdentified
+            : false;
+        context.identificationName = item.system?.identification?.name ?? "";
+        context.identificationDescription = item.system?.identification?.description ?? "";
 
         // Enrich description
         context.enrichedDescription = await TextEditorImpl.enrichHTML(item.system.description, {
@@ -198,7 +207,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
             relativeTo: item
         });
 
-        context.enrichedUnidentifiedDescription = await TextEditorImpl.enrichHTML(context.unidentifiedDescription, {
+        context.enrichedIdentificationDescription = await TextEditorImpl.enrichHTML(context.identificationDescription, {
             secrets: item.isOwner,
             async: true,
             relativeTo: item
@@ -692,6 +701,27 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 
     static async #onItemMacro(event, target) {
         this._onChangeTab("macro");
+    }
+
+    /**
+     * Toggle the item's identified state via the native SD 4.x mechanism.
+     * system.toggleIdentified() swaps item.name/description with
+     * system.identification.{name,description} and disables/enables the item's
+     * Active Effects — this is the state the rest of the module and the base
+     * system use to mask unidentified items from players.
+     */
+    static async #onToggleIdentified(event, target) {
+        // Persist a pending edit to the alternate name before the swap so the
+        // toggle uses the latest value the GM typed (its change event may not have
+        // committed yet when the checkbox is clicked).
+        const input = this.element?.querySelector('input[name="system.identification.name"]');
+        if (input) {
+            const pending = input.value ?? "";
+            if (pending !== (this.item.system?.identification?.name ?? "")) {
+                await this.item.update({ "system.identification.name": pending }, { render: false });
+            }
+        }
+        await this.item.system.toggleIdentified();
     }
 
     static async #onRemoveEffect(event, target) {

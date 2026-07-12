@@ -8,20 +8,32 @@
 const MODULE_ID = "shadowdark-extras";
 
 /**
- * Check if an item is unidentified
+ * Check if an item is unidentified.
+ * Uses the SD 4.x native identification schema when present (which is what the
+ * rest of the module masks off), falling back to the legacy SDX flag on
+ * pre-4.x worlds.
  * @param {Item} item - The item to check
- * @returns {boolean} - True if the item has the unidentified flag
+ * @returns {boolean} - True if the item is unidentified
  */
 export function isUnidentified(item) {
+    if (!item) return false;
+    if (item.system?.identification !== undefined) {
+        return !item.system.isIdentified;
+    }
     return Boolean(item?.getFlag?.(MODULE_ID, "unidentified"));
 }
 
 /**
- * Get the masked name for an unidentified item
+ * Get the masked name for an unidentified item.
+ * In SD 4.x the item's own name is already the masked name while unidentified;
+ * on legacy worlds the masked name comes from the SDX flag.
  * @param {Item} item - The item to get masked name for
  * @returns {string} - The masked name to display
  */
 export function getUnidentifiedName(item) {
+    if (item?.system?.identification !== undefined) {
+        return item?.name ?? "";
+    }
     const customName = item?.getFlag?.(MODULE_ID, "unidentifiedName");
     if (customName && customName.trim()) {
         return customName.trim();
@@ -173,12 +185,17 @@ export async function identifyItem(item, identifySpell) {
         }
     }
 
-    // Store original masked name for the reveal
+    // Store original masked name for the reveal (before the swap restores the real name)
     const maskedName = getUnidentifiedName(item);
 
-    // Remove unidentified flags
-    await item.unsetFlag(MODULE_ID, "unidentified");
-    await item.unsetFlag(MODULE_ID, "unidentifiedName");
+    // Reveal the item. SD 4.x swaps name/description back to the real values and
+    // re-enables the item's Active Effects; legacy worlds just clear the SDX flags.
+    if (item.system?.identification !== undefined) {
+        if (!item.system.isIdentified) await item.system.toggleIdentified();
+    } else {
+        await item.unsetFlag(MODULE_ID, "unidentified");
+        await item.unsetFlag(MODULE_ID, "unidentifiedName");
+    }
 
     // Show reveal modal
     await showItemReveal(item, maskedName);

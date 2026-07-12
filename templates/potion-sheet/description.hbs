@@ -16,17 +16,26 @@
         </div>
     </fieldset>
 
-    {{!-- Unidentified Description --}}
+    {{!-- Identification Description (native SD 4.x) --}}
     <fieldset class="potion-fieldset description-fieldset">
-        <legend><i class="fas fa-mask"></i> Unidentified Description</legend>
-        <p class="hint">Shown to players when the item is unidentified. Leave empty to show nothing.</p>
+        <legend><i class="fas fa-mask"></i>
+            {{#if isUnidentified}}Identified Description{{else}}Unidentified Description{{/if}}
+        </legend>
+        <p class="hint">
+            {{#if isUnidentified}}
+            The item's true description, restored to players when it is identified.
+            {{else}}
+            Shown to players while the item is unidentified. Swapped with the real description when you
+            toggle Unidentified on the Details tab. Leave empty to show nothing.
+            {{/if}}
+        </p>
         <div class="editor-wrapper">
             {{#if isEditable}}
-            <prose-mirror name="flags.shadowdark-extras.unidentifiedDescription" value="{{unidentifiedDescription}}"
-                document-uuid="{{item.uuid}}" class="sized" compact>{{{enrichedUnidentifiedDescription}}}</prose-mirror>
+            <prose-mirror name="system.identification.description" value="{{identificationDescription}}"
+                document-uuid="{{item.uuid}}" class="sized" compact>{{{enrichedIdentificationDescription}}}</prose-mirror>
             {{else}}
             <div class="editor editor-content">
-                {{{enrichedUnidentifiedDescription}}}
+                {{{enrichedIdentificationDescription}}}
             </div>
             {{/if}}
         </div>

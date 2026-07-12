@@ -61,21 +61,33 @@
         </div>
     </fieldset>
 
-    {{!-- Identification Section --}}
+    {{!-- Identification Section (native SD 4.x) --}}
     <fieldset class="potion-fieldset">
         <legend><i class="fas fa-search"></i> Identification</legend>
         <div class="form-group">
             <label>Status</label>
-            <label class="checkbox-label">
-                <input type="checkbox" name="flags.shadowdark-extras.unidentified" {{#if
+            {{!-- The checkbox is presentational (pointer-events:none, no name); the
+                  surrounding div carries the toggle action so a single click runs
+                  system.toggleIdentified() with no form-change / label-activation
+                  race. The checked state is reconciled on the post-toggle re-render. --}}
+            <div class="checkbox-label" data-action="toggleIdentified" style="cursor: pointer;">
+                <input type="checkbox" tabindex="-1" style="pointer-events: none;" {{#if
                     isUnidentified}}checked{{/if}} />
                 <span>Unidentified</span>
-            </label>
+            </div>
         </div>
         <div class="form-group">
-            <label>Unidentified Name</label>
-            <input type="text" name="flags.shadowdark-extras.unidentifiedName" value="{{unidentifiedName}}"
+            <label>{{#if isUnidentified}}Identified Name{{else}}Unidentified Name{{/if}}</label>
+            <input type="text" name="system.identification.name" value="{{identificationName}}"
                 placeholder="Unidentified Potion" />
+            <p class="hint">
+                {{#if isUnidentified}}
+                The item's true name, restored to players when it is identified.
+                {{else}}
+                What players see while this item is unidentified. Toggling Unidentified swaps it
+                with the item's real name and hides the item's effects.
+                {{/if}}
+            </p>
         </div>
     </fieldset>
 </section>
