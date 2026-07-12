@@ -171,13 +171,12 @@ export async function identifyItem(item, identifySpell) {
         if (sdxModule?.socket) {
             // Store masked name before GM removes flags
             const maskedName = getUnidentifiedName(item);
-            await sdxModule.socket.executeAsGM(
-                "identifyItemAsGM",
-                item.uuid,
-                identifySpell?.uuid,
+            await sdxModule.socket.executeAsGM("sdxIdentifyItemAsGM", {
+                itemUuid: item.uuid,
+                spellUuid: identifySpell?.uuid ?? null,
                 maskedName,
-                game.user.id  // Pass originating user for dialog routing
-            );
+                originatingUserId: game.user.id  // for reveal-dialog routing
+            });
             return;
         } else {
             ui.notifications.warn("Cannot identify item: No GM connected or socket unavailable.");

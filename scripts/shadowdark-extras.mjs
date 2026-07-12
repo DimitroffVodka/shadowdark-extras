@@ -18251,21 +18251,40 @@ Hooks.once("ready", () => {
 
 		// Handler: GM identifies item via SD 4.x native toggleIdentified(),
 		// then routes the reveal dialog back to the originating player.
-		macroExecuteSocket.register("sdxIdentifyItemAsGM", async function({ itemUuid, maskedName, originatingUserId }) {
+		macroExecuteSocket.register("sdxIdentifyItemAsGM", async function({ itemUuid, spellUuid, maskedName, originatingUserId }) {
 			const sender = game.users.get(this.socketdata?.userId);
 			if (!sender) return;
 
 			const item = await fromUuid(itemUuid);
 			if (!item) return;
 
-			// Verify authorization - sender must own the item (or its parent actor)
-			if (!sender.isGM && !item.testUserPermission(sender, "OWNER")) {
+			// Authorization. GMs and owners of the item always pass. This socket
+			// path exists precisely for non-owner senders (a player casting
+			// Identify on another actor's item), so those are authorized when the
+			// item is genuinely unidentified AND the Identify spell they cast
+			// lives on an actor they own — revealing is then a spell effect, not
+			// a permission escalation on the target document.
+			let authorized = sender.isGM || item.testUserPermission(sender, "OWNER");
+			if (!authorized && isUnidentified(item)) {
+				const spell = spellUuid ? await fromUuid(spellUuid) : null;
+				// Identify can be cast from a spell, scroll, or wand (see the
+				// spell-macro dispatch, which covers all three item types).
+				authorized = ["Spell", "Scroll", "Wand"].includes(spell?.type)
+					&& Boolean(spell.actor?.testUserPermission(sender, "OWNER"));
+			}
+			if (!authorized) {
 				console.warn(`${MODULE_ID} | Unauthorized sdxIdentifyItemAsGM attempt from user ${sender.name}`);
 				return;
 			}
 
-			// SD 4.x native: swaps name ↔ identification.name, flips identified flag
-			await item.system.toggleIdentified();
+			// Reveal. SD 4.x native swaps name ↔ identification.name and flips the
+			// identified flag; legacy (SD 3.x) worlds just clear the SDX flags.
+			if (item.system?.identification !== undefined) {
+				if (!item.system.isIdentified) await item.system.toggleIdentified();
+			} else {
+				await item.unsetFlag(MODULE_ID, "unidentified");
+				await item.unsetFlag(MODULE_ID, "unidentifiedName");
+			}
 			const escapedItemImg = foundry.utils.escapeHTML(item.img ?? "");
 
 			// Post chat message visible to all
