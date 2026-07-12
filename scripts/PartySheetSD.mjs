@@ -11,6 +11,42 @@ import { getCustomLightSources } from "./shadowdark-extras.mjs";
 const MODULE_ID = "shadowdark-extras";
 
 /**
+ * Returns true when a live item is unidentified.
+ * Uses SD 4.x native identification; falls back to the legacy SDX flag
+ * only on worlds that predate the native schema.
+ * @param {Item} item
+ * @returns {boolean}
+ */
+function isItemUnidentified(item) {
+	if (!item) return false;
+	// SD 4.x: identification schema exists on PhysicalItemSD → use it
+	if (item.system?.identification !== undefined) {
+		return !item.system.isIdentified;
+	}
+	// Legacy fallback (SD 3.x worlds)
+	return Boolean(item.getFlag?.(MODULE_ID, "unidentified"));
+}
+
+/**
+ * Returns the masked display name for an unidentified live item.
+ * In SD 4.x item.name is already the unidentified name; legacy worlds
+ * store the mask in a separate flag.
+ * @param {Item} item
+ * @returns {string}
+ */
+function getMaskedItemName(item) {
+	// SD 4.x native: item.name is the unidentified name when unidentified
+	if (item?.system?.identification !== undefined) {
+		return item.name;
+	}
+	// Legacy fallback
+	const customName = item?.getFlag?.(MODULE_ID, "unidentifiedName");
+	return (customName && customName.trim())
+		? customName.trim()
+		: game.i18n.localize("SHADOWDARK_EXTRAS.item.unidentified.label");
+}
+
+/**
  * Get the configured camping/travel tasks
  * @returns {Array} Array of task objects with key, name, abilities, campfire, and bannerImage
  */
@@ -692,14 +728,6 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		const treasure = [];
 		const freeCarrySeen = {};
 
-		// Check if unidentified feature is enabled
-		let unidentifiedEnabled = false;
-		try {
-			unidentifiedEnabled = game.settings.get(MODULE_ID, "enableUnidentified");
-		} catch {
-			// Setting not registered yet
-		}
-
 		for (const item of this.actor.items) {
 			if (!item.system.isPhysical) continue;
 
@@ -707,16 +735,11 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			itemData.uuid = item.uuid;
 
 			// Handle unidentified items - mask name for non-GM users
-			const isUnidentified = unidentifiedEnabled && Boolean(item.getFlag(MODULE_ID, "unidentified"));
+			const isUnidentified = isItemUnidentified(item);
 			itemData.isUnidentified = isUnidentified;
-			if (isUnidentified && !game.user.isGM) {
-				const customName = item.getFlag(MODULE_ID, "unidentifiedName");
-				itemData.displayName = (customName && customName.trim())
-					? customName.trim()
-					: game.i18n.localize("SHADOWDARK_EXTRAS.item.unidentified.label");
-			} else {
-				itemData.displayName = item.name;
-			}
+			itemData.displayName = (isUnidentified && !game.user.isGM)
+				? getMaskedItemName(item)
+				: item.name;
 
 			itemData.showQuantity = item.system.quantity > 1 ||
 				item.system.isAmmunition ||
@@ -1169,9 +1192,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				await this._transferItemToActor(item, member, { move });
 
 				// Mask item name if unidentified and user is not GM
-				const isUnidentified = item.getFlag(MODULE_ID, "unidentified");
-				const displayName = (isUnidentified && !game.user.isGM)
-					? game.i18n.localize("SHADOWDARK_EXTRAS.item.unidentified.label")
+				const displayName = (isItemUnidentified(item) && !game.user.isGM)
+					? getMaskedItemName(item)
 					: item.name;
 
 				ui.notifications.info(
@@ -2113,9 +2135,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 
 						await this._transferItemToActor(item, member, { move: true });
 
-						const isUnidentified = item.getFlag(MODULE_ID, "unidentified");
-						const displayName = (isUnidentified && !game.user.isGM)
-							? game.i18n.localize("SHADOWDARK_EXTRAS.item.unidentified.label")
+						const displayName = (isItemUnidentified(item) && !game.user.isGM)
+							? getMaskedItemName(item)
 							: item.name;
 
 						ui.notifications.info(

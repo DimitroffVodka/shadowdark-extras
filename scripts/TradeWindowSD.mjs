@@ -233,16 +233,27 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 		const processItems = (items) => {
 			if (game.user?.isGM) return items;
 			return items.map(itemData => {
-				const isUnidentified = itemData.flags?.[MODULE_ID]?.unidentified === true;
-				if (isUnidentified) {
-					// Get custom unidentified name or default
+				// SD 4.x native: identification schema present on the raw data.
+				// Falls back to the legacy SDX flag on unmigrated worlds.
+				const native = itemData.system?.identification !== undefined;
+				const isUnidentified = native
+					? itemData.system.identification.identified === false
+					: itemData.flags?.[MODULE_ID]?.unidentified === true;
+				if (!isUnidentified) return itemData;
+
+				let maskedName;
+				if (native) {
+					// SD 4.x stores the masked name directly in itemData.name
+					// (toggleIdentified swaps name ↔ identification.name).
+					maskedName = itemData.name;
+				} else {
+					// Legacy: masked name lives in a separate flag
 					const customName = itemData.flags?.[MODULE_ID]?.unidentifiedName;
-					const maskedName = (customName && customName.trim())
+					maskedName = (customName && customName.trim())
 						? customName.trim()
 						: game.i18n.localize("SHADOWDARK_EXTRAS.item.unidentified.label");
-					return { ...itemData, name: maskedName, _realName: itemData.name };
 				}
-				return itemData;
+				return { ...itemData, name: maskedName, _realName: itemData.name };
 			});
 		};
 
