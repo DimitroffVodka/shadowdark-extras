@@ -6,6 +6,14 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- **Compendium sidebar folder.** The four SDX compendium packs (items, actors, rollables, effects) are grouped under a single "Shadowdark Extras" folder in the Compendium sidebar via a `packFolders` manifest entry.
+
+### Changed
+
+- **Optional dependency: Automated Animations → psfx.** SDX no longer recommends Automated Animations — its own Sequencer-based Animation FX engine replaces it. The manifest now lists **psfx** as the optional module that supplies the sound effects for the bundled weapon and spell animation presets. Animations still play without psfx; presets that reference a psfx sound simply fire silently if it isn't installed.
+
 ## [6.10.47] — 2026-07-13 — Native item identification, Identify flow, and carousing roll tables
 
 Verified live against Foundry 14.364 / Shadowdark 4.0.6.
