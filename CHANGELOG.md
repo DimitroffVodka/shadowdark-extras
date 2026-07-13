@@ -6,13 +6,22 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [6.10.48] — 2026-07-13 — Medkit source packs, journal-pin image rendering, and effect-apply API
+
 ### Added
 
+- **Journal pins: "None" content type and image tint.** Image-shaped pins gain an optional multiply tint, and a new "None" content type renders a bare image with no number/icon/text overlaid on top.
+- **Medkit scans multiple compendiums.** The Medkit now reconciles an actor's items against every registered source pack instead of only the bundled SDX items pack, and shows a "Source" label per row. A new module API — `registerMedkitPack(packId)`, `unregisterMedkitPack(packId)`, `getMedkitPacks()` — lets other modules (e.g. Shadowdark Enhancer) surface their own spell/item packs in the Medkit.
+- **`applySpellEffect` module API.** GM-applies an effect (by UUID) to a target actor — directly when the caller owns it, or relayed through a GM for unowned NPCs — and optionally registers it to break on the bearer's next HP loss. Returns the new effect id, so an effect-spell macro is a one-liner even against tokens the caster doesn't own.
 - **Compendium sidebar folder.** The four SDX compendium packs (items, actors, rollables, effects) are grouped under a single "Shadowdark Extras" folder in the Compendium sidebar via a `packFolders` manifest entry.
 
 ### Changed
 
 - **Optional dependency: Automated Animations → psfx.** SDX no longer recommends Automated Animations — its own Sequencer-based Animation FX engine replaces it. The manifest now lists **psfx** as the optional module that supplies the sound effects for the bundled weapon and spell animation presets. Animations still play without psfx; presets that reference a psfx sound simply fire silently if it isn't installed.
+
+### Fixed
+
+- **Map note → journal-pin conversion renders the note's actual image.** Converting a scene's map notes to pins routed the note image through the "customIcon" path, which corrupted raster PNGs and force-recolored SVGs to a solid block. Conversions now use the "image" pin shape (loading the texture directly and carrying over the note's tint), so the pin looks like the note.
 
 ## [6.10.47] — 2026-07-13 — Native item identification, Identify flow, and carousing roll tables
 
