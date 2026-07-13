@@ -1,7 +1,9 @@
-{{!-- Activity Tab. `tab` is undefined (so nothing renders) when a non-GM views
-      an unidentified item — the mechanics must stay hidden from players. --}}
-{{#if tab}}
+{{!-- Activity Tab. The <section> always renders (AppV2 parts must emit exactly
+      one root element); its contents render only when `tab` is defined — which it
+      is not for a non-GM viewing an unidentified item, so the mechanics stay
+      hidden from players while the sheet still opens. --}}
 <section class="tab-content {{#if tab.active}}active{{/if}}" data-tab="activity">
+    {{#if tab}}
 
     {{!-- Damage/Healing Group --}}
     <details class="potion-details-group" open>
@@ -498,5 +500,5 @@
             </div>
         </fieldset>
     </details>
+    {{/if}}
 </section>
-{{/if}}

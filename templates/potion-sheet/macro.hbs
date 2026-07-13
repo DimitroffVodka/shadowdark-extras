@@ -1,7 +1,9 @@
-{{!-- Macro Tab. `tab` is undefined (so nothing renders) when a non-GM views an
-      unidentified item — the item's macro/code must stay hidden from players. --}}
-{{#if tab}}
+{{!-- Macro Tab. The <section> always renders (AppV2 parts must emit exactly one
+      root element); its contents render only when `tab` is defined — which it is
+      not for a non-GM viewing an unidentified item, so the item's macro/code stays
+      hidden from players while the sheet still opens. --}}
 <section class="tab-content {{#if tab.active}}active{{/if}}" data-tab="macro">
+    {{#if tab}}
     <fieldset class="potion-fieldset macro-fieldset">
         <legend><i class="fas fa-code"></i> Item Macro</legend>
 
@@ -45,5 +47,5 @@
             <p class="hint">Enable this to trigger the macro automatically when drinking the potion.</p>
         </div>
     </fieldset>
+    {{/if}}
 </section>
-{{/if}}
