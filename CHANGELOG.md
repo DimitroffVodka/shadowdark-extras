@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [6.10.47] — 2026-07-13 — Native item identification, Identify flow, and carousing roll tables
+
+Verified live against Foundry 14.364 / Shadowdark 4.0.6.
+
 ### Added
 
 - **Carousing: linked Foundry roll tables, unified editor, and automation.** The Original and Expanded carousing editors are consolidated into one settings menu with an in-editor (and overlay-header) mode switch. Expanded tables can now link live Foundry RollTables — from the world or any compendium — for Events, Outcomes, Benefits, and Mishaps; linked tables are re-resolved at roll time, so edits to the source table take effect without re-importing. Each tab also gets a "From Foundry Table" import that parses labeled row formats (`Cost N gp, Event …, Bonus ±N` / `Mishap N, Benefit N, d100 Modifier ±N, XP N` / `Outcome …, Benefit …`), expanding dice ranges to one row per value. Rolled results now automate themselves: Benefit 01 / Mishap 100 "re-roll as the other table" entries follow the redirect automatically (bounded), and a `±N renown` in a result is applied to the character (clamped to the renown maximum, shown as a badge in chat and the overlay, and reverted exactly if the result is removed).
@@ -13,7 +17,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
-- **Unidentified potions are actually masked for players.** The SDX potion sheet still wrote a legacy module flag that nothing reads on Shadowdark 4.x, so marking a potion unidentified had zero player-facing effect. The potion sheet, the Identify spell, the Party sheet, and the Trade window now all use the system's native identification (name/description swap plus Active Effect suppression).
+- **Unidentified potions are actually masked for players.** The SDX potion sheet still wrote a legacy module flag that nothing reads on Shadowdark 4.x, so marking a potion unidentified had zero player-facing effect. The potion sheet, the Identify spell, the Party sheet, and the Trade window now all use the system's native identification (name/description swap plus Active Effect suppression). The potion sheet also hides its GM-only content from a player viewing an unidentified item — the real ("Identified") name, the real description, and the Activity and Macro tabs that reveal what the potion does — while the sheet still opens normally so players can read and use the item.
 - **Players can identify items they don't own.** The Identify flow's request-the-GM socket call invoked a handler name that was never registered, and the handler's authorization only accepted item owners — exactly the users who never take the socket path. The call and handler now agree, and a non-owner sender is authorized when the target item is genuinely unidentified and the Identify spell (or scroll/wand) belongs to an actor they own.
 - **Settings dialogs render usably again.** Combat Settings scrolls instead of overflowing the viewport, and the Activities editor uses a compact layout.
 - **Added missing localization strings** that rendered as raw keys: the carousing table delete confirmation, the Import Benefits / Import Mishaps dialog titles, and the carousing overlay's Close tooltip.
