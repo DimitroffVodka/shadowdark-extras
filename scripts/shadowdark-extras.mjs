@@ -18251,7 +18251,7 @@ Hooks.once("ready", () => {
 
 		// Handler: GM identifies item via SD 4.x native toggleIdentified(),
 		// then routes the reveal dialog back to the originating player.
-		macroExecuteSocket.register("sdxIdentifyItemAsGM", async function({ itemUuid, spellUuid, maskedName, originatingUserId }) {
+		macroExecuteSocket.register("sdxIdentifyItemAsGM", async function({ itemUuid, spellUuid, maskedName }) {
 			const sender = game.users.get(this.socketdata?.userId);
 			if (!sender) return;
 
@@ -18267,9 +18267,16 @@ Hooks.once("ready", () => {
 			let authorized = sender.isGM || item.testUserPermission(sender, "OWNER");
 			if (!authorized && isUnidentified(item)) {
 				const spell = spellUuid ? await fromUuid(spellUuid) : null;
-				// Identify can be cast from a spell, scroll, or wand (see the
-				// spell-macro dispatch, which covers all three item types).
+				// Identify can be cast from a spell, scroll, or wand (the
+				// spell-macro dispatch covers all three item types) — but the
+				// item must genuinely be Identify, not just any owned castable.
+				// The canonical marker is the same item-macro command the
+				// dispatch executes (module flag, legacy itemacro fallback):
+				// the bundled Identify spell's command calls the identify API.
+				const macroCommand = spell?.getFlag?.(MODULE_ID, "macroCommand")
+					?? spell?.flags?.itemacro?.macro?.command ?? "";
 				authorized = ["Spell", "Scroll", "Wand"].includes(spell?.type)
+					&& /\b(?:showIdentifyDialog|identifyItem)\b/.test(macroCommand)
 					&& Boolean(spell.actor?.testUserPermission(sender, "OWNER"));
 			}
 			if (!authorized) {
@@ -18310,9 +18317,11 @@ Hooks.once("ready", () => {
 				speaker: ChatMessage.getSpeaker({ actor: item.actor }),
 			});
 
-			// Route reveal dialog back to the originating player (or show locally if GM cast)
-			if (originatingUserId && originatingUserId !== game.user.id) {
-				await macroExecuteSocket.executeAsUser("sdxShowItemRevealForUser", originatingUserId, {
+			// Route reveal dialog back to the requesting player (or show locally
+			// if GM cast). The recipient is the authenticated socket sender —
+			// never a client-supplied user id, which could be forged.
+			if (sender.id !== game.user.id) {
+				await macroExecuteSocket.executeAsUser("sdxShowItemRevealForUser", sender.id, {
 					itemUuid: item.uuid,
 					maskedName
 				});

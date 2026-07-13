@@ -171,11 +171,12 @@ export async function identifyItem(item, identifySpell) {
         if (sdxModule?.socket) {
             // Store masked name before GM removes flags
             const maskedName = getUnidentifiedName(item);
+            // The GM routes the reveal dialog back to the authenticated socket
+            // sender, so no user id travels in the payload.
             await sdxModule.socket.executeAsGM("sdxIdentifyItemAsGM", {
                 itemUuid: item.uuid,
                 spellUuid: identifySpell?.uuid ?? null,
-                maskedName,
-                originatingUserId: game.user.id  // for reveal-dialog routing
+                maskedName
             });
             return;
         } else {
