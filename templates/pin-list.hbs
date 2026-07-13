@@ -11,8 +11,17 @@
                 <div class="pin-icon"
                     style="display: flex; justify-content: center; align-items: center; background-color: {{this.backgroundColor}}; border: 2px solid {{this.borderColor}}; border-radius: 50%; width: 32px; height: 32px; box-shadow: 0 0 4px rgba(0,0,0,0.5);">
                     {{#if (eq this.displayType "image")}}
+                    {{#if this.displayTint}}
+                    <span
+                        style="display: block; width: 20px; height: 20px; background-color: {{this.displayTint}}; isolation: isolate; -webkit-mask: url('{{this.displayContent}}') center / contain no-repeat; mask: url('{{this.displayContent}}') center / contain no-repeat;">
+                        <img src="{{this.displayContent}}"
+                            style="display: block; width: 20px; height: 20px; object-fit: contain; mix-blend-mode: multiply;"
+                            alt="Icon" />
+                    </span>
+                    {{else}}
                     <img src="{{this.displayContent}}"
                         style="display: block; width: 20px; height: 20px; object-fit: contain;" alt="Icon" />
+                    {{/if}}
                     {{else if (eq this.displayType "icon")}}
                     <i class="{{this.displayClass}}" style="{{this.displayStyle}} font-size: 16px;"></i>
                     {{else if (eq this.displayType "text")}}

@@ -1,7 +1,7 @@
 /**
  * Application for displaying a list of journal pins on the current scene
  */
-import { JournalPinManager } from "./JournalPinsSD.mjs";
+import { JournalPinManager, normalizeImageTint } from "./JournalPinsSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -75,8 +75,15 @@ export class PinListApp extends HandlebarsApplicationMixin(ApplicationV2) {
             let displayContent = "";
             let displayStyle = "";
             let displayClass = "";
+            let displayTint = "";
 
-            if (contentType === "symbol" || contentType === "icon") {
+            // Handle Image Shape (Icon is the image itself)
+            if ((style.shape || "circle") === "image" && style.imagePath) {
+                displayType = "image";
+                displayContent = style.imagePath;
+                displayTint = normalizeImageTint(style.imageTint)?.css || "";
+            }
+            else if (contentType === "symbol" || contentType === "icon") {
                 displayType = "icon";
                 displayClass = style.symbolClass || style.iconClass || "fa-solid fa-map-pin";
                 displayStyle = `color: ${style.symbolColor || style.fontColor || "#ffffff"};`;
@@ -125,6 +132,7 @@ export class PinListApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 displayContent,
                 displayStyle,
                 displayClass,
+                displayTint,
                 backgroundColor,
                 borderColor,
                 icon: displayType === "icon" ? displayClass : "fas fa-map-pin"

@@ -39,7 +39,7 @@ import { initWeaponAnimations } from "./WeaponAnimationSD.mjs";
 import { initLevelUpAnimations } from "./LevelUpAnimationSD.mjs";
 import { openWeaponAnimationConfig } from "./WeaponAnimationConfig.mjs";
 import { initFocusSpellTracker, endFocusSpell, linkEffectToFocusSpell, getActiveFocusSpells, isFocusingOnSpell, startDurationSpell, endDurationSpell, registerSpellModification, getActiveDurationSpells } from "./FocusSpellTrackerSD.mjs";
-import { initBreakOnDamage, breakEffectOnDamage, clearBreakOnDamage } from "./BreakOnDamageSD.mjs";
+import { initBreakOnDamage, breakEffectOnDamage, clearBreakOnDamage, applySpellEffect } from "./BreakOnDamageSD.mjs";
 import { initCarousing, injectCarousingButton, ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, getCustomCarousingTables, getCarousingTableById, setCarousingTable } from "./CarousingSD.mjs";
 import { openCarousingOverlay, refreshCarousingOverlay } from "./CarousingOverlaySD.mjs";
 import { openCarousingTablesEditor } from "./CarousingTablesApp.mjs";
@@ -66,7 +66,7 @@ import { initAppearanceSettings } from "./AppearanceSettingsSD.mjs";
 import AmmunitionSelector from "./AmmunitionSelector.mjs";
 import StaffSpellManager from "./StaffSpellManager.mjs";
 import { initJournalNarration } from "./JournalNarrationSD.mjs";
-import { initMedkit } from "./MedkitSD.mjs";
+import { initMedkit, registerMedkitPack, unregisterMedkitPack, getMedkitPacks } from "./MedkitSD.mjs";
 import { LightTrackerAppSD, initLightTrackerApp } from "./LightTrackerAppSD.mjs";
 import { initMarchingMode } from "./MarchingModeSD.mjs";
 import { SceneExporter } from "./SceneExporter.mjs";
@@ -20150,6 +20150,12 @@ Hooks.on("setup", () => {
 			// NOT gmOnly: a player's own effects must be able to break too.
 			breakEffectOnDamage: audited("breakEffectOnDamage", breakEffectOnDamage),
 			clearBreakOnDamage: audited("clearBreakOnDamage", clearBreakOnDamage),
+			applySpellEffect: audited("applySpellEffect", applySpellEffect),
+
+			// --- Medkit source packs (register your own spell pack to appear in the Medkit) ---
+			registerMedkitPack: audited("registerMedkitPack", registerMedkitPack),
+			unregisterMedkitPack: audited("unregisterMedkitPack", unregisterMedkitPack),
+			getMedkitPacks: audited("getMedkitPacks", getMedkitPacks),
 
 			// --- Spells / Focus tracker ---
 			startDurationSpell: audited("startDurationSpell", gmOnly("startDurationSpell", startDurationSpell)),

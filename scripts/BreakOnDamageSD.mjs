@@ -25,7 +25,13 @@
  *   2. Add to the `module.api = { … }` block (~line 19926, next to getCreatureType):
  *          breakEffectOnDamage: audited("breakEffectOnDamage", breakEffectOnDamage),
  *          clearBreakOnDamage:  audited("clearBreakOnDamage",  clearBreakOnDamage),
+ *          applySpellEffect:    audited("applySpellEffect",    applySpellEffect),
  *      (NOT gmOnly — a player's own effects must be able to break too.)
+ *
+ * applySpellEffect(target, effectUuid, { breakOnDamage, reason }) GM-applies an
+ * effect (reusing the existing applyEffectToTarget handler) and returns the new
+ * effect id — the companion that lets a caster-client macro land an effect on an
+ * unowned NPC. Together they make an effect-spell a one-liner.
  */
 
 import { getSocket } from "./CombatSettingsSD.mjs";
@@ -95,6 +101,55 @@ export async function breakEffectOnDamage(actorRef, effectId, { reason = "damage
 		effectItemId: effectId,
 		reason,
 	});
+}
+
+/**
+ * Apply an effect (by UUID) to a target as GM, optionally marking it to break on
+ * the bearer's next HP loss. The companion to breakEffectOnDamage: lets a spell
+ * macro run on the caster's client yet still land an effect on an unowned NPC.
+ * @param {Actor|string} targetRef   Target actor, UUID, or id (the bearer).
+ * @param {string} effectUuid        UUID of the source Effect item (e.g. Spell Effect: Sleep).
+ * @param {object} [opts]
+ * @param {boolean} [opts.breakOnDamage=false]  Also register break-on-damage.
+ * @param {string}  [opts.reason=""]            Break notification reason.
+ * @returns {Promise<string|null>} The created effect id, or null on failure.
+ */
+export async function applySpellEffect(targetRef, effectUuid, { breakOnDamage = false, reason = "" } = {}) {
+	const actor = resolveActor(targetRef);
+	if (!actor) {
+		console.warn(`${MODULE_ID} | applySpellEffect: target actor not resolved`);
+		return null;
+	}
+
+	let effectId = null;
+	if (actor.isOwner) {
+		// Owner (GM, or player on own actor) creates the embedded effect directly.
+		const src = await fromUuid(effectUuid);
+		if (!src) {
+			console.warn(`${MODULE_ID} | applySpellEffect: effect not found ${effectUuid}`);
+			return null;
+		}
+		const [doc] = await actor.createEmbeddedDocuments("Item", [src.toObject()]);
+		effectId = doc?.id ?? null;
+	} else {
+		// Cross-owner (player → NPC): relay through the existing GM handler.
+		const socket = getSocket();
+		if (!socket) {
+			console.warn(`${MODULE_ID} | applySpellEffect: no socket for cross-owner apply`);
+			return null;
+		}
+		const res = await socket.executeAsGM("applyEffectToTarget", {
+			targetActorId: actor.id,
+			targetTokenId: tokenIdOf(actor),
+			effectUuid,
+		});
+		effectId = res?.effectId ?? null;
+	}
+
+	if (effectId && breakOnDamage) {
+		await breakEffectOnDamage(actor, effectId, { reason: reason || "damaged" });
+	}
+	return effectId;
 }
 
 /** Remove the break-on-damage marker (e.g. if the effect is made permanent). */

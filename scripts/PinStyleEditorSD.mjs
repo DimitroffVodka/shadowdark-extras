@@ -774,6 +774,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
             tooltipContentFontSize: parseInt(form.querySelector('[name="tooltipContentFontSize"]')?.value) || 13,
             shape: form.querySelector('[name="shape"]')?.value || "circle",
             imagePath: form.querySelector('[name="imagePath"]')?.value || "",
+            imageTint: form.querySelector('[name="imageTint"]')?.value || "",
             hoverAnimation: form.querySelector('[name="hoverAnimation"]')?.value || "none",
             pingAnimation: form.querySelector('[name="pingAnimation"]')?.value || "ripple",
             bringAnimation: form.querySelector('[name="bringAnimation"]')?.value || "ripple",

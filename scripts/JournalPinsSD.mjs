@@ -59,7 +59,8 @@ const DEFAULT_PIN_STYLE = {
     pingAnimation: "ripple", // "ripple", "rotate", "shake", "none"
     bringAnimation: "ripple", // "ripple", "rotate", "shake", "none"
     imagePath: "", // Path to image for "image" shape
-    contentType: "number", // "number", "icon", "text"
+    imageTint: "", // Optional multiply tint for "image" shape (e.g. from a map note)
+    contentType: "number", // "number", "icon", "text", "customIcon", "none"
     iconClass: "fa-solid fa-book-open",
     iconColor: "#ffffff",
     symbolColor: "#ffffff",
@@ -100,6 +101,18 @@ const DEFAULT_PIN_STYLE = {
     tooltipContentFontSize: 13,
     hideTooltip: false
 };
+
+/**
+ * Normalize a pin image tint (hex string, number, or Color) to a Color.
+ * Returns null for missing/invalid values and for white, which is the
+ * multiply-tint no-op. Callers use Number(color) for PIXI and color.css
+ * for HTML.
+ */
+export function normalizeImageTint(value) {
+    if (!value) return null;
+    const color = foundry.utils.Color.from(value);
+    return (color.valid && Number(color) !== 0xFFFFFF) ? color : null;
+}
 
 /**
  * Get the current pin style settings
@@ -606,13 +619,19 @@ class JournalPinManager {
         const existing = this._getScenePins(scene);
         const made = notes.map(note => {
             const src = note.texture?.src;
-            // Keep the note's icon choice (path), tint, and size.
+            // Render the note's icon faithfully: a map note is just its image
+            // (raster or SVG, in its own colors), so use the "image" shape which
+            // loads the texture directly. The "customIcon" path is for monochrome
+            // SVG assets the user recolors — it corrupts raster PNGs and force-
+            // recolors SVGs to a solid block, which is not what a note looks like.
             const style = {};
             if (src) {
-                style.contentType = "customIcon";
-                style.customIconPath = src;
-                const tint = note.texture?.tint;
-                if (tint) style.iconColor = (typeof tint === "string") ? tint : (tint.css ?? tint.toString?.());
+                style.shape = "image";
+                style.imagePath = src;
+                // A note is just its image — no number/icon content on top.
+                style.contentType = "none";
+                const tint = normalizeImageTint(note.texture?.tint);
+                if (tint) style.imageTint = tint.css;
             }
             return {
                 id: foundry.utils.randomID(),
@@ -1281,6 +1300,11 @@ class JournalPinGraphics extends PIXI.Container {
                         // Apply opacity
                         sprite.alpha = baseOpacity;
 
+                        // Optional multiply tint (e.g. carried over from a map note).
+                        // normalizeImageTint drops invalid values and the white no-op.
+                        const imageTint = normalizeImageTint(style.imageTint);
+                        if (imageTint) sprite.tint = Number(imageTint);
+
                         // Store reference for pixel-perfect hover detection
                         this._imageSprite = sprite;
 
@@ -1298,20 +1322,9 @@ class JournalPinGraphics extends PIXI.Container {
                     container.addChild(placeholder);
                 }
 
-                // Add content (text/number/icon) on top?
-                // Plan assumption: yes, standard content renders on top
-                // So we fall through to the content rendering block...
-
-                // We need a dummy _circle reference because content rendering logic might use it?
-                // Checking code... no, content is added to 'container'.
-                // BUT _drawStyledStroke uses _circle. We skip that for image.
-
-                // We successfully added the visual to 'container'.
-                // The code below expects 'this._circle' to exist for shape drawing logic.
-                // We should bail out of the shape drawing part but continue to content.
-
-                // Let's restructure a bit.
-                // We'll define a flag to skip standard shape drawing.
+                // Content (number/icon/text) still renders on top of the image
+                // unless contentType is "none". _circle stays null here; all its
+                // uses are confined to the non-image branch below.
 
             } catch (err) {
                 console.error("SDX Journal Pins | Error loading pin image:", err);
@@ -1377,10 +1390,13 @@ class JournalPinGraphics extends PIXI.Container {
             }
         }
 
-        // Add content: number, symbol, custom icon, or custom text
+        // Add content: number, symbol, custom icon, custom text, or none
         const contentType = style.contentType || (style.showIcon ? "symbol" : "number");
 
-        if (contentType === "symbol" || contentType === "icon") {
+        if (contentType === "none") {
+            // No content overlay (e.g. pins converted from map notes)
+        }
+        else if (contentType === "symbol" || contentType === "icon") {
             // FontAwesome icon (renamed to symbol)
             const iconClass = style.symbolClass || style.iconClass || "fa-solid fa-book-open";
             const symbolColor = style.symbolColor || style.fontColor || "#ffffff";

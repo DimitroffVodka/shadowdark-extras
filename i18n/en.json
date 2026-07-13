@@ -1018,6 +1018,8 @@
   "SDX.pinStyleEditor.contentTypeNumber": "Page Number",
   "SDX.pinStyleEditor.contentTypeIcon": "Icon",
   "SDX.pinStyleEditor.contentTypeText": "Custom Text",
+  "SDX.pinStyleEditor.contentTypeNone": "None",
+  "SDX.pinStyleEditor.imageTint": "Image Tint (white = none)",
   "SDX.pinStyleEditor.customText": "Custom Text",
   "SDX.pinStyleEditor.showIcon": "Show icon instead of page number",
   "SDX.pinStyleEditor.iconType": "Icon",

@@ -163,6 +163,11 @@
                     </button>
                 </div>
             </div>
+            <div class="form-group">
+                <label>{{localize "SDX.pinStyleEditor.imageTint"}}</label>
+                <input type="color" name="imageTint"
+                    value="{{#if style.imageTint}}{{style.imageTint}}{{else}}#ffffff{{/if}}" />
+            </div>
         </div>
 
         <!-- Standard Shape Options (Ring, Fill, Etc) -->
@@ -288,6 +293,8 @@
                     {{localize "SDX.pinStyleEditor.contentTypeIcon"}}</option>
                 <option value="text" {{#if (eq style.contentType "text" )}}selected{{/if}}>
                     {{localize "SDX.pinStyleEditor.contentTypeText"}}</option>
+                <option value="none" {{#if (eq style.contentType "none" )}}selected{{/if}}>
+                    {{localize "SDX.pinStyleEditor.contentTypeNone"}}</option>
             </select>
         </div>
 

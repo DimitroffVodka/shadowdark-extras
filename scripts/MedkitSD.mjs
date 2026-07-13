@@ -2,6 +2,45 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 const MODULE_ID = "shadowdark-extras";
 
 /**
+ * Compendiums the Medkit reconciles an actor's owned items against. Other
+ * modules (e.g. shadowdark-enhancer) register their own spell packs via the
+ * module API's registerMedkitPack so their enhanced copies show as updates too.
+ * The default SDX item pack is always present.
+ */
+const DEFAULT_MEDKIT_PACK = "shadowdark-extras.pack-sdxitems";
+const _medkitPacks = new Set([DEFAULT_MEDKIT_PACK]);
+
+/** Add a compendium (by collection id) for the Medkit to scan. Idempotent. */
+export function registerMedkitPack(packId) {
+    if (typeof packId !== "string" || !packId) return false;
+    _medkitPacks.add(packId);
+    return true;
+}
+
+/** Remove a previously-registered pack. The default SDX pack can't be removed. */
+export function unregisterMedkitPack(packId) {
+    if (packId === DEFAULT_MEDKIT_PACK) return false;
+    return _medkitPacks.delete(packId);
+}
+
+/** Current Medkit source packs, in registration order (default SDX pack first). */
+export function getMedkitPacks() {
+    return [..._medkitPacks];
+}
+
+/**
+ * Human-friendly "Source:" label for a Medkit pack. Module/system packs report their
+ * package title (so SDX's own pack still reads "Shadowdark Extras"); world compendiums
+ * fall back to the pack's own label.
+ */
+function packSourceLabel(pack) {
+    const m = pack.metadata ?? {};
+    if (m.packageType === "module") return game.modules.get(m.packageName)?.title ?? m.label;
+    if (m.packageType === "system") return game.system?.title ?? m.label;
+    return m.label ?? pack.collection;
+}
+
+/**
  * Medkit Application for Shadowdark
  * Scans actor items and compares them with the Shadowdark Extras compendium
  * allowing users to update their items to the enhanced versions.
@@ -32,7 +71,6 @@ export class MedkitApp extends HandlebarsApplicationMixin(ApplicationV2) {
     constructor(options = {}) {
         super(options);
         this.actor = options.document;
-        this.packId = "shadowdark-extras.pack-sdxitems";
     }
 
     static DEFAULT_OPTIONS = {
@@ -69,13 +107,19 @@ export class MedkitApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /** @override */
     async _prepareContext(options) {
-        const pack = game.packs.get(this.packId);
-        if (!pack) {
-            return { error: `Compendium ${this.packId} not found.` };
+        const packs = getMedkitPacks().map(id => game.packs.get(id)).filter(Boolean);
+        if (!packs.length) {
+            return { error: `No Medkit compendiums found (${getMedkitPacks().join(", ")}).` };
         }
 
-        // Get index with UUID
-        const index = await pack.getIndex();
+        // Combined index across every registered pack. Index entries carry a
+        // fully-qualified .uuid, so downstream fetches use fromUuid (no per-pack
+        // handle needed).
+        const index = [];
+        for (const pack of packs) {
+            const _packLabel = packSourceLabel(pack);
+            for (const entry of await pack.getIndex()) index.push({ ...entry, _packLabel });
+        }
 
         // Get actor's class for spell filtering
         const actorClassUuid = this.actor.system?.class;
@@ -103,7 +147,7 @@ export class MedkitApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (item.type === "Spell" && actorClassUuid && allMatches.length > 1) {
                 // Need to fetch full documents to check class arrays
                 for (const indexMatch of allMatches) {
-                    const compendiumItem = await pack.getDocument(indexMatch._id);
+                    const compendiumItem = await fromUuid(indexMatch.uuid);
                     if (compendiumItem?.system?.class?.includes(actorClassUuid)) {
                         match = indexMatch;
                         break;
@@ -128,7 +172,7 @@ export class MedkitApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 // If linked, check if data is different
                 if (isLinked) {
                     // We must fetch the full document to compare data
-                    const compendiumItem = await pack.getDocument(match._id);
+                    const compendiumItem = await fromUuid(match.uuid);
                     if (compendiumItem) {
                         isDiff = this._isItemDifferent(item, compendiumItem);
                     }
@@ -145,6 +189,7 @@ export class MedkitApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     id: item.id,
                     compendiumUuid: compendiumUuid,
                     currentSource: sourceId || "Unknown/Vanilla",
+                    sourceLabel: match._packLabel ?? "Unknown",
                     statusLabel: isDiff ? "New Version" : (isLinked ? "Up to Date" : "Update Available")
                 };
 

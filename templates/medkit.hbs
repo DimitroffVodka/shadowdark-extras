@@ -4,7 +4,7 @@
             <i class="fas fa-kit-medical"></i>
             <h2>{{actor.name}}</h2>
         </div>
-        <p class="header-desc">Update your items to the enhanced versions from Shadowdark Extras.</p>
+        <p class="header-desc">Update your items to the enhanced versions from the registered compendiums.</p>
     </div>
 
     <div class="sdx-medkit-summary">
@@ -36,7 +36,7 @@
         {{else}}
         <div class="sdx-medkit-section success">
             <h3><i class="fas fa-check-circle"></i> All Scanned Items Up to Date</h3>
-            <p class="note">No updates found in Shadowdark Extras compendium for your current items.</p>
+            <p class="note">No updates found in the scanned compendiums for your current items.</p>
         </div>
         {{/if}}
 
@@ -49,7 +49,7 @@
                     <img src="{{this.img}}" alt="{{this.name}}">
                     <div class="sdx-medkit-item-details">
                         <span class="name">{{this.name}}</span>
-                        <span class="source">Source: Shadowdark Extras</span>
+                        <span class="source">Source: {{this.sourceLabel}}</span>
                     </div>
                     <span class="sdx-medkit-status"><i class="fas fa-check"></i></span>
                 </div>

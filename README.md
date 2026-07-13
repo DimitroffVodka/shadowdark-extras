@@ -29,7 +29,7 @@ A comprehensive enhancement module for [Shadowdark RPG](https://www.thearcanelib
 - **socketlib** (required) - For multiplayer functionality
 - **Sequencer** (optional) - For torch and level-up animations
 - **JB2A** (optional) - Animation assets for visual effects
-- **Automated Animations** (optional) - For attack/spell animations
+- **Automated Animations** (not needed) - SDX has its own built-in Animation FX engine; if AA is installed anyway, SDX suppresses it for anything it already animates (see [Animation FX](#-animation-fx))
 - **TokenMagic FX** (optional) - For template effects
 - **Item Macro** (required)
 

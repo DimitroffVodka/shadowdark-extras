@@ -1,7 +1,7 @@
 
 
 import { TrayApp } from "./TrayApp.mjs";
-import { JournalPinManager } from "./JournalPinsSD.mjs";
+import { JournalPinManager, normalizeImageTint } from "./JournalPinsSD.mjs";
 import { initSoloHexMode } from "./SoloHexMode.mjs";
 import { getHexPainterData, loadTileAssets, bindCanvasEvents, enablePainting, disablePainting, isPainting, setDecorMode, canUndoPoi, canRedoPoi } from "./HexPainterSD.mjs";
 import {
@@ -732,11 +732,13 @@ export function getPinsData() {
         let displayContent = "";
         let displayStyle = "";
         let displayClass = "";
+        let displayTint = "";
 
         // Handle Image Shape (Icon is the image itself)
         if (shape === "image" && style.imagePath) {
             displayType = "image";
             displayContent = style.imagePath;
+            displayTint = normalizeImageTint(style.imageTint)?.css || "";
         }
         // Handle Custom Icon Content
         else if (contentType === "customIcon" && style.customIconPath) {
@@ -798,6 +800,7 @@ export function getPinsData() {
             displayContent,
             displayStyle,
             displayClass,
+            displayTint,
             backgroundColor,
             borderColor,
             borderRadius,
