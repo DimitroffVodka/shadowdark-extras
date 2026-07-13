@@ -61,7 +61,9 @@
         </div>
     </fieldset>
 
-    {{!-- Identification Section (native SD 4.x) --}}
+    {{!-- Identification Section (native SD 4.x). GM-only: it exposes the item's
+          real name and the toggle, which players must never see. --}}
+    {{#if isGM}}
     <fieldset class="potion-fieldset">
         <legend><i class="fas fa-search"></i> Identification</legend>
         <div class="form-group">
@@ -90,4 +92,5 @@
             </p>
         </div>
     </fieldset>
+    {{/if}}
 </section>

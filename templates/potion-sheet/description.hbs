@@ -16,7 +16,9 @@
         </div>
     </fieldset>
 
-    {{!-- Identification Description (native SD 4.x) --}}
+    {{!-- Identification Description (native SD 4.x). GM-only: the alternate copy
+          holds the item's true description while unidentified. --}}
+    {{#if isGM}}
     <fieldset class="potion-fieldset description-fieldset">
         <legend><i class="fas fa-mask"></i>
             {{#if isUnidentified}}Identified Description{{else}}Unidentified Description{{/if}}
@@ -40,4 +42,5 @@
             {{/if}}
         </div>
     </fieldset>
+    {{/if}}
 </section>

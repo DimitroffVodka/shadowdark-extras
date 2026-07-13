@@ -1,4 +1,6 @@
-{{!-- Activity Tab --}}
+{{!-- Activity Tab. `tab` is undefined (so nothing renders) when a non-GM views
+      an unidentified item — the mechanics must stay hidden from players. --}}
+{{#if tab}}
 <section class="tab-content {{#if tab.active}}active{{/if}}" data-tab="activity">
 
     {{!-- Damage/Healing Group --}}
@@ -497,3 +499,4 @@
         </fieldset>
     </details>
 </section>
+{{/if}}

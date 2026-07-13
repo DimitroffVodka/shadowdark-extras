@@ -194,11 +194,14 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
         // module (and the base system) mask items for players off system.isIdentified,
         // so the sheet MUST drive that native state — the old
         // flags.shadowdark-extras.unidentified flag is no longer read anywhere.
-        context.isUnidentified = item.system?.identification
-            ? !item.system.isIdentified
-            : false;
+        context.isUnidentified = this._isUnidentified();
         context.identificationName = item.system?.identification?.name ?? "";
         context.identificationDescription = item.system?.identification?.description ?? "";
+        // Players must not learn what an unidentified item is or does. GM-only
+        // fields (real name/description) gate on isGM in the templates; the tabs
+        // that reveal mechanics (Activity) or GM code (Macro) are dropped from
+        // the tab set below for a non-GM viewing an unidentified item.
+        context.hideItemFunction = !context.isGM && context.isUnidentified;
 
         // Enrich description
         context.enrichedDescription = await TextEditorImpl.enrichHTML(item.system.description, {
@@ -319,15 +322,35 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
     }
 
     /**
+     * True when the item is unidentified via SD 4.x native identification.
+     */
+    _isUnidentified() {
+        const ident = this.item.system?.identification;
+        return ident ? !this.item.system.isIdentified : false;
+    }
+
+    /**
      * Prepare tabs configuration
      */
     _prepareTabs() {
+        // Hide the mechanics-revealing tabs from a non-GM viewing an unidentified
+        // item, so a player can't read what the potion does off the sheet.
+        const hidden = (!game.user.isGM && this._isUnidentified())
+            ? new Set(["activity", "macro"])
+            : new Set();
+
+        // If the active tab is one we're hiding, fall back to the always-visible
+        // Details tab so the sheet doesn't open to an empty body.
+        let active = this.tabGroups.primary;
+        if (hidden.has(active)) active = "details";
+
         const tabs = {};
         for (const [key, config] of Object.entries(PotionSheetSD.TABS)) {
+            if (hidden.has(key)) continue;
             tabs[key] = {
                 ...config,
-                active: this.tabGroups.primary === key,
-                cssClass: this.tabGroups.primary === key ? "active" : ""
+                active: active === key,
+                cssClass: active === key ? "active" : ""
             };
         }
         return tabs;

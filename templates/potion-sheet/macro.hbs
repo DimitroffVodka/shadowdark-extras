@@ -1,4 +1,6 @@
-{{!-- Macro Tab --}}
+{{!-- Macro Tab. `tab` is undefined (so nothing renders) when a non-GM views an
+      unidentified item — the item's macro/code must stay hidden from players. --}}
+{{#if tab}}
 <section class="tab-content {{#if tab.active}}active{{/if}}" data-tab="macro">
     <fieldset class="potion-fieldset macro-fieldset">
         <legend><i class="fas fa-code"></i> Item Macro</legend>
@@ -44,3 +46,4 @@
         </div>
     </fieldset>
 </section>
+{{/if}}
