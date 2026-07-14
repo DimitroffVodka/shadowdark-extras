@@ -49,6 +49,9 @@
     import "../../js/vendor.globals.min.js";
     import "../../js/Cave.js";
 
+    // Module scripts can't see the IIFE-scoped BASE above — recompute it here.
+    const BASE = new URL('.', document.baseURI || location.href).pathname.replace(/\/to\/[^\/]+\/?$/, '');
+
     const _saveAs = globalThis.saveAs;
     if (_saveAs) {
       globalThis.saveAs = function (blob, filename) {

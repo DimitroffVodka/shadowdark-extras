@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Maphub Cave/Glade generator opened to a blank black window.** The route-prefix refactor (`b707746`, 6.10.4x) moved the generator pages' `BASE` path constant into a classic-script IIFE, but the separate `<script type="module">` that boots each generator still referenced it — a cross-script `ReferenceError` that silently killed `lime.embed(...)` before the app could start. Each module script now computes `BASE` itself (same route-prefix-safe expression). Fixed in all five affected pages: cave, dwellings, mfcg, village, viewer — of which only Cave/Glade was reachable from the launcher (the others load their `-raw` variants or don't use `BASE`).
+
 ## [6.10.48] — 2026-07-13 — Medkit source packs, journal-pin image rendering, and effect-apply API
 
 ### Added
