@@ -43,6 +43,24 @@ async function replacePlaceholder(div) {
 	const extBase = div.dataset.maphubExternal;
 	if (!type || !qs || !extBase) return;
 
+	// These values come from document/journal HTML (untrusted). `type` drives a
+	// filesystem path, so require a plain slug (no traversal); `extBase` becomes an
+	// iframe src, so only allow https to watabou.github.io — reject javascript:/data:/
+	// other origins that would run in the page's context.
+	if (!/^[a-z0-9][a-z0-9-]*$/i.test(type)) {
+		console.warn(`${MODULE_ID} | ignoring maphub placeholder — invalid type:`, type);
+		return;
+	}
+	let extUrl;
+	try { extUrl = new URL(extBase); } catch {
+		console.warn(`${MODULE_ID} | ignoring maphub placeholder — invalid external URL:`, extBase);
+		return;
+	}
+	if (extUrl.protocol !== "https:" || !/(^|\.)watabou\.github\.io$/i.test(extUrl.hostname)) {
+		console.warn(`${MODULE_ID} | refusing non-watabou maphub external URL:`, extBase);
+		return;
+	}
+
 	// Try the local maphub files first (express.static has no X-Frame-Options).
 	// Fall back to the external watabou URL if the local files aren't present.
 	const localUrl = `${window.location.origin}${foundry.utils.getRoute(`/${LOCAL_MAPHUB_BASE}/to/${type}/index.html`)}?${qs}`;
@@ -50,7 +68,7 @@ async function replacePlaceholder(div) {
 	if (!dirRoute.endsWith("/")) dirRoute += "/";
 	const localDirUrl = `${window.location.origin}${dirRoute}`;
 
-	let src = `${extBase}?${qs}`;
+	let src = `${extUrl.origin}${extUrl.pathname}?${qs}`;
 	let blobUrl = null;
 	try {
 		const r = await fetch(localUrl, { method: "HEAD" });
