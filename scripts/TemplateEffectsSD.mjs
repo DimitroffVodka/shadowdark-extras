@@ -116,7 +116,9 @@ export function initTemplateEffects() {
 
             // Check all templates on the scene for expiry
             // Use < instead of <= so template lasts THROUGH the expiry round (delete at start of next round)
-            for (const template of canvas.scene.templates) {
+            // v14-safe: iterate Regions (warning-free; the merged Region carries the
+            // same id + flags as the template). Avoids the deprecated Scene#templates getter.
+            for (const template of (canvas.scene.regions ?? canvas.scene.templates)) {
                 const expiry = template.flags?.[MODULE_ID]?.templateExpiry;
                 if (expiry && expiry.expiryRound < currentRound) {
                     templatesToDelete.push(template.id);
@@ -128,7 +130,9 @@ export function initTemplateEffects() {
             // Delete expired templates
             if (templatesToDelete.length > 0) {
                 try {
-                    await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", templatesToDelete);
+                    // Delete via the Region collection (warning-free; same ids). Both the
+                    // MeasuredTemplate and Region delete paths fire deleteRegion in v14.
+                    await canvas.scene.deleteEmbeddedDocuments("Region", templatesToDelete);
                     console.log(`shadowdark-extras | Deleted ${templatesToDelete.length} expired template(s)`);
                 } catch (err) {
                     console.error("shadowdark-extras | Error deleting expired templates:", err);
@@ -1430,7 +1434,6 @@ export function getTemplatesContainingToken(token) {
     const templates = [];
     // v14: iterate Regions (carry levels + testPoint with elevation support)
     const collection = canvas.scene.regions
-        ?? canvas.scene.getEmbeddedCollection?.("MeasuredTemplate")
         ?? canvas.scene.templates;
     for (const templateDoc of collection) {
         if (!_isSameLevel(tokenLevelId, templateDoc)) continue;
@@ -1469,7 +1472,6 @@ function getTemplatesContainingPoint(x, y, scene, tokenLevelId = null, tokenElev
 
     const templates = [];
     const collection = scene.regions
-        ?? scene.getEmbeddedCollection?.("MeasuredTemplate")
         ?? scene.templates;
 
     const regionCount = [...collection].length;
