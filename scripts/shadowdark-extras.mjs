@@ -66,7 +66,7 @@ import { initAppearanceSettings } from "./AppearanceSettingsSD.mjs";
 import AmmunitionSelector from "./AmmunitionSelector.mjs";
 import StaffSpellManager from "./StaffSpellManager.mjs";
 import { initJournalNarration } from "./JournalNarrationSD.mjs";
-import { initMedkit, registerMedkitPack, unregisterMedkitPack, getMedkitPacks } from "./MedkitSD.mjs";
+import { initMedkit, registerMedkitPack, unregisterMedkitPack, getMedkitPacks, scanWorldForUpdates, applyWorldMedkitUpdates, medkitScanWorld, MedkitWorldScanMenu } from "./MedkitSD.mjs";
 import { LightTrackerAppSD, initLightTrackerApp } from "./LightTrackerAppSD.mjs";
 import { initMarchingMode } from "./MarchingModeSD.mjs";
 import { SceneExporter } from "./SceneExporter.mjs";
@@ -3177,6 +3177,17 @@ function registerSettings() {
 		default: true,
 		type: Boolean,
 		requiresReload: false,
+	});
+
+	// Medkit World Scan — GM-only button that scans every actor and applies
+	// available spell updates in one pass (no per-actor sheet clicking).
+	game.settings.registerMenu(MODULE_ID, "medkitWorldScanMenu", {
+		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.medkit_world_scan.name"),
+		label: game.i18n.localize("SHADOWDARK_EXTRAS.settings.medkit_world_scan.label"),
+		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.medkit_world_scan.hint"),
+		icon: "fas fa-kit-medical",
+		type: MedkitWorldScanMenu,
+		restricted: true
 	});
 	game.settings.register(MODULE_ID, "enableEnhancedHeader", {
 		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.enable_enhanced_header.name"),
@@ -20156,6 +20167,11 @@ Hooks.on("setup", () => {
 			registerMedkitPack: audited("registerMedkitPack", registerMedkitPack),
 			unregisterMedkitPack: audited("unregisterMedkitPack", unregisterMedkitPack),
 			getMedkitPacks: audited("getMedkitPacks", getMedkitPacks),
+
+			// --- Medkit world-scale scan/apply (no per-actor sheet clicking) ---
+			scanWorldForUpdates: audited("scanWorldForUpdates", scanWorldForUpdates),
+			applyWorldMedkitUpdates: audited("applyWorldMedkitUpdates", gmOnly("applyWorldMedkitUpdates", applyWorldMedkitUpdates)),
+			medkitScanWorld: audited("medkitScanWorld", gmOnly("medkitScanWorld", medkitScanWorld)),
 
 			// --- Spells / Focus tracker ---
 			startDurationSpell: audited("startDurationSpell", gmOnly("startDurationSpell", startDurationSpell)),

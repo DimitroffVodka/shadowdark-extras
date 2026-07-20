@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- **Medkit world scan: update every actor in one pass.** A GM-only **Medkit: Scan All Actors** button in module settings (and a matching `medkitScanWorld()` API) scans every actor in the world for available Medkit spell updates, lists the affected actors with per-actor counts, and applies them all on confirm — no more opening each sheet to check. Two new API entry points back it: `scanWorldForUpdates()` (read-only; returns the actors and update counts) and `applyWorldMedkitUpdates({ actorIds, notify })` (GM-gated; applies to all actors, or only the given ids). The per-actor Medkit and the world runner now share the same scan/compare/update logic, so results are identical. Still spell-only, matching the per-actor Medkit. Verified live against Foundry 14.365 / Shadowdark 4.0.6.
+
 ### Fixed
 
 - **Maphub Cave/Glade generator opened to a blank black window.** The route-prefix refactor (`b707746`, 6.10.4x) moved the generator pages' `BASE` path constant into a classic-script IIFE, but the separate `<script type="module">` that boots each generator still referenced it — a cross-script `ReferenceError` that silently killed `lime.embed(...)` before the app could start. Each module script now computes `BASE` itself (same route-prefix-safe expression). Fixed in all five affected pages: cave, dwellings, mfcg, village, viewer — of which only Cave/Glade was reachable from the launcher (the others load their `-raw` variants or don't use `BASE`).
