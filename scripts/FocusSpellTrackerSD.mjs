@@ -791,14 +791,14 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 
 			// If we have a specific templateId, use it for precise deletion
 			if (durationEntry.templateId) {
-				const template = scene.templates?.get(durationEntry.templateId);
+				const template = getSceneMeasuredTemplates(scene).get(durationEntry.templateId);
 				if (template) {
 					templatesToDelete.push(durationEntry.templateId);
 					console.log(`shadowdark-extras | Found specific template to delete: ${durationEntry.templateId}`);
 				}
 			} else {
 				// Fallback: match by spell name and caster (for duration spells without templateId)
-				const templates = scene.templates || [];
+				const templates = getSceneMeasuredTemplates(scene);
 				for (const template of templates) {
 					const templateFlags = template.flags?.["shadowdark-extras"]?.templateEffects;
 					if (!templateFlags?.enabled) continue;
@@ -815,7 +815,7 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 			}
 
 			if (templatesToDelete.length > 0) {
-				await scene.deleteEmbeddedDocuments("MeasuredTemplate", templatesToDelete);
+				await scene.deleteEmbeddedDocuments("Region", templatesToDelete);
 				console.log(`shadowdark-extras | Deleted ${templatesToDelete.length} template(s) for ended spell ${durationEntry.spellName}`);
 			}
 		}
@@ -2078,6 +2078,17 @@ export async function removeTargetFromDurationSpell(casterId, instanceId, tokenI
  * @param {string} spellId - The spell item ID
  * @param {string} reason - Why the focus ended ("focus_failed", "manual", "spell_lost")
  */
+/**
+ * Warning-free "templates on a scene" collection for v14. MeasuredTemplate was
+ * merged into Region: the auto-created Region carries the SAME id and flags as the
+ * template, and scene.regions is warning-free — whereas both Scene#templates and
+ * getEmbeddedCollection("MeasuredTemplate") route through the deprecated getter.
+ * Falls back to the legacy collection on pre-v14 clients.
+ */
+function getSceneMeasuredTemplates(scene) {
+	return scene?.regions ?? scene?.templates ?? [];
+}
+
 const _endingFocusSpells = new Set();
 const _processedFocusRollMessages = new Set();
 
@@ -2195,7 +2206,7 @@ export async function endFocusSpell(casterId, spellId, reason = "manual") {
 	try {
 		const scene = canvas.scene;
 		if (scene) {
-			const templatesToDelete = scene.templates.filter(template => {
+			const templatesToDelete = getSceneMeasuredTemplates(scene).filter(template => {
 				const config = template.flags?.[MODULE_ID]?.templateEffects;
 				return config?.casterActorId === casterId && config?.spellId === spellId;
 			});
