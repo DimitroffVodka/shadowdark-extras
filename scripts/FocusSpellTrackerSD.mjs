@@ -76,8 +76,12 @@ export function initFocusSpellTracker() {
 	// Hook into combat updates to process duration spells (per-turn damage, expiry)
 	Hooks.on("updateCombat", handleDurationSpellCombatUpdate);
 
-	// Hook into chat message rendering to add click handlers for focus roll buttons
-	Hooks.on("renderChatMessageHTML", handleFocusReminderChatClick);
+	// Delegated click handler for focus roll ("Roll to maintain focus") buttons in chat.
+	// Delegation (vs. binding per-message inside renderChatMessageHTML) is required: a
+	// per-message addEventListener binding does NOT attach for messages already present at
+	// the initial chat-log render (page reload, or a reminder scrolled in from history),
+	// leaving those buttons dead. A single document-level listener is immune to that timing.
+	document.addEventListener("click", onFocusReminderClick);
 
 	// Hook into chat message rendering to add click handlers for duration damage apply buttons
 	Hooks.on("renderChatMessageHTML", handleDurationDamageApplyClick);
@@ -170,7 +174,12 @@ async function handleChatMessageRender(message, html, context) {
 		}
 	}
 
-	const isFocusRoll = message.flavor?.includes(focusCheckText) ||
+	// SD 4.0.6 flavors focus maintenance rolls as plain "Casting Spell", so the
+	// reliable signal is the system's native focus flag on the roll config (set
+	// when casting with { cast: { focus: true } }). Keep the legacy flavor check
+	// as a fallback for older system versions.
+	const isFocusRoll = rollConfig?.cast?.focus === true ||
+		message.flavor?.includes(focusCheckText) ||
 		message.flavor?.includes("Focus Check");
 
 	console.log(`shadowdark-extras | Focus spell detected: ${item.name}`, {
@@ -185,6 +194,11 @@ async function handleChatMessageRender(message, html, context) {
 	});
 
 	if (isFocusRoll) {
+		// Process each focus-roll message only once. renderChatMessageHTML can fire
+		// repeatedly for the same message (dice animation, flag writes); without this
+		// the spell would end — or per-turn damage apply — multiple times per roll.
+		if (_processedFocusRollMessages.has(message.id)) return;
+		_processedFocusRollMessages.add(message.id);
 		// This is a focus maintenance roll
 		if (!success || critical === "failure") {
 			// Focus failed - end the spell and remove effects
@@ -208,7 +222,14 @@ async function handleChatMessageRender(message, html, context) {
 			}
 		} else {
 			console.log(`shadowdark-extras | Focus maintained for ${item.name}`);
-			// Don't re-apply effects - they're already applied
+			// Don't re-apply effects - they're already applied.
+			// Focus check succeeded → NOW apply this turn's per-turn damage. Gate to
+			// the active GM so damage is applied (and its chat card posted) exactly
+			// once across all connected clients rendering this roll.
+			const isSoleApplier = game.user.isGM && game.users.activeGM?.id === game.user.id;
+			if (isSoleApplier && focusEntry?.perTurnDamage) {
+				await applyFocusSpellPerTurnToTargets(focusEntry);
+			}
 		}
 	} else if (!isAlreadyFocusing) {
 		// This is the initial cast (only start tracking if not already focusing)
@@ -1100,6 +1121,25 @@ async function handleCombatUpdate(combat, changed, options, userId) {
 
 	if (activeFocus.length === 0) return;
 
+	// Auto-Roll Focus on Turn: if enabled, roll each active focus check
+	// automatically instead of posting a manual reminder. The roll flows through
+	// handleChatMessageRender exactly as a manual click would — success applies
+	// the per-turn effect, failure ends the spell. Fire from ONE client (the
+	// caster's active owner, else the active GM) so each check rolls once.
+	let autoRollFocus = false;
+	try { autoRollFocus = game.settings.get(MODULE_ID, "autoRollFocusOnTurn"); } catch { autoRollFocus = false; }
+	if (autoRollFocus) {
+		const activeOwner = game.users.find(u => u.active && !u.isGM && actor.testUserPermission(u, "OWNER"));
+		const shouldRoll = activeOwner
+			? game.user.id === activeOwner.id
+			: (game.user.isGM && game.users.activeGM?.id === game.user.id);
+		if (shouldRoll) {
+			// skipPrompt fast-forwards the roll dialog so the check is fully automatic.
+			for (const f of activeFocus) await rollFocusSpellWithTargets(actor, f.spellId, { skipPrompt: true });
+		}
+		return; // auto-roll replaces the manual reminder card
+	}
+
 	// Only ONE client should create the message to avoid duplicates
 	// Prefer the player owner, fallback to the active GM
 	const playerOwner = game.users.find(u => !u.isGM && actor.testUserPermission(u, "OWNER"));
@@ -1135,28 +1175,36 @@ async function handleCombatUpdate(combat, changed, options, userId) {
 		whisper: game.users.filter(u => actor.testUserPermission(u, "OWNER")).map(u => u.id),
 	});
 
-	// Process per-turn damage for focus spells (if configured)
-	// This runs separately from reminders to handle healing/damage each turn
-	for (const focusSpell of activeFocus) {
-		if (!focusSpell.perTurnDamage) continue;
+	// NOTE: Per-turn damage is intentionally NOT applied here. A focus spell deals
+	// its recurring damage only AFTER the caster succeeds on that turn's focus
+	// check — see the focus-success branch in handleChatMessageRender, which calls
+	// applyFocusSpellPerTurnToTargets(). Applying at turn start would deal damage
+	// even when the focus check is failed or never rolled.
+}
 
-		// Process each target that has effects from this focus spell
-		for (const targetEffect of focusSpell.targetEffects) {
-			// Get the target actor
-			let targetActor = null;
-			if (targetEffect.targetTokenId) {
-				const token = canvas.tokens?.get(targetEffect.targetTokenId);
-				targetActor = token?.actor;
-			}
-			if (!targetActor) {
-				targetActor = game.actors.get(targetEffect.targetActorId);
-			}
+/**
+ * Roll and apply a focus spell's per-turn damage/healing to every target it is
+ * tracking. Callers must gate this to a single applier (the active GM) so that
+ * multiplayer clients don't double-apply. No-op when the spell has no per-turn
+ * formula configured.
+ */
+async function applyFocusSpellPerTurnToTargets(focusSpell) {
+	if (!focusSpell?.perTurnDamage) return;
 
-			if (!targetActor) continue;
-
-			// Apply per-turn damage/healing to this target
-			await applyFocusSpellPerTurnDamage(focusSpell, targetActor, targetEffect.targetTokenId);
+	for (const targetEffect of focusSpell.targetEffects) {
+		// Resolve the target actor from its token (preferred) or actor id.
+		let targetActor = null;
+		if (targetEffect.targetTokenId) {
+			const token = canvas.tokens?.get(targetEffect.targetTokenId);
+			targetActor = token?.actor;
 		}
+		if (!targetActor) {
+			targetActor = game.actors.get(targetEffect.targetActorId);
+		}
+
+		if (!targetActor) continue;
+
+		await applyFocusSpellPerTurnDamage(focusSpell, targetActor, targetEffect.targetTokenId);
 	}
 }
 
@@ -1231,42 +1279,43 @@ async function applyFocusSpellPerTurnDamage(focusSpell, targetActor, targetToken
 }
 
 /**
- * Handle clicks on focus roll buttons in chat messages
+ * Handle clicks on focus roll ("Roll to maintain focus") buttons in chat messages.
+ *
+ * Registered once as a delegated listener on `document` (see initFocusSpellTracker).
+ * We intentionally do NOT bind per-message in renderChatMessageHTML: those bindings fail
+ * to attach for messages already present at the initial chat-log render (e.g. after a page
+ * reload, or when a reminder scrolls in from history), which left the button doing nothing.
+ * Delegation is immune to render/replace timing.
  */
-function handleFocusReminderChatClick(message, html, context) {
-	// Find all focus roll buttons in this message
-	const focusRollBtns = html.querySelectorAll(".sdx-focus-roll-btn");
-	if (focusRollBtns.length === 0) return;
+async function onFocusReminderClick(event) {
+	const btn = event.target.closest(".sdx-focus-roll-btn");
+	if (!btn) return;
 
-	focusRollBtns.forEach(btn => {
-		btn.addEventListener("click", async (event) => {
-			event.preventDefault();
-			event.stopPropagation();
+	event.preventDefault();
+	event.stopPropagation();
 
-			const actorId = btn.dataset.actorId;
-			const spellId = btn.dataset.spellId;
+	const actorId = btn.dataset.actorId;
+	const spellId = btn.dataset.spellId;
 
-			if (!actorId || !spellId) {
-				console.warn("shadowdark-extras | Focus roll button missing actorId or spellId");
-				return;
-			}
+	if (!actorId || !spellId) {
+		console.warn("shadowdark-extras | Focus roll button missing actorId or spellId");
+		return;
+	}
 
-			const actor = game.actors.get(actorId);
-			if (!actor) {
-				ui.notifications.error("Could not find the actor for this focus spell.");
-				return;
-			}
+	const actor = game.actors.get(actorId);
+	if (!actor) {
+		ui.notifications.error("Could not find the actor for this focus spell.");
+		return;
+	}
 
-			// Check if the current user owns this actor
-			if (!actor.isOwner) {
-				ui.notifications.warn("You do not own this actor.");
-				return;
-			}
+	// Check if the current user owns this actor
+	if (!actor.isOwner) {
+		ui.notifications.warn("You do not own this actor.");
+		return;
+	}
 
-			// Roll the focus check with auto-targeting
-			await rollFocusSpellWithTargets(actor, spellId);
-		});
-	});
+	// Roll the focus check with auto-targeting
+	await rollFocusSpellWithTargets(actor, spellId);
 }
 
 /**
@@ -1277,7 +1326,10 @@ function handleFocusReminderChatClick(message, html, context) {
  * @param {Actor} actor - The actor rolling the focus check
  * @param {string} spellId - The spell ID to roll focus for
  */
-async function rollFocusSpellWithTargets(actor, spellId) {
+async function rollFocusSpellWithTargets(actor, spellId, opts = {}) {
+	// When invoked by the auto-roll path, skipPrompt fast-forwards Shadowdark's
+	// roll dialog so the focus check rolls with no manual interaction.
+	const skipPrompt = opts.skipPrompt === true;
 	// Get the active focus spell data
 	const activeFocus = actor.getFlag(MODULE_ID, FOCUS_SPELL_FLAG) || [];
 	const focusEntry = activeFocus.find(f => f.spellId === spellId);
@@ -1320,14 +1372,14 @@ async function rollFocusSpellWithTargets(actor, spellId) {
 		const spellUuid = spell.uuid;
 		console.log(`shadowdark-extras | Rolling focus check for spell ${spell.name} (${spellUuid}) on actor ${actor.name}`);
 		if (actor.system.castSpell) {
-			actor.system.castSpell(spellUuid, { isFocusRoll: true });
+			actor.system.castSpell(spellUuid, { cast: { focus: true }, skipPrompt });
 		} else {
-			actor.castSpell(spellUuid, { isFocusRoll: true });
+			actor.castSpell(spellUuid, { cast: { focus: true }, skipPrompt });
 		}
 	} else if (focusEntry?.spellData) {
 		// Spell item no longer exists (e.g., scroll was consumed) - use cached data
 		console.log(`shadowdark-extras | Spell item ${spellId} no longer exists, using cached data for focus roll`);
-		await rollFocusCheckFromCachedData(actor, focusEntry);
+		await rollFocusCheckFromCachedData(actor, focusEntry, { skipPrompt });
 	} else {
 		ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.item_no_longer_exists"));
 	}
@@ -1340,7 +1392,8 @@ async function rollFocusSpellWithTargets(actor, spellId) {
  * @param {Actor} actor - The actor rolling the focus check
  * @param {Object} focusEntry - The focus spell tracking entry with cached spellData
  */
-async function rollFocusCheckFromCachedData(actor, focusEntry) {
+async function rollFocusCheckFromCachedData(actor, focusEntry, opts = {}) {
+	const skipPrompt = opts.skipPrompt === true;
 	const spellData = focusEntry.spellData || {};
 	const spellName = focusEntry.spellName;
 	const spellImg = focusEntry.spellImg;
@@ -1393,9 +1446,9 @@ async function rollFocusCheckFromCachedData(actor, focusEntry) {
 		// Shadowdark v4 expects the full item UUID, not just the local item id.
 		const tempSpellUuid = tempSpell.uuid;
 		if (actor.system.castSpell) {
-			await actor.system.castSpell(tempSpellUuid, { isFocusRoll: true });
+			await actor.system.castSpell(tempSpellUuid, { cast: { focus: true }, skipPrompt });
 		} else {
-			await actor.castSpell(tempSpellUuid, { isFocusRoll: true });
+			await actor.castSpell(tempSpellUuid, { cast: { focus: true }, skipPrompt });
 		}
 
 		// Delete the temporary spell item after a brief delay to allow the roll to complete
@@ -2025,7 +2078,19 @@ export async function removeTargetFromDurationSpell(casterId, instanceId, tokenI
  * @param {string} spellId - The spell item ID
  * @param {string} reason - Why the focus ended ("focus_failed", "manual", "spell_lost")
  */
+const _endingFocusSpells = new Set();
+const _processedFocusRollMessages = new Set();
+
 export async function endFocusSpell(casterId, spellId, reason = "manual") {
+	// Synchronous re-entrancy guard: renderChatMessageHTML can fire more than once
+	// for the same focus-roll message (dice animation / flag updates), each re-running
+	// the fail branch. Without this, endFocusSpell runs concurrently for the same
+	// spell — producing duplicate "Lost focus" notifications and double-deletes of the
+	// same items (which surface as core "Item does not exist!" toasts).
+	const _endKey = `${casterId}:${spellId}`;
+	if (_endingFocusSpells.has(_endKey)) return;
+	_endingFocusSpells.add(_endKey);
+	try {
 	const caster = game.actors.get(casterId);
 	if (!caster) {
 		console.warn(`shadowdark-extras | Cannot end focus spell: caster ${casterId} not found`);
@@ -2094,30 +2159,35 @@ export async function endFocusSpell(casterId, spellId, reason = "manual") {
 				});
 			}
 		} catch (err) {
-			console.error(`shadowdark-extras | Error removing effect:`, err);
+			// "does not exist" just means the effect was already removed elsewhere; benign.
+			console.warn(`shadowdark-extras | Effect ${targetEffect.effectItemId} already removed or unavailable:`, err?.message ?? err);
 		}
 	});
 
 	await Promise.all(removalPromises);
 
-	// Remove the Concentration effect from the caster
-	if (focusEntry.concentrationEffectId) {
-		const effectItem = caster.items.get(focusEntry.concentrationEffectId);
-		if (effectItem) {
-			await effectItem.delete();
-			console.log(`shadowdark-extras | Removed concentration effect ${effectItem.name} from caster`);
+	// Remove the Concentration effect from the caster. Wrapped defensively: the
+	// item may already be gone (manually deleted, or a concurrent cleanup won the
+	// race), leaving a stale local reference whose delete() rejects. Treat
+	// "already gone" as success so ending a focus never throws an uncaught error.
+	try {
+		let concEffect = focusEntry.concentrationEffectId
+			? caster.items.get(focusEntry.concentrationEffectId)
+			: null;
+		// Fallback: search for any concentration effect linked to this spell.
+		if (!concEffect) {
+			concEffect = caster.items.find(i =>
+				i.type === "Effect" &&
+				i.flags?.[MODULE_ID]?.isConcentration &&
+				i.flags?.[MODULE_ID]?.spellId === spellId
+			);
 		}
-	} else {
-		// Fallback: search for any concentration effect linked to this spell
-		const strayEffect = caster.items.find(i =>
-			i.type === "Effect" &&
-			i.flags?.[MODULE_ID]?.isConcentration &&
-			i.flags?.[MODULE_ID]?.spellId === spellId
-		);
-		if (strayEffect) {
-			await strayEffect.delete();
-			console.log(`shadowdark-extras | Removed stray concentration effect ${strayEffect.name} from caster`);
+		if (concEffect) {
+			await concEffect.delete();
+			console.log(`shadowdark-extras | Removed concentration effect ${concEffect.name} from caster`);
 		}
+	} catch (err) {
+		console.warn(`shadowdark-extras | Concentration effect already removed or unavailable:`, err?.message ?? err);
 	}
 
 	// Delete any templates associated with this focus spell
@@ -2168,6 +2238,9 @@ export async function endFocusSpell(casterId, spellId, reason = "manual") {
 
 	// Refresh the actor sheet if open
 	caster.sheet?.render(false);
+	} finally {
+		_endingFocusSpells.delete(_endKey);
+	}
 }
 
 /**

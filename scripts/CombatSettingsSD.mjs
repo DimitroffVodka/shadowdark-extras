@@ -2001,6 +2001,14 @@ export async function injectDamageCard(message, html, data) {
 		}
 	}
 
+	// Focus maintenance rolls (cast with { cast: { focus: true } } — the sheet's
+	// focus button or the Auto-Roll Focus feature) must NOT re-run on-cast
+	// enhancements. The spell effect was already applied on the initial cast, and
+	// per-turn damage + focus cleanup are handled by the Focus Spell Tracker.
+	// Without this, every maintenance roll re-applies the spell effect, stacking
+	// duplicate "Spell Effect" items on the target each round.
+	if (message.flags?.shadowdark?.rollConfig?.cast?.focus === true) return;
+
 	// Check for aura effects configuration
 	const hasAuraEnabled = item?.flags?.[MODULE_ID]?.auraEffects?.enabled || false;
 	if (hasAuraEnabled) {

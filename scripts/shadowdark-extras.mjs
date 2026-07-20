@@ -3095,6 +3095,16 @@ function registerSettings() {
 		requiresReload: true,
 	});
 
+	game.settings.register(MODULE_ID, "autoRollFocusOnTurn", {
+		name: "Auto-Roll Focus on Turn",
+		hint: "At the start of a caster's turn, automatically roll the focus check for each active focus spell instead of posting a manual reminder. On success the spell's per-turn effect applies; on failure the spell ends. Requires the Focus Tracker.",
+		scope: "world",
+		config: true,
+		default: false,
+		type: Boolean,
+		requiresReload: false,
+	});
+
 	game.settings.register(MODULE_ID, "enhanceSpells", {
 		name: "Enhance Spells",
 		hint: "Add damage/heal configuration to spell items for automatic spell damage application similar to weapon attacks.",
