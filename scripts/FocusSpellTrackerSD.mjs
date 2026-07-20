@@ -79,8 +79,11 @@ export function initFocusSpellTracker() {
 	// Hook into chat message rendering to add click handlers for focus roll buttons
 	Hooks.on("renderChatMessageHTML", handleFocusReminderChatClick);
 
-	// Hook into chat message rendering to add click handlers for duration damage apply buttons
-	Hooks.on("renderChatMessageHTML", handleDurationDamageApplyClick);
+	// Register a single delegated click handler for duration damage apply buttons.
+	// Per-message addEventListener bindings (via the render hook) do NOT attach for
+	// chat messages already present at the initial chat-log render (e.g. after a page
+	// reload or when a message scrolls in from history), so delegation is required.
+	document.addEventListener("click", onDurationDamageApplyClick);
 
 	// Hook into chat message rendering to track wand uses
 	Hooks.on("renderChatMessageHTML", handleWandUsesTracking);
@@ -1419,82 +1422,81 @@ async function rollFocusCheckFromCachedData(actor, focusEntry) {
 }
 
 /**
- * Handle clicks on duration damage apply buttons in chat messages
+ * Delegated click handler for duration damage apply buttons in chat messages.
+ * Registered once (in initFocusSpellTracker) on document, so it also fires for
+ * messages that were already in the DOM at the initial chat-log render.
  */
-function handleDurationDamageApplyClick(message, html, context) {
-	// Find all duration damage apply buttons in this message
-	const applyBtns = html.querySelectorAll(".sdx-duration-apply-btn");
-	if (applyBtns.length === 0) return;
+async function onDurationDamageApplyClick(event) {
+	const btn = event.target.closest(".sdx-duration-apply-btn");
+	if (!btn) return;
 
-	applyBtns.forEach(btn => {
-		btn.addEventListener("click", async (event) => {
-			event.preventDefault();
-			event.stopPropagation();
+	event.preventDefault();
+	event.stopPropagation();
 
-			// Disable immediately to prevent double-clicks
-			if (btn.disabled || btn.classList.contains("sdx-duration-applied")) {
-				return; // Already applied
+	// Disable immediately to prevent double-clicks
+	if (btn.disabled || btn.classList.contains("sdx-duration-applied")) {
+		return; // Already applied
+	}
+	btn.disabled = true;
+	const originalHtml = btn.innerHTML;
+	btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying...';
+
+	const tokenId = btn.dataset.tokenId;
+	const damage = parseInt(btn.dataset.damage);
+	const actorName = btn.dataset.actorName;
+
+	if (!tokenId || isNaN(damage)) {
+		console.warn("shadowdark-extras | Duration apply button missing tokenId or damage");
+		btn.disabled = false;
+		btn.innerHTML = originalHtml;
+		return;
+	}
+
+	try {
+		// Only GM can apply damage via socket or directly
+		if (!game.user.isGM) {
+			// Use socket to ask GM to apply
+			const socket = getSocket();
+			if (socket) {
+				// Use the registered applyTokenDamage handler (CombatSettingsSD).
+				// Note: the previous call site used "applyDamage" which was never registered.
+				socket.executeAsGM("applyTokenDamage", { tokenId, damage, actorName });
+			} else {
+				ui.notifications.warn("Cannot apply damage - no GM connected.");
+				btn.disabled = false;
+				btn.innerHTML = originalHtml;
+				return;
 			}
-			btn.disabled = true;
-			const originalHtml = btn.innerHTML;
-			btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying...';
-
-			const tokenId = btn.dataset.tokenId;
-			const damage = parseInt(btn.dataset.damage);
-			const actorName = btn.dataset.actorName;
-
-			if (!tokenId || isNaN(damage)) {
-				console.warn("shadowdark-extras | Duration apply button missing tokenId or damage");
+		} else {
+			// GM applies directly
+			const token = canvas.tokens?.get(tokenId);
+			if (!token?.actor) {
+				ui.notifications.error("Could not find the target token.");
 				btn.disabled = false;
 				btn.innerHTML = originalHtml;
 				return;
 			}
 
-			try {
-				// Only GM can apply damage via socket or directly
-				if (!game.user.isGM) {
-					// Use socket to ask GM to apply
-					const socket = getSocket();
-					if (socket) {
-						// Use the registered applyTokenDamage handler (CombatSettingsSD).
-						// Note: the previous call site used "applyDamage" which was never registered.
-						socket.executeAsGM("applyTokenDamage", { tokenId, damage, actorName });
-					} else {
-						ui.notifications.warn("Cannot apply damage - no GM connected.");
-						btn.disabled = false;
-						btn.innerHTML = originalHtml;
-						return;
-					}
-				} else {
-					// GM applies directly
-					const token = canvas.tokens?.get(tokenId);
-					if (!token?.actor) {
-						ui.notifications.error("Could not find the target token.");
-						btn.disabled = false;
-						btn.innerHTML = originalHtml;
-						return;
-					}
+			const currentHp = token.actor.system.attributes.hp.value;
+			const newHp = Math.max(0, currentHp - damage);
+			await token.actor.update({ "system.attributes.hp.value": newHp });
+		}
 
-					const currentHp = token.actor.system.attributes.hp.value;
-					const newHp = Math.max(0, currentHp - damage);
-					await token.actor.update({ "system.attributes.hp.value": newHp });
-				}
+		// Update the button to show it was applied
+		btn.innerHTML = '<i class="fas fa-check"></i> Applied';
+		btn.classList.add("sdx-duration-applied");
 
-				// Update the button to show it was applied
-				btn.innerHTML = '<i class="fas fa-check"></i> Applied';
-				btn.classList.add("sdx-duration-applied");
+		// Update the message flags (resolve the message from the enclosing chat card)
+		const messageId = btn.closest("[data-message-id]")?.dataset.messageId;
+		const message = messageId ? game.messages.get(messageId) : null;
+		if (message) await message.setFlag(MODULE_ID, "applied", true);
 
-				// Update the message flags
-				await message.setFlag(MODULE_ID, "applied", true);
-
-				ui.notifications.info(`Applied ${damage} damage to ${actorName}`);
-			} catch (err) {
-				console.error("shadowdark-extras | Failed to apply duration damage:", err);
-				btn.disabled = false;
-				btn.innerHTML = originalHtml;
-			}
-		});
-	});
+		ui.notifications.info(`Applied ${damage} damage to ${actorName}`);
+	} catch (err) {
+		console.error("shadowdark-extras | Failed to apply duration damage:", err);
+		btn.disabled = false;
+		btn.innerHTML = originalHtml;
+	}
 }
 
 // Track which combat state we've already processed for duration spells
