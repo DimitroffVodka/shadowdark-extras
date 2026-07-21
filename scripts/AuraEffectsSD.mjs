@@ -201,6 +201,19 @@ async function syncAuraTrackerTarget(config, targetToken, mode) {
  */
 export function initAuraEffects() {
 
+    // Aura geometry is canvas-derived from end to end: token placeables and
+    // their centers, grid size, wall/edge collision for line of sight, and the
+    // visibility API. A client running with the canvas disabled (the core
+    // "noCanvas" setting — e.g. an always-on headless relay GM) has none of
+    // them, and these handlers gate on isGM rather than the ACTIVE GM, so such
+    // a client runs them and throws on every token move, wall edit and scene
+    // change. Any other connected GM still processes auras normally, so
+    // standing down here loses no behaviour and avoids duplicate processing.
+    if (game.settings.get("core", "noCanvas")) {
+        console.log("Shadowdark Extras | Aura effects inactive on this client: running without a canvas.");
+        return;
+    }
+
     // Track token positions before movement
     Hooks.on("preUpdateToken", (tokenDoc, changes, options, userId) => {
         if (changes.x !== undefined || changes.y !== undefined) {
