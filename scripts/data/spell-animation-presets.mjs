@@ -42,7 +42,10 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Fireball / Flame Strike",
 		patterns: "fireball|flame strike|inferno|fire blast|wheel of flames|chaos orb|prismatic orb|meteor",
 		type: "projectile", target: "target",
-		hit: { file: "jb2a.fireball", scale: 1, duration: 1800 }
+		// `.beam.orange` (not the bare `jb2a.fireball` prefix, which also holds a
+		// stationary explosion + two loops). The trailing 05ft…90ft range variants
+		// are resolved by Sequencer from stretchTo distance, so leave them off.
+		hit: { file: "jb2a.fireball.beam.orange", scale: 1, duration: 1800 }
 	},
 	fire_bolt: {
 		label: "Fire Bolt / Flare",
@@ -60,7 +63,8 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Wall of Fire",
 		patterns: "wall of fire|firewall|ring of fire",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.wall_of_fire", scale: 1, duration: 1800 }
+		// Prefix spans 4 wall lengths + a Ring in 2 colours; pin one.
+		hit: { file: "jb2a.wall_of_fire.300x100.yellow", scale: 1, duration: 1800 }
 	},
 
 	// ── lightning / storm ────────────────────────────────────────────────────
@@ -107,8 +111,10 @@ export const DEFAULT_SPELL_PRESETS = {
 	necrotic_bolt: {
 		label: "Necrotic / Death Bolt",
 		patterns: "finger of death|void stare|power word kill|reap the soul|seal soul|summon soul|soul jar|soulbind|siphon|drain life|\\bdrain\\b|\\bharm\\b|inflict|wither|withermark|blight|contagion|damnation|defile|\\bbane\\b|ghoul touch|unlife|undeath|create undead|speak with dead|final toll|lamentation|necronom|cacklerot|enfeeble|\\bcurse\\b|anathema|cast out|wrack|nightmare|revenant|\\bpoison\\b|glassbones|sacrifice|ragnarok|\\brend\\b",
-		type: "projectile", target: "target",
-		hit: { file: "jb2a.toll_the_dead.green", scale: 1, duration: 1500 }
+		// toll_the_dead has no beam/ranged variant at all, so "projectile" stretched
+		// a stationary effect between the tokens. It is an on-target burst.
+		type: "onToken", target: "target",
+		hit: { file: "jb2a.toll_the_dead.green.complete", scale: 1, duration: 1500 }
 	},
 	necrotic_burst: {
 		label: "Necrotic Burst",
@@ -120,7 +126,7 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Bats / Raven / Swarm",
 		patterns: "\\braven\\b|\\bbats\\b|crows|murder of|\\bflock\\b|\\bcoven\\b|locusts|\\bswarm\\b|frog rain",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.bats", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.bats.complete.01.red", scale: 1, duration: 1500 }
 	},
 
 	// ── radiant / holy ───────────────────────────────────────────────────────
@@ -128,7 +134,8 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Holy / Smite / Judgment",
 		patterns: "smite|judgment|judgement|turn undead|rebuke unholy|rebuke|divine vengeance|holy weapon|cleansing weapon|\\bwrath\\b|consecrate|\\bhalo\\b|rapture|prayer|\\bchant\\b|sacred|divine|cleanse|abjure|excommunicate",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.divine_smite.caster", scale: 1, duration: 1500 }
+		// Prefix also holds a `reversed` (upside-down) cut.
+		hit: { file: "jb2a.divine_smite.caster.standard.blueyellow", scale: 1, duration: 1500 }
 	},
 	spiritual_weapon: {
 		label: "Spiritual / Summoned Weapon",
@@ -150,7 +157,7 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Entangle / Roots / Thorns",
 		patterns: "entangle|oak, ash, thorn|oak ash thorn|\\bthorn\\b|\\broot\\b|barkskin|spidersilk|\\bweb\\b|grease|mycelium|treeshape|bear shape|world tree|world serpent|\\bserpent\\b|riverwalk|mistletoe|toadstool|willowman",
 		type: "onToken", target: "self",
-		hit: { file: "jb2a.entangle", scale: 1, duration: 1800 }
+		hit: { file: "jb2a.entangle.green", scale: 1, duration: 1800 }
 	},
 
 	// ── enchant / mind / illusion ────────────────────────────────────────────
@@ -158,7 +165,8 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Charm / Mind / Illusion",
 		patterns: "charm|beguile|befriend|hypnotize|hypnotise|dominate|dominion|subjugate|pacify|\\bpeace\\b|command|puppet|pin doll|confusion|feeblemind|hallucinate|phantoms|illusion|mirror image|instill|betrayal|mischief|mesmerism|loki's trickery|lokis trickery|\\btrance\\b|\\bsleep\\b|whisper|beckon|glamour|forbid|unhinge|hold person|hold monster|\\bhold\\b|\\bsilence\\b|zone of truth|evoke rage|\\bhowl\\b",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.sleep", scale: 1, duration: 1500 }
+		// Prefix spans three unrelated looks (target / symbol / cloud).
+		hit: { file: "jb2a.sleep.target.pink", scale: 1, duration: 1500 }
 	},
 
 	// ── buff / ward / self ───────────────────────────────────────────────────
@@ -166,13 +174,15 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Bless / Ward / Buff",
 		patterns: "bless|shield of faith|mage armor|mage armour|stoneskin|fortify|\\bward\\b|absorb|anchor|stasis|balance|\\bfate\\b|freya's omen|freyas omen|odin's wisdom|odins wisdom|covenant|permanence|protection from|protection|aegis|fortitude|fifth gate|fourth gate|third gate|second gate|first gate|prophecy|invisibility|\\bfly\\b|levitate|feather fall|witchlight|barkskin",
 		type: "onToken", target: "self",
-		hit: { file: "jb2a.bless", scale: 1, duration: 1500 }
+		// Prefix mixes bare intro/loop fragments at two sizes; take the 400px loop.
+		hit: { file: "jb2a.bless.400px.loop.yellow", scale: 1, duration: 1500 }
 	},
 	arcane_shield: {
 		label: "Shield / Force Barrier",
 		patterns: "^shield$|force shield|wall of force|antimagic|resilient sphere|magic circle|\\bglyph\\b|\\bseal\\b|\\bhold portal\\b",
 		type: "onToken", target: "self",
-		hit: { file: "jb2a.shield.01", scale: 1, duration: 1500 }
+		// Prefix holds intro / loop / outro fragments; `complete` is the whole cast.
+		hit: { file: "jb2a.shield.01.complete.01.blue", scale: 1, duration: 1500 }
 	},
 
 	// ── summon / gate / teleport ─────────────────────────────────────────────
@@ -206,7 +216,7 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Moonbeam / Radiant Beam",
 		patterns: "moonbeam|\\bbeam\\b|pillar of|column of light|flame strike",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.moonbeam.01", scale: 1, duration: 1800 }
+		hit: { file: "jb2a.moonbeam.01.complete.blue", scale: 1, duration: 1800 }
 	},
 
 	// ── divination / detection (subtle self) ─────────────────────────────────
@@ -214,7 +224,9 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Detect / Divination",
 		patterns: "detect magic|\\bdetect\\b|divination|augury|scrying|\\bscry\\b|commune|reveal|\\bvision\\b|read the runes|truespeech|clairvoyance|arcane eye|see invis|cat's eye|cats eye|dispel magic|\\bdispel\\b",
 		type: "onToken", target: "self",
-		hit: { file: "jb2a.detect_magic", scale: 1, duration: 1500 }
+		// Leaf, not the `jb2a.detect_magic` prefix: that prefix spans one circle
+		// and three cones, so Sequencer picked a random shape on every cast.
+		hit: { file: "jb2a.detect_magic.circle.blue", scale: 1, duration: 1500 }
 	}
 };
 
