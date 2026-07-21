@@ -10681,7 +10681,7 @@ async function enhanceSpellSheet(app, html) {
 	}
 
 	// Build the damage/heal UI HTML using template (now includes summoning)
-	const damageHealHtml = generateSpellConfig(MODULE_ID, flags, effectsListHtml, effectsArray, effectsApplyToTarget, summonsList, summonProfilesArray, itemGiveList, itemGiveProfilesArray, criticalEffectsListHtml, criticalEffectsArray);
+	const damageHealHtml = generateSpellConfig(MODULE_ID, flags, effectsListHtml, effectsArray, effectsApplyToTarget, summonsList, summonProfilesArray, itemGiveList, itemGiveProfilesArray, criticalEffectsListHtml, criticalEffectsArray, item);
 
 	// Insert into Activity tab
 	$activityTab.append(damageHealHtml);
@@ -11512,33 +11512,133 @@ function activateAnimationFxListeners(html, item) {
 	const $box = html.find('.sdx-animation-fx-box');
 	if (!$box.length) return;
 
-	function saveAnimationFx() {
-		const enabled = $box.find('.sdx-animfx-enabled').prop('checked');
-		const preset = {
+	const FIELDS = '.sdx-animfx-type, .sdx-animfx-target, .sdx-animfx-file, .sdx-animfx-sound, .sdx-animfx-scale, .sdx-animfx-duration, .sdx-animfx-opacity';
+
+	/** Read the panel's current values as a master-list-shaped preset. */
+	function readPreset() {
+		const sound = ($box.find('.sdx-animfx-sound').val() || '').trim();
+		return {
 			label: item.name,
 			type: $box.find('.sdx-animfx-type').val() || 'projectile',
 			target: $box.find('.sdx-animfx-target').val() || 'target',
 			opacity: parseFloat($box.find('.sdx-animfx-opacity').val()) || 1,
 			hit: {
 				file: ($box.find('.sdx-animfx-file').val() || '').trim(),
+				// Blank clears the sound rather than storing "".
+				...(sound ? { sound } : {}),
 				scale: parseFloat($box.find('.sdx-animfx-scale').val()) || 1,
 				duration: parseInt($box.find('.sdx-animfx-duration').val(), 10) || 1500
 			}
 		};
+	}
+
+	/**
+	 * Keep the header badge honest without a full re-render. Rebuilt from the
+	 * data-inh-* attributes rather than stashing the rendered badge, because the
+	 * panel may have rendered in the "Override active" state to begin with.
+	 */
+	function updateBadge(overriding) {
+		const $badge = $box.find('.sdx-animfx-badge');
+		if (!$badge.length) return;
+		if (overriding) {
+			$badge.attr('class', 'sdx-animfx-badge sdx-animfx-badge-override').text('Override active');
+			return;
+		}
+		const label = $box.attr('data-inh-label') || '';
+		if ($box.attr('data-inh-file')) {
+			$badge.attr('class', 'sdx-animfx-badge sdx-animfx-badge-inherited')
+				.html(`<i class="fas fa-link"></i> Inherited: ${foundry.utils.escapeHTML(label || 'master list')}`);
+		} else {
+			$badge.attr('class', 'sdx-animfx-badge sdx-animfx-badge-none').text('No preset');
+		}
+	}
+
+	function saveAnimationFx() {
 		const updateData = {};
-		updateData[`flags.${MODULE_ID}.animationFx`] = { enabled, preset };
+		updateData[`flags.${MODULE_ID}.animationFx`] = { enabled: true, preset: readPreset() };
 		item.update(updateData, { render: false }).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save animationFx:`, err);
 		});
 	}
 
-	$box.on('change', '.sdx-animfx-enabled, .sdx-animfx-type, .sdx-animfx-target, .sdx-animfx-file, .sdx-animfx-scale, .sdx-animfx-duration, .sdx-animfx-opacity', function (e) {
+	// NOTE: these must be bound *directly*, not delegated off $box. The Activity
+	// tab installs a blanket per-input `change` handler that calls
+	// stopPropagation() to suppress Foundry's form auto-submit (see
+	// enhanceSpellSheet), so nothing here ever bubbles to an ancestor. Handlers
+	// on the same node still all run.
+
+	// Field edits only ever persist while the override is on — when it's off the
+	// panel is a read-only view of the master list and must not write to the item.
+	$box.find(FIELDS).on('change', function (e) {
 		e.stopPropagation();
+		if (!$box.find('.sdx-animfx-enabled').prop('checked')) return;
 		saveAnimationFx();
 	});
 
+	// Override toggle: on -> capture what's displayed as this item's own preset;
+	// off -> drop the override entirely and restore the inherited display.
+	$box.find('.sdx-animfx-enabled').on('change', function (e) {
+		e.stopPropagation();
+		const on = $box.find('.sdx-animfx-enabled').prop('checked');
+		$box.find(FIELDS).prop('disabled', !on);
+		$box.find('.SD-grid').toggleClass('sdx-animfx-readonly', !on);
+		updateBadge(on);
+
+		if (on) {
+			saveAnimationFx();
+			return;
+		}
+
+		// Restore the master-list values the panel was rendered with.
+		$box.find('.sdx-animfx-file').val($box.attr('data-inh-file') || '');
+		$box.find('.sdx-animfx-sound').val($box.attr('data-inh-sound') || '');
+		$box.find('.sdx-animfx-type').val($box.attr('data-inh-type') || 'projectile');
+		$box.find('.sdx-animfx-target').val($box.attr('data-inh-target') || 'target');
+		$box.find('.sdx-animfx-scale').val($box.attr('data-inh-scale') || 1);
+		$box.find('.sdx-animfx-duration').val($box.attr('data-inh-duration') || 1500);
+		$box.find('.sdx-animfx-opacity').val($box.attr('data-inh-opacity') || 1);
+
+		const updateData = {};
+		updateData[`flags.${MODULE_ID}.-=animationFx`] = null;
+		item.update(updateData, { render: false }).catch(err => {
+			console.error(`${MODULE_ID} | Failed to clear animationFx:`, err);
+		});
+	});
+
+	// Inline thumbnail: play on hover, rewind on leave (mirrors the master list).
+	$box.find('video.sdx-animfx-item-thumb').each(function () {
+		const vid = this;
+		vid.addEventListener('mouseenter', () => { vid.play().catch(() => { }); });
+		vid.addEventListener('mouseleave', () => { vid.pause(); vid.currentTime = 0; });
+		vid.addEventListener('error', () => {
+			const ph = document.createElement('div');
+			ph.className = 'sdx-animfx-item-thumb sdx-animfx-item-thumb-missing';
+			ph.textContent = 'no preview';
+			vid.replaceWith(ph);
+		});
+	});
+
+	// Play the displayed preset on the canvas from the selected token.
+	$box.find('.sdx-animfx-preview').on('click', async function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		await AnimationFxSD.previewPreset(readPreset(), { outcome: e.shiftKey ? 'miss' : 'hit' });
+	});
+
+	// Play just the sound, so it can be auditioned without the animation.
+	$box.find('.sdx-animfx-preview-sound').on('click', async function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		const sound = ($box.find('.sdx-animfx-sound').val() || '').trim();
+		if (!sound) {
+			ui.notifications.warn('No sound file set.');
+			return;
+		}
+		await AnimationFxSD._playSound({ sound });
+	});
+
 	// Sequencer Database browser button
-	$box.on('click', '.sdx-animfx-pick-file', function (e) {
+	$box.find('.sdx-animfx-pick-file').on('click', function (e) {
 		e.preventDefault();
 		e.stopPropagation();
 		try {
@@ -12720,7 +12820,7 @@ async function enhanceScrollSheet(app, html) {
 	}
 
 	// Build the damage/heal UI HTML
-	const damageHealHtml = generateScrollConfig(MODULE_ID, flags, effectsListHtml, effectsArray, effectsApplyToTarget, summonsList, summonProfilesArray, itemGiveList, itemGiveProfilesArray);
+	const damageHealHtml = generateScrollConfig(MODULE_ID, flags, effectsListHtml, effectsArray, effectsApplyToTarget, summonsList, summonProfilesArray, itemGiveList, itemGiveProfilesArray, item);
 
 	// Insert into Activity tab
 	$activityTab.append(damageHealHtml);
@@ -13300,6 +13400,10 @@ async function enhanceScrollSheet(app, html) {
 	// Setup UI listeners for targeting and aura effects
 	activateTemplateTargetingListeners(html[0], MODULE_ID);
 	activateTemplateTokenMagicStackHandlers(html, item);
+
+	// Scrolls render the same Animation FX panel as spells; without this it was
+	// inert (nothing saved, no preview).
+	activateAnimationFxListeners(html, item);
 
 	//console.log(`${MODULE_ID} | Scroll sheet enhanced for`, item.name);
 }
@@ -14371,7 +14475,7 @@ async function enhanceWandSheet(app, html) {
 		}
 	}
 
-	const damageHealHtml = generateWandConfig(MODULE_ID, flags, effectsListHtml, effectsArray, effectsApplyToTarget, summonsList, summonProfilesArray, itemGiveList, itemGiveProfilesArray);
+	const damageHealHtml = generateWandConfig(MODULE_ID, flags, effectsListHtml, effectsArray, effectsApplyToTarget, summonsList, summonProfilesArray, itemGiveList, itemGiveProfilesArray, item);
 
 	// Insert into Activity tab
 	$activityTab.append(damageHealHtml);
@@ -14949,6 +15053,10 @@ async function enhanceWandSheet(app, html) {
 	// Setup UI listeners for targeting and aura effects
 	activateTemplateTargetingListeners(html[0], MODULE_ID);
 	activateTemplateTokenMagicStackHandlers(html, item);
+
+	// Wands render the same Animation FX panel as spells; without this it was
+	// inert (nothing saved, no preview).
+	activateAnimationFxListeners(html, item);
 
 	//console.log(`${MODULE_ID} | Wand sheet enhanced for`, item.name);
 }

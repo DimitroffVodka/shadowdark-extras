@@ -102,49 +102,14 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 	_working = null;
 
 	/**
-	 * Turn a preset's `file` into a browser-playable URL for the inline <video>
-	 * thumbnail. Raw `modules/...` paths are direct URLs; Sequencer Database keys
-	 * (e.g. `jb2a.magic_missile`) must be resolved to a concrete file. Sequencer's
-	 * entry shape varies by version, so unwrap defensively and fall back to "".
+	 * Thumbnail URL for a preset file. The implementation lives on AnimationFxSD
+	 * so the per-item Activity panel can reuse it; kept here as a thin alias.
 	 *
 	 * @param {string} file
 	 * @returns {string} URL, or "" when not previewable
 	 */
 	static resolveVideoSrc(file) {
-		if (!file || typeof file !== "string") return "";
-
-		// Raw file path (has a slash) — serve it directly.
-		if (file.includes("/")) return foundry.utils.getRoute(file);
-
-		const db = globalThis.Sequencer?.Database;
-		if (!db) return "";
-		try {
-			if (typeof db.entryExists === "function" && !db.entryExists(file)) return "";
-
-			const unwrap = (v, depth = 0) => {
-				if (!v || depth > 4) return "";
-				if (typeof v === "string") return v;
-				if (Array.isArray(v)) return unwrap(v[0], depth + 1);
-				if (typeof v.getAllFiles === "function") return unwrap(v.getAllFiles(), depth + 1);
-				if (typeof v.file === "string") return v.file;
-				if (v.file) return unwrap(v.file, depth + 1);
-				if (v._file) return unwrap(v._file, depth + 1);
-				// Nested ranged/variant maps: take the first value.
-				if (typeof v === "object") {
-					const first = Object.values(v)[0];
-					if (first !== v) return unwrap(first, depth + 1);
-				}
-				return "";
-			};
-
-			let resolved = unwrap(db.getEntry?.(file));
-			if (!resolved && typeof db.getAllFileEntries === "function") {
-				resolved = unwrap(db.getAllFileEntries(file));
-			}
-			return resolved ? foundry.utils.getRoute(resolved) : "";
-		} catch (e) {
-			return "";
-		}
+		return AnimationFxSD.resolveVideoSrc(file);
 	}
 
 	_getWorking() {
@@ -317,42 +282,7 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 				ev.preventDefault();
 				this._syncFromForm();
 				const preset = this._getWorking()[btn.dataset.category]?.[btn.dataset.key];
-				if (!preset?.hit?.file) {
-					ui.notifications.warn("This preset has no animation file.");
-					return;
-				}
-				const source = canvas.tokens.controlled[0];
-				if (!source) {
-					ui.notifications.warn("Select a token first.");
-					return;
-				}
-				const outcome = ev.shiftKey ? "miss" : "hit";
-
-				// projectile/cone need a distinct target, or stretchTo / the cone
-				// angle get zero-distance math. Fall back to a synthetic point east.
-				let targets;
-				if (preset.type === "projectile" || preset.type === "cone") {
-					const controlled = canvas.tokens.controlled;
-					const userTarget = game.user.targets.first();
-					if (controlled.length >= 2) targets = [controlled[1]];
-					else if (userTarget && userTarget !== source) targets = [userTarget];
-					else targets = [{
-						x: source.x + (source.w ?? 0) + 400,
-						y: source.y,
-						w: 1,
-						h: source.h ?? 1,
-						id: "_preview_offset"
-					}];
-				} else {
-					targets = [source];
-				}
-
-				try {
-					await AnimationFxSD._play(preset, source, targets, outcome);
-				} catch (e) {
-					console.warn(`${MODULE_ID} | preview failed:`, e);
-					ui.notifications.error("Preview failed — see console.");
-				}
+				await AnimationFxSD.previewPreset(preset, { outcome: ev.shiftKey ? "miss" : "hit" });
 			});
 		});
 

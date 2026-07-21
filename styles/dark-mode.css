@@ -558,3 +558,28 @@ body.sdx-dark-mode .shadowdark.light-source-card .card-header img {
 body.sdx-dark-mode .message-content .shadowdark .content h3 {
     color: var(--lights-out-color-foreground-secondary);
 }
+/* Per-item Animation FX panel (Activity tab) — dark variants. */
+body.sdx-dark-mode .sdx-animation-fx-box .sdx-animfx-file-row a {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+body.sdx-dark-mode .sdx-animation-fx-box .sdx-animfx-badge-inherited {
+    background: rgba(90, 160, 100, 0.18);
+    color: #7fd18f;
+}
+
+body.sdx-dark-mode .sdx-animation-fx-box .sdx-animfx-badge-override {
+    background: rgba(190, 140, 60, 0.18);
+    color: #e0ab5c;
+}
+
+body.sdx-dark-mode .sdx-animation-fx-box .sdx-animfx-badge-none {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+body.sdx-dark-mode .sdx-animation-fx-box .SD-grid.sdx-animfx-readonly input,
+body.sdx-dark-mode .sdx-animation-fx-box .SD-grid.sdx-animfx-readonly select {
+    background: rgba(255, 255, 255, 0.05);
+}

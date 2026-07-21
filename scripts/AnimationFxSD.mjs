@@ -396,6 +396,32 @@ export const AnimationFxSD = {
 		return null;
 	},
 
+	/**
+	 * The master-list preset an item inherits *by name pattern only*.
+	 *
+	 * Deliberately excludes the category `_default`: a spell covered only by the
+	 * generic fallback is not "configured", so the item sheet shows it as blank.
+	 * Also ignores the per-item override — this answers "what would the master
+	 * list give this item", not "what will actually play".
+	 *
+	 * @param {Item} item
+	 * @returns {{preset: object, label: string, categoryEnabled: boolean}|null}
+	 */
+	inheritedPresetFor(item) {
+		if (!item) return null;
+		const category = this.categoryForItem(item);
+		if (!category) return null;
+
+		const preset = this._pickBestPattern(item.name ?? "", this.getConfig()[category]);
+		if (!preset?.hit?.file) return null;
+
+		return {
+			preset,
+			label: preset.label || "",
+			categoryEnabled: this._isCategoryEnabled(category)
+		};
+	},
+
 	// ── Missing-module guard ─────────────────────────────────────────────────
 
 	/**
@@ -427,6 +453,103 @@ export const AnimationFxSD = {
 			return roots;
 		} catch (e) {
 			return null;
+		}
+	},
+
+	// ── Thumbnail preview ────────────────────────────────────────────────────
+
+	/**
+	 * Turn a preset's `file` into a browser-playable URL for an inline <video>
+	 * thumbnail. Raw `modules/...` paths are direct URLs; Sequencer Database keys
+	 * (e.g. `jb2a.magic_missile`) must be resolved to a concrete file. Sequencer's
+	 * entry shape varies by version, so unwrap defensively and fall back to "".
+	 *
+	 * @param {string} file
+	 * @returns {string} URL, or "" when not previewable
+	 */
+	resolveVideoSrc(file) {
+		if (!file || typeof file !== "string") return "";
+
+		// Raw file path (has a slash) — serve it directly.
+		if (file.includes("/")) return foundry.utils.getRoute(file);
+
+		const db = globalThis.Sequencer?.Database;
+		if (!db) return "";
+		try {
+			if (typeof db.entryExists === "function" && !db.entryExists(file)) return "";
+
+			const unwrap = (v, depth = 0) => {
+				if (!v || depth > 4) return "";
+				if (typeof v === "string") return v;
+				if (Array.isArray(v)) return unwrap(v[0], depth + 1);
+				if (typeof v.getAllFiles === "function") return unwrap(v.getAllFiles(), depth + 1);
+				if (typeof v.file === "string") return v.file;
+				if (v.file) return unwrap(v.file, depth + 1);
+				if (v._file) return unwrap(v._file, depth + 1);
+				// Nested ranged/variant maps: take the first value.
+				if (typeof v === "object") {
+					const first = Object.values(v)[0];
+					if (first !== v) return unwrap(first, depth + 1);
+				}
+				return "";
+			};
+
+			let resolved = unwrap(db.getEntry?.(file));
+			if (!resolved && typeof db.getAllFileEntries === "function") {
+				resolved = unwrap(db.getAllFileEntries(file));
+			}
+			return resolved ? foundry.utils.getRoute(resolved) : "";
+		} catch (e) {
+			return "";
+		}
+	},
+
+	/**
+	 * Play a preset on the canvas from the selected token, for UI preview.
+	 * Shared by the master list app and the per-item Activity panel.
+	 *
+	 * @param {object}  preset
+	 * @param {object}  [opts]
+	 * @param {string}  [opts.outcome] "hit" | "miss"
+	 * @returns {Promise<boolean>} false when it could not be previewed (already notified)
+	 */
+	async previewPreset(preset, { outcome = "hit" } = {}) {
+		if (!preset?.hit?.file) {
+			ui.notifications.warn("This preset has no animation file.");
+			return false;
+		}
+		const source = canvas?.tokens?.controlled?.[0];
+		if (!source) {
+			ui.notifications.warn("Select a token first.");
+			return false;
+		}
+
+		// projectile/cone need a distinct target, or stretchTo / the cone angle get
+		// zero-distance math. Fall back to a synthetic point east of the source.
+		let targets;
+		if (preset.type === "projectile" || preset.type === "cone") {
+			const controlled = canvas.tokens.controlled;
+			const userTarget = game.user.targets.first();
+			if (controlled.length >= 2) targets = [controlled[1]];
+			else if (userTarget && userTarget !== source) targets = [userTarget];
+			else targets = [{
+				x: source.x + (source.w ?? 0) + 400,
+				y: source.y,
+				w: 1,
+				h: source.h ?? 1,
+				id: "_preview_offset"
+			}];
+		} else {
+			targets = [source];
+		}
+
+		try {
+			await this._play(preset, source, targets, outcome);
+			return true;
+		} catch (e) {
+			console.warn(`${MODULE_ID} | preview failed:`, e);
+			ui.notifications.error("Preview failed — see console.");
+			return false;
 		}
 	},
 

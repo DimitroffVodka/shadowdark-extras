@@ -19116,3 +19116,93 @@ footer.sdx-coords-footer {
     max-height: 80vh;
     overflow-y: auto;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Per-item Animation FX panel (Activity tab) — see AnimationFxConfig.mjs.
+   Mirrors the master list's thumbnail + preview affordances.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.sdx-animation-fx-box .sdx-animfx-file-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sdx-animation-fx-box .sdx-animfx-file-row input[type="text"] {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.sdx-animation-fx-box .sdx-animfx-file-row a {
+    flex: 0 0 auto;
+    cursor: pointer;
+    padding: 2px 5px;
+    color: #4a3c28;
+    opacity: 0.75;
+}
+
+.sdx-animation-fx-box .sdx-animfx-file-row a:hover {
+    opacity: 1;
+    text-shadow: 0 0 6px rgba(180, 140, 60, 0.8);
+}
+
+/* Inline animation thumbnail — preload="none" keeps it free until hovered. */
+.sdx-animation-fx-box .sdx-animfx-item-thumb {
+    flex: 0 0 auto;
+    width: 64px;
+    height: 36px;
+    border-radius: 3px;
+    border: 1px solid rgba(100, 80, 40, 0.5);
+    background: rgba(0, 0, 0, 0.35);
+    object-fit: cover;
+}
+
+.sdx-animation-fx-box .sdx-animfx-item-thumb-missing {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    line-height: 1;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+/* Header badge: at-a-glance coverage state. */
+.sdx-animation-fx-box .sdx-animfx-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    margin-right: 10px;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.sdx-animation-fx-box .sdx-animfx-badge-inherited {
+    background: rgba(60, 110, 70, 0.25);
+    border: 1px solid rgba(90, 160, 100, 0.6);
+    color: #2e6b3a;
+}
+
+.sdx-animation-fx-box .sdx-animfx-badge-override {
+    background: rgba(140, 90, 30, 0.25);
+    border: 1px solid rgba(190, 140, 60, 0.7);
+    color: #8a5a1e;
+}
+
+.sdx-animation-fx-box .sdx-animfx-badge-none {
+    background: rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(100, 80, 40, 0.35);
+    color: rgba(74, 60, 40, 0.65);
+}
+
+/* Read-only state: the panel is a view of the master list until overridden. */
+.sdx-animation-fx-box .SD-grid.sdx-animfx-readonly input,
+.sdx-animation-fx-box .SD-grid.sdx-animfx-readonly select {
+    opacity: 0.6;
+    background: rgba(0, 0, 0, 0.06);
+    cursor: not-allowed;
+}
