@@ -62,7 +62,7 @@ flags:
       perTurnDamage: ''
       reapplyEffects: false
       targetDefense:
-        enabled: true
+        enabled: false
         ability: cha
         dc: '@spellcastingCheck'
         successAction: avoid
@@ -169,7 +169,7 @@ flags:
       name: Turn Undead
       type: script
       scope: global
-      command: >-
+      command: |-
         // Turn Undead Macro
 
         // Run on Success
@@ -208,8 +208,7 @@ flags:
 
         // 4. Get the Turn Undead spell from the caster
 
-        const turnUndeadSpell = casterActor.items.find(i => i.name === "Turn
-        Undead" && (i.type === "Spell" || i.type === "NPC Spell"));
+        const turnUndeadSpell = casterActor.items.find(i => i.name === "Turn Undead" && (i.type === "Spell" || i.type === "NPC Spell"));
 
         if (!turnUndeadSpell) {
             ui.notifications.warn("Turn Undead: Could not find Turn Undead spell on caster.");
@@ -219,11 +218,9 @@ flags:
 
         // 5. Get the active duration spell instance for Turn Undead
 
-        const activeDurationSpells = casterActor.getFlag("shadowdark-extras",
-        "activeDurationSpells") || [];
+        const activeDurationSpells = casterActor.getFlag("shadowdark-extras", "activeDurationSpells") || [];
 
-        let turnUndeadDuration = activeDurationSpells.find(d => d.spellId ===
-        turnUndeadSpell.id);
+        let turnUndeadDuration = activeDurationSpells.find(d => d.spellId === turnUndeadSpell.id);
 
 
         if (!turnUndeadDuration) {
@@ -436,7 +433,7 @@ flags:
         }
 
 
-        const speaker = ChatMessage.getSpeaker({ token: casterToken });
+        const speaker = ChatMessage.getSpeaker({ token: casterToken.document ?? casterToken });
 
 
         // The public card always posts: the spellcasting check is public, and an
@@ -444,7 +441,7 @@ flags:
         // revealing what was in range.
 
         await ChatMessage.create({
-            user: game.user.id,
+            author: game.user.id,
             speaker,
             content: chatContent
         });
@@ -453,7 +450,7 @@ flags:
         if (gmOnlyContent) {
             const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
             await ChatMessage.create({
-                user: game.user.id,
+                author: game.user.id,
                 speaker,
                 whisper: gmIds,
                 content: `<h3>Turn Undead &mdash; Hidden Targets (GM only)</h3><p><strong>Spellcasting Check:</strong> ${spellCheckResult}</p><hr>${gmOnlyContent}`
