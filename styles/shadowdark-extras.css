@@ -7772,6 +7772,12 @@ body.sdx-dark-mode .shadowdark-extras .sdx-setting-header select {
    ACTIVITY TAB - PROFESSIONAL UI STYLES
    ============================================ */
 
+/* Breathing room after the last box - without this the final field row sits
+   flush against the sheet frame and reads as clipped content */
+.shadowdark.sheet section.tab.tab-activity {
+    padding-bottom: 16px;
+}
+
 /* Main section boxes - consistent card styling */
 .sdx-spell-damage-box,
 .sdx-summoning-box,
