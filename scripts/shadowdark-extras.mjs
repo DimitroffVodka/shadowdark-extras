@@ -17999,8 +17999,15 @@ async function executeSpellItemMacro(spellItem, actor, trigger, context = {}) {
 
 	//console.log(`${MODULE_ID} | Executing spell Item Macro for ${spellItem.name}, trigger: ${trigger}`);
 
-	// Get the caster's token
-	const token = canvas.tokens?.placeables?.find(t => t.actor?.id === actor.id) || null;
+	// Get the caster's token. A `runAsGm` socket execution has already resolved
+	// the caster's token from its UUID and passes it here — honour that even when
+	// it is null, because on the GM's client the canvas search would either miss
+	// (GM viewing a different scene than the caster) or, for a linked actor with
+	// tokens on several scenes, silently resolve the WRONG token. The canvas
+	// search is only correct on the casting client, where no token was supplied.
+	const token = Object.hasOwn(context, "token")
+		? (context.token || null)
+		: (canvas.tokens?.placeables?.find(t => t.actor?.id === actor.id) || null);
 
 	// Get current targets
 	const targets = context.targets || Array.from(game.user.targets || []);
@@ -18140,19 +18147,29 @@ Hooks.once("ready", () => {
 			const spellItem = actor.items.get(serializedContext.itemId);
 			if (!spellItem) return;
 
-			// Resolve token and targets from UUIDs
+			// Resolve token and targets from UUIDs. `TokenDocument#object` is only
+			// populated for the scene currently rendered on this client, so a GM
+			// viewing a different scene than the caster resolves null here. Pass the
+			// result on explicitly (null included) — executeSpellItemMacro must not
+			// fall back to a same-actor canvas search, which would pick a token from
+			// whatever scene the GM happens to be viewing.
 			const tokenDoc = serializedContext.tokenUuid ? await fromUuid(serializedContext.tokenUuid) : null;
 			const token = tokenDoc?.object || null;
+			if (serializedContext.tokenUuid && !token) {
+				console.warn(`${MODULE_ID} | Caster token ${serializedContext.tokenUuid} is not on the scene this GM is viewing; macro runs without a caster token`);
+			}
 
 			const targets = [];
 			if (serializedContext.targetUuids) {
 				for (const uuid of serializedContext.targetUuids) {
 					const tDoc = await fromUuid(uuid);
 					if (tDoc?.object) targets.push(tDoc.object);
+					else console.warn(`${MODULE_ID} | Target token ${uuid} could not be resolved on this GM's canvas; dropping it from the macro's targets`);
 				}
 			}
 
 			const context = {
+				token,
 				targets,
 				trigger: serializedContext.trigger,
 				isSuccess: serializedContext.isSuccess,
