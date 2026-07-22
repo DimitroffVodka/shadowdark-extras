@@ -4,7 +4,7 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased] — targeting 6.10.49 — Run-as-GM caster tokens, native focus system, and Maphub journal iframes
+## [6.10.49] — 2026-07-22 — Animation FX item panel, Run-as-GM caster tokens, and the native focus system
 
 ### Added
 
