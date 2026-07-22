@@ -4,6 +4,12 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Fixed
+
+- **Aura effects threw on every token move, wall edit, and scene change on canvas-less clients.** Aura geometry is canvas-derived end to end — token placeables and their centers, grid size, wall collision for line of sight, the visibility API — but the handlers gated on `isGM` rather than the *active* GM, so a client running with the core `noCanvas` setting (an always-on headless relay GM, for instance) ran them all and threw every time. Aura processing now stands down entirely on such a client, logging once at startup rather than registering the hooks at all; any other connected GM still processes auras, so nothing is lost and duplicate processing is avoided. Separately, the hooks and query functions now check that the canvas is actually initialised, which also covers a normal client whose canvas is not ready yet or that has no active scene.
+
 ## [6.10.49] — 2026-07-22 — Animation FX item panel, Run-as-GM caster tokens, and the native focus system
 
 ### Added
