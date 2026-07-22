@@ -313,7 +313,9 @@ async function startFocusSpell(actor, spell, perTurnConfig = null) {
 		},
 		effects: [{
 			name: concentrationName,
-			icon: concentrationIcon,
+			// v13 renamed ActiveEffect#icon to #img; `icon` is inert in v14, so
+			// the concentration effect rendered without its icon.
+			img: concentrationIcon,
 			origin: spell.uuid,
 			transfer: true,
 			statuses: ["concentration"],
