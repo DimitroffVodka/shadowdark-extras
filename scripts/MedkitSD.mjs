@@ -41,6 +41,105 @@ function packSourceLabel(pack) {
 }
 
 /* -------------------------------------------- */
+/*  Item types the Medkit reconciles            */
+/* -------------------------------------------- */
+
+/**
+ * Owned item types the Medkit scans. Spells are matched 1:1 against a
+ * compendium Spell and overwritten wholesale. Scrolls and Wands have no
+ * compendium counterpart — they are physical items that *reference* a spell
+ * (`system.spellUuid` / `system.spells[].uuid`) while carrying their own SDX
+ * enhancement flags, because the cast pipeline resolves the triggering item
+ * (`rollConfig.itemUuid`), not the referenced spell. So for those we sync only
+ * the enhancement flag payload from the matching compendium Spell and leave the
+ * item's own name, type, system data and charges alone.
+ */
+const SCANNED_TYPES = new Set(["Spell", "Scroll", "Wand"]);
+
+/**
+ * SDX flag keys that carry item *enhancement* data. Anything outside this list
+ * (sourceId, wandUses, animationFx overrides, …) is per-item state and is never
+ * touched by a Scroll/Wand sync.
+ */
+const ENHANCEMENT_FLAG_KEYS = [
+    "spellDamage",
+    "summoning",
+    "itemGive",
+    "alignment",
+    "targeting",
+    "templateEffects",
+    "auraEffects",
+    "itemMacro"
+];
+
+/** Strip a leading "Scroll of " / "Spell Scroll " / "Wand of " style prefix. */
+function _stripSpellPrefix(name, patterns) {
+    for (const re of patterns) {
+        const stripped = name.replace(re, "").trim();
+        if (stripped && stripped !== name) return stripped;
+    }
+    return name;
+}
+
+/**
+ * The spell name a Scroll/Wand should be matched against. Resolves the
+ * referenced spell document first (works no matter which pack it lives in) and
+ * falls back to parsing the item's own name.
+ */
+async function _resolveSpellName(item) {
+    if (item.type === "Scroll") {
+        const uuid = item.system?.spellUuid;
+        if (uuid) {
+            const spell = await fromUuid(uuid).catch(() => null);
+            if (spell?.name) return spell.name;
+        }
+        return _stripSpellPrefix(item.name, [
+            /^spell\s+scroll\s+(of\s+)?/i,
+            /^scroll\s+(of\s+)?/i
+        ]);
+    }
+
+    if (item.type === "Wand") {
+        const uuid = (item.system?.spells ?? []).find(s => s?.uuid)?.uuid;
+        if (uuid) {
+            const spell = await fromUuid(uuid).catch(() => null);
+            if (spell?.name) return spell.name;
+        }
+        return _stripSpellPrefix(item.name, [/^wand\s+(of\s+)?/i]);
+    }
+
+    return item.name;
+}
+
+/** The SDX enhancement flags carried by a document, as plain data. */
+function _enhancementPayload(doc) {
+    const flags = doc.toObject().flags?.[MODULE_ID] ?? {};
+    const out = {};
+    for (const key of ENHANCEMENT_FLAG_KEYS) {
+        if (flags[key] !== undefined) out[key] = flags[key];
+    }
+    return out;
+}
+
+/**
+ * True if a Scroll/Wand's enhancement flags differ from the compendium Spell
+ * they are synced from. Only the enhancement payload is compared — the item's
+ * physical data is expected to differ.
+ */
+export function isEnhancementDifferent(actorItem, compendiumItem) {
+    const a = _enhancementPayload(actorItem);
+    const b = _enhancementPayload(compendiumItem);
+    _stripEmpty(a);
+    _stripEmpty(b);
+
+    if (foundry.utils.equals(a, b)) return false;
+    if (foundry.utils.isEmpty(foundry.utils.diffObject(a, b))) return false;
+
+    console.log(`Medkit Enhancement Diff [${actorItem.name}]:`, foundry.utils.diffObject(a, b));
+    return true;
+}
+
+/* -------------------------------------------- */
 /*  Comparison Logic (shared)                   */
 /* -------------------------------------------- */
 
@@ -147,7 +246,7 @@ export async function buildMedkitIndex() {
 }
 
 /**
- * Scan one actor's Spell items against a prebuilt Medkit index.
+ * Scan one actor's Spell, Scroll and Wand items against a prebuilt Medkit index.
  * Returns { updatesAvailable, upToDate } — arrays of descriptor objects that
  * carry the live item id and resolved compendium uuid, so callers can both
  * render the state and perform the update without re-scanning.
@@ -160,21 +259,25 @@ export async function scanActorItems(actor, index) {
     const upToDate = [];
 
     for (const item of actor.items) {
-        // Restrict to Spells only per user request
-        if (item.type !== "Spell") continue;
+        if (!SCANNED_TYPES.has(item.type)) continue;
+
+        // Scrolls and Wands are matched against the Spell they cast, and only
+        // their enhancement flags are synced.
+        const flagsOnly = item.type !== "Spell";
+        const matchName = await _resolveSpellName(item);
 
         // Find all matches by name and type (whitespace-trimmed, case-insensitive)
         const allMatches = index.filter(i =>
-            i.name.trim().toLowerCase() === item.name.trim().toLowerCase() &&
-            i.type === item.type
+            i.name.trim().toLowerCase() === matchName.trim().toLowerCase() &&
+            i.type === "Spell"
         );
 
         if (allMatches.length === 0) continue;
 
         let match = null;
 
-        // For spells, try to find a class-specific match
-        if (item.type === "Spell" && actorClassUuid && allMatches.length > 1) {
+        // Where a spell exists for several classes, prefer the caster's own
+        if (actorClassUuid && allMatches.length > 1) {
             for (const indexMatch of allMatches) {
                 const compendiumItem = await fromUuid(indexMatch.uuid);
                 if (compendiumItem?.system?.class?.includes(actorClassUuid)) {
@@ -187,7 +290,11 @@ export async function scanActorItems(actor, index) {
         // If no class-specific match found, use the first match
         if (!match) match = allMatches[0];
 
-        const sourceId = item.getFlag("shadowdark-extras", "sourceId") || item.getFlag("core", "sourceId");
+        // Scroll/Wand links are tracked separately: their sourceId (if any)
+        // points at whatever pack the physical item came from, not at the spell.
+        const sourceId = flagsOnly
+            ? item.getFlag("shadowdark-extras", "medkitSpellSource")
+            : (item.getFlag("shadowdark-extras", "sourceId") || item.getFlag("core", "sourceId"));
         const compendiumUuid = match.uuid;
 
         // Check if already linked to this compendium item
@@ -197,7 +304,11 @@ export async function scanActorItems(actor, index) {
         if (isLinked) {
             // Linked: only an update if the data actually drifted.
             const compendiumItem = await fromUuid(match.uuid);
-            if (compendiumItem) isDiff = isItemDifferent(item, compendiumItem);
+            if (compendiumItem) {
+                isDiff = flagsOnly
+                    ? isEnhancementDifferent(item, compendiumItem)
+                    : isItemDifferent(item, compendiumItem);
+            }
         }
 
         // It is an update if it's NOT linked, OR if it IS linked but has different data
@@ -207,10 +318,15 @@ export async function scanActorItems(actor, index) {
             name: item.name,
             img: item.img,
             id: item.id,
+            type: item.type,
+            mode: flagsOnly ? "flags" : "full",
+            spellName: matchName,
             compendiumUuid: compendiumUuid,
             currentSource: sourceId || "Unknown/Vanilla",
             sourceLabel: match._packLabel ?? "Unknown",
-            statusLabel: isDiff ? "New Version" : (isLinked ? "Up to Date" : "Update Available")
+            statusLabel: isDiff
+                ? "New Version"
+                : (isLinked ? "Up to Date" : (flagsOnly ? `Enhancement Available (${matchName})` : "Update Available"))
         };
 
         if (isUpdate) updatesAvailable.push(itemData);
@@ -224,12 +340,41 @@ export async function scanActorItems(actor, index) {
 }
 
 /**
+ * Copy the SDX enhancement flags from a compendium Spell onto a Scroll/Wand,
+ * leaving everything else (name, type, system data, wand charges, per-item
+ * animation overrides) untouched. Each enhancement key is unset before it is
+ * written so stale sub-keys can't survive Foundry's deep flag merge.
+ */
+async function _applyEnhancementFlags(item, compendiumItem, compendiumUuid) {
+    const payload = _enhancementPayload(compendiumItem);
+
+    const unset = {};
+    for (const key of ENHANCEMENT_FLAG_KEYS) {
+        if (item.flags?.[MODULE_ID]?.[key] !== undefined) unset[`flags.${MODULE_ID}.-=${key}`] = null;
+    }
+    if (!foundry.utils.isEmpty(unset)) await item.update(unset);
+
+    const set = { [`flags.${MODULE_ID}.medkitSpellSource`]: compendiumUuid };
+    for (const [key, value] of Object.entries(payload)) set[`flags.${MODULE_ID}.${key}`] = value;
+    await item.update(set);
+
+    return true;
+}
+
+/**
  * Overwrite one owned item with its compendium source, preserving the item's
  * own id/folder/sort/ownership and stamping the sourceId link flags.
+ *
+ * @param {Item} item
+ * @param {string} compendiumUuid
+ * @param {"full"|"flags"} [mode="full"] "flags" syncs only the SDX enhancement
+ *   flags (Scroll/Wand); "full" replaces the whole document (Spell).
  */
-export async function performItemUpdate(item, compendiumUuid) {
+export async function performItemUpdate(item, compendiumUuid, mode = "full") {
     const compendiumItem = await fromUuid(compendiumUuid);
     if (!item || !compendiumItem) return false;
+
+    if (mode === "flags") return _applyEnhancementFlags(item, compendiumItem, compendiumUuid);
 
     const updateData = compendiumItem.toObject();
 
@@ -254,7 +399,7 @@ export async function performItemUpdate(item, compendiumUuid) {
 /* -------------------------------------------- */
 
 /**
- * Scan every world actor for available Medkit spell updates.
+ * Scan every world actor for available Medkit item updates.
  * Returns { actors: [{ actorId, actorName, updates }], totalActors, totalItems }
  * where `updates` is the per-actor updatesAvailable list. Read-only.
  */
@@ -281,7 +426,7 @@ export async function scanWorldForUpdates() {
 }
 
 /**
- * Apply available Medkit spell updates across the world.
+ * Apply available Medkit item updates across the world.
  * @param {object} [opts]
  * @param {string[]|null} [opts.actorIds] Restrict to these actor ids (null = all).
  * @param {boolean} [opts.notify=true] Show a completion notification.
@@ -300,7 +445,7 @@ export async function applyWorldMedkitUpdates({ actorIds = null, notify = true }
         let touched = 0;
         for (const upd of entry.updates) {
             const item = actor.items.get(upd.id);
-            if (item && await performItemUpdate(item, upd.compendiumUuid)) {
+            if (item && await performItemUpdate(item, upd.compendiumUuid, upd.mode)) {
                 appliedItems++;
                 touched++;
             }
@@ -316,7 +461,7 @@ export async function applyWorldMedkitUpdates({ actorIds = null, notify = true }
 
 /**
  * GM-facing entry point: scan the world, show a summary dialog listing every
- * actor with pending spell updates, and apply them all on confirm.
+ * actor with pending item updates, and apply them all on confirm.
  */
 export async function medkitScanWorld() {
     if (!game.user?.isGM) {
@@ -330,7 +475,7 @@ export async function medkitScanWorld() {
     if (!totalItems) {
         await foundry.applications.api.DialogV2.prompt({
             window: { title: "Medkit — World Scan", icon: "fas fa-kit-medical" },
-            content: `<p>All actors are up to date — no spell updates available.</p>`
+            content: `<p>All actors are up to date — no item updates available.</p>`
         });
         return;
     }
@@ -342,9 +487,9 @@ export async function medkitScanWorld() {
 
     const confirmed = await foundry.applications.api.DialogV2.confirm({
         window: { title: "Medkit — World Scan", icon: "fas fa-kit-medical" },
-        content: `<p>Found <strong>${totalItems}</strong> spell update${totalItems === 1 ? "" : "s"} across <strong>${totalActors}</strong> actor${totalActors === 1 ? "" : "s"}:</p>`
+        content: `<p>Found <strong>${totalItems}</strong> item update${totalItems === 1 ? "" : "s"} across <strong>${totalActors}</strong> actor${totalActors === 1 ? "" : "s"}:</p>`
             + `<ul style="max-height:320px;overflow:auto;margin:0.5em 0;padding-left:1.25em">${rows}</ul>`
-            + `<p>Apply all updates now? This overwrites the affected spell items with their compendium versions.</p>`,
+            + `<p>Apply all updates now? This overwrites the affected spells and re-syncs scroll/wand enhancements from their compendium versions.</p>`,
         modal: true
     });
 
@@ -457,7 +602,7 @@ export class MedkitApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const itemId = target.dataset.itemId;
         const compendiumUuid = target.dataset.uuid;
         const item = this.actor.items.get(itemId);
-        if (item) await performItemUpdate(item, compendiumUuid);
+        if (item) await performItemUpdate(item, compendiumUuid, target.dataset.mode);
         // Re-render to show updated state (item moves to "Up to Date" list)
         this.render();
     }
@@ -478,7 +623,7 @@ export class MedkitApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         for (const btn of buttons) {
             const item = this.actor.items.get(btn.dataset.itemId);
-            if (item) await performItemUpdate(item, btn.dataset.uuid);
+            if (item) await performItemUpdate(item, btn.dataset.uuid, btn.dataset.mode);
         }
 
         ui.notifications.info("Batch update complete!");
