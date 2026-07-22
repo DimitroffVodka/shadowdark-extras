@@ -292,6 +292,19 @@ flags:
         let gmOnlyContent = "";
 
 
+        // Resolved ONCE, before the loop. Writing the caster's
+        // activeDurationSpells flag (below, per fleeing target) makes
+        // game.combat transiently return null for a few hundred ms, so
+        // re-reading it per target handed every target after the first the
+        // out-of-combat branch mid-encounter. Combat state cannot
+        // meaningfully change during a single cast anyway.
+
+        const inCombat = !!game.combat;
+        const combatId = game.combat?.id ?? null;
+        const combatRound = game.combat?.round ?? null;
+        const combatTurn = game.combat?.turn ?? null;
+
+
         for (const t of targets) {
             const tActor = t.actor;
             const tName = t.name;
@@ -353,7 +366,7 @@ flags:
                     // (SHADOWDARK.item.effect.warning.add_round_item_outside_combat).
                     // Out of combat, convert to the equivalent real-time duration so
                     // the condition can still expire instead of sticking forever.
-                    const inCombat = !!game.combat;
+                    // (inCombat is resolved once before the loop -- see note there.)
                     const roundSeconds = Number(CONFIG.SHADOWDARK?.DURATION_UNITS?.rounds) || 6;
                     const fleeSeconds = FLEE_ROUNDS * roundSeconds;
 
@@ -390,9 +403,9 @@ flags:
                                     : { value: fleeSeconds, units: "seconds", expiry: "turnStart" },
                                 start: inCombat
                                     ? {
-                                        combat: game.combat.id,
-                                        round: game.combat.round,
-                                        turn: game.combat.turn,
+                                        combat: combatId,
+                                        round: combatRound,
+                                        turn: combatTurn,
                                         time: game.time.worldTime
                                     }
                                     : { time: game.time.worldTime },

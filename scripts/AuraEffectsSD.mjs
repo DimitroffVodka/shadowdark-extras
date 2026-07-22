@@ -1866,6 +1866,15 @@ export async function createAuraOnActor(actor, auraConfig, sourceItem, duration 
     _auraCreationInFlight.add(creationKey);
 
     try {
+        // Snapshot combat state BEFORE the awaited document writes below.
+        // Writing actor flags/effects makes game.combat transiently return null
+        // for a few hundred ms, so reading it afterwards recorded an undefined
+        // start round for the aura.
+        const inCombat = !!game.combat;
+        const combatId = game.combat?.id ?? null;
+        const combatRound = game.combat?.round ?? null;
+        const combatTurn = game.combat?.turn ?? null;
+
         await removeExistingAurasForSource(actor, sourceItem);
 
         // Generate a unique status ID for this aura
@@ -1877,11 +1886,13 @@ export async function createAuraOnActor(actor, auraConfig, sourceItem, duration 
         origin: sourceItem.uuid,
         // Add statuses to show as icon on token
         statuses: [auraStatusId],
-        duration: {
-            rounds: expiryRounds,
-            startRound: game.combat?.round,
-            startTime: game.time.worldTime
-        },
+        // v14 ActiveEffect duration is {value, units, expiry, expired}; combat
+        // anchoring moved to a sibling `start`. The old {rounds, startRound,
+        // startTime} keys only survive via the legacy migration shim.
+        duration: { value: expiryRounds, units: "rounds", expiry: "turnStart" },
+        start: inCombat
+            ? { combat: combatId, round: combatRound, turn: combatTurn, time: game.time.worldTime }
+            : { time: game.time.worldTime },
         flags: {
             [MODULE_ID]: {
                 aura: {
