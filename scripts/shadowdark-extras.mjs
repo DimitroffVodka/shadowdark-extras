@@ -17727,10 +17727,18 @@ Hooks.once("ready", async () => {
 				return null;
 			}
 
-			// Rehydrate context if it was serialized
+			// Rehydrate context if it was serialized. `token` is always defined —
+			// null included — so executeItemMacro does not fall back to a lookup on
+			// whatever scene this GM is viewing. The sending client is authoritative
+			// about whether a caster token existed.
 			const context = { ...contextData };
 			if (contextData.actorUuid) context.actor = await fromUuid(contextData.actorUuid);
-			if (contextData.tokenUuid) context.token = (await fromUuid(contextData.tokenUuid))?.object;
+			context.token = contextData.tokenUuid
+				? ((await fromUuid(contextData.tokenUuid))?.object || null)
+				: null;
+			if (contextData.tokenUuid && !context.token) {
+				console.warn(`${MODULE_ID} | Caster token ${contextData.tokenUuid} is not on the scene this GM is viewing; macro runs without a caster token`);
+			}
 
 			return executeItemMacro(item, context);
 		});
@@ -18022,7 +18030,20 @@ export async function executeItemMacro(item, context = {}) {
 	}
 
 	const actor = context.actor ?? item.parent ?? null;
-	const token = context.token ?? actor?.getActiveTokens()?.[0]?.document ?? null;
+	// A `runAsGm` socket handler has already resolved the caster's token from its
+	// UUID and sets the key explicitly — honour it even when the value is null.
+	// `getActiveTokens()` only searches the scene this client is currently
+	// viewing, so on the GM's client it would either miss (GM on another scene)
+	// or resolve a token belonging to whatever scene the GM happens to be on.
+	// Only the originating client, which supplies no token key at all, may use it.
+	// Both branches yield a Token *placeable*, matching the socket handlers and the
+	// spell/class-ability scopes. This fallback previously returned a TokenDocument,
+	// so `token` changed type depending on where the macro ran. Macro authors: reach
+	// the document as `token.document` — note `token.width`/`height` are pixels on a
+	// placeable but grid squares on the document, and updates are `token.document.update()`.
+	const token = Object.hasOwn(context, "token")
+		? (context.token || null)
+		: (actor?.getActiveTokens()?.[0] ?? null);
 	const character = game.user.character ?? null;
 	const speaker = ChatMessage.getSpeaker({ actor });
 
@@ -18107,8 +18128,15 @@ async function executeSpellItemMacro(spellItem, actor, trigger, context = {}) {
 
 	//console.log(`${MODULE_ID} | Executing spell Item Macro for ${spellItem.name}, trigger: ${trigger}`);
 
-	// Get the caster's token
-	const token = canvas.tokens?.placeables?.find(t => t.actor?.id === actor.id) || null;
+	// Get the caster's token. A `runAsGm` socket execution has already resolved
+	// the caster's token from its UUID and passes it here — honour that even when
+	// it is null, because on the GM's client the canvas search would either miss
+	// (GM viewing a different scene than the caster) or, for a linked actor with
+	// tokens on several scenes, silently resolve the WRONG token. The canvas
+	// search is only correct on the casting client, where no token was supplied.
+	const token = Object.hasOwn(context, "token")
+		? (context.token || null)
+		: (canvas.tokens?.placeables?.find(t => t.actor?.id === actor.id) || null);
 
 	// Get current targets
 	const targets = context.targets || Array.from(game.user.targets || []);
@@ -18248,19 +18276,29 @@ Hooks.once("ready", () => {
 			const spellItem = actor.items.get(serializedContext.itemId);
 			if (!spellItem) return;
 
-			// Resolve token and targets from UUIDs
+			// Resolve token and targets from UUIDs. `TokenDocument#object` is only
+			// populated for the scene currently rendered on this client, so a GM
+			// viewing a different scene than the caster resolves null here. Pass the
+			// result on explicitly (null included) — executeSpellItemMacro must not
+			// fall back to a same-actor canvas search, which would pick a token from
+			// whatever scene the GM happens to be viewing.
 			const tokenDoc = serializedContext.tokenUuid ? await fromUuid(serializedContext.tokenUuid) : null;
 			const token = tokenDoc?.object || null;
+			if (serializedContext.tokenUuid && !token) {
+				console.warn(`${MODULE_ID} | Caster token ${serializedContext.tokenUuid} is not on the scene this GM is viewing; macro runs without a caster token`);
+			}
 
 			const targets = [];
 			if (serializedContext.targetUuids) {
 				for (const uuid of serializedContext.targetUuids) {
 					const tDoc = await fromUuid(uuid);
 					if (tDoc?.object) targets.push(tDoc.object);
+					else console.warn(`${MODULE_ID} | Target token ${uuid} could not be resolved on this GM's canvas; dropping it from the macro's targets`);
 				}
 			}
 
 			const context = {
+				token,
 				targets,
 				trigger: serializedContext.trigger,
 				isSuccess: serializedContext.isSuccess,
@@ -19347,12 +19385,16 @@ Hooks.once("ready", () => {
 
 			const tokenDoc = serializedContext.tokenUuid ? await fromUuid(serializedContext.tokenUuid) : null;
 			const token = tokenDoc?.object || null;
+			if (serializedContext.tokenUuid && !token) {
+				console.warn(`${MODULE_ID} | Caster token ${serializedContext.tokenUuid} is not on the scene this GM is viewing; macro runs without a caster token`);
+			}
 
 			const targets = [];
 			if (serializedContext.targetUuids) {
 				for (const uuid of serializedContext.targetUuids) {
 					const tDoc = await fromUuid(uuid);
 					if (tDoc?.object) targets.push(tDoc.object);
+					else console.warn(`${MODULE_ID} | Target token ${uuid} could not be resolved on this GM's canvas; dropping it from the macro's targets`);
 				}
 			}
 
@@ -19369,7 +19411,9 @@ Hooks.once("ready", () => {
 				success: serializedContext.success,
 				critical: serializedContext.critical,
 				rolled: serializedContext.rolled,
-				scene: canvas.scene,
+				// The caster's scene, not the one this GM happens to be viewing —
+				// `canvas.scene` on a GM-side execution is whatever is open here.
+				scene: tokenDoc?.parent ?? canvas.scene ?? null,
 				game
 			};
 
