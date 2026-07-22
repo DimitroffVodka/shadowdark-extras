@@ -17928,12 +17928,14 @@ export async function executeItemMacro(item, context = {}) {
 	// viewing, so on the GM's client it would either miss (GM on another scene)
 	// or resolve a token belonging to whatever scene the GM happens to be on.
 	// Only the originating client, which supplies no token key at all, may use it.
-	// NOTE: the two branches disagree on type — a supplied token is a placeable,
-	// this fallback is a TokenDocument. Pre-existing; left alone here because
-	// normalising either way breaks macros written against the other.
+	// Both branches yield a Token *placeable*, matching the socket handlers and the
+	// spell/class-ability scopes. This fallback previously returned a TokenDocument,
+	// so `token` changed type depending on where the macro ran. Macro authors: reach
+	// the document as `token.document` — note `token.width`/`height` are pixels on a
+	// placeable but grid squares on the document, and updates are `token.document.update()`.
 	const token = Object.hasOwn(context, "token")
 		? (context.token || null)
-		: (actor?.getActiveTokens()?.[0]?.document ?? null);
+		: (actor?.getActiveTokens()?.[0] ?? null);
 	const character = game.user.character ?? null;
 	const speaker = ChatMessage.getSpeaker({ actor });
 
