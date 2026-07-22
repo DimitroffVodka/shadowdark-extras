@@ -27,7 +27,8 @@
       "Bash(npm run build:*)",
       "Bash(cmd /c \"dir C:\\\\Users\\\\gmdim\\\\AppData\\\\Local\\\\Temp\\\\maphub-build\\\\node_modules\\\\.bin\\\\pbjs*\")",
       "Bash(cmd /c \"dir /s /b \"\"C:\\\\Users\\\\gmdim\\\\AppData\\\\Local\\\\FoundryVTT\\\\Data\\\\modules\\\\shadowdark-extras\\\\scripts\\\\maphub\"\"\")",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(node --check MaphubViewerApp.mjs)"
     ]
   }
 }
