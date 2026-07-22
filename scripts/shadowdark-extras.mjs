@@ -18018,10 +18018,19 @@ export async function executeItemMacro(item, context = {}) {
 				serializedContext.actorUuid = context.actor.uuid;
 				delete serializedContext.actor;
 			}
-			if (context.token) {
-				serializedContext.tokenUuid = context.token.uuid || context.token.document?.uuid;
-				delete serializedContext.token;
+			// Resolve the caster's token HERE, on the client that is actually on the
+			// caster's scene. The GM cannot re-derive it — its canvas shows whatever
+			// scene it happens to be viewing — and callers such as
+			// executeWeaponItemMacro pass no token of their own, so without this the
+			// GM-side execution would receive none at all. The spell and class-ability
+			// paths already resolve locally before serialising; this matches them.
+			const casterToken = context.token
+				?? (context.actor ?? item.parent)?.getActiveTokens?.()?.[0]
+				?? null;
+			if (casterToken) {
+				serializedContext.tokenUuid = casterToken.uuid || casterToken.document?.uuid;
 			}
+			delete serializedContext.token;
 
 			return macroExecuteSocket.executeAsGM("sdxExecuteItemMacro", item.uuid, serializedContext);
 		} else {
