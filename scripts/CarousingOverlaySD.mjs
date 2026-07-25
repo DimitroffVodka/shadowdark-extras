@@ -26,7 +26,13 @@ import {
     pruneOfflineCarousingData,
     addCarousingResult,
     removeCarousingResult,
-    refreshLinkedCarousingTables
+    refreshLinkedCarousingTables,
+    parseOutcomeEffects,
+    hasOutcomeEffects,
+    previewOutcomeEffects,
+    applyCarousingOutcome,
+    openCarousingLog,
+    getCarousingWealthBaseMode
 } from "./CarousingSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -271,7 +277,12 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
             hasAvailableActors: availableActors.length > 0,
             // Visibility settings - show to GMs always, only to players if setting enabled
             canSeeBenefits: game.user.isGM || showBenefitsToPlayers,
-            canSeeMishaps: game.user.isGM || showMishapsToPlayers
+            canSeeMishaps: game.user.isGM || showMishapsToPlayers,
+            // Which base a "% of total wealth" loss uses, surfaced next to the
+            // cost so the GM never has to open Settings to check.
+            wealthBaseLabel: game.i18n.localize(getCarousingWealthBaseMode() === "coinsAndGear"
+                ? "SHADOWDARK_EXTRAS.carousing.wealth_base_gear"
+                : "SHADOWDARK_EXTRAS.carousing.wealth_base_coins")
         };
 
     }
@@ -297,6 +308,7 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 
             return {
                 ...p,
+                ...this._getApplyInfo(p),
                 modifiers: {
                     outcome: playerMods.outcome || "",
                     benefits: playerMods.benefits || "",
@@ -310,6 +322,79 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
                 hasOwnedActors: ownedActors.length > 0
             };
         });
+    }
+
+    /**
+     * Confirm and apply an outcome's effects to the participant's character.
+     * The dialog lists the exact numbers first — these are irreversible sheet
+     * writes, and a misparsed line should be caught before it lands.
+     */
+    async _applyResult(participantId) {
+        const participant = getCarousingParticipants().find(p => p.participantId === participantId);
+        const actor = participant?.droppedActor;
+        if (!participant?.result || !actor) {
+            ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.apply_no_actor"));
+            return;
+        }
+
+        const esc = Handlebars.Utils.escapeExpression;
+        const { lines } = previewOutcomeEffects(actor, participant.result.description, participant.result.benefit);
+
+        const content = `
+            <p>${game.i18n.format("SHADOWDARK_EXTRAS.carousing.apply_confirm_intro", { name: esc(actor.name) })}</p>
+            <ul>${lines.map(l => `<li>${esc(l)}</li>`).join("")}</ul>
+        `;
+
+        const confirmed = await foundry.applications.api.DialogV2.confirm({
+            window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.apply_confirm_title") },
+            content,
+            rejectClose: false
+        });
+        if (!confirmed) return;
+
+        const applied = await applyCarousingOutcome(participantId);
+        if (!applied) {
+            ui.notifications.warn(game.i18n.format("SHADOWDARK_EXTRAS.carousing.apply_failed", { name: actor.name }));
+            return;
+        }
+
+        ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.apply_done", {
+            name: applied.name,
+            summary: applied.summary || game.i18n.localize("SHADOWDARK_EXTRAS.carousing.effect_note")
+        }));
+        this.render();
+    }
+
+    /**
+     * GM-only affordances for applying an Original-mode outcome to a sheet.
+     * Expanded mode is excluded because it already grants its numeric XP column
+     * automatically at roll time — offering Apply there would double-grant.
+     * @returns {{canApply: boolean, isApplied: boolean, appliedSummary?: string, applyEffectSummary?: string}}
+     */
+    _getApplyInfo(p) {
+        if (!game.user.isGM) return { canApply: false, isApplied: false };
+        if (getCarousingMode() === "expanded") return { canApply: false, isApplied: false };
+        if (!p.result || !p.droppedActor) return { canApply: false, isApplied: false };
+
+        if (p.result.applied) {
+            return { canApply: false, isApplied: true, appliedSummary: p.result.applied.summary || "" };
+        }
+
+        // Apply stays available even with nothing mechanical to grant, because
+        // the narrative outcome is still recorded on the character's Notes.
+        const effects = parseOutcomeEffects(p.result.description, p.result.benefit);
+        const bits = [];
+        if (effects.xp) bits.push(`+${effects.xp} XP`);
+        if (effects.luck) bits.push(`+${effects.luck} luck`);
+        if (effects.wealthPercent) bits.push(`-${effects.wealthPercent}%`);
+        if (effects.renown) bits.push(`${effects.renown > 0 ? "+" : ""}${effects.renown} renown`);
+
+        return {
+            canApply: true,
+            isApplied: false,
+            hasMechanicalEffects: hasOutcomeEffects(effects),
+            applyEffectSummary: bits.join(" · ")
+        };
     }
 
     /**
@@ -437,6 +522,20 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
             event.preventDefault();
             const card = event.currentTarget.closest('.sdx-carousing-overlay-card');
             card?.classList.toggle('flipped');
+        });
+
+        // GM: apply an outcome's mechanical effects to the character sheet
+        on('[data-action="apply-carousing-result"]', "click", async (event) => {
+            event.preventDefault();
+            if (!game.user.isGM) return;
+            await this._applyResult(event.currentTarget.dataset.participantId);
+        });
+
+        // GM: open the carousing log journal
+        on('[data-action="open-carousing-log"]', "click", async (event) => {
+            event.preventDefault();
+            if (!game.user.isGM) return;
+            await openCarousingLog();
         });
 
         // Player: Clear drop button

@@ -6,7 +6,7 @@
 const MODULE_ID = "shadowdark-extras";
 
 import { getCustomCarousingTables, saveCustomCarousingTables } from "./CarousingSD.mjs";
-import { pickFoundryTable, pickMultipleFoundryTables, tableResultsToOriginalOutcomes, tableResultsToEventTiers, resolveLinkedData, describeLinks } from "./CarousingFoundryImport.mjs";
+import { pickFoundryTable, pickMultipleFoundryTables, tableResultsToOriginalOutcomes, tableResultsToEventTiers, resolveLinkedData, describeLinks, parsePipeTierLine, parsePipeOutcomeLine } from "./CarousingFoundryImport.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -269,7 +269,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
     async _importTiers(html) {
         const content = `
             <p>Paste tier entries. Each entry starts with cost (e.g., "30 gp") and ends with bonus (e.g., "+0").</p>
-            <p><small>Entries can span multiple lines. Example:<br>
+            <p><small>Use <code>|</code> to separate the columns — one entry per line:<br>
+            30 gp | A worthy night of drinking and festivity | +0</small></p>
+            <p><small>Without pipes, entries can span multiple lines. Example:<br>
             "100 gp A full day and night of revelry,<br>
             gambling, and recounting your exploits +1"</small></p>
             <textarea id="import-text" style="width:100%; height:300px;"></textarea>
@@ -287,9 +289,31 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 
         if (result) {
             const fullText = result.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+            // Pipe-delimited paste: one entry per line, "cost | description |
+            // bonus". Takes priority — a pipe is an unambiguous column break,
+            // so the multi-line "N gp ... +N" scan below never has to guess.
+            const entries = [];
+            if (fullText.includes('|')) {
+                for (const line of fullText.split('\n')) {
+                    if (!line.trim()) continue;
+                    const tier = parsePipeTierLine(line);
+                    if (tier) entries.push(tier);
+                }
+            }
+
+            if (entries.length) {
+                const tiersContainer = html.find('.tiers-list');
+                tiersContainer.empty();
+                entries.forEach((tier, index) => {
+                    tiersContainer.append(this._createTierRowHtml(index, tier));
+                });
+                ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
+                return;
+            }
+
             const entryPattern = /(?:^|\n)([\d,]+)\s*gp\s+/gi;
 
-            const entries = [];
             let match;
             const starts = [];
 
@@ -341,7 +365,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
     async _importOutcomes(html) {
         const content = `
             <p>Paste outcome entries. Each entry starts with a roll number and ends with the benefit.</p>
-            <p><small>Format: roll, description, benefit. Entries can span multiple lines.<br>
+            <p><small>Use <code>|</code> to separate the columns — one entry per line:<br>
+            3 | You wake up in a gutter with 15% of your total wealth spent | Gain 3 XP</small></p>
+            <p><small>Without pipes: roll, description, benefit — entries can span multiple lines.<br>
             Example: "3 You wake up in a gutter with 15%<br>
             of your total wealth spent Gain 3 XP"</small></p>
             <textarea id="import-text" style="width:100%; height:300px;"></textarea>
@@ -359,9 +385,31 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 
         if (result) {
             const fullText = result.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+            // Pipe-delimited paste: one entry per line, "[roll |] description |
+            // benefit". Rows without a leading roll column fall back to their
+            // 1-based position, matching how the editor numbers new rows.
+            const entries = [];
+            if (fullText.includes('|')) {
+                for (const line of fullText.split('\n')) {
+                    if (!line.trim()) continue;
+                    const outcome = parsePipeOutcomeLine(line, entries.length + 1);
+                    if (outcome) entries.push(outcome);
+                }
+            }
+
+            if (entries.length) {
+                const outcomesContainer = html.find('.outcomes-list');
+                outcomesContainer.empty();
+                entries.forEach((outcome, index) => {
+                    outcomesContainer.append(this._createOutcomeRowHtml(index, outcome));
+                });
+                ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
+                return;
+            }
+
             const entryPattern = /(?:^|\n)((?:[1-9]|1[0-9]|20)\+?)\s+/g;
 
-            const entries = [];
             let match;
             const starts = [];
 

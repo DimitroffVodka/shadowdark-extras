@@ -147,28 +147,56 @@ export async function pickMultipleFoundryTables(fields) {
  */
 export async function resolveLinkedData(links = {}, mode = "original") {
     const out = {};
+    const skipped = [];
     const load = async (uuid) => {
         if (!uuid) return null;
         try { return await fromUuid(uuid); } catch { return null; }
     };
 
+    // A linked RollTable in the wrong shape parses to rows that are entirely
+    // empty — an Expanded outcome link pointing at an Original-format table,
+    // for instance, yields 0 mishaps / 0 benefits / 0 xp for every row.
+    // Overlaying that would silently wipe the values the GM configured, so a
+    // section is only overlaid when the parse produced something usable.
+    const overlay = (key, rows, isUsable, tableName) => {
+        if (!rows?.length) return;
+        if (rows.some(isUsable)) out[key] = rows;
+        else skipped.push(tableName);
+    };
+
     const eventTbl = await load(links.event);
-    if (eventTbl) out.tiers = tableResultsToEventTiers(eventTbl);
+    if (eventTbl) {
+        overlay("tiers", tableResultsToEventTiers(eventTbl),
+            t => t.cost || t.bonus || t.description, eventTbl.name);
+    }
 
     const outcomeTbl = await load(links.outcome);
     if (outcomeTbl) {
-        out.outcomes = mode === "expanded"
-            ? tableResultsToExpandedOutcomes(outcomeTbl)
-            : tableResultsToOriginalOutcomes(outcomeTbl);
+        overlay("outcomes",
+            mode === "expanded"
+                ? tableResultsToExpandedOutcomes(outcomeTbl)
+                : tableResultsToOriginalOutcomes(outcomeTbl),
+            mode === "expanded"
+                ? o => o.mishaps || o.benefits || o.modifier || o.xp
+                : o => o.description || o.benefit,
+            outcomeTbl.name);
     }
 
     if (mode === "expanded") {
-        const toDescRows = (tbl) => tableResultsToRows(tbl)
-            .map(r => ({ roll: parseInt(r.roll) || 0, description: r.description }));
         const benefitTbl = await load(links.benefit);
-        if (benefitTbl) out.benefits = toDescRows(benefitTbl);
+        if (benefitTbl) {
+            overlay("benefits", tableResultsToDescriptionRows(benefitTbl), b => b.description, benefitTbl.name);
+        }
         const mishapTbl = await load(links.mishap);
-        if (mishapTbl) out.mishaps = toDescRows(mishapTbl);
+        if (mishapTbl) {
+            overlay("mishaps", tableResultsToDescriptionRows(mishapTbl), m => m.description, mishapTbl.name);
+        }
+    }
+
+    if (skipped.length && game.user?.isGM) {
+        ui.notifications?.warn(game.i18n.format("SHADOWDARK_EXTRAS.carousing.link_format_mismatch", {
+            tables: [...new Set(skipped)].join(", ")
+        }));
     }
 
     return out;
@@ -237,6 +265,36 @@ export function tableResultsToRows(table) {
 }
 
 /**
+ * Split a table entry on "|" column separators. RollTables authored outside
+ * SDX overwhelmingly use a pipe to break one result into its columns — e.g.
+ * "30 gp | A worthy night of drinking and festivity | +0" — instead of the
+ * "Cost 30 gp, Event ..., Bonus +0" labels the companion builder emits.
+ *
+ * Leading/trailing blanks (a stray edge pipe) are dropped, but interior
+ * blanks are kept so column positions stay stable for positional parsers.
+ * @param {string} text
+ * @returns {string[]|null} the trimmed columns, or null if the text has no pipe
+ */
+export function splitPipeFields(text) {
+    const raw = String(text ?? "");
+    if (!raw.includes("|")) return null;
+
+    const fields = raw.split("|").map(f => f.replace(/\s+/g, " ").trim());
+    while (fields.length && fields[0] === "") fields.shift();
+    while (fields.length && fields[fields.length - 1] === "") fields.pop();
+    return fields.length ? fields : null;
+}
+
+/** A bare roll-index column ("1", "07", "20+") rather than real content. */
+const ROLL_COLUMN = /^\d{1,3}\+?$/;
+
+/** A cost column ("30 gp", "1,200 gp"). */
+const COST_COLUMN = /^[\d,]+\s*gp$/i;
+
+/** A bonus column ("+0", "-1", "3"). */
+const BONUS_COLUMN = /^[+-]?\d+$/;
+
+/**
  * Parse a "-" / signed-integer field value: "-" means 0.
  */
 function numField(text, re) {
@@ -245,17 +303,169 @@ function numField(text, re) {
     return m[1] === "-" ? 0 : (parseInt(m[1]) || 0);
 }
 
+/** Parse one numeric column; "-" and blanks mean 0. */
+function numColumn(value) {
+    const v = String(value ?? "").trim();
+    if (!v || v === "-") return 0;
+    return parseInt(v) || 0;
+}
+
 /**
- * Map a RollTable to Carousing Event tiers. Expects each result to be labeled
- * "Cost <n> gp, Event <text>, Bonus <±n>" (the format produced by the
- * companion table-builder). Falls back to putting the whole text in the
- * description for tables that don't follow the convention.
+ * Map pipe columns to an event tier. Understands
+ * "[roll |] cost gp | description | bonus", with the cost and bonus columns
+ * both optional — a lone description column stays a description.
+ * @param {string[]} fields
+ * @returns {{cost: number, bonus: number, description: string}}
+ */
+function pipeFieldsToEventTier(fields) {
+    const f = [...fields];
+
+    // Drop a leading roll-index column, but only when a cost column follows it
+    // (so a numeric-looking description is never eaten).
+    if (f.length > 2 && ROLL_COLUMN.test(f[0]) && COST_COLUMN.test(f[1])) f.shift();
+
+    // Never consume the last remaining column — that is always the description.
+    let cost = 0;
+    if (f.length > 1 && COST_COLUMN.test(f[0])) cost = parseInt(f.shift().replace(/[^\d]/g, "")) || 0;
+
+    let bonus = 0;
+    if (f.length > 1 && BONUS_COLUMN.test(f[f.length - 1])) bonus = parseInt(f.pop()) || 0;
+
+    return { cost, bonus, description: f.join(" ").trim() };
+}
+
+/**
+ * Map pipe columns to a roll -> description row.
+ * @param {string[]} fields
+ * @param {number} fallbackRoll - used when the line carries no roll column
+ * @returns {{roll: number, description: string}}
+ */
+function pipeFieldsToDescriptionRow(fields, fallbackRoll) {
+    const f = [...fields];
+    let roll = fallbackRoll;
+    if (f.length > 1 && ROLL_COLUMN.test(f[0])) roll = parseInt(f.shift()) || roll;
+    return { roll, description: f.join(" ").trim() };
+}
+
+/**
+ * Map pipe columns to an Original outcome row.
+ * @param {string[]} fields
+ * @param {string|number} fallbackRoll - used when no roll column is present
+ * @param {number} rollThreshold - column count at or above which the first
+ *   column may be claimed as the roll. RollTable imports pass 3 (the result's
+ *   range already supplies a roll, so only an explicit extra column wins);
+ *   pasted text passes 2, since nothing else supplies one.
+ * @returns {{roll: string, description: string, benefit: string}}
+ */
+function pipeFieldsToOriginalOutcome(fields, fallbackRoll, rollThreshold) {
+    const f = [...fields];
+    let roll = String(fallbackRoll ?? "");
+    if (f.length >= rollThreshold && ROLL_COLUMN.test(f[0])) roll = f.shift();
+    return {
+        roll,
+        description: (f.shift() || "").trim(),
+        // Extra columns past the benefit are rare; keep them readable rather
+        // than dropping content the GM authored.
+        benefit: f.join(", ").trim()
+    };
+}
+
+/**
+ * Map pipe columns to an Expanded outcome row:
+ * "[roll |] mishaps | benefits | d100 modifier | xp".
+ * @param {string[]} fields
+ * @param {number} fallbackRoll
+ * @returns {{roll: number, mishaps: number, benefits: number, modifier: number, xp: number}}
+ */
+function pipeFieldsToExpandedOutcome(fields, fallbackRoll) {
+    const f = [...fields];
+    let roll = fallbackRoll;
+    if (f.length >= 5 && ROLL_COLUMN.test(f[0])) roll = parseInt(f.shift()) || roll;
+    return {
+        roll,
+        mishaps: numColumn(f[0]),
+        benefits: numColumn(f[1]),
+        modifier: numColumn(f[2]),
+        xp: numColumn(f[3])
+    };
+}
+
+/**
+ * Parse one pasted line as pipe-delimited tier columns.
+ * @param {string} line
+ * @returns {{cost: number, bonus: number, description: string}|null} null when
+ *   the line has no pipe, so callers fall back to their whitespace parser
+ */
+export function parsePipeTierLine(line) {
+    const fields = splitPipeFields(line);
+    return fields ? pipeFieldsToEventTier(fields) : null;
+}
+
+/**
+ * Parse one pasted line as pipe-delimited Original outcome columns.
+ * @param {string} line
+ * @param {string|number} fallbackRoll
+ * @returns {{roll: string, description: string, benefit: string}|null}
+ */
+export function parsePipeOutcomeLine(line, fallbackRoll) {
+    const fields = splitPipeFields(line);
+    return fields ? pipeFieldsToOriginalOutcome(fields, fallbackRoll, 2) : null;
+}
+
+/**
+ * Parse one pasted line as pipe-delimited Expanded outcome columns.
+ * @param {string} line
+ * @param {number} fallbackRoll
+ * @returns {{roll: number, mishaps: number, benefits: number, modifier: number, xp: number}|null}
+ */
+export function parsePipeExpandedOutcomeLine(line, fallbackRoll) {
+    const fields = splitPipeFields(line);
+    return fields ? pipeFieldsToExpandedOutcome(fields, fallbackRoll) : null;
+}
+
+/**
+ * Parse one pasted line as pipe-delimited "roll | description" columns.
+ * @param {string} line
+ * @param {number} fallbackRoll
+ * @returns {{roll: number, description: string}|null}
+ */
+export function parsePipeDescriptionLine(line, fallbackRoll) {
+    const fields = splitPipeFields(line);
+    return fields ? pipeFieldsToDescriptionRow(fields, fallbackRoll) : null;
+}
+
+/**
+ * Convert a RollTable to simple roll -> description rows (Benefit / Mishap
+ * d100 tables). A leading "roll |" column overrides the range-derived roll,
+ * so both "01 | You drank with a gossiper" and a plain description work.
+ * @param {RollTable} table
+ * @returns {Array<{roll: number, description: string}>}
+ */
+export function tableResultsToDescriptionRows(table) {
+    return tableResultsToRows(table).map(r => {
+        const roll = parseInt(r.roll) || 0;
+        const description = r.description || "";
+
+        const fields = splitPipeFields(description);
+        return fields ? pipeFieldsToDescriptionRow(fields, roll) : { roll, description };
+    });
+}
+
+/**
+ * Map a RollTable to Carousing Event tiers. Understands two layouts:
+ * pipe-delimited columns ("30 gp | A worthy night... | +0") and the labeled
+ * "Cost <n> gp, Event <text>, Bonus <±n>" text the companion table-builder
+ * emits. Falls back to putting the whole text in the description.
  * @param {RollTable} table
  * @returns {Array<{cost: number, bonus: number, description: string}>}
  */
 export function tableResultsToEventTiers(table) {
     return tableResultsToRows(table).map(r => {
         const t = r.description || "";
+
+        const fields = splitPipeFields(t);
+        if (fields) return pipeFieldsToEventTier(fields);
+
         const hasLabels = /Cost\s+[\d,]+/i.test(t) && /Bonus\s+[+-]?\d+/i.test(t);
         const cost = parseInt((t.match(/Cost\s+([\d,]+)/i)?.[1] || "0").replace(/,/g, "")) || 0;
         const bonus = parseInt(t.match(/Bonus\s+([+-]?\d+)/i)?.[1] || "0") || 0;
@@ -276,6 +486,11 @@ export function tableResultsToEventTiers(table) {
 export function tableResultsToExpandedOutcomes(table) {
     return tableResultsToRows(table).map(r => {
         const t = r.description || "";
+
+        // Pipe layout: "[roll |] mishaps | benefits | d100 modifier | xp".
+        const fields = splitPipeFields(t);
+        if (fields) return pipeFieldsToExpandedOutcome(fields, parseInt(r.roll) || 0);
+
         return {
             roll: parseInt(r.roll) || 0,
             mishaps: numField(t, /Mishap\s+([+-]?\d+|-)/i),
@@ -287,15 +502,20 @@ export function tableResultsToExpandedOutcomes(table) {
 }
 
 /**
- * Map a RollTable to Original Carousing Outcome rows. Expects each result to
- * be labeled "Outcome <text>, Benefit <text>"; falls back to the whole text
- * as the outcome description (no benefit) for plain roll -> text tables.
+ * Map a RollTable to Original Carousing Outcome rows. Understands the pipe
+ * layout "[roll |] description | benefit" and the labeled
+ * "Outcome <text>, Benefit <text>" text; falls back to the whole text as the
+ * outcome description (no benefit) for plain roll -> text tables.
  * @param {RollTable} table
  * @returns {Array<{roll: string, description: string, benefit: string}>}
  */
 export function tableResultsToOriginalOutcomes(table) {
     return tableResultsToRows(table).map(r => {
         const t = r.description || "";
+
+        const fields = splitPipeFields(t);
+        if (fields) return pipeFieldsToOriginalOutcome(fields, r.roll, 3);
+
         const hasLabels = /Outcome\s+/i.test(t) && /,\s*Benefit\s+/i.test(t);
         if (hasLabels) {
             return {

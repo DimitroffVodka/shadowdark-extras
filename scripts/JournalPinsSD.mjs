@@ -1029,7 +1029,7 @@ class JournalPinGraphics extends PIXI.Container {
     async unsetFlag(scope, key) {
         const updateData = {};
         // v14+: use ForcedDeletion sentinel instead of legacy "-=" deletion key syntax.
-        updateData[`flags.${scope}.${key}`] = foundry.data.operators.ForcedDeletion;
+        updateData[`flags.${scope}.${key}`] = new foundry.data.operators.ForcedDeletion();
         return await JournalPinManager.update(this.pinData.id, updateData);
     }
 

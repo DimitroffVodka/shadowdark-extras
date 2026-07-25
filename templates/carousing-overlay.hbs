@@ -85,6 +85,9 @@
                     <button type="button" class="sdx-carousing-reset-btn" data-action="reset-carousing">
                         <i class="fas fa-undo"></i> {{localize "SHADOWDARK_EXTRAS.carousing.reset"}}
                     </button>
+                    <button type="button" class="sdx-carousing-log-btn" data-action="open-carousing-log">
+                        <i class="fas fa-book"></i> {{localize "SHADOWDARK_EXTRAS.carousing.log_open"}}
+                    </button>
                 </div>
             </div>
             {{/if}}
@@ -99,6 +102,10 @@
             <div class="sdx-carousing-cost-info">
                 <i class="fas fa-coins"></i>
                 {{localize "SHADOWDARK_EXTRAS.carousing.cost_per_player"}}: <strong>{{selectedTierCost}} GP</strong>
+                <span class="sdx-wealth-base-tag" title="{{localize
+                    'SHADOWDARK_EXTRAS.carousing.wealth_base_hint'}}">
+                    <i class="fas fa-scale-balanced"></i> {{wealthBaseLabel}}
+                </span>
             </div>
             {{/if}}
 
@@ -193,8 +200,11 @@
                             <div class="sdx-carousing-flip-back">
                                 {{#if this.result}}
                                 <div class="sdx-carousing-results-content">
-                                    {{!-- Check if this is expanded mode (has xp property) --}}
-                                    {{#if this.result.xp}}
+                                    {{!-- Branch on the actual mode. This used to test `this.result.xp`,
+                                         but that is a number which is legitimately 0 on a low roll — a
+                                         0 XP outcome fell through to the classic layout and rendered
+                                         "No specific outcome recorded" with a blank roll total. --}}
+                                    {{#if @root.isExpandedMode}}
                                     {{!-- EXPANDED MODE RESULTS --}}
                                     <div class="sdx-results-header">
                                         <span class="sdx-results-roll">Roll: {{this.result.outcomeRoll}}</span>
@@ -336,8 +346,11 @@
                         {{#if this.hasDrop}}
                         <div class="sdx-carousing-card-stats">
                             <span
-                                class="sdx-carousing-card-gp {{#if ../hasSelectedTier}}{{#if this.canAfford}}can-afford{{else}}cannot-afford{{/if}}{{/if}}">
-                                <i class="fas fa-coins"></i> {{this.actorGp}} GP
+                                class="sdx-carousing-card-gp {{#if ../hasSelectedTier}}{{#if this.canAfford}}can-afford{{else}}cannot-afford{{/if}}{{/if}}"
+                                title="{{localize 'SHADOWDARK_EXTRAS.carousing.card_wealth_hint'}} — {{this.actorCoinsLabel}} / {{this.actorTotalWealthLabel}}">
+                                <i class="fas fa-coins"></i> {{this.actorGp}}{{#if
+                                this.hasGearValue}}<span class="sdx-card-total-wealth"> /
+                                    {{this.actorTotalWealthGp}}</span>{{/if}} GP
                             </span>
                             <span class="sdx-carousing-card-bonus"
                                 title="{{localize 'SHADOWDARK_EXTRAS.carousing.total_bonus_hint'}}">
@@ -359,6 +372,28 @@
                             <span class="sdx-flip-show-actor">{{localize
                                 "SHADOWDARK_EXTRAS.carousing.show_actor"}}</span>
                         </button>
+                        {{/if}}
+
+                        {{!-- GM: apply the outcome's mechanical effects to the sheet --}}
+                        {{#if this.canApply}}
+                        <button type="button" class="sdx-carousing-apply-btn" data-action="apply-carousing-result"
+                            data-participant-id="{{this.participantId}}"
+                            title="{{localize 'SHADOWDARK_EXTRAS.carousing.apply_hint'}}">
+                            <i class="fas fa-wand-magic-sparkles"></i>
+                            {{localize "SHADOWDARK_EXTRAS.carousing.apply_results"}}
+                            {{#if this.applyEffectSummary}}<span
+                                class="sdx-apply-preview">{{this.applyEffectSummary}}</span>{{/if}}
+                        </button>
+                        {{/if}}
+
+                        {{#if this.isApplied}}
+                        <div class="sdx-carousing-applied-badge"
+                            title="{{localize 'SHADOWDARK_EXTRAS.carousing.applied_hint'}}">
+                            <i class="fas fa-check-double"></i>
+                            {{localize "SHADOWDARK_EXTRAS.carousing.applied"}}
+                            {{#if this.appliedSummary}}<span
+                                class="sdx-apply-preview">{{this.appliedSummary}}</span>{{/if}}
+                        </div>
                         {{/if}}
 
                         <div class="sdx-carousing-card-buttons">

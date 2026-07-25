@@ -14711,6 +14711,70 @@ body:not(.game-master) .sdx-carousing-chat .sdx-player-only {
     border-color: #c9aa58;
 }
 
+/* Wealth-base indicator in the cost bar, so the GM can see at a glance which
+   base a "% of total wealth" loss will use. */
+.sdx-wealth-base-tag {
+    margin-left: 14px;
+    padding: 2px 8px;
+    border: 1px solid #4a4a4a;
+    border-radius: 10px;
+    color: #9a9a9a;
+    font-size: 0.85em;
+    white-space: nowrap;
+    cursor: help;
+}
+
+/* Total-wealth half of the "coins / total" card figure. */
+.sdx-card-total-wealth {
+    opacity: 0.6;
+}
+
+/* Apply-results button and its post-apply badge. Green to read as a commit
+   action, distinct from the neutral flip button directly above it. */
+.sdx-carousing-apply-btn {
+    width: 100%;
+    margin-top: 6px;
+    padding: 8px 12px;
+    background: linear-gradient(180deg, #1e3a24 0%, #142a19 100%);
+    border: 1px solid #2f6b3d;
+    border-radius: 4px;
+    color: #7fd694;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.sdx-carousing-apply-btn:hover {
+    background: linear-gradient(180deg, #2a4f32 0%, #1e3a24 100%);
+    border-color: #7fd694;
+}
+
+.sdx-carousing-applied-badge {
+    width: 100%;
+    margin-top: 6px;
+    padding: 8px 12px;
+    border: 1px dashed #2f6b3d;
+    border-radius: 4px;
+    color: #6a9c78;
+    font-size: 0.85em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.sdx-apply-preview {
+    opacity: 0.85;
+    font-size: 0.85em;
+    font-variant-numeric: tabular-nums;
+}
+
 /* Toggle visibility of button text based on flip state */
 .sdx-carousing-overlay-card .sdx-flip-show-actor {
     display: none;

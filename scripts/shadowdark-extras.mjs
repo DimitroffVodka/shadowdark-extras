@@ -3904,6 +3904,22 @@ function registerSettings() {
 		type: Boolean
 	});
 
+	// Carousing - What "N% of your total wealth" is measured against when the GM
+	// applies an outcome. The deduction always comes out of coins; "coinsAndGear"
+	// only widens the base so stockpiling gear can't dodge the penalty.
+	game.settings.register(MODULE_ID, "carousingWealthBase", {
+		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_wealth_base.name"),
+		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_wealth_base.hint"),
+		scope: "world",
+		config: true,
+		default: "coins",
+		type: String,
+		choices: {
+			coins: game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_wealth_base.coins"),
+			coinsAndGear: game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_wealth_base.coins_and_gear")
+		}
+	});
+
 	// Carousing Tables Editor Menu Button
 	// Opens a single editor that hosts both modes via an in-window Original/Expanded
 	// switch. It opens on the mode currently selected in the Carousing Mode setting.

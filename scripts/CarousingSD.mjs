@@ -526,23 +526,24 @@ export async function setCarousingDrop(userId, actorId) {
     const journal = getCarousingJournal();
     if (!journal) return;
 
-    const session = getCarousingSession();
-    const drops = getCarousingDrops();
+    // Flag objects merge on update, so a key is only removed via the "-="
+    // prefix. Mutating a local copy and writing it back leaves the key in the
+    // stored data — which is how cleared drops came back on reload and how
+    // results were stranded without a participant.
+    const base = `flags.${MODULE_ID}.carousingSession`;
+    const updates = {
+        // Always clear confirmation and results when the actor changes or is removed
+        [`${base}.confirmations.-=${userId}`]: null,
+        [`${base}.results.-=${userId}`]: null
+    };
 
     if (actorId) {
-        drops[userId] = actorId;
+        updates[`flags.${MODULE_ID}.carousingDrops.${userId}`] = actorId;
     } else {
-        delete drops[userId];
+        updates[`flags.${MODULE_ID}.carousingDrops.-=${userId}`] = null;
     }
 
-    // Always clear confirmation and results when actor changes or is removed
-    delete session.confirmations[userId];
-    if (session.results) delete session.results[userId];
-
-    await journal.update({
-        [`flags.${MODULE_ID}.carousingDrops`]: drops,
-        [`flags.${MODULE_ID}.carousingSession`]: session
-    });
+    await journal.update(updates);
 }
 
 /**
@@ -586,7 +587,7 @@ export async function setCarousingTable(tableId) {
 
     await journal.update({
         [`flags.${MODULE_ID}.carousingSession`]: session,
-        [`flags.${MODULE_ID}.carousingDrops`]: foundry.data.operators.ForcedDeletion
+        [`flags.${MODULE_ID}.carousingDrops`]: new foundry.data.operators.ForcedDeletion()
     });
 
     rerenderPlayerSheets();
@@ -596,13 +597,16 @@ export async function setCarousingTable(tableId) {
  * Set player confirmation
  */
 export async function setPlayerConfirmation(userId, confirmed) {
-    const session = getCarousingSession();
-    if (confirmed) {
-        session.confirmations[userId] = true;
-    } else {
-        delete session.confirmations[userId];
-    }
-    await saveCarousingSession(session);
+    const journal = getCarousingJournal();
+    if (!journal) return;
+
+    // Unconfirming needs the "-=" prefix — a plain delete on the session object
+    // only ever changed the in-memory copy, so the confirmation reappeared on
+    // the next reload.
+    const key = `flags.${MODULE_ID}.carousingSession.confirmations`;
+    await journal.update(confirmed
+        ? { [`${key}.${userId}`]: true }
+        : { [`${key}.-=${userId}`]: null });
 }
 
 /**
@@ -612,16 +616,15 @@ export async function setPlayerConfirmation(userId, confirmed) {
  * @param {string} value - The modifier value (static or dice string)
  */
 export async function setPlayerModifier(userId, type, value) {
-    const session = getCarousingSession();
-    if (!session.modifiers[userId]) session.modifiers[userId] = {};
+    const journal = getCarousingJournal();
+    if (!journal) return;
 
-    if (!value || value.trim() === "") {
-        delete session.modifiers[userId][type];
-    } else {
-        session.modifiers[userId][type] = value.trim();
-    }
-
-    await saveCarousingSession(session);
+    // Same merge caveat: clearing a modifier needs "-=", or the old value
+    // survives in the stored session.
+    const key = `flags.${MODULE_ID}.carousingSession.modifiers.${userId}`;
+    await journal.update(!value || value.trim() === ""
+        ? { [`${key}.-=${type}`]: null }
+        : { [`${key}.${type}`]: value.trim() });
     // Don't re-render everything on every keystroke if called from input, 
     // but useful for sync
 }
@@ -653,15 +656,17 @@ export async function removeGmParticipant(actorId) {
     let gmActors = getCarousingGmActors();
     gmActors = gmActors.filter(id => id !== actorId);
 
-    const session = getCarousingSession();
+    // Flag objects MERGE on update, so mutating a local copy and writing it
+    // back does not remove keys — the "-=" prefix is required. Without it the
+    // confirmation, result and modifier all survived the removal, which is how
+    // results ended up stranded without a participant to render them.
     const participantId = `actor-${actorId}`;
-    delete session.confirmations[participantId];
-    if (session.results) delete session.results[participantId];
-    if (session.modifiers) delete session.modifiers[participantId];
-
+    const base = `flags.${MODULE_ID}.carousingSession`;
     await journal.update({
         [`flags.${MODULE_ID}.carousingGmActors`]: gmActors,
-        [`flags.${MODULE_ID}.carousingSession`]: session
+        [`${base}.confirmations.-=${participantId}`]: null,
+        [`${base}.results.-=${participantId}`]: null,
+        [`${base}.modifiers.-=${participantId}`]: null
     });
     rerenderPlayerSheets();
 }
@@ -682,8 +687,8 @@ export async function resetCarousingSession() {
 
     // Forcefully wipe the flags via ForcedDeletion sentinel (v14+)
     await journal.update({
-        [`flags.${MODULE_ID}.carousingSession`]: foundry.data.operators.ForcedDeletion,
-        [`flags.${MODULE_ID}.carousingDrops`]: foundry.data.operators.ForcedDeletion
+        [`flags.${MODULE_ID}.carousingSession`]: new foundry.data.operators.ForcedDeletion(),
+        [`flags.${MODULE_ID}.carousingDrops`]: new foundry.data.operators.ForcedDeletion()
     });
 
     // Manually trigger local re-render immediately so the GM sees it instantly
@@ -788,36 +793,31 @@ export async function pruneOfflineCarousingData() {
 
     const drops = getCarousingDrops();
     const session = getCarousingSession();
-    let dropsChanged = false;
-    let sessionChanged = false;
+    const isOffline = (userId) => {
+        const user = game.users.get(userId);
+        return !user || !user.active;
+    };
 
-    // Check drops
+    // Keys are removed with the "-=" prefix; writing a mutated copy back would
+    // merge and leave every "pruned" entry in place.
+    const updates = {};
+    const base = `flags.${MODULE_ID}.carousingSession`;
+
+    // Check drops. A rolled result is preserved so a player going offline
+    // cannot strand an outcome the GM has not applied yet.
     for (const userId of Object.keys(drops)) {
-        const user = game.users.get(userId);
-        if (!user || !user.active) {
-            delete drops[userId];
-            dropsChanged = true;
-        }
+        if (!isOffline(userId) || session.results?.[userId]) continue;
+        updates[`flags.${MODULE_ID}.carousingDrops.-=${userId}`] = null;
     }
 
-    // Check confirmations
+    // Check confirmations (GM-managed actors are not users, so skip them)
     for (const userId of Object.keys(session.confirmations || {})) {
-        // Skip GM-managed actors
         if (userId.startsWith("actor-")) continue;
-
-        const user = game.users.get(userId);
-        if (!user || !user.active) {
-            delete session.confirmations[userId];
-            sessionChanged = true;
-        }
+        if (!isOffline(userId) || session.results?.[userId]) continue;
+        updates[`${base}.confirmations.-=${userId}`] = null;
     }
 
-    if (dropsChanged || sessionChanged) {
-        const updates = {};
-        if (dropsChanged) updates[`flags.${MODULE_ID}.carousingDrops`] = drops;
-        if (sessionChanged) updates[`flags.${MODULE_ID}.carousingSession`] = session;
-        await journal.update(updates);
-    }
+    if (Object.keys(updates).length) await journal.update(updates);
 }
 
 // ============================================
@@ -872,6 +872,7 @@ export function getCarousingParticipants() {
         const droppedActorId = drops[user.id];
         const droppedActor = droppedActorId ? game.actors.get(droppedActorId) : null;
         const actorGp = droppedActor ? getActorTotalGp(droppedActor) : 0;
+        const wealth = droppedActor ? getActorWealthDisplay(droppedActor) : null;
         const canAfford = actorGp >= splitCost;
         const isConfirmed = session.confirmations[user.id] === true;
         const result = session.results?.[user.id];
@@ -893,6 +894,11 @@ export function getCarousingParticipants() {
             hasDrop: !!droppedActor,
             isCurrentUser: user.id === game.user.id,
             actorGp: actorGp,
+            // Coins carried vs. total wealth including gear, shown as "41 / 162 GP"
+            actorTotalWealthGp: wealth ? Math.floor(wealth.totalCp / CP_PER_GP) : 0,
+            actorCoinsLabel: wealth?.coinsLabel || "0 gp",
+            actorTotalWealthLabel: wealth?.totalLabel || "0 gp",
+            hasGearValue: !!wealth?.gearCp,
             canAfford: canAfford,
             isConfirmed: isConfirmed,
             result: result,
@@ -902,13 +908,25 @@ export function getCarousingParticipants() {
         };
     });
 
-    // 2. Get GM-added Actor participants
-    const gmParticipants = gmActors.map(actorId => {
+    // 2. Get GM-added Actor participants.
+    //
+    // A rolled result keeps its participant alive even if the actor is no
+    // longer in the GM list. Without this, anything that drops an actor from
+    // that list strands its outcome: the result stays in the session but has
+    // no card, so it can never be applied or reviewed. Explicitly removing a
+    // participant still deletes its result outright, so nothing lingers.
+    const resultActorIds = Object.keys(session.results || {})
+        .filter(k => k.startsWith("actor-"))
+        .map(k => k.slice(6));
+    const gmActorIds = [...new Set([...gmActors, ...resultActorIds])];
+
+    const gmParticipants = gmActorIds.map(actorId => {
         const droppedActor = game.actors.get(actorId);
         if (!droppedActor) return null;
 
         const participantId = `actor-${actorId}`;
         const actorGp = getActorTotalGp(droppedActor);
+        const wealth = getActorWealthDisplay(droppedActor);
         const canAfford = actorGp >= splitCost;
         const isConfirmed = session.confirmations[participantId] === true;
         const result = session.results?.[participantId];
@@ -930,6 +948,11 @@ export function getCarousingParticipants() {
             hasDrop: true,
             isCurrentUser: game.user.isGM,
             actorGp: actorGp,
+            // Coins carried vs. total wealth including gear, shown as "41 / 162 GP"
+            actorTotalWealthGp: wealth ? Math.floor(wealth.totalCp / CP_PER_GP) : 0,
+            actorCoinsLabel: wealth?.coinsLabel || "0 gp",
+            actorTotalWealthLabel: wealth?.totalLabel || "0 gp",
+            hasGearValue: !!wealth?.gearCp,
             canAfford: canAfford,
             isConfirmed: isConfirmed,
             result: result,
@@ -952,14 +975,113 @@ function getOnlinePlayers() {
 
 
 /**
- * Get actor's total GP (coins.gp + sp/10 + cp/100)
+ * Get actor's total GP (coins.gp + sp/10 + cp/100), rounded down to whole gp.
+ * Display and affordability only — anything doing arithmetic on wealth should
+ * use the copper helpers below, which do not discard change.
  */
 function getActorTotalGp(actor) {
-    const coins = actor.system?.coins || {};
-    const gp = coins.gp || 0;
-    const sp = coins.sp || 0;
-    const cp = coins.cp || 0;
-    return gp + Math.floor(sp / 10) + Math.floor(cp / 100);
+    return Math.floor(getActorCoinsCp(actor) / CP_PER_GP);
+}
+
+// Coin maths is done in copper, the smallest unit, so a percentage and its
+// deduction keep their change instead of being rounded to whole gp at every
+// step. 1 gp = 10 sp = 100 cp.
+const CP_PER_GP = 100;
+const CP_PER_SP = 10;
+
+/** An actor's carried coin, in copper. */
+function getActorCoinsCp(actor) {
+    const coins = actor?.system?.coins || {};
+    return (Number(coins.gp) || 0) * CP_PER_GP
+        + (Number(coins.sp) || 0) * CP_PER_SP
+        + (Number(coins.cp) || 0);
+}
+
+/** Value of an actor's gear in copper. Items with no cost recorded count as 0. */
+function getActorGearValueCp(actor) {
+    let total = 0;
+    for (const item of actor?.items ?? []) {
+        const cost = item.system?.cost;
+        if (!cost) continue;
+        const qty = Number(item.system?.quantity ?? 1) || 1;
+        total += ((Number(cost.gp) || 0) * CP_PER_GP
+            + (Number(cost.sp) || 0) * CP_PER_SP
+            + (Number(cost.cp) || 0)) * qty;
+    }
+    return total;
+}
+
+/** Split a copper total into {gp, sp, cp}. */
+function cpToCoins(totalCp) {
+    return {
+        gp: Math.floor(totalCp / CP_PER_GP),
+        sp: Math.floor((totalCp % CP_PER_GP) / CP_PER_SP),
+        cp: totalCp % CP_PER_SP
+    };
+}
+
+/**
+ * Human-readable coin string ("2 gp 5 sp"), omitting empty denominations.
+ * @param {number} totalCp
+ */
+export function formatCoins(totalCp) {
+    const n = Math.max(0, Math.round(Number(totalCp) || 0));
+    if (!n) return "0 gp";
+    const { gp, sp, cp } = cpToCoins(n);
+    const parts = [];
+    if (gp) parts.push(`${gp} gp`);
+    if (sp) parts.push(`${sp} sp`);
+    if (cp) parts.push(`${cp} cp`);
+    return parts.join(" ");
+}
+
+/**
+ * Deduct an amount in copper, making change across denominations.
+ *
+ * Spends the smallest coins first and only breaks a larger one when the
+ * remainder cannot be covered, so the actor's coin *count* stays as close to
+ * unchanged as possible — in Shadowdark 100 coins is a gear slot regardless of
+ * denomination, so silently normalising a purse would alter encumbrance.
+ *
+ * @returns {Promise<number>} copper actually deducted (clamped to the purse)
+ */
+async function deductCoinsCp(actor, cpAmount) {
+    const src = actor?.system?.coins || {};
+    let gp = Number(src.gp) || 0;
+    let sp = Number(src.sp) || 0;
+    let cp = Number(src.cp) || 0;
+
+    const purse = gp * CP_PER_GP + sp * CP_PER_SP + cp;
+    const total = Math.min(Math.max(0, Math.round(Number(cpAmount) || 0)), purse);
+    if (!total) return 0;
+
+    let owed = total;
+    while (owed > 0 && (gp > 0 || sp > 0 || cp > 0)) {
+        if (cp >= owed) { cp -= owed; owed = 0; break; }
+        if (cp > 0) { owed -= cp; cp = 0; }
+
+        if (sp > 0) {
+            const use = Math.min(sp, Math.ceil(owed / CP_PER_SP));
+            sp -= use;
+            const value = use * CP_PER_SP;
+            if (value >= owed) { cp += value - owed; owed = 0; } else { owed -= value; }
+        } else if (gp > 0) {
+            const use = Math.min(gp, Math.ceil(owed / CP_PER_GP));
+            gp -= use;
+            const value = use * CP_PER_GP;
+            if (value >= owed) {
+                const change = value - owed;
+                sp += Math.floor(change / CP_PER_SP);
+                cp += change % CP_PER_SP;
+                owed = 0;
+            } else {
+                owed -= value;
+            }
+        }
+    }
+
+    await actor.update({ "system.coins": { gp, sp, cp } });
+    return total - owed;
 }
 
 /**
@@ -1479,10 +1601,19 @@ export async function executeCarousingRolls() {
         `);
     }
 
-    // Save results
+    // Save results. A fresh logId per roll gives the log journal a stable key
+    // to create-or-update against, so re-rolling never duplicates a page.
     session.results = results;
     session.phase = "complete";
+    session.logId = foundry.utils.randomID();
+    session.logMeta = {
+        date: new Date().toLocaleString(),
+        tierDescription: tier.description || "",
+        tierCost: tier.cost || 0,
+        costPerPerson
+    };
     await saveCarousingSession(session);
+    await writeCarousingLogPage(session);
 
     // Send chat message
     await ChatMessage.create({
@@ -1497,70 +1628,322 @@ export async function executeCarousingRolls() {
  * Deduct coins from actor (prioritize GP, then SP, then CP)
  */
 async function deductCoins(actor, gpAmount) {
-    const coins = foundry.utils.deepClone(actor.system?.coins || { gp: 0, sp: 0, cp: 0 });
+    await deductCoinsCp(actor, (Number(gpAmount) || 0) * CP_PER_GP);
+}
 
-    let remainingGp = gpAmount;
+// ============================================
+// OUTCOME EFFECT PARSING AND APPLICATION
+// ============================================
 
-    // Deduct from GP first
-    if (coins.gp >= remainingGp) {
-        coins.gp -= remainingGp;
-        remainingGp = 0;
-    } else {
-        remainingGp -= coins.gp;
-        coins.gp = 0;
+/** "Gain 4 XP", "4 XP", "+4 XP". */
+const XP_GRANT = /([+-]?\d+)\s*XP\b/i;
+
+/** "a luck token", "2 luck tokens". */
+const LUCK_TOKEN = /\b(?:(\d+)|an?|one)\s+luck\s+tokens?\b/i;
+
+/** "5% of your total wealth". */
+const WEALTH_PERCENT = /(\d+)\s*%\s*of\s+(?:your|their|his|her|the)\s+total\s+wealth/i;
+
+/**
+ * Verbs that would make a wealth percentage a gain rather than a loss. Tested
+ * only against the text immediately preceding the percentage, and only within
+ * the same column, so a "Gain 4 XP" sitting in the Benefit column can never be
+ * mistaken for the verb governing a percentage in the What Happened column.
+ */
+const WEALTH_GAIN = /\b(?:gain|earn|win|won|recover|receive|find|found)\w*\b/i;
+
+/** How far back to look for that verb. */
+const WEALTH_VERB_WINDOW = 24;
+
+/**
+ * Extract the mechanical effects described by an outcome's text.
+ *
+ * Narrative rewards — a priest ally, a debt owed by a noble, being barred from
+ * a tavern — have no mechanical target in Shadowdark and are deliberately not
+ * parsed. The full outcome text is recorded on the character's Notes instead,
+ * so nothing the GM authored is lost.
+ *
+ * @param {string} description - the "What Happened" column
+ * @param {string} benefit - the "Benefit" column
+ * @returns {{xp: number, luck: number, wealthPercent: number, renown: number}}
+ */
+export function parseOutcomeEffects(description = "", benefit = "") {
+    const desc = String(description || "");
+    const ben = String(benefit || "");
+    const combined = [desc, ben].filter(Boolean).join(" ");
+
+    const xpMatch = combined.match(XP_GRANT);
+    const luckMatch = combined.match(LUCK_TOKEN);
+
+    let wealthPercent = 0;
+    for (const field of [desc, ben]) {
+        const m = field.match(WEALTH_PERCENT);
+        if (!m) continue;
+        const before = field.slice(Math.max(0, m.index - WEALTH_VERB_WINDOW), m.index);
+        if (WEALTH_GAIN.test(before)) continue;
+        wealthPercent = parseInt(m[1]) || 0;
+        break;
     }
 
-    // Convert remaining to SP (1 GP = 10 SP)
-    if (remainingGp > 0) {
-        const neededSp = remainingGp * 10;
-        if (coins.sp >= neededSp) {
-            coins.sp -= neededSp;
-            remainingGp = 0;
-        } else {
-            remainingGp -= Math.floor(coins.sp / 10);
-            coins.sp = coins.sp % 10;
-        }
-    }
+    return {
+        xp: xpMatch ? (parseInt(xpMatch[1]) || 0) : 0,
+        luck: luckMatch ? (luckMatch[1] ? (parseInt(luckMatch[1]) || 0) : 1) : 0,
+        wealthPercent,
+        renown: parseRenownDelta(combined)
+    };
+}
 
-    // Convert remaining to CP (1 GP = 100 CP)
-    if (remainingGp > 0) {
-        const neededCp = remainingGp * 100;
-        coins.cp = Math.max(0, coins.cp - neededCp);
-    }
+/** True when an outcome has anything mechanical to write to a sheet. */
+export function hasOutcomeEffects(effects) {
+    return !!(effects && (effects.xp || effects.luck || effects.wealthPercent || effects.renown));
+}
 
-    await actor.update({ "system.coins": coins });
+/** The configured wealth base: "coins" or "coinsAndGear". */
+export function getCarousingWealthBaseMode() {
+    try { return game.settings.get(MODULE_ID, "carousingWealthBase") || "coins"; }
+    catch { return "coins"; }
 }
 
 /**
- * Apply outcome effect and return description text
+ * The copper figure a "% of total wealth" loss is measured against, per the
+ * carousingWealthBase setting. The loss itself always comes out of coins —
+ * including gear only widens the base so stockpiling equipment cannot dodge
+ * the penalty.
+ * @returns {number} copper
  */
-async function applyOutcomeEffect(actor, effect) {
-    if (!effect) return "";
+export function getCarousingWealthBaseCp(actor) {
+    const coins = getActorCoinsCp(actor);
+    return getCarousingWealthBaseMode() === "coinsAndGear"
+        ? coins + getActorGearValueCp(actor)
+        : coins;
+}
 
-    switch (effect.type) {
-        case "wealthLoss": {
-            const totalGp = getActorTotalGp(actor);
-            const lossGp = Math.floor(totalGp * effect.percent / 100);
-            if (lossGp > 0) {
-                await deductCoins(actor, lossGp);
-            }
-            const text = game.i18n.format("SHADOWDARK_EXTRAS.carousing.lost_wealth", { percent: effect.percent, amount: lossGp });
-            return effect.bonus ? `${text}, ${effect.bonus}` : text;
+/**
+ * Coin and total-wealth figures for display on a participant card.
+ * @returns {{coinsCp: number, gearCp: number, totalCp: number, coinsLabel: string, totalLabel: string}}
+ */
+export function getActorWealthDisplay(actor) {
+    const coinsCp = getActorCoinsCp(actor);
+    const gearCp = getActorGearValueCp(actor);
+    return {
+        coinsCp,
+        gearCp,
+        totalCp: coinsCp + gearCp,
+        coinsLabel: formatCoins(coinsCp),
+        totalLabel: formatCoins(coinsCp + gearCp)
+    };
+}
+
+/**
+ * Describe what applying an outcome would do, without changing anything.
+ * Used for the confirm dialog and the log, so the GM sees the exact numbers
+ * before committing an irreversible write.
+ * @returns {{lines: string[], effects: Object, wealthLossCp: number, wealthShortfallCp: number}}
+ */
+export function previewOutcomeEffects(actor, description, benefit) {
+    const effects = parseOutcomeEffects(description, benefit);
+    const lines = [];
+
+    if (effects.xp) lines.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_xp", { amount: effects.xp }));
+    if (effects.luck) lines.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_luck", { amount: effects.luck }));
+
+    // Computed and capped in copper so the change is not rounded away, and so
+    // a percentage of a gear-inflated base can never drive the purse negative.
+    let wealthLossCp = 0;
+    let wealthShortfallCp = 0;
+    if (effects.wealthPercent && actor) {
+        const intended = Math.round(getCarousingWealthBaseCp(actor) * effects.wealthPercent / 100);
+        const purse = getActorCoinsCp(actor);
+        wealthLossCp = Math.min(intended, purse);
+        wealthShortfallCp = intended - wealthLossCp;
+        lines.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_wealth", {
+            percent: effects.wealthPercent, amount: formatCoins(wealthLossCp)
+        }));
+        if (wealthShortfallCp > 0) {
+            lines.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_wealth_short", {
+                amount: formatCoins(wealthLossCp)
+            }));
         }
-
-        case "luckToken": {
-            const currentLuck = actor.system?.luck?.remaining ?? actor.system?.luck ?? 0;
-            await actor.update({ "system.luck.remaining": currentLuck + effect.amount });
-            return game.i18n.format("SHADOWDARK_EXTRAS.carousing.gained_luck", { amount: effect.amount });
-        }
-
-        case "bonus": {
-            return effect.bonus;
-        }
-
-        default:
-            return "";
     }
+
+    if (effects.renown) {
+        lines.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_renown", {
+            delta: effects.renown > 0 ? `+${effects.renown}` : String(effects.renown)
+        }));
+    }
+
+    lines.push(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.effect_note"));
+    return { lines, effects, wealthLossCp, wealthShortfallCp };
+}
+
+/**
+ * Append a carousing entry to an actor's Notes, preserving whatever is there.
+ * This is how narrative rewards (allies, debts, reputations) reach the sheet —
+ * verbatim, for the GM and player to interpret.
+ */
+async function appendCarousingNote(actor, description, benefit, appliedSummary) {
+    const esc = foundry.utils.escapeHTML ?? Handlebars.Utils.escapeExpression;
+    const heading = game.i18n.localize("SHADOWDARK_EXTRAS.carousing.note_heading");
+    const date = new Date().toLocaleDateString();
+
+    const parts = [description, benefit].filter(Boolean).map(t => esc(t)).join(" — ");
+    const applied = appliedSummary ? ` <em>(${esc(appliedSummary)})</em>` : "";
+    const entry = `<p><strong>${esc(heading)}</strong> — ${esc(date)}: ${parts}${applied}</p>`;
+
+    const existing = actor.system?.notes || "";
+    await actor.update({ "system.notes": existing ? `${existing}\n${entry}` : entry });
+}
+
+/**
+ * Apply an Original-mode carousing outcome to the participant's character.
+ * Idempotent: the session records what was applied, so a second click is a
+ * no-op rather than a double grant.
+ * @param {string} participantId
+ * @returns {Promise<{name: string, summary: string}|null>} null if nothing was applied
+ */
+export async function applyCarousingOutcome(participantId) {
+    if (!game.user.isGM) return null;
+
+    const session = getCarousingSession();
+    const result = session.results?.[participantId];
+    if (!result || result.applied) return null;
+
+    const actor = getParticipantActor(participantId);
+    if (!actor) {
+        ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.apply_no_actor"));
+        return null;
+    }
+
+    const { effects, wealthLossCp } = previewOutcomeEffects(actor, result.description, result.benefit);
+    const summaryParts = [];
+
+    if (effects.xp) {
+        const currentXp = actor.system?.level?.xp || 0;
+        await actor.update({ "system.level.xp": currentXp + effects.xp });
+        summaryParts.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_xp", { amount: effects.xp }));
+    }
+
+    if (effects.luck) {
+        const currentLuck = actor.system?.luck?.remaining ?? 0;
+        await actor.update({ "system.luck.remaining": currentLuck + effects.luck });
+        summaryParts.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_luck", { amount: effects.luck }));
+    }
+
+    if (wealthLossCp > 0) {
+        const taken = await deductCoinsCp(actor, wealthLossCp);
+        summaryParts.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_wealth", {
+            percent: effects.wealthPercent, amount: formatCoins(taken)
+        }));
+    }
+
+    if (effects.renown) {
+        const applied = await applyRenownDelta(actor, effects.renown);
+        if (applied) {
+            summaryParts.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_renown", {
+                delta: applied > 0 ? `+${applied}` : String(applied)
+            }));
+        }
+    }
+
+    const summary = summaryParts.join(", ");
+    await appendCarousingNote(actor, result.description, result.benefit, summary);
+
+    // Record on the session so the button locks and the log can show it.
+    session.results[participantId] = {
+        ...result,
+        applied: { at: Date.now(), summary, actorName: actor.name }
+    };
+    await saveCarousingSession(session);
+    await writeCarousingLogPage(session);
+
+    return { name: actor.name, summary };
+}
+
+// ============================================
+// CAROUSING LOG JOURNAL
+// ============================================
+
+/**
+ * The readable log of carousing sessions. Distinct from the hidden
+ * __sdx_carousing_sync__ journal, which only holds transient sync state — this
+ * one is a normal journal the GM can browse, created GM-only so outcomes hidden
+ * by the show-benefits/mishaps settings are not leaked through the sidebar.
+ * Located by flag rather than by name so renaming it does not orphan the log.
+ */
+async function getOrCreateCarousingLogJournal() {
+    let journal = game.journal.find(j => j.getFlag(MODULE_ID, "isCarousingLog"));
+    if (journal) return journal;
+
+    return JournalEntry.create({
+        name: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.log_journal_name"),
+        ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE },
+        flags: { [MODULE_ID]: { isCarousingLog: true } }
+    });
+}
+
+/**
+ * Create or refresh the log page for a session. Called when rolls complete and
+ * again each time results are applied, so the page always reflects current
+ * state rather than accumulating duplicates.
+ */
+export async function writeCarousingLogPage(session) {
+    if (!game.user.isGM) return;
+    if (!session?.logId || !Object.keys(session.results || {}).length) return;
+
+    const journal = await getOrCreateCarousingLogJournal();
+    if (!journal) return;
+
+    const esc = Handlebars.Utils.escapeExpression;
+    const meta = session.logMeta || {};
+
+    const rows = Object.entries(session.results).map(([pid, r]) => {
+        const name = r.applied?.actorName || getParticipantActor(pid)?.name || "?";
+        const applied = r.applied
+            ? esc(r.applied.summary || game.i18n.localize("SHADOWDARK_EXTRAS.carousing.log_applied"))
+            : `<em>${esc(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.log_not_applied"))}</em>`;
+        return `<tr>
+            <td><strong>${esc(name)}</strong></td>
+            <td style="text-align:center">${esc(String(r.roll ?? ""))}</td>
+            <td>${esc(r.description || "")}</td>
+            <td>${esc(r.benefit || "")}</td>
+            <td>${applied}</td>
+        </tr>`;
+    }).join("");
+
+    const header = meta.tierDescription
+        ? `<p><em>${esc(meta.tierDescription)}</em><br>${esc(String(meta.tierCost ?? 0))} GP total — ${esc(String(meta.costPerPerson ?? 0))} GP each</p>`
+        : "";
+
+    const content = `
+        ${header}
+        <table>
+            <thead><tr><th>Character</th><th>Roll</th><th>What Happened</th><th>Benefit</th><th>Applied</th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `;
+
+    const title = game.i18n.format("SHADOWDARK_EXTRAS.carousing.log_session_title", {
+        date: meta.date || new Date().toLocaleString()
+    });
+
+    const existing = journal.pages.find(p => p.getFlag(MODULE_ID, "logId") === session.logId);
+    if (existing) {
+        await existing.update({ "text.content": content });
+    } else {
+        await JournalEntryPage.create({
+            name: title,
+            type: "text",
+            text: { content, format: CONST.JOURNAL_ENTRY_PAGE_FORMATS.HTML },
+            flags: { [MODULE_ID]: { logId: session.logId } }
+        }, { parent: journal });
+    }
+}
+
+/** Open the carousing log journal, creating it if this world has none yet. */
+export async function openCarousingLog() {
+    if (!game.user.isGM) return;
+    const journal = await getOrCreateCarousingLogJournal();
+    journal?.sheet?.render(true);
 }
 
 // ============================================
