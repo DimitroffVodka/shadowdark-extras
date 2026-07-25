@@ -14,9 +14,11 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 - **The active wealth base is now visible at a glance.** A tag beside "Cost per player" reads *Wealth base: coins only* or *Wealth base: coins + gear*, so the GM can see which basis a percentage loss will use without opening Settings.
 
-- **New setting: Carousing Wealth Base.** Chooses what "N% of your total wealth" is measured against — coins only (`gp + sp/10 + cp/100`), or coins plus the value of carried gear so stockpiling equipment cannot dodge the penalty. The deduction always comes out of coins either way, and is clamped to what the purse actually holds so a gear-inflated percentage can never drive a character negative. Items with no cost recorded count as nothing rather than being guessed at.
+- **New setting: Carousing Wealth Base.** Chooses what "N% of your total wealth" is measured against — coins only (`gp + sp/10 + cp/100`), or coins plus the value of carried gear so stockpiling equipment cannot dodge the penalty. The deduction always comes out of coins either way and cannot drive the purse negative. If a gear-based loss exceeds the coins available, the unpaid balance becomes an accumulating, zero-slot **Carousing Debt** item on the character sheet, with an exact coin total and a history of the outcomes that created it. Items with no cost recorded count as nothing rather than being guessed at.
 
 ### Fixed
+
+- **Expanded Carousing neither populated the log nor added outcomes to character Notes.** Only the Original roll path assigned a log ID, wrote a journal page, and appended its narrative outcome to the sheet after Apply; Expanded mode returned after saving transient results, leaving benefits and mishaps visible only in chat. Expanded rolls now create the same stable per-session log page, with dedicated Outcome, Benefits, and Mishaps columns, and append each participant's full narrative result plus applied XP/renown summary to `system.notes`. Opening the log backfills the current completed session, and per-session markers make note recovery idempotent so reopening it cannot duplicate entries.
 
 - **Reset Carousing did nothing, and journal-pin flags were never unset.** Both passed `foundry.data.operators.ForcedDeletion` — the *class* — where Foundry expects an instance, so the update wrote a meaningless value instead of deleting the flag and every reset silently no-opped. All four call sites now construct the operator. Reset clears the session and character drops as intended while leaving the GM's added-actor roster in place.
 

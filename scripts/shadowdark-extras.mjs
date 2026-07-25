@@ -40,7 +40,7 @@ import { initLevelUpAnimations } from "./LevelUpAnimationSD.mjs";
 import { openWeaponAnimationConfig } from "./WeaponAnimationConfig.mjs";
 import { initFocusSpellTracker, endFocusSpell, linkEffectToFocusSpell, getActiveFocusSpells, isFocusingOnSpell, startDurationSpell, endDurationSpell, registerSpellModification, getActiveDurationSpells } from "./FocusSpellTrackerSD.mjs";
 import { initBreakOnDamage, breakEffectOnDamage, clearBreakOnDamage, applySpellEffect } from "./BreakOnDamageSD.mjs";
-import { initCarousing, injectCarousingButton, ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, getCustomCarousingTables, getCarousingTableById, setCarousingTable } from "./CarousingSD.mjs";
+import { initCarousing, injectCarousingButton, ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, getCustomCarousingTables, getCarousingTableById, setCarousingTable, migrateLegacyRenown } from "./CarousingSD.mjs";
 import { openCarousingOverlay, refreshCarousingOverlay } from "./CarousingOverlaySD.mjs";
 import { openCarousingTablesEditor } from "./CarousingTablesApp.mjs";
 import { openExpandedCarousingTablesEditor } from "./ExpandedCarousingTablesApp.mjs";
@@ -3254,30 +3254,6 @@ function registerSettings() {
 		requiresReload: true,
 	});
 
-	game.settings.register(MODULE_ID, "enableRenown", {
-		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.enable_renown.name"),
-		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.enable_renown.hint"),
-		scope: "world",
-		config: true,
-		default: true,
-		type: Boolean,
-		requiresReload: true,
-	});
-
-	game.settings.register(MODULE_ID, "renownMaximum", {
-		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.renown_maximum.name"),
-		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.renown_maximum.hint"),
-		scope: "world",
-		config: true,
-		default: 20,
-		type: Number,
-		range: {
-			min: 1,
-			max: 100,
-			step: 1,
-		},
-	});
-
 	// Sheet Decoration Settings - Border and Panel Styles
 	const borderChoices = {};
 	for (let i = 0; i <= 31; i++) {
@@ -4711,103 +4687,6 @@ function patchLightSourceMappings() {
 		// Otherwise use the original method
 		return originalTurnLightOn.call(this, itemId);
 	};
-}
-
-/**
- * Inject the Renown section into the player sheet
- */
-function injectRenownSection(html, actor) {
-	// Check if renown is enabled
-	if (!game.settings.get(MODULE_ID, "enableRenown")) return;
-
-	// Find the luck section to insert after it
-	const luckSection = html.find('.SD-box:has(.header label:contains("Luck"))');
-
-	if (luckSection.length === 0) {
-		// Alternative: find by checking the content structure
-		const boxes = html.find('.grid-2-columns .SD-box');
-		let targetBox = null;
-
-		boxes.each(function () {
-			const label = $(this).find('.header label').text();
-			if (label.toLowerCase().includes('luck')) {
-				targetBox = $(this);
-				return false;
-			}
-		});
-
-		if (targetBox) {
-			insertRenownAfter(targetBox, actor);
-		}
-	} else {
-		insertRenownAfter(luckSection, actor);
-	}
-}
-
-/**
- * Insert the renown HTML after the target element
- */
-function insertRenownAfter(targetElement, actor) {
-	const renownMax = game.settings.get(MODULE_ID, "renownMaximum");
-	const renownValue = actor.getFlag(MODULE_ID, "renown") ?? 0;
-
-	const renownHtml = `
-		<div class="SD-box grid-colspan-2 shadowdark-extras-renown">
-			<div class="header">
-				<label>${game.i18n.localize("SHADOWDARK_EXTRAS.sheet.player.renown")}</label>
-				<span></span>
-			</div>
-			<div class="content larger">
-				<div class="value-grid renown-display">
-					<input type="number"
-						name="flags.${MODULE_ID}.renown"
-						value="${renownValue}"
-						max="${renownMax}"
-						data-dtype="Number"
-						placeholder="0">
-					<div>/</div>
-					<div>${renownMax}</div>
-				</div>
-			</div>
-		</div>
-	`;
-
-	targetElement.after(renownHtml);
-
-	// Add event listener to enforce maximum only (allow negative values)
-	const renownInput = targetElement.parent().find(`input[name="flags.${MODULE_ID}.renown"]`);
-	renownInput.on('input change blur', function () {
-		let val = parseFloat(this.value);
-		const maxRenown = game.settings.get(MODULE_ID, "renownMaximum") ?? 20;
-
-		// If invalid, set to 0
-		if (isNaN(val)) {
-			val = 0;
-		}
-		// Clamp to max only
-		if (val > maxRenown) {
-			val = maxRenown;
-		}
-
-		// Update the input if changed
-		if (parseFloat(this.value) !== val) {
-			this.value = val;
-		}
-	});
-}
-
-/**
- * Handle form submission to save renown value
- */
-function handleRenownUpdate(actor, formData) {
-	const renownKey = `flags.${MODULE_ID}.renown`;
-	if (formData.hasOwnProperty(renownKey)) {
-		const renownMax = game.settings.get(MODULE_ID, "renownMaximum");
-		let value = parseInt(formData[renownKey]) || 0;
-		// Only enforce maximum, allow negative values
-		value = Math.min(value, renownMax);
-		actor.setFlag(MODULE_ID, "renown", value);
-	}
 }
 
 // ============================================
@@ -9526,6 +9405,15 @@ Hooks.once("ready", async () => {
 		return;
 	}
 
+	// Shadowdark 4.x owns renown natively. Reconcile the retired SDX actor flag
+	// once from the primary GM client, then remove it to keep one source of truth.
+	if (game.user.isGM && (!game.users.activeGM || game.users.activeGM.id === game.user.id)) {
+		const migratedRenown = await migrateLegacyRenown(game.actors);
+		if (migratedRenown > 0) {
+			console.log(`${MODULE_ID} | Migrated native renown for ${migratedRenown} actor(s)`);
+		}
+	}
+
 	//console.log(`${MODULE_ID} | Setting up Shadowdark Extras`);
 
 	extendLightSources();
@@ -9872,7 +9760,6 @@ Hooks.on("renderPlayerSheetSD", async (app, html, data) => {
 	enhanceGemInventory(app, html, app.actor);
 	injectWeaponSpellRechargeButtons(app, html, app.actor);
 	enhanceEffectsTab(app, html, app.actor);
-	injectRenownSection(html, app.actor);
 	attachContainerContentsToActorSheet(app, html);
 	enhanceInventoryWithDeleteAndMultiSelect(app, html);
 	injectTradeButton(html, app.actor);
@@ -16578,15 +16465,6 @@ Hooks.on("deleteItem", async (item, options, userId) => {
 
 // Handle updates when the sheet is submitted
 Hooks.on("preUpdateActor", (actor, changes, options, userId) => {
-	// Check if renown flag is being updated via the sheet
-	if (changes.flags?.[MODULE_ID]?.renown !== undefined) {
-		const renownMax = game.settings.get(MODULE_ID, "renownMaximum");
-		let value = parseInt(changes.flags[MODULE_ID].renown) || 0;
-		// Only enforce maximum, allow negative values
-		value = Math.min(value, renownMax);
-		changes.flags[MODULE_ID].renown = value;
-	}
-
 	// Validate NPC coins
 	if (changes.flags?.[MODULE_ID]?.coins) {
 		const coins = changes.flags[MODULE_ID].coins;

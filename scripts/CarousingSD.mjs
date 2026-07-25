@@ -876,7 +876,7 @@ export function getCarousingParticipants() {
         const canAfford = actorGp >= splitCost;
         const isConfirmed = session.confirmations[user.id] === true;
         const result = session.results?.[user.id];
-        const renown = droppedActor ? (droppedActor.getFlag(MODULE_ID, "renown") || 0) : 0;
+        const renown = getActorRenown(droppedActor);
         const renownBonus = getRenownBonus(renown);
         const totalBonus = selectedTier ? (selectedTier.bonus + renownBonus) : renownBonus;
 
@@ -930,7 +930,7 @@ export function getCarousingParticipants() {
         const canAfford = actorGp >= splitCost;
         const isConfirmed = session.confirmations[participantId] === true;
         const result = session.results?.[participantId];
-        const renown = droppedActor.getFlag(MODULE_ID, "renown") || 0;
+        const renown = getActorRenown(droppedActor);
         const renownBonus = getRenownBonus(renown);
         const totalBonus = selectedTier ? (selectedTier.bonus + renownBonus) : renownBonus;
 
@@ -1033,6 +1033,50 @@ export function formatCoins(totalCp) {
     if (sp) parts.push(`${sp} sp`);
     if (cp) parts.push(`${cp} cp`);
     return parts.join(" ");
+}
+
+/**
+ * Create or increase the actor's zero-slot Carousing Debt note.
+ * The amount is stored in copper for exact accumulation across denominations.
+ */
+export async function recordCarousingDebt(actor, amountCp, sourceText = "") {
+    const addedCp = Math.max(0, Math.round(Number(amountCp) || 0));
+    if (!actor || !addedCp) return 0;
+
+    const existing = actor.items?.find?.(item => item.getFlag?.(MODULE_ID, "carousingDebt")?.amountCp !== undefined);
+    const previous = existing?.getFlag?.(MODULE_ID, "carousingDebt") || {};
+    const totalCp = Math.max(0, Math.round(Number(previous.amountCp) || 0)) + addedCp;
+    const esc = foundry.utils.escapeHTML ?? (value => String(value));
+    const entries = [
+        ...(Array.isArray(previous.entries) ? previous.entries : []),
+        { amountCp: addedCp, source: String(sourceText || ""), at: Date.now() }
+    ];
+    const history = entries.map(entry => {
+        const source = entry.source ? ` — ${esc(entry.source)}` : "";
+        return `<li>${esc(formatCoins(entry.amountCp))}${source}</li>`;
+    }).join("");
+    const debt = { amountCp: totalCp, entries };
+    const data = {
+        name: `Carousing Debt — ${formatCoins(totalCp)}`,
+        img: "icons/sundries/documents/document-sealed-brown-red.webp",
+        system: {
+            cost: { cp: 0, gp: 0, sp: 0 },
+            description: `<p><strong>Outstanding carousing debt:</strong> ${esc(formatCoins(totalCp))}.</p><ul>${history}</ul><p>This note uses 0 gear slots. Delete it when the debt is paid.</p>`,
+            equipped: false,
+            quantity: 1,
+            slots: { free_carry: 0, per_slot: 1, slots_used: 0 },
+            stashed: false,
+            treasure: false
+        },
+        flags: { [MODULE_ID]: { carousingDebt: debt } }
+    };
+
+    if (existing) {
+        await existing.update(data);
+    } else {
+        await actor.createEmbeddedDocuments("Item", [{ ...data, type: "Basic" }]);
+    }
+    return totalCp;
 }
 
 /**
@@ -1191,19 +1235,44 @@ function parseRenownDelta(description) {
     return m ? (parseInt(m[1]) || 0) : 0;
 }
 
+/** Read the Shadowdark system's native renown value. */
+export function getActorRenown(actor) {
+    const value = Number(actor?.system?.renown);
+    return Number.isFinite(value) ? value : 0;
+}
+
 /**
- * Apply a renown change to an actor, clamped to [0, renownMaximum].
- * @returns {Promise<number>} the delta actually applied (0 if clamped away)
+ * Apply a change to Shadowdark's native renown field. The system intentionally
+ * permits negative renown, so do not impose the retired SDX min/max rules.
  */
-async function applyRenownDelta(actor, delta) {
+export async function applyRenownDelta(actor, delta) {
     if (!actor || !delta) return 0;
-    let max = 12;
-    try { max = game.settings.get(MODULE_ID, "renownMaximum") ?? 12; } catch { /* setting unregistered */ }
-    const current = actor.getFlag(MODULE_ID, "renown") ?? 0;
-    const next = Math.max(0, Math.min(max, current + delta));
-    if (next === current) return 0;
-    await actor.setFlag(MODULE_ID, "renown", next);
-    return next - current;
+    const current = getActorRenown(actor);
+    const next = current + delta;
+    await actor.update({ "system.renown": next });
+    return delta;
+}
+
+/**
+ * Move values from SDX's retired actor flag into native Shadowdark renown.
+ * A nonzero native value always wins; this avoids overwriting system-owned data.
+ * Legacy flags are removed after reconciliation so there is one source of truth.
+ * @returns {Promise<number>} number of native values populated from legacy data
+ */
+export async function migrateLegacyRenown(actors = []) {
+    let migrated = 0;
+    for (const actor of actors) {
+        if (actor?.type !== "Player") continue;
+        const legacy = Number(actor.getFlag?.(MODULE_ID, "renown"));
+        if (!Number.isFinite(legacy)) continue;
+
+        if (getActorRenown(actor) === 0 && legacy !== 0) {
+            await actor.update({ "system.renown": legacy });
+            migrated++;
+        }
+        await actor.unsetFlag(MODULE_ID, "renown");
+    }
+    return migrated;
 }
 
 /**
@@ -1277,7 +1346,7 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
         await deductCoins(actor, costPerPerson);
 
         // Get actor's renown bonus for the carousing event roll
-        const renown = actor.getFlag(MODULE_ID, "renown") || 0;
+        const renown = getActorRenown(actor);
         const renownBonus = getRenownBonus(renown);
 
         // Get custom GM modifiers for this player
@@ -1412,10 +1481,19 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
         chatContent.push(playerContent);
     }
 
-    // Save results
+    // Save results and create a stable journal-page key for this session.
     session.results = results;
     session.phase = "complete";
+    session.logId = foundry.utils.randomID();
+    session.logMeta = {
+        date: new Date().toLocaleString(),
+        tierDescription: tier.description || "",
+        tierCost: tier.cost || 0,
+        costPerPerson
+    };
+    await applyExpandedCarousingNotes(session);
     await saveCarousingSession(session);
+    await writeCarousingLogPage(session);
 
     // Send chat message
     await ChatMessage.create({
@@ -1763,6 +1841,9 @@ export function previewOutcomeEffects(actor, description, benefit) {
             lines.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_wealth_short", {
                 amount: formatCoins(wealthLossCp)
             }));
+            lines.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_debt", {
+                amount: formatCoins(wealthShortfallCp)
+            }));
         }
     }
 
@@ -1781,17 +1862,55 @@ export function previewOutcomeEffects(actor, description, benefit) {
  * This is how narrative rewards (allies, debts, reputations) reach the sheet —
  * verbatim, for the GM and player to interpret.
  */
-async function appendCarousingNote(actor, description, benefit, appliedSummary) {
+async function appendCarousingNote(actor, description, benefit, appliedSummary, entryId = "") {
     const esc = foundry.utils.escapeHTML ?? Handlebars.Utils.escapeExpression;
     const heading = game.i18n.localize("SHADOWDARK_EXTRAS.carousing.note_heading");
     const date = new Date().toLocaleDateString();
 
     const parts = [description, benefit].filter(Boolean).map(t => esc(t)).join(" — ");
     const applied = appliedSummary ? ` <em>(${esc(appliedSummary)})</em>` : "";
-    const entry = `<p><strong>${esc(heading)}</strong> — ${esc(date)}: ${parts}${applied}</p>`;
-
     const existing = actor.system?.notes || "";
+    const marker = entryId ? ` data-sdx-carousing-id="${esc(entryId)}"` : "";
+    if (marker && existing.includes(marker.trim())) return false;
+    const entry = `<p${marker}><strong>${esc(heading)}</strong> — ${esc(date)}: ${parts}${applied}</p>`;
     await actor.update({ "system.notes": existing ? `${existing}\n${entry}` : entry });
+    return true;
+}
+
+/** Build the human-readable sheet note for an Expanded-mode result. */
+export function buildExpandedCarousingNote(result) {
+    const benefits = (result?.benefits || []).map(entry => entry?.description || "").filter(Boolean);
+    const mishaps = (result?.mishaps || []).map(entry => entry?.description || "").filter(Boolean);
+    const sections = [];
+    if (benefits.length) sections.push(`Benefits: ${benefits.join("; ")}`);
+    if (mishaps.length) sections.push(`Mishaps: ${mishaps.join("; ")}`);
+
+    const summary = [`+${result?.xp ?? 0} XP`];
+    const renown = [...(result?.benefits || []), ...(result?.mishaps || [])]
+        .reduce((total, entry) => total + (Number(entry?.renownDelta) || 0), 0);
+    if (renown) summary.push(`${renown > 0 ? "+" : ""}${renown} renown`);
+
+    return {
+        description: sections.join(" — ") || "No benefits or mishaps",
+        summary: summary.join(", ")
+    };
+}
+
+/** Append missing Expanded-mode results to participant sheets exactly once. */
+async function applyExpandedCarousingNotes(session) {
+    let changed = false;
+    for (const [participantId, result] of Object.entries(session?.results || {})) {
+        const expanded = Array.isArray(result.benefits) || Array.isArray(result.mishaps);
+        if (!expanded || result.noteApplied) continue;
+        const actor = getParticipantActor(participantId);
+        if (!actor) continue;
+
+        const note = buildExpandedCarousingNote(result);
+        await appendCarousingNote(actor, note.description, "", note.summary, `${session.logId}:${participantId}`);
+        result.noteApplied = { at: Date.now(), actorName: actor.name };
+        changed = true;
+    }
+    return changed;
 }
 
 /**
@@ -1814,7 +1933,7 @@ export async function applyCarousingOutcome(participantId) {
         return null;
     }
 
-    const { effects, wealthLossCp } = previewOutcomeEffects(actor, result.description, result.benefit);
+    const { effects, wealthLossCp, wealthShortfallCp } = previewOutcomeEffects(actor, result.description, result.benefit);
     const summaryParts = [];
 
     if (effects.xp) {
@@ -1833,6 +1952,13 @@ export async function applyCarousingOutcome(participantId) {
         const taken = await deductCoinsCp(actor, wealthLossCp);
         summaryParts.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_wealth", {
             percent: effects.wealthPercent, amount: formatCoins(taken)
+        }));
+    }
+
+    if (wealthShortfallCp > 0) {
+        await recordCarousingDebt(actor, wealthShortfallCp, [result.description, result.benefit].filter(Boolean).join(" — "));
+        summaryParts.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_debt", {
+            amount: formatCoins(wealthShortfallCp)
         }));
     }
 
@@ -1882,6 +2008,31 @@ async function getOrCreateCarousingLogJournal() {
 }
 
 /**
+ * Normalize original and expanded result shapes for the shared journal table.
+ * Kept pure so both formats remain regression-testable outside Foundry.
+ */
+export function normalizeCarousingLogResults(session, resolveActorName = () => "?") {
+    return Object.entries(session?.results || {}).map(([participantId, result]) => {
+        const expanded = Array.isArray(result.benefits) || Array.isArray(result.mishaps);
+        const benefits = expanded
+            ? (result.benefits || []).map(entry => entry?.description || "").filter(Boolean)
+            : [result.benefit || ""].filter(Boolean);
+        const mishaps = expanded
+            ? (result.mishaps || []).map(entry => entry?.description || "").filter(Boolean)
+            : [];
+
+        return {
+            name: result.applied?.actorName || resolveActorName(participantId) || "?",
+            roll: expanded ? (result.outcomeRoll ?? "") : (result.roll ?? ""),
+            outcome: expanded ? `${result.xp ?? 0} XP` : (result.description || ""),
+            benefits,
+            mishaps,
+            applied: result.applied?.summary || (expanded ? "Automatic" : "")
+        };
+    });
+}
+
+/**
  * Create or refresh the log page for a session. Called when rolls complete and
  * again each time results are applied, so the page always reflects current
  * state rather than accumulating duplicates.
@@ -1896,16 +2047,21 @@ export async function writeCarousingLogPage(session) {
     const esc = Handlebars.Utils.escapeExpression;
     const meta = session.logMeta || {};
 
-    const rows = Object.entries(session.results).map(([pid, r]) => {
-        const name = r.applied?.actorName || getParticipantActor(pid)?.name || "?";
-        const applied = r.applied
-            ? esc(r.applied.summary || game.i18n.localize("SHADOWDARK_EXTRAS.carousing.log_applied"))
-            : `<em>${esc(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.log_not_applied"))}</em>`;
+    const rows = normalizeCarousingLogResults(session, pid => getParticipantActor(pid)?.name).map(entry => {
+        const expanded = entry.applied === "Automatic";
+        const applied = expanded
+            ? esc(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.log_automatic"))
+            : entry.applied
+                ? esc(entry.applied)
+                : `<em>${esc(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.log_not_applied"))}</em>`;
+        const benefits = entry.benefits.map(esc).join("<br>");
+        const mishaps = entry.mishaps.map(esc).join("<br>");
         return `<tr>
-            <td><strong>${esc(name)}</strong></td>
-            <td style="text-align:center">${esc(String(r.roll ?? ""))}</td>
-            <td>${esc(r.description || "")}</td>
-            <td>${esc(r.benefit || "")}</td>
+            <td><strong>${esc(entry.name)}</strong></td>
+            <td style="text-align:center">${esc(String(entry.roll))}</td>
+            <td>${esc(entry.outcome)}</td>
+            <td>${benefits}</td>
+            <td>${mishaps}</td>
             <td>${applied}</td>
         </tr>`;
     }).join("");
@@ -1917,7 +2073,7 @@ export async function writeCarousingLogPage(session) {
     const content = `
         ${header}
         <table>
-            <thead><tr><th>Character</th><th>Roll</th><th>What Happened</th><th>Benefit</th><th>Applied</th></tr></thead>
+            <thead><tr><th>Character</th><th>Roll</th><th>Outcome</th><th>Benefits</th><th>Mishaps</th><th>Applied</th></tr></thead>
             <tbody>${rows}</tbody>
         </table>
     `;
@@ -1942,6 +2098,31 @@ export async function writeCarousingLogPage(session) {
 /** Open the carousing log journal, creating it if this world has none yet. */
 export async function openCarousingLog() {
     if (!game.user.isGM) return;
+    const session = getCarousingSession();
+    if (Object.keys(session.results || {}).length) {
+        let sessionChanged = false;
+        if (!session.logId) {
+            session.logId = foundry.utils.randomID();
+            sessionChanged = true;
+        }
+        if (!session.logMeta) {
+            const table = getCarousingMode() === "expanded"
+                ? getExpandedCarousingData()
+                : getCarousingTableById(session.selectedTableId);
+            const tier = table?.tiers?.[session.selectedTier] || {};
+            const participantCount = Object.keys(session.results).length;
+            session.logMeta = {
+                date: new Date().toLocaleString(),
+                tierDescription: tier.description || "",
+                tierCost: tier.cost || 0,
+                costPerPerson: Math.ceil((tier.cost || 0) / Math.max(1, participantCount))
+            };
+            sessionChanged = true;
+        }
+        const notesChanged = await applyExpandedCarousingNotes(session);
+        if (sessionChanged || notesChanged) await saveCarousingSession(session);
+        await writeCarousingLogPage(session);
+    }
     const journal = await getOrCreateCarousingLogJournal();
     journal?.sheet?.render(true);
 }
