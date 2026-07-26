@@ -279,8 +279,11 @@ export class SDXRollerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static _launchOverlay(rollData) {
-        if (SDXRollerApp._activeOverlay) {
-            SDXRollerApp._activeOverlay.close();
+        const activeOverlay = SDXRollerApp._activeOverlay;
+        if (activeOverlay) {
+            activeOverlay.cancelRoll().catch(error => {
+                console.warn(`${MODULE_ID} | Could not close the replaced SDX roll`, error);
+            });
         }
         const overlay = new SDXRollerOverlay(rollData);
         SDXRollerApp._activeOverlay = overlay;
@@ -303,6 +306,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
         this._rolls = {};
         this._messageIds = new Set();
         this._ending = false;
+        this._settled = false;
 
         this._resolve = null;
         this._reject = null;
@@ -404,7 +408,6 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
         // Close button (GM only)
         el.querySelector(".sdx-overlay-close")?.addEventListener("click", () => {
             this._broadcastEnd({ abort: true });
-            this.close();
         });
 
         // Manual complete
@@ -677,11 +680,12 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 
     _broadcastEnd(payload) {
         const scopedPayload = { ...payload, rollId: this.rollData.rollId };
-        this._handleEnd(scopedPayload);
+        const completion = this._handleEnd(scopedPayload);
         game.socket.emit(`module.${MODULE_ID}`, {
             action: "sdxRollerEnd",
             payload: scopedPayload,
         });
+        return completion;
     }
 
     handleRemoteEnd(payload) {
@@ -700,26 +704,54 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
     }
 
     async _handleEnd({ abort, button }) {
-        if (this._ending) return;
+        if (abort) {
+            await this.cancelRoll();
+            return;
+        }
+        if (this._ending || this._settled) return;
         this._ending = true;
 
-        if (abort) {
+        const result = {
+            canceled: false,
+            success: this._computeSuccess(),
+            results: this._results
+        };
+        try {
+            await this._createChatRecap(result.success);
+            const el = this.element;
+            if (el) await this._runOutroSequence(el, result.success);
+        } catch (error) {
+            console.error(`${MODULE_ID} | Could not finish the SDX roll overlay`, error);
+            try {
+                await this.close();
+            } catch (closeError) {
+                console.warn(`${MODULE_ID} | Could not close the failed SDX roll overlay`, closeError);
+            }
+        } finally {
             if (SDXRollerApp._activeOverlay === this) {
                 SDXRollerApp._activeOverlay = null;
             }
-            await this.close();
-            this._resolve?.({ canceled: true, results: [] });
-            return;
+            this._settleRoll(result);
         }
+    }
 
-        const isSuccess = this._computeSuccess();
-        await this._createChatRecap(isSuccess);
-        const el = this.element;
-        if (el) await this._runOutroSequence(el, isSuccess);
-        if (SDXRollerApp._activeOverlay === this) {
-            SDXRollerApp._activeOverlay = null;
+    _settleRoll(result) {
+        if (this._settled) return false;
+        this._settled = true;
+        this._resolve?.(result);
+        this._resolve = null;
+        this._reject = null;
+        return true;
+    }
+
+    async cancelRoll() {
+        this._ending = true;
+        this._settleRoll({ canceled: true, results: [] });
+        try {
+            await this.close();
+        } catch (error) {
+            console.warn(`${MODULE_ID} | Could not close the canceled SDX roll overlay`, error);
         }
-        this._resolve?.({ canceled: false, success: isSuccess, results: this._results });
     }
 
     _computeSuccess() {
@@ -803,7 +835,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
             templateData,
         );
 
-        ChatMessage.create({
+        await ChatMessage.create({
             content: html,
             speaker: { alias: "SDX Roller" },
             whisper: this.rollData.hideNames ? ChatMessage.getWhisperRecipients("GM") : [],
@@ -811,7 +843,13 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
     }
 
     async close(...args) {
-        SDXRollerApp._activeOverlay = null;
+        if (SDXRollerApp._activeOverlay === this) {
+            SDXRollerApp._activeOverlay = null;
+        }
+        if (!this._ending && !this._settled) {
+            this._ending = true;
+            this._settleRoll({ canceled: true, results: [] });
+        }
         return super.close(...args);
     }
 
