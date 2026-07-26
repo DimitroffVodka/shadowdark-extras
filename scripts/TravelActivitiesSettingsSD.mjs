@@ -3,24 +3,17 @@
  * Allows configuring the camping/travel activities shown in the Party Sheet Travel tab
  */
 
+import {
+	DEFAULT_TRAVEL_ACTIVITIES,
+	normalizeTravelActivities
+} from "./CampingRulesData.mjs";
+
 const MODULE_ID = "shadowdark-extras";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 // All available abilities for selection
 const ABILITIES = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
-
-// Default travel activities (matches original hardcoded values)
-const DEFAULT_TRAVEL_ACTIVITIES = [
-	{ key: "battenDown", name: "Batten Down", abilities: ["INT", "CON"], campfire: true, bannerImage: "modules/shadowdark-extras/assets/travel/batten_down.png" },
-	{ key: "cook", name: "Cook", abilities: ["INT", "WIS"], campfire: true, bannerImage: "modules/shadowdark-extras/assets/travel/cook.png" },
-	{ key: "craft", name: "Craft", abilities: ["DEX"], campfire: true, bannerImage: "modules/shadowdark-extras/assets/travel/craft.png" },
-	{ key: "entertain", name: "Entertain", abilities: ["CHA"], campfire: true, bannerImage: "modules/shadowdark-extras/assets/travel/entertain.png" },
-	{ key: "firewood", name: "Firewood", abilities: ["STR", "CON"], campfire: false, bannerImage: "modules/shadowdark-extras/assets/travel/firewood.png" },
-	{ key: "hunt", name: "Hunt", abilities: ["STR", "DEX"], campfire: false, bannerImage: "modules/shadowdark-extras/assets/travel/hunt.png" },
-	{ key: "keepWatch", name: "Keep Watch", abilities: ["WIS"], campfire: true, bannerImage: "modules/shadowdark-extras/assets/travel/keep_watch.png" },
-	{ key: "predict", name: "Predict", abilities: ["INT", "WIS"], campfire: false, bannerImage: "modules/shadowdark-extras/assets/travel/predict.png" }
-];
 
 /**
  * Travel Activities Settings Application
@@ -191,6 +184,11 @@ export class TravelActivitiesSettingsApp extends HandlebarsApplicationMixin(Appl
 						${game.i18n.localize("SHADOWDARK_EXTRAS.travel_activities.campfire")}
 					</label>
 				</div>
+				<div class="sdx-activity-description">
+					<label>${game.i18n.localize("SHADOWDARK_EXTRAS.travel_activities.task_description")}:</label>
+					<textarea name="activities.${newIndex}.description" rows="2"
+						placeholder="${game.i18n.localize("SHADOWDARK_EXTRAS.travel_activities.task_description_placeholder")}"></textarea>
+				</div>
 				<div class="sdx-activity-banner">
 					<label>${game.i18n.localize("SHADOWDARK_EXTRAS.travel_activities.banner_image")}:</label>
 					<div class="sdx-banner-input">
@@ -284,6 +282,7 @@ export class TravelActivitiesSettingsApp extends HandlebarsApplicationMixin(Appl
 					name: data.name.trim(),
 					abilities: filteredAbilities,
 					campfire: data.campfire ?? false,
+					description: data.description || "",
 					bannerImage: data.bannerImage || ""
 				});
 			}
@@ -308,10 +307,10 @@ export function getTravelActivities() {
 		const saved = game.settings.get(MODULE_ID, "travelActivities");
 		if (saved) {
 			if (Array.isArray(saved) && saved.length > 0) {
-				return saved;
+				return normalizeTravelActivities(saved);
 			}
 			if (saved.activities && Array.isArray(saved.activities) && saved.activities.length > 0) {
-				return saved.activities;
+				return normalizeTravelActivities(saved.activities);
 			}
 		}
 	} catch (e) {

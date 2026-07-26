@@ -34,9 +34,12 @@
                         {{#if ../options.hideNames}}???{{else}}{{this.name}}{{/if}}
                     {{/if}}
                 </div>
+                {{#if this.abilityShort}}
+                <div class="sdx-tile-ability">{{this.abilityShort}}</div>
+                {{/if}}
                 <div class="sdx-tile-controls">
                     {{#if this.isOwner}}
-                    <button class="sdx-adv-btn" data-mode="disadvantage" title="Disadvantage">Dis</button>
+                    <button class="sdx-adv-btn {{#if this.hasDisadvantage}}sdx-active{{/if}}" data-mode="disadvantage" title="Disadvantage">Dis</button>
                     {{/if}}
                     <div class="sdx-tile-badge">
                         {{#if this.isOwner}}
@@ -45,7 +48,7 @@
                         <span class="sdx-result-value sdx-hidden"></span>
                     </div>
                     {{#if this.isOwner}}
-                    <button class="sdx-adv-btn" data-mode="advantage" title="Advantage">Adv</button>
+                    <button class="sdx-adv-btn {{#if this.hasAdvantage}}sdx-active{{/if}}" data-mode="advantage" title="Advantage">Adv</button>
                     {{/if}}
                 </div>
                 <span class="sdx-tile-mod-result sdx-hidden"></span>
@@ -71,9 +74,12 @@
                         {{#if ../options.hideNames}}???{{else}}{{this.name}}{{/if}}
                     {{/if}}
                 </div>
+                {{#if this.abilityShort}}
+                <div class="sdx-tile-ability">{{this.abilityShort}}</div>
+                {{/if}}
                 <div class="sdx-tile-controls">
                     {{#if this.isOwner}}
-                    <button class="sdx-adv-btn" data-mode="disadvantage" title="Disadvantage">Dis</button>
+                    <button class="sdx-adv-btn {{#if this.hasDisadvantage}}sdx-active{{/if}}" data-mode="disadvantage" title="Disadvantage">Dis</button>
                     {{/if}}
                     <div class="sdx-tile-badge">
                         {{#if this.isOwner}}
@@ -82,7 +88,7 @@
                         <span class="sdx-result-value sdx-hidden"></span>
                     </div>
                     {{#if this.isOwner}}
-                    <button class="sdx-adv-btn" data-mode="advantage" title="Advantage">Adv</button>
+                    <button class="sdx-adv-btn {{#if this.hasAdvantage}}sdx-active{{/if}}" data-mode="advantage" title="Advantage">Adv</button>
                     {{/if}}
                 </div>
                 <span class="sdx-tile-mod-result sdx-hidden"></span>

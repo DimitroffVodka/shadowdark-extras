@@ -7,6 +7,14 @@ import { getHpWaveColor, isHpWavesEnabled } from "./HpWavesSettingsSD.mjs";
 import { getTravelActivities } from "./TravelActivitiesSettingsSD.mjs";
 import { getTravelSpeeds } from "./TravelSpeedsSettingsSD.mjs";
 import { getCustomLightSources } from "./shadowdark-extras.mjs";
+import { SDXRollerApp } from "./SDXRollerApp.mjs";
+import { buildTravelTaskRollData } from "./SDXRollerData.mjs";
+import { CampingRestApp } from "./CampingRestSD.mjs";
+import {
+	PartyWeatherSettingsApp,
+	getConfiguredPartyWeatherTable,
+	getPartyWeatherTableUuid
+} from "./PartyWeatherSettingsSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -283,6 +291,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		// Prepare camping tasks for Travel tab
 
 		context.campingTasks = await this._prepareCampingTasks(context.members);
+		context.campingMembers = this._prepareCampingMemberSelectors(context.members);
 
 		// Prepare travel speeds for Travel tab
 		const selectedSpeed = this.actor.getFlag(MODULE_ID, "travelSpeed") ?? "normal";
@@ -478,6 +487,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				abilities: abilities,
 				abilitiesText: abilities.join(" / "),
 				campfire: task.campfire,
+				description: task.description || "",
 				bannerImage: task.bannerImage || "",
 				dc,
 				assignedMembers: assignedMembers.map(m => {
@@ -492,6 +502,45 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				})
 			};
 		});
+	}
+
+	/**
+	 * Prepare one task and ability selector for each player. These selectors
+	 * update the same assignment flags as drag-and-drop.
+	 * @param {Object[]} membersData
+	 * @returns {Object[]}
+	 */
+	_prepareCampingMemberSelectors(membersData) {
+		const assignments = this.actor.getFlag(MODULE_ID, "travelAssignments") ?? {};
+		const selections = this.actor.getFlag(MODULE_ID, "travelSelections") ?? {};
+		const tasks = getCampingTasks();
+
+		return membersData
+			.filter(member => !member.isNPC)
+			.map(member => {
+				const task = tasks.find(entry =>
+					(assignments[entry.key] ?? []).includes(member.memberKey)
+				);
+				const selectedIndex = Number(
+					selections[task?.key]?.[member.memberKey] ?? 0
+				);
+
+				return {
+					...member,
+					canChoose: this._canUserMoveMember(member),
+					taskKey: task?.key ?? "",
+					taskOptions: tasks.map(entry => ({
+						key: entry.key,
+						name: entry.name,
+						selected: entry.key === task?.key
+					})),
+					abilityOptions: (task?.abilities ?? []).map((ability, index) => ({
+						index,
+						name: ability,
+						selected: index === selectedIndex
+					}))
+				};
+			});
 	}
 
 	/**
@@ -869,6 +918,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		html.find("[data-action='reward-coins']").click(this._onRewardCoins.bind(this));
 		html.find("[data-action='sync-lights']").click(this._onSyncLights.bind(this));
 		html.find("[data-action='roll-weather']").click(this._onRollWeather.bind(this));
+		html.find("[data-action='configure-weather']").click(this._onConfigureWeather.bind(this));
 		html.find("[data-action='change-travel-speed']").change(this._onChangeTravelSpeed.bind(this));
 
 		// XP controls
@@ -905,6 +955,15 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		// Travel Tab interactions
 		html.find("[data-action='reset-travel']").click(this._onResetTravel.bind(this));
 		html.find("[data-action='remove-travel-member']").click(this._onRemoveTravelMember.bind(this));
+		html.find("[data-action='select-travel-task']").change(
+			this._onSelectTravelTask.bind(this)
+		);
+		html.find("[data-action='select-travel-ability']").change(
+			this._onSelectTravelAbility.bind(this)
+		);
+		html.find("[data-action='begin-camping-rest']").click(
+			this._onBeginCampingRest.bind(this)
+		);
 
 		// Travel Rolling
 
@@ -2193,6 +2252,63 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		}
 	}
 
+	async _onSelectTravelTask(event) {
+		const select = event.currentTarget;
+		const memberId = select.dataset.memberId;
+		const taskKey = select.value;
+		const member = this.members.find(actor =>
+			actor.id === memberId || actor.uuid === memberId
+		);
+		if (!member || (!game.user.isGM && !member.isOwner)) return;
+
+		const assignments = foundry.utils.deepClone(this._getTravelAssignments());
+		for (const key of Object.keys(assignments)) {
+			if (Array.isArray(assignments[key])) {
+				assignments[key] = assignments[key].filter(id => id !== memberId);
+			}
+		}
+		if (taskKey) {
+			assignments[taskKey] ??= [];
+			assignments[taskKey].push(memberId);
+		}
+		await this._setTravelAssignments(assignments);
+
+		if (taskKey) {
+			const selections = foundry.utils.deepClone(
+				this.actor.getFlag(MODULE_ID, "travelSelections") ?? {}
+			);
+			selections[taskKey] ??= {};
+			selections[taskKey][memberId] = 0;
+			await this.actor.setFlag(MODULE_ID, "travelSelections", selections);
+		}
+	}
+
+	async _onSelectTravelAbility(event) {
+		const select = event.currentTarget;
+		const memberId = select.dataset.memberId;
+		const taskKey = select.dataset.taskKey;
+		const member = this.members.find(actor =>
+			actor.id === memberId || actor.uuid === memberId
+		);
+		if (!member || !taskKey || (!game.user.isGM && !member.isOwner)) return;
+
+		const selections = foundry.utils.deepClone(
+			this.actor.getFlag(MODULE_ID, "travelSelections") ?? {}
+		);
+		selections[taskKey] ??= {};
+		selections[taskKey][memberId] = Number(select.value) || 0;
+		await this.actor.setFlag(MODULE_ID, "travelSelections", selections);
+	}
+
+	async _onBeginCampingRest(event) {
+		event.preventDefault();
+		if (!game.user.isGM) return;
+		const members = await this.getMembers();
+		CampingRestApp.show(this.actor, members, {
+			onCampfireChange: () => syncPartyTokenLight(this.actor)
+		});
+	}
+
 	/* -------------------------------------------- */
 	/*  Travel Tab Rolling Handlers                 */
 	/* -------------------------------------------- */
@@ -2249,7 +2365,12 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 
 		const assignments = this.actor.getFlag(MODULE_ID, "travelAssignments") ?? {};
 		const assignedIds = assignments[taskKey] ?? [];
-		if (assignedIds.length === 0) return;
+		if (assignedIds.length === 0) {
+			ui.notifications.warn(
+				game.i18n.localize("SHADOWDARK_EXTRAS.party.travel.no_assigned_members")
+			);
+			return;
+		}
 
 		const dcs = this.actor.getFlag(MODULE_ID, "travelDCs") ?? {};
 		const dc = dcs[taskKey] ?? 12;
@@ -2259,46 +2380,110 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		const members = await this.getMembers();
 		const actorsToRoll = assignedIds.map(id => members.find(m => m.id === id || m.uuid === id)).filter(m => m);
 
-		if (actorsToRoll.length === 0) return;
-
-		const rolls = [];
-		for (const actor of actorsToRoll) {
-			const isCompendium = actor.uuid.startsWith("Compendium.");
-			const memberKey = isCompendium ? actor.uuid : actor.id;
-
-			const selectionIdx = selections[taskKey]?.[memberKey] ?? 0;
-			const ability = task.abilities[selectionIdx] || task.abilities[0];
-			rolls.push({ actor, ability });
+		if (actorsToRoll.length === 0) {
+			ui.notifications.warn(
+				game.i18n.localize("SHADOWDARK_EXTRAS.party.travel.no_assigned_members")
+			);
+			return;
 		}
 
-		console.log("Shadowdark Extras | Rolling Task:", { taskKey, rolls });
-
-		for (const { actor, ability } of rolls) {
-			const abilityId = ability.toLowerCase();
-			const abilityLabel = game.i18n.localize(CONFIG.SHADOWDARK.ABILITIES_LONG[abilityId]);
-
-			try {
-				if (actor.system.rollStatCheck) {
-					await actor.system.rollStatCheck(abilityId, {
-						mainRoll: { dc: dc },
-						title: `${task.name} Check - ${abilityLabel}`
-					});
-				} else {
-					ui.notifications.warn("Cannot roll ability for actor type: " + actor.type);
-				}
-			} catch (err) {
-				console.error("Shadowdark Extras | Error rolling ability:", err);
-			}
-		}
+		const rollData = buildTravelTaskRollData(
+			task,
+			actorsToRoll,
+			selections[taskKey] ?? {},
+			dc
+		);
+		console.log("Shadowdark Extras | Dispatching cinematic travel task roll:", rollData);
+		SDXRollerApp.dispatchGroupRoll(rollData);
 	}
 
 	/**
 	 * Handle rolling for weather
-	 * @param {Event} event 
+	 * @param {Event} event
 	 */
 	async _onRollWeather(event) {
 		event.preventDefault();
 
+		const weatherTableUuid = getPartyWeatherTableUuid();
+		if (weatherTableUuid) {
+			const table = await getConfiguredPartyWeatherTable();
+				if (table) {
+					try {
+						await table.draw({ displayChat: true });
+						await this._maybeUseWeatherPrediction(
+							() => table.draw({ displayChat: true })
+						);
+						return;
+				} catch (error) {
+					console.error("Shadowdark Extras | Error drawing Party weather RollTable:", error);
+				}
+			}
+
+			ui.notifications.warn(
+				game.i18n.localize("SHADOWDARK_EXTRAS.party_weather.fallback_warning")
+			);
+		}
+
+		await this._rollDefaultWeather();
+		await this._maybeUseWeatherPrediction(() => this._rollDefaultWeather());
+	}
+
+	/**
+	 * Offer unused successful Predict results after the weather is known.
+	 * Accepting redraws immediately; declining accepts the current weather.
+	 * @param {Function} drawWeather
+	 */
+	async _maybeUseWeatherPrediction(drawWeather) {
+		const prediction = this.actor.getFlag(MODULE_ID, "campingWeatherReroll");
+		let uses = Math.max(0, Number(prediction?.uses ?? (prediction ? 1 : 0)));
+		if (!uses) return;
+
+		while (uses > 0) {
+			const useReroll = await foundry.applications.api.DialogV2.confirm({
+				window: {
+					title: game.i18n.localize(
+						"SHADOWDARK_EXTRAS.camping_rest.predict_title"
+					)
+				},
+				content: `<p>${game.i18n.format(
+					"SHADOWDARK_EXTRAS.camping_rest.predict_prompt",
+					{ count: uses }
+				)}</p>`,
+				modal: true
+			});
+
+			if (!useReroll) {
+				await this.actor.unsetFlag(MODULE_ID, "campingWeatherReroll");
+				return;
+			}
+
+			uses--;
+			if (uses) {
+				await this.actor.setFlag(MODULE_ID, "campingWeatherReroll", {
+					...prediction,
+					uses
+				});
+			} else {
+				await this.actor.unsetFlag(MODULE_ID, "campingWeatherReroll");
+			}
+			await drawWeather();
+		}
+	}
+
+	/**
+	 * Open the GM-only Party weather RollTable selector.
+	 * @param {Event} event
+	 */
+	_onConfigureWeather(event) {
+		event.preventDefault();
+		if (!game.user.isGM) return;
+		new PartyWeatherSettingsApp().render({ force: true });
+	}
+
+	/**
+	 * Roll the original Shadowdark weather check when no custom RollTable is set.
+	 */
+	async _rollDefaultWeather() {
 		// Play dice sound if available
 		if (shadowdark.utils.diceSound) {
 			shadowdark.utils.diceSound();
@@ -2388,7 +2573,10 @@ export async function getBrightestPartyLight(partyActor) {
 
 	// Get party members
 	const memberIds = partyActor.getFlag(MODULE_ID, "members") ?? [];
-	const members = [];
+	// Include active shared light sources carried directly by the party actor.
+	// Camping creates its temporary campfire there so the party token itself
+	// emits the light while every member remains free to perform a task.
+	const members = [partyActor];
 
 	for (const id of memberIds) {
 		let actor = game.actors.get(id);
@@ -2401,8 +2589,6 @@ export async function getBrightestPartyLight(partyActor) {
 		}
 		if (actor) members.push(actor);
 	}
-
-	if (members.length === 0) return null;
 
 	// Find all active light sources from all members
 	let brightestLight = null;

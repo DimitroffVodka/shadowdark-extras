@@ -115,8 +115,16 @@ export async function ensureIdentificationSimilarity() {
 }
 
 export function initItemPilesCompatibility() {
-	Hooks.on("preCreateItem", normalizePileItemCreate);
-	Hooks.on("preUpdateItem", normalizePileItemUpdate);
+	// Foundry cancels a pre-create/pre-update operation when a hook callback
+	// returns false. The pure normalizers intentionally return false when no
+	// Item Piles correction is needed, so never expose that return value to
+	// Foundry's pre-hook dispatcher.
+	Hooks.on("preCreateItem", (item, data) => {
+		normalizePileItemCreate(item, data);
+	});
+	Hooks.on("preUpdateItem", (item, changes) => {
+		normalizePileItemUpdate(item, changes);
+	});
 
 	Hooks.once("item-piles-ready", () => {
 		// Shadowdark registers its Item Piles profile on this same hook, and Item

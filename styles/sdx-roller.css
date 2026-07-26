@@ -414,7 +414,8 @@
     pointer-events: none;
     background-image: url(../assets/banner.jpg);
     background-size: cover;
-    filter: brightness(0.1);
+    background-position: center;
+    filter: brightness(0.25);
     box-shadow: 0px 0px 16px 19px #888888;
     border-top: solid;
     border-bottom: solid;
@@ -573,6 +574,15 @@
     letter-spacing: 1px;
 }
 
+.sdx-tile-ability {
+    margin-top: -0.35rem;
+    color: #c9aa58;
+    font-family: var(--sdx-roller-font);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
 /* ---- Controls row (adv / dice / dis) ---- */
 
 .sdx-tile-controls {
@@ -692,6 +702,16 @@
     font-style: italic;
 }
 
+.sdx-recap-activity-description {
+    margin: 0 0 7px;
+    padding: 5px 7px;
+    border-left: 3px solid #c9aa58;
+    background: rgba(201, 170, 88, 0.12);
+    color: var(--color-text-dark-secondary, #555);
+    font-size: 11px;
+    line-height: 1.35;
+}
+
 .sdx-recap-entry {
     display: flex;
     align-items: center;
@@ -719,6 +739,16 @@
     gap: 2px;
     font-size: 11px;
     color: #888;
+}
+
+.sdx-recap-ability {
+    border: 1px solid #c9aa58;
+    border-radius: 3px;
+    color: #765f22;
+    font-family: var(--sdx-roller-font);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 0 3px;
 }
 
 .sdx-recap-die {

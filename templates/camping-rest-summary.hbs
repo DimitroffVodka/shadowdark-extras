@@ -1,0 +1,76 @@
+<div class="sdx-camping-summary">
+	<header>
+		<i class="fas fa-campground"></i>
+		<span>{{localize "SHADOWDARK_EXTRAS.camping_rest.summary_title"}}</span>
+	</header>
+
+	<div class="sdx-camping-summary-meta">
+		<span>
+			<i class="fas fa-fire"></i>
+			{{#if campfireEstablished}}
+				{{localize "SHADOWDARK_EXTRAS.camping_rest.summary_campfire"}}
+			{{else}}
+				{{localize "SHADOWDARK_EXTRAS.camping_rest.summary_no_campfire"}}
+			{{/if}}
+		</span>
+		{{#if torchesConsumed}}
+		<span><i class="fas fa-torch"></i> {{torchesConsumed}} {{localize "SHADOWDARK_EXTRAS.camping_rest.torches_used"}}</span>
+		{{/if}}
+		{{#if interrupted}}
+		<span><i class="fas fa-triangle-exclamation"></i> {{localize "SHADOWDARK_EXTRAS.camping_rest.summary_interrupted"}}</span>
+		{{/if}}
+		{{#if advancedTime}}
+		<span><i class="fas fa-clock"></i> {{localize "SHADOWDARK_EXTRAS.camping_rest.summary_time"}}</span>
+		{{/if}}
+	</div>
+
+	{{#each summary as |entry|}}
+	<section class="sdx-camping-summary-member {{#unless entry.rested}}sdx-rest-failed{{/unless}}">
+		<img src="{{entry.img}}" alt="{{entry.name}}">
+		<div class="sdx-camping-summary-details">
+			<div class="sdx-camping-summary-name">
+				<strong>{{entry.name}}</strong>
+				<span>HP {{entry.hpBefore}} → {{entry.hpAfter}}</span>
+			</div>
+			<div class="sdx-camping-summary-status">
+				<span class="{{#if entry.hasRation}}success{{else}}failure{{/if}}">
+					<i class="fas {{#if entry.hasRation}}fa-bowl-food{{else}}fa-ban{{/if}}"></i>
+					{{#if entry.hasRation}}
+						{{localize "SHADOWDARK_EXTRAS.camping_rest.ration_eaten"}}
+					{{else}}
+						{{localize "SHADOWDARK_EXTRAS.camping_rest.no_ration"}}
+					{{/if}}
+				</span>
+				<span class="{{#if entry.rested}}success{{else}}failure{{/if}}">
+					<i class="fas {{#if entry.rested}}fa-bed{{else}}fa-xmark{{/if}}"></i>
+					{{#if entry.rested}}
+						{{localize "SHADOWDARK_EXTRAS.camping_rest.rest_succeeded"}}
+					{{else}}
+						{{localize "SHADOWDARK_EXTRAS.camping_rest.rest_failed"}}
+					{{/if}}
+				</span>
+			</div>
+			{{#if entry.hasTaskResult}}
+			<div class="sdx-camping-summary-task">
+				<strong>{{entry.taskName}}</strong>: {{entry.taskValue}}
+				<i class="fas {{#if entry.taskSuccess}}fa-check success{{else}}fa-xmark failure{{/if}}"></i>
+			</div>
+			{{/if}}
+			{{#if entry.benefits.length}}
+			<ul>
+				{{#each entry.benefits as |benefit|}}
+				<li>{{benefit}}</li>
+				{{/each}}
+			</ul>
+			{{/if}}
+			{{#if entry.rested}}
+			<small>
+				{{entry.resourceSummary.spells}} {{localize "SHADOWDARK_EXTRAS.camping_rest.spells_refreshed"}},
+				{{entry.resourceSummary.abilities}} {{localize "SHADOWDARK_EXTRAS.camping_rest.abilities_refreshed"}},
+				{{entry.resourceSummary.wands}} {{localize "SHADOWDARK_EXTRAS.camping_rest.wands_refreshed"}}
+			</small>
+			{{/if}}
+		</div>
+	</section>
+	{{/each}}
+</div>

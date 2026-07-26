@@ -535,10 +535,23 @@
 			<div class="sdx-travel-header">
 				<div class="sdx-travel-actions toolbar">
 					<button type="button" class="sdx-travel-reset" data-action="roll-weather"
-						data-tooltip="Roll Weather (1d6)">
+						data-tooltip="{{localize 'SHADOWDARK_EXTRAS.party.travel.roll_weather'}}">
 						<i class="fas fa-cloud-sun"></i>
-						Weather
+						{{localize "SHADOWDARK_EXTRAS.party.travel.weather"}}
 					</button>
+					{{#if isGM}}
+					<button type="button" class="sdx-travel-reset sdx-begin-rest"
+						data-action="begin-camping-rest"
+						data-tooltip="{{localize 'SHADOWDARK_EXTRAS.party.travel.begin_rest_tooltip'}}">
+						<i class="fas fa-campground"></i>
+						{{localize "SHADOWDARK_EXTRAS.party.travel.begin_rest"}}
+					</button>
+					<button type="button" class="sdx-travel-reset sdx-weather-config"
+						data-action="configure-weather"
+						data-tooltip="{{localize 'SHADOWDARK_EXTRAS.party.travel.configure_weather'}}">
+						<i class="fas fa-gear"></i>
+					</button>
+					{{/if}}
 
 					<div class="sdx-travel-speed-selector">
 						<label for="travel-speed">
@@ -563,6 +576,57 @@
 				</div>
 			</div>
 
+			<div class="sdx-camping-rules">
+				<p>
+					<i class="fas fa-campground"></i>
+					{{localize "SHADOWDARK_EXTRAS.party.travel.camping_rules"}}
+				</p>
+				<p>
+					<i class="fas fa-fire"></i>
+					{{localize "SHADOWDARK_EXTRAS.party.travel.campfire_rules"}}
+				</p>
+			</div>
+
+			{{#if campingMembers.length}}
+			<div class="sdx-camping-selectors SD-box">
+				<div class="header">
+					<label><i class="fas fa-list-check"></i>
+						{{localize "SHADOWDARK_EXTRAS.party.travel.choose_tasks"}}</label>
+				</div>
+				<div class="content">
+					{{#each campingMembers as |member|}}
+					<div class="sdx-camping-selector-row">
+						<div class="sdx-camping-selector-member">
+							<img src="{{member.img}}" alt="{{member.name}}">
+							<span>{{member.name}}</span>
+						</div>
+						<select data-action="select-travel-task" data-member-id="{{member.memberKey}}"
+							{{#unless member.canChoose}}disabled{{/unless}}>
+							<option value="" {{#unless member.taskKey}}selected{{/unless}}>
+								{{localize "SHADOWDARK_EXTRAS.party.travel.no_task"}}
+							</option>
+							{{#each member.taskOptions as |task|}}
+							<option value="{{task.key}}" {{#if task.selected}}selected{{/if}}>
+								{{task.name}}
+							</option>
+							{{/each}}
+						</select>
+						<select data-action="select-travel-ability"
+							data-member-id="{{member.memberKey}}" data-task-key="{{member.taskKey}}"
+							{{#unless member.taskKey}}disabled{{/unless}}
+							{{#unless member.canChoose}}disabled{{/unless}}>
+							{{#each member.abilityOptions as |ability|}}
+							<option value="{{ability.index}}" {{#if ability.selected}}selected{{/if}}>
+								{{ability.name}}
+							</option>
+							{{/each}}
+						</select>
+					</div>
+					{{/each}}
+				</div>
+			</div>
+			{{/if}}
+
 			<div class="sdx-camping-grid">
 				{{#each campingTasks as |task|}}
 				<div class="sdx-camping-task SD-box" data-task-key="{{task.key}}" data-action="drop-travel">
@@ -580,8 +644,11 @@
 							<span class="sdx-task-abilities">{{task.abilitiesText}}</span>
 						</div>
 						{{#if task.campfire}}<i class="fas fa-fire sdx-campfire-indicator"
-							data-tooltip="{{localize 'SHADOWDARK_EXTRAS.party.travel.requires_campfire'}}"></i>{{/if}}
+							data-tooltip="{{localize 'SHADOWDARK_EXTRAS.party.travel.campfire_disadvantage'}}"></i>{{/if}}
 					</div>
+					{{#if task.description}}
+					<p class="sdx-task-description">{{task.description}}</p>
+					{{/if}}
 					<div class="sdx-task-members" data-task-key="{{task.key}}">
 						{{#each task.assignedMembers as |member|}}
 						<div class="sdx-task-member" data-member-id="{{member.memberKey}}" data-uuid="{{member.uuid}}"

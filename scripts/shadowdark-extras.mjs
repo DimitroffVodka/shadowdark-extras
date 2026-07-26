@@ -14,6 +14,7 @@ import { patchArmorActiveEffects } from "./ArmorAEPatchSD.mjs";
 import { HpWavesSettingsApp, registerHpWavesSettings, getHpWaveColor, isHpWavesEnabled } from "./HpWavesSettingsSD.mjs";
 import { TravelActivitiesSettingsApp, registerTravelActivitiesSettings, getTravelActivities } from "./TravelActivitiesSettingsSD.mjs";
 import { TravelSpeedsSettingsApp, registerTravelSpeedsSettings, getTravelSpeeds } from "./TravelSpeedsSettingsSD.mjs";
+import { registerPartyWeatherSettings } from "./PartyWeatherSettingsSD.mjs";
 import { generateSpellConfig, generatePotionConfig, generateScrollConfig, generateWandConfig } from "./templates/ItemTypeConfigs.mjs";
 import { activateTemplateTargetingListeners } from "./templates/TemplateTargetingConfig.mjs";
 import { readSdRollOutcome, resolveCardContext } from "./sd4Compat.mjs";
@@ -3037,6 +3038,9 @@ function registerSettings() {
 
 	// Travel Speeds Settings Menu (registered via registerTravelSpeedsSettings)
 	registerTravelSpeedsSettings();
+
+	// Party Weather RollTable Settings Menu
+	registerPartyWeatherSettings();
 
 	// Inventory Styles data setting (hidden)
 	game.settings.register(MODULE_ID, "itemacroMigrationDone", {

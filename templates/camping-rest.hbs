@@ -1,0 +1,158 @@
+<div class="sdx-camping-rest">
+	<section class="sdx-rest-section">
+		<h2><i class="fas fa-fire"></i> {{localize "SHADOWDARK_EXTRAS.camping_rest.campfire_heading"}}</h2>
+		<div class="sdx-rest-campfire-options">
+			<label class="sdx-rest-choice">
+				<input type="radio" name="campfireMode" value="torches" {{#if canLightWithTorches}}checked{{/if}}
+					{{#unless canLightWithTorches}}disabled{{/unless}}>
+				<span>
+					<strong>{{localize "SHADOWDARK_EXTRAS.camping_rest.campfire_torches"}}</strong>
+					<small>{{localize "SHADOWDARK_EXTRAS.camping_rest.campfire_torches_hint"}}
+						({{totalTorches}} {{localize "SHADOWDARK_EXTRAS.camping_rest.available"}})</small>
+				</span>
+			</label>
+			<label class="sdx-rest-choice">
+				<input type="radio" name="campfireMode" value="firewood" {{#unless canLightWithTorches}}checked{{/unless}}>
+				<span>
+					<strong>{{localize "SHADOWDARK_EXTRAS.camping_rest.campfire_firewood"}}</strong>
+					<small>{{localize "SHADOWDARK_EXTRAS.camping_rest.campfire_firewood_hint"}}</small>
+				</span>
+			</label>
+			<label class="sdx-rest-choice">
+				<input type="radio" name="campfireMode" value="none">
+				<span>
+					<strong>{{localize "SHADOWDARK_EXTRAS.camping_rest.campfire_none"}}</strong>
+					<small>{{localize "SHADOWDARK_EXTRAS.camping_rest.campfire_none_hint"}}</small>
+				</span>
+			</label>
+		</div>
+	</section>
+
+	<section class="sdx-rest-section sdx-rest-members-section">
+		<div class="sdx-rest-section-heading">
+			<h2><i class="fas fa-users"></i> {{localize "SHADOWDARK_EXTRAS.camping_rest.campers_heading"}}</h2>
+			<span>{{totalRations}} {{localize "SHADOWDARK_EXTRAS.camping_rest.rations_available"}}</span>
+		</div>
+
+		<div class="sdx-rest-members">
+			{{#each members as |member|}}
+			<div class="sdx-rest-member" data-actor-id="{{member.id}}">
+				<label class="sdx-rest-member-identity">
+					<input class="sdx-rest-participating" type="checkbox" checked>
+					<img src="{{member.img}}" alt="{{member.name}}">
+					<span>
+						<strong>{{member.name}}</strong>
+						<small>HP {{member.hp}} / {{member.hpMax}} · {{member.rations}}
+							{{localize "SHADOWDARK_EXTRAS.camping_rest.rations"}}</small>
+					</span>
+				</label>
+
+				<div class="sdx-rest-member-controls">
+					<label>
+						<span>{{localize "SHADOWDARK_EXTRAS.camping_rest.task"}}</span>
+						<select class="sdx-rest-task-select">
+							<option value="" {{#unless member.taskKey}}selected{{/unless}}>
+								{{localize "SHADOWDARK_EXTRAS.camping_rest.rest_only"}}
+							</option>
+							{{#each member.taskOptions as |task|}}
+							<option value="{{task.key}}" data-abilities="{{task.abilitiesCsv}}" {{#if task.selected}}selected{{/if}}>
+								{{task.name}}
+							</option>
+							{{/each}}
+						</select>
+					</label>
+
+					<label>
+						<span>{{localize "SHADOWDARK_EXTRAS.camping_rest.ability"}}</span>
+						<select class="sdx-rest-ability-select" {{#unless member.taskKey}}disabled{{/unless}}>
+							{{#each member.abilityOptions as |ability|}}
+							<option value="{{ability.index}}" {{#if ability.selected}}selected{{/if}}>
+								{{ability.ability}}
+							</option>
+							{{/each}}
+						</select>
+					</label>
+
+					<div class="sdx-rest-contextual {{#unless member.isCraft}}sdx-hidden{{/unless}}" data-for-task="craft">
+						<label>
+							<span>{{localize "SHADOWDARK_EXTRAS.camping_rest.craft_result"}}</span>
+							<select class="sdx-rest-craft-choice">
+								<option value="torch">{{localize "SHADOWDARK_EXTRAS.camping_rest.craft_torch"}}</option>
+								<option value="arrows">{{localize "SHADOWDARK_EXTRAS.camping_rest.craft_arrows"}}</option>
+								<option value="bolts">{{localize "SHADOWDARK_EXTRAS.camping_rest.craft_bolts"}}</option>
+								<option value="slingStones">{{localize "SHADOWDARK_EXTRAS.camping_rest.craft_sling_stones"}}</option>
+								{{#if member.brokenItems.length}}
+								<option value="repair">{{localize "SHADOWDARK_EXTRAS.camping_rest.craft_repair"}}</option>
+								{{/if}}
+							</select>
+						</label>
+						{{#if member.brokenItems.length}}
+						<label>
+							<span>{{localize "SHADOWDARK_EXTRAS.camping_rest.repair_item"}}</span>
+							<select class="sdx-rest-repair-item">
+								{{#each member.brokenItems as |item|}}
+								<option value="{{item.id}}">{{item.name}}</option>
+								{{/each}}
+							</select>
+						</label>
+						{{/if}}
+					</div>
+
+					<div class="sdx-rest-contextual {{#unless member.isEntertain}}sdx-hidden{{/unless}}" data-for-task="entertain">
+						<label>
+							<span>{{localize "SHADOWDARK_EXTRAS.camping_rest.luck_target"}}</span>
+							<select class="sdx-rest-entertain-target">
+								{{#each member.targets as |target|}}
+								<option value="{{target.id}}">{{target.name}}</option>
+								{{/each}}
+							</select>
+						</label>
+					</div>
+
+					<div class="sdx-rest-contextual {{#unless member.isKeepWatch}}sdx-hidden{{/unless}}" data-for-task="keepWatch">
+						<label>
+							<span>{{localize "SHADOWDARK_EXTRAS.camping_rest.watch_half"}}</span>
+							<select class="sdx-rest-watch-half">
+								<option value="first">{{localize "SHADOWDARK_EXTRAS.camping_rest.first_half"}}</option>
+								<option value="second">{{localize "SHADOWDARK_EXTRAS.camping_rest.second_half"}}</option>
+							</select>
+						</label>
+					</div>
+
+					<label class="sdx-rest-contextual sdx-rest-inline-check {{#unless member.isHunt}}sdx-hidden{{/unless}}" data-for-task="hunt">
+						<input type="checkbox" class="sdx-rest-pushed">
+						<span>{{localize "SHADOWDARK_EXTRAS.camping_rest.pushed_today"}}</span>
+					</label>
+				</div>
+			</div>
+			{{/each}}
+		</div>
+	</section>
+
+	<section class="sdx-rest-section sdx-rest-options">
+		<h2><i class="fas fa-moon"></i> {{localize "SHADOWDARK_EXTRAS.camping_rest.rest_heading"}}</h2>
+		<label>
+			<input type="checkbox" name="interrupted">
+			<span>
+				<strong>{{localize "SHADOWDARK_EXTRAS.camping_rest.interrupted"}}</strong>
+				<small>{{localize "SHADOWDARK_EXTRAS.camping_rest.interrupted_hint"}}</small>
+			</span>
+		</label>
+		<label>
+			<input type="checkbox" name="advanceTime" checked>
+			<span>
+				<strong>{{localize "SHADOWDARK_EXTRAS.camping_rest.advance_time"}}</strong>
+				<small>{{localize "SHADOWDARK_EXTRAS.camping_rest.advance_time_hint"}}</small>
+			</span>
+		</label>
+	</section>
+
+	<footer class="sdx-rest-footer">
+		<button type="button" data-action="cancel">
+			<i class="fas fa-times"></i> {{localize "SHADOWDARK_EXTRAS.camping_rest.cancel"}}
+		</button>
+		<button type="button" class="sdx-rest-begin" data-action="begin">
+			<i class="fas fa-campground"></i> {{localize "SHADOWDARK_EXTRAS.camping_rest.begin"}}
+		</button>
+	</footer>
+</div>

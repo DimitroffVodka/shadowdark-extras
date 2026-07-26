@@ -6,6 +6,11 @@
  * group roll overlay visible to every connected client.
  */
 
+import {
+    getSdxActorAbility,
+    isSdxRollAuthority
+} from "./SDXRollerData.mjs";
+
 const MODULE_ID = "shadowdark-extras";
 
 /* ------------------------------------------------------------------ */
@@ -235,13 +240,19 @@ export class SDXRollerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /* ------------------------------------------------------------------ */
 
     static dispatchGroupRoll(rollData) {
+        const scopedRollData = {
+            ...rollData,
+            rollId: foundry.utils.randomID(),
+            authorityClientId: SDXRollerApp._getClientId(),
+        };
         // Show locally
-        SDXRollerApp._launchOverlay(rollData);
+        const overlay = SDXRollerApp._launchOverlay(scopedRollData);
         // Broadcast to others
         game.socket.emit(`module.${MODULE_ID}`, {
             action: "sdxRollerDispatch",
-            rollData,
+            rollData: scopedRollData,
         });
+        return overlay.promise;
     }
 
     static handleSocketMessage(data) {
@@ -260,6 +271,12 @@ export class SDXRollerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static _activeOverlay = null;
+    static _clientId = null;
+
+    static _getClientId() {
+        SDXRollerApp._clientId ??= foundry.utils.randomID();
+        return SDXRollerApp._clientId;
+    }
 
     static _launchOverlay(rollData) {
         if (SDXRollerApp._activeOverlay) {
@@ -268,6 +285,7 @@ export class SDXRollerApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const overlay = new SDXRollerOverlay(rollData);
         SDXRollerApp._activeOverlay = overlay;
         overlay.render(true);
+        return overlay;
     }
 }
 
@@ -318,13 +336,24 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
         const label = this.rollData.customLabel
             || this._buildLabel(showDC);
         this._introLabel = label;
-        const abilityId = this.rollData.ability;
-        const isNone = abilityId === "none";
         const addMod = (a) => {
+            const abilityId = getSdxActorAbility(this.rollData, a.uuid);
+            const isNone = abilityId === "none";
+            const defaultRollMode = this.rollData.actorRollModes?.[a.uuid] ?? "normal";
             // Shadowdark 4.x: use computed mod from system.abilities
             const mod = isNone ? 0 : (a.system?.abilities?.[abilityId]?.mod ?? 0);
             const modLabel = isNone ? "" : (mod >= 0 ? "+" : "") + mod;
-            return { uuid: a.uuid, name: a.name, img: a.img, isOwner: a.isOwner, mod, modLabel };
+            return {
+                uuid: a.uuid,
+                name: a.name,
+                img: a.img,
+                isOwner: a.isOwner,
+                mod,
+                modLabel,
+                abilityShort: this.rollData.actorAbilities && !isNone ? abilityId.toUpperCase() : "",
+                hasAdvantage: defaultRollMode === "advantage",
+                hasDisadvantage: defaultRollMode === "disadvantage"
+            };
         };
         return {
             introLabel: label,
@@ -347,6 +376,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
     _onRender(context, options) {
         super._onRender(context, options);
         const el = this.element;
+        this._applyBannerImage(el);
         this._runIntroSequence(el);
 
         // Advantage / Disadvantage toggle buttons
@@ -382,6 +412,21 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
             ev.currentTarget.classList.add("sdx-hidden-vis");
             this._broadcastEnd({ button: true });
         });
+    }
+
+    /**
+     * Use activity-specific artwork for travel rolls while retaining the
+     * standard SDX banner as a fallback for empty or missing image paths.
+     * @param {HTMLElement} el
+     */
+    _applyBannerImage(el) {
+        const stripe = el?.querySelector(".sdx-overlay-stripe");
+        const bannerImage = String(this.rollData.bannerImage ?? "").trim();
+        if (!stripe || !bannerImage) return;
+
+        const fallbackImage = `modules/${MODULE_ID}/assets/banner.jpg`;
+        stripe.style.backgroundImage =
+            `url(${JSON.stringify(bannerImage)}), url(${JSON.stringify(fallbackImage)})`;
     }
 
     /* ---------- Intro / Outro animations ---------- */
@@ -474,7 +519,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
         // Toggle spinner state
         this._broadcastToggle({ uuid, rolling: true });
 
-        const abilityId = this.rollData.ability;
+        const abilityId = getSdxActorAbility(this.rollData, uuid);
         const isNone = abilityId === "none";
         const mod = isNone ? 0 : (actor.system?.abilities?.[abilityId]?.mod ?? 0);
 
@@ -515,6 +560,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
         // Broadcast update
         const modLabel = (mod >= 0 ? "+" : "") + mod;
         const payload = {
+            rollId: this.rollData.rollId,
             uuid,
             value,
             mod,
@@ -523,6 +569,8 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
             isFumble,
             rollMode,
             diceResults,
+            ability: abilityId,
+            abilityShort: this.rollData.actorAbilities && !isNone ? abilityId.toUpperCase() : "",
             messageId: msg?.id ?? null,
         };
         this._applyResult(payload);
@@ -533,6 +581,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
     }
 
     handleRemoteUpdate(payload) {
+        if (!this._matchesRoll(payload)) return;
         this._applyResult(payload);
     }
 
@@ -592,7 +641,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
         // Check if all done
         const allActors = [...this.actors, ...this.contestants];
         const allDone = allActors.every(a => Number.isFinite(this._results[a.uuid]));
-        if (allDone) {
+        if (allDone && this._isAuthorityClient()) {
             this._broadcastEnd({ abort: false });
         }
     }
@@ -600,14 +649,16 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
     /* ---------- Toggle rolling state ---------- */
 
     _broadcastToggle(payload) {
-        this._applyToggle(payload);
+        const scopedPayload = { ...payload, rollId: this.rollData.rollId };
+        this._applyToggle(scopedPayload);
         game.socket.emit(`module.${MODULE_ID}`, {
             action: "sdxRollerToggle",
-            payload,
+            payload: scopedPayload,
         });
     }
 
     handleRemoteToggle(payload) {
+        if (!this._matchesRoll(payload)) return;
         this._applyToggle(payload);
     }
 
@@ -625,15 +676,27 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
     /* ---------- End roll ---------- */
 
     _broadcastEnd(payload) {
-        this._handleEnd(payload);
+        const scopedPayload = { ...payload, rollId: this.rollData.rollId };
+        this._handleEnd(scopedPayload);
         game.socket.emit(`module.${MODULE_ID}`, {
             action: "sdxRollerEnd",
-            payload,
+            payload: scopedPayload,
         });
     }
 
     handleRemoteEnd(payload) {
+        if (!this._matchesRoll(payload)) return;
         this._handleEnd(payload);
+    }
+
+    _matchesRoll(payload) {
+        const incomingRollId = String(payload?.rollId ?? "").trim();
+        const activeRollId = String(this.rollData.rollId ?? "").trim();
+        return !incomingRollId || !activeRollId || incomingRollId === activeRollId;
+    }
+
+    _isAuthorityClient() {
+        return isSdxRollAuthority(this.rollData, SDXRollerApp._getClientId());
     }
 
     async _handleEnd({ abort, button }) {
@@ -641,17 +704,22 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
         this._ending = true;
 
         if (abort) {
+            if (SDXRollerApp._activeOverlay === this) {
+                SDXRollerApp._activeOverlay = null;
+            }
+            await this.close();
             this._resolve?.({ canceled: true, results: [] });
-            SDXRollerApp._activeOverlay = null;
-            return this.close();
+            return;
         }
 
         const isSuccess = this._computeSuccess();
-        this._resolve?.({ canceled: false, success: isSuccess, results: this._results });
-        this._createChatRecap(isSuccess);
+        await this._createChatRecap(isSuccess);
         const el = this.element;
         if (el) await this._runOutroSequence(el, isSuccess);
-        SDXRollerApp._activeOverlay = null;
+        if (SDXRollerApp._activeOverlay === this) {
+            SDXRollerApp._activeOverlay = null;
+        }
+        this._resolve?.({ canceled: false, success: isSuccess, results: this._results });
     }
 
     _computeSuccess() {
@@ -670,7 +738,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
     }
 
     async _createChatRecap(success) {
-        if (!game.user.isGM) return;
+        if (!this._isAuthorityClient()) return;
 
         const dc = this.contestants.length
             ? Math.round(this.contestants.reduce((sum, c) => sum + (this._results[c.uuid] ?? 0), 0) / this.contestants.length)
@@ -697,6 +765,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
                 name: a.name, img: a.img,
                 result: this._results[a.uuid] ?? "—",
                 modLabel: r.modLabel ?? "",
+                abilityShort: r.abilityShort ?? "",
                 rollMode: r.rollMode ?? "normal",
                 diceResults: buildDice(r),
                 showDice: (r.diceResults?.length ?? 0) > 1,
@@ -710,6 +779,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
                 name: a.name, img: a.img,
                 result: this._results[a.uuid] ?? "—",
                 modLabel: r.modLabel ?? "",
+                abilityShort: r.abilityShort ?? "",
                 rollMode: r.rollMode ?? "normal",
                 diceResults: buildDice(r),
                 showDice: (r.diceResults?.length ?? 0) > 1,
@@ -720,6 +790,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 
         const templateData = {
             label: this._introLabel,
+            activityDescription: this.rollData.activityDescription,
             dc: Number.isFinite(dc) && dc > 0 ? dc : null,
             success,
             successLabel: success === true ? "SUCCESS" : success === false ? "FAILURE" : null,

@@ -1,0 +1,39 @@
+<div class="sdx-party-weather-form">
+	<p class="notes">{{localize "SHADOWDARK_EXTRAS.party_weather.description"}}</p>
+
+	<div class="form-group">
+		<label for="sdx-party-weather-table">{{localize "SHADOWDARK_EXTRAS.party_weather.table"}}</label>
+		<div class="form-fields">
+			<select id="sdx-party-weather-table" name="tableUuid">
+				<option value="" {{#if useDefault}}selected{{/if}}>
+					{{localize "SHADOWDARK_EXTRAS.party_weather.default_option"}}
+				</option>
+				{{#if missingSelection}}
+				<optgroup label="{{localize 'SHADOWDARK_EXTRAS.party_weather.unavailable'}}">
+					<option value="{{missingSelection}}" selected>{{missingSelection}}</option>
+				</optgroup>
+				{{/if}}
+				{{#each tableGroups as |group|}}
+				<optgroup label="{{group.label}}">
+					{{#each group.tables as |table|}}
+					<option value="{{table.uuid}}" {{#if table.selected}}selected{{/if}}>
+						{{table.name}}{{#if table.resultCount}} ({{table.resultCount}}){{/if}}
+					</option>
+					{{/each}}
+				</optgroup>
+				{{/each}}
+			</select>
+		</div>
+		<p class="hint">{{localize "SHADOWDARK_EXTRAS.party_weather.table_hint"}}</p>
+	</div>
+
+	{{#unless hasTables}}
+	<p class="notification warning">{{localize "SHADOWDARK_EXTRAS.party_weather.no_tables"}}</p>
+	{{/unless}}
+
+	<footer class="sheet-footer flexrow">
+		<button type="submit">
+			<i class="fas fa-save"></i> {{localize "SHADOWDARK_EXTRAS.party_weather.save"}}
+		</button>
+	</footer>
+</div>

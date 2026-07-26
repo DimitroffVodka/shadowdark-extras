@@ -5,6 +5,7 @@ import test from "node:test";
 import {
 	addIdentificationSimilarity,
 	getPileEquipmentUpdates,
+	initItemPilesCompatibility,
 	isItemPilesActor,
 	normalizePileItemCreate,
 	normalizePileItemUpdate
@@ -114,6 +115,31 @@ test("normal actors keep their equipment state untouched", () => {
 	assert.equal(normalizePileItemCreate(weapon, { system: { equipped: true } }), false);
 	assert.equal(normalizePileItemUpdate(weapon, changes), false);
 	assert.equal(changes.system.equipped, true);
+});
+
+test("Item Piles pre-hooks never cancel unrelated item creates or updates", () => {
+	const registered = new Map();
+	const previousHooks = globalThis.Hooks;
+	globalThis.Hooks = {
+		on(name, callback) {
+			registered.set(name, callback);
+		},
+		once() {}
+	};
+
+	try {
+		initItemPilesCompatibility();
+		const item = {
+			type: "Basic",
+			parent: pileActor(false),
+			system: {}
+		};
+
+		assert.equal(registered.get("preCreateItem")(item, {}), undefined);
+		assert.equal(registered.get("preUpdateItem")(item, { "system.quantity": 2 }), undefined);
+	} finally {
+		globalThis.Hooks = previousHooks;
+	}
 });
 
 test("weapon animation paths guard Item Piles actors", () => {
