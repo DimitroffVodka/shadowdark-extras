@@ -6,7 +6,15 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [6.10.50] — 2026-07-26 — Automated camping, applied carousing outcomes, and Item Piles compatibility
+
 ### Added
+
+- **Camping is now a complete Party rest procedure rather than an informational task list.** The GM can choose participating characters, select each character's task and ability from dropdowns, or begin from the existing drag-and-drop travel assignments. A campfire can consume three pooled inactive torches or be earned by a successful Firewood check; without one, every task marked by the camping rules rolls with disadvantage. The procedure consumes pooled rations, optionally advances world time by eight hours, restores qualifying characters to maximum HP, refreshes lost spells, class abilities, limited uses, and wand spells, and removes unconscious after a successful rest. Tangible task outcomes are applied automatically: Cook raises ration-eating campers up to 2 HP above maximum, Craft creates ammunition or a torch or repairs gear, Entertain grants luck, Hunt adds 1d4 rations before meals are allocated, Keep Watch records the protected half of the rest, and Predict grants a weather re-roll. A final chat summary records supplies, recovery, checks, and benefits.
+
+- **Party weather can use a GM-selected RollTable.** A new world setting selects any world or compendium RollTable for the Party sheet's Weather button while preserving the built-in Shadowdark weather roll as the fallback. Successful Predict tasks are offered after tomorrow's weather is revealed and can redraw either source.
+
+- **Travel and camping checks now use the cinematic SDX Roller with activity artwork and per-character abilities.** Each configured activity can supply a banner image, and characters in the same group check can roll different allowed abilities without splitting the task into separate cards.
 
 - **Apply carousing outcomes to character sheets, and a Carousing Log.** Original-mode outcomes were display-only — the GP cost was deducted, but "Gain 4 XP", "a luck token", and "bilked you for 5% of your total wealth" were rendered as prose and never touched the sheet. (A `applyOutcomeEffect()` helper for exactly this existed but was dead code, called from nowhere.) Each result card now carries a GM-only **Apply** button showing a preview of what it will grant; clicking it opens a confirm dialog listing the exact numbers before committing, then writes XP, luck tokens, the percentage wealth loss, and any renown delta. It is idempotent — the session records what was applied, so a second click is a no-op and the card shows an **Applied** badge instead. Narrative rewards (a priest ally, a debt owed by a noble, being barred from a tavern) have no mechanical target in Shadowdark, so they are deliberately never parsed; instead the full outcome text is appended to the character's Notes, preserving whatever was already there. Expanded mode is excluded, since it already grants its numeric XP column automatically at roll time. Alongside this, a GM-only **Carousing Log** journal records every session — each character's roll, what happened, the benefit, and exactly what was applied — created create-or-update per session so re-rolling never duplicates a page, and located by flag so renaming it does not orphan the log.
 
@@ -16,7 +24,15 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 - **New setting: Carousing Wealth Base.** Chooses what "N% of your total wealth" is measured against — coins only (`gp + sp/10 + cp/100`), or coins plus the value of carried gear so stockpiling equipment cannot dodge the penalty. The deduction always comes out of coins either way and cannot drive the purse negative. If a gear-based loss exceeds the coins available, the unpaid balance becomes an accumulating, zero-slot **Carousing Debt** item on the character sheet, with an exact coin total and a history of the outcomes that created it. Items with no cost recorded count as nothing rather than being guessed at.
 
+### Changed
+
+- **Hex Painter map formatting now supports maps up to 200×200 hexes.** Both sliders and the runtime clamp were raised from 50 while retaining the same exact-grid sizing formula, which was live-verified beyond the former limit.
+
 ### Fixed
+
+- **Different unidentified potions no longer collapse into the first potion placed in an Item Pile.** Item Piles similarity matching now includes Shadowdark's hidden identified name, so an unidentified Potion of Healing, Sleep, and Flight remain distinct stacks. Weapons and armor stored in Item Piles are also forced unequipped, and weapon glow/animation effects are suppressed on pile tokens.
+
+- **SDX group rolls now create one recap and cannot strand an awaiting camping procedure.** Only the browser that launched a roll creates its recap, eliminating the three-card duplication seen on travel rolls. Replacing or directly closing an overlay now resolves its pending result as canceled, stale overlays cannot clear a newer roll, and the GM close action no longer calls the Foundry close lifecycle twice.
 
 - **Expanded Carousing neither populated the log nor added outcomes to character Notes.** Only the Original roll path assigned a log ID, wrote a journal page, and appended its narrative outcome to the sheet after Apply; Expanded mode returned after saving transient results, leaving benefits and mishaps visible only in chat. Expanded rolls now create the same stable per-session log page, with dedicated Outcome, Benefits, and Mishaps columns, and append each participant's full narrative result plus applied XP/renown summary to `system.notes`. Opening the log backfills the current completed session, and per-session markers make note recovery idempotent so reopening it cannot duplicate entries.
 
