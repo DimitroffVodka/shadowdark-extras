@@ -1365,7 +1365,7 @@ export function isBwEffect() {
 }
 
 export function setMapDimension(axis, value) {
-    const clamped = Math.max(5, Math.min(50, parseInt(value) || 15));
+    const clamped = Math.max(5, Math.min(200, parseInt(value) || 15));
     if (axis === "columns") _mapColumns = clamped;
     if (axis === "rows") _mapRows = clamped;
 }
@@ -1383,7 +1383,8 @@ export async function formatActiveScene() {
 
     // Size the scene to EXACTLY _mapColumns × _mapRows hex cells, with edge hexes
     // rendered whole rather than sliced flat by the rectangular scene boundary.
-    // Verified against HexagonalGrid#calculateDimensions (HEXODDQ, N = 5..50):
+    // Verified against HexagonalGrid#calculateDimensions (HEXODDQ, N = 5..200,
+    // cap raised from 50 — formula is N-independent, live-verified at 65×77):
     //   • columns (flat-top hexes point left/right): width = floor((N + 1/3)·p),
     //     where the column pitch p = 0.75·hexWidth and hexWidth = S·(2/√3). This is
     //     the MAX width Foundry still counts as N columns — it lands on the last
