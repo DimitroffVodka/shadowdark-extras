@@ -8,6 +8,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  */
 
 import { AnimationFxSD } from "./AnimationFxSD.mjs";
+import { isItemPilesActor } from "./ItemPilesCompatSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -170,6 +171,21 @@ export async function playWeaponAnimation(token, item, configOverride = null) {
         if (!deps.hasSequencer) {
             console.warn(`${MODULE_ID} | Sequencer module is required for weapon animations`);
         }
+        return;
+    }
+
+    // Item Piles actors are inventories, not creatures wielding their contents.
+    // A configured weapon may keep its animation flag while stored, but it must
+    // never render as an attached/equipped sprite on the pile token.
+    if (isItemPilesActor(item?.parent ?? token?.actor)) {
+        await stopWeaponAnimation(token, item.id);
+        return;
+    }
+
+    // Unsaved form previews are allowed for unequipped character weapons.
+    // Saved/restored effects, however, only belong on actually equipped items.
+    if (!configOverride && item?.system?.equipped !== true) {
+        await stopWeaponAnimation(token, item.id);
         return;
     }
 
@@ -440,6 +456,12 @@ export function initWeaponAnimations() {
         const isEquipped = changes.system.equipped;
         const actor = item.actor;
         if (!actor) return;
+        if (isItemPilesActor(actor)) {
+            for (const token of getTokensForActor(actor)) {
+                await stopWeaponAnimation(token, item.id);
+            }
+            return;
+        }
 
         // Check if this weapon has animation config
         const animConfig = item.getFlag(MODULE_ID, "weaponAnimation");
@@ -473,6 +495,10 @@ export function initWeaponAnimations() {
         for (const token of canvas.tokens.placeables) {
             const actor = token.actor;
             if (!actor) continue;
+            if (isItemPilesActor(actor)) {
+                await stopAllWeaponAnimations(token);
+                continue;
+            }
 
             // Get all equipped items with animation config
             const equippedItems = actor.items.filter(i =>
@@ -513,6 +539,10 @@ export function initWeaponAnimations() {
 
         const actor = token.actor;
         if (!actor) return;
+        if (isItemPilesActor(actor)) {
+            await stopAllWeaponAnimations(token);
+            return;
+        }
 
         // Get all equipped items with animation config
         const equippedItems = actor.items.filter(i =>

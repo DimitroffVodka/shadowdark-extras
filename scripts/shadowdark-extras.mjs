@@ -89,6 +89,7 @@ import { initHexFog } from "./SDXHexFogSD.mjs";
 import { registerMaphubHooks } from "./MaphubSD.mjs";
 import { initUnidentifiedGMDisplay } from "./UnidentifiedDisplaySD.mjs";
 import { initTemplateElevationBadge } from "./TemplateElevationBadgeSD.mjs";
+import { initItemPilesCompatibility } from "./ItemPilesCompatSD.mjs";
 // Map-builder entry points — pulled in so we can expose them on module.api
 // for MCP / external automation. None of these modules register hooks at import
 // time (verified), so this only adds the named exports to the bundle graph.
@@ -200,6 +201,7 @@ Hooks.once("init", () => {
 
 	// Backport Shadowdark 4.0 fix: suppress AEs from stashed / unequipped / unidentified items
 	patchArmorActiveEffects();
+	initItemPilesCompatibility();
 
 	// Allow SDX-painted hex tiles to keep their true position at the scene's
 	// left/top edge instead of being clamped inward (fixes first-column / top-row
