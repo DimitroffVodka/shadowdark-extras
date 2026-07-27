@@ -91,6 +91,10 @@ jobs:
           fi
           [ "$fail" = "0" ]
 
+      - name: Extract release notes from changelog
+        if: ${{ inputs.dry_run != true }}
+        run: node dev/extract-release-notes.mjs "${{ steps.ver.outputs.tag }}" "${{ runner.temp }}/release-notes.md"
+
       - name: Publish artifacts to the release
         if: ${{ inputs.dry_run != true }}
         uses: ncipollo/release-action@v1
@@ -100,5 +104,6 @@ jobs:
           omitBodyDuringUpdate: true
           tag: ${{ steps.ver.outputs.tag }}
           name: ${{ steps.ver.outputs.tag }}
+          bodyFile: ${{ runner.temp }}/release-notes.md
           artifacts: './module.json, ./module.zip'
           token: ${{ secrets.GITHUB_TOKEN }}

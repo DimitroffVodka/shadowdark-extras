@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+- **GitHub releases now include real release notes and a direct Wiki link.** The release workflow extracts the matching version section from this changelog, fails rather than publishing an empty body when that section is missing, and appends a link to the project Wiki. The module manifest now uses that Wiki as its project URL as well.
+
 ## [6.10.50] — 2026-07-26 — Automated camping, applied carousing outcomes, and Item Piles compatibility
 
 ### Added

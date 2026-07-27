@@ -6,6 +6,7 @@
     "minimum": "13",
     "verified": "14"
   },
+  "url": "https://github.com/DimitroffVodka/shadowdark-extras/wiki",
   "description": "<p>Adds extra features to the Shadowdark RPG system: Party management sheet, Renown tracking for players, additional light sources (Candle), and Inventory tab for NPCs.</p>",
   "authors": [
     {
