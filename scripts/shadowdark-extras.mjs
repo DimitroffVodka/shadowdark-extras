@@ -17643,6 +17643,42 @@ Hooks.once("ready", async () => {
 			return executeItemMacro(item, context);
 		});
 
+		// Player-facing Party task selectors write to a GM-owned Party actor.
+		// Route those writes through the active GM while preserving ownership
+		// checks against the user who actually sent the request.
+		macroExecuteSocket.register(
+			"sdxMutatePartyTravel",
+			async function(partyUuid, request) {
+				const sender = game.users.get(this.socketdata?.userId);
+				if (!sender) return {
+					ok: false,
+					error: game.i18n.localize(
+						"SHADOWDARK_EXTRAS.party.travel.update_rejected"
+					)
+				};
+
+				try {
+					const partyActor = await fromUuid(partyUuid);
+					return await PartySheetSD.applyPartyTravelMutation(
+						partyActor,
+						request,
+						sender
+					);
+				} catch (error) {
+					console.warn(
+						`${MODULE_ID} | Rejected Party travel mutation from ${sender.name}:`,
+						error
+					);
+					return {
+						ok: false,
+						error: game.i18n.localize(
+							"SHADOWDARK_EXTRAS.party.travel.update_rejected"
+						)
+					};
+				}
+			}
+		);
+
 		// Register handler to sync template targets to GM
 		macroExecuteSocket.register("syncTargetsToGM", async (tokenIds) => {
 			// This runs on the GM's client - target the same tokens the player targeted

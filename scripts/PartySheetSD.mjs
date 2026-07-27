@@ -15,6 +15,11 @@ import {
 	getConfiguredPartyWeatherTable,
 	getPartyWeatherTableUuid
 } from "./PartyWeatherSettingsSD.mjs";
+import {
+	isPartyTravelMutationAuthorized,
+	planPartyTravelMutation,
+	planWeatherPredictionMutation
+} from "./PartyTravelMutationsSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -62,11 +67,158 @@ function getCampingTasks() {
 	return getTravelActivities();
 }
 
+async function getPartyMemberActor(memberKey) {
+	if (!memberKey) return null;
+	const worldActor = game.actors.get(memberKey);
+	if (worldActor) return worldActor;
+	if (!memberKey.includes(".")) return null;
+	try {
+		return await fromUuid(memberKey);
+	} catch {
+		return null;
+	}
+}
+
 /**
  * Party Actor Sheet
  * Extends the base ActorSheet to provide party management functionality
  */
 export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || ActorSheet) {
+
+	/**
+	 * Apply one validated Party travel mutation on the authoritative client.
+	 * The socket handler calls this with the sending user, never the active GM,
+	 * so ownership is checked against the player who made the request.
+	 *
+	 * @param {Actor} partyActor
+	 * @param {Object} request
+	 * @param {User} requestingUser
+	 * @returns {Promise<Object>}
+	 */
+	static async applyPartyTravelMutation(
+		partyActor,
+		request,
+		requestingUser = game.user
+	) {
+		if (
+			!partyActor
+			|| partyActor.type !== "NPC"
+			|| partyActor.getFlag(MODULE_ID, "isParty") !== true
+		) {
+			throw new Error("Invalid Party actor");
+		}
+		if (!requestingUser) throw new Error("Unknown requesting user");
+
+		const storedMemberKeys = partyActor.getFlag(MODULE_ID, "members");
+		const memberKeys = Array.isArray(storedMemberKeys)
+			? storedMemberKeys
+			: [];
+		const userOwnsMember = async memberKey => {
+			const member = await getPartyMemberActor(memberKey);
+			return Boolean(
+				member?.testUserPermission?.(requestingUser, "OWNER")
+			);
+		};
+		const ownedMemberKeys = [];
+		if (!requestingUser.isGM) {
+			const candidates = request.operation === "weatherPrediction"
+				? memberKeys
+				: [request.memberId];
+			for (const memberKey of candidates) {
+				if (await userOwnsMember(memberKey)) {
+					ownedMemberKeys.push(memberKey);
+				}
+			}
+		}
+		const authorized = isPartyTravelMutationAuthorized({
+			isGM: requestingUser.isGM,
+			memberKeys,
+			ownedMemberKeys,
+			operation: request.operation,
+			memberId: request.memberId
+		});
+
+		if (request.operation === "weatherPrediction") {
+			if (!authorized) throw new Error("Not authorized to use Party weather");
+
+			const prediction = partyActor.getFlag(
+				MODULE_ID,
+				"campingWeatherReroll"
+			);
+			const planned = planWeatherPredictionMutation(
+				prediction,
+				request.action
+			);
+			const key = `flags.${MODULE_ID}.campingWeatherReroll`;
+			await partyActor.update({
+				[key]: planned.value
+					?? new foundry.data.operators.ForcedDeletion()
+			});
+			return { ok: true, uses: planned.uses };
+		}
+
+		const memberId = request.memberId;
+		if (!memberKeys.includes(memberId)) {
+			throw new Error("Actor is not a member of this Party");
+		}
+		if (!authorized) {
+			throw new Error("Not authorized to change that Party member");
+		}
+
+		const assignments = partyActor.getFlag(
+			MODULE_ID,
+			"travelAssignments"
+		) ?? {};
+		const selections = partyActor.getFlag(
+			MODULE_ID,
+			"travelSelections"
+		) ?? {};
+		const planned = planPartyTravelMutation(
+			{ assignments, selections },
+			request,
+			getCampingTasks()
+		);
+		const base = `flags.${MODULE_ID}`;
+		const updates = {
+			[`${base}.travelAssignments`]: planned.assignments
+		};
+
+		// World actor IDs are safe dot paths and can update atomically. A
+		// compendium UUID contains dots, so replace that selections object
+		// instead of letting Foundry interpret the UUID as nested properties.
+		if (memberId.includes(".")) {
+			await partyActor.update({
+				...updates,
+				[`${base}.travelSelections`]:
+					new foundry.data.operators.ForcedDeletion()
+			});
+			await partyActor.setFlag(
+				MODULE_ID,
+				"travelSelections",
+				planned.selections
+			);
+			return { ok: true };
+		}
+
+		if (request.operation === "selectTask") {
+			for (const key of Object.keys(selections)) {
+				updates[`${base}.travelSelections.${key}.${memberId}`] =
+					new foundry.data.operators.ForcedDeletion();
+			}
+			if (request.taskKey) {
+				updates[
+					`${base}.travelSelections.${request.taskKey}.${memberId}`
+				] = 0;
+			}
+		} else {
+			updates[
+				`${base}.travelSelections.${request.taskKey}.${memberId}`
+			] = planned.selections[request.taskKey][memberId];
+		}
+
+		await partyActor.update(updates);
+		return { ok: true };
+	}
 
 	/** @inheritdoc */
 	static get defaultOptions() {
@@ -557,19 +709,63 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 	}
 
 	/**
-	 * Get travel task assignments
-	 * @returns {Object}
+	 * Execute Party travel writes locally for a GM, or route them to the active
+	 * GM for a player who normally cannot update the Party actor itself.
 	 */
-	_getTravelAssignments() {
-		return this.actor.getFlag(MODULE_ID, "travelAssignments") ?? {};
-	}
+	async _requestPartyTravelMutation(request) {
+		try {
+			if (game.user.isGM) {
+				return await PartySheetSD.applyPartyTravelMutation(
+					this.actor,
+					request,
+					game.user
+				);
+			}
 
-	/**
-	 * Set travel task assignments
-	 * @param {Object} assignments
-	 */
-	async _setTravelAssignments(assignments) {
-		await this.actor.setFlag(MODULE_ID, "travelAssignments", assignments);
+			const socket = game.modules.get(MODULE_ID)?.socket;
+			if (socket) {
+				const result = await socket.executeAsGM(
+					"sdxMutatePartyTravel",
+					this.actor.uuid,
+					request
+				);
+				if (!result?.ok) {
+					throw new Error(
+						result?.error
+						|| game.i18n.localize(
+							"SHADOWDARK_EXTRAS.party.travel.update_rejected"
+						)
+					);
+				}
+				return result;
+			}
+
+			if (this.actor.testUserPermission?.(game.user, "OWNER")) {
+				return await PartySheetSD.applyPartyTravelMutation(
+					this.actor,
+					request,
+					game.user
+				);
+			}
+			throw new Error(
+				game.i18n.localize(
+					"SHADOWDARK_EXTRAS.party.travel.gm_connection_required"
+				)
+			);
+		} catch (error) {
+			console.error(
+				"Shadowdark Extras | Party travel update failed:",
+				error
+			);
+			ui.notifications.error(
+				game.i18n.format(
+					"SHADOWDARK_EXTRAS.party.travel.update_failed",
+					{ message: error?.message || String(error) }
+				)
+			);
+			this.render(false);
+			return null;
+		}
 	}
 
 	/**
@@ -578,37 +774,23 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 	 * @param {string} memberId - The member ID or key
 	 */
 	async _assignMemberToTask(taskKey, memberId) {
-		const assignments = { ...this._getTravelAssignments() };
-
-		// Remove from any existing task first
-		for (const key of Object.keys(assignments)) {
-			if (Array.isArray(assignments[key])) {
-				assignments[key] = assignments[key].filter(id => id !== memberId);
-			}
-		}
-
-		// Add to new task
-		if (!Array.isArray(assignments[taskKey])) {
-			assignments[taskKey] = [];
-		}
-		if (!assignments[taskKey].includes(memberId)) {
-			assignments[taskKey].push(memberId);
-		}
-
-		await this._setTravelAssignments(assignments);
+		await this._requestPartyTravelMutation({
+			operation: "selectTask",
+			taskKey,
+			memberId
+		});
 	}
 
 	/**
 	 * Remove a member from a camping task
-	 * @param {string} taskKey - The task key
 	 * @param {string} memberId - The member ID or key
 	 */
-	async _removeMemberFromTask(taskKey, memberId) {
-		const assignments = { ...this._getTravelAssignments() };
-		if (Array.isArray(assignments[taskKey])) {
-			assignments[taskKey] = assignments[taskKey].filter(id => id !== memberId);
-		}
-		await this._setTravelAssignments(assignments);
+	async _removeMemberFromTask(memberId) {
+		await this._requestPartyTravelMutation({
+			operation: "selectTask",
+			taskKey: "",
+			memberId
+		});
 	}
 
 	/**
@@ -2246,7 +2428,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		const memberId = target.dataset.memberId;
 
 		if (taskKey && memberId) {
-			await this._removeMemberFromTask(taskKey, memberId);
+			await this._removeMemberFromTask(memberId);
 		} else {
 			console.warn("Shadowdark Extras | Missing taskKey or memberId for removal", taskKey, memberId);
 		}
@@ -2256,31 +2438,11 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		const select = event.currentTarget;
 		const memberId = select.dataset.memberId;
 		const taskKey = select.value;
-		const member = this.members.find(actor =>
-			actor.id === memberId || actor.uuid === memberId
-		);
-		if (!member || (!game.user.isGM && !member.isOwner)) return;
-
-		const assignments = foundry.utils.deepClone(this._getTravelAssignments());
-		for (const key of Object.keys(assignments)) {
-			if (Array.isArray(assignments[key])) {
-				assignments[key] = assignments[key].filter(id => id !== memberId);
-			}
-		}
-		if (taskKey) {
-			assignments[taskKey] ??= [];
-			assignments[taskKey].push(memberId);
-		}
-		await this._setTravelAssignments(assignments);
-
-		if (taskKey) {
-			const selections = foundry.utils.deepClone(
-				this.actor.getFlag(MODULE_ID, "travelSelections") ?? {}
-			);
-			selections[taskKey] ??= {};
-			selections[taskKey][memberId] = 0;
-			await this.actor.setFlag(MODULE_ID, "travelSelections", selections);
-		}
+		await this._requestPartyTravelMutation({
+			operation: "selectTask",
+			memberId,
+			taskKey
+		});
 	}
 
 	async _onSelectTravelAbility(event) {
@@ -2291,13 +2453,12 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			actor.id === memberId || actor.uuid === memberId
 		);
 		if (!member || !taskKey || (!game.user.isGM && !member.isOwner)) return;
-
-		const selections = foundry.utils.deepClone(
-			this.actor.getFlag(MODULE_ID, "travelSelections") ?? {}
-		);
-		selections[taskKey] ??= {};
-		selections[taskKey][memberId] = Number(select.value) || 0;
-		await this.actor.setFlag(MODULE_ID, "travelSelections", selections);
+		await this._requestPartyTravelMutation({
+			operation: "selectAbility",
+			memberId,
+			taskKey,
+			abilityIndex: Number(select.value) || 0
+		});
 	}
 
 	async _onBeginCampingRest(event) {
@@ -2324,20 +2485,22 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 
 		if (!taskKey || !memberId) return;
 
-		// Get current selections
-		const selections = { ...(this.actor.getFlag(MODULE_ID, "travelSelections") ?? {}) };
-		if (!selections[taskKey]) selections[taskKey] = {};
+		const selections = this.actor.getFlag(MODULE_ID, "travelSelections") ?? {};
 
 		const campingTasks = getCampingTasks();
 		const task = campingTasks.find(t => t.key === taskKey);
 		if (!task || !task.abilities || task.abilities.length < 2) return;
 
-		const currentIdx = selections[taskKey][memberId] ?? 0;
+		const currentIdx = selections[taskKey]?.[memberId] ?? 0;
 		const nextIdx = (currentIdx + 1) % task.abilities.length;
-		selections[taskKey][memberId] = nextIdx;
 
 		console.log("Shadowdark Extras | New Selection Index:", nextIdx);
-		await this.actor.setFlag(MODULE_ID, "travelSelections", selections);
+		await this._requestPartyTravelMutation({
+			operation: "selectAbility",
+			memberId,
+			taskKey,
+			abilityIndex: nextIdx
+		});
 	}
 
 	async _onChangeTravelDC(event) {
@@ -2407,13 +2570,13 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		const weatherTableUuid = getPartyWeatherTableUuid();
 		if (weatherTableUuid) {
 			const table = await getConfiguredPartyWeatherTable();
-				if (table) {
-					try {
-						await table.draw({ displayChat: true });
-						await this._maybeUseWeatherPrediction(
-							() => table.draw({ displayChat: true })
-						);
-						return;
+			if (table) {
+				try {
+					await table.draw({ displayChat: true });
+					await this._maybeUseWeatherPrediction(
+						() => table.draw({ displayChat: true })
+					);
+					return;
 				} catch (error) {
 					console.error("Shadowdark Extras | Error drawing Party weather RollTable:", error);
 				}
@@ -2453,19 +2616,19 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			});
 
 			if (!useReroll) {
-				await this.actor.unsetFlag(MODULE_ID, "campingWeatherReroll");
+				await this._requestPartyTravelMutation({
+					operation: "weatherPrediction",
+					action: "clear"
+				});
 				return;
 			}
 
-			uses--;
-			if (uses) {
-				await this.actor.setFlag(MODULE_ID, "campingWeatherReroll", {
-					...prediction,
-					uses
-				});
-			} else {
-				await this.actor.unsetFlag(MODULE_ID, "campingWeatherReroll");
-			}
+			const result = await this._requestPartyTravelMutation({
+				operation: "weatherPrediction",
+				action: "consume"
+			});
+			if (!result) return;
+			uses = result.uses;
 			await drawWeather();
 		}
 	}

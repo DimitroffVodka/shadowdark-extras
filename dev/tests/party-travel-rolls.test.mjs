@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -18,6 +18,11 @@ import {
 	getSdxActorAbility,
 	isSdxRollAuthority
 } from "../../scripts/SDXRollerData.mjs";
+import {
+	isPartyTravelMutationAuthorized,
+	planPartyTravelMutation,
+	planWeatherPredictionMutation
+} from "../../scripts/PartyTravelMutationsSD.mjs";
 
 const moduleRoot = new URL("../../", import.meta.url);
 
@@ -206,19 +211,154 @@ test("only the originating browser client has authority to finish an SDX roll", 
 	assert.equal(isSdxRollAuthority(rollData, ""), false);
 });
 
-test("Party sheet dispatches travel rolls to SDX and draws configured weather tables", () => {
+test("player task changes replace prior assignments and stale ability choices", () => {
+	const state = {
+		assignments: {
+			cook: ["hero", "friend"],
+			hunt: []
+		},
+		selections: {
+			cook: { hero: 1, friend: 0 },
+			hunt: { hero: 1 }
+		}
+	};
+	const tasks = [
+		{ key: "cook", abilities: ["INT", "WIS"] },
+		{ key: "hunt", abilities: ["STR", "DEX"] }
+	];
+
+	const moved = planPartyTravelMutation(state, {
+		operation: "selectTask",
+		memberId: "hero",
+		taskKey: "hunt"
+	}, tasks);
+
+	assert.deepEqual(moved.assignments, {
+		cook: ["friend"],
+		hunt: ["hero"]
+	});
+	assert.deepEqual(moved.selections, {
+		cook: { friend: 0 },
+		hunt: { hero: 0 }
+	});
+
+	const ability = planPartyTravelMutation(moved, {
+		operation: "selectAbility",
+		memberId: "hero",
+		taskKey: "hunt",
+		abilityIndex: 1
+	}, tasks);
+	assert.equal(ability.selections.hunt.hero, 1);
+});
+
+test("Party travel authorization is tied to the requested member", () => {
+	const base = {
+		memberKeys: ["hero", "friend"],
+		ownedMemberKeys: ["hero"]
+	};
+	assert.equal(isPartyTravelMutationAuthorized({
+		...base,
+		operation: "selectTask",
+		memberId: "hero"
+	}), true);
+	assert.equal(isPartyTravelMutationAuthorized({
+		...base,
+		operation: "selectTask",
+		memberId: "friend"
+	}), false);
+	assert.equal(isPartyTravelMutationAuthorized({
+		...base,
+		operation: "selectTask",
+		memberId: "outsider"
+	}), false);
+	assert.equal(isPartyTravelMutationAuthorized({
+		...base,
+		operation: "weatherPrediction"
+	}), true);
+	assert.equal(isPartyTravelMutationAuthorized({
+		...base,
+		ownedMemberKeys: [],
+		operation: "weatherPrediction"
+	}), false);
+	assert.equal(isPartyTravelMutationAuthorized({
+		...base,
+		isGM: true,
+		operation: "selectAbility",
+		memberId: "friend"
+	}), true);
+});
+
+test("player travel mutations reject unknown tasks and invalid abilities", () => {
+	const state = {
+		assignments: { cook: ["hero"] },
+		selections: { cook: { hero: 0 } }
+	};
+	const tasks = [{ key: "cook", abilities: ["INT", "WIS"] }];
+
+	assert.throws(() => planPartyTravelMutation(state, {
+		operation: "selectTask",
+		memberId: "hero",
+		taskKey: "secretTask"
+	}, tasks), /Unknown travel task/);
+	assert.throws(() => planPartyTravelMutation(state, {
+		operation: "selectAbility",
+		memberId: "hero",
+		taskKey: "cook",
+		abilityIndex: 9
+	}, tasks), /Invalid travel ability/);
+});
+
+test("weather prediction consumption is bounded and clearable", () => {
+	const consumed = planWeatherPredictionMutation({
+		uses: 2,
+		actorIds: ["hero"]
+	}, "consume");
+	assert.deepEqual(consumed, {
+		uses: 1,
+		value: { uses: 1, actorIds: ["hero"] }
+	});
+	assert.deepEqual(
+		planWeatherPredictionMutation(consumed.value, "consume"),
+		{ uses: 0, value: null }
+	);
+	assert.deepEqual(
+		planWeatherPredictionMutation({ uses: 2 }, "clear"),
+		{ uses: 0, value: null }
+	);
+	assert.throws(
+		() => planWeatherPredictionMutation(null, "consume"),
+		/No weather prediction rerolls remain/
+	);
+});
+
+test("every default camping task ships its configured banner", () => {
+	for (const task of DEFAULT_TRAVEL_ACTIVITIES) {
+		const relativePath = task.bannerImage.replace(
+			"modules/shadowdark-extras/",
+			""
+		);
+		assert.equal(
+			existsSync(new URL(relativePath, moduleRoot)),
+			true,
+			`${task.name} banner is missing: ${relativePath}`
+		);
+	}
+});
+
+test("Party sheet routes player travel writes through its GM socket", () => {
 	const source = readFileSync(
 		new URL("scripts/PartySheetSD.mjs", moduleRoot),
+		"utf8"
+	);
+	const mainSource = readFileSync(
+		new URL("scripts/shadowdark-extras.mjs", moduleRoot),
 		"utf8"
 	);
 
 	assert.match(source, /buildTravelTaskRollData\(/);
 	assert.match(source, /SDXRollerApp\.dispatchGroupRoll\(rollData\)/);
-	assert.match(source, /await table\.draw\(\{ displayChat: true \}\)/);
-	assert.match(source, /await this\._rollDefaultWeather\(\)/);
-	assert.match(source, /CampingRestApp\.show\(this\.actor, members/);
-	assert.match(source, /data-action='select-travel-task'/);
-	assert.match(source, /_maybeUseWeatherPrediction/);
+	assert.match(source, /executeAsGM\(\s*"sdxMutatePartyTravel"/);
+	assert.match(mainSource, /register\(\s*"sdxMutatePartyTravel"/);
 });
 
 test("camping procedure applies supplies, recovery, and tangible task outcomes", () => {

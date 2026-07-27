@@ -127,8 +127,11 @@ camping tasks, and full rests. The default speeds are **Slow**, **Normal**, and
 
 Assign a character with either the task/ability dropdowns or by dragging their
 portrait onto a task. Players can only assign characters they own, and only
-Party members are accepted. Multiple characters can perform the same task.
-The GM can set a separate DC for each task; the default is 12.
+Party members are accepted. A player's selection is validated against character
+ownership and sent to the active GM for the write, so the Party actor itself
+does not need player ownership. This requires an active GM and SocketLib.
+Multiple characters can perform the same task. The GM can set a separate DC
+for each task; the default is 12.
 
 Click a task header to make an isolated task roll. This opens the cinematic SDX
 Roller for the assigned characters but does not apply camping supplies, rest
@@ -195,6 +198,9 @@ The selector chooses a table; edit its entries through Foundry's normal
 RollTable sheet. To customize a read-only compendium table, import/copy it into
 the world, edit the world copy, and select that copy. A successful Predict task
 offers its reroll immediately after the next weather result appears.
+
+Player-triggered Predict consumption is likewise validated and written by the
+active GM.
 
 ---
 

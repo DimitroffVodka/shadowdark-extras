@@ -510,11 +510,17 @@ export function getCarousingSession() {
 /**
  * Save carousing session state
  */
-async function saveCarousingSession(session) {
+async function saveCarousingSession(session, { replaceResults = false } = {}) {
     const journal = getCarousingJournal();
     if (!journal) {
         console.error(`${MODULE_ID} | Carousing journal not found!`);
         return;
+    }
+    if (replaceResults) {
+        await journal.update({
+            [`flags.${MODULE_ID}.carousingSession.results`]:
+                new foundry.data.operators.ForcedDeletion()
+        });
     }
     await journal.setFlag(MODULE_ID, "carousingSession", session);
 }
@@ -526,21 +532,22 @@ export async function setCarousingDrop(userId, actorId) {
     const journal = getCarousingJournal();
     if (!journal) return;
 
-    // Flag objects merge on update, so a key is only removed via the "-="
-    // prefix. Mutating a local copy and writing it back leaves the key in the
+    // Flag objects merge on update, so removed keys need Foundry's deletion
+    // operator. Mutating a local copy and writing it back leaves the key in the
     // stored data — which is how cleared drops came back on reload and how
     // results were stranded without a participant.
     const base = `flags.${MODULE_ID}.carousingSession`;
     const updates = {
         // Always clear confirmation and results when the actor changes or is removed
-        [`${base}.confirmations.-=${userId}`]: null,
-        [`${base}.results.-=${userId}`]: null
+        [`${base}.confirmations.${userId}`]: new foundry.data.operators.ForcedDeletion(),
+        [`${base}.results.${userId}`]: new foundry.data.operators.ForcedDeletion()
     };
 
     if (actorId) {
         updates[`flags.${MODULE_ID}.carousingDrops.${userId}`] = actorId;
     } else {
-        updates[`flags.${MODULE_ID}.carousingDrops.-=${userId}`] = null;
+        updates[`flags.${MODULE_ID}.carousingDrops.${userId}`] =
+            new foundry.data.operators.ForcedDeletion();
     }
 
     await journal.update(updates);
@@ -600,13 +607,12 @@ export async function setPlayerConfirmation(userId, confirmed) {
     const journal = getCarousingJournal();
     if (!journal) return;
 
-    // Unconfirming needs the "-=" prefix — a plain delete on the session object
-    // only ever changed the in-memory copy, so the confirmation reappeared on
-    // the next reload.
+    // A plain delete on the session object only ever changed the in-memory copy,
+    // so the confirmation reappeared on the next reload.
     const key = `flags.${MODULE_ID}.carousingSession.confirmations`;
     await journal.update(confirmed
         ? { [`${key}.${userId}`]: true }
-        : { [`${key}.-=${userId}`]: null });
+        : { [`${key}.${userId}`]: new foundry.data.operators.ForcedDeletion() });
 }
 
 /**
@@ -619,11 +625,11 @@ export async function setPlayerModifier(userId, type, value) {
     const journal = getCarousingJournal();
     if (!journal) return;
 
-    // Same merge caveat: clearing a modifier needs "-=", or the old value
-    // survives in the stored session.
+    // Same merge caveat: clearing a modifier needs a deletion operator, or the
+    // old value survives in the stored session.
     const key = `flags.${MODULE_ID}.carousingSession.modifiers.${userId}`;
     await journal.update(!value || value.trim() === ""
-        ? { [`${key}.-=${type}`]: null }
+        ? { [`${key}.${type}`]: new foundry.data.operators.ForcedDeletion() }
         : { [`${key}.${type}`]: value.trim() });
     // Don't re-render everything on every keystroke if called from input, 
     // but useful for sync
@@ -657,16 +663,16 @@ export async function removeGmParticipant(actorId) {
     gmActors = gmActors.filter(id => id !== actorId);
 
     // Flag objects MERGE on update, so mutating a local copy and writing it
-    // back does not remove keys — the "-=" prefix is required. Without it the
-    // confirmation, result and modifier all survived the removal, which is how
-    // results ended up stranded without a participant to render them.
+    // back does not remove keys — the deletion operator is required. Without it
+    // the confirmation, result and modifier all survived the removal, which is
+    // how results ended up stranded without a participant to render them.
     const participantId = `actor-${actorId}`;
     const base = `flags.${MODULE_ID}.carousingSession`;
     await journal.update({
         [`flags.${MODULE_ID}.carousingGmActors`]: gmActors,
-        [`${base}.confirmations.-=${participantId}`]: null,
-        [`${base}.results.-=${participantId}`]: null,
-        [`${base}.modifiers.-=${participantId}`]: null
+        [`${base}.confirmations.${participantId}`]: new foundry.data.operators.ForcedDeletion(),
+        [`${base}.results.${participantId}`]: new foundry.data.operators.ForcedDeletion(),
+        [`${base}.modifiers.${participantId}`]: new foundry.data.operators.ForcedDeletion()
     });
     rerenderPlayerSheets();
 }
@@ -798,8 +804,8 @@ export async function pruneOfflineCarousingData() {
         return !user || !user.active;
     };
 
-    // Keys are removed with the "-=" prefix; writing a mutated copy back would
-    // merge and leave every "pruned" entry in place.
+    // Keys are removed with Foundry's deletion operator; writing a mutated copy
+    // back would merge and leave every "pruned" entry in place.
     const updates = {};
     const base = `flags.${MODULE_ID}.carousingSession`;
 
@@ -807,14 +813,16 @@ export async function pruneOfflineCarousingData() {
     // cannot strand an outcome the GM has not applied yet.
     for (const userId of Object.keys(drops)) {
         if (!isOffline(userId) || session.results?.[userId]) continue;
-        updates[`flags.${MODULE_ID}.carousingDrops.-=${userId}`] = null;
+        updates[`flags.${MODULE_ID}.carousingDrops.${userId}`] =
+            new foundry.data.operators.ForcedDeletion();
     }
 
     // Check confirmations (GM-managed actors are not users, so skip them)
     for (const userId of Object.keys(session.confirmations || {})) {
         if (userId.startsWith("actor-")) continue;
         if (!isOffline(userId) || session.results?.[userId]) continue;
-        updates[`${base}.confirmations.-=${userId}`] = null;
+        updates[`${base}.confirmations.${userId}`] =
+            new foundry.data.operators.ForcedDeletion();
     }
 
     if (Object.keys(updates).length) await journal.update(updates);
@@ -1492,7 +1500,7 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
         costPerPerson
     };
     await applyExpandedCarousingNotes(session);
-    await saveCarousingSession(session);
+    await saveCarousingSession(session, { replaceResults: true });
     await writeCarousingLogPage(session);
 
     // Send chat message
@@ -1690,7 +1698,7 @@ export async function executeCarousingRolls() {
         tierCost: tier.cost || 0,
         costPerPerson
     };
-    await saveCarousingSession(session);
+    await saveCarousingSession(session, { replaceResults: true });
     await writeCarousingLogPage(session);
 
     // Send chat message
@@ -1878,26 +1886,64 @@ async function appendCarousingNote(actor, description, benefit, appliedSummary, 
 }
 
 /** Build the human-readable sheet note for an Expanded-mode result. */
-export function buildExpandedCarousingNote(result) {
-    const benefits = (result?.benefits || []).map(entry => entry?.description || "").filter(Boolean);
-    const mishaps = (result?.mishaps || []).map(entry => entry?.description || "").filter(Boolean);
+export function buildExpandedCarousingNote(result, {
+    showBenefits = true,
+    showMishaps = true,
+    labels = {}
+} = {}) {
+    const benefits = showBenefits
+        ? (result?.benefits || []).map(entry => entry?.description || "").filter(Boolean)
+        : [];
+    const mishaps = showMishaps
+        ? (result?.mishaps || []).map(entry => entry?.description || "").filter(Boolean)
+        : [];
     const sections = [];
-    if (benefits.length) sections.push(`Benefits: ${benefits.join("; ")}`);
-    if (mishaps.length) sections.push(`Mishaps: ${mishaps.join("; ")}`);
+    if (benefits.length) {
+        sections.push(`${labels.benefits || "Benefits"}: ${benefits.join("; ")}`);
+    }
+    if (mishaps.length) {
+        sections.push(`${labels.mishaps || "Mishaps"}: ${mishaps.join("; ")}`);
+    }
 
-    const summary = [`+${result?.xp ?? 0} XP`];
+    const summary = [labels.xp || `+${result?.xp ?? 0} XP`];
     const renown = [...(result?.benefits || []), ...(result?.mishaps || [])]
         .reduce((total, entry) => total + (Number(entry?.renownDelta) || 0), 0);
-    if (renown) summary.push(`${renown > 0 ? "+" : ""}${renown} renown`);
+    if (renown) {
+        summary.push(
+            labels.renown
+            || `${renown > 0 ? "+" : ""}${renown} renown`
+        );
+    }
 
     return {
-        description: sections.join(" — ") || "No benefits or mishaps",
+        description: sections.join(" — ")
+            || labels.noVisibleOutcomes
+            || "No visible benefits or mishaps",
         summary: summary.join(", ")
     };
 }
 
-/** Append missing Expanded-mode results to participant sheets exactly once. */
+/**
+ * Append missing Expanded-mode results to participant sheets exactly once.
+ * Sheet Notes are player-visible, so hidden descriptions must stay out of them
+ * just as they stay out of the player-facing portion of the chat card.
+ */
 async function applyExpandedCarousingNotes(session) {
+    const showBenefits = game.settings.get(
+        MODULE_ID,
+        "carousingShowBenefitsToPlayers"
+    ) ?? true;
+    const showMishaps = game.settings.get(
+        MODULE_ID,
+        "carousingShowMishapsToPlayers"
+    ) ?? true;
+    const labels = {
+        benefits: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.benefits"),
+        mishaps: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.mishaps"),
+        noVisibleOutcomes: game.i18n.localize(
+            "SHADOWDARK_EXTRAS.carousing.note_no_visible_outcomes"
+        )
+    };
     let changed = false;
     for (const [participantId, result] of Object.entries(session?.results || {})) {
         const expanded = Array.isArray(result.benefits) || Array.isArray(result.mishaps);
@@ -1905,7 +1951,26 @@ async function applyExpandedCarousingNotes(session) {
         const actor = getParticipantActor(participantId);
         if (!actor) continue;
 
-        const note = buildExpandedCarousingNote(result);
+        const renown = [...(result?.benefits || []), ...(result?.mishaps || [])]
+            .reduce(
+                (total, entry) => total + (Number(entry?.renownDelta) || 0),
+                0
+            );
+        const note = buildExpandedCarousingNote(result, {
+            showBenefits,
+            showMishaps,
+            labels: {
+                ...labels,
+                xp: game.i18n.format(
+                    "SHADOWDARK_EXTRAS.carousing.effect_xp",
+                    { amount: result?.xp ?? 0 }
+                ),
+                renown: game.i18n.format(
+                    "SHADOWDARK_EXTRAS.carousing.effect_renown",
+                    { delta: renown > 0 ? `+${renown}` : String(renown) }
+                )
+            }
+        });
         await appendCarousingNote(actor, note.description, "", note.summary, `${session.logId}:${participantId}`);
         result.noteApplied = { at: Date.now(), actorName: actor.name };
         changed = true;
@@ -2027,7 +2092,12 @@ export function normalizeCarousingLogResults(session, resolveActorName = () => "
             outcome: expanded ? `${result.xp ?? 0} XP` : (result.description || ""),
             benefits,
             mishaps,
-            applied: result.applied?.summary || (expanded ? "Automatic" : "")
+            applied: result.applied?.summary || "",
+            appliedState: expanded
+                ? "automatic"
+                : result.applied
+                    ? "applied"
+                    : "pending"
         };
     });
 }
@@ -2048,12 +2118,24 @@ export async function writeCarousingLogPage(session) {
     const meta = session.logMeta || {};
 
     const rows = normalizeCarousingLogResults(session, pid => getParticipantActor(pid)?.name).map(entry => {
-        const expanded = entry.applied === "Automatic";
-        const applied = expanded
-            ? esc(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.log_automatic"))
-            : entry.applied
-                ? esc(entry.applied)
-                : `<em>${esc(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.log_not_applied"))}</em>`;
+        let applied;
+        if (entry.appliedState === "automatic") {
+            applied = esc(
+                game.i18n.localize(
+                    "SHADOWDARK_EXTRAS.carousing.log_automatic"
+                )
+            );
+        } else if (entry.applied) {
+            applied = esc(entry.applied);
+        } else if (entry.appliedState === "applied") {
+            applied = esc(
+                game.i18n.localize("SHADOWDARK_EXTRAS.carousing.log_applied")
+            );
+        } else {
+            applied = `<em>${esc(game.i18n.localize(
+                "SHADOWDARK_EXTRAS.carousing.log_not_applied"
+            ))}</em>`;
+        }
         const benefits = entry.benefits.map(esc).join("<br>");
         const mishaps = entry.mishaps.map(esc).join("<br>");
         return `<tr>

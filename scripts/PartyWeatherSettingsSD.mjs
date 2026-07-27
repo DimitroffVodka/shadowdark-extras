@@ -176,5 +176,3 @@ export function registerPartyWeatherSettings() {
 		restricted: true
 	});
 }
-
-export { SETTING_KEY as PARTY_WEATHER_SETTING_KEY };

@@ -51,15 +51,31 @@ for (const pack of manifest.packs ?? []) {
     fail.push(`pack ${pack.name}: not built — ${pack.path} is missing (run \`npm run pack\`)`);
     continue;
   }
+  let db;
   try {
-    const db = new ClassicLevel(resolve(root, pack.path), { keyEncoding: "utf8", valueEncoding: "json" });
+    db = new ClassicLevel(resolve(root, pack.path), {
+      keyEncoding: "utf8",
+      valueEncoding: "json"
+    });
+    await db.open();
+    const keys = await db.keys().all();
     let docs = 0;
-    for await (const k of db.keys()) { if (!k.startsWith("!folders!")) docs++; }
-    await db.close();
+    for (const key of keys) {
+      if (!key.startsWith("!folders!")) docs++;
+    }
     if (docs === 0) fail.push(`pack ${pack.name}: built but EMPTY (0 documents) — ${pack.path}`);
     else ok.push(`pack ${pack.name}: ${docs} documents`);
   } catch (e) {
-    fail.push(`pack ${pack.name}: unreadable LevelDB at ${pack.path} — ${e.message}`);
+    const reason = e.cause?.message || e.message;
+    fail.push(`pack ${pack.name}: unreadable LevelDB at ${pack.path} — ${reason}`);
+  } finally {
+    if (db?.status === "open") {
+      try {
+        await db.close();
+      } catch (e) {
+        fail.push(`pack ${pack.name}: could not close LevelDB at ${pack.path} — ${e.message}`);
+      }
+    }
   }
 }
 

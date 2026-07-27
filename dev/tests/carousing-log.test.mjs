@@ -40,7 +40,8 @@ eq("original results are normalized", normalizeCarousingLogResults({
     outcome: "You made a noble friend",
     benefits: ["Gain 4 XP"],
     mishaps: [],
-    applied: "+4 XP"
+    applied: "+4 XP",
+    appliedState: "applied"
 }]);
 
 eq("expanded results include benefits and mishaps", normalizeCarousingLogResults({
@@ -58,7 +59,27 @@ eq("expanded results include benefits and mishaps", normalizeCarousingLogResults
     outcome: "3 XP",
     benefits: ["A bard praises you; +1 renown"],
     mishaps: ["You lose your boots"],
-    applied: "Automatic"
+    applied: "",
+    appliedState: "automatic"
+}]);
+
+eq("narrative-only applied results remain applied", normalizeCarousingLogResults({
+    results: {
+        "actor-a": {
+            roll: 2,
+            description: "A noble owes you a favor",
+            benefit: "",
+            applied: { summary: "", actorName: "Aran" }
+        }
+    }
+}, names), [{
+    name: "Aran",
+    roll: 2,
+    outcome: "A noble owes you a favor",
+    benefits: [],
+    mishaps: [],
+    applied: "",
+    appliedState: "applied"
 }]);
 
 eq("missing result collections are safe", normalizeCarousingLogResults({ results: {} }, names), []);
@@ -77,8 +98,38 @@ eq("expanded notes still record uneventful XP", buildExpandedCarousingNote({
     benefits: [],
     mishaps: []
 }), {
-    description: "No benefits or mishaps",
+    description: "No visible benefits or mishaps",
     summary: "+1 XP"
+});
+
+eq("expanded notes omit outcomes hidden from players", buildExpandedCarousingNote({
+    xp: 3,
+    benefits: [{ description: "A bard praises you; +1 renown", renownDelta: 1 }],
+    mishaps: [{ description: "You lose your boots", renownDelta: 0 }]
+}, {
+    showBenefits: true,
+    showMishaps: false,
+    labels: {
+        benefits: "Benefits",
+        mishaps: "Mishaps",
+        noVisibleOutcomes: "No visible outcomes"
+    }
+}), {
+    description: "Benefits: A bard praises you; +1 renown",
+    summary: "+3 XP, +1 renown"
+});
+
+eq("expanded notes disclose no hidden descriptions", buildExpandedCarousingNote({
+    xp: 2,
+    benefits: [{ description: "Secret benefit", renownDelta: 0 }],
+    mishaps: [{ description: "Secret mishap", renownDelta: 0 }]
+}, {
+    showBenefits: false,
+    showMishaps: false,
+    labels: { noVisibleOutcomes: "No visible outcomes" }
+}), {
+    description: "No visible outcomes",
+    summary: "+2 XP"
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

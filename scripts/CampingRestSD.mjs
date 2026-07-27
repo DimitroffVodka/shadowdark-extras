@@ -376,7 +376,6 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const resourceActors = [this.partyActor, ...this.members];
 		return {
 			members,
-			tasks,
 			totalRations: itemQuantity(this.partyActor, RATION_PATTERN)
 				+ this.members.reduce((sum, actor) => sum + itemQuantity(actor, RATION_PATTERN), 0),
 			totalTorches: getItemStacks(resourceActors, TORCH_PATTERN, { inactiveLightsOnly: true })
@@ -385,8 +384,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				resourceActors,
 				TORCH_PATTERN,
 				{ inactiveLightsOnly: true }
-			).reduce((sum, stack) => sum + stack.quantity, 0) >= CAMPFIRE_TORCH_COST,
-			torchCost: CAMPFIRE_TORCH_COST
+			).reduce((sum, stack) => sum + stack.quantity, 0) >= CAMPFIRE_TORCH_COST
 		};
 	}
 
@@ -567,10 +565,14 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	async _rollInterruptionChecks(campers) {
 		const task = {
 			key: "interruptedRest",
-			name: "Interrupted Rest",
+			name: game.i18n.localize(
+				"SHADOWDARK_EXTRAS.camping_rest.interruption_check"
+			),
 			abilities: ["CON"],
 			campfire: false,
-			description: "Success: The interrupted character still gains the benefits of resting.",
+			description: game.i18n.localize(
+				"SHADOWDARK_EXTRAS.camping_rest.interruption_check_description"
+			),
 			bannerImage: "modules/shadowdark-extras/assets/travel/batten_down.png"
 		};
 		const actors = campers.map(camper => camper.actor);
@@ -701,7 +703,6 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				}
 			}
 
-			const rationPlan = this._buildRationPlan(plan.campers);
 			const actorMap = new Map([
 				[this.partyActor.id, this.partyActor],
 				...plan.campers.map(camper => [camper.actor.id, camper.actor])
@@ -907,11 +908,6 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				break;
 			}
 			case "keepWatch":
-				await this.partyActor.setFlag(MODULE_ID, "campingKeepWatch", {
-					actorId: actor.id,
-					half: camper.watchHalf,
-					createdAt: game.time.worldTime
-				});
 				benefits.push(
 					game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.benefit_watch", {
 						half: camper.watchHalf

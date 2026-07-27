@@ -86,7 +86,8 @@ universal Shadowdark field. SDX appends the full outcome to the character's
 Notes instead of guessing at mechanics.
 
 Expanded mode applies its numeric XP as part of its own roll path and does not
-reuse the Original Apply button.
+reuse the Original Apply button. Its player-visible benefit and mishap text is
+also appended to Notes once, along with the applied XP/Renown summary.
 
 ## Carousing Log
 
@@ -128,8 +129,11 @@ an Expanded outcome table merely because both contain prose.
 ## Visibility
 
 The GM can independently show or hide benefit and mishap descriptions from
-players. Costs and required player decisions remain visible when the workflow
-needs them.
+players. These controls apply both to player-facing chat and to the automatic
+Expanded-mode entry written to character Notes, so a hidden outcome is not
+silently disclosed on the character sheet. The GM-only Carousing Log retains
+the complete result. Costs and required player decisions remain visible when
+the workflow needs them.
 
 ---
 
