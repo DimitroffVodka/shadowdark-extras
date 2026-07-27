@@ -1,6 +1,6 @@
 # The SDX Tray & Party Tools
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 The SDX Tray is the module's persistent control surface. It sits on the left
 edge of the canvas and combines a scene/party browser with the launch buttons
@@ -29,7 +29,7 @@ Which tabs appear depends on role, settings, scene grid, and feature access:
 The tray is client-scoped: one user may hide the tray or Party tab without
 changing another user's screen.
 
-![The expanded SDX Tray in Party view with player and NPC cards](images/sdx-tray-party-view.png)
+![The expanded SDX Tray in Party view with player and NPC cards](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-tray-party-view.png)
 
 ## Tool rail
 
@@ -53,9 +53,9 @@ The narrow button rail changes with your role and the active tab.
 | **SDX Roller** | Build a multi-participant dice check |
 | **POI transform controls** | Undo/redo, resize, rotate, or mirror POIs while painting |
 
-Map tools are covered in [Hexcrawls & Dungeons](Hexcrawls-and-Dungeons.md);
+Map tools are covered in [Hexcrawls & Dungeons](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Hexcrawls-and-Dungeons);
 general utilities are covered in
-[Canvas & Table Tools](Canvas-and-Table-Tools.md).
+[Canvas & Table Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Canvas-and-Table-Tools).
 
 ---
 
@@ -237,7 +237,7 @@ Shadowdark system tracker if needed. Party actors are included:
 - updates to member light items resynchronize relevant Party tokens.
 
 Torch visuals are separate from light emission. See
-[Animation FX](Animation-FX.md).
+[Animation FX](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Animation-FX).
 
 ---
 
@@ -263,6 +263,6 @@ and an active GM must be connected.
 
 ---
 
-**Related:** [Canvas & Table Tools](Canvas-and-Table-Tools.md) ·
-[Hexcrawls & Dungeons](Hexcrawls-and-Dungeons.md) ·
-[Character Sheets](Character-Sheets.md)
+**Related:** [Canvas & Table Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Canvas-and-Table-Tools) ·
+[Hexcrawls & Dungeons](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Hexcrawls-and-Dungeons) ·
+[Character Sheets](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Character-Sheets)

@@ -1,6 +1,6 @@
 # Journal Tools & Pins
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 SDX connects campaign text to the canvas through character journals, notes on
 placeable objects, styled journal pins, folders, map-note conversion, and
@@ -84,7 +84,7 @@ Edit one pin or the world defaults. Options include:
 - player visibility and line-of-sight behavior;
 - display-name source.
 
-![The Pin Style Editor preview and its tooltip, shape, size, and ring controls](images/pin-style-editor.png)
+![The Pin Style Editor preview and its tooltip, shape, size, and ring controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-style-editor.png)
 
 ### Pin name source
 
@@ -159,7 +159,7 @@ the added control to present it.
 ## Easy Reference
 
 The ProseMirror Easy Reference menu inserts live NPC, Item, RollTable, check, and
-dice syntax. See [Easy Reference](Easy-Reference.md).
+dice syntax. See [Easy Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Easy-Reference).
 
 ---
 
@@ -186,6 +186,6 @@ threshold; for map-sized hex art, use Fit to hex grid.
 
 ---
 
-**Related:** [Hexcrawls & Dungeons](Hexcrawls-and-Dungeons.md) ·
-[Easy Reference](Easy-Reference.md) ·
-[Character Sheets](Character-Sheets.md)
+**Related:** [Hexcrawls & Dungeons](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Hexcrawls-and-Dungeons) ·
+[Easy Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Easy-Reference) ·
+[Character Sheets](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Character-Sheets)

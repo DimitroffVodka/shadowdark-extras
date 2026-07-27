@@ -1,6 +1,6 @@
 # NPCs & Effects
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 SDX gives NPCs a fuller inventory, explicit creature types, typed attacks,
 Activity-driven abilities, quick conditions, mysterious casting, and a reusable
@@ -34,7 +34,7 @@ drive:
 
 Open **Manage Creature Types** to add custom choices.
 
-![An NPC sheet with its creature type, attacks, and features visible](images/npc-creature-type-sheet.png)
+![An NPC sheet with its creature type, attacks, and features visible](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/npc-creature-type-sheet.png)
 
 ### Effective type resolution
 
@@ -48,7 +48,7 @@ The map lets stock bestiary creatures participate without editing every actor.
 A manual choice wins, which is useful for reskinned or homebrew creatures.
 
 The read-only API exposes both effective and raw-name-map lookups. See
-[Developer API](Developer-API.md).
+[Developer API](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Developer-API).
 
 ## NPC item sheets
 
@@ -77,7 +77,7 @@ same model as player spells.
 Special Attacks receive Activity, Description, and Macro tabs for abilities that
 do not fit a normal weapon line.
 
-See [Spell Automation](Spell-Automation.md).
+See [Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Spell-Automation).
 
 ## Mysterious Casting
 
@@ -137,7 +137,7 @@ automation and the public API.
 
 Auras are configured on the source item but processed against NPC/Player token
 geometry. Disposition, line of sight, range, elevation, and turn trigger all
-affect membership. See [Spell Automation](Spell-Automation.md#aura-effects).
+affect membership. See [Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Spell-Automation#aura-effects).
 
 ---
 
@@ -161,6 +161,6 @@ version with native Region membership/deduplication fixes.
 
 ---
 
-**Related:** [Combat & Damage](Combat-and-Damage.md) ·
-[Spell Automation](Spell-Automation.md) ·
-[Compendium Packs](Compendium-Packs.md)
+**Related:** [Combat & Damage](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Combat-and-Damage) ·
+[Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Spell-Automation) ·
+[Compendium Packs](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Compendium-Packs)

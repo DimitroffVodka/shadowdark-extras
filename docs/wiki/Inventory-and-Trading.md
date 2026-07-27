@@ -1,11 +1,11 @@
 # Inventory & Trading
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 SDX extends the Shadowdark inventory with containers, identification, visual
 rules, multi-selection, player transfers, party storage, and quick coin tools.
 
-![An enhanced Player inventory showing equipped gear, carried gear, slots, coins, and trading](images/inventory-sheet.png)
+![An enhanced Player inventory showing equipped gear, carried gear, slots, coins, and trading](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/inventory-sheet.png)
 
 ---
 
@@ -151,6 +151,6 @@ Inventory Styles editor.
 
 ---
 
-**Related:** [Character Sheets](Character-Sheets.md) ·
-[The SDX Tray & Party Tools](Tray-and-Party-Tools.md) ·
-[Compendium Packs](Compendium-Packs.md)
+**Related:** [Character Sheets](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Character-Sheets) ·
+[The SDX Tray & Party Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Tray-and-Party-Tools) ·
+[Compendium Packs](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Compendium-Packs)

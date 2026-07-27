@@ -1,6 +1,6 @@
 # Map Generators
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 The GM-only Map Generators launcher embeds six Watabou generators and can
 capture their current output into a Foundry Scene.
@@ -20,7 +20,7 @@ Click the map-location icon on the SDX Tray. Choose:
 | **Dungeon** | One-page room-and-corridor maps | Aligned grid, walls/doors, and map notes |
 | **Dwelling** | Houses, taverns, manors, and towers | Multi-level v14 Scene, per-floor background/walls, stair Regions |
 
-![The Maphub launcher with all six bundled map generators](images/map-generator-launcher.png)
+![The Maphub launcher with all six bundled map generators](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/map-generator-launcher.png)
 
 The generators and credits remain Watabou's; SDX supplies the Foundry wrapper,
 local bundled builds, capture, alignment, and document creation.
@@ -86,7 +86,7 @@ Wait until the dungeon is fully loaded. If JSON export or the render transform
 cannot be read, reopen the generator rather than importing a partially
 initialized window.
 
-![A one-page dungeon imported as a Foundry Scene with its grid, walls, doors, and room notes](images/dungeon-generator-result.png)
+![A one-page dungeon imported as a Foundry Scene with its grid, walls, doors, and room notes](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/dungeon-generator-result.png)
 
 ## Dwelling import
 
@@ -152,5 +152,5 @@ permission and the server data directory.
 
 ---
 
-**Related:** [Hexcrawls & Dungeons](Hexcrawls-and-Dungeons.md) ·
-[Canvas & Table Tools](Canvas-and-Table-Tools.md)
+**Related:** [Hexcrawls & Dungeons](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Hexcrawls-and-Dungeons) ·
+[Canvas & Table Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Canvas-and-Table-Tools)

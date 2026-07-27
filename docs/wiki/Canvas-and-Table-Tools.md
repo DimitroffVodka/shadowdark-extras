@@ -1,6 +1,6 @@
 # Canvas & Table Tools
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 SDX includes several smaller table-facing utilities: a selected-token toolbar,
 light tracker, sketch tools, group roller, scene overlay broadcaster, scene
@@ -38,7 +38,7 @@ Open the flame tool from the tray. It gathers active light-source items and
 supports Party actors in addition to normal Shadowdark actors.
 
 Use it to review remaining sources and toggle eligible lights. Visual torch
-animations are configured separately in [Animation FX](Animation-FX.md).
+animations are configured separately in [Animation FX](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Animation-FX).
 
 ## Drawing Tools
 
@@ -81,7 +81,7 @@ banner. They do not appear as standalone roll types in the generic roller
 because the Party sheet supplies the assigned actors, selected abilities, DC,
 campfire disadvantage, and rest context.
 
-![The SDX Roller configured for a Strength check with participants and an opposing contestant](images/sdx-roller.png)
+![The SDX Roller configured for a Strength check with participants and an opposing contestant](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-roller.png)
 
 ## ToM scenes and video overlays
 
@@ -104,7 +104,7 @@ ToM scenes are presentation records, distinct from Foundry canvas Scenes.
 ## Formation and marching
 
 The formation and marching-order tools are documented with the party workflow:
-[The SDX Tray & Party Tools](Tray-and-Party-Tools.md).
+[The SDX Tray & Party Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Tray-and-Party-Tools).
 
 ## Scene export
 
@@ -168,6 +168,6 @@ module manifest.
 
 ---
 
-**Related:** [The SDX Tray & Party Tools](Tray-and-Party-Tools.md) ·
-[Map Generators](Map-Generators.md) ·
-[Troubleshooting](Troubleshooting.md)
+**Related:** [The SDX Tray & Party Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Tray-and-Party-Tools) ·
+[Map Generators](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Map-Generators) ·
+[Troubleshooting](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Troubleshooting)

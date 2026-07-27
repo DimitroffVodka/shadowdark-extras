@@ -13,11 +13,11 @@ overview; the pages below explain where each tool lives and how to use it.
 
 If you have just installed Shadowdark Extras, read these in order:
 
-1. **[Installation & Setup](Installation-and-Setup.md)** — requirements,
+1. **[Installation & Setup](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Installation-and-Setup)** — requirements,
    dependencies, and a practical first-world checklist.
-2. **[The SDX Tray & Party Tools](Tray-and-Party-Tools.md)** — the persistent
+2. **[The SDX Tray & Party Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Tray-and-Party-Tools)** — the persistent
    left-side launcher for most of the module.
-3. **[Combat & Damage](Combat-and-Damage.md)** — damage cards, targeting,
+3. **[Combat & Damage](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Combat-and-Damage)** — damage cards, targeting,
    weapon bonuses, and combat defaults.
 
 The module is broad, but almost every feature is independent. You can keep the
@@ -29,39 +29,39 @@ defaults, disable the parts you do not use, and learn the rest as you need it.
 
 | Page | What it covers |
 |---|---|
-| [The SDX Tray & Party Tools](Tray-and-Party-Tools.md) | Party display, party actors, marching order, formations, lights, and tray navigation |
-| [Combat & Damage](Combat-and-Damage.md) | Enhanced damage cards, target/range rules, typed damage, weapon bonuses, and attack macros |
-| [Spell Automation](Spell-Automation.md) | Spell Activity configuration, templates, auras, saves, damage, effects, focus, durations, summons, and item macros |
-| [Animation FX](Animation-FX.md) | Sequencer/JB2A presets, sounds, per-item overrides, torch and level-up effects |
-| [Inventory & Trading](Inventory-and-Trading.md) | Containers, identification, bulk selection, inventory styles, coins, and player transfers |
-| [Carousing](Carousing.md) | Original and Expanded modes, custom tables, costs, outcome application, and the log |
-| [Canvas & Table Tools](Canvas-and-Table-Tools.md) | Token toolbar, light tracker, drawing tools, SDX Roller, scene navigation, overlays, and scene transfer |
+| [The SDX Tray & Party Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Tray-and-Party-Tools) | Party display, party actors, marching order, formations, lights, and tray navigation |
+| [Combat & Damage](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Combat-and-Damage) | Enhanced damage cards, target/range rules, typed damage, weapon bonuses, and attack macros |
+| [Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Spell-Automation) | Spell Activity configuration, templates, auras, saves, damage, effects, focus, durations, summons, and item macros |
+| [Animation FX](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Animation-FX) | Sequencer/JB2A presets, sounds, per-item overrides, torch and level-up effects |
+| [Inventory & Trading](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Inventory-and-Trading) | Containers, identification, bulk selection, inventory styles, coins, and player transfers |
+| [Carousing](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Carousing) | Original and Expanded modes, custom tables, costs, outcome application, and the log |
+| [Canvas & Table Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Canvas-and-Table-Tools) | Token toolbar, light tracker, drawing tools, SDX Roller, scene navigation, overlays, and scene transfer |
 
 ## Characters and creatures
 
 | Page | What it covers |
 |---|---|
-| [Character Sheets](Character-Sheets.md) | Enhanced headers, HP waves, themes, journal notes, sheet locks, Medkit, party actors, and custom item sheets |
-| [NPCs & Effects](NPCs-and-Effects.md) | NPC inventory and creature types, custom NPC item sheets, conditions, mysterious casting, and the effects library |
+| [Character Sheets](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Character-Sheets) | Enhanced headers, HP waves, themes, journal notes, sheet locks, Medkit, party actors, and custom item sheets |
+| [NPCs & Effects](https://github.com/DimitroffVodka/shadowdark-extras/wiki/NPCs-and-Effects) | NPC inventory and creature types, custom NPC item sheets, conditions, mysterious casting, and the effects library |
 
 ## Maps and campaign prep
 
 | Page | What it covers |
 |---|---|
-| [Map Generators](Map-Generators.md) | Realm, city, village, cave/glade, dungeon, and dwelling generators with Foundry scene import |
-| [Hexcrawls & Dungeons](Hexcrawls-and-Dungeons.md) | Hex formatting and painting, procedural terrain, POIs, fog, coordinates, dungeon painting, biomes, decor, and multi-level tools |
-| [Journal Tools & Pins](Journal-Tools-and-Pins.md) | Multi-page character notes, placeable notes, journal pins and folders, map-note conversion, and narration |
-| [Easy Reference](Easy-Reference.md) | ProseMirror inserts for NPC cards, item cards, roll tables, checks, and dice |
+| [Map Generators](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Map-Generators) | Realm, city, village, cave/glade, dungeon, and dwelling generators with Foundry scene import |
+| [Hexcrawls & Dungeons](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Hexcrawls-and-Dungeons) | Hex formatting and painting, procedural terrain, POIs, fog, coordinates, dungeon painting, biomes, decor, and multi-level tools |
+| [Journal Tools & Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Tools-and-Pins) | Multi-page character notes, placeable notes, journal pins and folders, map-note conversion, and narration |
+| [Easy Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Easy-Reference) | ProseMirror inserts for NPC cards, item cards, roll tables, checks, and dice |
 
 ## Reference
 
 | Page | What it covers |
 |---|---|
-| [Installation & Setup](Installation-and-Setup.md) | Supported versions, dependencies, permissions, updates, and disabling |
-| [Settings Reference](Settings-Reference.md) | Visible settings, configuration menus, defaults, scopes, and reload requirements |
-| [Compendium Packs](Compendium-Packs.md) | The four bundled SDX packs and safe customization practices |
-| [Troubleshooting](Troubleshooting.md) | Common symptoms, causes, fixes, and bug-report information |
-| [Developer API](Developer-API.md) | `game.modules.get("shadowdark-extras").api` and the stable automation surface |
+| [Installation & Setup](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Installation-and-Setup) | Supported versions, dependencies, permissions, updates, and disabling |
+| [Settings Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Settings-Reference) | Visible settings, configuration menus, defaults, scopes, and reload requirements |
+| [Compendium Packs](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Compendium-Packs) | The four bundled SDX packs and safe customization practices |
+| [Troubleshooting](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Troubleshooting) | Common symptoms, causes, fixes, and bug-report information |
+| [Developer API](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Developer-API) | `game.modules.get("shadowdark-extras").api` and the stable automation surface |
 
 ---
 

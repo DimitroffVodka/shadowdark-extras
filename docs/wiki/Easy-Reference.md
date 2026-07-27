@@ -1,6 +1,6 @@
 # Easy Reference
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 Easy Reference adds an SDX dropdown to Foundry's ProseMirror editor so journals,
 descriptions, and other rich-text fields can insert live game references without
@@ -120,5 +120,5 @@ numeric DC.
 
 ---
 
-**Related:** [Journal Tools & Pins](Journal-Tools-and-Pins.md) ·
-[Compendium Packs](Compendium-Packs.md)
+**Related:** [Journal Tools & Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Tools-and-Pins) ·
+[Compendium Packs](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Compendium-Packs)

@@ -1,6 +1,6 @@
 # Animation FX
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 SDX's native Animation FX engine uses Sequencer to play item and event effects.
 Bundled presets cover spells, weapons, common NPC attacks, equipped weapon
@@ -33,7 +33,7 @@ The manager groups presets into:
 
 Each category can be enabled independently.
 
-![The Animation FX master list with spell presets and Sequencer paths](images/animation-fx-master-list.png)
+![The Animation FX master list with spell presets and Sequencer paths](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/animation-fx-master-list.png)
 
 ## How a preset matches
 
@@ -175,6 +175,6 @@ half-initialized effects so one bad effect cannot strand the rest.
 
 ---
 
-**Related:** [Spell Automation](Spell-Automation.md) ·
-[Combat & Damage](Combat-and-Damage.md) ·
-[Settings Reference](Settings-Reference.md)
+**Related:** [Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Spell-Automation) ·
+[Combat & Damage](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Combat-and-Damage) ·
+[Settings Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Settings-Reference)

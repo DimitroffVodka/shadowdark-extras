@@ -1,6 +1,6 @@
 # Character Sheets
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 Shadowdark Extras extends player and NPC sheets without changing the underlying
 Shadowdark actor types. Most enhancements are world-controlled; Dark Mode is
@@ -26,7 +26,7 @@ world default for every actor that has no custom header.
 Clicking supported values opens the normal SDX/Shadowdark adjustment workflow;
 the header is not merely decorative.
 
-![An enhanced Player sheet with portrait HP wave, summary header, and themed tabs](images/enhanced-character-sheet.png)
+![An enhanced Player sheet with portrait HP wave, summary header, and themed tabs](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/enhanced-character-sheet.png)
 
 ## HP quick adjustment
 
@@ -100,7 +100,7 @@ journal:
 - rich-text editing;
 - quick inserts for information, warnings, quests, loot, and NPC notes.
 
-See [Journal Tools & Pins](Journal-Tools-and-Pins.md).
+See [Journal Tools & Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Tools-and-Pins).
 
 ## Sheet locks
 
@@ -136,7 +136,7 @@ entire world with **Medkit: Scan All Actors**.
 
 With **Enable Add Coins Button** on, the Coins area receives a quick adjustment
 control. Positive values add and negative values subtract. Transfers are a
-separate workflow covered in [Inventory & Trading](Inventory-and-Trading.md).
+separate workflow covered in [Inventory & Trading](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Inventory-and-Trading).
 
 ## Spellbook pack filter
 
@@ -158,7 +158,7 @@ SDX registers default sheets for several Shadowdark item types:
 | **NPC Special Attack** | Activity, Description, Macro |
 
 These are data editors as well as presentation sheets. See
-[Spell Automation](Spell-Automation.md) for Activity configuration.
+[Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Spell-Automation) for Activity configuration.
 
 ## Ammunition and staves
 
@@ -172,7 +172,7 @@ and restore their uses. The stored spell UUIDs must remain valid.
 
 SDX's Party actor has its own Members, Inventory, Travel, and Description tabs.
 It is documented with the tray because it coordinates the same roster:
-[The SDX Tray & Party Tools](Tray-and-Party-Tools.md).
+[The SDX Tray & Party Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Tray-and-Party-Tools).
 
 ---
 
@@ -194,6 +194,6 @@ the item window and reload after enabling/updating SDX.
 
 ---
 
-**Related:** [Inventory & Trading](Inventory-and-Trading.md) ·
-[Spell Automation](Spell-Automation.md) ·
-[The SDX Tray & Party Tools](Tray-and-Party-Tools.md)
+**Related:** [Inventory & Trading](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Inventory-and-Trading) ·
+[Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Spell-Automation) ·
+[The SDX Tray & Party Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Tray-and-Party-Tools)

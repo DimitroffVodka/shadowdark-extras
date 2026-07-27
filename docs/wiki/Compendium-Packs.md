@@ -1,6 +1,6 @@
 # Compendium Packs
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 Shadowdark Extras ships four module compendiums. They appear inside the
 **Shadowdark Extras** pack folder and are ordinary read-only module packs.
@@ -86,5 +86,5 @@ exists. Re-drop the effect from its current pack or world location.
 
 ---
 
-**Related:** [Character Sheets](Character-Sheets.md) ·
-[NPCs & Effects](NPCs-and-Effects.md) · [Developer API](Developer-API.md)
+**Related:** [Character Sheets](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Character-Sheets) ·
+[NPCs & Effects](https://github.com/DimitroffVodka/shadowdark-extras/wiki/NPCs-and-Effects) · [Developer API](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Developer-API)

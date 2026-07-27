@@ -1,6 +1,6 @@
 # Hexcrawls & Dungeons
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 The SDX Tray contains a full prep workflow: format a hex scene, paint or
 generate terrain, place POIs, key exploration data, add fog and coordinates,
@@ -49,7 +49,7 @@ A seed makes the procedural layout repeatable with the same inputs. Clear only
 targets tiles marked as SDX-generated; it is still destructive and asks for
 confirmation unless an authorized API caller forces it.
 
-![A completed hex-crawl map assembled on a Foundry hex scene](images/hexcrawl-map.png)
+![A completed hex-crawl map assembled on a Foundry hex scene](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/hexcrawl-map.png)
 
 ### 4. Place POIs
 
@@ -204,10 +204,10 @@ only SDX-generated documents at that level before rebuilding, then creates
 floors, walls, doors, biome props, stairs, decor, lights, and Regions according
 to the selected options.
 
-![A generated dungeon Scene with a complete room-and-corridor layout](images/dungeon-generator-result.png)
+![A generated dungeon Scene with a complete room-and-corridor layout](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/dungeon-generator-result.png)
 
 The public API hard-caps especially expansive values such as rooms, stairs, and
-clutter. See [Developer API](Developer-API.md).
+clutter. See [Developer API](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Developer-API).
 
 ## Biomes and decor
 
@@ -268,6 +268,6 @@ and restore from your duplicate if needed.
 
 ---
 
-**Related:** [Map Generators](Map-Generators.md) ·
-[Journal Tools & Pins](Journal-Tools-and-Pins.md) ·
-[Developer API](Developer-API.md)
+**Related:** [Map Generators](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Map-Generators) ·
+[Journal Tools & Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Tools-and-Pins) ·
+[Developer API](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Developer-API)

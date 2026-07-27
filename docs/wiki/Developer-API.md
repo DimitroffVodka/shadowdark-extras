@@ -1,6 +1,6 @@
 # Developer API
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 Shadowdark Extras exposes a public module API for macros, integrations, and
 MCP-driven prep.
@@ -183,6 +183,6 @@ Always validate the active Scene and current Level before a map mutation.
 
 ---
 
-**Related:** [Hexcrawls & Dungeons](Hexcrawls-and-Dungeons.md) ·
-[Compendium Packs](Compendium-Packs.md) ·
-[Troubleshooting](Troubleshooting.md)
+**Related:** [Hexcrawls & Dungeons](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Hexcrawls-and-Dungeons) ·
+[Compendium Packs](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Compendium-Packs) ·
+[Troubleshooting](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Troubleshooting)

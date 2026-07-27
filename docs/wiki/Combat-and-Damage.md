@@ -1,6 +1,6 @@
 # Combat & Damage
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 Shadowdark Extras adds a post-roll damage workflow, configurable target/range
 rules, typed damage processing, scrolling combat text, and item-level attack
@@ -24,7 +24,7 @@ For a confirmation-first table:
 4. Set target/range checks to **Warn**, not Block, until your item ranges and
    scene scale are verified.
 
-![The Automatic Combat Settings window showing damage-card and target controls](images/combat-settings.png)
+![The Automatic Combat Settings window showing damage-card and target controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/combat-settings.png)
 
 ## Enhanced damage cards
 
@@ -134,7 +134,7 @@ Bonus requirements can inspect combat context such as:
 - comparison operators such as equals, contains, starts with, or not-equal.
 
 Creature-type checks use the NPC's manual SDX type when set, then the bundled
-bestiary name map. See [NPCs & Effects](NPCs-and-Effects.md).
+bestiary name map. See [NPCs & Effects](https://github.com/DimitroffVodka/shadowdark-extras/wiki/NPCs-and-Effects).
 
 Test one requirement at a time before combining them. A bonus that does not
 appear is usually failing a requirement rather than failing to save.
@@ -210,5 +210,5 @@ may not be owned and no active GM may be available to authorize the change.
 
 ---
 
-**Related:** [Spell Automation](Spell-Automation.md) ·
-[NPCs & Effects](NPCs-and-Effects.md) · [Animation FX](Animation-FX.md)
+**Related:** [Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Spell-Automation) ·
+[NPCs & Effects](https://github.com/DimitroffVodka/shadowdark-extras/wiki/NPCs-and-Effects) · [Animation FX](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Animation-FX)

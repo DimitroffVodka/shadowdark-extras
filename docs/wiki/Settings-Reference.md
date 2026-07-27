@@ -1,6 +1,6 @@
 # Settings Reference
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 The visible settings and GM configuration menus registered by the current
 module. **World** settings apply to everyone; **Client** settings belong to the
@@ -35,7 +35,7 @@ These buttons open dedicated editors rather than a single checkbox or field.
 The pin editor can also open for one selected pin, and several map/dungeon
 editors are launched from the tray rather than Configure Settings.
 
-![The Automatic Combat Settings menu, one of SDX's dedicated configuration editors](images/combat-settings.png)
+![The Automatic Combat Settings menu, one of SDX's dedicated configuration editors](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/combat-settings.png)
 
 ## Combat settings menu defaults
 
@@ -179,5 +179,5 @@ All five Easy Reference categories are world-scoped and on by default:
 
 ---
 
-**Related:** [Installation & Setup](Installation-and-Setup.md) ·
-[Troubleshooting](Troubleshooting.md)
+**Related:** [Installation & Setup](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Installation-and-Setup) ·
+[Troubleshooting](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Troubleshooting)

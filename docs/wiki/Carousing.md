@@ -1,6 +1,6 @@
 # Carousing
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 Carousing is a shared downtime workflow with two rule modes, editable data,
 player-ready result cards, copper-precise costs, and a persistent GM log.
@@ -15,7 +15,7 @@ Carousing** is on.
 The GM assembles and manages the session; players can review/confirm the
 characters they own according to the active workflow.
 
-![The shared Carousing overlay with participant cards, tier controls, and the GM-managed roster](images/carousing-overlay.png)
+![The shared Carousing overlay with participant cards, tier controls, and the GM-managed roster](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/carousing-overlay.png)
 
 ## Choose a mode
 
@@ -158,6 +158,6 @@ copper-precise.
 
 ---
 
-**Related:** [Character Sheets](Character-Sheets.md) ·
-[Settings Reference](Settings-Reference.md) ·
-[Compendium Packs](Compendium-Packs.md)
+**Related:** [Character Sheets](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Character-Sheets) ·
+[Settings Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Settings-Reference) ·
+[Compendium Packs](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Compendium-Packs)

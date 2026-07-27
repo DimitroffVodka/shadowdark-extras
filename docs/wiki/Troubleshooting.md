@@ -1,6 +1,6 @@
 # Troubleshooting
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 Symptoms, likely causes, and fixes. Feature pages include more specific advice;
 this page covers problems that cross the module.
@@ -27,7 +27,7 @@ templates, or JavaScript after an update.
 
 ### A setting changed but nothing happened
 
-Check [Settings Reference](Settings-Reference.md). Settings marked **Reload**
+Check [Settings Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Settings-Reference). Settings marked **Reload**
 attach their behavior at startup. Reload the world after changing them.
 
 ---
@@ -264,5 +264,5 @@ or the [Discord community](https://discord.gg/ZBtQ9ub7Mn).
 
 ---
 
-**Related:** [Installation & Setup](Installation-and-Setup.md) ·
-[Settings Reference](Settings-Reference.md)
+**Related:** [Installation & Setup](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Installation-and-Setup) ·
+[Settings Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Settings-Reference)

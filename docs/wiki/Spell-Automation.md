@@ -1,6 +1,6 @@
 # Spell Automation
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 The **Activity** tab turns a Spell, Scroll, Wand, Potion, NPC Feature, or NPC
 Spell into a declarative workflow: choose targets, roll saves and damage, apply
@@ -29,7 +29,7 @@ The normal mode uses Foundry's current target set. Decide whether the item
 affects all valid targets, one random target, or a prompted selection where the
 section offers that choice.
 
-![A Spell Activity tab showing targeted-token, template, and aura automation controls](images/spell-automation-activity.png)
+![A Spell Activity tab showing targeted-token, template, and aura automation controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/spell-automation-activity.png)
 
 ### Measured templates
 
@@ -238,5 +238,5 @@ check.
 
 ---
 
-**Related:** [Combat & Damage](Combat-and-Damage.md) ·
-[Animation FX](Animation-FX.md) · [Compendium Packs](Compendium-Packs.md)
+**Related:** [Combat & Damage](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Combat-and-Damage) ·
+[Animation FX](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Animation-FX) · [Compendium Packs](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Compendium-Packs)

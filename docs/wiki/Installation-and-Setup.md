@@ -1,6 +1,6 @@
 # Installation & Setup
 
-[← Wiki home](Home.md)
+[← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
 ---
 
@@ -68,7 +68,7 @@ On the first world load:
 
 Most feature toggles are world-scoped. Appearance, tray visibility, and a few
 drawing/animation controls are per-client. See
-[Settings Reference](Settings-Reference.md).
+[Settings Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Settings-Reference).
 
 ## First-world checklist
 
@@ -78,7 +78,7 @@ Open a scene and look for the narrow SDX handle on the left edge of the canvas.
 Expand it and confirm the tabs render. If it does not appear, check the
 per-client **Enable SDX Tray** setting and reload.
 
-![The expanded SDX Tray showing the Party roster and tool rail](images/sdx-tray-party-view.png)
+![The expanded SDX Tray showing the Party roster and tool rail](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-tray-party-view.png)
 
 ### 2. Decide how automatic combat should be
 
@@ -168,5 +168,5 @@ Make a world backup before manually removing generated content or flags.
 
 ---
 
-**Next:** [The SDX Tray & Party Tools](Tray-and-Party-Tools.md) ·
-[Settings Reference](Settings-Reference.md)
+**Next:** [The SDX Tray & Party Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Tray-and-Party-Tools) ·
+[Settings Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Settings-Reference)
