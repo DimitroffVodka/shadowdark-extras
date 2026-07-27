@@ -4,7 +4,7 @@ A game-master toolkit and automation suite for
 [Shadowdark RPG](https://www.thearcanelibrary.com/pages/shadowdark) on Foundry
 VTT.
 
-This wiki is the full manual. The [README](../../README.md) is the feature
+This wiki is the full manual. The [README](https://github.com/DimitroffVodka/shadowdark-extras#readme) is the feature
 overview; the pages below explain where each tool lives and how to use it.
 
 ---
@@ -86,5 +86,5 @@ committing a map operation.
 
 - **Bugs and feature requests:** [GitHub issues](https://github.com/DimitroffVodka/shadowdark-extras/issues)
 - **Community help:** [Shadowdark Extras Discord](https://discord.gg/ZBtQ9ub7Mn)
-- **Release history:** [CHANGELOG.md](../../CHANGELOG.md)
-- **License:** [LICENSE](../../LICENSE)
+- **Release history:** [CHANGELOG.md](https://github.com/DimitroffVodka/shadowdark-extras/blob/main/CHANGELOG.md)
+- **License:** [LICENSE](https://github.com/DimitroffVodka/shadowdark-extras/blob/main/LICENSE)

@@ -93,7 +93,7 @@ density, branching, room-size bias, symmetry, stairs, clutter, texture, wall
 color/width, and shadows. Inputs are validated and expansive counts are capped.
 
 The detailed orchestration contract is in
-[SDX-MCP-DUNGEON-API.md](../../SDX-MCP-DUNGEON-API.md).
+[SDX-MCP-DUNGEON-API.md](https://github.com/DimitroffVodka/shadowdark-extras/blob/main/SDX-MCP-DUNGEON-API.md).
 
 ## Biomes
 
