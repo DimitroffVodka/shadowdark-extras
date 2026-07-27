@@ -49,7 +49,7 @@ A seed makes the procedural layout repeatable with the same inputs. Clear only
 targets tiles marked as SDX-generated; it is still destructive and asks for
 confirmation unless an authorized API caller forces it.
 
-![A completed hex-crawl map assembled on a Foundry hex scene](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/hexcrawl-map.png)
+<!-- Hex-crawl example image intentionally hidden pending replacement. -->
 
 ### 4. Place POIs
 
