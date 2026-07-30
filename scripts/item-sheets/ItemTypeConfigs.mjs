@@ -4,7 +4,7 @@
 import { generateSpellDamageConfigHTML } from './SpellDamageConfig.mjs';
 import { generateSummoningConfigHTML } from './SummoningConfig.mjs';
 import { generateItemGiveConfigHTML } from './ItemGiveConfig.mjs';
-import { generateItemMacroConfigHTML } from '../templates/ItemMacroConfig.mjs';
+import { generateItemMacroConfigHTML } from '../item-macros/ItemMacroConfig.mjs';
 import { generateTemplateTargetingConfigHTML } from './TemplateTargetingConfig.mjs';
 import { generateAnimationFxConfigHTML } from '../templates/AnimationFxConfig.mjs';
 

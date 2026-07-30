@@ -14,33 +14,33 @@ import {
     showIdentifyDialog,
     identifyItem,
     showItemReveal
-} from "./macros/identify.mjs";
+} from "../macros/identify.mjs";
 
 // Import Holy Weapon spell functions
 import {
     showHolyWeaponDialog,
     applyHolyWeapon
-} from "./macros/holy-weapon.mjs";
+} from "../macros/holy-weapon.mjs";
 
 // Import Cleansing Weapon spell functions
 import {
     showCleansingWeaponDialog,
     applyCleansingWeapon
-} from "./macros/cleansing-weapon.mjs";
+} from "../macros/cleansing-weapon.mjs";
 
 // Import Wrath spell functions
 import {
     showWrathWeaponDialog,
     applyWrathWeapon,
     applyWrathToAllWeapons
-} from "./macros/wrath.mjs";
+} from "../macros/wrath.mjs";
 
 // Import Shapechanger spell functions
 import {
     showShapechangerDialog,
     applyShapechanger,
     revertShapechanger
-} from "./macros/shapechanger.mjs";
+} from "../macros/shapechanger.mjs";
 
 // Re-export all functions for backward compatibility
 export {

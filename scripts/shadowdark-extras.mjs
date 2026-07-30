@@ -76,7 +76,7 @@ import { SceneImporter } from "./SceneImporter.mjs";
 import { initJournalPins } from "./JournalPinsSD.mjs";
 import { registerPinStyleSettings } from "./PinStyleEditorSD.mjs";
 import SheetLockManager from "./character-sheet/SheetLockManager.mjs";
-import "./SpellMacrosSD.mjs";
+import "./item-macros/SpellMacrosSD.mjs";
 import { initMysteriousCasting } from "./MysteriousCasting.mjs";
 import { TomSD } from "./TomSD.mjs";
 import { WallContextMenuSD } from "./WallContextMenuSD.mjs";
