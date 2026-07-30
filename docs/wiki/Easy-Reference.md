@@ -95,6 +95,9 @@ a new UUID that nothing points at. Copying does the same thing, leaving your
 existing journal syntax aimed at the original. Compendium UUIDs from a module
 hold only as long as that source document keeps shipping under the same pack and
 document id, which is worth knowing before you build a campaign on top of one.
+[Compendium Packs](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Compendium-Packs)
+lists what SDX ships and how to copy a document into the world so your edits
+survive an update.
 
 ## Narration
 

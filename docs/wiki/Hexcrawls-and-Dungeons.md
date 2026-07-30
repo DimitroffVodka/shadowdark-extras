@@ -56,8 +56,7 @@ controls.
 
 **Flatten Hexagons** consolidates the painted result into a lighter finished
 scene. Treat it as a commit step and keep a duplicate around if you expect to
-repaint individual tiles later. I keep the duplicate even when I'm sure I'm
-done with a map.
+repaint individual tiles later.
 
 ---
 
