@@ -11,7 +11,7 @@
 globalThis.CONST = { TABLE_RESULT_TYPES: { TEXT: "text", DOCUMENT: "document" }, USER_ROLES: {}, DOCUMENT_OWNERSHIP_LEVELS: { NONE: 0 } };
 globalThis.foundry = { utils: { escapeHTML: value => String(value) } };
 
-const { parseOutcomeEffects, hasOutcomeEffects, recordCarousingDebt } = await import("../../scripts/CarousingSD.mjs");
+const { parseOutcomeEffects, hasOutcomeEffects, recordCarousingDebt } = await import("../../scripts/party/carousing/CarousingSD.mjs");
 
 let pass = 0;
 let fail = 0;

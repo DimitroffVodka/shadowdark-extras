@@ -19,7 +19,7 @@ const {
     parsePipeOutcomeLine,
     parsePipeExpandedOutcomeLine,
     parsePipeDescriptionLine
-} = await import("../../scripts/CarousingFoundryImport.mjs");
+} = await import("../../scripts/party/carousing/CarousingFoundryImport.mjs");
 
 let pass = 0;
 let fail = 0;

@@ -9,7 +9,7 @@ globalThis.CONST = {
     DOCUMENT_OWNERSHIP_LEVELS: { NONE: 0 }
 };
 
-const { buildExpandedCarousingNote, normalizeCarousingLogResults } = await import("../../scripts/CarousingSD.mjs");
+const { buildExpandedCarousingNote, normalizeCarousingLogResults } = await import("../../scripts/party/carousing/CarousingSD.mjs");
 
 let pass = 0;
 let fail = 0;

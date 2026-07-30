@@ -13,7 +13,7 @@ const {
     getActorRenown,
     applyRenownDelta,
     migrateLegacyRenown
-} = await import("../../scripts/CarousingSD.mjs");
+} = await import("../../scripts/party/carousing/CarousingSD.mjs");
 
 let pass = 0;
 let fail = 0;
