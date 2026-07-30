@@ -23,7 +23,8 @@
  * Runs GM-only, once per world, gated on the `webpMigrationDone` setting.
  */
 
-const MODULE_ID = "shadowdark-extras";
+import { MODULE_ID } from "./module-id.mjs";
+
 const PREFIX = `modules/${MODULE_ID}/`;
 const RASTER = /\.(png|jpe?g)$/i;
 
