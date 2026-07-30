@@ -4,7 +4,13 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [6.10.51] — 2026-07-30 — Background and NPC Attack sheets save reliably on Foundry v14
+
+### Fixed
+
+- **Editing a Background item no longer fails with "ItemSD must be constructed with a DataModel or Object."** Changing the Source dropdown on a Background — the usual first step when building a homebrew one — threw that error and discarded the change. The sheet handed Foundry a pending promise instead of the edited data, which Foundry 14 rejects outright where Foundry 13 had quietly ignored it. Backgrounds now save every field on the sheet, and advancement entries are no longer disturbed by an unrelated edit elsewhere on the form.
+
+- **NPC Attack items now save fields that previously reverted without warning.** The same underlying fault affected this sheet in a quieter way: attack bonus, damage, critical thresholds, and Source appeared to accept an edit, then reverted on reopen. Only the fields with their own dedicated handlers survived. Every field on the sheet now persists, and the attack's configured ranges are left untouched by a form submission.
 
 ### Changed
 

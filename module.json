@@ -1,7 +1,7 @@
 {
   "id": "shadowdark-extras",
   "title": "Shadowdark Extras",
-  "version": "6.10.50",
+  "version": "6.10.51",
   "compatibility": {
     "minimum": "13",
     "verified": "14"
