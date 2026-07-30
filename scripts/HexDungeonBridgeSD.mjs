@@ -14,7 +14,7 @@
 
 import { generateDungeon } from "./DungeonGeneratorSD.mjs";
 import { generateDungeonRooms, getDungeonSizes } from "./DungeonGenerator.mjs";
-import { JournalPinManager } from "./JournalPinsSD.mjs";
+import { JournalPinManager } from "./journal/JournalPinsSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 

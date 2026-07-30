@@ -8,7 +8,7 @@
  * Based on Dragonbane's DisplayMonsterCard implementation.
  */
 
-import { getEffectiveCreatureType } from "./CreatureTypesApp.mjs";
+import { getEffectiveCreatureType } from "../npc/CreatureTypesApp.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 

@@ -1,6 +1,6 @@
 
 
-import { JournalPinRenderer } from "./JournalPinsSD.mjs";
+import { JournalPinRenderer } from "./journal/JournalPinsSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const HEX_JOURNAL_NAME = "__sdx_hex_data__";

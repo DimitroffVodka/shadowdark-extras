@@ -16,11 +16,11 @@ import {
 // Note: renderTray imported above is used by POI undo/redo handlers
 import { showLeaderDialog, showMovementModeDialog } from "./combat/MarchingModeSD.mjs";
 import { FormationSpawnerSD } from "./combat/FormationSpawnerSD.mjs";
-import { PinPlacer, JournalPinManager, JournalPinRenderer } from "./JournalPinsSD.mjs";
-import { PinStyleEditorApp } from "./PinStyleEditorSD.mjs";
-import { PinListApp } from "./PinListApp.mjs";
+import { PinPlacer, JournalPinManager, JournalPinRenderer } from "./journal/JournalPinsSD.mjs";
+import { PinStyleEditorApp } from "./journal/PinStyleEditorSD.mjs";
+import { PinListApp } from "./journal/PinListApp.mjs";
 
-import { PlaceableNotesSD } from "./PlaceableNotesSD.mjs";
+import { PlaceableNotesSD } from "./journal/PlaceableNotesSD.mjs";
 
 import { setMapDimension, formatActiveScene, enablePainting, disablePainting, toggleTileSelection, clearTileSelection, setSearchFilter, toggleWaterEffect, toggleWindEffect, toggleFogAnimation, toggleTintEnabled, toggleBwEffect, isTintEnabled, setActiveTileTab, setCustomTileDimension, toggleColoredFolderCollapsed, toggleSymbolFolderCollapsed, undoLastPoi, redoLastPoi, canUndoPoi, canRedoPoi, getPoiScale, enablePreview, disablePreview, getActiveTileTab, adjustPoiScale, rotatePoiLeft, rotatePoiRight, togglePoiMirror, getPoiMirror, setDecorSearchFilter, toggleDecorFolderCollapsed, setDecorMode, setDecorElevation, setDecorSort, reloadDecorAssets, registerDecorAsset, appendCustomNavSegment, setCustomNavPath, reloadCustomTiles } from "./HexPainterSD.mjs";
 import { generateHexMap, clearGeneratedTiles } from "./HexGeneratorSD.mjs";

@@ -196,7 +196,7 @@ export class WallContextMenuSD {
             name: "GM Notes",
             icon: `<i class="${hasNotes ? "fas fa-sticky-note" : "far fa-sticky-note"}" ${hasNotes ? 'style="color: #4ade80;"' : ""}></i>`,
             callback: async () => {
-                const { PlaceableNotesSD } = await import("./PlaceableNotesSD.mjs");
+                const { PlaceableNotesSD } = await import("./journal/PlaceableNotesSD.mjs");
                 new PlaceableNotesSD(wallDoc).render(true);
             }
         });

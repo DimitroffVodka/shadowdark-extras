@@ -8,7 +8,7 @@ import { startDurationSpell, linkEffectToDurationSpell, linkEffectToFocusSpell, 
 import { setupTemplateEffectFlags, buildTemplateEffectsFlag, applyTemplateEffect, getTokensInTemplate, processTemplateCreationEffects } from "../effects/TemplateEffectsSD.mjs";
 import { createAuraOnActor } from "../effects/AuraEffectsSD.mjs";
 import { readSdRollOutcome, readSdDamageRoll, resolveCardContext } from "../shared/sd4Compat.mjs";
-import { getEffectiveCreatureType } from "../CreatureTypesApp.mjs";
+import { getEffectiveCreatureType } from "../npc/CreatureTypesApp.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 let socketlibSocket = null;

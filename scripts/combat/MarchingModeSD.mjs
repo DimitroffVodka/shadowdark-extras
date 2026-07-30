@@ -6,8 +6,8 @@
  */
 
 import { FormationSpawnerSD, initFormationSpawner } from "./FormationSpawnerSD.mjs";
-import { PinPlacer } from "../JournalPinsSD.mjs";
-import { PinListApp } from "../PinListApp.mjs";
+import { PinPlacer } from "../journal/JournalPinsSD.mjs";
+import { PinListApp } from "../journal/PinListApp.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const SETTING_KEY_LEADER = "marchingModeLeader";
