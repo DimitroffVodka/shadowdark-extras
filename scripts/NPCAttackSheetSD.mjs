@@ -465,37 +465,33 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
     /* -------------------------------------------- */
 
     /**
-     * Prepare update data for form submission
-     */
-    async _prepareSubmitData(event, form, formData) {
-        const submitData = await super._prepareSubmitData(event, form, formData);
-
-        // Remove extra damage fields - we handle these with direct event listeners
-        for (const key in submitData) {
-            if (key.startsWith(`flags.${MODULE_ID}.extraDamages.`)) {
-                delete submitData[key];
-            }
-        }
-
-        // Remove ranges - we handle these with direct event listeners
-        // This prevents unchecked checkboxes from being submitted as null
-        if ("system.ranges" in submitData) {
-            delete submitData["system.ranges"];
-        }
-
-        return submitData;
-    }
-
-    /**
-     * Process the form submission and update the document
+     * Process raw form data into the document update payload.
+     *
+     * IMPORTANT: this MUST stay synchronous. The base DocumentSheetV2 submit
+     * handler calls `_prepareSubmitData` (which calls this) synchronously and
+     * hands the result straight to `_processSubmitData`. A previous version
+     * overrode `_prepareSubmitData` as `async`, so it returned a Promise whose
+     * own key count is zero - the local `_processSubmitData` guard then saw an
+     * "empty" payload and `document.update` never ran, so every field without a
+     * dedicated change-handler silently failed to save. We do the field cleanup
+     * here - the correct, sync, expanded-data extension point - and let the base
+     * class perform the update.
+     *
      * @override
      */
-    async _processSubmitData(event, form, submitData) {
-        // The parent class may not always call document.update() properly
-        // Explicitly update the document with the prepared submit data
-        if (submitData && Object.keys(submitData).length > 0) {
-            await this.document.update(submitData);
-        }
+    _processFormData(event, form, formData) {
+        const submitData = super._processFormData(event, form, formData);
+
+        // These fields are written directly by dedicated change-handlers
+        // (_setupRangeHandlers, _setupExtraDamageHandlers). The raw form
+        // representation is unreliable (same-named range checkboxes collapse to
+        // garbage), so strip them so the form submit can't clobber the managed
+        // values.
+        if (submitData?.system) delete submitData.system.ranges;
+        const sdxFlags = submitData?.flags?.[MODULE_ID];
+        if (sdxFlags) delete sdxFlags.extraDamages;
+
+        return submitData;
     }
 
 }

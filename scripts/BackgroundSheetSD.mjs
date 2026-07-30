@@ -477,16 +477,29 @@ export default class BackgroundSheetSD extends HandlebarsApplicationMixin(Docume
     /* -------------------------------------------- */
     /*  Form Submission                             */
     /* -------------------------------------------- */
-    async _prepareSubmitData(event, form, formData) {
-        const submitData = await super._prepareSubmitData(event, form, formData);
+    /**
+     * Process raw form data into the document update payload.
+     *
+     * IMPORTANT: this MUST stay synchronous. The base DocumentSheetV2 submit
+     * handler calls `_prepareSubmitData` (which calls this) synchronously and
+     * hands the result straight to `_processSubmitData`. A previous version
+     * overrode `_prepareSubmitData` as `async`, so it returned a Promise, which
+     * then reached `document.update()` verbatim - and v14's `DataModel.cleanData`
+     * rejects anything that isn't a plain object with "ItemSD must be constructed
+     * with a DataModel or Object." Changing the Source dropdown was enough to
+     * trigger it. We do the field cleanup here - the correct, sync,
+     * expanded-data extension point - and let the base class perform the update.
+     *
+     * @override
+     */
+    _processFormData(event, form, formData) {
+        const submitData = super._processFormData(event, form, formData);
 
-        // Remove advancement level fields - we handle these with direct event listeners
-        // This prevents them from interfering with normal form submission
-        for (const key in submitData) {
-            if (key.startsWith("advancement.")) {
-                delete submitData[key];
-            }
-        }
+        // Advancement levels are written directly by _setupLevelChangeHandlers.
+        // The data is expanded by this point, so the `advancement.<id>.level`
+        // inputs live under a single top-level `advancement` key - stripping it
+        // keeps a non-schema key out of the update payload.
+        delete submitData.advancement;
 
         return submitData;
     }
