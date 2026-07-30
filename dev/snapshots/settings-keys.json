@@ -1,5 +1,5 @@
 {
-  "$comment": "Settings keys and menu ids are stored in user worlds; renaming one silently orphans every GM's configured value. Statically enumerable keys only — dynamicSites records the call sites this scan cannot read, and the live total is verified by the shadowdark-extras.structural Quench batch. Regenerate with a reviewed reason: npm run snapshot:settings -- --write",
+  "$comment": "Settings keys and menu ids are stored in user worlds; renaming one silently orphans every GM's configured value. Statically enumerable keys only \u2014 dynamicSites records the call sites this scan cannot read, and the live total is verified by the shadowdark-extras.structural Quench batch. Regenerate with a reviewed reason: npm run snapshot:settings -- --write",
   "keys": [
     "aaAnimateOnSuccess",
     "aaAnimateSpellsWithoutTarget",
@@ -182,6 +182,25 @@
     "scripts/TomSD.mjs:112",
     "scripts/easy-reference/EasyReferenceMenu.mjs:327"
   ],
-  "liveKeyTotalExcludingGated": 156,
-  "liveCaptureNote": "Captured 2026-07-30, Foundry 14.365 / Shadowdark 4.0.6, autoanimations installed but INACTIVE so no gated key was live. Menus matched 141/141 static and 17/17 live."
+  "liveCaptureNote": "dynamicKeys are the keys only a running world reveals: built in loops, so the static scan cannot enumerate them. Captured 2026-07-30, Foundry 14.365 / Shadowdark 4.0.6, autoanimations INACTIVE. The Quench batch asserts the exact live set equals (keys - inactive optionalModuleGated) + dynamicKeys.",
+  "dynamicKeys": [
+    "allowPlayerDungeonPainting",
+    "animationFxCategory_npcActions",
+    "animationFxCategory_spells",
+    "animationFxCategory_weaponSprites",
+    "animationFxCategory_weapons",
+    "contentRegistry",
+    "currentFormation",
+    "easyRef_showChecks",
+    "easyRef_showDice",
+    "easyRef_showItemCards",
+    "easyRef_showNpcCards",
+    "easyRef_showTables",
+    "marchingModeEnabled",
+    "marchingModeLeader",
+    "mlSliders",
+    "partyWeatherTableUuid",
+    "tom-dataVersion",
+    "tom-scenes"
+  ]
 }

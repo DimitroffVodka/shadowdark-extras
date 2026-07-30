@@ -117,13 +117,18 @@ function main() {
             "Regenerate with a reviewed reason: npm run snapshot:settings -- --write",
           ...current,
           /**
-           * Live registry size at capture time, EXCLUDING any optional-module-gated
-           * key that happened to be active then. Cannot be produced headlessly, so
-           * it is preserved across regeneration like api-exports.json's moduleApi.
-           * The Quench batch adds back the gated keys whose module is active in the
-           * world under test, which makes the expectation world-independent.
+           * The keys only a running world reveals — built in loops, so no static
+           * scan can enumerate them. Cannot be produced headlessly, so they are
+           * preserved across regeneration like api-exports.json's moduleApi.
+           *
+           * Together these make the runtime expectation exact and world-
+           * independent: the live set must equal
+           * (keys - inactive optionalModuleGated) + dynamicKeys.
+           * A count alone would not do — swapping one dynamic key for another
+           * preserves the count while silently losing a setting.
            */
-          liveKeyTotalExcludingGated: previous?.liveKeyTotalExcludingGated ?? null,
+          dynamicKeys: previous?.dynamicKeys ?? [],
+          liveCaptureNote: previous?.liveCaptureNote ?? null,
         },
         null,
         2,

@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { scanExports } from "./export-scan.mjs";
 import { REPO_ROOT } from "./project-scan.mjs";
+import { sortKeys } from "./snapshot-util.mjs";
 
 /**
  * API-export snapshot gate.
@@ -53,9 +54,6 @@ export function collectEsmoduleExports() {
   return { declaredCount: declared.length, esmodules: sortKeys(esmodules), missing };
 }
 
-function sortKeys(object) {
-  return Object.fromEntries(Object.keys(object).sort().map((key) => [key, object[key]]));
-}
 
 export function diffExports(baseline, current) {
   const differences = [];

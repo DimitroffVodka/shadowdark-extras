@@ -121,18 +121,39 @@ export function registerStructuralBatch(quench) {
                 });
 
                 /**
-                 * `module.json` declares four esmodules. Three are feature entry
-                 * points that self-register on import; if one silently fails to
-                 * load after a move, its API names simply never appear.
+                 * `module.json` declares four esmodules. Each gets an observable,
+                 * not an inference — two are proved transitively and the reason is
+                 * stated, rather than being waved at:
+                 *
+                 *  - shadowdark-extras.mjs   its api object exists
+                 *  - SheetEditorConfig.mjs   statically imported by the root
+                 *                            (shadowdark-extras.mjs:57), so a load
+                 *                            failure takes the root's api with it
+                 *  - SpellMacrosSD.mjs       side-effect imported by the root
+                 *                            (line 79) AND backs named api entries
+                 *  - TileFlattenSD.mjs       loaded independently by Foundry, not by
+                 *                            the root, so it needs its own probe: it
+                 *                            is the tree's ONLY registrant of
+                 *                            `renderTileHUD`
                  */
                 it("loaded every declared esmodule", function () {
                     const surface = api();
-                    // SpellMacrosSD backs these; TileFlattenSD and SheetEditorConfig
-                    // register sheets/hooks rather than API names, so they are
-                    // covered by the settings and hook checks below.
+
+                    // Root, and with it the two esmodules it imports.
+                    assert.ok(surface, "composition root did not build module.api");
+
+                    // SpellMacrosSD, named surface.
                     for (const name of ["identifyItem", "isUnidentified", "showIdentifyDialog"]) {
                         assert.equal(typeof surface[name], "function", `SpellMacrosSD export missing: ${name}`);
                     }
+
+                    // TileFlattenSD — nothing else in the tree registers this hook,
+                    // so a callback here means that module executed.
+                    const tileHudHandlers = Hooks.events?.renderTileHUD?.length ?? 0;
+                    assert.ok(
+                        tileHudHandlers >= 1,
+                        "TileFlattenSD did not register its renderTileHUD hook — the module failed to load",
+                    );
                 });
             });
 
@@ -174,64 +195,120 @@ export function registerStructuralBatch(quench) {
                  * built in loops, so a move that drops one of those would pass
                  * every gate. Pinning the live total catches it.
                  */
-                it("registers at least as many keys as the recorded live total", function () {
-                    const recorded = settingsBaseline.liveKeyTotalExcludingGated;
-                    if (recorded === null || recorded === undefined) {
-                        this.skip();
-                        return;
-                    }
-
-                    const live = [...game.settings.settings.keys()].filter((k) =>
-                        k.startsWith(`${MODULE_ID}.`),
-                    ).length;
-                    // The baseline excludes gated keys; add back the ones whose
-                    // module is active HERE, so the expectation holds in any world.
-                    const gatedActive = Object.entries(settingsBaseline.optionalModuleGated ?? {})
-                        .filter(([moduleId]) => game.modules.get(moduleId)?.active)
-                        .flatMap(([, keys]) => keys).length;
-                    const expected = recorded + gatedActive;
-
-                    assert.ok(
-                        live >= expected,
-                        `live settings keys dropped: ${live} registered, expected at least ${expected}`,
+                /**
+                 * The exact live set, not a count. A count is satisfied by
+                 * swapping one loop-built key for a different one, which loses a
+                 * setting silently — the precise failure this tier exists to
+                 * catch, since the static gate is blind to those keys entirely.
+                 */
+                it("registers exactly the expected live key set", function () {
+                    const gatedInactive = new Set(
+                        Object.entries(settingsBaseline.optionalModuleGated ?? {})
+                            .filter(([moduleId]) => !game.modules.get(moduleId)?.active)
+                            .flatMap(([, keys]) => keys),
                     );
+
+                    const expected = new Set([
+                        ...settingsBaseline.keys.filter((key) => !gatedInactive.has(key)),
+                        ...(settingsBaseline.dynamicKeys ?? []),
+                    ]);
+                    const live = new Set(
+                        [...game.settings.settings.keys()]
+                            .filter((key) => key.startsWith(`${MODULE_ID}.`))
+                            .map((key) => key.slice(MODULE_ID.length + 1)),
+                    );
+
+                    const missing = [...expected].filter((key) => !live.has(key)).sort();
+                    const added = [...live].filter((key) => !expected.has(key)).sort();
+
+                    assert.deepEqual(missing, [], `settings keys no longer registered: ${missing.join(", ")}`);
+                    assert.deepEqual(added, [], `unrecorded settings keys registered: ${added.join(", ")}`);
                 });
             });
 
-            describe("sheet rendering", function () {
+            describe("sheet enhancement", function () {
                 /**
-                 * The most-repeated smoke rows in the plan are "open a PC sheet"
-                 * and "open an item sheet". A move that breaks a sheet enhancer
-                 * throws during render, which is what this actually catches —
-                 * asserting on specific injected markup would couple the gate to
-                 * cosmetic DOM and produce false failures.
+                 * Rendering without throwing is not enough. A sheet enhancer that
+                 * stops running after a move injects nothing and throws nothing —
+                 * the sheet renders perfectly, as the system's own sheet. So these
+                 * assert SDX-owned markup is actually present.
+                 *
+                 * The system's sheets are ApplicationV1, so `sheet.element` is a
+                 * jQuery object, not an HTMLElement. Reading `.outerHTML` off it
+                 * silently yields undefined — which is why the earlier version of
+                 * this batch could assert `element` truthy and prove nothing.
+                 *
+                 * Run in the disposable test world with default settings: several
+                 * of these markers belong to features a GM can switch off.
                  */
-                it("renders a character sheet without error", async function () {
+                const sheetHtml = (sheet) => {
+                    const element = sheet.element;
+                    if (!element) return "";
+                    if (element instanceof HTMLElement) return element.outerHTML;
+                    if (element[0] instanceof HTMLElement) return element[0].outerHTML;
+                    return "";
+                };
+
+                const sdxClasses = (html) => [
+                    ...new Set(
+                        [...html.matchAll(/class="([^"]*)"/g)]
+                            .flatMap((match) => match[1].split(/\s+/))
+                            .filter((name) => /^sdx-/.test(name)),
+                    ),
+                ];
+
+                it("injects SDX markup into a character sheet", async function () {
                     this.timeout(30000);
                     const actor = await Actor.create({ name: `${NAME_PREFIX}PC`, type: "Player" });
                     created.push(actor);
-                    assert.ok(actor, "could not create a scratch Player actor");
 
                     const sheet = actor.sheet;
                     await sheet.render(true);
-                    await new Promise((resolve) => setTimeout(resolve, 400));
+                    await new Promise((resolve) => setTimeout(resolve, 900));
+                    const html = sheetHtml(sheet);
 
                     assert.ok(sheet.rendered, "character sheet did not render");
-                    assert.ok(sheet.element, "character sheet produced no element");
+                    assert.ok(html.length > 0, "character sheet produced no readable markup");
+
+                    // Distinct owners, so a single moved feature is identifiable:
+                    // the header/HP enhancers live in the composition root, the
+                    // lock toggle in SheetLockManager (Phase 2 step 16).
+                    for (const marker of ["sdx-enhanced-header", "sdx-hp-bar-container", "sdx-sheet-lock-toggle"]) {
+                        assert.ok(
+                            html.includes(marker),
+                            `character sheet is missing "${marker}" — its enhancer did not run`,
+                        );
+                    }
+                    assert.ok(
+                        sdxClasses(html).length >= 10,
+                        `only ${sdxClasses(html).length} SDX classes on the character sheet; enhancers largely absent`,
+                    );
                     await sheet.close();
                 });
 
-                it("renders an item sheet without error", async function () {
+                it("injects SDX markup into a spell item sheet", async function () {
                     this.timeout(30000);
                     const item = await Item.create({ name: `${NAME_PREFIX}Spell`, type: "Spell" });
                     created.push(item);
-                    assert.ok(item, "could not create a scratch Spell item");
 
                     const sheet = item.sheet;
                     await sheet.render(true);
-                    await new Promise((resolve) => setTimeout(resolve, 400));
+                    await new Promise((resolve) => setTimeout(resolve, 900));
+                    const html = sheetHtml(sheet);
 
                     assert.ok(sheet.rendered, "item sheet did not render");
+                    assert.ok(html.length > 0, "item sheet produced no readable markup");
+
+                    for (const marker of ["sdx-targeting-box", "sdx-template-settings"]) {
+                        assert.ok(
+                            html.includes(marker),
+                            `spell sheet is missing "${marker}" — the targeting enhancer did not run`,
+                        );
+                    }
+                    assert.ok(
+                        sdxClasses(html).length >= 10,
+                        `only ${sdxClasses(html).length} SDX classes on the spell sheet; enhancers largely absent`,
+                    );
                     await sheet.close();
                 });
             });

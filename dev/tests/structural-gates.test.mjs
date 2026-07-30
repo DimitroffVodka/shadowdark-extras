@@ -258,14 +258,27 @@ test("settings snapshot: catches the unenumerable blind spot changing size", () 
   assert.match(diffSettings(baseline, current)[0], /blind spot changed size/);
 });
 
-test("settings snapshot: the live-registry baseline is recorded for the Quench batch", () => {
+/**
+ * The Quench batch reconstructs the exact live key set from this baseline, so
+ * the pieces it needs must be present and disjoint. A count would not be
+ * enough: swapping one loop-built key for another preserves the count while
+ * losing a setting.
+ */
+test("settings snapshot: records what the Quench batch needs to rebuild the live set", () => {
   const baseline = JSON.parse(readFileSync(path.join(REPO_ROOT, "dev/snapshots/settings-keys.json"), "utf8"));
 
-  assert.equal(typeof baseline.liveKeyTotalExcludingGated, "number");
-  assert.ok(
-    baseline.liveKeyTotalExcludingGated >= baseline.keys.length,
-    "the live registry cannot hold fewer keys than the static scan found",
-  );
+  assert.ok(Array.isArray(baseline.dynamicKeys), "dynamicKeys must be recorded from a live world");
+  assert.ok(baseline.dynamicKeys.length > 0, "dynamicKeys is empty — recapture it");
+
+  // The two sets describe different things and must not overlap: `keys` is what
+  // the scanner can read, `dynamicKeys` is what only a running world reveals.
+  const overlap = baseline.dynamicKeys.filter((key) => baseline.keys.includes(key));
+  assert.deepEqual(overlap, [], `dynamicKeys duplicates statically-found keys: ${overlap.join(", ")}`);
+
+  const gated = Object.values(baseline.optionalModuleGated ?? {}).flat();
+  for (const key of gated) {
+    assert.ok(baseline.keys.includes(key), `gated key "${key}" should also appear in the static key list`);
+  }
 });
 
 test("api-export snapshot: the composition root still exports its three consumed names", () => {

@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { scanRegistrations } from "./registration-scan.mjs";
 import { listJsFiles, toRepoPath, isVendor } from "./project-scan.mjs";
+import { sortKeys } from "./snapshot-util.mjs";
 
 /**
  * Registration-order snapshot gate.
@@ -61,9 +62,6 @@ export function collectRegistrations() {
   return { totals, modules: sortKeys(modules), detail };
 }
 
-function sortKeys(object) {
-  return Object.fromEntries(Object.keys(object).sort().map((key) => [key, object[key]]));
-}
 
 function buildSnapshot() {
   const { totals, modules } = collectRegistrations();
