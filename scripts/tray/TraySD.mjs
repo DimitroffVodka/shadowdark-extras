@@ -2,8 +2,8 @@
 
 import { TrayApp } from "./TrayApp.mjs";
 import { JournalPinManager, normalizeImageTint } from "../journal/JournalPinsSD.mjs";
-import { initSoloHexMode } from "../SoloHexMode.mjs";
-import { getHexPainterData, loadTileAssets, bindCanvasEvents, enablePainting, disablePainting, isPainting, setDecorMode, canUndoPoi, canRedoPoi } from "../HexPainterSD.mjs";
+import { initSoloHexMode } from "../hex/SoloHexMode.mjs";
+import { getHexPainterData, loadTileAssets, bindCanvasEvents, enablePainting, disablePainting, isPainting, setDecorMode, canUndoPoi, canRedoPoi } from "../hex/HexPainterSD.mjs";
 import {
     getDungeonPainterData,
     loadDungeonAssets,

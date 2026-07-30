@@ -1,8 +1,8 @@
-import { cache } from "./shared/SDXCache.mjs";
+import { cache } from "../shared/SDXCache.mjs";
 import { BIOME_TILES, BIOME_TINTS } from "./HexGeneratorSD.mjs";
-import { getDoorTiles } from "./DungeonPainterSD.mjs";
+import { getDoorTiles } from "../DungeonPainterSD.mjs";
 import { setHexTerrain } from "./HexTooltipSD.mjs";
-import { loadDDPackDecorTiles } from "./DDPackManagerSD.mjs";
+import { loadDDPackDecorTiles } from "../DDPackManagerSD.mjs";
 
 // Maps default-tile biome keys to user-friendly terrain labels
 const BIOME_TO_TERRAIN = {

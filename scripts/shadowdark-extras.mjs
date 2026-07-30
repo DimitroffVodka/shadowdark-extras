@@ -84,10 +84,10 @@ import { sdxDrawingTool } from "./canvas/SDXDrawingTool.mjs";
 import { sdxDrawingToolbar } from "./canvas/SDXDrawingToolbar.mjs";
 import { SDXRollerApp } from "./tray/SDXRollerApp.mjs";
 import { ensureMutableItemCompendiumIndexes } from "./shared/CompendiumIndexSD.mjs";
-import { initSDXCoords, registerSDXCoordsSettings, registerSDXCoordsMenu } from "./SDXCoordsSD.mjs";
-import { SDXCoordsSettingsApp } from "./SDXCoordsSettingsSD.mjs";
-import { initHexTooltip, HEX_JOURNAL_NAME } from "./HexTooltipSD.mjs";
-import { initHexFog } from "./SDXHexFogSD.mjs";
+import { initSDXCoords, registerSDXCoordsSettings, registerSDXCoordsMenu } from "./hex/SDXCoordsSD.mjs";
+import { SDXCoordsSettingsApp } from "./hex/SDXCoordsSettingsSD.mjs";
+import { initHexTooltip, HEX_JOURNAL_NAME } from "./hex/HexTooltipSD.mjs";
+import { initHexFog } from "./hex/SDXHexFogSD.mjs";
 import { registerMaphubHooks } from "./MaphubSD.mjs";
 import { initUnidentifiedGMDisplay } from "./inventory/UnidentifiedDisplaySD.mjs";
 import { initTemplateElevationBadge } from "./effects/TemplateElevationBadgeSD.mjs";
@@ -96,12 +96,12 @@ import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
 // for MCP / external automation. None of these modules register hooks at import
 // time (verified), so this only adds the named exports to the bundle graph.
 import { generateDungeon, getGeneratorSettings, setGeneratorSettings, generateRandomSeed, generateLayout, generateMixedLayout } from "./DungeonGeneratorSD.mjs";
-import { buildHexDungeonScene } from "./HexDungeonBridgeSD.mjs";
+import { buildHexDungeonScene } from "./hex/HexDungeonBridgeSD.mjs";
 import { generateCaveLayout, buildCaveLoops, traceBoundaryLoops } from "./DungeonCaveSD.mjs";
 import { assignBiomes, buildCellFloorMap, getBiomeDefs, getCustomBiomes, setCustomBiome, removeCustomBiome, resetCustomBiomes, getEnabledBiomeKeys, getDisabledBiomes, setBiomeEnabled } from "./DungeonBiomesSD.mjs";
 import { openBiomeEditor } from "./BiomeEditorSD.mjs";
-import { generateHexMap, clearGeneratedTiles } from "./HexGeneratorSD.mjs";
-import { buildHexcrawl, buildHexcrawlFromFile } from "./HexcrawlBuilderSD.mjs";
+import { generateHexMap, clearGeneratedTiles } from "./hex/HexGeneratorSD.mjs";
+import { buildHexcrawl, buildHexcrawlFromFile } from "./hex/HexcrawlBuilderSD.mjs";
 import { getSceneLevelContext, applySceneLevelData, getDungeonBackground } from "./DungeonPainterSD.mjs";
 import { placeChangeLevelRegion, placeDungeonSurface, placeDungeonDecor } from "./DungeonRegionsSD.mjs";
 

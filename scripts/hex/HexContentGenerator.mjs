@@ -1,4 +1,4 @@
-import { loadDungeonData, generateDungeonName } from "./DungeonGenerator.mjs";
+import { loadDungeonData, generateDungeonName } from "../DungeonGenerator.mjs";
 import { loadSettlementData, generateSettlementName, generateNpc, cap } from "./SettlementGenerator.mjs";
 
 const MODULE_ID = "shadowdark-extras";
