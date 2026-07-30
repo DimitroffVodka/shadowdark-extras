@@ -12,8 +12,8 @@
  * - Provides UI to manually end focus on a spell
  */
 
-import { getSocket } from "./combat/CombatSettingsSD.mjs";
-import { resolveCardContext } from "./shared/sd4Compat.mjs";
+import { getSocket } from "../combat/CombatSettingsSD.mjs";
+import { resolveCardContext } from "../shared/sd4Compat.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 

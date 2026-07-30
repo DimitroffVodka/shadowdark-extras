@@ -898,7 +898,7 @@ async function runTemplateItemMacro(templateDoc, token, trigger, config) {
         }
 
         // Import the native macro executor
-        const { executeItemMacro, hasItemMacro } = await import("./shadowdark-extras.mjs");
+        const { executeItemMacro, hasItemMacro } = await import("../shadowdark-extras.mjs");
         if (!hasItemMacro(spellItem)) return;
 
         // Get caster token

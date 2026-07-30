@@ -11,7 +11,7 @@
  * - Respects autoApplyDamage setting
  */
 
-import { getSocket } from "./combat/CombatSettingsSD.mjs";
+import { getSocket } from "../combat/CombatSettingsSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -1565,7 +1565,7 @@ async function runAuraItemMacro(sourceToken, targetToken, trigger, config) {
         if (!spellItem) return;
 
         // Import the native macro executor
-        const { executeItemMacro, hasItemMacro } = await import("./shadowdark-extras.mjs");
+        const { executeItemMacro, hasItemMacro } = await import("../shadowdark-extras.mjs");
         if (!hasItemMacro(spellItem)) return;
 
         const args = {

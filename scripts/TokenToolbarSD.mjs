@@ -1,7 +1,7 @@
 
 
 import { TokenToolbarApp } from "./TokenToolbarApp.mjs";
-import { getActiveFocusSpells, getActiveDurationSpells, endFocusSpell, endDurationSpell } from "./FocusSpellTrackerSD.mjs";
+import { getActiveFocusSpells, getActiveDurationSpells, endFocusSpell, endDurationSpell } from "./effects/FocusSpellTrackerSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 

@@ -4,9 +4,9 @@
  */
 
 import { getWeaponBonuses, getWeaponEffectsToApply, evaluateRequirements, calculateWeaponBonusDamage, decrementDamageBonusUsage } from "./WeaponBonusConfig.mjs";
-import { startDurationSpell, linkEffectToDurationSpell, linkEffectToFocusSpell, linkTargetToFocusSpell, startFocusSpellIfNeeded, getActiveDurationSpells, endFocusSpell } from "../FocusSpellTrackerSD.mjs";
-import { setupTemplateEffectFlags, buildTemplateEffectsFlag, applyTemplateEffect, getTokensInTemplate, processTemplateCreationEffects } from "../TemplateEffectsSD.mjs";
-import { createAuraOnActor } from "../AuraEffectsSD.mjs";
+import { startDurationSpell, linkEffectToDurationSpell, linkEffectToFocusSpell, linkTargetToFocusSpell, startFocusSpellIfNeeded, getActiveDurationSpells, endFocusSpell } from "../effects/FocusSpellTrackerSD.mjs";
+import { setupTemplateEffectFlags, buildTemplateEffectsFlag, applyTemplateEffect, getTokensInTemplate, processTemplateCreationEffects } from "../effects/TemplateEffectsSD.mjs";
+import { createAuraOnActor } from "../effects/AuraEffectsSD.mjs";
 import { readSdRollOutcome, readSdDamageRoll, resolveCardContext } from "../shared/sd4Compat.mjs";
 import { getEffectiveCreatureType } from "../CreatureTypesApp.mjs";
 
@@ -639,7 +639,7 @@ export function setupCombatSocket() {
 
 					// Also clean up the focus spell tracking for the removed effects
 					try {
-						const { unlinkEffectFromFocusSpell } = await import('../FocusSpellTrackerSD.mjs');
+						const { unlinkEffectFromFocusSpell } = await import('../effects/FocusSpellTrackerSD.mjs');
 						for (const effectId of effectIds) {
 							await unlinkEffectFromFocusSpell(data.spellInfo.casterActorId, data.spellInfo.spellId, effectId);
 						}
@@ -684,7 +684,7 @@ export function setupCombatSocket() {
 				const createdEffect = createdItems[0];
 				try {
 					// Import spell tracking functions
-					const { linkEffectToFocusSpell, startFocusSpellIfNeeded, linkEffectToDurationSpell, getActiveDurationSpells } = await import('../FocusSpellTrackerSD.mjs');
+					const { linkEffectToFocusSpell, startFocusSpellIfNeeded, linkEffectToDurationSpell, getActiveDurationSpells } = await import('../effects/FocusSpellTrackerSD.mjs');
 
 					// Check if this is a duration spell (non-focus)
 					const caster = game.actors.get(data.spellInfo.casterActorId);
@@ -879,7 +879,7 @@ export function setupCombatSocket() {
 			return;
 		}
 
-		const { applyAuraEffect } = await import("../AuraEffectsSD.mjs");
+		const { applyAuraEffect } = await import("../effects/AuraEffectsSD.mjs");
 		return applyAuraEffect(sourceToken, targetToken, trigger, config, auraEffect);
 	});
 
@@ -893,7 +893,7 @@ export function setupCombatSocket() {
 			return;
 		}
 
-		const { removeAuraEffectsFromToken } = await import("../AuraEffectsSD.mjs");
+		const { removeAuraEffectsFromToken } = await import("../effects/AuraEffectsSD.mjs");
 		return removeAuraEffectsFromToken(auraEffect, targetToken);
 	});
 
@@ -919,7 +919,7 @@ export function setupCombatSocket() {
 			return;
 		}
 
-		const { applyAuraConditions } = await import("../AuraEffectsSD.mjs");
+		const { applyAuraConditions } = await import("../effects/AuraEffectsSD.mjs");
 		return applyAuraConditions(auraEffect, targetToken, effectUuids);
 	});
 
@@ -930,7 +930,7 @@ export function setupCombatSocket() {
 			return;
 		}
 
-		const { applyAuraDamage } = await import("../AuraEffectsSD.mjs");
+		const { applyAuraDamage } = await import("../effects/AuraEffectsSD.mjs");
 		return applyAuraDamage(targetToken, config, savedSuccessfully);
 	});
 
@@ -943,7 +943,7 @@ export function setupCombatSocket() {
 			return;
 		}
 
-		const { removeAuraEffectsFromAll } = await import("../AuraEffectsSD.mjs");
+		const { removeAuraEffectsFromAll } = await import("../effects/AuraEffectsSD.mjs");
 		return removeAuraEffectsFromAll(auraEffect);
 	});
 
