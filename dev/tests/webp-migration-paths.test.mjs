@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import test from "node:test";
 
-import { planWebpSwap, toUrl } from "../../scripts/WebpMigrationSD.mjs";
+import { normalizeModulePath, planWebpSwap, toUrl } from "../../scripts/WebpMigrationSD.mjs";
 
 const moduleRoot = new URL("../../", import.meta.url);
-const P = "modules/shadowdark-extras/";
+const MODULE_PREFIX = "modules/shadowdark-extras/";
 
 // ---------------------------------------------------------------------------
 // toUrl - the encoding bug that made the migration silently skip files
@@ -16,38 +16,80 @@ const P = "modules/shadowdark-extras/";
 // concludes the .webp does not exist - leaving a dead .png in the world.
 
 test("toUrl encodes a raw path exactly once and keeps separators", () => {
-	const url = toUrl(`${P}assets/Hexes/Badlands/Hex - Plains (damp) 1.webp`);
-	assert.ok(url.startsWith(`/${P}assets/Hexes/Badlands/`), `separators mangled: ${url}`);
+	const url = toUrl(`${MODULE_PREFIX}assets/Hexes/Badlands/Hex - Plains (damp) 1.webp`);
+	assert.ok(url.startsWith(`/${MODULE_PREFIX}assets/Hexes/Badlands/`), `separators mangled: ${url}`);
 	// Parentheses are unreserved marks; encodeURIComponent leaves them literal,
 	// which is valid in a path segment. Spaces must be escaped.
 	assert.ok(url.endsWith("Hex%20-%20Plains%20(damp)%201.webp"), url);
 });
 
 test("toUrl does not double-encode an already-encoded path", () => {
-	const encoded = `${P}assets/Hexes/Badlands/Hex%20-%20Plains%20(damp)%201.webp`;
+	const encoded = `${MODULE_PREFIX}assets/Hexes/Badlands/Hex%20-%20Plains%20(damp)%201.webp`;
 	const url = toUrl(encoded);
 	assert.ok(!url.includes("%2520"), `double-encoded: ${url}`);
-	assert.equal(url, toUrl(`${P}assets/Hexes/Badlands/Hex - Plains (damp) 1.webp`));
+	assert.equal(url, toUrl(`${MODULE_PREFIX}assets/Hexes/Badlands/Hex - Plains (damp) 1.webp`));
 });
 
 test("toUrl handles encoded ampersands - the Dysonstyle 'B&W-' naming", () => {
 	// decodeURI leaves %26 intact (reserved), so encodeURI would emit %2526.
-	const encoded = `${P}assets/symbols/Dysonstyle/B%26W-Camp-Feu01.webp`;
+	const encoded = `${MODULE_PREFIX}assets/symbols/Dysonstyle/B%26W-Camp-Feu01.webp`;
 	const url = toUrl(encoded);
 	assert.ok(!url.includes("%2526"), `double-encoded ampersand: ${url}`);
 	assert.ok(url.endsWith("B%26W-Camp-Feu01.webp"), url);
 });
 
 test("toUrl is idempotent - encoded and raw forms converge", () => {
-	const raw = `${P}assets/symbols/Dysonstyle/B&W-Camp-Feu01.webp`;
-	const enc = `${P}assets/symbols/Dysonstyle/B%26W-Camp-Feu01.webp`;
+	const raw = `${MODULE_PREFIX}assets/symbols/Dysonstyle/B&W-Camp-Feu01.webp`;
+	const enc = `${MODULE_PREFIX}assets/symbols/Dysonstyle/B%26W-Camp-Feu01.webp`;
 	assert.equal(toUrl(raw), toUrl(enc));
 	assert.equal(toUrl(toUrl(raw).slice(1)), toUrl(raw));
 });
 
 test("toUrl survives a malformed percent escape instead of throwing", () => {
 	// A literal '%' in a filename is not a valid escape; decodeURI would throw.
-	assert.doesNotThrow(() => toUrl(`${P}assets/tiles/100%-cover.webp`));
+	assert.doesNotThrow(() => toUrl(`${MODULE_PREFIX}assets/tiles/100%-cover.webp`));
+});
+
+test("toUrl never emits a protocol-relative '//' for a slash-prefixed path", () => {
+	// Regression: "/" + "/modules/...".split("/") rejoined to "//modules/...",
+	// which a browser resolves as host=modules - the HEAD probe then goes
+	// off-origin, 404s, and the migration silently skips the file. Slash-prefixed
+	// paths are real here: SheetEditorConfig builds `/${basePath}/...`.
+	const url = toUrl(`/${MODULE_PREFIX}art/PNG/Default/Border/skulls.webp`);
+	assert.ok(!url.startsWith("//"), `protocol-relative URL: ${url}`);
+	assert.equal(url, `/${MODULE_PREFIX}art/PNG/Default/Border/skulls.webp`);
+});
+
+test("toUrl treats slash-prefixed and bare paths as the same URL", () => {
+	const bare = `${MODULE_PREFIX}assets/tiles/skulls.webp`;
+	assert.equal(toUrl(`/${bare}`), toUrl(bare));
+	assert.equal(toUrl(`///${bare}`), toUrl(bare), "repeated leading slashes");
+});
+
+// ---------------------------------------------------------------------------
+// normalizeModulePath - ownership must be a prefix test, not a substring test
+// ---------------------------------------------------------------------------
+
+test("normalizeModulePath accepts module paths with or without a leading slash", () => {
+	assert.equal(
+		normalizeModulePath(`${MODULE_PREFIX}assets/tiles/skulls.png`),
+		`${MODULE_PREFIX}assets/tiles/skulls.png`
+	);
+	assert.equal(
+		normalizeModulePath(`/${MODULE_PREFIX}assets/tiles/skulls.png`),
+		`${MODULE_PREFIX}assets/tiles/skulls.png`,
+		"leading slash should be stripped, not rejected"
+	);
+});
+
+test("normalizeModulePath rejects foreign paths that merely contain the prefix", () => {
+	// Regression: a substring test would claim ownership of these and rewrite a
+	// working reference to a file that does not exist.
+	assert.equal(normalizeModulePath(`worlds/mine/uploads/${MODULE_PREFIX}old.png`), null);
+	assert.equal(normalizeModulePath(`backups/2024/${MODULE_PREFIX}art.png`), null);
+	assert.equal(normalizeModulePath(`https://cdn.example.com/${MODULE_PREFIX}art.png`), null);
+	assert.equal(normalizeModulePath(`modules/other-module/vendor/${MODULE_PREFIX}x.png`), null);
+	assert.equal(normalizeModulePath("modules/shadowdark-extras-extended/assets/x.png"), null);
 });
 
 // ---------------------------------------------------------------------------
@@ -56,24 +98,24 @@ test("toUrl survives a malformed percent escape instead of throwing", () => {
 
 test("planWebpSwap rewrites module-owned raster paths", () => {
 	assert.equal(
-		planWebpSwap(`${P}assets/Hexes/Autumn/autumnbog.png`).rewritten,
-		`${P}assets/Hexes/Autumn/autumnbog.webp`
+		planWebpSwap(`${MODULE_PREFIX}assets/Hexes/Autumn/autumnbog.png`).rewritten,
+		`${MODULE_PREFIX}assets/Hexes/Autumn/autumnbog.webp`
 	);
 	assert.equal(
-		planWebpSwap(`${P}assets/Tom/portrait.JPEG`).rewritten,
-		`${P}assets/Tom/portrait.webp`
+		planWebpSwap(`${MODULE_PREFIX}assets/Tom/portrait.JPEG`).rewritten,
+		`${MODULE_PREFIX}assets/Tom/portrait.webp`
 	);
 });
 
 test("planWebpSwap preserves a cache-busting query suffix", () => {
-	const plan = planWebpSwap(`${P}assets/tiles/skulls.png?1712345`);
-	assert.equal(plan.candidate, `${P}assets/tiles/skulls.webp`, "probe target drops the query");
-	assert.equal(plan.rewritten, `${P}assets/tiles/skulls.webp?1712345`, "stored value keeps it");
+	const plan = planWebpSwap(`${MODULE_PREFIX}assets/tiles/skulls.png?1712345`);
+	assert.equal(plan.candidate, `${MODULE_PREFIX}assets/tiles/skulls.webp`, "probe target drops the query");
+	assert.equal(plan.rewritten, `${MODULE_PREFIX}assets/tiles/skulls.webp?1712345`, "stored value keeps it");
 });
 
 test("planWebpSwap preserves the original encoding of the stored path", () => {
-	const plan = planWebpSwap(`${P}assets/Hexes/Badlands/Hex%20-%20Plains%20(damp)%201.png`);
-	assert.equal(plan.rewritten, `${P}assets/Hexes/Badlands/Hex%20-%20Plains%20(damp)%201.webp`);
+	const plan = planWebpSwap(`${MODULE_PREFIX}assets/Hexes/Badlands/Hex%20-%20Plains%20(damp)%201.png`);
+	assert.equal(plan.rewritten, `${MODULE_PREFIX}assets/Hexes/Badlands/Hex%20-%20Plains%20(damp)%201.webp`);
 });
 
 test("planWebpSwap ignores paths belonging to other packages", () => {
@@ -84,13 +126,29 @@ test("planWebpSwap ignores paths belonging to other packages", () => {
 	assert.equal(planWebpSwap("worlds/mine/uploads/player-token.png"), null);
 });
 
+test("planWebpSwap ignores foreign paths that merely contain the module prefix", () => {
+	// Regression: `value.includes(PREFIX)` claimed ownership of these.
+	assert.equal(planWebpSwap(`worlds/mine/uploads/${MODULE_PREFIX}old.png`), null);
+	assert.equal(planWebpSwap(`https://cdn.example.com/${MODULE_PREFIX}art.png`), null);
+	assert.equal(planWebpSwap("modules/shadowdark-extras-extended/assets/x.png"), null);
+});
+
+test("planWebpSwap keeps a leading slash on the rewritten value", () => {
+	// The stored reference must change extension ONLY - dropping the slash would
+	// re-root a path the rest of the module builds as `/${basePath}/...`.
+	const plan = planWebpSwap(`/${MODULE_PREFIX}art/PNG/Default/Border/skulls.png`);
+	assert.equal(plan.rewritten, `/${MODULE_PREFIX}art/PNG/Default/Border/skulls.webp`);
+	// ...and the probe target must still resolve on-origin.
+	assert.ok(!toUrl(plan.candidate).startsWith("//"), toUrl(plan.candidate));
+});
+
 test("planWebpSwap ignores non-raster and non-string values", () => {
-	assert.equal(planWebpSwap(`${P}assets/crown.svg`), null);
-	assert.equal(planWebpSwap(`${P}assets/torch.webp`), null, "already converted");
-	assert.equal(planWebpSwap(`${P}intro.mp3`), null);
+	assert.equal(planWebpSwap(`${MODULE_PREFIX}assets/crown.svg`), null);
+	assert.equal(planWebpSwap(`${MODULE_PREFIX}assets/torch.webp`), null, "already converted");
+	assert.equal(planWebpSwap(`${MODULE_PREFIX}intro.mp3`), null);
 	assert.equal(planWebpSwap(null), null);
 	assert.equal(planWebpSwap(42), null);
-	assert.equal(planWebpSwap({ src: `${P}a.png` }), null);
+	assert.equal(planWebpSwap({ src: `${MODULE_PREFIX}a.png` }), null);
 });
 
 // ---------------------------------------------------------------------------

@@ -121,6 +121,43 @@ export function registerWebpMigrationBatch(quench) {
                     assert.deepEqual(scene.toObject().tiles.map((t) => t.texture.src), foreign);
                 });
 
+                it("migrates slash-prefixed paths and keeps the leading slash", async function () {
+                    this.timeout(60000);
+                    // Regression: these probed as `//modules/...` - a protocol-relative
+                    // URL resolving off-origin - so they were silently left unmigrated.
+                    const scene = await makeScene([
+                        `/${P}art/PNG/Default/Border/skulls.png`,
+                        `/${P}assets/symbols/Dysonstyle/B%26W-Camp-Feu01.png`,
+                    ]);
+
+                    await api().migrateWebpAssetPaths({ force: true });
+
+                    for (const tile of scene.toObject().tiles) {
+                        const src = tile.texture.src;
+                        assert.ok(src.endsWith(".webp"), `not migrated: ${src}`);
+                        assert.ok(src.startsWith("/"), `leading slash dropped: ${src}`);
+                        assert.ok(!src.startsWith("//"), `protocol-relative: ${src}`);
+                        const res = await fetch(src, { method: "HEAD" });
+                        assert.equal(res.status, 200, `dead after migration: ${src}`);
+                    }
+                });
+
+                it("does not claim foreign paths that merely contain the module prefix", async function () {
+                    this.timeout(60000);
+                    // Regression: a substring ownership test rewrote these, pointing a
+                    // working reference at a file that does not exist.
+                    const foreign = [
+                        `worlds/mine/uploads/${P}old.png`,
+                        `https://cdn.example.com/${P}art.png`,
+                        "modules/shadowdark-extras-extended/assets/x.png",
+                    ];
+                    const scene = await makeScene(foreign);
+
+                    await api().migrateWebpAssetPaths({ force: true });
+
+                    assert.deepEqual(scene.toObject().tiles.map((t) => t.texture.src), foreign);
+                });
+
                 it("reaches paths nested inside module flags", async function () {
                     this.timeout(60000);
                     const scene = await makeScene([], {

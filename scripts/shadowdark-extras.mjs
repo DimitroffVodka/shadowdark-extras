@@ -3059,6 +3059,16 @@ function registerSettings() {
 		type: Boolean
 	});
 
+	// Separate gate for the world-compendium sweep: packs that were locked (or
+	// whose update failed) must be retried on later loads, so this only flips
+	// once a sweep completes cleanly.
+	game.settings.register(MODULE_ID, "webpPackSweepDone", {
+		scope: "world",
+		config: false,
+		default: false,
+		type: Boolean
+	});
+
 	game.settings.register(MODULE_ID, "inventoryStyles", {
 		name: "Inventory Styles Configuration",
 		scope: "world",
@@ -17573,18 +17583,18 @@ Hooks.once("ready", async () => {
 	// before anything reads scene/actor artwork, or the GM sees broken images
 	// for one session.
 	try {
-		const webpStats = await migrateWebpAssetPaths();
-		// World compendiums are swept separately and NOT awaited: the sweep has
-		// to load every document of every world pack, which would stall world
-		// load. Only worth doing at all on the run that actually migrated.
-		if (webpStats) {
-			sweepWorldCompendiums().catch((e) =>
-				console.error(`${MODULE_ID} | world compendium webp sweep failed:`, e)
-			);
-		}
+		await migrateWebpAssetPaths();
 	} catch (e) {
 		console.error(`${MODULE_ID} | webp asset migration threw:`, e);
 	}
+
+	// World compendiums are swept separately and NOT awaited: the sweep has to
+	// load every document of every world pack, which would stall world load.
+	// It carries its own gate (webpPackSweepDone) so locked or failed packs are
+	// retried on later loads instead of being stranded by the document gate.
+	sweepWorldCompendiums().catch((e) =>
+		console.error(`${MODULE_ID} | world compendium webp sweep failed:`, e)
+	);
 
 	// Run one-time itemacro data migration if not already done
 	if (!game.settings.get(MODULE_ID, "itemacroMigrationDone")) {

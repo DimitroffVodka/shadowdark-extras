@@ -42,6 +42,13 @@ const _existsCache = new Map();
  * then encode once, so both forms converge on the same URL.
  */
 export function toUrl(relPath) {
+    // Strip any leading slash BEFORE splitting. `"/" + "/modules/...".split("/")`
+    // would rejoin to `//modules/...`, which a browser reads as a
+    // protocol-relative URL with `modules` as the HOST - the probe then resolves
+    // off-origin, 404s, and the migration silently skips the file. Stored paths
+    // do come through with a leading slash (e.g. SheetEditorConfig builds
+    // `/${basePath}/Transparent center/...`).
+    //
     // Per-segment decode/encode. encodeURI/decodeURI are NOT usable here:
     // they deliberately pass reserved characters through, so an encoded
     // ampersand (`B%26W-Camp-Feu01.png`, the naming convention across the ~359
@@ -49,7 +56,7 @@ export function toUrl(relPath) {
     // escaped by encodeURI, yielding `B%2526W-...` and a guaranteed 404.
     // encodeURIComponent/decodeURIComponent handle reserved characters, so we
     // split on '/' to keep the separators intact.
-    return "/" + relPath.split("/").map((segment) => {
+    return "/" + relPath.replace(/^\/+/, "").split("/").map((segment) => {
         let decoded = segment;
         try { decoded = decodeURIComponent(segment); } catch (e) { /* malformed escape */ }
         return encodeURIComponent(decoded);
@@ -57,13 +64,31 @@ export function toUrl(relPath) {
 }
 
 /**
- * Swap a raster extension for .webp, preserving any `?cachebust` suffix and
- * the original encoding of the path. Pure - exported for unit tests.
+ * Normalize a stored path and confirm this module actually owns it.
+ *
+ * Ownership must be a PREFIX test, not a substring test: a foreign path that
+ * merely contains our prefix - a backup or upload such as
+ * `worlds/mine/uploads/modules/shadowdark-extras/old.png` - is not ours, and
+ * rewriting it would point a working reference at a file that does not exist.
+ *
+ * Returns the leading-slash-stripped path, or null when the value is not a
+ * module-owned path. Pure - exported for unit tests.
+ */
+export function normalizeModulePath(value) {
+    if (typeof value !== "string") return null;
+    const normalized = value.replace(/^\/+/, "");
+    return normalized.startsWith(PREFIX) ? normalized : null;
+}
+
+/**
+ * Swap a raster extension for .webp, preserving any `?cachebust` suffix, the
+ * original encoding, and any leading slash. Pure - exported for unit tests.
  * Returns null when the value is not a module-owned raster path.
  */
 export function planWebpSwap(value) {
-    if (typeof value !== "string") return null;
-    if (!value.includes(PREFIX)) return null;
+    if (!normalizeModulePath(value)) return null;
+    // Split the ORIGINAL value so the rewritten string keeps the caller's form
+    // (leading slash included) - the document should change extension only.
     const [bare, query] = value.split("?");
     if (!RASTER.test(bare)) return null;
     const candidate = bare.replace(RASTER, ".webp");
@@ -136,25 +161,43 @@ async function rewriteTree(node, depth = 0) {
     return { value: node, changed: 0 };
 }
 
-/** Migrate one document collection in bulk. */
-async function migrateCollection(label, collection, stats, dryRun) {
-    if (!collection?.size) return;
+/**
+ * Scan documents and build the update payload for those needing a rewrite.
+ * Shared by the world-collection and compendium-pack passes, which differ only
+ * in where the documents come from and how the update is applied.
+ */
+async function collectUpdates(docs) {
     const updates = [];
-    for (const doc of collection) {
+    let refs = 0;
+    const touched = [];
+    for (const doc of docs) {
         let source;
         try { source = doc.toObject(); } catch (e) { continue; }
         const r = await rewriteTree(source);
         if (r.changed > 0) {
             updates.push({ ...r.value, _id: doc.id });
-            stats.refs += r.changed;
-            stats.docs++;
-            if (stats.samples.length < 20) {
-                stats.samples.push({ type: label, name: doc.name ?? doc.id, paths: r.changed });
-            }
+            refs += r.changed;
+            touched.push({ name: doc.name ?? doc.id, paths: r.changed });
         }
     }
+    return { updates, refs, touched };
+}
+
+/** Migrate one world document collection in bulk. */
+async function migrateCollection(label, collection, stats, dryRun) {
+    if (!collection?.size) return;
+
+    const { updates, refs, touched } = await collectUpdates(collection);
     if (!updates.length) return;
+
+    stats.refs += refs;
+    stats.docs += updates.length;
+    for (const t of touched) {
+        if (stats.samples.length >= 20) break;
+        stats.samples.push({ type: label, name: t.name, paths: t.paths });
+    }
     stats.byType[label] = updates.length;
+
     if (dryRun) return;
     try {
         await collection.documentClass.updateDocuments(updates, { diff: false, recursive: false });
@@ -216,23 +259,17 @@ async function migrateWorldPacks(stats, dryRun) {
         if (pack.metadata.packageType !== "world") continue;
 
         let docs;
-        try { docs = await pack.getDocuments(); } catch (e) { continue; }
-
-        const updates = [];
-        let hits = 0;
-        for (const doc of docs) {
-            let source;
-            try { source = doc.toObject(); } catch (e) { continue; }
-            const r = await rewriteTree(source);
-            if (r.changed > 0) {
-                updates.push({ ...r.value, _id: doc.id });
-                hits += r.changed;
-            }
+        try { docs = await pack.getDocuments(); } catch (e) {
+            stats.errors.push(`${pack.collection}: ${e.message}`);
+            continue;
         }
+
+        const { updates, refs: hits } = await collectUpdates(docs);
         if (!hits) continue;
+        const plural = hits === 1 ? "" : "s";
 
         if (pack.locked) {
-            stats.packWarnings.push(`${pack.collection} (${hits} path${hits === 1 ? "" : "s"}, LOCKED)`);
+            stats.packWarnings.push(`${pack.collection} (${hits} path${plural}, LOCKED)`);
             continue;
         }
         if (dryRun) {
@@ -241,7 +278,7 @@ async function migrateWorldPacks(stats, dryRun) {
         }
         try {
             await pack.documentClass.updateDocuments(updates, { pack: pack.collection, diff: false, recursive: false });
-            stats.packMigrated.push(`${pack.collection} (${hits} path${hits === 1 ? "" : "s"})`);
+            stats.packMigrated.push(`${pack.collection} (${hits} path${plural})`);
             stats.refs += hits;
         } catch (e) {
             console.error(`${MODULE_ID} | webp migration failed for pack ${pack.collection}:`, e);
@@ -257,9 +294,18 @@ async function migrateWorldPacks(stats, dryRun) {
  * Deliberately NOT awaited by the startup migration: it must load every
  * document of every world pack, which stalls world load on content-heavy
  * setups. The ready hook fires it in the background instead.
+ *
+ * Gated on its OWN setting rather than `webpMigrationDone`. A pack that was
+ * locked, or whose update threw, is not migrated - if the sweep shared the
+ * document gate it would be marked done and never retried, stranding those
+ * packs on dead paths forever. `webpPackSweepDone` is set only once a pass
+ * completes with nothing locked and no errors, so unlocking a pack and
+ * reloading is enough to finish the job.
  */
-export async function sweepWorldCompendiums({ dryRun = false } = {}) {
+export async function sweepWorldCompendiums({ dryRun = false, force = false } = {}) {
     if (!game.user.isGM) return null;
+    if (!force && !dryRun && game.settings.get(MODULE_ID, "webpPackSweepDone")) return null;
+
     const stats = { refs: 0, packWarnings: [], packMigrated: [], errors: [] };
     await migrateWorldPacks(stats, dryRun);
 
@@ -269,12 +315,18 @@ export async function sweepWorldCompendiums({ dryRun = false } = {}) {
     if (stats.packWarnings.length) {
         console.warn(
             `${MODULE_ID} | These world compendiums are LOCKED and still reference pre-WebP paths: ` +
-            `${stats.packWarnings.join(", ")}. Unlock them, then run ` +
-            `game.modules.get("${MODULE_ID}").api.sweepWorldCompendiums().`
+            `${stats.packWarnings.join(", ")}. Unlock them and reload - the sweep retries every load ` +
+            `until it completes cleanly, or run ` +
+            `game.modules.get("${MODULE_ID}").api.sweepWorldCompendiums({ force: true }) now.`
         );
         ui.notifications?.warn(
             `Shadowdark Extras: ${stats.packWarnings.length} locked world compendium(s) still use old artwork paths - see console.`
         );
+    }
+
+    // Only close the gate on a clean pass, so locked/failed packs get retried.
+    if (!dryRun && !stats.packWarnings.length && !stats.errors.length) {
+        await game.settings.set(MODULE_ID, "webpPackSweepDone", true);
     }
     return stats;
 }
