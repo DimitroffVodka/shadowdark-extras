@@ -6,9 +6,23 @@
   "scripts": {
     "verify": "bash verify.sh",
     "verify:strict": "bash verify.sh --strict",
+    "test": "node --test \"dev/tests/*.test.mjs\"",
+    "test:roller": "node dev/tests/shadowdarkling-roller-regressions.mjs",
+    "test:all": "npm run test && npm run test:roller",
+    "gate:imports": "node dev/tools/resolve-imports.mjs",
+    "gate:script-paths": "node dev/tools/script-path-guard.mjs",
+    "snapshot:registrations": "node dev/tools/registration-snapshot.mjs",
+    "snapshot:api": "node dev/tools/api-export-snapshot.mjs",
+    "snapshot:settings": "node dev/tools/settings-snapshot.mjs",
+    "matrix:imports": "node dev/tools/feature-import-matrix.mjs",
+    "premove": "node dev/tools/find-path-refs.mjs",
     "pack": "node ./dev/packs/pack.mjs",
     "unpack": "node ./dev/packs/unpack.mjs",
     "release:check": "node ./dev/release-check.mjs"
+  },
+  "//engines": "Node 24 is the supported runtime for release:check and the packs tooling. See dev/tools/README.md for the two environment failures that must not be recorded as a pass.",
+  "engines": {
+    "node": ">=24 <27"
   },
   "devDependencies": {
     "@foundryvtt/foundryvtt-cli": "^1.0.4"

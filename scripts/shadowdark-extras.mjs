@@ -17576,6 +17576,12 @@ Hooks.on("quenchReady", async (quench) => {
 	} catch (e) {
 		// Expected in a packaged install: dev/ is not shipped.
 	}
+	try {
+		const { registerStructuralBatch } = await import("../dev/tests/quench/structural.batch.mjs");
+		registerStructuralBatch(quench);
+	} catch (e) {
+		// Expected in a packaged install: dev/ is not shipped.
+	}
 });
 
 Hooks.once("ready", async () => {

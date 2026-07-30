@@ -1,0 +1,141 @@
+{
+  "$comment": "Public surface baseline. `esmodules` is static and gated on every structural commit; `moduleApi` is read from a live world and re-checked at phase ends. Name stability only — a changed signature breaks consumers with this file still green. Regenerate with: npm run snapshot:api -- --write",
+  "declaredCount": 4,
+  "esmodules": {
+    "SheetEditorConfig.mjs": {
+      "names": [
+        "default",
+        "openSheetEditor"
+      ]
+    },
+    "SpellMacrosSD.mjs": {
+      "names": [
+        "applyCleansingWeapon",
+        "applyHolyWeapon",
+        "applyShapechanger",
+        "applyWrathToAllWeapons",
+        "applyWrathWeapon",
+        "getUnidentifiedName",
+        "identifyItem",
+        "isUnidentified",
+        "revertShapechanger",
+        "showCleansingWeaponDialog",
+        "showHolyWeaponDialog",
+        "showIdentifyDialog",
+        "showItemReveal",
+        "showShapechangerDialog",
+        "showWrathWeaponDialog"
+      ]
+    },
+    "TileFlattenSD.mjs": {
+      "names": [
+        "flattenDungeonLevel",
+        "flattenTiles",
+        "getDungeonFloorLevels",
+        "getDungeonVisualDocs",
+        "getFlattendDungeonLevels",
+        "unflattenTile"
+      ]
+    },
+    "shadowdark-extras.mjs": {
+      "names": [
+        "executeItemMacro",
+        "getCustomLightSources",
+        "hasItemMacro"
+      ]
+    }
+  },
+  "moduleApi": {
+    "recordedAt": "2026-07-30",
+    "foundry": "14.365",
+    "system": "shadowdark 4.0.6",
+    "manifestVersionOnDisk": "6.10.51",
+    "versionReportedByFoundry": "6.10.50",
+    "$versionNote": "Foundry reads module.json once at server start, so a browser reload still reports the pre-bump version. The API surface below was captured after a hard reload and is what the gate compares.",
+    "keyCount": 59,
+    "keys": [
+      "applyCleansingWeapon",
+      "applyHolyWeapon",
+      "applyShapechanger",
+      "applySpellEffect",
+      "applyWorldMedkitUpdates",
+      "applyWrathToAllWeapons",
+      "applyWrathWeapon",
+      "breakEffectOnDamage",
+      "buildHexDungeonScene",
+      "buildHexcrawl",
+      "buildHexcrawlFromFile",
+      "clearBreakOnDamage",
+      "clearGeneratedTiles",
+      "dev",
+      "endDurationSpell",
+      "generateDungeon",
+      "generateHexMap",
+      "generateMultiLevelDungeon",
+      "generateRandomSeed",
+      "getActiveDurationSpells",
+      "getBiomeDefinitions",
+      "getConditionsData",
+      "getCreatureType",
+      "getCustomBiomes",
+      "getDisabledBiomes",
+      "getEnabledBiomeKeys",
+      "getGeneratorSettings",
+      "getMappedCreatureType",
+      "getMedkitPacks",
+      "getUnidentifiedName",
+      "identifyItem",
+      "internal",
+      "isUnidentified",
+      "medkitScanWorld",
+      "migrateWebpAssetPaths",
+      "openBiomeEditor",
+      "placeChangeLevelRegion",
+      "placeDungeonDecor",
+      "placeDungeonSurface",
+      "registerMedkitPack",
+      "registerSpellModification",
+      "removeCustomBiome",
+      "resetCustomBiomes",
+      "revertShapechanger",
+      "scanWorldForUpdates",
+      "setBiomeEnabled",
+      "setCustomBiome",
+      "setGeneratorSettings",
+      "showCleansingWeaponDialog",
+      "showConditionsModal",
+      "showHolyWeaponDialog",
+      "showIdentifyDialog",
+      "showItemReveal",
+      "showShapechangerDialog",
+      "showWrathWeaponDialog",
+      "startDurationSpell",
+      "sweepWorldCompendiums",
+      "templates",
+      "unregisterMedkitPack"
+    ],
+    "nested": {
+      "dev": [
+        "castSpell"
+      ],
+      "templates": [
+        "getPairedRegion",
+        "getTokensInTemplate",
+        "place",
+        "placeAndTarget"
+      ],
+      "internal": [
+        "applySceneLevelData",
+        "assignBiomes",
+        "buildCellFloorMap",
+        "caveLayout",
+        "caveLoops",
+        "getDungeonBackground",
+        "getSceneLevelContext",
+        "layout",
+        "mixedLayout",
+        "traceBoundaryLoops"
+      ]
+    }
+  }
+}

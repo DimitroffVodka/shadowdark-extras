@@ -1,0 +1,433 @@
+{
+  "$comment": "Static registration call-site inventory. Keyed by module basename so it survives feature-folder moves. Order within each module is the contract; runtime firing order is proved by the smoke matrix, not by this file. Regenerate only with a reviewed reason: npm run snapshot:registrations -- --write",
+  "totals": {
+    "Hooks.on": 222,
+    "Hooks.once": 43,
+    "socketlib.registerModule": 3,
+    "socket.register": 46,
+    "Hooks.off": 8,
+    "libWrapper.register": 3,
+    "all": 325
+  },
+  "modules": {
+    "AuraEffectsSD.mjs": [
+      "Hooks.on:preUpdateToken",
+      "Hooks.on:updateToken",
+      "Hooks.on:updateCombat",
+      "Hooks.on:renderChatMessageHTML",
+      "Hooks.on:createWall",
+      "Hooks.on:updateWall",
+      "Hooks.on:deleteWall",
+      "Hooks.on:updateScene",
+      "Hooks.on:deleteActiveEffect"
+    ],
+    "AutoAnimationsSD.mjs": [
+      "Hooks.on:preCreateChatMessage",
+      "Hooks.on:createChatMessage",
+      "Hooks.on:AutomatedAnimations-WorkflowStart",
+      "Hooks.once:ready"
+    ],
+    "BreakOnDamageSD.mjs": [
+      "Hooks.on:preUpdateActor",
+      "Hooks.on:updateActor"
+    ],
+    "CarousingSD.mjs": [
+      "Hooks.on:updateJournalEntry"
+    ],
+    "CombatSettingsSD.mjs": [
+      "socketlib.registerModule:<dynamic>",
+      "socket.register:setTargetDefenseResult",
+      "socket.register:applyTokenDamage",
+      "socket.register:showScrollingText",
+      "socket.register:applyTokenCondition",
+      "socket.register:removeTargetEffect",
+      "socket.register:markBreakOnDamage",
+      "socket.register:applyEffectToTarget",
+      "socket.register:endFocusSpell",
+      "socket.register:applyAuraEffectViaGM",
+      "socket.register:removeAuraEffectViaGM",
+      "socket.register:applyAuraConditionsViaGM",
+      "socket.register:applyAuraDamageViaGM",
+      "socket.register:removeAuraEffectsFromAllViaGM",
+      "socket.register:showTradeRequestPrompt",
+      "socket.register:openTradeWindow",
+      "socket.register:notifyTradeDeclined",
+      "socket.register:showHolyWeaponDialogForUser",
+      "socket.register:showIdentifyDialogForUser",
+      "socket.register:showCleansingWeaponDialogForUser",
+      "socket.register:showWrathWeaponDialogForUser",
+      "socket.register:showShapechangerDialogForUser",
+      "socket.register:revertShapechangerAsGM",
+      "socket.register:applyShapechangerAsGM",
+      "socket.register:revertItemModificationAsGM",
+      "socket.register:updateItemFlagsAsGM",
+      "socket.register:transferItemsAsGM",
+      "socket.register:transferCoinsAsGM",
+      "Hooks.on:preUpdateActor",
+      "Hooks.on:updateActor",
+      "Hooks.on:updateActor",
+      "Hooks.on:updateCombat",
+      "Hooks.on:updateCombat"
+    ],
+    "DungeonBiomesSD.mjs": [
+      "Hooks.once:init"
+    ],
+    "DungeonMultiLevelSD.mjs": [
+      "Hooks.once:ready",
+      "Hooks.once:init",
+      "Hooks.on:renderTrayApp"
+    ],
+    "DungeonPainterSD.mjs": [
+      "Hooks.once:init",
+      "socketlib.registerModule:<dynamic>",
+      "socket.register:dungeonFillRectangle",
+      "socket.register:dungeonDeleteRectangle",
+      "socket.register:dungeonPlaceDoor",
+      "socket.register:dungeonRemoveDoor",
+      "socket.register:dungeonRebuildWalls",
+      "socket.register:dungeonGetTileList"
+    ],
+    "EasyReferenceMenu.mjs": [
+      "Hooks.on:getProseMirrorMenuDropDowns"
+    ],
+    "FocusSpellTrackerSD.mjs": [
+      "Hooks.on:renderChatMessageHTML",
+      "Hooks.on:createItem",
+      "Hooks.on:deleteItem",
+      "Hooks.on:deleteToken",
+      "Hooks.on:renderPlayerSheetSD",
+      "Hooks.on:renderPlayerSheetSD",
+      "Hooks.on:updateCombat",
+      "Hooks.on:updateCombat",
+      "Hooks.on:renderChatMessageHTML",
+      "Hooks.on:renderPlayerSheetSD"
+    ],
+    "FormationSpawnerSD.mjs": [
+      "Hooks.once:createToken",
+      "Hooks.off:createToken"
+    ],
+    "HexTooltipSD.mjs": [
+      "Hooks.on:updateJournalEntry",
+      "Hooks.off:updateJournalEntry",
+      "Hooks.once:init",
+      "Hooks.once:ready",
+      "Hooks.off:updateJournalEntry",
+      "Hooks.off:updateJournalEntryPage",
+      "Hooks.on:updateJournalEntry",
+      "Hooks.on:updateJournalEntryPage",
+      "Hooks.off:updateJournalEntry",
+      "Hooks.off:updateJournalEntryPage",
+      "Hooks.on:canvasReady"
+    ],
+    "ItemPilesCompatSD.mjs": [
+      "Hooks.on:preCreateItem",
+      "Hooks.on:preUpdateItem",
+      "Hooks.once:item-piles-ready"
+    ],
+    "JournalNarrationSD.mjs": [
+      "Hooks.once:init",
+      "Hooks.on:renderJournalPageSheet",
+      "Hooks.once:ready"
+    ],
+    "JournalPinsSD.mjs": [
+      "Hooks.once:init",
+      "Hooks.once:init",
+      "Hooks.on:dropCanvasData",
+      "Hooks.on:preCreateNote",
+      "Hooks.once:init",
+      "Hooks.once:ready",
+      "Hooks.on:canvasReady",
+      "Hooks.on:canvasTearDown",
+      "Hooks.on:updateScene",
+      "Hooks.on:updateToken",
+      "Hooks.on:sightRefresh",
+      "Hooks.once:ready",
+      "Hooks.once:ready"
+    ],
+    "LevelUpAnimationSD.mjs": [
+      "Hooks.on:updateActor",
+      "Hooks.on:canvasReady",
+      "Hooks.on:deleteToken",
+      "Hooks.on:createToken"
+    ],
+    "MaphubSD.mjs": [
+      "Hooks.once:ready"
+    ],
+    "MarchingModeSD.mjs": [
+      "Hooks.on:renderSidebar",
+      "Hooks.on:preUpdateToken",
+      "Hooks.on:updateToken",
+      "Hooks.on:canvasReady",
+      "Hooks.on:deleteToken",
+      "Hooks.on:createToken"
+    ],
+    "MedkitSD.mjs": [
+      "Hooks.on:getActorSheetHeaderButtons"
+    ],
+    "MysteriousCasting.mjs": [
+      "Hooks.on:renderNpcSheetSD",
+      "Hooks.on:preCreateChatMessage"
+    ],
+    "PinListApp.mjs": [
+      "Hooks.on:updateScene",
+      "Hooks.on:canvasReady"
+    ],
+    "PlaceableNotesSD.mjs": [
+      "Hooks.on:getHeaderControlsDocumentSheetV2",
+      "Hooks.on:getActorSheetHeaderButtons"
+    ],
+    "PoiTileSortSD.mjs": [
+      "Hooks.on:<dynamic>",
+      "Hooks.off:<dynamic>"
+    ],
+    "SDXCoordsSD.mjs": [
+      "Hooks.on:canvasReady"
+    ],
+    "SDXDrawingTool.mjs": [
+      "Hooks.on:canvasReady",
+      "Hooks.on:canvasTearDown"
+    ],
+    "SDXDrawingToolbar.mjs": [
+      "Hooks.on:sdxDrawingActiveChanged"
+    ],
+    "SDXHexFogSD.mjs": [
+      "Hooks.on:canvasReady",
+      "Hooks.on:canvasTearDown",
+      "Hooks.on:updateScene",
+      "Hooks.on:updateToken",
+      "Hooks.on:updateJournalEntry"
+    ],
+    "SettlementGenerator.mjs": [
+      "Hooks.on:ready"
+    ],
+    "SheetLockManager.mjs": [
+      "Hooks.on:renderActorSheet",
+      "Hooks.on:renderApplication",
+      "Hooks.on:preUpdateActor",
+      "Hooks.on:preCreateItem",
+      "Hooks.on:preDeleteItem",
+      "Hooks.on:preUpdateItem"
+    ],
+    "SoloHexMode.mjs": [
+      "Hooks.on:updateToken"
+    ],
+    "SpellMacrosSD.mjs": [
+      "Hooks.once:ready"
+    ],
+    "TMFXFilterEditor.mjs": [
+      "Hooks.on:<dynamic>",
+      "Hooks.off:<dynamic>"
+    ],
+    "TemplateEffectsSD.mjs": [
+      "Hooks.on:preUpdateToken",
+      "Hooks.on:updateToken",
+      "Hooks.on:createMeasuredTemplate",
+      "Hooks.on:deleteMeasuredTemplate",
+      "Hooks.on:updateCombat",
+      "Hooks.on:renderChatMessageHTML"
+    ],
+    "TemplateElevationBadgeSD.mjs": [
+      "Hooks.on:drawMeasuredTemplate",
+      "Hooks.on:refreshMeasuredTemplate"
+    ],
+    "TileFlattenSD.mjs": [
+      "Hooks.on:renderTileHUD"
+    ],
+    "TokenToolbarSD.mjs": [
+      "Hooks.on:controlToken",
+      "Hooks.on:updateActor",
+      "Hooks.on:createActiveEffect",
+      "Hooks.on:deleteActiveEffect",
+      "Hooks.on:updateActiveEffect",
+      "Hooks.on:createItem",
+      "Hooks.on:deleteItem",
+      "Hooks.on:updateItem",
+      "Hooks.on:updateCombat",
+      "Hooks.on:deleteCombat"
+    ],
+    "TomSD.mjs": [
+      "Hooks.on:ready",
+      "Hooks.on:updateActor",
+      "Hooks.on:renderChatMessageHTML"
+    ],
+    "TomStore.mjs": [
+      "Hooks.on:updateSetting"
+    ],
+    "TorchAnimationSD.mjs": [
+      "Hooks.on:updateItem",
+      "Hooks.on:updateToken",
+      "Hooks.on:canvasReady",
+      "Hooks.on:deleteToken",
+      "Hooks.on:createToken"
+    ],
+    "TradeWindowSD.mjs": [
+      "Hooks.on:updateJournalEntry"
+    ],
+    "TrayApp.mjs": [
+      "Hooks.on:sdx.decorAssetsImported",
+      "Hooks.once:renderDialogV2",
+      "Hooks.once:init"
+    ],
+    "TraySD.mjs": [
+      "Hooks.on:controlToken",
+      "Hooks.on:updateActor",
+      "Hooks.on:createActiveEffect",
+      "Hooks.on:deleteActiveEffect",
+      "Hooks.on:updateActiveEffect",
+      "Hooks.on:createItem",
+      "Hooks.on:deleteItem",
+      "Hooks.on:updateItem",
+      "Hooks.on:createToken",
+      "Hooks.on:deleteToken",
+      "Hooks.on:updateToken",
+      "Hooks.on:createWall",
+      "Hooks.on:deleteWall",
+      "Hooks.on:updateWall",
+      "Hooks.on:<dynamic>",
+      "Hooks.on:<dynamic>",
+      "Hooks.on:<dynamic>",
+      "Hooks.on:canvasTearDown",
+      "Hooks.on:canvasReady",
+      "Hooks.on:createNote",
+      "Hooks.on:updateNote",
+      "Hooks.on:deleteNote",
+      "Hooks.on:sdx.poiPlaced",
+      "Hooks.on:updateScene",
+      "Hooks.on:updateSetting",
+      "Hooks.on:userConnected"
+    ],
+    "UnidentifiedDisplaySD.mjs": [
+      "Hooks.on:renderActorSheet",
+      "Hooks.on:renderItemDirectory",
+      "Hooks.on:renderCompendiumDirectory",
+      "Hooks.on:renderCompendium"
+    ],
+    "WallContextMenuSD.mjs": [
+      "libWrapper.register:foundry.canvas.layers.WallsLayer.prototype._onClickRight",
+      "libWrapper.register:foundry.canvas.placeables.Wall.prototype._onClickRight"
+    ],
+    "WeaponAnimationSD.mjs": [
+      "Hooks.on:updateItem",
+      "Hooks.on:canvasReady",
+      "Hooks.on:deleteToken",
+      "Hooks.on:createToken"
+    ],
+    "shadowdark-extras.mjs": [
+      "libWrapper.register:<dynamic>",
+      "Hooks.once:init",
+      "Hooks.on:renderChatMessageHTML",
+      "Hooks.once:ready",
+      "Hooks.on:renderSettingsConfig",
+      "Hooks.on:renderDocumentSheetConfig",
+      "Hooks.on:renderDialog",
+      "Hooks.on:renderApplication",
+      "Hooks.on:renderActorDirectory",
+      "Hooks.once:init",
+      "Hooks.on:sequencer.ready",
+      "Hooks.once:ready",
+      "Hooks.on:renderJournalDirectory",
+      "Hooks.on:renderJournalEntrySheet",
+      "Hooks.on:renderJournalSheet",
+      "Hooks.once:ready",
+      "Hooks.on:preCreateItem",
+      "Hooks.on:preCreateActor",
+      "Hooks.on:createActor",
+      "Hooks.on:renderPlayerSheetSD",
+      "Hooks.on:renderNpcSheetSD",
+      "Hooks.on:renderNpcSheetSD",
+      "Hooks.on:renderActorSheet",
+      "Hooks.on:createActor",
+      "Hooks.on:renderRollDialogSD",
+      "Hooks.on:updateItem",
+      "Hooks.on:renderItemSheet",
+      "Hooks.on:renderApplicationV2",
+      "Hooks.on:preUpdateItem",
+      "Hooks.on:preCreateChatMessage",
+      "Hooks.on:renderChatMessageHTML",
+      "Hooks.once:ready",
+      "Hooks.on:updateItem",
+      "Hooks.on:createItem",
+      "Hooks.on:preDeleteItem",
+      "Hooks.on:deleteItem",
+      "Hooks.on:preUpdateActor",
+      "Hooks.on:updateActor",
+      "Hooks.on:updateItem",
+      "Hooks.on:createItem",
+      "Hooks.on:deleteItem",
+      "Hooks.on:updateActor",
+      "Hooks.on:updateActor",
+      "Hooks.on:renderChatMessageHTML",
+      "Hooks.on:deleteActor",
+      "Hooks.on:createActiveEffect",
+      "Hooks.on:deleteActiveEffect",
+      "Hooks.on:updateActiveEffect",
+      "Hooks.once:ready",
+      "Hooks.once:init",
+      "Hooks.once:ready",
+      "Hooks.on:refreshToken",
+      "Hooks.on:preCreateChatMessage",
+      "Hooks.on:updateActiveEffect",
+      "Hooks.on:deleteActiveEffect",
+      "Hooks.on:deleteItem",
+      "Hooks.on:quenchReady",
+      "Hooks.once:ready",
+      "socketlib.registerModule:<dynamic>",
+      "socket.register:executeMacroAsGM",
+      "socket.register:sdxExecuteItemMacro",
+      "socket.register:sdxMutatePartyTravel",
+      "socket.register:syncTargetsToGM",
+      "Hooks.on:combatTurn",
+      "Hooks.on:combatTurn",
+      "Hooks.on:createActiveEffect",
+      "Hooks.on:deleteActiveEffect",
+      "Hooks.on:updateItem",
+      "Hooks.once:ready",
+      "socket.register:executeSpellItemMacroAsGM",
+      "socket.register:applyHolyWeaponAsGM",
+      "socket.register:applyCleansingWeaponAsGM",
+      "socket.register:applyWrathWeaponAsGM",
+      "socket.register:applyWrathToAllWeaponsAsGM",
+      "socket.register:sdxIdentifyItemAsGM",
+      "socket.register:sdxShowItemRevealForUser",
+      "socket.register:sdxShowIdentifyDialog",
+      "Hooks.on:renderChatMessageHTML",
+      "Hooks.on:renderChatMessageHTML",
+      "Hooks.on:renderChatMessageHTML",
+      "Hooks.on:renderChatMessageHTML",
+      "Hooks.once:ready",
+      "Hooks.once:ready",
+      "Hooks.once:ready",
+      "Hooks.once:ready",
+      "socket.register:executeClassAbilityMacroAsGM",
+      "Hooks.once:ready",
+      "Hooks.on:setup",
+      "Hooks.on:updateItem",
+      "Hooks.on:updateActor",
+      "Hooks.on:renderActorSheet",
+      "Hooks.on:createToken",
+      "Hooks.on:renderApplication",
+      "Hooks.once:ready",
+      "Hooks.on:renderSpellBookSD",
+      "Hooks.on:renderActiveEffectConfig",
+      "Hooks.on:preUpdateActiveEffect",
+      "Hooks.on:updateActiveEffect",
+      "Hooks.on:createActiveEffect",
+      "Hooks.on:updateActor",
+      "Hooks.on:renderActorSheet",
+      "Hooks.on:createItem",
+      "Hooks.once:ready",
+      "Hooks.on:renderNpcSheetSD",
+      "Hooks.on:getSceneContextOptions",
+      "Hooks.once:ready",
+      "Hooks.once:ready",
+      "Hooks.once:ready",
+      "Hooks.once:init",
+      "Hooks.on:renderApplication"
+    ],
+    "shapechanger.mjs": [
+      "Hooks.on:sdx.durationSpellEnded",
+      "Hooks.on:updateActor",
+      "Hooks.on:renderPlayerSheetSD"
+    ]
+  }
+}
