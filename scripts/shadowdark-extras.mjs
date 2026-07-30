@@ -15,8 +15,8 @@ import { HpWavesSettingsApp, registerHpWavesSettings, getHpWaveColor, isHpWavesE
 import { TravelActivitiesSettingsApp, registerTravelActivitiesSettings, getTravelActivities } from "./TravelActivitiesSettingsSD.mjs";
 import { TravelSpeedsSettingsApp, registerTravelSpeedsSettings, getTravelSpeeds } from "./TravelSpeedsSettingsSD.mjs";
 import { registerPartyWeatherSettings } from "./PartyWeatherSettingsSD.mjs";
-import { generateSpellConfig, generatePotionConfig, generateScrollConfig, generateWandConfig } from "./templates/ItemTypeConfigs.mjs";
-import { activateTemplateTargetingListeners } from "./templates/TemplateTargetingConfig.mjs";
+import { generateSpellConfig, generatePotionConfig, generateScrollConfig, generateWandConfig } from "./item-sheets/ItemTypeConfigs.mjs";
+import { activateTemplateTargetingListeners } from "./item-sheets/TemplateTargetingConfig.mjs";
 import { readSdRollOutcome, resolveCardContext } from "./shared/sd4Compat.mjs";
 import {
 	injectWeaponBonusTab,
@@ -55,18 +55,18 @@ import { registerDisplayItemEnricher } from "./DisplayItem.mjs";
 import { initEasyReferenceMenu, registerEasyReferenceSettings } from "./easy-reference/EasyReferenceMenu.mjs";
 import { CreatureTypesApp, getCreatureTypes, getEffectiveCreatureType, getMappedType } from "./CreatureTypesApp.mjs";
 import SheetEditorConfig from "./character-sheet/SheetEditorConfig.mjs";
-import PotionSheetSD from "./PotionSheetSD.mjs";
+import PotionSheetSD from "./item-sheets/PotionSheetSD.mjs";
 import BackgroundSheetSD from "./character-sheet/BackgroundSheetSD.mjs";
 import NPCAttackSheetSD from "./NPCAttackSheetSD.mjs";
 import NPCSpecialAttackSheetSD from "./NPCSpecialAttackSheetSD.mjs";
 import { initPlaceableNotes } from "./PlaceableNotesSD.mjs";
 import NPCFeatureSheetSD from "./NPCFeatureSheetSD.mjs";
-import ClassAbilitySheetSD from "./ClassAbilitySheetSD.mjs";
+import ClassAbilitySheetSD from "./item-sheets/ClassAbilitySheetSD.mjs";
 import { initTokenToolbar, registerTokenToolbarSettings } from "./TokenToolbarSD.mjs";
 import { initTray, registerTraySettings } from "./TraySD.mjs";
 import { initAppearanceSettings } from "./character-sheet/AppearanceSettingsSD.mjs";
 import AmmunitionSelector from "./inventory/AmmunitionSelector.mjs";
-import StaffSpellManager from "./StaffSpellManager.mjs";
+import StaffSpellManager from "./item-sheets/StaffSpellManager.mjs";
 import { initJournalNarration } from "./JournalNarrationSD.mjs";
 import { initMedkit, registerMedkitPack, unregisterMedkitPack, getMedkitPacks, scanWorldForUpdates, applyWorldMedkitUpdates, medkitScanWorld, MedkitWorldScanMenu } from "./MedkitSD.mjs";
 import { LightTrackerAppSD, initLightTrackerApp } from "./LightTrackerAppSD.mjs";
@@ -10529,7 +10529,7 @@ async function enhanceSpellSheet(app, html) {
 	}
 
 	if (summonProfilesArray && summonProfilesArray.length > 0) {
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		for (let i = 0; i < summonProfilesArray.length; i++) {
 			const profile = summonProfilesArray[i];
 			summonsList += generateSummonProfileHTML(profile, i);
@@ -10549,7 +10549,7 @@ async function enhanceSpellSheet(app, html) {
 	}
 
 	if (itemGiveProfilesArray && itemGiveProfilesArray.length > 0) {
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		for (let i = 0; i < itemGiveProfilesArray.length; i++) {
 			const profile = itemGiveProfilesArray[i];
 			itemGiveList += generateItemGiveProfileHTML(profile, i);
@@ -11126,7 +11126,7 @@ async function enhanceSpellSheet(app, html) {
 		e.preventDefault();
 		e.stopPropagation();
 
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		const $summonsList = $(this).closest('.sdx-summoning-content').find('.sdx-summons-list');
 		const index = $summonsList.find('.sdx-summon-profile').length;
 
@@ -11281,7 +11281,7 @@ async function enhanceSpellSheet(app, html) {
 	html.on('click', '.sdx-add-item-give-btn', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		const $list = $(this).closest('.sdx-item-give-content').find('.sdx-item-give-list');
 		const index = $list.find('.sdx-item-give-profile').length;
 		const newProfile = {
@@ -11857,7 +11857,7 @@ async function enhancePotionSheet(app, html) {
 	}
 
 	if (summonProfilesArray && summonProfilesArray.length > 0) {
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		for (let i = 0; i < summonProfilesArray.length; i++) {
 			const profile = summonProfilesArray[i];
 			summonsList += generateSummonProfileHTML(profile, i);
@@ -11877,7 +11877,7 @@ async function enhancePotionSheet(app, html) {
 	}
 
 	if (itemGiveProfilesArray && itemGiveProfilesArray.length > 0) {
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		for (let i = 0; i < itemGiveProfilesArray.length; i++) {
 			const profile = itemGiveProfilesArray[i];
 			itemGiveList += generateItemGiveProfileHTML(profile, i);
@@ -12119,7 +12119,7 @@ async function enhancePotionSheet(app, html) {
 	html.on('click', '.sdx-add-summon-btn', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		const $list = $(this).closest('.sdx-summoning-content').find('.sdx-summons-list');
 		const index = $list.find('.sdx-summon-profile').length;
 		const newProfile = {
@@ -12258,7 +12258,7 @@ async function enhancePotionSheet(app, html) {
 	html.on('click', '.sdx-add-item-give-btn', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		const $list = $(this).closest('.sdx-item-give-content').find('.sdx-item-give-list');
 		const index = $list.find('.sdx-item-give-profile').length;
 		const newProfile = {
@@ -12720,7 +12720,7 @@ async function enhanceScrollSheet(app, html) {
 	}
 
 	if (summonProfilesArray && summonProfilesArray.length > 0) {
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		for (let i = 0; i < summonProfilesArray.length; i++) {
 			const profile = summonProfilesArray[i];
 			summonsList += generateSummonProfileHTML(profile, i);
@@ -12740,7 +12740,7 @@ async function enhanceScrollSheet(app, html) {
 	}
 
 	if (itemGiveProfilesArray && itemGiveProfilesArray.length > 0) {
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		for (let i = 0; i < itemGiveProfilesArray.length; i++) {
 			const profile = itemGiveProfilesArray[i];
 			itemGiveList += generateItemGiveProfileHTML(profile, i);
@@ -13046,7 +13046,7 @@ async function enhanceScrollSheet(app, html) {
 	html.on('click', '.sdx-add-summon-btn', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		const $list = $(this).closest('.sdx-summoning-content').find('.sdx-summons-list');
 		const index = $list.find('.sdx-summon-profile').length;
 		const newProfile = {
@@ -13185,7 +13185,7 @@ async function enhanceScrollSheet(app, html) {
 	html.on('click', '.sdx-add-item-give-btn', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		const $list = $(this).closest('.sdx-item-give-content').find('.sdx-item-give-list');
 		const index = $list.find('.sdx-item-give-profile').length;
 		const newProfile = {
@@ -14376,7 +14376,7 @@ async function enhanceWandSheet(app, html) {
 	}
 
 	if (summonProfilesArray && summonProfilesArray.length > 0) {
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		for (let i = 0; i < summonProfilesArray.length; i++) {
 			const profile = summonProfilesArray[i];
 			summonsList += generateSummonProfileHTML(profile, i);
@@ -14396,7 +14396,7 @@ async function enhanceWandSheet(app, html) {
 	}
 
 	if (itemGiveProfilesArray && itemGiveProfilesArray.length > 0) {
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		for (let i = 0; i < itemGiveProfilesArray.length; i++) {
 			const profile = itemGiveProfilesArray[i];
 			itemGiveList += generateItemGiveProfileHTML(profile, i);
@@ -14699,7 +14699,7 @@ async function enhanceWandSheet(app, html) {
 	html.on('click', '.sdx-add-summon-btn', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		const $list = $(this).closest('.sdx-summoning-content').find('.sdx-summons-list');
 		const index = $list.find('.sdx-summon-profile').length;
 		const newProfile = {
@@ -14838,7 +14838,7 @@ async function enhanceWandSheet(app, html) {
 	html.on('click', '.sdx-add-item-give-btn', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		const $list = $(this).closest('.sdx-item-give-content').find('.sdx-item-give-list');
 		const index = $list.find('.sdx-item-give-profile').length;
 		const newProfile = {

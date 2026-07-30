@@ -3,7 +3,7 @@
  * Generates HTML for the targeting configuration section in spell/scroll/wand Activity tab
  */
 
-import { generateAuraConfigHTML, setupAuraConfigHandlers } from './AuraConfig.mjs';
+import { generateAuraConfigHTML, setupAuraConfigHandlers } from '../templates/AuraConfig.mjs';
 
 function normalizeTokenMagicPresetEntries(source, allowedLibraries = null) {
 	const entries = [];
