@@ -77,7 +77,7 @@
   ],
   "esmodules": [
     "scripts/shadowdark-extras.mjs",
-    "scripts/SheetEditorConfig.mjs",
+    "scripts/character-sheet/SheetEditorConfig.mjs",
     "scripts/SpellMacrosSD.mjs",
     "scripts/TileFlattenSD.mjs"
   ],

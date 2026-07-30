@@ -3,7 +3,7 @@
  * A group/party management sheet similar to D&D 5e's Group actor
  */
 
-import { getHpWaveColor, isHpWavesEnabled } from "./HpWavesSettingsSD.mjs";
+import { getHpWaveColor, isHpWavesEnabled } from "./character-sheet/HpWavesSettingsSD.mjs";
 import { getTravelActivities } from "./TravelActivitiesSettingsSD.mjs";
 import { getTravelSpeeds } from "./TravelSpeedsSettingsSD.mjs";
 import { getCustomLightSources } from "./shadowdark-extras.mjs";
