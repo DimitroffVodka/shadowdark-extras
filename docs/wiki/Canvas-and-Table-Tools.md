@@ -67,7 +67,7 @@ roll banner. Those tasks stay off the generic roller's list of roll types
 because the Party sheet is what supplies the assigned actors, chosen abilities,
 DC, campfire disadvantage, and rest context.
 
-![The SDX Roller configured for a Strength check with participants and an opposing contestant](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-roller.png)
+![The SDX Roller configured for a Strength check with participants and an opposing contestant](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-roller.webp)
 
 ## ToM scenes and video overlays
 

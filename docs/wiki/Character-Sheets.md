@@ -20,7 +20,7 @@ world default that covers every actor without a custom header.
 Clicking a supported value opens the normal SDX or Shadowdark adjustment
 workflow, so the header is a working control surface.
 
-![An enhanced Player sheet with portrait HP wave, summary header, and themed tabs](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/enhanced-character-sheet.png)
+![An enhanced Player sheet with portrait HP wave, summary header, and themed tabs](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/enhanced-character-sheet.webp)
 
 ## HP quick adjustment
 

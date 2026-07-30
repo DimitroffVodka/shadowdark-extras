@@ -42,6 +42,7 @@ import { openWeaponAnimationConfig } from "./WeaponAnimationConfig.mjs";
 import { initFocusSpellTracker, endFocusSpell, linkEffectToFocusSpell, getActiveFocusSpells, isFocusingOnSpell, startDurationSpell, endDurationSpell, registerSpellModification, getActiveDurationSpells } from "./FocusSpellTrackerSD.mjs";
 import { initBreakOnDamage, breakEffectOnDamage, clearBreakOnDamage, applySpellEffect } from "./BreakOnDamageSD.mjs";
 import { initCarousing, injectCarousingButton, ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, getCustomCarousingTables, getCarousingTableById, setCarousingTable, migrateLegacyRenown } from "./CarousingSD.mjs";
+import { migrateWebpAssetPaths, sweepWorldCompendiums } from "./WebpMigrationSD.mjs";
 import { openCarousingOverlay, refreshCarousingOverlay } from "./CarousingOverlaySD.mjs";
 import { openCarousingTablesEditor } from "./CarousingTablesApp.mjs";
 import { openExpandedCarousingTablesEditor } from "./ExpandedCarousingTablesApp.mjs";
@@ -2841,10 +2842,10 @@ function applySheetDecorationStyles() {
 	let actorNameShadowColor, actorNameShadowAlpha, actorNameFontWeight;
 	let tabGradientStart, tabGradientEnd;
 	try {
-		sheetBorder = game.settings.get(MODULE_ID, "sheetBorderStyle") || "panel-border-004.png";
-		abilityPanel = game.settings.get(MODULE_ID, "abilityPanelStyle") || "panel-013.png";
-		acPanel = game.settings.get(MODULE_ID, "acPanelStyle") || "panel-transparent-center-004.png";
-		statPanel = game.settings.get(MODULE_ID, "statPanelStyle") || "panel-transparent-center-015.png";
+		sheetBorder = game.settings.get(MODULE_ID, "sheetBorderStyle") || "panel-border-004.webp";
+		abilityPanel = game.settings.get(MODULE_ID, "abilityPanelStyle") || "panel-013.webp";
+		acPanel = game.settings.get(MODULE_ID, "acPanelStyle") || "panel-transparent-center-004.webp";
+		statPanel = game.settings.get(MODULE_ID, "statPanelStyle") || "panel-transparent-center-015.webp";
 		borderImageWidth = game.settings.get(MODULE_ID, "borderImageWidth") ?? 16;
 		borderImageSlice = game.settings.get(MODULE_ID, "borderImageSlice") ?? 12;
 		borderImageOutset = game.settings.get(MODULE_ID, "borderImageOutset") ?? 0;
@@ -2853,16 +2854,16 @@ function applySheetDecorationStyles() {
 		borderBackgroundColor = game.settings.get(MODULE_ID, "borderBackgroundColor") || "";
 		sheetHeaderBackgroundColor = game.settings.get(MODULE_ID, "sheetHeaderBackgroundColor") || "";
 		borderTransparencyWidth = game.settings.get(MODULE_ID, "borderWidth") ?? 10;
-		boxBorder = game.settings.get(MODULE_ID, "sdBoxBorderStyle") || "panel-border-001.png";
+		boxBorder = game.settings.get(MODULE_ID, "sdBoxBorderStyle") || "panel-border-001.webp";
 		boxBorderImageWidth = game.settings.get(MODULE_ID, "sdBoxBorderWidth") ?? 16;
 		boxBorderImageSlice = game.settings.get(MODULE_ID, "sdBoxBorderSlice") ?? 12;
 		boxBorderTransparencyWidth = game.settings.get(MODULE_ID, "sdBoxBorderTransparencyWidth") ?? 10;
-		journalBorder = game.settings.get(MODULE_ID, "journalBorderStyle") || "panel-border-004.png";
+		journalBorder = game.settings.get(MODULE_ID, "journalBorderStyle") || "panel-border-004.webp";
 		journalBorderImageWidth = game.settings.get(MODULE_ID, "journalBorderImageWidth") ?? 16;
 		journalBorderImageSlice = game.settings.get(MODULE_ID, "journalBorderImageSlice") ?? 12;
 		journalBorderImageOutset = game.settings.get(MODULE_ID, "journalBorderImageOutset") ?? 0;
 		journalBorderImageRepeat = game.settings.get(MODULE_ID, "journalBorderImageRepeat") || "repeat";
-		conditionModalBorder = game.settings.get(MODULE_ID, "conditionModalBorderStyle") || "panel-border-004.png";
+		conditionModalBorder = game.settings.get(MODULE_ID, "conditionModalBorderStyle") || "panel-border-004.webp";
 		conditionModalBorderImageWidth = game.settings.get(MODULE_ID, "conditionModalBorderImageWidth") ?? 16;
 		conditionModalBorderImageSlice = game.settings.get(MODULE_ID, "conditionModalBorderImageSlice") ?? 12;
 		conditionModalBorderImageOutset = game.settings.get(MODULE_ID, "conditionModalBorderImageOutset") ?? 0;
@@ -2892,10 +2893,10 @@ function applySheetDecorationStyles() {
 		tabGradientEnd = game.settings.get(MODULE_ID, "tabGradientEnd") || "#2f2b2b";
 	} catch {
 		// Settings not registered yet, use defaults
-		sheetBorder = "panel-border-004.png";
-		abilityPanel = "panel-013.png";
-		acPanel = "panel-transparent-center-004.png";
-		statPanel = "panel-transparent-center-015.png";
+		sheetBorder = "panel-border-004.webp";
+		abilityPanel = "panel-013.webp";
+		acPanel = "panel-transparent-center-004.webp";
+		statPanel = "panel-transparent-center-015.webp";
 		borderImageWidth = 16;
 		borderImageSlice = 12;
 		borderImageOutset = 0;
@@ -2904,16 +2905,16 @@ function applySheetDecorationStyles() {
 		borderBackgroundColor = "";
 		sheetHeaderBackgroundColor = "#000000ff";
 		borderTransparencyWidth = 10;
-		boxBorder = "panel-border-001.png";
+		boxBorder = "panel-border-001.webp";
 		boxBorderImageWidth = 16;
 		boxBorderImageSlice = 12;
 		boxBorderTransparencyWidth = 10;
-		journalBorder = "panel-border-004.png";
+		journalBorder = "panel-border-004.webp";
 		journalBorderImageWidth = 16;
 		journalBorderImageSlice = 12;
 		journalBorderImageOutset = 0;
 		journalBorderImageRepeat = "repeat";
-		conditionModalBorder = "panel-border-004.png";
+		conditionModalBorder = "panel-border-004.webp";
 		conditionModalBorderImageWidth = 16;
 		conditionModalBorderImageSlice = 12;
 		conditionModalBorderImageOutset = 0;
@@ -3044,6 +3045,14 @@ function registerSettings() {
 
 	// Inventory Styles data setting (hidden)
 	game.settings.register(MODULE_ID, "itemacroMigrationDone", {
+		scope: "world",
+		config: false,
+		default: false,
+		type: Boolean
+	});
+
+	// Gate for the one-time PNG/JPG -> WebP stored-path migration.
+	game.settings.register(MODULE_ID, "webpMigrationDone", {
 		scope: "world",
 		config: false,
 		default: false,
@@ -3284,7 +3293,7 @@ function registerSettings() {
 		hint: "Choose the decorative border frame around the player character sheet.",
 		scope: "world",
 		config: false,
-		default: "panel-border-004.png",
+		default: "panel-border-004.webp",
 		type: String,
 		choices: borderChoices,
 		onChange: () => applySheetDecorationStyles()
@@ -3295,7 +3304,7 @@ function registerSettings() {
 		hint: "Choose the panel background for ability stat boxes (STR, DEX, etc.).",
 		scope: "world",
 		config: false,
-		default: "panel-013.png",
+		default: "panel-013.webp",
 		type: String,
 		choices: panelChoices,
 		onChange: () => applySheetDecorationStyles()
@@ -3306,7 +3315,7 @@ function registerSettings() {
 		hint: "Choose the panel background for the Armor Class box.",
 		scope: "world",
 		config: false,
-		default: "panel-transparent-center-004.png",
+		default: "panel-transparent-center-004.webp",
 		type: String,
 		choices: transparentCenterChoices,
 		onChange: () => applySheetDecorationStyles()
@@ -3317,7 +3326,7 @@ function registerSettings() {
 		hint: "Choose the panel background for Initiative, Level, and Luck boxes.",
 		scope: "world",
 		config: false,
-		default: "panel-transparent-center-015.png",
+		default: "panel-transparent-center-015.webp",
 		type: String,
 		choices: transparentCenterChoices,
 		onChange: () => applySheetDecorationStyles()
@@ -3381,7 +3390,7 @@ function registerSettings() {
 		name: "SD-Box Border Style",
 		scope: "world",
 		config: false,
-		default: "panel-border-001.png",
+		default: "panel-border-001.webp",
 		type: String,
 		onChange: () => applySheetDecorationStyles()
 	});
@@ -3418,7 +3427,7 @@ function registerSettings() {
 		name: "Journal Border Style",
 		scope: "world",
 		config: false,
-		default: "panel-border-004.png",
+		default: "panel-border-004.webp",
 		type: String,
 		onChange: () => applySheetDecorationStyles()
 	});
@@ -3464,7 +3473,7 @@ function registerSettings() {
 		name: game.i18n.localize("SHADOWDARK_EXTRAS.sheetEditor.conditionModalBorder"),
 		scope: "world",
 		config: false,
-		default: "panel-border-004.png",
+		default: "panel-border-004.webp",
 		type: String,
 		onChange: () => applySheetDecorationStyles()
 	});
@@ -17547,7 +17556,36 @@ Hooks.on("deleteItem", async (item, options, userId) => {
 let macroExecuteSocket;
 
 // Register socketlib handler on ready hook
+// Dev-only Quench batches. These live under dev/ and are excluded from
+// module.zip, so a released install has nothing to import - stay silent there
+// rather than logging a spurious registration failure.
+Hooks.on("quenchReady", async (quench) => {
+	try {
+		const { registerWebpMigrationBatch } = await import("../dev/tests/quench/webp-migration.batch.mjs");
+		registerWebpMigrationBatch(quench);
+	} catch (e) {
+		// Expected in a packaged install: dev/ is not shipped.
+	}
+});
+
 Hooks.once("ready", async () => {
+	// Rewrite stored .png/.jpg asset paths after the WebP conversion. Must run
+	// before anything reads scene/actor artwork, or the GM sees broken images
+	// for one session.
+	try {
+		const webpStats = await migrateWebpAssetPaths();
+		// World compendiums are swept separately and NOT awaited: the sweep has
+		// to load every document of every world pack, which would stall world
+		// load. Only worth doing at all on the run that actually migrated.
+		if (webpStats) {
+			sweepWorldCompendiums().catch((e) =>
+				console.error(`${MODULE_ID} | world compendium webp sweep failed:`, e)
+			);
+		}
+	} catch (e) {
+		console.error(`${MODULE_ID} | webp asset migration threw:`, e);
+	}
+
 	// Run one-time itemacro data migration if not already done
 	if (!game.settings.get(MODULE_ID, "itemacroMigrationDone")) {
 		console.log(`${MODULE_ID} | Starting itemacro data migration...`);
@@ -20257,6 +20295,15 @@ Hooks.on("setup", () => {
 
 			// --- Dev / test helpers ---
 			dev: SDX.dev,
+
+			// --- Maintenance ---
+			// Re-run the PNG/JPG -> WebP stored-path migration over world
+			// documents and this module's settings. Pass {dryRun:true} to see
+			// what would change without writing anything.
+			migrateWebpAssetPaths,
+			// Same sweep across world-owned compendium packs. Unlocked packs are
+			// migrated; locked ones are reported so the GM can unlock and re-run.
+			sweepWorldCompendiums,
 
 			// --- Creature types (read-only; safe for all users) ---
 			// Effective type for an actor: manual flag override > bestiary map > "".

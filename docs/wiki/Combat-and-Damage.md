@@ -24,7 +24,7 @@ For a table that wants confirmation first:
 4. Leave target and range checks on **Warn** until you've verified your item
    ranges and scene scale. Block can wait.
 
-![The Automatic Combat Settings window showing damage-card and target controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/combat-settings.png)
+![The Automatic Combat Settings window showing damage-card and target controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/combat-settings.webp)
 
 ## Enhanced damage cards
 

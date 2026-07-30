@@ -176,7 +176,7 @@ clears only SDX-generated documents at that level before rebuilding, then lays
 down floors, walls, doors, biome props, stairs, decor, lights, and Regions
 according to the options you picked.
 
-![A generated dungeon Scene with a complete room-and-corridor layout](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/dungeon-generator-result.png)
+![A generated dungeon Scene with a complete room-and-corridor layout](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/dungeon-generator-result.webp)
 
 The public API hard-caps the especially expansive values, rooms and stairs and
 clutter among them. See

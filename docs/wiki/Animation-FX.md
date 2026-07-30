@@ -29,7 +29,7 @@ The manager sorts presets into five groups. Each one can be enabled on its own.
 | **Equipped Weapon Sprites** | Persistent art attached to equipped weapons |
 | **Ambient & Events** | Torch/light types and level-up animation |
 
-![The Animation FX master list with spell presets and Sequencer paths](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/animation-fx-master-list.png)
+![The Animation FX master list with spell presets and Sequencer paths](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/animation-fx-master-list.webp)
 
 ## How a preset matches
 

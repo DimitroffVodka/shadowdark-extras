@@ -14,10 +14,10 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
  * Default style values (Dark theme - matches dark mode)
  */
 const DEFAULTS = {
-    sheetBorderStyle: "skulls.png",
-    abilityPanelStyle: "skulls.png",
-    acPanelStyle: "round1.png",
-    statPanelStyle: "round1.png",
+    sheetBorderStyle: "skulls.webp",
+    abilityPanelStyle: "skulls.webp",
+    acPanelStyle: "round1.webp",
+    statPanelStyle: "round1.webp",
     borderImageWidth: 15,
     borderImageSlice: 80,
     borderImageOutset: 1,
@@ -25,12 +25,12 @@ const DEFAULTS = {
     borderBackgroundColor: "",
     sheetHeaderBackgroundColor: "#000000",
     borderWidth: 10,
-    sdBoxBorderStyle: "stat.png",
+    sdBoxBorderStyle: "stat.webp",
     sdBoxBorderWidth: 1,
     sdBoxBorderSlice: 71,
     sdBoxBorderTransparencyWidth: 10,
     // Journal border settings
-    journalBorderStyle: "stat.png",
+    journalBorderStyle: "stat.webp",
     journalBorderImageWidth: 24,
     journalBorderImageSlice: 200,
     journalBorderImageOutset: 0,
@@ -43,7 +43,7 @@ const DEFAULTS = {
     tabGradientStart: "#000000",
     tabGradientEnd: "#2f2b2b",
     // Condition Modal border settings
-    conditionModalBorderStyle: "panel-border-004.png",
+    conditionModalBorderStyle: "panel-border-004.webp",
     conditionModalBorderImageWidth: 16,
     conditionModalBorderImageSlice: 12,
     conditionModalBorderImageOutset: 0,

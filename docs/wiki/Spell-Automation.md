@@ -29,7 +29,7 @@ The normal mode uses Foundry's current target set. Decide whether the item hits
 all valid targets, one random target, or a prompted selection, where the section
 offers that choice.
 
-![A Spell Activity tab showing targeted-token, template, and aura automation controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/spell-automation-activity.png)
+![A Spell Activity tab showing targeted-token, template, and aura automation controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/spell-automation-activity.webp)
 
 ### Measured templates
 

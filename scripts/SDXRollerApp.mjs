@@ -427,7 +427,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
         const bannerImage = String(this.rollData.bannerImage ?? "").trim();
         if (!stripe || !bannerImage) return;
 
-        const fallbackImage = `modules/${MODULE_ID}/assets/banner.jpg`;
+        const fallbackImage = `modules/${MODULE_ID}/assets/banner.webp`;
         stripe.style.backgroundImage =
             `url(${JSON.stringify(bannerImage)}), url(${JSON.stringify(fallbackImage)})`;
     }

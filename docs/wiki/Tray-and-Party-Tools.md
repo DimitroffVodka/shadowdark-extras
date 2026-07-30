@@ -30,7 +30,7 @@ what features are switched on.
 The tray is client-scoped. One user can hide the tray or the Party tab entirely
 without touching anyone else's screen.
 
-![The expanded SDX Tray in Party view with player and NPC cards](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-tray-party-view.png)
+![The expanded SDX Tray in Party view with player and NPC cards](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-tray-party-view.webp)
 
 ## Tool rail
 

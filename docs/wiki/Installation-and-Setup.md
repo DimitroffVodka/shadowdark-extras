@@ -78,7 +78,7 @@ Open a scene and look for the narrow SDX handle at the left edge of the canvas.
 Expand it, check that the tabs render. Nothing at all usually points at the
 per-client **Enable SDX Tray** setting. Turn it on. Reload.
 
-![The expanded SDX Tray showing the Party roster and tool rail](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-tray-party-view.png)
+![The expanded SDX Tray showing the Party roster and tool rail](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-tray-party-view.webp)
 
 ### 2. Decide how automatic combat should be
 

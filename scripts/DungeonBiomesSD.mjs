@@ -20,15 +20,15 @@ const CLUT = (f) => `modules/${MODULE_ID}/assets/Dungeon/clutter/${f}`;
  * from if present; weight = relative frequency when assigning.
  */
 export const BIOME_DEFS = {
-    hall:       { label: "Hall",       floor: FLOOR("DQ_Floor_Stone_01.webp"),         props: [CLUT("pillar-50x50.png"), CLUT("statue-100x100.png")],                              ddpack: "hall",       weight: 2 },
-    crypt:      { label: "Crypt",      floor: FLOOR("DQ_Floor_Stone_05_black.webp"),   props: [CLUT("skull-26x30.png"), CLUT("statue2-100x100.png"), CLUT("rubble-100x100.png")], ddpack: "crypt",      weight: 1 },
-    library:    { label: "Library",    floor: FLOOR("DQ_Floor_Stone_04_yellow.webp"),  props: [CLUT("paper-50x50.png"), CLUT("pillar-50x50.png")],                                 ddpack: "library",    weight: 1 },
-    temple:     { label: "Temple",     floor: FLOOR("DQ_Floor_Stone_02_blue.webp"),    props: [CLUT("statue-100x100.png"), CLUT("fountain-100x100.png"), CLUT("pillar-50x50.png")], ddpack: "temple",     weight: 1 },
-    laboratory: { label: "Laboratory", floor: FLOOR("DQ_Floor_Stone_03.webp"),         props: [CLUT("glass-50x50.png"), CLUT("paper-50x50.png")],                                  ddpack: "laboratory", weight: 1 },
-    barracks:   { label: "Barracks",   floor: FLOOR("DQ_Floor_Cobble_01A.webp"),       props: [CLUT("rubble2-100x100.png")],                                                       ddpack: "barracks",   weight: 1 },
-    prison:     { label: "Prison",     floor: FLOOR("DQ_Floor_Stone_02_black.webp"),   props: [CLUT("skull-26x30.png"), CLUT("rubble-100x100.png")],                               ddpack: "prison",     weight: 1 },
-    storage:    { label: "Storage",    floor: FLOOR("DQ_Floor_Cobble_02A_light.webp"), props: [CLUT("rubble2-100x100.png"), CLUT("glass-50x50.png")],                              ddpack: "storage",    weight: 1 },
-    ruins:      { label: "Ruins",      floor: FLOOR("DQ_Floor_Stone_04_red.webp"),     props: [CLUT("rubble-100x100.png"), CLUT("rubble2-100x100.png"), CLUT("pillar-50x50.png")], ddpack: "ruins",      weight: 2 },
+    hall:       { label: "Hall",       floor: FLOOR("DQ_Floor_Stone_01.webp"),         props: [CLUT("pillar-50x50.webp"), CLUT("statue-100x100.webp")],                              ddpack: "hall",       weight: 2 },
+    crypt:      { label: "Crypt",      floor: FLOOR("DQ_Floor_Stone_05_black.webp"),   props: [CLUT("skull-26x30.webp"), CLUT("statue2-100x100.webp"), CLUT("rubble-100x100.webp")], ddpack: "crypt",      weight: 1 },
+    library:    { label: "Library",    floor: FLOOR("DQ_Floor_Stone_04_yellow.webp"),  props: [CLUT("paper-50x50.webp"), CLUT("pillar-50x50.webp")],                                 ddpack: "library",    weight: 1 },
+    temple:     { label: "Temple",     floor: FLOOR("DQ_Floor_Stone_02_blue.webp"),    props: [CLUT("statue-100x100.webp"), CLUT("fountain-100x100.webp"), CLUT("pillar-50x50.webp")], ddpack: "temple",     weight: 1 },
+    laboratory: { label: "Laboratory", floor: FLOOR("DQ_Floor_Stone_03.webp"),         props: [CLUT("glass-50x50.webp"), CLUT("paper-50x50.webp")],                                  ddpack: "laboratory", weight: 1 },
+    barracks:   { label: "Barracks",   floor: FLOOR("DQ_Floor_Cobble_01A.webp"),       props: [CLUT("rubble2-100x100.webp")],                                                       ddpack: "barracks",   weight: 1 },
+    prison:     { label: "Prison",     floor: FLOOR("DQ_Floor_Stone_02_black.webp"),   props: [CLUT("skull-26x30.webp"), CLUT("rubble-100x100.webp")],                               ddpack: "prison",     weight: 1 },
+    storage:    { label: "Storage",    floor: FLOOR("DQ_Floor_Cobble_02A_light.webp"), props: [CLUT("rubble2-100x100.webp"), CLUT("glass-50x50.webp")],                              ddpack: "storage",    weight: 1 },
+    ruins:      { label: "Ruins",      floor: FLOOR("DQ_Floor_Stone_04_red.webp"),     props: [CLUT("rubble-100x100.webp"), CLUT("rubble2-100x100.webp"), CLUT("pillar-50x50.webp")], ddpack: "ruins",      weight: 2 },
 };
 
 // ── Custom biome persistence (Ticket 5, slice 1) ───────────────────────────

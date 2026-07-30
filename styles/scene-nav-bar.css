@@ -62,12 +62,12 @@
 
 /* Left arrow */
 .scene-nav-prev {
-    background-image: url('../assets/Tom/arrow-left.png');
+    background-image: url('../assets/Tom/arrow-left.webp');
 }
 
 /* Right arrow - flipped */
 .scene-nav-next {
-    background-image: url('../assets/Tom/arrow-left.png');
+    background-image: url('../assets/Tom/arrow-left.webp');
     transform: scaleX(-1);
 }
 

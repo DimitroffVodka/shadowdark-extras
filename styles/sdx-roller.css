@@ -412,7 +412,7 @@
     background: rgba(0, 0, 0, 0.45);
     z-index: 1;
     pointer-events: none;
-    background-image: url(../assets/banner.jpg);
+    background-image: url(../assets/banner.webp);
     background-size: cover;
     background-position: center;
     filter: brightness(0.25);

@@ -14,7 +14,7 @@ The beer icon on the SDX Tray. It appears whenever **Enable Carousing** is on.
 The GM assembles and runs the session. Players review and confirm the characters
 they own, according to whichever workflow is active.
 
-![The shared Carousing overlay with participant cards, tier controls, and the GM-managed roster](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/carousing-overlay.png)
+![The shared Carousing overlay with participant cards, tier controls, and the GM-managed roster](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/carousing-overlay.webp)
 
 ## Choose a mode
 

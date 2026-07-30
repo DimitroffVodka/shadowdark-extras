@@ -11,6 +11,24 @@ const PAGE_BASE = "https://github.com/DimitroffVodka/shadowdark-extras/wiki/";
 const IMAGE_BASE = "https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/";
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
+/**
+ * Wiki screenshots are WebP since the asset conversion; a few may still be PNG.
+ * Validate the magic bytes actually match the extension, so a mis-renamed or
+ * truncated file is caught rather than silently served as a broken image.
+ * WebP is a RIFF container: "RIFF" <4-byte size> "WEBP".
+ */
+function imageSignatureError(name, buffer) {
+  if (name.toLowerCase().endsWith(".webp")) {
+    const isRiff = buffer.subarray(0, 4).toString("latin1") === "RIFF";
+    const isWebp = buffer.subarray(8, 12).toString("latin1") === "WEBP";
+    return isRiff && isWebp ? null : "is not a valid WebP";
+  }
+  if (name.toLowerCase().endsWith(".png")) {
+    return buffer.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE) ? null : "is not a valid PNG";
+  }
+  return "has an unexpected image extension (expected .webp or .png)";
+}
+
 test("Wiki links use published page routes and valid published images", async () => {
   const entries = await readdir(WIKI_DIR);
   const markdownFiles = entries.filter((name) => name.endsWith(".md"));
@@ -47,8 +65,9 @@ test("Wiki links use published page routes and valid published images", async ()
 
         try {
           const image = await readFile(new URL(`images/${imageName}`, WIKI_DIR));
-          if (!image.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)) {
-            failures.push(`${filename}: Wiki image is not a valid PNG: ${target}`);
+          const signatureError = imageSignatureError(imageName, image);
+          if (signatureError) {
+            failures.push(`${filename}: Wiki image ${signatureError}: ${target}`);
           }
         } catch {
           failures.push(`${filename}: Wiki image does not exist: ${target}`);
