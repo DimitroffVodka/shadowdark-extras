@@ -3,12 +3,12 @@
  * A group/party management sheet similar to D&D 5e's Group actor
  */
 
-import { getHpWaveColor, isHpWavesEnabled } from "./character-sheet/HpWavesSettingsSD.mjs";
+import { getHpWaveColor, isHpWavesEnabled } from "../character-sheet/HpWavesSettingsSD.mjs";
 import { getTravelActivities } from "./TravelActivitiesSettingsSD.mjs";
 import { getTravelSpeeds } from "./TravelSpeedsSettingsSD.mjs";
-import { getCustomLightSources } from "./shadowdark-extras.mjs";
-import { SDXRollerApp } from "./SDXRollerApp.mjs";
-import { buildTravelTaskRollData } from "./SDXRollerData.mjs";
+import { getCustomLightSources } from "../shadowdark-extras.mjs";
+import { SDXRollerApp } from "../SDXRollerApp.mjs";
+import { buildTravelTaskRollData } from "../SDXRollerData.mjs";
 import { CampingRestApp } from "./CampingRestSD.mjs";
 import {
 	PartyWeatherSettingsApp,

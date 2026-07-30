@@ -7,8 +7,8 @@
  */
 
 import { getTravelActivities } from "./TravelActivitiesSettingsSD.mjs";
-import { buildTravelTaskRollData } from "./SDXRollerData.mjs";
-import { SDXRollerApp } from "./SDXRollerApp.mjs";
+import { buildTravelTaskRollData } from "../SDXRollerData.mjs";
+import { SDXRollerApp } from "../SDXRollerApp.mjs";
 import {
 	CAMPFIRE_TORCH_COST,
 	REST_DURATION_SECONDS,

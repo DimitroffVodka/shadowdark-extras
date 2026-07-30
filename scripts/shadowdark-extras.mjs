@@ -6,15 +6,15 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  * Adds Renown tracking, additional light sources, NPC inventory, and Party management to Shadowdark RPG
  */
 
-import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor } from "./PartySheetSD.mjs";
+import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor } from "./party/PartySheetSD.mjs";
 import TradeWindowSD, { initializeTradeSocket, showTradeDialog, ensureTradeJournal, nativeTransferItems, nativeTransferCoins } from "./inventory/TradeWindowSD.mjs";
 import { CombatSettingsApp, registerCombatSettings, injectDamageCard, setupCombatSocket, setupScrollingCombatText, setupSummonExpiryHook, trackSummonedTokensForExpiry, spawnSummonedCreatures, getSocket } from "./combat/CombatSettingsSD.mjs";
 import { EffectsSettingsApp, registerEffectsSettings } from "./effects/EffectsSettingsSD.mjs";
 import { patchArmorActiveEffects } from "./effects/ArmorAEPatchSD.mjs";
 import { HpWavesSettingsApp, registerHpWavesSettings, getHpWaveColor, isHpWavesEnabled } from "./character-sheet/HpWavesSettingsSD.mjs";
-import { TravelActivitiesSettingsApp, registerTravelActivitiesSettings, getTravelActivities } from "./TravelActivitiesSettingsSD.mjs";
-import { TravelSpeedsSettingsApp, registerTravelSpeedsSettings, getTravelSpeeds } from "./TravelSpeedsSettingsSD.mjs";
-import { registerPartyWeatherSettings } from "./PartyWeatherSettingsSD.mjs";
+import { TravelActivitiesSettingsApp, registerTravelActivitiesSettings, getTravelActivities } from "./party/TravelActivitiesSettingsSD.mjs";
+import { TravelSpeedsSettingsApp, registerTravelSpeedsSettings, getTravelSpeeds } from "./party/TravelSpeedsSettingsSD.mjs";
+import { registerPartyWeatherSettings } from "./party/PartyWeatherSettingsSD.mjs";
 import { generateSpellConfig, generatePotionConfig, generateScrollConfig, generateWandConfig } from "./item-sheets/ItemTypeConfigs.mjs";
 import { activateTemplateTargetingListeners } from "./item-sheets/TemplateTargetingConfig.mjs";
 import { readSdRollOutcome, resolveCardContext } from "./shared/sd4Compat.mjs";
