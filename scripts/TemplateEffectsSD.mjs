@@ -1,7 +1,7 @@
 /**
  * Template Effects System for Shadowdark Extras
  * Handles damage and effects for tokens inside spell templates
- * 
+ *
  * Triggers:
  * - onEnter: When a token moves into a template
  * - onTurnStart: At the start of a token's turn while inside
@@ -253,7 +253,7 @@ export function initTemplateEffects() {
             btn.addEventListener('click', async (event) => {
                 event.preventDefault();
 
-                // Disable button immediately  
+                // Disable button immediately
                 if (btn.disabled || btn.classList.contains('sdx-applied')) return;
                 btn.disabled = true;
                 const originalHtml = btn.innerHTML;
@@ -385,7 +385,7 @@ async function processTokenMovement(tokenDoc, changes) {
     // Find entered templates
     const enteredTemplates = newTemplates.filter(t => !oldTemplates.some(ot => ot.id === t.id));
 
-    // Find left templates  
+    // Find left templates
     const leftTemplates = oldTemplates.filter(t => !newTemplates.some(nt => nt.id === t.id));
 
 
@@ -627,7 +627,7 @@ async function createInteractiveTemplateCard(templateDoc, token, trigger, config
                     <i class="fas fa-shield-alt" style="margin-right: 4px;"></i>${abilityName} Save DC ${dc}
                 </p>
                 <div style="display: flex; gap: 4px;">
-                    <button type="button" class="sdx-template-roll-save-btn sdx-save-btn-adv" 
+                    <button type="button" class="sdx-template-roll-save-btn sdx-save-btn-adv"
                         data-token-id="${token.document?.id || token.id}"
                         data-actor-id="${actor?.id}"
                         data-ability="${config.save.ability}"
@@ -637,7 +637,7 @@ async function createInteractiveTemplateCard(templateDoc, token, trigger, config
                         style="${btnBaseStyle} background: #111;">
                         <i class="fas fa-angle-double-up"></i> Adv
                     </button>
-                    <button type="button" class="sdx-template-roll-save-btn sdx-save-btn-normal" 
+                    <button type="button" class="sdx-template-roll-save-btn sdx-save-btn-normal"
                         data-token-id="${token.document?.id || token.id}"
                         data-actor-id="${actor?.id}"
                         data-ability="${config.save.ability}"
@@ -647,7 +647,7 @@ async function createInteractiveTemplateCard(templateDoc, token, trigger, config
                         style="${btnBaseStyle} background: #111;">
                         <i class="fas fa-dice-d20"></i> Roll
                     </button>
-                    <button type="button" class="sdx-template-roll-save-btn sdx-save-btn-dis" 
+                    <button type="button" class="sdx-template-roll-save-btn sdx-save-btn-dis"
                         data-token-id="${token.document?.id || token.id}"
                         data-actor-id="${actor?.id}"
                         data-ability="${config.save.ability}"
@@ -672,7 +672,7 @@ async function createInteractiveTemplateCard(templateDoc, token, trigger, config
                     <strong>${damageTotal}</strong>${typeText}
                 </p>
                 <p style="margin: 0 0 8px 0; font-size: 10px; color: #888;">${config.damage.formula} = ${damageRoll.result}</p>
-                <button type="button" class="sdx-template-apply-damage-btn" 
+                <button type="button" class="sdx-template-apply-damage-btn"
                     data-token-id="${token.document?.id || token.id}"
                     data-actor-id="${actor?.id}"
                     data-damage="${damageTotal}"
@@ -681,7 +681,7 @@ async function createInteractiveTemplateCard(templateDoc, token, trigger, config
                     style="width: 100%; background: #111; color: #f2f2f2; border: 1px solid #777; padding: 6px; cursor: pointer; border-radius: 3px; margin-bottom: 4px;">
                     <i class="fas fa-heart-broken"></i> Apply ${damageTotal} Damage
                 </button>
-                <button type="button" class="sdx-template-apply-half-damage-btn" 
+                <button type="button" class="sdx-template-apply-half-damage-btn"
                     data-token-id="${token.document?.id || token.id}"
                     data-actor-id="${actor?.id}"
                     data-damage="${Math.floor(damageTotal / 2)}"
@@ -1083,7 +1083,7 @@ async function applyTemplateConditions(templateDoc, token, effectUuids) {
                 try {
                     // Replace @target. references with actor data
                     // We use Roll.safeEval or a simple Function evaluation with restricted scope
-                    // For safety and simplicity, we'll try to use Foundry's Roll parser if possible, 
+                    // For safety and simplicity, we'll try to use Foundry's Roll parser if possible,
                     // or simple string substitution for common properties.
 
                     // Prepare data object
@@ -1129,7 +1129,7 @@ async function applyTemplateConditions(templateDoc, token, effectUuids) {
                 } catch (err) {
                     console.warn(`shadowdark-extras | Error evaluating requirement "${requirements}":`, err);
                     // On error, do we fail safe or permissive? Usually permissive unless critical.
-                    // But for "Level < 3", error likely means bad syntax. Let's allow it to be safe? 
+                    // But for "Level < 3", error likely means bad syntax. Let's allow it to be safe?
                     // Or fail? Let's log and proceed for now, blocking only on definite false.
                 }
             }
@@ -1278,8 +1278,8 @@ async function createTemplateEffectMessage(templateDoc, token, trigger, result) 
                     <i class="fas fa-shield-alt"></i> ${abilityName} Save vs DC ${sr.dc}
                 </p>
                 <p style="margin: 4px 0; color: #fff; font-size: 14px;">
-                    Roll: <span style="color: #fff; font-weight: bold;">${dieResult}</span> 
-                    <span style="color: #bbb;">${modifierStr}</span> 
+                    Roll: <span style="color: #fff; font-weight: bold;">${dieResult}</span>
+                    <span style="color: #bbb;">${modifierStr}</span>
                     = <span style="font-weight: bold;">${sr.total}</span>
                 </p>
                 <p style="margin: 4px 0; color: ${saveColor}; font-weight: bold;">${saveText}</p>
