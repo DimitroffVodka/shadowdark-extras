@@ -8,7 +8,7 @@
  * - Effect/condition application on hit with chance percentage
  */
 
-import { getEffectiveCreatureType } from "./CreatureTypesApp.mjs";
+import { getEffectiveCreatureType } from "../CreatureTypesApp.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -163,7 +163,7 @@ export function injectWeaponAnimationButton(html, item) {
 		event.stopPropagation();
 
 		// Dynamic import to avoid circular dependency
-		const { openWeaponAnimationConfig } = await import("./WeaponAnimationConfig.mjs");
+		const { openWeaponAnimationConfig } = await import("../WeaponAnimationConfig.mjs");
 		openWeaponAnimationConfig(item);
 	});
 

@@ -11,7 +11,7 @@
  * - Respects autoApplyDamage setting
  */
 
-import { getSocket } from "./CombatSettingsSD.mjs";
+import { getSocket } from "./combat/CombatSettingsSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 

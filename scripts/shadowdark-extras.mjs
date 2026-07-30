@@ -8,7 +8,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
 
 import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor } from "./PartySheetSD.mjs";
 import TradeWindowSD, { initializeTradeSocket, showTradeDialog, ensureTradeJournal, nativeTransferItems, nativeTransferCoins } from "./inventory/TradeWindowSD.mjs";
-import { CombatSettingsApp, registerCombatSettings, injectDamageCard, setupCombatSocket, setupScrollingCombatText, setupSummonExpiryHook, trackSummonedTokensForExpiry, spawnSummonedCreatures, getSocket } from "./CombatSettingsSD.mjs";
+import { CombatSettingsApp, registerCombatSettings, injectDamageCard, setupCombatSocket, setupScrollingCombatText, setupSummonExpiryHook, trackSummonedTokensForExpiry, spawnSummonedCreatures, getSocket } from "./combat/CombatSettingsSD.mjs";
 import { EffectsSettingsApp, registerEffectsSettings } from "./EffectsSettingsSD.mjs";
 import { patchArmorActiveEffects } from "./ArmorAEPatchSD.mjs";
 import { HpWavesSettingsApp, registerHpWavesSettings, getHpWaveColor, isHpWavesEnabled } from "./character-sheet/HpWavesSettingsSD.mjs";
@@ -30,7 +30,7 @@ import {
 	injectWeaponAnimationButton,
 	getPromptableHitBonuses,
 	getPromptableDamageBonuses
-} from "./WeaponBonusConfig.mjs";
+} from "./combat/WeaponBonusConfig.mjs";
 
 import { initAutoAnimationsIntegration } from "./AutoAnimationsSD.mjs";
 import { AnimationFxSD } from "./AnimationFxSD.mjs";
@@ -68,9 +68,9 @@ import { initAppearanceSettings } from "./character-sheet/AppearanceSettingsSD.m
 import AmmunitionSelector from "./inventory/AmmunitionSelector.mjs";
 import StaffSpellManager from "./item-sheets/StaffSpellManager.mjs";
 import { initJournalNarration } from "./JournalNarrationSD.mjs";
-import { initMedkit, registerMedkitPack, unregisterMedkitPack, getMedkitPacks, scanWorldForUpdates, applyWorldMedkitUpdates, medkitScanWorld, MedkitWorldScanMenu } from "./MedkitSD.mjs";
+import { initMedkit, registerMedkitPack, unregisterMedkitPack, getMedkitPacks, scanWorldForUpdates, applyWorldMedkitUpdates, medkitScanWorld, MedkitWorldScanMenu } from "./combat/MedkitSD.mjs";
 import { LightTrackerAppSD, initLightTrackerApp } from "./LightTrackerAppSD.mjs";
-import { initMarchingMode } from "./MarchingModeSD.mjs";
+import { initMarchingMode } from "./combat/MarchingModeSD.mjs";
 import { SceneExporter } from "./SceneExporter.mjs";
 import { SceneImporter } from "./SceneImporter.mjs";
 import { initJournalPins } from "./JournalPinsSD.mjs";

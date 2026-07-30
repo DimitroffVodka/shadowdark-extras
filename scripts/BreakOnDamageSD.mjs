@@ -34,7 +34,7 @@
  * unowned NPC. Together they make an effect-spell a one-liner.
  */
 
-import { getSocket } from "./CombatSettingsSD.mjs";
+import { getSocket } from "./combat/CombatSettingsSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const BREAK_FLAG = "breakOnDamage";      // flag key on the effect doc

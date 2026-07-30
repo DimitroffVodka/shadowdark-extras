@@ -14,8 +14,8 @@ import {
     toggleHideNpcsFromPlayers
 } from "./TraySD.mjs";
 // Note: renderTray imported above is used by POI undo/redo handlers
-import { showLeaderDialog, showMovementModeDialog } from "./MarchingModeSD.mjs";
-import { FormationSpawnerSD } from "./FormationSpawnerSD.mjs";
+import { showLeaderDialog, showMovementModeDialog } from "./combat/MarchingModeSD.mjs";
+import { FormationSpawnerSD } from "./combat/FormationSpawnerSD.mjs";
 import { PinPlacer, JournalPinManager, JournalPinRenderer } from "./JournalPinsSD.mjs";
 import { PinStyleEditorApp } from "./PinStyleEditorSD.mjs";
 import { PinListApp } from "./PinListApp.mjs";

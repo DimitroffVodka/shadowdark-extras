@@ -4,11 +4,11 @@
  */
 
 import { getWeaponBonuses, getWeaponEffectsToApply, evaluateRequirements, calculateWeaponBonusDamage, decrementDamageBonusUsage } from "./WeaponBonusConfig.mjs";
-import { startDurationSpell, linkEffectToDurationSpell, linkEffectToFocusSpell, linkTargetToFocusSpell, startFocusSpellIfNeeded, getActiveDurationSpells, endFocusSpell } from "./FocusSpellTrackerSD.mjs";
-import { setupTemplateEffectFlags, buildTemplateEffectsFlag, applyTemplateEffect, getTokensInTemplate, processTemplateCreationEffects } from "./TemplateEffectsSD.mjs";
-import { createAuraOnActor } from "./AuraEffectsSD.mjs";
-import { readSdRollOutcome, readSdDamageRoll, resolveCardContext } from "./shared/sd4Compat.mjs";
-import { getEffectiveCreatureType } from "./CreatureTypesApp.mjs";
+import { startDurationSpell, linkEffectToDurationSpell, linkEffectToFocusSpell, linkTargetToFocusSpell, startFocusSpellIfNeeded, getActiveDurationSpells, endFocusSpell } from "../FocusSpellTrackerSD.mjs";
+import { setupTemplateEffectFlags, buildTemplateEffectsFlag, applyTemplateEffect, getTokensInTemplate, processTemplateCreationEffects } from "../TemplateEffectsSD.mjs";
+import { createAuraOnActor } from "../AuraEffectsSD.mjs";
+import { readSdRollOutcome, readSdDamageRoll, resolveCardContext } from "../shared/sd4Compat.mjs";
+import { getEffectiveCreatureType } from "../CreatureTypesApp.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 let socketlibSocket = null;
@@ -639,7 +639,7 @@ export function setupCombatSocket() {
 
 					// Also clean up the focus spell tracking for the removed effects
 					try {
-						const { unlinkEffectFromFocusSpell } = await import('./FocusSpellTrackerSD.mjs');
+						const { unlinkEffectFromFocusSpell } = await import('../FocusSpellTrackerSD.mjs');
 						for (const effectId of effectIds) {
 							await unlinkEffectFromFocusSpell(data.spellInfo.casterActorId, data.spellInfo.spellId, effectId);
 						}
@@ -684,7 +684,7 @@ export function setupCombatSocket() {
 				const createdEffect = createdItems[0];
 				try {
 					// Import spell tracking functions
-					const { linkEffectToFocusSpell, startFocusSpellIfNeeded, linkEffectToDurationSpell, getActiveDurationSpells } = await import('./FocusSpellTrackerSD.mjs');
+					const { linkEffectToFocusSpell, startFocusSpellIfNeeded, linkEffectToDurationSpell, getActiveDurationSpells } = await import('../FocusSpellTrackerSD.mjs');
 
 					// Check if this is a duration spell (non-focus)
 					const caster = game.actors.get(data.spellInfo.casterActorId);
@@ -879,7 +879,7 @@ export function setupCombatSocket() {
 			return;
 		}
 
-		const { applyAuraEffect } = await import("./AuraEffectsSD.mjs");
+		const { applyAuraEffect } = await import("../AuraEffectsSD.mjs");
 		return applyAuraEffect(sourceToken, targetToken, trigger, config, auraEffect);
 	});
 
@@ -893,7 +893,7 @@ export function setupCombatSocket() {
 			return;
 		}
 
-		const { removeAuraEffectsFromToken } = await import("./AuraEffectsSD.mjs");
+		const { removeAuraEffectsFromToken } = await import("../AuraEffectsSD.mjs");
 		return removeAuraEffectsFromToken(auraEffect, targetToken);
 	});
 
@@ -919,7 +919,7 @@ export function setupCombatSocket() {
 			return;
 		}
 
-		const { applyAuraConditions } = await import("./AuraEffectsSD.mjs");
+		const { applyAuraConditions } = await import("../AuraEffectsSD.mjs");
 		return applyAuraConditions(auraEffect, targetToken, effectUuids);
 	});
 
@@ -930,7 +930,7 @@ export function setupCombatSocket() {
 			return;
 		}
 
-		const { applyAuraDamage } = await import("./AuraEffectsSD.mjs");
+		const { applyAuraDamage } = await import("../AuraEffectsSD.mjs");
 		return applyAuraDamage(targetToken, config, savedSuccessfully);
 	});
 
@@ -943,7 +943,7 @@ export function setupCombatSocket() {
 			return;
 		}
 
-		const { removeAuraEffectsFromAll } = await import("./AuraEffectsSD.mjs");
+		const { removeAuraEffectsFromAll } = await import("../AuraEffectsSD.mjs");
 		return removeAuraEffectsFromAll(auraEffect);
 	});
 
@@ -992,7 +992,7 @@ export function setupCombatSocket() {
 		}
 
 		// Dynamically import TradeWindowSD to avoid circular imports
-		const { default: TradeWindowSD } = await import("./inventory/TradeWindowSD.mjs");
+		const { default: TradeWindowSD } = await import("../inventory/TradeWindowSD.mjs");
 
 		// Create and render the trade window
 		const tradeWindow = new TradeWindowSD({
@@ -1197,7 +1197,7 @@ export function setupCombatSocket() {
 			return false;
 		}
 		try {
-			const { nativeTransferItems } = await import("./inventory/TradeWindowSD.mjs");
+			const { nativeTransferItems } = await import("../inventory/TradeWindowSD.mjs");
 			await nativeTransferItems(sourceActor, targetActor, items);
 			return true;
 		} catch (err) {
@@ -1216,7 +1216,7 @@ export function setupCombatSocket() {
 			return false;
 		}
 		try {
-			const { nativeTransferCoins } = await import("./inventory/TradeWindowSD.mjs");
+			const { nativeTransferCoins } = await import("../inventory/TradeWindowSD.mjs");
 			await nativeTransferCoins(sourceActor, targetActor, coins);
 			return true;
 		} catch (err) {
