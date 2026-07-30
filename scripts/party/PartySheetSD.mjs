@@ -7,8 +7,8 @@ import { getHpWaveColor, isHpWavesEnabled } from "../character-sheet/HpWavesSett
 import { getTravelActivities } from "./TravelActivitiesSettingsSD.mjs";
 import { getTravelSpeeds } from "./TravelSpeedsSettingsSD.mjs";
 import { getCustomLightSources } from "../shadowdark-extras.mjs";
-import { SDXRollerApp } from "../SDXRollerApp.mjs";
-import { buildTravelTaskRollData } from "../SDXRollerData.mjs";
+import { SDXRollerApp } from "../tray/SDXRollerApp.mjs";
+import { buildTravelTaskRollData } from "../tray/SDXRollerData.mjs";
 import { CampingRestApp } from "./CampingRestSD.mjs";
 import {
 	PartyWeatherSettingsApp,

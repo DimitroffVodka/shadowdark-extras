@@ -94,7 +94,7 @@ export class TomSocketHandler {
 
 
   static _updateTraySceneSwitcher(sceneId) {
-    import('../TrayApp.mjs').then(({ TrayApp }) => {
+    import('../tray/TrayApp.mjs').then(({ TrayApp }) => {
       const trayApp = TrayApp._instance;
       if (!trayApp) return;
       // Just render, the state is already in TomStore which the tray reads
@@ -104,7 +104,7 @@ export class TomSocketHandler {
 
 
   static _hideTraySceneSwitcher() {
-    import('../TrayApp.mjs').then(({ TrayApp }) => {
+    import('../tray/TrayApp.mjs').then(({ TrayApp }) => {
       const trayApp = TrayApp._instance;
       if (!trayApp) return;
       trayApp.render();

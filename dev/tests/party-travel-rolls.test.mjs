@@ -17,7 +17,7 @@ import {
 	buildTravelTaskRollData,
 	getSdxActorAbility,
 	isSdxRollAuthority
-} from "../../scripts/SDXRollerData.mjs";
+} from "../../scripts/tray/SDXRollerData.mjs";
 import {
 	isPartyTravelMutationAuthorized,
 	planPartyTravelMutation,
@@ -386,7 +386,7 @@ test("camping procedure applies supplies, recovery, and tangible task outcomes",
 
 test("SDX overlay applies configured banner art and labels actor-specific abilities", () => {
 	const source = readFileSync(
-		new URL("scripts/SDXRollerApp.mjs", moduleRoot),
+		new URL("scripts/tray/SDXRollerApp.mjs", moduleRoot),
 		"utf8"
 	);
 	const overlay = readFileSync(

@@ -14,24 +14,24 @@ import {
     toggleHideNpcsFromPlayers
 } from "./TraySD.mjs";
 // Note: renderTray imported above is used by POI undo/redo handlers
-import { showLeaderDialog, showMovementModeDialog } from "./combat/MarchingModeSD.mjs";
-import { FormationSpawnerSD } from "./combat/FormationSpawnerSD.mjs";
-import { PinPlacer, JournalPinManager, JournalPinRenderer } from "./journal/JournalPinsSD.mjs";
-import { PinStyleEditorApp } from "./journal/PinStyleEditorSD.mjs";
-import { PinListApp } from "./journal/PinListApp.mjs";
+import { showLeaderDialog, showMovementModeDialog } from "../combat/MarchingModeSD.mjs";
+import { FormationSpawnerSD } from "../combat/FormationSpawnerSD.mjs";
+import { PinPlacer, JournalPinManager, JournalPinRenderer } from "../journal/JournalPinsSD.mjs";
+import { PinStyleEditorApp } from "../journal/PinStyleEditorSD.mjs";
+import { PinListApp } from "../journal/PinListApp.mjs";
 
-import { PlaceableNotesSD } from "./journal/PlaceableNotesSD.mjs";
+import { PlaceableNotesSD } from "../journal/PlaceableNotesSD.mjs";
 
-import { setMapDimension, formatActiveScene, enablePainting, disablePainting, toggleTileSelection, clearTileSelection, setSearchFilter, toggleWaterEffect, toggleWindEffect, toggleFogAnimation, toggleTintEnabled, toggleBwEffect, isTintEnabled, setActiveTileTab, setCustomTileDimension, toggleColoredFolderCollapsed, toggleSymbolFolderCollapsed, undoLastPoi, redoLastPoi, canUndoPoi, canRedoPoi, getPoiScale, enablePreview, disablePreview, getActiveTileTab, adjustPoiScale, rotatePoiLeft, rotatePoiRight, togglePoiMirror, getPoiMirror, setDecorSearchFilter, toggleDecorFolderCollapsed, setDecorMode, setDecorElevation, setDecorSort, reloadDecorAssets, registerDecorAsset, appendCustomNavSegment, setCustomNavPath, reloadCustomTiles } from "./HexPainterSD.mjs";
-import { generateHexMap, clearGeneratedTiles } from "./HexGeneratorSD.mjs";
-import { flattenTiles, unflattenTile, getDungeonFloorLevels, getFlattendDungeonLevels, flattenDungeonLevel } from "./canvas/TileFlattenSD.mjs";
-import { setDungeonMode, selectFloorTile, selectWallTile, selectDoorTile, selectIntWallTile, selectIntDoorTile, enableDungeonPainting, disableDungeonPainting, setNoFoundryWalls, setWallShadows, setCurvedWalls, setDungeonBackground } from "./DungeonPainterSD.mjs";
-import { toggleGeneratorPanel, isGeneratorExpanded, generateDungeon, generateRandomSeed, getGeneratorSeed, setGeneratorSeed, getGeneratorSettings, setGeneratorSettings } from "./DungeonGeneratorSD.mjs";
+import { setMapDimension, formatActiveScene, enablePainting, disablePainting, toggleTileSelection, clearTileSelection, setSearchFilter, toggleWaterEffect, toggleWindEffect, toggleFogAnimation, toggleTintEnabled, toggleBwEffect, isTintEnabled, setActiveTileTab, setCustomTileDimension, toggleColoredFolderCollapsed, toggleSymbolFolderCollapsed, undoLastPoi, redoLastPoi, canUndoPoi, canRedoPoi, getPoiScale, enablePreview, disablePreview, getActiveTileTab, adjustPoiScale, rotatePoiLeft, rotatePoiRight, togglePoiMirror, getPoiMirror, setDecorSearchFilter, toggleDecorFolderCollapsed, setDecorMode, setDecorElevation, setDecorSort, reloadDecorAssets, registerDecorAsset, appendCustomNavSegment, setCustomNavPath, reloadCustomTiles } from "../HexPainterSD.mjs";
+import { generateHexMap, clearGeneratedTiles } from "../HexGeneratorSD.mjs";
+import { flattenTiles, unflattenTile, getDungeonFloorLevels, getFlattendDungeonLevels, flattenDungeonLevel } from "../canvas/TileFlattenSD.mjs";
+import { setDungeonMode, selectFloorTile, selectWallTile, selectDoorTile, selectIntWallTile, selectIntDoorTile, enableDungeonPainting, disableDungeonPainting, setNoFoundryWalls, setWallShadows, setCurvedWalls, setDungeonBackground } from "../DungeonPainterSD.mjs";
+import { toggleGeneratorPanel, isGeneratorExpanded, generateDungeon, generateRandomSeed, getGeneratorSeed, setGeneratorSeed, getGeneratorSettings, setGeneratorSettings } from "../DungeonGeneratorSD.mjs";
 // Side-effect import: loads the multi-level engine at startup so it can register the standalone
 // mlSliders client setting + the renderTrayApp persistence hook (Levels/Links/Variation/Variety).
-import "./DungeonMultiLevelSD.mjs";
-import { isHexFogEnabled, setHexFogEnabled, getActiveHexFogEffect, setHexFogEffect, getAvailableHexFogEffects, isFogEffectsEnabled } from "./SDXHexFogSD.mjs";
-import { isSoloMode, toggleSoloMode } from "./SoloHexMode.mjs";
+import "../DungeonMultiLevelSD.mjs";
+import { isHexFogEnabled, setHexFogEnabled, getActiveHexFogEffect, setHexFogEffect, getAvailableHexFogEffects, isFogEffectsEnabled } from "../SDXHexFogSD.mjs";
+import { isSoloMode, toggleSoloMode } from "../SoloHexMode.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -740,7 +740,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             (viewMode === "hexes" && getActiveTileTab() === "symbols") ||
             viewMode === "decor"
         );
-        const { PoiTileSortApp } = await import("./canvas/PoiTileSortSD.mjs");
+        const { PoiTileSortApp } = await import("../canvas/PoiTileSortSD.mjs");
         isPoiMode ? PoiTileSortApp.show() : PoiTileSortApp.hide();
     }
 
@@ -759,7 +759,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Tom Broadcast State
         let activeSceneId = null;
         try {
-            const { TomStore } = await import("./data/TomStore.mjs");
+            const { TomStore } = await import("../data/TomStore.mjs");
             activeSceneId = TomStore.activeSceneId || null;
         } catch (err) {
             // Ignore
@@ -797,7 +797,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     async _getTomScenes() {
         try {
-            const { TomStore } = await import("./data/TomStore.mjs");
+            const { TomStore } = await import("../data/TomStore.mjs");
             const scenes = Array.from(TomStore.scenes.values());
             // Add isVideo property to each scene for thumbnail rendering
             return scenes.map(scene => {
@@ -818,7 +818,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     async _getTomFolders() {
         try {
-            const { TomStore } = await import("./data/TomStore.mjs");
+            const { TomStore } = await import("../data/TomStore.mjs");
             const folders = TomStore.folders || [];
             return folders.map(folder => {
                 const folderScenes = TomStore.getScenesInFolder(folder.id);
@@ -955,7 +955,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             e.preventDefault();
             e.stopPropagation();
             if (!game.user.isGM) return;
-            const { MaphubLauncherApp } = await import("./MaphubLauncherApp.mjs");
+            const { MaphubLauncherApp } = await import("../MaphubLauncherApp.mjs");
             new MaphubLauncherApp().render(true);
         });
 
@@ -1504,7 +1504,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 // Multi-level dungeon — standalone engine, loaded on demand.
                 const variation = parseFloat(elem.querySelector(".dgen-variation")?.value ?? "1");
                 const connectorVariety = parseFloat(elem.querySelector(".dgen-variety")?.value ?? "0.4");
-                const { generateMultiLevelDungeon } = await import("./DungeonMultiLevelSD.mjs");
+                const { generateMultiLevelDungeon } = await import("../DungeonMultiLevelSD.mjs");
                 await generateMultiLevelDungeon({
                     ...config, levelCount: levels, connectionsPerPair: links, variation, connectorVariety,
                 });
@@ -1522,7 +1522,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Create Scene
         elem.querySelector("[data-action='create-scene']")?.addEventListener("click", async (e) => {
             e.preventDefault();
-            const { TomSceneEditor } = await import("./apps/TomEditors.mjs");
+            const { TomSceneEditor } = await import("../apps/TomEditors.mjs");
             new TomSceneEditor().render(true);
         });
 
@@ -1531,7 +1531,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             e.preventDefault();
             const name = await this._promptFolderName("Create Folder", "New Folder");
             if (!name) return;
-            const { TomStore } = await import("./data/TomStore.mjs");
+            const { TomStore } = await import("../data/TomStore.mjs");
             TomStore.createFolder(name);
             this.render();
         });
@@ -1539,8 +1539,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Stop Broadcast (Header Button)
         elem.querySelector("[data-action='stop-broadcast']")?.addEventListener("click", async (e) => {
             e.preventDefault();
-            const { TomSocketHandler } = await import("./data/TomSocketHandler.mjs");
-            const { TomStore } = await import("./data/TomStore.mjs");
+            const { TomSocketHandler } = await import("../data/TomSocketHandler.mjs");
+            const { TomStore } = await import("../data/TomStore.mjs");
             const activeSceneId = TomStore.activeSceneId;
             const activeScene = activeSceneId ? TomStore.scenes.get(activeSceneId) : null;
             const outAnimation = activeScene?.outAnimation || 'fade';
@@ -1554,7 +1554,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (e.target.closest("[data-action='rename-folder']") || e.target.closest("[data-action='delete-folder']")) return;
                 e.preventDefault();
                 const folderId = header.dataset.folderId;
-                const { TomStore } = await import("./data/TomStore.mjs");
+                const { TomStore } = await import("../data/TomStore.mjs");
                 TomStore.toggleFolderCollapsed(folderId);
                 this.render();
             });
@@ -1568,7 +1568,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const currentName = btn.dataset.folderName;
                 const newName = await this._promptFolderName("Rename Folder", currentName);
                 if (!newName) return;
-                const { TomStore } = await import("./data/TomStore.mjs");
+                const { TomStore } = await import("../data/TomStore.mjs");
                 TomStore.renameFolder(folderId, newName);
                 this.render();
             });
@@ -1586,7 +1586,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     modal: true
                 });
                 if (!confirmed) return;
-                const { TomStore } = await import("./data/TomStore.mjs");
+                const { TomStore } = await import("../data/TomStore.mjs");
                 TomStore.deleteFolder(folderId);
             });
         });
@@ -1617,7 +1617,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const targetCard = e.target.closest(".scene-card");
                 const targetFolderId = folderId || null;
 
-                const { TomStore } = await import("./data/TomStore.mjs");
+                const { TomStore } = await import("../data/TomStore.mjs");
                 const draggedScene = TomStore.scenes.get(draggedSceneId);
                 if (!draggedScene) return;
 
@@ -1652,8 +1652,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             card.querySelector(".scene-card-activate")?.addEventListener("click", async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const { TomSocketHandler } = await import("./data/TomSocketHandler.mjs");
-                const { TomStore } = await import("./data/TomStore.mjs");
+                const { TomSocketHandler } = await import("../data/TomSocketHandler.mjs");
+                const { TomStore } = await import("../data/TomStore.mjs");
                 const scene = TomStore.scenes.get(sceneId);
                 const inAnimation = scene?.inAnimation || 'fade';
                 TomSocketHandler.emitBroadcastScene(sceneId, inAnimation);
@@ -1663,7 +1663,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             card.querySelector("[data-action='edit-scene']")?.addEventListener("click", async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const { TomSceneEditor } = await import("./apps/TomEditors.mjs");
+                const { TomSceneEditor } = await import("../apps/TomEditors.mjs");
                 new TomSceneEditor(sceneId).render(true);
             });
 
@@ -1680,7 +1680,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 });
 
                 if (confirmed) {
-                    const { TomStore } = await import("./data/TomStore.mjs");
+                    const { TomStore } = await import("../data/TomStore.mjs");
                     TomStore.deleteItem(sceneId, "scene");
                     ui.notifications.info(`Scene "${sceneName}" deleted.`);
                 }
@@ -2745,7 +2745,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ui.notifications.warn("Only GMs can manage Dungeondraft packs.");
                 return;
             }
-            const { DDPackSettingsApp } = await import("./DDPackSettingsAppSD.mjs");
+            const { DDPackSettingsApp } = await import("../DDPackSettingsAppSD.mjs");
             new DDPackSettingsApp().render(true);
         });
 
@@ -2867,7 +2867,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const basePath = "modules/shadowdark-extras/assets/Tom/overlays/";
 
         // Get current overlay from TomStore
-        const { TomStore } = await import("./data/TomStore.mjs");
+        const { TomStore } = await import("../data/TomStore.mjs");
         const currentOverlay = TomStore.currentOverlay;
 
         // Create panel
@@ -2888,7 +2888,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         clearBtn.addEventListener("click", async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const { TomSocketHandler } = await import("./data/TomSocketHandler.mjs");
+            const { TomSocketHandler } = await import("../data/TomSocketHandler.mjs");
             TomSocketHandler.emitOverlayClear();
             panel.remove();
             this._toggleTomOverlayPanel(); // Refresh panel
@@ -2934,7 +2934,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 e.preventDefault();
                 e.stopPropagation();
 
-                const { TomSocketHandler } = await import("./data/TomSocketHandler.mjs");
+                const { TomSocketHandler } = await import("../data/TomSocketHandler.mjs");
 
                 if (isActive) {
                     // Clicking active overlay clears it
@@ -2987,7 +2987,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Get Tom data from store
-        const { TomStore } = await import("./data/TomStore.mjs");
+        const { TomStore } = await import("../data/TomStore.mjs");
         const scene = this._tomActiveSceneId ? TomStore.scenes.get(this._tomActiveSceneId) : null;
         const broadcasting = !!scene;
 
@@ -3076,7 +3076,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Get Tom scenes and folders from store
-        const { TomStore } = await import("./data/TomStore.mjs");
+        const { TomStore } = await import("../data/TomStore.mjs");
         const scenes = Array.from(TomStore.scenes.values());
         const folders = TomStore.folders || [];
 
@@ -3092,7 +3092,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             e.preventDefault();
             e.stopPropagation();
             panel.remove();
-            const { TomSceneEditor } = await import("./apps/TomEditors.mjs");
+            const { TomSceneEditor } = await import("../apps/TomEditors.mjs");
             new TomSceneEditor().render(true);
         });
         panel.appendChild(createSceneBtn);
@@ -3123,7 +3123,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 e.stopPropagation();
                 panel.remove();
 
-                const { TomSocketHandler } = await import("./data/TomSocketHandler.mjs");
+                const { TomSocketHandler } = await import("../data/TomSocketHandler.mjs");
                 const activeScene = TomStore.scenes.get(this._tomActiveSceneId);
                 const outAnimation = activeScene?.outAnimation || 'fade';
                 TomSocketHandler.emitStopBroadcast(outAnimation);
@@ -3192,7 +3192,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 e.preventDefault();
                 e.stopPropagation();
                 panel.remove();
-                const { TomSceneEditor } = await import("./apps/TomEditors.mjs");
+                const { TomSceneEditor } = await import("../apps/TomEditors.mjs");
                 new TomSceneEditor(scene.id).render(true);
             });
 
@@ -3230,7 +3230,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
                 panel.remove();
 
-                const { TomSocketHandler } = await import("./data/TomSocketHandler.mjs");
+                const { TomSocketHandler } = await import("../data/TomSocketHandler.mjs");
                 const inAnimation = scene?.inAnimation || 'fade';
 
                 if (this._tomActiveSceneId) {

@@ -35,7 +35,7 @@ globalThis.fromUuidSync = () => null;
 const {
 	SDXRollerApp,
 	SDXRollerOverlay
-} = await import("../../scripts/SDXRollerApp.mjs");
+} = await import("../../scripts/tray/SDXRollerApp.mjs");
 
 function makeRollData(rollId) {
 	return {

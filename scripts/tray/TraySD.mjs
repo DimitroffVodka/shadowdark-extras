@@ -1,9 +1,9 @@
 
 
 import { TrayApp } from "./TrayApp.mjs";
-import { JournalPinManager, normalizeImageTint } from "./journal/JournalPinsSD.mjs";
-import { initSoloHexMode } from "./SoloHexMode.mjs";
-import { getHexPainterData, loadTileAssets, bindCanvasEvents, enablePainting, disablePainting, isPainting, setDecorMode, canUndoPoi, canRedoPoi } from "./HexPainterSD.mjs";
+import { JournalPinManager, normalizeImageTint } from "../journal/JournalPinsSD.mjs";
+import { initSoloHexMode } from "../SoloHexMode.mjs";
+import { getHexPainterData, loadTileAssets, bindCanvasEvents, enablePainting, disablePainting, isPainting, setDecorMode, canUndoPoi, canRedoPoi } from "../HexPainterSD.mjs";
 import {
     getDungeonPainterData,
     loadDungeonAssets,
@@ -19,7 +19,7 @@ import {
     initDungeonSocket,
     isGMOnline,
     canPlayerPaint
-} from "./DungeonPainterSD.mjs";
+} from "../DungeonPainterSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
