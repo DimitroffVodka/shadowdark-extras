@@ -13,7 +13,7 @@
  */
 
 import { getSocket } from "./CombatSettingsSD.mjs";
-import { resolveCardContext } from "./sd4Compat.mjs";
+import { resolveCardContext } from "./shared/sd4Compat.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 

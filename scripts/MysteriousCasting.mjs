@@ -1,4 +1,4 @@
-import { readSdDamageRoll } from "./sd4Compat.mjs";
+import { readSdDamageRoll } from "./shared/sd4Compat.mjs";
 
 export const MODULE_ID = "shadowdark-extras";
 

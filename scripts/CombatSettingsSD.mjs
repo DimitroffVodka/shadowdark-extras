@@ -7,7 +7,7 @@ import { getWeaponBonuses, getWeaponEffectsToApply, evaluateRequirements, calcul
 import { startDurationSpell, linkEffectToDurationSpell, linkEffectToFocusSpell, linkTargetToFocusSpell, startFocusSpellIfNeeded, getActiveDurationSpells, endFocusSpell } from "./FocusSpellTrackerSD.mjs";
 import { setupTemplateEffectFlags, buildTemplateEffectsFlag, applyTemplateEffect, getTokensInTemplate, processTemplateCreationEffects } from "./TemplateEffectsSD.mjs";
 import { createAuraOnActor } from "./AuraEffectsSD.mjs";
-import { readSdRollOutcome, readSdDamageRoll, resolveCardContext } from "./sd4Compat.mjs";
+import { readSdRollOutcome, readSdDamageRoll, resolveCardContext } from "./shared/sd4Compat.mjs";
 import { getEffectiveCreatureType } from "./CreatureTypesApp.mjs";
 
 const MODULE_ID = "shadowdark-extras";

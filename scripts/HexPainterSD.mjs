@@ -1,4 +1,4 @@
-import { cache } from "./SDXCache.mjs";
+import { cache } from "./shared/SDXCache.mjs";
 import { BIOME_TILES, BIOME_TINTS } from "./HexGeneratorSD.mjs";
 import { getDoorTiles } from "./DungeonPainterSD.mjs";
 import { setHexTerrain } from "./HexTooltipSD.mjs";
