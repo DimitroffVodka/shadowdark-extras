@@ -734,7 +734,11 @@ export async function addCarousingResult(userId, type) {
         adjustment: 0,
         finalRoll: rolled.finalRoll,
         description: rolled.description,
-        renownDelta: await applyRenownDelta(getParticipantActor(userId), parseRenownDelta(rolled.description))
+        renownDelta: await applyRenownDelta(
+            getParticipantActor(userId),
+            parseRenownDelta(rolled.description),
+            rolled.description
+        )
     };
     const arrayKey = rolled.type === "benefit" ? "benefits" : "mishaps";
     if (!session.results[userId][arrayKey]) {
@@ -779,7 +783,13 @@ export async function removeCarousingResult(userId, type, index) {
     // Remove the item, reverting any renown it auto-applied
     const [removed] = arr.splice(index, 1);
     if (removed?.renownDelta) {
-        await applyRenownDelta(getParticipantActor(userId), -removed.renownDelta);
+        // Logged as its own reversing entry rather than erasing the original —
+        // SDE's renown history is a ledger and does not rewrite past rows.
+        await applyRenownDelta(
+            getParticipantActor(userId),
+            -removed.renownDelta,
+            game.i18n.localize("SHADOWDARK_EXTRAS.carousing.renown_reason_removed")
+        );
     }
 
     await saveCarousingSession(session);
@@ -1252,9 +1262,58 @@ export function getActorRenown(actor) {
 /**
  * Apply a change to Shadowdark's native renown field. The system intentionally
  * permits negative renown, so do not impose the retired SDX min/max rules.
+ *
+ * When Shadowdark Enhancer is installed it owns the renown ledger, so hand the
+ * change to its `award` API instead of writing the field ourselves: SDE commits
+ * the value and its history row in one transaction and carries `reason` through
+ * to the Session Recap, which a bare field write cannot do (SDE's watcher would
+ * only see an anonymous "changed outside the module").
+ *
+ * Two constraints shape the guard:
+ *  - SDE rejects player-side awards outright (its recap is a world setting only
+ *    a GM may write), so only delegate from a GM client. Player-reachable paths
+ *    keep the direct write and fall back to SDE's external-change watcher.
+ *  - Any refusal still has to apply the renown. SDE reports `ok: false` without
+ *    committing anything, so falling through to the direct write is safe and
+ *    keeps a player from silently losing renown when SDE is unavailable.
+ *
+ * @param {Actor} actor
+ * @param {number} delta signed change
+ * @param {string} [reason] human-readable cause, recorded in SDE's renown log
+ * @returns {Promise<number>} the delta actually applied
  */
-export async function applyRenownDelta(actor, delta) {
+export async function applyRenownDelta(actor, delta, reason = "") {
     if (!actor || !delta) return 0;
+
+    const sde = game.user?.isGM && game.modules.get("shadowdark-enhancer")?.active
+        ? game.shadowdarkEnhancer?.renown
+        : null;
+    if (typeof sde?.award === "function") {
+        try {
+            // chat: false — SDX's own carousing card already reports the change.
+            const result = await sde.award({
+                actor,
+                delta,
+                reason: String(reason || ""),
+                source: "carousing",
+                chat: false
+            });
+            // Trust SDE's number rather than the requested one: the session
+            // stores it and replays it negated when a result is removed, so a
+            // clamped award must not leave SDX holding a delta SDE never wrote.
+            if (result?.ok) return Number(result.delta) || 0;
+            console.warn(
+                `${MODULE_ID} | renown: Shadowdark Enhancer declined the award, writing the field directly`,
+                result?.error
+            );
+        } catch (err) {
+            console.warn(
+                `${MODULE_ID} | renown: Shadowdark Enhancer award failed, writing the field directly`,
+                err
+            );
+        }
+    }
+
     const current = getActorRenown(actor);
     const next = current + delta;
     await actor.update({ "system.renown": next });
@@ -1382,12 +1441,12 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
         const mishapResults = [];
         for (let i = 0; i < outcome.benefits; i++) {
             const r = await rollExpandedD100("benefit", outcome.modifier, playerMods);
-            r.renownDelta = await applyRenownDelta(actor, parseRenownDelta(r.description));
+            r.renownDelta = await applyRenownDelta(actor, parseRenownDelta(r.description), r.description);
             (r.type === "benefit" ? benefitResults : mishapResults).push(r);
         }
         for (let i = 0; i < outcome.mishaps; i++) {
             const r = await rollExpandedD100("mishap", outcome.modifier, playerMods);
-            r.renownDelta = await applyRenownDelta(actor, parseRenownDelta(r.description));
+            r.renownDelta = await applyRenownDelta(actor, parseRenownDelta(r.description), r.description);
             (r.type === "mishap" ? mishapResults : benefitResults).push(r);
         }
 
@@ -2028,7 +2087,11 @@ export async function applyCarousingOutcome(participantId) {
     }
 
     if (effects.renown) {
-        const applied = await applyRenownDelta(actor, effects.renown);
+        const applied = await applyRenownDelta(
+            actor,
+            effects.renown,
+            [result.description, result.benefit].filter(Boolean).join(" — ")
+        );
         if (applied) {
             summaryParts.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_renown", {
                 delta: applied > 0 ? `+${applied}` : String(applied)

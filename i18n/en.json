@@ -629,6 +629,7 @@
   "SHADOWDARK_EXTRAS.carousing.wealth_base_hint": "What \"% of your total wealth\" is measured against. Change it in Settings → Carousing Wealth Base.",
   "SHADOWDARK_EXTRAS.carousing.card_wealth_hint": "Coins carried / total wealth including gear",
   "SHADOWDARK_EXTRAS.carousing.effect_renown": "{delta} renown",
+  "SHADOWDARK_EXTRAS.carousing.renown_reason_removed": "Carousing result removed",
   "SHADOWDARK_EXTRAS.carousing.effect_note": "A note will be added to the character's Notes",
   "SHADOWDARK_EXTRAS.carousing.note_heading": "Carousing",
   "SHADOWDARK_EXTRAS.carousing.note_no_visible_outcomes": "No player-visible benefits or mishaps",
