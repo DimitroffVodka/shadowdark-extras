@@ -1,5 +1,5 @@
-import { TOM_CONFIG as CONFIG } from '../TomConfig.mjs';
-import { TomPlayerView } from '../apps/TomPlayerView.mjs';
+import { TOM_CONFIG as CONFIG } from './TomConfig.mjs';
+import { TomPlayerView } from '../tom/TomPlayerView.mjs';
 import { TomStore as Store } from './TomStore.mjs';
 
 export class TomSocketHandler {

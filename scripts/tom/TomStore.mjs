@@ -1,4 +1,4 @@
-import { TOM_CONFIG as CONFIG } from '../TomConfig.mjs';
+import { TOM_CONFIG as CONFIG } from './TomConfig.mjs';
 import { TomSocketHandler } from './TomSocketHandler.mjs';
 
 class TomSceneModel {
@@ -84,7 +84,7 @@ export class TomStoreClass {
         this._loadScenes(newValue);
 
         if (this.activeSceneId) {
-          import('../apps/TomPlayerView.mjs').then(({ TomPlayerView }) => {
+          import('../tom/TomPlayerView.mjs').then(({ TomPlayerView }) => {
             TomPlayerView.refresh();
           });
         }

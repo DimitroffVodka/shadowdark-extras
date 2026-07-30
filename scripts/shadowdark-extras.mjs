@@ -78,7 +78,7 @@ import { registerPinStyleSettings } from "./journal/PinStyleEditorSD.mjs";
 import SheetLockManager from "./character-sheet/SheetLockManager.mjs";
 import "./item-macros/SpellMacrosSD.mjs";
 import { initMysteriousCasting } from "./npc/MysteriousCasting.mjs";
-import { TomSD } from "./TomSD.mjs";
+import { TomSD } from "./tom/TomSD.mjs";
 import { WallContextMenuSD } from "./canvas/WallContextMenuSD.mjs";
 import { sdxDrawingTool } from "./canvas/SDXDrawingTool.mjs";
 import { sdxDrawingToolbar } from "./canvas/SDXDrawingToolbar.mjs";

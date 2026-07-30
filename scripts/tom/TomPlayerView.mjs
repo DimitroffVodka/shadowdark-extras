@@ -1,5 +1,5 @@
-import { TOM_CONFIG as CONFIG } from '../TomConfig.mjs';
-import { TomStore as Store } from '../data/TomStore.mjs';
+import { TOM_CONFIG as CONFIG } from './TomConfig.mjs';
+import { TomStore as Store } from '../tom/TomStore.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -201,7 +201,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
   _spawnToken(characterId, image, actor, x, y) {
     const tokenId = foundry.utils.randomID();
 
-    import('../data/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
+    import('../tom/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
       TomSocketHandler.emitArenaTokenSpawn({
         tokenId,
         characterId,
@@ -219,7 +219,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
   _spawnActorToken(actor, image, x, y) {
     const tokenId = foundry.utils.randomID();
 
-    import('../data/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
+    import('../tom/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
       TomSocketHandler.emitArenaTokenSpawn({
         tokenId,
         characterId: null,
@@ -238,7 +238,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
   _spawnAsset(image, x, y) {
     const assetId = foundry.utils.randomID();
 
-    import('../data/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
+    import('../tom/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
       TomSocketHandler.emitArenaAssetSpawn({
         assetId,
         image,
@@ -309,7 +309,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
         const clampedX = Math.max(2, Math.min(98, x));
         const clampedY = Math.max(2, Math.min(98, y));
 
-        import('../data/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
+        import('../tom/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
           TomSocketHandler.emitArenaAssetMove({ assetId, x: clampedX, y: clampedY });
         });
       });
@@ -330,7 +330,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
         asset.style.transform = `translate(-50%, -50%) scale(${newScale})`;
 
 
-        import('../data/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
+        import('../tom/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
           TomSocketHandler.emitArenaAssetResize({ assetId, scale: newScale });
         });
       });
@@ -338,7 +338,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 
       asset.addEventListener('contextmenu', (e) => {
         e.preventDefault();
-        import('../data/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
+        import('../tom/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
           TomSocketHandler.emitArenaAssetRemove({ assetId });
         });
       });
@@ -370,7 +370,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
       if (canRemove) {
         token.addEventListener('contextmenu', (e) => {
           e.preventDefault();
-          import('../data/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
+          import('../tom/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
             TomSocketHandler.emitArenaTokenRemove({ tokenId });
           });
         });
@@ -440,7 +440,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
         const clampedY = Math.max(5, Math.min(95, y));
 
 
-        import('../data/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
+        import('../tom/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
           TomSocketHandler.emitArenaTokenMove({
             tokenId,
             x: clampedX,
@@ -500,7 +500,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 
 
     let socketHandler = null;
-    import('../data/TomSocketHandler.mjs').then(module => {
+    import('../tom/TomSocketHandler.mjs').then(module => {
       socketHandler = module.TomSocketHandler;
     });
 
@@ -1176,7 +1176,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         // Update state and sync via socket
         if (tokenState) tokenState.isCompact = newCompact;
-        import('../data/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
+        import('../tom/TomSocketHandler.mjs').then(({ TomSocketHandler }) => {
           TomSocketHandler.emitArenaTokenCompactToggle({ tokenId, isCompact: newCompact });
         });
       });
@@ -1275,7 +1275,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
         item.classList.toggle('active');
 
 
-        const { TomSocketHandler } = await import('../data/TomSocketHandler.mjs');
+        const { TomSocketHandler } = await import('../tom/TomSocketHandler.mjs');
         TomSocketHandler.emitArenaTokenConditionsUpdate({ tokenId, conditions: newConditions });
       });
 
@@ -1335,7 +1335,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
             const newHp = parseInt(button.form.elements.hp.value) || 0;
             const clampedHp = Math.max(0, Math.min(newHp, maxHp));
 
-            const { TomSocketHandler } = await import('../data/TomSocketHandler.mjs');
+            const { TomSocketHandler } = await import('../tom/TomSocketHandler.mjs');
 
             if (isNPC) {
               TomSocketHandler.emitArenaTokenHpUpdate({ tokenId, hp: clampedHp, maxHp });

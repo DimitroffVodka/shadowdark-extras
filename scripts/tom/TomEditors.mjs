@@ -1,8 +1,8 @@
 // v13+ FilePicker namespaced under foundry.applications.apps.
 const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
 
-import { TOM_CONFIG as CONFIG } from '../TomConfig.mjs';
-import { TomStore as Store } from '../data/TomStore.mjs';
+import { TOM_CONFIG as CONFIG } from './TomConfig.mjs';
+import { TomStore as Store } from '../tom/TomStore.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 

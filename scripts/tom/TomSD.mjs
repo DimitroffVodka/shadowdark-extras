@@ -1,9 +1,9 @@
 // Scene/Character management and broadcasting system
 
 import { TOM_CONFIG } from './TomConfig.mjs';
-import { TomStore } from './data/TomStore.mjs';
-import { TomMigrationService } from './data/TomMigrationService.mjs';
-import { TomSocketHandler } from './data/TomSocketHandler.mjs';
+import { TomStore } from '../tom/TomStore.mjs';
+import { TomMigrationService } from '../tom/TomMigrationService.mjs';
+import { TomSocketHandler } from '../tom/TomSocketHandler.mjs';
 
 export class TomSD {
   static ID = TOM_CONFIG.MODULE_ID;
@@ -53,7 +53,7 @@ export class TomSD {
     if (!hpChanged) return;
 
     // Import and update arena tokens that use this actor
-    import('./apps/TomPlayerView.mjs').then(({ TomPlayerView }) => {
+    import('../tom/TomPlayerView.mjs').then(({ TomPlayerView }) => {
       if (!TomPlayerView._instance) return;
 
       const arenaTokens = TomPlayerView._instance.uiState.arenaTokens;

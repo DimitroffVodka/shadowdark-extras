@@ -1,4 +1,4 @@
-import { TOM_CONFIG as CONFIG } from '../TomConfig.mjs';
+import { TOM_CONFIG as CONFIG } from './TomConfig.mjs';
 import { TomStore as Store } from './TomStore.mjs';
 
 export class TomMigrationService {

@@ -759,7 +759,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Tom Broadcast State
         let activeSceneId = null;
         try {
-            const { TomStore } = await import("../data/TomStore.mjs");
+            const { TomStore } = await import("../tom/TomStore.mjs");
             activeSceneId = TomStore.activeSceneId || null;
         } catch (err) {
             // Ignore
@@ -797,7 +797,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     async _getTomScenes() {
         try {
-            const { TomStore } = await import("../data/TomStore.mjs");
+            const { TomStore } = await import("../tom/TomStore.mjs");
             const scenes = Array.from(TomStore.scenes.values());
             // Add isVideo property to each scene for thumbnail rendering
             return scenes.map(scene => {
@@ -818,7 +818,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     async _getTomFolders() {
         try {
-            const { TomStore } = await import("../data/TomStore.mjs");
+            const { TomStore } = await import("../tom/TomStore.mjs");
             const folders = TomStore.folders || [];
             return folders.map(folder => {
                 const folderScenes = TomStore.getScenesInFolder(folder.id);
@@ -1522,7 +1522,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Create Scene
         elem.querySelector("[data-action='create-scene']")?.addEventListener("click", async (e) => {
             e.preventDefault();
-            const { TomSceneEditor } = await import("../apps/TomEditors.mjs");
+            const { TomSceneEditor } = await import("../tom/TomEditors.mjs");
             new TomSceneEditor().render(true);
         });
 
@@ -1531,7 +1531,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             e.preventDefault();
             const name = await this._promptFolderName("Create Folder", "New Folder");
             if (!name) return;
-            const { TomStore } = await import("../data/TomStore.mjs");
+            const { TomStore } = await import("../tom/TomStore.mjs");
             TomStore.createFolder(name);
             this.render();
         });
@@ -1539,8 +1539,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Stop Broadcast (Header Button)
         elem.querySelector("[data-action='stop-broadcast']")?.addEventListener("click", async (e) => {
             e.preventDefault();
-            const { TomSocketHandler } = await import("../data/TomSocketHandler.mjs");
-            const { TomStore } = await import("../data/TomStore.mjs");
+            const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
+            const { TomStore } = await import("../tom/TomStore.mjs");
             const activeSceneId = TomStore.activeSceneId;
             const activeScene = activeSceneId ? TomStore.scenes.get(activeSceneId) : null;
             const outAnimation = activeScene?.outAnimation || 'fade';
@@ -1554,7 +1554,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (e.target.closest("[data-action='rename-folder']") || e.target.closest("[data-action='delete-folder']")) return;
                 e.preventDefault();
                 const folderId = header.dataset.folderId;
-                const { TomStore } = await import("../data/TomStore.mjs");
+                const { TomStore } = await import("../tom/TomStore.mjs");
                 TomStore.toggleFolderCollapsed(folderId);
                 this.render();
             });
@@ -1568,7 +1568,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const currentName = btn.dataset.folderName;
                 const newName = await this._promptFolderName("Rename Folder", currentName);
                 if (!newName) return;
-                const { TomStore } = await import("../data/TomStore.mjs");
+                const { TomStore } = await import("../tom/TomStore.mjs");
                 TomStore.renameFolder(folderId, newName);
                 this.render();
             });
@@ -1586,7 +1586,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     modal: true
                 });
                 if (!confirmed) return;
-                const { TomStore } = await import("../data/TomStore.mjs");
+                const { TomStore } = await import("../tom/TomStore.mjs");
                 TomStore.deleteFolder(folderId);
             });
         });
@@ -1617,7 +1617,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const targetCard = e.target.closest(".scene-card");
                 const targetFolderId = folderId || null;
 
-                const { TomStore } = await import("../data/TomStore.mjs");
+                const { TomStore } = await import("../tom/TomStore.mjs");
                 const draggedScene = TomStore.scenes.get(draggedSceneId);
                 if (!draggedScene) return;
 
@@ -1652,8 +1652,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             card.querySelector(".scene-card-activate")?.addEventListener("click", async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const { TomSocketHandler } = await import("../data/TomSocketHandler.mjs");
-                const { TomStore } = await import("../data/TomStore.mjs");
+                const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
+                const { TomStore } = await import("../tom/TomStore.mjs");
                 const scene = TomStore.scenes.get(sceneId);
                 const inAnimation = scene?.inAnimation || 'fade';
                 TomSocketHandler.emitBroadcastScene(sceneId, inAnimation);
@@ -1663,7 +1663,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             card.querySelector("[data-action='edit-scene']")?.addEventListener("click", async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const { TomSceneEditor } = await import("../apps/TomEditors.mjs");
+                const { TomSceneEditor } = await import("../tom/TomEditors.mjs");
                 new TomSceneEditor(sceneId).render(true);
             });
 
@@ -1680,7 +1680,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 });
 
                 if (confirmed) {
-                    const { TomStore } = await import("../data/TomStore.mjs");
+                    const { TomStore } = await import("../tom/TomStore.mjs");
                     TomStore.deleteItem(sceneId, "scene");
                     ui.notifications.info(`Scene "${sceneName}" deleted.`);
                 }
@@ -2867,7 +2867,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const basePath = "modules/shadowdark-extras/assets/Tom/overlays/";
 
         // Get current overlay from TomStore
-        const { TomStore } = await import("../data/TomStore.mjs");
+        const { TomStore } = await import("../tom/TomStore.mjs");
         const currentOverlay = TomStore.currentOverlay;
 
         // Create panel
@@ -2888,7 +2888,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         clearBtn.addEventListener("click", async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const { TomSocketHandler } = await import("../data/TomSocketHandler.mjs");
+            const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
             TomSocketHandler.emitOverlayClear();
             panel.remove();
             this._toggleTomOverlayPanel(); // Refresh panel
@@ -2934,7 +2934,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 e.preventDefault();
                 e.stopPropagation();
 
-                const { TomSocketHandler } = await import("../data/TomSocketHandler.mjs");
+                const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
 
                 if (isActive) {
                     // Clicking active overlay clears it
@@ -2987,7 +2987,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Get Tom data from store
-        const { TomStore } = await import("../data/TomStore.mjs");
+        const { TomStore } = await import("../tom/TomStore.mjs");
         const scene = this._tomActiveSceneId ? TomStore.scenes.get(this._tomActiveSceneId) : null;
         const broadcasting = !!scene;
 
@@ -3076,7 +3076,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Get Tom scenes and folders from store
-        const { TomStore } = await import("../data/TomStore.mjs");
+        const { TomStore } = await import("../tom/TomStore.mjs");
         const scenes = Array.from(TomStore.scenes.values());
         const folders = TomStore.folders || [];
 
@@ -3092,7 +3092,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             e.preventDefault();
             e.stopPropagation();
             panel.remove();
-            const { TomSceneEditor } = await import("../apps/TomEditors.mjs");
+            const { TomSceneEditor } = await import("../tom/TomEditors.mjs");
             new TomSceneEditor().render(true);
         });
         panel.appendChild(createSceneBtn);
@@ -3123,7 +3123,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 e.stopPropagation();
                 panel.remove();
 
-                const { TomSocketHandler } = await import("../data/TomSocketHandler.mjs");
+                const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
                 const activeScene = TomStore.scenes.get(this._tomActiveSceneId);
                 const outAnimation = activeScene?.outAnimation || 'fade';
                 TomSocketHandler.emitStopBroadcast(outAnimation);
@@ -3192,7 +3192,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 e.preventDefault();
                 e.stopPropagation();
                 panel.remove();
-                const { TomSceneEditor } = await import("../apps/TomEditors.mjs");
+                const { TomSceneEditor } = await import("../tom/TomEditors.mjs");
                 new TomSceneEditor(scene.id).render(true);
             });
 
@@ -3230,7 +3230,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
                 panel.remove();
 
-                const { TomSocketHandler } = await import("../data/TomSocketHandler.mjs");
+                const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
                 const inAnimation = scene?.inAnimation || 'fade';
 
                 if (this._tomActiveSceneId) {
