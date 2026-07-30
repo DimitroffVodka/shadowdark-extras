@@ -163,7 +163,7 @@ export function injectWeaponAnimationButton(html, item) {
 		event.stopPropagation();
 
 		// Dynamic import to avoid circular dependency
-		const { openWeaponAnimationConfig } = await import("../WeaponAnimationConfig.mjs");
+		const { openWeaponAnimationConfig } = await import("../animation/WeaponAnimationConfig.mjs");
 		openWeaponAnimationConfig(item);
 	});
 

@@ -32,13 +32,13 @@ import {
 	getPromptableDamageBonuses
 } from "./combat/WeaponBonusConfig.mjs";
 
-import { initAutoAnimationsIntegration } from "./AutoAnimationsSD.mjs";
-import { AnimationFxSD } from "./AnimationFxSD.mjs";
-import { registerAnimationFxMenu } from "./AnimationFxListApp.mjs";
-import { initTorchAnimations } from "./TorchAnimationSD.mjs";
-import { initWeaponAnimations } from "./WeaponAnimationSD.mjs";
-import { initLevelUpAnimations } from "./LevelUpAnimationSD.mjs";
-import { openWeaponAnimationConfig } from "./WeaponAnimationConfig.mjs";
+import { initAutoAnimationsIntegration } from "./animation/AutoAnimationsSD.mjs";
+import { AnimationFxSD } from "./animation/AnimationFxSD.mjs";
+import { registerAnimationFxMenu } from "./animation/AnimationFxListApp.mjs";
+import { initTorchAnimations } from "./animation/TorchAnimationSD.mjs";
+import { initWeaponAnimations } from "./animation/WeaponAnimationSD.mjs";
+import { initLevelUpAnimations } from "./animation/LevelUpAnimationSD.mjs";
+import { openWeaponAnimationConfig } from "./animation/WeaponAnimationConfig.mjs";
 import { initFocusSpellTracker, endFocusSpell, linkEffectToFocusSpell, getActiveFocusSpells, isFocusingOnSpell, startDurationSpell, endDurationSpell, registerSpellModification, getActiveDurationSpells } from "./effects/FocusSpellTrackerSD.mjs";
 import { initBreakOnDamage, breakEffectOnDamage, clearBreakOnDamage, applySpellEffect } from "./effects/BreakOnDamageSD.mjs";
 import { initCarousing, injectCarousingButton, ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, getCustomCarousingTables, getCarousingTableById, setCarousingTable, migrateLegacyRenown } from "./CarousingSD.mjs";
@@ -47,7 +47,7 @@ import { openCarousingOverlay, refreshCarousingOverlay } from "./CarousingOverla
 import { openCarousingTablesEditor } from "./CarousingTablesApp.mjs";
 import { openExpandedCarousingTablesEditor } from "./ExpandedCarousingTablesApp.mjs";
 import { initTemplateEffects, processTemplateTurnEffects, setupTemplateEffectFlags } from "./effects/TemplateEffectsSD.mjs";
-import { filterEditor as openTMFXFilterEditor } from "./TMFXFilterEditor.mjs";
+import { filterEditor as openTMFXFilterEditor } from "./animation/TMFXFilterEditor.mjs";
 import { initAuraEffects, createAuraOnActor, getActiveAuras, getTokensInAura } from "./effects/AuraEffectsSD.mjs";
 import { registerDisplayNpcEnricher } from "./DisplayNpc.mjs";
 import { registerDisplayTableEnricher } from "./DisplayTable.mjs";

@@ -8,7 +8,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  */
 
 import { AnimationFxSD } from "./AnimationFxSD.mjs";
-import { isItemPilesActor } from "./inventory/ItemPilesCompatSD.mjs";
+import { isItemPilesActor } from "../inventory/ItemPilesCompatSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 

@@ -19,10 +19,10 @@
  * throws out of the chat hook.
  */
 
-import { DEFAULT_WEAPON_PRESETS } from "./data/weapon-animation-presets.mjs";
-import { DEFAULT_SPELL_PRESETS } from "./data/spell-animation-presets.mjs";
-import { DEFAULT_NPC_ATTACK_PRESETS } from "./data/npc-attack-presets.mjs";
-import { DEFAULT_WEAPON_SPRITE_PRESETS } from "./data/weapon-sprite-presets.mjs";
+import { DEFAULT_WEAPON_PRESETS } from "./presets/weapon-animation-presets.mjs";
+import { DEFAULT_SPELL_PRESETS } from "./presets/spell-animation-presets.mjs";
+import { DEFAULT_NPC_ATTACK_PRESETS } from "./presets/npc-attack-presets.mjs";
+import { DEFAULT_WEAPON_SPRITE_PRESETS } from "./presets/weapon-sprite-presets.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 

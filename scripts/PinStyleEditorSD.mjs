@@ -8,7 +8,7 @@ const MODULE_ID = "shadowdark-extras";
  */
 import { getPinStyle, JournalPinManager, JournalPinRenderer, DEFAULT_PIN_STYLE } from "./JournalPinsSD.mjs";
 import { IconPickerApp } from "./IconPickerSD.mjs";
-import { FilterEditor, getCloneFilterParams } from "./TMFXFilterEditor.mjs";
+import { FilterEditor, getCloneFilterParams } from "./animation/TMFXFilterEditor.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 

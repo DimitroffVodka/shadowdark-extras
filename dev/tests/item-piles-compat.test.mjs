@@ -144,7 +144,7 @@ test("Item Piles pre-hooks never cancel unrelated item creates or updates", () =
 
 test("weapon animation paths guard Item Piles actors", () => {
 	const source = readFileSync(
-		new URL("scripts/WeaponAnimationSD.mjs", moduleRoot),
+		new URL("scripts/animation/WeaponAnimationSD.mjs", moduleRoot),
 		"utf8"
 	);
 

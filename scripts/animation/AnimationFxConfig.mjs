@@ -17,7 +17,7 @@
  * master list stays authoritative and the display can never go stale.
  */
 
-import { AnimationFxSD } from "../AnimationFxSD.mjs";
+import { AnimationFxSD } from "./AnimationFxSD.mjs";
 
 /** Escape a value for interpolation into an HTML attribute. */
 function esc(v) {
