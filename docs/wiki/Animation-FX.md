@@ -2,26 +2,24 @@
 
 [← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
-SDX's native Animation FX engine uses Sequencer to play item and event effects.
-Bundled presets cover spells, weapons, common NPC attacks, equipped weapon
-sprites, torches, and level-up indicators.
+SDX's native Animation FX engine drives Sequencer to play item and event
+effects. The bundled presets cover spells, weapons, common NPC attacks, equipped
+weapon sprites, torches, and level-up indicators.
 
 ---
 
 ## What you need
 
-- **Sequencer** is required by the current module manifest.
-- A **JB2A** pack supplies the visual database entries used by most bundled
-  presets.
-- **psfx** is optional and supplies sound files. Missing psfx audio should fail
-  silent, not stop the visual.
-- **Automated Animations** is optional.
+**Sequencer** is required by the current module manifest, and a **JB2A** pack
+supplies the visual database entries behind most bundled presets. **psfx**
+provides sound files and is optional, since a missing psfx file should fail
+silently and leave the visual alone. **Automated Animations** is optional too.
 
 ## Open the master list
 
 Go to **Configure Settings → Shadowdark Extras → Configure Animations**.
 
-The manager groups presets into:
+The manager sorts presets into five groups. Each one can be enabled on its own.
 
 | Category | Matches |
 |---|---|
@@ -31,123 +29,92 @@ The manager groups presets into:
 | **Equipped Weapon Sprites** | Persistent art attached to equipped weapons |
 | **Ambient & Events** | Torch/light types and level-up animation |
 
-Each category can be enabled independently.
-
 ![The Animation FX master list with spell presets and Sequencer paths](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/animation-fx-master-list.png)
 
 ## How a preset matches
 
-A master preset contains a name pattern. One preset can therefore cover normal,
-magic, or suffixed variants of an item name. When more than one pattern matches,
-the most specific match wins.
+Every master preset carries a name pattern, so one preset can cover the normal,
+magic, and suffixed variants of an item name, and when several patterns match
+the most specific one takes it.
 
-Resolution order:
+Resolution runs in three steps: an enabled per-item override first, then the
+most-specific master-list name match, then the category default.
 
-1. enabled per-item override;
-2. most-specific master-list name match;
-3. category default.
-
-The item Activity panel deliberately reports **No preset** when only a generic
-category fallback exists; it does not imply that a named preset was inherited.
+The item Activity panel deliberately reports **No preset** when all it found was
+a generic category fallback. Read that as "nothing named matched", rather than
+as an inherited preset.
 
 ## One-time seeding
 
-An active GM seeds the bundled defaults once in a new world. Seeding merges
-missing keys. After that:
+An active GM seeds the bundled defaults once in a new world, merging in whatever
+keys are missing. After that, your edits stick, your deletions stick, and a
+later module update won't keep overwriting world choices.
 
-- editing a preset preserves the edit;
-- deleting a preset preserves the deletion;
-- a later module update does not continuously overwrite world choices.
-
-Use **Seed Default Presets** when you explicitly want to merge defaults again.
-Review the result if you maintain custom patterns.
+Use **Seed Default Presets** when you deliberately want defaults merged in
+again, then review the result if you maintain custom patterns of your own.
 
 ## Editing a preset
 
-A typical preset defines:
+A typical preset defines a label and name-match pattern, an effect type such as
+projectile, cone, on-token, or persistent, a hit file, an optional miss file, a
+sound, and whatever scale and geometry that type needs.
 
-- label and name-match pattern;
-- effect type, such as projectile, cone, on-token, or persistent;
-- hit file;
-- optional miss file;
-- sound;
-- scale/geometry appropriate to the type.
+The Sequencer Database browser helps you pick registered entries, with a
+thumbnail previewing image and video media and a hover that plays video inline.
+Select a token first for the canvas preview.
 
-The Sequencer Database browser helps select registered entries. A thumbnail
-previews image/video media; hovering a video can play it inline. Select a token
-before using the canvas preview.
-
-Some database paths are prefixes. Distance-aware projectile paths may
-intentionally resolve a suitable leaf, while a prefix containing unrelated
-shapes should be pinned to a specific entry.
+Some database paths are prefixes. Distance-aware projectile paths may resolve a
+suitable leaf on purpose, but a prefix holding unrelated shapes should be pinned
+down to one specific entry.
 
 ## Per-item override
 
 Open a Spell, Scroll, or Wand and expand **Animation FX** on the Activity tab.
 
-With the override off:
+Leave the override off and the panel shows inherited master values read-only,
+with a badge naming the inherited preset or reading **No preset**. Opening the
+sheet copies nothing into the item.
 
-- the panel shows inherited master values read-only;
-- its badge names the inherited preset or says **No preset**;
-- opening the sheet does not copy world values into the item.
+Turn the override on to capture and edit item-specific values, and switching it
+back off clears the override and resumes live inheritance.
 
-Turn the override on to capture/edit item-specific values. Turn it off to clear
-the override and resume live inheritance.
-
-The panel supports:
-
-- effect and miss files;
-- sound with audition;
-- media thumbnail;
-- canvas preview;
-- inherited/override status.
-
-Hold `Shift` while previewing where supported to test the miss variant.
+The panel handles effect and miss files, sound with audition, a media thumbnail,
+a canvas preview, and the inherited/override status. Hold `Shift` while
+previewing, where supported, to test the miss variant.
 
 ## Weapon sprites
 
-Equipped Weapon Sprites display a weapon or shield image on the token:
+Equipped Weapon Sprites paint a weapon or shield image onto the token, and the
+bundled art and presets cover the common weapon categories. Offset, scale,
+rotation, anchor, and PIXI filters control placement, while idle wobble, bob,
+float, and rotation give the sprite some life. An item can also be set to appear
+only during an attack.
 
-- bundled art/presets cover common weapon categories;
-- per-item configuration can override the master match;
-- offset, scale, rotation, anchor, and PIXI filters control placement;
-- idle wobble/bob/float/rotation can animate the sprite;
-- an item can be configured to appear only during an attack.
-
-The per-item weapon animation configuration takes precedence over the master
-sprite match.
+Per-item weapon animation configuration always beats the master sprite match.
 
 ## Torch and level-up effects
 
-The Ambient & Events section controls the animation file for:
+The Ambient & Events section owns the animation file for torch, lantern, oil,
+candle, light-spell variants, and level-up readiness.
 
-- torch;
-- lantern;
-- oil;
-- candle;
-- light-spell variants;
-- level-up readiness.
-
-Torch geometry such as per-light offset/scale remains part of the torch system;
-the master manager owns the chosen animation file.
+Torch geometry such as per-light offset and scale still belongs to the torch
+system. The master manager owns only the chosen animation file.
 
 ## Sounds and client controls
 
-Sound enablement, volume, and animation scale are per-client controls in the
-manager. A GM can define a sound path in the world preset without forcing every
-client to hear it at the same volume.
+Sound enablement, volume, and animation scale are all per-client controls in the
+manager. A GM can set a sound path in the world preset while every client keeps
+its own volume, or no sound at all.
 
 ## Automated Animations coexistence
 
-When AA is active and SDX integration is enabled:
+With AA active and SDX integration enabled, AA gets filtered down to successful
+workflows, targetless utility spells can be allowed separately, and AA is
+suppressed for any item SDX already animates. One attack or cast should produce
+one owned effect.
 
-- AA is filtered to successful workflows;
-- targetless utility spells can be allowed separately;
-- AA is suppressed for an item already animated by SDX;
-- one attack/cast should produce one owned effect, not two.
-
-If you prefer AA for a particular item, remove/disable the SDX match or item
-override and configure AA normally.
+Prefer AA for a particular item? Remove or disable the SDX match or item
+override, then configure AA the normal way.
 
 ---
 
@@ -155,23 +122,24 @@ override and configure AA normally.
 
 **Every spell preview is blank.** Check whether JB2A registered its Sequencer
 database namespace. Current SDX versions repair the common load-order failure,
-but JB2A must still be installed and active.
+but JB2A still has to be installed and active.
 
-**Animation shape changes randomly.** The preset probably points to a database
-prefix with multiple shapes. Select a concrete leaf in the browser.
+**Animation shape changes randomly.** The preset is almost certainly pointing at
+a database prefix holding several shapes. Pick a concrete leaf in the browser.
 
-**Visual plays but no audio.** Enable sound for this client, raise volume, and
-install the source sound pack if the preset uses psfx.
+Silent visuals are nearly always a client-side sound setting. Enable sound for
+this client, raise the volume, and install the source sound pack if the preset
+uses psfx.
 
-**Effect plays twice.** Confirm SDX's Automated Animations integration is on and
-that another workflow module is not independently listening to the same chat
+**Effect plays twice.** Confirm SDX's Automated Animations integration is on,
+and that no second workflow module is independently listening to the same chat
 message.
 
-**Historical messages replay after refresh.** Hard-refresh after updating;
-current versions ignore messages created before the client load epoch.
+**Historical messages replay after refresh.** Hard-refresh after updating.
+Current versions ignore messages created before the client load epoch.
 
 **Cleanup logs a Sequencer ticker error.** Update SDX. Current cleanup guards
-half-initialized effects so one bad effect cannot strand the rest.
+half-initialized effects, so one bad effect can't strand the rest.
 
 ---
 

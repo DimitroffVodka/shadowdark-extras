@@ -11,143 +11,127 @@ rules, multi-selection, player transfers, party storage, and quick coin tools.
 
 ## Containers
 
-An owned item can be marked **Is Container**. It can then hold other items from
-the same actor and its own coins.
+Mark an owned item **Is Container** and it can hold other items belonging to the
+same actor, plus its own coins.
 
 ### Put an item in a container
 
-1. Open the container or expand its inventory row.
+1. Open the container, or expand its inventory row.
 2. Drag an owned item into the contents area.
-3. Use the remove control to return it to the actor's top-level inventory.
+3. Use the remove control to send it back to the actor's top-level inventory.
 
-The container shows its contents and total. The actor's slot calculation
-accounts for the configured container behavior.
+The container displays its contents and total, while slot calculation on the
+actor follows whichever container behavior you configured.
 
 ### Nested containers
 
-**Allow Nested Containers** is on by default. Turn it off if bags should not go
-inside other bags. SDX rejects a nested drop rather than leaving a half-moved
-item.
+**Allow Nested Containers** ships on. Turn it off if bags shouldn't go inside
+other bags. SDX rejects a nested drop outright rather than leaving you with a
+half-moved item.
 
-Avoid circular structures. The UI is designed to prevent invalid nesting, but
-flags edited by hand can still produce data the normal workflow would never
+Steer clear of circular structures. The UI is built to prevent invalid nesting,
+but flags edited by hand can still produce data the normal workflow would never
 create.
 
 ### Unowned containers
 
-An item not currently owned by an actor can keep a packed contents list for
-distribution. Once owned, normal same-actor container rules apply. Follow the
-UI's `Ctrl` hint when choosing copy versus move.
+An item nobody owns yet can keep a packed contents list, ready for
+distribution. Once an actor owns it, the normal same-actor container rules kick
+in. Follow the UI's `Ctrl` hint when you're choosing copy versus move.
 
 ## Identification
 
-Items use Shadowdark 4.x's native identified state. A GM can set:
+Items use Shadowdark 4.x's native identified state. A GM sets the
+identified/unidentified flag, the name players see while it's unidentified, and
+an unidentified description.
 
-- identified/unidentified;
-- the name players see while unidentified;
-- an unidentified description.
-
-Players see the safe name/description until the item is identified. GMs retain
-the true item display. The Identify spell and related API use the same native
-state, avoiding a second conflicting identification flag.
+Players see the safe name and description until the item is identified, while
+GMs keep the true display throughout. The Identify spell and the related API use
+that same native state, which avoids a second identification flag fighting the
+first.
 
 ## Multi-select and bulk delete
 
-With the feature enabled:
+With the feature on, `Shift+Click` and `Ctrl+Click` select inventory rows and
+the bulk bar shows a running count. Delete asks for confirmation. Clear
+selection backs out without touching a thing.
 
-- `Shift+Click` and `Ctrl+Click` select inventory rows;
-- the bulk bar shows the count;
-- delete asks for confirmation;
-- clear selection exits without altering items.
-
-Review container contents before bulk-deleting a container. Bulk deletion is a
-real embedded-document delete, not an archive.
+Check container contents before you bulk-delete a container. Bulk deletion is a
+real embedded-document delete, with nothing archived.
 
 ## Inventory Styles
 
-Open **Configure Inventory Styles** to set row appearance by category. Shipped
-categories include:
+Open **Configure Inventory Styles** to set row appearance by category. The
+shipped categories cover magical, unidentified, container, Weapon, Armor,
+Scroll, and the remaining item types.
 
-- magical;
-- unidentified;
-- container;
-- Weapon;
-- Armor;
-- Scroll;
-- other item types.
-
-Each category has a priority so a row matching several rules has a deterministic
-winner. Configure backgrounds/gradients, text and description colors, and
-shadows. The editor applies a live preview to open Player, NPC, and Party
-sheets.
+Each category carries a priority, so a row matching several rules has one
+deterministic winner. Configure backgrounds and gradients, text and description
+colors, and shadows. The editor pushes a live preview into open Player, NPC, and
+Party sheets.
 
 ## Item and coin transfer
 
-SDX adds transfer/trade actions to owned character inventories.
+SDX adds transfer and trade actions to owned character inventories.
 
 ### Direct transfer
 
-Choose **Transfer to Player**, select a recipient actor, and confirm. The item is
-removed from the source and added to the recipient when the authoritative
-operation succeeds.
+Choose **Transfer to Player**, pick a recipient actor, confirm. The item leaves
+the source and lands on the recipient once the authoritative operation succeeds.
 
-Coin transfer lets the sender choose GP, SP, and CP. SDX validates that the
-source has the requested denomination before committing.
+Coin transfer lets the sender split GP, SP, and CP. SDX checks the source
+actually holds the requested denomination before committing.
 
 ### Trade request
 
-**Trade with Player** opens a two-party exchange:
+**Trade with Player** opens a two-party exchange covering items and coins, with
+accept and decline confirmation and socket-backed updates across clients.
 
-- items;
-- coins;
-- accept/decline confirmation;
-- socket-backed updates across clients.
-
-An active GM may be required when ownership or document permissions prevent a
-direct client update.
+An active GM may be needed when ownership or document permissions block a direct
+client update.
 
 ### Party transfers
 
-Flagged Party actors are valid item/coin destinations:
+Flagged Party actors are valid item and coin destinations. Transfer from a
+Player into the Party treasury or inventory, hand a Party item to a chosen
+member, or divide Party coins evenly among eligible players.
 
-- transfer from a Player to the Party treasury/inventory;
-- transfer a Party item to a chosen member;
-- divide Party coins evenly among eligible players.
-
-Party treasury coins are stored as Party data rather than the NPC's normal
-`system.coins`, so use the Party sheet or transfer workflow instead of editing
-the underlying NPC fields.
+Party treasury coins live in Party data of their own, off to the side from the
+NPC's normal `system.coins`. Use the Party sheet or the transfer workflow
+instead of poking at the underlying NPC fields.
 
 ## Add/remove coins
 
-The Player sheet's **+** coin button accepts positive or negative adjustments.
-It is intended for GM awards and quick corrections, not a transactional trade
-audit.
+The Player sheet's **+** coin button takes positive or negative adjustments.
+It's built for GM awards and quick corrections. Anything you want audited should
+go through a trade.
 
 ## Native item drops
 
 The module cooperates with Shadowdark's normal inventory and light-source
-behavior. Use the scene/tray map tools for decorative props; do not substitute
-an inventory transfer with a decorative Tile if the player needs to own the
-actual Item.
+behavior. Use the scene and tray map tools for decorative props, and remember
+that a decorative Tile is no substitute for a transfer when the player needs to
+own the actual Item.
 
 ---
 
 ## Troubleshooting
 
-**Transfer target list is empty.** The source actor is excluded, Player targets
-need an owner, and only valid Party actors are added as group destinations.
+**Transfer target list is empty.** The source actor is excluded by design,
+Player targets need an owner, and only valid Party actors get added as group
+destinations.
 
-**Transfer waits forever.** Confirm socketlib and an active GM are present.
+**Transfer waits forever.** Confirm socketlib is active and a GM is connected.
 
-**Player can see the true item.** Verify the native identified state and test as
-the player, not through the GM's sheet.
+**Player can see the true item.** Check the native identified state, then log in
+as the player to test. A GM's own sheet shows the true item by design, so
+testing from there proves nothing either way.
 
 **Item disappeared inside a bag.** Open the container and use its remove
-control. Check parent containers if nesting is enabled.
+control. Check parent containers too if nesting is enabled.
 
-**Style is wrong for a magical container.** Compare category priorities in the
-Inventory Styles editor.
+**Style is wrong for a magical container.** Compare the category priorities in
+the Inventory Styles editor.
 
 ---
 

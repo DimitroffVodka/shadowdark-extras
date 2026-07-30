@@ -2,15 +2,15 @@
 
 [← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
-The visible settings and GM configuration menus registered by the current
-module. **World** settings apply to everyone; **Client** settings belong to the
-current browser/user. “Reload” means the setting explicitly requests a reload.
+Every visible setting and GM configuration menu the current module registers.
+**World** settings apply to everyone. **Client** settings belong to one
+browser and user. Where a row says "Reload", the setting itself asks for one.
 
 ---
 
 ## Configuration menus
 
-These buttons open dedicated editors rather than a single checkbox or field.
+Each of these opens a dedicated editor instead of flipping one checkbox.
 
 | Menu | Access | What it configures |
 |---|---|---|
@@ -32,8 +32,8 @@ These buttons open dedicated editors rather than a single checkbox or field.
 | **Configure Coordinates** | GM | Coordinate mode, placement, labels, and appearance |
 | **Configure Sheet Locks** | GM | Which fields and item operations a locked character sheet protects |
 
-The pin editor can also open for one selected pin, and several map/dungeon
-editors are launched from the tray rather than Configure Settings.
+The pin editor also opens for a single selected pin, and several map and dungeon
+editors launch from the tray instead of Configure Settings.
 
 ![The Automatic Combat Settings menu, one of SDX's dedicated configuration editors](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/combat-settings.png)
 
@@ -55,8 +55,8 @@ editors are launched from the tray rather than Configure Settings.
 | GM Only Apply Damage | off |
 | Enabled multiplier buttons | clear, 0, ¼, ½, 1, 2 |
 
-The “clear” control uses an internal zero-valued entry distinct from applying
-zero damage.
+That "clear" control uses an internal zero-valued entry, which is a different
+thing from applying zero damage.
 
 ## Combat, spells, and animation
 
@@ -72,7 +72,8 @@ zero damage.
 | **Mysterious Casting Message** | World | `The creature casts a mysterious spell...` | no | Public replacement text while an NPC's Mysterious Mode is active |
 
 Animation FX's category toggles, master data, client scale, sound toggle, and
-volume live inside **Configure Animations** instead of the normal settings list.
+volume all live inside **Configure Animations** rather than the normal settings
+list.
 
 ## Character sheets
 
@@ -88,8 +89,8 @@ volume live inside **Configure Animations** instead of the normal settings list.
 | **Conditions theme** | World | Shadowdark | no | Shadowdark, 5e, Parchment, Stone, Leather, Iron, Moss, or Blood |
 | **Dark Mode** | Client | on | no | Applies the client's dark theme |
 
-The many border, panel, and color values are hidden settings owned by the
-**Sheet Style Editor**, not separate supported controls.
+The many border, panel, and color values belong to the **Sheet Style Editor** as
+hidden settings, so they never appear as separate supported controls.
 
 ## Inventory and carousing
 
@@ -132,7 +133,8 @@ The many border, panel, and color values are hidden settings owned by the
 | **Settlement Maps: Use Local Maphub** | World | off | no | Uses bundled/local generator assets instead of an external visual source |
 
 Hex tile dimensions, POI scale, dungeon level sliders, marching state, formation
-state, content registry, and pin folders are internal/UI-managed settings.
+state, the content registry, and pin folders are all internal, UI-managed
+settings.
 
 ## Token toolbar
 
@@ -153,29 +155,24 @@ state, content registry, and pin folders are internal/UI-managed settings.
 | **Enable Drawing Hotkey** | Client | on | Enables the hold-to-draw keybinding |
 | **Block Drawing While Typing** | Client | on | Prevents the hotkey from activating in an editor/input |
 
-The default hold-to-draw key is `L`. Drawing mode, stamp, size, width, line style,
-color, opacity, timed-erase state, and toolbar position are saved per client by
-the toolbar.
+The default hold-to-draw key is `L`. Drawing mode, stamp, size, width, line
+style, color, opacity, timed-erase state, and toolbar position are saved per
+client by the toolbar itself.
 
 ## Easy Reference
 
-All five Easy Reference categories are world-scoped and on by default:
-
-- NPC cards
-- Item cards
-- RollTables
-- Ability checks/requests
-- Dice rolls
+All five Easy Reference categories are world-scoped and on by default: NPC
+cards, item cards, RollTables, ability checks and requests, and dice rolls.
 
 ## Notes about scope
 
-- World settings still require the relevant document permissions at use time.
-- Client settings explain why two users can see different themes or tray
-  contents in the same world.
-- Reload-required settings attach or remove hooks/templates at startup. Reload
-  after changing them.
-- Hidden settings should be edited through their owning UI, not with
-  `game.settings.set`, unless you are developing an integration.
+World settings still answer to the relevant document permissions at the moment
+of use. Client settings are why two users in the same world can be looking at
+different themes and different tray contents.
+
+Reload-required settings attach or remove hooks and templates at startup, so
+reload after touching one. Hidden settings belong to their owning UI, and
+`game.settings.set` is the wrong way in unless you're developing an integration.
 
 ---
 
