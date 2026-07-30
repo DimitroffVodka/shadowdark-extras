@@ -48,6 +48,34 @@ done
 
 mjs_paths=( $mjs_files )
 
+# Structural gates for the feature-reorganization track. These protect the one
+# assumption that track rests on: script file paths may move freely because
+# nothing depends on where a script lives. Each is blocking.
+#
+# `set -e` is active, so every gate runs under `if !` — a bare call would abort
+# the script on the first failure and hide the remaining checks.
+echo "=== BLOCKING — structural gates (feature-reorganization track) ==="
+
+if ! node dev/tools/resolve-imports.mjs; then
+  echo "[BLOCK] unresolved relative import(s)"
+  block_fail=1
+fi
+
+if ! node dev/tools/script-path-guard.mjs; then
+  echo "[BLOCK] absolute script path(s) in shipped runtime JS"
+  block_fail=1
+fi
+
+if ! node dev/tools/registration-snapshot.mjs; then
+  echo "[BLOCK] hook/libWrapper/socket registration snapshot mismatch"
+  block_fail=1
+fi
+
+if ! node dev/tools/api-export-snapshot.mjs; then
+  echo "[BLOCK] public API export snapshot mismatch"
+  block_fail=1
+fi
+
 echo "=== BLOCKING — regressions of previously fixed bugs ==="
 
 # Socketlib auth: handler context is { socketdata: { userId } }, not { senderId }.
