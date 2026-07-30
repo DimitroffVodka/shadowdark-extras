@@ -112,13 +112,13 @@ export class TomSocketHandler {
   }
 
   static _showSceneNavBar(sceneId) {
-    import('../SceneNavBar.mjs').then(({ SceneNavBar }) => {
+    import('../scene/SceneNavBar.mjs').then(({ SceneNavBar }) => {
       SceneNavBar.show(sceneId);
     });
   }
 
   static _hideSceneNavBar() {
-    import('../SceneNavBar.mjs').then(({ SceneNavBar }) => {
+    import('../scene/SceneNavBar.mjs').then(({ SceneNavBar }) => {
       SceneNavBar.hide();
     });
   }

@@ -24,7 +24,7 @@ import { PlaceableNotesSD } from "./journal/PlaceableNotesSD.mjs";
 
 import { setMapDimension, formatActiveScene, enablePainting, disablePainting, toggleTileSelection, clearTileSelection, setSearchFilter, toggleWaterEffect, toggleWindEffect, toggleFogAnimation, toggleTintEnabled, toggleBwEffect, isTintEnabled, setActiveTileTab, setCustomTileDimension, toggleColoredFolderCollapsed, toggleSymbolFolderCollapsed, undoLastPoi, redoLastPoi, canUndoPoi, canRedoPoi, getPoiScale, enablePreview, disablePreview, getActiveTileTab, adjustPoiScale, rotatePoiLeft, rotatePoiRight, togglePoiMirror, getPoiMirror, setDecorSearchFilter, toggleDecorFolderCollapsed, setDecorMode, setDecorElevation, setDecorSort, reloadDecorAssets, registerDecorAsset, appendCustomNavSegment, setCustomNavPath, reloadCustomTiles } from "./HexPainterSD.mjs";
 import { generateHexMap, clearGeneratedTiles } from "./HexGeneratorSD.mjs";
-import { flattenTiles, unflattenTile, getDungeonFloorLevels, getFlattendDungeonLevels, flattenDungeonLevel } from "./TileFlattenSD.mjs";
+import { flattenTiles, unflattenTile, getDungeonFloorLevels, getFlattendDungeonLevels, flattenDungeonLevel } from "./canvas/TileFlattenSD.mjs";
 import { setDungeonMode, selectFloorTile, selectWallTile, selectDoorTile, selectIntWallTile, selectIntDoorTile, enableDungeonPainting, disableDungeonPainting, setNoFoundryWalls, setWallShadows, setCurvedWalls, setDungeonBackground } from "./DungeonPainterSD.mjs";
 import { toggleGeneratorPanel, isGeneratorExpanded, generateDungeon, generateRandomSeed, getGeneratorSeed, setGeneratorSeed, getGeneratorSettings, setGeneratorSettings } from "./DungeonGeneratorSD.mjs";
 // Side-effect import: loads the multi-level engine at startup so it can register the standalone
@@ -740,7 +740,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             (viewMode === "hexes" && getActiveTileTab() === "symbols") ||
             viewMode === "decor"
         );
-        const { PoiTileSortApp } = await import("./PoiTileSortSD.mjs");
+        const { PoiTileSortApp } = await import("./canvas/PoiTileSortSD.mjs");
         isPoiMode ? PoiTileSortApp.show() : PoiTileSortApp.hide();
     }
 

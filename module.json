@@ -79,7 +79,7 @@
     "scripts/shadowdark-extras.mjs",
     "scripts/character-sheet/SheetEditorConfig.mjs",
     "scripts/item-macros/SpellMacrosSD.mjs",
-    "scripts/TileFlattenSD.mjs"
+    "scripts/canvas/TileFlattenSD.mjs"
   ],
   "styles": [
     {

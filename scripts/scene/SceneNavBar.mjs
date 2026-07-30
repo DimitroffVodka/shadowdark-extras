@@ -12,7 +12,7 @@ export class SceneNavBar {
      * Show the navigation bar with a specific scene
      */
     static async show(sceneId) {
-        const { TomStore } = await import("./data/TomStore.mjs");
+        const { TomStore } = await import("../data/TomStore.mjs");
         const scene = sceneId ? TomStore.scenes.get(sceneId) : null;
 
         if (!scene) {
@@ -66,8 +66,8 @@ export class SceneNavBar {
      * @param {number} direction - -1 for previous, 1 for next
      */
     static async _navigateScene(direction) {
-        const { TomStore } = await import("./data/TomStore.mjs");
-        const { TomSocketHandler } = await import("./data/TomSocketHandler.mjs");
+        const { TomStore } = await import("../data/TomStore.mjs");
+        const { TomSocketHandler } = await import("../data/TomSocketHandler.mjs");
 
         const currentSceneId = this._container?.dataset.sceneId;
         if (!currentSceneId) return;
