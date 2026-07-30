@@ -83,7 +83,7 @@ import { WallContextMenuSD } from "./WallContextMenuSD.mjs";
 import { sdxDrawingTool } from "./SDXDrawingTool.mjs";
 import { sdxDrawingToolbar } from "./SDXDrawingToolbar.mjs";
 import { SDXRollerApp } from "./SDXRollerApp.mjs";
-import { ensureMutableItemCompendiumIndexes } from "./CompendiumIndexSD.mjs";
+import { ensureMutableItemCompendiumIndexes } from "./shared/CompendiumIndexSD.mjs";
 import { initSDXCoords, registerSDXCoordsSettings, registerSDXCoordsMenu } from "./SDXCoordsSD.mjs";
 import { SDXCoordsSettingsApp } from "./SDXCoordsSettingsSD.mjs";
 import { initHexTooltip, HEX_JOURNAL_NAME } from "./HexTooltipSD.mjs";

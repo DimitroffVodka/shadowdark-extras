@@ -10,7 +10,7 @@ test("frozen compendium index system data is replaced with a mergeable clone", a
 	// file is Phase 1 step 11's move target. The old existsSync guard was removed
 	// for the same reason — it was a second, ungated reference to the same path.
 	// The resolver now blocks such a move before this test can even run.
-	const { ensureMutableItemCompendiumIndexes } = await import("../../scripts/CompendiumIndexSD.mjs");
+	const { ensureMutableItemCompendiumIndexes } = await import("../../scripts/shared/CompendiumIndexSD.mjs");
 	const frozenSystem = Object.freeze({
 		baseWeapon: "",
 		magicItem: false,
