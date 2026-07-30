@@ -12,7 +12,7 @@
  */
 
 const MODULE_ID = "shadowdark-extras";
-const P = `modules/${MODULE_ID}/`;
+const MODULE_PREFIX = `modules/${MODULE_ID}/`;
 const NAME_PREFIX = "Test sdx-webp ";
 
 export function registerWebpMigrationBatch(quench) {
@@ -55,11 +55,11 @@ export function registerWebpMigrationBatch(quench) {
                 it("rewrites converted paths regardless of URL encoding", async function () {
                     this.timeout(60000);
                     const scene = await makeScene([
-                        `${P}assets/tiles/skulls.png`,
-                        `${P}assets/symbols/Dysonstyle/B%26W-Camp-Feu01.png`,
-                        `${P}assets/symbols/Dysonstyle/B&W-Camp-Feu01.png`,
-                        `${P}assets/Hexes/Badlands/Hex%20-%20Plains%20(damp)%201.png`,
-                        `${P}assets/Hexes/Badlands/Hex - Plains (damp) 1.png`,
+                        `${MODULE_PREFIX}assets/tiles/skulls.png`,
+                        `${MODULE_PREFIX}assets/symbols/Dysonstyle/B%26W-Camp-Feu01.png`,
+                        `${MODULE_PREFIX}assets/symbols/Dysonstyle/B&W-Camp-Feu01.png`,
+                        `${MODULE_PREFIX}assets/Hexes/Badlands/Hex%20-%20Plains%20(damp)%201.png`,
+                        `${MODULE_PREFIX}assets/Hexes/Badlands/Hex - Plains (damp) 1.png`,
                     ]);
 
                     await api().migrateWebpAssetPaths({ force: true });
@@ -75,9 +75,9 @@ export function registerWebpMigrationBatch(quench) {
                 it("leaves every migrated path resolvable over HTTP", async function () {
                     this.timeout(60000);
                     const scene = await makeScene([
-                        `${P}assets/symbols/Dysonstyle/B%26W-Camp-Feu01.png`,
-                        `${P}assets/Hexes/Badlands/Hex%20-%20Plains%20(damp)%201.png`,
-                        `${P}assets/symbols/Dysonstyle/B%26W-Country-Barri%C3%A8re-01.png`,
+                        `${MODULE_PREFIX}assets/symbols/Dysonstyle/B%26W-Camp-Feu01.png`,
+                        `${MODULE_PREFIX}assets/Hexes/Badlands/Hex%20-%20Plains%20(damp)%201.png`,
+                        `${MODULE_PREFIX}assets/symbols/Dysonstyle/B%26W-Country-Barri%C3%A8re-01.png`,
                     ]);
 
                     await api().migrateWebpAssetPaths({ force: true });
@@ -96,8 +96,8 @@ export function registerWebpMigrationBatch(quench) {
                 it("does not touch assets deliberately kept as PNG/JPG", async function () {
                     this.timeout(60000);
                     const kept = [
-                        `${P}assets/Dungeon/backgrounds/dark-wood.png`,
-                        `${P}assets/Tom/banner_tom.png`,
+                        `${MODULE_PREFIX}assets/Dungeon/backgrounds/dark-wood.png`,
+                        `${MODULE_PREFIX}assets/Tom/banner_tom.png`,
                     ];
                     const scene = await makeScene(kept);
 
@@ -126,8 +126,8 @@ export function registerWebpMigrationBatch(quench) {
                     // Regression: these probed as `//modules/...` - a protocol-relative
                     // URL resolving off-origin - so they were silently left unmigrated.
                     const scene = await makeScene([
-                        `/${P}art/PNG/Default/Border/skulls.png`,
-                        `/${P}assets/symbols/Dysonstyle/B%26W-Camp-Feu01.png`,
+                        `/${MODULE_PREFIX}art/PNG/Default/Border/skulls.png`,
+                        `/${MODULE_PREFIX}assets/symbols/Dysonstyle/B%26W-Camp-Feu01.png`,
                     ]);
 
                     await api().migrateWebpAssetPaths({ force: true });
@@ -147,8 +147,8 @@ export function registerWebpMigrationBatch(quench) {
                     // Regression: a substring ownership test rewrote these, pointing a
                     // working reference at a file that does not exist.
                     const foreign = [
-                        `worlds/mine/uploads/${P}old.png`,
-                        `https://cdn.example.com/${P}art.png`,
+                        `worlds/mine/uploads/${MODULE_PREFIX}old.png`,
+                        `https://cdn.example.com/${MODULE_PREFIX}art.png`,
                         "modules/shadowdark-extras-extended/assets/x.png",
                     ];
                     const scene = await makeScene(foreign);
@@ -165,8 +165,8 @@ export function registerWebpMigrationBatch(quench) {
                             [MODULE_ID]: {
                                 hexData: {
                                     tiles: [
-                                        { img: `${P}assets/Hexes/Autumn/autumnbog.png` },
-                                        { img: `${P}assets/tiles/skulls.png` },
+                                        { img: `${MODULE_PREFIX}assets/Hexes/Autumn/autumnbog.png` },
+                                        { img: `${MODULE_PREFIX}assets/tiles/skulls.png` },
                                     ],
                                 },
                             },
@@ -185,7 +185,7 @@ export function registerWebpMigrationBatch(quench) {
             describe("idempotence", function () {
                 it("is a no-op on a second pass", async function () {
                     this.timeout(60000);
-                    const scene = await makeScene([`${P}assets/tiles/skulls.png`]);
+                    const scene = await makeScene([`${MODULE_PREFIX}assets/tiles/skulls.png`]);
 
                     await api().migrateWebpAssetPaths({ force: true });
                     const firstPass = scene.toObject().tiles[0].texture.src;
@@ -199,7 +199,7 @@ export function registerWebpMigrationBatch(quench) {
 
                 it("dry run reports changes without writing them", async function () {
                     this.timeout(60000);
-                    const original = `${P}assets/tiles/skulls.png`;
+                    const original = `${MODULE_PREFIX}assets/tiles/skulls.png`;
                     const scene = await makeScene([original]);
 
                     const dry = await api().migrateWebpAssetPaths({ force: true, dryRun: true });
