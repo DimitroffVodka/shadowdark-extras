@@ -457,7 +457,7 @@ export function generateCurvedWalls(loops, wallThickness) {
  */
 export function generateCurvedWallVisuals(loops, options) {
     const { useTexture, wallColor, wallThickness, wallTilePath } = options;
-    const texture = wallTilePath || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_horizontal.png`;
+    const texture = wallTilePath || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_horizontal.webp`;
     const t = wallThickness;
     const drawings = [];
 

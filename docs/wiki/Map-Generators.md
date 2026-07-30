@@ -20,7 +20,7 @@ Click the map-location icon on the SDX Tray, then choose:
 | **Dungeon** | One-page room-and-corridor maps | Aligned grid, walls/doors, and map notes |
 | **Dwelling** | Houses, taverns, manors, and towers | Multi-level v14 Scene, per-floor background/walls, stair Regions |
 
-![The Maphub launcher with all six bundled map generators](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/map-generator-launcher.png)
+![The Maphub launcher with all six bundled map generators](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/map-generator-launcher.webp)
 
 The generators and the credit for them belong to Watabou. SDX supplies the
 Foundry wrapper, the local bundled builds, capture, alignment, and document
@@ -82,7 +82,7 @@ Wait until the dungeon has fully loaded. If the JSON export or the render
 transform can't be read, reopen the generator rather than importing from a
 half-initialized window.
 
-![A one-page dungeon imported as a Foundry Scene with its grid, walls, doors, and room notes](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/dungeon-generator-result.png)
+![A one-page dungeon imported as a Foundry Scene with its grid, walls, doors, and room notes](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/dungeon-generator-result.webp)
 
 ## Dwelling import
 

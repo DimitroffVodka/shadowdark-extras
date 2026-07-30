@@ -16665,7 +16665,7 @@ body:not(.game-master) .sdx-carousing-chat .sdx-player-only {
     gap: 12px;
     border: 12px solid transparent;
     /* border-right: 34px; */
-    border-image: url(../art/PNG/Default/Border/panel-border-000.png) 12 fill;
+    border-image: url(../art/PNG/Default/Border/panel-border-000.webp) 12 fill;
     border-image-repeat: stretch;
     margin-bottom: 5px;
     margin-right: 2px;

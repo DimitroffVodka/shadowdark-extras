@@ -2249,8 +2249,8 @@ function generateWallVisualsWithElevation(floors, entranceSet, gridSize, thickne
     const drawingsData = [];
 
     // Get wall texture paths
-    const hTexture = _selectedWallTile || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_horizontal.png`;
-    const vTexture = _selectedWallTile?.replace("horizontal", "vertical") || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_vertical.png`;
+    const hTexture = _selectedWallTile || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_horizontal.webp`;
+    const vTexture = _selectedWallTile?.replace("horizontal", "vertical") || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_vertical.webp`;
 
     // Identify wall segments
     const segments = { N: {}, S: {}, E: {}, W: {} };

@@ -52,11 +52,11 @@ const DIR_DELTA = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] };
 const SYM = `modules/${MODULE_ID}/assets/symbols/Dysonstyle`;
 const CONNECTOR = {
     stairs: { twoWay: true,  size: 50, upper: `modules/${MODULE_ID}/assets/Dungeon/stairsdown.webp`, lower: `modules/${MODULE_ID}/assets/Dungeon/stairs.webp` },
-    spiral: { twoWay: true,  size: 96, upper: `${SYM}/stairspiral-1x1.png`, lower: `${SYM}/stairspiral-1x1.png` },
-    ladder: { twoWay: true,  size: 84, upper: `modules/${MODULE_ID}/assets/Hexes/Specials/holeladder.png`, lower: `modules/${MODULE_ID}/assets/Hexes/Specials/holeladder.png` },
-    shaft:  { twoWay: true,  size: 84, upper: `${SYM}/well_1.png`, lower: `${SYM}/well_1.png` },
-    drop:   { twoWay: false, size: 84, upper: `${SYM}/Trapdoor.png`, lower: `${SYM}/Pitcircle1x1.png` },
-    chute:  { twoWay: false, size: 84, upper: `${SYM}/Pit1x1.png`, lower: `${SYM}/Pitcircle1x1.png` },
+    spiral: { twoWay: true,  size: 96, upper: `${SYM}/stairspiral-1x1.webp`, lower: `${SYM}/stairspiral-1x1.webp` },
+    ladder: { twoWay: true,  size: 84, upper: `modules/${MODULE_ID}/assets/Hexes/Specials/holeladder.webp`, lower: `modules/${MODULE_ID}/assets/Hexes/Specials/holeladder.webp` },
+    shaft:  { twoWay: true,  size: 84, upper: `${SYM}/well_1.webp`, lower: `${SYM}/well_1.webp` },
+    drop:   { twoWay: false, size: 84, upper: `${SYM}/Trapdoor.webp`, lower: `${SYM}/Pitcircle1x1.webp` },
+    chute:  { twoWay: false, size: 84, upper: `${SYM}/Pit1x1.webp`, lower: `${SYM}/Pitcircle1x1.webp` },
 };
 const TWO_WAY_VARIANTS = ["spiral", "ladder", "shaft"]; // art variety on the two-way mechanic
 const ONE_WAY_SHARE = 0.4;     // of varied EXTRA connectors (not the primary), share that are drops
@@ -574,7 +574,7 @@ export async function generateMultiLevelDungeon(config = {}) {
         wallColor: config.wallColor ?? "#5C3D3D",
         wallThickness: config.useTexture ? 20 : (config.wallThickness ?? 20),
         floorTexture: config.floorTexture ?? getSelectedFloorTile()
-            ?? `modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.png`,
+            ?? `modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.webp`,
         wallTilePath: config.wallTilePath ?? getSelectedWallTile() ?? null,
         doorTilePath: config.doorTilePath ?? getSelectedDoorTile() ?? null,
     };

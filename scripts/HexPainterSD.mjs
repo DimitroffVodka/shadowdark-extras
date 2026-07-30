@@ -118,11 +118,11 @@ export async function loadTileAssets() {
     } else {
         try {
             const listing = await foundry.applications.apps.FilePicker.implementation.browse("data", TILE_FOLDER);
-            const pngFiles = (listing.files || []).filter(f => f.endsWith(".png"));
+            const pngFiles = (listing.files || []).filter(f => f.endsWith(".png") || f.endsWith(".webp"));
 
             _tiles = pngFiles
                 .map(path => {
-                    const filename = path.split("/").pop().replace(".png", "");
+                    const filename = path.split("/").pop().replace(/\.(png|webp)$/i, "");
                     const raw = filename.replace(/^hex-tile-/, "");
                     return {
                         key: raw,

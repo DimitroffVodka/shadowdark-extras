@@ -812,8 +812,8 @@ export function generateWallVisuals(floors, offset, options, entranceEdges, soli
     const entranceSet = new Set(entranceEdges.map(e => `${e.x},${e.y},${e.dir}`));
 
     // Determine textures
-    const hTexture = wallTilePath || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_horizontal.png`;
-    const vTexture = wallTilePath?.replace("horizontal", "vertical") || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_vertical.png`;
+    const hTexture = wallTilePath || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_horizontal.webp`;
+    const vTexture = wallTilePath?.replace("horizontal", "vertical") || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_vertical.webp`;
 
     // Identify wall segments per direction
     const segments = { N: {}, S: {}, E: {}, W: {} };
@@ -1231,7 +1231,7 @@ export async function generateDungeon(config) {
         // Levels module active but no native level — use probe tile for reliable elevation
         try {
             const probe = await scene.createEmbeddedDocuments("Tile", [{
-                texture: makeTopLeftTileTexture(`modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.png`),
+                texture: makeTopLeftTileTexture(`modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.webp`),
                 x: 0, y: 0, width: GRID_SIZE, height: GRID_SIZE,
                 hidden: true,
                 flags: { [MODULE_ID]: { probe: true } }
@@ -1305,7 +1305,7 @@ export async function generateDungeon(config) {
         }
 
         // 6. Get selected textures
-        const floorTexture = getSelectedFloorTile() || `modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.png`;
+        const floorTexture = getSelectedFloorTile() || `modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.webp`;
         const wallTilePath = getSelectedWallTile();
 
         // Helper: create documents in batches, apply level data (elevation + levelId), then

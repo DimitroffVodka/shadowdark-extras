@@ -5,7 +5,7 @@
 SDX extends the Shadowdark inventory with containers, identification, visual
 rules, multi-selection, player transfers, party storage, and quick coin tools.
 
-![An enhanced Player inventory showing equipped gear, carried gear, slots, coins, and trading](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/inventory-sheet.png)
+![An enhanced Player inventory showing equipped gear, carried gear, slots, coins, and trading](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/inventory-sheet.webp)
 
 ---
 

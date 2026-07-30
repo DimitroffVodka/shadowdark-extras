@@ -573,7 +573,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			description: game.i18n.localize(
 				"SHADOWDARK_EXTRAS.camping_rest.interruption_check_description"
 			),
-			bannerImage: "modules/shadowdark-extras/assets/travel/batten_down.png"
+			bannerImage: "modules/shadowdark-extras/assets/travel/batten_down.webp"
 		};
 		const actors = campers.map(camper => camper.actor);
 		const selections = Object.fromEntries(campers.map(camper => [memberKey(camper.actor), 0]));

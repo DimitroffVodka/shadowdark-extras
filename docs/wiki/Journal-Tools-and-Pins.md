@@ -53,7 +53,7 @@ whole thing to the grid. The rest covers content and behavior: label and tooltip
 text, title and body font sizes, player visibility, line-of-sight behavior, and
 where the display name comes from.
 
-![The Pin Style Editor preview and its tooltip, shape, size, and ring controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-style-editor.png)
+![The Pin Style Editor preview and its tooltip, shape, size, and ring controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-style-editor.webp)
 
 ### Pin name source
 

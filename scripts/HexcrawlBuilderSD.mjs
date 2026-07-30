@@ -30,7 +30,7 @@
  *   },
  *   hexes: [
  *     { num: 102, name:"Shattered Tower", terrain:"Forest",
- *       icon:"assets/symbols/Details/Structures - Ruins (stone).png",
+ *       icon:"assets/symbols/Details/Structures - Ruins (stone).webp",
  *       desc:"A crumbling keep …", zone:"The Gloaming" },
  *     …
  *   ]
@@ -63,53 +63,53 @@ const BIOME_TILES = {
 	forest: {
 		terrain: "Forest",
 		paths: [
-			"assets/tiles/hex-tile-evergreen1.png",
-			"assets/tiles/hex-tile-evergreen2.png",
-			"assets/tiles/hex-tile-evergreen3.png",
-			"assets/tiles/hex-tile-forest1.png",
-			"assets/tiles/hex-tile-forest3.png",
-			"assets/tiles/hex-tile-forestmixed1.png",
+			"assets/tiles/hex-tile-evergreen1.webp",
+			"assets/tiles/hex-tile-evergreen2.webp",
+			"assets/tiles/hex-tile-evergreen3.webp",
+			"assets/tiles/hex-tile-forest1.webp",
+			"assets/tiles/hex-tile-forest3.webp",
+			"assets/tiles/hex-tile-forestmixed1.webp",
 		],
 	},
 	plains: {
 		terrain: "Plains",
 		paths: [
-			"assets/tiles/hex-tile-grassland1.png",
-			"assets/tiles/hex-tile-grassland2.png",
-			"assets/tiles/hex-tile-grassland3.png",
+			"assets/tiles/hex-tile-grassland1.webp",
+			"assets/tiles/hex-tile-grassland2.webp",
+			"assets/tiles/hex-tile-grassland3.webp",
 		],
 	},
 	hills: {
 		terrain: "Hills",
 		paths: [
-			"assets/tiles/hex-tile-hills1.png",
-			"assets/tiles/hex-tile-hills2.png",
-			"assets/tiles/hex-tile-hills3.png",
+			"assets/tiles/hex-tile-hills1.webp",
+			"assets/tiles/hex-tile-hills2.webp",
+			"assets/tiles/hex-tile-hills3.webp",
 		],
 	},
 	water: {
 		terrain: "Water",
 		isWater: true,
 		paths: [
-			"assets/tiles/ocean.png",
-			"assets/tiles/ocean2.png",
-			"assets/tiles/waves.png",
+			"assets/tiles/ocean.webp",
+			"assets/tiles/ocean2.webp",
+			"assets/tiles/waves.webp",
 		],
 	},
 	swamp: {
 		terrain: "Swamp",
 		paths: [
-			"assets/tiles/hex-tile-swamp1.png",
-			"assets/tiles/hex-tile-swamp2.png",
-			"assets/tiles/hex-tile-swamp3.png",
+			"assets/tiles/hex-tile-swamp1.webp",
+			"assets/tiles/hex-tile-swamp2.webp",
+			"assets/tiles/hex-tile-swamp3.webp",
 		],
 	},
 	mountains: {
 		terrain: "Mountains",
 		paths: [
-			"assets/tiles/hex-tile-mountains1.png",
-			"assets/tiles/hex-tile-mountains2.png",
-			"assets/tiles/hex-tile-mountains3.png",
+			"assets/tiles/hex-tile-mountains1.webp",
+			"assets/tiles/hex-tile-mountains2.webp",
+			"assets/tiles/hex-tile-mountains3.webp",
 		],
 	},
 };

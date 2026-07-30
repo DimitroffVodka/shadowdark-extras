@@ -35,7 +35,7 @@ Each of these opens a dedicated editor instead of flipping one checkbox.
 The pin editor also opens for a single selected pin, and several map and dungeon
 editors launch from the tray instead of Configure Settings.
 
-![The Automatic Combat Settings menu, one of SDX's dedicated configuration editors](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/combat-settings.png)
+![The Automatic Combat Settings menu, one of SDX's dedicated configuration editors](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/combat-settings.webp)
 
 ## Combat settings menu defaults
 

@@ -25,7 +25,7 @@ integrations, and plain GM reference at the table.
 
 Open **Manage Creature Types** to add your own choices.
 
-![An NPC sheet with its creature type, attacks, and features visible](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/npc-creature-type-sheet.png)
+![An NPC sheet with its creature type, attacks, and features visible](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/npc-creature-type-sheet.webp)
 
 ### Effective type resolution
 
