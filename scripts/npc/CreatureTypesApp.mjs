@@ -3,7 +3,7 @@
  * Allows GMs to create, edit, and delete custom NPC creature types/subtypes.
  */
 
-import { CREATURE_TYPE_MAP } from "../data/creature-type-map.mjs";
+import { CREATURE_TYPE_MAP } from "./creature-type-map.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
