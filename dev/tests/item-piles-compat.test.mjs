@@ -9,7 +9,7 @@ import {
 	isItemPilesActor,
 	normalizePileItemCreate,
 	normalizePileItemUpdate
-} from "../../scripts/ItemPilesCompatSD.mjs";
+} from "../../scripts/inventory/ItemPilesCompatSD.mjs";
 
 const moduleRoot = new URL("../../", import.meta.url);
 

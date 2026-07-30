@@ -992,7 +992,7 @@ export function setupCombatSocket() {
 		}
 
 		// Dynamically import TradeWindowSD to avoid circular imports
-		const { default: TradeWindowSD } = await import("./TradeWindowSD.mjs");
+		const { default: TradeWindowSD } = await import("./inventory/TradeWindowSD.mjs");
 
 		// Create and render the trade window
 		const tradeWindow = new TradeWindowSD({
@@ -1197,7 +1197,7 @@ export function setupCombatSocket() {
 			return false;
 		}
 		try {
-			const { nativeTransferItems } = await import("./TradeWindowSD.mjs");
+			const { nativeTransferItems } = await import("./inventory/TradeWindowSD.mjs");
 			await nativeTransferItems(sourceActor, targetActor, items);
 			return true;
 		} catch (err) {
@@ -1216,7 +1216,7 @@ export function setupCombatSocket() {
 			return false;
 		}
 		try {
-			const { nativeTransferCoins } = await import("./TradeWindowSD.mjs");
+			const { nativeTransferCoins } = await import("./inventory/TradeWindowSD.mjs");
 			await nativeTransferCoins(sourceActor, targetActor, coins);
 			return true;
 		} catch (err) {

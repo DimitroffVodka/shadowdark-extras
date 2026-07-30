@@ -7,7 +7,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  */
 
 import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor } from "./PartySheetSD.mjs";
-import TradeWindowSD, { initializeTradeSocket, showTradeDialog, ensureTradeJournal, nativeTransferItems, nativeTransferCoins } from "./TradeWindowSD.mjs";
+import TradeWindowSD, { initializeTradeSocket, showTradeDialog, ensureTradeJournal, nativeTransferItems, nativeTransferCoins } from "./inventory/TradeWindowSD.mjs";
 import { CombatSettingsApp, registerCombatSettings, injectDamageCard, setupCombatSocket, setupScrollingCombatText, setupSummonExpiryHook, trackSummonedTokensForExpiry, spawnSummonedCreatures, getSocket } from "./CombatSettingsSD.mjs";
 import { EffectsSettingsApp, registerEffectsSettings } from "./EffectsSettingsSD.mjs";
 import { patchArmorActiveEffects } from "./ArmorAEPatchSD.mjs";
@@ -65,7 +65,7 @@ import ClassAbilitySheetSD from "./ClassAbilitySheetSD.mjs";
 import { initTokenToolbar, registerTokenToolbarSettings } from "./TokenToolbarSD.mjs";
 import { initTray, registerTraySettings } from "./TraySD.mjs";
 import { initAppearanceSettings } from "./AppearanceSettingsSD.mjs";
-import AmmunitionSelector from "./AmmunitionSelector.mjs";
+import AmmunitionSelector from "./inventory/AmmunitionSelector.mjs";
 import StaffSpellManager from "./StaffSpellManager.mjs";
 import { initJournalNarration } from "./JournalNarrationSD.mjs";
 import { initMedkit, registerMedkitPack, unregisterMedkitPack, getMedkitPacks, scanWorldForUpdates, applyWorldMedkitUpdates, medkitScanWorld, MedkitWorldScanMenu } from "./MedkitSD.mjs";
@@ -89,9 +89,9 @@ import { SDXCoordsSettingsApp } from "./SDXCoordsSettingsSD.mjs";
 import { initHexTooltip, HEX_JOURNAL_NAME } from "./HexTooltipSD.mjs";
 import { initHexFog } from "./SDXHexFogSD.mjs";
 import { registerMaphubHooks } from "./MaphubSD.mjs";
-import { initUnidentifiedGMDisplay } from "./UnidentifiedDisplaySD.mjs";
+import { initUnidentifiedGMDisplay } from "./inventory/UnidentifiedDisplaySD.mjs";
 import { initTemplateElevationBadge } from "./TemplateElevationBadgeSD.mjs";
-import { initItemPilesCompatibility } from "./ItemPilesCompatSD.mjs";
+import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
 // Map-builder entry points — pulled in so we can expose them on module.api
 // for MCP / external automation. None of these modules register hooks at import
 // time (verified), so this only adds the named exports to the bundle graph.

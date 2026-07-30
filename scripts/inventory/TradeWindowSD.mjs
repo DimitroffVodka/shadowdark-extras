@@ -4,7 +4,7 @@
  * Uses socketlib for direct player-to-player trade requests
  */
 
-import { getSocket } from "./CombatSettingsSD.mjs";
+import { getSocket } from "../CombatSettingsSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const TRADE_JOURNAL_NAME = "__sdx_trade_sync__"; // Internal journal name (hidden from sidebar)
