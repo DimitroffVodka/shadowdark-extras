@@ -1,27 +1,32 @@
-# Shadowdark Extras — Wiki
+# Shadowdark Extras Wiki
 
 A game-master toolkit and automation suite for
 [Shadowdark RPG](https://www.thearcanelibrary.com/pages/shadowdark) on Foundry
 VTT.
 
-This wiki is the full manual. The [README](https://github.com/DimitroffVodka/shadowdark-extras#readme) is the feature
-overview; the pages below explain where each tool lives and how to use it.
+The [README](https://github.com/DimitroffVodka/shadowdark-extras#readme) is the
+short version. This wiki is the manual: where each tool lives, what it touches,
+and the buttons that rewrite documents you care about.
 
 ---
 
 ## Start here
 
-If you have just installed Shadowdark Extras, read these in order:
+Fresh install? Read these three, in order.
 
-1. **[Installation & Setup](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Installation-and-Setup)** — requirements,
-   dependencies, and a practical first-world checklist.
-2. **[The SDX Tray & Party Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Tray-and-Party-Tools)** — the persistent
-   left-side launcher for most of the module.
-3. **[Combat & Damage](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Combat-and-Damage)** — damage cards, targeting,
-   weapon bonuses, and combat defaults.
+1. **[Installation & Setup](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Installation-and-Setup)**
+   covers requirements, the five manifest dependencies, and a checklist for your
+   first world.
+2. **[The SDX Tray & Party Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Tray-and-Party-Tools)**
+   documents the launcher on the left edge of the canvas. You will use it
+   constantly.
+3. **[Combat & Damage](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Combat-and-Damage)**
+   explains damage cards, targeting, weapon bonuses, and what the
+   automation-forward defaults will commit on your behalf.
 
-The module is broad, but almost every feature is independent. You can keep the
-defaults, disable the parts you do not use, and learn the rest as you need it.
+The module is broad. Almost every feature stands on its own, though, so keep the
+defaults, switch off whatever your table doesn't use, and pick the rest up when
+a session actually calls for it.
 
 ---
 
@@ -65,20 +70,22 @@ defaults, disable the parts you do not use, and learn the rest as you need it.
 
 ---
 
-## The three systems to understand first
+## Three things worth knowing up front
 
-**The SDX Tray is the front door.** Expand the tab on the left side of the
-canvas. It changes between Scenes, Party, Pins, Notes, Hexes, Dungeons, and
-Decor, and its vertical tool rail opens most session utilities.
+Expand the tab on the left edge of the canvas. That is the SDX Tray, and it
+swaps between Scenes, Party, Pins, Notes, Hexes, Dungeons, and Decor depending
+on your role and the scene grid. A vertical tool rail sits beside it and
+launches most of the remaining session utilities.
 
-**Automation lives on the item.** A spell's **Activity** tab and a weapon's
-**Bonuses** tab define what should happen when that item is used. World settings
-control the shared behavior; item configuration controls the exception.
+Automation is stored on the item itself. A spell's **Activity** tab and a
+weapon's **Bonuses** tab describe what happens when that item gets used, so you
+set the table-wide behavior in world settings and then override whichever
+individual items break the pattern.
 
-**Map tools modify the active scene.** Formatting, painting, procedural
-generation, imports, fog, Regions, and multi-level work all act on the scene and
-level currently open on the GM's canvas. Confirm the active scene before
-committing a map operation.
+Map tools write to whatever scene and elevation level the GM currently has open.
+Formatting, painting, procedural generation, imports, fog, Regions, multi-level
+work: all of it lands on the active canvas. Check the scene first. Several of
+those operations delete documents.
 
 ---
 

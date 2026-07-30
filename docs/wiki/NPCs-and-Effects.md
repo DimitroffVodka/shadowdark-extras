@@ -10,93 +10,76 @@ effects library.
 
 ## NPC inventory
 
-With **Enable NPC Inventory Tab** on, ordinary NPC sheets gain:
+With **Enable NPC Inventory Tab** on, ordinary NPC sheets pick up an item list,
+quantities, treasure, GP/SP/CP, used inventory slots, and create, edit, and
+delete controls.
 
-- item list;
-- quantities;
-- treasure;
-- GP/SP/CP;
-- used inventory slots;
-- create/edit/delete controls.
-
-Party actors are excluded because their dedicated Party sheet has its own shared
-inventory and treasury.
+Party actors sit this one out. Their dedicated Party sheet already has shared
+inventory and a treasury.
 
 ## Creature types
 
-With **Enable NPC Creature Type** on, NPC sheets show a type selector. Types can
-drive:
+With **Enable NPC Creature Type** on, NPC sheets show a type selector. Those
+types feed weapon bonus requirements, spell and effect gating, macros and API
+integrations, and plain GM reference at the table.
 
-- weapon bonus requirements;
-- spell/effect gating;
-- macros and API integrations;
-- quick GM reference.
-
-Open **Manage Creature Types** to add custom choices.
+Open **Manage Creature Types** to add your own choices.
 
 ![An NPC sheet with its creature type, attacks, and features visible](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/npc-creature-type-sheet.png)
 
 ### Effective type resolution
 
-SDX resolves a creature type in this order:
+SDX resolves a creature type in three steps: the NPC's manual type override
+first, the bundled bestiary name map second, and a blank result when neither one
+has an answer.
 
-1. the NPC's manual type override;
-2. the bundled bestiary name map;
-3. blank when neither exists.
+The name map lets stock bestiary creatures participate without you editing every
+actor. A manual choice always wins, which is what you want for reskinned or
+homebrew creatures.
 
-The map lets stock bestiary creatures participate without editing every actor.
-A manual choice wins, which is useful for reskinned or homebrew creatures.
-
-The read-only API exposes both effective and raw-name-map lookups. See
-[Developer API](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Developer-API).
+The read-only API exposes both the effective lookup and the raw name-map one.
+See [Developer API](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Developer-API).
 
 ## NPC item sheets
 
 ### NPC Attack
 
-The SDX NPC Attack sheet includes:
+The SDX NPC Attack sheet covers number of attacks, attack bonus, damage formula,
+damage type, Close/Near/Far choices, and Description and Source.
 
-- number of attacks;
-- attack bonus;
-- damage formula;
-- damage type;
-- Close/Near/Far choices;
-- Description and Source.
-
-The attack count accepts numeric or free-form values. Current builds preserve
+The attack count takes numeric or free-form values. Current builds preserve
 Shadowdark 4.x's numeric multi-attack display.
 
 ### NPC Feature and NPC Spell
 
-These use Activity, Description, and Macro tabs. They can configure damage,
-healing, saves, effects, auras, templates, summons, and item macros using the
-same model as player spells.
+Both use Activity, Description, and Macro tabs. They configure damage, healing,
+saves, effects, auras, templates, summons, and item macros with the same model
+player spells use.
 
 ### NPC Special Attack
 
-Special Attacks receive Activity, Description, and Macro tabs for abilities that
-do not fit a normal weapon line.
+Special Attacks get Activity, Description, and Macro tabs for abilities that
+don't fit a normal weapon line.
 
 See [Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Spell-Automation).
 
 ## Mysterious Casting
 
-The GM sees a mask toggle in an NPC sheet header:
+The GM sees a mask toggle in the NPC sheet header. Off, rolls and cards appear
+normally. On, public output gets replaced by the configured mysterious-casting
+text while the GM keeps every hidden detail.
 
-- **off:** rolls/cards appear normally;
-- **on:** public output is replaced by the configured mysterious-casting text
-  while the GM retains the hidden details.
-
-The state is intentionally in-memory, so it is a tactical reveal mode rather
-than permanent actor data. Toggle it again after a reload if needed.
+That state lives in memory on purpose, which makes it a tactical reveal mode
+rather than permanent actor data. Toggle it again after a reload if you need it
+back.
 
 Edit the public text with **Mysterious Casting Message**.
 
 ## Quick conditions
 
-NPC sheets receive the same themed quick-condition toggles as Player sheets.
-Condition changes create/remove the actor's real effects; the chosen theme only
-changes presentation.
+NPC sheets get the same themed quick-condition toggles as Player sheets.
+Condition changes create and remove the actor's real effects. The chosen theme
+only changes how the controls look.
 
 ## Effects & Conditions settings
 
@@ -109,55 +92,52 @@ Open **Configure Effects**. The current dedicated policy is **Silenced**:
 | Wand | allowed |
 | Potion | always allowed |
 
-Enable Scroll/Wand blocking if your table treats those activations as requiring
-speech. Potions are not blocked because drinking does not require speech.
+Enable Scroll and Wand blocking if your table rules that those activations
+require speech. Potions stay usable, because drinking doesn't.
 
 ## Effects library
 
-`shadowdark-extras.pack-sdxeffects` contains reusable ActiveEffect documents.
-Drag them into:
+`shadowdark-extras.pack-sdxeffects` holds reusable ActiveEffect documents. Drag
+them into weapon on-hit effects, spell, Potion, or NPC Activity slots, aura or
+template effects, or straight onto actor effects.
 
-- weapon on-hit effects;
-- spell/Potion/NPC Activity slots;
-- aura or template effects;
-- actor effects.
-
-The module supports predefined advantages/disadvantages, spell-related
-modifiers, and special effects such as Glassbones where included by the pack.
-Inspect an effect before applying it to homebrew actors.
+The module supports predefined advantages and disadvantages, spell-related
+modifiers, and special effects such as Glassbones where the pack includes them.
+Inspect an effect before you drop it on a homebrew actor.
 
 ## Damage response
 
-Effects can alter typed damage through resistance, immunity, or vulnerability.
-An effect can also be marked **break on damage**, causing it to end on the
-bearer's next HP loss. Clearing or applying this marker is available to item
-automation and the public API.
+Effects alter typed damage through resistance, immunity, or vulnerability. An
+effect can also be marked **break on damage**, ending it the next time the
+bearer loses HP. Item automation and the public API can both set and clear that
+marker.
 
 ## Auras
 
-Auras are configured on the source item but processed against NPC/Player token
-geometry. Disposition, line of sight, range, elevation, and turn trigger all
-affect membership. See [Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Spell-Automation#aura-effects).
+Auras are configured on the source item and processed against NPC and Player
+token geometry. Disposition, line of sight, range, elevation, and turn trigger
+all shape who's inside. See
+[Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Spell-Automation#aura-effects).
 
 ---
 
 ## Troubleshooting
 
-**Creature-type bonus does not trigger.** Check the actor's effective type and
-the bonus operator/value. A renamed homebrew actor may not match the bundled map
-until you set a manual type.
+**Creature-type bonus does not trigger.** Check the actor's effective type
+against the bonus operator and value. A renamed homebrew actor won't match the
+bundled map until you set a manual type.
 
-**Mysterious mode turned off after reload.** Expected; it is an in-memory
+**Mysterious mode turned off after reload.** Expected. It's an in-memory
 encounter mode.
 
-**NPC inventory appears on a Party actor.** Update/reload SDX and confirm the
-actor has the Party flag created by the Party actor workflow.
+**NPC inventory appears on a Party actor.** Update and reload SDX, then confirm
+the actor carries the Party flag the Party actor workflow creates.
 
 **Silenced blocks the wrong item class.** Review the three toggles in Configure
-Effects. Potions remain usable by design.
+Effects. Potions stay usable by design.
 
-**Aura triggers more than once.** Keep one active GM applier and update to a
-version with native Region membership/deduplication fixes.
+**Aura triggers more than once.** Keep one active GM applier, and update to a
+version with the native Region membership and deduplication fixes.
 
 ---
 

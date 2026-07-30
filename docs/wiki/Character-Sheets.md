@@ -2,126 +2,97 @@
 
 [← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
-Shadowdark Extras extends player and NPC sheets without changing the underlying
-Shadowdark actor types. Most enhancements are world-controlled; Dark Mode is
-per client.
+Shadowdark Extras extends player and NPC sheets while leaving the underlying
+Shadowdark actor types alone. Most enhancements are world-controlled. Dark Mode
+is per client.
 
 ---
 
 ## Enhanced player header
 
-With **Enable Enhanced Header** on, a Player sheet shows an interactive summary
-of:
+With **Enable Enhanced Header** on, a Player sheet gets an interactive summary
+across the top: current and max HP with a health bar, AC, ability modifiers,
+Luck, XP progress and level, plus the actor portrait and header background.
 
-- current/max HP with a health bar;
-- AC;
-- ability modifiers;
-- Luck;
-- XP progress and level;
-- actor portrait and header background.
+Actors can supply their own image or video background. The GM can also set one
+world default that covers every actor without a custom header.
 
-Actors can use their own image/video background. The GM can also enable one
-world default for every actor that has no custom header.
-
-Clicking supported values opens the normal SDX/Shadowdark adjustment workflow;
-the header is not merely decorative.
+Clicking a supported value opens the normal SDX or Shadowdark adjustment
+workflow, so the header is a working control surface.
 
 ![An enhanced Player sheet with portrait HP wave, summary header, and themed tabs](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/enhanced-character-sheet.png)
 
 ## HP quick adjustment
 
-Current HP controls accept direct edits and quick relative changes. NPC sheets
-also receive the compatible quick-control behavior. Changes still require actor
-permission, and combat automation may update the same value through damage
+Current HP controls take direct edits and quick relative changes. NPC sheets get
+the same compatible quick-control behavior. Actor permission still governs every
+change, and combat automation may be writing to that same value through damage
 cards.
 
 ## HP Waves
 
-The HP wave is a portrait overlay whose height follows the actor's remaining
-health. Open **Configure HP Waves** to:
+The HP wave is a portrait overlay whose height tracks remaining health. Open
+**Configure HP Waves** to switch the effect on or off, choose the default color,
+and add ancestry-specific colors.
 
-- enable or disable the effect;
-- choose the default color;
-- add ancestry-specific colors.
-
-The shipped default is enabled with a red wave. Use a solid, high-contrast color
-if the portrait art is visually busy.
+Ships enabled, with a red wave. Pick a solid, high-contrast color when the
+portrait art underneath is busy.
 
 ## Sheet Style Editor
 
-The GM-only editor controls the shared visual system:
+This GM-only editor owns the shared visual system: the outer sheet frame, panels
+and stat boxes, border slices, width and repeat, header, title bar, tabs,
+navigation, labels and value colors, actor-name shadow and weight, tab
+gradients, and a live preview.
 
-- outer sheet frame;
-- panels and stat boxes;
-- border slices/width/repeat;
-- header, title bar, tabs, navigation, labels, and value colors;
-- actor-name shadow and weight;
-- tab gradients;
-- a live preview.
+Those values are stored as hidden settings because the editor treats them as one
+coherent theme. Dark Mode loads a client theme over the top without erasing the
+GM's saved custom settings.
 
-These values are stored as hidden settings because the editor owns them as one
-coherent theme. Dark Mode loads a client theme without erasing the GM's saved
-custom settings.
-
-**Match NPC Sheet Theme to Player Sheets** applies the same frame/header/panel
-language to NPC sheets while retaining the system's NPC layout.
+**Match NPC Sheet Theme to Player Sheets** applies the same frame, header, and
+panel language to NPC sheets while the system's NPC layout stays intact.
 
 ## Quick conditions
 
-Player and NPC sheets receive condition toggles. The **Conditions theme**
-setting chooses:
+Player and NPC sheets both get condition toggles. The **Conditions theme**
+setting offers Shadowdark, 5e, Parchment, Stone Tablet, Leather Bound, Iron &
+Rust, Moss & Decay, and Blood & Shadow.
 
-- Shadowdark;
-- 5e;
-- Parchment;
-- Stone Tablet;
-- Leather Bound;
-- Iron & Rust;
-- Moss & Decay;
-- Blood & Shadow.
-
-Changing the theme re-renders open Player sheets. The condition documents remain
-the same; only the control presentation changes.
+Changing the theme re-renders open Player sheets. The condition documents
+underneath stay identical, and only the control presentation changes.
 
 ## Renown
 
-Player sheets include a Renown value for faction reputation, fame, or another
-campaign-scale standing. Current carousing outcomes can also apply a configured
-Renown delta. Decide at the table what the number means; SDX stores and displays
-it but does not impose a faction model.
+Player sheets carry a Renown value for faction reputation, fame, or whatever
+campaign-scale standing you're tracking. Carousing outcomes can apply a
+configured Renown delta to it. Decide at the table what the number means. SDX
+stores and displays it without imposing a faction model.
 
 ## Journal Notes
 
 With **Enable Journal Notes** on, the simple Notes tab becomes a multi-page
-journal:
-
-- page sidebar;
-- create, select, rename, and remove pages;
-- rich-text editing;
-- quick inserts for information, warnings, quests, loot, and NPC notes.
+journal with a page sidebar, controls to create, select, rename, and remove
+pages, rich-text editing, and quick inserts for information, warnings, quests,
+loot, and NPC notes.
 
 See [Journal Tools & Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Tools-and-Pins).
 
 ## Sheet locks
 
-The sheet padlock protects configured fields from player edits. **Configure
-Sheet Locks** chooses what the locked state covers:
+The sheet padlock protects configured fields from player edits, and **Configure
+Sheet Locks** decides what the locked state actually covers. On the numeric
+side, XP, coins, gems, HP, abilities, and Luck. Past those it reaches equipped
+state, inventory add and remove, spells, and talents, then the identity fields
+(class, ancestry, background, deity, alignment, languages) plus Active Effects.
 
-- XP, coins, gems, HP, abilities, and Luck;
-- equipped state;
-- inventory add/remove;
-- spells and talents;
-- class, ancestry, background, deity, alignment, and languages;
-- Active Effects.
-
-The configuration is global; the lock state is per sheet/actor. GMs retain
-authority. A locked field gives a warning instead of silently discarding the
-player's edit.
+The configuration is global while the lock state is per sheet and per actor.
+GMs keep authority throughout. A locked field warns the player rather than
+silently swallowing their edit.
 
 ## Medkit
 
-The Medkit icon is available to actor owners when **Show Medkit Icon** is on.
-It checks owned Spells, Scrolls, and Wands against registered source packs.
+The Medkit icon appears for actor owners when **Show Medkit Icon** is on. It
+checks owned Spells, Scrolls, and Wands against registered source packs.
 
 | Item | Update behavior |
 |---|---|
@@ -129,20 +100,22 @@ It checks owned Spells, Scrolls, and Wands against registered source packs.
 | Scroll | Keeps the physical item; refreshes SDX enhancement flags from its referenced spell |
 | Wand | Keeps the physical item/use data; refreshes enhancement flags from referenced spells |
 
-Review the preview before applying. The GM can run the same logic over the
+Read the preview before you apply. The GM can run the same logic across the
 entire world with **Medkit: Scan All Actors**.
 
 ## Add Coins
 
-With **Enable Add Coins Button** on, the Coins area receives a quick adjustment
-control. Positive values add and negative values subtract. Transfers are a
-separate workflow covered in [Inventory & Trading](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Inventory-and-Trading).
+With **Enable Add Coins Button** on, the Coins area picks up a quick adjustment
+control. Positive values add, negative values subtract. Transfers are a separate
+workflow, covered in
+[Inventory & Trading](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Inventory-and-Trading).
 
 ## Spellbook pack filter
 
-The Shadowdark Spell Book dialog receives a compendium selector. It scans
-installed Item packs containing Spells and lets the user show one source or all
-sources. This changes the browser list, not the actor's existing spellbook.
+The Shadowdark Spell Book dialog gains a compendium selector. It scans installed
+Item packs containing Spells and lets the user narrow to one source or view all
+of them. This filters the browser list. The actor's existing spellbook is
+untouched.
 
 ## Custom SDX item sheets
 
@@ -157,21 +130,22 @@ SDX registers default sheets for several Shadowdark item types:
 | **NPC Feature / NPC Spell** | Activity, Description, Macro |
 | **NPC Special Attack** | Activity, Description, Macro |
 
-These are data editors as well as presentation sheets. See
-[Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Spell-Automation) for Activity configuration.
+They're data editors as much as presentation sheets. See
+[Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Spell-Automation)
+for Activity configuration.
 
 ## Ammunition and staves
 
-When a ranged weapon can use more than one owned ammunition item, SDX can prompt
-for the ammunition to consume and remember the preferred choice.
+When a ranged weapon could draw on more than one owned ammunition item, SDX
+prompts for which to consume and remembers the preferred choice.
 
 Staff weapons can open **Staff Spells Configuration** to manage attached spells
-and restore their uses. The stored spell UUIDs must remain valid.
+and restore their uses. Those stored spell UUIDs have to stay valid.
 
 ## Party sheet
 
-SDX's Party actor has its own Members, Inventory, Travel, and Description tabs.
-It is documented with the tray because it coordinates the same roster:
+SDX's Party actor runs its own Members, Inventory, Travel, and Description tabs.
+It's documented with the tray, since both coordinate the same roster:
 [The SDX Tray & Party Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Tray-and-Party-Tools).
 
 ---
@@ -187,10 +161,10 @@ Sheet Lock configuration.
 **Medkit cannot match a Scroll/Wand.** Repair its referenced Spell UUID.
 
 **An ancestry color is ignored.** Confirm the stored ancestry name matches the
-override and that HP Waves are enabled.
+override, and that HP Waves are enabled at all.
 
 **Potion/NPC item opens the system sheet instead.** Check the sheet selection in
-the item window and reload after enabling/updating SDX.
+the item window, and reload after enabling or updating SDX.
 
 ---
 

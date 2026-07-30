@@ -9,25 +9,25 @@ MCP-driven prep.
 const api = game.modules.get("shadowdark-extras")?.api;
 ```
 
-The main API object is installed during Foundry's `setup` hook. Spell-macro
-helpers are added by `ready`. Call it after the appropriate lifecycle hook and
-feature-detect every method.
+The main API object is installed during Foundry's `setup` hook, and the
+spell-macro helpers only arrive at `ready`, so call it after the right lifecycle
+hook and feature-detect every method you touch.
 
 ---
 
 ## Permission model
 
-Scene/document mutation methods are wrapped with a GM guard. A non-GM call
-throws:
+Scene and document mutation methods sit behind a GM guard. A non-GM call throws:
 
 ```text
 SDX | <function>: requires GM permission
 ```
 
-Read-only helpers and player-safe effect helpers are not GM-only. Public calls
-are audited in the console with their caller.
+Read-only helpers and player-safe effect helpers are open. Public calls get
+audited in the console along with their caller.
 
-Do not bypass the wrapper by importing internal source modules directly.
+Importing internal source modules directly to sidestep the wrapper is
+unsupported, and it will break on you.
 
 ## Creature types
 
@@ -46,8 +46,8 @@ Do not bypass the wrapper by importing internal source modules directly.
 | `showConditionsModal(...)` | Open the condition picker |
 | `getConditionsData(...)` | Read condition choices/data |
 
-These are not universally GM-only because an owning player's effect must be
-able to break.
+These stay open to players because an owning player's effect has to be able to
+break.
 
 ## Medkit
 
@@ -88,11 +88,12 @@ Hooks.once("ready", () => {
 | `generateRandomSeed()` | Any | Create a seed |
 | `buildHexDungeonScene(options)` | GM | Create a playable keyed dungeon for a hex |
 
-`generateDungeon` accepts optional settings such as seed, layout, room count,
+`generateDungeon` takes optional settings covering seed, layout, room count,
 density, branching, room-size bias, symmetry, stairs, clutter, texture, wall
-color/width, and shadows. Inputs are validated and expansive counts are capped.
+color and width, and shadows. Inputs get validated, and expansive counts get
+capped.
 
-The detailed orchestration contract is in
+The full orchestration contract lives in
 [SDX-MCP-DUNGEON-API.md](https://github.com/DimitroffVodka/shadowdark-extras/blob/main/SDX-MCP-DUNGEON-API.md).
 
 ## Biomes
@@ -118,8 +119,8 @@ The detailed orchestration contract is in
 | `buildHexcrawl(dataset)` | GM | Build a keyed map from in-memory data |
 | `buildHexcrawlFromFile(path/options)` | GM | Build from a supported data file |
 
-`clearGeneratedTiles({ force: true })` bypasses its confirmation. Use that only
-in an already-confirmed automation workflow.
+`clearGeneratedTiles({ force: true })` skips its confirmation. Reach for that
+only inside an automation workflow that already confirmed with the user.
 
 ## Regions and multi-level decor
 
@@ -129,35 +130,28 @@ in an already-confirmed automation workflow.
 | `placeDungeonSurface(options)` | GM |
 | `placeDungeonDecor(options)` | GM |
 
-Decor source paths are allowlisted by the implementation. Do not pass arbitrary
-remote URLs.
+Decor source paths are allowlisted by the implementation. Arbitrary remote URLs
+will be rejected.
 
 ## Spell macro helpers
 
-Available after `ready`:
+Available after `ready`. The unidentified helpers are `isUnidentified`,
+`getUnidentifiedName`, `showIdentifyDialog`, `identifyItem`, and
+`showItemReveal`, and alongside those sit the Holy Weapon, Cleansing Weapon, and
+Wrath helpers, plus Shapechanger apply and revert.
 
-- unidentified helpers: `isUnidentified`, `getUnidentifiedName`,
-  `showIdentifyDialog`, `identifyItem`, `showItemReveal`;
-- Holy Weapon helpers;
-- Cleansing Weapon helpers;
-- Wrath helpers;
-- Shapechanger apply/revert helpers.
-
-Feature-detect these because the ready-phase module can change independently of
+Feature-detect all of them. The ready-phase module can change independently of
 the setup-phase API.
 
 ## Namespaces not promised as stable
 
-`api.internal` contains generator/layout primitives used by SDX:
+`api.internal` holds generator and layout primitives SDX uses itself:
+level-context and scene-level data helpers, cave layout and loop tracing, room
+and mixed-layout algorithms, biome assignment, and cell-floor mapping.
 
-- level-context and scene-level data helpers;
-- cave layout/loop tracing;
-- room and mixed-layout algorithms;
-- biome assignment and cell-floor mapping.
-
-These can change without a compatibility promise. `api.templates` and `api.dev`
-are likewise implementation/development surfaces unless a specific method is
-documented elsewhere.
+Those can change without any compatibility promise. `api.templates` and
+`api.dev` are implementation and development surfaces too, unless some specific
+method is documented elsewhere.
 
 ## Safe integration pattern
 
@@ -179,7 +173,7 @@ if (!game.user.isGM || !api?.generateDungeon) return;
 await api.generateDungeon({ seed: "my-campaign-floor-1", roomCount: 12 });
 ```
 
-Always validate the active Scene and current Level before a map mutation.
+Validate the active Scene and current Level before every map mutation.
 
 ---
 

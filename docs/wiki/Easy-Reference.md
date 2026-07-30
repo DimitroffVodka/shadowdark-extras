@@ -2,23 +2,21 @@
 
 [← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
-Easy Reference adds an SDX dropdown to Foundry's ProseMirror editor so journals,
-descriptions, and other rich-text fields can insert live game references without
-memorizing enricher syntax.
+Easy Reference adds an SDX dropdown to Foundry's ProseMirror editor, so
+journals, descriptions, and other rich-text fields can insert live game
+references without anyone at the table memorizing enricher syntax.
 
 ---
 
 ## Enable categories
 
-Five world settings are on by default:
+Five world settings, all on by default: NPC cards, item cards, RollTables,
+checks and requests, and dice rolls. Disable one and it leaves the editor menu
+for everybody.
 
-- NPC cards;
-- item cards;
-- RollTables;
-- checks/requests;
-- dice rolls.
-
-Disable a category to remove it from the editor menu for everyone.
+No SDX menu at all? Check the editor first. That field is probably not
+ProseMirror, which is a faster thing to rule out than working through the
+settings list.
 
 ## NPC cards
 
@@ -28,14 +26,15 @@ Choose an NPC document, then insert:
 @DisplayNpcCard[Actor.uuid]{Name}
 ```
 
-The detailed variant is:
+The detailed variant:
 
 ```text
 @DisplayNpcCardDetailed[Actor.uuid]{Name}
 ```
 
-The compact card is best for inline encounters and rumors; the detailed card is
-better for a full keyed-area stat reference.
+Reach for the compact card in inline encounters and rumors, and save the
+detailed one for a full keyed-area stat reference where you genuinely want the
+whole block sitting on screen.
 
 ## Item cards
 
@@ -45,8 +44,8 @@ Insert an interactive item reference:
 @DisplayItemCard[Item.uuid]{Name}
 ```
 
-The stored UUID can point to a world item, owned item, or compendium item. If the
-source is deleted or moved, the reference no longer resolves.
+That UUID can point at a world item, an owned item, or a compendium item. Move
+or delete the source and it goes dead.
 
 ## RollTable cards
 
@@ -56,25 +55,26 @@ Insert:
 @DisplayTable[RollTable.uuid]{Name}
 ```
 
-The rendered card can roll the referenced table subject to the user's
-permissions.
+The rendered card rolls the table. Permissions still apply, so a player who
+can't roll it needs observer access on the RollTable or its pack. Failing that,
+the GM rolls it.
+
+Deleted source, dead card. Insert the current document again.
 
 ## Ability checks and requests
 
-The custom dialog asks for:
-
-- DC;
-- ability;
-- check or request.
-
-It inserts Shadowdark's enriched syntax:
+The custom dialog asks for a DC, an ability, and whether you want a check or a
+request. Out comes Shadowdark's enriched syntax:
 
 ```text
 [[check 12 str]]
 [[request 15 wis]]
 ```
 
-Quick entries are available for STR, DEX, CON, INT, WIS, and CHA.
+Quick entries cover STR, DEX, CON, INT, WIS, and CHA. A check that renders as
+plain text instead of an enriched button has picked up a capitalized ability key
+or a non-numeric DC somewhere along the way. Lowercase the key. Check the
+number.
 
 ## Dice rolls
 
@@ -84,41 +84,27 @@ Enter a custom Roll formula:
 [[/r 2d6+3]]
 ```
 
-Quick buttons cover d4, d6, d8, d10, d12, and d20.
+Quick buttons handle d4, d6, d8, d10, d12, and d20.
 
 ## Working with UUIDs
 
-- References remain stable when a document is renamed.
-- Moving a world document between folders is safe.
-- Deleting/recreating a document changes its UUID.
-- Copying a document creates a new UUID; existing journal syntax still points
-  at the original.
-- A module-compendium UUID remains stable only while that source document
-  continues to ship under the same pack/document id.
+Four rules will save you a pile of broken references later on. Renaming is safe.
+Moving a world document between folders is safe too, and neither one disturbs
+the UUID. Delete and recreate that same document, though, and it comes back with
+a new UUID that nothing points at. Copying does the same thing, leaving your
+existing journal syntax aimed at the original. Compendium UUIDs from a module
+hold only as long as that source document keeps shipping under the same pack and
+document id, which is worth knowing before you build a campaign on top of one.
+[Compendium Packs](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Compendium-Packs)
+lists what SDX ships and how to copy a document into the world so your edits
+survive an update.
 
 ## Narration
 
-Journal blockquotes receive a narration control when **Enable Journal
-Narration** is on. Use blockquotes for read-aloud text, then trigger the
-narration presentation from the rendered Journal page.
+Journal blockquotes get a narration control when **Enable Journal Narration** is
+on. Blockquote the read-aloud text, render, present.
 
----
-
-## Troubleshooting
-
-**Menu is missing.** Confirm you are editing with ProseMirror and the desired
-Easy Reference category is enabled.
-
-**Card displays a missing document.** The saved UUID no longer resolves. Insert
-the current source document again.
-
-**Player cannot roll the table.** Give the player observer permission to the
-RollTable/pack or have the GM roll it.
-
-**Check does not enrich.** Use a valid Shadowdark ability key in lowercase and a
-numeric DC.
-
----
-
-**Related:** [Journal Tools & Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Tools-and-Pins) ·
-[Compendium Packs](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Compendium-Packs)
+The rest of the journal tooling lives in
+[Journal Tools & Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Tools-and-Pins),
+which covers pins, folders, placeable notes, and the multi-page character
+journal that replaces the plain Notes tab.

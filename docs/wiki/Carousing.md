@@ -9,11 +9,10 @@ player-ready result cards, copper-precise costs, and a persistent GM log.
 
 ## Open it
 
-Use the beer icon on the SDX Tray. The overlay is available when **Enable
-Carousing** is on.
+The beer icon on the SDX Tray. It appears whenever **Enable Carousing** is on.
 
-The GM assembles and manages the session; players can review/confirm the
-characters they own according to the active workflow.
+The GM assembles and runs the session. Players review and confirm the characters
+they own, according to whichever workflow is active.
 
 ![The shared Carousing overlay with participant cards, tier controls, and the GM-managed roster](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/carousing-overlay.png)
 
@@ -26,33 +25,32 @@ characters they own according to the active workflow.
 | **Original** | Tier/cost and a direct outcome/benefit table |
 | **Expanded** | Spending tier, d8-style outcome, d100 benefit/mishap tables, modifiers, XP |
 
-Changing the mode changes the overlay and which editor opens from **Manage
-Carousing Tables**.
+Switching modes changes both the overlay and which editor **Manage Carousing
+Tables** opens.
 
 ## Typical session
 
 1. Open the Carousing overlay.
-2. Add/select participating characters.
-3. Review carried coins and, when relevant, total valued wealth.
-4. Choose the available tier/drop and confirm participants.
+2. Add or select the participating characters.
+3. Review carried coins and, where it matters, total valued wealth.
+4. Choose the available tier or drop and confirm participants.
 5. Roll the session.
 6. Review each result.
-7. In Original mode, use the GM-only **Apply** button for mechanical outcomes.
-8. Open the Carousing Log when you need the persistent record.
-9. Reset after the session is finished.
+7. In Original mode, hit the GM-only **Apply** button for mechanical outcomes.
+8. Open the Carousing Log when you want the persistent record.
+9. Reset once the session is done.
 
-The overlay shows whether the percentage-loss base is **coins only** or **coins
-+ gear**.
+The overlay tells you whether the percentage-loss base is **coins only** or
+**coins + gear**.
 
 ## Money math
 
-All arithmetic is performed in copper, even when displayed as GP/SP/CP.
+Every calculation happens in copper, whatever the display says.
 
-- `1 gp = 10 sp = 100 cp`;
-- a cost such as 5% of 41 gp is 2 gp 5 cp, not a floored 2 gp;
-- deduction spends available denominations without silently re-minting the
-  entire purse;
-- this matters because Shadowdark encumbrance counts coin quantity.
+The conversion is `1 gp = 10 sp = 100 cp`, so 5% of 41 gp comes out at 2 gp 5 cp
+where a floored calculation would have said 2 gp. Deduction spends the
+denominations you actually carry without silently re-minting the whole purse.
+That precision matters, because Shadowdark encumbrance counts coin quantity.
 
 ### Wealth base
 
@@ -63,98 +61,88 @@ All arithmetic is performed in copper, even when displayed as GP/SP/CP.
 | **Coins only** | GP + SP + CP carried | Coins |
 | **Coins + gear** | Coins plus recorded gear value | Coins first |
 
-Gear with no recorded value contributes zero. If a gear-based loss is larger
-than the character's coins, SDX creates/increases a zero-slot **Carousing Debt**
-item with the exact unpaid amount and history.
+Gear with no recorded value contributes zero. When a gear-based loss exceeds the
+character's coins, SDX creates or increases a zero-slot **Carousing Debt** item
+carrying the exact unpaid amount and its history.
 
 ## Applying Original-mode outcomes
 
-Original results can include:
+Original results can carry XP, Luck, a percentage wealth loss, a Renown change,
+and narrative consequences.
 
-- XP;
-- Luck;
-- percentage wealth loss;
-- Renown change;
-- narrative consequences.
+The result card's GM-only **Apply** button shows an exact preview and asks for
+confirmation before it commits anything. Application is idempotent, so a second
+click grants nothing twice, and the card picks up an **Applied** badge.
 
-The result card's GM-only **Apply** button shows an exact preview and confirmation
-before committing. Application is idempotent: a second click does not grant the
-same result twice, and the card displays an **Applied** badge.
+Narrative rewards like allies, enemies, debts, or bans have no safe universal
+Shadowdark field to live in. SDX appends the full outcome to the character's
+Notes rather than guessing at mechanics.
 
-Narrative rewards such as allies, enemies, debts, or bans do not have a safe
-universal Shadowdark field. SDX appends the full outcome to the character's
-Notes instead of guessing at mechanics.
-
-Expanded mode applies its numeric XP as part of its own roll path and does not
-reuse the Original Apply button. Its player-visible benefit and mishap text is
-also appended to Notes once, along with the applied XP/Renown summary.
+Expanded mode applies its numeric XP through its own roll path and leaves the
+Original Apply button out of it. Its player-visible benefit and mishap text also
+gets appended to Notes once, together with the applied XP and Renown summary.
 
 ## Carousing Log
 
-The GM-only log is a Journal with one stable page per session. It records:
+The GM-only log is a Journal holding one stable page per session. Each entry
+records the participant and their roll, the outcome, benefits and mishaps, the
+exact mechanical result applied, and the Expanded XP/Renown summary where that
+applies.
 
-- participant and roll;
-- outcome;
-- benefits and mishaps;
-- the exact mechanical result applied;
-- Expanded XP/Renown summary where relevant.
-
-Pages are found by flags, so renaming the Journal does not orphan the log.
-Reopening/backfilling is idempotent and should not duplicate the character-note
-entry.
+Pages are located by flags, so renaming the Journal won't orphan the log.
+Reopening and backfilling are idempotent and shouldn't duplicate the
+character-note entry.
 
 ## Editing tables
 
-Open **Manage Carousing Tables**. The editor follows the active mode.
+Open **Manage Carousing Tables**. The editor follows whichever mode is active.
 
-Supported imports include labeled prose and pipe-separated columns:
+Imports accept labeled prose and pipe-separated columns:
 
 ```text
 30 gp | A worthy night of drinking and festivity | +0
 ```
 
-Depending on the section, columns can represent:
+What the columns mean depends on the section. An event tier reads roll, cost,
+description, bonus. Original outcomes are shorter, just roll, description, and
+benefit. Expanded outcomes are the wide ones, running roll, mishaps, benefits,
+d100 modifier, and XP, while a benefit/mishap row needs nothing beyond a roll
+and a description.
 
-- event tier: roll, cost, description, bonus;
-- Original outcome: roll, description, benefit;
-- Expanded outcome: roll, mishaps, benefits, d100 modifier, XP;
-- benefit/mishap row: roll, description.
+The RollTable result range can supply the roll column, so you can leave it out.
+Review the imported editor data before saving either way.
 
-The RollTable result range can supply the roll column, so it may be omitted.
-Review the imported editor data before saving.
-
-Link only a structurally compatible RollTable. An Original outcome table is not
-an Expanded outcome table merely because both contain prose.
+Link only a structurally compatible RollTable. Two tables both containing prose
+does not make an Original outcome table into an Expanded one.
 
 ## Visibility
 
-The GM can independently show or hide benefit and mishap descriptions from
-players. These controls apply both to player-facing chat and to the automatic
-Expanded-mode entry written to character Notes, so a hidden outcome is not
-silently disclosed on the character sheet. The GM-only Carousing Log retains
-the complete result. Costs and required player decisions remain visible when
-the workflow needs them.
+The GM can show or hide benefit and mishap descriptions from players
+independently. Those controls cover both the player-facing chat and the
+automatic Expanded-mode entry written to character Notes, so a hidden outcome
+stays hidden on the sheet too. The GM-only Carousing Log keeps the complete
+result. Costs and required player decisions stay visible whenever the workflow
+needs them.
 
 ---
 
-## Troubleshooting
+## When it misbehaves
 
-**Reset did nothing.** Update SDX. Current builds use Foundry's deletion operator
-correctly and clear session/drop flags while retaining the GM-managed roster.
+Most of the strange behavior here traces back to an old build. A Reset that
+clears nothing and a removed participant reappearing were both fixed in current
+releases, which use Foundry's deletion operator correctly and persist key
+deletion explicitly, clearing session and drop flags while the GM-managed roster
+survives. Same story for an Expanded roll where every row comes back 0 XP:
+current editors warn about a mismatched linked table and keep your configured
+values, instead of overlaying an all-zero parse. Update before digging any
+deeper. The one deliberate exception is a participant still holding an unapplied
+result, who stays reachable until you handle it.
 
-**Removed participant came back.** Current builds persist key deletion
-explicitly. A participant with an unapplied result can remain reachable until
-that result is handled.
-
-**Every Expanded row has 0 XP.** A mismatched linked table may have supplied no
-usable fields. Current editors warn and keep configured values instead of
-overlaying an all-zero parse.
-
-**Outcome changed coins but not XP/Luck.** In Original mode, click **Apply** and
-confirm the preview.
-
-**Percentage cost looks different from whole-GP math.** It is intentionally
-copper-precise.
+Two more look like bugs and are working as intended. An Original-mode outcome
+that moved coins without touching XP or Luck is waiting on the GM-only
+**Apply** button and its confirmation preview. A percentage cost that disagrees
+with your whole-GP arithmetic is copper-precise, which is the entire point of
+the money math above.
 
 ---
 

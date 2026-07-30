@@ -2,7 +2,7 @@
 
 [← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
-SDX connects campaign text to the canvas through character journals, notes on
+SDX wires campaign text to the canvas through character journals, notes on
 placeable objects, styled journal pins, folders, map-note conversion, and
 read-aloud narration.
 
@@ -13,76 +13,45 @@ read-aloud narration.
 With **Enable Journal Notes** on, a Player's Notes tab becomes a small
 multi-page journal.
 
-Use the page sidebar to create and navigate entries. The editor supports normal
-ProseMirror formatting plus quick blocks for:
+Use the page sidebar to create and navigate entries. The editor gives you normal
+ProseMirror formatting plus quick blocks for information, warning, quest, loot,
+and NPC.
 
-- information;
-- warning;
-- quest;
-- loot;
-- NPC.
-
-The content remains actor data. Disabling the enhanced UI does not intentionally
-delete the saved notes, but back up important actor data before changing note
-systems.
+The content stays actor data throughout. Disabling the enhanced UI won't
+deliberately delete saved notes, but back up important actor data before you
+switch note systems.
 
 ## Notes on placeables
 
-With **Enable Notes on placeables and Notes tab in tray** on, configuration
-windows for these documents gain a Notes control:
+With **Enable Notes on placeables and Notes tab in tray** on, the configuration
+windows for Tokens, Tiles, Walls, Ambient Lights, and Ambient Sounds all gain a
+Notes control.
 
-- Token;
-- Tile;
-- Wall;
-- Ambient Light;
-- Ambient Sound.
+Write rich text and save. The tray's **Notes** tab lists every annotated object
+on the current scene, where you can expand or collapse the note, pan to the
+object, rename the note label, toggle player visibility, and delete it.
 
-Write rich text and save. The tray's **Notes** tab lists the current scene's
-annotated objects. From there:
-
-- expand/collapse the note;
-- pan to the object;
-- rename the note label;
-- toggle player visibility;
-- delete the note.
-
-This is attached metadata, not a Journal Entry. Deleting the placeable also
-removes its note.
+These notes are metadata attached to the placeable. Delete the placeable and its
+note goes with it.
 
 ## Journal pins
 
-The pin tool creates an SDX canvas marker optionally linked to:
+The pin tool creates an SDX canvas marker. Link it to a Journal, to a specific
+Journal page, or leave it unlinked as a tooltip or label.
 
-- a Journal;
-- a specific Journal page;
-- an unlinked tooltip/label.
-
-The Pins tab can:
-
-- search;
-- pan or ping;
-- bring players to the location;
-- open/edit the pin;
-- copy/paste style;
-- duplicate;
-- make GM-only or player-visible;
-- require line of sight;
-- remove or delete.
+From the Pins tab you can search, pan or ping, bring players to the location,
+open and edit the pin, copy and paste style, duplicate it, flip it between
+GM-only and player-visible, require line of sight, and remove or delete it.
 
 ## Pin Style Editor
 
-Edit one pin or the world defaults. Options include:
-
-- Font Awesome icon, image, or custom text;
-- icon/text color and tint;
-- background and border;
-- circle, square, pointy hex, or flat hex;
-- size and scale;
-- **Fit to hex grid**;
-- label and tooltip content;
-- title/body font sizes;
-- player visibility and line-of-sight behavior;
-- display-name source.
+Edit one pin, or the world defaults. The marker itself can be a Font Awesome
+icon, an image, or custom text, and it takes its own color and tint, a
+background and border, and a shape drawn from circle, square, pointy hex, or
+flat hex. Size and scale are adjustable, while **Fit to hex grid** snaps the
+whole thing to the grid. The rest covers content and behavior: label and tooltip
+text, title and body font sizes, player visibility, line-of-sight behavior, and
+where the display name comes from.
 
 ![The Pin Style Editor preview and its tooltip, shape, size, and ring controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-style-editor.png)
 
@@ -95,27 +64,22 @@ Edit one pin or the world defaults. Options include:
 | **Tooltip** | Tooltip title |
 | **Canvas Label** | Marker label |
 
-Auto ignores placeholder names such as “New Pin” when a better source exists.
+Auto skips placeholder names like "New Pin" when it can find a better source.
 
 ### Pixel-perfect hit testing
 
-For irregular transparent images, enable **Pixel perfect on Pins**. The alpha
-threshold decides which pixels count as clickable:
+Irregular transparent images do better with **Pixel perfect on Pins** enabled.
+The alpha threshold decides which pixels count as clickable: lower values accept
+more translucent pixels, higher values demand more opaque ones.
 
-- lower values accept more translucent pixels;
-- higher values require more opaque pixels.
-
-This is experimental and costs more than simple shape hit testing.
+Experimental, and it costs real CPU. Plain shape hit testing stays the cheap
+default.
 
 ## Pin folders
 
-The GM can create nested folders in the Pins tab:
-
-- drag pins into/out of folders;
-- drag folders to reorder or nest;
-- collapse/expand;
-- choose color;
-- choose a Font Awesome or image icon.
+The GM can build nested folders in the Pins tab. Drag pins in and out, drag
+folders to reorder or nest them, collapse and expand, and give each one a color
+and a Font Awesome or image icon.
 
 Folder scope can be:
 
@@ -124,65 +88,63 @@ Folder scope can be:
 | **Scene** | Only on the current scene |
 | **World** | On every scene, marked with a globe |
 
-Pins remain scene-owned even inside a world folder. A world folder is a shared
-organizational definition, not a way to move a pin between scenes.
+Pins stay scene-owned even inside a world folder. A world folder is a shared
+organizational definition that shows up everywhere, while each pin keeps living
+on its own scene.
 
-Search reveals matches inside collapsed folders.
+Search reaches matches inside collapsed folders.
 
 ## Convert Foundry Map Notes
 
-Use **Notes→Pins** for all Map Notes on the current scene, or the convert control
-on one note.
+Use **Notes→Pins** for every Map Note on the current scene, or the convert
+control on a single note.
 
-The new pin keeps:
+The new pin carries over position, the Journal or page link, the text label, and
+the icon path, tint, and size.
 
-- position;
-- Journal/page link;
-- text label;
-- icon path, tint, and size.
-
-Choose a target folder and whether to delete the original Note. Deletion is
-optional so you can compare the converted result first.
+Choose a target folder and decide whether the original Note gets deleted.
+Deletion is optional so you can compare the converted result first.
 
 ## Generated room pins
 
 The playable hex-dungeon builder creates one pin per generated room, linked to
-the matching room Journal page. This is the preferred path when the room number
-on the map and the room key must stay synchronized.
+the matching room Journal page. Use that path whenever the room number on the
+map and the room key have to stay synchronized.
 
 ## Journal narration
 
-When **Enable Journal Narration** is on, rendered Journal blockquotes receive a
-narration toolbar. Put read-aloud text in a blockquote, render the page, and use
-the added control to present it.
+With **Enable Journal Narration** on, rendered Journal blockquotes get a
+narration toolbar. Put read-aloud text in a blockquote, render the page, and
+present it from the added control.
 
 ## Easy Reference
 
-The ProseMirror Easy Reference menu inserts live NPC, Item, RollTable, check, and
-dice syntax. See [Easy Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Easy-Reference).
+The ProseMirror Easy Reference menu inserts live NPC, Item, RollTable, check,
+and dice syntax. See
+[Easy Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Easy-Reference).
 
 ---
 
 ## Troubleshooting
 
-**Placeable Notes button is absent.** Enable the setting and reload. Foundry
-v14 uses the DocumentSheetV2 header-controls hook.
+**Placeable Notes button is absent.** Enable the setting and reload. Foundry v14
+uses the DocumentSheetV2 header-controls hook.
 
-**A note saved blank.** Reopen after updating SDX; current builds read the real
+**A note saved blank.** Reopen after updating SDX. Current builds read the real
 ProseMirror field path.
 
-**Pin has an unhelpful name.** Set Pin Name to Auto or Tooltip and provide a
+**Pin has an unhelpful name.** Set Pin Name to Auto or Tooltip, and give it a
 real title.
 
-**World folder is empty on another scene.** Expected: the folder definition is
-world-wide, but pins stay on their source scene.
+**World folder is empty on another scene.** Expected. The folder definition is
+world-wide, and the pins stay on their source scene.
 
-**Map Note conversion duplicated markers.** You kept the original Notes.
-Delete them after verifying the converted pins, or use the conversion dialog's
+**Map Note conversion duplicated markers.** You kept the originals. Delete them
+once you've verified the converted pins, or use the conversion dialog's
 delete-originals option next time.
 
-**Image pin is hard to select.** Try pixel-perfect mode or a lower alpha
-threshold; for map-sized hex art, use Fit to hex grid.
+**Image pin is hard to select.** Try pixel-perfect mode, or a lower alpha
+threshold. For map-sized hex art, use Fit to hex grid.
 
 ---
 

@@ -2,8 +2,9 @@
 
 [← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
-Shadowdark Extras ships four module compendiums. They appear inside the
-**Shadowdark Extras** pack folder and are ordinary read-only module packs.
+Shadowdark Extras ships four module compendiums. They live inside the
+**Shadowdark Extras** pack folder and behave like any other read-only module
+pack.
 
 ---
 
@@ -16,73 +17,69 @@ Shadowdark Extras ships four module compendiums. They appear inside the
 | `shadowdark-extras.pack-sdxrollables` | `sdxrollables` | RollTable | Observer | Rollable tables used as ready-made SDX content |
 | `shadowdark-extras.pack-sdxeffects` | `SDX Effects Library` | ActiveEffect | Observer | Reusable effects and conditions |
 
-Assistant users have owner access according to the manifest. Normal players
-have observer access.
+Assistant users get owner access per the manifest. Normal players get observer.
 
 ## Use content safely
 
-Module compendiums are replaced when the module updates. To customize a shipped
-document:
+Module compendiums get replaced wholesale every time the module updates. So to
+customize a shipped document:
 
-1. Import or copy it into the world or a world compendium.
-2. Rename the copy if you want it to be clearly independent.
-3. Edit the copy, not the module pack source.
+1. Import or copy it into the world, or into a world compendium.
+2. Rename the copy if you want it clearly independent.
+3. Edit the copy. Leave the module pack source alone.
 
-Do not edit files under `packs/` by hand in a live installation. The LevelDB
-pack format and Foundry's pack indexes should be managed through Foundry or the
+Never hand-edit files under `packs/` in a live installation. The LevelDB pack
+format and Foundry's pack indexes should go through Foundry itself or the
 repository's pack tooling.
 
 ## Medkit and the item pack
 
-The actor-sheet **Medkit** compares owned Spells with configured source packs.
-It also resolves the source spell referenced by owned Scrolls and Wands and
-compares their SDX enhancement flags.
+The actor-sheet **Medkit** compares owned Spells against configured source
+packs. It also resolves the source spell referenced by owned Scrolls and Wands,
+then compares their SDX enhancement flags.
 
 The SDX item pack is always a Medkit source. Other modules can register their
-own source pack through the public API:
+own through the public API:
 
 ```js
 const api = game.modules.get("shadowdark-extras")?.api;
 api?.registerMedkitPack("my-module.my-spells");
 ```
 
-The GM-only **Medkit: Scan All Actors** settings button runs the same comparison
-over every world actor, presents a summary, and applies updates only after
-confirmation.
+The GM-only **Medkit: Scan All Actors** settings button runs that same
+comparison over every world actor, shows a summary, and waits for confirmation
+before applying anything.
 
 ## Effects library
 
-The effects pack can be used anywhere SDX accepts an effect drop:
+The effects pack works anywhere SDX accepts an effect drop: a spell, potion, NPC
+feature, or other Activity configuration, a weapon's on-hit effects, an aura or
+template effect, or an ordinary actor Active Effect workflow.
 
-- a spell, potion, NPC feature, or other Activity configuration;
-- a weapon's on-hit effects;
-- an aura or template effect;
-- a normal actor Active Effect workflow.
-
-When a feature stores a UUID, moving or replacing the source document can break
-the reference. Copying a configured item into the world does not automatically
-copy every referenced effect.
+Anywhere a feature stores a UUID, moving or replacing the source document breaks
+the reference. Copying a configured item into the world copies the item, and
+leaves every referenced effect where it was.
 
 ## RollTables and carousing
 
-SDX can work with ordinary Foundry RollTables. The carousing editors can also
-import compatible table text, including pipe-separated rows. Linking a table
-does not make every arbitrary table valid for every carousing section; review
-the imported preview before using it in play.
+SDX works with ordinary Foundry RollTables. The carousing editors additionally
+import compatible table text, pipe-separated rows included. Linking a table
+doesn't make every arbitrary table valid for every carousing section, so review
+the imported preview before you take it to the table.
 
 ## Pack troubleshooting
 
-**A pack is missing.** Reinstall/update the module and relaunch the world.
+**A pack is missing.** Reinstall or update the module and relaunch the world.
 Release archives are checked for all four declared packs.
 
-**A document is read-only.** It is still in a module compendium. Import it to
-the world before editing.
+**A document is read-only.** It's still sitting in a module compendium. Import
+it to the world before editing.
 
-**An actor has stale spell automation.** Open its Medkit or run the world scan.
-The tool previews available updates before applying them.
+**An actor has stale spell automation.** Open its Medkit, or run the world scan.
+The tool previews available updates first.
 
-**An effect drop later resolves as missing.** The stored source UUID no longer
-exists. Re-drop the effect from its current pack or world location.
+**An effect drop later resolves as missing.** The stored source UUID is gone.
+Re-drop the effect from wherever it lives now.
 
 ---
 

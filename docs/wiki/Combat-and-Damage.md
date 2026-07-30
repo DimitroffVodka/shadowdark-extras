@@ -2,9 +2,9 @@
 
 [← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
-Shadowdark Extras adds a post-roll damage workflow, configurable target/range
-rules, typed damage processing, scrolling combat text, and item-level attack
-automation.
+Shadowdark Extras adds a post-roll damage workflow, configurable target and
+range rules, typed damage processing, scrolling combat text, and item-level
+attack automation.
 
 ---
 
@@ -12,45 +12,40 @@ automation.
 
 Open **Configure Settings → Shadowdark Extras → Configure Combat Settings**.
 
-The default is automation-forward: the enhanced card is visible to everyone,
-successful damage and configured conditions auto-apply, but SDX does not require
-a target or enforce weapon range.
+Out of the box the module leans automatic. Everyone sees the enhanced card,
+successful damage and configured conditions apply themselves, and SDX asks
+nothing about targets or weapon range.
 
-For a confirmation-first table:
+For a table that wants confirmation first:
 
 1. Turn **Auto-Apply Damage** off.
-2. Turn **Auto-Apply Conditions** off if effects also require approval.
+2. Turn **Auto-Apply Conditions** off if effects should also wait for approval.
 3. Optionally enable **GM Only Apply Damage**.
-4. Set target/range checks to **Warn**, not Block, until your item ranges and
-   scene scale are verified.
+4. Leave target and range checks on **Warn** until you've verified your item
+   ranges and scene scale. Block can wait.
 
 ![The Automatic Combat Settings window showing damage-card and target controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/combat-settings.png)
 
 ## Enhanced damage cards
 
-After a recognized damage roll, the card can show:
+After a recognized damage roll, the card can display the targeted tokens, the
+damage total broken into typed components, multiplier buttons, an Apply button,
+and any configured effects or conditions. Your settings decide who sees what.
 
-- the targeted tokens;
-- the damage total and typed components;
-- multiplier buttons;
-- an Apply button;
-- configured effects/conditions;
-- GM/player visibility based on settings.
+The default multiplier row runs 0, ¼, ½, 1, and 2, plus the card's clear
+control. That covers immunity, resistance, normal damage, and vulnerability
+without anybody editing HP by hand.
 
-The default multiplier row includes 0, ¼, ½, 1, and 2, plus the card's clear
-control. Use it for immunity, resistance, normal damage, and vulnerability
-without editing HP manually.
-
-Scrolling combat text displays the final damage or healing result over the
+Scrolling combat text floats the final damage or healing result over the
 affected token.
 
 ### Target selection
 
-SDX uses the user's current targets and, where supported by the card, selected
-tokens. Target ownership and actor permission still matter. A player's
-cross-owner change can be relayed to the GM.
+SDX reads the user's current targets and, where the card supports it, selected
+tokens. Target ownership and actor permission still apply. When a player's
+change crosses an ownership boundary, it gets relayed to the GM.
 
-The **Require Target for Attack** choices are:
+The **Require Target for Attack** choices:
 
 | Mode | Behavior |
 |---|---|
@@ -60,8 +55,8 @@ The **Require Target for Attack** choices are:
 
 ### Range checking
 
-The **Check Weapon Range** modes are also None, Warn, and Block. SDX's quick
-range interpretation is:
+**Check Weapon Range** offers the same three modes. SDX's quick reading of
+Shadowdark distances:
 
 | Shadowdark range | Distance |
 |---|---:|
@@ -69,110 +64,92 @@ range interpretation is:
 | Near | 30 ft |
 | Far | Not capped by this check |
 
-Scene grid scale and token positions must be correct for a meaningful result.
+Your scene grid scale and token positions both have to be right for the result
+to mean anything.
 
 ### Untargeting
 
-At the end of the workflow, SDX can keep every target, release dead targets, or
-release all targets. The default is **dead**.
+At the end of the workflow SDX can keep every target, release the dead ones, or
+release all of them. The default is **dead**.
 
 ---
 
 ## Damage types
 
-Configured item damage can be tagged as physical or elemental/other types. The
-extended item sheets expose common choices including:
+Configured item damage carries a physical or elemental tag. The extended item
+sheets offer bludgeoning, slashing, piercing, and generic physical, plus fire,
+cold, lightning, acid, poison, necrotic, radiant, psychic, and force. Healing is
+there too, on item types that support it.
 
-- bludgeoning, slashing, piercing, and generic physical;
-- fire, cold, lightning, acid, and poison;
-- necrotic, radiant, psychic, and force;
-- healing where the item type supports it.
-
-Typed components are processed separately so an actor's resistance, immunity,
-or vulnerability can affect the correct part of a mixed roll.
+Typed components are processed separately, so an actor's resistance, immunity,
+or vulnerability lands on the correct portion of a mixed roll.
 
 ## Weapon Bonuses tab
 
-Open a Weapon item and use the SDX **Bonuses** interface to define behavior that
-belongs to that weapon.
+Open a Weapon item and use the SDX **Bonuses** interface for behavior that
+belongs to that specific weapon.
 
 ### To-hit bonuses
 
-Each entry can contain:
-
-- a flat number or formula such as `2` or `@abilities.dex.mod`;
-- requirements;
-- **Exclusive**, so it suppresses other applicable entries;
-- **Prompt**, so the user decides whether to include it in the roll dialog.
+Each entry holds a flat number or a formula such as `2` or
+`@abilities.dex.mod`, along with any requirements. Two flags shape how it
+behaves: **Exclusive** suppresses other applicable entries, and **Prompt** puts
+the decision in the roll dialog for the user to make.
 
 ### Damage bonuses
 
-Damage entries use the same formula/requirement model and can carry their own
-damage type. Promptable entries are chosen during the workflow.
+Damage entries use the same formula and requirement model, and each one can
+carry its own damage type. Promptable entries get chosen during the workflow.
 
 ### Critical bonuses
 
-Configure additional dice and/or a formula that only contributes on a critical
-hit. Keep the normal weapon damage in the Shadowdark system fields; use SDX
-critical fields for the extra component.
+Configure extra dice, a formula, or both, contributing only on a critical hit.
+Leave normal weapon damage in the Shadowdark system fields and use the SDX
+critical fields purely for the extra component.
 
 ### Effects on hit
 
 Drag effects or conditions into the weapon's on-hit configuration. On a
-successful hit, SDX can apply those to the valid target set, respecting the
-combat setting for automatic condition application.
+successful hit SDX applies them to the valid target set, respecting whatever the
+combat setting says about automatic condition application.
 
 ## Requirements
 
-Bonus requirements can inspect combat context such as:
+Bonus requirements can inspect combat context: target name, ancestry, creature
+type, current HP or HP percentage, and conditions or effects. Comparison
+operators cover equals, contains, starts with, and not-equal.
 
-- target name;
-- ancestry;
-- creature type;
-- current HP or HP percentage;
-- conditions/effects;
-- comparison operators such as equals, contains, starts with, or not-equal.
+Creature-type checks read the NPC's manual SDX type when one is set, then fall
+back to the bundled bestiary name map. See
+[NPCs & Effects](https://github.com/DimitroffVodka/shadowdark-extras/wiki/NPCs-and-Effects).
 
-Creature-type checks use the NPC's manual SDX type when set, then the bundled
-bestiary name map. See [NPCs & Effects](https://github.com/DimitroffVodka/shadowdark-extras/wiki/NPCs-and-Effects).
-
-Test one requirement at a time before combining them. A bonus that does not
-appear is usually failing a requirement rather than failing to save.
+Test one requirement at a time before you start combining them. A bonus that
+never shows up is almost always failing one of its requirements. Saving is
+rarely the culprit.
 
 ---
 
 ## Item Macro triggers
 
-Weapons can execute a stored item macro at specific points:
+Weapons can fire a stored item macro at seven points in the workflow: before
+attack, hit, critical hit, miss, critical miss, equip, and unequip.
 
-- before attack;
-- hit;
-- critical hit;
-- miss;
-- critical miss;
-- equip;
-- unequip.
+**Run as GM** covers actions that need elevated permissions. The macro receives
+the caster and the workflow context. In current versions `token` is consistently
+a Token placeable, so reach for `token.document` when you need TokenDocument
+fields or updates.
 
-**Run as GM** is available for actions that need elevated permissions. The
-macro receives the caster and workflow context. In current versions, `token` is
-consistently a Token placeable; use `token.document` for TokenDocument fields
-and updates.
-
-Run-as-GM cannot create a token placeable for a scene the GM client is not
-rendering. Cross-scene targets are dropped with a warning rather than silently
-substituting a different token.
+Run-as-GM cannot conjure a token placeable for a scene the GM client isn't
+rendering. Cross-scene targets get dropped with a warning. No silent
+substitution.
 
 ## NPC attacks
 
-SDX supplies an NPC Attack item sheet with:
+SDX supplies an NPC Attack item sheet covering attack count, to-hit value,
+damage formula and type, Shadowdark range choices, and description and source
+tabs.
 
-- attack count;
-- to-hit value;
-- damage formula and type;
-- Shadowdark range choices;
-- description and source tabs.
-
-NPC Feature, NPC Spell, and NPC Special Attack sheets add Activity and/or Macro
+NPC Feature, NPC Spell, and NPC Special Attack sheets add Activity and Macro
 configuration for creature abilities that need the same automation concepts as
 player spells.
 
@@ -192,18 +169,19 @@ player spells.
 
 ## Troubleshooting
 
-**Damage was applied twice.** Check for another damage automation module and
-turn off one auto-apply path. Also check whether an item macro applies damage in
-addition to its configured SDX damage.
+**Damage was applied twice.** Look for a second damage automation module and
+switch off one of the auto-apply paths. Check too whether an item macro is
+applying damage on top of its configured SDX damage.
 
-**Bonus never appears.** Remove its requirements temporarily, then add them
-back one at a time. Verify the target has the expected SDX creature type.
+**Bonus never appears.** Strip its requirements, then add them back one at a
+time. Verify the target carries the SDX creature type you expected.
 
-**Block mode rejects a valid ranged attack.** Confirm the item range and scene
-grid scale. Use Warn if you use house distances that do not match Close/Near.
+**Block mode rejects a valid ranged attack.** Confirm the item range and the
+scene grid scale. Switch to Warn if your house distances don't map onto
+Close/Near.
 
-**Apply button is visible but a player cannot change the target.** The target
-may not be owned and no active GM may be available to authorize the change.
+**Apply button is visible but a player cannot change the target.** The target is
+probably unowned, with no active GM around to authorize the change.
 
 **NPC attack count is missing.** Update SDX. Current builds coerce Shadowdark
 4.x's numeric `attack.num` before enriching the display.
