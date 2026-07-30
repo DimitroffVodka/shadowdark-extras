@@ -1,4 +1,5 @@
 import { maskSource } from "./import-scan.mjs";
+import { buildLineIndex, lineAt, literalArgument, literalIndex } from "./call-scan.mjs";
 
 /**
  * Static call-site inventory of the registrations whose ORDER is a
@@ -13,80 +14,13 @@ import { maskSource } from "./import-scan.mjs";
  * in the tree, and their order is not observable the way hook order is.
  */
 
-const IDENTIFIER = /[A-Za-z0-9_$]/;
-
-function buildLineIndex(source) {
-  const starts = [0];
-  for (let i = 0; i < source.length; i += 1) {
-    if (source[i] === "\n") starts.push(i + 1);
-  }
-  return starts;
-}
-
-function lineAt(lineStarts, offset) {
-  let low = 0;
-  let high = lineStarts.length - 1;
-  while (low < high) {
-    const mid = (low + high + 1) >> 1;
-    if (lineStarts[mid] <= offset) low = mid;
-    else high = mid - 1;
-  }
-  return low + 1;
-}
-
-/**
- * Collect the offsets at which each top-level argument of a call begins.
- * Operates on masked text, so nested parens inside strings cannot unbalance it.
- */
-function argumentOffsets(chars, openParen) {
-  const offsets = [];
-  let depth = 0;
-  let expectArgument = true;
-
-  for (let i = openParen; i < chars.length; i += 1) {
-    const char = chars[i];
-    if (char === "(" || char === "[" || char === "{") {
-      depth += 1;
-      if (depth === 1) expectArgument = true;
-      continue;
-    }
-    if (char === ")" || char === "]" || char === "}") {
-      depth -= 1;
-      if (depth === 0) break;
-      continue;
-    }
-    if (depth === 1 && char === ",") {
-      expectArgument = true;
-      continue;
-    }
-    if (depth >= 1 && expectArgument && !/\s/.test(char)) {
-      if (depth === 1) offsets.push(i);
-      expectArgument = false;
-    }
-  }
-
-  return offsets;
-}
-
-/**
- * Read the nth argument as a string literal, or report it as dynamic.
- */
-function literalArgument(chars, literalsByStart, openParen, position) {
-  const offsets = argumentOffsets(chars, openParen);
-  const offset = offsets[position];
-  if (offset === undefined) return { name: null, dynamic: true };
-  const literal = literalsByStart.get(offset);
-  if (!literal || literal.computed) return { name: null, dynamic: true };
-  return { name: literal.raw, dynamic: false };
-}
-
 /**
  * @param {string} source
  * @returns {Array<{api: string, name: string|null, line: number, dynamic: boolean}>}
  */
 export function scanRegistrations(source) {
   const { masked, maskedChars, literals } = maskSource(source);
-  const literalsByStart = new Map(literals.map((literal) => [literal.start, literal]));
+  const literalsByStart = literalIndex(literals);
   const lineStarts = buildLineIndex(source);
   const found = [];
 

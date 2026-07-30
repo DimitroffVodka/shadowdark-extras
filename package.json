@@ -13,6 +13,7 @@
     "gate:script-paths": "node dev/tools/script-path-guard.mjs",
     "snapshot:registrations": "node dev/tools/registration-snapshot.mjs",
     "snapshot:api": "node dev/tools/api-export-snapshot.mjs",
+    "snapshot:settings": "node dev/tools/settings-snapshot.mjs",
     "matrix:imports": "node dev/tools/feature-import-matrix.mjs",
     "pack": "node ./dev/packs/pack.mjs",
     "unpack": "node ./dev/packs/unpack.mjs",

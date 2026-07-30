@@ -76,6 +76,11 @@ if ! node dev/tools/api-export-snapshot.mjs; then
   block_fail=1
 fi
 
+if ! node dev/tools/settings-snapshot.mjs; then
+  echo "[BLOCK] settings key/menu identity changed (stored in user worlds)"
+  block_fail=1
+fi
+
 echo "=== BLOCKING — regressions of previously fixed bugs ==="
 
 # Socketlib auth: handler context is { socketdata: { userId } }, not { senderId }.

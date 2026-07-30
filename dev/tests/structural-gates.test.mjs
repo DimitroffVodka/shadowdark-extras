@@ -8,6 +8,7 @@ import { resolveProjectImports } from "../tools/resolve-imports.mjs";
 import { findScriptPathStrings, FORBIDDEN } from "../tools/script-path-guard.mjs";
 import { collectRegistrations, readSnapshot, diffSnapshot } from "../tools/registration-snapshot.mjs";
 import { collectEsmoduleExports, diffExports } from "../tools/api-export-snapshot.mjs";
+import { collectSettingsKeys, diffSettings } from "../tools/settings-snapshot.mjs";
 import { REPO_ROOT } from "../tools/project-scan.mjs";
 
 /**
@@ -206,6 +207,67 @@ test("api-export snapshot: catches a dropped manifest declaration", () => {
  * consume today. Phase 3 re-homes them behind an API facade; if this count
  * changes before then, something has been extracted without a re-export.
  */
+// ---------------------------------------------------- settings snapshot
+
+test("settings snapshot: the real tree matches the committed baseline", () => {
+  const baseline = JSON.parse(readFileSync(path.join(REPO_ROOT, "dev/snapshots/settings-keys.json"), "utf8"));
+
+  assert.deepEqual(diffSettings(baseline, collectSettingsKeys()), []);
+});
+
+/**
+ * The failure that matters: a key that vanishes takes every GM's stored value
+ * with it, silently. The message has to name that consequence, because a bare
+ * "key removed" reads like a tidy-up rather than data loss.
+ */
+test("settings snapshot: catches a removed key and says why it matters", () => {
+  const baseline = { keys: ["enableAuras", "hexFog"], menus: [], dynamicSites: [] };
+  const current = { keys: ["enableAuras"], menus: [], dynamicSites: [] };
+
+  const differences = diffSettings(baseline, current);
+  assert.equal(differences.length, 1);
+  assert.match(differences[0], /REMOVED "hexFog"/);
+  assert.match(differences[0], /orphaned/);
+});
+
+test("settings snapshot: catches a renamed key as a remove plus an add", () => {
+  const baseline = { keys: ["enableAuras"], menus: [], dynamicSites: [] };
+  const current = { keys: ["enableAurasV2"], menus: [], dynamicSites: [] };
+
+  const differences = diffSettings(baseline, current);
+  assert.equal(differences.length, 2);
+  assert.ok(differences.some((line) => line.includes('REMOVED "enableAuras"')));
+  assert.ok(differences.some((line) => line.includes('added "enableAurasV2"')));
+});
+
+test("settings snapshot: catches a removed settings menu", () => {
+  const baseline = { keys: [], menus: ["combatSettingsMenu"], dynamicSites: [] };
+  const current = { keys: [], menus: [], dynamicSites: [] };
+
+  assert.match(diffSettings(baseline, current)[0], /menus: REMOVED "combatSettingsMenu"/);
+});
+
+/**
+ * The scanner is blind to keys built in loops. If that blind spot changes size,
+ * the gate's coverage changed and nobody would otherwise notice.
+ */
+test("settings snapshot: catches the unenumerable blind spot changing size", () => {
+  const baseline = { keys: [], menus: [], dynamicSites: ["a.mjs:1"] };
+  const current = { keys: [], menus: [], dynamicSites: ["a.mjs:1", "b.mjs:2"] };
+
+  assert.match(diffSettings(baseline, current)[0], /blind spot changed size/);
+});
+
+test("settings snapshot: the live-registry baseline is recorded for the Quench batch", () => {
+  const baseline = JSON.parse(readFileSync(path.join(REPO_ROOT, "dev/snapshots/settings-keys.json"), "utf8"));
+
+  assert.equal(typeof baseline.liveKeyTotalExcludingGated, "number");
+  assert.ok(
+    baseline.liveKeyTotalExcludingGated >= baseline.keys.length,
+    "the live registry cannot hold fewer keys than the static scan found",
+  );
+});
+
 test("api-export snapshot: the composition root still exports its three consumed names", () => {
   const { esmodules } = collectEsmoduleExports();
 

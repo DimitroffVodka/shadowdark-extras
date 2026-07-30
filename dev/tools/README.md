@@ -22,6 +22,51 @@ npm run gate:imports && npm run gate:script-paths && npm run snapshot:registrati
 | String-path guard | `npm run gate:script-paths` | No shipped runtime JS contains `modules/shadowdark-extras/scripts/`. |
 | Registration snapshot | `npm run snapshot:registrations` | The set and per-module source order of `Hooks.on/once/off`, `libWrapper.register`, and socketlib registrations is unchanged. |
 | API-export snapshot | `npm run snapshot:api` | The four manifest-declared esmodules export the same names. |
+| Settings-key snapshot | `npm run snapshot:settings` | No settings key or menu id was renamed or removed. These are stored in user worlds, so a rename silently orphans every GM's configured value. |
+
+## The runtime tier — Quench
+
+The five gates above are static. They cannot prove the module actually loaded
+and did its work, which is the failure a feature-folder move is most likely to
+cause. The `shadowdark-extras.structural` Quench batch
+(`dev/tests/quench/structural.batch.mjs`) covers that, and automates four rows
+of the plan's smoke matrix: module active and `module.api` matching the
+baseline, every settings key actually registered, the declared esmodules loaded,
+and real character/item sheets rendering.
+
+Run it after each Phase 2 move commit. It cannot run in CI — it needs a browser
+and a world — so it is a pre-merge tier above the static gates, not a
+replacement for them.
+
+**Running it headlessly (MCP bridge): render the results app first.** Quench's
+reporter writes into that app's DOM; calling `quench.runBatches()` while it is
+closed wedges the run — no tests execute, no `end` event fires, and every later
+run is refused with "Mocha instance is currently running tests" until the page
+is reloaded.
+
+```js
+await quench.app.render(true);
+await new Promise((r) => setTimeout(r, 1000));
+const runner = await quench.runBatches(["shadowdark-extras.structural"]);
+runner.once("end", () => console.log(runner.stats));
+```
+
+Verified 2026-07-30 on Quench 0.10.1 / Foundry 14.365 / Shadowdark 4.0.6:
+**9 passing, 0 failing**, no leftover documents.
+
+### Why the settings check needs both tiers
+
+The static gate reads 141 keys and 17 menus. The live registry has **156** keys,
+because roughly a dozen call sites build their key in a loop — those are counted
+in `dynamicSites` rather than hidden, so the blind spot is visible and its size
+is itself gated. The batch reads the live registry and so covers all 156.
+
+Three keys go the other way: `aaIntegration`, `aaAnimateOnSuccess`, and
+`aaAnimateSpellsWithoutTarget` exist in source but are registered only when the
+`autoanimations` module is active. They are listed under `optionalModuleGated`
+in the snapshot so the batch does not demand a key that legitimately cannot be
+there. That list is hand-maintained and fails closed: a new gated key shows up
+as a batch failure until it is added.
 
 Supporting tool, not a gate:
 
