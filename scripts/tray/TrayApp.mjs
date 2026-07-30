@@ -25,11 +25,11 @@ import { PlaceableNotesSD } from "../journal/PlaceableNotesSD.mjs";
 import { setMapDimension, formatActiveScene, enablePainting, disablePainting, toggleTileSelection, clearTileSelection, setSearchFilter, toggleWaterEffect, toggleWindEffect, toggleFogAnimation, toggleTintEnabled, toggleBwEffect, isTintEnabled, setActiveTileTab, setCustomTileDimension, toggleColoredFolderCollapsed, toggleSymbolFolderCollapsed, undoLastPoi, redoLastPoi, canUndoPoi, canRedoPoi, getPoiScale, enablePreview, disablePreview, getActiveTileTab, adjustPoiScale, rotatePoiLeft, rotatePoiRight, togglePoiMirror, getPoiMirror, setDecorSearchFilter, toggleDecorFolderCollapsed, setDecorMode, setDecorElevation, setDecorSort, reloadDecorAssets, registerDecorAsset, appendCustomNavSegment, setCustomNavPath, reloadCustomTiles } from "../hex/HexPainterSD.mjs";
 import { generateHexMap, clearGeneratedTiles } from "../hex/HexGeneratorSD.mjs";
 import { flattenTiles, unflattenTile, getDungeonFloorLevels, getFlattendDungeonLevels, flattenDungeonLevel } from "../canvas/TileFlattenSD.mjs";
-import { setDungeonMode, selectFloorTile, selectWallTile, selectDoorTile, selectIntWallTile, selectIntDoorTile, enableDungeonPainting, disableDungeonPainting, setNoFoundryWalls, setWallShadows, setCurvedWalls, setDungeonBackground } from "../DungeonPainterSD.mjs";
-import { toggleGeneratorPanel, isGeneratorExpanded, generateDungeon, generateRandomSeed, getGeneratorSeed, setGeneratorSeed, getGeneratorSettings, setGeneratorSettings } from "../DungeonGeneratorSD.mjs";
+import { setDungeonMode, selectFloorTile, selectWallTile, selectDoorTile, selectIntWallTile, selectIntDoorTile, enableDungeonPainting, disableDungeonPainting, setNoFoundryWalls, setWallShadows, setCurvedWalls, setDungeonBackground } from "../dungeon/DungeonPainterSD.mjs";
+import { toggleGeneratorPanel, isGeneratorExpanded, generateDungeon, generateRandomSeed, getGeneratorSeed, setGeneratorSeed, getGeneratorSettings, setGeneratorSettings } from "../dungeon/DungeonGeneratorSD.mjs";
 // Side-effect import: loads the multi-level engine at startup so it can register the standalone
 // mlSliders client setting + the renderTrayApp persistence hook (Levels/Links/Variation/Variety).
-import "../DungeonMultiLevelSD.mjs";
+import "../dungeon/DungeonMultiLevelSD.mjs";
 import { isHexFogEnabled, setHexFogEnabled, getActiveHexFogEffect, setHexFogEffect, getAvailableHexFogEffects, isFogEffectsEnabled } from "../hex/SDXHexFogSD.mjs";
 import { isSoloMode, toggleSoloMode } from "../hex/SoloHexMode.mjs";
 
@@ -1504,7 +1504,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 // Multi-level dungeon — standalone engine, loaded on demand.
                 const variation = parseFloat(elem.querySelector(".dgen-variation")?.value ?? "1");
                 const connectorVariety = parseFloat(elem.querySelector(".dgen-variety")?.value ?? "0.4");
-                const { generateMultiLevelDungeon } = await import("../DungeonMultiLevelSD.mjs");
+                const { generateMultiLevelDungeon } = await import("../dungeon/DungeonMultiLevelSD.mjs");
                 await generateMultiLevelDungeon({
                     ...config, levelCount: levels, connectionsPerPair: links, variation, connectorVariety,
                 });
@@ -2745,7 +2745,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ui.notifications.warn("Only GMs can manage Dungeondraft packs.");
                 return;
             }
-            const { DDPackSettingsApp } = await import("../DDPackSettingsAppSD.mjs");
+            const { DDPackSettingsApp } = await import("../dungeon/DDPackSettingsAppSD.mjs");
             new DDPackSettingsApp().render(true);
         });
 

@@ -12,8 +12,8 @@
 // Hex-record linkage (features, content registry) stays in HexTooltipSD, which
 // already owns that data.
 
-import { generateDungeon } from "../DungeonGeneratorSD.mjs";
-import { generateDungeonRooms, getDungeonSizes } from "../DungeonGenerator.mjs";
+import { generateDungeon } from "../dungeon/DungeonGeneratorSD.mjs";
+import { generateDungeonRooms, getDungeonSizes } from "../dungeon/DungeonGenerator.mjs";
 import { JournalPinManager } from "../journal/JournalPinsSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";

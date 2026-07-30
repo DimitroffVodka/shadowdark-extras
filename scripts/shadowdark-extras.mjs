@@ -95,15 +95,15 @@ import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
 // Map-builder entry points — pulled in so we can expose them on module.api
 // for MCP / external automation. None of these modules register hooks at import
 // time (verified), so this only adds the named exports to the bundle graph.
-import { generateDungeon, getGeneratorSettings, setGeneratorSettings, generateRandomSeed, generateLayout, generateMixedLayout } from "./DungeonGeneratorSD.mjs";
+import { generateDungeon, getGeneratorSettings, setGeneratorSettings, generateRandomSeed, generateLayout, generateMixedLayout } from "./dungeon/DungeonGeneratorSD.mjs";
 import { buildHexDungeonScene } from "./hex/HexDungeonBridgeSD.mjs";
-import { generateCaveLayout, buildCaveLoops, traceBoundaryLoops } from "./DungeonCaveSD.mjs";
-import { assignBiomes, buildCellFloorMap, getBiomeDefs, getCustomBiomes, setCustomBiome, removeCustomBiome, resetCustomBiomes, getEnabledBiomeKeys, getDisabledBiomes, setBiomeEnabled } from "./DungeonBiomesSD.mjs";
-import { openBiomeEditor } from "./BiomeEditorSD.mjs";
+import { generateCaveLayout, buildCaveLoops, traceBoundaryLoops } from "./dungeon/DungeonCaveSD.mjs";
+import { assignBiomes, buildCellFloorMap, getBiomeDefs, getCustomBiomes, setCustomBiome, removeCustomBiome, resetCustomBiomes, getEnabledBiomeKeys, getDisabledBiomes, setBiomeEnabled } from "./dungeon/DungeonBiomesSD.mjs";
+import { openBiomeEditor } from "./dungeon/BiomeEditorSD.mjs";
 import { generateHexMap, clearGeneratedTiles } from "./hex/HexGeneratorSD.mjs";
 import { buildHexcrawl, buildHexcrawlFromFile } from "./hex/HexcrawlBuilderSD.mjs";
-import { getSceneLevelContext, applySceneLevelData, getDungeonBackground } from "./DungeonPainterSD.mjs";
-import { placeChangeLevelRegion, placeDungeonSurface, placeDungeonDecor } from "./DungeonRegionsSD.mjs";
+import { getSceneLevelContext, applySceneLevelData, getDungeonBackground } from "./dungeon/DungeonPainterSD.mjs";
+import { placeChangeLevelRegion, placeDungeonSurface, placeDungeonDecor } from "./dungeon/DungeonRegionsSD.mjs";
 
 
 const MODULE_ID = "shadowdark-extras";
@@ -3173,7 +3173,7 @@ function registerSettings() {
 		type: class extends foundry.applications.api.ApplicationV2 {
 			static DEFAULT_OPTIONS = { id: "sdx-ddpack-settings-menu-stub", window: { title: "" } };
 			async render() {
-				const { DDPackSettingsApp } = await import("./DDPackSettingsAppSD.mjs");
+				const { DDPackSettingsApp } = await import("./dungeon/DDPackSettingsAppSD.mjs");
 				new DDPackSettingsApp().render(true);
 				return this;
 			}

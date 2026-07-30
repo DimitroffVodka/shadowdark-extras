@@ -5,7 +5,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
 
 import { getAvailableBiomes, generateHexHtml } from "./HexContentGenerator.mjs";
 import { getSettlementTypes, generateSettlementHtml } from "./SettlementGenerator.mjs";
-import { getDungeonTypes, getDungeonSizes, generateDungeonHtml } from "../DungeonGenerator.mjs";
+import { getDungeonTypes, getDungeonSizes, generateDungeonHtml } from "../dungeon/DungeonGenerator.mjs";
 import { buildHexDungeonScene } from "./HexDungeonBridgeSD.mjs";
 import { formatHexCoord } from "./SDXCoordsSD.mjs";
 import { registerContentRegistrySetting, registerContent } from "./ContentRegistry.mjs";

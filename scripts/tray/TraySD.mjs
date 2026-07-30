@@ -19,7 +19,7 @@ import {
     initDungeonSocket,
     isGMOnline,
     canPlayerPaint
-} from "../DungeonPainterSD.mjs";
+} from "../dungeon/DungeonPainterSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
