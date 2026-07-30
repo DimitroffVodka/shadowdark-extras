@@ -17,7 +17,7 @@ import { TravelSpeedsSettingsApp, registerTravelSpeedsSettings, getTravelSpeeds 
 import { registerPartyWeatherSettings } from "./PartyWeatherSettingsSD.mjs";
 import { generateSpellConfig, generatePotionConfig, generateScrollConfig, generateWandConfig } from "./templates/ItemTypeConfigs.mjs";
 import { activateTemplateTargetingListeners } from "./templates/TemplateTargetingConfig.mjs";
-import { readSdRollOutcome, resolveCardContext } from "./sd4Compat.mjs";
+import { readSdRollOutcome, resolveCardContext } from "./shared/sd4Compat.mjs";
 import {
 	injectWeaponBonusTab,
 	getWeaponBonuses,
@@ -42,7 +42,7 @@ import { openWeaponAnimationConfig } from "./WeaponAnimationConfig.mjs";
 import { initFocusSpellTracker, endFocusSpell, linkEffectToFocusSpell, getActiveFocusSpells, isFocusingOnSpell, startDurationSpell, endDurationSpell, registerSpellModification, getActiveDurationSpells } from "./FocusSpellTrackerSD.mjs";
 import { initBreakOnDamage, breakEffectOnDamage, clearBreakOnDamage, applySpellEffect } from "./BreakOnDamageSD.mjs";
 import { initCarousing, injectCarousingButton, ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, getCustomCarousingTables, getCarousingTableById, setCarousingTable, migrateLegacyRenown } from "./CarousingSD.mjs";
-import { migrateWebpAssetPaths, sweepWorldCompendiums } from "./WebpMigrationSD.mjs";
+import { migrateWebpAssetPaths, sweepWorldCompendiums } from "./shared/WebpMigrationSD.mjs";
 import { openCarousingOverlay, refreshCarousingOverlay } from "./CarousingOverlaySD.mjs";
 import { openCarousingTablesEditor } from "./CarousingTablesApp.mjs";
 import { openExpandedCarousingTablesEditor } from "./ExpandedCarousingTablesApp.mjs";
@@ -83,7 +83,7 @@ import { WallContextMenuSD } from "./WallContextMenuSD.mjs";
 import { sdxDrawingTool } from "./SDXDrawingTool.mjs";
 import { sdxDrawingToolbar } from "./SDXDrawingToolbar.mjs";
 import { SDXRollerApp } from "./SDXRollerApp.mjs";
-import { ensureMutableItemCompendiumIndexes } from "./CompendiumIndexSD.mjs";
+import { ensureMutableItemCompendiumIndexes } from "./shared/CompendiumIndexSD.mjs";
 import { initSDXCoords, registerSDXCoordsSettings, registerSDXCoordsMenu } from "./SDXCoordsSD.mjs";
 import { SDXCoordsSettingsApp } from "./SDXCoordsSettingsSD.mjs";
 import { initHexTooltip, HEX_JOURNAL_NAME } from "./HexTooltipSD.mjs";

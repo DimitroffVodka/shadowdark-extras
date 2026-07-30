@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import test from "node:test";
 
-import { normalizeModulePath, planWebpSwap, toUrl } from "../../scripts/WebpMigrationSD.mjs";
+import { normalizeModulePath, planWebpSwap, toUrl } from "../../scripts/shared/WebpMigrationSD.mjs";
 
 const moduleRoot = new URL("../../", import.meta.url);
 const MODULE_PREFIX = "modules/shadowdark-extras/";

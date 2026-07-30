@@ -1,4 +1,4 @@
-import { cache } from "./SDXCache.mjs";
+import { cache } from "./shared/SDXCache.mjs";
 import { buildCaveLoops, generateCurvedWalls, generateCurvedWallVisuals } from "./DungeonCaveSD.mjs";
 /**
  * SDX Dungeon Painter - Room/Dungeon mapping tool

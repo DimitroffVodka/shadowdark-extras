@@ -22,7 +22,14 @@ import { listJsFiles, toRepoPath, REPO_ROOT } from "./project-scan.mjs";
  *
  * Advisory, not a gate: it runs before a move, on a path that has not moved yet.
  *
- *   npm run premove -- scripts/CompendiumIndexSD.mjs
+ *   npm run premove -- scripts/AuraEffectsSD.mjs
+ *
+ * The example names a file that has not moved yet, because a worked example is
+ * only useful before the move. This comment previously named
+ * `scripts/CompendiumIndexSD.mjs` and went stale the moment Phase 1 moved it —
+ * running the old example afterwards reported that file's real imports as
+ * ungated, which is precisely the wrong answer. Point it at an unmoved file, or
+ * at nothing.
  */
 
 /** Text files worth searching. Vendor trees and binaries are skipped. */

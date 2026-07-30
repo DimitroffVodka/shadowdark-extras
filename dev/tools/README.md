@@ -88,12 +88,21 @@ invisible to all five of them, and two such paths already existed in this repo:
   `path.join(__dirname, "..", "data", …)`. Move the file it generates without
   editing that line and the next regeneration silently recreates the old copy.
 - `dev/tests/shadowdarkling-roller-regressions.mjs` reached
-  `CompendiumIndexSD.mjs` — Phase 1 step 11's move target — through
-  `new URL(…)`. Converted to a literal specifier, so the resolver now covers it.
+  `CompendiumIndexSD.mjs` through `new URL(…)`. It was converted to a literal
+  specifier in Phase 0, which is the only reason Phase 1 step 11 could move that
+  file safely — the resolver named both consumers and the move updated both.
 
 `premove` does that search for you and flags constructed paths specifically.
 Treat its "NOT covered" list as the manual checklist for the move commit;
 documentation hits are informational, constructed paths are not.
+
+**Actually work the list.** During Phase 1 step 11 the tool correctly reported a
+stale reference in this very file, the report was read, and the reference was
+left unfixed until review caught it. A checklist you generate and skim is worth
+nothing. Note in particular that the tool's own usage examples are references
+like any other: naming a real path in a doc comment means that comment goes
+stale the moment the path moves, and a stale example gives a confidently wrong
+answer rather than an obviously broken one.
 
 It is best-effort by nature: a path assembled from fragments
 (`path.join(dir, name + ".mjs")`) cannot be matched by any search. Reviewing the
