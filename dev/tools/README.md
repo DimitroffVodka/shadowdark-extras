@@ -68,11 +68,36 @@ in the snapshot so the batch does not demand a key that legitimately cannot be
 there. That list is hand-maintained and fails closed: a new gated key shows up
 as a batch failure until it is added.
 
-Supporting tool, not a gate:
+Supporting tools, not gates:
 
 | Tool | Command | Produces |
 | --- | --- | --- |
 | Cross-feature import matrix | `npm run matrix:imports` | `docs/architecture/cross-feature-import-matrix.md` (local-only) |
+| Pre-move reference finder | `npm run premove -- <path>` | Every textual reference to a file, split into "the resolver covers this" and "update by hand" |
+
+## Run this before every Phase 2 move
+
+```bash
+npm run premove -- scripts/AuraEffectsSD.mjs
+```
+
+The gates only follow **literal** import specifiers. A path built at runtime is
+invisible to all five of them, and two such paths already existed in this repo:
+
+- `dev/regen-creature-type-map.mjs:23` builds its output path with
+  `path.join(__dirname, "..", "data", …)`. Move the file it generates without
+  editing that line and the next regeneration silently recreates the old copy.
+- `dev/tests/shadowdarkling-roller-regressions.mjs` reached
+  `CompendiumIndexSD.mjs` — Phase 1 step 11's move target — through
+  `new URL(…)`. Converted to a literal specifier, so the resolver now covers it.
+
+`premove` does that search for you and flags constructed paths specifically.
+Treat its "NOT covered" list as the manual checklist for the move commit;
+documentation hits are informational, constructed paths are not.
+
+It is best-effort by nature: a path assembled from fragments
+(`path.join(dir, name + ".mjs")`) cannot be matched by any search. Reviewing the
+move commit is still the backstop.
 
 ## What these gates do NOT prove
 

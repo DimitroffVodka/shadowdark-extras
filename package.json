@@ -15,6 +15,7 @@
     "snapshot:api": "node dev/tools/api-export-snapshot.mjs",
     "snapshot:settings": "node dev/tools/settings-snapshot.mjs",
     "matrix:imports": "node dev/tools/feature-import-matrix.mjs",
+    "premove": "node dev/tools/find-path-refs.mjs",
     "pack": "node ./dev/packs/pack.mjs",
     "unpack": "node ./dev/packs/unpack.mjs",
     "release:check": "node ./dev/release-check.mjs"

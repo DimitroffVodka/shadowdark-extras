@@ -1,20 +1,15 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const moduleRoot = new URL("../../", import.meta.url);
 
 test("frozen compendium index system data is replaced with a mergeable clone", async () => {
-	const helperUrl = new URL("scripts/CompendiumIndexSD.mjs", moduleRoot);
-	assert.ok(
-		existsSync(helperUrl),
-		"CompendiumIndexSD.mjs must provide the Shadowdark v14 index workaround"
-	);
-
-	// Literal relative specifier, not `import(helperUrl.href)`: the structural
-	// track's import resolver can only follow literal paths, and this file is
-	// Phase 1 step 11's move target. A constructed URL here would let that move
-	// break this test with every gate still green.
+	// Literal relative specifier, never a constructed `new URL(...)`: the
+	// structural track's import resolver can only follow literal paths, and this
+	// file is Phase 1 step 11's move target. The old existsSync guard was removed
+	// for the same reason — it was a second, ungated reference to the same path.
+	// The resolver now blocks such a move before this test can even run.
 	const { ensureMutableItemCompendiumIndexes } = await import("../../scripts/CompendiumIndexSD.mjs");
 	const frozenSystem = Object.freeze({
 		baseWeapon: "",
