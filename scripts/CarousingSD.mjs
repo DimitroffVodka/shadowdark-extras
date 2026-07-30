@@ -1285,8 +1285,11 @@ export function getActorRenown(actor) {
 export async function applyRenownDelta(actor, delta, reason = "") {
     if (!actor || !delta) return 0;
 
-    const sde = game.user?.isGM && game.modules.get("shadowdark-enhancer")?.active
-        ? game.shadowdarkEnhancer?.renown
+    // Reached through `globalThis` so the delta logic stays importable under
+    // node:test, where no `game` binding exists at all.
+    const g = globalThis.game;
+    const sde = g?.user?.isGM && g.modules.get("shadowdark-enhancer")?.active
+        ? g.shadowdarkEnhancer?.renown
         : null;
     if (typeof sde?.award === "function") {
         try {
