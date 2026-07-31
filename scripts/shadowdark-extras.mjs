@@ -128,7 +128,8 @@ import { setupWandUsesBlocker, setupSilencedCastingBlocker } from "./effects/cas
 import { registerPredefinedEffects } from "./effects/predefined-effects.mjs";
 import { registerContainerHooks, recomputeContainerSlots, patchGetPhysicalItemsForContainers, injectBasicContainerUI, attachContainerContentsToActorSheet, enableItemChatIcon } from "./inventory/containers.mjs";
 import { isUnidentified } from "./shared/sd4Compat.mjs";
-import { transferItemToPlayer, transferCoinsToPlayer, showCoinTransferDialog, showTransferDialog, patchPlayerSheetForTransfers } from "./inventory/player-transfers.mjs";
+import { patchPlayerSheetForTransfers } from "./inventory/player-transfers.mjs";
+import { enhanceDetailsTab, enhanceAbilitiesTab, enhanceTalentsTab, enhanceEffectsTab } from "./character-sheet/enhanced-tabs.mjs";
 import { injectEnhancedHeader, injectHeaderCustomization, injectPartyHeaderCustomization, injectAddCoinsButton, injectTradeButton } from "./character-sheet/enhanced-header.mjs";
 import { DEFAULT_LIGHT_TEMPLATES, LightTemplateEditor, extendLightSources, patchLightSourceMappings } from "./canvas/light-templates.mjs";
 import { patchCtrlMoveOnActorSheetDrops } from "./inventory/default-move-drops.mjs";
@@ -1608,161 +1609,9 @@ function setupSettingsOrganization() {
 
 
 
-// ============================================
-// ENHANCED DETAILS TAB
-// ============================================
-
-/**
- * Enhance the Details tab with improved styling and organization
- */
-function enhanceDetailsTab(app, html, actor) {
-	if (actor.type !== "Player") return;
-
-	const $detailsTab = html.find('.tab[data-tab="tab-details"]');
-	if (!$detailsTab.length) return;
-
-	// Add enhanced class to the details tab
-	$detailsTab.addClass('sdx-enhanced-details');
-
-	// Hide the level box (it's already in the enhanced header)
-	$detailsTab.find('.SD-box').first().hide();
-}
-
-// ============================================
-// ENHANCED ABILITIES TAB
-// ============================================
-
-/**
- * Enhance the Abilities tab with improved styling and organization
- */
-function enhanceAbilitiesTab(app, html, actor) {
-	if (actor.type !== "Player") return;
-
-	const $abilitiesTab = html.find('.tab[data-tab="tab-abilities"]');
-	if (!$abilitiesTab.length) return;
-
-	// Add enhanced class to the abilities tab
-	$abilitiesTab.addClass('sdx-enhanced-abilities');
-
-}
-
-
-// ============================================
-// ENHANCED TALENTS TAB
-// ============================================
-
-/**
- * Add inline control buttons to talent items
- */
-function addInlineTalentControls($talentsTab, actor) {
-	const $items = $talentsTab.find('.item');
-
-	$items.each(function () {
-		const $item = $(this);
-
-		// Skip if already has controls
-		if ($item.find('.sdx-talent-controls').length) return;
-
-		const itemId = $item.data('item-id');
-
-		if (!itemId) return;
-
-		// Create control buttons
-		const $controls = $(`
-			<div class="sdx-talent-controls">
-				<button type="button" class="sdx-talent-edit" data-tooltip="Edit" title="Edit">
-					<i class="fas fa-edit"></i>
-				</button>
-				<button type="button" class="sdx-talent-transfer" data-tooltip="Transfer to Player" title="Transfer to Player">
-					<i class="fas fa-share"></i>
-				</button>
-				<button type="button" class="sdx-talent-delete" data-tooltip="Delete" title="Delete">
-					<i class="fas fa-trash"></i>
-				</button>
-			</div>
-		`);
-
-		// Add controls to the item
-		$item.append($controls);
-
-		// Edit button
-		$controls.find('.sdx-talent-edit').on('click', async (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			const item = actor.items.get(itemId);
-			if (item) item.sheet.render(true);
-		});
-
-		// Transfer button
-		$controls.find('.sdx-talent-transfer').on('click', async (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			const item = actor.items.get(itemId);
-			if (item && game.user.isGM) {
-				const targetActorId = await showTransferDialog(actor, item);
-				if (targetActorId) {
-					await transferItemToPlayer(actor, item, targetActorId);
-				}
-			}
-		});
-
-		// Delete button
-		$controls.find('.sdx-talent-delete').on('click', async (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			const item = actor.items.get(itemId);
-			if (item) {
-				const confirm = await foundry.applications.api.DialogV2.confirm({
-					window: { title: "Delete Talent" },
-					content: `<p>Are you sure you want to delete <strong>${item.name}</strong>?</p>`,
-					modal: true
-				});
-
-				if (confirm) {
-					await item.delete();
-					ui.notifications.info(`Deleted ${item.name}`);
-				}
-			}
-		});
-	});
-}
-
-/**
- * Enhance the Talents tab with improved styling and organization
- */
-function enhanceTalentsTab(app, html, actor) {
-	if (actor.type !== "Player") return;
-
-	const $talentsTab = html.find('.tab[data-tab="tab-talents"]');
-	if (!$talentsTab.length) return;
-
-	// Add enhanced class to the talents tab
-	$talentsTab.addClass('sdx-enhanced-talents');
-
-	// Add inline control buttons to talent items
-	addInlineTalentControls($talentsTab, actor);
-}
-
-
-// ============================================
-// ENHANCED EFFECTS TAB
-// ============================================
-
-/**
- * Enhance the Effects tab with improved styling and organization
- */
-function enhanceEffectsTab(app, html, actor) {
-	if (actor.type !== "Player") return;
-
-	const $effectsTab = html.find('.tab[data-tab="tab-effects"]');
-	if (!$effectsTab.length) return;
-
-	// Add enhanced class to the effects tab
-	$effectsTab.addClass('sdx-enhanced-effects');
-}
-
-
-
+// The four small tab enhancers moved to character-sheet/enhanced-tabs.mjs,
+// together in one module because they are 12, 10, 12 and 9 lines. The
+// actor-sheet dispatcher below still calls all four.
 
 
 // ============================================

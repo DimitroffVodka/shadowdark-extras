@@ -53,6 +53,7 @@ export const FEATURE_OWNERS = {
     // notes ON an actor sheet stored in a module flag — not JournalEntry
     // documents. The feature map lists "journal notes" under Character sheets.
     "journal-notes.mjs",
+    "enhanced-tabs.mjs",
   ],
   "item-sheets": [
     "PotionSheetSD.mjs",
