@@ -118,8 +118,57 @@ export function buildInventory() {
   };
 }
 
+/**
+ * Compare a stored inventory against the current one. Declarations legitimately
+ * LEAVE the root as Phase 3 extracts them — that is the point — so a departure
+ * is reported for review rather than treated as an error. A declaration
+ * APPEARING is the real signal: the composition root should only ever shrink
+ * during this phase, and new module-scope state in it is state nobody has
+ * classified.
+ */
+export function diffInventory(baseline, current) {
+  const differences = [];
+  const before = new Map((baseline.declarations ?? []).map((d) => [d.name, d]));
+  const after = new Map(current.declarations.map((d) => [d.name, d]));
+
+  for (const [name, d] of after) {
+    if (!before.has(name)) differences.push(`NEW module-scope declaration in the root: ${name} (${d.kind}, ${d.shape})`);
+    else if (before.get(name).mutable !== d.mutable) {
+      differences.push(`${name}: mutability changed ${before.get(name).mutable} -> ${d.mutable}`);
+    }
+  }
+  const departed = [...before.keys()].filter((n) => !after.has(n));
+  return { differences, departed };
+}
+
 function main() {
   const inventory = buildInventory();
+
+  if (process.argv.includes("--check")) {
+    let baseline;
+    try {
+      baseline = JSON.parse(readFileSync(new URL(SNAPSHOT_PATH), "utf8"));
+    } catch {
+      console.log("[BLOCK] entry-state inventory: no baseline. Generate it with --write.");
+      process.exit(1);
+    }
+    const { differences, departed } = diffInventory(baseline, inventory);
+    console.log(
+      `entry-state inventory: ${inventory.totals.declarations} declarations, ` +
+        `${inventory.totals.mutable} mutable (baseline ${baseline.totals.declarations}/${baseline.totals.mutable})`,
+    );
+    if (departed.length > 0) {
+      console.log(`  [NOTE]  ${departed.length} declaration(s) extracted since the baseline: ${departed.join(", ")}`);
+      console.log("          Refresh the baseline once the extraction is reviewed: npm run inventory:entry -- --write");
+    }
+    if (differences.length > 0) {
+      for (const d of differences) console.log(`  ${d}`);
+      console.log(`[BLOCK] ${differences.length} unclassified change(s) to composition-root state.`);
+      process.exit(1);
+    }
+    console.log("entry-state inventory: OK");
+    return;
+  }
 
   if (process.argv.includes("--write")) {
     mkdirSync(new URL(".", SNAPSHOT_PATH), { recursive: true });

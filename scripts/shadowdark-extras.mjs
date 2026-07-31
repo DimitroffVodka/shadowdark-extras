@@ -93,7 +93,7 @@ import { initUnidentifiedGMDisplay } from "./inventory/UnidentifiedDisplaySD.mjs
 import { initTemplateElevationBadge } from "./effects/TemplateElevationBadgeSD.mjs";
 import { registerInvisibilityHooks } from "./effects/invisibility.mjs";
 import { registerActiveEffectConfigHooks } from "./effects/effect-config.mjs";
-import { registerContainerHooks, isContainerItem, isItemPilesEnabledActor, calculateSlotsCostForItemData, recomputeContainerSlots } from "./inventory/containers.mjs";
+import { registerContainerHooks, isContainerItem, isItemPilesEnabledActor, calculateSlotsCostForItemData, recomputeContainerSlots, calculateContainedItemSlots, getContainedItems, getPackedContainedItemData, syncContainerPackedItems } from "./inventory/containers.mjs";
 import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
 // Map-builder entry points — pulled in so we can expose them on module.api
 // for MCP / external automation. None of these modules register hooks at import
@@ -1243,25 +1243,6 @@ function patchGetPhysicalItemsForContainers() {
 	target.__sdxContainerItemsPatched = true;
 }
 
-function getContainedItems(containerItem) {
-	const actor = containerItem?.parent;
-	if (!actor) return [];
-	return actor.items.filter(i => i.getFlag(MODULE_ID, "containerId") === containerItem.id);
-}
-
-function getParentContainer(item) {
-	const containerId = item?.getFlag(MODULE_ID, "containerId");
-	if (!containerId) return null;
-	const actor = item?.parent;
-	if (!actor) return null;
-	return actor.items.get(containerId);
-}
-
-function getPackedContainedItemData(containerItem) {
-	const packed = containerItem?.getFlag?.(MODULE_ID, "containerPackedItems");
-	return Array.isArray(packed) ? packed : [];
-}
-
 function getPackedKeyFromItemData(itemData) {
 	return itemData?.flags?.[MODULE_ID]?.packedKey ?? null;
 }
@@ -1301,94 +1282,6 @@ async function packItemToContainerData(sourceItem) {
 }
 
 
-function calculateSlotsCostForItem(item, { ignoreIsPhysical = false } = {}) {
-	// Mirror the simple Shadowdark slot math used elsewhere in this module:
-	// cost = ceil(qty / per_slot) * slots_used
-	const system = item?.system ?? {};
-	if (!ignoreIsPhysical && !system.isPhysical) return 0;
-	if (item?.type === "Gem") return 0;
-	if (system.stashed) return 0;
-
-	const qty = Math.max(0, Number(system.quantity ?? 1) || 0);
-	const perSlot = Math.max(1, Number(system.slots?.per_slot ?? 1) || 1);
-	const slotsUsed = Math.max(0, Number(system.slots?.slots_used ?? 1) || 0);
-	return Math.ceil(qty / perSlot) * slotsUsed;
-}
-
-
-function calculateContainedItemSlots(item) {
-	// Contained items are forcibly set to non-physical to hide them; for container math we
-	// treat them as physical only if they originally were.
-	const originallyPhysical = item?.getFlag?.(MODULE_ID, "containerOrigIsPhysical");
-	if (originallyPhysical === false) return 0;
-
-	// For containers, use base slots to avoid double-counting
-	let slots;
-	if (isContainerItem(item)) {
-		// Use base slots for nested containers
-		const baseSlots = item.getFlag(MODULE_ID, "containerBaseSlots");
-		if (baseSlots) {
-			const qty = Math.max(0, Number(item.system?.quantity ?? 1) || 0);
-			const perSlot = Math.max(1, Number(baseSlots.per_slot ?? 1) || 1);
-			const baseSlotsUsed = Math.max(0, Number(baseSlots.slots_used ?? 1) || 0);
-			const freeCarry = Math.max(0, Number(item.system?.slots?.free_carry ?? 0) || 0);
-			let baseSlotCost = Math.ceil(qty / perSlot) * baseSlotsUsed;
-			// Apply free carry to the container itself (but not contents)
-			// Free carry of 1 means the container itself is free (0 slots)
-			if (freeCarry > 0) {
-				baseSlotCost = 0;
-			}
-			slots = baseSlotCost;
-		} else {
-			slots = calculateSlotsCostForItem(item, { ignoreIsPhysical: true });
-		}
-	} else {
-		slots = calculateSlotsCostForItem(item, { ignoreIsPhysical: true });
-	}
-
-	// If this item is itself a container, recursively add its contained items' slots
-	if (isContainerItem(item)) {
-		const actor = item.parent;
-		const packedOnly = !actor || isItemPilesEnabledActor(actor);
-
-		if (packedOnly) {
-			// Use packed data for actorless or Item Piles containers
-			for (const data of getPackedContainedItemData(item)) {
-				slots += calculateSlotsCostForItemData(data, { recursive: true });
-			}
-		} else {
-			// Use embedded items for normal actors
-			const contained = getContainedItems(item);
-			for (const nestedItem of contained) {
-				slots += calculateContainedItemSlots(nestedItem);
-			}
-		}
-
-		// Add coin weight from nested container
-		const coins = item.getFlag(MODULE_ID, "containerCoins") || {};
-		const gp = Number(coins.gp ?? 0);
-		const sp = Number(coins.sp ?? 0);
-		const cp = Number(coins.cp ?? 0);
-		const totalCoins = gp + sp + cp;
-		const coinSlots = Math.floor(totalCoins / 100);
-		slots += coinSlots;
-	}
-
-	return slots;
-}
-
-async function ensureContainerBaseSlots(containerItem) {
-	if (!containerItem) return;
-	const existing = containerItem.getFlag(MODULE_ID, "containerBaseSlots");
-	if (existing && typeof existing === "object") return;
-	const base = {
-		slots_used: Number(containerItem.system?.slots?.slots_used ?? 1) || 1,
-		per_slot: Number(containerItem.system?.slots?.per_slot ?? 1) || 1,
-		max: Number(containerItem.system?.slots?.max ?? 1) || 1,
-	};
-	await containerItem.setFlag(MODULE_ID, "containerBaseSlots", base);
-}
-
 async function restoreContainerBaseSlots(containerItem) {
 	if (!containerItem) return;
 	const base = containerItem.getFlag(MODULE_ID, "containerBaseSlots");
@@ -1400,39 +1293,6 @@ async function restoreContainerBaseSlots(containerItem) {
 	}, { sdxInternal: true });
 }
 
-
-async function syncContainerPackedItems(containerItem) {
-	if (!containerItem || !isContainerItem(containerItem) || !containerItem.parent) return;
-	if (isItemPilesEnabledActor(containerItem.parent)) return;
-	const contained = getContainedItems(containerItem);
-	const packed = contained.map(i => {
-		const data = i.toObject();
-		// Store as a template for recreation on another actor
-		delete data._id;
-		data.flags = data.flags ?? {};
-		data.flags[MODULE_ID] = data.flags[MODULE_ID] ?? {};
-		// ContainerId will be rewritten on unpack
-		data.flags[MODULE_ID].containerId = null;
-		// Clear the unpacked flag so it can be unpacked when copied to another actor
-		delete data.flags[MODULE_ID].containerUnpacked;
-		// Clear the actor-specific unpack flag
-		delete data.flags[MODULE_ID].containerUnpackedOnActor;
-		// Ensure it stays hidden when recreated
-		data.system = data.system ?? {};
-		data.system.isPhysical = false;
-		return data;
-	});
-	// Use update with sdxInternal to prevent hook recursion
-	await containerItem.update({
-		[`flags.${MODULE_ID}.containerPackedItems`]: packed,
-	}, { sdxInternal: true });
-	// Clear the unpacked flag on the current container since we just synced
-	if (containerItem.getFlag(MODULE_ID, "containerUnpacked")) {
-		await containerItem.update({
-			[`flags.${MODULE_ID}.-=containerUnpacked`]: null,
-		}, { sdxInternal: true });
-	}
-}
 
 async function setContainedState(item, containerId) {
 	if (!item) return;

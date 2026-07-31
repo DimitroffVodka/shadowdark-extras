@@ -81,6 +81,19 @@ if ! node dev/tools/settings-snapshot.mjs; then
   block_fail=1
 fi
 
+# Phase 3 gates. An extraction can leave a call pointing at a helper that stayed
+# behind, or read a constant it never imported — valid syntax, resolvable
+# imports, green snapshots, and a ReferenceError the first time the hook fires.
+if ! node dev/tools/binding-gate.mjs; then
+  echo "[BLOCK] new unbound identifier(s) — an extraction left a dangling reference"
+  block_fail=1
+fi
+
+if ! node dev/tools/entry-state-inventory.mjs --check; then
+  echo "[BLOCK] unclassified module-scope state in the composition root"
+  block_fail=1
+fi
+
 echo "=== BLOCKING — regressions of previously fixed bugs ==="
 
 # Socketlib auth: handler context is { socketdata: { userId } }, not { senderId }.

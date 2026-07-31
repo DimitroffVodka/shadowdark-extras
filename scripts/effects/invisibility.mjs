@@ -1,3 +1,5 @@
+import { MODULE_ID } from "../shared/module-id.mjs";
+
 /**
  * Invisibility effect: restore token visibility when the effect ends.
  *

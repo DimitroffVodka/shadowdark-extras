@@ -1,15 +1,15 @@
 {
   "$comment": "Phase 3 gate. Module-scope state of the composition root, with mutability judged per variable (const freezes the binding, not the value). An extraction that touches a variable absent from this inventory stops until the inventory is corrected. Regenerate: npm run inventory:entry -- --write",
   "file": "scripts/shadowdark-extras.mjs",
-  "lines": 21862,
+  "lines": 21172,
   "totals": {
-    "declarations": 25,
-    "const": 24,
+    "declarations": 23,
+    "const": 22,
     "let": 1,
-    "mutable": 16,
+    "mutable": 14,
     "immutable": 9,
-    "hookRegistrations": 95,
-    "leafRegistrations": 83
+    "hookRegistrations": 89,
+    "leafRegistrations": 79
   },
   "declarations": [
     {
@@ -23,7 +23,7 @@
     {
       "name": "MODULE_ID",
       "kind": "const",
-      "line": 109,
+      "line": 112,
       "shape": "string",
       "mutable": false,
       "exported": false
@@ -31,7 +31,7 @@
     {
       "name": "TRADE_JOURNAL_NAME",
       "kind": "const",
-      "line": 110,
+      "line": 113,
       "shape": "string",
       "mutable": false,
       "exported": false
@@ -39,7 +39,7 @@
     {
       "name": "CAROUSING_JOURNAL_NAME",
       "kind": "const",
-      "line": 111,
+      "line": 114,
       "shape": "string",
       "mutable": false,
       "exported": false
@@ -47,7 +47,7 @@
     {
       "name": "CAROUSING_TABLES_JOURNAL_NAME",
       "kind": "const",
-      "line": 112,
+      "line": 115,
       "shape": "string",
       "mutable": false,
       "exported": false
@@ -55,7 +55,7 @@
     {
       "name": "HIDDEN_JOURNAL_NAMES",
       "kind": "const",
-      "line": 115,
+      "line": 118,
       "shape": "Array",
       "mutable": true,
       "exported": false
@@ -63,31 +63,15 @@
     {
       "name": "DEFAULT_INVENTORY_STYLES",
       "kind": "const",
-      "line": 302,
+      "line": 305,
       "shape": "Object",
-      "mutable": true,
-      "exported": false
-    },
-    {
-      "name": "_containersBeingUnpacked",
-      "kind": "const",
-      "line": 1208,
-      "shape": "Set",
-      "mutable": true,
-      "exported": false
-    },
-    {
-      "name": "_containersBeingRecomputed",
-      "kind": "const",
-      "line": 1211,
-      "shape": "Set",
       "mutable": true,
       "exported": false
     },
     {
       "name": "_pendingHitBonusInfo",
       "kind": "const",
-      "line": 1215,
+      "line": 1213,
       "shape": "Map",
       "mutable": true,
       "exported": false
@@ -95,7 +79,7 @@
     {
       "name": "_selectedItems",
       "kind": "const",
-      "line": 2119,
+      "line": 1858,
       "shape": "WeakMap",
       "mutable": true,
       "exported": false
@@ -103,7 +87,7 @@
     {
       "name": "DEFAULT_LIGHT_TEMPLATES",
       "kind": "const",
-      "line": 2425,
+      "line": 2164,
       "shape": "Array",
       "mutable": true,
       "exported": false
@@ -111,7 +95,7 @@
     {
       "name": "NPC_INVENTORY_TYPES",
       "kind": "const",
-      "line": 2737,
+      "line": 2476,
       "shape": "Array",
       "mutable": true,
       "exported": false
@@ -119,7 +103,7 @@
     {
       "name": "npcActiveTabTracker",
       "kind": "const",
-      "line": 2748,
+      "line": 2487,
       "shape": "Map",
       "mutable": true,
       "exported": false
@@ -127,7 +111,7 @@
     {
       "name": "DEFAULT_JOURNAL_PAGE",
       "kind": "const",
-      "line": 4286,
+      "line": 4024,
       "shape": "Object",
       "mutable": true,
       "exported": false
@@ -135,7 +119,7 @@
     {
       "name": "HP_QUICK_ADJUST_TOOLTIP",
       "kind": "const",
-      "line": 6477,
+      "line": 6215,
       "shape": "string",
       "mutable": false,
       "exported": false
@@ -143,7 +127,7 @@
     {
       "name": "hpQuickAdjustments",
       "kind": "const",
-      "line": 6478,
+      "line": 6216,
       "shape": "Map",
       "mutable": true,
       "exported": false
@@ -151,7 +135,7 @@
     {
       "name": "_SDX_V2_ITEM_SHEETS",
       "kind": "const",
-      "line": 15791,
+      "line": 15526,
       "shape": "Set",
       "mutable": true,
       "exported": false
@@ -159,7 +143,7 @@
     {
       "name": "macroExecuteSocket",
       "kind": "let",
-      "line": 17566,
+      "line": 17107,
       "shape": "uninitialised",
       "mutable": true,
       "exported": false
@@ -167,7 +151,7 @@
     {
       "name": "_sdxSpellMacroProcessedMessages",
       "kind": "const",
-      "line": 18590,
+      "line": 18131,
       "shape": "Set",
       "mutable": true,
       "exported": false
@@ -175,7 +159,7 @@
     {
       "name": "_sdxItemMacroProcessedMessages",
       "kind": "const",
-      "line": 18591,
+      "line": 18132,
       "shape": "Set",
       "mutable": true,
       "exported": false
@@ -183,7 +167,7 @@
     {
       "name": "SDX_MACRO_EPOCH",
       "kind": "const",
-      "line": 18599,
+      "line": 18140,
       "shape": "expression",
       "mutable": false,
       "exported": false
@@ -191,7 +175,7 @@
     {
       "name": "sdxIsHistoricalMessage",
       "kind": "const",
-      "line": 18600,
+      "line": 18141,
       "shape": "function",
       "mutable": false,
       "exported": false
@@ -199,7 +183,7 @@
     {
       "name": "_sdxFxProcessedMessages",
       "kind": "const",
-      "line": 18694,
+      "line": 18235,
       "shape": "Set",
       "mutable": true,
       "exported": false
@@ -207,7 +191,7 @@
     {
       "name": "_originalGetRectShape",
       "kind": "const",
-      "line": 19512,
+      "line": 19053,
       "shape": "expression",
       "mutable": false,
       "exported": false
@@ -215,32 +199,28 @@
   ],
   "sharedBy": {
     "HIDDEN_JOURNAL_NAMES": [
-      9348
-    ],
-    "_containersBeingUnpacked": [
-      16294,
-      16334
+      9085
     ],
     "_pendingHitBonusInfo": [
-      9426,
-      15870
+      9163,
+      15605
     ],
     "_SDX_V2_ITEM_SHEETS": [
-      15799
+      15534
     ],
     "macroExecuteSocket": [
-      17587,
-      18256,
-      19376
+      17128,
+      17797,
+      18917
     ],
     "_sdxSpellMacroProcessedMessages": [
-      18605
+      18146
     ],
     "_sdxItemMacroProcessedMessages": [
-      18758
+      18299
     ],
     "_sdxFxProcessedMessages": [
-      18695
+      18236
     ]
   }
 }

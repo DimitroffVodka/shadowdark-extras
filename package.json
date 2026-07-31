@@ -19,7 +19,8 @@
     "premove": "node dev/tools/find-path-refs.mjs",
     "pack": "node ./dev/packs/pack.mjs",
     "unpack": "node ./dev/packs/unpack.mjs",
-    "release:check": "node ./dev/release-check.mjs"
+    "release:check": "node ./dev/release-check.mjs",
+    "gate:bindings": "node dev/tools/binding-gate.mjs"
   },
   "//engines": "Node 24 is the supported runtime for release:check and the packs tooling. See dev/tools/README.md for the two environment failures that must not be recorded as a pass.",
   "engines": {

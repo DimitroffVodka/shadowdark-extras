@@ -1,3 +1,5 @@
+import { MODULE_ID } from "../shared/module-id.mjs";
+
 /**
  * Active Effect configuration sheet behaviour.
  *
