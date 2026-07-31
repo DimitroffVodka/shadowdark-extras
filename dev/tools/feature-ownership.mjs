@@ -225,6 +225,10 @@ export const FEATURE_OWNERS = {
     // imports `getCustomLightSources` from it — the crossing that used to run
     // party -> root -> party, now a plain party -> canvas row in the matrix.
     "light-templates.mjs",
+    // Third-party compatibility: makes shadowdark-crawl-helper's lights-out
+    // carousel draggable. Here rather than shared/ because shared takes a helper
+    // at its SECOND consumer and this has one.
+    "carousel-drag.mjs",
   ],
   scene: ["SceneImporter.mjs", "SceneExporter.mjs", "SceneNavBar.mjs"],
   tray: ["TraySD.mjs", "TrayApp.mjs", "SDXRollerApp.mjs", "SDXRollerData.mjs"],

@@ -327,6 +327,9 @@
       "Hooks.on:updateActor",
       "Hooks.on:updateActor"
     ],
+    "carousel-drag.mjs": [
+      "Hooks.once:ready"
+    ],
     "chat-card-hooks.mjs": [
       "Hooks.on:preCreateChatMessage",
       "Hooks.on:renderChatMessageHTML"
@@ -439,7 +442,6 @@
       "Hooks.once:ready",
       "Hooks.on:renderNpcSheetSD",
       "Hooks.on:getSceneContextOptions",
-      "Hooks.once:ready",
       "Hooks.once:ready",
       "Hooks.once:ready",
       "Hooks.once:init",
