@@ -17,6 +17,8 @@ export const FEATURE_OWNERS = {
     "TradeWindowSD.mjs",
     "UnidentifiedDisplaySD.mjs",
     "ItemPilesCompatSD.mjs",
+    // Extracted from the composition root in Phase 3.
+    "containers.mjs",
   ],
   "character-sheet": [
     "SheetEditorConfig.mjs",
@@ -36,7 +38,13 @@ export const FEATURE_OWNERS = {
     "SummoningConfig.mjs",
     "ItemGiveConfig.mjs",
   ],
-  "item-macros": ["ItemMacroConfig.mjs", "SpellMacrosSD.mjs"],
+  "item-macros": [
+    "ItemMacroConfig.mjs",
+    "SpellMacrosSD.mjs",
+    "macro-socket.mjs",
+    "item-macro-engine.mjs",
+    "class-ability-macros.mjs",
+  ],
   combat: [
     "CombatSettingsSD.mjs",
     "WeaponBonusConfig.mjs",
@@ -53,6 +61,9 @@ export const FEATURE_OWNERS = {
     "EffectsSettingsSD.mjs",
     "AuraConfig.mjs",
     "TemplateElevationBadgeSD.mjs",
+    // Extracted from the composition root in Phase 3.
+    "effect-config.mjs",
+    "invisibility.mjs",
   ],
   animation: [
     "AnimationFxSD.mjs",
@@ -171,7 +182,22 @@ export const FEATURE_OWNERS = {
     "TomMigrationService.mjs",
   ],
   maphub: ["MaphubSD.mjs", "MaphubLauncherApp.mjs", "MaphubViewerApp.mjs", "OnePageParserSD.mjs"],
-  shared: ["sd4Compat.mjs", "SDXCache.mjs", "CompendiumIndexSD.mjs", "WebpMigrationSD.mjs"],
+  /**
+   * The stable module API and the developer/templates surface. Opened in Phase
+   * 3; the `SDX.templates` block still in the composition root joins it at
+   * step 13.
+   */
+  api: ["template-target-sync.mjs"],
+  shared: [
+    "sd4Compat.mjs",
+    "SDXCache.mjs",
+    "CompendiumIndexSD.mjs",
+    "WebpMigrationSD.mjs",
+    // Added in Phase 3. It lives in scripts/shared/ and was the matrix's only
+    // "Classify before Phase 2" row, left unassigned by oversight rather than
+    // by any open question about where it belongs.
+    "module-id.mjs",
+  ],
   /** The composition root. Its own imports are composition, not crossings. */
   root: ["shadowdark-extras.mjs"],
   /**
