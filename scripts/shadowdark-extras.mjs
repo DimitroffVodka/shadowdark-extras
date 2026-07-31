@@ -104,6 +104,7 @@ import { setupWandUsesBlocker, setupSilencedCastingBlocker } from "./effects/cas
 import { registerPredefinedEffects } from "./effects/predefined-effects.mjs";
 import { registerContainerHooks, recomputeContainerSlots, patchGetPhysicalItemsForContainers, injectBasicContainerUI, attachContainerContentsToActorSheet, enableItemChatIcon } from "./inventory/containers.mjs";
 import { isUnidentified } from "./shared/sd4Compat.mjs";
+import { initUnidentifiedSheetContext } from "./inventory/UnidentifiedDisplaySD.mjs";
 import { patchPlayerSheetForTransfers } from "./inventory/player-transfers.mjs";
 import { enhanceDetailsTab, enhanceAbilitiesTab, enhanceTalentsTab, enhanceEffectsTab } from "./character-sheet/enhanced-tabs.mjs";
 import { patchCharacterGeneratorRolls } from "./character-sheet/character-generator.mjs";
@@ -989,26 +990,11 @@ Hooks.on("preUpdateItem", (item, updateData, options, userId) => {
 // Chat-card target stash and damage-card injection; registered here to keep hook order
 registerChatCardHooks();
 
-// Wrap ItemSheet getData to modify context before rendering
+// The unidentified magicItem context wrap moved to
+// inventory/UnidentifiedDisplaySD.mjs, beside the GM display it mirrors.
+initUnidentifiedSheetContext();
+
 Hooks.once("ready", () => {
-	const ItemSheetClass = foundry.appv1?.sheets?.ItemSheet || globalThis.ItemSheet;
-	if (!ItemSheetClass?.prototype?.getData) return;
-
-	const originalGetData = ItemSheetClass.prototype.getData;
-	ItemSheetClass.prototype.getData = async function (options = {}) {
-		const data = await originalGetData.call(this, options);
-
-		// Hide magicItem property for unidentified items for non-GM players
-		const item = this?.item;
-		if (item && isUnidentified(item) && !game.user?.isGM && data?.system) {
-			// Deep clone the system data to avoid mutating the original
-			data.system = foundry.utils.duplicate(data.system);
-			data.system.magicItem = false;
-		}
-
-		return data;
-	};
-
 	// CRITICAL FIX: Wrap Shadowdark's createItemFromSpell to preserve our spell damage flags
 	// The system's function only copies type/name/system/img, stripping all flags
 	if (globalThis.shadowdark?.utils?.createItemFromSpell) {

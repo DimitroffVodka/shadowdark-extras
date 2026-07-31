@@ -9,6 +9,8 @@
  * Players see the plain unidentified name as usual.
  */
 
+import { isUnidentified } from "../shared/sd4Compat.mjs";
+
 export function initUnidentifiedGMDisplay() {
     Hooks.on("renderActorSheet", _patchActorSheet);
     Hooks.on("renderItemDirectory", _patchItemDirectory);
@@ -124,5 +126,42 @@ async function _patchCompendiumDirectory(app, html) {
         if (!nameEl) return;
 
         _setNameText(nameEl, _gmName(entry.name, entry.system.identification.name));
+    });
+}
+
+/**
+ * Hide `system.magicItem` from non-GM players on unidentified items.
+ *
+ * The counterpart to the GM display above: that one shows GMs MORE than the
+ * sheet would (the real name alongside the unidentified one), this one shows
+ * players LESS (an unidentified item must not advertise that it is magical).
+ * Same feature, opposite directions, which is why they live together.
+ *
+ * Extracted from the composition root in Phase 3. It shared a single
+ * `Hooks.once("ready")` there with an unrelated `createItemFromSpell` wrap;
+ * the two patch different objects and have no ordering relationship, so
+ * splitting them costs one extra registration and buys each half its real
+ * owner. The body is the root's verbatim, reindented from tabs to this file's
+ * four spaces — verified as a whitespace-only change, not retyped.
+ */
+export function initUnidentifiedSheetContext() {
+    Hooks.once("ready", () => {
+        const ItemSheetClass = foundry.appv1?.sheets?.ItemSheet || globalThis.ItemSheet;
+        if (!ItemSheetClass?.prototype?.getData) return;
+
+        const originalGetData = ItemSheetClass.prototype.getData;
+        ItemSheetClass.prototype.getData = async function (options = {}) {
+            const data = await originalGetData.call(this, options);
+
+            // Hide magicItem property for unidentified items for non-GM players
+            const item = this?.item;
+            if (item && isUnidentified(item) && !game.user?.isGM && data?.system) {
+                // Deep clone the system data to avoid mutating the original
+                data.system = foundry.utils.duplicate(data.system);
+                data.system.magicItem = false;
+            }
+
+            return data;
+        };
     });
 }

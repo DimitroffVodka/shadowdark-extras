@@ -130,6 +130,59 @@ try/catch so the next system change is loud instead of silent.
 
 ---
 
+## 13. The unidentified `magicItem` wrap is a permanent no-op: it guards on a
+return value that has no `system`
+
+**Found:** while splitting the shared `ready` hook in Phase 3. **Status:**
+confirmed, unfixed. **Pre-existing** — the body moved with a whitespace-only
+reindent (verified by stripping leading whitespace from both sides and
+requiring an exact match), so the move cannot have caused it.
+
+SDX wraps `ItemSheet.prototype.getData` to hide `system.magicItem` from
+non-GM players on unidentified items:
+
+```js
+const data = await originalGetData.call(this, options);
+const item = this?.item;
+if (item && isUnidentified(item) && !game.user?.isGM && data?.system) {
+    data.system = foundry.utils.duplicate(data.system);
+    data.system.magicItem = false;
+}
+```
+
+**`data.system` is never there.** The v1 `ItemSheet.getData()` return has no
+`system` key at all — Shadowdark's `ItemSheetSD` adds it AFTER
+`super.getData()` comes back. The guard's last clause is therefore always
+false and the body never runs. Measured in world `0100`, Foundry 14.365 /
+Shadowdark 4.0.6:
+
+| | |
+| --- | --- |
+| base `ItemSheet.getData()` keys | `cssClass, editable, document, data, limited, options, owner, title, item` |
+| `"system" in baseReturn` | **`false`** |
+| `"system" in ItemSheetSD.getData()` return | `true` |
+| `systemAddedBySubclassAfterSuper` | **`true`** |
+
+The other three clauses are all satisfied on a probe item —
+`isUnidentified(item)` returns `true` for `identification.identified ===
+false` — so the wrap installs, runs, and does nothing. An unidentified magic
+item still reports `magicItem === true` to a player: `docMagicItem: true`,
+`playerSees: true`, `gmSees: true`.
+
+**Not fixed here because the fix is a behaviour change, not a refactor.** It
+would have to patch `ItemSheetSD`'s chain rather than the base class, and that
+settles a product question a structural commit should not: whether an
+unidentified item may reveal that it is magical at all. `magicItem` may also
+reach the template by another path, which needs checking before anything is
+rewired.
+
+**Third member of the same family** as items 7 and 12 — SDX code that installs
+cleanly, guards on something that is never true under 4.x, and fails by doing
+nothing at all. Worth a sweep for other wraps whose guards were written
+against a 3.x return shape.
+
+---
+
 ## 1. The itemacro migration is one-shot; items added later never migrate
 
 **Status:** confirmed, unfixed, currently harmless.
