@@ -25,7 +25,6 @@ import { enhanceWandSheet } from "./item-sheets/wand-sheet-enhance.mjs";
 import {
 	injectWeaponBonusTab,
 	getWeaponBonuses,
-	getWeaponHitBonuses,
 	getWeaponEffectsToApply,
 	evaluateRequirements,
 	calculateWeaponBonusDamage,
@@ -36,7 +35,7 @@ import {
 	injectWeaponDamageTypeDropdown
 } from "./combat/WeaponBonusConfig.mjs";
 import { setupRollAttackPatches, setupRollConfigPatches } from "./combat/roll-patches.mjs";
-import { processWeaponBonuses, stashHitBonus, takeHitBonus, pendingHitBonusKeys } from "./combat/hit-bonus.mjs";
+import { processWeaponBonuses } from "./combat/hit-bonus.mjs";
 
 import { initAutoAnimationsIntegration } from "./animation/AutoAnimationsSD.mjs";
 import { AnimationFxSD } from "./animation/AnimationFxSD.mjs";
@@ -9328,59 +9327,17 @@ Hooks.once("ready", async () => {
 		//console.log(`${MODULE_ID} | Wrapped ActorSD._learnSpell to preserve spell damage flags`);
 	}
 
-	// Wrap ItemSD.rollItem to inject weapon hit bonuses
-	if (globalThis.shadowdark?.documents?.ItemSD) {
-		const ItemSD = globalThis.shadowdark.documents.ItemSD;
-		const original_rollItem = ItemSD.prototype.rollItem;
-
-		if (typeof original_rollItem === "function") {
-			ItemSD.prototype.rollItem = async function (parts, data, options = {}) {
-			// Only process weapon attacks
-			if (this.type === "Weapon" && data?.actor && data?.item) {
-				try {
-					// Get the target (if any)
-					const targetToken = options.targetToken || game.user.targets.first();
-					const targetActor = targetToken?.actor || null;
-
-					// Get weapon hit bonuses
-					const hitBonusResult = getWeaponHitBonuses(this, data.actor, targetActor);
-
-					if (hitBonusResult.hitBonus) {
-						let h = hitBonusResult.hitBonus.trim();
-						if (h.startsWith("+")) h = h.substring(1).trim();
-						if (h) {
-							// Normalize d... to 1d... for parseInt check in _digestParts
-							if (h.toLowerCase().startsWith("d")) h = "1" + h;
-
-							if (!parts.includes("@sdxHitBonus")) {
-								parts.push("@sdxHitBonus");
-								data.sdxHitBonus = h;
-							}
-
-							// Store hit bonus info for chat message display (will evaluate during message creation)
-							const actorId = data.actor._id || data.actor.id;
-							const itemId = this.id;
-							stashHitBonus(actorId, itemId, {
-								formula: h,
-								parts: hitBonusResult.hitBonusParts,
-								timestamp: Date.now()
-							});
-
-							//console.log(`${MODULE_ID} | Injected weapon hit bonus formula: ${h}`, hitBonusResult.hitBonusParts);
-						}
-					}
-				} catch (err) {
-					console.error(`${MODULE_ID} | Error applying weapon hit bonus:`, err);
-				}
-			}
-
-			// Call original method
-			return original_rollItem.call(this, parts, data, options);
-			};
-		}
-
-		//console.log(`${MODULE_ID} | Wrapped ItemSD.rollItem to inject weapon hit bonuses`);
-	}
+	// The weapon hit-bonus writer used to live here, wrapped onto
+	// `ItemSD.prototype.rollItem`. Shadowdark 4.0.6 does not define that method
+	// — it is absent from both src/documents/ItemSD.mjs and the compiled bundle
+	// — so the wrapper's `typeof original_rollItem === "function"` guard never
+	// passed and it was never installed. SD 4.x also routes attacks through
+	// `rollConfigGenerators` / `rollFromConfig`, never `rollItem`, so installing
+	// it later would not have helped either.
+	//
+	// The bonus is now recorded where it is actually applied, by the
+	// `renderRollDialogSD` handler in combat/roll-patches.mjs, and travels to the
+	// card on the roll config as `_sdxHitBonusInfo`. See combat/hit-bonus.mjs.
 
 	// Ensure trade journal exists (GM only creates it)
 	await ensureTradeJournal();
@@ -9911,76 +9868,12 @@ Hooks.on("preCreateChatMessage", (message, data, options, userId) => {
 			}
 		}
 
-		// Check for pending hit bonus info and store it in the message flags
-		// This allows us to display the hit bonus formula and result in the chat card
-		// Try multiple sources for actor/item IDs since they may not all be available at this point
-		const sdFlags = message.flags?.shadowdark;
-		const speakerActorId = message.speaker?.actor;
-
-		// Debug: log the regex matches
-		//console.log(`${MODULE_ID} | preCreateChatMessage regex matches:`, {
-		//actorIdMatch: actorIdMatch ? actorIdMatch[1] : null,
-		//itemIdMatch: itemIdMatch ? itemIdMatch[1] : null
-		//});
-
-		// Try to get itemId from multiple sources:
-		// 1. message.flags.shadowdark.itemId (may not be set yet)
-		// 2. HTML data attributes - use itemIdMatch from earlier
-		let sdItemId = sdFlags?.itemId;
-		if (!sdItemId && itemIdMatch) {
-			sdItemId = itemIdMatch[1];
-		}
-
-		// Debug: log the content to see what attributes are used
-		//console.log(`${MODULE_ID} | preCreateChatMessage content snippet:`, content.substring(0, 500));
-
-		// Debug: log what we have
-		/*//console.log(`${MODULE_ID} | preCreateChatMessage - checking for hit bonus:`, {
-			speakerActorId,
-			sdItemId,
-			pendingKeys: pendingHitBonusKeys()
-		});*/
-
-		if (speakerActorId && sdItemId) {
-			const hitBonusKey = `${speakerActorId}-${sdItemId}`;
-			//console.log(`${MODULE_ID} | Looking for hit bonus key: ${hitBonusKey}`);
-			const hitBonusInfo = takeHitBonus(hitBonusKey);
-
-			if (hitBonusInfo) {
-				// Store the hit bonus info in the message flags
-				// No timestamp check needed - we clean up after use anyway
-				// The hit bonus is stored before the roll dialog opens, so it can be
-				// quite old by the time the user clicks roll
-				message.updateSource({
-					"flags.shadowdark-extras.hitBonus": {
-						formula: hitBonusInfo.formula,
-						result: hitBonusInfo.result,
-						parts: hitBonusInfo.parts
-					}
-				});
-				//console.log(`${MODULE_ID} | Stored hit bonus info in message:`, hitBonusInfo);
-			}
-		} else if (actorIdMatch && itemIdMatch) {
-			// Fallback: try HTML data attributes (for item cards)
-			const actorId = actorIdMatch[1];
-			const itemId = itemIdMatch[1];
-			const hitBonusKey = `${actorId}-${itemId}`;
-			const hitBonusInfo = takeHitBonus(hitBonusKey);
-
-			if (hitBonusInfo) {
-				const isRecent = (Date.now() - hitBonusInfo.timestamp) < 5000;
-				if (isRecent) {
-					message.updateSource({
-						"flags.shadowdark-extras.hitBonus": {
-							formula: hitBonusInfo.formula,
-							result: hitBonusInfo.result,
-							parts: hitBonusInfo.parts
-						}
-					});
-					//console.log(`${MODULE_ID} | Stored hit bonus info in message (from HTML):`, hitBonusInfo);
-				}
-			}
-		}
+		// The hit-bonus stash consumer used to live here, matching a pending entry
+		// by `${speakerActorId}-${itemId}` and copying it onto
+		// `flags.shadowdark-extras.hitBonus`. Nothing ever filled that stash — its
+		// writer was never installed — and the breakdown now travels to the card
+		// on the roll config instead, so no key matching is needed at all.
+		// See combat/hit-bonus.mjs.
 
 		// Store current targets in flags for Item Macro use
 		if (game.user.targets.size > 0 && !message.flags[MODULE_ID]?.targetIds) {
@@ -10000,12 +9893,14 @@ Hooks.on("renderChatMessageHTML", (message, html, context) => {
 		console.error(`${MODULE_ID} | Failed to inject damage card`, err);
 	}
 
-	// Also process weapon bonuses for weapon attack messages
-	try {
-		processWeaponBonuses(message, html);
-	} catch (err) {
+	// Also process weapon bonuses for weapon attack messages.
+	// `processWeaponBonuses` is async, so a throw inside it becomes a rejected
+	// promise that a surrounding try/catch can never observe — which is exactly
+	// how a `html.find is not a function` TypeError went unreported here for as
+	// long as it did. Attach the handler to the promise instead.
+	processWeaponBonuses(message, html).catch(err => {
 		console.error(`${MODULE_ID} | Failed to process weapon bonuses`, err);
-	}
+	});
 
 	// Hide item description if setting is enabled
 	try {
