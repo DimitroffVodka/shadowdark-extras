@@ -354,6 +354,9 @@
       "Hooks.on:updateItem",
       "Hooks.on:createItem"
     ],
+    "crawl-helper-death-timer.mjs": [
+      "Hooks.once:ready"
+    ],
     "effect-config.mjs": [
       "Hooks.on:renderActiveEffectConfig",
       "Hooks.on:preUpdateActiveEffect"
@@ -450,7 +453,6 @@
       "Hooks.once:ready",
       "Hooks.on:renderNpcSheetSD",
       "Hooks.on:getSceneContextOptions",
-      "Hooks.once:ready",
       "Hooks.once:ready",
       "Hooks.once:init",
       "Hooks.on:renderApplication"

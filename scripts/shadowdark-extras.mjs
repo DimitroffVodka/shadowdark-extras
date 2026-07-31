@@ -11,6 +11,7 @@ import { initCarouselDrag } from "./canvas/carousel-drag.mjs";
 import { extendActorCreationDialog, wrapActorCreate } from "./party/party-creation.mjs";
 import { initializeTradeSocket, ensureTradeJournal } from "./inventory/TradeWindowSD.mjs";
 import { setupCombatSocket, setupScrollingCombatText } from "./combat/CombatSettingsSD.mjs";
+import { registerCrawlHelperDeathTimer } from "./combat/crawl-helper-death-timer.mjs";
 import { patchArmorActiveEffects } from "./effects/ArmorAEPatchSD.mjs";
 import { enhanceSpellSheet, injectSpellAlignmentField } from "./item-sheets/spell-sheet-enhance.mjs";
 import { enhancePotionSheet } from "./item-sheets/potion-sheet-enhance.mjs";
@@ -1676,53 +1677,9 @@ console.log(`${MODULE_ID} | Scene export context menu registered`);
 // Initialize carousel drag
 initCarouselDrag();
 
-// ============================================
-// CRAWL-HELPER: Override rollDeathTimer to let
-// the player roll the d4 death timer instead of GM
-// ============================================
-Hooks.once("ready", () => {
-	if (!game.modules.get("shadowdark-crawl-helper")?.active) return;
-
-	const crawlerModel = CONFIG.Combatant?.dataModels?.["shadowdark-crawl-helper.crawler"];
-	if (!crawlerModel) {
-		console.warn(`${MODULE_ID} | Could not find crawl-helper combatant data model to override rollDeathTimer`);
-		return;
-	}
-
-	crawlerModel.prototype.rollDeathTimer = async function () {
-		const actor = this.parent.actor;
-		const user = game.users.find(u => (u.character?.id === actor.id) && u.active) ?? game.users.activeGM;
-
-		// Prompt the player to roll their death timer
-		const defaultFormula = "d4 +" + actor.system.abilities.con.mod;
-		const fields = foundry.applications.fields;
-		const textInput = fields.createTextInput({ name: "formula", value: defaultFormula });
-		const textGroup = fields.createFormGroup({ input: textInput, label: "Roll:" });
-
-		const response = await user.query("dialog", {
-			config: {
-				window: { title: "Roll Death Timer" },
-				content: `${textGroup.outerHTML}`,
-				modal: true
-			},
-			type: "input"
-		});
-
-		const formula = Roll.validate(response?.formula) ? response.formula : defaultFormula;
-		let roll = await new Roll(formula).evaluate();
-		const total = Math.max(roll.total, 1);
-		const msg = await ChatMessage.create({
-			content: `<div class="shadowdark"><h3 style="color: white;">${actor.name} will die in ${total} rounds</h3><br>${await roll.render()}</div>`,
-			speaker: { actor: actor.id },
-			user: user,
-			rolls: [roll.toJSON()]
-		});
-		if (game.dice3d) await game.dice3d.waitFor3DAnimationByMessageID(msg.id);
-		await this.parent.update({ "system.dyingRounds": total });
-	};
-
-	console.log(`${MODULE_ID} | Overrode crawl-helper rollDeathTimer to let player roll`);
-});
+// Crawl-helper's player-rolled death timer lives in
+// combat/crawl-helper-death-timer.mjs.
+registerCrawlHelperDeathTimer();
 
 // Initialize Placeable Notes
 Hooks.once("ready", () => {

@@ -100,6 +100,8 @@ export const FEATURE_OWNERS = {
     // Extracted from the composition root in Phase 3.
     "chat-card-hooks.mjs",
     "freyas-omen.mjs",
+    // Step 39: crawl-helper death-timer override, gated on that module.
+    "crawl-helper-death-timer.mjs",
   ],
   effects: [
     "AuraEffectsSD.mjs",
