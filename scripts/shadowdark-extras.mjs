@@ -116,6 +116,7 @@ import { injectEnhancedHeader, injectHeaderCustomization, injectPartyHeaderCusto
 import { extendLightSources, patchLightSourceMappings } from "./canvas/light-templates.mjs";
 import { patchCtrlMoveOnActorSheetDrops } from "./inventory/default-move-drops.mjs";
 import { injectNpcCreatureType, injectNpcInventoryTab, patchNpcSheetForItemDrops, applyNpcPlayerTheme } from "./npc/npc-sheet-inventory.mjs";
+import { registerNpcDisplayPatches } from "./npc/npc-display-patches.mjs";
 import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
 // Map-builder entry points — pulled in so we can expose them on module.api
 // for MCP / external automation. None of these modules register hooks at import
@@ -1895,143 +1896,7 @@ registerSourceRequirementHooks();
 /* ------------------------------------------------ */
 /*  NPC Attack Display Patch                        */
 /* ------------------------------------------------ */
-Hooks.once('ready', () => {
-	// Shadowdark 4.x: NPC display builders moved from ActorSD.prototype to the
-	// NPC data model (CONFIG.Actor.dataModels.NPC.prototype). Inside these
-	// methods `this` is the data model, and the parent actor is `this.parent`.
-	const NpcModel = CONFIG.Actor.dataModels?.NPC;
-
-	if (!NpcModel?.prototype || !NpcModel.prototype.buildNpcAttackDisplays) {
-		console.warn("shadowdark-extras | Could not patch NpcSD.prototype.buildNpcAttackDisplays");
-		return;
-	}
-
-	const originalBuildNpcAttackDisplays = NpcModel.prototype.buildNpcAttackDisplays;
-
-	NpcModel.prototype.buildNpcAttackDisplays = async function (itemId) {
-		const actor = this.parent;
-		const item = actor?.items.get(itemId);
-
-		// If getting item fails, fallback to original ensuring failure consistency
-		if (!item) return originalBuildNpcAttackDisplays.call(this, itemId);
-
-		const attackOptions = {
-			attackType: item.system.attackType,
-			attackName: item.name,
-			// numAttacks: item.system.attack.num,
-			attackBonus: parseInt(item.system.bonuses.attackBonus, 10),
-			baseDamage: item.system.damage.value,
-			bonusDamage: parseInt(item.system.bonuses.damageBonus, 10),
-			itemId,
-			special: item.system.damage.special || "", // Default to empty string
-			ranges: item.system.ranges.map(s => game.i18n.localize(
-				CONFIG.SHADOWDARK.RANGES[s])).join("/"),
-		};
-
-		// Coerce to a string first: enrichHTML returns "" for non-string input,
-		// and Shadowdark 4.x stores attack.num as a NumberField (e.g. 3). Without
-		// this, the attack count silently vanishes from the display. Enriching the
-		// string still preserves free-form values like "1d4" attacks.
-		attackOptions.numAttacks =
-			await foundry.applications.ux.TextEditor.implementation.enrichHTML(
-				String(item.system.attack.num ?? ""),
-				{
-					async: true,
-				}
-			);
-
-		// --- SDX Extra Damage Logic ---
-		const MODULE_ID = "shadowdark-extras";
-		const sdxFlags = item.flags?.[MODULE_ID] || {};
-
-		let extraText = "";
-
-		// Base Damage Type
-		if (sdxFlags.baseDamageType && sdxFlags.baseDamageType !== "physical") {
-			const typeLabel = game.i18n.localize(`SHADOWDARK_EXTRAS.damage_type.${sdxFlags.baseDamageType}`);
-			extraText += ` [${typeLabel}]`;
-		}
-
-		// Extra Damages
-		const extraDamagesFlag = sdxFlags.extraDamages || [];
-		const extraDamages = Array.isArray(extraDamagesFlag) ? extraDamagesFlag : Object.values(extraDamagesFlag);
-
-		if (extraDamages.length > 0) {
-			const parts = extraDamages
-				.filter(d => d.formula)
-				.map(d => {
-					const label = game.i18n.localize(`SHADOWDARK_EXTRAS.damage_type.${d.damageType}`);
-					return `${d.formula} [${label}]`;
-				});
-			if (parts.length > 0) {
-				extraText += ` + ${parts.join(" + ")}`;
-			}
-		}
-
-		if (extraText) {
-			// Append to special
-			if (attackOptions.special) {
-				attackOptions.special += extraText;
-			} else {
-				attackOptions.special = extraText;
-			}
-		}
-		// ------------------------------
-
-		const baseHtml = await foundry.applications.handlebars.renderTemplate(
-			"systems/shadowdark/templates/_partials/npc-attack.hbs",
-			attackOptions
-		);
-
-		// Add item image if available and not the default
-		const defaultIcon = "icons/svg/sword.svg";
-		if (item.img && item.img !== defaultIcon) {
-			const escapedName = foundry.utils.escapeHTML(item.name);
-			const escapedImg = foundry.utils.escapeHTML(item.img);
-			const imgHtml = `<img src="${escapedImg}" alt="${escapedName}" class="sdx-npc-item-img" style="width: 18px; height: 18px; vertical-align: text-bottom; margin-right: 2px; border: none; border-radius: 2px;" />`;
-			// Insert image inside the anchor, right after the icon <i> tag
-			return baseHtml.replace(/<i class="fas fa-dice-d20"><\/i>/, `<i class="fas fa-dice-d20"></i>${imgHtml}`);
-		}
-
-		return baseHtml;
-	};
-
-	console.log("shadowdark-extras | Patched NpcSD.prototype.buildNpcAttackDisplays");
-
-	// Also patch buildNpcSpecialDisplays to include item images
-	if (NpcModel.prototype.buildNpcSpecialDisplays) {
-		const originalBuildNpcSpecialDisplays = NpcModel.prototype.buildNpcSpecialDisplays;
-
-		NpcModel.prototype.buildNpcSpecialDisplays = async function (itemId) {
-			const actor = this.parent;
-			const item = actor?.items.get(itemId);
-
-			// If getting item fails, fallback to original
-			if (!item) return originalBuildNpcSpecialDisplays.call(this, itemId);
-
-			const baseHtml = await originalBuildNpcSpecialDisplays.call(this, itemId);
-
-			// Add item image if available and not the default
-			const defaultIcon = "icons/svg/explosion.svg";
-			if (item.img && item.img !== defaultIcon) {
-				const escapedName = foundry.utils.escapeHTML(item.name);
-				const escapedImg = foundry.utils.escapeHTML(item.img);
-				const imgHtml = `<img src="${escapedImg}" alt="${escapedName}" class="sdx-npc-item-img" style="width: 18px; height: 18px; vertical-align: text-bottom; margin-right: 2px; border: none; border-radius: 2px;" />`;
-				// Insert image inside the anchor, right after the icon <i> tag (could be dice-d20 or comment)
-				return baseHtml.replace(/<i class="fas (fa-dice-d20|fa-comment)"><\/i>/, `<i class="fas $1"></i>${imgHtml}`);
-			}
-
-			return baseHtml;
-		};
-
-		console.log("shadowdark-extras | Patched NpcSD.prototype.buildNpcSpecialDisplays");
-	}
-
-	// PLAYER WEAPON IMAGES (buildWeaponDisplay) removed: the underlying
-	// ActorSD.prototype.buildWeaponDisplay method no longer exists in
-	// Shadowdark 4.x. The guard ensured the patch was a silent no-op on the
-	// supported system; deleted to reduce dead code.
-});
+registerNpcDisplayPatches();
 
 /**
  * Hook to add item images to NPC Features on the Abilities tab

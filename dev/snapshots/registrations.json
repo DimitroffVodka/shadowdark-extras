@@ -392,6 +392,9 @@
     "module-settings.mjs": [
       "Hooks.on:renderSettingsConfig"
     ],
+    "npc-display-patches.mjs": [
+      "Hooks.once:ready"
+    ],
     "npc-feature-macros.mjs": [
       "Hooks.once:ready",
       "Hooks.once:ready"
@@ -443,7 +446,6 @@
       "Hooks.on:renderApplication",
       "Hooks.once:ready",
       "Hooks.on:renderSpellBookSD",
-      "Hooks.once:ready",
       "Hooks.on:renderNpcSheetSD",
       "Hooks.on:getSceneContextOptions",
       "Hooks.once:ready",

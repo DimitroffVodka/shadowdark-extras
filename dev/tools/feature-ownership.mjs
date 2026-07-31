@@ -156,6 +156,9 @@ export const FEATURE_OWNERS = {
     "NPCAttackSheetSD.mjs",
     "NPCFeatureSheetSD.mjs",
     "NPCSpecialAttackSheetSD.mjs",
+    // Extracted from the composition root in Phase 3: the ready-hook that
+    // wraps the NPC data model’s two display builders.
+    "npc-display-patches.mjs",
     "MysteriousCasting.mjs",
     /**
      * PHASE 0 FINDING — owner confirmed 2026-07-30. Moves to `scripts/npc/`.
