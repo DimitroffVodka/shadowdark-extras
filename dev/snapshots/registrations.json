@@ -398,15 +398,6 @@
       "Hooks.on:createActiveEffect",
       "Hooks.on:deleteActiveEffect",
       "Hooks.on:updateItem",
-      "Hooks.once:ready",
-      "socket.register:executeSpellItemMacroAsGM",
-      "socket.register:applyHolyWeaponAsGM",
-      "socket.register:applyCleansingWeaponAsGM",
-      "socket.register:applyWrathWeaponAsGM",
-      "socket.register:applyWrathToAllWeaponsAsGM",
-      "socket.register:sdxIdentifyItemAsGM",
-      "socket.register:sdxShowItemRevealForUser",
-      "socket.register:sdxShowIdentifyDialog",
       "Hooks.on:renderChatMessageHTML",
       "Hooks.on:renderChatMessageHTML",
       "Hooks.on:renderChatMessageHTML",
@@ -440,6 +431,17 @@
       "Hooks.on:sdx.durationSpellEnded",
       "Hooks.on:updateActor",
       "Hooks.on:renderPlayerSheetSD"
+    ],
+    "spell-item-macros.mjs": [
+      "Hooks.once:ready",
+      "socket.register:executeSpellItemMacroAsGM",
+      "socket.register:applyHolyWeaponAsGM",
+      "socket.register:applyCleansingWeaponAsGM",
+      "socket.register:applyWrathWeaponAsGM",
+      "socket.register:applyWrathToAllWeaponsAsGM",
+      "socket.register:sdxIdentifyItemAsGM",
+      "socket.register:sdxShowItemRevealForUser",
+      "socket.register:sdxShowIdentifyDialog"
     ],
     "template-target-sync.mjs": [
       "socket.register:syncTargetsToGM"
