@@ -17003,70 +17003,9 @@ Hooks.once("ready", () => {
 // INVISIBILITY EFFECT - MAKE TOKEN INVISIBLE
 // ============================================
 
-// Apply invisibility visual effect to tokens using Foundry's built-in hidden property
-Hooks.on("refreshToken", (token) => {
-	const hasInvisibility = token.actor?.getFlag(MODULE_ID, "invisibility");
 
-	if (hasInvisibility) {
-		// Use Foundry's hidden property (same as token HUD invisible button)
-		if (!token.document.hidden) {
-			token.document.update({ hidden: true });
-		}
-	}
-});
 
-// Auto-disable invisibility when attacking or casting spells
-Hooks.on("preCreateChatMessage", async (message) => {
-	const speaker = message.speaker;
-	if (!speaker?.actor) return;
 
-	const actor = game.actors.get(speaker.actor);
-	if (!actor) return;
-
-	// Check if actor has invisibility
-	const hasInvisibility = actor.getFlag(MODULE_ID, "invisibility");
-	if (!hasInvisibility) return;
-
-	// Check if this is an attack or spell
-	const shadowdarkFlags = message.flags?.shadowdark;
-	const isAttack = shadowdarkFlags?.roll?.type === "attack";
-	const isSpell = shadowdarkFlags?.spell || message.flags?.shadowdark?.itemId;
-
-	// Also check if spell item is being cast
-	let isSpellCast = false;
-	if (message.flags?.shadowdark?.itemId) {
-		const item = actor.items.get(message.flags.shadowdark.itemId);
-		if (item && item.type === "Spell") {
-			isSpellCast = true;
-		}
-	}
-
-	if (isAttack || isSpell || isSpellCast) {
-		//console.log(`${MODULE_ID} | ${actor.name} attacks/casts while invisible - breaking invisibility`);
-
-		// Find and disable the invisibility effect
-		const effect = actor.effects.find(e =>
-			e.changes.some(c => c.key === `flags.${MODULE_ID}.invisibility`)
-		);
-
-		if (effect) {
-			await effect.update({ disabled: true });
-
-			// Notify about invisibility breaking
-			ChatMessage.create({
-				content: `<p>${actor.name}'s invisibility fades as they take offensive action!</p>`,
-				speaker: ChatMessage.getSpeaker({ actor }),
-				whisper: []
-			});
-
-			// Restore token visibility using Foundry's hidden property
-			const tokens = actor.getActiveTokens();
-			for (const token of tokens) {
-				await token.document.update({ hidden: false });
-			}
-		}
-	}
-});
 
 // Invisibility hooks live in ./effects/invisibility.mjs; registered here to keep source order.
 registerInvisibilityHooks();

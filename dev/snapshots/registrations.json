@@ -322,7 +322,9 @@
     ],
     "invisibility.mjs": [
       "Hooks.on:updateActiveEffect",
-      "Hooks.on:deleteActiveEffect"
+      "Hooks.on:deleteActiveEffect",
+      "Hooks.on:refreshToken",
+      "Hooks.on:preCreateChatMessage"
     ],
     "shadowdark-extras.mjs": [
       "libWrapper.register:<dynamic>",
@@ -374,8 +376,6 @@
       "Hooks.once:ready",
       "Hooks.once:init",
       "Hooks.once:ready",
-      "Hooks.on:refreshToken",
-      "Hooks.on:preCreateChatMessage",
       "Hooks.on:deleteItem",
       "Hooks.on:quenchReady",
       "Hooks.once:ready",
