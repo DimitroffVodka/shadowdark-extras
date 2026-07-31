@@ -81,7 +81,6 @@ import { WallContextMenuSD } from "./canvas/WallContextMenuSD.mjs";
 import { sdxDrawingTool } from "./canvas/SDXDrawingTool.mjs";
 import { sdxDrawingToolbar } from "./canvas/SDXDrawingToolbar.mjs";
 import { SDXRollerApp } from "./tray/SDXRollerApp.mjs";
-import { ensureMutableItemCompendiumIndexes } from "./shared/CompendiumIndexSD.mjs";
 import { registerAppV2HeaderBridge } from "./shared/appv2-header-bridge.mjs";
 import { initSDXCoords } from "./hex/SDXCoordsSD.mjs";
 import { initHexTooltip } from "./hex/HexTooltipSD.mjs";
@@ -103,7 +102,7 @@ import { registerActiveEffectConfigHooks } from "./effects/effect-config.mjs";
 import { registerSourceRequirementHooks } from "./effects/source-requirements.mjs";
 import { setupWandUsesBlocker, setupSilencedCastingBlocker } from "./effects/casting-blockers.mjs";
 import { registerPredefinedEffects } from "./effects/predefined-effects.mjs";
-import { registerContainerHooks, recomputeContainerSlots, patchGetPhysicalItemsForContainers, injectBasicContainerUI, attachContainerContentsToActorSheet, enableItemChatIcon } from "./inventory/containers.mjs";
+import { registerContainerHooks, patchGetPhysicalItemsForContainers, injectBasicContainerUI, attachContainerContentsToActorSheet, enableItemChatIcon } from "./inventory/containers.mjs";
 import { isUnidentified } from "./shared/sd4Compat.mjs";
 import { initUnidentifiedSheetContext } from "./inventory/UnidentifiedDisplaySD.mjs";
 import { registerItemCreateFlagPreservation, registerSpellItemFlagPreservation } from "./items/item-flag-preservation.mjs";
@@ -113,7 +112,7 @@ import { patchCharacterGeneratorRolls } from "./character-sheet/character-genera
 import { patchHexTilePositionClamp } from "./hex/hex-tile-clamp.mjs";
 import { patchLightSourceTrackerForParty } from "./party/party-light-tracker.mjs";
 import { patchPlayerSheetUseAbility } from "./character-sheet/player-sheet-patches.mjs";
-import { injectAmmunitionBonuses } from "./inventory/ammunition-bonuses.mjs";
+import { injectAmmunitionBonuses, registerAmmunitionPatches } from "./inventory/ammunition-bonuses.mjs";
 import { injectSpellbookCompendiumFilter, initAlignmentSpellFiltering } from "./character-sheet/spellbook-filter.mjs";
 import { injectEnhancedHeader, injectHeaderCustomization, injectPartyHeaderCustomization, injectAddCoinsButton, injectTradeButton } from "./character-sheet/enhanced-header.mjs";
 import { extendLightSources, patchLightSourceMappings } from "./canvas/light-templates.mjs";
@@ -922,67 +921,9 @@ registerSpellItemFlagPreservation();
 registerContainerHooks();
 
 
-// Release contained items BEFORE a container is deleted
-Hooks.on("preDeleteItem", async (item, options, userId) => {
-	if (options?.sdxInternal) return;
-
-	// Only the user who deleted the item should release contained items
-	if (userId !== game.user.id) return;
-
-	const actor = item?.parent;
-	if (!actor) return;
-
-	// If a container item is being deleted, release all items that were inside it
-	// (make them visible again in inventory) BEFORE the container is gone
-	if (item.getFlag(MODULE_ID, "isContainer")) {
-		const containedIds = [];
-		for (const i of actor.items) {
-			if (i.getFlag(MODULE_ID, "containerId") === item.id) {
-				containedIds.push(i.id);
-			}
-		}
-
-		if (containedIds.length > 0) {
-			// Batch update all contained items to release them
-			const updates = containedIds.map(id => {
-				const child = actor.items.get(id);
-				if (!child) return null;
-				const restorePhysical = child.getFlag(MODULE_ID, "containerOrigIsPhysical");
-				return {
-					_id: id,
-					"system.isPhysical": (restorePhysical === undefined) ? true : Boolean(restorePhysical),
-					[`flags.${MODULE_ID}.containerId`]: null,
-					[`flags.${MODULE_ID}.containerOrigIsPhysical`]: null,
-				};
-			}).filter(u => u !== null);
-
-			if (updates.length > 0) {
-				try {
-					await actor.updateEmbeddedDocuments("Item", updates, { sdxInternal: true });
-				} catch (e) {
-					console.warn(`${MODULE_ID} | Could not release contained items`, e);
-				}
-			}
-		}
-	}
-});
-
-Hooks.on("deleteItem", async (item, options, userId) => {
-	if (options?.sdxInternal) return;
-
-	// Only the user who deleted the item should update container slots
-	if (userId !== game.user.id) return;
-
-	const actor = item?.parent;
-	if (!actor) return;
-
-	// If a contained item was deleted, update its container slots.
-	const containerId = item.getFlag(MODULE_ID, "containerId");
-	if (containerId) {
-		const container = actor.items.get(containerId);
-		if (container) await recomputeContainerSlots(container);
-	}
-});
+// The two container-deletion hooks moved into inventory/containers.mjs and
+// now register at the end of registerContainerHooks() above, which keeps the
+// original order: updateItem, createItem, preDeleteItem, deleteItem.
 
 // Handle updates when the sheet is submitted
 Hooks.on("preUpdateActor", (actor, changes, options, userId) => {
@@ -1021,53 +962,9 @@ registerConditionEffectHooks();
  * @param {Collection|Map|Array} items - The items to check for unidentified status
  */
 
-// Simplify usesAmmunition to include all ranged weapons (and add weapon-sheet
-// ammunition enhancement). Wrapped in `ready` because both rely on the system's
-// `shadowdark` global being initialised.
-Hooks.once("ready", () => {
-	Object.defineProperty(shadowdark.documents.ItemSD.prototype, "usesAmmunition", {
-		get: function () {
-			return (game.settings.get("shadowdark", "autoConsumeAmmunition")
-				&& this.isOwned
-				&& this.actor.type === "Player"
-				&& this.type === "Weapon"
-				&& this.system.type === "ranged"
-			);
-		},
-		configurable: true
-	});
-
-
-	const prepareGearSheetCompendiumIndexes = () => {
-		ensureMutableItemCompendiumIndexes(game.packs, foundry.utils.deepClone);
-	};
-
-	// Shadowdark's armor and weapon sheet helpers request full Item system data
-	// from every pack. Normalize any frozen v14 index entries first.
-	const originalGetArmorSheetData = shadowdark.sheets.ItemSheetSD.prototype.getSheetDataForArmorItem;
-	shadowdark.sheets.ItemSheetSD.prototype.getSheetDataForArmorItem = async function (context) {
-		prepareGearSheetCompendiumIndexes();
-		return originalGetArmorSheetData.call(this, context);
-	};
-
-	// Enhance weapon sheet to include actor's inventory ammunition in the dropdown
-	const originalGetWeaponSheetData = shadowdark.sheets.ItemSheetSD.prototype.getSheetDataForWeaponItem;
-	shadowdark.sheets.ItemSheetSD.prototype.getSheetDataForWeaponItem = async function (context) {
-		prepareGearSheetCompendiumIndexes();
-		await originalGetWeaponSheetData.call(this, context);
-
-		const actor = context.item.actor;
-		if (actor) {
-			const actorAmmo = actor.items.filter(i => i.system.isAmmunition && i.system.quantity > 0);
-			for (const ammo of actorAmmo) {
-				const slug = ammo.name.slugify();
-				if (!context.ammunition[slug]) {
-					context.ammunition[slug] = ammo.name;
-				}
-			}
-		}
-	};
-});
+// The two ammunition-consumption patches moved to
+// inventory/ammunition-bonuses.mjs, beside the sheet UI they enable.
+registerAmmunitionPatches();
 
 // ============================================
 // AMMUNITION BONUS UI INJECTION

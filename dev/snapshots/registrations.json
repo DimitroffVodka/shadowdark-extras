@@ -321,6 +321,9 @@
       "Hooks.on:deleteToken",
       "Hooks.on:createToken"
     ],
+    "ammunition-bonuses.mjs": [
+      "Hooks.once:ready"
+    ],
     "appv2-header-bridge.mjs": [
       "Hooks.on:renderApplicationV2"
     ],
@@ -352,7 +355,9 @@
     ],
     "containers.mjs": [
       "Hooks.on:updateItem",
-      "Hooks.on:createItem"
+      "Hooks.on:createItem",
+      "Hooks.on:preDeleteItem",
+      "Hooks.on:deleteItem"
     ],
     "crawl-helper-death-timer.mjs": [
       "Hooks.once:ready"
@@ -436,10 +441,7 @@
       "Hooks.on:renderActorSheet",
       "Hooks.on:renderItemSheet",
       "Hooks.on:preUpdateItem",
-      "Hooks.on:preDeleteItem",
-      "Hooks.on:deleteItem",
       "Hooks.on:preUpdateActor",
-      "Hooks.once:ready",
       "Hooks.on:quenchReady",
       "Hooks.once:ready",
       "Hooks.once:ready",
