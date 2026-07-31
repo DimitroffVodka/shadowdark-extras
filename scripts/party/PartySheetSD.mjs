@@ -2982,3 +2982,122 @@ export function getPartiesContainingActor(actor) {
 
 	return parties;
 }
+
+/**
+ * Re-render any open party sheet when one of its members changes.
+ *
+ * Four hooks moved verbatim out of the composition root. They belong here
+ * rather than in a new module because every one of them tests
+ * `app instanceof PartySheetSD` — the class this file exports — so the
+ * dependency already points this way (handoff rule 3).
+ *
+ * The four bodies are near-identical by nature: same window scan, same member
+ * test, differing only in how the actor is reached. They are carried as they
+ * were; de-duplicating them would be a rewrite, not a move.
+ *
+ * `updateActor`, `updateItem` and `deleteItem` are each registered more than
+ * once in the root, so the root calls this from the exact position these four
+ * occupied and relative order is preserved by the call site (rule 2).
+ */
+export function registerPartySheetRerenderHooks() {
+	// Re-render party sheets when a member actor is updated
+	Hooks.on("updateActor", (actor, changes, options, userId) => {
+		// If a Player actor was updated, check if they're in any parties and re-render those sheets
+		if (actor.type !== "Player") return;
+
+		// Find all open party sheets that contain this actor as a member
+		for (const app of Object.values(ui.windows)) {
+			if (app instanceof PartySheetSD) {
+				const memberIds = app.memberIds;
+				if (memberIds.includes(actor.id)) {
+					app.render();
+				}
+			}
+		}
+	});
+
+	// Re-render party sheets when items are updated on member actors
+	Hooks.on("updateItem", (item, changes, options, userId) => {
+		const actor = item.parent;
+		if (!actor || actor.type !== "Player") return;
+
+		// Find all open party sheets that contain this actor as a member
+		for (const app of Object.values(ui.windows)) {
+			if (app instanceof PartySheetSD) {
+				const memberIds = app.memberIds;
+				if (memberIds.includes(actor.id)) {
+					app.render();
+				}
+			}
+		}
+	});
+
+	// Re-render party sheets when items are created on member actors
+	Hooks.on("createItem", (item, options, userId) => {
+		const actor = item.parent;
+		if (!actor || actor.type !== "Player") return;
+
+		// Find all open party sheets that contain this actor as a member
+		for (const app of Object.values(ui.windows)) {
+			if (app instanceof PartySheetSD) {
+				const memberIds = app.memberIds;
+				if (memberIds.includes(actor.id)) {
+					app.render();
+				}
+			}
+		}
+	});
+
+	// Re-render party sheets when items are deleted from member actors
+	Hooks.on("deleteItem", (item, options, userId) => {
+		const actor = item.parent;
+		if (!actor || actor.type !== "Player") return;
+
+		// Find all open party sheets that contain this actor as a member
+		for (const app of Object.values(ui.windows)) {
+			if (app instanceof PartySheetSD) {
+				const memberIds = app.memberIds;
+				if (memberIds.includes(actor.id)) {
+					app.render();
+				}
+			}
+		}
+	});
+}
+
+/**
+ * Party membership predicate and cleanup, moved verbatim out of the
+ * composition root.
+ *
+ * `isPartyActor` was defined in the root with six call sites, five of which
+ * stay there and now import it. It belongs here: it is the definition of what
+ * a party actor IS, and this file is the party sheet.
+ *
+ * `deleteActor` is registered once in the root, so this one is safe to move on
+ * its own (handoff rule 1); the register call still goes back in its original
+ * position rather than relying on that.
+ */
+/**
+ * Check if an actor is a Party actor (flagged NPC)
+ * @param {Actor} actor
+ * @returns {boolean}
+ */
+export function isPartyActor(actor) {
+	return actor?.type === "NPC" && actor?.getFlag(MODULE_ID, "isParty") === true;
+}
+
+export function registerPartyCleanupHooks() {
+	// Clean up deleted actors from parties
+	Hooks.on("deleteActor", (actor, options, userId) => {
+		if (actor.type !== "Player") return;
+
+		// Remove this actor from all parties
+		game.actors.filter(a => isPartyActor(a)).forEach(async party => {
+			const memberIds = party.getFlag(MODULE_ID, "members") ?? [];
+			if (memberIds.includes(actor.id)) {
+				const newMemberIds = memberIds.filter(id => id !== actor.id);
+				await party.setFlag(MODULE_ID, "members", newMemberIds);
+			}
+		});
+	});
+}

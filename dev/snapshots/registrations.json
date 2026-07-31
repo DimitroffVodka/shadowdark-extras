@@ -169,7 +169,12 @@
       "Hooks.on:preCreateChatMessage"
     ],
     "PartySheetSD.mjs": [
-      "socket.register:sdxMutatePartyTravel"
+      "socket.register:sdxMutatePartyTravel",
+      "Hooks.on:updateActor",
+      "Hooks.on:updateItem",
+      "Hooks.on:createItem",
+      "Hooks.on:deleteItem",
+      "Hooks.on:deleteActor"
     ],
     "PinListApp.mjs": [
       "Hooks.on:updateScene",
@@ -315,6 +320,17 @@
       "Hooks.on:deleteToken",
       "Hooks.on:createToken"
     ],
+    "appv2-header-bridge.mjs": [
+      "Hooks.on:renderApplicationV2"
+    ],
+    "background-advancement.mjs": [
+      "Hooks.on:updateActor",
+      "Hooks.on:updateActor"
+    ],
+    "chat-card-hooks.mjs": [
+      "Hooks.on:preCreateChatMessage",
+      "Hooks.on:renderChatMessageHTML"
+    ],
     "chat-dispatch.mjs": [
       "Hooks.on:renderChatMessageHTML",
       "Hooks.on:renderChatMessageHTML",
@@ -324,6 +340,11 @@
       "Hooks.once:ready",
       "socket.register:executeClassAbilityMacroAsGM",
       "Hooks.once:ready"
+    ],
+    "conditions.mjs": [
+      "Hooks.on:createActiveEffect",
+      "Hooks.on:deleteActiveEffect",
+      "Hooks.on:updateActiveEffect"
     ],
     "containers.mjs": [
       "Hooks.on:updateItem",
@@ -341,6 +362,9 @@
       "Hooks.on:deleteActiveEffect",
       "Hooks.on:updateItem"
     ],
+    "freyas-omen.mjs": [
+      "Hooks.on:renderChatMessageHTML"
+    ],
     "invisibility.mjs": [
       "Hooks.on:updateActiveEffect",
       "Hooks.on:deleteActiveEffect",
@@ -350,6 +374,11 @@
     ],
     "item-macro-engine.mjs": [
       "socket.register:sdxExecuteItemMacro"
+    ],
+    "journal-ui.mjs": [
+      "Hooks.on:renderJournalDirectory",
+      "Hooks.on:renderJournalEntrySheet",
+      "Hooks.on:renderJournalSheet"
     ],
     "macro-socket.mjs": [
       "socketlib.registerModule:<dynamic>"
@@ -378,9 +407,6 @@
       "Hooks.once:init",
       "Hooks.on:sequencer.ready",
       "Hooks.once:ready",
-      "Hooks.on:renderJournalDirectory",
-      "Hooks.on:renderJournalEntrySheet",
-      "Hooks.on:renderJournalSheet",
       "Hooks.once:ready",
       "Hooks.on:preCreateItem",
       "Hooks.on:preCreateActor",
@@ -390,25 +416,11 @@
       "Hooks.on:renderNpcSheetSD",
       "Hooks.on:renderActorSheet",
       "Hooks.on:renderItemSheet",
-      "Hooks.on:renderApplicationV2",
       "Hooks.on:preUpdateItem",
-      "Hooks.on:preCreateChatMessage",
-      "Hooks.on:renderChatMessageHTML",
       "Hooks.once:ready",
       "Hooks.on:preDeleteItem",
       "Hooks.on:deleteItem",
       "Hooks.on:preUpdateActor",
-      "Hooks.on:updateActor",
-      "Hooks.on:updateItem",
-      "Hooks.on:createItem",
-      "Hooks.on:deleteItem",
-      "Hooks.on:updateActor",
-      "Hooks.on:updateActor",
-      "Hooks.on:renderChatMessageHTML",
-      "Hooks.on:deleteActor",
-      "Hooks.on:createActiveEffect",
-      "Hooks.on:deleteActiveEffect",
-      "Hooks.on:updateActiveEffect",
       "Hooks.once:ready",
       "Hooks.on:quenchReady",
       "Hooks.once:ready",
