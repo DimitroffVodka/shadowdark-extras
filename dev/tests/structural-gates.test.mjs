@@ -426,3 +426,13 @@ test("binding gate: a call to a name that is never imported is reported", () => 
   assert.deepEqual(findUnboundCalls(source).map((u) => u.name), ["helperLeftBehind"],
     "the imported name is bound; the un-imported one is the whole point of this gate");
 });
+
+test("binding gate: CONST is a known global, not an unbound reference", () => {
+  // `CONST` is Foundry's global constants namespace and matches the
+  // SCREAMING_SNAKE reference scan, so before it was listed every module that
+  // read one of its members produced a baseline entry. Verified live in world
+  // `0100` on Foundry 14.365: `CONST === foundry.CONST`.
+  const source = "function f() {\n\treturn CONST.KEYBINDING_PRECEDENCE.NORMAL;\n}";
+  assert.deepEqual(findUnboundCalls(source), [],
+    "a real global must not read as an extraction leftover");
+});
