@@ -169,7 +169,11 @@
       "Hooks.on:preCreateChatMessage"
     ],
     "PartySheetSD.mjs": [
-      "socket.register:sdxMutatePartyTravel"
+      "socket.register:sdxMutatePartyTravel",
+      "Hooks.on:updateActor",
+      "Hooks.on:updateItem",
+      "Hooks.on:createItem",
+      "Hooks.on:deleteItem"
     ],
     "PinListApp.mjs": [
       "Hooks.on:updateScene",
@@ -407,10 +411,6 @@
       "Hooks.on:preDeleteItem",
       "Hooks.on:deleteItem",
       "Hooks.on:preUpdateActor",
-      "Hooks.on:updateActor",
-      "Hooks.on:updateItem",
-      "Hooks.on:createItem",
-      "Hooks.on:deleteItem",
       "Hooks.on:updateActor",
       "Hooks.on:updateActor",
       "Hooks.on:renderChatMessageHTML",

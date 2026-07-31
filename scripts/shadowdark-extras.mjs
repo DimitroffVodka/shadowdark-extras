@@ -6,7 +6,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  * Adds Renown tracking, additional light sources, NPC inventory, and Party management to Shadowdark RPG
  */
 
-import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor, registerPartyTravelSocket } from "./party/PartySheetSD.mjs";
+import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor, registerPartyTravelSocket, registerPartySheetRerenderHooks } from "./party/PartySheetSD.mjs";
 import TradeWindowSD, { initializeTradeSocket, showTradeDialog, ensureTradeJournal, nativeTransferItems, nativeTransferCoins } from "./inventory/TradeWindowSD.mjs";
 import { CombatSettingsApp, registerCombatSettings, injectDamageCard, setupCombatSocket, setupScrollingCombatText, setupSummonExpiryHook, trackSummonedTokensForExpiry, spawnSummonedCreatures, getSocket } from "./combat/CombatSettingsSD.mjs";
 import { EffectsSettingsApp, registerEffectsSettings } from "./effects/EffectsSettingsSD.mjs";
@@ -9214,69 +9214,8 @@ Hooks.on("preUpdateActor", (actor, changes, options, userId) => {
 	}
 });
 
-// Re-render party sheets when a member actor is updated
-Hooks.on("updateActor", (actor, changes, options, userId) => {
-	// If a Player actor was updated, check if they're in any parties and re-render those sheets
-	if (actor.type !== "Player") return;
-
-	// Find all open party sheets that contain this actor as a member
-	for (const app of Object.values(ui.windows)) {
-		if (app instanceof PartySheetSD) {
-			const memberIds = app.memberIds;
-			if (memberIds.includes(actor.id)) {
-				app.render();
-			}
-		}
-	}
-});
-
-// Re-render party sheets when items are updated on member actors
-Hooks.on("updateItem", (item, changes, options, userId) => {
-	const actor = item.parent;
-	if (!actor || actor.type !== "Player") return;
-
-	// Find all open party sheets that contain this actor as a member
-	for (const app of Object.values(ui.windows)) {
-		if (app instanceof PartySheetSD) {
-			const memberIds = app.memberIds;
-			if (memberIds.includes(actor.id)) {
-				app.render();
-			}
-		}
-	}
-});
-
-// Re-render party sheets when items are created on member actors
-Hooks.on("createItem", (item, options, userId) => {
-	const actor = item.parent;
-	if (!actor || actor.type !== "Player") return;
-
-	// Find all open party sheets that contain this actor as a member
-	for (const app of Object.values(ui.windows)) {
-		if (app instanceof PartySheetSD) {
-			const memberIds = app.memberIds;
-			if (memberIds.includes(actor.id)) {
-				app.render();
-			}
-		}
-	}
-});
-
-// Re-render party sheets when items are deleted from member actors
-Hooks.on("deleteItem", (item, options, userId) => {
-	const actor = item.parent;
-	if (!actor || actor.type !== "Player") return;
-
-	// Find all open party sheets that contain this actor as a member
-	for (const app of Object.values(ui.windows)) {
-		if (app instanceof PartySheetSD) {
-			const memberIds = app.memberIds;
-			if (memberIds.includes(actor.id)) {
-				app.render();
-			}
-		}
-	}
-});
+// Party sheets re-render when a member changes; registered here to keep hook order
+registerPartySheetRerenderHooks();
 
 /* ============================================================================
  * Background Advancement System
