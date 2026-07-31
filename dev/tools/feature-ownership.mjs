@@ -54,6 +54,7 @@ export const FEATURE_OWNERS = {
   combat: [
     "CombatSettingsSD.mjs",
     "WeaponBonusConfig.mjs",
+    "roll-patches.mjs",
     "FormationSpawnerSD.mjs",
     "MarchingModeSD.mjs",
     "MedkitSD.mjs",
