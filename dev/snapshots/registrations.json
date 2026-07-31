@@ -333,6 +333,13 @@
       "Hooks.on:renderActiveEffectConfig",
       "Hooks.on:preUpdateActiveEffect"
     ],
+    "effect-trigger-macros.mjs": [
+      "Hooks.on:combatTurn",
+      "Hooks.on:combatTurn",
+      "Hooks.on:createActiveEffect",
+      "Hooks.on:deleteActiveEffect",
+      "Hooks.on:updateItem"
+    ],
     "invisibility.mjs": [
       "Hooks.on:updateActiveEffect",
       "Hooks.on:deleteActiveEffect",
@@ -404,11 +411,6 @@
       "Hooks.on:quenchReady",
       "Hooks.once:ready",
       "Hooks.once:ready",
-      "Hooks.on:combatTurn",
-      "Hooks.on:combatTurn",
-      "Hooks.on:createActiveEffect",
-      "Hooks.on:deleteActiveEffect",
-      "Hooks.on:updateItem",
       "Hooks.on:renderChatMessageHTML",
       "Hooks.on:setup",
       "Hooks.on:updateItem",
