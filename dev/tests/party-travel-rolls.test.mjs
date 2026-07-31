@@ -358,7 +358,14 @@ test("Party sheet routes player travel writes through its GM socket", () => {
 	assert.match(source, /buildTravelTaskRollData\(/);
 	assert.match(source, /SDXRollerApp\.dispatchGroupRoll\(rollData\)/);
 	assert.match(source, /executeAsGM\(\s*"sdxMutatePartyTravel"/);
-	assert.match(mainSource, /register\(\s*"sdxMutatePartyTravel"/);
+
+	// The GM-side handler moved out of the composition root in Phase 3, so both
+	// ends of this exchange now live in PartySheetSD.mjs and the root only wires
+	// it up. Pin the whole chain rather than just the registration: sender,
+	// handler, the register function it is exposed through, and the root's call.
+	assert.match(source, /register\(\s*"sdxMutatePartyTravel"/);
+	assert.match(source, /export function registerPartyTravelSocket\(/);
+	assert.match(mainSource, /registerPartyTravelSocket\(macroExecuteSocket\)/);
 });
 
 test("camping procedure applies supplies, recovery, and tangible task outcomes", () => {

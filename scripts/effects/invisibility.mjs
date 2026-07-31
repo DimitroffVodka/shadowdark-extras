@@ -3,15 +3,21 @@ import { MODULE_ID } from "../shared/module-id.mjs";
 /**
  * Invisibility effect: restore token visibility when the effect ends.
  *
- * Extracted from the composition root in Phase 3. Both handlers ignore any effect
- * that is not an invisibility effect, so this is the whole feature.
+ * Extracted from the composition root in Phase 3. Five hooks — the effect being
+ * disabled or deleted, the token refreshing, an offensive action breaking
+ * concealment, and the Condition item itself being deleted. Every one ignores
+ * anything that is not an invisibility effect, so this is the whole feature.
  *
  * These share their hook names with other root registrations — updateActiveEffect
  * and deleteActiveEffect are registered three times each. Co-location is NOT what
  * preserves firing order; the position of the register() CALL is. The root calls
- * registerInvisibilityHooks() where these two sat, which lands after the
+ * registerInvisibilityHooks() where the first of them sat, which lands after the
  * condition-toggle handlers and before the remaining ones for both names, exactly
  * as before. Same-name handlers may therefore live in different feature modules.
+ *
+ * The deleteItem handler arrived last (5648cd6): it was left behind in the root
+ * by the original extraction and appended here, which is why it is the only one
+ * registered after the offensive-action guard.
  */
 
 /**
@@ -141,6 +147,32 @@ export function registerInvisibilityHooks() {
 				for (const token of tokens) {
 					await token.document.update({ hidden: false });
 				}
+			}
+		}
+	});
+
+	// Also restore visibility when the Condition item itself is deleted
+	Hooks.on("deleteItem", async (item, options, userId) => {
+		// Check if this item has an invisibility effect
+		const hasInvisibilityEffect = item.effects?.some(e =>
+			e.changes.some(c => c.key === `flags.${MODULE_ID}.invisibility`)
+		);
+		if (!hasInvisibilityEffect) return;
+
+		//console.log(`${MODULE_ID} | Condition with invisibility effect deleted, restoring visibility`);
+		// Item's parent is the Actor
+		const actor = item.parent;
+		if (actor) {
+			//console.log(`${MODULE_ID} | Character Actor:`, { id: actor.id, name: actor.name, type: actor.type });
+			// Find all token documents for this actor across all scenes
+			const tokens = [];
+			for (const scene of game.scenes) {
+				const sceneTokens = scene.tokens.filter(t => t.actorId === actor.id);
+				tokens.push(...sceneTokens);
+			}
+			//console.log(`${MODULE_ID} | Found ${tokens.length} token documents to restore visibility`);
+			for (const tokenDoc of tokens) {
+				await tokenDoc.update({ hidden: false });
 			}
 		}
 	});

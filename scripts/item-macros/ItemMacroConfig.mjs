@@ -1,7 +1,11 @@
 /**
  * Generate the Item Macro configuration HTML
  * @param {string} MODULE_ID - The module identifier
- * @param {object} flags - The item macro flags
+ * @param {object} flags - NOT `item.flags[MODULE_ID]`. Every caller builds a
+ *   synthetic object and resolves `macroCommand` itself, native flag first and
+ *   legacy `item.flags.itemacro.macro.command` second, before calling in. The
+ *   sole caller is `item-sheets/ItemTypeConfigs.mjs`, whose four generators pass
+ *   through what the composition root assembled for them.
  * @param {string} itemType - 'spell' or 'weapon' to customize triggers
  * @returns {string} HTML string
  */
@@ -10,7 +14,13 @@ export function generateItemMacroConfigHTML(MODULE_ID, flags, itemType = 'spell'
 	const runAsGm = macroFlags.runAsGm || false;
 	const triggers = macroFlags.triggers || [];
 
-	// Support both native and legacy itemacro flags for the command
+	// `flags.macroCommand` already carries the legacy fallback — see the param
+	// docs above. The `flags.itemacro` branch below is therefore unreachable: it
+	// would look under the SDX flag namespace, and the legacy flag lives at the
+	// top level of `item.flags`, so it can never match. Kept only so a caller
+	// that does hand over a raw `item.flags[MODULE_ID]` degrades to "" rather
+	// than throwing — but such a caller would silently lose legacy macros, so
+	// resolve the command before calling instead of relying on this.
 	const macroCommand = flags.macroCommand ?? flags.itemacro?.macro?.command ?? "";
 
 	// Define triggers based on item type

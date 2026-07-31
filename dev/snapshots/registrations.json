@@ -1,13 +1,13 @@
 {
   "$comment": "Static registration call-site inventory. Keyed by module basename so it survives feature-folder moves. Order within each module is the contract; runtime firing order is proved by the smoke matrix, not by this file. Regenerate only with a reviewed reason: npm run snapshot:registrations -- --write",
   "totals": {
-    "Hooks.once": 43,
+    "Hooks.once": 42,
     "Hooks.on": 222,
     "Hooks.off": 8,
+    "socket.register": 46,
     "libWrapper.register": 3,
     "socketlib.registerModule": 3,
-    "socket.register": 46,
-    "all": 325
+    "all": 324
   },
   "modules": {
     "AuraEffectsSD.mjs": [
@@ -168,6 +168,9 @@
       "Hooks.on:renderNpcSheetSD",
       "Hooks.on:preCreateChatMessage"
     ],
+    "PartySheetSD.mjs": [
+      "socket.register:sdxMutatePartyTravel"
+    ],
     "PinListApp.mjs": [
       "Hooks.on:updateScene",
       "Hooks.on:canvasReady"
@@ -312,6 +315,16 @@
       "Hooks.on:deleteToken",
       "Hooks.on:createToken"
     ],
+    "chat-dispatch.mjs": [
+      "Hooks.on:renderChatMessageHTML",
+      "Hooks.on:renderChatMessageHTML",
+      "Hooks.on:renderChatMessageHTML"
+    ],
+    "class-ability-macros.mjs": [
+      "Hooks.once:ready",
+      "socket.register:executeClassAbilityMacroAsGM",
+      "Hooks.once:ready"
+    ],
     "containers.mjs": [
       "Hooks.on:updateItem",
       "Hooks.on:createItem"
@@ -320,11 +333,33 @@
       "Hooks.on:renderActiveEffectConfig",
       "Hooks.on:preUpdateActiveEffect"
     ],
+    "effect-trigger-macros.mjs": [
+      "socket.register:executeMacroAsGM",
+      "Hooks.on:combatTurn",
+      "Hooks.on:combatTurn",
+      "Hooks.on:createActiveEffect",
+      "Hooks.on:deleteActiveEffect",
+      "Hooks.on:updateItem"
+    ],
     "invisibility.mjs": [
       "Hooks.on:updateActiveEffect",
       "Hooks.on:deleteActiveEffect",
       "Hooks.on:refreshToken",
-      "Hooks.on:preCreateChatMessage"
+      "Hooks.on:preCreateChatMessage",
+      "Hooks.on:deleteItem"
+    ],
+    "item-macro-engine.mjs": [
+      "socket.register:sdxExecuteItemMacro"
+    ],
+    "macro-socket.mjs": [
+      "socketlib.registerModule:<dynamic>"
+    ],
+    "npc-feature-macros.mjs": [
+      "Hooks.once:ready",
+      "Hooks.once:ready"
+    ],
+    "predefined-effects.mjs": [
+      "Hooks.once:init"
     ],
     "shadowdark-extras.mjs": [
       "libWrapper.register:<dynamic>",
@@ -374,40 +409,10 @@
       "Hooks.on:deleteActiveEffect",
       "Hooks.on:updateActiveEffect",
       "Hooks.once:ready",
-      "Hooks.once:init",
-      "Hooks.once:ready",
-      "Hooks.on:deleteItem",
       "Hooks.on:quenchReady",
       "Hooks.once:ready",
-      "socketlib.registerModule:<dynamic>",
-      "socket.register:executeMacroAsGM",
-      "socket.register:sdxExecuteItemMacro",
-      "socket.register:sdxMutatePartyTravel",
-      "socket.register:syncTargetsToGM",
-      "Hooks.on:combatTurn",
-      "Hooks.on:combatTurn",
-      "Hooks.on:createActiveEffect",
-      "Hooks.on:deleteActiveEffect",
-      "Hooks.on:updateItem",
       "Hooks.once:ready",
-      "socket.register:executeSpellItemMacroAsGM",
-      "socket.register:applyHolyWeaponAsGM",
-      "socket.register:applyCleansingWeaponAsGM",
-      "socket.register:applyWrathWeaponAsGM",
-      "socket.register:applyWrathToAllWeaponsAsGM",
-      "socket.register:sdxIdentifyItemAsGM",
-      "socket.register:sdxShowItemRevealForUser",
-      "socket.register:sdxShowIdentifyDialog",
       "Hooks.on:renderChatMessageHTML",
-      "Hooks.on:renderChatMessageHTML",
-      "Hooks.on:renderChatMessageHTML",
-      "Hooks.on:renderChatMessageHTML",
-      "Hooks.once:ready",
-      "Hooks.once:ready",
-      "Hooks.once:ready",
-      "Hooks.once:ready",
-      "socket.register:executeClassAbilityMacroAsGM",
-      "Hooks.once:ready",
       "Hooks.on:setup",
       "Hooks.on:updateItem",
       "Hooks.on:updateActor",
@@ -416,11 +421,6 @@
       "Hooks.on:renderApplication",
       "Hooks.once:ready",
       "Hooks.on:renderSpellBookSD",
-      "Hooks.on:updateActiveEffect",
-      "Hooks.on:createActiveEffect",
-      "Hooks.on:updateActor",
-      "Hooks.on:renderActorSheet",
-      "Hooks.on:createItem",
       "Hooks.once:ready",
       "Hooks.on:renderNpcSheetSD",
       "Hooks.on:getSceneContextOptions",
@@ -434,6 +434,27 @@
       "Hooks.on:sdx.durationSpellEnded",
       "Hooks.on:updateActor",
       "Hooks.on:renderPlayerSheetSD"
+    ],
+    "source-requirements.mjs": [
+      "Hooks.on:updateActiveEffect",
+      "Hooks.on:createActiveEffect",
+      "Hooks.on:updateActor",
+      "Hooks.on:renderActorSheet",
+      "Hooks.on:createItem"
+    ],
+    "spell-item-macros.mjs": [
+      "Hooks.once:ready",
+      "socket.register:executeSpellItemMacroAsGM",
+      "socket.register:applyHolyWeaponAsGM",
+      "socket.register:applyCleansingWeaponAsGM",
+      "socket.register:applyWrathWeaponAsGM",
+      "socket.register:applyWrathToAllWeaponsAsGM",
+      "socket.register:sdxIdentifyItemAsGM",
+      "socket.register:sdxShowItemRevealForUser",
+      "socket.register:sdxShowIdentifyDialog"
+    ],
+    "template-target-sync.mjs": [
+      "socket.register:syncTargetsToGM"
     ]
   }
 }
