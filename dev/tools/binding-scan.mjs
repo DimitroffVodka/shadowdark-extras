@@ -33,6 +33,7 @@ const KNOWN_GLOBALS = new Set([
   "parseFloat", "parseInt", "structuredClone", "queueMicrotask", "require", "import",
   // DOM / browser
   "Blob", "CustomEvent", "Event", "File", "FileReader", "FormData", "Headers", "Image", "MutationObserver",
+  "Option",
   "Node", "Request", "Response", "URL", "URLSearchParams", "XMLHttpRequest", "alert", "atob", "btoa",
   "clearInterval", "clearTimeout", "confirm", "document", "fetch", "getComputedStyle", "localStorage",
   "navigator", "prompt", "requestAnimationFrame", "setInterval", "setTimeout", "window", "console", "$", "jQuery",
@@ -64,6 +65,11 @@ function boundNames(masked) {
 
   for (const m of masked.matchAll(/\b(?:function|class)\s*\*?\s*([A-Za-z_$][\w$]*)/g)) add(m[1]);
   for (const m of masked.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g)) add(m[1]);
+  // Class fields. `static DEFAULT_OPTIONS = {…}` and `static PARTS = {…}` are the
+  // ApplicationV2 idiom, and a plain `field = …` is the instance form. Neither is
+  // a const/let/var declaration, so without this the field NAME reads as an
+  // unbound call the first time an AppV2 class is extracted into its own module.
+  for (const m of masked.matchAll(/^\s*(?:static\s+)?([A-Za-z_$][\w$]*)\s*=[^=>]/gm)) add(m[1]);
   // destructured bindings, incl. `const { a, b: c } = …` and import clauses.
   // The optional identifier before the brace is the default binding in a mixed
   // clause — `import Default, { named } from …`. Without it the named half is
