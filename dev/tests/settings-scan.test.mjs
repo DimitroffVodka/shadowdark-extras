@@ -2,6 +2,48 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { scanSettings } from "../tools/settings-scan.mjs";
+import { findAbsoluteScriptPaths } from "../tools/script-path-guard.mjs";
+
+/**
+ * The string-path guard originally matched only the fully literal form,
+ * `modules/shadowdark-extras/scripts/…`. The tree contains none of those — but
+ * it contains seventeen INTERPOLATED ones, `modules/${MODULE_ID}/scripts/…`,
+ * which the literal search could never see. MODULE_ID is a local constant in 99
+ * files, so the interpolated spelling is the common one; the guard was blind to
+ * the majority case while reporting a clean result.
+ *
+ * All seventeen legitimately target paths that never move — the vendored MapHub
+ * tree and the retained scripts/data/ JSON collection — so the guard now takes
+ * a target allowlist rather than banning the shape outright.
+ */
+
+test("path guard sees a literal absolute script path", () => {
+  const hits = findAbsoluteScriptPaths('const p = "modules/shadowdark-extras/scripts/AuraEffectsSD.mjs";', "a.mjs");
+
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].target, "AuraEffectsSD.mjs");
+});
+
+test("path guard sees an INTERPOLATED absolute script path", () => {
+  const hits = findAbsoluteScriptPaths("const p = `modules/${MODULE_ID}/scripts/AuraEffectsSD.mjs`;", "a.mjs");
+
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].target, "AuraEffectsSD.mjs");
+});
+
+test("path guard allows targets that never move", () => {
+  const vendor = findAbsoluteScriptPaths("const B = `modules/${MODULE_ID}/scripts/maphub`;", "a.mjs");
+  const data = findAbsoluteScriptPaths("fetch(`modules/${MODULE_ID}/scripts/data/poi-data.json`);", "a.mjs");
+
+  assert.deepEqual(vendor, []);
+  assert.deepEqual(data, []);
+});
+
+test("path guard is not fooled by a similar prefix on another module", () => {
+  const hits = findAbsoluteScriptPaths('const p = "modules/some-other-module/scripts/Thing.mjs";', "a.mjs");
+
+  assert.deepEqual(hits, []);
+});
 
 /**
  * Settings keys and settings-menu ids are rename invariants: they are stored in
