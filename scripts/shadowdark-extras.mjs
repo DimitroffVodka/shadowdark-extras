@@ -104,6 +104,8 @@ import { setupWandUsesBlocker, setupSilencedCastingBlocker } from "./effects/cas
 import { registerPredefinedEffects } from "./effects/predefined-effects.mjs";
 import { registerContainerHooks, recomputeContainerSlots, patchGetPhysicalItemsForContainers, injectBasicContainerUI, attachContainerContentsToActorSheet, enableItemChatIcon } from "./inventory/containers.mjs";
 import { isUnidentified } from "./shared/sd4Compat.mjs";
+import { initUnidentifiedSheetContext } from "./inventory/UnidentifiedDisplaySD.mjs";
+import { registerItemCreateFlagPreservation, registerSpellItemFlagPreservation } from "./items/item-flag-preservation.mjs";
 import { patchPlayerSheetForTransfers } from "./inventory/player-transfers.mjs";
 import { enhanceDetailsTab, enhanceAbilitiesTab, enhanceTalentsTab, enhanceEffectsTab } from "./character-sheet/enhanced-tabs.mjs";
 import { patchCharacterGeneratorRolls } from "./character-sheet/character-generator.mjs";
@@ -681,90 +683,8 @@ Hooks.once("ready", async () => {
 	window.sdxOpenCarousingOverlay = openCarousingOverlay;
 });
 
-// Preserve flags when items are created (covers item-piles transfers, compendium drops, etc.)
-Hooks.on("preCreateItem", (item, data, options, userId) => {
-	// Note: This hook handles flag preservation for items created directly
-
-	// Preserve spell damage flags when learning a spell from a scroll
-	// This handles the "Learn Spell" button functionality
-	if (item.type === "Spell" && item.parent) {
-		// Check if there's a scroll being learned from (stored in temporary flag)
-		const sourceScrollId = item.parent.getFlag(MODULE_ID, "_learningFromScroll");
-		if (sourceScrollId) {
-			const sourceScroll = item.parent.items.get(sourceScrollId);
-			if (sourceScroll) {
-				// Preserve the spell damage configuration from the scroll
-				if (sourceScroll.flags?.[MODULE_ID]?.spellDamage) {
-					item.updateSource({
-						[`flags.${MODULE_ID}.spellDamage`]: foundry.utils.duplicate(sourceScroll.flags[MODULE_ID].spellDamage)
-					});
-					//console.log(`${MODULE_ID} | Preserved spell damage flags when learning from scroll:`, sourceScroll.name);
-				}
-				// Preserve targeting configuration from the scroll
-				if (sourceScroll.flags?.[MODULE_ID]?.targeting) {
-					item.updateSource({
-						[`flags.${MODULE_ID}.targeting`]: foundry.utils.duplicate(sourceScroll.flags[MODULE_ID].targeting)
-					});
-					//console.log(`${MODULE_ID} | Preserved targeting flags when learning from scroll:`, sourceScroll.name);
-				}
-				// Preserve template effects configuration from the scroll
-				if (sourceScroll.flags?.[MODULE_ID]?.templateEffects) {
-					item.updateSource({
-						[`flags.${MODULE_ID}.templateEffects`]: foundry.utils.duplicate(sourceScroll.flags[MODULE_ID].templateEffects)
-					});
-					//console.log(`${MODULE_ID} | Preserved templateEffects flags when learning from scroll:`, sourceScroll.name);
-				}
-				// Preserve aura effects configuration from the scroll
-				if (sourceScroll.flags?.[MODULE_ID]?.auraEffects) {
-					item.updateSource({
-						[`flags.${MODULE_ID}.auraEffects`]: foundry.utils.duplicate(sourceScroll.flags[MODULE_ID].auraEffects)
-					});
-					//console.log(`${MODULE_ID} | Preserved auraEffects flags when learning from scroll:`, sourceScroll.name);
-				}
-			}
-		}
-	}
-
-	// Preserve Item Macro trigger configuration flags
-	if (data.flags?.[MODULE_ID]?.itemMacro) {
-		item.updateSource({
-			[`flags.${MODULE_ID}.itemMacro`]: foundry.utils.duplicate(data.flags[MODULE_ID].itemMacro)
-		});
-		//console.log(`${MODULE_ID} | Preserved itemMacro flags on item creation:`, item.name);
-	}
-
-	// Preserve Targeting configuration flags
-	if (data.flags?.[MODULE_ID]?.targeting) {
-		item.updateSource({
-			[`flags.${MODULE_ID}.targeting`]: foundry.utils.duplicate(data.flags[MODULE_ID].targeting)
-		});
-		//console.log(`${MODULE_ID} | Preserved targeting flags on item creation:`, item.name);
-	}
-
-	// Preserve Template Effects configuration flags
-	if (data.flags?.[MODULE_ID]?.templateEffects) {
-		item.updateSource({
-			[`flags.${MODULE_ID}.templateEffects`]: foundry.utils.duplicate(data.flags[MODULE_ID].templateEffects)
-		});
-		//console.log(`${MODULE_ID} | Preserved templateEffects flags on item creation:`, item.name);
-	}
-
-	// Preserve Aura Effects configuration flags
-	if (data.flags?.[MODULE_ID]?.auraEffects) {
-		item.updateSource({
-			[`flags.${MODULE_ID}.auraEffects`]: foundry.utils.duplicate(data.flags[MODULE_ID].auraEffects)
-		});
-		//console.log(`${MODULE_ID} | Preserved auraEffects flags on item creation:`, item.name);
-	}
-
-	// Preserve Item Macro module's macro data (itemacro module)
-	if (data.flags?.itemacro?.macro) {
-		item.updateSource({
-			"flags.itemacro.macro": foundry.utils.duplicate(data.flags.itemacro.macro)
-		});
-		//console.log(`${MODULE_ID} | Preserved itemacro macro on item creation:`, item.name);
-	}
-});
+// Flag preservation on item creation moved to items/item-flag-preservation.mjs.
+registerItemCreateFlagPreservation();
 
 
 // Before party actor is created, ensure proper prototype token settings
@@ -989,100 +909,13 @@ Hooks.on("preUpdateItem", (item, updateData, options, userId) => {
 // Chat-card target stash and damage-card injection; registered here to keep hook order
 registerChatCardHooks();
 
-// Wrap ItemSheet getData to modify context before rendering
-Hooks.once("ready", () => {
-	const ItemSheetClass = foundry.appv1?.sheets?.ItemSheet || globalThis.ItemSheet;
-	if (!ItemSheetClass?.prototype?.getData) return;
+// The unidentified magicItem context wrap moved to
+// inventory/UnidentifiedDisplaySD.mjs, beside the GM display it mirrors.
+initUnidentifiedSheetContext();
 
-	const originalGetData = ItemSheetClass.prototype.getData;
-	ItemSheetClass.prototype.getData = async function (options = {}) {
-		const data = await originalGetData.call(this, options);
-
-		// Hide magicItem property for unidentified items for non-GM players
-		const item = this?.item;
-		if (item && isUnidentified(item) && !game.user?.isGM && data?.system) {
-			// Deep clone the system data to avoid mutating the original
-			data.system = foundry.utils.duplicate(data.system);
-			data.system.magicItem = false;
-		}
-
-		return data;
-	};
-
-	// CRITICAL FIX: Wrap Shadowdark's createItemFromSpell to preserve our spell damage flags
-	// The system's function only copies type/name/system/img, stripping all flags
-	if (globalThis.shadowdark?.utils?.createItemFromSpell) {
-		const originalCreateItemFromSpell = globalThis.shadowdark.utils.createItemFromSpell;
-
-		globalThis.shadowdark.utils.createItemFromSpell = async function (type, spell) {
-			// Call the original function to get the base item data
-			const itemData = await originalCreateItemFromSpell.call(this, type, spell);
-
-			// Initialize flags object if needed
-			itemData.flags = itemData.flags || {};
-			itemData.flags[MODULE_ID] = itemData.flags[MODULE_ID] || {};
-
-			// Preserve spell damage configuration flags
-			if (spell.flags?.[MODULE_ID]?.spellDamage) {
-				itemData.flags[MODULE_ID].spellDamage = foundry.utils.duplicate(spell.flags[MODULE_ID].spellDamage);
-				//console.log(`${MODULE_ID} | Preserved spell damage flags for ${spell.name} -> ${itemData.name}`, itemData.flags[MODULE_ID].spellDamage);
-			}
-
-			// Preserve Targeting configuration flags
-			if (spell.flags?.[MODULE_ID]?.targeting) {
-				itemData.flags[MODULE_ID].targeting = foundry.utils.duplicate(spell.flags[MODULE_ID].targeting);
-				//console.log(`${MODULE_ID} | Preserved targeting flags for ${spell.name} -> ${itemData.name}`, itemData.flags[MODULE_ID].targeting);
-			}
-
-			// Preserve summoning configuration flags
-			if (spell.flags?.[MODULE_ID]?.summoning) {
-				itemData.flags[MODULE_ID].summoning = foundry.utils.duplicate(spell.flags[MODULE_ID].summoning);
-				//console.log(`${MODULE_ID} | Preserved summoning flags for ${spell.name} -> ${itemData.name}`, itemData.flags[MODULE_ID].summoning);
-			}
-
-			// Preserve item give configuration flags
-			if (spell.flags?.[MODULE_ID]?.itemGive) {
-				itemData.flags[MODULE_ID].itemGive = foundry.utils.duplicate(spell.flags[MODULE_ID].itemGive);
-				//console.log(`${MODULE_ID} | Preserved item give flags for ${spell.name} -> ${itemData.name}`, itemData.flags[MODULE_ID].itemGive);
-			}
-
-			// Preserve unidentified flags
-			if (spell.flags?.[MODULE_ID]?.unidentified) {
-				itemData.flags[MODULE_ID].unidentified = spell.flags[MODULE_ID].unidentified;
-				itemData.flags[MODULE_ID].unidentifiedDescription = spell.flags[MODULE_ID].unidentifiedDescription || "";
-			}
-
-			// Preserve Item Macro trigger configuration flags
-			if (spell.flags?.[MODULE_ID]?.itemMacro) {
-				itemData.flags[MODULE_ID].itemMacro = foundry.utils.duplicate(spell.flags[MODULE_ID].itemMacro);
-				//console.log(`${MODULE_ID} | Preserved itemMacro flags for ${spell.name} -> ${itemData.name}`, itemData.flags[MODULE_ID].itemMacro);
-			}
-
-			// Preserve Template Effects configuration flags
-			if (spell.flags?.[MODULE_ID]?.templateEffects) {
-				itemData.flags[MODULE_ID].templateEffects = foundry.utils.duplicate(spell.flags[MODULE_ID].templateEffects);
-				//console.log(`${MODULE_ID} | Preserved templateEffects flags for ${spell.name} -> ${itemData.name}`, itemData.flags[MODULE_ID].templateEffects);
-			}
-
-			// Preserve Aura Effects configuration flags
-			if (spell.flags?.[MODULE_ID]?.auraEffects) {
-				itemData.flags[MODULE_ID].auraEffects = foundry.utils.duplicate(spell.flags[MODULE_ID].auraEffects);
-				//console.log(`${MODULE_ID} | Preserved auraEffects flags for ${spell.name} -> ${itemData.name}`, itemData.flags[MODULE_ID].auraEffects);
-			}
-
-			// Preserve Item Macro module's macro data (itemacro module)
-			if (spell.flags?.itemacro?.macro) {
-				itemData.flags.itemacro = itemData.flags.itemacro || {};
-				itemData.flags.itemacro.macro = foundry.utils.duplicate(spell.flags.itemacro.macro);
-				//console.log(`${MODULE_ID} | Preserved itemacro macro for ${spell.name} -> ${itemData.name}`);
-			}
-
-			return itemData;
-		};
-
-		//console.log(`${MODULE_ID} | Wrapped shadowdark.utils.createItemFromSpell to preserve spell flags`);
-	}
-});
+// Shadowdark's createItemFromSpell strips module flags; the wrap that puts
+// them back lives in items/item-flag-preservation.mjs.
+registerSpellItemFlagPreservation();
 
 // Container hooks live in inventory/containers.mjs; registered here to keep source order.
 registerContainerHooks();
