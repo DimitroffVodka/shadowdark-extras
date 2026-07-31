@@ -46,15 +46,19 @@ function injectWandUsesUI(html, item) {
 		max: 0
 	};
 
-	// Find the Range field in the SPELL box (it's a select with name="system.range")
-	const $rangeSelect = html.find('select[name="system.range"]');
-	if (!$rangeSelect.length) {
-		console.warn(`${MODULE_ID} | Could not find Range field in wand sheet`);
+	// Anchor to the Broken checkbox in the "Item Properties" box.
+	//
+	// This used to anchor to `select[name="system.range"]`, which Shadowdark 4.x
+	// dropped from the Wand sheet — every <select> on a rendered Wand is now an
+	// SDX flag control — so the helper returned here and the charge inputs were
+	// never injected. The Broken row is the surviving system-owned control on
+	// that tab, and it sits in a `div.SD-grid.right` (grid-template-columns:
+	// 3fr 1fr), which is exactly the label/control shape the markup below emits.
+	const $brokenInput = html.find('input[name="system.broken"]');
+	if (!$brokenInput.length) {
+		console.warn(`${MODULE_ID} | Could not find Item Properties grid in wand sheet`);
 		return;
 	}
-
-	// Get the parent row (h3 + select)
-	const $rangeRow = $rangeSelect.parent();
 
 	// Create the wand uses UI HTML
 	const usesEnabled = wandUsesFlags.enabled;
@@ -92,8 +96,8 @@ function injectWandUsesUI(html, item) {
 		` : ''}
 	`;
 
-	// Insert after the range field's row
-	$rangeRow.after(wandUsesHTML);
+	// Insert as further cells of the same grid, directly after the Broken control
+	$brokenInput.after(wandUsesHTML);
 
 	// Wire up the checkbox to trigger a re-render when changed
 	const $enableCheckbox = html.find(`input[name="flags.${MODULE_ID}.wandUses.enabled"]`);
