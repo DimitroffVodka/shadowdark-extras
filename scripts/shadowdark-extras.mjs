@@ -17064,57 +17064,17 @@ Hooks.on("quenchReady", async (quench) => {
 	}
 });
 
-Hooks.once("ready", async () => {
-	// Create the socket BEFORE the first await in this hook. `Hooks.callAll`
-	// does not await async handlers, so the two later ready hooks that add
-	// handlers to this socket run while this one is suspended on the migrations
-	// below. Both skip their handlers when the socket is still unset, so
-	// creating it after the awaits left nine handlers permanently unregistered.
+// Socket setup gets its own ready hook, with no await anywhere in it, so that
+// nothing here can be delayed by unrelated work. It used to share a hook with
+// the two migrations below and register only once both had finished, which left
+// these four handlers unavailable for as long as a world migration took. The
+// same await also stranded nine handlers belonging to other hooks (669e8a9).
+//
+// A socket handler is a promise made to other clients: a player who acts in
+// that window gets "No socket handler with the name ... has been registered",
+// not a retry. Registration therefore has to be synchronous with `ready`.
+Hooks.once("ready", () => {
 	const macroExecuteSocket = initMacroExecuteSocket();
-
-	// Rewrite stored .png/.jpg asset paths after the WebP conversion. Must run
-	// before anything reads scene/actor artwork, or the GM sees broken images
-	// for one session.
-	try {
-		await migrateWebpAssetPaths();
-	} catch (e) {
-		console.error(`${MODULE_ID} | webp asset migration threw:`, e);
-	}
-
-	// World compendiums are swept separately and NOT awaited: the sweep has to
-	// load every document of every world pack, which would stall world load.
-	// It carries its own gate (webpPackSweepDone) so locked or failed packs are
-	// retried on later loads instead of being stranded by the document gate.
-	sweepWorldCompendiums().catch((e) =>
-		console.error(`${MODULE_ID} | world compendium webp sweep failed:`, e)
-	);
-
-	// Run one-time itemacro data migration if not already done
-	if (!game.settings.get(MODULE_ID, "itemacroMigrationDone")) {
-		console.log(`${MODULE_ID} | Starting itemacro data migration...`);
-		
-		const migrateItem = async (item) => {
-			const legacy = item.flags?.itemacro?.macro?.command;
-			if (legacy && !item.getFlag(MODULE_ID, "macroCommand")) {
-				await item.setFlag(MODULE_ID, "macroCommand", legacy);
-				await item.setFlag(MODULE_ID, "macroName", item.flags?.itemacro?.macro?.name || item.name);
-				await item.setFlag(MODULE_ID, "macroRunAsGM", item.flags?.itemacro?.macro?.runAsGM || false);
-			}
-		};
-
-		// Migrate world items
-		for (const item of game.items) await migrateItem(item);
-
-		// Migrate actor items
-		for (const actor of game.actors) {
-			for (const item of actor.items) await migrateItem(item);
-		}
-
-		await game.settings.set(MODULE_ID, "itemacroMigrationDone", true);
-		console.log(`${MODULE_ID} | itemacro data migration complete.`);
-	}
-
-	// Register the socket handlers. The socket itself was created above.
 	if (macroExecuteSocket) {
 
 
@@ -17235,6 +17195,54 @@ Hooks.once("ready", async () => {
 		});
 
 		//console.log(`${MODULE_ID} | Socketlib integration enabled for macro execution`);
+	}
+});
+
+// The one-time data migrations, split out of the socket hook above. They keep
+// their original position in the ready sequence — this hook is registered
+// immediately after that one, where the combined hook used to sit — and their
+// own internal order is unchanged.
+Hooks.once("ready", async () => {
+	// Rewrite stored .png/.jpg asset paths after the WebP conversion. Must run
+	// before anything reads scene/actor artwork, or the GM sees broken images
+	// for one session.
+	try {
+		await migrateWebpAssetPaths();
+	} catch (e) {
+		console.error(`${MODULE_ID} | webp asset migration threw:`, e);
+	}
+
+	// World compendiums are swept separately and NOT awaited: the sweep has to
+	// load every document of every world pack, which would stall world load.
+	// It carries its own gate (webpPackSweepDone) so locked or failed packs are
+	// retried on later loads instead of being stranded by the document gate.
+	sweepWorldCompendiums().catch((e) =>
+		console.error(`${MODULE_ID} | world compendium webp sweep failed:`, e)
+	);
+
+	// Run one-time itemacro data migration if not already done
+	if (!game.settings.get(MODULE_ID, "itemacroMigrationDone")) {
+		console.log(`${MODULE_ID} | Starting itemacro data migration...`);
+
+		const migrateItem = async (item) => {
+			const legacy = item.flags?.itemacro?.macro?.command;
+			if (legacy && !item.getFlag(MODULE_ID, "macroCommand")) {
+				await item.setFlag(MODULE_ID, "macroCommand", legacy);
+				await item.setFlag(MODULE_ID, "macroName", item.flags?.itemacro?.macro?.name || item.name);
+				await item.setFlag(MODULE_ID, "macroRunAsGM", item.flags?.itemacro?.macro?.runAsGM || false);
+			}
+		};
+
+		// Migrate world items
+		for (const item of game.items) await migrateItem(item);
+
+		// Migrate actor items
+		for (const actor of game.actors) {
+			for (const item of actor.items) await migrateItem(item);
+		}
+
+		await game.settings.set(MODULE_ID, "itemacroMigrationDone", true);
+		console.log(`${MODULE_ID} | itemacro data migration complete.`);
 	}
 });
 
