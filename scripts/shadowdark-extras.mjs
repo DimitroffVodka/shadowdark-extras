@@ -17042,7 +17042,9 @@ Hooks.on("deleteItem", async (item, options, userId) => {
 // MACRO EXECUTE EFFECT HANDLERS
 // ============================================
 
-// Socket for executing macros as GM
+// Socket for executing macros as GM. Assigned at the top of the ready hook
+// below, before that hook's first await — three separate ready hooks register
+// handlers on it and they all run while this one is still suspended.
 let macroExecuteSocket;
 
 // Register socketlib handler on ready hook
@@ -17065,6 +17067,18 @@ Hooks.on("quenchReady", async (quench) => {
 });
 
 Hooks.once("ready", async () => {
+	// Create the socket BEFORE the first await in this hook. `Hooks.callAll`
+	// does not await async handlers, so the two later ready hooks that add
+	// handlers to this socket run while this one is suspended on the migrations
+	// below. Both skip their handlers when macroExecuteSocket is still unset, so
+	// creating it after the awaits left nine handlers permanently unregistered.
+	if (game.modules.get("socketlib")?.active) {
+		macroExecuteSocket = socketlib.registerModule(MODULE_ID);
+		// Expose socket to module
+		const module = game.modules.get(MODULE_ID);
+		if (module) module.socket = macroExecuteSocket;
+	}
+
 	// Rewrite stored .png/.jpg asset paths after the WebP conversion. Must run
 	// before anything reads scene/actor artwork, or the GM sees broken images
 	// for one session.
@@ -17107,12 +17121,8 @@ Hooks.once("ready", async () => {
 		console.log(`${MODULE_ID} | itemacro data migration complete.`);
 	}
 
-	// Register socketlib socket if available
-	if (game.modules.get("socketlib")?.active) {
-		macroExecuteSocket = socketlib.registerModule(MODULE_ID);
-		// Expose socket to module
-		const module = game.modules.get(MODULE_ID);
-		if (module) module.socket = macroExecuteSocket;
+	// Register the socket handlers. The socket itself was created above.
+	if (macroExecuteSocket) {
 
 
 		// Register the GM execution handler
@@ -17734,11 +17744,9 @@ async function executeSpellItemMacro(spellItem, actor, trigger, context = {}) {
 
 // Register socket handlers for Spell API functions
 Hooks.once("ready", () => {
-	// Note: macroExecuteSocket is defined in the closure above, but we need to access it.
-	// However, since it was defined in a previous ready hook, it might not be available here if this hook runs before that one completes?
-	// Actually, hooks run sequentially. But macroExecuteSocket is let-scoped in the file, so it IS available.
-
-	if (game.modules.get("socketlib")?.active && macroExecuteSocket) {
+	// macroExecuteSocket is assigned synchronously at the top of the earlier
+	// ready hook, so it is set by the time this one runs.
+	if (macroExecuteSocket) {
 		macroExecuteSocket.register("executeSpellItemMacroAsGM", async function(serializedContext) {
 			const sender = game.users.get(this.socketdata?.userId);
 			if (!sender) return;
