@@ -91,6 +91,7 @@ import { sdxDrawingTool } from "./canvas/SDXDrawingTool.mjs";
 import { sdxDrawingToolbar } from "./canvas/SDXDrawingToolbar.mjs";
 import { SDXRollerApp } from "./tray/SDXRollerApp.mjs";
 import { ensureMutableItemCompendiumIndexes } from "./shared/CompendiumIndexSD.mjs";
+import { registerAppV2HeaderBridge } from "./shared/appv2-header-bridge.mjs";
 import { initSDXCoords, registerSDXCoordsSettings, registerSDXCoordsMenu } from "./hex/SDXCoordsSD.mjs";
 import { SDXCoordsSettingsApp } from "./hex/SDXCoordsSettingsSD.mjs";
 import { initHexTooltip } from "./hex/HexTooltipSD.mjs";
@@ -9568,63 +9569,8 @@ Hooks.on("renderItemSheet", (app, html, data) => {
 	}
 });
 
-// ═══════════════════════════════════════════════════════════════════
-// V1/V2 Header Button Bridge
-// SDX registers AppV2 item sheets (NPC Attack, NPC Feature, etc.).
-// Modules like Automated Animations inject header buttons with the
-// V1 hook "getItemSheetHeaderButtons" which doesn't fire for V2 apps.
-// This bridge fires that hook for our V2 sheets and injects the
-// resulting buttons into the window header so they render properly.
-// ═══════════════════════════════════════════════════════════════════
-const _SDX_V2_ITEM_SHEETS = new Set([
-	"NPCAttackSheetSD",
-	"NPCFeatureSheetSD",
-	"NPCSpecialAttackSheetSD",
-	"PotionSheetSD",
-	"BackgroundSheetSD"
-]);
-
-Hooks.on("renderApplicationV2", (app, element, options) => {
-	try {
-		if (!_SDX_V2_ITEM_SHEETS.has(app.constructor.name)) return;
-		if (!app.document || app.document.documentName !== "Item") return;
-
-		// Collect V1-style header buttons from other modules
-		const v1Buttons = [];
-		Hooks.callAll("getItemSheetHeaderButtons", app, v1Buttons);
-		if (!v1Buttons.length) return;
-
-		const header = element?.querySelector?.(".window-header")
-			?? app.element?.querySelector?.(".window-header");
-		if (!header) return;
-
-		for (const btn of v1Buttons) {
-			// Skip if already injected (prevents duplicates on re-render)
-			if (btn.class && header.querySelector(`.${btn.class}`)) continue;
-
-			const button = document.createElement("button");
-			button.type = "button";
-			button.className = `header-control ${btn.class || ""}`.trim();
-			button.title = btn.label || "";
-			button.innerHTML = `<i class="${btn.icon}"></i>`;
-			if (btn.onclick) {
-				button.addEventListener("click", (e) => {
-					e.preventDefault();
-					e.stopPropagation();
-					btn.onclick(e);
-				});
-			}
-
-			// Insert before the close button
-			const closeBtn = header.querySelector('[data-action="close"]')
-				|| header.querySelector(".close");
-			if (closeBtn) header.insertBefore(button, closeBtn);
-			else header.appendChild(button);
-		}
-	} catch (err) {
-		console.error(`${MODULE_ID} | V1/V2 header button bridge error`, err);
-	}
-});
+// V1/V2 header button bridge for SDX's AppV2 item sheets
+registerAppV2HeaderBridge();
 
 // Convert string values to booleans for spell damage flags
 Hooks.on("preUpdateItem", (item, updateData, options, userId) => {

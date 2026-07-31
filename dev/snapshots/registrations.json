@@ -315,6 +315,9 @@
       "Hooks.on:deleteToken",
       "Hooks.on:createToken"
     ],
+    "appv2-header-bridge.mjs": [
+      "Hooks.on:renderApplicationV2"
+    ],
     "chat-dispatch.mjs": [
       "Hooks.on:renderChatMessageHTML",
       "Hooks.on:renderChatMessageHTML",
@@ -392,7 +395,6 @@
       "Hooks.on:renderNpcSheetSD",
       "Hooks.on:renderActorSheet",
       "Hooks.on:renderItemSheet",
-      "Hooks.on:renderApplicationV2",
       "Hooks.on:preUpdateItem",
       "Hooks.on:preCreateChatMessage",
       "Hooks.on:renderChatMessageHTML",
