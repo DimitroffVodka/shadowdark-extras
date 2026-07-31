@@ -64,8 +64,8 @@ function injectWandUsesUI(html, item) {
 	const wandUsesHTML = `
 		<h3 class="sdx-wand-uses-row">${game.i18n.localize("SHADOWDARK_EXTRAS.wand.enable_uses")}</h3>
 		<div class="sdx-wand-uses-row sdx-wand-uses-checkbox">
-			<input type="checkbox" 
-				name="flags.${MODULE_ID}.wandUses.enabled" 
+			<input type="checkbox"
+				name="flags.${MODULE_ID}.wandUses.enabled"
 				${usesEnabled ? 'checked' : ''}
 				data-dtype="Boolean"
 			/>
@@ -73,16 +73,16 @@ function injectWandUsesUI(html, item) {
 		${usesEnabled ? `
 			<h3 class="sdx-wand-uses-row">${game.i18n.localize("SHADOWDARK_EXTRAS.wand.uses")}</h3>
 			<div class="sdx-wand-uses-row sdx-wand-uses-inputs">
-				<input type="number" 
-					name="flags.${MODULE_ID}.wandUses.current" 
+				<input type="number"
+					name="flags.${MODULE_ID}.wandUses.current"
 					value="${usesCurrent}"
 					min="0"
 					style="width: 40px; text-align: center;"
 					data-dtype="Number"
 				/>
 				<span style="margin: 0 4px;">/</span>
-				<input type="number" 
-					name="flags.${MODULE_ID}.wandUses.max" 
+				<input type="number"
+					name="flags.${MODULE_ID}.wandUses.max"
 					value="${usesMax}"
 					min="0"
 					style="width: 40px; text-align: center;"
