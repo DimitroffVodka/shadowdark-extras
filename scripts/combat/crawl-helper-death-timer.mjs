@@ -41,9 +41,23 @@
  *     `rollDeathTimer` behaves correctly, only that the module loads and both
  *     guards behave.
  *
- * This is the second unit in that position — `canvas/carousel-drag.mjs` is the
- * first — and both are Phase 4 release-readiness rows. A byte-identical carry
- * proves the code did not change; it does not prove it works.
+ * NOT A RELEASE GATE — owner decision, 2026-07-31. An earlier note here made
+ * this a Phase 4 release-readiness row, to be cleared by enabling
+ * `shadowdark-crawl-helper`. That instruction is withdrawn: the maintainer's
+ * world runs Shadowdark Enhancer, which ships its own crawl and a "Warn when
+ * shadowdark-crawl-helper is enabled" setting, so enabling it to satisfy a gate
+ * would create the conflict Enhancer warns about and run two competing crawl
+ * implementations. Retargeting at Enhancer is not an option either — it
+ * registers no combatant data models, so there is no crawler to patch.
+ *
+ * This file and `canvas/carousel-drag.mjs` are the only SDX code that touches
+ * crawl-helper. Both are kept as BEST-EFFORT THIRD-PARTY SUPPORT that the
+ * maintainer cannot verify, and neither blocks a release. The risk is
+ * acknowledged rather than hidden: integration code nobody exercises is exactly
+ * how KNOWN-ISSUES 14 happened. Revisit in the Phase 5.2 dead-code pass.
+ *
+ * A byte-identical carry proves the code did not change; it does not prove it
+ * works.
  *
  * The body is the root's verbatim; the callback is a named function so its
  * single-tab indentation is preserved rather than reindented.
