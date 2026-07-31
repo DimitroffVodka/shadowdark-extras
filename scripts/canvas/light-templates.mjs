@@ -330,3 +330,51 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 		this.render({ force: true });
 	}
 }
+
+/**
+ * Wiring the custom templates into Shadowdark's own light handling.
+ *
+ * Moved from the composition root in Phase 3, out from under a JOURNAL NOTES
+ * banner it had nothing to do with. Both call `getCustomLightSources` above,
+ * so co-locating them turns a root import into a local call.
+ */
+/**
+ * Add custom light templates to the light source options
+ */
+export function extendLightSources() {
+	// Add to the config for dropdown options
+	if (CONFIG.SHADOWDARK?.LIGHT_SETTING_NAMES) {
+		const customSources = getCustomLightSources();
+		for (const [key, source] of Object.entries(customSources)) {
+			// If lang key starts with SHADOWDARK_EXTRAS, try to localize it, otherwise use raw string
+			const label = source.lang.startsWith("SHADOWDARK_EXTRAS.")
+				? game.i18n.localize(source.lang)
+				: source.lang;
+
+			CONFIG.SHADOWDARK.LIGHT_SETTING_NAMES[key] = label;
+		}
+	}
+}
+
+/**
+ * Patch the light source mappings when they're loaded
+ */
+export function patchLightSourceMappings() {
+	// Store the original turnLightOn method
+	const originalTurnLightOn = CONFIG.Actor.documentClass.prototype.turnLightOn;
+
+	CONFIG.Actor.documentClass.prototype.turnLightOn = async function (itemId) {
+		const item = this.items.get(itemId);
+		const customSources = getCustomLightSources();
+
+		// Check if this is one of our custom light sources
+		if (item?.system?.light?.template && customSources[item.system.light.template]) {
+			const lightData = customSources[item.system.light.template].light;
+			await this.changeLightSettings(lightData);
+			return;
+		}
+
+		// Otherwise use the original method
+		return originalTurnLightOn.call(this, itemId);
+	};
+}

@@ -32,7 +32,17 @@
  *   const runner = await quench.runBatches(["shadowdark-extras.structural"]);
  *   runner.once("end", () => console.log(runner.stats));
  *
+ * WAIT FOR `end`. `runBatches()` resolves before the two async sheet-render
+ * tests have settled, so reading `runner.stats` off the resolved promise
+ * reports **7 passing** and then climbs to 9 a second or two later. Over a
+ * request/response bridge that under-read looks exactly like two tests silently
+ * failing to register, which is a much more alarming thing than it is. If you
+ * cannot hook `end` from your harness, poll `runner.stats.tests` until it stops
+ * advancing before you believe the number.
+ *
  * Verified 2026-07-30 on Quench 0.10.1 / Foundry 14.365: 9 passing, 0 failing.
+ * Re-verified 2026-07-31 after the step-13 templates extraction: 9 passing,
+ * 0 failing, 0 pending, 2,293 ms.
  */
 
 const MODULE_ID = "shadowdark-extras";
