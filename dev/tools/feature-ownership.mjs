@@ -70,6 +70,7 @@ export const FEATURE_OWNERS = {
     "effect-config.mjs",
     "invisibility.mjs",
     "source-requirements.mjs",
+    "predefined-effects.mjs",
   ],
   animation: [
     "AnimationFxSD.mjs",
