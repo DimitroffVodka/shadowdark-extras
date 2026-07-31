@@ -272,6 +272,19 @@ export const FEATURE_OWNERS = {
    */
   settings: ["module-settings.mjs"],
   /**
+   * Item DOCUMENT LIFECYCLE — not item sheets, and not inventory. Opened in
+   * Phase 3 for the flag-preservation wraps: Foundry and Shadowdark both build
+   * new Items by copying a chosen subset of fields, and neither copies module
+   * flags, so every SDX configuration on an item is lost unless something puts
+   * it back.
+   *
+   * A new bucket because the eight flag families are configured across FOUR
+   * features — `item-sheets` 4, `effects` 2, `item-macros` 1, `inventory` 1.
+   * A plurality is not ownership, and `item-sheets` is named for sheets while
+   * `preCreateItem` has nothing to do with one. Owner decision, 2026-07-31.
+   */
+  items: ["item-flag-preservation.mjs"],
+  /**
    * The stable module API and the developer/templates surface. Opened in Phase
    * 3; step 13 landed `SDX.templates` here, which is what `api/` was opened for.
    */

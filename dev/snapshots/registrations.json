@@ -379,6 +379,10 @@
       "Hooks.on:preCreateChatMessage",
       "Hooks.on:deleteItem"
     ],
+    "item-flag-preservation.mjs": [
+      "Hooks.on:preCreateItem",
+      "Hooks.once:ready"
+    ],
     "item-macro-engine.mjs": [
       "socket.register:sdxExecuteItemMacro"
     ],
@@ -421,7 +425,6 @@
       "Hooks.on:sequencer.ready",
       "Hooks.once:ready",
       "Hooks.once:ready",
-      "Hooks.on:preCreateItem",
       "Hooks.on:preCreateActor",
       "Hooks.on:createActor",
       "Hooks.on:renderPlayerSheetSD",
@@ -430,7 +433,6 @@
       "Hooks.on:renderActorSheet",
       "Hooks.on:renderItemSheet",
       "Hooks.on:preUpdateItem",
-      "Hooks.once:ready",
       "Hooks.on:preDeleteItem",
       "Hooks.on:deleteItem",
       "Hooks.on:preUpdateActor",
