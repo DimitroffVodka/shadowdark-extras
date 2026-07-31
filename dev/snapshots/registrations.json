@@ -322,6 +322,10 @@
     "appv2-header-bridge.mjs": [
       "Hooks.on:renderApplicationV2"
     ],
+    "background-advancement.mjs": [
+      "Hooks.on:updateActor",
+      "Hooks.on:updateActor"
+    ],
     "chat-dispatch.mjs": [
       "Hooks.on:renderChatMessageHTML",
       "Hooks.on:renderChatMessageHTML",
@@ -411,8 +415,6 @@
       "Hooks.on:preDeleteItem",
       "Hooks.on:deleteItem",
       "Hooks.on:preUpdateActor",
-      "Hooks.on:updateActor",
-      "Hooks.on:updateActor",
       "Hooks.on:renderChatMessageHTML",
       "Hooks.on:deleteActor",
       "Hooks.once:ready",
