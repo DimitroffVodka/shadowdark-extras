@@ -718,7 +718,7 @@ export async function revertShapechanger(actor, skipEndDuration = false) {
 			await sdxModule.api.endDurationSpell(durationActorId, backup.instanceId, "manual");
 		} else {
 			try {
-				const { endDurationSpell } = await import("../FocusSpellTrackerSD.mjs");
+				const { endDurationSpell } = await import("../effects/FocusSpellTrackerSD.mjs");
 				await endDurationSpell(durationActorId, backup.instanceId, "manual");
 			} catch (e) {
 				console.warn(`${MODULE_ID} | Could not end duration spell:`, e);

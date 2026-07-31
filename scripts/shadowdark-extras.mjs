@@ -6,17 +6,17 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  * Adds Renown tracking, additional light sources, NPC inventory, and Party management to Shadowdark RPG
  */
 
-import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor } from "./PartySheetSD.mjs";
-import TradeWindowSD, { initializeTradeSocket, showTradeDialog, ensureTradeJournal, nativeTransferItems, nativeTransferCoins } from "./TradeWindowSD.mjs";
-import { CombatSettingsApp, registerCombatSettings, injectDamageCard, setupCombatSocket, setupScrollingCombatText, setupSummonExpiryHook, trackSummonedTokensForExpiry, spawnSummonedCreatures, getSocket } from "./CombatSettingsSD.mjs";
-import { EffectsSettingsApp, registerEffectsSettings } from "./EffectsSettingsSD.mjs";
-import { patchArmorActiveEffects } from "./ArmorAEPatchSD.mjs";
-import { HpWavesSettingsApp, registerHpWavesSettings, getHpWaveColor, isHpWavesEnabled } from "./HpWavesSettingsSD.mjs";
-import { TravelActivitiesSettingsApp, registerTravelActivitiesSettings, getTravelActivities } from "./TravelActivitiesSettingsSD.mjs";
-import { TravelSpeedsSettingsApp, registerTravelSpeedsSettings, getTravelSpeeds } from "./TravelSpeedsSettingsSD.mjs";
-import { registerPartyWeatherSettings } from "./PartyWeatherSettingsSD.mjs";
-import { generateSpellConfig, generatePotionConfig, generateScrollConfig, generateWandConfig } from "./templates/ItemTypeConfigs.mjs";
-import { activateTemplateTargetingListeners } from "./templates/TemplateTargetingConfig.mjs";
+import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor } from "./party/PartySheetSD.mjs";
+import TradeWindowSD, { initializeTradeSocket, showTradeDialog, ensureTradeJournal, nativeTransferItems, nativeTransferCoins } from "./inventory/TradeWindowSD.mjs";
+import { CombatSettingsApp, registerCombatSettings, injectDamageCard, setupCombatSocket, setupScrollingCombatText, setupSummonExpiryHook, trackSummonedTokensForExpiry, spawnSummonedCreatures, getSocket } from "./combat/CombatSettingsSD.mjs";
+import { EffectsSettingsApp, registerEffectsSettings } from "./effects/EffectsSettingsSD.mjs";
+import { patchArmorActiveEffects } from "./effects/ArmorAEPatchSD.mjs";
+import { HpWavesSettingsApp, registerHpWavesSettings, getHpWaveColor, isHpWavesEnabled } from "./character-sheet/HpWavesSettingsSD.mjs";
+import { TravelActivitiesSettingsApp, registerTravelActivitiesSettings, getTravelActivities } from "./party/TravelActivitiesSettingsSD.mjs";
+import { TravelSpeedsSettingsApp, registerTravelSpeedsSettings, getTravelSpeeds } from "./party/TravelSpeedsSettingsSD.mjs";
+import { registerPartyWeatherSettings } from "./party/PartyWeatherSettingsSD.mjs";
+import { generateSpellConfig, generatePotionConfig, generateScrollConfig, generateWandConfig } from "./item-sheets/ItemTypeConfigs.mjs";
+import { activateTemplateTargetingListeners } from "./item-sheets/TemplateTargetingConfig.mjs";
 import { readSdRollOutcome, resolveCardContext } from "./shared/sd4Compat.mjs";
 import {
 	injectWeaponBonusTab,
@@ -30,80 +30,80 @@ import {
 	injectWeaponAnimationButton,
 	getPromptableHitBonuses,
 	getPromptableDamageBonuses
-} from "./WeaponBonusConfig.mjs";
+} from "./combat/WeaponBonusConfig.mjs";
 
-import { initAutoAnimationsIntegration } from "./AutoAnimationsSD.mjs";
-import { AnimationFxSD } from "./AnimationFxSD.mjs";
-import { registerAnimationFxMenu } from "./AnimationFxListApp.mjs";
-import { initTorchAnimations } from "./TorchAnimationSD.mjs";
-import { initWeaponAnimations } from "./WeaponAnimationSD.mjs";
-import { initLevelUpAnimations } from "./LevelUpAnimationSD.mjs";
-import { openWeaponAnimationConfig } from "./WeaponAnimationConfig.mjs";
-import { initFocusSpellTracker, endFocusSpell, linkEffectToFocusSpell, getActiveFocusSpells, isFocusingOnSpell, startDurationSpell, endDurationSpell, registerSpellModification, getActiveDurationSpells } from "./FocusSpellTrackerSD.mjs";
-import { initBreakOnDamage, breakEffectOnDamage, clearBreakOnDamage, applySpellEffect } from "./BreakOnDamageSD.mjs";
-import { initCarousing, injectCarousingButton, ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, getCustomCarousingTables, getCarousingTableById, setCarousingTable, migrateLegacyRenown } from "./CarousingSD.mjs";
+import { initAutoAnimationsIntegration } from "./animation/AutoAnimationsSD.mjs";
+import { AnimationFxSD } from "./animation/AnimationFxSD.mjs";
+import { registerAnimationFxMenu } from "./animation/AnimationFxListApp.mjs";
+import { initTorchAnimations } from "./animation/TorchAnimationSD.mjs";
+import { initWeaponAnimations } from "./animation/WeaponAnimationSD.mjs";
+import { initLevelUpAnimations } from "./animation/LevelUpAnimationSD.mjs";
+import { openWeaponAnimationConfig } from "./animation/WeaponAnimationConfig.mjs";
+import { initFocusSpellTracker, endFocusSpell, linkEffectToFocusSpell, getActiveFocusSpells, isFocusingOnSpell, startDurationSpell, endDurationSpell, registerSpellModification, getActiveDurationSpells } from "./effects/FocusSpellTrackerSD.mjs";
+import { initBreakOnDamage, breakEffectOnDamage, clearBreakOnDamage, applySpellEffect } from "./effects/BreakOnDamageSD.mjs";
+import { initCarousing, injectCarousingButton, ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, getCustomCarousingTables, getCarousingTableById, setCarousingTable, migrateLegacyRenown } from "./party/carousing/CarousingSD.mjs";
 import { migrateWebpAssetPaths, sweepWorldCompendiums } from "./shared/WebpMigrationSD.mjs";
-import { openCarousingOverlay, refreshCarousingOverlay } from "./CarousingOverlaySD.mjs";
-import { openCarousingTablesEditor } from "./CarousingTablesApp.mjs";
-import { openExpandedCarousingTablesEditor } from "./ExpandedCarousingTablesApp.mjs";
-import { initTemplateEffects, processTemplateTurnEffects, setupTemplateEffectFlags } from "./TemplateEffectsSD.mjs";
-import { filterEditor as openTMFXFilterEditor } from "./TMFXFilterEditor.mjs";
-import { initAuraEffects, createAuraOnActor, getActiveAuras, getTokensInAura } from "./AuraEffectsSD.mjs";
-import { registerDisplayNpcEnricher } from "./DisplayNpc.mjs";
-import { registerDisplayTableEnricher } from "./DisplayTable.mjs";
-import { registerDisplayItemEnricher } from "./DisplayItem.mjs";
-import { initEasyReferenceMenu, registerEasyReferenceSettings } from "./easy-reference/EasyReferenceMenu.mjs";
-import { CreatureTypesApp, getCreatureTypes, getEffectiveCreatureType, getMappedType } from "./CreatureTypesApp.mjs";
-import SheetEditorConfig from "./SheetEditorConfig.mjs";
-import PotionSheetSD from "./PotionSheetSD.mjs";
-import BackgroundSheetSD from "./BackgroundSheetSD.mjs";
-import NPCAttackSheetSD from "./NPCAttackSheetSD.mjs";
-import NPCSpecialAttackSheetSD from "./NPCSpecialAttackSheetSD.mjs";
-import { initPlaceableNotes } from "./PlaceableNotesSD.mjs";
-import NPCFeatureSheetSD from "./NPCFeatureSheetSD.mjs";
-import ClassAbilitySheetSD from "./ClassAbilitySheetSD.mjs";
-import { initTokenToolbar, registerTokenToolbarSettings } from "./TokenToolbarSD.mjs";
-import { initTray, registerTraySettings } from "./TraySD.mjs";
-import { initAppearanceSettings } from "./AppearanceSettingsSD.mjs";
-import AmmunitionSelector from "./AmmunitionSelector.mjs";
-import StaffSpellManager from "./StaffSpellManager.mjs";
-import { initJournalNarration } from "./JournalNarrationSD.mjs";
-import { initMedkit, registerMedkitPack, unregisterMedkitPack, getMedkitPacks, scanWorldForUpdates, applyWorldMedkitUpdates, medkitScanWorld, MedkitWorldScanMenu } from "./MedkitSD.mjs";
-import { LightTrackerAppSD, initLightTrackerApp } from "./LightTrackerAppSD.mjs";
-import { initMarchingMode } from "./MarchingModeSD.mjs";
-import { SceneExporter } from "./SceneExporter.mjs";
-import { SceneImporter } from "./SceneImporter.mjs";
-import { initJournalPins } from "./JournalPinsSD.mjs";
-import { registerPinStyleSettings } from "./PinStyleEditorSD.mjs";
-import SheetLockManager from "./SheetLockManager.mjs";
-import "./SpellMacrosSD.mjs";
-import { initMysteriousCasting } from "./MysteriousCasting.mjs";
-import { TomSD } from "./TomSD.mjs";
-import { WallContextMenuSD } from "./WallContextMenuSD.mjs";
-import { sdxDrawingTool } from "./SDXDrawingTool.mjs";
-import { sdxDrawingToolbar } from "./SDXDrawingToolbar.mjs";
-import { SDXRollerApp } from "./SDXRollerApp.mjs";
+import { openCarousingOverlay, refreshCarousingOverlay } from "./party/carousing/CarousingOverlaySD.mjs";
+import { openCarousingTablesEditor } from "./party/carousing/CarousingTablesApp.mjs";
+import { openExpandedCarousingTablesEditor } from "./party/carousing/ExpandedCarousingTablesApp.mjs";
+import { initTemplateEffects, processTemplateTurnEffects, setupTemplateEffectFlags } from "./effects/TemplateEffectsSD.mjs";
+import { filterEditor as openTMFXFilterEditor } from "./animation/TMFXFilterEditor.mjs";
+import { initAuraEffects, createAuraOnActor, getActiveAuras, getTokensInAura } from "./effects/AuraEffectsSD.mjs";
+import { registerDisplayNpcEnricher } from "./journal/DisplayNpc.mjs";
+import { registerDisplayTableEnricher } from "./journal/DisplayTable.mjs";
+import { registerDisplayItemEnricher } from "./journal/DisplayItem.mjs";
+import { initEasyReferenceMenu, registerEasyReferenceSettings } from "./journal/easy-reference/EasyReferenceMenu.mjs";
+import { CreatureTypesApp, getCreatureTypes, getEffectiveCreatureType, getMappedType } from "./npc/CreatureTypesApp.mjs";
+import SheetEditorConfig from "./character-sheet/SheetEditorConfig.mjs";
+import PotionSheetSD from "./item-sheets/PotionSheetSD.mjs";
+import BackgroundSheetSD from "./character-sheet/BackgroundSheetSD.mjs";
+import NPCAttackSheetSD from "./npc/NPCAttackSheetSD.mjs";
+import NPCSpecialAttackSheetSD from "./npc/NPCSpecialAttackSheetSD.mjs";
+import { initPlaceableNotes } from "./journal/PlaceableNotesSD.mjs";
+import NPCFeatureSheetSD from "./npc/NPCFeatureSheetSD.mjs";
+import ClassAbilitySheetSD from "./item-sheets/ClassAbilitySheetSD.mjs";
+import { initTokenToolbar, registerTokenToolbarSettings } from "./canvas/TokenToolbarSD.mjs";
+import { initTray, registerTraySettings } from "./tray/TraySD.mjs";
+import { initAppearanceSettings } from "./character-sheet/AppearanceSettingsSD.mjs";
+import AmmunitionSelector from "./inventory/AmmunitionSelector.mjs";
+import StaffSpellManager from "./item-sheets/StaffSpellManager.mjs";
+import { initJournalNarration } from "./journal/JournalNarrationSD.mjs";
+import { initMedkit, registerMedkitPack, unregisterMedkitPack, getMedkitPacks, scanWorldForUpdates, applyWorldMedkitUpdates, medkitScanWorld, MedkitWorldScanMenu } from "./combat/MedkitSD.mjs";
+import { LightTrackerAppSD, initLightTrackerApp } from "./canvas/LightTrackerAppSD.mjs";
+import { initMarchingMode } from "./combat/MarchingModeSD.mjs";
+import { SceneExporter } from "./scene/SceneExporter.mjs";
+import { SceneImporter } from "./scene/SceneImporter.mjs";
+import { initJournalPins } from "./journal/JournalPinsSD.mjs";
+import { registerPinStyleSettings } from "./journal/PinStyleEditorSD.mjs";
+import SheetLockManager from "./character-sheet/SheetLockManager.mjs";
+import "./item-macros/SpellMacrosSD.mjs";
+import { initMysteriousCasting } from "./npc/MysteriousCasting.mjs";
+import { TomSD } from "./tom/TomSD.mjs";
+import { WallContextMenuSD } from "./canvas/WallContextMenuSD.mjs";
+import { sdxDrawingTool } from "./canvas/SDXDrawingTool.mjs";
+import { sdxDrawingToolbar } from "./canvas/SDXDrawingToolbar.mjs";
+import { SDXRollerApp } from "./tray/SDXRollerApp.mjs";
 import { ensureMutableItemCompendiumIndexes } from "./shared/CompendiumIndexSD.mjs";
-import { initSDXCoords, registerSDXCoordsSettings, registerSDXCoordsMenu } from "./SDXCoordsSD.mjs";
-import { SDXCoordsSettingsApp } from "./SDXCoordsSettingsSD.mjs";
-import { initHexTooltip, HEX_JOURNAL_NAME } from "./HexTooltipSD.mjs";
-import { initHexFog } from "./SDXHexFogSD.mjs";
+import { initSDXCoords, registerSDXCoordsSettings, registerSDXCoordsMenu } from "./hex/SDXCoordsSD.mjs";
+import { SDXCoordsSettingsApp } from "./hex/SDXCoordsSettingsSD.mjs";
+import { initHexTooltip, HEX_JOURNAL_NAME } from "./hex/HexTooltipSD.mjs";
+import { initHexFog } from "./hex/SDXHexFogSD.mjs";
 import { registerMaphubHooks } from "./MaphubSD.mjs";
-import { initUnidentifiedGMDisplay } from "./UnidentifiedDisplaySD.mjs";
-import { initTemplateElevationBadge } from "./TemplateElevationBadgeSD.mjs";
-import { initItemPilesCompatibility } from "./ItemPilesCompatSD.mjs";
+import { initUnidentifiedGMDisplay } from "./inventory/UnidentifiedDisplaySD.mjs";
+import { initTemplateElevationBadge } from "./effects/TemplateElevationBadgeSD.mjs";
+import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
 // Map-builder entry points — pulled in so we can expose them on module.api
 // for MCP / external automation. None of these modules register hooks at import
 // time (verified), so this only adds the named exports to the bundle graph.
-import { generateDungeon, getGeneratorSettings, setGeneratorSettings, generateRandomSeed, generateLayout, generateMixedLayout } from "./DungeonGeneratorSD.mjs";
-import { buildHexDungeonScene } from "./HexDungeonBridgeSD.mjs";
-import { generateCaveLayout, buildCaveLoops, traceBoundaryLoops } from "./DungeonCaveSD.mjs";
-import { assignBiomes, buildCellFloorMap, getBiomeDefs, getCustomBiomes, setCustomBiome, removeCustomBiome, resetCustomBiomes, getEnabledBiomeKeys, getDisabledBiomes, setBiomeEnabled } from "./DungeonBiomesSD.mjs";
-import { openBiomeEditor } from "./BiomeEditorSD.mjs";
-import { generateHexMap, clearGeneratedTiles } from "./HexGeneratorSD.mjs";
-import { buildHexcrawl, buildHexcrawlFromFile } from "./HexcrawlBuilderSD.mjs";
-import { getSceneLevelContext, applySceneLevelData, getDungeonBackground } from "./DungeonPainterSD.mjs";
-import { placeChangeLevelRegion, placeDungeonSurface, placeDungeonDecor } from "./DungeonRegionsSD.mjs";
+import { generateDungeon, getGeneratorSettings, setGeneratorSettings, generateRandomSeed, generateLayout, generateMixedLayout } from "./dungeon/DungeonGeneratorSD.mjs";
+import { buildHexDungeonScene } from "./hex/HexDungeonBridgeSD.mjs";
+import { generateCaveLayout, buildCaveLoops, traceBoundaryLoops } from "./dungeon/DungeonCaveSD.mjs";
+import { assignBiomes, buildCellFloorMap, getBiomeDefs, getCustomBiomes, setCustomBiome, removeCustomBiome, resetCustomBiomes, getEnabledBiomeKeys, getDisabledBiomes, setBiomeEnabled } from "./dungeon/DungeonBiomesSD.mjs";
+import { openBiomeEditor } from "./dungeon/BiomeEditorSD.mjs";
+import { generateHexMap, clearGeneratedTiles } from "./hex/HexGeneratorSD.mjs";
+import { buildHexcrawl, buildHexcrawlFromFile } from "./hex/HexcrawlBuilderSD.mjs";
+import { getSceneLevelContext, applySceneLevelData, getDungeonBackground } from "./dungeon/DungeonPainterSD.mjs";
+import { placeChangeLevelRegion, placeDungeonSurface, placeDungeonDecor } from "./dungeon/DungeonRegionsSD.mjs";
 
 
 const MODULE_ID = "shadowdark-extras";
@@ -3173,7 +3173,7 @@ function registerSettings() {
 		type: class extends foundry.applications.api.ApplicationV2 {
 			static DEFAULT_OPTIONS = { id: "sdx-ddpack-settings-menu-stub", window: { title: "" } };
 			async render() {
-				const { DDPackSettingsApp } = await import("./DDPackSettingsAppSD.mjs");
+				const { DDPackSettingsApp } = await import("./dungeon/DDPackSettingsAppSD.mjs");
 				new DDPackSettingsApp().render(true);
 				return this;
 			}
@@ -10529,7 +10529,7 @@ async function enhanceSpellSheet(app, html) {
 	}
 
 	if (summonProfilesArray && summonProfilesArray.length > 0) {
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		for (let i = 0; i < summonProfilesArray.length; i++) {
 			const profile = summonProfilesArray[i];
 			summonsList += generateSummonProfileHTML(profile, i);
@@ -10549,7 +10549,7 @@ async function enhanceSpellSheet(app, html) {
 	}
 
 	if (itemGiveProfilesArray && itemGiveProfilesArray.length > 0) {
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		for (let i = 0; i < itemGiveProfilesArray.length; i++) {
 			const profile = itemGiveProfilesArray[i];
 			itemGiveList += generateItemGiveProfileHTML(profile, i);
@@ -11126,7 +11126,7 @@ async function enhanceSpellSheet(app, html) {
 		e.preventDefault();
 		e.stopPropagation();
 
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		const $summonsList = $(this).closest('.sdx-summoning-content').find('.sdx-summons-list');
 		const index = $summonsList.find('.sdx-summon-profile').length;
 
@@ -11281,7 +11281,7 @@ async function enhanceSpellSheet(app, html) {
 	html.on('click', '.sdx-add-item-give-btn', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		const $list = $(this).closest('.sdx-item-give-content').find('.sdx-item-give-list');
 		const index = $list.find('.sdx-item-give-profile').length;
 		const newProfile = {
@@ -11857,7 +11857,7 @@ async function enhancePotionSheet(app, html) {
 	}
 
 	if (summonProfilesArray && summonProfilesArray.length > 0) {
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		for (let i = 0; i < summonProfilesArray.length; i++) {
 			const profile = summonProfilesArray[i];
 			summonsList += generateSummonProfileHTML(profile, i);
@@ -11877,7 +11877,7 @@ async function enhancePotionSheet(app, html) {
 	}
 
 	if (itemGiveProfilesArray && itemGiveProfilesArray.length > 0) {
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		for (let i = 0; i < itemGiveProfilesArray.length; i++) {
 			const profile = itemGiveProfilesArray[i];
 			itemGiveList += generateItemGiveProfileHTML(profile, i);
@@ -12119,7 +12119,7 @@ async function enhancePotionSheet(app, html) {
 	html.on('click', '.sdx-add-summon-btn', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		const $list = $(this).closest('.sdx-summoning-content').find('.sdx-summons-list');
 		const index = $list.find('.sdx-summon-profile').length;
 		const newProfile = {
@@ -12258,7 +12258,7 @@ async function enhancePotionSheet(app, html) {
 	html.on('click', '.sdx-add-item-give-btn', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		const $list = $(this).closest('.sdx-item-give-content').find('.sdx-item-give-list');
 		const index = $list.find('.sdx-item-give-profile').length;
 		const newProfile = {
@@ -12720,7 +12720,7 @@ async function enhanceScrollSheet(app, html) {
 	}
 
 	if (summonProfilesArray && summonProfilesArray.length > 0) {
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		for (let i = 0; i < summonProfilesArray.length; i++) {
 			const profile = summonProfilesArray[i];
 			summonsList += generateSummonProfileHTML(profile, i);
@@ -12740,7 +12740,7 @@ async function enhanceScrollSheet(app, html) {
 	}
 
 	if (itemGiveProfilesArray && itemGiveProfilesArray.length > 0) {
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		for (let i = 0; i < itemGiveProfilesArray.length; i++) {
 			const profile = itemGiveProfilesArray[i];
 			itemGiveList += generateItemGiveProfileHTML(profile, i);
@@ -13046,7 +13046,7 @@ async function enhanceScrollSheet(app, html) {
 	html.on('click', '.sdx-add-summon-btn', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		const $list = $(this).closest('.sdx-summoning-content').find('.sdx-summons-list');
 		const index = $list.find('.sdx-summon-profile').length;
 		const newProfile = {
@@ -13185,7 +13185,7 @@ async function enhanceScrollSheet(app, html) {
 	html.on('click', '.sdx-add-item-give-btn', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		const $list = $(this).closest('.sdx-item-give-content').find('.sdx-item-give-list');
 		const index = $list.find('.sdx-item-give-profile').length;
 		const newProfile = {
@@ -14376,7 +14376,7 @@ async function enhanceWandSheet(app, html) {
 	}
 
 	if (summonProfilesArray && summonProfilesArray.length > 0) {
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		for (let i = 0; i < summonProfilesArray.length; i++) {
 			const profile = summonProfilesArray[i];
 			summonsList += generateSummonProfileHTML(profile, i);
@@ -14396,7 +14396,7 @@ async function enhanceWandSheet(app, html) {
 	}
 
 	if (itemGiveProfilesArray && itemGiveProfilesArray.length > 0) {
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		for (let i = 0; i < itemGiveProfilesArray.length; i++) {
 			const profile = itemGiveProfilesArray[i];
 			itemGiveList += generateItemGiveProfileHTML(profile, i);
@@ -14699,7 +14699,7 @@ async function enhanceWandSheet(app, html) {
 	html.on('click', '.sdx-add-summon-btn', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateSummonProfileHTML } = await import(`./templates/SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import(`./item-sheets/SummoningConfig.mjs`);
 		const $list = $(this).closest('.sdx-summoning-content').find('.sdx-summons-list');
 		const index = $list.find('.sdx-summon-profile').length;
 		const newProfile = {
@@ -14838,7 +14838,7 @@ async function enhanceWandSheet(app, html) {
 	html.on('click', '.sdx-add-item-give-btn', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateItemGiveProfileHTML } = await import(`./templates/ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import(`./item-sheets/ItemGiveConfig.mjs`);
 		const $list = $(this).closest('.sdx-item-give-content').find('.sdx-item-give-list');
 		const index = $list.find('.sdx-item-give-profile').length;
 		const newProfile = {

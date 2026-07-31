@@ -5,24 +5,24 @@ import test from "node:test";
 import {
 	DEFAULT_TRAVEL_ACTIVITIES,
 	normalizeTravelActivities
-} from "../../scripts/CampingRulesData.mjs";
+} from "../../scripts/party/CampingRulesData.mjs";
 import {
 	calculateCookBonusHp,
 	getCampingAbility,
 	planStackConsumption,
 	qualifiesForRest,
 	TORCH_NAME_PATTERN
-} from "../../scripts/CampingRestData.mjs";
+} from "../../scripts/party/CampingRestData.mjs";
 import {
 	buildTravelTaskRollData,
 	getSdxActorAbility,
 	isSdxRollAuthority
-} from "../../scripts/SDXRollerData.mjs";
+} from "../../scripts/tray/SDXRollerData.mjs";
 import {
 	isPartyTravelMutationAuthorized,
 	planPartyTravelMutation,
 	planWeatherPredictionMutation
-} from "../../scripts/PartyTravelMutationsSD.mjs";
+} from "../../scripts/party/PartyTravelMutationsSD.mjs";
 
 const moduleRoot = new URL("../../", import.meta.url);
 
@@ -347,7 +347,7 @@ test("every default camping task ships its configured banner", () => {
 
 test("Party sheet routes player travel writes through its GM socket", () => {
 	const source = readFileSync(
-		new URL("scripts/PartySheetSD.mjs", moduleRoot),
+		new URL("scripts/party/PartySheetSD.mjs", moduleRoot),
 		"utf8"
 	);
 	const mainSource = readFileSync(
@@ -363,7 +363,7 @@ test("Party sheet routes player travel writes through its GM socket", () => {
 
 test("camping procedure applies supplies, recovery, and tangible task outcomes", () => {
 	const source = readFileSync(
-		new URL("scripts/CampingRestSD.mjs", moduleRoot),
+		new URL("scripts/party/CampingRestSD.mjs", moduleRoot),
 		"utf8"
 	);
 	const template = readFileSync(
@@ -386,7 +386,7 @@ test("camping procedure applies supplies, recovery, and tangible task outcomes",
 
 test("SDX overlay applies configured banner art and labels actor-specific abilities", () => {
 	const source = readFileSync(
-		new URL("scripts/SDXRollerApp.mjs", moduleRoot),
+		new URL("scripts/tray/SDXRollerApp.mjs", moduleRoot),
 		"utf8"
 	);
 	const overlay = readFileSync(
@@ -405,7 +405,7 @@ test("SDX overlay applies configured banner art and labels actor-specific abilit
 
 test("Party weather configuration registers a world setting and RollTable selector", () => {
 	const source = readFileSync(
-		new URL("scripts/PartyWeatherSettingsSD.mjs", moduleRoot),
+		new URL("scripts/party/PartyWeatherSettingsSD.mjs", moduleRoot),
 		"utf8"
 	);
 	const template = readFileSync(
