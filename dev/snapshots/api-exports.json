@@ -40,7 +40,6 @@
     "shadowdark-extras.mjs": {
       "names": [
         "executeItemMacro",
-        "getCustomLightSources",
         "hasItemMacro"
       ]
     }

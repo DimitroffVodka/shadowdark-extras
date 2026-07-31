@@ -1,87 +1,30 @@
 {
   "$comment": "Accepted unbound call identifiers. The gate blocks anything NEW, not the absolute count — resolving every identifier without a scope-accurate parser leaves a residue of nested declarations and unlisted globals. New entries almost always mean an extraction left a dangling reference. Regenerate only with a reviewed reason: npm run gate:bindings -- --write",
-  "total": 205,
+  "total": 108,
   "byFile": {
-    "scripts/MaphubLauncherApp.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
     "scripts/MaphubViewerApp.mjs": [
-      "CONST",
-      "DEFAULT_OPTIONS"
-    ],
-    "scripts/animation/AnimationFxListApp.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
+      "CONST"
     ],
     "scripts/animation/TMFXFilterEditor.mjs": [
-      "DEFAULT_OPTIONS",
       "DRAWING",
       "MAIN",
-      "PARTS",
       "REGION",
       "TEMPLATE",
       "TILE",
       "TOKEN",
       "genControl"
     ],
-    "scripts/animation/WeaponAnimationConfig.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
-    "scripts/canvas/LightTrackerAppSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
-    "scripts/canvas/PoiTileSortSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
-    "scripts/canvas/TokenToolbarApp.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
     "scripts/canvas/WallContextMenuSD.mjs": [
       "CONST"
     ],
-    "scripts/character-sheet/BackgroundSheetSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS",
-      "TABS"
-    ],
-    "scripts/character-sheet/HpWavesSettingsSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
-    "scripts/character-sheet/SheetEditorConfig.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
-    "scripts/character-sheet/SheetLockConfig.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
     "scripts/combat/CombatSettingsSD.mjs": [
       "CONST",
-      "DEFAULT_OPTIONS",
-      "PARTS",
       "SDX"
     ],
     "scripts/combat/FormationSpawnerSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS",
       "createDragDropHandlers"
     ],
-    "scripts/combat/MedkitSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
-    "scripts/dungeon/BiomeEditorSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
     "scripts/dungeon/DDPackPreviewAppSD.mjs": [
-      "DEFAULT_OPTIONS",
       "buildTree",
       "extract",
       "nodeByKey",
@@ -92,7 +35,6 @@
       "treeNode"
     ],
     "scripts/dungeon/DDPackSettingsAppSD.mjs": [
-      "DEFAULT_OPTIONS",
       "importPack"
     ],
     "scripts/dungeon/DungeonCaveSD.mjs": [
@@ -116,17 +58,11 @@
     "scripts/effects/AuraEffectsSD.mjs": [
       "CONST"
     ],
-    "scripts/effects/EffectsSettingsSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
     "scripts/hex/HexPainterSD.mjs": [
       "CONST"
     ],
     "scripts/hex/HexTooltipSD.mjs": [
       "CONST",
-      "DEFAULT_OPTIONS",
-      "PARTS",
       "appendFeatureRow",
       "appendNoteRow",
       "clearAllHighlights",
@@ -169,53 +105,19 @@
       "ZINE"
     ],
     "scripts/hex/SDXCoordsSettingsSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "FormDataExtended",
-      "PARTS"
+      "FormDataExtended"
     ],
     "scripts/hex/SDXHexFogSD.mjs": [
       "loadTexture"
     ],
     "scripts/inventory/TradeWindowSD.mjs": [
-      "CONST",
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
-    "scripts/item-sheets/ClassAbilitySheetSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS",
-      "TABS"
-    ],
-    "scripts/item-sheets/PotionSheetSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS",
-      "TABS"
-    ],
-    "scripts/item-sheets/StaffSpellManager.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
+      "CONST"
     ],
     "scripts/journal/DisplayTable.mjs": [
       "CONST"
     ],
-    "scripts/journal/IconPickerSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
     "scripts/journal/JournalPinsSD.mjs": [
       "loadTexture"
-    ],
-    "scripts/journal/PinListApp.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
-    "scripts/journal/PinStyleEditorSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
-    "scripts/journal/PlaceableNotesSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
     ],
     "scripts/macros/shapechanger.mjs": [
       "CONST"
@@ -223,63 +125,16 @@
     "scripts/maphub/OnePageParserSD.mjs": [
       "CONST"
     ],
-    "scripts/npc/CreatureTypesApp.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
-    "scripts/npc/NPCAttackSheetSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS",
-      "TABS"
-    ],
-    "scripts/npc/NPCFeatureSheetSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS",
-      "TABS"
-    ],
-    "scripts/npc/NPCSpecialAttackSheetSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS",
-      "TABS"
-    ],
-    "scripts/party/CampingRestSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
     "scripts/party/PartySheetSD.mjs": [
       "CONST",
       "loadTexture"
     ],
-    "scripts/party/PartyWeatherSettingsSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
-    "scripts/party/TravelActivitiesSettingsSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
-    "scripts/party/TravelSpeedsSettingsSD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
     "scripts/party/carousing/CarousingFoundryImport.mjs": [
       "CONST"
-    ],
-    "scripts/party/carousing/CarousingOverlaySD.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
     ],
     "scripts/party/carousing/CarousingSD.mjs": [
       "CONST",
       "resolveActorName"
-    ],
-    "scripts/party/carousing/CarousingTablesApp.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
-    "scripts/party/carousing/ExpandedCarousingTablesApp.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
     ],
     "scripts/scene/SceneExporter.mjs": [
       "JSZip"
@@ -291,11 +146,7 @@
     ],
     "scripts/shadowdark-extras.mjs": [
       "CONST",
-      "DEFAULT_OPTIONS",
-      "Option",
-      "PARTS",
-      "SDX",
-      "SNIPPETS"
+      "SDX"
     ],
     "scripts/shared/CompendiumIndexSD.mjs": [
       "TypeError"
@@ -317,35 +168,19 @@
       "UPLOAD_PATH"
     ],
     "scripts/tom/TomEditors.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS",
       "TOM_CONFIG"
     ],
     "scripts/tom/TomMigrationService.mjs": [
       "TOM_CONFIG"
     ],
     "scripts/tom/TomPlayerView.mjs": [
-      "ARENA_CONDITIONS",
-      "DEFAULT_OPTIONS",
-      "PARTS",
       "TOM_CONFIG"
-    ],
-    "scripts/tom/TomSD.mjs": [
-      "FEATURE_ID"
     ],
     "scripts/tom/TomSocketHandler.mjs": [
       "TOM_CONFIG"
     ],
     "scripts/tom/TomStore.mjs": [
       "TOM_CONFIG"
-    ],
-    "scripts/tray/SDXRollerApp.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
-    ],
-    "scripts/tray/TrayApp.mjs": [
-      "DEFAULT_OPTIONS",
-      "PARTS"
     ]
   }
 }

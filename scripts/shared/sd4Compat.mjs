@@ -27,6 +27,8 @@
  *     `system.hp` / `system.ac` (v3).
  */
 
+import { MODULE_ID } from "./module-id.mjs";
+
 /**
  * Read main-roll outcome (success, total, crit, masking state) from a chat message.
  * Handles both SD 4.x (typed Roll instances on `message.rolls`) and SD 3.x
@@ -222,4 +224,50 @@ export function getActorStats(actor) {
 		hpMax: sys.hp?.max ?? null,
 		ac: sys.ac?.value ?? null
 	};
+}
+
+/**
+ * Item identification, moved verbatim out of the composition root.
+ *
+ * These are the root's private thin wrappers over SD 4.x native identification,
+ * with a legacy SDX-flag fallback for unmigrated SD 3.x worlds. They belong in
+ * this file: that is precisely the SD-4.x-vs-3.x compatibility this module
+ * exists for.
+ *
+ * ⚠️ `getUnidentifiedName` here is NOT the same as the one in
+ * `macros/identify.mjs`, which `module.api` publishes. This copy returns
+ * `item?.name ?? ""` unconditionally; that one falls back to the legacy
+ * `unidentifiedName` flag when `system.identification` is absent, so the two
+ * disagree on SD 3.x worlds. That divergence is KNOWN-ISSUES item 2 and is
+ * deliberately NOT resolved by this move — the behaviour is carried across
+ * byte-for-byte so the decision stays open and separate.
+ */
+/**
+ * Returns true when the item is unidentified via SD 4.x native system.
+ * Falls back to the legacy SDX flag for worlds not yet migrated.
+ */
+export function isUnidentified(item) {
+	if (!item) return false;
+	// SD 4.x: identification schema exists on PhysicalItemSD → use it
+	if (item.system?.identification !== undefined) {
+		return !item.system.isIdentified;
+	}
+	// Legacy fallback (SD 3.x worlds)
+	return Boolean(item.getFlag?.(MODULE_ID, "unidentified"));
+}
+
+/**
+ * Returns the display name for an unidentified item.
+ * In SD 4.x, item.name is already the unidentified name when unidentified.
+ */
+export function getUnidentifiedName(item) {
+	return item?.name ?? "";
+}
+
+/**
+ * Returns the display name from raw item data.
+ * In SD 4.x, itemData.name is the display name (unidentified or real).
+ */
+export function getUnidentifiedNameFromData(itemData) {
+	return itemData?.name ?? "";
 }

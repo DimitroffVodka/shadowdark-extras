@@ -9,6 +9,7 @@ import { findScriptPathStrings, FORBIDDEN } from "../tools/script-path-guard.mjs
 import { collectRegistrations, readSnapshot, diffSnapshot } from "../tools/registration-snapshot.mjs";
 import { collectEsmoduleExports, diffExports } from "../tools/api-export-snapshot.mjs";
 import { collectSettingsKeys, diffSettings } from "../tools/settings-snapshot.mjs";
+import { findUnboundCalls } from "../tools/binding-scan.mjs";
 import { REPO_ROOT } from "../tools/project-scan.mjs";
 
 /**
@@ -281,12 +282,84 @@ test("settings snapshot: records what the Quench batch needs to rebuild the live
   }
 });
 
-test("api-export snapshot: the composition root still exports its three consumed names", () => {
+test("api-export snapshot: the composition root still exports its two consumed names", () => {
   const { esmodules } = collectEsmoduleExports();
 
   assert.deepEqual(esmodules["shadowdark-extras.mjs"].names, [
     "executeItemMacro",
-    "getCustomLightSources",
     "hasItemMacro",
   ]);
+});
+
+/**
+ * `getCustomLightSources` used to be the root's third export, and this test
+ * pinned it because party/PartySheetSD.mjs imported it FROM the composition
+ * root — the feature→root direction the structural track exists to remove.
+ *
+ * It now lives in canvas/light-templates.mjs. Loosening the assertion to "two
+ * names" alone would have dropped the guard entirely, so the guard follows the
+ * name to its new home: the module must export it, and the consumer must reach
+ * it there rather than through the root.
+ */
+test("light templates own getCustomLightSources, and PartySheetSD imports it from there", () => {
+  const modulePath = path.join(REPO_ROOT, "scripts/canvas/light-templates.mjs");
+  const moduleSource = readFileSync(modulePath, "utf8");
+  assert.match(
+    moduleSource,
+    /^export function getCustomLightSources\(/m,
+    "canvas/light-templates.mjs must export getCustomLightSources",
+  );
+
+  const consumerSource = readFileSync(path.join(REPO_ROOT, "scripts/party/PartySheetSD.mjs"), "utf8");
+  assert.match(
+    consumerSource,
+    /import \{ getCustomLightSources \} from "\.\.\/canvas\/light-templates\.mjs";/,
+    "PartySheetSD.mjs must import getCustomLightSources from canvas/light-templates.mjs",
+  );
+  assert.doesNotMatch(
+    consumerSource,
+    /from "\.\.\/shadowdark-extras\.mjs"/,
+    "no feature module may import from the composition root",
+  );
+});
+
+/**
+ * Regression tests for the binding gate's class-field rule (21ce0c4).
+ *
+ * The rule exists so `static DEFAULT_OPTIONS = {…}` in an extracted AppV2 class
+ * does not read as an unbound call. Its first version matched a bare
+ * `name = …` on any indented line, which bound every assignment inside every
+ * function body — so a genuinely undefined call went UNREPORTED. Review caught
+ * it. A gate that quietly stops reporting is worse than the blind spot it was
+ * written to close, so both directions are pinned here.
+ */
+test("binding gate: an assignment inside a function does NOT bind the name away", () => {
+  const source = [
+    "function f() {",
+    "\tmissingHelper = 1;",
+    "\treturn missingHelper();",
+    "}",
+  ].join("\n");
+
+  const names = findUnboundCalls(source).map((u) => u.name);
+  assert.deepEqual(names, ["missingHelper"],
+    "assigning to a name must not stop the gate reporting a call to it");
+});
+
+test("binding gate: a plain undefined call is still reported", () => {
+  const names = findUnboundCalls("function g() {\n\treturn genuinelyMissing();\n}").map((u) => u.name);
+  assert.deepEqual(names, ["genuinelyMissing"]);
+});
+
+test("binding gate: static class fields do not read as unbound calls", () => {
+  const source = [
+    "class X extends Y {",
+    "\tstatic DEFAULT_OPTIONS = { a: 1 };",
+    "\tstatic PARTS = { b: 2 };",
+    "\trender() { return DEFAULT_OPTIONS; }",
+    "}",
+  ].join("\n");
+
+  assert.deepEqual(findUnboundCalls(source), [],
+    "the ApplicationV2 static-field idiom must not be reported");
 });
