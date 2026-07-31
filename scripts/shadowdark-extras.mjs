@@ -91,6 +91,7 @@ import { initHexFog } from "./hex/SDXHexFogSD.mjs";
 import { registerMaphubHooks } from "./MaphubSD.mjs";
 import { initUnidentifiedGMDisplay } from "./inventory/UnidentifiedDisplaySD.mjs";
 import { initTemplateElevationBadge } from "./effects/TemplateElevationBadgeSD.mjs";
+import { registerInvisibilityHooks } from "./effects/invisibility.mjs";
 import { registerActiveEffectConfigHooks } from "./effects/effect-config.mjs";
 import { registerContainerHooks, isContainerItem, isItemPilesEnabledActor, calculateSlotsCostForItemData, recomputeContainerSlots } from "./inventory/containers.mjs";
 import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
@@ -17207,67 +17208,8 @@ Hooks.on("preCreateChatMessage", async (message) => {
 	}
 });
 
-// Restore visibility when invisibility effect is disabled or deleted
-Hooks.on("updateActiveEffect", async (effect, changes, options, userId) => {
-	// Check if this is an invisibility effect being disabled
-	const isInvisibilityEffect = effect.changes.some(c => c.key === `flags.${MODULE_ID}.invisibility`);
-	if (!isInvisibilityEffect) return;
-
-	//console.log(`${MODULE_ID} | Invisibility effect updated:`, { disabled: effect.disabled, changes });
-
-	// If effect was disabled, restore visibility
-	if (changes.disabled === true) {
-		//console.log(`${MODULE_ID} | Restoring visibility (effect disabled)`);
-		// Effect.parent is the Item (Condition), we need the Actor that owns the item
-		const item = effect.parent;
-		const actor = item?.parent; // Item's parent is the Actor
-		if (actor) {
-			//console.log(`${MODULE_ID} | Character Actor:`, { id: actor.id, name: actor.name, type: actor.type });
-			// Find all token documents for this actor across all scenes
-			const tokens = [];
-			for (const scene of game.scenes) {
-				//console.log(`${MODULE_ID} | Checking scene: ${scene.name}, tokens: ${scene.tokens.size}`);
-				const sceneTokens = scene.tokens.filter(t => {
-					const match = t.actorId === actor.id || t.actor?.id === actor.id;
-					if (t.actor?.name === actor.name) {
-						//console.log(`${MODULE_ID} | Token found:`, { tokenId: t.id, actorId: t.actorId, tokenActorId: t.actor?.id, match });
-					}
-					return match;
-				});
-				tokens.push(...sceneTokens);
-			}
-			//console.log(`${MODULE_ID} | Found ${tokens.length} token documents to restore visibility`);
-			for (const tokenDoc of tokens) {
-				await tokenDoc.update({ hidden: false });
-			}
-		}
-	}
-});
-
-Hooks.on("deleteActiveEffect", async (effect, options, userId) => {
-	// Check if this is an invisibility effect being deleted
-	const isInvisibilityEffect = effect.changes.some(c => c.key === `flags.${MODULE_ID}.invisibility`);
-	if (!isInvisibilityEffect) return;
-
-	// Restore visibility when effect is deleted
-	// Effect.parent is the Item (Condition), we need the Actor that owns the item
-	const item = effect.parent;
-	const actor = item?.parent; // Item's parent is the Actor
-	if (actor) {
-		//console.log(`${MODULE_ID} | Invisibility effect deleted, restoring visibility`);
-		// Find all token documents for this actor across all scenes
-		const tokens = [];
-		for (const scene of game.scenes) {
-			const sceneTokens = scene.tokens.filter(t => t.actorId === actor.id);
-			tokens.push(...sceneTokens);
-		}
-		//console.log(`${MODULE_ID} | Found ${tokens.length} token documents to restore visibility`);
-		for (const tokenDoc of tokens) {
-			await tokenDoc.update({ hidden: false });
-		}
-	}
-});
-
+// Invisibility hooks live in ./effects/invisibility.mjs; registered here to keep source order.
+registerInvisibilityHooks();
 // Also restore visibility when the Condition item itself is deleted
 Hooks.on("deleteItem", async (item, options, userId) => {
 	// Check if this item has an invisibility effect
