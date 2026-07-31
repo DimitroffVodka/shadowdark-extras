@@ -61,7 +61,7 @@ import { MODULE_ID } from "../shared/module-id.mjs";
 
 /**
  * Register module settings
- * 
+ *
  * Settings are registered in order to match the section headers:
  * 1. Configuration Menus (Combat, Effects, HP Waves, Inventory Styles)
  * 2. Combat & Spells (Focus Tracker, Enhance Spells)
@@ -1215,7 +1215,7 @@ export function registerSettings() {
 
 /**
  * Setup the renderSettingsConfig hook to organize settings with section headers
- * 
+ *
  * Settings are organized into these groups:
  * 1. Configuration Menus: Combat, Effects, HP Waves, Inventory Styles menus
  * 2. Combat & Spells: Focus Tracker, Enhance Spells

@@ -43,6 +43,12 @@
  * Verified 2026-07-30 on Quench 0.10.1 / Foundry 14.365: 9 passing, 0 failing.
  * Re-verified 2026-07-31 after the step-13 templates extraction: 9 passing,
  * 0 failing, 0 pending, 2,293 ms.
+ *
+ * THIS BATCH DEFINES NINE TESTS. `grep -c "it("` returns TEN, because
+ * `.split(/\s+/)` below contains the substring `it(`. There is no conditional
+ * or skipped test here — a PR #21 reviewer inferred one from that count, which
+ * is the same substring-match mistake the binding gate shipped twice. Count
+ * with a boundary: `grep -cP '(?<![\w$.])it\('`.
  */
 
 const MODULE_ID = "shadowdark-extras";
