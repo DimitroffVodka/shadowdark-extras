@@ -7,36 +7,26 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  */
 
 import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor, registerPartyTravelSocket, registerPartySheetRerenderHooks, isPartyActor, registerPartyCleanupHooks } from "./party/PartySheetSD.mjs";
+import { initCarouselDrag } from "./canvas/carousel-drag.mjs";
 import { extendActorCreationDialog, wrapActorCreate } from "./party/party-creation.mjs";
-import TradeWindowSD, { initializeTradeSocket, showTradeDialog, ensureTradeJournal, nativeTransferItems, nativeTransferCoins } from "./inventory/TradeWindowSD.mjs";
-import { CombatSettingsApp, registerCombatSettings, injectDamageCard, setupCombatSocket, setupScrollingCombatText, setupSummonExpiryHook, trackSummonedTokensForExpiry, spawnSummonedCreatures, getSocket } from "./combat/CombatSettingsSD.mjs";
-import { EffectsSettingsApp, registerEffectsSettings } from "./effects/EffectsSettingsSD.mjs";
+import { initializeTradeSocket, ensureTradeJournal } from "./inventory/TradeWindowSD.mjs";
+import { registerCombatSettings, setupCombatSocket, setupScrollingCombatText } from "./combat/CombatSettingsSD.mjs";
+import { registerEffectsSettings } from "./effects/EffectsSettingsSD.mjs";
 import { patchArmorActiveEffects } from "./effects/ArmorAEPatchSD.mjs";
-import { HpWavesSettingsApp, registerHpWavesSettings, getHpWaveColor, isHpWavesEnabled } from "./character-sheet/HpWavesSettingsSD.mjs";
-import { TravelActivitiesSettingsApp, registerTravelActivitiesSettings, getTravelActivities } from "./party/TravelActivitiesSettingsSD.mjs";
-import { TravelSpeedsSettingsApp, registerTravelSpeedsSettings, getTravelSpeeds } from "./party/TravelSpeedsSettingsSD.mjs";
+import { registerHpWavesSettings } from "./character-sheet/HpWavesSettingsSD.mjs";
+import { registerTravelActivitiesSettings } from "./party/TravelActivitiesSettingsSD.mjs";
+import { registerTravelSpeedsSettings } from "./party/TravelSpeedsSettingsSD.mjs";
 import { registerPartyWeatherSettings } from "./party/PartyWeatherSettingsSD.mjs";
-import { generateSpellConfig, generatePotionConfig, generateScrollConfig, generateWandConfig } from "./item-sheets/ItemTypeConfigs.mjs";
-import { activateTemplateTargetingListeners } from "./item-sheets/TemplateTargetingConfig.mjs";
-import { activateTemplateTokenMagicStackHandlers, setupActivityRadioToggles, activateAnimationFxListeners } from "./item-sheets/activity-tab-widgets.mjs";
 import { enhanceSpellSheet, injectSpellAlignmentField } from "./item-sheets/spell-sheet-enhance.mjs";
 import { enhancePotionSheet } from "./item-sheets/potion-sheet-enhance.mjs";
 import { enhanceScrollSheet } from "./item-sheets/scroll-sheet-enhance.mjs";
 import { enhanceWandSheet } from "./item-sheets/wand-sheet-enhance.mjs";
 import {
 	injectWeaponBonusTab,
-	getWeaponBonuses,
-	getWeaponEffectsToApply,
-	evaluateRequirements,
-	calculateWeaponBonusDamage,
-	injectWeaponBonusDisplay,
 	injectWeaponAnimationButton,
-	getPromptableHitBonuses,
-	getPromptableDamageBonuses,
 	injectWeaponDamageTypeDropdown
 } from "./combat/WeaponBonusConfig.mjs";
 import { setupRollAttackPatches, setupRollConfigPatches } from "./combat/roll-patches.mjs";
-import { processWeaponBonuses } from "./combat/hit-bonus.mjs";
 import { registerFreyasOmenHooks } from "./combat/freyas-omen.mjs";
 import { registerChatCardHooks } from "./combat/chat-card-hooks.mjs";
 
@@ -46,22 +36,20 @@ import { registerAnimationFxMenu } from "./animation/AnimationFxListApp.mjs";
 import { initTorchAnimations } from "./animation/TorchAnimationSD.mjs";
 import { initWeaponAnimations } from "./animation/WeaponAnimationSD.mjs";
 import { initLevelUpAnimations } from "./animation/LevelUpAnimationSD.mjs";
-import { openWeaponAnimationConfig } from "./animation/WeaponAnimationConfig.mjs";
-import { initFocusSpellTracker, endFocusSpell, linkEffectToFocusSpell, getActiveFocusSpells, isFocusingOnSpell, startDurationSpell, endDurationSpell, registerSpellModification, getActiveDurationSpells } from "./effects/FocusSpellTrackerSD.mjs";
+import { initFocusSpellTracker, startDurationSpell, endDurationSpell, registerSpellModification, getActiveDurationSpells } from "./effects/FocusSpellTrackerSD.mjs";
 import { initBreakOnDamage, breakEffectOnDamage, clearBreakOnDamage, applySpellEffect } from "./effects/BreakOnDamageSD.mjs";
-import { initCarousing, injectCarousingButton, ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, getCustomCarousingTables, getCarousingTableById, setCarousingTable, migrateLegacyRenown } from "./party/carousing/CarousingSD.mjs";
+import { injectCarousingButton, ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, migrateLegacyRenown } from "./party/carousing/CarousingSD.mjs";
 import { migrateWebpAssetPaths, sweepWorldCompendiums } from "./shared/WebpMigrationSD.mjs";
 import { openCarousingOverlay, refreshCarousingOverlay } from "./party/carousing/CarousingOverlaySD.mjs";
 import { openCarousingTablesEditor } from "./party/carousing/CarousingTablesApp.mjs";
 import { openExpandedCarousingTablesEditor } from "./party/carousing/ExpandedCarousingTablesApp.mjs";
-import { initTemplateEffects, processTemplateTurnEffects, setupTemplateEffectFlags } from "./effects/TemplateEffectsSD.mjs";
-import { filterEditor as openTMFXFilterEditor } from "./animation/TMFXFilterEditor.mjs";
-import { initAuraEffects, createAuraOnActor, getActiveAuras, getTokensInAura } from "./effects/AuraEffectsSD.mjs";
+import { initTemplateEffects } from "./effects/TemplateEffectsSD.mjs";
+import { initAuraEffects } from "./effects/AuraEffectsSD.mjs";
 import { registerDisplayNpcEnricher } from "./journal/DisplayNpc.mjs";
 import { registerDisplayTableEnricher } from "./journal/DisplayTable.mjs";
 import { registerDisplayItemEnricher } from "./journal/DisplayItem.mjs";
 import { initEasyReferenceMenu, registerEasyReferenceSettings } from "./journal/easy-reference/EasyReferenceMenu.mjs";
-import { CreatureTypesApp, getCreatureTypes, getEffectiveCreatureType, getMappedType } from "./npc/CreatureTypesApp.mjs";
+import { CreatureTypesApp, getEffectiveCreatureType, getMappedType } from "./npc/CreatureTypesApp.mjs";
 import SheetEditorConfig from "./character-sheet/SheetEditorConfig.mjs";
 import PotionSheetSD from "./item-sheets/PotionSheetSD.mjs";
 import BackgroundSheetSD from "./character-sheet/BackgroundSheetSD.mjs";
@@ -73,12 +61,10 @@ import ClassAbilitySheetSD from "./item-sheets/ClassAbilitySheetSD.mjs";
 import { initTokenToolbar, registerTokenToolbarSettings } from "./canvas/TokenToolbarSD.mjs";
 import { initTray, registerTraySettings } from "./tray/TraySD.mjs";
 import { initAppearanceSettings } from "./character-sheet/AppearanceSettingsSD.mjs";
-import AmmunitionSelector from "./inventory/AmmunitionSelector.mjs";
-import StaffSpellManager from "./item-sheets/StaffSpellManager.mjs";
 import { injectStaffSpellButton, injectStaffSpellsUI, injectWeaponSpellRechargeButtons, patchCanUseMagicItems, registerStaffSpellHooks } from "./item-sheets/staff-spells.mjs";
 import { initJournalNarration } from "./journal/JournalNarrationSD.mjs";
 import { initMedkit, registerMedkitPack, unregisterMedkitPack, getMedkitPacks, scanWorldForUpdates, applyWorldMedkitUpdates, medkitScanWorld, MedkitWorldScanMenu } from "./combat/MedkitSD.mjs";
-import { LightTrackerAppSD, initLightTrackerApp } from "./canvas/LightTrackerAppSD.mjs";
+import { initLightTrackerApp } from "./canvas/LightTrackerAppSD.mjs";
 import { initMarchingMode } from "./combat/MarchingModeSD.mjs";
 import { SceneExporter } from "./scene/SceneExporter.mjs";
 import { SceneImporter } from "./scene/SceneImporter.mjs";
@@ -86,7 +72,7 @@ import { initJournalPins } from "./journal/JournalPinsSD.mjs";
 import { registerPinStyleSettings } from "./journal/PinStyleEditorSD.mjs";
 import { registerJournalUIHooks } from "./journal/journal-ui.mjs";
 import SheetLockManager from "./character-sheet/SheetLockManager.mjs";
-import { enhanceInventoryTab, applyHpQuickAdjust, setActorHpValue, attachNativeHpQuickControls, HP_QUICK_ADJUST_TOOLTIP } from "./character-sheet/enhanced-inventory-tab.mjs";
+import { enhanceInventoryTab, attachNativeHpQuickControls } from "./character-sheet/enhanced-inventory-tab.mjs";
 import { enhanceGemSheet, enhanceGemBag, enhanceGemInventory } from "./inventory/gem-enhancements.mjs";
 import { injectSkillsBox } from "./character-sheet/skills-box.mjs";
 import { applySheetDecorationStyles } from "./character-sheet/sheet-decoration.mjs";
@@ -128,11 +114,18 @@ import { setupWandUsesBlocker, setupSilencedCastingBlocker } from "./effects/cas
 import { registerPredefinedEffects } from "./effects/predefined-effects.mjs";
 import { registerContainerHooks, recomputeContainerSlots, patchGetPhysicalItemsForContainers, injectBasicContainerUI, attachContainerContentsToActorSheet, enableItemChatIcon } from "./inventory/containers.mjs";
 import { isUnidentified } from "./shared/sd4Compat.mjs";
-import { transferItemToPlayer, transferCoinsToPlayer, showCoinTransferDialog, showTransferDialog, patchPlayerSheetForTransfers } from "./inventory/player-transfers.mjs";
+import { patchPlayerSheetForTransfers } from "./inventory/player-transfers.mjs";
+import { enhanceDetailsTab, enhanceAbilitiesTab, enhanceTalentsTab, enhanceEffectsTab } from "./character-sheet/enhanced-tabs.mjs";
+import { patchCharacterGeneratorRolls } from "./character-sheet/character-generator.mjs";
+import { patchHexTilePositionClamp } from "./hex/hex-tile-clamp.mjs";
+import { patchLightSourceTrackerForParty } from "./party/party-light-tracker.mjs";
+import { patchPlayerSheetUseAbility } from "./character-sheet/player-sheet-patches.mjs";
+import { injectAmmunitionBonuses } from "./inventory/ammunition-bonuses.mjs";
+import { injectSpellbookCompendiumFilter } from "./character-sheet/spellbook-filter.mjs";
 import { injectEnhancedHeader, injectHeaderCustomization, injectPartyHeaderCustomization, injectAddCoinsButton, injectTradeButton } from "./character-sheet/enhanced-header.mjs";
 import { DEFAULT_LIGHT_TEMPLATES, LightTemplateEditor, extendLightSources, patchLightSourceMappings } from "./canvas/light-templates.mjs";
 import { patchCtrlMoveOnActorSheetDrops } from "./inventory/default-move-drops.mjs";
-import { injectNpcCreatureType, injectNpcInventoryTab } from "./npc/npc-sheet-inventory.mjs";
+import { injectNpcCreatureType, injectNpcInventoryTab, patchNpcSheetForItemDrops, applyNpcPlayerTheme } from "./npc/npc-sheet-inventory.mjs";
 import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
 // Map-builder entry points — pulled in so we can expose them on module.api
 // for MCP / external automation. None of these modules register hooks at import
@@ -162,64 +155,7 @@ initHexFog();
 registerMaphubHooks();
 initUnidentifiedGMDisplay();
 initTemplateElevationBadge();
-/**
- * Allow SDX-painted hex tiles to keep their true (possibly negative) x/y when
- * they overhang the scene's left or top edge.
- *
- * Hex art tiles are intentionally larger than the grid cell — the visible hex
- * sits centered inside a transparent canvas — so a tile centered on an edge hex
- * is anchored at a slightly negative x/y. Foundry v14's
- * `TileDocument#prepareDerivedData` clamps x/y into [0, sceneWidth/Height]
- * (`this.x = Math.clamp(this.x, 0, d.width)`), which shoves the whole tile
- * inward and shifts the entire first column / top row off their grid cells.
- *
- * We re-apply the unclamped position (preserved in `_source`) for our painted
- * tiles after core prep runs, so the visible hex stays aligned to its grid cell
- * and only the transparent overhang is clipped at the scene boundary. Scoped to
- * SDX-painted tiles only; all other tiles keep core clamping behavior.
- */
-function patchHexTilePositionClamp() {
-	const restoreSourcePosition = function () {
-		const flags = this._source?.flags?.[MODULE_ID];
-		if (!flags?.painted || !this.parent) return;
-		const sx = this._source.x;
-		const sy = this._source.y;
-		if (this.x === sx && this.y === sy) return;  // not clamped — nothing to do
-		this.x = sx;
-		this.y = sy;
-		// Rebuild the derived shape so bounds/occlusion match the true position.
-		const ShapeCls = this.shape?.constructor;
-		if (ShapeCls) {
-			this.shape = new ShapeCls({
-				x: sx,
-				y: sy,
-				width: this.width,
-				height: this.height,
-				anchorX: this.texture?.anchorX ?? 0,
-				anchorY: this.texture?.anchorY ?? 0
-			});
-		}
-	};
-
-	const wrapperPath = "CONFIG.Tile.documentClass.prototype.prepareDerivedData";
-	if (globalThis.libWrapper?.register) {
-		libWrapper.register(MODULE_ID, wrapperPath, function (wrapped, ...args) {
-			wrapped(...args);
-			restoreSourcePosition.call(this);
-		}, "WRAPPER");
-	} else {
-		// Fallback: direct prototype wrap (idempotent).
-		const proto = CONFIG.Tile.documentClass.prototype;
-		if (!proto.__sdxClampPatched) {
-			const orig = proto.prepareDerivedData;
-			proto.prepareDerivedData = function (...args) {
-				orig.apply(this, args);
-				restoreSourcePosition.call(this);
-			};
-			proto.__sdxClampPatched = true;
-		}
-	}
-}
+// patchHexTilePositionClamp moved to hex/hex-tile-clamp.mjs
 
 Hooks.once("init", () => {
 	// Register GSAP Plugins (GSAP is loaded by Foundry core)
@@ -1608,224 +1544,16 @@ function setupSettingsOrganization() {
 
 
 
-// ============================================
-// ENHANCED DETAILS TAB
-// ============================================
-
-/**
- * Enhance the Details tab with improved styling and organization
- */
-function enhanceDetailsTab(app, html, actor) {
-	if (actor.type !== "Player") return;
-
-	const $detailsTab = html.find('.tab[data-tab="tab-details"]');
-	if (!$detailsTab.length) return;
-
-	// Add enhanced class to the details tab
-	$detailsTab.addClass('sdx-enhanced-details');
-
-	// Hide the level box (it's already in the enhanced header)
-	$detailsTab.find('.SD-box').first().hide();
-}
-
-// ============================================
-// ENHANCED ABILITIES TAB
-// ============================================
-
-/**
- * Enhance the Abilities tab with improved styling and organization
- */
-function enhanceAbilitiesTab(app, html, actor) {
-	if (actor.type !== "Player") return;
-
-	const $abilitiesTab = html.find('.tab[data-tab="tab-abilities"]');
-	if (!$abilitiesTab.length) return;
-
-	// Add enhanced class to the abilities tab
-	$abilitiesTab.addClass('sdx-enhanced-abilities');
-
-}
-
-
-// ============================================
-// ENHANCED TALENTS TAB
-// ============================================
-
-/**
- * Add inline control buttons to talent items
- */
-function addInlineTalentControls($talentsTab, actor) {
-	const $items = $talentsTab.find('.item');
-
-	$items.each(function () {
-		const $item = $(this);
-
-		// Skip if already has controls
-		if ($item.find('.sdx-talent-controls').length) return;
-
-		const itemId = $item.data('item-id');
-
-		if (!itemId) return;
-
-		// Create control buttons
-		const $controls = $(`
-			<div class="sdx-talent-controls">
-				<button type="button" class="sdx-talent-edit" data-tooltip="Edit" title="Edit">
-					<i class="fas fa-edit"></i>
-				</button>
-				<button type="button" class="sdx-talent-transfer" data-tooltip="Transfer to Player" title="Transfer to Player">
-					<i class="fas fa-share"></i>
-				</button>
-				<button type="button" class="sdx-talent-delete" data-tooltip="Delete" title="Delete">
-					<i class="fas fa-trash"></i>
-				</button>
-			</div>
-		`);
-
-		// Add controls to the item
-		$item.append($controls);
-
-		// Edit button
-		$controls.find('.sdx-talent-edit').on('click', async (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			const item = actor.items.get(itemId);
-			if (item) item.sheet.render(true);
-		});
-
-		// Transfer button
-		$controls.find('.sdx-talent-transfer').on('click', async (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			const item = actor.items.get(itemId);
-			if (item && game.user.isGM) {
-				const targetActorId = await showTransferDialog(actor, item);
-				if (targetActorId) {
-					await transferItemToPlayer(actor, item, targetActorId);
-				}
-			}
-		});
-
-		// Delete button
-		$controls.find('.sdx-talent-delete').on('click', async (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			const item = actor.items.get(itemId);
-			if (item) {
-				const confirm = await foundry.applications.api.DialogV2.confirm({
-					window: { title: "Delete Talent" },
-					content: `<p>Are you sure you want to delete <strong>${item.name}</strong>?</p>`,
-					modal: true
-				});
-
-				if (confirm) {
-					await item.delete();
-					ui.notifications.info(`Deleted ${item.name}`);
-				}
-			}
-		});
-	});
-}
-
-/**
- * Enhance the Talents tab with improved styling and organization
- */
-function enhanceTalentsTab(app, html, actor) {
-	if (actor.type !== "Player") return;
-
-	const $talentsTab = html.find('.tab[data-tab="tab-talents"]');
-	if (!$talentsTab.length) return;
-
-	// Add enhanced class to the talents tab
-	$talentsTab.addClass('sdx-enhanced-talents');
-
-	// Add inline control buttons to talent items
-	addInlineTalentControls($talentsTab, actor);
-}
-
-
-// ============================================
-// ENHANCED EFFECTS TAB
-// ============================================
-
-/**
- * Enhance the Effects tab with improved styling and organization
- */
-function enhanceEffectsTab(app, html, actor) {
-	if (actor.type !== "Player") return;
-
-	const $effectsTab = html.find('.tab[data-tab="tab-effects"]');
-	if (!$effectsTab.length) return;
-
-	// Add enhanced class to the effects tab
-	$effectsTab.addClass('sdx-enhanced-effects');
-}
-
-
-
+// The four small tab enhancers moved to character-sheet/enhanced-tabs.mjs,
+// together in one module because they are 12, 10, 12 and 9 lines. The
+// actor-sheet dispatcher below still calls all four.
 
 
 // ============================================
 // PARTY FUNCTIONS
 // ============================================
 
-function patchLightSourceTrackerForParty() {
-	const tracker = game.shadowdark?.lightSourceTracker;
-	if (!tracker) {
-		console.warn(`${MODULE_ID} | Light Source Tracker not found, skipping patch`);
-		return;
-	}
-
-	// Store the original _gatherLightSources method
-	const originalGatherLightSources = tracker._gatherLightSources.bind(tracker);
-
-	// Override _gatherLightSources to also include Party actors
-	tracker._gatherLightSources = async function () {
-		// Call the original method first
-		await originalGatherLightSources();
-
-		// Track if we added anything
-		let addedPartyActors = false;
-
-		// Now add Party actors with active light sources
-		const partyActors = game.actors.filter(actor => isPartyActor(actor));
-
-		for (const actor of partyActors) {
-			// Get active light sources for this party
-			const activeLightSources = actor.items.filter(
-				item => ["Basic", "Effect"].includes(item.type) &&
-					item.system.light?.isSource &&
-					item.system.light?.active
-			);
-
-			if (activeLightSources.length === 0) continue;
-
-			const actorData = actor.toObject(false);
-			actorData.lightSources = [];
-
-			for (const item of activeLightSources) {
-				actorData.lightSources.push(item.toObject(false));
-			}
-
-			// Only add if not already in the list
-			if (!this.monitoredLightSources.some(a => a._id === actorData._id)) {
-				this.monitoredLightSources.push(actorData);
-				addedPartyActors = true;
-			}
-		}
-
-		// Only re-sort if we actually added party actors
-		if (addedPartyActors) {
-			this.monitoredLightSources.sort((a, b) => {
-				if (a.name < b.name) return -1;
-				if (a.name > b.name) return 1;
-				return 0;
-			});
-		}
-	};
-
-	//console.log(`${MODULE_ID} | Patched Light Source Tracker to include Party actors`);
-}
+// patchLightSourceTrackerForParty moved to party/party-light-tracker.mjs
 
 
 /**
@@ -1924,238 +1652,15 @@ function registerClassAbilitySheet() {
 // CALLED, so the call site below — not this position — is what fixes their
 // order relative to the root's two other renderApplication handlers.
 
-/**
- * Patch NPC sheet to handle item drops with move vs copy behavior
- */
-function patchNpcSheetForItemDrops(app) {
-	// Only patch once per sheet instance
-	if (app._sdxDropPatched) return;
-	app._sdxDropPatched = true;
-
-	// Store the original _onDrop if it exists
-	const originalOnDrop = app._onDrop?.bind(app);
-
-	// Override the _onDrop method to intercept drops on the inventory tab
-	app._onDrop = async function (event) {
-		// Check if we're on the inventory tab
-		const inventoryTab = event.target.closest('.shadowdark-extras-npc-inventory');
-		if (!inventoryTab) {
-			// Not on inventory tab, use original handler
-			if (originalOnDrop) return originalOnDrop(event);
-			return;
-		}
-
-		// Get the drag data
-		let data;
-		try {
-			data = JSON.parse(event.dataTransfer.getData('text/plain'));
-		} catch (err) {
-			return;
-		}
-
-		if (data.type !== "Item") return;
-
-		// Get the source item
-		const sourceItem = await fromUuid(data.uuid);
-		if (!sourceItem) return;
-
-		const targetActor = this.actor;
-		const sourceActor = sourceItem.parent;
-
-		// Check if we're moving or copying (Ctrl = copy, default = move)
-		const isCopy = event.ctrlKey;
-
-		// Don't do anything if dropping on same actor
-		if (sourceActor === targetActor && !isCopy) return;
-
-		// Create the item on target actor
-		const itemData = sourceItem.toObject();
-		delete itemData._id; // Remove the ID so a new one is created
-
-		await targetActor.createEmbeddedDocuments("Item", [itemData]);
-
-		// If moving (not copying), delete from source
-		if (!isCopy && sourceActor && sourceActor !== targetActor) {
-			await sourceItem.delete();
-			ui.notifications.info(
-				game.i18n.format("SHADOWDARK_EXTRAS.notifications.item_moved", {
-					item: sourceItem.name,
-					target: targetActor.name
-				})
-			);
-		} else if (isCopy) {
-			ui.notifications.info(
-				game.i18n.format("SHADOWDARK_EXTRAS.notifications.item_copied", {
-					item: sourceItem.name,
-					target: targetActor.name
-				})
-			);
-		}
-	};
-}
+// patchNpcSheetForItemDrops moved to npc/npc-sheet-inventory.mjs
 
 
 // ============================================
 // FIX: PlayerSheetSD._onUseAbility missing methods
 // ============================================
 
-/**
- * Patch PlayerSheetSD._onUseAbility to fix missing getSkipPrompt/getAdvantage methods
- * The system calls this.getSkipPrompt() and this.getAdvantage() which don't exist on the sheet.
- * Other sheets correctly use this.actor.buildOptionsForSkipPrompt(event) instead.
- */
-function patchPlayerSheetUseAbility() {
-	const PlayerSheetSD = CONFIG.Actor.sheetClasses.Player?.["shadowdark.PlayerSheetSD"]?.cls;
-	if (!PlayerSheetSD) {
-		console.warn(`${MODULE_ID} | Could not find PlayerSheetSD class to patch _onUseAbility`);
-		return;
-	}
+// patchPlayerSheetUseAbility moved to character-sheet/player-sheet-patches.mjs
 
-	// Only patch if getSkipPrompt is missing (i.e. the bug exists in this system version)
-	if (typeof PlayerSheetSD.prototype.getSkipPrompt === "function") return;
-
-	PlayerSheetSD.prototype._onUseAbility = async function (event) {
-		event.preventDefault();
-		// SD 4.x: abilities live on the data model and are resolved by UUID.
-		// The system's own handler reads dataset.itemUuid and calls
-		// actor.system.useAbility(uuid). Mirror that, with a bare-id fallback
-		// for older templates that only expose data-item-id.
-		const ds = event.currentTarget.dataset;
-		let abilityUuid = ds.itemUuid;
-		if (!abilityUuid && ds.itemId) {
-			abilityUuid = this.actor.items.get(ds.itemId)?.uuid;
-		}
-		if (!abilityUuid) return;
-		const options = this.actor.buildOptionsForSkipPrompt?.(event) ?? { skipPrompt: event.shiftKey };
-		this.actor.system.useAbility(abilityUuid, options);
-	};
-
-	console.log(`${MODULE_ID} | Patched PlayerSheetSD._onUseAbility (getSkipPrompt fix)`);
-}
-
-// ============================================
-// CHARACTER GENERATOR ROLL PATCH
-// ============================================
-
-/**
- * Patch CharacterGeneratorSD to show dice rolls in chat
- * So all players can see character generation results
- */
-function patchCharacterGeneratorRolls() {
-	// Get the CharacterGeneratorSD class from the shadowdark namespace
-	const CharacterGeneratorSD = CONFIG.SHADOWDARK?.applications?.CharacterGeneratorSD
-		|| globalThis.shadowdark?.apps?.CharacterGeneratorSD
-		|| game.shadowdark?.apps?.CharacterGeneratorSD;
-
-	if (!CharacterGeneratorSD) {
-		console.warn(`${MODULE_ID} | CharacterGeneratorSD not found, skipping roll patch`);
-		return;
-	}
-
-	// Correct ability order: STR, DEX, CON, INT, WIS, CHA
-	const ABILITY_ORDER = ["str", "dex", "con", "int", "wis", "cha"];
-	const ABILITY_NAMES = {
-		str: "Strength",
-		dex: "Dexterity",
-		con: "Constitution",
-		int: "Intelligence",
-		wis: "Wisdom",
-		cha: "Charisma"
-	};
-
-	// Override _randomizeStats to use correct order and show per-ability rolls
-	// If no ability reaches 14+, all results are colored red
-	CharacterGeneratorSD.prototype._randomizeStats = async function () {
-		// Roll all abilities first (silently)
-		const rolls = {};
-		let hasHighStat = false;
-
-		for (const key of ABILITY_ORDER) {
-			const roll = await new Roll("3d6").evaluate();
-			rolls[key] = roll;
-			if (roll.total >= 14) hasHighStat = true;
-		}
-
-		// Collect message IDs if we need to update them
-		const messageIds = [];
-
-		// Send messages one at a time. roll.toMessage() handles render() +
-		// ChatMessage.create + DSN hook properly (ChatMessage.create with just
-		// `rolls: [...]` leaves the dice unrendered in v13+, only the formula shows).
-		for (const key of ABILITY_ORDER) {
-			const roll = rolls[key];
-			const message = await roll.toMessage({
-				speaker: ChatMessage.getSpeaker({ user: game.user }),
-				flavor: `<b>Character Generator</b> - ${ABILITY_NAMES[key]}`
-			});
-			if (message) messageIds.push(message.id);
-
-			// SD 4.x migrated abilities.base -> abilities.value (PlayerSD.mjs:15);
-			// _calculateModifiers() reads `.value` to compute the modifier.
-			this.formData.actor.system.abilities[key].value = roll.total;
-		}
-
-		// If no high stat, update all messages to show red totals
-		if (!hasHighStat) {
-			// Small delay to let messages render
-			setTimeout(() => {
-				for (const msgId of messageIds) {
-					const msgElement = document.querySelector(`[data-message-id="${msgId}"] .dice-total`);
-					if (msgElement) {
-						msgElement.style.color = "#cc0000";
-						msgElement.style.fontWeight = "bold";
-					}
-				}
-			}, 100);
-		}
-
-		this._calculateModifiers();
-	};
-
-	// Override _randomizeGold to show gold roll
-	CharacterGeneratorSD.prototype._randomizeGold = async function () {
-		const roll = await new Roll("2d6").evaluate();
-		const startingGold = roll.total * 5;
-
-		// roll.toMessage triggers DSN automatically via Foundry hooks
-		await roll.toMessage({
-			speaker: ChatMessage.getSpeaker({ user: game.user }),
-			flavor: `<b>Character Generator</b> - Starting Gold (×5 = ${startingGold} GP)`
-		});
-
-		this.formData.actor.system.coins.gp = startingGold;
-	};
-
-	// Override _randomizeAlignment to show alignment roll
-	CharacterGeneratorSD.prototype._randomizeAlignment = async function () {
-		const roll = await new Roll("d6").evaluate();
-		let alignment;
-
-		switch (roll.total) {
-			case 1:
-			case 2:
-			case 3:
-				alignment = "lawful";
-				break;
-			case 4:
-			case 5:
-				alignment = "neutral";
-				break;
-			default:
-				alignment = "chaotic";
-		}
-
-		// roll.toMessage triggers DSN automatically via Foundry hooks
-		await roll.toMessage({
-			speaker: ChatMessage.getSpeaker({ user: game.user }),
-			flavor: `<b>Character Generator</b> - Alignment (${alignment.charAt(0).toUpperCase() + alignment.slice(1)})`
-		});
-
-		this.formData.actor.system.alignment = alignment;
-	};
-
-	console.log(`${MODULE_ID} | Patched CharacterGeneratorSD to show rolls in chat`);
-}
 
 // ============================================
 // HOOKS
@@ -2598,27 +2103,7 @@ Hooks.on("renderPlayerSheetSD", async (app, html, data) => {
 	enableItemChatIcon(app, html);
 });
 
-function applyNpcPlayerTheme(app, html, actor) {
-	if (actor?.type !== "NPC") return;
-	if (isPartyActor(actor)) return;
-
-	const $html = html instanceof jQuery ? html : $(html);
-	const $sheet = $html.closest('.shadowdark.sheet.npc').length
-		? $html.closest('.shadowdark.sheet.npc')
-		: $html;
-
-	if (!game.settings.get(MODULE_ID, "enableNpcPlayerTheme")) {
-		$sheet.removeClass('sdx-npc-player-theme');
-		$html.find('.SD-header').first().removeClass('sdx-npc-themed-header');
-		$html.find('.SD-content-body').first().removeClass('sdx-npc-themed-content');
-		return;
-	}
-
-	$sheet.addClass('sdx-npc-player-theme');
-
-	$html.find('.SD-header').first().addClass('sdx-npc-themed-header');
-	$html.find('.SD-content-body').first().addClass('sdx-npc-themed-content');
-}
+// applyNpcPlayerTheme moved to npc/npc-sheet-inventory.mjs
 
 // Inject Inventory tab into NPC sheets (but not Party sheets)
 Hooks.on("renderNpcSheetSD", async (app, html, data) => {
@@ -3028,45 +2513,7 @@ Hooks.once("ready", () => {
 // ============================================
 // AMMUNITION BONUS UI INJECTION
 // ============================================
-function injectAmmunitionBonuses(app, html) {
-	const item = app?.item;
-	if (item?.type !== "Basic") return;
-	if (!item.system.isAmmunition) return;
-
-	// De-dupe on re-render
-	html.find(".sdx-ammunition-bonuses").remove();
-
-	const hitBonus = item.getFlag(MODULE_ID, "ammoHitBonus") || "";
-	const damageBonus = item.getFlag(MODULE_ID, "ammoDamageBonus") || "";
-
-	const bonusesHtml = `
-		<div class="sdx-ammunition-bonuses">
-			<div class="SD-box">
-				<div class="header light">
-					<label>${game.i18n.localize("SHADOWDARK_EXTRAS.ammunition.bonuses.label")}</label>
-				</div>
-				<div class="content">
-					<div class="SD-grid center">
-						<div class="sdx-bonus-field">
-							<label class="sdx-field-label">${game.i18n.localize("SHADOWDARK_EXTRAS.ammunition.bonuses.hit")}</label>
-							<input type="text" name="flags.${MODULE_ID}.ammoHitBonus" value="${hitBonus}" placeholder="+0">
-						</div>
-						<div class="sdx-bonus-field">
-							<label class="sdx-field-label">${game.i18n.localize("SHADOWDARK_EXTRAS.ammunition.bonuses.damage")}</label>
-							<input type="text" name="flags.${MODULE_ID}.ammoDamageBonus" value="${damageBonus}" placeholder="+0">
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	`;
-
-	// Inject at the bottom of the Details tab
-	const detailsTab = html.find('.tab[data-tab="tab-details"]');
-	if (detailsTab.length) {
-		detailsTab.append(bonusesHtml);
-	}
-}
+// injectAmmunitionBonuses moved to inventory/ammunition-bonuses.mjs
 
 // ============================================
 // ABILITY ADVANTAGE PREDEFINED EFFECTS
@@ -3516,94 +2963,7 @@ Hooks.on("createToken", async (tokenDoc, options, userId) => {
 // SPELLBOOK COMPENDIUM FILTER
 // ============================================
 
-/**
- * Inject a compendium filter dropdown into the SpellBookSD dialog
- * Allows users to filter spells by compendium
- */
-function injectSpellbookCompendiumFilter(app, html) {
-	const header = html.find(".SD-header");
-	if (!header.length) return;
-
-	// Get all compendiums that contain spells
-	const spellPacks = [];
-	for (const pack of game.packs) {
-		if (pack.metadata.type !== "Item") continue;
-		// Check if pack has any spells in its index
-		const hasSpells = pack.index.some(i => i.type === "Spell");
-		if (hasSpells) {
-			spellPacks.push({
-				id: pack.collection,
-				name: pack.metadata.label
-			});
-		}
-	}
-
-	// Sort packs alphabetically
-	spellPacks.sort((a, b) => a.name.localeCompare(b.name));
-
-	// Build the dropdown options
-	const allLabel = game.i18n.localize("SHADOWDARK_EXTRAS.spellbook.compendiumFilter.all");
-	let optionsHtml = `<option value="">${allLabel}</option>`;
-	for (const pack of spellPacks) {
-		optionsHtml += `<option value="${pack.id}">${pack.name}</option>`;
-	}
-
-	// Create the filter dropdown
-	const filterLabel = game.i18n.localize("SHADOWDARK_EXTRAS.spellbook.compendiumFilter.label");
-	const filterHtml = `
-		<div class="sdx-spellbook-filter">
-			<label>${filterLabel}</label>
-			<select class="sdx-spellbook-compendium-select">
-				${optionsHtml}
-			</select>
-		</div>
-	`;
-
-	// Insert before navigation tabs
-	const nav = html.find(".SD-nav");
-	if (nav.length) {
-		nav.before(filterHtml);
-	} else {
-		// Fallback: insert after header
-		header.after(filterHtml);
-	}
-
-	// Add event listener
-	const select = html.find(".sdx-spellbook-compendium-select");
-	select.on("change", (event) => {
-		const selectedCompendium = event.currentTarget.value;
-		filterSpellsByCompendium(html, selectedCompendium);
-	});
-}
-
-/**
- * Filter the spell list by hiding/showing items based on their compendium
- * @param {jQuery} html - The dialog HTML
- * @param {string} compendiumId - The compendium ID to filter by, or empty for all
- */
-function filterSpellsByCompendium(html, compendiumId) {
-	const spellItems = html.find(".SD-list .item[data-uuid]");
-
-	spellItems.each((index, element) => {
-		const $item = $(element);
-		const uuid = $item.data("uuid");
-
-		if (!compendiumId) {
-			// Show all
-			$item.show();
-		} else {
-			// Check if the UUID starts with the compendium ID
-			// UUID format: Compendium.module.pack.itemId
-			if (uuid && uuid.startsWith(`Compendium.${compendiumId}`)) {
-				$item.show();
-			} else {
-				$item.hide();
-			}
-		}
-	});
-
-	// Update the count display if needed (future enhancement)
-}
+// injectSpellbookCompendiumFilter moved to character-sheet/spellbook-filter.mjs
 
 // Hook into the SpellBookSD rendering
 Hooks.on("renderApplication", (app, html, data) => {
@@ -4030,167 +3390,8 @@ console.log(`${MODULE_ID} | Scene export context menu registered`);
 // ============================================
 // LIGHTS-OUT CAROUSEL DRAG FUNCTIONALITY
 // ============================================
-
-/**
- * Make the lights-out-carousel from shadowdark-crawl-helper draggable
- * Uses a dedicated drag handle icon
- */
-function initCarouselDrag() {
-	const STORAGE_KEY = "sdx-carousel-position";
-	let isDragging = false;
-	let dragStartX = 0;
-	let dragStartY = 0;
-	let carouselStartX = 0;
-	let carouselStartY = 0;
-	let hasMoved = false;
-
-	// Create and inject the drag handle button
-	function injectDragHandle(carousel) {
-		// Check if already injected
-		if (carousel.querySelector(".sdx-carousel-drag-btn")) return;
-
-		// Find the first side-buttons container (top one with roll-all button)
-		const sideButtons = carousel.querySelector(".side-buttons");
-		if (!sideButtons) return;
-
-		// Find the roll-all button to insert before it
-		const rollAllBtn = sideButtons.querySelector("#rollAllInit");
-		if (!rollAllBtn) return;
-
-		// Create drag handle button
-		const dragBtn = document.createElement("button");
-		dragBtn.className = "ui-control icon fas fa-grip-vertical sdx-carousel-drag-btn";
-		dragBtn.dataset.tooltip = "Drag to move carousel";
-		dragBtn.type = "button";
-
-		// Insert before roll-all button
-		rollAllBtn.parentNode.insertBefore(dragBtn, rollAllBtn);
-
-		// Attach drag handler
-		dragBtn.addEventListener("mousedown", (e) => {
-			if (e.button !== 0) return;
-
-			isDragging = true;
-			hasMoved = false;
-			dragStartX = e.clientX;
-			dragStartY = e.clientY;
-
-			const currentCarousel = document.querySelector("#actorCarousel.lights-out-carousel");
-			if (currentCarousel) {
-				const rect = currentCarousel.getBoundingClientRect();
-				carouselStartX = rect.left;
-				carouselStartY = rect.top;
-			}
-
-			dragBtn.classList.add("sdx-carousel-dragging");
-			document.body.style.userSelect = "none";
-			e.preventDefault();
-		});
-	}
-
-	// Setup drag on the carousel
-	function setupCarouselDrag(carousel) {
-		if (!carousel) return;
-
-		// Don't restore position if actively dragging
-		if (!isDragging) {
-			// Always restore saved position (carousel may have been re-positioned by the app)
-			const savedPos = localStorage.getItem(STORAGE_KEY);
-			if (savedPos) {
-				try {
-					const { left, top } = JSON.parse(savedPos);
-					// Only apply if position differs (avoid unnecessary style changes)
-					const currentLeft = parseInt(carousel.style.left) || 0;
-					const currentTop = parseInt(carousel.style.top) || 0;
-					if (Math.abs(currentLeft - left) > 5 || Math.abs(currentTop - top) > 5) {
-						carousel.style.left = `${left}px`;
-						carousel.style.top = `${top}px`;
-					}
-				} catch (e) {
-					console.warn("shadowdark-extras | Failed to restore carousel position:", e);
-				}
-			}
-		}
-
-		// Inject drag handle if not present
-		injectDragHandle(carousel);
-	}
-
-	// Global mouse move handler
-	document.addEventListener("mousemove", (e) => {
-		if (!isDragging) return;
-
-		const dx = e.clientX - dragStartX;
-		const dy = e.clientY - dragStartY;
-
-		// Only start moving after a small threshold to allow clicks
-		if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-			hasMoved = true;
-
-			const carousel = document.querySelector("#actorCarousel.lights-out-carousel");
-			if (carousel) {
-				const newLeft = carouselStartX + dx;
-				const newTop = carouselStartY + dy;
-				carousel.style.left = `${newLeft}px`;
-				carousel.style.top = `${newTop}px`;
-			}
-		}
-	});
-
-	// Global mouse up handler
-	document.addEventListener("mouseup", () => {
-		if (!isDragging) return;
-
-		isDragging = false;
-		document.body.style.userSelect = "";
-
-		// Remove dragging class from all portraits
-		document.querySelectorAll(".sdx-carousel-dragging").forEach(el => {
-			el.classList.remove("sdx-carousel-dragging");
-		});
-
-		// Save position if moved
-		if (hasMoved) {
-			const carousel = document.querySelector("#actorCarousel.lights-out-carousel");
-			if (carousel) {
-				const rect = carousel.getBoundingClientRect();
-				localStorage.setItem(STORAGE_KEY, JSON.stringify({
-					left: rect.left,
-					top: rect.top
-				}));
-			}
-		}
-	});
-
-	// Watch for carousel to appear using MutationObserver
-	const observer = new MutationObserver((mutations) => {
-		// Check for carousel and setup any new portraits
-		const carousel = document.querySelector("#actorCarousel.lights-out-carousel");
-		if (carousel) {
-			setupCarouselDrag(carousel);
-		}
-	});
-
-	// Observe the scene-controls area where the carousel is inserted
-	Hooks.once("ready", () => {
-		// Check if shadowdark-crawl-helper is enabled
-		if (!game.modules.get("shadowdark-crawl-helper")?.active) return;
-
-		// Start observing
-		observer.observe(document.body, {
-			childList: true,
-			subtree: true
-		});
-
-		// Also try to setup on any existing carousel
-		const carousel = document.querySelector("#actorCarousel.lights-out-carousel");
-		if (carousel) {
-			setupCarouselDrag(carousel);
-		}
-
-		console.log(`${MODULE_ID} | Carousel drag functionality initialized`);
-	});
-}
+// Moved to canvas/carousel-drag.mjs. Its one Hooks.once installs when the
+// call below runs, so that call site — not this position — fixes its order.
 
 // Initialize carousel drag
 initCarouselDrag();

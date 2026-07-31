@@ -363,3 +363,66 @@ test("binding gate: static class fields do not read as unbound calls", () => {
   assert.deepEqual(findUnboundCalls(source), [],
     "the ApplicationV2 static-field idiom must not be reported");
 });
+
+/**
+ * Regression tests for the binding gate's call-detection lookbehind.
+ *
+ * The call regex used to open with a CONSUMING group, `(^|[^\w$.?])`. In
+ * `if (isPartyActor(actor))` the `if (` match ate the `(` that `isPartyActor(`
+ * needed, so the inner call was never seen — every call written as the first
+ * thing inside `if (`, `while (`, `switch (` or `return (` was invisible.
+ *
+ * That is not hypothetical: the Phase 3 move of `applyNpcPlayerTheme` into
+ * `npc/npc-sheet-inventory.mjs` shipped `isPartyActor is not defined` past a
+ * green gate, and a live NPC sheet render caught it, not the gate.
+ */
+test("binding gate: an undefined call directly inside if(...) is reported", () => {
+  const source = "function f(actor) {\n\tif (isPartyActor(actor)) return;\n}";
+  assert.deepEqual(findUnboundCalls(source).map((u) => u.name), ["isPartyActor"],
+    "a consuming preceding-char group hides this shape entirely");
+});
+
+test("binding gate: undefined calls inside while/return parens are reported", () => {
+  for (const source of [
+    "function f(a) {\n\twhile (missingFn(a)) { a--; }\n}",
+    "function f(a) {\n\treturn (missingFn(a));\n}",
+    "function f(a) {\n\tif (missingFn(a)) { return 1; }\n}",
+  ]) {
+    assert.deepEqual(findUnboundCalls(source).map((u) => u.name), ["missingFn"], source);
+  }
+});
+
+test("binding gate: the lookbehind did not start flagging method definitions", () => {
+  const source = "class C {\n\tfoo(a) { return a; }\n\tbar() { return this.foo(1); }\n}";
+  assert.deepEqual(findUnboundCalls(source), [],
+    "a definition is `name(…) {` and must still be skipped");
+});
+
+test("binding gate: a locally declared function called inside if(...) is not reported", () => {
+  const source = "function ok(a) { return a; }\nfunction f() {\n\tif (ok(1)) return;\n}";
+  assert.deepEqual(findUnboundCalls(source), [],
+    "the fix must not turn every guarded call into a false positive");
+});
+
+test("binding gate: an undefined call inside a template-literal interpolation is reported", () => {
+  // The real site of the `unescape` finding in 13f92f0 — DungeonGenerator.mjs:752
+  // is `${btoa(unescape(encodeURIComponent(s)))}`, where btoa's match consumed
+  // the paren unescape needed. Interpolations are CODE, not string content, so
+  // the masker keeps them and the scanner must see through to the inner call.
+  const source = "function f(s) {\n\treturn `data:${btoa(missingFn(s))}`;\n}";
+  assert.deepEqual(findUnboundCalls(source).map((u) => u.name), ["missingFn"],
+    "a call nested inside an interpolation must not be hidden by its outer call");
+});
+
+test("binding gate: a call to a name that is never imported is reported", () => {
+  // The plainest extraction failure: lifted code calls a helper left behind.
+  const source = [
+    'import { MODULE_ID } from "../shared/module-id.mjs";',
+    "export function moved(actor) {",
+    "\tconsole.log(MODULE_ID);",
+    "\treturn helperLeftBehind(actor);",
+    "}",
+  ].join("\n");
+  assert.deepEqual(findUnboundCalls(source).map((u) => u.name), ["helperLeftBehind"],
+    "the imported name is bound; the un-imported one is the whole point of this gate");
+});

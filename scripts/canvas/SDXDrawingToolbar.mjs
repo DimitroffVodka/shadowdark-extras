@@ -3,7 +3,7 @@
  * Frameless, draggable, vertical, semi-transparent floating toolbar for the SDX drawing tools.
  */
 
-import { sdxDrawingTool, COLORS, STAMP_SIZES } from "./SDXDrawingTool.mjs";
+import { sdxDrawingTool, COLORS } from "./SDXDrawingTool.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 

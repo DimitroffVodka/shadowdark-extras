@@ -31,6 +31,21 @@ const KNOWN_GLOBALS = new Set([
   "Object", "Promise", "Proxy", "Reflect", "RegExp", "Set", "String", "Symbol", "WeakMap", "WeakSet",
   "decodeURI", "decodeURIComponent", "encodeURI", "encodeURIComponent", "eval", "isNaN", "isFinite",
   "parseFloat", "parseInt", "structuredClone", "queueMicrotask", "require", "import",
+  // Legacy but genuinely present in every browser.
+  //
+  // `unescape` was surfaced by the lookbehind fix below. Its real site is
+  // `DungeonGenerator.mjs:752`, inside a template-literal interpolation:
+  // `${btoa(unescape(encodeURIComponent(svgString)))}`. The mechanism is the
+  // same one the fix is about — `btoa`'s match consumed the `(` that
+  // `unescape(` needed — but it is NOT the `if (` shape, and an earlier version
+  // of this comment said it was. That description was written from the
+  // mechanism instead of from the site, which is the same mistake in kind as
+  // the bug being fixed.
+  //
+  // `escape` is DEFENSIVE: no call to it exists anywhere in this tree today. It
+  // is listed because it is `unescape`'s counterpart and would otherwise be the
+  // next surprise.
+  "escape", "unescape",
   // DOM / browser
   "Blob", "CustomEvent", "Event", "File", "FileReader", "FormData", "Headers", "Image", "MutationObserver",
   "Option",
@@ -131,19 +146,27 @@ export function findUnboundCalls(source) {
 
   const seen = new Map();
   // A bare call: not preceded by `.` (method access), `?.`, or an identifier char.
-  for (const m of masked.matchAll(/(^|[^\w$.?])([A-Za-z_$][\w$]*)\s*\(/g)) {
-    const name = m[2];
+  //
+  // LOOKBEHIND, NOT A CONSUMING GROUP. This used to be `(^|[^\w$.?])`, which ATE
+  // the preceding character — so in `if (isPartyActor(actor))` the `if (` match
+  // consumed the `(` that `isPartyActor(` needed, and the inner call was never
+  // seen. Every call written as the first thing inside `if (`, `while (`,
+  // `switch (`, `return (` was invisible, which is a very common shape: the
+  // Phase 3 move of `applyNpcPlayerTheme` shipped a ReferenceError past a green
+  // gate for exactly this reason, and live testing caught it, not the gate.
+  for (const m of masked.matchAll(/(?<![\w$.?])([A-Za-z_$][\w$]*)\s*\(/g)) {
+    const name = m[1];
     if (KEYWORDS.has(name) || KNOWN_GLOBALS.has(name) || bound.has(name)) continue;
 
     // A DEFINITION — class method, object shorthand, getter — is `name(…) {`.
     // A call is never followed by a block. Without this, every method in every
     // class reads as an unbound call and the signal drowns in ~1200 of them.
-    const open = masked.indexOf("(", m.index + m[1].length + name.length - 1);
+    const open = masked.indexOf("(", m.index + name.length - 1);
     let after = afterParens(open);
     while (after < masked.length && /\s/.test(masked[after])) after += 1;
     if (masked[after] === "{") continue;
 
-    if (!seen.has(name)) seen.set(name, lineOf(m.index + m[1].length));
+    if (!seen.has(name)) seen.set(name, lineOf(m.index));
   }
 
   /**
@@ -156,10 +179,13 @@ export function findUnboundCalls(source) {
    * convention this codebase uses for module-scope constants, and those are the
    * ones extraction leaves behind, so the check is scoped to that shape.
    */
-  for (const m of masked.matchAll(/(^|[^\w$.?])([A-Z][A-Z0-9_]{2,})\b/g)) {
-    const name = m[2];
+  // Lookbehind here for the same reason as the call scan above: a consuming
+  // group loses any reference whose preceding character was already eaten by an
+  // adjacent match.
+  for (const m of masked.matchAll(/(?<![\w$.?])([A-Z][A-Z0-9_]{2,})\b/g)) {
+    const name = m[1];
     if (KEYWORDS.has(name) || KNOWN_GLOBALS.has(name) || bound.has(name) || seen.has(name)) continue;
-    seen.set(name, lineOf(m.index + m[1].length));
+    seen.set(name, lineOf(m.index));
   }
 
   return [...seen].map(([name, line]) => ({ name, line })).sort((a, b) => a.line - b.line);

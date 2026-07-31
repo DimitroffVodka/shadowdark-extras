@@ -327,6 +327,9 @@
       "Hooks.on:updateActor",
       "Hooks.on:updateActor"
     ],
+    "carousel-drag.mjs": [
+      "Hooks.once:ready"
+    ],
     "chat-card-hooks.mjs": [
       "Hooks.on:preCreateChatMessage",
       "Hooks.on:renderChatMessageHTML"
@@ -365,6 +368,9 @@
     "freyas-omen.mjs": [
       "Hooks.on:renderChatMessageHTML"
     ],
+    "hex-tile-clamp.mjs": [
+      "libWrapper.register:<dynamic>"
+    ],
     "invisibility.mjs": [
       "Hooks.on:updateActiveEffect",
       "Hooks.on:deleteActiveEffect",
@@ -401,7 +407,6 @@
       "Hooks.on:renderRollDialogSD"
     ],
     "shadowdark-extras.mjs": [
-      "libWrapper.register:<dynamic>",
       "Hooks.once:init",
       "Hooks.on:renderChatMessageHTML",
       "Hooks.once:ready",
@@ -439,7 +444,6 @@
       "Hooks.once:ready",
       "Hooks.on:renderNpcSheetSD",
       "Hooks.on:getSceneContextOptions",
-      "Hooks.once:ready",
       "Hooks.once:ready",
       "Hooks.once:ready",
       "Hooks.once:init",

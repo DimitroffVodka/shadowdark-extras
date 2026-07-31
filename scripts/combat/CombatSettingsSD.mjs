@@ -3,9 +3,9 @@
  * Adds enhanced damage card features similar to midi-qol
  */
 
-import { getWeaponBonuses, getWeaponEffectsToApply, evaluateRequirements, calculateWeaponBonusDamage, decrementDamageBonusUsage } from "./WeaponBonusConfig.mjs";
+import { getWeaponEffectsToApply, calculateWeaponBonusDamage, decrementDamageBonusUsage } from "./WeaponBonusConfig.mjs";
 import { startDurationSpell, linkEffectToDurationSpell, linkEffectToFocusSpell, linkTargetToFocusSpell, startFocusSpellIfNeeded, getActiveDurationSpells, endFocusSpell } from "../effects/FocusSpellTrackerSD.mjs";
-import { setupTemplateEffectFlags, buildTemplateEffectsFlag, applyTemplateEffect, getTokensInTemplate, processTemplateCreationEffects } from "../effects/TemplateEffectsSD.mjs";
+import { buildTemplateEffectsFlag, processTemplateCreationEffects } from "../effects/TemplateEffectsSD.mjs";
 import { createAuraOnActor } from "../effects/AuraEffectsSD.mjs";
 import { readSdRollOutcome, readSdDamageRoll, resolveCardContext } from "../shared/sd4Compat.mjs";
 import { getEffectiveCreatureType } from "../npc/CreatureTypesApp.mjs";

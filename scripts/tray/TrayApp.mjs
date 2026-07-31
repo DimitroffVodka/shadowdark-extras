@@ -4,11 +4,8 @@ import {
     setViewMode,
     getViewMode,
     cycleViewMode,
-    openTokenSheet,
-    selectToken,
     selectPartyTokens,
     clearTokenSelection,
-    switchToActor,
     getHealthOverlayHeight,
     renderTray,
     toggleHideNpcsFromPlayers
@@ -18,7 +15,6 @@ import { showLeaderDialog, showMovementModeDialog } from "../combat/MarchingMode
 import { FormationSpawnerSD } from "../combat/FormationSpawnerSD.mjs";
 import { PinPlacer, JournalPinManager, JournalPinRenderer } from "../journal/JournalPinsSD.mjs";
 import { PinStyleEditorApp } from "../journal/PinStyleEditorSD.mjs";
-import { PinListApp } from "../journal/PinListApp.mjs";
 
 import { PlaceableNotesSD } from "../journal/PlaceableNotesSD.mjs";
 

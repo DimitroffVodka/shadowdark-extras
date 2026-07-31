@@ -23,7 +23,6 @@
  * that — a dependency scan over function names alone had missed the const.
  */
 
-import { MODULE_ID } from "../shared/module-id.mjs";
 
 // ============================================
 // ENHANCED INVENTORY TAB

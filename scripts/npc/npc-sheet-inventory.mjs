@@ -24,6 +24,7 @@
 import { MODULE_ID } from "../shared/module-id.mjs";
 import { getCreatureTypes, getEffectiveCreatureType } from "./CreatureTypesApp.mjs";
 import { calculateSlotsCostForItemData } from "../inventory/containers.mjs";
+import { isPartyActor } from "../party/PartySheetSD.mjs";
 
 // Item types that count as physical inventory for NPCs
 const NPC_INVENTORY_TYPES = [
@@ -334,4 +335,108 @@ function activateNpcInventoryListeners(html, actor) {
 			event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
 		});
 	});
+}
+
+/**
+ * Move-vs-copy behaviour when dropping an item onto an NPC sheet.
+ *
+ * Moved from the composition root in Phase 3, into the module that already
+ * owns NPC sheet inventory rather than a new file of its own.
+ */
+/**
+ * Patch NPC sheet to handle item drops with move vs copy behavior
+ */
+export function patchNpcSheetForItemDrops(app) {
+	// Only patch once per sheet instance
+	if (app._sdxDropPatched) return;
+	app._sdxDropPatched = true;
+
+	// Store the original _onDrop if it exists
+	const originalOnDrop = app._onDrop?.bind(app);
+
+	// Override the _onDrop method to intercept drops on the inventory tab
+	app._onDrop = async function (event) {
+		// Check if we're on the inventory tab
+		const inventoryTab = event.target.closest('.shadowdark-extras-npc-inventory');
+		if (!inventoryTab) {
+			// Not on inventory tab, use original handler
+			if (originalOnDrop) return originalOnDrop(event);
+			return;
+		}
+
+		// Get the drag data
+		let data;
+		try {
+			data = JSON.parse(event.dataTransfer.getData('text/plain'));
+		} catch (err) {
+			return;
+		}
+
+		if (data.type !== "Item") return;
+
+		// Get the source item
+		const sourceItem = await fromUuid(data.uuid);
+		if (!sourceItem) return;
+
+		const targetActor = this.actor;
+		const sourceActor = sourceItem.parent;
+
+		// Check if we're moving or copying (Ctrl = copy, default = move)
+		const isCopy = event.ctrlKey;
+
+		// Don't do anything if dropping on same actor
+		if (sourceActor === targetActor && !isCopy) return;
+
+		// Create the item on target actor
+		const itemData = sourceItem.toObject();
+		delete itemData._id; // Remove the ID so a new one is created
+
+		await targetActor.createEmbeddedDocuments("Item", [itemData]);
+
+		// If moving (not copying), delete from source
+		if (!isCopy && sourceActor && sourceActor !== targetActor) {
+			await sourceItem.delete();
+			ui.notifications.info(
+				game.i18n.format("SHADOWDARK_EXTRAS.notifications.item_moved", {
+					item: sourceItem.name,
+					target: targetActor.name
+				})
+			);
+		} else if (isCopy) {
+			ui.notifications.info(
+				game.i18n.format("SHADOWDARK_EXTRAS.notifications.item_copied", {
+					item: sourceItem.name,
+					target: targetActor.name
+				})
+			);
+		}
+	};
+}
+
+/**
+ * Applying the player-sheet theme to an NPC sheet.
+ *
+ * Moved from the composition root in Phase 3. Two callers, both NPC sheet
+ * render paths, so it lands beside the rest of the NPC sheet work.
+ */
+export function applyNpcPlayerTheme(app, html, actor) {
+	if (actor?.type !== "NPC") return;
+	if (isPartyActor(actor)) return;
+
+	const $html = html instanceof jQuery ? html : $(html);
+	const $sheet = $html.closest('.shadowdark.sheet.npc').length
+		? $html.closest('.shadowdark.sheet.npc')
+		: $html;
+
+	if (!game.settings.get(MODULE_ID, "enableNpcPlayerTheme")) {
+		$sheet.removeClass('sdx-npc-player-theme');
+		$html.find('.SD-header').first().removeClass('sdx-npc-themed-header');
+		$html.find('.SD-content-body').first().removeClass('sdx-npc-themed-content');
+		return;
+	}
+
+	$sheet.addClass('sdx-npc-player-theme');
+
+	$html.find('.SD-header').first().addClass('sdx-npc-themed-header');
+	$html.find('.SD-content-body').first().addClass('sdx-npc-themed-content');
 }

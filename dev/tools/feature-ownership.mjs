@@ -33,6 +33,7 @@ export const FEATURE_OWNERS = {
     "inventory-multi-select.mjs",
     "inventory-styles.mjs",
     "player-transfers.mjs",
+    "ammunition-bonuses.mjs",
   ],
   "character-sheet": [
     "SheetEditorConfig.mjs",
@@ -53,6 +54,12 @@ export const FEATURE_OWNERS = {
     // notes ON an actor sheet stored in a module flag — not JournalEntry
     // documents. The feature map lists "journal notes" under Character sheets.
     "journal-notes.mjs",
+    "enhanced-tabs.mjs",
+    // Patches the system's CharacterGeneratorSD to broadcast generation rolls.
+    // PC-facing creation behaviour, which is the closest bucket the map has.
+    "character-generator.mjs",
+    "player-sheet-patches.mjs",
+    "spellbook-filter.mjs",
   ],
   "item-sheets": [
     "PotionSheetSD.mjs",
@@ -142,6 +149,7 @@ export const FEATURE_OWNERS = {
     // Extracted from the composition root in Phase 3. Carries four Hooks.on
     // registrations, one of them a contended hook name — see its docblock.
     "party-creation.mjs",
+    "party-light-tracker.mjs",
   ],
   npc: [
     "CreatureTypesApp.mjs",
@@ -196,6 +204,8 @@ export const FEATURE_OWNERS = {
     "HexDungeonBridgeSD.mjs",
     "SettlementGenerator.mjs",
     "ContentRegistry.mjs",
+    // Extracted from the composition root in Phase 3.
+    "hex-tile-clamp.mjs",
   ],
   dungeon: [
     "DungeonGeneratorSD.mjs",
@@ -224,6 +234,10 @@ export const FEATURE_OWNERS = {
     // imports `getCustomLightSources` from it — the crossing that used to run
     // party -> root -> party, now a plain party -> canvas row in the matrix.
     "light-templates.mjs",
+    // Third-party compatibility: makes shadowdark-crawl-helper's lights-out
+    // carousel draggable. Here rather than shared/ because shared takes a helper
+    // at its SECOND consumer and this has one.
+    "carousel-drag.mjs",
   ],
   scene: ["SceneImporter.mjs", "SceneExporter.mjs", "SceneNavBar.mjs"],
   tray: ["TraySD.mjs", "TrayApp.mjs", "SDXRollerApp.mjs", "SDXRollerData.mjs"],
