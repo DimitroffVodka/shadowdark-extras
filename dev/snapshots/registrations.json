@@ -357,6 +357,9 @@
       "Hooks.on:deleteActiveEffect",
       "Hooks.on:updateItem"
     ],
+    "freyas-omen.mjs": [
+      "Hooks.on:renderChatMessageHTML"
+    ],
     "invisibility.mjs": [
       "Hooks.on:updateActiveEffect",
       "Hooks.on:deleteActiveEffect",
@@ -415,7 +418,6 @@
       "Hooks.on:preDeleteItem",
       "Hooks.on:deleteItem",
       "Hooks.on:preUpdateActor",
-      "Hooks.on:renderChatMessageHTML",
       "Hooks.on:deleteActor",
       "Hooks.once:ready",
       "Hooks.on:quenchReady",
