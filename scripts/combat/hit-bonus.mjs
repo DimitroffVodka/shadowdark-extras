@@ -4,74 +4,33 @@ import { injectWeaponBonusDisplay } from "./WeaponBonusConfig.mjs";
 /**
  * Weapon hit-bonus chat display.
  *
- * Extracted from the composition root in Phase 3, verbatim. These two render the
- * hit-bonus breakdown onto an attack card. They read it from
- * `message.flags.<MODULE_ID>.hitBonus` — a flag stamped during message creation —
- * so they are the tail of a three-stage pipeline and touch none of its state:
+ * Reads the breakdown off the roll config that produced the card:
+ * `message.rollConfig._sdxHitBonusInfo`, written by the `renderRollDialogSD`
+ * handler in combat/roll-patches.mjs as it applies each bonus. Shadowdark
+ * stores the whole config as `flags.shadowdark.rollConfig`
+ * (ChatSD.renderRollMessage), so the card reports exactly what the dialog
+ * applied — including any promptable bonus the player ticked — with no
+ * module-scope stash and no actor/item key matching in between.
  *
- *   1. the `ItemSD.prototype.rollItem` wrapper computes the bonus and stashes it
- *   2. `preCreateChatMessage` consumes the stash and writes the message flag
- *   3. these two read that flag and inject the display
- *
- * Only stage 3 lives here for now; stages 1 and 2 are still in the root.
+ * This replaced a three-stage pipeline whose first stage never ran. That writer
+ * was wrapped onto `ItemSD.prototype.rollItem`, a method Shadowdark 4.0.6 does
+ * not define; the wrapper's `typeof === "function"` guard therefore never
+ * passed, and SD 4.x routes attacks through `rollConfigGenerators` /
+ * `rollFromConfig` rather than `rollItem` in any case.
  */
 
-// Track pending hit bonus info for display in chat messages.
-// Maps "actorId-itemId" to { formula, result, parts, timestamp }.
-//
-// This was module-scope state on the composition root. It is private here, and
-// the two stages that touch it reach it only through the accessors below, so the
-// root no longer carries shared mutable state for this feature.
-const _pendingHitBonusInfo = new Map();
-
-/**
- * Stash a computed hit bonus for the chat message that is about to be created.
- * Called from the `ItemSD.prototype.rollItem` wrapper (stage 1).
- *
- * @param {string} actorId
- * @param {string} itemId
- * @param {{formula: string, parts: any, timestamp: number}} info
- */
-export function stashHitBonus(actorId, itemId, info) {
-	_pendingHitBonusInfo.set(`${actorId}-${itemId}`, info);
-}
-
-/**
- * Read a stashed hit bonus and remove it in one step (stage 2).
- *
- * Get-and-delete is deliberately one operation. Both call sites in
- * `preCreateChatMessage` deleted the entry whenever one was found — the second
- * one drops it even when it is too old to apply — so a caller that reads without
- * consuming would leave the entry to be picked up by an unrelated later card.
- *
- * @param {string} key `${actorId}-${itemId}`
- * @returns {object|undefined} the stashed info, or undefined if nothing pending
- */
-export function takeHitBonus(key) {
-	const info = _pendingHitBonusInfo.get(key);
-	if (info) _pendingHitBonusInfo.delete(key);
-	return info;
-}
-
-/**
- * The keys currently awaiting a chat message. Debug aid only — the composition
- * root has a commented-out log in `preCreateChatMessage` that prints them.
- *
- * @returns {string[]}
- */
-export function pendingHitBonusKeys() {
-	return Array.from(_pendingHitBonusInfo.keys());
-}
 /**
  * Process weapon bonuses for a chat message
+ *
+ * @param {ChatMessage} message
+ * @param {HTMLElement} html the message element, as `renderChatMessageHTML` supplies it
  */
 export async function processWeaponBonuses(message, html) {
-	// First, check if we have hit bonus info to display - this should happen
-	// regardless of other conditions since it was pre-calculated
-	const hitBonusInfo = message.flags?.[MODULE_ID]?.hitBonus;
-	//console.log(`${MODULE_ID} | processWeaponBonuses - hitBonusInfo:`, hitBonusInfo);
+	// The hit-bonus breakdown rides on the roll config, so it is available for
+	// any card the roll dialog produced, independent of the checks below.
+	const hitBonusInfo = message.rollConfig?._sdxHitBonusInfo;
 	if (hitBonusInfo) {
-		await injectHitBonusDisplay(html, hitBonusInfo);
+		injectHitBonusDisplay(html, hitBonusInfo);
 	}
 
 	// Check if this is a weapon attack roll (for damage bonus display)
@@ -107,11 +66,21 @@ export async function processWeaponBonuses(message, html) {
 
 /**
  * Inject hit bonus information into the chat card
- * @param {jQuery} html - The message HTML
- * @param {Object} hitBonusInfo - { formula, result, parts }
+ *
+ * `renderChatMessageHTML` hands v14 handlers a plain DOM element — measured off
+ * the live hook, `HTMLLIElement`, with `find` undefined — so this uses DOM APIs
+ * throughout. It previously used jQuery and threw `html.find is not a function`
+ * on every call, invisibly, because the caller does not await it.
+ *
+ * @param {HTMLElement} html - The message element
+ * @param {{formula: string, result: number|null, parts: {label: string}[]}} hitBonusInfo
  */
-async function injectHitBonusDisplay(html, hitBonusInfo) {
+function injectHitBonusDisplay(html, hitBonusInfo) {
 	if (!hitBonusInfo || hitBonusInfo.result === 0) return;
+	if (!html?.querySelector) return;
+
+	// Re-rendering a message re-runs this hook; never stack copies.
+	html.querySelectorAll(".sdx-hit-bonus-display").forEach(el => el.remove());
 
 	// Build tooltip from labels
 	let tooltip = "";
@@ -124,27 +93,25 @@ async function injectHitBonusDisplay(html, hitBonusInfo) {
 		}
 	}
 
-	const sign = hitBonusInfo.result > 0 ? "+" : "";
 	const tooltipAttr = tooltip ? `data-tooltip="${tooltip}"` : "";
 
-	// Always show formula = result format
+	// Show "= N" only for a bonus that is entirely constant. A dice-valued bonus
+	// is rolled inside the d20 roll, so no total is known here; showing the
+	// formula alone beats printing a wrong number — or `undefined`, which is what
+	// the previous writer produced, since it never recorded a result at all.
+	const hasResult = Number.isFinite(hitBonusInfo.result);
+	const sign = hitBonusInfo.result > 0 ? "+" : "";
+
 	let bonusHtml = `<div class="sdx-hit-bonus-display" ${tooltipAttr}>`;
 	bonusHtml += `<span class="sdx-hit-bonus-label">Hit Bonus:</span>`;
 	bonusHtml += `<span class="sdx-hit-bonus-formula">${hitBonusInfo.formula}</span>`;
-	bonusHtml += `<span class="sdx-hit-bonus-equals">=</span>`;
-	bonusHtml += `<span class="sdx-hit-bonus-result">${sign}${hitBonusInfo.result}</span>`;
+	if (hasResult) {
+		bonusHtml += `<span class="sdx-hit-bonus-equals">=</span>`;
+		bonusHtml += `<span class="sdx-hit-bonus-result">${sign}${hitBonusInfo.result}</span>`;
+	}
 	bonusHtml += `</div>`;
 
-	// Find where to inject (after the roll result but before damage sections)
-	const $attackRoll = html.find('.card-attack-roll');
-	if ($attackRoll.length) {
-		// Insert after the attack roll section
-		$attackRoll.after(bonusHtml);
-	} else {
-		// Fallback: insert after the dice roll
-		const $diceRoll = html.find('.dice-roll').first();
-		if ($diceRoll.length) {
-			$diceRoll.after(bonusHtml);
-		}
-	}
+	// Insert after the roll result but before any damage section.
+	const anchor = html.querySelector(".card-attack-roll") ?? html.querySelector(".dice-roll");
+	if (anchor) anchor.insertAdjacentHTML("afterend", bonusHtml);
 }

@@ -440,9 +440,16 @@ export function setupRollConfigPatches() {
 		let hitBonus    = systemBonus;
 		let hitTooltips = systemTooltips;
 
+		// Everything SDX itself contributes to the hit roll, recorded as it is
+		// applied. This rides to the chat card on the roll config (see the
+		// `_sdxHitBonusInfo` assignment below), which is what combat/hit-bonus.mjs
+		// reads to draw the breakdown.
+		const sdxHitParts = [];
+
 		(config._sdxSelectedHitBonuses || []).forEach(b => {
 			hitBonus    += shadowdark.dice.formatBonus(b.formula);
 			hitTooltips += `, ${b.label || "Bonus"}`;
+			sdxHitParts.push({ label: b.label || "Bonus", formula: String(b.formula) });
 		});
 
 		let dmgFormula  = systemDmgFmt;
@@ -461,6 +468,7 @@ export function setupRollConfigPatches() {
 				if (!evaluateRequirements(bonus.requirements || [], rollActor, targetActor)) continue;
 				hitBonus    += shadowdark.dice.formatBonus(bonus.formula);
 				hitTooltips += `, ${bonus.label || "Weapon Bonus"}`;
+				sdxHitParts.push({ label: bonus.label || "Weapon Bonus", formula: String(bonus.formula) });
 			}
 			// SDX auto-apply damage bonuses: add to dmgFormula (so the player sees the full
 			// expected damage in the dialog) AND to dmgTooltips (with the label). The flag
@@ -486,6 +494,33 @@ export function setupRollConfigPatches() {
 				}
 			}
 		}
+
+			// Hand the hit-bonus breakdown to the chat card.
+			//
+			// It travels on the roll config, which Shadowdark stores whole as
+			// `flags.shadowdark.rollConfig` (ChatSD.renderRollMessage), so no
+			// module-scope stash and no actor/item key matching is needed — the
+			// card reads back exactly what this dialog applied, including any
+			// promptable bonus the player ticked. Underscore-prefixed keys survive
+			// that round trip; verified against a live ChatMessage.
+			//
+			// `result` is the numeric total, but only when every part is a plain
+			// constant. A dice-valued bonus is rolled inside the d20 roll, so its
+			// value is not knowable here; null tells the card to show the formula
+			// alone rather than invent a number.
+			if (sdxHitParts.length) {
+				const asNumber = f => Number(String(f).trim().replace(/^\+/, ""));
+				const allConstant = sdxHitParts.every(p => Number.isFinite(asNumber(p.formula)));
+				config._sdxHitBonusInfo = {
+					formula: sdxHitParts.map(p => p.formula).join(" + "),
+					result: allConstant ? sdxHitParts.reduce((n, p) => n + asNumber(p.formula), 0) : null,
+					parts: sdxHitParts,
+				};
+			} else {
+				// The config object is reused across renders, so an unticked
+				// promptable bonus has to clear the previous render's entry.
+				delete config._sdxHitBonusInfo;
+			}
 
 			// Write reconstructed values back to config
 			config.mainRoll.bonus    = hitBonus;
