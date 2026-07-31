@@ -55,8 +55,17 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  *     composition, and splitting six four-line functions across five folders
  *     would cost clarity and buy nothing.
  *
- *   - The `ready` migration block. Three ordered one-time migrations with
- *     error handling; the implementations live with the flags they write.
+ *   - The `ready` migration block. Three ordered one-time migrations, whose
+ *     implementations live with the flags they write. Their error handling is
+ *     UNEVEN, which is worth knowing before editing: the webp path rewrite is
+ *     wrapped in try/catch and the compendium sweep carries its own `.catch`,
+ *     so neither can abort world load. `migrateLegacyItemMacros()` is awaited
+ *     bare, so a throw there surfaces as an unhandled rejection. Its
+ *     `itemacroMigrationDone` flag is written only after every item has been
+ *     processed, so a failure leaves the flag unset and the migration retries
+ *     on the next load rather than stranding half-migrated items. Whether the
+ *     bare await was intended or is simply older code is not recorded
+ *     anywhere, so it is described here rather than "fixed" on a guess.
  *
  * The measure used to decide each block was mechanical rather than aesthetic:
  * bare calls to imported helpers versus everything else. Blocks scoring near
@@ -149,7 +158,7 @@ import { initUnidentifiedGMDisplay } from "./inventory/UnidentifiedDisplaySD.mjs
 import { initTemplateElevationBadge } from "./effects/TemplateElevationBadgeSD.mjs";
 import { registerInvisibilityHooks } from "./effects/invisibility.mjs";
 import { initMacroExecuteSocket } from "./item-macros/macro-socket.mjs";
-import { hasItemMacro, executeItemMacro, registerItemMacroSocket, migrateLegacyItemMacros } from "./item-macros/item-macro-engine.mjs";
+import { registerItemMacroSocket, migrateLegacyItemMacros } from "./item-macros/item-macro-engine.mjs";
 import { registerClassAbilityItemMacros } from "./item-macros/class-ability-macros.mjs";
 import { registerTemplateTargetSyncSocket } from "./api/template-target-sync.mjs";
 import { registerTemplatesApi } from "./api/templates.mjs";
