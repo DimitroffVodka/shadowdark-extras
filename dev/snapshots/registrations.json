@@ -327,6 +327,10 @@
       "Hooks.on:updateActor",
       "Hooks.on:updateActor"
     ],
+    "chat-card-hooks.mjs": [
+      "Hooks.on:preCreateChatMessage",
+      "Hooks.on:renderChatMessageHTML"
+    ],
     "chat-dispatch.mjs": [
       "Hooks.on:renderChatMessageHTML",
       "Hooks.on:renderChatMessageHTML",
@@ -413,8 +417,6 @@
       "Hooks.on:renderActorSheet",
       "Hooks.on:renderItemSheet",
       "Hooks.on:preUpdateItem",
-      "Hooks.on:preCreateChatMessage",
-      "Hooks.on:renderChatMessageHTML",
       "Hooks.once:ready",
       "Hooks.on:preDeleteItem",
       "Hooks.on:deleteItem",
