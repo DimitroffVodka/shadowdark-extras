@@ -16588,31 +16588,12 @@ function injectAmmunitionBonuses(app, html) {
 // its position relative to every other registration.
 registerPredefinedEffects();
 
-// ============================================
-// SILENCED EFFECT - PREVENT SPELL CASTING
-// ============================================
-
-// Monkey-patch ActorSD.castSpell to prevent spell casting when silenced
-Hooks.once("ready", () => {
-	// Get the ActorSD and RollSD class references
-	const ActorSD = globalThis.shadowdark?.documents?.ActorSD;
-	const RollSD = CONFIG.DiceSD;
-
-	if (!ActorSD) {
-		console.error(`${MODULE_ID} | ActorSD not found, cannot apply system patches`);
-		return;
-	}
-
-	//console.log(`${MODULE_ID} | Applying consolidated ActorSD and RollSD patches`);
-
-	// EXTRA DAMAGE DICE SUPPORT removed: getExtraDamageDiceForWeapon was
-	// removed from ActorSD in Shadowdark 4.x. The SDX wrap was a silent
-	// no-op on the supported system; deleted to reduce dead code.
-
-	// Legacy distance helper and rollAttack target/range patches removed - migrated to setupRollAttackPatches()
-
-	// Legacy ABILITY ADVANTAGE SUPPORT and RollDialog overrides removed - migrated to setupRollConfigPatches()
-});
+// The "SILENCED EFFECT - PREVENT SPELL CASTING" ready hook that stood here was
+// an empty husk and has been deleted. Every patch it once installed had already
+// been migrated out or removed, leaving a hook that read two class references,
+// used neither, and returned. The live silenced behaviour is
+// setupSilencedCastingBlocker(), called from the HOOKS block above; the effect
+// definition is in effects/predefined-effects.mjs.
 
 // ============================================
 // INVISIBILITY EFFECT - MAKE TOKEN INVISIBLE
