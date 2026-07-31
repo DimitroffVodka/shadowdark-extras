@@ -407,7 +407,13 @@ export function setupRollConfigPatches() {
 		const config = app.config;
 		if (!config || config.type !== "attack" || !config.itemUuid || !config.mainRoll) return;
 
-		const rollActor = game.actors.get(config.actorId);
+		// SD 4.x identifies the rolling actor by `config.actorUuid` — set in
+		// rollAttack() before the generators run — and never sets `actorId`.
+		// Reading `actorId` returned undefined here, so every SDX bonus below was
+		// unreachable. `fromUuid` is what the system itself uses (RollDialogSD
+		// `_onCheckboxChange`) and it also resolves unlinked token actors, which
+		// `game.actors.get()` could not have done anyway.
+		const rollActor = await fromUuid(config.actorUuid);
 		if (!rollActor) return;
 
 		const weapon = await fromUuid(config.itemUuid);
@@ -528,6 +534,14 @@ export function setupRollConfigPatches() {
 				}
 			}
 
+		// Drop any container left by a previous render before injecting a fresh
+		// one. Toggling a promptable bonus re-runs the generator and re-renders,
+		// but the injected node survives that render, so without this the dialog
+		// grows one extra "Optional ... Bonuses" section per click. Unconditional,
+		// and before the early return below, so a config that stops offering
+		// promptable bonuses does not leave a stale section behind.
+		html.querySelectorAll(".sdx-prompt-bonuses").forEach(el => el.remove());
+
 		// Inject promptable bonus UI (optional bonuses the user can toggle)
 		if (hitBonuses.length === 0 && damageBonuses.length === 0) return;
 
@@ -557,7 +571,7 @@ export function setupRollConfigPatches() {
 					else config[selectedKey].push(bonus);
 
 					// Re-trigger generator and re-render app
-					const hookActor = game.actors.get(config.actorId);
+					const hookActor = await fromUuid(config.actorUuid);
 					await hookActor?.system.rollConfigGenerators[config.type]?.(config);
 					app.render(true);
 				});
