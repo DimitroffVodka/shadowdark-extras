@@ -10,7 +10,8 @@ import { collectRegistrations, readSnapshot, diffSnapshot } from "../tools/regis
 import { collectEsmoduleExports, diffExports } from "../tools/api-export-snapshot.mjs";
 import { collectSettingsKeys, diffSettings } from "../tools/settings-snapshot.mjs";
 import { findUnboundCalls } from "../tools/binding-scan.mjs";
-import { REPO_ROOT } from "../tools/project-scan.mjs";
+import { scanImports } from "../tools/import-scan.mjs";
+import { REPO_ROOT, listJsFiles, toRepoPath, isVendor } from "../tools/project-scan.mjs";
 
 /**
  * Phase 0 step 7 — prove the safeguards.
@@ -282,13 +283,82 @@ test("settings snapshot: records what the Quench batch needs to rebuild the live
   }
 });
 
-test("api-export snapshot: the composition root still exports its two consumed names", () => {
+/**
+ * The composition root exports NOTHING, and nothing imports it.
+ *
+ * This assertion used to pin two names — `executeItemMacro` and
+ * `hasItemMacro` — which the root re-exported solely so `AuraEffectsSD` and
+ * `TemplateEffectsSD` could reach them by `await import("../shadowdark-extras.mjs")`.
+ * That was the last feature-to-root edge in the graph, and it is why the root
+ * could only ever be described as a "static-import leaf" rather than a leaf.
+ *
+ * Both consumers now import from `item-macros/item-macro-engine.mjs`, so the
+ * re-export is gone and the guard tightens from "exports exactly these two" to
+ * "exports nothing". Re-exporting anything through the root recreates the
+ * inversion the structural track existed to remove, so this failing is a
+ * design regression, not a bookkeeping one.
+ */
+test("api-export snapshot: the composition root exports nothing", () => {
   const { esmodules } = collectEsmoduleExports();
 
-  assert.deepEqual(esmodules["shadowdark-extras.mjs"].names, [
-    "executeItemMacro",
-    "hasItemMacro",
-  ]);
+  assert.deepEqual(esmodules["shadowdark-extras.mjs"].names, []);
+});
+
+/**
+ * Detect any import of the composition root, by any spelling.
+ *
+ * USES `scanImports`, NOT A REGEX. The first version of this guard matched
+ * `["']` only, so `await import(\`../shadowdark-extras.mjs\`)` slipped straight
+ * through — and a backtick dynamic import is not hypothetical here: the
+ * resolver test above uses exactly that shape as its broken-move fixture.
+ * A guard advertised as making an inversion impossible must not be weaker than
+ * the parser the rest of the tooling already shares.
+ */
+function rootImporters(sources) {
+  const offenders = [];
+  for (const [repoPath, source] of sources) {
+    for (const imported of scanImports(source)) {
+      if (imported.raw?.includes("shadowdark-extras.mjs")) {
+        offenders.push(repoPath);
+        break;
+      }
+    }
+  }
+  return offenders;
+}
+
+test("no module reaches the composition root, statically or dynamically", () => {
+  const sources = [];
+  for (const file of listJsFiles(["scripts", "data"])) {
+    const repoPath = toRepoPath(file);
+    if (repoPath === "scripts/shadowdark-extras.mjs" || isVendor(repoPath)) continue;
+    sources.push([repoPath, readFileSync(file, "utf8")]);
+  }
+
+  assert.deepEqual(rootImporters(sources), [],
+    "a feature module importing the composition root is the dependency inversion this track removed");
+});
+
+test("the root-import guard catches every import spelling, including backticks", () => {
+  const shapes = {
+    "static.mjs": 'import { x } from "../shadowdark-extras.mjs";\n',
+    "static-single.mjs": "import { x } from '../shadowdark-extras.mjs';\n",
+    "dynamic.mjs": 'const m = await import("../shadowdark-extras.mjs");\n',
+    // The shape the first version of this guard missed entirely.
+    "dynamic-backtick.mjs": "const m = await import(`../shadowdark-extras.mjs`);\n",
+    "reexport.mjs": 'export { x } from "../shadowdark-extras.mjs";\n',
+  };
+  for (const [name, source] of Object.entries(shapes)) {
+    assert.deepEqual(rootImporters([[name, source]]), [name], `missed the ${name} shape`);
+  }
+
+  // And it must not fire on a mere mention — every surviving reference to the
+  // root in the tree today is a doc comment, and those must stay legal.
+  const innocent = [
+    ["comment.mjs", " * Called from shadowdark-extras.mjs ready hook\n"],
+    ["string.mjs", 'const label = "shadowdark-extras.mjs";\n'],
+  ];
+  assert.deepEqual(rootImporters(innocent), [], "a comment or string is not an import");
 });
 
 /**

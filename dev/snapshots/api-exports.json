@@ -38,10 +38,7 @@
       ]
     },
     "shadowdark-extras.mjs": {
-      "names": [
-        "executeItemMacro",
-        "hasItemMacro"
-      ]
+      "names": []
     }
   },
   "moduleApi": {
