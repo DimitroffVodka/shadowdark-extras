@@ -2436,3 +2436,76 @@ export function getWeaponItemMacroConfig(weapon) {
 		triggers: flags.itemMacro.triggers || []
 	};
 }
+
+/**
+ * Moved here from the composition root in Phase 3. It belongs with
+ * `injectWeaponBonusTab` and `injectWeaponAnimationButton` above: the root's
+ * `renderItemSheet` dispatch calls all three in the same Weapon branch, and all
+ * three read the same `weaponBonus` flag namespace this module owns.
+ */
+/**
+ * Inject a damage type dropdown into the weapon item sheet's Details tab
+ */
+export function injectWeaponDamageTypeDropdown(app, html, item) {
+	// Only for Weapon type items
+	if (item.type !== "Weapon") return;
+
+	// Check if already injected
+	if (html.find('.sdx-weapon-damage-type-select').length > 0) return;
+
+	// Find the SD-grid content area within the Weapon box
+	const $weaponGrid = html.find('.SD-box .content.SD-grid').first();
+	if (!$weaponGrid.length) {
+		//console.log(`${MODULE_ID} | Could not find SD-grid in weapon sheet`);
+		return;
+	}
+
+	// Find the Type select to insert after it
+	const $typeSelect = $weaponGrid.find('select[name="system.type"]');
+	if (!$typeSelect.length) {
+		//console.log(`${MODULE_ID} | Could not find Type select in weapon sheet`);
+		return;
+	}
+
+	// Get current damage type from flags
+	const currentDamageType = item.getFlag(MODULE_ID, 'baseDamageType') || 'standard';
+
+	// Build damage type options
+	const damageTypes = [
+		{ id: "standard", name: "Standard Damage" },
+		{ id: "bludgeoning", name: "Bludgeoning" },
+		{ id: "slashing", name: "Slashing" },
+		{ id: "piercing", name: "Piercing" },
+		{ id: "physical", name: "Physical" },
+		{ id: "fire", name: "Fire" },
+		{ id: "cold", name: "Cold" },
+		{ id: "lightning", name: "Lightning" },
+		{ id: "acid", name: "Acid" },
+		{ id: "poison", name: "Poison" },
+		{ id: "necrotic", name: "Necrotic" },
+		{ id: "radiant", name: "Radiant" },
+		{ id: "psychic", name: "Psychic" },
+		{ id: "force", name: "Force" }
+	];
+
+	const optionsHtml = damageTypes.map(type =>
+		`<option value="${type.id}" ${currentDamageType === type.id ? 'selected' : ''}>${type.name}</option>`
+	).join('');
+
+	// Create the h3 label and select matching the existing style
+	const $damageLabel = $('<h3>Damage Type</h3>');
+	const $damageSelect = $(`<select class="sdx-weapon-damage-type-select" name="flags.${MODULE_ID}.baseDamageType">${optionsHtml}</select>`);
+
+	// Insert after the Type select (h3 + select pair)
+	$typeSelect.after($damageSelect);
+	$damageSelect.before($damageLabel);
+
+	// Handle change event
+	$damageSelect.on('change', async function () {
+		const newType = $(this).val();
+		await item.setFlag(MODULE_ID, 'baseDamageType', newType);
+		//console.log(`${MODULE_ID} | Set weapon base damage type to: ${newType}`);
+	});
+
+	//console.log(`${MODULE_ID} | Injected damage type dropdown for weapon: ${item.name}`);
+}
