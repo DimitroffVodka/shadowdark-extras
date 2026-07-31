@@ -79,6 +79,57 @@ you click and closes on its own. The sheet has nothing to refresh.
 
 ---
 
+## 12. The NPC item-chat icon is dead: `item.displayCard` does not exist in SD 4.x
+
+**Found:** while extracting `inventory/containers.mjs` (Phase 3). **Status:**
+confirmed, unfixed. **Pre-existing** — the function moved byte-identically (681
+lines, 0 unexplained differences), so the extraction cannot have caused it.
+
+`enableItemChatIcon` binds a click handler on `.item-image` in an NPC sheet and
+finishes with:
+
+```js
+// Show item in chat - Shadowdark uses displayCard()
+await item.displayCard();
+```
+
+**`displayCard` does not exist.** Measured on a scratch NPC in world `0100`,
+Foundry 14.365 / Shadowdark 4.0.6:
+
+| | |
+| --- | --- |
+| `typeof item.displayCard` | `"undefined"` |
+| on the prototype | `"undefined"` |
+| prototype chain searched | `ItemSD → ItemSD → Item → ClientDocumentMixin → BaseItem` |
+
+Clicking the icon on a real rendered `NpcSheetSD` produces:
+
+```
+item.displayCard is not a function
+```
+
+as an **unhandled promise rejection** — the handler is `async` and nothing
+awaits it, so the failure never reaches a try/catch and no notification is
+shown. The user clicks the chat icon and nothing happens, silently. Chat message
+count before and after the click: **386 → 386.**
+
+The handler itself is fine — `handlerBound: true`, the `.fa-comment` guard
+passes, the row and item resolve. Only the last line is wrong.
+
+**Player sheets are unaffected**, and deliberately so: the function returns early
+for `actor.type === "Player"` because Shadowdark handles those natively. This is
+NPC-only, which is likely why it has gone unreported.
+
+**Same family as the `rollItem` finding** — SDX calling a Shadowdark method that
+3.x had and 4.x does not, with an async swallow hiding it. Worth checking for
+other callers of system methods that were never re-verified against 4.x.
+
+**Fix is one line** once someone confirms the 4.x equivalent; the surrounding
+guard logic does not change. Whatever replaces it should be `await`ed inside a
+try/catch so the next system change is loud instead of silent.
+
+---
+
 ## 1. The itemacro migration is one-shot; items added later never migrate
 
 **Status:** confirmed, unfixed, currently harmless.
