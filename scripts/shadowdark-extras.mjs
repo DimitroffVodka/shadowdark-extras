@@ -2,8 +2,67 @@
 const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
 
 /**
- * Shadowdark Extras Module
- * Adds Renown tracking, additional light sources, NPC inventory, and Party management to Shadowdark RPG
+ * Shadowdark Extras — the composition root.
+ *
+ * Adds Renown tracking, additional light sources, NPC inventory, and Party
+ * management to Shadowdark RPG.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * WHAT THIS FILE IS, AND WHY WHAT IS LEFT IS STILL HERE
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * This module started the structural track at 21,861 lines holding most of
+ * SDX's implementation. It is now composition: it imports feature modules,
+ * calls their register functions in a fixed order, builds the public
+ * `module.api`, and carries the compatibility shims that have nowhere else to
+ * live. Everything else moved out, one verified unit at a time, and every
+ * module is mapped to a feature owner in `dev/tools/feature-ownership.mjs`.
+ *
+ * If you are looking for a FEATURE, it is not here — find its owner in the
+ * ownership map or the cross-feature import matrix.
+ *
+ * THE ONE RULE THAT GOVERNS EDITS HERE. Hook order is observable behaviour,
+ * and it is fixed by the POSITION OF THE REGISTER CALL, not by where the
+ * callback is defined. `registerFoo()` installs its hooks when it is called.
+ * Moving a call up or down this file reorders real behaviour even though
+ * nothing else changes, and `dev/snapshots/registrations.json` will block the
+ * commit. Add new registrations at the end of their phase, not wherever is
+ * convenient.
+ *
+ * WHAT REMAINS, AND WHY EACH KIND STAYS — this is the step-39 acceptance
+ * criterion, written down so a stranger does not have to infer it:
+ *
+ *   - ~36 bare `registerX()` / `initX()` calls. Ordered composition. This is
+ *     the intended end state, not leftovers.
+ *
+ *   - The `Hooks.on("setup")` block that builds `module.api`. Public API
+ *     construction belongs to the root by definition: it is the only place
+ *     that legitimately knows every feature.
+ *
+ *   - The sheet dispatchers (`renderPlayerSheetSD`, the two
+ *     `renderNpcSheetSD`, `renderActorSheet`, `renderItemSheet`). These are
+ *     ordered call lists behind a type guard — `renderPlayerSheetSD` is 21
+ *     imported calls in 22 lines of code. Pushing one into a feature module
+ *     would make that feature own five other features' render order, which is
+ *     the dependency inversion this whole track existed to remove.
+ *
+ *   - The `init` blocks: CONFIG wiring, document/sheet class registration,
+ *     fonts, keybindings. Bootstrap, not feature logic.
+ *
+ *   - The six `registerXSheet()` functions. Each is a
+ *     `documents.collections.*.registerSheet(...)` call plus its label; the
+ *     Party one additionally patches `_getSheetClass`. Sheet registration is
+ *     composition, and splitting six four-line functions across five folders
+ *     would cost clarity and buy nothing.
+ *
+ *   - The `ready` migration block. Three ordered one-time migrations with
+ *     error handling; the implementations live with the flags they write.
+ *
+ * The measure used to decide each block was mechanical rather than aesthetic:
+ * bare calls to imported helpers versus everything else. Blocks scoring near
+ * zero dispatch were prototype surgery spelled as hooks and left; blocks
+ * scoring high were dispatch and stayed. The borderline cases are argued in
+ * their commit messages.
  */
 
 import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor, registerPartyTravelSocket, registerPartySheetRerenderHooks, isPartyActor, registerPartyCleanupHooks } from "./party/PartySheetSD.mjs";
@@ -90,7 +149,7 @@ import { initUnidentifiedGMDisplay } from "./inventory/UnidentifiedDisplaySD.mjs
 import { initTemplateElevationBadge } from "./effects/TemplateElevationBadgeSD.mjs";
 import { registerInvisibilityHooks } from "./effects/invisibility.mjs";
 import { initMacroExecuteSocket } from "./item-macros/macro-socket.mjs";
-import { hasItemMacro, executeItemMacro, registerItemMacroSocket } from "./item-macros/item-macro-engine.mjs";
+import { hasItemMacro, executeItemMacro, registerItemMacroSocket, migrateLegacyItemMacros } from "./item-macros/item-macro-engine.mjs";
 import { registerClassAbilityItemMacros } from "./item-macros/class-ability-macros.mjs";
 import { registerTemplateTargetSyncSocket } from "./api/template-target-sync.mjs";
 import { registerTemplatesApi } from "./api/templates.mjs";
@@ -1070,30 +1129,10 @@ Hooks.once("ready", async () => {
 		console.error(`${MODULE_ID} | world compendium webp sweep failed:`, e)
 	);
 
-	// Run one-time itemacro data migration if not already done
-	if (!game.settings.get(MODULE_ID, "itemacroMigrationDone")) {
-		console.log(`${MODULE_ID} | Starting itemacro data migration...`);
-
-		const migrateItem = async (item) => {
-			const legacy = item.flags?.itemacro?.macro?.command;
-			if (legacy && !item.getFlag(MODULE_ID, "macroCommand")) {
-				await item.setFlag(MODULE_ID, "macroCommand", legacy);
-				await item.setFlag(MODULE_ID, "macroName", item.flags?.itemacro?.macro?.name || item.name);
-				await item.setFlag(MODULE_ID, "macroRunAsGM", item.flags?.itemacro?.macro?.runAsGM || false);
-			}
-		};
-
-		// Migrate world items
-		for (const item of game.items) await migrateItem(item);
-
-		// Migrate actor items
-		for (const actor of game.actors) {
-			for (const item of actor.items) await migrateItem(item);
-		}
-
-		await game.settings.set(MODULE_ID, "itemacroMigrationDone", true);
-		console.log(`${MODULE_ID} | itemacro data migration complete.`);
-	}
+	// The legacy itemacro migration lives with the flag it writes, in
+	// item-macros/item-macro-engine.mjs. Awaited here so its position in the
+	// migration sequence is unchanged.
+	await migrateLegacyItemMacros();
 });
 
 // Moved to item-macros/effect-trigger-macros.mjs, all five hooks together with
@@ -1104,10 +1143,10 @@ registerEffectTriggerHooks();
 // ============================================
 // NATIVE ITEM MACRO ENGINE
 // ============================================
-// Moved to item-macros/item-macro-engine.mjs. Both names stay on this module's
-// public surface: they are pinned by the API-export snapshot, and AuraEffectsSD
-// and TemplateEffectsSD reach them by dynamic import of this file.
-export { hasItemMacro, executeItemMacro };
+// Moved to item-macros/item-macro-engine.mjs. AuraEffectsSD and
+// TemplateEffectsSD now import it FROM THERE rather than dynamically importing
+// this file, so the composition root exports nothing at all — it is a true
+// leaf of the import graph, not merely a static-import leaf.
 
 // ============================================
 // WEAPON ITEM MACRO EXECUTION SYSTEM

@@ -11,11 +11,16 @@ import { getMacroExecuteSocket } from "./macro-socket.mjs";
  * root, and a feature module importing the root is the cycle Phase 3 exists to
  * remove.
  *
- * The root re-exports both names. They are part of the module's declared public
- * surface (`hasItemMacro`, `executeItemMacro` on the entry module) and are
- * pinned by the API-export snapshot, so the re-export is load-bearing, not
- * courtesy — `AuraEffectsSD` and `TemplateEffectsSD` still reach them with a
- * dynamic `import("../shadowdark-extras.mjs")`.
+ * `AuraEffectsSD` and `TemplateEffectsSD` import both names FROM HERE, by
+ * dynamic import at the point of use. They used to reach them by dynamically
+ * importing the composition root, which re-exported them purely to serve that
+ * one call — the last feature-to-root edge in the graph, and the reason the
+ * root could only be described as a "static-import leaf". Repointing those two
+ * sites let the re-export go, so the root now exports NOTHING and nothing
+ * imports it by any mechanism.
+ *
+ * Keep it that way: if something here is needed elsewhere, import it from this
+ * module. Re-exporting through the root recreates the inversion.
  */
 
 /**
@@ -145,4 +150,46 @@ export function registerItemMacroSocket(socket) {
 
 		return executeItemMacro(item, context);
 	});
+}
+
+/**
+ * One-time migration of legacy `flags.itemacro.macro` data onto SDX's own
+ * `macroCommand` / `macroName` / `macroRunAsGM` flags.
+ *
+ * Extracted from the composition root in Phase 3 (step 39). It lives here
+ * because this module is what READS `macroCommand`; the migration that writes
+ * it belongs beside its consumer, not in the bootstrap.
+ *
+ * KNOWN LIMITATION, already recorded as KNOWN-ISSUES item 1: this is gated on
+ * the `itemacroMigrationDone` world setting and runs once, so items imported
+ * after it has run are never migrated. Moving the code does not change that,
+ * and fixing it is a behaviour change that belongs with the issue, not here.
+ *
+ * The body is the root's verbatim, at its original indentation.
+ */
+export async function migrateLegacyItemMacros() {
+	// Run one-time itemacro data migration if not already done
+	if (!game.settings.get(MODULE_ID, "itemacroMigrationDone")) {
+		console.log(`${MODULE_ID} | Starting itemacro data migration...`);
+
+		const migrateItem = async (item) => {
+			const legacy = item.flags?.itemacro?.macro?.command;
+			if (legacy && !item.getFlag(MODULE_ID, "macroCommand")) {
+				await item.setFlag(MODULE_ID, "macroCommand", legacy);
+				await item.setFlag(MODULE_ID, "macroName", item.flags?.itemacro?.macro?.name || item.name);
+				await item.setFlag(MODULE_ID, "macroRunAsGM", item.flags?.itemacro?.macro?.runAsGM || false);
+			}
+		};
+
+		// Migrate world items
+		for (const item of game.items) await migrateItem(item);
+
+		// Migrate actor items
+		for (const actor of game.actors) {
+			for (const item of actor.items) await migrateItem(item);
+		}
+
+		await game.settings.set(MODULE_ID, "itemacroMigrationDone", true);
+		console.log(`${MODULE_ID} | itemacro data migration complete.`);
+	}
 }

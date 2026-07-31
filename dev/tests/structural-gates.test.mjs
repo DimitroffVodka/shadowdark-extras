@@ -10,7 +10,7 @@ import { collectRegistrations, readSnapshot, diffSnapshot } from "../tools/regis
 import { collectEsmoduleExports, diffExports } from "../tools/api-export-snapshot.mjs";
 import { collectSettingsKeys, diffSettings } from "../tools/settings-snapshot.mjs";
 import { findUnboundCalls } from "../tools/binding-scan.mjs";
-import { REPO_ROOT } from "../tools/project-scan.mjs";
+import { REPO_ROOT, listJsFiles, toRepoPath, isVendor } from "../tools/project-scan.mjs";
 
 /**
  * Phase 0 step 7 — prove the safeguards.
@@ -282,13 +282,38 @@ test("settings snapshot: records what the Quench batch needs to rebuild the live
   }
 });
 
-test("api-export snapshot: the composition root still exports its two consumed names", () => {
+/**
+ * The composition root exports NOTHING, and nothing imports it.
+ *
+ * This assertion used to pin two names — `executeItemMacro` and
+ * `hasItemMacro` — which the root re-exported solely so `AuraEffectsSD` and
+ * `TemplateEffectsSD` could reach them by `await import("../shadowdark-extras.mjs")`.
+ * That was the last feature-to-root edge in the graph, and it is why the root
+ * could only ever be described as a "static-import leaf" rather than a leaf.
+ *
+ * Both consumers now import from `item-macros/item-macro-engine.mjs`, so the
+ * re-export is gone and the guard tightens from "exports exactly these two" to
+ * "exports nothing". Re-exporting anything through the root recreates the
+ * inversion the structural track existed to remove, so this failing is a
+ * design regression, not a bookkeeping one.
+ */
+test("api-export snapshot: the composition root exports nothing", () => {
   const { esmodules } = collectEsmoduleExports();
 
-  assert.deepEqual(esmodules["shadowdark-extras.mjs"].names, [
-    "executeItemMacro",
-    "hasItemMacro",
-  ]);
+  assert.deepEqual(esmodules["shadowdark-extras.mjs"].names, []);
+});
+
+test("no module reaches the composition root, statically or dynamically", () => {
+  const offenders = [];
+  for (const file of listJsFiles(["scripts", "data"])) {
+    const repoPath = toRepoPath(file);
+    if (repoPath === "scripts/shadowdark-extras.mjs" || isVendor(repoPath)) continue;
+    const source = readFileSync(file, "utf8");
+    // Both forms: `from "…/shadowdark-extras.mjs"` and `import("…/shadowdark-extras.mjs")`.
+    if (/(?:from|import\s*\()\s*["'][^"']*shadowdark-extras\.mjs["']/.test(source)) offenders.push(repoPath);
+  }
+  assert.deepEqual(offenders, [],
+    "a feature module importing the composition root is the dependency inversion this track removed");
 });
 
 /**

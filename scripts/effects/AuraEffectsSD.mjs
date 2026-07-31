@@ -1565,7 +1565,7 @@ async function runAuraItemMacro(sourceToken, targetToken, trigger, config) {
         if (!spellItem) return;
 
         // Import the native macro executor
-        const { executeItemMacro, hasItemMacro } = await import("../shadowdark-extras.mjs");
+        const { executeItemMacro, hasItemMacro } = await import("../item-macros/item-macro-engine.mjs");
         if (!hasItemMacro(spellItem)) return;
 
         const args = {
