@@ -312,6 +312,11 @@
       "Hooks.on:deleteToken",
       "Hooks.on:createToken"
     ],
+    "class-ability-macros.mjs": [
+      "Hooks.once:ready",
+      "socket.register:executeClassAbilityMacroAsGM",
+      "Hooks.once:ready"
+    ],
     "containers.mjs": [
       "Hooks.on:updateItem",
       "Hooks.on:createItem"
@@ -406,9 +411,6 @@
       "Hooks.on:renderChatMessageHTML",
       "Hooks.once:ready",
       "Hooks.once:ready",
-      "Hooks.once:ready",
-      "Hooks.once:ready",
-      "socket.register:executeClassAbilityMacroAsGM",
       "Hooks.once:ready",
       "Hooks.on:setup",
       "Hooks.on:updateItem",
