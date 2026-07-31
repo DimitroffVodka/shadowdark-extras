@@ -357,6 +357,9 @@
       "Hooks.once:ready",
       "Hooks.once:ready"
     ],
+    "predefined-effects.mjs": [
+      "Hooks.once:init"
+    ],
     "shadowdark-extras.mjs": [
       "libWrapper.register:<dynamic>",
       "Hooks.once:init",
@@ -405,7 +408,6 @@
       "Hooks.on:deleteActiveEffect",
       "Hooks.on:updateActiveEffect",
       "Hooks.once:ready",
-      "Hooks.once:init",
       "Hooks.once:ready",
       "Hooks.on:deleteItem",
       "Hooks.on:quenchReady",
