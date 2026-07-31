@@ -7,11 +7,11 @@ names, flag namespaces, Handlebars template paths under the module-root
 `templates/` tree, i18n keys, public API names — is a rename invariant and is
 not this tooling's concern.
 
-All four run as blocking checks inside `verify.sh`. Run them individually while
+All run as blocking checks inside `verify.sh`. Run them individually while
 iterating:
 
 ```bash
-npm run gate:imports && npm run gate:script-paths && npm run snapshot:registrations && npm run snapshot:api
+npm run gate:imports && npm run gate:script-paths && npm run gate:named-exports && npm run snapshot:registrations && npm run snapshot:api
 ```
 
 ## The gates
@@ -23,6 +23,7 @@ npm run gate:imports && npm run gate:script-paths && npm run snapshot:registrati
 | Registration snapshot | `npm run snapshot:registrations` | The set and per-module source order of `Hooks.on/once/off`, `libWrapper.register`, and socketlib registrations is unchanged. |
 | API-export snapshot | `npm run snapshot:api` | The four manifest-declared esmodules export the same names. |
 | Settings-key snapshot | `npm run snapshot:settings` | No settings key or menu id was renamed or removed. These are stored in user worlds, so a rename silently orphans every GM's configured value. |
+| Named-export gate | `npm run gate:named-exports` | Every named import resolves to a name the target actually exports. |
 
 ## The runtime tier — Quench
 
@@ -194,3 +195,34 @@ real failures and must be told apart from them:
 **Node 24 is the supported local runtime** (declared in `package.json`
 `engines`). Where it is unavailable, the same check must pass in CI for every
 push; CI is the authority. Neither failure above may be recorded as a pass.
+
+## Why the named-export gate exists
+
+`gate:imports` proves the target FILE resolves. It never reads the target's
+export list, so this clears every other static check:
+
+```js
+import { doesNotExist } from "./real-file.mjs";
+```
+
+`node --check` is a parser and cannot see across files. The binding gate reads
+the importing file only. The registration and API snapshots do not look at
+imports at all. The failure surfaces at load time in the browser, and it takes
+the whole module graph down with it.
+
+This is not hypothetical. Extracting `item-sheets/activity-tab-widgets.mjs`
+moved code calling `openTMFXFilterEditor`, which the composition root obtains
+through a **renamed** import:
+
+```js
+import { filterEditor as openTMFXFilterEditor } from "./animation/TMFXFilterEditor.mjs";
+```
+
+Reconstructing that import from the local name alone gives
+`import { openTMFXFilterEditor }`, which does not exist. Seven gates, 141 tests
+and `node --check` were all green; the module failed to load in Foundry, and
+only live verification caught it.
+
+**Renamed imports are the trap.** The name at the call site is the LOCAL name,
+not the exported one. When moving code, copy the import CLAUSE, do not rebuild
+it from the identifiers you see used.

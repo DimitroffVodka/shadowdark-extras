@@ -66,6 +66,14 @@ if ! node dev/tools/script-path-guard.mjs; then
   block_fail=1
 fi
 
+# resolve-imports.mjs proves the target FILE exists; it never reads the target's
+# export list. A wrong name in a renamed import clears every other static check
+# and fails at load time in the browser.
+if ! node dev/tools/named-export-gate.mjs; then
+  echo "[BLOCK] import(s) name something the target module does not export"
+  block_fail=1
+fi
+
 if ! node dev/tools/registration-snapshot.mjs; then
   echo "[BLOCK] hook/libWrapper/socket registration snapshot mismatch"
   block_fail=1
