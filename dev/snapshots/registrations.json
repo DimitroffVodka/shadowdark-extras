@@ -321,6 +321,9 @@
       "Hooks.on:deleteToken",
       "Hooks.on:createToken"
     ],
+    "ammunition-bonuses.mjs": [
+      "Hooks.once:ready"
+    ],
     "appv2-header-bridge.mjs": [
       "Hooks.on:renderApplicationV2"
     ],
@@ -439,7 +442,6 @@
       "Hooks.on:renderItemSheet",
       "Hooks.on:preUpdateItem",
       "Hooks.on:preUpdateActor",
-      "Hooks.once:ready",
       "Hooks.on:quenchReady",
       "Hooks.once:ready",
       "Hooks.once:ready",

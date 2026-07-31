@@ -81,7 +81,6 @@ import { WallContextMenuSD } from "./canvas/WallContextMenuSD.mjs";
 import { sdxDrawingTool } from "./canvas/SDXDrawingTool.mjs";
 import { sdxDrawingToolbar } from "./canvas/SDXDrawingToolbar.mjs";
 import { SDXRollerApp } from "./tray/SDXRollerApp.mjs";
-import { ensureMutableItemCompendiumIndexes } from "./shared/CompendiumIndexSD.mjs";
 import { registerAppV2HeaderBridge } from "./shared/appv2-header-bridge.mjs";
 import { initSDXCoords } from "./hex/SDXCoordsSD.mjs";
 import { initHexTooltip } from "./hex/HexTooltipSD.mjs";
@@ -113,7 +112,7 @@ import { patchCharacterGeneratorRolls } from "./character-sheet/character-genera
 import { patchHexTilePositionClamp } from "./hex/hex-tile-clamp.mjs";
 import { patchLightSourceTrackerForParty } from "./party/party-light-tracker.mjs";
 import { patchPlayerSheetUseAbility } from "./character-sheet/player-sheet-patches.mjs";
-import { injectAmmunitionBonuses } from "./inventory/ammunition-bonuses.mjs";
+import { injectAmmunitionBonuses, registerAmmunitionPatches } from "./inventory/ammunition-bonuses.mjs";
 import { injectSpellbookCompendiumFilter, initAlignmentSpellFiltering } from "./character-sheet/spellbook-filter.mjs";
 import { injectEnhancedHeader, injectHeaderCustomization, injectPartyHeaderCustomization, injectAddCoinsButton, injectTradeButton } from "./character-sheet/enhanced-header.mjs";
 import { extendLightSources, patchLightSourceMappings } from "./canvas/light-templates.mjs";
@@ -963,53 +962,9 @@ registerConditionEffectHooks();
  * @param {Collection|Map|Array} items - The items to check for unidentified status
  */
 
-// Simplify usesAmmunition to include all ranged weapons (and add weapon-sheet
-// ammunition enhancement). Wrapped in `ready` because both rely on the system's
-// `shadowdark` global being initialised.
-Hooks.once("ready", () => {
-	Object.defineProperty(shadowdark.documents.ItemSD.prototype, "usesAmmunition", {
-		get: function () {
-			return (game.settings.get("shadowdark", "autoConsumeAmmunition")
-				&& this.isOwned
-				&& this.actor.type === "Player"
-				&& this.type === "Weapon"
-				&& this.system.type === "ranged"
-			);
-		},
-		configurable: true
-	});
-
-
-	const prepareGearSheetCompendiumIndexes = () => {
-		ensureMutableItemCompendiumIndexes(game.packs, foundry.utils.deepClone);
-	};
-
-	// Shadowdark's armor and weapon sheet helpers request full Item system data
-	// from every pack. Normalize any frozen v14 index entries first.
-	const originalGetArmorSheetData = shadowdark.sheets.ItemSheetSD.prototype.getSheetDataForArmorItem;
-	shadowdark.sheets.ItemSheetSD.prototype.getSheetDataForArmorItem = async function (context) {
-		prepareGearSheetCompendiumIndexes();
-		return originalGetArmorSheetData.call(this, context);
-	};
-
-	// Enhance weapon sheet to include actor's inventory ammunition in the dropdown
-	const originalGetWeaponSheetData = shadowdark.sheets.ItemSheetSD.prototype.getSheetDataForWeaponItem;
-	shadowdark.sheets.ItemSheetSD.prototype.getSheetDataForWeaponItem = async function (context) {
-		prepareGearSheetCompendiumIndexes();
-		await originalGetWeaponSheetData.call(this, context);
-
-		const actor = context.item.actor;
-		if (actor) {
-			const actorAmmo = actor.items.filter(i => i.system.isAmmunition && i.system.quantity > 0);
-			for (const ammo of actorAmmo) {
-				const slug = ammo.name.slugify();
-				if (!context.ammunition[slug]) {
-					context.ammunition[slug] = ammo.name;
-				}
-			}
-		}
-	};
-});
+// The two ammunition-consumption patches moved to
+// inventory/ammunition-bonuses.mjs, beside the sheet UI they enable.
+registerAmmunitionPatches();
 
 // ============================================
 // AMMUNITION BONUS UI INJECTION
