@@ -49,6 +49,10 @@ export const FEATURE_OWNERS = {
     "enhanced-spells-tab.mjs",
     "sheet-decoration.mjs",
     "skills-box.mjs",
+    // Per-actor journal notes. Owned here, not by `journal`, because these are
+    // notes ON an actor sheet stored in a module flag — not JournalEntry
+    // documents. The feature map lists "journal notes" under Character sheets.
+    "journal-notes.mjs",
   ],
   "item-sheets": [
     "PotionSheetSD.mjs",
