@@ -101,6 +101,7 @@ import { registerChatDispatch } from "./item-macros/chat-dispatch.mjs";
 import { registerEffectTriggerHooks, registerEffectMacroSocket } from "./item-macros/effect-trigger-macros.mjs";
 import { registerActiveEffectConfigHooks } from "./effects/effect-config.mjs";
 import { registerSourceRequirementHooks } from "./effects/source-requirements.mjs";
+import { setupWandUsesBlocker, setupSilencedCastingBlocker } from "./effects/casting-blockers.mjs";
 import { registerPredefinedEffects } from "./effects/predefined-effects.mjs";
 import { registerContainerHooks, isContainerItem, isItemPilesEnabledActor, calculateSlotsCostForItemData, recomputeContainerSlots, calculateContainedItemSlots, getContainedItems, getPackedContainedItemData, syncContainerPackedItems } from "./inventory/containers.mjs";
 import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
@@ -13160,107 +13161,6 @@ function injectWandUsesUI(html, item) {
 }
 
 /**
- * Setup a wrapper to prevent casting depleted wands.
- *
- * Shadowdark 4.x moved castSpell from ActorSD.prototype to the PlayerSD and
- * NpcSD data models. Inside the wrapped method `this` is the data model, and
- * the actor is reached via `this.parent`. The first arg is now a spell/item
- * UUID rather than an item ID.
- */
-function setupWandUsesBlocker() {
-	const patchModel = (model, label) => {
-		if (!model?.prototype?.castSpell) return false;
-		if (model.prototype.__sdxCastSpellWandPatched) return true;
-		const original = model.prototype.castSpell;
-		model.prototype.castSpell = async function (spellUuid, config = {}) {
-			const actor = this.parent;
-			// Resolve the item the user is invoking. New API passes an item UUID;
-			// legacy callers may still pass an item id. Cover both.
-			let item = null;
-			if (typeof spellUuid === "string") {
-				if (spellUuid.includes(".")) {
-					try { item = await fromUuid(spellUuid); } catch (_) { item = null; }
-				}
-				if (!item) item = actor?.items.get(spellUuid) ?? null;
-			}
-
-			if (item?.type === "Wand") {
-				const wandUsesFlags = item.flags?.[MODULE_ID]?.wandUses;
-				if (wandUsesFlags?.enabled && (wandUsesFlags.current ?? 0) <= 0) {
-					ui.notifications.warn(game.i18n.format("SHADOWDARK_EXTRAS.wand.no_uses_remaining", { name: item.name }));
-					return null;
-				}
-			}
-			return original.call(this, spellUuid, config);
-		};
-		model.prototype.__sdxCastSpellWandPatched = true;
-		return true;
-	};
-	const playerOK = patchModel(CONFIG.Actor.dataModels?.Player, "Player");
-	const npcOK = patchModel(CONFIG.Actor.dataModels?.NPC, "NPC");
-	if (!playerOK && !npcOK) {
-		console.warn(`${MODULE_ID} | Could not find castSpell on PlayerSD/NpcSD data models; wand uses blocking inactive`);
-	}
-}
-
-/**
- * Setup a wrapper to prevent spellcasting when silenced.
- *
- * Shadowdark 4.x moved castSpell from ActorSD.prototype to the PlayerSD and
- * NpcSD data models. Inside the wrapped method `this` is the data model, and
- * the actor is reached via `this.parent`. The first arg is now a spell/item
- * UUID rather than an item ID.
- */
-function setupSilencedCastingBlocker() {
-	const patchModel = (model) => {
-		if (!model?.prototype?.castSpell) return false;
-		if (model.prototype.__sdxCastSpellSilencedPatched) return true;
-		const original = model.prototype.castSpell;
-		model.prototype.castSpell = async function (spellUuid, config = {}) {
-			const actor = this.parent;
-			const isSilenced = actor?.getFlag(MODULE_ID, "silenced");
-			if (isSilenced) {
-				// Resolve the item the user is invoking
-				let item = null;
-				if (typeof spellUuid === "string") {
-					if (spellUuid.includes(".")) {
-						try { item = await fromUuid(spellUuid); } catch (_) { item = null; }
-					}
-					if (!item) item = actor?.items.get(spellUuid) ?? null;
-				}
-
-				if (item) {
-					const effectsSettings = game.settings.get(MODULE_ID, "effectsSettings");
-					let shouldBlock = false;
-					let blockedType = "";
-
-					if (item.type === "Spell" || item.type === "NPC Spell") {
-						shouldBlock = effectsSettings.silenced.blocksSpells;
-						blockedType = "spells";
-					} else if (item.type === "Scroll") {
-						shouldBlock = effectsSettings.silenced.blocksScrolls;
-						blockedType = "scrolls";
-					} else if (item.type === "Wand") {
-						shouldBlock = effectsSettings.silenced.blocksWands;
-						blockedType = "wands";
-					}
-
-					if (shouldBlock) {
-						ui.notifications.warn(`You are silenced and cannot cast ${blockedType}!`);
-						return null;
-					}
-				}
-			}
-			return original.call(this, spellUuid, config);
-		};
-		model.prototype.__sdxCastSpellSilencedPatched = true;
-		return true;
-	};
-	patchModel(CONFIG.Actor.dataModels?.Player);
-	patchModel(CONFIG.Actor.dataModels?.NPC);
-}
-
-/**
  * Calculate the edge-to-edge distance between two tokens.
  * Unlike center-to-center, this properly handles different token sizes.
  * @param {Token} token1 - First token
@@ -15949,8 +15849,9 @@ registerPredefinedEffects();
 // an empty husk and has been deleted. Every patch it once installed had already
 // been migrated out or removed, leaving a hook that read two class references,
 // used neither, and returned. The live silenced behaviour is
-// setupSilencedCastingBlocker(), called from the HOOKS block above; the effect
-// definition is in effects/predefined-effects.mjs.
+// setupSilencedCastingBlocker(), defined in effects/casting-blockers.mjs and
+// called from the HOOKS block above; the effect definition is in
+// effects/predefined-effects.mjs.
 
 // ============================================
 // INVISIBILITY EFFECT - MAKE TOKEN INVISIBLE

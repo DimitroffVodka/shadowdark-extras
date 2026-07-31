@@ -72,6 +72,7 @@ export const FEATURE_OWNERS = {
     "invisibility.mjs",
     "source-requirements.mjs",
     "predefined-effects.mjs",
+    "casting-blockers.mjs",
   ],
   animation: [
     "AnimationFxSD.mjs",
