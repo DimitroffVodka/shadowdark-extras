@@ -2,7 +2,7 @@
   "name": "shadowdark-extras",
   "version": "6.10.51",
   "private": true,
-  "description": "Foundry VTT module — extras for Shadowdark RPG. Dev tooling only; the module itself ships as a manifest install.",
+  "description": "Foundry VTT module \u2014 extras for Shadowdark RPG. Dev tooling only; the module itself ships as a manifest install.",
   "scripts": {
     "verify": "bash verify.sh",
     "verify:strict": "bash verify.sh --strict",
@@ -14,11 +14,13 @@
     "snapshot:registrations": "node dev/tools/registration-snapshot.mjs",
     "snapshot:api": "node dev/tools/api-export-snapshot.mjs",
     "snapshot:settings": "node dev/tools/settings-snapshot.mjs",
+    "inventory:entry": "node dev/tools/entry-state-inventory.mjs",
     "matrix:imports": "node dev/tools/feature-import-matrix.mjs",
     "premove": "node dev/tools/find-path-refs.mjs",
     "pack": "node ./dev/packs/pack.mjs",
     "unpack": "node ./dev/packs/unpack.mjs",
-    "release:check": "node ./dev/release-check.mjs"
+    "release:check": "node ./dev/release-check.mjs",
+    "gate:bindings": "node dev/tools/binding-gate.mjs"
   },
   "//engines": "Node 24 is the supported runtime for release:check and the packs tooling. See dev/tools/README.md for the two environment failures that must not be recorded as a pass.",
   "engines": {

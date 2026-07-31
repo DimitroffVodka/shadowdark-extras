@@ -91,6 +91,9 @@ import { initHexFog } from "./hex/SDXHexFogSD.mjs";
 import { registerMaphubHooks } from "./MaphubSD.mjs";
 import { initUnidentifiedGMDisplay } from "./inventory/UnidentifiedDisplaySD.mjs";
 import { initTemplateElevationBadge } from "./effects/TemplateElevationBadgeSD.mjs";
+import { registerInvisibilityHooks } from "./effects/invisibility.mjs";
+import { registerActiveEffectConfigHooks } from "./effects/effect-config.mjs";
+import { registerContainerHooks, isContainerItem, isItemPilesEnabledActor, calculateSlotsCostForItemData, recomputeContainerSlots, calculateContainedItemSlots, getContainedItems, getPackedContainedItemData, syncContainerPackedItems } from "./inventory/containers.mjs";
 import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
 // Map-builder entry points — pulled in so we can expose them on module.api
 // for MCP / external automation. None of these modules register hooks at import
@@ -1204,11 +1207,6 @@ function getUnidentifiedNameFromData(itemData) {
 // BASIC ITEM CONTAINERS (non-invasive)
 // ============================================
 
-// Track containers currently being unpacked to prevent race conditions
-const _containersBeingUnpacked = new Set();
-
-// Track containers currently being recomputed to prevent recursion
-const _containersBeingRecomputed = new Set();
 
 // Track pending hit bonus info for display in chat messages
 // Maps "actorId-itemId" to { formula, result, parts, timestamp }
@@ -1218,9 +1216,6 @@ function isBasicItem(item) {
 	return item?.type === "Basic";
 }
 
-function isContainerItem(item) {
-	return Boolean(item?.getFlag(MODULE_ID, "isContainer"));
-}
 
 /**
  * SD 4.x made `isPhysical` a hardcoded getter, so setting it to false via
@@ -1246,25 +1241,6 @@ function patchGetPhysicalItemsForContainers() {
 		);
 	};
 	target.__sdxContainerItemsPatched = true;
-}
-
-function getContainedItems(containerItem) {
-	const actor = containerItem?.parent;
-	if (!actor) return [];
-	return actor.items.filter(i => i.getFlag(MODULE_ID, "containerId") === containerItem.id);
-}
-
-function getParentContainer(item) {
-	const containerId = item?.getFlag(MODULE_ID, "containerId");
-	if (!containerId) return null;
-	const actor = item?.parent;
-	if (!actor) return null;
-	return actor.items.get(containerId);
-}
-
-function getPackedContainedItemData(containerItem) {
-	const packed = containerItem?.getFlag?.(MODULE_ID, "containerPackedItems");
-	return Array.isArray(packed) ? packed : [];
 }
 
 function getPackedKeyFromItemData(itemData) {
@@ -1305,154 +1281,6 @@ async function packItemToContainerData(sourceItem) {
 	return data;
 }
 
-function isItemPilesEnabledActor(actor) {
-	try {
-		return Boolean(actor?.getFlag?.("item-piles", "data")?.enabled);
-	} catch {
-		return false;
-	}
-}
-
-function calculateSlotsCostForItem(item, { ignoreIsPhysical = false } = {}) {
-	// Mirror the simple Shadowdark slot math used elsewhere in this module:
-	// cost = ceil(qty / per_slot) * slots_used
-	const system = item?.system ?? {};
-	if (!ignoreIsPhysical && !system.isPhysical) return 0;
-	if (item?.type === "Gem") return 0;
-	if (system.stashed) return 0;
-
-	const qty = Math.max(0, Number(system.quantity ?? 1) || 0);
-	const perSlot = Math.max(1, Number(system.slots?.per_slot ?? 1) || 1);
-	const slotsUsed = Math.max(0, Number(system.slots?.slots_used ?? 1) || 0);
-	return Math.ceil(qty / perSlot) * slotsUsed;
-}
-
-function calculateSlotsCostForItemData(itemData, { recursive = false } = {}) {
-	const system = itemData?.system ?? {};
-	// Packed items are stored as hidden/non-physical; assume they were meant to count unless explicitly marked otherwise.
-	const originallyPhysical = itemData?.flags?.[MODULE_ID]?.containerOrigIsPhysical;
-	if (originallyPhysical === false) return 0;
-	if (itemData?.type === "Gem") return 0;
-	if (system.stashed) return 0;
-
-	const qty = Math.max(0, Number(system.quantity ?? 1) || 0);
-	const perSlot = Math.max(1, Number(system.slots?.per_slot ?? 1) || 1);
-	const freeCarry = Math.max(0, Number(system.slots?.free_carry ?? 0) || 0);
-
-	// For containers, use base slots when recursive to avoid double-counting
-	const isContainer = Boolean(itemData?.flags?.[MODULE_ID]?.isContainer);
-	let slotsUsed;
-	if (recursive && isContainer) {
-		// Use base slots for nested containers
-		const baseSlots = itemData?.flags?.[MODULE_ID]?.containerBaseSlots;
-		slotsUsed = baseSlots?.slots_used ?? (Number(system.slots?.slots_used ?? 1) || 1);
-	} else {
-		slotsUsed = Math.max(0, Number(system.slots?.slots_used ?? 1) || 0);
-	}
-
-	// Calculate base slot cost for this item
-	let baseSlotCost = Math.ceil(qty / perSlot) * slotsUsed;
-	// Apply free carry to the item itself (but not contents)
-	// Free carry of 1 means the container itself is free (0 slots)
-	if (freeCarry > 0) {
-		baseSlotCost = 0;
-	}
-	let slots = baseSlotCost;
-
-	// If recursive and this is a container, add its nested contents
-	if (recursive && isContainer) {
-		const packedItems = itemData?.flags?.[MODULE_ID]?.containerPackedItems;
-		if (Array.isArray(packedItems)) {
-			for (const nestedData of packedItems) {
-				slots += calculateSlotsCostForItemData(nestedData, { recursive: true });
-			}
-		}
-
-		// Add coin weight from nested container
-		const coins = itemData?.flags?.[MODULE_ID]?.containerCoins || {};
-		const gp = Number(coins.gp ?? 0);
-		const sp = Number(coins.sp ?? 0);
-		const cp = Number(coins.cp ?? 0);
-		const totalCoins = gp + sp + cp;
-		const coinSlots = Math.floor(totalCoins / 100);
-		slots += coinSlots;
-	}
-
-	return slots;
-}
-
-function calculateContainedItemSlots(item) {
-	// Contained items are forcibly set to non-physical to hide them; for container math we
-	// treat them as physical only if they originally were.
-	const originallyPhysical = item?.getFlag?.(MODULE_ID, "containerOrigIsPhysical");
-	if (originallyPhysical === false) return 0;
-
-	// For containers, use base slots to avoid double-counting
-	let slots;
-	if (isContainerItem(item)) {
-		// Use base slots for nested containers
-		const baseSlots = item.getFlag(MODULE_ID, "containerBaseSlots");
-		if (baseSlots) {
-			const qty = Math.max(0, Number(item.system?.quantity ?? 1) || 0);
-			const perSlot = Math.max(1, Number(baseSlots.per_slot ?? 1) || 1);
-			const baseSlotsUsed = Math.max(0, Number(baseSlots.slots_used ?? 1) || 0);
-			const freeCarry = Math.max(0, Number(item.system?.slots?.free_carry ?? 0) || 0);
-			let baseSlotCost = Math.ceil(qty / perSlot) * baseSlotsUsed;
-			// Apply free carry to the container itself (but not contents)
-			// Free carry of 1 means the container itself is free (0 slots)
-			if (freeCarry > 0) {
-				baseSlotCost = 0;
-			}
-			slots = baseSlotCost;
-		} else {
-			slots = calculateSlotsCostForItem(item, { ignoreIsPhysical: true });
-		}
-	} else {
-		slots = calculateSlotsCostForItem(item, { ignoreIsPhysical: true });
-	}
-
-	// If this item is itself a container, recursively add its contained items' slots
-	if (isContainerItem(item)) {
-		const actor = item.parent;
-		const packedOnly = !actor || isItemPilesEnabledActor(actor);
-
-		if (packedOnly) {
-			// Use packed data for actorless or Item Piles containers
-			for (const data of getPackedContainedItemData(item)) {
-				slots += calculateSlotsCostForItemData(data, { recursive: true });
-			}
-		} else {
-			// Use embedded items for normal actors
-			const contained = getContainedItems(item);
-			for (const nestedItem of contained) {
-				slots += calculateContainedItemSlots(nestedItem);
-			}
-		}
-
-		// Add coin weight from nested container
-		const coins = item.getFlag(MODULE_ID, "containerCoins") || {};
-		const gp = Number(coins.gp ?? 0);
-		const sp = Number(coins.sp ?? 0);
-		const cp = Number(coins.cp ?? 0);
-		const totalCoins = gp + sp + cp;
-		const coinSlots = Math.floor(totalCoins / 100);
-		slots += coinSlots;
-	}
-
-	return slots;
-}
-
-async function ensureContainerBaseSlots(containerItem) {
-	if (!containerItem) return;
-	const existing = containerItem.getFlag(MODULE_ID, "containerBaseSlots");
-	if (existing && typeof existing === "object") return;
-	const base = {
-		slots_used: Number(containerItem.system?.slots?.slots_used ?? 1) || 1,
-		per_slot: Number(containerItem.system?.slots?.per_slot ?? 1) || 1,
-		max: Number(containerItem.system?.slots?.max ?? 1) || 1,
-	};
-	await containerItem.setFlag(MODULE_ID, "containerBaseSlots", base);
-}
 
 async function restoreContainerBaseSlots(containerItem) {
 	if (!containerItem) return;
@@ -1465,95 +1293,6 @@ async function restoreContainerBaseSlots(containerItem) {
 	}, { sdxInternal: true });
 }
 
-async function recomputeContainerSlots(containerItem, { skipSync = false } = {}) {
-	if (!containerItem || !isContainerItem(containerItem)) return;
-
-	// Prevent recursive recomputation
-	const recomputeKey = containerItem.uuid;
-	if (_containersBeingRecomputed.has(recomputeKey)) return;
-	_containersBeingRecomputed.add(recomputeKey);
-
-	try {
-		await ensureContainerBaseSlots(containerItem);
-		const base = containerItem.getFlag(MODULE_ID, "containerBaseSlots") || {};
-		const baseSlotsUsed = Number(base.slots_used ?? 1) || 1;
-
-		const packedOnly = !containerItem.parent || isItemPilesEnabledActor(containerItem.parent);
-		let containedSlots = 0;
-		if (packedOnly) {
-			// Actorless containers and Item Piles actors shouldn't rely on embedded contained items.
-			// Use recursive calculation to handle nested containers
-			for (const data of getPackedContainedItemData(containerItem)) containedSlots += calculateSlotsCostForItemData(data, { recursive: true });
-		} else {
-			const contained = getContainedItems(containerItem);
-			// calculateContainedItemSlots now handles recursion automatically
-			for (const item of contained) containedSlots += calculateContainedItemSlots(item);
-		}
-
-		// Add coin weight: 1 slot per 100 coins (regardless of denomination)
-		const coins = containerItem.getFlag(MODULE_ID, "containerCoins") || {};
-		const gp = Number(coins.gp ?? 0);
-		const sp = Number(coins.sp ?? 0);
-		const cp = Number(coins.cp ?? 0);
-		const totalCoins = gp + sp + cp;
-		const coinSlots = Math.floor(totalCoins / 100);
-		containedSlots += coinSlots;
-
-		const nextSlotsUsed = Math.max(baseSlotsUsed, containedSlots);
-		const current = Number(containerItem.system?.slots?.slots_used ?? 1) || 1;
-		if (current !== nextSlotsUsed) {
-			await containerItem.update({
-				"system.slots.slots_used": nextSlotsUsed,
-			}, { sdxInternal: true });
-		}
-
-		// Keep a packed snapshot so copies/transfers can recreate contents.
-		// For packed-only containers we preserve the existing snapshot.
-		// Skip syncing when unpacking to prevent doubling items.
-		if (!packedOnly && !skipSync) await syncContainerPackedItems(containerItem);
-
-		// If this container is itself inside another container, update the parent container too
-		const parentContainer = getParentContainer(containerItem);
-		if (parentContainer && !_containersBeingRecomputed.has(parentContainer.uuid)) {
-			await recomputeContainerSlots(parentContainer, { skipSync });
-		}
-	} finally {
-		_containersBeingRecomputed.delete(recomputeKey);
-	}
-}
-
-async function syncContainerPackedItems(containerItem) {
-	if (!containerItem || !isContainerItem(containerItem) || !containerItem.parent) return;
-	if (isItemPilesEnabledActor(containerItem.parent)) return;
-	const contained = getContainedItems(containerItem);
-	const packed = contained.map(i => {
-		const data = i.toObject();
-		// Store as a template for recreation on another actor
-		delete data._id;
-		data.flags = data.flags ?? {};
-		data.flags[MODULE_ID] = data.flags[MODULE_ID] ?? {};
-		// ContainerId will be rewritten on unpack
-		data.flags[MODULE_ID].containerId = null;
-		// Clear the unpacked flag so it can be unpacked when copied to another actor
-		delete data.flags[MODULE_ID].containerUnpacked;
-		// Clear the actor-specific unpack flag
-		delete data.flags[MODULE_ID].containerUnpackedOnActor;
-		// Ensure it stays hidden when recreated
-		data.system = data.system ?? {};
-		data.system.isPhysical = false;
-		return data;
-	});
-	// Use update with sdxInternal to prevent hook recursion
-	await containerItem.update({
-		[`flags.${MODULE_ID}.containerPackedItems`]: packed,
-	}, { sdxInternal: true });
-	// Clear the unpacked flag on the current container since we just synced
-	if (containerItem.getFlag(MODULE_ID, "containerUnpacked")) {
-		await containerItem.update({
-			[`flags.${MODULE_ID}.-=containerUnpacked`]: null,
-		}, { sdxInternal: true });
-	}
-}
 
 async function setContainedState(item, containerId) {
 	if (!item) return;
@@ -3760,7 +3499,6 @@ function registerSettings() {
 		type: Boolean,
 		requiresReload: true
 	});
-
 
 
 	game.settings.register(MODULE_ID, "enablePlaceableNotes", {
@@ -9276,7 +9014,6 @@ Hooks.once("init", () => {
 	patchCharacterGeneratorRolls();
 
 
-
 	// Register Handlebars helpers
 	Handlebars.registerHelper("numberSigned", (value) => {
 		const num = parseInt(value) || 0;
@@ -9449,7 +9186,6 @@ Hooks.once("ready", async () => {
 	patchPlayerSheetUseAbility();
 	initializeTradeSocket();
 	patchCanUseMagicItems();
-
 
 
 	// Setup combat socket for damage application (requires socketlib)
@@ -9735,7 +9471,6 @@ Hooks.on("preCreateItem", (item, data, options, userId) => {
 		//console.log(`${MODULE_ID} | Preserved itemacro macro on item creation:`, item.name);
 	}
 });
-
 
 
 // Before party actor is created, ensure proper prototype token settings
@@ -16290,141 +16025,9 @@ Hooks.once("ready", () => {
 	}
 });
 
-// Keep container slot values in sync when contained items change
-Hooks.on("updateItem", async (item, changes, options, userId) => {
-	if (options?.sdxInternal) return;
+// Container hooks live in inventory/containers.mjs; registered here to keep source order.
+registerContainerHooks();
 
-	// Only the user who made the update should process it
-	if (userId !== game.user.id) return;
-
-	const actor = item?.parent;
-
-	// If the unidentified flag changed, re-render the actor sheet
-	if (changes?.flags?.[MODULE_ID]?.unidentified !== undefined && actor) {
-		for (const app of Object.values(ui.windows)) {
-			if (app.actor?.id === actor.id) {
-				app.render();
-			}
-		}
-	}
-
-	if (!actor) return;
-
-	// Skip recomputing if a container is currently being unpacked (prevents double-unpacking)
-	const unpackKey = `${actor.id}-${item.id}`;
-	if (_containersBeingUnpacked.has(unpackKey)) return;
-
-	// If this item is inside a container, recompute that container (but skip sync during unpack)
-	const containerId = item.getFlag(MODULE_ID, "containerId");
-	if (containerId) {
-		const containerUnpackKey = `${actor.id}-${containerId}`;
-		const skipSync = _containersBeingUnpacked.has(containerUnpackKey);
-		const container = actor.items.get(containerId);
-		if (container) await recomputeContainerSlots(container, { skipSync });
-		return;
-	}
-
-	// If the updated item is a container, recompute in case its contents changed.
-	if (isContainerItem(item)) {
-		await recomputeContainerSlots(item);
-	}
-});
-
-// Unpack container contents when a container item is created on an actor (e.g., drag/drop transfer)
-Hooks.on("createItem", async (item, options, userId) => {
-	if (options?.sdxInternal) return;
-
-	// CRITICAL: Only the user who created the item should unpack it.
-	// This prevents multi-client duplication where all connected clients try to unpack.
-	if (userId !== game.user.id) return;
-
-	const actor = item?.parent;
-	if (!actor) return;
-	if (!isContainerItem(item)) return;
-
-	// Item Piles actors should not have embedded contained items (they show up as separate loot).
-	// Keep contents packed on the container item and only unpack when moved to a normal actor.
-	if (isItemPilesEnabledActor(actor)) return;
-
-	// Check if this container has already been unpacked (persisted flag on the item)
-	// This is more reliable than checking embedded items which might not be synced yet
-	if (item.getFlag(MODULE_ID, "containerUnpackedOnActor") === actor.id) return;
-
-	// Use a unique key for this specific container instance to prevent race conditions
-	const unpackKey = `${actor.id}-${item.id}`;
-	if (_containersBeingUnpacked.has(unpackKey)) return;
-
-	// Skip if contained items already exist for this container (e.g., from explicit transfer)
-	const existing = actor.items.filter(i => i.getFlag(MODULE_ID, "containerId") === item.id);
-	if (existing.length > 0) {
-		// Items exist but containerUnpackedOnActor might not be set - set it now to prevent issues
-		if (!item.getFlag(MODULE_ID, "containerUnpackedOnActor")) {
-			await item.setFlag(MODULE_ID, "containerUnpackedOnActor", actor.id);
-		}
-		return;
-	}
-
-	const packed = item.getFlag(MODULE_ID, "containerPackedItems");
-	if (!Array.isArray(packed) || packed.length === 0) {
-		// No packed items, but ensure containerUnpackedOnActor is set to prevent future issues
-		if (!item.getFlag(MODULE_ID, "containerUnpackedOnActor")) {
-			await item.setFlag(MODULE_ID, "containerUnpackedOnActor", actor.id);
-		}
-		return;
-	}
-
-	// Mark as being unpacked SYNCHRONOUSLY before any async operations
-	_containersBeingUnpacked.add(unpackKey);
-
-	try {
-		const toCreate = packed.map(d => {
-			const data = foundry.utils.duplicate(d);
-			delete data._id;
-			data.flags = data.flags ?? {};
-			data.flags[MODULE_ID] = data.flags[MODULE_ID] ?? {};
-			data.flags[MODULE_ID].containerId = item.id;
-			data.system = data.system ?? {};
-			data.system.isPhysical = false;
-			if (data.flags[MODULE_ID].containerOrigIsPhysical === undefined) data.flags[MODULE_ID].containerOrigIsPhysical = true;
-			return data;
-		});
-
-		await actor.createEmbeddedDocuments("Item", toCreate, { sdxInternal: true });
-
-		// Mark this container as unpacked on this actor (persisted to database)
-		// This prevents any other client from trying to unpack it again
-		await item.setFlag(MODULE_ID, "containerUnpackedOnActor", actor.id);
-
-		// Update the slot count directly
-		const base = item.getFlag(MODULE_ID, "containerBaseSlots") || {};
-		const baseSlotsUsed = Number(base.slots_used ?? 1) || 1;
-		let containedSlots = 0;
-		for (const d of packed) containedSlots += calculateSlotsCostForItemData(d);
-		const coins = item.getFlag(MODULE_ID, "containerCoins") || {};
-		const totalCoins = (Number(coins.gp ?? 0)) + (Number(coins.sp ?? 0)) + (Number(coins.cp ?? 0));
-		containedSlots += Math.floor(totalCoins / 100);
-		const nextSlotsUsed = Math.max(baseSlotsUsed, containedSlots);
-
-		await item.update({
-			"system.slots.slots_used": nextSlotsUsed,
-		}, { sdxInternal: true });
-	} finally {
-		// Keep the lock active for a bit longer to let any triggered hooks complete
-		// Then clear containerPackedItems to prevent any future sync from re-populating
-		setTimeout(async () => {
-			_containersBeingUnpacked.delete(unpackKey);
-			// Clear packed items after everything has settled
-			try {
-				const currentItem = actor.items.get(item.id);
-				if (currentItem) {
-					await currentItem.setFlag(MODULE_ID, "containerPackedItems", []);
-				}
-			} catch (e) {
-				// Ignore errors
-			}
-		}, 100);
-	}
-});
 
 // Release contained items BEFORE a container is deleted
 Hooks.on("preDeleteItem", async (item, options, userId) => {
@@ -16894,7 +16497,6 @@ Hooks.once("ready", () => {
 		},
 		configurable: true
 	});
-
 
 
 	const prepareGearSheetCompendiumIndexes = () => {
@@ -17466,67 +17068,8 @@ Hooks.on("preCreateChatMessage", async (message) => {
 	}
 });
 
-// Restore visibility when invisibility effect is disabled or deleted
-Hooks.on("updateActiveEffect", async (effect, changes, options, userId) => {
-	// Check if this is an invisibility effect being disabled
-	const isInvisibilityEffect = effect.changes.some(c => c.key === `flags.${MODULE_ID}.invisibility`);
-	if (!isInvisibilityEffect) return;
-
-	//console.log(`${MODULE_ID} | Invisibility effect updated:`, { disabled: effect.disabled, changes });
-
-	// If effect was disabled, restore visibility
-	if (changes.disabled === true) {
-		//console.log(`${MODULE_ID} | Restoring visibility (effect disabled)`);
-		// Effect.parent is the Item (Condition), we need the Actor that owns the item
-		const item = effect.parent;
-		const actor = item?.parent; // Item's parent is the Actor
-		if (actor) {
-			//console.log(`${MODULE_ID} | Character Actor:`, { id: actor.id, name: actor.name, type: actor.type });
-			// Find all token documents for this actor across all scenes
-			const tokens = [];
-			for (const scene of game.scenes) {
-				//console.log(`${MODULE_ID} | Checking scene: ${scene.name}, tokens: ${scene.tokens.size}`);
-				const sceneTokens = scene.tokens.filter(t => {
-					const match = t.actorId === actor.id || t.actor?.id === actor.id;
-					if (t.actor?.name === actor.name) {
-						//console.log(`${MODULE_ID} | Token found:`, { tokenId: t.id, actorId: t.actorId, tokenActorId: t.actor?.id, match });
-					}
-					return match;
-				});
-				tokens.push(...sceneTokens);
-			}
-			//console.log(`${MODULE_ID} | Found ${tokens.length} token documents to restore visibility`);
-			for (const tokenDoc of tokens) {
-				await tokenDoc.update({ hidden: false });
-			}
-		}
-	}
-});
-
-Hooks.on("deleteActiveEffect", async (effect, options, userId) => {
-	// Check if this is an invisibility effect being deleted
-	const isInvisibilityEffect = effect.changes.some(c => c.key === `flags.${MODULE_ID}.invisibility`);
-	if (!isInvisibilityEffect) return;
-
-	// Restore visibility when effect is deleted
-	// Effect.parent is the Item (Condition), we need the Actor that owns the item
-	const item = effect.parent;
-	const actor = item?.parent; // Item's parent is the Actor
-	if (actor) {
-		//console.log(`${MODULE_ID} | Invisibility effect deleted, restoring visibility`);
-		// Find all token documents for this actor across all scenes
-		const tokens = [];
-		for (const scene of game.scenes) {
-			const sceneTokens = scene.tokens.filter(t => t.actorId === actor.id);
-			tokens.push(...sceneTokens);
-		}
-		//console.log(`${MODULE_ID} | Found ${tokens.length} token documents to restore visibility`);
-		for (const tokenDoc of tokens) {
-			await tokenDoc.update({ hidden: false });
-		}
-	}
-});
-
+// Invisibility hooks live in ./effects/invisibility.mjs; registered here to keep source order.
+registerInvisibilityHooks();
 // Also restore visibility when the Condition item itself is deleted
 Hooks.on("deleteItem", async (item, options, userId) => {
 	// Check if this item has an invisibility effect
@@ -17554,8 +17097,6 @@ Hooks.on("deleteItem", async (item, options, userId) => {
 });
 
 //console.log(`${MODULE_ID} | Invisibility effect enabled with auto-disable on attack/spell`);
-
-
 
 
 // ============================================
@@ -20848,237 +20389,8 @@ async function evaluateSourceRequirement(requirement, actor, token = null, sourc
 	}
 }
 
-/**
- * Hook to add Source Requirement field to Active Effect config
- */
-Hooks.on("renderActiveEffectConfig", (app, html, data) => {
-	// Try multiple ways to get the effect - app.object might be undefined for new effects
-	const effect = app.object || app.document || data.effect;
-
-	// Guard: ensure effect exists
-	if (!effect) {
-		console.warn(`${MODULE_ID} | renderActiveEffectConfig: Could not find effect document`);
-		return;
-	}
-
-	const currentRequirement = effect.getFlag?.(MODULE_ID, "sourceRequirement") || "";
-	// Escape HTML entities for safe insertion into HTML attribute
-	const escapedRequirement = currentRequirement.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
-	// Get the requireEquipped flag
-	const requireEquipped = effect.getFlag?.(MODULE_ID, "requireEquipped") || false;
-
-	// Ensure html is a jQuery object
-	const $html = html instanceof jQuery ? html : $(html);
-
-	// Find the Status Conditions section - it's a div.form-group.statuses
-	const statusConditions = $html.find('.form-group.statuses');
-
-	// Build the HTML for the require equipped checkbox
-	const requireEquippedHtml = `
-		<div class="form-group sdx-require-equipped">
-			<label>Must be Equipped</label>
-			<input type="checkbox" name="flags.${MODULE_ID}.requireEquipped" ${requireEquipped ? 'checked' : ''}/>
-			<p class="hint">If checked, this Effect will be applied to any Actor that owns this Effect's parent Item only if the Item is equipped.</p>
-		</div>
-	`;
-
-	// Build the HTML for the source requirement field
-	const fieldHtml = `
-		<div class="form-group sdx-source-requirement">
-			<label>${game.i18n.localize("SHADOWDARK_EXTRAS.effects.sourceRequirement")}</label>
-			<div class="form-fields">
-				<input type="text" name="flags.${MODULE_ID}.sourceRequirement" value="${escapedRequirement}"
-					placeholder="e.g., level > 3"
-					title="${game.i18n.localize("SHADOWDARK_EXTRAS.effects.sourceRequirementHint")}"/>
-			</div>
-			<p class="hint">${game.i18n.localize("SHADOWDARK_EXTRAS.effects.sourceRequirementHint")}</p>
-			<details class="sdx-requirement-examples">
-				<summary><i class="fas fa-info-circle"></i> Valid Requirement Examples</summary>
-				<div class="examples-content">
-					<p><strong>Level Requirements:</strong></p>
-					<ul>
-						<li><code>level > 3</code> - Character level greater than 3</li>
-						<li><code>level >= 5</code> - Character level 5 or higher</li>
-						<li><code>level === 1</code> - Exactly level 1</li>
-					</ul>
-
-					<p><strong>Hit Points Requirements:</strong></p>
-					<ul>
-						<li><code>actor.system.attributes.hp.value > 10</code> - Current HP greater than 10</li>
-						<li><code>actor.system.attributes.hp.value >= actor.system.attributes.hp.max / 2</code> - At least half HP</li>
-						<li><code>actor.system.attributes.hp.value < 5</code> - Bloodied (less than 5 HP)</li>
-						<li><code>actor.system.attributes.hp.max >= 20</code> - Maximum HP 20 or higher</li>
-					</ul>
-
-					<p><strong>Attribute Requirements:</strong></p>
-					<ul>
-						<li><code>attributes.str.value >= 14</code> - Strength 14 or higher</li>
-						<li><code>attributes.dex.value > 12</code> - Dexterity greater than 12</li>
-						<li><code>attributes.con.value >= 16</code> - Constitution 16 or higher</li>
-					</ul>
-
-					<p><strong>Ability Modifier Requirements:</strong></p>
-					<ul>
-						<li><code>abilities.str.mod >= 2</code> - Strength modifier +2 or higher</li>
-						<li><code>abilities.dex.mod > 0</code> - Positive Dexterity modifier</li>
-						<li><code>abilities.int.mod >= 3</code> - Intelligence modifier +3 or higher</li>
-					</ul>
-
-					<p><strong>Ancestry Requirements:</strong></p>
-					<ul>
-						<li><code>ancestry === "elf"</code> - Is an elf</li>
-						<li><code>ancestry === "dwarf"</code> - Is a dwarf</li>
-						<li><code>ancestry === "halfling"</code> - Is a halfling</li>
-						<li><code>ancestry === "human"</code> - Is a human</li>
-						<li><code>ancestry.includes("goblin")</code> - Name includes "goblin" (for variations)</li>
-					</ul>
-
-					<p><strong>Class Requirements:</strong></p>
-					<ul>
-						<li><code>charClass === "fighter"</code> - Is a fighter</li>
-						<li><code>charClass === "wizard"</code> - Is a wizard</li>
-						<li><code>charClass === "cleric"</code> - Is a cleric</li>
-						<li><code>charClass === "thief"</code> - Is a thief</li>
-						<li><code>charClass.includes("ranger")</code> - Class name includes "ranger" (for variations)</li>
-					</ul>
-
-					<p><strong>Background Requirements:</strong></p>
-					<ul>
-						<li><code>background === "urchin"</code> - Urchin background</li>
-						<li><code>background === "merchant"</code> - Merchant background</li>
-						<li><code>background.includes("soldier")</code> - Background includes "soldier"</li>
-					</ul>
-
-					<p><strong>Alignment Requirements:</strong></p>
-					<ul>
-						<li><code>alignment === "lawful"</code> - Lawful alignment</li>
-						<li><code>alignment === "neutral"</code> - Neutral alignment</li>
-						<li><code>alignment === "chaotic"</code> - Chaotic alignment</li>
-					</ul>
-
-					<p><strong>Item Ownership Requirements:</strong></p>
-					<ul>
-						<li><code>actor.items.some(i => i.name === "Sword of Light")</code> - Has "Sword of Light"</li>
-						<li><code>actor.items.some(i => i.name.includes("Sword"))</code> - Has any item with "Sword" in name</li>
-						<li><code>actor.items.some(i => i.type === "Weapon" && i.name.includes("Magic"))</code> - Has magic weapon</li>
-						<li><code>actor.items.some(i => i.type === "Armor" && i.system.equipped)</code> - Has equipped armor</li>
-						<li><code>actor.items.filter(i => i.type === "Spell").length >= 3</code> - Has 3 or more spells</li>
-					</ul>
-
-					<p><strong>Combined Requirements (AND/OR):</strong></p>
-					<ul>
-						<li><code>level >= 5 && abilities.str.mod >= 2</code> - Level 5+ AND Str +2+</li>
-						<li><code>attributes.str.value >= 16 || attributes.dex.value >= 16</code> - Str 16+ OR Dex 16+</li>
-						<li><code>level > 3 && charClass === "wizard"</code> - Level 3+ wizard</li>
-						<li><code>actor.items.some(i => i.name === "Holy Symbol") && charClass === "cleric"</code> - Cleric with holy symbol</li>
-						<li><code>ancestry === "elf" && abilities.int.mod > 0</code> - Elf with positive Int modifier</li>
-						<li><code>alignment === "lawful" && charClass === "cleric"</code> - Lawful cleric</li>
-					</ul>
-
-					<p><strong>Token Requirements (if token exists):</strong></p>
-					<ul>
-						<li><code>token?.elevation > 0</code> - Token is elevated</li>
-						<li><code>token?.disposition === 1</code> - Friendly token</li>
-					</ul>
-
-					<p class="notes"><strong>Available Variables:</strong> <code>actor</code>, <code>token</code>, <code>level</code>, <code>attributes</code>, <code>abilities</code>, <code>ancestry</code>, <code>charClass</code>, <code>background</code>, <code>alignment</code><br><br><strong>Note:</strong> <code>ancestry</code>, <code>charClass</code>, <code>background</code>, and <code>alignment</code> are automatically resolved from Compendium UUIDs to lowercase names (e.g., "wizard", "elf", "chaotic").</p>
-				</div>
-			</details>
-		</div>
-	`;
-
-	// Insert after Status Conditions if found, otherwise at the end of the details tab
-	if (statusConditions.length > 0) {
-		statusConditions.after(requireEquippedHtml + fieldHtml);
-	} else {
-		// Fallback: insert at the end of the details tab
-		const detailsTab = $html.find('section[data-tab="details"]');
-		if (detailsTab.length > 0) {
-			detailsTab.append(requireEquippedHtml + fieldHtml);
-		}
-	}
-
-	// Intercept form submission to save the source requirement
-	const form = $html.closest('form');
-	if (form.length > 0) {
-		// Store the original submit method
-		const originalSubmit = form[0].onsubmit;
-
-		form.on('submit', async (event) => {
-			// Get the requirement value
-			const requirementInput = $html.find(`input[name="flags.${MODULE_ID}.sourceRequirement"]`);
-			if (requirementInput.length > 0) {
-				const newRequirement = requirementInput.val()?.trim() || "";
-				//console.log(`${MODULE_ID} | Form submitting, will save requirement: "${newRequirement}"`);
-
-				// Store it in a temp variable on the effect to be picked up by preUpdate hook
-				effect._pendingSourceRequirement = newRequirement;
-			}
-
-			// Get the requireEquipped checkbox value
-			const requireEquippedInput = $html.find(`input[name="flags.${MODULE_ID}.requireEquipped"]`);
-			if (requireEquippedInput.length > 0) {
-				const newRequireEquipped = requireEquippedInput.is(':checked');
-				//console.log(`${MODULE_ID} | Form submitting, will save requireEquipped: ${newRequireEquipped}`);
-
-				// Store it in a temp variable on the effect to be picked up by preUpdate hook
-				effect._pendingRequireEquipped = newRequireEquipped;
-			}
-		});
-	}
-
-	// Adjust app height to accommodate new field
-	app.setPosition({ height: "auto" });
-});
-
-/**
- * Hook to save the source requirement when effect is updated
- */
-Hooks.on("preUpdateActiveEffect", (effect, changes, options, userId) => {
-	//console.log(`${MODULE_ID} | preUpdateActiveEffect fired for effect: ${effect.name}`);
-
-	// Check if there's a pending source requirement from the form
-	if (effect._pendingSourceRequirement !== undefined) {
-		//console.log(`${MODULE_ID} | Found pending requirement: "${effect._pendingSourceRequirement}"`);
-
-		// Merge the requirement into the changes
-		if (!changes.flags) changes.flags = {};
-		if (!changes.flags[MODULE_ID]) changes.flags[MODULE_ID] = {};
-		changes.flags[MODULE_ID].sourceRequirement = effect._pendingSourceRequirement;
-
-		// Clean up the temp variable
-		delete effect._pendingSourceRequirement;
-
-		//console.log(`${MODULE_ID} | Merged requirement into update: "${changes.flags[MODULE_ID].sourceRequirement}"`);
-	}
-
-	// Check if there's a pending requireEquipped from the form
-	if (effect._pendingRequireEquipped !== undefined) {
-		//console.log(`${MODULE_ID} | Found pending requireEquipped: ${effect._pendingRequireEquipped}`);
-
-		// Merge the requireEquipped into the changes
-		if (!changes.flags) changes.flags = {};
-		if (!changes.flags[MODULE_ID]) changes.flags[MODULE_ID] = {};
-		changes.flags[MODULE_ID].requireEquipped = effect._pendingRequireEquipped;
-
-		// Clean up the temp variable
-		delete effect._pendingRequireEquipped;
-
-		//console.log(`${MODULE_ID} | Merged requireEquipped into update: ${changes.flags[MODULE_ID].requireEquipped}`);
-	}
-
-	// Check if there's a flags update with our source requirement
-	if (changes.flags?.[MODULE_ID]?.sourceRequirement !== undefined) {
-		//console.log(`${MODULE_ID} | preUpdateActiveEffect: Saving requirement "${changes.flags[MODULE_ID].sourceRequirement}"`);
-	}
-
-	// Check if there's a flags update with our requireEquipped
-	if (changes.flags?.[MODULE_ID]?.requireEquipped !== undefined) {
-		//console.log(`${MODULE_ID} | preUpdateActiveEffect: Saving requireEquipped ${changes.flags[MODULE_ID].requireEquipped}`);
-	}
-});
-
+// Active Effect config hooks live in ./effects/effect-config.mjs; registered here to keep source order.
+registerActiveEffectConfigHooks();
 /**
  * Hook to check requirements after effect is updated
  */
@@ -21855,7 +21167,5 @@ Hooks.on("renderApplication", (app, html, data) => {
 		console.error(`${MODULE_ID} | Failed to enhance gem bag`, err);
 	}
 });
-
-
 
 
