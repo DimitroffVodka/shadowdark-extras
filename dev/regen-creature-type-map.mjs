@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Regenerate data/creature-type-map.mjs from Shadowdark Tools (or a local JSON).
+ * Regenerate scripts/npc/creature-type-map.mjs from Shadowdark Tools (or a local JSON).
  *
  * The bundled creature-type map is a SNAPSHOT of shadowdarktools.com/reference.
  * Run this when that source updates. Node-side fetch has no CORS limit (unlike
@@ -27,7 +27,8 @@ const DRY = args.includes("--dry");
 const fromIdx = args.indexOf("--from");
 const FROM = fromIdx >= 0 ? args[fromIdx + 1] : null;
 
-// Must match getMappedType/normalizeMonsterName in scripts/CreatureTypesApp.mjs
+// Must match normalizeMonsterName in scripts/npc/CreatureTypesApp.mjs.
+// dev/tests/creature-type-map-sync.test.mjs fails if these two diverge.
 const norm = (s) => String(s ?? "").toUpperCase().replace(/[’']/g, "'").replace(/\s+/g, " ").trim();
 const titlePrimary = (tags) => {
 	const primary = String(tags ?? "").split(",")[0].trim().toLowerCase();
