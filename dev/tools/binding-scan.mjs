@@ -64,6 +64,17 @@ const KNOWN_GLOBALS = new Set([
   "Uint8Array", "Uint16Array", "Uint32Array", "Int8Array", "Float32Array", "Float64Array", "DataView",
   "ArrayBuffer", "TextDecoder", "TextEncoder", "SubmitEvent", "DOMParser", "AbortController",
   "cancelAnimationFrame", "IntersectionObserver", "ResizeObserver", "CSS", "performance", "crypto",
+  // Foundry's global constants namespace. Its omission was an oversight, not a
+  // judgement: `CONST` matches the SCREAMING_SNAKE reference scan below, so
+  // every module reading `CONST.DOCUMENT_OWNERSHIP_LEVELS` or
+  // `CONST.KEYBINDING_PRECEDENCE` landed in the baseline as an accepted unbound
+  // identifier — 17 of them, 16 shipping in production. Verified live in world
+  // `0100` (Foundry 14.365): `typeof CONST === "object"` and `CONST ===
+  // foundry.CONST`. Listing it removes exactly those 17 baseline entries and
+  // introduces no new ones, so the baseline is left alone: orphaned entries are
+  // inert here (the gate diffs current-against-baseline, never the reverse),
+  // and re-baselining would discard the accepted set this gate exists to hold.
+  "CONST",
 ]);
 
 /** Syntax keywords a naive `name(` pattern will pick up. */

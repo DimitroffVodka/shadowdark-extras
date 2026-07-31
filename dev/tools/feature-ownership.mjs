@@ -156,6 +156,9 @@ export const FEATURE_OWNERS = {
     "NPCAttackSheetSD.mjs",
     "NPCFeatureSheetSD.mjs",
     "NPCSpecialAttackSheetSD.mjs",
+    // Extracted from the composition root in Phase 3: the ready-hook that
+    // wraps the NPC data model’s two display builders.
+    "npc-display-patches.mjs",
     "MysteriousCasting.mjs",
     /**
      * PHASE 0 FINDING — owner confirmed 2026-07-30. Moves to `scripts/npc/`.
@@ -252,6 +255,22 @@ export const FEATURE_OWNERS = {
     "TomMigrationService.mjs",
   ],
   maphub: ["MaphubSD.mjs", "MaphubLauncherApp.mjs", "MaphubViewerApp.mjs", "OnePageParserSD.mjs"],
+  /**
+   * Cross-cutting world configuration. Opened in Phase 3 for the last and
+   * largest extraction: the 108 `settings.register` and 17 `registerMenu`
+   * calls that had grown to a third of the composition root.
+   *
+   * A new bucket rather than an existing one, which every other Phase 3 move
+   * avoided. The keys registered here span inventory, combat, character
+   * sheets, carousing, NPCs, hex, dungeon, tray and canvas, so no feature owns
+   * them, and `shared` is for compatibility helpers that earn their place at a
+   * second consumer — not for a registration surface.
+   *
+   * Its many imports of `registerXSettings` from feature modules are
+   * composition, the same shape as the root's own imports, so the crossings
+   * the matrix records for it are expected rather than a coupling smell.
+   */
+  settings: ["module-settings.mjs"],
   /**
    * The stable module API and the developer/templates surface. Opened in Phase
    * 3; step 13 landed `SDX.templates` here, which is what `api/` was opened for.
