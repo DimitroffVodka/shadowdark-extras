@@ -281,12 +281,43 @@ test("settings snapshot: records what the Quench batch needs to rebuild the live
   }
 });
 
-test("api-export snapshot: the composition root still exports its three consumed names", () => {
+test("api-export snapshot: the composition root still exports its two consumed names", () => {
   const { esmodules } = collectEsmoduleExports();
 
   assert.deepEqual(esmodules["shadowdark-extras.mjs"].names, [
     "executeItemMacro",
-    "getCustomLightSources",
     "hasItemMacro",
   ]);
+});
+
+/**
+ * `getCustomLightSources` used to be the root's third export, and this test
+ * pinned it because party/PartySheetSD.mjs imported it FROM the composition
+ * root — the feature→root direction the structural track exists to remove.
+ *
+ * It now lives in canvas/light-templates.mjs. Loosening the assertion to "two
+ * names" alone would have dropped the guard entirely, so the guard follows the
+ * name to its new home: the module must export it, and the consumer must reach
+ * it there rather than through the root.
+ */
+test("light templates own getCustomLightSources, and PartySheetSD imports it from there", () => {
+  const modulePath = path.join(REPO_ROOT, "scripts/canvas/light-templates.mjs");
+  const moduleSource = readFileSync(modulePath, "utf8");
+  assert.match(
+    moduleSource,
+    /^export function getCustomLightSources\(/m,
+    "canvas/light-templates.mjs must export getCustomLightSources",
+  );
+
+  const consumerSource = readFileSync(path.join(REPO_ROOT, "scripts/party/PartySheetSD.mjs"), "utf8");
+  assert.match(
+    consumerSource,
+    /import \{ getCustomLightSources \} from "\.\.\/canvas\/light-templates\.mjs";/,
+    "PartySheetSD.mjs must import getCustomLightSources from canvas/light-templates.mjs",
+  );
+  assert.doesNotMatch(
+    consumerSource,
+    /from "\.\.\/shadowdark-extras\.mjs"/,
+    "no feature module may import from the composition root",
+  );
 });
