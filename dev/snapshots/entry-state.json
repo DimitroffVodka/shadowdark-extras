@@ -1,0 +1,246 @@
+{
+  "$comment": "Phase 3 gate. Module-scope state of the composition root, with mutability judged per variable (const freezes the binding, not the value). An extraction that touches a variable absent from this inventory stops until the inventory is corrected. Regenerate: npm run inventory:entry -- --write",
+  "file": "scripts/shadowdark-extras.mjs",
+  "lines": 21862,
+  "totals": {
+    "declarations": 25,
+    "const": 24,
+    "let": 1,
+    "mutable": 16,
+    "immutable": 9,
+    "hookRegistrations": 95,
+    "leafRegistrations": 83
+  },
+  "declarations": [
+    {
+      "name": "FilePicker",
+      "kind": "const",
+      "line": 2,
+      "shape": "expression",
+      "mutable": false,
+      "exported": false
+    },
+    {
+      "name": "MODULE_ID",
+      "kind": "const",
+      "line": 109,
+      "shape": "string",
+      "mutable": false,
+      "exported": false
+    },
+    {
+      "name": "TRADE_JOURNAL_NAME",
+      "kind": "const",
+      "line": 110,
+      "shape": "string",
+      "mutable": false,
+      "exported": false
+    },
+    {
+      "name": "CAROUSING_JOURNAL_NAME",
+      "kind": "const",
+      "line": 111,
+      "shape": "string",
+      "mutable": false,
+      "exported": false
+    },
+    {
+      "name": "CAROUSING_TABLES_JOURNAL_NAME",
+      "kind": "const",
+      "line": 112,
+      "shape": "string",
+      "mutable": false,
+      "exported": false
+    },
+    {
+      "name": "HIDDEN_JOURNAL_NAMES",
+      "kind": "const",
+      "line": 115,
+      "shape": "Array",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "DEFAULT_INVENTORY_STYLES",
+      "kind": "const",
+      "line": 302,
+      "shape": "Object",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "_containersBeingUnpacked",
+      "kind": "const",
+      "line": 1208,
+      "shape": "Set",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "_containersBeingRecomputed",
+      "kind": "const",
+      "line": 1211,
+      "shape": "Set",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "_pendingHitBonusInfo",
+      "kind": "const",
+      "line": 1215,
+      "shape": "Map",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "_selectedItems",
+      "kind": "const",
+      "line": 2119,
+      "shape": "WeakMap",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "DEFAULT_LIGHT_TEMPLATES",
+      "kind": "const",
+      "line": 2425,
+      "shape": "Array",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "NPC_INVENTORY_TYPES",
+      "kind": "const",
+      "line": 2737,
+      "shape": "Array",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "npcActiveTabTracker",
+      "kind": "const",
+      "line": 2748,
+      "shape": "Map",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "DEFAULT_JOURNAL_PAGE",
+      "kind": "const",
+      "line": 4286,
+      "shape": "Object",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "HP_QUICK_ADJUST_TOOLTIP",
+      "kind": "const",
+      "line": 6477,
+      "shape": "string",
+      "mutable": false,
+      "exported": false
+    },
+    {
+      "name": "hpQuickAdjustments",
+      "kind": "const",
+      "line": 6478,
+      "shape": "Map",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "_SDX_V2_ITEM_SHEETS",
+      "kind": "const",
+      "line": 15791,
+      "shape": "Set",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "macroExecuteSocket",
+      "kind": "let",
+      "line": 17566,
+      "shape": "uninitialised",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "_sdxSpellMacroProcessedMessages",
+      "kind": "const",
+      "line": 18590,
+      "shape": "Set",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "_sdxItemMacroProcessedMessages",
+      "kind": "const",
+      "line": 18591,
+      "shape": "Set",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "SDX_MACRO_EPOCH",
+      "kind": "const",
+      "line": 18599,
+      "shape": "expression",
+      "mutable": false,
+      "exported": false
+    },
+    {
+      "name": "sdxIsHistoricalMessage",
+      "kind": "const",
+      "line": 18600,
+      "shape": "function",
+      "mutable": false,
+      "exported": false
+    },
+    {
+      "name": "_sdxFxProcessedMessages",
+      "kind": "const",
+      "line": 18694,
+      "shape": "Set",
+      "mutable": true,
+      "exported": false
+    },
+    {
+      "name": "_originalGetRectShape",
+      "kind": "const",
+      "line": 19512,
+      "shape": "expression",
+      "mutable": false,
+      "exported": false
+    }
+  ],
+  "sharedBy": {
+    "HIDDEN_JOURNAL_NAMES": [
+      9348
+    ],
+    "_containersBeingUnpacked": [
+      16294,
+      16334
+    ],
+    "_pendingHitBonusInfo": [
+      9426,
+      15870
+    ],
+    "_SDX_V2_ITEM_SHEETS": [
+      15799
+    ],
+    "macroExecuteSocket": [
+      17587,
+      18256,
+      19376
+    ],
+    "_sdxSpellMacroProcessedMessages": [
+      18605
+    ],
+    "_sdxItemMacroProcessedMessages": [
+      18758
+    ],
+    "_sdxFxProcessedMessages": [
+      18695
+    ]
+  }
+}
