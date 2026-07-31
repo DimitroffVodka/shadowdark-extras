@@ -233,10 +233,9 @@ export const FEATURE_OWNERS = {
   maphub: ["MaphubSD.mjs", "MaphubLauncherApp.mjs", "MaphubViewerApp.mjs", "OnePageParserSD.mjs"],
   /**
    * The stable module API and the developer/templates surface. Opened in Phase
-   * 3; the `SDX.templates` block still in the composition root joins it at
-   * step 13.
+   * 3; step 13 landed `SDX.templates` here, which is what `api/` was opened for.
    */
-  api: ["template-target-sync.mjs"],
+  api: ["template-target-sync.mjs", "templates.mjs"],
   shared: [
     "sd4Compat.mjs",
     "SDXCache.mjs",
