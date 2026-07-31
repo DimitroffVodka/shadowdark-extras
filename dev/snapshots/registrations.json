@@ -328,6 +328,11 @@
       "socket.register:executeClassAbilityMacroAsGM",
       "Hooks.once:ready"
     ],
+    "conditions.mjs": [
+      "Hooks.on:createActiveEffect",
+      "Hooks.on:deleteActiveEffect",
+      "Hooks.on:updateActiveEffect"
+    ],
     "containers.mjs": [
       "Hooks.on:updateItem",
       "Hooks.on:createItem"
@@ -410,9 +415,6 @@
       "Hooks.on:updateActor",
       "Hooks.on:renderChatMessageHTML",
       "Hooks.on:deleteActor",
-      "Hooks.on:createActiveEffect",
-      "Hooks.on:deleteActiveEffect",
-      "Hooks.on:updateActiveEffect",
       "Hooks.once:ready",
       "Hooks.on:quenchReady",
       "Hooks.once:ready",
