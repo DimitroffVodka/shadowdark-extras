@@ -54,6 +54,9 @@ export const FEATURE_OWNERS = {
     // documents. The feature map lists "journal notes" under Character sheets.
     "journal-notes.mjs",
     "enhanced-tabs.mjs",
+    // Patches the system's CharacterGeneratorSD to broadcast generation rolls.
+    // PC-facing creation behaviour, which is the closest bucket the map has.
+    "character-generator.mjs",
   ],
   "item-sheets": [
     "PotionSheetSD.mjs",
