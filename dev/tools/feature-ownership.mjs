@@ -36,6 +36,7 @@ export const FEATURE_OWNERS = {
     "spell-sheet-enhance.mjs",
     "potion-sheet-enhance.mjs",
     "scroll-sheet-enhance.mjs",
+    "wand-sheet-enhance.mjs",
     "ClassAbilitySheetSD.mjs",
     "ItemTypeConfigs.mjs",
     "TemplateTargetingConfig.mjs",
