@@ -315,6 +315,11 @@
       "Hooks.on:deleteToken",
       "Hooks.on:createToken"
     ],
+    "chat-dispatch.mjs": [
+      "Hooks.on:renderChatMessageHTML",
+      "Hooks.on:renderChatMessageHTML",
+      "Hooks.on:renderChatMessageHTML"
+    ],
     "class-ability-macros.mjs": [
       "Hooks.once:ready",
       "socket.register:executeClassAbilityMacroAsGM",
@@ -404,9 +409,6 @@
       "Hooks.on:createActiveEffect",
       "Hooks.on:deleteActiveEffect",
       "Hooks.on:updateItem",
-      "Hooks.on:renderChatMessageHTML",
-      "Hooks.on:renderChatMessageHTML",
-      "Hooks.on:renderChatMessageHTML",
       "Hooks.on:renderChatMessageHTML",
       "Hooks.on:setup",
       "Hooks.on:updateItem",
