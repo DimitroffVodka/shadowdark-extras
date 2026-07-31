@@ -12,7 +12,7 @@
  */
 
 import { getColoredTilesByBiome, getColoredTileDimensions } from "./HexPainterSD.mjs";
-import { generateHexHtml, getAvailableBiomes } from "./HexContentGenerator.mjs";
+import { generateHexHtml } from "./HexContentGenerator.mjs";
 import { saveHexRecord, HEX_JOURNAL_NAME } from "./HexTooltipSD.mjs";
 import { registerContent } from "./ContentRegistry.mjs";
 

@@ -1,4 +1,3 @@
-import SheetLockConfig from "../character-sheet/SheetLockConfig.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 

@@ -8,35 +8,24 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
 
 import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor, registerPartyTravelSocket, registerPartySheetRerenderHooks, isPartyActor, registerPartyCleanupHooks } from "./party/PartySheetSD.mjs";
 import { extendActorCreationDialog, wrapActorCreate } from "./party/party-creation.mjs";
-import TradeWindowSD, { initializeTradeSocket, showTradeDialog, ensureTradeJournal, nativeTransferItems, nativeTransferCoins } from "./inventory/TradeWindowSD.mjs";
-import { CombatSettingsApp, registerCombatSettings, injectDamageCard, setupCombatSocket, setupScrollingCombatText, setupSummonExpiryHook, trackSummonedTokensForExpiry, spawnSummonedCreatures, getSocket } from "./combat/CombatSettingsSD.mjs";
-import { EffectsSettingsApp, registerEffectsSettings } from "./effects/EffectsSettingsSD.mjs";
+import { initializeTradeSocket, ensureTradeJournal } from "./inventory/TradeWindowSD.mjs";
+import { registerCombatSettings, setupCombatSocket, setupScrollingCombatText } from "./combat/CombatSettingsSD.mjs";
+import { registerEffectsSettings } from "./effects/EffectsSettingsSD.mjs";
 import { patchArmorActiveEffects } from "./effects/ArmorAEPatchSD.mjs";
-import { HpWavesSettingsApp, registerHpWavesSettings, getHpWaveColor, isHpWavesEnabled } from "./character-sheet/HpWavesSettingsSD.mjs";
-import { TravelActivitiesSettingsApp, registerTravelActivitiesSettings, getTravelActivities } from "./party/TravelActivitiesSettingsSD.mjs";
-import { TravelSpeedsSettingsApp, registerTravelSpeedsSettings, getTravelSpeeds } from "./party/TravelSpeedsSettingsSD.mjs";
+import { registerHpWavesSettings } from "./character-sheet/HpWavesSettingsSD.mjs";
+import { registerTravelActivitiesSettings } from "./party/TravelActivitiesSettingsSD.mjs";
+import { registerTravelSpeedsSettings } from "./party/TravelSpeedsSettingsSD.mjs";
 import { registerPartyWeatherSettings } from "./party/PartyWeatherSettingsSD.mjs";
-import { generateSpellConfig, generatePotionConfig, generateScrollConfig, generateWandConfig } from "./item-sheets/ItemTypeConfigs.mjs";
-import { activateTemplateTargetingListeners } from "./item-sheets/TemplateTargetingConfig.mjs";
-import { activateTemplateTokenMagicStackHandlers, setupActivityRadioToggles, activateAnimationFxListeners } from "./item-sheets/activity-tab-widgets.mjs";
 import { enhanceSpellSheet, injectSpellAlignmentField } from "./item-sheets/spell-sheet-enhance.mjs";
 import { enhancePotionSheet } from "./item-sheets/potion-sheet-enhance.mjs";
 import { enhanceScrollSheet } from "./item-sheets/scroll-sheet-enhance.mjs";
 import { enhanceWandSheet } from "./item-sheets/wand-sheet-enhance.mjs";
 import {
 	injectWeaponBonusTab,
-	getWeaponBonuses,
-	getWeaponEffectsToApply,
-	evaluateRequirements,
-	calculateWeaponBonusDamage,
-	injectWeaponBonusDisplay,
 	injectWeaponAnimationButton,
-	getPromptableHitBonuses,
-	getPromptableDamageBonuses,
 	injectWeaponDamageTypeDropdown
 } from "./combat/WeaponBonusConfig.mjs";
 import { setupRollAttackPatches, setupRollConfigPatches } from "./combat/roll-patches.mjs";
-import { processWeaponBonuses } from "./combat/hit-bonus.mjs";
 import { registerFreyasOmenHooks } from "./combat/freyas-omen.mjs";
 import { registerChatCardHooks } from "./combat/chat-card-hooks.mjs";
 
@@ -46,22 +35,20 @@ import { registerAnimationFxMenu } from "./animation/AnimationFxListApp.mjs";
 import { initTorchAnimations } from "./animation/TorchAnimationSD.mjs";
 import { initWeaponAnimations } from "./animation/WeaponAnimationSD.mjs";
 import { initLevelUpAnimations } from "./animation/LevelUpAnimationSD.mjs";
-import { openWeaponAnimationConfig } from "./animation/WeaponAnimationConfig.mjs";
-import { initFocusSpellTracker, endFocusSpell, linkEffectToFocusSpell, getActiveFocusSpells, isFocusingOnSpell, startDurationSpell, endDurationSpell, registerSpellModification, getActiveDurationSpells } from "./effects/FocusSpellTrackerSD.mjs";
+import { initFocusSpellTracker, startDurationSpell, endDurationSpell, registerSpellModification, getActiveDurationSpells } from "./effects/FocusSpellTrackerSD.mjs";
 import { initBreakOnDamage, breakEffectOnDamage, clearBreakOnDamage, applySpellEffect } from "./effects/BreakOnDamageSD.mjs";
-import { initCarousing, injectCarousingButton, ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, getCustomCarousingTables, getCarousingTableById, setCarousingTable, migrateLegacyRenown } from "./party/carousing/CarousingSD.mjs";
+import { injectCarousingButton, ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, migrateLegacyRenown } from "./party/carousing/CarousingSD.mjs";
 import { migrateWebpAssetPaths, sweepWorldCompendiums } from "./shared/WebpMigrationSD.mjs";
 import { openCarousingOverlay, refreshCarousingOverlay } from "./party/carousing/CarousingOverlaySD.mjs";
 import { openCarousingTablesEditor } from "./party/carousing/CarousingTablesApp.mjs";
 import { openExpandedCarousingTablesEditor } from "./party/carousing/ExpandedCarousingTablesApp.mjs";
-import { initTemplateEffects, processTemplateTurnEffects, setupTemplateEffectFlags } from "./effects/TemplateEffectsSD.mjs";
-import { filterEditor as openTMFXFilterEditor } from "./animation/TMFXFilterEditor.mjs";
-import { initAuraEffects, createAuraOnActor, getActiveAuras, getTokensInAura } from "./effects/AuraEffectsSD.mjs";
+import { initTemplateEffects } from "./effects/TemplateEffectsSD.mjs";
+import { initAuraEffects } from "./effects/AuraEffectsSD.mjs";
 import { registerDisplayNpcEnricher } from "./journal/DisplayNpc.mjs";
 import { registerDisplayTableEnricher } from "./journal/DisplayTable.mjs";
 import { registerDisplayItemEnricher } from "./journal/DisplayItem.mjs";
 import { initEasyReferenceMenu, registerEasyReferenceSettings } from "./journal/easy-reference/EasyReferenceMenu.mjs";
-import { CreatureTypesApp, getCreatureTypes, getEffectiveCreatureType, getMappedType } from "./npc/CreatureTypesApp.mjs";
+import { CreatureTypesApp, getEffectiveCreatureType, getMappedType } from "./npc/CreatureTypesApp.mjs";
 import SheetEditorConfig from "./character-sheet/SheetEditorConfig.mjs";
 import PotionSheetSD from "./item-sheets/PotionSheetSD.mjs";
 import BackgroundSheetSD from "./character-sheet/BackgroundSheetSD.mjs";
@@ -73,12 +60,10 @@ import ClassAbilitySheetSD from "./item-sheets/ClassAbilitySheetSD.mjs";
 import { initTokenToolbar, registerTokenToolbarSettings } from "./canvas/TokenToolbarSD.mjs";
 import { initTray, registerTraySettings } from "./tray/TraySD.mjs";
 import { initAppearanceSettings } from "./character-sheet/AppearanceSettingsSD.mjs";
-import AmmunitionSelector from "./inventory/AmmunitionSelector.mjs";
-import StaffSpellManager from "./item-sheets/StaffSpellManager.mjs";
 import { injectStaffSpellButton, injectStaffSpellsUI, injectWeaponSpellRechargeButtons, patchCanUseMagicItems, registerStaffSpellHooks } from "./item-sheets/staff-spells.mjs";
 import { initJournalNarration } from "./journal/JournalNarrationSD.mjs";
 import { initMedkit, registerMedkitPack, unregisterMedkitPack, getMedkitPacks, scanWorldForUpdates, applyWorldMedkitUpdates, medkitScanWorld, MedkitWorldScanMenu } from "./combat/MedkitSD.mjs";
-import { LightTrackerAppSD, initLightTrackerApp } from "./canvas/LightTrackerAppSD.mjs";
+import { initLightTrackerApp } from "./canvas/LightTrackerAppSD.mjs";
 import { initMarchingMode } from "./combat/MarchingModeSD.mjs";
 import { SceneExporter } from "./scene/SceneExporter.mjs";
 import { SceneImporter } from "./scene/SceneImporter.mjs";
@@ -86,7 +71,7 @@ import { initJournalPins } from "./journal/JournalPinsSD.mjs";
 import { registerPinStyleSettings } from "./journal/PinStyleEditorSD.mjs";
 import { registerJournalUIHooks } from "./journal/journal-ui.mjs";
 import SheetLockManager from "./character-sheet/SheetLockManager.mjs";
-import { enhanceInventoryTab, applyHpQuickAdjust, setActorHpValue, attachNativeHpQuickControls, HP_QUICK_ADJUST_TOOLTIP } from "./character-sheet/enhanced-inventory-tab.mjs";
+import { enhanceInventoryTab, attachNativeHpQuickControls } from "./character-sheet/enhanced-inventory-tab.mjs";
 import { enhanceGemSheet, enhanceGemBag, enhanceGemInventory } from "./inventory/gem-enhancements.mjs";
 import { injectSkillsBox } from "./character-sheet/skills-box.mjs";
 import { applySheetDecorationStyles } from "./character-sheet/sheet-decoration.mjs";

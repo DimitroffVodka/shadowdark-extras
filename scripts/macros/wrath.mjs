@@ -9,7 +9,6 @@
 const MODULE_ID = "shadowdark-extras";
 
 // Import helper functions from identify.mjs
-import { isUnidentified, getUnidentifiedName } from "./identify.mjs";
 
 /**
  * Apply Wrath to all of the caster's weapons

@@ -14,10 +14,8 @@ import {
     isDungeonPainting,
     setDungeonMode,
     getDungeonMode,
-    selectFloorTile,
     cleanupDungeonPainting,
     initDungeonSocket,
-    isGMOnline,
     canPlayerPaint
 } from "../dungeon/DungeonPainterSD.mjs";
 
