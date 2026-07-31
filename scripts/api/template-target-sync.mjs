@@ -29,6 +29,16 @@ export function registerTemplateTargetSyncSocket(socket) {
 	socket.register("syncTargetsToGM", async (tokenIds) => {
 		// This runs on the GM's client - target the same tokens the player targeted
 		if (!game.user.isGM) return;
+
+		// socketlib may elect any connected GM, and a GM client without a canvas
+		// cannot hold targets at all — `canvas.tokens` is undefined there, so the
+		// lookup below would throw. Bail before clearing, or the elected GM ends
+		// up with its targets wiped and nothing put back.
+		if (!canvas?.ready || !canvas.tokens) {
+			console.warn(`${MODULE_ID} | syncTargetsToGM: no canvas on this GM client, targets not mirrored`);
+			return;
+		}
+
 		console.log(`${MODULE_ID} | GM syncing targets from player:`, tokenIds);
 
 		// Clear current GM targets first
