@@ -44,6 +44,7 @@ export const FEATURE_OWNERS = {
     "macro-socket.mjs",
     "item-macro-engine.mjs",
     "class-ability-macros.mjs",
+    "spell-item-macros.mjs",
   ],
   combat: [
     "CombatSettingsSD.mjs",
