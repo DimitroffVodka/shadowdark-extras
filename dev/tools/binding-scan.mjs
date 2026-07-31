@@ -64,8 +64,11 @@ function boundNames(masked) {
 
   for (const m of masked.matchAll(/\b(?:function|class)\s*\*?\s*([A-Za-z_$][\w$]*)/g)) add(m[1]);
   for (const m of masked.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g)) add(m[1]);
-  // destructured bindings, incl. `const { a, b: c } = …` and import clauses
-  for (const m of masked.matchAll(/(?:const|let|var|import)\s*\{([^}]*)\}/g)) {
+  // destructured bindings, incl. `const { a, b: c } = …` and import clauses.
+  // The optional identifier before the brace is the default binding in a mixed
+  // clause — `import Default, { named } from …`. Without it the named half is
+  // invisible here and every name in it reads as unbound.
+  for (const m of masked.matchAll(/(?:const|let|var|import)\s*(?:[A-Za-z_$][\w$]*\s*,\s*)?\{([^}]*)\}/g)) {
     for (const part of m[1].split(",")) {
       const name = part.split(":").pop().split(/\s+as\s+/).pop().trim().replace(/^\.\.\./, "");
       if (/^[A-Za-z_$][\w$]*$/.test(name)) add(name);

@@ -1,6 +1,6 @@
 {
   "$comment": "Accepted unbound call identifiers. The gate blocks anything NEW, not the absolute count — resolving every identifier without a scope-accurate parser leaves a residue of nested declarations and unlisted globals. New entries almost always mean an extraction left a dangling reference. Regenerate only with a reviewed reason: npm run gate:bindings -- --write",
-  "total": 213,
+  "total": 206,
   "byFile": {
     "scripts/MaphubLauncherApp.mjs": [
       "DEFAULT_OPTIONS",
@@ -296,14 +296,7 @@
       "Option",
       "PARTS",
       "SDX",
-      "SNIPPETS",
-      "ensureTradeJournal",
-      "getPartiesContainingActor",
-      "initializeTradeSocket",
-      "nativeTransferCoins",
-      "nativeTransferItems",
-      "showTradeDialog",
-      "syncPartyTokenLight"
+      "SNIPPETS"
     ],
     "scripts/shared/CompendiumIndexSD.mjs": [
       "TypeError"
