@@ -93,7 +93,7 @@ import { initUnidentifiedGMDisplay } from "./inventory/UnidentifiedDisplaySD.mjs
 import { initTemplateElevationBadge } from "./effects/TemplateElevationBadgeSD.mjs";
 import { registerInvisibilityHooks } from "./effects/invisibility.mjs";
 import { initMacroExecuteSocket, getMacroExecuteSocket } from "./item-macros/macro-socket.mjs";
-import { hasItemMacro, executeItemMacro } from "./item-macros/item-macro-engine.mjs";
+import { hasItemMacro, executeItemMacro, registerItemMacroSocket } from "./item-macros/item-macro-engine.mjs";
 import { registerClassAbilityItemMacros } from "./item-macros/class-ability-macros.mjs";
 import { registerTemplateTargetSyncSocket } from "./api/template-target-sync.mjs";
 import { getSpellItemMacroConfig, executeSpellItemMacro, registerSpellItemMacroSocket } from "./item-macros/spell-item-macros.mjs";
@@ -17078,73 +17078,11 @@ Hooks.on("quenchReady", async (quench) => {
 Hooks.once("ready", () => {
 	const macroExecuteSocket = initMacroExecuteSocket();
 	if (macroExecuteSocket) {
-
-
-		// Register the GM execution handler
-		macroExecuteSocket.register("executeMacroAsGM", async function(macroId, contextData) {
-			// This runs on the GM's client
-			const sender = game.users.get(this.socketdata?.userId);
-			if (!sender) return;
-
-			// Reconstruct actor to check ownership
-			const actor = contextData.actorUuid ? await fromUuid(contextData.actorUuid) :
-						 (contextData.actorId ? game.actors.get(contextData.actorId) : null);
-
-			if (!sender.isGM && (!actor || !actor.testUserPermission(sender, "OWNER"))) {
-				console.warn(`${MODULE_ID} | Unauthorized macro execution attempt from user ${sender.name}`);
-				return;
-			}
-
-			const macro = game.macros.get(macroId);
-			if (!macro) {
-				console.warn(`${MODULE_ID} | Macro with ID "${macroId}" not found`);
-				return;
-			}
-
-			// Reconstruct the context from the serialized data
-			const context = {
-				actor: actor,
-				token: contextData.tokenUuid ? (await fromUuid(contextData.tokenUuid))?.object : undefined,
-				trigger: contextData.trigger,
-				item: contextData.itemUuid ? await fromUuid(contextData.itemUuid) : undefined,
-				effect: contextData.effectUuid ? await fromUuid(contextData.effectUuid) : undefined,
-			};
-
-			// Execute the macro as GM
-			await macro.execute(context);
-		});
-
-		macroExecuteSocket.register("sdxExecuteItemMacro", async function(itemUuid, contextData) {
-			const sender = game.users.get(this.socketdata?.userId);
-			if (!sender) return null;
-
-			const item = await fromUuid(itemUuid);
-			if (!item) return null;
-
-			if (!sender.isGM && !item.testUserPermission(sender, "OWNER")) {
-				console.warn(`${MODULE_ID} | Unauthorized item macro execution attempt from user ${sender.name}`);
-				return null;
-			}
-
-			// Rehydrate context if it was serialized. `token` is always defined —
-			// null included — so executeItemMacro does not fall back to a lookup on
-			// whatever scene this GM is viewing. The sending client is authoritative
-			// about whether a caster token existed.
-			const context = { ...contextData };
-			if (contextData.actorUuid) context.actor = await fromUuid(contextData.actorUuid);
-			context.token = contextData.tokenUuid
-				? ((await fromUuid(contextData.tokenUuid))?.object || null)
-				: null;
-			if (contextData.tokenUuid && !context.token) {
-				console.warn(`${MODULE_ID} | Caster token ${contextData.tokenUuid} is not on the scene this GM is viewing; macro runs without a caster token`);
-			}
-
-			return executeItemMacro(item, context);
-		});
-
-		// The remaining two handlers on this socket are not item-macro concerns;
-		// they belong to the features that own both other sides of the exchange.
-		// Called here, in place, so their registration order is unchanged.
+		// Each feature registers its own handlers on the shared socket. They are
+		// called here, in their original order, so this hook is the single place
+		// socket registration order is decided — and the single place that has to
+		// stay free of awaits.
+		registerItemMacroSocket(macroExecuteSocket);
 		registerPartyTravelSocket(macroExecuteSocket);
 		registerTemplateTargetSyncSocket(macroExecuteSocket);
 

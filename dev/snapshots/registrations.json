@@ -334,6 +334,10 @@
       "Hooks.on:refreshToken",
       "Hooks.on:preCreateChatMessage"
     ],
+    "item-macro-engine.mjs": [
+      "socket.register:executeMacroAsGM",
+      "socket.register:sdxExecuteItemMacro"
+    ],
     "macro-socket.mjs": [
       "socketlib.registerModule:<dynamic>"
     ],
@@ -390,8 +394,6 @@
       "Hooks.on:deleteItem",
       "Hooks.on:quenchReady",
       "Hooks.once:ready",
-      "socket.register:executeMacroAsGM",
-      "socket.register:sdxExecuteItemMacro",
       "Hooks.once:ready",
       "Hooks.on:combatTurn",
       "Hooks.on:combatTurn",

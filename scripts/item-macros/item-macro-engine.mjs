@@ -101,3 +101,87 @@ export async function executeItemMacro(item, context = {}) {
 		return null;
 	}
 }
+
+/**
+ * Register the GM-side handlers for macro execution routed off a player client.
+ *
+ * `sdxExecuteItemMacro` is the other end of the `runAsGm` branch in
+ * `executeItemMacro` above. They belong in one file: the serialise/rehydrate
+ * contract between them is subtle — the sender always sets `token`, null
+ * included, precisely so this side does not fall back to a canvas lookup on
+ * whatever scene the GM happens to be viewing — and that rule is only
+ * enforceable if both halves are read together.
+ *
+ * `executeMacroAsGM` runs a Foundry Macro document rather than an item macro.
+ * Its caller is `executeMacroFromEffect`, still in the composition root; it is
+ * here because it shares this socket and was registered alongside, and it should
+ * follow that function whenever the effect-trigger path moves.
+ *
+ * The socket is passed in rather than fetched, so the root's single socket hook
+ * stays the one place registration order is decided.
+ *
+ * @param {object} socket - The module's socketlib socket.
+ */
+export function registerItemMacroSocket(socket) {
+	// Register the GM execution handler
+	socket.register("executeMacroAsGM", async function(macroId, contextData) {
+		// This runs on the GM's client
+		const sender = game.users.get(this.socketdata?.userId);
+		if (!sender) return;
+
+		// Reconstruct actor to check ownership
+		const actor = contextData.actorUuid ? await fromUuid(contextData.actorUuid) :
+					 (contextData.actorId ? game.actors.get(contextData.actorId) : null);
+
+		if (!sender.isGM && (!actor || !actor.testUserPermission(sender, "OWNER"))) {
+			console.warn(`${MODULE_ID} | Unauthorized macro execution attempt from user ${sender.name}`);
+			return;
+		}
+
+		const macro = game.macros.get(macroId);
+		if (!macro) {
+			console.warn(`${MODULE_ID} | Macro with ID "${macroId}" not found`);
+			return;
+		}
+
+		// Reconstruct the context from the serialized data
+		const context = {
+			actor: actor,
+			token: contextData.tokenUuid ? (await fromUuid(contextData.tokenUuid))?.object : undefined,
+			trigger: contextData.trigger,
+			item: contextData.itemUuid ? await fromUuid(contextData.itemUuid) : undefined,
+			effect: contextData.effectUuid ? await fromUuid(contextData.effectUuid) : undefined,
+		};
+
+		// Execute the macro as GM
+		await macro.execute(context);
+	});
+
+	socket.register("sdxExecuteItemMacro", async function(itemUuid, contextData) {
+		const sender = game.users.get(this.socketdata?.userId);
+		if (!sender) return null;
+
+		const item = await fromUuid(itemUuid);
+		if (!item) return null;
+
+		if (!sender.isGM && !item.testUserPermission(sender, "OWNER")) {
+			console.warn(`${MODULE_ID} | Unauthorized item macro execution attempt from user ${sender.name}`);
+			return null;
+		}
+
+		// Rehydrate context if it was serialized. `token` is always defined —
+		// null included — so executeItemMacro does not fall back to a lookup on
+		// whatever scene this GM is viewing. The sending client is authoritative
+		// about whether a caster token existed.
+		const context = { ...contextData };
+		if (contextData.actorUuid) context.actor = await fromUuid(contextData.actorUuid);
+		context.token = contextData.tokenUuid
+			? ((await fromUuid(contextData.tokenUuid))?.object || null)
+			: null;
+		if (contextData.tokenUuid && !context.token) {
+			console.warn(`${MODULE_ID} | Caster token ${contextData.tokenUuid} is not on the scene this GM is viewing; macro runs without a caster token`);
+		}
+
+		return executeItemMacro(item, context);
+	});
+}
