@@ -1,13 +1,13 @@
 {
   "$comment": "Static registration call-site inventory. Keyed by module basename so it survives feature-folder moves. Order within each module is the contract; runtime firing order is proved by the smoke matrix, not by this file. Regenerate only with a reviewed reason: npm run snapshot:registrations -- --write",
   "totals": {
-    "Hooks.once": 44,
+    "Hooks.once": 43,
     "Hooks.on": 222,
     "Hooks.off": 8,
     "socket.register": 46,
     "libWrapper.register": 3,
     "socketlib.registerModule": 3,
-    "all": 326
+    "all": 325
   },
   "modules": {
     "AuraEffectsSD.mjs": [
@@ -341,6 +341,10 @@
     "macro-socket.mjs": [
       "socketlib.registerModule:<dynamic>"
     ],
+    "npc-feature-macros.mjs": [
+      "Hooks.once:ready",
+      "Hooks.once:ready"
+    ],
     "shadowdark-extras.mjs": [
       "libWrapper.register:<dynamic>",
       "Hooks.once:init",
@@ -404,9 +408,6 @@
       "Hooks.on:renderChatMessageHTML",
       "Hooks.on:renderChatMessageHTML",
       "Hooks.on:renderChatMessageHTML",
-      "Hooks.once:ready",
-      "Hooks.once:ready",
-      "Hooks.once:ready",
       "Hooks.on:setup",
       "Hooks.on:updateItem",
       "Hooks.on:updateActor",
