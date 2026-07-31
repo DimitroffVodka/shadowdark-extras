@@ -2731,6 +2731,59 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
  * @param {Actor} partyActor - The party actor
  * @returns {Promise<Object|null>} Light configuration or null if no lights
  */
+/**
+ * Register the GM-side handler for player-initiated Party travel writes.
+ *
+ * Extracted from the composition root in Phase 3. It lives here because this
+ * file already owns both other sides of the exchange: `applyPartyTravelMutation`
+ * is the authority it calls, and `_requestPartyTravelMutation` is the sender
+ * that reaches it via `executeAsGM("sdxMutatePartyTravel", …)`.
+ *
+ * The socket is passed in rather than fetched. The root registers all socket
+ * handlers from one hook, synchronously with `ready`, so that none of them can
+ * be delayed by unrelated work — taking the socket as an argument keeps that
+ * the single place the ordering is decided.
+ *
+ * @param {object} socket - The module's socketlib socket.
+ */
+export function registerPartyTravelSocket(socket) {
+	// Player-facing Party task selectors write to a GM-owned Party actor.
+	// Route those writes through the active GM while preserving ownership
+	// checks against the user who actually sent the request.
+	socket.register(
+		"sdxMutatePartyTravel",
+		async function(partyUuid, request) {
+			const sender = game.users.get(this.socketdata?.userId);
+			if (!sender) return {
+				ok: false,
+				error: game.i18n.localize(
+					"SHADOWDARK_EXTRAS.party.travel.update_rejected"
+				)
+			};
+
+			try {
+				const partyActor = await fromUuid(partyUuid);
+				return await PartySheetSD.applyPartyTravelMutation(
+					partyActor,
+					request,
+					sender
+				);
+			} catch (error) {
+				console.warn(
+					`${MODULE_ID} | Rejected Party travel mutation from ${sender.name}:`,
+					error
+				);
+				return {
+					ok: false,
+					error: game.i18n.localize(
+						"SHADOWDARK_EXTRAS.party.travel.update_rejected"
+					)
+				};
+			}
+		}
+	);
+}
+
 export async function getBrightestPartyLight(partyActor) {
 	if (!partyActor) return null;
 

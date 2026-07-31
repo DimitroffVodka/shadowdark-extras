@@ -6,7 +6,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  * Adds Renown tracking, additional light sources, NPC inventory, and Party management to Shadowdark RPG
  */
 
-import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor } from "./party/PartySheetSD.mjs";
+import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor, registerPartyTravelSocket } from "./party/PartySheetSD.mjs";
 import TradeWindowSD, { initializeTradeSocket, showTradeDialog, ensureTradeJournal, nativeTransferItems, nativeTransferCoins } from "./inventory/TradeWindowSD.mjs";
 import { CombatSettingsApp, registerCombatSettings, injectDamageCard, setupCombatSocket, setupScrollingCombatText, setupSummonExpiryHook, trackSummonedTokensForExpiry, spawnSummonedCreatures, getSocket } from "./combat/CombatSettingsSD.mjs";
 import { EffectsSettingsApp, registerEffectsSettings } from "./effects/EffectsSettingsSD.mjs";
@@ -95,6 +95,7 @@ import { registerInvisibilityHooks } from "./effects/invisibility.mjs";
 import { initMacroExecuteSocket, getMacroExecuteSocket } from "./item-macros/macro-socket.mjs";
 import { hasItemMacro, executeItemMacro } from "./item-macros/item-macro-engine.mjs";
 import { registerClassAbilityItemMacros } from "./item-macros/class-ability-macros.mjs";
+import { registerTemplateTargetSyncSocket } from "./api/template-target-sync.mjs";
 import { registerActiveEffectConfigHooks } from "./effects/effect-config.mjs";
 import { registerContainerHooks, isContainerItem, isItemPilesEnabledActor, calculateSlotsCostForItemData, recomputeContainerSlots, calculateContainedItemSlots, getContainedItems, getPackedContainedItemData, syncContainerPackedItems } from "./inventory/containers.mjs";
 import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
@@ -17140,59 +17141,11 @@ Hooks.once("ready", () => {
 			return executeItemMacro(item, context);
 		});
 
-		// Player-facing Party task selectors write to a GM-owned Party actor.
-		// Route those writes through the active GM while preserving ownership
-		// checks against the user who actually sent the request.
-		macroExecuteSocket.register(
-			"sdxMutatePartyTravel",
-			async function(partyUuid, request) {
-				const sender = game.users.get(this.socketdata?.userId);
-				if (!sender) return {
-					ok: false,
-					error: game.i18n.localize(
-						"SHADOWDARK_EXTRAS.party.travel.update_rejected"
-					)
-				};
-
-				try {
-					const partyActor = await fromUuid(partyUuid);
-					return await PartySheetSD.applyPartyTravelMutation(
-						partyActor,
-						request,
-						sender
-					);
-				} catch (error) {
-					console.warn(
-						`${MODULE_ID} | Rejected Party travel mutation from ${sender.name}:`,
-						error
-					);
-					return {
-						ok: false,
-						error: game.i18n.localize(
-							"SHADOWDARK_EXTRAS.party.travel.update_rejected"
-						)
-					};
-				}
-			}
-		);
-
-		// Register handler to sync template targets to GM
-		macroExecuteSocket.register("syncTargetsToGM", async (tokenIds) => {
-			// This runs on the GM's client - target the same tokens the player targeted
-			if (!game.user.isGM) return;
-			console.log(`${MODULE_ID} | GM syncing targets from player:`, tokenIds);
-
-			// Clear current GM targets first
-			game.user.targets.forEach(t => t.setTarget(false, { user: game.user, releaseOthers: false }));
-
-			// Target each token
-			for (const tokenId of tokenIds) {
-				const token = canvas.tokens.get(tokenId);
-				if (token) {
-					await token.setTarget(true, { user: game.user, releaseOthers: false });
-				}
-			}
-		});
+		// The remaining two handlers on this socket are not item-macro concerns;
+		// they belong to the features that own both other sides of the exchange.
+		// Called here, in place, so their registration order is unchanged.
+		registerPartyTravelSocket(macroExecuteSocket);
+		registerTemplateTargetSyncSocket(macroExecuteSocket);
 
 		//console.log(`${MODULE_ID} | Socketlib integration enabled for macro execution`);
 	}
