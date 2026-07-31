@@ -45,6 +45,8 @@ export const FEATURE_OWNERS = {
     "item-macro-engine.mjs",
     "class-ability-macros.mjs",
     "spell-item-macros.mjs",
+    "weapon-item-macros.mjs",
+    "npc-feature-macros.mjs",
   ],
   combat: [
     "CombatSettingsSD.mjs",
