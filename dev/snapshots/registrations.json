@@ -345,7 +345,8 @@
       "Hooks.on:updateActiveEffect",
       "Hooks.on:deleteActiveEffect",
       "Hooks.on:refreshToken",
-      "Hooks.on:preCreateChatMessage"
+      "Hooks.on:preCreateChatMessage",
+      "Hooks.on:deleteItem"
     ],
     "item-macro-engine.mjs": [
       "socket.register:sdxExecuteItemMacro"
@@ -408,7 +409,6 @@
       "Hooks.on:deleteActiveEffect",
       "Hooks.on:updateActiveEffect",
       "Hooks.once:ready",
-      "Hooks.on:deleteItem",
       "Hooks.on:quenchReady",
       "Hooks.once:ready",
       "Hooks.once:ready",

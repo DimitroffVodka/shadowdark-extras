@@ -16605,31 +16605,6 @@ registerPredefinedEffects();
 
 // Invisibility hooks live in ./effects/invisibility.mjs; registered here to keep source order.
 registerInvisibilityHooks();
-// Also restore visibility when the Condition item itself is deleted
-Hooks.on("deleteItem", async (item, options, userId) => {
-	// Check if this item has an invisibility effect
-	const hasInvisibilityEffect = item.effects?.some(e =>
-		e.changes.some(c => c.key === `flags.${MODULE_ID}.invisibility`)
-	);
-	if (!hasInvisibilityEffect) return;
-
-	//console.log(`${MODULE_ID} | Condition with invisibility effect deleted, restoring visibility`);
-	// Item's parent is the Actor
-	const actor = item.parent;
-	if (actor) {
-		//console.log(`${MODULE_ID} | Character Actor:`, { id: actor.id, name: actor.name, type: actor.type });
-		// Find all token documents for this actor across all scenes
-		const tokens = [];
-		for (const scene of game.scenes) {
-			const sceneTokens = scene.tokens.filter(t => t.actorId === actor.id);
-			tokens.push(...sceneTokens);
-		}
-		//console.log(`${MODULE_ID} | Found ${tokens.length} token documents to restore visibility`);
-		for (const tokenDoc of tokens) {
-			await tokenDoc.update({ hidden: false });
-		}
-	}
-});
 
 //console.log(`${MODULE_ID} | Invisibility effect enabled with auto-disable on attack/spell`);
 
