@@ -1,5 +1,6 @@
 import { MODULE_ID } from "../shared/module-id.mjs";
 import { getWeaponItemMacroConfig } from "../combat/WeaponBonusConfig.mjs";
+import { checkEffectRequirements } from "../effects/source-requirements.mjs";
 import { getMacroExecuteSocket } from "./macro-socket.mjs";
 import { executeWeaponItemMacro } from "./weapon-item-macros.mjs";
 
@@ -14,22 +15,12 @@ import { executeWeaponItemMacro } from "./weapon-item-macros.mjs";
  * `flags.<module>.macroExecute` value shaped `"macroName|trigger"`, on the
  * actor, on its effects, and on its items' effects.
  *
- * ## Why `checkEffectRequirements` is a parameter
- *
- * The equip/unequip hook does three things in one handler: fire macroExecute
- * triggers, fire the weapon onEquip/onUnequip macro, and re-evaluate source
- * requirements so effects enable and disable with the item. The third belongs
- * to the source-requirement group, which is still in the root and has seven
- * other call sites there.
- *
- * Splitting the handler is not free — the three run sequentially inside one
- * awaited handler, and two `Hooks.on("updateItem")` registrations would run
- * concurrently instead. Importing the helper back from the root would add a
- * root-and-back cycle, which is what Phase 3 exists to remove. So the root
- * hands it in, the same way it hands the socket to the socket registrars.
- *
- * This is an interim seam. When the source-requirement group moves to
- * `effects/`, replace the parameter with an import and delete this note.
+ * The equip/unequip hook does three things in one awaited handler: fire
+ * macroExecute triggers, fire the weapon onEquip/onUnequip macro, and
+ * re-evaluate source requirements so effects enable and disable with the item.
+ * The third belongs to `effects/source-requirements.mjs` and is imported from
+ * there. It was briefly passed in as a parameter, while that group was still in
+ * the composition root and importing it would have meant a root-and-back cycle.
  */
 
 /**
@@ -203,13 +194,8 @@ export function registerEffectMacroSocket(socket) {
 /**
  * Register the five macroExecute trigger hooks. The composition root calls this
  * at the source position the first of them occupied.
- *
- * @param {object} deps
- * @param {(actor: Actor) => Promise<void>} deps.checkEffectRequirements - see
- *   the module note; supplied by the root until the source-requirement group
- *   moves out of it.
  */
-export function registerEffectTriggerHooks({ checkEffectRequirements }) {
+export function registerEffectTriggerHooks() {
 	// Hook: Combat turn start (roundStart)
 	Hooks.on("combatTurn", async (combat, updateData, updateOptions) => {
 		// Only execute for the active combatant at the start of their turn

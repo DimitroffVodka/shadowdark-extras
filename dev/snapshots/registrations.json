@@ -420,11 +420,6 @@
       "Hooks.on:renderApplication",
       "Hooks.once:ready",
       "Hooks.on:renderSpellBookSD",
-      "Hooks.on:updateActiveEffect",
-      "Hooks.on:createActiveEffect",
-      "Hooks.on:updateActor",
-      "Hooks.on:renderActorSheet",
-      "Hooks.on:createItem",
       "Hooks.once:ready",
       "Hooks.on:renderNpcSheetSD",
       "Hooks.on:getSceneContextOptions",
@@ -438,6 +433,13 @@
       "Hooks.on:sdx.durationSpellEnded",
       "Hooks.on:updateActor",
       "Hooks.on:renderPlayerSheetSD"
+    ],
+    "source-requirements.mjs": [
+      "Hooks.on:updateActiveEffect",
+      "Hooks.on:createActiveEffect",
+      "Hooks.on:updateActor",
+      "Hooks.on:renderActorSheet",
+      "Hooks.on:createItem"
     ],
     "spell-item-macros.mjs": [
       "Hooks.once:ready",
