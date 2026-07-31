@@ -117,10 +117,15 @@ import { isUnidentified } from "./shared/sd4Compat.mjs";
 import { patchPlayerSheetForTransfers } from "./inventory/player-transfers.mjs";
 import { enhanceDetailsTab, enhanceAbilitiesTab, enhanceTalentsTab, enhanceEffectsTab } from "./character-sheet/enhanced-tabs.mjs";
 import { patchCharacterGeneratorRolls } from "./character-sheet/character-generator.mjs";
+import { patchHexTilePositionClamp } from "./hex/hex-tile-clamp.mjs";
+import { patchLightSourceTrackerForParty } from "./party/party-light-tracker.mjs";
+import { patchPlayerSheetUseAbility } from "./character-sheet/player-sheet-patches.mjs";
+import { injectAmmunitionBonuses } from "./inventory/ammunition-bonuses.mjs";
+import { injectSpellbookCompendiumFilter } from "./character-sheet/spellbook-filter.mjs";
 import { injectEnhancedHeader, injectHeaderCustomization, injectPartyHeaderCustomization, injectAddCoinsButton, injectTradeButton } from "./character-sheet/enhanced-header.mjs";
 import { DEFAULT_LIGHT_TEMPLATES, LightTemplateEditor, extendLightSources, patchLightSourceMappings } from "./canvas/light-templates.mjs";
 import { patchCtrlMoveOnActorSheetDrops } from "./inventory/default-move-drops.mjs";
-import { injectNpcCreatureType, injectNpcInventoryTab } from "./npc/npc-sheet-inventory.mjs";
+import { injectNpcCreatureType, injectNpcInventoryTab, patchNpcSheetForItemDrops, applyNpcPlayerTheme } from "./npc/npc-sheet-inventory.mjs";
 import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
 // Map-builder entry points — pulled in so we can expose them on module.api
 // for MCP / external automation. None of these modules register hooks at import
@@ -150,64 +155,7 @@ initHexFog();
 registerMaphubHooks();
 initUnidentifiedGMDisplay();
 initTemplateElevationBadge();
-/**
- * Allow SDX-painted hex tiles to keep their true (possibly negative) x/y when
- * they overhang the scene's left or top edge.
- *
- * Hex art tiles are intentionally larger than the grid cell — the visible hex
- * sits centered inside a transparent canvas — so a tile centered on an edge hex
- * is anchored at a slightly negative x/y. Foundry v14's
- * `TileDocument#prepareDerivedData` clamps x/y into [0, sceneWidth/Height]
- * (`this.x = Math.clamp(this.x, 0, d.width)`), which shoves the whole tile
- * inward and shifts the entire first column / top row off their grid cells.
- *
- * We re-apply the unclamped position (preserved in `_source`) for our painted
- * tiles after core prep runs, so the visible hex stays aligned to its grid cell
- * and only the transparent overhang is clipped at the scene boundary. Scoped to
- * SDX-painted tiles only; all other tiles keep core clamping behavior.
- */
-function patchHexTilePositionClamp() {
-	const restoreSourcePosition = function () {
-		const flags = this._source?.flags?.[MODULE_ID];
-		if (!flags?.painted || !this.parent) return;
-		const sx = this._source.x;
-		const sy = this._source.y;
-		if (this.x === sx && this.y === sy) return;  // not clamped — nothing to do
-		this.x = sx;
-		this.y = sy;
-		// Rebuild the derived shape so bounds/occlusion match the true position.
-		const ShapeCls = this.shape?.constructor;
-		if (ShapeCls) {
-			this.shape = new ShapeCls({
-				x: sx,
-				y: sy,
-				width: this.width,
-				height: this.height,
-				anchorX: this.texture?.anchorX ?? 0,
-				anchorY: this.texture?.anchorY ?? 0
-			});
-		}
-	};
-
-	const wrapperPath = "CONFIG.Tile.documentClass.prototype.prepareDerivedData";
-	if (globalThis.libWrapper?.register) {
-		libWrapper.register(MODULE_ID, wrapperPath, function (wrapped, ...args) {
-			wrapped(...args);
-			restoreSourcePosition.call(this);
-		}, "WRAPPER");
-	} else {
-		// Fallback: direct prototype wrap (idempotent).
-		const proto = CONFIG.Tile.documentClass.prototype;
-		if (!proto.__sdxClampPatched) {
-			const orig = proto.prepareDerivedData;
-			proto.prepareDerivedData = function (...args) {
-				orig.apply(this, args);
-				restoreSourcePosition.call(this);
-			};
-			proto.__sdxClampPatched = true;
-		}
-	}
-}
+// patchHexTilePositionClamp moved to hex/hex-tile-clamp.mjs
 
 Hooks.once("init", () => {
 	// Register GSAP Plugins (GSAP is loaded by Foundry core)
@@ -1605,63 +1553,7 @@ function setupSettingsOrganization() {
 // PARTY FUNCTIONS
 // ============================================
 
-function patchLightSourceTrackerForParty() {
-	const tracker = game.shadowdark?.lightSourceTracker;
-	if (!tracker) {
-		console.warn(`${MODULE_ID} | Light Source Tracker not found, skipping patch`);
-		return;
-	}
-
-	// Store the original _gatherLightSources method
-	const originalGatherLightSources = tracker._gatherLightSources.bind(tracker);
-
-	// Override _gatherLightSources to also include Party actors
-	tracker._gatherLightSources = async function () {
-		// Call the original method first
-		await originalGatherLightSources();
-
-		// Track if we added anything
-		let addedPartyActors = false;
-
-		// Now add Party actors with active light sources
-		const partyActors = game.actors.filter(actor => isPartyActor(actor));
-
-		for (const actor of partyActors) {
-			// Get active light sources for this party
-			const activeLightSources = actor.items.filter(
-				item => ["Basic", "Effect"].includes(item.type) &&
-					item.system.light?.isSource &&
-					item.system.light?.active
-			);
-
-			if (activeLightSources.length === 0) continue;
-
-			const actorData = actor.toObject(false);
-			actorData.lightSources = [];
-
-			for (const item of activeLightSources) {
-				actorData.lightSources.push(item.toObject(false));
-			}
-
-			// Only add if not already in the list
-			if (!this.monitoredLightSources.some(a => a._id === actorData._id)) {
-				this.monitoredLightSources.push(actorData);
-				addedPartyActors = true;
-			}
-		}
-
-		// Only re-sort if we actually added party actors
-		if (addedPartyActors) {
-			this.monitoredLightSources.sort((a, b) => {
-				if (a.name < b.name) return -1;
-				if (a.name > b.name) return 1;
-				return 0;
-			});
-		}
-	};
-
-	//console.log(`${MODULE_ID} | Patched Light Source Tracker to include Party actors`);
-}
+// patchLightSourceTrackerForParty moved to party/party-light-tracker.mjs
 
 
 /**
@@ -1760,114 +1652,14 @@ function registerClassAbilitySheet() {
 // CALLED, so the call site below — not this position — is what fixes their
 // order relative to the root's two other renderApplication handlers.
 
-/**
- * Patch NPC sheet to handle item drops with move vs copy behavior
- */
-function patchNpcSheetForItemDrops(app) {
-	// Only patch once per sheet instance
-	if (app._sdxDropPatched) return;
-	app._sdxDropPatched = true;
-
-	// Store the original _onDrop if it exists
-	const originalOnDrop = app._onDrop?.bind(app);
-
-	// Override the _onDrop method to intercept drops on the inventory tab
-	app._onDrop = async function (event) {
-		// Check if we're on the inventory tab
-		const inventoryTab = event.target.closest('.shadowdark-extras-npc-inventory');
-		if (!inventoryTab) {
-			// Not on inventory tab, use original handler
-			if (originalOnDrop) return originalOnDrop(event);
-			return;
-		}
-
-		// Get the drag data
-		let data;
-		try {
-			data = JSON.parse(event.dataTransfer.getData('text/plain'));
-		} catch (err) {
-			return;
-		}
-
-		if (data.type !== "Item") return;
-
-		// Get the source item
-		const sourceItem = await fromUuid(data.uuid);
-		if (!sourceItem) return;
-
-		const targetActor = this.actor;
-		const sourceActor = sourceItem.parent;
-
-		// Check if we're moving or copying (Ctrl = copy, default = move)
-		const isCopy = event.ctrlKey;
-
-		// Don't do anything if dropping on same actor
-		if (sourceActor === targetActor && !isCopy) return;
-
-		// Create the item on target actor
-		const itemData = sourceItem.toObject();
-		delete itemData._id; // Remove the ID so a new one is created
-
-		await targetActor.createEmbeddedDocuments("Item", [itemData]);
-
-		// If moving (not copying), delete from source
-		if (!isCopy && sourceActor && sourceActor !== targetActor) {
-			await sourceItem.delete();
-			ui.notifications.info(
-				game.i18n.format("SHADOWDARK_EXTRAS.notifications.item_moved", {
-					item: sourceItem.name,
-					target: targetActor.name
-				})
-			);
-		} else if (isCopy) {
-			ui.notifications.info(
-				game.i18n.format("SHADOWDARK_EXTRAS.notifications.item_copied", {
-					item: sourceItem.name,
-					target: targetActor.name
-				})
-			);
-		}
-	};
-}
+// patchNpcSheetForItemDrops moved to npc/npc-sheet-inventory.mjs
 
 
 // ============================================
 // FIX: PlayerSheetSD._onUseAbility missing methods
 // ============================================
 
-/**
- * Patch PlayerSheetSD._onUseAbility to fix missing getSkipPrompt/getAdvantage methods
- * The system calls this.getSkipPrompt() and this.getAdvantage() which don't exist on the sheet.
- * Other sheets correctly use this.actor.buildOptionsForSkipPrompt(event) instead.
- */
-function patchPlayerSheetUseAbility() {
-	const PlayerSheetSD = CONFIG.Actor.sheetClasses.Player?.["shadowdark.PlayerSheetSD"]?.cls;
-	if (!PlayerSheetSD) {
-		console.warn(`${MODULE_ID} | Could not find PlayerSheetSD class to patch _onUseAbility`);
-		return;
-	}
-
-	// Only patch if getSkipPrompt is missing (i.e. the bug exists in this system version)
-	if (typeof PlayerSheetSD.prototype.getSkipPrompt === "function") return;
-
-	PlayerSheetSD.prototype._onUseAbility = async function (event) {
-		event.preventDefault();
-		// SD 4.x: abilities live on the data model and are resolved by UUID.
-		// The system's own handler reads dataset.itemUuid and calls
-		// actor.system.useAbility(uuid). Mirror that, with a bare-id fallback
-		// for older templates that only expose data-item-id.
-		const ds = event.currentTarget.dataset;
-		let abilityUuid = ds.itemUuid;
-		if (!abilityUuid && ds.itemId) {
-			abilityUuid = this.actor.items.get(ds.itemId)?.uuid;
-		}
-		if (!abilityUuid) return;
-		const options = this.actor.buildOptionsForSkipPrompt?.(event) ?? { skipPrompt: event.shiftKey };
-		this.actor.system.useAbility(abilityUuid, options);
-	};
-
-	console.log(`${MODULE_ID} | Patched PlayerSheetSD._onUseAbility (getSkipPrompt fix)`);
-}
+// patchPlayerSheetUseAbility moved to character-sheet/player-sheet-patches.mjs
 
 
 // ============================================
@@ -2311,27 +2103,7 @@ Hooks.on("renderPlayerSheetSD", async (app, html, data) => {
 	enableItemChatIcon(app, html);
 });
 
-function applyNpcPlayerTheme(app, html, actor) {
-	if (actor?.type !== "NPC") return;
-	if (isPartyActor(actor)) return;
-
-	const $html = html instanceof jQuery ? html : $(html);
-	const $sheet = $html.closest('.shadowdark.sheet.npc').length
-		? $html.closest('.shadowdark.sheet.npc')
-		: $html;
-
-	if (!game.settings.get(MODULE_ID, "enableNpcPlayerTheme")) {
-		$sheet.removeClass('sdx-npc-player-theme');
-		$html.find('.SD-header').first().removeClass('sdx-npc-themed-header');
-		$html.find('.SD-content-body').first().removeClass('sdx-npc-themed-content');
-		return;
-	}
-
-	$sheet.addClass('sdx-npc-player-theme');
-
-	$html.find('.SD-header').first().addClass('sdx-npc-themed-header');
-	$html.find('.SD-content-body').first().addClass('sdx-npc-themed-content');
-}
+// applyNpcPlayerTheme moved to npc/npc-sheet-inventory.mjs
 
 // Inject Inventory tab into NPC sheets (but not Party sheets)
 Hooks.on("renderNpcSheetSD", async (app, html, data) => {
@@ -2741,45 +2513,7 @@ Hooks.once("ready", () => {
 // ============================================
 // AMMUNITION BONUS UI INJECTION
 // ============================================
-function injectAmmunitionBonuses(app, html) {
-	const item = app?.item;
-	if (item?.type !== "Basic") return;
-	if (!item.system.isAmmunition) return;
-
-	// De-dupe on re-render
-	html.find(".sdx-ammunition-bonuses").remove();
-
-	const hitBonus = item.getFlag(MODULE_ID, "ammoHitBonus") || "";
-	const damageBonus = item.getFlag(MODULE_ID, "ammoDamageBonus") || "";
-
-	const bonusesHtml = `
-		<div class="sdx-ammunition-bonuses">
-			<div class="SD-box">
-				<div class="header light">
-					<label>${game.i18n.localize("SHADOWDARK_EXTRAS.ammunition.bonuses.label")}</label>
-				</div>
-				<div class="content">
-					<div class="SD-grid center">
-						<div class="sdx-bonus-field">
-							<label class="sdx-field-label">${game.i18n.localize("SHADOWDARK_EXTRAS.ammunition.bonuses.hit")}</label>
-							<input type="text" name="flags.${MODULE_ID}.ammoHitBonus" value="${hitBonus}" placeholder="+0">
-						</div>
-						<div class="sdx-bonus-field">
-							<label class="sdx-field-label">${game.i18n.localize("SHADOWDARK_EXTRAS.ammunition.bonuses.damage")}</label>
-							<input type="text" name="flags.${MODULE_ID}.ammoDamageBonus" value="${damageBonus}" placeholder="+0">
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	`;
-
-	// Inject at the bottom of the Details tab
-	const detailsTab = html.find('.tab[data-tab="tab-details"]');
-	if (detailsTab.length) {
-		detailsTab.append(bonusesHtml);
-	}
-}
+// injectAmmunitionBonuses moved to inventory/ammunition-bonuses.mjs
 
 // ============================================
 // ABILITY ADVANTAGE PREDEFINED EFFECTS
@@ -3229,94 +2963,7 @@ Hooks.on("createToken", async (tokenDoc, options, userId) => {
 // SPELLBOOK COMPENDIUM FILTER
 // ============================================
 
-/**
- * Inject a compendium filter dropdown into the SpellBookSD dialog
- * Allows users to filter spells by compendium
- */
-function injectSpellbookCompendiumFilter(app, html) {
-	const header = html.find(".SD-header");
-	if (!header.length) return;
-
-	// Get all compendiums that contain spells
-	const spellPacks = [];
-	for (const pack of game.packs) {
-		if (pack.metadata.type !== "Item") continue;
-		// Check if pack has any spells in its index
-		const hasSpells = pack.index.some(i => i.type === "Spell");
-		if (hasSpells) {
-			spellPacks.push({
-				id: pack.collection,
-				name: pack.metadata.label
-			});
-		}
-	}
-
-	// Sort packs alphabetically
-	spellPacks.sort((a, b) => a.name.localeCompare(b.name));
-
-	// Build the dropdown options
-	const allLabel = game.i18n.localize("SHADOWDARK_EXTRAS.spellbook.compendiumFilter.all");
-	let optionsHtml = `<option value="">${allLabel}</option>`;
-	for (const pack of spellPacks) {
-		optionsHtml += `<option value="${pack.id}">${pack.name}</option>`;
-	}
-
-	// Create the filter dropdown
-	const filterLabel = game.i18n.localize("SHADOWDARK_EXTRAS.spellbook.compendiumFilter.label");
-	const filterHtml = `
-		<div class="sdx-spellbook-filter">
-			<label>${filterLabel}</label>
-			<select class="sdx-spellbook-compendium-select">
-				${optionsHtml}
-			</select>
-		</div>
-	`;
-
-	// Insert before navigation tabs
-	const nav = html.find(".SD-nav");
-	if (nav.length) {
-		nav.before(filterHtml);
-	} else {
-		// Fallback: insert after header
-		header.after(filterHtml);
-	}
-
-	// Add event listener
-	const select = html.find(".sdx-spellbook-compendium-select");
-	select.on("change", (event) => {
-		const selectedCompendium = event.currentTarget.value;
-		filterSpellsByCompendium(html, selectedCompendium);
-	});
-}
-
-/**
- * Filter the spell list by hiding/showing items based on their compendium
- * @param {jQuery} html - The dialog HTML
- * @param {string} compendiumId - The compendium ID to filter by, or empty for all
- */
-function filterSpellsByCompendium(html, compendiumId) {
-	const spellItems = html.find(".SD-list .item[data-uuid]");
-
-	spellItems.each((index, element) => {
-		const $item = $(element);
-		const uuid = $item.data("uuid");
-
-		if (!compendiumId) {
-			// Show all
-			$item.show();
-		} else {
-			// Check if the UUID starts with the compendium ID
-			// UUID format: Compendium.module.pack.itemId
-			if (uuid && uuid.startsWith(`Compendium.${compendiumId}`)) {
-				$item.show();
-			} else {
-				$item.hide();
-			}
-		}
-	});
-
-	// Update the count display if needed (future enhancement)
-}
+// injectSpellbookCompendiumFilter moved to character-sheet/spellbook-filter.mjs
 
 // Hook into the SpellBookSD rendering
 Hooks.on("renderApplication", (app, html, data) => {

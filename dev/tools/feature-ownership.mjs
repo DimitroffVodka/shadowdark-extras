@@ -33,6 +33,7 @@ export const FEATURE_OWNERS = {
     "inventory-multi-select.mjs",
     "inventory-styles.mjs",
     "player-transfers.mjs",
+    "ammunition-bonuses.mjs",
   ],
   "character-sheet": [
     "SheetEditorConfig.mjs",
@@ -57,6 +58,8 @@ export const FEATURE_OWNERS = {
     // Patches the system's CharacterGeneratorSD to broadcast generation rolls.
     // PC-facing creation behaviour, which is the closest bucket the map has.
     "character-generator.mjs",
+    "player-sheet-patches.mjs",
+    "spellbook-filter.mjs",
   ],
   "item-sheets": [
     "PotionSheetSD.mjs",
@@ -146,6 +149,7 @@ export const FEATURE_OWNERS = {
     // Extracted from the composition root in Phase 3. Carries four Hooks.on
     // registrations, one of them a contended hook name — see its docblock.
     "party-creation.mjs",
+    "party-light-tracker.mjs",
   ],
   npc: [
     "CreatureTypesApp.mjs",
@@ -200,6 +204,8 @@ export const FEATURE_OWNERS = {
     "HexDungeonBridgeSD.mjs",
     "SettlementGenerator.mjs",
     "ContentRegistry.mjs",
+    // Extracted from the composition root in Phase 3.
+    "hex-tile-clamp.mjs",
   ],
   dungeon: [
     "DungeonGeneratorSD.mjs",
