@@ -15,6 +15,53 @@ import { injectWeaponBonusDisplay } from "./WeaponBonusConfig.mjs";
  *
  * Only stage 3 lives here for now; stages 1 and 2 are still in the root.
  */
+
+// Track pending hit bonus info for display in chat messages.
+// Maps "actorId-itemId" to { formula, result, parts, timestamp }.
+//
+// This was module-scope state on the composition root. It is private here, and
+// the two stages that touch it reach it only through the accessors below, so the
+// root no longer carries shared mutable state for this feature.
+const _pendingHitBonusInfo = new Map();
+
+/**
+ * Stash a computed hit bonus for the chat message that is about to be created.
+ * Called from the `ItemSD.prototype.rollItem` wrapper (stage 1).
+ *
+ * @param {string} actorId
+ * @param {string} itemId
+ * @param {{formula: string, parts: any, timestamp: number}} info
+ */
+export function stashHitBonus(actorId, itemId, info) {
+	_pendingHitBonusInfo.set(`${actorId}-${itemId}`, info);
+}
+
+/**
+ * Read a stashed hit bonus and remove it in one step (stage 2).
+ *
+ * Get-and-delete is deliberately one operation. Both call sites in
+ * `preCreateChatMessage` deleted the entry whenever one was found — the second
+ * one drops it even when it is too old to apply — so a caller that reads without
+ * consuming would leave the entry to be picked up by an unrelated later card.
+ *
+ * @param {string} key `${actorId}-${itemId}`
+ * @returns {object|undefined} the stashed info, or undefined if nothing pending
+ */
+export function takeHitBonus(key) {
+	const info = _pendingHitBonusInfo.get(key);
+	if (info) _pendingHitBonusInfo.delete(key);
+	return info;
+}
+
+/**
+ * The keys currently awaiting a chat message. Debug aid only — the composition
+ * root has a commented-out log in `preCreateChatMessage` that prints them.
+ *
+ * @returns {string[]}
+ */
+export function pendingHitBonusKeys() {
+	return Array.from(_pendingHitBonusInfo.keys());
+}
 /**
  * Process weapon bonuses for a chat message
  */

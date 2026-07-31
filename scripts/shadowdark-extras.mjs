@@ -36,7 +36,7 @@ import {
 	injectWeaponDamageTypeDropdown
 } from "./combat/WeaponBonusConfig.mjs";
 import { setupRollAttackPatches, setupRollConfigPatches } from "./combat/roll-patches.mjs";
-import { processWeaponBonuses } from "./combat/hit-bonus.mjs";
+import { processWeaponBonuses, stashHitBonus, takeHitBonus, pendingHitBonusKeys } from "./combat/hit-bonus.mjs";
 
 import { initAutoAnimationsIntegration } from "./animation/AutoAnimationsSD.mjs";
 import { AnimationFxSD } from "./animation/AnimationFxSD.mjs";
@@ -1226,9 +1226,6 @@ function getUnidentifiedNameFromData(itemData) {
 // ============================================
 
 
-// Track pending hit bonus info for display in chat messages
-// Maps "actorId-itemId" to { formula, result, parts, timestamp }
-const _pendingHitBonusInfo = new Map();
 
 function isBasicItem(item) {
 	return item?.type === "Basic";
@@ -9363,7 +9360,7 @@ Hooks.once("ready", async () => {
 							// Store hit bonus info for chat message display (will evaluate during message creation)
 							const actorId = data.actor._id || data.actor.id;
 							const itemId = this.id;
-							_pendingHitBonusInfo.set(`${actorId}-${itemId}`, {
+							stashHitBonus(actorId, itemId, {
 								formula: h,
 								parts: hitBonusResult.hitBonusParts,
 								timestamp: Date.now()
@@ -9941,13 +9938,13 @@ Hooks.on("preCreateChatMessage", (message, data, options, userId) => {
 		/*//console.log(`${MODULE_ID} | preCreateChatMessage - checking for hit bonus:`, {
 			speakerActorId,
 			sdItemId,
-			pendingKeys: Array.from(_pendingHitBonusInfo.keys())
+			pendingKeys: pendingHitBonusKeys()
 		});*/
 
 		if (speakerActorId && sdItemId) {
 			const hitBonusKey = `${speakerActorId}-${sdItemId}`;
 			//console.log(`${MODULE_ID} | Looking for hit bonus key: ${hitBonusKey}`);
-			const hitBonusInfo = _pendingHitBonusInfo.get(hitBonusKey);
+			const hitBonusInfo = takeHitBonus(hitBonusKey);
 
 			if (hitBonusInfo) {
 				// Store the hit bonus info in the message flags
@@ -9962,16 +9959,13 @@ Hooks.on("preCreateChatMessage", (message, data, options, userId) => {
 					}
 				});
 				//console.log(`${MODULE_ID} | Stored hit bonus info in message:`, hitBonusInfo);
-
-				// Clean up the pending info
-				_pendingHitBonusInfo.delete(hitBonusKey);
 			}
 		} else if (actorIdMatch && itemIdMatch) {
 			// Fallback: try HTML data attributes (for item cards)
 			const actorId = actorIdMatch[1];
 			const itemId = itemIdMatch[1];
 			const hitBonusKey = `${actorId}-${itemId}`;
-			const hitBonusInfo = _pendingHitBonusInfo.get(hitBonusKey);
+			const hitBonusInfo = takeHitBonus(hitBonusKey);
 
 			if (hitBonusInfo) {
 				const isRecent = (Date.now() - hitBonusInfo.timestamp) < 5000;
@@ -9985,7 +9979,6 @@ Hooks.on("preCreateChatMessage", (message, data, options, userId) => {
 					});
 					//console.log(`${MODULE_ID} | Stored hit bonus info in message (from HTML):`, hitBonusInfo);
 				}
-				_pendingHitBonusInfo.delete(hitBonusKey);
 			}
 		}
 
