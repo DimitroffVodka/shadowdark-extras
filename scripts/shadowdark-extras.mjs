@@ -124,6 +124,7 @@ import { registerSourceRequirementHooks } from "./effects/source-requirements.mj
 import { setupWandUsesBlocker, setupSilencedCastingBlocker } from "./effects/casting-blockers.mjs";
 import { registerPredefinedEffects } from "./effects/predefined-effects.mjs";
 import { registerContainerHooks, isContainerItem, isItemPilesEnabledActor, calculateSlotsCostForItemData, recomputeContainerSlots, calculateContainedItemSlots, getContainedItems, getPackedContainedItemData, syncContainerPackedItems } from "./inventory/containers.mjs";
+import { isUnidentified, getUnidentifiedName, getUnidentifiedNameFromData } from "./shared/sd4Compat.mjs";
 import { DEFAULT_LIGHT_TEMPLATES, getCustomLightSources, LightTemplateEditor } from "./canvas/light-templates.mjs";
 import { patchCtrlMoveOnActorSheetDrops } from "./inventory/default-move-drops.mjs";
 import { injectNpcCreatureType, injectNpcInventoryTab } from "./npc/npc-sheet-inventory.mjs";
@@ -322,35 +323,6 @@ Hooks.once("init", () => {
 // UNIDENTIFIED ITEMS — thin wrappers to SD 4.x native identification
 // ============================================
 
-/**
- * Returns true when the item is unidentified via SD 4.x native system.
- * Falls back to the legacy SDX flag for worlds not yet migrated.
- */
-function isUnidentified(item) {
-	if (!item) return false;
-	// SD 4.x: identification schema exists on PhysicalItemSD → use it
-	if (item.system?.identification !== undefined) {
-		return !item.system.isIdentified;
-	}
-	// Legacy fallback (SD 3.x worlds)
-	return Boolean(item.getFlag?.(MODULE_ID, "unidentified"));
-}
-
-/**
- * Returns the display name for an unidentified item.
- * In SD 4.x, item.name is already the unidentified name when unidentified.
- */
-function getUnidentifiedName(item) {
-	return item?.name ?? "";
-}
-
-/**
- * Returns the display name from raw item data.
- * In SD 4.x, itemData.name is the display name (unidentified or real).
- */
-function getUnidentifiedNameFromData(itemData) {
-	return itemData?.name ?? "";
-}
 
 // ============================================
 // BASIC ITEM CONTAINERS (non-invasive)
