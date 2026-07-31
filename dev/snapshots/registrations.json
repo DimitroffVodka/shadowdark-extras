@@ -351,6 +351,11 @@
     "item-macro-engine.mjs": [
       "socket.register:sdxExecuteItemMacro"
     ],
+    "journal-ui.mjs": [
+      "Hooks.on:renderJournalDirectory",
+      "Hooks.on:renderJournalEntrySheet",
+      "Hooks.on:renderJournalSheet"
+    ],
     "macro-socket.mjs": [
       "socketlib.registerModule:<dynamic>"
     ],
@@ -378,9 +383,6 @@
       "Hooks.once:init",
       "Hooks.on:sequencer.ready",
       "Hooks.once:ready",
-      "Hooks.on:renderJournalDirectory",
-      "Hooks.on:renderJournalEntrySheet",
-      "Hooks.on:renderJournalSheet",
       "Hooks.once:ready",
       "Hooks.on:preCreateItem",
       "Hooks.on:preCreateActor",

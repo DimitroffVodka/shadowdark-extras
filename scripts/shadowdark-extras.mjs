@@ -81,6 +81,7 @@ import { SceneExporter } from "./scene/SceneExporter.mjs";
 import { SceneImporter } from "./scene/SceneImporter.mjs";
 import { initJournalPins } from "./journal/JournalPinsSD.mjs";
 import { registerPinStyleSettings } from "./journal/PinStyleEditorSD.mjs";
+import { registerJournalUIHooks } from "./journal/journal-ui.mjs";
 import SheetLockManager from "./character-sheet/SheetLockManager.mjs";
 import "./item-macros/SpellMacrosSD.mjs";
 import { initMysteriousCasting } from "./npc/MysteriousCasting.mjs";
@@ -92,7 +93,7 @@ import { SDXRollerApp } from "./tray/SDXRollerApp.mjs";
 import { ensureMutableItemCompendiumIndexes } from "./shared/CompendiumIndexSD.mjs";
 import { initSDXCoords, registerSDXCoordsSettings, registerSDXCoordsMenu } from "./hex/SDXCoordsSD.mjs";
 import { SDXCoordsSettingsApp } from "./hex/SDXCoordsSettingsSD.mjs";
-import { initHexTooltip, HEX_JOURNAL_NAME } from "./hex/HexTooltipSD.mjs";
+import { initHexTooltip } from "./hex/HexTooltipSD.mjs";
 import { initHexFog } from "./hex/SDXHexFogSD.mjs";
 import { registerMaphubHooks } from "./MaphubSD.mjs";
 import { initUnidentifiedGMDisplay } from "./inventory/UnidentifiedDisplaySD.mjs";
@@ -127,17 +128,6 @@ import { placeChangeLevelRegion, placeDungeonSurface, placeDungeonDecor } from "
 
 
 const MODULE_ID = "shadowdark-extras";
-const TRADE_JOURNAL_NAME = "__sdx_trade_sync__"; // Must match TradeWindowSD.mjs
-const CAROUSING_JOURNAL_NAME = "__sdx_carousing_sync__"; // Must match CarousingSD.mjs
-const CAROUSING_TABLES_JOURNAL_NAME = "__sdx_carousing_tables__"; // Must match CarousingSD.mjs
-
-// All internal journals that should be hidden from the sidebar
-const HIDDEN_JOURNAL_NAMES = [
-	TRADE_JOURNAL_NAME,
-	CAROUSING_JOURNAL_NAME,
-	CAROUSING_TABLES_JOURNAL_NAME,
-	HEX_JOURNAL_NAME,
-];
 
 // ============================================
 // JOURNAL NARRATION INITIALIZATION
@@ -9095,83 +9085,8 @@ Hooks.once("init", () => {
 	setupSettingsOrganization();
 });
 
-// Hide internal trade journal from the sidebar (Foundry v13 compatible)
-Hooks.on("renderJournalDirectory", (app, html, data) => {
-	// In v13, html might be an HTMLElement or jQuery - handle both
-	const element = html instanceof jQuery ? html[0] : html;
-
-	// Find all journal entries in the directory list
-	const entries = element.querySelectorAll("[data-entry-id], [data-document-id], .directory-item");
-	entries.forEach(entry => {
-		const entryId = entry.dataset?.entryId || entry.dataset?.documentId;
-		if (entryId) {
-			const journal = game.journal.get(entryId);
-			if (journal && HIDDEN_JOURNAL_NAMES.includes(journal.name)) {
-				entry.remove();
-				return;
-			}
-		}
-		// Also check by name in the entry text as fallback
-		const nameEl = entry.querySelector(".entry-name, .document-name");
-		const entryName = nameEl?.textContent?.trim();
-		if (entryName && HIDDEN_JOURNAL_NAMES.includes(entryName)) {
-			entry.remove();
-		}
-	});
-});
-
-// Inject collapse/expand button for journal page headings sidebar
-function injectHeadingsCollapseButton(app, html) {
-	const element = html instanceof jQuery ? html[0] : html;
-
-	// Find ALL headings lists (there may be one per page in the sidebar)
-	const headingsLists = element.querySelectorAll("ol.headings");
-	if (!headingsLists.length) return;
-
-	for (const headingsOl of headingsLists) {
-		// Don't inject twice
-		if (headingsOl.previousElementSibling?.classList?.contains("sdx-headings-toggle")) continue;
-
-		// Create the toggle button
-		const toggleBtn = document.createElement("button");
-		toggleBtn.className = "sdx-headings-toggle";
-		toggleBtn.type = "button";
-		toggleBtn.title = "Toggle headings";
-		toggleBtn.innerHTML = `<i class="fas fa-chevron-down" style="transition:transform 0.2s;"></i>`;
-		Object.assign(toggleBtn.style, {
-			background: "none",
-			border: "none",
-			cursor: "pointer",
-			padding: "2px 6px",
-			opacity: "0.6",
-			fontSize: "0.75em",
-			position: "absolute",
-			right: "4px",
-			top: "2px",
-			zIndex: "1",
-		});
-
-		// Make the parent position:relative so the button can be positioned
-		const parentLi = headingsOl.closest("li.page");
-		if (parentLi) {
-			parentLi.style.position = "relative";
-			parentLi.insertBefore(toggleBtn, headingsOl);
-		} else {
-			headingsOl.parentElement.insertBefore(toggleBtn, headingsOl);
-		}
-
-		// Toggle handler
-		toggleBtn.addEventListener("click", (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			const isCollapsed = headingsOl.style.display === "none";
-			headingsOl.style.display = isCollapsed ? "" : "none";
-			toggleBtn.querySelector("i").style.transform = isCollapsed ? "" : "rotate(-90deg)";
-		});
-	}
-}
-Hooks.on("renderJournalEntrySheet", injectHeadingsCollapseButton);
-Hooks.on("renderJournalSheet", injectHeadingsCollapseButton);
+// Journal chrome: hide the internal sync journals, add the headings toggle
+registerJournalUIHooks();
 
 // Setup after Shadowdark system is ready
 Hooks.once("ready", async () => {
