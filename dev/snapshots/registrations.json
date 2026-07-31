@@ -316,6 +316,10 @@
       "Hooks.on:updateItem",
       "Hooks.on:createItem"
     ],
+    "effect-config.mjs": [
+      "Hooks.on:renderActiveEffectConfig",
+      "Hooks.on:preUpdateActiveEffect"
+    ],
     "shadowdark-extras.mjs": [
       "libWrapper.register:<dynamic>",
       "Hooks.once:init",
@@ -410,8 +414,6 @@
       "Hooks.on:renderApplication",
       "Hooks.once:ready",
       "Hooks.on:renderSpellBookSD",
-      "Hooks.on:renderActiveEffectConfig",
-      "Hooks.on:preUpdateActiveEffect",
       "Hooks.on:updateActiveEffect",
       "Hooks.on:createActiveEffect",
       "Hooks.on:updateActor",
