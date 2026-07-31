@@ -92,6 +92,7 @@ import { registerMaphubHooks } from "./MaphubSD.mjs";
 import { initUnidentifiedGMDisplay } from "./inventory/UnidentifiedDisplaySD.mjs";
 import { initTemplateElevationBadge } from "./effects/TemplateElevationBadgeSD.mjs";
 import { registerInvisibilityHooks } from "./effects/invisibility.mjs";
+import { initMacroExecuteSocket, getMacroExecuteSocket } from "./item-macros/macro-socket.mjs";
 import { registerActiveEffectConfigHooks } from "./effects/effect-config.mjs";
 import { registerContainerHooks, isContainerItem, isItemPilesEnabledActor, calculateSlotsCostForItemData, recomputeContainerSlots, calculateContainedItemSlots, getContainedItems, getPackedContainedItemData, syncContainerPackedItems } from "./inventory/containers.mjs";
 import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
@@ -17042,11 +17043,6 @@ Hooks.on("deleteItem", async (item, options, userId) => {
 // MACRO EXECUTE EFFECT HANDLERS
 // ============================================
 
-// Socket for executing macros as GM. Assigned at the top of the ready hook
-// below, before that hook's first await — three separate ready hooks register
-// handlers on it and they all run while this one is still suspended.
-let macroExecuteSocket;
-
 // Register socketlib handler on ready hook
 // Dev-only Quench batches. These live under dev/ and are excluded from
 // module.zip, so a released install has nothing to import - stay silent there
@@ -17070,14 +17066,9 @@ Hooks.once("ready", async () => {
 	// Create the socket BEFORE the first await in this hook. `Hooks.callAll`
 	// does not await async handlers, so the two later ready hooks that add
 	// handlers to this socket run while this one is suspended on the migrations
-	// below. Both skip their handlers when macroExecuteSocket is still unset, so
+	// below. Both skip their handlers when the socket is still unset, so
 	// creating it after the awaits left nine handlers permanently unregistered.
-	if (game.modules.get("socketlib")?.active) {
-		macroExecuteSocket = socketlib.registerModule(MODULE_ID);
-		// Expose socket to module
-		const module = game.modules.get(MODULE_ID);
-		if (module) module.socket = macroExecuteSocket;
-	}
+	const macroExecuteSocket = initMacroExecuteSocket();
 
 	// Rewrite stored .png/.jpg asset paths after the WebP conversion. Must run
 	// before anything reads scene/actor artwork, or the GM sees broken images
@@ -17299,6 +17290,7 @@ async function executeMacroFromEffect(actor, macroValue, currentTrigger, options
 		};
 
 		// Use socketlib for GM execution if available, otherwise execute locally
+		const macroExecuteSocket = getMacroExecuteSocket();
 		if (macroExecuteSocket && !game.user.isGM) {
 			// Serialize context data for socket transmission
 			const contextData = {
@@ -17491,6 +17483,7 @@ export async function executeItemMacro(item, context = {}) {
 		?? item.flags?.itemacro?.macro?.runAsGM;
 	
 	if (runAsGM && !game.user.isGM) {
+		const macroExecuteSocket = getMacroExecuteSocket();
 		if (macroExecuteSocket) {
 			// Serialize context documents to UUIDs for socketlib transmission
 			const serializedContext = { ...context };
@@ -17674,6 +17667,7 @@ async function executeSpellItemMacro(spellItem, actor, trigger, context = {}) {
 		};
 
 		//console.log(`${MODULE_ID} | Sending spell Item Macro to GM for execution`);
+		const macroExecuteSocket = getMacroExecuteSocket();
 		if (macroExecuteSocket) {
 			await macroExecuteSocket.executeAsGM("executeSpellItemMacroAsGM", serializedContext);
 		}
@@ -17744,8 +17738,9 @@ async function executeSpellItemMacro(spellItem, actor, trigger, context = {}) {
 
 // Register socket handlers for Spell API functions
 Hooks.once("ready", () => {
-	// macroExecuteSocket is assigned synchronously at the top of the earlier
-	// ready hook, so it is set by the time this one runs.
+	// The socket is created synchronously at the top of the earlier ready hook,
+	// so it is set by the time this one runs.
+	const macroExecuteSocket = getMacroExecuteSocket();
 	if (macroExecuteSocket) {
 		macroExecuteSocket.register("executeSpellItemMacroAsGM", async function(serializedContext) {
 			const sender = game.users.get(this.socketdata?.userId);
@@ -18830,6 +18825,7 @@ async function executeClassAbilityItemMacro(item, actor, context = {}) {
 			rolled
 		};
 
+		const macroExecuteSocket = getMacroExecuteSocket();
 		if (macroExecuteSocket) {
 			await macroExecuteSocket.executeAsGM("executeClassAbilityMacroAsGM", serializedContext);
 		}
@@ -18862,6 +18858,7 @@ async function executeClassAbilityItemMacro(item, actor, context = {}) {
 
 // Register socket handler for GM execution of Class Ability Item Macros
 Hooks.once("ready", () => {
+	const macroExecuteSocket = getMacroExecuteSocket();
 	if (macroExecuteSocket) {
 		macroExecuteSocket.register("executeClassAbilityMacroAsGM", async (serializedContext) => {
 			const actor = game.actors.get(serializedContext.actorId);
