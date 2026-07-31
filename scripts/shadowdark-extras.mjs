@@ -123,6 +123,7 @@ import { registerSourceRequirementHooks } from "./effects/source-requirements.mj
 import { setupWandUsesBlocker, setupSilencedCastingBlocker } from "./effects/casting-blockers.mjs";
 import { registerPredefinedEffects } from "./effects/predefined-effects.mjs";
 import { registerContainerHooks, isContainerItem, isItemPilesEnabledActor, calculateSlotsCostForItemData, recomputeContainerSlots, calculateContainedItemSlots, getContainedItems, getPackedContainedItemData, syncContainerPackedItems } from "./inventory/containers.mjs";
+import { patchCtrlMoveOnActorSheetDrops } from "./inventory/default-move-drops.mjs";
 import { injectNpcCreatureType, injectNpcInventoryTab } from "./npc/npc-sheet-inventory.mjs";
 import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
 // Map-builder entry points — pulled in so we can expose them on module.api
@@ -994,62 +995,6 @@ function attachContainerContentsToActorSheet(app, html) {
 
 
 
-// ============================================
-// DEFAULT-MOVE ITEM DROPS (non-invasive)
-// Normal drag = move, Ctrl+drag = copy
-// ============================================
-
-function patchCtrlMoveOnActorSheetDrops() {
-	// Only relevant for Shadowdark in this module
-	if (game.system.id !== "shadowdark") return;
-	const ActorSheetClass = foundry.appv1?.sheets?.ActorSheet || globalThis.ActorSheet;
-	if (!ActorSheetClass?.prototype?._onDropItem) return;
-	const proto = ActorSheetClass.prototype;
-	if (proto._sdxCtrlMovePatched) return;
-	proto._sdxCtrlMovePatched = true;
-
-	const original = proto._onDropItem;
-	proto._onDropItem = async function (event, data) {
-		const targetActor = this.actor;
-		const ctrlCopy = Boolean(event?.ctrlKey); // Ctrl = copy, normal = move
-		const sourceUuid = data?.uuid;
-		let sourceItem = null;
-		try {
-			if (!ctrlCopy && sourceUuid) sourceItem = await fromUuid(sourceUuid);
-		} catch (e) {
-			// Ignore uuid resolution failures
-		}
-
-		const result = await original.call(this, event, data);
-
-		// Default move: delete the source unless CTRL is held (copy mode).
-		if (ctrlCopy) return result; // Ctrl held = copy, don't delete
-		if (result === false) return result;
-		if (!sourceItem || !(sourceItem instanceof Item)) return result;
-		const sourceActor = sourceItem.parent;
-		if (!sourceActor || !targetActor) return result;
-		if (sourceActor === targetActor || sourceActor.id === targetActor.id) return result;
-		// Permission safety: only owners/GM can delete
-		if (!(game.user.isGM || sourceActor.isOwner || sourceItem.isOwner)) return result;
-
-		try {
-			const isContainer = sourceItem.type === "Basic" && Boolean(sourceItem.getFlag?.(MODULE_ID, "isContainer"));
-			if (isContainer) {
-				const children = sourceActor.items.filter(i => i.getFlag(MODULE_ID, "containerId") === sourceItem.id);
-				for (const child of children) {
-					await child.delete({ sdxInternal: true });
-				}
-				await sourceItem.delete({ sdxInternal: true });
-			} else {
-				await sourceItem.delete();
-			}
-		} catch (err) {
-			console.warn(`${MODULE_ID} | Ctrl-move delete failed`, err);
-		}
-
-		return result;
-	};
-}
 
 // Default light templates (replacing hardcoded EXTRA_LIGHT_SOURCES)
 const DEFAULT_LIGHT_TEMPLATES = [
