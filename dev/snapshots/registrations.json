@@ -387,6 +387,12 @@
       "Hooks.once:ready",
       "Hooks.once:ready"
     ],
+    "party-creation.mjs": [
+      "Hooks.on:renderDocumentSheetConfig",
+      "Hooks.on:renderDialog",
+      "Hooks.on:renderApplication",
+      "Hooks.on:renderActorDirectory"
+    ],
     "predefined-effects.mjs": [
       "Hooks.once:init"
     ],
@@ -400,10 +406,6 @@
       "Hooks.on:renderChatMessageHTML",
       "Hooks.once:ready",
       "Hooks.on:renderSettingsConfig",
-      "Hooks.on:renderDocumentSheetConfig",
-      "Hooks.on:renderDialog",
-      "Hooks.on:renderApplication",
-      "Hooks.on:renderActorDirectory",
       "Hooks.once:init",
       "Hooks.on:sequencer.ready",
       "Hooks.once:ready",

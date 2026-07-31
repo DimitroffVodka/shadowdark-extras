@@ -139,6 +139,9 @@ export const FEATURE_OWNERS = {
     "TravelActivitiesSettingsSD.mjs",
     "TravelSpeedsSettingsSD.mjs",
     "PartyWeatherSettingsSD.mjs",
+    // Extracted from the composition root in Phase 3. Carries four Hooks.on
+    // registrations, one of them a contended hook name — see its docblock.
+    "party-creation.mjs",
   ],
   npc: [
     "CreatureTypesApp.mjs",
