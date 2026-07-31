@@ -31,6 +31,7 @@ export const FEATURE_OWNERS = {
   "item-sheets": [
     "PotionSheetSD.mjs",
     "StaffSpellManager.mjs",
+    "staff-spells.mjs",
     "ClassAbilitySheetSD.mjs",
     "ItemTypeConfigs.mjs",
     "TemplateTargetingConfig.mjs",
