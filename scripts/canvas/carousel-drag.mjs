@@ -12,6 +12,22 @@ import { MODULE_ID } from "../shared/module-id.mjs";
  * when the function is CALLED, not when this module is evaluated, so its
  * order relative to every other registration is decided by the root's call
  * site. Do not make this a module-eval side effect.
+ *
+ * NOT A RELEASE GATE — owner decision, 2026-07-31. This was a Phase 4
+ * release-readiness row to be cleared by enabling `shadowdark-crawl-helper` and
+ * dragging the carousel. That instruction is withdrawn: the maintainer's world
+ * runs Shadowdark Enhancer, which ships its own crawl and a "Warn when
+ * shadowdark-crawl-helper is enabled" setting, so enabling it purely to satisfy
+ * a gate would create the conflict Enhancer warns about.
+ *
+ * This file and `combat/crawl-helper-death-timer.mjs` are the only SDX code
+ * that touches crawl-helper. Both are kept as BEST-EFFORT THIRD-PARTY SUPPORT
+ * the maintainer cannot verify, and neither blocks a release. Nothing here
+ * registers a setting or joins `module.api`, and the saved position is a
+ * `localStorage` key rather than world data, so a world without crawl-helper
+ * carries no state from this file. The risk is acknowledged rather than hidden:
+ * unexercised integration code is how KNOWN-ISSUES 14 happened. Revisit in the
+ * Phase 5.2 dead-code pass.
  */
 
 // ============================================
