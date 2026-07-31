@@ -32,6 +32,7 @@ export const FEATURE_OWNERS = {
     "PotionSheetSD.mjs",
     "StaffSpellManager.mjs",
     "staff-spells.mjs",
+    "activity-tab-widgets.mjs",
     "ClassAbilitySheetSD.mjs",
     "ItemTypeConfigs.mjs",
     "TemplateTargetingConfig.mjs",
