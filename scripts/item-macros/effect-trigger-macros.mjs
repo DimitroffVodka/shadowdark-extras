@@ -150,6 +150,57 @@ async function checkAndExecuteMacros(actor, trigger) {
 }
 
 /**
+ * Register the GM-side handler for `macroExecute` triggers routed off a player
+ * client — the other end of the `executeAsGM("executeMacroAsGM", …)` call in
+ * `executeMacroFromEffect` above.
+ *
+ * It ran a Foundry Macro document rather than an item macro, so it never
+ * belonged with the item-macro engine; it lived there only because it shared
+ * the socket. It follows its sender here now that the sender has moved.
+ *
+ * The socket is passed in rather than fetched, so the root's single socket hook
+ * stays the one place registration order is decided. The root calls this before
+ * registerItemMacroSocket(), which is the order these two were registered in.
+ *
+ * @param {object} socket - The module's socketlib socket.
+ */
+export function registerEffectMacroSocket(socket) {
+	// Register the GM execution handler
+	socket.register("executeMacroAsGM", async function(macroId, contextData) {
+		// This runs on the GM's client
+		const sender = game.users.get(this.socketdata?.userId);
+		if (!sender) return;
+
+		// Reconstruct actor to check ownership
+		const actor = contextData.actorUuid ? await fromUuid(contextData.actorUuid) :
+					 (contextData.actorId ? game.actors.get(contextData.actorId) : null);
+
+		if (!sender.isGM && (!actor || !actor.testUserPermission(sender, "OWNER"))) {
+			console.warn(`${MODULE_ID} | Unauthorized macro execution attempt from user ${sender.name}`);
+			return;
+		}
+
+		const macro = game.macros.get(macroId);
+		if (!macro) {
+			console.warn(`${MODULE_ID} | Macro with ID "${macroId}" not found`);
+			return;
+		}
+
+		// Reconstruct the context from the serialized data
+		const context = {
+			actor: actor,
+			token: contextData.tokenUuid ? (await fromUuid(contextData.tokenUuid))?.object : undefined,
+			trigger: contextData.trigger,
+			item: contextData.itemUuid ? await fromUuid(contextData.itemUuid) : undefined,
+			effect: contextData.effectUuid ? await fromUuid(contextData.effectUuid) : undefined,
+		};
+
+		// Execute the macro as GM
+		await macro.execute(context);
+	});
+}
+
+/**
  * Register the five macroExecute trigger hooks. The composition root calls this
  * at the source position the first of them occupied.
  *

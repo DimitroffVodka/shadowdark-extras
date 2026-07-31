@@ -97,7 +97,7 @@ import { registerTemplateTargetSyncSocket } from "./api/template-target-sync.mjs
 import { registerSpellItemMacroSocket } from "./item-macros/spell-item-macros.mjs";
 import { registerNPCFeatureItemMacros } from "./item-macros/npc-feature-macros.mjs";
 import { registerChatDispatch } from "./item-macros/chat-dispatch.mjs";
-import { registerEffectTriggerHooks } from "./item-macros/effect-trigger-macros.mjs";
+import { registerEffectTriggerHooks, registerEffectMacroSocket } from "./item-macros/effect-trigger-macros.mjs";
 import { registerActiveEffectConfigHooks } from "./effects/effect-config.mjs";
 import { registerContainerHooks, isContainerItem, isItemPilesEnabledActor, calculateSlotsCostForItemData, recomputeContainerSlots, calculateContainedItemSlots, getContainedItems, getPackedContainedItemData, syncContainerPackedItems } from "./inventory/containers.mjs";
 import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
@@ -17083,6 +17083,7 @@ Hooks.once("ready", () => {
 		// called here, in their original order, so this hook is the single place
 		// socket registration order is decided — and the single place that has to
 		// stay free of awaits.
+		registerEffectMacroSocket(macroExecuteSocket);
 		registerItemMacroSocket(macroExecuteSocket);
 		registerPartyTravelSocket(macroExecuteSocket);
 		registerTemplateTargetSyncSocket(macroExecuteSocket);

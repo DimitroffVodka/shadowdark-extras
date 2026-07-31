@@ -334,6 +334,7 @@
       "Hooks.on:preUpdateActiveEffect"
     ],
     "effect-trigger-macros.mjs": [
+      "socket.register:executeMacroAsGM",
       "Hooks.on:combatTurn",
       "Hooks.on:combatTurn",
       "Hooks.on:createActiveEffect",
@@ -347,7 +348,6 @@
       "Hooks.on:preCreateChatMessage"
     ],
     "item-macro-engine.mjs": [
-      "socket.register:executeMacroAsGM",
       "socket.register:sdxExecuteItemMacro"
     ],
     "macro-socket.mjs": [
