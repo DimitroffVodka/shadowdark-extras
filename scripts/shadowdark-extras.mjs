@@ -128,7 +128,7 @@ import { registerContainerHooks, recomputeContainerSlots, patchGetPhysicalItemsF
 import { isUnidentified } from "./shared/sd4Compat.mjs";
 import { transferItemToPlayer, transferCoinsToPlayer, showCoinTransferDialog, showTransferDialog, patchPlayerSheetForTransfers } from "./inventory/player-transfers.mjs";
 import { injectEnhancedHeader, injectHeaderCustomization, injectPartyHeaderCustomization, injectAddCoinsButton, injectTradeButton } from "./character-sheet/enhanced-header.mjs";
-import { DEFAULT_LIGHT_TEMPLATES, getCustomLightSources, LightTemplateEditor } from "./canvas/light-templates.mjs";
+import { DEFAULT_LIGHT_TEMPLATES, LightTemplateEditor, extendLightSources, patchLightSourceMappings } from "./canvas/light-templates.mjs";
 import { patchCtrlMoveOnActorSheetDrops } from "./inventory/default-move-drops.mjs";
 import { injectNpcCreatureType, injectNpcInventoryTab } from "./npc/npc-sheet-inventory.mjs";
 import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
@@ -1999,47 +1999,6 @@ async function openJournalPageEditor(actor, pageId, sheetApp) {
 	if (!page) return;
 	const editor = new SdxJournalPageEditor({ actor, page, sheetApp });
 	editor.render({ force: true });
-}
-
-/**
- * Add custom light templates to the light source options
- */
-function extendLightSources() {
-	// Add to the config for dropdown options
-	if (CONFIG.SHADOWDARK?.LIGHT_SETTING_NAMES) {
-		const customSources = getCustomLightSources();
-		for (const [key, source] of Object.entries(customSources)) {
-			// If lang key starts with SHADOWDARK_EXTRAS, try to localize it, otherwise use raw string
-			const label = source.lang.startsWith("SHADOWDARK_EXTRAS.")
-				? game.i18n.localize(source.lang)
-				: source.lang;
-
-			CONFIG.SHADOWDARK.LIGHT_SETTING_NAMES[key] = label;
-		}
-	}
-}
-
-/**
- * Patch the light source mappings when they're loaded
- */
-function patchLightSourceMappings() {
-	// Store the original turnLightOn method
-	const originalTurnLightOn = CONFIG.Actor.documentClass.prototype.turnLightOn;
-
-	CONFIG.Actor.documentClass.prototype.turnLightOn = async function (itemId) {
-		const item = this.items.get(itemId);
-		const customSources = getCustomLightSources();
-
-		// Check if this is one of our custom light sources
-		if (item?.system?.light?.template && customSources[item.system.light.template]) {
-			const lightData = customSources[item.system.light.template].light;
-			await this.changeLightSettings(lightData);
-			return;
-		}
-
-		// Otherwise use the original method
-		return originalTurnLightOn.call(this, itemId);
-	};
 }
 
 
