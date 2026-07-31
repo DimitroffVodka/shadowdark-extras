@@ -48,6 +48,7 @@ export const FEATURE_OWNERS = {
     "weapon-item-macros.mjs",
     "npc-feature-macros.mjs",
     "chat-dispatch.mjs",
+    "effect-trigger-macros.mjs",
   ],
   combat: [
     "CombatSettingsSD.mjs",
