@@ -448,7 +448,6 @@
       "Hooks.on:createToken",
       "Hooks.on:renderApplication",
       "Hooks.once:ready",
-      "Hooks.on:renderSpellBookSD",
       "Hooks.on:renderNpcSheetSD",
       "Hooks.on:getSceneContextOptions",
       "Hooks.once:ready",
@@ -478,6 +477,9 @@
       "socket.register:sdxIdentifyItemAsGM",
       "socket.register:sdxShowItemRevealForUser",
       "socket.register:sdxShowIdentifyDialog"
+    ],
+    "spellbook-filter.mjs": [
+      "Hooks.on:renderSpellBookSD"
     ],
     "staff-spells.mjs": [
       "Hooks.on:updateItem"
