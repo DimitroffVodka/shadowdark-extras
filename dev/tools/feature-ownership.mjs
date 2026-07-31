@@ -47,6 +47,7 @@ export const FEATURE_OWNERS = {
     "spell-item-macros.mjs",
     "weapon-item-macros.mjs",
     "npc-feature-macros.mjs",
+    "chat-dispatch.mjs",
   ],
   combat: [
     "CombatSettingsSD.mjs",
