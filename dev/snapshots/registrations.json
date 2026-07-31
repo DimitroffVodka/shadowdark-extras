@@ -1,12 +1,12 @@
 {
   "$comment": "Static registration call-site inventory. Keyed by module basename so it survives feature-folder moves. Order within each module is the contract; runtime firing order is proved by the smoke matrix, not by this file. Regenerate only with a reviewed reason: npm run snapshot:registrations -- --write",
   "totals": {
-    "Hooks.on": 222,
     "Hooks.once": 43,
-    "socketlib.registerModule": 3,
-    "socket.register": 46,
+    "Hooks.on": 222,
     "Hooks.off": 8,
     "libWrapper.register": 3,
+    "socketlib.registerModule": 3,
+    "socket.register": 46,
     "all": 325
   },
   "modules": {
@@ -312,6 +312,10 @@
       "Hooks.on:deleteToken",
       "Hooks.on:createToken"
     ],
+    "containers.mjs": [
+      "Hooks.on:updateItem",
+      "Hooks.on:createItem"
+    ],
     "shadowdark-extras.mjs": [
       "libWrapper.register:<dynamic>",
       "Hooks.once:init",
@@ -345,8 +349,6 @@
       "Hooks.on:preCreateChatMessage",
       "Hooks.on:renderChatMessageHTML",
       "Hooks.once:ready",
-      "Hooks.on:updateItem",
-      "Hooks.on:createItem",
       "Hooks.on:preDeleteItem",
       "Hooks.on:deleteItem",
       "Hooks.on:preUpdateActor",
