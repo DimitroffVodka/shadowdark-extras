@@ -3,15 +3,21 @@ import { MODULE_ID } from "../shared/module-id.mjs";
 /**
  * Invisibility effect: restore token visibility when the effect ends.
  *
- * Extracted from the composition root in Phase 3. Both handlers ignore any effect
- * that is not an invisibility effect, so this is the whole feature.
+ * Extracted from the composition root in Phase 3. Five hooks — the effect being
+ * disabled or deleted, the token refreshing, an offensive action breaking
+ * concealment, and the Condition item itself being deleted. Every one ignores
+ * anything that is not an invisibility effect, so this is the whole feature.
  *
  * These share their hook names with other root registrations — updateActiveEffect
  * and deleteActiveEffect are registered three times each. Co-location is NOT what
  * preserves firing order; the position of the register() CALL is. The root calls
- * registerInvisibilityHooks() where these two sat, which lands after the
+ * registerInvisibilityHooks() where the first of them sat, which lands after the
  * condition-toggle handlers and before the remaining ones for both names, exactly
  * as before. Same-name handlers may therefore live in different feature modules.
+ *
+ * The deleteItem handler arrived last (5648cd6): it was left behind in the root
+ * by the original extraction and appended here, which is why it is the only one
+ * registered after the offensive-action guard.
  */
 
 /**

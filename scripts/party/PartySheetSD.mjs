@@ -2722,15 +2722,6 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 	}
 }
 
-// ============================================
-// PARTY TOKEN LIGHT SYNCHRONIZATION
-// ============================================
-
-/**
- * Get the brightest light source from all party members
- * @param {Actor} partyActor - The party actor
- * @returns {Promise<Object|null>} Light configuration or null if no lights
- */
 /**
  * Register the GM-side handler for player-initiated Party travel writes.
  *
@@ -2784,6 +2775,15 @@ export function registerPartyTravelSocket(socket) {
 	);
 }
 
+// ============================================
+// PARTY TOKEN LIGHT SYNCHRONIZATION
+// ============================================
+
+/**
+ * Get the brightest light source from all party members
+ * @param {Actor} partyActor - The party actor
+ * @returns {Promise<Object|null>} Light configuration or null if no lights
+ */
 export async function getBrightestPartyLight(partyActor) {
 	if (!partyActor) return null;
 
