@@ -69,6 +69,7 @@ export const FEATURE_OWNERS = {
     // Extracted from the composition root in Phase 3.
     "effect-config.mjs",
     "invisibility.mjs",
+    "source-requirements.mjs",
   ],
   animation: [
     "AnimationFxSD.mjs",
