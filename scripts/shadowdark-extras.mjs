@@ -97,6 +97,7 @@ import { hasItemMacro, executeItemMacro, registerItemMacroSocket } from "./item-
 import { registerClassAbilityItemMacros } from "./item-macros/class-ability-macros.mjs";
 import { registerTemplateTargetSyncSocket } from "./api/template-target-sync.mjs";
 import { getSpellItemMacroConfig, executeSpellItemMacro, registerSpellItemMacroSocket } from "./item-macros/spell-item-macros.mjs";
+import { executeWeaponItemMacro } from "./item-macros/weapon-item-macros.mjs";
 import { registerActiveEffectConfigHooks } from "./effects/effect-config.mjs";
 import { registerContainerHooks, isContainerItem, isItemPilesEnabledActor, calculateSlotsCostForItemData, recomputeContainerSlots, calculateContainedItemSlots, getContainedItems, getPackedContainedItemData, syncContainerPackedItems } from "./inventory/containers.mjs";
 import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
@@ -17368,34 +17369,9 @@ export { hasItemMacro, executeItemMacro };
 // WEAPON ITEM MACRO EXECUTION SYSTEM
 // ============================================
 
-/**
- * Execute a weapon's Item Macro
- * @param {Item} weapon - The weapon item
- * @param {Actor} actor - The actor using the weapon
- * @param {string} trigger - The trigger type (beforeAttack, onHit, onCritical, onMiss, onCriticalMiss, onEquip, onUnequip)
- * @param {Object} context - Additional context for the macro
- */
-async function executeWeaponItemMacro(weapon, actor, trigger, context = {}) {
-	// Check if the weapon has a macro
-	if (!hasItemMacro(weapon)) return;
-
-	// Get the weapon item macro config
-	const macroConfig = getWeaponItemMacroConfig(weapon);
-	if (!macroConfig.enabled) return;
-
-	// Verify the trigger is enabled
-	if (!macroConfig.triggers.includes(trigger)) return;
-
-	// Build context for the macro
-	const macroContext = {
-		...context,
-		actor,
-		trigger,
-		args: context.args ?? []
-	};
-
-	return executeItemMacro(weapon, macroContext);
-}
+// Moved to item-macros/weapon-item-macros.mjs. Its two callers — the
+// equip/unequip updateItem hook and the attack-card chat dispatch — are still
+// here, so the name is imported rather than re-exported.
 
 // ============================================
 // SPELL ITEM MACRO EXECUTION SYSTEM
