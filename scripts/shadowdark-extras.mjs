@@ -6,7 +6,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  * Adds Renown tracking, additional light sources, NPC inventory, and Party management to Shadowdark RPG
  */
 
-import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor, registerPartyTravelSocket, registerPartySheetRerenderHooks } from "./party/PartySheetSD.mjs";
+import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor, registerPartyTravelSocket, registerPartySheetRerenderHooks, isPartyActor, registerPartyCleanupHooks } from "./party/PartySheetSD.mjs";
 import TradeWindowSD, { initializeTradeSocket, showTradeDialog, ensureTradeJournal, nativeTransferItems, nativeTransferCoins } from "./inventory/TradeWindowSD.mjs";
 import { CombatSettingsApp, registerCombatSettings, injectDamageCard, setupCombatSocket, setupScrollingCombatText, setupSummonExpiryHook, trackSummonedTokensForExpiry, spawnSummonedCreatures, getSocket } from "./combat/CombatSettingsSD.mjs";
 import { EffectsSettingsApp, registerEffectsSettings } from "./effects/EffectsSettingsSD.mjs";
@@ -7130,14 +7130,6 @@ function patchLightSourceTrackerForParty() {
 	//console.log(`${MODULE_ID} | Patched Light Source Tracker to include Party actors`);
 }
 
-/**
- * Check if an actor is a Party actor (flagged NPC)
- * @param {Actor} actor
- * @returns {boolean}
- */
-function isPartyActor(actor) {
-	return actor?.type === "NPC" && actor?.getFlag(MODULE_ID, "isParty") === true;
-}
 
 /**
  * Register the Party sheet
@@ -9225,19 +9217,8 @@ registerBackgroundAdvancementHooks();
 // Freya's Omen reroll button on critically-failed spell cards; registered here to keep hook order
 registerFreyasOmenHooks();
 
-// Clean up deleted actors from parties
-Hooks.on("deleteActor", (actor, options, userId) => {
-	if (actor.type !== "Player") return;
-
-	// Remove this actor from all parties
-	game.actors.filter(a => isPartyActor(a)).forEach(async party => {
-		const memberIds = party.getFlag(MODULE_ID, "members") ?? [];
-		if (memberIds.includes(actor.id)) {
-			const newMemberIds = memberIds.filter(id => id !== actor.id);
-			await party.setFlag(MODULE_ID, "members", newMemberIds);
-		}
-	});
-});
+// Party membership cleanup on actor delete; registered here to keep hook order
+registerPartyCleanupHooks();
 
 // Condition toggles refresh when effects change; registered here to keep hook order
 registerConditionEffectHooks();

@@ -173,7 +173,8 @@
       "Hooks.on:updateActor",
       "Hooks.on:updateItem",
       "Hooks.on:createItem",
-      "Hooks.on:deleteItem"
+      "Hooks.on:deleteItem",
+      "Hooks.on:deleteActor"
     ],
     "PinListApp.mjs": [
       "Hooks.on:updateScene",
@@ -418,7 +419,6 @@
       "Hooks.on:preDeleteItem",
       "Hooks.on:deleteItem",
       "Hooks.on:preUpdateActor",
-      "Hooks.on:deleteActor",
       "Hooks.once:ready",
       "Hooks.on:quenchReady",
       "Hooks.once:ready",

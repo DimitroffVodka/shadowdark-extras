@@ -3064,3 +3064,40 @@ export function registerPartySheetRerenderHooks() {
 		}
 	});
 }
+
+/**
+ * Party membership predicate and cleanup, moved verbatim out of the
+ * composition root.
+ *
+ * `isPartyActor` was defined in the root with six call sites, five of which
+ * stay there and now import it. It belongs here: it is the definition of what
+ * a party actor IS, and this file is the party sheet.
+ *
+ * `deleteActor` is registered once in the root, so this one is safe to move on
+ * its own (handoff rule 1); the register call still goes back in its original
+ * position rather than relying on that.
+ */
+/**
+ * Check if an actor is a Party actor (flagged NPC)
+ * @param {Actor} actor
+ * @returns {boolean}
+ */
+export function isPartyActor(actor) {
+	return actor?.type === "NPC" && actor?.getFlag(MODULE_ID, "isParty") === true;
+}
+
+export function registerPartyCleanupHooks() {
+	// Clean up deleted actors from parties
+	Hooks.on("deleteActor", (actor, options, userId) => {
+		if (actor.type !== "Player") return;
+
+		// Remove this actor from all parties
+		game.actors.filter(a => isPartyActor(a)).forEach(async party => {
+			const memberIds = party.getFlag(MODULE_ID, "members") ?? [];
+			if (memberIds.includes(actor.id)) {
+				const newMemberIds = memberIds.filter(id => id !== actor.id);
+				await party.setFlag(MODULE_ID, "members", newMemberIds);
+			}
+		});
+	});
+}
