@@ -4,6 +4,30 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.52] — 2026-07-31 — Smaller downloads, restored combat automation, and internal reorganization
+
+### Changed
+
+- **The Phase 3 source reorganization is intentionally user-invisible.** Feature implementations now live in owned modules and `scripts/shadowdark-extras.mjs` is a 1,654-line composition root instead of a 21,861-line mixed implementation file. Hook order, settings keys, public API names, and registration totals are pinned by structural gates; this release is meant to behave like 6.10.51 apart from the fixes and asset optimization listed below.
+
+- **The shipped image payload is about 99 MB smaller.** 1,431 raster assets were converted to WebP, reducing their archive footprint from 140.2 MB to 41.4 MB. A conservative one-time GM migration updates stored Shadowdark Extras image paths in existing world documents, settings, and unlocked world compendiums only when the replacement WebP responds successfully; 14 images for which WebP was larger remain in their original format.
+
+### Fixed
+
+- **SDX weapon hit and damage bonuses work in the Shadowdark 4.x roll dialog again.** The integration now resolves actors from the UUID Shadowdark actually supplies, including unlinked token actors; optional bonus controls no longer duplicate when toggled, hit bonuses reach the attack roll, and damage bonuses remain single-applied.
+
+- **Weapon hit-bonus details render on attack chat cards again.** The result now travels with Shadowdark's roll configuration and the v14 chat renderer uses the native DOM element it receives, eliminating the silent failure and the former `undefined` result display.
+
+- **Wand charge controls render and persist on Shadowdark 4.x item sheets again.** The controls are anchored to a field the current Wand sheet still emits, so a GM can enable uses and edit current and maximum charges without writing flags manually.
+
+- **Player-to-GM automation sockets are registered before migrations can suspend startup.** Spell and item macros, Holy/Cleansing/Wrath weapon actions, Identify, class-ability macros, party travel mutations, and target synchronization are available as soon as the module reaches `ready`, including on worlds where an asset or item-macro migration has real work to do.
+
+- **Target synchronization no longer clears targets and throws when socketlib elects a headless GM with no canvas.** That client now leaves its target state untouched and reports the unavailable canvas; a normal GM client continues to mirror player targets.
+
+### Known issues
+
+- **Seven confirmed limitations remain deliberately unfixed in this verification-only release.** Item Macro migration is one-shot for content added after it ran; two unidentified-name implementations disagree for legacy Shadowdark 3.x data; an effect configured only with `requireEquipped` can remain active until the next sheet/update check; the quick-condition effect hooks do not refresh an already-open modal; the NPC item chat icon calls a method removed in Shadowdark 4.x; unidentified magic items can still reveal their magic-item marker to players; and alignment-based Spellbook filtering patches the Shadowdark 3.x method location and therefore does not run on Shadowdark 4.x. Maintainer evidence and scope decisions are recorded in `docs/KNOWN-ISSUES.md`.
+
 ## [6.10.51] — 2026-07-30 — Background and NPC Attack sheets save reliably on Foundry v14
 
 ### Fixed
