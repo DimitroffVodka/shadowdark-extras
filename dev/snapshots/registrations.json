@@ -361,6 +361,10 @@
     "predefined-effects.mjs": [
       "Hooks.once:init"
     ],
+    "roll-patches.mjs": [
+      "Hooks.on:createActor",
+      "Hooks.on:renderRollDialogSD"
+    ],
     "shadowdark-extras.mjs": [
       "libWrapper.register:<dynamic>",
       "Hooks.once:init",
@@ -385,9 +389,6 @@
       "Hooks.on:renderNpcSheetSD",
       "Hooks.on:renderNpcSheetSD",
       "Hooks.on:renderActorSheet",
-      "Hooks.on:createActor",
-      "Hooks.on:renderRollDialogSD",
-      "Hooks.on:updateItem",
       "Hooks.on:renderItemSheet",
       "Hooks.on:renderApplicationV2",
       "Hooks.on:preUpdateItem",
@@ -452,6 +453,9 @@
       "socket.register:sdxIdentifyItemAsGM",
       "socket.register:sdxShowItemRevealForUser",
       "socket.register:sdxShowIdentifyDialog"
+    ],
+    "staff-spells.mjs": [
+      "Hooks.on:updateItem"
     ],
     "template-target-sync.mjs": [
       "socket.register:syncTargetsToGM"

@@ -31,6 +31,12 @@ export const FEATURE_OWNERS = {
   "item-sheets": [
     "PotionSheetSD.mjs",
     "StaffSpellManager.mjs",
+    "staff-spells.mjs",
+    "activity-tab-widgets.mjs",
+    "spell-sheet-enhance.mjs",
+    "potion-sheet-enhance.mjs",
+    "scroll-sheet-enhance.mjs",
+    "wand-sheet-enhance.mjs",
     "ClassAbilitySheetSD.mjs",
     "ItemTypeConfigs.mjs",
     "TemplateTargetingConfig.mjs",
@@ -53,6 +59,8 @@ export const FEATURE_OWNERS = {
   combat: [
     "CombatSettingsSD.mjs",
     "WeaponBonusConfig.mjs",
+    "roll-patches.mjs",
+    "hit-bonus.mjs",
     "FormationSpawnerSD.mjs",
     "MarchingModeSD.mjs",
     "MedkitSD.mjs",
@@ -71,6 +79,7 @@ export const FEATURE_OWNERS = {
     "invisibility.mjs",
     "source-requirements.mjs",
     "predefined-effects.mjs",
+    "casting-blockers.mjs",
   ],
   animation: [
     "AnimationFxSD.mjs",
