@@ -65,11 +65,20 @@ function boundNames(masked) {
 
   for (const m of masked.matchAll(/\b(?:function|class)\s*\*?\s*([A-Za-z_$][\w$]*)/g)) add(m[1]);
   for (const m of masked.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g)) add(m[1]);
-  // Class fields. `static DEFAULT_OPTIONS = {…}` and `static PARTS = {…}` are the
-  // ApplicationV2 idiom, and a plain `field = …` is the instance form. Neither is
-  // a const/let/var declaration, so without this the field NAME reads as an
-  // unbound call the first time an AppV2 class is extracted into its own module.
-  for (const m of masked.matchAll(/^\s*(?:static\s+)?([A-Za-z_$][\w$]*)\s*=[^=>]/gm)) add(m[1]);
+  // Class fields — `static DEFAULT_OPTIONS = {…}` / `static PARTS = {…}`, the
+  // ApplicationV2 idiom. Not a const/let/var declaration, so without this the
+  // field NAME reads as an unbound call the first time an AppV2 class is
+  // extracted into its own module.
+  //
+  // Deliberately requires `static`, and deliberately does NOT match a bare
+  // `name = …`. An earlier version did, and that is a FALSE NEGATIVE generator:
+  // any assignment inside a function body would bind the name, so
+  // `function f() { missing = 1; return missing(); }` reported nothing. A gate
+  // that silently stops reporting is worse than the blind spot it replaced.
+  // Instance fields (`field = …` with no `static`) are not matched; none exist
+  // in this tree, and the cost of missing one is a false POSITIVE, which is the
+  // safe direction. See the regression tests in dev/tests/structural-gates.test.mjs.
+  for (const m of masked.matchAll(/^\s*static\s+([A-Za-z_$][\w$]*)\s*=[^=>]/gm)) add(m[1]);
   // destructured bindings, incl. `const { a, b: c } = …` and import clauses.
   // The optional identifier before the brace is the default binding in a mixed
   // clause — `import Default, { named } from …`. Without it the named half is
