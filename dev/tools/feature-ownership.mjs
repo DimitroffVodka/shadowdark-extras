@@ -2,13 +2,22 @@
  * Feature ownership map, transcribed from `docs/architecture/feature-map.md`.
  *
  * The feature map is the authority for classification; this file is a machine
- * readable copy of its inventory table, keyed by module basename (unique across
- * all 138 non-vendor modules). When the map's ownership changes, change it there
- * first and mirror it here.
+ * readable copy of its inventory table, keyed by module basename. Basenames are
+ * unique across everything the matrix classifies — the only duplicates in the
+ * tree sit inside the vendored `scripts/maphub/js/` subtree, which `isVendor`
+ * excludes. When the map's ownership changes, change it there first and mirror
+ * it here.
  *
  * Any module missing from this table is reported as `unassigned` rather than
  * silently bucketed, because "every maintained script is mapped to one feature"
  * is an acceptance criterion of the structural track.
+ *
+ * KEEP THIS IN THE SAME COMMIT AS THE MOVE. Nothing in `verify.sh` enforces it —
+ * the cross-feature matrix is a plan stop-condition, not one of the eight
+ * blocking gates — so a stale entry here is green everywhere and only surfaces
+ * when someone regenerates the matrix. PRs #17 and #18 extracted 17 modules and
+ * added none of them; that is why the Phase 3 block below arrived in one late
+ * batch rather than alongside each move.
  */
 
 export const FEATURE_OWNERS = {
@@ -19,6 +28,11 @@ export const FEATURE_OWNERS = {
     "ItemPilesCompatSD.mjs",
     // Extracted from the composition root in Phase 3.
     "containers.mjs",
+    "default-move-drops.mjs",
+    "gem-enhancements.mjs",
+    "inventory-multi-select.mjs",
+    "inventory-styles.mjs",
+    "player-transfers.mjs",
   ],
   "character-sheet": [
     "SheetEditorConfig.mjs",
@@ -27,6 +41,14 @@ export const FEATURE_OWNERS = {
     "HpWavesSettingsSD.mjs",
     "AppearanceSettingsSD.mjs",
     "BackgroundSheetSD.mjs",
+    // Extracted from the composition root in Phase 3.
+    "background-advancement.mjs",
+    "conditions.mjs",
+    "enhanced-header.mjs",
+    "enhanced-inventory-tab.mjs",
+    "enhanced-spells-tab.mjs",
+    "sheet-decoration.mjs",
+    "skills-box.mjs",
   ],
   "item-sheets": [
     "PotionSheetSD.mjs",
@@ -64,6 +86,9 @@ export const FEATURE_OWNERS = {
     "FormationSpawnerSD.mjs",
     "MarchingModeSD.mjs",
     "MedkitSD.mjs",
+    // Extracted from the composition root in Phase 3.
+    "chat-card-hooks.mjs",
+    "freyas-omen.mjs",
   ],
   effects: [
     "AuraEffectsSD.mjs",
@@ -134,6 +159,8 @@ export const FEATURE_OWNERS = {
      * old copy and the `npc/` one goes stale with every gate still green.
      */
     "creature-type-map.mjs",
+    // Extracted from the composition root in Phase 3.
+    "npc-sheet-inventory.mjs",
   ],
   journal: [
     "JournalPinsSD.mjs",
@@ -146,6 +173,8 @@ export const FEATURE_OWNERS = {
     "DisplayNpc.mjs",
     "DisplayTable.mjs",
     "EasyReferenceMenu.mjs",
+    // Extracted from the composition root in Phase 3.
+    "journal-ui.mjs",
   ],
   hex: [
     "HexPainterSD.mjs",
@@ -184,6 +213,10 @@ export const FEATURE_OWNERS = {
     "TileFlattenSD.mjs",
     "PoiTileSortSD.mjs",
     "LightTrackerAppSD.mjs",
+    // Extracted from the composition root in Phase 3. `PartySheetSD` (party)
+    // imports `getCustomLightSources` from it — the crossing that used to run
+    // party -> root -> party, now a plain party -> canvas row in the matrix.
+    "light-templates.mjs",
   ],
   scene: ["SceneImporter.mjs", "SceneExporter.mjs", "SceneNavBar.mjs"],
   tray: ["TraySD.mjs", "TrayApp.mjs", "SDXRollerApp.mjs", "SDXRollerData.mjs"],
@@ -213,6 +246,19 @@ export const FEATURE_OWNERS = {
     // "Classify before Phase 2" row, left unassigned by oversight rather than
     // by any open question about where it belongs.
     "module-id.mjs",
+    /**
+     * Extracted from the composition root in Phase 3 (`851c3c1`).
+     *
+     * The one entry here that was a judgement call rather than a directory
+     * lookup. It bridges V1 and V2 item-sheet headers, so `item-sheets` has a
+     * claim on it — but its only importer is the composition root, so it fails
+     * the map's second-consumer test for feature ownership, and the shared
+     * bucket's definition opens with "compatibility", which is exactly what a
+     * V1/V2 bridge is. Assigned to `shared`, matching both its home and its
+     * purpose. If a feature module ever imports it directly, that crossing
+     * earns a row in the matrix and the question can be reopened on evidence.
+     */
+    "appv2-header-bridge.mjs",
   ],
   /** The composition root. Its own imports are composition, not crossings. */
   root: ["shadowdark-extras.mjs"],
