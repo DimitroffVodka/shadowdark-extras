@@ -31,9 +31,20 @@ const KNOWN_GLOBALS = new Set([
   "Object", "Promise", "Proxy", "Reflect", "RegExp", "Set", "String", "Symbol", "WeakMap", "WeakSet",
   "decodeURI", "decodeURIComponent", "encodeURI", "encodeURIComponent", "eval", "isNaN", "isFinite",
   "parseFloat", "parseInt", "structuredClone", "queueMicrotask", "require", "import",
-  // Legacy but genuinely present in every browser. Surfaced by the lookbehind
-  // fix below — `DungeonGenerator.mjs` calls `unescape` inside an `if (`, which
-  // the old consuming-group regex could not see.
+  // Legacy but genuinely present in every browser.
+  //
+  // `unescape` was surfaced by the lookbehind fix below. Its real site is
+  // `DungeonGenerator.mjs:752`, inside a template-literal interpolation:
+  // `${btoa(unescape(encodeURIComponent(svgString)))}`. The mechanism is the
+  // same one the fix is about — `btoa`'s match consumed the `(` that
+  // `unescape(` needed — but it is NOT the `if (` shape, and an earlier version
+  // of this comment said it was. That description was written from the
+  // mechanism instead of from the site, which is the same mistake in kind as
+  // the bug being fixed.
+  //
+  // `escape` is DEFENSIVE: no call to it exists anywhere in this tree today. It
+  // is listed because it is `unescape`'s counterpart and would otherwise be the
+  // next surprise.
   "escape", "unescape",
   // DOM / browser
   "Blob", "CustomEvent", "Event", "File", "FileReader", "FormData", "Headers", "Image", "MutationObserver",
