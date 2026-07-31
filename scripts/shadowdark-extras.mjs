@@ -103,7 +103,7 @@ import { registerActiveEffectConfigHooks } from "./effects/effect-config.mjs";
 import { registerSourceRequirementHooks } from "./effects/source-requirements.mjs";
 import { setupWandUsesBlocker, setupSilencedCastingBlocker } from "./effects/casting-blockers.mjs";
 import { registerPredefinedEffects } from "./effects/predefined-effects.mjs";
-import { registerContainerHooks, recomputeContainerSlots, patchGetPhysicalItemsForContainers, injectBasicContainerUI, attachContainerContentsToActorSheet, enableItemChatIcon } from "./inventory/containers.mjs";
+import { registerContainerHooks, patchGetPhysicalItemsForContainers, injectBasicContainerUI, attachContainerContentsToActorSheet, enableItemChatIcon } from "./inventory/containers.mjs";
 import { isUnidentified } from "./shared/sd4Compat.mjs";
 import { initUnidentifiedSheetContext } from "./inventory/UnidentifiedDisplaySD.mjs";
 import { registerItemCreateFlagPreservation, registerSpellItemFlagPreservation } from "./items/item-flag-preservation.mjs";
@@ -922,67 +922,9 @@ registerSpellItemFlagPreservation();
 registerContainerHooks();
 
 
-// Release contained items BEFORE a container is deleted
-Hooks.on("preDeleteItem", async (item, options, userId) => {
-	if (options?.sdxInternal) return;
-
-	// Only the user who deleted the item should release contained items
-	if (userId !== game.user.id) return;
-
-	const actor = item?.parent;
-	if (!actor) return;
-
-	// If a container item is being deleted, release all items that were inside it
-	// (make them visible again in inventory) BEFORE the container is gone
-	if (item.getFlag(MODULE_ID, "isContainer")) {
-		const containedIds = [];
-		for (const i of actor.items) {
-			if (i.getFlag(MODULE_ID, "containerId") === item.id) {
-				containedIds.push(i.id);
-			}
-		}
-
-		if (containedIds.length > 0) {
-			// Batch update all contained items to release them
-			const updates = containedIds.map(id => {
-				const child = actor.items.get(id);
-				if (!child) return null;
-				const restorePhysical = child.getFlag(MODULE_ID, "containerOrigIsPhysical");
-				return {
-					_id: id,
-					"system.isPhysical": (restorePhysical === undefined) ? true : Boolean(restorePhysical),
-					[`flags.${MODULE_ID}.containerId`]: null,
-					[`flags.${MODULE_ID}.containerOrigIsPhysical`]: null,
-				};
-			}).filter(u => u !== null);
-
-			if (updates.length > 0) {
-				try {
-					await actor.updateEmbeddedDocuments("Item", updates, { sdxInternal: true });
-				} catch (e) {
-					console.warn(`${MODULE_ID} | Could not release contained items`, e);
-				}
-			}
-		}
-	}
-});
-
-Hooks.on("deleteItem", async (item, options, userId) => {
-	if (options?.sdxInternal) return;
-
-	// Only the user who deleted the item should update container slots
-	if (userId !== game.user.id) return;
-
-	const actor = item?.parent;
-	if (!actor) return;
-
-	// If a contained item was deleted, update its container slots.
-	const containerId = item.getFlag(MODULE_ID, "containerId");
-	if (containerId) {
-		const container = actor.items.get(containerId);
-		if (container) await recomputeContainerSlots(container);
-	}
-});
+// The two container-deletion hooks moved into inventory/containers.mjs and
+// now register at the end of registerContainerHooks() above, which keeps the
+// original order: updateItem, createItem, preDeleteItem, deleteItem.
 
 // Handle updates when the sheet is submitted
 Hooks.on("preUpdateActor", (actor, changes, options, userId) => {

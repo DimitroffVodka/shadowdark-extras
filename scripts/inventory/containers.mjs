@@ -291,6 +291,82 @@ export function registerContainerHooks() {
 			}, 100);
 		}
 	});
+
+	// The container half of item deletion. These two sat in the composition
+	// root immediately after the `registerContainerHooks()` call, so
+	// registering them at the END of this function reproduces the original
+	// order exactly: updateItem, createItem, preDeleteItem, deleteItem.
+	Hooks.on("preDeleteItem", releaseContainedItemsBeforeDelete);
+	Hooks.on("deleteItem", recomputeSlotsAfterContainedDelete);
+}
+
+/**
+ * Release contained items BEFORE their container is deleted.
+ *
+ * Extracted from the composition root in Phase 3 (step 39). Named functions
+ * rather than the arrows they were, so the 41- and 14-line bodies keep their
+ * original single-tab indentation instead of shifting by one.
+ */
+async function releaseContainedItemsBeforeDelete(item, options, userId) {
+	if (options?.sdxInternal) return;
+
+	// Only the user who deleted the item should release contained items
+	if (userId !== game.user.id) return;
+
+	const actor = item?.parent;
+	if (!actor) return;
+
+	// If a container item is being deleted, release all items that were inside it
+	// (make them visible again in inventory) BEFORE the container is gone
+	if (item.getFlag(MODULE_ID, "isContainer")) {
+		const containedIds = [];
+		for (const i of actor.items) {
+			if (i.getFlag(MODULE_ID, "containerId") === item.id) {
+				containedIds.push(i.id);
+			}
+		}
+
+		if (containedIds.length > 0) {
+			// Batch update all contained items to release them
+			const updates = containedIds.map(id => {
+				const child = actor.items.get(id);
+				if (!child) return null;
+				const restorePhysical = child.getFlag(MODULE_ID, "containerOrigIsPhysical");
+				return {
+					_id: id,
+					"system.isPhysical": (restorePhysical === undefined) ? true : Boolean(restorePhysical),
+					[`flags.${MODULE_ID}.containerId`]: null,
+					[`flags.${MODULE_ID}.containerOrigIsPhysical`]: null,
+				};
+			}).filter(u => u !== null);
+
+			if (updates.length > 0) {
+				try {
+					await actor.updateEmbeddedDocuments("Item", updates, { sdxInternal: true });
+				} catch (e) {
+					console.warn(`${MODULE_ID} | Could not release contained items`, e);
+				}
+			}
+		}
+	}
+}
+
+/** Recompute a container's slots after one of its contained items is deleted. */
+async function recomputeSlotsAfterContainedDelete(item, options, userId) {
+	if (options?.sdxInternal) return;
+
+	// Only the user who deleted the item should update container slots
+	if (userId !== game.user.id) return;
+
+	const actor = item?.parent;
+	if (!actor) return;
+
+	// If a contained item was deleted, update its container slots.
+	const containerId = item.getFlag(MODULE_ID, "containerId");
+	if (containerId) {
+		const container = actor.items.get(containerId);
+		if (container) await recomputeContainerSlots(container);
+	}
 }
 
 
