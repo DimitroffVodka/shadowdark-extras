@@ -389,6 +389,9 @@
     "macro-socket.mjs": [
       "socketlib.registerModule:<dynamic>"
     ],
+    "module-settings.mjs": [
+      "Hooks.on:renderSettingsConfig"
+    ],
     "npc-feature-macros.mjs": [
       "Hooks.once:ready",
       "Hooks.once:ready"
@@ -410,7 +413,6 @@
       "Hooks.once:init",
       "Hooks.on:renderChatMessageHTML",
       "Hooks.once:ready",
-      "Hooks.on:renderSettingsConfig",
       "Hooks.once:init",
       "Hooks.on:sequencer.ready",
       "Hooks.once:ready",
