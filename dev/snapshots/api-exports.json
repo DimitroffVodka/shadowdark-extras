@@ -38,7 +38,11 @@
       ]
     },
     "shadowdark-extras.mjs": {
-      "names": []
+      "names": [
+        "executeItemMacro",
+        "getCustomLightSources",
+        "hasItemMacro"
+      ]
     }
   },
   "moduleApi": {

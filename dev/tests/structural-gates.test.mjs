@@ -6,7 +6,12 @@ import test from "node:test";
 
 import { resolveProjectImports } from "../tools/resolve-imports.mjs";
 import { findScriptPathStrings, FORBIDDEN } from "../tools/script-path-guard.mjs";
-import { collectRegistrations, readSnapshot, diffSnapshot } from "../tools/registration-snapshot.mjs";
+import {
+  collectRegistrations,
+  readSnapshot,
+  diffSnapshot,
+  scanRootCompositionCalls,
+} from "../tools/registration-snapshot.mjs";
 import { collectEsmoduleExports, diffExports } from "../tools/api-export-snapshot.mjs";
 import { collectSettingsKeys, diffSettings } from "../tools/settings-snapshot.mjs";
 import { findUnboundCalls } from "../tools/binding-scan.mjs";
@@ -150,6 +155,37 @@ test("registration snapshot: catches a reordering that preserves the count", () 
   assert.ok(differences.some((line) => line.startsWith("A.mjs[0]")), differences.join("; "));
 });
 
+test("registration snapshot: catches reordered root composition calls", () => {
+  const baseline = {
+    totals: {},
+    modules: {},
+    rootCompositionCalls: ["registerAlpha", "initBeta"],
+  };
+  const current = {
+    totals: {},
+    modules: {},
+    rootCompositionCalls: ["initBeta", "registerAlpha"],
+  };
+
+  const differences = diffSnapshot(baseline, current);
+  assert.ok(
+    differences.some((line) => line === "root composition[0]: registerAlpha -> initBeta"),
+    differences.join("; "),
+  );
+});
+
+test("registration snapshot: root call scanner ignores declarations and masked text", () => {
+  const source = `
+    function registerDeclared() {}
+    const help = "registerQuoted()";
+    // initCommented();
+    registerActual();
+    await initActual();
+  `;
+
+  assert.deepEqual(scanRootCompositionCalls(source), ["registerActual", "initActual"]);
+});
+
 test("registration snapshot: catches a module that lost its registrations", () => {
   const baseline = { totals: { "Hooks.on": 1, all: 1 }, modules: { "A.mjs": ["Hooks.on:ready"] } };
   const current = { totals: {}, modules: {} };
@@ -284,24 +320,19 @@ test("settings snapshot: records what the Quench batch needs to rebuild the live
 });
 
 /**
- * The composition root exports NOTHING, and nothing imports it.
- *
- * This assertion used to pin two names — `executeItemMacro` and
- * `hasItemMacro` — which the root re-exported solely so `AuraEffectsSD` and
- * `TemplateEffectsSD` could reach them by `await import("../shadowdark-extras.mjs")`.
- * That was the last feature-to-root edge in the graph, and it is why the root
- * could only ever be described as a "static-import leaf" rather than a leaf.
- *
- * Both consumers now import from `item-macros/item-macro-engine.mjs`, so the
- * re-export is gone and the guard tightens from "exports exactly these two" to
- * "exports nothing". Re-exporting anything through the root recreates the
- * inversion the structural track existed to remove, so this failing is a
- * design regression, not a bookkeeping one.
+ * The declared esmodule's original export names are a compatibility contract.
+ * Feature modules no longer import the root — that is the dependency property
+ * the track needed — but external consumers may still import these names from
+ * the manifest entry point. Keep the forwarding surface exact.
  */
-test("api-export snapshot: the composition root exports nothing", () => {
+test("api-export snapshot: the composition root preserves its compatibility exports", () => {
   const { esmodules } = collectEsmoduleExports();
 
-  assert.deepEqual(esmodules["shadowdark-extras.mjs"].names, []);
+  assert.deepEqual(esmodules["shadowdark-extras.mjs"].names, [
+    "executeItemMacro",
+    "getCustomLightSources",
+    "hasItemMacro",
+  ]);
 });
 
 /**

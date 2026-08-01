@@ -35,6 +35,10 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  *   - ~36 bare `registerX()` / `initX()` calls. Ordered composition. This is
  *     the intended end state, not leftovers.
  *
+ *   - Three compatibility re-exports from the original declared esmodule
+ *     surface. Internal consumers import from the owning feature modules, so
+ *     these preserve external callers without recreating a feature→root edge.
+ *
  *   - The `Hooks.on("setup")` block that builds `module.api`. Public API
  *     construction belongs to the root by definition: it is the only place
  *     that legitimately knows every feature.
@@ -202,6 +206,10 @@ import { getSceneLevelContext, applySceneLevelData, getDungeonBackground } from 
 import { placeChangeLevelRegion, placeDungeonSurface, placeDungeonDecor } from "./dungeon/DungeonRegionsSD.mjs";
 import { registerSettings, setupSettingsOrganization } from "./settings/module-settings.mjs";
 
+// Backward-compatible declared-esmodule surface. These names were public before
+// the reorganization; internal feature modules import from their owners instead.
+export { getCustomLightSources } from "./canvas/light-templates.mjs";
+export { executeItemMacro, hasItemMacro } from "./item-macros/item-macro-engine.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
