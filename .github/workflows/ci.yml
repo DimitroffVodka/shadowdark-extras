@@ -1,0 +1,48 @@
+name: CI
+
+# Phase 5.0.7: permanent local+CI enforcement. Every PR to main and push to
+# main must pass the structural gates (verify.sh, which now includes the
+# error-level eslint gate + unused-import gate) and the full test suite,
+# under Node 24 (the supported runtime; see package.json engines).
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Structural + lint gates
+        # verify.sh is error-level blocking: eslint (0 errors baseline),
+        # structural gates, snapshots, binding gate, regression scans.
+        # The packs/ LOCK check is -f guarded, so a fresh clone without
+        # the gitignored packs/ build output passes (confirmed in 5.0.7).
+        run: bash verify.sh
+
+      - name: Test suite
+        run: npm run test:all
