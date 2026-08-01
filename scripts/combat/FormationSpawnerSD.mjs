@@ -111,7 +111,8 @@ export class FormationSpawnerSD extends HandlebarsApplicationMixin(ApplicationV2
 		if (savedFormation?.active && savedFormation?.data) {
 			this.formation = savedFormation.data;
 			this.gridSize = savedFormation.gridSize || 7;
-		} else {
+		}
+		else {
 			this.formation = await this._createDefaultFormation();
 		}
 	}

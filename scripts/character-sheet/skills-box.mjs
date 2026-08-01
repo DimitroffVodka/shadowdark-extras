@@ -150,7 +150,8 @@ function openSkillDialog(actor, existingSkill) {
 					let skills = actor.getFlag(MODULE_ID, "skills") || [];
 					if (existingSkill) {
 						skills = skills.map(s => s.id === existingSkill.id ? { ...s, name, ability } : s);
-					} else {
+					}
+					else {
 						skills.push({ id: foundry.utils.randomID(), name, ability });
 					}
 					await actor.setFlag(MODULE_ID, "skills", skills);

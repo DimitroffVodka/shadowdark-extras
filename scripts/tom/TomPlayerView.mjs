@@ -68,7 +68,8 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 						// Remove the black transition overlay
 						TomPlayerView._removeTransitionOverlay();
 					}, { once: true });
-				} else {
+				}
+				else {
 					// No animation, remove overlay immediately
 					TomPlayerView._removeTransitionOverlay();
 				}
@@ -147,10 +148,12 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 								const parsed = JSON.parse(rawData);
 								if (parsed.type === "Tile" && parsed.texture?.src) {
 									filePath = parsed.texture.src;
-								} else if (parsed.src || parsed.path || parsed.img) {
+								}
+								else if (parsed.src || parsed.path || parsed.img) {
 									filePath = parsed.src || parsed.path || parsed.img;
 								}
-							} catch (e) { }
+							}
+							catch (e) { }
 						}
 
 						if (filePath) {
@@ -183,7 +186,8 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 						this._spawnActorToken(actor, image, x, y);
 						return;
 					}
-				} catch (err) {
+				}
+				catch (err) {
 					console.error("Tom | Error handling drop:", err);
 				}
 			});
@@ -530,7 +534,8 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 				contentWidth = contentHeight * VIEWBOX_ASPECT;
 				offsetX = (containerRect.width - contentWidth) / 2;
 				offsetY = 0;
-			} else {
+			}
+			else {
 
 				contentWidth = containerRect.width;
 				contentHeight = contentWidth / VIEWBOX_ASPECT;
@@ -787,7 +792,8 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 						if (token.currentHp !== undefined) {
 							hpValue = token.currentHp;
 							hpMax = token.maxHp ?? actor.system?.attributes?.hp?.max ?? actor.system?.hp?.max ?? 0;
-						} else {
+						}
+						else {
 							hpValue = actor.system?.attributes?.hp?.value ?? actor.system?.hp?.value ?? 0;
 							hpMax = actor.system?.attributes?.hp?.max ?? actor.system?.hp?.max ?? 0;
 						}
@@ -922,7 +928,8 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 				this._instance.uiState.sequenceBackground = null;
 				this._instance.render();
 				resolve();
-			} else {
+			}
+			else {
 				resolve();
 			}
 		});
@@ -966,7 +973,8 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 					playerView.classList.remove(`anim-out-${outAnimation}`);
 					resolve();
 				}, animDuration);
-			} else {
+			}
+			else {
 				resolve();
 			}
 		});
@@ -1069,7 +1077,8 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 			if (isNPC && tokenState?.currentHp !== undefined) {
 				hpValue = tokenState.currentHp;
 				hpMax = tokenState.maxHp ?? actor.system?.attributes?.hp?.max ?? actor.system?.hp?.max ?? 0;
-			} else {
+			}
+			else {
 				hpValue = actor.system?.attributes?.hp?.value ?? actor.system?.hp?.value ?? 0;
 				hpMax = actor.system?.attributes?.hp?.max ?? actor.system?.hp?.max ?? 0;
 			}
@@ -1265,7 +1274,8 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 					newConditions = activeConditions.filter(c => c !== cond.id);
 					const idx = activeConditions.indexOf(cond.id);
 					if (idx > -1) activeConditions.splice(idx, 1);
-				} else {
+				}
+				else {
 
 					newConditions = [...activeConditions, cond.id];
 					activeConditions.push(cond.id);
@@ -1339,7 +1349,8 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 
 						if (isNPC) {
 							TomSocketHandler.emitArenaTokenHpUpdate({ tokenId, hp: clampedHp, maxHp });
-						} else {
+						}
+						else {
 							const actor = game.actors.get(actorId);
 							if (actor) {
 								await actor.update({ "system.attributes.hp.value": clampedHp });
@@ -1612,7 +1623,8 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 				contentWidth = contentHeight * VIEWBOX_ASPECT;
 				offsetX = (containerRect.width - contentWidth) / 2;
 				offsetY = 0;
-			} else {
+			}
+			else {
 				contentWidth = containerRect.width;
 				contentHeight = contentWidth / VIEWBOX_ASPECT;
 				offsetX = 0;
@@ -1638,7 +1650,8 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 
 			startPx = { x: screenStartX - viewRect.left, y: screenStartY - viewRect.top };
 			endPx = { x: screenEndX - viewRect.left, y: screenEndY - viewRect.top };
-		} else {
+		}
+		else {
 
 			startPx = {
 				x: (startX / VIEWBOX_WIDTH) * viewRect.width,

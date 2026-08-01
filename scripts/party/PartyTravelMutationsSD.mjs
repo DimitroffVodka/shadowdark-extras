@@ -81,7 +81,8 @@ export function planPartyTravelMutation(
 			nextSelections[taskKey] ??= {};
 			nextSelections[taskKey][memberId] = 0;
 		}
-	} else if (operation === "selectAbility") {
+	}
+	else if (operation === "selectAbility") {
 		const task = taskMap.get(taskKey);
 		if (!task) throw new Error("Unknown travel task");
 		if (!(nextAssignments[taskKey] ?? []).includes(memberId)) {
@@ -97,7 +98,8 @@ export function planPartyTravelMutation(
 		}
 		nextSelections[taskKey] ??= {};
 		nextSelections[taskKey][memberId] = index;
-	} else {
+	}
+	else {
 		throw new Error("Unknown Party travel operation");
 	}
 

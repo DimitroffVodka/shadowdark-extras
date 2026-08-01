@@ -105,7 +105,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 
 				}
 			}
-		} else {
+		}
+		else {
 			style = getPinStyle();
 		}
 
@@ -246,7 +247,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 				removable: p.removable,
 				label: p.name.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
 			})).sort((a, b) => a.label.localeCompare(b.label));
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX | Error fetching TMFX presets:", err);
 			return [];
 		}
@@ -273,7 +275,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 
 			if (rawType !== "unknown") {
 				label = type.charAt(0).toUpperCase() + type.slice(1);
-			} else if (id && id.toLowerCase() !== "unknown") {
+			}
+			else if (id && id.toLowerCase() !== "unknown") {
 				label = id.charAt(0).toUpperCase() + id.slice(1);
 			}
 
@@ -481,7 +484,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 				if (shape === "image") {
 					if (standardStyleSection) standardStyleSection.style.display = "none";
 					if (imageShapeOptions) imageShapeOptions.style.display = "block";
-				} else {
+				}
+				else {
 					if (standardStyleSection) standardStyleSection.style.display = "block";
 					if (imageShapeOptions) imageShapeOptions.style.display = "none";
 				}
@@ -604,7 +608,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 						previewPin.style.backgroundSize = "contain";
 						previewPin.style.backgroundPosition = "center";
 						previewPin.style.backgroundRepeat = "no-repeat";
-					} else {
+					}
+					else {
 						// Fallback placeholder
 						previewPin.style.backgroundImage = "none";
 						previewPin.style.border = "1px dashed #666";
@@ -628,7 +633,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 					// Custom SVG icon
 					if (style.customIconPath) {
 						content.innerHTML = `<img src="${style.customIconPath}" style="width: 70%; height: 70%; filter: invert(1);" />`;
-					} else {
+					}
+					else {
 						content.innerHTML = "<i class=\"fa-solid fa-image\"></i>";
 						content.style.fontSize = `${size * 0.5}px`;
 					}
@@ -639,7 +645,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 				else {
 					if (type === "text") {
 						content.textContent = style.customText || "";
-					} else {
+					}
+					else {
 						// Calculate actual page number for preview
 						let pageNumber = "";
 						const journal = game.journal.get(style.journalId);
@@ -655,7 +662,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 					if (style.fontFamily && style.fontFamily !== "Arial") {
 						try {
 							await document.fonts.load(`16px ${style.fontFamily}`);
-						} catch (e) {
+						}
+						catch (e) {
 							console.warn(`SDX Pin Editor | Failed to load font: ${style.fontFamily}`);
 						}
 					}
@@ -670,7 +678,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 					if (style.fontStrokeThickness > 0) {
 						content.style.webkitTextStroke = `${style.fontStrokeThickness}px ${style.fontStroke || "#000000"}`;
 						content.style.paintOrder = "stroke fill";
-					} else {
+					}
+					else {
 						content.style.webkitTextStroke = "unset";
 					}
 				}
@@ -723,7 +732,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 					previewLabel.style.backgroundColor = style.labelBackgroundColor || "rgba(0,0,0,0.8)";
 					previewLabel.style.opacity = style.labelBackgroundOpacity ?? 1.0;
 					previewLabel.style.borderImage = "none";
-				} else if (labelBg === "image") {
+				}
+				else if (labelBg === "image") {
 					previewLabel.style.borderRadius = "0";
 
 					if (style.labelBorderImagePath) {
@@ -743,10 +753,12 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 						if (style.labelBackgroundOpacity > 0) {
 							previewLabel.style.backgroundColor = style.labelBackgroundColor || "#000000";
 							previewLabel.style.opacity = style.labelBackgroundOpacity;
-						} else {
+						}
+						else {
 							previewLabel.style.backgroundColor = "transparent";
 						}
-					} else {
+					}
+					else {
 						previewLabel.style.border = "1px dashed #666";
 						previewLabel.style.backgroundColor = "transparent";
 						previewLabel.style.borderImage = "none";
@@ -788,7 +800,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 				const shape = form.querySelector('[name="shape"]')?.value;
 				if (shape === "image") {
 					return parseFloat(form.querySelector('.image-opacity-option [name="opacity"]')?.value) ?? 1.0;
-				} else {
+				}
+				else {
 					return parseFloat(form.querySelector('.standard-style-options [name="opacity"]')?.value) ?? 1.0;
 				}
 			})(),
@@ -842,7 +855,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		if (formData.labelBackground === "image") {
 			formData.labelBackgroundColor = form.querySelector('[name="labelImageBackgroundColor"]')?.value || "#000000";
 			formData.labelBackgroundOpacity = parseFloat(form.querySelector('[name="labelImageBackgroundOpacity"]')?.value) ?? 0.8;
-		} else {
+		}
+		else {
 			// Default/Solid inputs
 			formData.labelBackgroundColor = form.querySelector('[name="labelBackgroundColor"]')?.value || "#000000";
 			formData.labelBackgroundOpacity = parseFloat(form.querySelector('[name="labelBackgroundOpacity"]')?.value) ?? 0.8;
@@ -947,7 +961,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 				console.log("SDX Pin Style Editor | Saving pin update:", { pinId, updateData });
 				await JournalPinManager.update(pinId, updateData);
 				ui.notifications.info(game.i18n.localize("SDX.pinStyleEditor.savedIndividual"));
-			} else {
+			}
+			else {
 				// Save to global defaults
 				await game.settings.set(MODULE_ID, "pinStyleDefaults", style);
 				ui.notifications.info(game.i18n.localize("SDX.pinStyleEditor.saved"));
@@ -958,7 +973,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 					JournalPinRenderer.loadScenePins(canvas.scene.id, pins);
 				}
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX | Error saving pin style:", err);
 			ui.notifications.error("Error saving pin style settings.");
 		}
@@ -1006,7 +1022,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			// Reset individual pin style by clearing overrides
 			await JournalPinManager.update(this.pinId, { style: {} });
 			ui.notifications.info(game.i18n.localize("SDX.pinStyleEditor.resetIndividualMsg"));
-		} else {
+		}
+		else {
 			// Reset global defaults
 			await game.settings.set(MODULE_ID, "pinStyleDefaults", DEFAULT_PIN_STYLE);
 			ui.notifications.info(game.i18n.localize("SDX.pinStyleEditor.resetMsg"));
@@ -1049,7 +1066,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 
 			// Small delay to ensure flag updates propagate before re-render
 			setTimeout(() => this.render(), 100);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX | Error applying TMFX preset:", err);
 			ui.notifications.error("Failed to apply TokenMagic FX preset.");
 		}
@@ -1095,7 +1113,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			}, params);
 			ui.notifications.info(`Saved preset: ${finalName}`);
 			this.render();
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX | Error saving TMFX preset:", err);
 			ui.notifications.error("Failed to save preset.");
 		}
@@ -1129,7 +1148,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			});
 			ui.notifications.info(`Deleted preset: ${presetName}`);
 			this.render();
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX | Error deleting TMFX preset:", err);
 			ui.notifications.error("Failed to delete preset.");
 		}
@@ -1150,7 +1170,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 
 			// Small delay to ensure flag updates propagate before re-render
 			setTimeout(() => this.render(), 100);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`SDX Pin Editor | Error removing TMFX filter ${filterId}:`, err);
 		}
 	}
@@ -1170,7 +1191,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 
 			// Small delay to ensure flag updates propagate before re-render
 			setTimeout(() => this.render(), 100);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX | Error clearing TMFX filters:", err);
 		}
 	}
@@ -1185,8 +1207,12 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		// Create a proxy object that mimics a Foundry Document for TokenMagic
 		const proxy = {
 			id: pin.id,
-			get documentName() { return "SDXPin"; },
-			get isOwner() { return game.user.isGM; },
+			get documentName() {
+				return "SDXPin";
+			},
+			get isOwner() {
+				return game.user.isGM;
+			},
 			getFlag: (scope, key) => {
 				if (scope === "tokenmagic" && key === "filters") {
 					return pin.flags?.tokenmagic?.filters || [];
@@ -1232,14 +1258,16 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 									tmParams: foundry.utils.mergeObject(existingFilter.tmFilters.tmParams, data),
 								},
 							};
-						} else if (existingFilter.tmParams) {
+						}
+						else if (existingFilter.tmParams) {
 							// Nested structure - update BOTH top-level AND tmParams
 							updatedFilter = {
 								...existingFilter,
 								...data,  // Update top-level properties
 								tmParams: foundry.utils.mergeObject(existingFilter.tmParams, data),  // Update tmParams
 							};
-						} else {
+						}
+						else {
 							// Flat structure - direct merge
 							updatedFilter = { ...existingFilter, ...data };
 						}
@@ -1257,7 +1285,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 							if (!pin.flags.tokenmagic) pin.flags.tokenmagic = {};
 							pin.flags.tokenmagic.filters = currentFilters;
 						}
-					} else {
+					}
+					else {
 						console.warn("SDX Pin Editor | Filter not found for update:", data.filterInternalId);
 						console.warn("SDX Pin Editor | Available filters:", currentFilters.map(f => ({
 							tmFilterInternalId: f.tmFilters?.tmFilterInternalId,
@@ -1265,7 +1294,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 							tmParamsFilterInternalId: f.tmParams?.filterInternalId,
 						})));
 					}
-				} else {
+				}
+				else {
 					// Standard update (non-TMFX data)
 					await JournalPinManager.update(pin.id, data);
 				}
@@ -1277,7 +1307,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 
 		if (activeInstance) {
 			activeInstance.close();
-		} else {
+		}
+		else {
 			// Position the editor near the styling app
 			const { left, top, width } = this.position;
 			new FilterEditor(

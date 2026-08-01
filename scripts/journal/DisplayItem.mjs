@@ -38,7 +38,8 @@ async function getItemFromUUID(uuid) {
 			item = await fromUuid(uuid);
 		}
 		return item;
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn(`SDX DisplayItemCard: Could not find item for UUID: ${uuid}`);
 		return null;
 	}
@@ -101,9 +102,11 @@ function buildWeaponStatsHtml(item) {
 	let damageStr = "";
 	if (oneHanded && twoHanded) {
 		damageStr = `${oneHanded}/${twoHanded}`;
-	} else if (twoHanded) {
+	}
+	else if (twoHanded) {
 		damageStr = twoHanded;
-	} else if (oneHanded) {
+	}
+	else if (oneHanded) {
 		damageStr = oneHanded;
 	}
 
@@ -228,9 +231,11 @@ function buildSpellStatsHtml(item) {
 		const durValue = system.duration.value || "";
 		if (durType === "instant") {
 			durationStr = "Instant";
-		} else if (durType === "focus") {
+		}
+		else if (durType === "focus") {
 			durationStr = "Focus";
-		} else if (durValue) {
+		}
+		else if (durValue) {
 			const typeLabel = durType === "rounds" ? "rounds" : durType === "realTime" ? "real time" : durType;
 			durationStr = `${durValue} ${typeLabel}`;
 		}
@@ -327,7 +332,8 @@ export async function enrichDisplayItemCard(match, _options) {
 		let titleContent;
 		if (parsedMatch.named) {
 			titleContent = `<span class="sdx-item-name">${itemName}</span>`;
-		} else {
+		}
+		else {
 			titleContent = `@UUID[${item.uuid}]{${itemName}}`;
 		}
 
@@ -339,10 +345,12 @@ export async function enrichDisplayItemCard(match, _options) {
 		if (itemType === "Weapon") {
 			statsHtml = buildWeaponStatsHtml(item);
 			container.classList.add("sdx-display-item-weapon");
-		} else if (itemType === "Armor") {
+		}
+		else if (itemType === "Armor") {
 			statsHtml = buildArmorStatsHtml(item);
 			container.classList.add("sdx-display-item-armor");
-		} else if (itemType === "Spell" || itemType === "Scroll" || itemType === "Wand") {
+		}
+		else if (itemType === "Spell" || itemType === "Scroll" || itemType === "Wand") {
 			statsHtml = buildSpellStatsHtml(item);
 			container.classList.add("sdx-display-item-spell");
 		}
@@ -361,7 +369,8 @@ export async function enrichDisplayItemCard(match, _options) {
         </div>`;
 
 		container.innerHTML = await TextEditor.enrichHTML(html, { async: true });
-	} else {
+	}
+	else {
 		// Broken link fallback
 		container.dataset.itemId = parsedMatch.uuid;
 		if (match[2]) container.dataset.itemName = match[2];

@@ -249,7 +249,8 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 						const specialAttack = foundry.utils.deepClone(this.item.getFlag(MODULE_ID, "specialAttack") || {});
 						foundry.utils.setProperty(specialAttack, field.flagPath, value);
 						await this.item.setFlag(MODULE_ID, "specialAttack", specialAttack);
-					} else {
+					}
+					else {
 						await this.item.update({ [field.path]: value });
 					}
 				};

@@ -42,7 +42,8 @@ export async function injectEnhancedHeader(app, html, actor) {
 	// Check if enhanced header is enabled
 	try {
 		if (!game.settings.get(MODULE_ID, "enableEnhancedHeader")) return;
-	} catch {
+	}
+	catch {
 		return;
 	}
 
@@ -89,7 +90,8 @@ export async function injectEnhancedHeader(app, html, actor) {
 			const backgroundItem = await fromUuid(sys.background);
 			backgroundName = backgroundItem?.name || "";
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn("shadowdark-extras | Error fetching character details:", e);
 	}
 
@@ -136,7 +138,8 @@ export async function injectEnhancedHeader(app, html, actor) {
 				<div class="sdx-luck-label">LUCK</div>
 			</div>
 		`;
-	} else {
+	}
+	else {
 		// Standard mode: show toggle icon
 		const hasLuck = luck ? "has-luck" : "";
 		const luckStatus = luck ? "Available" : "Used";
@@ -287,7 +290,8 @@ export async function injectEnhancedHeader(app, html, actor) {
 			// Use tokenizeActor for direct tokenization, or launch for UI
 			if (window.Tokenizer?.tokenizeActor) {
 				await window.Tokenizer.tokenizeActor(actor);
-			} else if (window.Tokenizer?.launch) {
+			}
+			else if (window.Tokenizer?.launch) {
 				// Launch with options
 				const options = {
 					name: actor.name,
@@ -298,7 +302,8 @@ export async function injectEnhancedHeader(app, html, actor) {
 					//console.log("shadowdark-extras | Tokenizer response:", response);
 					ui.notifications.success(`Tokenizer completed for ${actor.name}!`);
 				});
-			} else {
+			}
+			else {
 				// Fallback to file picker if Tokenizer API not found
 				const fp = new FilePicker({
 					type: "image",
@@ -309,7 +314,8 @@ export async function injectEnhancedHeader(app, html, actor) {
 				});
 				return fp.browse();
 			}
-		} catch (error) {
+		}
+		catch (error) {
 			console.error("shadowdark-extras | Error launching tokenizer:", error);
 			ui.notifications.error(`Failed to launch tokenizer: ${error.message}`);
 		}
@@ -340,7 +346,8 @@ export async function injectEnhancedHeader(app, html, actor) {
 			if (e.key === "Enter") {
 				e.preventDefault();
 				$input.blur();
-			} else if (e.key === "Escape") {
+			}
+			else if (e.key === "Escape") {
 				$input.val(currentHp);
 				$input.blur();
 			}
@@ -403,14 +410,16 @@ export async function injectEnhancedHeader(app, html, actor) {
 				if (e.key === "Enter") {
 					e.preventDefault();
 					$input.blur();
-				} else if (e.key === "Escape") {
+				}
+				else if (e.key === "Escape") {
 					// Restore original value display without saving
 					const $newLuckValue = $(`<div class="sdx-luck-value">${currentLuck}</div>`);
 					$input.replaceWith($newLuckValue);
 				}
 			});
 		});
-	} else {
+	}
+	else {
 		// Standard mode: toggle on/off
 		$luckContainer.on("click", async () => {
 			if (!actor.isOwner) return;
@@ -445,7 +454,8 @@ export async function injectEnhancedHeader(app, html, actor) {
 			if (ev.key === "Enter") {
 				ev.preventDefault();
 				$input.blur();
-			} else if (ev.key === "Escape") {
+			}
+			else if (ev.key === "Escape") {
 				const $newXpValue = $(`<span class="sdx-xp-value">${currentXp}</span>`);
 				$input.replaceWith($newXpValue);
 			}
@@ -473,7 +483,8 @@ export async function injectEnhancedHeader(app, html, actor) {
 			if (sys.class) {
 				actorClass = await fromUuid(sys.class);
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn("shadowdark-extras | Could not fetch actor class:", err);
 		}
 
@@ -482,7 +493,8 @@ export async function injectEnhancedHeader(app, html, actor) {
 		// with `Cannot read properties of null` when actor.system.class is empty.
 		if (!actorClass || (level === 0 && actorClass?.name?.includes("Level 0"))) {
 			new shadowdark.apps.CharacterGeneratorSD(actor._id).render(true);
-		} else {
+		}
+		else {
 			// Standard level up
 			new shadowdark.apps.LevelUpSD(actor._id).render(true);
 		}
@@ -495,10 +507,12 @@ export async function injectEnhancedHeader(app, html, actor) {
 		const skipPrompt = event?.shiftKey === true;
 		if (typeof actor.system?.rollStatCheck === "function") {
 			await actor.system.rollStatCheck(String(ability).toLowerCase(), { skipPrompt });
-		} else if (typeof actor.rollAbility === "function") {
+		}
+		else if (typeof actor.rollAbility === "function") {
 			// Legacy SD <4.x
 			actor.rollAbility(ability);
-		} else {
+		}
+		else {
 			console.warn(`${MODULE_ID} | No ability-roll API on actor for "${ability}"`);
 		}
 	});
@@ -517,7 +531,8 @@ export async function injectEnhancedHeader(app, html, actor) {
 		// Fallback: just roll a dex stat check if not in combat (SD 4.x: rollStatCheck)
 		if (typeof actor.system?.rollStatCheck === "function") {
 			await actor.system.rollStatCheck("dex");
-		} else if (typeof actor.rollAbility === "function") {
+		}
+		else if (typeof actor.rollAbility === "function") {
 			actor.rollAbility("dex");
 		}
 	});
@@ -715,7 +730,8 @@ function applyHeaderBackground(html, actor) {
 			</video>
 		`);
 		$bgExtension.append($video);
-	} else {
+	}
+	else {
 		$bgExtension.css("background-image", `url("${headerBg}")`);
 	}
 
@@ -877,7 +893,8 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 			// Use tokenizeActor for direct tokenization, or launch for UI
 			if (window.Tokenizer?.tokenizeActor) {
 				await window.Tokenizer.tokenizeActor(actor);
-			} else if (window.Tokenizer?.launch) {
+			}
+			else if (window.Tokenizer?.launch) {
 				// Launch with options
 				const options = {
 					name: actor.name,
@@ -888,7 +905,8 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 					//console.log("shadowdark-extras | Tokenizer response:", response);
 					ui.notifications.success(`Tokenizer completed for ${actor.name}!`);
 				});
-			} else {
+			}
+			else {
 				// Fallback to file picker if Tokenizer API not found
 				const fp = new FilePicker({
 					type: "image",
@@ -899,7 +917,8 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 				});
 				return fp.browse();
 			}
-		} catch (error) {
+		}
+		catch (error) {
 			console.error("shadowdark-extras | Error launching tokenizer:", error);
 			ui.notifications.error(`Failed to launch tokenizer: ${error.message}`);
 		}
@@ -973,7 +992,8 @@ function applyPartyHeaderBackground(html, actor) {
 			</video>
 		`);
 		$bgExtension.append($video);
-	} else {
+	}
+	else {
 		$bgExtension.css("background-image", `url("${headerBg}")`);
 	}
 

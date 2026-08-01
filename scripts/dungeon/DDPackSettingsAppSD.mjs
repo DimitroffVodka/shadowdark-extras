@@ -51,7 +51,8 @@ export class DDPackSettingsApp extends ApplicationV2 {
 		const existingStyles = document.getElementById("sdx-ddpack-settings-styles");
 		if (existingStyles) {
 			existingStyles.outerHTML = STYLES;
-		} else {
+		}
+		else {
 			document.head.insertAdjacentHTML("beforeend", STYLES);
 		}
 		const packs = getDDPacks();
@@ -144,7 +145,8 @@ export class DDPackSettingsApp extends ApplicationV2 {
 					this.render();
 				},
 			}).render(true);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Could not read Dungeondraft pack:`, err);
 			ui.notifications.error(`Could not read pack: ${err?.message || err}`);
 			this.status = "";

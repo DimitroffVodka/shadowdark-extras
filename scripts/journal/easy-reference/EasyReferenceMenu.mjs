@@ -200,7 +200,8 @@ function showUuidInputDialog(title, docType, callback) {
 						try {
 							const doc = await fromUuid(uuid);
 							displayName = doc?.name || "Unknown";
-						} catch (e) {
+						}
+						catch (e) {
 							displayName = "Unknown";
 						}
 					}

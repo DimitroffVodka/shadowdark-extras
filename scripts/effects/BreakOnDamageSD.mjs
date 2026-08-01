@@ -131,7 +131,8 @@ export async function applySpellEffect(targetRef, effectUuid, { breakOnDamage = 
 		}
 		const [doc] = await actor.createEmbeddedDocuments("Item", [src.toObject()]);
 		effectId = doc?.id ?? null;
-	} else {
+	}
+	else {
 		// Cross-owner (player → NPC): relay through the existing GM handler.
 		const socket = getSocket();
 		if (!socket) {
@@ -157,7 +158,9 @@ export async function clearBreakOnDamage(actorRef, effectId) {
 	const actor = resolveActor(actorRef);
 	const doc = findEffectDoc(actor, effectId);
 	if (!doc) return false;
-	if (doc.isOwner) { await doc.unsetFlag(MODULE_ID, BREAK_FLAG); return true; }
+	if (doc.isOwner) {
+		await doc.unsetFlag(MODULE_ID, BREAK_FLAG); return true;
+	}
 	const socket = getSocket();
 	return socket ? await socket.executeAsGM("markBreakOnDamage", {
 		targetActorId: actor.id, targetTokenId: tokenIdOf(actor), effectItemId: effectId, reason: null,
@@ -197,9 +200,11 @@ async function onUpdateActor(actor, _changes, options, userId) {
 
 		if (game.user.isGM) {
 			await doc.delete();
-		} else if (socket) {
+		}
+		else if (socket) {
 			await socket.executeAsGM("removeTargetEffect", payload);   // reuse existing GM handler
-		} else {
+		}
+		else {
 			continue;
 		}
 

@@ -104,8 +104,12 @@ class SDXDrawingTool {
 	_loadSavedState() {
 		try {
 			const s = (key, fallback) => {
-				try { return game.settings.get(MODULE_ID, key); }
-				catch { return fallback; }
+				try {
+					return game.settings.get(MODULE_ID, key);
+				}
+				catch {
+					return fallback;
+				}
 			};
 			const dm = s("drawing.toolbar.drawingMode", "sketch");
 			if (["sketch", "line", "box", "ellipse", "stamp"].includes(dm)) this.state.drawingMode = dm;
@@ -124,7 +128,8 @@ class SDXDrawingTool {
 			if (typeof te === "boolean") this.state.timedEraseEnabled = te;
 			const op = s("drawing.toolbar.opacity", 1.0);
 			if (typeof op === "number" && op >= 0.1 && op <= 1.0) this.state.opacity = op;
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn("SDX Drawing | Failed to load saved state:", e);
 		}
 	}
@@ -135,9 +140,11 @@ class SDXDrawingTool {
 			if (game.user.color.constructor?.name === "Color") {
 				const v = Number(game.user.color);
 				if (!isNaN(v)) hex = "#" + v.toString(16).padStart(6, "0");
-			} else if (typeof game.user.color === "string") {
+			}
+			else if (typeof game.user.color === "string") {
 				hex = game.user.color;
-			} else if (typeof game.user.color === "number") {
+			}
+			else if (typeof game.user.color === "number") {
 				hex = "#" + game.user.color.toString(16).padStart(6, "0");
 			}
 		}
@@ -181,13 +188,17 @@ class SDXDrawingTool {
 		game.socket.on(SOCKET_NAME, (payload) => {
 			if (payload.type === "sdx-drawing-created") {
 				this._handleRemoteDrawing(payload.data);
-			} else if (payload.type === "sdx-drawing-deleted") {
+			}
+			else if (payload.type === "sdx-drawing-deleted") {
 				this._handleRemoteDeletion(payload.data);
-			} else if (payload.type === "sdx-permanent-cleared") {
+			}
+			else if (payload.type === "sdx-permanent-cleared") {
 				this._handleRemotePermanentClear();
-			} else if (payload.type === "sdx-drawing-visibility") {
+			}
+			else if (payload.type === "sdx-drawing-visibility") {
 				this._handleRemoteVisibilityChange(payload.data);
-			} else if (payload.type === "sdx-drawing-renamed") {
+			}
+			else if (payload.type === "sdx-drawing-renamed") {
 				this._handleRemoteRename(payload.data);
 			}
 		});
@@ -280,7 +291,10 @@ class SDXDrawingTool {
 		if (game.user.isGM) return true;
 		try {
 			return game.settings.get(MODULE_ID, "drawing.enablePlayerDrawing");
-		} catch { return true; }
+		}
+		catch {
+			return true;
+		}
 	}
 
 	// ── Cursor ──────────────────────────────────────────────────
@@ -329,19 +343,25 @@ class SDXDrawingTool {
 				const mode = self.state.drawingMode;
 				if (mode === "sketch") {
 					if (!self.state.isDrawing) self._startSketch(e); else self._updateSketch(e);
-				} else if (mode === "line") {
+				}
+				else if (mode === "line") {
 					if (!self.state.isDrawing) self._startLine(e); else self._updateLinePreview(e);
-				} else if (mode === "box") {
+				}
+				else if (mode === "box") {
 					if (!self.state.isDrawing) self._startBox(e); else self._updateBoxPreview(e);
-				} else if (mode === "ellipse") {
+				}
+				else if (mode === "ellipse") {
 					if (!self.state.isDrawing) self._startEllipse(e); else self._updateEllipsePreview(e);
-				} else if (mode === "stamp") {
+				}
+				else if (mode === "stamp") {
 					self._updatePreviewSymbol(e);
 				}
-			} else if (self._toggleActive && self.state.drawingMode === "stamp") {
+			}
+			else if (self._toggleActive && self.state.drawingMode === "stamp") {
 				// Toggle + stamp: show preview cursor on hover even without mouse button.
 				self._updatePreviewSymbol(e);
-			} else {
+			}
+			else {
 				self._removePreviewSymbol();
 			}
 		};
@@ -378,9 +398,15 @@ class SDXDrawingTool {
 	_detachCanvasHandlers() {
 		const v = canvas?.app?.view;
 		if (!v) return;
-		if (this._handlePointerDown) { v.removeEventListener("pointerdown", this._handlePointerDown, true); this._handlePointerDown = null; }
-		if (this._handlePointerMove) { v.removeEventListener("pointermove", this._handlePointerMove, true); this._handlePointerMove = null; }
-		if (this._handlePointerUp) { v.removeEventListener("pointerup", this._handlePointerUp, true); this._handlePointerUp = null; }
+		if (this._handlePointerDown) {
+			v.removeEventListener("pointerdown", this._handlePointerDown, true); this._handlePointerDown = null;
+		}
+		if (this._handlePointerMove) {
+			v.removeEventListener("pointermove", this._handlePointerMove, true); this._handlePointerMove = null;
+		}
+		if (this._handlePointerUp) {
+			v.removeEventListener("pointerup", this._handlePointerUp, true); this._handlePointerUp = null;
+		}
 	}
 
 	// ── Finish current drawing (called on key-up) ───────────────
@@ -451,7 +477,9 @@ class SDXDrawingTool {
 
 	_finishSketch(e) {
 		if (!this.state.isDrawing) return;
-		if (this.state.drawingPoints.length < 2) { this._cancelDrawing(); return; }
+		if (this.state.drawingPoints.length < 2) {
+			this._cancelDrawing(); return;
+		}
 		this._removePreview();
 		const sp = this.state.drawingStartPoint;
 		const pts = [...this.state.drawingPoints];
@@ -491,7 +519,9 @@ class SDXDrawingTool {
 		if (!this.state.isDrawing || !this.state.lineStartPoint) return;
 		let wc = this.state.lastMousePosition;
 		if (!wc && e) wc = this._getWorldCoords(e);
-		if (!wc) { this._cancelDrawing(); return; }
+		if (!wc) {
+			this._cancelDrawing(); return;
+		}
 		this._removePreview();
 		const s = this.state.lineStartPoint;
 		const pts = [[0, 0], [wc.x - s.x, wc.y - s.y]];
@@ -532,7 +562,9 @@ class SDXDrawingTool {
 		if (!this.state.isDrawing || !this.state.boxStartPoint) return;
 		let wc = this.state.lastMousePosition;
 		if (!wc && e) wc = this._getWorldCoords(e);
-		if (!wc) { this._cancelDrawing(); return; }
+		if (!wc) {
+			this._cancelDrawing(); return;
+		}
 		this._removePreview();
 		const s = this.state.boxStartPoint;
 		const w = wc.x - s.x; const h = wc.y - s.y;
@@ -573,7 +605,9 @@ class SDXDrawingTool {
 		if (!this.state.isDrawing || !this.state.ellipseStartPoint) return;
 		let wc = this.state.lastMousePosition;
 		if (!wc && e) wc = this._getWorldCoords(e);
-		if (!wc) { this._cancelDrawing(); return; }
+		if (!wc) {
+			this._cancelDrawing(); return;
+		}
 		this._removePreview();
 		const s = this.state.ellipseStartPoint;
 		const w = wc.x - s.x; const h = wc.y - s.y;
@@ -698,13 +732,16 @@ class SDXDrawingTool {
 		if (style === "solid") {
 			g.moveTo(sx + pts[0][0], sy + pts[0][1]);
 			for (let i = 1; i < pts.length; i++) g.lineTo(sx + pts[i][0], sy + pts[i][1]);
-		} else if (style === "dotted") {
+		}
+		else if (style === "dotted") {
 			const dotR = sw * 0.4; const dotSp = sw * 4;
 			let total = 0; const segs = [];
 			for (let i = 0; i < pts.length - 1; i++) {
 				const dx = pts[i + 1][0] - pts[i][0]; const dy = pts[i + 1][1] - pts[i][1];
 				const d = Math.sqrt(dx * dx + dy * dy);
-				if (d > 0) { segs.push({ x1: sx + pts[i][0], y1: sy + pts[i][1], dx, dy, dist: d }); total += d; }
+				if (d > 0) {
+					segs.push({ x1: sx + pts[i][0], y1: sy + pts[i][1], dx, dy, dist: d }); total += d;
+				}
 			}
 			let cur = 0;
 			while (cur < total) {
@@ -721,13 +758,16 @@ class SDXDrawingTool {
 				}
 				cur += dotSp;
 			}
-		} else if (style === "dashed") {
+		}
+		else if (style === "dashed") {
 			const dashL = sw * 6; const gapL = sw * 2;
 			let total = 0; const segs = [];
 			for (let i = 0; i < pts.length - 1; i++) {
 				const dx = pts[i + 1][0] - pts[i][0]; const dy = pts[i + 1][1] - pts[i][1];
 				const d = Math.sqrt(dx * dx + dy * dy);
-				if (d > 0) { segs.push({ x1: sx + pts[i][0], y1: sy + pts[i][1], x2: sx + pts[i + 1][0], y2: sy + pts[i + 1][1], dx, dy, dist: d }); total += d; }
+				if (d > 0) {
+					segs.push({ x1: sx + pts[i][0], y1: sy + pts[i][1], x2: sx + pts[i + 1][0], y2: sy + pts[i + 1][1], dx, dy, dist: d }); total += d;
+				}
 			}
 			let cur = 0; let drawing = true;
 			while (cur < total) {
@@ -736,12 +776,18 @@ class SDXDrawingTool {
 				if (drawing) {
 					let sl = 0; let startPt = null; let endPt = null;
 					for (const seg of segs) {
-						if (!startPt && cur >= sl && cur < sl + seg.dist) { const t = (cur - sl) / seg.dist; startPt = { x: seg.x1 + seg.dx * t, y: seg.y1 + seg.dy * t }; }
-						if (!endPt && next >= sl && next <= sl + seg.dist) { const t = (next - sl) / seg.dist; endPt = { x: seg.x1 + seg.dx * t, y: seg.y1 + seg.dy * t }; }
+						if (!startPt && cur >= sl && cur < sl + seg.dist) {
+							const t = (cur - sl) / seg.dist; startPt = { x: seg.x1 + seg.dx * t, y: seg.y1 + seg.dy * t };
+						}
+						if (!endPt && next >= sl && next <= sl + seg.dist) {
+							const t = (next - sl) / seg.dist; endPt = { x: seg.x1 + seg.dx * t, y: seg.y1 + seg.dy * t };
+						}
 						if (startPt && endPt) break;
 						sl += seg.dist;
 					}
-					if (startPt && endPt) { g.moveTo(startPt.x, startPt.y); g.lineTo(endPt.x, endPt.y); }
+					if (startPt && endPt) {
+						g.moveTo(startPt.x, startPt.y); g.lineTo(endPt.x, endPt.y);
+					}
 				}
 				cur = next;
 				drawing = !drawing;
@@ -752,7 +798,8 @@ class SDXDrawingTool {
 	_drawBoxWithStyle(g, x, y, w, h, style) {
 		if (style === "solid") {
 			g.drawRect(x, y, w, h);
-		} else {
+		}
+		else {
 			const sw = this.state.brushSettings.size;
 			const color = this._cssToPixi(this.state.brushSettings.color);
 			this._drawLineWithStyle(g, [[0, 0], [w, 0]], x, y, sw, color, 1.0, style);
@@ -767,7 +814,8 @@ class SDXDrawingTool {
 		const hw = Math.abs(w) / 2; const hh = Math.abs(h) / 2;
 		if (style === "solid") {
 			g.drawEllipse(cx, cy, hw, hh);
-		} else {
+		}
+		else {
 			const segs = 48;
 			const color = this._cssToPixi(this.state.brushSettings.color);
 			const sw = this.state.brushSettings.size;
@@ -860,7 +908,8 @@ class SDXDrawingTool {
 						g.lineTo(points[i], points[i + 1]);
 					}
 					g.closePath();
-				} else {
+				}
+				else {
 					// Fallback: Draw single hex using grid size
 					const gridSize = canvas?.grid?.size || 100;
 					// Detect orientation
@@ -905,7 +954,10 @@ class SDXDrawingTool {
 			else if (data.type === "box") this._createRemoteBox(data);
 			else if (data.type === "ellipse") this._createRemoteEllipse(data);
 			else if (data.startX !== undefined && data.points) this._createRemoteLine(data);
-		} catch (e) { console.error("SDX Drawing | Remote drawing error:", e); }
+		}
+		catch (e) {
+			console.error("SDX Drawing | Remote drawing error:", e);
+		}
 	}
 
 	_createRemoteLine(data) {
@@ -913,7 +965,9 @@ class SDXDrawingTool {
 		const color = this._cssToPixi(data.strokeColor);
 		const sw = data.strokeWidth || 6;
 		g.lineStyle(sw, 0x000000, 0.3);
-		if (data.points.length > 0) { g.moveTo(data.startX + data.points[0][0] + 2, data.startY + data.points[0][1] + 2); for (let i = 1; i < data.points.length; i++) g.lineTo(data.startX + data.points[i][0] + 2, data.startY + data.points[i][1] + 2); }
+		if (data.points.length > 0) {
+			g.moveTo(data.startX + data.points[0][0] + 2, data.startY + data.points[0][1] + 2); for (let i = 1; i < data.points.length; i++) g.lineTo(data.startX + data.points[i][0] + 2, data.startY + data.points[i][1] + 2);
+		}
 		this._drawLineWithStyle(g, data.points, data.startX, data.startY, sw, color, 1.0, data.lineStyle || "solid");
 		if (data.opacity !== undefined) g.alpha = data.opacity;
 		this.canvasLayer.addChild(g);
@@ -981,9 +1035,11 @@ class SDXDrawingTool {
 		}
 		if (data.clearAll) {
 			if (game.users.get(data.userId)?.isGM) this.clearAllDrawings(false);
-		} else if (data.drawingId) {
+		}
+		else if (data.drawingId) {
 			this._deleteById(data.drawingId, false);
-		} else {
+		}
+		else {
 			this.clearUserDrawings(data.userId, false);
 		}
 	}
@@ -1000,14 +1056,18 @@ class SDXDrawingTool {
 			const p = Math.min(elapsed / duration, 1);
 			g.alpha = startAlpha * (1 - (1 - Math.pow(1 - p, 3)));
 			if (p < 1) requestAnimationFrame(animate);
-			else { if (g.parent) g.parent.removeChild(g); g.destroy(); }
+			else {
+				if (g.parent) g.parent.removeChild(g); g.destroy();
+			}
 		};
 		requestAnimationFrame(animate);
 	}
 
 	clearAllDrawings(broadcast = true) {
 		if (!this._pixiDrawings.length) return;
-		this._pixiDrawings.forEach(d => { if (d.graphics?.parent) this._fadeOutAndRemove(d.graphics); });
+		this._pixiDrawings.forEach(d => {
+			if (d.graphics?.parent) this._fadeOutAndRemove(d.graphics);
+		});
 		this._pixiDrawings = [];
 		this._lastDrawing = null;
 		if (broadcast) this._broadcast("sdx-drawing-deleted", { userId: game.user.id, clearAll: true });
@@ -1020,13 +1080,18 @@ class SDXDrawingTool {
 		this._permanentDrawings = [];
 		this._lastPermanentDrawing = null;
 		if (game.user.isGM && canvas.scene) {
-			try { await canvas.scene.setFlag(MODULE_ID, "permanentDrawings", []); } catch { }
+			try {
+				await canvas.scene.setFlag(MODULE_ID, "permanentDrawings", []);
+			}
+			catch { }
 		}
 		if (broadcast) this._broadcast("sdx-permanent-cleared", { userId: game.user.id });
 	}
 
 	async _undoLastPermanent() {
-		if (!this._lastPermanentDrawing) { ui.notifications.warn("No permanent drawing to undo"); return; }
+		if (!this._lastPermanentDrawing) {
+			ui.notifications.warn("No permanent drawing to undo"); return;
+		}
 		const d = this._lastPermanentDrawing;
 		if (d.graphics?.parent) this._fadeOutAndRemove(d.graphics);
 		this._permanentDrawings = this._permanentDrawings.filter(dd => dd.id !== d.id);
@@ -1037,7 +1102,8 @@ class SDXDrawingTool {
 				const saved = canvas.scene.getFlag(MODULE_ID, "permanentDrawings") || [];
 				const updated = saved.filter(s => s.drawingId !== d.id);
 				await canvas.scene.setFlag(MODULE_ID, "permanentDrawings", updated);
-			} catch { }
+			}
+			catch { }
 		}
 		this._broadcast("sdx-drawing-deleted", { userId: game.user.id, drawingId: d.id, permanent: true });
 	}
@@ -1045,7 +1111,9 @@ class SDXDrawingTool {
 	clearUserDrawings(userId = game.user.id, broadcast = true) {
 		let removed = 0;
 		this._pixiDrawings = this._pixiDrawings.filter(d => {
-			if (d.userId === userId) { if (d.graphics?.parent) this._fadeOutAndRemove(d.graphics); removed++; return false; }
+			if (d.userId === userId) {
+				if (d.graphics?.parent) this._fadeOutAndRemove(d.graphics); removed++; return false;
+			}
 			return true;
 		});
 		if (this._lastDrawing?.userId === userId) this._lastDrawing = null;
@@ -1055,15 +1123,23 @@ class SDXDrawingTool {
 
 	undoLastDrawing() {
 		// If in permanent mode and GM, undo last permanent drawing
-		if (this.state.permanentMode && game.user.isGM) { this._undoLastPermanent(); return; }
-		if (!this._lastDrawing) { ui.notifications.warn("No drawing to undo"); return; }
-		if (!game.user.isGM && this._lastDrawing.userId !== game.user.id) { ui.notifications.warn("Can only undo your own drawings"); return; }
+		if (this.state.permanentMode && game.user.isGM) {
+			this._undoLastPermanent(); return;
+		}
+		if (!this._lastDrawing) {
+			ui.notifications.warn("No drawing to undo"); return;
+		}
+		if (!game.user.isGM && this._lastDrawing.userId !== game.user.id) {
+			ui.notifications.warn("Can only undo your own drawings"); return;
+		}
 		const d = this._lastDrawing;
 		if (d.graphics?.parent) this._fadeOutAndRemove(d.graphics);
 		this._pixiDrawings = this._pixiDrawings.filter(dd => dd.id !== d.id);
 		this._lastDrawing = null;
 		const userDrawings = this._pixiDrawings.filter(dd => dd.userId === game.user.id);
-		if (userDrawings.length) { userDrawings.sort((a, b) => b.createdAt - a.createdAt); this._lastDrawing = userDrawings[0]; }
+		if (userDrawings.length) {
+			userDrawings.sort((a, b) => b.createdAt - a.createdAt); this._lastDrawing = userDrawings[0];
+		}
 		this._broadcast("sdx-drawing-deleted", { userId: game.user.id, drawingId: d.id, clearAll: false });
 	}
 
@@ -1073,7 +1149,11 @@ class SDXDrawingTool {
 		const d = this._pixiDrawings[idx];
 		if (d.graphics?.parent) this._fadeOutAndRemove(d.graphics);
 		this._pixiDrawings.splice(idx, 1);
-		if (this._lastDrawing?.id === drawingId) { this._lastDrawing = null; const ud = this._pixiDrawings.filter(dd => dd.userId === game.user.id); if (ud.length) { ud.sort((a, b) => b.createdAt - a.createdAt); this._lastDrawing = ud[0]; } }
+		if (this._lastDrawing?.id === drawingId) {
+			this._lastDrawing = null; const ud = this._pixiDrawings.filter(dd => dd.userId === game.user.id); if (ud.length) {
+				ud.sort((a, b) => b.createdAt - a.createdAt); this._lastDrawing = ud[0];
+			}
+		}
 		if (broadcast) this._broadcast("sdx-drawing-deleted", { userId: game.user.id, drawingId, clearAll: false });
 	}
 
@@ -1081,7 +1161,10 @@ class SDXDrawingTool {
 	_getExpiration() {
 		if (!this.state.timedEraseEnabled) return null;
 		let timeout = 30;
-		try { timeout = game.settings.get(MODULE_ID, "drawing.timedEraseTimeout"); } catch { }
+		try {
+			timeout = game.settings.get(MODULE_ID, "drawing.timedEraseTimeout");
+		}
+		catch { }
 		return timeout > 0 ? Date.now() + timeout * 1000 : null;
 	}
 
@@ -1148,7 +1231,8 @@ class SDXDrawingTool {
 			broadcastPayload.permanent = true;
 			this._broadcast("sdx-drawing-created", broadcastPayload);
 			this._savePermanentToScene(broadcastPayload);
-		} else {
+		}
+		else {
 			this._pixiDrawings.push(localData);
 			this._lastDrawing = localData;
 			this._scheduleCleanup();
@@ -1163,7 +1247,8 @@ class SDXDrawingTool {
 			const existing = scene.getFlag(MODULE_ID, "permanentDrawings") || [];
 			existing.push(data);
 			await scene.setFlag(MODULE_ID, "permanentDrawings", existing);
-		} catch (e) {
+		}
+		catch (e) {
 			console.error("SDX Drawing | Failed to save permanent drawing:", e);
 		}
 	}
@@ -1171,7 +1256,9 @@ class SDXDrawingTool {
 	_loadPermanentDrawings() {
 		// Destroy old permanent PIXI objects
 		this._permanentDrawings.forEach(d => {
-			if (d.graphics?.parent) { d.graphics.parent.removeChild(d.graphics); d.graphics.destroy(); }
+			if (d.graphics?.parent) {
+				d.graphics.parent.removeChild(d.graphics); d.graphics.destroy();
+			}
 		});
 		this._permanentDrawings = [];
 		this._lastPermanentDrawing = null;
@@ -1196,7 +1283,8 @@ class SDXDrawingTool {
 				const color = this._cssToPixi(data.strokeColor);
 				const half = sqSize / 2; const pad = sqSize * 0.1;
 				this._drawSymbolShape(g, data.symbolType, data.x, data.y, half, pad, sw, color, 1.0, 0x000000, 0.3, 2);
-			} else if (data.type === "box") {
+			}
+			else if (data.type === "box") {
 				g = new PIXI.Graphics();
 				const color = this._cssToPixi(data.strokeColor);
 				const sw = data.strokeWidth || 6;
@@ -1205,7 +1293,8 @@ class SDXDrawingTool {
 				this._drawBoxWithStyle(g, data.startX + 2, data.startY + 2, data.width, data.height, "solid");
 				g.lineStyle(sw, color, 1.0);
 				this._drawBoxWithStyle(g, data.startX, data.startY, data.width, data.height, ls);
-			} else if (data.type === "ellipse") {
+			}
+			else if (data.type === "ellipse") {
 				g = new PIXI.Graphics();
 				const color = this._cssToPixi(data.strokeColor);
 				const sw = data.strokeWidth || 6;
@@ -1214,7 +1303,8 @@ class SDXDrawingTool {
 				this._drawEllipseWithStyle(g, data.startX + 2, data.startY + 2, data.width, data.height, "solid");
 				g.lineStyle(sw, color, 1.0);
 				this._drawEllipseWithStyle(g, data.startX, data.startY, data.width, data.height, ls);
-			} else if (data.startX !== undefined && data.points) {
+			}
+			else if (data.startX !== undefined && data.points) {
 				g = new PIXI.Graphics();
 				const color = this._cssToPixi(data.strokeColor);
 				const sw = data.strokeWidth || 6;
@@ -1244,7 +1334,8 @@ class SDXDrawingTool {
 				});
 				this._lastPermanentDrawing = this._permanentDrawings[this._permanentDrawings.length - 1];
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			console.error("SDX Drawing | Failed to render permanent drawing:", e);
 		}
 	}
@@ -1283,7 +1374,8 @@ class SDXDrawingTool {
 					saved[idx].hidden = newHidden;
 					await canvas.scene.setFlag(MODULE_ID, "permanentDrawings", saved);
 				}
-			} catch { }
+			}
+			catch { }
 		}
 		// Broadcast to other clients
 		this._broadcast("sdx-drawing-visibility", { drawingId: id, hidden: newHidden, userId: game.user.id });
@@ -1319,7 +1411,8 @@ class SDXDrawingTool {
 						saved[idx].name = newName;
 						await canvas.scene.setFlag(MODULE_ID, "permanentDrawings", saved);
 					}
-				} catch { }
+				}
+				catch { }
 			}
 			this._broadcast("sdx-drawing-renamed", { drawingId: id, name: newName, userId: game.user.id });
 			return;
@@ -1405,12 +1498,14 @@ class SDXDrawingTool {
 				});
 				entry.graphics.filters = [glow];
 				this._highlightFilter = glow;
-			} else if (typeof PIXI.filters?.OutlineFilter === "function") {
+			}
+			else if (typeof PIXI.filters?.OutlineFilter === "function") {
 				// Fallback to OutlineFilter
 				const outline = new PIXI.filters.OutlineFilter(4, glowColor, 1);
 				entry.graphics.filters = [outline];
 				this._highlightFilter = outline;
-			} else {
+			}
+			else {
 				// Final fallback: use ColorMatrixFilter for a blue tint effect
 				const colorMatrix = new PIXI.ColorMatrixFilter();
 				// Shift towards blue and increase brightness
@@ -1423,7 +1518,8 @@ class SDXDrawingTool {
 				entry.graphics.filters = [colorMatrix];
 				this._highlightFilter = colorMatrix;
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn("SDX Drawing | Could not apply glow filter:", e);
 			// Fallback: simple alpha pulse without filter
 			this._highlightFilter = null;
@@ -1443,10 +1539,12 @@ class SDXDrawingTool {
 				if (this._highlightFilter.outerStrength !== undefined) {
 					// GlowFilter
 					this._highlightFilter.outerStrength = 2 + pulse * 3;
-				} else if (this._highlightFilter.thickness !== undefined) {
+				}
+				else if (this._highlightFilter.thickness !== undefined) {
 					// OutlineFilter
 					this._highlightFilter.thickness = 3 + pulse * 3;
-				} else if (this._highlightFilter.matrix !== undefined) {
+				}
+				else if (this._highlightFilter.matrix !== undefined) {
 					// ColorMatrixFilter - animate the blue channel intensity
 					const intensity = 0.3 + pulse * 0.4;
 					this._highlightFilter.matrix[12] = 0.3 + pulse * 0.3; // Blue offset
@@ -1495,7 +1593,9 @@ class SDXDrawingTool {
 			if (this._lastDrawing?.id === id) {
 				this._lastDrawing = null;
 				const ud = this._pixiDrawings.filter(dd => dd.userId === game.user.id);
-				if (ud.length) { ud.sort((a, b) => b.createdAt - a.createdAt); this._lastDrawing = ud[0]; }
+				if (ud.length) {
+					ud.sort((a, b) => b.createdAt - a.createdAt); this._lastDrawing = ud[0];
+				}
 			}
 			this._broadcast("sdx-drawing-deleted", { userId: game.user.id, drawingId: id, clearAll: false });
 			return;
@@ -1514,27 +1614,78 @@ class SDXDrawingTool {
 					const saved = canvas.scene.getFlag(MODULE_ID, "permanentDrawings") || [];
 					const updated = saved.filter(s => s.drawingId !== id);
 					await canvas.scene.setFlag(MODULE_ID, "permanentDrawings", updated);
-				} catch { }
+				}
+				catch { }
 			}
 			this._broadcast("sdx-drawing-deleted", { userId: game.user.id, drawingId: id, permanent: true });
 		}
 	}
 
 	// ── Public setters (called by toolbar) ──────────────────────
-	setDrawingMode(mode) { if (["sketch", "line", "box", "ellipse", "stamp"].includes(mode)) { this.state.drawingMode = mode; try { game.settings.set(MODULE_ID, "drawing.toolbar.drawingMode", mode); } catch { } } }
-	setStampStyle(style) { const v = ["plus", "x", "dot", "arrow", "arrow-up", "arrow-down", "arrow-left", "square", "hex-outline"]; if (v.includes(style)) { this.state.stampStyle = style; try { game.settings.set(MODULE_ID, "drawing.toolbar.stampStyle", style); } catch { } } }
-	setSymbolSize(size) { if (["small", "medium", "large"].includes(size)) { this.state.symbolSize = size; try { game.settings.set(MODULE_ID, "drawing.toolbar.symbolSize", size); } catch { } } }
-	setLineStyle(style) { if (["solid", "dotted", "dashed"].includes(style)) { this.state.lineStyle = style; try { game.settings.set(MODULE_ID, "drawing.toolbar.lineStyle", style); } catch { } } }
-	setBrushSize(size) { this.state.brushSettings.size = Math.max(1, Math.min(20, size)); try { game.settings.set(MODULE_ID, "drawing.toolbar.lineWidth", this.state.brushSettings.size); } catch { } }
-	setBrushColor(color) { this.state.brushSettings.color = color; try { game.settings.set(MODULE_ID, "drawing.toolbar.color", color); } catch { } }
+	setDrawingMode(mode) {
+		if (["sketch", "line", "box", "ellipse", "stamp"].includes(mode)) {
+			this.state.drawingMode = mode; try {
+				game.settings.set(MODULE_ID, "drawing.toolbar.drawingMode", mode);
+			}
+			catch { }
+		}
+	}
+	setStampStyle(style) {
+		const v = ["plus", "x", "dot", "arrow", "arrow-up", "arrow-down", "arrow-left", "square", "hex-outline"]; if (v.includes(style)) {
+			this.state.stampStyle = style; try {
+				game.settings.set(MODULE_ID, "drawing.toolbar.stampStyle", style);
+			}
+			catch { }
+		}
+	}
+	setSymbolSize(size) {
+		if (["small", "medium", "large"].includes(size)) {
+			this.state.symbolSize = size; try {
+				game.settings.set(MODULE_ID, "drawing.toolbar.symbolSize", size);
+			}
+			catch { }
+		}
+	}
+	setLineStyle(style) {
+		if (["solid", "dotted", "dashed"].includes(style)) {
+			this.state.lineStyle = style; try {
+				game.settings.set(MODULE_ID, "drawing.toolbar.lineStyle", style);
+			}
+			catch { }
+		}
+	}
+	setBrushSize(size) {
+		this.state.brushSettings.size = Math.max(1, Math.min(20, size)); try {
+			game.settings.set(MODULE_ID, "drawing.toolbar.lineWidth", this.state.brushSettings.size);
+		}
+		catch { }
+	}
+	setBrushColor(color) {
+		this.state.brushSettings.color = color; try {
+			game.settings.set(MODULE_ID, "drawing.toolbar.color", color);
+		}
+		catch { }
+	}
 	setTimedErase(enabled) {
 		this.state.timedEraseEnabled = enabled;
-		try { game.settings.set(MODULE_ID, "drawing.toolbar.timedEraseEnabled", enabled); } catch { }
-		if (this._cleanupInterval) { clearInterval(this._cleanupInterval); this._cleanupInterval = null; }
+		try {
+			game.settings.set(MODULE_ID, "drawing.toolbar.timedEraseEnabled", enabled);
+		}
+		catch { }
+		if (this._cleanupInterval) {
+			clearInterval(this._cleanupInterval); this._cleanupInterval = null;
+		}
 		if (this._pixiDrawings.length) this._scheduleCleanup();
 	}
-	setPermanentMode(enabled) { this.state.permanentMode = !!enabled; }
-	setOpacity(val) { this.state.opacity = Math.max(0.1, Math.min(1.0, Number(val) || 1.0)); try { game.settings.set(MODULE_ID, "drawing.toolbar.opacity", this.state.opacity); } catch { } }
+	setPermanentMode(enabled) {
+		this.state.permanentMode = !!enabled;
+	}
+	setOpacity(val) {
+		this.state.opacity = Math.max(0.1, Math.min(1.0, Number(val) || 1.0)); try {
+			game.settings.set(MODULE_ID, "drawing.toolbar.opacity", this.state.opacity);
+		}
+		catch { }
+	}
 
 	// ── Hex Outline Helper ──────────────────────────────────────
 	_getHexClusterOutline(tier, centerX, centerY) {
@@ -1549,7 +1700,8 @@ class SDXDrawingTool {
 			// V11: grid.type 2,3 = columns (pointy), 4,5 = rows (flat)
 			if (grid.columns !== undefined) {
 				isPointyTop = grid.columns;
-			} else if (grid.type !== undefined) {
+			}
+			else if (grid.type !== undefined) {
 				isPointyTop = (grid.type === 2 || grid.type === 3);
 			}
 		}
@@ -1586,7 +1738,8 @@ class SDXDrawingTool {
 					x: gridSize * 0.75 * scaleFactor * q,
 					y: gridSize * (sqrt3 / 2) * scaleFactor * (ar + q / 2),
 				};
-			} else {
+			}
+			else {
 				// Actually pointy-top: horizontal = sqrt(3)*r, vertical = 1.5*r
 				return {
 					x: gridSize * (sqrt3 / 2) * scaleFactor * (q + ar / 2),
@@ -1644,9 +1797,11 @@ class SDXDrawingTool {
 			const revKey = `${pointKey(edge.p2)}|${pointKey(edge.p1)}`;
 			if (edgeCounts.has(revKey)) {
 				edgeCounts.set(revKey, edgeCounts.get(revKey) + 1);
-			} else if (edgeCounts.has(edge.key)) {
+			}
+			else if (edgeCounts.has(edge.key)) {
 				edgeCounts.set(edge.key, edgeCounts.get(edge.key) + 1);
-			} else {
+			}
+			else {
 				edgeCounts.set(edge.key, 1);
 			}
 		}

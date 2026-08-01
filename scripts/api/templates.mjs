@@ -71,7 +71,9 @@ function _sdxLevelIdForElevation(elevation) {
 		if (elevation < bottom || elevation > top) continue;
 		// Never return defaultLevel0000 as a specific match — treat it as catch-all
 		// regardless of whatever elevation values Foundry gives it.
-		if (level.id === "defaultLevel0000") { catchAll = level.id; continue; }
+		if (level.id === "defaultLevel0000") {
+			catchAll = level.id; continue;
+		}
 		if (isFinite(bottom) || isFinite(top)) return level.id;
 		catchAll = level.id;
 	}
@@ -238,7 +240,10 @@ const SDX_TEMPLATES = {
 				// aborted template placement whenever a token was targeted
 				// (healing/template items then did nothing). Wrap instead.
 				game.user.targets.forEach(t => {
-					try { t.setTarget(false, { user: game.user, releaseOthers: false }); } catch (e) { /* ignore */ }
+					try {
+						t.setTarget(false, { user: game.user, releaseOthers: false });
+					}
+					catch (e) { /* ignore */ }
 				});
 
 				// 2. Force local cleanup (bypass hooks) to ensure state is clear
@@ -260,10 +265,12 @@ const SDX_TEMPLATES = {
 			let initialPos;
 			if (originFromCaster) {
 				initialPos = { x: originFromCaster.x, y: originFromCaster.y };
-			} else {
+			}
+			else {
 				try {
 					initialPos = canvas.app.renderer.events.pointer.getLocalPosition(canvas.stage);
-				} catch {
+				}
+				catch {
 					initialPos = { x: 0, y: 0 };
 				}
 			}
@@ -331,7 +338,10 @@ const SDX_TEMPLATES = {
 			const updateTokenHighlighting = () => {
 				// v14: preview placeable's .shape is lazy — refresh if missing
 				if (!template.shape && typeof template._refreshShape === "function") {
-					try { template._refreshShape(); } catch {}
+					try {
+						template._refreshShape();
+					}
+					catch {}
 				}
 				if (!template.shape) return;
 
@@ -346,7 +356,8 @@ const SDX_TEMPLATES = {
 					const casterLevelId = levels?.[0] ?? null;
 					if (casterLevelId) {
 						if ((token.document?.level ?? null) !== casterLevelId) continue;
-					} else {
+					}
+					else {
 						// No level system — fall back to exact elevation match
 						if ((token.document?.elevation ?? 0) !== currentElevation) continue;
 					}
@@ -451,7 +462,8 @@ const SDX_TEMPLATES = {
 					const degrees = Math.toDegrees(angle);
 					currentDirection = degrees;
 					template.document.updateSource({ direction: currentDirection });
-				} else {
+				}
+				else {
 					// Normal mode - follow mouse
 					const snapped = canvas.templates.getSnappedPoint(pos);
 					template.document.updateSource({ x: snapped.x, y: snapped.y });
@@ -502,7 +514,8 @@ const SDX_TEMPLATES = {
 				if (event.ctrlKey) {
 					// Snap to 45° increments (8 positions around the circle)
 					snap = 45;
-				} else {
+				}
+				else {
 					// Fine rotation: 5° per tick
 					snap = 5;
 				}
@@ -517,7 +530,8 @@ const SDX_TEMPLATES = {
 					if (currentDirection % snap !== 0 && sign < 0)
 						direction += snap;
 					currentDirection = (direction + (snap * sign)) % 360;
-				} else {
+				}
+				else {
 					// Normal fine rotation
 					currentDirection = (currentDirection + (snap * sign)) % 360;
 				}
@@ -543,7 +557,8 @@ const SDX_TEMPLATES = {
 				if (originFromCaster) {
 					finalX = originFromCaster.x;
 					finalY = originFromCaster.y;
-				} else {
+				}
+				else {
 					const pos = event.getLocalPosition(canvas.stage);
 					const snapped = canvas.templates.getSnappedPoint(pos);
 					finalX = snapped.x;
@@ -584,10 +599,12 @@ const SDX_TEMPLATES = {
 						if (newRegion) {
 							await newRegion.update({ levels });
 							console.log(`shadowdark-extras | Set region.levels=${JSON.stringify(levels)} on ${newRegion.id}`);
-						} else {
+						}
+						else {
 							console.warn(`shadowdark-extras | Could not find auto-created Region with ID ${placedTemplate.id} to set levels`);
 						}
-					} catch (e) {
+					}
+					catch (e) {
 						console.warn("shadowdark-extras | Failed to set region.levels:", e);
 					}
 				}
@@ -599,7 +616,8 @@ const SDX_TEMPLATES = {
 							if (placedTemplate && canvas.scene.templates.get(placedTemplate.id)) {
 								await placedTemplate.delete();
 							}
-						} catch (e) {
+						}
+						catch (e) {
 							console.warn(`${MODULE_ID} | Failed to auto-delete template:`, e);
 						}
 					}, autoDelete);
@@ -663,7 +681,12 @@ const SDX_TEMPLATES = {
 
 		// v14: placeable doesn't auto-compute .shape on doc creation; force it before testPoint
 		if (!templateObject.shape && typeof templateObject._refreshShape === "function") {
-			try { templateObject._refreshShape(); } catch (e) { console.warn(`${MODULE_ID} | _refreshShape failed:`, e); }
+			try {
+				templateObject._refreshShape();
+			}
+			catch (e) {
+				console.warn(`${MODULE_ID} | _refreshShape failed:`, e);
+			}
 		}
 		if (!templateObject.shape) {
 			console.warn(`${MODULE_ID} | getTokensInTemplate: shape still null after refresh; returning []`);
@@ -679,7 +702,8 @@ const SDX_TEMPLATES = {
 			// Level filter
 			if (casterLevelId) {
 				if ((t.document?.level ?? null) !== casterLevelId) return false;
-			} else if (!_sdxTokenMatchesTemplateLevel(t, templateElevation)) {
+			}
+			else if (!_sdxTokenMatchesTemplateLevel(t, templateElevation)) {
 				return false;
 			}
 
@@ -730,11 +754,13 @@ const SDX_TEMPLATES = {
 			for (const token of tokens) {
 				try {
 					await token.setTarget(true, { user: game.user, releaseOthers: false });
-				} catch (e) {
+				}
+				catch (e) {
 					console.warn(`${MODULE_ID} | Safe targeting failed for token ${token.id} (system bug ignored):`, e);
 				}
 			}
-		} finally {
+		}
+		finally {
 			// Always reset the bypass flag
 			if (game.shadowdarkExtras) game.shadowdarkExtras.allowMultiTarget = false;
 		}

@@ -73,7 +73,8 @@ async function evaluateSourceRequirement(requirement, actor, token = null, sourc
 				if (ancestryDoc) {
 					ancestryName = ancestryDoc.name?.toLowerCase() ?? "";
 				}
-			} catch (e) {
+			}
+			catch (e) {
 				console.warn(`${MODULE_ID} | Could not resolve ancestry UUID`);
 			}
 		}
@@ -85,7 +86,8 @@ async function evaluateSourceRequirement(requirement, actor, token = null, sourc
 				if (classDoc) {
 					className = classDoc.name?.toLowerCase() ?? "";
 				}
-			} catch (e) {
+			}
+			catch (e) {
 				console.warn(`${MODULE_ID} | Could not resolve class UUID`);
 			}
 		}
@@ -97,7 +99,8 @@ async function evaluateSourceRequirement(requirement, actor, token = null, sourc
 				if (backgroundDoc) {
 					backgroundName = backgroundDoc.name?.toLowerCase() ?? "";
 				}
-			} catch (e) {
+			}
+			catch (e) {
 				console.warn(`${MODULE_ID} | Could not resolve background UUID`);
 			}
 		}
@@ -129,7 +132,8 @@ async function evaluateSourceRequirement(requirement, actor, token = null, sourc
 		//console.log(`${MODULE_ID} | Requirement "${requirement}" evaluated to: ${result}`);
 
 		return Boolean(result);
-	} catch (error) {
+	}
+	catch (error) {
 		console.error(`${MODULE_ID} | Error evaluating source requirement "${requirement}":`, error);
 		return false;
 	}
@@ -170,7 +174,8 @@ export async function checkEffectRequirements(actor) {
 					sourceEffect = originDoc;
 					//console.log(`${MODULE_ID} | Effect "${effect.name}" is transferred, checking source effect for requirement: "${requirement}", requireEquipped: ${requireEquipped}`);
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				//console.log(`${MODULE_ID} | Could not resolve origin for effect "${effect.name}"`);
 			}
 		}
@@ -220,10 +225,12 @@ export async function checkEffectRequirements(actor) {
 		if (requirementMet && sourceEffect.disabled) {
 			//console.log(`${MODULE_ID} | ENABLING effect "${effect.name}" - requirement met: ${requirement}`);
 			await sourceEffect.update({ disabled: false }, { byRequirementSystem: true });
-		} else if (!requirementMet && !sourceEffect.disabled) {
+		}
+		else if (!requirementMet && !sourceEffect.disabled) {
 			//console.log(`${MODULE_ID} | DISABLING effect "${effect.name}" - requirement not met: ${requirement}`);
 			await sourceEffect.update({ disabled: true }, { byRequirementSystem: true });
-		} else {
+		}
+		else {
 			//console.log(`${MODULE_ID} | Effect "${effect.name}" already in correct state (disabled: ${sourceEffect.disabled}, requirement met: ${requirementMet})`);
 		}
 	}
@@ -261,7 +268,8 @@ export function registerSourceRequirementHooks() {
 					if (requirementMet && changes.disabled === true) {
 						//console.log(`${MODULE_ID} | User manually disabled effect "${effect.name}" (requirements met), setting manual override`);
 						await effect.setFlag(MODULE_ID, "manualOverride", true);
-					} else if (!requirementMet && changes.disabled === false) {
+					}
+					else if (!requirementMet && changes.disabled === false) {
 						// Requirements not met, user trying to enable - block it
 						//console.log(`${MODULE_ID} | Cannot enable effect "${effect.name}" - requirements not met: ${requirement}`);
 						ui.notifications.warn(game.i18n.format("SHADOWDARK_EXTRAS.effects.requirementNotMet", {
@@ -299,7 +307,8 @@ export function registerSourceRequirementHooks() {
 						await checkEffectRequirements(actor);
 					}, 100);
 				}
-			} else if (parent && parent instanceof Actor) {
+			}
+			else if (parent && parent instanceof Actor) {
 				//console.log(`${MODULE_ID} | Effect is directly on an Actor`);
 				await checkEffectRequirements(parent);
 			}
@@ -327,7 +336,8 @@ export function registerSourceRequirementHooks() {
 						await checkEffectRequirements(actor);
 					}, 100);
 				}
-			} else if (parent && parent instanceof Actor) {
+			}
+			else if (parent && parent instanceof Actor) {
 				//console.log(`${MODULE_ID} | Effect is directly on an Actor`);
 				await checkEffectRequirements(parent);
 			}
@@ -366,7 +376,8 @@ export function registerSourceRequirementHooks() {
 		if (!requirementMet && !effect.disabled) {
 			//console.log(`${MODULE_ID} | DISABLING newly created effect "${effect.name}" - requirement not met: ${requirement}`);
 			await effect.update({ disabled: true }, { byRequirementSystem: true });
-		} else {
+		}
+		else {
 			//console.log(`${MODULE_ID} | Effect "${effect.name}" - requirementMet: ${requirementMet}, already disabled: ${effect.disabled}`);
 		}
 	});

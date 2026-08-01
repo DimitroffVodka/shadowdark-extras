@@ -93,7 +93,8 @@ export async function showCleansingWeaponDialog(casterActor, casterItem, targetA
 			let badge = "";
 			if (hasExistingBonuses) {
 				badge = "<span class=\"sdx-weapon-badge bonus\" title=\"Has existing bonuses\"><i class=\"fas fa-plus-circle\"></i></span>";
-			} else if (isMagical && !isUnidentifiedItem) {
+			}
+			else if (isMagical && !isUnidentifiedItem) {
 				// Hide magic sparkle if unidentified
 				badge = "<span class=\"sdx-weapon-badge magical\" title=\"Magic Item\"><i class=\"fas fa-sparkles\"></i></span>";
 			}
@@ -241,7 +242,8 @@ export async function applyCleansingWeapon(weapon, casterActor, casterItem, targ
 				targetToken?.document?.uuid
 			);
 			return;
-		} else {
+		}
+		else {
 			ui.notifications.warn("Cannot cleanse weapon: No GM connected or socket unavailable.");
 			return;
 		}
@@ -321,7 +323,8 @@ export async function applyCleansingWeapon(weapon, casterActor, casterItem, targ
 					.play();
 			}
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		console.log(`${MODULE_ID} | Sequencer animation not available: ${e.message}`);
 	}
 

@@ -132,7 +132,8 @@ export async function enhanceWandSheet(app, html) {
 			// Inject wand uses UI after the Range field
 			injectWandUsesUI(html, item);
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to inject wand uses UI`, err);
 	}
 
@@ -142,7 +143,8 @@ export async function enhanceWandSheet(app, html) {
 	// Check if spell enhancement is enabled
 	try {
 		if (!game.settings.get(MODULE_ID, "enhanceSpells")) return;
-	} catch {
+	}
+	catch {
 		return;
 	}
 
@@ -292,7 +294,8 @@ export async function enhanceWandSheet(app, html) {
 		if ($detailsLink.length) {
 			$detailsLink.after(activityTabLink);
 			//console.log(`${MODULE_ID} | Activity tab link added to navigation`);
-		} else {
+		}
+		else {
 			console.warn(`${MODULE_ID} | Could not find Details tab link`);
 		}
 
@@ -302,7 +305,8 @@ export async function enhanceWandSheet(app, html) {
 		if ($detailsTab.length) {
 			$detailsTab.after(activityTabContent);
 			//console.log(`${MODULE_ID} | Activity tab content created`);
-		} else {
+		}
+		else {
 			console.warn(`${MODULE_ID} | Could not find Details tab content`);
 		}
 
@@ -345,7 +349,8 @@ export async function enhanceWandSheet(app, html) {
 	if (typeof effectsArray === "string") {
 		try {
 			effectsArray = JSON.parse(effectsArray);
-		} catch (err) {
+		}
+		catch (err) {
 			effectsArray = [];
 		}
 	}
@@ -422,7 +427,8 @@ export async function enhanceWandSheet(app, html) {
 	if (typeof summonProfilesArray === "string") {
 		try {
 			summonProfilesArray = JSON.parse(summonProfilesArray);
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Could not parse summon profiles string:`, summonProfilesArray, err);
 			summonProfilesArray = [];
 		}
@@ -442,7 +448,8 @@ export async function enhanceWandSheet(app, html) {
 	if (typeof itemGiveProfilesArray === "string") {
 		try {
 			itemGiveProfilesArray = JSON.parse(itemGiveProfilesArray);
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Could not parse item give profiles string:`, itemGiveProfilesArray, err);
 			itemGiveProfilesArray = [];
 		}
@@ -506,7 +513,8 @@ export async function enhanceWandSheet(app, html) {
 		const $content = $(this).closest(".sdx-spell-damage-box").find(".sdx-spell-damage-content");
 		if ($(this).is(":checked")) {
 			$content.slideDown(200);
-		} else {
+		}
+		else {
 			$content.slideUp(200);
 		}
 	});
@@ -516,7 +524,8 @@ export async function enhanceWandSheet(app, html) {
 		const $templateSettings = $(this).closest(".sdx-targeting-content").find(".sdx-template-settings");
 		if ($(this).val() === "template") {
 			$templateSettings.slideDown(200);
-		} else {
+		}
+		else {
 			$templateSettings.slideUp(200);
 		}
 	});
@@ -582,7 +591,8 @@ export async function enhanceWandSheet(app, html) {
 		const $config = $(this).closest(".sdx-template-effects-section").find(".sdx-template-effects-config");
 		if ($(this).is(":checked")) {
 			$config.css({ opacity: "", pointerEvents: "" });
-		} else {
+		}
+		else {
 			$config.css({ opacity: "0.5", pointerEvents: "none" });
 		}
 	});
@@ -592,7 +602,8 @@ export async function enhanceWandSheet(app, html) {
 		const $config = $(this).closest(".sdx-template-effects-section").find(".sdx-template-save-config");
 		if ($(this).is(":checked")) {
 			$config.css({ opacity: "", pointerEvents: "" });
-		} else {
+		}
+		else {
 			$config.css({ opacity: "0.5", pointerEvents: "none" });
 		}
 	});
@@ -608,9 +619,11 @@ export async function enhanceWandSheet(app, html) {
 		// Show the selected formula section
 		if (selectedType === "basic") {
 			$box.find(".sdx-basic-formula").show();
-		} else if (selectedType === "formula") {
+		}
+		else if (selectedType === "formula") {
 			$box.find(".sdx-custom-formula").show();
-		} else if (selectedType === "tiered") {
+		}
+		else if (selectedType === "tiered") {
 			$box.find(".sdx-tiered-formula").show();
 		}
 
@@ -650,7 +663,8 @@ export async function enhanceWandSheet(app, html) {
 
 		if (effects.length > 0) {
 			$effectsList.find(".sdx-no-effects").remove();
-		} else if ($effectsList.find(".sdx-spell-effect-item").length === 0) {
+		}
+		else if ($effectsList.find(".sdx-spell-effect-item").length === 0) {
 			$effectsList.html('<div class="sdx-no-effects">Drag and drop conditions or effects here</div>');
 		}
 	}
@@ -678,11 +692,13 @@ export async function enhanceWandSheet(app, html) {
 			let doc = null;
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === "Item" && data.id) {
+			}
+			else if (data.type === "Item" && data.id) {
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
 					doc = await pack.getDocument(data.id);
-				} else {
+				}
+				else {
 					doc = game.items.get(data.id);
 				}
 			}
@@ -717,7 +733,8 @@ export async function enhanceWandSheet(app, html) {
 			updateEffectsData();
 
 			ui.notifications.info(`Added ${doc.name} to wand effects`);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error handling drop:`, err);
 			ui.notifications.error("Failed to add effect");
 		}
@@ -802,12 +819,14 @@ export async function enhanceWandSheet(app, html) {
 			let doc = null;
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === "Actor" && data.id) {
+			}
+			else if (data.type === "Actor" && data.id) {
 				// Handle actors from compendiums or world
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
 					doc = await pack.getDocument(data.id);
-				} else {
+				}
+				else {
 					doc = game.actors.get(data.id);
 				}
 			}
@@ -844,7 +863,8 @@ export async function enhanceWandSheet(app, html) {
 
 			updateSummonsData();
 			ui.notifications.info(`Added ${creatureName} to summon profile`);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error handling creature drop:`, err);
 			ui.notifications.error("Failed to add creature");
 		}
@@ -937,11 +957,13 @@ export async function enhanceWandSheet(app, html) {
 			let doc = null;
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === "Item" && data.id) {
+			}
+			else if (data.type === "Item" && data.id) {
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
 					doc = await pack.getDocument(data.id);
-				} else {
+				}
+				else {
 					doc = game.items.get(data.id);
 				}
 			}
@@ -968,7 +990,8 @@ export async function enhanceWandSheet(app, html) {
 			`);
 			updateItemGiveData();
 			ui.notifications.info(`Added ${itemName} to caster item list`);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error handling item drop:`, err);
 			ui.notifications.error("Failed to add item");
 		}

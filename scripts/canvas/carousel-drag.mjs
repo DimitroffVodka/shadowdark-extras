@@ -109,7 +109,8 @@ export function initCarouselDrag() {
 						carousel.style.left = `${left}px`;
 						carousel.style.top = `${top}px`;
 					}
-				} catch (e) {
+				}
+				catch (e) {
 					console.warn("shadowdark-extras | Failed to restore carousel position:", e);
 				}
 			}

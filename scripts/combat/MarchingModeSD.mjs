@@ -288,7 +288,8 @@ function injectSidebarButtons($html) {
 	$carousingBtn.find("button").on("click", () => {
 		if (window.sdxOpenCarousingOverlay) {
 			window.sdxOpenCarousingOverlay();
-		} else {
+		}
+		else {
 			ui.notifications.warn("Carousing system not ready.");
 		}
 	});
@@ -461,10 +462,12 @@ async function setLeader(tokenId) {
 		if (token) {
 			await showLeaderCrown(token);
 			ui.notifications.info(`Party leader set to: ${token.name}`);
-		} else {
+		}
+		else {
 			ui.notifications.info("Party leader set to: Unknown");
 		}
-	} else {
+	}
+	else {
 		ui.notifications.info("Party leader cleared.");
 	}
 
@@ -487,7 +490,8 @@ async function setMovementMode(enabled) {
 			return;
 		}
 		ui.notifications.info("Marching Mode enabled. Followers will track the leader's path.");
-	} else {
+	}
+	else {
 		ui.notifications.info("Free Movement enabled.");
 		leaderMovementPath = [];
 		tokenFollowers.clear();
@@ -520,14 +524,16 @@ function updateButtonStates() {
 	// Update leader button
 	if (leaderTokenId) {
 		$leaderBtn.addClass("active").css("color", "#ffd700");
-	} else {
+	}
+	else {
 		$leaderBtn.removeClass("active").css("color", "");
 	}
 
 	// Update mode button
 	if (marchingModeEnabled) {
 		$modeBtn.addClass("active").css("color", "#4CAF50");
-	} else {
+	}
+	else {
 		$modeBtn.removeClass("active").css("color", "");
 	}
 }
@@ -627,7 +633,8 @@ async function onUpdateToken(tokenDoc, changes, options, userId) {
 				processCongaMovement();
 			}
 		}, 100);
-	} else {
+	}
+	else {
 		// Non-leader token was moved manually - recalculate marching order to include it
 		// This allows new tokens to join the formation by being positioned near the group
 		const leaderToken = canvas.tokens.get(leaderTokenId);

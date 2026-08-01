@@ -529,8 +529,12 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		// Build roll formula based on advantage/disadvantage
 		let formula = isNone ? "1d20" : "1d20 + @mod";
 		let rollMode = "normal";
-		if (hasAdv) { formula = isNone ? "2d20kh" : "2d20kh + @mod"; rollMode = "advantage"; }
-		else if (hasDis) { formula = isNone ? "2d20kl" : "2d20kl + @mod"; rollMode = "disadvantage"; }
+		if (hasAdv) {
+			formula = isNone ? "2d20kh" : "2d20kh + @mod"; rollMode = "advantage";
+		}
+		else if (hasDis) {
+			formula = isNone ? "2d20kl" : "2d20kl + @mod"; rollMode = "disadvantage";
+		}
 
 		const roll = new Roll(formula, { mod });
 		await roll.evaluate();
@@ -720,14 +724,17 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 			await this._createChatRecap(result.success);
 			const el = this.element;
 			if (el) await this._runOutroSequence(el, result.success);
-		} catch (error) {
+		}
+		catch (error) {
 			console.error(`${MODULE_ID} | Could not finish the SDX roll overlay`, error);
 			try {
 				await this.close();
-			} catch (closeError) {
+			}
+			catch (closeError) {
 				console.warn(`${MODULE_ID} | Could not close the failed SDX roll overlay`, closeError);
 			}
-		} finally {
+		}
+		finally {
 			if (SDXRollerApp._activeOverlay === this) {
 				SDXRollerApp._activeOverlay = null;
 			}
@@ -749,7 +756,8 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		this._settleRoll({ canceled: true, results: [] });
 		try {
 			await this.close();
-		} catch (error) {
+		}
+		catch (error) {
 			console.warn(`${MODULE_ID} | Could not close the canceled SDX roll overlay`, error);
 		}
 	}

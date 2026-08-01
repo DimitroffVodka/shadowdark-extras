@@ -66,7 +66,8 @@ export class LightTrackerAppSD extends HandlebarsApplicationMixin(ApplicationV2)
 		const app = LightTrackerAppSD.getInstance();
 		if (app.rendered) {
 			app.close();
-		} else {
+		}
+		else {
 			app.render(true);
 		}
 	}
@@ -148,7 +149,8 @@ export class LightTrackerAppSD extends HandlebarsApplicationMixin(ApplicationV2)
 
 		if (actor.sheet.rendered) {
 			actor.sheet.close();
-		} else {
+		}
+		else {
 			actor.sheet.render(true);
 		}
 	}
@@ -175,7 +177,8 @@ export class LightTrackerAppSD extends HandlebarsApplicationMixin(ApplicationV2)
 
 		if (item.type === "Effect") {
 			await actor.deleteEmbeddedDocuments("Item", [itemId]);
-		} else {
+		}
+		else {
 			const active = !item.system.light.active;
 			await actor.updateEmbeddedDocuments("Item", [{
 				"_id": itemId,
@@ -217,7 +220,8 @@ export class LightTrackerAppSD extends HandlebarsApplicationMixin(ApplicationV2)
 
 				if (itemData.type === "Effect") {
 					await actor.deleteEmbeddedDocuments("Item", [itemData._id]);
-				} else {
+				}
+				else {
 					await actor.updateEmbeddedDocuments("Item", [{
 						"_id": itemData._id,
 						"system.light.active": false,
@@ -275,7 +279,8 @@ export class LightTrackerAppSD extends HandlebarsApplicationMixin(ApplicationV2)
 
 			if (itemData.type === "Effect") {
 				await actor.deleteEmbeddedDocuments("Item", [itemData._id]);
-			} else {
+			}
+			else {
 				await actor.updateEmbeddedDocuments("Item", [{
 					"_id": itemData._id,
 					"system.light.active": false,

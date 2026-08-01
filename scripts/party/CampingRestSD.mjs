@@ -63,7 +63,8 @@ function mergeConsumptionEntries(entries = []) {
 		if (existing) {
 			existing.amount += entry.amount;
 			existing.after -= entry.amount;
-		} else {
+		}
+		else {
 			merged.set(key, { ...entry });
 		}
 	}
@@ -274,7 +275,8 @@ async function removeCampfire(partyActor, campfire) {
 		if (partyActor.items.has(campfire.id)) {
 			await partyActor.deleteEmbeddedDocuments("Item", [campfire.id]);
 		}
-	} catch (error) {
+	}
+	catch (error) {
 		console.warn(`${MODULE_ID} | Could not clean up camping campfire`, error);
 	}
 }
@@ -517,7 +519,8 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		await this.close();
 		try {
 			await this._runProcedure(plan);
-		} finally {
+		}
+		finally {
 			this._running = false;
 		}
 	}
@@ -766,7 +769,8 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					const taskBenefits = taskBenefitsByActor.get(actor.id)
 						?? await this._applyTaskBenefit(camper, taskResult, plan);
 					benefits.push(...taskBenefits);
-				} else if (camper.taskKey === "hunt" && camper.pushed) {
+				}
+				else if (camper.taskKey === "hunt" && camper.pushed) {
 					benefits.push(
 						game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.hunt_blocked")
 					);
@@ -810,14 +814,16 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			ui.notifications.info(
 				game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.complete")
 			);
-		} catch (error) {
+		}
+		catch (error) {
 			console.error(`${MODULE_ID} | Camping rest procedure failed`, error);
 			ui.notifications.error(
 				game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.failed", {
 					message: error.message,
 				})
 			);
-		} finally {
+		}
+		finally {
 			await removeCampfire(this.partyActor, campfire);
 			await this.onCampfireChange?.();
 			this.partyActor.sheet?.render(false);

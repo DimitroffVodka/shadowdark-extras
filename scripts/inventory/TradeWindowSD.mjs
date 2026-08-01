@@ -61,7 +61,8 @@ export async function ensureTradeJournal() {
 		});
 
 		console.log(`${MODULE_ID} | Trade sync journal created:`, journal.id);
-	} else {
+	}
+	else {
 		// Ensure ownership is correct (in case it was changed)
 		if (journal.ownership.default !== CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) {
 			await journal.update({
@@ -246,7 +247,8 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 					// SD 4.x stores the masked name directly in itemData.name
 					// (toggleIdentified swaps name ↔ identification.name).
 					maskedName = itemData.name;
-				} else {
+				}
+				else {
 					// Legacy: masked name lives in a separate flag
 					const customName = itemData.flags?.[MODULE_ID]?.unidentifiedName;
 					maskedName = (customName && customName.trim())
@@ -364,7 +366,8 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 		let data;
 		try {
 			data = JSON.parse(event.dataTransfer.getData("text/plain"));
-		} catch (e) {
+		}
+		catch (e) {
 			return;
 		}
 
@@ -412,7 +415,8 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 			if (updates.coins !== undefined) state.coinsA = updates.coins;
 			if (updates.locked !== undefined) state.lockedA = updates.locked;
 			if (updates.accepted !== undefined) state.acceptedA = updates.accepted;
-		} else {
+		}
+		else {
 			if (updates.items !== undefined) state.itemsB = updates.items;
 			if (updates.coins !== undefined) state.coinsB = updates.coins;
 			if (updates.locked !== undefined) state.lockedB = updates.locked;
@@ -449,11 +453,13 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 			state.acceptedB = false;
 			if (this.localSide === "A") {
 				state.lockedA = false;
-			} else {
+			}
+			else {
 				state.lockedB = false;
 			}
 			await saveTradeData(this.tradeId, state);
-		} else {
+		}
+		else {
 			// Lock
 			await this._updateLocalState({ locked: true });
 		}
@@ -472,7 +478,8 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 		const state = this.getTradeState();
 		if (this.localSide === "A") {
 			state.acceptedA = true;
-		} else {
+		}
+		else {
 			state.acceptedB = true;
 		}
 
@@ -528,7 +535,8 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 				const itemsA = state.itemsA.map(i => ({ _id: i._id, quantity: i.system?.quantity ?? 1 }));
 				if (useItemPiles) {
 					await game.itempiles.API.transferItems(actorA, actorB, itemsA, { interactionId: false });
-				} else {
+				}
+				else {
 					await this._nativeTransferItems(actorA, actorB, itemsA);
 				}
 			}
@@ -538,7 +546,8 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 				const itemsB = state.itemsB.map(i => ({ _id: i._id, quantity: i.system?.quantity ?? 1 }));
 				if (useItemPiles) {
 					await game.itempiles.API.transferItems(actorB, actorA, itemsB, { interactionId: false });
-				} else {
+				}
+				else {
 					await this._nativeTransferItems(actorB, actorA, itemsB);
 				}
 			}
@@ -551,7 +560,8 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 					console.log(`${MODULE_ID} | Transferring currencies from ${actorA.name} to ${actorB.name}:`, attributesA);
 					const result = await game.itempiles.API.transferAttributes(actorA, actorB, attributesA, { interactionId: false });
 					console.log(`${MODULE_ID} | Currency transfer A->B result:`, result);
-				} else {
+				}
+				else {
 					await this._nativeTransferCoins(actorA, actorB, coinsA);
 				}
 			}
@@ -564,7 +574,8 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 					console.log(`${MODULE_ID} | Transferring currencies from ${actorB.name} to ${actorA.name}:`, attributesB);
 					const result = await game.itempiles.API.transferAttributes(actorB, actorA, attributesB, { interactionId: false });
 					console.log(`${MODULE_ID} | Currency transfer B->A result:`, result);
-				} else {
+				}
+				else {
 					await this._nativeTransferCoins(actorB, actorA, coinsB);
 				}
 			}
@@ -573,7 +584,8 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 			state.complete = true;
 			await saveTradeData(this.tradeId, state);
 
-		} catch (error) {
+		}
+		catch (error) {
 			console.error(`${MODULE_ID} | Trade execution failed:`, error);
 			ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.trade.failed"));
 		}
@@ -722,7 +734,8 @@ export async function nativeTransferItems(fromActor, toActor, transferList) {
 		if (existingStack) {
 			const newQty = Number(existingStack.system?.quantity ?? 1) + actualTransfer;
 			await existingStack.update({ "system.quantity": newQty }, opts);
-		} else {
+		}
+		else {
 			const data = srcItem.toObject();
 			data.system = data.system ?? {};
 			data.system.quantity = actualTransfer;
@@ -734,7 +747,8 @@ export async function nativeTransferItems(fromActor, toActor, transferList) {
 		const remaining = srcQty - actualTransfer;
 		if (remaining <= 0) {
 			await srcItem.delete(opts);
-		} else {
+		}
+		else {
 			await srcItem.update({ "system.quantity": remaining }, opts);
 		}
 	}
@@ -911,14 +925,16 @@ export async function initiateTradeWithPlayer(localActor, remoteActor) {
 			});
 
 			ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.trade.accepted"));
-		} else {
+		}
+		else {
 			// Trade declined
 			ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.trade.declined_by", {
 				player: remoteActor.name,
 			}));
 		}
 
-	} catch (error) {
+	}
+	catch (error) {
 		console.error(`${MODULE_ID} | Error initiating trade:`, error);
 		ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.trade.failed"));
 	}

@@ -127,7 +127,9 @@ export class SDXCoordsSettingsApp extends HandlebarsApplicationMixin(Application
 		html.querySelectorAll('input[type="color"]').forEach(picker => {
 			const text = picker.nextElementSibling;
 			if (text?.type === "text") {
-				picker.addEventListener("input", () => { text.value = picker.value; });
+				picker.addEventListener("input", () => {
+					text.value = picker.value;
+				});
 				text.addEventListener("input", () => {
 					if (/^#[0-9a-fA-F]{6}$/.test(text.value)) picker.value = text.value;
 				});

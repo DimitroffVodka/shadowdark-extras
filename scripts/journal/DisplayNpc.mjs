@@ -41,7 +41,8 @@ async function getActorFromUUID(uuid) {
 			actor = await fromUuid(uuid);
 		}
 		return actor;
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn(`SDX DisplayNpcCard: Could not find actor for UUID: ${uuid}`);
 		return null;
 	}
@@ -267,7 +268,8 @@ export async function enrichDisplayNpcCard(match, _options, detailed = false) {
 		if (parsedMatch.named) {
 			titleClasses += " named";
 			titleContent = `<span class="sdx-npc-name">${npcName}</span>`;
-		} else {
+		}
+		else {
 			titleContent = `@UUID[${npc.uuid}]{${npcName}}`;
 		}
 
@@ -330,7 +332,8 @@ export async function enrichDisplayNpcCard(match, _options, detailed = false) {
 		html += "</div>";
 
 		container.innerHTML = await TextEditor.enrichHTML(html, { async: true });
-	} else {
+	}
+	else {
 		// Broken link fallback
 		container.dataset.npcId = parsedMatch.uuid;
 		if (match[2]) container.dataset.npcName = match[2];

@@ -104,7 +104,8 @@ async function executeClassAbilityItemMacro(item, actor, context = {}) {
 			scope.actor, scope.token, scope.item, scope.targets, scope.target, scope.targetActor,
 			scope.speaker, scope.flags, scope.success, scope.critical, scope.rolled, scope.scene, scope.game
 		);
-	} catch (error) {
+	}
+	catch (error) {
 		console.error(`${MODULE_ID} | Error executing Class Ability macro:`, error);
 		ui.notifications.error("There was an error in your macro syntax. See the console (F12) for details");
 	}
@@ -175,7 +176,8 @@ export function registerClassAbilityItemMacros() {
 						scope.actor, scope.token, scope.item, scope.targets, scope.target, scope.targetActor,
 						scope.speaker, scope.flags, scope.success, scope.critical, scope.rolled, scope.scene, scope.game
 					);
-				} catch (error) {
+				}
+				catch (error) {
 					console.error(`${MODULE_ID} | GM execution of Class Ability macro failed:`, error);
 				}
 			});
@@ -200,7 +202,10 @@ export function registerClassAbilityItemMacros() {
 			PlayerDM.prototype.useAbility = async function(abilityUuid, config = {}) {
 				const actor = this.parent;
 				let item = null;
-				try { item = await fromUuid(abilityUuid); } catch (_) { }
+				try {
+					item = await fromUuid(abilityUuid);
+				}
+				catch (_) { }
 
 				// Only intercept Class Ability items
 				if (!item || item.type !== "Class Ability") {

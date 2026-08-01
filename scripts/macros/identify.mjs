@@ -179,7 +179,8 @@ export async function identifyItem(item, identifySpell) {
 				maskedName,
 			});
 			return;
-		} else {
+		}
+		else {
 			ui.notifications.warn("Cannot identify item: No GM connected or socket unavailable.");
 			return;
 		}
@@ -192,7 +193,8 @@ export async function identifyItem(item, identifySpell) {
 	// re-enables the item's Active Effects; legacy worlds just clear the SDX flags.
 	if (item.system?.identification !== undefined) {
 		if (!item.system.isIdentified) await item.system.toggleIdentified();
-	} else {
+	}
+	else {
 		await item.unsetFlag(MODULE_ID, "unidentified");
 		await item.unsetFlag(MODULE_ID, "unidentifiedName");
 	}
@@ -292,7 +294,8 @@ export async function showItemReveal(item, maskedName) {
 					.play();
 			}
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		// Silently fail if no JB2A effects available
 		console.log(`${MODULE_ID} | Sequencer animation not available: ${e.message}`);
 	}

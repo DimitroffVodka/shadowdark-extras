@@ -20,7 +20,8 @@ export async function loadDungeonData() {
 				_data.roomDescriptions[key] = val;
 			}
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load dungeon data:`, err);
 		ui.notifications?.error("SDX | Could not load dungeon data.");
 		throw err;
@@ -35,7 +36,8 @@ export async function loadBookData() {
 		const resp = await fetch(`modules/${MODULE_ID}/scripts/data/dungeon-books.json`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_bookData = await resp.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load dungeon books:`, err);
 		throw err;
 	}
@@ -49,7 +51,8 @@ export async function loadMotivationsData() {
 		const resp = await fetch(`modules/${MODULE_ID}/scripts/data/dungeon-motivations.json`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_motivationsData = await resp.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load dungeon motivations:`, err);
 		throw err;
 	}
@@ -66,7 +69,8 @@ async function getMonsterIndex() {
 		for (const entry of index) {
 			_monsterIndex.set(entry.name, entry._id);
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn(`${MODULE_ID} | Could not load monster compendium index:`, err);
 	}
 	return _monsterIndex;
@@ -101,7 +105,8 @@ function resolveTemplate(template, tables = {}) {
 			if (group.includes("|")) {
 				const options = group.split("|");
 				return options[Math.floor(Math.random() * options.length)];
-			} else {
+			}
+			else {
 				const table = tables[group.trim()];
 				if (Array.isArray(table) && table.length > 0) {
 					return resolveTemplate(
@@ -728,7 +733,8 @@ export async function generateDungeonHtml(typeKey, sizeKey, hexLabel, hexKey) {
 	let fileObj;
 	if (typeof File !== "undefined") { // Browser
 		fileObj = new File([blob], safeFileName, { type: "image/svg+xml" });
-	} else { // Fallback shouldn't usually happen in Foundry UI, but safe
+	}
+	else { // Fallback shouldn't usually happen in Foundry UI, but safe
 		fileObj = blob;
 		fileObj.name = safeFileName;
 	}
@@ -739,14 +745,16 @@ export async function generateDungeonHtml(typeKey, sizeKey, hexLabel, hexKey) {
 		const targetFolder = "hexlocations";
 		try {
 			await FilePicker.createDirectory("data", targetFolder);
-		} catch (e) {
+		}
+		catch (e) {
 			// Directory probably exists, ignore
 		}
 
 		// Upload the file
 		const uploadResult = await FilePicker.upload("data", targetFolder, fileObj);
 		mapSrc = uploadResult.path;
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn(`${MODULE_ID} | Failed to upload dungeon map:`, err);
 		// Fallback to inline data URI if upload fails (some browsers might still display it)
 		mapSrc = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;

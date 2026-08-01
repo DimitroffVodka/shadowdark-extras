@@ -14,7 +14,8 @@ export class WallContextMenuSD {
 		if (typeof libWrapper === "function") {
 			libWrapper.register(MODULE_ID, "foundry.canvas.layers.WallsLayer.prototype._onClickRight", this._onLayerRightClick, "WRAPPER");
 			libWrapper.register(MODULE_ID, "foundry.canvas.placeables.Wall.prototype._onClickRight", this._onWallRightClick, "WRAPPER");
-		} else {
+		}
+		else {
 			const originalLayer = WallsLayerClass.prototype._onClickRight;
 			WallsLayerClass.prototype._onClickRight = function(event) {
 				WallContextMenuSD._onLayerRightClick.call(this, originalLayer, event);
@@ -164,7 +165,8 @@ export class WallContextMenuSD {
 				icon: '<i class="fas fa-user-secret"></i>',
 				callback: () => wallDoc.update({ door: CONST.WALL_DOOR_TYPES.SECRET }),
 			});
-		} else if (wallDoc.door === CONST.WALL_DOOR_TYPES.DOOR) {
+		}
+		else if (wallDoc.door === CONST.WALL_DOOR_TYPES.DOOR) {
 			menuItems.push({
 				name: "Convert to Wall",
 				icon: '<i class="fas fa-border-all"></i>',
@@ -175,7 +177,8 @@ export class WallContextMenuSD {
 				icon: '<i class="fas fa-user-secret"></i>',
 				callback: () => wallDoc.update({ door: CONST.WALL_DOOR_TYPES.SECRET }),
 			});
-		} else if (wallDoc.door === CONST.WALL_DOOR_TYPES.SECRET) {
+		}
+		else if (wallDoc.door === CONST.WALL_DOOR_TYPES.SECRET) {
 			menuItems.push({
 				name: "Convert to Door",
 				icon: '<i class="fas fa-door-open"></i>',

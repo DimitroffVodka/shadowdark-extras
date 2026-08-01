@@ -112,7 +112,8 @@ export async function injectJournalNotes(app, html, actor) {
 	// Check if journal notes is enabled
 	try {
 		if (!game.settings.get(MODULE_ID, "enableJournalNotes")) return;
-	} catch {
+	}
+	catch {
 		return;
 	}
 
@@ -379,7 +380,8 @@ class SdxJournalPageEditor extends foundry.applications.api.HandlebarsApplicatio
 					view.focus();
 					return;
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				console.warn("SDX Journal: ProseMirror insertion failed:", err);
 			}
 		}

@@ -55,7 +55,8 @@ export function patchHexTilePositionClamp() {
 			wrapped(...args);
 			restoreSourcePosition.call(this);
 		}, "WRAPPER");
-	} else {
+	}
+	else {
 		// Fallback: direct prototype wrap (idempotent).
 		const proto = CONFIG.Tile.documentClass.prototype;
 		if (!proto.__sdxClampPatched) {

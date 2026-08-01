@@ -43,7 +43,8 @@ export async function applyWrathToAllWeapons(casterActor, casterItem, originatin
 				isCritical
 			);
 			return;
-		} else {
+		}
+		else {
 			ui.notifications.warn("Cannot empower weapons: No GM connected or socket unavailable.");
 			return;
 		}
@@ -125,7 +126,8 @@ export async function applyWrathToAllWeapons(casterActor, casterItem, originatin
 					.play();
 			}
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		console.log(`${MODULE_ID} | Sequencer animation not available: ${e.message}`);
 	}
 

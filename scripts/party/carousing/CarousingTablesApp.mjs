@@ -222,7 +222,8 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 
 		if (isNew) {
 			tables.push(tableData);
-		} else {
+		}
+		else {
 			const idx = tables.findIndex(t => t.id === this.editingTable);
 			if (idx >= 0) tables[idx] = tableData;
 		}
@@ -336,7 +337,8 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 					const description = entryMatch[2].replace(/\s+/g, " ").trim();
 					const bonus = parseInt(entryMatch[3]) || 0;
 					entries.push({ cost, description, bonus });
-				} else {
+				}
+				else {
 					const cost = parseInt(starts[i].cost) || 0;
 					const afterCost = entryText.replace(/^[\d,]+\s*gp\s*/i, "");
 					const bonusMatch = afterCost.match(/([+-]\d+)\s*$/);
@@ -434,7 +436,8 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 				if (benefitMatch) {
 					benefit = benefitMatch[1].replace(/\s+/g, " ").trim();
 					description = afterRoll.slice(0, afterRoll.length - benefitMatch[0].length).replace(/\s+/g, " ").trim();
-				} else {
+				}
+				else {
 					description = afterRoll.replace(/\s+/g, " ").trim();
 					benefit = "";
 				}
@@ -608,7 +611,8 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 
 				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.table_imported", { name: tableData.name }));
 				this.render();
-			} catch (err) {
+			}
+			catch (err) {
 				console.error("Failed to import carousing table:", err);
 				ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_error"));
 			}

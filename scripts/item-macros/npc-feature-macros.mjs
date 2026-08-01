@@ -140,9 +140,11 @@ async function processNPCFeatureDamage(item, actor, token, targetToken, targetAc
 		if (bonus !== 0) {
 			formula += bonus > 0 ? `+${bonus}` : `${bonus}`;
 		}
-	} else if (formulaType === "formula") {
+	}
+	else if (formulaType === "formula") {
 		formula = spellDamage.formula || "1d6";
-	} else if (formulaType === "tiered") {
+	}
+	else if (formulaType === "tiered") {
 		// Parse tiered formula like "1-3:1d6, 4-6:2d8, 7+:3d10"
 		const level = actor.system?.level?.value || 1;
 		const tieredFormula = spellDamage.tieredFormula || "";
@@ -156,7 +158,8 @@ async function processNPCFeatureDamage(item, actor, token, targetToken, targetAc
 					formula = tierFormula;
 					break;
 				}
-			} else if (range.includes("+")) {
+			}
+			else if (range.includes("+")) {
 				const min = parseInt(range.replace("+", ""));
 				if (level >= min) {
 					formula = tierFormula;
@@ -243,7 +246,8 @@ async function processNPCFeatureEffects(item, actor, token, targetToken, targetA
 	if (selectionMode === "random" && effectsToApply.length > 1) {
 		const randomIndex = Math.floor(Math.random() * effectsToApply.length);
 		effectsToApply = [effectsToApply[randomIndex]];
-	} else if (selectionMode === "prompt" && effectsToApply.length > 1) {
+	}
+	else if (selectionMode === "prompt" && effectsToApply.length > 1) {
 		// For now, just apply all - prompt could be added later
 		// effectsToApply = effectsToApply;
 	}
@@ -263,7 +267,8 @@ async function processNPCFeatureEffects(item, actor, token, targetToken, targetA
 
 			await recipient.createEmbeddedDocuments("Item", [effectDataObj]);
 			ui.notifications.info(`Applied ${effectDoc.name} to ${recipient.name}`);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Failed to apply effect ${effectUuid}:`, err);
 		}
 	}
@@ -315,7 +320,8 @@ async function processNPCFeatureItemGive(item, actor, token, targetToken, target
 
 			await recipient.createEmbeddedDocuments("Item", [itemData]);
 			ui.notifications.info(`Gave ${quantity}x ${itemDoc.name} to ${recipient.name}`);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Failed to give item:`, err);
 		}
 	}
@@ -357,7 +363,8 @@ export function registerNPCFeatureItemMacros() {
 						const token = selectedTokens.find(t => t.actor?.id === actor?.id) || null;
 						await executeNPCFeatureItemMacro(this, actor, {});
 						await processNPCFeatureActivities(this, actor, token);
-					} catch (err) {
+					}
+					catch (err) {
 						console.error(`${MODULE_ID} | NPC Feature macro/activity execution failed:`, err);
 					}
 				}

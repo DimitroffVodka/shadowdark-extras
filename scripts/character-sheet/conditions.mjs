@@ -185,7 +185,8 @@ export async function injectConditionsToggles(app, html, actor) {
 	const $activeEffects = $effectsTab.find(".active-effects, .effects-list").last();
 	if ($activeEffects.length) {
 		$activeEffects.after(togglesHtml);
-	} else {
+	}
+	else {
 		// Fallback: append to the tab
 		$effectsTab.append(togglesHtml);
 	}
@@ -334,7 +335,8 @@ export function showConditionsModal(actor, conditionDataMap, theme) {
 
 			if (conditionName.includes(searchTerm)) {
 				$toggle.show();
-			} else {
+			}
+			else {
 				$toggle.hide();
 			}
 		});
@@ -355,7 +357,8 @@ export function showConditionsModal(actor, conditionDataMap, theme) {
 		if (isActive) {
 			await removeConditionFromActor(actor, conditionName, conditionUuid);
 			$toggle.removeClass("active");
-		} else {
+		}
+		else {
 			await addConditionToActor(actor, conditionUuid);
 			$toggle.addClass("active");
 		}
@@ -398,7 +401,8 @@ function refreshModalConditionOrder($grid, actor) {
 		if (isActive) {
 			$toggle.addClass("active");
 			activeToggles.push($toggle);
-		} else {
+		}
+		else {
 			$toggle.removeClass("active");
 			inactiveToggles.push($toggle);
 		}
@@ -476,7 +480,8 @@ function showConditionSubmenuInModal($toggle, variants, actor, conditionItems, $
 	if (spaceBelow < submenuHeight && rect.top > submenuHeight) {
 		// Position above if not enough space below
 		$submenu.css("top", (rect.top - submenuHeight) + "px");
-	} else {
+	}
+	else {
 		// Position below
 		$submenu.css("top", rect.bottom + "px");
 	}
@@ -493,7 +498,8 @@ function showConditionSubmenuInModal($toggle, variants, actor, conditionItems, $
 
 		if (isActive) {
 			await removeConditionFromActor(actor, conditionName, conditionUuid);
-		} else {
+		}
+		else {
 			await addConditionToActor(actor, conditionUuid);
 		}
 
@@ -618,7 +624,8 @@ function showConditionSubmenu($toggle, variants, actor, conditionItems) {
 	if (spaceBelow < submenuHeight && rect.top > submenuHeight) {
 		// Position above if not enough space below
 		$submenu.css("top", (rect.top - submenuHeight) + "px");
-	} else {
+	}
+	else {
 		// Position below
 		$submenu.css("top", rect.bottom + "px");
 	}
@@ -635,7 +642,8 @@ function showConditionSubmenu($toggle, variants, actor, conditionItems) {
 
 		if (isActive) {
 			await removeConditionFromActor(actor, conditionName, conditionUuid);
-		} else {
+		}
+		else {
 			await addConditionToActor(actor, conditionUuid);
 		}
 
@@ -687,7 +695,8 @@ async function addConditionToActor(actor, conditionUuid) {
 
 		await actor.createEmbeddedDocuments("Item", [itemData]);
 		ui.notifications.info(`Applied: ${condition.name}`);
-	} catch (error) {
+	}
+	catch (error) {
 		console.error(`${MODULE_ID} | Error adding condition:`, error);
 		ui.notifications.error("Failed to apply condition");
 	}
@@ -711,7 +720,8 @@ async function removeConditionFromActor(actor, conditionName, conditionUuid) {
 			await actor.deleteEmbeddedDocuments("Item", ids);
 			ui.notifications.info(`Removed: ${conditionName}`);
 		}
-	} catch (error) {
+	}
+	catch (error) {
 		console.error(`${MODULE_ID} | Error removing condition:`, error);
 		ui.notifications.error("Failed to remove condition");
 	}

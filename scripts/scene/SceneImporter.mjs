@@ -92,7 +92,8 @@ export class SceneImporter {
 			await this.createScene(zipContent, sceneName, assetMap, idMap);
 
 			ui.notifications.info(`Scene "${sceneName}" imported successfully!`);
-		} catch (error) {
+		}
+		catch (error) {
 			console.error(`${MODULE_ID} | Import failed:`, error);
 			ui.notifications.error(`Import failed: ${error.message}`);
 		}
@@ -163,7 +164,8 @@ export class SceneImporter {
 				await FilePicker.upload("data", uploadDir, file, {}, { notify: false });
 				// const newPath = `${uploadDir}/${filename}`;
 				// We actually don't trust the return path blindly, constructing it is safer if we know where we put it.
-			} catch (e) {
+			}
+			catch (e) {
 				console.warn(`${MODULE_ID} | Failed to upload ${filename}`, e);
 			}
 		}
@@ -227,7 +229,8 @@ export class SceneImporter {
 					const doc = await cls.create(docData);
 					idMap[type].set(oldId, doc.id);
 					console.log(`${MODULE_ID} | Created ${type}: ${doc.name}`);
-				} catch (e) {
+				}
+				catch (e) {
 					console.error(`${MODULE_ID} | Failed to create ${type}:`, e);
 				}
 			}
@@ -337,7 +340,8 @@ export class SceneImporter {
 	static async ensureDirectory(source, path) {
 		try {
 			await FilePicker.browse(source, path);
-		} catch (e) {
+		}
+		catch (e) {
 			await FilePicker.createDirectory(source, path);
 		}
 	}

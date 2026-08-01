@@ -166,11 +166,13 @@ export default class StaffSpellManager extends HandlebarsApplicationMixin(Applic
 			// Handle UUID or pack references
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === "Item" && data.id) {
+			}
+			else if (data.type === "Item" && data.id) {
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
 					doc = await pack.getDocument(data.id);
-				} else {
+				}
+				else {
 					doc = game.items.get(data.id);
 				}
 			}
@@ -211,7 +213,8 @@ export default class StaffSpellManager extends HandlebarsApplicationMixin(Applic
 			// Re-render to show the new spell
 			this.render();
 
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error handling spell drop:`, err);
 			ui.notifications.error("Failed to add spell to staff");
 		}

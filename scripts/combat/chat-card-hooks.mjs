@@ -68,7 +68,8 @@ export function registerChatCardHooks() {
 												await endDurationSpell(targetActor.id, mirrorSpell.instanceId || mirrorSpell.spellId, "expired");
 											}
 										}
-									} else {
+									}
+									else {
 										await mirrorEffect.update({
 											"flags.shadowdark-extras.duplicates": newCount,
 											"name": `Mirror Image (${newCount})`,
@@ -164,7 +165,8 @@ export function registerChatCardHooks() {
 				const targetIds = Array.from(game.user.targets).map(t => t.id);
 				foundry.utils.setProperty(message._source, `flags.${MODULE_ID}.targetIds`, targetIds);
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Failed to store data in message`, err);
 		}
 	});
@@ -173,7 +175,8 @@ export function registerChatCardHooks() {
 	Hooks.on("renderChatMessageHTML", (message, html, context) => {
 		try {
 			injectDamageCard(message, html, context);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Failed to inject damage card`, err);
 		}
 
@@ -194,7 +197,8 @@ export function registerChatCardHooks() {
 				const cardContent = html.querySelector(".card-content");
 				if (cardContent) cardContent.style.display = "none";
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			// Settings may not be registered yet, ignore
 		}
 	});

@@ -104,7 +104,8 @@ async function ensureLevels(scene, count, levelHeight, entranceIndex = 0, names 
 				[`flags.${MODULE_ID}.mlLevelIndex`]: r.index,
 			});
 			result[r.index] = { id: lvl.id, bottom: r.bottom, top: r.top, index: r.index };
-		} else {
+		}
+		else {
 			creates.push(r);
 		}
 	}
@@ -167,12 +168,20 @@ function carveCorridorTo(floors, tx, ty) {
 	for (const c of floors) {
 		const [x, y] = c.split(",").map(Number);
 		const d = Math.abs(x - tx) + Math.abs(y - ty);
-		if (d < bestD) { bestD = d; best = [x, y]; }
+		if (d < bestD) {
+			bestD = d; best = [x, y];
+		}
 	}
-	if (!best) { floors.add(`${tx},${ty}`); return; }
+	if (!best) {
+		floors.add(`${tx},${ty}`); return;
+	}
 	let [cx, cy] = best;
-	while (cx !== tx) { floors.add(`${cx},${cy}`); cx += tx > cx ? 1 : -1; }
-	while (cy !== ty) { floors.add(`${cx},${cy}`); cy += ty > cy ? 1 : -1; }
+	while (cx !== tx) {
+		floors.add(`${cx},${cy}`); cx += tx > cx ? 1 : -1;
+	}
+	while (cy !== ty) {
+		floors.add(`${cx},${cy}`); cy += ty > cy ? 1 : -1;
+	}
 	floors.add(`${tx},${ty}`);
 }
 
@@ -181,14 +190,22 @@ function translateLayout(layout, dx, dy) {
 	if (dx === 0 && dy === 0) return;
 	const shiftSet = (set) => {
 		const out = new Set();
-		for (const k of set) { const [x, y] = k.split(",").map(Number); out.add(`${x + dx},${y + dy}`); }
+		for (const k of set) {
+			const [x, y] = k.split(",").map(Number); out.add(`${x + dx},${y + dy}`);
+		}
 		return out;
 	};
 	layout.floors = shiftSet(layout.floors);
 	if (layout._caveCells) layout._caveCells = shiftSet(layout._caveCells); // keep mixed-mode cave tags aligned
-	for (const rd of (layout.roomData || [])) { rd.room.x += dx; rd.room.y += dy; }
-	for (const e of (layout.entranceEdges || [])) { e.x += dx; e.y += dy; }
-	for (const dp of (layout.doorPositions || [])) { dp.x += dx; dp.y += dy; }
+	for (const rd of (layout.roomData || [])) {
+		rd.room.x += dx; rd.room.y += dy;
+	}
+	for (const e of (layout.entranceEdges || [])) {
+		e.x += dx; e.y += dy;
+	}
+	for (const dp of (layout.doorPositions || [])) {
+		dp.x += dx; dp.y += dy;
+	}
 }
 
 /** Move a layout's bounding-box center to the origin, so independent levels become
@@ -196,7 +213,9 @@ function translateLayout(layout, dx, dy) {
  *  connectors) while keeping distinct room arrangements. */
 function centerLayout(layout) {
 	let a = Infinity; let b = Infinity; let c = -Infinity; let d = -Infinity;
-	for (const k of layout.floors) { const [x, y] = k.split(",").map(Number); a = Math.min(a, x); b = Math.min(b, y); c = Math.max(c, x); d = Math.max(d, y); }
+	for (const k of layout.floors) {
+		const [x, y] = k.split(",").map(Number); a = Math.min(a, x); b = Math.min(b, y); c = Math.max(c, x); d = Math.max(d, y);
+	}
 	translateLayout(layout, -Math.round((a + c) / 2), -Math.round((b + d) / 2));
 }
 
@@ -244,7 +263,9 @@ function pickAnchors(layouts, count, rng, maxCarve = 6) {
 	const interiors = layouts.map(interiorCells);
 	const doorKeys = new Set();         // never anchor on a door cell (a stair in a doorway is nonsense)
 	for (const lay of layouts) for (const d of (lay.doorPositions ?? [])) doorKeys.add(`${d.x},${d.y}`);
-	const floorArrs = layouts.map(l => [...l.floors].map(c => { const [x, y] = c.split(",").map(Number); return [x, y]; }));
+	const floorArrs = layouts.map(l => [...l.floors].map(c => {
+		const [x, y] = c.split(",").map(Number); return [x, y];
+	}));
 
 	// A candidate's "carve cost" = the worst (max) distance from it to any level's nearest
 	// floor. Capping it keeps the per-level stair connector short, so independent (distinct)
@@ -260,10 +281,14 @@ function pickAnchors(layouts, count, rng, maxCarve = 6) {
 				let dmin = Infinity;
 				for (const [x, y] of floorArrs[li]) {
 					const d = Math.abs(x - gx) + Math.abs(y - gy);
-					if (d < dmin) { dmin = d; if (dmin <= 1) break; }
+					if (d < dmin) {
+						dmin = d; if (dmin <= 1) break;
+					}
 				}
 				if (dmin > carve) carve = dmin;
-				if (carve > cap) { ok = false; break; }
+				if (carve > cap) {
+					ok = false; break;
+				}
 			}
 			if (!ok) continue;
 			// Strongly prefer cells that are ALREADY a room interior; penalize floor cells that
@@ -291,7 +316,9 @@ function pickAnchors(layouts, count, rng, maxCarve = 6) {
 			let dmin = Infinity;
 			for (const a of anchors) dmin = Math.min(dmin, Math.abs(c.gx - a.gx) + Math.abs(c.gy - a.gy));
 			const score = (anchors.length ? dmin * 3 : 0) + c.base; // spread dominates, then overlap/room
-			if (score > bestScore) { bestScore = score; bestIdx = idx; }
+			if (score > bestScore) {
+				bestScore = score; bestIdx = idx;
+			}
 		}
 		const [pick] = candidates.splice(bestIdx, 1);
 		anchors.push({ gx: pick.gx, gy: pick.gy, key: pick.key });
@@ -357,8 +384,11 @@ async function browseClutter() {
 		const result = await FP.browse("data", `modules/${MODULE_ID}/assets/Dungeon/clutter`);
 		return (result.files || [])
 			.filter(f => /-(\d+)x(\d+)\.\w+$/i.test(f))
-			.map(f => { const m = f.match(/-(\d+)x(\d+)\.\w+$/i); return { src: f, w: parseInt(m[1]), h: parseInt(m[2]) }; });
-	} catch (e) {
+			.map(f => {
+				const m = f.match(/-(\d+)x(\d+)\.\w+$/i); return { src: f, w: parseInt(m[1]), h: parseInt(m[2]) };
+			});
+	}
+	catch (e) {
 		console.warn(`${MODULE_ID} | Could not browse clutter folder:`, e);
 		return [];
 	}
@@ -429,12 +459,14 @@ async function renderLevel(scene, layout, offset, level, cfg, rng, clutterItems,
 		const loops = buildMixedLoops(layout.floors, layout._caveCells ?? new Set(), offset, GRID_SIZE);
 		walls = generateCurvedWalls(loops, mt);
 		visuals = generateCurvedWallVisuals(loops, { useTexture: cfg.useTexture, wallColor: cfg.wallColor, wallThickness: mt, wallTilePath: cfg.wallTilePath });
-	} else if (cfg.style === "cave") {
+	}
+	else if (cfg.style === "cave") {
 		const ct = Math.max(cfg.wallThickness, 45);
 		const loops = buildCaveLoops(layout.floors, offset, GRID_SIZE);
 		walls = generateCurvedWalls(loops, ct);
 		visuals = generateCurvedWallVisuals(loops, { useTexture: cfg.useTexture, wallColor: cfg.wallColor, wallThickness: ct, wallTilePath: cfg.wallTilePath });
-	} else {
+	}
+	else {
 		walls = generateWalls(layout.floors, offset, connectedEdges, cfg.wallThickness);
 		visuals = generateWallVisuals(layout.floors, offset, {
 			useTexture: cfg.useTexture,
@@ -619,7 +651,8 @@ export async function generateMultiLevelDungeon(config = {}) {
 					_caveCells: base._caveCells ? new Set(base._caveCells) : undefined, // mixed-mode tags
 				});
 			}
-		} else {
+		}
+		else {
 			for (let i = 0; i < cfg.levelCount; i++) {
 				const lp = levelLayoutParams(cfg, i, cfg.levelCount, entranceIdx, cfg.variation, cfg.seed);
 				const lay = await buildLayout(lp, `${cfg.seed}:L${i}`);
@@ -741,7 +774,8 @@ export async function generateMultiLevelDungeon(config = {}) {
 			`SDX | Multi-level dungeon ready: ${cfg.levelCount} levels, ${connectionCount} stair connections.`
 		);
 		return { levels: cfg.levelCount, connections: connectionCount, seed: cfg.seed };
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Multi-level dungeon generation failed:`, err);
 		ui.notifications?.error("SDX | Multi-level dungeon generation failed. See console.");
 		throw err;
@@ -770,10 +804,16 @@ function readMlSliders() {
 	try {
 		const v = game.settings.get(MODULE_ID, ML_SLIDERS_KEY);
 		return { ...ML_SLIDERS_DEFAULT, ...(v && typeof v === "object" ? v : {}) };
-	} catch { return { ...ML_SLIDERS_DEFAULT }; }
+	}
+	catch {
+		return { ...ML_SLIDERS_DEFAULT };
+	}
 }
 function saveMlSlider(key, value) {
-	try { game.settings.set(MODULE_ID, ML_SLIDERS_KEY, { ...readMlSliders(), [key]: value }); } catch { /* noop */ }
+	try {
+		game.settings.set(MODULE_ID, ML_SLIDERS_KEY, { ...readMlSliders(), [key]: value });
+	}
+	catch { /* noop */ }
 }
 
 Hooks.once("init", () => {
@@ -781,7 +821,10 @@ Hooks.once("init", () => {
 		game.settings.register(MODULE_ID, ML_SLIDERS_KEY, {
 			scope: "client", config: false, type: Object, default: { ...ML_SLIDERS_DEFAULT },
 		});
-	} catch (e) { console.warn(`${MODULE_ID} | failed to register ${ML_SLIDERS_KEY} setting`, e); }
+	}
+	catch (e) {
+		console.warn(`${MODULE_ID} | failed to register ${ML_SLIDERS_KEY} setting`, e);
+	}
 });
 
 Hooks.on("renderTrayApp", (app, html) => {
@@ -806,7 +849,9 @@ Hooks.on("renderTrayApp", (app, html) => {
 	const levels = root.querySelector(".dgen-levels");
 	const extraRows = [".dgen-variation", ".dgen-variety"]
 		.map(s => root.querySelector(s)?.closest(".dgen-row")).filter(Boolean);
-	const syncExtras = n => { const multi = parseInt(n) >= 2; for (const r of extraRows) r.style.display = multi ? "" : "none"; };
+	const syncExtras = n => {
+		const multi = parseInt(n) >= 2; for (const r of extraRows) r.style.display = multi ? "" : "none";
+	};
 	if (levels) {
 		syncExtras(levels.value);
 		levels.addEventListener("input", e => syncExtras(e.target.value));

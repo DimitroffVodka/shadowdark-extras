@@ -23,7 +23,10 @@ const _blobFrames = new Map();
 
 function _revokeBlob(url) {
 	if (!_blobFrames.delete(url)) return;
-	try { URL.revokeObjectURL(url); } catch {}
+	try {
+		URL.revokeObjectURL(url);
+	}
+	catch {}
 }
 
 function _sweepDetachedBlobs() {
@@ -52,7 +55,10 @@ async function replacePlaceholder(div) {
 		return;
 	}
 	let extUrl;
-	try { extUrl = new URL(extBase); } catch {
+	try {
+		extUrl = new URL(extBase);
+	}
+	catch {
 		console.warn(`${MODULE_ID} | ignoring maphub placeholder — invalid external URL:`, extBase);
 		return;
 	}
@@ -77,7 +83,8 @@ async function replacePlaceholder(div) {
 			if (contentType.includes("text/html")) {
 				// Foundry serves it as real HTML — embed the file directly.
 				src = localUrl;
-			} else {
+			}
+			else {
 				// FV14 serves module .html as `text/plain`, so a direct iframe src
 				// would render the page's SOURCE instead of running the generator.
 				// Fetch the page and wrap it in a same-origin Blob with an injected
@@ -95,16 +102,23 @@ async function replacePlaceholder(div) {
 						.replace(/(\.\.\/\.\.\/js\/[^"]+\.js)(")/g, (_m, p, q2) => `${p}?cb=${Date.now()}${q2}`);
 					blobUrl = URL.createObjectURL(new Blob([html], { type: "text/html" }));
 					src = blobUrl;
-				} else {
+				}
+				else {
 					console.warn(`${MODULE_ID} | maphub local file was not HTML, using external:`, type);
 				}
 			}
 		}
-	} catch (_) { /* network error — use external */ }
+	}
+	catch (_) { /* network error — use external */ }
 
 	// The journal may have re-rendered while we awaited the probe/fetch.
 	if (!div.isConnected) {
-		if (blobUrl) { try { URL.revokeObjectURL(blobUrl); } catch {} }
+		if (blobUrl) {
+			try {
+				URL.revokeObjectURL(blobUrl);
+			}
+			catch {}
+		}
 		return;
 	}
 

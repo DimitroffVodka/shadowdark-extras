@@ -99,6 +99,36 @@ recorded version + hash make an exact rerun possible.
   the allow-list (the other 2 = documented artifact fix). Both APPROVE-WITH-NITS
   (nits: commit-message accuracy, addressed here); consent to merge.
 
+## 5.0.5 record (in the 5.0.5 style commit)
+
+- **Decision:** adopt Stroustrup braces (plan decision table line 937;
+  matches base system). Config already targets `stroustrup` since 5.0.1
+  (adopted wholesale) — this commit is the mechanical conversion.
+- **Mechanism (two passes + sweep):** brace-only allow-list (SHA
+  `bc6a801fcc9498ce83767255a7e6c63e2ba42ab262cbcf97a82c64558114755a`) →
+  5.0.4 six-rule layout allow-list (SHA `74aae676…`) → trailing-ws sweep.
+  WHY: the `brace-style` autofix is not self-contained — for single-line
+  blocks (`try { x(); } catch {}`, `const f = () => { a; b; }`) it moves
+  braces but leaves the body at column 0 with trailing whitespace; the
+  layout pass finalizes them. This does not violate the plan's "no
+  remaining suggestion is changed" — indent is a layout class, and the
+  brace-only+layout replay is deterministic.
+- **Scope:** 147 files, 4,023/1,787 lines. Census: the 2,236 pre-fix
+  brace-style findings resolve to 1,618 moved `else`/`catch`/`finally`
+  boundaries and 309 single-line blocks expanded to multi-line (each
+  expanded block accounts for 2 findings) — exactly reproducible from the
+  recorded pre-fix count. All 309 expanded blocks preserve statement
+  tokens and order (138 of them multi-statement, up to five statements).
+  No other change class present.
+- **Proof:** replay probe reproduces all 147 files byte-for-byte from
+  parent + (brace, layout, ws); AST/token/comment/non-whitespace-stream
+  identity across all 147 files (independent, Codex + Claude Code);
+  idempotent (each of the three passes re-run against HEAD changes 0
+  files); diff --check clean; no hand edits anywhere in the commit.
+- **Post-state:** lint errors ZERO (brace-style was the last error class);
+  4,760 warnings (all suggestion/deferred classes). max-len 913→894
+  (expansions reduce line lengths; mechanical, deferred).
+
 ## Why not a gate yet
 
 `verify.sh` does not call lint until the error-level baseline is clean

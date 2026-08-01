@@ -170,7 +170,8 @@ export async function buildHexDungeonScene({ hexLabel, hexKey, typeKey, sizeKey 
 				style: { contentType: "text", customText: String(r.num) },
 				flags: { [MODULE_ID]: { hexDungeon: true } },
 			}, { sceneId: scene.id });
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to create SDX pin for room ${r.num}:`, err);
 		}
 	}
@@ -178,7 +179,8 @@ export async function buildHexDungeonScene({ hexLabel, hexKey, typeKey, sizeKey 
 	// 7. Restore the GM's previous view (non-fatal if it fails).
 	try {
 		if (remember && remember.id !== scene.id) await remember.view();
-	} catch (_e) { /* ignore */ }
+	}
+	catch (_e) { /* ignore */ }
 
 	ui.notifications.info(`SDX | Dungeon map "${content.dungeonName}" generated (${roomCount} rooms).`);
 	return { scene, journal, dungeonName: content.dungeonName, roomCount };

@@ -50,7 +50,8 @@ export function enhanceInventoryTab(app, html, actor) {
 			// Light is active - add glow effect
 			$toggle.find("i").addClass("sdx-light-active");
 			$toggle.addClass("sdx-light-toggle-active");
-		} else {
+		}
+		else {
 			// Light is not active - ensure classes are removed
 			$toggle.find("i").removeClass("sdx-light-active");
 			$toggle.removeClass("sdx-light-toggle-active");
@@ -138,13 +139,15 @@ async function flushActorHpAdjustment(actorUuid) {
 			// update via the updateActor hook regardless of this flag.
 			await actor.update({ "system.attributes.hp.value": newHp }, { render: false });
 		}
-	} finally {
+	}
+	finally {
 		state.flushing = false;
 		if (state.delta !== 0) {
 			// A click landed during the final in-flight update; drain it on the
 			// next tick (no artificial delay — just yields so the update settles).
 			state.timer = window.setTimeout(() => flushActorHpAdjustment(actorUuid), 0);
-		} else {
+		}
+		else {
 			hpQuickAdjustments.delete(actorUuid);
 			// Burst complete: one authoritative re-render reconciles any drift
 			// between the optimistic paint and the stored value (the per-tick
@@ -152,7 +155,8 @@ async function flushActorHpAdjustment(actorUuid) {
 			try {
 				const actor = await fromUuid(actorUuid);
 				if (actor?.sheet?.rendered) actor.sheet.render(false);
-			} catch (_e) { /* sheet closed mid-burst — nothing to reconcile */ }
+			}
+			catch (_e) { /* sheet closed mid-burst — nothing to reconcile */ }
 		}
 	}
 }

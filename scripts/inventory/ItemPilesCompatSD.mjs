@@ -24,7 +24,8 @@ export function addIdentificationSimilarity(paths = []) {
 export function isItemPilesActor(actor) {
 	try {
 		return actor?.getFlag?.(ITEM_PILES_ID, "data")?.enabled === true;
-	} catch {
+	}
+	catch {
 		return false;
 	}
 }
@@ -49,7 +50,8 @@ export function normalizePileItemUpdate(item, changes = {}) {
 
 	if (Object.hasOwn(changes, "system.equipped")) {
 		changes["system.equipped"] = false;
-	} else {
+	}
+	else {
 		changes.system ??= {};
 		changes.system.equipped = false;
 	}

@@ -205,7 +205,8 @@ async function createItemMacro(actor, item) {
 	let actionType = "cast"; // default for Spell
 	if (itemType === "Wand") {
 		actionType = "wand";
-	} else if (itemType === "Scroll") {
+	}
+	else if (itemType === "Scroll") {
 		actionType = "scroll";
 	}
 

@@ -115,7 +115,8 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 				if (e.ctrlKey || e.metaKey) {
 					canvas.animatePan({ x: tile.center.x, y: tile.center.y, duration: 500 });
-				} else {
+				}
+				else {
 					tile.control({ releaseOthers: !e.shiftKey });
 				}
 			});
@@ -209,7 +210,8 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					});
 					if (e.clientY < midY) {
 						li.classList.add("drag-over");
-					} else {
+					}
+					else {
 						li.classList.add("drag-over-below");
 					}
 				}
@@ -228,7 +230,8 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				const midY = rect.top + rect.height / 2;
 				if (e.clientY < midY) {
 					list.insertBefore(draggedEl, li);
-				} else {
+				}
+				else {
 					list.insertBefore(draggedEl, li.nextSibling);
 				}
 
@@ -292,7 +295,8 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			this._hiddenTileIds.delete(tileId);
 			li.classList.remove("hidden-tile");
 			li.querySelector(".poi-sort-eye i").className = "fas fa-eye";
-		} else {
+		}
+		else {
 			this._hiddenTileIds.add(tileId);
 			li.classList.add("hidden-tile");
 			li.querySelector(".poi-sort-eye i").className = "fas fa-eye-slash";
@@ -457,8 +461,11 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					tile.document.update({
 						x: tile.document.x + intX,
 						y: tile.document.y + intY,
-					}).then(() => { state.pending = false; });
-				} else {
+					}).then(() => {
+						state.pending = false;
+					});
+				}
+				else {
 					state.pending = false;
 				}
 			}

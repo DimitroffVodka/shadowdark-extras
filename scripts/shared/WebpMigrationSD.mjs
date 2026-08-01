@@ -59,7 +59,10 @@ export function toUrl(relPath) {
 	// split on '/' to keep the separators intact.
 	return "/" + relPath.replace(/^\/+/, "").split("/").map((segment) => {
 		let decoded = segment;
-		try { decoded = decodeURIComponent(segment); } catch (e) { /* malformed escape */ }
+		try {
+			decoded = decodeURIComponent(segment);
+		}
+		catch (e) { /* malformed escape */ }
 		return encodeURIComponent(decoded);
 	}).join("/");
 }
@@ -103,7 +106,8 @@ async function urlExists(relPath) {
 	try {
 		const res = await fetch(url, { method: "HEAD" });
 		ok = res.ok;
-	} catch (e) {
+	}
+	catch (e) {
 		ok = false;
 	}
 	_existsCache.set(url, ok);
@@ -173,7 +177,12 @@ async function collectUpdates(docs) {
 	const touched = [];
 	for (const doc of docs) {
 		let source;
-		try { source = doc.toObject(); } catch (e) { continue; }
+		try {
+			source = doc.toObject();
+		}
+		catch (e) {
+			continue;
+		}
 		const r = await rewriteTree(source);
 		if (r.changed > 0) {
 			updates.push({ ...r.value, _id: doc.id });
@@ -202,7 +211,8 @@ async function migrateCollection(label, collection, stats, dryRun) {
 	if (dryRun) return;
 	try {
 		await collection.documentClass.updateDocuments(updates, { diff: false, recursive: false });
-	} catch (e) {
+	}
+	catch (e) {
 		console.error(`${MODULE_ID} | webp migration failed for ${label}:`, e);
 		stats.errors.push(`${label}: ${e.message}`);
 	}
@@ -215,7 +225,12 @@ async function migrateSettings(stats, dryRun) {
 		if (setting.scope !== "world") continue;
 
 		let current;
-		try { current = game.settings.get(MODULE_ID, setting.key); } catch (e) { continue; }
+		try {
+			current = game.settings.get(MODULE_ID, setting.key);
+		}
+		catch (e) {
+			continue;
+		}
 
 		// Bare style filenames ("skulls.png") carry no directory, so probe them
 		// against the art directories SheetEditorConfig resolves them against.
@@ -231,7 +246,9 @@ async function migrateSettings(stats, dryRun) {
 			const target = current.replace(RASTER, ".webp");
 			let found = false;
 			for (const d of dirs) {
-				if (await urlExists(`${d}/${target}`)) { found = true; break; }
+				if (await urlExists(`${d}/${target}`)) {
+					found = true; break;
+				}
 			}
 			if (found) {
 				if (!dryRun) await game.settings.set(MODULE_ID, setting.key, target);
@@ -260,7 +277,10 @@ async function migrateWorldPacks(stats, dryRun) {
 		if (pack.metadata.packageType !== "world") continue;
 
 		let docs;
-		try { docs = await pack.getDocuments(); } catch (e) {
+		try {
+			docs = await pack.getDocuments();
+		}
+		catch (e) {
 			stats.errors.push(`${pack.collection}: ${e.message}`);
 			continue;
 		}
@@ -281,7 +301,8 @@ async function migrateWorldPacks(stats, dryRun) {
 			await pack.documentClass.updateDocuments(updates, { pack: pack.collection, diff: false, recursive: false });
 			stats.packMigrated.push(`${pack.collection} (${hits} path${plural})`);
 			stats.refs += hits;
-		} catch (e) {
+		}
+		catch (e) {
 			console.error(`${MODULE_ID} | webp migration failed for pack ${pack.collection}:`, e);
 			stats.errors.push(`${pack.collection}: ${e.message}`);
 		}
@@ -370,7 +391,8 @@ export async function migrateWebpAssetPaths({ force = false, dryRun = false, aud
 
 	if (stats.errors.length === 0) {
 		await game.settings.set(MODULE_ID, "webpMigrationDone", true);
-	} else {
+	}
+	else {
 		console.warn(`${MODULE_ID} | migration had errors; will retry on next load.`);
 	}
 

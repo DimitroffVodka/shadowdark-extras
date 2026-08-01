@@ -23,7 +23,9 @@ export function patchArmorActiveEffects() {
 	let p = Object.getPrototypeOf(proto);
 	while (p && p !== Object.prototype) {
 		const desc = Object.getOwnPropertyDescriptor(p, "isSuppressed");
-		if (desc?.get) { originalGetter = desc.get; break; }
+		if (desc?.get) {
+			originalGetter = desc.get; break;
+		}
 		p = Object.getPrototypeOf(p);
 	}
 

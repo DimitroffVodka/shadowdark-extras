@@ -25,7 +25,9 @@ const MODULE_ID = "shadowdark-extras";
 let _soloActive = false;
 let _processing = false; // guard against re-entrant calls
 
-export function isSoloMode() { return _soloActive; }
+export function isSoloMode() {
+	return _soloActive;
+}
 
 export function setSoloMode(enabled) {
 	_soloActive = !!enabled;
@@ -146,7 +148,9 @@ function rollTerrain(adjacentBiomes) {
 	// Lookup result in table
 	let result = "mountains";
 	for (const entry of TERRAIN_TABLE) {
-		if (roll <= entry.max) { result = entry.biome; break; }
+		if (roll <= entry.max) {
+			result = entry.biome; break;
+		}
 	}
 
 	// Rule: desert strongly prefers clustering. Without an adjacent desert,
@@ -157,7 +161,8 @@ function rollTerrain(adjacentBiomes) {
 		const hasWetNeighbor = adjacentBiomes.some(b => WET_BIOMES.has(b));
 		if (hasWetNeighbor) {
 			result = "jungle"; // never desert next to water/swamp
-		} else if (!hasDesertNeighbor && Math.random() > 0.10) {
+		}
+		else if (!hasDesertNeighbor && Math.random() > 0.10) {
 			result = "jungle"; // 90% of the time, no isolated desert
 		}
 	}
@@ -244,9 +249,11 @@ async function placeTileForBiome(offset, biomeKey) {
 
 	if (tilesByBiome[folder]?.length > 0) {
 		tilePath = pickRandom(tilesByBiome[folder]);
-	} else if (tilesByBiome.other?.length > 0) {
+	}
+	else if (tilesByBiome.other?.length > 0) {
 		tilePath = pickRandom(tilesByBiome.other);
-	} else {
+	}
+	else {
 		// Try any available folder
 		for (const f of ["vegetation", "water", "mountains", "desert", "swamp", "badlands", "snow"]) {
 			if (tilesByBiome[f]?.length > 0) {
@@ -315,7 +322,8 @@ async function generateJournalForHex(hexKey, biomeKey, hexLabel, nearOcean = fal
 		const result = await generateHexHtml(biomeKey, hexLabel, nearOcean);
 		htmlContent = result.html;
 		regionName = result.regionName;
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Solo mode: hex generation failed for ${hexKey}:`, err);
 		return;
 	}
@@ -438,7 +446,8 @@ async function onTokenMove(tokenDoc, changes) {
 			for (const n of neighbors) {
 				hexesToProcess.push({ offset: n, key: offsetToHexKey(n) });
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Solo mode: could not get adjacent hexes:`, err);
 		}
 
@@ -462,7 +471,8 @@ async function onTokenMove(tokenDoc, changes) {
 					const biome = getBiomeForHex(sceneId, adjKey);
 					if (biome) adjacentBiomes.push(biome);
 				}
-			} catch { /* ignore */ }
+			}
+			catch { /* ignore */ }
 
 			// Roll terrain
 			const biomeKey = rollTerrain(adjacentBiomes);
@@ -476,10 +486,12 @@ async function onTokenMove(tokenDoc, changes) {
 			await generateJournalForHex(hex.key, biomeKey, hexLabel, nearOcean);
 		}
 
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Solo mode error:`, err);
 		ui.notifications.error("SDX | Solo mode encountered an error.");
-	} finally {
+	}
+	finally {
 		_processing = false;
 	}
 }

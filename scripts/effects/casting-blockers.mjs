@@ -42,7 +42,12 @@ export function setupWandUsesBlocker() {
 			let item = null;
 			if (typeof spellUuid === "string") {
 				if (spellUuid.includes(".")) {
-					try { item = await fromUuid(spellUuid); } catch (_) { item = null; }
+					try {
+						item = await fromUuid(spellUuid);
+					}
+					catch (_) {
+						item = null;
+					}
 				}
 				if (!item) item = actor?.items.get(spellUuid) ?? null;
 			}
@@ -87,7 +92,12 @@ export function setupSilencedCastingBlocker() {
 				let item = null;
 				if (typeof spellUuid === "string") {
 					if (spellUuid.includes(".")) {
-						try { item = await fromUuid(spellUuid); } catch (_) { item = null; }
+						try {
+							item = await fromUuid(spellUuid);
+						}
+						catch (_) {
+							item = null;
+						}
 					}
 					if (!item) item = actor?.items.get(spellUuid) ?? null;
 				}
@@ -100,10 +110,12 @@ export function setupSilencedCastingBlocker() {
 					if (item.type === "Spell" || item.type === "NPC Spell") {
 						shouldBlock = effectsSettings.silenced.blocksSpells;
 						blockedType = "spells";
-					} else if (item.type === "Scroll") {
+					}
+					else if (item.type === "Scroll") {
 						shouldBlock = effectsSettings.silenced.blocksScrolls;
 						blockedType = "scrolls";
-					} else if (item.type === "Wand") {
+					}
+					else if (item.type === "Wand") {
 						shouldBlock = effectsSettings.silenced.blocksWands;
 						blockedType = "wands";
 					}

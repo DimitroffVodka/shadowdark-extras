@@ -55,7 +55,8 @@ Hooks.once("init", () => {
 			type: Array,
 			default: [],
 		});
-	} catch (_) { /* already registered */ }
+	}
+	catch (_) { /* already registered */ }
 });
 
 /** Read the persisted custom-biome map (always a plain object). */
@@ -63,7 +64,10 @@ export function getCustomBiomes() {
 	try {
 		const c = game.settings.get(MODULE_ID, "customBiomes");
 		return (c && typeof c === "object") ? c : {};
-	} catch (_) { return {}; }
+	}
+	catch (_) {
+		return {};
+	}
 }
 
 /** Coerce a raw biome definition to a safe shape, layering over an optional base. */
@@ -124,7 +128,10 @@ export function getDisabledBiomes() {
 	try {
 		const d = game.settings.get(MODULE_ID, "disabledBiomes");
 		return Array.isArray(d) ? d : [];
-	} catch (_) { return []; }
+	}
+	catch (_) {
+		return [];
+	}
 }
 
 /** Biome keys eligible for random room assignment = all defs minus the denylist. */
@@ -154,7 +161,9 @@ export function assignBiomes(roomData, rng, enabled = null) {
 	for (const k of keys) for (let i = 0; i < (defs[k].weight || 1); i++) pool.push(k);
 	const map = new Map();
 	roomData.forEach((rd, i) => {
-		if (rd.isStart && defs.hall) { map.set(i, "hall"); return; }
+		if (rd.isStart && defs.hall) {
+			map.set(i, "hall"); return;
+		}
 		map.set(i, pool.length ? pool[Math.floor(rng() * pool.length)] : "hall");
 	});
 	return map;
@@ -198,7 +207,8 @@ async function findDDPackProps(category) {
 					if (files.length) return files.slice(0, 12);
 				}
 			}
-		} catch (e) { /* path absent — fine */ }
+		}
+		catch (e) { /* path absent — fine */ }
 	}
 	return [];
 }
@@ -248,7 +258,9 @@ export async function placeBiomeProps(roomData, biomeMap, offset, gridSize, perR
 			return true;
 		};
 		const reserve = (gx, gy, cellsW, cellsH) => {
-			if (occupancy) { occupancy.occupyRect({ gx, gy, cellsW, cellsH }, { padding: 0.15, kind: "biome" }); return; }
+			if (occupancy) {
+				occupancy.occupyRect({ gx, gy, cellsW, cellsH }, { padding: 0.15, kind: "biome" }); return;
+			}
 			for (let ox = 0; ox < cellsW; ox++)
 				for (let oy = 0; oy < cellsH; oy++)
 					localOccupied.add(`${gx + ox},${gy + oy}`);

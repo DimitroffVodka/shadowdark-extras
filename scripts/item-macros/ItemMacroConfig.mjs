@@ -48,11 +48,14 @@ export function generateItemMacroConfigHTML(MODULE_ID, flags, itemType = "spell"
 	let triggerOptions;
 	if (itemType === "potion") {
 		triggerOptions = potionTriggers;
-	} else if (itemType === "scroll" || itemType === "wand") {
+	}
+	else if (itemType === "scroll" || itemType === "wand") {
 		triggerOptions = scrollWandTriggers;
-	} else if (itemType === "classAbility" || itemType === "npcFeature") {
+	}
+	else if (itemType === "classAbility" || itemType === "npcFeature") {
 		triggerOptions = abilityTriggers;
-	} else {
+	}
+	else {
 		triggerOptions = spellTriggers;
 	}
 

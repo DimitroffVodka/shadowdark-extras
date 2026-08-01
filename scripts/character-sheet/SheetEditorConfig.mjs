@@ -140,7 +140,8 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
 			}
 			// Sort by number
 			images.sort((a, b) => a.number - b.number);
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to scan ${folderPath}:`, err);
 		}
 		return images;
@@ -290,7 +291,8 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
 				let value;
 				if (input.type === "number") {
 					value = parseInt(e.target.value) || 0;
-				} else {
+				}
+				else {
 					value = e.target.value;
 				}
 
@@ -547,7 +549,8 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
 					try {
 						const result = await FilePicker.browse("data", `${basePath}/${cat}`);
 						validImages[cat] = new Set(result.files.map(f => f.split("/").pop()));
-					} catch (e) {
+					}
+					catch (e) {
 						console.warn(`${MODULE_ID} | Failed to scan ${cat} for validation`, e);
 						validImages[cat] = new Set();
 					}
@@ -580,10 +583,12 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
 						count: missingAssets.length,
 					}));
 					console.warn("Shadowdark Extras | The following assets were missing in the imported theme and reset to defaults:", missingAssets);
-				} else {
+				}
+				else {
 					ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.sheetEditor.themeImported"));
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				console.error("Shadowdark Extras | Failed to import theme:", err);
 				ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.sheetEditor.importError"));
 			}

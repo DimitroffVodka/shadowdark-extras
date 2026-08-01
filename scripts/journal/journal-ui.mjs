@@ -75,7 +75,8 @@ function injectHeadingsCollapseButton(app, html) {
 		if (parentLi) {
 			parentLi.style.position = "relative";
 			parentLi.insertBefore(toggleBtn, headingsOl);
-		} else {
+		}
+		else {
 			headingsOl.parentElement.insertBefore(toggleBtn, headingsOl);
 		}
 

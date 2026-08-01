@@ -316,7 +316,8 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 
 		if (this.editData.id !== undefined) {
 			templates[this.editData.id] = newTemplateData;
-		} else {
+		}
+		else {
 			if (templates.some(t => t.key === newTemplateData.key)) {
 				ui.notifications.error(`Template with key "${newTemplateData.key}" already exists.`);
 				return;

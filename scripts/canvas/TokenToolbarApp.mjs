@@ -122,7 +122,8 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		if (existing) {
 			existing.replaceWith(element);
-		} else {
+		}
+		else {
 			container.appendChild(element);
 		}
 
@@ -146,7 +147,8 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			// Apply position - we'll clamp on next render if needed
 			element.style.left = `${savedPosition.x}px`;
 			element.style.top = `${savedPosition.y}px`;
-		} else {
+		}
+		else {
 			// Default position: bottom center
 			element.style.position = "fixed";
 			element.style.left = "50%";
@@ -164,7 +166,8 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	_savePosition(x, y) {
 		try {
 			localStorage.setItem(POSITION_KEY, JSON.stringify({ x, y }));
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn("shadowdark-extras | Failed to save toolbar position:", e);
 		}
 	}
@@ -177,7 +180,8 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		try {
 			const saved = localStorage.getItem(POSITION_KEY);
 			return saved ? JSON.parse(saved) : null;
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn("shadowdark-extras | Failed to load toolbar position:", e);
 			return null;
 		}
@@ -189,7 +193,8 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	resetPosition() {
 		try {
 			localStorage.removeItem(POSITION_KEY);
-		} catch (e) {
+		}
+		catch (e) {
 			// Ignore
 		}
 		const elem = document.querySelector("#sdx-token-toolbar");
@@ -223,7 +228,8 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			luckAttr.addEventListener("click", (e) => {
 				if (pulpMode) {
 					changeLuck(e, 1);
-				} else {
+				}
+				else {
 					changeLuck(e, null);
 				}
 			});
@@ -232,7 +238,8 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				e.preventDefault();
 				if (pulpMode) {
 					changeLuck(e, -1);
-				} else {
+				}
+				else {
 					changeLuck(e, null);
 				}
 			});
@@ -272,17 +279,21 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					// Shadowdark 4.x uses rollAttack on the data model
 					if (typeof actor.system?.rollAttack === "function") {
 						await actor.system.rollAttack(itemId);
-					} else if (typeof actor.rollAttack === "function") {
+					}
+					else if (typeof actor.rollAttack === "function") {
 						await actor.rollAttack(itemId);
-					} else if (typeof item.roll === "function") {
+					}
+					else if (typeof item.roll === "function") {
 						await item.roll();
 					}
-				} else if (itemType === "NPC Attack") {
+				}
+				else if (itemType === "NPC Attack") {
 					// Check if it's a special attack which shouldn't be rolled via rollAttack
 					if (item.system.attackType === "special") {
 						if (typeof item.displayCard === "function") {
 							await item.displayCard();
-						} else {
+						}
+						else {
 							item.sheet.render(true);
 						}
 						return;
@@ -291,7 +302,8 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					// For NPC attacks in 4.x, we should also try actor.system.rollAttack
 					if (typeof actor.system?.rollAttack === "function") {
 						await actor.system.rollAttack(itemId);
-					} else if (typeof item.rollNpcAttack === "function") {
+					}
+					else if (typeof item.rollNpcAttack === "function") {
 						// Legacy fallback
 						const data = { item: item, actor: actor };
 						const parts = ["1d20", "@attackBonus"];
@@ -306,24 +318,29 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 							options.target = options.targetToken.actor.system.attributes.ac.value;
 						}
 						await item.rollNpcAttack(parts, data, options);
-					} else if (typeof item.displayCard === "function") {
+					}
+					else if (typeof item.displayCard === "function") {
 						await item.displayCard();
-					} else {
+					}
+					else {
 						item.sheet.render(true);
 					}
-				} else if (itemType === "NPC Special Attack") {
+				}
+				else if (itemType === "NPC Special Attack") {
 					// NPC Special Attack - use the roll/activity path so SDX macros,
 					// effects, and summoning run instead of just opening the sheet.
 					if (!await useNpcActivityItem(actor, item)) {
 						item.sheet.render(true);
 					}
-				} else if (itemType === "NPC Feature") {
+				}
+				else if (itemType === "NPC Feature") {
 					// NPC Feature - use the roll/activity path so SDX macros,
 					// effects, and summoning run instead of just opening the sheet.
 					if (!await useNpcActivityItem(actor, item)) {
 						item.sheet.render(true);
 					}
-				} else {
+				}
+				else {
 					// For other items, open the item sheet
 					item.sheet.render(true);
 				}
@@ -353,7 +370,8 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						effectName = effect.name;
 						await effect.delete();
 					}
-				} else {
+				}
+				else {
 					// Delete from actor.items (Shadowdark Effect item)
 					const item = actor.items.get(effectId);
 					if (item) {
@@ -377,7 +395,8 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				if (isFocus) {
 					// Terminate focus spell
 					await terminateFocusSpell(e);
-				} else {
+				}
+				else {
 					// Terminate duration spell
 					await terminateDurationSpell(e);
 				}

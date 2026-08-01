@@ -64,7 +64,8 @@ export function initMysteriousCasting() {
 
 			if (_mysteriousActors.has(baseId)) {
 				_mysteriousActors.delete(baseId);
-			} else {
+			}
+			else {
 				_mysteriousActors.add(baseId);
 			}
 
@@ -109,7 +110,8 @@ export function initMysteriousCasting() {
 		const buttonsMatch = content.match(/<div class="[^"]*card-buttons[^"]*">[\s\S]*?<\/div>/i);
 		if (buttonsMatch) {
 			buttonsHtml = buttonsMatch[0];
-		} else {
+		}
+		else {
 			const actionButtons = content.match(/<button\s+[^>]*data-action[^>]*>[\s\S]*?<\/button>/gi);
 			if (actionButtons) {
 				buttonsHtml = `<div class="card-buttons">${actionButtons.join("")}</div>`;
@@ -121,7 +123,8 @@ export function initMysteriousCasting() {
 		const attributesMatch = content.match(/^<div\s+([^>]+)>/i);
 		if (attributesMatch) {
 			wrapperAttributes = attributesMatch[1];
-		} else {
+		}
+		else {
 			wrapperAttributes = `class="shadowdark chat-card item-card" data-actor-id="${actorId}"`;
 		}
 

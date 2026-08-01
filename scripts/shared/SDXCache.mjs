@@ -101,7 +101,8 @@ class SDXCache {
 
 				request.onsuccess = () => resolve(request.result || null);
 				request.onerror = () => reject(request.error);
-			} catch (err) {
+			}
+			catch (err) {
 				console.warn(`SDX | Error getting ${key} from ${storeName}:`, err);
 				resolve(null);
 			}
@@ -125,7 +126,8 @@ class SDXCache {
 
 				request.onsuccess = () => resolve();
 				request.onerror = () => reject(request.error);
-			} catch (err) {
+			}
+			catch (err) {
 				console.error(`SDX | Error setting ${key} in ${storeName}:`, err);
 				reject(err);
 			}

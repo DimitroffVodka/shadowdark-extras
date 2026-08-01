@@ -289,10 +289,12 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 			if ($input.hasClass("sdx-border-width")) {
 				$valueDisplay.text(`${value}px`);
 				this._updateBorderValue($input.closest(".sdx-border-builder"));
-			} else if ($input.hasClass("sdx-shadow-x") || $input.hasClass("sdx-shadow-y") || $input.hasClass("sdx-shadow-blur")) {
+			}
+			else if ($input.hasClass("sdx-shadow-x") || $input.hasClass("sdx-shadow-y") || $input.hasClass("sdx-shadow-blur")) {
 				$valueDisplay.text(`${value}px`);
 				this._updateShadowValue($input.closest(".sdx-shadow-popup"));
-			} else if ($input.attr("name")?.includes("priority")) {
+			}
+			else if ($input.attr("name")?.includes("priority")) {
 				$valueDisplay.text(value);
 			}
 
@@ -523,7 +525,8 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 			if (useGradient) {
 				const endColor = gradientEnd || "transparent";
 				background = `linear-gradient(to right, ${bgColor}, ${endColor})`;
-			} else {
+			}
+			else {
 				background = bgColor;
 			}
 
@@ -675,7 +678,8 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 				this.render();
 
 				ui.notifications.info("Theme imported successfully!");
-			} catch (err) {
+			}
+			catch (err) {
 				ui.notifications.error("Failed to import theme: " + err.message);
 			}
 		};
@@ -832,7 +836,8 @@ function applyStylesToSingleItem($row, actor, styles, containersEnabled) {
 		if (appliedStyle.useGradient) {
 			const endColor = appliedStyle.gradientEndColor || "transparent";
 			background = `linear-gradient(to right, ${appliedStyle.backgroundColor}, ${endColor})`;
-		} else {
+		}
+		else {
 			background = appliedStyle.backgroundColor;
 		}
 
@@ -858,7 +863,8 @@ function applyStylesToSingleItem($row, actor, styles, containersEnabled) {
 				$details.find("p, b, em, span, .tag, .details-description, .details-footer, a").each((j, child) => {
 					child.style.setProperty("color", appliedStyle.descriptionTextColor, "important");
 				});
-			} else {
+			}
+			else {
 				el.style.removeProperty("color");
 				$details.find("p, b, em, span, .tag, .details-description, .details-footer, a").each((j, child) => {
 					child.style.removeProperty("color");
@@ -869,14 +875,16 @@ function applyStylesToSingleItem($row, actor, styles, containersEnabled) {
 				$details.find("p, b, em, span, .tag, .details-description, .details-footer, a").each((j, child) => {
 					child.style.setProperty("text-shadow", appliedStyle.descriptionTextShadow, "important");
 				});
-			} else {
+			}
+			else {
 				el.style.removeProperty("text-shadow");
 				$details.find("p, b, em, span, .tag, .details-description, .details-footer, a").each((j, child) => {
 					child.style.removeProperty("text-shadow");
 				});
 			}
 		});
-	} else {
+	}
+	else {
 		// Clear any existing styles if no category applies
 		const rowEl = $row[0];
 		rowEl.style.removeProperty("background");

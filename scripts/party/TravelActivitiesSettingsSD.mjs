@@ -92,13 +92,16 @@ export class TravelActivitiesSettingsApp extends HandlebarsApplicationMixin(Appl
 			if (ev.target.closest(".sdx-remove-activity")) {
 				ev.preventDefault();
 				this._removeActivity(ev);
-			} else if (ev.target.closest(".sdx-move-up")) {
+			}
+			else if (ev.target.closest(".sdx-move-up")) {
 				ev.preventDefault();
 				this._moveActivity(ev, -1);
-			} else if (ev.target.closest(".sdx-move-down")) {
+			}
+			else if (ev.target.closest(".sdx-move-down")) {
 				ev.preventDefault();
 				this._moveActivity(ev, 1);
-			} else if (ev.target.closest(".sdx-file-picker")) {
+			}
+			else if (ev.target.closest(".sdx-file-picker")) {
 				ev.preventDefault();
 				const button = ev.target.closest(".sdx-file-picker");
 				const index = button.dataset.index;
@@ -259,12 +262,15 @@ export class TravelActivitiesSettingsApp extends HandlebarsApplicationMixin(Appl
 				if (field === "abilities") {
 					if (typeof value === "string") {
 						activitiesData[index].abilities.push(value);
-					} else if (Array.isArray(value)) {
+					}
+					else if (Array.isArray(value)) {
 						activitiesData[index].abilities = value;
 					}
-				} else if (field === "campfire") {
+				}
+				else if (field === "campfire") {
 					activitiesData[index].campfire = value === true || value === "on" || value === "true";
-				} else {
+				}
+				else {
 					activitiesData[index][field] = value;
 				}
 			}
@@ -313,7 +319,8 @@ export function getTravelActivities() {
 				return normalizeTravelActivities(saved.activities);
 			}
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		// Setting not registered yet, return defaults
 	}
 	return foundry.utils.deepClone(DEFAULT_TRAVEL_ACTIVITIES);

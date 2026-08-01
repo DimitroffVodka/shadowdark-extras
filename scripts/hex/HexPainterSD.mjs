@@ -115,7 +115,8 @@ export async function loadTileAssets() {
 		if (_tiles.length && _chosenTiles.size === 0) {
 			_chosenTiles.add(_tiles[0].path);
 		}
-	} else {
+	}
+	else {
 		try {
 			const listing = await foundry.applications.apps.FilePicker.implementation.browse("data", TILE_FOLDER);
 			const pngFiles = (listing.files || []).filter(f => f.endsWith(".png") || f.endsWith(".webp"));
@@ -138,7 +139,8 @@ export async function loadTileAssets() {
 			}
 
 			await cache.setMetadata(metadataKey, _tiles);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Failed to discover hex tiles:`, err);
 			_tiles = [];
 		}
@@ -170,7 +172,8 @@ async function ensureCustomFolderStructure() {
 		try {
 			await foundry.applications.apps.FilePicker.implementation.browse("data", CUSTOM_TILE_FOLDER);
 			hexesExists = true;
-		} catch (e) {
+		}
+		catch (e) {
 			hexesExists = false;
 		}
 
@@ -185,13 +188,15 @@ async function ensureCustomFolderStructure() {
 			const biomePath = `${CUSTOM_TILE_FOLDER}/${biome}`;
 			try {
 				await foundry.applications.apps.FilePicker.implementation.browse("data", biomePath);
-			} catch (e) {
+			}
+			catch (e) {
 				// Folder doesn't exist, create it
 				await foundry.applications.apps.FilePicker.implementation.createDirectory("data", biomePath);
 				console.log(`${MODULE_ID} | Created ${biomePath} folder`);
 			}
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.log(`${MODULE_ID} | Skipped custom tile folder setup (filesystem permission deferred):`, err?.message || err);
 	}
 }
@@ -201,7 +206,8 @@ async function _scanCustomDir(dir, segments) {
 	let listing;
 	try {
 		listing = await FP.browse("data", dir);
-	} catch (err) {
+	}
+	catch (err) {
 		console.log(`${MODULE_ID} | Skipped ${dir} (${err?.message || err})`);
 		return [];
 	}
@@ -261,7 +267,8 @@ async function loadCustomTileAssets() {
 		_customTiles.sort((a, b) => a.key.localeCompare(b.key));
 		await cache.setMetadata(metadataKey, _customTiles);
 		console.log(`${MODULE_ID} | Loaded ${_customTiles.length} custom tiles (recursive scan)`);
-	} catch (err) {
+	}
+	catch (err) {
 		// Filesystem browse can fail during early boot phases even for GMs
 		// in Foundry v14. Recoverable: log only, do not surface warnings.
 		console.log(`${MODULE_ID} | Skipped custom tile load (filesystem permission deferred):`, err?.message || err);
@@ -272,7 +279,8 @@ async function loadCustomTileAssets() {
 export async function reloadCustomTiles() {
 	try {
 		await cache.setMetadata("hex_tiles_metadata_custom_v2", null);
-	} catch (_) {
+	}
+	catch (_) {
 		// Ignore cache clear failures; the in-memory scan still refreshes.
 	}
 	_customTiles = null;
@@ -328,7 +336,8 @@ async function loadColoredTileAssets() {
 						biome: biome.toLowerCase(),  // Normalize to lowercase
 					});
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				// Subdirectory might not be accessible, that's okay
 			}
 		}
@@ -336,7 +345,8 @@ async function loadColoredTileAssets() {
 		_coloredTiles.sort((a, b) => a.key.localeCompare(b.key));
 		await cache.setMetadata(metadataKey, _coloredTiles);
 		console.log(`${MODULE_ID} | Loaded ${_coloredTiles.length} colored tiles from ${subdirs.length} folders`);
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn(`${MODULE_ID} | Could not load colored tiles:`, err);
 		_coloredTiles = [];
 	}
@@ -389,7 +399,8 @@ async function loadSymbolTileAssets() {
 						category: category.toLowerCase(),
 					});
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				// Subdirectory might not be accessible, that's okay
 			}
 		}
@@ -397,7 +408,8 @@ async function loadSymbolTileAssets() {
 		_symbolTiles.sort((a, b) => a.key.localeCompare(b.key));
 		await cache.setMetadata(metadataKey, _symbolTiles);
 		console.log(`${MODULE_ID} | Loaded ${_symbolTiles.length} symbol tiles from ${subdirs.length} folders`);
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn(`${MODULE_ID} | Could not load symbol tiles:`, err);
 		_symbolTiles = [];
 	}
@@ -445,7 +457,8 @@ function getRegisteredDecorTiles() {
 	let assets = [];
 	try {
 		assets = game.settings.get(MODULE_ID, "customDecorAssets") || [];
-	} catch {
+	}
+	catch {
 		assets = [];
 	}
 	return assets
@@ -524,7 +537,8 @@ export async function loadImportedDecorAssets({ force = false } = {}) {
 	try {
 		_importedDecorTiles = await browseDecorFolderRecursive(DECOR_IMPORT_FOLDER, []);
 		_importedDecorTiles.sort((a, b) => a.path.localeCompare(b.path));
-	} catch (err) {
+	}
+	catch (err) {
 		console.log(`${MODULE_ID} | Imported decor folder not available yet:`, err?.message || err);
 		_importedDecorTiles = [];
 	}
@@ -542,7 +556,8 @@ async function getDDPackDecorAssets({ force = false } = {}) {
 	if (_ddPackDecorTiles && !force) return _ddPackDecorTiles;
 	try {
 		_ddPackDecorTiles = await loadDDPackDecorTiles();
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn(`${MODULE_ID} | Dungeondraft decor packs not available yet:`, err?.message || err);
 		_ddPackDecorTiles = [];
 	}
@@ -568,7 +583,8 @@ export function getCustomTilesByBiome() {
 	for (const tile of _customTiles) {
 		if (tile.biome && byBiome[tile.biome]) {
 			byBiome[tile.biome].push(tile.path);
-		} else {
+		}
+		else {
 			byBiome.other.push(tile.path);
 		}
 	}
@@ -600,7 +616,8 @@ export function getColoredTilesByBiome() {
 		}
 		if (tile.biome && byBiome[tile.biome]) {
 			byBiome[tile.biome].push(tile.path);
-		} else {
+		}
+		else {
 			byBiome.other.push(tile.path);
 		}
 	}
@@ -665,7 +682,8 @@ export function loadCustomTileDimensions() {
 	try {
 		_customTileWidth = game.settings.get(MODULE_ID, "hexPainter.customTileWidth") || 296;
 		_customTileHeight = game.settings.get(MODULE_ID, "hexPainter.customTileHeight") || 256;
-	} catch (e) {
+	}
+	catch (e) {
 		// Settings not registered yet, use defaults
 		_customTileWidth = 296;
 		_customTileHeight = 256;
@@ -739,7 +757,8 @@ export async function getCustomTilePlacement(src, center, verticalNudge = 0) {
 			x: center.x - (_customTileWidth / 2) - visibleOffsetX,
 			y: center.y - (_customTileHeight / 2) - visibleOffsetY - verticalNudge,
 		};
-	} catch (err) {
+	}
+	catch (err) {
 		console.log(`${MODULE_ID} | Could not auto-fit custom tile ${src}:`, err?.message || err);
 		return {
 			width: _customTileWidth,
@@ -763,7 +782,8 @@ export function getActiveTileTab() {
 export function setActiveTileTab(tab) {
 	if (tab === "custom" || tab === "colored" || tab === "symbols") {
 		_activeTileTab = tab;
-	} else {
+	}
+	else {
 		_activeTileTab = "default";
 	}
 }
@@ -782,7 +802,8 @@ export function setPoiScale(scale) {
 	_poiScale = Math.max(0.1, Math.min(2.0, scale));
 	try {
 		game.settings.set(MODULE_ID, "hexPainter.poiScale", _poiScale);
-	} catch (e) {
+	}
+	catch (e) {
 		// Settings might not be registered yet
 	}
 	// Update preview if active
@@ -800,7 +821,8 @@ export function loadPoiScale() {
 		if (saved !== undefined) {
 			_poiScale = saved;
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		// Settings not registered yet, use default
 		_poiScale = 0.5;
 	}
@@ -985,10 +1007,18 @@ export function isDecorMode() {
 	return _decorMode;
 }
 
-export function getDecorElevation() { return _decorElevation; }
-export function setDecorElevation(v) { _decorElevation = parseFloat(v) || 0; }
-export function getDecorSort() { return _decorSort; }
-export function setDecorSort(v) { _decorSort = parseInt(v, 10) || 0; }
+export function getDecorElevation() {
+	return _decorElevation;
+}
+export function setDecorElevation(v) {
+	_decorElevation = parseFloat(v) || 0;
+}
+export function getDecorSort() {
+	return _decorSort;
+}
+export function setDecorSort(v) {
+	_decorSort = parseInt(v, 10) || 0;
+}
 
 /**
  * Get decor tiles grouped by folder for the tray UI.
@@ -1260,7 +1290,8 @@ export function getCustomNavChips() {
 export function toggleTileSelection(tilePath) {
 	if (_chosenTiles.has(tilePath)) {
 		_chosenTiles.delete(tilePath);
-	} else {
+	}
+	else {
 		_chosenTiles.add(tilePath);
 	}
 
@@ -1276,7 +1307,8 @@ export function toggleTileSelection(tilePath) {
 			if (_paintEnabled) {
 				if (!_previewEnabled) {
 					createPreview();
-				} else if (_previewSprite) {
+				}
+				else if (_previewSprite) {
 					// Update texture to current tile
 					const currentPath = availableTiles[_currentPreviewIndex % availableTiles.length];
 					foundry.canvas.loadTexture(currentPath).then(texture => {
@@ -1287,7 +1319,8 @@ export function toggleTileSelection(tilePath) {
 					});
 				}
 			}
-		} else {
+		}
+		else {
 			// No tiles selected, destroy preview
 			destroyPreview();
 		}
@@ -1426,7 +1459,8 @@ export async function formatActiveScene() {
 
 		await scene.setFlag(MODULE_ID, "hexScene", true);
 		ui.notifications.info("SDX | Scene formatted for hex painting.");
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Scene format failed:`, err);
 		ui.notifications.error("SDX | Could not format the scene.");
 	}
@@ -1656,11 +1690,14 @@ async function _stampAtPointer(ev, forceStamp = false) {
             (_decorMode && getRegisteredDecorTiles().some(t => t.path === path)) ||
             (_decorMode && doorTiles.some(t => t.path === path))
 		);
-	} else if (_activeTileTab === "custom") {
+	}
+	else if (_activeTileTab === "custom") {
 		availableTiles = availableTiles.filter(path => _customTiles && _customTiles.some(t => t.path === path));
-	} else if (_activeTileTab === "colored") {
+	}
+	else if (_activeTileTab === "colored") {
 		availableTiles = availableTiles.filter(path => _coloredTiles && _coloredTiles.some(t => t.path === path));
-	} else {
+	}
+	else {
 		// Default tab - include basic tiles (not custom/colored/symbols)
 		availableTiles = availableTiles.filter(path => {
 			const isSymbol = _symbolTiles && _symbolTiles.some(t => t.path === path);
@@ -1680,7 +1717,8 @@ async function _stampAtPointer(ev, forceStamp = false) {
 	let chosenTile;
 	if (_activeTileTab === "symbols" || _decorMode) {
 		chosenTile = availableTiles[_currentPreviewIndex % availableTiles.length];
-	} else {
+	}
+	else {
 		chosenTile = availableTiles[Math.floor(Math.random() * availableTiles.length)];
 	}
 
@@ -1706,21 +1744,25 @@ async function _stampAtPointer(ev, forceStamp = false) {
 			const img = await foundry.canvas.loadTexture(chosenTile);
 			tw = Math.floor(img.width * _poiScale);
 			th = Math.floor(img.height * _poiScale);
-		} catch (e) {
+		}
+		catch (e) {
 			// Fallback to default size if image can't be loaded
 			tw = Math.floor(256 * _poiScale);
 			th = Math.floor(256 * _poiScale);
 		}
-	} else if (isColoredTile) {
+	}
+	else if (isColoredTile) {
 		tw = COLORED_HEX_TILE_W;
 		th = COLORED_HEX_TILE_H;
-	} else if (isCustomTile) {
+	}
+	else if (isCustomTile) {
 		const placement = await getCustomTilePlacement(chosenTile, center, verticalNudge);
 		tw = placement.width;
 		th = placement.height;
 		tx = placement.x;
 		ty = placement.y;
-	} else {
+	}
+	else {
 		tw = HEX_TILE_W;
 		th = HEX_TILE_H;
 	}
@@ -1746,13 +1788,15 @@ async function _stampAtPointer(ev, forceStamp = false) {
 			if (coloredTile && coloredTile.biome) {
 				foundBiome = biomeToTint[coloredTile.biome] || null;
 			}
-		} else if (isCustomTile) {
+		}
+		else if (isCustomTile) {
 			// Check if this is a custom tile
 			const customTile = _customTiles.find(t => t.path === chosenTile);
 			if (customTile && customTile.biome) {
 				foundBiome = biomeToTint[customTile.biome] || null;
 			}
-		} else {
+		}
+		else {
 			// Default tile - extract filename and find biome
 			const filename = chosenTile.split("/").pop();
 			for (const [biome, files] of Object.entries(BIOME_TILES)) {
@@ -1798,7 +1842,8 @@ async function _stampAtPointer(ev, forceStamp = false) {
 	let createdTiles;
 	try {
 		createdTiles = await canvas.scene.createEmbeddedDocuments("Tile", [tileData]);
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to create tile:`, err);
 		return;
 	}
@@ -1809,10 +1854,12 @@ async function _stampAtPointer(ev, forceStamp = false) {
 		if (isColoredTile) {
 			const ct = _coloredTiles.find(t => t.path === chosenTile);
 			terrain = ct?.biome;
-		} else if (isCustomTile) {
+		}
+		else if (isCustomTile) {
 			const ct = _customTiles.find(t => t.path === chosenTile);
 			terrain = ct?.biome;
-		} else {
+		}
+		else {
 			// Default tile — match filename to BIOME_TILES
 			const filename = chosenTile.split("/").pop();
 			for (const [biome, files] of Object.entries(BIOME_TILES)) {
@@ -2026,7 +2073,8 @@ async function _stampAtPointer(ev, forceStamp = false) {
 			if (allParams.length > 0) {
 				try {
 					await TokenMagic.addUpdateFilters(tileObj.document, allParams);
-				} catch (err) {
+				}
+				catch (err) {
 					console.warn(`${MODULE_ID} | Could not apply effects:`, err);
 				}
 			}
@@ -2044,7 +2092,8 @@ function _formatLabel(key) {
 function _decodePathLabel(value) {
 	try {
 		return decodeURIComponent(String(value || ""));
-	} catch (_) {
+	}
+	catch (_) {
 		return String(value || "");
 	}
 }
@@ -2116,7 +2165,8 @@ export async function redoLastPoi() {
 			_poiUndoStack.push({ id: created[0].id });
 			return true;
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to redo POI tile:`, err);
 	}
 
@@ -2166,7 +2216,8 @@ export async function createPreview() {
 			targetLayer.addChild(_previewContainer);
 			_previewEnabled = true;
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn(`${MODULE_ID} | Failed to create POI preview:`, e);
 	}
 }
@@ -2196,7 +2247,8 @@ export async function updatePreviewPosition(pos) {
 				_previewSprite.texture = texture;
 				_previewSprite._sdxTexturePath = currentPath;
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			// Ignore texture load errors
 		}
 	}
@@ -2298,6 +2350,7 @@ async function preloadHexImages() {
 					await cache.setBinary(tile.path, blob);
 				}
 			}
-		} catch (err) { }
+		}
+		catch (err) { }
 	}
 }

@@ -138,7 +138,9 @@ function pickChambers(floors, count, W, H, rng) {
 	for (const key of floors) {
 		const [x, y] = key.split(",").map(Number);
 		const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !floors.has(`${x + dx},${y + dy}`));
-		if (edge) { dist.set(key, 1); queue.push(key); }
+		if (edge) {
+			dist.set(key, 1); queue.push(key);
+		}
 	}
 	let head = 0;
 	while (head < queue.length) {
@@ -147,7 +149,9 @@ function pickChambers(floors, count, W, H, rng) {
 		const d = dist.get(key);
 		for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
 			const nk = `${x + dx},${y + dy}`;
-			if (floors.has(nk) && !dist.has(nk)) { dist.set(nk, d + 1); queue.push(nk); }
+			if (floors.has(nk) && !dist.has(nk)) {
+				dist.set(nk, d + 1); queue.push(nk);
+			}
 		}
 	}
 	// Candidates sorted by openness (distance), with slight jitter for variety.
@@ -176,7 +180,9 @@ function makePseudoRoom(cx, cy) {
 function chainAdjacency(n) {
 	const adj = new Map();
 	for (let i = 0; i < n; i++) adj.set(i, new Set());
-	for (let i = 0; i < n - 1; i++) { adj.get(i).add(i + 1); adj.get(i + 1).add(i); }
+	for (let i = 0; i < n - 1; i++) {
+		adj.get(i).add(i + 1); adj.get(i + 1).add(i);
+	}
 	return adj;
 }
 
@@ -234,7 +240,9 @@ export function traceBoundaryLoops(cells, isFloor = (k) => cells.has(k), isCave 
 			const dot = vi.x * vo.x + vi.y * vo.y;
 			const ang = Math.atan2(cross, dot); // (-pi, pi]; +pi == reverse
 			if (Math.abs(Math.abs(ang) - Math.PI) < 1e-6) continue; // skip backtrack
-			if (ang > bestAng) { bestAng = ang; best = idx; }
+			if (ang > bestAng) {
+				bestAng = ang; best = idx;
+			}
 		}
 		return best === -1 ? undefined : best;
 	};
@@ -249,9 +257,13 @@ export function traceBoundaryLoops(cells, isFloor = (k) => cells.has(k), isCave 
 			const e = edges[curr];
 			pts.push({ x: e.a.x, y: e.a.y, cave: e.cave }); // cave = region of this vertex's outgoing edge
 			const bKey = `${e.b.x},${e.b.y}`;
-			if (bKey === startCorner) { closed = true; break; } // returned to start
+			if (bKey === startCorner) {
+				closed = true; break;
+			} // returned to start
 			const next = pickNext(byStart.get(bKey) || [], dirOf(e));
-			if (next === undefined) { pts.push({ x: e.b.x, y: e.b.y, cave: e.cave }); break; } // open arc end
+			if (next === undefined) {
+				pts.push({ x: e.b.x, y: e.b.y, cave: e.cave }); break;
+			} // open arc end
 			curr = next;
 		}
 		return { pts, closed };
@@ -328,9 +340,13 @@ function dpOpen(pts, tol) {
 		const len = Math.hypot(dx, dy) || 1;
 		for (let i = s + 1; i < e; i++) {
 			const d = Math.abs((pts[i].x - ax) * dy - (pts[i].y - ay) * dx) / len;
-			if (d > maxD) { maxD = d; idx = i; }
+			if (d > maxD) {
+				maxD = d; idx = i;
+			}
 		}
-		if (maxD > tol && idx !== -1) { keep[idx] = true; stack.push([s, idx], [idx, e]); }
+		if (maxD > tol && idx !== -1) {
+			keep[idx] = true; stack.push([s, idx], [idx, e]);
+		}
 	}
 	const out = [];
 	for (let i = 0; i < n; i++) if (keep[i]) out.push(pts[i]);
@@ -349,7 +365,9 @@ export function simplifyClosed(points, tol) {
 	let far = 1; let fd = -1;
 	for (let i = 1; i < n; i++) {
 		const d = Math.hypot(points[i].x - points[0].x, points[i].y - points[0].y);
-		if (d > fd) { fd = d; far = i; }
+		if (d > fd) {
+			fd = d; far = i;
+		}
 	}
 	const arc1 = points.slice(0, far + 1);                 // [0 .. far]
 	const arc2 = points.slice(far).concat([points[0]]);    // [far .. n-1, 0]
@@ -377,7 +395,8 @@ function selectiveCavePass(pts) {
 			const next = pts[(i + 1) % n];
 			out.push({ x: 0.75 * v.x + 0.25 * prev.x, y: 0.75 * v.y + 0.25 * prev.y, cave: true });
 			out.push({ x: 0.75 * v.x + 0.25 * next.x, y: 0.75 * v.y + 0.25 * next.y, cave: outCave });
-		} else {
+		}
+		else {
 			out.push({ x: v.x, y: v.y, cave: outCave }); // keep sharp
 		}
 	}
@@ -418,7 +437,8 @@ export function buildCaveLoops(floors, offset, gridSize = GRID_SIZE, { chaikin =
 			px = chaikinClosed(px, chaikin);
 			px = simplifyClosed(px, tol);
 			if (px.length >= 3) result.push({ points: px, closed: true });
-		} else {
+		}
+		else {
 			px = chaikinOpen(px, chaikin);
 			px = dpOpen(px, tol);
 			if (px.length >= 2) result.push({ points: px, closed: false });
@@ -491,7 +511,8 @@ export function generateCurvedWallVisuals(loops, options) {
 				drawing.fillType = 2; // pattern
 				drawing.fillColor = "#ffffff";
 				drawing.texture = texture;
-			} else {
+			}
+			else {
 				drawing.fillType = 1; // solid
 				drawing.fillColor = wallColor || "#5C3D3D";
 			}
@@ -585,15 +606,23 @@ function caveAnchors(caveCells, count, rng) {
 /** Cave cell closest to the room centroid, and the room cell closest to it. */
 function nearestPair(caveCells, roomFloors) {
 	let rcx = 0; let rcy = 0; let n = 0;
-	for (const k of roomFloors) { const [x, y] = k.split(",").map(Number); rcx += x; rcy += y; n++; }
+	for (const k of roomFloors) {
+		const [x, y] = k.split(",").map(Number); rcx += x; rcy += y; n++;
+	}
 	rcx /= (n || 1); rcy /= (n || 1);
 	let from = null; let fd = Infinity;
-	for (const [x, y] of caveCells) { const d = (x - rcx) ** 2 + (y - rcy) ** 2; if (d < fd) { fd = d; from = [x, y]; } }
+	for (const [x, y] of caveCells) {
+		const d = (x - rcx) ** 2 + (y - rcy) ** 2; if (d < fd) {
+			fd = d; from = [x, y];
+		}
+	}
 	let to = null; let td = Infinity;
 	if (from) for (const k of roomFloors) {
 		const [x, y] = k.split(",").map(Number);
 		const d = (x - from[0]) ** 2 + (y - from[1]) ** 2;
-		if (d < td) { td = d; to = [x, y]; }
+		if (d < td) {
+			td = d; to = [x, y];
+		}
 	}
 	return { from, to };
 }
@@ -623,10 +652,16 @@ function carveConnector(from, to, caveCells, roomFloors) {
 /** Representative interior cell of a cave blob (nearest cell to its centroid). */
 function chamberAnchor(placed) {
 	let cx = 0; let cy = 0;
-	for (const [x, y] of placed) { cx += x; cy += y; }
+	for (const [x, y] of placed) {
+		cx += x; cy += y;
+	}
 	cx /= placed.length; cy /= placed.length;
 	let best = placed[0]; let bd = Infinity;
-	for (const [x, y] of placed) { const d = (x - cx) ** 2 + (y - cy) ** 2; if (d < bd) { bd = d; best = [x, y]; } }
+	for (const [x, y] of placed) {
+		const d = (x - cx) ** 2 + (y - cy) ** 2; if (d < bd) {
+			bd = d; best = [x, y];
+		}
+	}
 	return { x: best[0], y: best[1] };
 }
 
@@ -650,7 +685,9 @@ async function ensureRot() {
 function hashSeed(s) {
 	let h = 2166136261;
 	const str = String(s);
-	for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+	for (let i = 0; i < str.length; i++) {
+		h ^= str.charCodeAt(i); h = Math.imul(h, 16777619);
+	}
 	return (h >>> 0) || 1;
 }
 
@@ -667,7 +704,9 @@ function largestFloorRegion(set) {
 			const [x, y] = k.split(",").map(Number);
 			for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
 				const nk = `${x + dx},${y + dy}`;
-				if (set.has(nk) && !seen.has(nk)) { seen.add(nk); q.push(nk); }
+				if (set.has(nk) && !seen.has(nk)) {
+					seen.add(nk); q.push(nk);
+				}
 			}
 		}
 		if (region.size > best.size) best = region;
@@ -696,7 +735,9 @@ export async function rotjsLayout(kind, params, seed) {
 	}
 
 	const floors = new Set();
-	gen.create((x, y, val) => { if (val === 0) floors.add(`${x},${y}`); }); // 0 = floor for these generators
+	gen.create((x, y, val) => {
+		if (val === 0) floors.add(`${x},${y}`);
+	}); // 0 = floor for these generators
 	const connected = largestFloorRegion(floors);
 
 	const rng = () => ROT.RNG.getUniform();

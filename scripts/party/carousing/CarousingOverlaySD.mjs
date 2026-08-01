@@ -189,7 +189,8 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		if (carousingMode === "expanded") {
 			availableTables = getExpandedCarousingTables();
 			activeTable = getExpandedCarousingData();
-		} else {
+		}
+		else {
 			availableTables = getCustomCarousingTables();
 			activeTable = getCarousingTableById(session.selectedTableId);
 		}
@@ -457,7 +458,8 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 			if (mode === "expanded") {
 				const mod = await import("./ExpandedCarousingTablesApp.mjs");
 				mod.openExpandedCarousingTablesEditor();
-			} else {
+			}
+			else {
 				const mod = await import("./CarousingTablesApp.mjs");
 				mod.openCarousingTablesEditor();
 			}
@@ -640,7 +642,8 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 			// Force reflow then set final height
 			drawer.offsetHeight;
 			drawer.style.maxHeight = fullHeight + "px";
-		} else {
+		}
+		else {
 			drawer.style.maxHeight = "0px";
 		}
 	}

@@ -162,7 +162,8 @@ export function registerActiveEffectConfigHooks() {
 		// Insert after Status Conditions if found, otherwise at the end of the details tab
 		if (statusConditions.length > 0) {
 			statusConditions.after(requireEquippedHtml + fieldHtml);
-		} else {
+		}
+		else {
 			// Fallback: insert at the end of the details tab
 			const detailsTab = $html.find('section[data-tab="details"]');
 			if (detailsTab.length > 0) {

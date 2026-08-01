@@ -102,7 +102,10 @@ export class TomStoreClass {
 	_parseData(data) {
 		let parsed = data;
 		if (typeof data === "string") {
-			try { parsed = JSON.parse(data); } catch (e) {
+			try {
+				parsed = JSON.parse(data);
+			}
+			catch (e) {
 				console.warn(`${CONFIG.MODULE_NAME} | Failed to parse data string: `, e);
 			}
 		}
@@ -131,7 +134,8 @@ export class TomStoreClass {
 		// Load folders
 		try {
 			this.folders = game.settings.get(CONFIG.MODULE_ID, "tom-folders") || [];
-		} catch (e) {
+		}
+		catch (e) {
 			this.folders = [];
 		}
 

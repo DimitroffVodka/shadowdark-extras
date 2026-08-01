@@ -71,7 +71,8 @@ function prepareNpcInventory(actor) {
 		// Sort treasure items separately
 		if (item.system.treasure) {
 			treasure.push(itemData);
-		} else {
+		}
+		else {
 			inventory.push(itemData);
 		}
 	}
@@ -122,7 +123,8 @@ export function injectNpcCreatureType(app, html, actor) {
 		const enabled = game.settings.get(MODULE_ID, "enableNpcCreatureType");
 		//console.log(`${MODULE_ID} | enableNpcCreatureType setting: ${enabled}`);
 		if (!enabled) return;
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn(`${MODULE_ID} | Setting enableNpcCreatureType not registered or failed`, e);
 		return;
 	}
@@ -182,7 +184,8 @@ export function injectNpcCreatureType(app, html, actor) {
 				type: newType || game.i18n.localize("SHADOWDARK_EXTRAS.npc.creature_type.none"),
 			}));
 		});
-	} else {
+	}
+	else {
 		console.warn(`${MODULE_ID} | Could not find attacks box to insert creature type box`);
 		// Fallback: try to find any SD-box in the main content
 		const $anyBox = $html.find(".SD-box").first();
@@ -368,7 +371,8 @@ export function patchNpcSheetForItemDrops(app) {
 		let data;
 		try {
 			data = JSON.parse(event.dataTransfer.getData("text/plain"));
-		} catch (err) {
+		}
+		catch (err) {
 			return;
 		}
 
@@ -402,7 +406,8 @@ export function patchNpcSheetForItemDrops(app) {
 					target: targetActor.name,
 				})
 			);
-		} else if (isCopy) {
+		}
+		else if (isCopy) {
 			ui.notifications.info(
 				game.i18n.format("SHADOWDARK_EXTRAS.notifications.item_copied", {
 					item: sourceItem.name,

@@ -302,7 +302,8 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 						duration,
 					});
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				console.warn(`${MODULE_ID} | Failed to load effect ${uuid}:`, err);
 			}
 		}
@@ -430,11 +431,13 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === "Item" && data.id) {
+			}
+			else if (data.type === "Item" && data.id) {
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
 					doc = await pack.getDocument(data.id);
-				} else {
+				}
+				else {
 					doc = game.items.get(data.id);
 				}
 			}
@@ -467,7 +470,8 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 			await this.item.setFlag(MODULE_ID, `spellDamage.${flagKey}`, newEffects);
 
 			ui.notifications.info(`Added ${doc.name} to ${isCritical ? "critical " : ""}effects`);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error handling effect drop:`, err);
 		}
 	}
@@ -508,11 +512,13 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === "Actor" && data.id) {
+			}
+			else if (data.type === "Actor" && data.id) {
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
 					doc = await pack.getDocument(data.id);
-				} else {
+				}
+				else {
 					doc = game.actors.get(data.id);
 				}
 			}
@@ -533,7 +539,8 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 				await this.item.setFlag(MODULE_ID, "summoning.profiles", profiles);
 				ui.notifications.info(`Added ${doc.name} to summon profile`);
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error handling summon drop:`, err);
 		}
 	}
@@ -574,11 +581,13 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === "Item" && data.id) {
+			}
+			else if (data.type === "Item" && data.id) {
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
 					doc = await pack.getDocument(data.id);
-				} else {
+				}
+				else {
 					doc = game.items.get(data.id);
 				}
 			}
@@ -599,7 +608,8 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 				await this.item.setFlag(MODULE_ID, "itemGive.profiles", profiles);
 				ui.notifications.info(`Added ${doc.name} to give list`);
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error handling item give drop:`, err);
 		}
 	}

@@ -361,11 +361,14 @@ export class TomSocketHandler {
 
 		if (arenaAssets) {
 			playerView.insertBefore(overlay, arenaAssets);
-		} else if (arenaRings) {
+		}
+		else if (arenaRings) {
 			playerView.insertBefore(overlay, arenaRings);
-		} else if (castLayer) {
+		}
+		else if (castLayer) {
 			playerView.insertBefore(overlay, castLayer);
-		} else {
+		}
+		else {
 			playerView.appendChild(overlay);
 		}
 

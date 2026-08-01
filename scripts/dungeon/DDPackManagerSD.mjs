@@ -82,7 +82,8 @@ async function ensureDirectory(path) {
 		current = current ? `${current}/${part}` : part;
 		try {
 			await FP.browse("data", current);
-		} catch {
+		}
+		catch {
 			await FP.createDirectory("data", current);
 		}
 	}
@@ -91,7 +92,8 @@ async function ensureDirectory(path) {
 export function getDDPacks() {
 	try {
 		return game.settings.get(MODULE_ID, SETTING_KEY) || [];
-	} catch {
+	}
+	catch {
 		return [];
 	}
 }
@@ -155,7 +157,8 @@ export async function extractDDPack(file, folderLabel, onProgress, selectedPaths
 	for (const dir of [...dirs].sort((a, b) => a.length - b.length || a.localeCompare(b))) {
 		try {
 			await ensureDirectory(dir);
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Could not create Dungeondraft directory ${dir}:`, err);
 		}
 	}
@@ -172,7 +175,8 @@ export async function extractDDPack(file, folderLabel, onProgress, selectedPaths
 		const uploadFile = new File([blob], sanitizePathPart(filename), { type: mime });
 		try {
 			await FP.upload("data", uploadDir, uploadFile, {}, { notify: false });
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Could not upload Dungeondraft asset ${filename}:`, err);
 		}
 		uploaded++;
@@ -196,7 +200,8 @@ export async function extractDDPack(file, folderLabel, onProgress, selectedPaths
 	);
 	try {
 		await FP.upload("data", basePath, indexFile, {}, { notify: false });
-	} catch {
+	}
+	catch {
 		// Index is helpful but not required for tray loading.
 	}
 
@@ -233,7 +238,8 @@ export async function loadDDPackDecorTiles() {
 			let listing;
 			try {
 				listing = await FP.browse("data", dir);
-			} catch {
+			}
+			catch {
 				continue;
 			}
 

@@ -101,7 +101,8 @@ export function getTokenData() {
 		const token = tokens[0];
 		if (token.document.actorLink) {
 			return game.actors.get(token.document.actorId);
-		} else {
+		}
+		else {
 			return token.document;
 		}
 	}
@@ -153,7 +154,8 @@ export async function getEntityData(entity) {
 	if (actor.system.luck) {
 		if (pulpMode) {
 			luckValue = actor.system.luck?.remaining ?? 0;
-		} else {
+		}
+		else {
 			luckValue = actor.system.luck?.available ? "●" : "○";
 		}
 	}
@@ -315,7 +317,8 @@ function getEquippedItems(actor) {
 
 		if (isNPC) {
 			if (!isNpcItem) continue;
-		} else {
+		}
+		else {
 			if (!item.system?.equipped) continue;
 		}
 
@@ -476,7 +479,8 @@ export async function changeLuck(event, change = null) {
 			"system.luck.available": luckValue > 0,
 			"system.luck.remaining": luckValue,
 		});
-	} else {
+	}
+	else {
 		// Standard mode: toggle available
 		await actor.update({
 			"system.luck.available": !actor.system.luck.available,
@@ -511,11 +515,13 @@ export async function handleHpChange(event) {
 		// Healing
 		damageAmount = parseInt(inputValue.slice(1), 10);
 		multiplier = -1;
-	} else if (inputValue.startsWith("-")) {
+	}
+	else if (inputValue.startsWith("-")) {
 		// Damage
 		damageAmount = parseInt(inputValue.slice(1), 10);
 		multiplier = 1;
-	} else {
+	}
+	else {
 		// Absolute value
 		const newHP = parseInt(inputValue, 10);
 		damageAmount = currentHP - newHP;

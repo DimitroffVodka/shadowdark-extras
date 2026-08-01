@@ -220,10 +220,12 @@ async function handleChatMessageRender(message, html, context) {
 					await permanentItem.update({ "system.lost": true });
 				}
 				await endFocusSpell(casterId, trackedSpellId, "spell_lost");
-			} else {
+			}
+			else {
 				await endFocusSpell(casterId, trackedSpellId, "focus_failed");
 			}
-		} else {
+		}
+		else {
 			console.log(`shadowdark-extras | Focus maintained for ${item.name}`);
 			// Don't re-apply effects - they're already applied.
 			// Focus check succeeded → NOW apply this turn's per-turn damage. Gate to
@@ -234,7 +236,8 @@ async function handleChatMessageRender(message, html, context) {
 				await applyFocusSpellPerTurnToTargets(focusEntry);
 			}
 		}
-	} else if (!isAlreadyFocusing) {
+	}
+	else if (!isAlreadyFocusing) {
 		// This is the initial cast (only start tracking if not already focusing)
 		if (success && critical !== "failure") {
 			// Spell cast successfully - start tracking focus
@@ -287,7 +290,8 @@ async function startFocusSpell(actor, spell, perTurnConfig = null) {
 	if (existingIndex >= 0) {
 		// Update existing entry
 		currentFocus[existingIndex] = focusData;
-	} else {
+	}
+	else {
 		// Add new entry
 		currentFocus.push(focusData);
 	}
@@ -341,7 +345,8 @@ async function startFocusSpell(actor, spell, perTurnConfig = null) {
 				await actor.setFlag(MODULE_ID, FOCUS_SPELL_FLAG, updatedFocus);
 			}
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.error("shadowdark-extras | Failed to create concentration effect:", err);
 	}
 
@@ -377,7 +382,8 @@ export async function startDurationSpell(caster, spell, targetTokenIds = [], spe
 
 	if (durationType === "rounds") {
 		expiryRound = currentRound + durationValue;
-	} else if (durationType === "turns") {
+	}
+	else if (durationType === "turns") {
 		expiryRound = currentRound + Math.ceil(durationValue / 10); // Approximate
 	}
 
@@ -564,7 +570,8 @@ async function revertSpellModifications(spellId, casterId) {
 				// Check if we have permission to update the item
 				if (item.isOwner || game.user.isGM) {
 					await item.update(updates);
-				} else {
+				}
+				else {
 					// Route through GM socket
 					const socket = getSocket();
 					if (socket) {
@@ -572,7 +579,8 @@ async function revertSpellModifications(spellId, casterId) {
 							itemUuid: item.uuid,
 							updates: updates,
 						});
-					} else {
+					}
+					else {
 						console.warn(`shadowdark-extras | Cannot revert ${item.name}: No GM connected or socket unavailable.`);
 						continue;
 					}
@@ -587,10 +595,12 @@ async function revertSpellModifications(spellId, casterId) {
 				if (item.isOwner || game.user.isGM) {
 					if (remainingMods.length > 0) {
 						await item.setFlag(MODULE_ID, SPELL_MODIFICATIONS_FLAG, remainingMods);
-					} else {
+					}
+					else {
 						await item.unsetFlag(MODULE_ID, SPELL_MODIFICATIONS_FLAG);
 					}
-				} else {
+				}
+				else {
 					const socket = getSocket();
 					if (socket) {
 						await socket.executeAsGM("updateItemFlagsAsGM", {
@@ -602,7 +612,8 @@ async function revertSpellModifications(spellId, casterId) {
 				}
 
 				revertedItems.push({ item, actor, modEntry });
-			} catch (err) {
+			}
+			catch (err) {
 				console.error(`shadowdark-extras | Failed to revert ${item.name}:`, err);
 			}
 		}
@@ -688,7 +699,8 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 						effectItemId: targetEffect.effectItemId,
 					});
 					console.log("shadowdark-extras | Removed effect via socket");
-				} else {
+				}
+				else {
 					// Fallback for GM or if socket not available
 					let targetActor = null;
 
@@ -717,7 +729,8 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 						console.log(`shadowdark-extras | Removed effect ${effectItem.name} from ${targetActor.name}`);
 					}
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				console.warn("shadowdark-extras | Failed to remove effect:", err);
 			}
 		}
@@ -762,7 +775,8 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 				if (isCleansing) {
 					updates["flags.shadowdark-extras.cleansingWeaponSpellId"] = null;
 					updates["flags.shadowdark-extras.cleansingWeaponCasterId"] = null;
-				} else {
+				}
+				else {
 					updates["flags.shadowdark-extras.holyWeaponSpellId"] = null;
 					updates["flags.shadowdark-extras.holyWeaponCasterId"] = null;
 				}
@@ -801,7 +815,8 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 					templatesToDelete.push(durationEntry.templateId);
 					console.log(`shadowdark-extras | Found specific template to delete: ${durationEntry.templateId}`);
 				}
-			} else {
+			}
+			else {
 				// Fallback: match by spell name and caster (for duration spells without templateId)
 				const templates = getSceneMeasuredTemplates(scene);
 				for (const template of templates) {
@@ -824,7 +839,8 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 				console.log(`shadowdark-extras | Deleted ${templatesToDelete.length} template(s) for ended spell ${durationEntry.spellName}`);
 			}
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn("shadowdark-extras | Failed to delete templates for ended spell:", err);
 	}
 
@@ -857,7 +873,8 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 					console.log("shadowdark-extras | Removed summoned tokens from expiry tracking");
 				}
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn("shadowdark-extras | Failed to delete summoned tokens for ended spell:", err);
 		}
 	}
@@ -967,7 +984,8 @@ async function handleEffectCreated(item, options, userId) {
 	if (originDoc instanceof Item) {
 		sourceSpell = originDoc;
 		sourceActor = originDoc.actor;
-	} else if (originDoc instanceof Actor) {
+	}
+	else if (originDoc instanceof Actor) {
 		sourceActor = originDoc;
 	}
 
@@ -1132,7 +1150,12 @@ async function handleCombatUpdate(combat, changed, options, userId) {
 	// the per-turn effect, failure ends the spell. Fire from ONE client (the
 	// caster's active owner, else the active GM) so each check rolls once.
 	let autoRollFocus = false;
-	try { autoRollFocus = game.settings.get(MODULE_ID, "autoRollFocusOnTurn"); } catch { autoRollFocus = false; }
+	try {
+		autoRollFocus = game.settings.get(MODULE_ID, "autoRollFocusOnTurn");
+	}
+	catch {
+		autoRollFocus = false;
+	}
 	if (autoRollFocus) {
 		const activeOwner = game.users.find(u => u.active && !u.isGM && actor.testUserPermission(u, "OWNER"));
 		const shouldRoll = activeOwner
@@ -1278,7 +1301,8 @@ async function applyFocusSpellPerTurnDamage(focusSpell, targetActor, targetToken
 			content: content,
 			speaker: ChatMessage.getSpeaker({ actor: targetActor }),
 		});
-	} catch (err) {
+	}
+	catch (err) {
 		console.error("shadowdark-extras | Error applying per-turn damage for focus spell: ", err);
 	}
 }
@@ -1378,14 +1402,17 @@ async function rollFocusSpellWithTargets(actor, spellId, opts = {}) {
 		console.log(`shadowdark-extras | Rolling focus check for spell ${spell.name} (${spellUuid}) on actor ${actor.name}`);
 		if (actor.system.castSpell) {
 			actor.system.castSpell(spellUuid, { cast: { focus: true }, skipPrompt });
-		} else {
+		}
+		else {
 			actor.castSpell(spellUuid, { cast: { focus: true }, skipPrompt });
 		}
-	} else if (focusEntry?.spellData) {
+	}
+	else if (focusEntry?.spellData) {
 		// Spell item no longer exists (e.g., scroll was consumed) - use cached data
 		console.log(`shadowdark-extras | Spell item ${spellId} no longer exists, using cached data for focus roll`);
 		await rollFocusCheckFromCachedData(actor, focusEntry, { skipPrompt });
-	} else {
+	}
+	else {
 		ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.item_no_longer_exists"));
 	}
 }
@@ -1416,7 +1443,8 @@ async function rollFocusCheckFromCachedData(actor, focusEntry, opts = {}) {
 			if (actorClass) {
 				classUuids = [actorClass.uuid];
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn("shadowdark-extras | Could not get actor class for temp spell", e);
 		}
 	}
@@ -1452,7 +1480,8 @@ async function rollFocusCheckFromCachedData(actor, focusEntry, opts = {}) {
 		const tempSpellUuid = tempSpell.uuid;
 		if (actor.system.castSpell) {
 			await actor.system.castSpell(tempSpellUuid, { cast: { focus: true }, skipPrompt });
-		} else {
+		}
+		else {
 			await actor.castSpell(tempSpellUuid, { cast: { focus: true }, skipPrompt });
 		}
 
@@ -1465,12 +1494,14 @@ async function rollFocusCheckFromCachedData(actor, focusEntry, opts = {}) {
 					await actor.deleteEmbeddedDocuments("Item", [tempSpell.id]);
 					console.log(`shadowdark-extras | Deleted temporary spell: ${spellName}`);
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				console.warn("shadowdark-extras | Could not delete temporary spell:", err);
 			}
 		}, 2000);
 
-	} catch (err) {
+	}
+	catch (err) {
 		console.error("shadowdark-extras | Error rolling focus from cached data:", err);
 		ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.focus_roll_error") || "Error rolling focus check");
 	}
@@ -1516,13 +1547,15 @@ async function onDurationDamageApplyClick(event) {
 				// Use the registered applyTokenDamage handler (CombatSettingsSD).
 				// Note: the previous call site used "applyDamage" which was never registered.
 				socket.executeAsGM("applyTokenDamage", { tokenId, damage, actorName });
-			} else {
+			}
+			else {
 				ui.notifications.warn("Cannot apply damage - no GM connected.");
 				btn.disabled = false;
 				btn.innerHTML = originalHtml;
 				return;
 			}
-		} else {
+		}
+		else {
 			// GM applies directly
 			const token = canvas.tokens?.get(tokenId);
 			if (!token?.actor) {
@@ -1547,7 +1580,8 @@ async function onDurationDamageApplyClick(event) {
 		if (message) await message.setFlag(MODULE_ID, "applied", true);
 
 		ui.notifications.info(`Applied ${damage} damage to ${actorName}`);
-	} catch (err) {
+	}
+	catch (err) {
 		console.error("shadowdark-extras | Failed to apply duration damage:", err);
 		btn.disabled = false;
 		btn.innerHTML = originalHtml;
@@ -1636,7 +1670,8 @@ async function handleDurationSpellCombatUpdate(combat, changed, options, userId)
 						// Mark this target as processed this round
 						durationSpell.processedTargetsThisRound[targetKey] = true;
 						needsUpdate = true;
-					} else {
+					}
+					else {
 						console.log(`shadowdark-extras | Target ${currentActor.name} already processed this round for ${durationSpell.spellName}`);
 					}
 				}
@@ -1740,10 +1775,12 @@ async function applyDurationSpellPerTurnDamage(durationSpell, targetActor, targe
 			const newHp = Math.max(0, currentHp - damage);
 			await token.actor.update({ "system.attributes.hp.value": newHp });
 			console.log(`shadowdark-extras | Auto-applied ${damage} ${damageType} damage to ${targetActor.name} from ${durationSpell.spellName}`);
-		} else {
+		}
+		else {
 			console.log(`shadowdark-extras | Per-turn damage rolled for ${targetActor.name}: ${damage} ${damageType} (awaiting manual apply)`);
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.error("shadowdark-extras | Failed to apply per-turn damage:", err);
 	}
 }
@@ -1800,7 +1837,8 @@ export async function linkEffectToDurationSpell(casterActorOrId, instanceId, tar
 	if (targetTokenId) {
 		const token = canvas.tokens?.get(targetTokenId);
 		if (token) targetName = token.name;
-	} else if (targetActor?.token) {
+	}
+	else if (targetActor?.token) {
 		targetName = targetActor.token.name;
 	}
 
@@ -1889,7 +1927,8 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
 		if (typeof effects === "string") {
 			try {
 				effects = JSON.parse(effects);
-			} catch (e) {
+			}
+			catch (e) {
 				effects = [];
 			}
 		}
@@ -1915,7 +1954,8 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
 					if (result.success) {
 						createdEffectId = result.effectId;
 					}
-				} else {
+				}
+				else {
 					// Fallback for GM or if socket not available
 					const effectDoc = await fromUuid(effectUuid);
 					if (!effectDoc) continue;
@@ -1933,7 +1973,8 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
 					await linkEffectToDurationSpell(casterId, spellInstanceId, token.actor.id, tokenId, createdEffectId);
 					console.log(`shadowdark-extras | Applied effect to new target ${token.name}`);
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				console.warn("shadowdark-extras | Failed to apply effect to new target:", err);
 			}
 		}
@@ -2015,13 +2056,15 @@ export async function removeTargetFromDurationSpell(casterId, instanceId, tokenI
 					effectItemId: targetEffect.effectItemId,
 				});
 				console.log(`shadowdark-extras | Removed effect via socket from ${removedTarget.name}`);
-			} else {
+			}
+			else {
 				// Fallback for GM or if socket not available
 				let targetActor = null;
 				const token = canvas.tokens?.get(tokenId);
 				if (token?.actor) {
 					targetActor = token.actor;
-				} else if (targetEffect.targetActorId) {
+				}
+				else if (targetEffect.targetActorId) {
 					targetActor = game.actors.get(targetEffect.targetActorId);
 				}
 
@@ -2040,7 +2083,8 @@ export async function removeTargetFromDurationSpell(casterId, instanceId, tokenI
 					}
 				}
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn("shadowdark-extras | Failed to remove effect from target:", err);
 		}
 	}
@@ -2166,14 +2210,16 @@ export async function endFocusSpell(casterId, spellId, reason = "manual") {
 				if (game.user.isGM || targetActor.isOwner) {
 					await effectDoc.delete();
 					console.log(`shadowdark-extras | Removed effect ${effectDoc.name || targetEffect.effectItemId} from ${targetActor.name}`);
-				} else if (socket) {
+				}
+				else if (socket) {
 					await socket.executeAsGM("removeTargetEffect", {
 						targetActorId: targetEffect.targetActorId,
 						targetTokenId: targetEffect.targetTokenId,
 						effectItemId: targetEffect.effectItemId,
 					});
 				}
-			} catch (err) {
+			}
+			catch (err) {
 			// "does not exist" just means the effect was already removed elsewhere; benign.
 				console.warn(`shadowdark-extras | Effect ${targetEffect.effectItemId} already removed or unavailable:`, err?.message ?? err);
 			}
@@ -2201,7 +2247,8 @@ export async function endFocusSpell(casterId, spellId, reason = "manual") {
 				await concEffect.delete();
 				console.log(`shadowdark-extras | Removed concentration effect ${concEffect.name} from caster`);
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn("shadowdark-extras | Concentration effect already removed or unavailable:", err?.message ?? err);
 		}
 
@@ -2222,13 +2269,15 @@ export async function endFocusSpell(casterId, spellId, reason = "manual") {
 						try {
 							await template.delete();
 							console.log(`shadowdark-extras | Deleted template ${template.id}`);
-						} catch (err) {
+						}
+						catch (err) {
 							console.warn(`shadowdark-extras | Failed to delete template ${template.id}:`, err);
 						}
 					}
 				}
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn("shadowdark-extras | Error cleaning up templates:", err);
 		}
 
@@ -2253,7 +2302,8 @@ export async function endFocusSpell(casterId, spellId, reason = "manual") {
 
 		// Refresh the actor sheet if open
 		caster.sheet?.render(false);
-	} finally {
+	}
+	finally {
 		_endingFocusSpells.delete(_endKey);
 	}
 }
@@ -2327,7 +2377,8 @@ function injectFocusSpellsUI(sheet, html, data) {
 			if (targetsList.is(":visible")) {
 				targetsList.slideUp(200);
 				icon.removeClass("fa-chevron-up").addClass("fa-chevron-down");
-			} else {
+			}
+			else {
 				targetsList.slideDown(200);
 				icon.removeClass("fa-chevron-down").addClass("fa-chevron-up");
 			}
@@ -2426,7 +2477,8 @@ function injectFocusSpellsUI(sheet, html, data) {
 
 			if (token) {
 				canvas.animatePan({ x: token.center.x, y: token.center.y, duration: 250 });
-			} else {
+			}
+			else {
 				ui.notifications.warn("Token not found on this scene.");
 			}
 		});
@@ -2533,7 +2585,8 @@ function buildDurationSpellsHtml(actor, activeDuration) {
 					</div>
 				`;
 			}
-		} else {
+		}
+		else {
 			targetsListHtml = '<div class="sdx-no-targets">No targets</div>';
 		}
 
@@ -2684,10 +2737,12 @@ function calculateFocusDuration(focus) {
 
 	if (seconds < 60) {
 		return game.i18n.format("SHADOWDARK_EXTRAS.focus_tracker.seconds", { count: seconds });
-	} else if (seconds < 3600) {
+	}
+	else if (seconds < 3600) {
 		const minutes = Math.floor(seconds / 60);
 		return game.i18n.format("SHADOWDARK_EXTRAS.focus_tracker.minutes", { count: minutes });
-	} else {
+	}
+	else {
 		const hours = Math.floor(seconds / 3600);
 		return game.i18n.format("SHADOWDARK_EXTRAS.focus_tracker.hours", { count: hours });
 	}
@@ -2780,7 +2835,8 @@ export async function linkEffectToFocusSpell(casterActorOrId, spellId, targetAct
 	if (resolvedTokenId) {
 		const token = canvas.tokens?.get(resolvedTokenId);
 		if (token) targetName = token.name;
-	} else if (targetActor.token) {
+	}
+	else if (targetActor.token) {
 		targetName = targetActor.token.name;
 	}
 
@@ -2868,7 +2924,8 @@ export async function linkTargetToFocusSpell(casterActorOrId, spellId, targetAct
 	if (resolvedTokenId) {
 		const token = canvas.tokens?.get(resolvedTokenId);
 		if (token) targetName = token.name;
-	} else if (targetActor.token) {
+	}
+	else if (targetActor.token) {
 		targetName = targetActor.token.name;
 	}
 
@@ -2928,7 +2985,8 @@ async function handleWandUsesTracking(message, html, data) {
 	// Check if wand uses tracking is enabled
 	try {
 		if (!game.settings.get(MODULE_ID, "enableWandUses")) return;
-	} catch {
+	}
+	catch {
 		return;
 	}
 
@@ -2986,7 +3044,8 @@ function injectWandUsesDisplay(app, html, data) {
 	// Check if wand uses tracking is enabled
 	try {
 		if (!game.settings.get(MODULE_ID, "enableWandUses")) return;
-	} catch {
+	}
+	catch {
 		return;
 	}
 

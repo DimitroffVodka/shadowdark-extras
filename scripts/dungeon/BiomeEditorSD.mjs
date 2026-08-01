@@ -40,7 +40,8 @@ function pickImage(current, onPick) {
 	try {
 		const fp = new FilePickerImpl({ type: "imagevideo", current: current || "", callback: onPick });
 		fp.render(true);
-	} catch (e) {
+	}
+	catch (e) {
 		ui.notifications?.error(`Could not open file picker: ${e.message}`);
 	}
 }
@@ -96,13 +97,17 @@ export class BiomeEditorSD extends HandlebarsApplicationMixin(ApplicationV2) {
 	static onBrowseFloor(event, target) {
 		const row = target.closest(".biome-row");
 		const input = row?.querySelector(".biome-floor");
-		if (input) pickImage(input.value, (p) => { input.value = p; });
+		if (input) pickImage(input.value, (p) => {
+			input.value = p;
+		});
 	}
 
 	static onBrowseProp(event, target) {
 		const row = target.closest(".biome-row");
 		const ta = row?.querySelector(".biome-props");
-		if (ta) pickImage("", (p) => { ta.value = (ta.value ? ta.value + "\n" : "") + p; });
+		if (ta) pickImage("", (p) => {
+			ta.value = (ta.value ? ta.value + "\n" : "") + p;
+		});
 	}
 
 	static async onToggleEnabled(event, target) {
@@ -110,7 +115,8 @@ export class BiomeEditorSD extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (!key) return;
 		try {
 			await setBiomeEnabled(key, target.checked);
-		} catch (e) {
+		}
+		catch (e) {
 			ui.notifications.error(e.message);
 			this.render(); // resync checkbox to persisted state on failure
 		}
@@ -123,7 +129,8 @@ export class BiomeEditorSD extends HandlebarsApplicationMixin(ApplicationV2) {
 		try {
 			await setCustomBiome(key, readRow(row));
 			ui.notifications.info(`Biome "${key}" saved.`);
-		} catch (e) {
+		}
+		catch (e) {
 			ui.notifications.error(e.message);
 		}
 		this.render();
@@ -134,12 +141,15 @@ export class BiomeEditorSD extends HandlebarsApplicationMixin(ApplicationV2) {
 		const row = root.querySelector(".new-biome-row");
 		const rawKey = root.querySelector(".new-biome-key")?.value || "";
 		const key = rawKey.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
-		if (!key) { ui.notifications.warn("Enter a biome key (letters, digits, - or _)."); return; }
+		if (!key) {
+			ui.notifications.warn("Enter a biome key (letters, digits, - or _)."); return;
+		}
 		try {
 			await setCustomBiome(key, readRow(row));
 			ui.notifications.info(`Biome "${key}" added.`);
 			this.render();
-		} catch (e) {
+		}
+		catch (e) {
 			ui.notifications.error(e.message);
 		}
 	}

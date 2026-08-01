@@ -31,7 +31,8 @@ function _load() {
 		const raw = game.settings.get(MODULE_ID, SETTING_KEY);
 		if (raw && Array.isArray(raw.entries)) return raw;
 		return { entries: [] };
-	} catch {
+	}
+	catch {
 		return { entries: [] };
 	}
 }
