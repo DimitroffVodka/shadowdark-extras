@@ -79,6 +79,40 @@ you click and closes on its own. The sheet has nothing to refresh.
 
 ---
 
+## 9. Ammunition hit and damage bonuses never reach Shadowdark 4.x attack rolls
+
+**Found:** static analysis during the combat fixes, then confirmed live during
+the 6.10.52 archive smoke. **Status:** confirmed, unfixed. **Pre-existing** —
+the Phase 3 move carried this implementation unchanged.
+
+The ranged-attack wrapper selects and consumes ammunition correctly, but tries
+to inject `ammoHitBonus` and `ammoDamageBonus` by temporarily replacing
+`item.rollItem` (`scripts/combat/roll-patches.mjs:178-230`). Shadowdark 4.0.6's
+Player attack path never calls that method: it creates a roll configuration,
+opens the roll dialog, and finishes through `rollFromConfig`.
+
+Measured against the installed 6.10.52 candidate archive in a disposable world,
+Foundry 14.365 / Shadowdark 4.0.6:
+
+| | |
+| --- | --- |
+| ammunition | `Phase 4 Silver Arrows`, `ammoHitBonus: +2`, `ammoDamageBonus: +3` |
+| selector | listed and selected the configured ammunition |
+| quantity | **2 → 1** after one Longbow attack |
+| attack formula | **`1d20 + 2`**, with no additional `+2` |
+| damage formula | **`1d8`**, with no additional `+3` |
+| chat card | named `Phase 4 Silver Arrows (1/20)` |
+
+So the sheet controls, selector, consumption, and chat annotation all work;
+only the advertised bonuses are absent. This is the live confirmation that the
+local architecture notes previously lacked.
+
+**Fix direction:** carry both values through Shadowdark's roll configuration,
+as the repaired weapon hit-bonus path already does. That is a combat behaviour
+change and is deliberately outside the verification-only Phase 4 release.
+
+---
+
 ## 12. The NPC item-chat icon is dead: `item.displayCard` does not exist in SD 4.x
 
 **Found:** while extracting `inventory/containers.mjs` (Phase 3). **Status:**
@@ -243,6 +277,36 @@ builders moved from ActorSD.prototype to the NPC data model" — so the same
 That is a behaviour change — it turns a dormant feature back on — so it wants
 its own commit and a decision about whether alignment filtering is still
 wanted.
+
+---
+
+## 15. ToM's default scene background points to an asset that is not shipped
+
+**Found:** Phase 4 manifest/asset sweep; confirmed through both runtime entry
+points against the installed 6.10.52 candidate archive. **Status:** confirmed,
+unfixed. **Pre-existing** — git history traces the literal to the original ToM
+implementation, and no Phase 3 move changed it.
+
+Both `TomSceneModel` implementations use
+`modules/shadowdark-extras/assets/default-scene.jpg` when `background` is empty
+(`scripts/tom/TomSceneModel.mjs:6`, `scripts/tom/TomStore.mjs:9`). That file is
+absent from both the checkout and `module.zip`.
+
+Measured in the disposable archive-installed world, Foundry 14.365 / Shadowdark
+4.0.6:
+
+| entry point | selected background | HTTP result |
+| --- | --- | --- |
+| `new TomSceneModel({})` | `modules/shadowdark-extras/assets/default-scene.jpg` | **404** |
+| `new TomStoreClass().createScene({})` | same | **404** |
+
+This settles the Phase 4 question: the fallback is reachable, not dead code.
+A newly-created ToM scene with no explicit background therefore starts with a
+broken image reference.
+
+**Fix direction:** ship a real fallback asset or change both implementations to
+an existing packaged image. The duplicate model definitions should be reconciled
+at the same time, but that runtime change is outside verification-only Phase 4.
 
 ---
 
