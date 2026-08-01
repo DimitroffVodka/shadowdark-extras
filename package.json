@@ -22,8 +22,8 @@
     "release:check": "node ./dev/release-check.mjs",
     "gate:bindings": "node dev/tools/binding-gate.mjs",
     "gate:named-exports": "node dev/tools/named-export-gate.mjs",
-    "lint:baseline": "eslint --ext .mjs scripts/",
-    "lint:baseline:fix": "eslint --ext .mjs scripts/ --fix --fix-type layout --rule '{\"quotes\":\"off\",\"brace-style\":\"off\"}'"
+    "lint": "eslint .",
+    "lint:strict": "eslint . --max-warnings 0"
   },
   "//engines": "Node 24 is the supported runtime for release:check and the packs tooling. See dev/tools/README.md for the two environment failures that must not be recorded as a pass.",
   "engines": {
@@ -31,7 +31,8 @@
   },
   "devDependencies": {
     "@foundryvtt/foundryvtt-cli": "^1.0.4",
-    "eslint": "8.57.1"
+    "eslint": "9.39.5",
+    "globals": "14.0.0"
   },
   "dependencies": {
     "rot-js": "^2.2.1"

@@ -129,6 +129,40 @@ recorded version + hash make an exact rerun possible.
   4,760 warnings (all suggestion/deferred classes). max-len 913→894
   (expansions reduce line lengths; mechanical, deferred).
 
+## 5.0.6 record (in the 5.0.6 build commit)
+
+- **Port:** ESLint 8.57.1 (exact) → 9.39.5 (exact, latest 9.x maintenance
+  line); `.eslintrc.json` deleted; `eslint.config.mjs` flat config added;
+  `lint` / `lint:strict` (`--max-warnings 0`) scripts added;
+  `lint:baseline*` scripts removed. NOTE on `--ext`: the option still
+  parses in 9.39.5, but flat-config scoping no longer honors the
+  ESLint 8-style `--ext .mjs scripts/` restriction; the equivalent scope
+  is expressed via `files` + `ignores` in the flat config.
+- **Config generation:** flat config derived from the committed
+  `.eslintrc.json` (5.0.1 commit) via a one-shot generator (not
+  committed). All 128 rules preserved verbatim; env → globals (browser,
+  node, jquery from the `globals` package; es2022 → ecmaVersion 2022).
+- **Two deliberate deltas (each verified against the baseline):**
+  1. `js.configs.recommended` NOT merged — the eslintrc had no `extends`
+     (standalone rules list; absent rules OFF). Merging recommended
+     injected 9,898 phantom errors (no-undef etc.) on a 0-error tree.
+  2. `no-unused-vars` gets explicit `caughtErrors: "none"` — ESLint 9
+     changed the default from "none" to "all", which alone added 192
+     phantom catch-parameter findings. Restored explicitly.
+  3. Scope: `files: ["scripts/**/*.mjs"]` + ignores (compiled, maphub,
+     dev/**, greensock/**, libs/**, scripts/macros/*.js) — the linted
+     file set (193) exactly matches ESLint 8's `--ext .mjs scripts/`.
+- **Verification (plan's requirement — identical findings):**
+  ESLint 9.39.5 vs ESLint 8.57.1 on the same tree: 0 errors / 4,760
+  warnings both; identical 193-file set; finding-by-finding identical by
+  (file, rule) — every finding's file and rule match, with exactly two
+  no-implicit-coercion messages reworded by ESLint 9 itself and two
+  no-dupe-class-members findings at shifted line/column anchors (same
+  rule + message).
+- **Tooling note:** ESLint 8.57.1 kept reproducible via the 5.0.1 commit
+  (exact pin) + this note; the isolated /tmp/es8prefix copy was used for
+  the side-by-side check.
+
 ## Why not a gate yet
 
 `verify.sh` does not call lint until the error-level baseline is clean
@@ -137,8 +171,11 @@ fail every commit with no signal.
 
 ## 5.0.6 port hazards (recorded 5.0.1, from review)
 
-- `--ext` is removed in ESLint 9 — both scripts break at the port; replace with
-  the flat-config file-matching (`files: ["**/*.mjs"]`).
+- `--ext` still parses in ESLint 9 but its scoping semantics changed: the
+  ESLint 8-style `--ext .mjs scripts/` restriction is not honored the same
+  way in flat config — replace with flat-config file-matching
+  (`files: ["scripts/**/*.mjs"]` + `ignores`). Both old scripts needed
+  replacement at the port.
 - `env` → `languageOptions.globals` (adds a `globals` dependency); `ignorePatterns`
   → `ignores` in flat config.
 - 42 of the 128 rules are deprecated core formatting rules (40 formatting; per
