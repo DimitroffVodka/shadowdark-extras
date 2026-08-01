@@ -34,7 +34,7 @@ const NPC_INVENTORY_TYPES = [
 	"Potion",
 	"Scroll",
 	"Wand",
-	"Weapon"
+	"Weapon",
 ];
 
 // Track active tab per NPC sheet (by actor ID)
@@ -90,7 +90,7 @@ function getNpcCoins(actor) {
 	return {
 		gp: actor.system?.coins?.gp ?? actor.getFlag(MODULE_ID, "coins.gp") ?? 0,
 		sp: actor.system?.coins?.sp ?? actor.getFlag(MODULE_ID, "coins.sp") ?? 0,
-		cp: actor.system?.coins?.cp ?? actor.getFlag(MODULE_ID, "coins.cp") ?? 0
+		cp: actor.system?.coins?.cp ?? actor.getFlag(MODULE_ID, "coins.cp") ?? 0,
 	};
 }
 
@@ -161,10 +161,10 @@ export function injectNpcCreatureType(app, html, actor) {
 	`;
 
 	// Find the attacks box (first SD-box in grid-1-columns on the right side)
-	const $gridRight = $html.find('.grid-1-columns');
+	const $gridRight = $html.find(".grid-1-columns");
 	//console.log(`${MODULE_ID} | Found ${$gridRight.length} elements with .grid-1-columns`);
 
-	const $attacksBox = $gridRight.find('.SD-box').first();
+	const $attacksBox = $gridRight.find(".SD-box").first();
 	//console.log(`${MODULE_ID} | Found ${$attacksBox.length} potential attack boxes`);
 
 	if ($attacksBox.length) {
@@ -173,19 +173,19 @@ export function injectNpcCreatureType(app, html, actor) {
 		//console.log(`${MODULE_ID} | Injected creature type box`);
 
 		// Attach change handler (GM only; players see it read-only)
-		if (isGM) $html.find('.sdx-creature-type-select').on('change', async function (e) {
+		if (isGM) $html.find(".sdx-creature-type-select").on("change", async function(e) {
 			const newType = $(this).val();
 			//console.log(`${MODULE_ID} | Changing creature type to: ${newType}`);
 			await actor.setFlag(MODULE_ID, "creatureType", newType);
 			ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.npc.creature_type.updated", {
 				name: actor.name,
-				type: newType || game.i18n.localize("SHADOWDARK_EXTRAS.npc.creature_type.none")
+				type: newType || game.i18n.localize("SHADOWDARK_EXTRAS.npc.creature_type.none"),
 			}));
 		});
 	} else {
 		console.warn(`${MODULE_ID} | Could not find attacks box to insert creature type box`);
 		// Fallback: try to find any SD-box in the main content
-		const $anyBox = $html.find('.SD-box').first();
+		const $anyBox = $html.find(".SD-box").first();
 		if ($anyBox.length) {
 			$anyBox.before(creatureTypeHtml);
 			//console.log(`${MODULE_ID} | Injected creature type box using fallback`);
@@ -200,7 +200,7 @@ export async function injectNpcInventoryTab(app, html, data) {
 	const actor = app.actor;
 
 	// Add the inventory tab to navigation (after Abilities)
-	const nav = html.find('.SD-nav');
+	const nav = html.find(".SD-nav");
 	const abilitiesTab = nav.find('a[data-tab="tab-abilities"]');
 
 	const inventoryTabHtml = `<a class="navigation-tab" data-tab="tab-inventory">${game.i18n.localize("SHADOWDARK_EXTRAS.sheet.npc.tab.inventory")}</a>`;
@@ -222,14 +222,14 @@ export async function injectNpcInventoryTab(app, html, data) {
 		npcSlotsUsed: totalSlotsUsed,
 		npcItemSlots: safeItemSlots,
 		npcCoinSlots: coinSlots,
-		owner: actor.isOwner
+		owner: actor.isOwner,
 	};
 
 	const renderTpl = foundry.applications?.handlebars?.renderTemplate || renderTemplate;
 	const inventoryHtml = await renderTpl(templatePath, templateData);
 
 	// Insert after the abilities tab content
-	const contentBody = html.find('.SD-content-body');
+	const contentBody = html.find(".SD-content-body");
 	const abilitiesSection = contentBody.find('.tab[data-tab="tab-abilities"]');
 	abilitiesSection.after(inventoryHtml);
 
@@ -243,12 +243,12 @@ export async function injectNpcInventoryTab(app, html, data) {
 		event.stopPropagation();
 
 		// Remove active from all tabs and content
-		nav.find('.navigation-tab').removeClass('active');
-		contentBody.find('.tab').removeClass('active');
+		nav.find(".navigation-tab").removeClass("active");
+		contentBody.find(".tab").removeClass("active");
 
 		// Activate inventory tab
-		inventoryTabBtn.addClass('active');
-		inventoryContent.addClass('active');
+		inventoryTabBtn.addClass("active");
+		inventoryContent.addClass("active");
 
 		// Update the system's tab controller to know we're on a custom tab
 		// This prevents it from thinking abilities is still active
@@ -269,10 +269,10 @@ export async function injectNpcInventoryTab(app, html, data) {
 	const lastActiveTab = npcActiveTabTracker.get(actor.id);
 	if (lastActiveTab === "tab-inventory") {
 		// Activate inventory tab
-		nav.find('.navigation-tab').removeClass('active');
-		inventoryTabBtn.addClass('active');
-		contentBody.find('.tab').removeClass('active');
-		inventoryContent.addClass('active');
+		nav.find(".navigation-tab").removeClass("active");
+		inventoryTabBtn.addClass("active");
+		contentBody.find(".tab").removeClass("active");
+		inventoryContent.addClass("active");
 
 		// Update the system's tab controller
 		if (app._tabs?.[0]) {
@@ -294,7 +294,7 @@ function activateNpcInventoryListeners(html, actor) {
 		const itemData = {
 			name: game.i18n.localize("SHADOWDARK_EXTRAS.sheet.npc.inventory.new_item"),
 			type: "Basic",
-			img: "icons/svg/item-bag.svg"
+			img: "icons/svg/item-bag.svg",
 		};
 		await actor.createEmbeddedDocuments("Item", [itemData]);
 	});
@@ -323,13 +323,13 @@ function activateNpcInventoryListeners(html, actor) {
 
 	// Make items draggable
 	html.find('.npc-item-list .item[draggable="true"]').each((i, li) => {
-		li.addEventListener('dragstart', (event) => {
+		li.addEventListener("dragstart", (event) => {
 			const uuid = li.dataset.uuid;
 			if (!uuid) return;
 
 			const dragData = {
 				type: "Item",
-				uuid: uuid
+				uuid: uuid,
 			};
 
 			event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
@@ -355,9 +355,9 @@ export function patchNpcSheetForItemDrops(app) {
 	const originalOnDrop = app._onDrop?.bind(app);
 
 	// Override the _onDrop method to intercept drops on the inventory tab
-	app._onDrop = async function (event) {
+	app._onDrop = async function(event) {
 		// Check if we're on the inventory tab
-		const inventoryTab = event.target.closest('.shadowdark-extras-npc-inventory');
+		const inventoryTab = event.target.closest(".shadowdark-extras-npc-inventory");
 		if (!inventoryTab) {
 			// Not on inventory tab, use original handler
 			if (originalOnDrop) return originalOnDrop(event);
@@ -367,7 +367,7 @@ export function patchNpcSheetForItemDrops(app) {
 		// Get the drag data
 		let data;
 		try {
-			data = JSON.parse(event.dataTransfer.getData('text/plain'));
+			data = JSON.parse(event.dataTransfer.getData("text/plain"));
 		} catch (err) {
 			return;
 		}
@@ -399,14 +399,14 @@ export function patchNpcSheetForItemDrops(app) {
 			ui.notifications.info(
 				game.i18n.format("SHADOWDARK_EXTRAS.notifications.item_moved", {
 					item: sourceItem.name,
-					target: targetActor.name
+					target: targetActor.name,
 				})
 			);
 		} else if (isCopy) {
 			ui.notifications.info(
 				game.i18n.format("SHADOWDARK_EXTRAS.notifications.item_copied", {
 					item: sourceItem.name,
-					target: targetActor.name
+					target: targetActor.name,
 				})
 			);
 		}
@@ -424,19 +424,19 @@ export function applyNpcPlayerTheme(app, html, actor) {
 	if (isPartyActor(actor)) return;
 
 	const $html = html instanceof jQuery ? html : $(html);
-	const $sheet = $html.closest('.shadowdark.sheet.npc').length
-		? $html.closest('.shadowdark.sheet.npc')
+	const $sheet = $html.closest(".shadowdark.sheet.npc").length
+		? $html.closest(".shadowdark.sheet.npc")
 		: $html;
 
 	if (!game.settings.get(MODULE_ID, "enableNpcPlayerTheme")) {
-		$sheet.removeClass('sdx-npc-player-theme');
-		$html.find('.SD-header').first().removeClass('sdx-npc-themed-header');
-		$html.find('.SD-content-body').first().removeClass('sdx-npc-themed-content');
+		$sheet.removeClass("sdx-npc-player-theme");
+		$html.find(".SD-header").first().removeClass("sdx-npc-themed-header");
+		$html.find(".SD-content-body").first().removeClass("sdx-npc-themed-content");
 		return;
 	}
 
-	$sheet.addClass('sdx-npc-player-theme');
+	$sheet.addClass("sdx-npc-player-theme");
 
-	$html.find('.SD-header').first().addClass('sdx-npc-themed-header');
-	$html.find('.SD-content-body').first().addClass('sdx-npc-themed-content');
+	$html.find(".SD-header").first().addClass("sdx-npc-themed-header");
+	$html.find(".SD-content-body").first().addClass("sdx-npc-themed-content");
 }

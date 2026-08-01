@@ -155,10 +155,10 @@ function buildTooltipHtml(hexKey, record, isGM) {
 	const visibleNotes = isGM ? notes : notes.filter(n => n.visible);
 	const exploLabel = EXPLORATION_OPTIONS.find(o => o.value === exploration)?.label ?? exploration;
 
-	let html = `<div class="sdx-hex-tt-inner">`;
+	let html = "<div class=\"sdx-hex-tt-inner\">";
 
 	// Header
-	const hiddenIcon = (isGM && !r.showToPlayers) ? `<i class="fas fa-eye-slash sdx-hex-tt-hidden-icon"></i> ` : "";
+	const hiddenIcon = (isGM && !r.showToPlayers) ? "<i class=\"fas fa-eye-slash sdx-hex-tt-hidden-icon\"></i> " : "";
 	if (name) html += `<div class="sdx-hex-tt-head"><span class="sdx-hex-tt-name">${hiddenIcon}${name}</span></div>`;
 
 	// Exploration badge
@@ -173,41 +173,41 @@ function buildTooltipHtml(hexKey, record, isGM) {
 	if (claimed) rows.push(["Claimed", '<i class="fas fa-flag"  style="color:#60a5fa"></i>']);
 
 	if (rows.length) {
-		html += `<div class="sdx-hex-tt-rows">`;
+		html += "<div class=\"sdx-hex-tt-rows\">";
 		for (const [label, value] of rows) {
 			html += `<div class="sdx-hex-tt-row">
 				<span class="sdx-hex-tt-rlabel">${label}</span>
 				<span class="sdx-hex-tt-rvalue">${value}</span>
 			</div>`;
 		}
-		html += `</div>`;
+		html += "</div>";
 	}
 
 	// Notes — golden italic quote style
 	if (visibleNotes.length) {
-		html += `<div class="sdx-hex-tt-notes">`;
+		html += "<div class=\"sdx-hex-tt-notes\">";
 		for (const n of visibleNotes) {
 			if (!n.text) continue;
 			const hidden = (isGM && !n.visible) ? " sdx-hex-note-gm-hidden" : "";
 			html += `<div class="sdx-hex-tt-note${hidden}">${n.text}</div>`;
 		}
-		html += `</div>`;
+		html += "</div>";
 	}
 
 	// Feature pills
 	if (visibleFeatures.length) {
-		html += `<div class="sdx-hex-tt-features">`;
+		html += "<div class=\"sdx-hex-tt-features\">";
 		for (const f of visibleFeatures) {
 			const label = featureLabel(f);
 			const hidden = (isGM && !f.discovered) ? " sdx-hex-feat-gm-hidden" : "";
 			html += `<span class="sdx-hex-tt-feat${hidden}">${label}</span>`;
 		}
-		html += `</div>`;
+		html += "</div>";
 	}
 
-	if (isGM) html += `<div class="sdx-hex-tt-hint">Double-click to edit · Right-click for menu</div>`;
+	if (isGM) html += "<div class=\"sdx-hex-tt-hint\">Double-click to edit · Right-click for menu</div>";
 
-	html += `</div>`;
+	html += "</div>";
 	return html;
 }
 
@@ -577,7 +577,7 @@ export class SDXHexTooltip {
 
 		// GM-only: Generate options
 		if (isGM) {
-			html += `<div class="sdx-hex-ctx-divider"></div>`;
+			html += "<div class=\"sdx-hex-ctx-divider\"></div>";
 			html += `<div class="sdx-hex-ctx-item sdx-hex-ctx-generate" data-action="generate">
 				<i class="fas fa-dice-d20"></i>Generate Wilderness
 			</div>`;
@@ -640,7 +640,7 @@ export class SDXHexTooltip {
 					new MaphubViewerApp({
 						type: maphubData.maphubType,
 						queryString: maphubData.params,
-						externalBase: maphubData.externalBase
+						externalBase: maphubData.externalBase,
 					}).render(true);
 				} catch (err) {
 					console.error(`${MODULE_ID} | Failed to launch MaphubViewerApp:`, err);
@@ -714,7 +714,7 @@ export class SDXHexTooltip {
 		const menu = document.createElement("div");
 		menu.className = "sdx-hex-ctx-menu";
 
-		let html = `<div class="sdx-hex-ctx-header">Select Biome</div>`;
+		let html = "<div class=\"sdx-hex-ctx-header\">Select Biome</div>";
 		for (const b of biomes) {
 			html += `<div class="sdx-hex-ctx-item" data-biome="${b.key}">
 				<i class="fas fa-mountain-sun"></i>${b.label}
@@ -767,7 +767,7 @@ export class SDXHexTooltip {
 		} catch { /* grid not available — skip check */ }
 
 		// Generate content
-		let htmlContent, regionName;
+		let htmlContent; let regionName;
 		try {
 			const result = await generateHexHtml(biomeKey, hexLabel, nearOcean);
 			htmlContent = result.html;
@@ -858,7 +858,7 @@ export class SDXHexTooltip {
 		const menu = document.createElement("div");
 		menu.className = "sdx-hex-ctx-menu";
 
-		let html = `<div class="sdx-hex-ctx-header">Select Settlement</div>`;
+		let html = "<div class=\"sdx-hex-ctx-header\">Select Settlement</div>";
 		for (const t of types) {
 			html += `<div class="sdx-hex-ctx-item" data-stype="${t.key}">
 				<i class="fas fa-city"></i>${t.label}
@@ -897,7 +897,7 @@ export class SDXHexTooltip {
 		const sceneName = canvas.scene?.name ?? "Hex Map";
 
 		// Generate content
-		let htmlContent, settlementName, maphubData;
+		let htmlContent; let settlementName; let maphubData;
 		try {
 			const result = await generateSettlementHtml(typeKey, hexLabel, hexKey);
 			htmlContent = result.html;
@@ -990,7 +990,7 @@ export class SDXHexTooltip {
 		const menu = document.createElement("div");
 		menu.className = "sdx-hex-ctx-menu";
 
-		let html = `<div class="sdx-hex-ctx-header">Dungeon Type</div>`;
+		let html = "<div class=\"sdx-hex-ctx-header\">Dungeon Type</div>";
 		for (const t of types) {
 			html += `<div class="sdx-hex-ctx-item" data-dtype="${t.key}">
 				<i class="fas fa-dungeon"></i>${t.label}
@@ -1030,7 +1030,7 @@ export class SDXHexTooltip {
 		const menu = document.createElement("div");
 		menu.className = "sdx-hex-ctx-menu";
 
-		let html = `<div class="sdx-hex-ctx-header">Dungeon Size</div>`;
+		let html = "<div class=\"sdx-hex-ctx-header\">Dungeon Size</div>";
 		for (const s of sizes) {
 			html += `<div class="sdx-hex-ctx-item" data-dsize="${s.key}">
 				<i class="fas fa-expand-arrows-alt"></i>${s.label}
@@ -1073,7 +1073,7 @@ export class SDXHexTooltip {
 		const sceneName = canvas.scene?.name ?? "Hex Map";
 
 		// Generate content — single page with all rooms
-		let htmlContent, dungeonName, roomCount;
+		let htmlContent; let dungeonName; let roomCount;
 		try {
 			const result = await generateDungeonHtml(typeKey, sizeKey, hexLabel, hexKey);
 			htmlContent = result.html;
@@ -1155,7 +1155,7 @@ export class SDXHexTooltip {
 		const hexLabel = hexKeyToLabel(hexKey);
 		const sceneId = canvas.scene?.id;
 
-		let scene, journal, dungeonName, roomCount;
+		let scene; let journal; let dungeonName; let roomCount;
 		try {
 			ui.notifications.info(`SDX | Generating dungeon map for Hex ${hexLabel}…`);
 			({ scene, journal, dungeonName, roomCount } = await buildHexDungeonScene({
@@ -1383,7 +1383,7 @@ export class SDXHexTooltip {
 				exploration: "unexplored", cleared: false, claimed: false,
 				revealRadius: -1, revealCells: "",
 				rollTable: "", rollTableChance: 100, rollTableFirstOnly: false,
-				showToPlayers: false, features: [], notes: []
+				showToPlayers: false, features: [], notes: [],
 			};
 
 		// Backwards compat — existing records may not have notes
@@ -1629,7 +1629,7 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	}
 
 	#populatePageSelect(selectEl, journalId, selectedPageId) {
-		selectEl.innerHTML = `<option value="">— Page (optional) —</option>`;
+		selectEl.innerHTML = "<option value=\"\">— Page (optional) —</option>";
 		if (!journalId) return;
 		const journal = game.journal.get(journalId);
 		if (!journal) return;

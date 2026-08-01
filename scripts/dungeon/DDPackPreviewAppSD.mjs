@@ -42,57 +42,57 @@ const STYLES = `
 </style>`;
 
 function escapeHtml(value) {
-    return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+	return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 }
 
 function formatLabel(filename) {
-    return String(filename || "").replace(/\.(png|webp)$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+	return String(filename || "").replace(/\.(png|webp)$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
 export class DDPackPreviewApp extends ApplicationV2 {
-    static DEFAULT_OPTIONS = {
-        id: "sdx-ddpack-preview",
-        classes: ["sdx-ddpack-preview-app"],
-        tag: "div",
-        window: { title: "Preview Dungeondraft Pack", icon: "fas fa-cubes", resizable: true },
-        position: { width: 900, height: 660 }
-    };
+	static DEFAULT_OPTIONS = {
+		id: "sdx-ddpack-preview",
+		classes: ["sdx-ddpack-preview-app"],
+		tag: "div",
+		window: { title: "Preview Dungeondraft Pack", icon: "fas fa-cubes", resizable: true },
+		position: { width: 900, height: 660 },
+	};
 
-    constructor({ scan, file, onDone } = {}) {
-        super();
-        this.scan = scan;
-        this.file = file;
-        this.onDone = onDone;
-        this.selected = new Set(scan.categories.flatMap(category => category.files.map(file => file.path)));
-        this.tree = this.#buildTree(scan.categories);
-        this.open = {};
-        this.viewKey = this.tree[0]?.key ?? null;
-        this.extracting = false;
-        this.progress = 0;
-        this.total = 0;
-        this.status = "";
-    }
+	constructor({ scan, file, onDone } = {}) {
+		super();
+		this.scan = scan;
+		this.file = file;
+		this.onDone = onDone;
+		this.selected = new Set(scan.categories.flatMap(category => category.files.map(file => file.path)));
+		this.tree = this.#buildTree(scan.categories);
+		this.open = {};
+		this.viewKey = this.tree[0]?.key ?? null;
+		this.extracting = false;
+		this.progress = 0;
+		this.total = 0;
+		this.status = "";
+	}
 
-    close(options) {
-        for (const category of this.scan.categories) {
-            for (const file of category.files) URL.revokeObjectURL(file.previewUrl);
-        }
-        return super.close(options);
-    }
+	close(options) {
+		for (const category of this.scan.categories) {
+			for (const file of category.files) URL.revokeObjectURL(file.previewUrl);
+		}
+		return super.close(options);
+	}
 
-    async _renderHTML() {
-        if (!document.getElementById("sdx-ddpack-preview-styles")) {
-            document.head.insertAdjacentHTML("beforeend", STYLES);
-        }
-        const meta = this.scan.meta;
-        const selectedCount = this.selected.size;
-        const progress = this.extracting
-            ? `<div class="sdx-ddp-progress"><div class="sdx-ddp-bar"><div class="sdx-ddp-fill" style="width:${this.total ? Math.round(this.progress / this.total * 100) : 0}%"></div></div><div>${escapeHtml(this.status)}</div></div>`
-            : "";
-        const el = document.createElement("div");
-        el.className = "sdx-ddp-wrap";
-        el.style.position = "relative";
-        el.innerHTML = `
+	async _renderHTML() {
+		if (!document.getElementById("sdx-ddpack-preview-styles")) {
+			document.head.insertAdjacentHTML("beforeend", STYLES);
+		}
+		const meta = this.scan.meta;
+		const selectedCount = this.selected.size;
+		const progress = this.extracting
+			? `<div class="sdx-ddp-progress"><div class="sdx-ddp-bar"><div class="sdx-ddp-fill" style="width:${this.total ? Math.round(this.progress / this.total * 100) : 0}%"></div></div><div>${escapeHtml(this.status)}</div></div>`
+			: "";
+		const el = document.createElement("div");
+		el.className = "sdx-ddp-wrap";
+		el.style.position = "relative";
+		el.innerHTML = `
             <div class="sdx-ddp-head">
                 <h2>${escapeHtml(meta.name || "Unknown Pack")}</h2>
                 <div class="sdx-ddp-meta">${meta.author ? `By ${escapeHtml(meta.author)} · ` : ""}${meta.version ? `v${escapeHtml(meta.version)} · ` : ""}${this.scan.totalAssets} objects · ${this.scan.categories.length} categories</div>
@@ -112,157 +112,157 @@ export class DDPackPreviewApp extends ApplicationV2 {
                 <button type="button" class="cancel" data-action="cancel"><i class="fas fa-times"></i> Cancel</button>
             </div>
             ${progress}`;
-        return el;
-    }
+		return el;
+	}
 
-    _replaceHTML(result, content) {
-        content.replaceChildren(result);
-    }
+	_replaceHTML(result, content) {
+		content.replaceChildren(result);
+	}
 
-    _onRender() {
-        this.#renderTree();
-        this.#renderAssets();
-        this.element.querySelector("[data-action='extract-selected']")?.addEventListener("click", () => this.#extract(new Set(this.selected)));
-        this.element.querySelector("[data-action='extract-all']")?.addEventListener("click", () => this.#extract(null));
-        this.element.querySelector("[data-action='cancel']")?.addEventListener("click", () => this.close());
-    }
+	_onRender() {
+		this.#renderTree();
+		this.#renderAssets();
+		this.element.querySelector("[data-action='extract-selected']")?.addEventListener("click", () => this.#extract(new Set(this.selected)));
+		this.element.querySelector("[data-action='extract-all']")?.addEventListener("click", () => this.#extract(null));
+		this.element.querySelector("[data-action='cancel']")?.addEventListener("click", () => this.close());
+	}
 
-    #buildTree(categories) {
-        const roots = [];
-        const byKey = new Map();
-        for (const category of categories) {
-            const parts = (category.name === "__root__" ? ["Root"] : category.name.split("/")).filter(Boolean);
-            let parentKey = "";
-            for (let i = 0; i < parts.length; i++) {
-                const key = parts.slice(0, i + 1).join("/");
-                if (!byKey.has(key)) {
-                    const node = { key, label: parts[i], children: [], files: [] };
-                    byKey.set(key, node);
-                    if (parentKey) byKey.get(parentKey).children.push(node);
-                    else roots.push(node);
-                }
-                parentKey = key;
-            }
-            byKey.get(parentKey).files = category.files;
-        }
-        return roots;
-    }
+	#buildTree(categories) {
+		const roots = [];
+		const byKey = new Map();
+		for (const category of categories) {
+			const parts = (category.name === "__root__" ? ["Root"] : category.name.split("/")).filter(Boolean);
+			let parentKey = "";
+			for (let i = 0; i < parts.length; i++) {
+				const key = parts.slice(0, i + 1).join("/");
+				if (!byKey.has(key)) {
+					const node = { key, label: parts[i], children: [], files: [] };
+					byKey.set(key, node);
+					if (parentKey) byKey.get(parentKey).children.push(node);
+					else roots.push(node);
+				}
+				parentKey = key;
+			}
+			byKey.get(parentKey).files = category.files;
+		}
+		return roots;
+	}
 
-    #nodeFiles(node) {
-        return [...node.files, ...node.children.flatMap(child => this.#nodeFiles(child))];
-    }
+	#nodeFiles(node) {
+		return [...node.files, ...node.children.flatMap(child => this.#nodeFiles(child))];
+	}
 
-    #nodeByKey(key, nodes = this.tree) {
-        for (const node of nodes) {
-            if (node.key === key) return node;
-            const found = this.#nodeByKey(key, node.children);
-            if (found) return found;
-        }
-        return null;
-    }
+	#nodeByKey(key, nodes = this.tree) {
+		for (const node of nodes) {
+			if (node.key === key) return node;
+			const found = this.#nodeByKey(key, node.children);
+			if (found) return found;
+		}
+		return null;
+	}
 
-    #renderTree() {
-        const panel = this.element.querySelector(".sdx-ddp-tree");
-        panel.replaceChildren(...this.tree.map(node => this.#treeNode(node, 0)));
-    }
+	#renderTree() {
+		const panel = this.element.querySelector(".sdx-ddp-tree");
+		panel.replaceChildren(...this.tree.map(node => this.#treeNode(node, 0)));
+	}
 
-    #treeNode(node, depth) {
-        const files = this.#nodeFiles(node);
-        const selected = files.filter(file => this.selected.has(file.path)).length;
-        const row = document.createElement("div");
-        row.className = `sdx-ddp-row${this.viewKey === node.key ? " active" : ""}`;
-        row.style.paddingLeft = `${8 + depth * 14}px`;
-        row.dataset.key = node.key;
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = selected === files.length;
-        checkbox.indeterminate = selected > 0 && selected < files.length;
-        checkbox.addEventListener("change", event => {
-            event.stopPropagation();
-            for (const file of files) checkbox.checked ? this.selected.add(file.path) : this.selected.delete(file.path);
-            this.#refresh();
-        });
-        row.innerHTML = `<i class="fas ${node.children.length ? (this.open[node.key] ? "fa-folder-open" : "fa-folder") : "fa-images"}"></i>`;
-        row.prepend(checkbox);
-        row.insertAdjacentHTML("beforeend", `<span class="label" title="${escapeHtml(node.key)}">${escapeHtml(node.label)}</span><span class="count">(${files.length})</span>`);
-        row.addEventListener("click", event => {
-            if (event.target.closest("input")) return;
-            if (node.children.length) this.open[node.key] = !this.open[node.key];
-            this.viewKey = node.key;
-            this.#refresh();
-        });
-        const wrap = document.createElement("div");
-        wrap.appendChild(row);
-        if (node.children.length && this.open[node.key]) {
-            for (const child of node.children) wrap.appendChild(this.#treeNode(child, depth + 1));
-        }
-        return wrap;
-    }
+	#treeNode(node, depth) {
+		const files = this.#nodeFiles(node);
+		const selected = files.filter(file => this.selected.has(file.path)).length;
+		const row = document.createElement("div");
+		row.className = `sdx-ddp-row${this.viewKey === node.key ? " active" : ""}`;
+		row.style.paddingLeft = `${8 + depth * 14}px`;
+		row.dataset.key = node.key;
+		const checkbox = document.createElement("input");
+		checkbox.type = "checkbox";
+		checkbox.checked = selected === files.length;
+		checkbox.indeterminate = selected > 0 && selected < files.length;
+		checkbox.addEventListener("change", event => {
+			event.stopPropagation();
+			for (const file of files) checkbox.checked ? this.selected.add(file.path) : this.selected.delete(file.path);
+			this.#refresh();
+		});
+		row.innerHTML = `<i class="fas ${node.children.length ? (this.open[node.key] ? "fa-folder-open" : "fa-folder") : "fa-images"}"></i>`;
+		row.prepend(checkbox);
+		row.insertAdjacentHTML("beforeend", `<span class="label" title="${escapeHtml(node.key)}">${escapeHtml(node.label)}</span><span class="count">(${files.length})</span>`);
+		row.addEventListener("click", event => {
+			if (event.target.closest("input")) return;
+			if (node.children.length) this.open[node.key] = !this.open[node.key];
+			this.viewKey = node.key;
+			this.#refresh();
+		});
+		const wrap = document.createElement("div");
+		wrap.appendChild(row);
+		if (node.children.length && this.open[node.key]) {
+			for (const child of node.children) wrap.appendChild(this.#treeNode(child, depth + 1));
+		}
+		return wrap;
+	}
 
-    #renderAssets() {
-        const grid = this.element.querySelector(".sdx-ddp-grid");
-        const head = this.element.querySelector(".sdx-ddp-assets-head h3");
-        const count = this.element.querySelector(".sdx-ddp-assets-head .asset-count");
-        const node = this.#nodeByKey(this.viewKey);
-        if (!node) return;
-        const files = this.#nodeFiles(node);
-        head.textContent = node.key;
-        count.textContent = `${files.filter(file => this.selected.has(file.path)).length} / ${files.length}`;
-        grid.innerHTML = files.map(file => {
-            const selected = this.selected.has(file.path);
-            return `<button type="button" class="sdx-ddp-thumb${selected ? " selected" : ""}" data-path="${escapeHtml(file.path)}" title="${escapeHtml(file.filename)}">
+	#renderAssets() {
+		const grid = this.element.querySelector(".sdx-ddp-grid");
+		const head = this.element.querySelector(".sdx-ddp-assets-head h3");
+		const count = this.element.querySelector(".sdx-ddp-assets-head .asset-count");
+		const node = this.#nodeByKey(this.viewKey);
+		if (!node) return;
+		const files = this.#nodeFiles(node);
+		head.textContent = node.key;
+		count.textContent = `${files.filter(file => this.selected.has(file.path)).length} / ${files.length}`;
+		grid.innerHTML = files.map(file => {
+			const selected = this.selected.has(file.path);
+			return `<button type="button" class="sdx-ddp-thumb${selected ? " selected" : ""}" data-path="${escapeHtml(file.path)}" title="${escapeHtml(file.filename)}">
                 <span class="sdx-ddp-check"></span><img src="${file.previewUrl}" loading="lazy" alt=""><span>${escapeHtml(formatLabel(file.filename))}</span>
             </button>`;
-        }).join("");
-        grid.querySelectorAll(".sdx-ddp-thumb").forEach(button => {
-            button.addEventListener("click", () => {
-                const path = button.dataset.path;
-                this.selected.has(path) ? this.selected.delete(path) : this.selected.add(path);
-                this.#refresh();
-            });
-        });
-        this.element.querySelector("[data-action='all']")?.addEventListener("click", () => {
-            for (const file of files) this.selected.add(file.path);
-            this.#refresh();
-        });
-        this.element.querySelector("[data-action='none']")?.addEventListener("click", () => {
-            for (const file of files) this.selected.delete(file.path);
-            this.#refresh();
-        });
-    }
+		}).join("");
+		grid.querySelectorAll(".sdx-ddp-thumb").forEach(button => {
+			button.addEventListener("click", () => {
+				const path = button.dataset.path;
+				this.selected.has(path) ? this.selected.delete(path) : this.selected.add(path);
+				this.#refresh();
+			});
+		});
+		this.element.querySelector("[data-action='all']")?.addEventListener("click", () => {
+			for (const file of files) this.selected.add(file.path);
+			this.#refresh();
+		});
+		this.element.querySelector("[data-action='none']")?.addEventListener("click", () => {
+			for (const file of files) this.selected.delete(file.path);
+			this.#refresh();
+		});
+	}
 
-    #refresh() {
-        this.render();
-    }
+	#refresh() {
+		this.render();
+	}
 
-    async #extract(selectedPaths) {
-        if (this.extracting) return;
-        const folderLabel = this.element.querySelector("#sdx-ddp-folder")?.value?.trim() || this.scan.meta.name || "Pack";
-        this.extracting = true;
-        this.progress = 0;
-        this.total = selectedPaths ? selectedPaths.size : this.scan.totalAssets;
-        this.status = "Creating folders...";
-        this.render();
+	async #extract(selectedPaths) {
+		if (this.extracting) return;
+		const folderLabel = this.element.querySelector("#sdx-ddp-folder")?.value?.trim() || this.scan.meta.name || "Pack";
+		this.extracting = true;
+		this.progress = 0;
+		this.total = selectedPaths ? selectedPaths.size : this.scan.totalAssets;
+		this.status = "Creating folders...";
+		this.render();
 
-        try {
-            const indexData = await extractDDPack(this.file, folderLabel, (done, total) => {
-                this.progress = done;
-                this.total = total;
-                this.status = `Extracting... ${done} / ${total}`;
-                if (done % 20 === 0 || done === total) this.render();
-            }, selectedPaths);
-            await upsertDDPack(indexData);
-            await reloadDecorAssets();
-            Hooks.callAll("sdx.decorAssetsImported");
-            ui.notifications.info(`Dungeondraft pack "${indexData.name}" imported (${indexData.assetCount} assets).`);
-            this.onDone?.(indexData);
-            await this.close();
-        } catch (err) {
-            console.error(`${MODULE_ID} | Dungeondraft import failed:`, err);
-            ui.notifications.error(`Import failed: ${err?.message || err}`);
-            this.extracting = false;
-            this.status = "";
-            this.render();
-        }
-    }
+		try {
+			const indexData = await extractDDPack(this.file, folderLabel, (done, total) => {
+				this.progress = done;
+				this.total = total;
+				this.status = `Extracting... ${done} / ${total}`;
+				if (done % 20 === 0 || done === total) this.render();
+			}, selectedPaths);
+			await upsertDDPack(indexData);
+			await reloadDecorAssets();
+			Hooks.callAll("sdx.decorAssetsImported");
+			ui.notifications.info(`Dungeondraft pack "${indexData.name}" imported (${indexData.assetCount} assets).`);
+			this.onDone?.(indexData);
+			await this.close();
+		} catch (err) {
+			console.error(`${MODULE_ID} | Dungeondraft import failed:`, err);
+			ui.notifications.error(`Import failed: ${err?.message || err}`);
+			this.extracting = false;
+			this.status = "";
+			this.render();
+		}
+	}
 }

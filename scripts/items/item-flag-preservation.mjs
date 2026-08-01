@@ -41,28 +41,28 @@ function preserveFlagsOnItemCreate(item, data, options, userId) {
 				// Preserve the spell damage configuration from the scroll
 				if (sourceScroll.flags?.[MODULE_ID]?.spellDamage) {
 					item.updateSource({
-						[`flags.${MODULE_ID}.spellDamage`]: foundry.utils.duplicate(sourceScroll.flags[MODULE_ID].spellDamage)
+						[`flags.${MODULE_ID}.spellDamage`]: foundry.utils.duplicate(sourceScroll.flags[MODULE_ID].spellDamage),
 					});
 					//console.log(`${MODULE_ID} | Preserved spell damage flags when learning from scroll:`, sourceScroll.name);
 				}
 				// Preserve targeting configuration from the scroll
 				if (sourceScroll.flags?.[MODULE_ID]?.targeting) {
 					item.updateSource({
-						[`flags.${MODULE_ID}.targeting`]: foundry.utils.duplicate(sourceScroll.flags[MODULE_ID].targeting)
+						[`flags.${MODULE_ID}.targeting`]: foundry.utils.duplicate(sourceScroll.flags[MODULE_ID].targeting),
 					});
 					//console.log(`${MODULE_ID} | Preserved targeting flags when learning from scroll:`, sourceScroll.name);
 				}
 				// Preserve template effects configuration from the scroll
 				if (sourceScroll.flags?.[MODULE_ID]?.templateEffects) {
 					item.updateSource({
-						[`flags.${MODULE_ID}.templateEffects`]: foundry.utils.duplicate(sourceScroll.flags[MODULE_ID].templateEffects)
+						[`flags.${MODULE_ID}.templateEffects`]: foundry.utils.duplicate(sourceScroll.flags[MODULE_ID].templateEffects),
 					});
 					//console.log(`${MODULE_ID} | Preserved templateEffects flags when learning from scroll:`, sourceScroll.name);
 				}
 				// Preserve aura effects configuration from the scroll
 				if (sourceScroll.flags?.[MODULE_ID]?.auraEffects) {
 					item.updateSource({
-						[`flags.${MODULE_ID}.auraEffects`]: foundry.utils.duplicate(sourceScroll.flags[MODULE_ID].auraEffects)
+						[`flags.${MODULE_ID}.auraEffects`]: foundry.utils.duplicate(sourceScroll.flags[MODULE_ID].auraEffects),
 					});
 					//console.log(`${MODULE_ID} | Preserved auraEffects flags when learning from scroll:`, sourceScroll.name);
 				}
@@ -73,7 +73,7 @@ function preserveFlagsOnItemCreate(item, data, options, userId) {
 	// Preserve Item Macro trigger configuration flags
 	if (data.flags?.[MODULE_ID]?.itemMacro) {
 		item.updateSource({
-			[`flags.${MODULE_ID}.itemMacro`]: foundry.utils.duplicate(data.flags[MODULE_ID].itemMacro)
+			[`flags.${MODULE_ID}.itemMacro`]: foundry.utils.duplicate(data.flags[MODULE_ID].itemMacro),
 		});
 		//console.log(`${MODULE_ID} | Preserved itemMacro flags on item creation:`, item.name);
 	}
@@ -81,7 +81,7 @@ function preserveFlagsOnItemCreate(item, data, options, userId) {
 	// Preserve Targeting configuration flags
 	if (data.flags?.[MODULE_ID]?.targeting) {
 		item.updateSource({
-			[`flags.${MODULE_ID}.targeting`]: foundry.utils.duplicate(data.flags[MODULE_ID].targeting)
+			[`flags.${MODULE_ID}.targeting`]: foundry.utils.duplicate(data.flags[MODULE_ID].targeting),
 		});
 		//console.log(`${MODULE_ID} | Preserved targeting flags on item creation:`, item.name);
 	}
@@ -89,7 +89,7 @@ function preserveFlagsOnItemCreate(item, data, options, userId) {
 	// Preserve Template Effects configuration flags
 	if (data.flags?.[MODULE_ID]?.templateEffects) {
 		item.updateSource({
-			[`flags.${MODULE_ID}.templateEffects`]: foundry.utils.duplicate(data.flags[MODULE_ID].templateEffects)
+			[`flags.${MODULE_ID}.templateEffects`]: foundry.utils.duplicate(data.flags[MODULE_ID].templateEffects),
 		});
 		//console.log(`${MODULE_ID} | Preserved templateEffects flags on item creation:`, item.name);
 	}
@@ -97,7 +97,7 @@ function preserveFlagsOnItemCreate(item, data, options, userId) {
 	// Preserve Aura Effects configuration flags
 	if (data.flags?.[MODULE_ID]?.auraEffects) {
 		item.updateSource({
-			[`flags.${MODULE_ID}.auraEffects`]: foundry.utils.duplicate(data.flags[MODULE_ID].auraEffects)
+			[`flags.${MODULE_ID}.auraEffects`]: foundry.utils.duplicate(data.flags[MODULE_ID].auraEffects),
 		});
 		//console.log(`${MODULE_ID} | Preserved auraEffects flags on item creation:`, item.name);
 	}
@@ -105,7 +105,7 @@ function preserveFlagsOnItemCreate(item, data, options, userId) {
 	// Preserve Item Macro module's macro data (itemacro module)
 	if (data.flags?.itemacro?.macro) {
 		item.updateSource({
-			"flags.itemacro.macro": foundry.utils.duplicate(data.flags.itemacro.macro)
+			"flags.itemacro.macro": foundry.utils.duplicate(data.flags.itemacro.macro),
 		});
 		//console.log(`${MODULE_ID} | Preserved itemacro macro on item creation:`, item.name);
 	}
@@ -123,7 +123,7 @@ function wrapCreateItemFromSpell() {
 	if (globalThis.shadowdark?.utils?.createItemFromSpell) {
 		const originalCreateItemFromSpell = globalThis.shadowdark.utils.createItemFromSpell;
 
-		globalThis.shadowdark.utils.createItemFromSpell = async function (type, spell) {
+		globalThis.shadowdark.utils.createItemFromSpell = async function(type, spell) {
 			// Call the original function to get the base item data
 			const itemData = await originalCreateItemFromSpell.call(this, type, spell);
 

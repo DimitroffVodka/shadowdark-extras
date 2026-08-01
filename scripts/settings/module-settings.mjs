@@ -101,7 +101,7 @@ export function registerSettings() {
 		scope: "world",
 		config: false,
 		default: false,
-		type: Boolean
+		type: Boolean,
 	});
 
 	// Gate for the one-time PNG/JPG -> WebP stored-path migration.
@@ -109,7 +109,7 @@ export function registerSettings() {
 		scope: "world",
 		config: false,
 		default: false,
-		type: Boolean
+		type: Boolean,
 	});
 
 	// Separate gate for the world-compendium sweep: packs that were locked (or
@@ -119,7 +119,7 @@ export function registerSettings() {
 		scope: "world",
 		config: false,
 		default: false,
-		type: Boolean
+		type: Boolean,
 	});
 
 	game.settings.register(MODULE_ID, "inventoryStyles", {
@@ -127,7 +127,7 @@ export function registerSettings() {
 		scope: "world",
 		config: false,
 		type: Object,
-		default: foundry.utils.deepClone(DEFAULT_INVENTORY_STYLES)
+		default: foundry.utils.deepClone(DEFAULT_INVENTORY_STYLES),
 	});
 
 	// Inventory Styles Menu
@@ -137,7 +137,7 @@ export function registerSettings() {
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.inventory_styles.hint"),
 		icon: "fas fa-palette",
 		type: InventoryStylesApp,
-		restricted: true
+		restricted: true,
 	});
 
 	// Sheet Style Editor Menu
@@ -147,7 +147,7 @@ export function registerSettings() {
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.sheetEditor.menuHint"),
 		icon: "fas fa-paint-brush",
 		type: SheetEditorConfig,
-		restricted: true
+		restricted: true,
 	});
 
 	// ═══════════════════════════════════════════════════════════════
@@ -190,7 +190,7 @@ export function registerSettings() {
 		config: true,
 		default: true,
 		type: Boolean,
-		requiresReload: true
+		requiresReload: true,
 	});
 
 	// Custom Light Templates data setting (hidden)
@@ -199,7 +199,7 @@ export function registerSettings() {
 		scope: "world",
 		config: false,
 		type: Array,
-		default: foundry.utils.deepClone(DEFAULT_LIGHT_TEMPLATES)
+		default: foundry.utils.deepClone(DEFAULT_LIGHT_TEMPLATES),
 	});
 
 	game.settings.register(MODULE_ID, "customDecorAssets", {
@@ -207,7 +207,7 @@ export function registerSettings() {
 		scope: "world",
 		config: false,
 		type: Array,
-		default: []
+		default: [],
 	});
 
 	game.settings.register(MODULE_ID, "decorDungeondraftPacks", {
@@ -215,7 +215,7 @@ export function registerSettings() {
 		scope: "world",
 		config: false,
 		type: Array,
-		default: []
+		default: [],
 	});
 
 	game.settings.registerMenu(MODULE_ID, "decorDungeondraftPacksMenu", {
@@ -231,7 +231,7 @@ export function registerSettings() {
 				return this;
 			}
 		},
-		restricted: true
+		restricted: true,
 	});
 
 	// Custom Light Templates Menu
@@ -241,7 +241,7 @@ export function registerSettings() {
 		hint: "Configure custom light templates for items.",
 		icon: "fas fa-lightbulb",
 		type: LightTemplateEditor,
-		restricted: true
+		restricted: true,
 	});
 
 	game.settings.register(MODULE_ID, "enableWandUses", {
@@ -251,7 +251,7 @@ export function registerSettings() {
 		config: true,
 		default: true,
 		type: Boolean,
-		requiresReload: true
+		requiresReload: true,
 	});
 
 	// ═══════════════════════════════════════════════════════════════
@@ -275,7 +275,7 @@ export function registerSettings() {
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.medkit_world_scan.hint"),
 		icon: "fas fa-kit-medical",
 		type: MedkitWorldScanMenu,
-		restricted: true
+		restricted: true,
 	});
 	game.settings.register(MODULE_ID, "enableEnhancedHeader", {
 		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.enable_enhanced_header.name"),
@@ -335,19 +335,19 @@ export function registerSettings() {
 	// Sheet Decoration Settings - Border and Panel Styles
 	const borderChoices = {};
 	for (let i = 0; i <= 31; i++) {
-		const num = String(i).padStart(3, '0');
+		const num = String(i).padStart(3, "0");
 		borderChoices[`panel-border-${num}.png`] = `Border Style ${i}`;
 	}
 
 	const panelChoices = {};
 	for (let i = 0; i <= 31; i++) {
-		const num = String(i).padStart(3, '0');
+		const num = String(i).padStart(3, "0");
 		panelChoices[`panel-${num}.png`] = `Panel Style ${i}`;
 	}
 
 	const transparentCenterChoices = {};
 	for (let i = 0; i <= 31; i++) {
-		const num = String(i).padStart(3, '0');
+		const num = String(i).padStart(3, "0");
 		transparentCenterChoices[`panel-transparent-center-${num}.png`] = `Panel Style ${i}`;
 	}
 
@@ -359,7 +359,7 @@ export function registerSettings() {
 		default: "panel-border-004.webp",
 		type: String,
 		choices: borderChoices,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "abilityPanelStyle", {
@@ -370,7 +370,7 @@ export function registerSettings() {
 		default: "panel-013.webp",
 		type: String,
 		choices: panelChoices,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "acPanelStyle", {
@@ -381,7 +381,7 @@ export function registerSettings() {
 		default: "panel-transparent-center-004.webp",
 		type: String,
 		choices: transparentCenterChoices,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "statPanelStyle", {
@@ -392,7 +392,7 @@ export function registerSettings() {
 		default: "panel-transparent-center-015.webp",
 		type: String,
 		choices: transparentCenterChoices,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "borderImageWidth", {
@@ -401,7 +401,7 @@ export function registerSettings() {
 		config: false,
 		default: 16,
 		type: Number,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "borderImageSlice", {
@@ -410,7 +410,7 @@ export function registerSettings() {
 		config: false,
 		default: 12,
 		type: Number,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "borderImageOutset", {
@@ -419,7 +419,7 @@ export function registerSettings() {
 		config: false,
 		default: 0,
 		type: Number,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "borderImageRepeat", {
@@ -428,7 +428,7 @@ export function registerSettings() {
 		config: false,
 		default: "stretch",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "borderBackgroundColor", {
@@ -437,7 +437,7 @@ export function registerSettings() {
 		config: false,
 		default: "",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "borderWidth", {
@@ -446,7 +446,7 @@ export function registerSettings() {
 		config: false,
 		default: 10,
 		type: Number,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "sdBoxBorderStyle", {
@@ -455,7 +455,7 @@ export function registerSettings() {
 		config: false,
 		default: "panel-border-001.webp",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "sdBoxBorderWidth", {
@@ -464,7 +464,7 @@ export function registerSettings() {
 		config: false,
 		default: 16,
 		type: Number,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "sdBoxBorderSlice", {
@@ -473,7 +473,7 @@ export function registerSettings() {
 		config: false,
 		default: 12,
 		type: Number,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "sdBoxBorderTransparencyWidth", {
@@ -482,7 +482,7 @@ export function registerSettings() {
 		config: false,
 		default: 10,
 		type: Number,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	// Journal Border Settings
@@ -492,7 +492,7 @@ export function registerSettings() {
 		config: false,
 		default: "panel-border-004.webp",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "journalBorderImageWidth", {
@@ -501,7 +501,7 @@ export function registerSettings() {
 		config: false,
 		default: 16,
 		type: Number,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "journalBorderImageSlice", {
@@ -510,7 +510,7 @@ export function registerSettings() {
 		config: false,
 		default: 12,
 		type: Number,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "journalBorderImageOutset", {
@@ -519,7 +519,7 @@ export function registerSettings() {
 		config: false,
 		default: 0,
 		type: Number,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "journalBorderImageRepeat", {
@@ -528,7 +528,7 @@ export function registerSettings() {
 		config: false,
 		default: "repeat",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	// Condition Modal Border Settings
@@ -538,7 +538,7 @@ export function registerSettings() {
 		config: false,
 		default: "panel-border-004.webp",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "conditionModalBorderImageWidth", {
@@ -547,7 +547,7 @@ export function registerSettings() {
 		config: false,
 		default: 16,
 		type: Number,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "conditionModalBorderImageSlice", {
@@ -556,7 +556,7 @@ export function registerSettings() {
 		config: false,
 		default: 12,
 		type: Number,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "conditionModalBorderImageOutset", {
@@ -565,7 +565,7 @@ export function registerSettings() {
 		config: false,
 		default: 0,
 		type: Number,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "conditionModalBorderImageRepeat", {
@@ -574,7 +574,7 @@ export function registerSettings() {
 		config: false,
 		default: "repeat",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "abilityModColor", {
@@ -583,7 +583,7 @@ export function registerSettings() {
 		config: false,
 		default: "#000000",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "levelValueColor", {
@@ -592,7 +592,7 @@ export function registerSettings() {
 		config: false,
 		default: "#000000",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "acValueColor", {
@@ -601,7 +601,7 @@ export function registerSettings() {
 		config: false,
 		default: "#000000",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "initModColor", {
@@ -610,7 +610,7 @@ export function registerSettings() {
 		config: false,
 		default: "#000000",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "luckValueColor", {
@@ -619,7 +619,7 @@ export function registerSettings() {
 		config: false,
 		default: "#000000",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	// Extended Text Color Settings
@@ -629,7 +629,7 @@ export function registerSettings() {
 		config: false,
 		default: "#ffffff",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "navLinkActiveColor", {
@@ -638,7 +638,7 @@ export function registerSettings() {
 		config: false,
 		default: "#ffffff",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "detailsRowColor", {
@@ -647,7 +647,7 @@ export function registerSettings() {
 		config: false,
 		default: "#ffffff",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "borderBackgroundColor", {
@@ -656,7 +656,7 @@ export function registerSettings() {
 		config: false,
 		default: "",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "sheetHeaderBackgroundColor", {
@@ -665,7 +665,7 @@ export function registerSettings() {
 		config: false,
 		default: "#000000",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "luckContainerColor", {
@@ -674,7 +674,7 @@ export function registerSettings() {
 		config: false,
 		default: "#ffffff",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "actorNameColor", {
@@ -683,7 +683,7 @@ export function registerSettings() {
 		config: false,
 		default: "#ffffff",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "windowHeaderColor", {
@@ -692,7 +692,7 @@ export function registerSettings() {
 		config: false,
 		default: "#000000ff",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "navBackgroundColor", {
@@ -701,7 +701,7 @@ export function registerSettings() {
 		config: false,
 		default: "#000000ff",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "navBorderColor", {
@@ -710,7 +710,7 @@ export function registerSettings() {
 		config: false,
 		default: "rgba(0, 0, 0, 0.5)",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "effectsTextColor", {
@@ -719,7 +719,7 @@ export function registerSettings() {
 		config: false,
 		default: "#ffffff",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "talentsTextColor", {
@@ -728,7 +728,7 @@ export function registerSettings() {
 		config: false,
 		default: "#ffffffff",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "xpRowColor", {
@@ -737,7 +737,7 @@ export function registerSettings() {
 		config: false,
 		default: "#ffffff",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "windowTitleBarBackgroundColor", {
@@ -746,7 +746,7 @@ export function registerSettings() {
 		config: false,
 		default: "#ffffff",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "statsLabelColor", {
@@ -755,7 +755,7 @@ export function registerSettings() {
 		config: false,
 		default: "#ffffff",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "actorNameShadowColor", {
@@ -764,7 +764,7 @@ export function registerSettings() {
 		config: false,
 		default: "#000000",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "actorNameShadowAlpha", {
@@ -773,7 +773,7 @@ export function registerSettings() {
 		config: false,
 		default: 0.8,
 		type: Number,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "actorNameFontWeight", {
@@ -782,7 +782,7 @@ export function registerSettings() {
 		config: false,
 		default: "bold",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	// Tab background gradient settings
@@ -792,7 +792,7 @@ export function registerSettings() {
 		config: false,
 		default: "#000000",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "tabGradientEnd", {
@@ -801,7 +801,7 @@ export function registerSettings() {
 		config: false,
 		default: "#2f2b2b",
 		type: String,
-		onChange: () => applySheetDecorationStyles()
+		onChange: () => applySheetDecorationStyles(),
 	});
 
 	game.settings.register(MODULE_ID, "enableJournalNotes", {
@@ -811,7 +811,7 @@ export function registerSettings() {
 		config: true,
 		default: true,
 		type: Boolean,
-		requiresReload: true
+		requiresReload: true,
 	});
 
 
@@ -822,7 +822,7 @@ export function registerSettings() {
 		config: true,
 		default: true,
 		type: Boolean,
-		requiresReload: true
+		requiresReload: true,
 	});
 
 	game.settings.register(MODULE_ID, "enableAddCoinsButton", {
@@ -850,7 +850,7 @@ export function registerSettings() {
 			leather: "Leather Bound",
 			iron: "Iron & Rust",
 			moss: "Moss & Decay",
-			blood: "Blood & Shadow"
+			blood: "Blood & Shadow",
 		},
 		onChange: () => {
 			// Re-render all open player sheets
@@ -858,7 +858,7 @@ export function registerSettings() {
 			if (PlayerSheetClass) {
 				Object.values(ui.windows).filter(app => app instanceof PlayerSheetClass).forEach(app => app.render());
 			}
-		}
+		},
 	});
 
 	// ═══════════════════════════════════════════════════════════════
@@ -915,7 +915,7 @@ export function registerSettings() {
 		config: true,
 		default: true,
 		type: Boolean,
-		requiresReload: true
+		requiresReload: true,
 	});
 
 	game.settings.register(MODULE_ID, "carousingMode", {
@@ -927,14 +927,14 @@ export function registerSettings() {
 		type: String,
 		choices: {
 			"original": game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_mode.original"),
-			"expanded": game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_mode.expanded")
+			"expanded": game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_mode.expanded"),
 		},
 		onChange: () => {
 			// Re-render all open player sheets to update carousing tab
 			Object.values(ui.windows).forEach(app => {
 				if (app.actor?.type === "Player") app.render();
 			});
-		}
+		},
 	});
 
 	// Carousing - Show benefit descriptions to players
@@ -944,7 +944,7 @@ export function registerSettings() {
 		scope: "world",
 		config: true,
 		default: true,
-		type: Boolean
+		type: Boolean,
 	});
 
 	// Carousing - Show mishap descriptions to players
@@ -954,7 +954,7 @@ export function registerSettings() {
 		scope: "world",
 		config: true,
 		default: true,
-		type: Boolean
+		type: Boolean,
 	});
 
 	// Carousing - What "N% of your total wealth" is measured against when the GM
@@ -969,8 +969,8 @@ export function registerSettings() {
 		type: String,
 		choices: {
 			coins: game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_wealth_base.coins"),
-			coinsAndGear: game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_wealth_base.coins_and_gear")
-		}
+			coinsAndGear: game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_wealth_base.coins_and_gear"),
+		},
 	});
 
 	// Carousing Tables Editor Menu Button
@@ -990,7 +990,7 @@ export function registerSettings() {
 				return this;
 			}
 		},
-		restricted: true
+		restricted: true,
 	});
 
 	// Expanded Carousing Data Storage (hidden setting)
@@ -999,7 +999,7 @@ export function registerSettings() {
 		scope: "world",
 		config: false,
 		default: null,
-		type: Object
+		type: Object,
 	});
 
 	// ═══════════════════════════════════════════════════════════════
@@ -1080,7 +1080,7 @@ export function registerSettings() {
 				const pins = window.JournalPinManager?.list({ sceneId: canvas.scene.id }) || [];
 				window.JournalPinRenderer.loadScenePins(canvas.scene.id, pins);
 			}
-		}
+		},
 	});
 
 	game.settings.register(MODULE_ID, "pixelPerfectPinsAlpha", {
@@ -1093,7 +1093,7 @@ export function registerSettings() {
 		range: {
 			min: 0,
 			max: 255,
-			step: 1
+			step: 1,
 		},
 		requiresReload: false,
 		onChange: () => {
@@ -1101,7 +1101,7 @@ export function registerSettings() {
 				const pins = window.JournalPinManager?.list({ sceneId: canvas.scene.id }) || [];
 				window.JournalPinRenderer.loadScenePins(canvas.scene.id, pins);
 			}
-		}
+		},
 	});
 	// ═══════════════════════════════════════════════════════════════
 	// 9. EASY REFERENCE MENU
@@ -1237,16 +1237,16 @@ export function setupSettingsOrganization() {
 
 		// Helper function to create a group header
 		const createHeader = (text, icon = null) => {
-			const iconHtml = icon ? `<i class="${icon}"></i> ` : '';
-			return $('<div>').addClass('form-group group-header sdx-settings-header').html(`${iconHtml}${text}`);
+			const iconHtml = icon ? `<i class="${icon}"></i> ` : "";
+			return $("<div>").addClass("form-group group-header sdx-settings-header").html(`${iconHtml}${text}`);
 		};
 
 		// Helper to insert header before first found element
 		const insertHeaderBefore = (selector, headerText, headerIcon) => {
 			const element = sdxSection.find(selector);
 			if (element.length) {
-				const formGroup = element.closest('.form-group');
-				if (formGroup.length && !formGroup.prev().hasClass('sdx-settings-header')) {
+				const formGroup = element.closest(".form-group");
+				if (formGroup.length && !formGroup.prev().hasClass("sdx-settings-header")) {
 					createHeader(headerText, headerIcon).insertBefore(formGroup);
 				}
 			}

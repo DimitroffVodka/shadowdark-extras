@@ -26,8 +26,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Ranged/Bolt01_01_Regular_Orange_Physical_15ft_1000x400.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/ranged-weapons/longbow/v1/longbow-003-60ft.ogg"
-		}
+			sound: "modules/psfx/library/ranged-weapons/longbow/v1/longbow-003-60ft.ogg",
+		},
 	},
 	battleaxe: {
 		label: "Battleaxe",
@@ -38,8 +38,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Group02/MeleeAttack02_BattleAxe01_02_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-00.ogg"
-		}
+			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-00.ogg",
+		},
 	},
 	bottle_glass: {
 		label: "Bottle, glass",
@@ -50,8 +50,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Ranged/ThrowFlask01_01_Regular_Orange_05ft_600x400.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/impacts/magicaleffects/generic/002/impact-magicaleffects-generic-001-03.ogg"
-		}
+			sound: "modules/psfx/library/impacts/magicaleffects/generic/002/impact-magicaleffects-generic-001-03.ogg",
+		},
 	},
 	breath_attack: {
 		label: "Breath Attack",
@@ -62,8 +62,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Template/Cone/Breath_Weapon/BreathWeapon_Fire01_Regular_Orange_30ft_Cone_Burst_600x600.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/1st-level-spells/burning-hands/v1/burning-hands-01.ogg"
-		}
+			sound: "modules/psfx/library/1st-level-spells/burning-hands/v1/burning-hands-01.ogg",
+		},
 	},
 	buckler: {
 		label: "Buckler",
@@ -74,8 +74,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Group06/MeleeAttack06_Shield01_01_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-00.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-00.ogg",
+		},
 	},
 	caestus: {
 		label: "Caestus",
@@ -86,8 +86,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Creature/Fist/CreatureAttackFist_001_001_Red_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-01.ogg"
-		}
+			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-01.ogg",
+		},
 	},
 	club: {
 		label: "Club",
@@ -98,8 +98,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Club01_05_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-01.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-01.ogg",
+		},
 	},
 	crossbow: {
 		label: "Crossbow",
@@ -110,8 +110,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Ranged/Bolt01_01_Regular_Orange_Physical_15ft_1000x400.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/ranged-weapons/longbow/v1/longbow-003-60ft.ogg"
-		}
+			sound: "modules/psfx/library/ranged-weapons/longbow/v1/longbow-003-60ft.ogg",
+		},
 	},
 	crossbow_light: {
 		label: "Crossbow, light",
@@ -122,8 +122,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Ranged/Bolt01_01_Regular_Orange_Physical_15ft_1000x400.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/ranged-weapons/longbow/v1/longbow-003-60ft.ogg"
-		}
+			sound: "modules/psfx/library/ranged-weapons/longbow/v1/longbow-003-60ft.ogg",
+		},
 	},
 	dagger: {
 		label: "Dagger",
@@ -134,8 +134,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Dagger02_01_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-02.ogg"
-		}
+			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-02.ogg",
+		},
 	},
 	dagger_thrown: {
 		label: "Dagger (Thrown)",
@@ -146,8 +146,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Ranged/Dagger01_01_Regular_White_15ft_1000x400.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-02.ogg"
-		}
+			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-02.ogg",
+		},
 	},
 	flail: {
 		label: "Flail",
@@ -158,8 +158,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Mace01_06_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-02.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-02.ogg",
+		},
 	},
 	garotte_wire: {
 		label: "Garotte wire",
@@ -170,8 +170,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Unarmed_Attacks/Unarmed_Strike/UnarmedStrike_01_Regular_Blue_Physical02_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-03.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-03.ogg",
+		},
 	},
 	gauntlet: {
 		label: "Gauntlet",
@@ -182,8 +182,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Creature/Fist/CreatureAttackFist_002_001_Blue_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-00.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-00.ogg",
+		},
 	},
 	greataxe: {
 		label: "Greataxe",
@@ -194,8 +194,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/GreatAxe01_01_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-03.ogg"
-		}
+			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-03.ogg",
+		},
 	},
 	greatclub: {
 		label: "Greatclub",
@@ -206,8 +206,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/GreatClub01_01_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-01.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-01.ogg",
+		},
 	},
 	greatshield: {
 		label: "Greatshield",
@@ -218,8 +218,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Group06/MeleeAttack06_Shield01_01_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-02.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-02.ogg",
+		},
 	},
 	greatsword: {
 		label: "Greatsword",
@@ -230,8 +230,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/GreatSword01_01_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-00.ogg"
-		}
+			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-00.ogg",
+		},
 	},
 	handaxe: {
 		label: "Handaxe",
@@ -242,8 +242,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/HandAxe02_01_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-01.ogg"
-		}
+			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-01.ogg",
+		},
 	},
 	handgun: {
 		label: "Handgun",
@@ -254,8 +254,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Ranged/Bullet_01_Regular_Orange_15ft_1000x400.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/ranged-weapons/guns/revolver/single-fire/revolver-single-fire-001-03.ogg"
-		}
+			sound: "modules/psfx/library/ranged-weapons/guns/revolver/single-fire/revolver-single-fire-001-03.ogg",
+		},
 	},
 	javelin: {
 		label: "Javelin",
@@ -266,8 +266,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Spear01_04_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-03.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-03.ogg",
+		},
 	},
 	katar: {
 		label: "Katar",
@@ -278,8 +278,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Dagger02_01_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-00.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-00.ogg",
+		},
 	},
 	lance: {
 		label: "Lance",
@@ -290,8 +290,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Spear01_01_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-02.ogg"
-		}
+			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-02.ogg",
+		},
 	},
 	light_hammer: {
 		label: "Light hammer",
@@ -302,8 +302,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Group02/MeleeAttack02_Hammer01_01_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-01.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-01.ogg",
+		},
 	},
 	longbow: {
 		label: "Longbow",
@@ -314,8 +314,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Ranged/Arrow01_01_Regular_White_15ft_1000x400.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/ranged-weapons/longbow/v1/longbow-003-60ft.ogg"
-		}
+			sound: "modules/psfx/library/ranged-weapons/longbow/v1/longbow-003-60ft.ogg",
+		},
 	},
 	longsword: {
 		label: "Longsword",
@@ -326,8 +326,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Sword01_05_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-03.ogg"
-		}
+			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-03.ogg",
+		},
 	},
 	lucerne: {
 		label: "Lucerne",
@@ -338,8 +338,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Warhammer01_05_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-02.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-02.ogg",
+		},
 	},
 	mace: {
 		label: "Mace",
@@ -350,8 +350,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Mace01_01_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-03.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-03.ogg",
+		},
 	},
 	morningstar: {
 		label: "Morningstar",
@@ -362,8 +362,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Mace01_06_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-00.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-00.ogg",
+		},
 	},
 	net: {
 		label: "Net",
@@ -374,8 +374,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Marker/MarkerChainSpectralStandard01_02_Regular_Blue_Complete_400x400.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-01.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-01.ogg",
+		},
 	},
 	pike: {
 		label: "Pike",
@@ -386,8 +386,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Group03/TrailAttack03_01_01_Regular_BlueYellow_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-00.ogg"
-		}
+			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-00.ogg",
+		},
 	},
 	poleblade: {
 		label: "Poleblade",
@@ -398,8 +398,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Group04/TrailAttack04_01_04_Regular_BlueYellow_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-01.ogg"
-		}
+			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-01.ogg",
+		},
 	},
 	rifle: {
 		label: "Rifle",
@@ -410,8 +410,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Ranged/Snipe_01_Regular_Blue_15ft_1000x400.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/ranged-weapons/guns/revolver/single-fire/revolver-single-fire-001-03.ogg"
-		}
+			sound: "modules/psfx/library/ranged-weapons/guns/revolver/single-fire/revolver-single-fire-001-03.ogg",
+		},
 	},
 	shortbow: {
 		label: "Shortbow",
@@ -422,8 +422,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Ranged/Arrow01_01_Regular_White_15ft_1000x400.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/ranged-weapons/longbow/v1/longbow-003-60ft.ogg"
-		}
+			sound: "modules/psfx/library/ranged-weapons/longbow/v1/longbow-003-60ft.ogg",
+		},
 	},
 	shortsword: {
 		label: "Shortsword",
@@ -434,8 +434,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Shortsword01_03_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-02.ogg"
-		}
+			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-02.ogg",
+		},
 	},
 	shotgun: {
 		label: "Shotgun",
@@ -446,8 +446,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Ranged/Bullet_02_Regular_Orange_05ft_600x400.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/ranged-weapons/guns/revolver/single-fire/revolver-single-fire-001-03.ogg"
-		}
+			sound: "modules/psfx/library/ranged-weapons/guns/revolver/single-fire/revolver-single-fire-001-03.ogg",
+		},
 	},
 	shotgun_sawed_off: {
 		label: "Shotgun, sawed-off",
@@ -458,8 +458,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Ranged/Bullet_02_Regular_Orange_05ft_600x400.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/ranged-weapons/guns/revolver/single-fire/revolver-single-fire-001-03.ogg"
-		}
+			sound: "modules/psfx/library/ranged-weapons/guns/revolver/single-fire/revolver-single-fire-001-03.ogg",
+		},
 	},
 	sling: {
 		label: "Sling",
@@ -470,8 +470,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Ranged/Bullet_03_Regular_Blue_15ft_1000x400.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/ranged-weapons/guns/revolver/single-fire/revolver-single-fire-001-03.ogg"
-		}
+			sound: "modules/psfx/library/ranged-weapons/guns/revolver/single-fire/revolver-single-fire-001-03.ogg",
+		},
 	},
 	spear: {
 		label: "Spear",
@@ -482,8 +482,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Spear01_01_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-03.ogg"
-		}
+			sound: "modules/psfx/library/impacts/slashing/v1/meleeattack-impacts-slashing-03.ogg",
+		},
 	},
 	staff: {
 		label: "Staff",
@@ -494,8 +494,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Quarterstaff01_03_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-02.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-02.ogg",
+		},
 	},
 	standard_shield: {
 		label: "Standard shield",
@@ -506,8 +506,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Group06/MeleeAttack06_Shield01_01_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-03.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-03.ogg",
+		},
 	},
 	unarmed: {
 		label: "Unarmed",
@@ -518,8 +518,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Unarmed_Attacks/Unarmed_Strike/UnarmedStrike_01_Regular_Blue_Physical01_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-00.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-00.ogg",
+		},
 	},
 	warhammer: {
 		label: "Warhammer",
@@ -530,8 +530,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Warhammer01_05_Regular_White_800x600.webm",
 			scale: 1,
 			duration: 1000,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-01.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-01.ogg",
+		},
 	},
 	whip_chain: {
 		label: "Whip, chain",
@@ -542,8 +542,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/RangedSpell/02/RangedInstant02_01_Regular_Yellow_30ft_1600x400.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-02.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-02.ogg",
+		},
 	},
 	whip_leather: {
 		label: "Whip, leather",
@@ -554,8 +554,8 @@ export const DEFAULT_WEAPON_PRESETS = {
 			file: "modules/JB2A_DnD5e/Library/Generic/RangedSpell/03/RangedProjectile03_01_Regular_BlueGreen_30ft_1600x400.webm",
 			scale: 1,
 			duration: 1500,
-			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-03.ogg"
-		}
+			sound: "modules/psfx/library/impacts/bludgeoning/v1/meleeattack-impacts-bludgeoning-03.ogg",
+		},
 	},
 };
 

@@ -23,7 +23,7 @@ const SHAPECHANGER_DEFAULTS = {
 	monsterNames: null,    // Array of exact monster names to allow (null = use maxLevel filter)
 	transferAbilities: ["str", "dex", "con", "int", "wis", "cha"],
 	revertAt0HP: false,
-	revertHPValue: null
+	revertHPValue: null,
 };
 
 /**
@@ -44,7 +44,7 @@ const SPELL_CONFIGS = {
 		},
 		transferAbilities: ["str", "dex", "con"],
 		revertAt0HP: true,
-		revertHPValue: 0
+		revertHPValue: 0,
 	},
 	polymorph: {
 		title: "Polymorph",
@@ -55,8 +55,8 @@ const SPELL_CONFIGS = {
 		transferAbilities: ["str", "dex", "con"],
 		revertAt0HP: true,
 		revertHPValue: "half",
-		targetMode: "other"
-	}
+		targetMode: "other",
+	},
 };
 
 /**
@@ -199,7 +199,7 @@ export async function showShapechangerDialog(casterActor, casterItem, originatin
 				isCritical: isCritical,
 				options: opts,
 				targetActorId: targetActor?.id || null,
-				targetTokenId: targetToken?.id || null
+				targetTokenId: targetToken?.id || null,
 			});
 			return;
 		}
@@ -214,7 +214,7 @@ export async function showShapechangerDialog(casterActor, casterItem, originatin
 
 	// Get index with needed fields
 	const index = await pack.getIndex({
-		fields: ["system.level", "system.attributes", "img", "prototypeToken", "name"]
+		fields: ["system.level", "system.attributes", "img", "prototypeToken", "name"],
 	});
 
 	// Resolve monsterNames (can be array or function)
@@ -277,13 +277,13 @@ export async function showShapechangerDialog(casterActor, casterItem, originatin
 			</div>
 			${showSearch ? `<div class="sdx-shapechanger-search">
 				<input type="text" name="npcSearch" placeholder="Search monsters..." autocomplete="off" />
-			</div>` : ''}
+			</div>` : ""}
 			<div class="sdx-spell-weapon-grid sdx-shapechanger-grid">
 				${buildNpcGrid()}
 			</div>
 			<div class="sdx-spell-description">
 				<i class="fas fa-info-circle"></i>
-				${opts.description}${isCritical ? ' <em>(Critical Success!)</em>' : ''}
+				${opts.description}${isCritical ? " <em>(Critical Success!)</em>" : ""}
 			</div>
 			<input type="hidden" name="selectedNpcId" value="">
 		</div>
@@ -295,14 +295,14 @@ export async function showShapechangerDialog(casterActor, casterItem, originatin
 	const dialog = new foundry.applications.api.DialogV2({
 		window: {
 			title: opts.title,
-			icon: faIcon
+			icon: faIcon,
 		},
 		content: content,
 		buttons: [
 			{
 				action: "cancel",
 				label: "Cancel",
-				icon: "fas fa-times"
+				icon: "fas fa-times",
 			},
 			{
 				action: "transform",
@@ -320,13 +320,13 @@ export async function showShapechangerDialog(casterActor, casterItem, originatin
 						await applyShapechanger(casterActor, casterItem, npcDoc, isCritical, opts, targetActor, targetToken);
 					}
 					return true;
-				}
-			}
+				},
+			},
 		],
 		position: {
 			width: 560,
-			height: "auto"
-		}
+			height: "auto",
+		},
 	});
 
 	dialog.addEventListener("render", (event) => {
@@ -424,10 +424,10 @@ export async function applyShapechanger(casterActor, casterItem, npcDoc, isCriti
 	const backup = {
 		hp: {
 			value: transformActor.system.attributes.hp.value,
-			max: transformActor.system.attributes.hp.max
+			max: transformActor.system.attributes.hp.max,
 		},
 		ac: {
-			value: transformActor.system.attributes.ac.value
+			value: transformActor.system.attributes.ac.value,
 		},
 		abilities: {},
 		tokenTexture: transformActor.prototypeToken.texture.src,
@@ -448,14 +448,14 @@ export async function applyShapechanger(casterActor, casterItem, npcDoc, isCriti
 		// Spellcasting info from the NPC (for sheet display)
 		npcSpellcastingBonus: npcDoc.system.spellcastingBonus ?? null,
 		npcSpellcastingAttackNum: npcDoc.system.spellcastingAttackNum ?? null,
-		npcSpellcastingAbility: npcDoc.system.spellcastingAbility ?? null
+		npcSpellcastingAbility: npcDoc.system.spellcastingAbility ?? null,
 	};
 
 	// Backup ability values and bonuses for transferred abilities only
 	for (const ability of transferAbilities) {
 		backup.abilities[ability] = {
 			value: transformActor.system.abilities[ability]?.value ?? 10,
-			bonus: transformActor.system.abilities[ability]?.bonus ?? 0
+			bonus: transformActor.system.abilities[ability]?.bonus ?? 0,
 		};
 	}
 
@@ -474,7 +474,7 @@ export async function applyShapechanger(casterActor, casterItem, npcDoc, isCriti
 		"system.attributes.ac.value": npcAc.value,
 		"prototypeToken.texture.src": tokenTexture,
 		"prototypeToken.width": npcDoc.prototypeToken.width,
-		"prototypeToken.height": npcDoc.prototypeToken.height
+		"prototypeToken.height": npcDoc.prototypeToken.height,
 	};
 
 	// Update only the transferred ability scores
@@ -511,7 +511,7 @@ export async function applyShapechanger(casterActor, casterItem, npcDoc, isCriti
 		await activeToken.document.update({
 			"texture.src": tokenTexture,
 			"width": npcDoc.prototypeToken.width,
-			"height": npcDoc.prototypeToken.height
+			"height": npcDoc.prototypeToken.height,
 		});
 	}
 
@@ -577,7 +577,7 @@ export async function applyShapechanger(casterActor, casterItem, npcDoc, isCriti
 	}
 
 	const duration = casterItem.system?.duration?.value || "?";
-	const criticalBadge = isCritical ? ' <span style="color: gold; font-weight: bold;">[CRITICAL]</span>' : '';
+	const criticalBadge = isCritical ? ' <span style="color: gold; font-weight: bold;">[CRITICAL]</span>' : "";
 
 	let revertNote = "The transformation can be reverted at any time.";
 	if (opts.revertAt0HP) {
@@ -620,7 +620,7 @@ export async function applyShapechanger(casterActor, casterItem, npcDoc, isCriti
 					</button>
 				</div>
 			</div>
-		`
+		`,
 	});
 
 	ui.notifications.info(`${isOtherTarget ? `${casterActor.name} transforms ${transformActor.name}` : `${casterActor.name} transforms`} into ${npcDoc.name}!`);
@@ -664,7 +664,7 @@ export async function revertShapechanger(actor, skipEndDuration = false) {
 		"system.attributes.ac.value": backup.ac.value,
 		"prototypeToken.texture.src": backup.tokenTexture,
 		"prototypeToken.width": backup.tokenWidth,
-		"prototypeToken.height": backup.tokenHeight
+		"prototypeToken.height": backup.tokenHeight,
 	};
 
 	// If revertAt0HP triggered, set HP to revertHPValue, otherwise restore original HP
@@ -702,7 +702,7 @@ export async function revertShapechanger(actor, skipEndDuration = false) {
 		await activeToken.document.update({
 			"texture.src": backup.tokenTexture,
 			"width": backup.tokenWidth,
-			"height": backup.tokenHeight
+			"height": backup.tokenHeight,
 		});
 	}
 
@@ -759,7 +759,7 @@ export async function revertShapechanger(actor, skipEndDuration = false) {
 					<p><strong>${actor.name}</strong> reverts from <strong>${backup.npcName}</strong> back to their original form.</p>
 				</div>
 			</div>
-		`
+		`,
 	});
 
 	ui.notifications.info(`${actor.name} reverts to their original form.`);
@@ -818,7 +818,7 @@ Hooks.on("updateActor", async (actor, changes, options, userId) => {
 	// Only run on the GM's client (or the user who owns the actor) to avoid duplicate reverts
 	if (!game.user.isGM && actor.ownership[game.user.id] !== CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) return;
 
-	console.log(`${MODULE_ID} | ${backup.spellTitle || 'Shapechanger'} auto-revert: ${actor.name} reached 0 HP`);
+	console.log(`${MODULE_ID} | ${backup.spellTitle || "Shapechanger"} auto-revert: ${actor.name} reached 0 HP`);
 	await revertShapechanger(actor);
 });
 
@@ -856,11 +856,11 @@ Hooks.on("renderPlayerSheetSD", (sheet, html, data) => {
 		const isSpecialType = atk.system.attackType === "special";
 
 		attacksHtml += `
-			<div class="sdx-sc-item ${isSpecialType ? '' : 'sdx-sc-item-rollable'}" data-item-id="${atk.id}" data-item-type="NPC Attack" title="${isSpecialType ? 'View details' : 'Click to roll attack'}">
+			<div class="sdx-sc-item ${isSpecialType ? "" : "sdx-sc-item-rollable"}" data-item-id="${atk.id}" data-item-type="NPC Attack" title="${isSpecialType ? "View details" : "Click to roll attack"}">
 				<img class="sdx-sc-item-img" src="${atk.img}" alt="${atk.name}">
 				<div class="sdx-sc-item-info">
 					<span class="sdx-sc-item-name">${atk.name}</span>
-					<span class="sdx-sc-item-detail">${num}x ${bonusStr} ${damage ? `(${damage})` : ''}</span>
+					<span class="sdx-sc-item-detail">${num}x ${bonusStr} ${damage ? `(${damage})` : ""}</span>
 				</div>
 			</div>`;
 	}
@@ -876,7 +876,7 @@ Hooks.on("renderPlayerSheetSD", (sheet, html, data) => {
 				<img class="sdx-sc-item-img" src="${sp.img}" alt="${sp.name}">
 				<div class="sdx-sc-item-info">
 					<span class="sdx-sc-item-name">${sp.name}</span>
-					${cleanDesc ? `<span class="sdx-sc-item-detail">${cleanDesc}${desc.length > 80 ? '...' : ''}</span>` : ''}
+					${cleanDesc ? `<span class="sdx-sc-item-detail">${cleanDesc}${desc.length > 80 ? "..." : ""}</span>` : ""}
 				</div>
 			</div>`;
 	}
@@ -892,7 +892,7 @@ Hooks.on("renderPlayerSheetSD", (sheet, html, data) => {
 				<img class="sdx-sc-item-img" src="${feat.img}" alt="${feat.name}">
 				<div class="sdx-sc-item-info">
 					<span class="sdx-sc-item-name">${feat.name}</span>
-					${cleanDesc ? `<span class="sdx-sc-item-detail">${cleanDesc}${desc.length > 80 ? '...' : ''}</span>` : ''}
+					${cleanDesc ? `<span class="sdx-sc-item-detail">${cleanDesc}${desc.length > 80 ? "..." : ""}</span>` : ""}
 				</div>
 			</div>`;
 	}
@@ -910,7 +910,7 @@ Hooks.on("renderPlayerSheetSD", (sheet, html, data) => {
 				<img class="sdx-sc-item-img" src="${sp.img}" alt="${sp.name}">
 				<div class="sdx-sc-item-info">
 					<span class="sdx-sc-item-name">${sp.name}</span>
-					${detail ? `<span class="sdx-sc-item-detail">${detail}</span>` : ''}
+					${detail ? `<span class="sdx-sc-item-detail">${detail}</span>` : ""}
 				</div>
 			</div>`;
 	}
@@ -932,10 +932,10 @@ Hooks.on("renderPlayerSheetSD", (sheet, html, data) => {
 				<span>${spellTitle} — ${backup.npcName}</span>
 				<button class="sdx-sc-revert-btn" title="Revert to original form"><i class="fas fa-undo"></i> Revert</button>
 			</div>
-			${attacks.length > 0 ? `<div class="sdx-sc-section"><div class="sdx-sc-section-label">Attacks</div>${attacksHtml}</div>` : ''}
-			${specials.length > 0 ? `<div class="sdx-sc-section"><div class="sdx-sc-section-label">Special Attacks</div>${specialsHtml}</div>` : ''}
-			${features.length > 0 ? `<div class="sdx-sc-section"><div class="sdx-sc-section-label">Features</div>${featuresHtml}</div>` : ''}
-			${spells.length > 0 ? `<div class="sdx-sc-section"><div class="sdx-sc-section-label">Spells</div>${spellcastingHeader}${spellsHtml}</div>` : ''}
+			${attacks.length > 0 ? `<div class="sdx-sc-section"><div class="sdx-sc-section-label">Attacks</div>${attacksHtml}</div>` : ""}
+			${specials.length > 0 ? `<div class="sdx-sc-section"><div class="sdx-sc-section-label">Special Attacks</div>${specialsHtml}</div>` : ""}
+			${features.length > 0 ? `<div class="sdx-sc-section"><div class="sdx-sc-section-label">Features</div>${featuresHtml}</div>` : ""}
+			${spells.length > 0 ? `<div class="sdx-sc-section"><div class="sdx-sc-section-label">Spells</div>${spellcastingHeader}${spellsHtml}</div>` : ""}
 		</div>
 	`;
 

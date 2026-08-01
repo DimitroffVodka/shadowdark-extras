@@ -29,16 +29,16 @@ import { MODULE_ID } from "../shared/module-id.mjs";
  * Add inline control buttons to effect/condition items
  */
 function addInlineEffectControls($effectsTab, actor) {
-	const $items = $effectsTab.find('.item.effect');
+	const $items = $effectsTab.find(".item.effect");
 
-	$items.each(function () {
+	$items.each(function() {
 		const $item = $(this);
 
 		// Skip if already has controls
-		if ($item.find('.sdx-effect-controls').length) return;
+		if ($item.find(".sdx-effect-controls").length) return;
 
-		const itemId = $item.data('item-id');
-		const itemUuid = $item.data('uuid');
+		const itemId = $item.data("item-id");
+		const itemUuid = $item.data("uuid");
 
 		if (!itemId) return;
 
@@ -58,14 +58,14 @@ function addInlineEffectControls($effectsTab, actor) {
 		$item.append($controls);
 
 		// Disable right-click context menu
-		$item.on('contextmenu', (e) => {
+		$item.on("contextmenu", (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 			return false;
 		});
 
 		// Edit button
-		$controls.find('.sdx-effect-edit').on('click', async (e) => {
+		$controls.find(".sdx-effect-edit").on("click", async (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -73,7 +73,7 @@ function addInlineEffectControls($effectsTab, actor) {
 		});
 
 		// Delete button
-		$controls.find('.sdx-effect-delete').on('click', async (e) => {
+		$controls.find(".sdx-effect-delete").on("click", async (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -81,7 +81,7 @@ function addInlineEffectControls($effectsTab, actor) {
 				const confirm = await foundry.applications.api.DialogV2.confirm({
 					window: { title: "Delete Effect" },
 					content: `<p>Are you sure you want to delete <strong>${item.name}</strong>?</p>`,
-					modal: true
+					modal: true,
 				});
 
 				if (confirm) {
@@ -136,7 +136,7 @@ export async function getConditionsData() {
 			uuid: cond.uuid,
 			name: cond.name,
 			img: cond.img,
-			description: cond.system?.description?.value || cond.system?.description || ''
+			description: cond.system?.description?.value || cond.system?.description || "",
 		}));
 	}
 
@@ -154,7 +154,7 @@ export async function injectConditionsToggles(app, html, actor) {
 	if (!$effectsTab.length) return;
 
 	// Check if we've already injected (avoid duplicates on re-render)
-	if ($effectsTab.find('.sdx-conditions-toggles').length) return;
+	if ($effectsTab.find(".sdx-conditions-toggles").length) return;
 
 	// Add inline control buttons to existing effects/conditions
 	addInlineEffectControls($effectsTab, actor);
@@ -178,11 +178,11 @@ export async function injectConditionsToggles(app, html, actor) {
 	togglesHtml += '<h3 class="sdx-conditions-header">Quick Conditions</h3>';
 	togglesHtml += '<button class="sdx-add-condition-btn" type="button">';
 	togglesHtml += '<i class="fas fa-plus"></i> Add Condition';
-	togglesHtml += '</button>';
-	togglesHtml += '</div>';
+	togglesHtml += "</button>";
+	togglesHtml += "</div>";
 
 	// Insert after the active effects section
-	const $activeEffects = $effectsTab.find('.active-effects, .effects-list').last();
+	const $activeEffects = $effectsTab.find(".active-effects, .effects-list").last();
 	if ($activeEffects.length) {
 		$activeEffects.after(togglesHtml);
 	} else {
@@ -191,8 +191,8 @@ export async function injectConditionsToggles(app, html, actor) {
 	}
 
 	// Attach event handler to the Add Condition button
-	const $addConditionBtn = $effectsTab.find('.sdx-add-condition-btn');
-	$addConditionBtn.on('click', function (e) {
+	const $addConditionBtn = $effectsTab.find(".sdx-add-condition-btn");
+	$addConditionBtn.on("click", function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 
@@ -207,7 +207,7 @@ export async function injectConditionsToggles(app, html, actor) {
  */
 export function showConditionsModal(actor, conditionDataMap, theme) {
 	// Remove any existing modal
-	$('.sdx-conditions-modal').remove();
+	$(".sdx-conditions-modal").remove();
 
 	// Get currently active condition items on the actor
 	const conditionItems = actor.items.filter(item =>
@@ -246,7 +246,7 @@ export function showConditionsModal(actor, conditionDataMap, theme) {
 
 			allConditions.push({
 				condition,
-				isActive
+				isActive,
 			});
 		}
 	}
@@ -264,12 +264,12 @@ export function showConditionsModal(actor, conditionDataMap, theme) {
 	const sortedConditions = [...activeConditions, ...inactiveConditions];
 
 	for (const { condition, isActive } of sortedConditions) {
-		const displayName = condition.name.replace('Condition: ', '');
-		const rawDescription = condition.description || '';
-		const processedDescription = rawDescription.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+		const displayName = condition.name.replace("Condition: ", "");
+		const rawDescription = condition.description || "";
+		const processedDescription = rawDescription.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
 		modalHtml += `
-			<div class="sdx-condition-toggle ${isActive ? 'active' : ''}"
+			<div class="sdx-condition-toggle ${isActive ? "active" : ""}"
 				 data-condition-uuid="${condition.uuid}"
 				 data-condition-name="${condition.name}"
 				 data-display-name="${displayName}"
@@ -289,47 +289,47 @@ export function showConditionsModal(actor, conditionDataMap, theme) {
 
 	// Append modal to body
 	const $modal = $(modalHtml);
-	$('body').append($modal);
+	$("body").append($modal);
 
 	// Get references to modal elements
-	const $modalContent = $modal.find('.sdx-conditions-modal-content');
-	const $searchInput = $modal.find('.sdx-conditions-search-input');
-	const $grid = $modal.find('.sdx-conditions-modal-grid');
-	const $toggles = $grid.find('.sdx-condition-toggle');
+	const $modalContent = $modal.find(".sdx-conditions-modal-content");
+	const $searchInput = $modal.find(".sdx-conditions-search-input");
+	const $grid = $modal.find(".sdx-conditions-modal-grid");
+	const $toggles = $grid.find(".sdx-condition-toggle");
 
 	// Focus search input
 	setTimeout(() => $searchInput.focus(), 100);
 
 	// Close button handler
-	$modal.find('.sdx-conditions-modal-close').on('click', () => {
+	$modal.find(".sdx-conditions-modal-close").on("click", () => {
 		$modal.remove();
 	});
 
 	// Backdrop click handler
-	$modal.find('.sdx-conditions-modal-backdrop').on('click', () => {
+	$modal.find(".sdx-conditions-modal-backdrop").on("click", () => {
 		$modal.remove();
 	});
 
 	// ESC key handler
-	$(document).on('keydown.sdx-conditions-modal', (e) => {
-		if (e.key === 'Escape') {
+	$(document).on("keydown.sdx-conditions-modal", (e) => {
+		if (e.key === "Escape") {
 			$modal.remove();
-			$(document).off('keydown.sdx-conditions-modal');
+			$(document).off("keydown.sdx-conditions-modal");
 		}
 	});
 
 	// Remove ESC handler when modal is removed
-	$modal.on('remove', () => {
-		$(document).off('keydown.sdx-conditions-modal');
+	$modal.on("remove", () => {
+		$(document).off("keydown.sdx-conditions-modal");
 	});
 
 	// Search/filter handler
-	$searchInput.on('input', function () {
+	$searchInput.on("input", function() {
 		const searchTerm = $(this).val().toLowerCase().trim();
 
-		$grid.find('.sdx-condition-toggle').each(function () {
+		$grid.find(".sdx-condition-toggle").each(function() {
 			const $toggle = $(this);
-			const displayName = $toggle.data('display-name') || $toggle.data('condition-name') || '';
+			const displayName = $toggle.data("display-name") || $toggle.data("condition-name") || "";
 			const conditionName = displayName.toString().toLowerCase();
 
 			if (conditionName.includes(searchTerm)) {
@@ -341,23 +341,23 @@ export function showConditionsModal(actor, conditionDataMap, theme) {
 	});
 
 	// Condition toggle click handler - use event delegation so it works after re-sorting
-	$grid.on('click', '.sdx-condition-toggle', async function (e) {
+	$grid.on("click", ".sdx-condition-toggle", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 
 		if (!actor.isOwner) return;
 
 		const $toggle = $(this);
-		const conditionUuid = $toggle.data('condition-uuid');
-		const conditionName = $toggle.data('condition-name');
-		const isActive = $toggle.hasClass('active');
+		const conditionUuid = $toggle.data("condition-uuid");
+		const conditionName = $toggle.data("condition-name");
+		const isActive = $toggle.hasClass("active");
 
 		if (isActive) {
 			await removeConditionFromActor(actor, conditionName, conditionUuid);
-			$toggle.removeClass('active');
+			$toggle.removeClass("active");
 		} else {
 			await addConditionToActor(actor, conditionUuid);
-			$toggle.addClass('active');
+			$toggle.addClass("active");
 		}
 
 		// Re-sort conditions: move to top if now active, or to inactive section if now inactive
@@ -376,16 +376,16 @@ function refreshModalConditionOrder($grid, actor) {
 	);
 
 	// Get all toggles from the grid
-	const $toggles = $grid.find('.sdx-condition-toggle');
+	const $toggles = $grid.find(".sdx-condition-toggle");
 
 	// Separate toggles into active and inactive
 	const activeToggles = [];
 	const inactiveToggles = [];
 
-	$toggles.each(function () {
+	$toggles.each(function() {
 		const $toggle = $(this);
-		const conditionUuid = $toggle.data('condition-uuid');
-		const conditionName = $toggle.data('condition-name');
+		const conditionUuid = $toggle.data("condition-uuid");
+		const conditionName = $toggle.data("condition-name");
 
 		// Update active class based on current actor state
 		const isActive = conditionItems.some(item =>
@@ -396,18 +396,18 @@ function refreshModalConditionOrder($grid, actor) {
 
 		// Update the active class
 		if (isActive) {
-			$toggle.addClass('active');
+			$toggle.addClass("active");
 			activeToggles.push($toggle);
 		} else {
-			$toggle.removeClass('active');
+			$toggle.removeClass("active");
 			inactiveToggles.push($toggle);
 		}
 	});
 
 	// Sort each group alphabetically by condition name
 	const sortByName = (a, b) => {
-		const nameA = (a.data('condition-name') || '').toString().toLowerCase();
-		const nameB = (b.data('condition-name') || '').toString().toLowerCase();
+		const nameA = (a.data("condition-name") || "").toString().toLowerCase();
+		const nameB = (b.data("condition-name") || "").toString().toLowerCase();
 		return nameA.localeCompare(nameB);
 	};
 
@@ -425,7 +425,7 @@ function refreshModalConditionOrder($grid, actor) {
  */
 function showConditionSubmenuInModal($toggle, variants, actor, conditionItems, $grid) {
 	// Remove any existing submenu
-	$('.sdx-condition-submenu').remove();
+	$(".sdx-condition-submenu").remove();
 
 	// Get theme for styling
 	const theme = game.settings.get(MODULE_ID, "conditionsTheme") || "parchment";
@@ -442,23 +442,23 @@ function showConditionSubmenuInModal($toggle, variants, actor, conditionItems, $
 
 		// Extract the variant part (e.g., "1", "Cha", etc.)
 		const match = variant.name.match(/\(([^)]+)\)\s*$/);
-		const variantLabel = match ? match[1] : variant.name.replace('Condition: ', '');
+		const variantLabel = match ? match[1] : variant.name.replace("Condition: ", "");
 
 		submenuHtml += `
-			<div class="sdx-submenu-item ${isActive ? 'active' : ''}"
+			<div class="sdx-submenu-item ${isActive ? "active" : ""}"
 				 data-condition-uuid="${variant.uuid}"
 				 data-condition-name="${variant.name}">
 				<span>${variantLabel}</span>
-				${isActive ? '<i class="fas fa-check"></i>' : ''}
+				${isActive ? '<i class="fas fa-check"></i>' : ""}
 			</div>
 		`;
 	}
 
-	submenuHtml += '</div>';
+	submenuHtml += "</div>";
 
 	// Append submenu to body for proper positioning (avoid overflow clipping)
 	const $submenu = $(submenuHtml);
-	$('body').append($submenu);
+	$("body").append($submenu);
 
 	// Get the toggle's position and calculate submenu placement
 	const rect = $toggle[0].getBoundingClientRect();
@@ -467,29 +467,29 @@ function showConditionSubmenuInModal($toggle, variants, actor, conditionItems, $
 
 	// Position the submenu
 	$submenu.css({
-		'position': 'fixed',
-		'left': rect.left + 'px',
-		'width': rect.width + 'px',
-		'min-width': '120px'
+		"position": "fixed",
+		"left": rect.left + "px",
+		"width": rect.width + "px",
+		"min-width": "120px",
 	});
 
 	if (spaceBelow < submenuHeight && rect.top > submenuHeight) {
 		// Position above if not enough space below
-		$submenu.css('top', (rect.top - submenuHeight) + 'px');
+		$submenu.css("top", (rect.top - submenuHeight) + "px");
 	} else {
 		// Position below
-		$submenu.css('top', rect.bottom + 'px');
+		$submenu.css("top", rect.bottom + "px");
 	}
 
 	// Handle submenu item clicks
-	$submenu.find('.sdx-submenu-item').on('click', async function (e) {
+	$submenu.find(".sdx-submenu-item").on("click", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 
 		const $item = $(this);
-		const conditionUuid = $item.data('condition-uuid');
-		const conditionName = $item.data('condition-name');
-		const isActive = $item.hasClass('active');
+		const conditionUuid = $item.data("condition-uuid");
+		const conditionName = $item.data("condition-name");
+		const isActive = $item.hasClass("active");
 
 		if (isActive) {
 			await removeConditionFromActor(actor, conditionName, conditionUuid);
@@ -506,7 +506,7 @@ function showConditionSubmenuInModal($toggle, variants, actor, conditionItems, $
 
 	// Close submenu when clicking outside
 	setTimeout(() => {
-		$(document).one('click', () => {
+		$(document).one("click", () => {
 			$submenu.remove();
 		});
 	}, 10);
@@ -518,7 +518,7 @@ function showConditionSubmenuInModal($toggle, variants, actor, conditionItems, $
 function convertUUIDLinksToClickable(text) {
 	// Match @UUID[uuid]{label} or @UUID[uuid]
 	return text.replace(/@UUID\[([^\]]+)\](?:\{([^\}]+)\})?/g, (match, uuid, label) => {
-		const displayText = label || uuid.split('.').pop();
+		const displayText = label || uuid.split(".").pop();
 		return `<span class="sdx-uuid-link" data-uuid="${uuid}">${displayText}</span>`;
 	});
 }
@@ -532,7 +532,7 @@ function groupConditionsByBaseName(conditions) {
 	for (const condition of conditions) {
 		const name = condition.name;
 		// Extract base name by removing variants like (1), (Cha), etc.
-		const baseName = name.replace(/\s*\([^)]+\)\s*$/, '').trim();
+		const baseName = name.replace(/\s*\([^)]+\)\s*$/, "").trim();
 
 		if (!groups[baseName]) {
 			groups[baseName] = [];
@@ -567,7 +567,7 @@ function showConditionSubmenu($toggle, variants, actor, conditionItems) {
 	}
 
 	// Remove any existing submenu
-	$('.sdx-condition-submenu').remove();
+	$(".sdx-condition-submenu").remove();
 
 	// Get theme for styling
 	const theme = game.settings.get(MODULE_ID, "conditionsTheme") || "parchment";
@@ -584,23 +584,23 @@ function showConditionSubmenu($toggle, variants, actor, conditionItems) {
 
 		// Extract the variant part (e.g., "1", "Cha", etc.)
 		const match = variant.name.match(/\(([^)]+)\)\s*$/);
-		const variantLabel = match ? match[1] : variant.name.replace('Condition: ', '');
+		const variantLabel = match ? match[1] : variant.name.replace("Condition: ", "");
 
 		submenuHtml += `
-			<div class="sdx-submenu-item ${isActive ? 'active' : ''}"
+			<div class="sdx-submenu-item ${isActive ? "active" : ""}"
 				 data-condition-uuid="${variant.uuid}"
 				 data-condition-name="${variant.name}">
 				<span>${variantLabel}</span>
-				${isActive ? '<i class="fas fa-check"></i>' : ''}
+				${isActive ? '<i class="fas fa-check"></i>' : ""}
 			</div>
 		`;
 	}
 
-	submenuHtml += '</div>';
+	submenuHtml += "</div>";
 
 	// Append submenu to body for proper positioning (avoid overflow clipping)
 	const $submenu = $(submenuHtml);
-	$('body').append($submenu);
+	$("body").append($submenu);
 
 	// Get the toggle's position and calculate submenu placement
 	const rect = $toggle[0].getBoundingClientRect();
@@ -609,29 +609,29 @@ function showConditionSubmenu($toggle, variants, actor, conditionItems) {
 
 	// Position the submenu
 	$submenu.css({
-		'position': 'fixed',
-		'left': rect.left + 'px',
-		'width': rect.width + 'px',
-		'min-width': '120px'
+		"position": "fixed",
+		"left": rect.left + "px",
+		"width": rect.width + "px",
+		"min-width": "120px",
 	});
 
 	if (spaceBelow < submenuHeight && rect.top > submenuHeight) {
 		// Position above if not enough space below
-		$submenu.css('top', (rect.top - submenuHeight) + 'px');
+		$submenu.css("top", (rect.top - submenuHeight) + "px");
 	} else {
 		// Position below
-		$submenu.css('top', rect.bottom + 'px');
+		$submenu.css("top", rect.bottom + "px");
 	}
 
 	// Handle submenu item clicks
-	$submenu.find('.sdx-submenu-item').on('click', async function (e) {
+	$submenu.find(".sdx-submenu-item").on("click", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 
 		const $item = $(this);
-		const conditionUuid = $item.data('condition-uuid');
-		const conditionName = $item.data('condition-name');
-		const isActive = $item.hasClass('active');
+		const conditionUuid = $item.data("condition-uuid");
+		const conditionName = $item.data("condition-name");
+		const isActive = $item.hasClass("active");
 
 		if (isActive) {
 			await removeConditionFromActor(actor, conditionName, conditionUuid);
@@ -644,7 +644,7 @@ function showConditionSubmenu($toggle, variants, actor, conditionItems) {
 
 	// Close submenu when clicking outside
 	setTimeout(() => {
-		$(document).one('click', () => {
+		$(document).one("click", () => {
 			$submenu.remove();
 		});
 	}, 10);
@@ -689,7 +689,7 @@ async function addConditionToActor(actor, conditionUuid) {
 		ui.notifications.info(`Applied: ${condition.name}`);
 	} catch (error) {
 		console.error(`${MODULE_ID} | Error adding condition:`, error);
-		ui.notifications.error(`Failed to apply condition`);
+		ui.notifications.error("Failed to apply condition");
 	}
 }
 
@@ -713,7 +713,7 @@ async function removeConditionFromActor(actor, conditionName, conditionUuid) {
 		}
 	} catch (error) {
 		console.error(`${MODULE_ID} | Error removing condition:`, error);
-		ui.notifications.error(`Failed to remove condition`);
+		ui.notifications.error("Failed to remove condition");
 	}
 }
 
@@ -721,7 +721,7 @@ async function removeConditionFromActor(actor, conditionName, conditionUuid) {
  * Update condition toggles when effects change
  */
 function updateConditionToggles(actor, html) {
-	const $toggles = html.find('.sdx-condition-toggle');
+	const $toggles = html.find(".sdx-condition-toggle");
 	if (!$toggles.length) return;
 
 	// Get condition items instead of effects
@@ -730,10 +730,10 @@ function updateConditionToggles(actor, html) {
 		(item.name.startsWith("Condition:") || item.name.startsWith("Absorption:"))
 	);
 
-	$toggles.each(function () {
+	$toggles.each(function() {
 		const $toggle = $(this);
-		const conditionUuid = $toggle.data('condition-uuid');
-		const conditionName = $toggle.data('condition-name');
+		const conditionUuid = $toggle.data("condition-uuid");
+		const conditionName = $toggle.data("condition-name");
 
 		// Check multiple ways to match the condition (now checking items)
 		const isActive = conditionItems.some(item => {
@@ -753,7 +753,7 @@ function updateConditionToggles(actor, html) {
 			return false;
 		});
 
-		$toggle.toggleClass('active', isActive);
+		$toggle.toggleClass("active", isActive);
 	});
 }
 

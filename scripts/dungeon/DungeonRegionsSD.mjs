@@ -21,50 +21,50 @@ const MODULE_ID = "shadowdark-extras";
  * @returns {Promise<{id: string, name: string}>}
  */
 export async function placeChangeLevelRegion({
-    sceneId, x, y, width = 100, height = 100,
-    levels, name = "Stairs", movementActions = [],
-    elevation
+	sceneId, x, y, width = 100, height = 100,
+	levels, name = "Stairs", movementActions = [],
+	elevation,
 }) {
-    const scene = game.scenes.get(sceneId);
-    if (!scene) throw new Error(`Scene ${sceneId} not found`);
-    if (!Array.isArray(levels) || levels.length < 2) {
-        throw new Error("placeChangeLevelRegion: levels must be array of 2+ level IDs");
-    }
+	const scene = game.scenes.get(sceneId);
+	if (!scene) throw new Error(`Scene ${sceneId} not found`);
+	if (!Array.isArray(levels) || levels.length < 2) {
+		throw new Error("placeChangeLevelRegion: levels must be array of 2+ level IDs");
+	}
 
-    // Default elevation: span from the lowest level's bottom to the highest level's top
-    let elev = elevation;
-    if (!elev) {
-        const ls = levels.map(id => scene.levels.get(id)).filter(Boolean);
-        if (ls.length < 2) throw new Error("levels not found on scene");
-        elev = {
-            bottom: Math.min(...ls.map(l => l.elevation?.bottom ?? 0)),
-            top:    Math.max(...ls.map(l => l.elevation?.top    ?? 0)),
-            topInclusive: false
-        };
-    }
+	// Default elevation: span from the lowest level's bottom to the highest level's top
+	let elev = elevation;
+	if (!elev) {
+		const ls = levels.map(id => scene.levels.get(id)).filter(Boolean);
+		if (ls.length < 2) throw new Error("levels not found on scene");
+		elev = {
+			bottom: Math.min(...ls.map(l => l.elevation?.bottom ?? 0)),
+			top:    Math.max(...ls.map(l => l.elevation?.top    ?? 0)),
+			topInclusive: false,
+		};
+	}
 
-    const [region] = await scene.createEmbeddedDocuments("Region", [{
-        name,
-        color: "#28c9cc",
-        shapes: [{
-            type: "rectangle",
-            x: x - width / 2,
-            y: y - height / 2,
-            width, height,
-            hole: false,
-        }],
-        elevation: elev,
-        levels,
-        visibility: 1,  // "Only on Region Layer" — visible when editing, hidden in play
-        locked: false,
-        behaviors: [{
-            name: "Change Level",
-            type: "changeLevel",
-            system: { movementActions }
-        }]
-    }]);
+	const [region] = await scene.createEmbeddedDocuments("Region", [{
+		name,
+		color: "#28c9cc",
+		shapes: [{
+			type: "rectangle",
+			x: x - width / 2,
+			y: y - height / 2,
+			width, height,
+			hole: false,
+		}],
+		elevation: elev,
+		levels,
+		visibility: 1,  // "Only on Region Layer" — visible when editing, hidden in play
+		locked: false,
+		behaviors: [{
+			name: "Change Level",
+			type: "changeLevel",
+			system: { movementActions },
+		}],
+	}]);
 
-    return { id: region.id, name: region.name };
+	return { id: region.id, name: region.name };
 }
 
 /**
@@ -80,55 +80,55 @@ export async function placeChangeLevelRegion({
  * @returns {Promise<{id: string, name: string, tileCount: number}>}
  */
 export async function placeDungeonSurface({ sceneId, levelId, name = "Dungeon Surface" }) {
-    const scene = game.scenes.get(sceneId);
-    if (!scene) throw new Error(`Scene ${sceneId} not found`);
-    const level = scene.levels.get(levelId);
-    if (!level) throw new Error(`Level ${levelId} not on scene ${sceneId}`);
+	const scene = game.scenes.get(sceneId);
+	if (!scene) throw new Error(`Scene ${sceneId} not found`);
+	const level = scene.levels.get(levelId);
+	if (!level) throw new Error(`Level ${levelId} not on scene ${sceneId}`);
 
-    // Collect every dungeon-generated tile that belongs to this level.
-    // generateDungeon flags tiles with flags["shadowdark-extras"].dungeonFloor = true.
-    const tiles = [...scene.tiles].filter(t =>
-        t.flags?.[MODULE_ID]?.dungeonFloor === true &&
+	// Collect every dungeon-generated tile that belongs to this level.
+	// generateDungeon flags tiles with flags["shadowdark-extras"].dungeonFloor = true.
+	const tiles = [...scene.tiles].filter(t =>
+		t.flags?.[MODULE_ID]?.dungeonFloor === true &&
         (t.levels?.includes?.(levelId) || t.levels?.has?.(levelId))
-    );
+	);
 
-    if (tiles.length === 0) {
-        throw new Error(`No dungeon-generated tiles found on level ${levelId}`);
-    }
+	if (tiles.length === 0) {
+		throw new Error(`No dungeon-generated tiles found on level ${levelId}`);
+	}
 
-    // Each tile -> a rectangle shape covering its footprint.
-    const shapes = tiles.map(t => ({
-        type: "rectangle",
-        x: t.x, y: t.y,
-        width: t.width, height: t.height,
-        hole: false,
-    }));
+	// Each tile -> a rectangle shape covering its footprint.
+	const shapes = tiles.map(t => ({
+		type: "rectangle",
+		x: t.x, y: t.y,
+		width: t.width, height: t.height,
+		hole: false,
+	}));
 
-    const [region] = await scene.createEmbeddedDocuments("Region", [{
-        name,
-        color: "#5cba6e",  // green-ish, distinct from changeLevel cyan
-        shapes,
-        elevation: {
-            bottom: level.elevation?.bottom ?? 0,
-            top:    level.elevation?.top    ?? 20,
-            topInclusive: false,
-        },
-        levels: [levelId],
-        visibility: 1,
-        locked: false,
-        behaviors: [{
-            name: "Define Surface",
-            type: "defineSurface",
-            system: {}
-        }]
-    }]);
+	const [region] = await scene.createEmbeddedDocuments("Region", [{
+		name,
+		color: "#5cba6e",  // green-ish, distinct from changeLevel cyan
+		shapes,
+		elevation: {
+			bottom: level.elevation?.bottom ?? 0,
+			top:    level.elevation?.top    ?? 20,
+			topInclusive: false,
+		},
+		levels: [levelId],
+		visibility: 1,
+		locked: false,
+		behaviors: [{
+			name: "Define Surface",
+			type: "defineSurface",
+			system: {},
+		}],
+	}]);
 
-    return { id: region.id, name: region.name, tileCount: tiles.length };
+	return { id: region.id, name: region.name, tileCount: tiles.length };
 }
 
 function isAllowedAssetPath(src) {
-    if (typeof src !== "string") return false;
-    return src.startsWith(`modules/${MODULE_ID}/`)
+	if (typeof src !== "string") return false;
+	return src.startsWith(`modules/${MODULE_ID}/`)
         || src.startsWith("worlds/")
         || src.startsWith("fa-nexus-assets/");
 }
@@ -149,46 +149,46 @@ function isAllowedAssetPath(src) {
  * @returns {Promise<Object>} The created tile data
  */
 export async function placeDungeonDecor({
-    sceneId, levelId, src, x, y, width, height, centered = true
+	sceneId, levelId, src, x, y, width, height, centered = true,
 }) {
-    if (!isAllowedAssetPath(src)) {
-        throw new Error(`SDX.placeDungeonDecor: src "${src}" not in allowlist`);
-    }
+	if (!isAllowedAssetPath(src)) {
+		throw new Error(`SDX.placeDungeonDecor: src "${src}" not in allowlist`);
+	}
 
-    const scene = game.scenes.get(sceneId);
-    if (!scene) throw new Error(`Scene ${sceneId} not found`);
-    const level = scene.levels.get(levelId);
-    if (!level) throw new Error(`Level ${levelId} not found`);
+	const scene = game.scenes.get(sceneId);
+	if (!scene) throw new Error(`Scene ${sceneId} not found`);
+	const level = scene.levels.get(levelId);
+	if (!level) throw new Error(`Level ${levelId} not found`);
 
-    // Determine dimensions
-    let w = width;
-    let h = height;
-    if (!w || !h) {
-        const tex = await loadTexture(src);
-        w = w || tex.width;
-        h = h || tex.height;
-    }
+	// Determine dimensions
+	let w = width;
+	let h = height;
+	if (!w || !h) {
+		const tex = await loadTexture(src);
+		w = w || tex.width;
+		h = h || tex.height;
+	}
 
-    // Adjust for centering
-    const finalX = centered ? x - w / 2 : x;
-    const finalY = centered ? y - h / 2 : y;
+	// Adjust for centering
+	const finalX = centered ? x - w / 2 : x;
+	const finalY = centered ? y - h / 2 : y;
 
-    // Apply elevation logic (matches generateDungeon's createWithElevation)
-    // Tiles sit at elevation 0 of their level; v14 native level handling is via levelId.
-    const [tile] = await scene.createEmbeddedDocuments("Tile", [{
-        texture: { src, anchorX: 0, anchorY: 0 },
-        x: finalX,
-        y: finalY,
-        width: w,
-        height: h,
-        elevation: 0,
-        levels: [levelId],
-        sort: 2,
-        flags: {
-            [MODULE_ID]: { dungeonClutter: true },
-            levels: { rangeTop: level.elevation?.top ?? 20 }
-        }
-    }]);
+	// Apply elevation logic (matches generateDungeon's createWithElevation)
+	// Tiles sit at elevation 0 of their level; v14 native level handling is via levelId.
+	const [tile] = await scene.createEmbeddedDocuments("Tile", [{
+		texture: { src, anchorX: 0, anchorY: 0 },
+		x: finalX,
+		y: finalY,
+		width: w,
+		height: h,
+		elevation: 0,
+		levels: [levelId],
+		sort: 2,
+		flags: {
+			[MODULE_ID]: { dungeonClutter: true },
+			levels: { rangeTop: level.elevation?.top ?? 20 },
+		},
+	}]);
 
-    return { id: tile.id, x: tile.x, y: tile.y, width: tile.width, height: tile.height };
+	return { id: tile.id, x: tile.x, y: tile.y, width: tile.width, height: tile.height };
 }

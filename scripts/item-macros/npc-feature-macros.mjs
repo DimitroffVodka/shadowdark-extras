@@ -50,7 +50,7 @@ async function executeNPCFeatureItemMacro(item, actor, context = {}) {
 	const macroContext = {
 		...context,
 		actor,
-		args: context.args ?? []
+		args: context.args ?? [],
 	};
 
 	return executeItemMacro(item, macroContext);
@@ -203,16 +203,16 @@ async function processNPCFeatureDamage(item, actor, token, targetToken, targetAc
 			"shadowdark": {
 				itemId: item.uuid,
 				isHealing: isHealing,
-				rollType: "damage"
+				rollType: "damage",
 			},
 			[MODULE_ID]: {
 				itemConfig: {
 					name: item.name,
 					type: item.type,
-					spellDamage: item.flags?.[MODULE_ID]?.spellDamage
-				}
-			}
-		}
+					spellDamage: item.flags?.[MODULE_ID]?.spellDamage,
+				},
+			},
+		},
 	});
 
 	// Note: Damage/healing is NOT auto-applied here
@@ -342,7 +342,7 @@ export function registerNPCFeatureItemMacros() {
 
 			const originalRollItem = itemDocClass.prototype.rollItem;
 
-			itemDocClass.prototype.rollItem = async function (...args) {
+			itemDocClass.prototype.rollItem = async function(...args) {
 				// Call the original (possibly already-wrapped) rollItem first, when
 				// the current Shadowdark system version provides one.
 				const result = typeof originalRollItem === "function"
@@ -388,7 +388,7 @@ export function registerNPCFeatureItemMacros() {
 			npcSheetClass.prototype.__sdxNpcSheetFeatureActivityPatched = true;
 
 			const originalDisplayFeature = npcSheetClass.prototype._displayFeature;
-			npcSheetClass.prototype._displayFeature = async function (event) {
+			npcSheetClass.prototype._displayFeature = async function(event) {
 				event?.preventDefault?.();
 				const itemId = event?.currentTarget?.dataset?.itemId;
 				const item = itemId ? this.actor?.items?.get(itemId) : null;

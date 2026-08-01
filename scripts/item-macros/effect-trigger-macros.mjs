@@ -36,7 +36,7 @@ async function executeMacroFromEffect(actor, macroValue, currentTrigger, options
 	if (!macroValue || macroValue === "REPLACEME") return;
 
 	// Parse the value format: "macroName|trigger"
-	let macroName, trigger;
+	let macroName; let trigger;
 	if (macroValue.includes("|")) {
 		[macroName, trigger] = macroValue.split("|").map(s => s.trim());
 	} else {

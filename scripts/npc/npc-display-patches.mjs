@@ -37,7 +37,7 @@ function patchNpcDisplayBuilders() {
 
 	const originalBuildNpcAttackDisplays = NpcModel.prototype.buildNpcAttackDisplays;
 
-	NpcModel.prototype.buildNpcAttackDisplays = async function (itemId) {
+	NpcModel.prototype.buildNpcAttackDisplays = async function(itemId) {
 		const actor = this.parent;
 		const item = actor?.items.get(itemId);
 
@@ -131,7 +131,7 @@ function patchNpcDisplayBuilders() {
 	if (NpcModel.prototype.buildNpcSpecialDisplays) {
 		const originalBuildNpcSpecialDisplays = NpcModel.prototype.buildNpcSpecialDisplays;
 
-		NpcModel.prototype.buildNpcSpecialDisplays = async function (itemId) {
+		NpcModel.prototype.buildNpcSpecialDisplays = async function(itemId) {
 			const actor = this.parent;
 			const item = actor?.items.get(itemId);
 

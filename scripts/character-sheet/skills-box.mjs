@@ -19,11 +19,11 @@ import { MODULE_ID } from "../shared/module-id.mjs";
  */
 function escapeHtmlSkills(str) {
 	return String(str)
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&#039;');
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#039;");
 }
 
 /**
@@ -34,18 +34,18 @@ export function injectSkillsBox(html, actor) {
 
 	const $abilitiesTab = html.find('.tab[data-tab="tab-abilities"]');
 	if (!$abilitiesTab.length) return;
-	if ($abilitiesTab.find('.sdx-skills-box').length) return;
+	if ($abilitiesTab.find(".sdx-skills-box").length) return;
 
-	const $gridRight = $abilitiesTab.find('.grid-1-columns');
+	const $gridRight = $abilitiesTab.find(".grid-1-columns");
 	if (!$gridRight.length) return;
 
 	const skills = actor.getFlag(MODULE_ID, "skills") || [];
 	const isOwner = actor.isOwner;
 
 	const skillRowsHtml = skills.map(skill => {
-		const abilityLabel = skill.ability !== 'none'
+		const abilityLabel = skill.ability !== "none"
 			? skill.ability.charAt(0).toUpperCase() + skill.ability.slice(1)
-			: '';
+			: "";
 		return `
 			<div class="sdx-skill-row" data-skill-id="${skill.id}">
 				<span class="sdx-skill-name">${escapeHtmlSkills(skill.name)}</span>
@@ -53,16 +53,16 @@ export function injectSkillsBox(html, actor) {
 				<span class="sdx-skill-actions">
 					<a class="sdx-skill-roll" data-skill-id="${skill.id}" data-skill-name="${escapeHtmlSkills(skill.name)}" data-skill-ability="${skill.ability}"><i class="fas fa-dice-d20"></i></a>
 					${isOwner ? `<a class="sdx-skill-edit" data-skill-id="${skill.id}"><i class="fas fa-pen"></i></a>
-					<a class="sdx-skill-delete" data-skill-id="${skill.id}"><i class="fas fa-times"></i></a>` : ''}
+					<a class="sdx-skill-delete" data-skill-id="${skill.id}"><i class="fas fa-times"></i></a>` : ""}
 				</span>
 			</div>`;
-	}).join('');
+	}).join("");
 
 	const skillsBoxHtml = `
 		<div class="SD-box sdx-skills-box">
 			<div class="header">
 				<label>Skills</label>
-				<span>${isOwner ? '<a class="sdx-skills-add-btn"><i class="fas fa-plus"></i></a>' : ''}</span>
+				<span>${isOwner ? '<a class="sdx-skills-add-btn"><i class="fas fa-plus"></i></a>' : ""}</span>
 			</div>
 			<div class="content">
 				<div class="sdx-skills-list">
@@ -74,27 +74,27 @@ export function injectSkillsBox(html, actor) {
 	$gridRight.append(skillsBoxHtml);
 
 	// Roll (any viewer can roll)
-	$gridRight.find('.sdx-skill-roll').on('click', async function () {
-		await rollSkill(actor, $(this).data('skill-name'), $(this).data('skill-ability'));
+	$gridRight.find(".sdx-skill-roll").on("click", async function() {
+		await rollSkill(actor, $(this).data("skill-name"), $(this).data("skill-ability"));
 	});
 
 	if (!isOwner) return;
 
 	// Add
-	$gridRight.find('.sdx-skills-add-btn').on('click', () => {
+	$gridRight.find(".sdx-skills-add-btn").on("click", () => {
 		openSkillDialog(actor, null);
 	});
 
 	// Edit
-	$gridRight.find('.sdx-skill-edit').on('click', function () {
-		const skillId = $(this).data('skill-id');
+	$gridRight.find(".sdx-skill-edit").on("click", function() {
+		const skillId = $(this).data("skill-id");
 		const skill = (actor.getFlag(MODULE_ID, "skills") || []).find(s => s.id === skillId);
 		if (skill) openSkillDialog(actor, skill);
 	});
 
 	// Delete
-	$gridRight.find('.sdx-skill-delete').on('click', async function () {
-		const skillId = $(this).data('skill-id');
+	$gridRight.find(".sdx-skill-delete").on("click", async function() {
+		const skillId = $(this).data("skill-id");
 		const skills = (actor.getFlag(MODULE_ID, "skills") || []).filter(s => s.id !== skillId);
 		await actor.setFlag(MODULE_ID, "skills", skills);
 	});
@@ -104,23 +104,23 @@ export function injectSkillsBox(html, actor) {
  * Open DialogV2 to add or edit a skill
  */
 function openSkillDialog(actor, existingSkill) {
-	const abilities = ['none', 'str', 'dex', 'con', 'int', 'wis', 'cha'];
-	const abilityLabels = { none: 'None', str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
+	const abilities = ["none", "str", "dex", "con", "int", "wis", "cha"];
+	const abilityLabels = { none: "None", str: "STR", dex: "DEX", con: "CON", int: "INT", wis: "WIS", cha: "CHA" };
 
 	const optionsHtml = abilities.map(ab =>
-		`<option value="${ab}" ${existingSkill?.ability === ab ? 'selected' : ''}>${abilityLabels[ab]}</option>`
-	).join('');
+		`<option value="${ab}" ${existingSkill?.ability === ab ? "selected" : ""}>${abilityLabels[ab]}</option>`
+	).join("");
 
 	const dialog = new foundry.applications.api.DialogV2({
 		window: {
-			title: existingSkill ? 'Edit Skill' : 'Add Skill',
-			icon: 'fas fa-star'
+			title: existingSkill ? "Edit Skill" : "Add Skill",
+			icon: "fas fa-star",
 		},
 		content: `
 			<div class="form-group">
 				<label>Name</label>
 				<div class="form-fields">
-					<input type="text" name="name" value="${escapeHtmlSkills(existingSkill?.name || '')}" autofocus />
+					<input type="text" name="name" value="${escapeHtmlSkills(existingSkill?.name || "")}" autofocus />
 				</div>
 			</div>
 			<div class="form-group">
@@ -133,7 +133,7 @@ function openSkillDialog(actor, existingSkill) {
 			{
 				action: "cancel",
 				label: "Cancel",
-				icon: "fas fa-times"
+				icon: "fas fa-times",
 			},
 			{
 				action: "save",
@@ -155,9 +155,9 @@ function openSkillDialog(actor, existingSkill) {
 					}
 					await actor.setFlag(MODULE_ID, "skills", skills);
 					return true;
-				}
-			}
-		]
+				},
+			},
+		],
 	});
 
 	dialog.render({ force: true });
@@ -167,11 +167,11 @@ function openSkillDialog(actor, existingSkill) {
  * Roll 1d20 + ability mod for a skill, posting to chat
  */
 async function rollSkill(actor, skillName, ability) {
-	const abilityMod = ability !== 'none' ? (actor.system.abilities[ability]?.mod ?? 0) : 0;
+	const abilityMod = ability !== "none" ? (actor.system.abilities[ability]?.mod ?? 0) : 0;
 
-	const abilityLabel = ability !== 'none'
+	const abilityLabel = ability !== "none"
 		? ability.charAt(0).toUpperCase() + ability.slice(1)
-		: 'None';
+		: "None";
 
 	const dialogContent = `
 		<form>
@@ -208,24 +208,24 @@ async function rollSkill(actor, skillName, ability) {
 			{
 				action: "advantage",
 				label: "Advantage",
-				callback: (event, button, dialog) => processRoll("advantage", dialog)
+				callback: (event, button, dialog) => processRoll("advantage", dialog),
 			},
 			{
 				action: "normal",
 				label: "Normal",
 				default: true,
-				callback: (event, button, dialog) => processRoll("normal", dialog)
+				callback: (event, button, dialog) => processRoll("normal", dialog),
 			},
 			{
 				action: "disadvantage",
 				label: "Disadvantage",
-				callback: (event, button, dialog) => processRoll("disadvantage", dialog)
-			}
+				callback: (event, button, dialog) => processRoll("disadvantage", dialog),
+			},
 		],
 		submit: (result) => {
 			// fallback if enter pressed (defaults to normal via default button, but just in case)
 			return "normal";
-		}
+		},
 	});
 
 	dialog.render(true);
@@ -252,11 +252,11 @@ async function rollSkill(actor, skillName, ability) {
 		// Flavor text
 		let flavor = `<b>${escapeHtmlSkills(skillName)}</b>`;
 		const flavorParts = [];
-		if (ability !== 'none') flavorParts.push(`${abilityLabel} mod: ${abilityMod >= 0 ? '+' + abilityMod : abilityMod}`);
-		if (bonus !== 0) flavorParts.push(`Bonus: ${bonus >= 0 ? '+' + bonus : bonus}`);
+		if (ability !== "none") flavorParts.push(`${abilityLabel} mod: ${abilityMod >= 0 ? "+" + abilityMod : abilityMod}`);
+		if (bonus !== 0) flavorParts.push(`Bonus: ${bonus >= 0 ? "+" + bonus : bonus}`);
 
 		if (flavorParts.length > 0) {
-			flavor += ` (${flavorParts.join(', ')})`;
+			flavor += ` (${flavorParts.join(", ")})`;
 		}
 
 		if (mode === "advantage") flavor += " (Advantage)";
@@ -264,9 +264,9 @@ async function rollSkill(actor, skillName, ability) {
 
 		await roll.toMessage({
 			speaker: ChatMessage.getSpeaker({ actor }),
-			flavor: flavor
+			flavor: flavor,
 		}, {
-			rollMode: rollMode
+			rollMode: rollMode,
 		});
 	}
 }

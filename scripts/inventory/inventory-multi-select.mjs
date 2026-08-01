@@ -57,9 +57,9 @@ export function enhanceInventoryWithDeleteAndMultiSelect(app, html) {
 	}
 
 	// Add CSS for selection and delete button
-	if (!document.getElementById('sdx-inventory-enhance-styles')) {
-		const style = document.createElement('style');
-		style.id = 'sdx-inventory-enhance-styles';
+	if (!document.getElementById("sdx-inventory-enhance-styles")) {
+		const style = document.createElement("style");
+		style.id = "sdx-inventory-enhance-styles";
 		style.textContent = `
 			.sdx-item-selected {
 				background-color: rgba(100, 149, 237, 0.3) !important;
@@ -96,18 +96,18 @@ export function enhanceInventoryWithDeleteAndMultiSelect(app, html) {
 	}
 
 	// Find all item rows in the inventory
-	const itemRows = html.find('.item[data-item-id]');
+	const itemRows = html.find(".item[data-item-id]");
 
 	itemRows.each((_, el) => {
 		const $row = $(el);
-		const itemId = $row.data('itemId');
+		const itemId = $row.data("itemId");
 		if (!itemId) return;
 
 		const item = actor.items.get(itemId);
 		const isContainer = item?.type === "Basic" && Boolean(item.getFlag?.(MODULE_ID, "isContainer"));
 
 		// Add edit button for containers if not already present
-		if (isContainer && !$row.find('.sdx-item-buttons').length) {
+		if (isContainer && !$row.find(".sdx-item-buttons").length) {
 			const $btnContainer = $('<span class="sdx-item-buttons"></span>');
 			const editBtn = $(`<a class="sdx-item-btn sdx-edit-btn" data-item-id="${itemId}" title="${game.i18n.localize("SHADOWDARK_EXTRAS.inventory.edit_container")}"><i class="fas fa-box-open"></i></a>`);
 			$btnContainer.append(editBtn);
@@ -117,17 +117,17 @@ export function enhanceInventoryWithDeleteAndMultiSelect(app, html) {
 		// Update selection visual state
 		const selected = getSelectedItems(app);
 		if (selected.has(itemId)) {
-			$row.addClass('sdx-item-selected');
+			$row.addClass("sdx-item-selected");
 		} else {
-			$row.removeClass('sdx-item-selected');
+			$row.removeClass("sdx-item-selected");
 		}
 	});
 
 	// Handle click for multi-select (Shift+Click to add to selection, Click to single select)
-	html.find('.item[data-item-id]').off('click.sdxSelect').on('click.sdxSelect', (ev) => {
+	html.find(".item[data-item-id]").off("click.sdxSelect").on("click.sdxSelect", (ev) => {
 		// Don't handle if clicking on a link, button, input, or the item name (which opens the sheet)
 		const target = ev.target;
-		if ($(target).closest('a:not(.sdx-edit-btn), button, input, .item-name, .item-image').length) {
+		if ($(target).closest("a:not(.sdx-edit-btn), button, input, .item-name, .item-image").length) {
 			return;
 		}
 
@@ -135,7 +135,7 @@ export function enhanceInventoryWithDeleteAndMultiSelect(app, html) {
 		ev.stopPropagation();
 
 		const $row = $(ev.currentTarget);
-		const itemId = $row.data('itemId');
+		const itemId = $row.data("itemId");
 		if (!itemId) return;
 
 		const selected = getSelectedItems(app);
@@ -144,37 +144,37 @@ export function enhanceInventoryWithDeleteAndMultiSelect(app, html) {
 			// Toggle selection with Shift
 			if (selected.has(itemId)) {
 				selected.delete(itemId);
-				$row.removeClass('sdx-item-selected');
+				$row.removeClass("sdx-item-selected");
 			} else {
 				selected.add(itemId);
-				$row.addClass('sdx-item-selected');
+				$row.addClass("sdx-item-selected");
 			}
 		} else if (ev.ctrlKey || ev.metaKey) {
 			// Toggle selection with Ctrl/Cmd
 			if (selected.has(itemId)) {
 				selected.delete(itemId);
-				$row.removeClass('sdx-item-selected');
+				$row.removeClass("sdx-item-selected");
 			} else {
 				selected.add(itemId);
-				$row.addClass('sdx-item-selected');
+				$row.addClass("sdx-item-selected");
 			}
 		} else {
 			// Single click without modifier: clear selection and select just this one
-			html.find('.item[data-item-id]').removeClass('sdx-item-selected');
+			html.find(".item[data-item-id]").removeClass("sdx-item-selected");
 			selected.clear();
 			selected.add(itemId);
-			$row.addClass('sdx-item-selected');
+			$row.addClass("sdx-item-selected");
 		}
 
 		setSelectedItems(app, selected);
 	});
 
 	// Handle edit button click (for containers)
-	html.find('.sdx-edit-btn').off('click.sdxEdit').on('click.sdxEdit', async (ev) => {
+	html.find(".sdx-edit-btn").off("click.sdxEdit").on("click.sdxEdit", async (ev) => {
 		ev.preventDefault();
 		ev.stopPropagation();
 
-		const itemId = $(ev.currentTarget).data('itemId');
+		const itemId = $(ev.currentTarget).data("itemId");
 		const item = actor.items.get(itemId);
 		if (!item) return;
 
@@ -213,13 +213,13 @@ function patchContextMenuForMultiDelete(app, html) {
 	// Shadowdark uses foundry.applications.ux.ContextMenu.implementation
 	// We'll add our own context menu handler for selected items
 
-	html.find('.item[data-item-id]').off('contextmenu.sdxMulti').on('contextmenu.sdxMulti', async (ev) => {
+	html.find(".item[data-item-id]").off("contextmenu.sdxMulti").on("contextmenu.sdxMulti", async (ev) => {
 		const selected = getSelectedItems(app);
 
 		// If multiple items selected and right-clicking on a selected item, show multi-delete menu
 		if (selected.size > 1) {
 			const $row = $(ev.currentTarget);
-			const itemId = $row.data('itemId');
+			const itemId = $row.data("itemId");
 
 			if (selected.has(itemId)) {
 				ev.preventDefault();
@@ -234,7 +234,7 @@ function patchContextMenuForMultiDelete(app, html) {
 							const confirmed = await foundry.applications.api.DialogV2.confirm({
 								window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.inventory.delete_confirm_title") },
 								content: `<p>${game.i18n.format("SHADOWDARK_EXTRAS.inventory.delete_confirm_multiple", { count: selected.size })}</p>`,
-								modal: true
+								modal: true,
 							});
 
 							if (confirmed) {
@@ -248,24 +248,24 @@ function patchContextMenuForMultiDelete(app, html) {
 								clearSelectedItems(app);
 								app.render();
 							}
-						}
+						},
 					},
 					{
 						name: game.i18n.localize("SHADOWDARK_EXTRAS.inventory.clear_selection"),
 						icon: '<i class="fas fa-times"></i>',
 						callback: () => {
 							clearSelectedItems(app);
-							html.find('.item[data-item-id]').removeClass('sdx-item-selected');
-						}
-					}
+							html.find(".item[data-item-id]").removeClass("sdx-item-selected");
+						},
+					},
 				];
 
 				// Create and show context menu
 				const menu = new foundry.applications.ux.ContextMenu.implementation(
 					html.get(0),
-					'.item[data-item-id]',
+					".item[data-item-id]",
 					menuItems,
-					{ jQuery: false, eventName: 'sdx-contextmenu' }
+					{ jQuery: false, eventName: "sdx-contextmenu" }
 				);
 
 				// Position and render the menu manually

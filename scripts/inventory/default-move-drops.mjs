@@ -33,7 +33,7 @@ export function patchCtrlMoveOnActorSheetDrops() {
 	proto._sdxCtrlMovePatched = true;
 
 	const original = proto._onDropItem;
-	proto._onDropItem = async function (event, data) {
+	proto._onDropItem = async function(event, data) {
 		const targetActor = this.actor;
 		const ctrlCopy = Boolean(event?.ctrlKey); // Ctrl = copy, normal = move
 		const sourceUuid = data?.uuid;

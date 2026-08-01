@@ -33,7 +33,7 @@ function normalizeConfiguredEffectUuids(rawEffects) {
 			uuid: effect?.uuid,
 			name: effect?.name,
 			img: effect?.img,
-			duration: effect?.duration || {}
+			duration: effect?.duration || {},
 		})
 		.filter(effect => effect.uuid);
 }
@@ -60,16 +60,16 @@ function evaluateFormulaExpressions(formula, rollData) {
 
 	// First, replace any @variable references with their values
 	evaluated = evaluated.replace(/@(\w+(?:\.\w+)*)/g, (match, path) => {
-		const parts = path.split('.');
+		const parts = path.split(".");
 		let value = rollData;
 		for (const part of parts) {
-			if (value && typeof value === 'object' && part in value) {
+			if (value && typeof value === "object" && part in value) {
 				value = value[part];
 			} else {
 				return match; // Keep original if not found
 			}
 		}
-		return typeof value === 'number' ? value : match;
+		return typeof value === "number" ? value : match;
 	});
 
 	// Now evaluate any parenthetical expressions containing math before 'd'
@@ -98,7 +98,7 @@ function evaluateFormulaExpressions(formula, rollData) {
 	});
 
 	// Clean up whitespace around 'd'
-	evaluated = evaluated.replace(/\s+d\s+/gi, 'd');
+	evaluated = evaluated.replace(/\s+d\s+/gi, "d");
 
 	return evaluated;
 }
@@ -144,7 +144,7 @@ function showScrollingText(token, amount, isHealing) {
 		fill: isHealing ? "#00ff00" : "#ff0000",
 		stroke: "#000000",
 		strokeThickness: 4,
-		jitter: 0.25
+		jitter: 0.25,
 	};
 
 	// Create the scrolling text
@@ -159,29 +159,29 @@ function showScrollingText(token, amount, isHealing) {
  * @returns {string|null} - The formula for the matching tier, or null if no match
  */
 function parseTieredFormula(tieredFormula, level) {
-	if (!tieredFormula || tieredFormula.trim() === '') return null;
+	if (!tieredFormula || tieredFormula.trim() === "") return null;
 
 	// Split by comma to get each tier
-	const tiers = tieredFormula.split(',').map(t => t.trim());
+	const tiers = tieredFormula.split(",").map(t => t.trim());
 
 	for (const tier of tiers) {
 		// Parse each tier - format: "X-Y:formula" or "X+:formula"
-		const colonIndex = tier.indexOf(':');
+		const colonIndex = tier.indexOf(":");
 		if (colonIndex === -1) continue;
 
 		const rangeStr = tier.substring(0, colonIndex).trim();
 		const formula = tier.substring(colonIndex + 1).trim();
 
 		// Check for "X+" format (level X and above)
-		if (rangeStr.endsWith('+')) {
+		if (rangeStr.endsWith("+")) {
 			const minLevel = parseInt(rangeStr.slice(0, -1));
 			if (!isNaN(minLevel) && level >= minLevel) {
 				return formula;
 			}
 		}
 		// Check for "X-Y" format (level X to Y)
-		else if (rangeStr.includes('-')) {
-			const [minStr, maxStr] = rangeStr.split('-');
+		else if (rangeStr.includes("-")) {
+			const [minStr, maxStr] = rangeStr.split("-");
 			const minLevel = parseInt(minStr);
 			const maxLevel = parseInt(maxStr);
 			if (!isNaN(minLevel) && !isNaN(maxLevel) && level >= minLevel && level <= maxLevel) {
@@ -208,7 +208,7 @@ function parseTieredFormula(tieredFormula, level) {
  * @returns {boolean} - Whether the requirement is met
  */
 function evaluateRequirement(formula, rollData) {
-	if (!formula || formula.trim() === '') return true;
+	if (!formula || formula.trim() === "") return true;
 
 	try {
 		// Replace @variable references with their values from rollData
@@ -219,23 +219,23 @@ function evaluateRequirement(formula, rollData) {
 
 		evalFormula = evalFormula.replace(variableRegex, (match, path) => {
 			// Navigate the path in rollData (e.g., "target.level" -> rollData.target.level)
-			const value = path.split('.').reduce((obj, key) => obj?.[key], rollData);
+			const value = path.split(".").reduce((obj, key) => obj?.[key], rollData);
 			if (value === undefined) return 0;
 			// Quote string values to prevent ReferenceErrors
-			if (typeof value === 'string') return JSON.stringify(value);
+			if (typeof value === "string") return JSON.stringify(value);
 			return value;
 		});
 
 		// Convert single = to == for comparison (users often write "= value" instead of "== value")
 		// Must be careful not to affect ==, !=, <=, >=
-		evalFormula = evalFormula.replace(/([^=!<>])=([^=])/g, '$1==$2');
+		evalFormula = evalFormula.replace(/([^=!<>])=([^=])/g, "$1==$2");
 
 		// Auto-quote bareword string literals on the right side of comparisons
 		// This handles cases like "@target.subtype == undead" -> "..." == "undead"
 		// Match: comparison operator followed by a bareword (not a number, not already quoted)
 		evalFormula = evalFormula.replace(/(==|!=|<=?|>=?)\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*$/g, (match, op, word) => {
 			// Don't quote if it's a boolean or looks like a number
-			if (word === 'true' || word === 'false' || !isNaN(Number(word))) {
+			if (word === "true" || word === "false" || !isNaN(Number(word))) {
 				return match;
 			}
 			return `${op} "${word}"`;
@@ -243,14 +243,14 @@ function evaluateRequirement(formula, rollData) {
 
 		// Also handle barewords after operators in the middle of expressions
 		evalFormula = evalFormula.replace(/(==|!=|<=?|>=?)\s*([a-zA-Z_][a-zA-Z0-9_]*)(\s+(?:&&|\|\|))/g, (match, op, word, rest) => {
-			if (word === 'true' || word === 'false' || !isNaN(Number(word))) {
+			if (word === "true" || word === "false" || !isNaN(Number(word))) {
 				return match;
 			}
 			return `${op} "${word}"${rest}`;
 		});
 
 		// Requirement expressions support strings and boolean logic, which Roll.safeEval does not.
-		const func = new Function('return (' + evalFormula + ')');
+		const func = new Function("return (" + evalFormula + ")");
 		const result = func();
 
 		// Return true if result is truthy or > 0
@@ -273,7 +273,7 @@ function buildTargetRollData(targetActor) {
 	const target = {};
 
 	// Flatten target level
-	if (targetActorData.level && typeof targetActorData.level === 'object' && targetActorData.level.value !== undefined) {
+	if (targetActorData.level && typeof targetActorData.level === "object" && targetActorData.level.value !== undefined) {
 		target.level = targetActorData.level.value;
 	} else {
 		target.level = targetActorData.level || 0;
@@ -281,12 +281,12 @@ function buildTargetRollData(targetActor) {
 
 	// Add target ability modifiers
 	if (targetActorData.abilities) {
-		['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {
+		["str", "dex", "con", "int", "wis", "cha"].forEach(ability => {
 			if (targetActorData.abilities[ability]?.mod !== undefined) {
 				target[ability] = targetActorData.abilities[ability].mod;
 			}
 			if (targetActorData.abilities[ability]?.value !== undefined) {
-				target[ability + 'Base'] = targetActorData.abilities[ability].value;
+				target[ability + "Base"] = targetActorData.abilities[ability].value;
 			}
 		});
 	}
@@ -341,14 +341,14 @@ export function setupCombatSocket() {
 			// Check for Glassbones effect (double damage)
 			const hasGlassbones = token.actor.getFlag("shadowdark-extras", "glassbones");
 
-			console.log(`shadowdark-extras | applyTokenDamage | Receiver | Data:`, data);
+			console.log("shadowdark-extras | applyTokenDamage | Receiver | Data:", data);
 
 			let finalDamage = 0;
 			// Allow explicit isHealing flag, otherwise infer from negative damage
 			const isHealing = data.isHealing || data.damage < 0;
 			const isDamage = !isHealing && data.damage > 0;
 
-			console.log(`shadowdark-extras | applyTokenDamage | Receiver | Flags:`, { isHealing, isDamage, initDamage: data.damage });
+			console.log("shadowdark-extras | applyTokenDamage | Receiver | Flags:", { isHealing, isDamage, initDamage: data.damage });
 
 			// If damageComponents is provided, process each component separately
 			// Check if we should use the new component-based damage or legacy damage
@@ -562,7 +562,7 @@ export function setupCombatSocket() {
 
 
 			await token.actor.update({
-				"system.attributes.hp.value": newHp
+				"system.attributes.hp.value": newHp,
 			});
 
 			// Scrolling combat text is now handled by the updateActor/updateToken hooks
@@ -639,7 +639,7 @@ export function setupCombatSocket() {
 
 					// Also clean up the focus spell tracking for the removed effects
 					try {
-						const { unlinkEffectFromFocusSpell } = await import('../effects/FocusSpellTrackerSD.mjs');
+						const { unlinkEffectFromFocusSpell } = await import("../effects/FocusSpellTrackerSD.mjs");
 						for (const effectId of effectIds) {
 							await unlinkEffectFromFocusSpell(data.spellInfo.casterActorId, data.spellInfo.spellId, effectId);
 						}
@@ -684,7 +684,7 @@ export function setupCombatSocket() {
 				const createdEffect = createdItems[0];
 				try {
 					// Import spell tracking functions
-					const { linkEffectToFocusSpell, startFocusSpellIfNeeded, linkEffectToDurationSpell, getActiveDurationSpells } = await import('../effects/FocusSpellTrackerSD.mjs');
+					const { linkEffectToFocusSpell, startFocusSpellIfNeeded, linkEffectToDurationSpell, getActiveDurationSpells } = await import("../effects/FocusSpellTrackerSD.mjs");
 
 					// Check if this is a duration spell (non-focus)
 					const caster = game.actors.get(data.spellInfo.casterActorId);
@@ -914,7 +914,7 @@ export function setupCombatSocket() {
 				auraActor: auraActor?.name,
 				auraEffect: auraEffect?.name,
 				auraEffectId,
-				auraEffectActorId
+				auraEffectActorId,
 			});
 			return;
 		}
@@ -970,7 +970,7 @@ export function setupCombatSocket() {
 			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.trade.request_title") },
 			content: `<p>${game.i18n.format("SHADOWDARK_EXTRAS.trade.request_prompt", { player: initiatorActor.name })}</p>`,
 			modal: true,
-			rejectClose: false
+			rejectClose: false,
 		});
 
 		return { accepted };
@@ -999,7 +999,7 @@ export function setupCombatSocket() {
 			tradeId: tradeId,
 			localActor: localActor,
 			remoteActor: remoteActor,
-			isInitiator: isInitiator
+			isInitiator: isInitiator,
 		});
 		tradeWindow.render(true);
 	});
@@ -1247,32 +1247,32 @@ export class CombatSettingsApp extends HandlebarsApplicationMixin(ApplicationV2)
 		tag: "form",
 		window: {
 			title: "Automatic Combat Settings",
-			resizable: true
+			resizable: true,
 		},
 		position: {
 			width: 600,
-			height: "auto"
+			height: "auto",
 		},
 		form: {
 			handler: CombatSettingsApp.formHandler,
 			submitOnChange: false,
-			closeOnSubmit: true
+			closeOnSubmit: true,
 		},
 		actions: {
-			reset: CombatSettingsApp._onReset
-		}
+			reset: CombatSettingsApp._onReset,
+		},
 	};
 
 	static PARTS = {
 		form: {
 			template: "modules/shadowdark-extras/templates/combat-settings.hbs",
-			scrollable: [""]
-		}
+			scrollable: [""],
+		},
 	};
 
 	async _prepareContext(options) {
 		return {
-			settings: game.settings.get(MODULE_ID, "combatSettings")
+			settings: game.settings.get(MODULE_ID, "combatSettings"),
 		};
 	}
 
@@ -1281,14 +1281,14 @@ export class CombatSettingsApp extends HandlebarsApplicationMixin(ApplicationV2)
 		// instead of an inline <script> in the HBS so it re-binds on every render.
 		const root = this.element;
 		if (!root) return;
-		const parent = root.querySelector('#showDamageCard');
+		const parent = root.querySelector("#showDamageCard");
 		const sub = root.querySelector('[data-parent="showDamageCard"]');
 		if (!parent || !sub) return;
 		const sync = () => {
-			sub.style.opacity = parent.checked ? '1' : '0.5';
-			sub.style.pointerEvents = parent.checked ? 'auto' : 'none';
+			sub.style.opacity = parent.checked ? "1" : "0.5";
+			sub.style.pointerEvents = parent.checked ? "auto" : "none";
 		};
-		parent.addEventListener('change', sync);
+		parent.addEventListener("change", sync);
 		sync();
 	}
 
@@ -1298,7 +1298,7 @@ export class CombatSettingsApp extends HandlebarsApplicationMixin(ApplicationV2)
 			window: { title: "Reset Combat Settings" },
 			content: "<p>Reset all combat settings to their defaults?</p>",
 			modal: true,
-			yes: { default: false }
+			yes: { default: false },
 		});
 		if (!confirmed) return;
 		await game.settings.set(MODULE_ID, "combatSettings", foundry.utils.deepClone(DEFAULT_COMBAT_SETTINGS));
@@ -1339,10 +1339,10 @@ export const DEFAULT_COMBAT_SETTINGS = {
 			{ value: 0.25, label: "¼", enabled: true },
 			{ value: 0.5, label: "½", enabled: true },
 			{ value: 1, label: "1", enabled: true },
-			{ value: 2, label: "2", enabled: true }
+			{ value: 2, label: "2", enabled: true },
 		],
-		gmOnlyApplyDamage: false
-	}
+		gmOnlyApplyDamage: false,
+	},
 };
 
 /**
@@ -1355,7 +1355,7 @@ export function registerCombatSettings() {
 		scope: "world",
 		config: false,
 		type: Object,
-		default: foundry.utils.deepClone(DEFAULT_COMBAT_SETTINGS)
+		default: foundry.utils.deepClone(DEFAULT_COMBAT_SETTINGS),
 	});
 
 	// Register a menu button to open the Combat Settings app
@@ -1365,7 +1365,7 @@ export function registerCombatSettings() {
 		hint: "Configure enhanced combat features like auto apply damage, damage cards and target management",
 		icon: "fas fa-crossed-swords",
 		type: CombatSettingsApp,
-		restricted: true
+		restricted: true,
 	});
 
 	// Setup hook for summoned token expiry
@@ -1400,7 +1400,7 @@ export function setupScrollingCombatText() {
 				maxHp: actor.system?.attributes?.hp?.max ?? currentHp,
 				isToken: actor.isToken,
 				tokenId: actor.token?.id,
-				actorId: actor.id
+				actorId: actor.id,
 			});
 		}
 	});
@@ -1452,7 +1452,7 @@ export function setupScrollingCombatText() {
 				socketlibSocket.executeForEveryone("showScrollingText", {
 					tokenId: token.id,
 					amount: Math.abs(hpChange),
-					isHealing: isHealing
+					isHealing: isHealing,
 				});
 			} else {
 				// Fallback to local-only
@@ -1528,13 +1528,13 @@ async function saveSummonedTokensExpiry(sceneId, expiryList) {
 		_summonedTokensExpiry.set(sceneId, expiryList);
 		const scene = game.scenes.get(sceneId);
 		if (scene && game.user.isGM) {
-			await scene.setFlag(MODULE_ID, 'summonedTokensExpiry', expiryList);
+			await scene.setFlag(MODULE_ID, "summonedTokensExpiry", expiryList);
 		}
 	} else {
 		_summonedTokensExpiry.delete(sceneId);
 		const scene = game.scenes.get(sceneId);
 		if (scene && game.user.isGM) {
-			await scene.unsetFlag(MODULE_ID, 'summonedTokensExpiry');
+			await scene.unsetFlag(MODULE_ID, "summonedTokensExpiry");
 		}
 	}
 }
@@ -1589,7 +1589,7 @@ export function setupSummonExpiryHook() {
 				expiringMessages.push(`<b>${entry.spellName}</b> has expired!`);
 			} else {
 				remainingExpiry.push(entry);
-				remainingMessages.push(`<b>${entry.spellName}</b>: ${roundsRemaining} round${roundsRemaining !== 1 ? 's' : ''} remaining`);
+				remainingMessages.push(`<b>${entry.spellName}</b>: ${roundsRemaining} round${roundsRemaining !== 1 ? "s" : ""} remaining`);
 			}
 		}
 
@@ -1605,13 +1605,13 @@ export function setupSummonExpiryHook() {
 						<i class="fas fa-dragon"></i> Summon Status
 					</h4>
 					<ul style="margin: 0; padding-left: 16px; list-style-type: none;">
-						${allMessages.map(m => `<li style="margin: 2px 0;">${m}</li>`).join('')}
+						${allMessages.map(m => `<li style="margin: 2px 0;">${m}</li>`).join("")}
 					</ul>
 				</div>
 			`;
 			ChatMessage.create({
 				content: content,
-				whisper: [game.user.id] // Whisper to GM only
+				whisper: [game.user.id], // Whisper to GM only
 			});
 		}
 
@@ -1702,7 +1702,7 @@ const _autoAppliedMessages = new Set();
 async function showEffectSelectionDialog(effectOptions) {
 	return new Promise((resolve) => {
 		// Build checkboxes HTML
-		let checkboxesHtml = '';
+		let checkboxesHtml = "";
 		for (let i = 0; i < effectOptions.length; i++) {
 			const opt = effectOptions[i];
 			checkboxesHtml += `
@@ -1741,16 +1741,16 @@ async function showEffectSelectionDialog(effectOptions) {
 							}
 						}
 						resolve(selectedEffects);
-					}
+					},
 				},
 				{
 					action: "cancel",
 					icon: "fas fa-times",
 					label: "Cancel",
-					callback: () => resolve(null)
-				}
+					callback: () => resolve(null),
+				},
 			],
-			close: () => resolve(null)
+			close: () => resolve(null),
 		}).render({ force: true });
 	});
 }
@@ -1769,12 +1769,12 @@ export async function injectDamageCard(message, html, data) {
 	const isAuthor = message.author.id === game.user.id;
 
 	// Skip if the message is being deleted or closed
-	if (html.hasClass('deleting') || data?.canClose) {
+	if (html.hasClass("deleting") || data?.canClose) {
 		return;
 	}
 
 	// Skip if a damage card is already in the DOM for this message
-	if (html.find('.sdx-damage-card').length > 0) {
+	if (html.find(".sdx-damage-card").length > 0) {
 		return;
 	}
 
@@ -1808,9 +1808,9 @@ export async function injectDamageCard(message, html, data) {
 
 	// Check if this is a Shadowdark weapon/attack card with damage OR a spell with damage configured.
 	// SD 4.x has no .chat-card class — also recognize via flags.shadowdark.rollConfig presence.
-	const hasWeaponCard = html.find('.chat-card, .item-card').length > 0
+	const hasWeaponCard = html.find(".chat-card, .item-card").length > 0
 		|| !!message.flags?.shadowdark?.rollConfig;
-	const hasDamageRoll = html.find('.dice-total').length > 0;
+	const hasDamageRoll = html.find(".dice-total").length > 0;
 
 	// Also check for damage text or damage formula using localized keywords
 	const messageText = html.text().toLowerCase();
@@ -1835,13 +1835,13 @@ export async function injectDamageCard(message, html, data) {
 	}
 
 	const hasDamageKeyword = damageKeywords.some(kw => messageText.includes(kw)) ||
-		damageKeywords.some(kw => html.find('h4, h3, h2').text().toLowerCase().includes(kw));
+		damageKeywords.some(kw => html.find("h4, h3, h2").text().toLowerCase().includes(kw));
 
 
 	// Check if this looks like a damage roll
 	const isDamageRoll = (hasWeaponCard && hasDamageRoll && hasDamageKeyword) ||
 		(damageKeywords.some(kw => flavorText.includes(kw))) ||
-		(message.flags?.shadowdark?.rollType === 'damage');
+		(message.flags?.shadowdark?.rollType === "damage");
 
 	// Check if this is a spell cast with damage/heal configuration or effects
 	let isSpellWithDamage = false;
@@ -1899,9 +1899,9 @@ export async function injectDamageCard(message, html, data) {
 						itemGive: storedConfig.itemGive,
 						auraEffects: storedConfig.auraEffects,
 						spellDamage: storedConfig.spellDamage,
-						coatingPoison: storedConfig.coatingPoison
-					}
-				}
+						coatingPoison: storedConfig.coatingPoison,
+					},
+				},
 			};
 		}
 
@@ -1914,7 +1914,7 @@ export async function injectDamageCard(message, html, data) {
 			if (attackSuccess === false) {
 				// Hide the base system damage roll section (.card-damage-rolls)
 				// This is the default damage roll that Shadowdark renders in the chat card
-				html.find('.card-damage-rolls').hide();
+				html.find(".card-damage-rolls").hide();
 				// Weapon attack failed, skip damage card injection
 				return;
 			}
@@ -1944,7 +1944,7 @@ export async function injectDamageCard(message, html, data) {
 					effects: [],
 					criticalEffects: [],
 					effectsApplyToTarget: true,
-					effectSelectionMode: "all"
+					effectSelectionMode: "all",
 				}, spellDamageConfig || {}, { inplace: false });
 				if (!item.flags?.[MODULE_ID]?.spellDamage?.enabled) {
 					spellDamageConfig.enabled = !!formula;
@@ -1957,7 +1957,7 @@ export async function injectDamageCard(message, html, data) {
 			// Check for effects even if damage is not enabled
 			if (spellDamageConfig?.effects) {
 				let effects = [];
-				if (typeof spellDamageConfig.effects === 'string') {
+				if (typeof spellDamageConfig.effects === "string") {
 					try {
 						effects = JSON.parse(spellDamageConfig.effects);
 					} catch (err) {
@@ -1973,7 +1973,7 @@ export async function injectDamageCard(message, html, data) {
 			// Also check for critical effects
 			if (spellDamageConfig?.criticalEffects) {
 				let critEffects = [];
-				if (typeof spellDamageConfig.criticalEffects === 'string') {
+				if (typeof spellDamageConfig.criticalEffects === "string") {
 					try {
 						critEffects = JSON.parse(spellDamageConfig.criticalEffects);
 					} catch (err) {
@@ -2046,7 +2046,7 @@ export async function injectDamageCard(message, html, data) {
 
 			// Parse profiles if it's a string
 			let profiles = summoningProfiles;
-			if (typeof profiles === 'string') {
+			if (typeof profiles === "string") {
 				try {
 					profiles = JSON.parse(profiles);
 				} catch (err) {
@@ -2086,7 +2086,7 @@ export async function injectDamageCard(message, html, data) {
 			if (shouldGive) {
 				_itemGiveMessages.add(message.id);
 				let profiles = itemGiveConfig.profiles;
-				if (typeof profiles === 'string') {
+				if (typeof profiles === "string") {
 					try {
 						profiles = JSON.parse(profiles);
 					} catch (err) {
@@ -2126,7 +2126,7 @@ export async function injectDamageCard(message, html, data) {
 	// Get the actor for damage rolls - for spells use the caster, otherwise use speaker
 	const speaker = message.speaker;
 	let actor = casterActor; // Start with the actor found from chat card data
-	let casterTokenId = speaker?.token || ''; // The actual token that made the attack/cast
+	let casterTokenId = speaker?.token || ""; // The actual token that made the attack/cast
 
 	if (!actor && speaker?.actor) {
 		// Fallback to speaker if not found from card data
@@ -2147,7 +2147,7 @@ export async function injectDamageCard(message, html, data) {
 
 	// Check if item has template targeting mode enabled
 	const targetingConfig = item?.flags?.[MODULE_ID]?.targeting;
-	let useTemplateTargeting = targetingConfig?.mode === 'template' &&
+	let useTemplateTargeting = targetingConfig?.mode === "template" &&
 		message.author.id === game.user.id && // Only for the caster
 		!_templatePlacedMessages.has(messageKey) && // Use in-memory check
 		!message.flags?.[MODULE_ID]?.templatePlaced; // AND persistent check
@@ -2168,11 +2168,11 @@ export async function injectDamageCard(message, html, data) {
 
 		// Get template settings
 		const templateSettings = targetingConfig.template || {};
-		const templateType = templateSettings.type || 'circle';
+		const templateType = templateSettings.type || "circle";
 		const templateSize = templateSettings.size || 30;
-		const placement = templateSettings.placement || 'choose';
-		const fillColor = templateSettings.fillColor || '#4e9a06';
-		const deleteMode = templateSettings.deleteMode || 'none';
+		const placement = templateSettings.placement || "choose";
+		const fillColor = templateSettings.fillColor || "#4e9a06";
+		const deleteMode = templateSettings.deleteMode || "none";
 		const deleteDuration = templateSettings.deleteDuration || 3;
 		const deleteSeconds = templateSettings.deleteSeconds || 1;
 		const hideOutline = templateSettings.hideOutline || false;
@@ -2180,39 +2180,39 @@ export async function injectDamageCard(message, html, data) {
 
 		// TokenMagic settings
 		const tmSettings = templateSettings.tokenMagic || {};
-		const tmTexture = tmSettings.texture || '';
+		const tmTexture = tmSettings.texture || "";
 		const tmOpacity = tmSettings.opacity ?? 0.5;
-		const tmPreset = tmSettings.preset || 'NOFX';
-		const tmTint = tmSettings.tint || '';
+		const tmPreset = tmSettings.preset || "NOFX";
+		const tmTint = tmSettings.tint || "";
 		const tmFilters = Array.isArray(tmSettings.filters) ? foundry.utils.deepClone(tmSettings.filters) : [];
-		const fxEngine = tmSettings.engine || 'tmfx';
+		const fxEngine = tmSettings.engine || "tmfx";
 		const indySettings = tmSettings.indy || {};
 		const indyFx = {
-			shaderId: indySettings.shaderId || '',
+			shaderId: indySettings.shaderId || "",
 			alpha: indySettings.alpha ?? 1,
 			speed: indySettings.speed ?? 1,
 			scale: indySettings.scale ?? 1,
-			layer: indySettings.layer || 'inherit'
+			layer: indySettings.layer || "inherit",
 		};
 
 		// Calculate auto-delete timing (time-based modes only)
 		// For round-based deletion, we use flags on the template instead
 		let autoDelete = null;
 		let expiryRounds = null;
-		if (deleteMode === 'endOfTurn') {
+		if (deleteMode === "endOfTurn") {
 			// Delete at end of caster's turn - tracked via combat, fallback to 6 seconds
 			autoDelete = 6000;
-		} else if (deleteMode === 'duration') {
+		} else if (deleteMode === "duration") {
 			// Delete after X combat rounds - tracked via template flags
 			// autoDelete stays null, we store expiryRounds instead
 			expiryRounds = deleteDuration;
-		} else if (deleteMode === 'seconds') {
+		} else if (deleteMode === "seconds") {
 			// Delete after X seconds (time-based)
 			autoDelete = deleteSeconds * 1000;
 		}
 
 		// Force disable auto-delete for Focus spells - they persist until focus is lost
-		if (item?.system?.duration?.type === 'focus') {
+		if (item?.system?.duration?.type === "focus") {
 			autoDelete = null;
 			expiryRounds = null;
 		}
@@ -2250,10 +2250,10 @@ export async function injectDamageCard(message, html, data) {
 				onTurnStart: templateEffectsConfigForFlag.triggers?.onTurnStart || false,
 				onTurnEnd: templateEffectsConfigForFlag.triggers?.onTurnEnd || false,
 				onLeave: templateEffectsConfigForFlag.triggers?.onLeave || false,
-				damageFormula: templateEffectsConfigForFlag.damage?.formula || '',
-				damageType: templateEffectsConfigForFlag.damage?.type || '',
+				damageFormula: templateEffectsConfigForFlag.damage?.formula || "",
+				damageType: templateEffectsConfigForFlag.damage?.type || "",
 				saveEnabled: templateEffectsConfigForFlag.save?.enabled || false,
-				saveDCFormula: templateEffectsConfigForFlag.save?.dc || '12',
+				saveDCFormula: templateEffectsConfigForFlag.save?.dc || "12",
 				spellcastingCheckTotal: readSdRollOutcome(message).total ?? 0,
 				casterLevel: casterActor?.system?.level?.value || 1,
 				casterAbilities: {
@@ -2262,9 +2262,9 @@ export async function injectDamageCard(message, html, data) {
 					con: casterActor?.system?.abilities?.con?.mod || 0,
 					int: casterActor?.system?.abilities?.int?.mod || 0,
 					wis: casterActor?.system?.abilities?.wis?.mod || 0,
-					cha: casterActor?.system?.abilities?.cha?.mod || 0
+					cha: casterActor?.system?.abilities?.cha?.mod || 0,
 				},
-				saveAbility: templateEffectsConfigForFlag.save?.ability || 'dex',
+				saveAbility: templateEffectsConfigForFlag.save?.ability || "dex",
 				halfOnSuccess: templateEffectsConfigForFlag.save?.halfOnSuccess || false,
 				effects: templateEffectsConfigForFlag.applyConfiguredEffects
 					? (spellDamageConfigForFlag?.effects || [])
@@ -2273,7 +2273,7 @@ export async function injectDamageCard(message, html, data) {
 				runItemMacro: templateEffectsConfigForFlag.runItemMacro || false,
 				spellId: item.id,
 				initialEnterTriggered: false,
-				effectsRequirement: spellDamageConfigForFlag?.effectsRequirement || ""
+				effectsRequirement: spellDamageConfigForFlag?.effectsRequirement || "",
 			});
 			if (effectsFlag) sdxTemplateFlags[MODULE_ID].templateEffects = effectsFlag;
 		}
@@ -2287,16 +2287,16 @@ export async function injectDamageCard(message, html, data) {
 				spellName: item.name,
 				createdRound: currentRound,
 				expiryRound: currentRound + expiryRounds - 1,
-				duration: expiryRounds
+				duration: expiryRounds,
 			};
 		}
 
 		try {
 			// Use SDX.templates API if available
-			if (typeof SDX !== 'undefined' && SDX.templates) {
+			if (typeof SDX !== "undefined" && SDX.templates) {
 				// Determine placement mode
 				let result;
-				if (placement === 'centered') {
+				if (placement === "centered") {
 					// Auto-center on caster's token
 					const casterTokenId = speaker?.token;
 					const casterToken = canvas.tokens?.get(casterTokenId);
@@ -2311,17 +2311,17 @@ export async function injectDamageCard(message, html, data) {
 							y: casterToken.center.y,
 							elevation: casterToken.document.elevation ?? 0,
 							levels: casterLevels,
-							texture: fxEngine === 'tmfx' ? (tmTexture || null) : null,
+							texture: fxEngine === "tmfx" ? (tmTexture || null) : null,
 							textureOpacity: tmOpacity,
-							tmfxPreset: fxEngine === 'tmfx' ? tmPreset : null,
-							tmfxTint: fxEngine === 'tmfx' ? tmTint : null,
-							tmfxFilters: fxEngine === 'tmfx' ? tmFilters : [],
-							indyFx: fxEngine === 'indy' ? indyFx : null,
+							tmfxPreset: fxEngine === "tmfx" ? tmPreset : null,
+							tmfxTint: fxEngine === "tmfx" ? tmTint : null,
+							tmfxFilters: fxEngine === "tmfx" ? tmFilters : [],
+							indyFx: fxEngine === "indy" ? indyFx : null,
 							excludeCasterTokenId: excludeCaster ? casterTokenId : null,
-							templateFlags: sdxTemplateFlags
+							templateFlags: sdxTemplateFlags,
 						});
 					}
-				} else if (placement === 'caster') {
+				} else if (placement === "caster") {
 					// Originate from caster - origin locked to caster, user controls direction
 					const casterTokenId = speaker?.token;
 					const casterToken = canvas.tokens?.get(casterTokenId);
@@ -2334,17 +2334,17 @@ export async function injectDamageCard(message, html, data) {
 							originFromCaster: {
 								x: casterToken.center.x,
 								y: casterToken.center.y,
-								elevation: casterToken.document.elevation ?? 0
+								elevation: casterToken.document.elevation ?? 0,
 							},
 							levels: casterLevels,
-							texture: fxEngine === 'tmfx' ? (tmTexture || null) : null,
+							texture: fxEngine === "tmfx" ? (tmTexture || null) : null,
 							textureOpacity: tmOpacity,
-							tmfxPreset: fxEngine === 'tmfx' ? tmPreset : null,
-							tmfxTint: fxEngine === 'tmfx' ? tmTint : null,
-							tmfxFilters: fxEngine === 'tmfx' ? tmFilters : [],
-							indyFx: fxEngine === 'indy' ? indyFx : null,
+							tmfxPreset: fxEngine === "tmfx" ? tmPreset : null,
+							tmfxTint: fxEngine === "tmfx" ? tmTint : null,
+							tmfxFilters: fxEngine === "tmfx" ? tmFilters : [],
+							indyFx: fxEngine === "indy" ? indyFx : null,
 							excludeCasterTokenId: excludeCaster ? casterTokenId : null,
-							templateFlags: sdxTemplateFlags
+							templateFlags: sdxTemplateFlags,
 						});
 					} else {
 						// No caster token found, fall back to choose location
@@ -2355,14 +2355,14 @@ export async function injectDamageCard(message, html, data) {
 							fillColor: fillColor,
 							autoDelete: autoDelete,
 							levels: casterLevels,
-							texture: fxEngine === 'tmfx' ? (tmTexture || null) : null,
+							texture: fxEngine === "tmfx" ? (tmTexture || null) : null,
 							textureOpacity: tmOpacity,
-							tmfxPreset: fxEngine === 'tmfx' ? tmPreset : null,
-							tmfxTint: fxEngine === 'tmfx' ? tmTint : null,
-							tmfxFilters: fxEngine === 'tmfx' ? tmFilters : [],
-							indyFx: fxEngine === 'indy' ? indyFx : null,
+							tmfxPreset: fxEngine === "tmfx" ? tmPreset : null,
+							tmfxTint: fxEngine === "tmfx" ? tmTint : null,
+							tmfxFilters: fxEngine === "tmfx" ? tmFilters : [],
+							indyFx: fxEngine === "indy" ? indyFx : null,
 							excludeCasterTokenId: excludeCaster ? speaker?.token : null,
-							templateFlags: sdxTemplateFlags
+							templateFlags: sdxTemplateFlags,
 						});
 					}
 				} else {
@@ -2375,14 +2375,14 @@ export async function injectDamageCard(message, html, data) {
 						autoDelete: autoDelete,
 						elevation: casterToken?.document?.elevation ?? 0,
 						levels: casterLevels,
-						texture: fxEngine === 'tmfx' ? (tmTexture || null) : null,
+						texture: fxEngine === "tmfx" ? (tmTexture || null) : null,
 						textureOpacity: tmOpacity,
-						tmfxPreset: fxEngine === 'tmfx' ? tmPreset : null,
-						tmfxTint: fxEngine === 'tmfx' ? tmTint : null,
-						tmfxFilters: fxEngine === 'tmfx' ? tmFilters : [],
-						indyFx: fxEngine === 'indy' ? indyFx : null,
+						tmfxPreset: fxEngine === "tmfx" ? tmPreset : null,
+						tmfxTint: fxEngine === "tmfx" ? tmTint : null,
+						tmfxFilters: fxEngine === "tmfx" ? tmFilters : [],
+						indyFx: fxEngine === "indy" ? indyFx : null,
 						excludeCasterTokenId: excludeCaster ? speaker?.token : null,
-						templateFlags: sdxTemplateFlags
+						templateFlags: sdxTemplateFlags,
 					});
 				}
 
@@ -2476,7 +2476,7 @@ export async function injectDamageCard(message, html, data) {
 	// For "Self" range spells, if no targets are selected, use the caster's token as target
 	// Range can be either a string directly (e.g., "self") or an object with a value property
 	const rawRange = item?.system?.range;
-	const spellRange = (typeof rawRange === 'string' ? rawRange : rawRange?.value || "").toLowerCase();
+	const spellRange = (typeof rawRange === "string" ? rawRange : rawRange?.value || "").toLowerCase();
 	if (targets.length === 0 && spellRange === "self" && casterActor) {
 		const casterTokenId = speaker?.token;
 		if (casterTokenId) {
@@ -2525,7 +2525,7 @@ export async function injectDamageCard(message, html, data) {
 			// Determine which actor to attach the aura to
 			let auraActor = null;
 			let auraToken = null;
-			if (auraConfig.attachTo === 'target' && targets.length > 0) {
+			if (auraConfig.attachTo === "target" && targets.length > 0) {
 				auraActor = targets[0].actor;
 				auraToken = targets[0];
 			} else {
@@ -2538,7 +2538,7 @@ export async function injectDamageCard(message, html, data) {
 
 			if (auraActor) {
 				const durationConfig = item.system.duration;
-				const auraExpiryRounds = durationConfig?.type === 'rounds' ? (durationConfig.value || 0) : null;
+				const auraExpiryRounds = durationConfig?.type === "rounds" ? (durationConfig.value || 0) : null;
 
 				const auraEffects = auraConfig.applyConfiguredEffects
 					? normalizeConfiguredEffectUuids(spellDamageConfig?.effects)
@@ -2548,7 +2548,7 @@ export async function injectDamageCard(message, html, data) {
 					applyConfiguredEffects: auraConfig.applyConfiguredEffects || false,
 					rawEffects: spellDamageConfig?.effects,
 					auraEffects,
-					effectsTriggers: auraConfig.effectsTriggers || {}
+					effectsTriggers: auraConfig.effectsTriggers || {},
 				});
 
 				let auraTrackerType = null;
@@ -2562,7 +2562,7 @@ export async function injectDamageCard(message, html, data) {
 						perTurnDamage: spellDamageConfig.perTurnDamage || "",
 						damageType: spellDamageConfig.damageType || "",
 						reapplyEffects: spellDamageConfig.reapplyEffects || false,
-						effects: spellDamageConfig.effects || []
+						effects: spellDamageConfig.effects || [],
 					} : null;
 
 					await startFocusSpellIfNeeded(casterActor.id, spellInstanceId, item.name, perTurnConfig);
@@ -2576,7 +2576,7 @@ export async function injectDamageCard(message, html, data) {
 							reapplyEffects: spellDamageConfig.reapplyEffects || false,
 							damageType: spellDamageConfig.damageType || "",
 							effects: spellDamageConfig.effects || [],
-							templateId: placedTemplateId || null
+							templateId: placedTemplateId || null,
 						};
 
 						const instance = await startDurationSpell(casterActor, item, [], trackerConfig);
@@ -2601,7 +2601,7 @@ export async function injectDamageCard(message, html, data) {
 					visualFx: auraConfig.visualFx || {},
 					bearerTokenId: auraToken?.id || null,
 					tokenFilters: auraConfig.tokenFilters || {},
-					disposition: auraConfig.disposition || 'all',
+					disposition: auraConfig.disposition || "all",
 					includeSelf: auraConfig.includeSelf || false,
 					checkVisibility: auraConfig.checkVisibility || false,
 					applyConfiguredEffects: auraConfig.applyConfiguredEffects || false,
@@ -2611,7 +2611,7 @@ export async function injectDamageCard(message, html, data) {
 					macroTriggers: auraConfig.macroTriggers || {},
 					casterActorId: casterActor.id,
 					trackerType: auraTrackerType,
-					trackerInstanceId: auraTrackerInstanceId
+					trackerInstanceId: auraTrackerInstanceId,
 				}, item, durationConfig, auraExpiryRounds);
 
 				if (effect) {
@@ -2694,7 +2694,7 @@ export async function injectDamageCard(message, html, data) {
 							window._perTargetDamage[id] = {
 								damage: d.damage,
 								formula: d.formula,
-								roll: (typeof tRollData === "string") ? Roll.fromJSON(tRollData) : Roll.fromData(tRollData)
+								roll: (typeof tRollData === "string") ? Roll.fromJSON(tRollData) : Roll.fromData(tRollData),
 							};
 						} catch (e) {
 							console.error(`shadowdark-extras | Error loading synced per-target roll for ${id}:`, e);
@@ -2720,10 +2720,10 @@ export async function injectDamageCard(message, html, data) {
 			window._lastSpellRoll = null;
 
 			// Formula Selection
-			let formula = '';
-			let tieredFormula = '';
+			let formula = "";
+			let tieredFormula = "";
 			let hasTieredFormula = false;
-			let formulaType = 'basic';
+			let formulaType = "basic";
 			let isSpellCritical = false;
 
 			// Mark as calculating
@@ -2745,16 +2745,16 @@ export async function injectDamageCard(message, html, data) {
 
 				// Only process damage formula if damage is explicitly enabled
 				if (spellDamageConfig && spellDamageConfig.enabled) {
-					formulaType = spellDamageConfig.formulaType || 'basic';
+					formulaType = spellDamageConfig.formulaType || "basic";
 
 					// Build damage formula based on selected formula type
-					if (formulaType === 'formula') {
+					if (formulaType === "formula") {
 						// Use custom formula
-						formula = spellDamageConfig.formula || '';
-					} else if (formulaType === 'tiered') {
+						formula = spellDamageConfig.formula || "";
+					} else if (formulaType === "tiered") {
 						// Use tiered formula
-						tieredFormula = spellDamageConfig.tieredFormula || '';
-						hasTieredFormula = tieredFormula.trim() !== '';
+						tieredFormula = spellDamageConfig.tieredFormula || "";
+						hasTieredFormula = tieredFormula.trim() !== "";
 					} else {
 						// Use basic formula (numDice + dieType + bonus)
 						// NOTE: Critical doubling is handled later by doubleDiceInFormula for all formula types
@@ -2843,7 +2843,7 @@ export async function injectDamageCard(message, html, data) {
 							formula: challengeFormula,
 							dc: dcTotal,
 							success: challengeRoll.total >= dcTotal,
-							rollJSON: challengeRoll.toJSON()
+							rollJSON: challengeRoll.toJSON(),
 						};
 
 
@@ -2869,7 +2869,7 @@ export async function injectDamageCard(message, html, data) {
 							// STRICTLY Inherit from main challenge (ignore local values as UI is removed)
 							enabled: rawEffectsConfig.enabled,
 							bonus: mainChallengeConfig.bonus || "0",
-							dc: mainChallengeConfig.dc || "10"
+							dc: mainChallengeConfig.dc || "10",
 						};
 						const challengeStartRollData = actor?.getRollData() || {};
 
@@ -2939,7 +2939,7 @@ export async function injectDamageCard(message, html, data) {
 							formula: challengeFormula,
 							dc: dcTotal,
 							success: challengeRoll.total >= dcTotal,
-							rollJSON: challengeRoll.toJSON()
+							rollJSON: challengeRoll.toJSON(),
 						};
 
 						window._latestEffectsChallengeResults = effectsChallengeResults;
@@ -2956,22 +2956,22 @@ export async function injectDamageCard(message, html, data) {
 				if (formula || hasTieredFormula) {
 					try {
 						// Check if formula contains target variables (tiered formulas always need per-target evaluation)
-						const hasTargetVariables = (formula && formula.includes('@target.')) || hasTieredFormula;
+						const hasTargetVariables = (formula && formula.includes("@target.")) || hasTieredFormula;
 
 						// Create base roll data with caster data
 						const baseRollData = actor?.getRollData() || {};
 						// Flatten level.value to just level for easier formula usage
-						if (baseRollData.level && typeof baseRollData.level === 'object' && baseRollData.level.value !== undefined) {
+						if (baseRollData.level && typeof baseRollData.level === "object" && baseRollData.level.value !== undefined) {
 							baseRollData.level = baseRollData.level.value;
 						}
 						// Ensure ability modifiers are available as @str, @dex, etc.
 						if (baseRollData.abilities) {
-							['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {
+							["str", "dex", "con", "int", "wis", "cha"].forEach(ability => {
 								if (baseRollData.abilities[ability]?.mod !== undefined) {
 									baseRollData[ability] = baseRollData.abilities[ability].mod; // @cha = modifier
 								}
 								if (baseRollData.abilities[ability]?.value !== undefined) {
-									baseRollData[ability + 'Base'] = baseRollData.abilities[ability].value; // @chaBase = base score
+									baseRollData[ability + "Base"] = baseRollData.abilities[ability].value; // @chaBase = base score
 								}
 							});
 						}
@@ -3028,13 +3028,13 @@ export async function injectDamageCard(message, html, data) {
 
 
 								// Check damage requirement if it exists
-								if (spellDamageConfig.damageRequirement && spellDamageConfig.damageRequirement.trim() !== '') {
+								if (spellDamageConfig.damageRequirement && spellDamageConfig.damageRequirement.trim() !== "") {
 									const reqFormula = spellDamageConfig.damageRequirement.trim();
 									const requirementMet = evaluateRequirement(reqFormula, rollData);
 
 									if (!requirementMet) {
-										const failAction = spellDamageConfig.damageRequirementFailAction || 'zero';
-										if (failAction === 'half') {
+										const failAction = spellDamageConfig.damageRequirementFailAction || "zero";
+										if (failAction === "half") {
 											targetDamage = Math.floor(targetDamage / 2);
 										} else {
 											targetDamage = 0;
@@ -3048,7 +3048,7 @@ export async function injectDamageCard(message, html, data) {
 								window._perTargetDamage[target.id] = {
 									damage: targetDamage,
 									roll: roll,
-									formula: roll.formula
+									formula: roll.formula,
 								};
 
 							}
@@ -3086,8 +3086,8 @@ export async function injectDamageCard(message, html, data) {
 							// cast roll (d20) for healing spells like Cure Wounds whose damage
 							// formula (e.g. 2d6) doesn't match the cast formula.
 							if (message.rolls?.length > 0) {
-								const cleanFinal = finalFormula.replace(/\s/g, '');
-								roll = message.rolls.find(r => r.formula?.replace(/\s/g, '') === cleanFinal) ?? null;
+								const cleanFinal = finalFormula.replace(/\s/g, "");
+								roll = message.rolls.find(r => r.formula?.replace(/\s/g, "") === cleanFinal) ?? null;
 							}
 
 							if (roll) {
@@ -3107,18 +3107,18 @@ export async function injectDamageCard(message, html, data) {
 
 							// Check damage requirement if it exists
 							// For non-per-target damage, we evaluate the requirement without target context
-							if (spellDamageConfig.damageRequirement && spellDamageConfig.damageRequirement.trim() !== '') {
+							if (spellDamageConfig.damageRequirement && spellDamageConfig.damageRequirement.trim() !== "") {
 								// If the requirement has @target variables but we're not rolling per-target,
 								// we'll apply the requirement to each target when damage is actually applied
 								const requirementFormula = spellDamageConfig.damageRequirement.trim();
 
 								// Only evaluate now if there are no target variables
-								if (!requirementFormula.includes('@target.')) {
+								if (!requirementFormula.includes("@target.")) {
 									const requirementMet = evaluateRequirement(requirementFormula, rollData);
 
 									if (!requirementMet) {
-										const failAction = spellDamageConfig.damageRequirementFailAction || 'zero';
-										if (failAction === 'half') {
+										const failAction = spellDamageConfig.damageRequirementFailAction || "zero";
+										if (failAction === "half") {
 											totalDamage = Math.floor(totalDamage / 2);
 										} else {
 											totalDamage = 0;
@@ -3128,19 +3128,19 @@ export async function injectDamageCard(message, html, data) {
 									// Store requirement info for per-target evaluation during damage application
 									window._damageRequirement = {
 										formula: requirementFormula,
-										failAction: spellDamageConfig.damageRequirementFailAction || 'zero',
-										casterData: rollData
+										failAction: spellDamageConfig.damageRequirementFailAction || "zero",
+										casterData: rollData,
 									};
 								}
 							}
 
 							// Build detailed breakdown of the roll
 							const diceBreakdown = roll.dice.map(d => {
-								const results = d.results.map(r => r.result).join(', ');
-								return `${d.number}${d.faces === 'f' ? 'dF' : 'd' + d.faces}: [${results}]`;
-							}).join(' + ');
+								const results = d.results.map(r => r.result).join(", ");
+								return `${d.number}${d.faces === "f" ? "dF" : "d" + d.faces}: [${results}]`;
+							}).join(" + ");
 
-							const rollBreakdown = roll.formula + ' = ' + (diceBreakdown || totalDamage);
+							const rollBreakdown = roll.formula + " = " + (diceBreakdown || totalDamage);
 							const formulaDisplay = hasTieredFormula ? `Tiered → ${finalFormula} ` : finalFormula;
 
 
@@ -3158,7 +3158,7 @@ export async function injectDamageCard(message, html, data) {
 							rollJSON: window._lastSpellRoll?.toJSON(),
 							damageRequirement: window._damageRequirement,
 							challengeResults: challengeResults,
-							effectsChallengeResults: effectsChallengeResults
+							effectsChallengeResults: effectsChallengeResults,
 						};
 
 						if (window._perTargetDamage) {
@@ -3167,7 +3167,7 @@ export async function injectDamageCard(message, html, data) {
 								flagData.perTargetDamage[id] = {
 									damage: d.damage,
 									formula: d.formula,
-									rollJSON: d.roll.toJSON()
+									rollJSON: d.roll.toJSON(),
 								};
 							}
 						}
@@ -3196,7 +3196,7 @@ export async function injectDamageCard(message, html, data) {
 						totalDamage: 0,
 						damageType: "",
 						challengeResults: challengeResults,
-						effectsChallengeResults: effectsChallengeResults
+						effectsChallengeResults: effectsChallengeResults,
 					};
 					console.log("SDX | Setting spellDamageResults flag (Challenge Only):", flagData);
 					await message.setFlag(MODULE_ID, "spellDamageResults", flagData);
@@ -3248,7 +3248,7 @@ export async function injectDamageCard(message, html, data) {
 					// Persist result
 					await message.setFlag(MODULE_ID, "npcBaseDamage", {
 						total: totalDamage,
-						json: roll.toJSON()
+						json: roll.toJSON(),
 					});
 					return; // Allow re-render
 				} catch (err) {
@@ -3272,7 +3272,7 @@ export async function injectDamageCard(message, html, data) {
 				if (hasPendingDamageRoll) return;
 
 				// Last resort: try to parse from the displayed total in the damage section
-				const $damageTotal = html.find('.card-damage-roll-single .dice-total, .card-damage-rolls .dice-total').first();
+				const $damageTotal = html.find(".card-damage-roll-single .dice-total, .card-damage-rolls .dice-total").first();
 				if ($damageTotal.length) {
 					totalDamage = parseInt($damageTotal.text()) || 0;
 				}
@@ -3285,7 +3285,7 @@ export async function injectDamageCard(message, html, data) {
 	let spellEffects = [];
 	if ((isSpellWithDamage || isSpellWithEffects) && spellDamageConfig?.effects) {
 		// Handle case where effects might be a string instead of an array
-		if (typeof spellDamageConfig.effects === 'string') {
+		if (typeof spellDamageConfig.effects === "string") {
 			try {
 				spellEffects = JSON.parse(spellDamageConfig.effects);
 			} catch (err) {
@@ -3310,7 +3310,7 @@ export async function injectDamageCard(message, html, data) {
 	// If critical effects exist, use them INSTEAD of normal effects
 	if (isCritical && (isSpellWithDamage || isSpellWithEffects) && spellDamageConfig?.criticalEffects) {
 		let criticalEffects = [];
-		if (typeof spellDamageConfig.criticalEffects === 'string') {
+		if (typeof spellDamageConfig.criticalEffects === "string") {
 			try {
 				criticalEffects = JSON.parse(spellDamageConfig.criticalEffects);
 			} catch (err) {
@@ -3328,17 +3328,17 @@ export async function injectDamageCard(message, html, data) {
 	}
 
 	// Get effect selection mode and apply it
-	const effectSelectionMode = spellDamageConfig?.effectSelectionMode || 'all';
+	const effectSelectionMode = spellDamageConfig?.effectSelectionMode || "all";
 	let originalEffectsForPrompt = null; // Store original effects for 'prompt' mode
 
 	if (spellEffects.length > 1) {
 
-		if (effectSelectionMode === 'random') {
+		if (effectSelectionMode === "random") {
 			// Randomly select one effect
 			const randomIndex = Math.floor(Math.random() * spellEffects.length);
 			const selectedEffect = spellEffects[randomIndex];
 			spellEffects = [selectedEffect];
-		} else if (effectSelectionMode === 'prompt') {
+		} else if (effectSelectionMode === "prompt") {
 			// Store original effects for the click handler to use for prompting
 			originalEffectsForPrompt = [...spellEffects];
 		}
@@ -3412,7 +3412,7 @@ export async function injectDamageCard(message, html, data) {
 						actorId: actor?.id,
 						// Persisted so the final render can skip the double-add without
 						// reading from rollConfig (which may strip underscore props).
-						bonusInFormula
+						bonusInFormula,
 					};
 
 					await message.setFlag(MODULE_ID, "weaponBonusResults", persistData);
@@ -3445,7 +3445,7 @@ export async function injectDamageCard(message, html, data) {
 						totalBonus: 0,
 						bonusFormula: "",
 						bonusRollResults: [],
-						damageComponents: []
+						damageComponents: [],
 					};
 				}
 
@@ -3491,7 +3491,7 @@ export async function injectDamageCard(message, html, data) {
 						formula: extra.formula,
 						amount: roll.total,
 						label: label,
-						type: extra.damageType
+						type: extra.damageType,
 					});
 
 					// Store dice results for breakdown
@@ -3505,7 +3505,7 @@ export async function injectDamageCard(message, html, data) {
 									faces: die.faces,
 									isMax: result.result === die.faces,
 									isMin: result.result === 1,
-									label: label
+									label: label,
 								});
 								diceSum += result.result;
 							}
@@ -3518,7 +3518,7 @@ export async function injectDamageCard(message, html, data) {
 						bonusRollResults.push({
 							value: staticMod,
 							faces: 0,
-							label: label
+							label: label,
 						});
 					}
 
@@ -3536,7 +3536,7 @@ export async function injectDamageCard(message, html, data) {
 					bonusRollResults,
 					criticalBonus: 0,
 					criticalFormula: "",
-					criticalRollResults: []
+					criticalRollResults: [],
 				};
 
 				await message.setFlag(MODULE_ID, "npcExtraDamage", persistData);
@@ -3566,7 +3566,7 @@ export async function injectDamageCard(message, html, data) {
 	// Get base damage type (use item flag for weapons, damageType for spells/others)
 	// Get base damage type (use item flag for weapons/NPC attacks, damageType for spells/others)
 	const baseDamageType = (item?.type === "Weapon" || item?.type === "NPC Attack" || item?.type === "NPC Special Attack")
-		? (item.getFlag?.(MODULE_ID, 'baseDamageType') || 'physical')
+		? (item.getFlag?.(MODULE_ID, "baseDamageType") || "physical")
 		: damageType;
 
 	// Check if this is a magical weapon attack
@@ -3591,11 +3591,11 @@ export async function injectDamageCard(message, html, data) {
 	const { html: cardHtml, challengeHtml } = await buildDamageCardHtml(actor, cardTargets, totalDamage, damageType, allEffects, spellDamageConfig, settings, message, weaponBonusDamage, isCritical, item, casterTokenId, baseDamageType, isMagicalWeapon, challengeResults, effectsChallengeResults);
 	// Insert Challenge HTML at the TOP (before the dice roll)
 	if (challengeHtml) {
-		const $diceRoll = html.find('.dice-roll, .card-damage-rolls').first();
+		const $diceRoll = html.find(".dice-roll, .card-damage-rolls").first();
 		if ($diceRoll.length) {
 			$diceRoll.before(challengeHtml);
 		} else {
-			html.find('.card-content').prepend(challengeHtml);
+			html.find(".card-content").prepend(challengeHtml);
 		}
 	}
 
@@ -3610,33 +3610,33 @@ export async function injectDamageCard(message, html, data) {
 	// Skip injection if damage card is hidden from this player
 	if (hideDamageCardFromPlayer) {
 	} else {
-		const $chatCard = html.find('.chat-card');
+		const $chatCard = html.find(".chat-card");
 
 		if ($chatCard.length) {
 			$chatCard.after(cardHtml);
 		} else {
-			const $messageContent = html.find('.message-content');
+			const $messageContent = html.find(".message-content");
 			$messageContent.append(cardHtml);
 		}
 	}
 
 	// Integrate the SD roll card with SDX theming when the SDX damage card is shown
 	if (!hideDamageCardFromPlayer) {
-		const $sdCard = html.find('.shadowdark.chat-card, .chat-card').first();
+		const $sdCard = html.find(".shadowdark.chat-card, .chat-card").first();
 		if ($sdCard.length) {
 			// Move the weapon icon/name row above the "Attack Roll" heading so it reads
 			// as the card's own header rather than a separate floating section below.
-			const $itemWrapper = $sdCard.find('.item-wrapper');
-			const $firstHeading = $sdCard.find('h3.sub-heading').first();
+			const $itemWrapper = $sdCard.find(".item-wrapper");
+			const $firstHeading = $sdCard.find("h3.sub-heading").first();
 			if ($itemWrapper.length && $firstHeading.length) {
 				$firstHeading.before($itemWrapper.detach());
 			}
 			// Hide the Targets sub-section — the SDX card already lists targets.
-			const $targetWrapper = $sdCard.find('.target-wrapper');
-			$targetWrapper.prev('h3.sub-heading').hide();
+			const $targetWrapper = $sdCard.find(".target-wrapper");
+			$targetWrapper.prev("h3.sub-heading").hide();
 			$targetWrapper.hide();
 			// Mark the card so CSS can apply the integrated theme.
-			$sdCard.addClass('sdx-integrated');
+			$sdCard.addClass("sdx-integrated");
 		}
 	}
 
@@ -3650,8 +3650,8 @@ export async function injectDamageCard(message, html, data) {
 		// This applies to Shadowdark's native weapon damage displays.
 		// SD 4.x doesn't render `.chat-card` so these selectors silently no-op,
 		// but we guard explicitly for clarity (per SD4-COMPAT-SWEEP-PLAN Phase 3.4).
-		html.find('.card-damage-roll-single, .card-damage-rolls').hide();
-		const $sdLegacyCard = html.find('.chat-card');
+		html.find(".card-damage-roll-single, .card-damage-rolls").hide();
+		const $sdLegacyCard = html.find(".chat-card");
 		if ($sdLegacyCard.length) {
 			$sdLegacyCard.find('h3:contains("Damage Roll")').hide();
 			$sdLegacyCard.find('h4:contains("Damage Roll")').hide();
@@ -3672,23 +3672,23 @@ export async function injectDamageCard(message, html, data) {
 			if (roll) {
 				formula = roll.formula;
 			} else if (window._lastSpellRollBreakdown) {
-				formula = window._lastSpellRollBreakdown.split(' = ')[0];
+				formula = window._lastSpellRollBreakdown.split(" = ")[0];
 			}
 		}
 
 		// Build breakdown tooltip HTML if components exist
-		let breakdownTooltipHtml = '';
+		let breakdownTooltipHtml = "";
 		if (rollSummary?.components && rollSummary.components.length > 0) {
 			const componentLines = rollSummary.components.map(c => {
-				const displayType = (c.type && c.type !== 'standard') ? c.type.charAt(0).toUpperCase() + c.type.slice(1).toLowerCase() : '';
-				const typeLabel = displayType ? ` ${displayType}` : '';
-				const labelText = c.label ? `[${c.label}] ` : '';
-				const diceResults = (c.dice && c.dice.length > 0) ? ` [${c.dice.join(',')}] ` : ' ';
+				const displayType = (c.type && c.type !== "standard") ? c.type.charAt(0).toUpperCase() + c.type.slice(1).toLowerCase() : "";
+				const typeLabel = displayType ? ` ${displayType}` : "";
+				const labelText = c.label ? `[${c.label}] ` : "";
+				const diceResults = (c.dice && c.dice.length > 0) ? ` [${c.dice.join(",")}] ` : " ";
 				return `<div style="display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid rgba(0,0,0,0.05); padding: 2px 0;">
 					<span style="font-size: 11px; white-space: nowrap;">${labelText}${c.formula}${diceResults}</span>
 					<span style="font-weight: bold; font-size: 11px;">${c.total}${typeLabel}</span>
 				</div>`;
-			}).join('');
+			}).join("");
 
 			breakdownTooltipHtml = `
 				<div class="sdx-damage-tooltip" style="display: none; margin-top: 8px; padding: 4px 8px; background: rgba(0,0,0,0.03); border-radius: 4px; border: 1px solid rgba(0,0,0,0.05); text-align: left;">
@@ -3711,11 +3711,11 @@ export async function injectDamageCard(message, html, data) {
 			</div>
 		`;
 
-		const $chatCard = html.find('.chat-card');
+		const $chatCard = html.find(".chat-card");
 		if ($chatCard.length) {
 			$chatCard.append(minimalHtml);
 		} else {
-			html.find('.message-content').append(minimalHtml);
+			html.find(".message-content").append(minimalHtml);
 		}
 	}
 
@@ -3780,7 +3780,7 @@ export async function injectDamageCard(message, html, data) {
 			setTimeout(() => {
 				// Auto-apply damage if enabled
 				if (canApplyDamage) {
-					const $applyDamageBtn = html.find('.sdx-apply-damage-btn');
+					const $applyDamageBtn = html.find(".sdx-apply-damage-btn");
 					if ($applyDamageBtn.length) {
 						$applyDamageBtn.click();
 					}
@@ -3790,7 +3790,7 @@ export async function injectDamageCard(message, html, data) {
 				// Effects are already applied on the initial cast
 				// ALSO NOT for NPC Features or NPC Spells (manual application only requested)
 				if (canApplyConditions && !isFocusCheck && item?.type !== "NPC Feature" && item?.type !== "NPC Spell") {
-					const $applyConditionBtn = html.find('.sdx-apply-condition-btn');
+					const $applyConditionBtn = html.find(".sdx-apply-condition-btn");
 					if ($applyConditionBtn.length) {
 						setTimeout(() => {
 							$applyConditionBtn.click();
@@ -3805,11 +3805,11 @@ export async function injectDamageCard(message, html, data) {
 	}
 
 	// Add event listener for minimal summary toggle
-	html.find('[data-action="toggleDamageBreakdown"]').on('click', (event) => {
+	html.find('[data-action="toggleDamageBreakdown"]').on("click", (event) => {
 		event.preventDefault();
 		const $target = $(event.currentTarget);
-		const $tooltip = $target.find('.sdx-damage-tooltip');
-		$target.toggleClass('expanded');
+		const $tooltip = $target.find(".sdx-damage-tooltip");
+		$target.toggleClass("expanded");
 		$tooltip.slideToggle(150);
 	});
 
@@ -3849,7 +3849,7 @@ export async function injectDamageCard(message, html, data) {
 				// For "Self" range spells, if no targets are selected, use the caster's token
 				// Range can be either a string directly (e.g., "self") or an object with a value property
 				const durationRawRange = item.system?.range;
-				const durationSpellRange = (typeof durationRawRange === 'string' ? durationRawRange : durationRawRange?.value || "").toLowerCase();
+				const durationSpellRange = (typeof durationRawRange === "string" ? durationRawRange : durationRawRange?.value || "").toLowerCase();
 				if (targetTokenIds.length === 0 && durationSpellRange === "self") {
 					const casterTokenId = message.speaker?.token;
 					if (casterTokenId) {
@@ -3870,7 +3870,7 @@ export async function injectDamageCard(message, html, data) {
 					reapplyEffects: spellDamageConfig.reapplyEffects || false,
 					damageType: spellDamageConfig.damageType || "",
 					effects: spellDamageConfig.effects || [],
-					templateId: placedTemplateId || null
+					templateId: placedTemplateId || null,
 				};
 
 				// Clear the temp variable
@@ -3908,7 +3908,7 @@ export async function injectDamageCard(message, html, data) {
  * Build roll breakdown information from message
  * Returns an object with formula, total, diceHtml, and bonusHtml
  */
-async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical = false, baseDamageType = 'standard') {
+async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical = false, baseDamageType = "standard") {
 	// Try to get the damage roll (SD 4.x typed Roll OR v3 flag fallback)
 	const damageRollData = readSdDamageRoll(message).roll;
 
@@ -3990,11 +3990,11 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 				const val = r.result;
 				const isCrit = val === faces;
 				const isFumble = val === 1;
-				const cssClass = isCrit ? 'sdx-die-max' : (isFumble ? 'sdx-die-min' : '');
+				const cssClass = isCrit ? "sdx-die-max" : (isFumble ? "sdx-die-min" : "");
 				diceResults.push({
 					value: val,
 					cssClass: cssClass,
-					faces: faces
+					faces: faces,
 				});
 				totalDiceSum += val;
 			}
@@ -4006,7 +4006,7 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 
 	// Check for numeric terms in the roll
 	const terms = roll.terms || [];
-	let operator = '+';
+	let operator = "+";
 
 	for (let i = 0; i < terms.length; i++) {
 		const term = terms[i];
@@ -4022,8 +4022,8 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 			const value = term.number;
 			if (value !== 0) {
 				bonuses.push({
-					label: 'Modifier',
-					value: operator === '-' ? -value : value
+					label: "Modifier",
+					value: operator === "-" ? -value : value,
 				});
 			}
 		}
@@ -4038,27 +4038,27 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 			for (const result of weaponBonusDamage.bonusRollResults) {
 				if (result.faces > 0) {
 					// This is a die result
-					const cssClass = result.isMax ? 'sdx-die-max' : (result.isMin ? 'sdx-die-min' : '');
+					const cssClass = result.isMax ? "sdx-die-max" : (result.isMin ? "sdx-die-min" : "");
 					weaponBonusDiceResults.push({
 						value: result.value,
 						cssClass,
 						faces: result.faces,
 						isBonus: true,
-						label: result.label
+						label: result.label,
 					});
 				} else {
 					// This is a static bonus
 					bonuses.push({
-						label: result.label || 'Bonus',
-						value: result.value
+						label: result.label || "Bonus",
+						value: result.value,
 					});
 				}
 			}
-		} else if (weaponBonusDamage.totalBonus !== 0 && !weaponBonusDamage.bonusFormula.includes('d')) {
+		} else if (weaponBonusDamage.totalBonus !== 0 && !weaponBonusDamage.bonusFormula.includes("d")) {
 			// Fallback for static bonuses without roll results
 			bonuses.push({
-				label: 'Weapon Bonus',
-				value: weaponBonusDamage.totalBonus
+				label: "Weapon Bonus",
+				value: weaponBonusDamage.totalBonus,
 			});
 		}
 
@@ -4066,18 +4066,18 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 		if (weaponBonusDamage.criticalRollResults && weaponBonusDamage.criticalRollResults.length > 0) {
 			for (const result of weaponBonusDamage.criticalRollResults) {
 				if (result.faces > 0) {
-					const cssClass = result.isMax ? 'sdx-die-max' : (result.isMin ? 'sdx-die-min' : '');
+					const cssClass = result.isMax ? "sdx-die-max" : (result.isMin ? "sdx-die-min" : "");
 					weaponBonusDiceResults.push({
 						value: result.value,
 						cssClass,
 						faces: result.faces,
 						isCritBonus: true,
-						label: result.label
+						label: result.label,
 					});
 				} else {
 					bonuses.push({
-						label: result.label || 'Critical Bonus',
-						value: result.value
+						label: result.label || "Critical Bonus",
+						value: result.value,
 					});
 				}
 			}
@@ -4085,7 +4085,7 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 			// Fallback for critical bonus without roll results
 			bonuses.push({
 				label: `Crit(${weaponBonusDamage.criticalFormula})`,
-				value: weaponBonusDamage.criticalBonus
+				value: weaponBonusDamage.criticalBonus,
 			});
 		}
 	}
@@ -4099,19 +4099,19 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 		breakdownParts.push({
 			html: `<span class="sdx-die sdx-die-clickable ${die.cssClass}" data-die-index="${dieIndex}" data-faces="${die.faces}" title="Click to reroll this d${die.faces}">${die.value}</span>`,
 			value: die.value,
-			faces: die.faces
+			faces: die.faces,
 		});
 		dieIndex++;
 	}
 
 	// Add weapon bonus dice (styled differently, also clickable)
 	for (const die of weaponBonusDiceResults) {
-		const extraClass = die.isCritBonus ? 'sdx-crit-bonus' : 'sdx-weapon-bonus';
-		const labelTitle = die.label ? `${die.label} - ` : '';
+		const extraClass = die.isCritBonus ? "sdx-crit-bonus" : "sdx-weapon-bonus";
+		const labelTitle = die.label ? `${die.label} - ` : "";
 		breakdownParts.push({
 			html: `<span class="sdx-die sdx-die-clickable ${die.cssClass} ${extraClass}" data-die-index="${dieIndex}" data-faces="${die.faces}" title="${labelTitle}Click to reroll this d${die.faces}">${die.value}</span>`,
 			value: die.value,
-			faces: die.faces
+			faces: die.faces,
 		});
 		dieIndex++;
 	}
@@ -4120,8 +4120,8 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 	for (const bonus of bonuses) {
 		const absValue = Math.abs(bonus.value);
 		breakdownParts.push({
-			html: `<span class="sdx-bonus-val" title="${bonus.label || ''}">${absValue}</span>`,
-			value: bonus.value
+			html: `<span class="sdx-bonus-val" title="${bonus.label || ""}">${absValue}</span>`,
+			value: bonus.value,
 		});
 	}
 
@@ -4132,14 +4132,14 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 	}
 
 	// Build the breakdown HTML: "Total = d1 + d2 + bonus"
-	let breakdownHtml = '';
+	let breakdownHtml = "";
 	if (breakdownParts.length > 0) {
 		const partsHtml = breakdownParts.map((part, index) => {
 			if (index === 0) return part.html;
 			// For subsequent parts, show + or - based on the value
 			if (part.value < 0) return `<span class="sdx-plus"> - </span> ${part.html} `;
 			return `<span class="sdx-plus"> + </span> ${part.html} `;
-		}).join('');
+		}).join("");
 
 		breakdownHtml = `
 							<div class="sdx-roll-breakdown-line">
@@ -4151,7 +4151,7 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 	}
 
 	// Build full display formula
-	let fullFormula = roll.formula || '';
+	let fullFormula = roll.formula || "";
 	if (weaponBonusDamage && weaponBonusDamage.requirementsMet) {
 		if (weaponBonusDamage.bonusFormula) {
 			fullFormula += ` + ${weaponBonusDamage.bonusFormula}`;
@@ -4176,11 +4176,11 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 		: (game.i18n.localize("SHADOWDARK_EXTRAS.chat.base_damage") || "Base Damage");
 
 	components.push({
-		formula: roll.formula || '',
+		formula: roll.formula || "",
 		total: roll.total || 0,
 		label: baseLabel,
 		type: baseDamageType,
-		dice: diceResults.map(d => d.value)
+		dice: diceResults.map(d => d.value),
 	});
 
 	// Bonus components
@@ -4190,7 +4190,7 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 				formula: comp.formula,
 				total: comp.amount,
 				label: comp.label,
-				type: comp.type
+				type: comp.type,
 			});
 		}
 	}
@@ -4199,7 +4199,7 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 		formula: fullFormula,
 		total: actualTotal,
 		breakdownHtml,
-		components
+		components,
 	};
 }
 
@@ -4215,7 +4215,7 @@ function getTargetDefenseConfig(spellDamageConfig, item) {
 		enabled: true,
 		ability: String(config.ability || "dex").toLowerCase(),
 		dc: String(config.dc || "12"),
-		successAction: config.successAction || "avoid"
+		successAction: config.successAction || "avoid",
 	};
 }
 
@@ -4241,7 +4241,7 @@ function getTargetDefenseResults(message) {
 
 function getTargetDefenseStatusHtml(result, defenseConfig) {
 	if (!result) {
-		return `<span class="sdx-target-defense-status pending">Pending</span>`;
+		return "<span class=\"sdx-target-defense-status pending\">Pending</span>";
 	}
 
 	const passed = !!result.success;
@@ -4257,13 +4257,13 @@ function canUserResolveTargetDefense(token) {
 }
 
 function getUnresolvedDefenseTargets($card) {
-	return $card.find('.sdx-target-item').filter(function () {
+	return $card.find(".sdx-target-item").filter(function() {
 		const $target = $(this);
-		const isEnabled = $target.data('enabled') !== false && $target.attr('data-enabled') !== 'false';
+		const isEnabled = $target.data("enabled") !== false && $target.attr("data-enabled") !== "false";
 		if (!isEnabled) return false;
 
-		const $defense = $target.find('.sdx-target-defense');
-		return $defense.length > 0 && $defense.attr('data-defense-resolved') !== 'true';
+		const $defense = $target.find(".sdx-target-defense");
+		return $defense.length > 0 && $defense.attr("data-defense-resolved") !== "true";
 	});
 }
 
@@ -4325,7 +4325,7 @@ async function rollTargetDefenseCheck({ messageId, tokenId, ability, dcFormula, 
 		formula: defenseRoll.formula,
 		success: defenseRoll.total >= dc,
 		userId: game.user.id,
-		rollJSON: defenseRoll.toJSON()
+		rollJSON: defenseRoll.toJSON(),
 	};
 
 	await saveTargetDefenseResult(messageId, tokenId, result);
@@ -4334,11 +4334,11 @@ async function rollTargetDefenseCheck({ messageId, tokenId, ability, dcFormula, 
 		user: game.user.id,
 		speaker: ChatMessage.getSpeaker({ token }),
 		rolls: [defenseRoll],
-		content: `<p><strong>${token.name}</strong> rolls ${getAbilityLabel(key)} defense vs DC ${dc}: <strong>${defenseRoll.total}</strong> - ${result.success ? "Success" : "Failure"}</p>`
+		content: `<p><strong>${token.name}</strong> rolls ${getAbilityLabel(key)} defense vs DC ${dc}: <strong>${defenseRoll.total}</strong> - ${result.success ? "Success" : "Failure"}</p>`,
 	});
 }
 
-async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allEffects, spellDamageConfig, settings, message, weaponBonusDamage = null, isCritical = false, spellItem = null, casterTokenId = '', baseDamageType = 'standard', isMagicalWeapon = false, challengeResults = null, effectsChallengeResults = null) {
+async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allEffects, spellDamageConfig, settings, message, weaponBonusDamage = null, isCritical = false, spellItem = null, casterTokenId = "", baseDamageType = "standard", isMagicalWeapon = false, challengeResults = null, effectsChallengeResults = null) {
 
 
 	const cardSettings = settings.damageCard;
@@ -4347,23 +4347,23 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 	const targetDefenseResults = getTargetDefenseResults(message);
 
 	// Build roll breakdown HTML
-	let rollBreakdownHtml = '';
+	let rollBreakdownHtml = "";
 	const rollBreakdown = await buildRollBreakdown(message, weaponBonusDamage, isCritical, baseDamageType);
 	if (rollBreakdown) {
 		// Store formula for reroll - escape quotes for data attribute
-		const rerollFormula = (rollBreakdown.formula || '').replace(/"/g, '&quot;');
+		const rerollFormula = (rollBreakdown.formula || "").replace(/"/g, "&quot;");
 
 		// Store weapon bonus info for reroll
-		let weaponBonusData = '';
+		let weaponBonusData = "";
 		if (weaponBonusDamage && weaponBonusDamage.requirementsMet) {
 			const bonusInfo = {
-				bonusFormula: weaponBonusDamage.bonusFormula || '',
+				bonusFormula: weaponBonusDamage.bonusFormula || "",
 				totalBonus: weaponBonusDamage.totalBonus || 0,
-				criticalFormula: weaponBonusDamage.criticalFormula || '',
+				criticalFormula: weaponBonusDamage.criticalFormula || "",
 				criticalBonus: weaponBonusDamage.criticalBonus || 0,
-				damageComponents: weaponBonusDamage.damageComponents || []
+				damageComponents: weaponBonusDamage.damageComponents || [],
 			};
-			weaponBonusData = JSON.stringify(bonusInfo).replace(/"/g, '&quot;');
+			weaponBonusData = JSON.stringify(bonusInfo).replace(/"/g, "&quot;");
 		}
 
 		rollBreakdownHtml = `
@@ -4374,16 +4374,16 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 										<i class="fas fa-dice"></i>
 									</button>
 								</div>
-				${rollBreakdown.breakdownHtml || ''}
+				${rollBreakdown.breakdownHtml || ""}
 			</div>
 							`;
 	}
 
 	// Challenge Result
-	let challengeHtml = '';
+	let challengeHtml = "";
 	if (challengeResults) {
-		const statusClass = challengeResults.success ? 'success' : 'failure';
-		const statusText = challengeResults.success ? 'SUCCESS' : 'FAILURE';
+		const statusClass = challengeResults.success ? "success" : "failure";
+		const statusText = challengeResults.success ? "SUCCESS" : "FAILURE";
 
 		challengeHtml = `
         <div class="sdx-challenge-result" style="margin-bottom: 8px; border: 1px solid #333; border-radius: 4px; overflow: hidden;">
@@ -4396,7 +4396,7 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
                     ${challengeResults.total}
                     <span style="font-size: 12px; font-weight: normal; opacity: 0.7;">(${challengeResults.formula})</span>
                 </div>
-                <div class="sdx-challenge-status ${statusClass}" style="padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; ${challengeResults.success ? 'background: #2d5a2d; color: #8f8;' : 'background: #5a2d2d; color: #f88;'}">
+                <div class="sdx-challenge-status ${statusClass}" style="padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; ${challengeResults.success ? "background: #2d5a2d; color: #8f8;" : "background: #5a2d2d; color: #f88;"}">
                     ${statusText}
                 </div>
             </div>
@@ -4405,10 +4405,10 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 	}
 
 	// Effects Challenge Result
-	let effectsChallengeHtml = '';
+	let effectsChallengeHtml = "";
 	if (effectsChallengeResults) {
-		const statusClass = effectsChallengeResults.success ? 'success' : 'failure';
-		const statusText = effectsChallengeResults.success ? 'SUCCESS' : 'FAILURE';
+		const statusClass = effectsChallengeResults.success ? "success" : "failure";
+		const statusText = effectsChallengeResults.success ? "SUCCESS" : "FAILURE";
 
 		effectsChallengeHtml = `
         <div class="sdx-challenge-result" style="margin-bottom: 8px; border: 1px solid #333; border-radius: 4px; overflow: hidden;">
@@ -4421,7 +4421,7 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
                     ${effectsChallengeResults.total}
                     <span style="font-size: 12px; font-weight: normal; opacity: 0.7;">(${effectsChallengeResults.formula})</span>
                 </div>
-                <div class="sdx-challenge-status ${statusClass}" style="padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; ${effectsChallengeResults.success ? 'background: #2d5a2d; color: #8f8;' : 'background: #5a2d2d; color: #f88;'}">
+                <div class="sdx-challenge-status ${statusClass}" style="padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; ${effectsChallengeResults.success ? "background: #2d5a2d; color: #8f8;" : "background: #5a2d2d; color: #f88;"}">
                     ${statusText}
                 </div>
             </div>
@@ -4433,7 +4433,7 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 
 
 	// Build targets HTML
-	let targetsHtml = '';
+	let targetsHtml = "";
 	if (cardSettings.showTargets && targets.length > 0) {
 		targetsHtml = '<div class="sdx-damage-targets">';
 
@@ -4458,19 +4458,19 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 				const targetSpecificDamage = perTargetDamage ? perTargetDamage.damage : totalDamage;
 
 				// Get roll breakdown for tooltip
-				let rollBreakdown = window._lastSpellRollBreakdown || '';
+				let rollBreakdown = window._lastSpellRollBreakdown || "";
 				if (perTargetDamage && perTargetDamage.roll) {
 					// Build breakdown for this specific target
 					const diceBreakdown = perTargetDamage.roll.dice.map(d => {
-						const results = d.results.map(r => r.result).join(', ');
-						return `${d.number}${d.faces === 'f' ? 'dF' : 'd' + d.faces}: [${results}]`;
-					}).join(' + ');
-					rollBreakdown = perTargetDamage.formula + ' = ' + (diceBreakdown || targetSpecificDamage);
+						const results = d.results.map(r => r.result).join(", ");
+						return `${d.number}${d.faces === "f" ? "dF" : "d" + d.faces}: [${results}]`;
+					}).join(" + ");
+					rollBreakdown = perTargetDamage.formula + " = " + (diceBreakdown || targetSpecificDamage);
 				}
-				const tooltipAttr = rollBreakdown ? `data-tooltip="${rollBreakdown}" title="${rollBreakdown}"` : '';
+				const tooltipAttr = rollBreakdown ? `data-tooltip="${rollBreakdown}" title="${rollBreakdown}"` : "";
 
 				// Only show damage preview if there's actual damage/healing
-				let damagePreviewHtml = '';
+				let damagePreviewHtml = "";
 				if (targetSpecificDamage > 0) {
 					damagePreviewHtml = `<div class="sdx-damage-preview">${damageSign}<span class="sdx-damage-value" data-base-damage="${targetSpecificDamage}" ${tooltipAttr}>${targetSpecificDamage}</span></div>`;
 				}
@@ -4498,7 +4498,7 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 				// Add enable/disable checkbox if auto-apply is disabled
 				const enableCheckbox = !cardSettings.autoApplyDamage ? `
 							<input type="checkbox" class="sdx-target-enable-checkbox" data-token-id="${target.id}" checked title="Enable/disable this target" />
-								` : '';
+								` : "";
 
 				const escapedTargetName = foundry.utils.escapeHTML(targetActor.name);
 				const escapedTargetImg = foundry.utils.escapeHTML(targetActor.img ?? "");
@@ -4511,7 +4511,7 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 							${damagePreviewHtml}
 						</div>
 						${targetDefenseHtml}
-						${cardSettings.showMultipliers && totalDamage > 0 ? buildMultipliersHtml(cardSettings.damageMultipliers, target.id) : ''}
+						${cardSettings.showMultipliers && totalDamage > 0 ? buildMultipliersHtml(cardSettings.damageMultipliers, target.id) : ""}
 					</div>
 							`;
 			} catch (error) {
@@ -4519,12 +4519,12 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 			}
 		}
 
-		targetsHtml += '</div>';
+		targetsHtml += "</div>";
 	}
 
 
 	// Build apply buttons
-	let applyButtonHtml = '';
+	let applyButtonHtml = "";
 
 	// Damage/healing button
 	if (cardSettings.showApplyButton && targets.length > 0 && totalDamage > 0) {
@@ -4536,10 +4536,10 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 		// user clicks after the auto-apply ran on first render.
 		const damageApplied = !!message?.getFlag?.(MODULE_ID, "damageApplied");
 		const damageBtnText = damageApplied
-			? `<i class="fas fa-check"></i> APPLIED`
+			? "<i class=\"fas fa-check\"></i> APPLIED"
 			: `<i class="fas ${buttonIcon}"></i> ${buttonText}`;
-		const damageBtnDisabled = damageApplied ? 'disabled' : '';
-		const damageBtnAppliedAttr = damageApplied ? 'data-already-applied="true"' : '';
+		const damageBtnDisabled = damageApplied ? "disabled" : "";
+		const damageBtnAppliedAttr = damageApplied ? 'data-already-applied="true"' : "";
 
 		applyButtonHtml = `
 							<div class="sdx-damage-actions">
@@ -4555,15 +4555,15 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 	const hasSelfTarget = !effectsApplyToTarget && actor;
 	if (allEffects && allEffects.length > 0 && (targets.length > 0 || hasSelfTarget)) {
 		const effectsJson = JSON.stringify(allEffects);
-		const effectsRequirement = spellDamageConfig?.effectsRequirement || '';
+		const effectsRequirement = spellDamageConfig?.effectsRequirement || "";
 
 		// Include spell info for focus spell tracking
 		const spellInfo = spellItem && ["Spell", "Scroll", "Wand", "NPC Spell"].includes(spellItem.type) ? {
 			spellId: spellItem.id,
 			spellName: spellItem.name,
-			casterActorId: actor?.id
+			casterActorId: actor?.id,
 		} : null;
-		const spellInfoJson = spellInfo ? JSON.stringify(spellInfo).replace(/"/g, '&quot;') : '';
+		const spellInfoJson = spellInfo ? JSON.stringify(spellInfo).replace(/"/g, "&quot;") : "";
 
 		// Start actions div if not already started
 		if (!applyButtonHtml) {
@@ -4577,16 +4577,16 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 		const conditionBtnText = conditionsApplied
 			? '<i class="fas fa-check"></i> APPLIED'
 			: '<i class="fas fa-wand-sparkles"></i> APPLY CONDITION';
-		const conditionBtnDisabled = conditionsApplied ? 'disabled' : '';
-		const conditionBtnAppliedAttr = conditionsApplied ? 'data-already-applied="true"' : '';
+		const conditionBtnDisabled = conditionsApplied ? "disabled" : "";
+		const conditionBtnAppliedAttr = conditionsApplied ? 'data-already-applied="true"' : "";
 
 		applyButtonHtml += `
 						<button type="button" class="sdx-apply-condition-btn"
 					data-effects='${effectsJson}'
 					data-apply-to-target="${effectsApplyToTarget}"
-					data-effects-requirement="${effectsRequirement.replace(/"/g, '&quot;')}"
+					data-effects-requirement="${effectsRequirement.replace(/"/g, "&quot;")}"
 					data-spell-info="${spellInfoJson}"
-					data-effect-selection-mode="${spellDamageConfig?.effectSelectionMode || 'all'}"
+					data-effect-selection-mode="${spellDamageConfig?.effectSelectionMode || "all"}"
 					${conditionBtnAppliedAttr} ${conditionBtnDisabled}>
 						${conditionBtnText}
 			</button>
@@ -4595,12 +4595,12 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 
 	// Close actions div if any buttons were added
 	if (applyButtonHtml) {
-		applyButtonHtml += `</div>`;
+		applyButtonHtml += "</div>";
 	}
 
 
 	// Determine card header based on content
-	let headerText, headerIcon;
+	let headerText; let headerIcon;
 	if (totalDamage > 0) {
 		headerText = isHealing ? "APPLY HEALING" : "APPLY DAMAGE";
 		headerIcon = isHealing ? "fa-heart-pulse" : "fa-heart";
@@ -4613,7 +4613,7 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 	}
 
 	const finalHtml = `
-						<div class="sdx-damage-card" data-message-id="${message.id}" data-item-id="${spellItem?.id || ''}" data-caster-actor-id="${actor?.id || ''}" data-caster-token-id="${casterTokenId}" data-base-damage="${totalDamage}" data-damage-type="${damageType}" data-base-damage-type="${baseDamageType}" data-is-magical-weapon="${isMagicalWeapon}">
+						<div class="sdx-damage-card" data-message-id="${message.id}" data-item-id="${spellItem?.id || ""}" data-caster-actor-id="${actor?.id || ""}" data-caster-token-id="${casterTokenId}" data-base-damage="${totalDamage}" data-damage-type="${damageType}" data-base-damage-type="${baseDamageType}" data-is-magical-weapon="${isMagicalWeapon}">
 							<div class="sdx-damage-card-header">
 								<i class="fas ${headerIcon}"></i> ${headerText} <i class="fas fa-chevron-down"></i>
 							</div>
@@ -4636,7 +4636,7 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 
 	return {
 		html: finalHtml,
-		challengeHtml: allChallengeHtml
+		challengeHtml: allChallengeHtml,
 	};
 }
 
@@ -4655,9 +4655,9 @@ function buildMultipliersHtml(multipliers, tokenId) {
 		if (!mult.enabled) continue;
 
 		// Parse the value to handle both string and number
-		const multValue = typeof mult.value === 'string' ? parseFloat(mult.value) : mult.value;
+		const multValue = typeof mult.value === "string" ? parseFloat(mult.value) : mult.value;
 		const isDefault = multValue === 1;
-		const activeClass = isDefault ? 'active' : '';
+		const activeClass = isDefault ? "active" : "";
 
 		html += `
 						<button type="button"
@@ -4669,7 +4669,7 @@ function buildMultipliersHtml(multipliers, tokenId) {
 						`;
 	}
 
-	html += '</div>';
+	html += "</div>";
 
 
 	return html;
@@ -4679,13 +4679,13 @@ function buildMultipliersHtml(multipliers, tokenId) {
  * Helper function to rebuild targets list based on active tab
  */
 function rebuildTargetsList($card, messageId, baseDamage) {
-	const $activeTab = $card.find('.sdx-tab.active');
-	const activeTabIndex = $card.find('.sdx-tab').index($activeTab);
+	const $activeTab = $card.find(".sdx-tab.active");
+	const activeTabIndex = $card.find(".sdx-tab").index($activeTab);
 	const settings = game.settings.get("shadowdark-extras", "combatSettings");
 	const cardSettings = settings.damageCard;
 
 	let targets = [];
-	let tabName = '';
+	let tabName = "";
 
 	// Get the message to access stored targets
 	const message = game.messages.get(messageId);
@@ -4702,20 +4702,20 @@ function rebuildTargetsList($card, messageId, baseDamage) {
 			// Fallback to current user's targets
 			targets = Array.from(game.user.targets);
 		}
-		tabName = 'TARGETED';
+		tabName = "TARGETED";
 	} else if (activeTabIndex === 1) {
 		targets = canvas.tokens.controlled.filter(t => t.actor);
-		tabName = 'SELECTED';
+		tabName = "SELECTED";
 	}
 
 
 	// Get damage type from card
-	const damageType = $card.data('damage-type') || 'damage';
-	const isHealing = damageType === 'healing';
-	const damageSign = isHealing ? '+' : '-';
+	const damageType = $card.data("damage-type") || "damage";
+	const isHealing = damageType === "healing";
+	const damageSign = isHealing ? "+" : "-";
 
 	// Build new targets HTML
-	let targetsHtml = '';
+	let targetsHtml = "";
 	for (const target of targets) {
 		const actor = target.actor;
 		if (!actor) continue;
@@ -4728,7 +4728,7 @@ function rebuildTargetsList($card, messageId, baseDamage) {
 		// Add enable/disable checkbox if auto-apply is disabled
 		const enableCheckbox = !cardSettings.autoApplyDamage ? `
 						<input type="checkbox" class="sdx-target-enable-checkbox" data-token-id="${tokenId}" checked title="Enable/disable this target" />
-							` : '';
+							` : "";
 
 		targetsHtml += `
 							<div class="sdx-target-item" data-token-id="${tokenId}" data-actor-id="${actorId}" data-enabled="true">
@@ -4743,28 +4743,28 @@ function rebuildTargetsList($card, messageId, baseDamage) {
 						`;
 	}
 
-	if (targetsHtml === '') {
-		targetsHtml = '<div class="sdx-no-targets">No ' + tabName.toLowerCase() + ' tokens</div>';
+	if (targetsHtml === "") {
+		targetsHtml = '<div class="sdx-no-targets">No ' + tabName.toLowerCase() + " tokens</div>";
 	}
 
 	// Preserve existing Apply Condition button data before rebuilding
-	const $existingConditionBtn = $card.find('.sdx-apply-condition-btn');
-	let conditionButtonHtml = '';
+	const $existingConditionBtn = $card.find(".sdx-apply-condition-btn");
+	let conditionButtonHtml = "";
 	if ($existingConditionBtn.length > 0) {
 		// Recreate the condition button with same attributes
-		const effectsData = $existingConditionBtn.attr('data-effects') || '';
-		const applyToTarget = $existingConditionBtn.attr('data-apply-to-target') || 'true';
-		const effectsRequirement = $existingConditionBtn.attr('data-effects-requirement') || '';
-		const spellInfoData = $existingConditionBtn.attr('data-spell-info') || '';
-		const effectSelectionMode = $existingConditionBtn.attr('data-effect-selection-mode') || 'all';
+		const effectsData = $existingConditionBtn.attr("data-effects") || "";
+		const applyToTarget = $existingConditionBtn.attr("data-apply-to-target") || "true";
+		const effectsRequirement = $existingConditionBtn.attr("data-effects-requirement") || "";
+		const spellInfoData = $existingConditionBtn.attr("data-spell-info") || "";
+		const effectSelectionMode = $existingConditionBtn.attr("data-effect-selection-mode") || "all";
 		// v14/SD4.x: Preserve applied state across tab rebuilds so the "APPLIED" indicator
 		// and double-click guard survive when the user switches Targeted/Selected tabs.
-		const alreadyApplied = $existingConditionBtn.attr('data-already-applied') === 'true';
+		const alreadyApplied = $existingConditionBtn.attr("data-already-applied") === "true";
 		const condBtnText = alreadyApplied
 			? '<i class="fas fa-check"></i> APPLIED'
 			: '<i class="fas fa-wand-sparkles"></i> APPLY EFFECTS';
-		const condBtnDisabled = alreadyApplied ? 'disabled' : '';
-		const condBtnAppliedAttr = alreadyApplied ? 'data-already-applied="true"' : '';
+		const condBtnDisabled = alreadyApplied ? "disabled" : "";
+		const condBtnAppliedAttr = alreadyApplied ? 'data-already-applied="true"' : "";
 
 		conditionButtonHtml = `
 			<button type="button" class="sdx-apply-condition-btn"
@@ -4779,21 +4779,21 @@ function rebuildTargetsList($card, messageId, baseDamage) {
 	}
 
 	// Build apply button with appropriate text for damage type
-	const baseDamageValue = parseInt($card.data('base-damage')) || baseDamage;
-	const buttonText = isHealing ? 'APPLY HEALING' : 'APPLY DAMAGE';
-	const buttonIcon = isHealing ? 'fa-heart-pulse' : 'fa-hand-sparkles';
+	const baseDamageValue = parseInt($card.data("base-damage")) || baseDamage;
+	const buttonText = isHealing ? "APPLY HEALING" : "APPLY DAMAGE";
+	const buttonIcon = isHealing ? "fa-heart-pulse" : "fa-hand-sparkles";
 	// Only show damage button if there's actual damage to apply
 	const applyDamageButtonHtml = cardSettings.showApplyButton && baseDamageValue > 0 ?
-		`<button type="button" class="sdx-apply-damage-btn" data-damage-type="${damageType}"><i class="fas ${buttonIcon}"></i> ${buttonText}</button>` : '';
+		`<button type="button" class="sdx-apply-damage-btn" data-damage-type="${damageType}"><i class="fas ${buttonIcon}"></i> ${buttonText}</button>` : "";
 
 	// Combine buttons in a wrapper if any exist
-	let buttonsHtml = '';
+	let buttonsHtml = "";
 	if (applyDamageButtonHtml || conditionButtonHtml) {
-		buttonsHtml = '<div class="sdx-damage-actions">' + applyDamageButtonHtml + conditionButtonHtml + '</div>';
+		buttonsHtml = '<div class="sdx-damage-actions">' + applyDamageButtonHtml + conditionButtonHtml + "</div>";
 	}
 
 	// Replace the content
-	$card.find('.sdx-damage-card-content').html(targetsHtml + buttonsHtml);
+	$card.find(".sdx-damage-card-content").html(targetsHtml + buttonsHtml);
 
 	// Re-attach listeners for new elements
 	attachMultiplierListeners($card);
@@ -4804,25 +4804,25 @@ function rebuildTargetsList($card, messageId, baseDamage) {
  * Attach multiplier button listeners
  */
 function attachMultiplierListeners($card) {
-	$card.find('.sdx-multiplier-btn').off('click').on('click', function (e) {
+	$card.find(".sdx-multiplier-btn").off("click").on("click", function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 
 		const $btn = $(this);
-		const tokenId = $btn.data('token-id');
-		const multiplier = parseFloat($btn.data('multiplier'));
+		const tokenId = $btn.data("token-id");
+		const multiplier = parseFloat($btn.data("multiplier"));
 
 		// Update active state
-		$btn.siblings().removeClass('active');
-		$btn.addClass('active');
+		$btn.siblings().removeClass("active");
+		$btn.addClass("active");
 
 		// Update damage preview
 		const $targetItem = $card.find(`.sdx-target-item[data-token-id="${tokenId}"]`);
-		const $damageValue = $targetItem.find('.sdx-damage-value');
-		const baseDamage = parseInt($damageValue.data('base-damage'));
+		const $damageValue = $targetItem.find(".sdx-damage-value");
+		const baseDamage = parseInt($damageValue.data("base-damage"));
 
 		let newDamage;
-		if (multiplier === 0 && $btn.text().trim() === '×') {
+		if (multiplier === 0 && $btn.text().trim() === "×") {
 			newDamage = 0;
 		} else if (multiplier === -1) {
 			newDamage = -baseDamage;
@@ -4833,35 +4833,35 @@ function attachMultiplierListeners($card) {
 		$damageValue.text(Math.abs(newDamage));
 
 		// Get the original damage type to determine proper +/- display
-		const originalDamageType = $card.data('original-damage-type') || $card.data('damage-type');
-		const isOriginallyHealing = (originalDamageType || '').toLowerCase() === 'healing';
+		const originalDamageType = $card.data("original-damage-type") || $card.data("damage-type");
+		const isOriginallyHealing = (originalDamageType || "").toLowerCase() === "healing";
 
 		// Determine the correct +/- sign based on:
 		// - For healing spells: positive newDamage = + (healing), negative = - (damage)
 		// - For damage spells: positive newDamage = - (damage), negative = + (healing)
-		const $preview = $targetItem.find('.sdx-damage-preview');
+		const $preview = $targetItem.find(".sdx-damage-preview");
 		let previewSign;
 
 		if (newDamage === 0) {
-			previewSign = '';
+			previewSign = "";
 		} else if (isOriginallyHealing) {
 			// Healing spell: positive = +, negative = -
-			previewSign = newDamage > 0 ? '+' : '-';
+			previewSign = newDamage > 0 ? "+" : "-";
 		} else {
 			// Damage spell: positive = -, negative = +
-			previewSign = newDamage > 0 ? '-' : '+';
+			previewSign = newDamage > 0 ? "-" : "+";
 		}
 
-		$preview.html(previewSign + '<span class="sdx-damage-value" data-base-damage="' + baseDamage + '">' + Math.abs(newDamage) + '</span>');
+		$preview.html(previewSign + '<span class="sdx-damage-value" data-base-damage="' + baseDamage + '">' + Math.abs(newDamage) + "</span>");
 
-		$targetItem.data('calculated-damage', newDamage);
+		$targetItem.data("calculated-damage", newDamage);
 		// Update card damage type and button text based on whether damage is healing or damaging
 		// This handles cases where multipliers flip the damage sign
-		const $applyBtn = $card.find('.sdx-apply-damage-btn');
+		const $applyBtn = $card.find(".sdx-apply-damage-btn");
 
 		// Store original damage type on first load (use the originalDamageType variable)
-		if (!$card.data('original-damage-type')) {
-			$card.data('original-damage-type', originalDamageType);
+		if (!$card.data("original-damage-type")) {
+			$card.data("original-damage-type", originalDamageType);
 		}
 
 		// Determine effective type based on multiplier (isOriginallyHealing already defined above)
@@ -4873,35 +4873,35 @@ function attachMultiplierListeners($card) {
 		if (isOriginallyHealing) {
 			if (newDamage >= 0) {
 				// Positive on healing spell = healing
-				effectiveDamageType = 'Healing';
+				effectiveDamageType = "Healing";
 				finalCalculatedDamage = newDamage;
 			} else {
 				// Negative on healing spell = damage (flip the sign for damage application)
-				effectiveDamageType = 'damage';
+				effectiveDamageType = "damage";
 				finalCalculatedDamage = Math.abs(newDamage);
 			}
 		} else {
 			if (newDamage >= 0) {
 				// Positive on damage spell = damage
-				effectiveDamageType = 'damage';
+				effectiveDamageType = "damage";
 				finalCalculatedDamage = newDamage;
 			} else {
 				// Negative on damage spell = healing (flip the sign for healing application)
-				effectiveDamageType = 'Healing';
+				effectiveDamageType = "Healing";
 				finalCalculatedDamage = Math.abs(newDamage);
 			}
 		}
 
 		// Store the final calculated damage (always positive, type determines heal vs damage)
-		$targetItem.data('calculated-damage', finalCalculatedDamage);
+		$targetItem.data("calculated-damage", finalCalculatedDamage);
 
 		// Update card damage type
-		$card.data('damage-type', effectiveDamageType);
+		$card.data("damage-type", effectiveDamageType);
 
 		// Update button text and icon
-		const isHealing = effectiveDamageType.toLowerCase() === 'healing';
-		const buttonText = isHealing ? 'APPLY HEALING' : 'APPLY DAMAGE';
-		const buttonIcon = isHealing ? 'fa-heart-pulse' : 'fa-hand-sparkles';
+		const isHealing = effectiveDamageType.toLowerCase() === "healing";
+		const buttonText = isHealing ? "APPLY HEALING" : "APPLY DAMAGE";
+		const buttonIcon = isHealing ? "fa-heart-pulse" : "fa-hand-sparkles";
 		$applyBtn.html(`<i class="fas ${buttonIcon}"></i> ${buttonText}`);
 	});
 }
@@ -4910,23 +4910,23 @@ function attachMultiplierListeners($card) {
  * Attach target enable/disable checkbox listeners
  */
 function attachTargetEnableListeners($card) {
-	$card.find('.sdx-target-enable-checkbox').off('change').on('change', function (e) {
+	$card.find(".sdx-target-enable-checkbox").off("change").on("change", function(e) {
 		e.stopPropagation();
 
 		const $checkbox = $(this);
-		const tokenId = $checkbox.data('token-id');
-		const isEnabled = $checkbox.is(':checked');
+		const tokenId = $checkbox.data("token-id");
+		const isEnabled = $checkbox.is(":checked");
 
 		// Update target item's enabled state
 		const $targetItem = $card.find(`.sdx-target-item[data-token-id="${tokenId}"]`);
-		$targetItem.attr('data-enabled', isEnabled);
-		$targetItem.data('enabled', isEnabled);
+		$targetItem.attr("data-enabled", isEnabled);
+		$targetItem.data("enabled", isEnabled);
 
 		// Visual feedback - gray out disabled targets
 		if (isEnabled) {
-			$targetItem.removeClass('sdx-target-disabled');
+			$targetItem.removeClass("sdx-target-disabled");
 		} else {
-			$targetItem.addClass('sdx-target-disabled');
+			$targetItem.addClass("sdx-target-disabled");
 		}
 
 	});
@@ -4985,7 +4985,7 @@ export async function spawnSummonedCreatures(casterActor, item, profiles, summon
 			: (profiles && typeof profiles === "object" ? Object.values(profiles) : []);
 
 		// Check if Portal library is available
-		if (typeof Portal === 'undefined') {
+		if (typeof Portal === "undefined") {
 			ui.notifications.error("Portal library not found. Please install the 'portal-lib' module.");
 			return;
 		}
@@ -5031,14 +5031,14 @@ export async function spawnSummonedCreatures(casterActor, item, profiles, summon
 			// Parse count formula if it's a dice formula
 			let count = 1;
 			const countFormula = profile.count || "1";
-			if (typeof countFormula === 'string' && countFormula.includes('d')) {
+			if (typeof countFormula === "string" && countFormula.includes("d")) {
 				try {
 					const roll = new Roll(countFormula);
 					await roll.evaluate();
 					count = roll.total;
 					await roll.toMessage({
-						flavor: `Summoning ${profile.displayName || profile.creatureName || 'creatures'}`,
-						speaker: ChatMessage.getSpeaker({ actor: casterActor })
+						flavor: `Summoning ${profile.displayName || profile.creatureName || "creatures"}`,
+						speaker: ChatMessage.getSpeaker({ actor: casterActor }),
 					});
 				} catch (err) {
 					console.warn(`${MODULE_ID} | Invalid count formula, using 1:`, countFormula, err);
@@ -5051,7 +5051,7 @@ export async function spawnSummonedCreatures(casterActor, item, profiles, summon
 			portal.addCreature({
 				creature: profile.worldUuid,
 				count,
-				displayName: profile.displayName || ''
+				displayName: profile.displayName || "",
 			});
 		}
 
@@ -5073,8 +5073,8 @@ export async function spawnSummonedCreatures(casterActor, item, profiles, summon
 				await worldActor.update({
 					ownership: {
 						...worldActor.ownership,
-						[ownerUserId]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
-					}
+						[ownerUserId]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
+					},
 				});
 				actorIdsUpdated.add(worldActor.id);
 			}
@@ -5102,7 +5102,7 @@ export async function spawnSummonedCreatures(casterActor, item, profiles, summon
 						damageType:      spellDamageConfig.damageType      || "",
 						effects:         spellDamageConfig.effects         || [],
 						templateId:      null,
-						summonedTokenIds: tokenIds
+						summonedTokenIds: tokenIds,
 					});
 				} catch (err) {
 					console.warn(`${MODULE_ID} | Failed to start duration tracking for summoning spell:`, err);
@@ -5140,21 +5140,21 @@ async function giveItemsToCaster(casterActor, item, profiles) {
 	for (const profile of profiles) {
 		if (!profile || !profile.itemUuid) continue;
 		let quantity = 1;
-		const qtyValue = (profile.quantity || '1').toString().trim();
-		if (qtyValue.includes('d')) {
+		const qtyValue = (profile.quantity || "1").toString().trim();
+		if (qtyValue.includes("d")) {
 			try {
 				const roll = new Roll(qtyValue);
 				await roll.evaluate();
 				quantity = Math.max(1, roll.total || 1);
 				await roll.toMessage({
-					flavor: `Item giver: ${profile.itemName || item.name || 'Item'} `,
-					speaker: ChatMessage.getSpeaker({ actor: casterActor })
+					flavor: `Item giver: ${profile.itemName || item.name || "Item"} `,
+					speaker: ChatMessage.getSpeaker({ actor: casterActor }),
 				});
 			} catch (err) {
 				console.warn("shadowdark-extras | Invalid item quantity formula, defaulting to 1:", qtyValue, err);
 				quantity = 1;
 			}
-		} else if (qtyValue !== '') {
+		} else if (qtyValue !== "") {
 			const parsed = parseInt(qtyValue);
 			if (!Number.isNaN(parsed)) {
 				quantity = Math.max(1, parsed);
@@ -5182,7 +5182,7 @@ async function giveItemsToCaster(casterActor, item, profiles) {
 	try {
 		const createdItems = await casterActor.createEmbeddedDocuments("Item", itemsToCreate);
 		const itemSummaries = createdItems.map(createdItem => `${createdItem.name} x${createdItem.system?.quantity || 1} `);
-		ui.notifications.info(`Granted ${itemSummaries.join(', ')} to ${casterActor.name} `);
+		ui.notifications.info(`Granted ${itemSummaries.join(", ")} to ${casterActor.name} `);
 	} catch (err) {
 		console.error("shadowdark-extras | Failed to add items to caster:", err);
 		ui.notifications.error("Failed to grant items to caster: " + err.message);
@@ -5256,7 +5256,7 @@ async function applyCoatingPoison(casterActor, targetActor, config, potionName) 
 	// Build weapon selection dropdown
 	const weaponChoices = availableWeapons.map(w =>
 		`<option value="${w.id}">${w.name}</option>`
-	).join('');
+	).join("");
 
 	new foundry.applications.api.DialogV2({
 		window: { title: `${potionName} - Coat Weapon` },
@@ -5301,15 +5301,15 @@ async function applyCoatingPoison(casterActor, targetActor, config, potionName) 
 								exclusive: false,
 								prompt: false,
 								requirements: [],
-								usage: poisonUsage
-							}
+								usage: poisonUsage,
+							},
 						],
 						damageBonus: existingBonus.damageBonus || "",
 						criticalExtraDice: existingBonus.criticalExtraDice || "",
 						criticalExtraDamage: existingBonus.criticalExtraDamage || "",
 						requirements: existingBonus.requirements || [],
 						effects: existingBonus.effects || [],
-						itemMacro: existingBonus.itemMacro || { enabled: false, runAsGm: false, triggers: [] }
+						itemMacro: existingBonus.itemMacro || { enabled: false, runAsGm: false, triggers: [] },
 					};
 
 					// Update the weapon with the poison coating
@@ -5322,12 +5322,12 @@ async function applyCoatingPoison(casterActor, targetActor, config, potionName) 
 							<h3><i class="fas fa-skull-crossbones"></i> Poison Coating</h3>
 							<p><strong>${casterActor?.name || "Someone"}</strong> coats <strong>${targetActor.name}'s ${weapon.name}</strong> with poison!</p>
 							<p><em>The weapon now deals +${damageFormula} poison damage (${usageText}).</em></p>
-						</div>`
+						</div>`,
 					});
-				}
+				},
 			},
-			{ action: "cancel", icon: "fas fa-times", label: "Cancel" }
-		]
+			{ action: "cancel", icon: "fas fa-times", label: "Cancel" },
+		],
 	}).render({ force: true });
 }
 
@@ -5335,18 +5335,18 @@ async function applyCoatingPoison(casterActor, targetActor, config, potionName) 
  * Attach event listeners to damage card elements
  */
 function attachDamageCardListeners(html, messageId) {
-	const $card = html.find('.sdx-damage-card');
+	const $card = html.find(".sdx-damage-card");
 
 	// Header collapse/expand
-	$card.find('.sdx-damage-card-header').on('click', function (e) {
+	$card.find(".sdx-damage-card-header").on("click", function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 
 		const $header = $(this);
-		const $chevron = $header.find('.fa-chevron-down, .fa-chevron-up');
-		const $content = $card.find('.sdx-damage-card-content');
-		const $tabs = $card.find('.sdx-damage-card-tabs');
-		const $rollBreakdown = $card.find('.sdx-roll-breakdown');
+		const $chevron = $header.find(".fa-chevron-down, .fa-chevron-up");
+		const $content = $card.find(".sdx-damage-card-content");
+		const $tabs = $card.find(".sdx-damage-card-tabs");
+		const $rollBreakdown = $card.find(".sdx-roll-breakdown");
 
 		// Toggle content visibility
 		$content.slideToggle(200);
@@ -5354,56 +5354,56 @@ function attachDamageCardListeners(html, messageId) {
 		$rollBreakdown.slideToggle(200);
 
 		// Toggle chevron direction
-		if ($chevron.hasClass('fa-chevron-down')) {
-			$chevron.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+		if ($chevron.hasClass("fa-chevron-down")) {
+			$chevron.removeClass("fa-chevron-down").addClass("fa-chevron-up");
 		} else {
-			$chevron.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+			$chevron.removeClass("fa-chevron-up").addClass("fa-chevron-down");
 		}
 	});
 
-	$card.on('click', '.sdx-target-defense-roll', async function (e) {
+	$card.on("click", ".sdx-target-defense-roll", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 
 		const $btn = $(this);
-		if ($btn.data('rolling')) return;
+		if ($btn.data("rolling")) return;
 
-		$btn.data('rolling', true);
-		$btn.prop('disabled', true);
+		$btn.data("rolling", true);
+		$btn.prop("disabled", true);
 		const originalHtml = $btn.html();
 		$btn.html('<i class="fas fa-spinner fa-spin"></i> Rolling');
 
 		try {
 			await rollTargetDefenseCheck({
 				messageId,
-				tokenId: String($btn.data('token-id')),
-				ability: String($btn.data('ability') || 'dex'),
-				dcFormula: String($btn.data('dc') || '12'),
-				casterActorId: String($card.data('caster-actor-id') || '')
+				tokenId: String($btn.data("token-id")),
+				ability: String($btn.data("ability") || "dex"),
+				dcFormula: String($btn.data("dc") || "12"),
+				casterActorId: String($card.data("caster-actor-id") || ""),
 			});
 		} catch (err) {
 			console.error("shadowdark-extras | Failed to roll target defense:", err);
 			ui.notifications.error("Failed to roll target defense");
-			$btn.prop('disabled', false);
+			$btn.prop("disabled", false);
 			$btn.html(originalHtml);
-			$btn.data('rolling', false);
+			$btn.data("rolling", false);
 		}
 	});
 
 	// Tab switching
-	$card.find('.sdx-tab').on('click', function (e) {
+	$card.find(".sdx-tab").on("click", function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 
 		const $tab = $(this);
-		if ($tab.hasClass('active')) return;
+		if ($tab.hasClass("active")) return;
 
 		// Update active tab
-		$tab.siblings().removeClass('active');
-		$tab.addClass('active');
+		$tab.siblings().removeClass("active");
+		$tab.addClass("active");
 
 		// Get base damage from card's data attribute
-		const baseDamage = parseInt($card.data('base-damage')) || 0;
+		const baseDamage = parseInt($card.data("base-damage")) || 0;
 
 		// Rebuild targets list
 		rebuildTargetsList($card, messageId, baseDamage);
@@ -5416,13 +5416,13 @@ function attachDamageCardListeners(html, messageId) {
 	attachTargetEnableListeners($card);
 
 	// Individual die click to reroll single die
-	$card.on('click', '.sdx-die-clickable', async function (e) {
+	$card.on("click", ".sdx-die-clickable", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 
 		const $die = $(this);
-		const dieIndex = parseInt($die.data('die-index'));
-		const faces = parseInt($die.data('faces'));
+		const dieIndex = parseInt($die.data("die-index"));
+		const faces = parseInt($die.data("faces"));
 
 		if (isNaN(dieIndex) || isNaN(faces)) {
 			console.warn("shadowdark-extras | Invalid die data for reroll");
@@ -5438,28 +5438,28 @@ function attachDamageCardListeners(html, messageId) {
 		// Determine CSS class for the new value
 		const isCrit = newValue === faces;
 		const isFumble = newValue === 1;
-		const newCssClass = isCrit ? 'sdx-die-max' : (isFumble ? 'sdx-die-min' : '');
+		const newCssClass = isCrit ? "sdx-die-max" : (isFumble ? "sdx-die-min" : "");
 
 		// Update the die's display
 		$die.text(newValue);
-		$die.removeClass('sdx-die-max sdx-die-min').addClass(newCssClass);
+		$die.removeClass("sdx-die-max sdx-die-min").addClass(newCssClass);
 
 		// Recalculate total by summing all dice and bonuses in the breakdown
 		let newTotal = 0;
-		const $breakdownLine = $card.find('.sdx-roll-breakdown-line');
+		const $breakdownLine = $card.find(".sdx-roll-breakdown-line");
 
 		// Sum all dice values
-		$breakdownLine.find('.sdx-die').each(function () {
+		$breakdownLine.find(".sdx-die").each(function() {
 			newTotal += parseInt($(this).text()) || 0;
 		});
 
 		// Sum all bonus values (considering the sign from adjacent plus/minus)
-		$breakdownLine.find('.sdx-bonus-val').each(function () {
+		$breakdownLine.find(".sdx-bonus-val").each(function() {
 			const $bonus = $(this);
 			const bonusValue = parseInt($bonus.text()) || 0;
 			// Check if the previous sibling is a minus sign
-			const $prev = $bonus.prev('.sdx-plus');
-			if ($prev.length && $prev.text().includes('-')) {
+			const $prev = $bonus.prev(".sdx-plus");
+			if ($prev.length && $prev.text().includes("-")) {
 				newTotal -= bonusValue;
 			} else {
 				newTotal += bonusValue;
@@ -5467,25 +5467,25 @@ function attachDamageCardListeners(html, messageId) {
 		});
 
 		// Update the total display
-		$breakdownLine.find('.sdx-roll-total').text(newTotal);
+		$breakdownLine.find(".sdx-roll-total").text(newTotal);
 
 		// Update card data
-		$card.attr('data-base-damage', newTotal);
-		$card.data('base-damage', newTotal);
+		$card.attr("data-base-damage", newTotal);
+		$card.data("base-damage", newTotal);
 
 		// Update all target damage displays
-		const damageType = $card.data('damage-type');
-		const isHealing = damageType?.toLowerCase() === 'healing';
+		const damageType = $card.data("damage-type");
+		const isHealing = damageType?.toLowerCase() === "healing";
 
-		$card.find('.sdx-target-item').each(function () {
+		$card.find(".sdx-target-item").each(function() {
 			const $targetItem = $(this);
-			const $targetDamage = $targetItem.find('.sdx-damage-value');
-			const $activeMultiplier = $targetItem.find('.sdx-multiplier-btn.active');
-			const multiplier = parseFloat($activeMultiplier.data('multiplier')) || 1;
+			const $targetDamage = $targetItem.find(".sdx-damage-value");
+			const $activeMultiplier = $targetItem.find(".sdx-multiplier-btn.active");
+			const multiplier = parseFloat($activeMultiplier.data("multiplier")) || 1;
 			const newDamage = Math.floor(newTotal * multiplier);
 
 			$targetDamage.text(newDamage);
-			$targetDamage.attr('data-base-damage', newDamage);
+			$targetDamage.attr("data-base-damage", newDamage);
 		});
 
 		// Show notification
@@ -5493,13 +5493,13 @@ function attachDamageCardListeners(html, messageId) {
 	});
 
 	// Reroll damage button click
-	$card.on('click', '.sdx-reroll-btn', async function (e) {
+	$card.on("click", ".sdx-reroll-btn", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 
 		const $btn = $(this);
-		const formula = $btn.data('formula');
-		const weaponBonusDataStr = $btn.attr('data-weapon-bonus');
+		const formula = $btn.data("formula");
+		const weaponBonusDataStr = $btn.attr("data-weapon-bonus");
 
 		if (!formula) {
 			ui.notifications.warn("No damage formula to reroll");
@@ -5507,8 +5507,8 @@ function attachDamageCardListeners(html, messageId) {
 		}
 
 		// Disable button temporarily
-		$btn.prop('disabled', true);
-		$btn.find('i').removeClass('fa-dice').addClass('fa-spinner fa-spin');
+		$btn.prop("disabled", true);
+		$btn.find("i").removeClass("fa-dice").addClass("fa-spinner fa-spin");
 
 		try {
 			// Roll the base formula
@@ -5542,7 +5542,7 @@ function attachDamageCardListeners(html, messageId) {
 							const val = r.result;
 							const isCrit = val === term.faces;
 							const isFumble = val === 1;
-							const cssClass = isCrit ? 'sdx-die-max' : (isFumble ? 'sdx-die-min' : '');
+							const cssClass = isCrit ? "sdx-die-max" : (isFumble ? "sdx-die-min" : "");
 							bonusDiceResults.push({ value: val, cssClass, faces: term.faces, isBonus: true });
 						}
 					}
@@ -5561,7 +5561,7 @@ function attachDamageCardListeners(html, messageId) {
 							const val = r.result;
 							const isCrit = val === term.faces;
 							const isFumble = val === 1;
-							const cssClass = isCrit ? 'sdx-die-max' : (isFumble ? 'sdx-die-min' : '');
+							const cssClass = isCrit ? "sdx-die-max" : (isFumble ? "sdx-die-min" : "");
 							bonusDiceResults.push({ value: val, cssClass, faces: term.faces, isCritBonus: true });
 						}
 					}
@@ -5579,14 +5579,14 @@ function attachDamageCardListeners(html, messageId) {
 					const val = r.result;
 					const isCrit = val === faces;
 					const isFumble = val === 1;
-					const cssClass = isCrit ? 'sdx-die-max' : (isFumble ? 'sdx-die-min' : '');
+					const cssClass = isCrit ? "sdx-die-max" : (isFumble ? "sdx-die-min" : "");
 					diceResults.push({ value: val, cssClass, faces });
 				}
 			}
 
 			// Get static bonuses from roll terms (like STR modifier)
 			const bonuses = [];
-			let operator = '+';
+			let operator = "+";
 			for (const term of roll.terms) {
 				if (term.operator) {
 					operator = term.operator;
@@ -5596,8 +5596,8 @@ function attachDamageCardListeners(html, messageId) {
 					const value = term.number;
 					if (value !== 0) {
 						bonuses.push({
-							label: 'Modifier',
-							value: operator === '-' ? -value : value
+							label: "Modifier",
+							value: operator === "-" ? -value : value,
 						});
 					}
 				}
@@ -5616,7 +5616,7 @@ function attachDamageCardListeners(html, messageId) {
 				breakdownParts.push({
 					html: `<span class="sdx-die sdx-die-clickable ${die.cssClass}" data-die-index="${dieIndex}" data-faces="${die.faces}" title="Click to reroll this d${die.faces}">${die.value}</span>`,
 					value: die.value,
-					faces: die.faces
+					faces: die.faces,
 				});
 				dieIndex++;
 			}
@@ -5625,18 +5625,18 @@ function attachDamageCardListeners(html, messageId) {
 			for (const bonus of bonuses) {
 				const absValue = Math.abs(bonus.value);
 				breakdownParts.push({
-					html: `<span class="sdx-bonus-val" title="${bonus.label || ''}">${absValue}</span>`,
-					value: bonus.value
+					html: `<span class="sdx-bonus-val" title="${bonus.label || ""}">${absValue}</span>`,
+					value: bonus.value,
 				});
 			}
 
 			// Add weapon bonus dice results (styled differently, also clickable)
 			for (const die of bonusDiceResults) {
-				const extraClass = die.isCritBonus ? 'sdx-crit-bonus' : 'sdx-weapon-bonus';
+				const extraClass = die.isCritBonus ? "sdx-crit-bonus" : "sdx-weapon-bonus";
 				breakdownParts.push({
 					html: `<span class="sdx-die sdx-die-clickable ${die.cssClass} ${extraClass}" data-die-index="${dieIndex}" data-faces="${die.faces}" title="Click to reroll this d${die.faces}">${die.value}</span>`,
 					value: die.value,
-					faces: die.faces
+					faces: die.faces,
 				});
 				dieIndex++;
 			}
@@ -5646,7 +5646,7 @@ function attachDamageCardListeners(html, messageId) {
 				if (index === 0) return part.html;
 				if (part.value < 0) return `<span class="sdx-plus"> - </span> ${part.html} `;
 				return `<span class="sdx-plus"> + </span> ${part.html} `;
-			}).join('');
+			}).join("");
 
 			const newBreakdownHtml = `
 						<div class="sdx-roll-breakdown-line">
@@ -5657,27 +5657,27 @@ function attachDamageCardListeners(html, messageId) {
 						`;
 
 			// Update the card
-			$card.find('.sdx-roll-breakdown-line').replaceWith(newBreakdownHtml);
-			$card.attr('data-base-damage', totalDamage);
-			$card.data('base-damage', totalDamage);
+			$card.find(".sdx-roll-breakdown-line").replaceWith(newBreakdownHtml);
+			$card.attr("data-base-damage", totalDamage);
+			$card.data("base-damage", totalDamage);
 
 			// Update all target damage displays
-			const damageType = $card.data('damage-type');
-			const isHealing = damageType?.toLowerCase() === 'healing';
-			const sign = isHealing ? '+' : '-';
+			const damageType = $card.data("damage-type");
+			const isHealing = damageType?.toLowerCase() === "healing";
+			const sign = isHealing ? "+" : "-";
 
-			const $targetItems = $card.find('.sdx-target-item');
+			const $targetItems = $card.find(".sdx-target-item");
 
-			$targetItems.each(function () {
+			$targetItems.each(function() {
 				const $targetItem = $(this);
-				const $targetDamage = $targetItem.find('.sdx-damage-value');
-				const $activeMultiplier = $targetItem.find('.sdx-multiplier-btn.active');
-				const multiplier = parseFloat($activeMultiplier.data('multiplier')) || 1;
+				const $targetDamage = $targetItem.find(".sdx-damage-value");
+				const $activeMultiplier = $targetItem.find(".sdx-multiplier-btn.active");
+				const multiplier = parseFloat($activeMultiplier.data("multiplier")) || 1;
 				const newDamage = Math.floor(totalDamage * multiplier);
 
 
 				$targetDamage.text(newDamage);
-				$targetDamage.attr('data-base-damage', newDamage);
+				$targetDamage.attr("data-base-damage", newDamage);
 			});
 
 			// Show notification
@@ -5688,14 +5688,14 @@ function attachDamageCardListeners(html, messageId) {
 			ui.notifications.error("Failed to reroll damage");
 		} finally {
 			// Re-enable button
-			$btn.prop('disabled', false);
-			$btn.find('i').removeClass('fa-spinner fa-spin').addClass('fa-dice');
+			$btn.prop("disabled", false);
+			$btn.find("i").removeClass("fa-spinner fa-spin").addClass("fa-dice");
 		}
 	});
 
 	// Apply damage button click (use delegation since button may be rebuilt)
 	// Apply damage button click (use delegation since button may be rebuilt)
-	$card.on('click', '.sdx-apply-damage-btn', async function (e) {
+	$card.on("click", ".sdx-apply-damage-btn", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 
@@ -5709,7 +5709,7 @@ function attachDamageCardListeners(html, messageId) {
 		}
 
 		// Prevent duplicate applications
-		if ($btn.data('applying')) {
+		if ($btn.data("applying")) {
 			return;
 		}
 
@@ -5718,33 +5718,33 @@ function attachDamageCardListeners(html, messageId) {
 		// reset the in-memory `applying` state — so the message flag is the source of
 		// truth. Once damage was applied (auto OR manual), refuse a second apply.
 		const messageDoc = game.messages.get(messageId);
-		if (messageDoc?.getFlag?.(MODULE_ID, "damageApplied") || $btn.attr('data-already-applied') === 'true') {
+		if (messageDoc?.getFlag?.(MODULE_ID, "damageApplied") || $btn.attr("data-already-applied") === "true") {
 			ui.notifications.info("Damage already applied to this card.");
-			$btn.prop('disabled', true);
+			$btn.prop("disabled", true);
 			$btn.html('<i class="fas fa-check"></i> APPLIED');
 			return;
 		}
 
-		$btn.data('applying', true);
-		$btn.prop('disabled', true);
+		$btn.data("applying", true);
+		$btn.prop("disabled", true);
 
 
 		try {
-			const $targets = $card.find('.sdx-target-item');
+			const $targets = $card.find(".sdx-target-item");
 			const unresolvedDefenses = getUnresolvedDefenseTargets($card);
 			if (unresolvedDefenses.length > 0) {
 				ui.notifications.warn("Resolve target defense checks before applying damage.");
-				$btn.prop('disabled', false);
-				$btn.data('applying', false);
-				const damageType = $card.data('damage-type') || 'damage';
-				const buttonText = damageType === 'healing' ? 'APPLY HEALING' : 'APPLY DAMAGE';
-				const buttonIcon = damageType === 'healing' ? 'fa-heart-pulse' : 'fa-hand-sparkles';
+				$btn.prop("disabled", false);
+				$btn.data("applying", false);
+				const damageType = $card.data("damage-type") || "damage";
+				const buttonText = damageType === "healing" ? "APPLY HEALING" : "APPLY DAMAGE";
+				const buttonIcon = damageType === "healing" ? "fa-heart-pulse" : "fa-hand-sparkles";
 				$btn.html(`<i class="fas ${buttonIcon}"></i> ${buttonText}`);
 				return;
 			}
 
-			const damageType = $card.data('damage-type') || 'damage';
-			const isHealing = damageType?.trim().toLowerCase() === 'healing';
+			const damageType = $card.data("damage-type") || "damage";
+			const isHealing = damageType?.trim().toLowerCase() === "healing";
 
 			console.log(`shadowdark-extras | Apply Button Clicked | Type: ${damageType} | isHealing: ${isHealing}`);
 
@@ -5754,18 +5754,18 @@ function attachDamageCardListeners(html, messageId) {
 				const $target = $(targetEl);
 
 				// Skip disabled targets
-				const isEnabled = $target.data('enabled') !== false && $target.attr('data-enabled') !== 'false';
+				const isEnabled = $target.data("enabled") !== false && $target.attr("data-enabled") !== "false";
 				if (!isEnabled) {
 					continue;
 				}
 
-				const tokenId = $target.data('token-id');
+				const tokenId = $target.data("token-id");
 				const token = canvas.tokens.get(tokenId);
 
-				let calculatedDamage = $target.data('calculated-damage');
+				let calculatedDamage = $target.data("calculated-damage");
 
 				if (calculatedDamage === undefined || calculatedDamage === null) {
-					const $damageValue = $target.find('.sdx-damage-value');
+					const $damageValue = $target.find(".sdx-damage-value");
 					calculatedDamage = parseInt($damageValue.text()) || 0;
 
 					// If it's healing, make damage negative
@@ -5774,10 +5774,10 @@ function attachDamageCardListeners(html, messageId) {
 					}
 				}
 
-				const $defense = $target.find('.sdx-target-defense');
-				if ($defense.length && $defense.attr('data-defense-success') === 'true') {
-					const defenseAction = $defense.data('defense-action') || 'avoid';
-					if (defenseAction === 'half') {
+				const $defense = $target.find(".sdx-target-defense");
+				if ($defense.length && $defense.attr("data-defense-success") === "true") {
+					const defenseAction = $defense.data("defense-action") || "avoid";
+					if (defenseAction === "half") {
 						calculatedDamage = Math.floor(calculatedDamage / 2);
 					} else {
 						calculatedDamage = 0;
@@ -5799,7 +5799,7 @@ function attachDamageCardListeners(html, messageId) {
 						const requirementMet = evaluateRequirement(reqInfo.formula, targetRollData);
 
 						if (!requirementMet) {
-							if (reqInfo.failAction === 'half') {
+							if (reqInfo.failAction === "half") {
 								calculatedDamage = Math.floor(calculatedDamage / 2);
 							} else {
 								calculatedDamage = 0;
@@ -5823,14 +5823,14 @@ function attachDamageCardListeners(html, messageId) {
 				// Use socketlib to apply damage via GM
 				if (socketlibSocket) {
 					try {
-						const damageType = $card.data('damage-type') || 'damage';
-						const baseDamage = parseInt($card.data('base-damage')) || 0;
+						const damageType = $card.data("damage-type") || "damage";
+						const baseDamage = parseInt($card.data("base-damage")) || 0;
 
 						// Get damage components from weapon bonus data if available
 						let damageComponents = [];
-						const $rerollBtn = $card.find('.sdx-reroll-btn');
+						const $rerollBtn = $card.find(".sdx-reroll-btn");
 						if ($rerollBtn.length) {
-							const weaponBonusAttr = $rerollBtn.attr('data-weapon-bonus');
+							const weaponBonusAttr = $rerollBtn.attr("data-weapon-bonus");
 							if (weaponBonusAttr) {
 								try {
 									const weaponBonusData = JSON.parse(weaponBonusAttr.replace(/&quot;/g, '"'));
@@ -5846,12 +5846,12 @@ function attachDamageCardListeners(html, messageId) {
 						const weaponBaseDamage = Math.max(0, calculatedDamage - totalBonusDamage);
 
 						// Get base damage type from card data (set by weapon flags)
-						const baseDamageType = $card.data('base-damage-type') || damageType || 'standard';
+						const baseDamageType = $card.data("base-damage-type") || damageType || "standard";
 
 						// Check if this is a magical weapon attack
-						const isMagicalWeapon = $card.data('is-magical-weapon') === true || $card.data('is-magical-weapon') === 'true';
+						const isMagicalWeapon = $card.data("is-magical-weapon") === true || $card.data("is-magical-weapon") === "true";
 
-						console.log(`shadowdark-extras | Executing Socket | Payload:`, { tokenId, damage: finalDamageForSocket, isHealing, damageType });
+						console.log("shadowdark-extras | Executing Socket | Payload:", { tokenId, damage: finalDamageForSocket, isHealing, damageType });
 
 						const success = await socketlibSocket.executeAsGM("applyTokenDamage", {
 							tokenId: tokenId,
@@ -5861,7 +5861,7 @@ function attachDamageCardListeners(html, messageId) {
 							damageComponents: damageComponents,
 							baseDamage: weaponBaseDamage,
 							baseDamageType: baseDamageType,
-							isMagicalWeapon: isMagicalWeapon
+							isMagicalWeapon: isMagicalWeapon,
 						});
 
 
@@ -5880,10 +5880,10 @@ function attachDamageCardListeners(html, messageId) {
 			}
 
 			if (appliedCount > 0) {
-				const appliedText = isHealing ? 'Healing' : 'Damage';
+				const appliedText = isHealing ? "Healing" : "Damage";
 				ui.notifications.info(`${appliedText} applied to ${appliedCount} target(s)`);
 				$btn.html('<i class="fas fa-check"></i> APPLIED');
-				$btn.attr('data-already-applied', 'true');
+				$btn.attr("data-already-applied", "true");
 				// v14/SD4.x: Persist applied state so re-renders show "APPLIED" and the
 				// click handler refuses a second apply attempt.
 				try {
@@ -5897,7 +5897,7 @@ function attachDamageCardListeners(html, messageId) {
 
 				// Decrement weapon bonus usage for bonuses that have limited uses
 				try {
-					const messageId = $card.data('message-id');
+					const messageId = $card.data("message-id");
 					if (messageId) {
 						const message = game.messages.get(messageId);
 						const weaponBonusResults = message?.getFlag(MODULE_ID, "weaponBonusResults");
@@ -5923,34 +5923,34 @@ function attachDamageCardListeners(html, messageId) {
 				// invite a double-apply. Only restore the original label when nothing applied
 				// (user can fix targets and retry).
 				if (appliedCount > 0) {
-					$btn.data('applying', false);
+					$btn.data("applying", false);
 					return;
 				}
-				const damageType = $card.data('damage-type') || 'damage';
-				const buttonText = damageType === 'healing' ? 'APPLY HEALING' : 'APPLY DAMAGE';
-				const buttonIcon = damageType === 'healing' ? 'fa-heart-pulse' : 'fa-hand-sparkles';
+				const damageType = $card.data("damage-type") || "damage";
+				const buttonText = damageType === "healing" ? "APPLY HEALING" : "APPLY DAMAGE";
+				const buttonIcon = damageType === "healing" ? "fa-heart-pulse" : "fa-hand-sparkles";
 				$btn.html(`<i class="fas ${buttonIcon}"></i> ${buttonText}`);
-				$btn.prop('disabled', false);
-				$btn.data('applying', false);
+				$btn.prop("disabled", false);
+				$btn.data("applying", false);
 			}, 2000);
 
 		} catch (error) {
 			console.error("shadowdark-extras | Error applying damage:", error);
 			ui.notifications.error("Failed to apply damage: " + error.message);
-			$btn.prop('disabled', false);
-			$btn.data('applying', false);
+			$btn.prop("disabled", false);
+			$btn.data("applying", false);
 		}
 	});
 
 	// Apply condition button click
-	$card.on('click', '.sdx-apply-condition-btn', async function (e) {
+	$card.on("click", ".sdx-apply-condition-btn", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 
 		const $btn = $(this);
 
 		// Prevent duplicate applications
-		if ($btn.data('applying')) {
+		if ($btn.data("applying")) {
 			return;
 		}
 
@@ -5960,33 +5960,33 @@ function attachDamageCardListeners(html, messageId) {
 		// in-memory guard above is not enough. The persisted message flag is the source of
 		// truth: once conditions were applied (auto OR manual), refuse further applies.
 		const messageDoc = game.messages.get(messageId);
-		if (messageDoc?.getFlag?.(MODULE_ID, "conditionsApplied") || $btn.attr('data-already-applied') === 'true') {
+		if (messageDoc?.getFlag?.(MODULE_ID, "conditionsApplied") || $btn.attr("data-already-applied") === "true") {
 			ui.notifications.info("Conditions already applied to this card.");
-			$btn.prop('disabled', true);
+			$btn.prop("disabled", true);
 			$btn.html('<i class="fas fa-check"></i> APPLIED');
 			return;
 		}
 
-		$btn.data('applying', true);
-		$btn.prop('disabled', true);
+		$btn.data("applying", true);
+		$btn.prop("disabled", true);
 
 
 		try {
 			const unresolvedDefenses = getUnresolvedDefenseTargets($card);
 			if (unresolvedDefenses.length > 0) {
 				ui.notifications.warn("Resolve target defense checks before applying conditions.");
-				$btn.prop('disabled', false);
-				$btn.data('applying', false);
+				$btn.prop("disabled", false);
+				$btn.data("applying", false);
 				$btn.html('<i class="fas fa-wand-sparkles"></i> APPLY CONDITION');
 				return;
 			}
 
-			const effectsJson = $btn.data('effects');
-			const applyToTarget = $btn.data('apply-to-target');
-			const effectsRequirement = $btn.data('effects-requirement') || '';
+			const effectsJson = $btn.data("effects");
+			const applyToTarget = $btn.data("apply-to-target");
+			const effectsRequirement = $btn.data("effects-requirement") || "";
 
 			// Get spell info for focus spell tracking
-			const spellInfoAttr = $btn.attr('data-spell-info');
+			const spellInfoAttr = $btn.attr("data-spell-info");
 			let spellInfo = null;
 			if (spellInfoAttr) {
 				try {
@@ -5997,7 +5997,7 @@ function attachDamageCardListeners(html, messageId) {
 			}
 
 			let effects = [];
-			if (typeof effectsJson === 'string') {
+			if (typeof effectsJson === "string") {
 				effects = JSON.parse(effectsJson);
 			} else if (Array.isArray(effectsJson)) {
 				effects = effectsJson;
@@ -6008,33 +6008,33 @@ function attachDamageCardListeners(html, messageId) {
 
 			if (effects.length === 0) {
 				ui.notifications.warn("No conditions to apply");
-				$btn.prop('disabled', false);
-				$btn.data('applying', false);
+				$btn.prop("disabled", false);
+				$btn.data("applying", false);
 				return;
 			}
 
 			// Handle 'prompt' selection mode - show dialog to select effects
-			const effectSelectionMode = $btn.data('effect-selection-mode') || 'all';
-			if (effectSelectionMode === 'prompt' && effects.length > 1) {
+			const effectSelectionMode = $btn.data("effect-selection-mode") || "all";
+			if (effectSelectionMode === "prompt" && effects.length > 1) {
 
 				// Build effect names for the dialog by resolving UUIDs
 				const effectOptions = [];
 				for (const effectData of effects) {
-					const effectUuid = typeof effectData === 'string' ? effectData : effectData.uuid;
+					const effectUuid = typeof effectData === "string" ? effectData : effectData.uuid;
 					try {
 						const effectDoc = await fromUuid(effectUuid);
 						effectOptions.push({
 							uuid: effectUuid,
-							name: effectDoc?.name || 'Unknown Effect',
-							img: effectDoc?.img || 'icons/svg/mystery-man.svg',
-							data: effectData
+							name: effectDoc?.name || "Unknown Effect",
+							img: effectDoc?.img || "icons/svg/mystery-man.svg",
+							data: effectData,
 						});
 					} catch (err) {
 						effectOptions.push({
 							uuid: effectUuid,
-							name: 'Unknown Effect',
-							img: 'icons/svg/mystery-man.svg',
-							data: effectData
+							name: "Unknown Effect",
+							img: "icons/svg/mystery-man.svg",
+							data: effectData,
 						});
 					}
 				}
@@ -6043,8 +6043,8 @@ function attachDamageCardListeners(html, messageId) {
 				const selectedEffects = await showEffectSelectionDialog(effectOptions);
 
 				if (!selectedEffects || selectedEffects.length === 0) {
-					$btn.prop('disabled', false);
-					$btn.data('applying', false);
+					$btn.prop("disabled", false);
+					$btn.data("applying", false);
 					return;
 				}
 
@@ -6053,23 +6053,23 @@ function attachDamageCardListeners(html, messageId) {
 			}
 
 			// Get caster data for requirement evaluation
-			const casterActorId = $card.data('caster-actor-id');
+			const casterActorId = $card.data("caster-actor-id");
 			const casterActor = casterActorId ? game.actors.get(casterActorId) : null;
 			let casterRollData = {};
 			if (casterActor) {
 				casterRollData = casterActor.getRollData() || {};
 				// Flatten level
-				if (casterRollData.level && typeof casterRollData.level === 'object' && casterRollData.level.value !== undefined) {
+				if (casterRollData.level && typeof casterRollData.level === "object" && casterRollData.level.value !== undefined) {
 					casterRollData.level = casterRollData.level.value;
 				}
 				// Add ability modifiers
 				if (casterRollData.abilities) {
-					['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {
+					["str", "dex", "con", "int", "wis", "cha"].forEach(ability => {
 						if (casterRollData.abilities[ability]?.mod !== undefined) {
 							casterRollData[ability] = casterRollData.abilities[ability].mod;
 						}
 						if (casterRollData.abilities[ability]?.value !== undefined) {
-							casterRollData[ability + 'Base'] = casterRollData.abilities[ability].value;
+							casterRollData[ability + "Base"] = casterRollData.abilities[ability].value;
 						}
 					});
 				}
@@ -6079,12 +6079,12 @@ function attachDamageCardListeners(html, messageId) {
 			}
 
 			// Get card targets (enemies shown in the card)
-			const $cardTargets = $card.find('.sdx-target-item');
-			const cardTargets = $cardTargets.map((i, el) => canvas.tokens.get($(el).data('token-id'))).get().filter(t => t);
+			const $cardTargets = $card.find(".sdx-target-item");
+			const cardTargets = $cardTargets.map((i, el) => canvas.tokens.get($(el).data("token-id"))).get().filter(t => t);
 			console.log("%c[SDX APPLY CONDITION] Card targets found:", "color: lime; font-weight: bold", cardTargets.map(t => ({ id: t.id, name: t.name })));
 
 			// Get caster token using the stored token ID (the actual token that attacked/cast)
-			const casterTokenId = $card.data('caster-token-id');
+			const casterTokenId = $card.data("caster-token-id");
 			let casterToken = null;
 			if (casterTokenId) {
 				casterToken = canvas.tokens.get(casterTokenId);
@@ -6100,14 +6100,14 @@ function attachDamageCardListeners(html, messageId) {
 			// Apply each effect to appropriate tokens based on individual effect settings
 			for (const effectData of effects) {
 				// Handle both old format (string UUID) and new format (object with uuid, duration, applyToTarget)
-				const effectUuid = typeof effectData === 'string' ? effectData : effectData.uuid;
-				const duration = typeof effectData === 'object' && effectData.duration ? effectData.duration : {};
+				const effectUuid = typeof effectData === "string" ? effectData : effectData.uuid;
+				const duration = typeof effectData === "object" && effectData.duration ? effectData.duration : {};
 				// Check individual effect's applyToTarget setting, fall back to global setting
-				const effectApplyToTarget = typeof effectData === 'object' && effectData.applyToTarget !== undefined
+				const effectApplyToTarget = typeof effectData === "object" && effectData.applyToTarget !== undefined
 					? effectData.applyToTarget
 					: applyToTarget;
 				// Check individual effect's cumulative setting (default true for backward compatibility)
-				const effectCumulative = typeof effectData === 'object' && effectData.cumulative !== undefined
+				const effectCumulative = typeof effectData === "object" && effectData.cumulative !== undefined
 					? effectData.cumulative
 					: true;
 
@@ -6134,15 +6134,15 @@ function attachDamageCardListeners(html, messageId) {
 				// Apply to each target for this effect
 				for (const target of effectTargets) {
 					const $targetRow = $card.find(`.sdx-target-item[data-token-id="${target.id}"]`);
-					const $defense = $targetRow.find('.sdx-target-defense');
-					if ($defense.length && $defense.attr('data-defense-success') === 'true' && ($defense.data('defense-action') || 'avoid') === 'avoid') {
+					const $defense = $targetRow.find(".sdx-target-defense");
+					if ($defense.length && $defense.attr("data-defense-success") === "true" && ($defense.data("defense-action") || "avoid") === "avoid") {
 						skippedCount++;
 						continue;
 					}
 
 					// Check effects requirement if it exists (only for target-directed effects)
 					let requirementMet = true;
-					if (effectApplyToTarget && effectsRequirement && effectsRequirement.trim() !== '') {
+					if (effectApplyToTarget && effectsRequirement && effectsRequirement.trim() !== "") {
 						try {
 							const targetRollData = foundry.utils.duplicate(casterRollData);
 
@@ -6174,7 +6174,7 @@ function attachDamageCardListeners(html, messageId) {
 								effectUuid: effectUuid,
 								duration: duration,
 								spellInfo: spellInfo,  // Pass spell info for focus tracking
-								cumulative: effectCumulative  // Pass cumulative flag
+								cumulative: effectCumulative,  // Pass cumulative flag
 							});
 
 							if (success === true) {
@@ -6200,7 +6200,7 @@ function attachDamageCardListeners(html, messageId) {
 				}
 				ui.notifications.info(message);
 				$btn.html('<i class="fas fa-check"></i> APPLIED');
-				$btn.attr('data-already-applied', 'true');
+				$btn.attr("data-already-applied", "true");
 				// v14/SD4.x: Persist applied state so re-renders show "APPLIED" and the
 				// click handler refuses a second apply attempt.
 				try {
@@ -6212,7 +6212,7 @@ function attachDamageCardListeners(html, messageId) {
 					console.warn("shadowdark-extras | Failed to persist conditionsApplied flag:", flagErr);
 				}
 			} else if (skippedCount > 0) {
-				ui.notifications.warn(`No conditions applied - requirement not met for any target`);
+				ui.notifications.warn("No conditions applied - requirement not met for any target");
 				$btn.html('<i class="fas fa-exclamation"></i> REQ FAILED');
 			} else {
 				ui.notifications.warn("No conditions were applied - no valid targets");
@@ -6220,63 +6220,63 @@ function attachDamageCardListeners(html, messageId) {
 		} catch (err) {
 			console.error("shadowdark-extras | Error applying conditions:", err);
 			ui.notifications.error("Failed to apply conditions");
-			$btn.prop('disabled', false);
-			$btn.data('applying', false);
+			$btn.prop("disabled", false);
+			$btn.data("applying", false);
 		}
 	});
 
 	// Summon creatures button click
-	$card.on('click', '.sdx-summon-creatures-btn', async function (e) {
+	$card.on("click", ".sdx-summon-creatures-btn", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 
 		const $btn = $(this);
 
 		// Prevent duplicate summonings
-		if ($btn.data('summoning')) {
+		if ($btn.data("summoning")) {
 			return;
 		}
 
-		$btn.data('summoning', true);
-		$btn.prop('disabled', true);
+		$btn.data("summoning", true);
+		$btn.prop("disabled", true);
 
 
 		try {
-			const profilesJson = $btn.data('profiles');
+			const profilesJson = $btn.data("profiles");
 			let profiles = [];
-			if (typeof profilesJson === 'string') {
+			if (typeof profilesJson === "string") {
 				profiles = JSON.parse(profilesJson);
 			} else if (Array.isArray(profilesJson)) {
 				profiles = profilesJson;
-			} else if (profilesJson && typeof profilesJson === 'object') {
+			} else if (profilesJson && typeof profilesJson === "object") {
 				profiles = Object.values(profilesJson);
 			}
 
 
 			if (profiles.length === 0) {
 				ui.notifications.warn("No summon profiles configured");
-				$btn.prop('disabled', false);
-				$btn.data('summoning', false);
+				$btn.prop("disabled", false);
+				$btn.data("summoning", false);
 				return;
 			}
 
 			// Check if Portal library is available
-			if (typeof Portal === 'undefined') {
+			if (typeof Portal === "undefined") {
 				ui.notifications.error("Portal library is required for summoning but not found");
-				$btn.prop('disabled', false);
-				$btn.data('summoning', false);
+				$btn.prop("disabled", false);
+				$btn.data("summoning", false);
 				return;
 			}
 
 			// Get the caster token to use as origin
-			const casterActorId = $card.data('caster-actor-id');
+			const casterActorId = $card.data("caster-actor-id");
 			const casterActor = casterActorId ? game.actors.get(casterActorId) : null;
 			const casterToken = casterActor ? canvas.tokens.placeables.find(t => t.actor?.id === casterActorId) : null;
 
 			if (!casterToken) {
 				ui.notifications.warn("Could not find caster token for summoning");
-				$btn.prop('disabled', false);
-				$btn.data('summoning', false);
+				$btn.prop("disabled", false);
+				$btn.data("summoning", false);
 				return;
 			}
 
@@ -6297,15 +6297,15 @@ function attachDamageCardListeners(html, messageId) {
 				// Add creature with count and display name
 				portal.addCreature({
 					creature: creatureUuid,
-					count: profile.count || '1',
-					displayName: profile.displayName || ''
+					count: profile.count || "1",
+					displayName: profile.displayName || "",
 				});
 			}
 
 			if (validProfileCount === 0) {
 				ui.notifications.warn("No summon creatures are configured. Drop an actor into the summon row first.");
-				$btn.prop('disabled', false);
-				$btn.data('summoning', false);
+				$btn.prop("disabled", false);
+				$btn.data("summoning", false);
 				return;
 			}
 
@@ -6313,7 +6313,7 @@ function attachDamageCardListeners(html, messageId) {
 			const spawnedTokens = await portal.dialog({
 				spawn: true,
 				multipleChoice: true, // Allow selecting which creatures to summon
-				title: "Summon Creatures"
+				title: "Summon Creatures",
 			});
 
 			if (spawnedTokens && spawnedTokens.length > 0) {
@@ -6321,14 +6321,14 @@ function attachDamageCardListeners(html, messageId) {
 				$btn.html('<i class="fas fa-check"></i> SUMMONED');
 			} else {
 				ui.notifications.info("Summoning cancelled");
-				$btn.prop('disabled', false);
-				$btn.data('summoning', false);
+				$btn.prop("disabled", false);
+				$btn.data("summoning", false);
 			}
 		} catch (err) {
 			console.error("shadowdark-extras | Error summoning creatures:", err);
 			ui.notifications.error("Failed to summon creatures");
-			$btn.prop('disabled', false);
-			$btn.data('summoning', false);
+			$btn.prop("disabled", false);
+			$btn.data("summoning", false);
 		}
 	});
 }

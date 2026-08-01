@@ -31,7 +31,7 @@ import { MODULE_ID } from "../shared/module-id.mjs";
  */
 function installSquareTemplateRotationFix() {
 	const _originalGetRectShape = foundry.canvas.placeables.MeasuredTemplate.getRectShape;
-	foundry.canvas.placeables.MeasuredTemplate.getRectShape = function (distance, direction, adjustForRoundingError = false) {
+	foundry.canvas.placeables.MeasuredTemplate.getRectShape = function(distance, direction, adjustForRoundingError = false) {
 		// Generate a rotation matrix to apply the rect against. The base rotation must be rotated
 		// CCW by 45° before applying the real direction rotation.
 		const matrix = PIXI.Matrix.IDENTITY.rotate(Math.toRadians(-45 + direction));
@@ -148,7 +148,7 @@ const SDX_TEMPLATES = {
 			tmfxTint = null,
 			excludeCasterTokenId = null,  // Token ID to exclude from highlighting
 			templateFlags = null,  // v14: module flags written at create-time only (post-create setFlag silently drops)
-			levels = null  // v14: Region.levels array of Level IDs — must be in creation data
+			levels = null,  // v14: Region.levels array of Level IDs — must be in creation data
 		} = options;
 
 		// Build template data based on type
@@ -159,7 +159,7 @@ const SDX_TEMPLATES = {
 			borderColor,
 			angle: 0,
 			direction: 0,
-			flags: templateFlags ? foundry.utils.deepClone(templateFlags) : {}
+			flags: templateFlags ? foundry.utils.deepClone(templateFlags) : {},
 		};
 
 		// Add texture if provided
@@ -173,17 +173,17 @@ const SDX_TEMPLATES = {
 			templateData.flags = templateData.flags || {};
 			templateData.flags.tokenmagic = templateData.flags.tokenmagic || {};
 			templateData.flags.tokenmagic.options = {
-				tmfxTextureAlpha: textureOpacity
+				tmfxTextureAlpha: textureOpacity,
 			};
 
 			// Add preset if specified
-			if (tmfxPreset && tmfxPreset !== 'NOFX') {
+			if (tmfxPreset && tmfxPreset !== "NOFX") {
 				templateData.flags.tokenmagic.options.tmfxPreset = tmfxPreset;
 
 				// Add tint if specified (must be a number, not hex string)
 				if (tmfxTint) {
-					const tintNum = typeof tmfxTint === 'string'
-						? parseInt(tmfxTint.replace('#', ''), 16)
+					const tintNum = typeof tmfxTint === "string"
+						? parseInt(tmfxTint.replace("#", ""), 16)
 						: tmfxTint;
 					templateData.flags.tokenmagic.options.tmfxTint = tintNum;
 				}
@@ -391,17 +391,17 @@ const SDX_TEMPLATES = {
 
 			// Create elevation indicator text (add to stage, not template)
 			const elevationText = new PIXI.Text(`Elevation: ${currentElevation}`, {
-				fontFamily: 'Modesto Condensed, Old Newspaper, serif',
+				fontFamily: "Modesto Condensed, Old Newspaper, serif",
 				fontSize: 36,
-				fontWeight: 'bold',
+				fontWeight: "bold",
 				fill: 0x000000, // Black text
 				stroke: 0xFFFFFF, // White outline
 				strokeThickness: 6,
-				align: 'center',
+				align: "center",
 				dropShadow: true,
 				dropShadowColor: 0x000000,
 				dropShadowBlur: 4,
-				dropShadowDistance: 2
+				dropShadowDistance: 2,
 			});
 			elevationText.anchor.set(0.5, 1); // Anchor at bottom center
 			elevationText.zIndex = 10000; // Very high z-index to be on top
@@ -539,7 +539,7 @@ const SDX_TEMPLATES = {
 				if (event.button !== 0) return;
 
 				// Get final position - use originFromCaster if set, otherwise click position
-				let finalX, finalY;
+				let finalX; let finalY;
 				if (originFromCaster) {
 					finalX = originFromCaster.x;
 					finalY = originFromCaster.y;
@@ -562,7 +562,7 @@ const SDX_TEMPLATES = {
 					x: finalX,
 					y: finalY,
 					direction: finalDirection,
-					elevation: currentElevation
+					elevation: currentElevation,
 				};
 				const created = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [creationData]);
 
@@ -755,7 +755,7 @@ const SDX_TEMPLATES = {
 		}, 8000);
 
 		return { template, tokens };
-	}
+	},
 };
 
 //console.log(`${MODULE_ID} | SDX.templates API loaded`);

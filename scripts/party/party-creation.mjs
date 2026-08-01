@@ -90,13 +90,13 @@ function addPartyOptionToSelect(html) {
 	}
 
 	// Also intercept form submission to convert Party to NPC before it's sent
-	const form = typeSelect.closest('form');
-	if (form.length > 0 && !form.data('party-intercepted')) {
-		form.data('party-intercepted', true);
-		form.on('submit', function (e) {
+	const form = typeSelect.closest("form");
+	if (form.length > 0 && !form.data("party-intercepted")) {
+		form.data("party-intercepted", true);
+		form.on("submit", function(e) {
 			const select = $(this).find('select[name="type"]');
-			if (select.val() === 'Party') {
-				select.val('NPC');
+			if (select.val() === "Party") {
+				select.val("NPC");
 				// Store that this should be a party
 				let hiddenInput = $(this).find('input[name="flags.shadowdark-extras.isParty"]');
 				if (hiddenInput.length === 0) {
@@ -113,7 +113,7 @@ function addPartyOptionToSelect(html) {
 export function wrapActorCreate() {
 	const originalCreate = CONFIG.Actor.documentClass.create;
 
-	CONFIG.Actor.documentClass.create = async function (data, options = {}) {
+	CONFIG.Actor.documentClass.create = async function(data, options = {}) {
 		// Handle single or array of data
 		const createData = Array.isArray(data) ? data : [data];
 
@@ -134,7 +134,7 @@ export function wrapActorCreate() {
 					attenuation: 0.1,
 					brightness: 0,
 					saturation: 0,
-					contrast: 0
+					contrast: 0,
 				});
 				foundry.utils.setProperty(d, "prototypeToken.light", {
 					negative: false,
@@ -154,12 +154,12 @@ export function wrapActorCreate() {
 						type: "torch",
 						speed: 1,
 						intensity: 1,
-						reverse: false
+						reverse: false,
 					},
 					darkness: {
 						min: 0,
-						max: 1
-					}
+						max: 1,
+					},
 				});
 			}
 		}

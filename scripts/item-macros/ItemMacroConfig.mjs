@@ -9,7 +9,7 @@
  * @param {string} itemType - 'spell' or 'weapon' to customize triggers
  * @returns {string} HTML string
  */
-export function generateItemMacroConfigHTML(MODULE_ID, flags, itemType = 'spell') {
+export function generateItemMacroConfigHTML(MODULE_ID, flags, itemType = "spell") {
 	const macroFlags = flags.itemMacro || { enabled: false, runAsGm: false, triggers: [] };
 	const runAsGm = macroFlags.runAsGm || false;
 	const triggers = macroFlags.triggers || [];
@@ -29,28 +29,28 @@ export function generateItemMacroConfigHTML(MODULE_ID, flags, itemType = 'spell'
 		{ value: "onSuccess", label: "Run macro on success", icon: "fa-check-circle" },
 		{ value: "onCritical", label: "Run macro on critical success", icon: "fa-burst" },
 		{ value: "onFailure", label: "Run macro on failure", icon: "fa-times-circle" },
-		{ value: "onCriticalFail", label: "Run macro on critical failure", icon: "fa-skull" }
+		{ value: "onCriticalFail", label: "Run macro on critical failure", icon: "fa-skull" },
 	];
 
 	const potionTriggers = [
-		{ value: "onCast", label: "Run macro on drink", icon: "fa-flask" }
+		{ value: "onCast", label: "Run macro on drink", icon: "fa-flask" },
 	];
 
 	const scrollWandTriggers = [
-		{ value: "onCast", label: "Run macro on use", icon: "fa-scroll" }
+		{ value: "onCast", label: "Run macro on use", icon: "fa-scroll" },
 	];
 
 	const abilityTriggers = [
-		{ value: "onUse", label: "Run macro on use", icon: "fa-bolt" }
+		{ value: "onUse", label: "Run macro on use", icon: "fa-bolt" },
 	];
 
 	// Select triggers based on item type
 	let triggerOptions;
-	if (itemType === 'potion') {
+	if (itemType === "potion") {
 		triggerOptions = potionTriggers;
-	} else if (itemType === 'scroll' || itemType === 'wand') {
+	} else if (itemType === "scroll" || itemType === "wand") {
 		triggerOptions = scrollWandTriggers;
-	} else if (itemType === 'classAbility' || itemType === 'npcFeature') {
+	} else if (itemType === "classAbility" || itemType === "npcFeature") {
 		triggerOptions = abilityTriggers;
 	} else {
 		triggerOptions = spellTriggers;
@@ -61,11 +61,11 @@ export function generateItemMacroConfigHTML(MODULE_ID, flags, itemType = 'spell'
 		<label class="sdx-macro-trigger-option">
 			<input type="checkbox" class="sdx-spell-macro-trigger-checkbox"
 				data-trigger="${opt.value}"
-				${triggers.includes(opt.value) ? 'checked' : ''} />
+				${triggers.includes(opt.value) ? "checked" : ""} />
 			<i class="fas ${opt.icon}"></i>
 			<span>${opt.label}</span>
 		</label>
-	`).join('');
+	`).join("");
 
 
 	return `
@@ -88,7 +88,7 @@ export function generateItemMacroConfigHTML(MODULE_ID, flags, itemType = 'spell'
 					<div class="sdx-macro-gm-toggle grid-colspan-3">
 						<label class="sdx-toggle-label">
 							<input type="checkbox" class="sdx-spell-macro-run-as-gm"
-								${runAsGm ? 'checked' : ''} />
+								${runAsGm ? "checked" : ""} />
 							<i class="fas fa-crown"></i>
 							<span>Run macro as GM</span>
 						</label>
@@ -144,6 +144,6 @@ export function getItemMacroConfig(item) {
 	return {
 		enabled: flags.triggers?.length > 0,
 		runAsGm: flags.runAsGm || false,
-		triggers: flags.triggers || []
+		triggers: flags.triggers || [],
 	};
 }

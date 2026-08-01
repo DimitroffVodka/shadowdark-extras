@@ -56,7 +56,7 @@ function injectHeadingsCollapseButton(app, html) {
 		toggleBtn.className = "sdx-headings-toggle";
 		toggleBtn.type = "button";
 		toggleBtn.title = "Toggle headings";
-		toggleBtn.innerHTML = `<i class="fas fa-chevron-down" style="transition:transform 0.2s;"></i>`;
+		toggleBtn.innerHTML = "<i class=\"fas fa-chevron-down\" style=\"transition:transform 0.2s;\"></i>";
 		Object.assign(toggleBtn.style, {
 			background: "none",
 			border: "none",

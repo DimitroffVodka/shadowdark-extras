@@ -20,47 +20,47 @@ export default class ClassAbilitySheetSD extends HandlebarsApplicationMixin(Docu
 			positioned: true,
 			icon: "fas fa-star",
 			resizable: true,
-			contentClasses: ["standard-form"]
+			contentClasses: ["standard-form"],
 		},
 		position: {
 			width: 550,
-			height: 600
+			height: 600,
 		},
 		form: {
 			submitOnChange: true,
-			closeOnSubmit: false
+			closeOnSubmit: false,
 		},
 		actions: {
-			itemMacro: ClassAbilitySheetSD.#onItemMacro
-		}
+			itemMacro: ClassAbilitySheetSD.#onItemMacro,
+		},
 	};
 
 	static PARTS = {
 		header: {
-			template: `modules/${MODULE_ID}/templates/class-ability-sheet/header.hbs`
+			template: `modules/${MODULE_ID}/templates/class-ability-sheet/header.hbs`,
 		},
 		tabs: {
-			template: `modules/${MODULE_ID}/templates/class-ability-sheet/tabs.hbs`
+			template: `modules/${MODULE_ID}/templates/class-ability-sheet/tabs.hbs`,
 		},
 		details: {
-			template: `modules/${MODULE_ID}/templates/class-ability-sheet/details.hbs`
+			template: `modules/${MODULE_ID}/templates/class-ability-sheet/details.hbs`,
 		},
 		description: {
-			template: `modules/${MODULE_ID}/templates/class-ability-sheet/description.hbs`
+			template: `modules/${MODULE_ID}/templates/class-ability-sheet/description.hbs`,
 		},
 		macro: {
-			template: `modules/${MODULE_ID}/templates/class-ability-sheet/macro.hbs`
-		}
+			template: `modules/${MODULE_ID}/templates/class-ability-sheet/macro.hbs`,
+		},
 	};
 
 	static TABS = {
 		details: { id: "details", group: "primary", label: "Details", icon: "fas fa-list" },
 		description: { id: "description", group: "primary", label: "Description", icon: "fas fa-book" },
-		macro: { id: "macro", group: "primary", label: "Macro", icon: "fas fa-code" }
+		macro: { id: "macro", group: "primary", label: "Macro", icon: "fas fa-code" },
 	};
 
 	tabGroups = {
-		primary: "details"
+		primary: "details",
 	};
 
 	/* -------------------------------------------- */
@@ -87,7 +87,7 @@ export default class ClassAbilitySheetSD extends HandlebarsApplicationMixin(Docu
 			icon: "fas fa-code",
 			label: "Item Macro",
 			action: "itemMacro",
-			class: "item-macro-header-btn"
+			class: "item-macro-header-btn",
 		});
 
 		return controls;
@@ -126,7 +126,7 @@ export default class ClassAbilitySheetSD extends HandlebarsApplicationMixin(Docu
 		context.enrichedDescription = await TextEditorImpl.enrichHTML(item.system.description, {
 			secrets: item.isOwner,
 			async: true,
-			relativeTo: item
+			relativeTo: item,
 		});
 
 		// Item Macro content
@@ -150,8 +150,8 @@ export default class ClassAbilitySheetSD extends HandlebarsApplicationMixin(Docu
 		return {
 			itemMacro: {
 				runAsGm: flags.itemMacro?.runAsGm ?? false,
-				macroTrigger: flags.itemMacro?.macroTrigger ?? "all"
-			}
+				macroTrigger: flags.itemMacro?.macroTrigger ?? "all",
+			},
 		};
 	}
 
@@ -164,7 +164,7 @@ export default class ClassAbilitySheetSD extends HandlebarsApplicationMixin(Docu
 			tabs[key] = {
 				...config,
 				active: this.tabGroups.primary === key,
-				cssClass: this.tabGroups.primary === key ? "active" : ""
+				cssClass: this.tabGroups.primary === key ? "active" : "",
 			};
 		}
 		return tabs;
@@ -209,7 +209,7 @@ export default class ClassAbilitySheetSD extends HandlebarsApplicationMixin(Docu
 					current: this.item.img,
 					callback: async (path) => {
 						await this.item.update({ img: path });
-					}
+					},
 				});
 				fp.browse();
 			});

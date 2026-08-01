@@ -38,8 +38,8 @@ export function getDefaultWeaponBonusConfig() {
 		itemMacro: {
 			enabled: false,
 			runAsGm: false,
-			triggers: [] // beforeAttack, onHit, onCritical, onMiss, onCriticalMiss, onEquip, onUnequip
-		}
+			triggers: [], // beforeAttack, onHit, onCritical, onMiss, onCriticalMiss, onEquip, onUnequip
+		},
 	};
 }
 /**
@@ -50,12 +50,12 @@ function activateBonusesTab(app, html) {
 	if (!$html || !$html.length) return;
 
 	// Remove active class from all tabs/sections
-	$html.find('nav.SD-nav[data-group="primary"] .navigation-tab').removeClass('active');
-	$html.find('.SD-content-body .tab[data-group="primary"]').removeClass('active');
+	$html.find('nav.SD-nav[data-group="primary"] .navigation-tab').removeClass("active");
+	$html.find('.SD-content-body .tab[data-group="primary"]').removeClass("active");
 
 	// Add active class to bonuses tab
-	$html.find('nav.SD-nav[data-group="primary"] [data-tab="tab-bonuses"]').addClass('active');
-	$html.find('.tab[data-tab="tab-bonuses"]').addClass('active');
+	$html.find('nav.SD-nav[data-group="primary"] [data-tab="tab-bonuses"]').addClass("active");
+	$html.find('.tab[data-tab="tab-bonuses"]').addClass("active");
 
 	// Also update Foundry's tab controller if available
 	if (app._tabs && app._tabs.length > 0) {
@@ -92,7 +92,7 @@ export function injectWeaponBonusTab(app, html, item) {
 	}
 
 	// Add the Bonuses tab to navigation (before Source tab)
-	const bonusTabNav = `<a class="navigation-tab" data-tab="tab-bonuses"><i class="fas fa-dice-d20"></i> Bonuses</a>`;
+	const bonusTabNav = "<a class=\"navigation-tab\" data-tab=\"tab-bonuses\"><i class=\"fas fa-dice-d20\"></i> Bonuses</a>";
 	const $sourceTab = $nav.find('[data-tab="tab-source"]');
 	if ($sourceTab.length) {
 		$sourceTab.before(bonusTabNav);
@@ -107,7 +107,7 @@ export function injectWeaponBonusTab(app, html, item) {
 	const tabContent = buildWeaponBonusTabHtml(flags, item);
 
 	// Find the sheet body/content area - Shadowdark uses SD-content-body
-	const $sheetBody = html.find('.SD-content-body, section.SD-content-body');
+	const $sheetBody = html.find(".SD-content-body, section.SD-content-body");
 	if ($sheetBody.length) {
 		$sheetBody.append(tabContent);
 		console.log(`${MODULE_ID} | Injected bonuses tab content`);
@@ -124,8 +124,8 @@ export function injectWeaponBonusTab(app, html, item) {
 	}
 
 	// Track tab changes to handle re-renders
-	html.find('nav.SD-nav[data-group="primary"] .navigation-tab').on('click', function () {
-		const tabName = $(this).data('tab');
+	html.find('nav.SD-nav[data-group="primary"] .navigation-tab').on("click", function() {
+		const tabName = $(this).data("tab");
 		if (tabName) {
 			app._shadowdarkExtrasActiveTab = tabName;
 		}
@@ -146,7 +146,7 @@ export function injectWeaponAnimationButton(html, item) {
 	if (!$nav.length) return;
 
 	// Check if button already exists
-	if ($nav.find('.sdx-weapon-animation-btn').length) return;
+	if ($nav.find(".sdx-weapon-animation-btn").length) return;
 
 	// Add the Animation button after the Bonuses tab
 	const animationBtn = `<a class="sdx-weapon-animation-btn navigation-tab" title="${game.i18n.localize("SHADOWDARK_EXTRAS.weaponAnimation.button")}"><i class="fas fa-wand-magic-sparkles"></i></a>`;
@@ -158,7 +158,7 @@ export function injectWeaponAnimationButton(html, item) {
 	}
 
 	// Add click handler for the animation button
-	html.find('.sdx-weapon-animation-btn').on('click', async (event) => {
+	html.find(".sdx-weapon-animation-btn").on("click", async (event) => {
 		event.preventDefault();
 		event.stopPropagation();
 
@@ -195,7 +195,7 @@ function buildWeaponBonusTabHtml(flags, item) {
 		damageBonuses = [{
 			formula: flags.damageBonus,
 			label: "",
-			requirements: flags.requirements || []
+			requirements: flags.requirements || [],
 		}];
 	}
 
@@ -223,12 +223,12 @@ function buildWeaponBonusTabHtml(flags, item) {
 	// Build critical requirements HTML
 	let criticalDiceReqsHtml = "";
 	criticalDiceRequirements.forEach((req, reqIndex) => {
-		criticalDiceReqsHtml += buildCriticalRequirementRowHtml(req, 'dice', reqIndex);
+		criticalDiceReqsHtml += buildCriticalRequirementRowHtml(req, "dice", reqIndex);
 	});
 
 	let criticalDamageReqsHtml = "";
 	criticalDamageRequirements.forEach((req, reqIndex) => {
-		criticalDamageReqsHtml += buildCriticalRequirementRowHtml(req, 'damage', reqIndex);
+		criticalDamageReqsHtml += buildCriticalRequirementRowHtml(req, "damage", reqIndex);
 	});
 
 	return `
@@ -237,12 +237,12 @@ function buildWeaponBonusTabHtml(flags, item) {
 				<!-- Enable Toggle -->
 				<div class="sdx-bonus-section sdx-bonus-enable">
 					<label class="sdx-toggle-label">
-						<input type="checkbox" class="sdx-weapon-bonus-enabled" ${enabled ? 'checked' : ''} />
+						<input type="checkbox" class="sdx-weapon-bonus-enabled" ${enabled ? "checked" : ""} />
 						<span>Enable Weapon Bonuses</span>
 					</label>
 				</div>
 
-				<div class="sdx-bonus-content ${enabled ? '' : 'sdx-disabled'}">
+				<div class="sdx-bonus-content ${enabled ? "" : "sdx-disabled"}">
 					<!-- To Hit Bonuses Section -->
 					<fieldset class="sdx-bonus-fieldset sdx-hit-bonuses-fieldset">
 						<legend><i class="fas fa-bullseye"></i> To Hit Bonuses</legend>
@@ -325,7 +325,7 @@ function buildWeaponBonusTabHtml(flags, item) {
 							<div class="sdx-effects-list">
 								${effectsHtml}
 							</div>
-							<div class="sdx-drop-placeholder ${effects.length ? 'hidden' : ''}">
+							<div class="sdx-drop-placeholder ${effects.length ? "hidden" : ""}">
 								<i class="fas fa-hand-point-down"></i>
 								<span>Drop Effect/Condition items here</span>
 							</div>
@@ -357,7 +357,7 @@ function buildWeaponBonusTabHtml(flags, item) {
 								<strong>Attacker HP %</strong> - Your health percentage<br>
 								<strong>Target Ancestry</strong> - Target's ancestry<br>
 								<strong>Target Alignment</strong> - Target's alignment (chaotic, neutral, lawful)<br>
-								${game.settings.get(MODULE_ID, "enableNpcCreatureType") ? '<strong>Target Subtype</strong> - Target\'s creature type' : ''}
+								${game.settings.get(MODULE_ID, "enableNpcCreatureType") ? "<strong>Target Subtype</strong> - Target's creature type" : ""}
 							</div>
 						</div>
 					</fieldset>
@@ -400,11 +400,11 @@ function buildHitBonusRowHtml(bonus, index) {
 				<div class="sdx-hit-bonus-reqs-header">
 					<span>Requirements (optional):</span>
 					<label class="sdx-exclusive-label" title="If checked and requirements are met, only this bonus applies (ignores other bonuses)">
-						<input type="checkbox" class="sdx-hit-bonus-exclusive" data-bonus-index="${index}" ${exclusive ? 'checked' : ''} />
+						<input type="checkbox" class="sdx-hit-bonus-exclusive" data-bonus-index="${index}" ${exclusive ? "checked" : ""} />
 						<span>Exclusive</span>
 					</label>
 					<label class="sdx-prompt-label" title="If checked, this bonus will appear in the attack roll dialog for optional activation">
-						<input type="checkbox" class="sdx-hit-bonus-prompt" data-bonus-index="${index}" ${prompt ? 'checked' : ''} />
+						<input type="checkbox" class="sdx-hit-bonus-prompt" data-bonus-index="${index}" ${prompt ? "checked" : ""} />
 						<span>Prompt</span>
 					</label>
 					<button type="button" class="sdx-add-hit-bonus-requirement" data-bonus-index="${index}">
@@ -433,7 +433,7 @@ function buildHitBonusRequirementRowHtml(req, bonusIndex, reqIndex) {
 		{ value: "targetHpPercent", label: "Target HP %" },
 		{ value: "attackerHpPercent", label: "Attacker HP %" },
 		{ value: "targetAncestry", label: "Target Ancestry" },
-		{ value: "targetAlignment", label: "Target Alignment" }
+		{ value: "targetAlignment", label: "Target Alignment" },
 	];
 
 	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
@@ -445,10 +445,10 @@ function buildHitBonusRequirementRowHtml(req, bonusIndex, reqIndex) {
 	return `
 		<div class="sdx-hit-bonus-req-row" data-bonus-index="${bonusIndex}" data-req-index="${reqIndex}">
 			<select class="sdx-hit-bonus-req-type">
-				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
+				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
 			</select>
 			<select class="sdx-hit-bonus-req-operator">
-				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
+				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
 			</select>
 			<input type="text" class="sdx-hit-bonus-req-value" value="${value}" placeholder="${getPlaceholderForType(type)}" />
 			<button type="button" class="sdx-remove-hit-bonus-requirement" data-bonus-index="${bonusIndex}" data-req-index="${reqIndex}">
@@ -485,20 +485,20 @@ function buildDamageBonusRowHtml(bonus, index) {
 					<input type="text" class="sdx-damage-bonus-label" value="${label}"
 						placeholder="Label (optional, e.g., vs Undead)" title="Label" />
 					<select class="sdx-damage-bonus-type" title="Damage Type">
-						<option value="" ${!bonus.damageType ? 'selected' : ''}>Standard Damage</option>
-						<option value="bludgeoning" ${bonus.damageType === 'bludgeoning' ? 'selected' : ''}>Bludgeoning</option>
-						<option value="slashing" ${bonus.damageType === 'slashing' ? 'selected' : ''}>Slashing</option>
-						<option value="piercing" ${bonus.damageType === 'piercing' ? 'selected' : ''}>Piercing</option>
-						<option value="physical" ${bonus.damageType === 'physical' ? 'selected' : ''}>Physical (Generic)</option>
-						<option value="fire" ${bonus.damageType === 'fire' ? 'selected' : ''}>Fire</option>
-						<option value="cold" ${bonus.damageType === 'cold' ? 'selected' : ''}>Cold</option>
-						<option value="lightning" ${bonus.damageType === 'lightning' ? 'selected' : ''}>Lightning</option>
-						<option value="acid" ${bonus.damageType === 'acid' ? 'selected' : ''}>Acid</option>
-						<option value="poison" ${bonus.damageType === 'poison' ? 'selected' : ''}>Poison</option>
-						<option value="necrotic" ${bonus.damageType === 'necrotic' ? 'selected' : ''}>Necrotic</option>
-						<option value="radiant" ${bonus.damageType === 'radiant' ? 'selected' : ''}>Radiant</option>
-						<option value="psychic" ${bonus.damageType === 'psychic' ? 'selected' : ''}>Psychic</option>
-						<option value="force" ${bonus.damageType === 'force' ? 'selected' : ''}>Force</option>
+						<option value="" ${!bonus.damageType ? "selected" : ""}>Standard Damage</option>
+						<option value="bludgeoning" ${bonus.damageType === "bludgeoning" ? "selected" : ""}>Bludgeoning</option>
+						<option value="slashing" ${bonus.damageType === "slashing" ? "selected" : ""}>Slashing</option>
+						<option value="piercing" ${bonus.damageType === "piercing" ? "selected" : ""}>Piercing</option>
+						<option value="physical" ${bonus.damageType === "physical" ? "selected" : ""}>Physical (Generic)</option>
+						<option value="fire" ${bonus.damageType === "fire" ? "selected" : ""}>Fire</option>
+						<option value="cold" ${bonus.damageType === "cold" ? "selected" : ""}>Cold</option>
+						<option value="lightning" ${bonus.damageType === "lightning" ? "selected" : ""}>Lightning</option>
+						<option value="acid" ${bonus.damageType === "acid" ? "selected" : ""}>Acid</option>
+						<option value="poison" ${bonus.damageType === "poison" ? "selected" : ""}>Poison</option>
+						<option value="necrotic" ${bonus.damageType === "necrotic" ? "selected" : ""}>Necrotic</option>
+						<option value="radiant" ${bonus.damageType === "radiant" ? "selected" : ""}>Radiant</option>
+						<option value="psychic" ${bonus.damageType === "psychic" ? "selected" : ""}>Psychic</option>
+						<option value="force" ${bonus.damageType === "force" ? "selected" : ""}>Force</option>
 					</select>
 					<input type="number" class="sdx-damage-bonus-usage" value="${usage}" min="0" step="1"
 						placeholder="∞" title="${game.i18n.localize("SHADOWDARK_EXTRAS.weaponBonus.usage.tooltip")}" />
@@ -511,11 +511,11 @@ function buildDamageBonusRowHtml(bonus, index) {
 				<div class="sdx-damage-bonus-reqs-header">
 					<span>Requirements (optional):</span>
 					<label class="sdx-exclusive-label" title="If checked and requirements are met, only this bonus applies (ignores other bonuses)">
-						<input type="checkbox" class="sdx-damage-bonus-exclusive" data-bonus-index="${index}" ${exclusive ? 'checked' : ''} />
+						<input type="checkbox" class="sdx-damage-bonus-exclusive" data-bonus-index="${index}" ${exclusive ? "checked" : ""} />
 						<span>Exclusive</span>
 					</label>
 					<label class="sdx-prompt-label" title="If checked, this bonus will appear in the attack roll dialog for optional activation">
-						<input type="checkbox" class="sdx-damage-bonus-prompt" data-bonus-index="${index}" ${prompt ? 'checked' : ''} />
+						<input type="checkbox" class="sdx-damage-bonus-prompt" data-bonus-index="${index}" ${prompt ? "checked" : ""} />
 						<span>Prompt</span>
 					</label>
 					<button type="button" class="sdx-add-damage-bonus-requirement" data-bonus-index="${index}">
@@ -544,7 +544,7 @@ function buildDamageBonusRequirementRowHtml(req, bonusIndex, reqIndex) {
 		{ value: "targetHpPercent", label: "Target HP %" },
 		{ value: "attackerHpPercent", label: "Attacker HP %" },
 		{ value: "targetAncestry", label: "Target Ancestry" },
-		{ value: "targetAlignment", label: "Target Alignment" }
+		{ value: "targetAlignment", label: "Target Alignment" },
 	];
 
 	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
@@ -556,10 +556,10 @@ function buildDamageBonusRequirementRowHtml(req, bonusIndex, reqIndex) {
 	return `
 		<div class="sdx-damage-bonus-req-row" data-bonus-index="${bonusIndex}" data-req-index="${reqIndex}">
 			<select class="sdx-damage-bonus-req-type">
-				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
+				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
 			</select>
 			<select class="sdx-damage-bonus-req-operator">
-				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
+				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
 			</select>
 			<input type="text" class="sdx-damage-bonus-req-value" value="${value}" placeholder="${getPlaceholderForType(type)}" />
 			<button type="button" class="sdx-remove-damage-bonus-requirement" data-bonus-index="${bonusIndex}" data-req-index="${reqIndex}">
@@ -586,7 +586,7 @@ function buildCriticalRequirementRowHtml(req, criticalType, reqIndex) {
 		{ value: "targetHpPercent", label: "Target HP %" },
 		{ value: "attackerHpPercent", label: "Attacker HP %" },
 		{ value: "targetAncestry", label: "Target Ancestry" },
-		{ value: "targetAlignment", label: "Target Alignment" }
+		{ value: "targetAlignment", label: "Target Alignment" },
 	];
 
 	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
@@ -598,10 +598,10 @@ function buildCriticalRequirementRowHtml(req, criticalType, reqIndex) {
 	return `
 		<div class="sdx-critical-req-row" data-critical-type="${criticalType}" data-req-index="${reqIndex}">
 			<select class="sdx-critical-req-type">
-				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
+				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
 			</select>
 			<select class="sdx-critical-req-operator">
-				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
+				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
 			</select>
 			<input type="text" class="sdx-critical-req-value" value="${value}" placeholder="${getPlaceholderForType(type)}" />
 			<button type="button" class="sdx-remove-critical-requirement" data-critical-type="${criticalType}" data-req-index="${reqIndex}">
@@ -626,7 +626,7 @@ function buildRequirementRowHtml(req, index) {
 		{ value: "attackerHpPercent", label: "Attacker HP %" },
 		{ value: "targetAncestry", label: "Target Ancestry" },
 		{ value: "targetAlignment", label: "Target Alignment" },
-		{ value: "attackerCondition", label: "Attacker Has Condition/Effect" }
+		{ value: "attackerCondition", label: "Attacker Has Condition/Effect" },
 	];
 
 	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
@@ -638,10 +638,10 @@ function buildRequirementRowHtml(req, index) {
 	return `
 		<div class="sdx-requirement-row" data-index="${index}">
 			<select class="sdx-req-type">
-				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
+				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
 			</select>
 			<select class="sdx-req-operator">
-				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
+				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
 			</select>
 			<input type="text" class="sdx-req-value" value="${value}" placeholder="${getPlaceholderForType(type)}" />
 			<button type="button" class="sdx-remove-requirement" data-index="${index}">
@@ -661,7 +661,7 @@ function getOperatorsForType(type) {
 			{ value: "lessThanOrEqual", label: "Less than or equal" },
 			{ value: "greaterThan", label: "Greater than" },
 			{ value: "greaterThanOrEqual", label: "Greater than or equal" },
-			{ value: "equals", label: "Equals" }
+			{ value: "equals", label: "Equals" },
 		];
 	}
 
@@ -671,7 +671,7 @@ function getOperatorsForType(type) {
 		{ value: "startsWith", label: "Starts with" },
 		{ value: "endsWith", label: "Ends with" },
 		{ value: "notContains", label: "Does not contain" },
-		{ value: "notEquals", label: "Does not equal" }
+		{ value: "notEquals", label: "Does not equal" },
 	];
 }
 
@@ -728,17 +728,17 @@ function buildEffectRowHtml(effect, index) {
 				<span class="sdx-apply-to-label">Apply to:</span>
 				<label class="sdx-radio-label">
 					<input type="radio" name="sdx-effect-apply-to-${index}" class="sdx-effect-apply-to-radio"
-					       data-effect-index="${index}" value="target" ${applyToTarget ? 'checked' : ''} />
+					       data-effect-index="${index}" value="target" ${applyToTarget ? "checked" : ""} />
 					<i class="fas fa-crosshairs"></i> Target
 				</label>
 				<label class="sdx-radio-label">
 					<input type="radio" name="sdx-effect-apply-to-${index}" class="sdx-effect-apply-to-radio"
-					       data-effect-index="${index}" value="attacker" ${!applyToTarget ? 'checked' : ''} />
+					       data-effect-index="${index}" value="attacker" ${!applyToTarget ? "checked" : ""} />
 					<i class="fas fa-user"></i> Attacker
 				</label>
 				<span class="sdx-effect-separator">|</span>
 				<label class="sdx-checkbox-label" title="If unchecked, won't apply if target already has this condition">
-					<input type="checkbox" class="sdx-effect-cumulative-checkbox" data-effect-index="${index}" ${cumulative ? 'checked' : ''} />
+					<input type="checkbox" class="sdx-effect-cumulative-checkbox" data-effect-index="${index}" ${cumulative ? "checked" : ""} />
 					<i class="fas fa-layer-group"></i> Cumulative
 				</label>
 			</div>
@@ -771,7 +771,7 @@ function buildEffectRequirementRowHtml(req, effectIndex, reqIndex) {
 		{ value: "targetHpPercent", label: "Target HP %" },
 		{ value: "attackerHpPercent", label: "Attacker HP %" },
 		{ value: "targetAncestry", label: "Target Ancestry" },
-		{ value: "targetAlignment", label: "Target Alignment" }
+		{ value: "targetAlignment", label: "Target Alignment" },
 	];
 
 	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
@@ -783,10 +783,10 @@ function buildEffectRequirementRowHtml(req, effectIndex, reqIndex) {
 	return `
 		<div class="sdx-effect-req-row" data-effect-index="${effectIndex}" data-req-index="${reqIndex}">
 			<select class="sdx-effect-req-type">
-				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
+				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
 			</select>
 			<select class="sdx-effect-req-operator">
-				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
+				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
 			</select>
 			<input type="text" class="sdx-effect-req-value" value="${value}" placeholder="${getPlaceholderForType(type)}" />
 			<button type="button" class="sdx-remove-effect-requirement" data-effect-index="${effectIndex}" data-req-index="${reqIndex}">
@@ -814,18 +814,18 @@ function buildItemMacroSectionHtml(itemMacro, macroCommand) {
 		{ value: "onMiss", label: "Run macro if miss", icon: "fa-times-circle" },
 		{ value: "onCriticalMiss", label: "Run macro if critical miss", icon: "fa-skull" },
 		{ value: "onEquip", label: "Run macro on equip", icon: "fa-hand-holding" },
-		{ value: "onUnequip", label: "Run macro on unequip", icon: "fa-hand" }
+		{ value: "onUnequip", label: "Run macro on unequip", icon: "fa-hand" },
 	];
 
 	// Build trigger checkboxes
 	const triggerCheckboxesHtml = triggerOptions.map(opt => `
 		<label class="sdx-macro-trigger-option">
 			<input type="checkbox" class="sdx-macro-trigger-checkbox" value="${opt.value}"
-				${triggers.includes(opt.value) ? 'checked' : ''} />
+				${triggers.includes(opt.value) ? "checked" : ""} />
 			<i class="fas ${opt.icon}"></i>
 			<span>${opt.label}</span>
 		</label>
-	`).join('');
+	`).join("");
 
 	return `
 		<fieldset class="sdx-bonus-fieldset sdx-item-macro-fieldset">
@@ -841,7 +841,7 @@ function buildItemMacroSectionHtml(itemMacro, macroCommand) {
 
 			<div class="sdx-macro-gm-toggle">
 				<label class="sdx-toggle-label">
-					<input type="checkbox" class="sdx-macro-run-as-gm" ${runAsGm ? 'checked' : ''} />
+					<input type="checkbox" class="sdx-macro-run-as-gm" ${runAsGm ? "checked" : ""} />
 					<i class="fas fa-crown"></i>
 					<span>Run macro as GM</span>
 				</label>
@@ -931,14 +931,14 @@ function activateWeaponBonusListeners(html, app, item) {
 	console.log(`${MODULE_ID} | Activating weapon bonus listeners`);
 
 	// Enable/disable toggle
-	$tab.find('.sdx-weapon-bonus-enabled').on('change', async function () {
-		const enabled = $(this).is(':checked');
-		const $content = $tab.find('.sdx-bonus-content');
+	$tab.find(".sdx-weapon-bonus-enabled").on("change", async function() {
+		const enabled = $(this).is(":checked");
+		const $content = $tab.find(".sdx-bonus-content");
 
 		if (enabled) {
-			$content.removeClass('sdx-disabled');
+			$content.removeClass("sdx-disabled");
 		} else {
-			$content.addClass('sdx-disabled');
+			$content.addClass("sdx-disabled");
 		}
 
 		await saveWeaponBonusConfig(item, { enabled });
@@ -946,14 +946,14 @@ function activateWeaponBonusListeners(html, app, item) {
 
 	// Critical hit fields - debounced save
 	let saveTimeout;
-	$tab.find('.sdx-critical-extra-dice, .sdx-critical-extra-damage').on('input', function () {
+	$tab.find(".sdx-critical-extra-dice, .sdx-critical-extra-damage").on("input", function() {
 		clearTimeout(saveTimeout);
 		saveTimeout = setTimeout(async () => {
 			await saveCriticalBonusFields($tab, item);
 		}, 500);
 	});
 
-	$tab.find('.sdx-critical-extra-dice, .sdx-critical-extra-damage').on('blur', async function () {
+	$tab.find(".sdx-critical-extra-dice, .sdx-critical-extra-damage").on("blur", async function() {
 		clearTimeout(saveTimeout);
 		await saveCriticalBonusFields($tab, item);
 	});
@@ -961,18 +961,18 @@ function activateWeaponBonusListeners(html, app, item) {
 	// ========== CRITICAL REQUIREMENTS LISTENERS ==========
 
 	// Add critical requirement
-	$tab.on('click', '.sdx-add-critical-requirement', async function (e) {
+	$tab.on("click", ".sdx-add-critical-requirement", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const criticalType = $(this).data('critical-type');
+		const criticalType = $(this).data("critical-type");
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 
-		const reqKey = criticalType === 'dice' ? 'criticalDiceRequirements' : 'criticalDamageRequirements';
+		const reqKey = criticalType === "dice" ? "criticalDiceRequirements" : "criticalDamageRequirements";
 		const requirements = currentFlags[reqKey] || [];
 		requirements.push({
 			type: "targetName",
 			operator: "contains",
-			value: ""
+			value: "",
 		});
 
 		await saveWeaponBonusConfig(item, { [reqKey]: requirements });
@@ -981,14 +981,14 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Remove critical requirement
-	$tab.on('click', '.sdx-remove-critical-requirement', async function (e) {
+	$tab.on("click", ".sdx-remove-critical-requirement", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const criticalType = $(this).data('critical-type');
-		const reqIndex = parseInt($(this).data('req-index'));
+		const criticalType = $(this).data("critical-type");
+		const reqIndex = parseInt($(this).data("req-index"));
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 
-		const reqKey = criticalType === 'dice' ? 'criticalDiceRequirements' : 'criticalDamageRequirements';
+		const reqKey = criticalType === "dice" ? "criticalDiceRequirements" : "criticalDamageRequirements";
 		const requirements = currentFlags[reqKey] || [];
 		requirements.splice(reqIndex, 1);
 
@@ -998,18 +998,18 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Critical requirement changes - immediate save on select/input change
-	$tab.on('change', '.sdx-critical-req-type, .sdx-critical-req-operator', async function () {
+	$tab.on("change", ".sdx-critical-req-type, .sdx-critical-req-operator", async function() {
 		await saveCriticalRequirementsFromDom($tab, item);
 	});
 
-	$tab.on('input', '.sdx-critical-req-value', function () {
+	$tab.on("input", ".sdx-critical-req-value", function() {
 		clearTimeout(saveTimeout);
 		saveTimeout = setTimeout(async () => {
 			await saveCriticalRequirementsFromDom($tab, item);
 		}, 500);
 	});
 
-	$tab.on('blur', '.sdx-critical-req-value', async function () {
+	$tab.on("blur", ".sdx-critical-req-value", async function() {
 		clearTimeout(saveTimeout);
 		await saveCriticalRequirementsFromDom($tab, item);
 	});
@@ -1017,7 +1017,7 @@ function activateWeaponBonusListeners(html, app, item) {
 	// ========== HIT BONUS LISTENERS ==========
 
 	// Add hit bonus button
-	$tab.find('.sdx-add-hit-bonus').on('click', async function (e) {
+	$tab.find(".sdx-add-hit-bonus").on("click", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
@@ -1025,7 +1025,7 @@ function activateWeaponBonusListeners(html, app, item) {
 		hitBonuses.push({
 			formula: "",
 			label: "",
-			requirements: []
+			requirements: [],
 		});
 		await saveWeaponBonusConfig(item, { hitBonuses });
 		app._shadowdarkExtrasActiveTab = "tab-bonuses";
@@ -1033,10 +1033,10 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Remove hit bonus button
-	$tab.on('click', '.sdx-remove-hit-bonus', async function (e) {
+	$tab.on("click", ".sdx-remove-hit-bonus", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const index = parseInt($(this).data('index'));
+		const index = parseInt($(this).data("index"));
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 		const hitBonuses = currentFlags.hitBonuses || [];
 		hitBonuses.splice(index, 1);
@@ -1046,23 +1046,23 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Hit bonus formula/label change - debounced save
-	$tab.on('input', '.sdx-hit-bonus-formula, .sdx-hit-bonus-label', function () {
+	$tab.on("input", ".sdx-hit-bonus-formula, .sdx-hit-bonus-label", function() {
 		clearTimeout(saveTimeout);
 		saveTimeout = setTimeout(async () => {
 			await saveHitBonusesFromDom($tab, item);
 		}, 500);
 	});
 
-	$tab.on('blur', '.sdx-hit-bonus-formula, .sdx-hit-bonus-label', async function () {
+	$tab.on("blur", ".sdx-hit-bonus-formula, .sdx-hit-bonus-label", async function() {
 		clearTimeout(saveTimeout);
 		await saveHitBonusesFromDom($tab, item);
 	});
 
 	// Add hit bonus requirement
-	$tab.on('click', '.sdx-add-hit-bonus-requirement', async function (e) {
+	$tab.on("click", ".sdx-add-hit-bonus-requirement", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const bonusIndex = parseInt($(this).data('bonus-index'));
+		const bonusIndex = parseInt($(this).data("bonus-index"));
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 		const hitBonuses = currentFlags.hitBonuses || [];
 
@@ -1071,7 +1071,7 @@ function activateWeaponBonusListeners(html, app, item) {
 			hitBonuses[bonusIndex].requirements.push({
 				type: "targetName",
 				operator: "contains",
-				value: ""
+				value: "",
 			});
 			await saveWeaponBonusConfig(item, { hitBonuses });
 			app._shadowdarkExtrasActiveTab = "tab-bonuses";
@@ -1080,11 +1080,11 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Remove hit bonus requirement
-	$tab.on('click', '.sdx-remove-hit-bonus-requirement', async function (e) {
+	$tab.on("click", ".sdx-remove-hit-bonus-requirement", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const bonusIndex = parseInt($(this).data('bonus-index'));
-		const reqIndex = parseInt($(this).data('req-index'));
+		const bonusIndex = parseInt($(this).data("bonus-index"));
+		const reqIndex = parseInt($(this).data("req-index"));
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 		const hitBonuses = currentFlags.hitBonuses || [];
 
@@ -1097,28 +1097,28 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Hit bonus requirement type/operator/value change
-	$tab.on('change', '.sdx-hit-bonus-req-type, .sdx-hit-bonus-req-operator, .sdx-hit-bonus-req-value', async function () {
+	$tab.on("change", ".sdx-hit-bonus-req-type, .sdx-hit-bonus-req-operator, .sdx-hit-bonus-req-value", async function() {
 		await saveHitBonusesFromDom($tab, item);
 	});
 
 	// Hit bonus exclusive checkbox change
-	$tab.on('change', '.sdx-hit-bonus-exclusive', async function () {
-		if ($(this).is(':checked')) {
+	$tab.on("change", ".sdx-hit-bonus-exclusive", async function() {
+		if ($(this).is(":checked")) {
 			// Uncheck all other exclusive checkboxes for hit bonuses
-			$tab.find('.sdx-hit-bonus-exclusive').not(this).prop('checked', false);
+			$tab.find(".sdx-hit-bonus-exclusive").not(this).prop("checked", false);
 		}
 		await saveHitBonusesFromDom($tab, item);
 	});
 
 	// Hit bonus prompt checkbox change
-	$tab.on('change', '.sdx-hit-bonus-prompt', async function () {
+	$tab.on("change", ".sdx-hit-bonus-prompt", async function() {
 		await saveHitBonusesFromDom($tab, item);
 	});
 
 	// ========== DAMAGE BONUS LISTENERS ==========
 
 	// Add damage bonus button
-	$tab.find('.sdx-add-damage-bonus').on('click', async function (e) {
+	$tab.find(".sdx-add-damage-bonus").on("click", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
@@ -1126,7 +1126,7 @@ function activateWeaponBonusListeners(html, app, item) {
 		damageBonuses.push({
 			formula: "",
 			label: "",
-			requirements: []
+			requirements: [],
 		});
 		await saveWeaponBonusConfig(item, { damageBonuses });
 		app._shadowdarkExtrasActiveTab = "tab-bonuses";
@@ -1134,10 +1134,10 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Remove damage bonus button
-	$tab.on('click', '.sdx-remove-damage-bonus', async function (e) {
+	$tab.on("click", ".sdx-remove-damage-bonus", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const index = parseInt($(this).data('index'));
+		const index = parseInt($(this).data("index"));
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 		const damageBonuses = currentFlags.damageBonuses || [];
 		damageBonuses.splice(index, 1);
@@ -1147,33 +1147,33 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Damage bonus formula/label change - debounced save
-	$tab.on('input', '.sdx-damage-bonus-formula, .sdx-damage-bonus-label', function () {
+	$tab.on("input", ".sdx-damage-bonus-formula, .sdx-damage-bonus-label", function() {
 		clearTimeout(saveTimeout);
 		saveTimeout = setTimeout(async () => {
 			await saveDamageBonusesFromDom($tab, item);
 		}, 500);
 	});
 
-	$tab.on('blur', '.sdx-damage-bonus-formula, .sdx-damage-bonus-label', async function () {
+	$tab.on("blur", ".sdx-damage-bonus-formula, .sdx-damage-bonus-label", async function() {
 		clearTimeout(saveTimeout);
 		await saveDamageBonusesFromDom($tab, item);
 	});
 
 	// Damage bonus type change
-	$tab.on('change', '.sdx-damage-bonus-type', async function () {
+	$tab.on("change", ".sdx-damage-bonus-type", async function() {
 		await saveDamageBonusesFromDom($tab, item);
 	});
 
 	// Damage bonus usage change
-	$tab.on('change', '.sdx-damage-bonus-usage', async function () {
+	$tab.on("change", ".sdx-damage-bonus-usage", async function() {
 		await saveDamageBonusesFromDom($tab, item);
 	});
 
 	// Add damage bonus requirement
-	$tab.on('click', '.sdx-add-damage-bonus-requirement', async function (e) {
+	$tab.on("click", ".sdx-add-damage-bonus-requirement", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const bonusIndex = parseInt($(this).data('bonus-index'));
+		const bonusIndex = parseInt($(this).data("bonus-index"));
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 		const damageBonuses = currentFlags.damageBonuses || [];
 
@@ -1182,7 +1182,7 @@ function activateWeaponBonusListeners(html, app, item) {
 			damageBonuses[bonusIndex].requirements.push({
 				type: "targetName",
 				operator: "contains",
-				value: ""
+				value: "",
 			});
 			await saveWeaponBonusConfig(item, { damageBonuses });
 			app._shadowdarkExtrasActiveTab = "tab-bonuses";
@@ -1191,11 +1191,11 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Remove damage bonus requirement
-	$tab.on('click', '.sdx-remove-damage-bonus-requirement', async function (e) {
+	$tab.on("click", ".sdx-remove-damage-bonus-requirement", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const bonusIndex = parseInt($(this).data('bonus-index'));
-		const reqIndex = parseInt($(this).data('req-index'));
+		const bonusIndex = parseInt($(this).data("bonus-index"));
+		const reqIndex = parseInt($(this).data("req-index"));
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 		const damageBonuses = currentFlags.damageBonuses || [];
 
@@ -1208,38 +1208,38 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Damage bonus requirement type/operator/value change
-	$tab.on('change', '.sdx-damage-bonus-req-type, .sdx-damage-bonus-req-operator, .sdx-damage-bonus-req-value', async function () {
+	$tab.on("change", ".sdx-damage-bonus-req-type, .sdx-damage-bonus-req-operator, .sdx-damage-bonus-req-value", async function() {
 		await saveDamageBonusesFromDom($tab, item);
 	});
 
 	// Exclusive checkbox change - only one can be exclusive at a time
-	$tab.on('change', '.sdx-damage-bonus-exclusive', async function () {
-		if ($(this).is(':checked')) {
+	$tab.on("change", ".sdx-damage-bonus-exclusive", async function() {
+		if ($(this).is(":checked")) {
 			// Uncheck all other exclusive checkboxes
-			$tab.find('.sdx-damage-bonus-exclusive').not(this).prop('checked', false);
+			$tab.find(".sdx-damage-bonus-exclusive").not(this).prop("checked", false);
 		}
 		await saveDamageBonusesFromDom($tab, item);
 	});
 
 	// Damage bonus prompt checkbox change
-	$tab.on('change', '.sdx-damage-bonus-prompt', async function () {
+	$tab.on("change", ".sdx-damage-bonus-prompt", async function() {
 		await saveDamageBonusesFromDom($tab, item);
 	});
 
 	// Effect drop area
-	const $dropArea = $tab.find('.sdx-effects-drop-area');
-	$dropArea.on('dragover', function (e) {
+	const $dropArea = $tab.find(".sdx-effects-drop-area");
+	$dropArea.on("dragover", function(e) {
 		e.preventDefault();
-		$(this).addClass('sdx-drag-over');
+		$(this).addClass("sdx-drag-over");
 	});
 
-	$dropArea.on('dragleave', function (e) {
-		$(this).removeClass('sdx-drag-over');
+	$dropArea.on("dragleave", function(e) {
+		$(this).removeClass("sdx-drag-over");
 	});
 
-	$dropArea.on('drop', async function (e) {
+	$dropArea.on("drop", async function(e) {
 		e.preventDefault();
-		$(this).removeClass('sdx-drag-over');
+		$(this).removeClass("sdx-drag-over");
 
 		const data = TextEditor.getDragEventData(e.originalEvent);
 		if (data?.type !== "Item") {
@@ -1275,7 +1275,7 @@ function activateWeaponBonusListeners(html, app, item) {
 			img: droppedItem.img,
 			chance: 100,
 			applyToTarget: true,
-			requirements: []
+			requirements: [],
 		});
 
 		await saveWeaponBonusConfig(item, { effects });
@@ -1284,10 +1284,10 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Remove effect button
-	$tab.on('click', '.sdx-remove-effect', async function (e) {
+	$tab.on("click", ".sdx-remove-effect", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const index = parseInt($(this).data('index'));
+		const index = parseInt($(this).data("index"));
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 		const effects = currentFlags.effects || [];
 		effects.splice(index, 1);
@@ -1297,9 +1297,9 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Effect chance change
-	$tab.on('change', '.sdx-effect-chance-input', async function () {
-		const $row = $(this).closest('.sdx-effect-row');
-		const index = parseInt($row.data('index'));
+	$tab.on("change", ".sdx-effect-chance-input", async function() {
+		const $row = $(this).closest(".sdx-effect-row");
+		const index = parseInt($row.data("index"));
 		const chance = Math.min(100, Math.max(0, parseInt($(this).val()) || 100));
 
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
@@ -1311,9 +1311,9 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Effect apply-to radio button change
-	$tab.on('change', '.sdx-effect-apply-to-radio', async function () {
-		const effectIndex = parseInt($(this).data('effect-index'));
-		const applyToTarget = $(this).val() === 'target';
+	$tab.on("change", ".sdx-effect-apply-to-radio", async function() {
+		const effectIndex = parseInt($(this).data("effect-index"));
+		const applyToTarget = $(this).val() === "target";
 
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 		const effects = currentFlags.effects || [];
@@ -1324,9 +1324,9 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Effect cumulative checkbox change
-	$tab.on('change', '.sdx-effect-cumulative-checkbox', async function () {
-		const effectIndex = parseInt($(this).data('effect-index'));
-		const cumulative = $(this).is(':checked');
+	$tab.on("change", ".sdx-effect-cumulative-checkbox", async function() {
+		const effectIndex = parseInt($(this).data("effect-index"));
+		const cumulative = $(this).is(":checked");
 
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 		const effects = currentFlags.effects || [];
@@ -1337,10 +1337,10 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Add effect requirement
-	$tab.on('click', '.sdx-add-effect-requirement', async function (e) {
+	$tab.on("click", ".sdx-add-effect-requirement", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const effectIndex = parseInt($(this).data('effect-index'));
+		const effectIndex = parseInt($(this).data("effect-index"));
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 		const effects = currentFlags.effects || [];
 
@@ -1349,7 +1349,7 @@ function activateWeaponBonusListeners(html, app, item) {
 			effects[effectIndex].requirements.push({
 				type: "targetName",
 				operator: "contains",
-				value: ""
+				value: "",
 			});
 			await saveWeaponBonusConfig(item, { effects });
 			app._shadowdarkExtrasActiveTab = "tab-bonuses";
@@ -1358,11 +1358,11 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Remove effect requirement
-	$tab.on('click', '.sdx-remove-effect-requirement', async function (e) {
+	$tab.on("click", ".sdx-remove-effect-requirement", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const effectIndex = parseInt($(this).data('effect-index'));
-		const reqIndex = parseInt($(this).data('req-index'));
+		const effectIndex = parseInt($(this).data("effect-index"));
+		const reqIndex = parseInt($(this).data("req-index"));
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 		const effects = currentFlags.effects || [];
 
@@ -1375,15 +1375,15 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Effect requirement changes
-	$tab.on('change', '.sdx-effect-req-type, .sdx-effect-req-operator, .sdx-effect-req-value', async function () {
+	$tab.on("change", ".sdx-effect-req-type, .sdx-effect-req-operator, .sdx-effect-req-value", async function() {
 		await saveEffectRequirementsFromDom($tab, item);
 	});
 
 	// ========== ITEM MACRO LISTENERS ==========
 
 	// Item Macro: Run as GM toggle
-	$tab.on('change', '.sdx-macro-run-as-gm', async function () {
-		const runAsGm = $(this).is(':checked');
+	$tab.on("change", ".sdx-macro-run-as-gm", async function() {
+		const runAsGm = $(this).is(":checked");
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 		const itemMacro = currentFlags.itemMacro || { enabled: false, runAsGm: false, triggers: [] };
 		itemMacro.runAsGm = runAsGm;
@@ -1391,7 +1391,7 @@ function activateWeaponBonusListeners(html, app, item) {
 	});
 
 	// Item Macro: Command text change - debounced save
-	$tab.on('input', '.sdx-item-macro-command', function () {
+	$tab.on("input", ".sdx-item-macro-command", function() {
 		clearTimeout(saveTimeout);
 		saveTimeout = setTimeout(async () => {
 			const command = $(this).val();
@@ -1399,20 +1399,20 @@ function activateWeaponBonusListeners(html, app, item) {
 		}, 500);
 	});
 
-	$tab.on('blur', '.sdx-item-macro-command', async function () {
+	$tab.on("blur", ".sdx-item-macro-command", async function() {
 		clearTimeout(saveTimeout);
 		const command = $(this).val();
 		await item.setFlag(MODULE_ID, "macroCommand", command);
 	});
 
 	// Item Macro: Trigger checkboxes
-	$tab.on('change', '.sdx-macro-trigger-checkbox', async function () {
+	$tab.on("change", ".sdx-macro-trigger-checkbox", async function() {
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 		const itemMacro = currentFlags.itemMacro || { enabled: false, runAsGm: false, triggers: [] };
 
 		// Collect all checked triggers
 		const triggers = [];
-		$tab.find('.sdx-macro-trigger-checkbox:checked').each(function () {
+		$tab.find(".sdx-macro-trigger-checkbox:checked").each(function() {
 			triggers.push($(this).val());
 		});
 
@@ -1427,12 +1427,12 @@ function activateWeaponBonusListeners(html, app, item) {
  * Save critical hit bonus fields from the form
  */
 async function saveCriticalBonusFields($tab, item) {
-	const criticalExtraDice = $tab.find('.sdx-critical-extra-dice').val() || "";
-	const criticalExtraDamage = $tab.find('.sdx-critical-extra-damage').val() || "";
+	const criticalExtraDice = $tab.find(".sdx-critical-extra-dice").val() || "";
+	const criticalExtraDamage = $tab.find(".sdx-critical-extra-damage").val() || "";
 
 	await saveWeaponBonusConfig(item, {
 		criticalExtraDice,
-		criticalExtraDamage
+		criticalExtraDamage,
 	});
 }
 
@@ -1443,16 +1443,16 @@ async function saveCriticalRequirementsFromDom($tab, item) {
 	const criticalDiceRequirements = [];
 	const criticalDamageRequirements = [];
 
-	$tab.find('.sdx-critical-req-row').each(function () {
+	$tab.find(".sdx-critical-req-row").each(function() {
 		const $row = $(this);
-		const criticalType = $row.data('critical-type');
+		const criticalType = $row.data("critical-type");
 		const req = {
-			type: $row.find('.sdx-critical-req-type').val(),
-			operator: $row.find('.sdx-critical-req-operator').val(),
-			value: $row.find('.sdx-critical-req-value').val()
+			type: $row.find(".sdx-critical-req-type").val(),
+			operator: $row.find(".sdx-critical-req-operator").val(),
+			value: $row.find(".sdx-critical-req-value").val(),
 		};
 
-		if (criticalType === 'dice') {
+		if (criticalType === "dice") {
 			criticalDiceRequirements.push(req);
 		} else {
 			criticalDamageRequirements.push(req);
@@ -1461,7 +1461,7 @@ async function saveCriticalRequirementsFromDom($tab, item) {
 
 	await saveWeaponBonusConfig(item, {
 		criticalDiceRequirements,
-		criticalDamageRequirements
+		criticalDamageRequirements,
 	});
 }
 
@@ -1470,24 +1470,24 @@ async function saveCriticalRequirementsFromDom($tab, item) {
  */
 async function saveHitBonusesFromDom($tab, item) {
 	const hitBonuses = [];
-	$tab.find('.sdx-hit-bonus-row').each(function () {
+	$tab.find(".sdx-hit-bonus-row").each(function() {
 		const $row = $(this);
 		const requirements = [];
 
-		$row.find('.sdx-hit-bonus-req-row').each(function () {
+		$row.find(".sdx-hit-bonus-req-row").each(function() {
 			requirements.push({
-				type: $(this).find('.sdx-hit-bonus-req-type').val(),
-				operator: $(this).find('.sdx-hit-bonus-req-operator').val(),
-				value: $(this).find('.sdx-hit-bonus-req-value').val()
+				type: $(this).find(".sdx-hit-bonus-req-type").val(),
+				operator: $(this).find(".sdx-hit-bonus-req-operator").val(),
+				value: $(this).find(".sdx-hit-bonus-req-value").val(),
 			});
 		});
 
 		hitBonuses.push({
-			formula: $row.find('.sdx-hit-bonus-formula').val() || "",
-			label: $row.find('.sdx-hit-bonus-label').val() || "",
-			exclusive: $row.find('.sdx-hit-bonus-exclusive').is(':checked'),
-			prompt: $row.find('.sdx-hit-bonus-prompt').is(':checked'),
-			requirements: requirements
+			formula: $row.find(".sdx-hit-bonus-formula").val() || "",
+			label: $row.find(".sdx-hit-bonus-label").val() || "",
+			exclusive: $row.find(".sdx-hit-bonus-exclusive").is(":checked"),
+			prompt: $row.find(".sdx-hit-bonus-prompt").is(":checked"),
+			requirements: requirements,
 		});
 	});
 	await saveWeaponBonusConfig(item, { hitBonuses });
@@ -1498,30 +1498,30 @@ async function saveHitBonusesFromDom($tab, item) {
  */
 async function saveDamageBonusesFromDom($tab, item) {
 	const damageBonuses = [];
-	$tab.find('.sdx-damage-bonus-row').each(function () {
+	$tab.find(".sdx-damage-bonus-row").each(function() {
 		const $row = $(this);
 		const requirements = [];
 
-		$row.find('.sdx-damage-bonus-req-row').each(function () {
+		$row.find(".sdx-damage-bonus-req-row").each(function() {
 			requirements.push({
-				type: $(this).find('.sdx-damage-bonus-req-type').val(),
-				operator: $(this).find('.sdx-damage-bonus-req-operator').val(),
-				value: $(this).find('.sdx-damage-bonus-req-value').val()
+				type: $(this).find(".sdx-damage-bonus-req-type").val(),
+				operator: $(this).find(".sdx-damage-bonus-req-operator").val(),
+				value: $(this).find(".sdx-damage-bonus-req-value").val(),
 			});
 		});
 
 		// Parse usage: empty string = null (permanent), otherwise parse as integer
-		const usageVal = $row.find('.sdx-damage-bonus-usage').val();
+		const usageVal = $row.find(".sdx-damage-bonus-usage").val();
 		const usage = usageVal === "" || usageVal === undefined ? null : parseInt(usageVal, 10);
 
 		damageBonuses.push({
-			formula: $row.find('.sdx-damage-bonus-formula').val() || "",
-			label: $row.find('.sdx-damage-bonus-label').val() || "",
-			damageType: $row.find('.sdx-damage-bonus-type').val() || "",
-			exclusive: $row.find('.sdx-damage-bonus-exclusive').is(':checked'),
-			prompt: $row.find('.sdx-damage-bonus-prompt').is(':checked'),
+			formula: $row.find(".sdx-damage-bonus-formula").val() || "",
+			label: $row.find(".sdx-damage-bonus-label").val() || "",
+			damageType: $row.find(".sdx-damage-bonus-type").val() || "",
+			exclusive: $row.find(".sdx-damage-bonus-exclusive").is(":checked"),
+			prompt: $row.find(".sdx-damage-bonus-prompt").is(":checked"),
 			requirements: requirements,
-			usage: usage
+			usage: usage,
 		});
 	});
 	await saveWeaponBonusConfig(item, { damageBonuses });
@@ -1534,15 +1534,15 @@ async function saveEffectRequirementsFromDom($tab, item) {
 	const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 	const effects = currentFlags.effects || [];
 
-	$tab.find('.sdx-effect-row').each(function () {
-		const effectIndex = parseInt($(this).data('index'));
+	$tab.find(".sdx-effect-row").each(function() {
+		const effectIndex = parseInt($(this).data("index"));
 		if (effects[effectIndex]) {
 			const requirements = [];
-			$(this).find('.sdx-effect-req-row').each(function () {
+			$(this).find(".sdx-effect-req-row").each(function() {
 				requirements.push({
-					type: $(this).find('.sdx-effect-req-type').val(),
-					operator: $(this).find('.sdx-effect-req-operator').val(),
-					value: $(this).find('.sdx-effect-req-value').val()
+					type: $(this).find(".sdx-effect-req-type").val(),
+					operator: $(this).find(".sdx-effect-req-operator").val(),
+					value: $(this).find(".sdx-effect-req-value").val(),
 				});
 			});
 			effects[effectIndex].requirements = requirements;
@@ -1560,7 +1560,7 @@ async function saveWeaponBonusConfig(item, updates) {
 	const newFlags = foundry.utils.mergeObject(currentFlags, updates);
 
 	await item.update({
-		[`flags.${MODULE_ID}.weaponBonus`]: newFlags
+		[`flags.${MODULE_ID}.weaponBonus`]: newFlags,
 	}, { render: false });
 
 	console.log(`${MODULE_ID} | Saved weapon bonus config:`, newFlags);
@@ -1651,7 +1651,7 @@ function evaluateString(testValue, operator, value) {
 	const test = (testValue || "").toLowerCase();
 
 	// Split by comma and trim whitespace for OR logic
-	const values = (value || "").split(',').map(v => v.trim().toLowerCase()).filter(v => v);
+	const values = (value || "").split(",").map(v => v.trim().toLowerCase()).filter(v => v);
 
 	// If no values, treat as empty/match all
 	if (values.length === 0) return true;
@@ -1686,7 +1686,7 @@ function evaluateString(testValue, operator, value) {
  */
 function evaluateArrayContains(array, operator, value) {
 	// Split by comma and trim whitespace for OR logic
-	const values = (value || "").split(',').map(v => v.trim().toLowerCase()).filter(v => v);
+	const values = (value || "").split(",").map(v => v.trim().toLowerCase()).filter(v => v);
 
 	// If no values, treat as empty/no requirement
 	if (values.length === 0) return true;
@@ -1759,13 +1759,13 @@ export function getWeaponHitBonuses(weapon, attacker, target) {
 			if (bonus.exclusive) {
 				exclusiveMatch = {
 					formula: bonus.formula,
-					label: bonus.label || ""
+					label: bonus.label || "",
 				};
 				break; // Stop processing, use only this exclusive bonus
 			}
 			applicableBonuses.push({
 				formula: bonus.formula,
-				label: bonus.label || ""
+				label: bonus.label || "",
 			});
 		}
 	}
@@ -1774,7 +1774,7 @@ export function getWeaponHitBonuses(weapon, attacker, target) {
 	if (exclusiveMatch) {
 		return {
 			hitBonus: exclusiveMatch.formula,
-			hitBonusParts: [exclusiveMatch]
+			hitBonusParts: [exclusiveMatch],
 		};
 	}
 
@@ -1783,7 +1783,7 @@ export function getWeaponHitBonuses(weapon, attacker, target) {
 
 	return {
 		hitBonus: combinedFormula,
-		hitBonusParts: applicableBonuses
+		hitBonusParts: applicableBonuses,
 	};
 }
 
@@ -1824,13 +1824,13 @@ export function getWeaponBonuses(weapon, attacker, target, isCritical = false) {
 				if (bonus.exclusive) {
 					exclusiveMatch = {
 						formula: bonus.formula,
-						label: bonus.label || ""
+						label: bonus.label || "",
 					};
 					break; // Stop processing, use only this exclusive bonus
 				}
 				applicableBonuses.push({
 					formula: bonus.formula,
-					label: bonus.label || ""
+					label: bonus.label || "",
 				});
 			}
 		}
@@ -1844,7 +1844,7 @@ export function getWeaponBonuses(weapon, attacker, target, isCritical = false) {
 			criticalDice: evaluateRequirements(flags.criticalDiceRequirements || [], attacker, target)
 				? (parseInt(flags.criticalExtraDice) || 0) : 0,
 			criticalDamage: evaluateRequirements(flags.criticalDamageRequirements || [], attacker, target)
-				? (flags.criticalExtraDamage || "") : ""
+				? (flags.criticalExtraDamage || "") : "",
 		};
 	}
 
@@ -1857,7 +1857,7 @@ export function getWeaponBonuses(weapon, attacker, target, isCritical = false) {
 		criticalDice: evaluateRequirements(flags.criticalDiceRequirements || [], attacker, target)
 			? (parseInt(flags.criticalExtraDice) || 0) : 0,
 		criticalDamage: evaluateRequirements(flags.criticalDamageRequirements || [], attacker, target)
-			? (flags.criticalExtraDamage || "") : ""
+			? (flags.criticalExtraDamage || "") : "",
 	};
 }
 
@@ -1886,7 +1886,7 @@ export function getPromptableHitBonuses(weapon, attacker, target) {
 			promptableBonuses.push({
 				formula: bonus.formula,
 				label: bonus.label || "",
-				index: index
+				index: index,
 			});
 		}
 	});
@@ -1920,7 +1920,7 @@ export function getPromptableDamageBonuses(weapon, attacker, target) {
 				formula: bonus.formula,
 				label: bonus.label || "",
 				damageType: bonus.damageType || "",
-				index: index
+				index: index,
 			});
 		}
 	});
@@ -1965,7 +1965,7 @@ export function getWeaponEffectsToApply(weapon, attacker, target) {
 			name: effect.name,
 			img: effect.img,
 			applyToTarget: effect.applyToTarget !== false, // Default to true for backward compatibility
-			cumulative: effect.cumulative !== false // Default to true for backward compatibility (stack effects)
+			cumulative: effect.cumulative !== false, // Default to true for backward compatibility (stack effects)
 		});
 	}
 
@@ -1998,7 +1998,7 @@ export function evaluateFormula(formula, actor) {
 	const variableRegex = /@([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)/g;
 
 	result = result.replace(variableRegex, (match, path) => {
-		const value = path.split('.').reduce((obj, key) => obj?.[key], rollData);
+		const value = path.split(".").reduce((obj, key) => obj?.[key], rollData);
 		return value !== undefined ? String(value) : "0";
 	});
 
@@ -2022,7 +2022,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 			criticalExtraDice: 0,
 			criticalBonus: 0,
 			criticalFormula: "",
-			requirementsMet: true
+			requirementsMet: true,
 		};
 	}
 
@@ -2060,7 +2060,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 						label: bonus.label || "",
 						damageType: bonus.damageType || "",
 						bonusIndex: i, // Track index for usage decrement
-						hasUsage: bonus.usage !== null && bonus.usage !== undefined && bonus.usage > 0
+						hasUsage: bonus.usage !== null && bonus.usage !== undefined && bonus.usage > 0,
 					};
 					// If this bonus is exclusive and has requirements, use only this bonus
 					if (bonus.exclusive && bonus.requirements && bonus.requirements.length > 0) {
@@ -2092,7 +2092,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 						formula,
 						label: "",
 						damageType: bonus.damageType || "",
-						isPromptBonus: true
+						isPromptBonus: true,
 					});
 
 				}
@@ -2124,7 +2124,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 					background: "#1a1a1a",
 					outline: "#000000",
 					edge: "#333333",
-					material: "metal"
+					material: "metal",
 				};
 			}
 
@@ -2136,7 +2136,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 				amount: amount,
 				type: part.damageType || "standard",
 				label: part.label || "",
-				formula: part.formula
+				formula: part.formula,
 			});
 
 
@@ -2148,10 +2148,10 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 						bonusRollResults.push({
 							value: r.result,
 							faces: term.faces,
-							label: part.label || '',
-							damageType: part.damageType || '',
+							label: part.label || "",
+							damageType: part.damageType || "",
 							isMax: r.result === term.faces,
-							isMin: r.result === 1
+							isMin: r.result === 1,
 						});
 					}
 				} else if (term.number !== undefined && !term.faces) {
@@ -2159,10 +2159,10 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 					bonusRollResults.push({
 						value: term.number,
 						faces: 0, // 0 means static bonus
-						label: part.label || '',
-						damageType: part.damageType || '',
+						label: part.label || "",
+						damageType: part.damageType || "",
 						isMax: false,
-						isMin: false
+						isMin: false,
 					});
 				}
 			}
@@ -2214,7 +2214,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 
 			if (dieType) {
 				// Ensure dieType starts with 'd' (e.g., "d6" not "6")
-				if (!dieType.startsWith('d')) {
+				if (!dieType.startsWith("d")) {
 					dieType = `d${dieType}`;
 				}
 
@@ -2231,7 +2231,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 						amount: extraDiceRoll.total,
 						type: "standard",
 						label: "Critical Dice",
-						formula: extraDiceFormula
+						formula: extraDiceFormula,
 					});
 
 					// Extract dice results
@@ -2242,9 +2242,9 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 								criticalRollResults.push({
 									value: r.result,
 									faces: term.faces,
-									label: 'Critical Dice',
+									label: "Critical Dice",
 									isMax: r.result === term.faces,
-									isMin: r.result === 1
+									isMin: r.result === 1,
 								});
 							}
 						}
@@ -2270,7 +2270,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 					amount: critRoll.total,
 					type: "standard",
 					label: "Critical",
-					formula: criticalFormula
+					formula: criticalFormula,
 				});
 
 				// Extract dice results from critical roll
@@ -2281,18 +2281,18 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 							criticalRollResults.push({
 								value: r.result,
 								faces: term.faces,
-								label: 'Critical',
+								label: "Critical",
 								isMax: r.result === term.faces,
-								isMin: r.result === 1
+								isMin: r.result === 1,
 							});
 						}
 					} else if (term.number !== undefined && !term.faces && term.number !== 0) {
 						criticalRollResults.push({
 							value: term.number,
 							faces: 0,
-							label: 'Critical',
+							label: "Critical",
 							isMax: false,
-							isMin: false
+							isMin: false,
 						});
 					}
 				}
@@ -2322,7 +2322,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 		criticalRollResults, // Actual dice results from critical roll
 		requirementsMet: applicableParts.length > 0 || damageBonuses.length === 0,
 		damageTypes: applicableParts.map(p => p.damageType).filter(t => t),
-		appliedBonusIndicesWithUsage // Indices of bonuses that have usage and were applied
+		appliedBonusIndicesWithUsage, // Indices of bonuses that have usage and were applied
 	};
 }
 
@@ -2344,7 +2344,7 @@ export async function decrementDamageBonusUsage(weapon, bonusIndices) {
 		if (damageBonuses[index] && damageBonuses[index].usage !== null && damageBonuses[index].usage > 0) {
 			damageBonuses[index] = {
 				...damageBonuses[index],
-				usage: damageBonuses[index].usage - 1
+				usage: damageBonuses[index].usage - 1,
 			};
 			updated = true;
 			console.log(`${MODULE_ID} | Decremented usage for damage bonus "${damageBonuses[index].label || damageBonuses[index].formula}" to ${damageBonuses[index].usage}`);
@@ -2379,8 +2379,8 @@ export async function injectWeaponBonusDisplay(message, html, weapon, attacker, 
 	if (!hasBonuses) return;
 
 	// Build bonus display HTML
-	let bonusHtml = `<div class="sdx-weapon-bonus-display">`;
-	bonusHtml += `<div class="sdx-bonus-header"><i class="fas fa-dice-d20"></i> Weapon Bonuses</div>`;
+	let bonusHtml = "<div class=\"sdx-weapon-bonus-display\">";
+	bonusHtml += "<div class=\"sdx-bonus-header\"><i class=\"fas fa-dice-d20\"></i> Weapon Bonuses</div>";
 
 	if (bonusData.totalBonus !== 0) {
 		const sign = bonusData.totalBonus > 0 ? "+" : "";
@@ -2407,15 +2407,15 @@ export async function injectWeaponBonusDisplay(message, html, weapon, attacker, 
 		</div>`;
 	}
 
-	bonusHtml += `</div>`;
+	bonusHtml += "</div>";
 
 	// Find where to inject (after the damage roll)
-	const $damageRoll = html.find('.dice-roll').last();
+	const $damageRoll = html.find(".dice-roll").last();
 	if ($damageRoll.length) {
 		$damageRoll.after(bonusHtml);
 	} else {
 		// Fallback: append to message content
-		html.find('.message-content').append(bonusHtml);
+		html.find(".message-content").append(bonusHtml);
 	}
 }
 
@@ -2433,7 +2433,7 @@ export function getWeaponItemMacroConfig(weapon) {
 	return {
 		enabled: flags.itemMacro.enabled || false,
 		runAsGm: flags.itemMacro.runAsGm || false,
-		triggers: flags.itemMacro.triggers || []
+		triggers: flags.itemMacro.triggers || [],
 	};
 }
 
@@ -2451,10 +2451,10 @@ export function injectWeaponDamageTypeDropdown(app, html, item) {
 	if (item.type !== "Weapon") return;
 
 	// Check if already injected
-	if (html.find('.sdx-weapon-damage-type-select').length > 0) return;
+	if (html.find(".sdx-weapon-damage-type-select").length > 0) return;
 
 	// Find the SD-grid content area within the Weapon box
-	const $weaponGrid = html.find('.SD-box .content.SD-grid').first();
+	const $weaponGrid = html.find(".SD-box .content.SD-grid").first();
 	if (!$weaponGrid.length) {
 		//console.log(`${MODULE_ID} | Could not find SD-grid in weapon sheet`);
 		return;
@@ -2468,7 +2468,7 @@ export function injectWeaponDamageTypeDropdown(app, html, item) {
 	}
 
 	// Get current damage type from flags
-	const currentDamageType = item.getFlag(MODULE_ID, 'baseDamageType') || 'standard';
+	const currentDamageType = item.getFlag(MODULE_ID, "baseDamageType") || "standard";
 
 	// Build damage type options
 	const damageTypes = [
@@ -2485,15 +2485,15 @@ export function injectWeaponDamageTypeDropdown(app, html, item) {
 		{ id: "necrotic", name: "Necrotic" },
 		{ id: "radiant", name: "Radiant" },
 		{ id: "psychic", name: "Psychic" },
-		{ id: "force", name: "Force" }
+		{ id: "force", name: "Force" },
 	];
 
 	const optionsHtml = damageTypes.map(type =>
-		`<option value="${type.id}" ${currentDamageType === type.id ? 'selected' : ''}>${type.name}</option>`
-	).join('');
+		`<option value="${type.id}" ${currentDamageType === type.id ? "selected" : ""}>${type.name}</option>`
+	).join("");
 
 	// Create the h3 label and select matching the existing style
-	const $damageLabel = $('<h3>Damage Type</h3>');
+	const $damageLabel = $("<h3>Damage Type</h3>");
 	const $damageSelect = $(`<select class="sdx-weapon-damage-type-select" name="flags.${MODULE_ID}.baseDamageType">${optionsHtml}</select>`);
 
 	// Insert after the Type select (h3 + select pair)
@@ -2501,9 +2501,9 @@ export function injectWeaponDamageTypeDropdown(app, html, item) {
 	$damageSelect.before($damageLabel);
 
 	// Handle change event
-	$damageSelect.on('change', async function () {
+	$damageSelect.on("change", async function() {
 		const newType = $(this).val();
-		await item.setFlag(MODULE_ID, 'baseDamageType', newType);
+		await item.setFlag(MODULE_ID, "baseDamageType", newType);
 		//console.log(`${MODULE_ID} | Set weapon base damage type to: ${newType}`);
 	});
 

@@ -36,28 +36,28 @@ export function enhanceSpellsTab(app, html, actor) {
 	if (!$spellsTab.length) return;
 
 	// Add enhanced class to the spells tab
-	$spellsTab.addClass('sdx-enhanced-spells');
+	$spellsTab.addClass("sdx-enhanced-spells");
 
 	// Find the "Spells From Items" banner to detect which items should NOT have action buttons
-	const $spellsFromItemsBanner = $spellsTab.find('.SD-banner').filter(function () {
-		return $(this).text().trim().includes('Spells From Items');
+	const $spellsFromItemsBanner = $spellsTab.find(".SD-banner").filter(function() {
+		return $(this).text().trim().includes("Spells From Items");
 	});
 
 	// Get all elements after the "Spells From Items" banner (these should not have action buttons)
 	const itemsFromWandsScrolls = new Set();
 	if ($spellsFromItemsBanner.length > 0) {
-		$spellsFromItemsBanner.nextAll().find('.item[data-item-id]').each(function () {
-			itemsFromWandsScrolls.add($(this).data('item-id'));
+		$spellsFromItemsBanner.nextAll().find(".item[data-item-id]").each(function() {
+			itemsFromWandsScrolls.add($(this).data("item-id"));
 		});
 	}
 
 	// Add action buttons to spell items
-	$spellsTab.find('.item[data-item-id]').each((i, item) => {
+	$spellsTab.find(".item[data-item-id]").each((i, item) => {
 		const $item = $(item);
-		const itemId = $item.data('item-id');
+		const itemId = $item.data("item-id");
 
 		// Skip if buttons already added
-		if ($item.find('.sdx-spell-actions').length) return;
+		if ($item.find(".sdx-spell-actions").length) return;
 
 		// Skip if this item is from a wand/scroll (comes after "Spells From Items" banner)
 		if (itemsFromWandsScrolls.has(itemId)) {
@@ -65,7 +65,7 @@ export function enhanceSpellsTab(app, html, actor) {
 		}
 
 		// Find the item-name element
-		const $itemName = $item.find('.item-name');
+		const $itemName = $item.find(".item-name");
 		if (!$itemName.length) return;
 
 		// Create action buttons container
@@ -90,7 +90,7 @@ export function enhanceSpellsTab(app, html, actor) {
 		$itemName.after($actions);
 
 		// Edit button handler
-		$actions.find('.sdx-edit-spell').on('click', (e) => {
+		$actions.find(".sdx-edit-spell").on("click", (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -98,7 +98,7 @@ export function enhanceSpellsTab(app, html, actor) {
 		});
 
 		// Create Macro button handler
-		$actions.find('.sdx-create-macro').on('click', async (e) => {
+		$actions.find(".sdx-create-macro").on("click", async (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -107,7 +107,7 @@ export function enhanceSpellsTab(app, html, actor) {
 		});
 
 		// Transfer button handler
-		$actions.find('.sdx-transfer-spell').on('click', async (e) => {
+		$actions.find(".sdx-transfer-spell").on("click", async (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -119,7 +119,7 @@ export function enhanceSpellsTab(app, html, actor) {
 					return;
 				}
 
-				const playerOptions = players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+				const playerOptions = players.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
 				const content = `
 					<form>
 						<div class="form-group">
@@ -153,22 +153,22 @@ export function enhanceSpellsTab(app, html, actor) {
 								await item.delete();
 								ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.notifications.item_transferred", {
 									item: item.name,
-									target: targetActor.name
+									target: targetActor.name,
 								}));
-							}
+							},
 						},
 						{
 							action: "cancel",
 							icon: "fas fa-times",
-							label: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.cancel")
-						}
-					]
+							label: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.cancel"),
+						},
+					],
 				}).render({ force: true });
 			}
 		});
 
 		// Delete button handler
-		$actions.find('.sdx-delete-spell').on('click', async (e) => {
+		$actions.find(".sdx-delete-spell").on("click", async (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -177,7 +177,7 @@ export function enhanceSpellsTab(app, html, actor) {
 			const confirmed = await foundry.applications.api.DialogV2.confirm({
 				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.inventory.delete_spell_title") },
 				content: `<p>${game.i18n.format("SHADOWDARK_EXTRAS.inventory.delete_spell_text", { name: item.name })}</p>`,
-				modal: true
+				modal: true,
 			});
 
 			if (confirmed) {
@@ -221,22 +221,22 @@ async function createItemMacro(actor, item) {
 						icon: "fas fa-magic",
 						label: game.i18n.localize("SHADOWDARK_EXTRAS.macro.cast_spell"),
 						default: true,
-						callback: () => resolve("cast")
+						callback: () => resolve("cast"),
 					},
 					{
 						action: "focus",
 						icon: "fas fa-brain",
 						label: game.i18n.localize("SHADOWDARK_EXTRAS.macro.focus_roll"),
-						callback: () => resolve("focus")
+						callback: () => resolve("focus"),
 					},
 					{
 						action: "cancel",
 						icon: "fas fa-times",
 						label: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.cancel"),
-						callback: () => resolve(null)
-					}
+						callback: () => resolve(null),
+					},
 				],
-				close: () => resolve(null)
+				close: () => resolve(null),
 			}).render({ force: true });
 		});
 
@@ -337,9 +337,9 @@ actor.system.castSpell(item.system.spellUuid, { itemUuid: item.uuid });`;
 				actorId: actorId,
 				itemId: itemId,
 				itemType: itemType,
-				actionType: actionType
-			}
-		}
+				actionType: actionType,
+			},
+		},
 	});
 
 	ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.macro.created", { name: macroName }));

@@ -138,7 +138,7 @@ function registerSettings() {
 		config: true,
 		type: Boolean,
 		default: true,
-		requiresReload: true
+		requiresReload: true,
 	});
 
 	game.settings.register(MODULE_ID, "aaAnimateOnSuccess", {
@@ -147,7 +147,7 @@ function registerSettings() {
 		scope: "world",
 		config: false,
 		type: Boolean,
-		default: true
+		default: true,
 	});
 
 	game.settings.register(MODULE_ID, "aaAnimateSpellsWithoutTarget", {
@@ -156,7 +156,7 @@ function registerSettings() {
 		scope: "world",
 		config: true,
 		type: Boolean,
-		default: true
+		default: true,
 	});
 }
 
@@ -197,7 +197,7 @@ function setupAAIntegration() {
 		const itemId = uuidMatch[1];
 		// Prepend an invisible span that AA can detect via querySelector
 		doc.updateSource({
-			content: `<span class="sdx-aa-item-marker" data-item-id="${itemId}" style="display:none;"></span>${content}`
+			content: `<span class="sdx-aa-item-marker" data-item-id="${itemId}" style="display:none;"></span>${content}`,
 		});
 	});
 
@@ -219,7 +219,7 @@ function setupAAIntegration() {
 		const content = msg.content || "";
 		const hasItemId = content.includes('data-item-id="');
 		const hasActorId = content.includes('data-actor-id="');
-		const hasChatCardButtons = content.includes('chat-card-buttons') || content.includes('data-action="roll-');
+		const hasChatCardButtons = content.includes("chat-card-buttons") || content.includes('data-action="roll-');
 
 		if (hasItemId && hasActorId && hasChatCardButtons) {
 			// Extract item name from the card for matching
@@ -230,7 +230,7 @@ function setupAAIntegration() {
 				// Store this as a recent item card to block
 				recentItemCards.set(itemName, {
 					messageId: msg.id,
-					timestamp: Date.now()
+					timestamp: Date.now(),
 				});
 				debug("Stored item card (pre-roll) for blocking:", itemName);
 
@@ -301,7 +301,7 @@ function setupAAIntegration() {
 		// ── No Shadowdark flags ────────────────────────────────────────────────
 		if (!shadowdarkFlags) {
 			const content = message?.content || "";
-			const hasRollButton = content.includes('data-action="roll-') || content.includes('chat-card-buttons');
+			const hasRollButton = content.includes('data-action="roll-') || content.includes("chat-card-buttons");
 			if (hasRollButton) {
 				debug("Item card (no flags, has roll button) - blocking");
 				clonedData.stopWorkflow = true;
@@ -336,7 +336,7 @@ function setupAAIntegration() {
 		// never meant to be intercepted here.  Let AA handle them normally.
 		// Only block if the HTML clearly marks it as a pre-roll item card.
 		const content = message?.content || "";
-		const hasRollButton = content.includes('data-action="roll-') || content.includes('chat-card-buttons');
+		const hasRollButton = content.includes('data-action="roll-') || content.includes("chat-card-buttons");
 		if (hasRollButton) {
 			debug("Pre-roll item card (has roll button, no isRoll flag) - blocking");
 			clonedData.stopWorkflow = true;
@@ -369,5 +369,5 @@ export function initAutoAnimationsIntegration() {
 
 export default {
 	initAutoAnimationsIntegration,
-	checkRollSuccess
+	checkRollSuccess,
 };

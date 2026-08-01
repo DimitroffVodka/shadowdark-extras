@@ -32,7 +32,7 @@ export function registerChatCardHooks() {
 				// Store target token IDs in message flags
 				const targetIds = targets.map(t => t.id);
 				message.updateSource({
-					"flags.shadowdark-extras.targetIds": targetIds
+					"flags.shadowdark-extras.targetIds": targetIds,
 				});
 				//console.log(`${MODULE_ID} | Stored ${targetIds.length} targets in message flags:`, targetIds);
 
@@ -61,7 +61,7 @@ export function registerChatCardHooks() {
 
 										// If duration tracking is active, end it
 										// If duration tracking is active, end it
-										if (typeof endDurationSpell === 'function') {
+										if (typeof endDurationSpell === "function") {
 											const activeSpells = getActiveDurationSpells(targetActor);
 											const mirrorSpell = activeSpells.find(s => s.spellName === "Mirror Image");
 											if (mirrorSpell) {
@@ -71,7 +71,7 @@ export function registerChatCardHooks() {
 									} else {
 										await mirrorEffect.update({
 											"flags.shadowdark-extras.duplicates": newCount,
-											"name": `Mirror Image (${newCount})`
+											"name": `Mirror Image (${newCount})`,
 										});
 									}
 								}
@@ -88,7 +88,7 @@ export function registerChatCardHooks() {
 
 							message.updateSource({
 								content: (message.content || "") + interceptHtml,
-								flavor: (message.flavor || "") + ` [Intercepted: ${targetActor.name}]`
+								flavor: (message.flavor || "") + ` [Intercepted: ${targetActor.name}]`,
 							});
 
 							// Only consume one duplicate per attack message even if multiple targets?
@@ -102,7 +102,7 @@ export function registerChatCardHooks() {
 			// Store item configuration for consumables (scrolls, potions, wands)
 			// This is needed because these items are consumed and removed from the actor
 			// before the chat message is processed
-			const content = message.content || '';
+			const content = message.content || "";
 			const actorIdMatch = content.match(/data-actor-id="([^"]+)"/);
 			const itemIdMatch = content.match(/data-item-id="([^"]+)"/);
 
@@ -116,7 +116,7 @@ export function registerChatCardHooks() {
 					// Store the item type and relevant configurations
 					const itemConfig = {
 						type: item.type,
-						name: item.name
+						name: item.name,
 					};
 
 					// Store summoning config if it exists
@@ -145,7 +145,7 @@ export function registerChatCardHooks() {
 					}
 
 					message.updateSource({
-						"flags.shadowdark-extras.itemConfig": itemConfig
+						"flags.shadowdark-extras.itemConfig": itemConfig,
 					});
 
 					//console.log(`${MODULE_ID} | Stored item config for ${item.name}:`, itemConfig);
@@ -191,8 +191,8 @@ export function registerChatCardHooks() {
 			const combatSettings = game.settings.get(MODULE_ID, "combatSettings");
 			if (combatSettings?.hideItemDescription) {
 				// Hide the card-content which contains weapon/spell descriptions
-				const cardContent = html.querySelector('.card-content');
-				if (cardContent) cardContent.style.display = 'none';
+				const cardContent = html.querySelector(".card-content");
+				if (cardContent) cardContent.style.display = "none";
 			}
 		} catch (err) {
 			// Settings may not be registered yet, ignore

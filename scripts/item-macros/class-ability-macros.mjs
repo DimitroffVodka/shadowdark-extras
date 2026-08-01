@@ -63,7 +63,7 @@ async function executeClassAbilityItemMacro(item, actor, context = {}) {
 		rolled,
 		scene: canvas.scene,
 		game,
-		...context
+		...context,
 	};
 
 	// If running as GM and we're not the GM, send via socket
@@ -76,7 +76,7 @@ async function executeClassAbilityItemMacro(item, actor, context = {}) {
 			originatingUserId: game.user.id,
 			success,
 			critical,
-			rolled
+			rolled,
 		};
 
 		const macroExecuteSocket = getMacroExecuteSocket();
@@ -93,7 +93,7 @@ async function executeClassAbilityItemMacro(item, actor, context = {}) {
 			?? item.flags?.itemacro?.macro?.command;
 		if (!macroCommand) return;
 
-		const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
+		const AsyncFunction = Object.getPrototypeOf(async function() { }).constructor;
 		const macroFn = new AsyncFunction(
 			"actor", "token", "item", "targets", "target", "targetActor",
 			"speaker", "flags", "success", "critical", "rolled", "scene", "game",
@@ -157,7 +157,7 @@ export function registerClassAbilityItemMacros() {
 					// The caster's scene, not the one this GM happens to be viewing —
 					// `canvas.scene` on a GM-side execution is whatever is open here.
 					scene: tokenDoc?.parent ?? canvas.scene ?? null,
-					game
+					game,
 				};
 
 				try {
@@ -165,7 +165,7 @@ export function registerClassAbilityItemMacros() {
 						?? item.flags?.itemacro?.macro?.command;
 					if (!macroCommand) return;
 
-					const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
+					const AsyncFunction = Object.getPrototypeOf(async function() { }).constructor;
 					const macroFn = new AsyncFunction(
 						"actor", "token", "item", "targets", "target", "targetActor",
 						"speaker", "flags", "success", "critical", "rolled", "scene", "game",
@@ -197,7 +197,7 @@ export function registerClassAbilityItemMacros() {
 
 			const originalUseAbility = PlayerDM.prototype.useAbility;
 
-			PlayerDM.prototype.useAbility = async function (abilityUuid, config = {}) {
+			PlayerDM.prototype.useAbility = async function(abilityUuid, config = {}) {
 				const actor = this.parent;
 				let item = null;
 				try { item = await fromUuid(abilityUuid); } catch (_) { }

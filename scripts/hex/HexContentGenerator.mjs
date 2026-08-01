@@ -264,21 +264,21 @@ async function generateLandmarkInn(data, biomeKey, regionName) {
 		rumor = tmpl.replace(/\{monster\}/g, link).replace(/\{region\}/g, regionName);
 	}
 
-	let html = `<div class="landmark-inn">`;
+	let html = "<div class=\"landmark-inn\">";
 	html += `<h3>${innName} (Inn)</h3>`;
 	html += `<p>This thematic retreat is hosted by <strong>${host.name}</strong>, ${host.appearance} (<em>${host.trait}</em>). In their pocket: ${host.pocket}.</p>`;
 
-	html += `<table><tr><th>Menu Item</th><th>Price</th></tr>`;
+	html += "<table><tr><th>Menu Item</th><th>Price</th></tr>";
 	for (const f of menuFood) html += `<tr><td>${f}</td><td>2 sp</td></tr>`;
 	for (const d of menuDrinks) html += `<tr><td>${d}</td><td>5 cp</td></tr>`;
-	html += `</table>`;
+	html += "</table>";
 
-	html += `<h4>Notable Patrons</h4><ul>`;
+	html += "<h4>Notable Patrons</h4><ul>";
 	for (const p of patrons) html += `<li>${p}</li>`;
-	html += `</ul>`;
+	html += "</ul>";
 
 	html += `<h4>Inn's Rumors</h4><p><em>"${rumor}"</em></p>`;
-	html += `</div>`;
+	html += "</div>";
 
 	return html;
 }
@@ -301,10 +301,10 @@ async function generateLandmarkAbandonedVillage(data, biomeKey) {
 		description = description.replace(/\{monster\}/g, link);
 	}
 
-	let html = `<div class="landmark-village">`;
-	html += `<h3>Abandoned Village (Landmark)</h3>`;
+	let html = "<div class=\"landmark-village\">";
+	html += "<h3>Abandoned Village (Landmark)</h3>";
 	html += `<p>${description}</p>`;
-	html += `</div>`;
+	html += "</div>";
 	return html;
 }
 
@@ -314,10 +314,10 @@ async function generateLandmarkAbandonedVillage(data, biomeKey) {
 function generateLandmarkAltar(data) {
 	const landmark = data.landmarks.altar;
 	const description = pick(landmark.descriptions);
-	let html = `<div class="landmark-altar">`;
-	html += `<h3>Ancient Altar (Landmark)</h3>`;
+	let html = "<div class=\"landmark-altar\">";
+	html += "<h3>Ancient Altar (Landmark)</h3>";
 	html += `<p>${description}</p>`;
-	html += `</div>`;
+	html += "</div>";
 	return html;
 }
 
@@ -327,11 +327,11 @@ function generateLandmarkAltar(data) {
 function generateLandmarkSignalingTower(data) {
 	const landmark = data.landmarks.signalingTower;
 	const description = pick(landmark.descriptions);
-	let html = `<div class="landmark-signaling-tower">`;
-	html += `<h3>Signaling Tower (Landmark)</h3>`;
+	let html = "<div class=\"landmark-signaling-tower\">";
+	html += "<h3>Signaling Tower (Landmark)</h3>";
 	html += `<p>${description}</p>`;
 	html += `<p><em>${landmark.supplemental}</em></p>`;
-	html += `</div>`;
+	html += "</div>";
 	return html;
 }
 
@@ -345,10 +345,10 @@ function generateLandmarkWagons(data) {
 	const description = template
 		.replace(/\{number\}/g, number)
 		.replace(/\{NumberCap\}/g, cap(number));
-	let html = `<div class="landmark-wagons">`;
-	html += `<h3>Abandoned Wagons (Landmark)</h3>`;
+	let html = "<div class=\"landmark-wagons\">";
+	html += "<h3>Abandoned Wagons (Landmark)</h3>";
 	html += `<p>${description}</p>`;
-	html += `</div>`;
+	html += "</div>";
 	return html;
 }
 
@@ -362,10 +362,10 @@ function generateLandmarkDeadAdventurers(data) {
 	const description = template
 		.replace(/\{number\}/g, number)
 		.replace(/\{NumberCap\}/g, cap(number));
-	let html = `<div class="landmark-adventurers">`;
-	html += `<h3>Dead Adventurers (Landmark)</h3>`;
+	let html = "<div class=\"landmark-adventurers\">";
+	html += "<h3>Dead Adventurers (Landmark)</h3>";
 	html += `<p>${description}</p>`;
-	html += `</div>`;
+	html += "</div>";
 	return html;
 }
 
@@ -376,10 +376,10 @@ function generateLandmarkSacrificialSite(data) {
 	const landmark = data.landmarks.sacrificialSite;
 	const subject = pick(landmark.subjects);
 	const description = landmark.descriptionTemplate.replace(/\{subject\}/g, subject);
-	let html = `<div class="landmark-sacrificial">`;
-	html += `<h3>Sacrificial Site (Landmark)</h3>`;
+	let html = "<div class=\"landmark-sacrificial\">";
+	html += "<h3>Sacrificial Site (Landmark)</h3>";
 	html += `<p>${description}</p>`;
-	html += `</div>`;
+	html += "</div>";
 	return html;
 }
 
@@ -392,10 +392,10 @@ async function generateLandmarkDeadMonster(data, biomeKey) {
 	const monsters = data.biomes[biomeKey].featureEncounters;
 	const link = await monsterLink(pickWeightedUnique(monsters, 1)[0]);
 	const description = template.replace(/\{monster\}/g, link);
-	let html = `<div class="landmark-monster-remains">`;
-	html += `<h3>Monster Remains (Landmark)</h3>`;
+	let html = "<div class=\"landmark-monster-remains\">";
+	html += "<h3>Monster Remains (Landmark)</h3>";
 	html += `<p>${description}</p>`;
-	html += `</div>`;
+	html += "</div>";
 	return html;
 }
 
@@ -406,11 +406,11 @@ function generateLandmarkWatchtower(data, biomeKey) {
 	const watchtower = data.landmarks.watchtower;
 	const description = pick(watchtower.descriptions);
 
-	let html = `<div class="landmark-watchtower">`;
-	html += `<h3>Watchtower (Landmark)</h3>`;
+	let html = "<div class=\"landmark-watchtower\">";
+	html += "<h3>Watchtower (Landmark)</h3>";
 	html += `<p>${description}</p>`;
-	html += `<p><em>Travelers who spend time surveying from this vantage point eliminate the risk of becoming lost for the remainder of the day.</em></p>`;
-	html += `</div>`;
+	html += "<p><em>Travelers who spend time surveying from this vantage point eliminate the risk of becoming lost for the remainder of the day.</em></p>";
+	html += "</div>";
 
 	return html;
 }
@@ -473,8 +473,8 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 			if (minorEventsData) {
 				const shipSecretId = `secret-${foundry.utils.randomID()}`;
 				html += `<section id="${shipSecretId}" class="secret">`;
-				html += `<h2>Shipboard Events</h2>`;
-				html += `<p><em><strong>If aboard a ship</strong></em></p>`;
+				html += "<h2>Shipboard Events</h2>";
+				html += "<p><em><strong>If aboard a ship</strong></em></p>";
 
 				// Shipboard minor event
 				if (minorEventsData.shipboardEvents?.length) {
@@ -492,7 +492,7 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 					html += `<p><strong>☠ Negative Event:</strong> ${omen}</p>`;
 				}
 
-				html += `</section>`;
+				html += "</section>";
 			}
 		} catch (err) {
 			console.warn(`${MODULE_ID} | Could not load shipboard events:`, err);
@@ -507,9 +507,9 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 				const wreck = pick(minorEventsData.shipwrecks);
 				const wreckSecretId = `secret-${foundry.utils.randomID()}`;
 				html += `<section id="${wreckSecretId}" class="secret">`;
-				html += `<h2>Shipwreck</h2>`;
+				html += "<h2>Shipwreck</h2>";
 				html += `<p>${wreck}</p>`;
-				html += `</section>`;
+				html += "</section>";
 			}
 		} catch (err) {
 			console.warn(`${MODULE_ID} | Could not load shipwrecks:`, err);
@@ -522,9 +522,9 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 		const poi = resolveTemplate(poiTemplate);
 		const poiSecretId = `secret-${foundry.utils.randomID()}`;
 		html += `<section id="${poiSecretId}" class="secret">`;
-		html += `<h2>Point of Interest</h2>`;
+		html += "<h2>Point of Interest</h2>";
 		html += `<div class="poi-content">${poi}</div>`;
-		html += `</section>`;
+		html += "</section>";
 	}
 
 	// Landmarks - 0, 1, or 2
@@ -545,7 +545,7 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 			{ key: "wagons", gen: (d) => generateLandmarkWagons(d) },
 			{ key: "deadAdventurers", gen: (d) => generateLandmarkDeadAdventurers(d) },
 			{ key: "sacrificialSite", gen: (d) => generateLandmarkSacrificialSite(d) },
-			{ key: "deadMonster", gen: async (d, b) => await generateLandmarkDeadMonster(d, b) }
+			{ key: "deadMonster", gen: async (d, b) => await generateLandmarkDeadMonster(d, b) },
 		];
 
 		// Shuffle or iterate? Let's iterate in order for now as a "priority" or "fairness" roll
@@ -568,7 +568,7 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 		}
 
 		if (generatedCount > 0) {
-			html += `<h2>Landmarks</h2>`;
+			html += "<h2>Landmarks</h2>";
 			html += landmarkHtml;
 		}
 	}
@@ -578,7 +578,7 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 	if (data.rumorTemplates && rumorMonsters.length > 0) {
 		const secretId = `secret-${foundry.utils.randomID()}`;
 		html += `<section id="${secretId}" class="secret">`;
-		html += `<h2>Rumors</h2>`;
+		html += "<h2>Rumors</h2>";
 		html += `<table><tr><th>1d${rumorMonsters.length}</th><th>Rumor</th></tr>`;
 		const usedTemplates = new Set();
 		for (let i = 0; i < rumorMonsters.length; i++) {
@@ -593,46 +593,46 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 			const text = tmpl.replace(/\{monster\}/g, link).replace(/\{region\}/g, regionName);
 			html += `<tr><td>${i + 1}</td><td>${text}</td></tr>`;
 		}
-		html += `</table>`;
-		html += `</section>`;
+		html += "</table>";
+		html += "</section>";
 	}
 
 	// Random Encounters — resolve to compendium links
 	const encountersSecretId = `secret-${foundry.utils.randomID()}`;
 	html += `<section id="${encountersSecretId}" class="secret">`;
-	html += `<h2>Random Encounters</h2>`;
-	html += `<p>There's a <strong>1 in 6</strong> chance when exploring `;
-	html += `(or <strong>2 in 6</strong> if camping overnight) to encounter:</p>`;
-	html += `<table><tr><th>1d4</th><th>Encounter</th></tr>`;
+	html += "<h2>Random Encounters</h2>";
+	html += "<p>There's a <strong>1 in 6</strong> chance when exploring ";
+	html += "(or <strong>2 in 6</strong> if camping overnight) to encounter:</p>";
+	html += "<table><tr><th>1d4</th><th>Encounter</th></tr>";
 	for (let i = 0; i < encounters.length; i++) {
 		const link = await monsterLink(encounters[i]);
 		html += `<tr><td>${i + 1}</td><td>${link}</td></tr>`;
 	}
-	html += `</table>`;
-	html += `</section>`;
+	html += "</table>";
+	html += "</section>";
 
 	// Weather
 	if (variant) {
 		const weatherSecretId = `secret-${foundry.utils.randomID()}`;
 		html += `<section id="${weatherSecretId}" class="secret">`;
-		html += `<h2>Regional Weather</h2>`;
-		html += `<table><tr><th>2d6</th>`;
+		html += "<h2>Regional Weather</h2>";
+		html += "<table><tr><th>2d6</th>";
 		for (const season of variant.seasons) {
 			html += `<th>${season}</th>`;
 		}
-		html += `</tr>`;
+		html += "</tr>";
 		for (const row of variant.rows) {
 			html += `<tr><td><strong>${row.roll}</strong></td>`;
 			for (const val of row.values) {
 				html += `<td>${val}</td>`;
 			}
-			html += `</tr>`;
+			html += "</tr>";
 		}
-		html += `</table>`;
+		html += "</table>";
 		if (variant.hazard) {
 			html += `<p><em>${variant.hazard}</em></p>`;
 		}
-		html += `</section>`;
+		html += "</section>";
 	}
 
 	// Pool — biome-gated probability
@@ -644,9 +644,9 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 		const poolEffect = pick(poolData.effects);
 		const poolSecretId = `secret-${foundry.utils.randomID()}`;
 		html += `<section id="${poolSecretId}" class="secret">`;
-		html += `<h2>Pool</h2>`;
+		html += "<h2>Pool</h2>";
 		html += `<p>You come across <strong>${poolType}</strong> filled with ${poolLiquid}. ${poolEffect}</p>`;
-		html += `</section>`;
+		html += "</section>";
 	}
 
 	// Mouth — 20% chance, excluding ocean
@@ -654,9 +654,9 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 		const mouthLocation = pick(data.mouths[biomeKey]);
 		const mouthSecretId = `secret-${foundry.utils.randomID()}`;
 		html += `<section id="${mouthSecretId}" class="secret">`;
-		html += `<h2>Mouth</h2>`;
+		html += "<h2>Mouth</h2>";
 		html += `<p>Exploring this area reveals a <strong>hidden entrance</strong> ${mouthLocation}.</p>`;
-		html += `</section>`;
+		html += "</section>";
 	}
 
 	// Caravan / Ship Encounter
@@ -703,27 +703,27 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 		if (hiddenTrait) {
 			html += ` <p class="secret"><strong>Secret:</strong> ${hiddenTrait}</p>`;
 		}
-		html += `</p>`;
+		html += "</p>";
 		html += `<p>Traveling with them: ${assistants.join(" and ")}.</p>`;
 
-		html += `<h3>Items for Sale</h3>`;
-		html += `<table><tr><th>Item</th><th>Price</th></tr>`;
+		html += "<h3>Items for Sale</h3>";
+		html += "<table><tr><th>Item</th><th>Price</th></tr>";
 		for (const item of items) {
 			html += `<tr><td>${item.Title}</td><td>${item.Cost}</td></tr>`;
 		}
-		html += `</table>`;
+		html += "</table>";
 
 		// Add a rumor if available
 		const rumorMonsters = pickWeightedUnique(biome.featureEncounters, 2);
 		if (data.rumorTemplates && rumorMonsters.length > 0) {
-			html += `<h3>Rumors</h3><ul>`;
+			html += "<h3>Rumors</h3><ul>";
 			for (let i = 0; i < rumorMonsters.length; i++) {
 				const tmpl = pick(data.rumorTemplates);
 				const link = await monsterLink(rumorMonsters[i]);
 				const text = tmpl.replace(/\{monster\}/g, link).replace(/\{region\}/g, regionName);
 				html += `<li>${text}</li>`;
 			}
-			html += `</ul>`;
+			html += "</ul>";
 		}
 
 		// Campfire Tale
@@ -752,21 +752,21 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 				taleTemplate = taleTemplate.replace(/\{dungeonLocation\}/g, `<strong>${dungeonLocation}</strong>`);
 			}
 
-			html += `<h3>Campfire Tale</h3>`;
+			html += "<h3>Campfire Tale</h3>";
 			html += `<p><em>If you sit by their fire, <strong>${merchantName}</strong> ${taleTemplate}</em></p>`;
 		}
 
 		// Fortune Teller
 		const fortuneData = await loadCaravanFortunes();
-		const pcs = typeof game !== 'undefined' && game.actors ? game.actors.filter(a => a.type === "Player" || a.hasPlayerOwner) : [];
+		const pcs = typeof game !== "undefined" && game.actors ? game.actors.filter(a => a.type === "Player" || a.hasPlayerOwner) : [];
 		const pcName = pcs.length > 0 ? pick(pcs).name : "a random adventurer";
 		const fortune = pick(fortuneData.fortunes);
 
-		html += `<h3>Fortune Teller</h3>`;
+		html += "<h3>Fortune Teller</h3>";
 		html += `<p>A fortune teller travels with the ${vehicleName.toLowerCase()}. She refuses to read the fortune of the party, but she whispers in the ear of <strong>${pcName}</strong>:</p>`;
 		html += `<blockquote>"${fortune}"</blockquote>`;
 
-		html += `</section>`;
+		html += "</section>";
 	}
 
 	// Circus Encounter - 5% chance in Forest, Plains, Jungle
@@ -779,14 +779,14 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 
 			const circusSecretId = `secret-${foundry.utils.randomID()}`;
 			html += `<section id="${circusSecretId}" class="secret">`;
-			html += `<h2>Traveling Circus</h2>`;
+			html += "<h2>Traveling Circus</h2>";
 			html += `<div class="circus-content">${content}</div>`;
-			html += `</section>`;
+			html += "</section>";
 		}
 	}
 
 	// Attribution
-	html += `<hr><p style="font-size:0.75em;opacity:0.6;">Generated from <a href="https://hexroll.app">Hexroll</a> data</p>`;
+	html += "<hr><p style=\"font-size:0.75em;opacity:0.6;\">Generated from <a href=\"https://hexroll.app\">Hexroll</a> data</p>";
 
 	return { html, regionName };
 }

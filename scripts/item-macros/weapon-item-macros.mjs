@@ -41,7 +41,7 @@ export async function executeWeaponItemMacro(weapon, actor, trigger, context = {
 		...context,
 		actor,
 		trigger,
-		args: context.args ?? []
+		args: context.args ?? [],
 	};
 
 	return executeItemMacro(weapon, macroContext);

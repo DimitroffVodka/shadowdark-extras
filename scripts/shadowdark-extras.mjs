@@ -92,7 +92,7 @@ import { enhanceWandSheet } from "./item-sheets/wand-sheet-enhance.mjs";
 import {
 	injectWeaponBonusTab,
 	injectWeaponAnimationButton,
-	injectWeaponDamageTypeDropdown
+	injectWeaponDamageTypeDropdown,
 } from "./combat/WeaponBonusConfig.mjs";
 import { setupRollAttackPatches, setupRollConfigPatches } from "./combat/roll-patches.mjs";
 import { registerFreyasOmenHooks } from "./combat/freyas-omen.mjs";
@@ -278,7 +278,7 @@ Hooks.once("init", () => {
 		initLightTrackerApp();
 
 		if (typeof game.user.updateTokenTargets !== "function") {
-			game.user.updateTokenTargets = function (tokenIds = []) {
+			game.user.updateTokenTargets = function(tokenIds = []) {
 				// If the bypass flag is set, don't restrict targeting
 				if (game.shadowdarkExtras?.allowMultiTarget) {
 					return;
@@ -310,7 +310,7 @@ Hooks.once("init", () => {
 		"breakaway", "bwptype", "codex", "college", "ethnocentric-rg", "exmouth_", "fewriter_memesbruh03",
 		"fontopoSUBWAY-Regular", "fontopoSunnyDay-Regular", "glashou", "go3v2", "happyfrushzero",
 		"himagsikan", "kindergarten", "kirsty-rg", "makayla", "oko", "shoplift", "stereofidelic",
-		"stonehen", "times_new_yorker", "venus-rising-rg"
+		"stonehen", "times_new_yorker", "venus-rising-rg",
 	];
 
 	if (CONFIG.fontFamilies instanceof Set) {
@@ -323,8 +323,8 @@ Hooks.once("init", () => {
 		window.FontsLoader.load({
 			custom: {
 				families: SDX_FONTS,
-				urls: ["modules/shadowdark-extras/styles/fonts.css"]
-			}
+				urls: ["modules/shadowdark-extras/styles/fonts.css"],
+			},
 		});
 	}
 });
@@ -367,12 +367,12 @@ function registerPartySheet() {
 	foundry.documents.collections.Actors.registerSheet(MODULE_ID, PartySheetSD, {
 		types: ["NPC"],
 		makeDefault: false,
-		label: game.i18n.localize("SHADOWDARK_EXTRAS.party.name")
+		label: game.i18n.localize("SHADOWDARK_EXTRAS.party.name"),
 	});
 
 	// Override the _getSheetClass method to force Party sheet for party actors
 	const originalGetSheetClass = CONFIG.Actor.documentClass.prototype._getSheetClass;
-	CONFIG.Actor.documentClass.prototype._getSheetClass = function () {
+	CONFIG.Actor.documentClass.prototype._getSheetClass = function() {
 		// Check if this is a party actor
 		if (isPartyActor(this)) {
 			return PartySheetSD;
@@ -391,7 +391,7 @@ function registerPotionSheet() {
 	foundry.documents.collections.Items.registerSheet(MODULE_ID, PotionSheetSD, {
 		types: ["Potion"],
 		makeDefault: true,
-		label: "Shadowdark Extras: Potion Sheet"
+		label: "Shadowdark Extras: Potion Sheet",
 	});
 
 	//console.log(`${MODULE_ID} | Potion sheet registered`);
@@ -405,7 +405,7 @@ function registerBackgroundSheet() {
 	foundry.documents.collections.Items.registerSheet(MODULE_ID, BackgroundSheetSD, {
 		types: ["Background"],
 		makeDefault: true,
-		label: "Shadowdark Extras: Background Sheet"
+		label: "Shadowdark Extras: Background Sheet",
 	});
 
 	//console.log(`${MODULE_ID} | Background sheet registered`);
@@ -419,7 +419,7 @@ function registerNPCAttackSheet() {
 	foundry.documents.collections.Items.registerSheet(MODULE_ID, NPCAttackSheetSD, {
 		types: ["NPC Attack"],
 		makeDefault: true,
-		label: "Shadowdark Extras: NPC Attack Sheet"
+		label: "Shadowdark Extras: NPC Attack Sheet",
 	});
 
 	//console.log(`${MODULE_ID} | NPC Attack sheet registered`);
@@ -433,7 +433,7 @@ function registerNPCFeatureSheet() {
 	foundry.documents.collections.Items.registerSheet(MODULE_ID, NPCFeatureSheetSD, {
 		types: ["NPC Feature", "NPC Spell"],
 		makeDefault: true,
-		label: "Shadowdark Extras: NPC Feature/Spell Sheet"
+		label: "Shadowdark Extras: NPC Feature/Spell Sheet",
 	});
 
 	//console.log(`${MODULE_ID} | NPC Feature sheet registered`);
@@ -446,7 +446,7 @@ function registerClassAbilitySheet() {
 	foundry.documents.collections.Items.registerSheet(MODULE_ID, ClassAbilitySheetSD, {
 		types: ["Class Ability"],
 		makeDefault: true,
-		label: "Shadowdark Extras: Class Ability Sheet"
+		label: "Shadowdark Extras: Class Ability Sheet",
 	});
 }
 
@@ -540,7 +540,7 @@ Hooks.once("init", () => {
 		`modules/${MODULE_ID}/templates/class-ability-sheet/tabs.hbs`,
 		`modules/${MODULE_ID}/templates/class-ability-sheet/details.hbs`,
 		`modules/${MODULE_ID}/templates/class-ability-sheet/description.hbs`,
-		`modules/${MODULE_ID}/templates/class-ability-sheet/macro.hbs`
+		`modules/${MODULE_ID}/templates/class-ability-sheet/macro.hbs`,
 	]);
 
 	// Register the Party sheet early
@@ -671,7 +671,7 @@ Hooks.once("ready", async () => {
 	if (globalThis.shadowdark?.sheets?.NpcSheetSD) {
 		const NpcSheetSD = globalThis.shadowdark.sheets.NpcSheetSD;
 		if (!NpcSheetSD.prototype._toggleLightSource) {
-			NpcSheetSD.prototype._toggleLightSource = async function (item, options = {}) {
+			NpcSheetSD.prototype._toggleLightSource = async function(item, options = {}) {
 				// For NPCs, just toggle the light active state without the player-specific features
 				const active = !item.system.light?.active;
 
@@ -709,7 +709,7 @@ Hooks.once("ready", async () => {
 		//console.log(`${MODULE_ID} | Monkey-patching ActorSD methods and DiceSD`);
 		const original_learnSpell = ActorSD.prototype._learnSpell;
 
-		ActorSD.prototype._learnSpell = async function (item) {
+		ActorSD.prototype._learnSpell = async function(item) {
 			// Store the scroll ID temporarily so preCreateItem can access it
 			if (item && item.flags?.[MODULE_ID]?.spellDamage) {
 				await this.setFlag(MODULE_ID, "_learningFromScroll", item._id);
@@ -778,7 +778,7 @@ Hooks.on("preCreateActor", (actor, data, options, userId) => {
 			"prototypeToken.sight.angle": 360,
 			"prototypeToken.sight.visionMode": "basic",
 			"prototypeToken.light.bright": 0,
-			"prototypeToken.light.dim": 0
+			"prototypeToken.light.dim": 0,
 		});
 	}
 });
@@ -1407,8 +1407,8 @@ Hooks.on("setup", () => {
 				layout: generateLayout,
 				mixedLayout: generateMixedLayout,
 				assignBiomes: assignBiomes,
-				buildCellFloorMap: buildCellFloorMap
-			}
+				buildCellFloorMap: buildCellFloorMap,
+			},
 		};
 		//console.log(`${MODULE_ID} | Module API registered`);
 	}
@@ -1550,10 +1550,10 @@ Hooks.on("renderNpcSheetSD", (app, html, data) => {
 	const $html = html instanceof jQuery ? html : $(html);
 
 	// Find all feature items and add images
-	const featureItems = $html.find('.SD-box .content .item.attack[data-item-id]');
+	const featureItems = $html.find(".SD-box .content .item.attack[data-item-id]");
 	featureItems.each((_, el) => {
 		const $el = $(el);
-		const itemId = $el.data('item-id');
+		const itemId = $el.data("item-id");
 		const item = app.actor.items.get(itemId);
 
 		if (!item) return;
@@ -1565,12 +1565,12 @@ Hooks.on("renderNpcSheetSD", (app, html, data) => {
 		const defaultIcon = "icons/svg/book.svg";
 		if (item.img && item.img !== defaultIcon) {
 			// Find the anchor element and insert image after the icon
-			const anchor = $el.find('a.rollable');
-			if (anchor.length && !anchor.find('.sdx-npc-item-img').length) {
+			const anchor = $el.find("a.rollable");
+			if (anchor.length && !anchor.find(".sdx-npc-item-img").length) {
 				const escapedImg = foundry.utils.escapeHTML(item.img);
 				const escapedName = foundry.utils.escapeHTML(item.name);
 				const imgHtml = `<img src="${escapedImg}" alt="${escapedName}" class="sdx-npc-item-img" style="width: 18px; height: 18px; vertical-align: text-bottom; margin-right: 2px; border: none; border-radius: 2px;" />`;
-				anchor.find('i.fas').after(imgHtml);
+				anchor.find("i.fas").after(imgHtml);
 			}
 		}
 	});
@@ -1606,7 +1606,7 @@ Hooks.on("getSceneContextOptions", (document, menuItems) => {
 
 			// Export the scene
 			await SceneExporter.exportScene(scene);
-		}
+		},
 	});
 
 	menuItems.push({
@@ -1615,7 +1615,7 @@ Hooks.on("getSceneContextOptions", (document, menuItems) => {
 		visible: () => game.user.isGM,
 		callback: async () => {
 			await SceneImporter.promptImport();
-		}
+		},
 	});
 });
 
@@ -1644,7 +1644,7 @@ Hooks.once("init", () => {
 	foundry.documents.collections.Items.registerSheet("shadowdark", NPCSpecialAttackSheetSD, {
 		types: ["NPC Special Attack"],
 		makeDefault: true,
-		label: "SDX Special Attack Sheet (V2)"
+		label: "SDX Special Attack Sheet (V2)",
 	});
 });
 

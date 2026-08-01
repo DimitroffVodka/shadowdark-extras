@@ -16,11 +16,11 @@ const MODULE_ID = "shadowdark-extras";
  * @returns {boolean} - True if the item is unidentified
  */
 export function isUnidentified(item) {
-    if (!item) return false;
-    if (item.system?.identification !== undefined) {
-        return !item.system.isIdentified;
-    }
-    return Boolean(item?.getFlag?.(MODULE_ID, "unidentified"));
+	if (!item) return false;
+	if (item.system?.identification !== undefined) {
+		return !item.system.isIdentified;
+	}
+	return Boolean(item?.getFlag?.(MODULE_ID, "unidentified"));
 }
 
 /**
@@ -31,14 +31,14 @@ export function isUnidentified(item) {
  * @returns {string} - The masked name to display
  */
 export function getUnidentifiedName(item) {
-    if (item?.system?.identification !== undefined) {
-        return item?.name ?? "";
-    }
-    const customName = item?.getFlag?.(MODULE_ID, "unidentifiedName");
-    if (customName && customName.trim()) {
-        return customName.trim();
-    }
-    return game.i18n.localize("SHADOWDARK_EXTRAS.item.unidentified.label");
+	if (item?.system?.identification !== undefined) {
+		return item?.name ?? "";
+	}
+	const customName = item?.getFlag?.(MODULE_ID, "unidentifiedName");
+	if (customName && customName.trim()) {
+		return customName.trim();
+	}
+	return game.i18n.localize("SHADOWDARK_EXTRAS.item.unidentified.label");
 }
 
 /**
@@ -51,26 +51,26 @@ export function getUnidentifiedName(item) {
  * @param {string} originatingUserId - Optional: The user who initiated this (for GM routing)
  */
 export async function showIdentifyDialog(targetActor, unidentifiedItems, identifySpell, originatingUserId = null) {
-    // Check if we need to route this dialog to the originating user
-    // This happens when a spell macro runs on the GM's client via runAsGm
-    if (originatingUserId && game.user.isGM && originatingUserId !== game.user.id) {
-        const sdxModule = game.modules.get(MODULE_ID);
-        if (sdxModule?.socket) {
-            await sdxModule.socket.executeAsUser("showIdentifyDialogForUser", originatingUserId, {
-                targetActorId: targetActor.id,
-                unidentifiedItemIds: unidentifiedItems.map(i => i.id),
-                identifySpellId: identifySpell.id,
-                casterActorId: identifySpell.parent?.id
-            });
-            return;
-        }
-    }
+	// Check if we need to route this dialog to the originating user
+	// This happens when a spell macro runs on the GM's client via runAsGm
+	if (originatingUserId && game.user.isGM && originatingUserId !== game.user.id) {
+		const sdxModule = game.modules.get(MODULE_ID);
+		if (sdxModule?.socket) {
+			await sdxModule.socket.executeAsUser("showIdentifyDialogForUser", originatingUserId, {
+				targetActorId: targetActor.id,
+				unidentifiedItemIds: unidentifiedItems.map(i => i.id),
+				identifySpellId: identifySpell.id,
+				casterActorId: identifySpell.parent?.id,
+			});
+			return;
+		}
+	}
 
-    // Build item cards HTML
-    const itemsHtml = unidentifiedItems.map(item => {
-        const maskedName = getUnidentifiedName(item);
-        const img = item.img || "icons/svg/mystery-man.svg";
-        return `
+	// Build item cards HTML
+	const itemsHtml = unidentifiedItems.map(item => {
+		const maskedName = getUnidentifiedName(item);
+		const img = item.img || "icons/svg/mystery-man.svg";
+		return `
 			<div class="sdx-identify-item" data-item-id="${item.id}">
 				<div class="sdx-identify-item-img">
 					<img src="${img}" alt="${maskedName}">
@@ -78,9 +78,9 @@ export async function showIdentifyDialog(targetActor, unidentifiedItems, identif
 				<div class="sdx-identify-item-name">${maskedName}</div>
 			</div>
 		`;
-    }).join("");
+	}).join("");
 
-    const content = `
+	const content = `
 		<div class="sdx-identify-dialog">
 			<div class="sdx-identify-header">
 				<i class="fas fa-sparkles"></i>
@@ -93,67 +93,67 @@ export async function showIdentifyDialog(targetActor, unidentifiedItems, identif
 		</div>
 	`;
 
-    const dialog = new foundry.applications.api.DialogV2({
-        window: {
-            title: game.i18n.localize("SHADOWDARK_EXTRAS.identify.title"),
-            icon: "fas fa-sparkles"
-        },
-        content: content,
-        buttons: [
-            {
-                action: "cancel",
-                label: game.i18n.localize("Cancel"),
-                icon: "fas fa-times"
-            },
-            {
-                action: "identify",
-                label: game.i18n.localize("SHADOWDARK_EXTRAS.identify.identify"),
-                icon: "fas fa-sparkles",
-                default: true,
-                callback: async (event, button, dialogApp) => {
-                    const selectedId = dialogApp.element.querySelector("input[name='selectedItemId']")?.value;
-                    if (!selectedId) {
-                        ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.identify.noSelection"));
-                        return false;
-                    }
-                    const selectedItem = targetActor.items.get(selectedId);
-                    if (selectedItem) {
-                        await identifyItem(selectedItem, identifySpell);
-                    }
-                    return true;
-                }
-            }
-        ],
-        position: {
-            width: 500,
-            height: "auto"
-        }
-    });
+	const dialog = new foundry.applications.api.DialogV2({
+		window: {
+			title: game.i18n.localize("SHADOWDARK_EXTRAS.identify.title"),
+			icon: "fas fa-sparkles",
+		},
+		content: content,
+		buttons: [
+			{
+				action: "cancel",
+				label: game.i18n.localize("Cancel"),
+				icon: "fas fa-times",
+			},
+			{
+				action: "identify",
+				label: game.i18n.localize("SHADOWDARK_EXTRAS.identify.identify"),
+				icon: "fas fa-sparkles",
+				default: true,
+				callback: async (event, button, dialogApp) => {
+					const selectedId = dialogApp.element.querySelector("input[name='selectedItemId']")?.value;
+					if (!selectedId) {
+						ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.identify.noSelection"));
+						return false;
+					}
+					const selectedItem = targetActor.items.get(selectedId);
+					if (selectedItem) {
+						await identifyItem(selectedItem, identifySpell);
+					}
+					return true;
+				},
+			},
+		],
+		position: {
+			width: 500,
+			height: "auto",
+		},
+	});
 
-    dialog.addEventListener("render", (event) => {
-        const dialogElement = dialog.element;
-        // Add click handlers for item selection
-        const items = dialogElement.querySelectorAll(".sdx-identify-item");
-        const hiddenInput = dialogElement.querySelector("input[name='selectedItemId']");
+	dialog.addEventListener("render", (event) => {
+		const dialogElement = dialog.element;
+		// Add click handlers for item selection
+		const items = dialogElement.querySelectorAll(".sdx-identify-item");
+		const hiddenInput = dialogElement.querySelector("input[name='selectedItemId']");
 
-        items.forEach(itemEl => {
-            itemEl.addEventListener("click", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                // Remove selected class from all
-                items.forEach(i => i.classList.remove("selected"));
-                // Add to clicked
-                itemEl.classList.add("selected");
-                // Update hidden input
-                if (hiddenInput) {
-                    hiddenInput.value = itemEl.dataset.itemId;
-                }
-                console.log(`${MODULE_ID} | Selected item: ${itemEl.dataset.itemId}`);
-            });
-        });
-    });
+		items.forEach(itemEl => {
+			itemEl.addEventListener("click", (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				// Remove selected class from all
+				items.forEach(i => i.classList.remove("selected"));
+				// Add to clicked
+				itemEl.classList.add("selected");
+				// Update hidden input
+				if (hiddenInput) {
+					hiddenInput.value = itemEl.dataset.itemId;
+				}
+				console.log(`${MODULE_ID} | Selected item: ${itemEl.dataset.itemId}`);
+			});
+		});
+	});
 
-    await dialog.render(true);
+	await dialog.render(true);
 }
 
 /**
@@ -163,45 +163,45 @@ export async function showIdentifyDialog(targetActor, unidentifiedItems, identif
  * @param {Item} identifySpell - The Identify spell item (for reference)
  */
 export async function identifyItem(item, identifySpell) {
-    if (!item) return;
+	if (!item) return;
 
-    // Check ownership. If we can't update the item, ask GM to do it.
-    const sdxModule = game.modules.get(MODULE_ID);
-    if (!item.isOwner && !game.user.isGM) {
-        if (sdxModule?.socket) {
-            // Store masked name before GM removes flags
-            const maskedName = getUnidentifiedName(item);
-            // The GM routes the reveal dialog back to the authenticated socket
-            // sender, so no user id travels in the payload.
-            await sdxModule.socket.executeAsGM("sdxIdentifyItemAsGM", {
-                itemUuid: item.uuid,
-                spellUuid: identifySpell?.uuid ?? null,
-                maskedName
-            });
-            return;
-        } else {
-            ui.notifications.warn("Cannot identify item: No GM connected or socket unavailable.");
-            return;
-        }
-    }
+	// Check ownership. If we can't update the item, ask GM to do it.
+	const sdxModule = game.modules.get(MODULE_ID);
+	if (!item.isOwner && !game.user.isGM) {
+		if (sdxModule?.socket) {
+			// Store masked name before GM removes flags
+			const maskedName = getUnidentifiedName(item);
+			// The GM routes the reveal dialog back to the authenticated socket
+			// sender, so no user id travels in the payload.
+			await sdxModule.socket.executeAsGM("sdxIdentifyItemAsGM", {
+				itemUuid: item.uuid,
+				spellUuid: identifySpell?.uuid ?? null,
+				maskedName,
+			});
+			return;
+		} else {
+			ui.notifications.warn("Cannot identify item: No GM connected or socket unavailable.");
+			return;
+		}
+	}
 
-    // Store original masked name for the reveal (before the swap restores the real name)
-    const maskedName = getUnidentifiedName(item);
+	// Store original masked name for the reveal (before the swap restores the real name)
+	const maskedName = getUnidentifiedName(item);
 
-    // Reveal the item. SD 4.x swaps name/description back to the real values and
-    // re-enables the item's Active Effects; legacy worlds just clear the SDX flags.
-    if (item.system?.identification !== undefined) {
-        if (!item.system.isIdentified) await item.system.toggleIdentified();
-    } else {
-        await item.unsetFlag(MODULE_ID, "unidentified");
-        await item.unsetFlag(MODULE_ID, "unidentifiedName");
-    }
+	// Reveal the item. SD 4.x swaps name/description back to the real values and
+	// re-enables the item's Active Effects; legacy worlds just clear the SDX flags.
+	if (item.system?.identification !== undefined) {
+		if (!item.system.isIdentified) await item.system.toggleIdentified();
+	} else {
+		await item.unsetFlag(MODULE_ID, "unidentified");
+		await item.unsetFlag(MODULE_ID, "unidentifiedName");
+	}
 
-    // Show reveal modal
-    await showItemReveal(item, maskedName);
+	// Show reveal modal
+	await showItemReveal(item, maskedName);
 
-    // Post chat message
-    const chatContent = `
+	// Post chat message
+	const chatContent = `
 		<div class="shadowdark chat-card sdx-identify-chat">
 			<header class="card-header flexrow">
 				<img class="item-image" src="${item.img}" alt="${item.name}"/>
@@ -219,12 +219,12 @@ export async function identifyItem(item, identifySpell) {
 		</div>
 	`;
 
-    await ChatMessage.create({
-        content: chatContent,
-        speaker: ChatMessage.getSpeaker({ actor: item.actor }),
-    });
+	await ChatMessage.create({
+		content: chatContent,
+		speaker: ChatMessage.getSpeaker({ actor: item.actor }),
+	});
 
-    ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.identify.success", { name: item.name }));
+	ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.identify.success", { name: item.name }));
 }
 
 /**
@@ -234,7 +234,7 @@ export async function identifyItem(item, identifySpell) {
  * @param {string} maskedName - The original masked name
  */
 export async function showItemReveal(item, maskedName) {
-    const content = `
+	const content = `
 		<div class="sdx-identify-reveal">
 			<div class="sdx-reveal-glow"></div>
 			<div class="sdx-reveal-content">
@@ -255,45 +255,45 @@ export async function showItemReveal(item, maskedName) {
 		</div>
 	`;
 
-    const dialog = new foundry.applications.api.DialogV2({
-        window: {
-            title: game.i18n.localize("SHADOWDARK_EXTRAS.identify.itemRevealed"),
-            icon: "fas fa-sparkles"
-        },
-        content: content,
-        buttons: [
-            {
-                action: "close",
-                label: game.i18n.localize("Close"),
-                icon: "fas fa-check",
-                default: true
-            }
-        ],
-        position: {
-            width: 450,
-            height: "auto"
-        }
-    });
+	const dialog = new foundry.applications.api.DialogV2({
+		window: {
+			title: game.i18n.localize("SHADOWDARK_EXTRAS.identify.itemRevealed"),
+			icon: "fas fa-sparkles",
+		},
+		content: content,
+		buttons: [
+			{
+				action: "close",
+				label: game.i18n.localize("Close"),
+				icon: "fas fa-check",
+				default: true,
+			},
+		],
+		position: {
+			width: 450,
+			height: "auto",
+		},
+	});
 
-    await dialog.render(true);
+	await dialog.render(true);
 
-    // Play reveal animation with Sequencer if available
-    try {
-        if (game.modules.get("sequencer")?.active) {
-            const token = item.actor?.getActiveTokens()?.[0];
-            if (token) {
-                new Sequence()
-                    .effect()
-                    .atLocation(token)
-                    .file("jb2a.divine_smite.caster.reversed.blueyellow")
-                    .scale(0.5)
-                    .fadeIn(300)
-                    .fadeOut(500)
-                    .play();
-            }
-        }
-    } catch (e) {
-        // Silently fail if no JB2A effects available
-        console.log(`${MODULE_ID} | Sequencer animation not available: ${e.message}`);
-    }
+	// Play reveal animation with Sequencer if available
+	try {
+		if (game.modules.get("sequencer")?.active) {
+			const token = item.actor?.getActiveTokens()?.[0];
+			if (token) {
+				new Sequence()
+					.effect()
+					.atLocation(token)
+					.file("jb2a.divine_smite.caster.reversed.blueyellow")
+					.scale(0.5)
+					.fadeIn(300)
+					.fadeOut(500)
+					.play();
+			}
+		}
+	} catch (e) {
+		// Silently fail if no JB2A effects available
+		console.log(`${MODULE_ID} | Sequencer animation not available: ${e.message}`);
+	}
 }

@@ -64,7 +64,7 @@ export function injectAmmunitionBonuses(app, html) {
  */
 function patchAmmunitionConsumption() {
 	Object.defineProperty(shadowdark.documents.ItemSD.prototype, "usesAmmunition", {
-		get: function () {
+		get: function() {
 			return (game.settings.get("shadowdark", "autoConsumeAmmunition")
 				&& this.isOwned
 				&& this.actor.type === "Player"
@@ -72,7 +72,7 @@ function patchAmmunitionConsumption() {
 				&& this.system.type === "ranged"
 			);
 		},
-		configurable: true
+		configurable: true,
 	});
 
 
@@ -83,14 +83,14 @@ function patchAmmunitionConsumption() {
 	// Shadowdark's armor and weapon sheet helpers request full Item system data
 	// from every pack. Normalize any frozen v14 index entries first.
 	const originalGetArmorSheetData = shadowdark.sheets.ItemSheetSD.prototype.getSheetDataForArmorItem;
-	shadowdark.sheets.ItemSheetSD.prototype.getSheetDataForArmorItem = async function (context) {
+	shadowdark.sheets.ItemSheetSD.prototype.getSheetDataForArmorItem = async function(context) {
 		prepareGearSheetCompendiumIndexes();
 		return originalGetArmorSheetData.call(this, context);
 	};
 
 	// Enhance weapon sheet to include actor's inventory ammunition in the dropdown
 	const originalGetWeaponSheetData = shadowdark.sheets.ItemSheetSD.prototype.getSheetDataForWeaponItem;
-	shadowdark.sheets.ItemSheetSD.prototype.getSheetDataForWeaponItem = async function (context) {
+	shadowdark.sheets.ItemSheetSD.prototype.getSheetDataForWeaponItem = async function(context) {
 		prepareGearSheetCompendiumIndexes();
 		await originalGetWeaponSheetData.call(this, context);
 

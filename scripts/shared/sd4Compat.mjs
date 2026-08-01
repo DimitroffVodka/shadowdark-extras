@@ -59,7 +59,7 @@ export function readSdRollOutcome(message) {
 				&& naturalDie >= (opts.criticalSuccessAt ?? 20),
 			isCriticalFailure: !!opts.canCritical && typeof naturalDie === "number"
 				&& naturalDie <= (opts.criticalFailureAt ?? 1),
-			isMasked: !successKnown   // true on non-recipient clients of a whispered roll
+			isMasked: !successKnown,   // true on non-recipient clients of a whispered roll
 		};
 	}
 
@@ -73,7 +73,7 @@ export function readSdRollOutcome(message) {
 			isSuccess: successKnown ? legacy.success : false,
 			isCriticalSuccess: legacy.critical === "success",
 			isCriticalFailure: legacy.critical === "failure",
-			isMasked: !successKnown
+			isMasked: !successKnown,
 		};
 	}
 
@@ -84,7 +84,7 @@ export function readSdRollOutcome(message) {
 		isSuccess: false,
 		isCriticalSuccess: false,
 		isCriticalFailure: false,
-		isMasked: false
+		isMasked: false,
 	};
 }
 
@@ -102,7 +102,7 @@ export function readSdDamageRoll(message) {
 	if (damageRoll) {
 		return {
 			roll: damageRoll,
-			total: typeof damageRoll.total === "number" ? damageRoll.total : null
+			total: typeof damageRoll.total === "number" ? damageRoll.total : null,
 		};
 	}
 
@@ -111,7 +111,7 @@ export function readSdDamageRoll(message) {
 	if (legacy) {
 		return {
 			roll: legacy,
-			total: typeof legacy.total === "number" ? legacy.total : null
+			total: typeof legacy.total === "number" ? legacy.total : null,
 		};
 	}
 
@@ -142,7 +142,7 @@ export function resolveCardContext(message, html) {
 			actorId,
 			itemUuid,
 			itemId: itemUuid.split(".").pop(),
-			rollConfig: rc ?? null
+			rollConfig: rc ?? null,
 		};
 	}
 
@@ -163,7 +163,7 @@ export function resolveCardContext(message, html) {
 				actorId: linkedActorId,
 				itemUuid: linkedUuid,
 				itemId,
-				rollConfig: rc ?? null
+				rollConfig: rc ?? null,
 			};
 		}
 	}
@@ -171,14 +171,14 @@ export function resolveCardContext(message, html) {
 	// Legacy SD 3.x DOM lookup — accepts jQuery OR raw HTMLElement.
 	// Matches both `.item-card` and `.chat-card` to preserve the multi-selector
 	// pattern used at shadowdark-extras.mjs:16210.
-	const $card = $html?.find?.('.item-card, .chat-card');
+	const $card = $html?.find?.(".item-card, .chat-card");
 	const data = $card?.data?.();
 	if (data?.actorId && data?.itemId) {
 		return {
 			actorId: data.actorId,
 			itemUuid: null,
 			itemId: data.itemId,
-			rollConfig: null
+			rollConfig: null,
 		};
 	}
 
@@ -188,7 +188,7 @@ export function resolveCardContext(message, html) {
 			actorId,
 			itemUuid: null,
 			itemId: null,
-			rollConfig: rc ?? null
+			rollConfig: rc ?? null,
 		};
 	}
 
@@ -214,7 +214,7 @@ export function getActorStats(actor) {
 		return {
 			hp: sys.attributes.hp?.value ?? null,
 			hpMax: sys.attributes.hp?.max ?? null,
-			ac: sys.attributes.ac?.value ?? null
+			ac: sys.attributes.ac?.value ?? null,
 		};
 	}
 
@@ -222,7 +222,7 @@ export function getActorStats(actor) {
 	return {
 		hp: sys.hp?.value ?? null,
 		hpMax: sys.hp?.max ?? null,
-		ac: sys.ac?.value ?? null
+		ac: sys.ac?.value ?? null,
 	};
 }
 

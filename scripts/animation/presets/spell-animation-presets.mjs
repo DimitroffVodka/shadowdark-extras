@@ -20,7 +20,7 @@ export const DEFAULT_SPELL_PRESETS = {
 	_default: {
 		label: "Generic Arcane Bolt", patterns: "",
 		type: "projectile", target: "target",
-		hit: { file: "jb2a.magic_missile", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.magic_missile", scale: 1, duration: 1500 },
 	},
 
 	// ── force / arcane ───────────────────────────────────────────────────────
@@ -28,13 +28,13 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Force / Arcane Bolt",
 		patterns: "magic missile|eldritch|force bolt|witch bolt|anima|push\\/pull|magnetize|telekinesis|arcane|\\bwish\\b",
 		type: "projectile", target: "target",
-		hit: { file: "jb2a.magic_missile", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.magic_missile", scale: 1, duration: 1500 },
 	},
 	disintegrate: {
 		label: "Disintegrate / Decay",
 		patterns: "disintegrat|dismember|excoriate|wrack|oxidize|dust to dust|ashes to ashes|acid arrow|corrode|envenom",
 		type: "projectile", target: "target",
-		hit: { file: "jb2a.disintegrate.green", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.disintegrate.green", scale: 1, duration: 1500 },
 	},
 
 	// ── fire ─────────────────────────────────────────────────────────────────
@@ -45,26 +45,26 @@ export const DEFAULT_SPELL_PRESETS = {
 		// `.beam.orange` (not the bare `jb2a.fireball` prefix, which also holds a
 		// stationary explosion + two loops). The trailing 05ft…90ft range variants
 		// are resolved by Sequencer from stretchTo distance, so leave them off.
-		hit: { file: "jb2a.fireball.beam.orange", scale: 1, duration: 1800 }
+		hit: { file: "jb2a.fireball.beam.orange", scale: 1, duration: 1800 },
 	},
 	fire_bolt: {
 		label: "Fire Bolt / Flare",
 		patterns: "fire bolt|firebolt|flare|scorch|ember|cinder|blazing",
 		type: "projectile", target: "target",
-		hit: { file: "jb2a.fire_bolt.orange", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.fire_bolt.orange", scale: 1, duration: 1500 },
 	},
 	burning_hands: {
 		label: "Burning Hands (cone)",
 		patterns: "burning hands|dragon breath|cone of fire|fire breath",
 		type: "cone", target: "target",
-		hit: { file: "jb2a.burning_hands", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.burning_hands", scale: 1, duration: 1500 },
 	},
 	wall_of_fire: {
 		label: "Wall of Fire",
 		patterns: "wall of fire|firewall|ring of fire",
 		type: "onToken", target: "target",
 		// Prefix spans 4 wall lengths + a Ring in 2 colours; pin one.
-		hit: { file: "jb2a.wall_of_fire.300x100.yellow", scale: 1, duration: 1800 }
+		hit: { file: "jb2a.wall_of_fire.300x100.yellow", scale: 1, duration: 1800 },
 	},
 
 	// ── lightning / storm ────────────────────────────────────────────────────
@@ -72,25 +72,25 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Lightning Bolt",
 		patterns: "lightning bolt|shock|electrocute",
 		type: "projectile", target: "target",
-		hit: { file: "jb2a.lightning_bolt.narrow.blue", scale: 1, duration: 1200 }
+		hit: { file: "jb2a.lightning_bolt.narrow.blue", scale: 1, duration: 1200 },
 	},
 	chain_lightning: {
 		label: "Chain Lightning / Thor's Thunder",
 		patterns: "chain lightning|thor's thunder|thors thunder|thunderbolt",
 		type: "projectile", target: "target",
-		hit: { file: "jb2a.chain_lightning.primary.blue", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.chain_lightning.primary.blue", scale: 1, duration: 1500 },
 	},
 	call_lightning: {
 		label: "Call Lightning / Storm",
 		patterns: "call lightning|summon storm|\\bstorm\\b|tempest|maelstrom",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.call_lightning", scale: 1, duration: 1800 }
+		hit: { file: "jb2a.call_lightning", scale: 1, duration: 1800 },
 	},
 	thunderwave: {
 		label: "Thunderwave / Shatter / Earthquake",
 		patterns: "thunderwave|shatter|earthquake|tremor|sonic|screech",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.shatter", scale: 1, duration: 1200 }
+		hit: { file: "jb2a.shatter", scale: 1, duration: 1200 },
 	},
 
 	// ── cold ─────────────────────────────────────────────────────────────────
@@ -98,13 +98,13 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Frost / Cold",
 		patterns: "ray of frost|frost|\\bice\\b|freeze|\\bcold\\b|chill|rime|glacial|avalanche",
 		type: "projectile", target: "target",
-		hit: { file: "jb2a.ray_of_frost.blue", scale: 1, duration: 1400 }
+		hit: { file: "jb2a.ray_of_frost.blue", scale: 1, duration: 1400 },
 	},
 	cone_of_cold: {
 		label: "Cone of Cold",
 		patterns: "cone of cold|frost breath|blizzard",
 		type: "cone", target: "target",
-		hit: { file: "jb2a.cone_of_cold", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.cone_of_cold", scale: 1, duration: 1500 },
 	},
 
 	// ── necrotic / death / drain ─────────────────────────────────────────────
@@ -114,19 +114,19 @@ export const DEFAULT_SPELL_PRESETS = {
 		// toll_the_dead has no beam/ranged variant at all, so "projectile" stretched
 		// a stationary effect between the tokens. It is an on-target burst.
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.toll_the_dead.green.complete", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.toll_the_dead.green.complete", scale: 1, duration: 1500 },
 	},
 	necrotic_burst: {
 		label: "Necrotic Burst",
 		patterns: "arms of hadar|plague|blood rite|contagion|excoriate",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.arms_of_hadar.dark_purple", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.arms_of_hadar.dark_purple", scale: 1, duration: 1500 },
 	},
 	swarm_bats: {
 		label: "Bats / Raven / Swarm",
 		patterns: "\\braven\\b|\\bbats\\b|crows|murder of|\\bflock\\b|\\bcoven\\b|locusts|\\bswarm\\b|frog rain",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.bats.complete.01.red", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.bats.complete.01.red", scale: 1, duration: 1500 },
 	},
 
 	// ── radiant / holy ───────────────────────────────────────────────────────
@@ -135,13 +135,13 @@ export const DEFAULT_SPELL_PRESETS = {
 		patterns: "smite|judgment|judgement|turn undead|rebuke unholy|rebuke|divine vengeance|holy weapon|cleansing weapon|\\bwrath\\b|consecrate|\\bhalo\\b|rapture|prayer|\\bchant\\b|sacred|divine|cleanse|abjure|excommunicate",
 		type: "onToken", target: "target",
 		// Prefix also holds a `reversed` (upside-down) cut.
-		hit: { file: "jb2a.divine_smite.caster.standard.blueyellow", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.divine_smite.caster.standard.blueyellow", scale: 1, duration: 1500 },
 	},
 	spiritual_weapon: {
 		label: "Spiritual / Summoned Weapon",
 		patterns: "spiritual weapon|spirit blade|dancing blade",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.spiritual_weapon", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.spiritual_weapon", scale: 1, duration: 1500 },
 	},
 
 	// ── healing / restoration ────────────────────────────────────────────────
@@ -149,7 +149,7 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Cure Wounds / Heal",
 		patterns: "cure wounds|\\bcure\\b|\\bheal\\b|mass cure|regenerate|restoration|revitalize|regrowth|lay to rest|\\bfeast\\b|restore|death ward",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.cure_wounds", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.cure_wounds", scale: 1, duration: 1500 },
 	},
 
 	// ── nature / druid ───────────────────────────────────────────────────────
@@ -157,7 +157,7 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Entangle / Roots / Thorns",
 		patterns: "entangle|oak, ash, thorn|oak ash thorn|\\bthorn\\b|\\broot\\b|barkskin|spidersilk|\\bweb\\b|grease|mycelium|treeshape|bear shape|world tree|world serpent|\\bserpent\\b|riverwalk|mistletoe|toadstool|willowman",
 		type: "onToken", target: "self",
-		hit: { file: "jb2a.entangle.green", scale: 1, duration: 1800 }
+		hit: { file: "jb2a.entangle.green", scale: 1, duration: 1800 },
 	},
 
 	// ── enchant / mind / illusion ────────────────────────────────────────────
@@ -166,7 +166,7 @@ export const DEFAULT_SPELL_PRESETS = {
 		patterns: "charm|beguile|befriend|hypnotize|hypnotise|dominate|dominion|subjugate|pacify|\\bpeace\\b|command|puppet|pin doll|confusion|feeblemind|hallucinate|phantoms|illusion|mirror image|instill|betrayal|mischief|mesmerism|loki's trickery|lokis trickery|\\btrance\\b|\\bsleep\\b|whisper|beckon|glamour|forbid|unhinge|hold person|hold monster|\\bhold\\b|\\bsilence\\b|zone of truth|evoke rage|\\bhowl\\b",
 		type: "onToken", target: "target",
 		// Prefix spans three unrelated looks (target / symbol / cloud).
-		hit: { file: "jb2a.sleep.target.pink", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.sleep.target.pink", scale: 1, duration: 1500 },
 	},
 
 	// ── buff / ward / self ───────────────────────────────────────────────────
@@ -175,14 +175,14 @@ export const DEFAULT_SPELL_PRESETS = {
 		patterns: "bless|shield of faith|mage armor|mage armour|stoneskin|fortify|\\bward\\b|absorb|anchor|stasis|balance|\\bfate\\b|freya's omen|freyas omen|odin's wisdom|odins wisdom|covenant|permanence|protection from|protection|aegis|fortitude|fifth gate|fourth gate|third gate|second gate|first gate|prophecy|invisibility|\\bfly\\b|levitate|feather fall|witchlight|barkskin",
 		type: "onToken", target: "self",
 		// Prefix mixes bare intro/loop fragments at two sizes; take the 400px loop.
-		hit: { file: "jb2a.bless.400px.loop.yellow", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.bless.400px.loop.yellow", scale: 1, duration: 1500 },
 	},
 	arcane_shield: {
 		label: "Shield / Force Barrier",
 		patterns: "^shield$|force shield|wall of force|antimagic|resilient sphere|magic circle|\\bglyph\\b|\\bseal\\b|\\bhold portal\\b",
 		type: "onToken", target: "self",
 		// Prefix holds intro / loop / outro fragments; `complete` is the whole cast.
-		hit: { file: "jb2a.shield.01.complete.01.blue", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.shield.01.complete.01.blue", scale: 1, duration: 1500 },
 	},
 
 	// ── summon / gate / teleport ─────────────────────────────────────────────
@@ -190,7 +190,7 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Gate / Summon / Teleport",
 		patterns: "\\bgate\\b|\\bsummon\\b|teleport|dimension door|plane shift|misty step|conjure|banish|valkyrie|planar|portal|dreamwalk|shadowdance|gaseous form|polymorph|shapechanger|wolfshape|alter self|passwall",
 		type: "onToken", target: "self",
-		hit: { file: "jb2a.misty_step", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.misty_step", scale: 1, duration: 1500 },
 	},
 
 	// ── control / area (fog, wind, darkness, beam) ───────────────────────────
@@ -198,25 +198,25 @@ export const DEFAULT_SPELL_PRESETS = {
 		label: "Fog / Cloud",
 		patterns: "\\bfog\\b|cloud kill|cloudkill|fog cloud|obscuring|\\bmist\\b",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.fog_cloud", scale: 1, duration: 1800 }
+		hit: { file: "jb2a.fog_cloud", scale: 1, duration: 1800 },
 	},
 	darkness: {
 		label: "Darkness / Night / Blind",
 		patterns: "darkness|mother of night|cloak of night|\\bshadow\\b|blind\\/deafen|\\bblind\\b|eyebite|\\bvoid\\b",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.darkness", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.darkness", scale: 1, duration: 1500 },
 	},
 	wind: {
 		label: "Wind / Whirlwind",
 		patterns: "gust of wind|whirlwind|\\bgust\\b|cyclone|wind wall|control water|riptide",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.gust_of_wind", scale: 1, duration: 1500 }
+		hit: { file: "jb2a.gust_of_wind", scale: 1, duration: 1500 },
 	},
 	moonbeam: {
 		label: "Moonbeam / Radiant Beam",
 		patterns: "moonbeam|\\bbeam\\b|pillar of|column of light|flame strike",
 		type: "onToken", target: "target",
-		hit: { file: "jb2a.moonbeam.01.complete.blue", scale: 1, duration: 1800 }
+		hit: { file: "jb2a.moonbeam.01.complete.blue", scale: 1, duration: 1800 },
 	},
 
 	// ── divination / detection (subtle self) ─────────────────────────────────
@@ -226,8 +226,8 @@ export const DEFAULT_SPELL_PRESETS = {
 		type: "onToken", target: "self",
 		// Leaf, not the `jb2a.detect_magic` prefix: that prefix spans one circle
 		// and three cones, so Sequencer picked a random shape on every cast.
-		hit: { file: "jb2a.detect_magic.circle.blue", scale: 1, duration: 1500 }
-	}
+		hit: { file: "jb2a.detect_magic.circle.blue", scale: 1, duration: 1500 },
+	},
 };
 
 export default DEFAULT_SPELL_PRESETS;

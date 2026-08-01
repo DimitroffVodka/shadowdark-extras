@@ -13,7 +13,7 @@ const DEFAULT_HP_WAVES_SETTINGS = {
 	defaultColor: "#dc2626", // Red
 	ancestryColors: [
 		// Example entries - users can add their own
-	]
+	],
 };
 
 /**
@@ -28,23 +28,23 @@ export class HpWavesSettingsApp extends HandlebarsApplicationMixin(ApplicationV2
 		tag: "form",
 		window: {
 			title: "SHADOWDARK_EXTRAS.hp_waves.title",
-			resizable: true
+			resizable: true,
 		},
 		position: {
 			width: 500,
-			height: "auto"
+			height: "auto",
 		},
 		form: {
 			handler: HpWavesSettingsApp.formHandler,
 			submitOnChange: true,
-			closeOnSubmit: false
-		}
+			closeOnSubmit: false,
+		},
 	};
 
 	static PARTS = {
 		form: {
-			template: `modules/${MODULE_ID}/templates/hp-waves-settings.hbs`
-		}
+			template: `modules/${MODULE_ID}/templates/hp-waves-settings.hbs`,
+		},
 	};
 
 	static show() {
@@ -67,7 +67,7 @@ export class HpWavesSettingsApp extends HandlebarsApplicationMixin(ApplicationV2
 			enabled: settings.enabled,
 			defaultColor: settings.defaultColor,
 			ancestryColors: settings.ancestryColors || [],
-			MODULE_ID
+			MODULE_ID,
 		};
 	}
 
@@ -128,7 +128,7 @@ export class HpWavesSettingsApp extends HandlebarsApplicationMixin(ApplicationV2
 			const confirmed = await foundry.applications.api.DialogV2.confirm({
 				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.hp_waves.reset_confirm_title") },
 				content: `<p>${game.i18n.localize("SHADOWDARK_EXTRAS.hp_waves.reset_confirm_content")}</p>`,
-				modal: true
+				modal: true,
 			});
 			if (confirmed) {
 				await game.settings.set(MODULE_ID, "hpWavesSettings", foundry.utils.deepClone(DEFAULT_HP_WAVES_SETTINGS));
@@ -148,7 +148,7 @@ export class HpWavesSettingsApp extends HandlebarsApplicationMixin(ApplicationV2
 		const settings = {
 			enabled: flat.enabled ?? true,
 			defaultColor: flat.defaultColor || "#dc2626",
-			ancestryColors: []
+			ancestryColors: [],
 		};
 
 		// Collect ancestry colors from form data
@@ -167,7 +167,7 @@ export class HpWavesSettingsApp extends HandlebarsApplicationMixin(ApplicationV2
 			if (data.ancestry && data.ancestry.trim()) {
 				settings.ancestryColors.push({
 					ancestry: data.ancestry.trim(),
-					color: data.color || "#dc2626"
+					color: data.color || "#dc2626",
 				});
 			}
 		}
@@ -223,7 +223,7 @@ export function registerHpWavesSettings() {
 		scope: "world",
 		config: false,
 		type: Object,
-		default: foundry.utils.deepClone(DEFAULT_HP_WAVES_SETTINGS)
+		default: foundry.utils.deepClone(DEFAULT_HP_WAVES_SETTINGS),
 	});
 
 	// Register a menu button to open the HP Waves Settings app
@@ -233,7 +233,7 @@ export function registerHpWavesSettings() {
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.hp_waves.hint"),
 		icon: "fas fa-water",
 		type: HpWavesSettingsApp,
-		restricted: true
+		restricted: true,
 	});
 }
 

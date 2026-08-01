@@ -266,7 +266,7 @@ export function registerSourceRequirementHooks() {
 						//console.log(`${MODULE_ID} | Cannot enable effect "${effect.name}" - requirements not met: ${requirement}`);
 						ui.notifications.warn(game.i18n.format("SHADOWDARK_EXTRAS.effects.requirementNotMet", {
 							name: effect.name,
-							requirement: requirement
+							requirement: requirement,
 						}));
 						// Prevent the enable by re-disabling
 						setTimeout(() => {

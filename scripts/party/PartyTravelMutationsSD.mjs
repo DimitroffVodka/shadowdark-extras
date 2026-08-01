@@ -9,7 +9,7 @@ function cloneAssignments(assignments = {}) {
 	return Object.fromEntries(
 		Object.entries(assignments).map(([key, members]) => [
 			key,
-			Array.isArray(members) ? [...members] : []
+			Array.isArray(members) ? [...members] : [],
 		])
 	);
 }
@@ -18,7 +18,7 @@ function cloneSelections(selections = {}) {
 	return Object.fromEntries(
 		Object.entries(selections).map(([key, values]) => [
 			key,
-			values && typeof values === "object" ? { ...values } : {}
+			values && typeof values === "object" ? { ...values } : {},
 		])
 	);
 }
@@ -34,7 +34,7 @@ export function isPartyTravelMutationAuthorized({
 	memberKeys = [],
 	ownedMemberKeys = [],
 	operation,
-	memberId = ""
+	memberId = "",
 }) {
 	if (isGM) return true;
 	const partyMembers = new Set(memberKeys);
@@ -103,7 +103,7 @@ export function planPartyTravelMutation(
 
 	return {
 		assignments: nextAssignments,
-		selections: nextSelections
+		selections: nextSelections,
 	};
 }
 
@@ -127,6 +127,6 @@ export function planWeatherPredictionMutation(prediction, action) {
 	const remaining = uses - 1;
 	return {
 		uses: remaining,
-		value: remaining ? { ...current, uses: remaining } : null
+		value: remaining ? { ...current, uses: remaining } : null,
 	};
 }

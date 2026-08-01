@@ -6,29 +6,29 @@
  */
 
 export class SceneNavBar {
-    static _container = null;
+	static _container = null;
 
-    /**
+	/**
      * Show the navigation bar with a specific scene
      */
-    static async show(sceneId) {
-        const { TomStore } = await import("../tom/TomStore.mjs");
-        const scene = sceneId ? TomStore.scenes.get(sceneId) : null;
+	static async show(sceneId) {
+		const { TomStore } = await import("../tom/TomStore.mjs");
+		const scene = sceneId ? TomStore.scenes.get(sceneId) : null;
 
-        if (!scene) {
-            this.hide();
-            return;
-        }
+		if (!scene) {
+			this.hide();
+			return;
+		}
 
-        // Create container if it doesn't exist
-        if (!this._container) {
-            this._container = document.createElement('div');
-            this._container.className = 'sdx-scene-nav-bar';
-            document.body.appendChild(this._container);
-        }
+		// Create container if it doesn't exist
+		if (!this._container) {
+			this._container = document.createElement("div");
+			this._container.className = "sdx-scene-nav-bar";
+			document.body.appendChild(this._container);
+		}
 
-        // Update content
-        this._container.innerHTML = `
+		// Update content
+		this._container.innerHTML = `
             <button class="scene-nav-btn scene-nav-prev" data-action="prev-scene" title="Previous Scene">
                 <i class="fas fa-caret-left"></i>
             </button>
@@ -38,60 +38,60 @@ export class SceneNavBar {
             </button>
         `;
 
-        // Store current scene ID
-        this._container.dataset.sceneId = sceneId;
+		// Store current scene ID
+		this._container.dataset.sceneId = sceneId;
 
-        // Attach event listeners
-        this._container.querySelector('[data-action="prev-scene"]')?.addEventListener('click', () => {
-            this._navigateScene(-1);
-        });
+		// Attach event listeners
+		this._container.querySelector('[data-action="prev-scene"]')?.addEventListener("click", () => {
+			this._navigateScene(-1);
+		});
 
-        this._container.querySelector('[data-action="next-scene"]')?.addEventListener('click', () => {
-            this._navigateScene(1);
-        });
-    }
+		this._container.querySelector('[data-action="next-scene"]')?.addEventListener("click", () => {
+			this._navigateScene(1);
+		});
+	}
 
-    /**
+	/**
      * Hide the navigation bar
      */
-    static hide() {
-        if (this._container) {
-            this._container.remove();
-            this._container = null;
-        }
-    }
+	static hide() {
+		if (this._container) {
+			this._container.remove();
+			this._container = null;
+		}
+	}
 
-    /**
+	/**
      * Navigate to previous or next scene within the same folder
      * @param {number} direction - -1 for previous, 1 for next
      */
-    static async _navigateScene(direction) {
-        const { TomStore } = await import("../tom/TomStore.mjs");
-        const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
+	static async _navigateScene(direction) {
+		const { TomStore } = await import("../tom/TomStore.mjs");
+		const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
 
-        const currentSceneId = this._container?.dataset.sceneId;
-        if (!currentSceneId) return;
+		const currentSceneId = this._container?.dataset.sceneId;
+		if (!currentSceneId) return;
 
-        const currentScene = TomStore.scenes.get(currentSceneId);
-        if (!currentScene) return;
+		const currentScene = TomStore.scenes.get(currentSceneId);
+		if (!currentScene) return;
 
-        // Get scenes in the same folder (or uncategorized if no folder)
-        const folderId = currentScene.folderId || null;
-        const folderScenes = TomStore.getScenesInFolder(folderId);
-        if (folderScenes.length === 0) return;
+		// Get scenes in the same folder (or uncategorized if no folder)
+		const folderId = currentScene.folderId || null;
+		const folderScenes = TomStore.getScenesInFolder(folderId);
+		if (folderScenes.length === 0) return;
 
-        const currentIndex = folderScenes.findIndex(s => s.id === currentSceneId);
-        if (currentIndex === -1) return;
+		const currentIndex = folderScenes.findIndex(s => s.id === currentSceneId);
+		if (currentIndex === -1) return;
 
-        // Calculate next index with wrapping within the folder
-        let nextIndex = currentIndex + direction;
-        if (nextIndex < 0) nextIndex = folderScenes.length - 1;
-        if (nextIndex >= folderScenes.length) nextIndex = 0;
+		// Calculate next index with wrapping within the folder
+		let nextIndex = currentIndex + direction;
+		if (nextIndex < 0) nextIndex = folderScenes.length - 1;
+		if (nextIndex >= folderScenes.length) nextIndex = 0;
 
-        const nextScene = folderScenes[nextIndex];
-        if (nextScene) {
-            const inAnimation = nextScene.inAnimation || 'fade';
-            TomSocketHandler.emitBroadcastScene(nextScene.id, inAnimation);
-        }
-    }
+		const nextScene = folderScenes[nextIndex];
+		if (nextScene) {
+			const inAnimation = nextScene.inAnimation || "fade";
+			TomSocketHandler.emitBroadcastScene(nextScene.id, inAnimation);
+		}
+	}
 }

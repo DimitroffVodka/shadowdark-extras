@@ -32,7 +32,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	greatsword: {
 		label: "Greatsword",
@@ -45,7 +45,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	shortsword: {
 		label: "Shortsword",
@@ -58,7 +58,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	scimitar: {
 		label: "Scimitar",
@@ -71,7 +71,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	dagger: {
 		label: "Dagger",
@@ -84,7 +84,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	greataxe: {
 		label: "Greataxe",
@@ -97,7 +97,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	battleaxe: {
 		label: "Battleaxe",
@@ -110,7 +110,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	handaxe: {
 		label: "Handaxe",
@@ -123,7 +123,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	mace: {
 		label: "Mace",
@@ -136,7 +136,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	morningstar: {
 		label: "Morningstar",
@@ -149,7 +149,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	warhammer: {
 		label: "Warhammer",
@@ -162,7 +162,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	club: {
 		label: "Club",
@@ -175,7 +175,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	staff: {
 		label: "Staff / Stave",
@@ -188,7 +188,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	flail: {
 		label: "Flail",
@@ -201,7 +201,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	spear: {
 		label: "Spear",
@@ -214,7 +214,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	trident: {
 		label: "Trident",
@@ -227,7 +227,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	pike: {
 		label: "Pike",
@@ -240,7 +240,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	javelin: {
 		label: "Javelin",
@@ -253,7 +253,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	whip: {
 		label: "Whip / Razor Chain",
@@ -266,7 +266,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	crossbow: {
 		label: "Crossbow",
@@ -279,7 +279,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	longbow: {
 		label: "Longbow",
@@ -292,7 +292,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	shortbow: {
 		label: "Shortbow",
@@ -305,7 +305,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 	shield: {
 		label: "Shield",
@@ -318,7 +318,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		scale: 1.0,
 		animationType: "wobble",
 		flipX: false,
-		flipY: false
+		flipY: false,
 	},
 };
 

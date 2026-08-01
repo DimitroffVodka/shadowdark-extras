@@ -1,398 +1,398 @@
 import {
-    getExpandedCarousingTables,
-    saveExpandedCarousingTables,
-    getDefaultExpandedData
+	getExpandedCarousingTables,
+	saveExpandedCarousingTables,
+	getDefaultExpandedData,
 } from "./CarousingSD.mjs";
 import { pickFoundryTable, pickMultipleFoundryTables, tableResultsToDescriptionRows, tableResultsToExpandedOutcomes, tableResultsToEventTiers, resolveLinkedData, describeLinks, parsePipeTierLine, parsePipeExpandedOutcomeLine, parsePipeDescriptionLine } from "./CarousingFoundryImport.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2) {
-    static DEFAULT_OPTIONS = {
-        id: "shadowdark-expanded-carousing-tables",
-        classes: ["shadowdark-extras", "carousing-tables-app", "expanded-carousing-tables-app"],
-        tag: "form",
-        window: {
-            title: "Expanded Carousing Tables Editor",
-            resizable: true
-        },
-        position: {
-            width: 800,
-            height: 700
-        },
-        form: {
-            handler: ExpandedCarousingTablesApp.formHandler,
-            submitOnChange: false,
-            closeOnSubmit: false
-        }
-    };
+	static DEFAULT_OPTIONS = {
+		id: "shadowdark-expanded-carousing-tables",
+		classes: ["shadowdark-extras", "carousing-tables-app", "expanded-carousing-tables-app"],
+		tag: "form",
+		window: {
+			title: "Expanded Carousing Tables Editor",
+			resizable: true,
+		},
+		position: {
+			width: 800,
+			height: 700,
+		},
+		form: {
+			handler: ExpandedCarousingTablesApp.formHandler,
+			submitOnChange: false,
+			closeOnSubmit: false,
+		},
+	};
 
-    static PARTS = {
-        form: {
-            template: "modules/shadowdark-extras/templates/expanded-carousing-tables-app.hbs",
-            scrollable: [".scrollable-list"]
-        }
-    };
+	static PARTS = {
+		form: {
+			template: "modules/shadowdark-extras/templates/expanded-carousing-tables-app.hbs",
+			scrollable: [".scrollable-list"],
+		},
+	};
 
-    constructor(options = {}) {
-        super(options);
-        this.editingTable = null;
-        this._currentTab = "tiers";
-    }
+	constructor(options = {}) {
+		super(options);
+		this.editingTable = null;
+		this._currentTab = "tiers";
+	}
 
-    async _prepareContext(options) {
-        const tables = getExpandedCarousingTables();
-        return {
-            tables,
-            isEditing: !!this.editingTable,
-            editingTable: this.editingTable,
-            linkedInfo: this.editingTable?.links ? describeLinks(this.editingTable.links) : null,
-            activeTab: this._currentTab,
-            defaultTiers: getDefaultExpandedData().tiers,
-            defaultOutcomes: getDefaultExpandedData().outcomes,
-            defaultBenefits: getDefaultExpandedData().benefits,
-            defaultMishaps: getDefaultExpandedData().mishaps
-        };
-    }
+	async _prepareContext(options) {
+		const tables = getExpandedCarousingTables();
+		return {
+			tables,
+			isEditing: !!this.editingTable,
+			editingTable: this.editingTable,
+			linkedInfo: this.editingTable?.links ? describeLinks(this.editingTable.links) : null,
+			activeTab: this._currentTab,
+			defaultTiers: getDefaultExpandedData().tiers,
+			defaultOutcomes: getDefaultExpandedData().outcomes,
+			defaultBenefits: getDefaultExpandedData().benefits,
+			defaultMishaps: getDefaultExpandedData().mishaps,
+		};
+	}
 
-    _onRender(context, options) {
-        const root = this.element;
-        if (!root) return;
-        const html = $(root);
+	_onRender(context, options) {
+		const root = this.element;
+		if (!root) return;
+		const html = $(root);
 
-        // Sidebar Actions (List View)
-        html.find('[data-action="new-table"]').click(this._onNewTable.bind(this));
-        html.find('[data-action="edit-table"]').click(this._onEditTable.bind(this));
-        html.find('[data-action="delete-table"]').click(this._onDeleteTable.bind(this));
-        html.find('[data-action="export-table"]').click(this._onExportTable.bind(this));
-        html.find('[data-action="import-table"]').click(this._onImportTable.bind(this));
-        html.find('[data-action="import-foundry-table"]').click(this._onBuildFromFoundry.bind(this));
+		// Sidebar Actions (List View)
+		html.find('[data-action="new-table"]').click(this._onNewTable.bind(this));
+		html.find('[data-action="edit-table"]').click(this._onEditTable.bind(this));
+		html.find('[data-action="delete-table"]').click(this._onDeleteTable.bind(this));
+		html.find('[data-action="export-table"]').click(this._onExportTable.bind(this));
+		html.find('[data-action="import-table"]').click(this._onImportTable.bind(this));
+		html.find('[data-action="import-foundry-table"]').click(this._onBuildFromFoundry.bind(this));
 
-        // Mode switch (Original <-> Expanded) — swaps to the other editor
-        // at the same window position. Already-active mode is a no-op.
-        html.find('[data-action="switch-mode"]').click(async (event) => {
-            if (event.currentTarget.dataset.mode !== "original") return;
-            const position = foundry.utils.deepClone(this.position);
-            await this.close();
-            const mod = await import("./CarousingTablesApp.mjs");
-            mod.openCarousingTablesEditor(position);
-        });
+		// Mode switch (Original <-> Expanded) — swaps to the other editor
+		// at the same window position. Already-active mode is a no-op.
+		html.find('[data-action="switch-mode"]').click(async (event) => {
+			if (event.currentTarget.dataset.mode !== "original") return;
+			const position = foundry.utils.deepClone(this.position);
+			await this.close();
+			const mod = await import("./CarousingTablesApp.mjs");
+			mod.openCarousingTablesEditor(position);
+		});
 
-        // Editor Actions (Edit View)
-        html.find('[data-action="cancel-edit"]').click(this._onCancelEdit.bind(this));
+		// Editor Actions (Edit View)
+		html.find('[data-action="cancel-edit"]').click(this._onCancelEdit.bind(this));
 
-        // Add Row Actions
-        html.find('[data-action="add-tier"]').click(this._onAddTier.bind(this));
-        html.find('[data-action="add-outcome"]').click(this._onAddOutcome.bind(this));
-        html.find('[data-action="add-benefit"]').click(this._onAddBenefit.bind(this));
-        html.find('[data-action="add-mishap"]').click(this._onAddMishap.bind(this));
+		// Add Row Actions
+		html.find('[data-action="add-tier"]').click(this._onAddTier.bind(this));
+		html.find('[data-action="add-outcome"]').click(this._onAddOutcome.bind(this));
+		html.find('[data-action="add-benefit"]').click(this._onAddBenefit.bind(this));
+		html.find('[data-action="add-mishap"]').click(this._onAddMishap.bind(this));
 
-        // Remove Row Actions
-        html.find('[data-action="remove-row"]').click(this._onRemoveRow.bind(this));
+		// Remove Row Actions
+		html.find('[data-action="remove-row"]').click(this._onRemoveRow.bind(this));
 
-        // Reset/Import Actions
-        html.find('[data-action="reset-tiers"]').click(() => this._onResetSection("tiers"));
-        html.find('[data-action="reset-outcomes"]').click(() => this._onResetSection("outcomes"));
-        html.find('[data-action="reset-benefits"]').click(() => this._onResetSection("benefits"));
-        html.find('[data-action="reset-mishaps"]').click(() => this._onResetSection("mishaps"));
-        html.find('[data-action="import-tiers"]').click(this._onImportTiers.bind(this));
-        html.find('[data-action="import-outcomes"]').click(this._onImportOutcomes.bind(this));
-        html.find('[data-action="import-benefits"]').click(this._onImportBenefits.bind(this));
-        html.find('[data-action="import-mishaps"]').click(this._onImportMishaps.bind(this));
+		// Reset/Import Actions
+		html.find('[data-action="reset-tiers"]').click(() => this._onResetSection("tiers"));
+		html.find('[data-action="reset-outcomes"]').click(() => this._onResetSection("outcomes"));
+		html.find('[data-action="reset-benefits"]').click(() => this._onResetSection("benefits"));
+		html.find('[data-action="reset-mishaps"]').click(() => this._onResetSection("mishaps"));
+		html.find('[data-action="import-tiers"]').click(this._onImportTiers.bind(this));
+		html.find('[data-action="import-outcomes"]').click(this._onImportOutcomes.bind(this));
+		html.find('[data-action="import-benefits"]').click(this._onImportBenefits.bind(this));
+		html.find('[data-action="import-mishaps"]').click(this._onImportMishaps.bind(this));
 
-        // Import Benefit/Mishap description tables from a Foundry RollTable
-        html.find('[data-action="import-foundry-benefits"]').click(() => this._onImportFoundryTable("benefits"));
-        html.find('[data-action="import-foundry-mishaps"]').click(() => this._onImportFoundryTable("mishaps"));
-        html.find('[data-action="import-foundry-outcomes"]').click(this._onImportFoundryOutcomes.bind(this));
-        html.find('[data-action="import-foundry-event"]').click(this._onImportFoundryEvent.bind(this));
-        html.find('[data-action="sync-linked"]').click(this._onSyncLinked.bind(this));
+		// Import Benefit/Mishap description tables from a Foundry RollTable
+		html.find('[data-action="import-foundry-benefits"]').click(() => this._onImportFoundryTable("benefits"));
+		html.find('[data-action="import-foundry-mishaps"]').click(() => this._onImportFoundryTable("mishaps"));
+		html.find('[data-action="import-foundry-outcomes"]').click(this._onImportFoundryOutcomes.bind(this));
+		html.find('[data-action="import-foundry-event"]').click(this._onImportFoundryEvent.bind(this));
+		html.find('[data-action="sync-linked"]').click(this._onSyncLinked.bind(this));
 
-        // Tab switching (manual jQuery approach like CarousingTablesApp)
-        html.find('.tabs .item').click((event) => {
-            event.preventDefault();
-            const tab = $(event.currentTarget).data('tab');
-            this._currentTab = tab; // Remember the active tab
-            html.find('.tabs .item').removeClass('active');
-            $(event.currentTarget).addClass('active');
-            html.find('.tab-pane').removeClass('active');
-            html.find(`.tab-pane[data-tab="${tab}"]`).addClass('active');
-        });
+		// Tab switching (manual jQuery approach like CarousingTablesApp)
+		html.find(".tabs .item").click((event) => {
+			event.preventDefault();
+			const tab = $(event.currentTarget).data("tab");
+			this._currentTab = tab; // Remember the active tab
+			html.find(".tabs .item").removeClass("active");
+			$(event.currentTarget).addClass("active");
+			html.find(".tab-pane").removeClass("active");
+			html.find(`.tab-pane[data-tab="${tab}"]`).addClass("active");
+		});
 
-        // Restore last active tab if we have one
-        if (this._currentTab && this._currentTab !== "tiers") {
-            html.find('.tabs .item').removeClass('active');
-            html.find(`.tabs .item[data-tab="${this._currentTab}"]`).addClass('active');
-            html.find('.tab-pane').removeClass('active');
-            html.find(`.tab-pane[data-tab="${this._currentTab}"]`).addClass('active');
-        }
-    }
+		// Restore last active tab if we have one
+		if (this._currentTab && this._currentTab !== "tiers") {
+			html.find(".tabs .item").removeClass("active");
+			html.find(`.tabs .item[data-tab="${this._currentTab}"]`).addClass("active");
+			html.find(".tab-pane").removeClass("active");
+			html.find(`.tab-pane[data-tab="${this._currentTab}"]`).addClass("active");
+		}
+	}
 
-    _onNewTable(event) {
-        event.preventDefault();
-        const defaultData = getDefaultExpandedData();
-        // Create a new empty table structure
-        this.editingTable = {
-            ...defaultData,
-            id: null, // New table has no ID initially
-            name: "New Expanded Table",
-            // Use defaults for structure
-            tiers: foundry.utils.deepClone(defaultData.tiers),
-            outcomes: foundry.utils.deepClone(defaultData.outcomes),
-            benefits: foundry.utils.deepClone(defaultData.benefits),
-            mishaps: foundry.utils.deepClone(defaultData.mishaps)
-        };
-        this.render(true);
-    }
+	_onNewTable(event) {
+		event.preventDefault();
+		const defaultData = getDefaultExpandedData();
+		// Create a new empty table structure
+		this.editingTable = {
+			...defaultData,
+			id: null, // New table has no ID initially
+			name: "New Expanded Table",
+			// Use defaults for structure
+			tiers: foundry.utils.deepClone(defaultData.tiers),
+			outcomes: foundry.utils.deepClone(defaultData.outcomes),
+			benefits: foundry.utils.deepClone(defaultData.benefits),
+			mishaps: foundry.utils.deepClone(defaultData.mishaps),
+		};
+		this.render(true);
+	}
 
-    _onEditTable(event) {
-        event.preventDefault();
-        const tableId = event.currentTarget.dataset.tableId;
-        const tables = getExpandedCarousingTables();
-        const table = tables.find(t => t.id === tableId);
-        if (table) {
-            this.editingTable = foundry.utils.deepClone(table);
-            this.render(true);
-        }
-    }
+	_onEditTable(event) {
+		event.preventDefault();
+		const tableId = event.currentTarget.dataset.tableId;
+		const tables = getExpandedCarousingTables();
+		const table = tables.find(t => t.id === tableId);
+		if (table) {
+			this.editingTable = foundry.utils.deepClone(table);
+			this.render(true);
+		}
+	}
 
-    async _onDeleteTable(event) {
-        event.preventDefault();
-        const tableId = event.currentTarget.dataset.tableId;
+	async _onDeleteTable(event) {
+		event.preventDefault();
+		const tableId = event.currentTarget.dataset.tableId;
 
-        const confirm = await foundry.applications.api.DialogV2.confirm({
-            window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.delete_table") },
-            content: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.delete_confirm"),
-            modal: true
-        });
+		const confirm = await foundry.applications.api.DialogV2.confirm({
+			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.delete_table") },
+			content: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.delete_confirm"),
+			modal: true,
+		});
 
-        if (confirm) {
-            const tables = getExpandedCarousingTables().filter(t => t.id !== tableId);
-            await saveExpandedCarousingTables(tables);
-            this.render(true);
-        }
-    }
+		if (confirm) {
+			const tables = getExpandedCarousingTables().filter(t => t.id !== tableId);
+			await saveExpandedCarousingTables(tables);
+			this.render(true);
+		}
+	}
 
-    _onCancelEdit(event) {
-        event.preventDefault();
-        this.editingTable = null;
-        this.render(true);
-    }
+	_onCancelEdit(event) {
+		event.preventDefault();
+		this.editingTable = null;
+		this.render(true);
+	}
 
-    _onAddTier(event) {
-        event.preventDefault();
-        if (!this.editingTable) return;
-        this.editingTable.tiers.push({ cost: 0, bonus: 0, description: "" });
-        this.render(true);
-    }
+	_onAddTier(event) {
+		event.preventDefault();
+		if (!this.editingTable) return;
+		this.editingTable.tiers.push({ cost: 0, bonus: 0, description: "" });
+		this.render(true);
+	}
 
-    _onAddOutcome(event) {
-        event.preventDefault();
-        if (!this.editingTable) return;
-        const nextRoll = this.editingTable.outcomes.length + 1;
-        this.editingTable.outcomes.push({
-            roll: nextRoll,
-            mishaps: 0,
-            benefits: 0,
-            modifier: 0,
-            xp: 0
-        });
-        this.render(true);
-    }
+	_onAddOutcome(event) {
+		event.preventDefault();
+		if (!this.editingTable) return;
+		const nextRoll = this.editingTable.outcomes.length + 1;
+		this.editingTable.outcomes.push({
+			roll: nextRoll,
+			mishaps: 0,
+			benefits: 0,
+			modifier: 0,
+			xp: 0,
+		});
+		this.render(true);
+	}
 
-    _onAddBenefit(event) {
-        event.preventDefault();
-        if (!this.editingTable) return;
-        const nextRoll = this.editingTable.benefits.length + 1;
-        this.editingTable.benefits.push({ roll: nextRoll, description: "" });
-        this.render(true);
-    }
+	_onAddBenefit(event) {
+		event.preventDefault();
+		if (!this.editingTable) return;
+		const nextRoll = this.editingTable.benefits.length + 1;
+		this.editingTable.benefits.push({ roll: nextRoll, description: "" });
+		this.render(true);
+	}
 
-    _onAddMishap(event) {
-        event.preventDefault();
-        if (!this.editingTable) return;
-        const nextRoll = this.editingTable.mishaps.length + 1;
-        this.editingTable.mishaps.push({ roll: nextRoll, description: "" });
-        this.render(true);
-    }
+	_onAddMishap(event) {
+		event.preventDefault();
+		if (!this.editingTable) return;
+		const nextRoll = this.editingTable.mishaps.length + 1;
+		this.editingTable.mishaps.push({ roll: nextRoll, description: "" });
+		this.render(true);
+	}
 
-    _onRemoveRow(event) {
-        event.preventDefault();
-        const row = $(event.currentTarget).closest('.table-row, .outcome-row');
-        const index = row.index();
-        const parentList = row.parent();
+	_onRemoveRow(event) {
+		event.preventDefault();
+		const row = $(event.currentTarget).closest(".table-row, .outcome-row");
+		const index = row.index();
+		const parentList = row.parent();
 
-        if (parentList.hasClass('tiers-list')) {
-            this.editingTable.tiers.splice(index, 1);
-        } else if (parentList.hasClass('outcomes-list')) {
-            this.editingTable.outcomes.splice(index, 1);
-        } else if (parentList.hasClass('benefits-list')) {
-            this.editingTable.benefits.splice(index, 1);
-        } else if (parentList.hasClass('mishaps-list')) {
-            this.editingTable.mishaps.splice(index, 1);
-        }
+		if (parentList.hasClass("tiers-list")) {
+			this.editingTable.tiers.splice(index, 1);
+		} else if (parentList.hasClass("outcomes-list")) {
+			this.editingTable.outcomes.splice(index, 1);
+		} else if (parentList.hasClass("benefits-list")) {
+			this.editingTable.benefits.splice(index, 1);
+		} else if (parentList.hasClass("mishaps-list")) {
+			this.editingTable.mishaps.splice(index, 1);
+		}
 
-        this.render(true);
-    }
+		this.render(true);
+	}
 
-    _onResetSection(section) {
-        if (!this.editingTable) return;
-        const defaults = getDefaultExpandedData();
+	_onResetSection(section) {
+		if (!this.editingTable) return;
+		const defaults = getDefaultExpandedData();
 
-        // Confirm before resetting
-        foundry.applications.api.DialogV2.confirm({
-            window: { title: `Reset ${section}` },
-            content: "Are you sure you want to reset this section to defaults?",
-            modal: true
-        }).then(ok => {
-            if (ok) {
-                this.editingTable[section] = foundry.utils.deepClone(defaults[section]);
-                this.render(true);
-            }
-        });
-    }
+		// Confirm before resetting
+		foundry.applications.api.DialogV2.confirm({
+			window: { title: `Reset ${section}` },
+			content: "Are you sure you want to reset this section to defaults?",
+			modal: true,
+		}).then(ok => {
+			if (ok) {
+				this.editingTable[section] = foundry.utils.deepClone(defaults[section]);
+				this.render(true);
+			}
+		});
+	}
 
-    static async formHandler(event, form, formData) {
-        const flat = formData.object;
-        if (!this.editingTable) return;
+	static async formHandler(event, form, formData) {
+		const flat = formData.object;
+		if (!this.editingTable) return;
 
-        this.editingTable.name = flat.name;
+		this.editingTable.name = flat.name;
 
-        const extractArray = (prefix, fields) => {
-            const list = [];
-            let i = 0;
-            while (Object.prototype.hasOwnProperty.call(flat, `${prefix}-${fields[0]}-${i}`)) {
-                const item = {};
-                for (const field of fields) {
-                    let val = flat[`${prefix}-${field}-${i}`];
-                    if (['cost', 'bonus', 'roll', 'mishaps', 'benefits', 'modifier', 'xp'].includes(field)) {
-                        val = parseInt(val) || 0;
-                    }
-                    item[field] = val;
-                }
-                list.push(item);
-                i++;
-            }
-            return list;
-        };
+		const extractArray = (prefix, fields) => {
+			const list = [];
+			let i = 0;
+			while (Object.prototype.hasOwnProperty.call(flat, `${prefix}-${fields[0]}-${i}`)) {
+				const item = {};
+				for (const field of fields) {
+					let val = flat[`${prefix}-${field}-${i}`];
+					if (["cost", "bonus", "roll", "mishaps", "benefits", "modifier", "xp"].includes(field)) {
+						val = parseInt(val) || 0;
+					}
+					item[field] = val;
+				}
+				list.push(item);
+				i++;
+			}
+			return list;
+		};
 
-        this.editingTable.tiers = extractArray('tier', ['cost', 'bonus', 'description']);
-        this.editingTable.outcomes = extractArray('outcome', ['roll', 'mishaps', 'benefits', 'modifier', 'xp']);
-        this.editingTable.benefits = extractArray('benefit', ['roll', 'description']);
-        this.editingTable.mishaps = extractArray('mishap', ['roll', 'description']);
+		this.editingTable.tiers = extractArray("tier", ["cost", "bonus", "description"]);
+		this.editingTable.outcomes = extractArray("outcome", ["roll", "mishaps", "benefits", "modifier", "xp"]);
+		this.editingTable.benefits = extractArray("benefit", ["roll", "description"]);
+		this.editingTable.mishaps = extractArray("mishap", ["roll", "description"]);
 
-        // Check ID
-        if (!this.editingTable.id) {
-            this.editingTable.id = foundry.utils.randomID();
-        }
+		// Check ID
+		if (!this.editingTable.id) {
+			this.editingTable.id = foundry.utils.randomID();
+		}
 
-        // Save to journal
-        const tables = getExpandedCarousingTables();
-        const existingIndex = tables.findIndex(t => t.id === this.editingTable.id);
+		// Save to journal
+		const tables = getExpandedCarousingTables();
+		const existingIndex = tables.findIndex(t => t.id === this.editingTable.id);
 
-        if (existingIndex >= 0) {
-            tables[existingIndex] = this.editingTable;
-        } else {
-            tables.push(this.editingTable);
-        }
+		if (existingIndex >= 0) {
+			tables[existingIndex] = this.editingTable;
+		} else {
+			tables.push(this.editingTable);
+		}
 
-        await saveExpandedCarousingTables(tables);
+		await saveExpandedCarousingTables(tables);
 
-        // Return to list view
-        this.editingTable = null;
-        this.render(true);
-    }
+		// Return to list view
+		this.editingTable = null;
+		this.render(true);
+	}
 
-    /**
+	/**
      * Export a table as JSON file
      */
-    _onExportTable(event) {
-        event.preventDefault();
-        const tableId = event.currentTarget.dataset.tableId;
-        const tables = getExpandedCarousingTables();
-        const table = tables.find(t => t.id === tableId);
-        if (!table) {
-            ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.table_not_found"));
-            return;
-        }
+	_onExportTable(event) {
+		event.preventDefault();
+		const tableId = event.currentTarget.dataset.tableId;
+		const tables = getExpandedCarousingTables();
+		const table = tables.find(t => t.id === tableId);
+		if (!table) {
+			ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.table_not_found"));
+			return;
+		}
 
-        // Create export data (include type for import validation)
-        const exportData = {
-            type: "shadowdark-expanded-carousing-table",
-            version: 1,
-            table: foundry.utils.deepClone(table)
-        };
+		// Create export data (include type for import validation)
+		const exportData = {
+			type: "shadowdark-expanded-carousing-table",
+			version: 1,
+			table: foundry.utils.deepClone(table),
+		};
 
-        // Create and download the file using Foundry's utility (works in both browser and Electron)
-        const filename = `${table.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_expanded_carousing.json`;
-        const data = JSON.stringify(exportData, null, 2);
-        saveDataToFile(data, "application/json", filename);
+		// Create and download the file using Foundry's utility (works in both browser and Electron)
+		const filename = `${table.name.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_expanded_carousing.json`;
+		const data = JSON.stringify(exportData, null, 2);
+		saveDataToFile(data, "application/json", filename);
 
-        ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.table_exported", { name: table.name }));
-    }
+		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.table_exported", { name: table.name }));
+	}
 
-    /**
+	/**
      * Import a table from JSON file
      */
-    async _onImportTable(event) {
-        event.preventDefault();
+	async _onImportTable(event) {
+		event.preventDefault();
 
-        // Create file input
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
+		// Create file input
+		const input = document.createElement("input");
+		input.type = "file";
+		input.accept = ".json";
 
-        input.onchange = async (fileEvent) => {
-            const file = fileEvent.target.files[0];
-            if (!file) return;
+		input.onchange = async (fileEvent) => {
+			const file = fileEvent.target.files[0];
+			if (!file) return;
 
-            try {
-                const text = await file.text();
-                const importData = JSON.parse(text);
+			try {
+				const text = await file.text();
+				const importData = JSON.parse(text);
 
-                // Validate import data
-                if (importData.type !== "shadowdark-expanded-carousing-table" || !importData.table) {
-                    ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.invalid_import_file"));
-                    return;
-                }
+				// Validate import data
+				if (importData.type !== "shadowdark-expanded-carousing-table" || !importData.table) {
+					ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.invalid_import_file"));
+					return;
+				}
 
-                const tableData = importData.table;
+				const tableData = importData.table;
 
-                // Generate new ID for imported table
-                tableData.id = foundry.utils.randomID();
+				// Generate new ID for imported table
+				tableData.id = foundry.utils.randomID();
 
-                // Ensure required fields exist
-                if (!tableData.name) tableData.name = "Imported Table";
-                if (!Array.isArray(tableData.tiers)) tableData.tiers = [];
-                if (!Array.isArray(tableData.outcomes)) tableData.outcomes = [];
-                if (!Array.isArray(tableData.benefits)) tableData.benefits = [];
-                if (!Array.isArray(tableData.mishaps)) tableData.mishaps = [];
+				// Ensure required fields exist
+				if (!tableData.name) tableData.name = "Imported Table";
+				if (!Array.isArray(tableData.tiers)) tableData.tiers = [];
+				if (!Array.isArray(tableData.outcomes)) tableData.outcomes = [];
+				if (!Array.isArray(tableData.benefits)) tableData.benefits = [];
+				if (!Array.isArray(tableData.mishaps)) tableData.mishaps = [];
 
-                // Add to existing tables
-                const tables = getExpandedCarousingTables();
-                tables.push(tableData);
-                await saveExpandedCarousingTables(tables);
+				// Add to existing tables
+				const tables = getExpandedCarousingTables();
+				tables.push(tableData);
+				await saveExpandedCarousingTables(tables);
 
-                ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.table_imported", { name: tableData.name }));
-                this.render(true);
-            } catch (err) {
-                console.error("Failed to import expanded carousing table:", err);
-                ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_error"));
-            }
-        };
+				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.table_imported", { name: tableData.name }));
+				this.render(true);
+			} catch (err) {
+				console.error("Failed to import expanded carousing table:", err);
+				ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_error"));
+			}
+		};
 
-        input.click();
-    }
+		input.click();
+	}
 
-    /**
+	/**
      * Import tiers from text format
      * Format: "cost gp description +bonus" per line
      * Example: "30 gp Night at the tavern to toast and gossip +0"
      */
-    async _onImportTiers(event) {
-        event.preventDefault();
-        if (!this.editingTable) return;
+	async _onImportTiers(event) {
+		event.preventDefault();
+		if (!this.editingTable) return;
 
-        const content = `
+		const content = `
             <p>Paste tier entries. Each line: <code>cost gp | description | +bonus</code></p>
             <p><small>Example:<br>
             30 gp | Night at the tavern to toast and gossip | +0<br>
@@ -401,61 +401,61 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
             <textarea id="import-text" style="width:100%; height:300px;"></textarea>
         `;
 
-        const result = await foundry.applications.api.DialogV2.prompt({
-            window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_tiers") },
-            content,
-            ok: {
-                label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import"),
-                callback: (event, button, dialog) => dialog.element.querySelector("#import-text")?.value
-            },
-            rejectClose: false
-        });
+		const result = await foundry.applications.api.DialogV2.prompt({
+			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_tiers") },
+			content,
+			ok: {
+				label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import"),
+				callback: (event, button, dialog) => dialog.element.querySelector("#import-text")?.value,
+			},
+			rejectClose: false,
+		});
 
-        if (result) {
-            const lines = result.split('\n').filter(l => l.trim());
-            const entries = [];
+		if (result) {
+			const lines = result.split("\n").filter(l => l.trim());
+			const entries = [];
 
-            for (const line of lines) {
-                // A pipe is an unambiguous column break — prefer it when present.
-                const piped = parsePipeTierLine(line);
-                if (piped) {
-                    entries.push(piped);
-                    continue;
-                }
+			for (const line of lines) {
+				// A pipe is an unambiguous column break — prefer it when present.
+				const piped = parsePipeTierLine(line);
+				if (piped) {
+					entries.push(piped);
+					continue;
+				}
 
-                // Pattern: "cost gp description +bonus" or "cost gp description -bonus"
-                // Cost can have commas (e.g., 1,200 gp)
-                const match = line.match(/^([\d,]+)\s*gp\s+(.+?)\s*([+-]\d+)\s*$/i);
+				// Pattern: "cost gp description +bonus" or "cost gp description -bonus"
+				// Cost can have commas (e.g., 1,200 gp)
+				const match = line.match(/^([\d,]+)\s*gp\s+(.+?)\s*([+-]\d+)\s*$/i);
 
-                if (match) {
-                    const cost = parseInt(match[1].replace(/,/g, '')) || 0;
-                    const description = match[2].trim();
-                    const bonus = parseInt(match[3]) || 0;
-                    entries.push({ cost, bonus, description });
-                }
-            }
+				if (match) {
+					const cost = parseInt(match[1].replace(/,/g, "")) || 0;
+					const description = match[2].trim();
+					const bonus = parseInt(match[3]) || 0;
+					entries.push({ cost, bonus, description });
+				}
+			}
 
-            if (entries.length > 0) {
-                this.editingTable.tiers = entries;
-                this.render(true);
-                ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
-            } else {
-                ui.notifications.warn("No valid tier entries found. Format: cost gp description +bonus");
-            }
-        }
-    }
+			if (entries.length > 0) {
+				this.editingTable.tiers = entries;
+				this.render(true);
+				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
+			} else {
+				ui.notifications.warn("No valid tier entries found. Format: cost gp description +bonus");
+			}
+		}
+	}
 
-    /**
+	/**
      * Import outcomes from text format
      * Format per line: roll mishaps benefits modifier xp
      * Example: "1 2 - -20 2" means roll=1, mishaps=2, benefits=0, modifier=-20, xp=2
      * "-" means 0 for numeric fields
      */
-    async _onImportOutcomes(event) {
-        event.preventDefault();
-        if (!this.editingTable) return;
+	async _onImportOutcomes(event) {
+		event.preventDefault();
+		if (!this.editingTable) return;
 
-        const content = `
+		const content = `
             <p>Paste outcome entries. Each line: <code>roll | mishaps | benefits | modifier | xp</code></p>
             <p><small>Use "-" for 0. Example:<br>
             1 | 2 | - | -20 | 2<br>
@@ -465,73 +465,73 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
             <textarea id="import-text" style="width:100%; height:300px;"></textarea>
         `;
 
-        const result = await foundry.applications.api.DialogV2.prompt({
-            window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_outcomes") },
-            content,
-            ok: {
-                label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import"),
-                callback: (event, button, dialog) => dialog.element.querySelector("#import-text")?.value
-            },
-            rejectClose: false
-        });
+		const result = await foundry.applications.api.DialogV2.prompt({
+			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_outcomes") },
+			content,
+			ok: {
+				label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import"),
+				callback: (event, button, dialog) => dialog.element.querySelector("#import-text")?.value,
+			},
+			rejectClose: false,
+		});
 
-        if (result) {
-            const lines = result.split('\n').filter(l => l.trim());
-            const entries = [];
+		if (result) {
+			const lines = result.split("\n").filter(l => l.trim());
+			const entries = [];
 
-            for (const line of lines) {
-                // A pipe is an unambiguous column break — prefer it when present.
-                const piped = parsePipeExpandedOutcomeLine(line, entries.length + 1);
-                if (piped) {
-                    entries.push(piped);
-                    continue;
-                }
+			for (const line of lines) {
+				// A pipe is an unambiguous column break — prefer it when present.
+				const piped = parsePipeExpandedOutcomeLine(line, entries.length + 1);
+				if (piped) {
+					entries.push(piped);
+					continue;
+				}
 
-                // Split by whitespace
-                const parts = line.trim().split(/\s+/);
-                if (parts.length >= 5) {
-                    // Parse roll (can be "25+" format)
-                    const rollStr = parts[0].replace('+', '');
-                    const roll = parseInt(rollStr) || entries.length + 1;
+				// Split by whitespace
+				const parts = line.trim().split(/\s+/);
+				if (parts.length >= 5) {
+					// Parse roll (can be "25+" format)
+					const rollStr = parts[0].replace("+", "");
+					const roll = parseInt(rollStr) || entries.length + 1;
 
-                    // Parse other fields, "-" means 0
-                    const parseField = (val) => val === '-' ? 0 : parseInt(val) || 0;
+					// Parse other fields, "-" means 0
+					const parseField = (val) => val === "-" ? 0 : parseInt(val) || 0;
 
-                    const mishaps = parseField(parts[1]);
-                    const benefits = parseField(parts[2]);
+					const mishaps = parseField(parts[1]);
+					const benefits = parseField(parts[2]);
 
-                    // Modifier can be "+20", "-20", or "-" for 0
-                    let modifier = 0;
-                    if (parts[3] !== '-') {
-                        modifier = parseInt(parts[3]) || 0;
-                    }
+					// Modifier can be "+20", "-20", or "-" for 0
+					let modifier = 0;
+					if (parts[3] !== "-") {
+						modifier = parseInt(parts[3]) || 0;
+					}
 
-                    const xp = parseField(parts[4]);
+					const xp = parseField(parts[4]);
 
-                    entries.push({ roll, mishaps, benefits, modifier, xp });
-                }
-            }
+					entries.push({ roll, mishaps, benefits, modifier, xp });
+				}
+			}
 
-            if (entries.length > 0) {
-                this.editingTable.outcomes = entries;
-                this.render(true);
-                ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
-            } else {
-                ui.notifications.warn("No valid outcome entries found. Format: roll mishaps benefits modifier xp");
-            }
-        }
-    }
+			if (entries.length > 0) {
+				this.editingTable.outcomes = entries;
+				this.render(true);
+				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
+			} else {
+				ui.notifications.warn("No valid outcome entries found. Format: roll mishaps benefits modifier xp");
+			}
+		}
+	}
 
-    /**
+	/**
      * Import benefits from text format
      * Format per line: roll description
      * Example: "01 You drank with a gossiper and learned a random rumor"
      */
-    async _onImportBenefits(event) {
-        event.preventDefault();
-        if (!this.editingTable) return;
+	async _onImportBenefits(event) {
+		event.preventDefault();
+		if (!this.editingTable) return;
 
-        const content = `
+		const content = `
             <p>Paste benefit entries. Each line: <code>roll | description</code></p>
             <p><small>Roll can have leading zeros (01, 02). Example:<br>
             01 | Terrible luck dogs you; re-roll this benefit as a mishap<br>
@@ -540,57 +540,57 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
             <textarea id="import-text" style="width:100%; height:300px;"></textarea>
         `;
 
-        const result = await foundry.applications.api.DialogV2.prompt({
-            window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_benefits") },
-            content,
-            ok: {
-                label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import"),
-                callback: (event, button, dialog) => dialog.element.querySelector("#import-text")?.value
-            },
-            rejectClose: false
-        });
+		const result = await foundry.applications.api.DialogV2.prompt({
+			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_benefits") },
+			content,
+			ok: {
+				label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import"),
+				callback: (event, button, dialog) => dialog.element.querySelector("#import-text")?.value,
+			},
+			rejectClose: false,
+		});
 
-        if (result) {
-            const lines = result.split('\n').filter(l => l.trim());
-            const entries = [];
+		if (result) {
+			const lines = result.split("\n").filter(l => l.trim());
+			const entries = [];
 
-            for (const line of lines) {
-                // A pipe is an unambiguous column break — prefer it when present.
-                const piped = parsePipeDescriptionLine(line, entries.length + 1);
-                if (piped) {
-                    entries.push(piped);
-                    continue;
-                }
+			for (const line of lines) {
+				// A pipe is an unambiguous column break — prefer it when present.
+				const piped = parsePipeDescriptionLine(line, entries.length + 1);
+				if (piped) {
+					entries.push(piped);
+					continue;
+				}
 
-                // Pattern: roll (1-3 digits) followed by space and description
-                const match = line.match(/^(\d{1,3})\s+(.+)$/);
-                if (match) {
-                    const roll = parseInt(match[1]) || entries.length + 1;
-                    const description = match[2].trim();
-                    entries.push({ roll, description });
-                }
-            }
+				// Pattern: roll (1-3 digits) followed by space and description
+				const match = line.match(/^(\d{1,3})\s+(.+)$/);
+				if (match) {
+					const roll = parseInt(match[1]) || entries.length + 1;
+					const description = match[2].trim();
+					entries.push({ roll, description });
+				}
+			}
 
-            if (entries.length > 0) {
-                this.editingTable.benefits = entries;
-                this.render(true);
-                ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
-            } else {
-                ui.notifications.warn("No valid benefit entries found. Format: roll description");
-            }
-        }
-    }
+			if (entries.length > 0) {
+				this.editingTable.benefits = entries;
+				this.render(true);
+				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
+			} else {
+				ui.notifications.warn("No valid benefit entries found. Format: roll description");
+			}
+		}
+	}
 
-    /**
+	/**
      * Import mishaps from text format
      * Format per line: roll description
      * Example: "01 You wake up in the Duke's Donjon accused of a major crime"
      */
-    async _onImportMishaps(event) {
-        event.preventDefault();
-        if (!this.editingTable) return;
+	async _onImportMishaps(event) {
+		event.preventDefault();
+		if (!this.editingTable) return;
 
-        const content = `
+		const content = `
             <p>Paste mishap entries. Each line: <code>roll | description</code></p>
             <p><small>Roll can have leading zeros (01, 02). Example:<br>
             01 | You wake up in the Duke's Donjon accused of a major crime<br>
@@ -599,165 +599,165 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
             <textarea id="import-text" style="width:100%; height:300px;"></textarea>
         `;
 
-        const result = await foundry.applications.api.DialogV2.prompt({
-            window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_mishaps") },
-            content,
-            ok: {
-                label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import"),
-                callback: (event, button, dialog) => dialog.element.querySelector("#import-text")?.value
-            },
-            rejectClose: false
-        });
+		const result = await foundry.applications.api.DialogV2.prompt({
+			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_mishaps") },
+			content,
+			ok: {
+				label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import"),
+				callback: (event, button, dialog) => dialog.element.querySelector("#import-text")?.value,
+			},
+			rejectClose: false,
+		});
 
-        if (result) {
-            const lines = result.split('\n').filter(l => l.trim());
-            const entries = [];
+		if (result) {
+			const lines = result.split("\n").filter(l => l.trim());
+			const entries = [];
 
-            for (const line of lines) {
-                // A pipe is an unambiguous column break — prefer it when present.
-                const piped = parsePipeDescriptionLine(line, entries.length + 1);
-                if (piped) {
-                    entries.push(piped);
-                    continue;
-                }
+			for (const line of lines) {
+				// A pipe is an unambiguous column break — prefer it when present.
+				const piped = parsePipeDescriptionLine(line, entries.length + 1);
+				if (piped) {
+					entries.push(piped);
+					continue;
+				}
 
-                // Pattern: roll (1-3 digits) followed by space and description
-                const match = line.match(/^(\d{1,3})\s+(.+)$/);
-                if (match) {
-                    const roll = parseInt(match[1]) || entries.length + 1;
-                    const description = match[2].trim();
-                    entries.push({ roll, description });
-                }
-            }
+				// Pattern: roll (1-3 digits) followed by space and description
+				const match = line.match(/^(\d{1,3})\s+(.+)$/);
+				if (match) {
+					const roll = parseInt(match[1]) || entries.length + 1;
+					const description = match[2].trim();
+					entries.push({ roll, description });
+				}
+			}
 
-            if (entries.length > 0) {
-                this.editingTable.mishaps = entries;
-                this.render(true);
-                ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
-            } else {
-                ui.notifications.warn("No valid mishap entries found. Format: roll description");
-            }
-        }
-    }
+			if (entries.length > 0) {
+				this.editingTable.mishaps = entries;
+				this.render(true);
+				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
+			} else {
+				ui.notifications.warn("No valid mishap entries found. Format: roll description");
+			}
+		}
+	}
 
-    /**
+	/**
      * Populate the Benefit or Mishap (d100) description table from a Foundry
      * RollTable. Both are simple roll -> description tables, matching the
      * shared RollTable -> rows mapping.
      * @param {"benefits"|"mishaps"} section
      */
-    async _onImportFoundryTable(section) {
-        if (!this.editingTable) return;
-        const table = await pickFoundryTable();
-        if (!table) return;
+	async _onImportFoundryTable(section) {
+		if (!this.editingTable) return;
+		const table = await pickFoundryTable();
+		if (!table) return;
 
-        const rows = tableResultsToDescriptionRows(table);
-        this.editingTable[section] = rows;
-        this.render(true);
-        ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: rows.length }));
-    }
+		const rows = tableResultsToDescriptionRows(table);
+		this.editingTable[section] = rows;
+		this.render(true);
+		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: rows.length }));
+	}
 
-    /**
+	/**
      * Populate the Outcome (d8) table from a Foundry RollTable. This table has
      * no description column — it holds numeric mishap/benefit counts, a d100
      * modifier and XP. So each result seeds a row's roll (from the range), and
      * any "mishaps/benefits/modifier/xp N" values found in the result text are
      * parsed out; anything absent defaults to 0 for the GM to fill in.
      */
-    async _onImportFoundryOutcomes() {
-        if (!this.editingTable) return;
-        const table = await pickFoundryTable();
-        if (!table) return;
+	async _onImportFoundryOutcomes() {
+		if (!this.editingTable) return;
+		const table = await pickFoundryTable();
+		if (!table) return;
 
-        this.editingTable.outcomes = tableResultsToExpandedOutcomes(table);
-        this.render(true);
-        ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: this.editingTable.outcomes.length }));
-    }
+		this.editingTable.outcomes = tableResultsToExpandedOutcomes(table);
+		this.render(true);
+		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: this.editingTable.outcomes.length }));
+	}
 
-    /**
+	/**
      * Build a whole Expanded carousing table from Foundry RollTables — one
      * picker with a dropdown for each of the four sub-tables. Any left blank
      * fall back to the default (empty) template for that section.
      */
-    async _onBuildFromFoundry() {
-        const picked = await pickMultipleFoundryTables([
-            { key: "event", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_event") },
-            { key: "outcome", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_outcome") },
-            { key: "benefit", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_benefit") },
-            { key: "mishap", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_mishap") }
-        ]);
-        if (!picked) return;
+	async _onBuildFromFoundry() {
+		const picked = await pickMultipleFoundryTables([
+			{ key: "event", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_event") },
+			{ key: "outcome", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_outcome") },
+			{ key: "benefit", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_benefit") },
+			{ key: "mishap", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_mishap") },
+		]);
+		if (!picked) return;
 
-        const defaults = getDefaultExpandedData();
-        const t = picked.tables;
-        const toDescRows = (tbl) => tableResultsToDescriptionRows(tbl);
+		const defaults = getDefaultExpandedData();
+		const t = picked.tables;
+		const toDescRows = (tbl) => tableResultsToDescriptionRows(tbl);
 
-        const tableData = {
-            id: foundry.utils.randomID(),
-            name: picked.name || game.i18n.localize("SHADOWDARK_EXTRAS.carousing.new_table"),
-            // Persistent references to the source RollTables — the carousing
-            // engine re-resolves these live, and the editor can re-sync.
-            links: {
-                event: picked.uuids.event || "",
-                outcome: picked.uuids.outcome || "",
-                benefit: picked.uuids.benefit || "",
-                mishap: picked.uuids.mishap || ""
-            },
-            tiers: t.event ? tableResultsToEventTiers(t.event) : foundry.utils.deepClone(defaults.tiers),
-            outcomes: t.outcome ? tableResultsToExpandedOutcomes(t.outcome) : foundry.utils.deepClone(defaults.outcomes),
-            benefits: t.benefit ? toDescRows(t.benefit) : foundry.utils.deepClone(defaults.benefits),
-            mishaps: t.mishap ? toDescRows(t.mishap) : foundry.utils.deepClone(defaults.mishaps)
-        };
+		const tableData = {
+			id: foundry.utils.randomID(),
+			name: picked.name || game.i18n.localize("SHADOWDARK_EXTRAS.carousing.new_table"),
+			// Persistent references to the source RollTables — the carousing
+			// engine re-resolves these live, and the editor can re-sync.
+			links: {
+				event: picked.uuids.event || "",
+				outcome: picked.uuids.outcome || "",
+				benefit: picked.uuids.benefit || "",
+				mishap: picked.uuids.mishap || "",
+			},
+			tiers: t.event ? tableResultsToEventTiers(t.event) : foundry.utils.deepClone(defaults.tiers),
+			outcomes: t.outcome ? tableResultsToExpandedOutcomes(t.outcome) : foundry.utils.deepClone(defaults.outcomes),
+			benefits: t.benefit ? toDescRows(t.benefit) : foundry.utils.deepClone(defaults.benefits),
+			mishaps: t.mishap ? toDescRows(t.mishap) : foundry.utils.deepClone(defaults.mishaps),
+		};
 
-        const tables = getExpandedCarousingTables();
-        tables.push(tableData);
-        await saveExpandedCarousingTables(tables);
+		const tables = getExpandedCarousingTables();
+		tables.push(tableData);
+		await saveExpandedCarousingTables(tables);
 
-        // Open the new table in the editor.
-        this.editingTable = foundry.utils.deepClone(tableData);
-        this.render(true);
-        ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.table_saved"));
-    }
+		// Open the new table in the editor.
+		this.editingTable = foundry.utils.deepClone(tableData);
+		this.render(true);
+		ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.table_saved"));
+	}
 
-    /**
+	/**
      * Re-resolve the editing table's linked RollTables into the working copy
      * and persist the refreshed data.
      */
-    async _onSyncLinked() {
-        if (!this.editingTable?.links) return;
+	async _onSyncLinked() {
+		if (!this.editingTable?.links) return;
 
-        const data = await resolveLinkedData(this.editingTable.links, "expanded");
-        for (const key of ["tiers", "outcomes", "benefits", "mishaps"]) {
-            if (data[key]) this.editingTable[key] = data[key];
-        }
+		const data = await resolveLinkedData(this.editingTable.links, "expanded");
+		for (const key of ["tiers", "outcomes", "benefits", "mishaps"]) {
+			if (data[key]) this.editingTable[key] = data[key];
+		}
 
-        // Persist to the stored record too (the table was saved when linked)
-        const tables = getExpandedCarousingTables();
-        const idx = tables.findIndex(t => t.id === this.editingTable.id);
-        if (idx >= 0) {
-            tables[idx] = foundry.utils.deepClone(this.editingTable);
-            await saveExpandedCarousingTables(tables);
-        }
+		// Persist to the stored record too (the table was saved when linked)
+		const tables = getExpandedCarousingTables();
+		const idx = tables.findIndex(t => t.id === this.editingTable.id);
+		if (idx >= 0) {
+			tables[idx] = foundry.utils.deepClone(this.editingTable);
+			await saveExpandedCarousingTables(tables);
+		}
 
-        this.render(true);
-        ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.linked_synced"));
-    }
+		this.render(true);
+		ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.linked_synced"));
+	}
 
-    /**
+	/**
      * Populate the Carousing Event (tiers) table from a Foundry RollTable.
      */
-    async _onImportFoundryEvent() {
-        if (!this.editingTable) return;
-        const table = await pickFoundryTable();
-        if (!table) return;
+	async _onImportFoundryEvent() {
+		if (!this.editingTable) return;
+		const table = await pickFoundryTable();
+		if (!table) return;
 
-        this.editingTable.tiers = tableResultsToEventTiers(table);
-        this.render(true);
-        ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: this.editingTable.tiers.length }));
-    }
+		this.editingTable.tiers = tableResultsToEventTiers(table);
+		this.render(true);
+		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: this.editingTable.tiers.length }));
+	}
 }
 
 export function openExpandedCarousingTablesEditor(position = null) {
-    const options = position ? { position } : {};
-    new ExpandedCarousingTablesApp(options).render({ force: true });
+	const options = position ? { position } : {};
+	new ExpandedCarousingTablesApp(options).render({ force: true });
 }

@@ -141,7 +141,7 @@ function makeGeom(dataset) {
 	function offsetOf(col, row) {
 		const cx = col - 1;  // 0..pubCols-1
 		const ry = row;      // 0..pubRows-1
-		let j, i;
+		let j; let i;
 		if (landscape) {
 			j = flipX ? (pubRows - 1 - ry) : ry;   // x runs along published rows
 			i = flipY ? (pubCols - 1 - cx) : cx;   // y runs along published cols

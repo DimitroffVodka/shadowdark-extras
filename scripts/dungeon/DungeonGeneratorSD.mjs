@@ -20,37 +20,37 @@ const ELEVATION_TOLERANCE = 5;
 const CANVAS_READY_TIMEOUT_MS = 3000;
 
 function makeTopLeftTileTexture(src) {
-    return { src, anchorX: 0, anchorY: 0 };
+	return { src, anchorX: 0, anchorY: 0 };
 }
 
 function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function isDocumentLayerReady(type) {
-    const layerName = { Tile: "tiles", Wall: "walls", Drawing: "drawings", AmbientLight: "lighting" }[type];
-    const layer = layerName ? canvas?.[layerName] : null;
-    return !!(canvas?.ready && layer?.objects && typeof layer.objects.addChild === "function");
+	const layerName = { Tile: "tiles", Wall: "walls", Drawing: "drawings", AmbientLight: "lighting" }[type];
+	const layer = layerName ? canvas?.[layerName] : null;
+	return !!(canvas?.ready && layer?.objects && typeof layer.objects.addChild === "function");
 }
 
 async function waitForDocumentLayerReady(type, sceneId, timeoutMs = CANVAS_READY_TIMEOUT_MS) {
-    const started = Date.now();
-    while (Date.now() - started < timeoutMs) {
-        if (canvas?.scene?.id === sceneId && isDocumentLayerReady(type)) return true;
-        await sleep(50);
-    }
-    return false;
+	const started = Date.now();
+	while (Date.now() - started < timeoutMs) {
+		if (canvas?.scene?.id === sceneId && isDocumentLayerReady(type)) return true;
+		await sleep(50);
+	}
+	return false;
 }
 
 async function waitForDungeonCanvasReady(scene, timeoutMs = CANVAS_READY_TIMEOUT_MS) {
-    const started = Date.now();
-    const requiredTypes = ["Tile", "Wall", "Drawing"];
-    while (Date.now() - started < timeoutMs) {
-        const activeSceneReady = canvas?.scene?.id === scene.id && canvas?.ready;
-        if (activeSceneReady && requiredTypes.every(type => isDocumentLayerReady(type))) return true;
-        await sleep(50);
-    }
-    return false;
+	const started = Date.now();
+	const requiredTypes = ["Tile", "Wall", "Drawing"];
+	while (Date.now() - started < timeoutMs) {
+		const activeSceneReady = canvas?.scene?.id === scene.id && canvas?.ready;
+		if (activeSceneReady && requiredTypes.every(type => isDocumentLayerReady(type))) return true;
+		await sleep(50);
+	}
+	return false;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -60,22 +60,22 @@ async function waitForDungeonCanvasReady(scene, timeoutMs = CANVAS_READY_TIMEOUT
 let _generatorExpanded = false;
 let _generatorSeed = generateRandomSeed();
 let _generatorSettings = {
-    rooms: 10,
-    density: 0.8,
-    branching: 0.5,
-    roomSize: 0.5,
-    symmetry: true,
-    stairs: 1,
-    stairsDown: 1,
-    clutter: 0,
-    decorLights: 0,
-    decorTiles: true,
-    textured: true,
-    wallShadows: false,
-    wallColor: "#5C3D3D",
-    thickness: 20,
-    style: "rooms",
-    biomes: false
+	rooms: 10,
+	density: 0.8,
+	branching: 0.5,
+	roomSize: 0.5,
+	symmetry: true,
+	stairs: 1,
+	stairsDown: 1,
+	clutter: 0,
+	decorLights: 0,
+	decorTiles: true,
+	textured: true,
+	wallShadows: false,
+	wallColor: "#5C3D3D",
+	thickness: 20,
+	style: "rooms",
+	biomes: false,
 };
 
 // ═══════════════════════════════════════════════════════
@@ -83,31 +83,31 @@ let _generatorSettings = {
 // ═══════════════════════════════════════════════════════
 
 const Direction = {
-    NORTH: 0,
-    SOUTH: 1,
-    EAST: 2,
-    WEST: 3
+	NORTH: 0,
+	SOUTH: 1,
+	EAST: 2,
+	WEST: 3,
 };
 
 const DIRECTION_OFFSETS = {
-    [Direction.NORTH]: { dx: 0, dy: -1 },
-    [Direction.SOUTH]: { dx: 0, dy: 1 },
-    [Direction.EAST]:  { dx: 1, dy: 0 },
-    [Direction.WEST]:  { dx: -1, dy: 0 }
+	[Direction.NORTH]: { dx: 0, dy: -1 },
+	[Direction.SOUTH]: { dx: 0, dy: 1 },
+	[Direction.EAST]:  { dx: 1, dy: 0 },
+	[Direction.WEST]:  { dx: -1, dy: 0 },
 };
 
 const OPPOSITE = {
-    [Direction.NORTH]: Direction.SOUTH,
-    [Direction.SOUTH]: Direction.NORTH,
-    [Direction.EAST]: Direction.WEST,
-    [Direction.WEST]: Direction.EAST
+	[Direction.NORTH]: Direction.SOUTH,
+	[Direction.SOUTH]: Direction.NORTH,
+	[Direction.EAST]: Direction.WEST,
+	[Direction.WEST]: Direction.EAST,
 };
 
 const PERPENDICULAR = {
-    [Direction.NORTH]: [Direction.EAST, Direction.WEST],
-    [Direction.SOUTH]: [Direction.EAST, Direction.WEST],
-    [Direction.EAST]:  [Direction.NORTH, Direction.SOUTH],
-    [Direction.WEST]:  [Direction.NORTH, Direction.SOUTH]
+	[Direction.NORTH]: [Direction.EAST, Direction.WEST],
+	[Direction.SOUTH]: [Direction.EAST, Direction.WEST],
+	[Direction.EAST]:  [Direction.NORTH, Direction.SOUTH],
+	[Direction.WEST]:  [Direction.NORTH, Direction.SOUTH],
 };
 
 // ═══════════════════════════════════════════════════════
@@ -115,19 +115,19 @@ const PERPENDICULAR = {
 // ═══════════════════════════════════════════════════════
 
 export function seedrandom(seed) {
-    let s = 0;
-    for (let i = 0; i < seed.length; i++) {
-        s = ((s << 5) - s + seed.charCodeAt(i)) | 0;
-    }
-    let m_w = (123456789 + s) & 0xffffffff;
-    let m_z = (987654321 - s) & 0xffffffff;
+	let s = 0;
+	for (let i = 0; i < seed.length; i++) {
+		s = ((s << 5) - s + seed.charCodeAt(i)) | 0;
+	}
+	let m_w = (123456789 + s) & 0xffffffff;
+	let m_z = (987654321 - s) & 0xffffffff;
 
-    return function() {
-        m_z = (36969 * (m_z & 65535) + (m_z >> 16)) & 0xffffffff;
-        m_w = (18000 * (m_w & 65535) + (m_w >> 16)) & 0xffffffff;
-        let result = ((m_z << 16) + (m_w & 65535)) >>> 0;
-        return result / 4294967296;
-    };
+	return function() {
+		m_z = (36969 * (m_z & 65535) + (m_z >> 16)) & 0xffffffff;
+		m_w = (18000 * (m_w & 65535) + (m_w >> 16)) & 0xffffffff;
+		let result = ((m_z << 16) + (m_w & 65535)) >>> 0;
+		return result / 4294967296;
+	};
 }
 
 // ═══════════════════════════════════════════════════════
@@ -135,26 +135,26 @@ export function seedrandom(seed) {
 // ═══════════════════════════════════════════════════════
 
 class ProcgenRoom {
-    constructor(x, y, w, h) {
-        this.x = x;
-        this.y = y;
-        this.w = w;
-        this.h = h;
-    }
+	constructor(x, y, w, h) {
+		this.x = x;
+		this.y = y;
+		this.w = w;
+		this.h = h;
+	}
 
-    get left() { return this.x; }
-    get right() { return this.x + this.w; }
-    get top() { return this.y; }
-    get bottom() { return this.y + this.h; }
-    get cx() { return this.x + Math.floor(this.w / 2); }
-    get cy() { return this.y + Math.floor(this.h / 2); }
+	get left() { return this.x; }
+	get right() { return this.x + this.w; }
+	get top() { return this.y; }
+	get bottom() { return this.y + this.h; }
+	get cx() { return this.x + Math.floor(this.w / 2); }
+	get cy() { return this.y + Math.floor(this.h / 2); }
 
-    intersects(other, margin = 0) {
-        return !(this.right + margin <= other.left ||
+	intersects(other, margin = 0) {
+		return !(this.right + margin <= other.left ||
                  other.right + margin <= this.left ||
                  this.bottom + margin <= other.top ||
                  other.bottom + margin <= this.top);
-    }
+	}
 }
 
 // ═══════════════════════════════════════════════════════
@@ -162,14 +162,14 @@ class ProcgenRoom {
 // ═══════════════════════════════════════════════════════
 
 class SpineWalker {
-    constructor(room, direction, length, depth, rng) {
-        this.currentRoom = room;
-        this.direction = direction;
-        this.remainingLength = length;
-        this.depth = depth;
-        this.rng = rng;
-        this.isDead = false;
-    }
+	constructor(room, direction, length, depth, rng) {
+		this.currentRoom = room;
+		this.direction = direction;
+		this.remainingLength = length;
+		this.depth = depth;
+		this.rng = rng;
+		this.isDead = false;
+	}
 }
 
 // ═══════════════════════════════════════════════════════
@@ -177,388 +177,388 @@ class SpineWalker {
 // ═══════════════════════════════════════════════════════
 
 export function generateLayout(params, rng) {
-    const {
-        roomCount = 10,
-        density = 0.8,
-        linearity = 0.5,
-        roomSizeBias = 0.5,
-        symmetry = true
-    } = params;
+	const {
+		roomCount = 10,
+		density = 0.8,
+		linearity = 0.5,
+		roomSizeBias = 0.5,
+		symmetry = true,
+	} = params;
 
-    const floors = new Set();
-    const corridors = new Set();
-    const placedRooms = [];
-    const doorPositions = [];
-    const entranceEdges = [];
-    const roomData = [];
+	const floors = new Set();
+	const corridors = new Set();
+	const placedRooms = [];
+	const doorPositions = [];
+	const entranceEdges = [];
+	const roomData = [];
 
-    // Room-to-room adjacency for loop detection
-    const adjacency = new Map(); // roomIndex -> Set of roomIndex
+	// Room-to-room adjacency for loop detection
+	const adjacency = new Map(); // roomIndex -> Set of roomIndex
 
-    const minRoomSize = 3;
-    const maxRoomSize = 5 + Math.round(roomSizeBias * 3);
-    const spacing = Math.max(0, Math.round(4 * (1 - density)));
+	const minRoomSize = 3;
+	const maxRoomSize = 5 + Math.round(roomSizeBias * 3);
+	const spacing = Math.max(0, Math.round(4 * (1 - density)));
 
-    function randRoomSize() {
-        return minRoomSize + Math.floor(rng() * (maxRoomSize - minRoomSize + 1));
-    }
+	function randRoomSize() {
+		return minRoomSize + Math.floor(rng() * (maxRoomSize - minRoomSize + 1));
+	}
 
-    function addRoomFloors(room) {
-        for (let rx = room.x; rx < room.x + room.w; rx++) {
-            for (let ry = room.y; ry < room.y + room.h; ry++) {
-                floors.add(`${rx},${ry}`);
-            }
-        }
-    }
+	function addRoomFloors(room) {
+		for (let rx = room.x; rx < room.x + room.w; rx++) {
+			for (let ry = room.y; ry < room.y + room.h; ry++) {
+				floors.add(`${rx},${ry}`);
+			}
+		}
+	}
 
-    function canPlace(room, margin) {
-        for (const existing of placedRooms) {
-            if (room.intersects(existing, margin)) return false;
-        }
-        return true;
-    }
+	function canPlace(room, margin) {
+		for (const existing of placedRooms) {
+			if (room.intersects(existing, margin)) return false;
+		}
+		return true;
+	}
 
-    function addEdge(idxA, idxB) {
-        if (!adjacency.has(idxA)) adjacency.set(idxA, new Set());
-        if (!adjacency.has(idxB)) adjacency.set(idxB, new Set());
-        adjacency.get(idxA).add(idxB);
-        adjacency.get(idxB).add(idxA);
-    }
+	function addEdge(idxA, idxB) {
+		if (!adjacency.has(idxA)) adjacency.set(idxA, new Set());
+		if (!adjacency.has(idxB)) adjacency.set(idxB, new Set());
+		adjacency.get(idxA).add(idxB);
+		adjacency.get(idxB).add(idxA);
+	}
 
-    // Lay a straight corridor between two grid points, return tiles added
-    function layCorridor(x1, y1, x2, y2) {
-        const tiles = [];
-        const ddx = Math.sign(x2 - x1);
-        const ddy = Math.sign(y2 - y1);
-        let cx = x1, cy = y1;
-        while (cx !== x2 || cy !== y2) {
-            corridors.add(`${cx},${cy}`);
-            floors.add(`${cx},${cy}`);
-            tiles.push(`${cx},${cy}`);
-            if (cx !== x2) cx += ddx;
-            else if (cy !== y2) cy += ddy;
-        }
-        corridors.add(`${x2},${y2}`);
-        floors.add(`${x2},${y2}`);
-        tiles.push(`${x2},${y2}`);
-        return tiles;
-    }
+	// Lay a straight corridor between two grid points, return tiles added
+	function layCorridor(x1, y1, x2, y2) {
+		const tiles = [];
+		const ddx = Math.sign(x2 - x1);
+		const ddy = Math.sign(y2 - y1);
+		let cx = x1; let cy = y1;
+		while (cx !== x2 || cy !== y2) {
+			corridors.add(`${cx},${cy}`);
+			floors.add(`${cx},${cy}`);
+			tiles.push(`${cx},${cy}`);
+			if (cx !== x2) cx += ddx;
+			else if (cy !== y2) cy += ddy;
+		}
+		corridors.add(`${x2},${y2}`);
+		floors.add(`${x2},${y2}`);
+		tiles.push(`${x2},${y2}`);
+		return tiles;
+	}
 
-    // Mark corridor entrance edges (suppress walls at room-corridor junctions)
-    function markCorridorEdges(roomA, roomB, direction) {
-        switch (direction) {
-            case Direction.NORTH:
-                entranceEdges.push({ x: roomA.cx, y: roomA.top - 1, dir: 'S' });
-                entranceEdges.push({ x: roomA.cx, y: roomA.top, dir: 'N' });
-                entranceEdges.push({ x: roomA.cx, y: roomB.bottom, dir: 'N' });
-                entranceEdges.push({ x: roomA.cx, y: roomB.bottom - 1, dir: 'S' });
-                break;
-            case Direction.SOUTH:
-                entranceEdges.push({ x: roomA.cx, y: roomA.bottom, dir: 'N' });
-                entranceEdges.push({ x: roomA.cx, y: roomA.bottom - 1, dir: 'S' });
-                entranceEdges.push({ x: roomA.cx, y: roomB.top - 1, dir: 'S' });
-                entranceEdges.push({ x: roomA.cx, y: roomB.top, dir: 'N' });
-                break;
-            case Direction.EAST:
-                entranceEdges.push({ x: roomA.right, y: roomA.cy, dir: 'W' });
-                entranceEdges.push({ x: roomA.right - 1, y: roomA.cy, dir: 'E' });
-                entranceEdges.push({ x: roomB.left - 1, y: roomA.cy, dir: 'E' });
-                entranceEdges.push({ x: roomB.left, y: roomA.cy, dir: 'W' });
-                break;
-            case Direction.WEST:
-                entranceEdges.push({ x: roomA.left - 1, y: roomA.cy, dir: 'E' });
-                entranceEdges.push({ x: roomA.left, y: roomA.cy, dir: 'W' });
-                entranceEdges.push({ x: roomB.right, y: roomA.cy, dir: 'W' });
-                entranceEdges.push({ x: roomB.right - 1, y: roomA.cy, dir: 'E' });
-                break;
-        }
-    }
+	// Mark corridor entrance edges (suppress walls at room-corridor junctions)
+	function markCorridorEdges(roomA, roomB, direction) {
+		switch (direction) {
+			case Direction.NORTH:
+				entranceEdges.push({ x: roomA.cx, y: roomA.top - 1, dir: "S" });
+				entranceEdges.push({ x: roomA.cx, y: roomA.top, dir: "N" });
+				entranceEdges.push({ x: roomA.cx, y: roomB.bottom, dir: "N" });
+				entranceEdges.push({ x: roomA.cx, y: roomB.bottom - 1, dir: "S" });
+				break;
+			case Direction.SOUTH:
+				entranceEdges.push({ x: roomA.cx, y: roomA.bottom, dir: "N" });
+				entranceEdges.push({ x: roomA.cx, y: roomA.bottom - 1, dir: "S" });
+				entranceEdges.push({ x: roomA.cx, y: roomB.top - 1, dir: "S" });
+				entranceEdges.push({ x: roomA.cx, y: roomB.top, dir: "N" });
+				break;
+			case Direction.EAST:
+				entranceEdges.push({ x: roomA.right, y: roomA.cy, dir: "W" });
+				entranceEdges.push({ x: roomA.right - 1, y: roomA.cy, dir: "E" });
+				entranceEdges.push({ x: roomB.left - 1, y: roomA.cy, dir: "E" });
+				entranceEdges.push({ x: roomB.left, y: roomA.cy, dir: "W" });
+				break;
+			case Direction.WEST:
+				entranceEdges.push({ x: roomA.left - 1, y: roomA.cy, dir: "E" });
+				entranceEdges.push({ x: roomA.left, y: roomA.cy, dir: "W" });
+				entranceEdges.push({ x: roomB.right, y: roomA.cy, dir: "W" });
+				entranceEdges.push({ x: roomB.right - 1, y: roomA.cy, dir: "E" });
+				break;
+		}
+	}
 
-    // ── Starting room ──
-    const startW = randRoomSize();
-    const startH = randRoomSize();
-    const startRoom = new ProcgenRoom(-Math.floor(startW / 2), -Math.floor(startH / 2), startW, startH);
-    placedRooms.push(startRoom);
-    addRoomFloors(startRoom);
-    roomData.push({ room: startRoom, isStart: true });
+	// ── Starting room ──
+	const startW = randRoomSize();
+	const startH = randRoomSize();
+	const startRoom = new ProcgenRoom(-Math.floor(startW / 2), -Math.floor(startH / 2), startW, startH);
+	placedRooms.push(startRoom);
+	addRoomFloors(startRoom);
+	roomData.push({ room: startRoom, isStart: true });
 
-    // ── Entrance ──
-    const allDirs = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST];
-    const spineDir = allDirs[Math.floor(rng() * allDirs.length)];
-    const entranceDir = OPPOSITE[spineDir];
+	// ── Entrance ──
+	const allDirs = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST];
+	const spineDir = allDirs[Math.floor(rng() * allDirs.length)];
+	const entranceDir = OPPOSITE[spineDir];
 
-    // Calculate the entrance starting point at the room EDGE (not center)
-    let entStartX, entStartY;
-    switch (entranceDir) {
-        case Direction.NORTH:
-            entStartX = startRoom.cx; entStartY = startRoom.top - 1;
-            break;
-        case Direction.SOUTH:
-            entStartX = startRoom.cx; entStartY = startRoom.bottom;
-            break;
-        case Direction.EAST:
-            entStartX = startRoom.right; entStartY = startRoom.cy;
-            break;
-        case Direction.WEST:
-            entStartX = startRoom.left - 1; entStartY = startRoom.cy;
-            break;
-    }
+	// Calculate the entrance starting point at the room EDGE (not center)
+	let entStartX; let entStartY;
+	switch (entranceDir) {
+		case Direction.NORTH:
+			entStartX = startRoom.cx; entStartY = startRoom.top - 1;
+			break;
+		case Direction.SOUTH:
+			entStartX = startRoom.cx; entStartY = startRoom.bottom;
+			break;
+		case Direction.EAST:
+			entStartX = startRoom.right; entStartY = startRoom.cy;
+			break;
+		case Direction.WEST:
+			entStartX = startRoom.left - 1; entStartY = startRoom.cy;
+			break;
+	}
 
-    const entranceOff = DIRECTION_OFFSETS[entranceDir];
-    // Lay 3 corridor tiles starting from the room edge outward
-    for (let i = 0; i < 3; i++) {
-        const ex = entStartX + entranceOff.dx * i;
-        const ey = entStartY + entranceOff.dy * i;
-        floors.add(`${ex},${ey}`);
-        corridors.add(`${ex},${ey}`);
-    }
+	const entranceOff = DIRECTION_OFFSETS[entranceDir];
+	// Lay 3 corridor tiles starting from the room edge outward
+	for (let i = 0; i < 3; i++) {
+		const ex = entStartX + entranceOff.dx * i;
+		const ey = entStartY + entranceOff.dy * i;
+		floors.add(`${ex},${ey}`);
+		corridors.add(`${ex},${ey}`);
+	}
 
-    // Suppress walls where entrance meets room
-    switch (entranceDir) {
-        case Direction.NORTH:
-            entranceEdges.push({ x: startRoom.cx, y: startRoom.top, dir: 'N' });
-            entranceEdges.push({ x: startRoom.cx, y: startRoom.top - 1, dir: 'S' });
-            break;
-        case Direction.SOUTH:
-            entranceEdges.push({ x: startRoom.cx, y: startRoom.bottom - 1, dir: 'S' });
-            entranceEdges.push({ x: startRoom.cx, y: startRoom.bottom, dir: 'N' });
-            break;
-        case Direction.EAST:
-            entranceEdges.push({ x: startRoom.right - 1, y: startRoom.cy, dir: 'E' });
-            entranceEdges.push({ x: startRoom.right, y: startRoom.cy, dir: 'W' });
-            break;
-        case Direction.WEST:
-            entranceEdges.push({ x: startRoom.left, y: startRoom.cy, dir: 'W' });
-            entranceEdges.push({ x: startRoom.left - 1, y: startRoom.cy, dir: 'E' });
-            break;
-    }
-    // Door at the first corridor tile (right at the room edge)
-    doorPositions.push({ x: entStartX, y: entStartY, dir: entranceDir });
+	// Suppress walls where entrance meets room
+	switch (entranceDir) {
+		case Direction.NORTH:
+			entranceEdges.push({ x: startRoom.cx, y: startRoom.top, dir: "N" });
+			entranceEdges.push({ x: startRoom.cx, y: startRoom.top - 1, dir: "S" });
+			break;
+		case Direction.SOUTH:
+			entranceEdges.push({ x: startRoom.cx, y: startRoom.bottom - 1, dir: "S" });
+			entranceEdges.push({ x: startRoom.cx, y: startRoom.bottom, dir: "N" });
+			break;
+		case Direction.EAST:
+			entranceEdges.push({ x: startRoom.right - 1, y: startRoom.cy, dir: "E" });
+			entranceEdges.push({ x: startRoom.right, y: startRoom.cy, dir: "W" });
+			break;
+		case Direction.WEST:
+			entranceEdges.push({ x: startRoom.left, y: startRoom.cy, dir: "W" });
+			entranceEdges.push({ x: startRoom.left - 1, y: startRoom.cy, dir: "E" });
+			break;
+	}
+	// Door at the first corridor tile (right at the room edge)
+	doorPositions.push({ x: entStartX, y: entStartY, dir: entranceDir });
 
-    // ── Walker-based room placement ──
-    // Short spine so branches get the budget
-    const spineLength = Math.max(2, Math.ceil(roomCount / 4));
-    const walkers = [new SpineWalker(startRoom, spineDir, spineLength, 0, rng)];
-    // Track which room index each walker's current room is
-    const walkerParentIdx = [0];
+	// ── Walker-based room placement ──
+	// Short spine so branches get the budget
+	const spineLength = Math.max(2, Math.ceil(roomCount / 4));
+	const walkers = [new SpineWalker(startRoom, spineDir, spineLength, 0, rng)];
+	// Track which room index each walker's current room is
+	const walkerParentIdx = [0];
 
-    let roundRobin = 0;
-    let attempts = 0;
-    const maxAttempts = roomCount * 40;
+	let roundRobin = 0;
+	let attempts = 0;
+	const maxAttempts = roomCount * 40;
 
-    while (placedRooms.length < roomCount && attempts < maxAttempts) {
-        attempts++;
+	while (placedRooms.length < roomCount && attempts < maxAttempts) {
+		attempts++;
 
-        // Round-robin: cycle through walkers fairly
-        let walker = null;
-        let walkerIdx = -1;
-        for (let i = 0; i < walkers.length; i++) {
-            const idx = (roundRobin + i) % walkers.length;
-            if (!walkers[idx].isDead) {
-                walker = walkers[idx];
-                walkerIdx = idx;
-                roundRobin = (idx + 1) % walkers.length;
-                break;
-            }
-        }
-        if (!walker) break;
+		// Round-robin: cycle through walkers fairly
+		let walker = null;
+		let walkerIdx = -1;
+		for (let i = 0; i < walkers.length; i++) {
+			const idx = (roundRobin + i) % walkers.length;
+			if (!walkers[idx].isDead) {
+				walker = walkers[idx];
+				walkerIdx = idx;
+				roundRobin = (idx + 1) % walkers.length;
+				break;
+			}
+		}
+		if (!walker) break;
 
-        if (walker.remainingLength <= 0) {
-            walker.isDead = true;
-            continue;
-        }
+		if (walker.remainingLength <= 0) {
+			walker.isDead = true;
+			continue;
+		}
 
-        // Try to place a room
-        const result = _stepWalker(walker, placedRooms, floors, corridors, doorPositions, entranceEdges, roomData, {
-            spacing, minRoomSize, maxRoomSize
-        }, rng, markCorridorEdges, layCorridor);
+		// Try to place a room
+		const result = _stepWalker(walker, placedRooms, floors, corridors, doorPositions, entranceEdges, roomData, {
+			spacing, minRoomSize, maxRoomSize,
+		}, rng, markCorridorEdges, layCorridor);
 
-        if (result.placed) {
-            const newRoomIdx = placedRooms.length - 1;
-            addEdge(walkerParentIdx[walkerIdx], newRoomIdx);
-            walker.currentRoom = result.newRoom;
-            walkerParentIdx[walkerIdx] = newRoomIdx;
-            walker.remainingLength--;
+		if (result.placed) {
+			const newRoomIdx = placedRooms.length - 1;
+			addEdge(walkerParentIdx[walkerIdx], newRoomIdx);
+			walker.currentRoom = result.newRoom;
+			walkerParentIdx[walkerIdx] = newRoomIdx;
+			walker.remainingLength--;
 
-            // ── Branching ──
-            // Chance scales with branching param, softly reduced by depth (never zero)
-            const branchChance = (1 - linearity) * Math.max(0.25, 1.0 - walker.depth * 0.1);
+			// ── Branching ──
+			// Chance scales with branching param, softly reduced by depth (never zero)
+			const branchChance = (1 - linearity) * Math.max(0.25, 1.0 - walker.depth * 0.1);
 
-            if (placedRooms.length < roomCount && rng() < branchChance) {
-                const perps = PERPENDICULAR[walker.direction];
-                const branchDir = perps[Math.floor(rng() * perps.length)];
-                // Branches get a generous length so they can grow deep
-                const branchLen = 1 + Math.floor(rng() * Math.max(2, Math.ceil(roomCount / 5)));
-                walkers.push(new SpineWalker(result.newRoom, branchDir, branchLen, walker.depth + 1, rng));
-                walkerParentIdx.push(newRoomIdx);
+			if (placedRooms.length < roomCount && rng() < branchChance) {
+				const perps = PERPENDICULAR[walker.direction];
+				const branchDir = perps[Math.floor(rng() * perps.length)];
+				// Branches get a generous length so they can grow deep
+				const branchLen = 1 + Math.floor(rng() * Math.max(2, Math.ceil(roomCount / 5)));
+				walkers.push(new SpineWalker(result.newRoom, branchDir, branchLen, walker.depth + 1, rng));
+				walkerParentIdx.push(newRoomIdx);
 
-                if (symmetry && placedRooms.length + 2 < roomCount) {
-                    walkers.push(new SpineWalker(result.newRoom, OPPOSITE[branchDir], branchLen, walker.depth + 1, rng));
-                    walkerParentIdx.push(newRoomIdx);
-                }
-            }
+				if (symmetry && placedRooms.length + 2 < roomCount) {
+					walkers.push(new SpineWalker(result.newRoom, OPPOSITE[branchDir], branchLen, walker.depth + 1, rng));
+					walkerParentIdx.push(newRoomIdx);
+				}
+			}
 
-            // Sometimes a branch turns a corner (changes its own direction)
-            if (walker.depth > 0 && walker.remainingLength > 0 && rng() < (1 - linearity) * 0.4) {
-                const perps = PERPENDICULAR[walker.direction];
-                walker.direction = perps[Math.floor(rng() * perps.length)];
-            }
-        } else {
-            // Placement failed - try redirecting before giving up
-            walker._failCount = (walker._failCount || 0) + 1;
-            if (walker._failCount < 3) {
-                const perps = PERPENDICULAR[walker.direction];
-                walker.direction = perps[Math.floor(rng() * perps.length)];
-            } else {
-                walker.isDead = true;
-            }
-        }
-    }
+			// Sometimes a branch turns a corner (changes its own direction)
+			if (walker.depth > 0 && walker.remainingLength > 0 && rng() < (1 - linearity) * 0.4) {
+				const perps = PERPENDICULAR[walker.direction];
+				walker.direction = perps[Math.floor(rng() * perps.length)];
+			}
+		} else {
+			// Placement failed - try redirecting before giving up
+			walker._failCount = (walker._failCount || 0) + 1;
+			if (walker._failCount < 3) {
+				const perps = PERPENDICULAR[walker.direction];
+				walker.direction = perps[Math.floor(rng() * perps.length)];
+			} else {
+				walker.isDead = true;
+			}
+		}
+	}
 
-    // ── Loop creation pass ──
-    // Connect nearby rooms that aren't already adjacent to form loops
-    if (linearity < 0.9 && placedRooms.length >= 4) {
-        const loopBudget = Math.max(1, Math.floor(placedRooms.length * (1 - linearity) * 0.3));
-        let loopsCreated = 0;
+	// ── Loop creation pass ──
+	// Connect nearby rooms that aren't already adjacent to form loops
+	if (linearity < 0.9 && placedRooms.length >= 4) {
+		const loopBudget = Math.max(1, Math.floor(placedRooms.length * (1 - linearity) * 0.3));
+		let loopsCreated = 0;
 
-        // Build candidate pairs sorted by distance
-        const candidates = [];
-        for (let i = 0; i < placedRooms.length; i++) {
-            for (let j = i + 1; j < placedRooms.length; j++) {
-                // Skip if already connected
-                if (adjacency.get(i)?.has(j)) continue;
+		// Build candidate pairs sorted by distance
+		const candidates = [];
+		for (let i = 0; i < placedRooms.length; i++) {
+			for (let j = i + 1; j < placedRooms.length; j++) {
+				// Skip if already connected
+				if (adjacency.get(i)?.has(j)) continue;
 
-                const a = placedRooms[i];
-                const b = placedRooms[j];
-                const dist = Math.abs(a.cx - b.cx) + Math.abs(b.cy - a.cy);
-                const minDim = Math.max(a.w, a.h, b.w, b.h);
+				const a = placedRooms[i];
+				const b = placedRooms[j];
+				const dist = Math.abs(a.cx - b.cx) + Math.abs(b.cy - a.cy);
+				const minDim = Math.max(a.w, a.h, b.w, b.h);
 
-                // Only consider rooms that are close-ish but not overlapping
-                if (dist > minDim && dist < minDim * 5 + spacing * 4) {
-                    candidates.push({ i, j, dist });
-                }
-            }
-        }
-        candidates.sort((a, b) => a.dist - b.dist);
+				// Only consider rooms that are close-ish but not overlapping
+				if (dist > minDim && dist < minDim * 5 + spacing * 4) {
+					candidates.push({ i, j, dist });
+				}
+			}
+		}
+		candidates.sort((a, b) => a.dist - b.dist);
 
-        for (const cand of candidates) {
-            if (loopsCreated >= loopBudget) break;
+		for (const cand of candidates) {
+			if (loopsCreated >= loopBudget) break;
 
-            const roomA = placedRooms[cand.i];
-            const roomB = placedRooms[cand.j];
+			const roomA = placedRooms[cand.i];
+			const roomB = placedRooms[cand.j];
 
-            const dx = roomB.cx - roomA.cx;
-            const dy = roomB.cy - roomA.cy;
-            const horizontal = Math.abs(dx) >= Math.abs(dy);
+			const dx = roomB.cx - roomA.cx;
+			const dy = roomB.cy - roomA.cy;
+			const horizontal = Math.abs(dx) >= Math.abs(dy);
 
-            let corridorOk = true;
-            let exitX, exitY, entryX, entryY;
+			let corridorOk = true;
+			let exitX; let exitY; let entryX; let entryY;
 
-            if (horizontal) {
-                if (dx > 0) {
-                    exitX = roomA.right;
-                    entryX = roomB.left - 1;
-                } else {
-                    exitX = roomA.left - 1;
-                    entryX = roomB.right;
-                }
-                exitY = roomA.cy;
-                entryY = roomA.cy;
-            } else {
-                if (dy > 0) {
-                    exitY = roomA.bottom;
-                    entryY = roomB.top - 1;
-                } else {
-                    exitY = roomA.top - 1;
-                    entryY = roomB.bottom;
-                }
-                exitX = roomA.cx;
-                entryX = roomA.cx;
-            }
+			if (horizontal) {
+				if (dx > 0) {
+					exitX = roomA.right;
+					entryX = roomB.left - 1;
+				} else {
+					exitX = roomA.left - 1;
+					entryX = roomB.right;
+				}
+				exitY = roomA.cy;
+				entryY = roomA.cy;
+			} else {
+				if (dy > 0) {
+					exitY = roomA.bottom;
+					entryY = roomB.top - 1;
+				} else {
+					exitY = roomA.top - 1;
+					entryY = roomB.bottom;
+				}
+				exitX = roomA.cx;
+				entryX = roomA.cx;
+			}
 
-            // Corridor must have at least 1 tile between rooms
-            const corridorLength = Math.abs(exitX - entryX) + Math.abs(exitY - entryY);
-            if (corridorLength < 1) continue;
+			// Corridor must have at least 1 tile between rooms
+			const corridorLength = Math.abs(exitX - entryX) + Math.abs(exitY - entryY);
+			if (corridorLength < 1) continue;
 
-            // Check corridor doesn't pass through other rooms
-            if (horizontal) {
-                const step = exitX <= entryX ? 1 : -1;
-                for (let cx = exitX; cx !== entryX + step; cx += step) {
-                    for (let r = 0; r < placedRooms.length; r++) {
-                        if (r === cand.i || r === cand.j) continue;
-                        const rm = placedRooms[r];
-                        if (cx >= rm.left && cx < rm.right && exitY >= rm.top && exitY < rm.bottom) {
-                            corridorOk = false;
-                            break;
-                        }
-                    }
-                    if (!corridorOk) break;
-                }
-            } else {
-                const step = exitY <= entryY ? 1 : -1;
-                for (let cy = exitY; cy !== entryY + step; cy += step) {
-                    for (let r = 0; r < placedRooms.length; r++) {
-                        if (r === cand.i || r === cand.j) continue;
-                        const rm = placedRooms[r];
-                        if (exitX >= rm.left && exitX < rm.right && cy >= rm.top && cy < rm.bottom) {
-                            corridorOk = false;
-                            break;
-                        }
-                    }
-                    if (!corridorOk) break;
-                }
-            }
+			// Check corridor doesn't pass through other rooms
+			if (horizontal) {
+				const step = exitX <= entryX ? 1 : -1;
+				for (let cx = exitX; cx !== entryX + step; cx += step) {
+					for (let r = 0; r < placedRooms.length; r++) {
+						if (r === cand.i || r === cand.j) continue;
+						const rm = placedRooms[r];
+						if (cx >= rm.left && cx < rm.right && exitY >= rm.top && exitY < rm.bottom) {
+							corridorOk = false;
+							break;
+						}
+					}
+					if (!corridorOk) break;
+				}
+			} else {
+				const step = exitY <= entryY ? 1 : -1;
+				for (let cy = exitY; cy !== entryY + step; cy += step) {
+					for (let r = 0; r < placedRooms.length; r++) {
+						if (r === cand.i || r === cand.j) continue;
+						const rm = placedRooms[r];
+						if (exitX >= rm.left && exitX < rm.right && cy >= rm.top && cy < rm.bottom) {
+							corridorOk = false;
+							break;
+						}
+					}
+					if (!corridorOk) break;
+				}
+			}
 
-            if (!corridorOk) continue;
+			if (!corridorOk) continue;
 
-            // Lay the corridor
-            layCorridor(exitX, exitY, entryX, entryY);
+			// Lay the corridor
+			layCorridor(exitX, exitY, entryX, entryY);
 
-            // Mark entrance edges using the same logic as markCorridorEdges
-            // RoomA exit side
-            if (horizontal) {
-                if (dx > 0) {
-                    // East: corridor exits roomA's right edge
-                    entranceEdges.push({ x: roomA.right - 1, y: roomA.cy, dir: 'E' });
-                    entranceEdges.push({ x: roomA.right, y: roomA.cy, dir: 'W' });
-                    // West: corridor enters roomB's left edge
-                    entranceEdges.push({ x: roomB.left - 1, y: roomA.cy, dir: 'E' });
-                    entranceEdges.push({ x: roomB.left, y: roomA.cy, dir: 'W' });
-                } else {
-                    // West: corridor exits roomA's left edge
-                    entranceEdges.push({ x: roomA.left, y: roomA.cy, dir: 'W' });
-                    entranceEdges.push({ x: roomA.left - 1, y: roomA.cy, dir: 'E' });
-                    // East: corridor enters roomB's right edge
-                    entranceEdges.push({ x: roomB.right, y: roomA.cy, dir: 'W' });
-                    entranceEdges.push({ x: roomB.right - 1, y: roomA.cy, dir: 'E' });
-                }
-            } else {
-                if (dy > 0) {
-                    // South: corridor exits roomA's bottom edge
-                    entranceEdges.push({ x: roomA.cx, y: roomA.bottom - 1, dir: 'S' });
-                    entranceEdges.push({ x: roomA.cx, y: roomA.bottom, dir: 'N' });
-                    // North: corridor enters roomB's top edge
-                    entranceEdges.push({ x: roomA.cx, y: roomB.top - 1, dir: 'S' });
-                    entranceEdges.push({ x: roomA.cx, y: roomB.top, dir: 'N' });
-                } else {
-                    // North: corridor exits roomA's top edge
-                    entranceEdges.push({ x: roomA.cx, y: roomA.top, dir: 'N' });
-                    entranceEdges.push({ x: roomA.cx, y: roomA.top - 1, dir: 'S' });
-                    // South: corridor enters roomB's bottom edge
-                    entranceEdges.push({ x: roomA.cx, y: roomB.bottom, dir: 'N' });
-                    entranceEdges.push({ x: roomA.cx, y: roomB.bottom - 1, dir: 'S' });
-                }
-            }
+			// Mark entrance edges using the same logic as markCorridorEdges
+			// RoomA exit side
+			if (horizontal) {
+				if (dx > 0) {
+					// East: corridor exits roomA's right edge
+					entranceEdges.push({ x: roomA.right - 1, y: roomA.cy, dir: "E" });
+					entranceEdges.push({ x: roomA.right, y: roomA.cy, dir: "W" });
+					// West: corridor enters roomB's left edge
+					entranceEdges.push({ x: roomB.left - 1, y: roomA.cy, dir: "E" });
+					entranceEdges.push({ x: roomB.left, y: roomA.cy, dir: "W" });
+				} else {
+					// West: corridor exits roomA's left edge
+					entranceEdges.push({ x: roomA.left, y: roomA.cy, dir: "W" });
+					entranceEdges.push({ x: roomA.left - 1, y: roomA.cy, dir: "E" });
+					// East: corridor enters roomB's right edge
+					entranceEdges.push({ x: roomB.right, y: roomA.cy, dir: "W" });
+					entranceEdges.push({ x: roomB.right - 1, y: roomA.cy, dir: "E" });
+				}
+			} else {
+				if (dy > 0) {
+					// South: corridor exits roomA's bottom edge
+					entranceEdges.push({ x: roomA.cx, y: roomA.bottom - 1, dir: "S" });
+					entranceEdges.push({ x: roomA.cx, y: roomA.bottom, dir: "N" });
+					// North: corridor enters roomB's top edge
+					entranceEdges.push({ x: roomA.cx, y: roomB.top - 1, dir: "S" });
+					entranceEdges.push({ x: roomA.cx, y: roomB.top, dir: "N" });
+				} else {
+					// North: corridor exits roomA's top edge
+					entranceEdges.push({ x: roomA.cx, y: roomA.top, dir: "N" });
+					entranceEdges.push({ x: roomA.cx, y: roomA.top - 1, dir: "S" });
+					// South: corridor enters roomB's bottom edge
+					entranceEdges.push({ x: roomA.cx, y: roomB.bottom, dir: "N" });
+					entranceEdges.push({ x: roomA.cx, y: roomB.bottom - 1, dir: "S" });
+				}
+			}
 
-            // Door on first corridor tile (guaranteed to be outside both rooms)
-            doorPositions.push({ x: exitX, y: exitY, dir: horizontal ? (dx > 0 ? Direction.EAST : Direction.WEST) : (dy > 0 ? Direction.SOUTH : Direction.NORTH) });
+			// Door on first corridor tile (guaranteed to be outside both rooms)
+			doorPositions.push({ x: exitX, y: exitY, dir: horizontal ? (dx > 0 ? Direction.EAST : Direction.WEST) : (dy > 0 ? Direction.SOUTH : Direction.NORTH) });
 
-            addEdge(cand.i, cand.j);
-            loopsCreated++;
-        }
-    }
+			addEdge(cand.i, cand.j);
+			loopsCreated++;
+		}
+	}
 
-    return { floors, corridors, placedRooms, doorPositions, entranceEdges, roomData, adjacency };
+	return { floors, corridors, placedRooms, doorPositions, entranceEdges, roomData, adjacency };
 }
 
 /**
@@ -568,150 +568,150 @@ export function generateLayout(params, rng) {
  * (straight room walls, curved cave walls, shared open seam).
  */
 export function generateMixedLayout(params, rng) {
-    const base = generateLayout(params, rng);
-    const { caveCells, tunnelCells, caveChambers } =
+	const base = generateLayout(params, rng);
+	const { caveCells, tunnelCells, caveChambers } =
         generateFringeCaves(base.floors, { density: params.density }, rng);
 
-    const merged = new Set(base.floors);
-    for (const k of caveCells) merged.add(k);
-    for (const k of tunnelCells) merged.add(k);
+	const merged = new Set(base.floors);
+	for (const k of caveCells) merged.add(k);
+	for (const k of tunnelCells) merged.add(k);
 
-    // Close 1-wide void gaps (a void cell with floor on two OPPOSITE sides) by
-    // filling them as cave floor. This removes the parallel "double wall"
-    // corridors between the cave blob and the rooms, leaving broad open seams.
-    {
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (const k of merged) { const [x, y] = k.split(",").map(Number); if (x < minX) minX = x; if (y < minY) minY = y; if (x > maxX) maxX = x; if (y > maxY) maxY = y; }
-        for (let pass = 0; pass < 4; pass++) {
-            const add = [];
-            for (let x = minX; x <= maxX; x++) for (let y = minY; y <= maxY; y++) {
-                const k = `${x},${y}`;
-                if (merged.has(k)) continue;
-                const N = merged.has(`${x},${y - 1}`), S = merged.has(`${x},${y + 1}`);
-                const E = merged.has(`${x + 1},${y}`), W = merged.has(`${x - 1},${y}`);
-                if (!((N && S) || (E && W))) continue;
-                // Only close gaps at the cave interface — never merge two rooms
-                // that intentionally share a thin wall.
-                const touchesCave = caveCells.has(`${x},${y - 1}`) || caveCells.has(`${x},${y + 1}`)
+	// Close 1-wide void gaps (a void cell with floor on two OPPOSITE sides) by
+	// filling them as cave floor. This removes the parallel "double wall"
+	// corridors between the cave blob and the rooms, leaving broad open seams.
+	{
+		let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity;
+		for (const k of merged) { const [x, y] = k.split(",").map(Number); if (x < minX) minX = x; if (y < minY) minY = y; if (x > maxX) maxX = x; if (y > maxY) maxY = y; }
+		for (let pass = 0; pass < 4; pass++) {
+			const add = [];
+			for (let x = minX; x <= maxX; x++) for (let y = minY; y <= maxY; y++) {
+				const k = `${x},${y}`;
+				if (merged.has(k)) continue;
+				const N = merged.has(`${x},${y - 1}`); const S = merged.has(`${x},${y + 1}`);
+				const E = merged.has(`${x + 1},${y}`); const W = merged.has(`${x - 1},${y}`);
+				if (!((N && S) || (E && W))) continue;
+				// Only close gaps at the cave interface — never merge two rooms
+				// that intentionally share a thin wall.
+				const touchesCave = caveCells.has(`${x},${y - 1}`) || caveCells.has(`${x},${y + 1}`)
                     || caveCells.has(`${x + 1},${y}`) || caveCells.has(`${x - 1},${y}`);
-                if (touchesCave) add.push(k);
-            }
-            if (!add.length) break;
-            for (const k of add) { merged.add(k); caveCells.add(k); }
-        }
-    }
+				if (touchesCave) add.push(k);
+			}
+			if (!add.length) break;
+			for (const k of add) { merged.add(k); caveCells.add(k); }
+		}
+	}
 
-    // Cave chambers become extra pseudo-rooms (stairs/clutter/narrative anchors),
-    // each linked to the entrance room for graph connectivity.
-    const placedRooms = [...base.placedRooms];
-    const roomData = [...base.roomData];
-    const adjacency = (base.adjacency instanceof Map) ? base.adjacency : new Map();
-    for (const c of caveChambers) {
-        const room = { x: c.x, y: c.y, w: 1, h: 1, cx: c.x, cy: c.y, left: c.x, right: c.x + 1, top: c.y, bottom: c.y + 1 };
-        const idx = placedRooms.length;
-        placedRooms.push(room);
-        roomData.push({ room, isStart: false });
-        if (!adjacency.has(idx)) adjacency.set(idx, new Set());
-        adjacency.get(idx).add(0);
-        if (adjacency.has(0)) adjacency.get(0).add(idx);
-    }
+	// Cave chambers become extra pseudo-rooms (stairs/clutter/narrative anchors),
+	// each linked to the entrance room for graph connectivity.
+	const placedRooms = [...base.placedRooms];
+	const roomData = [...base.roomData];
+	const adjacency = (base.adjacency instanceof Map) ? base.adjacency : new Map();
+	for (const c of caveChambers) {
+		const room = { x: c.x, y: c.y, w: 1, h: 1, cx: c.x, cy: c.y, left: c.x, right: c.x + 1, top: c.y, bottom: c.y + 1 };
+		const idx = placedRooms.length;
+		placedRooms.push(room);
+		roomData.push({ room, isStart: false });
+		if (!adjacency.has(idx)) adjacency.set(idx, new Set());
+		adjacency.get(idx).add(0);
+		if (adjacency.has(0)) adjacency.get(0).add(idx);
+	}
 
-    return {
-        floors: merged,
-        corridors: base.corridors,
-        placedRooms,
-        doorPositions: base.doorPositions,
-        entranceEdges: base.entranceEdges,
-        roomData,
-        adjacency,
-        _isMixed: true,
-        _roomCells: base.floors,   // straight-walled
-        _caveCells: caveCells,     // curved-walled
-        _tunnelCells: tunnelCells, // straight-walled connectors
-    };
+	return {
+		floors: merged,
+		corridors: base.corridors,
+		placedRooms,
+		doorPositions: base.doorPositions,
+		entranceEdges: base.entranceEdges,
+		roomData,
+		adjacency,
+		_isMixed: true,
+		_roomCells: base.floors,   // straight-walled
+		_caveCells: caveCells,     // curved-walled
+		_tunnelCells: tunnelCells, // straight-walled connectors
+	};
 }
 
 // Place a single room from a walker's current position
 function _stepWalker(walker, placedRooms, floors, corridors, doorPositions, entranceEdges, roomData, params, rng, markCorridorEdges, layCorridor) {
-    const { spacing, minRoomSize, maxRoomSize } = params;
+	const { spacing, minRoomSize, maxRoomSize } = params;
 
-    const rw = minRoomSize + Math.floor(rng() * (maxRoomSize - minRoomSize + 1));
-    const rh = minRoomSize + Math.floor(rng() * (maxRoomSize - minRoomSize + 1));
-    const corridorLen = 2 + spacing;
+	const rw = minRoomSize + Math.floor(rng() * (maxRoomSize - minRoomSize + 1));
+	const rh = minRoomSize + Math.floor(rng() * (maxRoomSize - minRoomSize + 1));
+	const corridorLen = 2 + spacing;
 
-    let nx, ny;
-    const curRoom = walker.currentRoom;
+	let nx; let ny;
+	const curRoom = walker.currentRoom;
 
-    switch (walker.direction) {
-        case Direction.NORTH:
-            nx = curRoom.cx - Math.floor(rw / 2);
-            ny = curRoom.top - corridorLen - rh;
-            break;
-        case Direction.SOUTH:
-            nx = curRoom.cx - Math.floor(rw / 2);
-            ny = curRoom.bottom + corridorLen;
-            break;
-        case Direction.EAST:
-            nx = curRoom.right + corridorLen;
-            ny = curRoom.cy - Math.floor(rh / 2);
-            break;
-        case Direction.WEST:
-            nx = curRoom.left - corridorLen - rw;
-            ny = curRoom.cy - Math.floor(rh / 2);
-            break;
-    }
+	switch (walker.direction) {
+		case Direction.NORTH:
+			nx = curRoom.cx - Math.floor(rw / 2);
+			ny = curRoom.top - corridorLen - rh;
+			break;
+		case Direction.SOUTH:
+			nx = curRoom.cx - Math.floor(rw / 2);
+			ny = curRoom.bottom + corridorLen;
+			break;
+		case Direction.EAST:
+			nx = curRoom.right + corridorLen;
+			ny = curRoom.cy - Math.floor(rh / 2);
+			break;
+		case Direction.WEST:
+			nx = curRoom.left - corridorLen - rw;
+			ny = curRoom.cy - Math.floor(rh / 2);
+			break;
+	}
 
-    const newRoom = new ProcgenRoom(nx, ny, rw, rh);
+	const newRoom = new ProcgenRoom(nx, ny, rw, rh);
 
-    if (!canPlaceRoom(newRoom, placedRooms, spacing)) {
-        return { placed: false };
-    }
+	if (!canPlaceRoom(newRoom, placedRooms, spacing)) {
+		return { placed: false };
+	}
 
-    placedRooms.push(newRoom);
-    addRoomFloorsTo(newRoom, floors);
-    roomData.push({ room: newRoom, isStart: false });
+	placedRooms.push(newRoom);
+	addRoomFloorsTo(newRoom, floors);
+	roomData.push({ room: newRoom, isStart: false });
 
-    // Build corridor
-    let cx1, cy1, cx2, cy2;
-    switch (walker.direction) {
-        case Direction.NORTH:
-            cx1 = curRoom.cx; cy1 = curRoom.top - 1;
-            cx2 = curRoom.cx; cy2 = newRoom.bottom;
-            break;
-        case Direction.SOUTH:
-            cx1 = curRoom.cx; cy1 = curRoom.bottom;
-            cx2 = curRoom.cx; cy2 = newRoom.top - 1;
-            break;
-        case Direction.EAST:
-            cx1 = curRoom.right; cy1 = curRoom.cy;
-            cx2 = newRoom.left - 1; cy2 = curRoom.cy;
-            break;
-        case Direction.WEST:
-            cx1 = curRoom.left - 1; cy1 = curRoom.cy;
-            cx2 = newRoom.right; cy2 = curRoom.cy;
-            break;
-    }
+	// Build corridor
+	let cx1; let cy1; let cx2; let cy2;
+	switch (walker.direction) {
+		case Direction.NORTH:
+			cx1 = curRoom.cx; cy1 = curRoom.top - 1;
+			cx2 = curRoom.cx; cy2 = newRoom.bottom;
+			break;
+		case Direction.SOUTH:
+			cx1 = curRoom.cx; cy1 = curRoom.bottom;
+			cx2 = curRoom.cx; cy2 = newRoom.top - 1;
+			break;
+		case Direction.EAST:
+			cx1 = curRoom.right; cy1 = curRoom.cy;
+			cx2 = newRoom.left - 1; cy2 = curRoom.cy;
+			break;
+		case Direction.WEST:
+			cx1 = curRoom.left - 1; cy1 = curRoom.cy;
+			cx2 = newRoom.right; cy2 = curRoom.cy;
+			break;
+	}
 
-    layCorridor(cx1, cy1, cx2, cy2);
-    doorPositions.push({ x: cx2, y: cy2, dir: walker.direction });
-    markCorridorEdges(curRoom, newRoom, walker.direction);
+	layCorridor(cx1, cy1, cx2, cy2);
+	doorPositions.push({ x: cx2, y: cy2, dir: walker.direction });
+	markCorridorEdges(curRoom, newRoom, walker.direction);
 
-    return { placed: true, newRoom };
+	return { placed: true, newRoom };
 }
 
 function canPlaceRoom(room, placedRooms, margin) {
-    for (const existing of placedRooms) {
-        if (room.intersects(existing, margin)) return false;
-    }
-    return true;
+	for (const existing of placedRooms) {
+		if (room.intersects(existing, margin)) return false;
+	}
+	return true;
 }
 
 function addRoomFloorsTo(room, floors) {
-    for (let rx = room.x; rx < room.x + room.w; rx++) {
-        for (let ry = room.y; ry < room.y + room.h; ry++) {
-            floors.add(`${rx},${ry}`);
-        }
-    }
+	for (let rx = room.x; rx < room.x + room.w; rx++) {
+		for (let ry = room.y; ry < room.y + room.h; ry++) {
+			floors.add(`${rx},${ry}`);
+		}
+	}
 }
 
 // ═══════════════════════════════════════════════════════
@@ -719,86 +719,86 @@ function addRoomFloorsTo(room, floors) {
 // ═══════════════════════════════════════════════════════
 
 export function generateWalls(floors, offset, entranceEdges, wallThickness, solidFloors = floors) {
-    const wallsData = [];
-    const entranceSet = new Set(entranceEdges.map(e => `${e.x},${e.y},${e.dir}`));
-    const gridSize = GRID_SIZE;
+	const wallsData = [];
+	const entranceSet = new Set(entranceEdges.map(e => `${e.x},${e.y},${e.dir}`));
+	const gridSize = GRID_SIZE;
 
-    const dirs = [
-        { dx: 0, dy: -1, ax: 0, ay: 0, bx: 1, by: 0, name: 'N', ox: 0, oy: -1 },
-        { dx: 0, dy: 1,  ax: 0, ay: 1, bx: 1, by: 1, name: 'S', ox: 0, oy: 1 },
-        { dx: 1, dy: 0,  ax: 1, ay: 0, bx: 1, by: 1, name: 'E', ox: 1, oy: 0 },
-        { dx: -1, dy: 0, ax: 0, ay: 0, bx: 0, by: 1, name: 'W', ox: -1, oy: 0 }
-    ];
+	const dirs = [
+		{ dx: 0, dy: -1, ax: 0, ay: 0, bx: 1, by: 0, name: "N", ox: 0, oy: -1 },
+		{ dx: 0, dy: 1,  ax: 0, ay: 1, bx: 1, by: 1, name: "S", ox: 0, oy: 1 },
+		{ dx: 1, dy: 0,  ax: 1, ay: 0, bx: 1, by: 1, name: "E", ox: 1, oy: 0 },
+		{ dx: -1, dy: 0, ax: 0, ay: 0, bx: 0, by: 1, name: "W", ox: -1, oy: 0 },
+	];
 
-    for (const coord of floors) {
-        const [gx, gy] = coord.split(',').map(Number);
-        const px = (gx + offset.x) * gridSize;
-        const py = (gy + offset.y) * gridSize;
+	for (const coord of floors) {
+		const [gx, gy] = coord.split(",").map(Number);
+		const px = (gx + offset.x) * gridSize;
+		const py = (gy + offset.y) * gridSize;
 
-        for (const d of dirs) {
-            const neighborKey = `${gx + d.dx},${gy + d.dy}`;
+		for (const d of dirs) {
+			const neighborKey = `${gx + d.dx},${gy + d.dy}`;
 
-            if (entranceSet.has(`${gx},${gy},${d.name}`)) continue;
+			if (entranceSet.has(`${gx},${gy},${d.name}`)) continue;
 
-            if (!solidFloors.has(neighborKey)) {
-                let x1 = px + (d.ax * gridSize);
-                let y1 = py + (d.ay * gridSize);
-                let x2 = px + (d.bx * gridSize);
-                let y2 = py + (d.by * gridSize);
+			if (!solidFloors.has(neighborKey)) {
+				let x1 = px + (d.ax * gridSize);
+				let y1 = py + (d.ay * gridSize);
+				let x2 = px + (d.bx * gridSize);
+				let y2 = py + (d.by * gridSize);
 
-                // Outward offset
-                x1 += d.ox * wallThickness;
-                x2 += d.ox * wallThickness;
-                y1 += d.oy * wallThickness;
-                y2 += d.oy * wallThickness;
+				// Outward offset
+				x1 += d.ox * wallThickness;
+				x2 += d.ox * wallThickness;
+				y1 += d.oy * wallThickness;
+				y2 += d.oy * wallThickness;
 
-                // Corner adjustments
-                const getKeys = (ddx, ddy) => ({
-                    sourceFlank: `${gx + ddx},${gy + ddy}`,
-                    voidFlank: `${gx + d.dx + ddx},${gy + d.dy + ddy}`
-                });
+				// Corner adjustments
+				const getKeys = (ddx, ddy) => ({
+					sourceFlank: `${gx + ddx},${gy + ddy}`,
+					voidFlank: `${gx + d.dx + ddx},${gy + d.dy + ddy}`,
+				});
 
-                let startVec, endVec;
-                if (d.name === 'N' || d.name === 'S') {
-                    startVec = { dx: -1, dy: 0 };
-                    endVec = { dx: 1, dy: 0 };
-                } else {
-                    startVec = { dx: 0, dy: -1 };
-                    endVec = { dx: 0, dy: 1 };
-                }
+				let startVec; let endVec;
+				if (d.name === "N" || d.name === "S") {
+					startVec = { dx: -1, dy: 0 };
+					endVec = { dx: 1, dy: 0 };
+				} else {
+					startVec = { dx: 0, dy: -1 };
+					endVec = { dx: 0, dy: 1 };
+				}
 
-                const startKeys = getKeys(startVec.dx, startVec.dy);
-                let modStart = 0;
-                if (!solidFloors.has(startKeys.sourceFlank)) modStart = 1;
-                else if (solidFloors.has(startKeys.voidFlank)) modStart = -1;
+				const startKeys = getKeys(startVec.dx, startVec.dy);
+				let modStart = 0;
+				if (!solidFloors.has(startKeys.sourceFlank)) modStart = 1;
+				else if (solidFloors.has(startKeys.voidFlank)) modStart = -1;
 
-                const endKeys = getKeys(endVec.dx, endVec.dy);
-                let modEnd = 0;
-                if (!solidFloors.has(endKeys.sourceFlank)) modEnd = 1;
-                else if (solidFloors.has(endKeys.voidFlank)) modEnd = -1;
+				const endKeys = getKeys(endVec.dx, endVec.dy);
+				let modEnd = 0;
+				if (!solidFloors.has(endKeys.sourceFlank)) modEnd = 1;
+				else if (solidFloors.has(endKeys.voidFlank)) modEnd = -1;
 
-                if (modStart !== 0) {
-                    const amount = wallThickness * modStart;
-                    if (d.name === 'N' || d.name === 'S') x1 -= amount;
-                    else y1 -= amount;
-                }
-                if (modEnd !== 0) {
-                    const amount = wallThickness * modEnd;
-                    if (d.name === 'N' || d.name === 'S') x2 += amount;
-                    else y2 += amount;
-                }
+				if (modStart !== 0) {
+					const amount = wallThickness * modStart;
+					if (d.name === "N" || d.name === "S") x1 -= amount;
+					else y1 -= amount;
+				}
+				if (modEnd !== 0) {
+					const amount = wallThickness * modEnd;
+					if (d.name === "N" || d.name === "S") x2 += amount;
+					else y2 += amount;
+				}
 
-                wallsData.push({
-                    c: [x1, y1, x2, y2],
-                    light: 20,
-                    move: 20,
-                    sound: 20,
-                    flags: { [MODULE_ID]: { dungeonGenWall: true } }
-                });
-            }
-        }
-    }
-    return wallsData;
+				wallsData.push({
+					c: [x1, y1, x2, y2],
+					light: 20,
+					move: 20,
+					sound: 20,
+					flags: { [MODULE_ID]: { dungeonGenWall: true } },
+				});
+			}
+		}
+	}
+	return wallsData;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -806,159 +806,159 @@ export function generateWalls(floors, offset, entranceEdges, wallThickness, soli
 // ═══════════════════════════════════════════════════════
 
 export function generateWallVisuals(floors, offset, options, entranceEdges, solidFloors = floors) {
-    const { useTexture, wallColor, wallThickness, wallTilePath } = options;
-    const gridSize = GRID_SIZE;
-    const drawingsData = [];
-    const entranceSet = new Set(entranceEdges.map(e => `${e.x},${e.y},${e.dir}`));
+	const { useTexture, wallColor, wallThickness, wallTilePath } = options;
+	const gridSize = GRID_SIZE;
+	const drawingsData = [];
+	const entranceSet = new Set(entranceEdges.map(e => `${e.x},${e.y},${e.dir}`));
 
-    // Determine textures
-    const hTexture = wallTilePath || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_horizontal.webp`;
-    const vTexture = wallTilePath?.replace("horizontal", "vertical") || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_vertical.webp`;
+	// Determine textures
+	const hTexture = wallTilePath || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_horizontal.webp`;
+	const vTexture = wallTilePath?.replace("horizontal", "vertical") || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_vertical.webp`;
 
-    // Identify wall segments per direction
-    const segments = { N: {}, S: {}, E: {}, W: {} };
+	// Identify wall segments per direction
+	const segments = { N: {}, S: {}, E: {}, W: {} };
 
-    for (const coord of floors) {
-        const [gx, gy] = coord.split(',').map(Number);
+	for (const coord of floors) {
+		const [gx, gy] = coord.split(",").map(Number);
 
-        if (!solidFloors.has(`${gx},${gy - 1}`) && !entranceSet.has(`${gx},${gy},N`)) {
-            segments.N[`${gx},${gy}`] = { gx, gy, len: 1 };
-        }
-        if (!solidFloors.has(`${gx},${gy + 1}`) && !entranceSet.has(`${gx},${gy},S`)) {
-            segments.S[`${gx},${gy}`] = { gx, gy, len: 1 };
-        }
-        if (!solidFloors.has(`${gx + 1},${gy}`) && !entranceSet.has(`${gx},${gy},E`)) {
-            segments.E[`${gx},${gy}`] = { gx, gy, len: 1 };
-        }
-        if (!solidFloors.has(`${gx - 1},${gy}`) && !entranceSet.has(`${gx},${gy},W`)) {
-            segments.W[`${gx},${gy}`] = { gx, gy, len: 1 };
-        }
-    }
+		if (!solidFloors.has(`${gx},${gy - 1}`) && !entranceSet.has(`${gx},${gy},N`)) {
+			segments.N[`${gx},${gy}`] = { gx, gy, len: 1 };
+		}
+		if (!solidFloors.has(`${gx},${gy + 1}`) && !entranceSet.has(`${gx},${gy},S`)) {
+			segments.S[`${gx},${gy}`] = { gx, gy, len: 1 };
+		}
+		if (!solidFloors.has(`${gx + 1},${gy}`) && !entranceSet.has(`${gx},${gy},E`)) {
+			segments.E[`${gx},${gy}`] = { gx, gy, len: 1 };
+		}
+		if (!solidFloors.has(`${gx - 1},${gy}`) && !entranceSet.has(`${gx},${gy},W`)) {
+			segments.W[`${gx},${gy}`] = { gx, gy, len: 1 };
+		}
+	}
 
-    // Merge horizontal segments (N, S)
-    for (const dir of ['N', 'S']) {
-        const pool = segments[dir];
-        const keys = Object.keys(pool).sort((a, b) => {
-            const [ax, ay] = a.split(',').map(Number);
-            const [bx, by] = b.split(',').map(Number);
-            if (ay !== by) return ay - by;
-            return ax - bx;
-        });
+	// Merge horizontal segments (N, S)
+	for (const dir of ["N", "S"]) {
+		const pool = segments[dir];
+		const keys = Object.keys(pool).sort((a, b) => {
+			const [ax, ay] = a.split(",").map(Number);
+			const [bx, by] = b.split(",").map(Number);
+			if (ay !== by) return ay - by;
+			return ax - bx;
+		});
 
-        for (const key of keys) {
-            const seg = pool[key];
-            if (!seg) continue;
-            let nextGx = seg.gx + seg.len;
-            while (pool[`${nextGx},${seg.gy}`]) {
-                seg.len += pool[`${nextGx},${seg.gy}`].len;
-                delete pool[`${nextGx},${seg.gy}`];
-                nextGx++;
-            }
-        }
-    }
+		for (const key of keys) {
+			const seg = pool[key];
+			if (!seg) continue;
+			let nextGx = seg.gx + seg.len;
+			while (pool[`${nextGx},${seg.gy}`]) {
+				seg.len += pool[`${nextGx},${seg.gy}`].len;
+				delete pool[`${nextGx},${seg.gy}`];
+				nextGx++;
+			}
+		}
+	}
 
-    // Merge vertical segments (E, W)
-    for (const dir of ['E', 'W']) {
-        const pool = segments[dir];
-        const keys = Object.keys(pool).sort((a, b) => {
-            const [ax, ay] = a.split(',').map(Number);
-            const [bx, by] = b.split(',').map(Number);
-            if (ax !== bx) return ax - bx;
-            return ay - by;
-        });
+	// Merge vertical segments (E, W)
+	for (const dir of ["E", "W"]) {
+		const pool = segments[dir];
+		const keys = Object.keys(pool).sort((a, b) => {
+			const [ax, ay] = a.split(",").map(Number);
+			const [bx, by] = b.split(",").map(Number);
+			if (ax !== bx) return ax - bx;
+			return ay - by;
+		});
 
-        for (const key of keys) {
-            const seg = pool[key];
-            if (!seg) continue;
-            let nextGy = seg.gy + seg.len;
-            while (pool[`${seg.gx},${nextGy}`]) {
-                seg.len += pool[`${seg.gx},${nextGy}`].len;
-                delete pool[`${seg.gx},${nextGy}`];
-                nextGy++;
-            }
-        }
-    }
+		for (const key of keys) {
+			const seg = pool[key];
+			if (!seg) continue;
+			let nextGy = seg.gy + seg.len;
+			while (pool[`${seg.gx},${nextGy}`]) {
+				seg.len += pool[`${seg.gx},${nextGy}`].len;
+				delete pool[`${seg.gx},${nextGy}`];
+				nextGy++;
+			}
+		}
+	}
 
-    // Create polygon drawing
-    const createPoly = (px, py, w, h, isHorizontal) => {
-        const drawing = {
-            author: game.user.id,
-            x: px,
-            y: py,
-            shape: {
-                type: "p",
-                width: w,
-                height: h,
-                points: [0, 0, w, 0, w, h, 0, h, 0, 0]
-            },
-            strokeWidth: 0,
-            strokeAlpha: 0,
-            fillAlpha: 1.0,
-            flags: {
-                [MODULE_ID]: { dungeonWall: true }
-            }
-        };
+	// Create polygon drawing
+	const createPoly = (px, py, w, h, isHorizontal) => {
+		const drawing = {
+			author: game.user.id,
+			x: px,
+			y: py,
+			shape: {
+				type: "p",
+				width: w,
+				height: h,
+				points: [0, 0, w, 0, w, h, 0, h, 0, 0],
+			},
+			strokeWidth: 0,
+			strokeAlpha: 0,
+			fillAlpha: 1.0,
+			flags: {
+				[MODULE_ID]: { dungeonWall: true },
+			},
+		};
 
-        if (useTexture) {
-            drawing.fillType = 2; // Pattern
-            drawing.fillColor = "#ffffff";
-            drawing.texture = isHorizontal ? hTexture : vTexture;
-        } else {
-            drawing.fillType = 1; // Solid
-            drawing.fillColor = wallColor || "#5C3D3D";
-        }
+		if (useTexture) {
+			drawing.fillType = 2; // Pattern
+			drawing.fillColor = "#ffffff";
+			drawing.texture = isHorizontal ? hTexture : vTexture;
+		} else {
+			drawing.fillType = 1; // Solid
+			drawing.fillColor = wallColor || "#5C3D3D";
+		}
 
-        drawingsData.push(drawing);
-    };
+		drawingsData.push(drawing);
+	};
 
-    const thickness = wallThickness;
+	const thickness = wallThickness;
 
-    // North walls
-    for (const seg of Object.values(segments.N)) {
-        const px = (seg.gx + offset.x) * gridSize;
-        const py = (seg.gy + offset.y) * gridSize - thickness;
-        createPoly(px, py, seg.len * gridSize, thickness, true);
-    }
+	// North walls
+	for (const seg of Object.values(segments.N)) {
+		const px = (seg.gx + offset.x) * gridSize;
+		const py = (seg.gy + offset.y) * gridSize - thickness;
+		createPoly(px, py, seg.len * gridSize, thickness, true);
+	}
 
-    // South walls
-    for (const seg of Object.values(segments.S)) {
-        const px = (seg.gx + offset.x) * gridSize;
-        const py = (seg.gy + offset.y) * gridSize + gridSize;
-        createPoly(px, py, seg.len * gridSize, thickness, true);
-    }
+	// South walls
+	for (const seg of Object.values(segments.S)) {
+		const px = (seg.gx + offset.x) * gridSize;
+		const py = (seg.gy + offset.y) * gridSize + gridSize;
+		createPoly(px, py, seg.len * gridSize, thickness, true);
+	}
 
-    // East walls
-    for (const seg of Object.values(segments.E)) {
-        const px = (seg.gx + offset.x) * gridSize + gridSize;
-        const py = (seg.gy + offset.y) * gridSize;
-        createPoly(px, py, thickness, seg.len * gridSize, false);
-    }
+	// East walls
+	for (const seg of Object.values(segments.E)) {
+		const px = (seg.gx + offset.x) * gridSize + gridSize;
+		const py = (seg.gy + offset.y) * gridSize;
+		createPoly(px, py, thickness, seg.len * gridSize, false);
+	}
 
-    // West walls
-    for (const seg of Object.values(segments.W)) {
-        const px = (seg.gx + offset.x) * gridSize - thickness;
-        const py = (seg.gy + offset.y) * gridSize;
-        createPoly(px, py, thickness, seg.len * gridSize, false);
-    }
+	// West walls
+	for (const seg of Object.values(segments.W)) {
+		const px = (seg.gx + offset.x) * gridSize - thickness;
+		const py = (seg.gy + offset.y) * gridSize;
+		createPoly(px, py, thickness, seg.len * gridSize, false);
+	}
 
-    // Corners
-    for (const coord of floors) {
-        const [gx, gy] = coord.split(',').map(Number);
-        const px = (gx + offset.x) * gridSize;
-        const py = (gy + offset.y) * gridSize;
+	// Corners
+	for (const coord of floors) {
+		const [gx, gy] = coord.split(",").map(Number);
+		const px = (gx + offset.x) * gridSize;
+		const py = (gy + offset.y) * gridSize;
 
-        const hasN = !solidFloors.has(`${gx},${gy - 1}`);
-        const hasS = !solidFloors.has(`${gx},${gy + 1}`);
-        const hasE = !solidFloors.has(`${gx + 1},${gy}`);
-        const hasW = !solidFloors.has(`${gx - 1},${gy}`);
+		const hasN = !solidFloors.has(`${gx},${gy - 1}`);
+		const hasS = !solidFloors.has(`${gx},${gy + 1}`);
+		const hasE = !solidFloors.has(`${gx + 1},${gy}`);
+		const hasW = !solidFloors.has(`${gx - 1},${gy}`);
 
-        if (hasN && hasW) createPoly(px - thickness, py - thickness, thickness, thickness, true);
-        if (hasN && hasE) createPoly(px + gridSize, py - thickness, thickness, thickness, true);
-        if (hasS && hasW) createPoly(px - thickness, py + gridSize, thickness, thickness, true);
-        if (hasS && hasE) createPoly(px + gridSize, py + gridSize, thickness, thickness, true);
-    }
+		if (hasN && hasW) createPoly(px - thickness, py - thickness, thickness, thickness, true);
+		if (hasN && hasE) createPoly(px + gridSize, py - thickness, thickness, thickness, true);
+		if (hasS && hasW) createPoly(px - thickness, py + gridSize, thickness, thickness, true);
+		if (hasS && hasE) createPoly(px + gridSize, py + gridSize, thickness, thickness, true);
+	}
 
-    return drawingsData;
+	return drawingsData;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -966,86 +966,86 @@ export function generateWallVisuals(floors, offset, options, entranceEdges, soli
 // ═══════════════════════════════════════════════════════
 
 export function generateDoors(doorPositions, offset, wallThickness, doorTilePath) {
-    const gridSize = GRID_SIZE;
-    const wallsData = [];
+	const gridSize = GRID_SIZE;
+	const wallsData = [];
 
-    for (const door of doorPositions) {
-        const px = (door.x + offset.x) * gridSize;
-        const py = (door.y + offset.y) * gridSize;
+	for (const door of doorPositions) {
+		const px = (door.x + offset.x) * gridSize;
+		const py = (door.y + offset.y) * gridSize;
 
-        let x1, y1, x2, y2;
+		let x1; let y1; let x2; let y2;
 
-        // Place door at the edge of the corridor tile
-        switch (door.dir) {
-            case Direction.NORTH:
-            case Direction.SOUTH:
-                // Horizontal door across vertical corridor
-                x1 = px;
-                y1 = py + gridSize / 2;
-                x2 = px + gridSize;
-                y2 = py + gridSize / 2;
-                break;
-            case Direction.EAST:
-            case Direction.WEST:
-                // Vertical door across horizontal corridor
-                x1 = px + gridSize / 2;
-                y1 = py;
-                x2 = px + gridSize / 2;
-                y2 = py + gridSize;
-                break;
-        }
+		// Place door at the edge of the corridor tile
+		switch (door.dir) {
+			case Direction.NORTH:
+			case Direction.SOUTH:
+				// Horizontal door across vertical corridor
+				x1 = px;
+				y1 = py + gridSize / 2;
+				x2 = px + gridSize;
+				y2 = py + gridSize / 2;
+				break;
+			case Direction.EAST:
+			case Direction.WEST:
+				// Vertical door across horizontal corridor
+				x1 = px + gridSize / 2;
+				y1 = py;
+				x2 = px + gridSize / 2;
+				y2 = py + gridSize;
+				break;
+		}
 
-        // Resolve door texture variant (horizontal/vertical) matching the door orientation
-        const isHorizontalDoor = (y1 === y2);
-        let doorTexture = doorTilePath;
-        if (doorTexture) {
-            if (isHorizontalDoor && !doorTexture.toLowerCase().includes("horizontal")) {
-                doorTexture = doorTexture.replace(/vertical/i, "horizontal");
-            } else if (!isHorizontalDoor && !doorTexture.toLowerCase().includes("vertical")) {
-                doorTexture = doorTexture.replace(/horizontal/i, "vertical");
-            }
-        }
+		// Resolve door texture variant (horizontal/vertical) matching the door orientation
+		const isHorizontalDoor = (y1 === y2);
+		let doorTexture = doorTilePath;
+		if (doorTexture) {
+			if (isHorizontalDoor && !doorTexture.toLowerCase().includes("horizontal")) {
+				doorTexture = doorTexture.replace(/vertical/i, "horizontal");
+			} else if (!isHorizontalDoor && !doorTexture.toLowerCase().includes("vertical")) {
+				doorTexture = doorTexture.replace(/horizontal/i, "vertical");
+			}
+		}
 
-        // Door wall with swing animation
-        const doorWall = {
-            c: [x1, y1, x2, y2],
-            door: 1,
-            ds: 0,
-            light: 20,
-            move: 20,
-            sound: 20,
-            doorSound: "woodBasic",
-            flags: { [MODULE_ID]: { dungeonGenWall: true } }
-        };
-        if (doorTexture) {
-            doorWall.animation = { type: "swing", texture: doorTexture };
-        }
-        wallsData.push(doorWall);
+		// Door wall with swing animation
+		const doorWall = {
+			c: [x1, y1, x2, y2],
+			door: 1,
+			ds: 0,
+			light: 20,
+			move: 20,
+			sound: 20,
+			doorSound: "woodBasic",
+			flags: { [MODULE_ID]: { dungeonGenWall: true } },
+		};
+		if (doorTexture) {
+			doorWall.animation = { type: "swing", texture: doorTexture };
+		}
+		wallsData.push(doorWall);
 
-        // Filler walls for thickness gaps
-        const fillerFlags = { [MODULE_ID]: { dungeonGenWall: true } };
-        if (isHorizontalDoor) {
-            wallsData.push({
-                c: [x1 - wallThickness, y1, x1, y1],
-                light: 20, move: 20, sound: 20, flags: fillerFlags
-            });
-            wallsData.push({
-                c: [x2, y2, x2 + wallThickness, y2],
-                light: 20, move: 20, sound: 20, flags: fillerFlags
-            });
-        } else {
-            wallsData.push({
-                c: [x1, y1 - wallThickness, x1, y1],
-                light: 20, move: 20, sound: 20, flags: fillerFlags
-            });
-            wallsData.push({
-                c: [x2, y2, x2, y2 + wallThickness],
-                light: 20, move: 20, sound: 20, flags: fillerFlags
-            });
-        }
-    }
+		// Filler walls for thickness gaps
+		const fillerFlags = { [MODULE_ID]: { dungeonGenWall: true } };
+		if (isHorizontalDoor) {
+			wallsData.push({
+				c: [x1 - wallThickness, y1, x1, y1],
+				light: 20, move: 20, sound: 20, flags: fillerFlags,
+			});
+			wallsData.push({
+				c: [x2, y2, x2 + wallThickness, y2],
+				light: 20, move: 20, sound: 20, flags: fillerFlags,
+			});
+		} else {
+			wallsData.push({
+				c: [x1, y1 - wallThickness, x1, y1],
+				light: 20, move: 20, sound: 20, flags: fillerFlags,
+			});
+			wallsData.push({
+				c: [x2, y2, x2, y2 + wallThickness],
+				light: 20, move: 20, sound: 20, flags: fillerFlags,
+			});
+		}
+	}
 
-    return wallsData;
+	return wallsData;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1058,75 +1058,75 @@ export function generateDoors(doorPositions, offset, wallThickness, doorTilePath
  * If levelsActive is false and no levelId, clears all dungeon documents.
  */
 export async function clearSceneAtLevel(scene, levelContext, levelsActive) {
-    const isDungeonTile = (t) => {
-        const f = t.flags?.[MODULE_ID];
-        return f?.dungeonFloor || f?.dungeonStairs || f?.dungeonStairsDown || f?.dungeonClutter;
-    };
-    const isDungeonWall = (w) => w.flags?.[MODULE_ID]?.dungeonGenWall;
-    const isDungeonDrawing = (d) => d.flags?.[MODULE_ID]?.dungeonWall;
-    const isDungeonLight = (l) => l.flags?.[MODULE_ID]?.dungeonDecorLight;
+	const isDungeonTile = (t) => {
+		const f = t.flags?.[MODULE_ID];
+		return f?.dungeonFloor || f?.dungeonStairs || f?.dungeonStairsDown || f?.dungeonClutter;
+	};
+	const isDungeonWall = (w) => w.flags?.[MODULE_ID]?.dungeonGenWall;
+	const isDungeonDrawing = (d) => d.flags?.[MODULE_ID]?.dungeonWall;
+	const isDungeonLight = (l) => l.flags?.[MODULE_ID]?.dungeonDecorLight;
 
-    const matchesLevel = (doc, type) => {
-        // v14 native levels: match by levelId stored in doc.levels collection/array
-        if (levelContext?.levelId && doc.levels?.size) return doc.levels.has(levelContext.levelId);
-        if (levelContext?.levelId && Array.isArray(doc.levels)) return doc.levels.includes(levelContext.levelId);
-        if (!levelsActive) return true;
-        const elevation = levelContext?.elevation ?? 0;
-        if (type === "Wall") {
-            const bottom = doc.flags?.["wall-height"]?.bottom ?? 0;
-            return Math.abs(bottom - elevation) < ELEVATION_TOLERANCE;
-        } else {
-            const elev = doc.elevation ?? 0;
-            return Math.abs(elev - elevation) < ELEVATION_TOLERANCE;
-        }
-    };
+	const matchesLevel = (doc, type) => {
+		// v14 native levels: match by levelId stored in doc.levels collection/array
+		if (levelContext?.levelId && doc.levels?.size) return doc.levels.has(levelContext.levelId);
+		if (levelContext?.levelId && Array.isArray(doc.levels)) return doc.levels.includes(levelContext.levelId);
+		if (!levelsActive) return true;
+		const elevation = levelContext?.elevation ?? 0;
+		if (type === "Wall") {
+			const bottom = doc.flags?.["wall-height"]?.bottom ?? 0;
+			return Math.abs(bottom - elevation) < ELEVATION_TOLERANCE;
+		} else {
+			const elev = doc.elevation ?? 0;
+			return Math.abs(elev - elevation) < ELEVATION_TOLERANCE;
+		}
+	};
 
-    // Tiles
-    const tileIds = scene.tiles.filter(t => isDungeonTile(t) && matchesLevel(t, "Tile")).map(t => t.id);
-    if (tileIds.length > 0) await scene.deleteEmbeddedDocuments("Tile", tileIds);
+	// Tiles
+	const tileIds = scene.tiles.filter(t => isDungeonTile(t) && matchesLevel(t, "Tile")).map(t => t.id);
+	if (tileIds.length > 0) await scene.deleteEmbeddedDocuments("Tile", tileIds);
 
-    // Walls (logical walls + doors)
-    const wallIds = scene.walls.filter(w => isDungeonWall(w) && matchesLevel(w, "Wall")).map(w => w.id);
-    if (wallIds.length > 0) await scene.deleteEmbeddedDocuments("Wall", wallIds);
+	// Walls (logical walls + doors)
+	const wallIds = scene.walls.filter(w => isDungeonWall(w) && matchesLevel(w, "Wall")).map(w => w.id);
+	if (wallIds.length > 0) await scene.deleteEmbeddedDocuments("Wall", wallIds);
 
-    // Drawings (wall visuals)
-    const drawingIds = scene.drawings.filter(d => isDungeonDrawing(d) && matchesLevel(d, "Drawing")).map(d => d.id);
-    if (drawingIds.length > 0) await scene.deleteEmbeddedDocuments("Drawing", drawingIds);
+	// Drawings (wall visuals)
+	const drawingIds = scene.drawings.filter(d => isDungeonDrawing(d) && matchesLevel(d, "Drawing")).map(d => d.id);
+	if (drawingIds.length > 0) await scene.deleteEmbeddedDocuments("Drawing", drawingIds);
 
-    // Ambient lights (generated decor)
-    const lightIds = scene.lights.filter(l => isDungeonLight(l) && matchesLevel(l, "AmbientLight")).map(l => l.id);
-    if (lightIds.length > 0) await scene.deleteEmbeddedDocuments("AmbientLight", lightIds);
+	// Ambient lights (generated decor)
+	const lightIds = scene.lights.filter(l => isDungeonLight(l) && matchesLevel(l, "AmbientLight")).map(l => l.id);
+	if (lightIds.length > 0) await scene.deleteEmbeddedDocuments("AmbientLight", lightIds);
 }
 
 export async function configureScene(scene) {
-    await scene.update({
-        "grid.size": GRID_SIZE,
-        "grid.type": 1,
-        "backgroundColor": "#1a1a1a"
-    });
+	await scene.update({
+		"grid.size": GRID_SIZE,
+		"grid.type": 1,
+		"backgroundColor": "#1a1a1a",
+	});
 }
 
 export function fitToContent(floors, gridSize, padding) {
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+	let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity;
 
-    for (const coord of floors) {
-        const [gx, gy] = coord.split(',').map(Number);
-        if (gx < minX) minX = gx;
-        if (gy < minY) minY = gy;
-        if (gx + 1 > maxX) maxX = gx + 1;
-        if (gy + 1 > maxY) maxY = gy + 1;
-    }
+	for (const coord of floors) {
+		const [gx, gy] = coord.split(",").map(Number);
+		if (gx < minX) minX = gx;
+		if (gy < minY) minY = gy;
+		if (gx + 1 > maxX) maxX = gx + 1;
+		if (gy + 1 > maxY) maxY = gy + 1;
+	}
 
-    const offsetX = -minX + Math.ceil(padding / gridSize);
-    const offsetY = -minY + Math.ceil(padding / gridSize);
-    const sceneWidth = (maxX - minX) * gridSize + padding * 2;
-    const sceneHeight = (maxY - minY) * gridSize + padding * 2;
+	const offsetX = -minX + Math.ceil(padding / gridSize);
+	const offsetY = -minY + Math.ceil(padding / gridSize);
+	const sceneWidth = (maxX - minX) * gridSize + padding * 2;
+	const sceneHeight = (maxY - minY) * gridSize + padding * 2;
 
-    return {
-        offset: { x: offsetX, y: offsetY },
-        width: sceneWidth,
-        height: sceneHeight
-    };
+	return {
+		offset: { x: offsetX, y: offsetY },
+		width: sceneWidth,
+		height: sceneHeight,
+	};
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1134,26 +1134,26 @@ export function fitToContent(floors, gridSize, padding) {
 // ═══════════════════════════════════════════════════════
 
 export async function renderFloorTilesWithElevation(scene, floors, rng, offset, floorTexture, createWithElevation, floorResolver = null) {
-    const gridSize = GRID_SIZE;
-    const tileDocs = [];
+	const gridSize = GRID_SIZE;
+	const tileDocs = [];
 
-    for (const coord of floors) {
-        const [gx, gy] = coord.split(',').map(Number);
-        const tex = floorResolver ? (floorResolver(gx, gy) || floorTexture) : floorTexture;
-        tileDocs.push({
-            texture: makeTopLeftTileTexture(tex),
-            x: (gx + offset.x) * gridSize,
-            y: (gy + offset.y) * gridSize,
-            width: gridSize,
-            height: gridSize,
-            sort: 0,
-            flags: {
-                [MODULE_ID]: { dungeonFloor: true }
-            }
-        });
-    }
+	for (const coord of floors) {
+		const [gx, gy] = coord.split(",").map(Number);
+		const tex = floorResolver ? (floorResolver(gx, gy) || floorTexture) : floorTexture;
+		tileDocs.push({
+			texture: makeTopLeftTileTexture(tex),
+			x: (gx + offset.x) * gridSize,
+			y: (gy + offset.y) * gridSize,
+			width: gridSize,
+			height: gridSize,
+			sort: 0,
+			flags: {
+				[MODULE_ID]: { dungeonFloor: true },
+			},
+		});
+	}
 
-    await createWithElevation("Tile", tileDocs);
+	await createWithElevation("Tile", tileDocs);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1161,471 +1161,471 @@ export async function renderFloorTilesWithElevation(scene, floors, rng, offset, 
 // ═══════════════════════════════════════════════════════
 
 export async function generateDungeon(config) {
-    const scene = canvas.scene;
-    if (!scene) {
-        ui.notifications.error("SDX | No active scene found.");
-        return;
-    }
+	const scene = canvas.scene;
+	if (!scene) {
+		ui.notifications.error("SDX | No active scene found.");
+		return;
+	}
 
-    if (!game.user.isGM) {
-        ui.notifications.error("SDX | Only the GM can generate dungeons.");
-        return;
-    }
+	if (!game.user.isGM) {
+		ui.notifications.error("SDX | Only the GM can generate dungeons.");
+		return;
+	}
 
-    // Hard caps to prevent abuse / accidents
-    const safeConfig = {
-        ...config,
-        roomCount: Math.min(Math.max(1, config.roomCount ?? 10), 50),
-        stairs:    Math.min(Math.max(0, config.stairs ?? 0), 10),
-        stairsDown:Math.min(Math.max(0, config.stairsDown ?? 0), 10),
-        clutter:   Math.min(Math.max(0, config.clutter ?? 0), 20),
-        decorLights: Math.min(Math.max(0, config.decorLights ?? 0), 4),
-        decorTiles: config.decorTiles ?? true,
-        density:   Math.min(Math.max(0, config.density ?? 0.8), 1),
-        // string fields: validate or fall back
-        wallColor: /^#[0-9a-f]{6}$/i.test(config.wallColor) ? config.wallColor : "#5C3D3D",
-        seed:      typeof config.seed === "string" ? config.seed.slice(0, 100) : "default",
-        style:     ["cave", "mixed", ...ROTJS_STYLES].includes(config.style) ? config.style : "rooms",
-        biomes:    !!config.biomes,
-    };
+	// Hard caps to prevent abuse / accidents
+	const safeConfig = {
+		...config,
+		roomCount: Math.min(Math.max(1, config.roomCount ?? 10), 50),
+		stairs:    Math.min(Math.max(0, config.stairs ?? 0), 10),
+		stairsDown:Math.min(Math.max(0, config.stairsDown ?? 0), 10),
+		clutter:   Math.min(Math.max(0, config.clutter ?? 0), 20),
+		decorLights: Math.min(Math.max(0, config.decorLights ?? 0), 4),
+		decorTiles: config.decorTiles ?? true,
+		density:   Math.min(Math.max(0, config.density ?? 0.8), 1),
+		// string fields: validate or fall back
+		wallColor: /^#[0-9a-f]{6}$/i.test(config.wallColor) ? config.wallColor : "#5C3D3D",
+		seed:      typeof config.seed === "string" ? config.seed.slice(0, 100) : "default",
+		style:     ["cave", "mixed", ...ROTJS_STYLES].includes(config.style) ? config.style : "rooms",
+		biomes:    !!config.biomes,
+	};
 
-    const {
-        seed = "abc123",
-        roomCount = 10,
-        density = 0.8,
-        branching = 0.5,
-        roomSizeBias = 0.5,
-        symmetry = true,
-        stairs = 0,
-        stairsDown = 0,
-        clutter = 0,
-        decorLights = 0,
-        decorTiles = true,
-        useTexture = false,
-        wallShadows = false,
-        wallColor = "#5C3D3D",
-        wallThickness = 20,
-        style = "rooms",
-        biomes = false
-    } = safeConfig;
-    const isCave = style === "cave";
-    const isMixed = style === "mixed";
-    const isRotjs = ROTJS_STYLES.includes(style);
-    const useBiomes = biomes && !isCave; // biomes theme rooms; pure cave is one biome
+	const {
+		seed = "abc123",
+		roomCount = 10,
+		density = 0.8,
+		branching = 0.5,
+		roomSizeBias = 0.5,
+		symmetry = true,
+		stairs = 0,
+		stairsDown = 0,
+		clutter = 0,
+		decorLights = 0,
+		decorTiles = true,
+		useTexture = false,
+		wallShadows = false,
+		wallColor = "#5C3D3D",
+		wallThickness = 20,
+		style = "rooms",
+		biomes = false,
+	} = safeConfig;
+	const isCave = style === "cave";
+	const isMixed = style === "mixed";
+	const isRotjs = ROTJS_STYLES.includes(style);
+	const useBiomes = biomes && !isCave; // biomes theme rooms; pure cave is one biome
 
-    // Validate stairs fit in requested rooms (exclude start room)
-    const totalStairs = stairs + stairsDown;
-    if (totalStairs > roomCount - 1) {
-        ui.notifications.warn(`SDX | Too many stairs (${totalStairs}) for ${roomCount} rooms. Reduce stairs or add more rooms.`);
-        return;
-    }
+	// Validate stairs fit in requested rooms (exclude start room)
+	const totalStairs = stairs + stairsDown;
+	if (totalStairs > roomCount - 1) {
+		ui.notifications.warn(`SDX | Too many stairs (${totalStairs}) for ${roomCount} rooms. Reduce stairs or add more rooms.`);
+		return;
+	}
 
-    // Detect Foundry v14 native levels and/or third-party Levels module
-    const levelsActive = game.modules.get("levels")?.active ?? false;
-    const levelContext = getSceneLevelContext(scene);
-    let elevation = levelContext.elevation;
-    let wallHeightBottom = levelContext.elevation;
-    let wallHeightTop = levelContext.rangeTop;
+	// Detect Foundry v14 native levels and/or third-party Levels module
+	const levelsActive = game.modules.get("levels")?.active ?? false;
+	const levelContext = getSceneLevelContext(scene);
+	let elevation = levelContext.elevation;
+	let wallHeightBottom = levelContext.elevation;
+	let wallHeightTop = levelContext.rangeTop;
 
-    if (levelsActive && !levelContext.levelId) {
-        // Levels module active but no native level — use probe tile for reliable elevation
-        try {
-            const probe = await scene.createEmbeddedDocuments("Tile", [{
-                texture: makeTopLeftTileTexture(`modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.webp`),
-                x: 0, y: 0, width: GRID_SIZE, height: GRID_SIZE,
-                hidden: true,
-                flags: { [MODULE_ID]: { probe: true } }
-            }]);
-            if (probe?.length > 0) {
-                elevation = probe[0].elevation ?? 0;
-                await scene.deleteEmbeddedDocuments("Tile", [probe[0].id]);
-            }
-        } catch (e) {
-            elevation = getCurrentElevation();
-        }
-        wallHeightBottom = elevation;
-        wallHeightTop = elevation + LEVEL_HEIGHT - 1;
-        console.log(`${MODULE_ID} | Generator: Levels detected, elevation ${elevation} (${wallHeightBottom}/${wallHeightTop})`);
-    } else if (levelContext.levelId) {
-        console.log(`${MODULE_ID} | Generator: Foundry level detected, ${levelContext.levelId} elevation ${elevation} (${wallHeightBottom}/${wallHeightTop})`);
-    }
+	if (levelsActive && !levelContext.levelId) {
+		// Levels module active but no native level — use probe tile for reliable elevation
+		try {
+			const probe = await scene.createEmbeddedDocuments("Tile", [{
+				texture: makeTopLeftTileTexture(`modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.webp`),
+				x: 0, y: 0, width: GRID_SIZE, height: GRID_SIZE,
+				hidden: true,
+				flags: { [MODULE_ID]: { probe: true } },
+			}]);
+			if (probe?.length > 0) {
+				elevation = probe[0].elevation ?? 0;
+				await scene.deleteEmbeddedDocuments("Tile", [probe[0].id]);
+			}
+		} catch (e) {
+			elevation = getCurrentElevation();
+		}
+		wallHeightBottom = elevation;
+		wallHeightTop = elevation + LEVEL_HEIGHT - 1;
+		console.log(`${MODULE_ID} | Generator: Levels detected, elevation ${elevation} (${wallHeightBottom}/${wallHeightTop})`);
+	} else if (levelContext.levelId) {
+		console.log(`${MODULE_ID} | Generator: Foundry level detected, ${levelContext.levelId} elevation ${elevation} (${wallHeightBottom}/${wallHeightTop})`);
+	}
 
-    ui.notifications.info(`SDX | Generating dungeon${(levelsActive || levelContext.levelId) ? ` at level ${elevation}` : ""}...`);
+	ui.notifications.info(`SDX | Generating dungeon${(levelsActive || levelContext.levelId) ? ` at level ${elevation}` : ""}...`);
 
-    try {
-        // 1. Clear only dungeon-generated content at current level
-        await clearSceneAtLevel(scene, levelContext, levelsActive || !!levelContext.levelId);
+	try {
+		// 1. Clear only dungeon-generated content at current level
+		await clearSceneAtLevel(scene, levelContext, levelsActive || !!levelContext.levelId);
 
-        // 2. Configure scene
-        await configureScene(scene);
+		// 2. Configure scene
+		await configureScene(scene);
 
-        // 3. Create seeded RNG
-        const rng = seedrandom(seed);
+		// 3. Create seeded RNG
+		const rng = seedrandom(seed);
 
-        // 4. Generate layout (rooms-and-corridors, organic cave, or mixed)
-        const roomParams = { roomCount, density, linearity: 1 - branching, roomSizeBias, symmetry };
-        const layout = isCave
-            ? generateCaveLayout({ roomCount, density }, rng)
-            : isMixed
-                ? generateMixedLayout(roomParams, rng)
-                : isRotjs
-                    ? await rotjsLayout(style, { roomCount, density }, seed)
-                    : generateLayout(roomParams, rng);
+		// 4. Generate layout (rooms-and-corridors, organic cave, or mixed)
+		const roomParams = { roomCount, density, linearity: 1 - branching, roomSizeBias, symmetry };
+		const layout = isCave
+			? generateCaveLayout({ roomCount, density }, rng)
+			: isMixed
+				? generateMixedLayout(roomParams, rng)
+				: isRotjs
+					? await rotjsLayout(style, { roomCount, density }, seed)
+					: generateLayout(roomParams, rng);
 
-        // 5. Fit scene to content (expand only if Levels is active to preserve other levels)
-        let { offset, width, height } = fitToContent(layout.floors, GRID_SIZE, 300);
-        if (levelsActive) {
-            const newWidth = Math.max(scene.width, width);
-            const newHeight = Math.max(scene.height, height);
-            await scene.update({ width: newWidth, height: newHeight });
-        } else {
-            await scene.update({ width, height });
-        }
+		// 5. Fit scene to content (expand only if Levels is active to preserve other levels)
+		let { offset, width, height } = fitToContent(layout.floors, GRID_SIZE, 300);
+		if (levelsActive) {
+			const newWidth = Math.max(scene.width, width);
+			const newHeight = Math.max(scene.height, height);
+			await scene.update({ width: newWidth, height: newHeight });
+		} else {
+			await scene.update({ width, height });
+		}
 
-        // Ensure dungeon content stays inside the scene interior with a 1-cell gap on all sides.
-        // Wall visuals extend wallThickness px outward from floor tiles, so floor tiles must
-        // start at least (scenePadX + GRID_SIZE + wallThickness) px from the canvas corner.
-        {
-            const scenePadX = Math.ceil(scene.width * scene.padding / GRID_SIZE) * GRID_SIZE;
-            const scenePadY = Math.ceil(scene.height * scene.padding / GRID_SIZE) * GRID_SIZE;
-            const minStartX = scenePadX + GRID_SIZE + wallThickness;
-            const minStartY = scenePadY + GRID_SIZE + wallThickness;
-            const extraX = Math.max(0, Math.ceil((minStartX - 300) / GRID_SIZE));
-            const extraY = Math.max(0, Math.ceil((minStartY - 300) / GRID_SIZE));
-            if (extraX > 0 || extraY > 0) {
-                offset = { x: offset.x + extraX, y: offset.y + extraY };
-                console.log(`${MODULE_ID} | Scene padding adjustment: +${extraX},+${extraY} cells (scenePad ${scenePadX}x${scenePadY}px)`);
-            }
-        }
+		// Ensure dungeon content stays inside the scene interior with a 1-cell gap on all sides.
+		// Wall visuals extend wallThickness px outward from floor tiles, so floor tiles must
+		// start at least (scenePadX + GRID_SIZE + wallThickness) px from the canvas corner.
+		{
+			const scenePadX = Math.ceil(scene.width * scene.padding / GRID_SIZE) * GRID_SIZE;
+			const scenePadY = Math.ceil(scene.height * scene.padding / GRID_SIZE) * GRID_SIZE;
+			const minStartX = scenePadX + GRID_SIZE + wallThickness;
+			const minStartY = scenePadY + GRID_SIZE + wallThickness;
+			const extraX = Math.max(0, Math.ceil((minStartX - 300) / GRID_SIZE));
+			const extraY = Math.max(0, Math.ceil((minStartY - 300) / GRID_SIZE));
+			if (extraX > 0 || extraY > 0) {
+				offset = { x: offset.x + extraX, y: offset.y + extraY };
+				console.log(`${MODULE_ID} | Scene padding adjustment: +${extraX},+${extraY} cells (scenePad ${scenePadX}x${scenePadY}px)`);
+			}
+		}
 
-        // Scene size changes can briefly leave canvas layers without display containers.
-        // Wait until all required layers are ready before creating embedded documents.
-        if (!(await waitForDungeonCanvasReady(scene))) {
-            console.warn(`${MODULE_ID} | Dungeon generation continuing before all canvas layers reported ready.`);
-        }
+		// Scene size changes can briefly leave canvas layers without display containers.
+		// Wait until all required layers are ready before creating embedded documents.
+		if (!(await waitForDungeonCanvasReady(scene))) {
+			console.warn(`${MODULE_ID} | Dungeon generation continuing before all canvas layers reported ready.`);
+		}
 
-        // 6. Get selected textures
-        const floorTexture = getSelectedFloorTile() || `modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.webp`;
-        const wallTilePath = getSelectedWallTile();
+		// 6. Get selected textures
+		const floorTexture = getSelectedFloorTile() || `modules/${MODULE_ID}/assets/Dungeon/floor_tiles/stone_floor_00.webp`;
+		const wallTilePath = getSelectedWallTile();
 
-        // Helper: create documents in batches, apply level data (elevation + levelId), then
-        // post-update wall-height/levels flags so the Levels module reads them correctly.
-        async function createWithElevation(type, docs, chunkSize = 100) {
-            for (let i = 0; i < docs.length; i += chunkSize) {
-                if (!(await waitForDocumentLayerReady(type, scene.id))) {
-                    throw new Error(`Canvas ${type} layer was not ready for dungeon generation.`);
-                }
-                const batch = docs.slice(i, i + chunkSize).map(doc => applySceneLevelData(doc, type, levelContext));
-                const created = await scene.createEmbeddedDocuments(type, batch);
-                if ((levelsActive || levelContext.levelId) && created.length > 0) {
-                    if (type === "Wall") {
-                        // Walls use absolute Z range — `wall-height.bottom`/`top` IS the slab.
-                        const updates = created.map(w => ({
-                            _id: w.id,
-                            "flags.wall-height.bottom": wallHeightBottom,
-                            "flags.wall-height.top": wallHeightTop
-                        }));
-                        await scene.updateEmbeddedDocuments("Wall", updates);
-                    } else if (type === "Tile") {
-                        // Tiles sit at the floor of their assigned level (elevation 0);
-                        // level membership is encoded by `doc.levels = [levelId]` already.
-                        // Writing the level's bottom into `elevation` double-encodes the
-                        // slab and renders the tile at 2× the intended height.
-                        const updates = created.map(t => ({
-                            _id: t.id,
-                            elevation: 0,
-                            "flags.levels.rangeTop": wallHeightTop
-                        }));
-                        await scene.updateEmbeddedDocuments("Tile", updates);
-                    } else if (type === "Drawing") {
-                        // Same reasoning as Tile — base-of-level elevation.
-                        const updates = created.map(d => ({
-                            _id: d.id,
-                            elevation: 0,
-                            "flags.levels.rangeTop": wallHeightTop
-                        }));
-                        await scene.updateEmbeddedDocuments("Drawing", updates);
-                    }
-                }
-            }
-        }
+		// Helper: create documents in batches, apply level data (elevation + levelId), then
+		// post-update wall-height/levels flags so the Levels module reads them correctly.
+		async function createWithElevation(type, docs, chunkSize = 100) {
+			for (let i = 0; i < docs.length; i += chunkSize) {
+				if (!(await waitForDocumentLayerReady(type, scene.id))) {
+					throw new Error(`Canvas ${type} layer was not ready for dungeon generation.`);
+				}
+				const batch = docs.slice(i, i + chunkSize).map(doc => applySceneLevelData(doc, type, levelContext));
+				const created = await scene.createEmbeddedDocuments(type, batch);
+				if ((levelsActive || levelContext.levelId) && created.length > 0) {
+					if (type === "Wall") {
+						// Walls use absolute Z range — `wall-height.bottom`/`top` IS the slab.
+						const updates = created.map(w => ({
+							_id: w.id,
+							"flags.wall-height.bottom": wallHeightBottom,
+							"flags.wall-height.top": wallHeightTop,
+						}));
+						await scene.updateEmbeddedDocuments("Wall", updates);
+					} else if (type === "Tile") {
+						// Tiles sit at the floor of their assigned level (elevation 0);
+						// level membership is encoded by `doc.levels = [levelId]` already.
+						// Writing the level's bottom into `elevation` double-encodes the
+						// slab and renders the tile at 2× the intended height.
+						const updates = created.map(t => ({
+							_id: t.id,
+							elevation: 0,
+							"flags.levels.rangeTop": wallHeightTop,
+						}));
+						await scene.updateEmbeddedDocuments("Tile", updates);
+					} else if (type === "Drawing") {
+						// Same reasoning as Tile — base-of-level elevation.
+						const updates = created.map(d => ({
+							_id: d.id,
+							elevation: 0,
+							"flags.levels.rangeTop": wallHeightTop,
+						}));
+						await scene.updateEmbeddedDocuments("Drawing", updates);
+					}
+				}
+			}
+		}
 
-        // 6b. Biomes: assign a biome per room + theme floors. Props are placed
-        //     later (step 13b) so they share the occupancy map with stairs.
-        let biomeMap = null, floorResolver = null;
-        if (useBiomes && layout.roomData?.length) {
-            biomeMap = assignBiomes(layout.roomData, rng, getEnabledBiomeKeys());
-            const cellFloor = buildCellFloorMap(layout.roomData, biomeMap, layout.floors);
-            floorResolver = (gx, gy) => cellFloor.get(`${gx},${gy}`) || floorTexture;
-        }
+		// 6b. Biomes: assign a biome per room + theme floors. Props are placed
+		//     later (step 13b) so they share the occupancy map with stairs.
+		let biomeMap = null; let floorResolver = null;
+		if (useBiomes && layout.roomData?.length) {
+			biomeMap = assignBiomes(layout.roomData, rng, getEnabledBiomeKeys());
+			const cellFloor = buildCellFloorMap(layout.roomData, biomeMap, layout.floors);
+			floorResolver = (gx, gy) => cellFloor.get(`${gx},${gy}`) || floorTexture;
+		}
 
-        // 7. Render floor tiles (per-biome textures when biomes are on)
-        await renderFloorTilesWithElevation(scene, layout.floors, rng, offset, floorTexture, createWithElevation, floorResolver);
+		// 7. Render floor tiles (per-biome textures when biomes are on)
+		await renderFloorTilesWithElevation(scene, layout.floors, rng, offset, floorTexture, createWithElevation, floorResolver);
 
-        // 8 + 9. Generate walls + wall visuals. Caves trace/smooth the floor
-        // boundary into curved segments; rooms use the axis-aligned cell edges.
-        let wallsData, drawingsData;
-        const caveWallThickness = Math.max(wallThickness, 45);
-        if (isMixed) {
-            // ONE unified wall boundary around the whole merged region. Cave
-            // segments are smoothed, room segments stay sharp. A single boundary
-            // means no two-system seam and no parallel double walls.
-            const mixThickness = Math.max(wallThickness, 30);
-            const mixedLoops = buildMixedLoops(layout.floors, layout._caveCells, offset, GRID_SIZE);
-            wallsData = generateCurvedWalls(mixedLoops, mixThickness);
-            drawingsData = generateCurvedWallVisuals(mixedLoops, { useTexture, wallColor, wallThickness: mixThickness, wallTilePath });
-            console.log(`${MODULE_ID} | Mixed: ${mixedLoops.length} unified loop(s), ${wallsData.length} wall segments`);
-        } else if (isCave) {
-            const caveLoops = buildCaveLoops(layout.floors, offset, GRID_SIZE);
-            // Caves use a chunkier wall so the rocky band covers the square
-            // floor-cell fringe and reads as a smooth cavern edge.
-            wallsData = generateCurvedWalls(caveLoops, caveWallThickness);
-            drawingsData = generateCurvedWallVisuals(caveLoops, {
-                useTexture, wallColor, wallThickness: caveWallThickness, wallTilePath
-            });
-            console.log(`${MODULE_ID} | Cave: ${caveLoops.length} boundary loop(s), ${wallsData.length} wall segments`);
-        } else {
-            wallsData = generateWalls(layout.floors, offset, layout.entranceEdges, wallThickness);
-            drawingsData = generateWallVisuals(layout.floors, offset, {
-                useTexture,
-                wallColor,
-                wallThickness,
-                wallTilePath
-            }, layout.entranceEdges);
-        }
+		// 8 + 9. Generate walls + wall visuals. Caves trace/smooth the floor
+		// boundary into curved segments; rooms use the axis-aligned cell edges.
+		let wallsData; let drawingsData;
+		const caveWallThickness = Math.max(wallThickness, 45);
+		if (isMixed) {
+			// ONE unified wall boundary around the whole merged region. Cave
+			// segments are smoothed, room segments stay sharp. A single boundary
+			// means no two-system seam and no parallel double walls.
+			const mixThickness = Math.max(wallThickness, 30);
+			const mixedLoops = buildMixedLoops(layout.floors, layout._caveCells, offset, GRID_SIZE);
+			wallsData = generateCurvedWalls(mixedLoops, mixThickness);
+			drawingsData = generateCurvedWallVisuals(mixedLoops, { useTexture, wallColor, wallThickness: mixThickness, wallTilePath });
+			console.log(`${MODULE_ID} | Mixed: ${mixedLoops.length} unified loop(s), ${wallsData.length} wall segments`);
+		} else if (isCave) {
+			const caveLoops = buildCaveLoops(layout.floors, offset, GRID_SIZE);
+			// Caves use a chunkier wall so the rocky band covers the square
+			// floor-cell fringe and reads as a smooth cavern edge.
+			wallsData = generateCurvedWalls(caveLoops, caveWallThickness);
+			drawingsData = generateCurvedWallVisuals(caveLoops, {
+				useTexture, wallColor, wallThickness: caveWallThickness, wallTilePath,
+			});
+			console.log(`${MODULE_ID} | Cave: ${caveLoops.length} boundary loop(s), ${wallsData.length} wall segments`);
+		} else {
+			wallsData = generateWalls(layout.floors, offset, layout.entranceEdges, wallThickness);
+			drawingsData = generateWallVisuals(layout.floors, offset, {
+				useTexture,
+				wallColor,
+				wallThickness,
+				wallTilePath,
+			}, layout.entranceEdges);
+		}
 
-        // 10. Generate doors (using selected door tile for swing animation).
-        // Drop orphaned doors: a real doorway must have a wall (non-floor) on
-        // each side of the opening. In mixed maps the cave can erode the wall a
-        // room-generator door was set into, leaving it floating in open floor.
-        const doorTilePath = getSelectedDoorTile();
-        const doorWallsIntact = (d) => {
-            const ns = (d.dir === Direction.NORTH || d.dir === Direction.SOUTH);
-            const f1 = ns ? `${d.x - 1},${d.y}` : `${d.x},${d.y - 1}`;
-            const f2 = ns ? `${d.x + 1},${d.y}` : `${d.x},${d.y + 1}`;
-            return !layout.floors.has(f1) && !layout.floors.has(f2);
-        };
-        const validDoors = layout.doorPositions.filter(doorWallsIntact);
-        const doorsData = generateDoors(validDoors, offset, wallThickness, doorTilePath);
+		// 10. Generate doors (using selected door tile for swing animation).
+		// Drop orphaned doors: a real doorway must have a wall (non-floor) on
+		// each side of the opening. In mixed maps the cave can erode the wall a
+		// room-generator door was set into, leaving it floating in open floor.
+		const doorTilePath = getSelectedDoorTile();
+		const doorWallsIntact = (d) => {
+			const ns = (d.dir === Direction.NORTH || d.dir === Direction.SOUTH);
+			const f1 = ns ? `${d.x - 1},${d.y}` : `${d.x},${d.y - 1}`;
+			const f2 = ns ? `${d.x + 1},${d.y}` : `${d.x},${d.y + 1}`;
+			return !layout.floors.has(f1) && !layout.floors.has(f2);
+		};
+		const validDoors = layout.doorPositions.filter(doorWallsIntact);
+		const doorsData = generateDoors(validDoors, offset, wallThickness, doorTilePath);
 
-        // 11. Create all walls (logical + doors)
-        const allWalls = [...wallsData, ...doorsData];
-        await createWithElevation("Wall", allWalls);
+		// 11. Create all walls (logical + doors)
+		const allWalls = [...wallsData, ...doorsData];
+		await createWithElevation("Wall", allWalls);
 
-        // 12. Create all drawings (wall visuals)
-        await createWithElevation("Drawing", drawingsData);
+		// 12. Create all drawings (wall visuals)
+		await createWithElevation("Drawing", drawingsData);
 
-        // 12b. Apply TokenMagic dropshadow2 to wall drawings if Wall Shadows is enabled
-        if (wallShadows && window.TokenMagic) {
-            const shadowParams = [{
-                "filterType": "shadow",
-                "filterId": "dropshadow2",
-                "rotation": 0,
-                "distance": 0,
-                "color": 0x000000,
-                "alpha": 1,
-                "shadowOnly": false,
-                "blur": 5,
-                "quality": 5,
-                "padding": 20
-            }];
-            const wallDrawings = canvas.drawings.placeables.filter(d => {
-                if (!d.document.flags?.[MODULE_ID]?.dungeonWall) return false;
-                if (levelsActive || levelContext.levelId) return Math.abs((d.document.elevation ?? 0) - elevation) < ELEVATION_TOLERANCE;
-                return true;
-            });
-            for (const drawing of wallDrawings) {
-                try {
-                    await TokenMagic.addUpdateFilters(drawing.document, shadowParams);
-                } catch (err) {
-                    console.warn(`${MODULE_ID} | Wall shadow effect failed:`, err);
-                }
-            }
-        }
+		// 12b. Apply TokenMagic dropshadow2 to wall drawings if Wall Shadows is enabled
+		if (wallShadows && window.TokenMagic) {
+			const shadowParams = [{
+				"filterType": "shadow",
+				"filterId": "dropshadow2",
+				"rotation": 0,
+				"distance": 0,
+				"color": 0x000000,
+				"alpha": 1,
+				"shadowOnly": false,
+				"blur": 5,
+				"quality": 5,
+				"padding": 20,
+			}];
+			const wallDrawings = canvas.drawings.placeables.filter(d => {
+				if (!d.document.flags?.[MODULE_ID]?.dungeonWall) return false;
+				if (levelsActive || levelContext.levelId) return Math.abs((d.document.elevation ?? 0) - elevation) < ELEVATION_TOLERANCE;
+				return true;
+			});
+			for (const drawing of wallDrawings) {
+				try {
+					await TokenMagic.addUpdateFilters(drawing.document, shadowParams);
+				} catch (err) {
+					console.warn(`${MODULE_ID} | Wall shadow effect failed:`, err);
+				}
+			}
+		}
 
-        // 13. Place stairs tiles in random rooms
-        const placedStairsUp = [];
-        const placedStairsDown = [];
-        const occupancy = createDungeonOccupancy(layout);
-        if ((stairs > 0 || stairsDown > 0) && layout.roomData.length > 0) {
-            const stairsTiles = [];
-            const usedPositions = new Set(); // track "gx,gy" to avoid overlap
+		// 13. Place stairs tiles in random rooms
+		const placedStairsUp = [];
+		const placedStairsDown = [];
+		const occupancy = createDungeonOccupancy(layout);
+		if ((stairs > 0 || stairsDown > 0) && layout.roomData.length > 0) {
+			const stairsTiles = [];
+			const usedPositions = new Set(); // track "gx,gy" to avoid overlap
 
-            // Shuffle non-start rooms
-            const candidateRooms = layout.roomData.filter(r => !r.isStart);
-            for (let i = candidateRooms.length - 1; i > 0; i--) {
-                const j = Math.floor(rng() * (i + 1));
-                [candidateRooms[i], candidateRooms[j]] = [candidateRooms[j], candidateRooms[i]];
-            }
+			// Shuffle non-start rooms
+			const candidateRooms = layout.roomData.filter(r => !r.isStart);
+			for (let i = candidateRooms.length - 1; i > 0; i--) {
+				const j = Math.floor(rng() * (i + 1));
+				[candidateRooms[i], candidateRooms[j]] = [candidateRooms[j], candidateRooms[i]];
+			}
 
-            let roomIdx = 0;
+			let roomIdx = 0;
 
-            const placeStairs = (count, textureName, flagKey, results) => {
-                for (let n = 0; n < count && roomIdx < candidateRooms.length; n++, roomIdx++) {
-                    const room = candidateRooms[roomIdx].room;
-                    const interiorLeft = room.left + 1;
-                    const interiorTop = room.top + 1;
-                    const interiorW = room.w - 2;
-                    const interiorH = room.h - 2;
-                    if (interiorW < 1 || interiorH < 1) { n--; continue; }
-                    let sx, sy, key;
-                    let tries = 0;
-                    do {
-                        sx = interiorLeft + Math.floor(rng() * interiorW);
-                        sy = interiorTop + Math.floor(rng() * interiorH);
-                        key = `${sx},${sy}`;
-                        tries++;
-                    } while ((usedPositions.has(key) || !occupancy.canPlaceRect({ gx: sx, gy: sy, cellsW: 1, cellsH: 1 }, { padding: 0.25, doorPadding: 0.5 })) && tries < 10);
-                    if (usedPositions.has(key) || !occupancy.canPlaceRect({ gx: sx, gy: sy, cellsW: 1, cellsH: 1 }, { padding: 0.25, doorPadding: 0.5 })) continue;
-                    usedPositions.add(key);
-                    occupancy.occupyRect({ gx: sx, gy: sy, cellsW: 1, cellsH: 1 }, { padding: 0.25, kind: flagKey });
+			const placeStairs = (count, textureName, flagKey, results) => {
+				for (let n = 0; n < count && roomIdx < candidateRooms.length; n++, roomIdx++) {
+					const room = candidateRooms[roomIdx].room;
+					const interiorLeft = room.left + 1;
+					const interiorTop = room.top + 1;
+					const interiorW = room.w - 2;
+					const interiorH = room.h - 2;
+					if (interiorW < 1 || interiorH < 1) { n--; continue; }
+					let sx; let sy; let key;
+					let tries = 0;
+					do {
+						sx = interiorLeft + Math.floor(rng() * interiorW);
+						sy = interiorTop + Math.floor(rng() * interiorH);
+						key = `${sx},${sy}`;
+						tries++;
+					} while ((usedPositions.has(key) || !occupancy.canPlaceRect({ gx: sx, gy: sy, cellsW: 1, cellsH: 1 }, { padding: 0.25, doorPadding: 0.5 })) && tries < 10);
+					if (usedPositions.has(key) || !occupancy.canPlaceRect({ gx: sx, gy: sy, cellsW: 1, cellsH: 1 }, { padding: 0.25, doorPadding: 0.5 })) continue;
+					usedPositions.add(key);
+					occupancy.occupyRect({ gx: sx, gy: sy, cellsW: 1, cellsH: 1 }, { padding: 0.25, kind: flagKey });
 
-                    const gridX = sx + offset.x;
-                    const gridY = sy + offset.y;
-                    const x = gridX * GRID_SIZE + (GRID_SIZE - 50) / 2;
-                    const y = gridY * GRID_SIZE + (GRID_SIZE - 50) / 2;
+					const gridX = sx + offset.x;
+					const gridY = sy + offset.y;
+					const x = gridX * GRID_SIZE + (GRID_SIZE - 50) / 2;
+					const y = gridY * GRID_SIZE + (GRID_SIZE - 50) / 2;
 
-                    stairsTiles.push({
-                        texture: makeTopLeftTileTexture(`modules/${MODULE_ID}/assets/Dungeon/${textureName}`),
-                        x, y,
-                        width: 50,
-                        height: 50,
-                        sort: 2,
-                        flags: { [MODULE_ID]: { [flagKey]: true } }
-                    });
+					stairsTiles.push({
+						texture: makeTopLeftTileTexture(`modules/${MODULE_ID}/assets/Dungeon/${textureName}`),
+						x, y,
+						width: 50,
+						height: 50,
+						sort: 2,
+						flags: { [MODULE_ID]: { [flagKey]: true } },
+					});
 
-                    results.push({ x, y, gridX, gridY });
-                }
-            };
+					results.push({ x, y, gridX, gridY });
+				}
+			};
 
-            placeStairs(stairs, "stairs.webp", "dungeonStairs", placedStairsUp);
-            placeStairs(stairsDown, "stairsdown.webp", "dungeonStairsDown", placedStairsDown);
+			placeStairs(stairs, "stairs.webp", "dungeonStairs", placedStairsUp);
+			placeStairs(stairsDown, "stairsdown.webp", "dungeonStairsDown", placedStairsDown);
 
-            if (stairsTiles.length > 0) {
-                await createWithElevation("Tile", stairsTiles);
-            }
-        }
+			if (stairsTiles.length > 0) {
+				await createWithElevation("Tile", stairsTiles);
+			}
+		}
 
-        // 13b. Biome props (replace generic clutter when biomes are on). Placed
-        //      after stairs so they share the occupancy map (avoid doors, stairs,
-        //      and each other), and so later sconces avoid them too.
-        if (useBiomes && biomeMap && layout.roomData?.length) {
-            const biomeProps = await placeBiomeProps(layout.roomData, biomeMap, offset, GRID_SIZE, Math.max(clutter, 2), rng, occupancy);
-            if (biomeProps.length > 0) await createWithElevation("Tile", biomeProps);
-        }
+		// 13b. Biome props (replace generic clutter when biomes are on). Placed
+		//      after stairs so they share the occupancy map (avoid doors, stairs,
+		//      and each other), and so later sconces avoid them too.
+		if (useBiomes && biomeMap && layout.roomData?.length) {
+			const biomeProps = await placeBiomeProps(layout.roomData, biomeMap, offset, GRID_SIZE, Math.max(clutter, 2), rng, occupancy);
+			if (biomeProps.length > 0) await createWithElevation("Tile", biomeProps);
+		}
 
-        // 14. Place clutter tiles in rooms (skipped when biomes provide props)
-        const placedClutter = [];
-        if (clutter > 0 && !useBiomes && layout.roomData.length > 0) {
-            // Discover clutter files from known folder
-            const clutterFolder = `modules/${MODULE_ID}/assets/Dungeon/clutter`;
-            let clutterFiles = [];
-            try {
-                const result = await FilePicker.browse("data", clutterFolder);
-                clutterFiles = (result.files || []).filter(f => /\-(\d+)x(\d+)\.\w+$/i.test(f));
-            } catch (e) {
-                console.warn(`${MODULE_ID} | Could not browse clutter folder:`, e);
-            }
+		// 14. Place clutter tiles in rooms (skipped when biomes provide props)
+		const placedClutter = [];
+		if (clutter > 0 && !useBiomes && layout.roomData.length > 0) {
+			// Discover clutter files from known folder
+			const clutterFolder = `modules/${MODULE_ID}/assets/Dungeon/clutter`;
+			let clutterFiles = [];
+			try {
+				const result = await FilePicker.browse("data", clutterFolder);
+				clutterFiles = (result.files || []).filter(f => /\-(\d+)x(\d+)\.\w+$/i.test(f));
+			} catch (e) {
+				console.warn(`${MODULE_ID} | Could not browse clutter folder:`, e);
+			}
 
-            if (clutterFiles.length > 0) {
-                // Parse dimensions from filenames
-                const clutterItems = clutterFiles.map(f => {
-                    const match = f.match(/\-(\d+)x(\d+)\.\w+$/i);
-                    return { src: f, w: parseInt(match[1]), h: parseInt(match[2]) };
-                });
+			if (clutterFiles.length > 0) {
+				// Parse dimensions from filenames
+				const clutterItems = clutterFiles.map(f => {
+					const match = f.match(/\-(\d+)x(\d+)\.\w+$/i);
+					return { src: f, w: parseInt(match[1]), h: parseInt(match[2]) };
+				});
 
-                const clutterTiles = [];
-                const nonStartRooms = layout.roomData.filter(r => !r.isStart);
+				const clutterTiles = [];
+				const nonStartRooms = layout.roomData.filter(r => !r.isStart);
 
-                for (const rd of nonStartRooms) {
-                    const room = rd.room;
-                    for (let c = 0; c < clutter; c++) {
-                        const item = clutterItems[Math.floor(rng() * clutterItems.length)];
-                        const cellsW = Math.ceil(item.w / GRID_SIZE);
-                        const cellsH = Math.ceil(item.h / GRID_SIZE);
-                        const fitW = room.w - (cellsW - 1);
-                        const fitH = room.h - (cellsH - 1);
-                        if (fitW < 1 || fitH < 1) continue;
+				for (const rd of nonStartRooms) {
+					const room = rd.room;
+					for (let c = 0; c < clutter; c++) {
+						const item = clutterItems[Math.floor(rng() * clutterItems.length)];
+						const cellsW = Math.ceil(item.w / GRID_SIZE);
+						const cellsH = Math.ceil(item.h / GRID_SIZE);
+						const fitW = room.w - (cellsW - 1);
+						const fitH = room.h - (cellsH - 1);
+						if (fitW < 1 || fitH < 1) continue;
 
-                        // Try to find a non-overlapping position
-                        let gx, gy, overlaps;
-                        let tries = 0;
-                        do {
-                            gx = room.left + Math.floor(rng() * fitW);
-                            gy = room.top + Math.floor(rng() * fitH);
-                            overlaps = !occupancy.canPlaceRect({ gx, gy, cellsW, cellsH }, { padding: 0.15, doorPadding: 0.35 });
-                            tries++;
-                        } while (overlaps && tries < 20);
-                        if (overlaps) continue; // couldn't find a free spot, skip
+						// Try to find a non-overlapping position
+						let gx; let gy; let overlaps;
+						let tries = 0;
+						do {
+							gx = room.left + Math.floor(rng() * fitW);
+							gy = room.top + Math.floor(rng() * fitH);
+							overlaps = !occupancy.canPlaceRect({ gx, gy, cellsW, cellsH }, { padding: 0.15, doorPadding: 0.35 });
+							tries++;
+						} while (overlaps && tries < 20);
+						if (overlaps) continue; // couldn't find a free spot, skip
 
-                        occupancy.occupyRect({ gx, gy, cellsW, cellsH }, { padding: 0.15, kind: "clutter" });
+						occupancy.occupyRect({ gx, gy, cellsW, cellsH }, { padding: 0.15, kind: "clutter" });
 
-                        const pixelX = (gx + offset.x) * GRID_SIZE + (cellsW * GRID_SIZE - item.w) / 2;
-                        const pixelY = (gy + offset.y) * GRID_SIZE + (cellsH * GRID_SIZE - item.h) / 2;
-                        clutterTiles.push({
-                            texture: makeTopLeftTileTexture(item.src),
-                            x: pixelX,
-                            y: pixelY,
-                            width: item.w,
-                            height: item.h,
-                            sort: 2,
-                            flags: { [MODULE_ID]: { dungeonClutter: true } }
-                        });
+						const pixelX = (gx + offset.x) * GRID_SIZE + (cellsW * GRID_SIZE - item.w) / 2;
+						const pixelY = (gy + offset.y) * GRID_SIZE + (cellsH * GRID_SIZE - item.h) / 2;
+						clutterTiles.push({
+							texture: makeTopLeftTileTexture(item.src),
+							x: pixelX,
+							y: pixelY,
+							width: item.w,
+							height: item.h,
+							sort: 2,
+							flags: { [MODULE_ID]: { dungeonClutter: true } },
+						});
 
-                        placedClutter.push({
-                            src: item.src,
-                            x: pixelX,
-                            y: pixelY,
-                            width: item.w,
-                            height: item.h,
-                            gridX: gx + offset.x,
-                            gridY: gy + offset.y
-                        });
-                    }
-                }
+						placedClutter.push({
+							src: item.src,
+							x: pixelX,
+							y: pixelY,
+							width: item.w,
+							height: item.h,
+							gridX: gx + offset.x,
+							gridY: gy + offset.y,
+						});
+					}
+				}
 
-                if (clutterTiles.length > 0) {
-                    await createWithElevation("Tile", clutterTiles);
-                }
-            }
-        }
+				if (clutterTiles.length > 0) {
+					await createWithElevation("Tile", clutterTiles);
+				}
+			}
+		}
 
-        // 15. Place generated decor lights.
-        const placedDecor = await generateDungeonDecor({
-            layout,
-            rng,
-            offset,
-            gridSize: GRID_SIZE,
-            createDocuments: createWithElevation,
-            lightsPerRoom: decorLights,
-            occupancy,
-            includeTiles: decorTiles,
-        });
+		// 15. Place generated decor lights.
+		const placedDecor = await generateDungeonDecor({
+			layout,
+			rng,
+			offset,
+			gridSize: GRID_SIZE,
+			createDocuments: createWithElevation,
+			lightsPerRoom: decorLights,
+			occupancy,
+			includeTiles: decorTiles,
+		});
 
-        // 16. Apply background if one is selected in the painter
-        const bgSetting = getDungeonBackground();
-        if (bgSetting && bgSetting !== "none") {
-            await ensureBackgroundDrawing(scene, elevation, bgSetting);
-        }
+		// 16. Apply background if one is selected in the painter
+		const bgSetting = getDungeonBackground();
+		if (bgSetting && bgSetting !== "none") {
+			await ensureBackgroundDrawing(scene, elevation, bgSetting);
+		}
 
-        ui.notifications.info(`SDX | Dungeon generated! ${layout.placedRooms.length} rooms, seed: ${seed}`);
+		ui.notifications.info(`SDX | Dungeon generated! ${layout.placedRooms.length} rooms, seed: ${seed}`);
 
-        return {
-            stairsUp: placedStairsUp,
-            stairsDown: placedStairsDown,
-            clutter: placedClutter,
-            decor: placedDecor,
-            // ── Room-for-room bridge data (additive; existing callers ignore) ──
-            scene,
-            layout,
-            offset,
-            gridSize: GRID_SIZE,
-            seed
-        };
-    } catch (err) {
-        console.error(`${MODULE_ID} | Dungeon generation failed:`, err);
-        ui.notifications.error("SDX | Dungeon generation failed. Check console for details.");
-    }
+		return {
+			stairsUp: placedStairsUp,
+			stairsDown: placedStairsDown,
+			clutter: placedClutter,
+			decor: placedDecor,
+			// ── Room-for-room bridge data (additive; existing callers ignore) ──
+			scene,
+			layout,
+			offset,
+			gridSize: GRID_SIZE,
+			seed,
+		};
+	} catch (err) {
+		console.error(`${MODULE_ID} | Dungeon generation failed:`, err);
+		ui.notifications.error("SDX | Dungeon generation failed. Check console for details.");
+	}
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1633,34 +1633,34 @@ export async function generateDungeon(config) {
 // ═══════════════════════════════════════════════════════
 
 export function toggleGeneratorPanel() {
-    _generatorExpanded = !_generatorExpanded;
+	_generatorExpanded = !_generatorExpanded;
 }
 
 export function isGeneratorExpanded() {
-    return _generatorExpanded;
+	return _generatorExpanded;
 }
 
 export function generateRandomSeed() {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let result = "";
-    for (let i = 0; i < 6; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
+	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+	let result = "";
+	for (let i = 0; i < 6; i++) {
+		result += chars.charAt(Math.floor(Math.random() * chars.length));
+	}
+	return result;
 }
 
 export function getGeneratorSeed() {
-    return _generatorSeed;
+	return _generatorSeed;
 }
 
 export function setGeneratorSeed(seed) {
-    _generatorSeed = seed;
+	_generatorSeed = seed;
 }
 
 export function getGeneratorSettings() {
-    return { ..._generatorSettings };
+	return { ..._generatorSettings };
 }
 
 export function setGeneratorSettings(settings) {
-    Object.assign(_generatorSettings, settings);
+	Object.assign(_generatorSettings, settings);
 }

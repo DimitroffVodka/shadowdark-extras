@@ -27,7 +27,7 @@ export function planStackConsumption(stacks = [], requested = 0) {
 			itemId: String(stack.itemId ?? ""),
 			amount,
 			before: available,
-			after: available - amount
+			after: available - amount,
 		});
 		remaining -= amount;
 	}
@@ -36,7 +36,7 @@ export function planStackConsumption(stacks = [], requested = 0) {
 		complete: remaining === 0,
 		consumed: Math.max(0, (Number.parseInt(requested, 10) || 0) - remaining),
 		remaining,
-		entries
+		entries,
 	};
 }
 
@@ -50,7 +50,7 @@ export function qualifiesForRest({
 	hasRation = false,
 	interrupted = false,
 	bedDownSucceeded = false,
-	interruptionCheckSucceeded = false
+	interruptionCheckSucceeded = false,
 } = {}) {
 	if (!hasRation) return false;
 	if (!interrupted) return true;

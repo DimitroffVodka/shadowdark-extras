@@ -27,7 +27,7 @@ import { MODULE_ID } from "../shared/module-id.mjs";
  * SDX-painted tiles only; all other tiles keep core clamping behavior.
  */
 export function patchHexTilePositionClamp() {
-	const restoreSourcePosition = function () {
+	const restoreSourcePosition = function() {
 		const flags = this._source?.flags?.[MODULE_ID];
 		if (!flags?.painted || !this.parent) return;
 		const sx = this._source.x;
@@ -44,14 +44,14 @@ export function patchHexTilePositionClamp() {
 				width: this.width,
 				height: this.height,
 				anchorX: this.texture?.anchorX ?? 0,
-				anchorY: this.texture?.anchorY ?? 0
+				anchorY: this.texture?.anchorY ?? 0,
 			});
 		}
 	};
 
 	const wrapperPath = "CONFIG.Tile.documentClass.prototype.prepareDerivedData";
 	if (globalThis.libWrapper?.register) {
-		libWrapper.register(MODULE_ID, wrapperPath, function (wrapped, ...args) {
+		libWrapper.register(MODULE_ID, wrapperPath, function(wrapped, ...args) {
 			wrapped(...args);
 			restoreSourcePosition.call(this);
 		}, "WRAPPER");
@@ -60,7 +60,7 @@ export function patchHexTilePositionClamp() {
 		const proto = CONFIG.Tile.documentClass.prototype;
 		if (!proto.__sdxClampPatched) {
 			const orig = proto.prepareDerivedData;
-			proto.prepareDerivedData = function (...args) {
+			proto.prepareDerivedData = function(...args) {
 				orig.apply(this, args);
 				restoreSourcePosition.call(this);
 			};

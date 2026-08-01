@@ -4,493 +4,493 @@ const MODULE_ID = "shadowdark-extras";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
-    static _instance = null;
-
-    static DEFAULT_OPTIONS = {
-        id: "sdx-poi-tile-sort",
-        classes: ["shadowdark", "shadowdark-extras", "poi-tile-sort-app"],
-        window: {
-            title: "POI Tile Sort",
-            resizable: true
-        },
-        position: {
-            width: 280,
-            height: 500,
-            top: 80,
-            left: window.innerWidth - 320
-        }
-    };
-
-    static PARTS = {
-        content: {
-            template: `modules/${MODULE_ID}/templates/poi-tile-sort.hbs`,
-            scrollable: [".poi-sort-list"]
-        }
-    };
-
-    constructor(options = {}) {
-        super(options);
-        this._hiddenTileIds = new Set();
-        this._highlightGraphics = null;
-        this._searchTerm = "";
-        this._hookIds = [];
-        this._renderDebounceTimer = null;
-        this._trackpoint = null;
-    }
-
-    /* ---------------------------------------- */
-    /*  Static show/hide                        */
-    /* ---------------------------------------- */
-
-    static show() {
-        if (this._instance?.rendered) return;
-        if (!this._instance) {
-            this._instance = new PoiTileSortApp();
-        }
-        this._instance.render({ force: true });
-    }
-
-    static hide() {
-        if (this._instance?.rendered) {
-            this._instance.close();
-        }
-    }
-
-    /* ---------------------------------------- */
-    /*  Data Preparation                        */
-    /* ---------------------------------------- */
-
-    async _prepareContext(options) {
-        if (!canvas.scene) return { tiles: [], searchTerm: this._searchTerm };
-
-        const tiles = canvas.tiles.placeables
-            .filter(t => t.document.getFlag(MODULE_ID, "painted") && t.document.getFlag(MODULE_ID, "isSymbol"))
-            .sort((a, b) => b.document.sort - a.document.sort)
-            .map(t => {
-                const doc = t.document;
-                const src = doc.texture?.src || "";
-                const filename = src.split("/").pop()?.replace(/\.[^.]+$/, "") || "Tile";
-                return {
-                    id: doc.id,
-                    src,
-                    name: filename,
-                    sort: doc.sort,
-                    elevation: doc.elevation ?? 0,
-                    isHidden: this._hiddenTileIds.has(doc.id),
-                    isControlled: t.controlled
-                };
-            });
-
-        return { tiles, searchTerm: this._searchTerm };
-    }
-
-    /* ---------------------------------------- */
-    /*  Rendering                               */
-    /* ---------------------------------------- */
-
-    _onRender(context, options) {
-        const html = this.element;
-        if (!html) return;
-
-        const list = html.querySelector(".poi-sort-list");
-        if (!list) return;
-
-        // Search
-        const search = html.querySelector(".poi-sort-search");
-        if (search) {
-            search.addEventListener("input", (e) => {
-                this._searchTerm = e.target.value.toLowerCase();
-                this._filterList(list);
-            });
-        }
-
-        // Item event handlers
-        list.querySelectorAll(".poi-sort-item").forEach(li => {
-            const tileId = li.dataset.tileId;
-
-            li.addEventListener("click", (e) => {
-                if (e.target.closest(".poi-sort-btn")) return;
-                const tile = canvas.tiles.get(tileId);
-                if (!tile) return;
-
-                if (e.ctrlKey || e.metaKey) {
-                    canvas.animatePan({ x: tile.center.x, y: tile.center.y, duration: 500 });
-                } else {
-                    tile.control({ releaseOthers: !e.shiftKey });
-                }
-            });
-
-            li.addEventListener("dblclick", (e) => {
-                if (e.target.closest(".poi-sort-btn")) return;
-                const tile = canvas.tiles.get(tileId);
-                tile?.document.sheet.render(true);
-            });
-
-            li.addEventListener("mouseenter", () => this._createHighlight(tileId));
-            li.addEventListener("mouseleave", () => this._removeHighlight());
-
-            li.querySelector(".poi-sort-rotate-left")?.addEventListener("click", (e) => {
-                e.stopPropagation();
-                this._rotateTile(tileId, -90);
-            });
-
-            li.querySelector(".poi-sort-rotate-right")?.addEventListener("click", (e) => {
-                e.stopPropagation();
-                this._rotateTile(tileId, 90);
-            });
-
-            li.querySelector(".poi-sort-scale-down")?.addEventListener("click", (e) => {
-                e.stopPropagation();
-                this._scaleTile(tileId, 0.8);
-            });
-
-            li.querySelector(".poi-sort-scale-up")?.addEventListener("click", (e) => {
-                e.stopPropagation();
-                this._scaleTile(tileId, 1.25);
-            });
-
-            li.querySelector(".poi-sort-eye")?.addEventListener("click", (e) => {
-                e.stopPropagation();
-                this._toggleHidden(tileId, li);
-            });
-
-            li.querySelector(".poi-sort-delete")?.addEventListener("click", (e) => {
-                e.stopPropagation();
-                this._deleteTile(tileId);
-            });
-
-            const trackpoint = li.querySelector(".poi-sort-trackpoint");
-            if (trackpoint) {
-                trackpoint.addEventListener("mousedown", (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    this._startTrackpoint(tileId, e, trackpoint);
-                });
-            }
-        });
-
-        this._setupDragDrop(list);
-        this._registerHooks();
-    }
-
-    /* ---------------------------------------- */
-    /*  Drag & Drop Reordering                  */
-    /* ---------------------------------------- */
-
-    _setupDragDrop(list) {
-        let draggedEl = null;
-
-        list.querySelectorAll(".poi-sort-item").forEach(li => {
-            li.addEventListener("dragstart", (e) => {
-                draggedEl = li;
-                li.classList.add("dragging");
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData("text/plain", li.dataset.tileId);
-            });
-
-            li.addEventListener("dragend", () => {
-                li.classList.remove("dragging");
-                list.querySelectorAll(".poi-sort-item").forEach(el => {
-                    el.classList.remove("drag-over");
-                    el.classList.remove("drag-over-below");
-                });
-                draggedEl = null;
-            });
-
-            li.addEventListener("dragover", (e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "move";
-                if (li !== draggedEl) {
-                    const rect = li.getBoundingClientRect();
-                    const midY = rect.top + rect.height / 2;
-                    list.querySelectorAll(".poi-sort-item").forEach(el => {
-                        el.classList.remove("drag-over");
-                        el.classList.remove("drag-over-below");
-                    });
-                    if (e.clientY < midY) {
-                        li.classList.add("drag-over");
-                    } else {
-                        li.classList.add("drag-over-below");
-                    }
-                }
-            });
-
-            li.addEventListener("dragleave", () => {
-                li.classList.remove("drag-over");
-                li.classList.remove("drag-over-below");
-            });
-
-            li.addEventListener("drop", (e) => {
-                e.preventDefault();
-                if (!draggedEl || li === draggedEl) return;
-
-                const rect = li.getBoundingClientRect();
-                const midY = rect.top + rect.height / 2;
-                if (e.clientY < midY) {
-                    list.insertBefore(draggedEl, li);
-                } else {
-                    list.insertBefore(draggedEl, li.nextSibling);
-                }
-
-                li.classList.remove("drag-over");
-                li.classList.remove("drag-over-below");
-
-                this._applySort(list);
-            });
-        });
-    }
-
-    async _applySort(list) {
-        const items = list.querySelectorAll(".poi-sort-item");
-        const updates = [];
-        const count = items.length;
-
-        items.forEach((li, idx) => {
-            const sort = 100000 + (count - idx) * 100;
-            updates.push({ _id: li.dataset.tileId, sort });
-            const meta = li.querySelector(".poi-sort-meta");
-            if (meta) {
-                const elev = meta.dataset.elevation || "0";
-                meta.textContent = `z:${sort} · e:${elev}`;
-            }
-        });
-
-        await canvas.scene.updateEmbeddedDocuments("Tile", updates);
-    }
-
-    /* ---------------------------------------- */
-    /*  Canvas Highlight                        */
-    /* ---------------------------------------- */
-
-    _createHighlight(tileId) {
-        this._removeHighlight();
-        const tile = canvas.tiles.get(tileId);
-        if (!tile) return;
-
-        const { x, y, width, height } = tile.document;
-        const gfx = new PIXI.Graphics();
-        gfx.lineStyle(3, 0x00ff66, 0.9);
-        gfx.drawRect(x, y, width, height);
-        gfx.endFill();
-        canvas.stage.addChild(gfx);
-        this._highlightGraphics = gfx;
-    }
-
-    _removeHighlight() {
-        if (this._highlightGraphics) {
-            this._highlightGraphics.destroy();
-            this._highlightGraphics = null;
-        }
-    }
-
-    /* ---------------------------------------- */
-    /*  Tile Hiding                             */
-    /* ---------------------------------------- */
-
-    _toggleHidden(tileId, li) {
-        if (this._hiddenTileIds.has(tileId)) {
-            this._hiddenTileIds.delete(tileId);
-            li.classList.remove("hidden-tile");
-            li.querySelector(".poi-sort-eye i").className = "fas fa-eye";
-        } else {
-            this._hiddenTileIds.add(tileId);
-            li.classList.add("hidden-tile");
-            li.querySelector(".poi-sort-eye i").className = "fas fa-eye-slash";
-        }
-        this._refreshTileVisibility(tileId);
-    }
-
-    _refreshTileVisibility(tileId) {
-        const tile = canvas.tiles.get(tileId);
-        if (!tile?.mesh) return;
-        tile.mesh.alpha = this._hiddenTileIds.has(tileId) ? 0 : tile.document.alpha;
-    }
-
-    _restoreAllHidden() {
-        for (const tileId of this._hiddenTileIds) {
-            const tile = canvas.tiles.get(tileId);
-            if (tile?.mesh) {
-                tile.mesh.alpha = tile.document.alpha;
-            }
-        }
-        this._hiddenTileIds.clear();
-    }
-
-    /* ---------------------------------------- */
-    /*  Tile Transform & Deletion               */
-    /* ---------------------------------------- */
-
-    async _rotateTile(tileId, degrees) {
-        const tile = canvas.tiles.get(tileId);
-        if (!tile) return;
-        const rotation = (tile.document.rotation + degrees + 360) % 360;
-        await tile.document.update({ rotation });
-    }
-
-    async _scaleTile(tileId, factor) {
-        const tile = canvas.tiles.get(tileId);
-        if (!tile) return;
-        const width = Math.round(tile.document.width * factor);
-        const height = Math.round(tile.document.height * factor);
-        if (width < 10 || height < 10) return;
-        await tile.document.update({ width, height });
-    }
-
-    async _deleteTile(tileId) {
-        this._hiddenTileIds.delete(tileId);
-        this._removeHighlight();
-        await canvas.scene.deleteEmbeddedDocuments("Tile", [tileId]);
-    }
-
-    /* ---------------------------------------- */
-    /*  Selection Tracking (DOM-only)           */
-    /* ---------------------------------------- */
-
-    updateControlled() {
-        const el = this.element;
-        if (!el) return;
-        el.querySelectorAll(".poi-sort-item").forEach(li => {
-            const tile = canvas.tiles.get(li.dataset.tileId);
-            li.classList.toggle("selected", !!tile?.controlled);
-        });
-    }
-
-    /* ---------------------------------------- */
-    /*  Search Filter                           */
-    /* ---------------------------------------- */
-
-    _filterList(list) {
-        list.querySelectorAll(".poi-sort-item").forEach(li => {
-            const name = li.querySelector(".poi-sort-name")?.textContent.toLowerCase() || "";
-            li.style.display = !this._searchTerm || name.includes(this._searchTerm) ? "" : "none";
-        });
-    }
-
-    /* ---------------------------------------- */
-    /*  Hooks                                   */
-    /* ---------------------------------------- */
-
-    _registerHooks() {
-        this._unregisterHooks();
-
-        const on = (event, fn) => {
-            const id = Hooks.on(event, fn);
-            this._hookIds.push({ event, id });
-        };
-
-        on("createTile", () => this._debouncedRender());
-        on("deleteTile", () => this._debouncedRender());
-        on("controlTile", () => this.updateControlled());
-        on("refreshTile", (tile) => {
-            if (this._hiddenTileIds.has(tile.id)) {
-                if (tile.mesh) tile.mesh.alpha = 0;
-            }
-        });
-        on("canvasReady", () => this.render({ force: true }));
-    }
-
-    _unregisterHooks() {
-        for (const { event, id } of this._hookIds) {
-            Hooks.off(event, id);
-        }
-        this._hookIds = [];
-    }
-
-    _debouncedRender() {
-        clearTimeout(this._renderDebounceTimer);
-        this._renderDebounceTimer = setTimeout(() => {
-            if (this.rendered) this.render({ force: true });
-        }, 200);
-    }
-
-    /* ---------------------------------------- */
-    /*  Trackpoint Nudge                        */
-    /* ---------------------------------------- */
-
-    _startTrackpoint(tileId, e, el) {
-        this._stopTrackpoint();
-
-        const originX = e.clientX;
-        const originY = e.clientY;
-        const maxRadius = 60;
-        const speed = 1;
-
-        el.classList.add("active");
-
-        const state = {
-            tileId,
-            el,
-            vx: 0,
-            vy: 0,
-            accX: 0,
-            accY: 0,
-            rafId: null,
-            pending: false
-        };
-
-        const onMove = (ev) => {
-            const dx = Math.max(-maxRadius, Math.min(maxRadius, ev.clientX - originX));
-            const dy = Math.max(-maxRadius, Math.min(maxRadius, ev.clientY - originY));
-            state.vx = (dx / maxRadius) * speed;
-            state.vy = (dy / maxRadius) * speed;
-        };
-
-        const onUp = () => {
-            window.removeEventListener("mousemove", onMove);
-            window.removeEventListener("mouseup", onUp);
-            this._stopTrackpoint();
-        };
-
-        const tick = () => {
-            if (!this._trackpoint) return;
-            state.accX += state.vx;
-            state.accY += state.vy;
-
-            const intX = Math.trunc(state.accX);
-            const intY = Math.trunc(state.accY);
-            if ((intX !== 0 || intY !== 0) && !state.pending) {
-                state.accX -= intX;
-                state.accY -= intY;
-                state.pending = true;
-                const tile = canvas.tiles.get(tileId);
-                if (tile) {
-                    tile.document.update({
-                        x: tile.document.x + intX,
-                        y: tile.document.y + intY
-                    }).then(() => { state.pending = false; });
-                } else {
-                    state.pending = false;
-                }
-            }
-
-            state.rafId = requestAnimationFrame(tick);
-        };
-
-        window.addEventListener("mousemove", onMove);
-        window.addEventListener("mouseup", onUp);
-
-        this._trackpoint = state;
-        state.rafId = requestAnimationFrame(tick);
-    }
-
-    _stopTrackpoint() {
-        if (!this._trackpoint) return;
-        cancelAnimationFrame(this._trackpoint.rafId);
-        this._trackpoint.el.classList.remove("active");
-        this._trackpoint = null;
-    }
-
-    /* ---------------------------------------- */
-    /*  Close                                   */
-    /* ---------------------------------------- */
-
-    async close(options) {
-        this._stopTrackpoint();
-        this._restoreAllHidden();
-        this._removeHighlight();
-        this._unregisterHooks();
-        clearTimeout(this._renderDebounceTimer);
-        PoiTileSortApp._instance = null;
-        return super.close(options);
-    }
+	static _instance = null;
+
+	static DEFAULT_OPTIONS = {
+		id: "sdx-poi-tile-sort",
+		classes: ["shadowdark", "shadowdark-extras", "poi-tile-sort-app"],
+		window: {
+			title: "POI Tile Sort",
+			resizable: true,
+		},
+		position: {
+			width: 280,
+			height: 500,
+			top: 80,
+			left: window.innerWidth - 320,
+		},
+	};
+
+	static PARTS = {
+		content: {
+			template: `modules/${MODULE_ID}/templates/poi-tile-sort.hbs`,
+			scrollable: [".poi-sort-list"],
+		},
+	};
+
+	constructor(options = {}) {
+		super(options);
+		this._hiddenTileIds = new Set();
+		this._highlightGraphics = null;
+		this._searchTerm = "";
+		this._hookIds = [];
+		this._renderDebounceTimer = null;
+		this._trackpoint = null;
+	}
+
+	/* ---------------------------------------- */
+	/*  Static show/hide                        */
+	/* ---------------------------------------- */
+
+	static show() {
+		if (this._instance?.rendered) return;
+		if (!this._instance) {
+			this._instance = new PoiTileSortApp();
+		}
+		this._instance.render({ force: true });
+	}
+
+	static hide() {
+		if (this._instance?.rendered) {
+			this._instance.close();
+		}
+	}
+
+	/* ---------------------------------------- */
+	/*  Data Preparation                        */
+	/* ---------------------------------------- */
+
+	async _prepareContext(options) {
+		if (!canvas.scene) return { tiles: [], searchTerm: this._searchTerm };
+
+		const tiles = canvas.tiles.placeables
+			.filter(t => t.document.getFlag(MODULE_ID, "painted") && t.document.getFlag(MODULE_ID, "isSymbol"))
+			.sort((a, b) => b.document.sort - a.document.sort)
+			.map(t => {
+				const doc = t.document;
+				const src = doc.texture?.src || "";
+				const filename = src.split("/").pop()?.replace(/\.[^.]+$/, "") || "Tile";
+				return {
+					id: doc.id,
+					src,
+					name: filename,
+					sort: doc.sort,
+					elevation: doc.elevation ?? 0,
+					isHidden: this._hiddenTileIds.has(doc.id),
+					isControlled: t.controlled,
+				};
+			});
+
+		return { tiles, searchTerm: this._searchTerm };
+	}
+
+	/* ---------------------------------------- */
+	/*  Rendering                               */
+	/* ---------------------------------------- */
+
+	_onRender(context, options) {
+		const html = this.element;
+		if (!html) return;
+
+		const list = html.querySelector(".poi-sort-list");
+		if (!list) return;
+
+		// Search
+		const search = html.querySelector(".poi-sort-search");
+		if (search) {
+			search.addEventListener("input", (e) => {
+				this._searchTerm = e.target.value.toLowerCase();
+				this._filterList(list);
+			});
+		}
+
+		// Item event handlers
+		list.querySelectorAll(".poi-sort-item").forEach(li => {
+			const tileId = li.dataset.tileId;
+
+			li.addEventListener("click", (e) => {
+				if (e.target.closest(".poi-sort-btn")) return;
+				const tile = canvas.tiles.get(tileId);
+				if (!tile) return;
+
+				if (e.ctrlKey || e.metaKey) {
+					canvas.animatePan({ x: tile.center.x, y: tile.center.y, duration: 500 });
+				} else {
+					tile.control({ releaseOthers: !e.shiftKey });
+				}
+			});
+
+			li.addEventListener("dblclick", (e) => {
+				if (e.target.closest(".poi-sort-btn")) return;
+				const tile = canvas.tiles.get(tileId);
+				tile?.document.sheet.render(true);
+			});
+
+			li.addEventListener("mouseenter", () => this._createHighlight(tileId));
+			li.addEventListener("mouseleave", () => this._removeHighlight());
+
+			li.querySelector(".poi-sort-rotate-left")?.addEventListener("click", (e) => {
+				e.stopPropagation();
+				this._rotateTile(tileId, -90);
+			});
+
+			li.querySelector(".poi-sort-rotate-right")?.addEventListener("click", (e) => {
+				e.stopPropagation();
+				this._rotateTile(tileId, 90);
+			});
+
+			li.querySelector(".poi-sort-scale-down")?.addEventListener("click", (e) => {
+				e.stopPropagation();
+				this._scaleTile(tileId, 0.8);
+			});
+
+			li.querySelector(".poi-sort-scale-up")?.addEventListener("click", (e) => {
+				e.stopPropagation();
+				this._scaleTile(tileId, 1.25);
+			});
+
+			li.querySelector(".poi-sort-eye")?.addEventListener("click", (e) => {
+				e.stopPropagation();
+				this._toggleHidden(tileId, li);
+			});
+
+			li.querySelector(".poi-sort-delete")?.addEventListener("click", (e) => {
+				e.stopPropagation();
+				this._deleteTile(tileId);
+			});
+
+			const trackpoint = li.querySelector(".poi-sort-trackpoint");
+			if (trackpoint) {
+				trackpoint.addEventListener("mousedown", (e) => {
+					e.stopPropagation();
+					e.preventDefault();
+					this._startTrackpoint(tileId, e, trackpoint);
+				});
+			}
+		});
+
+		this._setupDragDrop(list);
+		this._registerHooks();
+	}
+
+	/* ---------------------------------------- */
+	/*  Drag & Drop Reordering                  */
+	/* ---------------------------------------- */
+
+	_setupDragDrop(list) {
+		let draggedEl = null;
+
+		list.querySelectorAll(".poi-sort-item").forEach(li => {
+			li.addEventListener("dragstart", (e) => {
+				draggedEl = li;
+				li.classList.add("dragging");
+				e.dataTransfer.effectAllowed = "move";
+				e.dataTransfer.setData("text/plain", li.dataset.tileId);
+			});
+
+			li.addEventListener("dragend", () => {
+				li.classList.remove("dragging");
+				list.querySelectorAll(".poi-sort-item").forEach(el => {
+					el.classList.remove("drag-over");
+					el.classList.remove("drag-over-below");
+				});
+				draggedEl = null;
+			});
+
+			li.addEventListener("dragover", (e) => {
+				e.preventDefault();
+				e.dataTransfer.dropEffect = "move";
+				if (li !== draggedEl) {
+					const rect = li.getBoundingClientRect();
+					const midY = rect.top + rect.height / 2;
+					list.querySelectorAll(".poi-sort-item").forEach(el => {
+						el.classList.remove("drag-over");
+						el.classList.remove("drag-over-below");
+					});
+					if (e.clientY < midY) {
+						li.classList.add("drag-over");
+					} else {
+						li.classList.add("drag-over-below");
+					}
+				}
+			});
+
+			li.addEventListener("dragleave", () => {
+				li.classList.remove("drag-over");
+				li.classList.remove("drag-over-below");
+			});
+
+			li.addEventListener("drop", (e) => {
+				e.preventDefault();
+				if (!draggedEl || li === draggedEl) return;
+
+				const rect = li.getBoundingClientRect();
+				const midY = rect.top + rect.height / 2;
+				if (e.clientY < midY) {
+					list.insertBefore(draggedEl, li);
+				} else {
+					list.insertBefore(draggedEl, li.nextSibling);
+				}
+
+				li.classList.remove("drag-over");
+				li.classList.remove("drag-over-below");
+
+				this._applySort(list);
+			});
+		});
+	}
+
+	async _applySort(list) {
+		const items = list.querySelectorAll(".poi-sort-item");
+		const updates = [];
+		const count = items.length;
+
+		items.forEach((li, idx) => {
+			const sort = 100000 + (count - idx) * 100;
+			updates.push({ _id: li.dataset.tileId, sort });
+			const meta = li.querySelector(".poi-sort-meta");
+			if (meta) {
+				const elev = meta.dataset.elevation || "0";
+				meta.textContent = `z:${sort} · e:${elev}`;
+			}
+		});
+
+		await canvas.scene.updateEmbeddedDocuments("Tile", updates);
+	}
+
+	/* ---------------------------------------- */
+	/*  Canvas Highlight                        */
+	/* ---------------------------------------- */
+
+	_createHighlight(tileId) {
+		this._removeHighlight();
+		const tile = canvas.tiles.get(tileId);
+		if (!tile) return;
+
+		const { x, y, width, height } = tile.document;
+		const gfx = new PIXI.Graphics();
+		gfx.lineStyle(3, 0x00ff66, 0.9);
+		gfx.drawRect(x, y, width, height);
+		gfx.endFill();
+		canvas.stage.addChild(gfx);
+		this._highlightGraphics = gfx;
+	}
+
+	_removeHighlight() {
+		if (this._highlightGraphics) {
+			this._highlightGraphics.destroy();
+			this._highlightGraphics = null;
+		}
+	}
+
+	/* ---------------------------------------- */
+	/*  Tile Hiding                             */
+	/* ---------------------------------------- */
+
+	_toggleHidden(tileId, li) {
+		if (this._hiddenTileIds.has(tileId)) {
+			this._hiddenTileIds.delete(tileId);
+			li.classList.remove("hidden-tile");
+			li.querySelector(".poi-sort-eye i").className = "fas fa-eye";
+		} else {
+			this._hiddenTileIds.add(tileId);
+			li.classList.add("hidden-tile");
+			li.querySelector(".poi-sort-eye i").className = "fas fa-eye-slash";
+		}
+		this._refreshTileVisibility(tileId);
+	}
+
+	_refreshTileVisibility(tileId) {
+		const tile = canvas.tiles.get(tileId);
+		if (!tile?.mesh) return;
+		tile.mesh.alpha = this._hiddenTileIds.has(tileId) ? 0 : tile.document.alpha;
+	}
+
+	_restoreAllHidden() {
+		for (const tileId of this._hiddenTileIds) {
+			const tile = canvas.tiles.get(tileId);
+			if (tile?.mesh) {
+				tile.mesh.alpha = tile.document.alpha;
+			}
+		}
+		this._hiddenTileIds.clear();
+	}
+
+	/* ---------------------------------------- */
+	/*  Tile Transform & Deletion               */
+	/* ---------------------------------------- */
+
+	async _rotateTile(tileId, degrees) {
+		const tile = canvas.tiles.get(tileId);
+		if (!tile) return;
+		const rotation = (tile.document.rotation + degrees + 360) % 360;
+		await tile.document.update({ rotation });
+	}
+
+	async _scaleTile(tileId, factor) {
+		const tile = canvas.tiles.get(tileId);
+		if (!tile) return;
+		const width = Math.round(tile.document.width * factor);
+		const height = Math.round(tile.document.height * factor);
+		if (width < 10 || height < 10) return;
+		await tile.document.update({ width, height });
+	}
+
+	async _deleteTile(tileId) {
+		this._hiddenTileIds.delete(tileId);
+		this._removeHighlight();
+		await canvas.scene.deleteEmbeddedDocuments("Tile", [tileId]);
+	}
+
+	/* ---------------------------------------- */
+	/*  Selection Tracking (DOM-only)           */
+	/* ---------------------------------------- */
+
+	updateControlled() {
+		const el = this.element;
+		if (!el) return;
+		el.querySelectorAll(".poi-sort-item").forEach(li => {
+			const tile = canvas.tiles.get(li.dataset.tileId);
+			li.classList.toggle("selected", !!tile?.controlled);
+		});
+	}
+
+	/* ---------------------------------------- */
+	/*  Search Filter                           */
+	/* ---------------------------------------- */
+
+	_filterList(list) {
+		list.querySelectorAll(".poi-sort-item").forEach(li => {
+			const name = li.querySelector(".poi-sort-name")?.textContent.toLowerCase() || "";
+			li.style.display = !this._searchTerm || name.includes(this._searchTerm) ? "" : "none";
+		});
+	}
+
+	/* ---------------------------------------- */
+	/*  Hooks                                   */
+	/* ---------------------------------------- */
+
+	_registerHooks() {
+		this._unregisterHooks();
+
+		const on = (event, fn) => {
+			const id = Hooks.on(event, fn);
+			this._hookIds.push({ event, id });
+		};
+
+		on("createTile", () => this._debouncedRender());
+		on("deleteTile", () => this._debouncedRender());
+		on("controlTile", () => this.updateControlled());
+		on("refreshTile", (tile) => {
+			if (this._hiddenTileIds.has(tile.id)) {
+				if (tile.mesh) tile.mesh.alpha = 0;
+			}
+		});
+		on("canvasReady", () => this.render({ force: true }));
+	}
+
+	_unregisterHooks() {
+		for (const { event, id } of this._hookIds) {
+			Hooks.off(event, id);
+		}
+		this._hookIds = [];
+	}
+
+	_debouncedRender() {
+		clearTimeout(this._renderDebounceTimer);
+		this._renderDebounceTimer = setTimeout(() => {
+			if (this.rendered) this.render({ force: true });
+		}, 200);
+	}
+
+	/* ---------------------------------------- */
+	/*  Trackpoint Nudge                        */
+	/* ---------------------------------------- */
+
+	_startTrackpoint(tileId, e, el) {
+		this._stopTrackpoint();
+
+		const originX = e.clientX;
+		const originY = e.clientY;
+		const maxRadius = 60;
+		const speed = 1;
+
+		el.classList.add("active");
+
+		const state = {
+			tileId,
+			el,
+			vx: 0,
+			vy: 0,
+			accX: 0,
+			accY: 0,
+			rafId: null,
+			pending: false,
+		};
+
+		const onMove = (ev) => {
+			const dx = Math.max(-maxRadius, Math.min(maxRadius, ev.clientX - originX));
+			const dy = Math.max(-maxRadius, Math.min(maxRadius, ev.clientY - originY));
+			state.vx = (dx / maxRadius) * speed;
+			state.vy = (dy / maxRadius) * speed;
+		};
+
+		const onUp = () => {
+			window.removeEventListener("mousemove", onMove);
+			window.removeEventListener("mouseup", onUp);
+			this._stopTrackpoint();
+		};
+
+		const tick = () => {
+			if (!this._trackpoint) return;
+			state.accX += state.vx;
+			state.accY += state.vy;
+
+			const intX = Math.trunc(state.accX);
+			const intY = Math.trunc(state.accY);
+			if ((intX !== 0 || intY !== 0) && !state.pending) {
+				state.accX -= intX;
+				state.accY -= intY;
+				state.pending = true;
+				const tile = canvas.tiles.get(tileId);
+				if (tile) {
+					tile.document.update({
+						x: tile.document.x + intX,
+						y: tile.document.y + intY,
+					}).then(() => { state.pending = false; });
+				} else {
+					state.pending = false;
+				}
+			}
+
+			state.rafId = requestAnimationFrame(tick);
+		};
+
+		window.addEventListener("mousemove", onMove);
+		window.addEventListener("mouseup", onUp);
+
+		this._trackpoint = state;
+		state.rafId = requestAnimationFrame(tick);
+	}
+
+	_stopTrackpoint() {
+		if (!this._trackpoint) return;
+		cancelAnimationFrame(this._trackpoint.rafId);
+		this._trackpoint.el.classList.remove("active");
+		this._trackpoint = null;
+	}
+
+	/* ---------------------------------------- */
+	/*  Close                                   */
+	/* ---------------------------------------- */
+
+	async close(options) {
+		this._stopTrackpoint();
+		this._restoreAllHidden();
+		this._removeHighlight();
+		this._unregisterHooks();
+		clearTimeout(this._renderDebounceTimer);
+		PoiTileSortApp._instance = null;
+		return super.close(options);
+	}
 }

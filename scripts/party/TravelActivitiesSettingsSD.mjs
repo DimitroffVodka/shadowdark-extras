@@ -5,7 +5,7 @@
 
 import {
 	DEFAULT_TRAVEL_ACTIVITIES,
-	normalizeTravelActivities
+	normalizeTravelActivities,
 } from "./CampingRulesData.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -27,24 +27,24 @@ export class TravelActivitiesSettingsApp extends HandlebarsApplicationMixin(Appl
 		tag: "form",
 		window: {
 			title: "SHADOWDARK_EXTRAS.travel_activities.title",
-			resizable: true
+			resizable: true,
 		},
 		position: {
 			width: 700,
-			height: "auto"
+			height: "auto",
 		},
 		form: {
 			handler: TravelActivitiesSettingsApp.formHandler,
 			submitOnChange: true,
-			closeOnSubmit: false
-		}
+			closeOnSubmit: false,
+		},
 	};
 
 	static PARTS = {
 		form: {
 			template: `modules/${MODULE_ID}/templates/travel-activities-settings.hbs`,
-			scrollable: [".sdx-activities-list"]
-		}
+			scrollable: [".sdx-activities-list"],
+		},
 	};
 
 	static show() {
@@ -69,11 +69,11 @@ export class TravelActivitiesSettingsApp extends HandlebarsApplicationMixin(Appl
 				abilitiesSelected: ABILITIES.map(ab => ({
 					value: ab,
 					label: ab,
-					selected: (activity.abilities || []).includes(ab)
-				}))
+					selected: (activity.abilities || []).includes(ab),
+				})),
 			})),
 			ABILITIES,
-			MODULE_ID
+			MODULE_ID,
 		};
 	}
 
@@ -109,7 +109,7 @@ export class TravelActivitiesSettingsApp extends HandlebarsApplicationMixin(Appl
 					callback: (path) => {
 						if (input) input.value = path;
 						html.dispatchEvent(new SubmitEvent("submit", { cancelable: true }));
-					}
+					},
 				});
 				fp.browse();
 			}
@@ -121,7 +121,7 @@ export class TravelActivitiesSettingsApp extends HandlebarsApplicationMixin(Appl
 			const confirmed = await foundry.applications.api.DialogV2.confirm({
 				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.travel_activities.reset_confirm_title") },
 				content: `<p>${game.i18n.localize("SHADOWDARK_EXTRAS.travel_activities.reset_confirm_content")}</p>`,
-				modal: true
+				modal: true,
 			});
 			if (confirmed) {
 				await game.settings.set(MODULE_ID, "travelActivities", { activities: foundry.utils.deepClone(DEFAULT_TRAVEL_ACTIVITIES) });
@@ -283,7 +283,7 @@ export class TravelActivitiesSettingsApp extends HandlebarsApplicationMixin(Appl
 					abilities: filteredAbilities,
 					campfire: data.campfire ?? false,
 					description: data.description || "",
-					bannerImage: data.bannerImage || ""
+					bannerImage: data.bannerImage || "",
 				});
 			}
 		}
@@ -329,7 +329,7 @@ export function registerTravelActivitiesSettings() {
 		scope: "world",
 		config: false,
 		type: Object,
-		default: { activities: foundry.utils.deepClone(DEFAULT_TRAVEL_ACTIVITIES) }
+		default: { activities: foundry.utils.deepClone(DEFAULT_TRAVEL_ACTIVITIES) },
 	});
 
 	// Register a menu button to open the Travel Activities Settings app
@@ -339,7 +339,7 @@ export function registerTravelActivitiesSettings() {
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.travel_activities.hint"),
 		icon: "fas fa-campground",
 		type: TravelActivitiesSettingsApp,
-		restricted: true
+		restricted: true,
 	});
 }
 

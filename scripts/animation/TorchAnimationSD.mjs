@@ -29,7 +29,7 @@ function checkDependencies() {
 	return {
 		hasSequencer,
 		hasJB2A,
-		ready: hasSequencer && hasJB2A
+		ready: hasSequencer && hasJB2A,
 	};
 }
 
@@ -65,7 +65,7 @@ function getAnimationConfig(item) {
 		flameOffsetY: -0.05,
 		flameScale: 1.0,
 		flameRotation: 45,
-		isSpell: false
+		isSpell: false,
 	};
 
 	// Customize based on light source type
@@ -158,7 +158,7 @@ async function playTorchAnimation(token, item) {
 	const tokenWidth = token.document.width;
 	const tokenScale = {
 		x: token.document.texture?.scaleX ?? 1,
-		y: token.document.texture?.scaleY ?? 1
+		y: token.document.texture?.scaleY ?? 1,
 	};
 
 	console.log(`${MODULE_ID} | Playing torch animation for ${token.name}'s ${item.name}`, config);
@@ -178,7 +178,7 @@ async function playTorchAnimation(token, item) {
 				.scaleToObject(1.2, { considerTokenScale: true })
 				.spriteOffset({
 					x: 0,
-					y: -0.4 * tokenWidth
+					y: -0.4 * tokenWidth,
 				}, { gridUnits: true })
 				.aboveLighting(false)
 				.zIndex(1);
@@ -195,7 +195,7 @@ async function playTorchAnimation(token, item) {
 			.scaleOut(0, 250, { ease: "easeOutCubic" })
 			.spriteOffset({
 				x: 0,
-				y: -0.5 * tokenWidth
+				y: -0.5 * tokenWidth,
 			}, { gridUnits: true })
 			.loopProperty("sprite", "scale.y", { from: 0.95, to: 1.05, duration: 2000, ease: "easeInOutSine", pingPong: true })
 			.persist()
@@ -212,7 +212,7 @@ async function playTorchAnimation(token, item) {
 			.scaleToObject(0.4, { considerTokenScale: true })
 			.spriteOffset({
 				x: 0,
-				y: -0.5 * tokenWidth
+				y: -0.5 * tokenWidth,
 			}, { gridUnits: true })
 			.persist()
 			.opacity(0.7)
@@ -233,7 +233,7 @@ async function playTorchAnimation(token, item) {
 			.scaleToObject(0.9, { considerTokenScale: true })
 			.spriteOffset({
 				x: config.flameOffsetX * tokenWidth,
-				y: config.flameOffsetY * tokenWidth
+				y: config.flameOffsetY * tokenWidth,
 			}, { gridUnits: true })
 			.spriteRotation(45)
 			.spriteScale({ x: 1.0 / tokenScale.x, y: 1.0 / tokenScale.y })
@@ -253,7 +253,7 @@ async function playTorchAnimation(token, item) {
 			.scaleOut(0, 250, { ease: "easeOutCubic" })
 			.spriteOffset({
 				x: config.torchOffsetX * tokenWidth,
-				y: config.torchOffsetY * tokenWidth
+				y: config.torchOffsetY * tokenWidth,
 			}, { gridUnits: true })
 			.spriteScale({ x: 1.0 / tokenScale.x, y: 1.0 / tokenScale.y })
 			// Gentle swaying animation
@@ -275,7 +275,7 @@ async function playTorchAnimation(token, item) {
 		.scaleToObject(config.flameScale, { considerTokenScale: true })
 		.spriteOffset({
 			x: config.flameOffsetX * tokenWidth,
-			y: config.flameOffsetY * tokenWidth
+			y: config.flameOffsetY * tokenWidth,
 		}, { gridUnits: true })
 		.spriteScale({ x: 1.0 / tokenScale.x, y: 1.0 / tokenScale.y })
 		.loopProperty("sprite", "rotation", { from: config.flameRotation + 2, to: config.flameRotation - 2, duration: 1500, ease: "easeOutQuad", pingPong: true })
@@ -496,5 +496,5 @@ export {
 	playTorchAnimation,
 	stopTorchAnimation,
 	stopAllTorchAnimations,
-	checkDependencies
+	checkDependencies,
 };

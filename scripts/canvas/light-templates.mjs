@@ -42,8 +42,8 @@ export const DEFAULT_LIGHT_TEMPLATES = [
 		darknessMin: 0,
 		darknessMax: 1,
 		priority: 0,
-		negative: false
-	}
+		negative: false,
+	},
 ];
 
 /**
@@ -64,7 +64,7 @@ export function getCustomLightSources() {
 					speed: t.animationSpeed,
 					intensity: t.animationIntensity,
 					reverse: t.animationReverse,
-					type: t.animationType
+					type: t.animationType,
 				},
 				attenuation: t.attenuation,
 				bright: t.bright,
@@ -73,15 +73,15 @@ export function getCustomLightSources() {
 				contrast: t.contrast,
 				darkness: {
 					min: t.darknessMin,
-					max: t.darknessMax
+					max: t.darknessMax,
 				},
 				dim: t.dim,
 				luminosity: t.luminosity,
 				saturation: t.saturation,
 				shadows: t.shadows,
 				priority: t.priority,
-				negative: t.negative
-			}
+				negative: t.negative,
+			},
 		};
 	}
 
@@ -98,23 +98,23 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 		tag: "form",
 		window: {
 			title: "Light Template Editor",
-			resizable: true
+			resizable: true,
 		},
 		position: {
 			width: 600,
-			height: "auto"
+			height: "auto",
 		},
 		form: {
 			handler: LightTemplateEditor.formHandler,
 			submitOnChange: false,
-			closeOnSubmit: false
-		}
+			closeOnSubmit: false,
+		},
 	};
 
 	static PARTS = {
 		form: {
-			template: `modules/shadowdark-extras/templates/light-template-editor.hbs`
-		}
+			template: "modules/shadowdark-extras/templates/light-template-editor.hbs",
+		},
 	};
 
 	constructor(options = {}) {
@@ -140,7 +140,7 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 			"ghost": "Ghostly Light",
 			"energy": "Energy Field",
 			"roiling": "Roiling Mass",
-			"hole": "Black Hole"
+			"hole": "Black Hole",
 		};
 		// Add more from core if needed, but these are common
 
@@ -156,7 +156,7 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 			7: "Low Absorption",
 			8: "High Absorption",
 			9: "Invert Absorption",
-			10: "Natural Light"
+			10: "Natural Light",
 		};
 
 		return {
@@ -164,7 +164,7 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 			isEditing: !!this.editData,
 			editData: this.editData,
 			animationTypes,
-			colorationTechniques
+			colorationTechniques,
 		};
 	}
 
@@ -174,7 +174,7 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 		const html = $(root);
 
 		// Add Template
-		html.find('[data-action="addTemplate"]').on('click', () => {
+		html.find('[data-action="addTemplate"]').on("click", () => {
 			this.editData = {
 				key: "",
 				name: "",
@@ -196,22 +196,22 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 				darknessMin: 0,
 				darknessMax: 1,
 				priority: 0,
-				negative: false
+				negative: false,
 			};
 			this.render(true);
 		});
 
 		// Edit Template
-		html.find('[data-action="editTemplate"]').on('click', (ev) => {
-			const index = $(ev.currentTarget).data('index');
+		html.find('[data-action="editTemplate"]').on("click", (ev) => {
+			const index = $(ev.currentTarget).data("index");
 			const templates = game.settings.get(MODULE_ID, "customLightTemplates") || DEFAULT_LIGHT_TEMPLATES;
 			this.editData = { ...templates[index], id: index }; // Use index as ID for update
 			this.render(true);
 		});
 
 		// Duplicate Template
-		html.find('[data-action="duplicateTemplate"]').on('click', async (ev) => {
-			const index = $(ev.currentTarget).data('index');
+		html.find('[data-action="duplicateTemplate"]').on("click", async (ev) => {
+			const index = $(ev.currentTarget).data("index");
 			const templates = game.settings.get(MODULE_ID, "customLightTemplates") || DEFAULT_LIGHT_TEMPLATES;
 			const template = foundry.utils.deepClone(templates[index]);
 
@@ -224,14 +224,14 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 		});
 
 		// Delete Template
-		html.find('[data-action="deleteTemplate"]').on('click', async (ev) => {
-			const index = $(ev.currentTarget).data('index');
+		html.find('[data-action="deleteTemplate"]').on("click", async (ev) => {
+			const index = $(ev.currentTarget).data("index");
 			const templates = game.settings.get(MODULE_ID, "customLightTemplates") || DEFAULT_LIGHT_TEMPLATES;
 
 			const confirmed = await foundry.applications.api.DialogV2.confirm({
 				window: { title: "Delete Light Template" },
 				content: `<p>Are you sure you want to delete <strong>${templates[index].name}</strong>?</p>`,
-				modal: true
+				modal: true,
 			});
 
 			if (confirmed) {
@@ -242,7 +242,7 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 		});
 
 		// Cancel Edit
-		html.find('[data-action="cancelEdit"]').on('click', () => {
+		html.find('[data-action="cancelEdit"]').on("click", () => {
 			this.editData = null;
 			this.render(true);
 		});
@@ -253,7 +253,7 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 				navSelector: ".sheet-tabs",
 				contentSelector: ".content",
 				initial: "basic",
-				callback: () => { }
+				callback: () => { },
 			});
 			tabs.bind(root);
 		}
@@ -302,7 +302,7 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 				contrast: Number(data.contrast),
 				shadows: Number(data.shadows),
 				darknessMin: 0, // Hidden fields kept default
-				darknessMax: 1
+				darknessMax: 1,
 			};
 		};
 
@@ -363,7 +363,7 @@ export function patchLightSourceMappings() {
 	// Store the original turnLightOn method
 	const originalTurnLightOn = CONFIG.Actor.documentClass.prototype.turnLightOn;
 
-	CONFIG.Actor.documentClass.prototype.turnLightOn = async function (itemId) {
+	CONFIG.Actor.documentClass.prototype.turnLightOn = async function(itemId) {
 		const item = this.items.get(itemId);
 		const customSources = getCustomLightSources();
 

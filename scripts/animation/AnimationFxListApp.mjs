@@ -20,7 +20,7 @@ const CATEGORY_META = [
 	{ key: "spells", label: "Spells / Scrolls / Wands", icon: "fa-wand-magic-sparkles" },
 	{ key: "weapons", label: "Weapons (attack FX)", icon: "fa-gavel" },
 	{ key: "npcActions", label: "NPC Attacks", icon: "fa-dragon" },
-	{ key: "weaponSprites", label: "Equipped Weapon Sprites", icon: "fa-hand-fist", sprite: true }
+	{ key: "weaponSprites", label: "Equipped Weapon Sprites", icon: "fa-hand-fist", sprite: true },
 ];
 
 const ANIMATION_TYPES = ["none", "wobble", "bobbing", "floating", "rotating"];
@@ -49,7 +49,7 @@ function mergePresetFromForm(base, key, vals, isSprite = false) {
 			offsetY: Number(vals.offsetY ?? base.offsetY ?? 0.1),
 			rotation: Number(vals.rotation ?? base.rotation ?? 0),
 			scale: Number(vals.scale) || base.scale || 1,
-			animationType: vals.animationType ?? base.animationType ?? "wobble"
+			animationType: vals.animationType ?? base.animationType ?? "wobble",
 		};
 	}
 	return {
@@ -65,8 +65,8 @@ function mergePresetFromForm(base, key, vals, isSprite = false) {
 			// existing value only when the field wasn't in the form at all.
 			sound: vals.sound !== undefined ? (vals.sound.trim() || undefined) : base.hit?.sound,
 			scale: Number(vals.scale) || base.hit?.scale || 1,
-			duration: parseInt(vals.duration, 10) || base.hit?.duration || 1500
-		}
+			duration: parseInt(vals.duration, 10) || base.hit?.duration || 1500,
+		},
 	};
 }
 
@@ -87,15 +87,15 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 		form: {
 			handler: AnimationFxListApp.#onSubmit,
 			submitOnChange: false,
-			closeOnSubmit: false
-		}
+			closeOnSubmit: false,
+		},
 	};
 
 	static PARTS = {
 		form: {
 			template: "modules/shadowdark-extras/templates/animation-fx-list.hbs",
-			scrollable: [".sdx-animfx-scroll"]
-		}
+			scrollable: [".sdx-animfx-scroll"],
+		},
 	};
 
 	/** Working copy so add/delete survive across re-renders until saved. */
@@ -149,8 +149,8 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 						animTypes: ANIMATION_TYPES.map(t => ({
 							value: t,
 							label: t.charAt(0).toUpperCase() + t.slice(1),
-							selected: (p.animationType || "wobble") === t
-						}))
+							selected: (p.animationType || "wobble") === t,
+						})),
 					};
 				}
 				const hit = p.hit || {};
@@ -168,14 +168,14 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 					file: hit.file ?? "",
 					sound: hit.sound ?? "",
 					scale: hit.scale ?? 1,
-					duration: hit.duration ?? 1500
+					duration: hit.duration ?? 1500,
 				};
 			});
 			// _default first for readability
 			presets.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
 			return { key: cat.key, label: cat.label, icon: cat.icon, sprite: !!cat.sprite, enabled, presets };
 		});
-		let soundEnabled = true, volume = 0.8;
+		let soundEnabled = true; let volume = 0.8;
 		try { soundEnabled = game.settings.get(MODULE_ID, "animationFxSoundEnabled"); } catch (e) { /* default */ }
 		try { volume = game.settings.get(MODULE_ID, "animationFxVolume"); } catch (e) { /* default */ }
 
@@ -187,7 +187,7 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 				key, label: v.label ?? key, file: v.file ?? "",
 				hasScale: key === "levelUp", scale: v.scale ?? 1,
 				isImage, imgSrc: isImage ? foundry.utils.getRoute(v.file) : "",
-				videoSrc: isImage ? "" : AnimationFxListApp.resolveVideoSrc(v.file)
+				videoSrc: isImage ? "" : AnimationFxListApp.resolveVideoSrc(v.file),
 			};
 		});
 
@@ -237,14 +237,14 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 						offsetY: 0.1,
 						rotation: 0,
 						scale: 1,
-						animationType: "wobble"
+						animationType: "wobble",
 					}
 					: {
 						label: "New Preset",
 						patterns: "",
 						type: "projectile",
 						target: "target",
-						hit: { file: "", scale: 1, duration: 1500 }
+						hit: { file: "", scale: 1, duration: 1500 },
 					};
 				this.render();
 			});
@@ -389,6 +389,6 @@ export function registerAnimationFxMenu() {
 		hint: "Assign Sequencer/JB2A animations to spells, weapons, and NPC attacks by name.",
 		icon: "fas fa-wand-magic-sparkles",
 		type: AnimationFxListApp,
-		restricted: true
+		restricted: true,
 	});
 }

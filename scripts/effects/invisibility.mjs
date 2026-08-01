@@ -139,7 +139,7 @@ export function registerInvisibilityHooks() {
 				ChatMessage.create({
 					content: `<p>${actor.name}'s invisibility fades as they take offensive action!</p>`,
 					speaker: ChatMessage.getSpeaker({ actor }),
-					whisper: []
+					whisper: [],
 				});
 
 				// Restore token visibility using Foundry's hidden property

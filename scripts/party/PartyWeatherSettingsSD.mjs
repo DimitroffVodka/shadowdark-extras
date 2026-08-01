@@ -54,23 +54,23 @@ export class PartyWeatherSettingsApp extends HandlebarsApplicationMixin(Applicat
 		tag: "form",
 		window: {
 			title: "SHADOWDARK_EXTRAS.party_weather.title",
-			resizable: true
+			resizable: true,
 		},
 		position: {
 			width: 560,
-			height: "auto"
+			height: "auto",
 		},
 		form: {
 			handler: PartyWeatherSettingsApp.formHandler,
 			submitOnChange: false,
-			closeOnSubmit: true
-		}
+			closeOnSubmit: true,
+		},
 	};
 
 	static PARTS = {
 		form: {
-			template: `modules/${MODULE_ID}/templates/party-weather-settings.hbs`
-		}
+			template: `modules/${MODULE_ID}/templates/party-weather-settings.hbs`,
+		},
 	};
 
 	async _prepareContext(options) {
@@ -87,13 +87,13 @@ export class PartyWeatherSettingsApp extends HandlebarsApplicationMixin(Applicat
 					uuid: table.uuid,
 					name: table.name,
 					resultCount: table.results?.size ?? table.results?.length ?? 0,
-					selected
+					selected,
 				};
 			});
 		if (worldTables.length) {
 			tableGroups.push({
 				label: game.i18n.localize("SHADOWDARK_EXTRAS.party_weather.world_tables"),
-				tables: worldTables
+				tables: worldTables,
 			});
 		}
 
@@ -113,7 +113,7 @@ export class PartyWeatherSettingsApp extends HandlebarsApplicationMixin(Applicat
 						return {
 							uuid: entry.uuid,
 							name: entry.name,
-							selected
+							selected,
 						};
 					});
 				tableGroups.push({ label: pack.metadata.label, tables });
@@ -126,7 +126,7 @@ export class PartyWeatherSettingsApp extends HandlebarsApplicationMixin(Applicat
 			tableGroups,
 			useDefault: !selectedUuid,
 			missingSelection: selectedUuid && !selectedAvailable ? selectedUuid : "",
-			hasTables: tableGroups.length > 0
+			hasTables: tableGroups.length > 0,
 		};
 	}
 
@@ -164,7 +164,7 @@ export function registerPartyWeatherSettings() {
 		scope: "world",
 		config: false,
 		type: String,
-		default: ""
+		default: "",
 	});
 
 	game.settings.registerMenu(MODULE_ID, "partyWeatherTableMenu", {
@@ -173,6 +173,6 @@ export function registerPartyWeatherSettings() {
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.party_weather.hint"),
 		icon: "fas fa-cloud-sun-rain",
 		type: PartyWeatherSettingsApp,
-		restricted: true
+		restricted: true,
 	});
 }

@@ -27,7 +27,7 @@ export function patchPlayerSheetUseAbility() {
 	// Only patch if getSkipPrompt is missing (i.e. the bug exists in this system version)
 	if (typeof PlayerSheetSD.prototype.getSkipPrompt === "function") return;
 
-	PlayerSheetSD.prototype._onUseAbility = async function (event) {
+	PlayerSheetSD.prototype._onUseAbility = async function(event) {
 		event.preventDefault();
 		// SD 4.x: abilities live on the data model and are resolved by UUID.
 		// The system's own handler reads dataset.itemUuid and calls
