@@ -38,22 +38,22 @@ export function enhanceInventoryTab(app, html, actor) {
 	if (!$inventoryTab.length) return;
 
 	// Add enhanced class to the inventory tab
-	$inventoryTab.addClass('sdx-enhanced-inventory');
+	$inventoryTab.addClass("sdx-enhanced-inventory");
 
 	// Style light toggle icons based on active state
-	html.find('[data-action="toggle-light"]').each(function () {
+	html.find('[data-action="toggle-light"]').each(function() {
 		const $toggle = $(this);
-		const itemId = $toggle.data('item-id');
+		const itemId = $toggle.data("item-id");
 		const item = actor.items.get(itemId);
 
 		if (item?.system?.light?.active) {
 			// Light is active - add glow effect
-			$toggle.find('i').addClass('sdx-light-active');
-			$toggle.addClass('sdx-light-toggle-active');
+			$toggle.find("i").addClass("sdx-light-active");
+			$toggle.addClass("sdx-light-toggle-active");
 		} else {
 			// Light is not active - ensure classes are removed
-			$toggle.find('i').removeClass('sdx-light-active');
-			$toggle.removeClass('sdx-light-toggle-active');
+			$toggle.find("i").removeClass("sdx-light-active");
+			$toggle.removeClass("sdx-light-toggle-active");
 		}
 	});
 }
@@ -73,7 +73,7 @@ function getActorHpData(actor) {
 // header readout and falling back to the native current-HP input. Returns null
 // if neither is present (caller then skips the optimistic paint).
 function readDisplayedHp($scope) {
-	const $val = $scope.find('.sdx-hp-value').first();
+	const $val = $scope.find(".sdx-hp-value").first();
 	if ($val.length) {
 		const n = Number.parseInt($val.text(), 10);
 		if (Number.isFinite(n)) return n;
@@ -90,15 +90,15 @@ function readDisplayedHp($scope) {
 // clicks feel instant. The authoritative actor.update + reconcile render is the
 // backstop, so this only needs to be approximately right.
 function paintHpValue($scope, newValue) {
-	const $val = $scope.find('.sdx-hp-value');
+	const $val = $scope.find(".sdx-hp-value");
 	if ($val.length) {
 		$val.text(newValue);
-		const max = Number.parseInt($scope.find('.sdx-hp-max').first().text(), 10);
+		const max = Number.parseInt($scope.find(".sdx-hp-max").first().text(), 10);
 		if (Number.isFinite(max) && max > 0) {
 			const pct = Math.min(100, Math.max(0, (newValue / max) * 100));
-			const color = pct > 50 ? '#4ade80' : pct > 25 ? '#fbbf24' : '#ef4444';
-			$scope.find('.sdx-hp-bar').css({ width: `${pct}%`, "background-color": color });
-			$scope.find('.hp-wave-container').css("--hp-translate", `${Math.max(0, Math.round(pct) - 15)}%`);
+			const color = pct > 50 ? "#4ade80" : pct > 25 ? "#fbbf24" : "#ef4444";
+			$scope.find(".sdx-hp-bar").css({ width: `${pct}%`, "background-color": color });
+			$scope.find(".hp-wave-container").css("--hp-translate", `${Math.max(0, Math.round(pct) - 15)}%`);
 		}
 	}
 	const $input = $scope.find('[name="system.attributes.hp.value"]');
@@ -188,7 +188,7 @@ export function attachNativeHpQuickControls(app, html, actor) {
 	$hpInput.prop("disabled", false);
 	$hpInput.attr("data-tooltip", "Current HP");
 
-	const $hpBox = $hpInput.closest('.SD-box');
+	const $hpBox = $hpInput.closest(".SD-box");
 	if (!$hpBox.length) return;
 
 	$hpBox.attr("data-tooltip", HP_QUICK_ADJUST_TOOLTIP);
@@ -196,14 +196,14 @@ export function attachNativeHpQuickControls(app, html, actor) {
 	$hpBox.off("click.sdxQuickHp contextmenu.sdxQuickHp");
 
 	$hpBox.on("click.sdxQuickHp", async (event) => {
-		if ($(event.target).is('input, textarea, select, button, a')) return;
+		if ($(event.target).is("input, textarea, select, button, a")) return;
 		event.preventDefault();
 		event.stopPropagation();
 		applyHpQuickAdjust(actor, -1, $html);
 	});
 
 	$hpBox.on("contextmenu.sdxQuickHp", async (event) => {
-		if ($(event.target).is('input, textarea, select, button, a')) return;
+		if ($(event.target).is("input, textarea, select, button, a")) return;
 		event.preventDefault();
 		event.stopPropagation();
 		applyHpQuickAdjust(actor, 1, $html);

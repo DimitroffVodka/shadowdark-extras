@@ -111,7 +111,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			"town_buf",
 			"village_buf",
 			"cave_buf",
-			"dwellings_buf"
+			"dwellings_buf",
 		];
 		watabouKeys.forEach(k => window.localStorage.removeItem(k));
 
@@ -143,11 +143,11 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 		if (loadedJsonText) {
 			iframe.onload = () => {
-				console.log(`SDX | Iframe finished loading, dispatching maphub_load_json!`);
+				console.log("SDX | Iframe finished loading, dispatching maphub_load_json!");
 				iframe.contentWindow?.postMessage({
-					type: 'maphub_load_json',
-					json: loadedJsonText
-				}, '*');
+					type: "maphub_load_json",
+					json: loadedJsonText,
+				}, "*");
 			};
 		}
 
@@ -243,7 +243,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			const btn = document.createElement("button");
 			btn.type = "button";
 			btn.className = "header-control sdx-import-scene-btn";
-			btn.innerHTML = `<i class="fa-solid fa-map"></i><span>Import Scene</span>`;
+			btn.innerHTML = "<i class=\"fa-solid fa-map\"></i><span>Import Scene</span>";
 			btn.setAttribute("aria-label", "Import Scene");
 			btn.dataset.tooltip = "Create a Foundry scene from this map";
 			btn.style.cssText = [
@@ -318,7 +318,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 			const originalSaveAs = cw.saveAs;
 			const app = this;
-			const foundrySaveAs = function (blob, filename, ...rest) {
+			const foundrySaveAs = function(blob, filename, ...rest) {
 				if (filename) {
 					if (filename.endsWith(".json") || filename.endsWith(".pb")) {
 						void app._onMessage({ data: { type: "maphub_save_json", blob, filename } });
@@ -350,7 +350,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 			const mapId = this._getMapIdFromQuery();
 			const saveFilename = `maphub_${mapId}.json`;
-			const uploadPath = `maps/maphub`;
+			const uploadPath = "maps/maphub";
 
 			try {
 				await FilePicker.createDirectory("data", "maps").catch(() => { });
@@ -378,7 +378,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			const mapId = this._getMapIdFromQuery();
 			const timestamp = Date.now();
 			const saveFilename = `maphub_${mapId}_${timestamp}.${format}`;
-			const uploadPath = `maps/maphub`;
+			const uploadPath = "maps/maphub";
 
 			try {
 				await FilePicker.createDirectory("data", "maps").catch(() => { });
@@ -487,7 +487,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			const timestamp = Date.now();
 			const genType = this._mapType || "map";
 			const filename = `${genType}_${timestamp}.png`;
-			const uploadPath = `maps/maphub`;
+			const uploadPath = "maps/maphub";
 
 			// Foundry's createDirectory isn't recursive, so we create parent first
 			await FilePicker.createDirectory("data", "maps").catch(() => { });
@@ -586,7 +586,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			let notes = [];
 			let dungeonTransform = null;
 			let importImg = imgPath;          // background to use (may be rescaled)
-			let importW = null, importH = null;
+			let importW = null; let importH = null;
 
 			// Exact grid alignment for Dungeon + Cave.
 			//
@@ -741,7 +741,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			const ctx = off.getContext("2d");
 			const d = ctx.getImageData(0, 0, off.width, off.height).data;
 			const bg = [d[0], d[1], d[2]];
-			let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+			let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity;
 			for (let y = 0; y < off.height; y += 2) for (let x = 0; x < off.width; x += 2) {
 				const i = (y * off.width + x) * 4;
 				if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > threshold) {
@@ -777,8 +777,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 			// backing = CSS * devicePixelRatio). Read the node region in BACKING px by
 			// scaling M by dpr — otherwise the source rect is undersized and the floor
 			// image lands shifted/clipped and out of register with the (grid-space) walls.
-			const srcX = (M.a * mj + M.tx) * dpr, srcY = (M.d * mi + M.ty) * dpr;
-			const srcW = (Mj - mj) * M.a * dpr, srcH = (Mi - mi) * M.d * dpr;
+			const srcX = (M.a * mj + M.tx) * dpr; const srcY = (M.d * mi + M.ty) * dpr;
+			const srcW = (Mj - mj) * M.a * dpr; const srcH = (Mi - mi) * M.d * dpr;
 			ctx.drawImage(off, srcX, srcY, srcW, srcH, 0, 0, sceneW, sceneH);
 			return await this._uploadCanvas(out, `dwellfloor_${Date.now()}.png`);
 		} catch (e) { console.warn(`${MODULE_ID} | dwelling warp failed`, e); return null; }
@@ -798,151 +798,151 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 		try {
 			const LH = 10; // ft per level
-				const ordinal = (k) => { const v = k % 100, sfx = (v >= 11 && v <= 13) ? "th" : (["th","st","nd","rd"][k % 10] || "th"); return `${k}${sfx}`; };
-				// Levels to import, bottom -> top: basement (if any), ground, then upper floors.
-				const units = [];
-				if (view.house.basement) units.push({ floor: view.house.basement, setIdx: -1, name: "Basement", isGround: false });
-				floors.forEach((f, i) => units.push({ floor: f, setIdx: i, name: i === 0 ? "Ground Floor" : `${ordinal(i)} Floor`, isGround: i === 0 }));
-				const baseIdx = view.house.basement ? 1 : 0; // index of the ground floor within units
-				units.forEach((u, k) => { u.bottom = (k - baseIdx) * LH; u.top = u.bottom + LH; });
-				ui.notifications.info(`Importing dwelling — ${units.length} level${units.length === 1 ? "" : "s"}…`);
+			const ordinal = (k) => { const v = k % 100; const sfx = (v >= 11 && v <= 13) ? "th" : (["th","st","nd","rd"][k % 10] || "th"); return `${k}${sfx}`; };
+			// Levels to import, bottom -> top: basement (if any), ground, then upper floors.
+			const units = [];
+			if (view.house.basement) units.push({ floor: view.house.basement, setIdx: -1, name: "Basement", isGround: false });
+			floors.forEach((f, i) => units.push({ floor: f, setIdx: i, name: i === 0 ? "Ground Floor" : `${ordinal(i)} Floor`, isGround: i === 0 }));
+			const baseIdx = view.house.basement ? 1 : 0; // index of the ground floor within units
+			units.forEach((u, k) => { u.bottom = (k - baseIdx) * LH; u.top = u.bottom + LH; });
+			ui.notifications.info(`Importing dwelling — ${units.length} level${units.length === 1 ? "" : "s"}…`);
 
-				// 1. Capture each level + its render transform FROM THE SAME FRAME. setFloor
-				// animates the fit and the WebGL buffer can go blank once it settles, so retry
-				// (re-triggering each time) until a non-blank frame; reading transform + pixels
-				// back-to-back (no await between) keeps them on the same frame so the warp lines
-				// the image up with the walls regardless of the animation state.
-				for (const u of units) {
-					let M = null, off = null;
-					for (let attempt = 0; attempt < 14 && !off; attempt++) {
-						view.setFloor(u.setIdx);
-						this._setDwellUiVisible(view, false);
-						// Nudge OpenFL/Lime to repaint — the WebGL buffer can stay blank
-						// mid-fit or when the window isn't focused, which otherwise drops the
-						// whole dwelling to the flat generic fallback.
-						if (attempt > 0) { try { this._iframe?.contentWindow?.dispatchEvent(new Event("resize")); } catch (_) { } }
-						await new Promise(r => setTimeout(r, attempt === 0 ? 900 : 350));
-						const m = view.map.__getRenderTransform();
-						const cap = this._grabCanvas();
-						if (!m || !Number.isFinite(m.a) || !m.a || !cap) continue;
-						const b = this._detectBuildingBBox(cap);
-						if (b && b.w > 20 && b.h > 20) { M = { a: m.a, b: m.b, c: m.c, d: m.d, tx: m.tx, ty: m.ty }; off = cap; }
-					}
-					if (!off) return false;
-					u.M = M; u.off = off;
+			// 1. Capture each level + its render transform FROM THE SAME FRAME. setFloor
+			// animates the fit and the WebGL buffer can go blank once it settles, so retry
+			// (re-triggering each time) until a non-blank frame; reading transform + pixels
+			// back-to-back (no await between) keeps them on the same frame so the warp lines
+			// the image up with the walls regardless of the animation state.
+			for (const u of units) {
+				let M = null; let off = null;
+				for (let attempt = 0; attempt < 14 && !off; attempt++) {
+					view.setFloor(u.setIdx);
+					this._setDwellUiVisible(view, false);
+					// Nudge OpenFL/Lime to repaint — the WebGL buffer can stay blank
+					// mid-fit or when the window isn't focused, which otherwise drops the
+					// whole dwelling to the flat generic fallback.
+					if (attempt > 0) { try { this._iframe?.contentWindow?.dispatchEvent(new Event("resize")); } catch (_) { } }
+					await new Promise(r => setTimeout(r, attempt === 0 ? 900 : 350));
+					const m = view.map.__getRenderTransform();
+					const cap = this._grabCanvas();
+					if (!m || !Number.isFinite(m.a) || !m.a || !cap) continue;
+					const b = this._detectBuildingBBox(cap);
+					if (b && b.w > 20 && b.h > 20) { M = { a: m.a, b: m.b, c: m.c, d: m.d, tx: m.tx, ty: m.ty }; off = cap; }
 				}
+				if (!off) return false;
+				u.M = M; u.off = off;
+			}
 
-				// 2. Shared building grid from every level's geometry (contour + rooms), node
-				// coords (x = node.j, y = node.i), plus a fixed roof/outer-wall margin. Shared
-				// by ALL levels so they stack.
-				let cmi = Infinity, cmj = Infinity, cMi = -Infinity, cMj = -Infinity;
-				const accNode = (edges) => { for (const e of (edges || [])) for (const nd of [e?.a, e?.b]) { if (!nd) continue; cmi = Math.min(cmi, nd.i); cMi = Math.max(cMi, nd.i); cmj = Math.min(cmj, nd.j); cMj = Math.max(cMj, nd.j); } };
-				for (const u of units) { accNode(u.floor.contour); for (const rm of (u.floor.rooms || [])) accNode(rm.contour); }
-				if (!Number.isFinite(cmi)) return false;
-				const ROOF = 2;
-				const mi = Math.floor(cmi - ROOF), mj = Math.floor(cmj - ROOF), Mi = Math.ceil(cMi + ROOF), Mj = Math.ceil(cMj + ROOF);
-				const cellsW = Math.max(1, Mj - mj), cellsH = Math.max(1, Mi - mi);
-				const gridPx = Math.max(60, Math.min(160, Math.round(units[baseIdx].M.a * 1.8)));
-				const sceneW = Math.round(cellsW * gridPx);
-				const sceneH = Math.round(cellsH * gridPx);
-				const nodeToScene = (j, i) => ({ x: Math.round((j - mj) * gridPx), y: Math.round((i - mi) * gridPx) });
+			// 2. Shared building grid from every level's geometry (contour + rooms), node
+			// coords (x = node.j, y = node.i), plus a fixed roof/outer-wall margin. Shared
+			// by ALL levels so they stack.
+			let cmi = Infinity; let cmj = Infinity; let cMi = -Infinity; let cMj = -Infinity;
+			const accNode = (edges) => { for (const e of (edges || [])) for (const nd of [e?.a, e?.b]) { if (!nd) continue; cmi = Math.min(cmi, nd.i); cMi = Math.max(cMi, nd.i); cmj = Math.min(cmj, nd.j); cMj = Math.max(cMj, nd.j); } };
+			for (const u of units) { accNode(u.floor.contour); for (const rm of (u.floor.rooms || [])) accNode(rm.contour); }
+			if (!Number.isFinite(cmi)) return false;
+			const ROOF = 2;
+			const mi = Math.floor(cmi - ROOF); const mj = Math.floor(cmj - ROOF); const Mi = Math.ceil(cMi + ROOF); const Mj = Math.ceil(cMj + ROOF);
+			const cellsW = Math.max(1, Mj - mj); const cellsH = Math.max(1, Mi - mi);
+			const gridPx = Math.max(60, Math.min(160, Math.round(units[baseIdx].M.a * 1.8)));
+			const sceneW = Math.round(cellsW * gridPx);
+			const sceneH = Math.round(cellsH * gridPx);
+			const nodeToScene = (j, i) => ({ x: Math.round((j - mj) * gridPx), y: Math.round((i - mi) * gridPx) });
 
-				// 2b. Warp each level's capture into the shared grid (cell (j,i) -> nodeToScene).
-				// The captures are the canvas BACKING store (HiDPI), so pass the
-				// backing/CSS ratio so the warp samples the right region.
-				const srcCanvas = this._iframe?.contentDocument?.querySelector("canvas");
-				const dpr = (srcCanvas && srcCanvas.clientWidth > 0) ? (srcCanvas.width / srcCanvas.clientWidth) : (this._iframe?.contentWindow?.devicePixelRatio || 1);
-				for (const u of units) {
-					u.bg = await this._warpFloorImage(u.off, u.M, mj, mi, Mj, Mi, sceneW, sceneH, dpr);
-					if (!u.bg) return false;
-				}
+			// 2b. Warp each level's capture into the shared grid (cell (j,i) -> nodeToScene).
+			// The captures are the canvas BACKING store (HiDPI), so pass the
+			// backing/CSS ratio so the warp samples the right region.
+			const srcCanvas = this._iframe?.contentDocument?.querySelector("canvas");
+			const dpr = (srcCanvas && srcCanvas.clientWidth > 0) ? (srcCanvas.width / srcCanvas.clientWidth) : (this._iframe?.contentWindow?.devicePixelRatio || 1);
+			for (const u of units) {
+				u.bg = await this._warpFloorImage(u.off, u.M, mj, mi, Mj, Mi, sceneW, sceneH, dpr);
+				if (!u.bg) return false;
+			}
 
-				// 3. Scene with a named elevation Level per unit, each its OWN background image
-				// (fit:"fill" — Foundry fills/centres it in the scene rect). One scene, many levels.
-				const sceneName = `${this._getMapLabel()} ${new Date().toLocaleString()}`;
-				const levelBg = (src) => ({ src, color: "#000000", tint: "#ffffff", alphaThreshold: 0 });
-				const fillTex = { anchorX: 0.5, anchorY: 0.5, offsetX: 0, offsetY: 0, fit: "fill", scaleX: 1, scaleY: 1, rotation: 0 };
-				const sceneData = {
-					name: sceneName, width: sceneW, height: sceneH,
-					grid: { size: gridPx }, padding: 0, backgroundColor: "#000000",
-					fogExploration: true, tokenVision: true,
-					background: { src: units[baseIdx].bg },
-					levels: units.map(u => ({ name: u.name, elevation: { bottom: u.bottom, top: u.top }, background: levelBg(u.bg), textures: fillTex })),
-				};
-				const scene = await Scene.create(sceneData);
-				await scene.activate();
-				units.forEach((u, k) => { u.level = scene.levels.find(l => (l.elevation?.bottom ?? null) === u.bottom) ?? scene.levels.contents[k]; });
+			// 3. Scene with a named elevation Level per unit, each its OWN background image
+			// (fit:"fill" — Foundry fills/centres it in the scene rect). One scene, many levels.
+			const sceneName = `${this._getMapLabel()} ${new Date().toLocaleString()}`;
+			const levelBg = (src) => ({ src, color: "#000000", tint: "#ffffff", alphaThreshold: 0 });
+			const fillTex = { anchorX: 0.5, anchorY: 0.5, offsetX: 0, offsetY: 0, fit: "fill", scaleX: 1, scaleY: 1, rotation: 0 };
+			const sceneData = {
+				name: sceneName, width: sceneW, height: sceneH,
+				grid: { size: gridPx }, padding: 0, backgroundColor: "#000000",
+				fogExploration: true, tokenVision: true,
+				background: { src: units[baseIdx].bg },
+				levels: units.map(u => ({ name: u.name, elevation: { bottom: u.bottom, top: u.top }, background: levelBg(u.bg), textures: fillTex })),
+			};
+			const scene = await Scene.create(sceneData);
+			await scene.activate();
+			units.forEach((u, k) => { u.level = scene.levels.find(l => (l.elevation?.bottom ?? null) === u.bottom) ?? scene.levels.contents[k]; });
 
-				// 4. Per-level walls (with doors). Entrance door only on the ground floor.
-				let wallTotal = 0;
-				for (const u of units) {
-					const walls = this._buildDwellWalls(u.floor, nodeToScene, { id: u.level.id, bottom: u.bottom, top: u.top, isGround: u.isGround });
-					if (walls.length) { await scene.createEmbeddedDocuments("Wall", walls); wallTotal += walls.length; }
-				}
+			// 4. Per-level walls (with doors). Entrance door only on the ground floor.
+			let wallTotal = 0;
+			for (const u of units) {
+				const walls = this._buildDwellWalls(u.floor, nodeToScene, { id: u.level.id, bottom: u.bottom, top: u.top, isGround: u.isGround });
+				if (walls.length) { await scene.createEmbeddedDocuments("Wall", walls); wallTotal += walls.length; }
+			}
 
-				// 5. Stairs as changeLevel Regions, using the generator's OWN connectivity:
-				// each stair knows its cell and the floor it connects to (s.to.plan). A cell
-				// with both up- and down-stairs yields two regions (one per pair). Dedupe by
-				// cell + the level pair it bridges.
-				const floorToUnit = new Map(units.map(u => [u.floor, u]));
-				const regionByKey = new Map();
-				const addStairRegion = (cell, uA, uB) => {
-					if (!cell || typeof cell.i !== "number" || !uA || !uB || uA === uB) return;
-					const lo = uA.bottom <= uB.bottom ? uA : uB, hi = uA.bottom <= uB.bottom ? uB : uA;
-					const key = `${cell.i},${cell.j}|${lo.bottom}|${hi.bottom}`;
-					if (regionByKey.has(key)) return;
+			// 5. Stairs as changeLevel Regions, using the generator's OWN connectivity:
+			// each stair knows its cell and the floor it connects to (s.to.plan). A cell
+			// with both up- and down-stairs yields two regions (one per pair). Dedupe by
+			// cell + the level pair it bridges.
+			const floorToUnit = new Map(units.map(u => [u.floor, u]));
+			const regionByKey = new Map();
+			const addStairRegion = (cell, uA, uB) => {
+				if (!cell || typeof cell.i !== "number" || !uA || !uB || uA === uB) return;
+				const lo = uA.bottom <= uB.bottom ? uA : uB; const hi = uA.bottom <= uB.bottom ? uB : uA;
+				const key = `${cell.i},${cell.j}|${lo.bottom}|${hi.bottom}`;
+				if (regionByKey.has(key)) return;
+				const cc = nodeToScene(cell.j + 0.5, cell.i + 0.5);
+				regionByKey.set(key, {
+					name: `Stairs: ${lo.name} ↔ ${hi.name}`,
+					color: "#28c9cc",
+					shapes: [{ type: "rectangle", x: cc.x - gridPx / 2, y: cc.y - gridPx / 2, width: gridPx, height: gridPx, hole: false }],
+					elevation: { bottom: lo.bottom, top: hi.top, topInclusive: false },
+					levels: [lo.level.id, hi.level.id],
+					visibility: 1, locked: false,
+					behaviors: [{ name: "Change Level", type: "changeLevel", system: { movementActions: [] } }],
+				});
+			};
+				// Regular stairs: each stair's cell bridges its floor and s.to.plan's floor.
+			for (const u of units) for (const s of (u.floor.stairs || [])) {
+				const other = s?.to?.plan ? floorToUnit.get(s.to.plan) : null;
+				if (other) addStairRegion(s.cell, u, other);
+			}
+			// Spiral tower: one shared shaft connecting every above-ground floor at a single
+			// cell. A MIDDLE floor can go both up AND down from it, which the default
+			// changeLevel region can't express cleanly (stacked regions = duelling
+			// prompts). Use ONE region spanning all the spiral's levels with a custom
+			// up/down chooser (executeScript) instead.
+			try {
+				const spObj = (view.house.floors || []).map(f => f?.spiral).find(Boolean);
+				const sp = spObj?.landing;
+				const fu = units.filter(u => u.setIdx >= 0).sort((a, b) => a.bottom - b.bottom);
+				if (sp && typeof sp.i === "number" && fu.length >= 2) {
+					const conn = fu.map(u => ({ name: u.name, bottom: u.bottom, id: u.level.id }));
+					// Place the region ON the spiral shaft — the tower cell diagonally
+					// opposite the landing across the corner — so a token must stand on the
+					// stairs to use them.
+					let cell = sp;
+					try {
+						const C = [spObj.entrance.a, spObj.entrance.b].find(n1 => [spObj.exit.a, spObj.exit.b].some(n2 => n2 && n1 && n2.i === n1.i && n2.j === n1.j));
+						if (C) cell = { i: 2 * C.i - 1 - sp.i, j: 2 * C.j - 1 - sp.j };
+					} catch (_) { }
 					const cc = nodeToScene(cell.j + 0.5, cell.i + 0.5);
-					regionByKey.set(key, {
-						name: `Stairs: ${lo.name} ↔ ${hi.name}`,
+					regionByKey.set(`spiral|${sp.i},${sp.j}`, {
+						name: "Spiral Staircase",
 						color: "#28c9cc",
 						shapes: [{ type: "rectangle", x: cc.x - gridPx / 2, y: cc.y - gridPx / 2, width: gridPx, height: gridPx, hole: false }],
-						elevation: { bottom: lo.bottom, top: hi.top, topInclusive: false },
-						levels: [lo.level.id, hi.level.id],
+						elevation: { bottom: fu[0].bottom, top: fu[fu.length - 1].top, topInclusive: false },
+						levels: fu.map(u => u.level.id),
 						visibility: 1, locked: false,
-						behaviors: [{ name: "Change Level", type: "changeLevel", system: { movementActions: [] } }],
+						flags: { [MODULE_ID]: { spiral: conn } },
+						behaviors: [{ name: "Spiral Up/Down", type: "executeScript", system: { events: ["tokenMoveIn"], source: this._spiralRegionScript() } }],
 					});
-				};
-				// Regular stairs: each stair's cell bridges its floor and s.to.plan's floor.
-				for (const u of units) for (const s of (u.floor.stairs || [])) {
-					const other = s?.to?.plan ? floorToUnit.get(s.to.plan) : null;
-					if (other) addStairRegion(s.cell, u, other);
 				}
-				// Spiral tower: one shared shaft connecting every above-ground floor at a single
-				// cell. A MIDDLE floor can go both up AND down from it, which the default
-				// changeLevel region can't express cleanly (stacked regions = duelling
-				// prompts). Use ONE region spanning all the spiral's levels with a custom
-				// up/down chooser (executeScript) instead.
-				try {
-					const spObj = (view.house.floors || []).map(f => f?.spiral).find(Boolean);
-					const sp = spObj?.landing;
-					const fu = units.filter(u => u.setIdx >= 0).sort((a, b) => a.bottom - b.bottom);
-					if (sp && typeof sp.i === "number" && fu.length >= 2) {
-						const conn = fu.map(u => ({ name: u.name, bottom: u.bottom, id: u.level.id }));
-						// Place the region ON the spiral shaft — the tower cell diagonally
-						// opposite the landing across the corner — so a token must stand on the
-						// stairs to use them.
-						let cell = sp;
-						try {
-							const C = [spObj.entrance.a, spObj.entrance.b].find(n1 => [spObj.exit.a, spObj.exit.b].some(n2 => n2 && n1 && n2.i === n1.i && n2.j === n1.j));
-							if (C) cell = { i: 2 * C.i - 1 - sp.i, j: 2 * C.j - 1 - sp.j };
-						} catch (_) { }
-						const cc = nodeToScene(cell.j + 0.5, cell.i + 0.5);
-						regionByKey.set(`spiral|${sp.i},${sp.j}`, {
-							name: "Spiral Staircase",
-							color: "#28c9cc",
-							shapes: [{ type: "rectangle", x: cc.x - gridPx / 2, y: cc.y - gridPx / 2, width: gridPx, height: gridPx, hole: false }],
-							elevation: { bottom: fu[0].bottom, top: fu[fu.length - 1].top, topInclusive: false },
-							levels: fu.map(u => u.level.id),
-							visibility: 1, locked: false,
-							flags: { [MODULE_ID]: { spiral: conn } },
-							behaviors: [{ name: "Spiral Up/Down", type: "executeScript", system: { events: ["tokenMoveIn"], source: this._spiralRegionScript() } }],
-						});
-					}
-				} catch (_) { }
-				const regions = [...regionByKey.values()];
-				if (regions.length) await scene.createEmbeddedDocuments("Region", regions);
+			} catch (_) { }
+			const regions = [...regionByKey.values()];
+			if (regions.length) await scene.createEmbeddedDocuments("Region", regions);
 
-				ui.notifications.info(`Imported ${scene.name} — ${units.length} levels, ${wallTotal} walls, ${regions.length} stairs.`);
+			ui.notifications.info(`Imported ${scene.name} — ${units.length} levels, ${wallTotal} walls, ${regions.length} stairs.`);
 			this.close();
 			return true;
 		} catch (err) {
@@ -964,28 +964,28 @@ export class MaphubViewerApp extends ApplicationV2 {
 	 */
 	_spiralRegionScript() {
 		return [
-			'if (!event?.user?.isSelf) return;',
-				'const t = event?.data?.token; if (!t) return;',
-				'const conn = region?.flags?.["shadowdark-extras"]?.spiral;',
-				'if (!Array.isArray(conn) || conn.length < 2) return;',
-				'const origin = t.level;',
-				'const here = conn.find(c => c.id === origin) ?? conn.slice().sort((a,b)=>Math.abs(a.bottom-(t.elevation??0))-Math.abs(b.bottom-(t.elevation??0)))[0];',
-				'const cur = here?.bottom ?? (t.elevation ?? 0);',
-				'const up = conn.filter(c => c.bottom > cur + 0.5).sort((a,b)=>a.bottom-b.bottom)[0];',
-				'const down = conn.filter(c => c.bottom < cur - 0.5).sort((a,b)=>b.bottom-a.bottom)[0];',
-				'if (!up && !down) return;',
-				'const D = foundry.applications.api.DialogV2;',
-				'const btns = [];',
-				'if (up) btns.push({ action:"up", label:"Up to " + up.name, default: !down });',
-				'if (down) btns.push({ action:"down", label:"Down to " + down.name, default: !up });',
-				'btns.push({ action:"stay", label:"Stay" });',
-				'let pick = "stay";',
-				'try { pick = await D.wait({ window:{ title:"Spiral Staircase" }, content:"<p>Take the spiral staircase?</p>", buttons: btns, modal: true }); } catch (e) { pick = "stay"; }',
-				'const dest = pick === "up" ? up : (pick === "down" ? down : null);',
-				'if (!dest || dest.id === origin) return;',
-				'await t.update({ level: dest.id, elevation: dest.bottom });',
-				'try { if (t.parent?.isView && canvas.level?.id === origin) await t.parent.view({ level: dest.id, controlledTokens: [t.id] }); } catch (e) {}',
-			].join("\n");
+			"if (!event?.user?.isSelf) return;",
+			"const t = event?.data?.token; if (!t) return;",
+			'const conn = region?.flags?.["shadowdark-extras"]?.spiral;',
+			"if (!Array.isArray(conn) || conn.length < 2) return;",
+			"const origin = t.level;",
+			"const here = conn.find(c => c.id === origin) ?? conn.slice().sort((a,b)=>Math.abs(a.bottom-(t.elevation??0))-Math.abs(b.bottom-(t.elevation??0)))[0];",
+			"const cur = here?.bottom ?? (t.elevation ?? 0);",
+			"const up = conn.filter(c => c.bottom > cur + 0.5).sort((a,b)=>a.bottom-b.bottom)[0];",
+			"const down = conn.filter(c => c.bottom < cur - 0.5).sort((a,b)=>b.bottom-a.bottom)[0];",
+			"if (!up && !down) return;",
+			"const D = foundry.applications.api.DialogV2;",
+			"const btns = [];",
+			'if (up) btns.push({ action:"up", label:"Up to " + up.name, default: !down });',
+			'if (down) btns.push({ action:"down", label:"Down to " + down.name, default: !up });',
+			'btns.push({ action:"stay", label:"Stay" });',
+			'let pick = "stay";',
+			'try { pick = await D.wait({ window:{ title:"Spiral Staircase" }, content:"<p>Take the spiral staircase?</p>", buttons: btns, modal: true }); } catch (e) { pick = "stay"; }',
+			'const dest = pick === "up" ? up : (pick === "down" ? down : null);',
+			"if (!dest || dest.id === origin) return;",
+			"await t.update({ level: dest.id, elevation: dest.bottom });",
+			"try { if (t.parent?.isView && canvas.level?.id === origin) await t.parent.view({ level: dest.id, controlledTokens: [t.id] }); } catch (e) {}",
+		].join("\n");
 	}
 
 	/** Build wall docs for one dwelling floor (outer contour + room contours), scoped to a Level. */
@@ -1069,7 +1069,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			if (skip.has(nk)) return; // open connection (e.g. building <-> spiral tower)
 			const dt = doorType.get(nk);
 			if (dt === "DOORWAY" || dt === "NULL") return; // open passage — leave a gap
-			const A = nodeToScene(a.j, a.i), B = nodeToScene(b.j, b.i);
+			const A = nodeToScene(a.j, a.i); const B = nodeToScene(b.j, b.i);
 			if (A.x === B.x && A.y === B.y) return;
 			const w = { c: [A.x, A.y, B.x, B.y], levels: [levelCtx.id], flags: { "wall-height": { bottom: levelCtx.bottom, top: levelCtx.top } } };
 			if (dt === "REGULAR") { w.door = 1; w.ds = 0; } // closed, openable door
@@ -1215,7 +1215,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 					try {
 						const r = child.getBounds(child); // local-space bounds
 						if (r && r.width > 0 && r.height > 0) {
-							const rx = r.width / gw, ry = r.height / gh;
+							const rx = r.width / gw; const ry = r.height / gh;
 							// The geometry sprite draws in the geometry's own units, so
 							// its local bounds match geomBounds on BOTH axes at ~1:1.
 							// Reward axis agreement (rx≈ry) AND unit match (~1) so we
@@ -1404,7 +1404,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 			const keyEvent = new cw.KeyboardEvent("keydown", {
 				key: "j", code: "KeyJ", keyCode: 74, which: 74,
-				bubbles: true, cancelable: true
+				bubbles: true, cancelable: true,
 			});
 			doc.body?.dispatchEvent(keyEvent);
 			doc.dispatchEvent(keyEvent);
@@ -1449,19 +1449,19 @@ export class MaphubViewerApp extends ApplicationV2 {
 			const rects = view?.dungeon?.rects || this._lastSavedDungeonJson?.rects;
 			const kids = map?.__children;
 			if (!map || !Array.isArray(rects) || !rects.length || !Array.isArray(kids)) return this._DUNGEON_CELL;
-			let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+			let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
 			for (const r of rects) {
 				minX = Math.min(minX, r.x); maxX = Math.max(maxX, r.x + r.w);
 				minY = Math.min(minY, r.y); maxY = Math.max(maxY, r.y + r.h);
 			}
-			const gW = maxX - minX, gH = maxY - minY;
+			const gW = maxX - minX; const gH = maxY - minY;
 			if (gW <= 0 || gH <= 0) return this._DUNGEON_CELL;
 			// The floor layer's local bounds tightly equal the grid bbox × cell.
 			// Pick the child whose x/y cell-sizes agree and are an integer.
 			let best = null;
 			for (const c of kids) {
 				let b; try { b = c.getBounds(map); } catch (_) { continue; }
-				const cx = b.width / gW, cy = b.height / gH;
+				const cx = b.width / gW; const cy = b.height / gH;
 				if (!(cx > 0) || !(cy > 0)) continue;
 				const avg = (cx + cy) / 2;
 				const disagree = Math.abs(cx - cy);
@@ -1522,7 +1522,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			if (!M || !Number.isFinite(M.a)) return null;
 			const cell = this._resolveDungeonCell(view);
 			const toPixel = (gx, gy) => {
-				const lx = gx * cell, ly = gy * cell;
+				const lx = gx * cell; const ly = gy * cell;
 				return {
 					x: Math.round(M.a * lx + M.c * ly + M.tx),
 					y: Math.round(M.b * lx + M.d * ly + M.ty),
@@ -1617,7 +1617,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 	}
 
 	async _createImageScene({ name, img, grid, width = null, height = null }) {
-		let w = width, h = height;
+		let w = width; let h = height;
 		if (!(w > 0) || !(h > 0)) {
 			const loader = new foundry.canvas.TextureLoader();
 			const texture = await loader.loadTexture(img);
@@ -1664,8 +1664,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				maxHeight: this.element.style.maxHeight,
 				left: this.element.style.left,
 				top: this.element.style.top,
-				zIndex: this.element.style.zIndex
-			} : null
+				zIndex: this.element.style.zIndex,
+			} : null,
 		};
 
 		try {
@@ -1728,7 +1728,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 					width: img.width,
 					height: img.height,
 					padding: 0,
-					grid: { size: isDwellings ? 260 : 50 }
+					grid: { size: isDwellings ? 260 : 50 },
 				};
 
 				// Foundry V14 stores scene imagery on the embedded Level, not the
@@ -1796,7 +1796,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 					width: img.width,
 					height: img.height,
 					x: canvas.stage.pivot.x - (img.width / 2),
-					y: canvas.stage.pivot.y - (img.height / 2)
+					y: canvas.stage.pivot.y - (img.height / 2),
 				};
 
 				await canvas.scene.createEmbeddedDocuments("Tile", [tileData]);
@@ -1850,11 +1850,11 @@ export class MaphubViewerApp extends ApplicationV2 {
 		if (this._saveRotationWasOn) {
 			try {
 				const rotKey = [...Object.keys(window.localStorage)].find(k =>
-					k.includes('com.watabou.dungeon')
+					k.includes("com.watabou.dungeon")
 				);
 				if (rotKey) {
-					const val = window.localStorage.getItem(rotKey) || '';
-					window.localStorage.setItem(rotKey, val.replace('autoRotationf', 'autoRotationt'));
+					const val = window.localStorage.getItem(rotKey) || "";
+					window.localStorage.setItem(rotKey, val.replace("autoRotationf", "autoRotationt"));
 				}
 			} catch (err) {
 				console.warn(`${MODULE_ID} | Failed to restore dungeon rotation`, err);
@@ -1917,7 +1917,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 		const bundleDir = RAW_BUNDLE_DIRS[this._mapType] ?? this._mapType;
 		const localBase = `${window.location.origin}${foundry.utils.getRoute(`/${BASE}/to/${bundleDir}/index.html`)}`;
 		let routeDir = foundry.utils.getRoute(`/${BASE}/to/${bundleDir}`);
-		if (!routeDir.endsWith('/')) routeDir += '/';
+		if (!routeDir.endsWith("/")) routeDir += "/";
 		const localBaseDir = `${window.location.origin}${routeDir}`;
 		const localParams = this._queryString ? `cb=${Date.now()}&${this._queryString}` : `cb=${Date.now()}`;
 		const localUrl = `${localBase}?${localParams}`;

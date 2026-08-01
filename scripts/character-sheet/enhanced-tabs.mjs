@@ -29,10 +29,10 @@ export function enhanceDetailsTab(app, html, actor) {
 	if (!$detailsTab.length) return;
 
 	// Add enhanced class to the details tab
-	$detailsTab.addClass('sdx-enhanced-details');
+	$detailsTab.addClass("sdx-enhanced-details");
 
 	// Hide the level box (it's already in the enhanced header)
-	$detailsTab.find('.SD-box').first().hide();
+	$detailsTab.find(".SD-box").first().hide();
 }
 
 // ============================================
@@ -49,7 +49,7 @@ export function enhanceAbilitiesTab(app, html, actor) {
 	if (!$abilitiesTab.length) return;
 
 	// Add enhanced class to the abilities tab
-	$abilitiesTab.addClass('sdx-enhanced-abilities');
+	$abilitiesTab.addClass("sdx-enhanced-abilities");
 
 }
 
@@ -62,15 +62,15 @@ export function enhanceAbilitiesTab(app, html, actor) {
  * Add inline control buttons to talent items
  */
 function addInlineTalentControls($talentsTab, actor) {
-	const $items = $talentsTab.find('.item');
+	const $items = $talentsTab.find(".item");
 
-	$items.each(function () {
+	$items.each(function() {
 		const $item = $(this);
 
 		// Skip if already has controls
-		if ($item.find('.sdx-talent-controls').length) return;
+		if ($item.find(".sdx-talent-controls").length) return;
 
-		const itemId = $item.data('item-id');
+		const itemId = $item.data("item-id");
 
 		if (!itemId) return;
 
@@ -93,7 +93,7 @@ function addInlineTalentControls($talentsTab, actor) {
 		$item.append($controls);
 
 		// Edit button
-		$controls.find('.sdx-talent-edit').on('click', async (e) => {
+		$controls.find(".sdx-talent-edit").on("click", async (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -101,7 +101,7 @@ function addInlineTalentControls($talentsTab, actor) {
 		});
 
 		// Transfer button
-		$controls.find('.sdx-talent-transfer').on('click', async (e) => {
+		$controls.find(".sdx-talent-transfer").on("click", async (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -114,7 +114,7 @@ function addInlineTalentControls($talentsTab, actor) {
 		});
 
 		// Delete button
-		$controls.find('.sdx-talent-delete').on('click', async (e) => {
+		$controls.find(".sdx-talent-delete").on("click", async (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -122,7 +122,7 @@ function addInlineTalentControls($talentsTab, actor) {
 				const confirm = await foundry.applications.api.DialogV2.confirm({
 					window: { title: "Delete Talent" },
 					content: `<p>Are you sure you want to delete <strong>${item.name}</strong>?</p>`,
-					modal: true
+					modal: true,
 				});
 
 				if (confirm) {
@@ -144,7 +144,7 @@ export function enhanceTalentsTab(app, html, actor) {
 	if (!$talentsTab.length) return;
 
 	// Add enhanced class to the talents tab
-	$talentsTab.addClass('sdx-enhanced-talents');
+	$talentsTab.addClass("sdx-enhanced-talents");
 
 	// Add inline control buttons to talent items
 	addInlineTalentControls($talentsTab, actor);
@@ -165,5 +165,5 @@ export function enhanceEffectsTab(app, html, actor) {
 	if (!$effectsTab.length) return;
 
 	// Add enhanced class to the effects tab
-	$effectsTab.addClass('sdx-enhanced-effects');
+	$effectsTab.addClass("sdx-enhanced-effects");
 }

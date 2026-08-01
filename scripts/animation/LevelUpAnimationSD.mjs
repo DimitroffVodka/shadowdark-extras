@@ -12,22 +12,22 @@ const MODULE_ID = "shadowdark-extras";
  * Check if level-up animations are enabled in settings
  */
 function isEnabled() {
-    try {
-        return game.settings.get(MODULE_ID, "enableLevelUpAnimation") !== false;
-    } catch (e) {
-        return true; // Default to enabled if setting not registered yet
-    }
+	try {
+		return game.settings.get(MODULE_ID, "enableLevelUpAnimation") !== false;
+	} catch (e) {
+		return true; // Default to enabled if setting not registered yet
+	}
 }
 
 /**
  * Check if required modules are active
  */
 function checkDependencies() {
-    const hasSequencer = game.modules.get("sequencer")?.active;
-    return {
-        hasSequencer,
-        ready: hasSequencer
-    };
+	const hasSequencer = game.modules.get("sequencer")?.active;
+	return {
+		hasSequencer,
+		ready: hasSequencer,
+	};
 }
 
 /**
@@ -36,7 +36,7 @@ function checkDependencies() {
  * @returns {string} - Unique effect name
  */
 function getEffectName(token) {
-    return `${MODULE_ID}-levelup-${token.id}`;
+	return `${MODULE_ID}-levelup-${token.id}`;
 }
 
 /**
@@ -45,8 +45,8 @@ function getEffectName(token) {
  * @returns {number} - XP required for next level
  */
 function getXpForNextLevel(currentLevel) {
-    // Shadowdark XP requirements per level (linear progression: level * 10)
-    return currentLevel * 10;
+	// Shadowdark XP requirements per level (linear progression: level * 10)
+	return currentLevel * 10;
 }
 
 /**
@@ -55,14 +55,14 @@ function getXpForNextLevel(currentLevel) {
  * @returns {boolean} - True if actor can level up
  */
 function canLevelUp(actor) {
-    if (actor.type !== "Player") return false;
+	if (actor.type !== "Player") return false;
 
-    const sys = actor.system;
-    const level = sys.level?.value ?? 1;
-    const xp = sys.level?.xp ?? 0;
-    const xpNeeded = getXpForNextLevel(level);
+	const sys = actor.system;
+	const level = sys.level?.value ?? 1;
+	const xp = sys.level?.xp ?? 0;
+	const xpNeeded = getXpForNextLevel(level);
 
-    return xp >= xpNeeded;
+	return xp >= xpNeeded;
 }
 
 /**
@@ -70,68 +70,68 @@ function canLevelUp(actor) {
  * @param {Token} token - The token to animate
  */
 export async function playLevelUpAnimation(token) {
-    if (!isEnabled()) return;
+	if (!isEnabled()) return;
 
-    const deps = checkDependencies();
-    if (!deps.ready) {
-        if (!deps.hasSequencer) {
-            console.warn(`${MODULE_ID} | Sequencer module is required for level-up animations`);
-        }
-        return;
-    }
+	const deps = checkDependencies();
+	if (!deps.ready) {
+		if (!deps.hasSequencer) {
+			console.warn(`${MODULE_ID} | Sequencer module is required for level-up animations`);
+		}
+		return;
+	}
 
-    const effectName = getEffectName(token);
+	const effectName = getEffectName(token);
 
-    // End any existing animation for this token
-    await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
+	// End any existing animation for this token
+	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
 
-    // Get token dimensions for positioning
-    const tokenWidth = token.document.width;
+	// Get token dimensions for positioning
+	const tokenWidth = token.document.width;
 
-    console.log(`${MODULE_ID} | Playing level-up animation for ${token.name}`);
+	console.log(`${MODULE_ID} | Playing level-up animation for ${token.name}`);
 
-    // Build the animation sequence
-    const seq = new Sequence();
+	// Build the animation sequence
+	const seq = new Sequence();
 
-    // Animation file is configurable via the Animation FX manager (Ambient & Events);
-    // falls back to the Foundry built-in upgrade icon.
-    const ambient = AnimationFxSD.getAmbient?.() ?? {};
-    const levelUpFile = ambient.levelUp?.file || "icons/svg/upgrade.svg";
+	// Animation file is configurable via the Animation FX manager (Ambient & Events);
+	// falls back to the Foundry built-in upgrade icon.
+	const ambient = AnimationFxSD.getAmbient?.() ?? {};
+	const levelUpFile = ambient.levelUp?.file || "icons/svg/upgrade.svg";
 
-    // Create the level-up icon effect
-    seq.effect()
-        .name(effectName)
-        .file(levelUpFile)
-        .atLocation(token)
-        .attachTo(token, { bindRotation: false, local: true, bindVisibility: true })
-        .scaleToObject(0.35, { considerTokenScale: true })
-        .scaleIn(0, 300, { ease: "easeOutBack" })
-        .spriteOffset({
-            x: tokenWidth * 0.35,  // Top-right corner
-            y: -tokenWidth * 0.35
-        }, { gridUnits: true })
-        .filter("Glow", {
-            distance: 8,
-            outerStrength: 3,
-            innerStrength: 1,
-            color: 0xd4af37, // Golden glow
-            quality: 0.2,
-            knockout: false
-        })
-        .loopProperty("sprite", "position.y", {
-            from: 0,
-            to: -0.03 * tokenWidth,
-            duration: 800,
-            ease: "easeInOutSine",
-            pingPong: true,
-            gridUnits: true
-        })
-        .persist()
-        .xray(false)
-        .zIndex(10);
+	// Create the level-up icon effect
+	seq.effect()
+		.name(effectName)
+		.file(levelUpFile)
+		.atLocation(token)
+		.attachTo(token, { bindRotation: false, local: true, bindVisibility: true })
+		.scaleToObject(0.35, { considerTokenScale: true })
+		.scaleIn(0, 300, { ease: "easeOutBack" })
+		.spriteOffset({
+			x: tokenWidth * 0.35,  // Top-right corner
+			y: -tokenWidth * 0.35,
+		}, { gridUnits: true })
+		.filter("Glow", {
+			distance: 8,
+			outerStrength: 3,
+			innerStrength: 1,
+			color: 0xd4af37, // Golden glow
+			quality: 0.2,
+			knockout: false,
+		})
+		.loopProperty("sprite", "position.y", {
+			from: 0,
+			to: -0.03 * tokenWidth,
+			duration: 800,
+			ease: "easeInOutSine",
+			pingPong: true,
+			gridUnits: true,
+		})
+		.persist()
+		.xray(false)
+		.zIndex(10);
 
-    await seq.play();
-    console.log(`${MODULE_ID} | Level-up animation started for ${token.name}`);
+	await seq.play();
+	console.log(`${MODULE_ID} | Level-up animation started for ${token.name}`);
 }
 
 /**
@@ -139,12 +139,12 @@ export async function playLevelUpAnimation(token) {
  * @param {Token} token - The token
  */
 export async function stopLevelUpAnimation(token) {
-    const deps = checkDependencies();
-    if (!deps.hasSequencer) return;
+	const deps = checkDependencies();
+	if (!deps.hasSequencer) return;
 
-    const effectName = getEffectName(token);
-    await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
-    console.log(`${MODULE_ID} | Stopped level-up animation for ${token.name}`);
+	const effectName = getEffectName(token);
+	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
+	console.log(`${MODULE_ID} | Stopped level-up animation for ${token.name}`);
 }
 
 /**
@@ -153,18 +153,18 @@ export async function stopLevelUpAnimation(token) {
  * @returns {Token[]} - Array of tokens
  */
 function getTokensForActor(actor) {
-    if (!canvas.scene) return [];
+	if (!canvas.scene) return [];
 
-    // For synthetic/unlinked tokens
-    if (actor.isToken) {
-        const token = canvas.tokens.get(actor.token?.id);
-        return token ? [token] : [];
-    }
+	// For synthetic/unlinked tokens
+	if (actor.isToken) {
+		const token = canvas.tokens.get(actor.token?.id);
+		return token ? [token] : [];
+	}
 
-    // For linked tokens, find all tokens on the scene
-    return canvas.tokens.placeables.filter(t =>
-        t.actor?.id === actor.id && t.document.actorLink
-    );
+	// For linked tokens, find all tokens on the scene
+	return canvas.tokens.placeables.filter(t =>
+		t.actor?.id === actor.id && t.document.actorLink
+	);
 }
 
 /**
@@ -172,104 +172,104 @@ function getTokensForActor(actor) {
  * @param {Actor} actor - The actor
  */
 async function updateLevelUpAnimationForActor(actor) {
-    if (!isEnabled()) return;
-    if (actor.type !== "Player") return;
+	if (!isEnabled()) return;
+	if (actor.type !== "Player") return;
 
-    const tokens = getTokensForActor(actor);
-    const shouldShow = canLevelUp(actor);
+	const tokens = getTokensForActor(actor);
+	const shouldShow = canLevelUp(actor);
 
-    for (const token of tokens) {
-        if (shouldShow) {
-            await playLevelUpAnimation(token);
-        } else {
-            await stopLevelUpAnimation(token);
-        }
-    }
+	for (const token of tokens) {
+		if (shouldShow) {
+			await playLevelUpAnimation(token);
+		} else {
+			await stopLevelUpAnimation(token);
+		}
+	}
 }
 
 /**
  * Initialize level-up animation hooks
  */
 export function initLevelUpAnimations() {
-    if (!isEnabled()) {
-        console.log(`${MODULE_ID} | Level-up animations disabled in settings`);
-        return;
-    }
+	if (!isEnabled()) {
+		console.log(`${MODULE_ID} | Level-up animations disabled in settings`);
+		return;
+	}
 
-    const deps = checkDependencies();
-    if (!deps.hasSequencer) {
-        console.log(`${MODULE_ID} | Level-up animations disabled - Sequencer module not found`);
-        return;
-    }
+	const deps = checkDependencies();
+	if (!deps.hasSequencer) {
+		console.log(`${MODULE_ID} | Level-up animations disabled - Sequencer module not found`);
+		return;
+	}
 
-    console.log(`${MODULE_ID} | Initializing level-up animations`);
+	console.log(`${MODULE_ID} | Initializing level-up animations`);
 
-    // Hook into actor updates to detect XP or level changes
-    Hooks.on("updateActor", async (actor, changes, options, userId) => {
-        // Only the user who made the change should update the animation
-        if (userId !== game.user.id) return;
+	// Hook into actor updates to detect XP or level changes
+	Hooks.on("updateActor", async (actor, changes, options, userId) => {
+		// Only the user who made the change should update the animation
+		if (userId !== game.user.id) return;
 
-        // Check if XP or level was changed
-        const xpChanged = foundry.utils.hasProperty(changes, "system.level.xp");
-        const levelChanged = foundry.utils.hasProperty(changes, "system.level.value");
+		// Check if XP or level was changed
+		const xpChanged = foundry.utils.hasProperty(changes, "system.level.xp");
+		const levelChanged = foundry.utils.hasProperty(changes, "system.level.value");
 
-        if (!xpChanged && !levelChanged) return;
+		if (!xpChanged && !levelChanged) return;
 
-        // Update animation for this actor
-        await updateLevelUpAnimationForActor(actor);
-    });
+		// Update animation for this actor
+		await updateLevelUpAnimationForActor(actor);
+	});
 
-    // Restore animations on scene ready
-    Hooks.on("canvasReady", async () => {
-        // Only the first active user should restore animations
-        // This prevents all clients from creating duplicate effects
-        const firstActiveUser = game.users.find(u => u.active);
-        if (game.user.id !== firstActiveUser?.id) return;
+	// Restore animations on scene ready
+	Hooks.on("canvasReady", async () => {
+		// Only the first active user should restore animations
+		// This prevents all clients from creating duplicate effects
+		const firstActiveUser = game.users.find(u => u.active);
+		if (game.user.id !== firstActiveUser?.id) return;
 
-        // Small delay to ensure everything is loaded
-        await new Promise(resolve => setTimeout(resolve, 500));
+		// Small delay to ensure everything is loaded
+		await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Check all tokens for level-up eligibility
-        for (const token of canvas.tokens.placeables) {
-            const actor = token.actor;
-            if (!actor || actor.type !== "Player") continue;
+		// Check all tokens for level-up eligibility
+		for (const token of canvas.tokens.placeables) {
+			const actor = token.actor;
+			if (!actor || actor.type !== "Player") continue;
 
-            if (canLevelUp(actor)) {
-                await playLevelUpAnimation(token);
-            }
-        }
-    });
+			if (canLevelUp(actor)) {
+				await playLevelUpAnimation(token);
+			}
+		}
+	});
 
-    // Clean up animations when token is deleted
-    Hooks.on("deleteToken", async (tokenDoc, options, userId) => {
-        // Only the user who deleted the token should clean up
-        if (userId !== game.user.id) return;
+	// Clean up animations when token is deleted
+	Hooks.on("deleteToken", async (tokenDoc, options, userId) => {
+		// Only the user who deleted the token should clean up
+		if (userId !== game.user.id) return;
 
-        const deps = checkDependencies();
-        if (!deps.hasSequencer) return;
+		const deps = checkDependencies();
+		if (!deps.hasSequencer) return;
 
-        // End level-up effect for this token
-        await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-levelup-${tokenDoc.id}` });
-    });
+		// End level-up effect for this token
+		await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-levelup-${tokenDoc.id}` });
+	});
 
-    // Check for level-up when a new token is created
-    Hooks.on("createToken", async (tokenDoc, options, userId) => {
-        // Only the user who created the token should add animations
-        if (userId !== game.user.id) return;
+	// Check for level-up when a new token is created
+	Hooks.on("createToken", async (tokenDoc, options, userId) => {
+		// Only the user who created the token should add animations
+		if (userId !== game.user.id) return;
 
-        // Small delay to ensure token is fully initialized
-        await new Promise(resolve => setTimeout(resolve, 100));
+		// Small delay to ensure token is fully initialized
+		await new Promise(resolve => setTimeout(resolve, 100));
 
-        const token = canvas.tokens.get(tokenDoc.id);
-        if (!token) return;
+		const token = canvas.tokens.get(tokenDoc.id);
+		if (!token) return;
 
-        const actor = token.actor;
-        if (!actor || actor.type !== "Player") return;
+		const actor = token.actor;
+		if (!actor || actor.type !== "Player") return;
 
-        if (canLevelUp(actor)) {
-            await playLevelUpAnimation(token);
-        }
-    });
+		if (canLevelUp(actor)) {
+			await playLevelUpAnimation(token);
+		}
+	});
 
-    console.log(`${MODULE_ID} | Level-up animations initialized successfully`);
+	console.log(`${MODULE_ID} | Level-up animations initialized successfully`);
 }

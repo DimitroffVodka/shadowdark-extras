@@ -7,7 +7,7 @@ export function generateItemGiveConfigHTML(MODULE_ID, flags, itemsList, itemProf
 			<div class="header light">
 				<label class="sdx-section-checkbox">
 					<input type="checkbox" name="flags.${MODULE_ID}.itemGive.enabled"
-					       ${flags.enabled ? 'checked' : ''}
+					       ${flags.enabled ? "checked" : ""}
 					       class="sdx-item-give-toggle" />
 					<span>Give Item to Caster</span>
 				</label>
@@ -17,12 +17,12 @@ export function generateItemGiveConfigHTML(MODULE_ID, flags, itemsList, itemProf
 				<div class="SD-grid">
 					<h3 class="sdx-section-title">Items to Give</h3>
 					<div class="sdx-item-give-list">
-						${itemsList || ''}
+						${itemsList || ""}
 					</div>
 					<button type="button" class="sdx-add-item-give-btn" data-action="addItemGiveProfile">
 						<i class="fas fa-plus"></i> Add Item to Give
 					</button>
-					<input type="hidden" name="flags.${MODULE_ID}.itemGive.profiles" class="sdx-item-give-data" value="${JSON.stringify(itemProfilesArray).replace(/"/g, '&quot;')}" />
+					<input type="hidden" name="flags.${MODULE_ID}.itemGive.profiles" class="sdx-item-give-data" value="${JSON.stringify(itemProfilesArray).replace(/"/g, "&quot;")}" />
 				</div>
 			</div>
 		</div>
@@ -36,19 +36,19 @@ export function generateItemGiveProfileHTML(profile, index) {
 				<div class="sdx-item-give-drop">
 					${profile.itemUuid ? `
 						<div class="sdx-item-give-display" data-uuid="${profile.itemUuid}">
-							<img src="${profile.itemImg || 'icons/svg/mystery-man.svg'}" alt="${profile.itemName || 'Item'}" />
-							<span>${profile.itemName || 'Item'}</span>
+							<img src="${profile.itemImg || "icons/svg/mystery-man.svg"}" alt="${profile.itemName || "Item"}" />
+							<span>${profile.itemName || "Item"}</span>
 						</div>
 					` : `
 						<span><i class="fas fa-hand-holding"></i> Drop item here</span>
 					`}
 				</div>
-				<input type="hidden" class="sdx-item-give-uuid" value="${profile.itemUuid || ''}" />
-				<input type="hidden" class="sdx-item-give-name" value="${profile.itemName || ''}" />
-				<input type="hidden" class="sdx-item-give-img" value="${profile.itemImg || ''}" />
+				<input type="hidden" class="sdx-item-give-uuid" value="${profile.itemUuid || ""}" />
+				<input type="hidden" class="sdx-item-give-name" value="${profile.itemName || ""}" />
+				<input type="hidden" class="sdx-item-give-img" value="${profile.itemImg || ""}" />
 				<div class="sdx-profile-field">
 					<label>Quantity</label>
-					<input type="text" class="sdx-item-give-quantity" value="${profile.quantity || '1'}" placeholder="1 or 1d4" title="Quantity or dice formula to roll" />
+					<input type="text" class="sdx-item-give-quantity" value="${profile.quantity || "1"}" placeholder="1 or 1d4" title="Quantity or dice formula to roll" />
 				</div>
 				<button type="button" class="sdx-remove-item-give-btn" data-index="${index}"
 				        data-action="removeItemGiveProfile" title="Remove this item">

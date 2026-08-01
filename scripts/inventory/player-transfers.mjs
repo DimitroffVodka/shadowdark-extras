@@ -74,7 +74,7 @@ export async function transferItemToPlayer(sourceActor, item, targetActorId) {
 			const ok = await socket.executeAsGM("transferItemsAsGM", {
 				sourceActorId: sourceActor.id,
 				targetActorId: targetActor.id,
-				items: payload
+				items: payload,
 			});
 			if (!ok) {
 				ui.notifications.error(
@@ -87,7 +87,7 @@ export async function transferItemToPlayer(sourceActor, item, targetActorId) {
 		ui.notifications.info(
 			game.i18n.format("SHADOWDARK_EXTRAS.notifications.item_transferred", {
 				item: itemName,
-				target: targetActor.name
+				target: targetActor.name,
 			})
 		);
 	} catch (error) {
@@ -137,7 +137,7 @@ export async function transferCoinsToPlayer(sourceActor, coins, targetActorId) {
 			await sourceActor.update({
 				"system.coins.gp": sourceGp,
 				"system.coins.sp": sourceSp,
-				"system.coins.cp": sourceCp
+				"system.coins.cp": sourceCp,
 			});
 
 			// Add coins to party treasury flags
@@ -154,7 +154,7 @@ export async function transferCoinsToPlayer(sourceActor, coins, targetActorId) {
 			const coinPayload = {
 				gp: coins.gp || 0,
 				sp: coins.sp || 0,
-				cp: coins.cp || 0
+				cp: coins.cp || 0,
 			};
 
 			if (game.user.isGM || targetActor.isOwner) {
@@ -177,7 +177,7 @@ export async function transferCoinsToPlayer(sourceActor, coins, targetActorId) {
 				const ok = await socket.executeAsGM("transferCoinsAsGM", {
 					sourceActorId: sourceActor.id,
 					targetActorId: targetActor.id,
-					coins: coinPayload
+					coins: coinPayload,
 				});
 				if (!ok) {
 					ui.notifications.error(
@@ -198,7 +198,7 @@ export async function transferCoinsToPlayer(sourceActor, coins, targetActorId) {
 		ui.notifications.info(
 			game.i18n.format("SHADOWDARK_EXTRAS.notifications.coins_transferred", {
 				coins: coinsStr,
-				target: targetActor.name
+				target: targetActor.name,
 			})
 		);
 	} catch (error) {
@@ -238,7 +238,7 @@ export async function showCoinTransferDialog(sourceActor) {
 	const sourceCoins = {
 		gp: sourceActor.system?.coins?.gp ?? 0,
 		sp: sourceActor.system?.coins?.sp ?? 0,
-		cp: sourceActor.system?.coins?.cp ?? 0
+		cp: sourceActor.system?.coins?.cp ?? 0,
 	};
 
 	// Categorize actors and build searchable data
@@ -253,37 +253,37 @@ export async function showCoinTransferDialog(sourceActor) {
 	});
 
 	// Build options HTML
-	let optionsHtml = '';
+	let optionsHtml = "";
 
 	if (partyActors.length > 0) {
-		optionsHtml += `<optgroup label="📦 Party Storage" data-group="party">`;
+		optionsHtml += "<optgroup label=\"📦 Party Storage\" data-group=\"party\">";
 		for (const p of partyActors) {
 			optionsHtml += `<option value="${p.id}" data-search="${p.name.toLowerCase()}">🎒 ${p.name}</option>`;
 		}
-		optionsHtml += `</optgroup>`;
+		optionsHtml += "</optgroup>";
 	}
 
 	if (connectedAssigned.length > 0) {
-		optionsHtml += `<optgroup label="🟢 Connected Players" data-group="connected">`;
+		optionsHtml += "<optgroup label=\"🟢 Connected Players\" data-group=\"connected\">";
 		for (const p of connectedAssigned) {
 			const user = game.users.find(u => u.active && u.character?.id === p.id);
-			const userName = user ? user.name : '';
-			const displayUserName = userName ? ` (${userName})` : '';
+			const userName = user ? user.name : "";
+			const displayUserName = userName ? ` (${userName})` : "";
 			const searchText = `${p.name} ${userName}`.toLowerCase();
 			optionsHtml += `<option value="${p.id}" data-search="${searchText}">🟢 ${p.name}${displayUserName}</option>`;
 		}
-		optionsHtml += `</optgroup>`;
+		optionsHtml += "</optgroup>";
 	}
 
 	if (otherPlayers.length > 0) {
-		optionsHtml += `<optgroup label="⚪ Other Characters" data-group="other">`;
+		optionsHtml += "<optgroup label=\"⚪ Other Characters\" data-group=\"other\">";
 		for (const p of otherPlayers) {
 			const owners = game.users.filter(u => p.testUserPermission(u, "OWNER"));
-			const ownerNames = owners.map(u => u.name).join(' ');
+			const ownerNames = owners.map(u => u.name).join(" ");
 			const searchText = `${p.name} ${ownerNames}`.toLowerCase();
 			optionsHtml += `<option value="${p.id}" data-search="${searchText}">⚪ ${p.name}</option>`;
 		}
-		optionsHtml += `</optgroup>`;
+		optionsHtml += "</optgroup>";
 	}
 
 	const content = `
@@ -345,9 +345,9 @@ export async function showCoinTransferDialog(sourceActor) {
 					callback: (event, button, dlg) => {
 						const root = dlg.element;
 						const targetActorId = root.querySelector('[name="targetActorId"]')?.value;
-						const gp = parseInt(root.querySelector('#sdx-coin-gp')?.value) || 0;
-						const sp = parseInt(root.querySelector('#sdx-coin-sp')?.value) || 0;
-						const cp = parseInt(root.querySelector('#sdx-coin-cp')?.value) || 0;
+						const gp = parseInt(root.querySelector("#sdx-coin-gp")?.value) || 0;
+						const sp = parseInt(root.querySelector("#sdx-coin-sp")?.value) || 0;
+						const cp = parseInt(root.querySelector("#sdx-coin-cp")?.value) || 0;
 
 						if (gp <= 0 && sp <= 0 && cp <= 0) {
 							ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.dialog.no_coins_selected"));
@@ -356,37 +356,37 @@ export async function showCoinTransferDialog(sourceActor) {
 						}
 
 						resolve({ targetActorId, coins: { gp, sp, cp } });
-					}
+					},
 				},
 				{
 					action: "cancel",
 					icon: "fas fa-times",
 					label: game.i18n.localize("Cancel"),
-					callback: () => resolve(null)
-				}
+					callback: () => resolve(null),
+				},
 			],
-			close: () => resolve(null)
+			close: () => resolve(null),
 		});
 		dialog.render({ force: true }).then(() => {
 			const root = dialog.element;
-			const select = root.querySelector('#sdx-transfer-target');
-			const filterCheckbox = root.querySelector('#sdx-filter-connected');
-			const searchInput = root.querySelector('#sdx-transfer-search');
+			const select = root.querySelector("#sdx-transfer-target");
+			const filterCheckbox = root.querySelector("#sdx-filter-connected");
+			const searchInput = root.querySelector("#sdx-transfer-search");
 
 			const updateFilter = () => {
 				const showOnlyConnected = !!filterCheckbox?.checked;
 				const searchText = (searchInput?.value || "").toLowerCase().trim();
 
-				root.querySelectorAll('#sdx-transfer-target optgroup').forEach(group => {
+				root.querySelectorAll("#sdx-transfer-target optgroup").forEach(group => {
 					const groupType = group.dataset.group;
-					if (groupType === 'other' && showOnlyConnected) {
+					if (groupType === "other" && showOnlyConnected) {
 						group.hidden = true;
 						return;
 					}
 					let visibleCount = 0;
-					group.querySelectorAll('option').forEach(option => {
-						const optionSearch = option.dataset.search || '';
-						const visible = searchText === '' || optionSearch.includes(searchText);
+					group.querySelectorAll("option").forEach(option => {
+						const optionSearch = option.dataset.search || "";
+						const visible = searchText === "" || optionSearch.includes(searchText);
 						option.hidden = !visible;
 						if (visible) visibleCount++;
 					});
@@ -401,11 +401,11 @@ export async function showCoinTransferDialog(sourceActor) {
 			};
 
 			updateFilter();
-			filterCheckbox?.addEventListener('change', updateFilter);
-			searchInput?.addEventListener('input', updateFilter);
+			filterCheckbox?.addEventListener("change", updateFilter);
+			searchInput?.addEventListener("input", updateFilter);
 
-			root.querySelectorAll('#sdx-coin-gp, #sdx-coin-sp, #sdx-coin-cp').forEach(input => {
-				input.addEventListener('change', () => {
+			root.querySelectorAll("#sdx-coin-gp, #sdx-coin-sp, #sdx-coin-cp").forEach(input => {
+				input.addEventListener("change", () => {
 					const max = parseInt(input.max) || 0;
 					let val = parseInt(input.value) || 0;
 					if (val < 0) val = 0;
@@ -459,41 +459,41 @@ export async function showTransferDialog(sourceActor, item) {
 	});
 
 	// Build options HTML with optgroups and data attributes for searching
-	let optionsHtml = '';
+	let optionsHtml = "";
 
 	// Party actors first
 	if (partyActors.length > 0) {
-		optionsHtml += `<optgroup label="📦 Party Storage" data-group="party">`;
+		optionsHtml += "<optgroup label=\"📦 Party Storage\" data-group=\"party\">";
 		for (const p of partyActors) {
 			optionsHtml += `<option value="${p.id}" data-search="${p.name.toLowerCase()}">🎒 ${p.name}</option>`;
 		}
-		optionsHtml += `</optgroup>`;
+		optionsHtml += "</optgroup>";
 	}
 
 	// Connected & Assigned characters
 	if (connectedAssigned.length > 0) {
-		optionsHtml += `<optgroup label="🟢 Connected Players" data-group="connected">`;
+		optionsHtml += "<optgroup label=\"🟢 Connected Players\" data-group=\"connected\">";
 		for (const p of connectedAssigned) {
 			const user = game.users.find(u => u.active && u.character?.id === p.id);
-			const userName = user ? user.name : '';
-			const displayUserName = userName ? ` (${userName})` : '';
+			const userName = user ? user.name : "";
+			const displayUserName = userName ? ` (${userName})` : "";
 			const searchText = `${p.name} ${userName}`.toLowerCase();
 			optionsHtml += `<option value="${p.id}" data-search="${searchText}">🟢 ${p.name}${displayUserName}</option>`;
 		}
-		optionsHtml += `</optgroup>`;
+		optionsHtml += "</optgroup>";
 	}
 
 	// Other player characters
 	if (otherPlayers.length > 0) {
-		optionsHtml += `<optgroup label="⚪ Other Characters" data-group="other">`;
+		optionsHtml += "<optgroup label=\"⚪ Other Characters\" data-group=\"other\">";
 		for (const p of otherPlayers) {
 			// Find any owner for search purposes
 			const owners = game.users.filter(u => p.testUserPermission(u, "OWNER"));
-			const ownerNames = owners.map(u => u.name).join(' ');
+			const ownerNames = owners.map(u => u.name).join(" ");
 			const searchText = `${p.name} ${ownerNames}`.toLowerCase();
 			optionsHtml += `<option value="${p.id}" data-search="${searchText}">⚪ ${p.name}</option>`;
 		}
-		optionsHtml += `</optgroup>`;
+		optionsHtml += "</optgroup>";
 	}
 
 	const content = `
@@ -532,37 +532,37 @@ export async function showTransferDialog(sourceActor, item) {
 					callback: (event, button, dlg) => {
 						const targetActorId = dlg.element.querySelector('[name="targetActorId"]')?.value;
 						resolve(targetActorId);
-					}
+					},
 				},
 				{
 					action: "cancel",
 					icon: "fas fa-times",
 					label: game.i18n.localize("Cancel"),
-					callback: () => resolve(null)
-				}
+					callback: () => resolve(null),
+				},
 			],
-			close: () => resolve(null)
+			close: () => resolve(null),
 		});
 		dialog.render({ force: true }).then(() => {
 			const root = dialog.element;
-			const select = root.querySelector('#sdx-transfer-target');
-			const filterCheckbox = root.querySelector('#sdx-filter-connected');
-			const searchInput = root.querySelector('#sdx-transfer-search');
+			const select = root.querySelector("#sdx-transfer-target");
+			const filterCheckbox = root.querySelector("#sdx-filter-connected");
+			const searchInput = root.querySelector("#sdx-transfer-search");
 
 			const updateFilter = () => {
 				const showOnlyConnected = !!filterCheckbox?.checked;
 				const searchText = (searchInput?.value || "").toLowerCase().trim();
 
-				root.querySelectorAll('#sdx-transfer-target optgroup').forEach(group => {
+				root.querySelectorAll("#sdx-transfer-target optgroup").forEach(group => {
 					const groupType = group.dataset.group;
-					if (groupType === 'other' && showOnlyConnected) {
+					if (groupType === "other" && showOnlyConnected) {
 						group.hidden = true;
 						return;
 					}
 					let visibleCount = 0;
-					group.querySelectorAll('option').forEach(option => {
-						const optionSearch = option.dataset.search || '';
-						const visible = searchText === '' || optionSearch.includes(searchText);
+					group.querySelectorAll("option").forEach(option => {
+						const optionSearch = option.dataset.search || "";
+						const visible = searchText === "" || optionSearch.includes(searchText);
 						option.hidden = !visible;
 						if (visible) visibleCount++;
 					});
@@ -577,8 +577,8 @@ export async function showTransferDialog(sourceActor, item) {
 			};
 
 			updateFilter();
-			filterCheckbox?.addEventListener('change', updateFilter);
-			searchInput?.addEventListener('input', updateFilter);
+			filterCheckbox?.addEventListener("change", updateFilter);
+			searchInput?.addEventListener("input", updateFilter);
 
 			setTimeout(() => searchInput?.focus(), 100);
 		});
@@ -599,7 +599,7 @@ export function patchPlayerSheetForTransfers() {
 	const originalGetItemContextOptions = PlayerSheetSD.prototype._getItemContextOptions;
 
 	// Replace with enhanced version
-	PlayerSheetSD.prototype._getItemContextOptions = function () {
+	PlayerSheetSD.prototype._getItemContextOptions = function() {
 		const options = originalGetItemContextOptions.call(this);
 
 		// Only add transfer option for Player actors
@@ -641,7 +641,7 @@ export function patchPlayerSheetForTransfers() {
 				if (targetActorId) {
 					await transferItemToPlayer(this.actor, item, targetActorId);
 				}
-			}
+			},
 		});
 
 		return options;

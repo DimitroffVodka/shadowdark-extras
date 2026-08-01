@@ -14,9 +14,9 @@ export async function listMonsters() {
 				callback: () => {
 					navigator.clipboard.writeText(names.join("\n"));
 					ui.notifications.info("Copied to clipboard.");
-				}
+				},
 			},
-			{ action: "ok", label: "Close", default: true }
-		]
+			{ action: "ok", label: "Close", default: true },
+		],
 	}).render({ force: true });
 }

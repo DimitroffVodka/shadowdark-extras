@@ -39,10 +39,10 @@ export function activateTemplateTokenMagicStackHandlers(html, item) {
 	const saveFilters = async (filters) => {
 		const clonedFilters = Array.isArray(filters) ? foundry.utils.deepClone(filters) : [];
 		await item.update({
-			[`flags.${MODULE_ID}.targeting.template.tokenMagic.filters`]: clonedFilters
+			[`flags.${MODULE_ID}.targeting.template.tokenMagic.filters`]: clonedFilters,
 		}, { render: false });
 		item.updateSource?.({
-			[`flags.${MODULE_ID}.targeting.template.tokenMagic.filters`]: foundry.utils.deepClone(clonedFilters)
+			[`flags.${MODULE_ID}.targeting.template.tokenMagic.filters`]: foundry.utils.deepClone(clonedFilters),
 		});
 	};
 
@@ -81,14 +81,14 @@ export function activateTemplateTokenMagicStackHandlers(html, item) {
 				...data,
 				tmFilters: {
 					...existing.tmFilters,
-					tmParams: foundry.utils.mergeObject(existing.tmFilters.tmParams, data, { inplace: false })
-				}
+					tmParams: foundry.utils.mergeObject(existing.tmFilters.tmParams, data, { inplace: false }),
+				},
 			};
 		} else if (existing.tmParams) {
 			currentFilters[filterIndex] = {
 				...existing,
 				...data,
-				tmParams: foundry.utils.mergeObject(existing.tmParams, data, { inplace: false })
+				tmParams: foundry.utils.mergeObject(existing.tmParams, data, { inplace: false }),
 			};
 		} else {
 			currentFilters[filterIndex] = { ...existing, ...data };
@@ -127,8 +127,8 @@ export function activateTemplateTokenMagicStackHandlers(html, item) {
 					tmFilterInternalId: params.filterInternalId,
 					tmFilterType: params.filterType,
 					tmFilterOwner: params.filterOwner,
-					tmParams: params
-				}
+					tmParams: params,
+				},
 			});
 		}
 
@@ -185,10 +185,10 @@ export function activateTemplateTokenMagicStackHandlers(html, item) {
 			refreshOpenTMFXStackWindows();
 		},
 		_TMFXsetAnimeFlag: async () => {},
-		_TMFXunsetAnimeFlag: async () => {}
+		_TMFXunsetAnimeFlag: async () => {},
 	});
 
-	html.on("click", ".sdx-tm-edit-stack", function (event) {
+	html.on("click", ".sdx-tm-edit-stack", function(event) {
 		event.preventDefault();
 		event.stopPropagation();
 		if (!game.modules.get("tokenmagic")?.active || !globalThis.TokenMagic) {
@@ -198,7 +198,7 @@ export function activateTemplateTokenMagicStackHandlers(html, item) {
 		openTMFXFilterEditor(makeProxyDocument(), event.currentTarget.getBoundingClientRect());
 	});
 
-	html.on("click", ".sdx-tm-clear-stack", async function (event) {
+	html.on("click", ".sdx-tm-clear-stack", async function(event) {
 		event.preventDefault();
 		event.stopPropagation();
 		await saveFilters([]);
@@ -214,17 +214,17 @@ export function activateTemplateTokenMagicStackHandlers(html, item) {
  */
 export function setupActivityRadioToggles(html, item) {
 	// Spell Damage toggle
-	html.find('.sdx-spell-damage-toggle').off('change').on('change', function (e) {
+	html.find(".sdx-spell-damage-toggle").off("change").on("change", function(e) {
 		e.stopPropagation();
 		e.preventDefault();
-		const isEnabled = $(this).is(':checked');
-		const $content = $(this).closest('.sdx-spell-damage-box').find('.sdx-spell-damage-content');
+		const isEnabled = $(this).is(":checked");
+		const $content = $(this).closest(".sdx-spell-damage-box").find(".sdx-spell-damage-content");
 
 		if (isEnabled) {
 			$content.slideDown(200);
 			// Disable other activities visually
-			html.find('.sdx-summoning-toggle').prop('checked', false);
-			html.find('.sdx-item-give-toggle').prop('checked', false);
+			html.find(".sdx-summoning-toggle").prop("checked", false);
+			html.find(".sdx-item-give-toggle").prop("checked", false);
 			// Save all states at once
 			const updateData = {};
 			updateData[`flags.${MODULE_ID}.spellDamage.enabled`] = true;
@@ -240,10 +240,10 @@ export function setupActivityRadioToggles(html, item) {
 	});
 
 	// Track Duration toggle
-	html.find('.sdx-track-duration-toggle').off('change').on('change', function (e) {
+	html.find(".sdx-track-duration-toggle").off("change").on("change", function(e) {
 		e.stopPropagation();
-		const isEnabled = $(this).is(':checked');
-		const $content = $(this).closest('.sdx-spell-damage-content').find('.sdx-duration-content');
+		const isEnabled = $(this).is(":checked");
+		const $content = $(this).closest(".sdx-spell-damage-content").find(".sdx-duration-content");
 
 		if (isEnabled) {
 			$content.slideDown(200);
@@ -257,16 +257,16 @@ export function setupActivityRadioToggles(html, item) {
 	});
 
 	// Summoning toggle
-	html.find('.sdx-summoning-toggle').off('change').on('change', function (e) {
+	html.find(".sdx-summoning-toggle").off("change").on("change", function(e) {
 		e.stopPropagation();
 		e.preventDefault();
-		const isEnabled = $(this).is(':checked');
+		const isEnabled = $(this).is(":checked");
 
 		if (isEnabled) {
 			// Disable other activities visually
-			html.find('.sdx-spell-damage-toggle').prop('checked', false);
-			html.find('.sdx-spell-damage-content').slideUp(200);
-			html.find('.sdx-item-give-toggle').prop('checked', false);
+			html.find(".sdx-spell-damage-toggle").prop("checked", false);
+			html.find(".sdx-spell-damage-content").slideUp(200);
+			html.find(".sdx-item-give-toggle").prop("checked", false);
 			// Save all states at once
 			const updateData = {};
 			updateData[`flags.${MODULE_ID}.spellDamage.enabled`] = false;
@@ -281,16 +281,16 @@ export function setupActivityRadioToggles(html, item) {
 	});
 
 	// Item Give toggle
-	html.find('.sdx-item-give-toggle').off('change').on('change', function (e) {
+	html.find(".sdx-item-give-toggle").off("change").on("change", function(e) {
 		e.stopPropagation();
 		e.preventDefault();
-		const isEnabled = $(this).is(':checked');
+		const isEnabled = $(this).is(":checked");
 
 		if (isEnabled) {
 			// Disable other activities visually
-			html.find('.sdx-spell-damage-toggle').prop('checked', false);
-			html.find('.sdx-spell-damage-content').slideUp(200);
-			html.find('.sdx-summoning-toggle').prop('checked', false);
+			html.find(".sdx-spell-damage-toggle").prop("checked", false);
+			html.find(".sdx-spell-damage-content").slideUp(200);
+			html.find(".sdx-summoning-toggle").prop("checked", false);
 			// Save all states at once
 			const updateData = {};
 			updateData[`flags.${MODULE_ID}.spellDamage.enabled`] = false;
@@ -310,26 +310,26 @@ export function setupActivityRadioToggles(html, item) {
  * flags.shadowdark-extras.animationFx = { enabled, preset }.
  */
 export function activateAnimationFxListeners(html, item) {
-	const $box = html.find('.sdx-animation-fx-box');
+	const $box = html.find(".sdx-animation-fx-box");
 	if (!$box.length) return;
 
-	const FIELDS = '.sdx-animfx-type, .sdx-animfx-target, .sdx-animfx-file, .sdx-animfx-sound, .sdx-animfx-scale, .sdx-animfx-duration, .sdx-animfx-opacity';
+	const FIELDS = ".sdx-animfx-type, .sdx-animfx-target, .sdx-animfx-file, .sdx-animfx-sound, .sdx-animfx-scale, .sdx-animfx-duration, .sdx-animfx-opacity";
 
 	/** Read the panel's current values as a master-list-shaped preset. */
 	function readPreset() {
-		const sound = ($box.find('.sdx-animfx-sound').val() || '').trim();
+		const sound = ($box.find(".sdx-animfx-sound").val() || "").trim();
 		return {
 			label: item.name,
-			type: $box.find('.sdx-animfx-type').val() || 'projectile',
-			target: $box.find('.sdx-animfx-target').val() || 'target',
-			opacity: parseFloat($box.find('.sdx-animfx-opacity').val()) || 1,
+			type: $box.find(".sdx-animfx-type").val() || "projectile",
+			target: $box.find(".sdx-animfx-target").val() || "target",
+			opacity: parseFloat($box.find(".sdx-animfx-opacity").val()) || 1,
 			hit: {
-				file: ($box.find('.sdx-animfx-file').val() || '').trim(),
+				file: ($box.find(".sdx-animfx-file").val() || "").trim(),
 				// Blank clears the sound rather than storing "".
 				...(sound ? { sound } : {}),
-				scale: parseFloat($box.find('.sdx-animfx-scale').val()) || 1,
-				duration: parseInt($box.find('.sdx-animfx-duration').val(), 10) || 1500
-			}
+				scale: parseFloat($box.find(".sdx-animfx-scale").val()) || 1,
+				duration: parseInt($box.find(".sdx-animfx-duration").val(), 10) || 1500,
+			},
 		};
 	}
 
@@ -339,18 +339,18 @@ export function activateAnimationFxListeners(html, item) {
 	 * panel may have rendered in the "Override active" state to begin with.
 	 */
 	function updateBadge(overriding) {
-		const $badge = $box.find('.sdx-animfx-badge');
+		const $badge = $box.find(".sdx-animfx-badge");
 		if (!$badge.length) return;
 		if (overriding) {
-			$badge.attr('class', 'sdx-animfx-badge sdx-animfx-badge-override').text('Override active');
+			$badge.attr("class", "sdx-animfx-badge sdx-animfx-badge-override").text("Override active");
 			return;
 		}
-		const label = $box.attr('data-inh-label') || '';
-		if ($box.attr('data-inh-file')) {
-			$badge.attr('class', 'sdx-animfx-badge sdx-animfx-badge-inherited')
-				.html(`<i class="fas fa-link"></i> Inherited: ${foundry.utils.escapeHTML(label || 'master list')}`);
+		const label = $box.attr("data-inh-label") || "";
+		if ($box.attr("data-inh-file")) {
+			$badge.attr("class", "sdx-animfx-badge sdx-animfx-badge-inherited")
+				.html(`<i class="fas fa-link"></i> Inherited: ${foundry.utils.escapeHTML(label || "master list")}`);
 		} else {
-			$badge.attr('class', 'sdx-animfx-badge sdx-animfx-badge-none').text('No preset');
+			$badge.attr("class", "sdx-animfx-badge sdx-animfx-badge-none").text("No preset");
 		}
 	}
 
@@ -370,19 +370,19 @@ export function activateAnimationFxListeners(html, item) {
 
 	// Field edits only ever persist while the override is on — when it's off the
 	// panel is a read-only view of the master list and must not write to the item.
-	$box.find(FIELDS).on('change', function (e) {
+	$box.find(FIELDS).on("change", function(e) {
 		e.stopPropagation();
-		if (!$box.find('.sdx-animfx-enabled').prop('checked')) return;
+		if (!$box.find(".sdx-animfx-enabled").prop("checked")) return;
 		saveAnimationFx();
 	});
 
 	// Override toggle: on -> capture what's displayed as this item's own preset;
 	// off -> drop the override entirely and restore the inherited display.
-	$box.find('.sdx-animfx-enabled').on('change', function (e) {
+	$box.find(".sdx-animfx-enabled").on("change", function(e) {
 		e.stopPropagation();
-		const on = $box.find('.sdx-animfx-enabled').prop('checked');
-		$box.find(FIELDS).prop('disabled', !on);
-		$box.find('.SD-grid').toggleClass('sdx-animfx-readonly', !on);
+		const on = $box.find(".sdx-animfx-enabled").prop("checked");
+		$box.find(FIELDS).prop("disabled", !on);
+		$box.find(".SD-grid").toggleClass("sdx-animfx-readonly", !on);
 		updateBadge(on);
 
 		if (on) {
@@ -391,13 +391,13 @@ export function activateAnimationFxListeners(html, item) {
 		}
 
 		// Restore the master-list values the panel was rendered with.
-		$box.find('.sdx-animfx-file').val($box.attr('data-inh-file') || '');
-		$box.find('.sdx-animfx-sound').val($box.attr('data-inh-sound') || '');
-		$box.find('.sdx-animfx-type').val($box.attr('data-inh-type') || 'projectile');
-		$box.find('.sdx-animfx-target').val($box.attr('data-inh-target') || 'target');
-		$box.find('.sdx-animfx-scale').val($box.attr('data-inh-scale') || 1);
-		$box.find('.sdx-animfx-duration').val($box.attr('data-inh-duration') || 1500);
-		$box.find('.sdx-animfx-opacity').val($box.attr('data-inh-opacity') || 1);
+		$box.find(".sdx-animfx-file").val($box.attr("data-inh-file") || "");
+		$box.find(".sdx-animfx-sound").val($box.attr("data-inh-sound") || "");
+		$box.find(".sdx-animfx-type").val($box.attr("data-inh-type") || "projectile");
+		$box.find(".sdx-animfx-target").val($box.attr("data-inh-target") || "target");
+		$box.find(".sdx-animfx-scale").val($box.attr("data-inh-scale") || 1);
+		$box.find(".sdx-animfx-duration").val($box.attr("data-inh-duration") || 1500);
+		$box.find(".sdx-animfx-opacity").val($box.attr("data-inh-opacity") || 1);
 
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.-=animationFx`] = null;
@@ -407,39 +407,39 @@ export function activateAnimationFxListeners(html, item) {
 	});
 
 	// Inline thumbnail: play on hover, rewind on leave (mirrors the master list).
-	$box.find('video.sdx-animfx-item-thumb').each(function () {
+	$box.find("video.sdx-animfx-item-thumb").each(function() {
 		const vid = this;
-		vid.addEventListener('mouseenter', () => { vid.play().catch(() => { }); });
-		vid.addEventListener('mouseleave', () => { vid.pause(); vid.currentTime = 0; });
-		vid.addEventListener('error', () => {
-			const ph = document.createElement('div');
-			ph.className = 'sdx-animfx-item-thumb sdx-animfx-item-thumb-missing';
-			ph.textContent = 'no preview';
+		vid.addEventListener("mouseenter", () => { vid.play().catch(() => { }); });
+		vid.addEventListener("mouseleave", () => { vid.pause(); vid.currentTime = 0; });
+		vid.addEventListener("error", () => {
+			const ph = document.createElement("div");
+			ph.className = "sdx-animfx-item-thumb sdx-animfx-item-thumb-missing";
+			ph.textContent = "no preview";
 			vid.replaceWith(ph);
 		});
 	});
 
 	// Play the displayed preset on the canvas from the selected token.
-	$box.find('.sdx-animfx-preview').on('click', async function (e) {
+	$box.find(".sdx-animfx-preview").on("click", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		await AnimationFxSD.previewPreset(readPreset(), { outcome: e.shiftKey ? 'miss' : 'hit' });
+		await AnimationFxSD.previewPreset(readPreset(), { outcome: e.shiftKey ? "miss" : "hit" });
 	});
 
 	// Play just the sound, so it can be auditioned without the animation.
-	$box.find('.sdx-animfx-preview-sound').on('click', async function (e) {
+	$box.find(".sdx-animfx-preview-sound").on("click", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const sound = ($box.find('.sdx-animfx-sound').val() || '').trim();
+		const sound = ($box.find(".sdx-animfx-sound").val() || "").trim();
 		if (!sound) {
-			ui.notifications.warn('No sound file set.');
+			ui.notifications.warn("No sound file set.");
 			return;
 		}
 		await AnimationFxSD._playSound({ sound });
 	});
 
 	// Sequencer Database browser button
-	$box.find('.sdx-animfx-pick-file').on('click', function (e) {
+	$box.find(".sdx-animfx-pick-file").on("click", function(e) {
 		e.preventDefault();
 		e.stopPropagation();
 		try {
@@ -448,7 +448,7 @@ export function activateAnimationFxListeners(html, item) {
 			} else if (globalThis.Sequencer?.Database?.show) {
 				globalThis.Sequencer.Database.show();
 			} else {
-				ui.notifications.warn('Sequencer Database viewer is not available.');
+				ui.notifications.warn("Sequencer Database viewer is not available.");
 			}
 		} catch (err) {
 			console.warn(`${MODULE_ID} | Could not open Sequencer Database:`, err);

@@ -46,7 +46,7 @@ export async function enhanceScrollSheet(app, html) {
 	//console.log(`${MODULE_ID} | Scroll flags:`, item.flags?.[MODULE_ID]);
 
 	// Remove any existing damage/heal boxes to prevent duplicates
-	html.find('.sdx-spell-damage-box').remove();
+	html.find(".sdx-spell-damage-box").remove();
 
 	// Initialize flags if they don't exist
 	const spellDamageFlags = item.flags?.[MODULE_ID]?.spellDamage || {
@@ -64,39 +64,39 @@ export async function enhanceScrollSheet(app, html) {
 		effectsRequirement: "", // Formula that must evaluate to true for effects to apply
 		effects: [], // Array of effect document UUIDs
 		applyToTarget: true, // scrolls apply to target by default
-		effectsApplyToTarget: true // scrolls apply effects to target by default
+		effectsApplyToTarget: true, // scrolls apply effects to target by default
 	};
 
 	// Initialize summoning flags
 	const summoningFlags = item.flags?.[MODULE_ID]?.summoning || {
 		enabled: false,
-		profiles: []
+		profiles: [],
 	};
 
 	// Initialize item give flags
 	const itemGiveFlags = item.flags?.[MODULE_ID]?.itemGive || {
 		enabled: false,
-		profiles: []
+		profiles: [],
 	};
 
 	// Initialize item macro flags
 	const itemMacroFlags = item.flags?.[MODULE_ID]?.itemMacro || {
 		runAsGm: false,
-		triggers: []
+		triggers: [],
 	};
 
 	// Initialize targeting flags
 	const targetingFlags = item.flags?.[MODULE_ID]?.targeting || {
-		mode: 'targeted',
+		mode: "targeted",
 		template: {
-			type: 'circle',
+			type: "circle",
 			size: 30,
-			placement: 'choose',
-			fillColor: '#4e9a06',
-			deleteMode: 'none',
+			placement: "choose",
+			fillColor: "#4e9a06",
+			deleteMode: "none",
 			deleteDuration: 3,
-			hideOutline: false
-		}
+			hideOutline: false,
+		},
 	};
 
 	// Initialize template effects flags
@@ -106,25 +106,25 @@ export async function enhanceScrollSheet(app, html) {
 			onEnter: false,
 			onTurnStart: false,
 			onTurnEnd: false,
-			onLeave: false
+			onLeave: false,
 		},
 		damage: {
-			formula: '',
-			type: ''
+			formula: "",
+			type: "",
 		},
 		save: {
 			enabled: false,
 			dc: 12,
-			ability: 'dex',
-			halfOnSuccess: true
+			ability: "dex",
+			halfOnSuccess: true,
 		},
-		applyConfiguredEffects: false
+		applyConfiguredEffects: false,
 	};
 
 	// Initialize aura effects flags
 	const auraEffectsFlags = item.flags?.[MODULE_ID]?.auraEffects || {
 		enabled: false,
-		attachTo: 'caster',
+		attachTo: "caster",
 		radius: 30,
 		triggers: {
 			onEnter: false,
@@ -132,14 +132,14 @@ export async function enhanceScrollSheet(app, html) {
 			onSourceTurnStart: false,
 			onSourceTurnEnd: false,
 			onTargetTurnStart: false,
-			onTargetTurnEnd: false
+			onTargetTurnEnd: false,
 		},
-		damage: { formula: '', type: '' },
+		damage: { formula: "", type: "" },
 		damageTriggers: { onEnter: false, onLeave: false, onSourceTurnStart: false, onSourceTurnEnd: false, onTargetTurnStart: false, onTargetTurnEnd: false },
-		save: { enabled: false, dc: 12, ability: 'con', halfOnSave: false },
-		animation: { enabled: true, style: 'circle', tint: '#4488ff', opacity: 0.6, scaleMultiplier: 1.0 },
-		tokenFilters: { enabled: false, preset: '' },
-		disposition: 'all',
+		save: { enabled: false, dc: 12, ability: "con", halfOnSave: false },
+		animation: { enabled: true, style: "circle", tint: "#4488ff", opacity: 0.6, scaleMultiplier: 1.0 },
+		tokenFilters: { enabled: false, preset: "" },
+		disposition: "all",
 		includeSelf: false,
 		includeAuraBearer: false,
 		applyToOriginator: true,
@@ -147,7 +147,7 @@ export async function enhanceScrollSheet(app, html) {
 		applyConfiguredEffects: false,
 		effectsTriggers: { onEnter: false, onLeave: false, onSourceTurnStart: false, onSourceTurnEnd: false, onTargetTurnStart: false, onTargetTurnEnd: false },
 		runItemMacro: false,
-		macroTriggers: { onEnter: false, onLeave: false, onSourceTurnStart: false, onSourceTurnEnd: false, onTargetTurnStart: false, onTargetTurnEnd: false }
+		macroTriggers: { onEnter: false, onLeave: false, onSourceTurnStart: false, onSourceTurnEnd: false, onTargetTurnStart: false, onTargetTurnEnd: false },
 	};
 
 	// Combine all flags for template
@@ -160,7 +160,7 @@ export async function enhanceScrollSheet(app, html) {
 		itemMacro: itemMacroFlags,
 		targeting: targetingFlags,
 		templateEffects: templateEffectsFlags,
-		auraEffects: auraEffectsFlags
+		auraEffects: auraEffectsFlags,
 	};
 
 	// Convert applyToTarget to boolean (in case it was stored as string)
@@ -169,25 +169,25 @@ export async function enhanceScrollSheet(app, html) {
 
 	// Preserve active tab across re-renders
 	if (!app._shadowdarkExtrasActiveTab) {
-		app._shadowdarkExtrasActiveTab = 'tab-details'; // Default to details
+		app._shadowdarkExtrasActiveTab = "tab-details"; // Default to details
 	}
 
 	// Check which tab is currently active
-	const $currentActiveTab = html.find('nav.SD-nav a.navigation-tab.active');
+	const $currentActiveTab = html.find("nav.SD-nav a.navigation-tab.active");
 	if ($currentActiveTab.length) {
-		const currentTab = $currentActiveTab.data('tab');
+		const currentTab = $currentActiveTab.data("tab");
 		if (currentTab) {
 			app._shadowdarkExtrasActiveTab = currentTab;
 		}
 	}
 
 	// Create a new "Activity" tab after Details tab
-	const $tabs = html.find('nav.SD-nav');
+	const $tabs = html.find("nav.SD-nav");
 
 	// Check if Activity tab already exists
 	if (!html.find('section[data-tab="tab-activity"]').length) {
 		// Add Activity tab to navigation (after Details)
-		const activityTabLink = `<a class="navigation-tab" data-tab="tab-activity">Activity</a>`;
+		const activityTabLink = "<a class=\"navigation-tab\" data-tab=\"tab-activity\">Activity</a>";
 		const $detailsLink = $tabs.find('a[data-tab="tab-details"]');
 		if ($detailsLink.length) {
 			$detailsLink.after(activityTabLink);
@@ -197,7 +197,7 @@ export async function enhanceScrollSheet(app, html) {
 		}
 
 		// Create Activity tab content container with correct structure
-		const activityTabContent = `<section class="tab tab-activity" data-group="primary" data-tab="tab-activity"></section>`;
+		const activityTabContent = "<section class=\"tab tab-activity\" data-group=\"primary\" data-tab=\"tab-activity\"></section>";
 		const $detailsTab = html.find('section.tab-details[data-tab="tab-details"]');
 		if ($detailsTab.length) {
 			$detailsTab.after(activityTabContent);
@@ -207,8 +207,8 @@ export async function enhanceScrollSheet(app, html) {
 		}
 
 		// Add click handler to track tab changes
-		$tabs.find('a.navigation-tab').on('click', function () {
-			const tabName = $(this).data('tab');
+		$tabs.find("a.navigation-tab").on("click", function() {
+			const tabName = $(this).data("tab");
 			if (tabName) {
 				app._shadowdarkExtrasActiveTab = tabName;
 			}
@@ -222,12 +222,12 @@ export async function enhanceScrollSheet(app, html) {
 
 		if ($targetTab.length && $targetSection.length) {
 			// Remove active class from all tabs
-			$tabs.find('a.navigation-tab').removeClass('active');
-			html.find('section[data-group="primary"]').removeClass('active');
+			$tabs.find("a.navigation-tab").removeClass("active");
+			html.find('section[data-group="primary"]').removeClass("active");
 
 			// Add active class to target tab
-			$targetTab.addClass('active');
-			$targetSection.addClass('active');
+			$targetTab.addClass("active");
+			$targetSection.addClass("active");
 		}
 	}, 0);
 
@@ -241,11 +241,11 @@ export async function enhanceScrollSheet(app, html) {
 	//console.log(`${MODULE_ID} | Activity tab found/created`);
 
 	// Build list of current effects from stored UUIDs
-	let effectsListHtml = '';
+	let effectsListHtml = "";
 
 	// Handle case where effects might be a string instead of an array (from form submission)
 	let effectsArray = flags.effects || [];
-	if (typeof effectsArray === 'string') {
+	if (typeof effectsArray === "string") {
 		try {
 			effectsArray = JSON.parse(effectsArray);
 		} catch (err) {
@@ -256,7 +256,7 @@ export async function enhanceScrollSheet(app, html) {
 
 	// Normalize effects array - convert old UUID strings to new object format
 	effectsArray = effectsArray.map(effect => {
-		if (typeof effect === 'string') {
+		if (typeof effect === "string") {
 			return { uuid: effect, duration: {} };
 		}
 		return effect;
@@ -279,7 +279,7 @@ export async function enhanceScrollSheet(app, html) {
 				effectsListHtml += `
 					<div class="sdx-spell-effect-item" data-uuid="${uuid}" data-effect-index="${i}">
 						<div class="sdx-effect-header">
-							<img src="${doc.img || 'icons/svg/mystery-man.svg'}" alt="${doc.name}" />
+							<img src="${doc.img || "icons/svg/mystery-man.svg"}" alt="${doc.name}" />
 							<span class="sdx-effect-name">${doc.name}</span>
 							<a class="sdx-remove-effect" data-tooltip="Remove"><i class="fas fa-times"></i></a>
 						</div>
@@ -287,31 +287,31 @@ export async function enhanceScrollSheet(app, html) {
 							<div class="sdx-duration-row">
 								<div class="sdx-duration-field">
 									<label>Seconds</label>
-									<input type="number" class="sdx-duration-input" data-field="seconds" value="${duration.seconds || ''}" placeholder="Default" />
+									<input type="number" class="sdx-duration-input" data-field="seconds" value="${duration.seconds || ""}" placeholder="Default" />
 								</div>
 								<div class="sdx-duration-field">
 									<label>Start Time</label>
-									<input type="number" class="sdx-duration-input" data-field="startTime" value="${duration.startTime || ''}" placeholder="Default" />
+									<input type="number" class="sdx-duration-input" data-field="startTime" value="${duration.startTime || ""}" placeholder="Default" />
 								</div>
 							</div>
 							<div class="sdx-duration-row">
 								<div class="sdx-duration-field">
 									<label>Rounds</label>
-									<input type="number" class="sdx-duration-input" data-field="rounds" value="${duration.rounds || ''}" placeholder="Default" />
+									<input type="number" class="sdx-duration-input" data-field="rounds" value="${duration.rounds || ""}" placeholder="Default" />
 								</div>
 								<div class="sdx-duration-field">
 									<label>Turns</label>
-									<input type="number" class="sdx-duration-input" data-field="turns" value="${duration.turns || ''}" placeholder="Default" />
+									<input type="number" class="sdx-duration-input" data-field="turns" value="${duration.turns || ""}" placeholder="Default" />
 								</div>
 							</div>
 							<div class="sdx-duration-row">
 								<div class="sdx-duration-field">
 									<label>Start Round</label>
-									<input type="number" class="sdx-duration-input" data-field="startRound" value="${duration.startRound || ''}" placeholder="Default" />
+									<input type="number" class="sdx-duration-input" data-field="startRound" value="${duration.startRound || ""}" placeholder="Default" />
 								</div>
 								<div class="sdx-duration-field">
 									<label>Start Turn</label>
-									<input type="number" class="sdx-duration-input" data-field="startTurn" value="${duration.startTurn || ''}" placeholder="Default" />
+									<input type="number" class="sdx-duration-input" data-field="startTurn" value="${duration.startTurn || ""}" placeholder="Default" />
 								</div>
 							</div>
 						</div>
@@ -326,11 +326,11 @@ export async function enhanceScrollSheet(app, html) {
 	}
 
 	// Build summons list HTML
-	let summonsList = '';
+	let summonsList = "";
 	let summonProfilesArray = summoningFlags.profiles || [];
 
 	// Handle case where profiles might be a string
-	if (typeof summonProfilesArray === 'string') {
+	if (typeof summonProfilesArray === "string") {
 		try {
 			summonProfilesArray = JSON.parse(summonProfilesArray);
 		} catch (err) {
@@ -340,17 +340,17 @@ export async function enhanceScrollSheet(app, html) {
 	}
 
 	if (summonProfilesArray && summonProfilesArray.length > 0) {
-		const { generateSummonProfileHTML } = await import(`./SummoningConfig.mjs`);
+		const { generateSummonProfileHTML } = await import("./SummoningConfig.mjs");
 		for (let i = 0; i < summonProfilesArray.length; i++) {
 			const profile = summonProfilesArray[i];
 			summonsList += generateSummonProfileHTML(profile, i);
 		}
 	}
 
-	let itemGiveList = '';
+	let itemGiveList = "";
 	let itemGiveProfilesArray = itemGiveFlags.profiles || [];
 
-	if (typeof itemGiveProfilesArray === 'string') {
+	if (typeof itemGiveProfilesArray === "string") {
 		try {
 			itemGiveProfilesArray = JSON.parse(itemGiveProfilesArray);
 		} catch (err) {
@@ -360,7 +360,7 @@ export async function enhanceScrollSheet(app, html) {
 	}
 
 	if (itemGiveProfilesArray && itemGiveProfilesArray.length > 0) {
-		const { generateItemGiveProfileHTML } = await import(`./ItemGiveConfig.mjs`);
+		const { generateItemGiveProfileHTML } = await import("./ItemGiveConfig.mjs");
 		for (let i = 0; i < itemGiveProfilesArray.length; i++) {
 			const profile = itemGiveProfilesArray[i];
 			itemGiveList += generateItemGiveProfileHTML(profile, i);
@@ -375,30 +375,30 @@ export async function enhanceScrollSheet(app, html) {
 	//console.log(`${MODULE_ID} | Damage/Heal box inserted into Activity tab`);
 
 	// Prevent auto-submission of form inputs in Activity tab to avoid unwanted re-renders
-	$activityTab.find('input, select, textarea').on('change', function (e) {
+	$activityTab.find("input, select, textarea").on("change", function(e) {
 		// Skip Item Macro inputs - they have their own handlers
-		if ($(this).hasClass('sdx-spell-macro-run-as-gm') ||
-			$(this).hasClass('sdx-spell-macro-trigger-checkbox')) {
+		if ($(this).hasClass("sdx-spell-macro-run-as-gm") ||
+			$(this).hasClass("sdx-spell-macro-trigger-checkbox")) {
 			return; // Let the event propagate to the Item Macro handlers
 		}
 
 		e.stopPropagation(); // Prevent event from bubbling up to form auto-submit
 
 		// Manually update the item without re-rendering
-		const fieldName = $(this).attr('name');
+		const fieldName = $(this).attr("name");
 		if (fieldName) {
 			let value = $(this).val();
 
 			// Handle checkboxes
-			if ($(this).attr('type') === 'checkbox') {
-				value = $(this).is(':checked');
+			if ($(this).attr("type") === "checkbox") {
+				value = $(this).is(":checked");
 			}
 			// Handle radio buttons
-			else if ($(this).attr('type') === 'radio' && !$(this).is(':checked')) {
+			else if ($(this).attr("type") === "radio" && !$(this).is(":checked")) {
 				return; // Don't update for unchecked radios
 			}
 			// Handle number inputs
-			else if ($(this).attr('type') === 'number') {
+			else if ($(this).attr("type") === "number") {
 				value = parseFloat(value) || 0;
 			}
 
@@ -415,9 +415,9 @@ export async function enhanceScrollSheet(app, html) {
 	});
 
 	// Attach toggle listener
-	html.find('.sdx-spell-damage-toggle').on('change', function () {
-		const $content = $(this).closest('.sdx-spell-damage-box').find('.sdx-spell-damage-content');
-		if ($(this).is(':checked')) {
+	html.find(".sdx-spell-damage-toggle").on("change", function() {
+		const $content = $(this).closest(".sdx-spell-damage-box").find(".sdx-spell-damage-content");
+		if ($(this).is(":checked")) {
 			$content.slideDown(200);
 		} else {
 			$content.slideUp(200);
@@ -425,9 +425,9 @@ export async function enhanceScrollSheet(app, html) {
 	});
 
 	// Targeting mode toggle listener - show/hide template settings
-	html.find('.sdx-targeting-mode-radio').on('change', function () {
-		const $templateSettings = $(this).closest('.sdx-targeting-content').find('.sdx-template-settings');
-		if ($(this).val() === 'template') {
+	html.find(".sdx-targeting-mode-radio").on("change", function() {
+		const $templateSettings = $(this).closest(".sdx-targeting-content").find(".sdx-template-settings");
+		if ($(this).val() === "template") {
 			$templateSettings.slideDown(200);
 		} else {
 			$templateSettings.slideUp(200);
@@ -435,96 +435,96 @@ export async function enhanceScrollSheet(app, html) {
 	});
 
 	// Delete mode toggle listener - enable/disable duration input
-	html.find('.sdx-delete-mode-radio').on('change', function () {
-		const $container = $(this).closest('.sdx-delete-options');
-		$container.find('.sdx-duration-input').prop('disabled', true);
-		$(this).siblings('.sdx-duration-input').prop('disabled', false);
+	html.find(".sdx-delete-mode-radio").on("change", function() {
+		const $container = $(this).closest(".sdx-delete-options");
+		$container.find(".sdx-duration-input").prop("disabled", true);
+		$(this).siblings(".sdx-duration-input").prop("disabled", false);
 	});
 
 	// Color picker sync with text input
-	html.find('.sdx-targeting-box .sdx-color-picker').on('input', function () {
-		$(this).siblings('.sdx-color-text').val($(this).val());
+	html.find(".sdx-targeting-box .sdx-color-picker").on("input", function() {
+		$(this).siblings(".sdx-color-text").val($(this).val());
 	});
-	html.find('.sdx-targeting-box .sdx-color-text').on('input', function () {
+	html.find(".sdx-targeting-box .sdx-color-text").on("input", function() {
 		const colorVal = $(this).val();
 		if (/^#[0-9A-Fa-f]{6}$/.test(colorVal)) {
-			$(this).siblings('.sdx-color-picker').val(colorVal);
+			$(this).siblings(".sdx-color-picker").val(colorVal);
 		}
 	});
 
 	// TokenMagic texture file picker
-	html.find('.sdx-tm-texture-picker').on('click', async function (e) {
+	html.find(".sdx-tm-texture-picker").on("click", async function(e) {
 		e.preventDefault();
-		const $input = $(this).siblings('.sdx-tm-texture-input');
+		const $input = $(this).siblings(".sdx-tm-texture-input");
 		const fp = new FilePicker({
-			type: 'image',
+			type: "image",
 			current: $input.val(),
 			callback: path => {
-				$input.val(path).trigger('change');
-			}
+				$input.val(path).trigger("change");
+			},
 		});
 		fp.browse();
 	});
 
 	// TokenMagic opacity slider value display
-	html.find('.sdx-tm-opacity-slider').on('input', function () {
-		$(this).siblings('.sdx-tm-opacity-value').text($(this).val());
+	html.find(".sdx-tm-opacity-slider").on("input", function() {
+		$(this).siblings(".sdx-tm-opacity-value").text($(this).val());
 	});
 
 	// TokenMagic preset dropdown - enable/disable tint inputs
-	html.find('.sdx-tm-preset-select').on('change', function () {
+	html.find(".sdx-tm-preset-select").on("change", function() {
 		const preset = $(this).val();
-		const $tintGroup = $(this).closest('.sdx-tokenmagic-section').find('.sdx-tint-input-group');
-		const isNoFx = preset === 'NOFX';
-		$tintGroup.find('input').prop('disabled', isNoFx);
+		const $tintGroup = $(this).closest(".sdx-tokenmagic-section").find(".sdx-tint-input-group");
+		const isNoFx = preset === "NOFX";
+		$tintGroup.find("input").prop("disabled", isNoFx);
 	});
 
 	// TokenMagic tint color picker sync
-	html.find('.sdx-tm-tint-picker').on('input', function () {
-		$(this).siblings('.sdx-tm-tint-text').val($(this).val());
+	html.find(".sdx-tm-tint-picker").on("input", function() {
+		$(this).siblings(".sdx-tm-tint-text").val($(this).val());
 	});
-	html.find('.sdx-tm-tint-text').on('input', function () {
+	html.find(".sdx-tm-tint-text").on("input", function() {
 		const colorVal = $(this).val();
 		if (/^#[0-9A-Fa-f]{6}$/.test(colorVal)) {
-			$(this).siblings('.sdx-tm-tint-picker').val(colorVal);
+			$(this).siblings(".sdx-tm-tint-picker").val(colorVal);
 		}
 	});
 
 	// Template Effects: Enable/disable config section based on checkbox
-	html.find('.sdx-template-effects-enabled').on('change', function () {
-		const $config = $(this).closest('.sdx-template-effects-section').find('.sdx-template-effects-config');
-		if ($(this).is(':checked')) {
-			$config.css({ opacity: '', pointerEvents: '' });
+	html.find(".sdx-template-effects-enabled").on("change", function() {
+		const $config = $(this).closest(".sdx-template-effects-section").find(".sdx-template-effects-config");
+		if ($(this).is(":checked")) {
+			$config.css({ opacity: "", pointerEvents: "" });
 		} else {
-			$config.css({ opacity: '0.5', pointerEvents: 'none' });
+			$config.css({ opacity: "0.5", pointerEvents: "none" });
 		}
 	});
 
 	// Template Effects: Enable/disable save config section based on checkbox
-	html.find('.sdx-template-save-enabled').on('change', function () {
-		const $config = $(this).closest('.sdx-template-effects-section').find('.sdx-template-save-config');
-		if ($(this).is(':checked')) {
-			$config.css({ opacity: '', pointerEvents: '' });
+	html.find(".sdx-template-save-enabled").on("change", function() {
+		const $config = $(this).closest(".sdx-template-effects-section").find(".sdx-template-save-config");
+		if ($(this).is(":checked")) {
+			$config.css({ opacity: "", pointerEvents: "" });
 		} else {
-			$config.css({ opacity: '0.5', pointerEvents: 'none' });
+			$config.css({ opacity: "0.5", pointerEvents: "none" });
 		}
 	});
 
 	// Handle formula type radio buttons
-	html.find('.sdx-formula-type-radio').on('change', function () {
+	html.find(".sdx-formula-type-radio").on("change", function() {
 		const selectedType = $(this).val();
-		const $box = $(this).closest('.sdx-spell-damage-box');
+		const $box = $(this).closest(".sdx-spell-damage-box");
 
 		// Hide all formula sections
-		$box.find('.sdx-formula-section').hide();
+		$box.find(".sdx-formula-section").hide();
 
 		// Show the selected formula section
-		if (selectedType === 'basic') {
-			$box.find('.sdx-basic-formula').show();
-		} else if (selectedType === 'formula') {
-			$box.find('.sdx-custom-formula').show();
-		} else if (selectedType === 'tiered') {
-			$box.find('.sdx-tiered-formula').show();
+		if (selectedType === "basic") {
+			$box.find(".sdx-basic-formula").show();
+		} else if (selectedType === "formula") {
+			$box.find(".sdx-custom-formula").show();
+		} else if (selectedType === "tiered") {
+			$box.find(".sdx-tiered-formula").show();
 		}
 
 		// Save the formula type preference
@@ -534,22 +534,22 @@ export async function enhanceScrollSheet(app, html) {
 	});
 
 	// Attach drag and drop listeners for effects
-	const $dropArea = html.find('.sdx-spell-effects-drop-area:not(.sdx-critical-effects-drop-area)');
-	const $effectsList = html.find('.sdx-spell-effects-list');
-	const $effectsData = html.find('.sdx-effects-data');
+	const $dropArea = html.find(".sdx-spell-effects-drop-area:not(.sdx-critical-effects-drop-area)");
+	const $effectsList = html.find(".sdx-spell-effects-list");
+	const $effectsData = html.find(".sdx-effects-data");
 
 	function updateEffectsData() {
 		const effects = [];
-		$effectsList.find('.sdx-spell-effect-item').each(function () {
+		$effectsList.find(".sdx-spell-effect-item").each(function() {
 			const $item = $(this);
-			const uuid = $item.data('uuid');
+			const uuid = $item.data("uuid");
 
 			// Collect duration overrides
 			const duration = {};
-			$item.find('.sdx-duration-input').each(function () {
-				const field = $(this).data('field');
+			$item.find(".sdx-duration-input").each(function() {
+				const field = $(this).data("field");
 				const value = $(this).val();
-				if (value && value.trim() !== '') {
+				if (value && value.trim() !== "") {
 					duration[field] = parseFloat(value);
 				}
 			});
@@ -563,36 +563,36 @@ export async function enhanceScrollSheet(app, html) {
 		item.update(updateData);
 
 		if (effects.length > 0) {
-			$effectsList.find('.sdx-no-effects').remove();
-		} else if ($effectsList.find('.sdx-spell-effect-item').length === 0) {
+			$effectsList.find(".sdx-no-effects").remove();
+		} else if ($effectsList.find(".sdx-spell-effect-item").length === 0) {
 			$effectsList.html('<div class="sdx-no-effects">Drag and drop conditions or effects here</div>');
 		}
 	}
 
-	$dropArea.on('dragover', function (event) {
+	$dropArea.on("dragover", function(event) {
 		event.preventDefault();
 		event.stopPropagation();
-		$(this).addClass('sdx-drag-over');
+		$(this).addClass("sdx-drag-over");
 	});
 
-	$dropArea.on('dragleave', function (event) {
+	$dropArea.on("dragleave", function(event) {
 		event.preventDefault();
 		event.stopPropagation();
-		$(this).removeClass('sdx-drag-over');
+		$(this).removeClass("sdx-drag-over");
 	});
 
-	$dropArea.on('drop', async function (event) {
+	$dropArea.on("drop", async function(event) {
 		event.preventDefault();
 		event.stopPropagation();
-		$(this).removeClass('sdx-drag-over');
+		$(this).removeClass("sdx-drag-over");
 
 		try {
-			const data = JSON.parse(event.originalEvent.dataTransfer.getData('text/plain'));
+			const data = JSON.parse(event.originalEvent.dataTransfer.getData("text/plain"));
 
 			let doc = null;
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === 'Item' && data.id) {
+			} else if (data.type === "Item" && data.id) {
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
 					doc = await pack.getDocument(data.id);
@@ -602,13 +602,13 @@ export async function enhanceScrollSheet(app, html) {
 			}
 
 			if (!doc) {
-				ui.notifications.warn('Could not load dropped item');
+				ui.notifications.warn("Could not load dropped item");
 				return;
 			}
 
-			const validTypes = ['Effect', 'Condition', 'NPC Feature'];
+			const validTypes = ["Effect", "Condition", "NPC Feature"];
 			if (!validTypes.includes(doc.type)) {
-				ui.notifications.warn(`Only Effect, Condition, or NPC Feature items can be dropped here`);
+				ui.notifications.warn("Only Effect, Condition, or NPC Feature items can be dropped here");
 				return;
 			}
 
@@ -620,42 +620,42 @@ export async function enhanceScrollSheet(app, html) {
 
 			const effectHtml = `
 				<div class="sdx-spell-effect-item" data-uuid="${uuid}">
-					<img src="${doc.img || 'icons/svg/mystery-man.svg'}" alt="${doc.name}" />
+					<img src="${doc.img || "icons/svg/mystery-man.svg"}" alt="${doc.name}" />
 					<span>${doc.name}</span>
 					<a class="sdx-remove-effect" data-tooltip="Remove"><i class="fas fa-times"></i></a>
 				</div>
 			`;
 
-			$effectsList.find('.sdx-no-effects').remove();
+			$effectsList.find(".sdx-no-effects").remove();
 			$effectsList.append(effectHtml);
 			updateEffectsData();
 
 			ui.notifications.info(`Added ${doc.name} to scroll effects`);
 		} catch (err) {
 			console.error(`${MODULE_ID} | Error handling drop:`, err);
-			ui.notifications.error('Failed to add effect');
+			ui.notifications.error("Failed to add effect");
 		}
 	});
 
-	html.on('click', '.sdx-remove-effect', function (event) {
+	html.on("click", ".sdx-remove-effect", function(event) {
 		event.preventDefault();
 		event.stopPropagation();
 
-		$(this).closest('.sdx-spell-effect-item').remove();
+		$(this).closest(".sdx-spell-effect-item").remove();
 		updateEffectsData();
 	});
 
-	html.on('change', 'input[name="flags.shadowdark-extras.spellDamage.effectsApplyToTarget"]', function () {
-		const effectsApplyToTargetValue = $(this).val() === 'true';
+	html.on("change", 'input[name="flags.shadowdark-extras.spellDamage.effectsApplyToTarget"]', function() {
+		const effectsApplyToTargetValue = $(this).val() === "true";
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.spellDamage.effectsApplyToTarget`] = effectsApplyToTargetValue;
 		item.update(updateData);
 	});
 
 	// ---- Summoning handlers ----
-	html.on('change', '.sdx-summoning-toggle', function (e) {
+	html.on("change", ".sdx-summoning-toggle", function(e) {
 		e.stopPropagation();
-		const enabled = $(this).is(':checked');
+		const enabled = $(this).is(":checked");
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.summoning.enabled`] = enabled;
 		item.update(updateData, { render: false }).then(() => {
@@ -663,60 +663,60 @@ export async function enhanceScrollSheet(app, html) {
 		});
 	});
 
-	html.on('click', '.sdx-add-summon-btn', async function (e) {
+	html.on("click", ".sdx-add-summon-btn", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateSummonProfileHTML } = await import(`./SummoningConfig.mjs`);
-		const $list = $(this).closest('.sdx-summoning-content').find('.sdx-summons-list');
-		const index = $list.find('.sdx-summon-profile').length;
+		const { generateSummonProfileHTML } = await import("./SummoningConfig.mjs");
+		const $list = $(this).closest(".sdx-summoning-content").find(".sdx-summons-list");
+		const index = $list.find(".sdx-summon-profile").length;
 		const newProfile = {
-			creatureUuid: '',
-			creatureName: '',
-			creatureImg: '',
-			count: '1',
-			displayName: ''
+			creatureUuid: "",
+			creatureName: "",
+			creatureImg: "",
+			count: "1",
+			displayName: "",
 		};
 		$list.append(generateSummonProfileHTML(newProfile, index));
 		updateSummonsData();
 	});
 
-	html.on('click', '.sdx-remove-summon-btn', function (e) {
+	html.on("click", ".sdx-remove-summon-btn", function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		$(this).closest('.sdx-summon-profile').remove();
+		$(this).closest(".sdx-summon-profile").remove();
 		updateSummonsData();
 	});
 
-	html.on('change input', '.sdx-summon-count, .sdx-summon-display-name', function (e) {
+	html.on("change input", ".sdx-summon-count, .sdx-summon-display-name", function(e) {
 		e.stopPropagation();
 		updateSummonsData();
 	});
 
-	html.on('dragover', '.sdx-summon-creature-drop', function (event) {
+	html.on("dragover", ".sdx-summon-creature-drop", function(event) {
 		event.preventDefault();
 		event.stopPropagation();
-		$(this).addClass('sdx-drag-over');
+		$(this).addClass("sdx-drag-over");
 	});
 
-	html.on('dragleave', '.sdx-summon-creature-drop', function (event) {
+	html.on("dragleave", ".sdx-summon-creature-drop", function(event) {
 		event.preventDefault();
 		event.stopPropagation();
-		$(this).removeClass('sdx-drag-over');
+		$(this).removeClass("sdx-drag-over");
 	});
 
-	html.on('drop', '.sdx-summon-creature-drop', async function (event) {
+	html.on("drop", ".sdx-summon-creature-drop", async function(event) {
 		event.preventDefault();
 		event.stopPropagation();
-		$(this).removeClass('sdx-drag-over');
+		$(this).removeClass("sdx-drag-over");
 
 		try {
-			const data = JSON.parse(event.originalEvent.dataTransfer.getData('text/plain'));
+			const data = JSON.parse(event.originalEvent.dataTransfer.getData("text/plain"));
 
 			// Get the document from the dropped data
 			let doc = null;
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === 'Actor' && data.id) {
+			} else if (data.type === "Actor" && data.id) {
 				// Handle actors from compendiums or world
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
@@ -727,26 +727,26 @@ export async function enhanceScrollSheet(app, html) {
 			}
 
 			if (!doc) {
-				ui.notifications.warn('Could not load dropped actor');
+				ui.notifications.warn("Could not load dropped actor");
 				return;
 			}
 
 			// Must be an Actor
 			if (!(doc instanceof Actor)) {
-				ui.notifications.warn('Only actors can be dropped here');
+				ui.notifications.warn("Only actors can be dropped here");
 				return;
 			}
 
 			// Update the profile display
-			const $profile = $(this).closest('.sdx-summon-profile');
+			const $profile = $(this).closest(".sdx-summon-profile");
 			const creatureName = doc.name;
-			const creatureImg = doc.img || doc.prototypeToken?.texture?.src || 'icons/svg/mystery-man.svg';
+			const creatureImg = doc.img || doc.prototypeToken?.texture?.src || "icons/svg/mystery-man.svg";
 			const creatureUuid = doc.uuid;
 
 			// Update hidden inputs
-			$profile.find('.sdx-creature-uuid').val(creatureUuid);
-			$profile.find('.sdx-creature-name').val(creatureName);
-			$profile.find('.sdx-creature-img').val(creatureImg);
+			$profile.find(".sdx-creature-uuid").val(creatureUuid);
+			$profile.find(".sdx-creature-name").val(creatureName);
+			$profile.find(".sdx-creature-img").val(creatureImg);
 
 			// Update display
 			$(this).html(`
@@ -760,26 +760,26 @@ export async function enhanceScrollSheet(app, html) {
 			ui.notifications.info(`Added ${creatureName} to summon profile`);
 		} catch (err) {
 			console.error(`${MODULE_ID} | Error handling creature drop:`, err);
-			ui.notifications.error('Failed to add creature');
+			ui.notifications.error("Failed to add creature");
 		}
 	});
 
 	// Function to collect and save summons data
 	function updateSummonsData() {
 		const profiles = [];
-		html.find('.sdx-summon-profile').each(function () {
+		html.find(".sdx-summon-profile").each(function() {
 			const $profile = $(this);
 			profiles.push({
-				creatureUuid: $profile.find('.sdx-creature-uuid').val(),
-				creatureName: $profile.find('.sdx-creature-name').val(),
-				creatureImg: $profile.find('.sdx-creature-img').val(),
-				count: $profile.find('.sdx-summon-count').val() || '1',
-				displayName: $profile.find('.sdx-summon-display-name').val() || ''
+				creatureUuid: $profile.find(".sdx-creature-uuid").val(),
+				creatureName: $profile.find(".sdx-creature-name").val(),
+				creatureImg: $profile.find(".sdx-creature-img").val(),
+				count: $profile.find(".sdx-summon-count").val() || "1",
+				displayName: $profile.find(".sdx-summon-display-name").val() || "",
 			});
 		});
 
 		// Update hidden input
-		html.find('.sdx-summons-data').val(JSON.stringify(profiles));
+		html.find(".sdx-summons-data").val(JSON.stringify(profiles));
 
 		// Save to item
 		const updateData = {};
@@ -792,9 +792,9 @@ export async function enhanceScrollSheet(app, html) {
 	}
 
 	// ---- Item give handlers ----
-	html.on('change', '.sdx-item-give-toggle', function (e) {
+	html.on("change", ".sdx-item-give-toggle", function(e) {
 		e.stopPropagation();
-		const enabled = $(this).is(':checked');
+		const enabled = $(this).is(":checked");
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemGive.enabled`] = enabled;
 		item.update(updateData, { render: false }).then(() => {
@@ -802,56 +802,56 @@ export async function enhanceScrollSheet(app, html) {
 		});
 	});
 
-	html.on('click', '.sdx-add-item-give-btn', async function (e) {
+	html.on("click", ".sdx-add-item-give-btn", async function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		const { generateItemGiveProfileHTML } = await import(`./ItemGiveConfig.mjs`);
-		const $list = $(this).closest('.sdx-item-give-content').find('.sdx-item-give-list');
-		const index = $list.find('.sdx-item-give-profile').length;
+		const { generateItemGiveProfileHTML } = await import("./ItemGiveConfig.mjs");
+		const $list = $(this).closest(".sdx-item-give-content").find(".sdx-item-give-list");
+		const index = $list.find(".sdx-item-give-profile").length;
 		const newProfile = {
-			itemUuid: '',
-			itemName: '',
-			itemImg: '',
-			quantity: '1'
+			itemUuid: "",
+			itemName: "",
+			itemImg: "",
+			quantity: "1",
 		};
 		$list.append(generateItemGiveProfileHTML(newProfile, index));
 		updateItemGiveData();
 	});
 
-	html.on('click', '.sdx-remove-item-give-btn', function (e) {
+	html.on("click", ".sdx-remove-item-give-btn", function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		$(this).closest('.sdx-item-give-profile').remove();
+		$(this).closest(".sdx-item-give-profile").remove();
 		updateItemGiveData();
 	});
 
-	html.on('change input', '.sdx-item-give-quantity', function (e) {
+	html.on("change input", ".sdx-item-give-quantity", function(e) {
 		e.stopPropagation();
 		updateItemGiveData();
 	});
 
-	html.on('dragover', '.sdx-item-give-drop', function (event) {
+	html.on("dragover", ".sdx-item-give-drop", function(event) {
 		event.preventDefault();
 		event.stopPropagation();
-		$(this).addClass('sdx-drag-over');
+		$(this).addClass("sdx-drag-over");
 	});
 
-	html.on('dragleave', '.sdx-item-give-drop', function (event) {
+	html.on("dragleave", ".sdx-item-give-drop", function(event) {
 		event.preventDefault();
 		event.stopPropagation();
-		$(this).removeClass('sdx-drag-over');
+		$(this).removeClass("sdx-drag-over");
 	});
 
-	html.on('drop', '.sdx-item-give-drop', async function (event) {
+	html.on("drop", ".sdx-item-give-drop", async function(event) {
 		event.preventDefault();
 		event.stopPropagation();
-		$(this).removeClass('sdx-drag-over');
+		$(this).removeClass("sdx-drag-over");
 		try {
-			const data = JSON.parse(event.originalEvent.dataTransfer.getData('text/plain'));
+			const data = JSON.parse(event.originalEvent.dataTransfer.getData("text/plain"));
 			let doc = null;
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === 'Item' && data.id) {
+			} else if (data.type === "Item" && data.id) {
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
 					doc = await pack.getDocument(data.id);
@@ -860,20 +860,20 @@ export async function enhanceScrollSheet(app, html) {
 				}
 			}
 			if (!doc) {
-				ui.notifications.warn('Could not load dropped item');
+				ui.notifications.warn("Could not load dropped item");
 				return;
 			}
 			if (!(doc instanceof Item)) {
-				ui.notifications.warn('Only items can be dropped here');
+				ui.notifications.warn("Only items can be dropped here");
 				return;
 			}
-			const $profile = $(this).closest('.sdx-item-give-profile');
+			const $profile = $(this).closest(".sdx-item-give-profile");
 			const itemName = doc.name;
-			const itemImg = doc.img || 'icons/svg/mystery-man.svg';
+			const itemImg = doc.img || "icons/svg/mystery-man.svg";
 			const itemUuid = doc.uuid;
-			$profile.find('.sdx-item-give-uuid').val(itemUuid);
-			$profile.find('.sdx-item-give-name').val(itemName);
-			$profile.find('.sdx-item-give-img').val(itemImg);
+			$profile.find(".sdx-item-give-uuid").val(itemUuid);
+			$profile.find(".sdx-item-give-name").val(itemName);
+			$profile.find(".sdx-item-give-img").val(itemImg);
 			$(this).html(`
 				<div class="sdx-item-give-display" data-uuid="${itemUuid}">
 					<img src="${itemImg}" alt="${itemName}" style="width: 40px; height: 40px; border-radius: 4px;" />
@@ -884,24 +884,24 @@ export async function enhanceScrollSheet(app, html) {
 			ui.notifications.info(`Added ${itemName} to caster item list`);
 		} catch (err) {
 			console.error(`${MODULE_ID} | Error handling item drop:`, err);
-			ui.notifications.error('Failed to add item');
+			ui.notifications.error("Failed to add item");
 		}
 	});
 
 	function updateItemGiveData() {
 		const profiles = [];
-		html.find('.sdx-item-give-profile').each(function (idx) {
+		html.find(".sdx-item-give-profile").each(function(idx) {
 			const $profile = $(this);
-			$profile.attr('data-index', idx);
-			$profile.find('.sdx-remove-item-give-btn').attr('data-index', idx);
+			$profile.attr("data-index", idx);
+			$profile.find(".sdx-remove-item-give-btn").attr("data-index", idx);
 			profiles.push({
-				itemUuid: $profile.find('.sdx-item-give-uuid').val(),
-				itemName: $profile.find('.sdx-item-give-name').val(),
-				itemImg: $profile.find('.sdx-item-give-img').val(),
-				quantity: $profile.find('.sdx-item-give-quantity').val() || '1'
+				itemUuid: $profile.find(".sdx-item-give-uuid").val(),
+				itemName: $profile.find(".sdx-item-give-name").val(),
+				itemImg: $profile.find(".sdx-item-give-img").val(),
+				quantity: $profile.find(".sdx-item-give-quantity").val() || "1",
 			});
 		});
-		html.find('.sdx-item-give-data').val(JSON.stringify(profiles));
+		html.find(".sdx-item-give-data").val(JSON.stringify(profiles));
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemGive.profiles`] = profiles;
 		item.update(updateData, { render: false }).then(() => {
@@ -914,9 +914,9 @@ export async function enhanceScrollSheet(app, html) {
 	// ===== ITEM MACRO HANDLERS =====
 
 	// Handle spell macro GM toggle
-	html.on('change', '.sdx-spell-macro-run-as-gm', function (e) {
+	html.on("change", ".sdx-spell-macro-run-as-gm", function(e) {
 		e.stopPropagation();
-		const runAsGm = $(this).prop('checked');
+		const runAsGm = $(this).prop("checked");
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemMacro.runAsGm`] = runAsGm;
 		item.update(updateData, { render: false }).then(() => {
@@ -927,11 +927,11 @@ export async function enhanceScrollSheet(app, html) {
 	});
 
 	// Handle spell macro trigger checkboxes
-	html.on('change', '.sdx-spell-macro-trigger-checkbox', function (e) {
+	html.on("change", ".sdx-spell-macro-trigger-checkbox", function(e) {
 		e.stopPropagation();
 		const triggers = [];
-		html.find('.sdx-spell-macro-trigger-checkbox:checked').each(function () {
-			triggers.push($(this).data('trigger'));
+		html.find(".sdx-spell-macro-trigger-checkbox:checked").each(function() {
+			triggers.push($(this).data("trigger"));
 		});
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemMacro.triggers`] = triggers;

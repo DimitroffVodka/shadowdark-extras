@@ -26,11 +26,11 @@ let scheduledTimeouts = new Set(); // Track pending timeouts for cleanup
  * Save marching mode state to settings
  */
 async function saveMarchingState() {
-    if (!game.user.isGM) return;
+	if (!game.user.isGM) return;
 
-    await game.settings.set(MODULE_ID, SETTING_KEY_LEADER, leaderTokenId || "");
-    await game.settings.set(MODULE_ID, SETTING_KEY_ENABLED, marchingModeEnabled);
-    console.log(`${MODULE_ID} | Saved marching state: leader=${leaderTokenId}, enabled=${marchingModeEnabled}`);
+	await game.settings.set(MODULE_ID, SETTING_KEY_LEADER, leaderTokenId || "");
+	await game.settings.set(MODULE_ID, SETTING_KEY_ENABLED, marchingModeEnabled);
+	console.log(`${MODULE_ID} | Saved marching state: leader=${leaderTokenId}, enabled=${marchingModeEnabled}`);
 }
 
 /**
@@ -39,72 +39,72 @@ async function saveMarchingState() {
 function loadMarchingState() {
 
 
-    const savedLeader = game.settings.get(MODULE_ID, SETTING_KEY_LEADER);
-    const savedEnabled = game.settings.get(MODULE_ID, SETTING_KEY_ENABLED);
+	const savedLeader = game.settings.get(MODULE_ID, SETTING_KEY_LEADER);
+	const savedEnabled = game.settings.get(MODULE_ID, SETTING_KEY_ENABLED);
 
-    leaderTokenId = savedLeader || null;
-    marchingModeEnabled = savedEnabled || false;
+	leaderTokenId = savedLeader || null;
+	marchingModeEnabled = savedEnabled || false;
 
-    console.log(`${MODULE_ID} | Loaded marching state: leader=${leaderTokenId}, enabled=${marchingModeEnabled}`);
+	console.log(`${MODULE_ID} | Loaded marching state: leader=${leaderTokenId}, enabled=${marchingModeEnabled}`);
 }
 
 /**
  * Register game settings for marching mode
  */
 function registerMarchingSettings() {
-    game.settings.register(MODULE_ID, SETTING_KEY_LEADER, {
-        name: "Marching Mode Leader",
-        scope: "world",
-        config: false,
-        type: String,
-        default: "",
-        // Keep every client (players included) in sync when the GM changes the leader.
-        onChange: (value) => {
-            leaderTokenId = value || null;
-            updateButtonStates();
-        }
-    });
+	game.settings.register(MODULE_ID, SETTING_KEY_LEADER, {
+		name: "Marching Mode Leader",
+		scope: "world",
+		config: false,
+		type: String,
+		default: "",
+		// Keep every client (players included) in sync when the GM changes the leader.
+		onChange: (value) => {
+			leaderTokenId = value || null;
+			updateButtonStates();
+		},
+	});
 
-    game.settings.register(MODULE_ID, SETTING_KEY_ENABLED, {
-        name: "Marching Mode Enabled",
-        scope: "world",
-        config: false,
-        type: Boolean,
-        default: false,
-        // Keep every client (players included) in sync when the GM toggles the mode.
-        // Without this, players' local marchingModeEnabled stays stale and keeps
-        // blocking their movement even after the GM switches to Free Movement.
-        onChange: (value) => {
-            marchingModeEnabled = !!value;
-            if (!marchingModeEnabled) {
-                leaderMovementPath = [];
-                tokenFollowers.clear();
-            }
-            updateButtonStates();
-        }
-    });
+	game.settings.register(MODULE_ID, SETTING_KEY_ENABLED, {
+		name: "Marching Mode Enabled",
+		scope: "world",
+		config: false,
+		type: Boolean,
+		default: false,
+		// Keep every client (players included) in sync when the GM toggles the mode.
+		// Without this, players' local marchingModeEnabled stays stale and keeps
+		// blocking their movement even after the GM switches to Free Movement.
+		onChange: (value) => {
+			marchingModeEnabled = !!value;
+			if (!marchingModeEnabled) {
+				leaderMovementPath = [];
+				tokenFollowers.clear();
+			}
+			updateButtonStates();
+		},
+	});
 }
 
 /**
  * Schedule a timeout and track it for cleanup
  */
 function scheduleTimeout(callback, delay) {
-    const id = setTimeout(() => {
-        scheduledTimeouts.delete(id);
-        callback();
-    }, delay);
-    scheduledTimeouts.add(id);
-    return id;
+	const id = setTimeout(() => {
+		scheduledTimeouts.delete(id);
+		callback();
+	}, delay);
+	scheduledTimeouts.add(id);
+	return id;
 }
 
 /**
  * Clear all scheduled timeouts
  */
 function clearScheduledTimeouts() {
-    for (const id of scheduledTimeouts) {
-        clearTimeout(id);
-    }
-    scheduledTimeouts.clear();
+	for (const id of scheduledTimeouts) {
+		clearTimeout(id);
+	}
+	scheduledTimeouts.clear();
 }
 
 /**
@@ -113,93 +113,93 @@ function clearScheduledTimeouts() {
 export function initMarchingMode() {
 
 
-    console.log(`${MODULE_ID} | Initializing Marching Mode`);
+	console.log(`${MODULE_ID} | Initializing Marching Mode`);
 
-    // Register settings
-    registerMarchingSettings();
+	// Register settings
+	registerMarchingSettings();
 
-    // Initialize Formation Spawner settings
-    initFormationSpawner();
+	// Initialize Formation Spawner settings
+	initFormationSpawner();
 
-    // Load saved state
-    loadMarchingState();
+	// Load saved state
+	loadMarchingState();
 
-    // Register the renderSidebar hook
-    Hooks.on("renderSidebar", onRenderSidebar);
+	// Register the renderSidebar hook
+	Hooks.on("renderSidebar", onRenderSidebar);
 
-    // If sidebar already exists, inject buttons now
-    const sidebar = document.getElementById("sidebar");
-    if (sidebar) {
-        if (!game.settings.get(MODULE_ID, "tray.enabled")) {
-            injectSidebarButtons($(sidebar));
-        }
-    }
+	// If sidebar already exists, inject buttons now
+	const sidebar = document.getElementById("sidebar");
+	if (sidebar) {
+		if (!game.settings.get(MODULE_ID, "tray.enabled")) {
+			injectSidebarButtons($(sidebar));
+		}
+	}
 
-    // Hook into token movement
-    Hooks.on("preUpdateToken", onPreUpdateToken);
-    Hooks.on("updateToken", onUpdateToken);
+	// Hook into token movement
+	Hooks.on("preUpdateToken", onPreUpdateToken);
+	Hooks.on("updateToken", onUpdateToken);
 
-    // Restore leader crown when canvas is ready
-    Hooks.on("canvasReady", restoreLeaderCrown);
+	// Restore leader crown when canvas is ready
+	Hooks.on("canvasReady", restoreLeaderCrown);
 
-    // Clean up crown when token is deleted
-    Hooks.on("deleteToken", async (tokenDoc, options, userId) => {
-        if (tokenDoc.id === leaderTokenId) {
-            // Leader was deleted, clear leader
-            await setLeader(null);
-        }
-    });
+	// Clean up crown when token is deleted
+	Hooks.on("deleteToken", async (tokenDoc, options, userId) => {
+		if (tokenDoc.id === leaderTokenId) {
+			// Leader was deleted, clear leader
+			await setLeader(null);
+		}
+	});
 
-    // Show crown on newly created tokens if they're the leader
-    Hooks.on("createToken", async (tokenDoc, options, userId) => {
-        // Small delay to ensure token is fully initialized
-        await new Promise(resolve => setTimeout(resolve, 100));
+	// Show crown on newly created tokens if they're the leader
+	Hooks.on("createToken", async (tokenDoc, options, userId) => {
+		// Small delay to ensure token is fully initialized
+		await new Promise(resolve => setTimeout(resolve, 100));
 
-        if (tokenDoc.id === leaderTokenId) {
-            const token = canvas.tokens.get(tokenDoc.id);
-            if (token) {
-                await showLeaderCrown(token);
-            }
-        }
-    });
+		if (tokenDoc.id === leaderTokenId) {
+			const token = canvas.tokens.get(tokenDoc.id);
+			if (token) {
+				await showLeaderCrown(token);
+			}
+		}
+	});
 }
 
 /**
  * Hook callback for renderSidebar
  */
 function onRenderSidebar(sidebar, html) {
-    if (!game.settings.get(MODULE_ID, "tray.enabled")) {
-        injectSidebarButtons(html);
-    }
+	if (!game.settings.get(MODULE_ID, "tray.enabled")) {
+		injectSidebarButtons(html);
+	}
 }
 
 /**
  * Inject sidebar buttons into the given HTML
  */
 function injectSidebarButtons($html) {
-    const $tabs = $html.find("#sidebar-tabs");
-    if (!$tabs.length) {
-        console.warn(`${MODULE_ID} | Could not find #sidebar-tabs`);
-        return;
-    }
+	const $tabs = $html.find("#sidebar-tabs");
+	if (!$tabs.length) {
+		console.warn(`${MODULE_ID} | Could not find #sidebar-tabs`);
+		return;
+	}
 
-    // Check if buttons already exist
-    if ($tabs.find(".sdx-marching-leader-btn").length) {
-        console.log(`${MODULE_ID} | Marching buttons already exist, skipping injection`);
-        return;
-    }
+	// Check if buttons already exist
+	if ($tabs.find(".sdx-marching-leader-btn").length) {
+		console.log(`${MODULE_ID} | Marching buttons already exist, skipping injection`);
+		return;
+	}
 
-    // Find the settings button to insert before it
-    const $settingsBtn = $tabs.find('button[data-tab="settings"]').parent();
-    if (!$settingsBtn.length) {
-        console.warn(`${MODULE_ID} | Could not find settings button to insert marching buttons before`);
-        return;
-    }
+	// Find the settings button to insert before it
+	const $settingsBtn = $tabs.find('button[data-tab="settings"]').parent();
+	if (!$settingsBtn.length) {
+		console.warn(`${MODULE_ID} | Could not find settings button to insert marching buttons before`);
+		return;
+	}
 
-    console.log(`${MODULE_ID} | Injecting marching mode buttons into sidebar`);
+	console.log(`${MODULE_ID} | Injecting marching mode buttons into sidebar`);
 
-    // Create Leader button
-    const $leaderBtn = $(`
+	// Create Leader button
+	const $leaderBtn = $(`
         <li class="sdx-marching-btn-container">
             <button type="button" class="ui-control plain icon fa-solid fa-crown sdx-marching-leader-btn"
                     data-tooltip="Choose Party Leader" data-tooltip-direction="LEFT">
@@ -207,8 +207,8 @@ function injectSidebarButtons($html) {
         </li>
     `);
 
-    // Create Movement Mode button
-    const $movementBtn = $(`
+	// Create Movement Mode button
+	const $movementBtn = $(`
         <li class="sdx-marching-btn-container">
             <button type="button" class="ui-control plain icon fa-solid fa-person-walking sdx-marching-mode-btn"
                     data-tooltip="Movement Mode" data-tooltip-direction="LEFT">
@@ -216,8 +216,8 @@ function injectSidebarButtons($html) {
         </li>
     `);
 
-    // Create Formation Spawner button
-    const $formationBtn = $(`
+	// Create Formation Spawner button
+	const $formationBtn = $(`
         <li class="sdx-marching-btn-container">
             <button type="button" class="ui-control plain icon fa-solid fa-users-viewfinder sdx-formation-btn"
                     data-tooltip="Formation Spawner" data-tooltip-direction="LEFT">
@@ -225,8 +225,8 @@ function injectSidebarButtons($html) {
         </li>
     `);
 
-    // Create Add Pin button
-    const $addPinBtn = $(`
+	// Create Add Pin button
+	const $addPinBtn = $(`
         <li class="sdx-marching-btn-container">
             <button type="button" class="ui-control plain icon fa-solid fa-map-pin sdx-add-pin-btn"
                     data-tooltip="Add Journal Pin" data-tooltip-direction="LEFT">
@@ -234,47 +234,47 @@ function injectSidebarButtons($html) {
         </li>
     `);
 
-    // Insert before settings
-    if (game.user.isGM) {
-        $settingsBtn.before($leaderBtn);
-        $settingsBtn.before($movementBtn);
-        $settingsBtn.before($formationBtn);
-        $settingsBtn.before($addPinBtn);
-    }
+	// Insert before settings
+	if (game.user.isGM) {
+		$settingsBtn.before($leaderBtn);
+		$settingsBtn.before($movementBtn);
+		$settingsBtn.before($formationBtn);
+		$settingsBtn.before($addPinBtn);
+	}
 
-    // Add event handlers
-    if (game.user.isGM) {
-        $leaderBtn.find("button").on("click", showLeaderDialog);
-        $movementBtn.find("button").on("click", showMovementModeDialog);
-        $formationBtn.find("button").on("click", () => FormationSpawnerSD.show());
+	// Add event handlers
+	if (game.user.isGM) {
+		$leaderBtn.find("button").on("click", showLeaderDialog);
+		$movementBtn.find("button").on("click", showMovementModeDialog);
+		$formationBtn.find("button").on("click", () => FormationSpawnerSD.show());
 
-        // SDX Pins - Menu Dialog
-        $addPinBtn.find("button").on("click", () => {
-            new foundry.applications.api.DialogV2({
-                window: { title: "SDX Pins" },
-                content: "<p>Select an action:</p>",
-                position: { width: 300 },
-                buttons: [
-                    {
-                        action: "add",
-                        icon: "fas fa-map-pin",
-                        label: "Add Pin",
-                        default: true,
-                        callback: () => PinPlacer.activate()
-                    },
-                    {
-                        action: "list",
-                        icon: "fas fa-list",
-                        label: "Pin List",
-                        callback: () => PinListApp.show()
-                    }
-                ]
-            }).render({ force: true });
-        });
-    }
+		// SDX Pins - Menu Dialog
+		$addPinBtn.find("button").on("click", () => {
+			new foundry.applications.api.DialogV2({
+				window: { title: "SDX Pins" },
+				content: "<p>Select an action:</p>",
+				position: { width: 300 },
+				buttons: [
+					{
+						action: "add",
+						icon: "fas fa-map-pin",
+						label: "Add Pin",
+						default: true,
+						callback: () => PinPlacer.activate(),
+					},
+					{
+						action: "list",
+						icon: "fas fa-list",
+						label: "Pin List",
+						callback: () => PinListApp.show(),
+					},
+				],
+			}).render({ force: true });
+		});
+	}
 
-    // Create Carousing button
-    const $carousingBtn = $(`
+	// Create Carousing button
+	const $carousingBtn = $(`
         <li class="sdx-marching-btn-container">
             <button type="button" class="ui-control plain icon fa-solid fa-beer sdx-carousing-sidebar-btn"
                     data-tooltip="${game.i18n.localize("SHADOWDARK_EXTRAS.carousing.title")}" data-tooltip-direction="LEFT">
@@ -282,47 +282,47 @@ function injectSidebarButtons($html) {
         </li>
     `);
 
-    $settingsBtn.before($carousingBtn);
+	$settingsBtn.before($carousingBtn);
 
-    // Add Carousing handler
-    $carousingBtn.find("button").on("click", () => {
-        if (window.sdxOpenCarousingOverlay) {
-            window.sdxOpenCarousingOverlay();
-        } else {
-            ui.notifications.warn("Carousing system not ready.");
-        }
-    });
+	// Add Carousing handler
+	$carousingBtn.find("button").on("click", () => {
+		if (window.sdxOpenCarousingOverlay) {
+			window.sdxOpenCarousingOverlay();
+		} else {
+			ui.notifications.warn("Carousing system not ready.");
+		}
+	});
 
 
 
-    // Update button states
-    updateButtonStates();
+	// Update button states
+	updateButtonStates();
 }
 
 /**
  * Show leader selection dialog
  */
 export function showLeaderDialog() {
-    // Get all player-owned tokens on the current scene
-    const playerTokens = canvas.tokens.placeables.filter(t => {
-        const actor = t.actor;
-        return actor && actor.type === "Player" && actor.hasPlayerOwner;
-    });
+	// Get all player-owned tokens on the current scene
+	const playerTokens = canvas.tokens.placeables.filter(t => {
+		const actor = t.actor;
+		return actor && actor.type === "Player" && actor.hasPlayerOwner;
+	});
 
-    if (playerTokens.length === 0) {
-        ui.notifications.warn("No player tokens found on the current scene.");
-        return;
-    }
+	if (playerTokens.length === 0) {
+		ui.notifications.warn("No player tokens found on the current scene.");
+		return;
+	}
 
-    // Build options
-    const options = playerTokens.map(t => {
-        const ownerName = getTokenOwnerName(t);
-        return `<option value="${t.id}" ${t.id === leaderTokenId ? 'selected' : ''}>
-            ${t.name}${ownerName ? ` (${ownerName})` : ''}
+	// Build options
+	const options = playerTokens.map(t => {
+		const ownerName = getTokenOwnerName(t);
+		return `<option value="${t.id}" ${t.id === leaderTokenId ? "selected" : ""}>
+            ${t.name}${ownerName ? ` (${ownerName})` : ""}
         </option>`;
-    }).join('');
+	}).join("");
 
-    const content = `
+	const content = `
         <form>
             <div class="form-group">
                 <label>Select Party Leader:</label>
@@ -334,44 +334,44 @@ export function showLeaderDialog() {
         </form>
     `;
 
-    new foundry.applications.api.DialogV2({
-        window: { title: "Set Party Leader" },
-        content,
-        buttons: [
-            {
-                action: "set",
-                icon: "fas fa-check",
-                label: "Set Leader",
-                default: true,
-                callback: (event, button) => {
-                    const leaderId = button.form?.elements?.leaderId?.value;
-                    setLeader(leaderId || null);
-                }
-            },
-            {
-                action: "cancel",
-                icon: "fas fa-times",
-                label: "Cancel"
-            }
-        ]
-    }).render({ force: true });
+	new foundry.applications.api.DialogV2({
+		window: { title: "Set Party Leader" },
+		content,
+		buttons: [
+			{
+				action: "set",
+				icon: "fas fa-check",
+				label: "Set Leader",
+				default: true,
+				callback: (event, button) => {
+					const leaderId = button.form?.elements?.leaderId?.value;
+					setLeader(leaderId || null);
+				},
+			},
+			{
+				action: "cancel",
+				icon: "fas fa-times",
+				label: "Cancel",
+			},
+		],
+	}).render({ force: true });
 }
 
 /**
  * Show movement mode configuration dialog
  */
 export function showMovementModeDialog() {
-    const content = `
+	const content = `
         <form>
             <div class="sdx-movement-mode-options">
-                <div class="sdx-movement-option ${!marchingModeEnabled ? 'selected' : ''}" data-mode="free">
+                <div class="sdx-movement-option ${!marchingModeEnabled ? "selected" : ""}" data-mode="free">
                     <i class="fas fa-person-walking"></i>
                     <div class="sdx-movement-option-content">
                         <h3>Free Movement</h3>
                         <p>All party members can move their tokens at will without limitations. Move wisely.</p>
                     </div>
                 </div>
-                <div class="sdx-movement-option ${marchingModeEnabled ? 'selected' : ''}" data-mode="marching">
+                <div class="sdx-movement-option ${marchingModeEnabled ? "selected" : ""}" data-mode="marching">
                     <i class="fas fa-people-line"></i>
                     <div class="sdx-movement-option-content">
                         <h3>Marching Mode</h3>
@@ -382,580 +382,580 @@ export function showMovementModeDialog() {
         </form>
     `;
 
-    const dialog = new foundry.applications.api.DialogV2({
-        window: { title: "Configure Movement Mode" },
-        content,
-        classes: ["sdx-movement-mode-dialog"],
-        position: { width: 520, height: "auto" },
-        buttons: [
-            {
-                action: "apply",
-                icon: "fas fa-check",
-                label: "Apply",
-                default: true,
-                callback: (event, button, dlg) => {
-                    const selected = dlg.element.querySelector(".sdx-movement-option.selected");
-                    const selectedMode = selected?.dataset?.mode;
-                    setMovementMode(selectedMode === "marching");
-                }
-            },
-            {
-                action: "close",
-                icon: "fas fa-times",
-                label: "Close"
-            }
-        ]
-    });
-    dialog.render({ force: true }).then(() => {
-        const options = dialog.element.querySelectorAll(".sdx-movement-option");
-        options.forEach(opt => {
-            opt.addEventListener("click", () => {
-                options.forEach(o => o.classList.remove("selected"));
-                opt.classList.add("selected");
-            });
-        });
-    });
+	const dialog = new foundry.applications.api.DialogV2({
+		window: { title: "Configure Movement Mode" },
+		content,
+		classes: ["sdx-movement-mode-dialog"],
+		position: { width: 520, height: "auto" },
+		buttons: [
+			{
+				action: "apply",
+				icon: "fas fa-check",
+				label: "Apply",
+				default: true,
+				callback: (event, button, dlg) => {
+					const selected = dlg.element.querySelector(".sdx-movement-option.selected");
+					const selectedMode = selected?.dataset?.mode;
+					setMovementMode(selectedMode === "marching");
+				},
+			},
+			{
+				action: "close",
+				icon: "fas fa-times",
+				label: "Close",
+			},
+		],
+	});
+	dialog.render({ force: true }).then(() => {
+		const options = dialog.element.querySelectorAll(".sdx-movement-option");
+		options.forEach(opt => {
+			opt.addEventListener("click", () => {
+				options.forEach(o => o.classList.remove("selected"));
+				opt.classList.add("selected");
+			});
+		});
+	});
 }
 
 /**
  * Set the party leader
  */
 async function setLeader(tokenId) {
-    const oldLeaderId = leaderTokenId;
+	const oldLeaderId = leaderTokenId;
 
-    // Normalize tokenId (convert empty string to null)
-    const newLeaderId = tokenId || null;
-    leaderTokenId = newLeaderId;
+	// Normalize tokenId (convert empty string to null)
+	const newLeaderId = tokenId || null;
+	leaderTokenId = newLeaderId;
 
-    // Always remove ALL crowns first (handles refresh case where oldLeaderId is null but crowns persist)
-    await removeAllLeaderCrowns();
+	// Always remove ALL crowns first (handles refresh case where oldLeaderId is null but crowns persist)
+	await removeAllLeaderCrowns();
 
-    // Reset marching state when leader changes
-    if (oldLeaderId !== newLeaderId) {
-        // Clear the movement path
-        leaderMovementPath = [];
+	// Reset marching state when leader changes
+	if (oldLeaderId !== newLeaderId) {
+		// Clear the movement path
+		leaderMovementPath = [];
 
-        // Clear followers
-        tokenFollowers.clear();
+		// Clear followers
+		tokenFollowers.clear();
 
-        // Cancel any pending movements
-        clearScheduledTimeouts();
-        processingCongaMovement = false;
-        congaMovementPending = false;
+		// Cancel any pending movements
+		clearScheduledTimeouts();
+		processingCongaMovement = false;
+		congaMovementPending = false;
 
-        // If marching mode is enabled and we have a new leader, recalculate marching order
-        if (marchingModeEnabled && newLeaderId) {
-            const newLeaderToken = canvas.tokens.get(newLeaderId);
-            if (newLeaderToken) {
-                // Small delay to ensure state is settled
-                await new Promise(resolve => setTimeout(resolve, 100));
-                calculateMarchingOrder(newLeaderToken);
-                console.log(`${MODULE_ID} | Recalculated marching order with new leader`);
-            }
-        }
-    }
+		// If marching mode is enabled and we have a new leader, recalculate marching order
+		if (marchingModeEnabled && newLeaderId) {
+			const newLeaderToken = canvas.tokens.get(newLeaderId);
+			if (newLeaderToken) {
+				// Small delay to ensure state is settled
+				await new Promise(resolve => setTimeout(resolve, 100));
+				calculateMarchingOrder(newLeaderToken);
+				console.log(`${MODULE_ID} | Recalculated marching order with new leader`);
+			}
+		}
+	}
 
-    // Add crown to new leader if one was selected
-    if (newLeaderId) {
-        const token = canvas.tokens.get(newLeaderId);
-        if (token) {
-            await showLeaderCrown(token);
-            ui.notifications.info(`Party leader set to: ${token.name}`);
-        } else {
-            ui.notifications.info(`Party leader set to: Unknown`);
-        }
-    } else {
-        ui.notifications.info("Party leader cleared.");
-    }
+	// Add crown to new leader if one was selected
+	if (newLeaderId) {
+		const token = canvas.tokens.get(newLeaderId);
+		if (token) {
+			await showLeaderCrown(token);
+			ui.notifications.info(`Party leader set to: ${token.name}`);
+		} else {
+			ui.notifications.info("Party leader set to: Unknown");
+		}
+	} else {
+		ui.notifications.info("Party leader cleared.");
+	}
 
-    // Save state
-    await saveMarchingState();
+	// Save state
+	await saveMarchingState();
 
-    updateButtonStates();
+	updateButtonStates();
 }
 
 /**
  * Set movement mode
  */
 async function setMovementMode(enabled) {
-    marchingModeEnabled = enabled;
+	marchingModeEnabled = enabled;
 
-    if (enabled) {
-        if (!leaderTokenId) {
-            ui.notifications.warn("Please set a party leader first.");
-            marchingModeEnabled = false;
-            return;
-        }
-        ui.notifications.info("Marching Mode enabled. Followers will track the leader's path.");
-    } else {
-        ui.notifications.info("Free Movement enabled.");
-        leaderMovementPath = [];
-        tokenFollowers.clear();
-        clearScheduledTimeouts(); // Cancel any pending follower movements
-        processingCongaMovement = false;
-        congaMovementPending = false;
-    }
+	if (enabled) {
+		if (!leaderTokenId) {
+			ui.notifications.warn("Please set a party leader first.");
+			marchingModeEnabled = false;
+			return;
+		}
+		ui.notifications.info("Marching Mode enabled. Followers will track the leader's path.");
+	} else {
+		ui.notifications.info("Free Movement enabled.");
+		leaderMovementPath = [];
+		tokenFollowers.clear();
+		clearScheduledTimeouts(); // Cancel any pending follower movements
+		processingCongaMovement = false;
+		congaMovementPending = false;
+	}
 
-    // Save state
-    await saveMarchingState();
+	// Save state
+	await saveMarchingState();
 
-    updateButtonStates();
+	updateButtonStates();
 
-    // Calculate initial marching order when enabled
-    if (enabled && leaderTokenId) {
-        const leaderToken = canvas.tokens.get(leaderTokenId);
-        if (leaderToken) {
-            calculateMarchingOrder(leaderToken);
-        }
-    }
+	// Calculate initial marching order when enabled
+	if (enabled && leaderTokenId) {
+		const leaderToken = canvas.tokens.get(leaderTokenId);
+		if (leaderToken) {
+			calculateMarchingOrder(leaderToken);
+		}
+	}
 }
 
 /**
  * Update button states to show active mode
  */
 function updateButtonStates() {
-    const $leaderBtn = $("#sidebar-tabs .sdx-marching-leader-btn");
-    const $modeBtn = $("#sidebar-tabs .sdx-marching-mode-btn");
+	const $leaderBtn = $("#sidebar-tabs .sdx-marching-leader-btn");
+	const $modeBtn = $("#sidebar-tabs .sdx-marching-mode-btn");
 
-    // Update leader button
-    if (leaderTokenId) {
-        $leaderBtn.addClass("active").css("color", "#ffd700");
-    } else {
-        $leaderBtn.removeClass("active").css("color", "");
-    }
+	// Update leader button
+	if (leaderTokenId) {
+		$leaderBtn.addClass("active").css("color", "#ffd700");
+	} else {
+		$leaderBtn.removeClass("active").css("color", "");
+	}
 
-    // Update mode button
-    if (marchingModeEnabled) {
-        $modeBtn.addClass("active").css("color", "#4CAF50");
-    } else {
-        $modeBtn.removeClass("active").css("color", "");
-    }
+	// Update mode button
+	if (marchingModeEnabled) {
+		$modeBtn.addClass("active").css("color", "#4CAF50");
+	} else {
+		$modeBtn.removeClass("active").css("color", "");
+	}
 }
 
 /**
  * Get the owner name of a token
  */
 function getTokenOwnerName(token) {
-    if (!token.actor) return null;
+	if (!token.actor) return null;
 
-    const owners = Object.entries(token.actor.ownership || {})
-        .filter(([userId, level]) => level === 3 && userId !== "default")
-        .map(([userId]) => game.users.get(userId))
-        .filter(user => user && !user.isGM);
+	const owners = Object.entries(token.actor.ownership || {})
+		.filter(([userId, level]) => level === 3 && userId !== "default")
+		.map(([userId]) => game.users.get(userId))
+		.filter(user => user && !user.isGM);
 
-    return owners.length > 0 ? owners[0].name : "Gamemaster";
+	return owners.length > 0 ? owners[0].name : "Gamemaster";
 }
 
 /**
  * Hook: Before token update
  */
 function onPreUpdateToken(tokenDoc, changes, options, userId) {
-    // Skip if no position change (use === undefined so a move to x/y === 0 still counts)
-    if (changes.x === undefined && changes.y === undefined) return true;
+	// Skip if no position change (use === undefined so a move to x/y === 0 still counts)
+	if (changes.x === undefined && changes.y === undefined) return true;
 
-    if (!marchingModeEnabled) return true;
-    if (!leaderTokenId) return true;
+	if (!marchingModeEnabled) return true;
+	if (!leaderTokenId) return true;
 
-    // Allow GM to move any token
-    if (game.user.isGM) return true;
+	// Allow GM to move any token
+	if (game.user.isGM) return true;
 
-    // The party leader moves freely; the GM client records the path and drives the
-    // followers via processCongaMovement (see onUpdateToken).
-    if (tokenDoc.id === leaderTokenId) return true;
+	// The party leader moves freely; the GM client records the path and drives the
+	// followers via processCongaMovement (see onUpdateToken).
+	if (tokenDoc.id === leaderTokenId) return true;
 
-    // Followers move automatically — block manual movement of any other token.
-    ui.notifications.warn("In Marching Mode, only the leader can move. Other tokens follow automatically.");
-    return false;
+	// Followers move automatically — block manual movement of any other token.
+	ui.notifications.warn("In Marching Mode, only the leader can move. Other tokens follow automatically.");
+	return false;
 }
 
 /**
  * Hook: After token update (record path and move followers)
  */
 async function onUpdateToken(tokenDoc, changes, options, userId) {
-    if (!changes.x && !changes.y) return;
-    if (!marchingModeEnabled) return;
-    if (!leaderTokenId) return;
+	if (!changes.x && !changes.y) return;
+	if (!marchingModeEnabled) return;
+	if (!leaderTokenId) return;
 
-    // Only process on GM client
-    if (!game.user.isGM) return;
+	// Only process on GM client
+	if (!game.user.isGM) return;
 
-    const token = canvas.tokens.get(tokenDoc.id);
-    if (!token) return;
+	const token = canvas.tokens.get(tokenDoc.id);
+	if (!token) return;
 
-    // Check if this is automated movement
-    if (options.congaMovement || processingCongaMovement) {
-        return;
-    }
+	// Check if this is automated movement
+	if (options.congaMovement || processingCongaMovement) {
+		return;
+	}
 
-    // Check if this is the leader moving
-    if (tokenDoc.id === leaderTokenId) {
-        // Don't cancel pending follower movements — let in-progress conga movements finish.
-        // New path points are prepended, so the next processing cycle will pick them up.
+	// Check if this is the leader moving
+	if (tokenDoc.id === leaderTokenId) {
+		// Don't cancel pending follower movements — let in-progress conga movements finish.
+		// New path points are prepended, so the next processing cycle will pick them up.
 
-        // Record the leader's movement path
-        const startPosition = {
-            x: tokenDoc._source.x,
-            y: tokenDoc._source.y,
-            gridPos: getGridPositionKey(tokenDoc._source.x, tokenDoc._source.y)
-        };
+		// Record the leader's movement path
+		const startPosition = {
+			x: tokenDoc._source.x,
+			y: tokenDoc._source.y,
+			gridPos: getGridPositionKey(tokenDoc._source.x, tokenDoc._source.y),
+		};
 
-        const endPosition = {
-            x: tokenDoc.x,
-            y: tokenDoc.y,
-            gridPos: getGridPositionKey(tokenDoc.x, tokenDoc.y)
-        };
+		const endPosition = {
+			x: tokenDoc.x,
+			y: tokenDoc.y,
+			gridPos: getGridPositionKey(tokenDoc.x, tokenDoc.y),
+		};
 
-        // Add starting position if path is empty
-        if (leaderMovementPath.length === 0) {
-            leaderMovementPath.push(startPosition);
-        }
+		// Add starting position if path is empty
+		if (leaderMovementPath.length === 0) {
+			leaderMovementPath.push(startPosition);
+		}
 
-        // Create path points from start to end
-        const newPoints = createPathPoints(startPosition, endPosition);
+		// Create path points from start to end
+		const newPoints = createPathPoints(startPosition, endPosition);
 
-        // Add points to the beginning of the path
-        leaderMovementPath.unshift(...newPoints);
+		// Add points to the beginning of the path
+		leaderMovementPath.unshift(...newPoints);
 
-        // If no followers yet, calculate initial marching order
-        if (tokenFollowers.size === 0) {
-            calculateMarchingOrder(token);
-        }
+		// If no followers yet, calculate initial marching order
+		if (tokenFollowers.size === 0) {
+			calculateMarchingOrder(token);
+		}
 
-        // Process follower movement after a short delay using tracked timeout
-        scheduleTimeout(() => {
-            if (leaderMovementPath.length >= 2) {
-                processCongaMovement();
-            }
-        }, 100);
-    } else {
-        // Non-leader token was moved manually - recalculate marching order to include it
-        // This allows new tokens to join the formation by being positioned near the group
-        const leaderToken = canvas.tokens.get(leaderTokenId);
-        if (leaderToken) {
-            // Clear the path when manually reordering
-            leaderMovementPath = [];
-            calculateMarchingOrder(leaderToken);
-            console.log(`${MODULE_ID} | Recalculated marching order after ${token.name} was repositioned`);
-        }
-    }
+		// Process follower movement after a short delay using tracked timeout
+		scheduleTimeout(() => {
+			if (leaderMovementPath.length >= 2) {
+				processCongaMovement();
+			}
+		}, 100);
+	} else {
+		// Non-leader token was moved manually - recalculate marching order to include it
+		// This allows new tokens to join the formation by being positioned near the group
+		const leaderToken = canvas.tokens.get(leaderTokenId);
+		if (leaderToken) {
+			// Clear the path when manually reordering
+			leaderMovementPath = [];
+			calculateMarchingOrder(leaderToken);
+			console.log(`${MODULE_ID} | Recalculated marching order after ${token.name} was repositioned`);
+		}
+	}
 }
 
 /**
  * Calculate the grid position for a token
  */
 function getGridPositionKey(x, y) {
-    const gridSize = canvas.grid.size;
-    const gridX = Math.round(x / gridSize) * gridSize;
-    const gridY = Math.round(y / gridSize) * gridSize;
-    return `${gridX},${gridY}`;
+	const gridSize = canvas.grid.size;
+	const gridX = Math.round(x / gridSize) * gridSize;
+	const gridY = Math.round(y / gridSize) * gridSize;
+	return `${gridX},${gridY}`;
 }
 
 /**
  * Create path points between two positions
  */
 function createPathPoints(startPos, endPos) {
-    const gridSize = canvas.grid.size;
-    const dx = endPos.x - startPos.x;
-    const dy = endPos.y - startPos.y;
-    const distance = Math.max(Math.abs(dx), Math.abs(dy));
-    const steps = Math.max(Math.floor(distance / gridSize), 1);
+	const gridSize = canvas.grid.size;
+	const dx = endPos.x - startPos.x;
+	const dy = endPos.y - startPos.y;
+	const distance = Math.max(Math.abs(dx), Math.abs(dy));
+	const steps = Math.max(Math.floor(distance / gridSize), 1);
 
-    const result = [];
-    for (let i = 1; i <= steps; i++) {
-        const x = startPos.x + (dx * i / steps);
-        const y = startPos.y + (dy * i / steps);
-        const gridPos = getGridPositionKey(x, y);
+	const result = [];
+	for (let i = 1; i <= steps; i++) {
+		const x = startPos.x + (dx * i / steps);
+		const y = startPos.y + (dy * i / steps);
+		const gridPos = getGridPositionKey(x, y);
 
-        // Don't add duplicate positions
-        if (result.length > 0 && result[result.length - 1].gridPos === gridPos) {
-            continue;
-        }
+		// Don't add duplicate positions
+		if (result.length > 0 && result[result.length - 1].gridPos === gridPos) {
+			continue;
+		}
 
-        result.push({ x, y, gridPos });
-    }
+		result.push({ x, y, gridPos });
+	}
 
-    return result;
+	return result;
 }
 
 /**
  * Calculate the marching order based on proximity to leader
  */
 function calculateMarchingOrder(leaderToken) {
-    tokenFollowers.clear();
+	tokenFollowers.clear();
 
-    // Find all player-owned tokens except the leader
-    const followerTokens = canvas.tokens.placeables.filter(t =>
-        t.id !== leaderToken.id &&
+	// Find all player-owned tokens except the leader
+	const followerTokens = canvas.tokens.placeables.filter(t =>
+		t.id !== leaderToken.id &&
         t.actor &&
         t.actor.type === "Player" &&
         t.actor.hasPlayerOwner
-    );
+	);
 
-    // Sort by distance from leader
-    const sortedFollowers = followerTokens.map(token => {
-        const distance = Math.sqrt(
-            Math.pow(token.x - leaderToken.x, 2) +
+	// Sort by distance from leader
+	const sortedFollowers = followerTokens.map(token => {
+		const distance = Math.sqrt(
+			Math.pow(token.x - leaderToken.x, 2) +
             Math.pow(token.y - leaderToken.y, 2)
-        );
-        return { token, distance };
-    }).sort((a, b) => a.distance - b.distance);
+		);
+		return { token, distance };
+	}).sort((a, b) => a.distance - b.distance);
 
-    // Assign marching positions
-    sortedFollowers.forEach(({ token }, index) => {
-        tokenFollowers.set(token.id, {
-            marchPosition: index,
-            moving: false
-        });
-    });
+	// Assign marching positions
+	sortedFollowers.forEach(({ token }, index) => {
+		tokenFollowers.set(token.id, {
+			marchPosition: index,
+			moving: false,
+		});
+	});
 }
 
 /**
  * Process conga movement - tokens follow leader's exact path
  */
 function processCongaMovement() {
-    // Safety check
-    if (leaderMovementPath.length < 2) return;
-    if (tokenFollowers.size === 0) return;
+	// Safety check
+	if (leaderMovementPath.length < 2) return;
+	if (tokenFollowers.size === 0) return;
 
-    // If already processing, signal that new path points need processing after current cycle
-    if (processingCongaMovement) {
-        congaMovementPending = true;
-        console.log(`${MODULE_ID} | Conga movement already processing - flagged as pending`);
-        return;
-    }
+	// If already processing, signal that new path points need processing after current cycle
+	if (processingCongaMovement) {
+		congaMovementPending = true;
+		console.log(`${MODULE_ID} | Conga movement already processing - flagged as pending`);
+		return;
+	}
 
-    // Set processing flag
-    processingCongaMovement = true;
+	// Set processing flag
+	processingCongaMovement = true;
 
-    // Get the leader token
-    const leaderToken = canvas.tokens.get(leaderTokenId);
-    if (!leaderToken) {
-        processingCongaMovement = false;
-        return;
-    }
+	// Get the leader token
+	const leaderToken = canvas.tokens.get(leaderTokenId);
+	if (!leaderToken) {
+		processingCongaMovement = false;
+		return;
+	}
 
-    // Get sorted followers
-    const sortedFollowers = Array.from(tokenFollowers.entries())
-        .sort((a, b) => a[1].marchPosition - b[1].marchPosition);
+	// Get sorted followers
+	const sortedFollowers = Array.from(tokenFollowers.entries())
+		.sort((a, b) => a[1].marchPosition - b[1].marchPosition);
 
-    // Store followers' current positions and target indices
-    const followerStates = sortedFollowers.map(([tokenId, state]) => {
-        const token = canvas.tokens.get(tokenId);
-        if (!token) return null;
+	// Store followers' current positions and target indices
+	const followerStates = sortedFollowers.map(([tokenId, state]) => {
+		const token = canvas.tokens.get(tokenId);
+		if (!token) return null;
 
-        // Find where in the path the token currently is
-        let currentIndex = leaderMovementPath.length - 1;
-        let isOnPath = false;
+		// Find where in the path the token currently is
+		let currentIndex = leaderMovementPath.length - 1;
+		let isOnPath = false;
 
-        for (let i = 0; i < leaderMovementPath.length; i++) {
-            const pathPoint = leaderMovementPath[i];
-            if (Math.abs(pathPoint.x - token.x) < 1 && Math.abs(pathPoint.y - token.y) < 1) {
-                currentIndex = i;
-                isOnPath = true;
-                break;
-            }
-        }
+		for (let i = 0; i < leaderMovementPath.length; i++) {
+			const pathPoint = leaderMovementPath[i];
+			if (Math.abs(pathPoint.x - token.x) < 1 && Math.abs(pathPoint.y - token.y) < 1) {
+				currentIndex = i;
+				isOnPath = true;
+				break;
+			}
+		}
 
-        return {
-            token,
-            currentIndex,
-            targetIndex: state.marchPosition,
-            state,
-            isOnPath
-        };
-    }).filter(f => f !== null);
+		return {
+			token,
+			currentIndex,
+			targetIndex: state.marchPosition,
+			state,
+			isOnPath,
+		};
+	}).filter(f => f !== null);
 
-    // Move all tokens one step at a time
-    function moveAllTokensOneStep() {
-        if (!game.user.isGM) return;
+	// Move all tokens one step at a time
+	function moveAllTokensOneStep() {
+		if (!game.user.isGM) return;
 
-        // Check if all tokens have reached their targets
-        const allDone = followerStates.every(f => f.currentIndex <= f.targetIndex);
-        if (allDone) {
-            // Trim the path
-            const highestIndex = Math.max(...followerStates.map(f => f.targetIndex));
-            if (highestIndex < leaderMovementPath.length - 1) {
-                leaderMovementPath = leaderMovementPath.slice(0, highestIndex + 1);
-            }
-            processingCongaMovement = false;
+		// Check if all tokens have reached their targets
+		const allDone = followerStates.every(f => f.currentIndex <= f.targetIndex);
+		if (allDone) {
+			// Trim the path
+			const highestIndex = Math.max(...followerStates.map(f => f.targetIndex));
+			if (highestIndex < leaderMovementPath.length - 1) {
+				leaderMovementPath = leaderMovementPath.slice(0, highestIndex + 1);
+			}
+			processingCongaMovement = false;
 
-            // If new path points were added during processing, re-trigger
-            if (congaMovementPending) {
-                congaMovementPending = false;
-                console.log(`${MODULE_ID} | Re-triggering conga movement for pending waypoints`);
-                processCongaMovement();
-            }
-            return;
-        }
+			// If new path points were added during processing, re-trigger
+			if (congaMovementPending) {
+				congaMovementPending = false;
+				console.log(`${MODULE_ID} | Re-triggering conga movement for pending waypoints`);
+				processCongaMovement();
+			}
+			return;
+		}
 
-        // Check if this is first-turn movement
-        const isFirstTurn = followerStates.some(f => !f.isOnPath);
+		// Check if this is first-turn movement
+		const isFirstTurn = followerStates.some(f => !f.isOnPath);
 
-        // Move each token that hasn't reached its target yet
-        const promises = followerStates.map((follower, index) => {
-            // Skip if token has reached its target
-            if (follower.currentIndex <= follower.targetIndex) {
-                return Promise.resolve();
-            }
+		// Move each token that hasn't reached its target yet
+		const promises = followerStates.map((follower, index) => {
+			// Skip if token has reached its target
+			if (follower.currentIndex <= follower.targetIndex) {
+				return Promise.resolve();
+			}
 
-            // For first turn, only move if previous tokens are on path
-            if (isFirstTurn) {
-                const previousTokensOnPath = followerStates
-                    .slice(0, index)
-                    .every(f => f.isOnPath || f.currentIndex <= f.targetIndex);
+			// For first turn, only move if previous tokens are on path
+			if (isFirstTurn) {
+				const previousTokensOnPath = followerStates
+					.slice(0, index)
+					.every(f => f.isOnPath || f.currentIndex <= f.targetIndex);
 
-                if (!previousTokensOnPath) {
-                    return Promise.resolve();
-                }
-            }
+				if (!previousTokensOnPath) {
+					return Promise.resolve();
+				}
+			}
 
-            const position = leaderMovementPath[follower.currentIndex - 1];
+			const position = leaderMovementPath[follower.currentIndex - 1];
 
-            return follower.token.document.update({
-                x: position.x,
-                y: position.y
-            }, { congaMovement: true }).then(() => {
-                follower.currentIndex--;
-                if (!follower.isOnPath && follower.currentIndex < leaderMovementPath.length - 1) {
-                    follower.isOnPath = true;
-                }
-            });
-        });
+			return follower.token.document.update({
+				x: position.x,
+				y: position.y,
+			}, { congaMovement: true }).then(() => {
+				follower.currentIndex--;
+				if (!follower.isOnPath && follower.currentIndex < leaderMovementPath.length - 1) {
+					follower.isOnPath = true;
+				}
+			});
+		});
 
-        // After all tokens have moved one step, wait then move again
-        Promise.all(promises).then(() => {
-            scheduleTimeout(() => {
-                moveAllTokensOneStep();
-            }, 100);
-        });
-    }
+		// After all tokens have moved one step, wait then move again
+		Promise.all(promises).then(() => {
+			scheduleTimeout(() => {
+				moveAllTokensOneStep();
+			}, 100);
+		});
+	}
 
-    // Start the movement
-    moveAllTokensOneStep();
+	// Start the movement
+	moveAllTokensOneStep();
 }
 
 /**
  * Get the effect name for a token's leader crown
  */
 function getLeaderCrownEffectName(token) {
-    return `${MODULE_ID}-leader-crown-${token.id}`;
+	return `${MODULE_ID}-leader-crown-${token.id}`;
 }
 
 /**
  * Show the leader crown on a token
  */
 async function showLeaderCrown(token) {
-    // Check if Sequencer is available
-    if (typeof Sequencer === "undefined") {
-        console.warn(`${MODULE_ID} | Sequencer module required for leader crown visualization`);
-        return;
-    }
+	// Check if Sequencer is available
+	if (typeof Sequencer === "undefined") {
+		console.warn(`${MODULE_ID} | Sequencer module required for leader crown visualization`);
+		return;
+	}
 
-    const effectName = getLeaderCrownEffectName(token);
+	const effectName = getLeaderCrownEffectName(token);
 
-    // End any existing crown for this token
-    await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
+	// End any existing crown for this token
+	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
 
-    // Get token dimensions for positioning
-    const tokenWidth = token.document.width;
+	// Get token dimensions for positioning
+	const tokenWidth = token.document.width;
 
-    console.log(`${MODULE_ID} | Showing leader crown for ${token.name}`);
+	console.log(`${MODULE_ID} | Showing leader crown for ${token.name}`);
 
-    // Build the crown effect sequence
-    const seq = new Sequence();
+	// Build the crown effect sequence
+	const seq = new Sequence();
 
-    seq.effect()
-        .name(effectName)
-        .file("modules/shadowdark-extras/assets/crown.svg") // Foundry built-in crown icon
-        .atLocation(token)
-        .attachTo(token, { bindRotation: false, local: true, bindVisibility: true })
-        .scaleToObject(0.35, { considerTokenScale: true })
-        .scaleIn(0, 300, { ease: "easeOutBack" })
-        .spriteOffset({
-            x: 0,  // Top-center
-            y: -tokenWidth * 0.45
-        }, { gridUnits: true })
-        .filter("Glow", {
-            distance: 8,
-            outerStrength: 3,
-            innerStrength: 1,
-            color: 0xFFD700, // Gold glow
-            quality: 0.2,
-            knockout: false
-        })
-        .loopProperty("sprite", "position.y", {
-            from: 0,
-            to: -0.03 * tokenWidth,
-            duration: 800,
-            ease: "easeInOutSine",
-            pingPong: true,
-            gridUnits: true
-        })
-        .persist()
-        .aboveLighting()
-        .zIndex(10);
+	seq.effect()
+		.name(effectName)
+		.file("modules/shadowdark-extras/assets/crown.svg") // Foundry built-in crown icon
+		.atLocation(token)
+		.attachTo(token, { bindRotation: false, local: true, bindVisibility: true })
+		.scaleToObject(0.35, { considerTokenScale: true })
+		.scaleIn(0, 300, { ease: "easeOutBack" })
+		.spriteOffset({
+			x: 0,  // Top-center
+			y: -tokenWidth * 0.45,
+		}, { gridUnits: true })
+		.filter("Glow", {
+			distance: 8,
+			outerStrength: 3,
+			innerStrength: 1,
+			color: 0xFFD700, // Gold glow
+			quality: 0.2,
+			knockout: false,
+		})
+		.loopProperty("sprite", "position.y", {
+			from: 0,
+			to: -0.03 * tokenWidth,
+			duration: 800,
+			ease: "easeInOutSine",
+			pingPong: true,
+			gridUnits: true,
+		})
+		.persist()
+		.aboveLighting()
+		.zIndex(10);
 
-    await seq.play();
-    console.log(`${MODULE_ID} | Leader crown displayed for ${token.name}`);
+	await seq.play();
+	console.log(`${MODULE_ID} | Leader crown displayed for ${token.name}`);
 }
 
 /**
  * Remove the leader crown from a token
  */
 async function removeLeaderCrown(token) {
-    if (typeof Sequencer === "undefined") return;
+	if (typeof Sequencer === "undefined") return;
 
-    const effectName = getLeaderCrownEffectName(token);
-    await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
-    console.log(`${MODULE_ID} | Removed leader crown from ${token.name}`);
+	const effectName = getLeaderCrownEffectName(token);
+	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
+	console.log(`${MODULE_ID} | Removed leader crown from ${token.name}`);
 }
 
 /**
  * Remove all leader crowns from all tokens
  */
 async function removeAllLeaderCrowns() {
-    if (typeof Sequencer === "undefined") return;
+	if (typeof Sequencer === "undefined") return;
 
-    // Get all tokens on the canvas
-    const allTokens = canvas.tokens.placeables;
+	// Get all tokens on the canvas
+	const allTokens = canvas.tokens.placeables;
 
-    // Remove crown from each token
-    const promises = allTokens.map(token => {
-        const effectName = getLeaderCrownEffectName(token);
-        return Sequencer.EffectManager.endEffects({ name: effectName, object: token });
-    });
+	// Remove crown from each token
+	const promises = allTokens.map(token => {
+		const effectName = getLeaderCrownEffectName(token);
+		return Sequencer.EffectManager.endEffects({ name: effectName, object: token });
+	});
 
-    await Promise.all(promises);
-    console.log(`${MODULE_ID} | Removed all leader crowns`);
+	await Promise.all(promises);
+	console.log(`${MODULE_ID} | Removed all leader crowns`);
 }
 
 /**
  * Restore leader crown on canvas ready
  */
 async function restoreLeaderCrown() {
-    if (typeof Sequencer === "undefined") return;
+	if (typeof Sequencer === "undefined") return;
 
-    // Small delay to ensure canvas is ready
-    await new Promise(resolve => setTimeout(resolve, 500));
+	// Small delay to ensure canvas is ready
+	await new Promise(resolve => setTimeout(resolve, 500));
 
-    // First, clean up any stale crowns that may have persisted from before refresh
-    await removeAllLeaderCrowns();
+	// First, clean up any stale crowns that may have persisted from before refresh
+	await removeAllLeaderCrowns();
 
-    // Only restore if we have a leader
-    if (leaderTokenId) {
-        const leaderToken = canvas.tokens.get(leaderTokenId);
-        if (leaderToken) {
-            await showLeaderCrown(leaderToken);
-        }
-    }
+	// Only restore if we have a leader
+	if (leaderTokenId) {
+		const leaderToken = canvas.tokens.get(leaderTokenId);
+		if (leaderToken) {
+			await showLeaderCrown(leaderToken);
+		}
+	}
 }
 
 /**
  * Get current marching mode state
  */
 export function getMarchingModeState() {
-    return {
-        enabled: marchingModeEnabled,
-        leaderId: leaderTokenId
-    };
+	return {
+		enabled: marchingModeEnabled,
+		leaderId: leaderTokenId,
+	};
 }

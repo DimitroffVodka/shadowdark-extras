@@ -13,12 +13,12 @@ import { CampingRestApp } from "./CampingRestSD.mjs";
 import {
 	PartyWeatherSettingsApp,
 	getConfiguredPartyWeatherTable,
-	getPartyWeatherTableUuid
+	getPartyWeatherTableUuid,
 } from "./PartyWeatherSettingsSD.mjs";
 import {
 	isPartyTravelMutationAuthorized,
 	planPartyTravelMutation,
-	planWeatherPredictionMutation
+	planWeatherPredictionMutation,
 } from "./PartyTravelMutationsSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -135,7 +135,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			memberKeys,
 			ownedMemberKeys,
 			operation: request.operation,
-			memberId: request.memberId
+			memberId: request.memberId,
 		});
 
 		if (request.operation === "weatherPrediction") {
@@ -152,7 +152,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			const key = `flags.${MODULE_ID}.campingWeatherReroll`;
 			await partyActor.update({
 				[key]: planned.value
-					?? new foundry.data.operators.ForcedDeletion()
+					?? new foundry.data.operators.ForcedDeletion(),
 			});
 			return { ok: true, uses: planned.uses };
 		}
@@ -180,7 +180,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		);
 		const base = `flags.${MODULE_ID}`;
 		const updates = {
-			[`${base}.travelAssignments`]: planned.assignments
+			[`${base}.travelAssignments`]: planned.assignments,
 		};
 
 		// World actor IDs are safe dot paths and can update atomically. A
@@ -190,7 +190,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			await partyActor.update({
 				...updates,
 				[`${base}.travelSelections`]:
-					new foundry.data.operators.ForcedDeletion()
+					new foundry.data.operators.ForcedDeletion(),
 			});
 			await partyActor.setFlag(
 				MODULE_ID,
@@ -449,7 +449,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		const selectedSpeed = this.actor.getFlag(MODULE_ID, "travelSpeed") ?? "normal";
 		context.travelSpeeds = getTravelSpeeds().map(speed => ({
 			...speed,
-			selected: speed.key === selectedSpeed
+			selected: speed.key === selectedSpeed,
 		}));
 
 		return context;
@@ -489,13 +489,13 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				spawnFormula: isNPC ? this._getNpcSpawnFormula(memberKey) : null,
 				hp: {
 					value: member.system?.attributes?.hp?.value ?? 0,
-					max: member.system?.attributes?.hp?.max ?? 0
+					max: member.system?.attributes?.hp?.max ?? 0,
 				},
 				ac: member.system?.attributes?.ac?.value ?? 0,
 				level: isNPC ? null : (member.system?.level?.value ?? 1),
 				xp: {
 					current: member.system?.level?.xp ?? 0,
-					next: (member.system?.level?.value ?? 1) * 10  // Shadowdark: 10 XP per level
+					next: (member.system?.level?.value ?? 1) * 10,  // Shadowdark: 10 XP per level
 				},
 				className: await this._getMemberClassName(member),
 				ancestryName: await this._getMemberAncestryName(member),
@@ -521,7 +521,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				effects: member.effects.filter(e => !e.disabled).map(e => ({
 					id: e.id,
 					name: e.name,
-					img: e.img || "icons/svg/aura.svg"
+					img: e.img || "icons/svg/aura.svg",
 				})),
 				slots: {
 					used: slotsUsed,
@@ -536,7 +536,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 					int: member.system.abilities?.int?.mod ?? this._calculateMod(member.system.abilities?.int?.value ?? 10),
 					wis: member.system.abilities?.wis?.mod ?? this._calculateMod(member.system.abilities?.wis?.value ?? 10),
 					cha: member.system.abilities?.cha?.mod ?? this._calculateMod(member.system.abilities?.cha?.value ?? 10),
-				}
+				},
 			};
 
 			memberData.push(data);
@@ -598,7 +598,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				totalHp: 0,
 				maxHp: 0,
 				avgAc: 0,
-				avgLevel: 0
+				avgLevel: 0,
 			};
 		}
 
@@ -649,9 +649,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 						...m,
 						isOwner: this._canUserMoveMember(m),
 						selectedAbility: selectedAbility.toUpperCase(),
-						selectionIdx
+						selectionIdx,
 					};
-				})
+				}),
 			};
 		});
 	}
@@ -684,13 +684,13 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 					taskOptions: tasks.map(entry => ({
 						key: entry.key,
 						name: entry.name,
-						selected: entry.key === task?.key
+						selected: entry.key === task?.key,
 					})),
 					abilityOptions: (task?.abilities ?? []).map((ability, index) => ({
 						index,
 						name: ability,
-						selected: index === selectedIndex
-					}))
+						selected: index === selectedIndex,
+					})),
 				};
 			});
 	}
@@ -777,7 +777,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		await this._requestPartyTravelMutation({
 			operation: "selectTask",
 			taskKey,
-			memberId
+			memberId,
 		});
 	}
 
@@ -789,7 +789,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		await this._requestPartyTravelMutation({
 			operation: "selectTask",
 			taskKey: "",
-			memberId
+			memberId,
 		});
 	}
 
@@ -813,7 +813,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				// Set drag data as Actor type so Foundry creates a token on canvas drop
 				const dragData = {
 					type: "Actor",
-					uuid: uuid
+					uuid: uuid,
 				};
 				event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
 				return;
@@ -1023,7 +1023,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		return {
 			gp: this.actor.getFlag(MODULE_ID, "coins.gp") ?? 0,
 			sp: this.actor.getFlag(MODULE_ID, "coins.sp") ?? 0,
-			cp: this.actor.getFlag(MODULE_ID, "coins.cp") ?? 0
+			cp: this.actor.getFlag(MODULE_ID, "coins.cp") ?? 0,
 		};
 	}
 
@@ -1244,15 +1244,15 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 						action: "confirm",
 						label: game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_confirm"),
 						default: true,
-						callback: () => resolve(true)
+						callback: () => resolve(true),
 					},
 					{
 						action: "cancel",
 						label: game.i18n.localize("SHADOWDARK_EXTRAS.party.cancel"),
-						callback: () => resolve(false)
-					}
+						callback: () => resolve(false),
+					},
 				],
-				close: () => resolve(false)
+				close: () => resolve(false),
 			}).render({ force: true });
 		});
 
@@ -1307,15 +1307,15 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 						callback: (event, button) => {
 							const value = Number(button.form.elements.maxSlots.value);
 							resolve(value);
-						}
+						},
 					},
 					{
 						action: "cancel",
 						label: game.i18n.localize("SHADOWDARK_EXTRAS.party.cancel"),
-						callback: () => resolve(null)
-					}
+						callback: () => resolve(null),
+					},
 				],
-				close: () => resolve(null)
+				close: () => resolve(null),
 			}).render({ force: true });
 		});
 
@@ -1593,7 +1593,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
 			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.party.remove_member") },
 			content: `<p>${game.i18n.format("SHADOWDARK_EXTRAS.party.confirm_remove", { name: memberName })}</p>`,
-			modal: true
+			modal: true,
 		});
 		if (!confirmed) return;
 
@@ -1721,22 +1721,22 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 							icon: "fas fa-users",
 							label: game.i18n.localize("SHADOWDARK_EXTRAS.party.place_all"),
 							default: true,
-							callback: () => resolve("all")
+							callback: () => resolve("all"),
 						},
 						{
 							action: "players",
 							icon: "fas fa-user",
 							label: game.i18n.localize("SHADOWDARK_EXTRAS.party.place_players"),
-							callback: () => resolve("players")
+							callback: () => resolve("players"),
 						},
 						{
 							action: "npcs",
 							icon: "fas fa-dragon",
 							label: game.i18n.localize("SHADOWDARK_EXTRAS.party.place_npcs"),
-							callback: () => resolve("npcs")
-						}
+							callback: () => resolve("npcs"),
+						},
 					],
-					close: () => resolve(null)
+					close: () => resolve(null),
 				}).render({ force: true });
 			});
 
@@ -1962,9 +1962,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				callback: (event, button, dialog) => {
 					const form = dialog.element.querySelector("form");
 					return parseInt(form.xp.value) || 0;
-				}
+				},
 			},
-			rejectClose: false
+			rejectClose: false,
 		});
 
 		if (!xpAmount || xpAmount <= 0) return;
@@ -1978,7 +1978,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		ui.notifications.info(
 			game.i18n.format("SHADOWDARK_EXTRAS.party.xp_rewarded", {
 				xp: xpAmount,
-				count: members.length
+				count: members.length,
 			})
 		);
 	}
@@ -2035,11 +2035,11 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 					return {
 						gp: parseInt(form.gp.value) || 0,
 						sp: parseInt(form.sp.value) || 0,
-						cp: parseInt(form.cp.value) || 0
+						cp: parseInt(form.cp.value) || 0,
 					};
-				}
+				},
 			},
-			rejectClose: false
+			rejectClose: false,
 		});
 
 		if (!result) return;
@@ -2057,7 +2057,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			await member.update({
 				"system.coins.gp": currentGp + gp,
 				"system.coins.sp": currentSp + sp,
-				"system.coins.cp": currentCp + cp
+				"system.coins.cp": currentCp + cp,
 			});
 		}
 
@@ -2070,7 +2070,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		ui.notifications.info(
 			game.i18n.format("SHADOWDARK_EXTRAS.party.coins_rewarded", {
 				coins: coinParts.join(", "),
-				count: members.length
+				count: members.length,
 			})
 		);
 	}
@@ -2085,7 +2085,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		const itemData = {
 			name: game.i18n.localize("SHADOWDARK_EXTRAS.party.new_item"),
 			type: "Basic",
-			img: "icons/svg/item-bag.svg"
+			img: "icons/svg/item-bag.svg",
 		};
 
 		await this.actor.createEmbeddedDocuments("Item", [itemData]);
@@ -2260,11 +2260,11 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 					return {
 						gp: parseInt(form.gp.value) || 0,
 						sp: parseInt(form.sp.value) || 0,
-						cp: parseInt(form.cp.value) || 0
+						cp: parseInt(form.cp.value) || 0,
 					};
-				}
+				},
 			},
-			rejectClose: false
+			rejectClose: false,
 		});
 
 		if (!result) return;
@@ -2321,14 +2321,14 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 					callback: async (event, button) => {
 						const description = button.form.elements.description.value;
 						await this.actor.setFlag(MODULE_ID, "description", description);
-					}
+					},
 				},
 				{
 					action: "cancel",
 					icon: "fas fa-times",
-					label: game.i18n.localize("SHADOWDARK_EXTRAS.party.cancel")
-				}
-			]
+					label: game.i18n.localize("SHADOWDARK_EXTRAS.party.cancel"),
+				},
+			],
 		}).render({ force: true });
 	}
 
@@ -2383,17 +2383,17 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 						ui.notifications.info(
 							game.i18n.format("SHADOWDARK_EXTRAS.party.item_transferred", {
 								item: displayName,
-								member: member.name
+								member: member.name,
 							})
 						);
-					}
+					},
 				},
 				{
 					action: "cancel",
 					icon: "fas fa-times",
-					label: game.i18n.localize("SHADOWDARK_EXTRAS.party.cancel")
-				}
-			]
+					label: game.i18n.localize("SHADOWDARK_EXTRAS.party.cancel"),
+				},
+			],
 		}).render({ force: true });
 	}
 
@@ -2408,7 +2408,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
 			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.party.travel.reset_title") },
 			content: game.i18n.localize("SHADOWDARK_EXTRAS.party.travel.reset_confirm"),
-			modal: true
+			modal: true,
 		});
 
 		if (confirmed) {
@@ -2441,7 +2441,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		await this._requestPartyTravelMutation({
 			operation: "selectTask",
 			memberId,
-			taskKey
+			taskKey,
 		});
 	}
 
@@ -2457,7 +2457,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			operation: "selectAbility",
 			memberId,
 			taskKey,
-			abilityIndex: Number(select.value) || 0
+			abilityIndex: Number(select.value) || 0,
 		});
 	}
 
@@ -2466,7 +2466,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		if (!game.user.isGM) return;
 		const members = await this.getMembers();
 		CampingRestApp.show(this.actor, members, {
-			onCampfireChange: () => syncPartyTokenLight(this.actor)
+			onCampfireChange: () => syncPartyTokenLight(this.actor),
 		});
 	}
 
@@ -2499,7 +2499,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			operation: "selectAbility",
 			memberId,
 			taskKey,
-			abilityIndex: nextIdx
+			abilityIndex: nextIdx,
 		});
 	}
 
@@ -2606,26 +2606,26 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				window: {
 					title: game.i18n.localize(
 						"SHADOWDARK_EXTRAS.camping_rest.predict_title"
-					)
+					),
 				},
 				content: `<p>${game.i18n.format(
 					"SHADOWDARK_EXTRAS.camping_rest.predict_prompt",
 					{ count: uses }
 				)}</p>`,
-				modal: true
+				modal: true,
 			});
 
 			if (!useReroll) {
 				await this._requestPartyTravelMutation({
 					operation: "weatherPrediction",
-					action: "clear"
+					action: "clear",
 				});
 				return;
 			}
 
 			const result = await this._requestPartyTravelMutation({
 				operation: "weatherPrediction",
-				action: "consume"
+				action: "consume",
 			});
 			if (!result) return;
 			uses = result.uses;
@@ -2707,7 +2707,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			user: game.user.id,
 			speaker: ChatMessage.getSpeaker({ actor: this.actor }),
 			content: content,
-			flavor: flavor
+			flavor: flavor,
 		});
 	}
 
@@ -2749,7 +2749,7 @@ export function registerPartyTravelSocket(socket) {
 				ok: false,
 				error: game.i18n.localize(
 					"SHADOWDARK_EXTRAS.party.travel.update_rejected"
-				)
+				),
 			};
 
 			try {
@@ -2768,7 +2768,7 @@ export function registerPartyTravelSocket(socket) {
 					ok: false,
 					error: game.i18n.localize(
 						"SHADOWDARK_EXTRAS.party.travel.update_rejected"
-					)
+					),
 				};
 			}
 		}

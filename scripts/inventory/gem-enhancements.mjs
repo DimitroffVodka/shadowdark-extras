@@ -26,7 +26,7 @@ export function enhanceGemSheet(app, html) {
 	const item = app.item || app.document;
 	if (!item || item.type !== "Gem") return;
 
-	const $detailsTab = html.find('.tab-details');
+	const $detailsTab = html.find(".tab-details");
 	if (!$detailsTab.length) return;
 
 	// Check if quantity field already exists
@@ -35,7 +35,7 @@ export function enhanceGemSheet(app, html) {
 	const qty = item.system.quantity ?? 1;
 
 	// Insert quantity box after the cost box
-	const $costBox = $detailsTab.find('.SD-box').first();
+	const $costBox = $detailsTab.find(".SD-box").first();
 	if (!$costBox.length) return;
 
 	const qtyHtml = `
@@ -68,30 +68,30 @@ export function enhanceGemBag(app, html) {
 	if (!actor) return;
 
 	// Add qty column header
-	const $header = $html.find('.SD-list .header').first();
+	const $header = $html.find(".SD-list .header").first();
 	if (!$header.length) return;
-	const $headerValue = $header.find('.flex-60-px');
-	if ($headerValue.length && !$header.find('.sdx-gem-qty-col').length) {
+	const $headerValue = $header.find(".flex-60-px");
+	if ($headerValue.length && !$header.find(".sdx-gem-qty-col").length) {
 		$headerValue.before('<div class="sdx-gem-qty-col">qty</div>');
 	}
 
 	// Add qty values to each gem row
-	$html.find('.SD-list .item').each(function () {
+	$html.find(".SD-list .item").each(function() {
 		const $row = $(this);
-		const itemId = $row.data('item-id');
+		const itemId = $row.data("item-id");
 		const item = actor.items.get(itemId);
 		if (!item) return;
 
 		const qty = item.system.quantity ?? 1;
-		const $valueCol = $row.find('.flex-60-px');
-		if ($valueCol.length && !$row.find('.sdx-gem-qty-col').length) {
+		const $valueCol = $row.find(".flex-60-px");
+		if ($valueCol.length && !$row.find(".sdx-gem-qty-col").length) {
 			$valueCol.before(`<div class="sdx-gem-qty-col">${qty}</div>`);
 		}
 	});
 
 	// Recalculate total value accounting for quantity
 	const gems = actor.items.filter(i => i.type === "Gem");
-	let totalGp = 0, totalSp = 0, totalCp = 0;
+	let totalGp = 0; let totalSp = 0; let totalCp = 0;
 	for (const gem of gems) {
 		const qty = gem.system.quantity ?? 1;
 		totalGp += gem.system.cost.gp * qty;
@@ -102,14 +102,14 @@ export function enhanceGemBag(app, html) {
 	const totalCostGp = totalGp + (totalSp / 10) + (totalCp / 100);
 
 	// Update the total value display
-	const $totalRow = $html.find('.SD-list').last().find('.header');
-	const $totalValueCol = $totalRow.find('.flex-60-px');
+	const $totalRow = $html.find(".SD-list").last().find(".header");
+	const $totalValueCol = $totalRow.find(".flex-60-px");
 	if ($totalValueCol.length) {
 		$totalValueCol.text(`${totalCostGp} gp`);
 	}
 
 	// Add empty qty column to total row to keep alignment
-	if ($totalValueCol.length && !$totalRow.find('.sdx-gem-qty-col').length) {
+	if ($totalValueCol.length && !$totalRow.find(".sdx-gem-qty-col").length) {
 		$totalValueCol.before('<div class="sdx-gem-qty-col"></div>');
 	}
 
@@ -151,14 +151,14 @@ export function enhanceGemBag(app, html) {
 						if (remaining.length === 0) {
 							app.close();
 						}
-					}
+					},
 				},
 				{
 					action: "cancel",
 					icon: "fa fa-times",
-					label: game.i18n.localize("SHADOWDARK.dialog.general.cancel")
-				}
-			]
+					label: game.i18n.localize("SHADOWDARK.dialog.general.cancel"),
+				},
+			],
 		}).render({ force: true });
 	});
 
@@ -200,14 +200,14 @@ export function enhanceGemBag(app, html) {
 						}]);
 
 						app.close();
-					}
+					},
 				},
 				{
 					action: "cancel",
 					icon: "fa fa-times",
-					label: game.i18n.localize("SHADOWDARK.dialog.general.cancel")
-				}
-			]
+					label: game.i18n.localize("SHADOWDARK.dialog.general.cancel"),
+				},
+			],
 		}).render({ force: true });
 	});
 }
@@ -228,9 +228,9 @@ export function enhanceGemInventory(app, html, actor) {
 	}
 
 	// Update the gem count display in the gems box
-	const $gemBox = html.find('.tab-inventory [data-action="open-gem-bag"]').closest('.SD-box');
+	const $gemBox = html.find('.tab-inventory [data-action="open-gem-bag"]').closest(".SD-box");
 	if ($gemBox.length) {
-		$gemBox.find('.larger').text(totalGems);
+		$gemBox.find(".larger").text(totalGems);
 	}
 
 	// Recalculate gem slots: every 10 gems = 1 slot
@@ -238,12 +238,12 @@ export function enhanceGemInventory(app, html, actor) {
 
 	// Update the slots breakdown and total
 	// The slots box is the first SD-box in the inventory sidebar
-	const $slotsBox = html.find('.tab-inventory .SD-box').first();
-	const $slotGrid = $slotsBox.find('.SD-grid.left.small');
+	const $slotsBox = html.find(".tab-inventory .SD-box").first();
+	const $slotGrid = $slotsBox.find(".SD-grid.left.small");
 	if ($slotGrid.length) {
 		// The grid children are only the <div> elements (text nodes from {{localize}} are not elements)
 		// Order: [0]=gear, [1]=treasure, [2]=coins, [3]=gems
-		const $numDivs = $slotGrid.children('div');
+		const $numDivs = $slotGrid.children("div");
 		const gearVal = parseInt($numDivs.eq(0).text()) || 0;
 		const treasureVal = parseInt($numDivs.eq(1).text()) || 0;
 		const coinsVal = parseInt($numDivs.eq(2).text()) || 0;
@@ -253,9 +253,9 @@ export function enhanceGemInventory(app, html, actor) {
 
 		// Recalculate and update total
 		const newTotal = gearVal + treasureVal + coinsVal + gemSlots;
-		const $valueGrid = $slotsBox.find('.value-grid.larger');
-		const $totalDiv = $valueGrid.children('div').first();
-		const maxSlots = parseInt($valueGrid.children('div').eq(2).text()) || 0;
+		const $valueGrid = $slotsBox.find(".value-grid.larger");
+		const $totalDiv = $valueGrid.children("div").first();
+		const maxSlots = parseInt($valueGrid.children("div").eq(2).text()) || 0;
 
 		$totalDiv.text(newTotal);
 		if (newTotal > maxSlots) {

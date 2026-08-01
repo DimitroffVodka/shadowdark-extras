@@ -43,12 +43,12 @@ export function patchCharacterGeneratorRolls() {
 		con: "Constitution",
 		int: "Intelligence",
 		wis: "Wisdom",
-		cha: "Charisma"
+		cha: "Charisma",
 	};
 
 	// Override _randomizeStats to use correct order and show per-ability rolls
 	// If no ability reaches 14+, all results are colored red
-	CharacterGeneratorSD.prototype._randomizeStats = async function () {
+	CharacterGeneratorSD.prototype._randomizeStats = async function() {
 		// Roll all abilities first (silently)
 		const rolls = {};
 		let hasHighStat = false;
@@ -69,7 +69,7 @@ export function patchCharacterGeneratorRolls() {
 			const roll = rolls[key];
 			const message = await roll.toMessage({
 				speaker: ChatMessage.getSpeaker({ user: game.user }),
-				flavor: `<b>Character Generator</b> - ${ABILITY_NAMES[key]}`
+				flavor: `<b>Character Generator</b> - ${ABILITY_NAMES[key]}`,
 			});
 			if (message) messageIds.push(message.id);
 
@@ -96,21 +96,21 @@ export function patchCharacterGeneratorRolls() {
 	};
 
 	// Override _randomizeGold to show gold roll
-	CharacterGeneratorSD.prototype._randomizeGold = async function () {
+	CharacterGeneratorSD.prototype._randomizeGold = async function() {
 		const roll = await new Roll("2d6").evaluate();
 		const startingGold = roll.total * 5;
 
 		// roll.toMessage triggers DSN automatically via Foundry hooks
 		await roll.toMessage({
 			speaker: ChatMessage.getSpeaker({ user: game.user }),
-			flavor: `<b>Character Generator</b> - Starting Gold (×5 = ${startingGold} GP)`
+			flavor: `<b>Character Generator</b> - Starting Gold (×5 = ${startingGold} GP)`,
 		});
 
 		this.formData.actor.system.coins.gp = startingGold;
 	};
 
 	// Override _randomizeAlignment to show alignment roll
-	CharacterGeneratorSD.prototype._randomizeAlignment = async function () {
+	CharacterGeneratorSD.prototype._randomizeAlignment = async function() {
 		const roll = await new Roll("d6").evaluate();
 		let alignment;
 
@@ -131,7 +131,7 @@ export function patchCharacterGeneratorRolls() {
 		// roll.toMessage triggers DSN automatically via Foundry hooks
 		await roll.toMessage({
 			speaker: ChatMessage.getSpeaker({ user: game.user }),
-			flavor: `<b>Character Generator</b> - Alignment (${alignment.charAt(0).toUpperCase() + alignment.slice(1)})`
+			flavor: `<b>Character Generator</b> - Alignment (${alignment.charAt(0).toUpperCase() + alignment.slice(1)})`,
 		});
 
 		this.formData.actor.system.alignment = alignment;

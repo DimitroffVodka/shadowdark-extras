@@ -10,7 +10,7 @@ export const DEFAULT_TRAVEL_ACTIVITIES = [
 		abilities: ["WIS", "CON"],
 		campfire: true,
 		description: "Success: You do not need checks to benefit from this rest if your sleep is interrupted.",
-		bannerImage: "modules/shadowdark-extras/assets/travel/batten_down.webp"
+		bannerImage: "modules/shadowdark-extras/assets/travel/batten_down.webp",
 	},
 	{
 		key: "cook",
@@ -18,7 +18,7 @@ export const DEFAULT_TRAVEL_ACTIVITIES = [
 		abilities: ["INT", "WIS"],
 		campfire: true,
 		description: "Success: Each character who consumes a ration gains +2 HP, up to 2 HP above maximum.",
-		bannerImage: "modules/shadowdark-extras/assets/travel/cook.webp"
+		bannerImage: "modules/shadowdark-extras/assets/travel/cook.webp",
 	},
 	{
 		key: "craft",
@@ -26,7 +26,7 @@ export const DEFAULT_TRAVEL_ACTIVITIES = [
 		abilities: ["DEX"],
 		campfire: true,
 		description: "Success: Create 2d4 pieces of mundane weapon ammunition or one torch, or repair one broken piece of mundane gear.",
-		bannerImage: "modules/shadowdark-extras/assets/travel/craft.webp"
+		bannerImage: "modules/shadowdark-extras/assets/travel/craft.webp",
 	},
 	{
 		key: "entertain",
@@ -34,7 +34,7 @@ export const DEFAULT_TRAVEL_ACTIVITIES = [
 		abilities: ["CHA"],
 		campfire: true,
 		description: "Success: Grant 1 luck token to another character.",
-		bannerImage: "modules/shadowdark-extras/assets/travel/entertain.webp"
+		bannerImage: "modules/shadowdark-extras/assets/travel/entertain.webp",
 	},
 	{
 		key: "firewood",
@@ -42,7 +42,7 @@ export const DEFAULT_TRAVEL_ACTIVITIES = [
 		abilities: ["STR", "CON"],
 		campfire: false,
 		description: "Success: Make one free campfire during this rest without expending torches.",
-		bannerImage: "modules/shadowdark-extras/assets/travel/firewood.webp"
+		bannerImage: "modules/shadowdark-extras/assets/travel/firewood.webp",
 	},
 	{
 		key: "hunt",
@@ -50,7 +50,7 @@ export const DEFAULT_TRAVEL_ACTIVITIES = [
 		abilities: ["STR", "DEX"],
 		campfire: false,
 		description: "Success: Find 1d4 rations. You cannot hunt if you pushed during today's travel.",
-		bannerImage: "modules/shadowdark-extras/assets/travel/hunt.webp"
+		bannerImage: "modules/shadowdark-extras/assets/travel/hunt.webp",
 	},
 	{
 		key: "keepWatch",
@@ -58,7 +58,7 @@ export const DEFAULT_TRAVEL_ACTIVITIES = [
 		abilities: ["WIS"],
 		campfire: true,
 		description: "Success: The party cannot be surprised during one half of the rest; choose which half.",
-		bannerImage: "modules/shadowdark-extras/assets/travel/keep_watch.webp"
+		bannerImage: "modules/shadowdark-extras/assets/travel/keep_watch.webp",
 	},
 	{
 		key: "predict",
@@ -66,8 +66,8 @@ export const DEFAULT_TRAVEL_ACTIVITIES = [
 		abilities: ["INT", "WIS"],
 		campfire: false,
 		description: "Success: After learning tomorrow's weather result, you may force it to be re-rolled.",
-		bannerImage: "modules/shadowdark-extras/assets/travel/predict.webp"
-	}
+		bannerImage: "modules/shadowdark-extras/assets/travel/predict.webp",
+	},
 ];
 
 /**
@@ -85,7 +85,7 @@ export function normalizeTravelActivities(activities = []) {
 	return activities.map(activity => {
 		const normalized = {
 			...activity,
-			abilities: Array.isArray(activity?.abilities) ? [...activity.abilities] : []
+			abilities: Array.isArray(activity?.abilities) ? [...activity.abilities] : [],
 		};
 		const defaultActivity = defaultsByKey.get(normalized.key);
 

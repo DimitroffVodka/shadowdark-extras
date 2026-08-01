@@ -74,7 +74,7 @@ function overrideCrawlHelperDeathTimer() {
 		return;
 	}
 
-	crawlerModel.prototype.rollDeathTimer = async function () {
+	crawlerModel.prototype.rollDeathTimer = async function() {
 		const actor = this.parent.actor;
 		const user = game.users.find(u => (u.character?.id === actor.id) && u.active) ?? game.users.activeGM;
 
@@ -88,9 +88,9 @@ function overrideCrawlHelperDeathTimer() {
 			config: {
 				window: { title: "Roll Death Timer" },
 				content: `${textGroup.outerHTML}`,
-				modal: true
+				modal: true,
 			},
-			type: "input"
+			type: "input",
 		});
 
 		const formula = Roll.validate(response?.formula) ? response.formula : defaultFormula;
@@ -100,7 +100,7 @@ function overrideCrawlHelperDeathTimer() {
 			content: `<div class="shadowdark"><h3 style="color: white;">${actor.name} will die in ${total} rounds</h3><br>${await roll.render()}</div>`,
 			speaker: { actor: actor.id },
 			user: user,
-			rolls: [roll.toJSON()]
+			rolls: [roll.toJSON()],
 		});
 		if (game.dice3d) await game.dice3d.waitFor3DAnimationByMessageID(msg.id);
 		await this.parent.update({ "system.dyingRounds": total });

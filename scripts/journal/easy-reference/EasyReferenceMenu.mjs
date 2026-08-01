@@ -7,164 +7,164 @@ const MODULE_ID = "shadowdark-extras";
  * Call this on module ready
  */
 export function initEasyReferenceMenu() {
-    console.log("shadowdark-extras | Initializing Easy Reference Menu");
+	console.log("shadowdark-extras | Initializing Easy Reference Menu");
 
-    // Hook into ProseMirror menu creation
-    Hooks.on("getProseMirrorMenuDropDowns", (proseMirrorMenu, dropdowns) => {
-        buildEasyReferenceMenu(proseMirrorMenu, dropdowns);
-    });
+	// Hook into ProseMirror menu creation
+	Hooks.on("getProseMirrorMenuDropDowns", (proseMirrorMenu, dropdowns) => {
+		buildEasyReferenceMenu(proseMirrorMenu, dropdowns);
+	});
 }
 
 /**
  * Build the Easy Reference dropdown menu
  */
 function buildEasyReferenceMenu(proseMirrorMenu, dropdowns) {
-    // Helper function to insert text into the editor
-    const insertText = (text) => {
-        if (!text) return;
-        proseMirrorMenu.view.dispatch(
-            proseMirrorMenu.view.state.tr.insertText(text).scrollIntoView()
-        );
-    };
+	// Helper function to insert text into the editor
+	const insertText = (text) => {
+		if (!text) return;
+		proseMirrorMenu.view.dispatch(
+			proseMirrorMenu.view.state.tr.insertText(text).scrollIntoView()
+		);
+	};
 
-    // Build menu entries based on enabled settings
-    const entries = [];
+	// Build menu entries based on enabled settings
+	const entries = [];
 
-    // NPC Cards submenu
-    if (game.settings.get(MODULE_ID, "easyRef_showNpcCards")) {
-        entries.push({
-            title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.npc_cards.title"),
-            action: "npc-cards",
-            children: [
-                {
-                    title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.npc_cards.stat_card"),
-                    action: "npc-stat-card",
-                    cmd: () => {
-                        showUuidInputDialog(
-                            game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.npc_cards.stat_card"),
-                            "Actor",
-                            (uuid, name) => insertText(`@DisplayNpcCard[${uuid}]{${name}}`)
-                        );
-                    }
-                },
-                {
-                    title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.npc_cards.detailed_card"),
-                    action: "npc-detailed-card",
-                    cmd: () => {
-                        showUuidInputDialog(
-                            game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.npc_cards.detailed_card"),
-                            "Actor",
-                            (uuid, name) => insertText(`@DisplayNpcCardDetailed[${uuid}]{${name}}`)
-                        );
-                    }
-                }
-            ]
-        });
-    }
+	// NPC Cards submenu
+	if (game.settings.get(MODULE_ID, "easyRef_showNpcCards")) {
+		entries.push({
+			title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.npc_cards.title"),
+			action: "npc-cards",
+			children: [
+				{
+					title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.npc_cards.stat_card"),
+					action: "npc-stat-card",
+					cmd: () => {
+						showUuidInputDialog(
+							game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.npc_cards.stat_card"),
+							"Actor",
+							(uuid, name) => insertText(`@DisplayNpcCard[${uuid}]{${name}}`)
+						);
+					},
+				},
+				{
+					title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.npc_cards.detailed_card"),
+					action: "npc-detailed-card",
+					cmd: () => {
+						showUuidInputDialog(
+							game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.npc_cards.detailed_card"),
+							"Actor",
+							(uuid, name) => insertText(`@DisplayNpcCardDetailed[${uuid}]{${name}}`)
+						);
+					},
+				},
+			],
+		});
+	}
 
-    // Item Cards submenu
-    if (game.settings.get(MODULE_ID, "easyRef_showItemCards")) {
-        entries.push({
-            title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.item_cards.title"),
-            action: "item-cards",
-            cmd: () => {
-                showUuidInputDialog(
-                    game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.item_cards.title"),
-                    "Item",
-                    (uuid, name) => insertText(`@DisplayItemCard[${uuid}]{${name}}`)
-                );
-            }
-        });
-    }
+	// Item Cards submenu
+	if (game.settings.get(MODULE_ID, "easyRef_showItemCards")) {
+		entries.push({
+			title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.item_cards.title"),
+			action: "item-cards",
+			cmd: () => {
+				showUuidInputDialog(
+					game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.item_cards.title"),
+					"Item",
+					(uuid, name) => insertText(`@DisplayItemCard[${uuid}]{${name}}`)
+				);
+			},
+		});
+	}
 
-    // Tables submenu
-    if (game.settings.get(MODULE_ID, "easyRef_showTables")) {
-        entries.push({
-            title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.tables.title"),
-            action: "tables",
-            cmd: () => {
-                showUuidInputDialog(
-                    game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.tables.title"),
-                    "RollTable",
-                    (uuid, name) => insertText(`@DisplayTable[${uuid}]{${name}}`)
-                );
-            }
-        });
-    }
+	// Tables submenu
+	if (game.settings.get(MODULE_ID, "easyRef_showTables")) {
+		entries.push({
+			title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.tables.title"),
+			action: "tables",
+			cmd: () => {
+				showUuidInputDialog(
+					game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.tables.title"),
+					"RollTable",
+					(uuid, name) => insertText(`@DisplayTable[${uuid}]{${name}}`)
+				);
+			},
+		});
+	}
 
-    // Ability Checks submenu
-    if (game.settings.get(MODULE_ID, "easyRef_showChecks")) {
-        const abilities = ["str", "dex", "con", "int", "wis", "cha"];
-        entries.push({
-            title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.checks.title"),
-            action: "ability-checks",
-            children: [
-                // Custom check dialog option
-                {
-                    title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.checks.custom_check"),
-                    action: "custom-check",
-                    cmd: () => {
-                        showCheckDialog((dc, stat, type) => {
-                            insertText(`[[${type} ${dc} ${stat}]]`);
-                        });
-                    }
-                },
-                // Quick checks for each ability - opens dialog with ability pre-selected
-                ...abilities.map(ability => ({
-                    title: game.i18n.localize(`SHADOWDARK.ability_${ability}`),
-                    action: `check-${ability}`,
-                    cmd: () => {
-                        showCheckDialog((dc, stat, type) => {
-                            insertText(`[[${type} ${dc} ${stat}]]`);
-                        }, ability);
-                    }
-                }))
-            ]
-        });
-    }
+	// Ability Checks submenu
+	if (game.settings.get(MODULE_ID, "easyRef_showChecks")) {
+		const abilities = ["str", "dex", "con", "int", "wis", "cha"];
+		entries.push({
+			title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.checks.title"),
+			action: "ability-checks",
+			children: [
+				// Custom check dialog option
+				{
+					title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.checks.custom_check"),
+					action: "custom-check",
+					cmd: () => {
+						showCheckDialog((dc, stat, type) => {
+							insertText(`[[${type} ${dc} ${stat}]]`);
+						});
+					},
+				},
+				// Quick checks for each ability - opens dialog with ability pre-selected
+				...abilities.map(ability => ({
+					title: game.i18n.localize(`SHADOWDARK.ability_${ability}`),
+					action: `check-${ability}`,
+					cmd: () => {
+						showCheckDialog((dc, stat, type) => {
+							insertText(`[[${type} ${dc} ${stat}]]`);
+						}, ability);
+					},
+				})),
+			],
+		});
+	}
 
-    // Dice Rolls submenu
-    if (game.settings.get(MODULE_ID, "easyRef_showDice")) {
-        const dice = ["d4", "d6", "d8", "d10", "d12", "d20"];
-        entries.push({
-            title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dice.title"),
-            action: "dice-rolls",
-            children: [
-                // Custom roll dialog
-                {
-                    title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dice.custom"),
-                    action: "dice-custom",
-                    cmd: () => {
-                        showDiceDialog((formula) => {
-                            insertText(`[[/r ${formula}]]`);
-                        });
-                    }
-                },
-                // Quick dice inserts
-                ...dice.map(die => ({
-                    title: die.toUpperCase(),
-                    action: `dice-${die}`,
-                    cmd: () => insertText(`[[/r 1${die}]]`)
-                }))
-            ]
-        });
-    }
+	// Dice Rolls submenu
+	if (game.settings.get(MODULE_ID, "easyRef_showDice")) {
+		const dice = ["d4", "d6", "d8", "d10", "d12", "d20"];
+		entries.push({
+			title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dice.title"),
+			action: "dice-rolls",
+			children: [
+				// Custom roll dialog
+				{
+					title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dice.custom"),
+					action: "dice-custom",
+					cmd: () => {
+						showDiceDialog((formula) => {
+							insertText(`[[/r ${formula}]]`);
+						});
+					},
+				},
+				// Quick dice inserts
+				...dice.map(die => ({
+					title: die.toUpperCase(),
+					action: `dice-${die}`,
+					cmd: () => insertText(`[[/r 1${die}]]`),
+				})),
+			],
+		});
+	}
 
-    // Only add the menu if there are entries
-    if (entries.length > 0) {
-        dropdowns.sdxEasyReference = {
-            action: "sdx-easy-reference",
-            title: '<i class="fa-solid fa-book-sparkles"></i>',
-            entries: entries
-        };
-    }
+	// Only add the menu if there are entries
+	if (entries.length > 0) {
+		dropdowns.sdxEasyReference = {
+			action: "sdx-easy-reference",
+			title: '<i class="fa-solid fa-book-sparkles"></i>',
+			entries: entries,
+		};
+	}
 }
 
 /**
  * Show a dialog to input a UUID and optional display name
  */
 function showUuidInputDialog(title, docType, callback) {
-    const content = `
+	const content = `
 		<form class="sdx-easy-ref-dialog">
 			<div class="form-group">
 				<label>${game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dialog.uuid_label")}</label>
@@ -178,43 +178,43 @@ function showUuidInputDialog(title, docType, callback) {
 		</form>
 	`;
 
-    new foundry.applications.api.DialogV2({
-        window: { title },
-        content,
-        buttons: [
-            {
-                action: "insert",
-                icon: "fas fa-check",
-                label: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dialog.insert"),
-                default: true,
-                callback: async (event, button) => {
-                    const uuid = button.form.elements.uuid.value.trim();
-                    let displayName = button.form.elements.displayName.value.trim();
+	new foundry.applications.api.DialogV2({
+		window: { title },
+		content,
+		buttons: [
+			{
+				action: "insert",
+				icon: "fas fa-check",
+				label: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dialog.insert"),
+				default: true,
+				callback: async (event, button) => {
+					const uuid = button.form.elements.uuid.value.trim();
+					let displayName = button.form.elements.displayName.value.trim();
 
-                    if (!uuid) {
-                        ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dialog.uuid_required"));
-                        return;
-                    }
+					if (!uuid) {
+						ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dialog.uuid_required"));
+						return;
+					}
 
-                    if (!displayName) {
-                        try {
-                            const doc = await fromUuid(uuid);
-                            displayName = doc?.name || "Unknown";
-                        } catch (e) {
-                            displayName = "Unknown";
-                        }
-                    }
+					if (!displayName) {
+						try {
+							const doc = await fromUuid(uuid);
+							displayName = doc?.name || "Unknown";
+						} catch (e) {
+							displayName = "Unknown";
+						}
+					}
 
-                    callback(uuid, displayName);
-                }
-            },
-            {
-                action: "cancel",
-                icon: "fas fa-times",
-                label: game.i18n.localize("Cancel")
-            }
-        ]
-    }).render({ force: true });
+					callback(uuid, displayName);
+				},
+			},
+			{
+				action: "cancel",
+				icon: "fas fa-times",
+				label: game.i18n.localize("Cancel"),
+			},
+		],
+	}).render({ force: true });
 }
 
 /**
@@ -223,12 +223,12 @@ function showUuidInputDialog(title, docType, callback) {
  * @param {string} [preSelectedAbility] - Optional ability to pre-select
  */
 function showCheckDialog(callback, preSelectedAbility = null) {
-    const abilities = ["str", "dex", "con", "int", "wis", "cha"];
-    const abilityOptions = abilities.map(a =>
-        `<option value="${a}"${a === preSelectedAbility ? ' selected' : ''}>${game.i18n.localize(`SHADOWDARK.ability_${a}`)}</option>`
-    ).join("");
+	const abilities = ["str", "dex", "con", "int", "wis", "cha"];
+	const abilityOptions = abilities.map(a =>
+		`<option value="${a}"${a === preSelectedAbility ? " selected" : ""}>${game.i18n.localize(`SHADOWDARK.ability_${a}`)}</option>`
+	).join("");
 
-    const content = `
+	const content = `
 		<form class="sdx-easy-ref-dialog">
 			<div class="form-group">
 				<label>${game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.checks.type_label")}</label>
@@ -248,36 +248,36 @@ function showCheckDialog(callback, preSelectedAbility = null) {
 		</form>
 	`;
 
-    new foundry.applications.api.DialogV2({
-        window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.checks.dialog_title") },
-        content,
-        buttons: [
-            {
-                action: "insert",
-                icon: "fas fa-check",
-                label: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dialog.insert"),
-                default: true,
-                callback: (event, button) => {
-                    const type = button.form.elements.type.value;
-                    const dc = button.form.elements.dc.value;
-                    const ability = button.form.elements.ability.value;
-                    callback(dc, ability, type);
-                }
-            },
-            {
-                action: "cancel",
-                icon: "fas fa-times",
-                label: game.i18n.localize("Cancel")
-            }
-        ]
-    }).render({ force: true });
+	new foundry.applications.api.DialogV2({
+		window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.checks.dialog_title") },
+		content,
+		buttons: [
+			{
+				action: "insert",
+				icon: "fas fa-check",
+				label: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dialog.insert"),
+				default: true,
+				callback: (event, button) => {
+					const type = button.form.elements.type.value;
+					const dc = button.form.elements.dc.value;
+					const ability = button.form.elements.ability.value;
+					callback(dc, ability, type);
+				},
+			},
+			{
+				action: "cancel",
+				icon: "fas fa-times",
+				label: game.i18n.localize("Cancel"),
+			},
+		],
+	}).render({ force: true });
 }
 
 /**
  * Show a dialog to create a custom dice roll
  */
 function showDiceDialog(callback) {
-    const content = `
+	const content = `
 		<form class="sdx-easy-ref-dialog">
 			<div class="form-group">
 				<label>${game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dice.formula_label")}</label>
@@ -287,50 +287,50 @@ function showDiceDialog(callback) {
 		</form>
 	`;
 
-    new foundry.applications.api.DialogV2({
-        window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dice.dialog_title") },
-        content,
-        buttons: [
-            {
-                action: "insert",
-                icon: "fas fa-check",
-                label: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dialog.insert"),
-                default: true,
-                callback: (event, button) => {
-                    const formula = button.form.elements.formula.value.trim();
-                    if (formula) callback(formula);
-                }
-            },
-            {
-                action: "cancel",
-                icon: "fas fa-times",
-                label: game.i18n.localize("Cancel")
-            }
-        ]
-    }).render({ force: true });
+	new foundry.applications.api.DialogV2({
+		window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dice.dialog_title") },
+		content,
+		buttons: [
+			{
+				action: "insert",
+				icon: "fas fa-check",
+				label: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dialog.insert"),
+				default: true,
+				callback: (event, button) => {
+					const formula = button.form.elements.formula.value.trim();
+					if (formula) callback(formula);
+				},
+			},
+			{
+				action: "cancel",
+				icon: "fas fa-times",
+				label: game.i18n.localize("Cancel"),
+			},
+		],
+	}).render({ force: true });
 }
 
 /**
  * Register settings for the Easy Reference Menu
  */
 export function registerEasyReferenceSettings() {
-    const categories = [
-        "showNpcCards",
-        "showItemCards",
-        "showTables",
-        "showChecks",
-        "showDice"
-    ];
+	const categories = [
+		"showNpcCards",
+		"showItemCards",
+		"showTables",
+		"showChecks",
+		"showDice",
+	];
 
-    // Register each category setting
-    categories.forEach(category => {
-        game.settings.register(MODULE_ID, `easyRef_${category}`, {
-            name: game.i18n.localize(`SHADOWDARK_EXTRAS.easy_reference.settings.${category}.name`),
-            hint: game.i18n.localize(`SHADOWDARK_EXTRAS.easy_reference.settings.${category}.hint`),
-            scope: "world",
-            config: true,
-            type: Boolean,
-            default: true
-        });
-    });
+	// Register each category setting
+	categories.forEach(category => {
+		game.settings.register(MODULE_ID, `easyRef_${category}`, {
+			name: game.i18n.localize(`SHADOWDARK_EXTRAS.easy_reference.settings.${category}.name`),
+			hint: game.i18n.localize(`SHADOWDARK_EXTRAS.easy_reference.settings.${category}.hint`),
+			scope: "world",
+			config: true,
+			type: Boolean,
+			default: true,
+		});
+	});
 }

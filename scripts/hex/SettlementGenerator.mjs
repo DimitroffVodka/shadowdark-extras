@@ -409,23 +409,23 @@ function generateShopSection(data, shop, owner, hexKey, typeKey, nearbyContent) 
 	if (owner.hiddenTrait) {
 		html += ` <p class="secret"><strong>Secret:</strong> ${owner.hiddenTrait}</p>`;
 	}
-	html += `</p>`;
+	html += "</p>";
 
 	// Inventory table
 	if (inventory.length) {
-		html += `<table><tr><th>Item</th><th>Price</th></tr>`;
+		html += "<table><tr><th>Item</th><th>Price</th></tr>";
 		for (const item of inventory) {
 			html += `<tr><td>${item.name}</td><td>${item.price}</td></tr>`;
 		}
-		html += `</table>`;
+		html += "</table>";
 	}
 
 	// Quest
 	if (quest) {
-		const secretId = `secret-${(typeof foundry !== 'undefined' && foundry.utils) ? foundry.utils.randomID() : Math.random().toString(36).substring(2, 10)}`;
+		const secretId = `secret-${(typeof foundry !== "undefined" && foundry.utils) ? foundry.utils.randomID() : Math.random().toString(36).substring(2, 10)}`;
 		html += `<section id="${secretId}" class="secret">`;
 		html += `<ul><li>${quest}</li></ul>`;
-		html += `</section>`;
+		html += "</section>";
 	}
 
 	return html;
@@ -475,41 +475,41 @@ function generateTavernSection(data, keeper, hexKey, typeKey, nearbyContent) {
 	if (keeper.hiddenTrait) {
 		html += ` <p class="secret"><strong>Secret:</strong> ${keeper.hiddenTrait}</p>`;
 	}
-	html += `</p>`;
+	html += "</p>";
 
 	// Menu table
-	html += `<h3>Menu</h3>`;
-	html += `<table><tr><th>Dish</th><th>Price</th></tr>`;
+	html += "<h3>Menu</h3>";
+	html += "<table><tr><th>Dish</th><th>Price</th></tr>";
 	for (const d of dishes) {
 		html += `<tr><td>${d.desc}</td><td>${d.price}</td></tr>`;
 	}
-	html += `</table>`;
+	html += "</table>";
 
 	// Drinks table
-	html += `<h3>Drinks</h3>`;
-	html += `<table><tr><th>Drink</th><th>Price</th></tr>`;
+	html += "<h3>Drinks</h3>";
+	html += "<table><tr><th>Drink</th><th>Price</th></tr>";
 	for (const d of drinks) {
 		html += `<tr><td>${d.name}</td><td>${d.price}</td></tr>`;
 	}
-	html += `</table>`;
+	html += "</table>";
 
 	// Lodging table
 	if (lodging.length) {
-		html += `<h3>Lodging</h3>`;
-		html += `<table><tr><th>Room</th><th>Price</th><th>Capacity</th></tr>`;
+		html += "<h3>Lodging</h3>";
+		html += "<table><tr><th>Room</th><th>Price</th><th>Capacity</th></tr>";
 		for (const l of lodging) {
 			html += `<tr><td>${l.name}</td><td>${l.price}</td><td>${l.capacity}</td></tr>`;
 		}
-		html += `</table>`;
+		html += "</table>";
 	}
 
 	// Tavern quest
 	const quest = generateShopQuest(data, hexKey, typeKey, nearbyContent);
 	if (quest) {
-		const secretId = `secret-${(typeof foundry !== 'undefined' && foundry.utils) ? foundry.utils.randomID() : Math.random().toString(36).substring(2, 10)}`;
+		const secretId = `secret-${(typeof foundry !== "undefined" && foundry.utils) ? foundry.utils.randomID() : Math.random().toString(36).substring(2, 10)}`;
 		html += `<section id="${secretId}" class="secret">`;
 		html += `<ul><li>${quest}</li></ul>`;
-		html += `</section>`;
+		html += "</section>";
 	}
 
 	return html;
@@ -691,7 +691,7 @@ function generateRelations(data, npcs, typeKey) {
 	const usedPairs = new Set();
 
 	for (let i = 0; i < count; i++) {
-		let a, b, attempts = 0;
+		let a; let b; let attempts = 0;
 		do {
 			a = randRange(0, npcs.length - 1);
 			b = randRange(0, npcs.length - 1);
@@ -788,7 +788,7 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 	if (ruler.hiddenTrait) {
 		html += ` <p class="secret"><strong>Secret:</strong> ${ruler.hiddenTrait}</p>`;
 	}
-	html += `</p>`;
+	html += "</p>";
 
 	// Fortunate Event
 	const fortChance = { "village": 0.25, "town": 0.30, "city": 0.35 }[typeKey] || 0;
@@ -805,15 +805,15 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 				human_name: data.npcNames?.firstMale || [],
 				domestic_animal_adjective: [
 					"overworked", "hungry", "underfed", "thoroughbred", "extremely hardy",
-					"tired", "prize-winning", "gaunt", "well-treated", "exceptionally stubborn"
+					"tired", "prize-winning", "gaunt", "well-treated", "exceptionally stubborn",
 				],
 				draft_animals: ["oxen", "work horses", "donkeys", "mules"],
-				conveyances: ["carts", "wagons", "sledges", "drays"]
+				conveyances: ["carts", "wagons", "sledges", "drays"],
 			};
 			const template = pick(fortData.fortunate_event);
 			const eventText = resolveTemplate(template, combinedTables, selections);
 
-			html += `<h2>Fortunate Event</h2>`;
+			html += "<h2>Fortunate Event</h2>";
 			html += `<p>${eventText}</p>`;
 		}
 	}
@@ -833,7 +833,7 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 	}
 
 	// Notable Locations — each shop gets a rich sub-section
-	html += `<h2>Notable Locations</h2>`;
+	html += "<h2>Notable Locations</h2>";
 	for (let i = 0; i < shops.length; i++) {
 		html += generateShopSection(data, shops[i], shopOwners[i], safeHexKey, typeKey, nearbyContent);
 	}
@@ -842,7 +842,7 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 	html += generateTavernSection(data, tavernKeeper, safeHexKey, typeKey, nearbyContent);
 
 	// Factions, Relationships, and Quest Hooks - GM Only
-	const secretId = `secret-${(typeof foundry !== 'undefined' && foundry.utils) ? foundry.utils.randomID() : Math.random().toString(36).substring(2, 10)}`;
+	const secretId = `secret-${(typeof foundry !== "undefined" && foundry.utils) ? foundry.utils.randomID() : Math.random().toString(36).substring(2, 10)}`;
 	html += `<section id="${secretId}" class="secret">`;
 
 	// Faction (town/city only)
@@ -853,23 +853,23 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 	// NPC Relations
 	const relations = generateRelations(data, allNpcs, typeKey);
 	if (relations.length > 0) {
-		html += `<h2>Relationships</h2>`;
-		html += `<ul>`;
+		html += "<h2>Relationships</h2>";
+		html += "<ul>";
 		for (const r of relations) {
 			html += `<li><strong>${r.from.name}</strong> (${r.from.role}) ${r.text} <strong>${r.to.name}</strong> (${r.to.role}).</li>`;
 		}
-		html += `</ul>`;
+		html += "</ul>";
 	}
 
 	// Quest Hooks — try context-aware quests first, fall back to generic
 	const contextQuests = await generateContextQuests(data, safeHexKey, typeKey, allNpcs);
-	html += `<h2>Quest Hooks / Rumors</h2>`;
+	html += "<h2>Quest Hooks / Rumors</h2>";
 	if (contextQuests && contextQuests.length > 0) {
 		html += `<table><tr><th>1d${contextQuests.length}</th><th>Type</th><th>Hook</th></tr>`;
 		for (let i = 0; i < contextQuests.length; i++) {
 			html += `<tr><td>${i + 1}</td><td><em>${contextQuests[i].type}</em></td><td>${contextQuests[i].text}</td></tr>`;
 		}
-		html += `</table>`;
+		html += "</table>";
 	} else {
 		// Fallback: generic quest hooks with random hex references
 		const hookCount = randRange(3, 4);
@@ -879,10 +879,10 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 			const filled = await fillQuestTemplate(templates[i], data, safeHexKey, nearbyContent);
 			html += `<tr><td>${i + 1}</td><td>${filled}</td></tr>`;
 		}
-		html += `</table>`;
+		html += "</table>";
 	}
 
-	html += `</section>`;
+	html += "</section>";
 
 	// Notable NPCs — count scales with settlement size, flavour by settlement type
 	try {
@@ -893,8 +893,8 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 			const genderPools = npcPoolData[settlementClass] || npcPoolData.generic;
 
 			if (genderPools) {
-				html += `<h2>Notable NPCs</h2>`;
-				html += `<ul>`;
+				html += "<h2>Notable NPCs</h2>";
+				html += "<ul>";
 
 				// Track used descriptions to avoid duplicates across genders if needed
 				// (Though each gender has its own unique pool now)
@@ -940,7 +940,7 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 
 					html += `<li><strong>${name} (${alignment} ${effectiveGenderLabel} ${ancestry})</strong> ${desc}</li>`;
 				}
-				html += `</ul>`;
+				html += "</ul>";
 			}
 		}
 	} catch (err) {
@@ -956,7 +956,7 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 	</div>`;
 
 	// Attribution
-	html += `<hr><p style="font-size:0.75em;opacity:0.6;">Generated from <a href="https://hexroll.app">Hexroll</a> data</p>`;
+	html += "<hr><p style=\"font-size:0.75em;opacity:0.6;\">Generated from <a href=\"https://hexroll.app\">Hexroll</a> data</p>";
 
 	return { html, settlementName, maphubData };
 }
@@ -1002,7 +1002,7 @@ Hooks.on("ready", () => {
 				user: game.user.id,
 				speaker: { alias: "Settlement Guide" },
 				content: content,
-				whisper: game.users.filter(u => u.isGM).map(u => u.id)
+				whisper: game.users.filter(u => u.isGM).map(u => u.id),
 			});
 
 		} catch (err) {

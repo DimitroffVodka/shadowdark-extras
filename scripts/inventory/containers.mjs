@@ -542,7 +542,7 @@ function patchGetPhysicalItemsForContainers() {
 	if (!target.getPhysicalItems || target.__sdxContainerItemsPatched) return;
 
 	const _original = target.getPhysicalItems;
-	target.getPhysicalItems = function (group = true) {
+	target.getPhysicalItems = function(group = true) {
 		return _original.call(this, group).filter(
 			i => !i.getFlag(MODULE_ID, "containerId")
 		);
@@ -677,8 +677,8 @@ function injectBasicContainerUI(app, html) {
 	let slotsBox = null;
 
 	// Try to find the SLOTS box to add the toggle under it
-	detailsTab.find(".SD-box").each(function () {
-		const label = $(this).find('.header label').first().text().trim().toLowerCase();
+	detailsTab.find(".SD-box").each(function() {
+		const label = $(this).find(".header label").first().text().trim().toLowerCase();
 		if (label && (label === labelSlots || label.includes(labelSlots))) {
 			slotsBox = $(this);
 			return false;
@@ -695,7 +695,7 @@ function injectBasicContainerUI(app, html) {
 	`;
 
 	if (slotsBox?.length) {
-		slotsBox.find('.content').first().append(toggleHtml);
+		slotsBox.find(".content").first().append(toggleHtml);
 	} else {
 		// Fallback: append to the top of Details
 		detailsTab.prepend(toggleHtml);
@@ -737,9 +737,9 @@ function injectBasicContainerUI(app, html) {
 		// Disable per_slot input for containers (always 1)
 		const perSlotInput = html.find('input[name="system.slots.per_slot"]');
 		if (perSlotInput.length) {
-			perSlotInput.prop('disabled', true);
-			perSlotInput.css('opacity', '0.5');
-			perSlotInput.attr('title', 'Cannot edit for containers');
+			perSlotInput.prop("disabled", true);
+			perSlotInput.css("opacity", "0.5");
+			perSlotInput.attr("title", "Cannot edit for containers");
 		}
 
 		// Replace free_carry number input with checkbox
@@ -747,15 +747,15 @@ function injectBasicContainerUI(app, html) {
 		if (freeCarryInput.length) {
 			const currentValue = Number(item.system?.slots?.free_carry ?? 0);
 			const isChecked = currentValue > 0;
-			const freeCarryLabel = freeCarryInput.closest('.SD-grid').find('h3').filter(function () {
-				return $(this).text().trim().toLowerCase().includes('free');
+			const freeCarryLabel = freeCarryInput.closest(".SD-grid").find("h3").filter(function() {
+				return $(this).text().trim().toLowerCase().includes("free");
 			});
 
 			const checkboxHtml = `
 				<input type="checkbox"
 					data-sdx-free-carry
-					${isChecked ? 'checked' : ''}
-					${isEditable ? '' : 'disabled'}
+					${isChecked ? "checked" : ""}
+					${isEditable ? "" : "disabled"}
 					style="width: auto; height: auto;"
 				/>
 			`;
@@ -763,7 +763,7 @@ function injectBasicContainerUI(app, html) {
 			freeCarryInput.replaceWith(checkboxHtml);
 
 			// Bind checkbox change event
-			html.find('[data-sdx-free-carry]').on('change', async (ev) => {
+			html.find("[data-sdx-free-carry]").on("change", async (ev) => {
 				if (!isEditable) return;
 				const checked = ev.currentTarget.checked;
 				// Set to 1 if checked, 0 if unchecked
@@ -906,7 +906,7 @@ function injectBasicContainerUI(app, html) {
 	`;
 
 	// Insert after the top grid of the Details tab, if present
-	const topGrid = detailsTab.find('.grid-3-columns, .grid-3, .grid-3col, .grid-3columms, .grid-3-columns').first();
+	const topGrid = detailsTab.find(".grid-3-columns, .grid-3, .grid-3col, .grid-3columms, .grid-3-columns").first();
 	if (topGrid.length) topGrid.after(boxHtml);
 	else detailsTab.append(boxHtml);
 
@@ -961,10 +961,10 @@ function injectBasicContainerUI(app, html) {
 	}
 
 	// Wire up actions
-	html.find('.sdx-container-box [data-action="open-item"]').on('click', async (ev) => {
+	html.find('.sdx-container-box [data-action="open-item"]').on("click", async (ev) => {
 		ev.preventDefault();
 		ev.stopPropagation();
-		const li = ev.currentTarget.closest('li.item');
+		const li = ev.currentTarget.closest("li.item");
 		const actor = item.parent;
 
 		// Owned container contents: open the real embedded item.
@@ -983,11 +983,11 @@ function injectBasicContainerUI(app, html) {
 		await openPackedItemSheet(packedEntry, { containerItem: item, packedKey });
 	});
 
-	html.find('.sdx-container-box [data-action="remove-from-container"]').on('click', async (ev) => {
+	html.find('.sdx-container-box [data-action="remove-from-container"]').on("click", async (ev) => {
 		ev.preventDefault();
 		ev.stopPropagation();
 		if (!isEditable) return;
-		const li = ev.currentTarget.closest('li.item');
+		const li = ev.currentTarget.closest("li.item");
 		const packedKey = li?.dataset?.packedKey;
 		if (packedKey) {
 			const current = getPackedContainedItemData(item);
@@ -1008,7 +1008,7 @@ function injectBasicContainerUI(app, html) {
 	});
 
 	// Bind coin input changes
-	html.find('.sdx-container-box .sdx-container-coin-input').on('change', async (ev) => {
+	html.find(".sdx-container-box .sdx-container-coin-input").on("change", async (ev) => {
 		if (!isEditable) return;
 		const coinType = ev.currentTarget.dataset.coinType;
 		const value = Math.max(0, parseInt(ev.currentTarget.value) || 0);
@@ -1019,20 +1019,20 @@ function injectBasicContainerUI(app, html) {
 	});
 
 	// Drag/drop assignment (actor-owned or packed-only)
-	const dropzone = html.find('.sdx-container-box .sdx-container-dropzone').first();
+	const dropzone = html.find(".sdx-container-box .sdx-container-dropzone").first();
 	if (dropzone.length) {
-		dropzone.on('dragover', (ev) => {
+		dropzone.on("dragover", (ev) => {
 			if (!isEditable) return;
 			ev.preventDefault();
 		});
-		dropzone.on('drop', async (ev) => {
+		dropzone.on("drop", async (ev) => {
 			if (!isEditable) return;
 			ev.preventDefault();
 			const originalEvent = ev.originalEvent ?? ev;
 			const ctrlMove = Boolean(originalEvent?.ctrlKey);
 			const getDragEventData = foundry?.applications?.ux?.TextEditor?.implementation?.getDragEventData ?? TextEditor.getDragEventData;
 			const data = getDragEventData(originalEvent);
-			if (!data || data.type !== 'Item') return;
+			if (!data || data.type !== "Item") return;
 			const dropped = await fromUuid(data.uuid);
 			if (!dropped || !(dropped instanceof Item)) return;
 			if (dropped.id === item.id && dropped.parent === item.parent) return;
@@ -1124,7 +1124,7 @@ function buildContainerTooltip(containerItem) {
 			const qtySuffix = Number.isFinite(qty) && qty > 1 ? ` x${qty}` : "";
 			return `• ${name}${qtySuffix}`;
 		})
-		.join('\n');
+		.join("\n");
 
 	const more = entries.length > 50 ? `\n• ... and ${entries.length - 50} more` : "";
 	return `${label}\n${items}${more}`;
@@ -1138,9 +1138,9 @@ function attachContainerContentsToActorSheet(app, html) {
 	if (!actor) return;
 
 	// Add tooltips to container items in inventory
-	html.find('.item[data-item-id]').each((_, el) => {
+	html.find(".item[data-item-id]").each((_, el) => {
 		const $el = $(el);
-		const itemId = $el.data('itemId') ?? $el.attr('data-item-id');
+		const itemId = $el.data("itemId") ?? $el.attr("data-item-id");
 		if (!itemId) return;
 		const item = actor.items?.get?.(itemId);
 		if (!item) return;
@@ -1151,8 +1151,8 @@ function attachContainerContentsToActorSheet(app, html) {
 		if (!tooltip) return;
 
 		// Add tooltip to the item row
-		$el.attr('title', tooltip);
-		$el.addClass('sdx-has-container-tooltip');
+		$el.attr("title", tooltip);
+		$el.addClass("sdx-has-container-tooltip");
 	});
 }
 
@@ -1176,15 +1176,15 @@ function enableItemChatIcon(app, html) {
 	if (actor.type === "Player") return;
 
 	// Handle click on item image (when it has the chat icon)
-	html.find('.item-image').off('click.sdxChat').on('click.sdxChat', async function (ev) {
+	html.find(".item-image").off("click.sdxChat").on("click.sdxChat", async function(ev) {
 		// Only handle if this item-image has a comment icon
-		if (!$(this).find('.fa-comment').length) return;
+		if (!$(this).find(".fa-comment").length) return;
 
 		ev.preventDefault();
 		ev.stopPropagation();
 
-		const $itemRow = $(this).closest('.item[data-item-id]');
-		const itemId = $itemRow.data('itemId') ?? $itemRow.attr('data-item-id');
+		const $itemRow = $(this).closest(".item[data-item-id]");
+		const itemId = $itemRow.data("itemId") ?? $itemRow.attr("data-item-id");
 		if (!itemId) return;
 
 		const item = actor.items.get(itemId);

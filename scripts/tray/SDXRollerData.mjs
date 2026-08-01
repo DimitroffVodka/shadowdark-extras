@@ -85,7 +85,7 @@ export function buildTravelTaskRollData(task, actors, selections = {}, dc = 12) 
 		customLabel: String(task?.name ?? "Travel Activity"),
 		activityDescription: String(task?.description ?? "").trim(),
 		bannerImage: String(task?.bannerImage ?? "").trim(),
-		activityKey: String(task?.key ?? "")
+		activityKey: String(task?.key ?? ""),
 	};
 }
 

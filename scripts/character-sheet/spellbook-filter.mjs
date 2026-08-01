@@ -26,7 +26,7 @@ export function injectSpellbookCompendiumFilter(app, html) {
 		if (hasSpells) {
 			spellPacks.push({
 				id: pack.collection,
-				name: pack.metadata.label
+				name: pack.metadata.label,
 			});
 		}
 	}
@@ -140,7 +140,7 @@ export function initAlignmentSpellFiltering() {
 	// Patch SpellBookSD.getData() to filter spells by alignment
 	const originalGetData = shadowdark.apps.SpellBookSD.prototype.getData;
 
-	shadowdark.apps.SpellBookSD.prototype.getData = async function () {
+	shadowdark.apps.SpellBookSD.prototype.getData = async function() {
 		const data = await originalGetData.call(this);
 
 		//console.log(`${MODULE_ID} | SpellBook getData called`);
@@ -204,9 +204,9 @@ export function initAlignmentSpellFiltering() {
 	// Patch ActorSD.openSpellBook() to pass alignment to SpellBookSD
 	const originalOpenSpellBook = CONFIG.Actor.documentClass.prototype.openSpellBook;
 
-	CONFIG.Actor.documentClass.prototype.openSpellBook = async function () {
+	CONFIG.Actor.documentClass.prototype.openSpellBook = async function() {
 		const playerSpellcasterClasses = await this.getSpellcasterClasses();
-		const actorAlignment = this.system.alignment || '';
+		const actorAlignment = this.system.alignment || "";
 
 
 		//console.log(`${MODULE_ID} | Opening spellbook for actor: ${this.name}`);
@@ -247,9 +247,9 @@ export function initAlignmentSpellFiltering() {
 						{
 							action: "cancel",
 							icon: "fas fa-times",
-							label: game.i18n.localize("Cancel")
-						}
-					]
+							label: game.i18n.localize("Cancel"),
+						},
+					],
 				});
 				dialog.render({ force: true }).then(() => {
 					dialog.element.querySelectorAll("[data-action='open-class-spellbook']").forEach(el => {

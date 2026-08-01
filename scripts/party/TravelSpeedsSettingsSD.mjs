@@ -11,7 +11,7 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 const DEFAULT_TRAVEL_SPEEDS = [
 	{ key: "slow", name: "Slow" },
 	{ key: "normal", name: "Normal" },
-	{ key: "fast", name: "Fast" }
+	{ key: "fast", name: "Fast" },
 ];
 
 /**
@@ -26,24 +26,24 @@ export class TravelSpeedsSettingsApp extends HandlebarsApplicationMixin(Applicat
 		tag: "form",
 		window: {
 			title: "SHADOWDARK_EXTRAS.travel_speeds.title",
-			resizable: true
+			resizable: true,
 		},
 		position: {
 			width: 500,
-			height: "auto"
+			height: "auto",
 		},
 		form: {
 			handler: TravelSpeedsSettingsApp.formHandler,
 			submitOnChange: true,
-			closeOnSubmit: false
-		}
+			closeOnSubmit: false,
+		},
 	};
 
 	static PARTS = {
 		form: {
 			template: `modules/${MODULE_ID}/templates/travel-speeds-settings.hbs`,
-			scrollable: [".sdx-speeds-list"]
-		}
+			scrollable: [".sdx-speeds-list"],
+		},
 	};
 
 	static show() {
@@ -63,7 +63,7 @@ export class TravelSpeedsSettingsApp extends HandlebarsApplicationMixin(Applicat
 
 		return {
 			speeds: speeds.map((speed, index) => ({ ...speed, index })),
-			MODULE_ID
+			MODULE_ID,
 		};
 	}
 
@@ -97,7 +97,7 @@ export class TravelSpeedsSettingsApp extends HandlebarsApplicationMixin(Applicat
 			const confirmed = await foundry.applications.api.DialogV2.confirm({
 				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.travel_speeds.reset_confirm_title") },
 				content: `<p>${game.i18n.localize("SHADOWDARK_EXTRAS.travel_speeds.reset_confirm_content")}</p>`,
-				modal: true
+				modal: true,
 			});
 			if (confirmed) {
 				await game.settings.set(MODULE_ID, "travelSpeeds", { speeds: foundry.utils.deepClone(DEFAULT_TRAVEL_SPEEDS) });
@@ -208,7 +208,7 @@ export class TravelSpeedsSettingsApp extends HandlebarsApplicationMixin(Applicat
 			if (data.name && data.name.trim()) {
 				speeds.push({
 					key: data.key || `speed${Date.now()}_${index}`,
-					name: data.name.trim()
+					name: data.name.trim(),
 				});
 			}
 		}
@@ -256,7 +256,7 @@ export function registerTravelSpeedsSettings() {
 		scope: "world",
 		config: false,
 		type: Object,
-		default: { speeds: foundry.utils.deepClone(DEFAULT_TRAVEL_SPEEDS) }
+		default: { speeds: foundry.utils.deepClone(DEFAULT_TRAVEL_SPEEDS) },
 	});
 
 	// Register a menu button to open the Travel Speeds Settings app
@@ -266,7 +266,7 @@ export function registerTravelSpeedsSettings() {
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.travel_speeds.hint"),
 		icon: "fas fa-running",
 		type: TravelSpeedsSettingsApp,
-		restricted: true
+		restricted: true,
 	});
 }
 

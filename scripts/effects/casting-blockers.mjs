@@ -35,7 +35,7 @@ export function setupWandUsesBlocker() {
 		if (!model?.prototype?.castSpell) return false;
 		if (model.prototype.__sdxCastSpellWandPatched) return true;
 		const original = model.prototype.castSpell;
-		model.prototype.castSpell = async function (spellUuid, config = {}) {
+		model.prototype.castSpell = async function(spellUuid, config = {}) {
 			const actor = this.parent;
 			// Resolve the item the user is invoking. New API passes an item UUID;
 			// legacy callers may still pass an item id. Cover both.
@@ -79,7 +79,7 @@ export function setupSilencedCastingBlocker() {
 		if (!model?.prototype?.castSpell) return false;
 		if (model.prototype.__sdxCastSpellSilencedPatched) return true;
 		const original = model.prototype.castSpell;
-		model.prototype.castSpell = async function (spellUuid, config = {}) {
+		model.prototype.castSpell = async function(spellUuid, config = {}) {
 			const actor = this.parent;
 			const isSilenced = actor?.getFlag(MODULE_ID, "silenced");
 			if (isSilenced) {

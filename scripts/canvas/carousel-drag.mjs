@@ -159,7 +159,7 @@ export function initCarouselDrag() {
 				const rect = carousel.getBoundingClientRect();
 				localStorage.setItem(STORAGE_KEY, JSON.stringify({
 					left: rect.left,
-					top: rect.top
+					top: rect.top,
 				}));
 			}
 		}
@@ -182,7 +182,7 @@ export function initCarouselDrag() {
 		// Start observing
 		observer.observe(document.body, {
 			childList: true,
-			subtree: true
+			subtree: true,
 		});
 
 		// Also try to setup on any existing carousel

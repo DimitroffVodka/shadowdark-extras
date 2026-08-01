@@ -36,7 +36,7 @@ export function getSpellItemMacroConfig(item) {
 	return {
 		enabled: flags.triggers?.length > 0,
 		runAsGm: flags.runAsGm || false,
-		triggers: flags.triggers || []
+		triggers: flags.triggers || [],
 	};
 }
 
@@ -90,7 +90,7 @@ export async function executeSpellItemMacro(spellItem, actor, trigger, context =
 		// Originating user — Holy Weapon and other dialog-routing macros use
 		// this to remote-trigger the caller's dialog from a GM-side
 		// `runAsGm` execution. Socket path overrides via serializedContext.
-		originatingUserId: context.originatingUserId ?? game.user.id
+		originatingUserId: context.originatingUserId ?? game.user.id,
 	};
 
 	const macroConfig = getSpellItemMacroConfig(spellItem);
@@ -110,7 +110,7 @@ export async function executeSpellItemMacro(spellItem, actor, trigger, context =
 			isCriticalFail: context.isCriticalFail,
 			rollResult: context.rollResult,
 			rollDataJson: context.rollData ? JSON.stringify(context.rollData) : null,
-			originatingUserId: game.user.id  // Track who initiated the spell for dialog routing
+			originatingUserId: game.user.id,  // Track who initiated the spell for dialog routing
 		};
 
 		//console.log(`${MODULE_ID} | Sending spell Item Macro to GM for execution`);
@@ -156,10 +156,10 @@ export async function executeSpellItemMacro(spellItem, actor, trigger, context =
 			rollData: scope.rollData,
 			speaker: scope.speaker,
 			flags: scope.flags,
-			originatingUserId: scope.originatingUserId
+			originatingUserId: scope.originatingUserId,
 		};
 
-		const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
+		const AsyncFunction = Object.getPrototypeOf(async function() { }).constructor;
 
 		// Async functions are strict — redeclaring a named parameter with const/let/var
 		// inside the body throws SyntaxError. Scan the macro command and drop any
@@ -168,7 +168,7 @@ export async function executeSpellItemMacro(spellItem, actor, trigger, context =
 		const allParams = [
 			"actor", "token", "item", "targets", "target", "targetActor",
 			"trigger", "isSuccess", "isFailure", "isCritical", "isCriticalFail",
-			"rollResult", "rollData", "speaker", "flags", "args"
+			"rollResult", "rollData", "speaker", "flags", "args",
 		];
 		const safeParams = allParams.filter(
 			p => !new RegExp(`\\b(?:const|let|var)\\s+${p}\\b`).test(macroCommand)
@@ -248,7 +248,7 @@ export function registerSpellItemMacroSocket() {
 					isCriticalFail: serializedContext.isCriticalFail,
 					rollResult: serializedContext.rollResult,
 					rollData: serializedContext.rollDataJson ? JSON.parse(serializedContext.rollDataJson) : null,
-					originatingUserId: serializedContext.originatingUserId
+					originatingUserId: serializedContext.originatingUserId,
 				};
 
 				return executeSpellItemMacro(spellItem, actor, serializedContext.trigger, context);
@@ -430,7 +430,7 @@ export function registerSpellItemMacroSocket() {
 				if (sender.id !== game.user.id) {
 					await macroExecuteSocket.executeAsUser("sdxShowItemRevealForUser", sender.id, {
 						itemUuid: item.uuid,
-						maskedName
+						maskedName,
 					});
 				} else {
 					const sdxModule = game.modules.get(MODULE_ID);

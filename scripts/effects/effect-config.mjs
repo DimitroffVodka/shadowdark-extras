@@ -34,7 +34,7 @@ export function registerActiveEffectConfigHooks() {
 
 		const currentRequirement = effect.getFlag?.(MODULE_ID, "sourceRequirement") || "";
 		// Escape HTML entities for safe insertion into HTML attribute
-		const escapedRequirement = currentRequirement.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+		const escapedRequirement = currentRequirement.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
 		// Get the requireEquipped flag
 		const requireEquipped = effect.getFlag?.(MODULE_ID, "requireEquipped") || false;
@@ -43,13 +43,13 @@ export function registerActiveEffectConfigHooks() {
 		const $html = html instanceof jQuery ? html : $(html);
 
 		// Find the Status Conditions section - it's a div.form-group.statuses
-		const statusConditions = $html.find('.form-group.statuses');
+		const statusConditions = $html.find(".form-group.statuses");
 
 		// Build the HTML for the require equipped checkbox
 		const requireEquippedHtml = `
 			<div class="form-group sdx-require-equipped">
 				<label>Must be Equipped</label>
-				<input type="checkbox" name="flags.${MODULE_ID}.requireEquipped" ${requireEquipped ? 'checked' : ''}/>
+				<input type="checkbox" name="flags.${MODULE_ID}.requireEquipped" ${requireEquipped ? "checked" : ""}/>
 				<p class="hint">If checked, this Effect will be applied to any Actor that owns this Effect's parent Item only if the Item is equipped.</p>
 			</div>
 		`;
@@ -171,12 +171,12 @@ export function registerActiveEffectConfigHooks() {
 		}
 
 		// Intercept form submission to save the source requirement
-		const form = $html.closest('form');
+		const form = $html.closest("form");
 		if (form.length > 0) {
 			// Store the original submit method
 			const originalSubmit = form[0].onsubmit;
 
-			form.on('submit', async (event) => {
+			form.on("submit", async (event) => {
 				// Get the requirement value
 				const requirementInput = $html.find(`input[name="flags.${MODULE_ID}.sourceRequirement"]`);
 				if (requirementInput.length > 0) {
@@ -190,7 +190,7 @@ export function registerActiveEffectConfigHooks() {
 				// Get the requireEquipped checkbox value
 				const requireEquippedInput = $html.find(`input[name="flags.${MODULE_ID}.requireEquipped"]`);
 				if (requireEquippedInput.length > 0) {
-					const newRequireEquipped = requireEquippedInput.is(':checked');
+					const newRequireEquipped = requireEquippedInput.is(":checked");
 					//console.log(`${MODULE_ID} | Form submitting, will save requireEquipped: ${newRequireEquipped}`);
 
 					// Store it in a temp variable on the effect to be picked up by preUpdate hook

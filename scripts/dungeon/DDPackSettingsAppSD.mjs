@@ -30,34 +30,34 @@ const STYLES = `
 </style>`;
 
 function escapeHtml(value) {
-    return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+	return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 }
 
 export class DDPackSettingsApp extends ApplicationV2 {
-    static DEFAULT_OPTIONS = {
-        id: "sdx-ddpack-settings",
-        classes: ["sdx-ddpack-settings-app"],
-        tag: "div",
-        window: { title: "Dungeondraft Decor Packs", icon: "fas fa-cubes", resizable: true },
-        position: { width: 620, height: "auto" }
-    };
+	static DEFAULT_OPTIONS = {
+		id: "sdx-ddpack-settings",
+		classes: ["sdx-ddpack-settings-app"],
+		tag: "div",
+		window: { title: "Dungeondraft Decor Packs", icon: "fas fa-cubes", resizable: true },
+		position: { width: 620, height: "auto" },
+	};
 
-    constructor(options = {}) {
-        super(options);
-        this.status = "";
-    }
+	constructor(options = {}) {
+		super(options);
+		this.status = "";
+	}
 
-    async _renderHTML() {
-        const existingStyles = document.getElementById("sdx-ddpack-settings-styles");
-        if (existingStyles) {
-            existingStyles.outerHTML = STYLES;
-        } else {
-            document.head.insertAdjacentHTML("beforeend", STYLES);
-        }
-        const packs = getDDPacks();
-        const el = document.createElement("div");
-        el.className = "sdx-ddpack-settings";
-        el.innerHTML = `
+	async _renderHTML() {
+		const existingStyles = document.getElementById("sdx-ddpack-settings-styles");
+		if (existingStyles) {
+			existingStyles.outerHTML = STYLES;
+		} else {
+			document.head.insertAdjacentHTML("beforeend", STYLES);
+		}
+		const packs = getDDPacks();
+		const el = document.createElement("div");
+		el.className = "sdx-ddpack-settings";
+		el.innerHTML = `
             <div class="sdx-ddpack-top">
                 <p>Import Dungeondraft object packs into the SDX Decor tray. Disabling a pack hides it; extracted files remain in <code>Data/${DD_DECOR_BASE}/</code>.</p>
                 <div class="sdx-ddpack-toolbar">
@@ -81,74 +81,74 @@ export class DDPackSettingsApp extends ApplicationV2 {
                             <button type="button" class="danger sdx-ddpack-remove"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
-                `).join("") : `<div class="sdx-ddpack-empty">No Dungeondraft decor packs imported yet.</div>`}
+                `).join("") : "<div class=\"sdx-ddpack-empty\">No Dungeondraft decor packs imported yet.</div>"}
             </div>`;
-        return el;
-    }
+		return el;
+	}
 
-    _replaceHTML(result, content) {
-        content.replaceChildren(result);
-    }
+	_replaceHTML(result, content) {
+		content.replaceChildren(result);
+	}
 
-    _onRender() {
-        const fileInput = this.element.querySelector(".sdx-ddpack-file");
-        this.element.querySelector(".sdx-ddpack-add")?.addEventListener("click", () => fileInput?.click());
-        fileInput?.addEventListener("change", async event => {
-            const file = event.currentTarget.files?.[0];
-            event.currentTarget.value = "";
-            if (!file) return;
-            await this.#importPack(file);
-        });
+	_onRender() {
+		const fileInput = this.element.querySelector(".sdx-ddpack-file");
+		this.element.querySelector(".sdx-ddpack-add")?.addEventListener("click", () => fileInput?.click());
+		fileInput?.addEventListener("change", async event => {
+			const file = event.currentTarget.files?.[0];
+			event.currentTarget.value = "";
+			if (!file) return;
+			await this.#importPack(file);
+		});
 
-        this.element.querySelectorAll(".sdx-ddpack-row").forEach(row => {
-            const packId = row.dataset.packId;
-            row.querySelector(".sdx-ddpack-toggle")?.addEventListener("click", async event => {
-                const currentlyEnabled = event.currentTarget.dataset.enabled !== "false";
-                await setDDPackEnabled(packId, !currentlyEnabled);
-                await reloadDecorAssets();
-                Hooks.callAll("sdx.decorAssetsImported");
-                this.render();
-            });
-            row.querySelector(".sdx-ddpack-remove")?.addEventListener("click", async () => {
-                const pack = getDDPacks().find(p => p.packId === packId);
-                const ok = await Dialog.confirm({
-                    title: "Remove Dungeondraft Pack",
-                    content: `<p>Remove <strong>${escapeHtml(pack?.folderLabel || pack?.name || packId)}</strong> from the Decor tray?</p><p>Extracted files stay in <code>Data/${DD_DECOR_BASE}/${escapeHtml(packId)}/</code>.</p>`,
-                    defaultYes: false
-                });
-                if (!ok) return;
-                await removeDDPack(packId);
-                await reloadDecorAssets();
-                Hooks.callAll("sdx.decorAssetsImported");
-                this.render();
-            });
-        });
-    }
+		this.element.querySelectorAll(".sdx-ddpack-row").forEach(row => {
+			const packId = row.dataset.packId;
+			row.querySelector(".sdx-ddpack-toggle")?.addEventListener("click", async event => {
+				const currentlyEnabled = event.currentTarget.dataset.enabled !== "false";
+				await setDDPackEnabled(packId, !currentlyEnabled);
+				await reloadDecorAssets();
+				Hooks.callAll("sdx.decorAssetsImported");
+				this.render();
+			});
+			row.querySelector(".sdx-ddpack-remove")?.addEventListener("click", async () => {
+				const pack = getDDPacks().find(p => p.packId === packId);
+				const ok = await Dialog.confirm({
+					title: "Remove Dungeondraft Pack",
+					content: `<p>Remove <strong>${escapeHtml(pack?.folderLabel || pack?.name || packId)}</strong> from the Decor tray?</p><p>Extracted files stay in <code>Data/${DD_DECOR_BASE}/${escapeHtml(packId)}/</code>.</p>`,
+					defaultYes: false,
+				});
+				if (!ok) return;
+				await removeDDPack(packId);
+				await reloadDecorAssets();
+				Hooks.callAll("sdx.decorAssetsImported");
+				this.render();
+			});
+		});
+	}
 
-    async #importPack(file) {
-        if (!file.name.endsWith(".dungeondraft_pack")) {
-            ui.notifications.warn("Please select a .dungeondraft_pack file.");
-            return;
-        }
-        try {
-            this.status = "Reading pack...";
-            this.render();
-            const scan = await scanDDPack(file);
-            this.status = "";
-            this.render();
-            new DDPackPreviewApp({
-                scan,
-                file,
-                onDone: indexData => {
-                    this.status = `"${indexData.name}" imported (${indexData.assetCount} assets).`;
-                    this.render();
-                }
-            }).render(true);
-        } catch (err) {
-            console.error(`${MODULE_ID} | Could not read Dungeondraft pack:`, err);
-            ui.notifications.error(`Could not read pack: ${err?.message || err}`);
-            this.status = "";
-            this.render();
-        }
-    }
+	async #importPack(file) {
+		if (!file.name.endsWith(".dungeondraft_pack")) {
+			ui.notifications.warn("Please select a .dungeondraft_pack file.");
+			return;
+		}
+		try {
+			this.status = "Reading pack...";
+			this.render();
+			const scan = await scanDDPack(file);
+			this.status = "";
+			this.render();
+			new DDPackPreviewApp({
+				scan,
+				file,
+				onDone: indexData => {
+					this.status = `"${indexData.name}" imported (${indexData.assetCount} assets).`;
+					this.render();
+				},
+			}).render(true);
+		} catch (err) {
+			console.error(`${MODULE_ID} | Could not read Dungeondraft pack:`, err);
+			ui.notifications.error(`Could not read pack: ${err?.message || err}`);
+			this.status = "";
+			this.render();
+		}
+	}
 }

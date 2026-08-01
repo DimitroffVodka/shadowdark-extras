@@ -48,14 +48,14 @@ export async function injectEnhancedHeader(app, html, actor) {
 
 	if (actor.type !== "Player") return;
 
-	const $header = html.find('.SD-header').first();
+	const $header = html.find(".SD-header").first();
 	if (!$header.length) return;
 
 	// Clean up any existing enhanced content first (in case of re-render)
-	$header.find('.sdx-enhanced-content').remove();
+	$header.find(".sdx-enhanced-content").remove();
 
 	// Mark as enhanced
-	$header.addClass('sdx-enhanced-header');
+	$header.addClass("sdx-enhanced-header");
 
 	// Get actor data
 	const sys = actor.system;
@@ -72,47 +72,47 @@ export async function injectEnhancedHeader(app, html, actor) {
 	const luck = usePulpMode ? (sys.luck?.remaining ?? 0) : (sys.luck?.available ?? false);
 
 	// Get character details - need to fetch actual item names from UUIDs
-	let ancestryName = '';
-	let className = '';
-	let backgroundName = '';
+	let ancestryName = "";
+	let className = "";
+	let backgroundName = "";
 
 	try {
 		if (sys.ancestry) {
 			const ancestryItem = await fromUuid(sys.ancestry);
-			ancestryName = ancestryItem?.name || '';
+			ancestryName = ancestryItem?.name || "";
 		}
 		if (sys.class) {
 			const classItem = await fromUuid(sys.class);
-			className = classItem?.name || '';
+			className = classItem?.name || "";
 		}
 		if (sys.background) {
 			const backgroundItem = await fromUuid(sys.background);
-			backgroundName = backgroundItem?.name || '';
+			backgroundName = backgroundItem?.name || "";
 		}
 	} catch (e) {
 		console.warn("shadowdark-extras | Error fetching character details:", e);
 	}
 
 	const abilities = sys.abilities || {};
-	const abilityOrder = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+	const abilityOrder = ["str", "dex", "con", "int", "wis", "cha"];
 
 	// Calculate HP percentage for bar
 	const hpPercent = hp.max > 0 ? Math.min(100, Math.max(0, (hp.value / hp.max) * 100)) : 0;
-	const hpColor = hpPercent > 50 ? '#4ade80' : hpPercent > 25 ? '#fbbf24' : '#ef4444';
+	const hpColor = hpPercent > 50 ? "#4ade80" : hpPercent > 25 ? "#fbbf24" : "#ef4444";
 	// Wave translate: at 100% HP waves are hidden (translateY 85%), at 0% HP fully visible (translateY 0%)
 	const hpWaveTranslate = Math.max(0, Math.round(hpPercent) - 15);
-	const hpWaveClass = hpPercent >= 100 ? 'hp-full' : (hpPercent <= 0 ? 'hp-dead' : '');
+	const hpWaveClass = hpPercent >= 100 ? "hp-full" : (hpPercent <= 0 ? "hp-dead" : "");
 	// Get wave color based on ancestry settings (pass resolved ancestryName)
 	const hpWaveColor = getHpWaveColor(actor, ancestryName);
 	const hpWavesEnabled = isHpWavesEnabled();
 
 	// Build abilities HTML
-	let abilitiesHtml = '';
+	let abilitiesHtml = "";
 	for (const key of abilityOrder) {
 		const ab = abilities[key] || {};
 		const value = ab.value ?? 10;
 		const mod = ab.mod ?? Math.floor((value - 10) / 2);
-		const modSign = mod >= 0 ? '+' : '';
+		const modSign = mod >= 0 ? "+" : "";
 
 		abilitiesHtml += `
 			<div class="sdx-ability" data-ability="${key}" data-tooltip="${key.toUpperCase()}">
@@ -124,7 +124,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 
 	// Calculate initiative modifier with proper sign
 	const initMod = abilities.dex?.mod ?? 0;
-	const initModSign = initMod >= 0 ? '+' : '';
+	const initModSign = initMod >= 0 ? "+" : "";
 
 	// Build the luck container HTML based on mode
 	let luckHtml;
@@ -138,8 +138,8 @@ export async function injectEnhancedHeader(app, html, actor) {
 		`;
 	} else {
 		// Standard mode: show toggle icon
-		const hasLuck = luck ? 'has-luck' : '';
-		const luckStatus = luck ? 'Available' : 'Used';
+		const hasLuck = luck ? "has-luck" : "";
+		const luckStatus = luck ? "Available" : "Used";
 		luckHtml = `
 			<div class="sdx-luck-container standard-mode ${hasLuck}" data-tooltip="Luck (${luckStatus})">
 				<i class="fa-solid fa-dice-d20"></i>
@@ -157,7 +157,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 						<path class="wave-path" d="M0 15 C 100 10, 200 20, 300 15 C 400 10, 500 20, 600 15 V 100 H 0 Z"/>
 						<path class="wave-path" d="M0 20 C 100 25, 200 15, 300 20 C 400 25, 500 15, 600 20 V 100 H 0 Z"/>
 					</svg>
-				</div>` : '';
+				</div>` : "";
 
 	// Build the enhanced header content
 	const enhancedContent = `
@@ -181,9 +181,9 @@ export async function injectEnhancedHeader(app, html, actor) {
 				</div>
 
 				<div class="sdx-char-details-row">
-					${ancestryName ? `<span class="sdx-char-ancestry">${ancestryName}</span>` : ''}
-					${className ? `<span class="sdx-char-class">${className}</span>` : ''}
-					${backgroundName ? `<span class="sdx-char-background">${backgroundName}</span>` : ''}
+					${ancestryName ? `<span class="sdx-char-ancestry">${ancestryName}</span>` : ""}
+					${className ? `<span class="sdx-char-class">${className}</span>` : ""}
+					${backgroundName ? `<span class="sdx-char-background">${backgroundName}</span>` : ""}
 				</div>
 
 				<div class="sdx-xp-row" data-tooltip="XP: ${xp} / ${xpForNextLevel}">
@@ -217,20 +217,20 @@ export async function injectEnhancedHeader(app, html, actor) {
 
 			<div class="sdx-header-right">
 				${luckHtml}
-				<div class="sdx-level-container ${levelUp ? 'can-level-up' : ''}" data-tooltip="${levelUp ? 'Ready to Level Up!' : 'Level'}">
+				<div class="sdx-level-container ${levelUp ? "can-level-up" : ""}" data-tooltip="${levelUp ? "Ready to Level Up!" : "Level"}">
 					${levelUp
-			? '<i class="fas fa-arrow-up fa-beat"></i>'
-			: `<div class="sdx-level-value">${level}</div><div class="sdx-level-label">LVL</div>`
-		}
+		? '<i class="fas fa-arrow-up fa-beat"></i>'
+		: `<div class="sdx-level-value">${level}</div><div class="sdx-level-label">LVL</div>`
+}
 				</div>
 			</div>
 		</div>
 	`;
 
 	// Clear the existing header content and inject enhanced version
-	const $portrait = $header.find('.portrait');
-	const $logo = $header.find('.shadowdark-logo');
-	const $title = $header.find('.SD-title');
+	const $portrait = $header.find(".portrait");
+	const $logo = $header.find(".shadowdark-logo");
+	const $title = $header.find(".SD-title");
 
 	// Hide original elements
 	$portrait.hide();
@@ -241,11 +241,11 @@ export async function injectEnhancedHeader(app, html, actor) {
 	$header.append(enhancedContent);
 
 	// Wire up interactivity
-	const $enhancedContent = $header.find('.sdx-enhanced-content');
+	const $enhancedContent = $header.find(".sdx-enhanced-content");
 
 	// Portrait click to launch tokenizer (if vtta-tokenizer module is active)
 	// Hold Shift to open the default Foundry file picker instead
-	$enhancedContent.find('.sdx-portrait').on('click', async (e) => {
+	$enhancedContent.find(".sdx-portrait").on("click", async (e) => {
 		if (!actor.isOwner) return;
 		e.stopPropagation();
 
@@ -253,7 +253,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 		if (e.ctrlKey) {
 			new ImagePopout(actor.img, {
 				title: actor.name,
-				uuid: actor.uuid
+				uuid: actor.uuid,
 			}).render(true);
 			return;
 		}
@@ -265,7 +265,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 				current: actor.img,
 				callback: async (path) => {
 					await actor.update({ img: path });
-				}
+				},
 			});
 			return fp.browse();
 		}
@@ -278,7 +278,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 				current: actor.img,
 				callback: async (path) => {
 					await actor.update({ img: path });
-				}
+				},
 			});
 			return fp.browse();
 		}
@@ -292,7 +292,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 				const options = {
 					name: actor.name,
 					type: actor.type.toLowerCase(),
-					avatarFilename: actor.img
+					avatarFilename: actor.img,
 				};
 				window.Tokenizer.launch(options, (response) => {
 					//console.log("shadowdark-extras | Tokenizer response:", response);
@@ -305,7 +305,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 					current: actor.img,
 					callback: async (path) => {
 						await actor.update({ img: path });
-					}
+					},
 				});
 				return fp.browse();
 			}
@@ -320,8 +320,8 @@ export async function injectEnhancedHeader(app, html, actor) {
 	const openHpInput = () => {
 		if (!actor.isOwner) return;
 
-		const $hpValue = $enhancedContent.find('.sdx-hp-value');
-		if (!$hpValue.length || $enhancedContent.find('.sdx-hp-input').length) return;
+		const $hpValue = $enhancedContent.find(".sdx-hp-value");
+		if (!$hpValue.length || $enhancedContent.find(".sdx-hp-input").length) return;
 		// Read live: quick-adjust updates use render:false, so the render-time
 		// `hp` closure can be stale by the time the editor is opened.
 		const currentHp = Number(actor.system?.attributes?.hp?.value ?? hp.value);
@@ -335,52 +335,52 @@ export async function injectEnhancedHeader(app, html, actor) {
 			await setActorHpValue(actor, $input.val());
 		};
 
-		$input.on('blur', saveHp);
-		$input.on('keydown', (e) => {
-			if (e.key === 'Enter') {
+		$input.on("blur", saveHp);
+		$input.on("keydown", (e) => {
+			if (e.key === "Enter") {
 				e.preventDefault();
 				$input.blur();
-			} else if (e.key === 'Escape') {
+			} else if (e.key === "Escape") {
 				$input.val(currentHp);
 				$input.blur();
 			}
 		});
 	};
 
-	$enhancedContent.find('.sdx-hp-value').on('click', (e) => {
+	$enhancedContent.find(".sdx-hp-value").on("click", (e) => {
 		e.preventDefault();
 		e.stopPropagation();
 		openHpInput();
 	});
 
-	$enhancedContent.find('.sdx-hp-bar-container').on('click', async (e) => {
+	$enhancedContent.find(".sdx-hp-bar-container").on("click", async (e) => {
 		if (!actor.isOwner) return;
-		if ($(e.target).is('input, textarea, select, button, a') || $(e.target).closest('.sdx-hp-value').length) return;
+		if ($(e.target).is("input, textarea, select, button, a") || $(e.target).closest(".sdx-hp-value").length) return;
 		e.preventDefault();
 		e.stopPropagation();
 		applyHpQuickAdjust(actor, -1, $sheet);
 	});
 
-	$enhancedContent.find('.sdx-hp-bar-container').on('contextmenu', async (e) => {
+	$enhancedContent.find(".sdx-hp-bar-container").on("contextmenu", async (e) => {
 		if (!actor.isOwner) return;
-		if ($(e.target).is('input, textarea, select, button, a')) return;
+		if ($(e.target).is("input, textarea, select, button, a")) return;
 		e.preventDefault();
 		e.stopPropagation();
 		applyHpQuickAdjust(actor, 1, $sheet);
 	});
 
 	// Luck interaction - toggle or edit based on mode
-	const $luckContainer = $enhancedContent.find('.sdx-luck-container');
+	const $luckContainer = $enhancedContent.find(".sdx-luck-container");
 
 	if (usePulpMode) {
 		// Pulp mode: click to edit the number
-		$luckContainer.on('click', async (e) => {
+		$luckContainer.on("click", async (e) => {
 			if (!actor.isOwner) return;
 			e.stopPropagation();
 
-			const $luckValue = $luckContainer.find('.sdx-luck-value');
+			const $luckValue = $luckContainer.find(".sdx-luck-value");
 			// Don't create input if it already exists
-			if ($luckContainer.find('.sdx-luck-input').length > 0) return;
+			if ($luckContainer.find(".sdx-luck-input").length > 0) return;
 
 			const currentLuck = sys.luck?.remaining ?? 0;
 
@@ -398,12 +398,12 @@ export async function injectEnhancedHeader(app, html, actor) {
 				await actor.update({ "system.luck.remaining": newLuck });
 			};
 
-			$input.on('blur', saveLuck);
-			$input.on('keydown', (e) => {
-				if (e.key === 'Enter') {
+			$input.on("blur", saveLuck);
+			$input.on("keydown", (e) => {
+				if (e.key === "Enter") {
 					e.preventDefault();
 					$input.blur();
-				} else if (e.key === 'Escape') {
+				} else if (e.key === "Escape") {
 					// Restore original value display without saving
 					const $newLuckValue = $(`<div class="sdx-luck-value">${currentLuck}</div>`);
 					$input.replaceWith($newLuckValue);
@@ -412,7 +412,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 		});
 	} else {
 		// Standard mode: toggle on/off
-		$luckContainer.on('click', async () => {
+		$luckContainer.on("click", async () => {
 			if (!actor.isOwner) return;
 			await actor.update({ "system.luck.available": !luck });
 		});
@@ -420,13 +420,13 @@ export async function injectEnhancedHeader(app, html, actor) {
 
 	// XP inline edit on click — the SD system's editable XP input lives on
 	// the Details tab and is easy to miss; mirror the luck container pattern.
-	const $xpRow = $enhancedContent.find('.sdx-xp-row');
-	$xpRow.on('click', async (e) => {
+	const $xpRow = $enhancedContent.find(".sdx-xp-row");
+	$xpRow.on("click", async (e) => {
 		if (!actor.isOwner) return;
 		e.stopPropagation();
-		if ($xpRow.find('.sdx-xp-input').length > 0) return;
+		if ($xpRow.find(".sdx-xp-input").length > 0) return;
 
-		const $xpValue = $xpRow.find('.sdx-xp-value');
+		const $xpValue = $xpRow.find(".sdx-xp-value");
 		const currentXp = sys.level?.xp ?? 0;
 
 		const $input = $(`<input type="number" class="sdx-xp-input" value="${currentXp}" min="0" />`);
@@ -440,12 +440,12 @@ export async function injectEnhancedHeader(app, html, actor) {
 			await actor.update({ "system.level.xp": newXp });
 		};
 
-		$input.on('blur', saveXp);
-		$input.on('keydown', (ev) => {
-			if (ev.key === 'Enter') {
+		$input.on("blur", saveXp);
+		$input.on("keydown", (ev) => {
+			if (ev.key === "Enter") {
 				ev.preventDefault();
 				$input.blur();
-			} else if (ev.key === 'Escape') {
+			} else if (ev.key === "Escape") {
 				const $newXpValue = $(`<span class="sdx-xp-value">${currentXp}</span>`);
 				$input.replaceWith($newXpValue);
 			}
@@ -453,7 +453,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 	});
 
 	// Actor name change
-	$enhancedContent.find('.sdx-actor-name').on('change', async function () {
+	$enhancedContent.find(".sdx-actor-name").on("change", async function() {
 		if (!actor.isOwner) return;
 		const newName = $(this).val().trim();
 		if (newName && newName !== actor.name) {
@@ -462,7 +462,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 	});
 
 	// Level-up interaction
-	$enhancedContent.find('.sdx-level-container.can-level-up').on('click', async (e) => {
+	$enhancedContent.find(".sdx-level-container.can-level-up").on("click", async (e) => {
 		if (!actor.isOwner) return;
 		e.stopPropagation();
 		e.preventDefault();
@@ -489,13 +489,13 @@ export async function injectEnhancedHeader(app, html, actor) {
 	});
 
 	// Ability rolls on click — SD 4.x uses actor.system.rollStatCheck (rollAbility was removed)
-	$enhancedContent.find('.sdx-ability').on('click', async function (event) {
-		const ability = $(this).data('ability');
+	$enhancedContent.find(".sdx-ability").on("click", async function(event) {
+		const ability = $(this).data("ability");
 		if (!ability) return;
 		const skipPrompt = event?.shiftKey === true;
-		if (typeof actor.system?.rollStatCheck === 'function') {
+		if (typeof actor.system?.rollStatCheck === "function") {
 			await actor.system.rollStatCheck(String(ability).toLowerCase(), { skipPrompt });
-		} else if (typeof actor.rollAbility === 'function') {
+		} else if (typeof actor.rollAbility === "function") {
 			// Legacy SD <4.x
 			actor.rollAbility(ability);
 		} else {
@@ -504,7 +504,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 	});
 
 	// Initiative roll - if in combat, roll for combat initiative; otherwise just roll dex
-	$enhancedContent.find('.sdx-init-container').on('click', async () => {
+	$enhancedContent.find(".sdx-init-container").on("click", async () => {
 		// Check if there's an active combat and this actor has a combatant in it
 		if (game.combat) {
 			const combatant = game.combat.combatants.find(c => c.actorId === actor.id);
@@ -515,10 +515,10 @@ export async function injectEnhancedHeader(app, html, actor) {
 			}
 		}
 		// Fallback: just roll a dex stat check if not in combat (SD 4.x: rollStatCheck)
-		if (typeof actor.system?.rollStatCheck === 'function') {
-			await actor.system.rollStatCheck('dex');
-		} else if (typeof actor.rollAbility === 'function') {
-			actor.rollAbility('dex');
+		if (typeof actor.system?.rollStatCheck === "function") {
+			await actor.system.rollStatCheck("dex");
+		} else if (typeof actor.rollAbility === "function") {
+			actor.rollAbility("dex");
 		}
 	});
 }
@@ -539,12 +539,12 @@ function getXpForNextLevel(currentLevel) {
  * Allows GMs and sheet owners to set a custom background image for the header
  */
 export function injectHeaderCustomization(app, html, actor) {
-	const $header = html.find('.SD-header').first();
+	const $header = html.find(".SD-header").first();
 	if (!$header.length) return;
 
 	// Clean up any existing elements first (in case of re-render)
-	$header.find('.sdx-header-settings-btn').remove();
-	$header.find('.sdx-header-settings-menu').remove();
+	$header.find(".sdx-header-settings-btn").remove();
+	$header.find(".sdx-header-settings-menu").remove();
 
 	// Apply any existing custom backgrounds
 	applyHeaderBackground(html, actor);
@@ -556,7 +556,7 @@ export function injectHeaderCustomization(app, html, actor) {
 	}
 
 	// Make header position relative for absolute positioned children
-	$header.css('position', 'relative');
+	$header.css("position", "relative");
 
 	// Create the settings button
 	const $settingsBtn = $(`
@@ -592,29 +592,29 @@ export function injectHeaderCustomization(app, html, actor) {
 	$(document).off(eventNS);
 
 	// Toggle menu visibility
-	$settingsBtn.on('click', (event) => {
+	$settingsBtn.on("click", (event) => {
 		event.preventDefault();
 		event.stopPropagation();
-		$settingsBtn.toggleClass('active');
-		$settingsMenu.toggleClass('visible');
+		$settingsBtn.toggleClass("active");
+		$settingsMenu.toggleClass("visible");
 	});
 
 	// Close menu when clicking outside
 	$(document).on(`click${eventNS}`, (event) => {
-		if (!$(event.target).closest('.sdx-header-settings-btn, .sdx-header-settings-menu').length) {
-			$settingsBtn.removeClass('active');
-			$settingsMenu.removeClass('visible');
+		if (!$(event.target).closest(".sdx-header-settings-btn, .sdx-header-settings-menu").length) {
+			$settingsBtn.removeClass("active");
+			$settingsMenu.removeClass("visible");
 		}
 	});
 
 	// Handle select image button
-	$settingsMenu.find('.sdx-header-select-image').on('click', async (event) => {
+	$settingsMenu.find(".sdx-header-select-image").on("click", async (event) => {
 		event.preventDefault();
 		event.stopPropagation();
 
 		// Close the menu
-		$settingsBtn.removeClass('active');
-		$settingsMenu.removeClass('visible');
+		$settingsBtn.removeClass("active");
+		$settingsMenu.removeClass("visible");
 
 		// Open file picker - use imagevideo to allow webm files
 		const currentImage = actor.getFlag(MODULE_ID, "headerBackground") || "";
@@ -625,19 +625,19 @@ export function injectHeaderCustomization(app, html, actor) {
 				await actor.setFlag(MODULE_ID, "headerBackground", path);
 				// Force sheet re-render to apply the background properly
 				app.render(false);
-			}
+			},
 		});
 		fp.render(true);
 	});
 
 	// Handle remove image button
-	$settingsMenu.find('.sdx-header-remove-image').on('click', async (event) => {
+	$settingsMenu.find(".sdx-header-remove-image").on("click", async (event) => {
 		event.preventDefault();
 		event.stopPropagation();
 
 		// Close the menu
-		$settingsBtn.removeClass('active');
-		$settingsMenu.removeClass('visible');
+		$settingsBtn.removeClass("active");
+		$settingsMenu.removeClass("visible");
 
 		// Remove the custom background
 		await actor.unsetFlag(MODULE_ID, "headerBackground");
@@ -667,25 +667,25 @@ function applyHeaderBackground(html, actor) {
 		}
 	}
 	// Find the form - html might BE the form or contain it
-	let $form = html.is('form') ? html : html.find('form').first();
-	if (!$form.length) $form = html.closest('form');
+	let $form = html.is("form") ? html : html.find("form").first();
+	if (!$form.length) $form = html.closest("form");
 	if (!$form.length) return;
 
-	const $header = $form.find('.SD-header').first();
-	const $nav = $form.find('.SD-nav').first();
+	const $header = $form.find(".SD-header").first();
+	const $nav = $form.find(".SD-nav").first();
 
 	if (!$header.length) return;
 
 	// Remove any existing background extension
-	$form.find('.sdx-header-bg-extension').remove();
+	$form.find(".sdx-header-bg-extension").remove();
 
 	if (!headerBg) {
-		$header.removeClass('sdx-custom-header');
-		$header.css('background-image', '');
+		$header.removeClass("sdx-custom-header");
+		$header.css("background-image", "");
 		return;
 	}
 
-	$header.addClass('sdx-custom-header');
+	$header.addClass("sdx-custom-header");
 
 	// Calculate the height needed to cover header + nav (including margins, padding, borders)
 	const updateBgHeight = () => {
@@ -698,7 +698,7 @@ function applyHeaderBackground(html, actor) {
 		// Calculate from the top of header to the bottom of nav, relative to form
 		// Add extra padding to ensure it covers the full nav including border-bottom
 		const totalHeight = (navRect.bottom - formRect.top) + 30;
-		$form.find('.sdx-header-bg-extension').css('height', totalHeight + 'px');
+		$form.find(".sdx-header-bg-extension").css("height", totalHeight + "px");
 	};
 
 	// Check if it's a video file
@@ -708,7 +708,7 @@ function applyHeaderBackground(html, actor) {
 	const $bgExtension = $('<div class="sdx-header-bg-extension"></div>');
 
 	if (isVideo) {
-		const videoType = headerBg.split('.').pop().toLowerCase();
+		const videoType = headerBg.split(".").pop().toLowerCase();
 		const $video = $(`
 			<video autoplay loop muted playsinline>
 				<source src="${headerBg}" type="video/${videoType}">
@@ -716,7 +716,7 @@ function applyHeaderBackground(html, actor) {
 		`);
 		$bgExtension.append($video);
 	} else {
-		$bgExtension.css('background-image', `url("${headerBg}")`);
+		$bgExtension.css("background-image", `url("${headerBg}")`);
 	}
 
 	// Insert at the beginning of the form
@@ -733,12 +733,12 @@ function applyHeaderBackground(html, actor) {
  * Similar to player sheet customization but adapted for party layout
  */
 export function injectPartyHeaderCustomization(app, html, actor) {
-	const $header = html.find('.party-header.SD-header').first();
+	const $header = html.find(".party-header.SD-header").first();
 	if (!$header.length) return;
 
 	// Clean up any existing elements first (in case of re-render)
-	$header.find('.sdx-header-settings-btn').remove();
-	$header.find('.sdx-header-settings-menu').remove();
+	$header.find(".sdx-header-settings-btn").remove();
+	$header.find(".sdx-header-settings-menu").remove();
 
 	// Apply any existing custom backgrounds
 	applyPartyHeaderBackground(html, actor);
@@ -750,7 +750,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 	}
 
 	// Make header position relative for absolute positioned children
-	$header.css('position', 'relative');
+	$header.css("position", "relative");
 
 	// Create the settings button
 	const $settingsBtn = $(`
@@ -786,29 +786,29 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 	$(document).off(eventNS);
 
 	// Toggle menu visibility
-	$settingsBtn.on('click', (event) => {
+	$settingsBtn.on("click", (event) => {
 		event.preventDefault();
 		event.stopPropagation();
-		$settingsBtn.toggleClass('active');
-		$settingsMenu.toggleClass('visible');
+		$settingsBtn.toggleClass("active");
+		$settingsMenu.toggleClass("visible");
 	});
 
 	// Close menu when clicking outside
 	$(document).on(`click${eventNS}`, (event) => {
-		if (!$(event.target).closest('.sdx-header-settings-btn, .sdx-header-settings-menu').length) {
-			$settingsBtn.removeClass('active');
-			$settingsMenu.removeClass('visible');
+		if (!$(event.target).closest(".sdx-header-settings-btn, .sdx-header-settings-menu").length) {
+			$settingsBtn.removeClass("active");
+			$settingsMenu.removeClass("visible");
 		}
 	});
 
 	// Handle select image button
-	$settingsMenu.find('.sdx-header-select-image').on('click', async (event) => {
+	$settingsMenu.find(".sdx-header-select-image").on("click", async (event) => {
 		event.preventDefault();
 		event.stopPropagation();
 
 		// Close the menu
-		$settingsBtn.removeClass('active');
-		$settingsMenu.removeClass('visible');
+		$settingsBtn.removeClass("active");
+		$settingsMenu.removeClass("visible");
 
 		// Open file picker - use imagevideo to allow webm files
 		const currentImage = actor.getFlag(MODULE_ID, "partyHeaderBackground") || "";
@@ -819,19 +819,19 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 				await actor.setFlag(MODULE_ID, "partyHeaderBackground", path);
 				// Force sheet re-render to apply the background properly
 				app.render(false);
-			}
+			},
 		});
 		fp.render(true);
 	});
 
 	// Handle remove image button
-	$settingsMenu.find('.sdx-header-remove-image').on('click', async (event) => {
+	$settingsMenu.find(".sdx-header-remove-image").on("click", async (event) => {
 		event.preventDefault();
 		event.stopPropagation();
 
 		// Close the menu
-		$settingsBtn.removeClass('active');
-		$settingsMenu.removeClass('visible');
+		$settingsBtn.removeClass("active");
+		$settingsMenu.removeClass("visible");
 
 		// Remove the custom background
 		await actor.unsetFlag(MODULE_ID, "partyHeaderBackground");
@@ -842,8 +842,8 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 
 	// Portrait click to launch tokenizer (if vtta-tokenizer module is active)
 	// Hold Shift to open the default Foundry file picker instead
-	const $portrait = $header.find('.party-portrait');
-	$portrait.off('click.sdxPartyPortrait').on('click.sdxPartyPortrait', async (e) => {
+	const $portrait = $header.find(".party-portrait");
+	$portrait.off("click.sdxPartyPortrait").on("click.sdxPartyPortrait", async (e) => {
 		if (!actor.isOwner && !game.user.isGM) return;
 		e.preventDefault();
 		e.stopPropagation();
@@ -855,7 +855,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 				current: actor.img,
 				callback: async (path) => {
 					await actor.update({ img: path });
-				}
+				},
 			});
 			return fp.browse();
 		}
@@ -868,7 +868,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 				current: actor.img,
 				callback: async (path) => {
 					await actor.update({ img: path });
-				}
+				},
 			});
 			return fp.browse();
 		}
@@ -882,7 +882,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 				const options = {
 					name: actor.name,
 					type: "npc", // Party actors are NPC type
-					avatarFilename: actor.img
+					avatarFilename: actor.img,
 				};
 				window.Tokenizer.launch(options, (response) => {
 					//console.log("shadowdark-extras | Tokenizer response:", response);
@@ -895,7 +895,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 					current: actor.img,
 					callback: async (path) => {
 						await actor.update({ img: path });
-					}
+					},
 				});
 				return fp.browse();
 			}
@@ -926,24 +926,24 @@ function applyPartyHeaderBackground(html, actor) {
 	}
 
 	// Find the form - html might BE the form or contain it
-	let $form = html.is('form') ? html : html.find('form').first();
-	if (!$form.length) $form = html.closest('form');
+	let $form = html.is("form") ? html : html.find("form").first();
+	if (!$form.length) $form = html.closest("form");
 	if (!$form.length) return;
 
-	const $header = $form.find('.party-header.SD-header').first();
-	const $nav = $form.find('.SD-nav').first();
+	const $header = $form.find(".party-header.SD-header").first();
+	const $nav = $form.find(".SD-nav").first();
 
 	if (!$header.length) return;
 
 	// Remove any existing background extension
-	$form.find('.sdx-party-header-bg-extension').remove();
+	$form.find(".sdx-party-header-bg-extension").remove();
 
 	if (!headerBg) {
-		$header.removeClass('sdx-custom-party-header');
+		$header.removeClass("sdx-custom-party-header");
 		return;
 	}
 
-	$header.addClass('sdx-custom-party-header');
+	$header.addClass("sdx-custom-party-header");
 
 	// Calculate the height needed to cover header + nav
 	const updateBgHeight = () => {
@@ -956,7 +956,7 @@ function applyPartyHeaderBackground(html, actor) {
 		// Calculate from the top of header to the bottom of nav, relative to form
 		// Add extra padding to ensure background covers full tab area
 		const totalHeight = (navRect.bottom - formRect.top) + 30;
-		$form.find('.sdx-party-header-bg-extension').css('height', totalHeight + 'px');
+		$form.find(".sdx-party-header-bg-extension").css("height", totalHeight + "px");
 	};
 
 	// Check if it's a video file
@@ -966,7 +966,7 @@ function applyPartyHeaderBackground(html, actor) {
 	const $bgExtension = $('<div class="sdx-party-header-bg-extension"></div>');
 
 	if (isVideo) {
-		const videoType = headerBg.split('.').pop().toLowerCase();
+		const videoType = headerBg.split(".").pop().toLowerCase();
 		const $video = $(`
 			<video autoplay loop muted playsinline>
 				<source src="${headerBg}" type="video/${videoType}">
@@ -974,7 +974,7 @@ function applyPartyHeaderBackground(html, actor) {
 		`);
 		$bgExtension.append($video);
 	} else {
-		$bgExtension.css('background-image', `url("${headerBg}")`);
+		$bgExtension.css("background-image", `url("${headerBg}")`);
 	}
 
 	// Insert at the beginning of the form
@@ -1003,7 +1003,7 @@ export function injectAddCoinsButton(html, actor) {
 
 	// Find the coins box in the inventory sidebar
 	// The coins box has a header with label "COINS" and an empty span
-	const coinsBox = html.find('.tab-inventory .SD-box').filter((_, el) => {
+	const coinsBox = html.find(".tab-inventory .SD-box").filter((_, el) => {
 		const hasCoinsInput = $(el).find('input[name*="coins"]').length > 0;
 		return hasCoinsInput;
 	});
@@ -1011,7 +1011,7 @@ export function injectAddCoinsButton(html, actor) {
 	if (coinsBox.length === 0) return;
 
 	// Find the empty span in the header and add the buttons
-	const headerSpan = coinsBox.find('.header span').first();
+	const headerSpan = coinsBox.find(".header span").first();
 	if (headerSpan.length === 0) return;
 
 	// Check if there are other players/Party to transfer to
@@ -1088,11 +1088,11 @@ async function showAddCoinsDialog(actor) {
 				return {
 					gp: parseInt(form.gp.value) || 0,
 					sp: parseInt(form.sp.value) || 0,
-					cp: parseInt(form.cp.value) || 0
+					cp: parseInt(form.cp.value) || 0,
 				};
-			}
+			},
 		},
-		rejectClose: false
+		rejectClose: false,
 	});
 
 	if (!result) return;
@@ -1109,14 +1109,14 @@ async function showAddCoinsDialog(actor) {
 	await actor.update({
 		"system.coins.gp": newGp,
 		"system.coins.sp": newSp,
-		"system.coins.cp": newCp
+		"system.coins.cp": newCp,
 	});
 
 	// Build notification message
 	const parts = [];
-	if (gp !== 0) parts.push(`${gp > 0 ? '+' : ''}${gp} ${gpLabel}`);
-	if (sp !== 0) parts.push(`${sp > 0 ? '+' : ''}${sp} ${spLabel}`);
-	if (cp !== 0) parts.push(`${cp > 0 ? '+' : ''}${cp} ${cpLabel}`);
+	if (gp !== 0) parts.push(`${gp > 0 ? "+" : ""}${gp} ${gpLabel}`);
+	if (sp !== 0) parts.push(`${sp > 0 ? "+" : ""}${sp} ${spLabel}`);
+	if (cp !== 0) parts.push(`${cp > 0 ? "+" : ""}${cp} ${cpLabel}`);
 
 	ui.notifications.info(
 		game.i18n.format("SHADOWDARK_EXTRAS.coins_updated", { coins: parts.join(", ") })

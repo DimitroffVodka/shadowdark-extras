@@ -1,164 +1,164 @@
 // Scene/Character management and broadcasting system
 
-import { TOM_CONFIG } from './TomConfig.mjs';
-import { TomStore } from '../tom/TomStore.mjs';
-import { TomMigrationService } from '../tom/TomMigrationService.mjs';
-import { TomSocketHandler } from '../tom/TomSocketHandler.mjs';
+import { TOM_CONFIG } from "./TomConfig.mjs";
+import { TomStore } from "../tom/TomStore.mjs";
+import { TomMigrationService } from "../tom/TomMigrationService.mjs";
+import { TomSocketHandler } from "../tom/TomSocketHandler.mjs";
 
 export class TomSD {
-  static ID = TOM_CONFIG.MODULE_ID;
-  static FEATURE_ID = TOM_CONFIG.FEATURE_ID;
+	static ID = TOM_CONFIG.MODULE_ID;
+	static FEATURE_ID = TOM_CONFIG.FEATURE_ID;
 
-  static initialize() {
-    console.log(`Shadowdark Extras | Tom | Initializing`);
+	static initialize() {
+		console.log("Shadowdark Extras | Tom | Initializing");
 
-    // Register Handlebars Helpers
-    this._registerHandlebarsHelpers();
+		// Register Handlebars Helpers
+		this._registerHandlebarsHelpers();
 
-    // Register Settings
-    this._registerSettings();
+		// Register Settings
+		this._registerSettings();
 
 
-    // Register Hooks
-    Hooks.on('ready', this._onReady.bind(this));
+		// Register Hooks
+		Hooks.on("ready", this._onReady.bind(this));
 
-    // Listen for actor HP changes to update arena tokens
-    Hooks.on('updateActor', this._onActorUpdate.bind(this));
+		// Listen for actor HP changes to update arena tokens
+		Hooks.on("updateActor", this._onActorUpdate.bind(this));
 
-    // Hook to fix critical failure styling
-    Hooks.on('renderChatMessageHTML', (message, html, context) => {
-      const diceTotal = html.querySelector('.dice-total.failure');
-      if (diceTotal) {
-        if (diceTotal.innerText.includes('Critical Failure!')) {
-          diceTotal.classList.add('fumble');
-        }
-      }
+		// Hook to fix critical failure styling
+		Hooks.on("renderChatMessageHTML", (message, html, context) => {
+			const diceTotal = html.querySelector(".dice-total.failure");
+			if (diceTotal) {
+				if (diceTotal.innerText.includes("Critical Failure!")) {
+					diceTotal.classList.add("fumble");
+				}
+			}
 
-      const diceTotalSuccess = html.querySelector('.dice-total.success');
-      if (diceTotalSuccess) {
-        if (diceTotalSuccess.innerText.includes('Critical Success!')) {
-          diceTotalSuccess.classList.add('critical');
-        }
-      }
-    });
-  }
+			const diceTotalSuccess = html.querySelector(".dice-total.success");
+			if (diceTotalSuccess) {
+				if (diceTotalSuccess.innerText.includes("Critical Success!")) {
+					diceTotalSuccess.classList.add("critical");
+				}
+			}
+		});
+	}
 
-  /**
+	/**
    * Handle actor updates to sync arena token HP display
    */
-  static _onActorUpdate(actor, changes, options, userId) {
-    // Only process HP changes
-    const hpChanged = foundry.utils.hasProperty(changes, 'system.attributes.hp.value') ||
-      foundry.utils.hasProperty(changes, 'system.hp.value');
-    if (!hpChanged) return;
+	static _onActorUpdate(actor, changes, options, userId) {
+		// Only process HP changes
+		const hpChanged = foundry.utils.hasProperty(changes, "system.attributes.hp.value") ||
+      foundry.utils.hasProperty(changes, "system.hp.value");
+		if (!hpChanged) return;
 
-    // Import and update arena tokens that use this actor
-    import('../tom/TomPlayerView.mjs').then(({ TomPlayerView }) => {
-      if (!TomPlayerView._instance) return;
+		// Import and update arena tokens that use this actor
+		import("../tom/TomPlayerView.mjs").then(({ TomPlayerView }) => {
+			if (!TomPlayerView._instance) return;
 
-      const arenaTokens = TomPlayerView._instance.uiState.arenaTokens;
-      for (const [tokenId, token] of arenaTokens) {
-        if (token.actorId === actor.id || token.ownerId === actor.id) {
-          // Get new HP values
-          const hp = actor.system?.attributes?.hp?.value ?? actor.system?.hp?.value ?? 0;
-          const maxHp = actor.system?.attributes?.hp?.max ?? actor.system?.hp?.max ?? 0;
+			const arenaTokens = TomPlayerView._instance.uiState.arenaTokens;
+			for (const [tokenId, token] of arenaTokens) {
+				if (token.actorId === actor.id || token.ownerId === actor.id) {
+					// Get new HP values
+					const hp = actor.system?.attributes?.hp?.value ?? actor.system?.hp?.value ?? 0;
+					const maxHp = actor.system?.attributes?.hp?.max ?? actor.system?.hp?.max ?? 0;
 
-          // Update token state and display
-          token.currentHp = hp;
-          token.maxHp = maxHp;
-          TomPlayerView.updateArenaTokenHp(tokenId, hp, maxHp);
-        }
-      }
-    });
-  }
+					// Update token state and display
+					token.currentHp = hp;
+					token.maxHp = maxHp;
+					TomPlayerView.updateArenaTokenHp(tokenId, hp, maxHp);
+				}
+			}
+		});
+	}
 
-  static _registerHandlebarsHelpers() {
-    // Math helpers
-    if (!Handlebars.helpers.subtract) {
-      Handlebars.registerHelper('subtract', (a, b) => (a || 0) - (b || 0));
-    }
-    if (!Handlebars.helpers.add) {
-      Handlebars.registerHelper('add', (a, b) => (a || 0) + (b || 0));
-    }
-    if (!Handlebars.helpers.divide) {
-      Handlebars.registerHelper('divide', (a, b) => b ? (a || 0) / b : 0);
-    }
-    if (!Handlebars.helpers.multiply) {
-      Handlebars.registerHelper('multiply', (a, b) => (a || 0) * (b || 0));
-    }
+	static _registerHandlebarsHelpers() {
+		// Math helpers
+		if (!Handlebars.helpers.subtract) {
+			Handlebars.registerHelper("subtract", (a, b) => (a || 0) - (b || 0));
+		}
+		if (!Handlebars.helpers.add) {
+			Handlebars.registerHelper("add", (a, b) => (a || 0) + (b || 0));
+		}
+		if (!Handlebars.helpers.divide) {
+			Handlebars.registerHelper("divide", (a, b) => b ? (a || 0) / b : 0);
+		}
+		if (!Handlebars.helpers.multiply) {
+			Handlebars.registerHelper("multiply", (a, b) => (a || 0) * (b || 0));
+		}
 
-    // Comparison helpers (if not already registered by Foundry)
-    if (!Handlebars.helpers.gt) {
-      Handlebars.registerHelper('gt', (a, b) => a > b);
-    }
-    if (!Handlebars.helpers.eq) {
-      Handlebars.registerHelper('eq', (a, b) => a === b);
-    }
-    if (!Handlebars.helpers.lt) {
-      Handlebars.registerHelper('lt', (a, b) => a < b);
-    }
-  }
+		// Comparison helpers (if not already registered by Foundry)
+		if (!Handlebars.helpers.gt) {
+			Handlebars.registerHelper("gt", (a, b) => a > b);
+		}
+		if (!Handlebars.helpers.eq) {
+			Handlebars.registerHelper("eq", (a, b) => a === b);
+		}
+		if (!Handlebars.helpers.lt) {
+			Handlebars.registerHelper("lt", (a, b) => a < b);
+		}
+	}
 
-  static _registerSettings() {
-    // Data storage settings
-    game.settings.register(this.ID, TOM_CONFIG.SETTINGS.DATA_VERSION, {
-      name: 'Tom Data Version',
-      scope: 'world',
-      config: false,
-      type: Number,
-      default: 0
-    });
+	static _registerSettings() {
+		// Data storage settings
+		game.settings.register(this.ID, TOM_CONFIG.SETTINGS.DATA_VERSION, {
+			name: "Tom Data Version",
+			scope: "world",
+			config: false,
+			type: Number,
+			default: 0,
+		});
 
-    game.settings.register(this.ID, TOM_CONFIG.SETTINGS.SCENES, {
-      scope: 'world',
-      config: false,
-      type: Array,
-      default: []
-    });
+		game.settings.register(this.ID, TOM_CONFIG.SETTINGS.SCENES, {
+			scope: "world",
+			config: false,
+			type: Array,
+			default: [],
+		});
 
-    game.settings.register(this.ID, 'tom-folders', {
-      name: 'Tom Scene Folders',
-      scope: 'world',
-      config: false,
-      type: Array,
-      default: []
-    });
-  }
+		game.settings.register(this.ID, "tom-folders", {
+			name: "Tom Scene Folders",
+			scope: "world",
+			config: false,
+			type: Array,
+			default: [],
+		});
+	}
 
 
 
-  static async _onReady() {
-    console.log(`Shadowdark Extras | Tom | Ready`);
+	static async _onReady() {
+		console.log("Shadowdark Extras | Tom | Ready");
 
-    // Initialize Store
-    await TomStore.initialize();
+		// Initialize Store
+		await TomStore.initialize();
 
-    // Run Migration
-    await TomMigrationService.migrate();
+		// Run Migration
+		await TomMigrationService.migrate();
 
-    // Initialize Sockets
-    TomSocketHandler.initialize();
-  }
+		// Initialize Sockets
+		TomSocketHandler.initialize();
+	}
 
-  /**
+	/**
    * Open the appropriate panel based on user role
    */
-  static open() {
-    // Character management panel has been removed
-    // Players can now only view broadcasting scenes
-  }
+	static open() {
+		// Character management panel has been removed
+		// Players can now only view broadcasting scenes
+	}
 
-  /**
+	/**
    * Close all Tom panels
    */
-  static close() {
-    // Character management panel has been removed
-  }
+	static close() {
+		// Character management panel has been removed
+	}
 
-  /**
+	/**
    * Open Player Panel directly
    */
-  static openPlayerPanel() {
-    // Character management panel has been removed
-  }
+	static openPlayerPanel() {
+		// Character management panel has been removed
+	}
 }

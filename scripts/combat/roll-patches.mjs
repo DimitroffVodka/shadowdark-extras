@@ -44,13 +44,13 @@ function getEdgeToEdgeDistance(token1, token2) {
 		left: token1.x,
 		right: token1.x + (token1.document.width * gridSize),
 		top: token1.y,
-		bottom: token1.y + (token1.document.height * gridSize)
+		bottom: token1.y + (token1.document.height * gridSize),
 	};
 	const t2 = {
 		left: token2.x,
 		right: token2.x + (token2.document.width * gridSize),
 		top: token2.y,
-		bottom: token2.y + (token2.document.height * gridSize)
+		bottom: token2.y + (token2.document.height * gridSize),
 	};
 
 	// Find the nearest point on t1's edge to t2
@@ -85,7 +85,7 @@ export function setupRollAttackPatches() {
 		if (model.prototype.__sdxRollAttackPatched) return true;
 		const originalRollAttack = model.prototype.rollAttack;
 
-		model.prototype.rollAttack = async function (itemId, options = {}) {
+		model.prototype.rollAttack = async function(itemId, options = {}) {
 			const actor = this.parent || this; // Handle both ActorSD and Data Model
 
 			// SD 4.x rollAttack(weaponUuid) resolves its weapon via fromUuid(), so a
@@ -172,7 +172,7 @@ export function setupRollAttackPatches() {
 					if (ammoItem) {
 						options._sdxAmmoSelected = true;
 						const originalAvailableAmmunition = item.availableAmmunition;
-						item.availableAmmunition = function () { return [ammoItem]; };
+						item.availableAmmunition = function() { return [ammoItem]; };
 
 						try {
 							// Temporarily monkeypatch item.rollItem to inject bonuses.
@@ -180,7 +180,7 @@ export function setupRollAttackPatches() {
 							// async rollItem(parts, data, options={}) — see
 							// systems/shadowdark/src/documents/ItemSD.mjs:214.
 							const originalRollItem = item.rollItem;
-							item.rollItem = function (parts, data, options) {
+							item.rollItem = function(parts, data, options) {
 								if (!data._sdxAmmoBonusesApplied) {
 									const ammoHitBonus = String(ammoItem.getFlag(MODULE_ID, "ammoHitBonus") || "").trim();
 									const ammoDamageBonus = String(ammoItem.getFlag(MODULE_ID, "ammoDamageBonus") || "").trim();
@@ -227,7 +227,7 @@ export function setupRollAttackPatches() {
 							return await originalRollAttack.call(this, forwardId, options);
 						} finally {
 							item.availableAmmunition = originalAvailableAmmunition;
-							if (typeof originalRollItem === 'function') item.rollItem = originalRollItem;
+							if (typeof originalRollItem === "function") item.rollItem = originalRollItem;
 						}
 					} else {
 						return ui.notifications.warn(game.i18n.localize("SHADOWDARK.item.errors.no_available_ammunition"));
@@ -252,7 +252,7 @@ export function setupRollAttackPatches() {
 	const ActorSD = globalThis.shadowdark?.documents?.ActorSD;
 	if (ActorSD && !ActorSD.prototype.__sdxAmmunitionItemsPatched) {
 		const originalAmmunitionItems = ActorSD.prototype.ammunitionItems;
-		ActorSD.prototype.ammunitionItems = function (key) {
+		ActorSD.prototype.ammunitionItems = function(key) {
 			const allAmmo = this.items.filter(i => i.system.isAmmunition && i.system.quantity > 0);
 			if (key) {
 				allAmmo.sort((a, b) => {
@@ -279,7 +279,7 @@ export function setupRollConfigPatches() {
 		if (!generators || actor.__sdxRollConfigPatched) return;
 
 		for (const [type, original] of Object.entries(generators)) {
-			generators[type] = async function (config) {
+			generators[type] = async function(config) {
 				await original.call(this, config);
 				if (actor.type !== "Player") return;
 
@@ -495,79 +495,79 @@ export function setupRollConfigPatches() {
 			}
 		}
 
-			// Hand the hit-bonus breakdown to the chat card.
-			//
-			// It travels on the roll config, which Shadowdark stores whole as
-			// `flags.shadowdark.rollConfig` (ChatSD.renderRollMessage), so no
-			// module-scope stash and no actor/item key matching is needed — the
-			// card reads back exactly what this dialog applied, including any
-			// promptable bonus the player ticked. Underscore-prefixed keys survive
-			// that round trip; verified against a live ChatMessage.
-			//
-			// `result` is the numeric total, but only when every part is a plain
-			// constant. A dice-valued bonus is rolled inside the d20 roll, so its
-			// value is not knowable here; null tells the card to show the formula
-			// alone rather than invent a number.
-			if (sdxHitParts.length) {
-				const asNumber = f => Number(String(f).trim().replace(/^\+/, ""));
-				const allConstant = sdxHitParts.every(p => Number.isFinite(asNumber(p.formula)));
-				config._sdxHitBonusInfo = {
-					formula: sdxHitParts.map(p => p.formula).join(" + "),
-					result: allConstant ? sdxHitParts.reduce((n, p) => n + asNumber(p.formula), 0) : null,
-					parts: sdxHitParts,
-				};
-			} else {
-				// The config object is reused across renders, so an unticked
-				// promptable bonus has to clear the previous render's entry.
-				delete config._sdxHitBonusInfo;
-			}
+		// Hand the hit-bonus breakdown to the chat card.
+		//
+		// It travels on the roll config, which Shadowdark stores whole as
+		// `flags.shadowdark.rollConfig` (ChatSD.renderRollMessage), so no
+		// module-scope stash and no actor/item key matching is needed — the
+		// card reads back exactly what this dialog applied, including any
+		// promptable bonus the player ticked. Underscore-prefixed keys survive
+		// that round trip; verified against a live ChatMessage.
+		//
+		// `result` is the numeric total, but only when every part is a plain
+		// constant. A dice-valued bonus is rolled inside the d20 roll, so its
+		// value is not knowable here; null tells the card to show the formula
+		// alone rather than invent a number.
+		if (sdxHitParts.length) {
+			const asNumber = f => Number(String(f).trim().replace(/^\+/, ""));
+			const allConstant = sdxHitParts.every(p => Number.isFinite(asNumber(p.formula)));
+			config._sdxHitBonusInfo = {
+				formula: sdxHitParts.map(p => p.formula).join(" + "),
+				result: allConstant ? sdxHitParts.reduce((n, p) => n + asNumber(p.formula), 0) : null,
+				parts: sdxHitParts,
+			};
+		} else {
+			// The config object is reused across renders, so an unticked
+			// promptable bonus has to clear the previous render's entry.
+			delete config._sdxHitBonusInfo;
+		}
 
-			// Write reconstructed values back to config
-			config.mainRoll.bonus    = hitBonus;
-			config.mainRoll.formula  = `${systemBase}${hitBonus}`;
-			config.mainRoll.tooltips = hitTooltips;
+		// Write reconstructed values back to config
+		config.mainRoll.bonus    = hitBonus;
+		config.mainRoll.formula  = `${systemBase}${hitBonus}`;
+		config.mainRoll.tooltips = hitTooltips;
 
-			if (dmgFormula != null && config.damageRoll) {
-				config.damageRoll.formula  = dmgFormula;
-				config.damageRoll.tooltips = dmgTooltips;
-			}
+		if (dmgFormula != null && config.damageRoll) {
+			config.damageRoll.formula  = dmgFormula;
+			config.damageRoll.tooltips = dmgTooltips;
+		}
 
-			// Update formula inputs and tooltip text in the already-rendered dialog.
-			// The template has already been rendered with stale values; we patch the DOM
-			// directly. The tooltip lives in <p class="tooltips"> inside .roll-input.
-			const hitInput = html.querySelector(`input[name="mainRoll.formula"]`);
-			if (hitInput && hitInput.value !== config.mainRoll.formula) {
-				hitInput.value = config.mainRoll.formula;
-			}
-			if (hitTooltips) {
-				const hitRollDiv = hitInput?.closest(".roll-input");
-				if (hitRollDiv) {
-					let tooltipEl = hitRollDiv.querySelector("p.tooltips");
-					if (!tooltipEl) {
-						tooltipEl = document.createElement("p");
-						tooltipEl.className = "tooltips";
-						hitRollDiv.appendChild(tooltipEl);
-					}
-					tooltipEl.textContent = hitTooltips;
+		// Update formula inputs and tooltip text in the already-rendered dialog.
+		// The template has already been rendered with stale values; we patch the DOM
+		// directly. The tooltip lives in <p class="tooltips"> inside .roll-input.
+		const hitInput = html.querySelector("input[name=\"mainRoll.formula\"]");
+		if (hitInput && hitInput.value !== config.mainRoll.formula) {
+			hitInput.value = config.mainRoll.formula;
+		}
+		if (hitTooltips) {
+			const hitRollDiv = hitInput?.closest(".roll-input");
+			if (hitRollDiv) {
+				let tooltipEl = hitRollDiv.querySelector("p.tooltips");
+				if (!tooltipEl) {
+					tooltipEl = document.createElement("p");
+					tooltipEl.className = "tooltips";
+					hitRollDiv.appendChild(tooltipEl);
 				}
+				tooltipEl.textContent = hitTooltips;
 			}
+		}
 
-			const dmgInput = html.querySelector(`input[name="damageRoll.formula"]`);
-			if (dmgInput && dmgFormula != null && config.damageRoll) {
-				dmgInput.value = config.damageRoll.formula;
-			}
-			if (dmgTooltips && dmgInput) {
-				const dmgRollDiv = dmgInput.closest(".roll-input");
-				if (dmgRollDiv) {
-					let tooltipEl = dmgRollDiv.querySelector("p.tooltips");
-					if (!tooltipEl) {
-						tooltipEl = document.createElement("p");
-						tooltipEl.className = "tooltips";
-						dmgRollDiv.appendChild(tooltipEl);
-					}
-					tooltipEl.textContent = dmgTooltips;
+		const dmgInput = html.querySelector("input[name=\"damageRoll.formula\"]");
+		if (dmgInput && dmgFormula != null && config.damageRoll) {
+			dmgInput.value = config.damageRoll.formula;
+		}
+		if (dmgTooltips && dmgInput) {
+			const dmgRollDiv = dmgInput.closest(".roll-input");
+			if (dmgRollDiv) {
+				let tooltipEl = dmgRollDiv.querySelector("p.tooltips");
+				if (!tooltipEl) {
+					tooltipEl = document.createElement("p");
+					tooltipEl.className = "tooltips";
+					dmgRollDiv.appendChild(tooltipEl);
 				}
+				tooltipEl.textContent = dmgTooltips;
 			}
+		}
 
 		// Drop any container left by a previous render before injecting a fresh
 		// one. Toggling a promptable bonus re-runs the generator and re-renders,
@@ -580,26 +580,26 @@ export function setupRollConfigPatches() {
 		// Inject promptable bonus UI (optional bonuses the user can toggle)
 		if (hitBonuses.length === 0 && damageBonuses.length === 0) return;
 
-		const promptContainer = document.createElement('div');
-		promptContainer.className = 'sdx-prompt-bonuses';
-		promptContainer.innerHTML = '<hr>';
+		const promptContainer = document.createElement("div");
+		promptContainer.className = "sdx-prompt-bonuses";
+		promptContainer.innerHTML = "<hr>";
 
 		const createSection = (title, bonuses, selectedKey) => {
 			if (bonuses.length === 0) return;
-			const section = document.createElement('div');
-			section.className = 'sdx-prompt-section';
+			const section = document.createElement("div");
+			section.className = "sdx-prompt-section";
 			section.innerHTML = `<label class="sdx-prompt-section-label">${title}</label>`;
 
 			bonuses.forEach((bonus) => {
 				const isChecked = config[selectedKey]?.some(b => b.index === bonus.index) ?? false;
-				const row = document.createElement('div');
-				row.className = `sdx-prompt-bonus-row ${isChecked ? 'sdx-bonus-checked' : ''}`;
+				const row = document.createElement("div");
+				row.className = `sdx-prompt-bonus-row ${isChecked ? "sdx-bonus-checked" : ""}`;
 				row.innerHTML = `
-					<i class="fas ${isChecked ? 'fa-check-square' : 'fa-square'} sdx-toggle-icon"></i>
+					<i class="fas ${isChecked ? "fa-check-square" : "fa-square"} sdx-toggle-icon"></i>
 					<span class="sdx-prompt-bonus-label">+${bonus.label ? `${bonus.formula} (${bonus.label})` : bonus.formula}</span>
 				`;
 
-				row.addEventListener('click', async () => {
+				row.addEventListener("click", async () => {
 					config[selectedKey] ??= [];
 					const idx = config[selectedKey].findIndex(b => b.index === bonus.index);
 					if (idx >= 0) config[selectedKey].splice(idx, 1);
@@ -615,10 +615,10 @@ export function setupRollConfigPatches() {
 			promptContainer.appendChild(section);
 		};
 
-		createSection('Optional To Hit Bonuses', hitBonuses, '_sdxSelectedHitBonuses');
-		createSection('Optional Damage Bonuses', damageBonuses, '_sdxSelectedDamageBonuses');
+		createSection("Optional To Hit Bonuses", hitBonuses, "_sdxSelectedHitBonuses");
+		createSection("Optional Damage Bonuses", damageBonuses, "_sdxSelectedDamageBonuses");
 
-		const footer = html.querySelector('footer');
+		const footer = html.querySelector("footer");
 		if (footer) footer.before(promptContainer);
 	});
 }

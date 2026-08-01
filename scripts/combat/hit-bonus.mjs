@@ -103,13 +103,13 @@ function injectHitBonusDisplay(html, hitBonusInfo) {
 	const sign = hitBonusInfo.result > 0 ? "+" : "";
 
 	let bonusHtml = `<div class="sdx-hit-bonus-display" ${tooltipAttr}>`;
-	bonusHtml += `<span class="sdx-hit-bonus-label">Hit Bonus:</span>`;
+	bonusHtml += "<span class=\"sdx-hit-bonus-label\">Hit Bonus:</span>";
 	bonusHtml += `<span class="sdx-hit-bonus-formula">${hitBonusInfo.formula}</span>`;
 	if (hasResult) {
-		bonusHtml += `<span class="sdx-hit-bonus-equals">=</span>`;
+		bonusHtml += "<span class=\"sdx-hit-bonus-equals\">=</span>";
 		bonusHtml += `<span class="sdx-hit-bonus-result">${sign}${hitBonusInfo.result}</span>`;
 	}
-	bonusHtml += `</div>`;
+	bonusHtml += "</div>";
 
 	// Insert after the roll result but before any damage section.
 	const anchor = html.querySelector(".card-attack-roll") ?? html.querySelector(".dice-roll");

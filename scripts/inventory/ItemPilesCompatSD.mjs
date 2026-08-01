@@ -65,7 +65,7 @@ export function getPileEquipmentUpdates(actor) {
 		)
 		.map(item => ({
 			_id: item.id,
-			"system.equipped": false
+			"system.equipped": false,
 		}));
 }
 
@@ -133,7 +133,7 @@ export function initItemPilesCompatibility() {
 		setTimeout(() => {
 			Promise.all([
 				ensureIdentificationSimilarity(),
-				normalizeExistingPileEquipment()
+				normalizeExistingPileEquipment(),
 			]).catch(error => {
 				console.warn(
 					`${MODULE_ID} | Could not finish Item Piles compatibility setup`,

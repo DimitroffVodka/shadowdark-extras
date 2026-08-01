@@ -48,7 +48,7 @@ void main() {
 
     gl_FragColor = vec4(colour, original.a);
 }
-`
+`,
 	},
 	space: {
 		label: "Space",
@@ -117,7 +117,7 @@ void main() {
 
     gl_FragColor = vec4(v * 0.01, original.a);
 }
-`
+`,
 	},
 	fumes: {
 		label: "Fumes",
@@ -162,7 +162,7 @@ void main() {
 
     gl_FragColor = vec4(col, original.a);
 }
-`
+`,
 	},
 	voronoi: {
 		label: "Voronoi",
@@ -247,7 +247,7 @@ void main() {
 
     gl_FragColor = vec4(col.rgb, original.a);
 }
-`
+`,
 	},
 	mist: {
 		label: "Mist",
@@ -308,7 +308,7 @@ void main() {
 
     gl_FragColor = vec4(col, original.a);
 }
-`
+`,
 	},
 	warp: {
 		label: "Warp",
@@ -345,7 +345,7 @@ void main() {
 
     gl_FragColor = vec4(col, original.a);
 }
-`
+`,
 	},
 	sky: {
 		label: "Sky",
@@ -454,7 +454,7 @@ void main() {
 
     gl_FragColor = vec4(result, original.a);
 }
-`
+`,
 	},
 	zippy: {
 		label: "Zippy",
@@ -508,8 +508,8 @@ void main() {
 
     gl_FragColor = vec4(o.rgb, original.a);
 }
-`
-	}
+`,
+	},
 };
 
 let fog = null;
@@ -577,7 +577,7 @@ export async function setHexFogEffect(sceneId, effectName) {
 export function getAvailableHexFogEffects() {
 	return Object.entries(FOG_SHADERS).map(([name, data]) => ({
 		name,
-		label: data.label
+		label: data.label,
 	}));
 }
 
@@ -989,7 +989,7 @@ function _applyFogShader(effectName) {
 
 	const filter = new PIXI.Filter(null, shaderDef.fragment, {
 		uTime: 0.0,
-		uUVToWorld: [1, 1, 0, 0]
+		uUVToWorld: [1, 1, 0, 0],
 	});
 	// Lock filter to screen-space so zoom/pan don't cause texture recreation
 	filter.autoFit = false;
@@ -1012,7 +1012,7 @@ function _applyFogShader(effectName) {
 			sw / (zoom * dw),        // scaleX
 			sh / (zoom * dh),        // scaleY
 			-panX / (zoom * dw),     // offsetX
-			-panY / (zoom * dh)      // offsetY
+			-panY / (zoom * dh),      // offsetY
 		];
 	};
 	canvas.app.ticker.add(_shaderTick);
@@ -1075,7 +1075,7 @@ function _drawFog() {
 			const center = canvas.grid.getCenterPoint({ i, j });
 			const offsetShape = cellShape.map(p => ({
 				x: p.x + center.x,
-				y: p.y + center.y
+				y: p.y + center.y,
 			}));
 
 			if (texMatrix) {
@@ -1111,7 +1111,7 @@ function _drawFogMask(revealed, exploredKeys, rows, cols, cellShape) {
 			const center = canvas.grid.getCenterPoint({ i, j });
 			const offsetShape = cellShape.map(p => ({
 				x: p.x + center.x,
-				y: p.y + center.y
+				y: p.y + center.y,
 			}));
 
 			fogMask.beginFill(isRevealed ? 0xffffff : 0x000000, 1);

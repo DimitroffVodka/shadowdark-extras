@@ -13,803 +13,803 @@ const { DocumentSheetV2, HandlebarsApplicationMixin } = foundry.applications.api
 const TextEditorImpl = foundry.applications?.ux?.TextEditor?.implementation ?? TextEditor;
 
 function normalizeProfiles(profiles) {
-    if (Array.isArray(profiles)) return [...profiles];
-    if (profiles && typeof profiles === "object") return Object.values(profiles);
-    return [];
+	if (Array.isArray(profiles)) return [...profiles];
+	if (profiles && typeof profiles === "object") return Object.values(profiles);
+	return [];
 }
 
 /**
  * AppV2-based Item Sheet for Potion items
  */
 export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSheetV2) {
-    static DEFAULT_OPTIONS = {
-        classes: ["shadowdark-extras", "potion-sheet"],
-        tag: "form",
-        window: {
-            frame: true,
-            positioned: true,
-            icon: "fas fa-flask",
-            resizable: true,
-            contentClasses: ["standard-form"]
-        },
-        position: {
-            width: 550,
-            height: 600
-        },
-        form: {
-            submitOnChange: true,
-            closeOnSubmit: false
-        },
-        actions: {
-            removeEffect: PotionSheetSD.#onRemoveEffect,
-            removeCriticalEffect: PotionSheetSD.#onRemoveCriticalEffect,
-            addSummonProfile: PotionSheetSD.#onAddSummonProfile,
-            removeSummonProfile: PotionSheetSD.#onRemoveSummonProfile,
-            addItemGiveProfile: PotionSheetSD.#onAddItemGiveProfile,
-            removeItemGiveProfile: PotionSheetSD.#onRemoveItemGiveProfile,
-            itemMacro: PotionSheetSD.#onItemMacro,
-            toggleIdentified: PotionSheetSD.#onToggleIdentified
-        }
-    };
+	static DEFAULT_OPTIONS = {
+		classes: ["shadowdark-extras", "potion-sheet"],
+		tag: "form",
+		window: {
+			frame: true,
+			positioned: true,
+			icon: "fas fa-flask",
+			resizable: true,
+			contentClasses: ["standard-form"],
+		},
+		position: {
+			width: 550,
+			height: 600,
+		},
+		form: {
+			submitOnChange: true,
+			closeOnSubmit: false,
+		},
+		actions: {
+			removeEffect: PotionSheetSD.#onRemoveEffect,
+			removeCriticalEffect: PotionSheetSD.#onRemoveCriticalEffect,
+			addSummonProfile: PotionSheetSD.#onAddSummonProfile,
+			removeSummonProfile: PotionSheetSD.#onRemoveSummonProfile,
+			addItemGiveProfile: PotionSheetSD.#onAddItemGiveProfile,
+			removeItemGiveProfile: PotionSheetSD.#onRemoveItemGiveProfile,
+			itemMacro: PotionSheetSD.#onItemMacro,
+			toggleIdentified: PotionSheetSD.#onToggleIdentified,
+		},
+	};
 
-    static PARTS = {
-        header: {
-            template: `modules/${MODULE_ID}/templates/potion-sheet/header.hbs`
-        },
-        tabs: {
-            template: `modules/${MODULE_ID}/templates/potion-sheet/tabs.hbs`
-        },
-        details: {
-            template: `modules/${MODULE_ID}/templates/potion-sheet/details.hbs`
-        },
-        activity: {
-            template: `modules/${MODULE_ID}/templates/potion-sheet/activity.hbs`
-        },
-        description: {
-            template: `modules/${MODULE_ID}/templates/potion-sheet/description.hbs`
-        },
-        macro: {
-            template: `modules/${MODULE_ID}/templates/potion-sheet/macro.hbs`
-        }
-    };
+	static PARTS = {
+		header: {
+			template: `modules/${MODULE_ID}/templates/potion-sheet/header.hbs`,
+		},
+		tabs: {
+			template: `modules/${MODULE_ID}/templates/potion-sheet/tabs.hbs`,
+		},
+		details: {
+			template: `modules/${MODULE_ID}/templates/potion-sheet/details.hbs`,
+		},
+		activity: {
+			template: `modules/${MODULE_ID}/templates/potion-sheet/activity.hbs`,
+		},
+		description: {
+			template: `modules/${MODULE_ID}/templates/potion-sheet/description.hbs`,
+		},
+		macro: {
+			template: `modules/${MODULE_ID}/templates/potion-sheet/macro.hbs`,
+		},
+	};
 
-    /**
+	/**
      * Available tabs for the sheet
      */
-    static TABS = {
-        details: { id: "details", group: "primary", label: "Details", icon: "fas fa-list" },
-        activity: { id: "activity", group: "primary", label: "Activity", icon: "fas fa-bolt" },
-        description: { id: "description", group: "primary", label: "Description", icon: "fas fa-book" },
-        macro: { id: "macro", group: "primary", label: "Macro", icon: "fas fa-code" }
-    };
+	static TABS = {
+		details: { id: "details", group: "primary", label: "Details", icon: "fas fa-list" },
+		activity: { id: "activity", group: "primary", label: "Activity", icon: "fas fa-bolt" },
+		description: { id: "description", group: "primary", label: "Description", icon: "fas fa-book" },
+		macro: { id: "macro", group: "primary", label: "Macro", icon: "fas fa-code" },
+	};
 
-    /**
+	/**
      * Track active tab
      */
-    tabGroups = {
-        primary: "details"
-    };
+	tabGroups = {
+		primary: "details",
+	};
 
-    /* -------------------------------------------- */
-    /*  Properties                                  */
-    /* -------------------------------------------- */
+	/* -------------------------------------------- */
+	/*  Properties                                  */
+	/* -------------------------------------------- */
 
-    get title() {
-        return `[Potion] ${this.document.name}`;
-    }
+	get title() {
+		return `[Potion] ${this.document.name}`;
+	}
 
-    get item() {
-        return this.document;
-    }
+	get item() {
+		return this.document;
+	}
 
-    /* -------------------------------------------- */
-    /*  Header Buttons                              */
-    /* -------------------------------------------- */
+	/* -------------------------------------------- */
+	/*  Header Buttons                              */
+	/* -------------------------------------------- */
 
-    /** @override */
-    _getHeaderControls() {
-        const controls = super._getHeaderControls();
+	/** @override */
+	_getHeaderControls() {
+		const controls = super._getHeaderControls();
 
-        // Add Item Macro button
-        controls.unshift({
-            icon: "fas fa-code",
-            label: "Item Macro",
-            action: "itemMacro",
-            class: "item-macro-header-btn"
-        });
+		// Add Item Macro button
+		controls.unshift({
+			icon: "fas fa-code",
+			label: "Item Macro",
+			action: "itemMacro",
+			class: "item-macro-header-btn",
+		});
 
-        return controls;
-    }
+		return controls;
+	}
 
-    /* -------------------------------------------- */
-    /*  Context Preparation                         */
-    /* -------------------------------------------- */
+	/* -------------------------------------------- */
+	/*  Context Preparation                         */
+	/* -------------------------------------------- */
 
-    async _prepareContext(options) {
-        const context = await super._prepareContext(options);
-        const item = this.item;
-        const source = item.toObject();
+	async _prepareContext(options) {
+		const context = await super._prepareContext(options);
+		const item = this.item;
+		const source = item.toObject();
 
-        // Core data
-        context.item = item;
-        context.source = source;
-        context.system = item.system;
-        context.flags = item.flags;
-        context.isEditable = this.isEditable;
-        context.isGM = game.user.isGM;
+		// Core data
+		context.item = item;
+		context.source = source;
+		context.system = item.system;
+		context.flags = item.flags;
+		context.isEditable = this.isEditable;
+		context.isGM = game.user.isGM;
 
-        // Config
-        context.config = CONFIG.SHADOWDARK;
+		// Config
+		context.config = CONFIG.SHADOWDARK;
 
-        // Sources for dropdown
-        context.sources = await shadowdark.compendiums.sources();
+		// Sources for dropdown
+		context.sources = await shadowdark.compendiums.sources();
 
-        // SDX flags with defaults
-        context.sdxFlags = this._getSDXFlags();
+		// SDX flags with defaults
+		context.sdxFlags = this._getSDXFlags();
 
-        // Damage types
-        context.damageTypes = [
-            { value: "", label: "Select Type" },
-            { value: "Fire", label: "Fire" },
-            { value: "Cold", label: "Cold" },
-            { value: "Lightning", label: "Lightning" },
-            { value: "Acid", label: "Acid" },
-            { value: "Poison", label: "Poison" },
-            { value: "Necrotic", label: "Necrotic" },
-            { value: "Radiant", label: "Radiant" },
-            { value: "Force", label: "Force" },
-            { value: "Psychic", label: "Psychic" },
-            { value: "Healing", label: "Healing" }
-        ];
+		// Damage types
+		context.damageTypes = [
+			{ value: "", label: "Select Type" },
+			{ value: "Fire", label: "Fire" },
+			{ value: "Cold", label: "Cold" },
+			{ value: "Lightning", label: "Lightning" },
+			{ value: "Acid", label: "Acid" },
+			{ value: "Poison", label: "Poison" },
+			{ value: "Necrotic", label: "Necrotic" },
+			{ value: "Radiant", label: "Radiant" },
+			{ value: "Force", label: "Force" },
+			{ value: "Psychic", label: "Psychic" },
+			{ value: "Healing", label: "Healing" },
+		];
 
-        context.dieTypes = [
-            { value: "d4", label: "d4" },
-            { value: "d6", label: "d6" },
-            { value: "d8", label: "d8" },
-            { value: "d10", label: "d10" },
-            { value: "d12", label: "d12" },
-            { value: "d20", label: "d20" }
-        ];
+		context.dieTypes = [
+			{ value: "d4", label: "d4" },
+			{ value: "d6", label: "d6" },
+			{ value: "d8", label: "d8" },
+			{ value: "d10", label: "d10" },
+			{ value: "d12", label: "d12" },
+			{ value: "d20", label: "d20" },
+		];
 
-        context.scalingOptions = [
-            { value: "none", label: "No Scaling" },
-            { value: "every-level", label: "Every Level" },
-            { value: "every-other-level", label: "Every Other Level" }
-        ];
+		context.scalingOptions = [
+			{ value: "none", label: "No Scaling" },
+			{ value: "every-level", label: "Every Level" },
+			{ value: "every-other-level", label: "Every Other Level" },
+		];
 
-        // Load effects from UUIDs
-        context.effectsList = await this._loadEffects(context.sdxFlags.effects || []);
-        context.criticalEffectsList = await this._loadEffects(context.sdxFlags.criticalEffects || []);
+		// Load effects from UUIDs
+		context.effectsList = await this._loadEffects(context.sdxFlags.effects || []);
+		context.criticalEffectsList = await this._loadEffects(context.sdxFlags.criticalEffects || []);
 
-        // Load summon profiles
-        context.summonProfiles = context.sdxFlags.summoning?.profiles || [];
+		// Load summon profiles
+		context.summonProfiles = context.sdxFlags.summoning?.profiles || [];
 
-        // Load item give profiles
-        context.itemGiveProfiles = context.sdxFlags.itemGive?.profiles || [];
+		// Load item give profiles
+		context.itemGiveProfiles = context.sdxFlags.itemGive?.profiles || [];
 
-        // Identification (native SD 4.x). The item's real name/description live in
-        // item.name / system.description while identified; the "other" copy is held
-        // in system.identification.{name,description}. system.toggleIdentified()
-        // swaps them and disables/enables the item's Active Effects. The rest of the
-        // module (and the base system) mask items for players off system.isIdentified,
-        // so the sheet MUST drive that native state — the old
-        // flags.shadowdark-extras.unidentified flag is no longer read anywhere.
-        context.isUnidentified = this._isUnidentified();
-        context.identificationName = item.system?.identification?.name ?? "";
-        context.identificationDescription = item.system?.identification?.description ?? "";
-        // Players must not learn what an unidentified item is or does. GM-only
-        // fields (real name/description) gate on isGM in the templates; the tabs
-        // that reveal mechanics (Activity) or GM code (Macro) are dropped from
-        // the tab set below for a non-GM viewing an unidentified item.
-        context.hideItemFunction = !context.isGM && context.isUnidentified;
+		// Identification (native SD 4.x). The item's real name/description live in
+		// item.name / system.description while identified; the "other" copy is held
+		// in system.identification.{name,description}. system.toggleIdentified()
+		// swaps them and disables/enables the item's Active Effects. The rest of the
+		// module (and the base system) mask items for players off system.isIdentified,
+		// so the sheet MUST drive that native state — the old
+		// flags.shadowdark-extras.unidentified flag is no longer read anywhere.
+		context.isUnidentified = this._isUnidentified();
+		context.identificationName = item.system?.identification?.name ?? "";
+		context.identificationDescription = item.system?.identification?.description ?? "";
+		// Players must not learn what an unidentified item is or does. GM-only
+		// fields (real name/description) gate on isGM in the templates; the tabs
+		// that reveal mechanics (Activity) or GM code (Macro) are dropped from
+		// the tab set below for a non-GM viewing an unidentified item.
+		context.hideItemFunction = !context.isGM && context.isUnidentified;
 
-        // Enrich description
-        context.enrichedDescription = await TextEditorImpl.enrichHTML(item.system.description, {
-            secrets: item.isOwner,
-            async: true,
-            relativeTo: item
-        });
+		// Enrich description
+		context.enrichedDescription = await TextEditorImpl.enrichHTML(item.system.description, {
+			secrets: item.isOwner,
+			async: true,
+			relativeTo: item,
+		});
 
-        context.enrichedIdentificationDescription = await TextEditorImpl.enrichHTML(context.identificationDescription, {
-            secrets: item.isOwner,
-            async: true,
-            relativeTo: item
-        });
+		context.enrichedIdentificationDescription = await TextEditorImpl.enrichHTML(context.identificationDescription, {
+			secrets: item.isOwner,
+			async: true,
+			relativeTo: item,
+		});
 
-        // Item Macro content
-        context.macroId = item.id;
-        context.macroCommand = item.getFlag(MODULE_ID, "macroCommand") ?? item.flags?.itemacro?.macro?.command ?? "";
-        context.macroName = item.getFlag(MODULE_ID, "macroName") ?? item.flags?.itemacro?.macro?.name ?? item.name;
+		// Item Macro content
+		context.macroId = item.id;
+		context.macroCommand = item.getFlag(MODULE_ID, "macroCommand") ?? item.flags?.itemacro?.macro?.command ?? "";
+		context.macroName = item.getFlag(MODULE_ID, "macroName") ?? item.flags?.itemacro?.macro?.name ?? item.name;
 
-        // Tabs
-        context.tabs = this._prepareTabs();
+		// Tabs
+		context.tabs = this._prepareTabs();
 
-        return context;
-    }
+		return context;
+	}
 
-    /**
+	/**
      * Get SDX flags with defaults
      */
-    _getSDXFlags() {
-        const item = this.item;
-        const flags = item.flags?.[MODULE_ID] || {};
+	_getSDXFlags() {
+		const item = this.item;
+		const flags = item.flags?.[MODULE_ID] || {};
 
-        return {
-            // Spell damage/healing
-            enabled: flags.spellDamage?.enabled ?? false,
-            damageType: flags.spellDamage?.damageType ?? "",
-            formulaType: flags.spellDamage?.formulaType ?? "basic",
-            numDice: flags.spellDamage?.numDice ?? 1,
-            dieType: flags.spellDamage?.dieType ?? "d6",
-            bonus: flags.spellDamage?.bonus ?? 0,
-            scaling: flags.spellDamage?.scaling ?? "none",
-            scalingDice: flags.spellDamage?.scalingDice ?? 0,
-            formula: flags.spellDamage?.formula ?? "",
-            tieredFormula: flags.spellDamage?.tieredFormula ?? "",
-            damageRequirement: flags.spellDamage?.damageRequirement ?? "",
-            damageRequirementFailAction: flags.spellDamage?.damageRequirementFailAction ?? "zero",
-            effectsRequirement: flags.spellDamage?.effectsRequirement ?? "",
-            effectsApplyToTarget: flags.spellDamage?.effectsApplyToTarget ?? false,
-            effectSelectionMode: flags.spellDamage?.effectSelectionMode ?? "all",
-            effects: flags.spellDamage?.effects ?? [],
-            criticalEffects: flags.spellDamage?.criticalEffects ?? [],
+		return {
+			// Spell damage/healing
+			enabled: flags.spellDamage?.enabled ?? false,
+			damageType: flags.spellDamage?.damageType ?? "",
+			formulaType: flags.spellDamage?.formulaType ?? "basic",
+			numDice: flags.spellDamage?.numDice ?? 1,
+			dieType: flags.spellDamage?.dieType ?? "d6",
+			bonus: flags.spellDamage?.bonus ?? 0,
+			scaling: flags.spellDamage?.scaling ?? "none",
+			scalingDice: flags.spellDamage?.scalingDice ?? 0,
+			formula: flags.spellDamage?.formula ?? "",
+			tieredFormula: flags.spellDamage?.tieredFormula ?? "",
+			damageRequirement: flags.spellDamage?.damageRequirement ?? "",
+			damageRequirementFailAction: flags.spellDamage?.damageRequirementFailAction ?? "zero",
+			effectsRequirement: flags.spellDamage?.effectsRequirement ?? "",
+			effectsApplyToTarget: flags.spellDamage?.effectsApplyToTarget ?? false,
+			effectSelectionMode: flags.spellDamage?.effectSelectionMode ?? "all",
+			effects: flags.spellDamage?.effects ?? [],
+			criticalEffects: flags.spellDamage?.criticalEffects ?? [],
 
-            // Duration tracking
-            trackDuration: flags.spellDamage?.trackDuration ?? false,
-            perTurnTrigger: flags.spellDamage?.perTurnTrigger ?? "start",
-            perTurnDamage: flags.spellDamage?.perTurnDamage ?? "",
-            reapplyEffects: flags.spellDamage?.reapplyEffects ?? false,
+			// Duration tracking
+			trackDuration: flags.spellDamage?.trackDuration ?? false,
+			perTurnTrigger: flags.spellDamage?.perTurnTrigger ?? "start",
+			perTurnDamage: flags.spellDamage?.perTurnDamage ?? "",
+			reapplyEffects: flags.spellDamage?.reapplyEffects ?? false,
 
-            // Summoning
-            summoning: {
-                enabled: flags.summoning?.enabled ?? false,
-                profiles: normalizeProfiles(flags.summoning?.profiles),
-                deleteAtExpiry: flags.summoning?.deleteAtExpiry ?? false
-            },
+			// Summoning
+			summoning: {
+				enabled: flags.summoning?.enabled ?? false,
+				profiles: normalizeProfiles(flags.summoning?.profiles),
+				deleteAtExpiry: flags.summoning?.deleteAtExpiry ?? false,
+			},
 
-            // Item give
-            itemGive: {
-                enabled: flags.itemGive?.enabled ?? false,
-                profiles: flags.itemGive?.profiles ?? []
-            },
+			// Item give
+			itemGive: {
+				enabled: flags.itemGive?.enabled ?? false,
+				profiles: flags.itemGive?.profiles ?? [],
+			},
 
-            // Item macro
-            itemMacro: {
-                runAsGm: flags.itemMacro?.runAsGm ?? false,
-                executeOnUse: flags.itemMacro?.executeOnUse ?? (flags.itemMacro?.triggers?.includes?.("onCast") ?? true)
-            },
+			// Item macro
+			itemMacro: {
+				runAsGm: flags.itemMacro?.runAsGm ?? false,
+				executeOnUse: flags.itemMacro?.executeOnUse ?? (flags.itemMacro?.triggers?.includes?.("onCast") ?? true),
+			},
 
-            // Coating Poison
-            coatingPoison: {
-                enabled: flags.coatingPoison?.enabled ?? false,
-                formulaType: flags.coatingPoison?.formulaType ?? "basic",
-                numDice: flags.coatingPoison?.numDice ?? 1,
-                dieType: flags.coatingPoison?.dieType ?? "d6",
-                bonus: flags.coatingPoison?.bonus ?? 0,
-                formula: flags.coatingPoison?.formula ?? "",
-                tieredFormula: flags.coatingPoison?.tieredFormula ?? "",
-                usage: flags.coatingPoison?.usage ?? null
-            }
-        };
-    }
+			// Coating Poison
+			coatingPoison: {
+				enabled: flags.coatingPoison?.enabled ?? false,
+				formulaType: flags.coatingPoison?.formulaType ?? "basic",
+				numDice: flags.coatingPoison?.numDice ?? 1,
+				dieType: flags.coatingPoison?.dieType ?? "d6",
+				bonus: flags.coatingPoison?.bonus ?? 0,
+				formula: flags.coatingPoison?.formula ?? "",
+				tieredFormula: flags.coatingPoison?.tieredFormula ?? "",
+				usage: flags.coatingPoison?.usage ?? null,
+			},
+		};
+	}
 
-    /**
+	/**
      * Load effect documents from UUIDs
      */
-    async _loadEffects(effectsArray) {
-        if (!effectsArray?.length) return [];
+	async _loadEffects(effectsArray) {
+		if (!effectsArray?.length) return [];
 
-        const loaded = [];
-        for (const effect of effectsArray) {
-            const uuid = typeof effect === 'string' ? effect : effect.uuid;
-            const duration = typeof effect === 'object' ? effect.duration : {};
+		const loaded = [];
+		for (const effect of effectsArray) {
+			const uuid = typeof effect === "string" ? effect : effect.uuid;
+			const duration = typeof effect === "object" ? effect.duration : {};
 
-            try {
-                const doc = await fromUuid(uuid);
-                if (doc) {
-                    loaded.push({
-                        uuid,
-                        name: doc.name,
-                        img: doc.img || "icons/svg/mystery-man.svg",
-                        duration
-                    });
-                }
-            } catch (err) {
-                console.warn(`${MODULE_ID} | Failed to load effect ${uuid}:`, err);
-            }
-        }
-        return loaded;
-    }
+			try {
+				const doc = await fromUuid(uuid);
+				if (doc) {
+					loaded.push({
+						uuid,
+						name: doc.name,
+						img: doc.img || "icons/svg/mystery-man.svg",
+						duration,
+					});
+				}
+			} catch (err) {
+				console.warn(`${MODULE_ID} | Failed to load effect ${uuid}:`, err);
+			}
+		}
+		return loaded;
+	}
 
-    /**
+	/**
      * True when the item is unidentified via SD 4.x native identification.
      */
-    _isUnidentified() {
-        const ident = this.item.system?.identification;
-        return ident ? !this.item.system.isIdentified : false;
-    }
+	_isUnidentified() {
+		const ident = this.item.system?.identification;
+		return ident ? !this.item.system.isIdentified : false;
+	}
 
-    /**
+	/**
      * Prepare tabs configuration
      */
-    _prepareTabs() {
-        // Hide the mechanics-revealing tabs from a non-GM viewing an unidentified
-        // item, so a player can't read what the potion does off the sheet.
-        const hidden = (!game.user.isGM && this._isUnidentified())
-            ? new Set(["activity", "macro"])
-            : new Set();
+	_prepareTabs() {
+		// Hide the mechanics-revealing tabs from a non-GM viewing an unidentified
+		// item, so a player can't read what the potion does off the sheet.
+		const hidden = (!game.user.isGM && this._isUnidentified())
+			? new Set(["activity", "macro"])
+			: new Set();
 
-        // If the active tab is one we're hiding, fall back to the always-visible
-        // Details tab so the sheet doesn't open to an empty body.
-        let active = this.tabGroups.primary;
-        if (hidden.has(active)) active = "details";
+		// If the active tab is one we're hiding, fall back to the always-visible
+		// Details tab so the sheet doesn't open to an empty body.
+		let active = this.tabGroups.primary;
+		if (hidden.has(active)) active = "details";
 
-        const tabs = {};
-        for (const [key, config] of Object.entries(PotionSheetSD.TABS)) {
-            if (hidden.has(key)) continue;
-            tabs[key] = {
-                ...config,
-                active: active === key,
-                cssClass: active === key ? "active" : ""
-            };
-        }
-        return tabs;
-    }
+		const tabs = {};
+		for (const [key, config] of Object.entries(PotionSheetSD.TABS)) {
+			if (hidden.has(key)) continue;
+			tabs[key] = {
+				...config,
+				active: active === key,
+				cssClass: active === key ? "active" : "",
+			};
+		}
+		return tabs;
+	}
 
-    /* -------------------------------------------- */
-    /*  Part Preparation                            */
-    /* -------------------------------------------- */
+	/* -------------------------------------------- */
+	/*  Part Preparation                            */
+	/* -------------------------------------------- */
 
-    async _preparePartContext(partId, context, options) {
-        context.partId = `${this.id}-${partId}`;
-        context.tab = context.tabs[partId];
-        return context;
-    }
+	async _preparePartContext(partId, context, options) {
+		context.partId = `${this.id}-${partId}`;
+		context.tab = context.tabs[partId];
+		return context;
+	}
 
-    /* -------------------------------------------- */
-    /*  Rendering                                   */
-    /* -------------------------------------------- */
+	/* -------------------------------------------- */
+	/*  Rendering                                   */
+	/* -------------------------------------------- */
 
-    _onRender(context, options) {
-        super._onRender(context, options);
-        const html = this.element;
+	_onRender(context, options) {
+		super._onRender(context, options);
+		const html = this.element;
 
-        // Setup tab click handlers
-        const tabLinks = html.querySelectorAll(".potion-sheet-tabs .tab-item");
-        tabLinks.forEach(link => {
-            link.addEventListener("click", (event) => {
-                event.preventDefault();
-                const tab = event.currentTarget.dataset.tab;
-                this._onChangeTab(tab);
-            });
-        });
+		// Setup tab click handlers
+		const tabLinks = html.querySelectorAll(".potion-sheet-tabs .tab-item");
+		tabLinks.forEach(link => {
+			link.addEventListener("click", (event) => {
+				event.preventDefault();
+				const tab = event.currentTarget.dataset.tab;
+				this._onChangeTab(tab);
+			});
+		});
 
-        // Setup image click handler for FilePicker
-        const itemImage = html.querySelector(".item-image[data-edit='img']");
-        if (itemImage) {
-            itemImage.style.cursor = "pointer";
-            itemImage.addEventListener("click", (event) => {
-                event.preventDefault();
-                const fp = new FilePicker({
-                    type: "image",
-                    current: this.item.img,
-                    callback: async (path) => {
-                        await this.item.update({ img: path });
-                    }
-                });
-                fp.browse();
-            });
-        }
+		// Setup image click handler for FilePicker
+		const itemImage = html.querySelector(".item-image[data-edit='img']");
+		if (itemImage) {
+			itemImage.style.cursor = "pointer";
+			itemImage.addEventListener("click", (event) => {
+				event.preventDefault();
+				const fp = new FilePicker({
+					type: "image",
+					current: this.item.img,
+					callback: async (path) => {
+						await this.item.update({ img: path });
+					},
+				});
+				fp.browse();
+			});
+		}
 
-        // Setup drag-drop for effects
-        this._setupEffectsDragDrop(html);
+		// Setup drag-drop for effects
+		this._setupEffectsDragDrop(html);
 
-        // Setup drag-drop for summon creatures
-        this._setupSummonDragDrop(html);
+		// Setup drag-drop for summon creatures
+		this._setupSummonDragDrop(html);
 
-        // Setup drag-drop for item give
-        this._setupItemGiveDragDrop(html);
+		// Setup drag-drop for item give
+		this._setupItemGiveDragDrop(html);
 
-        // Toggle visibility of damage content based on checkbox
-        this._setupToggleSections(html);
+		// Toggle visibility of damage content based on checkbox
+		this._setupToggleSections(html);
 
-        // Setup formula type radio buttons
-        this._setupFormulaTypeRadios(html);
-    }
+		// Setup formula type radio buttons
+		this._setupFormulaTypeRadios(html);
+	}
 
-    /**
+	/**
      * Handle tab change
      */
-    _onChangeTab(tabId) {
-        this.tabGroups.primary = tabId;
-        this.render();
-    }
+	_onChangeTab(tabId) {
+		this.tabGroups.primary = tabId;
+		this.render();
+	}
 
-    /**
+	/**
      * Setup drag-drop for effects
      */
-    _setupEffectsDragDrop(html) {
-        const dropAreas = html.querySelectorAll(".effects-drop-area");
+	_setupEffectsDragDrop(html) {
+		const dropAreas = html.querySelectorAll(".effects-drop-area");
 
-        dropAreas.forEach(area => {
-            area.addEventListener("dragover", (event) => {
-                event.preventDefault();
-                area.classList.add("drag-over");
-            });
+		dropAreas.forEach(area => {
+			area.addEventListener("dragover", (event) => {
+				event.preventDefault();
+				area.classList.add("drag-over");
+			});
 
-            area.addEventListener("dragleave", () => {
-                area.classList.remove("drag-over");
-            });
+			area.addEventListener("dragleave", () => {
+				area.classList.remove("drag-over");
+			});
 
-            area.addEventListener("drop", async (event) => {
-                event.preventDefault();
-                area.classList.remove("drag-over");
+			area.addEventListener("drop", async (event) => {
+				event.preventDefault();
+				area.classList.remove("drag-over");
 
-                const isCritical = area.classList.contains("critical-effects");
-                await this._onDropEffect(event, isCritical);
-            });
-        });
-    }
+				const isCritical = area.classList.contains("critical-effects");
+				await this._onDropEffect(event, isCritical);
+			});
+		});
+	}
 
-    /**
+	/**
      * Handle effect drop
      */
-    async _onDropEffect(event, isCritical = false) {
-        try {
-            const data = JSON.parse(event.dataTransfer.getData("text/plain"));
-            let doc = null;
+	async _onDropEffect(event, isCritical = false) {
+		try {
+			const data = JSON.parse(event.dataTransfer.getData("text/plain"));
+			let doc = null;
 
-            if (data.uuid) {
-                doc = await fromUuid(data.uuid);
-            } else if (data.type === "Item" && data.id) {
-                if (data.pack) {
-                    const pack = game.packs.get(data.pack);
-                    doc = await pack.getDocument(data.id);
-                } else {
-                    doc = game.items.get(data.id);
-                }
-            }
+			if (data.uuid) {
+				doc = await fromUuid(data.uuid);
+			} else if (data.type === "Item" && data.id) {
+				if (data.pack) {
+					const pack = game.packs.get(data.pack);
+					doc = await pack.getDocument(data.id);
+				} else {
+					doc = game.items.get(data.id);
+				}
+			}
 
-            if (!doc) {
-                ui.notifications.warn("Could not load dropped item");
-                return;
-            }
+			if (!doc) {
+				ui.notifications.warn("Could not load dropped item");
+				return;
+			}
 
-            // Check valid type
-            const validTypes = ["Effect", "Condition", "NPC Feature"];
-            if (!validTypes.includes(doc.type)) {
-                ui.notifications.warn("Only Effect, Condition, or NPC Feature items can be dropped here");
-                return;
-            }
+			// Check valid type
+			const validTypes = ["Effect", "Condition", "NPC Feature"];
+			if (!validTypes.includes(doc.type)) {
+				ui.notifications.warn("Only Effect, Condition, or NPC Feature items can be dropped here");
+				return;
+			}
 
-            const flagKey = isCritical ? "criticalEffects" : "effects";
-            const rawEffects = this.item.getFlag(MODULE_ID, `spellDamage.${flagKey}`);
-            const currentEffects = Array.isArray(rawEffects) ? rawEffects : [];
+			const flagKey = isCritical ? "criticalEffects" : "effects";
+			const rawEffects = this.item.getFlag(MODULE_ID, `spellDamage.${flagKey}`);
+			const currentEffects = Array.isArray(rawEffects) ? rawEffects : [];
 
-            // Check for duplicates
-            const exists = currentEffects.some(e => (e.uuid || e) === doc.uuid);
-            if (exists) {
-                ui.notifications.info(`${doc.name} is already in the effects list`);
-                return;
-            }
+			// Check for duplicates
+			const exists = currentEffects.some(e => (e.uuid || e) === doc.uuid);
+			if (exists) {
+				ui.notifications.info(`${doc.name} is already in the effects list`);
+				return;
+			}
 
-            // Add new effect
-            const newEffects = [...currentEffects, { uuid: doc.uuid, duration: {} }];
-            await this.item.setFlag(MODULE_ID, `spellDamage.${flagKey}`, newEffects);
+			// Add new effect
+			const newEffects = [...currentEffects, { uuid: doc.uuid, duration: {} }];
+			await this.item.setFlag(MODULE_ID, `spellDamage.${flagKey}`, newEffects);
 
-            ui.notifications.info(`Added ${doc.name} to ${isCritical ? "critical " : ""}effects`);
-        } catch (err) {
-            console.error(`${MODULE_ID} | Error handling effect drop:`, err);
-        }
-    }
+			ui.notifications.info(`Added ${doc.name} to ${isCritical ? "critical " : ""}effects`);
+		} catch (err) {
+			console.error(`${MODULE_ID} | Error handling effect drop:`, err);
+		}
+	}
 
-    /**
+	/**
      * Setup drag-drop for summon creatures
      */
-    _setupSummonDragDrop(html) {
-        const dropZones = html.querySelectorAll(".summon-creature-drop");
+	_setupSummonDragDrop(html) {
+		const dropZones = html.querySelectorAll(".summon-creature-drop");
 
-        dropZones.forEach(zone => {
-            zone.addEventListener("dragover", (event) => {
-                event.preventDefault();
-                zone.classList.add("drag-over");
-            });
+		dropZones.forEach(zone => {
+			zone.addEventListener("dragover", (event) => {
+				event.preventDefault();
+				zone.classList.add("drag-over");
+			});
 
-            zone.addEventListener("dragleave", () => {
-                zone.classList.remove("drag-over");
-            });
+			zone.addEventListener("dragleave", () => {
+				zone.classList.remove("drag-over");
+			});
 
-            zone.addEventListener("drop", async (event) => {
-                event.preventDefault();
-                zone.classList.remove("drag-over");
+			zone.addEventListener("drop", async (event) => {
+				event.preventDefault();
+				zone.classList.remove("drag-over");
 
-                const index = parseInt(zone.dataset.index);
-                await this._onDropSummonCreature(event, index);
-            });
-        });
-    }
+				const index = parseInt(zone.dataset.index);
+				await this._onDropSummonCreature(event, index);
+			});
+		});
+	}
 
-    /**
+	/**
      * Handle summon creature drop
      */
-    async _onDropSummonCreature(event, index) {
-        try {
-            const data = JSON.parse(event.dataTransfer.getData("text/plain"));
-            let doc = null;
+	async _onDropSummonCreature(event, index) {
+		try {
+			const data = JSON.parse(event.dataTransfer.getData("text/plain"));
+			let doc = null;
 
-            if (data.uuid) {
-                doc = await fromUuid(data.uuid);
-            } else if (data.type === "Actor" && data.id) {
-                if (data.pack) {
-                    const pack = game.packs.get(data.pack);
-                    doc = await pack.getDocument(data.id);
-                } else {
-                    doc = game.actors.get(data.id);
-                }
-            }
+			if (data.uuid) {
+				doc = await fromUuid(data.uuid);
+			} else if (data.type === "Actor" && data.id) {
+				if (data.pack) {
+					const pack = game.packs.get(data.pack);
+					doc = await pack.getDocument(data.id);
+				} else {
+					doc = game.actors.get(data.id);
+				}
+			}
 
-            if (!doc || !(doc instanceof Actor)) {
-                ui.notifications.warn("Only actors can be dropped here");
-                return;
-            }
+			if (!doc || !(doc instanceof Actor)) {
+				ui.notifications.warn("Only actors can be dropped here");
+				return;
+			}
 
-            const profiles = normalizeProfiles(this.item.getFlag(MODULE_ID, "summoning.profiles"));
-            if (profiles[index]) {
-                profiles[index] = {
-                    ...profiles[index],
-                    creatureUuid: doc.uuid,
-                    creatureName: doc.name,
-                    creatureImg: doc.img || doc.prototypeToken?.texture?.src || "icons/svg/mystery-man.svg"
-                };
-                await this.item.setFlag(MODULE_ID, "summoning.profiles", profiles);
-                ui.notifications.info(`Added ${doc.name} to summon profile`);
-            }
-        } catch (err) {
-            console.error(`${MODULE_ID} | Error handling summon drop:`, err);
-        }
-    }
+			const profiles = normalizeProfiles(this.item.getFlag(MODULE_ID, "summoning.profiles"));
+			if (profiles[index]) {
+				profiles[index] = {
+					...profiles[index],
+					creatureUuid: doc.uuid,
+					creatureName: doc.name,
+					creatureImg: doc.img || doc.prototypeToken?.texture?.src || "icons/svg/mystery-man.svg",
+				};
+				await this.item.setFlag(MODULE_ID, "summoning.profiles", profiles);
+				ui.notifications.info(`Added ${doc.name} to summon profile`);
+			}
+		} catch (err) {
+			console.error(`${MODULE_ID} | Error handling summon drop:`, err);
+		}
+	}
 
-    /**
+	/**
      * Setup drag-drop for item give
      */
-    _setupItemGiveDragDrop(html) {
-        const dropZones = html.querySelectorAll(".item-give-drop");
+	_setupItemGiveDragDrop(html) {
+		const dropZones = html.querySelectorAll(".item-give-drop");
 
-        dropZones.forEach(zone => {
-            zone.addEventListener("dragover", (event) => {
-                event.preventDefault();
-                zone.classList.add("drag-over");
-            });
+		dropZones.forEach(zone => {
+			zone.addEventListener("dragover", (event) => {
+				event.preventDefault();
+				zone.classList.add("drag-over");
+			});
 
-            zone.addEventListener("dragleave", () => {
-                zone.classList.remove("drag-over");
-            });
+			zone.addEventListener("dragleave", () => {
+				zone.classList.remove("drag-over");
+			});
 
-            zone.addEventListener("drop", async (event) => {
-                event.preventDefault();
-                zone.classList.remove("drag-over");
+			zone.addEventListener("drop", async (event) => {
+				event.preventDefault();
+				zone.classList.remove("drag-over");
 
-                const index = parseInt(zone.dataset.index);
-                await this._onDropGiveItem(event, index);
-            });
-        });
-    }
+				const index = parseInt(zone.dataset.index);
+				await this._onDropGiveItem(event, index);
+			});
+		});
+	}
 
-    /**
+	/**
      * Handle item give drop
      */
-    async _onDropGiveItem(event, index) {
-        try {
-            const data = JSON.parse(event.dataTransfer.getData("text/plain"));
-            let doc = null;
+	async _onDropGiveItem(event, index) {
+		try {
+			const data = JSON.parse(event.dataTransfer.getData("text/plain"));
+			let doc = null;
 
-            if (data.uuid) {
-                doc = await fromUuid(data.uuid);
-            } else if (data.type === "Item" && data.id) {
-                if (data.pack) {
-                    const pack = game.packs.get(data.pack);
-                    doc = await pack.getDocument(data.id);
-                } else {
-                    doc = game.items.get(data.id);
-                }
-            }
+			if (data.uuid) {
+				doc = await fromUuid(data.uuid);
+			} else if (data.type === "Item" && data.id) {
+				if (data.pack) {
+					const pack = game.packs.get(data.pack);
+					doc = await pack.getDocument(data.id);
+				} else {
+					doc = game.items.get(data.id);
+				}
+			}
 
-            if (!doc || !(doc instanceof Item)) {
-                ui.notifications.warn("Only items can be dropped here");
-                return;
-            }
+			if (!doc || !(doc instanceof Item)) {
+				ui.notifications.warn("Only items can be dropped here");
+				return;
+			}
 
-            const profiles = this.item.getFlag(MODULE_ID, "itemGive.profiles") || [];
-            if (profiles[index]) {
-                profiles[index] = {
-                    ...profiles[index],
-                    itemUuid: doc.uuid,
-                    itemName: doc.name,
-                    itemImg: doc.img || "icons/svg/mystery-man.svg"
-                };
-                await this.item.setFlag(MODULE_ID, "itemGive.profiles", profiles);
-                ui.notifications.info(`Added ${doc.name} to give list`);
-            }
-        } catch (err) {
-            console.error(`${MODULE_ID} | Error handling item give drop:`, err);
-        }
-    }
+			const profiles = this.item.getFlag(MODULE_ID, "itemGive.profiles") || [];
+			if (profiles[index]) {
+				profiles[index] = {
+					...profiles[index],
+					itemUuid: doc.uuid,
+					itemName: doc.name,
+					itemImg: doc.img || "icons/svg/mystery-man.svg",
+				};
+				await this.item.setFlag(MODULE_ID, "itemGive.profiles", profiles);
+				ui.notifications.info(`Added ${doc.name} to give list`);
+			}
+		} catch (err) {
+			console.error(`${MODULE_ID} | Error handling item give drop:`, err);
+		}
+	}
 
-    /**
+	/**
      * Setup toggle sections (collapsible)
      */
-    _setupToggleSections(html) {
-        const toggles = html.querySelectorAll(".section-toggle");
-        toggles.forEach(toggle => {
-            const section = toggle.closest(".collapsible-section");
-            const content = section?.querySelector(".section-content");
-            if (content) {
-                content.style.display = toggle.checked ? "block" : "none";
-            }
+	_setupToggleSections(html) {
+		const toggles = html.querySelectorAll(".section-toggle");
+		toggles.forEach(toggle => {
+			const section = toggle.closest(".collapsible-section");
+			const content = section?.querySelector(".section-content");
+			if (content) {
+				content.style.display = toggle.checked ? "block" : "none";
+			}
 
-            toggle.addEventListener("change", () => {
-                if (content) {
-                    content.style.display = toggle.checked ? "block" : "none";
-                }
-            });
-        });
-    }
+			toggle.addEventListener("change", () => {
+				if (content) {
+					content.style.display = toggle.checked ? "block" : "none";
+				}
+			});
+		});
+	}
 
-    /**
+	/**
      * Setup formula type radio buttons
      */
-    _setupFormulaTypeRadios(html) {
-        // Spell Damage formula type radios
-        const radios = html.querySelectorAll('input[name="flags.shadowdark-extras.spellDamage.formulaType"]');
-        const sections = {
-            basic: html.querySelector(".formula-basic"),
-            formula: html.querySelector(".formula-custom"),
-            tiered: html.querySelector(".formula-tiered")
-        };
+	_setupFormulaTypeRadios(html) {
+		// Spell Damage formula type radios
+		const radios = html.querySelectorAll('input[name="flags.shadowdark-extras.spellDamage.formulaType"]');
+		const sections = {
+			basic: html.querySelector(".formula-basic"),
+			formula: html.querySelector(".formula-custom"),
+			tiered: html.querySelector(".formula-tiered"),
+		};
 
-        const updateVisibility = (selected) => {
-            Object.entries(sections).forEach(([key, section]) => {
-                if (section) {
-                    section.style.display = key === selected ? "block" : "none";
-                }
-            });
-        };
+		const updateVisibility = (selected) => {
+			Object.entries(sections).forEach(([key, section]) => {
+				if (section) {
+					section.style.display = key === selected ? "block" : "none";
+				}
+			});
+		};
 
-        // Initial state
-        const checked = html.querySelector('input[name="flags.shadowdark-extras.spellDamage.formulaType"]:checked');
-        if (checked) {
-            updateVisibility(checked.value);
-        }
+		// Initial state
+		const checked = html.querySelector('input[name="flags.shadowdark-extras.spellDamage.formulaType"]:checked');
+		if (checked) {
+			updateVisibility(checked.value);
+		}
 
-        // Change handler
-        radios.forEach(radio => {
-            radio.addEventListener("change", () => {
-                updateVisibility(radio.value);
-            });
-        });
+		// Change handler
+		radios.forEach(radio => {
+			radio.addEventListener("change", () => {
+				updateVisibility(radio.value);
+			});
+		});
 
-        // Coating Poison formula type radios
-        const cpRadios = html.querySelectorAll('input[name="flags.shadowdark-extras.coatingPoison.formulaType"]');
-        const cpSections = {
-            basic: html.querySelector(".coating-poison-basic"),
-            formula: html.querySelector(".coating-poison-formula"),
-            tiered: html.querySelector(".coating-poison-tiered")
-        };
+		// Coating Poison formula type radios
+		const cpRadios = html.querySelectorAll('input[name="flags.shadowdark-extras.coatingPoison.formulaType"]');
+		const cpSections = {
+			basic: html.querySelector(".coating-poison-basic"),
+			formula: html.querySelector(".coating-poison-formula"),
+			tiered: html.querySelector(".coating-poison-tiered"),
+		};
 
-        const updateCPVisibility = (selected) => {
-            Object.entries(cpSections).forEach(([key, section]) => {
-                if (section) {
-                    section.style.display = key === selected ? "block" : "none";
-                }
-            });
-        };
+		const updateCPVisibility = (selected) => {
+			Object.entries(cpSections).forEach(([key, section]) => {
+				if (section) {
+					section.style.display = key === selected ? "block" : "none";
+				}
+			});
+		};
 
-        // Initial state for coating poison
-        const cpChecked = html.querySelector('input[name="flags.shadowdark-extras.coatingPoison.formulaType"]:checked');
-        if (cpChecked) {
-            updateCPVisibility(cpChecked.value);
-        }
+		// Initial state for coating poison
+		const cpChecked = html.querySelector('input[name="flags.shadowdark-extras.coatingPoison.formulaType"]:checked');
+		if (cpChecked) {
+			updateCPVisibility(cpChecked.value);
+		}
 
-        // Change handler for coating poison
-        cpRadios.forEach(radio => {
-            radio.addEventListener("change", () => {
-                updateCPVisibility(radio.value);
-            });
-        });
-    }
+		// Change handler for coating poison
+		cpRadios.forEach(radio => {
+			radio.addEventListener("change", () => {
+				updateCPVisibility(radio.value);
+			});
+		});
+	}
 
-    /* -------------------------------------------- */
-    /*  Actions                                     */
-    /* -------------------------------------------- */
+	/* -------------------------------------------- */
+	/*  Actions                                     */
+	/* -------------------------------------------- */
 
-    static async #onItemMacro(event, target) {
-        this._onChangeTab("macro");
-    }
+	static async #onItemMacro(event, target) {
+		this._onChangeTab("macro");
+	}
 
-    /**
+	/**
      * Toggle the item's identified state via the native SD 4.x mechanism.
      * system.toggleIdentified() swaps item.name/description with
      * system.identification.{name,description} and disables/enables the item's
      * Active Effects — this is the state the rest of the module and the base
      * system use to mask unidentified items from players.
      */
-    static async #onToggleIdentified(event, target) {
-        // Persist a pending edit to the alternate name before the swap so the
-        // toggle uses the latest value the GM typed (its change event may not have
-        // committed yet when the checkbox is clicked).
-        const input = this.element?.querySelector('input[name="system.identification.name"]');
-        if (input) {
-            const pending = input.value ?? "";
-            if (pending !== (this.item.system?.identification?.name ?? "")) {
-                await this.item.update({ "system.identification.name": pending }, { render: false });
-            }
-        }
-        await this.item.system.toggleIdentified();
-    }
+	static async #onToggleIdentified(event, target) {
+		// Persist a pending edit to the alternate name before the swap so the
+		// toggle uses the latest value the GM typed (its change event may not have
+		// committed yet when the checkbox is clicked).
+		const input = this.element?.querySelector('input[name="system.identification.name"]');
+		if (input) {
+			const pending = input.value ?? "";
+			if (pending !== (this.item.system?.identification?.name ?? "")) {
+				await this.item.update({ "system.identification.name": pending }, { render: false });
+			}
+		}
+		await this.item.system.toggleIdentified();
+	}
 
-    static async #onRemoveEffect(event, target) {
-        const uuid = target.dataset.uuid;
-        const rawEffects = this.item.getFlag(MODULE_ID, "spellDamage.effects");
-        const currentEffects = Array.isArray(rawEffects) ? rawEffects : [];
-        const newEffects = currentEffects.filter(e => (e.uuid || e) !== uuid);
-        await this.item.setFlag(MODULE_ID, "spellDamage.effects", newEffects);
-    }
+	static async #onRemoveEffect(event, target) {
+		const uuid = target.dataset.uuid;
+		const rawEffects = this.item.getFlag(MODULE_ID, "spellDamage.effects");
+		const currentEffects = Array.isArray(rawEffects) ? rawEffects : [];
+		const newEffects = currentEffects.filter(e => (e.uuid || e) !== uuid);
+		await this.item.setFlag(MODULE_ID, "spellDamage.effects", newEffects);
+	}
 
-    static async #onRemoveCriticalEffect(event, target) {
-        const uuid = target.dataset.uuid;
-        const rawEffects = this.item.getFlag(MODULE_ID, "spellDamage.criticalEffects");
-        const currentEffects = Array.isArray(rawEffects) ? rawEffects : [];
-        const newEffects = currentEffects.filter(e => (e.uuid || e) !== uuid);
-        await this.item.setFlag(MODULE_ID, "spellDamage.criticalEffects", newEffects);
-    }
+	static async #onRemoveCriticalEffect(event, target) {
+		const uuid = target.dataset.uuid;
+		const rawEffects = this.item.getFlag(MODULE_ID, "spellDamage.criticalEffects");
+		const currentEffects = Array.isArray(rawEffects) ? rawEffects : [];
+		const newEffects = currentEffects.filter(e => (e.uuid || e) !== uuid);
+		await this.item.setFlag(MODULE_ID, "spellDamage.criticalEffects", newEffects);
+	}
 
-    static async #onAddSummonProfile(event, target) {
-        const rawProfiles = this.item.getFlag(MODULE_ID, "summoning.profiles");
-        const profiles = normalizeProfiles(rawProfiles);
-        profiles.push({
-            creatureUuid: "",
-            creatureName: "",
-            creatureImg: "",
-            count: "1",
-            displayName: ""
-        });
-        await this.item.setFlag(MODULE_ID, "summoning.profiles", profiles);
-    }
+	static async #onAddSummonProfile(event, target) {
+		const rawProfiles = this.item.getFlag(MODULE_ID, "summoning.profiles");
+		const profiles = normalizeProfiles(rawProfiles);
+		profiles.push({
+			creatureUuid: "",
+			creatureName: "",
+			creatureImg: "",
+			count: "1",
+			displayName: "",
+		});
+		await this.item.setFlag(MODULE_ID, "summoning.profiles", profiles);
+	}
 
-    static async #onRemoveSummonProfile(event, target) {
-        const index = parseInt(target.dataset.index);
-        const rawProfiles = this.item.getFlag(MODULE_ID, "summoning.profiles");
-        const profiles = normalizeProfiles(rawProfiles);
-        profiles.splice(index, 1);
-        await this.item.setFlag(MODULE_ID, "summoning.profiles", profiles);
-    }
+	static async #onRemoveSummonProfile(event, target) {
+		const index = parseInt(target.dataset.index);
+		const rawProfiles = this.item.getFlag(MODULE_ID, "summoning.profiles");
+		const profiles = normalizeProfiles(rawProfiles);
+		profiles.splice(index, 1);
+		await this.item.setFlag(MODULE_ID, "summoning.profiles", profiles);
+	}
 
-    static async #onAddItemGiveProfile(event, target) {
-        const rawProfiles = this.item.getFlag(MODULE_ID, "itemGive.profiles");
-        const profiles = Array.isArray(rawProfiles) ? [...rawProfiles] : [];
-        profiles.push({
-            itemUuid: "",
-            itemName: "",
-            itemImg: "",
-            quantity: "1"
-        });
-        await this.item.setFlag(MODULE_ID, "itemGive.profiles", profiles);
-    }
+	static async #onAddItemGiveProfile(event, target) {
+		const rawProfiles = this.item.getFlag(MODULE_ID, "itemGive.profiles");
+		const profiles = Array.isArray(rawProfiles) ? [...rawProfiles] : [];
+		profiles.push({
+			itemUuid: "",
+			itemName: "",
+			itemImg: "",
+			quantity: "1",
+		});
+		await this.item.setFlag(MODULE_ID, "itemGive.profiles", profiles);
+	}
 
-    static async #onRemoveItemGiveProfile(event, target) {
-        const index = parseInt(target.dataset.index);
-        const rawProfiles = this.item.getFlag(MODULE_ID, "itemGive.profiles");
-        const profiles = Array.isArray(rawProfiles) ? [...rawProfiles] : [];
-        profiles.splice(index, 1);
-        await this.item.setFlag(MODULE_ID, "itemGive.profiles", profiles);
-    }
+	static async #onRemoveItemGiveProfile(event, target) {
+		const index = parseInt(target.dataset.index);
+		const rawProfiles = this.item.getFlag(MODULE_ID, "itemGive.profiles");
+		const profiles = Array.isArray(rawProfiles) ? [...rawProfiles] : [];
+		profiles.splice(index, 1);
+		await this.item.setFlag(MODULE_ID, "itemGive.profiles", profiles);
+	}
 
-    /* -------------------------------------------- */
-    /*  Form Handling                               */
-    /* -------------------------------------------- */
+	/* -------------------------------------------- */
+	/*  Form Handling                               */
+	/* -------------------------------------------- */
 
-    _processFormData(event, form, formData) {
-        // Default processing handles item data updates
-        return super._processFormData(event, form, formData);
-    }
+	_processFormData(event, form, formData) {
+		// Default processing handles item data updates
+		return super._processFormData(event, form, formData);
+	}
 }

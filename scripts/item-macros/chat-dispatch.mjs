@@ -132,7 +132,7 @@ export function registerChatDispatch() {
 			isCriticalFail,
 			rollResult: rollOutcome.total,
 			rollData: rollOutcome.mainRoll?.roll ?? rollOutcome.mainRoll ?? null,
-			targets
+			targets,
 		};
 
 		// Trigger macros based on which triggers are enabled
@@ -243,8 +243,8 @@ export function registerChatDispatch() {
 		if (message.author?.id !== game.user.id) return;
 
 		// Check for rolls using HTML elements (like CombatSettingsSD does)
-		const hasDiceTotal = html.querySelector('.dice-total') !== null;
-		const hasD20Roll = html.querySelector('.d20-roll') !== null;
+		const hasDiceTotal = html.querySelector(".dice-total") !== null;
+		const hasD20Roll = html.querySelector(".d20-roll") !== null;
 
 		// Debug logging for troubleshooting
 		//console.log(`${MODULE_ID} | [DEBUG] Item Macro hook - checking message:`, {
@@ -343,7 +343,7 @@ export function registerChatDispatch() {
 			isCritical,
 			isCriticalMiss,
 			rollResult: rollResult,
-			rollData: rollOutcome.mainRoll?.roll ?? rollOutcome.mainRoll
+			rollData: rollOutcome.mainRoll?.roll ?? rollOutcome.mainRoll,
 		};
 
 		// Trigger macros based on which triggers are enabled

@@ -15,7 +15,7 @@ import {
 	TORCH_NAME_PATTERN,
 	planStackConsumption,
 	qualifiesForRest,
-	calculateCookBonusHp
+	calculateCookBonusHp,
 } from "./CampingRestData.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -48,7 +48,7 @@ function getItemStacks(actors, pattern, { inactiveLightsOnly = false } = {}) {
 				ownerName: actor.name,
 				itemId: item.id,
 				itemName: item.name,
-				quantity
+				quantity,
 			});
 		}
 	}
@@ -139,9 +139,9 @@ async function addGear(actor, name, quantity, { ammunition = false } = {}) {
 			slots: {
 				free_carry: 0,
 				per_slot: ammunition ? 20 : 1,
-				slots_used: 1
-			}
-		}
+				slots_used: 1,
+			},
+		},
 	}]);
 	return created;
 }
@@ -186,8 +186,8 @@ async function refreshRestResources(actor) {
 				_id: item.id,
 				"system.spells": item.system.spells.map(spell => ({
 					...foundry.utils.deepClone(spell),
-					lost: false
-				}))
+					lost: false,
+				})),
 			});
 			wands++;
 		}
@@ -232,8 +232,8 @@ async function createCampfire(partyActor) {
 		img: "icons/environment/wilderness/camp-improvised.webp",
 		flags: {
 			[MODULE_ID]: {
-				[CAMPFIRE_FLAG]: true
-			}
+				[CAMPFIRE_FLAG]: true,
+			},
 		},
 		system: {
 			description: "<p>Burns for 8 hours and sheds light to a near distance.</p>",
@@ -241,7 +241,7 @@ async function createCampfire(partyActor) {
 			slots: {
 				free_carry: 1,
 				per_slot: 1,
-				slots_used: 0
+				slots_used: 0,
 			},
 			light: {
 				active: true,
@@ -249,12 +249,12 @@ async function createCampfire(partyActor) {
 				isSource: true,
 				longevityMins: 480,
 				remainingSecs: REST_DURATION_SECONDS,
-				template: "torch"
-			}
-		}
+				template: "torch",
+			},
+		},
 	}], {
 		sdxInternal: true,
-		sdxBypassLock: true
+		sdxBypassLock: true,
 	});
 	const campfire = created?.[0];
 	if (!campfire) {
@@ -302,23 +302,23 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		tag: "form",
 		window: {
 			title: "SHADOWDARK_EXTRAS.camping_rest.title",
-			resizable: true
+			resizable: true,
 		},
 		position: {
 			width: 820,
-			height: 720
+			height: 720,
 		},
 		actions: {
 			begin: CampingRestApp._onBegin,
-			cancel: CampingRestApp._onCancel
-		}
+			cancel: CampingRestApp._onCancel,
+		},
 	};
 
 	static PARTS = {
 		form: {
 			template: `modules/${MODULE_ID}/templates/camping-rest.hbs`,
-			scrollable: [".sdx-rest-members"]
-		}
+			scrollable: [".sdx-rest-members"],
+		},
 	};
 
 	static show(partyActor, members, options = {}) {
@@ -333,7 +333,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const selections = this.partyActor.getFlag(MODULE_ID, "travelSelections") ?? {};
 		const allTargets = this.members.map(actor => ({
 			id: actor.id,
-			name: actor.name
+			name: actor.name,
 		}));
 
 		const members = this.members.map(actor => {
@@ -357,19 +357,19 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					key: entry.key,
 					name: entry.name,
 					abilitiesCsv: (entry.abilities ?? []).join("|"),
-					selected: entry.key === taskKey
+					selected: entry.key === taskKey,
 				})),
 				abilityOptions: (task?.abilities ?? []).map((ability, index) => ({
 					index,
 					ability,
-					selected: index === selectedAbility
+					selected: index === selectedAbility,
 				})),
 				isCraft: taskKey === "craft",
 				isEntertain: taskKey === "entertain",
 				isKeepWatch: taskKey === "keepWatch",
 				isHunt: taskKey === "hunt",
 				brokenItems,
-				targets: allTargets.filter(target => target.id !== actor.id)
+				targets: allTargets.filter(target => target.id !== actor.id),
 			};
 		});
 
@@ -384,7 +384,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				resourceActors,
 				TORCH_PATTERN,
 				{ inactiveLightsOnly: true }
-			).reduce((sum, stack) => sum + stack.quantity, 0) >= CAMPFIRE_TORCH_COST
+			).reduce((sum, stack) => sum + stack.quantity, 0) >= CAMPFIRE_TORCH_COST,
 		};
 	}
 
@@ -450,7 +450,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					repairItemId: row.querySelector(".sdx-rest-repair-item")?.value ?? "",
 					entertainTargetId: row.querySelector(".sdx-rest-entertain-target")?.value ?? "",
 					watchHalf: row.querySelector(".sdx-rest-watch-half")?.value ?? "first",
-					pushed: row.querySelector(".sdx-rest-pushed")?.checked ?? false
+					pushed: row.querySelector(".sdx-rest-pushed")?.checked ?? false,
 				};
 			})
 			.filter(camper => camper?.participating);
@@ -479,7 +479,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			ui.notifications.error(
 				game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.not_enough_torches", {
 					available: torchPlan.consumed,
-					required: CAMPFIRE_TORCH_COST
+					required: CAMPFIRE_TORCH_COST,
 				})
 			);
 			return null;
@@ -490,26 +490,26 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			campfireMode,
 			torchPlan,
 			interrupted: this.element.querySelector('input[name="interrupted"]')?.checked ?? false,
-			advanceTime: this.element.querySelector('input[name="advanceTime"]')?.checked ?? false
+			advanceTime: this.element.querySelector('input[name="advanceTime"]')?.checked ?? false,
 		};
 	}
 
 	async _confirmAndRun(plan) {
 		const content = `
 			<p>${game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.confirm_content", {
-				count: plan.campers.length
-			})}</p>
+		count: plan.campers.length,
+	})}</p>
 			<ul>
 				<li>${game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.confirm_rations", {
-					count: plan.campers.length
-				})}</li>
+		count: plan.campers.length,
+	})}</li>
 				<li>${game.i18n.localize(`SHADOWDARK_EXTRAS.camping_rest.campfire_${plan.campfireMode}`)}</li>
 			</ul>
 		`;
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
 			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.confirm_title") },
 			content,
-			modal: true
+			modal: true,
 		});
 		if (!confirmed) return;
 
@@ -573,7 +573,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			description: game.i18n.localize(
 				"SHADOWDARK_EXTRAS.camping_rest.interruption_check_description"
 			),
-			bannerImage: "modules/shadowdark-extras/assets/travel/batten_down.webp"
+			bannerImage: "modules/shadowdark-extras/assets/travel/batten_down.webp",
 		};
 		const actors = campers.map(camper => camper.actor);
 		const selections = Object.fromEntries(campers.map(camper => [memberKey(camper.actor), 0]));
@@ -594,7 +594,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				...stacks.filter(stack =>
 					stack.ownerId !== camper.actor.id
 					&& stack.ownerId !== this.partyActor.id
-				)
+				),
 			].filter(stack => stack.quantity > 0);
 			const consumption = planStackConsumption(ordered, 1);
 			rationByActor.set(camper.actor.id, consumption.complete);
@@ -610,7 +610,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		return {
 			rationByActor,
-			entries: mergeConsumptionEntries(entries)
+			entries: mergeConsumptionEntries(entries),
 		};
 	}
 
@@ -635,7 +635,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					campers: plan.campers.filter(camper =>
 						camper.taskKey === task.key
 						&& !(task.key === "hunt" && camper.pushed)
-					)
+					),
 				}))
 				.filter(group => group.campers.length);
 			taskGroups.sort((a, b) =>
@@ -658,7 +658,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					taskResults.set(camper.actor.id, {
 						task: group.task,
 						value,
-						success: Number.isFinite(value) && value >= dc
+						success: Number.isFinite(value) && value >= dc,
 					});
 				}
 
@@ -705,7 +705,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 			const actorMap = new Map([
 				[this.partyActor.id, this.partyActor],
-				...plan.campers.map(camper => [camper.actor.id, camper.actor])
+				...plan.campers.map(camper => [camper.actor.id, camper.actor]),
 			]);
 			if (plan.campfireMode === "torches") {
 				await applyConsumption(plan.torchPlan.entries, actorMap);
@@ -746,7 +746,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					hasRation,
 					interrupted: plan.interrupted,
 					bedDownSucceeded,
-					interruptionCheckSucceeded: interruptionResults.get(actor.id) ?? false
+					interruptionCheckSucceeded: interruptionResults.get(actor.id) ?? false,
 				});
 				const hpBefore = Number(actor.system?.attributes?.hp?.value ?? 0);
 				let resourceSummary = { spells: 0, abilities: 0, wands: 0 };
@@ -793,7 +793,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					hpBefore,
 					hpAfter: Number(actor.system?.attributes?.hp?.value ?? hpBefore),
 					resourceSummary,
-					benefits
+					benefits,
 				});
 			}
 
@@ -805,7 +805,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				advancedTime: plan.advanceTime,
 				torchesConsumed: plan.campfireMode === "torches"
 					? CAMPFIRE_TORCH_COST
-					: 0
+					: 0,
 			});
 			ui.notifications.info(
 				game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.complete")
@@ -814,7 +814,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			console.error(`${MODULE_ID} | Camping rest procedure failed`, error);
 			ui.notifications.error(
 				game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.failed", {
-					message: error.message
+					message: error.message,
 				})
 			);
 		} finally {
@@ -838,7 +838,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						await item.update({ "system.broken": false });
 						benefits.push(
 							game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.benefit_repair", {
-								item: item.name
+								item: item.name,
 							})
 						);
 					}
@@ -849,7 +849,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					torch: "Torch",
 					arrows: "Arrows",
 					bolts: "Bolts",
-					slingStones: "Sling Stones"
+					slingStones: "Sling Stones",
 				};
 				const rewardName = rewardNames[camper.craftChoice] ?? "Torch";
 				let amount = 1;
@@ -857,17 +857,17 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					const roll = await new Roll("2d4").evaluate();
 					await roll.toMessage({
 						speaker: ChatMessage.getSpeaker({ actor }),
-						flavor: `${actor.name} — Crafted ${rewardName}`
+						flavor: `${actor.name} — Crafted ${rewardName}`,
 					});
 					amount = roll.total;
 				}
 				await addGear(actor, rewardName, amount, {
-					ammunition: camper.craftChoice !== "torch"
+					ammunition: camper.craftChoice !== "torch",
 				});
 				benefits.push(
 					game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.benefit_craft", {
 						amount,
-						item: rewardName
+						item: rewardName,
 					})
 				);
 				break;
@@ -897,12 +897,12 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				const roll = await new Roll("1d4").evaluate();
 				await roll.toMessage({
 					speaker: ChatMessage.getSpeaker({ actor }),
-					flavor: `${actor.name} — Rations Found`
+					flavor: `${actor.name} — Rations Found`,
 				});
 				await addGear(actor, "Rations", roll.total);
 				benefits.push(
 					game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.benefit_hunt", {
-						amount: roll.total
+						amount: roll.total,
 					})
 				);
 				break;
@@ -910,7 +910,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			case "keepWatch":
 				benefits.push(
 					game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.benefit_watch", {
-						half: camper.watchHalf
+						half: camper.watchHalf,
 					})
 				);
 				break;
@@ -926,7 +926,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						uses: Math.max(0, Number(current.uses ?? 0)) + 1,
 						actorIds: [...actorIds],
 						actorId: actor.id,
-						createdAt: game.time.worldTime
+						createdAt: game.time.worldTime,
 					});
 				}
 				benefits.push(
@@ -944,7 +944,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		);
 		await ChatMessage.create({
 			content,
-			speaker: { alias: "Party Camping" }
+			speaker: { alias: "Party Camping" },
 		});
 	}
 }

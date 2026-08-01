@@ -45,9 +45,9 @@ export const DEFAULT_ANIMATION_FX_CONFIG = {
 			hit: {
 				file: "jb2a.magic_missile",
 				scale: 1,
-				duration: 1500
-			}
-		}
+				duration: 1500,
+			},
+		},
 	},
 	weapons: {
 		_default: {
@@ -58,9 +58,9 @@ export const DEFAULT_ANIMATION_FX_CONFIG = {
 			hit: {
 				file: "jb2a.greatsword.melee.standard.white",
 				scale: 1,
-				duration: 1000
-			}
-		}
+				duration: 1000,
+			},
+		},
 	},
 	npcActions: {},
 
@@ -70,7 +70,7 @@ export const DEFAULT_ANIMATION_FX_CONFIG = {
 	 * Rows use a different schema (imagePath/offsetX/offsetY/rotation/
 	 * animationType) than the transient FX categories above.
 	 */
-	weaponSprites: {}
+	weaponSprites: {},
 };
 
 /**
@@ -83,7 +83,7 @@ export const DEFAULT_AMBIENT_FX = {
 	levelUp: { label: "Level Up", file: "icons/svg/upgrade.svg", scale: 1 },
 	torchFlame: { label: "Torch / Lantern / Oil Flame", file: "jb2a.flames.01.orange" },
 	candleFlame: { label: "Candle Flame", file: "jb2a.flames.04.loop.orange" },
-	lightSpellGlow: { label: "Light Spell Glow", file: "jb2a.energy_strands.complete.blue.01" }
+	lightSpellGlow: { label: "Light Spell Glow", file: "jb2a.energy_strands.complete.blue.01" },
 };
 
 export const AnimationFxSD = {
@@ -94,7 +94,7 @@ export const AnimationFxSD = {
 		game.settings.register(MODULE_ID, "animationFxEnabled", {
 			name: "SDX.Settings.AnimationFxEnabled.Name",
 			hint: "SDX.Settings.AnimationFxEnabled.Hint",
-			scope: "world", config: false, type: Boolean, default: true
+			scope: "world", config: false, type: Boolean, default: true,
 		});
 
 		game.settings.register(MODULE_ID, "animationFxTriggerOn", {
@@ -102,12 +102,12 @@ export const AnimationFxSD = {
 			hint: "SDX.Settings.AnimationFxTriggerOn.Hint",
 			scope: "world", config: false, type: String,
 			choices: { always: "Always", hit: "On Hit Only" },
-			default: "always"
+			default: "always",
 		});
 
 		game.settings.register(MODULE_ID, "animationFxConfig", {
 			scope: "world", config: false, type: Object,
-			default: foundry.utils.deepClone(DEFAULT_ANIMATION_FX_CONFIG)
+			default: foundry.utils.deepClone(DEFAULT_ANIMATION_FX_CONFIG),
 		});
 
 		// Ambient / event effects (Torch, Level-Up) — SDX-native systems whose
@@ -115,31 +115,31 @@ export const AnimationFxSD = {
 		// (offsets/scale per light type) stays in TorchAnimationSD.
 		game.settings.register(MODULE_ID, "animationFxAmbient", {
 			scope: "world", config: false, type: Object,
-			default: foundry.utils.deepClone(DEFAULT_AMBIENT_FX)
+			default: foundry.utils.deepClone(DEFAULT_AMBIENT_FX),
 		});
 
 		// Per-category enable toggles (world)
 		for (const cat of ["spells", "weapons", "npcActions", "weaponSprites"]) {
 			game.settings.register(MODULE_ID, `animationFxCategory_${cat}`, {
-				scope: "world", config: false, type: Boolean, default: true
+				scope: "world", config: false, type: Boolean, default: true,
 			});
 		}
 
 		// Client-side scale + volume
 		game.settings.register(MODULE_ID, "animationFxClientScale", {
-			scope: "client", config: false, type: Number, default: 1.0
+			scope: "client", config: false, type: Number, default: 1.0,
 		});
 		game.settings.register(MODULE_ID, "animationFxSoundEnabled", {
-			scope: "client", config: false, type: Boolean, default: true
+			scope: "client", config: false, type: Boolean, default: true,
 		});
 		game.settings.register(MODULE_ID, "animationFxVolume", {
-			scope: "client", config: false, type: Number, default: 0.8
+			scope: "client", config: false, type: Number, default: 0.8,
 		});
 
 		// One-time auto-seed guard (world). Once true we never re-seed this
 		// world, so any preset a GM later deletes stays deleted.
 		game.settings.register(MODULE_ID, "animationFxSeeded", {
-			scope: "world", config: false, type: Boolean, default: false
+			scope: "world", config: false, type: Boolean, default: false,
 		});
 	},
 
@@ -206,7 +206,7 @@ export const AnimationFxSD = {
 			db.registerEntries("jb2a", freeDb);
 			console.log(
 				`${MODULE_ID} | Registered JB2A Sequencer database (fallback — ` +
-				`JB2A's own registration did not run in this world)`
+				"JB2A's own registration did not run in this world)"
 			);
 		} catch (e) {
 			console.error(`${MODULE_ID} | JB2A fallback registration failed`, e);
@@ -250,7 +250,7 @@ export const AnimationFxSD = {
 		const config = foundry.utils.deepClone(this.getConfig());
 		if (!config[category] || typeof config[category] !== "object") config[category] = {};
 
-		let added = 0, replaced = 0, skipped = 0;
+		let added = 0; let replaced = 0; let skipped = 0;
 		for (const [key, preset] of Object.entries(presets)) {
 			if (key in config[category]) {
 				if (!overwrite) { skipped++; continue; }
@@ -418,7 +418,7 @@ export const AnimationFxSD = {
 		return {
 			preset,
 			label: preset.label || "",
-			categoryEnabled: this._isCategoryEnabled(category)
+			categoryEnabled: this._isCategoryEnabled(category),
 		};
 	},
 
@@ -537,7 +537,7 @@ export const AnimationFxSD = {
 				y: source.y,
 				w: 1,
 				h: source.h ?? 1,
-				id: "_preview_offset"
+				id: "_preview_offset",
 			}];
 		} else {
 			targets = [source];
@@ -585,7 +585,7 @@ export const AnimationFxSD = {
 		if (!targets || targets.length === 0) return 0;
 		const sx = sourceToken.x + ((sourceToken.w ?? 0) / 2);
 		const sy = sourceToken.y + ((sourceToken.h ?? 0) / 2);
-		let sumX = 0, sumY = 0;
+		let sumX = 0; let sumY = 0;
 		for (const t of targets) {
 			sumX += t.x + ((t.w ?? 0) / 2);
 			sumY += t.y + ((t.h ?? 0) / 2);
@@ -818,7 +818,7 @@ export const AnimationFxSD = {
 
 	async clearAllFx() {
 		await this._endEffectsSafe({ name: `${MODULE_ID}-fx-*` });
-	}
+	},
 };
 
 export default AnimationFxSD;

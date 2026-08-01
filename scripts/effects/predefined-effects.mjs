@@ -222,7 +222,7 @@ export function registerPredefinedEffects() {
 				resistanceImg: "icons/skills/melee/shield-block-bash-blue.webp",
 				immunityImg: "icons/skills/melee/shield-block-gray-yellow.webp",
 				vulnerabilityImg: "icons/skills/melee/strike-hammer-destructive-orange.webp",
-				absorptionImg: "icons/magic/life/heart-cross-blue.webp"
+				absorptionImg: "icons/magic/life/heart-cross-blue.webp",
 			},
 			{
 				id: "slashing",
@@ -230,7 +230,7 @@ export function registerPredefinedEffects() {
 				resistanceImg: "icons/skills/melee/shield-damaged-broken-blue.webp",
 				immunityImg: "icons/skills/melee/shield-damaged-broken-gold.webp",
 				vulnerabilityImg: "icons/skills/melee/strike-blade-blood-red.webp",
-				absorptionImg: "icons/magic/life/heart-cross-green.webp"
+				absorptionImg: "icons/magic/life/heart-cross-green.webp",
 			},
 			{
 				id: "piercing",
@@ -238,7 +238,7 @@ export function registerPredefinedEffects() {
 				resistanceImg: "icons/skills/melee/shield-block-bash-yellow.webp",
 				immunityImg: "icons/skills/melee/shield-block-gray-orange.webp",
 				vulnerabilityImg: "icons/skills/melee/strike-spear-red.webp",
-				absorptionImg: "icons/magic/life/heart-cross-red.webp"
+				absorptionImg: "icons/magic/life/heart-cross-red.webp",
 			},
 			{
 				id: "physical",
@@ -246,7 +246,7 @@ export function registerPredefinedEffects() {
 				resistanceImg: "icons/skills/melee/shield-damaged-broken-brown.webp",
 				immunityImg: "icons/skills/melee/shield-damaged-broken-orange.webp",
 				vulnerabilityImg: "icons/skills/wounds/blood-drip-droplet-red.webp",
-				absorptionImg: "icons/magic/life/heart-cross-purple-orange.webp"
+				absorptionImg: "icons/magic/life/heart-cross-purple-orange.webp",
 			},
 			{
 				id: "fire",
@@ -254,7 +254,7 @@ export function registerPredefinedEffects() {
 				resistanceImg: "icons/magic/fire/barrier-wall-flame-ring-yellow.webp",
 				immunityImg: "icons/magic/fire/orb-vortex.webp",
 				vulnerabilityImg: "icons/magic/fire/explosion-fireball-medium-orange.webp",
-				absorptionImg: "icons/magic/fire/flame-burning-hand-orange.webp"
+				absorptionImg: "icons/magic/fire/flame-burning-hand-orange.webp",
 			},
 			{
 				id: "cold",
@@ -262,7 +262,7 @@ export function registerPredefinedEffects() {
 				resistanceImg: "icons/magic/water/barrier-ice-crystal-wall-jagged-blue.webp",
 				immunityImg: "icons/magic/water/snowflake-ice-blue-white.webp",
 				vulnerabilityImg: "icons/magic/water/ice-crystal-white.webp",
-				absorptionImg: "icons/magic/water/heart-ice-cold.webp"
+				absorptionImg: "icons/magic/water/heart-ice-cold.webp",
 			},
 			{
 				id: "lightning",
@@ -270,7 +270,7 @@ export function registerPredefinedEffects() {
 				resistanceImg: "icons/magic/lightning/bolt-forked-blue.webp",
 				immunityImg: "icons/magic/lightning/orb-ball-blue.webp",
 				vulnerabilityImg: "icons/magic/lightning/bolt-strike-blue.webp",
-				absorptionImg: "icons/magic/lightning/bolt-blue.webp"
+				absorptionImg: "icons/magic/lightning/bolt-blue.webp",
 			},
 			{
 				id: "acid",
@@ -278,7 +278,7 @@ export function registerPredefinedEffects() {
 				resistanceImg: "icons/magic/acid/projectile-faceted-glob.webp",
 				immunityImg: "icons/magic/acid/orb-bubble-smoke-drip.webp",
 				vulnerabilityImg: "icons/magic/acid/dissolve-arm-flesh.webp",
-				absorptionImg: "icons/magic/acid/orb-bubble-green.webp"
+				absorptionImg: "icons/magic/acid/orb-bubble-green.webp",
 			},
 			{
 				id: "poison",
@@ -286,7 +286,7 @@ export function registerPredefinedEffects() {
 				resistanceImg: "icons/skills/toxins/poison-bottle-corked-fire-green.webp",
 				immunityImg: "icons/consumables/potions/flask-ornate-skull-green.webp",
 				vulnerabilityImg: "icons/skills/toxins/symbol-poison-drop-skull-green.webp",
-				absorptionImg: "icons/consumables/potions/potion-tube-corked-teal.webp"
+				absorptionImg: "icons/consumables/potions/potion-tube-corked-teal.webp",
 			},
 			{
 				id: "necrotic",
@@ -294,7 +294,7 @@ export function registerPredefinedEffects() {
 				resistanceImg: "icons/magic/death/skull-humanoid-crown-white-blue.webp",
 				immunityImg: "icons/magic/death/skull-energy-light-purple.webp",
 				vulnerabilityImg: "icons/magic/death/hand-withered-gray.webp",
-				absorptionImg: "icons/magic/death/undead-skeleton-rags-green.webp"
+				absorptionImg: "icons/magic/death/undead-skeleton-rags-green.webp",
 			},
 			{
 				id: "radiant",
@@ -302,7 +302,7 @@ export function registerPredefinedEffects() {
 				resistanceImg: "icons/magic/holy/angel-wings-gray.webp",
 				immunityImg: "icons/magic/holy/barrier-shield-winged-cross.webp",
 				vulnerabilityImg: "icons/magic/light/explosion-star-glow-yellow.webp",
-				absorptionImg: "icons/magic/holy/angel-winged-humanoid-yellow.webp"
+				absorptionImg: "icons/magic/holy/angel-winged-humanoid-yellow.webp",
 			},
 			{
 				id: "psychic",
@@ -310,7 +310,7 @@ export function registerPredefinedEffects() {
 				resistanceImg: "icons/magic/control/silhouette-hold-beam-blue.webp",
 				immunityImg: "icons/magic/control/fear-fright-monster-grin-red-orange.webp",
 				vulnerabilityImg: "icons/commodities/biological/organ-brain-pink-purple.webp",
-				absorptionImg: "icons/magic/control/telepathy-psychic-mind.webp"
+				absorptionImg: "icons/magic/control/telepathy-psychic-mind.webp",
 			},
 			{
 				id: "force",
@@ -318,8 +318,8 @@ export function registerPredefinedEffects() {
 				resistanceImg: "icons/magic/sonic/explosion-shock-wave-teal.webp",
 				immunityImg: "icons/magic/defensive/barrier-shield-dome-blue-purple.webp",
 				vulnerabilityImg: "icons/magic/sonic/explosion-impact-shock-wave.webp",
-				absorptionImg: "icons/magic/sonic/barrier-shock-wave-blue.webp"
-			}
+				absorptionImg: "icons/magic/sonic/barrier-shock-wave-blue.webp",
+			},
 		];
 
 		// Register Resistance, Immunity, and Vulnerability effects for each type
@@ -332,7 +332,7 @@ export function registerPredefinedEffects() {
 				effectKey: `flags.${MODULE_ID}.resistance.${type.id}`,
 				img: type.resistanceImg || "icons/equipment/shield/buckler-wooden-boss-brass.webp",
 				name: `SHADOWDARK_EXTRAS.item.effect.predefined_effect.resistance${capId}`,
-				mode: "CONST.ACTIVE_EFFECT_MODES.OVERRIDE"
+				mode: "CONST.ACTIVE_EFFECT_MODES.OVERRIDE",
 			};
 
 			// Immunity
@@ -341,7 +341,7 @@ export function registerPredefinedEffects() {
 				effectKey: `flags.${MODULE_ID}.immunity.${type.id}`,
 				img: type.immunityImg || "icons/magic/defensive/shield-barrier-blue.webp",
 				name: `SHADOWDARK_EXTRAS.item.effect.predefined_effect.immunity${capId}`,
-				mode: "CONST.ACTIVE_EFFECT_MODES.OVERRIDE"
+				mode: "CONST.ACTIVE_EFFECT_MODES.OVERRIDE",
 			};
 
 			// Vulnerability (double damage)
@@ -350,7 +350,7 @@ export function registerPredefinedEffects() {
 				effectKey: `flags.${MODULE_ID}.vulnerability.${type.id}`,
 				img: type.vulnerabilityImg || "icons/skills/wounds/injury-pain-body-orange.webp",
 				name: `SHADOWDARK_EXTRAS.item.effect.predefined_effect.vulnerability${capId}`,
-				mode: "CONST.ACTIVE_EFFECT_MODES.OVERRIDE"
+				mode: "CONST.ACTIVE_EFFECT_MODES.OVERRIDE",
 			};
 
 			// Absorption (value -1 = heal from damage, value 1 = double damage)
@@ -359,7 +359,7 @@ export function registerPredefinedEffects() {
 				effectKey: `flags.${MODULE_ID}.absorption.${type.id}`,
 				img: type.absorptionImg || "icons/magic/life/heart-cross-purple-orange.webp",
 				name: `SHADOWDARK_EXTRAS.item.effect.predefined_effect.absorption${capId}`,
-				mode: "CONST.ACTIVE_EFFECT_MODES.OVERRIDE"
+				mode: "CONST.ACTIVE_EFFECT_MODES.OVERRIDE",
 			};
 		}
 
@@ -368,16 +368,16 @@ export function registerPredefinedEffects() {
 			defaultValue: true,
 			effectKey: `flags.${MODULE_ID}.resistance.nonmagic`,
 			img: "icons/magic/defensive/shield-barrier-glowing-triangle-blue.webp",
-			name: `SHADOWDARK_EXTRAS.item.effect.predefined_effect.resistanceNonMagic`,
-			mode: "CONST.ACTIVE_EFFECT_MODES.OVERRIDE"
+			name: "SHADOWDARK_EXTRAS.item.effect.predefined_effect.resistanceNonMagic",
+			mode: "CONST.ACTIVE_EFFECT_MODES.OVERRIDE",
 		};
 
 		abilityAdvantageEffects.immunityNonMagic = {
 			defaultValue: true,
 			effectKey: `flags.${MODULE_ID}.immunity.nonmagic`,
 			img: "icons/magic/defensive/shield-barrier-glowing-triangle-orange.webp",
-			name: `SHADOWDARK_EXTRAS.item.effect.predefined_effect.immunityNonMagic`,
-			mode: "CONST.ACTIVE_EFFECT_MODES.OVERRIDE"
+			name: "SHADOWDARK_EXTRAS.item.effect.predefined_effect.immunityNonMagic",
+			mode: "CONST.ACTIVE_EFFECT_MODES.OVERRIDE",
 		};
 
 		// Merge ability advantage effects into the system's predefined effects
@@ -395,7 +395,7 @@ export function registerPredefinedEffects() {
 
 		// Patch handlePredefinedEffect to support spellDisadvantage (like spellAdvantage)
 		const originalHandlePredefinedEffect = shadowdark.effects.handlePredefinedEffect;
-		shadowdark.effects.handlePredefinedEffect = async function (key, value, name = null) {
+		shadowdark.effects.handlePredefinedEffect = async function(key, value, name = null) {
 			// Handle spellDisadvantage the same way as spellAdvantage
 			if (key === "spellDisadvantage") {
 				const type = "spell";
@@ -414,7 +414,7 @@ export function registerPredefinedEffects() {
 		// `system.roll.spell.advantage.REPLACEME` (with negative value for disadvantage).
 		// Detect that pattern and route to SDX's spell-picker handler.
 		const originalModifyEffectChangesWithInput = shadowdark.effects.modifyEffectChangesWithInput;
-		shadowdark.effects.modifyEffectChangesWithInput = async function (item, effect, key = false) {
+		shadowdark.effects.modifyEffectChangesWithInput = async function(item, effect, key = false) {
 			if (!key && effect.changes?.some(c =>
 				c.key === "system.roll.spell.advantage.REPLACEME" && Number(c.value) < 0
 			)) {

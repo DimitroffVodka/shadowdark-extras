@@ -1,94 +1,94 @@
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 export class MaphubLauncherApp extends HandlebarsApplicationMixin(ApplicationV2) {
-    static DEFAULT_OPTIONS = {
-        id: "maphub-launcher",
-        tag: "div",
-        classes: ["maphub-launcher-app"],
-        position: {
-            width: 580,
-            height: "auto",
-        },
-        window: {
-            title: "Maphub Generators",
-            icon: "fas fa-map-location-dot",
-            resizable: false,
-            frame: true,
-        },
-    };
+	static DEFAULT_OPTIONS = {
+		id: "maphub-launcher",
+		tag: "div",
+		classes: ["maphub-launcher-app"],
+		position: {
+			width: 580,
+			height: "auto",
+		},
+		window: {
+			title: "Maphub Generators",
+			icon: "fas fa-map-location-dot",
+			resizable: false,
+			frame: true,
+		},
+	};
 
-    static PARTS = {
-        main: {
-            template: "modules/shadowdark-extras/templates/maphub-launcher.hbs"
-        }
-    };
+	static PARTS = {
+		main: {
+			template: "modules/shadowdark-extras/templates/maphub-launcher.hbs",
+		},
+	};
 
-    constructor(options = {}) {
-        super(options);
-    }
+	constructor(options = {}) {
+		super(options);
+	}
 
-    async _preFirstRender(context, options) {
-        await super._preFirstRender?.(context, options);
-        if (!game.user.isGM) {
-            ui.notifications.warn("Only a GM can open map generators.");
-            return false;
-        }
-    }
+	async _preFirstRender(context, options) {
+		await super._preFirstRender?.(context, options);
+		if (!game.user.isGM) {
+			ui.notifications.warn("Only a GM can open map generators.");
+			return false;
+		}
+	}
 
-    _onRender(context, options) {
-        super._onRender(context, options);
+	_onRender(context, options) {
+		super._onRender(context, options);
 
-        const html = this.element;
+		const html = this.element;
 
-        html.querySelector("[data-action='open-realm']")?.addEventListener("click", async (e) => {
-            e.preventDefault();
-            this._openGenerator("realm");
-        });
+		html.querySelector("[data-action='open-realm']")?.addEventListener("click", async (e) => {
+			e.preventDefault();
+			this._openGenerator("realm");
+		});
 
-        html.querySelector("[data-action='open-mfcg']")?.addEventListener("click", async (e) => {
-            e.preventDefault();
-            this._openGenerator("mfcg");
-        });
+		html.querySelector("[data-action='open-mfcg']")?.addEventListener("click", async (e) => {
+			e.preventDefault();
+			this._openGenerator("mfcg");
+		});
 
-        html.querySelector("[data-action='open-village']")?.addEventListener("click", async (e) => {
-            e.preventDefault();
-            this._openGenerator("village");
-        });
+		html.querySelector("[data-action='open-village']")?.addEventListener("click", async (e) => {
+			e.preventDefault();
+			this._openGenerator("village");
+		});
 
-        html.querySelector("[data-action='open-dwellings']")?.addEventListener("click", async (e) => {
-            e.preventDefault();
-            this._openGenerator("dwellings");
-        });
+		html.querySelector("[data-action='open-dwellings']")?.addEventListener("click", async (e) => {
+			e.preventDefault();
+			this._openGenerator("dwellings");
+		});
 
-        html.querySelector("[data-action='open-cave']")?.addEventListener("click", async (e) => {
-            e.preventDefault();
-            this._openGenerator("cave");
-        });
+		html.querySelector("[data-action='open-cave']")?.addEventListener("click", async (e) => {
+			e.preventDefault();
+			this._openGenerator("cave");
+		});
 
-        html.querySelector("[data-action='open-dungeon']")?.addEventListener("click", async (e) => {
-            e.preventDefault();
-            this._openGenerator("dungeon");
-        });
-    }
+		html.querySelector("[data-action='open-dungeon']")?.addEventListener("click", async (e) => {
+			e.preventDefault();
+			this._openGenerator("dungeon");
+		});
+	}
 
-    async _openGenerator(generatorType) {
-        const { MaphubViewerApp } = await import("./MaphubViewerApp.mjs");
+	async _openGenerator(generatorType) {
+		const { MaphubViewerApp } = await import("./MaphubViewerApp.mjs");
 
-        let externalBase = "";
-        switch (generatorType) {
-            case "realm": externalBase = "https://watabou.github.io/perilous-shores/"; break;
-            case "mfcg": externalBase = "https://watabou.github.io/city-generator/"; break;
-            case "village": externalBase = "https://watabou.github.io/village-generator/"; break;
-            case "dwellings": externalBase = "https://watabou.github.io/dwellings/"; break;
-            case "cave": externalBase = "https://watabou.github.io/cave-generator/"; break;
-            case "dungeon": externalBase = "https://watabou.github.io/one-page-dungeon/"; break;
-        }
+		let externalBase = "";
+		switch (generatorType) {
+			case "realm": externalBase = "https://watabou.github.io/perilous-shores/"; break;
+			case "mfcg": externalBase = "https://watabou.github.io/city-generator/"; break;
+			case "village": externalBase = "https://watabou.github.io/village-generator/"; break;
+			case "dwellings": externalBase = "https://watabou.github.io/dwellings/"; break;
+			case "cave": externalBase = "https://watabou.github.io/cave-generator/"; break;
+			case "dungeon": externalBase = "https://watabou.github.io/one-page-dungeon/"; break;
+		}
 
-        new MaphubViewerApp({
-            type: generatorType,
-            queryString: "",
-            externalBase: externalBase
-        }).render(true);
-        this.close();
-    }
+		new MaphubViewerApp({
+			type: generatorType,
+			queryString: "",
+			externalBase: externalBase,
+		}).render(true);
+		this.close();
+	}
 }

@@ -28,7 +28,7 @@ function hexToRgba(hex, alpha) {
 	if (!hex) return `rgba(0, 0, 0, ${alpha})`;
 
 	// Handle rgba strings if already present
-	if (hex.startsWith('rgba')) return hex;
+	if (hex.startsWith("rgba")) return hex;
 
 	const r = parseInt(hex.slice(1, 3), 16);
 	const g = parseInt(hex.slice(3, 5), 16);
@@ -43,22 +43,22 @@ function hexToRgba(hex, alpha) {
  */
 export function applySheetDecorationStyles() {
 	// Remove existing style if any
-	const existingStyle = document.getElementById('sdx-decoration-styles');
+	const existingStyle = document.getElementById("sdx-decoration-styles");
 	if (existingStyle) existingStyle.remove();
 
 	// Get settings - with fallback defaults for when settings aren't registered yet
-	let sheetBorder, abilityPanel, acPanel, statPanel;
-	let borderImageWidth, borderImageSlice, borderTransparencyWidth;
-	let borderImageOutset, borderImageRepeat, borderBackgroundColor;
+	let sheetBorder; let abilityPanel; let acPanel; let statPanel;
+	let borderImageWidth; let borderImageSlice; let borderTransparencyWidth;
+	let borderImageOutset; let borderImageRepeat; let borderBackgroundColor;
 	let sheetHeaderBackgroundColor;
-	let boxBorder, boxBorderImageWidth, boxBorderImageSlice, boxBorderTransparencyWidth;
-	let journalBorder, journalBorderImageWidth, journalBorderImageSlice, journalBorderImageOutset, journalBorderImageRepeat;
-	let conditionModalBorder, conditionModalBorderImageWidth, conditionModalBorderImageSlice, conditionModalBorderImageOutset, conditionModalBorderImageRepeat;
-	let abilityModColor, levelValueColor, acValueColor, initModColor, luckValueColor;
-	let navLinkColor, navLinkActiveColor, detailsRowColor, luckContainerColor, actorNameColor, windowHeaderColor;
-	let navBackgroundColor, navBorderColor, effectsTextColor, talentsTextColor, xpRowColor, windowTitleBarBackgroundColor, statsLabelColor;
-	let actorNameShadowColor, actorNameShadowAlpha, actorNameFontWeight;
-	let tabGradientStart, tabGradientEnd;
+	let boxBorder; let boxBorderImageWidth; let boxBorderImageSlice; let boxBorderTransparencyWidth;
+	let journalBorder; let journalBorderImageWidth; let journalBorderImageSlice; let journalBorderImageOutset; let journalBorderImageRepeat;
+	let conditionModalBorder; let conditionModalBorderImageWidth; let conditionModalBorderImageSlice; let conditionModalBorderImageOutset; let conditionModalBorderImageRepeat;
+	let abilityModColor; let levelValueColor; let acValueColor; let initModColor; let luckValueColor;
+	let navLinkColor; let navLinkActiveColor; let detailsRowColor; let luckContainerColor; let actorNameColor; let windowHeaderColor;
+	let navBackgroundColor; let navBorderColor; let effectsTextColor; let talentsTextColor; let xpRowColor; let windowTitleBarBackgroundColor; let statsLabelColor;
+	let actorNameShadowColor; let actorNameShadowAlpha; let actorNameFontWeight;
+	let tabGradientStart; let tabGradientEnd;
 	try {
 		sheetBorder = game.settings.get(MODULE_ID, "sheetBorderStyle") || "panel-border-004.webp";
 		abilityPanel = game.settings.get(MODULE_ID, "abilityPanelStyle") || "panel-013.webp";
@@ -178,8 +178,8 @@ export function applySheetDecorationStyles() {
 	const conditionModalBorderPath = foundry.utils.getRoute(`${artBase}/Border/${conditionModalBorder}`);
 
 	// Create style element with CSS custom properties
-	const style = document.createElement('style');
-	style.id = 'sdx-decoration-styles';
+	const style = document.createElement("style");
+	style.id = "sdx-decoration-styles";
 	style.textContent = `
 		:root {
 			--sdx-sheet-border: url('${borderPath}');
@@ -191,8 +191,8 @@ export function applySheetDecorationStyles() {
 			--sdx-border-image-outset: ${borderImageOutset}px;
 			--sdx-border-image-repeat: ${borderImageRepeat};
 			--sdx-border-image-repeat: ${borderImageRepeat};
-			--sdx-border-background-color: ${borderBackgroundColor || 'transparent'};
-			--sdx-sheet-header-bg: ${sheetHeaderBackgroundColor || 'transparent'};
+			--sdx-border-background-color: ${borderBackgroundColor || "transparent"};
+			--sdx-sheet-header-bg: ${sheetHeaderBackgroundColor || "transparent"};
 			--sdx-border-width: ${borderTransparencyWidth}px;
 			--sdx-box-border: url('${boxBorderPath}');
 			--sdx-box-border-image-width: ${boxBorderImageWidth}px;

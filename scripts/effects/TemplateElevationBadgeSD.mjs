@@ -18,44 +18,44 @@
 const BADGE_KEY = "_sdxElevationBadge";
 
 export function initTemplateElevationBadge() {
-    Hooks.on("drawMeasuredTemplate", _updateBadge);
-    Hooks.on("refreshMeasuredTemplate", _updateBadge);
+	Hooks.on("drawMeasuredTemplate", _updateBadge);
+	Hooks.on("refreshMeasuredTemplate", _updateBadge);
 }
 
 function _updateBadge(template) {
-    if (!template) return;
+	if (!template) return;
 
-    const elevation = template.document?.elevation ?? 0;
+	const elevation = template.document?.elevation ?? 0;
 
-    // Strip any existing badge first — handles elevation changes via the
-    // template's config sheet, where the same placeable refreshes with a
-    // new value and we need to redraw the label.
-    const existing = template[BADGE_KEY];
-    if (existing) {
-        template[BADGE_KEY] = null;
-        if (!existing.destroyed) {
-            try {
-                existing.parent?.removeChild(existing);
-                existing.destroy({ children: true });
-            } catch (e) { /* ignore destroy races */ }
-        }
-    }
+	// Strip any existing badge first — handles elevation changes via the
+	// template's config sheet, where the same placeable refreshes with a
+	// new value and we need to redraw the label.
+	const existing = template[BADGE_KEY];
+	if (existing) {
+		template[BADGE_KEY] = null;
+		if (!existing.destroyed) {
+			try {
+				existing.parent?.removeChild(existing);
+				existing.destroy({ children: true });
+			} catch (e) { /* ignore destroy races */ }
+		}
+	}
 
-    // No badge at ground level — avoid clutter on single-floor scenes.
-    if (!elevation) return;
+	// No badge at ground level — avoid clutter on single-floor scenes.
+	if (!elevation) return;
 
-    const badge = new PIXI.Text(`el ${elevation}`, {
-        fontFamily: "Arial",
-        fontSize: 18,
-        fill: 0xFFFFFF,
-        stroke: 0x000000,
-        strokeThickness: 3,
-        align: "center"
-    });
-    badge.anchor.set(0.5, 0.5);
-    badge.position.set(0, 0); // template-local origin = placement point in world coords
-    badge.zIndex = 100;
+	const badge = new PIXI.Text(`el ${elevation}`, {
+		fontFamily: "Arial",
+		fontSize: 18,
+		fill: 0xFFFFFF,
+		stroke: 0x000000,
+		strokeThickness: 3,
+		align: "center",
+	});
+	badge.anchor.set(0.5, 0.5);
+	badge.position.set(0, 0); // template-local origin = placement point in world coords
+	badge.zIndex = 100;
 
-    template.addChild(badge);
-    template[BADGE_KEY] = badge;
+	template.addChild(badge);
+	template[BADGE_KEY] = badge;
 }

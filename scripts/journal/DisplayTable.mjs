@@ -13,15 +13,15 @@ const MODULE_ID = "shadowdark-extras";
  * @returns {Object} Contains uuid and flag booleans
  */
 function parseMatch(match) {
-    const words = match.split(" ");
-    let result = {};
-    if (words.length) {
-        result.uuid = words[0];
-    }
-    for (let i = 1; i < words.length; i++) {
-        result[words[i]] = true;
-    }
-    return result;
+	const words = match.split(" ");
+	let result = {};
+	if (words.length) {
+		result.uuid = words[0];
+	}
+	for (let i = 1; i < words.length; i++) {
+		result[words[i]] = true;
+	}
+	return result;
 }
 
 /**
@@ -30,16 +30,16 @@ function parseMatch(match) {
  * @returns {RollTable|null} The table document or null
  */
 async function getTableFromUUID(uuid) {
-    try {
-        let table = fromUuidSync(uuid);
-        if (!table) {
-            table = await fromUuid(uuid);
-        }
-        return table;
-    } catch (e) {
-        console.warn(`SDX DisplayTable: Could not find table for UUID: ${uuid}`);
-        return null;
-    }
+	try {
+		let table = fromUuidSync(uuid);
+		if (!table) {
+			table = await fromUuid(uuid);
+		}
+		return table;
+	} catch (e) {
+		console.warn(`SDX DisplayTable: Could not find table for UUID: ${uuid}`);
+		return null;
+	}
 }
 
 /**
@@ -49,18 +49,18 @@ async function getTableFromUUID(uuid) {
  * @returns {HTMLElement} The rendered element
  */
 export async function enrichDisplayTable(match, _options) {
-    const parsedMatch = parseMatch(match[1]);
-    const table = await getTableFromUUID(parsedMatch.uuid);
-    const tableName = match[2] ?? table?.name;
+	const parsedMatch = parseMatch(match[1]);
+	const table = await getTableFromUUID(parsedMatch.uuid);
+	const tableName = match[2] ?? table?.name;
 
-    const container = document.createElement("div");
-    container.classList.add("sdx-display-table-container");
+	const container = document.createElement("div");
+	container.classList.add("sdx-display-table-container");
 
-    if (table) {
-        container.dataset.tableUuid = table.uuid;
+	if (table) {
+		container.dataset.tableUuid = table.uuid;
 
-        // Header and Roll Bar
-        let html = `
+		// Header and Roll Bar
+		let html = `
         <div class="sdx-display-table">
             <div class="sdx-table-header">
                 ${tableName}
@@ -75,60 +75,60 @@ export async function enrichDisplayTable(match, _options) {
             </div>
             <div class="sdx-table-results">`;
 
-        // Rows
-        for (const result of table.results) {
-            const rangeStr = result.range[0] === result.range[1]
-                ? `${result.range[0]}`
-                : `${result.range[0]}-${result.range[1]}`;
+		// Rows
+		for (const result of table.results) {
+			const rangeStr = result.range[0] === result.range[1]
+				? `${result.range[0]}`
+				: `${result.range[0]}-${result.range[1]}`;
 
-            let resultText = "";
-            if (result.type === CONST.TABLE_RESULT_TYPES.TEXT) {
-                resultText = result.text || result.description || "";
-            } else if (result.type === CONST.TABLE_RESULT_TYPES.DOCUMENT) {
-                // Try to get the actual UUID from the linked document
-                const doc = fromUuidSync(`${result.documentCollection}.${result.documentId}`);
-                const docUuid = doc?.uuid ?? `${result.documentCollection}.${result.documentId}`;
-                resultText = `@UUID[${docUuid}]{${result.text}}`;
-            } else if (result.type === CONST.TABLE_RESULT_TYPES.COMPENDIUM) {
-                // Try to get the actual UUID from the linked compendium document
-                // v10+ UUIDs include the document type (e.g., Compendium.pack.id.RollTable.docId)
-                const doc = fromUuidSync(`Compendium.${result.documentCollection}.${result.documentId}`);
-                const docUuid = doc?.uuid ?? `Compendium.${result.documentCollection}.${result.documentId}`;
-                resultText = `@UUID[${docUuid}]{${result.text}}`;
-            }
+			let resultText = "";
+			if (result.type === CONST.TABLE_RESULT_TYPES.TEXT) {
+				resultText = result.text || result.description || "";
+			} else if (result.type === CONST.TABLE_RESULT_TYPES.DOCUMENT) {
+				// Try to get the actual UUID from the linked document
+				const doc = fromUuidSync(`${result.documentCollection}.${result.documentId}`);
+				const docUuid = doc?.uuid ?? `${result.documentCollection}.${result.documentId}`;
+				resultText = `@UUID[${docUuid}]{${result.text}}`;
+			} else if (result.type === CONST.TABLE_RESULT_TYPES.COMPENDIUM) {
+				// Try to get the actual UUID from the linked compendium document
+				// v10+ UUIDs include the document type (e.g., Compendium.pack.id.RollTable.docId)
+				const doc = fromUuidSync(`Compendium.${result.documentCollection}.${result.documentId}`);
+				const docUuid = doc?.uuid ?? `Compendium.${result.documentCollection}.${result.documentId}`;
+				resultText = `@UUID[${docUuid}]{${result.text}}`;
+			}
 
-            html += `
+			html += `
                 <div class="sdx-table-row">
                     <div class="sdx-table-row-range">${rangeStr}</div>
                     <div class="sdx-table-row-text">${resultText}</div>
                 </div>`;
-        }
+		}
 
-        html += `
+		html += `
             </div>
         </div>`;
 
-        // We use TextEditor.enrichHTML to handle any nested UUID links or dice rolls in the results
-        container.innerHTML = await TextEditor.enrichHTML(html, { async: true });
-    } else {
-        // Broken link fallback
-        container.dataset.tableId = parsedMatch.uuid;
-        if (match[2]) container.dataset.tableName = match[2];
-        container.classList.add("content-link", "broken");
-        container.innerHTML = `<i class="fas fa-unlink"></i> ${tableName ?? "Unknown Table"}`;
-    }
+		// We use TextEditor.enrichHTML to handle any nested UUID links or dice rolls in the results
+		container.innerHTML = await TextEditor.enrichHTML(html, { async: true });
+	} else {
+		// Broken link fallback
+		container.dataset.tableId = parsedMatch.uuid;
+		if (match[2]) container.dataset.tableName = match[2];
+		container.classList.add("content-link", "broken");
+		container.innerHTML = `<i class="fas fa-unlink"></i> ${tableName ?? "Unknown Table"}`;
+	}
 
-    return container;
+	return container;
 }
 
 /**
  * Register the DisplayTable enricher with Foundry
  */
 export function registerDisplayTableEnricher() {
-    CONFIG.TextEditor.enrichers.push({
-        pattern: /@DisplayTable\[(.+?)\](?:\{(.+?)\})?/gm,
-        enricher: enrichDisplayTable
-    });
+	CONFIG.TextEditor.enrichers.push({
+		pattern: /@DisplayTable\[(.+?)\](?:\{(.+?)\})?/gm,
+		enricher: enrichDisplayTable,
+	});
 
-    console.log("SDX | Registered DisplayTable enricher");
+	console.log("SDX | Registered DisplayTable enricher");
 }

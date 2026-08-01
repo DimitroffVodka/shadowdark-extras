@@ -65,7 +65,7 @@ export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
 		`data-inh-target="${esc(inherited?.preset?.target ?? "target")}"`,
 		`data-inh-scale="${esc(inhHit.scale ?? 1)}"`,
 		`data-inh-duration="${esc(inhHit.duration ?? 1500)}"`,
-		`data-inh-opacity="${esc(inherited?.preset?.opacity ?? 1)}"`
+		`data-inh-opacity="${esc(inherited?.preset?.opacity ?? 1)}"`,
 	].join(" ");
 
 	const ro = enabled ? "" : "disabled";
@@ -79,7 +79,7 @@ export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
 	// Header badge: tells you at a glance whether this item is already covered.
 	let badge = "";
 	if (enabled) {
-		badge = `<span class="sdx-animfx-badge sdx-animfx-badge-override">Override active</span>`;
+		badge = "<span class=\"sdx-animfx-badge sdx-animfx-badge-override\">Override active</span>";
 	} else if (inherited) {
 		const off = inherited.categoryEnabled ? "" : " — category disabled";
 		badge = `<span class="sdx-animfx-badge sdx-animfx-badge-inherited"
@@ -94,7 +94,7 @@ export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
 	const thumb = videoSrc
 		? `<video class="sdx-animfx-item-thumb" src="${esc(videoSrc)}" muted loop preload="none" playsinline
 			data-tooltip="Hover to play"></video>`
-		: `<div class="sdx-animfx-item-thumb sdx-animfx-item-thumb-missing">no preview</div>`;
+		: "<div class=\"sdx-animfx-item-thumb sdx-animfx-item-thumb-missing\">no preview</div>";
 
 	const hint = enabled
 		? `Overriding the master list. Untick to hand this item back to the master list

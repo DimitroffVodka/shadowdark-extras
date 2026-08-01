@@ -55,9 +55,9 @@ export async function ensureTradeJournal() {
 			ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER },
 			flags: {
 				[MODULE_ID]: {
-					isTradeJournal: true
-				}
-			}
+					isTradeJournal: true,
+				},
+			},
 		});
 
 		console.log(`${MODULE_ID} | Trade sync journal created:`, journal.id);
@@ -65,7 +65,7 @@ export async function ensureTradeJournal() {
 		// Ensure ownership is correct (in case it was changed)
 		if (journal.ownership.default !== CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) {
 			await journal.update({
-				ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER }
+				ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER },
 			});
 		}
 	}
@@ -121,24 +121,24 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 			title: "SHADOWDARK_EXTRAS.trade.title",
 			icon: "fas fa-exchange-alt",
 			resizable: false,
-			minimizable: false
+			minimizable: false,
 		},
 		position: {
 			width: 600,
-			height: "auto"
+			height: "auto",
 		},
 		actions: {
 			lockOffer: TradeWindowSD.#onLockOffer,
 			acceptTrade: TradeWindowSD.#onAcceptTrade,
 			cancelTrade: TradeWindowSD.#onCancelTrade,
-			removeItem: TradeWindowSD.#onRemoveItem
-		}
+			removeItem: TradeWindowSD.#onRemoveItem,
+		},
 	};
 
 	static PARTS = {
 		trade: {
-			template: `modules/${MODULE_ID}/templates/trade-window.hbs`
-		}
+			template: `modules/${MODULE_ID}/templates/trade-window.hbs`,
+		},
 	};
 
 	/**
@@ -166,7 +166,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 
 	get title() {
 		return game.i18n.format("SHADOWDARK_EXTRAS.trade.title_with_player", {
-			player: this.remoteActor?.name ?? "Unknown"
+			player: this.remoteActor?.name ?? "Unknown",
 		});
 	}
 
@@ -184,7 +184,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 				lockedA: false,
 				lockedB: false,
 				acceptedA: false,
-				acceptedB: false
+				acceptedB: false,
 			};
 		}
 		// Ensure coins exist (for backwards compatibility)
@@ -202,7 +202,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 			items: this.localSide === "A" ? state.itemsA : state.itemsB,
 			coins: this.localSide === "A" ? state.coinsA : state.coinsB,
 			locked: this.localSide === "A" ? state.lockedA : state.lockedB,
-			accepted: this.localSide === "A" ? state.acceptedA : state.acceptedB
+			accepted: this.localSide === "A" ? state.acceptedA : state.acceptedB,
 		};
 	}
 
@@ -215,7 +215,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 			items: this.remoteSide === "A" ? state.itemsA : state.itemsB,
 			coins: this.remoteSide === "A" ? state.coinsA : state.coinsB,
 			locked: this.remoteSide === "A" ? state.lockedA : state.lockedB,
-			accepted: this.remoteSide === "A" ? state.acceptedA : state.acceptedB
+			accepted: this.remoteSide === "A" ? state.acceptedA : state.acceptedB,
 		};
 	}
 
@@ -272,7 +272,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 		context.localActorCoins = {
 			gp: this.localActor.system?.coins?.gp ?? 0,
 			sp: this.localActor.system?.coins?.sp ?? 0,
-			cp: this.localActor.system?.coins?.cp ?? 0
+			cp: this.localActor.system?.coins?.cp ?? 0,
 		};
 
 		// Calculate total value for each side (items + coins)
@@ -333,7 +333,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 		if (value > maxAvailable) {
 			ui.notifications.warn(game.i18n.format("SHADOWDARK_EXTRAS.trade.not_enough_coins", {
 				type: coinType.toUpperCase(),
-				available: maxAvailable
+				available: maxAvailable,
 			}));
 			value = maxAvailable;
 		}
@@ -400,7 +400,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 
 		// Add item to local trade and save to journal
 		await this._updateLocalState({
-			items: [...localState.items, item.toObject()]
+			items: [...localState.items, item.toObject()],
 		});
 	}
 
@@ -435,7 +435,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 
 		// Remove item from local trade
 		await this._updateLocalState({
-			items: localState.items.filter(i => i._id !== itemId)
+			items: localState.items.filter(i => i._id !== itemId),
 		});
 	}
 
@@ -631,7 +631,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 		// Check if cancelled
 		if (state.cancelled && state.cancelledBy !== this.localActor.name) {
 			ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.trade.cancelled_by", {
-				player: state.cancelledBy
+				player: state.cancelledBy,
 			}));
 			this.close({ skipJournalCleanup: true });
 			return;
@@ -640,7 +640,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 		// Check if complete
 		if (state.complete) {
 			ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.trade.complete", {
-				player: this.remoteActor.name
+				player: this.remoteActor.name,
 			}));
 			this.close({ skipJournalCleanup: true });
 			return;
@@ -861,7 +861,7 @@ export async function initiateTradeWithPlayer(localActor, remoteActor) {
 
 	// Notify user that request is being sent
 	ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.trade.request_sent", {
-		player: remoteActor.name
+		player: remoteActor.name,
 	}));
 
 	// Send trade request prompt to the remote user via socketlib
@@ -872,7 +872,7 @@ export async function initiateTradeWithPlayer(localActor, remoteActor) {
 			initiatorActorId: localActor.id,
 			targetActorId: remoteActor.id,
 			initiatorUserId: game.user.id,
-			tradeId: tradeId
+			tradeId: tradeId,
 		});
 
 		console.log(`${MODULE_ID} | Trade request result:`, result);
@@ -889,7 +889,7 @@ export async function initiateTradeWithPlayer(localActor, remoteActor) {
 				lockedA: false,
 				lockedB: false,
 				acceptedA: false,
-				acceptedB: false
+				acceptedB: false,
 			});
 
 			// Open trade window for initiator (this user) - we are side A
@@ -897,7 +897,7 @@ export async function initiateTradeWithPlayer(localActor, remoteActor) {
 				tradeId: tradeId,
 				localActor: localActor,
 				remoteActor: remoteActor,
-				isInitiator: true
+				isInitiator: true,
 			});
 			tradeWindow.render(true);
 
@@ -907,14 +907,14 @@ export async function initiateTradeWithPlayer(localActor, remoteActor) {
 				tradeId: tradeId,
 				localActorId: remoteActor.id,
 				remoteActorId: localActor.id,
-				isInitiator: false
+				isInitiator: false,
 			});
 
 			ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.trade.accepted"));
 		} else {
 			// Trade declined
 			ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.trade.declined_by", {
-				player: remoteActor.name
+				player: remoteActor.name,
 			}));
 		}
 
@@ -956,32 +956,32 @@ export async function showTradeDialog(localActor) {
 	});
 
 	// Build options HTML with optgroups and data attributes for searching
-	let optionsHtml = '';
+	let optionsHtml = "";
 
 	// Connected & Assigned characters
 	if (connectedAssigned.length > 0) {
-		optionsHtml += `<optgroup label="🟢 Connected Players" data-group="connected">`;
+		optionsHtml += "<optgroup label=\"🟢 Connected Players\" data-group=\"connected\">";
 		for (const p of connectedAssigned) {
 			const user = game.users.find(u => u.active && u.id !== game.user.id && u.character?.id === p.id);
-			const userName = user ? user.name : '';
-			const displayUserName = userName ? ` (${userName})` : '';
+			const userName = user ? user.name : "";
+			const displayUserName = userName ? ` (${userName})` : "";
 			const searchText = `${p.name} ${userName}`.toLowerCase();
 			optionsHtml += `<option value="${p.id}" data-search="${searchText}">🟢 ${p.name}${displayUserName}</option>`;
 		}
-		optionsHtml += `</optgroup>`;
+		optionsHtml += "</optgroup>";
 	}
 
 	// Other player characters (only shown when filter is unchecked)
 	if (otherPlayers.length > 0) {
-		optionsHtml += `<optgroup label="⚪ Other Characters" data-group="other">`;
+		optionsHtml += "<optgroup label=\"⚪ Other Characters\" data-group=\"other\">";
 		for (const p of otherPlayers) {
 			// Find any owner for search purposes
 			const owners = game.users.filter(u => p.testUserPermission(u, "OWNER"));
-			const ownerNames = owners.map(u => u.name).join(' ');
+			const ownerNames = owners.map(u => u.name).join(" ");
 			const searchText = `${p.name} ${ownerNames}`.toLowerCase();
 			optionsHtml += `<option value="${p.id}" data-search="${searchText}">⚪ ${p.name}</option>`;
 		}
-		optionsHtml += `</optgroup>`;
+		optionsHtml += "</optgroup>";
 	}
 
 	const content = `
@@ -1023,37 +1023,37 @@ export async function showTradeDialog(localActor) {
 							await initiateTradeWithPlayer(localActor, targetActor);
 						}
 						resolve(true);
-					}
+					},
 				},
 				{
 					action: "cancel",
 					icon: "fas fa-times",
 					label: game.i18n.localize("Cancel"),
-					callback: () => resolve(false)
-				}
+					callback: () => resolve(false),
+				},
 			],
-			close: () => resolve(false)
+			close: () => resolve(false),
 		});
 		dialog.render({ force: true }).then(() => {
 			const root = dialog.element;
-			const select = root.querySelector('#sdx-trade-target');
-			const filterCheckbox = root.querySelector('#sdx-filter-connected');
-			const searchInput = root.querySelector('#sdx-trade-search');
+			const select = root.querySelector("#sdx-trade-target");
+			const filterCheckbox = root.querySelector("#sdx-filter-connected");
+			const searchInput = root.querySelector("#sdx-trade-search");
 
 			const updateFilter = () => {
 				const showOnlyConnected = !!filterCheckbox?.checked;
 				const searchText = (searchInput?.value || "").toLowerCase().trim();
 
-				root.querySelectorAll('#sdx-trade-target optgroup').forEach(group => {
+				root.querySelectorAll("#sdx-trade-target optgroup").forEach(group => {
 					const groupType = group.dataset.group;
-					if (groupType === 'other' && showOnlyConnected) {
+					if (groupType === "other" && showOnlyConnected) {
 						group.hidden = true;
 						return;
 					}
 					let visibleCount = 0;
-					group.querySelectorAll('option').forEach(option => {
-						const optionSearch = option.dataset.search || '';
-						const visible = searchText === '' || optionSearch.includes(searchText);
+					group.querySelectorAll("option").forEach(option => {
+						const optionSearch = option.dataset.search || "";
+						const visible = searchText === "" || optionSearch.includes(searchText);
 						option.hidden = !visible;
 						if (visible) visibleCount++;
 					});
@@ -1068,8 +1068,8 @@ export async function showTradeDialog(localActor) {
 			};
 
 			updateFilter();
-			filterCheckbox?.addEventListener('change', updateFilter);
-			searchInput?.addEventListener('input', updateFilter);
+			filterCheckbox?.addEventListener("change", updateFilter);
+			searchInput?.addEventListener("input", updateFilter);
 
 			setTimeout(() => searchInput?.focus(), 100);
 		});

@@ -43,7 +43,7 @@ export const DEFAULT_INVENTORY_STYLES = {
 			textShadow: "1px 1px 2px #000",
 			borderLeft: "3px solid #9b59b6",
 			descriptionTextColor: "",
-			descriptionTextShadow: ""
+			descriptionTextShadow: "",
 		},
 		unidentified: {
 			enabled: true,
@@ -56,7 +56,7 @@ export const DEFAULT_INVENTORY_STYLES = {
 			textShadow: "1px 1px 2px #000",
 			borderLeft: "3px solid #f39c12",
 			descriptionTextColor: "",
-			descriptionTextShadow: ""
+			descriptionTextShadow: "",
 		},
 		container: {
 			enabled: true,
@@ -69,7 +69,7 @@ export const DEFAULT_INVENTORY_STYLES = {
 			textShadow: "1px 1px 2px #000",
 			borderLeft: "3px solid #27ae60",
 			descriptionTextColor: "",
-			descriptionTextShadow: ""
+			descriptionTextShadow: "",
 		},
 		Weapon: {
 			enabled: false,
@@ -82,7 +82,7 @@ export const DEFAULT_INVENTORY_STYLES = {
 			textShadow: "1px 1px 2px #000",
 			borderLeft: "3px solid #c0392b",
 			descriptionTextColor: "",
-			descriptionTextShadow: ""
+			descriptionTextShadow: "",
 		},
 		Armor: {
 			enabled: false,
@@ -95,7 +95,7 @@ export const DEFAULT_INVENTORY_STYLES = {
 			textShadow: "1px 1px 2px #000",
 			borderLeft: "3px solid #2980b9",
 			descriptionTextColor: "",
-			descriptionTextShadow: ""
+			descriptionTextShadow: "",
 		},
 		Scroll: {
 			enabled: false,
@@ -108,7 +108,7 @@ export const DEFAULT_INVENTORY_STYLES = {
 			textShadow: "1px 1px 2px #000",
 			borderLeft: "3px solid #d4a574",
 			descriptionTextColor: "",
-			descriptionTextShadow: ""
+			descriptionTextShadow: "",
 		},
 		Potion: {
 			enabled: false,
@@ -121,7 +121,7 @@ export const DEFAULT_INVENTORY_STYLES = {
 			textShadow: "1px 1px 2px #000",
 			borderLeft: "3px solid #2ecc71",
 			descriptionTextColor: "",
-			descriptionTextShadow: ""
+			descriptionTextShadow: "",
 		},
 		Wand: {
 			enabled: false,
@@ -134,7 +134,7 @@ export const DEFAULT_INVENTORY_STYLES = {
 			textShadow: "1px 1px 2px #000",
 			borderLeft: "3px solid #8e44ad",
 			descriptionTextColor: "",
-			descriptionTextShadow: ""
+			descriptionTextShadow: "",
 		},
 		Basic: {
 			enabled: false,
@@ -147,9 +147,9 @@ export const DEFAULT_INVENTORY_STYLES = {
 			textShadow: "1px 1px 2px #000",
 			borderLeft: "3px solid #666666",
 			descriptionTextColor: "",
-			descriptionTextShadow: ""
-		}
-	}
+			descriptionTextShadow: "",
+		},
+	},
 };
 
 /**
@@ -164,23 +164,23 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 		tag: "form",
 		window: {
 			title: "SHADOWDARK_EXTRAS.inventory_styles.title",
-			resizable: true
+			resizable: true,
 		},
 		position: {
 			width: 900,
-			height: 750
+			height: 750,
 		},
 		form: {
 			handler: InventoryStylesApp.formHandler,
 			submitOnChange: true,
-			closeOnSubmit: false
-		}
+			closeOnSubmit: false,
+		},
 	};
 
 	static PARTS = {
 		form: {
-			template: `modules/shadowdark-extras/templates/inventory-styles.hbs`
-		}
+			template: "modules/shadowdark-extras/templates/inventory-styles.hbs",
+		},
 	};
 
 	static show() {
@@ -218,7 +218,7 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 				key,
 				...config,
 				gradientEndColorPicker,
-				isSpecial: ["magical", "unidentified", "container"].includes(key)
+				isSpecial: ["magical", "unidentified", "container"].includes(key),
 			};
 		}).filter(Boolean);
 
@@ -231,7 +231,7 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 		return {
 			enabled: styles.enabled,
 			categories,
-			MODULE_ID
+			MODULE_ID,
 		};
 	}
 
@@ -269,7 +269,7 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 		});
 
 		// Text input change for colors - sync back to color picker
-		html.find('.sdx-color-text').on("input", (ev) => {
+		html.find(".sdx-color-text").on("input", (ev) => {
 			const input = ev.currentTarget;
 			const fieldName = input.name;
 			const colorInput = html.find(`input[type="color"][data-edit="${fieldName}"]`);
@@ -402,7 +402,7 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 			const confirm = await foundry.applications.api.DialogV2.confirm({
 				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.inventory_styles.reset_confirm_title") },
 				content: `<p>${game.i18n.localize("SHADOWDARK_EXTRAS.inventory_styles.reset_confirm_content")}</p>`,
-				modal: true
+				modal: true,
 			});
 			if (confirm) {
 				await game.settings.set(MODULE_ID, "inventoryStyles", foundry.utils.deepClone(DEFAULT_INVENTORY_STYLES));
@@ -497,15 +497,15 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 			if (!enabled) {
 				$preview.css({
 					background: "#1a1a1a",
-					borderLeft: "none"
+					borderLeft: "none",
 				});
 				$preview.find(".sdx-preview-name, .sdx-preview-qty, .sdx-preview-slots").css({
 					color: "#e0e0e0",
-					textShadow: "none"
+					textShadow: "none",
 				});
 				$preview.find(".sdx-preview-details, .sdx-preview-details *").css({
 					color: "#a0a0a0",
-					textShadow: "none"
+					textShadow: "none",
 				});
 				return;
 			}
@@ -530,12 +530,12 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 			$preview.css({
 				background: background,
 				borderLeft: borderLeft,
-				borderRadius: "10px"
+				borderRadius: "10px",
 			});
 
 			$preview.find(".sdx-preview-name, .sdx-preview-qty, .sdx-preview-slots").css({
 				color: textColor,
-				textShadow: textShadow
+				textShadow: textShadow,
 			});
 
 			// Apply description styles
@@ -543,12 +543,12 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 			const finalDescShadow = descShadow || "none";
 			$preview.find(".sdx-preview-details, .sdx-preview-details p, .sdx-preview-details b, .sdx-preview-details em").css({
 				color: finalDescColor,
-				textShadow: finalDescShadow
+				textShadow: finalDescShadow,
 			});
 			$preview.find(".sdx-preview-tag").css({
 				color: finalDescColor,
 				textShadow: finalDescShadow,
-				background: `${bgColor}66`
+				background: `${bgColor}66`,
 			});
 		});
 
@@ -571,41 +571,41 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 				categories: {
 					magical: { enabled: true, backgroundColor: "#1a1a2e", useGradient: true, gradientEndColor: "transparent", textColor: "#a78bfa", textShadow: "0px 0px 8px #8b5cf6", borderLeft: "3px solid #8b5cf6", descriptionTextColor: "#9ca3af", descriptionTextShadow: "" },
 					unidentified: { enabled: true, backgroundColor: "#1f1a0a", useGradient: true, gradientEndColor: "transparent", textColor: "#fbbf24", textShadow: "0px 0px 6px #f59e0b", borderLeft: "3px solid #f59e0b", descriptionTextColor: "#9ca3af", descriptionTextShadow: "" },
-					container: { enabled: true, backgroundColor: "#0a1f1a", useGradient: true, gradientEndColor: "transparent", textColor: "#34d399", textShadow: "0px 0px 6px #10b981", borderLeft: "3px solid #10b981", descriptionTextColor: "#9ca3af", descriptionTextShadow: "" }
-				}
+					container: { enabled: true, backgroundColor: "#0a1f1a", useGradient: true, gradientEndColor: "transparent", textColor: "#34d399", textShadow: "0px 0px 6px #10b981", borderLeft: "3px solid #10b981", descriptionTextColor: "#9ca3af", descriptionTextShadow: "" },
+				},
 			},
 			vibrant: {
 				enabled: true,
 				categories: {
 					magical: { enabled: true, backgroundColor: "#7c3aed", useGradient: true, gradientEndColor: "#4c1d95", textColor: "#ffffff", textShadow: "2px 2px 4px #000", borderLeft: "4px solid #fbbf24", descriptionTextColor: "#e0e7ff", descriptionTextShadow: "" },
 					unidentified: { enabled: true, backgroundColor: "#dc2626", useGradient: true, gradientEndColor: "#7f1d1d", textColor: "#fef2f2", textShadow: "2px 2px 4px #000", borderLeft: "4px solid #fbbf24", descriptionTextColor: "#fee2e2", descriptionTextShadow: "" },
-					container: { enabled: true, backgroundColor: "#059669", useGradient: true, gradientEndColor: "#064e3b", textColor: "#ecfdf5", textShadow: "2px 2px 4px #000", borderLeft: "4px solid #fbbf24", descriptionTextColor: "#d1fae5", descriptionTextShadow: "" }
-				}
+					container: { enabled: true, backgroundColor: "#059669", useGradient: true, gradientEndColor: "#064e3b", textColor: "#ecfdf5", textShadow: "2px 2px 4px #000", borderLeft: "4px solid #fbbf24", descriptionTextColor: "#d1fae5", descriptionTextShadow: "" },
+				},
 			},
 			parchment: {
 				enabled: true,
 				categories: {
 					magical: { enabled: true, backgroundColor: "#92702c", useGradient: true, gradientEndColor: "#d4a574", textColor: "#1a0f00", textShadow: "none", borderLeft: "3px solid #5a3e1b", descriptionTextColor: "#3d2914", descriptionTextShadow: "" },
 					unidentified: { enabled: true, backgroundColor: "#8b4513", useGradient: true, gradientEndColor: "#d2691e", textColor: "#fff8dc", textShadow: "1px 1px 1px #000", borderLeft: "3px solid #654321", descriptionTextColor: "#f5deb3", descriptionTextShadow: "" },
-					container: { enabled: true, backgroundColor: "#6b5344", useGradient: true, gradientEndColor: "#a08679", textColor: "#f5f5dc", textShadow: "none", borderLeft: "3px solid #463830", descriptionTextColor: "#d2b48c", descriptionTextShadow: "" }
-				}
+					container: { enabled: true, backgroundColor: "#6b5344", useGradient: true, gradientEndColor: "#a08679", textColor: "#f5f5dc", textShadow: "none", borderLeft: "3px solid #463830", descriptionTextColor: "#d2b48c", descriptionTextShadow: "" },
+				},
 			},
 			neon: {
 				enabled: true,
 				categories: {
 					magical: { enabled: true, backgroundColor: "#0a0a1a", useGradient: false, gradientEndColor: "transparent", textColor: "#00ffff", textShadow: "0px 0px 10px #00ffff, 0px 0px 20px #00ffff", borderLeft: "3px solid #00ffff", descriptionTextColor: "#00ff88", descriptionTextShadow: "0px 0px 5px #00ff88" },
 					unidentified: { enabled: true, backgroundColor: "#0a0a1a", useGradient: false, gradientEndColor: "transparent", textColor: "#ff00ff", textShadow: "0px 0px 10px #ff00ff, 0px 0px 20px #ff00ff", borderLeft: "3px solid #ff00ff", descriptionTextColor: "#ff6b6b", descriptionTextShadow: "0px 0px 5px #ff6b6b" },
-					container: { enabled: true, backgroundColor: "#0a0a1a", useGradient: false, gradientEndColor: "transparent", textColor: "#00ff00", textShadow: "0px 0px 10px #00ff00, 0px 0px 20px #00ff00", borderLeft: "3px solid #00ff00", descriptionTextColor: "#ffff00", descriptionTextShadow: "0px 0px 5px #ffff00" }
-				}
+					container: { enabled: true, backgroundColor: "#0a0a1a", useGradient: false, gradientEndColor: "transparent", textColor: "#00ff00", textShadow: "0px 0px 10px #00ff00, 0px 0px 20px #00ff00", borderLeft: "3px solid #00ff00", descriptionTextColor: "#ffff00", descriptionTextShadow: "0px 0px 5px #ffff00" },
+				},
 			},
 			minimal: {
 				enabled: true,
 				categories: {
 					magical: { enabled: true, backgroundColor: "transparent", useGradient: false, gradientEndColor: "transparent", textColor: "#a78bfa", textShadow: "none", borderLeft: "2px solid #a78bfa", descriptionTextColor: "", descriptionTextShadow: "" },
 					unidentified: { enabled: true, backgroundColor: "transparent", useGradient: false, gradientEndColor: "transparent", textColor: "#fbbf24", textShadow: "none", borderLeft: "2px solid #fbbf24", descriptionTextColor: "", descriptionTextShadow: "" },
-					container: { enabled: true, backgroundColor: "transparent", useGradient: false, gradientEndColor: "transparent", textColor: "#34d399", textShadow: "none", borderLeft: "2px solid #34d399", descriptionTextColor: "", descriptionTextShadow: "" }
-				}
-			}
+					container: { enabled: true, backgroundColor: "transparent", useGradient: false, gradientEndColor: "transparent", textColor: "#34d399", textShadow: "none", borderLeft: "2px solid #34d399", descriptionTextColor: "", descriptionTextShadow: "" },
+				},
+			},
 		};
 	}
 

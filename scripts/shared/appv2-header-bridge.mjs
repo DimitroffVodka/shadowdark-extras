@@ -31,7 +31,7 @@ const _SDX_V2_ITEM_SHEETS = new Set([
 	"NPCFeatureSheetSD",
 	"NPCSpecialAttackSheetSD",
 	"PotionSheetSD",
-	"BackgroundSheetSD"
+	"BackgroundSheetSD",
 ]);
 
 export function registerAppV2HeaderBridge() {

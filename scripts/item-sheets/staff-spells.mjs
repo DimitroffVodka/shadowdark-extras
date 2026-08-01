@@ -28,10 +28,10 @@ export function injectStaffSpellButton(app, html, item) {
 	if (item.type !== "Weapon") return;
 
 	// Check if already injected
-	if (html.find('.sdx-staff-spell-button').length > 0) return;
+	if (html.find(".sdx-staff-spell-button").length > 0) return;
 
 	// Find the header with class "light" (ITEM PROPERTIES header)
-	const $headerLight = html.find('.SD-box .header.light').first();
+	const $headerLight = html.find(".SD-box .header.light").first();
 	if (!$headerLight.length) {
 		//console.log(`${MODULE_ID} | Could not find header.light in weapon sheet`);
 		return;
@@ -50,7 +50,7 @@ export function injectStaffSpellButton(app, html, item) {
 	`);
 
 	// Handle button click
-	$button.on('click', async function (e) {
+	$button.on("click", async function(e) {
 		e.preventDefault();
 		const manager = new StaffSpellManager(item);
 		manager.render(true);
@@ -91,7 +91,7 @@ async function getEquippedStaffSpells(actor) {
 						spellImg: spell.img,
 						spellData: spell,
 						maxUses: spellRef.maxUses,
-						currentUses: spellRef.currentUses
+						currentUses: spellRef.currentUses,
 					});
 				}
 			} catch (err) {
@@ -159,11 +159,11 @@ function buildStaffSpellsHtml(staffSpells) {
 							data-spell-uuid="${spell.uuid}"
 							data-staff-id="${staffId}"
 							data-tooltip="Focus on this spell"
-							${isDepleted ? 'style="opacity: 0.3; pointer-events: none;"' : ''}
+							${isDepleted ? 'style="opacity: 0.3; pointer-events: none;"' : ""}
 						>
 							<i class="fa-solid fa-brain"></i>
 						</a>
-					` : ''}
+					` : ""}
 					${!isDepleted ? `
 						<a
 							data-action="cast-staff-spell"
@@ -311,12 +311,12 @@ export async function injectStaffSpellsUI(sheet, html, data) {
 					slots: { slots_used: 0 },
 					equipped: true,
 					lost: false,
-					stashed: false
+					stashed: false,
 				},
 				// Copy all flags from the spell (includes spellDamage, effects, etc.)
 				flags: spellData.flags || {},
 				// Copy effects from the spell
-				effects: spellData.effects || []
+				effects: spellData.effects || [],
 			};
 
 			const [tempWand] = await actor.createEmbeddedDocuments("Item", [wandData]);
@@ -466,12 +466,12 @@ export async function injectStaffSpellsUI(sheet, html, data) {
 					slots: { slots_used: 0 },
 					equipped: true,
 					lost: false,
-					stashed: false
+					stashed: false,
 				},
 				// Copy all flags from the spell (includes spellDamage, effects, etc.)
 				flags: spellData.flags || {},
 				// Copy effects from the spell
-				effects: spellData.effects || []
+				effects: spellData.effects || [],
 			};
 
 			const [tempWand] = await actor.createEmbeddedDocuments("Item", [wandData]);
@@ -556,15 +556,15 @@ export function injectWeaponSpellRechargeButtons(app, html, actor) {
 		if (staffSpells.length === 0) return;
 
 		// Find this item's row in the inventory
-		const $itemRow = $inventoryTab.find(`[data-item-id="${item.id}"]`).closest('.item');
+		const $itemRow = $inventoryTab.find(`[data-item-id="${item.id}"]`).closest(".item");
 		if (!$itemRow.length) return;
 
 		// Find the actions div for this item
-		const $actions = $itemRow.find('.actions');
+		const $actions = $itemRow.find(".actions");
 		if (!$actions.length) return;
 
 		// Check if recharge button already exists
-		if ($actions.find('.sdx-recharge-weapon-spells').length > 0) return;
+		if ($actions.find(".sdx-recharge-weapon-spells").length > 0) return;
 
 		// Create recharge button
 		const $rechargeBtn = $(`
@@ -577,9 +577,9 @@ export function injectWeaponSpellRechargeButtons(app, html, actor) {
 		`);
 
 		// Add click handler
-		$rechargeBtn.on('click', async (event) => {
+		$rechargeBtn.on("click", async (event) => {
 			event.preventDefault();
-			const itemId = $(event.currentTarget).data('item-id');
+			const itemId = $(event.currentTarget).data("item-id");
 			const weapon = actor.items.get(itemId);
 			if (!weapon) return;
 
@@ -651,7 +651,7 @@ export function patchCanUseMagicItems() {
 			});
 
 			return hasWands || hasScrolls || hasWeaponSpells;
-		}
+		},
 	});
 	Player.prototype.__sdxCanUseMagicItemsPatched = true;
 }

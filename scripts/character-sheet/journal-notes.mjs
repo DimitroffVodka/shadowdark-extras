@@ -24,7 +24,7 @@ import { MODULE_ID } from "../shared/module-id.mjs";
 const DEFAULT_JOURNAL_PAGE = {
 	id: "",
 	name: "New Page",
-	content: ""
+	content: "",
 };
 
 /**
@@ -68,7 +68,7 @@ async function addJournalPage(actor, name = null) {
 	const newPage = {
 		id: generateJournalPageId(),
 		name: name || game.i18n.format("SHADOWDARK_EXTRAS.journal.default_page_name", { num: pages.length + 1 }),
-		content: ""
+		content: "",
 	};
 	pages.push(newPage);
 	await actor.setFlag(MODULE_ID, "journalPages", pages);
@@ -131,7 +131,7 @@ export async function injectJournalNotes(app, html, actor) {
 	}
 
 	// Prevent duplicate injection - check inside the notes tab specifically
-	if (notesTab.find('.sdx-journal-notes').length > 0) {
+	if (notesTab.find(".sdx-journal-notes").length > 0) {
 		return;
 	}
 
@@ -146,7 +146,7 @@ export async function injectJournalNotes(app, html, actor) {
 		const firstPage = {
 			id: generateJournalPageId(),
 			name: game.i18n.localize("SHADOWDARK_EXTRAS.journal.default_first_page"),
-			content: existingNotes
+			content: existingNotes,
 		};
 		pages = [firstPage];
 		await actor.setFlag(MODULE_ID, "journalPages", pages);
@@ -160,7 +160,7 @@ export async function injectJournalNotes(app, html, actor) {
 	// Mark pages as active/inactive
 	const pagesWithActive = pages.map(p => ({
 		...p,
-		active: p.id === activePage?.id
+		active: p.id === activePage?.id,
 	}));
 
 	// Enrich the active page content
@@ -185,15 +185,15 @@ export async function injectJournalNotes(app, html, actor) {
 		activePage: activePage,
 		activePageContent: activePageContent,
 		editable: app.isEditable,
-		actorId: actor.id
+		actorId: actor.id,
 	});
 
 	// Remove any existing journal notes first
-	targetTab.find('.sdx-journal-notes').remove();
+	targetTab.find(".sdx-journal-notes").remove();
 
 	// Hide ALL original content in the notes tab (the SD-hideable-section with the editor)
-	targetTab.children().each(function () {
-		if (!$(this).hasClass('sdx-journal-notes')) {
+	targetTab.children().each(function() {
+		if (!$(this).hasClass("sdx-journal-notes")) {
 			$(this).hide();
 		}
 	});
@@ -214,32 +214,32 @@ export async function injectJournalNotes(app, html, actor) {
 function activateJournalListeners(app, html, actor) {
 	// Find the journal section specifically within the notes tab
 	const notesTab = app.element.find('section.tab-notes[data-tab="tab-notes"]');
-	const journalSection = notesTab.find('.sdx-journal-notes');
+	const journalSection = notesTab.find(".sdx-journal-notes");
 	if (journalSection.length === 0) return;
 
 	// Page selection
-	journalSection.find('.sdx-journal-page-item').on('click', async (ev) => {
+	journalSection.find(".sdx-journal-page-item").on("click", async (ev) => {
 		// Don't trigger if clicking delete button
-		if ($(ev.target).closest('.sdx-page-delete').length) return;
+		if ($(ev.target).closest(".sdx-page-delete").length) return;
 
-		const pageId = $(ev.currentTarget).data('page-id');
+		const pageId = $(ev.currentTarget).data("page-id");
 		await setActiveJournalPage(actor, pageId);
 		app.render(false);
 	});
 
 	// Add page button
-	journalSection.find('[data-action="add-page"]').on('click', async (ev) => {
+	journalSection.find('[data-action="add-page"]').on("click", async (ev) => {
 		ev.preventDefault();
 		await addJournalPage(actor);
 		app.render(false);
 	});
 
 	// Delete page button
-	journalSection.find('[data-action="delete-page"]').on('click', async (ev) => {
+	journalSection.find('[data-action="delete-page"]').on("click", async (ev) => {
 		ev.preventDefault();
 		ev.stopPropagation();
 
-		const pageId = $(ev.currentTarget).data('page-id');
+		const pageId = $(ev.currentTarget).data("page-id");
 		const pages = getJournalPages(actor);
 		const page = pages.find(p => p.id === pageId);
 
@@ -247,7 +247,7 @@ function activateJournalListeners(app, html, actor) {
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
 			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.journal.delete_page_title") },
 			content: `<p>${game.i18n.format("SHADOWDARK_EXTRAS.journal.delete_page_confirm", { name: page?.name || "Page" })}</p>`,
-			modal: true
+			modal: true,
 		});
 
 		if (confirmed) {
@@ -257,17 +257,17 @@ function activateJournalListeners(app, html, actor) {
 	});
 
 	// Page title editing
-	journalSection.find('.sdx-page-title-input').on('change', async (ev) => {
-		const pageId = $(ev.currentTarget).data('page-id');
+	journalSection.find(".sdx-page-title-input").on("change", async (ev) => {
+		const pageId = $(ev.currentTarget).data("page-id");
 		const newName = $(ev.currentTarget).val().trim() || game.i18n.localize("SHADOWDARK_EXTRAS.journal.untitled");
 		await updateJournalPage(actor, pageId, { name: newName });
 		app.render(false);
 	});
 
 	// Edit page content button
-	journalSection.find('[data-action="edit-page"]').on('click', async (ev) => {
+	journalSection.find('[data-action="edit-page"]').on("click", async (ev) => {
 		ev.preventDefault();
-		const pageId = $(ev.currentTarget).data('page-id');
+		const pageId = $(ev.currentTarget).data("page-id");
 		await openJournalPageEditor(actor, pageId, app);
 	});
 }
@@ -282,18 +282,18 @@ function activateJournalListeners(app, html, actor) {
 class SdxJournalPageEditor extends foundry.applications.api.HandlebarsApplicationMixin(foundry.applications.api.ApplicationV2) {
 
 	static SNIPPETS = {
-		'callout-info': '<div class="sdx-callout sdx-callout-info"><p>Information text here...</p></div>',
-		'callout-warning': '<div class="sdx-callout sdx-callout-warning"><p>Warning text here...</p></div>',
-		'callout-danger': '<div class="sdx-callout sdx-callout-danger"><p>Danger text here...</p></div>',
-		'callout-success': '<div class="sdx-callout sdx-callout-success"><p>Success text here...</p></div>',
-		'callout-quest': '<div class="sdx-callout sdx-callout-quest"><p><strong>Quest:</strong> Quest details here...</p></div>',
-		'callout-loot': '<div class="sdx-callout sdx-callout-loot"><p><strong>Loot:</strong> Treasure description here...</p></div>',
-		'callout-npc': '<div class="sdx-callout sdx-callout-npc"><p>"NPC dialogue or quote here..."</p></div>',
-		'divider-swords': '<div class="sdx-divider sdx-divider-swords"></div>',
-		'divider-stars': '<div class="sdx-divider sdx-divider-stars"></div>',
-		'divider-skulls': '<div class="sdx-divider sdx-divider-skulls"></div>',
-		'divider-crowns': '<div class="sdx-divider sdx-divider-crowns"></div>',
-		'divider-simple': '<div class="sdx-divider sdx-divider-simple"></div>'
+		"callout-info": '<div class="sdx-callout sdx-callout-info"><p>Information text here...</p></div>',
+		"callout-warning": '<div class="sdx-callout sdx-callout-warning"><p>Warning text here...</p></div>',
+		"callout-danger": '<div class="sdx-callout sdx-callout-danger"><p>Danger text here...</p></div>',
+		"callout-success": '<div class="sdx-callout sdx-callout-success"><p>Success text here...</p></div>',
+		"callout-quest": '<div class="sdx-callout sdx-callout-quest"><p><strong>Quest:</strong> Quest details here...</p></div>',
+		"callout-loot": '<div class="sdx-callout sdx-callout-loot"><p><strong>Loot:</strong> Treasure description here...</p></div>',
+		"callout-npc": '<div class="sdx-callout sdx-callout-npc"><p>"NPC dialogue or quote here..."</p></div>',
+		"divider-swords": '<div class="sdx-divider sdx-divider-swords"></div>',
+		"divider-stars": '<div class="sdx-divider sdx-divider-stars"></div>',
+		"divider-skulls": '<div class="sdx-divider sdx-divider-skulls"></div>',
+		"divider-crowns": '<div class="sdx-divider sdx-divider-crowns"></div>',
+		"divider-simple": '<div class="sdx-divider sdx-divider-simple"></div>',
 	};
 
 	static DEFAULT_OPTIONS = {
@@ -302,27 +302,27 @@ class SdxJournalPageEditor extends foundry.applications.api.HandlebarsApplicatio
 		tag: "form",
 		window: {
 			title: "SHADOWDARK_EXTRAS.journal.edit_page_title",
-			resizable: true
+			resizable: true,
 		},
 		position: {
 			width: 650,
-			height: 500
+			height: 500,
 		},
 		form: {
 			handler: SdxJournalPageEditor.formHandler,
 			submitOnChange: false,
-			closeOnSubmit: true
+			closeOnSubmit: true,
 		},
 		actions: {
-			insertSnippet: SdxJournalPageEditor._onInsertSnippet
-		}
+			insertSnippet: SdxJournalPageEditor._onInsertSnippet,
+		},
 	};
 
 	static PARTS = {
 		form: {
 			template: `modules/${MODULE_ID}/templates/journal-editor.hbs`,
-			scrollable: [""]
-		}
+			scrollable: [""],
+		},
 	};
 
 	constructor({ actor, page, sheetApp, ...options } = {}) {
@@ -340,7 +340,7 @@ class SdxJournalPageEditor extends foundry.applications.api.HandlebarsApplicatio
 	async _prepareContext(options) {
 		return {
 			content: this.page?.content ?? "",
-			pageName: this.page?.name ?? ""
+			pageName: this.page?.name ?? "",
 		};
 	}
 
@@ -370,7 +370,7 @@ class SdxJournalPageEditor extends foundry.applications.api.HandlebarsApplicatio
 				const PMDOMParser = view.constructor.DOMParser || pmEl.editor.constructor?.DOMParser || globalThis.ProseMirror?.DOMParser;
 				if (PMDOMParser) {
 					const parser = PMDOMParser.fromSchema(schema);
-					const tmp = document.createElement('div');
+					const tmp = document.createElement("div");
 					tmp.innerHTML = snippet;
 					const doc = parser.parse(tmp);
 					const tr = state.tr;
@@ -386,10 +386,10 @@ class SdxJournalPageEditor extends foundry.applications.api.HandlebarsApplicatio
 
 		// Last-resort fallback: append to the element's value attribute.
 		if (pmEl) {
-			const existing = pmEl.value ?? pmEl.getAttribute('value') ?? '';
+			const existing = pmEl.value ?? pmEl.getAttribute("value") ?? "";
 			const next = existing + snippet;
 			pmEl.value = next;
-			pmEl.setAttribute('value', next);
+			pmEl.setAttribute("value", next);
 		}
 	}
 

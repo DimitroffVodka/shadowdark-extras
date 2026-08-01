@@ -70,6 +70,35 @@ revert by the merge commit or by `git log --oneline --grep="5.0.1"`. Rollback
 for the 5.0.4 style commit (when it lands): `git revert <5.0.4 SHA>`; the
 recorded version + hash make an exact rerun possible.
 
+## 5.0.4 record (in the 5.0.4 style commit)
+
+- **Allow-list config:** temporary, not committed; SHA-256
+  `74aae676fbed0ff2e26bba9b06f7677a054803539dbde26a5948c865371f470a`.
+  Generated from `.eslintrc.json` by setting every rule to `off` except
+  `indent`, `quotes`, `comma-dangle`, `eol-last`, `one-var`,
+  `space-before-function-paren` (the plan's 5.0.4 mechanical class).
+- **Applied:** `eslint --ext .mjs scripts/ -c <allowlist> --fix` — 184 files,
+  49,014/49,014 lines. NOTE: no committed command reproduces this commit
+  (`lint:baseline:fix` disables `quotes`/`brace-style` by design); the
+  allow-list SHA above + the change-class census below are the record.
+- **Change-class census** (Claude Code AST/token analysis, 2026-08-01):
+  quotes 5,118 flips + 386 static backtick→string = **5,504** (= recorded
+  debt exactly); comma-dangle 2,274 added + 19 removed (`functions: never`)
+  = **2,293** (= recorded debt exactly); 222 one-var splits; remainder
+  whitespace (indent 40,291). Zero `${}`-substitution templates converted;
+  zero string values changed; zero line-count deltas; comments intact.
+- **Artifact fix:** 3 ESLint space-before-tab sites (operator-aligned
+  continuations) hand-normalized to pure tabs — AuraEffectsSD.mjs:1164,
+  TemplateEffectsSD.mjs:1055, :1217. Rule-verified fixed points.
+- **Post-state:** remaining debt 2,236 errors (ALL `brace-style` → 5.0.5) +
+  4,779 warnings; `max-len` 899→913 (+14, mechanical consequence of
+  comma-dangle/quote reflow, deferred). `git diff --check` clean; node
+  --check ×184; test:all 158 passing; verify.sh OK.
+- **Review:** Codex + Claude Code both verified AST/comment equivalence
+  across all 184 files and reproduced 182 byte-for-byte from the parent via
+  the allow-list (the other 2 = documented artifact fix). Both APPROVE-WITH-NITS
+  (nits: commit-message accuracy, addressed here); consent to merge.
+
 ## Why not a gate yet
 
 `verify.sh` does not call lint until the error-level baseline is clean

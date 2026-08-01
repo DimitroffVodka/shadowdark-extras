@@ -20,7 +20,7 @@ export function patchLightSourceTrackerForParty() {
 	const originalGatherLightSources = tracker._gatherLightSources.bind(tracker);
 
 	// Override _gatherLightSources to also include Party actors
-	tracker._gatherLightSources = async function () {
+	tracker._gatherLightSources = async function() {
 		// Call the original method first
 		await originalGatherLightSources();
 

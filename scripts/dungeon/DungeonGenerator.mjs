@@ -318,7 +318,7 @@ function isOccupied(layout, x, y) {
 
 function generateDungeonSVG(layout, connections) {
 	// Calculate bounds
-	let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+	let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity;
 	for (const pos of layout.values()) {
 		if (pos.x < minX) minX = pos.x;
 		if (pos.x > maxX) maxX = pos.x;
@@ -344,10 +344,10 @@ function generateDungeonSVG(layout, connections) {
 	svg += `<defs><pattern id="grid" width="${scale}" height="${scale}" patternUnits="userSpaceOnUse">
 				<path d="M ${scale} 0 L 0 0 0 ${scale}" fill="none" stroke="#e0e0e0" stroke-width="1"/>
 			</pattern></defs>`;
-	svg += `<rect width="100%" height="100%" fill="url(#grid)" />`;
+	svg += "<rect width=\"100%\" height=\"100%\" fill=\"url(#grid)\" />";
 
 	// Draw connections (corridors)
-	svg += `<g id="corridors" stroke="#555" stroke-width="6" stroke-linecap="round">`;
+	svg += "<g id=\"corridors\" stroke=\"#555\" stroke-width=\"6\" stroke-linecap=\"round\">";
 	const drawnConnections = new Set();
 	for (let i = 1; i < connections.length; i++) {
 		const fromPos = layout.get(i);
@@ -369,10 +369,10 @@ function generateDungeonSVG(layout, connections) {
 			drawnConnections.add(connKey);
 		}
 	}
-	svg += `</g>`;
+	svg += "</g>";
 
 	// Draw rooms
-	svg += `<g id="rooms">`;
+	svg += "<g id=\"rooms\">";
 	for (const [roomNum, pos] of layout.entries()) {
 		const px = pos.x * scale + offsetX;
 		const py = pos.y * scale + offsetY;
@@ -383,9 +383,9 @@ function generateDungeonSVG(layout, connections) {
 		// Room number
 		svg += `<text x="${px}" y="${py + 5}" font-family="sans-serif" font-size="16" font-weight="bold" fill="#333" text-anchor="middle">${roomNum}</text>`;
 	}
-	svg += `</g>`;
+	svg += "</g>";
 
-	svg += `</svg>`;
+	svg += "</svg>";
 	return svg;
 }
 
@@ -436,7 +436,7 @@ async function generateEncounter(data, typeKey) {
 	const hint = pick(category.hints);
 	const foreshadowing = pick(category.foreshadowing);
 
-	const countText = count === 1 ? `1x` : `${count}x`;
+	const countText = count === 1 ? "1x" : `${count}x`;
 	return {
 		html: `<p><em>${foreshadowing}</em></p><p>${hint} ${countText} ${link} lurk here.</p>`,
 	};
@@ -455,7 +455,7 @@ function generateTreasure(data, tier) {
 	if (Math.random() < 0.6) {
 		html += ` and ${item}`;
 	}
-	html += `.</p>`;
+	html += ".</p>";
 
 	// Container trap (~20% chance)
 	if (Math.random() < 0.2) {
@@ -544,30 +544,30 @@ async function generateRoom(data, roomNum, roomType, connections, keyMap, typeKe
 	let html = `<h2>Room ${roomNum}: ${roomType.label}</h2>`;
 	html += `<p>${roomDesc}`;
 	if (roomDeco) html += ` ${roomDeco}`;
-	html += `</p>`;
+	html += "</p>";
 	html += `<p><em>${cap(cover)} mark ${location}.</em></p>`;
 
 	// Doorways
 	const roomConnections = connections[roomNum] || [];
 	if (roomConnections.length > 0) {
-		html += `<h3>Doorways</h3><ul>`;
+		html += "<h3>Doorways</h3><ul>";
 		for (const conn of roomConnections) {
 			html += `<li>${generateDoorway(data, roomNum, conn.toRoom, conn.direction, keyMap)}</li>`;
 		}
-		html += `</ul>`;
+		html += "</ul>";
 	}
 
 	// Key placement — check if this room holds a key
 	const keyEntry = keyMap.find(k => k.keyRoom === roomNum);
 	if (keyEntry) {
-		html += `<h3>Hidden Key</h3>`;
+		html += "<h3>Hidden Key</h3>";
 		html += `<p>A small iron key marked with <em>${keyEntry.sigil}</em> is hidden in ${keyEntry.hidingSpot}. It unlocks the door in Room ${keyEntry.lockRoom}.</p>`;
 	}
 
 	// Trap (~30% chance)
 	if (Math.random() < 0.3) {
 		const trap = generateTrap(data);
-		html += `<h3>Trap!</h3>`;
+		html += "<h3>Trap!</h3>";
 		html += trap.html;
 	}
 
@@ -575,7 +575,7 @@ async function generateRoom(data, roomNum, roomType, connections, keyMap, typeKe
 	if (Math.random() < 0.4) {
 		const encounter = await generateEncounter(data, typeKey);
 		if (encounter) {
-			html += `<h3>Encounter</h3>`;
+			html += "<h3>Encounter</h3>";
 			html += encounter.html;
 		}
 	}
@@ -583,7 +583,7 @@ async function generateRoom(data, roomNum, roomType, connections, keyMap, typeKe
 	// Treasure (~25% chance)
 	if (Math.random() < 0.25) {
 		const treasure = generateTreasure(data, treasureTier);
-		html += `<h3>Treasure</h3>`;
+		html += "<h3>Treasure</h3>";
 		html += treasure.html;
 	}
 
@@ -607,20 +607,20 @@ async function generateRoom(data, roomNum, roomType, connections, keyMap, typeKe
 		}
 
 		if (featureStr !== "") {
-			html += `<h3>Features</h3>`;
+			html += "<h3>Features</h3>";
 			html += featureStr;
 		}
 	}
 
 	// Pool (~20% chance, medium/large dungeons only)
 	if (allowPool && Math.random() < 0.2) {
-		html += `<h3>Pool</h3>`;
+		html += "<h3>Pool</h3>";
 		html += generatePool(data);
 	}
 
 	// Well (Specific to room)
 	if (hasWell) {
-		html += `<h3>Well</h3>`;
+		html += "<h3>Well</h3>";
 		html += generateWell(data);
 	}
 
@@ -658,11 +658,11 @@ async function generateWanderingTable(data, typeKey) {
 		entries.push(entries[entries.length - 1] || "Nothing");
 	}
 
-	let html = `<table><tr><th>1d6</th><th>Encounter</th></tr>`;
+	let html = "<table><tr><th>1d6</th><th>Encounter</th></tr>";
 	for (let i = 0; i < 6; i++) {
 		html += `<tr><td>${i + 1}</td><td>${entries[i]}</td></tr>`;
 	}
-	html += `</table>`;
+	html += "</table>";
 
 	return html;
 }
@@ -723,11 +723,11 @@ export async function generateDungeonHtml(typeKey, sizeKey, hexLabel, hexKey) {
 	const svgString = generateDungeonSVG(layout, connections);
 
 	// Convert SVG to File
-	const blob = new Blob([svgString], { type: 'image/svg+xml' });
-	const safeFileName = `${dungeonName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${hexKey}.svg`;
+	const blob = new Blob([svgString], { type: "image/svg+xml" });
+	const safeFileName = `${dungeonName.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_${hexKey}.svg`;
 	let fileObj;
-	if (typeof File !== 'undefined') { // Browser
-		fileObj = new File([blob], safeFileName, { type: 'image/svg+xml' });
+	if (typeof File !== "undefined") { // Browser
+		fileObj = new File([blob], safeFileName, { type: "image/svg+xml" });
 	} else { // Fallback shouldn't usually happen in Foundry UI, but safe
 		fileObj = blob;
 		fileObj.name = safeFileName;
@@ -756,34 +756,34 @@ export async function generateDungeonHtml(typeKey, sizeKey, hexLabel, hexKey) {
 	let html = `<h2>${dungeonName}</h2>`;
 	html += `<p><em>${dungeonType.label} — Hex ${hexLabel}</em></p>`;
 	if (mapSrc) {
-		const mapSecretId = `secret-${(typeof foundry !== 'undefined' && foundry.utils) ? foundry.utils.randomID() : Math.random().toString(36).substring(2, 10)}`;
+		const mapSecretId = `secret-${(typeof foundry !== "undefined" && foundry.utils) ? foundry.utils.randomID() : Math.random().toString(36).substring(2, 10)}`;
 		html += `<section id="${mapSecretId}" class="secret">`;
-		html += `<div style="text-align: center; margin: 10px 0;">`;
+		html += "<div style=\"text-align: center; margin: 10px 0;\">";
 		html += `<img src="${mapSrc}" alt="Dungeon Map" style="max-width: 450px; width: 100%; border: 1px solid #ccc; border-radius: 8px;">`;
-		html += `</div>`;
-		html += `</section>`;
+		html += "</div>";
+		html += "</section>";
 	}
 	html += `<p>${description}</p>`;
 
 	if (typeKey === "dungeon") {
 		const motData = await loadMotivationsData();
 		const pickedMots = pickN(motData.motivations, 3);
-		html += `<h3>Peculiar Motivations</h3>`;
-		html += `<p>There is someone here with some peculiar motivations, choose one or make your own:</p>`;
-		html += `<ul>`;
+		html += "<h3>Peculiar Motivations</h3>";
+		html += "<p>There is someone here with some peculiar motivations, choose one or make your own:</p>";
+		html += "<ul>";
 		for (const mot of pickedMots) {
 			html += `<li>${mot}</li>`;
 		}
-		html += `</ul>`;
+		html += "</ul>";
 	}
 
 	// Wandering monsters
-	html += `<h2>Wandering Monsters</h2>`;
+	html += "<h2>Wandering Monsters</h2>";
 	html += `<p>Check <strong>${data.wanderingMonsters.chance}</strong> (${data.wanderingMonsters.checkFrequency}) for a wandering encounter:</p>`;
 	html += await generateWanderingTable(data, typeKey);
 
 	// Rooms ────────────────────────────────────────────────────────────────
-	html += `<hr>`;
+	html += "<hr>";
 
 	// Pick a random room to have the book
 	const bookRoomIndex = randRange(0, roomCount - 1);
@@ -813,11 +813,11 @@ export async function generateDungeonHtml(typeKey, sizeKey, hexLabel, hexKey) {
 			html += `<p><strong>Rare Find (Book):</strong> You notice a book ${chosenLocation}. The cover reads: <em>"${chosenBook}"</em>.</p>`;
 		}
 
-		if (i < roomCount - 1) html += `<hr>`;
+		if (i < roomCount - 1) html += "<hr>";
 	}
 
 	// Attribution
-	html += `<hr><p style="font-size:0.75em;opacity:0.6;">Generated from <a href="https://hexroll.app">Hexroll</a> data</p>`;
+	html += "<hr><p style=\"font-size:0.75em;opacity:0.6;\">Generated from <a href=\"https://hexroll.app\">Hexroll</a> data</p>";
 
 	return { html, dungeonName, roomCount };
 }
@@ -861,15 +861,15 @@ export async function generateDungeonRooms({ typeKey, sizeKey, roomCount, connec
 	if (typeKey === "dungeon") {
 		const motData = await loadMotivationsData();
 		const pickedMots = pickN(motData.motivations, 3);
-		overviewHtml += `<h3>Peculiar Motivations</h3>`;
-		overviewHtml += `<p>There is someone here with some peculiar motivations, choose one or make your own:</p><ul>`;
+		overviewHtml += "<h3>Peculiar Motivations</h3>";
+		overviewHtml += "<p>There is someone here with some peculiar motivations, choose one or make your own:</p><ul>";
 		for (const mot of pickedMots) overviewHtml += `<li>${mot}</li>`;
-		overviewHtml += `</ul>`;
+		overviewHtml += "</ul>";
 	}
-	overviewHtml += `<h2>Wandering Monsters</h2>`;
+	overviewHtml += "<h2>Wandering Monsters</h2>";
 	overviewHtml += `<p>Check <strong>${data.wanderingMonsters.chance}</strong> (${data.wanderingMonsters.checkFrequency}) for a wandering encounter:</p>`;
 	overviewHtml += await generateWanderingTable(data, typeKey);
-	overviewHtml += `<hr><p style="font-size:0.75em;opacity:0.6;">Generated from <a href="https://hexroll.app">Hexroll</a> data</p>`;
+	overviewHtml += "<hr><p style=\"font-size:0.75em;opacity:0.6;\">Generated from <a href=\"https://hexroll.app\">Hexroll</a> data</p>";
 
 	// ── Per-room pages ──────────────────────────────────────────────────────────
 	const bookRoomIndex = randRange(0, roomCount - 1);

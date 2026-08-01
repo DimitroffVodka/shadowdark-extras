@@ -14,30 +14,30 @@ const SETTING_KEY = "contentRegistry";
  * Register the world setting. Call this from the module's init hook.
  */
 export function registerContentRegistrySetting() {
-    game.settings.register(MODULE_ID, SETTING_KEY, {
-        name: "Content Registry",
-        hint: "Internal. Tracks generated dungeons, settlements, and wilderness for quest cross-referencing.",
-        scope: "world",
-        config: false,
-        type: Object,
-        default: { entries: [] },
-    });
+	game.settings.register(MODULE_ID, SETTING_KEY, {
+		name: "Content Registry",
+		hint: "Internal. Tracks generated dungeons, settlements, and wilderness for quest cross-referencing.",
+		scope: "world",
+		config: false,
+		type: Object,
+		default: { entries: [] },
+	});
 }
 
 // ── Read / Write helpers ────────────────────────────────────────────────────
 
 function _load() {
-    try {
-        const raw = game.settings.get(MODULE_ID, SETTING_KEY);
-        if (raw && Array.isArray(raw.entries)) return raw;
-        return { entries: [] };
-    } catch {
-        return { entries: [] };
-    }
+	try {
+		const raw = game.settings.get(MODULE_ID, SETTING_KEY);
+		if (raw && Array.isArray(raw.entries)) return raw;
+		return { entries: [] };
+	} catch {
+		return { entries: [] };
+	}
 }
 
 async function _save(data) {
-    await game.settings.set(MODULE_ID, SETTING_KEY, data);
+	await game.settings.set(MODULE_ID, SETTING_KEY, data);
 }
 
 // ── Public API ──────────────────────────────────────────────────────────────
@@ -55,25 +55,25 @@ async function _save(data) {
  * @param {string} entry.pageId      - Foundry journal page ID
  */
 export async function registerContent(entry) {
-    const data = _load();
-    // Avoid duplicates (same hexKey + name + sceneId)
-    const exists = data.entries.some(
-        e => e.hexKey === entry.hexKey && e.name === entry.name && e.sceneId === entry.sceneId
-    );
-    if (!exists) {
-        data.entries.push({
-            hexKey: entry.hexKey,
-            sceneId: entry.sceneId,
-            type: entry.type,
-            subType: entry.subType || "",
-            name: entry.name,
-            roomCount: entry.roomCount || 0,
-            journalId: entry.journalId || "",
-            pageId: entry.pageId || "",
-        });
-        await _save(data);
-        console.log(`SDX Registry | Registered ${entry.type} "${entry.name}" at hex ${entry.hexKey}`);
-    }
+	const data = _load();
+	// Avoid duplicates (same hexKey + name + sceneId)
+	const exists = data.entries.some(
+		e => e.hexKey === entry.hexKey && e.name === entry.name && e.sceneId === entry.sceneId
+	);
+	if (!exists) {
+		data.entries.push({
+			hexKey: entry.hexKey,
+			sceneId: entry.sceneId,
+			type: entry.type,
+			subType: entry.subType || "",
+			name: entry.name,
+			roomCount: entry.roomCount || 0,
+			journalId: entry.journalId || "",
+			pageId: entry.pageId || "",
+		});
+		await _save(data);
+		console.log(`SDX Registry | Registered ${entry.type} "${entry.name}" at hex ${entry.hexKey}`);
+	}
 }
 
 /**
@@ -85,28 +85,28 @@ export async function registerContent(entry) {
  * @returns {object[]} Matching entries sorted by distance (closest first)
  */
 export function getNearbyContent(hexKey, maxDist = 7, types = null, sceneId = null) {
-    const data = _load();
-    const [oi, oj] = hexKey.split("_").map(Number);
+	const data = _load();
+	const [oi, oj] = hexKey.split("_").map(Number);
 
-    const results = [];
-    for (const entry of data.entries) {
-        // Scene filter
-        if (sceneId && entry.sceneId !== sceneId) continue;
-        // Type filter
-        if (types && !types.includes(entry.type)) continue;
-        // Don't return the same hex
-        if (entry.hexKey === hexKey) continue;
+	const results = [];
+	for (const entry of data.entries) {
+		// Scene filter
+		if (sceneId && entry.sceneId !== sceneId) continue;
+		// Type filter
+		if (types && !types.includes(entry.type)) continue;
+		// Don't return the same hex
+		if (entry.hexKey === hexKey) continue;
 
-        const [ei, ej] = entry.hexKey.split("_").map(Number);
-        const dist = hexDistance(oi, oj, ei, ej);
-        if (dist <= maxDist) {
-            results.push({ ...entry, distance: dist });
-        }
-    }
+		const [ei, ej] = entry.hexKey.split("_").map(Number);
+		const dist = hexDistance(oi, oj, ei, ej);
+		if (dist <= maxDist) {
+			results.push({ ...entry, distance: dist });
+		}
+	}
 
-    // Sort closest first
-    results.sort((a, b) => a.distance - b.distance);
-    return results;
+	// Sort closest first
+	results.sort((a, b) => a.distance - b.distance);
+	return results;
 }
 
 /**
@@ -115,9 +115,9 @@ export function getNearbyContent(hexKey, maxDist = 7, types = null, sceneId = nu
  * @returns {object[]}
  */
 export function getAllContent(sceneId = null) {
-    const data = _load();
-    if (sceneId) return data.entries.filter(e => e.sceneId === sceneId);
-    return [...data.entries];
+	const data = _load();
+	if (sceneId) return data.entries.filter(e => e.sceneId === sceneId);
+	return [...data.entries];
 }
 
 /**
@@ -126,11 +126,11 @@ export function getAllContent(sceneId = null) {
  * @param {string} name
  */
 export async function removeContent(hexKey, name) {
-    const data = _load();
-    data.entries = data.entries.filter(
-        e => !(e.hexKey === hexKey && e.name === name)
-    );
-    await _save(data);
+	const data = _load();
+	data.entries = data.entries.filter(
+		e => !(e.hexKey === hexKey && e.name === name)
+	);
+	await _save(data);
 }
 
 // ── Hex distance (offset coordinates) ───────────────────────────────────────
@@ -140,18 +140,18 @@ export async function removeContent(hexKey, name) {
  * Converts to cube coordinates first for accurate distance.
  */
 function hexDistance(i1, j1, i2, j2) {
-    // Offset → cube (even-q vertical layout, which Foundry uses for hex grids)
-    const toCube = (col, row) => {
-        const q = col;
-        const r = row - (col - (col & 1)) / 2;
-        const s = -q - r;
-        return { q, r, s };
-    };
-    const a = toCube(i1, j1);
-    const b = toCube(i2, j2);
-    return Math.max(
-        Math.abs(a.q - b.q),
-        Math.abs(a.r - b.r),
-        Math.abs(a.s - b.s)
-    );
+	// Offset → cube (even-q vertical layout, which Foundry uses for hex grids)
+	const toCube = (col, row) => {
+		const q = col;
+		const r = row - (col - (col & 1)) / 2;
+		const s = -q - r;
+		return { q, r, s };
+	};
+	const a = toCube(i1, j1);
+	const b = toCube(i2, j2);
+	return Math.max(
+		Math.abs(a.q - b.q),
+		Math.abs(a.r - b.r),
+		Math.abs(a.s - b.s)
+	);
 }
