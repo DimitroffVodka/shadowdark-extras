@@ -1,7 +1,7 @@
 /**
  * Aura Effects System for Shadowdark Extras
  * Token-attached effects that follow the bearer with damage, saves, and conditions
- * 
+ *
  * Features:
  * - Attach aura to caster or target
  * - Triggers: onEnter, onLeave, turnStart, turnEnd
@@ -1608,7 +1608,7 @@ async function createInteractiveAuraCard(sourceToken, targetToken, trigger, conf
              data-save-dc="${config.save?.dc || ''}"
              data-save-ability="${config.save?.ability || ''}"
              data-half-damage="${config.save?.halfOnSuccess || false}">
-            
+
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 6px;">
                 <img src="${auraEffect.img || sourceToken.document.texture.src}" style="width: 32px; height: 32px; border-radius: 4px; border: 1px solid #555;">
                 <div>

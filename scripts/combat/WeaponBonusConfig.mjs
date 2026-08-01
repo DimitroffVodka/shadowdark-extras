@@ -241,17 +241,17 @@ function buildWeaponBonusTabHtml(flags, item) {
 						<span>Enable Weapon Bonuses</span>
 					</label>
 				</div>
-				
+
 				<div class="sdx-bonus-content ${enabled ? '' : 'sdx-disabled'}">
 					<!-- To Hit Bonuses Section -->
 					<fieldset class="sdx-bonus-fieldset sdx-hit-bonuses-fieldset">
 						<legend><i class="fas fa-bullseye"></i> To Hit Bonuses</legend>
 						<p class="sdx-section-hint">Add bonuses to attack rolls with optional requirements. Bonuses without requirements always apply.</p>
-						
+
 						<div class="sdx-hit-bonuses-list">
 							${hitBonusesHtml}
 						</div>
-						
+
 						<button type="button" class="sdx-add-hit-bonus">
 							<i class="fas fa-plus"></i> Add To Hit Bonus
 						</button>
@@ -261,16 +261,16 @@ function buildWeaponBonusTabHtml(flags, item) {
 					<fieldset class="sdx-bonus-fieldset sdx-damage-bonuses-fieldset">
 						<legend><i class="fas fa-burst"></i> Damage Bonuses</legend>
 						<p class="sdx-section-hint">Add damage bonuses with optional requirements. Bonuses without requirements always apply.</p>
-						
+
 						<div class="sdx-damage-bonuses-list">
 							${damageBonusesHtml}
 						</div>
-						
+
 						<button type="button" class="sdx-add-damage-bonus">
 							<i class="fas fa-plus"></i> Add Damage Bonus
 						</button>
 					</fieldset>
-					
+
 					<!-- Critical Hit Section -->
 					<fieldset class="sdx-bonus-fieldset sdx-critical-bonuses-fieldset">
 						<legend><i class="fas fa-crosshairs"></i> Critical Hit Bonuses</legend>
@@ -315,12 +315,12 @@ function buildWeaponBonusTabHtml(flags, item) {
 							</div>
 						</div>
 					</fieldset>
-					
+
 					<!-- Effects on Hit Section -->
 					<fieldset class="sdx-bonus-fieldset">
 						<legend><i class="fas fa-magic"></i> Apply Effects on Hit</legend>
 						<p class="sdx-section-hint">Drag Effect or Condition items here to apply them when this weapon hits.</p>
-						
+
 						<div class="sdx-effects-drop-area" data-drop-type="effect">
 							<div class="sdx-effects-list">
 								${effectsHtml}
@@ -331,10 +331,10 @@ function buildWeaponBonusTabHtml(flags, item) {
 							</div>
 						</div>
 					</fieldset>
-					
+
 					<!-- Item Macro Section -->
 					${itemMacroHtml}
-					
+
 					<!-- Formula Reference -->
 					<fieldset class="sdx-bonus-fieldset sdx-formula-reference">
 						<legend><i class="fas fa-book"></i> Formula Reference</legend>
@@ -387,9 +387,9 @@ function buildHitBonusRowHtml(bonus, index) {
 		<div class="sdx-hit-bonus-row" data-index="${index}">
 			<div class="sdx-hit-bonus-header">
 				<div class="sdx-hit-bonus-inputs">
-					<input type="text" class="sdx-hit-bonus-formula" value="${formula}" 
+					<input type="text" class="sdx-hit-bonus-formula" value="${formula}"
 						placeholder="e.g., 2 or @abilities.dex.mod" title="To hit bonus" />
-					<input type="text" class="sdx-hit-bonus-label" value="${label}" 
+					<input type="text" class="sdx-hit-bonus-label" value="${label}"
 						placeholder="Label (optional, e.g., vs Undead)" title="Label" />
 				</div>
 				<button type="button" class="sdx-remove-hit-bonus" data-index="${index}">
@@ -727,12 +727,12 @@ function buildEffectRowHtml(effect, index) {
 			<div class="sdx-effect-apply-to">
 				<span class="sdx-apply-to-label">Apply to:</span>
 				<label class="sdx-radio-label">
-					<input type="radio" name="sdx-effect-apply-to-${index}" class="sdx-effect-apply-to-radio" 
+					<input type="radio" name="sdx-effect-apply-to-${index}" class="sdx-effect-apply-to-radio"
 					       data-effect-index="${index}" value="target" ${applyToTarget ? 'checked' : ''} />
 					<i class="fas fa-crosshairs"></i> Target
 				</label>
 				<label class="sdx-radio-label">
-					<input type="radio" name="sdx-effect-apply-to-${index}" class="sdx-effect-apply-to-radio" 
+					<input type="radio" name="sdx-effect-apply-to-${index}" class="sdx-effect-apply-to-radio"
 					       data-effect-index="${index}" value="attacker" ${!applyToTarget ? 'checked' : ''} />
 					<i class="fas fa-user"></i> Attacker
 				</label>
@@ -820,7 +820,7 @@ function buildItemMacroSectionHtml(itemMacro, macroCommand) {
 	// Build trigger checkboxes
 	const triggerCheckboxesHtml = triggerOptions.map(opt => `
 		<label class="sdx-macro-trigger-option">
-			<input type="checkbox" class="sdx-macro-trigger-checkbox" value="${opt.value}" 
+			<input type="checkbox" class="sdx-macro-trigger-checkbox" value="${opt.value}"
 				${triggers.includes(opt.value) ? 'checked' : ''} />
 			<i class="fas ${opt.icon}"></i>
 			<span>${opt.label}</span>
@@ -834,11 +834,11 @@ function buildItemMacroSectionHtml(itemMacro, macroCommand) {
 
 			<div class="sdx-macro-editor-section">
 				<label class="sdx-triggers-label">Macro Command (JavaScript):</label>
-				<textarea class="sdx-item-macro-command" 
+				<textarea class="sdx-item-macro-command"
 					placeholder="// Write your macro here... (actor, token, item, args are available)"
 					spellcheck="false">${macroCommand}</textarea>
 			</div>
-			
+
 			<div class="sdx-macro-gm-toggle">
 				<label class="sdx-toggle-label">
 					<input type="checkbox" class="sdx-macro-run-as-gm" ${runAsGm ? 'checked' : ''} />
@@ -847,14 +847,14 @@ function buildItemMacroSectionHtml(itemMacro, macroCommand) {
 				</label>
 				<p class="hint">Execute the macro with GM permissions using socketlib.</p>
 			</div>
-			
+
 			<div class="sdx-macro-triggers-section">
 				<label class="sdx-triggers-label">Execute macro on:</label>
 				<div class="sdx-macro-trigger-grid">
 					${triggerCheckboxesHtml}
 				</div>
 			</div>
-			
+
 			<details class="sdx-macro-guide">
 				<summary><i class="fas fa-book-open"></i> Macro Development Guide</summary>
 				<div class="sdx-macro-guide-content">
@@ -878,7 +878,7 @@ args.trigger      // String - which trigger fired
 args.targets      // Array of targeted tokens
 args.target       // First target token
 args.targetActor  // First target's actor</code></pre>
-					
+
 					<h4>Example: Play Effect on Critical Hit</h4>
 					<pre><code>if (args.isCritical && token) {
   new Sequence()
@@ -887,7 +887,7 @@ args.targetActor  // First target's actor</code></pre>
     .atLocation(token)
     .play();
 }</code></pre>
-					
+
 					<h4>Example: Extra Damage vs Undead</h4>
 					<pre><code>if (args.isHit) {
   const ancestry = args.targetActor?.system?.ancestry?.name;
@@ -898,7 +898,7 @@ args.targetActor  // First target's actor</code></pre>
     });
   }
 }</code></pre>
-					
+
 					<h4>Example: Heal on Kill (requires GM execution)</h4>
 					<pre><code>if (args.isHit && args.targetActor) {
   const hp = args.targetActor.system.attributes.hp;

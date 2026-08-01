@@ -1,6 +1,6 @@
 /**
  * Identify Spell Macro
- * 
+ *
  * This module contains the Identify spell implementation for Shadowdark Extras.
  * The Identify spell allows players to reveal the true nature of unidentified items.
  */
@@ -44,7 +44,7 @@ export function getUnidentifiedName(item) {
 /**
  * Show the Identify spell selection dialog
  * Displays all unidentified items on the target actor in a grid with images
- * 
+ *
  * @param {Actor} targetActor - The actor whose items to show
  * @param {Item[]} unidentifiedItems - Array of unidentified items
  * @param {Item} identifySpell - The Identify spell item (for reference)
@@ -158,7 +158,7 @@ export async function showIdentifyDialog(targetActor, unidentifiedItems, identif
 
 /**
  * Identify an item - removes the unidentified flag and shows a reveal animation
- * 
+ *
  * @param {Item} item - The item to identify
  * @param {Item} identifySpell - The Identify spell item (for reference)
  */
@@ -229,7 +229,7 @@ export async function identifyItem(item, identifySpell) {
 
 /**
  * Show the magical reveal modal with animation
- * 
+ *
  * @param {Item} item - The identified item
  * @param {string} maskedName - The original masked name
  */

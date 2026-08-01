@@ -103,7 +103,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 		let loadedJsonText = null;
 
-		// Clear Maphub buffers from Foundry's localStorage to prevent 
+		// Clear Maphub buffers from Foundry's localStorage to prevent
 		// ghost maps from loading via Watabou's auto-restore behavior.
 		const watabouKeys = [
 			"_toy_town_buf_",

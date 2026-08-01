@@ -994,7 +994,7 @@ export async function showTradeDialog(localActor) {
 			</div>
 			<div class="form-group" style="margin-bottom: 8px;">
 				<label>Search:</label>
-				<input type="text" id="sdx-trade-search" placeholder="Type to filter by name..." 
+				<input type="text" id="sdx-trade-search" placeholder="Type to filter by name..."
 				       style="width: 100%;" autocomplete="off" />
 			</div>
 			<div class="form-group">

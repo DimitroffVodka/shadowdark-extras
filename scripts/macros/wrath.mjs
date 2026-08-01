@@ -1,6 +1,6 @@
 /**
  * Wrath Spell Macro
- * 
+ *
  * This module contains the Wrath spell implementation for Shadowdark Extras.
  * The Wrath spell empowers ALL weapons with divine wrath, granting +2 to hit and +1d8 damage.
  * On critical success, grants +4 to hit and +2d8 damage.
@@ -12,7 +12,7 @@ const MODULE_ID = "shadowdark-extras";
 
 /**
  * Apply Wrath to all of the caster's weapons
- * 
+ *
  * @param {Actor} casterActor - The actor casting the spell
  * @param {Item} casterItem - The Wrath spell item
  * @param {string} originatingUserId - Optional: The user who initiated this (for GM routing)

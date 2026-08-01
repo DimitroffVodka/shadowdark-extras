@@ -916,8 +916,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 
 	/**
 	 * Reorder a member in the list
-	 * @param {string} sourceKey 
-	 * @param {string} targetKey 
+	 * @param {string} sourceKey
+	 * @param {string} targetKey
 	 */
 	async _reorderMember(sourceKey, targetKey) {
 		const members = await this.getMembers();

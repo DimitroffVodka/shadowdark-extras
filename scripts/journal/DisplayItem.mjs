@@ -1,9 +1,9 @@
 /**
  * Display Item Card Enricher for Shadowdark Extras
- * 
+ *
  * Allows journal pages to display styled item cards using:
  * @DisplayItemCard[Item.UUID]{Display Name}
- * 
+ *
  * Supports different item types: Weapon, Armor, Spell, and generic items.
  */
 

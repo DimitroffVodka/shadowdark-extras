@@ -1,6 +1,6 @@
 /**
  * Light Tracker AppV2 for Shadowdark Extras
- * 
+ *
  * A modern AppV2 wrapper around the system's light source tracker.
  * Provides SDX styling while leveraging the existing tracking logic.
  */

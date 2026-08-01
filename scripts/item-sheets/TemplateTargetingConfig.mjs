@@ -125,45 +125,45 @@ function generateTemplateEffectsHTML(MODULE_ID, flags) {
 	return `
 		<div class="sdx-template-effects-section" style="grid-column: 1 / -1; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border-light-tertiary);">
 			<h3 style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-				<i class="fas fa-fire-alt" style="color: #ff6b35;"></i> 
+				<i class="fas fa-fire-alt" style="color: #ff6b35;"></i>
 				Template Effects
 				<label style="margin-left: auto; font-weight: normal; font-size: 12px;">
-					<input type="checkbox" 
+					<input type="checkbox"
 						name="flags.${MODULE_ID}.templateEffects.enabled"
 						class="sdx-template-effects-enabled"
 						${enabled ? 'checked' : ''}>
 					Enable
 				</label>
 			</h3>
-			
+
 			<div class="sdx-template-effects-config" style="${enabled ? '' : 'opacity: 0.5; pointer-events: none;'}">
 				<div class="SD-grid" style="grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 12px;">
 					<label class="sdx-checkbox-option" style="display: flex; align-items: center; gap: 4px;">
-						<input type="checkbox" 
+						<input type="checkbox"
 							name="flags.${MODULE_ID}.templateEffects.triggers.onCreation"
 							${triggers.onCreation ? 'checked' : ''}>
 						<span>On Cast</span>
 					</label>
 					<label class="sdx-checkbox-option" style="display: flex; align-items: center; gap: 4px;">
-						<input type="checkbox" 
+						<input type="checkbox"
 							name="flags.${MODULE_ID}.templateEffects.triggers.onEnter"
 							${triggers.onEnter ? 'checked' : ''}>
 						<span>On Enter</span>
 					</label>
 					<label class="sdx-checkbox-option" style="display: flex; align-items: center; gap: 4px;">
-						<input type="checkbox" 
+						<input type="checkbox"
 							name="flags.${MODULE_ID}.templateEffects.triggers.onTurnStart"
 							${triggers.onTurnStart ? 'checked' : ''}>
 						<span>Turn Start</span>
 					</label>
 					<label class="sdx-checkbox-option" style="display: flex; align-items: center; gap: 4px;">
-						<input type="checkbox" 
+						<input type="checkbox"
 							name="flags.${MODULE_ID}.templateEffects.triggers.onTurnEnd"
 							${triggers.onTurnEnd ? 'checked' : ''}>
 						<span>Turn End</span>
 					</label>
 					<label class="sdx-checkbox-option" style="display: flex; align-items: center; gap: 4px;">
-						<input type="checkbox" 
+						<input type="checkbox"
 							name="flags.${MODULE_ID}.templateEffects.triggers.onLeave"
 							${triggers.onLeave ? 'checked' : ''}>
 						<span>On Leave (remove)</span>
@@ -173,7 +173,7 @@ function generateTemplateEffectsHTML(MODULE_ID, flags) {
 				<div class="SD-grid" style="grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
 					<div>
 						<label style="font-size: 11px; color: #999;">Damage Formula</label>
-						<input type="text" 
+						<input type="text"
 							name="flags.${MODULE_ID}.templateEffects.damage.formula"
 							value="${damage.formula || ''}"
 							placeholder="e.g., 2d10"
@@ -199,17 +199,17 @@ function generateTemplateEffectsHTML(MODULE_ID, flags) {
 
 				<div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-border-light-tertiary);">
 					<label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-						<input type="checkbox" 
+						<input type="checkbox"
 							name="flags.${MODULE_ID}.templateEffects.save.enabled"
 							class="sdx-template-save-enabled"
 							${save.enabled ? 'checked' : ''}>
 						<span style="font-weight: bold;">Allow Saving Throw</span>
 					</label>
-					
+
 					<div class="sdx-template-save-config SD-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 8px; ${save.enabled ? '' : 'opacity: 0.5; pointer-events: none;'}">
 						<div>
 							<label style="font-size: 11px; color: #999;">Save DC</label>
-							<input type="text" 
+							<input type="text"
 								name="flags.${MODULE_ID}.templateEffects.save.dc"
 								value="${save.dc || 12}"
 								placeholder="e.g. 15 or @spellcastingCheck"
@@ -229,7 +229,7 @@ function generateTemplateEffectsHTML(MODULE_ID, flags) {
 						<div>
 							<label style="font-size: 11px; color: #999;">&nbsp;</label>
 							<label style="display: flex; align-items: center; gap: 4px;">
-								<input type="checkbox" 
+								<input type="checkbox"
 									name="flags.${MODULE_ID}.templateEffects.save.halfOnSuccess"
 									${save.halfOnSuccess !== false ? 'checked' : ''}>
 								<span style="font-size: 11px;">Half on Save</span>
@@ -240,7 +240,7 @@ function generateTemplateEffectsHTML(MODULE_ID, flags) {
 
 				<div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-border-light-tertiary);">
 					<label style="display: flex; align-items: center; gap: 8px;">
-						<input type="checkbox" 
+						<input type="checkbox"
 							name="flags.${MODULE_ID}.templateEffects.applyConfiguredEffects"
 							${applyConfiguredEffects ? 'checked' : ''}>
 						<span>Apply Configured Effects (from Activity tab) on trigger</span>
@@ -252,7 +252,7 @@ function generateTemplateEffectsHTML(MODULE_ID, flags) {
 
 				<div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-border-light-tertiary);">
 					<label style="display: flex; align-items: center; gap: 8px;">
-						<input type="checkbox" 
+						<input type="checkbox"
 							name="flags.${MODULE_ID}.templateEffects.runItemMacro"
 							${runItemMacro ? 'checked' : ''}>
 						<span><i class="fas fa-code" style="margin-right: 4px;"></i>Run Item Macro on trigger</span>
@@ -336,8 +336,8 @@ export function generateTemplateTargetingConfigHTML(MODULE_ID, flags) {
 				<div class="SD-grid sdx-targeting-mode-grid">
 					<div class="sdx-targeting-mode-options">
 						<label class="sdx-radio-option">
-							<input type="radio" 
-								name="flags.${MODULE_ID}.targeting.mode" 
+							<input type="radio"
+								name="flags.${MODULE_ID}.targeting.mode"
 								value="targeted"
 								class="sdx-targeting-mode-radio"
 								${mode === 'targeted' ? 'checked' : ''}>
@@ -347,8 +347,8 @@ export function generateTemplateTargetingConfigHTML(MODULE_ID, flags) {
 							</span>
 						</label>
 						<label class="sdx-radio-option">
-							<input type="radio" 
-								name="flags.${MODULE_ID}.targeting.mode" 
+							<input type="radio"
+								name="flags.${MODULE_ID}.targeting.mode"
 								value="template"
 								class="sdx-targeting-mode-radio"
 								${mode === 'template' ? 'checked' : ''}>
@@ -371,19 +371,19 @@ export function generateTemplateTargetingConfigHTML(MODULE_ID, flags) {
 						</select>
 
 						<h3>Size (ft)</h3>
-						<input type="number" 
-							name="flags.${MODULE_ID}.targeting.template.size" 
-							value="${templateSize}" 
-							min="5" 
+						<input type="number"
+							name="flags.${MODULE_ID}.targeting.template.size"
+							value="${templateSize}"
+							min="5"
 							step="5">
 
 						<h3>Fill Color</h3>
 						<div class="sdx-color-input-group">
-							<input type="color" 
+							<input type="color"
 								class="sdx-color-picker"
 								value="${fillColor}">
-							<input type="text" 
-								name="flags.${MODULE_ID}.targeting.template.fillColor" 
+							<input type="text"
+								name="flags.${MODULE_ID}.targeting.template.fillColor"
 								value="${fillColor}"
 								class="sdx-color-text">
 						</div>
@@ -398,32 +398,32 @@ export function generateTemplateTargetingConfigHTML(MODULE_ID, flags) {
 						<h3>When to Delete</h3>
 						<div class="sdx-delete-options" style="grid-column: span 3;">
 							<label class="sdx-radio-option">
-								<input type="radio" 
-									name="flags.${MODULE_ID}.targeting.template.deleteMode" 
+								<input type="radio"
+									name="flags.${MODULE_ID}.targeting.template.deleteMode"
 									value="none"
 									class="sdx-delete-mode-radio"
 									${deleteMode === 'none' ? 'checked' : ''}>
 								<span>Do not delete</span>
 							</label>
 							<label class="sdx-radio-option">
-								<input type="radio" 
-									name="flags.${MODULE_ID}.targeting.template.deleteMode" 
+								<input type="radio"
+									name="flags.${MODULE_ID}.targeting.template.deleteMode"
 									value="endOfTurn"
 									class="sdx-delete-mode-radio"
 									${deleteMode === 'endOfTurn' ? 'checked' : ''}>
 								<span>End of turn</span>
 							</label>
 							<label class="sdx-radio-option">
-								<input type="radio" 
-									name="flags.${MODULE_ID}.targeting.template.deleteMode" 
+								<input type="radio"
+									name="flags.${MODULE_ID}.targeting.template.deleteMode"
 									value="duration"
 									class="sdx-delete-mode-radio"
 									${deleteMode === 'duration' ? 'checked' : ''}>
 								<span>After</span>
-								<input type="number" 
-									name="flags.${MODULE_ID}.targeting.template.deleteDuration" 
-									value="${deleteDuration}" 
-									min="1" 
+								<input type="number"
+									name="flags.${MODULE_ID}.targeting.template.deleteDuration"
+									value="${deleteDuration}"
+									min="1"
 									max="100"
 									class="sdx-duration-input"
 									style="width: 50px; margin: 0 4px;"
@@ -431,16 +431,16 @@ export function generateTemplateTargetingConfigHTML(MODULE_ID, flags) {
 								<span>rounds</span>
 							</label>
 							<label class="sdx-radio-option">
-								<input type="radio" 
-									name="flags.${MODULE_ID}.targeting.template.deleteMode" 
+								<input type="radio"
+									name="flags.${MODULE_ID}.targeting.template.deleteMode"
 									value="seconds"
 									class="sdx-delete-mode-radio"
 									${deleteMode === 'seconds' ? 'checked' : ''}>
 								<span>After</span>
-								<input type="number" 
-									name="flags.${MODULE_ID}.targeting.template.deleteSeconds" 
-									value="${deleteSeconds}" 
-									min="0.1" 
+								<input type="number"
+									name="flags.${MODULE_ID}.targeting.template.deleteSeconds"
+									value="${deleteSeconds}"
+									min="0.1"
 									step="0.1"
 									class="sdx-duration-input"
 									style="width: 50px; margin: 0 4px;"
@@ -451,19 +451,19 @@ export function generateTemplateTargetingConfigHTML(MODULE_ID, flags) {
 
 						<div style="grid-column: 1 / -1; margin-top: 8px; display: flex; gap: 16px; flex-wrap: wrap;">
 							<label class="sdx-checkbox-option">
-								<input type="checkbox" 
+								<input type="checkbox"
 									name="flags.${MODULE_ID}.targeting.template.hideOutline"
 									${hideOutline ? 'checked' : ''}>
 								<span>Hide Outline</span>
 							</label>
 							<label class="sdx-checkbox-option">
-								<input type="checkbox" 
+								<input type="checkbox"
 									name="flags.${MODULE_ID}.targeting.template.excludeCaster"
 									${excludeCaster ? 'checked' : ''}>
 								<span>Exclude Caster</span>
 							</label>
 						</div>
-						
+
 						${tokenMagicActive ? `
 						<div class="sdx-tokenmagic-section" style="grid-column: 1 / -1; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border-light-tertiary);">
 							<h3 style="grid-column: 1 / -1; margin-bottom: 8px;">
@@ -472,7 +472,7 @@ export function generateTemplateTargetingConfigHTML(MODULE_ID, flags) {
 							<div class="SD-grid" style="grid-template-columns: 1fr 2fr; gap: 8px; align-items: center;">
 								<label>Texture</label>
 								<div class="sdx-texture-input-group" style="display: flex; gap: 4px;">
-									<input type="text" 
+									<input type="text"
 										name="flags.${MODULE_ID}.targeting.template.tokenMagic.texture"
 										value="${tmTexture}"
 										class="sdx-tm-texture-input"
@@ -482,10 +482,10 @@ export function generateTemplateTargetingConfigHTML(MODULE_ID, flags) {
 										<i class="fas fa-file-image"></i>
 									</button>
 								</div>
-								
+
 								<label>Opacity</label>
 								<div class="sdx-opacity-input-group" style="display: flex; gap: 8px; align-items: center;">
-									<input type="range" 
+									<input type="range"
 										name="flags.${MODULE_ID}.targeting.template.tokenMagic.opacity"
 										value="${tmOpacity}"
 										min="0.1" max="1" step="0.05"
@@ -493,20 +493,20 @@ export function generateTemplateTargetingConfigHTML(MODULE_ID, flags) {
 										style="flex: 1;">
 									<span class="sdx-tm-opacity-value" style="min-width: 35px; text-align: right;">${tmOpacity}</span>
 								</div>
-								
+
 								<label>Special Effect</label>
 								<select name="flags.${MODULE_ID}.targeting.template.tokenMagic.preset" class="sdx-tm-preset-select">
 									<option value="NOFX" ${tmPreset === 'NOFX' ? 'selected' : ''}>None</option>
 									${tmPresets.map(p => `<option value="${escapeAttribute(p.name)}" ${tmPreset === p.name ? 'selected' : ''}>${escapeAttribute(p.name)}</option>`).join('')}
 								</select>
-								
+
 								<label>Effect Tint</label>
 								<div class="sdx-tint-input-group" style="display: flex; gap: 4px;">
-									<input type="color" 
+									<input type="color"
 										class="sdx-tm-tint-picker"
 										value="${tmTint || '#ffffff'}"
 										${tmPreset === 'NOFX' ? 'disabled' : ''}>
-									<input type="text" 
+									<input type="text"
 										name="flags.${MODULE_ID}.targeting.template.tokenMagic.tint"
 										value="${tmTint}"
 										class="sdx-tm-tint-text"

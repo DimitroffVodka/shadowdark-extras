@@ -2242,7 +2242,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (searchInput) {
             // Restore focus if we re-rendered and input was focused (simple heuristic)
             // But actually ApplicationV2 re-renders the whole thing, so focus is lost.
-            // We can rely on value={pinSearchTerm} to restore value, 
+            // We can rely on value={pinSearchTerm} to restore value,
             // but for smooth typing we might want to avoid full re-render on every keystroke if possible,
             // or just use client-side filtering without re-render.
 

@@ -6,8 +6,8 @@ export function generateItemGiveConfigHTML(MODULE_ID, flags, itemsList, itemProf
 		<div class="SD-box sdx-item-give-box grid-colspan-3">
 			<div class="header light">
 				<label class="sdx-section-checkbox">
-					<input type="checkbox" name="flags.${MODULE_ID}.itemGive.enabled" 
-					       ${flags.enabled ? 'checked' : ''} 
+					<input type="checkbox" name="flags.${MODULE_ID}.itemGive.enabled"
+					       ${flags.enabled ? 'checked' : ''}
 					       class="sdx-item-give-toggle" />
 					<span>Give Item to Caster</span>
 				</label>

@@ -1,9 +1,9 @@
 /**
  * Focus Spell Tracker for Shadowdark Extras
- * 
+ *
  * This module tracks active focus spells and the effects they have applied to targets.
  * When a focus spell fails or is intentionally dropped, all associated effects are removed.
- * 
+ *
  * Features:
  * - Tracks which spells are currently being focused on by each actor
  * - Links effects applied to targets back to the source spell and caster
@@ -451,7 +451,7 @@ const SPELL_MODIFICATIONS_FLAG = "spellModifications";
 /**
  * Register a spell modification on an item
  * This stores the original state of the item so it can be reverted when the spell ends.
- * 
+ *
  * @param {Actor} caster - The caster who applied the modification
  * @param {Item} spell - The spell item that applied the modification
  * @param {Item} targetItem - The item being modified (weapon, armor, etc.)
@@ -513,7 +513,7 @@ export async function registerSpellModification(caster, spell, targetItem, chang
 /**
  * Revert all spell modifications when a spell ends
  * Automatically called by endDurationSpell/endFocusSpell
- * 
+ *
  * @param {string} spellId - The spell ID
  * @param {string} casterId - The caster actor ID
  */
@@ -899,9 +899,9 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 /**
  * Start focus spell tracking if the spell is a focus spell and not already tracked.
  * Called from effect application to ensure focus is tracked before linking effects.
- * 
+ *
  * @param {string} casterActorId - The caster actor ID
- * @param {string} spellId - The spell item ID  
+ * @param {string} spellId - The spell item ID
  * @param {string} spellName - The spell name (for lookup)
  * @returns {boolean} - True if focus is now being tracked for this spell
  */
@@ -1327,7 +1327,7 @@ async function onFocusReminderClick(event) {
  * Roll a focus spell check, automatically targeting the tokens affected by the spell.
  * This ensures the damage card system can find the targets even if the player
  * doesn't have them manually targeted.
- * 
+ *
  * @param {Actor} actor - The actor rolling the focus check
  * @param {string} spellId - The spell ID to roll focus for
  */
@@ -1393,7 +1393,7 @@ async function rollFocusSpellWithTargets(actor, spellId, opts = {}) {
 /**
  * Roll a focus check using cached spell data when the original item no longer exists
  * (e.g., when the spell was cast from a scroll that was consumed)
- * 
+ *
  * @param {Actor} actor - The actor rolling the focus check
  * @param {Object} focusEntry - The focus spell tracking entry with cached spellData
  */
@@ -1695,8 +1695,8 @@ async function applyDurationSpellPerTurnDamage(durationSpell, targetActor, targe
 
 		// Create the chat message content with compact styling
 		const applyButtonHtml = !autoApplyDamage ? `
-			<button type="button" class="sdx-duration-apply-btn" 
-				data-token-id="${targetTokenId}" 
+			<button type="button" class="sdx-duration-apply-btn"
+				data-token-id="${targetTokenId}"
 				data-damage="${damage}"
 				data-actor-name="${targetActor.name}">
 				<i class="fas fa-heart-broken"></i> Apply Damage
@@ -1751,7 +1751,7 @@ async function applyDurationSpellPerTurnDamage(durationSpell, targetActor, targe
 /**
  * Link an effect to an active duration spell
  * Call this when applying effects via the damage card for duration spells
- * 
+ *
  * @param {string|Actor} casterActorOrId - The caster actor or their ID
  * @param {string} spellId - The spell item ID
  * @param {string|Actor} targetActorOrId - The target actor or their ID
@@ -1838,7 +1838,7 @@ export async function linkEffectToDurationSpell(casterActorOrId, instanceId, tar
 /**
  * Add a new target to an existing duration spell
  * Used when a creature enters an area of effect
- * 
+ *
  * @param {string} casterId - The caster actor ID
  * @param {string} instanceId - The unique instance ID of the spell (or spellId for backwards compatibility)
  * @param {string} tokenId - The token ID to add
@@ -1967,7 +1967,7 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
 /**
  * Remove a target from an existing duration spell
  * Used when a creature leaves an area of effect
- * 
+ *
  * @param {string} casterId - The caster actor ID
  * @param {string} instanceId - The unique instance ID of the spell (or spellId for backwards compatibility)
  * @param {string} tokenId - The token ID to remove
@@ -2407,8 +2407,8 @@ function injectFocusSpellsUI(sheet, html, data) {
 			if (tokenId && !$target.find(".sdx-pan-to-target").length) {
 				const $nameSpan = $target.find(".sdx-target-name");
 				const $panButton = $(`
-					<a class="sdx-pan-to-target" data-token-id="${tokenId}" 
-					   data-tooltip="Pan camera to this token" 
+					<a class="sdx-pan-to-target" data-token-id="${tokenId}"
+					   data-tooltip="Pan camera to this token"
 					   style="margin: 0 4px; cursor: pointer;">
 						<i class="fas fa-location-crosshairs" style="color: #3498db;"></i>
 					</a>
@@ -2524,8 +2524,8 @@ function buildDurationSpellsHtml(actor, activeDuration) {
 							<i class="fas fa-user"></i> ${target.name}
 							${hasEffects ? '<i class="fas fa-magic" title="Has effects applied" style="color: #9b59b6; margin-left: 4px;"></i>' : ''}
 						</span>
-						<a class="sdx-remove-target" data-action="remove-duration-target" 
-						   data-instance-id="${spellInstanceId}" 
+						<a class="sdx-remove-target" data-action="remove-duration-target"
+						   data-instance-id="${spellInstanceId}"
 						   data-token-id="${target.tokenId}"
 						   data-tooltip="Remove from spell (left area)">
 							<i class="fas fa-times" style="color: #ff6666;"></i>
@@ -2640,7 +2640,7 @@ function buildFocusSpellsHtml(actor, activeFocus) {
 					<i class="fas fa-bullseye"></i> ${targetCount}
 				</span>
 				<div class="actions">
-					<a data-action="focus-roll" data-spell-id="${focus.spellId}" 
+					<a data-action="focus-roll" data-spell-id="${focus.spellId}"
 					   data-tooltip="${game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.roll_focus")}">
 						<i class="fa-solid fa-brain"></i>
 					</a>
@@ -2711,7 +2711,7 @@ export function isFocusingOnSpell(actor, spellId) {
 /**
  * Manually link an effect to an active focus spell
  * Call this when applying effects via the damage card
- * 
+ *
  * @param {string|Actor} casterActorOrId - The caster actor or their ID
  * @param {string} spellId - The spell item ID
  * @param {string|Actor} targetActorOrId - The target actor or their ID
@@ -2804,7 +2804,7 @@ export async function linkEffectToFocusSpell(casterActorOrId, spellId, targetAct
 /**
  * Link a target to an active focus spell without requiring an effect
  * Use this for spells that only deal damage/healing without transferring conditions
- * 
+ *
  * @param {string|Actor} casterActorOrId - The caster actor or their ID
  * @param {string} spellId - The spell item ID
  * @param {string|Actor} targetActorOrId - The target actor or their ID
@@ -2892,7 +2892,7 @@ export async function linkTargetToFocusSpell(casterActorOrId, spellId, targetAct
 /**
  * Unlink an effect from a focus spell's tracking
  * Called when an effect is removed/replaced before a new one is applied
- * 
+ *
  * @param {string} casterActorId - The caster actor ID
  * @param {string} spellId - The spell item ID
  * @param {string} effectItemId - The effect item ID to unlink

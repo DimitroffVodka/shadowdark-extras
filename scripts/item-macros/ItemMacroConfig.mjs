@@ -59,8 +59,8 @@ export function generateItemMacroConfigHTML(MODULE_ID, flags, itemType = 'spell'
 	// Build trigger checkboxes
 	const triggerCheckboxesHtml = triggerOptions.map(opt => `
 		<label class="sdx-macro-trigger-option">
-			<input type="checkbox" class="sdx-spell-macro-trigger-checkbox" 
-				data-trigger="${opt.value}" 
+			<input type="checkbox" class="sdx-spell-macro-trigger-checkbox"
+				data-trigger="${opt.value}"
 				${triggers.includes(opt.value) ? 'checked' : ''} />
 			<i class="fas ${opt.icon}"></i>
 			<span>${opt.label}</span>
@@ -80,28 +80,28 @@ export function generateItemMacroConfigHTML(MODULE_ID, flags, itemType = 'spell'
 				<div class="SD-grid">
 					<div class="sdx-macro-editor-section grid-colspan-3">
 						<label class="sdx-triggers-label">Macro Command (JavaScript):</label>
-						<textarea class="sdx-item-macro-command" 
+						<textarea class="sdx-item-macro-command"
 							placeholder="// Write your macro here... (actor, token, item, args are available)"
 							spellcheck="false">${macroCommand}</textarea>
 					</div>
 
 					<div class="sdx-macro-gm-toggle grid-colspan-3">
 						<label class="sdx-toggle-label">
-							<input type="checkbox" class="sdx-spell-macro-run-as-gm" 
+							<input type="checkbox" class="sdx-spell-macro-run-as-gm"
 								${runAsGm ? 'checked' : ''} />
 							<i class="fas fa-crown"></i>
 							<span>Run macro as GM</span>
 						</label>
 						<p class="hint">Execute the macro with GM permissions using socketlib.</p>
 					</div>
-					
+
 					<div class="sdx-macro-triggers-section grid-colspan-3">
 						<label class="sdx-triggers-label">Execute macro on:</label>
 						<div class="sdx-macro-trigger-grid">
 							${triggerCheckboxesHtml}
 						</div>
 					</div>
-					
+
 					<details class="sdx-macro-guide grid-colspan-3">
 						<summary><i class="fas fa-book-open"></i> Macro Development Guide</summary>
 						<div class="sdx-macro-guide-content">

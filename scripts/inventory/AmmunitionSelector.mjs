@@ -29,7 +29,7 @@ export default class AmmunitionSelector {
             if (preferred) {
                 // We still might want to show a dialog if there are multiple choices,
                 // or maybe just default to the preferred one if it's there?
-                // The user wants "Flexible Ammunition Selection", so a dialog is safer 
+                // The user wants "Flexible Ammunition Selection", so a dialog is safer
                 // if there are multiple types.
             }
         }
