@@ -34,13 +34,6 @@
     "CarousingSD.mjs": [
       "Hooks.on:updateJournalEntry"
     ],
-    "CombatSettingsSD.mjs": [
-      "Hooks.on:preUpdateActor",
-      "Hooks.on:updateActor",
-      "Hooks.on:updateActor",
-      "Hooks.on:updateCombat",
-      "Hooks.on:updateCombat"
-    ],
     "DungeonBiomesSD.mjs": [
       "Hooks.once:init"
     ],
@@ -319,6 +312,13 @@
       "Hooks.once:ready",
       "socket.register:executeClassAbilityMacroAsGM",
       "Hooks.once:ready"
+    ],
+    "combat-settings-app.mjs": [
+      "Hooks.on:preUpdateActor",
+      "Hooks.on:updateActor",
+      "Hooks.on:updateActor",
+      "Hooks.on:updateCombat",
+      "Hooks.on:updateCombat"
     ],
     "combat-socket.mjs": [
       "socketlib.registerModule:<dynamic>",

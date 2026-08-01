@@ -1,6 +1,9 @@
 /**
- * Combat Settings for Shadowdark Extras
- * Adds enhanced damage card features similar to midi-qol
+ * Combat Settings for Shadowdark Extras — damage-card injection pipeline.
+ * The combat-settings application, registration hooks, scrolling-text /
+ * summon-expiry / untarget hooks, and the shared message-tracker Sets live
+ * in combat-settings-app.mjs; the socket seam in shared/combat-socket.mjs;
+ * the damage-card builders in damage-card-builders.mjs.
  */
 
 import { getWeaponEffectsToApply, calculateWeaponBonusDamage } from "./WeaponBonusConfig.mjs";
@@ -8,8 +11,6 @@ import { startDurationSpell, linkEffectToDurationSpell, linkEffectToFocusSpell, 
 import { buildTemplateEffectsFlag, processTemplateCreationEffects } from "../effects/TemplateEffectsSD.mjs";
 import { createAuraOnActor } from "../effects/AuraEffectsSD.mjs";
 import { readSdRollOutcome, readSdDamageRoll, resolveCardContext } from "../shared/sd4Compat.mjs";
-import { getSocket } from "../shared/combat-socket.mjs";
-import { showScrollingText } from "../shared/scrolling-text.mjs";
 import {
 	buildRollBreakdown,
 	buildDamageCardHtml,
@@ -17,8 +18,6 @@ import {
 	spawnSummonedCreatures,
 	giveItemsToCaster,
 	applyCoatingPoison,
-	getSummonedTokensExpiry,
-	saveSummonedTokensExpiry,
 	normalizeConfiguredEffectUuids,
 	evaluateFormulaExpressions,
 	doubleDiceInFormula,
@@ -28,6 +27,23 @@ import {
 } from "./damage-card.mjs";
 export { trackSummonedTokensForExpiry, spawnSummonedCreatures } from "./damage-card.mjs";
 export { setupCombatSocket, getSocket } from "../shared/combat-socket.mjs";
+export {
+	CombatSettingsApp,
+	DEFAULT_COMBAT_SETTINGS,
+	registerCombatSettings,
+	setupScrollingCombatText,
+	setupSummonExpiryHook,
+	untargetDeadTokens,
+	untargetAllTokens,
+	setupUntargetHook,
+} from "./combat-settings-app.mjs";
+import {
+	_spawnedMessages,
+	_itemGiveMessages,
+	_coatingPoisonMessages,
+	_templatePlacedMessages,
+	_autoAppliedMessages,
+} from "./combat-settings-app.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -38,425 +54,11 @@ const _durationStartedMessages = new Set();
 // Track messages currently calculating damage to prevent race conditions (double rolls)
 window._sdx_calculatingMessages = window._sdx_calculatingMessages || new Set();
 window._sdx_localDamageResults = window._sdx_localDamageResults || {};
-const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-/**
- * Combat Settings Configuration Application (ApplicationV2)
- */
-export class CombatSettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
-	static DEFAULT_OPTIONS = {
-		id: "shadowdark-combat-settings",
-		classes: ["shadowdark-extras", "combat-settings"],
-		tag: "form",
-		window: {
-			title: "Automatic Combat Settings",
-			resizable: true,
-		},
-		position: {
-			width: 600,
-			height: "auto",
-		},
-		form: {
-			handler: CombatSettingsApp.formHandler,
-			submitOnChange: false,
-			closeOnSubmit: true,
-		},
-		actions: {
-			reset: CombatSettingsApp._onReset,
-		},
-	};
-
-	static PARTS = {
-		form: {
-			template: "modules/shadowdark-extras/templates/combat-settings.hbs",
-			scrollable: [""],
-		},
-	};
-
-	async _prepareContext(options) {
-		return {
-			settings: game.settings.get(MODULE_ID, "combatSettings"),
-		};
-	}
-
-	_onRender(context, options) {
-		// Wire the "showDamageCard" subsetting opacity/pointer toggle. Lives here
-		// instead of an inline <script> in the HBS so it re-binds on every render.
-		const root = this.element;
-		if (!root) return;
-		const parent = root.querySelector("#showDamageCard");
-		const sub = root.querySelector('[data-parent="showDamageCard"]');
-		if (!parent || !sub) return;
-		const sync = () => {
-			sub.style.opacity = parent.checked ? "1" : "0.5";
-			sub.style.pointerEvents = parent.checked ? "auto" : "none";
-		};
-		parent.addEventListener("change", sync);
-		sync();
-	}
-
-	static async _onReset(event, target) {
-		event?.preventDefault?.();
-		const confirmed = await foundry.applications.api.DialogV2.confirm({
-			window: { title: "Reset Combat Settings" },
-			content: "<p>Reset all combat settings to their defaults?</p>",
-			modal: true,
-			yes: { default: false },
-		});
-		if (!confirmed) return;
-		await game.settings.set(MODULE_ID, "combatSettings", foundry.utils.deepClone(DEFAULT_COMBAT_SETTINGS));
-		ui.notifications.info("Combat settings reset to defaults");
-		// Re-render to reflect the new values in the form
-		this.render({ force: true });
-	}
-
-	static async formHandler(event, form, formData) {
-		const settings = foundry.utils.expandObject(formData.object);
-		await game.settings.set(MODULE_ID, "combatSettings", settings);
-		ui.notifications.info("Combat settings saved successfully");
-	}
-}
-
-/**
- * Default combat settings configuration
- */
-export const DEFAULT_COMBAT_SETTINGS = {
-	showDamageCard: true, // Default to enabled for testing
-	showForPlayers: true, // Show damage card for players
-	scrollingCombatText: true, // Show floating damage/healing numbers on tokens
-	hideItemDescription: false, // Hide item description in chat cards (weapon/spell details)
-	requireTargetForAttack: "none", // 'none' = no check, 'warn' = warn but proceed, 'block' = prevent attack
-	checkWeaponRange: "none", // 'none' = no check, 'warn' = warn but proceed, 'block' = prevent attack if out of range
-	untargetAtEndOfTurn: "dead", // 'none' = no untargeting, 'dead' = untarget dead tokens, 'all' = untarget all
-	hideDamageCardOnFailedAttack: false, // Don't show damage card when weapon attack fails
-	damageCard: {
-		showTargets: true,
-		showMultipliers: true,
-		showApplyButton: true,
-		autoApplyDamage: true,
-		autoApplyConditions: true,
-		damageMultipliers: [
-			{ value: 0, label: "×", enabled: true },
-			{ value: -1, label: "-1", enabled: false },
-			{ value: 0, label: "0", enabled: true },
-			{ value: 0.25, label: "¼", enabled: true },
-			{ value: 0.5, label: "½", enabled: true },
-			{ value: 1, label: "1", enabled: true },
-			{ value: 2, label: "2", enabled: true },
-		],
-		gmOnlyApplyDamage: false,
-	},
-};
-
-/**
- * Register combat settings
- */
-export function registerCombatSettings() {
-	// Register the combat settings data (not shown in config)
-	game.settings.register(MODULE_ID, "combatSettings", {
-		name: "Combat Settings Configuration",
-		scope: "world",
-		config: false,
-		type: Object,
-		default: foundry.utils.deepClone(DEFAULT_COMBAT_SETTINGS),
-	});
-
-	// Register a menu button to open the Combat Settings app
-	game.settings.registerMenu(MODULE_ID, "combatSettingsMenu", {
-		name: "Combat Settings",
-		label: "Configure Combat Settings",
-		hint: "Configure enhanced combat features like auto apply damage, damage cards and target management",
-		icon: "fas fa-crossed-swords",
-		type: CombatSettingsApp,
-		restricted: true,
-	});
-
-	// Setup hook for summoned token expiry
-	setupSummonExpiryHook();
-
-	// Setup hook for un-targeting tokens at end of turn
-	setupUntargetHook();
-}
-
-// Track HP values before updates for scrolling text
-const _preUpdateHp = new Map();
-
-/**
- * Setup scrolling combat text hooks
- * This catches HP changes from any source (not just our damage cards)
- */
-export function setupScrollingCombatText() {
-	// Store HP before update
-	Hooks.on("preUpdateActor", (actor, changes, options, userId) => {
-		// Only process if HP is being changed
-		const newHp = foundry.utils.getProperty(changes, "system.attributes.hp.value");
-		if (newHp === undefined) return;
-
-		// Store the current HP for comparison after update
-		// Use a unique key: for synthetic actors use token id, for real actors use actor id
-		const key = actor.isToken ? `token-${actor.token?.id}` : `actor-${actor.id}`;
-		const currentHp = actor.system?.attributes?.hp?.value;
-
-		if (currentHp !== undefined) {
-			_preUpdateHp.set(key, {
-				oldHp: currentHp,
-				maxHp: actor.system?.attributes?.hp?.max ?? currentHp,
-				isToken: actor.isToken,
-				tokenId: actor.token?.id,
-				actorId: actor.id,
-			});
-		}
-	});
-
-	// Show scrolling text after update
-	Hooks.on("updateActor", (actor, changes, options, userId) => {
-		// Check if scrolling combat text is enabled
-		let settings;
-		try {
-			settings = game.settings.get(MODULE_ID, "combatSettings");
-		}
-		catch (e) {
-			return; // Settings not registered yet
-		}
-
-		if (settings.scrollingCombatText === false) return;
-
-		// Only process if HP was changed
-		const newHp = foundry.utils.getProperty(changes, "system.attributes.hp.value");
-		if (newHp === undefined) return;
-
-		// Get the stored pre-update HP using the same key logic
-		const key = actor.isToken ? `token-${actor.token?.id}` : `actor-${actor.id}`;
-		const preData = _preUpdateHp.get(key);
-		if (!preData) return;
-		_preUpdateHp.delete(key);
-
-		const hpChange = preData.oldHp - newHp;
-		if (hpChange === 0) return;
-
-		const isHealing = hpChange < 0;
-
-		// Find the appropriate token(s) to show scrolling text on
-		let tokens = [];
-
-		if (actor.isToken) {
-			// Synthetic actor (unlinked token) - get the specific token
-			const token = canvas.tokens?.get(actor.token?.id);
-			if (token) tokens.push(token);
-		}
-		else {
-			// Real actor - find all LINKED tokens for this actor
-			tokens = canvas.tokens?.placeables?.filter(t =>
-				t.actor?.id === actor.id && t.document.actorLink
-			) || [];
-		}
-
-		for (const token of tokens) {
-			// Use socket to broadcast to all clients if available
-			if (getSocket()) {
-				getSocket().executeForEveryone("showScrollingText", {
-					tokenId: token.id,
-					amount: Math.abs(hpChange),
-					isHealing: isHealing,
-				});
-			}
-			else {
-				// Fallback to local-only
-				showScrollingText(token, Math.abs(hpChange), isHealing);
-			}
-		}
-	});
-
-	// Auto-mark actors as defeated/dead when HP drops to 0.
-	// SD 4.x's ActorSD._onUpdate no longer calls _setDefeated() — only animates the HP delta.
-	// The _setDefeated() prototype method still exists and is correct (marks combatant.defeated
-	// + applies "dead" status overlay for NPCs / "prone"+"unconscious" for Players),
-	// it just isn't being invoked anymore. This hook restores the pre-v4 behavior.
-	Hooks.on("updateActor", async (actor, changes, options, userId) => {
-		// GM-only to avoid duplicate combatant updates from each client
-		if (!game.user.isGM) return;
-		if (userId !== game.user.id) return;
-
-		const newHp = foundry.utils.getProperty(changes, "system.attributes.hp.value");
-		if (newHp === undefined) return;
-		if (newHp > 0) return;
-
-		// Only fire when HP actually transitioned to 0 from a positive value
-		const key = actor.isToken ? `token-${actor.token?.id}` : `actor-${actor.id}`;
-		// _preUpdateHp may have been cleared by the scrolling-text hook above; fall back to current
-		// (post-update) HP if we don't have a record (e.g., direct sheet edit). Skip in that case.
-		// To be safe, just call _setDefeated unconditionally on HP === 0 — it's idempotent
-		// (toggleStatusEffect with active:true is a no-op if already applied).
-
-		if (typeof actor._setDefeated === "function") {
-			try {
-				await actor._setDefeated();
-			}
-			catch (err) {
-				console.error(`${MODULE_ID} | _setDefeated failed for ${actor.name}:`, err);
-			}
-		}
-	});
-
-}
-
-// Track which messages have already spawned creatures (in-memory cache)
-const _spawnedMessages = new Set();
-const _itemGiveMessages = new Set();
-const _coatingPoisonMessages = new Set();
-
-
-/**
- * Setup hook to delete expired summoned tokens when combat advances
- */
-export function setupSummonExpiryHook() {
-	Hooks.on("updateCombat", async (combat, changed, options, userId) => {
-
-		// Only process on round changes
-		if (!("round" in changed)) {
-			return;
-		}
-
-		// Only run for GM
-		if (!game.user.isGM) return;
-
-		const currentRound = combat.round;
-		const sceneId = canvas.scene?.id;
-
-
-		if (!sceneId) return;
-
-		const expiryList = getSummonedTokensExpiry(sceneId);
-		if (!expiryList || expiryList.length === 0) {
-			return;
-		}
-
-
-		// expiryList already retrieved above
-		const tokensToDelete = [];
-		const remainingExpiry = [];
-		const expiringMessages = [];
-		const remainingMessages = [];
-
-		for (const entry of expiryList) {
-			const roundsRemaining = entry.expiryRound - currentRound;
-
-			if (currentRound >= entry.expiryRound) {
-				tokensToDelete.push(...entry.tokenIds);
-				expiringMessages.push(`<b>${entry.spellName}</b> has expired!`);
-			}
-			else {
-				remainingExpiry.push(entry);
-				remainingMessages.push(`<b>${entry.spellName}</b>: ${roundsRemaining} round${roundsRemaining !== 1 ? "s" : ""} remaining`);
-			}
-		}
-
-		// Update the tracking list
-		await saveSummonedTokensExpiry(sceneId, remainingExpiry);
-
-		// Post chat message with summon status
-		const allMessages = [...expiringMessages, ...remainingMessages];
-		if (allMessages.length > 0) {
-			const content = `
-				<div class="sdx-summon-status">
-					<h4 style="margin: 0 0 6px 0; border-bottom: 1px solid #666; padding-bottom: 4px;">
-						<i class="fas fa-dragon"></i> Summon Status
-					</h4>
-					<ul style="margin: 0; padding-left: 16px; list-style-type: none;">
-						${allMessages.map(m => `<li style="margin: 2px 0;">${m}</li>`).join("")}
-					</ul>
-				</div>
-			`;
-			ChatMessage.create({
-				content: content,
-				whisper: [game.user.id], // Whisper to GM only
-			});
-		}
-
-		// Delete expired tokens
-		if (tokensToDelete.length > 0) {
-			try {
-				// Filter to only tokens that still exist on the scene
-				const existingTokenIds = tokensToDelete.filter(id => canvas.tokens.get(id));
-				if (existingTokenIds.length > 0) {
-					await canvas.scene.deleteEmbeddedDocuments("Token", existingTokenIds);
-					ui.notifications.info(`Deleted ${existingTokenIds.length} expired summoned creature(s)`);
-				}
-			}
-			catch (err) {
-				console.error("shadowdark-extras | Error deleting expired summons:", err);
-			}
-		}
-	});
-
-}
-
-/**
- * Un-target dead tokens after a roll
- * Called when untargetAtEndOfTurn is set to "dead"
- */
-export function untargetDeadTokens() {
-	game.user?.targets.forEach((token) => {
-		const hp = token.actor?.system?.attributes?.hp?.value;
-		if (hp !== undefined && hp <= 0) {
-			token.setTarget(false, { releaseOthers: false });
-		}
-	});
-}
-
-/**
- * Un-target all tokens for the current user
- * Called when untargetAtEndOfTurn is set to "all"
- */
-export function untargetAllTokens() {
-	game.user?.targets.forEach((token) => {
-		token.setTarget(false, { releaseOthers: false });
-	});
-}
-
-/**
- * Setup hook for un-targeting tokens at end of turn
- * This runs when the combat turn advances
- */
-export function setupUntargetHook() {
-	Hooks.on("updateCombat", (combat, changed, options, userId) => {
-		// Only process on turn changes
-		if (!("turn" in changed)) {
-			return;
-		}
-
-		// Get the untarget setting
-		let settings;
-		try {
-			settings = game.settings.get(MODULE_ID, "combatSettings");
-		}
-		catch (e) {
-			return; // Settings not registered yet
-		}
-
-		const untargetMode = settings.untargetAtEndOfTurn || "none";
-		if (untargetMode === "none") return;
-
-		// Delay slightly to let any pending damage/HP updates complete
-		setTimeout(() => {
-			if (untargetMode === "dead") {
-				untargetDeadTokens();
-			}
-			else if (untargetMode === "all") {
-				untargetAllTokens();
-			}
-		}, 100);
-	});
-}
-
-// Track messages that have already had template placement to prevent re-triggering
-const _templatePlacedMessages = new Set();
-// Track messages that have already auto-applied conditions/damage to prevent duplicates
-const _autoAppliedMessages = new Set();
-
-/**
- * Inject damage card into chat messages
- */
+// Damage-card injection pipeline — the full combat-message rendering stage
+// (card HTML, template/aura placement, spell/damage computation, auto-apply,
+// duration tracking). Remains a single staged function by design; see the
+// demonstrated-exception record in the phase log.
 export async function injectDamageCard(message, html, data) {
 
 	// v14: renderChatMessageHTML passes a raw HTMLElement, not jQuery.
