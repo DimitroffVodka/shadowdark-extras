@@ -102,6 +102,14 @@ if ! node dev/tools/entry-state-inventory.mjs --check; then
   block_fail=1
 fi
 
+# Phase 5.0.8: export-surface comparison. Every exported name at origin/main
+# must still exist (directly or via re-export chain) at HEAD — catches a split
+# deleting an exported name even when nothing imports it.
+if ! node dev/tools/export-surface-compare.mjs; then
+  echo "[BLOCK] export-surface regression(s) vs origin/main"
+  block_fail=1
+fi
+
 # Phase 5.0 gates — permanent lint enforcement (5.0.7).
 # `npm run lint` (eslint 9 flat config, scripts/**/*.mjs) is error-level
 # blocking: 0 errors / 4,760 warnings is the recorded 5.0.5+5.0.6 baseline.
