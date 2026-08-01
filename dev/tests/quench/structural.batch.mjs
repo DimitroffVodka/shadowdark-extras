@@ -62,6 +62,49 @@ async function loadSnapshot(name) {
     return response.json();
 }
 
+/**
+ * Wait for a sheet render to SETTLE, by observing its DOM rather than
+ * sleeping a fixed duration (Phase 5.0.8).
+ *
+ * WHY. The previous code waited a fixed 900 ms after `sheet.render(true)`
+ * before reading `sheet.element`. On a cold cache — first render after a
+ * fresh page load, templates and modules still being fetched — 900 ms is
+ * not enough for the enhancers to run, and the test fails with a plausible
+ * but wrong message ("its enhancer did not run") when the real cause is
+ * simply that the render had not finished. A fixed wait is also wasteful
+ * on warm caches: every run pays the full 900 ms even when the render
+ * settled in 50 ms.
+ *
+ * The settled condition is observable: the sheet's element must contain the
+ * SDX markers the enhancers inject. Poll for that condition with a bounded
+ * timeout (default 10 s, well inside the test's 30 s Mocha timeout). If the
+ * condition never appears, throw with the markers that were still missing —
+ * the same diagnostic the assertion would have produced, but only after the
+ * render genuinely had a chance to complete.
+ */
+async function waitForSettled(sheet, markers, { timeoutMs = 10000, pollMs = 50 } = {}) {
+    const deadline = Date.now() + timeoutMs;
+    let html = "";
+    while (Date.now() < deadline) {
+        html = sheetHtml(sheet);
+        const missing = markers.filter((marker) => !html.includes(marker));
+        if (missing.length === 0) return html;
+        await new Promise((resolve) => setTimeout(resolve, pollMs));
+    }
+    const missing = markers.filter((marker) => !html.includes(marker));
+    throw new Error(
+        `sheet did not settle with markers within ${timeoutMs} ms; still missing: ${missing.join(", ")}`,
+    );
+}
+
+function sheetHtml(sheet) {
+    const element = sheet.element;
+    if (!element) return "";
+    if (element instanceof HTMLElement) return element.outerHTML;
+    if (element[0] instanceof HTMLElement) return element[0].outerHTML;
+    return "";
+}
+
 export function registerStructuralBatch(quench) {
     quench.registerBatch(
         `${MODULE_ID}.structural`,
@@ -257,14 +300,6 @@ export function registerStructuralBatch(quench) {
                  * Run in the disposable test world with default settings: several
                  * of these markers belong to features a GM can switch off.
                  */
-                const sheetHtml = (sheet) => {
-                    const element = sheet.element;
-                    if (!element) return "";
-                    if (element instanceof HTMLElement) return element.outerHTML;
-                    if (element[0] instanceof HTMLElement) return element[0].outerHTML;
-                    return "";
-                };
-
                 const sdxClasses = (html) => [
                     ...new Set(
                         [...html.matchAll(/class="([^"]*)"/g)]
@@ -280,8 +315,8 @@ export function registerStructuralBatch(quench) {
 
                     const sheet = actor.sheet;
                     await sheet.render(true);
-                    await new Promise((resolve) => setTimeout(resolve, 900));
-                    const html = sheetHtml(sheet);
+                    const markers = ["sdx-enhanced-header", "sdx-hp-bar-container", "sdx-sheet-lock-toggle"];
+                    const html = await waitForSettled(sheet, markers);
 
                     assert.ok(sheet.rendered, "character sheet did not render");
                     assert.ok(html.length > 0, "character sheet produced no readable markup");
@@ -289,7 +324,7 @@ export function registerStructuralBatch(quench) {
                     // Distinct owners, so a single moved feature is identifiable:
                     // the header/HP enhancers live in the composition root, the
                     // lock toggle in SheetLockManager (Phase 2 step 16).
-                    for (const marker of ["sdx-enhanced-header", "sdx-hp-bar-container", "sdx-sheet-lock-toggle"]) {
+                    for (const marker of markers) {
                         assert.ok(
                             html.includes(marker),
                             `character sheet is missing "${marker}" — its enhancer did not run`,
@@ -309,13 +344,13 @@ export function registerStructuralBatch(quench) {
 
                     const sheet = item.sheet;
                     await sheet.render(true);
-                    await new Promise((resolve) => setTimeout(resolve, 900));
-                    const html = sheetHtml(sheet);
+                    const markers = ["sdx-targeting-box", "sdx-template-settings"];
+                    const html = await waitForSettled(sheet, markers);
 
                     assert.ok(sheet.rendered, "item sheet did not render");
                     assert.ok(html.length > 0, "item sheet produced no readable markup");
 
-                    for (const marker of ["sdx-targeting-box", "sdx-template-settings"]) {
+                    for (const marker of markers) {
                         assert.ok(
                             html.includes(marker),
                             `spell sheet is missing "${marker}" — the targeting enhancer did not run`,
