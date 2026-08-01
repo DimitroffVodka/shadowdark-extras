@@ -102,6 +102,25 @@ if ! node dev/tools/entry-state-inventory.mjs --check; then
   block_fail=1
 fi
 
+# Phase 5.0 gates — permanent lint enforcement (5.0.7).
+# `npm run lint` (eslint 9 flat config, scripts/**/*.mjs) is error-level
+# blocking: 0 errors / 4,760 warnings is the recorded 5.0.5+5.0.6 baseline.
+# Warnings are deliberately non-blocking (not warning-clean yet; see plan
+# 5.0.7). The unused-import gate is --strict: removable unused imports
+# block, docOnly findings (referenced in comments/strings) stay
+# informational per the plan's decision-table recommendation.
+echo "=== BLOCKING — lint (Phase 5.0.7) ==="
+
+if ! npm run lint --silent; then
+  echo "[BLOCK] eslint error-level findings (see baseline note)"
+  block_fail=1
+fi
+
+if ! node dev/tools/unused-imports.mjs --strict; then
+  echo "[BLOCK] removable unused import(s) (docOnly findings are informational)"
+  block_fail=1
+fi
+
 echo "=== BLOCKING — regressions of previously fixed bugs ==="
 
 # Socketlib auth: handler context is { socketdata: { userId } }, not { senderId }.
