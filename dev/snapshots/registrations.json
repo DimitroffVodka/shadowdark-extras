@@ -565,6 +565,15 @@
     "registerNpcDisplayPatches",
     "initCarouselDrag",
     "registerCrawlHelperDeathTimer",
-    "initPlaceableNotes"
+    "initPlaceableNotes",
+    "registerPlugin(PixiPlugin)",
+    "registerSheet(MODULE_ID)",
+    "registerSheet(PartySheetSD)",
+    "registerSheet(PotionSheetSD)",
+    "registerSheet(BackgroundSheetSD)",
+    "registerSheet(NPCAttackSheetSD)",
+    "registerSheet(NPCFeatureSheetSD)",
+    "registerSheet(ClassAbilitySheetSD)",
+    "registerSheet(NPCSpecialAttackSheetSD)"
   ]
 }

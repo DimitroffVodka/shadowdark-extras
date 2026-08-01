@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import { execSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import test from "node:test";
 
 import { scanExports } from "../tools/export-scan.mjs";
@@ -31,12 +29,10 @@ test("tool reports 0 regressions against origin/main (current surface intact)", 
 test("tool catches a removed export name (the acceptance case)", () => {
   const target = "scripts/shared/module-id.mjs";
   const original = fs.readFileSync(target, "utf8");
-  const scratch = path.join(os.tmpdir(), `sdx-surface-${process.pid}.mjs`);
   try {
-    // Simulate a split deleting the export: move the file's content to a
-    // scratch copy (so git still has the original at origin/main), then
-    // replace the tracked file with a version missing the export.
-    fs.writeFileSync(scratch, original);
+    // Simulate a split deleting the export: replace the tracked file with a
+    // version missing the export. git still has the original at origin/main,
+    // so the tool's base-surface scan sees the exported name.
     fs.writeFileSync(
       target,
       original.replace(/^export const MODULE_ID/m, "const MODULE_ID"),
@@ -57,6 +53,5 @@ test("tool catches a removed export name (the acceptance case)", () => {
     assert.match(out, /MISSING\s+scripts\/shared\/module-id\.mjs\s+MODULE_ID/);
   } finally {
     fs.writeFileSync(target, original);
-    fs.rmSync(scratch, { force: true });
   }
 });

@@ -20,6 +20,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history: the export-surface gate (verify.sh) compares
+          # against origin/main via `git show`, which a shallow
+          # fetch-depth:1 checkout cannot provide.
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4

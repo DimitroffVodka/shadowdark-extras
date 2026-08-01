@@ -41,6 +41,23 @@ import { listJsFiles, toRepoPath, isVendor, REPO_ROOT } from "./project-scan.mjs
 
 const BASE_REF = process.argv[2] ?? "origin/main";
 
+// The base ref must resolve, or the comparison is meaningless. A missing ref
+// (e.g. shallow CI checkout without origin/main) must fail loudly rather than
+// report "0 surface regressions" against nothing.
+try {
+  execSync(`git rev-parse --verify "${BASE_REF}^{commit}"`, {
+    cwd: REPO_ROOT,
+    stdio: "pipe",
+  });
+} catch {
+  console.error(
+    `export-surface compare: base ref "${BASE_REF}" does not resolve. ` +
+      "In CI, checkout must use fetch-depth: 0 so origin/main exists. " +
+      "Locally, fetch origin first.",
+  );
+  process.exit(1);
+}
+
 /** Resolve a repo-relative path to the absolute path under REPO_ROOT. */
 function absPath(repoPath) {
   return path.join(REPO_ROOT, repoPath);

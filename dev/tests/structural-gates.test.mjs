@@ -186,6 +186,25 @@ test("registration snapshot: root call scanner ignores declarations and masked t
   assert.deepEqual(scanRootCompositionCalls(source), ["registerActual", "initActual"]);
 });
 
+test("registration snapshot: FAILING FIXTURE — scanner is blind to reference-passed class seams", () => {
+  // Phase 5.0.8 part 3. The root registers sheets by passing the CLASS BY
+  // REFERENCE: foundry.documents.collections.Actors.registerSheet(MODULE_ID,
+  // PartySheetSD, {...}). The `.`-prefixed call is excluded from the
+  // register/init scan by design (method calls are not root seams), so the
+  // scanner sees nothing — and a split that swaps PartySheetSD for another
+  // class changes runtime behaviour with a green snapshot.
+  const source = `
+    foundry.documents.collections.Actors.registerSheet(MODULE_ID, PartySheetSD, { types: ["Player"] });
+    foundry.documents.collections.Items.registerSheet(MODULE_ID, PotionSheetSD, {});
+  `;
+
+  const calls = scanRootCompositionCalls(source);
+  assert.ok(
+    calls.some((c) => c.includes("PartySheetSD")),
+    "expected the scanner to surface the reference-passed PartySheetSD seam; got: " + JSON.stringify(calls),
+  );
+});
+
 test("registration snapshot: catches a module that lost its registrations", () => {
   const baseline = { totals: { "Hooks.on": 1, all: 1 }, modules: { "A.mjs": ["Hooks.on:ready"] } };
   const current = { totals: {}, modules: {} };

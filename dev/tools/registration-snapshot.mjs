@@ -47,6 +47,18 @@ const VENDOR_TREE_EXCEPTIONS = ["scripts/maphub/OnePageParserSD.mjs"];
  * root call decides when those registrations are installed relative to every
  * other feature.
  *
+ * ALSO captures reference-passed class seams (Phase 5.0.8 part 3). The root
+ * registers sheets by passing the CLASS BY REFERENCE:
+ *
+ *   foundry.documents.collections.Actors.registerSheet(MODULE_ID, PartySheetSD, {...})
+ *
+ * The `.`-prefixed call is excluded from the register/init scan below by
+ * design (method calls are not root seams), so without this second pass a
+ * split that swaps PartySheetSD for another class changes runtime behaviour
+ * with a green snapshot. Every capitalized identifier passed as an argument
+ * to a register-seam or init-seam call is recorded as `<Seam>(<Class>)` so a
+ * class swap changes the snapshot.
+ *
  * Function declarations are excluded; comments, strings, templates and regex
  * literals are already masked by the shared import scanner.
  */
@@ -60,6 +72,24 @@ export function scanRootCompositionCalls(source) {
     const prefix = masked.slice(Math.max(0, nameOffset - 48), nameOffset);
     if (/\bfunction\s*$/.test(prefix)) continue;
     calls.push(name);
+  }
+
+  // Reference-passed class seams: `registerSheet(MODULE_ID, PartySheetSD)`.
+  // Match any register/init call (optionally .-prefixed — API seams like
+  // foundry.documents...registerSheet) and capture capitalized identifiers
+  // among its arguments. The captured class name is the contract: swapping
+  // the class must change the snapshot.
+  for (const match of masked.matchAll(/(?<![\w$])((?:register|init)[A-Z][A-Za-z0-9_$]*)\s*\(([^)]*)\)/g)) {
+    const name = match[1];
+    const nameOffset = match.index + match[0].indexOf(name);
+    const prefix = masked.slice(Math.max(0, nameOffset - 48), nameOffset);
+    if (/\bfunction\s*$/.test(prefix)) continue; // declarations, same as pass 1
+    const args = match[2];
+    const classes = [...args.matchAll(/\b([A-Z][A-Za-z0-9_$]*)\b/g)].map((m) => m[1]);
+    for (const cls of classes) {
+      const entry = `${name}(${cls})`;
+      if (!calls.includes(entry)) calls.push(entry);
+    }
   }
 
   return calls;
