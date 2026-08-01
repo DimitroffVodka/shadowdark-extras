@@ -82,7 +82,8 @@ function checkRollSuccess(flags) {
 		if (success) {
 			debug("Successful attack/spell - playing animation");
 			return { isRoll: true, shouldAnimate: true, isSuccess: true };
-		} else {
+		}
+		else {
 			debug("Failed attack/spell - skipping animation");
 			return { isRoll: true, shouldAnimate: false, isFailure: true };
 		}
@@ -99,13 +100,15 @@ function checkRollSuccess(flags) {
 		let animateSpellsWithoutTarget = true;
 		try {
 			animateSpellsWithoutTarget = game.settings.get(MODULE_ID, "aaAnimateSpellsWithoutTarget");
-		} catch (e) {
+		}
+		catch (e) {
 			// Use default
 		}
 		if (animateSpellsWithoutTarget) {
 			debug("Spell without target - playing animation");
 			return { isRoll: true, shouldAnimate: true, isSpell: true };
-		} else {
+		}
+		else {
 			debug("Spell without target - skipping (disabled in settings)");
 			return { isRoll: true, shouldAnimate: false, isSpell: true };
 		}
@@ -175,7 +178,8 @@ function setupAAIntegration() {
 	let integrationEnabled = true;
 	try {
 		integrationEnabled = game.settings.get(MODULE_ID, "aaIntegration");
-	} catch (e) {
+	}
+	catch (e) {
 		// Settings not registered yet, use default
 	}
 
@@ -270,7 +274,8 @@ function setupAAIntegration() {
 					return;
 				}
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			// Fall through to normal AA gating if anything goes sideways.
 			debug("SDX-primary check failed, deferring to AA gating:", e?.message);
 		}
@@ -324,7 +329,8 @@ function setupAAIntegration() {
 			if (rollResult.isCriticalSuccess) {
 				clonedData.isCritical = true;
 				debug("Animation will play - critical success");
-			} else {
+			}
+			else {
 				debug("Animation will play - successful roll");
 			}
 			return;

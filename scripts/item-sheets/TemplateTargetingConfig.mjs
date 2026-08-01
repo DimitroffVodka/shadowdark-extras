@@ -22,9 +22,11 @@ function normalizeTokenMagicPresetEntries(source, allowedLibraries = null) {
 
 	if (Array.isArray(source)) {
 		for (const entry of source) pushEntry(entry);
-	} else if (source instanceof Map) {
+	}
+	else if (source instanceof Map) {
 		for (const [key, value] of source.entries()) pushEntry(value, key);
-	} else if (source && typeof source === "object") {
+	}
+	else if (source && typeof source === "object") {
 		for (const [key, value] of Object.entries(source)) pushEntry(value, key);
 	}
 
@@ -44,14 +46,16 @@ function getTokenMagicPresets() {
 			addPresets(tokenMagic.getPresets("tmfx-region"));
 			addPresets(tokenMagic.getPresets("tmfx-template"));
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn("shadowdark-extras | Failed to read TokenMagic presets via getPresets:", e);
 	}
 
 	for (const key of ["presets", "Presets", "defaultPresets", "templatePresets", "tmfxPresets", "_presets"]) {
 		try {
 			addPresets(tokenMagic[key]);
-		} catch (e) {
+		}
+		catch (e) {
 			// Ignore unstable TokenMagic internals.
 		}
 	}
@@ -59,7 +63,8 @@ function getTokenMagicPresets() {
 	for (const settingKey of ["presets", "templatePresets", "defaultPresets", "customPresets", "tmfxPresets"]) {
 		try {
 			addPresets(game.settings.get("tokenmagic", settingKey));
-		} catch (e) {
+		}
+		catch (e) {
 			// Setting may not exist in this TokenMagic version.
 		}
 	}
@@ -598,7 +603,8 @@ export function activateTemplateTargetingListeners(html, MODULE_ID) {
 			if (e.target.checked) {
 				templateEffectsConfig.style.opacity = "";
 				templateEffectsConfig.style.pointerEvents = "";
-			} else {
+			}
+			else {
 				templateEffectsConfig.style.opacity = "0.5";
 				templateEffectsConfig.style.pointerEvents = "none";
 			}
@@ -614,7 +620,8 @@ export function activateTemplateTargetingListeners(html, MODULE_ID) {
 			if (e.target.checked) {
 				templateSaveConfig.style.opacity = "";
 				templateSaveConfig.style.pointerEvents = "";
-			} else {
+			}
+			else {
 				templateSaveConfig.style.opacity = "0.5";
 				templateSaveConfig.style.pointerEvents = "none";
 			}

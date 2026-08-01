@@ -150,7 +150,12 @@ export async function resolveLinkedData(links = {}, mode = "original") {
 	const skipped = [];
 	const load = async (uuid) => {
 		if (!uuid) return null;
-		try { return await fromUuid(uuid); } catch { return null; }
+		try {
+			return await fromUuid(uuid);
+		}
+		catch {
+			return null;
+		}
 	};
 
 	// A linked RollTable in the wrong shape parses to rows that are entirely
@@ -219,7 +224,10 @@ export function describeLinks(links = {}) {
 	for (const [key, uuid] of Object.entries(links)) {
 		if (!uuid || !labels[key]) continue;
 		let name = null;
-		try { name = fromUuidSync(uuid)?.name ?? null; } catch { /* pack not loaded */ }
+		try {
+			name = fromUuidSync(uuid)?.name ?? null;
+		}
+		catch { /* pack not loaded */ }
 		parts.push(`${game.i18n.localize(labels[key])}: ${name || "?"}`);
 	}
 	return parts.join(" • ");
@@ -255,7 +263,8 @@ export function tableResultsToRows(table) {
 		// Expand normal ranges; guard against a pathologically wide single range.
 		if (span <= 1 || span > 200) {
 			rows.push({ roll: String(low), description });
-		} else {
+		}
+		else {
 			for (let n = low; n <= high; n++) {
 				rows.push({ roll: String(n), description });
 			}

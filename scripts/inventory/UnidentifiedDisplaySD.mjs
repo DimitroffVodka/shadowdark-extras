@@ -45,7 +45,8 @@ function _setNameText(el, text) {
 	const textNode = [...el.childNodes].find(n => n.nodeType === Node.TEXT_NODE);
 	if (textNode) {
 		textNode.textContent = text;
-	} else {
+	}
+	else {
 		el.textContent = text;
 	}
 }
@@ -113,7 +114,8 @@ async function _patchCompendiumDirectory(app, html) {
 		index = await pack.getIndex({
 			fields: ["system.identification.identified", "system.identification.name"],
 		});
-	} catch (_e) { /* fall back to whatever is already indexed */ }
+	}
+	catch (_e) { /* fall back to whatever is already indexed */ }
 
 	root.querySelectorAll(".directory-item[data-entry-id], .directory-item[data-document-id]").forEach(el => {
 		const docId = el.dataset.entryId ?? el.dataset.documentId;

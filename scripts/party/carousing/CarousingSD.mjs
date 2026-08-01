@@ -33,7 +33,8 @@ export async function refreshLinkedCarousingTables() {
 		if (!rec?.links || !Object.values(rec.links).some(Boolean)) continue;
 		try {
 			_linkedDataCache.set(rec.id, await resolveLinkedData(rec.links, mode));
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to refresh linked carousing table "${rec.name}"`, err);
 		}
 	}
@@ -147,7 +148,8 @@ export function initCarousing() {
 export function getCarousingMode() {
 	try {
 		return game.settings.get(MODULE_ID, "carousingMode") || "original";
-	} catch {
+	}
+	catch {
 		return "original";
 	}
 }
@@ -239,7 +241,8 @@ export function getExpandedCarousingTables() {
 				// The next save operation will persist it
 				tables = [migratedTable];
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			// No legacy data
 		}
 
@@ -291,7 +294,8 @@ export async function saveExpandedCarousingData(data) {
 
 	if (index >= 0) {
 		tables[index] = data;
-	} else {
+	}
+	else {
 		tables.push(data);
 	}
 
@@ -360,7 +364,8 @@ export async function ensureCarousingJournal() {
 			},
 		});
 		console.log(`${MODULE_ID} | Carousing sync journal created:`, journal.id);
-	} else {
+	}
+	else {
 		if (journal.ownership.default !== CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) {
 			await journal.update({
 				ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER },
@@ -545,7 +550,8 @@ export async function setCarousingDrop(userId, actorId) {
 
 	if (actorId) {
 		updates[`flags.${MODULE_ID}.carousingDrops.${userId}`] = actorId;
-	} else {
+	}
+	else {
 		updates[`flags.${MODULE_ID}.carousingDrops.${userId}`] =
             new foundry.data.operators.ForcedDeletion();
 	}
@@ -1091,7 +1097,8 @@ export async function recordCarousingDebt(actor, amountCp, sourceText = "") {
 
 	if (existing) {
 		await existing.update(data);
-	} else {
+	}
+	else {
 		await actor.createEmbeddedDocuments("Item", [{ ...data, type: "Basic" }]);
 	}
 	return totalCp;
@@ -1119,15 +1126,25 @@ async function deductCoinsCp(actor, cpAmount) {
 
 	let owed = total;
 	while (owed > 0 && (gp > 0 || sp > 0 || cp > 0)) {
-		if (cp >= owed) { cp -= owed; owed = 0; break; }
-		if (cp > 0) { owed -= cp; cp = 0; }
+		if (cp >= owed) {
+			cp -= owed; owed = 0; break;
+		}
+		if (cp > 0) {
+			owed -= cp; cp = 0;
+		}
 
 		if (sp > 0) {
 			const use = Math.min(sp, Math.ceil(owed / CP_PER_SP));
 			sp -= use;
 			const value = use * CP_PER_SP;
-			if (value >= owed) { cp += value - owed; owed = 0; } else { owed -= value; }
-		} else if (gp > 0) {
+			if (value >= owed) {
+				cp += value - owed; owed = 0;
+			}
+			else {
+				owed -= value;
+			}
+		}
+		else if (gp > 0) {
 			const use = Math.min(gp, Math.ceil(owed / CP_PER_GP));
 			gp -= use;
 			const value = use * CP_PER_GP;
@@ -1136,7 +1153,8 @@ async function deductCoinsCp(actor, cpAmount) {
 				sp += Math.floor(change / CP_PER_SP);
 				cp += change % CP_PER_SP;
 				owed = 0;
-			} else {
+			}
+			else {
 				owed -= value;
 			}
 		}
@@ -1309,7 +1327,8 @@ export async function applyRenownDelta(actor, delta, reason = "") {
 				`${MODULE_ID} | renown: Shadowdark Enhancer declined the award, writing the field directly`,
 				result?.error
 			);
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(
 				`${MODULE_ID} | renown: Shadowdark Enhancer award failed, writing the field directly`,
 				err
@@ -1592,7 +1611,8 @@ function getOutcome(rollTotal, outcomes) {
 			if (!isNaN(minRoll) && rollTotal >= minRoll) {
 				return outcome;
 			}
-		} else {
+		}
+		else {
 			// Exact match
 			const exactRoll = parseInt(rollStr);
 			if (!isNaN(exactRoll) && rollTotal === exactRoll) {
@@ -1848,8 +1868,12 @@ export function hasOutcomeEffects(effects) {
 
 /** The configured wealth base: "coins" or "coinsAndGear". */
 export function getCarousingWealthBaseMode() {
-	try { return game.settings.get(MODULE_ID, "carousingWealthBase") || "coins"; }
-	catch { return "coins"; }
+	try {
+		return game.settings.get(MODULE_ID, "carousingWealthBase") || "coins";
+	}
+	catch {
+		return "coins";
+	}
 }
 
 /**
@@ -2191,13 +2215,16 @@ export async function writeCarousingLogPage(session) {
 					"SHADOWDARK_EXTRAS.carousing.log_automatic"
 				)
 			);
-		} else if (entry.applied) {
+		}
+		else if (entry.applied) {
 			applied = esc(entry.applied);
-		} else if (entry.appliedState === "applied") {
+		}
+		else if (entry.appliedState === "applied") {
 			applied = esc(
 				game.i18n.localize("SHADOWDARK_EXTRAS.carousing.log_applied")
 			);
-		} else {
+		}
+		else {
 			applied = `<em>${esc(game.i18n.localize(
 				"SHADOWDARK_EXTRAS.carousing.log_not_applied"
 			))}</em>`;
@@ -2233,7 +2260,8 @@ export async function writeCarousingLogPage(session) {
 	const existing = journal.pages.find(p => p.getFlag(MODULE_ID, "logId") === session.logId);
 	if (existing) {
 		await existing.update({ "text.content": content });
-	} else {
+	}
+	else {
 		await JournalEntryPage.create({
 			name: title,
 			type: "text",
@@ -2377,7 +2405,8 @@ function rerenderPlayerSheets() {
 export async function injectCarousingButton(app, html, actor) {
 	try {
 		if (!game.settings.get(MODULE_ID, "enableCarousing")) return;
-	} catch {
+	}
+	catch {
 		return;
 	}
 
@@ -2491,7 +2520,8 @@ function activateCarousingListeners(html, actor, app) {
 			let data;
 			try {
 				data = JSON.parse(event.dataTransfer.getData("text/plain"));
-			} catch (e) {
+			}
+			catch (e) {
 				return;
 			}
 

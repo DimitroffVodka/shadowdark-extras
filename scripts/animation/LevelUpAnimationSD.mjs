@@ -14,7 +14,8 @@ const MODULE_ID = "shadowdark-extras";
 function isEnabled() {
 	try {
 		return game.settings.get(MODULE_ID, "enableLevelUpAnimation") !== false;
-	} catch (e) {
+	}
+	catch (e) {
 		return true; // Default to enabled if setting not registered yet
 	}
 }
@@ -181,7 +182,8 @@ async function updateLevelUpAnimationForActor(actor) {
 	for (const token of tokens) {
 		if (shouldShow) {
 			await playLevelUpAnimation(token);
-		} else {
+		}
+		else {
 			await stopLevelUpAnimation(token);
 		}
 	}

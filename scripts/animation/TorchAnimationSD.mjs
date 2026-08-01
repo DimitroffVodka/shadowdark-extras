@@ -14,7 +14,8 @@ const MODULE_ID = "shadowdark-extras";
 function isEnabled() {
 	try {
 		return game.settings.get(MODULE_ID, "enableTorchAnimations") !== false;
-	} catch (e) {
+	}
+	catch (e) {
 		return true; // Default to enabled if setting not registered yet
 	}
 }
@@ -81,7 +82,8 @@ function getAnimationConfig(item) {
 		config.flameOffsetX = 0;
 		config.flameOffsetY = -0.5; // Above the token
 		config.tint = "#4488ff";
-	} else if (itemName.includes("oil") || itemName.includes("flask")) {
+	}
+	else if (itemName.includes("oil") || itemName.includes("flask")) {
 		// Oil Flask - use lamp.webp
 		config.type = "oil";
 		config.torchFile = "modules/shadowdark-extras/assets/lamp.webp";
@@ -92,7 +94,8 @@ function getAnimationConfig(item) {
 		config.flameOffsetX = 0.34;
 		config.flameOffsetY = 0.19;
 		config.flameRotation = 0;
-	} else if (lightTemplate.includes("lantern") || itemName.includes("lantern")) {
+	}
+	else if (lightTemplate.includes("lantern") || itemName.includes("lantern")) {
 		// Lantern - use lamp.webp
 		config.type = "lantern";
 		config.torchFile = "modules/shadowdark-extras/assets/lamp.webp";
@@ -102,7 +105,8 @@ function getAnimationConfig(item) {
 		config.flameScale = 0.35;
 		config.flameOffsetX = 0.45;
 		config.flameOffsetY = -0.08;
-	} else if (lightTemplate.includes("candle") || itemName.includes("candle")) {
+	}
+	else if (lightTemplate.includes("candle") || itemName.includes("candle")) {
 		// Candle - use candle.webp
 		config.type = "candle";
 		config.torchFile = "modules/shadowdark-extras/assets/candle.webp";
@@ -123,7 +127,8 @@ function getAnimationConfig(item) {
 		if (config.type === "spell") config.flameFile = ambient.lightSpellGlow?.file || config.flameFile;
 		else if (config.type === "candle") config.flameFile = ambient.candleFlame?.file || config.flameFile;
 		else config.flameFile = ambient.torchFlame?.file || config.flameFile; // torch / lantern / oil
-	} catch (e) { /* keep hardcoded default */ }
+	}
+	catch (e) { /* keep hardcoded default */ }
 
 	return config;
 }
@@ -299,7 +304,8 @@ async function stopTorchAnimation(token, itemId = null) {
 		const effectName = getEffectName(token, itemId);
 		await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
 		console.log(`${MODULE_ID} | Stopped torch animation: ${effectName}`);
-	} else {
+	}
+	else {
 		// Stop all torch animations for this token
 		await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-${token.id}*`, object: token });
 		console.log(`${MODULE_ID} | Stopped all torch animations for ${token.name}`);
@@ -385,7 +391,8 @@ export function initTorchAnimations() {
 			if (isActive) {
 				// Light turned on - play animation
 				await playTorchAnimation(token, item);
-			} else {
+			}
+			else {
 				// Light turned off - stop animation
 				await stopTorchAnimation(token, item.id);
 			}

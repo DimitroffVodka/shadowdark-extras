@@ -80,7 +80,9 @@ export class SDXDrawingToolbar {
 		});
 	}
 
-	get visible() { return this._visible; }
+	get visible() {
+		return this._visible;
+	}
 
 	// ── Toggle ──────────────────────────────────────────────────
 	toggle() {
@@ -245,7 +247,8 @@ export class SDXDrawingToolbar {
 	_getDrawHotkeyLabel() {
 		try {
 			if (!game.settings.get(MODULE_ID, "drawing.hotkeyEnabled")) return "";
-		} catch {}
+		}
+		catch {}
 		const bindings = game.keybindings?.bindings?.get(`${MODULE_ID}.drawHotkey`) || [];
 		const b = bindings[0];
 		if (!b?.key) return "";
@@ -334,7 +337,8 @@ export class SDXDrawingToolbar {
 	_applyColor(colorId) {
 		if (colorId === "player") {
 			sdxDrawingTool.setBrushColor(sdxDrawingTool._getPlayerColor());
-		} else if (COLORS[colorId]) {
+		}
+		else if (COLORS[colorId]) {
 			sdxDrawingTool.setBrushColor(COLORS[colorId]);
 		}
 	}
@@ -343,8 +347,12 @@ export class SDXDrawingToolbar {
 		const cur = sdxDrawingTool.state.brushSettings.color;
 		for (const c of COLOR_DEFS) {
 			if (c.id === "player") {
-				try { if (cur === sdxDrawingTool._getPlayerColor()) return this._getPlayerHex(); } catch { }
-			} else if (COLORS[c.id] && cur === COLORS[c.id]) {
+				try {
+					if (cur === sdxDrawingTool._getPlayerColor()) return this._getPlayerHex();
+				}
+				catch { }
+			}
+			else if (COLORS[c.id] && cur === COLORS[c.id]) {
 				return c.hex;
 			}
 		}
@@ -380,10 +388,12 @@ export class SDXDrawingToolbar {
 				if (game.user.color.constructor?.name === "Color") {
 					const v = Number(game.user.color);
 					if (!isNaN(v)) hex = "#" + v.toString(16).padStart(6, "0");
-				} else if (typeof game.user.color === "string") hex = game.user.color;
+				}
+				else if (typeof game.user.color === "string") hex = game.user.color;
 				else if (typeof game.user.color === "number") hex = "#" + game.user.color.toString(16).padStart(6, "0");
 			}
-		} catch { }
+		}
+		catch { }
 		return hex;
 	}
 
@@ -392,7 +402,9 @@ export class SDXDrawingToolbar {
 	_opacityOverlay = null;
 
 	_openStampOverlay() {
-		if (this._stampOverlay) { this._closeStampOverlay(); return; }
+		if (this._stampOverlay) {
+			this._closeStampOverlay(); return;
+		}
 		if (!this._el) return;
 		const overlay = document.createElement("div");
 		overlay.classList.add("sdx-dt-stamp-overlay");
@@ -450,7 +462,9 @@ export class SDXDrawingToolbar {
 
 	// ── Opacity slider overlay ───────────────────────────────
 	_toggleOpacityOverlay() {
-		if (this._opacityOverlay) { this._closeOpacityOverlay(); return; }
+		if (this._opacityOverlay) {
+			this._closeOpacityOverlay(); return;
+		}
 		if (!this._el) return;
 		const overlay = document.createElement("div");
 		overlay.classList.add("sdx-dt-stamp-overlay", "sdx-dt-opacity-overlay");
@@ -500,7 +514,9 @@ export class SDXDrawingToolbar {
 	_colorOverlay = null;
 
 	_toggleColorOverlay() {
-		if (this._colorOverlay) { this._closeColorOverlay(); return; }
+		if (this._colorOverlay) {
+			this._closeColorOverlay(); return;
+		}
 		if (!this._el) return;
 		const overlay = document.createElement("div");
 		overlay.classList.add("sdx-dt-stamp-overlay", "sdx-dt-color-overlay");
@@ -633,7 +649,9 @@ export class SDXDrawingToolbar {
 		// Click delegation
 		el.addEventListener("click", (e) => {
 			const closeBtn = e.target.closest(".sdx-dt-inspector-close");
-			if (closeBtn) { this._closeInspector(); return; }
+			if (closeBtn) {
+				this._closeInspector(); return;
+			}
 			const nameEl = e.target.closest(".sdx-dt-inspector-name");
 			if (nameEl && !nameEl.classList.contains("sdx-dt-inspector-name-editing")) {
 				const item = nameEl.closest(".sdx-dt-inspector-item");
@@ -673,8 +691,12 @@ export class SDXDrawingToolbar {
 	}
 
 	_closeInspector() {
-		if (this._inspectorInterval) { clearInterval(this._inspectorInterval); this._inspectorInterval = null; }
-		if (this._inspectorEl) { this._inspectorEl.remove(); this._inspectorEl = null; }
+		if (this._inspectorInterval) {
+			clearInterval(this._inspectorInterval); this._inspectorInterval = null;
+		}
+		if (this._inspectorEl) {
+			this._inspectorEl.remove(); this._inspectorEl = null;
+		}
 		this._inspectorSnapshot = "";
 		sdxDrawingTool.unhighlightDrawing();
 		this._el?.querySelector('[data-action="inspector"]')?.classList.remove("sdx-dt-active");
@@ -704,7 +726,8 @@ export class SDXDrawingToolbar {
 		if (count) count.textContent = entries.length;
 		if (entries.length === 0) {
 			list.innerHTML = "<div class=\"sdx-dt-inspector-empty\">No drawings on this scene</div>";
-		} else {
+		}
+		else {
 			list.innerHTML = entries.map(e => this._inspectorItemHtml(e)).join("");
 		}
 	}
@@ -751,7 +774,8 @@ export class SDXDrawingToolbar {
 		h += "<div class=\"sdx-dt-inspector-list\">";
 		if (entries.length === 0) {
 			h += "<div class=\"sdx-dt-inspector-empty\">No drawings on this scene</div>";
-		} else {
+		}
+		else {
 			h += entries.map(e => this._inspectorItemHtml(e)).join("");
 		}
 		h += "</div>";
@@ -846,7 +870,8 @@ export class SDXDrawingToolbar {
 			if (e.key === "Enter") {
 				e.preventDefault();
 				finishRename(true);
-			} else if (e.key === "Escape") {
+			}
+			else if (e.key === "Escape") {
 				e.preventDefault();
 				finishRename(false);
 			}
@@ -885,7 +910,10 @@ export class SDXDrawingToolbar {
 	_savePosition() {
 		if (!this._el) return;
 		const pos = { left: this._el.style.left, top: this._el.style.top };
-		try { game.settings.set(MODULE_ID, "drawing.toolbar.position", JSON.stringify(pos)); } catch { }
+		try {
+			game.settings.set(MODULE_ID, "drawing.toolbar.position", JSON.stringify(pos));
+		}
+		catch { }
 	}
 
 	_restorePosition() {
@@ -898,7 +926,8 @@ export class SDXDrawingToolbar {
 				if (pos.top) this._el.style.top = pos.top;
 				this._el.style.right = "auto";
 			}
-		} catch { }
+		}
+		catch { }
 	}
 }
 

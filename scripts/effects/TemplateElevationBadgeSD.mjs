@@ -37,7 +37,8 @@ function _updateBadge(template) {
 			try {
 				existing.parent?.removeChild(existing);
 				existing.destroy({ children: true });
-			} catch (e) { /* ignore destroy races */ }
+			}
+			catch (e) { /* ignore destroy races */ }
 		}
 	}
 

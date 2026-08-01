@@ -43,7 +43,8 @@ function getSettings() {
 	try {
 		const saved = game.settings.get(MODULE_ID, "sdxCoordsSettings");
 		return foundry.utils.mergeObject(defaults, saved || {});
-	} catch {
+	}
+	catch {
 		return defaults;
 	}
 }
@@ -96,7 +97,8 @@ class SDXCoord {
 			this._zeroPad = String(
 				Math.max(canvas.dimensions.columns, canvas.dimensions.rows)
 			).length;
-		} else {
+		}
+		else {
 			this._zeroPad = 0;
 		}
 
@@ -325,12 +327,18 @@ class SDXCoord {
 				pos = [tl.x, tl.y];
 
 				const adjRow = this._adjustRow(r, absCol);
-				if (adjRow < 0) { r += 1; continue; }
+				if (adjRow < 0) {
+					r += 1; continue;
+				}
 
 				// In zine mode the cropped/partial edge column is not numbered
 				// (its zine column would be -1); skip it to match the shifted axis.
-				if (style === "zine" && this._zineColumn(adjCol) < 0) { r += 1; continue; }
-				if (style !== "zine" && this._standardColumn(adjCol) < 0) { r += 1; continue; }
+				if (style === "zine" && this._zineColumn(adjCol) < 0) {
+					r += 1; continue;
+				}
+				if (style !== "zine" && this._standardColumn(adjCol) < 0) {
+					r += 1; continue;
+				}
 
 				const text = new PT(this._formatCellLabel(adjRow, adjCol, style), cellStyle);
 				text.resolution = 4;
@@ -433,7 +441,8 @@ class SDXCoord {
 		this._applyState(next);
 		if (game.user.isGM) {
 			canvas.scene.setFlag(MODULE_ID, "sdxcoords-state", next);
-		} else {
+		}
+		else {
 			this.#overrideState = next;
 		}
 		this.#state = next;
@@ -471,7 +480,8 @@ export function initSDXCoords() {
 			const fontFamily = settings.fontFamily || "Signika-Bold";
 			try {
 				await document.fonts.load(`16px "${fontFamily}"`);
-			} catch { /* font may not exist, PIXI will use fallback */ }
+			}
+			catch { /* font may not exist, PIXI will use fallback */ }
 			window.SDXCoordinates = new SDXCoord();
 		}
 	});

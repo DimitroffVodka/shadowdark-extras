@@ -59,10 +59,12 @@ export async function handleTMFXDropEvent(document, data) {
 
 		if (isSDXVirtualDocument(document) && typeof document._SDXaddFilterParams === "function") {
 			await document._SDXaddFilterParams(deepClone(preset.params));
-		} else {
+		}
+		else {
 			await getTokenMagic().addFilters(document, deepClone(preset.params));
 		}
-	} else if (data.type === "TMFX-Filter" || data.type === "TMFX Filter") {
+	}
+	else if (data.type === "TMFX-Filter" || data.type === "TMFX Filter") {
 		const { filterId, filterType, filterInternalId, placeableId, documentName, sceneId } = data;
 		if (document.id === placeableId && document.parent.id === sceneId) {
 			return;
@@ -77,10 +79,12 @@ export async function handleTMFXDropEvent(document, data) {
 
 		if (isSDXVirtualDocument(document) && typeof document._SDXaddFilterParams === "function") {
 			await document._SDXaddFilterParams([filter]);
-		} else {
+		}
+		else {
 			await getTokenMagic().addUpdateFilters(document, [filter]);
 		}
-	} else if (data.type === "TMFX Group") {
+	}
+	else if (data.type === "TMFX Group") {
 		const { placeableId, documentName, sceneId } = data;
 		const scene = game.scenes.get(sceneId);
 		const originDocument = scene?.getEmbeddedDocument(documentName, placeableId);
@@ -93,10 +97,12 @@ export async function handleTMFXDropEvent(document, data) {
 
 		if (isSDXVirtualDocument(document) && typeof document._SDXaddFilterParams === "function") {
 			await document._SDXaddFilterParams(filters);
-		} else {
+		}
+		else {
 			await getTokenMagic().addUpdateFilters(document, filters);
 		}
-	} else if (data.type === "CommunityGalleryEntry" && data.subtype === "TMFX Preset") {
+	}
+	else if (data.type === "CommunityGalleryEntry" && data.subtype === "TMFX Preset") {
 		try {
 			const response = await fetch(data.src);
 			const entry = await response.json();
@@ -104,10 +110,12 @@ export async function handleTMFXDropEvent(document, data) {
 			if (!preset?.params?.length) return;
 			if (isSDXVirtualDocument(document) && typeof document._SDXaddFilterParams === "function") {
 				await document._SDXaddFilterParams(deepClone(preset.params));
-			} else {
+			}
+			else {
 				await getTokenMagic().addFilters(document, deepClone(preset.params));
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn("SDX | Failed to import TokenMagic gallery preset:", e);
 		}
 	}
@@ -406,7 +414,8 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (isSDXVirtualDocument(this._document)) {
 			// Sequential updates might be safer for rank swapping if the manager handles it
 			for (const u of updates) await this._document.update(u);
-		} else {
+		}
+		else {
 			await getTokenMagic().updateFiltersByPlaceable(this._document, updates);
 		}
 
@@ -426,7 +435,8 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 			if (paramArray.every((p) => typeof p === "object" && p.filterId && p.filterType)) {
 				getTokenMagic().addFilters(this._document, paramArray);
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn("No filter parameter array found within macro: " + macro.name);
 		}
 	}
@@ -447,7 +457,8 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 					{ id: appId, position: { left, top: bottom } }
 				).render(true);
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			console.log(e);
 		}
 	}
@@ -489,7 +500,8 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 		const loadPresetSearch = async () => {
 			try {
 				return await import("../../../tokenmagic/gui/apps/editor/PresetSearch.js");
-			} catch {
+			}
+			catch {
 				return await import("../../../tokenmagic/gui/apps/PresetSearch.js");
 			}
 		};
@@ -525,7 +537,8 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 
 				if ("-=filters" in tm) {
 					this.render({ parts: ["header", "filters"] });
-				} else if (tm.filters) {
+				}
+				else if (tm.filters) {
 					const renderFieldsChanged = this._paramArrayCompare(
 						this._paramArray,
 						tm.filters.map((f) => f.tmFilters.tmParams)
@@ -675,11 +688,13 @@ export class FilterEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		if (!isEmpty(this._params.animated)) {
 			this._animated = this._params.animated;
-		} else this._animated = {};
+		}
+		else this._animated = {};
 
 		if (!isEmpty(this._params.randomized)) {
 			this._randomized = this._params.randomized;
-		} else this._randomized = {};
+		}
+		else this._randomized = {};
 
 		// Remove un-editable parameters
 		[
@@ -710,7 +725,8 @@ export class FilterEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 				console.warn(`Unable to determine param (${param}) control type.`, value);
 				return null;
 			}
-		} else control = deepClone(control);
+		}
+		else control = deepClone(control);
 
 		if (control.type === "ignore") return null;
 
@@ -755,7 +771,8 @@ export class FilterEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		if (isSDXVirtualDocument(this._document)) {
 			await this._document.update(params);
-		} else {
+		}
+		else {
 			await getTokenMagic().updateFiltersByPlaceable(this._document, [params]);
 		}
 	}
@@ -974,7 +991,8 @@ export class AnimationEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 			let control;
 			if (param === "val1" || param === "val2") {
 				control = { ...this._control, order: 1, disabled: false, label: null };
-			} else {
+			}
+			else {
 				control = deepClone(ANIM_PARAM_CONTROLS[param]);
 			}
 
@@ -1016,7 +1034,8 @@ export class AnimationEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		if (isSDXVirtualDocument(this._document)) {
 			await this._document.update(updateData);
-		} else {
+		}
+		else {
 			await TokenMagic.updateFiltersByPlaceable(this._document, [updateData]);
 		}
 
@@ -1132,15 +1151,20 @@ export class RandomizationEditor extends HandlebarsApplicationMixin(ApplicationV
 
 		if (controlType === "range") {
 			allowedTypes.push("any", "range", "list");
-		} else if (controlType === "file" || controlType == "text") {
+		}
+		else if (controlType === "file" || controlType == "text") {
 			allowedTypes.push("list");
-		} else if (controlType === "color") {
+		}
+		else if (controlType === "color") {
 			allowedTypes.push("any", "list", "range");
-		} else if (controlType == "boolean") {
+		}
+		else if (controlType == "boolean") {
 			allowedTypes.push("any");
-		} else if (controlType === "select") {
+		}
+		else if (controlType === "select") {
 			allowedTypes.push("any", "list");
-		} else if (controlType === "number") {
+		}
+		else if (controlType === "number") {
 			allowedTypes.push("range", "list");
 		}
 
@@ -1168,7 +1192,8 @@ export class RandomizationEditor extends HandlebarsApplicationMixin(ApplicationV
 				name: "val2",
 				label: game.i18n.localize("TMFX.app.randomizationEditor.option.max"),
 			});
-		} else if (type === "list") {
+		}
+		else if (type === "list") {
 			for (let i = 0; i < this._randomizeParams.list.length; i++) {
 				controls.push({
 					...this._control,
@@ -1246,7 +1271,8 @@ export class RandomizationEditor extends HandlebarsApplicationMixin(ApplicationV
 			if (this._control.type === "color") {
 				update.val1 = 0;
 				update.val2 = 0xffffff;
-			} else if (this._control.hasOwnProperty("min")) {
+			}
+			else if (this._control.hasOwnProperty("min")) {
 				update.val1 = this._control.min;
 				update.val2 = this._control.max;
 			}
@@ -1256,7 +1282,8 @@ export class RandomizationEditor extends HandlebarsApplicationMixin(ApplicationV
 
 		if (isSDXVirtualDocument(this._document)) {
 			await this._document.update(updateData);
-		} else {
+		}
+		else {
 			await getTokenMagic().updateFiltersByPlaceable(this._document, [updateData]);
 		}
 
@@ -1379,7 +1406,8 @@ export class SavePreset extends HandlebarsApplicationMixin(ApplicationV2) {
 					context.buttons = [
 						{ type: "button", icon: "fa-solid fa-floppy-disk", label: game.i18n.localize("TMFX.save"), action: "save" },
 					];
-				} else context.buttons = [];
+				}
+				else context.buttons = [];
 				break;
 		}
 		return context;

@@ -20,7 +20,8 @@ export async function loadSettlementData() {
 		const resp = await fetch(`modules/${MODULE_ID}/scripts/data/settlement-data.json`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_data = await resp.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load settlement data:`, err);
 		ui.notifications?.error("SDX | Could not load settlement data.");
 		throw err;
@@ -35,7 +36,8 @@ export async function loadHiddenTraitsData() {
 		const resp = await fetch(`modules/${MODULE_ID}/scripts/data/npc-hidden-traits.json`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_hiddenTraitsData = await resp.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load hidden NPC traits:`, err);
 		throw err;
 	}
@@ -48,7 +50,8 @@ export async function loadFortunateEventData() {
 		const resp = await fetch(`modules/${MODULE_ID}/scripts/data/fortunate-event-data.json`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_fortunateEventData = await resp.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load fortunate event data:`, err);
 		throw err;
 	}
@@ -61,7 +64,8 @@ async function loadQuestData() {
 		const resp = await fetch(`modules/${MODULE_ID}/scripts/data/quest-data.json`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_questData = await resp.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load quest data:`, err);
 		_questData = null;
 	}
@@ -75,7 +79,8 @@ async function loadNotableNpcData() {
 		const resp = await fetch(`modules/${MODULE_ID}/scripts/data/settlement-notable-npcs.json`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_notableNpcData = await resp.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load notable NPC data:`, err);
 		_notableNpcData = null;
 	}
@@ -88,7 +93,8 @@ async function loadSettlementEventData() {
 		const resp = await fetch(`modules/${MODULE_ID}/scripts/data/settlement-events.json`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_eventPoolData = await resp.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load settlement event data:`, err);
 		_eventPoolData = null;
 	}
@@ -105,7 +111,8 @@ async function getMonsterIndex() {
 		for (const entry of index) {
 			_monsterIndex.set(entry.name, entry._id);
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn(`${MODULE_ID} | Could not load monster compendium index:`, err);
 	}
 	return _monsterIndex;
@@ -195,7 +202,8 @@ function getAdjacentOceanInfo(hexKey) {
 		}
 		result.hasOcean = result.oceanCount > 0;
 		result.allOcean = result.totalNeighbors > 0 && result.oceanCount === result.totalNeighbors;
-	} catch { /* grid not ready */ }
+	}
+	catch { /* grid not ready */ }
 
 	return result;
 }
@@ -291,7 +299,8 @@ function generateNearbyHexRef(hexKey) {
 	const nj = Math.max(0, cj + dj);
 	try {
 		return `Hex ${formatHexCoord({ i: ni, j: nj })}`;
-	} catch {
+	}
+	catch {
 		return `Hex ${ni}.${nj}`;
 	}
 }
@@ -381,7 +390,8 @@ function generateShopQuest(data, hexKey, typeKey, nearbyContent) {
 	if (nearbyContent && nearbyContent.length > 0) {
 		const target = pick(nearbyContent);
 		hexRef = `<strong>${target.name}</strong> (${hexKeyToLabel(target.hexKey)})`;
-	} else {
+	}
+	else {
 		hexRef = generateNearbyHexRef(hexKey);
 	}
 
@@ -537,7 +547,8 @@ async function fillQuestTemplate(template, data, hexKey, nearbyContent) {
 	if (nearbyContent && nearbyContent.length > 0) {
 		const target = pick(nearbyContent);
 		hexRef = `<strong>${target.name}</strong> (${hexKeyToLabel(target.hexKey)})`;
-	} else {
+	}
+	else {
 		hexRef = generateNearbyHexRef(hexKey);
 	}
 
@@ -563,7 +574,8 @@ function hexKeyToLabel(hexKey) {
 	const [i, j] = hexKey.split("_").map(Number);
 	try {
 		return `Hex ${formatHexCoord({ i, j })}`;
-	} catch {
+	}
+	catch {
 		return `Hex ${i}.${j}`;
 	}
 }
@@ -580,7 +592,8 @@ async function generateContextQuests(data, hexKey, typeKey, allNpcs) {
 	try {
 		nearby = getNearbyContent(hexKey, 7);
 		nearbySettlementsWide = getNearbyContent(hexKey, 50, ["settlement"]);
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn(`${MODULE_ID} | Could not query content registry:`, err);
 		return null;
 	}
@@ -828,7 +841,8 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 			...nearbyClose.filter(e => e.type !== "settlement"),
 			...nearbySettlementsWide,
 		];
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn(`${MODULE_ID} | Could not query content registry for shops:`, err);
 	}
 
@@ -870,7 +884,8 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 			html += `<tr><td>${i + 1}</td><td><em>${contextQuests[i].type}</em></td><td>${contextQuests[i].text}</td></tr>`;
 		}
 		html += "</table>";
-	} else {
+	}
+	else {
 		// Fallback: generic quest hooks with random hex references
 		const hookCount = randRange(3, 4);
 		const templates = pickN(data.questHooks, hookCount);
@@ -943,7 +958,8 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 				html += "</ul>";
 			}
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn(`${MODULE_ID} | Could not generate notable NPCs:`, err);
 	}
 
@@ -1005,7 +1021,8 @@ Hooks.on("ready", () => {
 				whisper: game.users.filter(u => u.isGM).map(u => u.id),
 			});
 
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX | Failed to roll settlement event:", err);
 		}
 	});

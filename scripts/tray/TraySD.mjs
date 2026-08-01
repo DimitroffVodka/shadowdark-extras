@@ -353,7 +353,8 @@ export function getCurrentActor() {
 			_currentToken = token;
 			if (token.document.actorLink) {
 				_currentActor = game.actors.get(token.document.actorId);
-			} else {
+			}
+			else {
 				_currentActor = token.actor;
 			}
 			return _currentActor;
@@ -412,7 +413,8 @@ export function getPartyTokens() {
 				isOwner: actor.isOwner,
 				isSelected: canvas.tokens.controlled.some(t => t.id === token.id),
 			});
-		} else if (game.user.isGM && game.settings.get(MODULE_ID, "tray.showNPCs")) {
+		}
+		else if (game.user.isGM && game.settings.get(MODULE_ID, "tray.showNPCs")) {
 			// NPCs/monsters for GM
 			npcTokens.push({
 				token: token,
@@ -426,7 +428,8 @@ export function getPartyTokens() {
 				isNPC: true,
 				isSelected: canvas.tokens.controlled.some(t => t.id === token.id),
 			});
-		} else if (!game.user.isGM && !_hideNpcsFromPlayers && !actor.hasPlayerOwner) {
+		}
+		else if (!game.user.isGM && !_hideNpcsFromPlayers && !actor.hasPlayerOwner) {
 			// NPCs visible to players when GM allows it
 			npcTokens.push({
 				token: token,
@@ -501,7 +504,8 @@ export async function setViewMode(mode) {
 		setDecorMode(false);
 		enablePainting();
 		disableDungeonPainting();
-	} else if (mode === "dungeons") {
+	}
+	else if (mode === "dungeons") {
 		setDecorMode(false);
 		disablePainting();
 		enableDungeonPainting();
@@ -512,11 +516,13 @@ export async function setViewMode(mode) {
 				await reloadDungeonAssets();
 			}
 		}
-	} else if (mode === "decor") {
+	}
+	else if (mode === "decor") {
 		setDecorMode(true);
 		enablePainting();
 		disableDungeonPainting();
-	} else {
+	}
+	else {
 		setDecorMode(false);
 		disablePainting();
 		disableDungeonPainting();
@@ -560,7 +566,8 @@ export function cycleViewMode() {
 	// GM sees Scenes instead of Token/Player
 	if (isGM) {
 		modes.push("scenes");
-	} else {
+	}
+	else {
 		modes.push("player");
 	}
 
@@ -581,15 +588,18 @@ export function cycleViewMode() {
 		setDecorMode(false);
 		enablePainting();
 		disableDungeonPainting();
-	} else if (_viewMode === "dungeons") {
+	}
+	else if (_viewMode === "dungeons") {
 		setDecorMode(false);
 		disablePainting();
 		enableDungeonPainting();
-	} else if (_viewMode === "decor") {
+	}
+	else if (_viewMode === "decor") {
 		setDecorMode(true);
 		enablePainting();
 		disableDungeonPainting();
-	} else {
+	}
+	else {
 		setDecorMode(false);
 		disablePainting();
 		disableDungeonPainting();
@@ -715,7 +725,8 @@ export function getPinsData() {
 				if (pin.pageId) {
 					const page = journal.pages.get(pin.pageId);
 					pageName = page ? `${journal.name} • ${page.name}` : journal.name;
-				} else {
+				}
+				else {
 					pageName = journal.name;
 				}
 			}
@@ -761,7 +772,8 @@ export function getPinsData() {
 
 			if (contentType === "text") {
 				displayContent = style.customText || "";
-			} else {
+			}
+			else {
 				// Number logic
 				if (pin.journalId && pin.pageId) {
 					const journal = game.journal.get(pin.journalId);
@@ -769,10 +781,12 @@ export function getPinsData() {
 						const sortedPages = journal.pages.contents.sort((a, b) => a.sort - b.sort);
 						const idx = sortedPages.findIndex(p => p.id === pin.pageId);
 						displayContent = idx >= 0 ? idx : 0;
-					} else {
+					}
+					else {
 						displayContent = "0";
 					}
-				} else {
+				}
+				else {
 					displayContent = "0";
 				}
 			}
@@ -1092,7 +1106,8 @@ export function selectPartyTokens() {
 			if (actor.type === "Player") {
 				partyTokens.push(token);
 			}
-		} else if (actor.isOwner) {
+		}
+		else if (actor.isOwner) {
 			partyTokens.push(token);
 		}
 	}

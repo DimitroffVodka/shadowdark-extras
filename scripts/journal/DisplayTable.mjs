@@ -36,7 +36,8 @@ async function getTableFromUUID(uuid) {
 			table = await fromUuid(uuid);
 		}
 		return table;
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn(`SDX DisplayTable: Could not find table for UUID: ${uuid}`);
 		return null;
 	}
@@ -84,12 +85,14 @@ export async function enrichDisplayTable(match, _options) {
 			let resultText = "";
 			if (result.type === CONST.TABLE_RESULT_TYPES.TEXT) {
 				resultText = result.text || result.description || "";
-			} else if (result.type === CONST.TABLE_RESULT_TYPES.DOCUMENT) {
+			}
+			else if (result.type === CONST.TABLE_RESULT_TYPES.DOCUMENT) {
 				// Try to get the actual UUID from the linked document
 				const doc = fromUuidSync(`${result.documentCollection}.${result.documentId}`);
 				const docUuid = doc?.uuid ?? `${result.documentCollection}.${result.documentId}`;
 				resultText = `@UUID[${docUuid}]{${result.text}}`;
-			} else if (result.type === CONST.TABLE_RESULT_TYPES.COMPENDIUM) {
+			}
+			else if (result.type === CONST.TABLE_RESULT_TYPES.COMPENDIUM) {
 				// Try to get the actual UUID from the linked compendium document
 				// v10+ UUIDs include the document type (e.g., Compendium.pack.id.RollTable.docId)
 				const doc = fromUuidSync(`Compendium.${result.documentCollection}.${result.documentId}`);
@@ -110,7 +113,8 @@ export async function enrichDisplayTable(match, _options) {
 
 		// We use TextEditor.enrichHTML to handle any nested UUID links or dice rolls in the results
 		container.innerHTML = await TextEditor.enrichHTML(html, { async: true });
-	} else {
+	}
+	else {
 		// Broken link fallback
 		container.dataset.tableId = parsedMatch.uuid;
 		if (match[2]) container.dataset.tableName = match[2];

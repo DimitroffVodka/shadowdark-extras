@@ -134,7 +134,8 @@ export function initTemplateEffects() {
 					// MeasuredTemplate and Region delete paths fire deleteRegion in v14.
 					await canvas.scene.deleteEmbeddedDocuments("Region", templatesToDelete);
 					console.log(`shadowdark-extras | Deleted ${templatesToDelete.length} expired template(s)`);
-				} catch (err) {
+				}
+				catch (err) {
 					console.error("shadowdark-extras | Error deleting expired templates:", err);
 				}
 
@@ -199,7 +200,8 @@ export function initTemplateEffects() {
 				const token = canvas.tokens?.get(tokenId);
 				if (token?.actor) {
 					actor = token.actor;
-				} else if (actorId) {
+				}
+				else if (actorId) {
 					actor = game.actors.get(actorId);
 				}
 
@@ -239,7 +241,8 @@ export function initTemplateEffects() {
 					if (fullBtn) fullBtn.style.display = "none";
 					const halfBtn = html.querySelector(".sdx-template-apply-half-damage-btn");
 					if (halfBtn) halfBtn.style.background = "#3a5a3a";
-				} else if (!saveResult.success) {
+				}
+				else if (!saveResult.success) {
 					// Failed save - hide half damage button
 					const halfBtn = html.querySelector(".sdx-template-apply-half-damage-btn");
 					if (halfBtn) halfBtn.style.display = "none";
@@ -300,7 +303,8 @@ export function initTemplateEffects() {
 					});
 
 					ui.notifications.info(`Applied ${damage} ${damageType} damage to ${actorName}`);
-				} catch (err) {
+				}
+				catch (err) {
 					console.error("shadowdark-extras | Error applying template damage:", err);
 					btn.disabled = false;
 					btn.innerHTML = originalHtml;
@@ -451,7 +455,8 @@ export async function applyTemplateEffect(templateDoc, token, trigger) {
 	try {
 		const settings = game.settings.get(MODULE_ID, "combatSettings") || {};
 		autoApplyDamage = settings.damageCard?.autoApplyDamage ?? true;
-	} catch (e) {
+	}
+	catch (e) {
 		// Settings may not exist
 	}
 
@@ -781,7 +786,8 @@ async function rollTemplateSave(actor, saveConfig) {
 	if (abilityData?.mod !== undefined) {
 		// Use the stored modifier (works for NPCs and PCs with calculated mod)
 		modifier = abilityData.mod;
-	} else if (abilityData?.value !== undefined) {
+	}
+	else if (abilityData?.value !== undefined) {
 		// Fallback: calculate from ability score value
 		modifier = Math.floor((abilityData.value - 10) / 2);
 	}
@@ -791,9 +797,11 @@ async function rollTemplateSave(actor, saveConfig) {
 	let dieResults;
 	if (rollMode === "advantage") {
 		formula = `2d20kh + ${modifier}`;
-	} else if (rollMode === "disadvantage") {
+	}
+	else if (rollMode === "disadvantage") {
 		formula = `2d20kl + ${modifier}`;
-	} else {
+	}
+	else {
 		formula = `1d20 + ${modifier}`;
 	}
 
@@ -813,7 +821,8 @@ async function rollTemplateSave(actor, saveConfig) {
 		const results = roll.dice[0]?.results?.map(r => r.result) || [];
 		const kept = rollMode === "advantage" ? Math.max(...results) : Math.min(...results);
 		dieResults = `${results.join(", ")} → ${kept}`;
-	} else {
+	}
+	else {
 		dieResults = roll.dice[0]?.results?.[0]?.result?.toString() || "?";
 	}
 
@@ -868,7 +877,8 @@ async function evaluateDCFormula(formula, casterData) {
 		const result = Math.floor(roll.total);
 		console.log(`shadowdark-extras | DC evaluation result: ${result}`);
 		return result;
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn(`shadowdark-extras | Failed to evaluate DC formula "${formula}":`, e);
 		return 10;
 	}
@@ -922,7 +932,8 @@ async function runTemplateItemMacro(templateDoc, token, trigger, config) {
 			token: token,
 			args: args,
 		});
-	} catch (err) {
+	}
+	catch (err) {
 		console.error("shadowdark-extras | Error running item macro:", err);
 		ui.notifications.error(`Error running item macro: ${err.message}`);
 	}
@@ -941,7 +952,8 @@ async function applyTemplateConditions(templateDoc, token, effectUuids) {
 				await applyTemplateConditions(templateDoc, token, Array.isArray(parsed) ? parsed : [parsed]);
 				return;
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn("shadowdark-extras | Failed to parse stringified effectUuids:", e);
 		}
 	}
@@ -974,7 +986,8 @@ async function applyTemplateConditions(templateDoc, token, effectUuids) {
 				}
 				effectData = effectDoc.toObject();
 				effectName = effectDoc.name;
-			} else if (typeof effectRef === "object") {
+			}
+			else if (typeof effectRef === "object") {
 				if (effectRef.uuid && typeof effectRef.uuid === "string" && !effectRef.changes && !effectRef.effects) {
 					console.log(`shadowdark-extras | applyTemplateConditions: Found UUID wrapper object, resolving ${effectRef.uuid}`);
 					const effectDoc = await fromUuid(effectRef.uuid);
@@ -984,14 +997,17 @@ async function applyTemplateConditions(templateDoc, token, effectUuids) {
 					}
 					effectData = effectDoc.toObject();
 					effectName = effectDoc.name;
-				} else if (typeof effectRef.toObject === "function") {
+				}
+				else if (typeof effectRef.toObject === "function") {
 					effectData = effectRef.toObject();
 					effectName = effectRef.name;
-				} else {
+				}
+				else {
 					effectData = foundry.utils.deepClone(effectRef);
 					effectName = effectData.name || "Effect";
 				}
-			} else {
+			}
+			else {
 				console.warn(`shadowdark-extras | applyTemplateConditions: Invalid effect reference type: ${typeof effectRef}`);
 				continue;
 			}
@@ -1011,7 +1027,8 @@ async function applyTemplateConditions(templateDoc, token, effectUuids) {
 						img: aeData.icon || "icons/svg/aura.svg",
 						effects: [aeData],
 					};
-				} else {
+				}
+				else {
 					console.warn("shadowdark-extras | applyTemplateConditions: Missing type on effect data, forcing 'Effect'");
 					effectData.type = "Effect";
 				}
@@ -1126,7 +1143,8 @@ async function applyTemplateConditions(templateDoc, token, effectUuids) {
 
 					console.log(`shadowdark-extras | Requirement met for ${effectName}: "${requirements}" -> ${result}`);
 
-				} catch (err) {
+				}
+				catch (err) {
 					console.warn(`shadowdark-extras | Error evaluating requirement "${requirements}":`, err);
 					// On error, do we fail safe or permissive? Usually permissive unless critical.
 					// But for "Level < 3", error likely means bad syntax. Let's allow it to be safe?
@@ -1166,7 +1184,8 @@ async function applyTemplateConditions(templateDoc, token, effectUuids) {
 				}
 			}
 
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("shadowdark-extras | Error applying effect:", err);
 		}
 	}
@@ -1302,7 +1321,8 @@ async function createTemplateEffectMessage(templateDoc, token, trigger, result) 
                 </p>
             </div>
         `;
-	} else if (result.saved && config?.save?.halfOnSuccess === false) {
+	}
+	else if (result.saved && config?.save?.halfOnSuccess === false) {
 		// Save fully negated
 		content += `
             <p style="margin: 4px 0; color: #f2f2f2;">
@@ -1357,7 +1377,8 @@ function _isSameLevel(tokenLevelId, templateDoc) {
 			if (!tokenLevelId) return false;
 			return tokenLevelId === casterLevelId;
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn("shadowdark-extras | _isSameLevel failed:", e);
 	}
 	return true; // no level info → no restriction
@@ -1373,7 +1394,10 @@ function ensureTemplateShape(template) {
 	if (typeof template.testPoint === "function") return true;
 	if (template.shape) return true;
 	if (typeof template._refreshShape === "function") {
-		try { template._refreshShape(); } catch (e) {
+		try {
+			template._refreshShape();
+		}
+		catch (e) {
 			console.warn(`${MODULE_ID} | _refreshShape failed:`, e);
 		}
 	}
@@ -1442,7 +1466,8 @@ export function getTemplatesContainingToken(token) {
 		if (typeof templateDoc.testPoint === "function") {
 			// v14: RegionDocument#testPoint({x, y, elevation})
 			inside = templateDoc.testPoint({ x: token.center.x, y: token.center.y, elevation: tokenElevation });
-		} else {
+		}
+		else {
 			// Pre-v14 fallback
 			const template = templateDoc.object;
 			if (!ensureTemplateShape(template)) continue;
@@ -1485,7 +1510,8 @@ function getTemplatesContainingPoint(x, y, scene, tokenLevelId = null, tokenElev
 		if (typeof templateDoc.testPoint === "function") {
 			// v14: RegionDocument#testPoint({x, y, elevation}) — correct API
 			inside = templateDoc.testPoint({ x, y, elevation: tokenElevation });
-		} else {
+		}
+		else {
 			// Pre-v14 fallback: MeasuredTemplate placeable shape check
 			const obj = templateDoc.object;
 			if (!ensureTemplateShape(obj)) continue;

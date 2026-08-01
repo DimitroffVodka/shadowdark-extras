@@ -88,7 +88,8 @@ export default class SheetLockManager {
 			if (!game.user.isGM) {
 				this._disableInputs(html, config);
 			}
-		} else {
+		}
+		else {
 			// Remove all lock classes if unlocked
 			root.removeClass("sdx-sheet-locked lock-xp lock-coins lock-hp lock-stats lock-luck lock-inventory lock-activeEffects");
 

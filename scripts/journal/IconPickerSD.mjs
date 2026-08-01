@@ -97,7 +97,8 @@ export class IconPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 							searchName: fileName.toLowerCase(),
 						});
 					}
-				} catch (err) {
+				}
+				catch (err) {
 					console.warn(`SDX Icon Picker | Could not browse category: ${categoryPath}`, err);
 				}
 			}
@@ -106,7 +107,8 @@ export class IconPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			this._categoriesCache = Array.from(categories).sort();
 			console.log(`SDX Icon Picker | Loaded ${icons.length} icons from ${categories.size} categories`);
 
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX Icon Picker | Failed to load icons:", err);
 			this._iconCache = [];
 			this._categoriesCache = [];

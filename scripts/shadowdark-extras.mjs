@@ -234,7 +234,8 @@ Hooks.once("init", () => {
 			gsap.registerPlugin(PixiPlugin);
 			console.log("Shadowdark Extras | Registered GSAP PixiPlugin");
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.error("Shadowdark Extras | Failed to register GSAP PixiPlugin:", err);
 	}
 
@@ -315,7 +316,8 @@ Hooks.once("init", () => {
 
 	if (CONFIG.fontFamilies instanceof Set) {
 		for (const font of SDX_FONTS) CONFIG.fontFamilies.add(font);
-	} else {
+	}
+	else {
 		CONFIG.fontFamilies = [...new Set([...(CONFIG.fontFamilies || []), ...SDX_FONTS])];
 	}
 
@@ -606,7 +608,8 @@ Hooks.once("ready", async () => {
 	if (typeof socketlib !== "undefined") {
 		setupCombatSocket();
 		//console.log(`${MODULE_ID} | Combat socket initialized`);
-	} else {
+	}
+	else {
 		console.warn(`${MODULE_ID} | socketlib not found, damage application may not work for non-GMs`);
 	}
 
@@ -882,37 +885,43 @@ Hooks.on("renderItemSheet", (app, html, data) => {
 	try {
 		injectBasicContainerUI(app, html);
 		injectAmmunitionBonuses(app, html);
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to inject Basic item container UI`, err);
 	}
 
 	try {
 		enhanceSpellSheet(app, html);
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to enhance spell sheet`, err);
 	}
 
 	try {
 		injectSpellAlignmentField(app, html);
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to inject spell alignment field`, err);
 	}
 
 	try {
 		enhancePotionSheet(app, html);
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to enhance potion sheet`, err);
 	}
 
 	try {
 		enhanceScrollSheet(app, html);
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to enhance scroll sheet`, err);
 	}
 
 	try {
 		enhanceWandSheet(app, html);
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to enhance wand sheet`, err);
 	}
 
@@ -923,11 +932,13 @@ Hooks.on("renderItemSheet", (app, html, data) => {
 			injectWeaponBonusTab(app, html, item);
 			injectWeaponDamageTypeDropdown(app, html, item);
 			injectStaffSpellButton(app, html, item);
-		} else if (item?.type === "Armor") {
+		}
+		else if (item?.type === "Armor") {
 			// For shields (Armor), just inject the animation button
 			injectWeaponAnimationButton(html, item);
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to inject weapon bonus tab`, err);
 	}
 
@@ -939,14 +950,16 @@ Hooks.on("renderItemSheet", (app, html, data) => {
 			html.find('a[data-tab="tab-effects"]').remove();
 			html.find('.tab[data-tab="tab-effects"]').remove();
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to hide effects tab`, err);
 	}
 
 	// Enhance Gem item sheet with quantity field
 	try {
 		enhanceGemSheet(app, html);
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to enhance gem sheet`, err);
 	}
 });
@@ -963,7 +976,8 @@ Hooks.on("preUpdateItem", (item, updateData, options, userId) => {
 		// Convert string to boolean
 		if (value === "true" || value === true) {
 			foundry.utils.setProperty(updateData, applyToTargetPath, true);
-		} else if (value === "false" || value === false) {
+		}
+		else if (value === "false" || value === false) {
 			foundry.utils.setProperty(updateData, applyToTargetPath, false);
 		}
 	}
@@ -975,7 +989,8 @@ Hooks.on("preUpdateItem", (item, updateData, options, userId) => {
 		// Convert string to boolean
 		if (value === "true" || value === true) {
 			foundry.utils.setProperty(updateData, effectsApplyToTargetPath, true);
-		} else if (value === "false" || value === false) {
+		}
+		else if (value === "false" || value === false) {
 			foundry.utils.setProperty(updateData, effectsApplyToTargetPath, false);
 		}
 	}
@@ -1088,13 +1103,15 @@ Hooks.on("quenchReady", async (quench) => {
 	try {
 		const { registerWebpMigrationBatch } = await import("../dev/tests/quench/webp-migration.batch.mjs");
 		registerWebpMigrationBatch(quench);
-	} catch (e) {
+	}
+	catch (e) {
 		// Expected in a packaged install: dev/ is not shipped.
 	}
 	try {
 		const { registerStructuralBatch } = await import("../dev/tests/quench/structural.batch.mjs");
 		registerStructuralBatch(quench);
-	} catch (e) {
+	}
+	catch (e) {
 		// Expected in a packaged install: dev/ is not shipped.
 	}
 });
@@ -1134,7 +1151,8 @@ Hooks.once("ready", async () => {
 	// for one session.
 	try {
 		await migrateWebpAssetPaths();
-	} catch (e) {
+	}
+	catch (e) {
 		console.error(`${MODULE_ID} | webp asset migration threw:`, e);
 	}
 
@@ -1654,7 +1672,8 @@ Hooks.once("init", () => {
 Hooks.on("renderApplication", (app, html, data) => {
 	try {
 		enhanceGemBag(app, html);
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to enhance gem bag`, err);
 	}
 });

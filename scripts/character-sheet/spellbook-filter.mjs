@@ -56,7 +56,8 @@ export function injectSpellbookCompendiumFilter(app, html) {
 	const nav = html.find(".SD-nav");
 	if (nav.length) {
 		nav.before(filterHtml);
-	} else {
+	}
+	else {
 		// Fallback: insert after header
 		header.after(filterHtml);
 	}
@@ -84,12 +85,14 @@ function filterSpellsByCompendium(html, compendiumId) {
 		if (!compendiumId) {
 			// Show all
 			$item.show();
-		} else {
+		}
+		else {
 			// Check if the UUID starts with the compendium ID
 			// UUID format: Compendium.module.pack.itemId
 			if (uuid && uuid.startsWith(`Compendium.${compendiumId}`)) {
 				$item.show();
-			} else {
+			}
+			else {
 				$item.hide();
 			}
 		}
@@ -194,7 +197,8 @@ export function initAlignmentSpellFiltering() {
 				const filteredCount = data.spellList[tier].length;
 				//console.log(`${MODULE_ID} | Tier ${tier} - Filtered spell count:`, filteredCount, `(removed ${originalCount - filteredCount})`);
 			}
-		} else {
+		}
+		else {
 			//console.log(`${MODULE_ID} | No filtering applied - alignment: "${this.alignment}", has spellList: ${!!data.spellList}`);
 		}
 

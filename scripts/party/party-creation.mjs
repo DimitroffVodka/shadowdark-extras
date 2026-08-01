@@ -83,7 +83,8 @@ function addPartyOptionToSelect(html) {
 	if (npcOption.length > 0) {
 		npcOption.after(`<option value="Party">${game.i18n.localize("SHADOWDARK_EXTRAS.party.name")}</option>`);
 		//console.log(`${MODULE_ID} | Added Party option to actor type select`);
-	} else {
+	}
+	else {
 		// Fallback: append to the end
 		typeSelect.append(`<option value="Party">${game.i18n.localize("SHADOWDARK_EXTRAS.party.name")}</option>`);
 		//console.log(`${MODULE_ID} | Added Party option to actor type select (appended)`);

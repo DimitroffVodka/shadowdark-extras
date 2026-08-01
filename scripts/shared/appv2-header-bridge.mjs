@@ -72,7 +72,8 @@ export function registerAppV2HeaderBridge() {
 				if (closeBtn) header.insertBefore(button, closeBtn);
 				else header.appendChild(button);
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | V1/V2 header button bridge error`, err);
 		}
 	});

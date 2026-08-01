@@ -223,11 +223,14 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 
 		if (parentList.hasClass("tiers-list")) {
 			this.editingTable.tiers.splice(index, 1);
-		} else if (parentList.hasClass("outcomes-list")) {
+		}
+		else if (parentList.hasClass("outcomes-list")) {
 			this.editingTable.outcomes.splice(index, 1);
-		} else if (parentList.hasClass("benefits-list")) {
+		}
+		else if (parentList.hasClass("benefits-list")) {
 			this.editingTable.benefits.splice(index, 1);
-		} else if (parentList.hasClass("mishaps-list")) {
+		}
+		else if (parentList.hasClass("mishaps-list")) {
 			this.editingTable.mishaps.splice(index, 1);
 		}
 
@@ -291,7 +294,8 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 
 		if (existingIndex >= 0) {
 			tables[existingIndex] = this.editingTable;
-		} else {
+		}
+		else {
 			tables.push(this.editingTable);
 		}
 
@@ -374,7 +378,8 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 
 				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.table_imported", { name: tableData.name }));
 				this.render(true);
-			} catch (err) {
+			}
+			catch (err) {
 				console.error("Failed to import expanded carousing table:", err);
 				ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_error"));
 			}
@@ -439,7 +444,8 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 				this.editingTable.tiers = entries;
 				this.render(true);
 				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
-			} else {
+			}
+			else {
 				ui.notifications.warn("No valid tier entries found. Format: cost gp description +bonus");
 			}
 		}
@@ -516,7 +522,8 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 				this.editingTable.outcomes = entries;
 				this.render(true);
 				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
-			} else {
+			}
+			else {
 				ui.notifications.warn("No valid outcome entries found. Format: roll mishaps benefits modifier xp");
 			}
 		}
@@ -575,7 +582,8 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 				this.editingTable.benefits = entries;
 				this.render(true);
 				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
-			} else {
+			}
+			else {
 				ui.notifications.warn("No valid benefit entries found. Format: roll description");
 			}
 		}
@@ -634,7 +642,8 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 				this.editingTable.mishaps = entries;
 				this.render(true);
 				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
-			} else {
+			}
+			else {
 				ui.notifications.warn("No valid mishap entries found. Format: roll description");
 			}
 		}

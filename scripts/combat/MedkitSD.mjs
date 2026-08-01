@@ -215,8 +215,12 @@ function _stripEmpty(obj) {
 	if (obj == null || typeof obj !== "object" || Array.isArray(obj)) return;
 	for (const k of Object.keys(obj)) {
 		const v = obj[k];
-		if (v === undefined || v === null || v === "") { delete obj[k]; continue; }
-		if (Array.isArray(v) && v.length === 0) { delete obj[k]; continue; }
+		if (v === undefined || v === null || v === "") {
+			delete obj[k]; continue;
+		}
+		if (Array.isArray(v) && v.length === 0) {
+			delete obj[k]; continue;
+		}
 		if (typeof v === "object" && !Array.isArray(v)) {
 			_stripEmpty(v);
 			if (Object.keys(v).length === 0) delete obj[k];
@@ -523,7 +527,8 @@ export function initMedkit() {
 		// Check if medkit icon should be shown
 		try {
 			if (!game.settings.get(MODULE_ID, "showMedkitIcon")) return;
-		} catch {
+		}
+		catch {
 			// Setting not registered yet, don't show button
 			return;
 		}

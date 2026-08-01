@@ -22,9 +22,11 @@ function normalizeTokenMagicPresetEntries(source, allowedLibraries = null) {
 
 	if (Array.isArray(source)) {
 		for (const entry of source) pushEntry(entry);
-	} else if (source instanceof Map) {
+	}
+	else if (source instanceof Map) {
 		for (const [key, value] of source.entries()) pushEntry(value, key);
-	} else if (source && typeof source === "object") {
+	}
+	else if (source && typeof source === "object") {
 		for (const [key, value] of Object.entries(source)) pushEntry(value, key);
 	}
 
@@ -45,14 +47,16 @@ function getTokenMagicRegionPresets() {
 			addPresets(tokenMagic.getPresets("tmfx-template"));
 			addPresets(tokenMagic.getPresets("tmfx-main"));
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn("shadowdark-extras | Failed to read TokenMagic aura presets:", e);
 	}
 
 	for (const key of ["presets", "Presets", "defaultPresets", "templatePresets", "tmfxPresets", "_presets"]) {
 		try {
 			addPresets(tokenMagic[key]);
-		} catch (e) {
+		}
+		catch (e) {
 			// Ignore unstable TokenMagic internals.
 		}
 	}
@@ -60,7 +64,8 @@ function getTokenMagicRegionPresets() {
 	for (const settingKey of ["presets", "templatePresets", "defaultPresets", "customPresets", "tmfxPresets"]) {
 		try {
 			addPresets(game.settings.get("tokenmagic", settingKey));
-		} catch (e) {
+		}
+		catch (e) {
 			// Setting may not exist in this TokenMagic version.
 		}
 	}
@@ -84,7 +89,8 @@ function getIndyFxShaderChoices() {
 			.map(([id, label]) => ({ id: String(id), label: String(label || id) }))
 			.filter(shader => shader.id)
 			.sort((a, b) => a.label.localeCompare(b.label));
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn("shadowdark-extras | Failed to read Indy FX aura shader choices:", e);
 		return [];
 	}
@@ -214,7 +220,8 @@ export function generateAuraConfigHTML(moduleId, flags) {
 	if (tokenMagicActive && globalThis.TokenMagic?.getPresets) {
 		try {
 			tmTokenPresets = TokenMagic.getPresets("tmfx-main") || [];
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn("shadowdark-extras | Failed to get TokenMagic token presets:", e);
 		}
 	}
@@ -652,7 +659,8 @@ export function setupAuraConfigHandlers(html) {
 			if (e.target.checked) {
 				auraConfig.style.opacity = "1";
 				auraConfig.style.pointerEvents = "auto";
-			} else {
+			}
+			else {
 				auraConfig.style.opacity = "0.5";
 				auraConfig.style.pointerEvents = "none";
 			}
@@ -679,7 +687,8 @@ export function setupAuraConfigHandlers(html) {
 			if (e.target.checked) {
 				saveConfig.style.opacity = "1";
 				saveConfig.style.pointerEvents = "auto";
-			} else {
+			}
+			else {
 				saveConfig.style.opacity = "0.5";
 				saveConfig.style.pointerEvents = "none";
 			}
@@ -695,7 +704,8 @@ export function setupAuraConfigHandlers(html) {
 			if (e.target.checked) {
 				tokenFiltersConfig.style.opacity = "1";
 				tokenFiltersConfig.style.pointerEvents = "auto";
-			} else {
+			}
+			else {
 				tokenFiltersConfig.style.opacity = "0.5";
 				tokenFiltersConfig.style.pointerEvents = "none";
 			}

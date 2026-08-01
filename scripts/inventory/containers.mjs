@@ -33,7 +33,8 @@ function isContainerItem(item) {
 function isItemPilesEnabledActor(actor) {
 	try {
 		return Boolean(actor?.getFlag?.("item-piles", "data")?.enabled);
-	} catch {
+	}
+	catch {
 		return false;
 	}
 }
@@ -58,7 +59,8 @@ function calculateSlotsCostForItemData(itemData, { recursive = false } = {}) {
 		// Use base slots for nested containers
 		const baseSlots = itemData?.flags?.[MODULE_ID]?.containerBaseSlots;
 		slotsUsed = baseSlots?.slots_used ?? (Number(system.slots?.slots_used ?? 1) || 1);
-	} else {
+	}
+	else {
 		slotsUsed = Math.max(0, Number(system.slots?.slots_used ?? 1) || 0);
 	}
 
@@ -113,7 +115,8 @@ async function recomputeContainerSlots(containerItem, { skipSync = false } = {})
 			// Actorless containers and Item Piles actors shouldn't rely on embedded contained items.
 			// Use recursive calculation to handle nested containers
 			for (const data of getPackedContainedItemData(containerItem)) containedSlots += calculateSlotsCostForItemData(data, { recursive: true });
-		} else {
+		}
+		else {
 			const contained = getContainedItems(containerItem);
 			// calculateContainedItemSlots now handles recursion automatically
 			for (const item of contained) containedSlots += calculateContainedItemSlots(item);
@@ -146,7 +149,8 @@ async function recomputeContainerSlots(containerItem, { skipSync = false } = {})
 		if (parentContainer && !_containersBeingRecomputed.has(parentContainer.uuid)) {
 			await recomputeContainerSlots(parentContainer, { skipSync });
 		}
-	} finally {
+	}
+	finally {
 		_containersBeingRecomputed.delete(recomputeKey);
 	}
 }
@@ -274,7 +278,8 @@ export function registerContainerHooks() {
 			await item.update({
 				"system.slots.slots_used": nextSlotsUsed,
 			}, { sdxInternal: true });
-		} finally {
+		}
+		finally {
 			// Keep the lock active for a bit longer to let any triggered hooks complete
 			// Then clear containerPackedItems to prevent any future sync from re-populating
 			setTimeout(async () => {
@@ -285,7 +290,8 @@ export function registerContainerHooks() {
 					if (currentItem) {
 						await currentItem.setFlag(MODULE_ID, "containerPackedItems", []);
 					}
-				} catch (e) {
+				}
+				catch (e) {
 					// Ignore errors
 				}
 			}, 100);
@@ -343,7 +349,8 @@ async function releaseContainedItemsBeforeDelete(item, options, userId) {
 			if (updates.length > 0) {
 				try {
 					await actor.updateEmbeddedDocuments("Item", updates, { sdxInternal: true });
-				} catch (e) {
+				}
+				catch (e) {
 					console.warn(`${MODULE_ID} | Could not release contained items`, e);
 				}
 			}
@@ -426,10 +433,12 @@ function calculateContainedItemSlots(item) {
 				baseSlotCost = 0;
 			}
 			slots = baseSlotCost;
-		} else {
+		}
+		else {
 			slots = calculateSlotsCostForItem(item, { ignoreIsPhysical: true });
 		}
-	} else {
+	}
+	else {
 		slots = calculateSlotsCostForItem(item, { ignoreIsPhysical: true });
 	}
 
@@ -443,7 +452,8 @@ function calculateContainedItemSlots(item) {
 			for (const data of getPackedContainedItemData(item)) {
 				slots += calculateSlotsCostForItemData(data, { recursive: true });
 			}
-		} else {
+		}
+		else {
 			// Use embedded items for normal actors
 			const contained = getContainedItems(item);
 			for (const nestedItem of contained) {
@@ -568,7 +578,8 @@ async function packItemToContainerData(sourceItem) {
 		if (isContainerItem(sourceItem) && sourceItem.parent && !isItemPilesEnabledActor(sourceItem.parent)) {
 			await syncContainerPackedItems(sourceItem);
 		}
-	} catch {
+	}
+	catch {
 		// Ignore snapshot refresh errors
 	}
 
@@ -696,7 +707,8 @@ function injectBasicContainerUI(app, html) {
 
 	if (slotsBox?.length) {
 		slotsBox.find(".content").first().append(toggleHtml);
-	} else {
+	}
+	else {
 		// Fallback: append to the top of Details
 		detailsTab.prepend(toggleHtml);
 	}
@@ -926,7 +938,8 @@ function injectBasicContainerUI(app, html) {
 					// Update the in-memory doc source so the sheet reflects changes.
 					try {
 						temp.updateSource(changes);
-					} catch {
+					}
+					catch {
 						// If updateSource isn't available for some reason, fall back to default update.
 						return originalUpdate ? originalUpdate(changes, options) : temp;
 					}
@@ -955,7 +968,8 @@ function injectBasicContainerUI(app, html) {
 			}
 
 			temp?.sheet?.render(true);
-		} catch {
+		}
+		catch {
 			// Give up silently
 		}
 	}
@@ -1067,7 +1081,8 @@ function injectBasicContainerUI(app, html) {
 				if (ctrlMove && dropped.parent && dropped.parent !== item.parent) {
 					try {
 						await dropped.delete({ sdxInternal: true });
-					} catch {
+					}
+					catch {
 						// Ignore delete failures
 					}
 				}
@@ -1088,7 +1103,8 @@ function injectBasicContainerUI(app, html) {
 			if (ctrlMove && dropped.parent) {
 				try {
 					await dropped.delete({ sdxInternal: true });
-				} catch {
+				}
+				catch {
 					// Ignore delete failures
 				}
 			}

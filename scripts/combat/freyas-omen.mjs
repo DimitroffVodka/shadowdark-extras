@@ -70,7 +70,8 @@ export function registerFreyasOmenHooks() {
 					// Check if item has spellAttribute
 					if (item.system.spellAttribute) {
 						abilityId = item.system.spellAttribute;
-					} else {
+					}
+					else {
 						// Find spellcasting class
 						const classes = actor.items.filter(i => i.type === "Class");
 						for (const cls of classes) {

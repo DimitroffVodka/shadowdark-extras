@@ -118,7 +118,8 @@ export function enhanceInventoryWithDeleteAndMultiSelect(app, html) {
 		const selected = getSelectedItems(app);
 		if (selected.has(itemId)) {
 			$row.addClass("sdx-item-selected");
-		} else {
+		}
+		else {
 			$row.removeClass("sdx-item-selected");
 		}
 	});
@@ -145,20 +146,24 @@ export function enhanceInventoryWithDeleteAndMultiSelect(app, html) {
 			if (selected.has(itemId)) {
 				selected.delete(itemId);
 				$row.removeClass("sdx-item-selected");
-			} else {
+			}
+			else {
 				selected.add(itemId);
 				$row.addClass("sdx-item-selected");
 			}
-		} else if (ev.ctrlKey || ev.metaKey) {
+		}
+		else if (ev.ctrlKey || ev.metaKey) {
 			// Toggle selection with Ctrl/Cmd
 			if (selected.has(itemId)) {
 				selected.delete(itemId);
 				$row.removeClass("sdx-item-selected");
-			} else {
+			}
+			else {
 				selected.add(itemId);
 				$row.addClass("sdx-item-selected");
 			}
-		} else {
+		}
+		else {
 			// Single click without modifier: clear selection and select just this one
 			html.find(".item[data-item-id]").removeClass("sdx-item-selected");
 			selected.clear();

@@ -96,7 +96,8 @@ export function injectWeaponBonusTab(app, html, item) {
 	const $sourceTab = $nav.find('[data-tab="tab-source"]');
 	if ($sourceTab.length) {
 		$sourceTab.before(bonusTabNav);
-	} else {
+	}
+	else {
 		$nav.append(bonusTabNav);
 	}
 
@@ -111,7 +112,8 @@ export function injectWeaponBonusTab(app, html, item) {
 	if ($sheetBody.length) {
 		$sheetBody.append(tabContent);
 		console.log(`${MODULE_ID} | Injected bonuses tab content`);
-	} else {
+	}
+	else {
 		console.log(`${MODULE_ID} | Could not find SD-content-body`);
 	}
 
@@ -153,7 +155,8 @@ export function injectWeaponAnimationButton(html, item) {
 	const $bonusesTab = $nav.find('[data-tab="tab-bonuses"]');
 	if ($bonusesTab.length) {
 		$bonusesTab.after(animationBtn);
-	} else {
+	}
+	else {
 		$nav.append(animationBtn);
 	}
 
@@ -937,7 +940,8 @@ function activateWeaponBonusListeners(html, app, item) {
 
 		if (enabled) {
 			$content.removeClass("sdx-disabled");
-		} else {
+		}
+		else {
 			$content.addClass("sdx-disabled");
 		}
 
@@ -1454,7 +1458,8 @@ async function saveCriticalRequirementsFromDom($tab, item) {
 
 		if (criticalType === "dice") {
 			criticalDiceRequirements.push(req);
-		} else {
+		}
+		else {
 			criticalDamageRequirements.push(req);
 		}
 	});
@@ -1811,7 +1816,8 @@ export function getWeaponBonuses(weapon, attacker, target, isCritical = false) {
 		if (evaluateRequirements(flags.requirements, attacker, target)) {
 			applicableBonuses.push({ formula: flags.damageBonus, label: "" });
 		}
-	} else {
+	}
+	else {
 		// Process each damage bonus entry
 		for (const bonus of damageBonuses) {
 			if (!bonus.formula) continue;
@@ -2039,7 +2045,8 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 				applicableParts.push({ formula, label: "" });
 			}
 		}
-	} else {
+	}
+	else {
 		// Process each damage bonus entry
 		for (let i = 0; i < damageBonuses.length; i++) {
 			const bonus = damageBonuses[i];
@@ -2154,7 +2161,8 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 							isMin: r.result === 1,
 						});
 					}
-				} else if (term.number !== undefined && !term.faces) {
+				}
+				else if (term.number !== undefined && !term.faces) {
 					// Static number
 					bonusRollResults.push({
 						value: term.number,
@@ -2166,7 +2174,8 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 					});
 				}
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to evaluate damage bonus formula: ${part.formula}`, err);
 		}
 	}
@@ -2200,7 +2209,8 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 				// For player weapons: oneHanded or twoHanded (e.g., "d6")
 				if (damageData.oneHanded) {
 					dieType = damageData.oneHanded;
-				} else if (damageData.twoHanded) {
+				}
+				else if (damageData.twoHanded) {
 					dieType = damageData.twoHanded;
 				}
 				// For NPC attacks: value (e.g., "1d6+2") - extract the die
@@ -2251,7 +2261,8 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 					}
 
 					console.log(`${MODULE_ID} | Rolled ${criticalExtraDice} extra critical dice (${extraDiceFormula}): ${extraDiceRoll.total}`);
-				} catch (err) {
+				}
+				catch (err) {
 					console.warn(`${MODULE_ID} | Failed to roll extra critical dice: ${extraDiceFormula}`, err);
 				}
 			}
@@ -2286,7 +2297,8 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 								isMin: r.result === 1,
 							});
 						}
-					} else if (term.number !== undefined && !term.faces && term.number !== 0) {
+					}
+					else if (term.number !== undefined && !term.faces && term.number !== 0) {
 						criticalRollResults.push({
 							value: term.number,
 							faces: 0,
@@ -2296,7 +2308,8 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 						});
 					}
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				console.warn(`${MODULE_ID} | Failed to evaluate critical damage formula: ${criticalFormula}`, err);
 			}
 		}
@@ -2413,7 +2426,8 @@ export async function injectWeaponBonusDisplay(message, html, weapon, attacker, 
 	const $damageRoll = html.find(".dice-roll").last();
 	if ($damageRoll.length) {
 		$damageRoll.after(bonusHtml);
-	} else {
+	}
+	else {
 		// Fallback: append to message content
 		html.find(".message-content").append(bonusHtml);
 	}

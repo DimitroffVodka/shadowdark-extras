@@ -33,7 +33,8 @@ export class PinListApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	static show() {
 		if (this._instance) {
 			this._instance.render({ force: true });
-		} else {
+		}
+		else {
 			this._instance = new PinListApp();
 			this._instance.render({ force: true });
 		}
@@ -61,7 +62,8 @@ export class PinListApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					if (pin.pageId) {
 						const page = journal.pages.get(pin.pageId);
 						pageName = page ? `${journal.name} • ${page.name}` : journal.name;
-					} else {
+					}
+					else {
 						pageName = journal.name;
 					}
 				}
@@ -103,17 +105,20 @@ export class PinListApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 				if (contentType === "text") {
 					displayContent = style.customText || "";
-				} else {
+				}
+				else {
 					if (pin.journalId && pin.pageId) {
 						const journal = game.journal.get(pin.journalId);
 						if (journal) {
 							const sortedPages = journal.pages.contents.sort((a, b) => a.sort - b.sort);
 							const idx = sortedPages.findIndex(p => p.id === pin.pageId);
 							displayContent = idx >= 0 ? idx : 0;
-						} else {
+						}
+						else {
 							displayContent = "0";
 						}
-					} else {
+					}
+					else {
 						displayContent = "0";
 					}
 				}

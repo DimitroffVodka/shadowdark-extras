@@ -94,7 +94,8 @@ async function getEquippedStaffSpells(actor) {
 						currentUses: spellRef.currentUses,
 					});
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				console.warn(`${MODULE_ID} | Could not load spell ${spellRef.uuid} from weapon ${staff.name}:`, err);
 			}
 		}
@@ -119,15 +120,20 @@ function buildStaffSpellsHtml(staffSpells) {
 		let durationDisplay = "";
 		if (durationType === "focus") {
 			durationDisplay = "Focus";
-		} else if (durationType === "instant") {
+		}
+		else if (durationType === "instant") {
 			durationDisplay = "Instant";
-		} else if (durationType === "rounds") {
+		}
+		else if (durationType === "rounds") {
 			durationDisplay = `${durationValue} rounds`;
-		} else if (durationType === "minutes") {
+		}
+		else if (durationType === "minutes") {
 			durationDisplay = `${durationValue} minutes`;
-		} else if (durationType === "hours") {
+		}
+		else if (durationType === "hours") {
 			durationDisplay = `${durationValue} hours`;
-		} else if (durationDisplay) {
+		}
+		else if (durationDisplay) {
 			durationDisplay = durationType;
 		}
 
@@ -238,7 +244,8 @@ export async function injectStaffSpellsUI(sheet, html, data) {
 			if (spell && spell.sheet) {
 				spell.sheet.render(true);
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error opening staff spell sheet:`, err);
 		}
 	});
@@ -355,7 +362,8 @@ export async function injectStaffSpellsUI(sheet, html, data) {
 			setTimeout(async () => {
 				try {
 					await tempWand.delete();
-				} catch (err) {
+				}
+				catch (err) {
 					// Item may already be deleted, ignore error
 				}
 			}, 1000);
@@ -392,7 +400,8 @@ export async function injectStaffSpellsUI(sheet, html, data) {
 				// Re-render the sheet to update the uses display
 				sheet.render(false);
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error casting staff spell:`, err);
 			ui.notifications.error("Failed to cast spell from staff");
 		}
@@ -510,7 +519,8 @@ export async function injectStaffSpellsUI(sheet, html, data) {
 			setTimeout(async () => {
 				try {
 					await tempWand.delete();
-				} catch (err) {
+				}
+				catch (err) {
 					// Item may already be deleted, ignore error
 				}
 			}, 1000);
@@ -528,7 +538,8 @@ export async function injectStaffSpellsUI(sheet, html, data) {
 				// Re-render the sheet to update the uses display
 				sheet.render(false);
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error focusing on staff spell:`, err);
 			ui.notifications.error("Failed to focus on spell from staff");
 		}
@@ -602,7 +613,8 @@ export function injectWeaponSpellRechargeButtons(app, html, actor) {
 				ui.notifications.info(`Recharged all spells on ${weapon.name}`);
 				// Re-render the sheet to update displays
 				app.render(false);
-			} else {
+			}
+			else {
 				ui.notifications.info(`All spells on ${weapon.name} are already fully charged`);
 			}
 		});

@@ -257,7 +257,8 @@ export class DDPackPreviewApp extends ApplicationV2 {
 			ui.notifications.info(`Dungeondraft pack "${indexData.name}" imported (${indexData.assetCount} assets).`);
 			this.onDone?.(indexData);
 			await this.close();
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Dungeondraft import failed:`, err);
 			ui.notifications.error(`Import failed: ${err?.message || err}`);
 			this.extracting = false;

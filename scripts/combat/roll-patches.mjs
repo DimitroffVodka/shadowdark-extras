@@ -94,7 +94,12 @@ export function setupRollAttackPatches() {
 			// and forward the uuid so the underlying system call always resolves.
 			let item = actor.items.get(itemId);
 			if (!item && typeof itemId === "string") {
-				try { item = await fromUuid(itemId); } catch (_e) { item = null; }
+				try {
+					item = await fromUuid(itemId);
+				}
+				catch (_e) {
+					item = null;
+				}
 			}
 			const weaponUuid = item?.uuid ?? itemId;
 
@@ -123,7 +128,8 @@ export function setupRollAttackPatches() {
 					if (requireTarget === "block") {
 						ui.notifications.warn(game.i18n.format("SHADOWDARK_EXTRAS.combat.require_target.blocked", { itemName }));
 						return null;
-					} else if (requireTarget === "warn") {
+					}
+					else if (requireTarget === "warn") {
 						ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.combat.require_target.warning", { itemName }));
 					}
 				}
@@ -141,10 +147,12 @@ export function setupRollAttackPatches() {
 						if (weaponType === "melee" && !isThrown) {
 							maxRange = 0;
 							rangeLabel = "Close (Adjacent)";
-						} else if (isThrown) {
+						}
+						else if (isThrown) {
 							maxRange = 25;
 							rangeLabel = "Near (30 ft)";
-						} else {
+						}
+						else {
 							maxRange = Infinity;
 							rangeLabel = "Far";
 						}
@@ -156,7 +164,8 @@ export function setupRollAttackPatches() {
 								if (checkRange === "block") {
 									ui.notifications.warn(game.i18n.format("SHADOWDARK_EXTRAS.combat.range_check.blocked", { itemName, range: rangeLabel, distance: displayDistance.toFixed(0) }));
 									return null;
-								} else if (checkRange === "warn") {
+								}
+								else if (checkRange === "warn") {
 									ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.combat.range_check.warning", { itemName, range: rangeLabel, distance: displayDistance.toFixed(0) }));
 								}
 							}
@@ -172,7 +181,9 @@ export function setupRollAttackPatches() {
 					if (ammoItem) {
 						options._sdxAmmoSelected = true;
 						const originalAvailableAmmunition = item.availableAmmunition;
-						item.availableAmmunition = function() { return [ammoItem]; };
+						item.availableAmmunition = function() {
+							return [ammoItem];
+						};
 
 						try {
 							// Temporarily monkeypatch item.rollItem to inject bonuses.
@@ -210,7 +221,8 @@ export function setupRollAttackPatches() {
 											let bonusValue = d;
 											if (!d.toLowerCase().includes("d")) {
 												bonusValue = parseInt(d, 10) * damageMultiplier;
-											} else if (damageMultiplier > 1) {
+											}
+											else if (damageMultiplier > 1) {
 												bonusValue = `(${d}) * ${damageMultiplier}`;
 											}
 											if (!data.damageParts.includes("@ammoDamageBonus")) {
@@ -225,15 +237,18 @@ export function setupRollAttackPatches() {
 							};
 
 							return await originalRollAttack.call(this, forwardId, options);
-						} finally {
+						}
+						finally {
 							item.availableAmmunition = originalAvailableAmmunition;
 							if (typeof originalRollItem === "function") item.rollItem = originalRollItem;
 						}
-					} else {
+					}
+					else {
 						return ui.notifications.warn(game.i18n.localize("SHADOWDARK.item.errors.no_available_ammunition"));
 					}
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				// Continue normally on error
 			}
 
@@ -329,7 +344,8 @@ export function setupRollConfigPatches() {
 				if (hasAdv && !hasDis) {
 					config.mainRoll.advantage = 1;
 					config.mainRoll.tooltips = (config.mainRoll.tooltips || "").concat(", SDX Talent Advantage");
-				} else if (hasDis && !hasAdv) {
+				}
+				else if (hasDis && !hasAdv) {
 					config.mainRoll.advantage = -1;
 					config.mainRoll.tooltips = (config.mainRoll.tooltips || "").concat(", SDX Talent Disadvantage");
 				}
@@ -516,7 +532,8 @@ export function setupRollConfigPatches() {
 				result: allConstant ? sdxHitParts.reduce((n, p) => n + asNumber(p.formula), 0) : null,
 				parts: sdxHitParts,
 			};
-		} else {
+		}
+		else {
 			// The config object is reused across renders, so an unticked
 			// promptable bonus has to clear the previous render's entry.
 			delete config._sdxHitBonusInfo;

@@ -93,7 +93,8 @@ export async function showHolyWeaponDialog(casterActor, casterItem, targetActor,
 			let badge = "";
 			if (hasExistingBonuses) {
 				badge = "<span class=\"sdx-weapon-badge bonus\" title=\"Has existing bonuses\"><i class=\"fas fa-plus-circle\"></i></span>";
-			} else if (isMagical && !isUnidentifiedItem) {
+			}
+			else if (isMagical && !isUnidentifiedItem) {
 				// Hide magic sparkle if unidentified
 				badge = "<span class=\"sdx-weapon-badge magical\" title=\"Magic Item\"><i class=\"fas fa-sparkles\"></i></span>";
 			}
@@ -241,7 +242,8 @@ export async function applyHolyWeapon(weapon, casterActor, casterItem, targetAct
 				targetToken?.document?.uuid
 			);
 			return;
-		} else {
+		}
+		else {
 			ui.notifications.warn("Cannot bless weapon: No GM connected or socket unavailable.");
 			return;
 		}
@@ -292,7 +294,8 @@ export async function applyHolyWeapon(weapon, casterActor, casterItem, targetAct
 					.play();
 			}
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		console.log(`${MODULE_ID} | Sequencer animation not available: ${e.message}`);
 	}
 

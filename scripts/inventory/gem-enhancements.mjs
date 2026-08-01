@@ -260,7 +260,8 @@ export function enhanceGemInventory(app, html, actor) {
 		$totalDiv.text(newTotal);
 		if (newTotal > maxSlots) {
 			$totalDiv.css("color", "red");
-		} else {
+		}
+		else {
 			$totalDiv.css("color", "");
 		}
 	}

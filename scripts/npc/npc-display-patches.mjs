@@ -101,7 +101,8 @@ function patchNpcDisplayBuilders() {
 			// Append to special
 			if (attackOptions.special) {
 				attackOptions.special += extraText;
-			} else {
+			}
+			else {
 				attackOptions.special = extraText;
 			}
 		}

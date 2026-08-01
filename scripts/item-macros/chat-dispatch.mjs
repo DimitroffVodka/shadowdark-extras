@@ -146,14 +146,16 @@ export function registerChatDispatch() {
 		// Success-based triggers
 		if (macroConfig.triggers.includes("onCritical") && isCritical) {
 			triggersToFire.push("onCritical");
-		} else if (macroConfig.triggers.includes("onSuccess") && isSuccess) {
+		}
+		else if (macroConfig.triggers.includes("onSuccess") && isSuccess) {
 			triggersToFire.push("onSuccess");
 		}
 
 		// Failure-based triggers
 		if (macroConfig.triggers.includes("onCriticalFail") && isCriticalFail) {
 			triggersToFire.push("onCriticalFail");
-		} else if (macroConfig.triggers.includes("onFailure") && isFailure && !isCriticalFail) {
+		}
+		else if (macroConfig.triggers.includes("onFailure") && isFailure && !isCriticalFail) {
 			triggersToFire.push("onFailure");
 		}
 
@@ -184,7 +186,10 @@ export function registerChatDispatch() {
 
 		try {
 			if (!game.settings.get(MODULE_ID, "animationFxEnabled")) return;
-		} catch (e) { return; }
+		}
+		catch (e) {
+			return;
+		}
 
 		const ctx = resolveCardContext(message, html);
 		const actorId = ctx?.actorId || message.speaker?.actor;
@@ -223,7 +228,8 @@ export function registerChatDispatch() {
 
 		try {
 			await AnimationFxSD.playForItem({ item, actor, targets, outcome, tokenId });
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn(`${MODULE_ID} | AnimationFx trigger failed:`, e);
 		}
 	});
@@ -267,7 +273,8 @@ export function registerChatDispatch() {
 
 		if (cardCtx?.itemId) {
 			item = actor.items.get(cardCtx.itemId);
-		} else {
+		}
+		else {
 			// Fallback: Try to detect weapon from message content
 			const content = message.content || "";
 			for (const actorItem of actor.items) {
@@ -351,13 +358,15 @@ export function registerChatDispatch() {
 
 		if (macroConfig.triggers.includes("onCritical") && isCritical) {
 			triggersToFire.push("onCritical");
-		} else if (macroConfig.triggers.includes("onHit") && isHit) {
+		}
+		else if (macroConfig.triggers.includes("onHit") && isHit) {
 			triggersToFire.push("onHit");
 		}
 
 		if (macroConfig.triggers.includes("onCriticalMiss") && isCriticalMiss) {
 			triggersToFire.push("onCriticalMiss");
-		} else if (macroConfig.triggers.includes("onMiss") && isMiss && !isCriticalMiss) {
+		}
+		else if (macroConfig.triggers.includes("onMiss") && isMiss && !isCriticalMiss) {
 			triggersToFire.push("onMiss");
 		}
 

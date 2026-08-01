@@ -91,11 +91,17 @@ class SimplexNoise {
 		const jj = j & 255;
 
 		let t0 = 0.5 - x0 * x0 - y0 * y0;
-		if (t0 >= 0) { t0 *= t0; const gi = permMod12[ii + perm[jj]]; n0 = t0 * t0 * (grad3[gi][0] * x0 + grad3[gi][1] * y0); }
+		if (t0 >= 0) {
+			t0 *= t0; const gi = permMod12[ii + perm[jj]]; n0 = t0 * t0 * (grad3[gi][0] * x0 + grad3[gi][1] * y0);
+		}
 		let t1 = 0.5 - x1 * x1 - y1 * y1;
-		if (t1 >= 0) { t1 *= t1; const gi = permMod12[ii + i1 + perm[jj + j1]]; n1 = t1 * t1 * (grad3[gi][0] * x1 + grad3[gi][1] * y1); }
+		if (t1 >= 0) {
+			t1 *= t1; const gi = permMod12[ii + i1 + perm[jj + j1]]; n1 = t1 * t1 * (grad3[gi][0] * x1 + grad3[gi][1] * y1);
+		}
 		let t2 = 0.5 - x2 * x2 - y2 * y2;
-		if (t2 >= 0) { t2 *= t2; const gi = permMod12[ii + 1 + perm[jj + 1]]; n2 = t2 * t2 * (grad3[gi][0] * x2 + grad3[gi][1] * y2); }
+		if (t2 >= 0) {
+			t2 *= t2; const gi = permMod12[ii + 1 + perm[jj + 1]]; n2 = t2 * t2 * (grad3[gi][0] * x2 + grad3[gi][1] * y2);
+		}
 		return 70 * (n0 + n1 + n2);
 	}
 }
@@ -403,7 +409,8 @@ export async function generateHexMap(params = {}) {
 		tileW = coloredDims.width;
 		tileH = coloredDims.height;
 		tileModeName = " using colored tiles";
-	} else if (useCustom) {
+	}
+	else if (useCustom) {
 		tilesByBiome = getCustomTilesByBiome();
 		const customDims = getCustomTileDimensions();
 		tileW = customDims.width;
@@ -499,7 +506,8 @@ export async function generateHexMap(params = {}) {
 							}
 						}
 					}
-				} else {
+				}
+				else {
 					// Not using custom/colored tiles - use default path
 					tilePath = defaultPath;
 				}
@@ -622,7 +630,8 @@ export async function generateHexMap(params = {}) {
 							// Use distortion-only for colored tiles
 							const params = useColored ? waterParamsColored : waterParamsFull;
 							await TokenMagic.addUpdateFilters(tileObj.document, params);
-						} catch (err) {
+						}
+						catch (err) {
 							console.warn(`${MODULE_ID} | TMFX water effect failed:`, err);
 						}
 					}
@@ -656,7 +665,8 @@ export async function generateHexMap(params = {}) {
 				if (tileObj) {
 					try {
 						await TokenMagic.addUpdateFilters(tileObj.document, bwParams);
-					} catch (err) {
+					}
+					catch (err) {
 						console.warn(`${MODULE_ID} | TMFX B&W effect failed:`, err);
 					}
 				}
@@ -670,12 +680,14 @@ export async function generateHexMap(params = {}) {
 			try {
 				await setHexTerrainBatch(scene.id, terrainMap);
 				console.log(`${MODULE_ID} | Set terrain for ${Object.keys(terrainMap).length} hexes`);
-			} catch (err) {
+			}
+			catch (err) {
 				console.warn(`${MODULE_ID} | Failed to batch-set hex terrain:`, err);
 			}
 		}
 
-	} finally {
+	}
+	finally {
 		setGenerating(false);
 	}
 }
@@ -712,7 +724,8 @@ export async function clearGeneratedTiles({ force = false } = {}) {
 	try {
 		await scene.deleteEmbeddedDocuments("Tile", ids);
 		ui.notifications.info(`SDX | Cleared ${ids.length} tiles.`);
-	} finally {
+	}
+	finally {
 		setGenerating(false);
 	}
 }

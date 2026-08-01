@@ -39,7 +39,8 @@ async function loadTheme(path) {
 			return null;
 		}
 		return await response.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Error loading theme:`, err);
 		return null;
 	}
@@ -59,7 +60,8 @@ async function applyTheme(theme) {
 			if (game.settings.settings.has(`${MODULE_ID}.${key}`)) {
 				await game.settings.set(MODULE_ID, key, value);
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Could not apply setting ${key}:`, err);
 		}
 	}
@@ -81,7 +83,8 @@ async function toggleDarkMode(enabled, applyStyles = true) {
 			darkTheme = await loadTheme(DARK_THEME_PATH);
 		}
 		await applyTheme(darkTheme);
-	} else {
+	}
+	else {
 		document.body.classList.remove("sdx-dark-mode");
 
 		if (!applyStyles) return;

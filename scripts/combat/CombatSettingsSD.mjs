@@ -20,7 +20,8 @@ function normalizeConfiguredEffectUuids(rawEffects) {
 	if (typeof effects === "string") {
 		try {
 			effects = JSON.parse(effects);
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn("shadowdark-extras | Failed to parse configured effects JSON:", err, rawEffects);
 			return [];
 		}
@@ -65,7 +66,8 @@ function evaluateFormulaExpressions(formula, rollData) {
 		for (const part of parts) {
 			if (value && typeof value === "object" && part in value) {
 				value = value[part];
-			} else {
+			}
+			else {
 				return match; // Keep original if not found
 			}
 		}
@@ -80,7 +82,8 @@ function evaluateFormulaExpressions(formula, rollData) {
 			// via MATH_PROXY; do NOT rewrite to Math.* — that breaks safeEval.
 			const numDice = Math.max(1, Math.floor(Roll.safeEval(expr))); // At least 1 die
 			return `${numDice}d${dieSize}`;
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn("shadowdark-extras | Could not evaluate expression:", expr, e);
 			return match;
 		}
@@ -92,7 +95,8 @@ function evaluateFormulaExpressions(formula, rollData) {
 			// Pass bare floor() through — Roll.safeEval handles it natively.
 			const result = parseInt(base) + Math.floor(Roll.safeEval(expr));
 			return result.toString();
-		} catch (e) {
+		}
+		catch (e) {
 			return match;
 		}
 	});
@@ -255,7 +259,8 @@ function evaluateRequirement(formula, rollData) {
 
 		// Return true if result is truthy or > 0
 		return !!result;
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn(`shadowdark-extras | Failed to evaluate requirement: ${formula}`, err);
 		return true; // Fail-open: if we can't evaluate, allow the action
 	}
@@ -275,7 +280,8 @@ function buildTargetRollData(targetActor) {
 	// Flatten target level
 	if (targetActorData.level && typeof targetActorData.level === "object" && targetActorData.level.value !== undefined) {
 		target.level = targetActorData.level.value;
-	} else {
+	}
+	else {
 		target.level = targetActorData.level || 0;
 	}
 
@@ -368,7 +374,8 @@ export function setupCombatSocket() {
 							if (absorptionValue === -1 || absorptionValue === true) {
 								componentDamage = -componentDamage; // Convert to healing
 								isAbsorbed = true;
-							} else if (absorptionValue === 1) {
+							}
+							else if (absorptionValue === 1) {
 								componentDamage = componentDamage * 2; // Double damage
 								isAbsorbed = true;
 							}
@@ -377,14 +384,16 @@ export function setupCombatSocket() {
 							const isImmune = !isAbsorbed && token.actor.getFlag("shadowdark-extras", `immunity.${componentType}`);
 							if (isImmune) {
 								componentDamage = 0;
-							} else if (!isAbsorbed) {
+							}
+							else if (!isAbsorbed) {
 								// Check for resistance/vulnerability
 								const isResistant = token.actor.getFlag("shadowdark-extras", `resistance.${componentType}`);
 								const isVulnerable = token.actor.getFlag("shadowdark-extras", `vulnerability.${componentType}`);
 
 								if (isResistant) {
 									componentDamage = Math.floor(componentDamage / 2);
-								} else if (isVulnerable) {
+								}
+								else if (isVulnerable) {
 									componentDamage = componentDamage * 2;
 								}
 							}
@@ -396,13 +405,15 @@ export function setupCombatSocket() {
 							const isPhysicalImmune = token.actor.getFlag("shadowdark-extras", "immunity.physical");
 							if (isPhysicalImmune) {
 								componentDamage = 0;
-							} else if (componentDamage > 0) {
+							}
+							else if (componentDamage > 0) {
 								const isPhysicalResistant = token.actor.getFlag("shadowdark-extras", "resistance.physical");
 								const isPhysicalVulnerable = token.actor.getFlag("shadowdark-extras", "vulnerability.physical");
 
 								if (isPhysicalResistant) {
 									componentDamage = Math.floor(componentDamage / 2);
-								} else if (isPhysicalVulnerable) {
+								}
+								else if (isPhysicalVulnerable) {
 									componentDamage = componentDamage * 2;
 								}
 							}
@@ -412,7 +423,8 @@ export function setupCombatSocket() {
 								const isNonMagicImmune = token.actor.getFlag("shadowdark-extras", "immunity.nonmagic");
 								if (isNonMagicImmune) {
 									componentDamage = 0;
-								} else {
+								}
+								else {
 									const isNonMagicResistant = token.actor.getFlag("shadowdark-extras", "resistance.nonmagic");
 									if (isNonMagicResistant) {
 										componentDamage = Math.floor(componentDamage / 2);
@@ -438,7 +450,8 @@ export function setupCombatSocket() {
 						if (absorptionValue === -1 || absorptionValue === true) {
 							baseDamage = -baseDamage; // Convert to healing
 							isAbsorbed = true;
-						} else if (absorptionValue === 1) {
+						}
+						else if (absorptionValue === 1) {
 							baseDamage = baseDamage * 2; // Double damage
 							isAbsorbed = true;
 						}
@@ -447,13 +460,15 @@ export function setupCombatSocket() {
 						const isImmune = !isAbsorbed && token.actor.getFlag("shadowdark-extras", `immunity.${baseType}`);
 						if (isImmune) {
 							baseDamage = 0;
-						} else if (!isAbsorbed) {
+						}
+						else if (!isAbsorbed) {
 							const isResistant = token.actor.getFlag("shadowdark-extras", `resistance.${baseType}`);
 							const isVulnerable = token.actor.getFlag("shadowdark-extras", `vulnerability.${baseType}`);
 
 							if (isResistant) {
 								baseDamage = Math.floor(baseDamage / 2);
-							} else if (isVulnerable) {
+							}
+							else if (isVulnerable) {
 								baseDamage = baseDamage * 2;
 							}
 						}
@@ -463,13 +478,15 @@ export function setupCombatSocket() {
 							const isPhysicalImmune = token.actor.getFlag("shadowdark-extras", "immunity.physical");
 							if (isPhysicalImmune) {
 								baseDamage = 0;
-							} else if (baseDamage > 0) {
+							}
+							else if (baseDamage > 0) {
 								const isPhysicalResistant = token.actor.getFlag("shadowdark-extras", "resistance.physical");
 								const isPhysicalVulnerable = token.actor.getFlag("shadowdark-extras", "vulnerability.physical");
 
 								if (isPhysicalResistant) {
 									baseDamage = Math.floor(baseDamage / 2);
-								} else if (isPhysicalVulnerable) {
+								}
+								else if (isPhysicalVulnerable) {
 									baseDamage = baseDamage * 2;
 								}
 							}
@@ -479,7 +496,8 @@ export function setupCombatSocket() {
 								const isNonMagicImmune = token.actor.getFlag("shadowdark-extras", "immunity.nonmagic");
 								if (isNonMagicImmune) {
 									baseDamage = 0;
-								} else {
+								}
+								else {
 									const isNonMagicResistant = token.actor.getFlag("shadowdark-extras", "resistance.nonmagic");
 									if (isNonMagicResistant) {
 										baseDamage = Math.floor(baseDamage / 2);
@@ -497,7 +515,8 @@ export function setupCombatSocket() {
 					finalDamage = finalDamage * 2;
 				}
 
-			} else {
+			}
+			else {
 				// Legacy behavior: single damage value with single type
 				finalDamage = data.damage;
 				const effectiveDamageType = (data.baseDamageType || data.damageType || "standard").toLowerCase();
@@ -509,7 +528,8 @@ export function setupCombatSocket() {
 					if (absorptionValue === -1 || absorptionValue === true) {
 						finalDamage = -finalDamage; // Convert to healing
 						isAbsorbed = true;
-					} else if (absorptionValue === 1) {
+					}
+					else if (absorptionValue === 1) {
 						finalDamage = finalDamage * 2; // Double damage
 						isAbsorbed = true;
 					}
@@ -518,14 +538,16 @@ export function setupCombatSocket() {
 					const isImmune = !isAbsorbed && token.actor.getFlag("shadowdark-extras", `immunity.${effectiveDamageType}`);
 					if (isImmune) {
 						finalDamage = 0;
-					} else if (!isAbsorbed) {
+					}
+					else if (!isAbsorbed) {
 						// Check for resistance/vulnerability
 						const isResistant = token.actor.getFlag("shadowdark-extras", `resistance.${effectiveDamageType}`);
 						const isVulnerable = token.actor.getFlag("shadowdark-extras", `vulnerability.${effectiveDamageType}`);
 
 						if (isResistant) {
 							finalDamage = Math.floor(finalDamage / 2);
-						} else if (isVulnerable) {
+						}
+						else if (isVulnerable) {
 							finalDamage = finalDamage * 2;
 						}
 					}
@@ -535,7 +557,8 @@ export function setupCombatSocket() {
 						const isNonMagicImmune = token.actor.getFlag("shadowdark-extras", "immunity.nonmagic");
 						if (isNonMagicImmune) {
 							finalDamage = 0;
-						} else {
+						}
+						else {
 							const isNonMagicResistant = token.actor.getFlag("shadowdark-extras", "resistance.nonmagic");
 							if (isNonMagicResistant) {
 								finalDamage = Math.floor(finalDamage / 2);
@@ -569,7 +592,8 @@ export function setupCombatSocket() {
 			// so we don't need to call it here anymore
 
 			return true;
-		} catch (error) {
+		}
+		catch (error) {
 			console.error("shadowdark-extras | Error in socket damage handler:", error);
 			return false;
 		}
@@ -643,7 +667,8 @@ export function setupCombatSocket() {
 						for (const effectId of effectIds) {
 							await unlinkEffectFromFocusSpell(data.spellInfo.casterActorId, data.spellInfo.spellId, effectId);
 						}
-					} catch (err) {
+					}
+					catch (err) {
 						// Focus tracking cleanup is optional
 					}
 				}
@@ -700,7 +725,8 @@ export function setupCombatSocket() {
 							data.tokenId,
 							createdEffect.id
 						);
-					} else {
+					}
+					else {
 						// Try focus spell
 						// Ensure focus tracking is started (in case it hasn't been started yet)
 						await startFocusSpellIfNeeded(
@@ -718,13 +744,15 @@ export function setupCombatSocket() {
 							createdEffect.id
 						);
 					}
-				} catch (linkError) {
+				}
+				catch (linkError) {
 					// Spell tracking might not be enabled, that's okay
 				}
 			}
 
 			return true;
-		} catch (error) {
+		}
+		catch (error) {
 			console.error("shadowdark-extras | Error in socket condition handler:", error);
 			return false;
 		}
@@ -803,7 +831,8 @@ export function setupCombatSocket() {
 
 		if (reason === null) {
 			await effectDoc.unsetFlag(MODULE_ID, "breakOnDamage");
-		} else {
+		}
+		else {
 			await effectDoc.setFlag(MODULE_ID, "breakOnDamage", { reason });
 		}
 		return true;
@@ -854,7 +883,8 @@ export function setupCombatSocket() {
 			}
 
 			return { success: false, effectId: null };
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("shadowdark-extras | applyEffectToTarget error:", err);
 			return { success: false, effectId: null };
 		}
@@ -1158,7 +1188,8 @@ export function setupCombatSocket() {
 			await item.update(updates);
 			console.log(`${MODULE_ID} | GM reverted item ${item.name}:`, updates);
 			return true;
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | GM failed to revert item ${item.name}:`, err);
 			return false;
 		}
@@ -1175,12 +1206,14 @@ export function setupCombatSocket() {
 		try {
 			if (flagValue === null) {
 				await item.unsetFlag(MODULE_ID, flagPath);
-			} else {
+			}
+			else {
 				await item.setFlag(MODULE_ID, flagPath, flagValue);
 			}
 			console.log(`${MODULE_ID} | GM updated item flags for ${item.name}`);
 			return true;
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | GM failed to update item flags for ${item.name}:`, err);
 			return false;
 		}
@@ -1200,7 +1233,8 @@ export function setupCombatSocket() {
 			const { nativeTransferItems } = await import("../inventory/TradeWindowSD.mjs");
 			await nativeTransferItems(sourceActor, targetActor, items);
 			return true;
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | transferItemsAsGM failed:`, err);
 			return false;
 		}
@@ -1219,7 +1253,8 @@ export function setupCombatSocket() {
 			const { nativeTransferCoins } = await import("../inventory/TradeWindowSD.mjs");
 			await nativeTransferCoins(sourceActor, targetActor, coins);
 			return true;
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | transferCoinsAsGM failed:`, err);
 			return false;
 		}
@@ -1411,7 +1446,8 @@ export function setupScrollingCombatText() {
 		let settings;
 		try {
 			settings = game.settings.get(MODULE_ID, "combatSettings");
-		} catch (e) {
+		}
+		catch (e) {
 			return; // Settings not registered yet
 		}
 
@@ -1439,7 +1475,8 @@ export function setupScrollingCombatText() {
 			// Synthetic actor (unlinked token) - get the specific token
 			const token = canvas.tokens?.get(actor.token?.id);
 			if (token) tokens.push(token);
-		} else {
+		}
+		else {
 			// Real actor - find all LINKED tokens for this actor
 			tokens = canvas.tokens?.placeables?.filter(t =>
 				t.actor?.id === actor.id && t.document.actorLink
@@ -1454,7 +1491,8 @@ export function setupScrollingCombatText() {
 					amount: Math.abs(hpChange),
 					isHealing: isHealing,
 				});
-			} else {
+			}
+			else {
 				// Fallback to local-only
 				showScrollingText(token, Math.abs(hpChange), isHealing);
 			}
@@ -1485,7 +1523,8 @@ export function setupScrollingCombatText() {
 		if (typeof actor._setDefeated === "function") {
 			try {
 				await actor._setDefeated();
-			} catch (err) {
+			}
+			catch (err) {
 				console.error(`${MODULE_ID} | _setDefeated failed for ${actor.name}:`, err);
 			}
 		}
@@ -1530,7 +1569,8 @@ async function saveSummonedTokensExpiry(sceneId, expiryList) {
 		if (scene && game.user.isGM) {
 			await scene.setFlag(MODULE_ID, "summonedTokensExpiry", expiryList);
 		}
-	} else {
+	}
+	else {
 		_summonedTokensExpiry.delete(sceneId);
 		const scene = game.scenes.get(sceneId);
 		if (scene && game.user.isGM) {
@@ -1587,7 +1627,8 @@ export function setupSummonExpiryHook() {
 			if (currentRound >= entry.expiryRound) {
 				tokensToDelete.push(...entry.tokenIds);
 				expiringMessages.push(`<b>${entry.spellName}</b> has expired!`);
-			} else {
+			}
+			else {
 				remainingExpiry.push(entry);
 				remainingMessages.push(`<b>${entry.spellName}</b>: ${roundsRemaining} round${roundsRemaining !== 1 ? "s" : ""} remaining`);
 			}
@@ -1624,7 +1665,8 @@ export function setupSummonExpiryHook() {
 					await canvas.scene.deleteEmbeddedDocuments("Token", existingTokenIds);
 					ui.notifications.info(`Deleted ${existingTokenIds.length} expired summoned creature(s)`);
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				console.error("shadowdark-extras | Error deleting expired summons:", err);
 			}
 		}
@@ -1670,7 +1712,8 @@ export function setupUntargetHook() {
 		let settings;
 		try {
 			settings = game.settings.get(MODULE_ID, "combatSettings");
-		} catch (e) {
+		}
+		catch (e) {
 			return; // Settings not registered yet
 		}
 
@@ -1681,7 +1724,8 @@ export function setupUntargetHook() {
 		setTimeout(() => {
 			if (untargetMode === "dead") {
 				untargetDeadTokens();
-			} else if (untargetMode === "all") {
+			}
+			else if (untargetMode === "all") {
 				untargetAllTokens();
 			}
 		}, 100);
@@ -1782,7 +1826,8 @@ export async function injectDamageCard(message, html, data) {
 	let settings;
 	try {
 		settings = game.settings.get(MODULE_ID, "combatSettings");
-	} catch (e) {
+	}
+	catch (e) {
 		return; // Settings not registered yet
 	}
 
@@ -1830,7 +1875,8 @@ export async function injectDamageCard(message, html, data) {
 		}
 		const applyDamageLabel = game.i18n.localize("SHADOWDARK.chat_card.context.apply_damage").toLowerCase();
 		if (applyDamageLabel && !damageKeywords.includes(applyDamageLabel)) damageKeywords.push(applyDamageLabel);
-	} catch (e) {
+	}
+	catch (e) {
 		// game.i18n might not be fully ready
 	}
 
@@ -1960,10 +2006,12 @@ export async function injectDamageCard(message, html, data) {
 				if (typeof spellDamageConfig.effects === "string") {
 					try {
 						effects = JSON.parse(spellDamageConfig.effects);
-					} catch (err) {
+					}
+					catch (err) {
 						effects = [];
 					}
-				} else if (Array.isArray(spellDamageConfig.effects)) {
+				}
+				else if (Array.isArray(spellDamageConfig.effects)) {
 					effects = spellDamageConfig.effects;
 				}
 				if (effects.length > 0) {
@@ -1976,10 +2024,12 @@ export async function injectDamageCard(message, html, data) {
 				if (typeof spellDamageConfig.criticalEffects === "string") {
 					try {
 						critEffects = JSON.parse(spellDamageConfig.criticalEffects);
-					} catch (err) {
+					}
+					catch (err) {
 						critEffects = [];
 					}
-				} else if (Array.isArray(spellDamageConfig.criticalEffects)) {
+				}
+				else if (Array.isArray(spellDamageConfig.criticalEffects)) {
 					critEffects = spellDamageConfig.criticalEffects;
 				}
 				if (critEffects.length > 0) {
@@ -2024,9 +2074,11 @@ export async function injectDamageCard(message, html, data) {
 		// Only spawn for the user who created the message (the caster)
 		if (message.author.id !== game.user.id) {
 			// Don't return - still process other damage/effects for observers
-		} else if (_spawnedMessages.has(message.id)) {
+		}
+		else if (_spawnedMessages.has(message.id)) {
 			// Check in-memory cache (synchronous, prevents race condition)
-		} else {
+		}
+		else {
 			// Check if the spell cast was successful (skip this check for potions and scrolls which always succeed)
 			// Wands have spell rolls, so they need the success check
 			const summonOutcome = readSdRollOutcome(message);
@@ -2049,7 +2101,8 @@ export async function injectDamageCard(message, html, data) {
 			if (typeof profiles === "string") {
 				try {
 					profiles = JSON.parse(profiles);
-				} catch (err) {
+				}
+				catch (err) {
 					console.error("shadowdark-extras | Failed to parse profiles:", err);
 					return;
 				}
@@ -2073,8 +2126,10 @@ export async function injectDamageCard(message, html, data) {
 	// in-memory). Item-give only needs to fire for cards created during live play.
 	if (game.ready && itemGiveConfig?.enabled && itemGiveConfig?.profiles && itemGiveConfig.profiles.length > 0) {
 		if (message.author.id !== game.user.id) {
-		} else if (_itemGiveMessages.has(message.id)) {
-		} else {
+		}
+		else if (_itemGiveMessages.has(message.id)) {
+		}
+		else {
 			let shouldGive = true;
 			// See the summoning gate above: NPC Special Attack / NPC Feature have no
 			// system-determined attack success, so they grant on use like Potion/Scroll.
@@ -2089,7 +2144,8 @@ export async function injectDamageCard(message, html, data) {
 				if (typeof profiles === "string") {
 					try {
 						profiles = JSON.parse(profiles);
-					} catch (err) {
+					}
+					catch (err) {
 						console.error("shadowdark-extras | Failed to parse item give profiles:", err);
 						profiles = [];
 					}
@@ -2104,9 +2160,11 @@ export async function injectDamageCard(message, html, data) {
 	if (coatingPoisonConfig?.enabled && itemType === "Potion") {
 		if (message.author.id !== game.user.id) {
 			// Don't process for other users
-		} else if (_coatingPoisonMessages.has(message.id)) {
+		}
+		else if (_coatingPoisonMessages.has(message.id)) {
 			// Already processed
-		} else {
+		}
+		else {
 			_coatingPoisonMessages.add(message.id);
 
 			// Determine target actor - use target if present, otherwise self
@@ -2138,7 +2196,8 @@ export async function injectDamageCard(message, html, data) {
 	}
 
 	if ((isSpellWithDamage || isSpellWithEffects)) {
-	} else {
+	}
+	else {
 	}
 
 	// Get targeted tokens - use stored targets from message flags if available
@@ -2202,11 +2261,13 @@ export async function injectDamageCard(message, html, data) {
 		if (deleteMode === "endOfTurn") {
 			// Delete at end of caster's turn - tracked via combat, fallback to 6 seconds
 			autoDelete = 6000;
-		} else if (deleteMode === "duration") {
+		}
+		else if (deleteMode === "duration") {
 			// Delete after X combat rounds - tracked via template flags
 			// autoDelete stays null, we store expiryRounds instead
 			expiryRounds = deleteDuration;
-		} else if (deleteMode === "seconds") {
+		}
+		else if (deleteMode === "seconds") {
 			// Delete after X seconds (time-based)
 			autoDelete = deleteSeconds * 1000;
 		}
@@ -2235,7 +2296,8 @@ export async function injectDamageCard(message, html, data) {
 				casterLevels = [casterLevelId];
 				console.log(`shadowdark-extras | Caster level id=${casterLevelId} — will pass to Region creation`);
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn("shadowdark-extras | Failed to detect caster level:", e);
 		}
 
@@ -2321,7 +2383,8 @@ export async function injectDamageCard(message, html, data) {
 							templateFlags: sdxTemplateFlags,
 						});
 					}
-				} else if (placement === "caster") {
+				}
+				else if (placement === "caster") {
 					// Originate from caster - origin locked to caster, user controls direction
 					const casterTokenId = speaker?.token;
 					const casterToken = canvas.tokens?.get(casterTokenId);
@@ -2346,7 +2409,8 @@ export async function injectDamageCard(message, html, data) {
 							excludeCasterTokenId: excludeCaster ? casterTokenId : null,
 							templateFlags: sdxTemplateFlags,
 						});
-					} else {
+					}
+					else {
 						// No caster token found, fall back to choose location
 						console.warn("shadowdark-extras | Caster token not found for originate from caster, falling back to choose location");
 						result = await SDX.templates.placeAndTarget({
@@ -2365,7 +2429,8 @@ export async function injectDamageCard(message, html, data) {
 							templateFlags: sdxTemplateFlags,
 						});
 					}
-				} else {
+				}
+				else {
 					// Choose location — seed elevation and level from caster
 					const casterToken = canvas.tokens?.get(speaker?.token);
 					result = await SDX.templates.placeAndTarget({
@@ -2415,7 +2480,8 @@ export async function injectDamageCard(message, html, data) {
 									// where targets is an Array.
 									await window.AutomatedAnimations.playAnimation(casterForAnim, [result.template], { item: item });
 									console.log("shadowdark-extras | Manual AA trigger fired");
-								} catch (err) {
+								}
+								catch (err) {
 									console.error("shadowdark-extras | Manual AA trigger failed:", err);
 								}
 							}
@@ -2430,7 +2496,8 @@ export async function injectDamageCard(message, html, data) {
 								try {
 									await window.AutomatedAnimations.playAnimation(casterForAnim, [result.template], { item: item });
 									console.log("shadowdark-extras | Manual AA trigger fired");
-								} catch (err) {
+								}
+								catch (err) {
 									console.error("shadowdark-extras | Manual AA trigger failed:", err);
 								}
 							}
@@ -2451,23 +2518,28 @@ export async function injectDamageCard(message, html, data) {
 					// Mark this message as having template placed using in-memory tracking
 					// We avoid message.update() because it triggers re-renders that remove our injected damage card
 					_templatePlacedMessages.add(messageKey);
-				} else {
+				}
+				else {
 					return; // User cancelled
 				}
-			} else {
+			}
+			else {
 				console.warn("shadowdark-extras | SDX.templates not available, falling back to user targets");
 				targets = Array.from(game.user.targets || []);
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("shadowdark-extras | Error during template placement:", err);
 			targets = Array.from(game.user.targets || []);
 		}
-	} else if (storedTargetIds && storedTargetIds.length > 0) {
+	}
+	else if (storedTargetIds && storedTargetIds.length > 0) {
 		// Use the stored targets from when the message was created
 		targets = storedTargetIds
 			.map(id => canvas.tokens?.get(id))
 			.filter(t => t); // Filter out any tokens that no longer exist
-	} else {
+	}
+	else {
 		// Fallback to current user's targets (backward compatibility)
 		targets = Array.from(game.user.targets || []);
 	}
@@ -2521,14 +2593,16 @@ export async function injectDamageCard(message, html, data) {
 			if (game.user.id !== primaryExecutorId) {
 				auraCreatedThisCall = true;
 			}
-		} else {
+		}
+		else {
 			// Determine which actor to attach the aura to
 			let auraActor = null;
 			let auraToken = null;
 			if (auraConfig.attachTo === "target" && targets.length > 0) {
 				auraActor = targets[0].actor;
 				auraToken = targets[0];
-			} else {
+			}
+			else {
 				// Default to caster
 				auraActor = casterActor;
 				auraToken = (casterTokenId ? canvas.tokens?.get(casterTokenId) : null)
@@ -2568,7 +2642,8 @@ export async function injectDamageCard(message, html, data) {
 					await startFocusSpellIfNeeded(casterActor.id, spellInstanceId, item.name, perTurnConfig);
 					auraTrackerType = "focus";
 					auraTrackerInstanceId = spellInstanceId;
-				} else if ((durationConfig?.type === "rounds" || durationConfig?.type === "turns") && spellDamageConfig?.trackDuration) {
+				}
+				else if ((durationConfig?.type === "rounds" || durationConfig?.type === "turns") && spellDamageConfig?.trackDuration) {
 					try {
 						const trackerConfig = {
 							perTurnTrigger: spellDamageConfig.perTurnTrigger || "start",
@@ -2586,7 +2661,8 @@ export async function injectDamageCard(message, html, data) {
 							durationTrackerStartedForAura = true;
 							message.setFlag(MODULE_ID, "durationTrackerStarted", true);
 						}
-					} catch (err) {
+					}
+					catch (err) {
 						console.warn("shadowdark-extras | Failed to start duration tracking for aura:", err);
 					}
 				}
@@ -2625,7 +2701,8 @@ export async function injectDamageCard(message, html, data) {
 						// Link the newly created aura effect to the focus spell
 						// For focus spells, we MUST use linkEffectToFocusSpell (not Duration spell)
 						await linkEffectToFocusSpell(casterActor.id, spellInstanceId, auraActor.id, auraToken?.id || auraActor.token?.id, effect.id);
-					} else if ((durationConfig?.type === "rounds" || durationConfig?.type === "turns") && spellDamageConfig?.trackDuration) {
+					}
+					else if ((durationConfig?.type === "rounds" || durationConfig?.type === "turns") && spellDamageConfig?.trackDuration) {
 						if (durationTrackerStartedForAura && auraTrackerInstanceId) {
 							await linkEffectToDurationSpell(casterActor.id, auraTrackerInstanceId, auraActor.id, auraToken?.id || auraActor.token?.id, effect.id);
 						}
@@ -2680,7 +2757,8 @@ export async function injectDamageCard(message, html, data) {
 			if (rollData) {
 				try {
 					window._lastSpellRoll = (typeof rollData === "string") ? Roll.fromJSON(rollData) : Roll.fromData(rollData);
-				} catch (e) {
+				}
+				catch (e) {
 					console.error("shadowdark-extras | Error loading synced spell roll:", e);
 				}
 			}
@@ -2696,7 +2774,8 @@ export async function injectDamageCard(message, html, data) {
 								formula: d.formula,
 								roll: (typeof tRollData === "string") ? Roll.fromJSON(tRollData) : Roll.fromData(tRollData),
 							};
-						} catch (e) {
+						}
+						catch (e) {
 							console.error(`shadowdark-extras | Error loading synced per-target roll for ${id}:`, e);
 						}
 					}
@@ -2708,10 +2787,12 @@ export async function injectDamageCard(message, html, data) {
 			}
 
 			// We have everything we need from sync, skip rolling
-		} else if (!isAuthor && !syncedResults) {
+		}
+		else if (!isAuthor && !syncedResults) {
 			// Not the author and no results yet - wait for sync
 			return;
-		} else {
+		}
+		else {
 			// AUTHOR: Continue with normal rolling logic (or if we have syncedResults but need to re-run for some reason, though logic above prevents that)
 			// Clear any cached roll data from previous items
 			window._lastSpellRollBreakdown = null;
@@ -2751,11 +2832,13 @@ export async function injectDamageCard(message, html, data) {
 					if (formulaType === "formula") {
 						// Use custom formula
 						formula = spellDamageConfig.formula || "";
-					} else if (formulaType === "tiered") {
+					}
+					else if (formulaType === "tiered") {
 						// Use tiered formula
 						tieredFormula = spellDamageConfig.tieredFormula || "";
 						hasTieredFormula = tieredFormula.trim() !== "";
-					} else {
+					}
+					else {
 						// Use basic formula (numDice + dieType + bonus)
 						// NOTE: Critical doubling is handled later by doubleDiceInFormula for all formula types
 						const numDice = spellDamageConfig.numDice || 1;
@@ -2765,11 +2848,13 @@ export async function injectDamageCard(message, html, data) {
 						formula = `${numDice}${dieType}`;
 						if (bonus > 0) {
 							formula += `+ ${bonus}`;
-						} else if (bonus < 0) {
+						}
+						else if (bonus < 0) {
 							formula += `${bonus}`;
 						}
 					}
-				} else {
+				}
+				else {
 					// Damage NOT enabled, ensure formula is empty so we don't try to roll "undefined" or something
 					formula = "";
 				}
@@ -2798,7 +2883,10 @@ export async function injectDamageCard(message, html, data) {
 							const bonusRoll = new Roll(bonusFormula, challengeStartRollData);
 							await bonusRoll.evaluate();
 							bonusTotal = bonusRoll.total;
-						} catch (e) { console.warn("SDX | Challenge Bonus Eval Fail", e); }
+						}
+						catch (e) {
+							console.warn("SDX | Challenge Bonus Eval Fail", e);
+						}
 
 						// 2. Calculate DC
 						let dcFormula = challengeConfig.dc || "10";
@@ -2809,7 +2897,8 @@ export async function injectDamageCard(message, html, data) {
 							const dcRoll = new Roll(dcFormula, challengeStartRollData);
 							await dcRoll.evaluate();
 							dcTotal = dcRoll.total;
-						} catch (e) {
+						}
+						catch (e) {
 							dcTotal = parseInt(dcFormula) || 10;
 						}
 
@@ -2834,7 +2923,8 @@ export async function injectDamageCard(message, html, data) {
 							if (game.dice3d) {
 								await game.dice3d.showForRoll(challengeRoll, game.user, true);
 							}
-						} else {
+						}
+						else {
 							console.log("SDX | Using Existing Challenge Roll", challengeRoll);
 						}
 
@@ -2850,7 +2940,8 @@ export async function injectDamageCard(message, html, data) {
 
 						console.log("SDX | Challenge Results", challengeResults);
 
-					} catch (err) {
+					}
+					catch (err) {
 						console.error("shadowdark-extras | Error processing Challenge Mode:", err);
 					}
 				}
@@ -2887,7 +2978,10 @@ export async function injectDamageCard(message, html, data) {
 							await bonusRoll.evaluate();
 							bonusTotal = bonusRoll.total;
 							console.log("SDX | Effects Challenge Bonus Calculated", bonusTotal);
-						} catch (e) { console.warn("SDX | Effects Challenge Bonus Eval Fail", e); }
+						}
+						catch (e) {
+							console.warn("SDX | Effects Challenge Bonus Eval Fail", e);
+						}
 
 						// 2. Calculate DC
 						let dcFormula = challengeConfig.dc || "10";
@@ -2898,7 +2992,8 @@ export async function injectDamageCard(message, html, data) {
 							const dcRoll = new Roll(dcFormula, challengeStartRollData);
 							await dcRoll.evaluate();
 							dcTotal = dcRoll.total;
-						} catch (e) {
+						}
+						catch (e) {
 							dcTotal = parseInt(dcFormula) || 10;
 						}
 
@@ -2946,7 +3041,8 @@ export async function injectDamageCard(message, html, data) {
 
 						console.log("SDX | Effects Challenge Results", effectsChallengeResults);
 
-					} catch (err) {
+					}
+					catch (err) {
 						console.error("shadowdark-extras | Error processing Effects Challenge Mode:", err);
 					}
 				}
@@ -3036,7 +3132,8 @@ export async function injectDamageCard(message, html, data) {
 										const failAction = spellDamageConfig.damageRequirementFailAction || "zero";
 										if (failAction === "half") {
 											targetDamage = Math.floor(targetDamage / 2);
-										} else {
+										}
+										else {
 											targetDamage = 0;
 										}
 									}
@@ -3057,7 +3154,8 @@ export async function injectDamageCard(message, html, data) {
 							totalDamage = Math.floor(totalDamageSum / targets.length);
 							window._lastSpellRollBreakdown = `Per - target(avg: ${totalDamage})`;
 
-						} else {
+						}
+						else {
 							// No target variables and no tiered formula, roll once for all targets
 							const rollData = baseRollData;
 
@@ -3092,7 +3190,8 @@ export async function injectDamageCard(message, html, data) {
 
 							if (roll) {
 								// Use existing roll
-							} else {
+							}
+							else {
 								roll = new Roll(finalFormula, rollData);
 								await roll.evaluate();
 
@@ -3120,11 +3219,13 @@ export async function injectDamageCard(message, html, data) {
 										const failAction = spellDamageConfig.damageRequirementFailAction || "zero";
 										if (failAction === "half") {
 											totalDamage = Math.floor(totalDamage / 2);
-										} else {
+										}
+										else {
 											totalDamage = 0;
 										}
 									}
-								} else {
+								}
+								else {
 									// Store requirement info for per-target evaluation during damage application
 									window._damageRequirement = {
 										formula: requirementFormula,
@@ -3181,16 +3282,19 @@ export async function injectDamageCard(message, html, data) {
 
 						// Allow the re-render from setFlag to handle final injection for consistency
 						return;
-					} catch (error) {
+					}
+					catch (error) {
 						console.error("shadowdark-extras | Error rolling spell damage:", error);
 						ui.notifications.error(`Invalid spell damage formula: ${formula}`);
 						return;
-					} finally {
+					}
+					finally {
 						if (isAuthor) {
 							window._sdx_calculatingMessages.delete(message.id);
 						}
 					}
-				} else if (challengeResults || effectsChallengeResults) {
+				}
+				else if (challengeResults || effectsChallengeResults) {
 					// Case: No damage formula, but we have challenge results (either one or both)
 					const flagData = {
 						totalDamage: 0,
@@ -3202,11 +3306,13 @@ export async function injectDamageCard(message, html, data) {
 					await message.setFlag(MODULE_ID, "spellDamageResults", flagData);
 					return;
 				}
-			} catch (error) {
+			}
+			catch (error) {
 				console.error("shadowdark-extras | Error rolling spell damage:", error);
 				ui.notifications.error(`Invalid spell damage formula: ${formula}`);
 				return;
-			} finally {
+			}
+			finally {
 				if (isAuthor) {
 					window._sdx_calculatingMessages.delete(message.id);
 				}
@@ -3222,14 +3328,16 @@ export async function injectDamageCard(message, html, data) {
 		if (latestFlags?.effectsChallengeResults) {
 			window._latestEffectsChallengeResults = latestFlags.effectsChallengeResults;
 		}
-	} else {
+	}
+	else {
 		// NPC Special Attack Base Damage Handling (Manual Roll since no system roll exists)
 		if (itemType === "NPC Special Attack") {
 			// Check for synced results first
 			const syncedBaseResults = message.getFlag(MODULE_ID, "npcBaseDamage");
 			if (syncedBaseResults) {
 				totalDamage = syncedBaseResults.total;
-			} else if (isAuthor && item.system.damage?.value) {
+			}
+			else if (isAuthor && item.system.damage?.value) {
 				try {
 					let damageFormula = item.system.damage.value;
 					const damageBonus = item.system.bonuses?.damageBonus;
@@ -3251,7 +3359,8 @@ export async function injectDamageCard(message, html, data) {
 						json: roll.toJSON(),
 					});
 					return; // Allow re-render
-				} catch (err) {
+				}
+				catch (err) {
 					console.error("shadowdark-extras | Error rolling NPC Special Attack base damage:", err);
 				}
 			}
@@ -3261,7 +3370,8 @@ export async function injectDamageCard(message, html, data) {
 			const damageRollData = readSdDamageRoll(message);
 			if (typeof damageRollData.total === "number") {
 				totalDamage = damageRollData.total;
-			} else {
+			}
+			else {
 				// SD 4.x: the damage roll is added to message.rolls asynchronously by
 				// rollDamageFromMessage(), which runs after ChatMessage.create() resolves.
 				// If the rollConfig has a damage formula but the roll isn't in message.rolls
@@ -3288,11 +3398,13 @@ export async function injectDamageCard(message, html, data) {
 		if (typeof spellDamageConfig.effects === "string") {
 			try {
 				spellEffects = JSON.parse(spellDamageConfig.effects);
-			} catch (err) {
+			}
+			catch (err) {
 				console.warn("shadowdark-extras | Could not parse spell effects:", err);
 				spellEffects = [];
 			}
-		} else if (Array.isArray(spellDamageConfig.effects)) {
+		}
+		else if (Array.isArray(spellDamageConfig.effects)) {
 			spellEffects = spellDamageConfig.effects;
 		}
 	}
@@ -3313,11 +3425,13 @@ export async function injectDamageCard(message, html, data) {
 		if (typeof spellDamageConfig.criticalEffects === "string") {
 			try {
 				criticalEffects = JSON.parse(spellDamageConfig.criticalEffects);
-			} catch (err) {
+			}
+			catch (err) {
 				console.warn("shadowdark-extras | Could not parse spell critical effects:", err);
 				criticalEffects = [];
 			}
-		} else if (Array.isArray(spellDamageConfig.criticalEffects)) {
+		}
+		else if (Array.isArray(spellDamageConfig.criticalEffects)) {
 			criticalEffects = spellDamageConfig.criticalEffects;
 		}
 
@@ -3338,7 +3452,8 @@ export async function injectDamageCard(message, html, data) {
 			const randomIndex = Math.floor(Math.random() * spellEffects.length);
 			const selectedEffect = spellEffects[randomIndex];
 			spellEffects = [selectedEffect];
-		} else if (effectSelectionMode === "prompt") {
+		}
+		else if (effectSelectionMode === "prompt") {
 			// Store original effects for the click handler to use for prompting
 			originalEffectsForPrompt = [...spellEffects];
 		}
@@ -3365,7 +3480,8 @@ export async function injectDamageCard(message, html, data) {
 
 				// Reconstruct Roll results if needed (though they are mainly used for display)
 				// The breakdown logic will use bonusRollResults/criticalRollResults which are plain objects
-			} else if (isAuthor) {
+			}
+			else if (isAuthor) {
 				// Author calculates and persists results
 				try {
 					weaponBonusDamage = await calculateWeaponBonusDamage(item, actor, targetActor, isCritical);
@@ -3419,10 +3535,12 @@ export async function injectDamageCard(message, html, data) {
 
 					// Allow the re-render from setFlag to handle final injection for consistency
 					return;
-				} catch (err) {
+				}
+				catch (err) {
 					console.warn("shadowdark-extras | Failed to calculate weapon bonus damage:", err);
 				}
-			} else {
+			}
+			else {
 				// Not the author and no results yet - wait for sync
 				return;
 			}
@@ -3455,7 +3573,8 @@ export async function injectDamageCard(message, html, data) {
 				}
 			}
 		}
-	} else if (item?.type === "NPC Attack" || item?.type === "NPC Special Attack") {
+	}
+	else if (item?.type === "NPC Attack" || item?.type === "NPC Special Attack") {
 		// NPC Attack Extra Damage Handling
 		const extraDamagesFlag = item.getFlag(MODULE_ID, "extraDamages") || [];
 		const extraDamages = Array.isArray(extraDamagesFlag) ? extraDamagesFlag : Object.values(extraDamagesFlag);
@@ -3464,7 +3583,8 @@ export async function injectDamageCard(message, html, data) {
 		const syncedNpcResults = message.getFlag(MODULE_ID, "npcExtraDamage");
 		if (syncedNpcResults) {
 			weaponBonusDamage = syncedNpcResults;
-		} else if (isAuthor && extraDamages.length > 0) {
+		}
+		else if (isAuthor && extraDamages.length > 0) {
 			// Calculate extra damage
 			let totalBonus = 0;
 			let damageComponents = [];
@@ -3522,7 +3642,8 @@ export async function injectDamageCard(message, html, data) {
 						});
 					}
 
-				} catch (err) {
+				}
+				catch (err) {
 					console.error("shadowdark-extras | Error rolling NPC extra damage:", err);
 				}
 			}
@@ -3594,7 +3715,8 @@ export async function injectDamageCard(message, html, data) {
 		const $diceRoll = html.find(".dice-roll, .card-damage-rolls").first();
 		if ($diceRoll.length) {
 			$diceRoll.before(challengeHtml);
-		} else {
+		}
+		else {
 			html.find(".card-content").prepend(challengeHtml);
 		}
 	}
@@ -3609,12 +3731,14 @@ export async function injectDamageCard(message, html, data) {
 	// Insert the damage card after the chat card or message content
 	// Skip injection if damage card is hidden from this player
 	if (hideDamageCardFromPlayer) {
-	} else {
+	}
+	else {
 		const $chatCard = html.find(".chat-card");
 
 		if ($chatCard.length) {
 			$chatCard.after(cardHtml);
-		} else {
+		}
+		else {
 			const $messageContent = html.find(".message-content");
 			$messageContent.append(cardHtml);
 		}
@@ -3643,7 +3767,8 @@ export async function injectDamageCard(message, html, data) {
 	// Attach event listeners (only if damage card was injected)
 	if (!hideDamageCardFromPlayer) {
 		attachDamageCardListeners(html, message.id);
-	} else if (isSpellWithDamage || isSpellWithEffects || hasWeaponBonuses || allEffects.length > 0) {
+	}
+	else if (isSpellWithDamage || isSpellWithEffects || hasWeaponBonuses || allEffects.length > 0) {
 		// If damage card is hidden, show a minimal summary for both spells AND weapons (if they have bonuses)
 
 		// Hide native damage rolls to avoid redundancy when showing our summary
@@ -3671,7 +3796,8 @@ export async function injectDamageCard(message, html, data) {
 			const roll = window._lastSpellRoll;
 			if (roll) {
 				formula = roll.formula;
-			} else if (window._lastSpellRollBreakdown) {
+			}
+			else if (window._lastSpellRollBreakdown) {
 				formula = window._lastSpellRollBreakdown.split(" = ")[0];
 			}
 		}
@@ -3714,7 +3840,8 @@ export async function injectDamageCard(message, html, data) {
 		const $chatCard = html.find(".chat-card");
 		if ($chatCard.length) {
 			$chatCard.append(minimalHtml);
-		} else {
+		}
+		else {
 			html.find(".message-content").append(minimalHtml);
 		}
 	}
@@ -3796,12 +3923,15 @@ export async function injectDamageCard(message, html, data) {
 							$applyConditionBtn.click();
 						}, 200); // Slight delay after damage
 					}
-				} else if (isFocusCheck) {
+				}
+				else if (isFocusCheck) {
 				}
 			}, 100);
-		} else {
 		}
-	} else if ((shouldAutoApplyDamage || shouldAutoApplyConditions) && messageAuthorId !== game.user.id) {
+		else {
+		}
+	}
+	else if ((shouldAutoApplyDamage || shouldAutoApplyConditions) && messageAuthorId !== game.user.id) {
 	}
 
 	// Add event listener for minimal summary toggle
@@ -3854,7 +3984,8 @@ export async function injectDamageCard(message, html, data) {
 					const casterTokenId = message.speaker?.token;
 					if (casterTokenId) {
 						targetTokenIds = [casterTokenId];
-					} else {
+					}
+					else {
 						// Fallback: find first token for this actor on the current scene
 						const casterToken = canvas.tokens?.placeables.find(t => t.actor?.id === actor.id);
 						if (casterToken) {
@@ -3880,7 +4011,8 @@ export async function injectDamageCard(message, html, data) {
 
 				// Also mark message with flag for persistence (backup check)
 				await message.setFlag(MODULE_ID, "durationTrackerStarted", true);
-			} catch (durationError) {
+			}
+			catch (durationError) {
 				console.warn("shadowdark-extras | Failed to start duration spell tracking:", durationError);
 			}
 		}
@@ -3922,7 +4054,8 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 	if (sRollData) {
 		try {
 			spellRollFromFlag = (typeof sRollData === "string") ? Roll.fromJSON(sRollData) : Roll.fromData(sRollData);
-		} catch (e) {
+		}
+		catch (e) {
 			console.error("shadowdark-extras | Error parsing roll from flag:", e);
 		}
 	}
@@ -3938,7 +4071,8 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 			npcBaseRoll = (typeof syncedNpcBaseResults.json === "string")
 				? Roll.fromJSON(syncedNpcBaseResults.json)
 				: Roll.fromData(syncedNpcBaseResults.json);
-		} catch (e) {
+		}
+		catch (e) {
 			console.error("shadowdark-extras | Error parsing NPC base roll:", e);
 		}
 	}
@@ -3976,7 +4110,8 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 	let dice = [];
 	if (roll.dice && roll.dice.length > 0) {
 		dice = roll.dice;
-	} else if (roll.terms) {
+	}
+	else if (roll.terms) {
 		// Filter terms to find dice (objects with faces property)
 		dice = roll.terms.filter(t => t.faces !== undefined);
 	}
@@ -4046,7 +4181,8 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 						isBonus: true,
 						label: result.label,
 					});
-				} else {
+				}
+				else {
 					// This is a static bonus
 					bonuses.push({
 						label: result.label || "Bonus",
@@ -4054,7 +4190,8 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 					});
 				}
 			}
-		} else if (weaponBonusDamage.totalBonus !== 0 && !weaponBonusDamage.bonusFormula.includes("d")) {
+		}
+		else if (weaponBonusDamage.totalBonus !== 0 && !weaponBonusDamage.bonusFormula.includes("d")) {
 			// Fallback for static bonuses without roll results
 			bonuses.push({
 				label: "Weapon Bonus",
@@ -4074,14 +4211,16 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 						isCritBonus: true,
 						label: result.label,
 					});
-				} else {
+				}
+				else {
 					bonuses.push({
 						label: result.label || "Critical Bonus",
 						value: result.value,
 					});
 				}
 			}
-		} else if (weaponBonusDamage.criticalBonus !== 0) {
+		}
+		else if (weaponBonusDamage.criticalBonus !== 0) {
 			// Fallback for critical bonus without roll results
 			bonuses.push({
 				label: `Crit(${weaponBonusDamage.criticalFormula})`,
@@ -4302,7 +4441,8 @@ async function rollTargetDefenseCheck({ messageId, tokenId, ability, dcFormula, 
 		const dcRoll = new Roll(evaluatedFormula, rollData);
 		await dcRoll.evaluate();
 		dc = Number(dcRoll.total) || 12;
-	} catch (err) {
+	}
+	catch (err) {
 		dc = Number.parseInt(dcFormula, 10) || 12;
 	}
 
@@ -4514,7 +4654,8 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 						${cardSettings.showMultipliers && totalDamage > 0 ? buildMultipliersHtml(cardSettings.damageMultipliers, target.id) : ""}
 					</div>
 							`;
-			} catch (error) {
+			}
+			catch (error) {
 				console.error("shadowdark-extras | Error processing target:", error, target);
 			}
 		}
@@ -4604,10 +4745,12 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 	if (totalDamage > 0) {
 		headerText = isHealing ? "APPLY HEALING" : "APPLY DAMAGE";
 		headerIcon = isHealing ? "fa-heart-pulse" : "fa-heart";
-	} else if (allEffects && allEffects.length > 0) {
+	}
+	else if (allEffects && allEffects.length > 0) {
 		headerText = "APPLY EFFECTS";
 		headerIcon = "fa-wand-sparkles";
-	} else {
+	}
+	else {
 		headerText = "SPELL EFFECTS";
 		headerIcon = "fa-magic";
 	}
@@ -4698,12 +4841,14 @@ function rebuildTargetsList($card, messageId, baseDamage) {
 			targets = storedTargetIds
 				.map(id => canvas.tokens.get(id))
 				.filter(t => t); // Filter out any tokens that no longer exist
-		} else {
+		}
+		else {
 			// Fallback to current user's targets
 			targets = Array.from(game.user.targets);
 		}
 		tabName = "TARGETED";
-	} else if (activeTabIndex === 1) {
+	}
+	else if (activeTabIndex === 1) {
 		targets = canvas.tokens.controlled.filter(t => t.actor);
 		tabName = "SELECTED";
 	}
@@ -4824,9 +4969,11 @@ function attachMultiplierListeners($card) {
 		let newDamage;
 		if (multiplier === 0 && $btn.text().trim() === "×") {
 			newDamage = 0;
-		} else if (multiplier === -1) {
+		}
+		else if (multiplier === -1) {
 			newDamage = -baseDamage;
-		} else {
+		}
+		else {
 			newDamage = Math.floor(baseDamage * multiplier);
 		}
 
@@ -4844,10 +4991,12 @@ function attachMultiplierListeners($card) {
 
 		if (newDamage === 0) {
 			previewSign = "";
-		} else if (isOriginallyHealing) {
+		}
+		else if (isOriginallyHealing) {
 			// Healing spell: positive = +, negative = -
 			previewSign = newDamage > 0 ? "+" : "-";
-		} else {
+		}
+		else {
 			// Damage spell: positive = -, negative = +
 			previewSign = newDamage > 0 ? "-" : "+";
 		}
@@ -4875,17 +5024,20 @@ function attachMultiplierListeners($card) {
 				// Positive on healing spell = healing
 				effectiveDamageType = "Healing";
 				finalCalculatedDamage = newDamage;
-			} else {
+			}
+			else {
 				// Negative on healing spell = damage (flip the sign for damage application)
 				effectiveDamageType = "damage";
 				finalCalculatedDamage = Math.abs(newDamage);
 			}
-		} else {
+		}
+		else {
 			if (newDamage >= 0) {
 				// Positive on damage spell = damage
 				effectiveDamageType = "damage";
 				finalCalculatedDamage = newDamage;
-			} else {
+			}
+			else {
 				// Negative on damage spell = healing (flip the sign for healing application)
 				effectiveDamageType = "Healing";
 				finalCalculatedDamage = Math.abs(newDamage);
@@ -4925,7 +5077,8 @@ function attachTargetEnableListeners($card) {
 		// Visual feedback - gray out disabled targets
 		if (isEnabled) {
 			$targetItem.removeClass("sdx-target-disabled");
-		} else {
+		}
+		else {
 			$targetItem.addClass("sdx-target-disabled");
 		}
 
@@ -4971,7 +5124,8 @@ async function _resolveActorForSummon(uuid) {
 
 		await imported.setFlag(MODULE_ID, "_sdxSummonSourceUuid", uuid);
 		return imported.uuid;
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn(`${MODULE_ID} | Could not import summon actor from compendium (${uuid}):`, err);
 		return uuid;
 	}
@@ -5040,11 +5194,13 @@ export async function spawnSummonedCreatures(casterActor, item, profiles, summon
 						flavor: `Summoning ${profile.displayName || profile.creatureName || "creatures"}`,
 						speaker: ChatMessage.getSpeaker({ actor: casterActor }),
 					});
-				} catch (err) {
+				}
+				catch (err) {
 					console.warn(`${MODULE_ID} | Invalid count formula, using 1:`, countFormula, err);
 					count = 1;
 				}
-			} else {
+			}
+			else {
 				count = parseInt(countFormula) || 1;
 			}
 
@@ -5104,7 +5260,8 @@ export async function spawnSummonedCreatures(casterActor, item, profiles, summon
 						templateId:      null,
 						summonedTokenIds: tokenIds,
 					});
-				} catch (err) {
+				}
+				catch (err) {
 					console.warn(`${MODULE_ID} | Failed to start duration tracking for summoning spell:`, err);
 				}
 
@@ -5118,10 +5275,12 @@ export async function spawnSummonedCreatures(casterActor, item, profiles, summon
 			}
 
 			ui.notifications.info(`Summoned ${creatures.length} creature(s)`);
-		} else {
+		}
+		else {
 			ui.notifications.warn("No creatures were spawned - check that creature UUIDs are valid");
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.error("shadowdark-extras | Error summoning creatures:", err);
 		ui.notifications.error("Failed to summon creatures: " + err.message);
 	}
@@ -5150,11 +5309,13 @@ async function giveItemsToCaster(casterActor, item, profiles) {
 					flavor: `Item giver: ${profile.itemName || item.name || "Item"} `,
 					speaker: ChatMessage.getSpeaker({ actor: casterActor }),
 				});
-			} catch (err) {
+			}
+			catch (err) {
 				console.warn("shadowdark-extras | Invalid item quantity formula, defaulting to 1:", qtyValue, err);
 				quantity = 1;
 			}
-		} else if (qtyValue !== "") {
+		}
+		else if (qtyValue !== "") {
 			const parsed = parseInt(qtyValue);
 			if (!Number.isNaN(parsed)) {
 				quantity = Math.max(1, parsed);
@@ -5171,7 +5332,8 @@ async function giveItemsToCaster(casterActor, item, profiles) {
 			if (!itemData.system) itemData.system = {};
 			itemData.system.quantity = quantity;
 			itemsToCreate.push(itemData);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("shadowdark-extras | Failed to load item for item giver:", err);
 		}
 	}
@@ -5183,7 +5345,8 @@ async function giveItemsToCaster(casterActor, item, profiles) {
 		const createdItems = await casterActor.createEmbeddedDocuments("Item", itemsToCreate);
 		const itemSummaries = createdItems.map(createdItem => `${createdItem.name} x${createdItem.system?.quantity || 1} `);
 		ui.notifications.info(`Granted ${itemSummaries.join(", ")} to ${casterActor.name} `);
-	} catch (err) {
+	}
+	catch (err) {
 		console.error("shadowdark-extras | Failed to add items to caster:", err);
 		ui.notifications.error("Failed to grant items to caster: " + err.message);
 	}
@@ -5237,11 +5400,13 @@ async function applyCoatingPoison(casterActor, targetActor, config, potionName) 
 		if (bonus !== 0) {
 			damageFormula += bonus > 0 ? `+${bonus}` : `${bonus}`;
 		}
-	} else if (config.formulaType === "formula") {
+	}
+	else if (config.formulaType === "formula") {
 		damageFormula = config.formula || "1d6";
 		// Replace level placeholder with actual level
 		damageFormula = damageFormula.replace(/@level/gi, casterLevel);
-	} else if (config.formulaType === "tiered") {
+	}
+	else if (config.formulaType === "tiered") {
 		// Parse tiered formula like "1-3:1d4, 4-6:1d6, 7+:1d8"
 		const tieredFormula = config.tieredFormula || "1+:1d6";
 		damageFormula = parseTieredFormula(tieredFormula, casterLevel) || "1d6";
@@ -5356,7 +5521,8 @@ function attachDamageCardListeners(html, messageId) {
 		// Toggle chevron direction
 		if ($chevron.hasClass("fa-chevron-down")) {
 			$chevron.removeClass("fa-chevron-down").addClass("fa-chevron-up");
-		} else {
+		}
+		else {
 			$chevron.removeClass("fa-chevron-up").addClass("fa-chevron-down");
 		}
 	});
@@ -5381,7 +5547,8 @@ function attachDamageCardListeners(html, messageId) {
 				dcFormula: String($btn.data("dc") || "12"),
 				casterActorId: String($card.data("caster-actor-id") || ""),
 			});
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("shadowdark-extras | Failed to roll target defense:", err);
 			ui.notifications.error("Failed to roll target defense");
 			$btn.prop("disabled", false);
@@ -5461,7 +5628,8 @@ function attachDamageCardListeners(html, messageId) {
 			const $prev = $bonus.prev(".sdx-plus");
 			if ($prev.length && $prev.text().includes("-")) {
 				newTotal -= bonusValue;
-			} else {
+			}
+			else {
 				newTotal += bonusValue;
 			}
 		});
@@ -5520,7 +5688,8 @@ function attachDamageCardListeners(html, messageId) {
 			if (weaponBonusDataStr) {
 				try {
 					weaponBonus = JSON.parse(weaponBonusDataStr);
-				} catch (e) {
+				}
+				catch (e) {
 					console.warn("shadowdark-extras | Could not parse weapon bonus data:", e);
 				}
 			}
@@ -5683,10 +5852,12 @@ function attachDamageCardListeners(html, messageId) {
 			// Show notification
 			ui.notifications.info(`Rerolled damage: ${totalDamage} `);
 
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("shadowdark-extras | Error rerolling damage:", err);
 			ui.notifications.error("Failed to reroll damage");
-		} finally {
+		}
+		finally {
 			// Re-enable button
 			$btn.prop("disabled", false);
 			$btn.find("i").removeClass("fa-spinner fa-spin").addClass("fa-dice");
@@ -5779,7 +5950,8 @@ function attachDamageCardListeners(html, messageId) {
 					const defenseAction = $defense.data("defense-action") || "avoid";
 					if (defenseAction === "half") {
 						calculatedDamage = Math.floor(calculatedDamage / 2);
-					} else {
+					}
+					else {
 						calculatedDamage = 0;
 					}
 				}
@@ -5801,12 +5973,15 @@ function attachDamageCardListeners(html, messageId) {
 						if (!requirementMet) {
 							if (reqInfo.failAction === "half") {
 								calculatedDamage = Math.floor(calculatedDamage / 2);
-							} else {
+							}
+							else {
 								calculatedDamage = 0;
 							}
-						} else {
 						}
-					} catch (err) {
+						else {
+						}
+					}
+					catch (err) {
 						console.warn(`shadowdark - extras | Failed to evaluate requirement for target ${tokenId}: `, err);
 					}
 				}
@@ -5835,7 +6010,8 @@ function attachDamageCardListeners(html, messageId) {
 								try {
 									const weaponBonusData = JSON.parse(weaponBonusAttr.replace(/&quot;/g, '"'));
 									damageComponents = weaponBonusData.damageComponents || [];
-								} catch (e) {
+								}
+								catch (e) {
 									console.warn("shadowdark-extras | Failed to parse weapon bonus data:", e);
 								}
 							}
@@ -5867,13 +6043,16 @@ function attachDamageCardListeners(html, messageId) {
 
 						if (success) {
 							appliedCount++;
-						} else {
+						}
+						else {
 							console.warn("shadowdark-extras | Failed to apply damage to token:", tokenId);
 						}
-					} catch (socketError) {
+					}
+					catch (socketError) {
 						console.error("shadowdark-extras | Socket error applying damage:", socketError);
 					}
-				} else {
+				}
+				else {
 					console.error("shadowdark-extras | socketlib not initialized");
 					ui.notifications.error("Socket communication not available");
 				}
@@ -5891,7 +6070,8 @@ function attachDamageCardListeners(html, messageId) {
 					if (persistMsg && !persistMsg.getFlag(MODULE_ID, "damageApplied")) {
 						await persistMsg.setFlag(MODULE_ID, "damageApplied", true);
 					}
-				} catch (flagErr) {
+				}
+				catch (flagErr) {
 					console.warn("shadowdark-extras | Failed to persist damageApplied flag:", flagErr);
 				}
 
@@ -5910,10 +6090,12 @@ function attachDamageCardListeners(html, messageId) {
 							}
 						}
 					}
-				} catch (decrementError) {
+				}
+				catch (decrementError) {
 					console.warn("shadowdark-extras | Failed to decrement weapon bonus usage:", decrementError);
 				}
-			} else {
+			}
+			else {
 				ui.notifications.warn("No damage to apply");
 				$btn.html('<i class="fas fa-exclamation"></i> NO TARGETS');
 			}
@@ -5934,7 +6116,8 @@ function attachDamageCardListeners(html, messageId) {
 				$btn.data("applying", false);
 			}, 2000);
 
-		} catch (error) {
+		}
+		catch (error) {
 			console.error("shadowdark-extras | Error applying damage:", error);
 			ui.notifications.error("Failed to apply damage: " + error.message);
 			$btn.prop("disabled", false);
@@ -5991,7 +6174,8 @@ function attachDamageCardListeners(html, messageId) {
 			if (spellInfoAttr) {
 				try {
 					spellInfo = JSON.parse(spellInfoAttr);
-				} catch (err) {
+				}
+				catch (err) {
 					console.warn("shadowdark-extras | Could not parse spell info:", err);
 				}
 			}
@@ -5999,7 +6183,8 @@ function attachDamageCardListeners(html, messageId) {
 			let effects = [];
 			if (typeof effectsJson === "string") {
 				effects = JSON.parse(effectsJson);
-			} else if (Array.isArray(effectsJson)) {
+			}
+			else if (Array.isArray(effectsJson)) {
 				effects = effectsJson;
 			}
 
@@ -6029,7 +6214,8 @@ function attachDamageCardListeners(html, messageId) {
 							img: effectDoc?.img || "icons/svg/mystery-man.svg",
 							data: effectData,
 						});
-					} catch (err) {
+					}
+					catch (err) {
 						effectOptions.push({
 							uuid: effectUuid,
 							name: "Unknown Effect",
@@ -6119,10 +6305,12 @@ function attachDamageCardListeners(html, messageId) {
 				if (cardTargets.length > 0) {
 					// Use targets from the current tab (override)
 					effectTargets = cardTargets;
-				} else if (effectApplyToTarget) {
+				}
+				else if (effectApplyToTarget) {
 					// No targets in tab, but configured to apply to target - keep empty (will show warning)
 					effectTargets = [];
-				} else {
+				}
+				else {
 					// No targets in tab and configured for self - apply to caster
 					if (casterToken) effectTargets = [casterToken];
 				}
@@ -6156,9 +6344,11 @@ function attachDamageCardListeners(html, messageId) {
 							if (!requirementMet) {
 								skippedCount++;
 								continue; // Skip this target
-							} else {
 							}
-						} catch (err) {
+							else {
+							}
+						}
+						catch (err) {
 							console.warn(`shadowdark - extras | Failed to evaluate effects requirement for target ${target.id}: `, err);
 							// On error, assume requirement is met (fail-open)
 						}
@@ -6179,13 +6369,16 @@ function attachDamageCardListeners(html, messageId) {
 
 							if (success === true) {
 								appliedCount++;
-							} else {
+							}
+							else {
 								console.warn("shadowdark-extras | Failed to apply condition to token:", target.id);
 							}
-						} catch (socketError) {
+						}
+						catch (socketError) {
 							console.error("shadowdark-extras | Socket error applying condition:", socketError);
 						}
-					} else {
+					}
+					else {
 						console.error("shadowdark-extras | socketlib not initialized");
 						ui.notifications.error("Socket communication not available");
 					}
@@ -6208,16 +6401,20 @@ function attachDamageCardListeners(html, messageId) {
 					if (messageDoc && !messageDoc.getFlag(MODULE_ID, "conditionsApplied")) {
 						await messageDoc.setFlag(MODULE_ID, "conditionsApplied", true);
 					}
-				} catch (flagErr) {
+				}
+				catch (flagErr) {
 					console.warn("shadowdark-extras | Failed to persist conditionsApplied flag:", flagErr);
 				}
-			} else if (skippedCount > 0) {
+			}
+			else if (skippedCount > 0) {
 				ui.notifications.warn("No conditions applied - requirement not met for any target");
 				$btn.html('<i class="fas fa-exclamation"></i> REQ FAILED');
-			} else {
+			}
+			else {
 				ui.notifications.warn("No conditions were applied - no valid targets");
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("shadowdark-extras | Error applying conditions:", err);
 			ui.notifications.error("Failed to apply conditions");
 			$btn.prop("disabled", false);
@@ -6246,9 +6443,11 @@ function attachDamageCardListeners(html, messageId) {
 			let profiles = [];
 			if (typeof profilesJson === "string") {
 				profiles = JSON.parse(profilesJson);
-			} else if (Array.isArray(profilesJson)) {
+			}
+			else if (Array.isArray(profilesJson)) {
 				profiles = profilesJson;
-			} else if (profilesJson && typeof profilesJson === "object") {
+			}
+			else if (profilesJson && typeof profilesJson === "object") {
 				profiles = Object.values(profilesJson);
 			}
 
@@ -6319,12 +6518,14 @@ function attachDamageCardListeners(html, messageId) {
 			if (spawnedTokens && spawnedTokens.length > 0) {
 				ui.notifications.info(`Summoned ${spawnedTokens.length} creature(s)`);
 				$btn.html('<i class="fas fa-check"></i> SUMMONED');
-			} else {
+			}
+			else {
 				ui.notifications.info("Summoning cancelled");
 				$btn.prop("disabled", false);
 				$btn.data("summoning", false);
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("shadowdark-extras | Error summoning creatures:", err);
 			ui.notifications.error("Failed to summon creatures");
 			$btn.prop("disabled", false);

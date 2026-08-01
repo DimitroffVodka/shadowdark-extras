@@ -177,7 +177,8 @@ export async function executeSpellItemMacro(spellItem, actor, trigger, context =
 
 		const macroFn = new AsyncFunction(...safeParams, macroCommand);
 		await macroFn.call(scope, ...safeValues);
-	} catch (error) {
+	}
+	catch (error) {
 		console.error(`${MODULE_ID} | Error executing spell macro:`, error);
 		ui.notifications.error("There was an error in your macro syntax. See the console (F12) for details");
 	}
@@ -395,7 +396,8 @@ export function registerSpellItemMacroSocket() {
 				// identified flag; legacy (SD 3.x) worlds just clear the SDX flags.
 				if (item.system?.identification !== undefined) {
 					if (!item.system.isIdentified) await item.system.toggleIdentified();
-				} else {
+				}
+				else {
 					await item.unsetFlag(MODULE_ID, "unidentified");
 					await item.unsetFlag(MODULE_ID, "unidentifiedName");
 				}
@@ -432,7 +434,8 @@ export function registerSpellItemMacroSocket() {
 						itemUuid: item.uuid,
 						maskedName,
 					});
-				} else {
+				}
+				else {
 					const sdxModule = game.modules.get(MODULE_ID);
 					if (sdxModule?.api?.showItemReveal) {
 						await sdxModule.api.showItemReveal(item, maskedName);

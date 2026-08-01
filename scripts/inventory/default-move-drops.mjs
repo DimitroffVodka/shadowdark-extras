@@ -40,7 +40,8 @@ export function patchCtrlMoveOnActorSheetDrops() {
 		let sourceItem = null;
 		try {
 			if (!ctrlCopy && sourceUuid) sourceItem = await fromUuid(sourceUuid);
-		} catch (e) {
+		}
+		catch (e) {
 			// Ignore uuid resolution failures
 		}
 
@@ -64,10 +65,12 @@ export function patchCtrlMoveOnActorSheetDrops() {
 					await child.delete({ sdxInternal: true });
 				}
 				await sourceItem.delete({ sdxInternal: true });
-			} else {
+			}
+			else {
 				await sourceItem.delete();
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Ctrl-move delete failed`, err);
 		}
 

@@ -86,11 +86,13 @@ export function injectSpellAlignmentField(app, html) {
 		if ($grid.length) {
 			// Append to the grid
 			$grid.append(alignmentHtml);
-		} else {
+		}
+		else {
 			// Fallback: append directly to content
 			$content.append(alignmentHtml);
 		}
-	} else {
+	}
+	else {
 		//console.log(`${MODULE_ID} | Could not find content area in Caster Classes box`);
 		return;
 	}
@@ -113,7 +115,8 @@ export async function enhanceSpellSheet(app, html) {
 	// Check if spell enhancement is enabled
 	try {
 		if (!game.settings.get(MODULE_ID, "enhanceSpells")) return;
-	} catch {
+	}
+	catch {
 		return;
 	}
 
@@ -270,7 +273,8 @@ export async function enhanceSpellSheet(app, html) {
 		if ($detailsLink.length) {
 			$detailsLink.after(activityTabLink);
 			//console.log(`${MODULE_ID} | Activity tab link added to navigation`);
-		} else {
+		}
+		else {
 			console.warn(`${MODULE_ID} | Could not find Details tab link`);
 		}
 
@@ -280,7 +284,8 @@ export async function enhanceSpellSheet(app, html) {
 		if ($detailsTab.length) {
 			$detailsTab.after(activityTabContent);
 			//console.log(`${MODULE_ID} | Activity tab content created`);
-		} else {
+		}
+		else {
 			console.warn(`${MODULE_ID} | Could not find Details tab content`);
 		}
 
@@ -326,7 +331,8 @@ export async function enhanceSpellSheet(app, html) {
 	if (typeof effectsArray === "string") {
 		try {
 			effectsArray = JSON.parse(effectsArray);
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Could not parse effects string:`, effectsArray, err);
 			effectsArray = [];
 		}
@@ -395,7 +401,8 @@ export async function enhanceSpellSheet(app, html) {
 						</div>
 					</div>
 				`;
-			} else {
+			}
+			else {
 				console.warn(`${MODULE_ID} | Could not load effect from UUID:`, uuid);
 			}
 		}
@@ -411,7 +418,8 @@ export async function enhanceSpellSheet(app, html) {
 	if (typeof summonProfilesArray === "string") {
 		try {
 			summonProfilesArray = JSON.parse(summonProfilesArray);
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Could not parse summon profiles string:`, summonProfilesArray, err);
 			summonProfilesArray = [];
 		}
@@ -431,7 +439,8 @@ export async function enhanceSpellSheet(app, html) {
 	if (typeof itemGiveProfilesArray === "string") {
 		try {
 			itemGiveProfilesArray = JSON.parse(itemGiveProfilesArray);
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Could not parse item give profiles string:`, itemGiveProfilesArray, err);
 			itemGiveProfilesArray = [];
 		}
@@ -453,7 +462,8 @@ export async function enhanceSpellSheet(app, html) {
 	if (typeof criticalEffectsArray === "string") {
 		try {
 			criticalEffectsArray = JSON.parse(criticalEffectsArray);
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Could not parse critical effects string:`, criticalEffectsArray, err);
 			criticalEffectsArray = [];
 		}
@@ -489,7 +499,8 @@ export async function enhanceSpellSheet(app, html) {
 						</div>
 					</div>
 				`;
-			} else {
+			}
+			else {
 				console.warn(`${MODULE_ID} | Could not load critical effect from UUID:`, uuid);
 			}
 		}
@@ -550,7 +561,8 @@ export async function enhanceSpellSheet(app, html) {
 		const $content = $(this).closest(".sdx-spell-damage-box").find(".sdx-spell-damage-content");
 		if ($(this).is(":checked")) {
 			$content.slideDown(200);
-		} else {
+		}
+		else {
 			$content.slideUp(200);
 		}
 	});
@@ -560,7 +572,8 @@ export async function enhanceSpellSheet(app, html) {
 		const $templateSettings = $(this).closest(".sdx-targeting-content").find(".sdx-template-settings");
 		if ($(this).val() === "template") {
 			$templateSettings.slideDown(200);
-		} else {
+		}
+		else {
 			$templateSettings.slideUp(200);
 		}
 	});
@@ -626,7 +639,8 @@ export async function enhanceSpellSheet(app, html) {
 		const $config = $(this).closest(".sdx-template-effects-section").find(".sdx-template-effects-config");
 		if ($(this).is(":checked")) {
 			$config.css({ opacity: "", pointerEvents: "" });
-		} else {
+		}
+		else {
 			$config.css({ opacity: "0.5", pointerEvents: "none" });
 		}
 	});
@@ -636,7 +650,8 @@ export async function enhanceSpellSheet(app, html) {
 		const $config = $(this).closest(".sdx-template-effects-section").find(".sdx-template-save-config");
 		if ($(this).is(":checked")) {
 			$config.css({ opacity: "", pointerEvents: "" });
-		} else {
+		}
+		else {
 			$config.css({ opacity: "0.5", pointerEvents: "none" });
 		}
 	});
@@ -652,9 +667,11 @@ export async function enhanceSpellSheet(app, html) {
 		// Show the selected formula section
 		if (selectedType === "basic") {
 			$box.find(".sdx-basic-formula").show();
-		} else if (selectedType === "formula") {
+		}
+		else if (selectedType === "formula") {
 			$box.find(".sdx-custom-formula").show();
-		} else if (selectedType === "tiered") {
+		}
+		else if (selectedType === "tiered") {
 			$box.find(".sdx-tiered-formula").show();
 		}
 
@@ -702,7 +719,8 @@ export async function enhanceSpellSheet(app, html) {
 		// Remove "no effects" placeholder if we have effects
 		if (effects.length > 0) {
 			$effectsList.find(".sdx-no-effects").remove();
-		} else if ($effectsList.find(".sdx-spell-effect-item").length === 0) {
+		}
+		else if ($effectsList.find(".sdx-spell-effect-item").length === 0) {
 			$effectsList.html('<div class="sdx-no-effects">Drag and drop conditions or effects here</div>');
 		}
 	}
@@ -734,12 +752,14 @@ export async function enhanceSpellSheet(app, html) {
 			let doc = null;
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === "Item" && data.id) {
+			}
+			else if (data.type === "Item" && data.id) {
 				// Handle items from compendiums or world
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
 					doc = await pack.getDocument(data.id);
-				} else {
+				}
+				else {
 					doc = game.items.get(data.id);
 				}
 			}
@@ -812,7 +832,8 @@ export async function enhanceSpellSheet(app, html) {
 			updateEffectsData();
 
 			ui.notifications.info(`Added ${doc.name} to spell effects`);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error handling drop:`, err);
 			ui.notifications.error("Failed to add effect");
 		}
@@ -834,7 +855,8 @@ export async function enhanceSpellSheet(app, html) {
 
 		if ($(this).closest(".sdx-critical-effect-item").length > 0) {
 			updateCriticalEffectsData();
-		} else {
+		}
+		else {
 			updateEffectsData();
 		}
 	});
@@ -877,7 +899,8 @@ export async function enhanceSpellSheet(app, html) {
 		// Remove "no effects" placeholder if we have effects
 		if (effects.length > 0) {
 			$critEffectsList.find(".sdx-no-effects").remove();
-		} else if ($critEffectsList.find(".sdx-critical-effect-item").length === 0) {
+		}
+		else if ($critEffectsList.find(".sdx-critical-effect-item").length === 0) {
 			$critEffectsList.html('<div class="sdx-no-effects"><i class="fas fa-star-exclamation"></i> Optional</div>');
 		}
 	}
@@ -909,11 +932,13 @@ export async function enhanceSpellSheet(app, html) {
 			let doc = null;
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === "Item" && data.id) {
+			}
+			else if (data.type === "Item" && data.id) {
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
 					doc = await pack.getDocument(data.id);
-				} else {
+				}
+				else {
 					doc = game.items.get(data.id);
 				}
 			}
@@ -954,7 +979,8 @@ export async function enhanceSpellSheet(app, html) {
 			updateCriticalEffectsData();
 
 			ui.notifications.info(`Added ${doc.name} to critical effects`);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error handling critical effect drop:`, err);
 			ui.notifications.error("Failed to add critical effect");
 		}
@@ -1002,7 +1028,8 @@ export async function enhanceSpellSheet(app, html) {
 			updateData[`flags.${MODULE_ID}.summoning.enabled`] = true;
 			updateData[`flags.${MODULE_ID}.itemGive.enabled`] = false;
 			item.update(updateData, { render: false });
-		} else {
+		}
+		else {
 			// Just disable this one
 			const updateData = {};
 			updateData[`flags.${MODULE_ID}.summoning.enabled`] = false;
@@ -1081,12 +1108,14 @@ export async function enhanceSpellSheet(app, html) {
 			let doc = null;
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === "Actor" && data.id) {
+			}
+			else if (data.type === "Actor" && data.id) {
 				// Handle actors from compendiums or world
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
 					doc = await pack.getDocument(data.id);
-				} else {
+				}
+				else {
 					doc = game.actors.get(data.id);
 				}
 			}
@@ -1123,7 +1152,8 @@ export async function enhanceSpellSheet(app, html) {
 
 			updateSummonsData();
 			ui.notifications.info(`Added ${creatureName} to summon profile`);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error handling creature drop:`, err);
 			ui.notifications.error("Failed to add creature");
 		}
@@ -1216,11 +1246,13 @@ export async function enhanceSpellSheet(app, html) {
 			let doc = null;
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === "Item" && data.id) {
+			}
+			else if (data.type === "Item" && data.id) {
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
 					doc = await pack.getDocument(data.id);
-				} else {
+				}
+				else {
 					doc = game.items.get(data.id);
 				}
 			}
@@ -1247,7 +1279,8 @@ export async function enhanceSpellSheet(app, html) {
 			`);
 			updateItemGiveData();
 			ui.notifications.info(`Added ${itemName} to caster item list`);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error handling item drop:`, err);
 			ui.notifications.error("Failed to add item");
 		}

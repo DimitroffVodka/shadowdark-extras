@@ -38,7 +38,8 @@ export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
 	let inherited = null;
 	try {
 		inherited = AnimationFxSD.inheritedPresetFor(item);
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn(`${MODULE_ID} | Could not resolve inherited animation preset:`, e);
 	}
 
@@ -80,12 +81,14 @@ export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
 	let badge = "";
 	if (enabled) {
 		badge = "<span class=\"sdx-animfx-badge sdx-animfx-badge-override\">Override active</span>";
-	} else if (inherited) {
+	}
+	else if (inherited) {
 		const off = inherited.categoryEnabled ? "" : " — category disabled";
 		badge = `<span class="sdx-animfx-badge sdx-animfx-badge-inherited"
 			data-tooltip="Matched by name pattern in the Animation FX master list">
 			<i class="fas fa-link"></i> Inherited: ${esc(inherited.label || "master list")}${esc(off)}</span>`;
-	} else {
+	}
+	else {
 		badge = `<span class="sdx-animfx-badge sdx-animfx-badge-none"
 			data-tooltip="No named preset matches this item. The category default (if any) still plays.">No preset</span>`;
 	}

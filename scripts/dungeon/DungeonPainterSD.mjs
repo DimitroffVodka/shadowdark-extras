@@ -110,7 +110,8 @@ export function applySceneLevelData(doc, type, levelContext = getSceneLevelConte
 		doc.flags = foundry.utils.mergeObject(doc.flags ?? {}, {
 			"wall-height": { bottom: levelContext.elevation, top: levelContext.rangeTop },
 		}, { inplace: false });
-	} else {
+	}
+	else {
 		// MCP on Foundry v14.361 verified level membership controls which native
 		// level renders non-wall placeables. Elevation is relative within that
 		// level, so default to 0 but preserve explicit caller offsets.
@@ -197,7 +198,8 @@ export function getCurrentElevation() {
 				if (typeof levelsFloor === "number") {
 					return levelsFloor;
 				}
-			} catch (e) { /* Setting doesn't exist */ }
+			}
+			catch (e) { /* Setting doesn't exist */ }
 
 			// Try accessing Levels Layer Tool's UI element directly
 			const levelsToolApp = Object.values(ui.windows).find(w =>
@@ -236,7 +238,8 @@ export function getCurrentElevation() {
 			return canvas.scene.flags["levels-3d-preview"].currentFloor;
 		}
 
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn(`${MODULE_ID} | Could not get current elevation from Levels:`, e);
 	}
 
@@ -262,7 +265,8 @@ export function initDungeonSocket() {
 		_dungeonSocket.register("dungeonGetTileList", _gmGetTileList);
 
 		console.log(`${MODULE_ID} | Dungeon Painter socket initialized`);
-	} else {
+	}
+	else {
 		console.log(`${MODULE_ID} | socketlib not found, player dungeon painting disabled`);
 	}
 }
@@ -293,7 +297,8 @@ export function isGMOnline() {
 export function isPlayerPaintingAllowed() {
 	try {
 		return game.settings.get(MODULE_ID, SETTING_ALLOW_PLAYER_PAINT) === true;
-	} catch (e) {
+	}
+	catch (e) {
 		return false;
 	}
 }
@@ -336,7 +341,8 @@ export async function loadDungeonAssets() {
 				});
 			}
 		}
-	} else if (game.user.isGM) {
+	}
+	else if (game.user.isGM) {
 		// Ensure folder structure exists
 		await ensureDungeonFolders();
 
@@ -373,7 +379,8 @@ export async function loadDungeonAssets() {
 				_backgroundTiles = tileData.backgroundTiles || [];
 				console.log(`${MODULE_ID} | Received tile list from GM: ${_floorTiles.length} floor, ${_wallTiles.length} wall, ${_doorTiles.length} door tiles`);
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to get tile list from GM:`, err);
 		}
 	}
@@ -423,7 +430,8 @@ async function preloadDungeonImages() {
 					await cache.setBinary(tile.path, blob);
 				}
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			// Silently fail preloads
 		}
 	}
@@ -455,7 +463,8 @@ async function ensureDungeonFolders() {
 	for (const folder of folders) {
 		try {
 			await FilePicker.browse("data", `${basePath}/${folder}`);
-		} catch (e) {
+		}
+		catch (e) {
 			// Folder doesn't exist - that's ok, assets may not be installed yet
 		}
 	}
@@ -484,7 +493,8 @@ async function loadTilesFromFolder(folderPath, type) {
 		}
 
 		tiles.sort((a, b) => a.key.localeCompare(b.key));
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn(`${MODULE_ID} | Could not load ${type} tiles from ${folderPath}:`, err);
 	}
 
@@ -823,7 +833,8 @@ function onPointerMove(event) {
 		if (pos) {
 			updateSelectionRect(_dragStart, pos, _isShiftHeld);
 		}
-	} else if (_dungeonMode === "intwalls") {
+	}
+	else if (_dungeonMode === "intwalls") {
 		const pos = event.data?.getLocalPosition(canvas.stage);
 		if (pos) {
 			updateIntWallLine(_dragStart, pos);
@@ -864,20 +875,25 @@ function onPointerUp(event) {
 	if (_dungeonMode === "doors") {
 		if (isClick) {
 			handleDoorClick(event, deleteMode);
-		} else if (deleteMode) {
+		}
+		else if (deleteMode) {
 			handleRectangleDelete(_dragStart, endPos, true);
 		}
-	} else if (_dungeonMode === "intwalls") {
+	}
+	else if (_dungeonMode === "intwalls") {
 		if (isClick) {
 			if (deleteMode) {
 				handleIntWallDoorRemove(endPos);
-			} else if (_selectedIntDoorTile) {
+			}
+			else if (_selectedIntDoorTile) {
 				handleIntWallClick(endPos);
 			}
-		} else {
+		}
+		else {
 			handleIntWallDrag(_dragStart, endPos);
 		}
-	} else {
+	}
+	else {
 		handleRectangleFill(_dragStart, endPos, deleteMode);
 	}
 
@@ -1076,7 +1092,10 @@ async function handleIntWallDrag(startPos, endPos) {
 				rotation: 0, distance: 0, color: 0x000000, alpha: 1,
 				shadowOnly: false, blur: 5, quality: 5, padding: 20,
 			}];
-			try { await TokenMagic.addUpdateFilters(created[0], shadowParams); } catch (_) {}
+			try {
+				await TokenMagic.addUpdateFilters(created[0], shadowParams);
+			}
+			catch (_) {}
 		}
 	}
 
@@ -1186,7 +1205,8 @@ async function handleIntWallClick(clickPos) {
 		if (isHorizontalWall && !doorTexture.toLowerCase().includes("horizontal")) {
 			const hVariant = doorTexture.replace(/vertical/i, "horizontal");
 			if (_doorTiles?.find(t => t.path === hVariant)) doorTexture = hVariant;
-		} else if (!isHorizontalWall && !doorTexture.toLowerCase().includes("vertical")) {
+		}
+		else if (!isHorizontalWall && !doorTexture.toLowerCase().includes("vertical")) {
 			const vVariant = doorTexture.replace(/horizontal/i, "vertical");
 			if (_doorTiles?.find(t => t.path === vVariant)) doorTexture = vVariant;
 		}
@@ -1287,7 +1307,10 @@ async function handleIntWallClick(clickPos) {
 		if (_wallShadows && window.TokenMagic) {
 			const shadowParams = [{ filterType: "shadow", filterId: "dropshadow2", rotation: 0, distance: 0, color: 0x000000, alpha: 1, shadowOnly: false, blur: 5, quality: 5, padding: 20 }];
 			for (const doc of created) {
-				try { await TokenMagic.addUpdateFilters(doc, shadowParams); } catch (_) {}
+				try {
+					await TokenMagic.addUpdateFilters(doc, shadowParams);
+				}
+				catch (_) {}
 			}
 		}
 	}
@@ -1383,10 +1406,18 @@ async function handleIntWallDoorRemove(clickPos) {
 		if (d.flags?.[MODULE_ID]?.dungeonIntDoor) continue;
 		if (d.shape?.type !== "r") continue;
 		const [ep1, ep2] = getDrawingEndpoints(d);
-		if (near(ep1.x, ep1.y, dsx, dsy)) { leftDrawing = d; leftFarEnd = ep2; }
-		else if (near(ep2.x, ep2.y, dsx, dsy)) { leftDrawing = d; leftFarEnd = ep1; }
-		if (near(ep1.x, ep1.y, dex, dey)) { rightDrawing = d; rightFarEnd = ep2; }
-		else if (near(ep2.x, ep2.y, dex, dey)) { rightDrawing = d; rightFarEnd = ep1; }
+		if (near(ep1.x, ep1.y, dsx, dsy)) {
+			leftDrawing = d; leftFarEnd = ep2;
+		}
+		else if (near(ep2.x, ep2.y, dsx, dsy)) {
+			leftDrawing = d; leftFarEnd = ep1;
+		}
+		if (near(ep1.x, ep1.y, dex, dey)) {
+			rightDrawing = d; rightFarEnd = ep2;
+		}
+		else if (near(ep2.x, ep2.y, dex, dey)) {
+			rightDrawing = d; rightFarEnd = ep1;
+		}
 	}
 
 	// Find adjacent int wall Foundry walls (non-door) touching the door gap
@@ -1397,10 +1428,18 @@ async function handleIntWallDoorRemove(clickPos) {
 		if (!w.flags?.[MODULE_ID]?.dungeonIntWall) continue;
 		if (w.door && w.door > 0) continue;
 		const [wx1, wy1, wx2, wy2] = w.c;
-		if (near(wx1, wy1, dsx, dsy)) { leftWall = w; leftWallFar = { x: wx2, y: wy2 }; }
-		else if (near(wx2, wy2, dsx, dsy)) { leftWall = w; leftWallFar = { x: wx1, y: wy1 }; }
-		if (near(wx1, wy1, dex, dey)) { rightWall = w; rightWallFar = { x: wx2, y: wy2 }; }
-		else if (near(wx2, wy2, dex, dey)) { rightWall = w; rightWallFar = { x: wx1, y: wy1 }; }
+		if (near(wx1, wy1, dsx, dsy)) {
+			leftWall = w; leftWallFar = { x: wx2, y: wy2 };
+		}
+		else if (near(wx2, wy2, dsx, dsy)) {
+			leftWall = w; leftWallFar = { x: wx1, y: wy1 };
+		}
+		if (near(wx1, wy1, dex, dey)) {
+			rightWall = w; rightWallFar = { x: wx2, y: wy2 };
+		}
+		else if (near(wx2, wy2, dex, dey)) {
+			rightWall = w; rightWallFar = { x: wx1, y: wy1 };
+		}
 	}
 
 	// Merged wall endpoints (fall back to door endpoints if a segment was missing)
@@ -1463,7 +1502,10 @@ async function handleIntWallDoorRemove(clickPos) {
 		}]);
 		if (_wallShadows && window.TokenMagic) {
 			const shadowParams = [{ filterType: "shadow", filterId: "dropshadow2", rotation: 0, distance: 0, color: 0x000000, alpha: 1, shadowOnly: false, blur: 5, quality: 5, padding: 20 }];
-			try { await TokenMagic.addUpdateFilters(created[0], shadowParams); } catch (_) {}
+			try {
+				await TokenMagic.addUpdateFilters(created[0], shadowParams);
+			}
+			catch (_) {}
 		}
 	}
 
@@ -1520,17 +1562,20 @@ export async function ensureBackgroundDrawing(scene, elevation, backgroundSettin
 		fillColor = "#000000";
 		fillAlpha = 0.8;
 		texturePath = null;
-	} else if (backgroundSetting === "color-white") {
+	}
+	else if (backgroundSetting === "color-white") {
 		fillType = 1;
 		fillColor = "#ffffff";
 		fillAlpha = 0.8;
 		texturePath = null;
-	} else if (backgroundSetting === "color-gray") {
+	}
+	else if (backgroundSetting === "color-gray") {
 		fillType = 1;
 		fillColor = "#808080";
 		fillAlpha = 0.8;
 		texturePath = null;
-	} else {
+	}
+	else {
 		// Image path
 		fillType = 2;
 		fillColor = "#ffffff";
@@ -1637,7 +1682,8 @@ async function handleRectangleFill(startPos, endPos, isDeleting) {
 				doorsOnly: false,
 				levelId: getSceneLevelContext(scene).levelId,
 			});
-		} else {
+		}
+		else {
 			if (!_selectedFloorTile) {
 				ui.notifications.warn("SDX | Select a floor tile first.");
 				return;
@@ -1694,7 +1740,8 @@ async function handleRectangleFill(startPos, endPos, isDeleting) {
 		if (doorsToDelete.length > 0) {
 			await scene.deleteEmbeddedDocuments("Wall", doorsToDelete);
 		}
-	} else {
+	}
+	else {
 		// Add tiles to fill rectangle
 		if (!_selectedFloorTile) {
 			ui.notifications.warn("SDX | Select a floor tile first.");
@@ -1719,7 +1766,8 @@ async function handleRectangleFill(startPos, endPos, isDeleting) {
 
 				if (existing) {
 					tilesToUpdate.push(applySceneLevelData({ _id: existing.id, texture: makeTopLeftTileTexture(_selectedFloorTile) }, "Tile", levelContext));
-				} else {
+				}
+				else {
 					tilesToCreate.push(applySceneLevelData({
 						texture: makeTopLeftTileTexture(_selectedFloorTile),
 						x: gx * gridSize,
@@ -1840,10 +1888,12 @@ async function handleDoorClick(event, isDeleting) {
 	if (isVerticalCorridor) {
 		x1 = gx * gridSize; y1 = (gy + 0.5) * gridSize;
 		x2 = (gx + 1) * gridSize; y2 = (gy + 0.5) * gridSize;
-	} else if (isHorizontalCorridor) {
+	}
+	else if (isHorizontalCorridor) {
 		x1 = (gx + 0.5) * gridSize; y1 = gy * gridSize;
 		x2 = (gx + 0.5) * gridSize; y2 = (gy + 1) * gridSize;
-	} else {
+	}
+	else {
 		// Find best edge based on click position
 		const rx = pos.x % gridSize;
 		const ry = pos.y % gridSize;
@@ -1865,7 +1915,8 @@ async function handleDoorClick(event, isDeleting) {
 		if (anyOpen) {
 			const openEdges = edges.filter(e => e.open).sort((a, b) => a.dist - b.dist);
 			[x1, y1, x2, y2] = openEdges[0].coords;
-		} else {
+		}
+		else {
 			const sorted = edges.sort((a, b) => a.dist - b.dist);
 			[x1, y1, x2, y2] = sorted[0].coords;
 		}
@@ -1884,7 +1935,8 @@ async function handleDoorClick(event, isDeleting) {
 			const hVariant = doorTexture.replace(/vertical/i, "horizontal");
 			const hTile = _doorTiles?.find(t => t.path === hVariant);
 			if (hTile) doorTexture = hVariant;
-		} else if (!isHorizontalDoor && !doorTexture.toLowerCase().includes("vertical")) {
+		}
+		else if (!isHorizontalDoor && !doorTexture.toLowerCase().includes("vertical")) {
 			const vVariant = doorTexture.replace(/horizontal/i, "vertical");
 			const vTile = _doorTiles?.find(t => t.path === vVariant);
 			if (vTile) doorTexture = vVariant;
@@ -1901,7 +1953,8 @@ async function handleDoorClick(event, isDeleting) {
 				noWalls: _noFoundryWalls,
 				levelId: levelContext.levelId,
 			});
-		} else {
+		}
+		else {
 			await _dungeonSocket.executeAsGM("dungeonPlaceDoor", {
 				sceneId: scene.id,
 				x1, y1, x2, y2,
@@ -1930,7 +1983,8 @@ async function handleDoorClick(event, isDeleting) {
 			await scene.deleteEmbeddedDocuments("Wall", [existingWall.id]);
 			scheduleWallRebuild(scene);
 		}
-	} else {
+	}
+	else {
 		if (existingWall) {
 			if (existingWall.door === 0) {
 				const updateData = { door: 1, ds: 0 };
@@ -1943,7 +1997,8 @@ async function handleDoorClick(event, isDeleting) {
 				await existingWall.update(updateData);
 				scheduleWallRebuild(scene);
 			}
-		} else {
+		}
+		else {
 			const wallData = applySceneLevelData({
 				c: [x1, y1, x2, y2],
 				door: 1,
@@ -2046,7 +2101,8 @@ async function rebuildWallsForLevel(scene, levelContext, { wallTilePath = null, 
 				const gx = Math.floor(midX / gridSize);
 				entranceEdges.push({ x: gx, y: gy - 1, dir: "S" });
 				entranceEdges.push({ x: gx, y: gy, dir: "N" });
-			} else if (isVertical) {
+			}
+			else if (isVertical) {
 				const gx = Math.round(midX / gridSize);
 				const gy = Math.floor(midY / gridSize);
 				entranceEdges.push({ x: gx - 1, y: gy, dir: "E" });
@@ -2091,7 +2147,8 @@ async function rebuildWallsForLevel(scene, levelContext, { wallTilePath = null, 
 							c: [maxX, y, maxX + WALL_THICKNESS, y],
 							light: 20, move: 20, sound: 20,
 						}, "Wall", levelContext));
-					} else if (Math.abs(px1 - px2) < tolerance) {
+					}
+					else if (Math.abs(px1 - px2) < tolerance) {
 						const minY = Math.min(py1, py2);
 						const maxY = Math.max(py1, py2);
 						const x = px1;
@@ -2135,8 +2192,12 @@ async function rebuildWallsForLevel(scene, levelContext, { wallTilePath = null, 
 						blur: 5, quality: 5, padding: 20,
 					}];
 					for (const doc of created) {
-						try { await TokenMagic.addUpdateFilters(doc, shadowParams); }
-						catch (err) { console.warn(`${MODULE_ID} | Wall shadow failed:`, err); }
+						try {
+							await TokenMagic.addUpdateFilters(doc, shadowParams);
+						}
+						catch (err) {
+							console.warn(`${MODULE_ID} | Wall shadow failed:`, err);
+						}
 					}
 				}
 			}
@@ -2144,7 +2205,8 @@ async function rebuildWallsForLevel(scene, levelContext, { wallTilePath = null, 
 		}
 
 		console.log(`${MODULE_ID} | ${logPrefix}Rebuilt ${noWalls ? "0 (disabled)" : totalWalls} walls and ${totalDrawings} wall visuals on level "${levelContext.levelId ?? "none"}"`);
-	} finally {
+	}
+	finally {
 		_selectedWallTile = originalWallTile;
 	}
 }
@@ -2196,7 +2258,8 @@ function generateWallsWithElevation(floors, entranceSet, gridSize, thickness, wa
 				if (d.name === "N" || d.name === "S") {
 					startVec = { dx: -1, dy: 0 };
 					endVec = { dx: 1, dy: 0 };
-				} else {
+				}
+				else {
 					startVec = { dx: 0, dy: -1 };
 					endVec = { dx: 0, dy: 1 };
 				}
@@ -2424,7 +2487,8 @@ async function _gmFillRectangle(data) {
 
 			if (existing) {
 				tilesToUpdate.push(applySceneLevelData({ _id: existing.id, texture: makeTopLeftTileTexture(floorTilePath) }, "Tile", levelContext));
-			} else {
+			}
+			else {
 				tilesToCreate.push(applySceneLevelData({
 					texture: makeTopLeftTileTexture(floorTilePath),
 					x: gx * gridSize,
@@ -2545,7 +2609,8 @@ async function _gmPlaceDoor(data) {
 			}
 			await existingWall.update(updateData);
 		}
-	} else {
+	}
+	else {
 		const wallData = applySceneLevelData({
 			c: [x1, y1, x2, y2],
 			door: 1,

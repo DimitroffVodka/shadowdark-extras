@@ -39,7 +39,8 @@ async function executeMacroFromEffect(actor, macroValue, currentTrigger, options
 	let macroName; let trigger;
 	if (macroValue.includes("|")) {
 		[macroName, trigger] = macroValue.split("|").map(s => s.trim());
-	} else {
+	}
+	else {
 		// No trigger specified, default to effectCreated
 		macroName = macroValue.trim();
 		trigger = "effectCreated";
@@ -91,11 +92,13 @@ async function executeMacroFromEffect(actor, macroValue, currentTrigger, options
 			// Execute macro as GM via socketlib
 			//console.log(`${MODULE_ID} | Executing macro via GM (socketlib)`);
 			await macroExecuteSocket.executeAsGM("executeMacroAsGM", macro.id, contextData);
-		} else {
+		}
+		else {
 			// Execute locally (either user is GM or socketlib not available)
 			await macro.execute(context);
 		}
-	} catch (error) {
+	}
+	catch (error) {
 		console.error(`${MODULE_ID} | Error executing macro "${macroName}":`, error);
 		ui.notifications.error(`Failed to execute macro "${macroName}": ${error.message}`);
 	}

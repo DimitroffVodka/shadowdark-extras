@@ -569,7 +569,8 @@ export async function setHexFogEffect(sceneId, effectName) {
 	if (!scene) return;
 	if (effectName) {
 		await scene.setFlag(MODULE_ID, "hexFogEffect", effectName);
-	} else {
+	}
+	else {
 		await scene.unsetFlag(MODULE_ID, "hexFogEffect");
 	}
 }
@@ -627,7 +628,8 @@ function _onUpdateScene(scene, changes) {
 			_initFog();
 			const effect = getActiveHexFogEffect(scene.id);
 			if (effect) _applyFogShader(effect);
-		} else {
+		}
+		else {
 			_destroyFog();
 		}
 		return;
@@ -751,7 +753,8 @@ function _getNeighborsAtDepth(center, depth, resultSet) {
 						nextFrontier.push(n);
 					}
 				}
-			} catch { /* fallback if getAdjacentOffsets unavailable */ }
+			}
+			catch { /* fallback if getAdjacentOffsets unavailable */ }
 		}
 		frontier = nextFrontier;
 	}
@@ -808,7 +811,8 @@ async function _processRollTables(scene, rollTableCells) {
 					rolledChanged = true;
 				}
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to roll table for hex ${tooltipKey}:`, err);
 		}
 	}
@@ -888,7 +892,8 @@ async function _loadFogOverlayTexture() {
 			_fogOverlayPath = overlayPath;
 			if (fog) _drawFog();
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn(`${MODULE_ID} | Failed to load fog overlay texture:`, err);
 		_fogOverlayTexture = null;
 		_fogOverlayPath = null;
@@ -972,7 +977,8 @@ function _paintHex(key) {
 	_paintKeys.add(key);
 	if (_paintMode === "reveal") {
 		_paintOverlay[key] = true;
-	} else {
+	}
+	else {
 		_paintOverlay[key] = false;
 	}
 	_drawFog();
@@ -1068,7 +1074,8 @@ function _drawFog() {
 			if (key in _paintOverlay) {
 				if (_paintOverlay[key]) continue; // painting reveal → no fog
 				// painting hide → fall through to draw fog
-			} else if (revealed[key] || exploredKeys.has(key)) {
+			}
+			else if (revealed[key] || exploredKeys.has(key)) {
 				continue;
 			}
 
@@ -1081,7 +1088,8 @@ function _drawFog() {
 			if (texMatrix) {
 				fog.lineStyle(0);
 				fog.beginTextureFill({ texture: _fogOverlayTexture, alpha, matrix: texMatrix });
-			} else {
+			}
+			else {
 				fog.lineStyle(alpha, unexploredColor, alpha);
 				fog.beginFill(unexploredColor, alpha);
 			}
@@ -1131,7 +1139,8 @@ function _updateFogPinVisibility() {
 	let renderer;
 	try {
 		renderer = JournalPinRenderer;
-	} catch {
+	}
+	catch {
 		return;
 	}
 	if (!renderer?._pins) return;
@@ -1142,7 +1151,8 @@ function _updateFogPinVisibility() {
 		if (game.user.isGM) {
 			pin.alpha = revealed ? 1.0 : 0.3;
 			pin.visible = true;
-		} else {
+		}
+		else {
 			pin.visible = revealed;
 		}
 	}

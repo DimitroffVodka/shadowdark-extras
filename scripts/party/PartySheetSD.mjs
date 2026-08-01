@@ -74,7 +74,8 @@ async function getPartyMemberActor(memberKey) {
 	if (!memberKey.includes(".")) return null;
 	try {
 		return await fromUuid(memberKey);
-	} catch {
+	}
+	catch {
 		return null;
 	}
 }
@@ -210,7 +211,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 					`${base}.travelSelections.${request.taskKey}.${memberId}`
 				] = 0;
 			}
-		} else {
+		}
+		else {
 			updates[
 				`${base}.travelSelections.${request.taskKey}.${memberId}`
 			] = planned.selections[request.taskKey][memberId];
@@ -262,7 +264,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		if (memberKey.includes(".")) {
 			try {
 				actor = await fromUuid(memberKey);
-			} catch {
+			}
+			catch {
 				// Ignore errors
 			}
 		}
@@ -285,7 +288,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				if (typeof fromUuidSync === "function" && id.includes(".")) {
 					try {
 						return fromUuidSync(id);
-					} catch {
+					}
+					catch {
 						return null;
 					}
 				}
@@ -309,7 +313,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				// Try as UUID (compendium or other)
 				try {
 					actor = await fromUuid(id);
-				} catch {
+				}
+				catch {
 					// Ignore errors
 				}
 			}
@@ -381,7 +386,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			const roll = await (new Roll(formula)).evaluate({ async: true });
 			const total = Math.floor(Number(roll.total));
 			return Math.max(1, Number.isFinite(total) ? total : 1);
-		} catch (e) {
+		}
+		catch (e) {
 			ui.notifications.warn(`Invalid NPC spawn formula: ${formula}`);
 			return 1;
 		}
@@ -752,7 +758,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 					"SHADOWDARK_EXTRAS.party.travel.gm_connection_required"
 				)
 			);
-		} catch (error) {
+		}
+		catch (error) {
 			console.error(
 				"Shadowdark Extras | Party travel update failed:",
 				error
@@ -935,7 +942,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 
 		if (targetIndex !== -1) {
 			members.splice(targetIndex, 0, sourceMember);
-		} else {
+		}
+		else {
 			members.push(sourceMember);
 		}
 
@@ -983,7 +991,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 
 			if (item.system.treasure) {
 				treasure.push(itemData);
-			} else {
+			}
+			else {
 				inventory.push(itemData);
 			}
 		}
@@ -1584,7 +1593,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		if (!member && memberKey.includes(".")) {
 			try {
 				member = await fromUuid(memberKey);
-			} catch {
+			}
+			catch {
 				// Ignore
 			}
 		}
@@ -1781,7 +1791,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			const placed = await this._placeTokenWithPreview(member);
 			if (placed) {
 				placedCount++;
-			} else {
+			}
+			else {
 				// User cancelled, stop placing
 				break;
 			}
@@ -1822,7 +1833,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 						// Record the compendium source on the imported actor without using the deprecated core.sourceId flag
 						try {
 							await imported.update({ "_stats.compendiumSource": member.uuid });
-						} catch {
+						}
+						catch {
 							// Fallback to writing the legacy flag if update fails for any reason
 							await imported.setFlag("core", "sourceId", member.uuid);
 						}
@@ -1831,7 +1843,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 							game.i18n.format("SHADOWDARK_EXTRAS.party.actor_imported", { name: member.name })
 						);
 					}
-				} catch (e) {
+				}
+				catch (e) {
 					console.error(`${MODULE_ID} | Failed to import compendium actor`, e);
 					ui.notifications.error(
 						game.i18n.format("SHADOWDARK_EXTRAS.party.import_failed", { name: member.name })
@@ -2192,11 +2205,13 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 					"systems/shadowdark/assets/mappings/map-light-sources.json"
 				);
 				lightData = lightSources[item.system.light.template]?.light ?? { dim: 0, bright: 0 };
-			} catch (e) {
+			}
+			catch (e) {
 				console.warn("Failed to load light source mappings:", e);
 				lightData = { dim: 0, bright: 0 };
 			}
-		} else {
+		}
+		else {
 			lightData = { dim: 0, bright: 0 };
 		}
 
@@ -2429,7 +2444,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 
 		if (taskKey && memberId) {
 			await this._removeMemberFromTask(memberId);
-		} else {
+		}
+		else {
 			console.warn("Shadowdark Extras | Missing taskKey or memberId for removal", taskKey, memberId);
 		}
 	}
@@ -2577,7 +2593,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 						() => table.draw({ displayChat: true })
 					);
 					return;
-				} catch (error) {
+				}
+				catch (error) {
 					console.error("Shadowdark Extras | Error drawing Party weather RollTable:", error);
 				}
 			}
@@ -2683,7 +2700,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 					</div>
 				</div>
 			`;
-		} else {
+		}
+		else {
 			content = `
 				<div class="shadowdark chat-card item-card" style="border: 1px solid #c9aa58; border-radius: 4px; overflow: hidden; box-shadow: 0 0 10px rgba(201, 170, 88, 0.2);">
 					<div class="card-header" style="display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(201, 170, 88, 0.05);">
@@ -2759,7 +2777,8 @@ export function registerPartyTravelSocket(socket) {
 					request,
 					sender
 				);
-			} catch (error) {
+			}
+			catch (error) {
 				console.warn(
 					`${MODULE_ID} | Rejected Party travel mutation from ${sender.name}:`,
 					error
@@ -2799,7 +2818,8 @@ export async function getBrightestPartyLight(partyActor) {
 		if (!actor && id.includes(".")) {
 			try {
 				actor = await fromUuid(id);
-			} catch {
+			}
+			catch {
 				continue;
 			}
 		}
@@ -2834,7 +2854,8 @@ export async function getBrightestPartyLight(partyActor) {
 					);
 					lightTemplate = lightSources[templateName]?.light;
 					console.log(`${MODULE_ID} | Loaded template '${templateName}' from Shadowdark mappings:`, lightTemplate);
-				} catch (e) {
+				}
+				catch (e) {
 					console.warn(`${MODULE_ID} | Failed to load light mappings:`, e);
 				}
 
@@ -2946,7 +2967,8 @@ export async function syncPartyTokenLight(partyActor) {
 			updates["light.coloration"] = brightestLight.coloration;
 
 			console.log(`${MODULE_ID} | Party token ${token.name} light ON: ${brightestLight.bright}/${brightestLight.dim}`);
-		} else {
+		}
+		else {
 			// No lights active - turn off party token light
 			updates["light.dim"] = 0;
 			updates["light.bright"] = 0;

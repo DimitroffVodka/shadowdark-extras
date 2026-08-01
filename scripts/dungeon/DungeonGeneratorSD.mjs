@@ -142,12 +142,24 @@ class ProcgenRoom {
 		this.h = h;
 	}
 
-	get left() { return this.x; }
-	get right() { return this.x + this.w; }
-	get top() { return this.y; }
-	get bottom() { return this.y + this.h; }
-	get cx() { return this.x + Math.floor(this.w / 2); }
-	get cy() { return this.y + Math.floor(this.h / 2); }
+	get left() {
+		return this.x;
+	}
+	get right() {
+		return this.x + this.w;
+	}
+	get top() {
+		return this.y;
+	}
+	get bottom() {
+		return this.y + this.h;
+	}
+	get cx() {
+		return this.x + Math.floor(this.w / 2);
+	}
+	get cy() {
+		return this.y + Math.floor(this.h / 2);
+	}
 
 	intersects(other, margin = 0) {
 		return !(this.right + margin <= other.left ||
@@ -403,13 +415,15 @@ export function generateLayout(params, rng) {
 				const perps = PERPENDICULAR[walker.direction];
 				walker.direction = perps[Math.floor(rng() * perps.length)];
 			}
-		} else {
+		}
+		else {
 			// Placement failed - try redirecting before giving up
 			walker._failCount = (walker._failCount || 0) + 1;
 			if (walker._failCount < 3) {
 				const perps = PERPENDICULAR[walker.direction];
 				walker.direction = perps[Math.floor(rng() * perps.length)];
-			} else {
+			}
+			else {
 				walker.isDead = true;
 			}
 		}
@@ -458,17 +472,20 @@ export function generateLayout(params, rng) {
 				if (dx > 0) {
 					exitX = roomA.right;
 					entryX = roomB.left - 1;
-				} else {
+				}
+				else {
 					exitX = roomA.left - 1;
 					entryX = roomB.right;
 				}
 				exitY = roomA.cy;
 				entryY = roomA.cy;
-			} else {
+			}
+			else {
 				if (dy > 0) {
 					exitY = roomA.bottom;
 					entryY = roomB.top - 1;
-				} else {
+				}
+				else {
 					exitY = roomA.top - 1;
 					entryY = roomB.bottom;
 				}
@@ -494,7 +511,8 @@ export function generateLayout(params, rng) {
 					}
 					if (!corridorOk) break;
 				}
-			} else {
+			}
+			else {
 				const step = exitY <= entryY ? 1 : -1;
 				for (let cy = exitY; cy !== entryY + step; cy += step) {
 					for (let r = 0; r < placedRooms.length; r++) {
@@ -524,7 +542,8 @@ export function generateLayout(params, rng) {
 					// West: corridor enters roomB's left edge
 					entranceEdges.push({ x: roomB.left - 1, y: roomA.cy, dir: "E" });
 					entranceEdges.push({ x: roomB.left, y: roomA.cy, dir: "W" });
-				} else {
+				}
+				else {
 					// West: corridor exits roomA's left edge
 					entranceEdges.push({ x: roomA.left, y: roomA.cy, dir: "W" });
 					entranceEdges.push({ x: roomA.left - 1, y: roomA.cy, dir: "E" });
@@ -532,7 +551,8 @@ export function generateLayout(params, rng) {
 					entranceEdges.push({ x: roomB.right, y: roomA.cy, dir: "W" });
 					entranceEdges.push({ x: roomB.right - 1, y: roomA.cy, dir: "E" });
 				}
-			} else {
+			}
+			else {
 				if (dy > 0) {
 					// South: corridor exits roomA's bottom edge
 					entranceEdges.push({ x: roomA.cx, y: roomA.bottom - 1, dir: "S" });
@@ -540,7 +560,8 @@ export function generateLayout(params, rng) {
 					// North: corridor enters roomB's top edge
 					entranceEdges.push({ x: roomA.cx, y: roomB.top - 1, dir: "S" });
 					entranceEdges.push({ x: roomA.cx, y: roomB.top, dir: "N" });
-				} else {
+				}
+				else {
 					// North: corridor exits roomA's top edge
 					entranceEdges.push({ x: roomA.cx, y: roomA.top, dir: "N" });
 					entranceEdges.push({ x: roomA.cx, y: roomA.top - 1, dir: "S" });
@@ -581,7 +602,9 @@ export function generateMixedLayout(params, rng) {
 	// corridors between the cave blob and the rooms, leaving broad open seams.
 	{
 		let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity;
-		for (const k of merged) { const [x, y] = k.split(",").map(Number); if (x < minX) minX = x; if (y < minY) minY = y; if (x > maxX) maxX = x; if (y > maxY) maxY = y; }
+		for (const k of merged) {
+			const [x, y] = k.split(",").map(Number); if (x < minX) minX = x; if (y < minY) minY = y; if (x > maxX) maxX = x; if (y > maxY) maxY = y;
+		}
 		for (let pass = 0; pass < 4; pass++) {
 			const add = [];
 			for (let x = minX; x <= maxX; x++) for (let y = minY; y <= maxY; y++) {
@@ -597,7 +620,9 @@ export function generateMixedLayout(params, rng) {
 				if (touchesCave) add.push(k);
 			}
 			if (!add.length) break;
-			for (const k of add) { merged.add(k); caveCells.add(k); }
+			for (const k of add) {
+				merged.add(k); caveCells.add(k);
+			}
 		}
 	}
 
@@ -762,7 +787,8 @@ export function generateWalls(floors, offset, entranceEdges, wallThickness, soli
 				if (d.name === "N" || d.name === "S") {
 					startVec = { dx: -1, dy: 0 };
 					endVec = { dx: 1, dy: 0 };
-				} else {
+				}
+				else {
 					startVec = { dx: 0, dy: -1 };
 					endVec = { dx: 0, dy: 1 };
 				}
@@ -903,7 +929,8 @@ export function generateWallVisuals(floors, offset, options, entranceEdges, soli
 			drawing.fillType = 2; // Pattern
 			drawing.fillColor = "#ffffff";
 			drawing.texture = isHorizontal ? hTexture : vTexture;
-		} else {
+		}
+		else {
 			drawing.fillType = 1; // Solid
 			drawing.fillColor = wallColor || "#5C3D3D";
 		}
@@ -1001,7 +1028,8 @@ export function generateDoors(doorPositions, offset, wallThickness, doorTilePath
 		if (doorTexture) {
 			if (isHorizontalDoor && !doorTexture.toLowerCase().includes("horizontal")) {
 				doorTexture = doorTexture.replace(/vertical/i, "horizontal");
-			} else if (!isHorizontalDoor && !doorTexture.toLowerCase().includes("vertical")) {
+			}
+			else if (!isHorizontalDoor && !doorTexture.toLowerCase().includes("vertical")) {
 				doorTexture = doorTexture.replace(/horizontal/i, "vertical");
 			}
 		}
@@ -1033,7 +1061,8 @@ export function generateDoors(doorPositions, offset, wallThickness, doorTilePath
 				c: [x2, y2, x2 + wallThickness, y2],
 				light: 20, move: 20, sound: 20, flags: fillerFlags,
 			});
-		} else {
+		}
+		else {
 			wallsData.push({
 				c: [x1, y1 - wallThickness, x1, y1],
 				light: 20, move: 20, sound: 20, flags: fillerFlags,
@@ -1075,7 +1104,8 @@ export async function clearSceneAtLevel(scene, levelContext, levelsActive) {
 		if (type === "Wall") {
 			const bottom = doc.flags?.["wall-height"]?.bottom ?? 0;
 			return Math.abs(bottom - elevation) < ELEVATION_TOLERANCE;
-		} else {
+		}
+		else {
 			const elev = doc.elevation ?? 0;
 			return Math.abs(elev - elevation) < ELEVATION_TOLERANCE;
 		}
@@ -1240,13 +1270,15 @@ export async function generateDungeon(config) {
 				elevation = probe[0].elevation ?? 0;
 				await scene.deleteEmbeddedDocuments("Tile", [probe[0].id]);
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			elevation = getCurrentElevation();
 		}
 		wallHeightBottom = elevation;
 		wallHeightTop = elevation + LEVEL_HEIGHT - 1;
 		console.log(`${MODULE_ID} | Generator: Levels detected, elevation ${elevation} (${wallHeightBottom}/${wallHeightTop})`);
-	} else if (levelContext.levelId) {
+	}
+	else if (levelContext.levelId) {
 		console.log(`${MODULE_ID} | Generator: Foundry level detected, ${levelContext.levelId} elevation ${elevation} (${wallHeightBottom}/${wallHeightTop})`);
 	}
 
@@ -1278,7 +1310,8 @@ export async function generateDungeon(config) {
 			const newWidth = Math.max(scene.width, width);
 			const newHeight = Math.max(scene.height, height);
 			await scene.update({ width: newWidth, height: newHeight });
-		} else {
+		}
+		else {
 			await scene.update({ width, height });
 		}
 
@@ -1326,7 +1359,8 @@ export async function generateDungeon(config) {
 							"flags.wall-height.top": wallHeightTop,
 						}));
 						await scene.updateEmbeddedDocuments("Wall", updates);
-					} else if (type === "Tile") {
+					}
+					else if (type === "Tile") {
 						// Tiles sit at the floor of their assigned level (elevation 0);
 						// level membership is encoded by `doc.levels = [levelId]` already.
 						// Writing the level's bottom into `elevation` double-encodes the
@@ -1337,7 +1371,8 @@ export async function generateDungeon(config) {
 							"flags.levels.rangeTop": wallHeightTop,
 						}));
 						await scene.updateEmbeddedDocuments("Tile", updates);
-					} else if (type === "Drawing") {
+					}
+					else if (type === "Drawing") {
 						// Same reasoning as Tile — base-of-level elevation.
 						const updates = created.map(d => ({
 							_id: d.id,
@@ -1375,7 +1410,8 @@ export async function generateDungeon(config) {
 			wallsData = generateCurvedWalls(mixedLoops, mixThickness);
 			drawingsData = generateCurvedWallVisuals(mixedLoops, { useTexture, wallColor, wallThickness: mixThickness, wallTilePath });
 			console.log(`${MODULE_ID} | Mixed: ${mixedLoops.length} unified loop(s), ${wallsData.length} wall segments`);
-		} else if (isCave) {
+		}
+		else if (isCave) {
 			const caveLoops = buildCaveLoops(layout.floors, offset, GRID_SIZE);
 			// Caves use a chunkier wall so the rocky band covers the square
 			// floor-cell fringe and reads as a smooth cavern edge.
@@ -1384,7 +1420,8 @@ export async function generateDungeon(config) {
 				useTexture, wallColor, wallThickness: caveWallThickness, wallTilePath,
 			});
 			console.log(`${MODULE_ID} | Cave: ${caveLoops.length} boundary loop(s), ${wallsData.length} wall segments`);
-		} else {
+		}
+		else {
 			wallsData = generateWalls(layout.floors, offset, layout.entranceEdges, wallThickness);
 			drawingsData = generateWallVisuals(layout.floors, offset, {
 				useTexture,
@@ -1437,7 +1474,8 @@ export async function generateDungeon(config) {
 			for (const drawing of wallDrawings) {
 				try {
 					await TokenMagic.addUpdateFilters(drawing.document, shadowParams);
-				} catch (err) {
+				}
+				catch (err) {
 					console.warn(`${MODULE_ID} | Wall shadow effect failed:`, err);
 				}
 			}
@@ -1467,7 +1505,9 @@ export async function generateDungeon(config) {
 					const interiorTop = room.top + 1;
 					const interiorW = room.w - 2;
 					const interiorH = room.h - 2;
-					if (interiorW < 1 || interiorH < 1) { n--; continue; }
+					if (interiorW < 1 || interiorH < 1) {
+						n--; continue;
+					}
 					let sx; let sy; let key;
 					let tries = 0;
 					do {
@@ -1523,7 +1563,8 @@ export async function generateDungeon(config) {
 			try {
 				const result = await FilePicker.browse("data", clutterFolder);
 				clutterFiles = (result.files || []).filter(f => /\-(\d+)x(\d+)\.\w+$/i.test(f));
-			} catch (e) {
+			}
+			catch (e) {
 				console.warn(`${MODULE_ID} | Could not browse clutter folder:`, e);
 			}
 
@@ -1622,7 +1663,8 @@ export async function generateDungeon(config) {
 			gridSize: GRID_SIZE,
 			seed,
 		};
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Dungeon generation failed:`, err);
 		ui.notifications.error("SDX | Dungeon generation failed. Check console for details.");
 	}

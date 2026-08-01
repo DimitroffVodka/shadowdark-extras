@@ -84,13 +84,15 @@ export function activateTemplateTokenMagicStackHandlers(html, item) {
 					tmParams: foundry.utils.mergeObject(existing.tmFilters.tmParams, data, { inplace: false }),
 				},
 			};
-		} else if (existing.tmParams) {
+		}
+		else if (existing.tmParams) {
 			currentFilters[filterIndex] = {
 				...existing,
 				...data,
 				tmParams: foundry.utils.mergeObject(existing.tmParams, data, { inplace: false }),
 			};
-		} else {
+		}
+		else {
 			currentFilters[filterIndex] = { ...existing, ...data };
 		}
 
@@ -141,8 +143,12 @@ export function activateTemplateTokenMagicStackHandlers(html, item) {
 		sdxTitle: item.name || "Spell Activity",
 		_sdxVirtualTMFX: true,
 		parent: { id: game.scenes?.current?.id ?? "sdx-item-activity" },
-		get documentName() { return "SDXItemTMFX"; },
-		get isOwner() { return item.isOwner; },
+		get documentName() {
+			return "SDXItemTMFX";
+		},
+		get isOwner() {
+			return item.isOwner;
+		},
 		getFlag: (scope, key) => {
 			if (scope === "tokenmagic" && key === "filters") return getFilters();
 			return item.flags?.[scope]?.[key];
@@ -231,7 +237,8 @@ export function setupActivityRadioToggles(html, item) {
 			updateData[`flags.${MODULE_ID}.summoning.enabled`] = false;
 			updateData[`flags.${MODULE_ID}.itemGive.enabled`] = false;
 			item.update(updateData, { render: false });
-		} else {
+		}
+		else {
 			$content.slideUp(200);
 			const updateData = {};
 			updateData[`flags.${MODULE_ID}.spellDamage.enabled`] = false;
@@ -247,7 +254,8 @@ export function setupActivityRadioToggles(html, item) {
 
 		if (isEnabled) {
 			$content.slideDown(200);
-		} else {
+		}
+		else {
 			$content.slideUp(200);
 		}
 
@@ -273,7 +281,8 @@ export function setupActivityRadioToggles(html, item) {
 			updateData[`flags.${MODULE_ID}.summoning.enabled`] = true;
 			updateData[`flags.${MODULE_ID}.itemGive.enabled`] = false;
 			item.update(updateData, { render: false });
-		} else {
+		}
+		else {
 			const updateData = {};
 			updateData[`flags.${MODULE_ID}.summoning.enabled`] = false;
 			item.update(updateData, { render: false });
@@ -297,7 +306,8 @@ export function setupActivityRadioToggles(html, item) {
 			updateData[`flags.${MODULE_ID}.summoning.enabled`] = false;
 			updateData[`flags.${MODULE_ID}.itemGive.enabled`] = true;
 			item.update(updateData, { render: false });
-		} else {
+		}
+		else {
 			const updateData = {};
 			updateData[`flags.${MODULE_ID}.itemGive.enabled`] = false;
 			item.update(updateData, { render: false });
@@ -349,7 +359,8 @@ export function activateAnimationFxListeners(html, item) {
 		if ($box.attr("data-inh-file")) {
 			$badge.attr("class", "sdx-animfx-badge sdx-animfx-badge-inherited")
 				.html(`<i class="fas fa-link"></i> Inherited: ${foundry.utils.escapeHTML(label || "master list")}`);
-		} else {
+		}
+		else {
 			$badge.attr("class", "sdx-animfx-badge sdx-animfx-badge-none").text("No preset");
 		}
 	}
@@ -409,8 +420,12 @@ export function activateAnimationFxListeners(html, item) {
 	// Inline thumbnail: play on hover, rewind on leave (mirrors the master list).
 	$box.find("video.sdx-animfx-item-thumb").each(function() {
 		const vid = this;
-		vid.addEventListener("mouseenter", () => { vid.play().catch(() => { }); });
-		vid.addEventListener("mouseleave", () => { vid.pause(); vid.currentTime = 0; });
+		vid.addEventListener("mouseenter", () => {
+			vid.play().catch(() => { });
+		});
+		vid.addEventListener("mouseleave", () => {
+			vid.pause(); vid.currentTime = 0;
+		});
 		vid.addEventListener("error", () => {
 			const ph = document.createElement("div");
 			ph.className = "sdx-animfx-item-thumb sdx-animfx-item-thumb-missing";
@@ -445,12 +460,15 @@ export function activateAnimationFxListeners(html, item) {
 		try {
 			if (globalThis.Sequencer?.DatabaseViewer?.show) {
 				globalThis.Sequencer.DatabaseViewer.show();
-			} else if (globalThis.Sequencer?.Database?.show) {
+			}
+			else if (globalThis.Sequencer?.Database?.show) {
 				globalThis.Sequencer.Database.show();
-			} else {
+			}
+			else {
 				ui.notifications.warn("Sequencer Database viewer is not available.");
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Could not open Sequencer Database:`, err);
 		}
 	});

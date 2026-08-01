@@ -127,7 +127,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				window.localStorage.setItem("_toy_town_buf_", "j" + loadedJsonText);
 				ui.notifications.info("Loaded Maphub saved state!");
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			// No saved file exists, ignore
 		}
 
@@ -162,7 +163,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 							cw.lime.embed("Dungeon", "openfl-content", 0, 0, { parameters: {} });
 							this._installIframeSaveHook(iframe);
 						}
-					} catch (err) {
+					}
+					catch (err) {
 						console.warn(`${MODULE_ID} | Failed to ensure dungeon generator canvas`, err);
 					}
 				}, 250);
@@ -265,7 +267,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				?? header.querySelector('[data-action="close"]');
 			if (anchor) header.insertBefore(btn, anchor);
 			else header.appendChild(btn);
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to inject Import Scene header button`, err);
 		}
 	}
@@ -306,7 +309,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 			const seed = params.get("seed") || "noseed";
 			const name = params.get("name") || "noname";
 			return `${this._mapType}_${seed}_${name}`.replace(/[^a-zA-Z0-9_\-]/g, "");
-		} catch (e) {
+		}
+		catch (e) {
 			return `unknown_${Date.now()}`;
 		}
 	}
@@ -338,7 +342,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 			foundrySaveAs.__sdxFoundrySaveAs = true;
 			cw.saveAs = foundrySaveAs;
 			return true;
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to install Maphub save hook`, err);
 			return false;
 		}
@@ -365,14 +370,17 @@ export class MaphubViewerApp extends ApplicationV2 {
 				const response = await FilePicker.upload("data", uploadPath, file, {});
 				if (response?.path) {
 					ui.notifications.info(`Map state saved to ${saveFilename}!`);
-				} else {
+				}
+				else {
 					ui.notifications.error("Failed to upload map state.");
 				}
-			} catch (e) {
+			}
+			catch (e) {
 				console.error(`${MODULE_ID} | Failed to save map state`, e);
 				ui.notifications.error("Failed to upload map state.");
 			}
-		} else if (event.data && event.data.type === "maphub_save_image") {
+		}
+		else if (event.data && event.data.type === "maphub_save_image") {
 			const { blob, filename, format } = event.data;
 
 			const mapId = this._getMapIdFromQuery();
@@ -395,17 +403,20 @@ export class MaphubViewerApp extends ApplicationV2 {
 					if (this._pendingCaptureResolve) {
 						this._pendingCaptureResolve(response.path);
 						this._pendingCaptureResolve = null;
-					} else {
+					}
+					else {
 						ui.notifications.info(`Image saved to ${saveFilename}!`);
 					}
-				} else {
+				}
+				else {
 					if (this._pendingCaptureResolve) {
 						this._pendingCaptureResolve(null);
 						this._pendingCaptureResolve = null;
 					}
 					ui.notifications.error("Failed to upload map image.");
 				}
-			} catch (e) {
+			}
+			catch (e) {
 				console.error(`${MODULE_ID} | Failed to save map image`, e);
 				if (this._pendingCaptureResolve) {
 					this._pendingCaptureResolve(null);
@@ -434,12 +445,15 @@ export class MaphubViewerApp extends ApplicationV2 {
 		let exportFn = null;
 		if (cw?.maphubVillageAppInstance?.view?.exportPNG) {
 			exportFn = () => cw.maphubVillageAppInstance.view.exportPNG();
-		} else if (cw?.maphubCaveAppInstance?.exportPNG) {
+		}
+		else if (cw?.maphubCaveAppInstance?.exportPNG) {
 			exportFn = () => cw.maphubCaveAppInstance.exportPNG();
-		} else if (cw?.maphubDwellingsAppInstance?.exportAsPNG) {
+		}
+		else if (cw?.maphubDwellingsAppInstance?.exportAsPNG) {
 			// Note: Dwellings might not have a working exportAsPNG natively, but we hook it if it does
 			exportFn = () => cw.maphubDwellingsAppInstance.exportAsPNG();
-		} else if (cw?.maphubAppInstance?.asPNG) { // MFCG
+		}
+		else if (cw?.maphubAppInstance?.asPNG) { // MFCG
 			exportFn = () => cw.maphubAppInstance.asPNG();
 		}
 
@@ -449,7 +463,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				this._pendingCaptureResolve = resolve;
 				try {
 					exportFn();
-				} catch (e) {
+				}
+				catch (e) {
 					console.error("Failed to run high-res export", e);
 					this._pendingCaptureResolve = null;
 					resolve(null);
@@ -468,7 +483,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 		let canvas;
 		try {
 			canvas = iframe.contentDocument?.querySelector("canvas");
-		} catch (e) {
+		}
+		catch (e) {
 			ui.notifications.error("Cannot access map canvas (cross-origin).");
 			return null;
 		}
@@ -500,7 +516,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				return null;
 			}
 			return response.path;
-		} catch (e) {
+		}
+		catch (e) {
 			console.error(`${MODULE_ID} | Map capture failed:`, e);
 			ui.notifications.error(`Capture failed: ${e.message}`);
 			return null;
@@ -521,7 +538,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				speaker: ChatMessage.getSpeaker(),
 			});
 			ui.notifications.info("Map exported to chat!");
-		} catch (e) {
+		}
+		catch (e) {
 			ui.notifications.error("Failed to create chat message.");
 		}
 	}
@@ -536,7 +554,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 			ip.render(true);
 			ip.shareImage();
 			ui.notifications.info("Map shared with players!");
-		} catch (e) {
+		}
+		catch (e) {
 			ui.notifications.error("Failed to share image.");
 		}
 	}
@@ -612,7 +631,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				}
 				// Cell-zero edge sits at canvas toPixel(0,0) == (M.tx, M.ty).
 				align = { toPixel: dungeonTransform.toPixel, cellPx: dungeonTransform.cellPx, origin: dungeonTransform.toPixel(0, 0) };
-			} else if (isCave) {
+			}
+			else if (isCave) {
 				align = this._getCaveAlignSource();
 			}
 
@@ -650,12 +670,15 @@ export class MaphubViewerApp extends ApplicationV2 {
 						const m = mapPx(p.x, p.y);
 						return { ...n, x: m.x, y: m.y };
 					});
-				} catch (e) {
+				}
+				catch (e) {
 					console.warn("Could not parse current Dungeon JSON for import", e);
 				}
-			} else if (isDwellings) {
+			}
+			else if (isDwellings) {
 				walls = this._getDwellingsWalls({ width: scene.width, height: scene.height, grid });
-			} else if (isCave) {
+			}
+			else if (isCave) {
 				// _getCaveWalls returns captured-canvas px; run them through mapPx.
 				walls = this._getCaveWalls().map(w => {
 					const a = mapPx(w.c[0], w.c[1]);
@@ -675,7 +698,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 			const notesNote = notes.length ? ` and ${notes.length} notes` : "";
 			ui.notifications.info(`Imported ${scene?.name ?? "map"} as a Foundry scene${wallNote}${notesNote}.`);
 			this.close();
-		} catch (e) {
+		}
+		catch (e) {
 			console.error(`${MODULE_ID} | Failed to import Maphub scene`, e);
 			ui.notifications.error(`Failed to import scene: ${e.message}`);
 			if (isDwellings) this._restoreAfterCapture(oldState);
@@ -684,7 +708,12 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 	/** Live raw-Dwellings view controller (Dwellings.js is patched to expose it). */
 	_getDwellView() {
-		try { return this._iframe?.contentWindow?.__sdxDwellView ?? null; } catch (_) { return null; }
+		try {
+			return this._iframe?.contentWindow?.__sdxDwellView ?? null;
+		}
+		catch (_) {
+			return null;
+		}
 	}
 
 	/**
@@ -701,9 +730,15 @@ export class MaphubViewerApp extends ApplicationV2 {
 			if (!layer) return null;
 			if (typeof layer.set_visible === "function") layer.set_visible(visible);
 			layer.__visible = visible;
-			try { layer.visible = visible; } catch (_) { }
+			try {
+				layer.visible = visible;
+			}
+			catch (_) { }
 			return layer;
-		} catch (_) { return null; }
+		}
+		catch (_) {
+			return null;
+		}
 	}
 
 	/** Snapshot the generator's live canvas to an offscreen canvas (or null). */
@@ -715,7 +750,10 @@ export class MaphubViewerApp extends ApplicationV2 {
 			off.width = canvas.width; off.height = canvas.height;
 			off.getContext("2d").drawImage(canvas, 0, 0);
 			return off;
-		} catch (_) { return null; }
+		}
+		catch (_) {
+			return null;
+		}
 	}
 
 	/** Upload an offscreen canvas as a PNG under maps/maphub; returns its path. */
@@ -727,7 +765,10 @@ export class MaphubViewerApp extends ApplicationV2 {
 			await FP.createDirectory("data", "maps/maphub").catch(() => { });
 			const resp = await FP.upload("data", "maps/maphub", new File([blob], filename, { type: "image/png" }), {});
 			return resp?.path || null;
-		} catch (e) { console.warn(`${MODULE_ID} | dwelling upload failed`, e); return null; }
+		}
+		catch (e) {
+			console.warn(`${MODULE_ID} | dwelling upload failed`, e); return null;
+		}
 	}
 
 	/**
@@ -750,7 +791,10 @@ export class MaphubViewerApp extends ApplicationV2 {
 			}
 			if (!Number.isFinite(x0)) return null;
 			return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0, bg };
-		} catch (_) { return null; }
+		}
+		catch (_) {
+			return null;
+		}
 	}
 
 	/**
@@ -772,7 +816,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				const d = off.getContext("2d").getImageData(0, 0, 1, 1).data;
 				ctx.fillStyle = `rgb(${d[0]},${d[1]},${d[2]})`;
 				ctx.fillRect(0, 0, sceneW, sceneH);
-			} catch (_) { }
+			}
+			catch (_) { }
 			// M maps node -> stage(CSS) px, but `off` is the canvas BACKING store (HiDPI:
 			// backing = CSS * devicePixelRatio). Read the node region in BACKING px by
 			// scaling M by dpr — otherwise the source rect is undersized and the floor
@@ -781,7 +826,10 @@ export class MaphubViewerApp extends ApplicationV2 {
 			const srcW = (Mj - mj) * M.a * dpr; const srcH = (Mi - mi) * M.d * dpr;
 			ctx.drawImage(off, srcX, srcY, srcW, srcH, 0, 0, sceneW, sceneH);
 			return await this._uploadCanvas(out, `dwellfloor_${Date.now()}.png`);
-		} catch (e) { console.warn(`${MODULE_ID} | dwelling warp failed`, e); return null; }
+		}
+		catch (e) {
+			console.warn(`${MODULE_ID} | dwelling warp failed`, e); return null;
+		}
 	}
 
 	/**
@@ -798,13 +846,17 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 		try {
 			const LH = 10; // ft per level
-			const ordinal = (k) => { const v = k % 100; const sfx = (v >= 11 && v <= 13) ? "th" : (["th","st","nd","rd"][k % 10] || "th"); return `${k}${sfx}`; };
+			const ordinal = (k) => {
+				const v = k % 100; const sfx = (v >= 11 && v <= 13) ? "th" : (["th","st","nd","rd"][k % 10] || "th"); return `${k}${sfx}`;
+			};
 			// Levels to import, bottom -> top: basement (if any), ground, then upper floors.
 			const units = [];
 			if (view.house.basement) units.push({ floor: view.house.basement, setIdx: -1, name: "Basement", isGround: false });
 			floors.forEach((f, i) => units.push({ floor: f, setIdx: i, name: i === 0 ? "Ground Floor" : `${ordinal(i)} Floor`, isGround: i === 0 }));
 			const baseIdx = view.house.basement ? 1 : 0; // index of the ground floor within units
-			units.forEach((u, k) => { u.bottom = (k - baseIdx) * LH; u.top = u.bottom + LH; });
+			units.forEach((u, k) => {
+				u.bottom = (k - baseIdx) * LH; u.top = u.bottom + LH;
+			});
 			ui.notifications.info(`Importing dwelling — ${units.length} level${units.length === 1 ? "" : "s"}…`);
 
 			// 1. Capture each level + its render transform FROM THE SAME FRAME. setFloor
@@ -820,13 +872,20 @@ export class MaphubViewerApp extends ApplicationV2 {
 					// Nudge OpenFL/Lime to repaint — the WebGL buffer can stay blank
 					// mid-fit or when the window isn't focused, which otherwise drops the
 					// whole dwelling to the flat generic fallback.
-					if (attempt > 0) { try { this._iframe?.contentWindow?.dispatchEvent(new Event("resize")); } catch (_) { } }
+					if (attempt > 0) {
+						try {
+							this._iframe?.contentWindow?.dispatchEvent(new Event("resize"));
+						}
+						catch (_) { }
+					}
 					await new Promise(r => setTimeout(r, attempt === 0 ? 900 : 350));
 					const m = view.map.__getRenderTransform();
 					const cap = this._grabCanvas();
 					if (!m || !Number.isFinite(m.a) || !m.a || !cap) continue;
 					const b = this._detectBuildingBBox(cap);
-					if (b && b.w > 20 && b.h > 20) { M = { a: m.a, b: m.b, c: m.c, d: m.d, tx: m.tx, ty: m.ty }; off = cap; }
+					if (b && b.w > 20 && b.h > 20) {
+						M = { a: m.a, b: m.b, c: m.c, d: m.d, tx: m.tx, ty: m.ty }; off = cap;
+					}
 				}
 				if (!off) return false;
 				u.M = M; u.off = off;
@@ -836,8 +895,14 @@ export class MaphubViewerApp extends ApplicationV2 {
 			// coords (x = node.j, y = node.i), plus a fixed roof/outer-wall margin. Shared
 			// by ALL levels so they stack.
 			let cmi = Infinity; let cmj = Infinity; let cMi = -Infinity; let cMj = -Infinity;
-			const accNode = (edges) => { for (const e of (edges || [])) for (const nd of [e?.a, e?.b]) { if (!nd) continue; cmi = Math.min(cmi, nd.i); cMi = Math.max(cMi, nd.i); cmj = Math.min(cmj, nd.j); cMj = Math.max(cMj, nd.j); } };
-			for (const u of units) { accNode(u.floor.contour); for (const rm of (u.floor.rooms || [])) accNode(rm.contour); }
+			const accNode = (edges) => {
+				for (const e of (edges || [])) for (const nd of [e?.a, e?.b]) {
+					if (!nd) continue; cmi = Math.min(cmi, nd.i); cMi = Math.max(cMi, nd.i); cmj = Math.min(cmj, nd.j); cMj = Math.max(cMj, nd.j);
+				}
+			};
+			for (const u of units) {
+				accNode(u.floor.contour); for (const rm of (u.floor.rooms || [])) accNode(rm.contour);
+			}
 			if (!Number.isFinite(cmi)) return false;
 			const ROOF = 2;
 			const mi = Math.floor(cmi - ROOF); const mj = Math.floor(cmj - ROOF); const Mi = Math.ceil(cMi + ROOF); const Mj = Math.ceil(cMj + ROOF);
@@ -871,13 +936,17 @@ export class MaphubViewerApp extends ApplicationV2 {
 			};
 			const scene = await Scene.create(sceneData);
 			await scene.activate();
-			units.forEach((u, k) => { u.level = scene.levels.find(l => (l.elevation?.bottom ?? null) === u.bottom) ?? scene.levels.contents[k]; });
+			units.forEach((u, k) => {
+				u.level = scene.levels.find(l => (l.elevation?.bottom ?? null) === u.bottom) ?? scene.levels.contents[k];
+			});
 
 			// 4. Per-level walls (with doors). Entrance door only on the ground floor.
 			let wallTotal = 0;
 			for (const u of units) {
 				const walls = this._buildDwellWalls(u.floor, nodeToScene, { id: u.level.id, bottom: u.bottom, top: u.top, isGround: u.isGround });
-				if (walls.length) { await scene.createEmbeddedDocuments("Wall", walls); wallTotal += walls.length; }
+				if (walls.length) {
+					await scene.createEmbeddedDocuments("Wall", walls); wallTotal += walls.length;
+				}
 			}
 
 			// 5. Stairs as changeLevel Regions, using the generator's OWN connectivity:
@@ -925,7 +994,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 					try {
 						const C = [spObj.entrance.a, spObj.entrance.b].find(n1 => [spObj.exit.a, spObj.exit.b].some(n2 => n2 && n1 && n2.i === n1.i && n2.j === n1.j));
 						if (C) cell = { i: 2 * C.i - 1 - sp.i, j: 2 * C.j - 1 - sp.j };
-					} catch (_) { }
+					}
+					catch (_) { }
 					const cc = nodeToScene(cell.j + 0.5, cell.i + 0.5);
 					regionByKey.set(`spiral|${sp.i},${sp.j}`, {
 						name: "Spiral Staircase",
@@ -938,18 +1008,21 @@ export class MaphubViewerApp extends ApplicationV2 {
 						behaviors: [{ name: "Spiral Up/Down", type: "executeScript", system: { events: ["tokenMoveIn"], source: this._spiralRegionScript() } }],
 					});
 				}
-			} catch (_) { }
+			}
+			catch (_) { }
 			const regions = [...regionByKey.values()];
 			if (regions.length) await scene.createEmbeddedDocuments("Region", regions);
 
 			ui.notifications.info(`Imported ${scene.name} — ${units.length} levels, ${wallTotal} walls, ${regions.length} stairs.`);
 			this.close();
 			return true;
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Multi-level dwelling import failed`, err);
 			ui.notifications.error(`Multi-level dwelling import failed: ${err.message}`);
 			return true; // handled (don't fall through to a second import)
-		} finally {
+		}
+		finally {
 			// Restore the generator's UI so it stays usable if the window is open.
 			this._setDwellUiVisible(view, true);
 		}
@@ -1000,7 +1073,13 @@ export class MaphubViewerApp extends ApplicationV2 {
 		const doorType = new Map();
 		for (const rm of (floor.rooms || [])) {
 			let list = [];
-			try { const it = rm.doors?.iterator?.(); if (it) { while (it.hasNext()) list.push(it.next()); } else if (Array.isArray(rm.doors)) list = rm.doors; } catch (_) { }
+			try {
+				const it = rm.doors?.iterator?.(); if (it) {
+					while (it.hasNext()) list.push(it.next());
+				}
+				else if (Array.isArray(rm.doors)) list = rm.doors;
+			}
+			catch (_) { }
 			for (const d of list) {
 				const e = d?.edge1; if (!e?.a || !e?.b) continue;
 				const t = (d.type?.name || d.type?._hx_name || "").toUpperCase();
@@ -1023,9 +1102,14 @@ export class MaphubViewerApp extends ApplicationV2 {
 					[{ i: L.i, j: L.j }, { i: L.i + 1, j: L.j }],
 					[{ i: L.i, j: L.j + 1 }, { i: L.i + 1, j: L.j + 1 }],
 				];
-				for (const [a, b] of cand) { const k = ek(a, b); if (contourKeys.has(k)) { doorType.set(k, "REGULAR"); break; } }
+				for (const [a, b] of cand) {
+					const k = ek(a, b); if (contourKeys.has(k)) {
+						doorType.set(k, "REGULAR"); break;
+					}
+				}
 			}
-		} catch (_) { }
+		}
+		catch (_) { }
 
 		// Spiral tower: enclose the round tower (the cells just outside the building
 		// around the spiral's corner) and OPEN the contour edges between it and the
@@ -1057,7 +1141,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 					}
 				}
 			}
-		} catch (_) { }
+		}
+		catch (_) { }
 
 		const walls = [];
 		const used = new Set();
@@ -1072,7 +1157,9 @@ export class MaphubViewerApp extends ApplicationV2 {
 			const A = nodeToScene(a.j, a.i); const B = nodeToScene(b.j, b.i);
 			if (A.x === B.x && A.y === B.y) return;
 			const w = { c: [A.x, A.y, B.x, B.y], levels: [levelCtx.id], flags: { "wall-height": { bottom: levelCtx.bottom, top: levelCtx.top } } };
-			if (dt === "REGULAR") { w.door = 1; w.ds = 0; } // closed, openable door
+			if (dt === "REGULAR") {
+				w.door = 1; w.ds = 0;
+			} // closed, openable door
 			walls.push(w);
 		};
 		for (const e of (floor.contour || [])) add(e?.a, e?.b);
@@ -1183,7 +1270,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 		try {
 			const cw = this._iframe?.contentWindow;
 			return cw?.__maphubClasses?.["lime.app.Application"]?.current?.__window?.stage ?? null;
-		} catch (_) {
+		}
+		catch (_) {
 			return null;
 		}
 	}
@@ -1225,7 +1313,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 							const score = uniform + unit;
 							if (!best || score < best.score) best = { child, score };
 						}
-					} catch (_) { /* some nodes refuse getBounds */ }
+					}
+					catch (_) { /* some nodes refuse getBounds */ }
 					visit(child, depth + 1);
 				}
 			};
@@ -1240,7 +1329,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				y: Math.round(M.b * x + M.d * y + M.ty),
 			});
 			return { toPixel, scale: Math.hypot(M.a, M.b) };
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to read maphub geometry transform`, err);
 			return null;
 		}
@@ -1383,7 +1473,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 			canvas.dispatchEvent(new cw.MouseEvent("mouseup", { ...eventInit, buttons: 0 }));
 			canvas.dispatchEvent(new cw.MouseEvent("click", { ...eventInit, buttons: 0 }));
 			await new Promise(resolve => setTimeout(resolve, 250));
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to dismiss generator context menu`, err);
 		}
 	}
@@ -1415,7 +1506,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				if (this._lastSavedDungeonJson) return true;
 			}
 			return false;
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to export dungeon JSON`, err);
 			return false;
 		}
@@ -1430,7 +1522,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 	_getDungeonController() {
 		try {
 			return this._iframe?.contentWindow?.__sdxDungeonView ?? null;
-		} catch (_) {
+		}
+		catch (_) {
 			return null;
 		}
 	}
@@ -1460,7 +1553,12 @@ export class MaphubViewerApp extends ApplicationV2 {
 			// Pick the child whose x/y cell-sizes agree and are an integer.
 			let best = null;
 			for (const c of kids) {
-				let b; try { b = c.getBounds(map); } catch (_) { continue; }
+				let b; try {
+					b = c.getBounds(map);
+				}
+				catch (_) {
+					continue;
+				}
 				const cx = b.width / gW; const cy = b.height / gH;
 				if (!(cx > 0) || !(cy > 0)) continue;
 				const avg = (cx + cy) / 2;
@@ -1471,7 +1569,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				}
 			}
 			return best?.cell || this._DUNGEON_CELL;
-		} catch (_) {
+		}
+		catch (_) {
 			return this._DUNGEON_CELL;
 		}
 	}
@@ -1497,7 +1596,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 					await new Promise(r => setTimeout(r, 1200));
 				}
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to force dungeon axis-aligned`, err);
 		}
 	}
@@ -1530,7 +1630,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 			};
 			const cellPx = cell * Math.hypot(M.a, M.b);
 			return { toPixel, cellPx };
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to read dungeon render transform`, err);
 			return null;
 		}
@@ -1565,7 +1666,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				cellPx: cellUnits * transform.scale,
 				origin: transform.toPixel(left, top),
 			};
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to read cave align source`, err);
 			return null;
 		}
@@ -1601,7 +1703,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				const d = pctx.getImageData(0, 0, 1, 1).data;
 				ctx.fillStyle = `rgb(${d[0]},${d[1]},${d[2]})`;
 				ctx.fillRect(0, 0, w, h);
-			} catch (_) { /* keep transparent */ }
+			}
+			catch (_) { /* keep transparent */ }
 			ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, -shiftX, -shiftY, w, h);
 			const blob = await new Promise(r => canvas.toBlob(r, "image/png"));
 			const FP = foundry.applications.apps.FilePicker?.implementation ?? FilePicker;
@@ -1610,7 +1713,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 			const file = new File([blob], `aligned_${this._mapType}_${Date.now()}.png`, { type: "image/png" });
 			const resp = await FP.upload("data", "maps/maphub", file, {});
 			return { path: resp?.path || imgPath, width: w, height: h };
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to render aligned image`, err);
 			return { path: imgPath, width: null, height: null };
 		}
@@ -1638,7 +1742,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 		const foundryMajor = Number(game.version?.split?.(".")?.[0] ?? 0);
 		if (foundryMajor >= 14) {
 			sceneData.levels = [{ name: "Level", background: { src: img } }];
-		} else {
+		}
+		else {
 			sceneData.background = { src: img };
 		}
 
@@ -1681,7 +1786,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				this.element.style.top = "0px";
 				this.element.style.zIndex = "9999";
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn("Failed to maximize dialog window:", e);
 		}
 		// Give the iframe/canvas time to resize and redraw completely
@@ -1738,7 +1844,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				const levelId = canvas.level?.id ?? canvas.scene.levels?.contents?.[0]?.id;
 				if (foundryMajor >= 14 && levelId) {
 					sceneUpdateData[`levels.${levelId}.background.src`] = imgPath;
-				} else {
+				}
+				else {
 					sceneUpdateData.background = { src: imgPath };
 				}
 
@@ -1747,7 +1854,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 				if (isDwellings) {
 					this._restoreAfterCapture(oldState);
-				} else {
+				}
+				else {
 					this.close(); // Close the dialog
 				}
 			};
@@ -1758,12 +1866,14 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 				if (isDwellings) {
 					this._restoreAfterCapture(oldState);
-				} else {
+				}
+				else {
 					this.close(); // Close the dialog
 				}
 			};
 			img.src = imgPath;
-		} catch (e) {
+		}
+		catch (e) {
 			console.error(`${MODULE_ID} | Failed to set scene background`, e);
 			ui.notifications.error("Failed to set scene background.");
 			if (isDwellings) this._restoreAfterCapture(oldState);
@@ -1804,7 +1914,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 				if (isDwellings) {
 					this._restoreAfterCapture(oldState);
-				} else {
+				}
+				else {
 					this.close(); // Close the dialog
 				}
 			};
@@ -1813,7 +1924,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				if (isDwellings) this._restoreAfterCapture(oldState);
 			};
 			img.src = imgPath;
-		} catch (e) {
+		}
+		catch (e) {
 			console.error(`${MODULE_ID} | Failed to add map as tile`, e);
 			ui.notifications.error("Failed to add map as tile.");
 			if (isDwellings) this._restoreAfterCapture(oldState);
@@ -1856,7 +1968,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 					const val = window.localStorage.getItem(rotKey) || "";
 					window.localStorage.setItem(rotKey, val.replace("autoRotationf", "autoRotationt"));
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				console.warn(`${MODULE_ID} | Failed to restore dungeon rotation`, err);
 			}
 		}
@@ -1876,7 +1989,10 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 			// Kill JS context after the rAF loop settles, then clean up
 			setTimeout(() => {
-				try { iframe.src = "about:blank"; } catch (_) { }
+				try {
+					iframe.src = "about:blank";
+				}
+				catch (_) { }
 				setTimeout(() => graveyard.remove(), 500);
 			}, 100);
 		}
@@ -1946,7 +2062,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 				console.log(`${MODULE_ID} | MaphubViewerApp: using local Blob URL for ${localUrl}`);
 				return this._blobUrl;
 			}
-		} catch (_) { /* network error → fall through */ }
+		}
+		catch (_) { /* network error → fall through */ }
 
 		if (localOnly) {
 			const label = this._getMapLabel();

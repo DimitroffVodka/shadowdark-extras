@@ -164,7 +164,8 @@ export default class BackgroundSheetSD extends HandlebarsApplicationMixin(Docume
 						name: doc?.name || itemRef.name || "Unknown Item",
 						img: doc?.img || itemRef.img || "icons/svg/mystery-man.svg",
 					});
-				} catch (err) {
+				}
+				catch (err) {
 					console.warn(`${MODULE_ID} | Failed to load item ${itemRef.uuid}:`, err);
 					// Include it anyway with stored data
 					loadedItems.push({
@@ -379,11 +380,13 @@ export default class BackgroundSheetSD extends HandlebarsApplicationMixin(Docume
 			// Handle UUID or pack references
 			if (data.uuid) {
 				doc = await fromUuid(data.uuid);
-			} else if (data.type === "Item" && data.id) {
+			}
+			else if (data.type === "Item" && data.id) {
 				if (data.pack) {
 					const pack = game.packs.get(data.pack);
 					doc = await pack.getDocument(data.id);
-				} else {
+				}
+				else {
 					doc = game.items.get(data.id);
 				}
 			}
@@ -419,7 +422,8 @@ export default class BackgroundSheetSD extends HandlebarsApplicationMixin(Docume
 			await this.item.setFlag(MODULE_ID, "advancement", advancement);
 			ui.notifications.info(`Added ${doc.name} to advancement`);
 
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Error handling advancement item drop:`, err);
 		}
 	}

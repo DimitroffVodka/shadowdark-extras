@@ -18,7 +18,8 @@ function _registerGsapPixiPlugin() {
 	try {
 		window.gsap.registerPlugin(window.PixiPlugin);
 		window.PixiPlugin.registerPIXI(window.PIXI);
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn("SDX Journal Pins | GSAP PixiPlugin registration failed:", e);
 	}
 }
@@ -121,7 +122,8 @@ function getPinStyle() {
 	try {
 		const stored = game.settings.get(MODULE_ID, "pinStyleDefaults") || {};
 		return foundry.utils.mergeObject(foundry.utils.deepClone(DEFAULT_PIN_STYLE), stored);
-	} catch (e) {
+	}
+	catch (e) {
 		return foundry.utils.deepClone(DEFAULT_PIN_STYLE);
 	}
 }
@@ -381,8 +383,12 @@ class JournalPinManager {
 		await scene.setFlag(MODULE_ID, FOLDER_FLAG_KEY, arr);
 	}
 	static _getWorldFolders() {
-		try { return game.settings.get(MODULE_ID, "pinFoldersWorld") || []; }
-		catch (e) { return []; }
+		try {
+			return game.settings.get(MODULE_ID, "pinFoldersWorld") || [];
+		}
+		catch (e) {
+			return [];
+		}
 	}
 	static async _setWorldFolders(arr) {
 		await game.settings.set(MODULE_ID, "pinFoldersWorld", arr);
@@ -548,7 +554,9 @@ class JournalPinManager {
 		const pins = this._getScenePins(scene);
 		let changed = false;
 		const nextPins = pins.map(p => {
-			if ((p.folderId ?? null) === folderId) { changed = true; return { ...p, folderId: null }; }
+			if ((p.folderId ?? null) === folderId) {
+				changed = true; return { ...p, folderId: null };
+			}
 			return p;
 		});
 		if (changed) await scene.setFlag(MODULE_ID, FLAG_KEY, nextPins);
@@ -825,10 +833,12 @@ function checkTokenCanSeePinPosition(token, pinPosition) {
 	if (window.foundry?.canvas?.geometry?.Ray) {
 		if (CONFIG.Canvas?.polygonBackends?.sight?.testCollision) {
 			isBlocked = CONFIG.Canvas.polygonBackends.sight.testCollision(startPos, endPos, { mode: "any", type: "sight" });
-		} else if (canvas.edges?.testCollision) {
+		}
+		else if (canvas.edges?.testCollision) {
 			isBlocked = canvas.edges.testCollision(startPos, endPos, { mode: "any", type: "sight" });
 		}
-	} else if (canvas.walls?.checkCollision) {
+	}
+	else if (canvas.walls?.checkCollision) {
 		const RayClass = foundry.canvas?.geometry?.Ray || globalThis.Ray;
 		const ray = new RayClass(startPos, endPos);
 		isBlocked = canvas.walls.checkCollision(ray, { mode: "any", type: "sight" });
@@ -858,7 +868,8 @@ function checkTokenCanSeePinPosition(token, pinPosition) {
 		const effectiveRange = visionRangePixels > 0 ? visionRangePixels : (60 / gridDistance) * gridSize;
 		if (distanceToPin <= effectiveRange) {
 			return true;
-		} else {
+		}
+		else {
 			return false;
 		}
 	}
@@ -915,10 +926,12 @@ function checkWallCollision(startPos, endPos) {
 	if (window.foundry?.canvas?.geometry?.Ray) {
 		if (CONFIG.Canvas?.polygonBackends?.sight?.testCollision) {
 			isBlocked = CONFIG.Canvas.polygonBackends.sight.testCollision(startPos, endPos, { mode: "any", type: "sight" });
-		} else if (canvas.edges?.testCollision) {
+		}
+		else if (canvas.edges?.testCollision) {
 			isBlocked = canvas.edges.testCollision(startPos, endPos, { mode: "any", type: "sight" });
 		}
-	} else if (canvas.walls?.checkCollision) {
+	}
+	else if (canvas.walls?.checkCollision) {
 		const RayClass = foundry.canvas?.geometry?.Ray || globalThis.Ray;
 		const ray = new RayClass(startPos, endPos);
 		isBlocked = canvas.walls.checkCollision(ray, { mode: "any", type: "sight" });
@@ -977,7 +990,8 @@ class JournalPinGraphics extends PIXI.Container {
 			// Find the index of the specific page
 			const pageIndex = sortedPages.findIndex(p => p.id === this.pinData.pageId);
 			return pageIndex >= 0 ? pageIndex : 0;
-		} else {
+		}
+		else {
 			// Default to first page (index 0)
 			return 0;
 		}
@@ -1004,7 +1018,9 @@ class JournalPinGraphics extends PIXI.Container {
 			_TMFXunsetAnimeFlag: () => this._TMFXunsetAnimeFlag(),
 			_TMFXgetPlaceableType: () => this._TMFXgetPlaceableType(),
 			_TMFXgetMaxFilterRank: () => this._TMFXgetMaxFilterRank(),
-			get object() { return this; },
+			get object() {
+				return this;
+			},
 		};
 	}
 
@@ -1086,7 +1102,8 @@ class JournalPinGraphics extends PIXI.Container {
 		// Simple append for now as TMFX usually manages the array
 		if (filters === null) {
 			this.filters = null;
-		} else {
+		}
+		else {
 			if (Array.isArray(filters)) this.filters = filters;
 			else this.filters.push(filters);
 		}
@@ -1140,7 +1157,8 @@ class JournalPinGraphics extends PIXI.Container {
 			try {
 				if (typeof color === "string" && color.startsWith("#")) colorNum = parseInt(color.slice(1), 16);
 				else if (typeof color === "number") colorNum = color;
-			} catch (e) { }
+			}
+			catch (e) { }
 
 			const ripple = new PIXI.Graphics();
 			ripple.lineStyle(6, colorNum, 0.8);
@@ -1161,14 +1179,16 @@ class JournalPinGraphics extends PIXI.Container {
 				{ x: restingScale, y: restingScale, duration: 1.0, ease: "elastic.out(1, 0.5)" }
 			);
 
-		} else if (pingAnim === "flash") {
+		}
+		else if (pingAnim === "flash") {
 			gsap.fromTo(this, { pixi: { brightness: 3 } }, { pixi: { brightness: 1 }, duration: 1.0, ease: "power2.out" });
 			gsap.fromTo(this.scale,
 				{ x: 1.5, y: 1.5 },
 				{ x: restingScale, y: restingScale, duration: 1.0, ease: "elastic.out(1, 0.5)" }
 			);
 
-		} else if (pingAnim === "shake") {
+		}
+		else if (pingAnim === "shake") {
 			const originalX = this.pinData.x;
 			gsap.to(this, {
 				x: "+=5", yoyo: true, repeat: 9, duration: 0.05, onComplete: () => {
@@ -1260,7 +1280,8 @@ class JournalPinGraphics extends PIXI.Container {
 		if (this.pinData.gmOnly && game.user?.isGM) {
 			ringColor = "#FF4444"; // Red for GM-only pins
 			ringStyle = "dashed";  // Forced dashed for GM-only
-		} else {
+		}
+		else {
 			ringColor = style.ringColor || "#ffffff";
 		}
 
@@ -1310,7 +1331,8 @@ class JournalPinGraphics extends PIXI.Container {
 
 						container.addChild(sprite);
 					}
-				} else {
+				}
+				else {
 					// Fallback if no image path: broken image placeholder
 					const placeholder = new PIXI.Graphics();
 					placeholder.lineStyle(2, 0xFF0000, baseOpacity);
@@ -1326,7 +1348,8 @@ class JournalPinGraphics extends PIXI.Container {
 				// unless contentType is "none". _circle stays null here; all its
 				// uses are confined to the non-image branch below.
 
-			} catch (err) {
+			}
+			catch (err) {
 				console.error("SDX Journal Pins | Error loading pin image:", err);
 			}
 		}
@@ -1340,7 +1363,8 @@ class JournalPinGraphics extends PIXI.Container {
 			// Use standard lineStyle for solid, or helper for dashed/dotted
 			if (ringStyle === "solid") {
 				this._circle.lineStyle(ringWidth, ringColorNum, ringOpacity);
-			} else {
+			}
+			else {
 				this._circle.lineStyle(0); // Standard stroke off for segment drawing
 			}
 
@@ -1418,7 +1442,8 @@ class JournalPinGraphics extends PIXI.Container {
 				await this._addSvgIcon(container, iconPath, radius, iconColorNum);
 				if (this._buildId !== buildId || this.destroyed) return;
 			}
-		} else {
+		}
+		else {
 			// Show text (page number or custom)
 			const fontColor = style.fontColor || "#ffffff";
 			const fontColorNum = typeof fontColor === "string" && fontColor.startsWith("#")
@@ -1428,7 +1453,8 @@ class JournalPinGraphics extends PIXI.Container {
 			let textValue = "";
 			if (contentType === "text") {
 				textValue = style.customText || "";
-			} else {
+			}
+			else {
 				const pageNumber = this._getPageNumber();
 				textValue = pageNumber !== null ? String(pageNumber) : "";
 			}
@@ -1443,7 +1469,8 @@ class JournalPinGraphics extends PIXI.Container {
 					try {
 						await document.fonts.load(`16px ${fontFamily}`);
 						if (this._buildId !== buildId || this.destroyed) return;
-					} catch (e) {
+					}
+					catch (e) {
 						console.warn(`SDX Journal Pins | Failed to load font: ${fontFamily}`);
 					}
 				}
@@ -1490,7 +1517,8 @@ class JournalPinGraphics extends PIXI.Container {
 				try {
 					await document.fonts.load(`16px ${labelFontFamily}`);
 					if (this._buildId !== buildId || this.destroyed) return;
-				} catch (e) {
+				}
+				catch (e) {
 					console.warn(`SDX Journal Pins | Failed to load label font: ${labelFontFamily}`);
 				}
 			}
@@ -1556,10 +1584,12 @@ class JournalPinGraphics extends PIXI.Container {
 							bgColorGraphic.endFill();
 						}
 					}
-				} catch (e) {
+				}
+				catch (e) {
 					console.error("SDX Journal Pins | Failed to load label background", e);
 				}
-			} else if (style.labelBackground === "solid") {
+			}
+			else if (style.labelBackground === "solid") {
 				bg = new PIXI.Graphics();
 				const bgColor = typeof Color !== "undefined" ? Color.from(style.labelBackgroundColor || "#000000") : (style.labelBackgroundColor || "#000000");
 				const borderColor = typeof Color !== "undefined" ? Color.from(style.labelBorderColor || "#ffffff") : (style.labelBorderColor || "#ffffff");
@@ -1649,10 +1679,12 @@ class JournalPinGraphics extends PIXI.Container {
 				if (rendererLabelContainer) {
 					this._labelContainer.position.set(this.position.x + posX, this.position.y + posY);
 					rendererLabelContainer.addChild(this._labelContainer);
-				} else {
+				}
+				else {
 					this.addChild(this._labelContainer);
 				}
-			} else {
+			}
+			else {
 				// This build was superseded, clean up our local container
 				newLabelContainer.destroy({ children: true });
 			}
@@ -1661,7 +1693,8 @@ class JournalPinGraphics extends PIXI.Container {
 		// Hit area based on shape
 		if (shape === "circle") {
 			this.hitArea = new PIXI.Circle(0, 0, radius);
-		} else {
+		}
+		else {
 			this.hitArea = new PIXI.Rectangle(-radius, -radius, size, size);
 		}
 
@@ -1735,7 +1768,8 @@ class JournalPinGraphics extends PIXI.Container {
 					const alpha = this._pixelData[pixelIndex + 3];
 
 					return alpha >= this._alphaThreshold;
-				} catch (err) {
+				}
+				catch (err) {
 					console.warn("SDX Journal Pins | Pixel-perfect detection failed:", err);
 					return inBounds;
 				}
@@ -1786,7 +1820,8 @@ class JournalPinGraphics extends PIXI.Container {
 						this._cachedTexture = texture;
 					}
 				}
-			} catch (e) {
+			}
+			catch (e) {
 				// Keep the raw graphics container if caching fails
 			}
 		}
@@ -1828,13 +1863,15 @@ class JournalPinGraphics extends PIXI.Container {
 					graphics.beginFill(color, opacity);
 					graphics.drawCircle(x, y, width / 2);
 					graphics.endFill();
-				} else {
+				}
+				else {
 					// Draw a dash arc
 					graphics.arc(0, 0, radius, startAngle, startAngle + dashAngle);
 					graphics.moveTo(Math.cos(startAngle + stepAngle) * radius, Math.sin(startAngle + stepAngle) * radius);
 				}
 			}
-		} else if (shape === "square" && cornerRadius > 0) {
+		}
+		else if (shape === "square" && cornerRadius > 0) {
 			// Rounded square - draw edges with corner arcs
 			const cr = Math.min(cornerRadius, radius); // Clamp corner radius
 			const innerRadius = radius - cr;
@@ -1880,14 +1917,16 @@ class JournalPinGraphics extends PIXI.Container {
 							graphics.beginFill(color, opacity);
 							graphics.drawCircle(sx, sy, width / 2);
 							graphics.endFill();
-						} else {
+						}
+						else {
 							graphics.lineStyle(width, color, opacity);
 							graphics.moveTo(sx, sy);
 							graphics.lineTo(sx + nx * segLen, sy + ny * segLen);
 						}
 						dist += dashLen + gapLen;
 					}
-				} else if (seg.type === "arc") {
+				}
+				else if (seg.type === "arc") {
 					const arcLen = seg.r * Math.abs(seg.endAngle - seg.startAngle);
 					const numDashes = Math.max(1, Math.floor(arcLen / (dashLen + gapLen)));
 					const angleStep = (seg.endAngle - seg.startAngle) / numDashes;
@@ -1902,7 +1941,8 @@ class JournalPinGraphics extends PIXI.Container {
 							graphics.beginFill(color, opacity);
 							graphics.drawCircle(x, y, width / 2);
 							graphics.endFill();
-						} else {
+						}
+						else {
 							graphics.lineStyle(width, color, opacity);
 							graphics.arc(seg.cx, seg.cy, seg.r, startAngle, Math.min(startAngle + dashAngle, seg.endAngle));
 							if (i < numDashes - 1) {
@@ -1913,15 +1953,18 @@ class JournalPinGraphics extends PIXI.Container {
 					}
 				}
 			}
-		} else {
+		}
+		else {
 			// Polygon shapes (non-rounded square, diamond, hexagon)
 			// For simplicity, we'll draw straight lines with patterns
 			const points = [];
 			if (shape === "square") {
 				points.push({ x: -radius, y: -radius }, { x: radius, y: -radius }, { x: radius, y: radius }, { x: -radius, y: radius }, { x: -radius, y: -radius });
-			} else if (shape === "diamond") {
+			}
+			else if (shape === "diamond") {
 				points.push({ x: 0, y: -radius }, { x: radius, y: 0 }, { x: 0, y: radius }, { x: -radius, y: 0 }, { x: 0, y: -radius });
-			} else if (shape === "hexagon" || shape === "hexagonFlat") {
+			}
+			else if (shape === "hexagon" || shape === "hexagonFlat") {
 				const hexOffset = shape === "hexagonFlat" ? 0 : -Math.PI / 2;
 				for (let i = 0; i <= 6; i++) {
 					const angle = (Math.PI / 3) * i + hexOffset;
@@ -1949,7 +1992,8 @@ class JournalPinGraphics extends PIXI.Container {
 						graphics.beginFill(color, opacity);
 						graphics.drawCircle(sx, sy, width / 2);
 						graphics.endFill();
-					} else {
+					}
+					else {
 						graphics.lineStyle(width, color, opacity);
 						graphics.moveTo(sx, sy);
 						graphics.lineTo(sx + nx * segLen, sy + ny * segLen);
@@ -1998,7 +2042,8 @@ class JournalPinGraphics extends PIXI.Container {
 					ctx.textBaseline = "middle";
 					ctx.fillText(iconChar, canvas.width / 2, canvas.height / 2);
 				}
-			} catch (e) {
+			}
+			catch (e) {
 				// Fallback
 			}
 		}
@@ -2027,7 +2072,8 @@ class JournalPinGraphics extends PIXI.Container {
 			// Replace existing fill/stroke attributes or add to root if missing
 			if (svgText.includes("fill=")) {
 				svgText = svgText.replace(/fill="[^"]*"/g, `fill="${colorHex}"`);
-			} else {
+			}
+			else {
 				svgText = svgText.replace("<svg ", `<svg fill="${colorHex}" `);
 			}
 
@@ -2056,7 +2102,8 @@ class JournalPinGraphics extends PIXI.Container {
 			}
 
 			container.addChild(this._icon);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`SDX Journal Pins | Failed to load custom SVG: ${iconPath}`, err);
 		}
 	}
@@ -2105,7 +2152,8 @@ class JournalPinGraphics extends PIXI.Container {
 					ctx.textBaseline = "middle";
 					ctx.fillText(iconChar, canvas.width / 2, canvas.height / 2);
 				}
-			} catch (e) { }
+			}
+			catch (e) { }
 		}
 
 		document.body.removeChild(tempDiv);
@@ -2157,7 +2205,8 @@ class JournalPinGraphics extends PIXI.Container {
 			window.TokenMagic._clearImgFiltersByPlaceable(this);
 			if (filters && Array.isArray(filters) && filters.length > 0) {
 				window.TokenMagic._assignFilters(this, filters);
-			} else {
+			}
+			else {
 				this.filters = null;
 			}
 		}
@@ -2205,18 +2254,22 @@ class JournalPinGraphics extends PIXI.Container {
 
 			if (animType === "scale") {
 				gsap.to(this.scale, { x: 1.2, y: 1.2, duration: 0.3, ease: "back.out(1.7)" });
-			} else if (animType === "pulse") {
+			}
+			else if (animType === "pulse") {
 				gsap.to(this.scale, { x: 1.15, y: 1.15, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
-			} else if (animType === "shake") {
+			}
+			else if (animType === "shake") {
 				gsap.to(this, {
 					rotation: 0.2, duration: 0.05, yoyo: true, repeat: 5, ease: "power1.inOut", onComplete: () => {
 						gsap.to(this, { rotation: 0, duration: 0.1 });
 					},
 				});
 				gsap.to(this.scale, { x: 1.1, y: 1.1, duration: 0.2 });
-			} else if (animType === "brightness") {
+			}
+			else if (animType === "brightness") {
 				gsap.to(this, { pixi: { brightness: 1.5 }, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
-			} else if (animType === "hue") {
+			}
+			else if (animType === "hue") {
 				gsap.to(this, { pixi: { hue: 180 }, duration: 2, repeat: -1, yoyo: true, ease: "linear" });
 			}
 		}
@@ -2238,7 +2291,8 @@ class JournalPinGraphics extends PIXI.Container {
 			// Smooth reset
 			gsap.to(this.scale, { x: 1.0, y: 1.0, duration: 0.3, ease: "power2.out" });
 			gsap.to(this, { rotation: 0, pixi: { brightness: 1, hue: 0 }, duration: 0.3, ease: "power2.out" });
-		} else {
+		}
+		else {
 			this.scale.set(1.0);
 			this.rotation = 0;
 		}
@@ -2277,7 +2331,8 @@ class JournalPinGraphics extends PIXI.Container {
 				this.on("globalpointermove", this._onPointerMove, this);
 			}
 			JournalPinTooltip.hide();
-		} else if (button === 2) {
+		}
+		else if (button === 2) {
 			event.stopPropagation();
 			if (isGm) {
 				this._showContextMenu(event);
@@ -2321,11 +2376,13 @@ class JournalPinGraphics extends PIXI.Container {
 						x: Math.round(this.position.x),
 						y: Math.round(this.position.y),
 					});
-				} catch (err) {
+				}
+				catch (err) {
 					console.error("SDX Journal Pins | Error updating pin position:", err);
 					this.position.set(this.pinData.x, this.pinData.y);
 				}
-			} else {
+			}
+			else {
 				this._openJournal();
 			}
 		}
@@ -2340,10 +2397,12 @@ class JournalPinGraphics extends PIXI.Container {
 		if (journal) {
 			if (this.pinData.pageId) {
 				journal.sheet.render(true, { pageId: this.pinData.pageId });
-			} else {
+			}
+			else {
 				journal.sheet.render(true);
 			}
-		} else {
+		}
+		else {
 			ui.notifications.warn("Journal not found");
 		}
 	}
@@ -2381,10 +2440,12 @@ class JournalPinGraphics extends PIXI.Container {
 
 						if (this.animatePing) {
 							this.animatePing("bring");
-						} else if (canvas.ping) {
+						}
+						else if (canvas.ping) {
 							canvas.ping({ x: this.pinData.x, y: this.pinData.y });
 						}
-					} else {
+					}
+					else {
 						ui.notifications.warn("Only the GM can bring players here.");
 					}
 				},
@@ -2401,7 +2462,8 @@ class JournalPinGraphics extends PIXI.Container {
 							pinId: this.pinData.id,
 						});
 						if (this.animatePing) this.animatePing();
-					} else {
+					}
+					else {
 						ui.notifications.warn("Only the GM can ping pins.");
 					}
 				},
@@ -2531,7 +2593,8 @@ class JournalPinTooltip {
 			// Get the page first
 			if (pinData.pageId) {
 				page = journal.pages.get(pinData.pageId);
-			} else {
+			}
+			else {
 				page = journal.pages.contents[0];
 			}
 
@@ -2565,7 +2628,8 @@ class JournalPinTooltip {
 		// Use custom tooltip content if provided, otherwise use page content
 		if (pinData.tooltipContent) {
 			content = pinData.tooltipContent;
-		} else if (canSeeContent && page?.text?.content) {
+		}
+		else if (canSeeContent && page?.text?.content) {
 			const temp = document.createElement("div");
 			temp.innerHTML = page.text.content;
 			content = temp.textContent?.substring(0, 200) || "";
@@ -2716,7 +2780,8 @@ class JournalPinRenderer {
 				if (!this._pins.has(pinData.id)) {
 					this._addPinGraphics(pinData);
 				}
-			} else {
+			}
+			else {
 				this.updatePin(pinData); // updatePin handles adding if missing
 			}
 		}
@@ -2770,7 +2835,8 @@ class JournalPinRenderer {
 					this.removePin(pinData.id);
 				}
 				return;
-			} else if (!existing) {
+			}
+			else if (!existing) {
 				// Pin became visible, add it for non-GM
 				this._addPinGraphics(pinData);
 				return;
@@ -2779,7 +2845,8 @@ class JournalPinRenderer {
 
 		if (existing) {
 			existing.update(pinData);
-		} else {
+		}
+		else {
 			this._addPinGraphics(pinData);
 		}
 	}
@@ -2873,7 +2940,8 @@ class JournalPinDropHandler {
 			pageId = null;
 			const journal = game.journal.get(journalId);
 			label = journal?.name || "Journal Pin";
-		} else if (data.type === "JournalEntryPage") {
+		}
+		else if (data.type === "JournalEntryPage") {
 			const parts = data.uuid?.split(".") || [];
 			journalId = parts[1];
 			pageId = parts[3] || data.id;
@@ -2916,7 +2984,8 @@ class JournalPinDropHandler {
 if (typeof CONFIG !== "undefined" && CONFIG.Canvas?.layers) {
 	hookCanvas();
 	console.log("SDX Journal Pins | hookCanvas called at module load");
-} else {
+}
+else {
 	// Fallback: try during init hook
 	Hooks.once("init", () => {
 		hookCanvas();
@@ -2946,10 +3015,12 @@ function initJournalPins() {
 
 				if (pin && pin.animatePing) {
 					pin.animatePing("bring");
-				} else if (canvas.ping) {
+				}
+				else if (canvas.ping) {
 					canvas.ping({ x: data.x, y: data.y });
 				}
-			} else if (data.type === "pingPin") {
+			}
+			else if (data.type === "pingPin") {
 				if (canvas.scene?.id !== data.sceneId) return;
 
 				let pin;
@@ -3056,7 +3127,8 @@ function initJournalPins() {
 					if (!this.placeableImg && this.placeableType === "JournalPin") return;
 					try {
 						return originalCalculatePadding.call(this);
-					} catch (err) {
+					}
+					catch (err) {
 						// Ignore rotation errors for pins that are being destroyed/removed
 						if (this.placeableType === "JournalPin") return;
 						throw err;

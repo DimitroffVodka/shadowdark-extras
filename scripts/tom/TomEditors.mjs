@@ -189,7 +189,8 @@ export class TomSceneEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 				document.querySelector(".tom-scene-switcher-panel")?.remove();
 				this.close();
 				ui.notifications.info(`Created Scene: ${newScene.name}`);
-			} else {
+			}
+			else {
 				Object.assign(this.scene, this.uiState.data);
 				console.log(`SDX Scene Editor | After assign, scene has: in=${this.scene.inAnimation}, out=${this.scene.outAnimation}`);
 				Store.saveData();
@@ -197,7 +198,8 @@ export class TomSceneEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 				this.close();
 				ui.notifications.info(`Saved Scene: ${this.scene.name}`);
 			}
-		} catch (error) {
+		}
+		catch (error) {
 			console.error("Tom | Error saving scene:", error);
 			ui.notifications.error("Failed to save scene. Check console for details.");
 			target.classList.remove("es-btn-loading");

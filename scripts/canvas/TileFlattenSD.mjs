@@ -21,8 +21,15 @@ const UPLOAD_DIR = "flattened-tiles";
 function nextFrame() {
 	return new Promise(resolve => {
 		let done = false;
-		const finish = () => { if (!done) { done = true; resolve(); } };
-		try { requestAnimationFrame(finish); } catch (_) { /* fall through to timer */ }
+		const finish = () => {
+			if (!done) {
+				done = true; resolve();
+			}
+		};
+		try {
+			requestAnimationFrame(finish);
+		}
+		catch (_) { /* fall through to timer */ }
 		setTimeout(finish, 50);
 	});
 }
@@ -80,7 +87,8 @@ function computeBounds(tiles) {
 				maxX = Math.max(maxX, rx);
 				maxY = Math.max(maxY, ry);
 			}
-		} else {
+		}
+		else {
 			minX = Math.min(minX, x);
 			minY = Math.min(minY, y);
 			maxX = Math.max(maxX, x + w);
@@ -202,10 +210,16 @@ function isolateVisibility(docs, bounds) {
 
 	return () => {
 		for (const { obj, visible } of hidden) {
-			try { obj.visible = visible; } catch (_) { }
+			try {
+				obj.visible = visible;
+			}
+			catch (_) { }
 		}
 		for (const { frame, visible } of hiddenFrames) {
-			try { frame.visible = visible; } catch (_) { }
+			try {
+				frame.visible = visible;
+			}
+			catch (_) { }
 		}
 		if (gridVis !== null && grid) grid.visible = gridVis;
 		if (iGridVis !== null && iGrid) iGrid.visible = iGridVis;
@@ -230,9 +244,15 @@ function patchPrimaryForTransparent(primary) {
 		if (typeof sprite.renderable === "boolean") sprite.renderable = false;
 	}
 	if (primary.clearColor) {
-		try { primary.clearColor = [0, 0, 0, 0]; } catch (_) { }
+		try {
+			primary.clearColor = [0, 0, 0, 0];
+		}
+		catch (_) { }
 	}
-	try { primary.renderDirty = true; } catch (_) { }
+	try {
+		primary.renderDirty = true;
+	}
+	catch (_) { }
 
 	let restoreRender = null;
 	if (typeof primary._render === "function") {
@@ -246,30 +266,60 @@ function patchPrimaryForTransparent(primary) {
 				fb.clear = function(rr, g, b, a, mask) {
 					return origClear.call(this, 0, 0, 0, 0, mask);
 				};
-				restoreClear = () => { fb.clear = origClear; };
+				restoreClear = () => {
+					fb.clear = origClear;
+				};
 			}
 			try {
 				return origRender.call(this, r);
-			} finally {
-				if (restoreClear) try { restoreClear(); } catch (_) { }
+			}
+			finally {
+				if (restoreClear) try {
+					restoreClear();
+				}
+				catch (_) { }
 			}
 		};
-		try { primary.renderDirty = true; } catch (_) { }
+		try {
+			primary.renderDirty = true;
+		}
+		catch (_) { }
 		restoreRender = () => {
 			primary._render = origRender;
-			try { primary.renderDirty = true; } catch (_) { }
+			try {
+				primary.renderDirty = true;
+			}
+			catch (_) { }
 		};
 	}
 
 	return () => {
-		try { primary.displayed = prevDisplayed; } catch (_) { }
-		if (sprite) {
-			try { sprite.visible = prevSpriteVis; } catch (_) { }
-			if (prevSpriteRend !== undefined) try { sprite.renderable = prevSpriteRend; } catch (_) { }
+		try {
+			primary.displayed = prevDisplayed;
 		}
-		if (prevClearColor) try { primary.clearColor = prevClearColor; } catch (_) { }
-		try { primary.renderDirty = true; } catch (_) { }
-		if (restoreRender) try { restoreRender(); } catch (_) { }
+		catch (_) { }
+		if (sprite) {
+			try {
+				sprite.visible = prevSpriteVis;
+			}
+			catch (_) { }
+			if (prevSpriteRend !== undefined) try {
+				sprite.renderable = prevSpriteRend;
+			}
+			catch (_) { }
+		}
+		if (prevClearColor) try {
+			primary.clearColor = prevClearColor;
+		}
+		catch (_) { }
+		try {
+			primary.renderDirty = true;
+		}
+		catch (_) { }
+		if (restoreRender) try {
+			restoreRender();
+		}
+		catch (_) { }
 	};
 }
 
@@ -370,7 +420,10 @@ async function renderTilesToCanvas(tiles, bounds) {
 		scaleMode: PIXI.SCALE_MODES.LINEAR,
 	});
 	if (renderTexture?.baseTexture) {
-		try { renderTexture.baseTexture.clearColor = [0, 0, 0, 0]; } catch (_) { }
+		try {
+			renderTexture.baseTexture.clearColor = [0, 0, 0, 0];
+		}
+		catch (_) { }
 	}
 
 	let outputCanvas = null;
@@ -380,41 +433,84 @@ async function renderTilesToCanvas(tiles, bounds) {
 			renderer.screen.height = pixelHeight;
 		}
 
-		try { stage.pivot?.set?.(0, 0); } catch (_) { }
-		try { stage.position?.set?.(-bounds.x * resolution, -bounds.y * resolution); } catch (_) { }
-		try { stage.scale?.set?.(resolution, resolution); } catch (_) { }
+		try {
+			stage.pivot?.set?.(0, 0);
+		}
+		catch (_) { }
+		try {
+			stage.position?.set?.(-bounds.x * resolution, -bounds.y * resolution);
+		}
+		catch (_) { }
+		try {
+			stage.scale?.set?.(resolution, resolution);
+		}
+		catch (_) { }
 
-		if (rendBg) try { rendBg.alpha = 0; } catch (_) { }
-		if (hasBgAlpha) try { renderer.backgroundAlpha = 0; } catch (_) { }
+		if (rendBg) try {
+			rendBg.alpha = 0;
+		}
+		catch (_) { }
+		if (hasBgAlpha) try {
+			renderer.backgroundAlpha = 0;
+		}
+		catch (_) { }
 
 		await nextFrame();
-		try { stage.updateTransform?.(); } catch (_) { }
-		try { primary?.updateTransform?.(); } catch (_) { }
+		try {
+			stage.updateTransform?.();
+		}
+		catch (_) { }
+		try {
+			primary?.updateTransform?.();
+		}
+		catch (_) { }
 		await nextFrame();
 
 		renderer.render(stage, { renderTexture, clear: true, skipUpdateTransform: false });
 
 		outputCanvas = renderer.extract.canvas(renderTexture);
-	} finally {
+	}
+	finally {
 		renderTexture.destroy(true);
 
-		try { stage.scale?.set?.(origStage.scaleX, origStage.scaleY); } catch (_) { }
-		try { stage.position?.set?.(origStage.posX, origStage.posY); } catch (_) { }
-		try { stage.pivot?.set?.(origStage.pivotX, origStage.pivotY); } catch (_) { }
+		try {
+			stage.scale?.set?.(origStage.scaleX, origStage.scaleY);
+		}
+		catch (_) { }
+		try {
+			stage.position?.set?.(origStage.posX, origStage.posY);
+		}
+		catch (_) { }
+		try {
+			stage.pivot?.set?.(origStage.pivotX, origStage.pivotY);
+		}
+		catch (_) { }
 		if (origScreen && renderer.screen) {
 			renderer.screen.width = origScreen.width;
 			renderer.screen.height = origScreen.height;
 		}
-		try { stage.updateTransform?.(); } catch (_) { }
+		try {
+			stage.updateTransform?.();
+		}
+		catch (_) { }
 
 		if (rendBg && prevBg) {
-			try { rendBg.alpha = prevBg.alpha; rendBg.color = prevBg.color; } catch (_) { }
+			try {
+				rendBg.alpha = prevBg.alpha; rendBg.color = prevBg.color;
+			}
+			catch (_) { }
 		}
 		if (hasBgAlpha && prevBgAlpha !== null) {
-			try { renderer.backgroundAlpha = prevBgAlpha; } catch (_) { }
+			try {
+				renderer.backgroundAlpha = prevBgAlpha;
+			}
+			catch (_) { }
 		}
 
-		if (restorePrimary) try { restorePrimary(); } catch (_) { }
+		if (restorePrimary) try {
+			restorePrimary();
+		}
+		catch (_) { }
 		restore();
 	}
 
@@ -427,11 +523,13 @@ async function ensureDir(dir) {
 	try {
 		const FP = foundry.applications.apps.FilePicker.implementation;
 		await FP.browse("data", dir);
-	} catch {
+	}
+	catch {
 		try {
 			const FP = foundry.applications.apps.FilePicker.implementation;
 			await FP.createDirectory("data", dir);
-		} catch (_) { }
+		}
+		catch (_) { }
 	}
 }
 
@@ -443,14 +541,16 @@ async function saveAsWebP(canvasEl, quality = 1.0) {
 	const blob = await new Promise(resolve => {
 		if (canvasEl.toBlob) {
 			canvasEl.toBlob(resolve, "image/webp", quality);
-		} else {
+		}
+		else {
 			try {
 				const dataUrl = canvasEl.toDataURL("image/webp", quality);
 				const bin = atob(dataUrl.split(",")[1] || "");
 				const arr = new Uint8Array(bin.length);
 				for (let i = 0; i < arr.length; i++) arr[i] = bin.charCodeAt(i);
 				resolve(new Blob([arr], { type: "image/webp" }));
-			} catch (e) {
+			}
+			catch (e) {
 				resolve(null);
 			}
 		}
@@ -557,13 +657,19 @@ async function flattenTiles(tiles) {
 
 		const cropped = cropTransparentBorders(result.canvas, bounds);
 		if (cropped.canvas !== result.canvas) {
-			try { result.canvas.width = 0; result.canvas.height = 0; } catch (_) { }
+			try {
+				result.canvas.width = 0; result.canvas.height = 0;
+			}
+			catch (_) { }
 		}
 
 		ui.notifications.info("Saving flattened image…");
 		const filePath = await saveAsWebP(cropped.canvas, 1.0);
 
-		try { cropped.canvas.width = 0; cropped.canvas.height = 0; } catch (_) { }
+		try {
+			cropped.canvas.width = 0; cropped.canvas.height = 0;
+		}
+		catch (_) { }
 
 		ui.notifications.info("Creating flattened tile…");
 		await createFlattenedTile(cropped.bounds, filePath, tiles);
@@ -571,7 +677,8 @@ async function flattenTiles(tiles) {
 
 		ui.notifications.info(`Flattened ${tiles.length} tiles successfully!`);
 
-	} catch (error) {
+	}
+	catch (error) {
 		console.error(`${MODULE_ID} | TileFlatten failed:`, error);
 		ui.notifications.error(`Failed to flatten tiles: ${error.message}`);
 	}
@@ -640,7 +747,8 @@ async function unflattenTile(tileDoc) {
 
 		ui.notifications.info(`Restored ${toCreateTiles.length} tiles + ${toCreateDrawings.length} drawings successfully!`);
 
-	} catch (error) {
+	}
+	catch (error) {
 		console.error(`${MODULE_ID} | Unflatten failed:`, error);
 		ui.notifications.error(`Failed to unflatten tile: ${error.message}`);
 	}
@@ -755,7 +863,8 @@ console.log(`${MODULE_ID} | TileFlattenSD: Module loaded. HUD hook registered.`)
 Hooks.on("renderTileHUD", (hud, html) => {
 	try {
 		injectHudButtons(hud, html);
-	} catch (error) {
+	}
+	catch (error) {
 		console.error(`${MODULE_ID} | TileHUD flatten button error:`, error);
 	}
 });
@@ -856,12 +965,18 @@ export async function flattenDungeonLevel(elevation, options = {}) {
 
 		const cropped = cropTransparentBorders(result.canvas, bounds);
 		if (cropped.canvas !== result.canvas) {
-			try { result.canvas.width = 0; result.canvas.height = 0; } catch (_) {}
+			try {
+				result.canvas.width = 0; result.canvas.height = 0;
+			}
+			catch (_) {}
 		}
 
 		ui.notifications.info("Saving flattened image…");
 		const filePath = await saveAsWebP(cropped.canvas, 1.0);
-		try { cropped.canvas.width = 0; cropped.canvas.height = 0; } catch (_) {}
+		try {
+			cropped.canvas.width = 0; cropped.canvas.height = 0;
+		}
+		catch (_) {}
 
 		const originalTiles = tiles.map(t => ({ data: t.toObject(false) }));
 		const originalDrawings = drawings.map(d => ({ data: d.toObject(false) }));
@@ -905,7 +1020,8 @@ export async function flattenDungeonLevel(elevation, options = {}) {
 		if (tiles.length) await canvas.scene.deleteEmbeddedDocuments("Tile", tiles.map(t => t.id).filter(Boolean));
 		if (drawings.length) await canvas.scene.deleteEmbeddedDocuments("Drawing", drawings.map(d => d.id).filter(Boolean));
 		ui.notifications.info(`Flattened elevation ${elevation} (${tiles.length} tiles + ${drawings.length} drawings) successfully!`);
-	} catch (error) {
+	}
+	catch (error) {
 		console.error(`${MODULE_ID} | FlattenDungeonLevel failed:`, error);
 		ui.notifications.error(`Failed to flatten level: ${error.message}`);
 	}

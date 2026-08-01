@@ -130,7 +130,10 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 		const working = this._getWorking();
 		const categories = CATEGORY_META.map(cat => {
 			let enabled = true;
-			try { enabled = game.settings.get(MODULE_ID, `animationFxCategory_${cat.key}`); } catch (e) { /* default */ }
+			try {
+				enabled = game.settings.get(MODULE_ID, `animationFxCategory_${cat.key}`);
+			}
+			catch (e) { /* default */ }
 
 			const map = working[cat.key] || {};
 			const presets = Object.entries(map).map(([key, p]) => {
@@ -176,8 +179,14 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 			return { key: cat.key, label: cat.label, icon: cat.icon, sprite: !!cat.sprite, enabled, presets };
 		});
 		let soundEnabled = true; let volume = 0.8;
-		try { soundEnabled = game.settings.get(MODULE_ID, "animationFxSoundEnabled"); } catch (e) { /* default */ }
-		try { volume = game.settings.get(MODULE_ID, "animationFxVolume"); } catch (e) { /* default */ }
+		try {
+			soundEnabled = game.settings.get(MODULE_ID, "animationFxSoundEnabled");
+		}
+		catch (e) { /* default */ }
+		try {
+			volume = game.settings.get(MODULE_ID, "animationFxVolume");
+		}
+		catch (e) { /* default */ }
 
 		// Ambient & Events (Torch, Level-Up) — SDX-native effects, file-only editable.
 		const amb = AnimationFxSD.getAmbient();
@@ -265,8 +274,12 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 		// Inline thumbnails: play on hover, rewind on leave (preload="none" keeps
 		// 45+ videos cheap until the user actually hovers one).
 		root.querySelectorAll("video.sdx-animfx-thumb").forEach(vid => {
-			vid.addEventListener("mouseenter", () => { vid.play().catch(() => {}); });
-			vid.addEventListener("mouseleave", () => { vid.pause(); vid.currentTime = 0; });
+			vid.addEventListener("mouseenter", () => {
+				vid.play().catch(() => {});
+			});
+			vid.addEventListener("mouseleave", () => {
+				vid.pause(); vid.currentTime = 0;
+			});
 			vid.addEventListener("error", () => {
 				// Swap an unloadable video for the "no preview" placeholder.
 				const ph = document.createElement("div");
@@ -339,7 +352,8 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 					if (globalThis.Sequencer?.DatabaseViewer?.show) globalThis.Sequencer.DatabaseViewer.show();
 					else if (globalThis.Sequencer?.Database?.show) globalThis.Sequencer.Database.show();
 					else ui.notifications.warn("Sequencer Database viewer is not available.");
-				} catch (e) { /* ignore */ }
+				}
+				catch (e) { /* ignore */ }
 			});
 		}
 	}

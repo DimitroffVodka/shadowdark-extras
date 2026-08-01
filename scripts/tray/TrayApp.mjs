@@ -82,7 +82,8 @@ async function ensureDecorDirectory(path) {
 		current = current ? `${current}/${part}` : part;
 		try {
 			await FP.browse("data", current);
-		} catch {
+		}
+		catch {
 			await FP.createDirectory("data", current);
 		}
 	}
@@ -96,7 +97,8 @@ async function decorFileExists(path) {
 	try {
 		const listing = await FP.browse("data", folder);
 		return (listing.files || []).some(file => file === path || file.endsWith(`/${filename}`));
-	} catch {
+	}
+	catch {
 		return false;
 	}
 }
@@ -212,7 +214,8 @@ class DecorImportApp extends ApplicationV2 {
 		grid.className = "sdx-decor-import-grid";
 		if (this.sourceMode === "local") {
 			for (const entry of this.files) grid.appendChild(this._createFileCard(entry));
-		} else {
+		}
+		else {
 			grid.appendChild(this._createServerPreview());
 		}
 
@@ -424,10 +427,12 @@ class DecorImportApp extends ApplicationV2 {
 			Hooks.callAll("sdx.decorAssetsImported");
 			ui.notifications.info(`Imported ${imported} decor asset${imported === 1 ? "" : "s"} to ${DECOR_IMPORT_DESTINATION}/.`);
 			this.selected.clear();
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Failed to import decor assets:`, err);
 			ui.notifications.error(`Failed to import decor assets: ${err?.message || err}`);
-		} finally {
+		}
+		finally {
 			this.importing = false;
 			this._renderContent();
 		}
@@ -471,7 +476,8 @@ class DecorImportApp extends ApplicationV2 {
 			await registerDecorAsset(path, { source });
 			Hooks.callAll("sdx.decorAssetsImported");
 			ui.notifications.info("Added decor asset to the Decor browser.");
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Failed to add decor asset:`, err);
 			ui.notifications.error(`Failed to add decor asset: ${err?.message || err}`);
 		}
@@ -501,7 +507,8 @@ class DecorImportApp extends ApplicationV2 {
 			await reloadDecorAssets();
 			Hooks.callAll("sdx.decorAssetsImported");
 			ui.notifications.info(`Added ${images.length} decor asset${images.length === 1 ? "" : "s"} from Foundry folder.`);
-		} catch (err) {
+		}
+		catch (err) {
 			console.error(`${MODULE_ID} | Failed to add decor folder:`, err);
 			ui.notifications.error(`Failed to add decor folder: ${err?.message || err}`);
 		}
@@ -709,16 +716,19 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			if (getActiveTileTab() === "symbols") {
 				enablePreview();
 			}
-		} else if (this._isExpanded && viewMode === "decor") {
+		}
+		else if (this._isExpanded && viewMode === "decor") {
 			setDecorMode(true);
 			enablePainting();
 			disableDungeonPainting();
 			enablePreview();
-		} else if (this._isExpanded && viewMode === "dungeons") {
+		}
+		else if (this._isExpanded && viewMode === "dungeons") {
 			disablePainting();
 			disablePreview();
 			enableDungeonPainting();
-		} else {
+		}
+		else {
 			disablePainting();
 			disablePreview();
 			disableDungeonPainting();
@@ -757,7 +767,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		try {
 			const { TomStore } = await import("../tom/TomStore.mjs");
 			activeSceneId = TomStore.activeSceneId || null;
-		} catch (err) {
+		}
+		catch (err) {
 			// Ignore
 		}
 		this._tomActiveSceneId = activeSceneId;
@@ -802,7 +813,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				const isVideo = /\.(webm|mp4)$/i.test(bg);
 				return { ...sceneData, isVideo };
 			});
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("Failed to load TomScenes:", err);
 			return [];
 		}
@@ -826,7 +838,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				});
 				return { ...folder, scenes };
 			});
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("Failed to load TomFolders:", err);
 			return [];
 		}
@@ -917,9 +930,11 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			// Use SDX AppV2 Light Tracker if available, fallback to system tracker
 			if (game.shadowdarkExtras?.lightTracker?.toggle) {
 				game.shadowdarkExtras.lightTracker.toggle();
-			} else if (game.shadowdark?.lightSourceTracker?.toggleInterface) {
+			}
+			else if (game.shadowdark?.lightSourceTracker?.toggleInterface) {
 				game.shadowdark.lightSourceTracker.toggleInterface();
-			} else {
+			}
+			else {
 				ui.notifications.warn("Light Source Tracker not found.");
 			}
 		});
@@ -930,7 +945,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			e.stopPropagation();
 			if (window.sdxOpenCarousingOverlay) {
 				window.sdxOpenCarousingOverlay();
-			} else {
+			}
+			else {
 				ui.notifications.warn("Carousing system not ready.");
 			}
 		});
@@ -941,7 +957,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			e.stopPropagation();
 			if (game.shadowdarkExtras?.drawingToolbar?.toggle) {
 				game.shadowdarkExtras.drawingToolbar.toggle();
-			} else {
+			}
+			else {
 				ui.notifications.warn("Drawing tools not ready.");
 			}
 		});
@@ -961,7 +978,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			e.stopPropagation();
 			if (window.SDXCoordinates) {
 				window.SDXCoordinates.toggle();
-			} else {
+			}
+			else {
 				ui.notifications.warn("Coordinate display not supported on this map.");
 			}
 		});
@@ -1147,16 +1165,19 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						if (getActiveTileTab() === "symbols") {
 							enablePreview();
 						}
-					} else if (view === "decor" && this._isExpanded) {
+					}
+					else if (view === "decor" && this._isExpanded) {
 						setDecorMode(true);
 						enablePainting();
 						disableDungeonPainting();
 						enablePreview();
-					} else if (view === "dungeons" && this._isExpanded) {
+					}
+					else if (view === "dungeons" && this._isExpanded) {
 						disablePainting();
 						disablePreview();
 						enableDungeonPainting();
-					} else {
+					}
+					else {
 						disablePainting();
 						disablePreview();
 						disableDungeonPainting();
@@ -1291,7 +1312,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			let elevation;
 			if (elevations.length === 1) {
 				elevation = elevations[0];
-			} else {
+			}
+			else {
 				const options = elevations.map(el =>
 					`<option value="${el}">Elevation ${el} — ${byElevation[el].length} tiles</option>`
 				).join("");
@@ -1333,7 +1355,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			let tileDoc;
 			if (flattenedTiles.length === 1) {
 				tileDoc = flattenedTiles[0];
-			} else {
+			}
+			else {
 				const options = flattenedTiles.map(t => {
 					const el = t.flags?.["shadowdark-extras"]?.dungeonFlattenedLevel ?? "?";
 					const cnt = t.flags?.["shadowdark-extras"]?.originalTileCount ?? "?";
@@ -1504,7 +1527,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				await generateMultiLevelDungeon({
 					...config, levelCount: levels, connectionsPerPair: links, variation, connectorVariety,
 				});
-			} else {
+			}
+			else {
 				await generateDungeon(config);
 			}
 		});
@@ -1622,7 +1646,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				if (currentFolderId !== targetFolderId) {
 					// Moving to a different folder
 					TomStore.moveSceneToFolder(draggedSceneId, targetFolderId);
-				} else if (targetCard) {
+				}
+				else if (targetCard) {
 					// Same folder — reorder
 					const targetId = targetCard.dataset.sceneId;
 					if (draggedSceneId === targetId) return;
@@ -1756,7 +1781,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					if (!isNaN(x) && !isNaN(y)) {
 						canvas.animatePan({ x, y, scale: 1.5, duration: 500 });
 					}
-				} else if (action === "ping-pin") {
+				}
+				else if (action === "ping-pin") {
 					if (!JournalPinRenderer.getContainer()) return;
 					const pin = JournalPinRenderer.getContainer().children.find(c => c.pinData?.id === id);
 
@@ -1767,10 +1793,12 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 							sceneId: canvas.scene?.id,
 							pinId: id,
 						});
-					} else {
+					}
+					else {
 						ui.notifications.warn("Only GM can ping pins.");
 					}
-				} else if (action === "bring-players") {
+				}
+				else if (action === "bring-players") {
 					const x = parseFloat(entry.dataset.x);
 					const y = parseFloat(entry.dataset.y);
 
@@ -1789,51 +1817,62 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 								pinId: id,
 							});
 						}
-					} else {
+					}
+					else {
 						ui.notifications.warn("Only GM can bring players.");
 					}
-				} else if (action === "edit-pin") {
+				}
+				else if (action === "edit-pin") {
 					const pinData = JournalPinManager.get(id);
 					if (pinData) {
 						new PinStyleEditorApp({ pinId: id }).render(true);
 					}
-				} else if (action === "toggle-gm-only") {
+				}
+				else if (action === "toggle-gm-only") {
 					const pinData = JournalPinManager.get(id);
 					if (pinData) {
 						if (game.user.isGM) {
 							const current = pinData.gmOnly || false;
 							await JournalPinManager.update(id, { gmOnly: !current });
-						} else {
+						}
+						else {
 							ui.notifications.warn("Only GM can toggle visibility.");
 						}
 					}
-				} else if (action === "toggle-vision") {
+				}
+				else if (action === "toggle-vision") {
 					const pinData = JournalPinManager.get(id);
 					if (pinData) {
 						if (game.user.isGM) {
 							const current = pinData.requiresVision || false;
 							await JournalPinManager.update(id, { requiresVision: !current });
-						} else {
+						}
+						else {
 							ui.notifications.warn("Only GM can toggle vision requirement.");
 						}
 					}
-				} else if (action === "delete-pin") {
+				}
+				else if (action === "delete-pin") {
 					const confirmed = await foundry.applications.api.DialogV2.confirm({
 						window: { title: "Delete Pin" },
 						content: "<p>Are you sure you want to delete this pin?</p>",
 						modal: true,
 					});
 					if (confirmed) await JournalPinManager.delete(id);
-				} else if (action === "copy-style") {
+				}
+				else if (action === "copy-style") {
 					const pinData = JournalPinManager.get(id);
 					if (pinData) {
 						JournalPinManager.copyStyle(pinData);
 					}
-				} else if (action === "paste-style") {
+				}
+				else if (action === "paste-style") {
 					await JournalPinManager.pasteStyle(id);
-				} else if (action === "duplicate-pin") {
+				}
+				else if (action === "duplicate-pin") {
 					await JournalPinManager.duplicate(id);
-				} else if (action === "ungroup-pin") {
+				}
+				else if (action === "ungroup-pin") {
 					if (game.user.isGM) await JournalPinManager.movePin(id, null);
 				}
 			});
@@ -1887,7 +1926,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					new FilePickerImpl({
 						type: "image",
 						current: cur,
-						callback: (path) => { if (input) input.value = path; },
+						callback: (path) => {
+							if (input) input.value = path;
+						},
 					}).browse();
 				});
 			});
@@ -1920,7 +1961,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Convert Map Notes -> pins (shared by the toolbar = all, and per-note buttons)
 		const runConvertDialog = async (noteIds = null) => {
 			const noteCount = noteIds ? noteIds.length : (canvas.scene?.notes?.size ?? 0);
-			if (!noteCount) { ui.notifications.info("No map notes on this scene to convert."); return; }
+			if (!noteCount) {
+				ui.notifications.info("No map notes on this scene to convert."); return;
+			}
 			const folderOpts = JournalPinManager.listFolders()
 				.map(f => `<option value="${esc(f.id)}">${esc(f.name)}${f.scope === "world" ? " (world)" : ""}</option>`)
 				.join("");
@@ -1971,9 +2014,11 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					if (action === "folder-add-child") {
 						const name = await promptFolderName("New Subfolder", "New Folder");
 						if (name) await JournalPinManager.createFolder({ name, parentId: folderId });
-					} else if (action === "folder-edit") {
+					}
+					else if (action === "folder-edit") {
 						await editFolderDialog(folderId);
-					} else if (action === "folder-delete") {
+					}
+					else if (action === "folder-delete") {
 						const ok = await foundry.applications.api.DialogV2.confirm({
 							window: { title: "Delete Folder" },
 							content: "<p>Delete this folder? Its pins move to <strong>Ungrouped</strong> (pins are not deleted).</p>",
@@ -1997,10 +2042,15 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						? { type: "folder", id: row.dataset.folderId }
 						: { type: "pin", id: row.dataset.id };
 					e.dataTransfer.effectAllowed = "move";
-					try { e.dataTransfer.setData("text/plain", drag.id); } catch (_) { }
+					try {
+						e.dataTransfer.setData("text/plain", drag.id);
+					}
+					catch (_) { }
 					row.classList.add("sdx-dragging");
 				});
-				row.addEventListener("dragend", () => { row.classList.remove("sdx-dragging"); clearOver(); drag = null; });
+				row.addEventListener("dragend", () => {
+					row.classList.remove("sdx-dragging"); clearOver(); drag = null;
+				});
 			});
 
 			pinsList.addEventListener("dragover", (e) => {
@@ -2011,7 +2061,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				const target = e.target.closest(".pin-folder-header, .pin-entry");
 				if (target) target.classList.add("drag-over");
 			});
-			pinsList.addEventListener("dragleave", (e) => { if (e.target === pinsList) clearOver(); });
+			pinsList.addEventListener("dragleave", (e) => {
+				if (e.target === pinsList) clearOver();
+			});
 
 			pinsList.addEventListener("drop", async (e) => {
 				if (!drag) return;
@@ -2024,19 +2076,24 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					if (dragged.type === "pin") {
 						if (folderHeader) {
 							await JournalPinManager.movePin(dragged.id, folderHeader.dataset.folderId);
-						} else if (pinRow && pinRow.dataset.id !== dragged.id) {
+						}
+						else if (pinRow && pinRow.dataset.id !== dragged.id) {
 							await JournalPinManager.movePin(dragged.id, pinRow.dataset.folderId || null, pinRow.dataset.id);
-						} else if (!folderHeader && !pinRow) {
+						}
+						else if (!folderHeader && !pinRow) {
 							await JournalPinManager.movePin(dragged.id, null);
 						}
-					} else if (dragged.type === "folder") {
+					}
+					else if (dragged.type === "folder") {
 						if (folderHeader && folderHeader.dataset.folderId !== dragged.id) {
 							await JournalPinManager.updateFolder(dragged.id, { parentId: folderHeader.dataset.folderId });
-						} else if (!folderHeader && !pinRow) {
+						}
+						else if (!folderHeader && !pinRow) {
 							await JournalPinManager.updateFolder(dragged.id, { parentId: null });
 						}
 					}
-				} catch (err) {
+				}
+				catch (err) {
 					console.error("SDX | pin folder DnD error", err);
 				}
 			});
@@ -2069,7 +2126,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						// If token has no note, but actor does, edit the actor's note (matching display logic)
 						if (!tokenNote && token.actor && token.actor.getFlag("shadowdark-extras", "notes")) {
 							doc = token.actor;
-						} else {
+						}
+						else {
 							doc = tokenDoc;
 						}
 					}
@@ -2085,7 +2143,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					const x = parseFloat(entry.dataset.x);
 					const y = parseFloat(entry.dataset.y);
 					canvas.animatePan({ x, y, scale: 1.5, duration: 500 });
-				} else if (action === "rename") {
+				}
+				else if (action === "rename") {
 					const currentName = doc.getFlag("shadowdark-extras", "customName") || doc.name || "";
 					new foundry.applications.api.DialogV2({
 						window: { title: "Rename Placeable Note" },
@@ -2118,10 +2177,12 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 							},
 						],
 					}).render({ force: true });
-				} else if (action === "toggle-visibility") {
+				}
+				else if (action === "toggle-visibility") {
 					const isVisible = !!doc.getFlag("shadowdark-extras", "noteVisible");
 					await doc.setFlag("shadowdark-extras", "noteVisible", !isVisible);
-				} else if (action === "delete") {
+				}
+				else if (action === "delete") {
 					const ok = await foundry.applications.api.DialogV2.confirm({
 						window: { title: "Delete Note" },
 						content: `<p>Are you sure you want to delete the note for <strong>${doc.name}</strong>?</p>`,
@@ -2183,7 +2244,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						// If token has no note, but actor does, edit the actor's note (matching display logic)
 						if (!tokenNote && token.actor && token.actor.getFlag("shadowdark-extras", "notes")) {
 							doc = token.actor;
-						} else {
+						}
+						else {
 							doc = tokenDoc;
 						}
 					}
@@ -2218,7 +2280,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					if (!isNaN(x) && !isNaN(y)) {
 						canvas.animatePan({ x, y, scale: 1.5, duration: 500 });
 					}
-				} else if (action === "delete") {
+				}
+				else if (action === "delete") {
 					const note = fromUuidSync(uuid);
 					if (!note) return;
 
@@ -2228,10 +2291,12 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						modal: true,
 					});
 					if (ok) await note.delete();
-				} else if (action === "open") {
+				}
+				else if (action === "open") {
 					const note = fromUuidSync(uuid);
 					if (note) note.sheet.render(true);
-				} else if (action === "convert") {
+				}
+				else if (action === "convert") {
 					await runConvertDialog([id]);
 				}
 			});
@@ -2286,8 +2351,12 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		if (!lowerTerm) {
 			// Restore collapse-based visibility (clear inline display; CSS .sdx-row-hidden handles collapse)
-			pinRows.forEach(r => { r.style.display = ""; });
-			folderRows.forEach(r => { r.style.display = ""; });
+			pinRows.forEach(r => {
+				r.style.display = "";
+			});
+			folderRows.forEach(r => {
+				r.style.display = "";
+			});
 			return;
 		}
 
@@ -2301,7 +2370,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			if (match) (entry.dataset.ancestors || "").split(" ").filter(Boolean).forEach(a => matchedAncestors.add(a));
 		});
 		// A folder is shown only if it is an ancestor of a matched pin.
-		folderRows.forEach(f => { f.style.display = matchedAncestors.has(f.dataset.folderId) ? "flex" : "none"; });
+		folderRows.forEach(f => {
+			f.style.display = matchedAncestors.has(f.dataset.folderId) ? "flex" : "none";
+		});
 	}
 
 	/**
@@ -2537,7 +2608,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				elem.querySelectorAll("[data-tile-panel]").forEach(panel => {
 					if (panel.dataset.tilePanel === tabName) {
 						panel.classList.remove("hidden");
-					} else {
+					}
+					else {
 						panel.classList.add("hidden");
 					}
 				});
@@ -2551,7 +2623,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				// Enable/disable POI preview based on tab
 				if (tabName === "symbols" && this._isExpanded) {
 					enablePreview();
-				} else {
+				}
+				else {
 					disablePreview();
 				}
 
@@ -2600,7 +2673,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				btn.disabled = true;
 				try {
 					await reloadCustomTiles();
-				} finally {
+				}
+				finally {
 					btn.disabled = false;
 					renderTray();
 				}
@@ -2935,7 +3009,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				if (isActive) {
 					// Clicking active overlay clears it
 					TomSocketHandler.emitOverlayClear();
-				} else {
+				}
+				else {
 					// Set new overlay
 					TomSocketHandler.emitOverlaySet(overlayPath);
 				}
@@ -2999,7 +3074,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		header.className = "tom-cast-header";
 		if (broadcasting) {
 			header.innerHTML = `<span><i class="fas fa-users"></i> Manage Cast</span><span class="tom-cast-scene-name">${scene.name}</span>`;
-		} else {
+		}
+		else {
 			header.innerHTML = "<span><i class=\"fas fa-users\"></i> Characters</span>";
 		}
 		panel.appendChild(header);
@@ -3231,7 +3307,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 				if (this._tomActiveSceneId) {
 					TomSocketHandler.emitSceneFadeTransition(scene.id);
-				} else {
+				}
+				else {
 					TomSocketHandler.emitBroadcastScene(scene.id, inAnimation);
 				}
 
@@ -3266,7 +3343,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						panel.remove();
 						this._toggleTomScenePanel();
 					}
-				} catch (err) { /* ignore non-scene drops */ }
+				}
+				catch (err) { /* ignore non-scene drops */ }
 			});
 		};
 

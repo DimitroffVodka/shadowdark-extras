@@ -12,7 +12,8 @@ async function loadData() {
 		const resp = await fetch(`modules/${MODULE_ID}/scripts/data/hexroll-data.json`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_data = await resp.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load hexroll data:`, err);
 		ui.notifications?.error("SDX | Could not load hexroll data.");
 		throw err;
@@ -27,7 +28,8 @@ async function loadCaravanFortunes() {
 		const resp = await fetch(`modules/${MODULE_ID}/scripts/data/caravan-fortunes.json`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_caravanFortunes = await resp.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load caravan fortunes:`, err);
 		throw err;
 	}
@@ -41,7 +43,8 @@ async function loadHiddenTraitsData() {
 		const resp = await fetch(`modules/${MODULE_ID}/scripts/data/npc-hidden-traits.json`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_hiddenTraitsData = await resp.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load hidden NPC traits:`, err);
 		throw err;
 	}
@@ -55,7 +58,8 @@ async function loadPoiData() {
 		const resp = await fetch(`modules/${MODULE_ID}/scripts/data/poi-data.json`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_poiData = await resp.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load POI data:`, err);
 		throw err;
 	}
@@ -69,7 +73,8 @@ async function loadCircusData() {
 		const resp = await fetch(`modules/${MODULE_ID}/scripts/data/circus-data.json`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_circusData = await resp.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load circus data:`, err);
 		throw err;
 	}
@@ -83,7 +88,8 @@ async function loadCoastalMinorEvents() {
 		const resp = await fetch(`modules/${MODULE_ID}/scripts/data/coastal-minor-events.json`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_coastalMinorEventsData = await resp.json();
-	} catch (err) {
+	}
+	catch (err) {
 		console.error(`${MODULE_ID} | Failed to load coastal minor events:`, err);
 		throw err;
 	}
@@ -104,7 +110,8 @@ async function getMonsterIndex() {
 		for (const entry of index) {
 			_monsterIndex.set(entry.name, entry._id);
 		}
-	} catch (err) {
+	}
+	catch (err) {
 		console.warn(`${MODULE_ID} | Could not load monster compendium index:`, err);
 	}
 	return _monsterIndex;
@@ -150,7 +157,8 @@ export function resolveTemplate(template, tables = {}, selections = {}) {
 			if (group.includes("|")) {
 				const options = group.split("|");
 				return options[Math.floor(Math.random() * options.length)];
-			} else {
+			}
+			else {
 				const table = tables[group];
 				if (Array.isArray(table) && table.length > 0) {
 					// Pick a random entry
@@ -461,7 +469,8 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 				const minorEvent = pick(minorEventsData.coastalMinorEvents);
 				html += `<p><em><strong>As you travel:</strong> ${minorEvent}</em></p>`;
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Could not load coastal minor events:`, err);
 		}
 	}
@@ -487,14 +496,16 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 				if (isPositive && minorEventsData.shipboardPositiveEvents?.length) {
 					const omen = pick(minorEventsData.shipboardPositiveEvents);
 					html += `<p><strong>⚑ Positive Event:</strong> ${omen}</p>`;
-				} else if (!isPositive && minorEventsData.shipboardNegativeEvents?.length) {
+				}
+				else if (!isPositive && minorEventsData.shipboardNegativeEvents?.length) {
 					const omen = pick(minorEventsData.shipboardNegativeEvents);
 					html += `<p><strong>☠ Negative Event:</strong> ${omen}</p>`;
 				}
 
 				html += "</section>";
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Could not load shipboard events:`, err);
 		}
 	}
@@ -511,7 +522,8 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 				html += `<p>${wreck}</p>`;
 				html += "</section>";
 			}
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Could not load shipwrecks:`, err);
 		}
 	}

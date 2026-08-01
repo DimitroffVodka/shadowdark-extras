@@ -51,7 +51,8 @@ export function getCreatureTypes() {
 			}
 			return customTypes;
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		console.warn(`${MODULE_ID} | Error reading customCreatureTypes setting:`, e);
 	}
 	return DEFAULT_CREATURE_TYPES;
@@ -110,7 +111,8 @@ export function getEffectiveCreatureType(actor) {
 		flagVal = typeof actor.getFlag === "function"
 			? (actor.getFlag(MODULE_ID, "creatureType") || "")
 			: (actor.flags?.[MODULE_ID]?.creatureType || "");
-	} catch (e) {
+	}
+	catch (e) {
 		flagVal = "";
 	}
 	if (flagVal) return flagVal;
@@ -133,14 +135,21 @@ export async function bakeCreatureTypesToWorldActors({ overwrite = false } = {})
 	let updated = 0; let skipped = 0; let unmatched = 0; let failed = 0;
 	for (const actor of npcs) {
 		const existing = actor.getFlag(MODULE_ID, "creatureType") || "";
-		if (existing && !overwrite) { skipped++; continue; }
+		if (existing && !overwrite) {
+			skipped++; continue;
+		}
 		const mapped = getMappedType(actor.name);
-		if (!mapped) { unmatched++; continue; }
-		if (existing === mapped) { skipped++; continue; }
+		if (!mapped) {
+			unmatched++; continue;
+		}
+		if (existing === mapped) {
+			skipped++; continue;
+		}
 		try {
 			await actor.setFlag(MODULE_ID, "creatureType", mapped);
 			updated++;
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn(`${MODULE_ID} | bake creature type failed for ${actor.name}:`, e);
 			failed++;
 		}
@@ -305,7 +314,8 @@ export class CreatureTypesApp extends HandlebarsApplicationMixin(ApplicationV2) 
 				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.creature_types.import_success", {
 					count: importData.creatureTypes.length,
 				}));
-			} catch (err) {
+			}
+			catch (err) {
 				console.error(`${MODULE_ID} | Failed to import creature types:`, err);
 				ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.import_error"));
 			}

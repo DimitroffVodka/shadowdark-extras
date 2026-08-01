@@ -49,7 +49,8 @@ async function grantAdvancementItems(actor, background, entry) {
 				continue;
 			}
 			itemsToCreate.push(doc.toObject());
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Error loading item ${itemRef.uuid}:`, err);
 			// Continue with other items
 		}
@@ -61,7 +62,8 @@ async function grantAdvancementItems(actor, background, entry) {
 		const itemNames = itemsToCreate.map(i => i.name).join(", ");
 		ui.notifications.info(`${actor.name} gained: ${itemNames}`);
 		//console.log(`${MODULE_ID} | Granted ${itemsToCreate.length} items to ${actor.name} from advancement ${entry.id}`);
-	} else {
+	}
+	else {
 		//console.log(`${MODULE_ID} | No valid items to grant from advancement ${entry.id}`);
 	}
 

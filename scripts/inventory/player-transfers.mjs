@@ -56,7 +56,8 @@ export async function transferItemToPlayer(sourceActor, item, targetActorId) {
 		// the whole transfer through a GM (who owns every actor). No Item Piles.
 		if (game.user.isGM || targetActor.isOwner) {
 			await nativeTransferItems(sourceActor, targetActor, payload);
-		} else {
+		}
+		else {
 			const socket = getSocket();
 			if (!socket) {
 				ui.notifications.error(
@@ -90,7 +91,8 @@ export async function transferItemToPlayer(sourceActor, item, targetActorId) {
 				target: targetActor.name,
 			})
 		);
-	} catch (error) {
+	}
+	catch (error) {
 		console.error(`${MODULE_ID} | Error during transfer:`, error);
 		ui.notifications.error(
 			game.i18n.localize("SHADOWDARK_EXTRAS.notifications.transfer_failed")
@@ -148,7 +150,8 @@ export async function transferCoinsToPlayer(sourceActor, coins, targetActorId) {
 			await targetActor.setFlag(MODULE_ID, "coins.gp", partyGp);
 			await targetActor.setFlag(MODULE_ID, "coins.sp", partySp);
 			await targetActor.setFlag(MODULE_ID, "coins.cp", partyCp);
-		} else {
+		}
+		else {
 			// Regular player-to-player coin transfer. Move directly if we own
 			// the target, otherwise relay through a GM. No Item Piles.
 			const coinPayload = {
@@ -159,7 +162,8 @@ export async function transferCoinsToPlayer(sourceActor, coins, targetActorId) {
 
 			if (game.user.isGM || targetActor.isOwner) {
 				await nativeTransferCoins(sourceActor, targetActor, coinPayload);
-			} else {
+			}
+			else {
 				const socket = getSocket();
 				if (!socket) {
 					ui.notifications.error(
@@ -201,7 +205,8 @@ export async function transferCoinsToPlayer(sourceActor, coins, targetActorId) {
 				target: targetActor.name,
 			})
 		);
-	} catch (error) {
+	}
+	catch (error) {
 		console.error(`${MODULE_ID} | Error during coin transfer:`, error);
 		ui.notifications.error(
 			game.i18n.localize("SHADOWDARK_EXTRAS.notifications.transfer_failed")

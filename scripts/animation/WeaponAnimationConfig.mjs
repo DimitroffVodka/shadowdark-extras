@@ -146,7 +146,8 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 				tokenRotation = firstToken.rotation ?? 0;
 				tokenWidth = firstToken.width ?? 1;
 				tokenImg = firstToken.texture?.src || tokenImg;
-			} else {
+			}
+			else {
 				tokenRotation = actor.prototypeToken?.rotation ?? 0;
 				tokenWidth = actor.prototypeToken?.width ?? 1;
 			}
@@ -205,8 +206,12 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 
 		const inputs = html.querySelectorAll("input, select");
 		inputs.forEach(input => {
-			input.addEventListener("input", () => { this._updatePreview(); this._scheduleLivePreview(); });
-			input.addEventListener("change", () => { this._updatePreview(); this._scheduleLivePreview(); });
+			input.addEventListener("input", () => {
+				this._updatePreview(); this._scheduleLivePreview();
+			});
+			input.addEventListener("change", () => {
+				this._updatePreview(); this._scheduleLivePreview();
+			});
 		});
 
 		const rangeInputs = html.querySelectorAll('input[type="range"]');
@@ -217,9 +222,11 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 					let val = e.target.value;
 					if (e.target.name.includes("rotation") || e.target.name.includes("hue")) {
 						valueSpan.textContent = `${val}°`;
-					} else if (e.target.name.includes("distance")) {
+					}
+					else if (e.target.name.includes("distance")) {
 						valueSpan.textContent = `${val}px`;
-					} else {
+					}
+					else {
 						valueSpan.textContent = parseFloat(val).toFixed(2);
 					}
 				});
@@ -525,7 +532,8 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 				const glowKnockout = html.querySelector('input[name="filters.glow.knockout"]')?.checked;
 				previewImg.style.opacity = glowKnockout ? "0" : "1";
 				filterStr += ` drop-shadow(0 0 ${glowDistance}px ${glowColor})`;
-			} else {
+			}
+			else {
 				previewImg.style.opacity = "1";
 			}
 			if (dropShadowEnabled) {

@@ -156,8 +156,12 @@ export const AnimationFxSD = {
 	async autoSeedIfNeeded() {
 		if (!game.user?.isGM) return;
 		let seeded = false;
-		try { seeded = game.settings.get(MODULE_ID, "animationFxSeeded"); }
-		catch (e) { return; } // settings not registered yet
+		try {
+			seeded = game.settings.get(MODULE_ID, "animationFxSeeded");
+		}
+		catch (e) {
+			return;
+		} // settings not registered yet
 		if (seeded) return;
 
 		try {
@@ -174,7 +178,8 @@ export const AnimationFxSD = {
 					`NPC attacks: ${n.added}, sprites: ${sp.added}`
 				);
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			console.error(`${MODULE_ID} | Animation FX auto-seed failed`, e);
 		}
 	},
@@ -208,7 +213,8 @@ export const AnimationFxSD = {
 				`${MODULE_ID} | Registered JB2A Sequencer database (fallback — ` +
 				"JB2A's own registration did not run in this world)"
 			);
-		} catch (e) {
+		}
+		catch (e) {
 			console.error(`${MODULE_ID} | JB2A fallback registration failed`, e);
 		}
 	},
@@ -223,7 +229,10 @@ export const AnimationFxSD = {
 	/** Ambient/event effect config, merged over defaults so new keys always resolve. */
 	getAmbient() {
 		let stored = {};
-		try { stored = game.settings.get(MODULE_ID, "animationFxAmbient") || {}; } catch (e) { /* not registered yet */ }
+		try {
+			stored = game.settings.get(MODULE_ID, "animationFxAmbient") || {};
+		}
+		catch (e) { /* not registered yet */ }
 		return foundry.utils.mergeObject(foundry.utils.deepClone(DEFAULT_AMBIENT_FX), stored, { inplace: false });
 	},
 
@@ -253,9 +262,12 @@ export const AnimationFxSD = {
 		let added = 0; let replaced = 0; let skipped = 0;
 		for (const [key, preset] of Object.entries(presets)) {
 			if (key in config[category]) {
-				if (!overwrite) { skipped++; continue; }
+				if (!overwrite) {
+					skipped++; continue;
+				}
 				replaced++;
-			} else {
+			}
+			else {
 				added++;
 			}
 			config[category][key] = foundry.utils.deepClone(preset);
@@ -314,7 +326,8 @@ export const AnimationFxSD = {
 		if (!category) return true;
 		try {
 			return game.settings.get(MODULE_ID, `animationFxCategory_${category}`);
-		} catch (e) {
+		}
+		catch (e) {
 			return true;
 		}
 	},
@@ -337,7 +350,8 @@ export const AnimationFxSD = {
 		try {
 			const m = new RegExp(patterns, "i").exec(name);
 			return m ? m[0].length : 0;
-		} catch (e) {
+		}
+		catch (e) {
 			return 0;
 		}
 	},
@@ -349,7 +363,9 @@ export const AnimationFxSD = {
 		for (const [key, preset] of Object.entries(presetMap ?? {})) {
 			if (key === "_default") continue;
 			const score = this._patternMatchScore(name, preset?.patterns);
-			if (score > bestScore) { best = preset; bestScore = score; }
+			if (score > bestScore) {
+				best = preset; bestScore = score;
+			}
 		}
 		return best;
 	},
@@ -441,7 +457,8 @@ export const AnimationFxSD = {
 		try {
 			const dbRoots = Sequencer?.Database?.getEntry ? this._sequencerDbRoots() : null;
 			if (dbRoots && !dbRoots.has(root)) return root;
-		} catch (e) { /* ignore */ }
+		}
+		catch (e) { /* ignore */ }
 		return null;
 	},
 
@@ -451,7 +468,8 @@ export const AnimationFxSD = {
 			const roots = new Set();
 			for (const p of paths) roots.add(String(p).split(".")[0]);
 			return roots;
-		} catch (e) {
+		}
+		catch (e) {
 			return null;
 		}
 	},
@@ -499,7 +517,8 @@ export const AnimationFxSD = {
 				resolved = unwrap(db.getAllFileEntries(file));
 			}
 			return resolved ? foundry.utils.getRoute(resolved) : "";
-		} catch (e) {
+		}
+		catch (e) {
 			return "";
 		}
 	},
@@ -539,14 +558,16 @@ export const AnimationFxSD = {
 				h: source.h ?? 1,
 				id: "_preview_offset",
 			}];
-		} else {
+		}
+		else {
 			targets = [source];
 		}
 
 		try {
 			await this._play(preset, source, targets, outcome);
 			return true;
-		} catch (e) {
+		}
+		catch (e) {
 			console.warn(`${MODULE_ID} | preview failed:`, e);
 			ui.notifications.error("Preview failed — see console.");
 			return false;
@@ -556,15 +577,22 @@ export const AnimationFxSD = {
 	// ── Client scale / volume ────────────────────────────────────────────────
 
 	_getClientScale() {
-		try { return game.settings.get(MODULE_ID, "animationFxClientScale") || 1.0; }
-		catch (e) { return 1.0; }
+		try {
+			return game.settings.get(MODULE_ID, "animationFxClientScale") || 1.0;
+		}
+		catch (e) {
+			return 1.0;
+		}
 	},
 
 	_getMasterVolume() {
 		try {
 			if (!game.settings.get(MODULE_ID, "animationFxSoundEnabled")) return 0;
 			return game.settings.get(MODULE_ID, "animationFxVolume") ?? 0.8;
-		} catch (e) { return 0.8; }
+		}
+		catch (e) {
+			return 0.8;
+		}
 	},
 
 	async _playSound(block) {
@@ -576,7 +604,8 @@ export const AnimationFxSD = {
 			const seq = new Sequence(MODULE_ID);
 			seq.sound().file(block.sound).volume(volume);
 			await seq.play();
-		} catch (e) { /* silent */ }
+		}
+		catch (e) { /* silent */ }
 	},
 
 	// ── Cone geometry ────────────────────────────────────────────────────────
@@ -623,13 +652,15 @@ export const AnimationFxSD = {
 	async playForItem({ item, actor, sourceToken = null, targets = [], outcome = "hit", tokenId = null }) {
 		try {
 			if (!game.settings.get(MODULE_ID, "animationFxEnabled")) return;
-		} catch (e) { /* setting may not be registered yet */ }
+		}
+		catch (e) { /* setting may not be registered yet */ }
 
 		// Trigger-on filter (world): skip misses when set to hit-only
 		try {
 			const triggerOn = game.settings.get(MODULE_ID, "animationFxTriggerOn");
 			if (outcome === "miss" && triggerOn === "hit") return;
-		} catch (e) { /* default: always */ }
+		}
+		catch (e) { /* default: always */ }
 
 		const preset = this.resolvePreset(item);
 		if (!preset) return;
@@ -660,7 +691,8 @@ export const AnimationFxSD = {
 					console.debug(`${MODULE_ID} | AnimationFx: skipping "${preset.label ?? "?"}" — DB entry not found: ${block.file}`);
 					return;
 				}
-			} catch (e) { /* fall through and let play() handle it */ }
+			}
+			catch (e) { /* fall through and let play() handle it */ }
 		}
 
 		const globalScale = this._getClientScale();
@@ -677,7 +709,8 @@ export const AnimationFxSD = {
 					await this._endEffectsSafe({ name: effectName });
 					return;
 				}
-			} catch (e) { /* ignore */ }
+			}
+			catch (e) { /* ignore */ }
 			try {
 				const seq = new Sequence(MODULE_ID);
 				seq.effect()
@@ -691,7 +724,8 @@ export const AnimationFxSD = {
 					.name(effectName);
 				await seq.play();
 				await this._playSound(block);
-			} catch (e) {
+			}
+			catch (e) {
 				console.warn(`${MODULE_ID} | AnimationFx persistent play failed:`, e);
 			}
 			return;
@@ -704,7 +738,8 @@ export const AnimationFxSD = {
 			targetList = needsDistance
 				? targets.filter(t => t && t.id !== sourceToken.id)
 				: targets;
-		} else {
+		}
+		else {
 			targetList = needsDistance ? [] : [sourceToken];
 		}
 		if (targetList.length === 0) {
@@ -750,7 +785,8 @@ export const AnimationFxSD = {
 					.fadeIn(100).fadeOut(100).opacity(opacity)
 					.duration(hardDuration)
 					.name(safetyName);
-			} else if (preset.type === "cone") {
+			}
+			else if (preset.type === "cone") {
 				hardDuration = block.duration ?? 1500;
 				const angle = this._computeConeAngle(sourceToken, allTargets);
 				effect
@@ -761,7 +797,8 @@ export const AnimationFxSD = {
 					.duration(hardDuration)
 					.fadeIn(fadeIn).fadeOut(fadeOut).opacity(opacity)
 					.name(safetyName);
-			} else {
+			}
+			else {
 				// onToken
 				hardDuration = block.duration ?? 800;
 				const anchorToken = preset.target === "self" ? sourceToken : target;
@@ -778,10 +815,12 @@ export const AnimationFxSD = {
 				// Safety net: guarantee cleanup even for looped / endless webms.
 				const cleanupAfter = hardDuration + fadeOut + 200;
 				setTimeout(() => this._endEffectsSafe({ name: safetyName }), cleanupAfter);
-			} catch (e) {
+			}
+			catch (e) {
 				console.warn(`${MODULE_ID} | AnimationFx play failed:`, e);
 			}
-		} catch (outer) {
+		}
+		catch (outer) {
 			console.warn(`${MODULE_ID} | AnimationFx setup failed for "${preset?.label ?? "?"}" (${block?.file ?? "?"}):`, outer);
 		}
 	},
@@ -811,7 +850,8 @@ export const AnimationFxSD = {
 				if (!Array.isArray(effect?._tickerMethods)) effect._tickerMethods = [];
 			}
 			await Sequencer.EffectManager.endEffects(filter);
-		} catch (e) { /* silent */ }
+		}
+		catch (e) { /* silent */ }
 	},
 
 	// ── Persistent helpers (for weapon glows etc.) ───────────────────────────

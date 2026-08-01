@@ -145,7 +145,8 @@ function makeGeom(dataset) {
 		if (landscape) {
 			j = flipX ? (pubRows - 1 - ry) : ry;   // x runs along published rows
 			i = flipY ? (pubCols - 1 - cx) : cx;   // y runs along published cols
-		} else {
+		}
+		else {
 			j = flipX ? (pubCols - 1 - cx) : cx;
 			i = flipY ? (pubRows - 1 - ry) : ry;
 		}
@@ -341,7 +342,10 @@ export async function buildHexcrawl(dataset, opts = {}) {
 	// Tiles created on a freshly-viewed scene can leave their meshes parked at the
 	// origin until the Tiles layer is redrawn. Force a clean redraw so the map
 	// renders in place immediately after building.
-	try { await canvas.tiles?.draw?.(); } catch (err) {
+	try {
+		await canvas.tiles?.draw?.();
+	}
+	catch (err) {
 		console.warn(`${MODULE_ID} | post-build tiles redraw failed`, err);
 	}
 
@@ -361,7 +365,8 @@ export async function buildHexcrawlFromFile(relPath, opts = {}) {
 	let dataset;
 	try {
 		dataset = await foundry.utils.fetchJsonWithTimeout(url);
-	} catch (err) {
+	}
+	catch (err) {
 		ui.notifications?.error(`SDX | Could not load hexcrawl dataset: ${relPath}`);
 		console.error(`${MODULE_ID} | fetch hexcrawl dataset failed`, err);
 		return null;

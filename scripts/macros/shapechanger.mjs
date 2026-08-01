@@ -119,7 +119,8 @@ function resolveNpcTokenImage(npcDoc) {
 				return tokenPath;
 			}
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		console.log(`${MODULE_ID} | Community tokens lookup failed:`, e.message);
 	}
 
@@ -412,7 +413,8 @@ export async function applyShapechanger(casterActor, casterItem, npcDoc, isCriti
 				targetToken?.document?.uuid || null
 			);
 			return;
-		} else {
+		}
+		else {
 			ui.notifications.warn("Cannot transform: No GM connected or socket unavailable.");
 			return;
 		}
@@ -541,7 +543,8 @@ export async function applyShapechanger(casterActor, casterItem, npcDoc, isCriti
 				.fadeOut(400)
 				.play();
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		console.log(`${MODULE_ID} | Sequencer animation not available: ${e.message}`);
 	}
 
@@ -583,7 +586,8 @@ export async function applyShapechanger(casterActor, casterItem, npcDoc, isCriti
 	if (opts.revertAt0HP) {
 		if (opts.revertHPValue === "half") {
 			revertNote = "Reverts at 0 HP to half prior HP.";
-		} else {
+		}
+		else {
 			revertNote = "If you reach 0 HP, you revert to your true shape at 0 HP.";
 		}
 	}
@@ -650,7 +654,8 @@ export async function revertShapechanger(actor, skipEndDuration = false) {
 		if (sdxModule?.socket) {
 			await sdxModule.socket.executeAsGM("revertShapechangerAsGM", actor.uuid);
 			return;
-		} else {
+		}
+		else {
 			ui.notifications.warn("Cannot revert: No GM connected or socket unavailable.");
 			return;
 		}
@@ -672,11 +677,13 @@ export async function revertShapechanger(actor, skipEndDuration = false) {
 		let revertHP;
 		if (backup.revertHPValue === "half") {
 			revertHP = Math.max(1, Math.floor(backup.hp.value / 2));
-		} else {
+		}
+		else {
 			revertHP = backup.revertHPValue ?? 0;
 		}
 		actorUpdate["system.attributes.hp.value"] = revertHP;
-	} else {
+	}
+	else {
 		actorUpdate["system.attributes.hp.value"] = backup.hp.value;
 	}
 
@@ -716,11 +723,13 @@ export async function revertShapechanger(actor, skipEndDuration = false) {
 		const sdxModule = game.modules.get(MODULE_ID);
 		if (sdxModule?.api?.endDurationSpell) {
 			await sdxModule.api.endDurationSpell(durationActorId, backup.instanceId, "manual");
-		} else {
+		}
+		else {
 			try {
 				const { endDurationSpell } = await import("../effects/FocusSpellTrackerSD.mjs");
 				await endDurationSpell(durationActorId, backup.instanceId, "manual");
-			} catch (e) {
+			}
+			catch (e) {
 				console.warn(`${MODULE_ID} | Could not end duration spell:`, e);
 			}
 		}
@@ -738,7 +747,8 @@ export async function revertShapechanger(actor, skipEndDuration = false) {
 				.fadeOut(400)
 				.play();
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		console.log(`${MODULE_ID} | Sequencer animation not available: ${e.message}`);
 	}
 
@@ -964,7 +974,8 @@ Hooks.on("renderPlayerSheetSD", (sheet, html, data) => {
 			if (item.system.attackType === "special") {
 				if (typeof item.displayCard === "function") {
 					await item.displayCard();
-				} else {
+				}
+				else {
 					item.sheet.render(true);
 				}
 				return;
@@ -973,7 +984,8 @@ Hooks.on("renderPlayerSheetSD", (sheet, html, data) => {
 			// Shadowdark 4.x uses rollAttack on the data model
 			if (typeof actor.system?.rollAttack === "function") {
 				await actor.system.rollAttack(itemId);
-			} else if (typeof item.rollNpcAttack === "function") {
+			}
+			else if (typeof item.rollNpcAttack === "function") {
 				const rollData = {
 					item: item,
 					actor: actor,
@@ -984,16 +996,20 @@ Hooks.on("renderPlayerSheetSD", (sheet, html, data) => {
 				rollData.damageBonus = item.system.bonuses.damageBonus;
 
 				await item.rollNpcAttack(parts, rollData);
-			} else if (typeof item.displayCard === "function") {
+			}
+			else if (typeof item.displayCard === "function") {
 				await item.displayCard();
-			} else {
+			}
+			else {
 				item.sheet.render(true);
 			}
-		} else {
+		}
+		else {
 			// NPC Special Attack or NPC Feature — display card
 			if (typeof item.displayCard === "function") {
 				await item.displayCard();
-			} else {
+			}
+			else {
 				item.sheet.render(true);
 			}
 		}

@@ -82,10 +82,12 @@ export class TravelSpeedsSettingsApp extends HandlebarsApplicationMixin(Applicat
 			if (ev.target.closest(".sdx-remove-speed")) {
 				ev.preventDefault();
 				this._removeSpeed(ev);
-			} else if (ev.target.closest(".sdx-move-up")) {
+			}
+			else if (ev.target.closest(".sdx-move-up")) {
 				ev.preventDefault();
 				this._moveSpeed(ev, -1);
-			} else if (ev.target.closest(".sdx-move-down")) {
+			}
+			else if (ev.target.closest(".sdx-move-down")) {
 				ev.preventDefault();
 				this._moveSpeed(ev, 1);
 			}
@@ -161,7 +163,8 @@ export class TravelSpeedsSettingsApp extends HandlebarsApplicationMixin(Applicat
 
 		if (direction < 0) {
 			rows[newIndex].before(row);
-		} else {
+		}
+		else {
 			rows[newIndex].after(row);
 		}
 
@@ -240,7 +243,8 @@ export function getTravelSpeeds() {
 				return saved.speeds;
 			}
 		}
-	} catch (e) {
+	}
+	catch (e) {
 		// Setting not registered yet, return defaults
 	}
 	return foundry.utils.deepClone(DEFAULT_TRAVEL_SPEEDS);

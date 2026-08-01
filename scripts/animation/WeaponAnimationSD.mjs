@@ -18,7 +18,8 @@ const MODULE_ID = "shadowdark-extras";
 function isEnabled() {
 	try {
 		return game.settings.get(MODULE_ID, "enableWeaponAnimations") !== false;
-	} catch (e) {
+	}
+	catch (e) {
 		return true; // Default to enabled if setting not registered yet
 	}
 }
@@ -95,7 +96,8 @@ export async function scanItemImages() {
 				}
 			}
 
-		} catch (error) {
+		}
+		catch (error) {
 			console.warn(`${MODULE_ID} | Error scanning ${basePath}:`, error);
 		}
 	}
@@ -129,7 +131,8 @@ async function scanDirectory(dirPath, images, basePath) {
 				});
 			}
 		}
-	} catch (error) {
+	}
+	catch (error) {
 		console.warn(`${MODULE_ID} | Error scanning directory ${dirPath}:`, error);
 	}
 }
@@ -370,7 +373,8 @@ export async function playWeaponAnimation(token, item, configOverride = null) {
 
 				sprite.filters = [...(sprite.filters || []), dropShadow];
 				console.log(`${MODULE_ID} | Applied DropShadow filter to ${effectName}:`, ds);
-			} catch (e) {
+			}
+			catch (e) {
 				console.error(`${MODULE_ID} | Error applying DropShadow filter:`, e);
 			}
 		}
@@ -474,7 +478,8 @@ export function initWeaponAnimations() {
 			if (isEquipped) {
 				// Weapon equipped - play animation
 				await playWeaponAnimation(token, item);
-			} else {
+			}
+			else {
 				// Weapon unequipped - stop animation
 				await stopWeaponAnimation(token, item.id);
 			}

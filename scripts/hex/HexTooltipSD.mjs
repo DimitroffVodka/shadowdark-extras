@@ -121,7 +121,8 @@ function hexKeyToLabel(hexKey) {
 	const [i, j] = hexKey.split("_").map(Number);
 	try {
 		return formatHexCoord({ i, j });
-	} catch {
+	}
+	catch {
 		return `${i}.${j}`;
 	}
 }
@@ -258,17 +259,24 @@ export class SDXHexTooltip {
 		try {
 			if (canvas.grid.highlightLayers?.[this.#hlName]) canvas.grid.destroyHighlightLayer(this.#hlName);
 			canvas.grid.addHighlightLayer(this.#hlName);
-		} catch { this.#hlName = null; }
+		}
+		catch {
+			this.#hlName = null;
+		}
 
 		// "Show all" highlight layer
 		try {
 			if (canvas.grid.highlightLayers?.[this.#hlAllName]) canvas.grid.destroyHighlightLayer(this.#hlAllName);
 			canvas.grid.addHighlightLayer(this.#hlAllName);
-		} catch { this.#hlAllName = null; }
+		}
+		catch {
+			this.#hlAllName = null;
+		}
 
 		try {
 			this.#ensureMarkerLayer();
-		} catch {
+		}
+		catch {
 			this.#markerLayer = null;
 		}
 
@@ -296,14 +304,21 @@ export class SDXHexTooltip {
 		Hooks.on("updateJournalEntry", this.#onJournalRef);
 	}
 
-	get enabled() { return this.#enabled; }
+	get enabled() {
+		return this.#enabled;
+	}
 
 	toggle() {
 		this.#enabled = !this.#enabled;
 		if (this.#markerLayer) this.#markerLayer.visible = this.#enabled;
 		if (this.#enabled) this.#drawMarkers();
 		else {
-			try { this.#markerLayer?.clear(); } catch { this.#markerLayer = null; }
+			try {
+				this.#markerLayer?.clear();
+			}
+			catch {
+				this.#markerLayer = null;
+			}
 			this.#hide();
 		}
 		return this.#enabled;
@@ -324,8 +339,14 @@ export class SDXHexTooltip {
 		document.removeEventListener("keyup", this.#onKeyUpRef);
 		this.#closeContextMenu();
 		this.#hide();
-		if (this.#hlName) try { canvas.grid.destroyHighlightLayer(this.#hlName); } catch { }
-		if (this.#hlAllName) try { canvas.grid.destroyHighlightLayer(this.#hlAllName); } catch { }
+		if (this.#hlName) try {
+			canvas.grid.destroyHighlightLayer(this.#hlName);
+		}
+		catch { }
+		if (this.#hlAllName) try {
+			canvas.grid.destroyHighlightLayer(this.#hlAllName);
+		}
+		catch { }
 		this.#destroyMarkerLayer();
 		this.#markerLayer = null;
 		if (this.#onJournalRef) Hooks.off("updateJournalEntry", this.#onJournalRef);
@@ -338,8 +359,12 @@ export class SDXHexTooltip {
 	// ── Private ──
 
 	#getOffset(worldPos) {
-		try { return canvas.grid.getOffset(worldPos); }
-		catch { return null; }
+		try {
+			return canvas.grid.getOffset(worldPos);
+		}
+		catch {
+			return null;
+		}
 	}
 
 	#inSceneBounds(offset) {
@@ -365,10 +390,12 @@ export class SDXHexTooltip {
 		if (!this.#markerLayer) return;
 		try {
 			this.#markerLayer.parent?.removeChild(this.#markerLayer);
-		} catch { }
+		}
+		catch { }
 		try {
 			if (!this.#markerLayer.destroyed) this.#markerLayer.destroy();
-		} catch (err) {
+		}
+		catch (err) {
 			if (!String(err?.message || err).includes("refCount")) throw err;
 		}
 	}
@@ -380,7 +407,8 @@ export class SDXHexTooltip {
 			this.#markerLayer.beginFill(color, 0.95);
 			this.#markerLayer.drawCircle(x, y, radius);
 			this.#markerLayer.endFill();
-		} catch (err) {
+		}
+		catch (err) {
 			console.warn(`${MODULE_ID} | Failed to draw hex tooltip marker:`, err);
 		}
 	}
@@ -389,10 +417,16 @@ export class SDXHexTooltip {
 		if (!this.#ensureMarkerLayer()) return;
 		try {
 			this.#markerLayer.clear();
-		} catch {
+		}
+		catch {
 			this.#markerLayer = null;
 			if (!this.#ensureMarkerLayer()) return;
-			try { this.#markerLayer.clear(); } catch { return; }
+			try {
+				this.#markerLayer.clear();
+			}
+			catch {
+				return;
+			}
 		}
 		if (!canvas.grid?.isHexagonal) return;
 
@@ -558,7 +592,8 @@ export class SDXHexTooltip {
 						<i class="fas fa-eye"></i>
 					</div>
 				</div>`;
-			} else {
+			}
+			else {
 				html += `<div class="sdx-hex-ctx-item${dim}" data-jid="${f.journalId}" data-pid="${f.pageId ?? ""}">
 					<i class="fas fa-book-open"></i>${label}
 				</div>`;
@@ -607,17 +642,21 @@ export class SDXHexTooltip {
 		menu.querySelectorAll(".sdx-hex-ctx-item:not(.sdx-hex-ctx-generate):not(.sdx-hex-ctx-generate-settlement):not(.sdx-hex-ctx-generate-dungeon):not(.sdx-hex-ctx-generate-dungeon-map):not(.sdx-hex-ctx-scene)").forEach(item => {
 			item.addEventListener("click", async () => {
 				const j = game.journal.get(item.dataset.jid);
-				if (!j) { this.#closeContextMenu(); return; }
+				if (!j) {
+					this.#closeContextMenu(); return;
+				}
 				const pid = item.dataset.pid || "";
 
 				if (game.user.isGM) {
 					// GM renders directly
 					if (pid) {
 						j.sheet.render(true, { pageId: pid });
-					} else {
+					}
+					else {
 						j.sheet.render(true);
 					}
-				} else {
+				}
+				else {
 					// Players always go through the GM — ensures journal is set to LIMITED
 					// and the specific page to OBSERVER before rendering
 					game.socket.emit("module.shadowdark-extras", {
@@ -642,7 +681,8 @@ export class SDXHexTooltip {
 						queryString: maphubData.params,
 						externalBase: maphubData.externalBase,
 					}).render(true);
-				} catch (err) {
+				}
+				catch (err) {
 					console.error(`${MODULE_ID} | Failed to launch MaphubViewerApp:`, err);
 				}
 				this.#closeContextMenu();
@@ -707,7 +747,8 @@ export class SDXHexTooltip {
 		let biomes;
 		try {
 			biomes = await getAvailableBiomes();
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX | Failed to load biomes:", err);
 			return;
 		}
@@ -762,9 +803,12 @@ export class SDXHexTooltip {
 				const nKey = `${n.i}_${n.j}`;
 				const terrain = this.#allData[sceneId]?.[nKey]?.terrain ?? "";
 				const t = terrain.toLowerCase();
-				if (t === "ocean" || t === "water") { nearOcean = true; break; }
+				if (t === "ocean" || t === "water") {
+					nearOcean = true; break;
+				}
 			}
-		} catch { /* grid not available — skip check */ }
+		}
+		catch { /* grid not available — skip check */ }
 
 		// Generate content
 		let htmlContent; let regionName;
@@ -772,7 +816,8 @@ export class SDXHexTooltip {
 			const result = await generateHexHtml(biomeKey, hexLabel, nearOcean);
 			htmlContent = result.html;
 			regionName = result.regionName;
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX | Hex generation failed:", err);
 			ui.notifications.error("SDX | Hex content generation failed.");
 			return;
@@ -851,7 +896,8 @@ export class SDXHexTooltip {
 		let types;
 		try {
 			types = await getSettlementTypes();
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX | Failed to load settlement types:", err);
 			return;
 		}
@@ -903,7 +949,8 @@ export class SDXHexTooltip {
 			htmlContent = result.html;
 			settlementName = result.settlementName;
 			maphubData = result.maphubData;
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX | Settlement generation failed:", err);
 			ui.notifications.error("SDX | Settlement content generation failed.");
 			return;
@@ -983,7 +1030,8 @@ export class SDXHexTooltip {
 		let types;
 		try {
 			types = await getDungeonTypes();
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX | Failed to load dungeon types:", err);
 			return;
 		}
@@ -1052,7 +1100,8 @@ export class SDXHexTooltip {
 				this.#closeContextMenu();
 				if (mode === "map") {
 					await this.#generateDungeonMapAndSave(hexKey, typeKey, sizeKey);
-				} else {
+				}
+				else {
 					await this.#generateDungeonAndSave(hexKey, typeKey, sizeKey);
 				}
 			});
@@ -1079,7 +1128,8 @@ export class SDXHexTooltip {
 			htmlContent = result.html;
 			dungeonName = result.dungeonName;
 			roomCount = result.roomCount || 0;
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX | Dungeon generation failed:", err);
 			ui.notifications.error("SDX | Dungeon content generation failed.");
 			return;
@@ -1161,7 +1211,8 @@ export class SDXHexTooltip {
 			({ scene, journal, dungeonName, roomCount } = await buildHexDungeonScene({
 				hexLabel, hexKey, typeKey, sizeKey,
 			}));
-		} catch (err) {
+		}
+		catch (err) {
 			console.error("SDX | Dungeon map generation failed:", err);
 			ui.notifications.error("SDX | Dungeon map generation failed. Check console for details.");
 			return;
@@ -1225,7 +1276,8 @@ export class SDXHexTooltip {
 			this.#imgTooltipEl.innerHTML = `<img src="${img}">`;
 			this.#imgTooltipEl.style.display = "block";
 			requestAnimationFrame(() => this.#imgTooltipEl?.classList.add("sdx-visible"));
-		} else if (this.#imgTooltipEl) {
+		}
+		else if (this.#imgTooltipEl) {
 			this.#imgTooltipEl.classList.remove("sdx-visible");
 			this.#imgTooltipEl.style.display = "none";
 		}
@@ -1254,12 +1306,16 @@ export class SDXHexTooltip {
 				color: base, alpha: 0.25,
 				border: border, borderAlpha: 1.0,
 			});
-		} catch { }
+		}
+		catch { }
 	}
 
 	#clearHighlight() {
 		if (!this.#hlName) return;
-		try { canvas.interface.grid.clearHighlightLayer(this.#hlName); } catch { }
+		try {
+			canvas.interface.grid.clearHighlightLayer(this.#hlName);
+		}
+		catch { }
 	}
 
 	#onKeyDown(e) {
@@ -1276,7 +1332,12 @@ export class SDXHexTooltip {
 
 	#drawAllHighlights() {
 		if (!this.#hlAllName) return;
-		try { canvas.interface.grid.clearHighlightLayer(this.#hlAllName); } catch { return; }
+		try {
+			canvas.interface.grid.clearHighlightLayer(this.#hlAllName);
+		}
+		catch {
+			return;
+		}
 		const sceneId = canvas.scene?.id;
 		const hexes = this.#allData[sceneId];
 		if (!hexes) return;
@@ -1297,7 +1358,10 @@ export class SDXHexTooltip {
 
 	#clearAllHighlights() {
 		if (!this.#hlAllName) return;
-		try { canvas.interface.grid.clearHighlightLayer(this.#hlAllName); } catch { }
+		try {
+			canvas.interface.grid.clearHighlightLayer(this.#hlAllName);
+		}
+		catch { }
 	}
 
 	#positionAtHex(offset) {
@@ -1425,7 +1489,9 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		main: { template: "modules/shadowdark-extras/templates/sdx-hex-tooltip/hex-edit.hbs" },
 	};
 
-	get title() { return "Edit Hex"; }
+	get title() {
+		return "Edit Hex";
+	}
 
 	async _prepareContext() {
 		const record = { ...this.#opts.record };
@@ -1466,7 +1532,9 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Browse image
 		el.querySelector("[data-action='browse-image']")?.addEventListener("click", () => {
 			const input = el.querySelector("[name='hex-image']");
-			new FilePicker({ type: "image", current: input.value, callback: (path) => { input.value = path; } }).browse();
+			new FilePicker({ type: "image", current: input.value, callback: (path) => {
+				input.value = path;
+			} }).browse();
 		});
 
 		// Add note
@@ -1535,8 +1603,12 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			});
 		}
 
-		el.querySelector("[data-action='save-hex']")?.addEventListener("click", async () => { await this.#save(); });
-		el.querySelector("[data-action='cancel-hex']")?.addEventListener("click", () => { this.close(); });
+		el.querySelector("[data-action='save-hex']")?.addEventListener("click", async () => {
+			await this.#save();
+		});
+		el.querySelector("[data-action='cancel-hex']")?.addEventListener("click", () => {
+			this.close();
+		});
 	}
 
 	// ── Notes ──
@@ -1653,10 +1725,14 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			terrain: el.querySelector("[name='hex-terrain']")?.value?.trim() ?? "",
 			travel: el.querySelector("[name='hex-travel']")?.value?.trim() ?? "",
 			exploration: el.querySelector("[name='hex-exploration']")?.value ?? "unexplored",
-			revealRadius: (() => { const v = parseInt(el.querySelector("[name='hex-reveal-radius']")?.value); return isNaN(v) ? -1 : v; })(),
+			revealRadius: (() => {
+				const v = parseInt(el.querySelector("[name='hex-reveal-radius']")?.value); return isNaN(v) ? -1 : v;
+			})(),
 			revealCells: el.querySelector("[name='hex-reveal-cells']")?.value?.trim() ?? "",
 			rollTable: el.querySelector("[name='hex-roll-table']")?.value?.trim() ?? "",
-			rollTableChance: (() => { const v = parseInt(el.querySelector("[name='hex-roll-chance']")?.value); return isNaN(v) ? 100 : Math.max(1, Math.min(100, v)); })(),
+			rollTableChance: (() => {
+				const v = parseInt(el.querySelector("[name='hex-roll-chance']")?.value); return isNaN(v) ? 100 : Math.max(1, Math.min(100, v));
+			})(),
 			rollTableFirstOnly: el.querySelector("[name='hex-roll-first-only']")?.checked ?? false,
 			cleared: el.querySelector("[name='hex-cleared']")?.checked ?? false,
 			claimed: el.querySelector("[name='hex-claimed']")?.checked ?? false,
@@ -1690,7 +1766,8 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				f.journalId = row.querySelector(".sdx-hex-feat-journal")?.value ?? "";
 				f.pageId = row.querySelector(".sdx-hex-feat-page")?.value ?? "";
 				f.name = "";
-			} else {
+			}
+			else {
 				f.name = row.querySelector(".sdx-hex-feat-name")?.value?.trim() ?? "";
 			}
 			record.features.push(f);
@@ -1745,7 +1822,8 @@ export function initHexTooltip() {
 					await j.update({ ownership: { ...j.ownership, [userId]: LEVELS.LIMITED } });
 					const page = j.pages.get(pid);
 					if (page) await page.update({ ownership: { ...page.ownership, [userId]: LEVELS.OBSERVER } });
-				} else {
+				}
+				else {
 					// No page — grant OBSERVER on the whole journal
 					await j.update({ ownership: { ...j.ownership, [userId]: LEVELS.OBSERVER } });
 				}
@@ -1783,7 +1861,8 @@ export function initHexTooltip() {
 
 				if (journalOk && pageOk) {
 					openPage();
-				} else {
+				}
+				else {
 					// One or both ownership updates haven't reached this client yet — wait for them
 					const tryOpen = () => {
 						if (!journalOk || !pageOk) return;
