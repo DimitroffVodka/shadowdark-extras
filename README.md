@@ -399,7 +399,7 @@ This module is provided under the MIT License.
 ## 📬 Support & Feedback
 
 - **Issues**: [GitHub Issues](https://github.com/gmdima/shadowdark-extras/issues)
-- **Known issues**: [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md) — confirmed,
+- **Known issues**: [maintainer record](https://github.com/DimitroffVodka/shadowdark-extras/blob/main/docs/KNOWN-ISSUES.md) — confirmed,
   measured defects that are not yet fixed. Worth checking before reporting.
 - **Discord**: Find me on the Shadowdark or Foundry VTT Discord servers
 

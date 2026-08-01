@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 
 import { scanRegistrations } from "./registration-scan.mjs";
+import { maskSource } from "./import-scan.mjs";
 import { listJsFiles, toRepoPath, isVendor } from "./project-scan.mjs";
 import { sortKeys } from "./snapshot-util.mjs";
 
@@ -10,9 +11,13 @@ import { sortKeys } from "./snapshot-util.mjs";
  * Registration-order snapshot gate.
  *
  * WHAT THIS PROVES: the set and per-module source order of `Hooks.on/once/off`,
- * `libWrapper.register`, and socketlib registration call sites is unchanged.
+ * `libWrapper.register`, and socketlib registration call sites is unchanged;
+ * and the composition root's ordered `registerX()` / `initX()` invocations are
+ * unchanged. The second list closes the extraction-specific gap: once a hook
+ * moves behind a named seam, moving the root call changes installation order
+ * without changing the feature module's local call sites.
  *
- * WHAT IT DOES NOT PROVE: runtime firing order. Registrations made inside
+ * WHAT IT DOES NOT PROVE: runtime firing behaviour. Registrations made inside
  * `init`/`ready` callbacks, conditionals, or nested functions appear here in
  * call-site order, which is not the order Foundry executes them. Proving
  * runtime behaviour is the smoke matrix's job, and a green snapshot must never
@@ -30,9 +35,35 @@ import { sortKeys } from "./snapshot-util.mjs";
  */
 
 const SNAPSHOT_PATH = new URL("../snapshots/registrations.json", import.meta.url);
+const COMPOSITION_ROOT_PATH = new URL("../../scripts/shadowdark-extras.mjs", import.meta.url);
 
 /** SDX-authored code inside the vendored MapHub tree is held to SDX rules. */
 const VENDOR_TREE_EXCEPTIONS = ["scripts/maphub/OnePageParserSD.mjs"];
+
+/**
+ * Capture the order in which the composition root invokes imported/local
+ * registration and initialization seams. Moving a hook into a feature module
+ * means the feature file's local call-site order is no longer sufficient: the
+ * root call decides when those registrations are installed relative to every
+ * other feature.
+ *
+ * Function declarations are excluded; comments, strings, templates and regex
+ * literals are already masked by the shared import scanner.
+ */
+export function scanRootCompositionCalls(source) {
+  const { masked } = maskSource(source);
+  const calls = [];
+
+  for (const match of masked.matchAll(/(?<![\w$.])((?:register|init)[A-Z][A-Za-z0-9_$]*)\s*\(/g)) {
+    const name = match[1];
+    const nameOffset = match.index + match[0].indexOf(name);
+    const prefix = masked.slice(Math.max(0, nameOffset - 48), nameOffset);
+    if (/\bfunction\s*$/.test(prefix)) continue;
+    calls.push(name);
+  }
+
+  return calls;
+}
 
 export function collectRegistrations() {
   // Repo-root `data/` also ships runtime ESM — not to be confused with `scripts/data/`.
@@ -59,19 +90,22 @@ export function collectRegistrations() {
   }
 
   totals.all = Object.values(totals).reduce((sum, count) => sum + count, 0);
-  return { totals, modules: sortKeys(modules), detail };
+  const rootCompositionCalls = scanRootCompositionCalls(readFileSync(COMPOSITION_ROOT_PATH, "utf8"));
+  return { totals, modules: sortKeys(modules), rootCompositionCalls, detail };
 }
 
 
 function buildSnapshot() {
-  const { totals, modules } = collectRegistrations();
+  const { totals, modules, rootCompositionCalls } = collectRegistrations();
   return {
     $comment:
       "Static registration call-site inventory. Keyed by module basename so it survives feature-folder " +
-      "moves. Order within each module is the contract; runtime firing order is proved by the smoke matrix, " +
-      "not by this file. Regenerate only with a reviewed reason: npm run snapshot:registrations -- --write",
+      "moves. Order within each module and the root's register/init invocation order are contracts; runtime " +
+      "firing behaviour is proved by the smoke matrix, not by this file. Regenerate only with a reviewed " +
+      "reason: npm run snapshot:registrations -- --write",
     totals,
     modules,
+    rootCompositionCalls,
   };
 }
 
@@ -117,6 +151,19 @@ export function diffSnapshot(baseline, current) {
     }
   }
 
+  const beforeRoot = baseline.rootCompositionCalls ?? [];
+  const afterRoot = current.rootCompositionCalls ?? [];
+  if (beforeRoot.length !== afterRoot.length) {
+    differences.push(`root composition calls: ${beforeRoot.length} -> ${afterRoot.length}`);
+  }
+  const rootLimit = Math.min(beforeRoot.length, afterRoot.length);
+  for (let i = 0; i < rootLimit; i += 1) {
+    if (beforeRoot[i] !== afterRoot[i]) {
+      differences.push(`root composition[${i}]: ${beforeRoot[i]} -> ${afterRoot[i]}`);
+      break;
+    }
+  }
+
   return differences;
 }
 
@@ -127,7 +174,10 @@ function main() {
   if (write) {
     mkdirSync(new URL(".", SNAPSHOT_PATH), { recursive: true });
     writeFileSync(SNAPSHOT_PATH, `${JSON.stringify(current, null, 2)}\n`);
-    console.log(`registration snapshot: wrote ${current.totals.all} call sites across ${Object.keys(current.modules).length} modules`);
+    console.log(
+      `registration snapshot: wrote ${current.totals.all} call sites across ${Object.keys(current.modules).length} modules; ` +
+      `${current.rootCompositionCalls.length} root composition calls`,
+    );
     return;
   }
 
@@ -141,7 +191,8 @@ function main() {
 
   const differences = diffSnapshot(baseline, current);
   console.log(
-    `registration snapshot: ${current.totals.all} call sites across ${Object.keys(current.modules).length} modules`,
+    `registration snapshot: ${current.totals.all} call sites across ${Object.keys(current.modules).length} modules; ` +
+      `${current.rootCompositionCalls.length} root composition calls`,
   );
 
   if (differences.length > 0) {
