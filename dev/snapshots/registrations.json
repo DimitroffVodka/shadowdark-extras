@@ -97,9 +97,6 @@
     "JournalPinsSD.mjs": [
       "Hooks.once:init",
       "Hooks.once:init",
-      "Hooks.on:dropCanvasData",
-      "Hooks.on:preCreateNote",
-      "Hooks.once:init",
       "Hooks.once:ready",
       "Hooks.on:canvasReady",
       "Hooks.on:canvasTearDown",
@@ -107,7 +104,8 @@
       "Hooks.on:updateToken",
       "Hooks.on:sightRefresh",
       "Hooks.once:ready",
-      "Hooks.once:ready"
+      "Hooks.once:ready",
+      "Hooks.once:init"
     ],
     "LevelUpAnimationSD.mjs": [
       "Hooks.on:updateActor",
@@ -419,6 +417,10 @@
       "Hooks.on:renderDialog",
       "Hooks.on:renderApplication",
       "Hooks.on:renderActorDirectory"
+    ],
+    "pin-manager.mjs": [
+      "Hooks.on:dropCanvasData",
+      "Hooks.on:preCreateNote"
     ],
     "predefined-effects.mjs": [
       "Hooks.once:init"

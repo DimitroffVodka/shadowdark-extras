@@ -1,6 +1,6 @@
 {
   "$comment": "Accepted unbound call identifiers. The gate blocks anything NEW, not the absolute count — resolving every identifier without a scope-accurate parser leaves a residue of nested declarations and unlisted globals. New entries almost always mean an extraction left a dangling reference. Regenerate only with a reviewed reason: npm run gate:bindings -- --write",
-  "total": 109,
+  "total": 110,
   "byFile": {
     "scripts/MaphubViewerApp.mjs": [
       "CONST"
@@ -182,6 +182,9 @@
     ],
     "scripts/tom/TomStore.mjs": [
       "TOM_CONFIG"
+    ],
+    "scripts/journal/pin-rendering.mjs": [
+      "loadTexture"
     ]
   }
 }
