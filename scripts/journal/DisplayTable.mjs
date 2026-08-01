@@ -1,6 +1,6 @@
 /**
  * Display Table Enricher for Shadowdark Extras
- * 
+ *
  * Allows journal pages to display styled rollable tables using:
  * @DisplayTable[RollTable.UUID]{Display Name}
  */

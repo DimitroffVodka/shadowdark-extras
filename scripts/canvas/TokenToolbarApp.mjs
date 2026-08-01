@@ -1,6 +1,6 @@
 /**
  * Token Toolbar Application
- * 
+ *
  * V2 Application for displaying the token toolbar HUD.
  * Uses Handlebars template for rendering.
  * Supports drag-to-reposition with position persistence.

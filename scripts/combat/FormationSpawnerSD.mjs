@@ -1,6 +1,6 @@
 /**
  * Formation Spawner for Shadowdark Extras
- * 
+ *
  * Allows a GM to arrange party members on a grid and spawn them
  * in formation on the canvas by dragging the spawn button.
  * Adapted from osr-helper's party-sheet formation feature.
@@ -178,9 +178,9 @@ export class FormationSpawnerSD extends HandlebarsApplicationMixin(ApplicationV2
                 }
 
                 rowHtml += `
-                    <div class="grid-cell ${leaderClass}" 
-                         data-type="grid-cell" 
-                         data-row="${r}" 
+                    <div class="grid-cell ${leaderClass}"
+                         data-type="grid-cell"
+                         data-row="${r}"
                          data-cell="${c}">
                         ${markerHtml}
                     </div>

@@ -11,8 +11,8 @@ export function generateSummoningConfigHTML(MODULE_ID, flags, summonsList, summo
 		<div class="SD-box sdx-summoning-box grid-colspan-3">
 			<div class="header light">
 				<label class="sdx-section-checkbox">
-					<input type="checkbox" name="flags.${MODULE_ID}.summoning.enabled" 
-					       ${flags.enabled ? 'checked' : ''} 
+					<input type="checkbox" name="flags.${MODULE_ID}.summoning.enabled"
+					       ${flags.enabled ? 'checked' : ''}
 					       class="sdx-summoning-toggle" />
 					<span>Summonings</span>
 				</label>
@@ -25,19 +25,19 @@ export function generateSummoningConfigHTML(MODULE_ID, flags, summonsList, summo
 					<div class="sdx-summons-list">
 						${summonsList || ''}
 					</div>
-					
+
 					<!-- Add Profile Button -->
 					<button type="button" class="sdx-add-summon-btn" data-action="addSummonProfile">
 						<i class="fas fa-plus"></i> Add Summon Profile
 					</button>
-					
+
 					<!-- Hidden input to store JSON data -->
 					<input type="hidden" name="flags.${MODULE_ID}.summoning.profiles" class="sdx-summons-data" value="${JSON.stringify(summonProfilesArray).replace(/"/g, '&quot;')}" />
-					
+
 					<!-- Delete at expiry option -->
 					<div class="sdx-summoning-option" style="margin-top: 8px;">
 						<label class="sdx-checkbox-label" style="display: flex; align-items: center; gap: 6px;">
-							<input type="checkbox" name="flags.${MODULE_ID}.summoning.deleteAtExpiry" 
+							<input type="checkbox" name="flags.${MODULE_ID}.summoning.deleteAtExpiry"
 							       ${flags.deleteAtExpiry ? 'checked' : ''} />
 							<span>Delete at expiry <i class="fas fa-question-circle sdx-help-icon" style="opacity: 0.6; font-size: 0.9em;" title="Automatically delete summoned tokens when the spell duration expires.&#10;Only works during combat with round/turn-based durations."></i></span>
 						</label>
@@ -75,22 +75,22 @@ export function generateSummonProfileHTML(profile, index) {
 				<input type="hidden" class="sdx-creature-uuid" value="${profile.creatureUuid || ''}" />
 				<input type="hidden" class="sdx-creature-name" value="${profile.creatureName || ''}" />
 				<input type="hidden" class="sdx-creature-img" value="${profile.creatureImg || ''}" />
-				
+
 				<!-- Count Formula -->
 				<div class="sdx-profile-field">
 					<label>Count</label>
-					<input type="text" class="sdx-summon-count" value="${profile.count || '1'}" 
-					       placeholder="1, 1d4, etc." 
+					<input type="text" class="sdx-summon-count" value="${profile.count || '1'}"
+					       placeholder="1, 1d4, etc."
 					       title="Number of creatures to summon. Can be a number or dice formula (e.g., 1d4, 2d6)." />
 				</div>
-				
+
 				<!-- Display Name -->
 				<div class="sdx-profile-field">
 					<label>Display Name</label>
-					<input type="text" class="sdx-summon-display-name" value="${profile.displayName || ''}" 
+					<input type="text" class="sdx-summon-display-name" value="${profile.displayName || ''}"
 					       placeholder="Optional custom name" />
 				</div>
-				
+
 				<!-- Remove Button -->
 				<button type="button" class="sdx-remove-summon-btn" data-index="${index}"
 				        data-action="removeSummonProfile" title="Remove this summon profile">

@@ -20,7 +20,7 @@ class SDXCache {
      */
     /**
      * Get a display source for a path (Blob URL if cached, file path if not)
-     * @param {string} path 
+     * @param {string} path
      * @returns {Promise<string>}
      */
     async getCachedSrc(path) {
@@ -134,7 +134,7 @@ class SDXCache {
 
     /**
      * Get metadata value
-     * @param {string} key 
+     * @param {string} key
      * @returns {Promise<any|null>}
      */
     async getMetadata(key) {
@@ -143,8 +143,8 @@ class SDXCache {
 
     /**
      * Set metadata value
-     * @param {string} key 
-     * @param {any} data 
+     * @param {string} key
+     * @param {any} data
      */
     async setMetadata(key, data) {
         return this._set(STORE_METADATA, key, data);
@@ -152,7 +152,7 @@ class SDXCache {
 
     /**
      * Get binary data (Blob)
-     * @param {string} key 
+     * @param {string} key
      * @returns {Promise<Blob|null>}
      */
     async getBinary(key) {
@@ -161,8 +161,8 @@ class SDXCache {
 
     /**
      * Set binary data (Blob)
-     * @param {string} key 
-     * @param {Blob} blob 
+     * @param {string} key
+     * @param {Blob} blob
      */
     async setBinary(key, blob) {
         return this._set(STORE_BINARY, key, blob);

@@ -378,7 +378,7 @@ export default class SheetLockManager {
 
         // If inventory is locked, prevent changing quantity, equipped state, etc.
         // Actually, 'equipped' has its own setting (Removed, merged into Inventory or just removed?)
-        // If Inventory lock is just adding/removing, maybe we allow editing? 
+        // If Inventory lock is just adding/removing, maybe we allow editing?
         // Hints said "Prevents adding, removing, or editing items" -> changed to "Prevents adding or removing".
         // SO... if inventory is locked, maybe we DON'T block updates?
         // But context menu edit/delete is blocked.

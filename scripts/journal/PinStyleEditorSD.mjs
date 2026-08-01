@@ -633,7 +633,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
                         content.style.fontSize = `${size * 0.5}px`;
                     }
                     content.style.color = style.iconColor || "#ffffff";
-                    // Note: Inverting SVG preview as a simple way to show on dark background, 
+                    // Note: Inverting SVG preview as a simple way to show on dark background,
                     // real PIXI rendering handles the color properly.
                 }
                 else {

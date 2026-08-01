@@ -232,17 +232,17 @@ export function generateAuraConfigHTML(moduleId, flags) {
     return `
         <div class="sdx-aura-effects-section" style="grid-column: 1 / -1; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border-light-tertiary);">
             <h3 style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-circle-notch" style="color: #4488ff;"></i> 
+                <i class="fas fa-circle-notch" style="color: #4488ff;"></i>
                 Aura Effects
                 <label style="margin-left: auto; font-weight: normal; font-size: 12px;">
-                    <input type="checkbox" 
+                    <input type="checkbox"
                         name="flags.${moduleId}.auraEffects.enabled"
                         class="sdx-aura-effects-enabled"
                         ${enabled ? 'checked' : ''}>
                     Enable
                 </label>
             </h3>
-            
+
             <div class="sdx-aura-effects-config" style="${enabled ? '' : 'opacity: 0.5; pointer-events: none;'}">
                 <!-- Attach To & Size Row -->
                 <div class="SD-grid" style="grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
@@ -250,14 +250,14 @@ export function generateAuraConfigHTML(moduleId, flags) {
                         <label style="font-size: 11px; color: #999; display: block; margin-bottom: 4px;">Attach To</label>
                         <div style="display: flex; gap: 12px;">
                             <label style="display: flex; align-items: center; gap: 4px;">
-                                <input type="radio" 
+                                <input type="radio"
                                     name="flags.${moduleId}.auraEffects.attachTo"
                                     value="caster"
                                     ${attachTo === 'caster' ? 'checked' : ''}>
                                 <span>Caster</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 4px;">
-                                <input type="radio" 
+                                <input type="radio"
                                     name="flags.${moduleId}.auraEffects.attachTo"
                                     value="target"
                                     ${attachTo === 'target' ? 'checked' : ''}>
@@ -267,7 +267,7 @@ export function generateAuraConfigHTML(moduleId, flags) {
                     </div>
                     <div>
                         <label style="font-size: 11px; color: #999;">Radius (feet)</label>
-                        <input type="number" 
+                        <input type="number"
                             name="flags.${moduleId}.auraEffects.radius"
                             value="${radius}"
                             min="5" max="300" step="5"
@@ -365,13 +365,13 @@ export function generateAuraConfigHTML(moduleId, flags) {
                     <span style="font-size: 9px; color: #aaa; display: block; margin-bottom: 6px;">Default triggers for damage, effects, and macros. Override per-component below.</span>
                     <div class="SD-grid" style="grid-template-columns: 1fr 1fr; gap: 8px;">
                         <label class="sdx-checkbox-option" style="display: flex; align-items: center; gap: 4px;" title="Apply effects when a token enters the aura">
-                            <input type="checkbox" 
+                            <input type="checkbox"
                                 name="flags.${moduleId}.auraEffects.triggers.onEnter"
                                 ${triggers.onEnter ? 'checked' : ''}>
                             <span>On Enter</span>
                         </label>
                         <label class="sdx-checkbox-option" style="display: flex; align-items: center; gap: 4px;" title="REMOVE applied effects when a token leaves the aura">
-                            <input type="checkbox" 
+                            <input type="checkbox"
                                 name="flags.${moduleId}.auraEffects.triggers.onLeave"
                                 ${triggers.onLeave ? 'checked' : ''}>
                             <span>Remove effect on leave</span>
@@ -379,25 +379,25 @@ export function generateAuraConfigHTML(moduleId, flags) {
                     </div>
                     <div class="SD-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
                         <label class="sdx-checkbox-option" style="display: flex; align-items: center; gap: 4px;" title="Triggers when the aura SOURCE's turn starts (affects all tokens in aura)">
-                            <input type="checkbox" 
+                            <input type="checkbox"
                                 name="flags.${moduleId}.auraEffects.triggers.onSourceTurnStart"
                                 ${triggers.onSourceTurnStart ? 'checked' : ''}>
                             <span style="font-size: 10px;">Source Turn Start</span>
                         </label>
                         <label class="sdx-checkbox-option" style="display: flex; align-items: center; gap: 4px;" title="Triggers when the aura SOURCE's turn ends (affects all tokens in aura)">
-                            <input type="checkbox" 
+                            <input type="checkbox"
                                 name="flags.${moduleId}.auraEffects.triggers.onSourceTurnEnd"
                                 ${triggers.onSourceTurnEnd ? 'checked' : ''}>
                             <span style="font-size: 10px;">Source Turn End</span>
                         </label>
                         <label class="sdx-checkbox-option" style="display: flex; align-items: center; gap: 4px;" title="Triggers when each TARGET's turn starts (affects only that token)">
-                            <input type="checkbox" 
+                            <input type="checkbox"
                                 name="flags.${moduleId}.auraEffects.triggers.onTargetTurnStart"
                                 ${triggers.onTargetTurnStart ? 'checked' : ''}>
                             <span style="font-size: 10px;">Target Turn Start</span>
                         </label>
                         <label class="sdx-checkbox-option" style="display: flex; align-items: center; gap: 4px;" title="Triggers when each TARGET's turn ends (affects only that token)">
-                            <input type="checkbox" 
+                            <input type="checkbox"
                                 name="flags.${moduleId}.auraEffects.triggers.onTargetTurnEnd"
                                 ${triggers.onTargetTurnEnd ? 'checked' : ''}>
                             <span style="font-size: 10px;">Target Turn End</span>
@@ -409,7 +409,7 @@ export function generateAuraConfigHTML(moduleId, flags) {
                 <div class="SD-grid" style="grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
                     <div>
                         <label style="font-size: 11px; color: #999;">Damage Formula</label>
-                        <input type="text" 
+                        <input type="text"
                             name="flags.${moduleId}.auraEffects.damage.formula"
                             value="${damage.formula || ''}"
                             placeholder="e.g., 2d6"
@@ -463,17 +463,17 @@ export function generateAuraConfigHTML(moduleId, flags) {
                 <!-- Save Section -->
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-border-light-tertiary);">
                     <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                        <input type="checkbox" 
+                        <input type="checkbox"
                             name="flags.${moduleId}.auraEffects.save.enabled"
                             class="sdx-aura-save-enabled"
                             ${save.enabled ? 'checked' : ''}>
                         <span style="font-weight: bold;">Allow Saving Throw</span>
                     </label>
-                    
+
                     <div class="sdx-aura-save-config SD-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 8px; ${save.enabled ? '' : 'opacity: 0.5; pointer-events: none;'}">
                         <div>
                             <label style="font-size: 11px; color: #999;">Save DC</label>
-                            <input type="number" 
+                            <input type="number"
                                 name="flags.${moduleId}.auraEffects.save.dc"
                                 value="${save.dc || 12}"
                                 min="1" max="30"
@@ -493,7 +493,7 @@ export function generateAuraConfigHTML(moduleId, flags) {
                         <div>
                             <label style="font-size: 11px; color: #999;">&nbsp;</label>
                             <label style="display: flex; align-items: center; gap: 4px;">
-                                <input type="checkbox" 
+                                <input type="checkbox"
                                     name="flags.${moduleId}.auraEffects.save.halfOnSuccess"
                                     ${save.halfOnSuccess ? 'checked' : ''}>
                                 <span style="font-size: 11px;">Half on Save</span>
@@ -516,19 +516,19 @@ export function generateAuraConfigHTML(moduleId, flags) {
                         <div>
                             <label style="font-size: 11px; color: #999;">&nbsp;</label>
                             <label style="display: flex; align-items: center; gap: 4px;">
-                                <input type="checkbox" 
+                                <input type="checkbox"
                                     name="flags.${moduleId}.auraEffects.includeSelf"
                                     ${includeSelf ? 'checked' : ''}>
                                 <span style="font-size: 11px;">Include Aura Bearer</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
-                                <input type="checkbox" 
+                                <input type="checkbox"
                                     name="flags.${moduleId}.auraEffects.applyToOriginator"
                                     ${applyToOriginator ? 'checked' : ''}>
                                 <span style="font-size: 11px;">Apply Effects to Originator</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
-                                <input type="checkbox" 
+                                <input type="checkbox"
                                     name="flags.${moduleId}.auraEffects.checkVisibility"
                                     ${checkVisibility ? 'checked' : ''}>
                                 <span style="font-size: 11px;">Check Visibility (LOS)</span>
@@ -541,13 +541,13 @@ export function generateAuraConfigHTML(moduleId, flags) {
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-border-light-tertiary);">
                         <div class="sdx-token-filters-column">
                             <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                                <input type="checkbox" 
+                                <input type="checkbox"
                                     name="flags.${moduleId}.auraEffects.tokenFilters.enabled"
                                     class="sdx-aura-token-filters-enabled"
                                     ${tokenFilters.enabled ? 'checked' : ''}>
                                 <span style="font-weight: bold;"><i class="fas fa-filter"></i> Apply Token Filters</span>
                             </label>
-                            
+
                             <div class="sdx-aura-token-filters-config" style="${tokenFilters.enabled ? '' : 'opacity: 0.5; pointer-events: none;'}">
                                 <div>
                                     <label style="font-size: 11px; color: #999;">TokenMagic Preset</label>
@@ -567,7 +567,7 @@ export function generateAuraConfigHTML(moduleId, flags) {
                 <!-- Effects Section -->
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-border-light-tertiary);">
                     <label style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" 
+                        <input type="checkbox"
                             name="flags.${moduleId}.auraEffects.applyConfiguredEffects"
                             ${applyConfiguredEffects ? 'checked' : ''}>
                         <span>Apply Configured Effects (from Activity tab) on trigger</span>
@@ -600,7 +600,7 @@ export function generateAuraConfigHTML(moduleId, flags) {
                 <!-- Item Macro Section -->
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-border-light-tertiary);">
                     <label style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" 
+                        <input type="checkbox"
                             name="flags.${moduleId}.auraEffects.runItemMacro"
                             ${runItemMacro ? 'checked' : ''}>
                         <span><i class="fas fa-code" style="margin-right: 4px;"></i>Run Item Macro on trigger</span>

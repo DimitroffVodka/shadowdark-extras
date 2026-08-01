@@ -1,9 +1,9 @@
 /**
  * Hex Map Procedural Generator
- * 
+ *
  * Generates a hex map by combining two Simplex Noise layers (elevation + vegetation)
  * and mapping each cell to one of the existing SDX hex tiles based on biome thresholds.
- * 
+ *
  * User controls: water level, vegetation density, mountain height, desert amount.
  * Uses the scene's current hex grid configuration (format via Hex Painter first).
  */

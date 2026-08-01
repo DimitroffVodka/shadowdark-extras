@@ -674,8 +674,8 @@ class JournalPinManager {
         delete style.customText;
         delete style.tooltipTitle;
         delete style.tooltipContent;
-        // Keep hideTooltip as it's a preference, but maybe user wants to copy it? 
-        // Plan said: "Delete labelText and customText". 
+        // Keep hideTooltip as it's a preference, but maybe user wants to copy it?
+        // Plan said: "Delete labelText and customText".
         // User said: "dont copy things like journal, page, custom tooltips, label text".
 
         this._styleClipboard = style;
@@ -1220,7 +1220,7 @@ class JournalPinGraphics extends PIXI.Container {
             this._cachedTexture = null;
         }
 
-        // We will build the new label in a local variable and only 
+        // We will build the new label in a local variable and only
         // attach it to the class/renderer if this build cycle is still valid at the end.
         let newLabelContainer = null;
 
@@ -1632,7 +1632,7 @@ class JournalPinGraphics extends PIXI.Container {
             // Initial Visibility
             newLabelContainer.visible = !style.labelShowOnHover;
 
-            // Winner takes all: Only update instance variables and 
+            // Winner takes all: Only update instance variables and
             // add to canvas if this build is still the latest one.
             if (this._buildId === buildId && !this.destroyed) {
                 // Final cleanup of any concurrent build's label that might have slipped in
@@ -3035,7 +3035,7 @@ function initJournalPins() {
                 return originalGetPlaceableById(id, type);
             };
 
-            // Patch PIXI.Filter.prototype.getPlaceable because the internal logic 
+            // Patch PIXI.Filter.prototype.getPlaceable because the internal logic
             // of filters uses an imported version of getPlaceableById which we can't easily patch
             if (PIXI.Filter.prototype.getPlaceable) {
                 const originalGetPlaceable = PIXI.Filter.prototype.getPlaceable;

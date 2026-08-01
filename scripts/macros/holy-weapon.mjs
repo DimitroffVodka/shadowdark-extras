@@ -1,6 +1,6 @@
 /**
  * Holy Weapon Spell Macro
- * 
+ *
  * This module contains the Holy Weapon spell implementation for Shadowdark Extras.
  * The Holy Weapon spell blesses a weapon with holy power, granting +1 to attack and damage rolls.
  */
@@ -13,7 +13,7 @@ import { isUnidentified, getUnidentifiedName } from "./identify.mjs";
 /**
  * Show the Holy Weapon spell selection dialog
  * Displays all available weapons on the target actor in a grid with images
- * 
+ *
  * @param {Actor} casterActor - The actor casting the spell
  * @param {Item} casterItem - The Holy Weapon spell item
  * @param {Actor} targetActor - The actor whose weapons to show
@@ -214,7 +214,7 @@ export async function showHolyWeaponDialog(casterActor, casterItem, targetActor,
 
 /**
  * Apply the Holy Weapon blessing to a weapon
- * 
+ *
  * @param {Item} weapon - The weapon to bless
  * @param {Actor} casterActor - The caster
  * @param {Item} casterItem - The spell item

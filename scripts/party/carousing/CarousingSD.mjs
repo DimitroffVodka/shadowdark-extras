@@ -125,7 +125,7 @@ const EXPANDED_OUTCOME_TABLE = [
 const EXPANDED_BENEFITS = Array.from({ length: 100 }, (_, i) => ({ roll: i + 1, description: "" }));
 
 /**
- * Expanded Mishaps Table (d100) - Empty template  
+ * Expanded Mishaps Table (d100) - Empty template
  * GM configures via Settings > Edit Expanded Tables
  */
 const EXPANDED_MISHAPS = Array.from({ length: 100 }, (_, i) => ({ roll: i + 1, description: "" }));
@@ -631,7 +631,7 @@ export async function setPlayerModifier(userId, type, value) {
     await journal.update(!value || value.trim() === ""
         ? { [`${key}.${type}`]: new foundry.data.operators.ForcedDeletion() }
         : { [`${key}.${type}`]: value.trim() });
-    // Don't re-render everything on every keystroke if called from input, 
+    // Don't re-render everything on every keystroke if called from input,
     // but useful for sync
 }
 
@@ -848,7 +848,7 @@ export async function pruneOfflineCarousingData() {
  * 4-7 = +1
  * 8-11 = +2
  * 12 or higher = +3
- * @param {number} renown 
+ * @param {number} renown
  * @returns {number}
  */
 export function getRenownBonus(renown) {

@@ -58,7 +58,7 @@ export class SceneImporter {
 
     /**
      * Main import function
-     * @param {File} file - The ZIP file object 
+     * @param {File} file - The ZIP file object
      */
     static async importScene(file) {
         ui.notifications.info(`Reading archive: ${file.name}...`);
@@ -140,7 +140,7 @@ export class SceneImporter {
             filesToUpload.push({ path: relativePath, entry: zipEntry });
         });
 
-        // Upload sequentially 
+        // Upload sequentially
         for (const fileItem of filesToUpload) {
             const category = fileItem.path.split('/')[0]; // e.g., 'tokens'
             let filename = fileItem.path.split('/').pop();
@@ -220,7 +220,7 @@ export class SceneImporter {
                 docData.folder = folder.id;
 
                 // Strip ownership/permission to defaults
-                // docData.ownership = { default: 0 }; 
+                // docData.ownership = { default: 0 };
 
                 try {
                     const cls = getDocumentClass(type);

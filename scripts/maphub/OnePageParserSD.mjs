@@ -251,7 +251,7 @@ export class OnePageParserSD {
             minvals[0] = Math.min(minvals[0], w.c[0], w.c[2]);
             minvals[1] = Math.min(minvals[1], w.c[1], w.c[3]);
         });
-        
+
         if (minvals[0] === Number.MAX_SAFE_INTEGER) minvals = [0, 0];
 
         // Find the effective top left corner coordinate of the map

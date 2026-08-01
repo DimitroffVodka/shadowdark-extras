@@ -1,6 +1,6 @@
 /**
  * Cleansing Weapon Spell Macro
- * 
+ *
  * This module contains the Cleansing Weapon spell implementation for Shadowdark Extras.
  * The Cleansing Weapon spell wreaths a weapon in purifying flames, dealing fire damage.
  */
@@ -13,7 +13,7 @@ import { isUnidentified, getUnidentifiedName } from "./identify.mjs";
 /**
  * Show the Cleansing Weapon spell selection dialog
  * Displays all available weapons on the target actor in a grid with images
- * 
+ *
  * @param {Actor} casterActor - The actor casting the spell
  * @param {Item} casterItem - The Cleansing Weapon spell item
  * @param {Actor} targetActor - The actor whose weapons to show
@@ -214,7 +214,7 @@ export async function showCleansingWeaponDialog(casterActor, casterItem, targetA
 
 /**
  * Apply the Cleansing Weapon effect to a weapon
- * 
+ *
  * @param {Item} weapon - The weapon to enchant
  * @param {Actor} casterActor - The caster
  * @param {Item} casterItem - The spell item

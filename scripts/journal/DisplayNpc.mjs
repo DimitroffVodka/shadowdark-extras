@@ -1,10 +1,10 @@
 /**
  * Display NPC Card Enricher for Shadowdark Extras
- * 
+ *
  * Allows journal pages to display styled NPC stat cards using:
  * @DisplayNpcCard[Actor.UUID named]{Display Name}
  * @DisplayNpcCardDetailed[Actor.UUID named]{Display Name} - includes attacks, special attacks, features
- * 
+ *
  * Based on Dragonbane's DisplayMonsterCard implementation.
  */
 
@@ -127,7 +127,7 @@ function getLocalizedMove(moveKey) {
 
 /**
  * Get the creature type from NPC flags
- * @param {Actor} npc - The NPC actor  
+ * @param {Actor} npc - The NPC actor
  * @returns {String} Creature type or empty string
  */
 function getCreatureType(npc) {

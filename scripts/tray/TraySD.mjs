@@ -753,7 +753,7 @@ export function getPinsData() {
         else {
             displayType = "text";
             displayStyle = `
-                color: ${style.fontColor || "#ffffff"}; 
+                color: ${style.fontColor || "#ffffff"};
                 font-family: ${style.fontFamily || "Arial"};
                 font-weight: ${style.fontWeight || "bold"};
                 font-size: 16px;
@@ -952,7 +952,7 @@ export async function getNotesData() {
             }
 
             // Visibility Check
-            // For tokens we check the token document first, then actor? 
+            // For tokens we check the token document first, then actor?
             // Logic: If token has specific visibility flag, use it. If not, default to hidden?
             // Or share visibility with the note source?
             // Let's assume visibility flag is on the object that has the note, or just the token document itself for simplicity?

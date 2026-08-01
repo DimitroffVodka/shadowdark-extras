@@ -976,7 +976,7 @@ export function setupCombatSocket() {
 		return { accepted };
 	});
 
-	// Handler: Open trade window on this client  
+	// Handler: Open trade window on this client
 	socketlibSocket.register("openTradeWindow", async ({ tradeId, localActorId, remoteActorId, isInitiator }) => {
 		const localActor = game.actors.get(localActorId);
 		const remoteActor = game.actors.get(remoteActorId);
@@ -2200,7 +2200,7 @@ export async function injectDamageCard(message, html, data) {
 		let autoDelete = null;
 		let expiryRounds = null;
 		if (deleteMode === 'endOfTurn') {
-			// Delete at end of caster's turn - tracked via combat, fallback to 6 seconds  
+			// Delete at end of caster's turn - tracked via combat, fallback to 6 seconds
 			autoDelete = 6000;
 		} else if (deleteMode === 'duration') {
 			// Delete after X combat rounds - tracked via template flags
@@ -2907,15 +2907,15 @@ export async function injectDamageCard(message, html, data) {
 						let challengeRoll;
 
 						if (message.rolls?.length > 0) {
-							// Look for a DIFFERENT roll than the damage challenge if possible, 
+							// Look for a DIFFERENT roll than the damage challenge if possible,
 							// but usually it's best to look for a matching formula.
 							// Ideally we check if this roll was already "claimed" by damage challenge?
 							// For now, strict formula matching or simple search.
 							challengeRoll = message.rolls.find(r => r.formula === challengeFormula &&
 								(!challengeResults || r !== challengeResults.rollJSON /* simplistic check */));
 
-							// Fallback: just find any matching d20 roll not used? 
-							// To confirm uniqueness we'd need better tracking. 
+							// Fallback: just find any matching d20 roll not used?
+							// To confirm uniqueness we'd need better tracking.
 							// For now, let's assume if formulas are identical, re-using is okay OR we force new roll?
 							// Actually, if we re-use the SAME roll object for two different challenges, it might look weird.
 							// But if the user rolled once for both checks? Unlikely.
@@ -4838,7 +4838,7 @@ function attachMultiplierListeners($card) {
 
 		// Determine the correct +/- sign based on:
 		// - For healing spells: positive newDamage = + (healing), negative = - (damage)
-		// - For damage spells: positive newDamage = - (damage), negative = + (healing) 
+		// - For damage spells: positive newDamage = - (damage), negative = + (healing)
 		const $preview = $targetItem.find('.sdx-damage-preview');
 		let previewSign;
 

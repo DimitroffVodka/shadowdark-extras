@@ -25,8 +25,8 @@ export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml,
 		<div class="SD-box sdx-spell-damage-box grid-colspan-3">
 			<div class="header light">
 				<label>
-					<input type="checkbox" name="flags.${MODULE_ID}.spellDamage.enabled" 
-					       ${flags.enabled ? 'checked' : ''} 
+					<input type="checkbox" name="flags.${MODULE_ID}.spellDamage.enabled"
+					       ${flags.enabled ? 'checked' : ''}
 					       class="sdx-spell-damage-toggle" />
 					Damage/Healing
 				</label>
@@ -48,36 +48,36 @@ export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml,
 						<option value="Psychic" ${flags.damageType === 'Psychic' ? 'selected' : ''}>Psychic</option>
 						<option value="Healing" ${flags.damageType === 'Healing' ? 'selected' : ''}>Healing</option>
 					</select>
-					
+
 					<h3>Requirement</h3>
-					<input type="text" name="flags.${MODULE_ID}.spellDamage.damageRequirement" 
-					       value="${flags.damageRequirement || ''}" 
-					       placeholder="e.g., @target.ancestry == &quot;Undead&quot;" 
-					       title="Formula that must be true for damage to apply. Leave blank to always apply.&#10;Examples: ${requirementExamples}" 
+					<input type="text" name="flags.${MODULE_ID}.spellDamage.damageRequirement"
+					       value="${flags.damageRequirement || ''}"
+					       placeholder="e.g., @target.ancestry == &quot;Undead&quot;"
+					       title="Formula that must be true for damage to apply. Leave blank to always apply.&#10;Examples: ${requirementExamples}"
 					       style="grid-column: span 2;" />
-					
+
 					<h3>If Fails</h3>
 					<select name="flags.${MODULE_ID}.spellDamage.damageRequirementFailAction">
 						<option value="zero" ${(flags.damageRequirementFailAction || 'zero') === 'zero' ? 'selected' : ''}>Zero Damage</option>
 						<option value="half" ${flags.damageRequirementFailAction === 'half' ? 'selected' : ''}>Half Damage</option>
 					</select>
-					
+
 					<!-- Formula Type Selection -->
 					<h3 style="grid-column: 1 / -1; margin-top: 12px; margin-bottom: 8px; border-bottom: 1px solid #999; padding-bottom: 4px;">Formula Type (select one)</h3>
-					
+
 					<!-- BASIC -->
 					<div style="grid-column: 1 / -1;">
 						<label style="display: flex; align-items: center; gap: 6px; font-weight: bold; margin-bottom: 8px;">
-							<input type="radio" name="flags.${MODULE_ID}.spellDamage.formulaType" value="basic" 
+							<input type="radio" name="flags.${MODULE_ID}.spellDamage.formulaType" value="basic"
 						       ${!flags.formulaType || flags.formulaType === 'basic' ? 'checked' : ''}
 						       class="sdx-formula-type-radio" />
 						BASIC
 					</label>
 					<div class="sdx-formula-section sdx-basic-formula" style="display: ${!flags.formulaType || flags.formulaType === 'basic' ? 'grid' : 'none'}; grid-template-columns: subgrid; grid-column: 1 / -1; gap: 4px; padding-left: 24px;">
 							<h3>Number</h3>
-							<input type="number" name="flags.${MODULE_ID}.spellDamage.numDice" 
+							<input type="number" name="flags.${MODULE_ID}.spellDamage.numDice"
 							       value="${flags.numDice}" min="1" step="1" />
-							
+
 							<h3>Die</h3>
 							<select name="flags.${MODULE_ID}.spellDamage.dieType">
 								<option value="d4" ${flags.dieType === 'd4' ? 'selected' : ''}>d4</option>
@@ -87,57 +87,57 @@ export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml,
 								<option value="d12" ${flags.dieType === 'd12' ? 'selected' : ''}>d12</option>
 								<option value="d20" ${flags.dieType === 'd20' ? 'selected' : ''}>d20</option>
 							</select>
-							
+
 							<h3>Bonus</h3>
-							<input type="number" name="flags.${MODULE_ID}.spellDamage.bonus" 
+							<input type="number" name="flags.${MODULE_ID}.spellDamage.bonus"
 							       value="${flags.bonus}" step="1" />
-							
+
 							<h3>Scaling</h3>
 							<select name="flags.${MODULE_ID}.spellDamage.scaling">
 								<option value="none" ${!flags.scaling || flags.scaling === 'none' ? 'selected' : ''}>No Scaling</option>
 								<option value="every-level" ${flags.scaling === 'every-level' ? 'selected' : ''}>Every Level</option>
 								<option value="every-other-level" ${flags.scaling === 'every-other-level' ? 'selected' : ''}>Every Other Level</option>
 							</select>
-							
+
 							<h3>Dice</h3>
-							<input type="number" name="flags.${MODULE_ID}.spellDamage.scalingDice" 
+							<input type="number" name="flags.${MODULE_ID}.spellDamage.scalingDice"
 							       value="${flags.scalingDice}" min="0" step="1" />
 						</div>
 					</div>
-					
+
 					<!-- FORMULA -->
 					<div style="grid-column: 1 / -1; margin-top: 8px;">
 						<label style="display: flex; align-items: center; gap: 6px; font-weight: bold; margin-bottom: 8px;">
-							<input type="radio" name="flags.${MODULE_ID}.spellDamage.formulaType" value="formula" 
+							<input type="radio" name="flags.${MODULE_ID}.spellDamage.formulaType" value="formula"
 						       ${flags.formulaType === 'formula' ? 'checked' : ''}
 						       class="sdx-formula-type-radio" />
 						FORMULA <i class="fas fa-question-circle" style="font-size: 0.9em; opacity: 0.6; cursor: help; font-weight: normal;" title="${formulaHelp}"></i>
 					</label>
 					<div class="sdx-formula-section sdx-custom-formula" style="display: ${flags.formulaType === 'formula' ? 'grid' : 'none'}; grid-template-columns: subgrid; grid-column: 1 / -1; gap: 4px; padding-left: 24px;">
-							<input type="text" name="flags.${MODULE_ID}.spellDamage.formula" 
-							       value="${flags.formula}" placeholder="e.g., (@level)d6 + @int" 
+							<input type="text" name="flags.${MODULE_ID}.spellDamage.formula"
+							       value="${flags.formula}" placeholder="e.g., (@level)d6 + @int"
 							       style="grid-column: 1 / -1;" />
 						</div>
 					</div>
-					
+
 					<!-- TIERED -->
 					<div style="grid-column: 1 / -1; margin-top: 8px;">
 						<label style="display: flex; align-items: center; gap: 6px; font-weight: bold; margin-bottom: 8px;">
-							<input type="radio" name="flags.${MODULE_ID}.spellDamage.formulaType" value="tiered" 
+							<input type="radio" name="flags.${MODULE_ID}.spellDamage.formulaType" value="tiered"
 						       ${flags.formulaType === 'tiered' ? 'checked' : ''}
 						       class="sdx-formula-type-radio" />
 						TIERED <i class="fas fa-question-circle" style="font-size: 0.9em; opacity: 0.6; cursor: help; font-weight: normal;" title="${tieredFormulaHelp}"></i>
 					</label>
 					<div class="sdx-formula-section sdx-tiered-formula" style="display: ${flags.formulaType === 'tiered' ? 'grid' : 'none'}; grid-template-columns: subgrid; grid-column: 1 / -1; gap: 4px; padding-left: 24px;">
-							<input type="text" name="flags.${MODULE_ID}.spellDamage.tieredFormula" 
-							       value="${flags.tieredFormula || ''}" 
+							<input type="text" name="flags.${MODULE_ID}.spellDamage.tieredFormula"
+							       value="${flags.tieredFormula || ''}"
 							       placeholder="e.g., 1-3:1d6, 4-6:2d8, 7-9:3d10, 10+:4d12"
 							       style="grid-column: 1 / -1;" />
 						</div>
 					</div>
 				</div>
 			</div>
-			
+
 			<!-- Effects section - always visible -->
 			<h3 class="sdx-section-title">Effects/Conditions</h3>
 			<div class="sdx-effects-container">
@@ -159,64 +159,64 @@ export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml,
 			</div>
 			<input type="hidden" name="flags.${MODULE_ID}.spellDamage.effects" class="sdx-effects-data" value="${JSON.stringify(effectsArray).replace(/"/g, '&quot;')}" />
 			<input type="hidden" name="flags.${MODULE_ID}.spellDamage.criticalEffects" class="sdx-critical-effects-data" value="${JSON.stringify(criticalEffectsArray).replace(/"/g, '&quot;')}" />
-			
+
 			<!-- Requirement for effects -->
 			<h3 class="sdx-section-title sdx-section-title-small">Effects Requirement <i class="fas fa-question-circle sdx-help-icon" title="Formula that must be true for effects to apply. Leave blank to always apply.&#10;Examples: ${effectsRequirementExamples}"></i></h3>
-			<input type="text" name="flags.${MODULE_ID}.spellDamage.effectsRequirement" 
-			       value="${flags.effectsRequirement || ''}" 
-			       placeholder="e.g., @target.subtype == &quot;Undead&quot;" 
+			<input type="text" name="flags.${MODULE_ID}.spellDamage.effectsRequirement"
+			       value="${flags.effectsRequirement || ''}"
+			       placeholder="e.g., @target.subtype == &quot;Undead&quot;"
 			       class="sdx-full-width-input" />
-			
+
 			<!-- Apply To setting for effects -->
 			<h3 class="sdx-section-title sdx-section-title-small">Apply Effects To</h3>
 			<div class="sdx-radio-group">
 				<label class="sdx-radio-label">
-					<input type="radio" name="flags.${MODULE_ID}.spellDamage.effectsApplyToTarget" 
+					<input type="radio" name="flags.${MODULE_ID}.spellDamage.effectsApplyToTarget"
 					       value="true" ${effectsApplyToTarget === true ? 'checked' : ''} />
 					<span>Target</span>
 				</label>
 				<label class="sdx-radio-label">
-					<input type="radio" name="flags.${MODULE_ID}.spellDamage.effectsApplyToTarget" 
+					<input type="radio" name="flags.${MODULE_ID}.spellDamage.effectsApplyToTarget"
 					       value="false" ${effectsApplyToTarget === false ? 'checked' : ''} />
 					<span>Self</span>
 				</label>
 			</div>
-			
+
 			<!-- Effect Selection Mode (for multiple effects) -->
 			<h3 class="sdx-section-title sdx-section-title-small">Effect Selection Mode <i class="fas fa-question-circle sdx-help-icon" title="When multiple effects are configured, controls how they are applied.&#10;&#10;All: Apply all configured effects&#10;Random: Randomly select one effect&#10;Prompt: Ask which effects to apply"></i></h3>
 			<div class="sdx-radio-group">
 				<label class="sdx-radio-label">
-					<input type="radio" name="flags.${MODULE_ID}.spellDamage.effectSelectionMode" 
+					<input type="radio" name="flags.${MODULE_ID}.spellDamage.effectSelectionMode"
 					       value="all" ${!flags.effectSelectionMode || flags.effectSelectionMode === 'all' ? 'checked' : ''} />
 					<span>All</span>
 				</label>
 				<label class="sdx-radio-label">
-					<input type="radio" name="flags.${MODULE_ID}.spellDamage.effectSelectionMode" 
+					<input type="radio" name="flags.${MODULE_ID}.spellDamage.effectSelectionMode"
 					       value="random" ${flags.effectSelectionMode === 'random' ? 'checked' : ''} />
 					<span>Random</span>
 				</label>
 				<label class="sdx-radio-label">
-					<input type="radio" name="flags.${MODULE_ID}.spellDamage.effectSelectionMode" 
+					<input type="radio" name="flags.${MODULE_ID}.spellDamage.effectSelectionMode"
 					       value="prompt" ${flags.effectSelectionMode === 'prompt' ? 'checked' : ''} />
 					<span>Prompt</span>
 				</label>
 			</div>
-			
+
 			<!-- Duration Tracking Section -->
 			<h3 class="sdx-section-title" style="margin-top: 16px; border-top: 2px solid #7a5a30; padding-top: 12px;">
 				<i class="fas fa-clock"></i> Duration Tracking
 				<i class="fas fa-question-circle sdx-help-icon" title="Track this spell's duration and apply effects each turn. Use for spells like Cloud Kill that deal damage over multiple rounds."></i>
 			</h3>
-			
+
 			<div class="sdx-duration-tracking-options">
 				<label class="sdx-checkbox-label">
-					<input type="checkbox" name="flags.${MODULE_ID}.spellDamage.trackDuration" 
-					       ${flags.trackDuration ? 'checked' : ''} 
+					<input type="checkbox" name="flags.${MODULE_ID}.spellDamage.trackDuration"
+					       ${flags.trackDuration ? 'checked' : ''}
 					       class="sdx-track-duration-toggle" />
 					<span>Track in Duration Tracker</span>
 				</label>
 			</div>
-			
+
 			<div class="sdx-duration-content" style="display: ${flags.trackDuration ? 'block' : 'none'}; margin-left: 20px;">
 				<div class="sdx-duration-options-grid">
 					<label>Per-Turn Trigger:</label>
@@ -224,15 +224,15 @@ export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml,
 						<option value="start" ${!flags.perTurnTrigger || flags.perTurnTrigger === 'start' ? 'selected' : ''}>Start of Turn</option>
 						<option value="end" ${flags.perTurnTrigger === 'end' ? 'selected' : ''}>End of Turn</option>
 					</select>
-					
+
 					<label>Per-Turn Damage:</label>
-					<input type="text" name="flags.${MODULE_ID}.spellDamage.perTurnDamage" 
-					       value="${flags.perTurnDamage || ''}" 
-					       placeholder="e.g., 2d6" 
+					<input type="text" name="flags.${MODULE_ID}.spellDamage.perTurnDamage"
+					       value="${flags.perTurnDamage || ''}"
+					       placeholder="e.g., 2d6"
 					       title="Damage formula rolled each turn" />
-					
+
 					<label class="sdx-checkbox-label" style="grid-column: span 2;">
-						<input type="checkbox" name="flags.${MODULE_ID}.spellDamage.reapplyEffects" 
+						<input type="checkbox" name="flags.${MODULE_ID}.spellDamage.reapplyEffects"
 						       ${flags.reapplyEffects ? 'checked' : ''} />
 						<span>Apply effects each turn (if not already applied)</span>
 					</label>

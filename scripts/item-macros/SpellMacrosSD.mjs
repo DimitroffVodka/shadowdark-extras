@@ -1,6 +1,6 @@
 /**
  * Spell Macros for Shadowdark Extras
- * 
+ *
  * This module serves as the main entry point for spell macro functions.
  * Individual spell implementations are organized in the ./macros/ folder.
  */
