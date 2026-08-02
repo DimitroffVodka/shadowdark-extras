@@ -64,12 +64,13 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  *     UNEVEN, which is worth knowing before editing: the webp path rewrite is
  *     wrapped in try/catch and the compendium sweep carries its own `.catch`,
  *     so neither can abort world load. `migrateLegacyItemMacros()` is awaited
- *     bare, so a throw there surfaces as an unhandled rejection. Its
- *     `itemacroMigrationDone` flag is written only after every item has been
- *     processed, so a failure leaves the flag unset and the migration retries
- *     on the next load rather than stranding half-migrated items. Whether the
- *     bare await was intended or is simply older code is not recorded
- *     anywhere, so it is described here rather than "fixed" on a guess.
+ *     bare, so a throw there surfaces as an unhandled rejection. Since
+ *     Phase 5.2.7 (issue #49) the itemacro sweep is idempotent and ungated —
+ *     it runs on every load and retries naturally — so the failure recovery
+ *     described here is now inherent to the sweep rather than tied to a
+ *     one-shot flag (which no longer exists). Whether the bare await was
+ *     intended or is simply older code is not recorded anywhere, so it is
+ *     described here rather than "fixed" on a guess.
  *
  * The measure used to decide each block was mechanical rather than aesthetic:
  * bare calls to imported helpers versus everything else. Blocks scoring near
