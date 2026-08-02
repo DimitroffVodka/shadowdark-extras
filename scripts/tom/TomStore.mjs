@@ -1,44 +1,6 @@
 import { TOM_CONFIG as CONFIG } from "./TomConfig.mjs";
 import { TomSocketHandler } from "./TomSocketHandler.mjs";
-
-class TomSceneModel {
-	constructor(data = {}) {
-		this.id = data.id || foundry.utils.randomID();
-		this.name = data.name || "New Scene";
-		this.type = "scene";
-		this.background = data.background || "modules/shadowdark-extras/assets/default-scene.jpg";
-		this.bgType = data.bgType || "image";
-		this.isArena = data.isArena || false;
-		this.arenaType = data.arenaType || "isometric";
-		this.inAnimation = data.inAnimation || "fade";
-		this.outAnimation = data.outAnimation || "fade";
-		this.folderId = data.folderId || null;
-	}
-
-	get thumbnail() {
-		return this.background;
-	}
-
-	get image() {
-		return this.background;
-	}
-
-	toJSON() {
-		const { id, name, type, background, bgType, isArena, arenaType, inAnimation, outAnimation, folderId } = this;
-		return {
-			id,
-			name,
-			type,
-			background,
-			bgType,
-			isArena,
-			arenaType,
-			inAnimation,
-			outAnimation,
-			folderId,
-		};
-	}
-}
+import { TomSceneModel } from "./TomSceneModel.mjs";
 
 export class TomStoreClass {
 	constructor() {
