@@ -19,8 +19,16 @@ async function useNpcActivityItem(actor, item) {
 		return true;
 	}
 
-	if (typeof item?.displayCard === "function") {
-		await item.displayCard();
+	// SD 4.x removed item.displayCard; the equivalent is
+	// ChatSD.showItemCard(uuid) (PlayerSheetSD._onItemChatClick).
+	if (item?.uuid) {
+		try {
+			await shadowdark.chat.showItemCard(item.uuid);
+		}
+		catch(err) {
+			console.error("shadowdark-extras: showItemCard failed", err);
+			return false;
+		}
 		return true;
 	}
 
@@ -290,10 +298,12 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				else if (itemType === "NPC Attack") {
 					// Check if it's a special attack which shouldn't be rolled via rollAttack
 					if (item.system.attackType === "special") {
-						if (typeof item.displayCard === "function") {
-							await item.displayCard();
+						// SD 4.x removed item.displayCard; use ChatSD.showItemCard.
+						try {
+							await shadowdark.chat.showItemCard(item.uuid);
 						}
-						else {
+						catch(err) {
+							console.error("shadowdark-extras: showItemCard failed", err);
 							item.sheet.render(true);
 						}
 						return;
@@ -319,11 +329,17 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						}
 						await item.rollNpcAttack(parts, data, options);
 					}
-					else if (typeof item.displayCard === "function") {
-						await item.displayCard();
-					}
 					else {
-						item.sheet.render(true);
+						// SD 4.x removed item.displayCard; use ChatSD.showItemCard.
+						// else-guarded: a successful rollAttack above must NOT also
+						// post a card (reviewer-caught fallthrough, issue #54).
+						try {
+							await shadowdark.chat.showItemCard(item.uuid);
+						}
+						catch(err) {
+							console.error("shadowdark-extras: showItemCard failed", err);
+							item.sheet.render(true);
+						}
 					}
 				}
 				else if (itemType === "NPC Special Attack") {

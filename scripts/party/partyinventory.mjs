@@ -328,7 +328,16 @@ export const PartyInventory = {
 		event.preventDefault();
 		const itemId = event.currentTarget.closest(".item")?.dataset.itemId;
 		const item = this.actor.items.get(itemId);
-		item?.displayCard();
+		// SD 4.x removed item.displayCard; use ChatSD.showItemCard. The old
+		// optional call swallowed failures silently.
+		if (item?.uuid) {
+			try {
+				await shadowdark.chat.showItemCard(item.uuid);
+			}
+			catch(err) {
+				console.error("shadowdark-extras: showItemCard failed", err);
+			}
+		}
 	},
 
 	/**

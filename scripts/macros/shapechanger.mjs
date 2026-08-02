@@ -972,10 +972,12 @@ Hooks.on("renderPlayerSheetSD", (sheet, html, data) => {
 
 		if (itemType === "NPC Attack") {
 			if (item.system.attackType === "special") {
-				if (typeof item.displayCard === "function") {
-					await item.displayCard();
+				// SD 4.x removed item.displayCard; use ChatSD.showItemCard.
+				try {
+					await shadowdark.chat.showItemCard(item.uuid);
 				}
-				else {
+				catch(err) {
+					console.error("shadowdark-extras: showItemCard failed", err);
 					item.sheet.render(true);
 				}
 				return;
@@ -997,19 +999,25 @@ Hooks.on("renderPlayerSheetSD", (sheet, html, data) => {
 
 				await item.rollNpcAttack(parts, rollData);
 			}
-			else if (typeof item.displayCard === "function") {
-				await item.displayCard();
-			}
 			else {
-				item.sheet.render(true);
+				// SD 4.x removed item.displayCard; use ChatSD.showItemCard.
+				try {
+					await shadowdark.chat.showItemCard(item.uuid);
+				}
+				catch(err) {
+					console.error("shadowdark-extras: showItemCard failed", err);
+					item.sheet.render(true);
+				}
 			}
 		}
 		else {
 			// NPC Special Attack or NPC Feature — display card
-			if (typeof item.displayCard === "function") {
-				await item.displayCard();
+			// SD 4.x removed item.displayCard; use ChatSD.showItemCard.
+			try {
+				await shadowdark.chat.showItemCard(item.uuid);
 			}
-			else {
+			catch(err) {
+				console.error("shadowdark-extras: showItemCard failed", err);
 				item.sheet.render(true);
 			}
 		}

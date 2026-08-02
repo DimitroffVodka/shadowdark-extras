@@ -1212,8 +1212,15 @@ function enableItemChatIcon(app, html) {
 			return;
 		}
 
-		// Show item in chat - Shadowdark uses displayCard()
-		await item.displayCard();
+		// Show item in chat - Shadowdark 4.x removed item.displayCard; the
+		// equivalent is ChatSD.showItemCard(uuid) (PlayerSheetSD._onItemChatClick).
+		try {
+			await shadowdark.chat.showItemCard(item.uuid);
+		}
+		catch(err) {
+			// Be loud: the old unhandled promise rejection hid this failure.
+			console.error("shadowdark-extras: showItemCard failed", err);
+		}
 	});
 }
 
