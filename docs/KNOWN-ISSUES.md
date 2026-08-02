@@ -280,35 +280,6 @@ wanted.
 
 ---
 
-## 15. ToM's default scene background points to an asset that is not shipped
-
-**Found:** Phase 4 manifest/asset sweep; confirmed through both runtime entry
-points against the installed 6.10.52 candidate archive. **Status:** confirmed,
-unfixed. **Pre-existing** — git history traces the literal to the original ToM
-implementation, and no Phase 3 move changed it.
-
-Both `TomSceneModel` implementations use
-`modules/shadowdark-extras/assets/default-scene.jpg` when `background` is empty
-(`scripts/tom/TomSceneModel.mjs:6`, `scripts/tom/TomStore.mjs:9`). That file is
-absent from both the checkout and `module.zip`.
-
-Measured in the disposable archive-installed world, Foundry 14.365 / Shadowdark
-4.0.6:
-
-| entry point | selected background | HTTP result |
-| --- | --- | --- |
-| `new TomSceneModel({})` | `modules/shadowdark-extras/assets/default-scene.jpg` | **404** |
-| `new TomStoreClass().createScene({})` | same | **404** |
-
-This settles the Phase 4 question: the fallback is reachable, not dead code.
-A newly-created ToM scene with no explicit background therefore starts with a
-broken image reference.
-
-**Fix direction:** ship a real fallback asset or change both implementations to
-an existing packaged image. The duplicate model definitions should be reconciled
-at the same time, but that runtime change is outside verification-only Phase 4.
-
----
 
 ## 1. The itemacro migration is one-shot; items added later never migrate
 
@@ -391,5 +362,6 @@ Kept briefly so the same findings are not re-reported.
 | 5 | The wand-charges UI never rendered — anchored to `select[name="system.range"]`, which SD 4.x does not emit | #16 (`64e7b78`) |
 | 6 | The weapon hit-bonus chat display was dead — jQuery `html.find` against a v14 `HTMLLIElement`, failing silently because the caller was async and unawaited | #16 (`111080a`) |
 | 8 | The roll-config generator wrapper died on every actor update (marker on the Document, wrapped generators on the rebuilt `actor.system`), silently killing SDX talent advantage; the wrapper, marker, `createActor` hook, and `_sdxSystem*` baseline fields were retired and the dialog hook now owns advantage for all roll types | issue #52, Phase 5.2.1 |
+| 15 | ToM's default scene background pointed at `assets/default-scene.jpg`, which was never shipped (404 from both model entry points); the promised asset now ships and both `TomSceneModel` implementations were deduplicated onto one shared default | issue #57, Phase 5.2.2 |
 
 Row 7 (condition hooks) is still open — issue #56.
