@@ -507,7 +507,7 @@ async function applyFocusSpellPerTurnDamage(focusSpell, targetActor, targetToken
  * reload, or when a reminder scrolls in from history), which left the button doing nothing.
  * Delegation is immune to render/replace timing.
  */
-async function onFocusReminderClick(event) {
+export async function onFocusReminderClick(event) {
 	const btn = event.target.closest(".sdx-focus-roll-btn");
 	if (!btn) return;
 

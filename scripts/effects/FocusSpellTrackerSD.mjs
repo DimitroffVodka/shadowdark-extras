@@ -15,8 +15,8 @@
 import { getSocket } from "../combat/CombatSettingsSD.mjs";
 import { resolveCardContext } from "../shared/sd4Compat.mjs";
 import { MODULE_ID, FOCUS_SPELL_FLAG, DURATION_SPELL_FLAG, _processedFocusRollMessages } from "./focus-constants.mjs";
-import { endDurationSpell, handleDurationSpellCombatUpdate, addTargetToDurationSpell, removeTargetFromDurationSpell, buildDurationSpellsHtml } from "./duration-spell.mjs";
-import { handleEffectCreated, handleEffectDeleted, handleTokenDeleted, handleCombatUpdate, endFocusSpell, startFocusSpell, rollFocusSpellWithTargets, applyFocusSpellPerTurnToTargets, buildFocusSpellsHtml } from "./focus-spell.mjs";
+import { endDurationSpell, handleDurationSpellCombatUpdate, addTargetToDurationSpell, removeTargetFromDurationSpell, buildDurationSpellsHtml, onDurationDamageApplyClick } from "./duration-spell.mjs";
+import { handleEffectCreated, handleEffectDeleted, handleTokenDeleted, handleCombatUpdate, endFocusSpell, startFocusSpell, rollFocusSpellWithTargets, applyFocusSpellPerTurnToTargets, buildFocusSpellsHtml, onFocusReminderClick } from "./focus-spell.mjs";
 
 
 /**
@@ -101,7 +101,7 @@ export function initFocusSpellTracker() {
  * Helper function to get the shared socket from CombatSettingsSD
  * @returns {object|null} The socketlib socket instance
  */
-function getFocusSpellSocket() {
+export function getFocusSpellSocket() {
 	return getSocket();
 }
 
@@ -247,7 +247,7 @@ async function handleChatMessageRender(message, html, context) {
 }
 
 /**
- * Start tracking a focus spell
+ * Inject focus spells UI into the player sheet's spells tab
  */
 function injectFocusSpellsUI(sheet, html, data) {
 	const actor = sheet.actor;

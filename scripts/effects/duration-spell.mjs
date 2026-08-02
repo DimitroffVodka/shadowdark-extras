@@ -566,7 +566,7 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
  * @returns {boolean} - True if focus is now being tracked for this spell
  */
 
-async function onDurationDamageApplyClick(event) {
+export async function onDurationDamageApplyClick(event) {
 	const btn = event.target.closest(".sdx-duration-apply-btn");
 	if (!btn) return;
 
