@@ -1,40 +1,8 @@
 /**
- * Module settings registration.
- *
- * The single largest unit of the Phase 3 structural track: 108
- * `game.settings.register` calls and 17 `registerMenu` calls lifted verbatim
- * out of the composition root, where they had grown to a third of the file.
- *
- * WHY A NEW FOLDER RATHER THAN AN EXISTING FEATURE. Every other Phase 3 move
- * extended a module that already owned the feature, per handoff rule 3. This
- * one cannot: the keys registered here span inventory, combat, character
- * sheets, carousing, NPCs, hex, dungeon, tray and canvas, so no feature has a
- * claim on it and `shared/` is for compatibility helpers that earn their place
- * at a second consumer. Cross-cutting world configuration is its own concern,
- * and `settings/` is where a stranger would look for it.
- *
- * WHY THIS MOVED ALONE, IN ITS OWN COMMIT. Settings keys and menu ids are
- * stored in every GM's world. A rename does not throw — the stored value is
- * orphaned and the setting silently reverts to its default, so the damage is
- * to saved user data rather than to a render, and it surfaces weeks later as
- * "my config keeps resetting". The settings-key snapshot is the gate that
- * catches it, and it only reads as a proof of THIS move if this move is the
- * only thing in the commit.
- *
- * The body below is the source range verbatim. Exactly two edits were applied
- * on top of the carry, both forced by the change of directory:
- *
- *   1. `function registerSettings` gained `export`.
- *   2. The dynamic `import("./dungeon/DDPackSettingsAppSD.mjs")` inside the
- *      Dungeondraft packs menu stub became `"../dungeon/…"`. It is the only
- *      path-dependent string in the whole range, and it is exactly the shape
- *      the import resolver exists to catch — a literal dynamic import that a
- *      move silently breaks, with no error until a GM opens that menu.
- *
- * `MODULE_ID` is imported from `shared/module-id.mjs` rather than carried as a
- * local const. The composition root declares its own copy; both are the string
- * "shadowdark-extras", so the 108 keys this file writes are unchanged, which
- * the settings-key snapshot proves rather than assumes.
+ * Register the module's world settings and configuration menus in their
+ * established order. Persisted setting keys and menu ids are intentionally
+ * kept in this coordinator; the drawing registrations and settings-page
+ * organization hook live in focused sibling modules.
  */
 
 import { registerCombatSettings } from "../combat/CombatSettingsSD.mjs";

@@ -1,5 +1,7 @@
-// Combat socket seam — extracted from combat/CombatSettingsSD.mjs (Phase 5.1 split).
-// setupCombatSocket + getSocket + the 27 socketlib message handlers.
+/**
+ * Combat socket registration and the module's socketlib message handlers.
+ * Handler names and payloads are compatibility surfaces for combat workflows.
+ */
 
 import { endFocusSpell } from "../effects/FocusSpellTrackerSD.mjs";
 import { showScrollingText } from "./scrolling-text.mjs";

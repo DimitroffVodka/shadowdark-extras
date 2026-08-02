@@ -3,15 +3,13 @@ import { MODULE_ID } from "../shared/module-id.mjs";
 /**
  * GM-side target syncing for the templates API.
  *
- * Extracted from the composition root in Phase 3. A player placing a template
- * targets tokens on their own client; the GM has to end up targeting the same
+ * A player placing a template targets tokens on their own client; the GM has
+ * to end up targeting the same
  * tokens, or the GM cannot interact with the damage card that follows.
  *
- * This is the first file in `api/`, which the feature map reserves for the
- * public `module.api` and the developer/templates surface. Its only caller is
- * the `SDX.templates` block still in the root, which follows in step 13 — the
- * two halves are inherently on different clients, so they do not need to be
- * co-located to be reviewable.
+ * The public `module.api` and developer-facing templates surface call this
+ * handler through the module socket; it remains separate from placement code
+ * because the two halves run on different clients.
  */
 
 /**

@@ -3,11 +3,9 @@ import { MODULE_ID } from "../shared/module-id.mjs";
 /**
  * `SDX.templates` — the developer-facing template placement and targeting API.
  *
- * Phase 3 step 13: extracted verbatim from the composition root, joining
- * `template-target-sync.mjs`, which was parked here waiting for it. The two are
- * two ends of one call — a player places a template and targets locally, then
- * asks the GM to mirror those targets — but they run on different clients, so
- * they stay in separate files.
+ * A player places a template and targets locally, then asks the GM to mirror
+ * those targets. The two operations run on different clients, so the public
+ * placement API and GM-side socket handler stay in separate files.
  *
  * CONSUMERS REACH THIS THROUGH THE GLOBAL, NOT THROUGH AN IMPORT.
  * `CombatSettingsSD` calls `SDX.templates.placeAndTarget` at six sites behind a
@@ -16,7 +14,7 @@ import { MODULE_ID } from "../shared/module-id.mjs";
  * `SDX_TEMPLATES` by name, and renaming it changes nothing a caller can see.
  * Renaming a method on it is a public API break.
  *
- * WHY THE ASSIGNMENT IS DEFERRED TO A REGISTER CALL. `globalThis.SDX` is
+ * The assignment is deferred to a register call. `globalThis.SDX` is
  * created here, and the composition root's DEV HELPERS block assigns `SDX.dev`
  * to it further down the same file. Import-time evaluation would move this
  * namespace creation ahead of everything in the root's body — safe today, but
