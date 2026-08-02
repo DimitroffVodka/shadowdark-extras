@@ -18,12 +18,11 @@ import { hasItemMacro } from "./item-macro-engine.mjs";
  * implementations, which is why this file does not depend on
  * `macros/holy-weapon.mjs` and friends.
  *
- * `isUnidentified` comes from `macros/identify.mjs`, the canonical copy that
- * `SpellMacrosSD` also re-exports. The composition root carries its own
- * byte-equivalent duplicate for six unrelated call sites; see the known gaps in
- * the Phase 3 handoff — its sibling `getUnidentifiedName` has already diverged
- * between the two copies, so consolidating them is a decision of its own rather
- * than something to fold into a move.
+ * `isUnidentified` / `getUnidentifiedName` come from `macros/identify.mjs`,
+ * which re-exports the single canonical implementation in
+ * `shared/sd4Compat.mjs` (Phase 5.2.9, issue #50 — the duplicate copies and
+ * their 3.x divergence were consolidated; the party helpers and the
+ * data-shaped path re-export or mirror the same logic).
  */
 
 /**

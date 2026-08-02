@@ -139,26 +139,6 @@ wanted.
 
 
 
-## 2. `getUnidentifiedName` is duplicated, and the two copies have diverged
-
-**Status:** confirmed, unfixed. Blocks a tidy-up, not a feature.
-
-The composition root carries private wrappers to SD 4.x identification;
-`macros/identify.mjs` carries the canonical implementations that `module.api`
-publishes.
-
-- **`isUnidentified`** — byte-equivalent, no behaviour difference.
-- **`getUnidentifiedName`** — genuinely diverged. The root's returns
-  `item?.name ?? ""` unconditionally. The `identify.mjs` one returns the item
-  name only when `system.identification` exists, and otherwise falls back to the
-  legacy `unidentifiedName` SDX flag. **On a legacy (SD 3.x) world these
-  disagree.**
-
-So the root block cannot simply be deleted and re-pointed at `identify.mjs` —
-that would change behaviour at the root's call sites. Deciding which copy is
-correct is a Shadowdark-compatibility question.
-
----
 
 
 ## Recently fixed
@@ -168,6 +148,7 @@ Kept briefly so the same findings are not re-reported.
 | # | Issue | Fixed in |
 | --- | --- | --- |
 | 1 | The itemacro migration was one-shot — items imported after the first run (compendium imports, drag-in, future packs) kept only the legacy `flags.itemacro` namespace forever; the migration is now idempotent and re-runnable on every ready, with per-item idempotence (`migrateItem` writes only when a legacy command exists and the SDX flag does not) | issue #49, Phase 5.2.7 |
+| 2 | `getUnidentifiedName` existed in multiple copies that diverged on SD 3.x worlds — sd4Compat returned `item.name` unconditionally (revealing the real name); the richer copy (4.x schema, else legacy `unidentifiedName` flag, else i18n label) is now the single implementation in sd4Compat, with identify.mjs (the api publisher) importing and re-exporting it, the party helpers (`isItemUnidentified`/`getMaskedItemName`) re-exporting it under their local names, and the data-shaped path (`getUnidentifiedNameFromData`) mirroring the same logic | issue #50, Phase 5.2.9 |
 | 3 | `requireEquipped`-only effects arrived active on newly created items — the createItem hook's requirement filter tested `sourceRequirement` only, while the createActiveEffect hook bails for Item parents; the filter now catches the `requireEquipped` flag too | issue #51, Phase 5.2.6 |
 | 4 | `renderRollDialogSD` bailed on a never-set `config.actorId`, making every SDX weapon bonus in the dialog unreachable | #16 (`f4e4b2a`) |
 | 5 | The wand-charges UI never rendered — anchored to `select[name="system.range"]`, which SD 4.x does not emit | #16 (`64e7b78`) |
