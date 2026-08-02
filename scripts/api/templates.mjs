@@ -595,7 +595,6 @@ const SDX_TEMPLATES = {
 
 						if (newRegion) {
 							await newRegion.update({ levels });
-							console.log(`shadowdark-extras | Set region.levels=${JSON.stringify(levels)} on ${newRegion.id}`);
 						}
 						else {
 							console.warn(`shadowdark-extras | Could not find auto-created Region with ID ${placedTemplate.id} to set levels`);
@@ -738,8 +737,6 @@ const SDX_TEMPLATES = {
 		// We must ensure this function returns the tokens even if targeting fails.
 		// Target the tokens (safely)
 		// We wrap EACH call in try/catch to ensure we attempt all tokens
-		console.log(`${MODULE_ID} | placeAndTarget found ${tokens.length} tokens. Targeting...`);
-
 		// Enable multi-target bypass for players during template targeting
 		if (game.shadowdarkExtras) game.shadowdarkExtras.allowMultiTarget = true;
 		try {
@@ -762,7 +759,6 @@ const SDX_TEMPLATES = {
 			const module = game.modules.get(MODULE_ID);
 			if (module?.socket) {
 				const tokenIds = tokens.map(t => t.id);
-				console.log(`${MODULE_ID} | Syncing targets to GM:`, tokenIds);
 				module.socket.executeAsGM("syncTargetsToGM", tokenIds);
 			}
 		}

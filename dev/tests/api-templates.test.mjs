@@ -17,3 +17,13 @@ test("template and combat seams contain no confirmed dead-code candidates", () =
   assert.doesNotMatch(templates, /\/\/console\.log/);
   assert.doesNotMatch(combatSocket, /\/\/ effectData\.name/);
 });
+
+test("template and combat seams contain no debug console logging", () => {
+  for (const relativePath of [
+    "scripts/api/templates.mjs",
+    "scripts/api/template-target-sync.mjs",
+    "scripts/shared/combat-socket.mjs",
+  ]) {
+    assert.doesNotMatch(readScript(relativePath), /console\.log/);
+  }
+});

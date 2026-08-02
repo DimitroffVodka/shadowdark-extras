@@ -45,14 +45,10 @@ export function setupCombatSocket() {
 			// Check for Glassbones effect (double damage)
 			const hasGlassbones = token.actor.getFlag("shadowdark-extras", "glassbones");
 
-			console.log("shadowdark-extras | applyTokenDamage | Receiver | Data:", data);
-
 			let finalDamage = 0;
 			// Allow explicit isHealing flag, otherwise infer from negative damage
 			const isHealing = data.isHealing || data.damage < 0;
 			const isDamage = !isHealing && data.damage > 0;
-
-			console.log("shadowdark-extras | applyTokenDamage | Receiver | Flags:", { isHealing, isDamage, initDamage: data.damage });
 
 			// If damageComponents is provided, process each component separately
 			// Check if we should use the new component-based damage or legacy damage
@@ -277,8 +273,6 @@ export function setupCombatSocket() {
 			const isFinalHealing = isHealing || finalDamage < 0;
 			const hpChange = isFinalHealing ? Math.abs(finalDamage) : -finalDamage;
 
-			console.log(`shadowdark-extras | applyTokenDamage | Final | FinalDamage: ${finalDamage} | isHealing: ${isHealing} | isFinalHealing: ${isFinalHealing} | HP Change: ${hpChange}`);
-
 			const newHp = Math.max(0, Math.min(maxHp, currentHp + hpChange));
 
 
@@ -307,7 +301,6 @@ export function setupCombatSocket() {
 
 	// Register socket handler for applying conditions/effects
 	socketlibSocket.register("applyTokenCondition", async (data) => {
-		console.log("%c[SDX SOCKET] applyTokenCondition called with:", "color: magenta; font-weight: bold", data);
 		const token = canvas.tokens.get(data.tokenId);
 		if (!token || !token.actor) {
 			console.warn("shadowdark-extras | Token not found for condition:", data.tokenId);
@@ -881,7 +874,6 @@ export function setupCombatSocket() {
 
 		try {
 			await item.update(updates);
-			console.log(`${MODULE_ID} | GM reverted item ${item.name}:`, updates);
 			return true;
 		}
 		catch (err) {
@@ -905,7 +897,6 @@ export function setupCombatSocket() {
 			else {
 				await item.setFlag(MODULE_ID, flagPath, flagValue);
 			}
-			console.log(`${MODULE_ID} | GM updated item flags for ${item.name}`);
 			return true;
 		}
 		catch (err) {

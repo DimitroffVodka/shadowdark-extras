@@ -39,8 +39,6 @@ export function registerTemplateTargetSyncSocket(socket) {
 			return;
 		}
 
-		console.log(`${MODULE_ID} | GM syncing targets from player:`, tokenIds);
-
 		// Clear current GM targets first
 		game.user.targets.forEach(t => t.setTarget(false, { user: game.user, releaseOthers: false }));
 
