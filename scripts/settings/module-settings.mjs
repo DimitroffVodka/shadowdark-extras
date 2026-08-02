@@ -402,15 +402,6 @@ export function registerSettings() {
 		onChange: () => applySheetDecorationStyles(),
 	});
 
-	game.settings.register(MODULE_ID, "borderBackgroundColor", {
-		name: "Border Background Color",
-		scope: "world",
-		config: false,
-		default: "",
-		type: String,
-		onChange: () => applySheetDecorationStyles(),
-	});
-
 	game.settings.register(MODULE_ID, "borderWidth", {
 		name: "Border Width",
 		scope: "world",

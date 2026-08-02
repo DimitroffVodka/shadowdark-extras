@@ -151,4 +151,5 @@ test("settings registration keeps drawing and organization seams separate", () =
   assert.match(settingsSource, /registerDrawingSettings\(\);/);
   assert.match(organizationSource, /export function setupSettingsOrganization\(\)/);
   assert.match(settingsSource, /export \{ setupSettingsOrganization \} from "\.\/settings-organization\.mjs";/);
+  assert.equal((settingsSource.match(/game\.settings\.register\(MODULE_ID, "borderBackgroundColor"/g) || []).length, 1);
 });
