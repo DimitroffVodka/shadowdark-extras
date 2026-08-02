@@ -184,30 +184,6 @@ correct is a Shadowdark-compatibility question.
 
 ---
 
-## 3. `requireEquipped` alone is not enforced until something else runs
-
-**Status:** confirmed, unfixed, self-healing in practice.
-
-The `createItem` hook filters for effects to check by testing `sourceRequirement`
-only. An effect carrying **just** `requireEquipped`, with no expression, is
-skipped. The `createActiveEffect` hook does check `requireEquipped`, but bails
-when the effect's parent is an Item rather than an Actor — which is exactly
-where item effects live.
-
-So an unequipped item's `requireEquipped` effect arrives **active**. Confirmed
-live: an item created unequipped with a `requireEquipped` transferred effect had
-`disabled: false` immediately after creation, and `disabled: true` after the
-`renderActorSheet` handler ran.
-
-Self-healing — `renderActorSheet`, `updateActor` and any equip/unequip toggle
-all call `checkEffectRequirements`, which does honour `requireEquipped`. The
-window is "between adding the item and looking at the sheet", which is probably
-why it has never been reported.
-
-The fix is one clause in the `createItem` filter, but it changes *when* effects
-switch off, so it is a behaviour decision.
-
----
 
 ## Recently fixed
 
@@ -215,6 +191,7 @@ Kept briefly so the same findings are not re-reported.
 
 | # | Issue | Fixed in |
 | --- | --- | --- |
+| 3 | `requireEquipped`-only effects arrived active on newly created items — the createItem hook's requirement filter tested `sourceRequirement` only, while the createActiveEffect hook bails for Item parents; the filter now catches the `requireEquipped` flag too | issue #51, Phase 5.2.6 |
 | 4 | `renderRollDialogSD` bailed on a never-set `config.actorId`, making every SDX weapon bonus in the dialog unreachable | #16 (`f4e4b2a`) |
 | 5 | The wand-charges UI never rendered — anchored to `select[name="system.range"]`, which SD 4.x does not emit | #16 (`64e7b78`) |
 | 6 | The weapon hit-bonus chat display was dead — jQuery `html.find` against a v14 `HTMLLIElement`, failing silently because the caller was async and unawaited | #16 (`111080a`) |

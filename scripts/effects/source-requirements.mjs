@@ -437,10 +437,14 @@ export function registerSourceRequirementHooks() {
 			return;
 		}
 
-		// Check if this item has any effects with requirements
+		// Check if this item has any effects with requirements. The filter
+		// must also catch effects carrying ONLY the requireEquipped flag —
+		// the createActiveEffect hook bails when the effect's parent is an
+		// Item, so creation itself never enforced it (issue #51).
 		const effectsWithRequirements = item.effects.filter(e => {
 			const requirement = e.getFlag(MODULE_ID, "sourceRequirement");
-			return requirement && requirement.trim() !== "";
+			const requireEquipped = e.getFlag(MODULE_ID, "requireEquipped");
+			return (requirement && requirement.trim() !== "") || requireEquipped;
 		});
 
 		if (effectsWithRequirements.length === 0) {
