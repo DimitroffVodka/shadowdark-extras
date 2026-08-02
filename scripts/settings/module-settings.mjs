@@ -227,6 +227,7 @@ export function registerSettings() {
 		icon: "fas fa-cubes",
 		type: class extends foundry.applications.api.ApplicationV2 {
 			static DEFAULT_OPTIONS = { id: "sdx-ddpack-settings-menu-stub", window: { title: "" } };
+
 			async render() {
 				const { DDPackSettingsApp } = await import("../dungeon/DDPackSettingsAppSD.mjs");
 				new DDPackSettingsApp().render(true);
@@ -847,18 +848,20 @@ export function registerSettings() {
 		choices: {
 			"shadowdark": "Shadowdark",
 			"5e": "5e",
-			parchment: "Parchment (Default)",
-			stone: "Stone Tablet",
-			leather: "Leather Bound",
-			iron: "Iron & Rust",
-			moss: "Moss & Decay",
-			blood: "Blood & Shadow",
+			"parchment": "Parchment (Default)",
+			"stone": "Stone Tablet",
+			"leather": "Leather Bound",
+			"iron": "Iron & Rust",
+			"moss": "Moss & Decay",
+			"blood": "Blood & Shadow",
 		},
 		onChange: () => {
 			// Re-render all open player sheets
 			const PlayerSheetClass = globalThis.shadowdark?.apps?.PlayerSheetSD;
 			if (PlayerSheetClass) {
-				Object.values(ui.windows).filter(app => app instanceof PlayerSheetClass).forEach(app => app.render());
+				Object.values(ui.windows)
+					.filter(app => app instanceof PlayerSheetClass)
+					.forEach(app => app.render());
 			}
 		},
 	});
@@ -928,8 +931,8 @@ export function registerSettings() {
 		default: "original",
 		type: String,
 		choices: {
-			"original": game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_mode.original"),
-			"expanded": game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_mode.expanded"),
+			original: game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_mode.original"),
+			expanded: game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_mode.expanded"),
 		},
 		onChange: () => {
 			// Re-render all open player sheets to update carousing tab
@@ -985,6 +988,7 @@ export function registerSettings() {
 		icon: "fas fa-beer",
 		type: class extends foundry.applications.api.ApplicationV2 {
 			static DEFAULT_OPTIONS = { id: "sdx-carousing-tables-menu-stub", window: { title: "" } };
+
 			async render() {
 				const mode = game.settings.get(MODULE_ID, "carousingMode") || "original";
 				if (mode === "expanded") openExpandedCarousingTablesEditor();

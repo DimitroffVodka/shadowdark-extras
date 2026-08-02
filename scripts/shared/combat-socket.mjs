@@ -31,7 +31,7 @@ export function setupCombatSocket() {
 	});
 
 	// Register socket handler for applying damage/healing
-	socketlibSocket.register("applyTokenDamage", async (data) => {
+	socketlibSocket.register("applyTokenDamage", async data => {
 		const token = canvas.tokens.get(data.tokenId);
 		if (!token || !token.actor) {
 			console.warn("shadowdark-extras | Token not found:", data.tokenId);
@@ -52,7 +52,8 @@ export function setupCombatSocket() {
 
 			// If damageComponents is provided, process each component separately
 			// Check if we should use the new component-based damage or legacy damage
-			if (((data.damageComponents && data.damageComponents.length > 0) || (data.baseDamage && data.baseDamage > 0)) && isDamage) {
+			if (((data.damageComponents && data.damageComponents.length > 0)
+				|| (data.baseDamage && data.baseDamage > 0)) && isDamage) {
 
 				// 1. Process damage components
 				if (data.damageComponents && data.damageComponents.length > 0) {
@@ -285,14 +286,14 @@ export function setupCombatSocket() {
 
 			return true;
 		}
-		catch (error) {
+		catch(error) {
 			console.error("shadowdark-extras | Error in socket damage handler:", error);
 			return false;
 		}
 	});
 
 	// Register socket handler for showing scrolling text on all clients
-	socketlibSocket.register("showScrollingText", (data) => {
+	socketlibSocket.register("showScrollingText", data => {
 		const token = canvas.tokens?.get(data.tokenId);
 		if (!token) return;
 
@@ -300,7 +301,7 @@ export function setupCombatSocket() {
 	});
 
 	// Register socket handler for applying conditions/effects
-	socketlibSocket.register("applyTokenCondition", async (data) => {
+	socketlibSocket.register("applyTokenCondition", async data => {
 		const token = canvas.tokens.get(data.tokenId);
 		if (!token || !token.actor) {
 			console.warn("shadowdark-extras | Token not found for condition:", data.tokenId);
@@ -343,7 +344,8 @@ export function setupCombatSocket() {
 			if (data.spellInfo?.spellId) {
 				const existingEffects = token.actor.items.filter(item => {
 					if (item.type !== "Effect") return false;
-					// Check if this effect came from the same spell (by matching the compendium source)
+					// Check if this effect came from the same spell (by matching the
+					// compendium source)
 					const sourceId = item._stats?.compendiumSource || item.flags?.core?.sourceId;
 					return sourceId === data.effectUuid;
 				});
@@ -356,18 +358,23 @@ export function setupCombatSocket() {
 					try {
 						const { unlinkEffectFromFocusSpell } = await import("../effects/FocusSpellTrackerSD.mjs");
 						for (const effectId of effectIds) {
-							await unlinkEffectFromFocusSpell(data.spellInfo.casterActorId, data.spellInfo.spellId, effectId);
+							await unlinkEffectFromFocusSpell(
+								data.spellInfo.casterActorId,
+								data.spellInfo.spellId,
+								effectId
+							);
 						}
 					}
-					catch (err) {
+					catch(err) {
 						// Focus tracking cleanup is optional
 					}
 				}
 			}
 
 			// Create the Effect Item on the actor
-			// This is the correct approach - the Effect Item has transfer: true on its embedded ActiveEffects,
-			// which Foundry automatically applies to the actor. This ensures the effect shows up properly
+			// This is the correct approach - the Effect Item has transfer: true on its
+			// embedded ActiveEffects, which Foundry automatically applies to the actor.
+			// This ensures the effect shows up properly
 			// in the Effects and Conditions section with correct source attribution.
 			const effectData = effectDoc.toObject();
 
@@ -402,7 +409,9 @@ export function setupCombatSocket() {
 					// Check if this is a duration spell (non-focus)
 					const caster = game.actors.get(data.spellInfo.casterActorId);
 					const activeDuration = caster ? getActiveDurationSpells(caster) : [];
-					const isDurationSpell = activeDuration.some(d => d.spellId === data.spellInfo.spellId);
+					const isDurationSpell = activeDuration.some(
+						d => d.spellId === data.spellInfo.spellId
+					);
 
 					if (isDurationSpell) {
 						// Link to duration spell
@@ -433,14 +442,14 @@ export function setupCombatSocket() {
 						);
 					}
 				}
-				catch (linkError) {
+				catch(linkError) {
 					// Spell tracking might not be enabled, that's okay
 				}
 			}
 
 			return true;
 		}
-		catch (error) {
+		catch(error) {
 			console.error("shadowdark-extras | Error in socket condition handler:", error);
 			return false;
 		}
@@ -510,7 +519,8 @@ export function setupCombatSocket() {
 		}
 
 		// Check for Item first, then ActiveEffect (e.g. Auras)
-		let effectDoc = targetActor.items.get(effectItemId) ?? targetActor.effects.get(effectItemId);
+		let effectDoc = targetActor.items.get(effectItemId)
+			?? targetActor.effects.get(effectItemId);
 
 		if (!effectDoc) {
 			console.warn("shadowdark-extras | markBreakOnDamage: effect item/document not found");
@@ -572,7 +582,7 @@ export function setupCombatSocket() {
 
 			return { success: false, effectId: null };
 		}
-		catch (err) {
+		catch(err) {
 			console.error("shadowdark-extras | applyEffectToTarget error:", err);
 			return { success: false, effectId: null };
 		}
@@ -745,7 +755,9 @@ export function setupCombatSocket() {
 
 		const sdxModule = game.modules.get(MODULE_ID);
 		if (sdxModule?.api?.showHolyWeaponDialog) {
-			await sdxModule.api.showHolyWeaponDialog(casterActor, casterItem, targetActor, targetToken, null, isCritical);
+			await sdxModule.api.showHolyWeaponDialog(
+				casterActor, casterItem, targetActor, targetToken, null, isCritical
+			);
 		}
 	});
 
@@ -754,7 +766,8 @@ export function setupCombatSocket() {
 		const casterActor = game.actors.get(casterActorId);
 		const targetActor = game.actors.get(targetActorId);
 		const identifySpell = casterActor?.items.get(identifySpellId);
-		const unidentifiedItems = unidentifiedItemIds?.map(id => targetActor?.items.get(id)).filter(Boolean) || [];
+		const unidentifiedItems = unidentifiedItemIds?.map(id => targetActor?.items.get(id))
+			.filter(Boolean) || [];
 
 		if (!targetActor || unidentifiedItems.length === 0 || !identifySpell) {
 			console.warn(`${MODULE_ID} | showIdentifyDialogForUser: Missing data`);
@@ -781,7 +794,9 @@ export function setupCombatSocket() {
 
 		const sdxModule = game.modules.get(MODULE_ID);
 		if (sdxModule?.api?.showCleansingWeaponDialog) {
-			await sdxModule.api.showCleansingWeaponDialog(casterActor, casterItem, targetActor, targetToken, null, isCritical);
+			await sdxModule.api.showCleansingWeaponDialog(
+				casterActor, casterItem, targetActor, targetToken, null, isCritical
+			);
 		}
 	});
 
@@ -821,12 +836,14 @@ export function setupCombatSocket() {
 
 		const sdxModule = game.modules.get(MODULE_ID);
 		if (sdxModule?.api?.showShapechangerDialog) {
-			await sdxModule.api.showShapechangerDialog(casterActor, casterItem, null, isCritical, options || {});
+			await sdxModule.api.showShapechangerDialog(
+				casterActor, casterItem, null, isCritical, options || {}
+			);
 		}
 	});
 
 	// Handler: Revert Shapechanger as GM (when player doesn't have ownership)
-	socketlibSocket.register("revertShapechangerAsGM", async (actorUuid) => {
+	socketlibSocket.register("revertShapechangerAsGM", async actorUuid => {
 		const actor = await fromUuid(actorUuid);
 		if (!actor) {
 			console.warn(`${MODULE_ID} | revertShapechangerAsGM: Actor not found: ${actorUuid}`);
@@ -850,13 +867,22 @@ export function setupCombatSocket() {
 		let targetToken = null;
 		if (targetTokenUuid) {
 			const tokenDoc = await fromUuid(targetTokenUuid);
-			targetToken = tokenDoc?.object || null; // .object gets the Token placeable from TokenDocument
+			// .object gets the Token placeable from TokenDocument
+			targetToken = tokenDoc?.object || null;
 		}
 
 		if (casterActor && casterItem && npcDoc) {
 			const sdxModule = game.modules.get(MODULE_ID);
 			if (sdxModule?.api?.applyShapechanger) {
-				await sdxModule.api.applyShapechanger(casterActor, casterItem, npcDoc, isCritical, opts || {}, targetActor, targetToken);
+				await sdxModule.api.applyShapechanger(
+					casterActor,
+					casterItem,
+					npcDoc,
+					isCritical,
+					opts || {},
+					targetActor,
+					targetToken
+				);
 			}
 		}
 	});
@@ -876,7 +902,7 @@ export function setupCombatSocket() {
 			await item.update(updates);
 			return true;
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | GM failed to revert item ${item.name}:`, err);
 			return false;
 		}
@@ -899,7 +925,7 @@ export function setupCombatSocket() {
 			}
 			return true;
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | GM failed to update item flags for ${item.name}:`, err);
 			return false;
 		}
@@ -920,7 +946,7 @@ export function setupCombatSocket() {
 			await nativeTransferItems(sourceActor, targetActor, items);
 			return true;
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | transferItemsAsGM failed:`, err);
 			return false;
 		}
@@ -940,7 +966,7 @@ export function setupCombatSocket() {
 			await nativeTransferCoins(sourceActor, targetActor, coins);
 			return true;
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | transferCoinsAsGM failed:`, err);
 			return false;
 		}

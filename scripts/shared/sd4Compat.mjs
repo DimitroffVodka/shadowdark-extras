@@ -130,7 +130,8 @@ export function readSdDamageRoll(message) {
  *
  * @param {ChatMessage} message
  * @param {HTMLElement|jQuery} html
- * @returns {{ actorId: string, itemUuid: string|null, itemId: string|null, rollConfig: object|null } | null}
+ * @returns {{ actorId: string, itemUuid: string|null, itemId: string|null,
+ * rollConfig: object|null } | null}
  */
 export function resolveCardContext(message, html) {
 	// SD 4.x: prefer the rollConfig flag path. Spell casts may carry itemUuid OR cast.spellUuid.

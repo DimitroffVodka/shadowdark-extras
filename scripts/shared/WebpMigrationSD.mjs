@@ -57,14 +57,14 @@ export function toUrl(relPath) {
 	// escaped by encodeURI, yielding `B%2526W-...` and a guaranteed 404.
 	// encodeURIComponent/decodeURIComponent handle reserved characters, so we
 	// split on '/' to keep the separators intact.
-	return "/" + relPath.replace(/^\/+/, "").split("/").map((segment) => {
+	return `/${relPath.replace(/^\/+/, "").split("/").map(segment => {
 		let decoded = segment;
 		try {
 			decoded = decodeURIComponent(segment);
 		}
-		catch (e) { /* malformed escape */ }
+		catch(e) { /* malformed escape */ }
 		return encodeURIComponent(decoded);
-	}).join("/");
+	}).join("/")}`;
 }
 
 /**
@@ -107,7 +107,7 @@ async function urlExists(relPath) {
 		const res = await fetch(url, { method: "HEAD" });
 		ok = res.ok;
 	}
-	catch (e) {
+	catch(e) {
 		ok = false;
 	}
 	_existsCache.set(url, ok);
@@ -150,7 +150,8 @@ async function rewriteTree(node, depth = 0) {
 
 	if (typeof node === "object") {
 		// Never walk class instances - only plain source data.
-		if (Object.getPrototypeOf(node) !== Object.prototype && Object.getPrototypeOf(node) !== null) {
+		if (Object.getPrototypeOf(node) !== Object.prototype
+			&& Object.getPrototypeOf(node) !== null) {
 			return { value: node, changed: 0 };
 		}
 		let changed = 0;
@@ -180,7 +181,7 @@ async function collectUpdates(docs) {
 		try {
 			source = doc.toObject();
 		}
-		catch (e) {
+		catch(e) {
 			continue;
 		}
 		const r = await rewriteTree(source);
@@ -212,7 +213,7 @@ async function migrateCollection(label, collection, stats, dryRun) {
 	try {
 		await collection.documentClass.updateDocuments(updates, { diff: false, recursive: false });
 	}
-	catch (e) {
+	catch(e) {
 		console.error(`${MODULE_ID} | webp migration failed for ${label}:`, e);
 		stats.errors.push(`${label}: ${e.message}`);
 	}
@@ -228,7 +229,7 @@ async function migrateSettings(stats, dryRun) {
 		try {
 			current = game.settings.get(MODULE_ID, setting.key);
 		}
-		catch (e) {
+		catch(e) {
 			continue;
 		}
 
@@ -280,7 +281,7 @@ async function migrateWorldPacks(stats, dryRun) {
 		try {
 			docs = await pack.getDocuments();
 		}
-		catch (e) {
+		catch(e) {
 			stats.errors.push(`${pack.collection}: ${e.message}`);
 			continue;
 		}
@@ -298,11 +299,15 @@ async function migrateWorldPacks(stats, dryRun) {
 			continue;
 		}
 		try {
-			await pack.documentClass.updateDocuments(updates, { pack: pack.collection, diff: false, recursive: false });
+			await pack.documentClass.updateDocuments(updates, {
+				pack: pack.collection,
+				diff: false,
+				recursive: false,
+			});
 			stats.packMigrated.push(`${pack.collection} (${hits} path${plural})`);
 			stats.refs += hits;
 		}
-		catch (e) {
+		catch(e) {
 			console.error(`${MODULE_ID} | webp migration failed for pack ${pack.collection}:`, e);
 			stats.errors.push(`${pack.collection}: ${e.message}`);
 		}
@@ -336,10 +341,10 @@ export async function sweepWorldCompendiums({ dryRun = false, force = false } = 
 	}
 	if (stats.packWarnings.length) {
 		console.warn(
-			`${MODULE_ID} | These world compendiums are LOCKED and still reference pre-WebP paths: ` +
-            `${stats.packWarnings.join(", ")}. Unlock them and reload - the sweep retries every load ` +
-            "until it completes cleanly, or run " +
-            `game.modules.get("${MODULE_ID}").api.sweepWorldCompendiums({ force: true }) now.`
+			`${MODULE_ID} | These world compendiums are LOCKED and still reference pre-WebP paths: `
+            + `${stats.packWarnings.join(", ")}. Unlock them and reload - the sweep retries every load `
+            + "until it completes cleanly, or run "
+            + `game.modules.get("${MODULE_ID}").api.sweepWorldCompendiums({ force: true }) now.`
 		);
 		ui.notifications?.warn(
 			`Shadowdark Extras: ${stats.packWarnings.length} locked world compendium(s) still use old artwork paths - see console.`
@@ -357,11 +362,18 @@ export async function sweepWorldCompendiums({ dryRun = false, force = false } = 
  * Run the migration. Safe to call repeatedly - the setting gate makes it a
  * no-op after the first successful pass.
  */
-export async function migrateWebpAssetPaths({ force = false, dryRun = false, auditPacks = false } = {}) {
+export async function migrateWebpAssetPaths({
+	force = false,
+	dryRun = false,
+	auditPacks = false,
+} = {}) {
 	if (!game.user.isGM) return null;
 	if (!force && !dryRun && game.settings.get(MODULE_ID, "webpMigrationDone")) return null;
 
-	const stats = { dryRun, docs: 0, refs: 0, byType: {}, samples: [], settings: [], packWarnings: [], packMigrated: [], errors: [] };
+	const stats = {
+		dryRun, docs: 0, refs: 0, byType: {}, samples: [], settings: [],
+		packWarnings: [], packMigrated: [], errors: [],
+	};
 	const started = performance.now();
 	console.log(`${MODULE_ID} | webp asset migration ${dryRun ? "DRY RUN" : "starting"}...`);
 
@@ -398,9 +410,9 @@ export async function migrateWebpAssetPaths({ force = false, dryRun = false, aud
 
 	if (stats.refs > 0 || stats.settings.length > 0) {
 		ui.notifications?.info(
-			`Shadowdark Extras: updated ${stats.refs} artwork path${stats.refs === 1 ? "" : "s"} ` +
-            `across ${stats.docs} document${stats.docs === 1 ? "" : "s"} and ` +
-            `${stats.settings.length} setting${stats.settings.length === 1 ? "" : "s"} for the WebP asset update.`
+			`Shadowdark Extras: updated ${stats.refs} artwork path${stats.refs === 1 ? "" : "s"} `
+            + `across ${stats.docs} document${stats.docs === 1 ? "" : "s"} and `
+            + `${stats.settings.length} setting${stats.settings.length === 1 ? "" : "s"} for the WebP asset update.`
 		);
 	}
 	return stats;

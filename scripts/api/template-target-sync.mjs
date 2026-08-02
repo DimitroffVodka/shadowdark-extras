@@ -26,7 +26,7 @@ import { MODULE_ID } from "../shared/module-id.mjs";
  */
 export function registerTemplateTargetSyncSocket(socket) {
 	// Register handler to sync template targets to GM
-	socket.register("syncTargetsToGM", async (tokenIds) => {
+	socket.register("syncTargetsToGM", async tokenIds => {
 		// This runs on the GM's client - target the same tokens the player targeted
 		if (!game.user.isGM) return;
 
@@ -40,7 +40,10 @@ export function registerTemplateTargetSyncSocket(socket) {
 		}
 
 		// Clear current GM targets first
-		game.user.targets.forEach(t => t.setTarget(false, { user: game.user, releaseOthers: false }));
+		game.user.targets.forEach(t => t.setTarget(false, {
+			user: game.user,
+			releaseOthers: false,
+		}));
 
 		// Target each token
 		for (const tokenId of tokenIds) {

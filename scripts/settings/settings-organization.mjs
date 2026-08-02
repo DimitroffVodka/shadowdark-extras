@@ -6,7 +6,8 @@ import { MODULE_ID } from "../shared/module-id.mjs";
  * Settings are organized into these groups:
  * 1. Configuration Menus: Combat, Effects, HP Waves, Inventory Styles menus
  * 2. Combat & Spells: Focus Tracker, Enhance Spells
- * 3. Character Sheet: Enhanced Header, backgrounds, Renown, Journal Notes, Add Coins, Conditions Theme
+ * 3. Character Sheet: Enhanced Header, backgrounds, Renown, Journal Notes,
+ * Add Coins, Conditions Theme
  * 4. Inventory: Containers, Nested Containers, Trading, Unidentified, Multi-select
  * 5. Carousing: Enable Carousing, Mode, Table menus
  * 6. NPC Features: NPC Inventory, Creature Type
