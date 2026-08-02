@@ -28,7 +28,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 - **The unreachable weapon damage-bonus chat display was removed.** Its only caller sat behind a flag SD 4.x never sets, and it used jQuery against the v14 DOM; the damage-apply card already renders the breakdown from `weaponBonusResults` (with double-add de-duplication), so the dead path was deleted rather than converted. (Issue #55)
 
-- **Internal:** the export-surface gate gained a reviewed-exceptions registry for deliberate export removals; the regression suite grew to 226 tests; nine review-gated fix branches, each with a RED-first regression test, live smoke, and a closed GitHub issue.
+- **Internal:** the export-surface gate gained a reviewed-exceptions registry for deliberate export removals; the regression suite grew to 228 tests (226 node + 2 roller); nine review-gated fix branches, each with a RED-first regression test, a post-merge smoke checklist, and a closed GitHub issue.
 
 ## [6.10.52] — 2026-07-31 — Smaller downloads, restored combat automation, and internal reorganization
 
