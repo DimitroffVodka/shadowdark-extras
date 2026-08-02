@@ -36,3 +36,4 @@ packs/**/lost/
 
 # Node toolchain
 node_modules/
+.deepcode/
