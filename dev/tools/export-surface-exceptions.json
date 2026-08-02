@@ -1,0 +1,11 @@
+{
+  "comment": "Deliberate export removals. The export-surface gate is fail-closed: an export present at origin/main but gone at HEAD is normally a regression. A removal belongs here only when it is a reviewed decision (a whole feature deleted), with the phase and reason recorded. The tool lists these as EXPECTED and still fails on anything else.",
+  "removals": [
+    {
+      "module": "scripts/character-sheet/conditions.mjs",
+      "name": "registerConditionEffectHooks",
+      "phase": "5.2.5",
+      "reason": "Issue #56: the three ActiveEffect condition hooks were a permanent silent no-op (they looked for .sdx-condition-toggle inside the actor sheet; the toggles live in the BODY modal). The modal self-updates on toggle click (refreshModalConditionOrder) and closes on its own, so the hooks and their registration were deleted."
+    }
+  ]
+}

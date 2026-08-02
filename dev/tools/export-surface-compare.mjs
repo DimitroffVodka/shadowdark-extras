@@ -115,7 +115,26 @@ function headSurface(repoPath, _seen = new Set()) {
 const files = listJsFiles(["scripts"])
   .map(toRepoPath)
   .filter((p) => p.endsWith(".mjs") && !isVendor(p));
+
+// Deliberate export removals (fail-closed gate): each entry is a reviewed
+// decision, e.g. a whole feature deleted. See export-surface-exceptions.json.
+let exceptions = new Set();
+try {
+  const raw = JSON.parse(
+    fs.readFileSync(
+      path.join(REPO_ROOT, "dev/tools/export-surface-exceptions.json"),
+      "utf8",
+    ),
+  );
+  for (const entry of raw.removals || []) {
+    exceptions.add(`${entry.module}  ${entry.name}`);
+  }
+} catch {
+  // No exceptions file: the gate stays strictly fail-closed.
+}
+
 const regressions = [];
+const expectedRemovals = [];
 let compared = 0;
 
 for (const repoPath of files) {
@@ -127,7 +146,12 @@ for (const repoPath of files) {
   const headNames = headSurface(repoPath);
   for (const name of baseSurface.names) {
     if (!headNames.has(name)) {
-      regressions.push(`${repoPath}  ${name}`);
+      if (exceptions.has(`${repoPath}  ${name}`)) {
+        expectedRemovals.push(`${repoPath}  ${name}`);
+      }
+      else {
+        regressions.push(`${repoPath}  ${name}`);
+      }
     }
   }
 }
@@ -136,4 +160,5 @@ console.log(
   `export-surface compare (${BASE_REF} -> HEAD): ${compared} files with exports compared, ${regressions.length} surface regressions`,
 );
 for (const r of regressions) console.log(`  MISSING  ${r}`);
+for (const r of expectedRemovals) console.log(`  EXPECTED ${r}  (exception)`);
 if (regressions.length) process.exit(1);

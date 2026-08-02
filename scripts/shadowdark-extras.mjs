@@ -144,7 +144,7 @@ import { injectJournalNotes } from "./character-sheet/journal-notes.mjs";
 import { applyInventoryStylesToSheet } from "./inventory/inventory-styles.mjs";
 import { enhanceInventoryWithDeleteAndMultiSelect } from "./inventory/inventory-multi-select.mjs";
 import { enhanceSpellsTab } from "./character-sheet/enhanced-spells-tab.mjs";
-import { getConditionsData, injectConditionsToggles, showConditionsModal, registerConditionEffectHooks } from "./character-sheet/conditions.mjs";
+import { getConditionsData, injectConditionsToggles, showConditionsModal } from "./character-sheet/conditions.mjs";
 import { registerBackgroundAdvancementHooks } from "./character-sheet/background-advancement.mjs";
 import "./item-macros/SpellMacrosSD.mjs";
 import { initMysteriousCasting } from "./npc/MysteriousCasting.mjs";
@@ -1039,8 +1039,9 @@ registerFreyasOmenHooks();
 // Party membership cleanup on actor delete; registered here to keep hook order
 registerPartyCleanupHooks();
 
-// Condition toggles refresh when effects change; registered here to keep hook order
-registerConditionEffectHooks();
+// Condition-toggles refresh hooks were removed in 5.2.5 (issue #56): they
+// were a permanent no-op (toggles live in the BODY modal, never the sheet),
+// and the modal self-updates and closes on its own.
 
 // ============================================
 // SIDEBAR & COMPENDIUM UNIDENTIFIED INDICATORS
