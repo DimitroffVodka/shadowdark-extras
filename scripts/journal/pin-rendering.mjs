@@ -1628,6 +1628,15 @@ export class JournalPinGraphics extends PIXI.Container {
 
 	destroy(options) {
 		this._removeEventListeners();
+		// Kill GSAP tweens targeting this pin BEFORE tearing down children.
+		// Hover/ping animations (incl. the infinite `repeat: -1` pulse) hold
+		// references to this PIXI object and its scale vector; without this,
+		// destroying a pin mid-animation leaks the tween (and the display
+		// object it pins) for the rest of the session.
+		if (window.gsap) {
+			gsap.killTweensOf(this);
+			gsap.killTweensOf(this.scale);
+		}
 		if (this._labelContainer) {
 			this._labelContainer.destroy({ children: true });
 			this._labelContainer = null;
