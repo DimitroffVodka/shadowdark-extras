@@ -61,7 +61,7 @@ class SDXCache {
 		return new Promise((resolve, reject) => {
 			const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-			request.onupgradeneeded = (event) => {
+			request.onupgradeneeded = event => {
 				const db = event.target.result;
 				// Store for JSON metadata (file listing etc.)
 				if (!db.objectStoreNames.contains(STORE_METADATA)) {
@@ -73,12 +73,12 @@ class SDXCache {
 				}
 			};
 
-			request.onsuccess = (event) => {
+			request.onsuccess = event => {
 				this.db = event.target.result;
 				resolve(this.db);
 			};
 
-			request.onerror = (event) => {
+			request.onerror = event => {
 				console.error("SDX | IndexedDB error:", event.target.error);
 				reject(event.target.error);
 			};
@@ -102,7 +102,7 @@ class SDXCache {
 				request.onsuccess = () => resolve(request.result || null);
 				request.onerror = () => reject(request.error);
 			}
-			catch (err) {
+			catch(err) {
 				console.warn(`SDX | Error getting ${key} from ${storeName}:`, err);
 				resolve(null);
 			}
@@ -127,7 +127,7 @@ class SDXCache {
 				request.onsuccess = () => resolve();
 				request.onerror = () => reject(request.error);
 			}
-			catch (err) {
+			catch(err) {
 				console.error(`SDX | Error setting ${key} in ${storeName}:`, err);
 				reject(err);
 			}

@@ -59,7 +59,7 @@ export function registerAppV2HeaderBridge() {
 				button.title = btn.label || "";
 				button.innerHTML = `<i class="${btn.icon}"></i>`;
 				if (btn.onclick) {
-					button.addEventListener("click", (e) => {
+					button.addEventListener("click", e => {
 						e.preventDefault();
 						e.stopPropagation();
 						btn.onclick(e);
@@ -73,7 +73,7 @@ export function registerAppV2HeaderBridge() {
 				else header.appendChild(button);
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | V1/V2 header button bridge error`, err);
 		}
 	});
