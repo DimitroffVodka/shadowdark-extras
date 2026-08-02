@@ -429,7 +429,7 @@ const RENOWN_DELTA = /([+-]\d+)\s+renown(?!\s+if)/i;
  * Extract the renown adjustment from a benefit/mishap description, if any.
  * @returns {number} the delta, or 0 when none applies
  */
-function parseRenownDelta(description) {
+export function parseRenownDelta(description) {
 	const m = String(description || "").match(RENOWN_DELTA);
 	return m ? (parseInt(m[1]) || 0) : 0;
 }
@@ -531,7 +531,7 @@ export async function migrateLegacyRenown(actors = []) {
  * Resolve the actor behind a carousing participant id
  * (a user id with a dropped actor, or "actor-<id>" for GM-managed ones).
  */
-function getParticipantActor(participantId) {
+export function getParticipantActor(participantId) {
 	const actorId = participantId?.startsWith("actor-")
 		? participantId.slice(6)
 		: getCarousingDrops()[participantId];
@@ -547,7 +547,7 @@ function getParticipantActor(participantId) {
  * @param {object} playerMods - per-player custom modifiers ({benefits, mishaps})
  * @returns {Promise<{type: string, diceRoll: number, modifier: number, finalRoll: number, description: string}>}
  */
-async function rollExpandedD100(type, outcomeModifier, playerMods = {}) {
+export async function rollExpandedD100(type, outcomeModifier, playerMods = {}) {
 	let result = null;
 	for (let hop = 0; hop < 4; hop++) {
 		const extra = playerMods[type === "benefit" ? "benefits" : "mishaps"];
@@ -1541,7 +1541,7 @@ function _showCarousingToast(message, type) {
 /**
  * Re-render all open player sheets and the carousing overlay
  */
-function rerenderPlayerSheets() {
+export function rerenderPlayerSheets() {
 	// Refresh the full-screen overlay if open
 	if (window.sdxCarousingOverlayRefresh) {
 		window.sdxCarousingOverlayRefresh();
