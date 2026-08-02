@@ -350,17 +350,24 @@ test("Party sheet routes player travel writes through its GM socket", () => {
 		new URL("scripts/party/PartySheetSD.mjs", moduleRoot),
 		"utf8"
 	);
+	const travelSource = readFileSync(
+		new URL("scripts/party/partytravel.mjs", moduleRoot),
+		"utf8"
+	);
 	const mainSource = readFileSync(
 		new URL("scripts/shadowdark-extras.mjs", moduleRoot),
 		"utf8"
 	);
 
-	assert.match(source, /buildTravelTaskRollData\(/);
-	assert.match(source, /SDXRollerApp\.dispatchGroupRoll\(rollData\)/);
-	assert.match(source, /executeAsGM\(\s*"sdxMutatePartyTravel"/);
+	// Phase 5.1 split: the sender half of the chain (roll-data builders +
+	// dispatch + executeAsGM) moved to partytravel.mjs; the GM-side handler
+	// (registerPartyTravelSocket) stayed in PartySheetSD.mjs. Assert both.
+	assert.match(travelSource, /buildTravelTaskRollData\(/);
+	assert.match(travelSource, /SDXRollerApp\.dispatchGroupRoll\(rollData\)/);
+	assert.match(travelSource, /executeAsGM\(\s*"sdxMutatePartyTravel"/);
 
 	// The GM-side handler moved out of the composition root in Phase 3, so both
-	// ends of this exchange now live in PartySheetSD.mjs and the root only wires
+	// ends of this exchange now live in the party modules and the root only wires
 	// it up. Pin the whole chain rather than just the registration: sender,
 	// handler, the register function it is exposed through, and the root's call.
 	assert.match(source, /register\(\s*"sdxMutatePartyTravel"/);
