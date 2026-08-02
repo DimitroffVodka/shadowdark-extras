@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
 
 import { scanSettings } from "../tools/settings-scan.mjs";
 import { findAbsoluteScriptPaths } from "../tools/script-path-guard.mjs";
+import { REPO_ROOT } from "../tools/project-scan.mjs";
 
 /**
  * The string-path guard originally matched only the fully literal form,
@@ -136,4 +139,16 @@ test("records 1-based line numbers", () => {
   const source = ["", "", 'game.settings.register(MODULE_ID, "late", {});'].join("\n");
 
   assert.equal(scanSettings(source)[0].line, 3);
+});
+
+test("settings registration keeps drawing and organization seams separate", () => {
+  const settingsSource = readFileSync(path.join(REPO_ROOT, "scripts/settings/module-settings.mjs"), "utf8");
+  const drawingSource = readFileSync(path.join(REPO_ROOT, "scripts/settings/drawing-settings.mjs"), "utf8");
+  const organizationSource = readFileSync(path.join(REPO_ROOT, "scripts/settings/settings-organization.mjs"), "utf8");
+
+  assert.match(drawingSource, /export function registerDrawingSettings\(\)/);
+  assert.match(settingsSource, /import \{ registerDrawingSettings \} from "\.\/drawing-settings\.mjs";/);
+  assert.match(settingsSource, /registerDrawingSettings\(\);/);
+  assert.match(organizationSource, /export function setupSettingsOrganization\(\)/);
+  assert.match(settingsSource, /export \{ setupSettingsOrganization \} from "\.\/settings-organization\.mjs";/);
 });

@@ -397,9 +397,6 @@
     "macro-socket.mjs": [
       "socketlib.registerModule:<dynamic>"
     ],
-    "module-settings.mjs": [
-      "Hooks.on:renderSettingsConfig"
-    ],
     "npc-display-patches.mjs": [
       "Hooks.once:ready"
     ],
@@ -422,6 +419,9 @@
     ],
     "roll-patches.mjs": [
       "Hooks.on:renderRollDialogSD"
+    ],
+    "settings-organization.mjs": [
+      "Hooks.on:renderSettingsConfig"
     ],
     "shadowdark-extras.mjs": [
       "Hooks.once:init",
