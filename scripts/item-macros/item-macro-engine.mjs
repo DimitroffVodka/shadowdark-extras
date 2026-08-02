@@ -155,43 +155,54 @@ export function registerItemMacroSocket(socket) {
 }
 
 /**
- * One-time migration of legacy `flags.itemacro.macro` data onto SDX's own
+ * Idempotent migration of legacy `flags.itemacro.macro` data onto SDX's own
  * `macroCommand` / `macroName` / `macroRunAsGM` flags.
  *
  * Extracted from the composition root in Phase 3 (step 39). It lives here
  * because this module is what READS `macroCommand`; the migration that writes
  * it belongs beside its consumer, not in the bootstrap.
  *
- * KNOWN LIMITATION, already recorded as KNOWN-ISSUES item 1: this is gated on
- * the `itemacroMigrationDone` world setting and runs once, so items imported
- * after it has run are never migrated. Moving the code does not change that,
- * and fixing it is a behaviour change that belongs with the issue, not here.
- *
- * The body is the root's verbatim, at its original indentation.
+ * Phase 5.2.7 (issue #49): the one-shot `itemacroMigrationDone` gate was
+ * removed. The gate meant items arriving AFTER the first run (compendium
+ * imports, drag-in, future SDX packs) kept only the legacy namespace forever
+ * — measured: 20 legacy-only items in world 0100 despite the gate being set.
+ * The per-item migrateItem is idempotent (migrates only when a legacy
+ * command exists AND the SDX flag does not), so an ungated sweep on every
+ * ready is safe and cheap — a flags read per item, writes only once. The
+ * setting registration is kept for backward compatibility (worlds that ran
+ * the old migration have the value stored); nothing reads it anymore.
  */
 export async function migrateLegacyItemMacros() {
-	// Run one-time itemacro data migration if not already done
-	if (!game.settings.get(MODULE_ID, "itemacroMigrationDone")) {
-		console.log(`${MODULE_ID} | Starting itemacro data migration...`);
+	// Only the GM may write flags on world items and foreign actors. The
+	// sweep runs on every ready (idempotent), so a player client must skip
+	// it entirely — a player attempting setFlag on a world item throws a
+	// permission error and the root awaits this bare (unhandled rejection
+	// on every player login). The GM's load migrates everything.
+	if (!game.user?.isGM) return;
 
-		const migrateItem = async (item) => {
-			const legacy = item.flags?.itemacro?.macro?.command;
-			if (legacy && !item.getFlag(MODULE_ID, "macroCommand")) {
-				await item.setFlag(MODULE_ID, "macroCommand", legacy);
-				await item.setFlag(MODULE_ID, "macroName", item.flags?.itemacro?.macro?.name || item.name);
-				await item.setFlag(MODULE_ID, "macroRunAsGM", item.flags?.itemacro?.macro?.runAsGM || false);
-			}
-		};
+	const migrated = [];
 
-		// Migrate world items
-		for (const item of game.items) await migrateItem(item);
-
-		// Migrate actor items
-		for (const actor of game.actors) {
-			for (const item of actor.items) await migrateItem(item);
+	const migrateItem = async item => {
+		const legacy = item.flags?.itemacro?.macro?.command;
+		if (legacy && !item.getFlag(MODULE_ID, "macroCommand")) {
+			await item.setFlag(MODULE_ID, "macroCommand", legacy);
+			await item.setFlag(MODULE_ID, "macroName", item.flags?.itemacro?.macro?.name || item.name);
+			await item.setFlag(MODULE_ID, "macroRunAsGM", item.flags?.itemacro?.macro?.runAsGM || false);
+			migrated.push(item.name);
 		}
+	};
 
-		await game.settings.set(MODULE_ID, "itemacroMigrationDone", true);
-		console.log(`${MODULE_ID} | itemacro data migration complete.`);
+	// Migrate world items
+	for (const item of game.items) await migrateItem(item);
+
+	// Migrate actor items
+	for (const actor of game.actors) {
+		for (const item of actor.items) await migrateItem(item);
+	}
+
+	if (migrated.length > 0) {
+		console.log(
+			`${MODULE_ID} | itemacro migration: ${migrated.length} item(s) migrated (${migrated.slice(0, 5).join(", ")}${migrated.length > 5 ? ", ..." : ""})`
+		);
 	}
 }

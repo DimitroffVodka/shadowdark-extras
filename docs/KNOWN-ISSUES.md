@@ -138,30 +138,6 @@ wanted.
 ---
 
 
-## 1. The itemacro migration is one-shot; items added later never migrate
-
-**Status:** confirmed, unfixed, currently harmless.
-
-`Hooks.once("ready")` runs the itemacro data migration once per world, gated on
-the `itemacroMigrationDone` setting. It iterates `game.items` and every actor's
-items **at that moment**. Anything arriving later — imported from a compendium,
-dragged in from another world, or shipped in a future SDX pack — keeps only the
-legacy `flags.itemacro` namespace. The gate never reopens.
-
-Measured in world `0100`: of 744 items, **20 carry a legacy
-`flags.itemacro.macro.command` with no SDX `macroCommand`** despite
-`itemacroMigrationDone` being `true` — 18 Spells and 2 Potions, all bundled SDX
-pack content that landed after the migration ran.
-
-**Harmless today** because every execution path and the config editor read the
-SDX flag with a legacy fallback. The cost is that `flags.itemacro` must be
-supported forever, in every new reader.
-
-**Cheapest fix** is to make the migration idempotent and re-runnable — drop the
-one-shot gate for a "any item with a legacy flag and no SDX flag" sweep, or
-expose it on `module.api` as a GM repair.
-
----
 
 ## 2. `getUnidentifiedName` is duplicated, and the two copies have diverged
 
@@ -191,6 +167,7 @@ Kept briefly so the same findings are not re-reported.
 
 | # | Issue | Fixed in |
 | --- | --- | --- |
+| 1 | The itemacro migration was one-shot — items imported after the first run (compendium imports, drag-in, future packs) kept only the legacy `flags.itemacro` namespace forever; the migration is now idempotent and re-runnable on every ready, with per-item idempotence (`migrateItem` writes only when a legacy command exists and the SDX flag does not) | issue #49, Phase 5.2.7 |
 | 3 | `requireEquipped`-only effects arrived active on newly created items — the createItem hook's requirement filter tested `sourceRequirement` only, while the createActiveEffect hook bails for Item parents; the filter now catches the `requireEquipped` flag too | issue #51, Phase 5.2.6 |
 | 4 | `renderRollDialogSD` bailed on a never-set `config.actorId`, making every SDX weapon bonus in the dialog unreachable | #16 (`f4e4b2a`) |
 | 5 | The wand-charges UI never rendered — anchored to `select[name="system.range"]`, which SD 4.x does not emit | #16 (`64e7b78`) |
