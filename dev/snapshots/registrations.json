@@ -2,12 +2,12 @@
   "$comment": "Static registration call-site inventory. Keyed by module basename so it survives feature-folder moves. Order within each module and the root's register/init invocation order are contracts; runtime firing behaviour is proved by the smoke matrix, not by this file. Regenerate only with a reviewed reason: npm run snapshot:registrations -- --write",
   "totals": {
     "Hooks.once": 43,
-    "Hooks.on": 221,
+    "Hooks.on": 218,
     "Hooks.off": 8,
     "socket.register": 46,
     "libWrapper.register": 3,
     "socketlib.registerModule": 3,
-    "all": 324
+    "all": 321
   },
   "modules": {
     "AuraEffectsSD.mjs": [
@@ -348,11 +348,6 @@
       "socket.register:transferItemsAsGM",
       "socket.register:transferCoinsAsGM"
     ],
-    "conditions.mjs": [
-      "Hooks.on:createActiveEffect",
-      "Hooks.on:deleteActiveEffect",
-      "Hooks.on:updateActiveEffect"
-    ],
     "containers.mjs": [
       "Hooks.on:updateItem",
       "Hooks.on:createItem",
@@ -538,7 +533,6 @@
     "registerBackgroundAdvancementHooks",
     "registerFreyasOmenHooks",
     "registerPartyCleanupHooks",
-    "registerConditionEffectHooks",
     "registerAmmunitionPatches",
     "registerPredefinedEffects",
     "registerInvisibilityHooks",

@@ -8,15 +8,15 @@
  *
  * Only three names are exported, because only three are used outside:
  * `injectConditionsToggles` from the Player and NPC sheet render hooks, and
- * `getConditionsData`/`showConditionsModal` from the module API. The other
- * nine functions, including `updateConditionToggles`, stay private — the
- * hooks that call it came along.
+ * `getConditionsData`/`showConditionsModal` from the module API.
  *
- * `registerConditionEffectHooks()` is called from the position those three
- * registrations occupied. That matters here: createActiveEffect,
- * deleteActiveEffect and updateActiveEffect are each registered several times
- * across the module, so relative order is preserved by the call site and not
- * by co-location (handoff rule 2).
+ * The three ActiveEffect hooks (createActiveEffect / deleteActiveEffect /
+ * updateActiveEffect) and their private toggle-refresh helper were REMOVED
+ * in Phase 5.2.5 (issue #56): they looked for `.sdx-condition-toggle`
+ * inside the actor sheet, but the toggles have always lived in the modal
+ * appended to BODY, so the hooks were a permanent silent no-op. The modal
+ * self-updates on toggle click (`refreshModalConditionOrder`) and closes on
+ * its own (close button, backdrop, ESC) — the sheet has nothing to refresh.
  */
 
 import { MODULE_ID } from "../shared/module-id.mjs";
@@ -725,82 +725,4 @@ async function removeConditionFromActor(actor, conditionName, conditionUuid) {
 		console.error(`${MODULE_ID} | Error removing condition:`, error);
 		ui.notifications.error("Failed to remove condition");
 	}
-}
-
-/**
- * Update condition toggles when effects change
- */
-function updateConditionToggles(actor, html) {
-	const $toggles = html.find(".sdx-condition-toggle");
-	if (!$toggles.length) return;
-
-	// Get condition items instead of effects
-	const conditionItems = actor.items.filter(item =>
-		item.type === "Effect" &&
-		(item.name.startsWith("Condition:") || item.name.startsWith("Absorption:"))
-	);
-
-	$toggles.each(function() {
-		const $toggle = $(this);
-		const conditionUuid = $toggle.data("condition-uuid");
-		const conditionName = $toggle.data("condition-name");
-
-		// Check multiple ways to match the condition (now checking items)
-		const isActive = conditionItems.some(item => {
-			// Direct name match
-			if (item.name === conditionName) return true;
-
-			// Source ID match (prefer new _stats.compendiumSource)
-			if (item._stats?.compendiumSource === conditionUuid) return true;
-			if (item.flags?.core?.sourceId === conditionUuid) return true;
-
-			// Case-insensitive name match
-			if (item.name?.toLowerCase() === conditionName?.toLowerCase()) return true;
-
-			// Check if the item name contains the condition name
-			if (item.name?.toLowerCase().includes(conditionName?.toLowerCase())) return true;
-
-			return false;
-		});
-
-		$toggle.toggleClass("active", isActive);
-	});
-}
-
-export function registerConditionEffectHooks() {
-	// Update condition toggles when effects are created
-	Hooks.on("createActiveEffect", (effect, options, userId) => {
-		const actor = effect.parent;
-		if (!actor || actor.type !== "Player") return;
-
-		// Update the sheet if it's rendered
-		if (actor.sheet?.rendered) {
-			const html = actor.sheet.element;
-			updateConditionToggles(actor, html);
-		}
-	});
-
-	// Update condition toggles when effects are deleted
-	Hooks.on("deleteActiveEffect", (effect, options, userId) => {
-		const actor = effect.parent;
-		if (!actor || actor.type !== "Player") return;
-
-		// Update the sheet if it's rendered
-		if (actor.sheet?.rendered) {
-			const html = actor.sheet.element;
-			updateConditionToggles(actor, html);
-		}
-	});
-
-	// Update condition toggles when effects are updated
-	Hooks.on("updateActiveEffect", (effect, changes, options, userId) => {
-		const actor = effect.parent;
-		if (!actor || actor.type !== "Player") return;
-
-		// Update the sheet if it's rendered
-		if (actor.sheet?.rendered) {
-			const html = actor.sheet.element;
-			updateConditionToggles(actor, html);
-		}
-	});
 }

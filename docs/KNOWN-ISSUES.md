@@ -18,66 +18,6 @@ notes, where the fuller reasoning and the raw measurements live.
 
 ---
 
-## 7. The three ActiveEffect condition hooks are a permanent no-op
-
-**Found:** PR #17 (`ab9897a`), extracting `character-sheet/conditions.mjs`.
-**Status:** confirmed, unfixed. **Pre-existing** — the code moved
-byte-identically (735 + 35 lines, 0 differing), so the extraction cannot have
-caused it.
-
-`registerConditionEffectHooks()` in `scripts/character-sheet/conditions.mjs`
-registers `createActiveEffect`, `deleteActiveEffect` and `updateActiveEffect`.
-Each one does:
-
-```js
-if (actor.sheet?.rendered) {
-    const html = actor.sheet.element;
-    updateConditionToggles(actor, html);
-}
-```
-
-and `updateConditionToggles` opens with:
-
-```js
-const $toggles = html.find('.sdx-condition-toggle');
-if (!$toggles.length) return;
-```
-
-**`.sdx-condition-toggle` never exists inside the sheet.**
-`injectConditionsToggles` adds only a container, a "Quick Conditions" header and
-an "Add Condition" button. The per-condition toggles are built by
-`showConditionsModal`, which appends to `BODY`.
-
-Measured on a throwaway Player in world `0100`, Foundry 14.365 / Shadowdark
-4.0.6:
-
-| | |
-| --- | --- |
-| `.sdx-condition-toggle` inside the sheet, modal closed | **0** |
-| inside the sheet, modal **open** | **0** |
-| in the whole document, modal open | **114** |
-| modal's `parentElement` | `BODY`; `sheet.element.contains(modal)` is `false` |
-
-So the guard returns on its first line every time, for all three hooks.
-
-**It does not throw.** Unlike the `injectHitBonusDisplay` case fixed in #16,
-this is a silent no-op rather than a swallowed `TypeError` —
-`PlayerSheetSD.element` really is jQuery in v14 (`constructor.name` `"ce"`,
-`typeof element.find === "function"`), so `find` succeeds and returns an empty
-set.
-
-**Not user-visible today**, because the modal updates its own toggle state as
-you click and closes on its own. The sheet has nothing to refresh.
-
-**Decision needed** — both are cheap, and they differ in intent:
-
-1. **Delete the three hooks**, if they are vestigial from a design where the
-   toggles lived on the sheet.
-2. **Point them at the open modal**, if live refresh is wanted. Today, with the
-   modal open, an effect applied by another client or an effect expiring will
-   not update the toggle state in front of you.
-
----
 
 
 
@@ -278,9 +218,9 @@ Kept briefly so the same findings are not re-reported.
 | 4 | `renderRollDialogSD` bailed on a never-set `config.actorId`, making every SDX weapon bonus in the dialog unreachable | #16 (`f4e4b2a`) |
 | 5 | The wand-charges UI never rendered — anchored to `select[name="system.range"]`, which SD 4.x does not emit | #16 (`64e7b78`) |
 | 6 | The weapon hit-bonus chat display was dead — jQuery `html.find` against a v14 `HTMLLIElement`, failing silently because the caller was async and unawaited | #16 (`111080a`) |
+| 7 | The three ActiveEffect condition hooks were a permanent no-op — they looked for `.sdx-condition-toggle` inside the actor sheet, but the toggles live in the BODY modal; the modal self-updates on click and closes on its own, so the hooks (and their `updateConditionToggles` helper) were deleted | issue #56, Phase 5.2.5 |
 | 8 | The roll-config generator wrapper died on every actor update (marker on the Document, wrapped generators on the rebuilt `actor.system`), silently killing SDX talent advantage; the wrapper, marker, `createActor` hook, and `_sdxSystem*` baseline fields were retired and the dialog hook now owns advantage for all roll types | issue #52, Phase 5.2.1 |
 | 9 | Ammunition hit/damage bonuses never reached SD 4.x attack rolls — the wrapper monkeypatched `item.rollItem`/`availableAmmunition`, which the 4.x flow never calls; the bonuses now ride the roll config (`applyAmmoBonuses` in the rollFromConfig patch, the seam that sees the final `selectedAmmunition`) | issue #53, Phase 5.2.3 |
 | 12 | The NPC item-chat icon was dead — `item.displayCard` does not exist in SD 4.x (unhandled rejection, nothing posted); the four call sites now use `shadowdark.chat.showItemCard(uuid)` inside try/catch so the next system change is loud instead of silent | issue #54, Phase 5.2.4 |
 | 15 | ToM's default scene background pointed at `assets/default-scene.jpg`, which was never shipped (404 from both model entry points); the promised asset now ships and both `TomSceneModel` implementations were deduplicated onto one shared default | issue #57, Phase 5.2.2 |
 
-Row 7 (condition hooks) is still open — issue #56.
