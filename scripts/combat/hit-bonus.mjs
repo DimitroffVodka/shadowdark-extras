@@ -1,6 +1,3 @@
-import { MODULE_ID } from "../shared/module-id.mjs";
-import { injectWeaponBonusDisplay } from "./WeaponBonusConfig.mjs";
-
 /**
  * Weapon hit-bonus chat display.
  *
@@ -17,6 +14,16 @@ import { injectWeaponBonusDisplay } from "./WeaponBonusConfig.mjs";
  * not define; the wrapper's `typeof === "function"` guard therefore never
  * passed, and SD 4.x routes attacks through `rollConfigGenerators` /
  * `rollFromConfig` rather than `rollItem` in any case.
+ *
+ * Phase 5.2.8 (issue #55): the DAMAGE half of the old pipeline was removed.
+ * `injectWeaponBonusDisplay` (jQuery against the v14 DOM) had exactly one
+ * caller, inside a branch gated on `flags.itemId` — which SD 4.x messages
+ * never carry — so the whole damage-bonus display path was unreachable.
+ * The live pipeline is CombatSettingsSD: it computes `weaponBonusDamage`
+ * via `calculateWeaponBonusDamage`, persists `weaponBonusResults` on the
+ * message, and the damage-apply card renders the breakdown (with
+ * `bonusInFormula` de-dup for bonuses the dialog already baked into the
+ * formula). This module now carries the hit-bonus display only.
  */
 
 /**
@@ -32,36 +39,6 @@ export async function processWeaponBonuses(message, html) {
 	if (hitBonusInfo) {
 		injectHitBonusDisplay(html, hitBonusInfo);
 	}
-
-	// Check if this is a weapon attack roll (for damage bonus display)
-	const flags = message.flags?.shadowdark;
-	if (!flags?.itemId) return;
-
-	// Get the actor and item
-	const actor = game.actors.get(message.speaker?.actor) || canvas.tokens?.get(message.speaker?.token)?.actor;
-	if (!actor) return;
-
-	const item = actor.items.get(flags.itemId);
-	if (!item || item.type !== "Weapon") return;
-
-	// Check if weapon has damage bonuses configured
-	const bonusFlags = item.flags?.[MODULE_ID]?.weaponBonus;
-	if (!bonusFlags?.enabled) return;
-
-	// Check if this was a critical hit
-	const isCritical = message.rolls?.some(r => {
-		const d20Roll = r.terms?.find(t => t.faces === 20);
-		return d20Roll?.total === 20;
-	});
-
-	// Try to get the target
-	const targetToken = message.flags?.shadowdark?.targetToken
-		? canvas.tokens?.get(message.flags.shadowdark.targetToken)
-		: game.user.targets.first();
-	const target = targetToken?.actor;
-
-	// Inject the weapon damage bonus display
-	await injectWeaponBonusDisplay(message, html, item, actor, target, isCritical);
 }
 
 /**

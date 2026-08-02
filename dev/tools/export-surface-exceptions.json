@@ -6,6 +6,12 @@
       "name": "registerConditionEffectHooks",
       "phase": "5.2.5",
       "reason": "Issue #56: the three ActiveEffect condition hooks were a permanent silent no-op (they looked for .sdx-condition-toggle inside the actor sheet; the toggles live in the BODY modal). The modal self-updates on toggle click (refreshModalConditionOrder) and closes on its own, so the hooks and their registration were deleted."
+    },
+    {
+      "module": "scripts/combat/WeaponBonusConfig.mjs",
+      "name": "injectWeaponBonusDisplay",
+      "phase": "5.2.8",
+      "reason": "Issue #55: the damage-bonus chat display was unreachable in SD 4.x — its only caller sat behind a flags.itemId gate that 4.x messages never carry, and it used jQuery (html.find) against the v14 plain DOM. The live pipeline (CombatSettingsSD computes weaponBonusDamage via calculateWeaponBonusDamage, persists weaponBonusResults, and the damage-apply card renders the breakdown with bonusInFormula de-dup) already presents the same information, so the dead function was deleted."
     }
   ]
 }
