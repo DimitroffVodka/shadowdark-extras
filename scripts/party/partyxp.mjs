@@ -300,9 +300,4 @@ export const PartyXp = {
 			})
 		);
 	}
-
-	/**
-	 * Create a new item in party inventory
-	 * @param {Event} event
-	 */
 };

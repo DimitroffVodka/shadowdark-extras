@@ -10,10 +10,22 @@ const MODULE_ID = "shadowdark-extras";
 // Lazy accessor avoids the mixin<->class import cycle (Phase 5.1 split):
 // getCampingTasks lives in PartySheetSD, which imports this mixin.
 let _campingTasks = null;
+let _campingTasksPromise = null;
 async function getCampingTasks() {
 	if (!_campingTasks) {
-		const mod = await import("./PartySheetSD.mjs");
-		_campingTasks = mod.getCampingTasks;
+		// Dedupe concurrent first calls; ESM caches the module so the
+		// dynamic import is cheap even if it fires more than once.
+		if (!_campingTasksPromise) {
+			_campingTasksPromise = import("./PartySheetSD.mjs")
+				.then(mod => {
+					_campingTasks = mod.getCampingTasks;
+					return _campingTasks;
+				})
+				.finally(() => {
+					_campingTasksPromise = null;
+				});
+		}
+		await _campingTasksPromise;
 	}
 	return _campingTasks();
 }
@@ -117,8 +129,6 @@ export const PartyTravel = {
 		await this.actor.unsetFlag(MODULE_ID, "travelAssignments");
 	},
 
-	/** @inheritdoc */
-
 	/**
 	 * Handle resetting all travel assignments
 	 * @param {Event} event
@@ -190,9 +200,15 @@ export const PartyTravel = {
 		const members = await this.getMembers();
 		CampingRestApp.show(this.actor, members, {
 			onCampfireChange: async () => {
-				// Dynamic import breaks the mixin<->class cycle (Phase 5.1 split)
-				const { syncPartyTokenLight } = await import("./PartySheetSD.mjs");
-				return syncPartyTokenLight(this.actor);
+				try {
+					// Dynamic import breaks the mixin<->class cycle (Phase 5.1 split)
+					const { syncPartyTokenLight } = await import("./PartySheetSD.mjs");
+					return syncPartyTokenLight(this.actor);
+				}
+				catch (error) {
+					console.error("Shadowdark Extras | Party light sync failed:", error);
+					return null;
+				}
 			},
 		});
 	},
@@ -439,9 +455,4 @@ export const PartyTravel = {
 			flavor: flavor,
 		});
 	}
-
-	/**
-	 * Handle changing the travel speed
-	 * @param {Event} event
-	 */
 };
