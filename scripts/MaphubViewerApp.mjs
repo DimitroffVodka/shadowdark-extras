@@ -628,11 +628,43 @@ export class MaphubViewerApp extends ApplicationV2 {
 				if (!dungeonTransform) {
 					throw new Error("One Page Dungeon render transform was not available. Reopen the generator (bundled local files) and try again.");
 				}
+				// The render transform (toPixel/cellPx) is in CSS/stage px, but the captured
+				// PNG is the canvas BACKING store (× devicePixelRatio). Scale to backing px so
+				// the walls match the image instead of coming out 1/dpr too small and offset.
+				// (Same HiDPI correction Cartomancer applies; SDX only had it on the
+				// dwelling floor-warp path before.)
+				const srcCanvas = this._iframe?.contentDocument?.querySelector("canvas");
+				const dpr = (srcCanvas && srcCanvas.clientWidth > 0)
+					? (srcCanvas.width / srcCanvas.clientWidth)
+					: (this._iframe?.contentWindow?.devicePixelRatio || 1);
+				const Tcss = dungeonTransform.toPixel;
+				const toBacking = (gx, gy) => {
+					const p = Tcss(gx, gy);
+					return { x: p.x * dpr, y: p.y * dpr };
+				};
 				// Cell-zero edge sits at canvas toPixel(0,0) == (M.tx, M.ty).
-				align = { toPixel: dungeonTransform.toPixel, cellPx: dungeonTransform.cellPx, origin: dungeonTransform.toPixel(0, 0) };
+				align = {
+					toPixel: toBacking,
+					cellPx: dungeonTransform.cellPx * dpr,
+					origin: toBacking(0, 0),
+				};
 			}
 			else if (isCave) {
-				align = this._getCaveAlignSource();
+				const ca = this._getCaveAlignSource();
+				if (ca) {
+					// Same HiDPI correction as the dungeon: the cave render transform is in
+					// CSS/stage px, but the captured PNG is the backing store (× dpr).
+					const cc = this._iframe?.contentDocument?.querySelector("canvas");
+					const caveDpr = (cc && cc.clientWidth > 0)
+						? (cc.width / cc.clientWidth)
+						: (this._iframe?.contentWindow?.devicePixelRatio || 1);
+					align = {
+						toPixel: ca.toPixel,
+						cellPx: ca.cellPx * caveDpr,
+						origin: { x: ca.origin.x * caveDpr, y: ca.origin.y * caveDpr },
+					};
+					this._caveWallDpr = caveDpr;
+				}
 			}
 
 			if (align && align.cellPx > 0) {
@@ -658,7 +690,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 			if (isDungeon) {
 				try {
 					const parsed = OnePageParserSD.parseDungeonData(this._lastSavedDungeonJson, 1, { gridSpace: true });
-					const T = dungeonTransform.toPixel;
+					// Use the dpr-scaled transform (backing px) so walls/notes match the captured image.
+					const T = align?.toPixel ?? dungeonTransform.toPixel;
 					walls = (parsed.walls || []).map(w => {
 						const t0 = T(w.c[0], w.c[1]); const a = mapPx(t0.x, t0.y);
 						const t1 = T(w.c[2], w.c[3]); const b = mapPx(t1.x, t1.y);
@@ -678,10 +711,11 @@ export class MaphubViewerApp extends ApplicationV2 {
 				walls = this._getDwellingsWalls({ width: scene.width, height: scene.height, grid });
 			}
 			else if (isCave) {
-				// _getCaveWalls returns captured-canvas px; run them through mapPx.
+				// _getCaveWalls returns CSS px; scale to backing (× dpr) to match the image, then mapPx.
+				const cwDpr = this._caveWallDpr || 1;
 				walls = this._getCaveWalls().map(w => {
-					const a = mapPx(w.c[0], w.c[1]);
-					const b = mapPx(w.c[2], w.c[3]);
+					const a = mapPx(w.c[0] * cwDpr, w.c[1] * cwDpr);
+					const b = mapPx(w.c[2] * cwDpr, w.c[3] * cwDpr);
 					return { ...w, c: [a.x, a.y, b.x, b.y] };
 				});
 			}
