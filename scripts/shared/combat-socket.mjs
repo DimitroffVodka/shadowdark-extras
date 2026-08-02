@@ -397,9 +397,6 @@ export function setupCombatSocket() {
 				}
 			}
 
-			// Rename the effect item to indicate it came from the spell
-			// effectData.name = `Spell Effect: ${effectData.name}`;
-
 			const createdItems = await token.actor.createEmbeddedDocuments("Item", [effectData]);
 
 			// Link to focus spell or duration spell if applicable

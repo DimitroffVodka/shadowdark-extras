@@ -30,7 +30,6 @@ import { MODULE_ID } from "../shared/module-id.mjs";
  * Based on df-templates by flamewave000
  */
 function installSquareTemplateRotationFix() {
-	const _originalGetRectShape = foundry.canvas.placeables.MeasuredTemplate.getRectShape;
 	foundry.canvas.placeables.MeasuredTemplate.getRectShape = function(distance, direction, adjustForRoundingError = false) {
 		// Generate a rotation matrix to apply the rect against. The base rotation must be rotated
 		// CCW by 45° before applying the real direction rotation.
@@ -54,7 +53,6 @@ function installSquareTemplateRotationFix() {
 		shape.height = size;
 		return shape;
 	};
-	//console.log(`${MODULE_ID} | Square template rotation fix applied`);
 }
 
 /**
@@ -303,7 +301,6 @@ const SDX_TEMPLATES = {
 
 				// Create a graphics object for the highlight border
 				const highlight = new PIXI.Graphics();
-				const bounds = token.bounds;
 				const padding = 4;
 
 				// Draw a pulsing orange border around the token
@@ -649,11 +646,6 @@ const SDX_TEMPLATES = {
 				}
 			};
 
-			// Key up handler - no longer needed
-			const onKeyUp = (event) => {
-				// Removed - Alt key is checked directly in wheel handler
-			};
-
 			// Attach event listeners
 			canvas.stage.on("pointermove", onMouseMove);
 			canvas.stage.on("pointerdown", onLeftClick);
@@ -784,7 +776,7 @@ const SDX_TEMPLATES = {
 	},
 };
 
-//console.log(`${MODULE_ID} | SDX.templates API loaded`);
+
 
 /**
  * Install the square-template rotation fix and publish `SDX.templates`.
