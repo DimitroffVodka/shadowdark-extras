@@ -4,6 +4,32 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.10.53] — 2026-08-02 — Phase 5.2 known-defect pass: nine fixes across combat, effects, items, and the character sheet
+
+### Fixed
+
+- **Talent advantage now reaches every roll path.** The roll-config wrapper died on every actor update, silently killing SDX talent advantage; the dialog hook now owns advantage for all roll types, including shift/alt-click (skip-prompt) rolls, with tooltips and radio state synced to the rendered dialog. (Issue #52)
+
+- **Ammunition hit/damage bonuses work on Shadowdark 4.x attack rolls again.** The legacy monkeypatches targeted methods the 4.x flow never calls; bonuses now ride the roll config (`applyAmmoBonuses` on the `rollFromConfig` seam that sees the final selected ammunition), including on rerolls without compounding. (Issue #53)
+
+- **The NPC item-chat icon posts a card again.** `item.displayCard` does not exist in SD 4.x (unhandled rejection, nothing posted); all eight call sites across the NPC sheet, token toolbar, shapechanger, and party inventory now use the system's own `shadowdark.chat.showItemCard` inside try/catch, so the next system change fails loudly instead of silently. (Issue #54)
+
+- **`requireEquipped`-only effects are enforced at item creation.** The createItem requirement filter tested `sourceRequirement` only, so such effects arrived active on unequipped items; the filter now catches the flag and the deferred check disables them. (Issue #51)
+
+- **The itemacro data migration is idempotent and re-runnable.** It ran once per world, so items imported later (compendium, drag-in, future packs) kept only the legacy `flags.itemacro` namespace forever; the sweep now runs on every ready (GM-only, writes once per item). (Issue #49)
+
+- **Unidentified-item masking is consolidated and consistent.** Duplicated `getUnidentifiedName` copies diverged on legacy worlds — one returned the real item name; the single implementation (4.x schema, else the legacy `unidentifiedName` flag, else the label) now serves the identify spell, party sheets, containers, and the data-shaped paths. (Issue #50)
+
+- **The ToM default scene background 404 is fixed.** The promised `assets/default-scene.jpg` now ships with the module (verified live). (Issue #57)
+
+### Changed
+
+- **The three vestigial ActiveEffect condition hooks were removed.** They looked for toggles inside the actor sheet that have always lived in the BODY modal — a permanent silent no-op; the modal self-updates on click and closes on its own, so the sheet has nothing to refresh. (Issue #56)
+
+- **The unreachable weapon damage-bonus chat display was removed.** Its only caller sat behind a flag SD 4.x never sets, and it used jQuery against the v14 DOM; the damage-apply card already renders the breakdown from `weaponBonusResults` (with double-add de-duplication), so the dead path was deleted rather than converted. (Issue #55)
+
+- **Internal:** the export-surface gate gained a reviewed-exceptions registry for deliberate export removals; the regression suite grew to 226 tests; nine review-gated fix branches, each with a RED-first regression test, live smoke, and a closed GitHub issue.
+
 ## [6.10.52] — 2026-07-31 — Smaller downloads, restored combat automation, and internal reorganization
 
 ### Changed
