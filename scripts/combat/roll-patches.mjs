@@ -17,16 +17,14 @@ import {
  *     ammunition selection and range checks. `getEdgeToEdgeDistance` is its
  *     private helper — center-to-center distance is wrong once tokens differ
  *     in size, which is the whole reason it exists.
- *   - `setupRollConfigPatches` wraps each actor's roll-config generators and
- *     adds the bonus prompts to the roll dialog.
+ *   - `setupRollConfigPatches` registers the roll-dialog hook that applies
+ *     SDX talent advantage and bonus prompts to the roll config.
  *
  * `setupRollConfigPatches` is the reason this module registers anything. It
  * runs *inside* the root's ready hook, so ready has already fired by the time
- * its body executes; it therefore wraps every existing actor by iteration and
- * registers `createActor` to catch new ones, plus `renderRollDialogSD` for the
- * dialog itself. Those two registrations move with it, but their position in
- * the firing order is set by where the root calls this function, which has not
- * changed.
+ * its body executes; it registers `renderRollDialogSD` for the dialog itself.
+ * The registration's position in the firing order is set by where the root
+ * calls this function, which has not changed.
  */
 
 /**
@@ -285,176 +283,186 @@ export function setupRollAttackPatches() {
 }
 
 /**
- * Setup monkeypatches for rollConfigGenerators and hooks for the Roll Dialog.
+ * Update the rendered dialog's tooltip element (`p.tooltips` inside the main
+ * roll-input). The dialog renders before the hook runs, so a config change
+ * alone would stay invisible on screen.
+ */
+function syncTooltip(html, tooltips) {
+	if (!tooltips) return;
+	const input = html.querySelector("input[name=\"mainRoll.formula\"]");
+	const rollDiv = input?.closest(".roll-input");
+	if (!rollDiv) return;
+	let tooltipEl = rollDiv.querySelector("p.tooltips");
+	if (!tooltipEl) {
+		tooltipEl = document.createElement("p");
+		tooltipEl.className = "tooltips";
+		rollDiv.appendChild(tooltipEl);
+	}
+	tooltipEl.textContent = tooltips;
+}
+
+/**
+ * Apply SDX talent advantage/disadvantage to a roll config for a Player
+ * actor. Mirrors the retired generator wrapper's behaviour exactly: Player
+ * only; spell via the "spellcasting" flag, ability/check via the stat name,
+ * attack via the weapon type or its slug; when both flags match or neither
+ * matches, `config.mainRoll.advantage` is left untouched (talents cancel).
+ * Returns `{ tooltip, weapon }` — the tooltip text to display (or "") and the
+ * resolved weapon (attack configs only, reused by the dialog's bonus work).
+ */
+async function applyTalentAdvantage(config, rollActor) {
+	if (rollActor.type !== "Player") return { tooltip: "", weapon: null };
+
+	const bonuses = rollActor.system.bonuses || {};
+	const advFlags = bonuses.advantage || [];
+	const disFlags = bonuses.disadvantage || [];
+
+	let hasAdv = false;
+	let hasDis = false;
+	let weapon = null;
+
+	if (config.type === "spell" && advFlags.includes("spellcasting")) hasAdv = true;
+	if ((config.type === "ability" || config.type === "check") && config.check?.stat) {
+		if (advFlags.includes(config.check.stat)) hasAdv = true;
+		if (disFlags.includes(config.check.stat)) hasDis = true;
+	}
+	if (config.type === "attack") {
+		const weaponType = config.attack?.type; // melee/ranged
+		if (weaponType) {
+			if (advFlags.includes(weaponType)) hasAdv = true;
+			if (disFlags.includes(weaponType)) hasDis = true;
+		}
+		// Item specific
+		if (config.itemUuid) {
+			weapon = await fromUuid(config.itemUuid);
+			if (weapon) {
+				const slug = weapon.name.slugify();
+				if (advFlags.includes(slug)) hasAdv = true;
+				if (disFlags.includes(slug)) hasDis = true;
+			}
+		}
+	}
+
+	if (hasAdv && !hasDis) {
+		config.mainRoll.advantage = 1;
+		return { tooltip: "SDX Talent Advantage", weapon };
+	}
+	if (hasDis && !hasAdv) {
+		config.mainRoll.advantage = -1;
+		return { tooltip: "SDX Talent Disadvantage", weapon };
+	}
+	return { tooltip: "", weapon };
+}
+
+/**
+ * Setup the roll-dialog hook (Shadowdark 4.x).
+ *
  * This is the Shadowdark 4.x way to inject advantage and promptable bonuses.
+ *
+ * The hook is the single owner of every SDX contribution to a roll config:
+ * talent advantage/disadvantage (all roll types), promptable and auto-apply
+ * weapon bonuses (attack rolls), and the formula/tooltip reconstruction that
+ * prevents double-application across re-renders. It resolves the rolling
+ * actor through `config.actorUuid`, so unlinked token actors are covered too.
+ *
+ * History: this used to wrap each actor's `rollConfigGenerators` entries and
+ * snapshot the system baseline fields for the hook to rebuild from. The
+ * wrapper died on every `actor.update()` — the generators are a DataModel
+ * class field on `actor.system`, while the "patched" marker lived on the
+ * Document — so talent advantage silently stopped applying (issue #52). The
+ * wrapper, the marker, the `createActor` hook, and the baseline fields were
+ * removed; the hook now derives everything from the freshly generated
+ * config, which is safe because every re-render path regenerates first
+ * (RollDialogSD._onCheckboxChange and the SDX prompt-row click both call the
+ * generator).
  */
 export function setupRollConfigPatches() {
-	const wrapActorGenerators = (actor) => {
-		const generators = actor.system?.rollConfigGenerators;
-		if (!generators || actor.__sdxRollConfigPatched) return;
-
-		for (const [type, original] of Object.entries(generators)) {
-			generators[type] = async function(config) {
-				await original.call(this, config);
-				if (actor.type !== "Player") return;
-
-				// Save the system-generated roll baseline before SDX adds anything.
-				// The renderRollDialogSD hook reads these to reconstruct the formula
-				// from scratch on every render, preventing double-application.
-				if (config.mainRoll) {
-					config._sdxSystemBonus = config.mainRoll.bonus ?? "";
-					config._sdxSystemBase = config.mainRoll.base ?? "d20";
-					config._sdxSystemTooltips = config.mainRoll.tooltips ?? "";
-				}
-				if (config.damageRoll) {
-					config._sdxSystemDamageFormula = config.damageRoll.formula ?? "";
-					config._sdxSystemDamageTooltips = config.damageRoll.tooltips ?? "";
-				}
-
-				// --- 1. ADVANTAGE / DISADVANTAGE ---
-				const bonuses = actor.system.bonuses || {};
-				const advFlags = bonuses.advantage || [];
-				const disFlags = bonuses.disadvantage || [];
-
-				let hasAdv = false;
-				let hasDis = false;
-
-				if (type === "spell" && advFlags.includes("spellcasting")) hasAdv = true;
-				if ((type === "ability" || type === "check") && config.check?.stat) {
-					if (advFlags.includes(config.check.stat)) hasAdv = true;
-					if (disFlags.includes(config.check.stat)) hasDis = true;
-				}
-				if (type === "attack") {
-					const weaponType = config.attack?.type; // melee/ranged
-					if (weaponType) {
-						if (advFlags.includes(weaponType)) hasAdv = true;
-						if (disFlags.includes(weaponType)) hasDis = true;
-					}
-					// Item specific
-					if (config.itemUuid) {
-						const item = await fromUuid(config.itemUuid);
-						if (item) {
-							const slug = item.name.slugify();
-							if (advFlags.includes(slug)) hasAdv = true;
-							if (disFlags.includes(slug)) hasDis = true;
-						}
-					}
-				}
-
-				if (hasAdv && !hasDis) {
-					config.mainRoll.advantage = 1;
-					config.mainRoll.tooltips = (config.mainRoll.tooltips || "").concat(", SDX Talent Advantage");
-				}
-				else if (hasDis && !hasAdv) {
-					config.mainRoll.advantage = -1;
-					config.mainRoll.tooltips = (config.mainRoll.tooltips || "").concat(", SDX Talent Disadvantage");
-				}
-
-				// --- 2. PROMPTABLE + AUTO-APPLY BONUSES ---
-				if (type === "attack" && config.itemUuid) {
-					const weapon = await fromUuid(config.itemUuid);
-					const targetToken = game.user.targets.first();
-					const targetActor = targetToken?.actor || null;
-
-					if (weapon && actor) {
-						const hitBonuses = getPromptableHitBonuses(weapon, actor, targetActor);
-						const damageBonuses = getPromptableDamageBonuses(weapon, actor, targetActor);
-						config._sdxPromptable = { hitBonuses, damageBonuses };
-
-						// Apply selected hit bonuses (from the prompt dialog)
-						const selectedHit = config._sdxSelectedHitBonuses || [];
-						selectedHit.forEach(b => {
-							const bonus = shadowdark.dice.formatBonus(b.formula);
-							config.mainRoll.bonus = (config.mainRoll.bonus || "").concat(bonus);
-							config.mainRoll.formula = `${config.mainRoll.base}${config.mainRoll.bonus}`;
-							config.mainRoll.tooltips = (config.mainRoll.tooltips || "").concat(`, ${b.label || "Bonus"}`);
-						});
-
-						// Apply selected damage bonuses (from the prompt dialog)
-						const selectedDamage = config._sdxSelectedDamageBonuses || [];
-						selectedDamage.forEach(b => {
-							if (!config.damageRoll) return;
-							const bonus = shadowdark.dice.formatBonus(b.formula);
-							config.damageRoll.formula = (config.damageRoll.formula || "").concat(bonus);
-							config.damageRoll.tooltips = (config.damageRoll.tooltips || "").concat(`, ${b.label || "Bonus"}`);
-						});
-
-						// --- AUTO-APPLY: bonuses without the Prompt checkbox ---
-						// Walk every configured hit/damage bonus on the weapon. Skip
-						// the promptable ones (handled above). For each remaining
-						// bonus, evaluate its requirements (alignment, target type,
-						// caster level, etc.) and apply the bonus in-place if met.
-						const wbFlags = weapon.flags?.["shadowdark-extras"]?.weaponBonus;
-						if (wbFlags?.enabled) {
-							for (const bonus of wbFlags.hitBonuses || []) {
-								if (!bonus.formula || bonus.prompt) continue;
-								if (!evaluateRequirements(bonus.requirements || [], actor, targetActor)) continue;
-								const formatted = shadowdark.dice.formatBonus(bonus.formula);
-								config.mainRoll.bonus = (config.mainRoll.bonus || "").concat(formatted);
-								config.mainRoll.formula = `${config.mainRoll.base}${config.mainRoll.bonus}`;
-								config.mainRoll.tooltips = (config.mainRoll.tooltips || "").concat(`, ${bonus.label || "Weapon Bonus"}`);
-							}
-							// SDX damage bonuses are handled exclusively by calculateWeaponBonusDamage()
-							// in CombatSettingsSD.mjs. Do NOT also bake them into the damage roll
-							// formula here — that causes double-counting (formula + separate calc).
-						}
-					}
-				}
-			};
-		}
-		actor.__sdxRollConfigPatched = true;
-	};
-
-	// Wrap existing actors. setupRollConfigPatches() itself is called from the
-	// composition root's main Hooks.once("ready"), so ready has already fired by
-	// the time we get here — registering another Hooks.once("ready") would never
-	// trigger. Iterate directly.
-	for (const actor of game.actors) wrapActorGenerators(actor);
-
-	// Wrap new actors going forward
-	Hooks.on("createActor", (actor) => wrapActorGenerators(actor));
-
-	// --- 3. ROLL DIALOG HOOK ---
-	// Async so we can look up the weapon via fromUuid. Runs after rendering and
-	// updates the formula inputs directly. Always rebuilds from _sdxSystemBonus
-	// (saved by the generator wrapper above) so re-renders never double-apply.
-	// Also serves as a fallback if the generator wrapper didn't run.
+	// --- ROLL DIALOG HOOK ---
+	// Async so we can look up the weapon via fromUuid. Runs after rendering
+	// and updates the formula inputs directly. Rebuilds the hit formula from
+	// the freshly generated system values so re-renders never double-apply.
 	Hooks.on("renderRollDialogSD", async (app, html, context) => {
 		const config = app.config;
-		if (!config || config.type !== "attack" || !config.itemUuid || !config.mainRoll) return;
+		if (!config || !config.mainRoll || (!config.actorUuid && !config.actorId)) return;
 
-		// SD 4.x identifies the rolling actor by `config.actorUuid` — set in
-		// rollAttack() before the generators run — and never sets `actorId`.
-		// Reading `actorId` returned undefined here, so every SDX bonus below was
-		// unreachable. `fromUuid` is what the system itself uses (RollDialogSD
-		// `_onCheckboxChange`) and it also resolves unlinked token actors, which
-		// `game.actors.get()` could not have done anyway.
-		const rollActor = await fromUuid(config.actorUuid);
+		// Mark configs that went through the dialog so the rollFromConfig patch
+		// below (dialog-less rolls) never double-applies or overrides the
+		// radio choices the submit handler wrote back.
+		config._sdxDialogRendered = true;
+
+		// Resolve the rolling actor. Attack/ability/spell configs carry
+		// `actorUuid` (set in rollAttack() etc. before the generators run);
+		// the spell-learning check config carries only `actorId`
+		// (PlayerSD._learnSpell). `fromUuid` also resolves unlinked token
+		// actors, which `game.actors.get()` could not have done anyway.
+		// Resolving first keeps the async window before the user can submit
+		// the dialog tiny (world actors resolve in a microtask; token actors
+		// in a canvas lookup).
+		const rollActor = config.actorUuid
+			? await fromUuid(config.actorUuid)
+			: game.actors.get(config.actorId);
 		if (!rollActor) return;
 
-		const weapon = await fromUuid(config.itemUuid);
+		// --- 1. TALENT ADVANTAGE / DISADVANTAGE (all roll types, Players only) ---
+		// Moved here from the retired generator wrapper (issue #52): the wrapper
+		// died on every actor.update(); the hook survives because it resolves the
+		// actor per render. Dialog-less rolls (skipPrompt) are covered by the
+		// rollFromConfig patch below.
+		let { tooltip: advantageTooltip, weapon } = await applyTalentAdvantage(config, rollActor);
+
+		// The dialog rendered its advantage radios from the config BEFORE this
+		// hook ran (RollDialogSD._prepareContext builds advantageOptions from
+		// config.mainRoll.advantage), and the submit handler writes the checked
+		// radio's value back into config.mainRoll.advantage. Re-sync the radios
+		// here or submitting silently discards the SDX value. Skipped when the
+		// advantage is not a number (no radio should ever be unchecked).
+		if (Number.isFinite(config.mainRoll.advantage)) {
+			const wanted = String(config.mainRoll.advantage);
+			html.querySelectorAll('input[name="advantage"]').forEach(radio => {
+				radio.checked = radio.value === wanted;
+			});
+		}
+
+		// --- 2. ATTACK-ONLY: weapon bonuses and promptable UI ---
+		// Non-attack rolls get the advantage tooltip appended straight to the
+		// system-generated tooltips (the system dialog renders those); the hook
+		// does not touch their formulas.
+		if (config.type !== "attack" || !config.itemUuid) {
+			if (advantageTooltip) {
+				config.mainRoll.tooltips = (config.mainRoll.tooltips || "").concat(`, ${advantageTooltip}`);
+				syncTooltip(html, config.mainRoll.tooltips);
+			}
+			return;
+		}
+
+		if (!weapon) weapon = await fromUuid(config.itemUuid);
 		if (!weapon) return;
 
 		const targetToken = game.user.targets.first();
 		const targetActor = targetToken?.actor || null;
 
-		// Use the system-saved baseline when available (set by the generator wrapper).
-		// Fall back to current mainRoll values — those equal the system values when
-		// the wrapper didn't run, because nothing else modified them yet.
-		const systemBonus    = config._sdxSystemBonus    ?? config.mainRoll.bonus    ?? "";
-		const systemBase     = config._sdxSystemBase     ?? config.mainRoll.base     ?? "d20";
-		const systemTooltips = config._sdxSystemTooltips ?? config.mainRoll.tooltips ?? "";
-		const systemDmgFmt   = config._sdxSystemDamageFormula  ?? config.damageRoll?.formula;
-		const systemDmgTips  = config._sdxSystemDamageTooltips ?? config.damageRoll?.tooltips ?? "";
+		// The generator has just populated these with the system's own values
+		// (every re-render path regenerates first), so the current config IS the
+		// baseline. The wrapper that used to snapshot it into `_sdxSystem*` is
+		// gone (issue #52); those fields had no other readers.
+		const systemBonus    = config.mainRoll.bonus    ?? "";
+		const systemBase     = config.mainRoll.base     ?? "d20";
+		const systemTooltips = config.mainRoll.tooltips ?? "";
+		const systemDmgFmt   = config.damageRoll?.formula;
+		const systemDmgTips  = config.damageRoll?.tooltips ?? "";
 
 		// Build promptable lists for UI and selected-bonus tracking
 		const hitBonuses    = getPromptableHitBonuses(weapon, rollActor, targetActor);
 		const damageBonuses = getPromptableDamageBonuses(weapon, rollActor, targetActor);
 		config._sdxPromptable = { hitBonuses, damageBonuses };
 
-		// Reconstruct hit formula: system baseline + selected promptable + auto-apply
+		// Reconstruct hit formula: system baseline + advantage + selected promptable + auto-apply.
+		// The advantage tooltip is folded in here (not appended before the rebuild)
+		// so the reconstruction pass stays the single writer of `tooltips`.
 		let hitBonus    = systemBonus;
-		let hitTooltips = systemTooltips;
+		let hitTooltips = advantageTooltip
+			? `${systemTooltips}${systemTooltips ? ", " : ""}${advantageTooltip}`
+			: systemTooltips;
 
 		// Everything SDX itself contributes to the hit roll, recorded as it is
 		// applied. This rides to the chat card on the roll config (see the
@@ -556,18 +564,7 @@ export function setupRollConfigPatches() {
 		if (hitInput && hitInput.value !== config.mainRoll.formula) {
 			hitInput.value = config.mainRoll.formula;
 		}
-		if (hitTooltips) {
-			const hitRollDiv = hitInput?.closest(".roll-input");
-			if (hitRollDiv) {
-				let tooltipEl = hitRollDiv.querySelector("p.tooltips");
-				if (!tooltipEl) {
-					tooltipEl = document.createElement("p");
-					tooltipEl.className = "tooltips";
-					hitRollDiv.appendChild(tooltipEl);
-				}
-				tooltipEl.textContent = hitTooltips;
-			}
-		}
+		syncTooltip(html, hitTooltips);
 
 		const dmgInput = html.querySelector("input[name=\"damageRoll.formula\"]");
 		if (dmgInput && dmgFormula != null && config.damageRoll) {
@@ -638,4 +635,28 @@ export function setupRollConfigPatches() {
 		const footer = html.querySelector("footer");
 		if (footer) footer.before(promptContainer);
 	});
+
+	// Dialog-less rolls (skipPrompt: shift/alt/ctrl-clicked checks,
+	// RequestCheckSD, LevelUpSD) never fire renderRollDialogSD, so the dialog
+	// hook above cannot apply talent advantage there — the retired generator
+	// wrapper used to. Patch shadowdark.dice.rollFromConfig (the single roll
+	// entry point, a stable global — no lifecycle problem) to apply advantage
+	// only to configs that never went through the dialog, mirroring the old
+	// wrapper's generation-time behaviour. The dialog hook flags its configs
+	// (`_sdxDialogRendered`) so the patch never double-applies or overrides a
+	// user's radio choice.
+	const dice = globalThis.shadowdark?.dice;
+	if (dice?.rollFromConfig && !dice.__sdxRollFromConfigPatched) {
+		const originalRollFromConfig = dice.rollFromConfig;
+		dice.rollFromConfig = async function(config, ...args) {
+			if (config && !config._sdxDialogRendered && (config.actorUuid || config.actorId)) {
+				const rollActor = config.actorUuid
+					? await fromUuid(config.actorUuid)
+					: game.actors.get(config.actorId);
+				if (rollActor) await applyTalentAdvantage(config, rollActor);
+			}
+			return originalRollFromConfig.call(this, config, ...args);
+		};
+		dice.__sdxRollFromConfigPatched = true;
+	}
 }
