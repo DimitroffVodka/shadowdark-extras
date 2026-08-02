@@ -79,39 +79,6 @@ you click and closes on its own. The sheet has nothing to refresh.
 
 ---
 
-## 9. Ammunition hit and damage bonuses never reach Shadowdark 4.x attack rolls
-
-**Found:** static analysis during the combat fixes, then confirmed live during
-the 6.10.52 archive smoke. **Status:** confirmed, unfixed. **Pre-existing** —
-the Phase 3 move carried this implementation unchanged.
-
-The ranged-attack wrapper selects and consumes ammunition correctly, but tries
-to inject `ammoHitBonus` and `ammoDamageBonus` by temporarily replacing
-`item.rollItem` (`scripts/combat/roll-patches.mjs:178-230`). Shadowdark 4.0.6's
-Player attack path never calls that method: it creates a roll configuration,
-opens the roll dialog, and finishes through `rollFromConfig`.
-
-Measured against the installed 6.10.52 candidate archive in a disposable world,
-Foundry 14.365 / Shadowdark 4.0.6:
-
-| | |
-| --- | --- |
-| ammunition | `Phase 4 Silver Arrows`, `ammoHitBonus: +2`, `ammoDamageBonus: +3` |
-| selector | listed and selected the configured ammunition |
-| quantity | **2 → 1** after one Longbow attack |
-| attack formula | **`1d20 + 2`**, with no additional `+2` |
-| damage formula | **`1d8`**, with no additional `+3` |
-| chat card | named `Phase 4 Silver Arrows (1/20)` |
-
-So the sheet controls, selector, consumption, and chat annotation all work;
-only the advertised bonuses are absent. This is the live confirmation that the
-local architecture notes previously lacked.
-
-**Fix direction:** carry both values through Shadowdark's roll configuration,
-as the repaired weapon hit-bonus path already does. That is a combat behaviour
-change and is deliberately outside the verification-only Phase 4 release.
-
----
 
 ## 12. The NPC item-chat icon is dead: `item.displayCard` does not exist in SD 4.x
 
@@ -362,6 +329,7 @@ Kept briefly so the same findings are not re-reported.
 | 5 | The wand-charges UI never rendered — anchored to `select[name="system.range"]`, which SD 4.x does not emit | #16 (`64e7b78`) |
 | 6 | The weapon hit-bonus chat display was dead — jQuery `html.find` against a v14 `HTMLLIElement`, failing silently because the caller was async and unawaited | #16 (`111080a`) |
 | 8 | The roll-config generator wrapper died on every actor update (marker on the Document, wrapped generators on the rebuilt `actor.system`), silently killing SDX talent advantage; the wrapper, marker, `createActor` hook, and `_sdxSystem*` baseline fields were retired and the dialog hook now owns advantage for all roll types | issue #52, Phase 5.2.1 |
+| 9 | Ammunition hit/damage bonuses never reached SD 4.x attack rolls — the wrapper monkeypatched `item.rollItem`/`availableAmmunition`, which the 4.x flow never calls; the bonuses now ride the roll config (`applyAmmoBonuses` in the rollFromConfig patch, the seam that sees the final `selectedAmmunition`) | issue #53, Phase 5.2.3 |
 | 15 | ToM's default scene background pointed at `assets/default-scene.jpg`, which was never shipped (404 from both model entry points); the promised asset now ships and both `TomSceneModel` implementations were deduplicated onto one shared default | issue #57, Phase 5.2.2 |
 
 Row 7 (condition hooks) is still open — issue #56.

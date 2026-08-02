@@ -178,68 +178,14 @@ export function setupRollAttackPatches() {
 
 					if (ammoItem) {
 						options._sdxAmmoSelected = true;
-						const originalAvailableAmmunition = item.availableAmmunition;
-						item.availableAmmunition = function() {
-							return [ammoItem];
-						};
-
-						try {
-							// Temporarily monkeypatch item.rollItem to inject bonuses.
-							// Signature verified compatible with Shadowdark 4.0.x:
-							// async rollItem(parts, data, options={}) — see
-							// systems/shadowdark/src/documents/ItemSD.mjs:214.
-							const originalRollItem = item.rollItem;
-							item.rollItem = function(parts, data, options) {
-								if (!data._sdxAmmoBonusesApplied) {
-									const ammoHitBonus = String(ammoItem.getFlag(MODULE_ID, "ammoHitBonus") || "").trim();
-									const ammoDamageBonus = String(ammoItem.getFlag(MODULE_ID, "ammoDamageBonus") || "").trim();
-									const damageMultiplier = Math.max(
-										parseInt(data.item?.system?.bonuses?.damageMultiplier || 0, 10),
-										parseInt(data.actor?.system?.bonuses?.damageMultiplier || 0, 10),
-										1
-									);
-
-									if (ammoHitBonus) {
-										let h = ammoHitBonus;
-										if (h.startsWith("+")) h = h.substring(1).trim();
-										if (h) {
-											if (h.toLowerCase().startsWith("d")) h = "1" + h;
-											if (!parts.includes("@ammoHitBonus")) {
-												parts.push("@ammoHitBonus");
-												data.ammoHitBonus = h;
-											}
-										}
-									}
-
-									if (ammoDamageBonus) {
-										let d = ammoDamageBonus;
-										if (d.startsWith("+")) d = d.substring(1).trim();
-										if (d) {
-											if (d.toLowerCase().startsWith("d")) d = "1" + d;
-											let bonusValue = d;
-											if (!d.toLowerCase().includes("d")) {
-												bonusValue = parseInt(d, 10) * damageMultiplier;
-											}
-											else if (damageMultiplier > 1) {
-												bonusValue = `(${d}) * ${damageMultiplier}`;
-											}
-											if (!data.damageParts.includes("@ammoDamageBonus")) {
-												data.damageParts.push("@ammoDamageBonus");
-												data.ammoDamageBonus = bonusValue;
-											}
-										}
-									}
-									data._sdxAmmoBonusesApplied = true;
-								}
-								return originalRollItem.call(this, parts, data, options);
-							};
-
-							return await originalRollAttack.call(this, forwardId, options);
-						}
-						finally {
-							item.availableAmmunition = originalAvailableAmmunition;
-							if (typeof originalRollItem === "function") item.rollItem = originalRollItem;
-						}
+						// The 4.x attack flow selects and consumes ammunition via the
+						// roll dialog (`config.attack.selectedAmmunition`) and never
+						// calls `item.rollItem`, so the old monkeypatches (rollItem /
+						// availableAmmunition) were dead. The SDX ammo bonuses now
+						// ride the roll config: applyAmmoBonuses runs in the
+						// rollFromConfig patch, which sees the final selection
+						// (issue #53).
+						return await originalRollAttack.call(this, forwardId, options);
 					}
 					else {
 						return ui.notifications.warn(game.i18n.localize("SHADOWDARK.item.errors.no_available_ammunition"));
@@ -352,6 +298,92 @@ async function applyTalentAdvantage(config, rollActor) {
 		return { tooltip: "SDX Talent Disadvantage", weapon };
 	}
 	return { tooltip: "", weapon };
+}
+
+/**
+ * Carry the selected ammunition's SDX hit/damage bonuses into the roll
+ * config (issue #53). Shadowdark 4.x picks the ammo inside the roll dialog —
+ * `config.attack.selectedAmmunition` is only final after submit — and rolls
+ * through `rollFromConfig`, so this runs in the rollFromConfig patch, the
+ * single seam that sees the final choice for both dialog and skipPrompt
+ * rolls. (The old item.rollItem / availableAmmunition monkeypatches were
+ * dead: the 4.x attack flow never calls them.)
+ *
+ * The damage multiplier semantics are carried over from the retired 3.x
+ * path: plain numbers scale by the higher of item/actor `damageMultiplier`;
+ * dice expressions become `(XdY) * N`.
+ */
+async function applyAmmoBonuses(config) {
+	// Rerolls (ChatMessageSD -> rerollFromMessage -> rollFromConfig) reuse the
+	// config stored on the chat message, which already carries the baked
+	// bonuses; without this marker every reroll would append them again
+	// (compounding). Underscore keys survive the message round trip.
+	if (config._sdxAmmoApplied) return;
+
+	const ammo = config.attack?.selectedAmmunition
+		? await fromUuid(config.attack.selectedAmmunition)
+		: null;
+	if (!ammo) return;
+
+	const normalize = raw => {
+		let v = String(raw || "").trim();
+		if (!v) return "";
+		if (v.startsWith("+")) v = v.substring(1).trim();
+		if (!v) return "";
+		if (v.toLowerCase().startsWith("d")) v = "1" + v;
+		return v;
+	};
+	const hit = normalize(ammo.getFlag(MODULE_ID, "ammoHitBonus"));
+	const rawDamage = normalize(ammo.getFlag(MODULE_ID, "ammoDamageBonus"));
+	if (!hit && !rawDamage) return;
+
+	config._sdxAmmoApplied = true;
+
+	let damage = "";
+	if (rawDamage) {
+		const weapon = config.itemUuid ? await fromUuid(config.itemUuid) : null;
+		const rollActor = config.actorUuid ? await fromUuid(config.actorUuid) : null;
+		const damageMultiplier = Math.max(
+			parseInt(weapon?.system?.bonuses?.damageMultiplier || 0, 10),
+			parseInt(rollActor?.system?.bonuses?.damageMultiplier || 0, 10),
+			1
+		);
+		if (!rawDamage.toLowerCase().includes("d")) {
+			damage = String(parseInt(rawDamage, 10) * damageMultiplier);
+		}
+		else if (damageMultiplier > 1) {
+			damage = `(${rawDamage}) * ${damageMultiplier}`;
+		}
+		else {
+			damage = rawDamage;
+		}
+	}
+
+	if (hit) {
+		const formatted = shadowdark.dice.formatBonus(hit);
+		config.mainRoll.bonus   = (config.mainRoll.bonus || "") + formatted;
+		config.mainRoll.formula = (config.mainRoll.formula || "") + formatted;
+		config.mainRoll.tooltips = (config.mainRoll.tooltips || "") + ", Ammunition";
+		// Show the ammo contribution on the chat card's hit-bonus breakdown
+		// when one already exists (the dialog hook built it from the
+		// promptable/weapon bonuses).
+		if (config._sdxHitBonusInfo?.parts) {
+			config._sdxHitBonusInfo.parts.push({ label: "Ammunition", formula: hit });
+			config._sdxHitBonusInfo.formula = config._sdxHitBonusInfo.parts
+				.map(p => p.formula)
+				.join(" + ");
+			const asNumber = f => Number(String(f).trim().replace(/^\+/, ""));
+			config._sdxHitBonusInfo.result = config._sdxHitBonusInfo.parts.every(
+				p => Number.isFinite(asNumber(p.formula))
+			)
+				? config._sdxHitBonusInfo.parts.reduce((n, p) => n + asNumber(p.formula), 0)
+				: null;
+		}
+	}
+	if (damage && config.damageRoll?.formula != null) {
+		config.damageRoll.formula   += shadowdark.dice.formatBonus(damage);
+		config.damageRoll.tooltips  = (config.damageRoll.tooltips || "") + `, Ammunition (${damage})`;
+	}
 }
 
 /**
@@ -649,11 +681,23 @@ export function setupRollConfigPatches() {
 	if (dice?.rollFromConfig && !dice.__sdxRollFromConfigPatched) {
 		const originalRollFromConfig = dice.rollFromConfig;
 		dice.rollFromConfig = async function(config, ...args) {
-			if (config && !config._sdxDialogRendered && (config.actorUuid || config.actorId)) {
-				const rollActor = config.actorUuid
-					? await fromUuid(config.actorUuid)
-					: game.actors.get(config.actorId);
-				if (rollActor) await applyTalentAdvantage(config, rollActor);
+			if (config) {
+				// Dialog-less rolls never fired renderRollDialogSD, so the
+				// dialog hook could not apply talent advantage there.
+				if (!config._sdxDialogRendered && (config.actorUuid || config.actorId)) {
+					const rollActor = config.actorUuid
+						? await fromUuid(config.actorUuid)
+						: game.actors.get(config.actorId);
+					if (rollActor) await applyTalentAdvantage(config, rollActor);
+				}
+				// Ammunition bonuses (issue #53): the selected ammo is final
+				// only after the dialog submits, so this is the single seam
+				// that sees it for both dialog and skipPrompt rolls. Applies
+				// for dialog configs too (the advantage guard above is about
+				// the dialog's radio ownership, not the ammo).
+				if (config.type === "attack" && config.attack?.selectedAmmunition) {
+					await applyAmmoBonuses(config);
+				}
 			}
 			return originalRollFromConfig.call(this, config, ...args);
 		};
