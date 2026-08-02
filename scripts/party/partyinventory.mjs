@@ -151,10 +151,16 @@ export const PartyInventory = {
 	async _onSyncLights(event) {
 		event.preventDefault();
 		ui.notifications.info("Syncing party token lights...");
-		// Dynamic import breaks the mixin<->class cycle (Phase 5.1 split):
-		// syncPartyTokenLight lives in PartySheetSD, which imports this mixin.
-		const { syncPartyTokenLight } = await import("./PartySheetSD.mjs");
-		await syncPartyTokenLight(this.actor);
+		try {
+			// Dynamic import breaks the mixin<->class cycle (Phase 5.1 split):
+			// syncPartyTokenLight lives in PartySheetSD, which imports this mixin.
+			const { syncPartyTokenLight } = await import("./PartySheetSD.mjs");
+			await syncPartyTokenLight(this.actor);
+		}
+		catch (error) {
+			console.error("Shadowdark Extras | Party light sync failed:", error);
+			ui.notifications.error("Party light sync failed.");
+		}
 	},
 
 	async _onDivideCoins(event) {
