@@ -8,38 +8,15 @@
 const MODULE_ID = "shadowdark-extras";
 
 /**
- * Check if an item is unidentified.
- * Uses the SD 4.x native identification schema when present (which is what the
- * rest of the module masks off), falling back to the legacy SDX flag on
- * pre-4.x worlds.
- * @param {Item} item - The item to check
- * @returns {boolean} - True if the item is unidentified
+ * Canonical identification helpers live in shared/sd4Compat.mjs (Phase 5.2.9,
+ * issue #50 — the divergence between this module's copies and sd4Compat's was
+ * resolved in favour of the richer 3.x-compatible behaviour). Re-exported here
+ * because `module.api` publishes them from this module; every call site keeps
+ * crossing the same seam. The local import also binds them for this module's
+ * own call sites (a bare `export ... from` creates no local binding).
  */
-export function isUnidentified(item) {
-	if (!item) return false;
-	if (item.system?.identification !== undefined) {
-		return !item.system.isIdentified;
-	}
-	return Boolean(item?.getFlag?.(MODULE_ID, "unidentified"));
-}
-
-/**
- * Get the masked name for an unidentified item.
- * In SD 4.x the item's own name is already the masked name while unidentified;
- * on legacy worlds the masked name comes from the SDX flag.
- * @param {Item} item - The item to get masked name for
- * @returns {string} - The masked name to display
- */
-export function getUnidentifiedName(item) {
-	if (item?.system?.identification !== undefined) {
-		return item?.name ?? "";
-	}
-	const customName = item?.getFlag?.(MODULE_ID, "unidentifiedName");
-	if (customName && customName.trim()) {
-		return customName.trim();
-	}
-	return game.i18n.localize("SHADOWDARK_EXTRAS.item.unidentified.label");
-}
+import { isUnidentified, getUnidentifiedName } from "../shared/sd4Compat.mjs";
+export { isUnidentified, getUnidentifiedName };
 
 /**
  * Show the Identify spell selection dialog

@@ -227,20 +227,17 @@ export function getActorStats(actor) {
 }
 
 /**
- * Item identification, moved verbatim out of the composition root.
+ * Item identification, canonical copies.
  *
- * These are the root's private thin wrappers over SD 4.x native identification,
- * with a legacy SDX-flag fallback for unmigrated SD 3.x worlds. They belong in
- * this file: that is precisely the SD-4.x-vs-3.x compatibility this module
- * exists for.
- *
- * ⚠️ `getUnidentifiedName` here is NOT the same as the one in
- * `macros/identify.mjs`, which `module.api` publishes. This copy returns
- * `item?.name ?? ""` unconditionally; that one falls back to the legacy
- * `unidentifiedName` flag when `system.identification` is absent, so the two
- * disagree on SD 3.x worlds. That divergence is KNOWN-ISSUES item 2 and is
- * deliberately NOT resolved by this move — the behaviour is carried across
- * byte-for-byte so the decision stays open and separate.
+ * Phase 5.2.9 (issue #50) resolved the divergence: these are now the ONE
+ * implementation of `isUnidentified` / `getUnidentifiedName`, and
+ * `macros/identify.mjs` (the `module.api` publisher) re-exports them from
+ * here. The winner is the richer copy — SD 4.x native identification when
+ * the schema is present, else the legacy SDX `unidentified` /
+ * `unidentifiedName` flags on unmigrated SD 3.x worlds, else the i18n
+ * label. That preserves the declared 3.x behaviour (the masked name lived
+ * in the flag), which the old sd4Compat copy broke by returning
+ * `item.name` unconditionally — revealing the real name on 3.x worlds.
  */
 /**
  * Returns true when the item is unidentified via SD 4.x native system.
@@ -259,15 +256,34 @@ export function isUnidentified(item) {
 /**
  * Returns the display name for an unidentified item.
  * In SD 4.x, item.name is already the unidentified name when unidentified.
+ * On legacy worlds the masked name lives in the SDX `unidentifiedName`
+ * flag, falling back to the i18n label when absent.
  */
 export function getUnidentifiedName(item) {
-	return item?.name ?? "";
+	if (item?.system?.identification !== undefined) {
+		return item?.name ?? "";
+	}
+	const customName = item?.getFlag?.(MODULE_ID, "unidentifiedName");
+	if (customName && customName.trim()) {
+		return customName.trim();
+	}
+	return game.i18n.localize("SHADOWDARK_EXTRAS.item.unidentified.label");
 }
 
 /**
  * Returns the display name from raw item data.
- * In SD 4.x, itemData.name is the display name (unidentified or real).
+ * Mirrors the canonical doc-shaped logic: 4.x data carries the masked name
+ * in `name` when the identification schema is present; legacy data keeps it
+ * in `flags.<MODULE_ID>.unidentifiedName`, falling back to the i18n label.
+ * (Phase 5.2.9, issue #50 — the data path had the same real-name reveal.)
  */
 export function getUnidentifiedNameFromData(itemData) {
-	return itemData?.name ?? "";
+	if (itemData?.system?.identification !== undefined) {
+		return itemData?.name ?? "";
+	}
+	const customName = itemData?.flags?.[MODULE_ID]?.unidentifiedName;
+	if (customName && customName.trim()) {
+		return customName.trim();
+	}
+	return game.i18n.localize("SHADOWDARK_EXTRAS.item.unidentified.label");
 }
