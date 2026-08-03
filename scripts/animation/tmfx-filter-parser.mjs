@@ -136,13 +136,16 @@ class LiteralParser {
 		}
 		if (!token) this.fail("invalid number");
 		this.index += token.length;
-		// Number("-0xff") is NaN in V8, so decode signed hex explicitly.
-		const negative = token.startsWith("-");
-		const value = negative
-			? -Number.parseInt(token.slice(1), 16)
-			: token.startsWith("0x") || token.startsWith("0X")
-				? Number.parseInt(token, 16)
-				: Number(token);
+		// Only genuine 0xRRGGBB literals are base-16; signed hex is decoded
+		// explicitly because Number("-0xff") is NaN in V8. Every other signed
+		// token (decimal, integer, exponent) must stay decimal — a c3 regression
+		// routed every negative token through parseInt(..., 16), silently
+		// corrupting shipped TokenMagic 0.8.4 speeds (speed:-0.0016 -> -0).
+		const value = /^-?0[xX]/.test(token)
+			? token.startsWith("-")
+				? -Number.parseInt(token.slice(1), 16)
+				: Number.parseInt(token, 16)
+			: Number(token);
 		if (!Number.isFinite(value)) this.fail("number is not finite");
 		return value;
 	}

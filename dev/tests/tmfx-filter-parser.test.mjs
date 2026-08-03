@@ -112,6 +112,38 @@ test("rejects malformed hexadecimal tokens", () => {
 });
 
 // ---------------------------------------------------------------------------
+// c4 fixes: signed decimals/integers/exponents must never decode as base-16.
+// The c3 signed-hex fix routed EVERY negative token through parseInt(..., 16):
+// -0.0016 -> -0, -12 -> -18, -1.5 -> -1, -2e3 -> -739, -100 -> -256. Shipped
+// TokenMagic 0.8.4 presets (speed: -0.0016 etc.) parsed "successfully" with
+// corrupted values — worse than a no-op, so exact values are asserted here.
+// ---------------------------------------------------------------------------
+test("parses signed decimals, integers, and exponents as decimal values", () => {
+	assert.equal(parseTMFXFilterParams("([{speed: -0.0016}])")[0].speed, -0.0016);
+	assert.equal(parseTMFXFilterParams("([{speed: -0.0024}])")[0].speed, -0.0024);
+	assert.equal(parseTMFXFilterParams("([{rotation: -12}])")[0].rotation, -12);
+	assert.equal(parseTMFXFilterParams("([{scale: -1.5}])")[0].scale, -1.5);
+	assert.equal(parseTMFXFilterParams("([{v: -2e3}])")[0].v, -2e3);
+	assert.equal(parseTMFXFilterParams("([{v: -2.5e-3}])")[0].v, -2.5e-3);
+	assert.equal(parseTMFXFilterParams("([{v: -100}])")[0].v, -100);
+	assert.equal(parseTMFXFilterParams("([{v: -0}])")[0].v, -0);
+	assert.ok(Object.is(parseTMFXFilterParams("([{v: -0}])")[0].v, -0), "-0 must keep its sign");
+});
+
+test("signed hexadecimal literals still decode in base-16", () => {
+	assert.equal(parseTMFXFilterParams("([{c: -0xff}])")[0].c, -0xff);
+	assert.equal(parseTMFXFilterParams("([{c: -0XABCDEF}])")[0].c, -0xabcdef);
+	assert.equal(parseTMFXFilterParams("([{c: 0xff0000}])")[0].c, 0xff0000);
+	assert.equal(parseTMFXFilterParams("([{c: -0x0}])")[0].c, -0);
+	assert.ok(Object.is(parseTMFXFilterParams("([{c: -0x0}])")[0].c, -0), "-0x0 must decode to -0");
+});
+
+test("signed non-finite exponents are still rejected", () => {
+	assert.throws(() => parseTMFXFilterParams("([{v: -1e999}])"), /number is not finite/);
+	assert.throws(() => parseTMFXFilterParams("([{v: -0.5e999}])"), /number is not finite/);
+});
+
+// ---------------------------------------------------------------------------
 // c3 fixes: trailing commas in arrays and objects (82+ in shipped presets)
 // ---------------------------------------------------------------------------
 test("accepts trailing commas in arrays and objects", () => {
@@ -186,7 +218,7 @@ test("moderately nested object literals still parse within the depth budget", ()
 // ---------------------------------------------------------------------------
 // REAL-CORPUS acceptance (shipped tokenmagic/fx/presets/defaultpresets.js)
 // ---------------------------------------------------------------------------
-test("shipped TokenMagic 0.8.4 params corpus parses (79 hex, 93 preset entries)", { skip: CORPUS_CANDIDATES ? false : "TokenMagic corpus not installed" }, () => {
+test("shipped TokenMagic 0.8.4 params corpus parses (79 hex, 93 preset entries)", { skip: CORPUS_CANDIDATES ? false : "TokenMagic corpus not installed" }, async () => {
 	const source = readFileSync(CORPUS_CANDIDATES, "utf8");
 	const arrays = extractParamsArrays(source);
 	assert.equal(arrays.length, 76, "shipped defaultpresets.js contains 76 params arrays");
@@ -197,21 +229,42 @@ test("shipped TokenMagic 0.8.4 params corpus parses (79 hex, 93 preset entries)"
 	const filterEntries = source.match(/filterType:/g) ?? [];
 	assert.equal(filterEntries.length, 93, "shipped corpus has 93 preset entries");
 
+	// Ground truth: evaluate the pure-data corpus module with Node's own engine
+	// (a data: URL forces ESM regardless of the Foundry data directory's package
+	// type), so every expected value below is the engine's own interpretation.
+	const { allPresets } = await import(
+		`data:text/javascript;base64,${Buffer.from(source, "utf8").toString("base64")}`
+	);
+	assert.equal(allPresets.length, 76, "every params array maps 1:1 to a shipped preset");
+
+	// c4: the shipped corpus carries seven negative-speed presets (defaultpresets.js
+	// lines 503, 1633, 1737, 1819, 2094, 2293, 2409); the c3 parser corrupted each
+	// to 0 while "succeeding", so the count is pinned to prove they are exercised.
+	const negativeSpeeds = source.match(/speed:\s*-/g) ?? [];
+	assert.equal(negativeSpeeds.length, 7, "shipped corpus has 7 negative-speed presets");
+
 	let parsedArrays = 0;
 	let rejectedArrays = 0;
 	let parsedEntries = 0;
 	let rejectedEntries = 0;
-	for (const array of arrays) {
+	for (let index = 0; index < arrays.length; index += 1) {
+		const literal = arrays[index];
+		const groundTruth = allPresets[index].params;
 		try {
-			const value = parseTMFXFilterParams(array);
+			const value = parseTMFXFilterParams(literal);
 			parsedArrays += 1;
 			parsedEntries += value.length;
+			// VALUE-LEVEL equality for EVERY parsed entry of the shipped-preset
+			// arrays — speed:-0.0016 must equal -0.0016 (never -0), hex colors must
+			// equal their base-16 values, and so on for every key of every entry,
+			// not just counts or arrays[0].
+			assert.deepEqual(value, groundTruth, `params array ${index} value mismatch`);
 		} catch (error) {
 			rejectedArrays += 1;
-			rejectedEntries += (array.match(/filterType:/g) ?? []).length;
+			rejectedEntries += (literal.match(/filterType:/g) ?? []).length;
 			// Exactly one shipped array is expression-bearing (-0.6 * Math.PI);
 			// a safe parser must reject it rather than evaluate it.
-			assert.match(array, /Math\.PI/, `unexpectedly rejected array: ${error.message}`);
+			assert.match(literal, /Math\.PI/, `unexpectedly rejected array: ${error.message}`);
 		}
 	}
 	assert.equal(parsedArrays, 75, "75 of 76 shipped params arrays are pure literals and must parse");
@@ -219,11 +272,42 @@ test("shipped TokenMagic 0.8.4 params corpus parses (79 hex, 93 preset entries)"
 	assert.equal(parsedEntries + rejectedEntries, 93, "parsed + rejected filter entries match the 93 shipped preset entries");
 	assert.equal(rejectedEntries, 1, "the rejected expression array holds the single unparseable preset entry");
 
-	// Spot-check exact numeric conversion of hex literals seen in the corpus.
-	const sample = parseTMFXFilterParams(arrays[0]);
-	assert.equal(sample[0].filterType, "bevel");
-	assert.equal(sample[0].lightColor, 0xff0000);
-	assert.equal(sample[0].shadowColor, 0x00ff00);
+	// c4 acceptance proof: every shipped negative-speed preset parses with a
+	// strictly negative speed (the per-entry deepEqual above already proves the
+	// exact values; this documents the seven locations the c3 regression hit).
+	const collectSpeeds = (node) => {
+		const out = [];
+		const walk = (value) => {
+			if (Array.isArray(value)) {
+				for (const item of value) walk(item);
+				return;
+			}
+			if (value && typeof value === "object") {
+				for (const [key, child] of Object.entries(value)) {
+					if (key === "speed") out.push(child);
+					else walk(child);
+				}
+			}
+		};
+		walk(node);
+		return out;
+	};
+	const negativeSpeedArrays = arrays.filter((literal) => /speed:\s*-/.test(literal));
+	assert.equal(negativeSpeedArrays.length, 7, "exactly the seven negative-speed presets");
+	for (const literal of negativeSpeedArrays) {
+		const speeds = collectSpeeds(parseTMFXFilterParams(literal));
+		assert.ok(speeds.length >= 1, "negative-speed preset must carry a speed entry");
+		for (const speed of speeds) {
+			assert.equal(typeof speed, "number");
+		}
+		// The negative literal must survive as a strictly negative number
+		// (the per-entry deepEqual already proves the exact value; this makes
+		// the c3 regression class — -0.0016 collapsing to -0 — explicit).
+		assert.ok(
+			speeds.some((speed) => speed < 0),
+			`shipped negative speed must parse negative, got ${JSON.stringify(speeds)}`,
+		);
+	}
 });
 
 test("corpus identity is the installed Token Magic FX 0.8.4 file", { skip: CORPUS_CANDIDATES ? false : "TokenMagic corpus not installed" }, () => {
