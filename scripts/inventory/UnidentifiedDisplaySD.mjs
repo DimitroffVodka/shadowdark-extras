@@ -132,9 +132,9 @@ async function _patchCompendiumDirectory(app, html) {
 }
 
 // Shadowdark's PhysicalItemSD schema supplies both identification and
-// magicItem to these six item types. Potion is intentionally handled by the
+// magicItem to these seven item types. Potion is intentionally handled by the
 // SDX AppV2 PotionSheetSD below rather than by the generic AppV1 sheet.
-const IDENTIFIABLE_MAGIC_ITEM_TYPES = ["Armor", "Basic", "Potion", "Scroll", "Wand", "Weapon"];
+const IDENTIFIABLE_MAGIC_ITEM_TYPES = ["Armor", "Basic", "Gem", "Potion", "Scroll", "Wand", "Weapon"];
 const GENERIC_UNIDENTIFIED_ITEM_TYPES = IDENTIFIABLE_MAGIC_ITEM_TYPES.filter(type => type !== "Potion");
 let sheetContextInitRegistered = false;
 

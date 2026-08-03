@@ -92,16 +92,16 @@ test("unidentified magic privacy patches the Shadowdark ItemSheetSD chain", asyn
 		assert.deepEqual(registration.options.types, [
 			"Armor",
 			"Basic",
+			"Gem",
 			"Scroll",
 			"Wand",
 			"Weapon",
 		]);
 		assert.deepEqual(
 			[...registration.options.types, "Potion"].sort(),
-			["Armor", "Basic", "Potion", "Scroll", "Wand", "Weapon"].sort(),
+			["Armor", "Basic", "Gem", "Potion", "Scroll", "Wand", "Weapon"].sort(),
 			"PhysicalItemSD inventory covers every type with identification and magicItem",
 		);
-		assert.equal(registration.options.types.includes("Gem"), false, "Gem is not a PhysicalItemSD type");
 		assert.equal(registration.options.makeDefault, true);
 		assert.equal(
 			registrations.find(entry => entry.options.types?.includes("Potion") && entry.default)?.sheetClass.name,
