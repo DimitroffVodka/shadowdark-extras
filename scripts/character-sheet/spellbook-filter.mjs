@@ -104,169 +104,134 @@ function filterSpellsByCompendium(html, compendiumId) {
 /**
  * Filtering the same spell-book dialog by ALIGNMENT.
  *
- * Extracted from the composition root in Phase 3, where it was 145 lines
- * living inside a `ready` hook whose other statements were ordered
- * composition — the block scored 14% dispatch, and this section was all of
- * the remainder.
- *
- * It joins the compendium filter above per handoff rule 3: same dialog, same
- * feature, and a reader looking for "how is the spell book filtered" should
- * find both answers in one file rather than one here and one in the root.
- *
- * WHY A WeakMap AND NOT A SUBCLASS. `shadowdark.apps.SpellBookSD` cannot be
- * replaced — the property is read-only — so the alignment is stashed against
- * the app instance on render and read back inside the patched `getData`. That
- * is the original design, carried verbatim.
- *
- * The `renderSpellBookSD` registration installs when
- * `initAlignmentSpellFiltering()` is CALLED, and the root calls it at the
- * point the section occupied, so hook order is unchanged.
+ * Shadowdark 4.x keeps `openSpellBook` on the Player data model, while the
+ * sheet calls `actor.system.openSpellBook()`. Stable global symbols make both
+ * prototype patches safe across repeated init calls and cache-busted imports.
  */
+const PLAYER_PATCH = Symbol.for("shadowdark-extras.alignment-spellbook.player");
+const SPELLBOOK_PATCH = Symbol.for("shadowdark-extras.alignment-spellbook.get-data");
+
 export function initAlignmentSpellFiltering() {
-	// ============================================
-	// ALIGNMENT-BASED SPELL FILTERING
-	// ============================================
+	const playerPrototype = globalThis.CONFIG?.Actor?.dataModels?.Player?.prototype;
+	const spellbookPrototype = globalThis.shadowdark?.apps?.SpellBookSD?.prototype;
+	const missing = [];
+	if (typeof playerPrototype?.openSpellBook !== "function") {
+		missing.push("CONFIG.Actor.dataModels.Player.prototype.openSpellBook");
+	}
+	if (typeof spellbookPrototype?.getData !== "function") {
+		missing.push("shadowdark.apps.SpellBookSD.prototype.getData");
+	}
+	if (typeof globalThis.shadowdark?.utils?.resolveSpellClasses !== "function") {
+		missing.push("shadowdark.utils.resolveSpellClasses");
+	}
+	if (typeof globalThis.Hooks?.on !== "function") {
+		missing.push("Hooks.on");
+	}
+	if (missing.length > 0) {
+		console.warn(`${MODULE_ID} | Alignment spell filtering unavailable; missing ${missing.join(", ")}`);
+		return;
+	}
 
-	// We can't replace the class due to read-only property, so we'll use a different approach:
-	// Store alignment in a WeakMap and use hooks to set it
-	const spellbookAlignments = new WeakMap();
+	const existingPlayerPatch = playerPrototype[PLAYER_PATCH];
+	const existingSpellbookPatch = spellbookPrototype[SPELLBOOK_PATCH];
+	if (existingPlayerPatch && existingSpellbookPatch) return;
+	if (existingPlayerPatch || existingSpellbookPatch) {
+		console.warn(`${MODULE_ID} | Alignment spell filtering has an incomplete prior patch; refusing to mutate`);
+		return;
+	}
 
-	// Hook to capture when SpellBookSD is rendered and store alignment
-	Hooks.on("renderSpellBookSD", (app, html, data) => {
-		// The alignment should already be stored via our custom openSpellBook
-		const alignment = spellbookAlignments.get(app);
-		if (alignment) {
-			app.alignment = alignment;
+	const spellbookState = {
+		alignments: new WeakMap(),
+		originalGetData: spellbookPrototype.getData,
+	};
+	const originalGetData = spellbookState.originalGetData;
+	spellbookPrototype.getData = async function(...args) {
+		const data = await originalGetData.apply(this, args);
+		if (!data?.spellList || typeof data.spellList !== "object") return data;
+
+		const spellList = { ...data.spellList };
+		for (const [tier, entries] of Object.entries(data.spellList)) {
+			if (!Array.isArray(entries)) continue;
+
+			const visibleEntries = [];
+			for (const entry of entries) {
+				const fullSpell = await fromUuid(entry?.uuid);
+				const spell = fullSpell ?? entry;
+				const spellAlignment = spell?.flags?.[MODULE_ID]?.alignment;
+				if (!spellAlignment || spellAlignment === this.alignment) {
+					visibleEntries.push(entry);
+				}
+			}
+			spellList[tier] = visibleEntries;
+		}
+
+		return { ...data, spellList };
+	};
+	Object.defineProperty(spellbookPrototype, SPELLBOOK_PATCH, {
+		configurable: false,
+		enumerable: false,
+		value: spellbookState,
+		writable: false,
+	});
+
+	globalThis.Hooks.on("renderSpellBookSD", app => {
+		if (spellbookState.alignments.has(app)) {
+			app.alignment = spellbookState.alignments.get(app);
 		}
 	});
 
-	// Patch SpellBookSD.getData() to filter spells by alignment
-	const originalGetData = shadowdark.apps.SpellBookSD.prototype.getData;
-
-	shadowdark.apps.SpellBookSD.prototype.getData = async function() {
-		const data = await originalGetData.call(this);
-
-		//console.log(`${MODULE_ID} | SpellBook getData called`);
-		//console.log(`${MODULE_ID} | Actor alignment:`, this.alignment);
-		//console.log(`${MODULE_ID} | Has spellList:`, !!data.spellList);
-
-		// Filter spells by alignment if alignment is set
-		if (this.alignment && data.spellList) {
-			//console.log(`${MODULE_ID} | Filtering spells by alignment: ${this.alignment}`);
-
-			for (const tier in data.spellList) {
-				const originalCount = data.spellList[tier].length;
-				//console.log(`${MODULE_ID} | Tier ${tier} - Original spell count:`, originalCount);
-
-				// We need to load full spell documents to get flags
-				// Compendium index doesn't include flags
-				const spellsWithFlags = await Promise.all(
-					data.spellList[tier].map(async (spell) => {
-						// Load full document to get flags
-						const fullSpell = await fromUuid(spell.uuid);
-						return fullSpell || spell; // Fallback to original if load fails
-					})
-				);
-
-				// Log first spell to see structure
-				if (spellsWithFlags.length > 0) {
-					const sample = spellsWithFlags[0];
-					//console.log(`${MODULE_ID} | Sample spell from tier ${tier} (after loading):`, {
-					//	name: sample.name,
-					//	uuid: sample.uuid,
-					//	hasFlags: !!sample.flags,
-					//	flagKeys: sample.flags ? Object.keys(sample.flags) : 'no flags',
-					//	sdxFlags: sample.flags?.[MODULE_ID],
-					//	alignment: sample.flags?.[MODULE_ID]?.alignment
-					//});
-				}
-
-				// Filter spells based on alignment
-				data.spellList[tier] = spellsWithFlags.filter(spell => {
-					const spellAlignment = spell.flags?.[MODULE_ID]?.alignment;
-					const shouldShow = !spellAlignment || spellAlignment === this.alignment;
-
-					// Log filtering decisions for spells with alignment
-					if (spellAlignment) {
-						//console.log(`${MODULE_ID} | Spell "${spell.name}" has alignment "${spellAlignment}", actor is "${this.alignment}" - ${shouldShow ? 'SHOW' : 'HIDE'}`);
-					}
-
-					return shouldShow;
-				});
-
-				const filteredCount = data.spellList[tier].length;
-				//console.log(`${MODULE_ID} | Tier ${tier} - Filtered spell count:`, filteredCount, `(removed ${originalCount - filteredCount})`);
-			}
-		}
-		else {
-			//console.log(`${MODULE_ID} | No filtering applied - alignment: "${this.alignment}", has spellList: ${!!data.spellList}`);
-		}
-
-		return data;
-	};
-
-	// Patch ActorSD.openSpellBook() to pass alignment to SpellBookSD
-	const originalOpenSpellBook = CONFIG.Actor.documentClass.prototype.openSpellBook;
-
-	CONFIG.Actor.documentClass.prototype.openSpellBook = async function() {
-		const playerSpellcasterClasses = await this.getSpellcasterClasses();
-		const actorAlignment = this.system.alignment || "";
-
-
-		//console.log(`${MODULE_ID} | Opening spellbook for actor: ${this.name}`);
-		//console.log(`${MODULE_ID} | Actor alignment: "${actorAlignment}"`);
-		//console.log(`${MODULE_ID} | Spellcaster classes:`, playerSpellcasterClasses.map(c => c.name));
+	const playerState = { originalOpenSpellBook: playerPrototype.openSpellBook };
+	playerPrototype.openSpellBook = async function() {
+		const castingClasses = await globalThis.shadowdark.utils.resolveSpellClasses(
+			this.spellcasting.classes
+		);
 
 		const openChosenSpellbook = classUuid => {
-			//console.log(`${MODULE_ID} | Creating SpellBookSD with alignment: "${actorAlignment}"`);
-			const app = new shadowdark.apps.SpellBookSD(
+			const app = new globalThis.shadowdark.apps.SpellBookSD(
 				classUuid,
-				this.id
+				this.parent.id
 			);
-			// Store alignment directly on the app instance
+			const actorAlignment = this.alignment ?? this.parent?.system?.alignment ?? "";
 			app.alignment = actorAlignment;
-			// Also store in WeakMap as backup
-			spellbookAlignments.set(app, actorAlignment);
+			spellbookState.alignments.set(app, actorAlignment);
 			app.render(true);
 		};
 
-		if (playerSpellcasterClasses.length <= 0) {
+		if (castingClasses.length <= 0) {
 			return ui.notifications.error(
 				game.i18n.localize("SHADOWDARK.item.errors.no_spellcasting_classes"),
 				{ permanent: false }
 			);
 		}
-		else if (playerSpellcasterClasses.length === 1) {
-			return openChosenSpellbook(playerSpellcasterClasses[0].uuid);
+		else if (castingClasses.length === 1) {
+			return openChosenSpellbook(castingClasses[0].uuid);
 		}
 		else {
 			return foundry.applications.handlebars.renderTemplate(
 				"systems/shadowdark/templates/dialog/choose-spellbook.hbs",
-				{ classes: playerSpellcasterClasses }
+				{classes: castingClasses}
 			).then(html => {
-				const dialog = new foundry.applications.api.DialogV2({
-					window: { title: game.i18n.localize("SHADOWDARK.dialog.spellbook.open_which_class.title") },
+				const dialog = new Dialog({
+					title: game.i18n.localize("SHADOWDARK.dialog.spellbook.open_which_class.title"),
 					content: html,
-					buttons: [
-						{
-							action: "cancel",
-							icon: "fas fa-times",
-							label: game.i18n.localize("Cancel"),
-						},
-					],
-				});
-				dialog.render({ force: true }).then(() => {
-					dialog.element.querySelectorAll("[data-action='open-class-spellbook']").forEach(el => {
-						el.addEventListener("click", event => {
-							event.preventDefault();
-							openChosenSpellbook(event.currentTarget.dataset.uuid);
-							dialog.close();
-						});
-					});
-				});
+					buttons: {},
+					render: html => {
+						html.find("[data-action='open-class-spellbook']").click(
+							event => {
+								event.preventDefault();
+								openChosenSpellbook(event.currentTarget.dataset.uuid);
+								dialog.close();
+							}
+						);
+					},
+				}).render(true);
 			});
 		}
 	};
-
-	//console.log(`${MODULE_ID} | Alignment-based spell filtering initialized`);
+	Object.defineProperty(playerPrototype, PLAYER_PATCH, {
+		configurable: false,
+		enumerable: false,
+		value: playerState,
+		writable: false,
+	});
 }
