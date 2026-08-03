@@ -93,6 +93,12 @@ export const FEATURE_OWNERS = {
   combat: [
     "CombatSettingsSD.mjs",
     "WeaponBonusConfig.mjs",
+    "combat-settings-app.mjs",
+    "damage-card-builders.mjs",
+    "damage-card.mjs",
+    "damage-card-pipeline.mjs",
+    "damage-card-finalization.mjs",
+    "weapon-bonus-ui.mjs",
     "roll-patches.mjs",
     "hit-bonus.mjs",
     "FormationSpawnerSD.mjs",
@@ -119,6 +125,11 @@ export const FEATURE_OWNERS = {
     "source-requirements.mjs",
     "predefined-effects.mjs",
     "casting-blockers.mjs",
+    "aura-constants.mjs",
+    "aura-regions.mjs",
+    "duration-spell.mjs",
+    "focus-constants.mjs",
+    "focus-spell.mjs",
   ],
   animation: [
     "AnimationFxSD.mjs",
@@ -301,6 +312,7 @@ export const FEATURE_OWNERS = {
     // "Classify before Phase 2" row, left unassigned by oversight rather than
     // by any open question about where it belongs.
     "module-id.mjs",
+    "combat-socket.mjs",
     /**
      * Extracted from the composition root in Phase 3 (`851c3c1`).
      *
