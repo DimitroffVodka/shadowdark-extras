@@ -28,6 +28,7 @@ export const FEATURE_OWNERS = {
     "ItemPilesCompatSD.mjs",
     // Extracted from the composition root in Phase 3.
     "containers.mjs",
+    "container-slots.mjs",
     "default-move-drops.mjs",
     "gem-enhancements.mjs",
     "inventory-multi-select.mjs",

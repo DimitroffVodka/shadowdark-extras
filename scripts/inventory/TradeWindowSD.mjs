@@ -47,7 +47,6 @@ export async function ensureTradeJournal() {
 	let journal = game.journal.find(j => j.name === TRADE_JOURNAL_NAME);
 
 	if (!journal) {
-		console.log(`${MODULE_ID} | Creating trade sync journal...`);
 
 		// Create with default ownership for all players
 		journal = await JournalEntry.create({
@@ -60,7 +59,6 @@ export async function ensureTradeJournal() {
 			},
 		});
 
-		console.log(`${MODULE_ID} | Trade sync journal created:`, journal.id);
 	}
 	else {
 		// Ensure ownership is correct (in case it was changed)
@@ -557,9 +555,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 			if (coinsA.gp > 0 || coinsA.sp > 0 || coinsA.cp > 0) {
 				if (useItemPiles) {
 					const attributesA = this._buildCurrencyAttributes(coinsA);
-					console.log(`${MODULE_ID} | Transferring currencies from ${actorA.name} to ${actorB.name}:`, attributesA);
-					const result = await game.itempiles.API.transferAttributes(actorA, actorB, attributesA, { interactionId: false });
-					console.log(`${MODULE_ID} | Currency transfer A->B result:`, result);
+					await game.itempiles.API.transferAttributes(actorA, actorB, attributesA, { interactionId: false });
 				}
 				else {
 					await this._nativeTransferCoins(actorA, actorB, coinsA);
@@ -571,9 +567,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 			if (coinsB.gp > 0 || coinsB.sp > 0 || coinsB.cp > 0) {
 				if (useItemPiles) {
 					const attributesB = this._buildCurrencyAttributes(coinsB);
-					console.log(`${MODULE_ID} | Transferring currencies from ${actorB.name} to ${actorA.name}:`, attributesB);
-					const result = await game.itempiles.API.transferAttributes(actorB, actorA, attributesB, { interactionId: false });
-					console.log(`${MODULE_ID} | Currency transfer B->A result:`, result);
+					await game.itempiles.API.transferAttributes(actorB, actorA, attributesB, { interactionId: false });
 				}
 				else {
 					await this._nativeTransferCoins(actorB, actorA, coinsB);
@@ -818,7 +812,6 @@ export function initializeTradeSocket() {
 	// are registered in setupCombatSocket() in CombatSettingsSD.mjs during socketlib.ready hook
 	// This ensures they're available on all clients before any trade is initiated
 
-	console.log(`${MODULE_ID} | Trade system initialized`);
 }
 
 
@@ -881,7 +874,6 @@ export async function initiateTradeWithPlayer(localActor, remoteActor) {
 	// Send trade request prompt to the remote user via socketlib
 	// Use executeAsUser which waits for and returns the result from that specific user
 	try {
-		console.log(`${MODULE_ID} | Sending trade request to user ${remoteOwner.id}`);
 		const result = await socket.executeAsUser("showTradeRequestPrompt", remoteOwner.id, {
 			initiatorActorId: localActor.id,
 			targetActorId: remoteActor.id,
@@ -889,12 +881,10 @@ export async function initiateTradeWithPlayer(localActor, remoteActor) {
 			tradeId: tradeId,
 		});
 
-		console.log(`${MODULE_ID} | Trade request result:`, result);
 
 		// executeAsUser returns the result directly (unlike executeForUsers)
 		if (result?.accepted) {
 			// Trade accepted! Initialize trade state and open windows for both players
-			console.log(`${MODULE_ID} | Trade accepted, initializing trade state`);
 			await saveTradeData(tradeId, {
 				actorAId: localActor.id,
 				actorBId: remoteActor.id,
@@ -916,7 +906,6 @@ export async function initiateTradeWithPlayer(localActor, remoteActor) {
 			tradeWindow.render(true);
 
 			// Open trade window for target user (they are side B)
-			console.log(`${MODULE_ID} | Opening trade window for target user`);
 			await socket.executeForUsers("openTradeWindow", [remoteOwner.id], {
 				tradeId: tradeId,
 				localActorId: remoteActor.id,

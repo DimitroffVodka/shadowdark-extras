@@ -84,11 +84,6 @@ export async function normalizeExistingPileEquipment() {
 		normalized += updates.length;
 	}
 
-	if (normalized > 0) {
-		console.log(
-			`${MODULE_ID} | Unequipped ${normalized} item(s) stored in Item Piles actors`
-		);
-	}
 	return normalized;
 }
 
@@ -110,9 +105,6 @@ export async function ensureIdentificationSimilarity() {
 	if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return false;
 
 	await api.setItemSimilarities(updated);
-	console.log(
-		`${MODULE_ID} | Added Shadowdark identification data to Item Piles item similarities`
-	);
 	return true;
 }
 

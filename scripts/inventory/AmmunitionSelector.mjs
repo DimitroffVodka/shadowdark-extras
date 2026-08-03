@@ -24,16 +24,6 @@ export default class AmmunitionSelector {
 
 		// Prioritize the preferred ammunition if set on the weapon
 		const preferredAmmoKey = weapon.system.ammoClass;
-		if (preferredAmmoKey) {
-			const preferred = ammunition.find(i => i.name.slugify() === preferredAmmoKey);
-			if (preferred) {
-				// We still might want to show a dialog if there are multiple choices,
-				// or maybe just default to the preferred one if it's there?
-				// The user wants "Flexible Ammunition Selection", so a dialog is safer
-				// if there are multiple types.
-			}
-		}
-
 		// Sort to show preferred first
 		ammunition.sort((a, b) => {
 			const aIsPreferred = a.name.slugify() === preferredAmmoKey;
