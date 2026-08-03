@@ -21,66 +21,25 @@ notes, where the fuller reasoning and the raw measurements live.
 
 
 
-## 14. Alignment-based spell filtering is dead: SDX patches the 3.x method
-location, and SD 4.x moved it to the data model
+## 14. Alignment-based spell filtering was dead: SDX patched the 3.x method location
 
-**Found:** while extracting the alignment section into
-`character-sheet/spellbook-filter.mjs` (Phase 3, step 39). **Status:**
-confirmed, unfixed. **Pre-existing** — the 145 lines moved byte-identically,
-and the cause is where SD 4.0.6 keeps the method, not where SDX keeps the code.
+**Status:** fixed in Phase 5.3 / GitHub issue #63. Shadowdark 4.x stores
+`openSpellBook` on `CONFIG.Actor.dataModels.Player.prototype`, and the player
+sheet calls `actor.system.openSpellBook()`. The patch now targets that live
+data-model method and resolves classes through
+`shadowdark.utils.resolveSpellClasses(this.spellcasting.classes)`.
 
-The feature is three linked pieces, and the first one never runs:
+The repair preserves Shadowdark's zero-, single-, and multi-class dialog
+behavior, assigns the actor alignment to each transient `SpellBookSD` before
+render, and filters only flagged spells whose alignment is not an exact match.
+Unflagged spells remain visible, unresolved UUIDs fall back to their original
+entries, and source actor/item documents are not mutated. Both prototype
+patches use stable global markers so repeated initialization cannot stack
+wrappers or hooks.
 
-1. a patched `openSpellBook` computes the actor's alignment and stores it in a
-   `WeakMap` keyed by the spell-book app;
-2. a `renderSpellBookSD` hook reads that map back onto `app.alignment`;
-3. a patched `SpellBookSD.prototype.getData` filters the spell list **if**
-   `this.alignment` is set.
-
-**SDX patches `CONFIG.Actor.documentClass.prototype.openSpellBook`. Nothing
-calls it.** SD 4.x moved the method onto the `PlayerSD` data model, and the
-sheet calls the data-model copy:
-
-```js
-async _onOpenSpellBook(event) { event.preventDefault(); this.actor.system.openSpellBook(); }
-```
-
-Measured in world `0100`, Foundry 14.365 / Shadowdark 4.0.6:
-
-| | |
-| --- | --- |
-| `ActorSD.prototype.openSpellBook` is SDX-patched | **`true`** |
-| `PlayerSD` data-model `openSpellBook` is SDX-patched | **`false`** |
-| what `PlayerSheetSD._onOpenSpellBook` calls | `this.actor.system.openSpellBook()` |
-| `typeof actor.getSpellcasterClasses` | **`"undefined"`** (instance, prototype, and data model) |
-
-**And it would throw if anything did reach it.** The patched version's first
-line is `await this.getSpellcasterClasses()`, and that method does not exist
-anywhere in 4.0.6. Called directly on three Player actors — Aran, Bazogo,
-Brenna — every one raised `TypeError: this.getSpellcasterClasses is not a
-function`.
-
-**User-visible impact: none.** The spell-book button goes through the
-data-model method, which SDX never touched, so the book opens normally — it
-just is not filtered by alignment. The WeakMap stays empty, so the hook never
-sets `app.alignment`, so `getData`'s filter never engages. The code's own
-comment names the broken link: *"The alignment should already be stored via
-our custom openSpellBook."*
-
-**A distinct mechanism from items 7, 12 and 13**, which fail on guards that
-are never true. This one fails on *location*: the patch is applied where the
-method used to live. The module already knows about this migration —
-`npc/npc-display-patches.mjs` opens by explaining that "SD 4.x: NPC display
-builders moved from ActorSD.prototype to the NPC data model" — so the same
-3.x-to-4.x move was handled in one place and missed in another.
-
-**Fix is small but not free:** repoint the patch at
-`CONFIG.Actor.dataModels.Player.prototype.openSpellBook` and replace
-`getSpellcasterClasses()` with whatever 4.x offers (`system.isSpellCaster`,
-`getClass`, and `_generateSpellConfig` are the candidates on the data model).
-That is a behaviour change — it turns a dormant feature back on — so it wants
-its own commit and a decision about whether alignment filtering is still
-wanted.
+Direct Node regression coverage reaches the patched data-model method and
+`SpellBookSD.getData` chain, including all alignments, zero/single/multi-class
+paths, UUID failures, missing seams, and repeated initialization.
 
 ---
 
