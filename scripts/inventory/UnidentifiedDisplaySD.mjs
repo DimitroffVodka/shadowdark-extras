@@ -131,6 +131,35 @@ async function _patchCompendiumDirectory(app, html) {
 	});
 }
 
+// Shadowdark's PhysicalItemSD schema supplies both identification and
+// magicItem to these seven item types. Potion is intentionally handled by the
+// SDX AppV2 PotionSheetSD below rather than by the generic AppV1 sheet.
+const IDENTIFIABLE_MAGIC_ITEM_TYPES = ["Armor", "Basic", "Gem", "Potion", "Scroll", "Wand", "Weapon"];
+const GENERIC_UNIDENTIFIED_ITEM_TYPES = IDENTIFIABLE_MAGIC_ITEM_TYPES.filter(type => type !== "Potion");
+let sheetContextInitRegistered = false;
+
+/**
+ * Mask only the rendered system context for a non-GM viewing an unidentified
+ * magical item. The Item document, its system object, and all other aliases
+ * remain untouched. Re-running after masking is a no-op because the detached
+ * context no longer has magicItem=true.
+ */
+export function applyUnidentifiedMagicPrivacy(context, item = context?.item) {
+	if (
+		!context?.system
+		|| !item
+		|| isUnidentified(item) === false
+		|| globalThis.game?.user?.isGM
+		|| context.system.magicItem !== true
+	) {
+		return context;
+	}
+
+	context.system = foundry.utils.duplicate(context.system);
+	context.system.magicItem = false;
+	return context;
+}
+
 /**
  * Hide `system.magicItem` from non-GM players on unidentified items.
  *
@@ -143,27 +172,29 @@ async function _patchCompendiumDirectory(app, html) {
  * `Hooks.once("ready")` there with an unrelated `createItemFromSpell` wrap;
  * the two patch different objects and have no ordering relationship, so
  * splitting them costs one extra registration and buys each half its real
- * owner. The body is the root's verbatim, reindented from tabs to this file's
- * four spaces — verified as a whitespace-only change, not retyped.
+ * owner. The generic AppV1 path and the AppV2 Potion path share the privacy
+ * helper above so their rendered-context behavior stays identical.
  */
 export function initUnidentifiedSheetContext() {
+	if (sheetContextInitRegistered) return;
+	sheetContextInitRegistered = true;
+
 	Hooks.once("ready", () => {
-		const ItemSheetClass = foundry.appv1?.sheets?.ItemSheet || globalThis.ItemSheet;
-		if (!ItemSheetClass?.prototype?.getData) return;
+		const ItemSheetSD = globalThis.shadowdark?.sheets?.ItemSheetSD;
+		if (!ItemSheetSD?.prototype?.getData) return;
 
-		const originalGetData = ItemSheetClass.prototype.getData;
-		ItemSheetClass.prototype.getData = async function(options = {}) {
-			const data = await originalGetData.call(this, options);
+		class UnidentifiedItemSheetSD extends ItemSheetSD {
+			async getData(options = {}) {
+				const data = await super.getData(options);
 
-			// Hide magicItem property for unidentified items for non-GM players
-			const item = this?.item;
-			if (item && isUnidentified(item) && !game.user?.isGM && data?.system) {
-				// Deep clone the system data to avoid mutating the original
-				data.system = foundry.utils.duplicate(data.system);
-				data.system.magicItem = false;
+				return applyUnidentifiedMagicPrivacy(data);
 			}
+		}
 
-			return data;
-		};
+		foundry.documents.collections.Items.registerSheet("shadowdark-extras", UnidentifiedItemSheetSD, {
+			types: GENERIC_UNIDENTIFIED_ITEM_TYPES,
+			makeDefault: true,
+			label: "Shadowdark Extras: Unidentified Item Sheet",
+		});
 	});
 }

@@ -1,3 +1,5 @@
+import { applyUnidentifiedMagicPrivacy } from "../inventory/UnidentifiedDisplaySD.mjs";
+
 // v13+ FilePicker namespaced under foundry.applications.apps.
 const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
 
@@ -224,7 +226,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 		// Tabs
 		context.tabs = this._prepareTabs();
 
-		return context;
+		return applyUnidentifiedMagicPrivacy(context, item);
 	}
 
 	/**
