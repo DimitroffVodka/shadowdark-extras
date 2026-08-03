@@ -17,7 +17,6 @@ Entries are numbered to match `pending-decisions.md` in the local architecture
 notes, where the fuller reasoning and the raw measurements live.
 
 ---
----
 
 
 

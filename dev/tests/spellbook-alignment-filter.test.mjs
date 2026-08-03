@@ -255,11 +255,23 @@ test("alignment filtering reaches the PlayerSD method and preserves Shadowdark 4
 			chaotic: { uuid: "spell-chaotic" },
 			fallback: { uuid: "spell-fallback", flags: { [MODULE_ID]: { alignment: "neutral" } } },
 		};
-		fake.uuidDocuments.set(entries.unflagged.uuid, { flags: {} });
-		fake.uuidDocuments.set(entries.lawful.uuid, { flags: { [MODULE_ID]: { alignment: "lawful" } } });
-		fake.uuidDocuments.set(entries.mixedCase.uuid, { flags: { [MODULE_ID]: { alignment: "Lawful" } } });
-		fake.uuidDocuments.set(entries.neutral.uuid, { flags: { [MODULE_ID]: { alignment: "neutral" } } });
-		fake.uuidDocuments.set(entries.chaotic.uuid, { flags: { [MODULE_ID]: { alignment: "chaotic" } } });
+		fake.uuidDocuments.set(entries.unflagged.uuid, { uuid: entries.unflagged.uuid, flags: {} });
+		fake.uuidDocuments.set(entries.lawful.uuid, {
+			uuid: entries.lawful.uuid,
+			flags: { [MODULE_ID]: { alignment: "lawful" } },
+		});
+		fake.uuidDocuments.set(entries.mixedCase.uuid, {
+			uuid: entries.mixedCase.uuid,
+			flags: { [MODULE_ID]: { alignment: "Lawful" } },
+		});
+		fake.uuidDocuments.set(entries.neutral.uuid, {
+			uuid: entries.neutral.uuid,
+			flags: { [MODULE_ID]: { alignment: "neutral" } },
+		});
+		fake.uuidDocuments.set(entries.chaotic.uuid, {
+			uuid: entries.chaotic.uuid,
+			flags: { [MODULE_ID]: { alignment: "chaotic" } },
+		});
 		const originalActor = {
 			id: actor.id,
 			spellClasses: [...actor.spellClasses],
@@ -272,6 +284,7 @@ test("alignment filtering reaches the PlayerSD method and preserves Shadowdark 4
 			chaotic: ["spell-unflagged", "spell-chaotic"],
 			"": ["spell-unflagged"],
 		};
+		const entriesByUuid = new Map(Object.values(entries).map(entry => [entry.uuid, entry]));
 		for (const [actorAlignment, expected] of Object.entries(expectedByAlignment)) {
 			const app = new fake.SpellBookSD("class-wizard", actor.id);
 			app.alignment = actorAlignment;
@@ -285,6 +298,13 @@ test("alignment filtering reaches the PlayerSD method and preserves Shadowdark 4
 				expected,
 				`${actorAlignment || "empty"} alignment applies exact-match filtering`,
 			);
+			for (const visibleEntry of context.spellList[1]) {
+				assert.strictEqual(
+					visibleEntry,
+					entriesByUuid.get(visibleEntry.uuid),
+					"visible results preserve the original spellbook/index entry identity",
+				);
+			}
 			assert.equal(context.baseSentinel, "preserved");
 			assert.deepEqual(context.nested, { preserved: true });
 			const call = fake.originalGetDataCalls.at(-1);
