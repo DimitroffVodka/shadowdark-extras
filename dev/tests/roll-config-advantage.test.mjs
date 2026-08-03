@@ -472,3 +472,39 @@ test("dialog rolls are not double-applied by the rollFromConfig patch", async ()
 		delete globalThis.shadowdark;
 	}
 });
+
+test("ready setup skips an immutable rollFromConfig descriptor without blocking later ready steps", async () => {
+	const readySteps = [];
+	const previousHooks = globalThis.Hooks;
+	const previousShadowdark = globalThis.shadowdark;
+	const originalRollFromConfig = async () => {};
+	let readySentinelRan = false;
+
+	globalThis.Hooks = {
+		on() {},
+		once(name, callback) {
+			if (name === "ready") readySteps.push(callback);
+		},
+	};
+	globalThis.shadowdark = { dice: {} };
+	Object.defineProperty(globalThis.shadowdark.dice, "rollFromConfig", {
+		value: originalRollFromConfig,
+		writable: false,
+		configurable: false,
+	});
+
+	try {
+		setupRollConfigPatches();
+		Hooks.once("ready", () => {
+			readySentinelRan = true;
+		});
+		await readySteps.at(-1)();
+
+		assert.equal(globalThis.shadowdark.dice.rollFromConfig, originalRollFromConfig);
+		assert.equal(globalThis.shadowdark.dice.__sdxRollFromConfigPatched, undefined);
+		assert.equal(readySentinelRan, true);
+	} finally {
+		globalThis.Hooks = previousHooks;
+		globalThis.shadowdark = previousShadowdark;
+	}
+});

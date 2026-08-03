@@ -7,6 +7,8 @@ import {
 	getPromptableHitBonuses,
 } from "./WeaponBonusConfig.mjs";
 
+let rollFromConfigPatchWarningIssued = false;
+
 /**
  * The attack-roll and roll-config prototype patches.
  *
@@ -679,6 +681,15 @@ export function setupRollConfigPatches() {
 	// user's radio choice.
 	const dice = globalThis.shadowdark?.dice;
 	if (dice?.rollFromConfig && !dice.__sdxRollFromConfigPatched) {
+		const descriptor = Object.getOwnPropertyDescriptor(dice, "rollFromConfig");
+		if (descriptor?.writable === false && descriptor.configurable === false) {
+			if (!rollFromConfigPatchWarningIssued) {
+				console.warn(`${MODULE_ID} | shadowdark.dice.rollFromConfig is immutable; skipping SDX roll-config wrapper`);
+				rollFromConfigPatchWarningIssued = true;
+			}
+			return;
+		}
+
 		const originalRollFromConfig = dice.rollFromConfig;
 		dice.rollFromConfig = async function(config, ...args) {
 			if (config) {
