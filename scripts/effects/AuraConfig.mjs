@@ -3,7 +3,6 @@
  * Generates HTML for the aura configuration section in spell/scroll/wand Activity tab
  */
 
-const MODULE_ID = "shadowdark-extras";
 
 function normalizeTokenMagicPresetEntries(source, allowedLibraries = null) {
 	const entries = [];
@@ -38,7 +37,8 @@ function getTokenMagicRegionPresets() {
 
 	const presets = [];
 	const allowedLibraries = new Set(["tmfx-region", "tmfx-template", "tmfx-main"]);
-	const addPresets = (source) => presets.push(...normalizeTokenMagicPresetEntries(source, allowedLibraries));
+	const addPresets = source => presets.push(...normalizeTokenMagicPresetEntries(source,
+		allowedLibraries));
 	const tokenMagic = globalThis.TokenMagic;
 
 	try {
@@ -48,7 +48,7 @@ function getTokenMagicRegionPresets() {
 			addPresets(tokenMagic.getPresets("tmfx-main"));
 		}
 	}
-	catch (e) {
+	catch(e) {
 		console.warn("shadowdark-extras | Failed to read TokenMagic aura presets:", e);
 	}
 
@@ -56,7 +56,7 @@ function getTokenMagicRegionPresets() {
 		try {
 			addPresets(tokenMagic[key]);
 		}
-		catch (e) {
+		catch(e) {
 			// Ignore unstable TokenMagic internals.
 		}
 	}
@@ -65,7 +65,7 @@ function getTokenMagicRegionPresets() {
 		try {
 			addPresets(game.settings.get("tokenmagic", settingKey));
 		}
-		catch (e) {
+		catch(e) {
 			// Setting may not exist in this TokenMagic version.
 		}
 	}
@@ -90,7 +90,7 @@ function getIndyFxShaderChoices() {
 			.filter(shader => shader.id)
 			.sort((a, b) => a.label.localeCompare(b.label));
 	}
-	catch (e) {
+	catch(e) {
 		console.warn("shadowdark-extras | Failed to read Indy FX aura shader choices:", e);
 		return [];
 	}
@@ -221,7 +221,7 @@ export function generateAuraConfigHTML(moduleId, flags) {
 		try {
 			tmTokenPresets = TokenMagic.getPresets("tmfx-main") || [];
 		}
-		catch (e) {
+		catch(e) {
 			console.warn("shadowdark-extras | Failed to get TokenMagic token presets:", e);
 		}
 	}
@@ -655,7 +655,7 @@ export function setupAuraConfigHandlers(html) {
 	const auraConfig = element.querySelector(".sdx-aura-effects-config");
 
 	if (auraEnabledCheckbox && auraConfig) {
-		auraEnabledCheckbox.addEventListener("change", (e) => {
+		auraEnabledCheckbox.addEventListener("change", e => {
 			if (e.target.checked) {
 				auraConfig.style.opacity = "1";
 				auraConfig.style.pointerEvents = "auto";
@@ -669,7 +669,7 @@ export function setupAuraConfigHandlers(html) {
 
 	const auraFxEngineSelect = element.querySelector(".sdx-aura-fx-engine-select");
 	if (auraFxEngineSelect) {
-		auraFxEngineSelect.addEventListener("change", (e) => {
+		auraFxEngineSelect.addEventListener("change", e => {
 			const engine = e.target.value;
 			const tmfxSettings = element.querySelector(".sdx-aura-tmfx-settings");
 			const indySettings = element.querySelector(".sdx-aura-indyfx-settings");
@@ -683,7 +683,7 @@ export function setupAuraConfigHandlers(html) {
 	const saveConfig = element.querySelector(".sdx-aura-save-config");
 
 	if (saveEnabledCheckbox && saveConfig) {
-		saveEnabledCheckbox.addEventListener("change", (e) => {
+		saveEnabledCheckbox.addEventListener("change", e => {
 			if (e.target.checked) {
 				saveConfig.style.opacity = "1";
 				saveConfig.style.pointerEvents = "auto";
@@ -700,7 +700,7 @@ export function setupAuraConfigHandlers(html) {
 	const tokenFiltersConfig = element.querySelector(".sdx-aura-token-filters-config");
 
 	if (tokenFiltersEnabledCheckbox && tokenFiltersConfig) {
-		tokenFiltersEnabledCheckbox.addEventListener("change", (e) => {
+		tokenFiltersEnabledCheckbox.addEventListener("change", e => {
 			if (e.target.checked) {
 				tokenFiltersConfig.style.opacity = "1";
 				tokenFiltersConfig.style.pointerEvents = "auto";

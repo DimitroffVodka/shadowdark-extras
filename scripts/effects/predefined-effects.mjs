@@ -213,7 +213,7 @@ export function registerPredefinedEffects() {
 			},
 		};
 
-		// Define all custom damage types with proper icons for resistance, immunity, and vulnerability
+		// Define custom damage types with icons for resistance, immunity, vulnerability
 		const sdxDamageTypes = [
 			{
 				id: "bludgeoning",
@@ -411,8 +411,11 @@ export function registerPredefinedEffects() {
 		// SD 4.x renamed the AE change key from `system.bonuses.disadvantage` to
 		// `system.roll.spell.advantage.REPLACEME` (with negative value for disadvantage).
 		// Detect that pattern and route to SDX's spell-picker handler.
-		const originalModifyEffectChangesWithInput = shadowdark.effects.modifyEffectChangesWithInput;
-		shadowdark.effects.modifyEffectChangesWithInput = async function(item, effect, key = false) {
+		const originalModifyEffectChangesWithInput =
+			shadowdark.effects.modifyEffectChangesWithInput;
+		shadowdark.effects.modifyEffectChangesWithInput = async function(
+			item, effect, key = false
+		) {
 			if (!key && effect.changes?.some(c =>
 				c.key === "system.roll.spell.advantage.REPLACEME" && Number(c.value) < 0
 			)) {
