@@ -51,13 +51,19 @@ function evaluateSingleRequirement(req, attacker, target) {
 			// Check if target has any effect/condition containing the value
 			const targetEffects = target?.effects?.contents || [];
 			const targetItems = target?.items?.filter(i => i.type === "Effect" || i.system?.category === "effect") || [];
-			const allTargetEffects = [...targetEffects.map(e => e.name), ...targetItems.map(i => i.name)];
+			const allTargetEffects = [
+				...targetEffects.map(e => e.name),
+				...targetItems.map(i => i.name),
+			];
 			return evaluateArrayContains(allTargetEffects, operator, value);
 
 		case "attackerCondition":
 			const attackerEffects = attacker?.effects?.contents || [];
 			const attackerItems = attacker?.items?.filter(i => i.type === "Effect" || i.system?.category === "effect") || [];
-			const allAttackerEffects = [...attackerEffects.map(e => e.name), ...attackerItems.map(i => i.name)];
+			const allAttackerEffects = [
+				...attackerEffects.map(e => e.name),
+				...attackerItems.map(i => i.name),
+			];
 			return evaluateArrayContains(allAttackerEffects, operator, value);
 
 		case "targetHpPercent":
@@ -290,9 +296,17 @@ export function getWeaponBonuses(weapon, attacker, target, isCritical = false) {
 		return {
 			damageBonus: exclusiveMatch.formula,
 			damageBonusParts: [exclusiveMatch],
-			criticalDice: evaluateRequirements(flags.criticalDiceRequirements || [], attacker, target)
+			criticalDice: evaluateRequirements(
+				flags.criticalDiceRequirements || [],
+				attacker,
+				target
+			)
 				? (parseInt(flags.criticalExtraDice) || 0) : 0,
-			criticalDamage: evaluateRequirements(flags.criticalDamageRequirements || [], attacker, target)
+			criticalDamage: evaluateRequirements(
+				flags.criticalDamageRequirements || [],
+				attacker,
+				target
+			)
 				? (flags.criticalExtraDamage || "") : "",
 		};
 	}
@@ -303,9 +317,17 @@ export function getWeaponBonuses(weapon, attacker, target, isCritical = false) {
 	return {
 		damageBonus: combinedFormula,
 		damageBonusParts: applicableBonuses,
-		criticalDice: evaluateRequirements(flags.criticalDiceRequirements || [], attacker, target)
+		criticalDice: evaluateRequirements(
+			flags.criticalDiceRequirements || [],
+			attacker,
+			target
+		)
 			? (parseInt(flags.criticalExtraDice) || 0) : 0,
-		criticalDamage: evaluateRequirements(flags.criticalDamageRequirements || [], attacker, target)
+		criticalDamage: evaluateRequirements(
+			flags.criticalDamageRequirements || [],
+			attacker,
+			target
+		)
 			? (flags.criticalExtraDamage || "") : "",
 	};
 }
@@ -413,8 +435,10 @@ export function getWeaponEffectsToApply(weapon, attacker, target) {
 			uuid: effect.uuid,
 			name: effect.name,
 			img: effect.img,
-			applyToTarget: effect.applyToTarget !== false, // Default to true for backward compatibility
-			cumulative: effect.cumulative !== false, // Default to true for backward compatibility (stack effects)
+			// Default to true for backward compatibility
+			applyToTarget: effect.applyToTarget !== false,
+			// Default to true for backward compatibility (stack effects)
+			cumulative: effect.cumulative !== false,
 		});
 	}
 
@@ -460,7 +484,8 @@ export function evaluateFormula(formula, actor) {
  * @param {Actor} attacker - The attacking actor
  * @param {Actor} target - The target actor (optional)
  * @param {boolean} isCritical - Whether this is a critical hit
- * @returns {Object} - { totalBonus, bonusFormula, criticalExtraDice, criticalBonus, criticalFormula, requirementsMet }
+ * @returns {Object} - { totalBonus, bonusFormula, criticalExtraDice, criticalBonus,
+ * criticalFormula, requirementsMet }
  */
 export async function calculateWeaponBonusDamage(weapon, attacker, target, isCritical = false) {
 	const flags = weapon?.flags?.[MODULE_ID]?.weaponBonus;
@@ -510,7 +535,9 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 						label: bonus.label || "",
 						damageType: bonus.damageType || "",
 						bonusIndex: i, // Track index for usage decrement
-						hasUsage: bonus.usage !== null && bonus.usage !== undefined && bonus.usage > 0,
+						hasUsage: bonus.usage !== null
+						&& bonus.usage !== undefined
+						&& bonus.usage > 0,
 					};
 					// If this bonus is exclusive and has requirements, use only this bonus
 					if (bonus.exclusive && bonus.requirements && bonus.requirements.length > 0) {
@@ -618,7 +645,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 				}
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to evaluate damage bonus formula: ${part.formula}`, err);
 		}
 	}
@@ -705,7 +732,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 
 					console.log(`${MODULE_ID} | Rolled ${criticalExtraDice} extra critical dice (${extraDiceFormula}): ${extraDiceRoll.total}`);
 				}
-				catch (err) {
+				catch(err) {
 					console.warn(`${MODULE_ID} | Failed to roll extra critical dice: ${extraDiceFormula}`, err);
 				}
 			}
@@ -752,7 +779,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 					}
 				}
 			}
-			catch (err) {
+			catch(err) {
 				console.warn(`${MODULE_ID} | Failed to evaluate critical damage formula: ${criticalFormula}`, err);
 			}
 		}
@@ -797,7 +824,11 @@ export async function decrementDamageBonusUsage(weapon, bonusIndices) {
 	let updated = false;
 
 	for (const index of bonusIndices) {
-		if (damageBonuses[index] && damageBonuses[index].usage !== null && damageBonuses[index].usage > 0) {
+		if (
+			damageBonuses[index]
+			&& damageBonuses[index].usage !== null
+			&& damageBonuses[index].usage > 0
+		) {
 			damageBonuses[index] = {
 				...damageBonuses[index],
 				usage: damageBonuses[index].usage - 1,

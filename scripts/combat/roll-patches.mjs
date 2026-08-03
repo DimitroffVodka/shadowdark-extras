@@ -1,7 +1,6 @@
 import { MODULE_ID } from "../shared/module-id.mjs";
 import AmmunitionSelector from "../inventory/AmmunitionSelector.mjs";
 import {
-	calculateWeaponBonusDamage,
 	evaluateRequirements,
 	getPromptableDamageBonuses,
 	getPromptableHitBonuses,
@@ -80,7 +79,7 @@ function getEdgeToEdgeDistance(token1, token2) {
  * Covers: Target required, Range check, and Ammunition selection.
  */
 export function setupRollAttackPatches() {
-	const patchModel = (model) => {
+	const patchModel = model => {
 		if (!model?.prototype?.rollAttack) return false;
 		if (model.prototype.__sdxRollAttackPatched) return true;
 		const originalRollAttack = model.prototype.rollAttack;
@@ -97,7 +96,7 @@ export function setupRollAttackPatches() {
 				try {
 					item = await fromUuid(itemId);
 				}
-				catch (_e) {
+				catch(_e) {
 					item = null;
 				}
 			}
@@ -136,7 +135,8 @@ export function setupRollAttackPatches() {
 
 				// --- RANGE CHECK ---
 				if (checkRange !== "none" && hasTargets && item) {
-					const attackerToken = actor.getActiveTokens()[0] || canvas.tokens?.placeables?.find(t => t.actor?.id === actor.id);
+					const attackerToken = actor.getActiveTokens()[0]
+						|| canvas.tokens?.placeables?.find(t => t.actor?.id === actor.id);
 					if (attackerToken) {
 						const targets = Array.from(game.user.targets);
 						const weaponType = item.system?.type || "melee";
@@ -175,7 +175,9 @@ export function setupRollAttackPatches() {
 
 				// --- AMMUNITION SELECTION ---
 				if (item && item.type === "Weapon" && item.system.type === "ranged" && item.usesAmmunition) {
-					if (options?._sdxAmmoSelected) return originalRollAttack.call(this, forwardId, options);
+					if (options?._sdxAmmoSelected) {
+						return originalRollAttack.call(this, forwardId, options);
+					}
 					const ammoItem = await AmmunitionSelector.select(actor, item);
 
 					if (ammoItem) {
@@ -194,7 +196,7 @@ export function setupRollAttackPatches() {
 					}
 				}
 			}
-			catch (err) {
+			catch(err) {
 				// Continue normally on error
 			}
 
@@ -212,7 +214,6 @@ export function setupRollAttackPatches() {
 	// Patch ammunitionItems to return all ammunition prioritized by key
 	const ActorSD = globalThis.shadowdark?.documents?.ActorSD;
 	if (ActorSD && !ActorSD.prototype.__sdxAmmunitionItemsPatched) {
-		const originalAmmunitionItems = ActorSD.prototype.ammunitionItems;
 		ActorSD.prototype.ammunitionItems = function(key) {
 			const allAmmo = this.items.filter(i => i.system.isAmmunition && i.system.quantity > 0);
 			if (key) {
@@ -332,7 +333,7 @@ async function applyAmmoBonuses(config) {
 		if (!v) return "";
 		if (v.startsWith("+")) v = v.substring(1).trim();
 		if (!v) return "";
-		if (v.toLowerCase().startsWith("d")) v = "1" + v;
+		if (v.toLowerCase().startsWith("d")) v = `1${v}`;
 		return v;
 	};
 	const hit = normalize(ammo.getFlag(MODULE_ID, "ammoHitBonus"));
@@ -365,7 +366,7 @@ async function applyAmmoBonuses(config) {
 		const formatted = shadowdark.dice.formatBonus(hit);
 		config.mainRoll.bonus   = (config.mainRoll.bonus || "") + formatted;
 		config.mainRoll.formula = (config.mainRoll.formula || "") + formatted;
-		config.mainRoll.tooltips = (config.mainRoll.tooltips || "") + ", Ammunition";
+		config.mainRoll.tooltips = `${config.mainRoll.tooltips || ""}, Ammunition`;
 		// Show the ammo contribution on the chat card's hit-bonus breakdown
 		// when one already exists (the dialog hook built it from the
 		// promptable/weapon bonuses).
@@ -384,7 +385,7 @@ async function applyAmmoBonuses(config) {
 	}
 	if (damage && config.damageRoll?.formula != null) {
 		config.damageRoll.formula   += shadowdark.dice.formatBonus(damage);
-		config.damageRoll.tooltips  = (config.damageRoll.tooltips || "") + `, Ammunition (${damage})`;
+		config.damageRoll.tooltips  = `${config.damageRoll.tooltips || ""}, Ammunition (${damage})`;
 	}
 }
 
@@ -523,7 +524,9 @@ export function setupRollConfigPatches() {
 		if (wbFlags?.enabled) {
 			for (const bonus of wbFlags.hitBonuses || []) {
 				if (!bonus.formula || bonus.prompt) continue;
-				if (!evaluateRequirements(bonus.requirements || [], rollActor, targetActor)) continue;
+				if (!evaluateRequirements(bonus.requirements || [], rollActor, targetActor)) {
+					continue;
+				}
 				hitBonus    += shadowdark.dice.formatBonus(bonus.formula);
 				hitTooltips += `, ${bonus.label || "Weapon Bonus"}`;
 				sdxHitParts.push({ label: bonus.label || "Weapon Bonus", formula: String(bonus.formula) });
@@ -535,7 +538,9 @@ export function setupRollConfigPatches() {
 			if (dmgFormula != null) {
 				for (const bonus of wbFlags.damageBonuses || []) {
 					if (!bonus.formula || bonus.prompt) continue;
-					if (!evaluateRequirements(bonus.requirements || [], rollActor, targetActor)) continue;
+					if (!evaluateRequirements(bonus.requirements || [], rollActor, targetActor)) {
+						continue;
+					}
 					const formatted = shadowdark.dice.formatBonus(bonus.formula);
 					dmgFormula  += formatted;
 					const bonusStr = formatted.trim();
@@ -571,7 +576,9 @@ export function setupRollConfigPatches() {
 			const allConstant = sdxHitParts.every(p => Number.isFinite(asNumber(p.formula)));
 			config._sdxHitBonusInfo = {
 				formula: sdxHitParts.map(p => p.formula).join(" + "),
-				result: allConstant ? sdxHitParts.reduce((n, p) => n + asNumber(p.formula), 0) : null,
+				result: allConstant
+					? sdxHitParts.reduce((n, p) => n + asNumber(p.formula), 0)
+					: null,
 				parts: sdxHitParts,
 			};
 		}
@@ -638,7 +645,7 @@ export function setupRollConfigPatches() {
 			section.className = "sdx-prompt-section";
 			section.innerHTML = `<label class="sdx-prompt-section-label">${title}</label>`;
 
-			bonuses.forEach((bonus) => {
+			bonuses.forEach(bonus => {
 				const isChecked = config[selectedKey]?.some(b => b.index === bonus.index) ?? false;
 				const row = document.createElement("div");
 				row.className = `sdx-prompt-bonus-row ${isChecked ? "sdx-bonus-checked" : ""}`;

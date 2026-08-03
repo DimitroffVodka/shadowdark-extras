@@ -5,15 +5,16 @@
 
 import { getWeaponEffectsToApply, calculateWeaponBonusDamage } from "./WeaponBonusConfig.mjs";
 import { startDurationSpell, linkEffectToDurationSpell, linkEffectToFocusSpell, startFocusSpellIfNeeded } from "../effects/FocusSpellTrackerSD.mjs";
-import { buildTemplateEffectsFlag, processTemplateCreationEffects } from "../effects/TemplateEffectsSD.mjs";
 import { createAuraOnActor } from "../effects/AuraEffectsSD.mjs";
 import { readSdRollOutcome, readSdDamageRoll, resolveCardContext } from "../shared/sd4Compat.mjs";
-import { buildRollBreakdown, buildDamageCardHtml, spawnSummonedCreatures, giveItemsToCaster, applyCoatingPoison, normalizeConfiguredEffectUuids, evaluateFormulaExpressions, doubleDiceInFormula, parseTieredFormula, evaluateRequirement, buildTargetRollData } from "./damage-card.mjs";
-import { _spawnedMessages, _itemGiveMessages, _coatingPoisonMessages, _templatePlacedMessages } from "./combat-settings-app.mjs";
+import { buildDamageCardHtml, spawnSummonedCreatures, giveItemsToCaster, applyCoatingPoison, normalizeConfiguredEffectUuids, evaluateFormulaExpressions, doubleDiceInFormula, parseTieredFormula, evaluateRequirement, buildTargetRollData } from "./damage-card.mjs";
+import { _spawnedMessages, _itemGiveMessages, _coatingPoisonMessages } from "./combat-settings-app.mjs";
 import { finalizeDamageCard } from "./damage-card-finalization.mjs";
+import { resolveDamageCardTargets } from "./damage-card-targeting.mjs";
 
 const MODULE_ID = "shadowdark-extras";
-globalThis.window._sdx_calculatingMessages = globalThis.window._sdx_calculatingMessages || new Set();
+globalThis.window._sdx_calculatingMessages = globalThis.window._sdx_calculatingMessages
+	|| new Set();
 globalThis.window._sdx_localDamageResults = globalThis.window._sdx_localDamageResults || {};
 
 // Damage-card injection pipeline — the full combat-message rendering stage
@@ -45,7 +46,7 @@ export async function injectDamageCard(message, html, data) {
 	try {
 		settings = game.settings.get(MODULE_ID, "combatSettings");
 	}
-	catch (e) {
+	catch(e) {
 		return; // Settings not registered yet
 	}
 
@@ -64,12 +65,12 @@ export async function injectDamageCard(message, html, data) {
 	// Note: We don't return early here - we still process templates, summoning, effects, etc.
 	// We just skip the damage card HTML injection at the end
 	const hideDamageCardFromPlayer = !game.user.isGM && !settings.showForPlayers;
-	if (hideDamageCardFromPlayer) {
-	}
 
-	// Note: hideDamageCardOnFailedAttack check is done later after item type is known (around line 1610)
+	// Note: hideDamageCardOnFailedAttack check is done later after item type is known (around line
+	// 1610)
 
-	// Check if this is a Shadowdark weapon/attack card with damage OR a spell with damage configured.
+	// Check if this is a Shadowdark weapon/attack card with damage OR a spell with damage
+	// configured.
 	// SD 4.x has no .chat-card class — also recognize via flags.shadowdark.rollConfig presence.
 	const hasWeaponCard = html.find(".chat-card, .item-card").length > 0
 		|| !!message.flags?.shadowdark?.rollConfig;
@@ -92,20 +93,22 @@ export async function injectDamageCard(message, html, data) {
 			}
 		}
 		const applyDamageLabel = game.i18n.localize("SHADOWDARK.chat_card.context.apply_damage").toLowerCase();
-		if (applyDamageLabel && !damageKeywords.includes(applyDamageLabel)) damageKeywords.push(applyDamageLabel);
+		if (applyDamageLabel && !damageKeywords.includes(applyDamageLabel)) {
+			damageKeywords.push(applyDamageLabel);
+		}
 	}
-	catch (e) {
+	catch(e) {
 		// game.i18n might not be fully ready
 	}
 
-	const hasDamageKeyword = damageKeywords.some(kw => messageText.includes(kw)) ||
-		damageKeywords.some(kw => html.find("h4, h3, h2").text().toLowerCase().includes(kw));
+	const hasDamageKeyword = damageKeywords.some(kw => messageText.includes(kw))
+		|| damageKeywords.some(kw => html.find("h4, h3, h2").text().toLowerCase().includes(kw));
 
 
 	// Check if this looks like a damage roll
-	const isDamageRoll = (hasWeaponCard && hasDamageRoll && hasDamageKeyword) ||
-		(damageKeywords.some(kw => flavorText.includes(kw))) ||
-		(message.flags?.shadowdark?.rollType === "damage");
+	const isDamageRoll = (hasWeaponCard && hasDamageRoll && hasDamageKeyword)
+		|| (damageKeywords.some(kw => flavorText.includes(kw)))
+		|| (message.flags?.shadowdark?.rollType === "damage");
 
 	// Check if this is a spell cast with damage/heal configuration or effects
 	let isSpellWithDamage = false;
@@ -127,10 +130,15 @@ export async function injectDamageCard(message, html, data) {
 		const speaker = message.speaker;
 		if (speaker.token) {
 			const token = canvas.tokens?.get(speaker.token);
-			// Verify this token matches the actor ID in the card (or the card actor ID is the base ID and token wraps it)
+			// Verify this token matches the actor ID in the card (or the card actor ID is the base
+			// ID and token wraps it)
 			if (token && token.actor) {
-				// If cardData.actorId matches either the token's synthetic ID or its base ID, use the token actor
-				if (token.actor.id === cardData.actorId || token.actor.uuid.endsWith(cardData.actorId)) {
+				// If cardData.actorId matches either the token's synthetic ID or its base ID, use
+				// the token actor
+				if (
+					token.actor.id === cardData.actorId
+					|| token.actor.uuid.endsWith(cardData.actorId)
+				) {
 					casterActor = token.actor;
 				}
 			}
@@ -196,7 +204,9 @@ export async function injectDamageCard(message, html, data) {
 			if (item.type === "NPC Special Attack") {
 				const specialAttack = item.getFlag?.(MODULE_ID, "specialAttack") || {};
 				const systemDamage = specialAttack.damageFormula || item.system?.damage?.value || "";
-				const damageBonus = Number(specialAttack.damageBonus ?? item.system?.bonuses?.damageBonus ?? 0) || 0;
+				const damageBonus = Number(
+					specialAttack.damageBonus ?? item.system?.bonuses?.damageBonus ?? 0
+				) || 0;
 				const formula = damageBonus
 					? `${systemDamage || "0"}${damageBonus > 0 ? "+" : ""}${damageBonus}`
 					: systemDamage;
@@ -225,7 +235,7 @@ export async function injectDamageCard(message, html, data) {
 					try {
 						effects = JSON.parse(spellDamageConfig.effects);
 					}
-					catch (err) {
+					catch(err) {
 						effects = [];
 					}
 				}
@@ -243,7 +253,7 @@ export async function injectDamageCard(message, html, data) {
 					try {
 						critEffects = JSON.parse(spellDamageConfig.criticalEffects);
 					}
-					catch (err) {
+					catch(err) {
 						critEffects = [];
 					}
 				}
@@ -257,7 +267,8 @@ export async function injectDamageCard(message, html, data) {
 
 			// Check if Challenge Mode is enabled
 			if (spellDamageConfig?.challenge?.enabled) {
-				isSpellWithDamage = true; // Loop into the damage processing block even if damage logic itself is off
+				isSpellWithDamage = true;
+				// Loop into the damage processing block even if damage logic itself is off
 			}
 
 			// Check if Effects Challenge Mode is enabled
@@ -279,8 +290,6 @@ export async function injectDamageCard(message, html, data) {
 
 	// Check for aura effects configuration
 	const hasAuraEnabled = item?.flags?.[MODULE_ID]?.auraEffects?.enabled || false;
-	if (hasAuraEnabled) {
-	}
 
 	// Check for summoning configuration (independent of damage/effects)
 	const summoningConfig = item?.flags?.[MODULE_ID]?.summoning;
@@ -297,7 +306,8 @@ export async function injectDamageCard(message, html, data) {
 			// Check in-memory cache (synchronous, prevents race condition)
 		}
 		else {
-			// Check if the spell cast was successful (skip this check for potions and scrolls which always succeed)
+			// Check if the spell cast was successful (skip this check for potions and scrolls which
+			// always succeed)
 			// Wands have spell rolls, so they need the success check
 			const summonOutcome = readSdRollOutcome(message);
 			// NPC Special Attack / NPC Feature are GM-activated abilities: the SD system
@@ -306,7 +316,9 @@ export async function injectDamageCard(message, html, data) {
 			// like Potion/Scroll and summon on use. The author-only guard above
 			// (message.author.id === game.user.id) still prevents multi-client spawns.
 			if (!["Potion", "Scroll", "NPC Special Attack", "NPC Feature"].includes(itemType)) {
-				if (summonOutcome.isMasked) return;   // private roll — don't auto-spawn on non-recipient clients
+				if (summonOutcome.isMasked) {
+					return;   // private roll — don't auto-spawn on non-recipient clients
+				}
 				if (!summonOutcome.isSuccess) return;
 			}
 
@@ -320,7 +332,7 @@ export async function injectDamageCard(message, html, data) {
 				try {
 					profiles = JSON.parse(profiles);
 				}
-				catch (err) {
+				catch(err) {
 					console.error("shadowdark-extras | Failed to parse profiles:", err);
 					return;
 				}
@@ -328,11 +340,15 @@ export async function injectDamageCard(message, html, data) {
 
 			// Check for critical success to double duration
 			const isCriticalSuccess = summonOutcome.isCriticalSuccess;
-			if (isCriticalSuccess) {
-			}
 
 			// Automatically spawn creatures when spell is cast
-			await spawnSummonedCreatures(casterActor, item, profiles, summoningConfig, isCriticalSuccess);
+			await spawnSummonedCreatures(
+				casterActor,
+				item,
+				profiles,
+				summoningConfig,
+				isCriticalSuccess
+			);
 		}
 	}
 
@@ -342,18 +358,21 @@ export async function injectDamageCard(message, html, data) {
 	// ("Cannot read properties of undefined (reading 'OBJECTS')") and would also
 	// re-grant items from historical cards on every reload (the dedup set is
 	// in-memory). Item-give only needs to fire for cards created during live play.
-	if (game.ready && itemGiveConfig?.enabled && itemGiveConfig?.profiles && itemGiveConfig.profiles.length > 0) {
-		if (message.author.id !== game.user.id) {
-		}
-		else if (_itemGiveMessages.has(message.id)) {
-		}
-		else {
+	if (
+		game.ready
+		&& itemGiveConfig?.enabled
+		&& itemGiveConfig?.profiles
+		&& itemGiveConfig.profiles.length > 0
+	) {
+		if (message.author.id === game.user.id && !_itemGiveMessages.has(message.id)) {
 			let shouldGive = true;
 			// See the summoning gate above: NPC Special Attack / NPC Feature have no
 			// system-determined attack success, so they grant on use like Potion/Scroll.
 			if (!["Potion", "Scroll", "NPC Special Attack", "NPC Feature"].includes(itemType)) {
 				const itemGiveOutcome = readSdRollOutcome(message);
-				if (itemGiveOutcome.isMasked) shouldGive = false;   // private roll — skip on non-recipient clients
+				if (itemGiveOutcome.isMasked) {
+					shouldGive = false;   // private roll — skip on non-recipient clients
+				}
 				else if (!itemGiveOutcome.isSuccess) shouldGive = false;
 			}
 			if (shouldGive) {
@@ -363,7 +382,7 @@ export async function injectDamageCard(message, html, data) {
 					try {
 						profiles = JSON.parse(profiles);
 					}
-					catch (err) {
+					catch(err) {
 						console.error("shadowdark-extras | Failed to parse item give profiles:", err);
 						profiles = [];
 					}
@@ -413,354 +432,26 @@ export async function injectDamageCard(message, html, data) {
 		return;
 	}
 
-	if ((isSpellWithDamage || isSpellWithEffects)) {
-	}
-	else {
-	}
-
 	// Get targeted tokens - use stored targets from message flags if available
-	let targets = [];
 	const storedTargetIds = message.flags?.["shadowdark-extras"]?.targetIds;
 
-	// Check if item has template targeting mode enabled
-	const targetingConfig = item?.flags?.[MODULE_ID]?.targeting;
-	let useTemplateTargeting = targetingConfig?.mode === "template" &&
-		message.author.id === game.user.id && // Only for the caster
-		!_templatePlacedMessages.has(messageKey) && // Use in-memory check
-		!message.flags?.[MODULE_ID]?.templatePlaced; // AND persistent check
-
-	// For spells that require success rolls, only show template if spell succeeded
-	// Note: Potions and Scrolls don't have successful roll requirements (they always succeed when used)
-	// Wands DO have spell rolls, so they need the success check
-	if (useTemplateTargeting && !["Potion", "Scroll"].includes(itemType)) {
-		const templateOutcome = readSdRollOutcome(message);
-		if (templateOutcome.isMasked) useTemplateTargeting = false;   // private roll — don't show template prompt
-		else if (!templateOutcome.isSuccess) useTemplateTargeting = false;
+	// Resolve the card's targets: template targeting mode (place a
+	// MeasuredTemplate and derive targets from it), stored message targets,
+	// or the current user's targets as a fallback.
+	const targetResolution = await resolveDamageCardTargets({
+		item,
+		message,
+		casterActor,
+		speaker,
+		itemType,
+		messageKey,
+		storedTargetIds,
+	});
+	if (targetResolution.cancelled) {
+		return; // User cancelled template placement
 	}
-
-	if (useTemplateTargeting) {
-		// Mark as placed immediately to prevent re-runs (especially on reload)
-		await message.setFlag(MODULE_ID, "templatePlaced", true);
-		_templatePlacedMessages.add(messageKey);
-
-		// Get template settings
-		const templateSettings = targetingConfig.template || {};
-		const templateType = templateSettings.type || "circle";
-		const templateSize = templateSettings.size || 30;
-		const placement = templateSettings.placement || "choose";
-		const fillColor = templateSettings.fillColor || "#4e9a06";
-		const deleteMode = templateSettings.deleteMode || "none";
-		const deleteDuration = templateSettings.deleteDuration || 3;
-		const deleteSeconds = templateSettings.deleteSeconds || 1;
-		const hideOutline = templateSettings.hideOutline || false;
-		const excludeCaster = templateSettings.excludeCaster || false;
-
-		// TokenMagic settings
-		const tmSettings = templateSettings.tokenMagic || {};
-		const tmTexture = tmSettings.texture || "";
-		const tmOpacity = tmSettings.opacity ?? 0.5;
-		const tmPreset = tmSettings.preset || "NOFX";
-		const tmTint = tmSettings.tint || "";
-		const tmFilters = Array.isArray(tmSettings.filters) ? foundry.utils.deepClone(tmSettings.filters) : [];
-		const fxEngine = tmSettings.engine || "tmfx";
-		const indySettings = tmSettings.indy || {};
-		const indyFx = {
-			shaderId: indySettings.shaderId || "",
-			alpha: indySettings.alpha ?? 1,
-			speed: indySettings.speed ?? 1,
-			scale: indySettings.scale ?? 1,
-			layer: indySettings.layer || "inherit",
-		};
-
-		// Calculate auto-delete timing (time-based modes only)
-		// For round-based deletion, we use flags on the template instead
-		let autoDelete = null;
-		let expiryRounds = null;
-		if (deleteMode === "endOfTurn") {
-			// Delete at end of caster's turn - tracked via combat, fallback to 6 seconds
-			autoDelete = 6000;
-		}
-		else if (deleteMode === "duration") {
-			// Delete after X combat rounds - tracked via template flags
-			// autoDelete stays null, we store expiryRounds instead
-			expiryRounds = deleteDuration;
-		}
-		else if (deleteMode === "seconds") {
-			// Delete after X seconds (time-based)
-			autoDelete = deleteSeconds * 1000;
-		}
-
-		// Force disable auto-delete for Focus spells - they persist until focus is lost
-		if (item?.system?.duration?.type === "focus") {
-			autoDelete = null;
-			expiryRounds = null;
-		}
-
-		// Build globalThis.SDX template flags to write at CREATE time.
-		// Foundry v14 silently drops post-create setFlag on MeasuredTemplate documents
-		// (template→region deprecation hardening), so we must include flags in the
-		// templateData passed to createEmbeddedDocuments — see globalThis.SDX.templates.place.
-		const templateEffectsConfigForFlag = item?.flags?.[MODULE_ID]?.templateEffects;
-		const spellDamageConfigForFlag = item?.flags?.[MODULE_ID]?.spellDamage;
-		const sdxTemplateFlags = { [MODULE_ID]: {} };
-
-		// Native v14: Region.levels must be in the creation data — post-create
-		// updates are silently dropped.  Read token.document.level directly.
-		let casterLevels = null;
-		try {
-			const casterToken = canvas.tokens?.get(speaker?.token);
-			const casterLevelId = casterToken?.document?.level ?? null;
-			if (casterLevelId) {
-				casterLevels = [casterLevelId];
-				console.log(`shadowdark-extras | Caster level id=${casterLevelId} — will pass to Region creation`);
-			}
-		}
-		catch (e) {
-			console.warn("shadowdark-extras | Failed to detect caster level:", e);
-		}
-
-		if (templateEffectsConfigForFlag?.enabled) {
-			const effectsFlag = buildTemplateEffectsFlag({
-				enabled: true,
-				spellName: item.name,
-				casterActorId: casterActor?.id,
-				casterTokenId: speaker?.token,
-				onCreation: templateEffectsConfigForFlag.triggers?.onCreation || false,
-				onEnter: templateEffectsConfigForFlag.triggers?.onEnter || false,
-				onTurnStart: templateEffectsConfigForFlag.triggers?.onTurnStart || false,
-				onTurnEnd: templateEffectsConfigForFlag.triggers?.onTurnEnd || false,
-				onLeave: templateEffectsConfigForFlag.triggers?.onLeave || false,
-				damageFormula: templateEffectsConfigForFlag.damage?.formula || "",
-				damageType: templateEffectsConfigForFlag.damage?.type || "",
-				saveEnabled: templateEffectsConfigForFlag.save?.enabled || false,
-				saveDCFormula: templateEffectsConfigForFlag.save?.dc || "12",
-				spellcastingCheckTotal: readSdRollOutcome(message).total ?? 0,
-				casterLevel: casterActor?.system?.level?.value || 1,
-				casterAbilities: {
-					str: casterActor?.system?.abilities?.str?.mod || 0,
-					dex: casterActor?.system?.abilities?.dex?.mod || 0,
-					con: casterActor?.system?.abilities?.con?.mod || 0,
-					int: casterActor?.system?.abilities?.int?.mod || 0,
-					wis: casterActor?.system?.abilities?.wis?.mod || 0,
-					cha: casterActor?.system?.abilities?.cha?.mod || 0,
-				},
-				saveAbility: templateEffectsConfigForFlag.save?.ability || "dex",
-				halfOnSuccess: templateEffectsConfigForFlag.save?.halfOnSuccess || false,
-				effects: templateEffectsConfigForFlag.applyConfiguredEffects
-					? (spellDamageConfigForFlag?.effects || [])
-					: [],
-				excludeCaster: excludeCaster,
-				runItemMacro: templateEffectsConfigForFlag.runItemMacro || false,
-				spellId: item.id,
-				initialEnterTriggered: false,
-				effectsRequirement: spellDamageConfigForFlag?.effectsRequirement || "",
-			});
-			if (effectsFlag) sdxTemplateFlags[MODULE_ID].templateEffects = effectsFlag;
-		}
-		if (expiryRounds && expiryRounds > 0) {
-			const currentRound = game.combat?.round || 0;
-			// expiryRound is the LAST round the template stays active.
-			// updateCombat hook deletes when `expiryRound < currentRound`, i.e.,
-			// at the START of the round AFTER expiryRound.
-			// For "duration: 1" → template lasts only the cast round, deletes at start of next round.
-			sdxTemplateFlags[MODULE_ID].templateExpiry = {
-				spellName: item.name,
-				createdRound: currentRound,
-				expiryRound: currentRound + expiryRounds - 1,
-				duration: expiryRounds,
-			};
-		}
-
-		try {
-			// Use globalThis.SDX.templates API if available
-			if (typeof globalThis.SDX !== "undefined" && globalThis.SDX.templates) {
-				// Determine placement mode
-				let result;
-				if (placement === "centered") {
-					// Auto-center on caster's token
-					const casterTokenId = speaker?.token;
-					const casterToken = canvas.tokens?.get(casterTokenId);
-					if (casterToken) {
-						// Place template centered on caster
-						result = await globalThis.SDX.templates.placeAndTarget({
-							type: templateType,
-							size: templateSize,
-							fillColor: fillColor,
-							autoDelete: autoDelete,
-							x: casterToken.center.x,
-							y: casterToken.center.y,
-							elevation: casterToken.document.elevation ?? 0,
-							levels: casterLevels,
-							texture: fxEngine === "tmfx" ? (tmTexture || null) : null,
-							textureOpacity: tmOpacity,
-							tmfxPreset: fxEngine === "tmfx" ? tmPreset : null,
-							tmfxTint: fxEngine === "tmfx" ? tmTint : null,
-							tmfxFilters: fxEngine === "tmfx" ? tmFilters : [],
-							indyFx: fxEngine === "indy" ? indyFx : null,
-							excludeCasterTokenId: excludeCaster ? casterTokenId : null,
-							templateFlags: sdxTemplateFlags,
-						});
-					}
-				}
-				else if (placement === "caster") {
-					// Originate from caster - origin locked to caster, user controls direction
-					const casterTokenId = speaker?.token;
-					const casterToken = canvas.tokens?.get(casterTokenId);
-					if (casterToken) {
-						result = await globalThis.SDX.templates.placeAndTarget({
-							type: templateType,
-							size: templateSize,
-							fillColor: fillColor,
-							autoDelete: autoDelete,
-							originFromCaster: {
-								x: casterToken.center.x,
-								y: casterToken.center.y,
-								elevation: casterToken.document.elevation ?? 0,
-							},
-							levels: casterLevels,
-							texture: fxEngine === "tmfx" ? (tmTexture || null) : null,
-							textureOpacity: tmOpacity,
-							tmfxPreset: fxEngine === "tmfx" ? tmPreset : null,
-							tmfxTint: fxEngine === "tmfx" ? tmTint : null,
-							tmfxFilters: fxEngine === "tmfx" ? tmFilters : [],
-							indyFx: fxEngine === "indy" ? indyFx : null,
-							excludeCasterTokenId: excludeCaster ? casterTokenId : null,
-							templateFlags: sdxTemplateFlags,
-						});
-					}
-					else {
-						// No caster token found, fall back to choose location
-						console.warn("shadowdark-extras | Caster token not found for originate from caster, falling back to choose location");
-						result = await globalThis.SDX.templates.placeAndTarget({
-							type: templateType,
-							size: templateSize,
-							fillColor: fillColor,
-							autoDelete: autoDelete,
-							levels: casterLevels,
-							texture: fxEngine === "tmfx" ? (tmTexture || null) : null,
-							textureOpacity: tmOpacity,
-							tmfxPreset: fxEngine === "tmfx" ? tmPreset : null,
-							tmfxTint: fxEngine === "tmfx" ? tmTint : null,
-							tmfxFilters: fxEngine === "tmfx" ? tmFilters : [],
-							indyFx: fxEngine === "indy" ? indyFx : null,
-							excludeCasterTokenId: excludeCaster ? speaker?.token : null,
-							templateFlags: sdxTemplateFlags,
-						});
-					}
-				}
-				else {
-					// Choose location — seed elevation and level from caster
-					const casterToken = canvas.tokens?.get(speaker?.token);
-					result = await globalThis.SDX.templates.placeAndTarget({
-						type: templateType,
-						size: templateSize,
-						fillColor: fillColor,
-						autoDelete: autoDelete,
-						elevation: casterToken?.document?.elevation ?? 0,
-						levels: casterLevels,
-						texture: fxEngine === "tmfx" ? (tmTexture || null) : null,
-						textureOpacity: tmOpacity,
-						tmfxPreset: fxEngine === "tmfx" ? tmPreset : null,
-						tmfxTint: fxEngine === "tmfx" ? tmTint : null,
-						tmfxFilters: fxEngine === "tmfx" ? tmFilters : [],
-						indyFx: fxEngine === "indy" ? indyFx : null,
-						excludeCasterTokenId: excludeCaster ? speaker?.token : null,
-						templateFlags: sdxTemplateFlags,
-					});
-				}
-
-				if (result && result.tokens) {
-					targets = result.tokens.map(t => canvas.tokens?.get(t.id)).filter(t => t);
-
-					// Filter out caster if excludeCaster is enabled
-					if (excludeCaster && speaker?.token) {
-						targets = targets.filter(t => t.id !== speaker.token);
-					}
-
-					// Template flags (templateEffects + templateExpiry) were already written at create-time
-					// via placeAndTarget's templateFlags option — see sdxTemplateFlags build block above
-					// (v14 silently drops post-create setFlag on MeasuredTemplate documents).
-					const templateEffectsConfig = item?.flags?.[MODULE_ID]?.templateEffects;
-					if (result.template && templateEffectsConfig?.enabled) {
-						await processTemplateCreationEffects(result.template, targets);
-
-						// Trigger Automated Animations for the template
-						// AA often fires too early (on chat message) before template exists.
-						// We manually trigger it here on the placed template.
-						if (game.modules.get("autoanimations")?.active && window.AutomatedAnimations) {
-							const casterForAnim = canvas.tokens.get(casterTokenId);
-							console.log("shadowdark-extras | Attempting manual AA trigger", { caster: casterForAnim, template: result.template, item: item });
-							if (casterForAnim) {
-								try {
-									// AA usually expects (source, targets, data)
-									// We pass the template as the target
-									// NOTE: Some versions of AA use playAnimation(source, targets, data)
-									// where targets is an Array.
-									await window.AutomatedAnimations.playAnimation(casterForAnim, [result.template], { item: item });
-									console.log("shadowdark-extras | Manual AA trigger fired");
-								}
-								catch (err) {
-									console.error("shadowdark-extras | Manual AA trigger failed:", err);
-								}
-							}
-						}
-					}
-					// Check for manual AA trigger if template effects were NOT enabled but template exists
-					else if (result.template) {
-						if (game.modules.get("autoanimations")?.active && window.AutomatedAnimations) {
-							const casterForAnim = canvas.tokens.get(casterTokenId);
-							console.log("shadowdark-extras | Attempting manual AA trigger (no template effects)", { caster: casterForAnim, template: result.template, item: item });
-							if (casterForAnim) {
-								try {
-									await window.AutomatedAnimations.playAnimation(casterForAnim, [result.template], { item: item });
-									console.log("shadowdark-extras | Manual AA trigger fired");
-								}
-								catch (err) {
-									console.error("shadowdark-extras | Manual AA trigger failed:", err);
-								}
-							}
-						}
-					}
-
-					// Note: Aura effects are now applied after target gathering (see below)
-					// to work for both template and targeted modes.
-					// templateExpiry flag was already written at create-time via placeAndTarget's
-					// templateFlags option — see sdxTemplateFlags build block above
-					// (v14 silently drops post-create setFlag on MeasuredTemplate documents).
-
-					// Store template ID for duration spell linking
-					if (result.template) {
-						placedTemplateId = result.template.id;
-					}
-
-					// Mark this message as having template placed using in-memory tracking
-					// We avoid message.update() because it triggers re-renders that remove our injected damage card
-					_templatePlacedMessages.add(messageKey);
-				}
-				else {
-					return; // User cancelled
-				}
-			}
-			else {
-				console.warn("shadowdark-extras | SDX.templates not available, falling back to user targets");
-				targets = Array.from(game.user.targets || []);
-			}
-		}
-		catch (err) {
-			console.error("shadowdark-extras | Error during template placement:", err);
-			targets = Array.from(game.user.targets || []);
-		}
-	}
-	else if (storedTargetIds && storedTargetIds.length > 0) {
-		// Use the stored targets from when the message was created
-		targets = storedTargetIds
-			.map(id => canvas.tokens?.get(id))
-			.filter(t => t); // Filter out any tokens that no longer exist
-	}
-	else {
-		// Fallback to current user's targets (backward compatibility)
-		targets = Array.from(game.user.targets || []);
-	}
+	let targets = targetResolution.targets;
+	placedTemplateId = targetResolution.placedTemplateId;
 
 
 	// For "Self" range spells, if no targets are selected, use the caster's token as target
@@ -806,7 +497,8 @@ export async function injectDamageCard(message, html, data) {
 		const primaryExecutorId = game.users.activeGM?.id || message.author?.id;
 
 		if (primaryExecutorId !== game.user.id) {
-			// If it's the GM casting but this client is a player, we still treat the aura as "handled"
+			// If it's the GM casting but this client is a player, we still treat the aura as
+			// "handled"
 			// so this client's damage card (if any) doesn't try to auto-apply redundant effects
 			if (game.user.id !== primaryExecutorId) {
 				auraCreatedThisCall = true;
@@ -857,7 +549,12 @@ export async function injectDamageCard(message, html, data) {
 						effects: spellDamageConfig.effects || [],
 					} : null;
 
-					await startFocusSpellIfNeeded(casterActor.id, spellInstanceId, item.name, perTurnConfig);
+					await startFocusSpellIfNeeded(
+						casterActor.id,
+						spellInstanceId,
+						item.name,
+						perTurnConfig
+					);
 					auraTrackerType = "focus";
 					auraTrackerInstanceId = spellInstanceId;
 				}
@@ -872,7 +569,12 @@ export async function injectDamageCard(message, html, data) {
 							templateId: placedTemplateId || null,
 						};
 
-						const instance = await startDurationSpell(casterActor, item, [], trackerConfig);
+						const instance = await startDurationSpell(
+							casterActor,
+							item,
+							[],
+							trackerConfig
+						);
 						if (instance?.instanceId) {
 							auraTrackerType = "duration";
 							auraTrackerInstanceId = instance.instanceId;
@@ -880,7 +582,7 @@ export async function injectDamageCard(message, html, data) {
 							message.setFlag(MODULE_ID, "durationTrackerStarted", true);
 						}
 					}
-					catch (err) {
+					catch(err) {
 						console.warn("shadowdark-extras | Failed to start duration tracking for aura:", err);
 					}
 				}
@@ -918,11 +620,23 @@ export async function injectDamageCard(message, html, data) {
 						const spellInstanceId = item.id;
 						// Link the newly created aura effect to the focus spell
 						// For focus spells, we MUST use linkEffectToFocusSpell (not Duration spell)
-						await linkEffectToFocusSpell(casterActor.id, spellInstanceId, auraActor.id, auraToken?.id || auraActor.token?.id, effect.id);
+						await linkEffectToFocusSpell(
+							casterActor.id,
+							spellInstanceId,
+							auraActor.id,
+							auraToken?.id || auraActor.token?.id,
+							effect.id
+						);
 					}
 					else if ((durationConfig?.type === "rounds" || durationConfig?.type === "turns") && spellDamageConfig?.trackDuration) {
 						if (durationTrackerStartedForAura && auraTrackerInstanceId) {
-							await linkEffectToDurationSpell(casterActor.id, auraTrackerInstanceId, auraActor.id, auraToken?.id || auraActor.token?.id, effect.id);
+							await linkEffectToDurationSpell(
+								casterActor.id,
+								auraTrackerInstanceId,
+								auraActor.id,
+								auraToken?.id || auraActor.token?.id,
+								effect.id
+							);
 						}
 					}
 				}
@@ -940,11 +654,17 @@ export async function injectDamageCard(message, html, data) {
 
 	// For spells with damage configuration, calculate damage from the spell config
 	// Also enter this block if Effects Challenge is enabled (calculated inside)
-	if ((isSpellWithDamage || (isSpellWithEffects && spellDamageConfig?.effectsChallenge?.enabled)) && spellDamageConfig) {
-		// Check if the spell cast was successful (skip this check for potions, scrolls, wands, and NPC Features)
+	if (
+		(isSpellWithDamage || (isSpellWithEffects && spellDamageConfig?.effectsChallenge?.enabled))
+		&& spellDamageConfig
+	) {
+		// Check if the spell cast was successful (skip this check for potions, scrolls, wands, and
+		// NPC Features)
 		if (!["Potion", "Scroll", "Wand", "NPC Feature", "NPC Spell"].includes(itemType)) {
 			const spellEffectsOutcome = readSdRollOutcome(message);
-			if (spellEffectsOutcome.isMasked) return;   // private roll — don't apply effects on non-recipient clients
+			if (spellEffectsOutcome.isMasked) {
+				return;   // private roll — don't apply effects on non-recipient clients
+			}
 			if (!spellEffectsOutcome.isSuccess) return;
 		}
 
@@ -958,9 +678,10 @@ export async function injectDamageCard(message, html, data) {
 
 		console.log(`SDX | injectDamageCard | Message: ${message.id} | Author: ${isAuthor} | Synced: ${!!syncedResults} | Calculating: ${window._sdx_calculatingMessages.has(message.id)}`);
 
-		// If no results yet, check if we are already calculating for this message to prevent double-roll race condition
+		// If no results yet, check if we are already calculating for this message to prevent
+		// double-roll race condition
 		if (!syncedResults && isAuthor && window._sdx_calculatingMessages.has(message.id)) {
-			console.log("SDX | injectDamageCard | Already calculating for check " + message.id + ", skipping duplicate execution");
+			console.log(`SDX | injectDamageCard | Already calculating for check ${message.id}, skipping duplicate execution`);
 			return;
 		}
 
@@ -974,7 +695,7 @@ export async function injectDamageCard(message, html, data) {
 				try {
 					window._lastSpellRoll = (typeof rollData === "string") ? Roll.fromJSON(rollData) : Roll.fromData(rollData);
 				}
-				catch (e) {
+				catch(e) {
 					console.error("shadowdark-extras | Error loading synced spell roll:", e);
 				}
 			}
@@ -991,7 +712,7 @@ export async function injectDamageCard(message, html, data) {
 								roll: (typeof tRollData === "string") ? Roll.fromJSON(tRollData) : Roll.fromData(tRollData),
 							};
 						}
-						catch (e) {
+						catch(e) {
 							console.error(`shadowdark-extras | Error loading synced per-target roll for ${id}:`, e);
 						}
 					}
@@ -1009,7 +730,8 @@ export async function injectDamageCard(message, html, data) {
 			return;
 		}
 		else {
-			// AUTHOR: Continue with normal rolling logic (or if we have syncedResults but need to re-run for some reason, though logic above prevents that)
+			// AUTHOR: Continue with normal rolling logic (or if we have syncedResults but need to
+			// re-run for some reason, though logic above prevents that)
 			// Clear any cached roll data from previous items
 			window._lastSpellRollBreakdown = null;
 			window._perTargetDamage = null;
@@ -1026,7 +748,8 @@ export async function injectDamageCard(message, html, data) {
 			// Mark as calculating
 			if (isAuthor) {
 				window._sdx_calculatingMessages.add(message.id);
-				// CRITICAL FIX: Ensure no stale data from previous rolls persists if we are calculating fresh
+				// CRITICAL FIX: Ensure no stale data from previous rolls persists if we are
+				// calculating fresh
 				window._lastSpellRollBreakdown = null;
 				window._perTargetDamage = null;
 				window._damageRequirement = null;
@@ -1056,7 +779,8 @@ export async function injectDamageCard(message, html, data) {
 					}
 					else {
 						// Use basic formula (numDice + dieType + bonus)
-						// NOTE: Critical doubling is handled later by doubleDiceInFormula for all formula types
+						// NOTE: Critical doubling is handled later by doubleDiceInFormula for all
+						// formula types
 						const numDice = spellDamageConfig.numDice || 1;
 						const dieType = spellDamageConfig.dieType || "d6";
 						const bonus = spellDamageConfig.bonus || 0;
@@ -1071,7 +795,8 @@ export async function injectDamageCard(message, html, data) {
 					}
 				}
 				else {
-					// Damage NOT enabled, ensure formula is empty so we don't try to roll "undefined" or something
+					// Damage NOT enabled, ensure formula is empty so we don't try to roll
+					// "undefined" or something
 					formula = "";
 				}
 
@@ -1091,7 +816,10 @@ export async function injectDamageCard(message, html, data) {
 
 						// 1. Calculate Bonus
 						let bonusFormula = challengeConfig.bonus || "0";
-						bonusFormula = evaluateFormulaExpressions(bonusFormula, challengeStartRollData);
+						bonusFormula = evaluateFormulaExpressions(
+							bonusFormula,
+							challengeStartRollData
+						);
 
 						let bonusTotal = 0;
 						try {
@@ -1099,7 +827,7 @@ export async function injectDamageCard(message, html, data) {
 							await bonusRoll.evaluate();
 							bonusTotal = bonusRoll.total;
 						}
-						catch (e) {
+						catch(e) {
 							console.warn("SDX | Challenge Bonus Eval Fail", e);
 						}
 
@@ -1113,7 +841,7 @@ export async function injectDamageCard(message, html, data) {
 							await dcRoll.evaluate();
 							dcTotal = dcRoll.total;
 						}
-						catch (e) {
+						catch(e) {
 							dcTotal = parseInt(dcFormula) || 10;
 						}
 
@@ -1126,8 +854,10 @@ export async function injectDamageCard(message, html, data) {
 						if (message.rolls?.length > 0) {
 							// Try to find a matching d20 roll to avoid double-roll
 							// Look for a d20 term in the roll
-							challengeRoll = message.rolls.find(r => r.terms.some(t => t.faces === 20)) ||
-								message.rolls.find(r => r.formula === challengeFormula);
+							challengeRoll = message.rolls.find(
+								r => r.terms.some(t => t.faces === 20)
+							)
+								|| message.rolls.find(r => r.formula === challengeFormula);
 						}
 
 						if (!challengeRoll) {
@@ -1155,7 +885,7 @@ export async function injectDamageCard(message, html, data) {
 						console.log("SDX | Challenge Results", challengeResults);
 
 					}
-					catch (err) {
+					catch(err) {
 						console.error("shadowdark-extras | Error processing Challenge Mode:", err);
 					}
 				}
@@ -1166,12 +896,14 @@ export async function injectDamageCard(message, html, data) {
 				if (spellDamageConfig?.effectsChallenge?.enabled) {
 					console.log("SDX | Effects Challenge Mode Enabled", spellDamageConfig.effectsChallenge);
 					try {
-						// Inherit from main challenge if properties are missing (since UI is hidden)
+						// Inherit from main challenge if properties are missing (since UI is
+						// hidden)
 						const mainChallengeConfig = spellDamageConfig.challenge || {};
 						const rawEffectsConfig = spellDamageConfig.effectsChallenge || {};
 
 						const challengeConfig = {
-							// STRICTLY Inherit from main challenge (ignore local values as UI is removed)
+							// STRICTLY Inherit from main challenge (ignore local values as UI is
+							// removed)
 							enabled: rawEffectsConfig.enabled,
 							bonus: mainChallengeConfig.bonus || "0",
 							dc: mainChallengeConfig.dc || "10",
@@ -1184,7 +916,10 @@ export async function injectDamageCard(message, html, data) {
 
 						// 1. Calculate Bonus
 						let bonusFormula = challengeConfig.bonus || "0";
-						bonusFormula = evaluateFormulaExpressions(bonusFormula, challengeStartRollData);
+						bonusFormula = evaluateFormulaExpressions(
+							bonusFormula,
+							challengeStartRollData
+						);
 
 						let bonusTotal = 0;
 						try {
@@ -1193,7 +928,7 @@ export async function injectDamageCard(message, html, data) {
 							bonusTotal = bonusRoll.total;
 							console.log("SDX | Effects Challenge Bonus Calculated", bonusTotal);
 						}
-						catch (e) {
+						catch(e) {
 							console.warn("SDX | Effects Challenge Bonus Eval Fail", e);
 						}
 
@@ -1207,7 +942,7 @@ export async function injectDamageCard(message, html, data) {
 							await dcRoll.evaluate();
 							dcTotal = dcRoll.total;
 						}
-						catch (e) {
+						catch(e) {
 							dcTotal = parseInt(dcFormula) || 10;
 						}
 
@@ -1218,15 +953,23 @@ export async function injectDamageCard(message, html, data) {
 						if (message.rolls?.length > 0) {
 							// Look for a DIFFERENT roll than the damage challenge if possible,
 							// but usually it's best to look for a matching formula.
-							// Ideally we check if this roll was already "claimed" by damage challenge?
+							// Ideally we check if this roll was already "claimed" by damage
+							// challenge?
 							// For now, strict formula matching or simple search.
-							challengeRoll = message.rolls.find(r => r.formula === challengeFormula &&
-								(!challengeResults || r !== challengeResults.rollJSON /* simplistic check */));
+							challengeRoll = message.rolls.find(
+								r => r.formula === challengeFormula
+									&& (
+										!challengeResults
+										|| r !== challengeResults.rollJSON /* simplistic check */
+									)
+							);
 
 							// Fallback: just find any matching d20 roll not used?
 							// To confirm uniqueness we'd need better tracking.
-							// For now, let's assume if formulas are identical, re-using is okay OR we force new roll?
-							// Actually, if we re-use the SAME roll object for two different challenges, it might look weird.
+							// For now, let's assume if formulas are identical, re-using is okay OR
+							// we force new roll?
+							// Actually, if we re-use the SAME roll object for two different
+							// challenges, it might look weird.
 							// But if the user rolled once for both checks? Unlikely.
 							// Let's just create a new roll if strict match fails.
 						}
@@ -1256,7 +999,7 @@ export async function injectDamageCard(message, html, data) {
 						console.log("SDX | Effects Challenge Results", effectsChallengeResults);
 
 					}
-					catch (err) {
+					catch(err) {
 						console.error("shadowdark-extras | Error processing Effects Challenge Mode:", err);
 					}
 				}
@@ -1265,7 +1008,8 @@ export async function injectDamageCard(message, html, data) {
 				// Roll the damage formula (or tiered formula)
 				if (formula || hasTieredFormula) {
 					try {
-						// Check if formula contains target variables (tiered formulas always need per-target evaluation)
+						// Check if formula contains target variables (tiered formulas always need
+						// per-target evaluation)
 						const hasTargetVariables = (formula && formula.includes("@target.")) || hasTieredFormula;
 
 						// Create base roll data with caster data
@@ -1278,20 +1022,26 @@ export async function injectDamageCard(message, html, data) {
 						if (baseRollData.abilities) {
 							["str", "dex", "con", "int", "wis", "cha"].forEach(ability => {
 								if (baseRollData.abilities[ability]?.mod !== undefined) {
-									baseRollData[ability] = baseRollData.abilities[ability].mod; // @cha = modifier
+									baseRollData[ability] = baseRollData.abilities[ability].mod;
+									// @cha = modifier
 								}
 								if (baseRollData.abilities[ability]?.value !== undefined) {
-									baseRollData[ability + "Base"] = baseRollData.abilities[ability].value; // @chaBase = base score
+									baseRollData[`${ability}Base`] = baseRollData.abilities[ability].value;
+									// @chaBase = base score
 								}
 							});
 						}
 						// Ensure other common stats are available
-						if (baseRollData.attributes?.ac?.value !== undefined) baseRollData.ac = baseRollData.attributes.ac.value;
-						if (baseRollData.attributes?.hp?.value !== undefined) baseRollData.hp = baseRollData.attributes.hp.value;
+						if (baseRollData.attributes?.ac?.value !== undefined) {
+							baseRollData.ac = baseRollData.attributes.ac.value;
+						}
+						if (baseRollData.attributes?.hp?.value !== undefined) {
+							baseRollData.hp = baseRollData.attributes.hp.value;
+						}
 
-						// If formula uses target variables OR we have a tiered formula (which needs target level), we need to roll per-target
+						// If formula uses target variables OR we have a tiered formula (which needs
+						// target level), we need to roll per-target
 						if ((hasTargetVariables || hasTieredFormula) && targets.length > 0) {
-							const formulaDisplay = hasTieredFormula ? `Tiered: ${tieredFormula}` : formula;
 
 							// Store per-target damage for later use
 							window._perTargetDamage = {};
@@ -1303,7 +1053,6 @@ export async function injectDamageCard(message, html, data) {
 
 								// Clone base roll data and add target data
 								const rollData = foundry.utils.duplicate(baseRollData);
-								const targetRollData = targetActor.getRollData() || {};
 
 								// Create target object in rollData
 								rollData.target = buildTargetRollData(targetActor);
@@ -1311,13 +1060,17 @@ export async function injectDamageCard(message, html, data) {
 								// Check for tiered formula and resolve it for this target's level
 								let targetFormula = formula;
 								if (hasTieredFormula) {
-									const tieredResult = parseTieredFormula(tieredFormula, rollData.target.level);
+									const tieredResult = parseTieredFormula(
+										tieredFormula,
+										rollData.target.level
+									);
 									if (tieredResult) {
 										targetFormula = tieredResult;
 									}
 								}
 
-								// Evaluate any expressions in the formula (e.g., (1 + floor(@level / 2))d6 -> 2d6)
+								// Evaluate any expressions in the formula (e.g., (1 + floor(@level
+								// / 2))d6 -> 2d6)
 								targetFormula = evaluateFormulaExpressions(targetFormula, rollData);
 
 								// Double dice on critical hit
@@ -1340,7 +1093,10 @@ export async function injectDamageCard(message, html, data) {
 								// Check damage requirement if it exists
 								if (spellDamageConfig.damageRequirement && spellDamageConfig.damageRequirement.trim() !== "") {
 									const reqFormula = spellDamageConfig.damageRequirement.trim();
-									const requirementMet = evaluateRequirement(reqFormula, rollData);
+									const requirementMet = evaluateRequirement(
+										reqFormula,
+										rollData
+									);
 
 									if (!requirementMet) {
 										const failAction = spellDamageConfig.damageRequirementFailAction || "zero";
@@ -1364,7 +1120,8 @@ export async function injectDamageCard(message, html, data) {
 
 							}
 
-							// Use average damage for display (or total, depending on your preference)
+							// Use average damage for display (or total, depending on your
+							// preference)
 							totalDamage = Math.floor(totalDamageSum / targets.length);
 							window._lastSpellRollBreakdown = `Per - target(avg: ${totalDamage})`;
 
@@ -1376,24 +1133,28 @@ export async function injectDamageCard(message, html, data) {
 							// Check for tiered formula - use caster's level when no targets
 							let finalFormula = formula;
 							if (hasTieredFormula) {
-								const tieredResult = parseTieredFormula(tieredFormula, rollData.level);
+								const tieredResult = parseTieredFormula(
+									tieredFormula,
+									rollData.level
+								);
 								if (tieredResult) {
 									finalFormula = tieredResult;
 								}
 							}
 
-							// Evaluate any expressions in the formula (e.g., (1 + floor(@level / 2))d6 -> 2d6)
+							// Evaluate any expressions in the formula (e.g., (1 + floor(@level /
+							// 2))d6 -> 2d6)
 							finalFormula = evaluateFormulaExpressions(finalFormula, rollData);
 
 							// Double dice on critical hit
 							if (isSpellCritical) {
-								const originalFormula = finalFormula;
 								finalFormula = doubleDiceInFormula(finalFormula);
 							}
 
 							let roll;
 
-							// Try to use an existing roll from message.rolls if its formula matches.
+							// Try to use an existing roll from message.rolls if its formula
+							// matches.
 							// Do NOT fall back to the last roll — that would pick up the spell
 							// cast roll (d20) for healing spells like Cure Wounds whose damage
 							// formula (e.g. 2d6) doesn't match the cast formula.
@@ -1419,15 +1180,22 @@ export async function injectDamageCard(message, html, data) {
 
 
 							// Check damage requirement if it exists
-							// For non-per-target damage, we evaluate the requirement without target context
+							// For non-per-target damage, we evaluate the requirement without target
+							// context
 							if (spellDamageConfig.damageRequirement && spellDamageConfig.damageRequirement.trim() !== "") {
-								// If the requirement has @target variables but we're not rolling per-target,
-								// we'll apply the requirement to each target when damage is actually applied
-								const requirementFormula = spellDamageConfig.damageRequirement.trim();
+								// If the requirement has @target variables but we're not rolling
+								// per-target,
+								// we'll apply the requirement to each target when damage is
+								// actually applied
+								const requirementFormula =
+									spellDamageConfig.damageRequirement.trim();
 
 								// Only evaluate now if there are no target variables
 								if (!requirementFormula.includes("@target.")) {
-									const requirementMet = evaluateRequirement(requirementFormula, rollData);
+									const requirementMet = evaluateRequirement(
+										requirementFormula,
+										rollData
+									);
 
 									if (!requirementMet) {
 										const failAction = spellDamageConfig.damageRequirementFailAction || "zero";
@@ -1440,7 +1208,8 @@ export async function injectDamageCard(message, html, data) {
 									}
 								}
 								else {
-									// Store requirement info for per-target evaluation during damage application
+									// Store requirement info for per-target evaluation during
+									// damage application
 									window._damageRequirement = {
 										formula: requirementFormula,
 										failAction: spellDamageConfig.damageRequirementFailAction || "zero",
@@ -1452,16 +1221,16 @@ export async function injectDamageCard(message, html, data) {
 							// Build detailed breakdown of the roll
 							const diceBreakdown = roll.dice.map(d => {
 								const results = d.results.map(r => r.result).join(", ");
-								return `${d.number}${d.faces === "f" ? "dF" : "d" + d.faces}: [${results}]`;
+								return `${d.number}${d.faces === "f" ? "dF" : `d${d.faces}`}: [${results}]`;
 							}).join(" + ");
 
-							const rollBreakdown = roll.formula + " = " + (diceBreakdown || totalDamage);
-							const formulaDisplay = hasTieredFormula ? `Tiered → ${finalFormula} ` : finalFormula;
+							const rollBreakdown = `${roll.formula} = ${diceBreakdown || totalDamage}`;
 
 
 							// Store roll breakdown for use in damage card
 							window._lastSpellRollBreakdown = rollBreakdown;
-							// Store the actual Roll object so buildRollBreakdown can extract individual dice
+							// Store the actual Roll object so buildRollBreakdown can extract
+							// individual dice
 							window._lastSpellRoll = roll;
 						}
 
@@ -1494,10 +1263,11 @@ export async function injectDamageCard(message, html, data) {
 						console.log("SDX | Setting spellDamageResults flag:", flagData);
 						await message.setFlag(MODULE_ID, "spellDamageResults", flagData);
 
-						// Allow the re-render from setFlag to handle final injection for consistency
+						// Allow the re-render from setFlag to handle final injection for
+						// consistency
 						return;
 					}
-					catch (error) {
+					catch(error) {
 						console.error("shadowdark-extras | Error rolling spell damage:", error);
 						ui.notifications.error(`Invalid spell damage formula: ${formula}`);
 						return;
@@ -1521,7 +1291,7 @@ export async function injectDamageCard(message, html, data) {
 					return;
 				}
 			}
-			catch (error) {
+			catch(error) {
 				console.error("shadowdark-extras | Error rolling spell damage:", error);
 				ui.notifications.error(`Invalid spell damage formula: ${formula}`);
 				return;
@@ -1543,63 +1313,62 @@ export async function injectDamageCard(message, html, data) {
 			window._latestEffectsChallengeResults = latestFlags.effectsChallengeResults;
 		}
 	}
-	else {
+	else if (itemType === "NPC Special Attack") {
 		// NPC Special Attack Base Damage Handling (Manual Roll since no system roll exists)
-		if (itemType === "NPC Special Attack") {
-			// Check for synced results first
-			const syncedBaseResults = message.getFlag(MODULE_ID, "npcBaseDamage");
-			if (syncedBaseResults) {
-				totalDamage = syncedBaseResults.total;
+		// Check for synced results first
+		const syncedBaseResults = message.getFlag(MODULE_ID, "npcBaseDamage");
+		if (syncedBaseResults) {
+			totalDamage = syncedBaseResults.total;
+		}
+		else if (isAuthor && item.system.damage?.value) {
+			try {
+				let damageFormula = item.system.damage.value;
+				const damageBonus = item.system.bonuses?.damageBonus;
+				if (damageBonus) {
+					damageFormula += ` + ${damageBonus}`;
+				}
+				const roll = new Roll(damageFormula);
+				await roll.evaluate();
+
+				if (game.dice3d) {
+					game.dice3d.showForRoll(roll, game.user, true);
+				}
+
+				totalDamage = roll.total;
+
+				// Persist result
+				await message.setFlag(MODULE_ID, "npcBaseDamage", {
+					total: totalDamage,
+					json: roll.toJSON(),
+				});
+				return; // Allow re-render
 			}
-			else if (isAuthor && item.system.damage?.value) {
-				try {
-					let damageFormula = item.system.damage.value;
-					const damageBonus = item.system.bonuses?.damageBonus;
-					if (damageBonus) {
-						damageFormula += ` + ${damageBonus}`;
-					}
-					const roll = new Roll(damageFormula);
-					await roll.evaluate();
-
-					if (game.dice3d) {
-						game.dice3d.showForRoll(roll, game.user, true);
-					}
-
-					totalDamage = roll.total;
-
-					// Persist result
-					await message.setFlag(MODULE_ID, "npcBaseDamage", {
-						total: totalDamage,
-						json: roll.toJSON(),
-					});
-					return; // Allow re-render
-				}
-				catch (err) {
-					console.error("shadowdark-extras | Error rolling NPC Special Attack base damage:", err);
-				}
+			catch(err) {
+				console.error("shadowdark-extras | Error rolling NPC Special Attack base damage:", err);
 			}
 		}
-		// SD 4.x stores damage as a typed Roll on message.rolls; v3 stored under flags.shadowdark.rolls.damage.roll.
+	}
+	// SD 4.x stores damage as a typed Roll on message.rolls; v3 stored under
+	// flags.shadowdark.rolls.damage.roll.
+	else {
+		const damageRollData = readSdDamageRoll(message);
+		if (typeof damageRollData.total === "number") {
+			totalDamage = damageRollData.total;
+		}
 		else {
-			const damageRollData = readSdDamageRoll(message);
-			if (typeof damageRollData.total === "number") {
-				totalDamage = damageRollData.total;
-			}
-			else {
-				// SD 4.x: the damage roll is added to message.rolls asynchronously by
-				// rollDamageFromMessage(), which runs after ChatMessage.create() resolves.
-				// If the rollConfig has a damage formula but the roll isn't in message.rolls
-				// yet, bail out here — the re-render triggered when rollDamageFromMessage
-				// calls msg.update({rolls}) will have the damage roll available.
-				const hasPendingDamageRoll = !!(message.rollConfig?.damageRoll?.formula)
-					&& !message.getRoll?.("damage");
-				if (hasPendingDamageRoll) return;
+			// SD 4.x: the damage roll is added to message.rolls asynchronously by
+			// rollDamageFromMessage(), which runs after ChatMessage.create() resolves.
+			// If the rollConfig has a damage formula but the roll isn't in message.rolls
+			// yet, bail out here — the re-render triggered when rollDamageFromMessage
+			// calls msg.update({rolls}) will have the damage roll available.
+			const hasPendingDamageRoll = !!(message.rollConfig?.damageRoll?.formula)
+				&& !message.getRoll?.("damage");
+			if (hasPendingDamageRoll) return;
 
-				// Last resort: try to parse from the displayed total in the damage section
-				const $damageTotal = html.find(".card-damage-roll-single .dice-total, .card-damage-rolls .dice-total").first();
-				if ($damageTotal.length) {
-					totalDamage = parseInt($damageTotal.text()) || 0;
-				}
+			// Last resort: try to parse from the displayed total in the damage section
+			const $damageTotal = html.find(".card-damage-roll-single .dice-total, .card-damage-rolls .dice-total").first();
+			if ($damageTotal.length) {
+				totalDamage = parseInt($damageTotal.text()) || 0;
 			}
 		}
 	}
@@ -1613,7 +1382,7 @@ export async function injectDamageCard(message, html, data) {
 			try {
 				spellEffects = JSON.parse(spellDamageConfig.effects);
 			}
-			catch (err) {
+			catch(err) {
 				console.warn("shadowdark-extras | Could not parse spell effects:", err);
 				spellEffects = [];
 			}
@@ -1634,13 +1403,17 @@ export async function injectDamageCard(message, html, data) {
 
 	// Check if spell has critical effects and this was a critical success
 	// If critical effects exist, use them INSTEAD of normal effects
-	if (isCritical && (isSpellWithDamage || isSpellWithEffects) && spellDamageConfig?.criticalEffects) {
+	if (
+		isCritical
+		&& (isSpellWithDamage || isSpellWithEffects)
+		&& spellDamageConfig?.criticalEffects
+	) {
 		let criticalEffects = [];
 		if (typeof spellDamageConfig.criticalEffects === "string") {
 			try {
 				criticalEffects = JSON.parse(spellDamageConfig.criticalEffects);
 			}
-			catch (err) {
+			catch(err) {
 				console.warn("shadowdark-extras | Could not parse spell critical effects:", err);
 				criticalEffects = [];
 			}
@@ -1657,10 +1430,8 @@ export async function injectDamageCard(message, html, data) {
 
 	// Get effect selection mode and apply it
 	const effectSelectionMode = spellDamageConfig?.effectSelectionMode || "all";
-	let originalEffectsForPrompt = null; // Store original effects for 'prompt' mode
 
 	if (spellEffects.length > 1) {
-
 		if (effectSelectionMode === "random") {
 			// Randomly select one effect
 			const randomIndex = Math.floor(Math.random() * spellEffects.length);
@@ -1668,8 +1439,8 @@ export async function injectDamageCard(message, html, data) {
 			spellEffects = [selectedEffect];
 		}
 		else if (effectSelectionMode === "prompt") {
-			// Store original effects for the click handler to use for prompting
-			originalEffectsForPrompt = [...spellEffects];
+			// Prompt mode: the click handler re-reads spellEffects from the
+			// configured list, so no original-effects snapshot is needed here.
 		}
 		// 'all' mode: keep all effects as-is
 	}
@@ -1693,12 +1464,18 @@ export async function injectDamageCard(message, html, data) {
 				weaponBonusDamage = syncedWeaponResults;
 
 				// Reconstruct Roll results if needed (though they are mainly used for display)
-				// The breakdown logic will use bonusRollResults/criticalRollResults which are plain objects
+				// The breakdown logic will use bonusRollResults/criticalRollResults which are plain
+				// objects
 			}
 			else if (isAuthor) {
 				// Author calculates and persists results
 				try {
-					weaponBonusDamage = await calculateWeaponBonusDamage(item, actor, targetActor, isCritical);
+					weaponBonusDamage = await calculateWeaponBonusDamage(
+						item,
+						actor,
+						targetActor,
+						isCritical
+					);
 
 					// Trigger Dice So Nice for author
 					if (game.dice3d) {
@@ -1714,12 +1491,13 @@ export async function injectDamageCard(message, html, data) {
 						}
 					}
 
-					// Detect whether the globalThis.SDX damage bonus was already baked into the damage
+					// Detect whether the globalThis.SDX damage bonus was already baked into the
+					// damage
 					// roll formula by the renderRollDialogSD hook. Try both the underscore
 					// and non-underscore forms in case one gets stripped by DataModel cleaning.
 					const bonusInFormula = !!(
-						message.rollConfig?.sdxBonusInDamageFormula ||
-						message.rollConfig?._sdxDamageBonusInFormula
+						message.rollConfig?.sdxBonusInDamageFormula
+						|| message.rollConfig?._sdxDamageBonusInFormula
 					);
 
 					// Prepare results for flag (must be plain objects/JSON compatible)
@@ -1737,7 +1515,8 @@ export async function injectDamageCard(message, html, data) {
 						requirementsMet: weaponBonusDamage.requirementsMet,
 						damageTypes: weaponBonusDamage.damageTypes,
 						// Track usage info for decrementing after damage is applied
-						appliedBonusIndicesWithUsage: weaponBonusDamage.appliedBonusIndicesWithUsage || [],
+						appliedBonusIndicesWithUsage:
+							weaponBonusDamage.appliedBonusIndicesWithUsage || [],
 						weaponItemId: item?.id,
 						actorId: actor?.id,
 						// Persisted so the final render can skip the double-add without
@@ -1750,7 +1529,7 @@ export async function injectDamageCard(message, html, data) {
 					// Allow the re-render from setFlag to handle final injection for consistency
 					return;
 				}
-				catch (err) {
+				catch(err) {
 					console.warn("shadowdark-extras | Failed to calculate weapon bonus damage:", err);
 				}
 			}
@@ -1759,7 +1538,10 @@ export async function injectDamageCard(message, html, data) {
 				return;
 			}
 
-			if (weaponBonusDamage?.requirementsMet && (weaponBonusDamage.totalBonus !== 0 || weaponBonusDamage.criticalBonus !== 0)) {
+			if (
+				weaponBonusDamage?.requirementsMet
+				&& (weaponBonusDamage.totalBonus !== 0 || weaponBonusDamage.criticalBonus !== 0)
+			) {
 				// bonusInFormula is stored inside weaponBonusResults (a module flag that
 				// survives Foundry DataModel serialisation reliably). When true, the globalThis.SDX
 				// bonus is already counted in readSdDamageRoll.total, so we must not add
@@ -1791,7 +1573,9 @@ export async function injectDamageCard(message, html, data) {
 	else if (item?.type === "NPC Attack" || item?.type === "NPC Special Attack") {
 		// NPC Attack Extra Damage Handling
 		const extraDamagesFlag = item.getFlag(MODULE_ID, "extraDamages") || [];
-		const extraDamages = Array.isArray(extraDamagesFlag) ? extraDamagesFlag : Object.values(extraDamagesFlag);
+		const extraDamages = Array.isArray(extraDamagesFlag)
+			? extraDamagesFlag
+			: Object.values(extraDamagesFlag);
 
 		// Check for synced results first
 		const syncedNpcResults = message.getFlag(MODULE_ID, "npcExtraDamage");
@@ -1857,7 +1641,7 @@ export async function injectDamageCard(message, html, data) {
 					}
 
 				}
-				catch (err) {
+				catch(err) {
 					console.error("shadowdark-extras | Error rolling NPC extra damage:", err);
 				}
 			}
@@ -1884,7 +1668,12 @@ export async function injectDamageCard(message, html, data) {
 		}
 	}
 
-	const hasWeaponBonuses = weaponBonusDamage && weaponBonusDamage.requirementsMet && (weaponBonusDamage.totalBonus !== 0 || (isCritical && weaponBonusDamage.criticalBonus !== 0));
+	const hasWeaponBonuses = weaponBonusDamage
+		&& weaponBonusDamage.requirementsMet
+		&& (
+			weaponBonusDamage.totalBonus !== 0
+			|| (isCritical && weaponBonusDamage.criticalBonus !== 0)
+		);
 
 	// Combine spell effects and weapon effects
 	const allEffects = [...spellEffects, ...weaponEffects];
@@ -1910,7 +1699,9 @@ export async function injectDamageCard(message, html, data) {
 	// Check if challenge failed - if so, DO NOT auto apply
 	// ALSO needed for buildDamageCardHtml
 	let challengeResults = window._latestChallengeResults || message.getFlag(MODULE_ID, "spellDamageResults")?.challengeResults;
-	const challengeFailed = spellDamageConfig?.challenge?.enabled && challengeResults && !challengeResults.success;
+	const challengeFailed = spellDamageConfig?.challenge?.enabled
+		&& challengeResults
+		&& !challengeResults.success;
 
 	// Check if EFFECTS challenge failed - if so, DO NOT apply conditions
 	let effectsChallengeResults = message.getFlag(MODULE_ID, "spellDamageResults")?.effectsChallengeResults;
@@ -1920,10 +1711,30 @@ export async function injectDamageCard(message, html, data) {
 	// But we must also trust the result if it exists, even if config is wonky on re-render
 	const hasChallengeResults = !!effectsChallengeResults;
 	const challengeFailedAndPresent = hasChallengeResults && !effectsChallengeResults.success;
-	const effectsChallengeFailed = (spellDamageConfig?.effectsChallenge?.enabled && (!effectsChallengeResults || !effectsChallengeResults.success)) || challengeFailedAndPresent;
+	const effectsChallengeFailed = (
+		spellDamageConfig?.effectsChallenge?.enabled
+		&& (!effectsChallengeResults || !effectsChallengeResults.success)
+	) || challengeFailedAndPresent;
 
 	// Build the complete damage card HTML
-	const { html: cardHtml, challengeHtml } = await buildDamageCardHtml(actor, cardTargets, totalDamage, damageType, allEffects, spellDamageConfig, settings, message, weaponBonusDamage, isCritical, item, casterTokenId, baseDamageType, isMagicalWeapon, challengeResults, effectsChallengeResults);
+	const { html: cardHtml, challengeHtml } = await buildDamageCardHtml(
+		actor,
+		cardTargets,
+		totalDamage,
+		damageType,
+		allEffects,
+		spellDamageConfig,
+		settings,
+		message,
+		weaponBonusDamage,
+		isCritical,
+		item,
+		casterTokenId,
+		baseDamageType,
+		isMagicalWeapon,
+		challengeResults,
+		effectsChallengeResults
+	);
 	// Insert Challenge HTML at the TOP (before the dice roll)
 	if (challengeHtml) {
 		const $diceRoll = html.find(".dice-roll, .card-damage-rolls").first();
@@ -1942,9 +1753,7 @@ export async function injectDamageCard(message, html, data) {
 
 	// Insert the damage card after the chat card or message content
 	// Skip injection if damage card is hidden from this player
-	if (hideDamageCardFromPlayer) {
-	}
-	else {
+	if (!hideDamageCardFromPlayer) {
 		const $chatCard = html.find(".chat-card");
 
 		if ($chatCard.length) {
@@ -1956,5 +1765,28 @@ export async function injectDamageCard(message, html, data) {
 		}
 	}
 
-	await finalizeDamageCard({ html, message, item, settings, hideDamageCardFromPlayer, isSpellWithDamage, isSpellWithEffects, hasWeaponBonuses, weaponBonusDamage, isCritical, baseDamageType, totalDamage, damageType, spellDamageConfig, targets, actor, auraCreatedThisCall, casterTokenId, placedTemplateId, allEffects, challengeFailed, effectsChallengeFailed });
+	await finalizeDamageCard({
+		html,
+		message,
+		item,
+		settings,
+		hideDamageCardFromPlayer,
+		isSpellWithDamage,
+		isSpellWithEffects,
+		hasWeaponBonuses,
+		weaponBonusDamage,
+		isCritical,
+		baseDamageType,
+		totalDamage,
+		damageType,
+		spellDamageConfig,
+		targets,
+		actor,
+		auraCreatedThisCall,
+		casterTokenId,
+		placedTemplateId,
+		allEffects,
+		challengeFailed,
+		effectsChallengeFailed,
+	});
 }
