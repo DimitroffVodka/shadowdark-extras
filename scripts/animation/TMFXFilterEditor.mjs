@@ -15,6 +15,7 @@ const PlaceableType = {
 
 const getFilterType = () => window.TokenMagic?.filterTypes || {};
 import { ANIM_PARAM_CONTROLS, FILTER_PARAM_CONTROLS } from "../../../tokenmagic/gui/apps/data/fxControls.js";
+import { parseTMFXFilterParams } from "./tmfx-filter-parser.mjs";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 const { deepClone, getType, isEmpty, mergeObject, diffObject } = foundry.utils;
@@ -431,7 +432,7 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (!macro?.documentName === "Macro") return;
 
 		try {
-			const paramArray = eval(macro.command.match(/\[[\s\S]*?\]/)?.[0]);
+			const paramArray = parseTMFXFilterParams(macro.command);
 			if (paramArray.every((p) => typeof p === "object" && p.filterId && p.filterType)) {
 				getTokenMagic().addFilters(this._document, paramArray);
 			}
