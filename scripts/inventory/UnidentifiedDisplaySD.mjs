@@ -148,22 +148,34 @@ async function _patchCompendiumDirectory(app, html) {
  */
 export function initUnidentifiedSheetContext() {
 	Hooks.once("ready", () => {
-		const ItemSheetClass = foundry.appv1?.sheets?.ItemSheet || globalThis.ItemSheet;
-		if (!ItemSheetClass?.prototype?.getData) return;
+		const ItemSheetSD = globalThis.shadowdark?.sheets?.ItemSheetSD;
+		if (!ItemSheetSD?.prototype?.getData) return;
 
-		const originalGetData = ItemSheetClass.prototype.getData;
-		ItemSheetClass.prototype.getData = async function(options = {}) {
-			const data = await originalGetData.call(this, options);
+		class UnidentifiedItemSheetSD extends ItemSheetSD {
+			async getData(options = {}) {
+				const data = await super.getData(options);
 
-			// Hide magicItem property for unidentified items for non-GM players
-			const item = this?.item;
-			if (item && isUnidentified(item) && !game.user?.isGM && data?.system) {
-				// Deep clone the system data to avoid mutating the original
-				data.system = foundry.utils.duplicate(data.system);
-				data.system.magicItem = false;
+				// Hide only the detached view context for unidentified magical items;
+				// the Item document and its context.item alias remain unchanged.
+				const item = data?.item;
+				if (
+					item
+					&& isUnidentified(item)
+					&& !game.user?.isGM
+					&& data.system?.magicItem === true
+				) {
+					data.system = foundry.utils.duplicate(data.system);
+					data.system.magicItem = false;
+				}
+
+				return data;
 			}
+		}
 
-			return data;
-		};
+		foundry.documents.collections.Items.registerSheet("shadowdark-extras", UnidentifiedItemSheetSD, {
+			types: ["Armor", "Basic", "Potion", "Scroll", "Wand", "Weapon"],
+			makeDefault: true,
+			label: "Shadowdark Extras: Unidentified Item Sheet",
+		});
 	});
 }
