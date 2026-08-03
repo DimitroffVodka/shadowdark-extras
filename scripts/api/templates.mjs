@@ -3,11 +3,9 @@ import { MODULE_ID } from "../shared/module-id.mjs";
 /**
  * `SDX.templates` — the developer-facing template placement and targeting API.
  *
- * Phase 3 step 13: extracted verbatim from the composition root, joining
- * `template-target-sync.mjs`, which was parked here waiting for it. The two are
- * two ends of one call — a player places a template and targets locally, then
- * asks the GM to mirror those targets — but they run on different clients, so
- * they stay in separate files.
+ * A player places a template and targets locally, then asks the GM to mirror
+ * those targets. The two operations run on different clients, so the public
+ * placement API and GM-side socket handler stay in separate files.
  *
  * CONSUMERS REACH THIS THROUGH THE GLOBAL, NOT THROUGH AN IMPORT.
  * `CombatSettingsSD` calls `SDX.templates.placeAndTarget` at six sites behind a
@@ -16,7 +14,7 @@ import { MODULE_ID } from "../shared/module-id.mjs";
  * `SDX_TEMPLATES` by name, and renaming it changes nothing a caller can see.
  * Renaming a method on it is a public API break.
  *
- * WHY THE ASSIGNMENT IS DEFERRED TO A REGISTER CALL. `globalThis.SDX` is
+ * The assignment is deferred to a register call. `globalThis.SDX` is
  * created here, and the composition root's DEV HELPERS block assigns `SDX.dev`
  * to it further down the same file. Import-time evaluation would move this
  * namespace creation ahead of everything in the root's body — safe today, but
@@ -30,15 +28,20 @@ import { MODULE_ID } from "../shared/module-id.mjs";
  * Based on df-templates by flamewave000
  */
 function installSquareTemplateRotationFix() {
-	const _originalGetRectShape = foundry.canvas.placeables.MeasuredTemplate.getRectShape;
-	foundry.canvas.placeables.MeasuredTemplate.getRectShape = function(distance, direction, adjustForRoundingError = false) {
+	foundry.canvas.placeables.MeasuredTemplate.getRectShape = function(
+		distance,
+		direction,
+		adjustForRoundingError = false
+	) {
 		// Generate a rotation matrix to apply the rect against. The base rotation must be rotated
 		// CCW by 45° before applying the real direction rotation.
 		const matrix = PIXI.Matrix.IDENTITY.rotate(Math.toRadians(-45 + direction));
-		// If the shape will be used for collision, shrink the rectangle by a fixed EPSILON amount to account for rounding errors
+		// If the shape will be used for collision, shrink the rectangle by a fixed
+		// EPSILON amount to account for rounding errors.
 		const EPSILON = adjustForRoundingError ? 0.0001 : 0;
 		// Use simple Pythagoras to calculate the square's size from the diagonal "distance".
-		const size = (Math.sqrt((distance * distance) / 2) * canvas.dimensions.distancePixels) - EPSILON;
+		const size = (Math.sqrt((distance * distance) / 2) * canvas.dimensions.distancePixels)
+			- EPSILON;
 		// Create the square's 4 corners with origin being the Top-Left corner and apply the
 		// rotation matrix against each.
 		const topLeft = matrix.apply(new PIXI.Point(EPSILON, EPSILON));
@@ -46,7 +49,11 @@ function installSquareTemplateRotationFix() {
 		const botLeft = matrix.apply(new PIXI.Point(EPSILON, size));
 		const botRight = matrix.apply(new PIXI.Point(size, size));
 		// Inject the vector data into a Polygon object to create a closed shape.
-		const shape = new PIXI.Polygon([topLeft.x, topLeft.y, topRight.x, topRight.y, botRight.x, botRight.y, botLeft.x, botLeft.y, topLeft.x, topLeft.y]);
+		const shape = new PIXI.Polygon([
+			topLeft.x, topLeft.y, topRight.x, topRight.y,
+			botRight.x, botRight.y, botLeft.x, botLeft.y,
+			topLeft.x, topLeft.y,
+		]);
 		// Add these fields so that the Sequencer mod doesn't have a stroke
 		shape.x = topLeft.x;
 		shape.y = topLeft.y;
@@ -54,7 +61,6 @@ function installSquareTemplateRotationFix() {
 		shape.height = size;
 		return shape;
 	};
-	//console.log(`${MODULE_ID} | Square template rotation fix applied`);
 }
 
 /**
@@ -104,7 +110,9 @@ function _sdxTokenMatchesTemplateLevel(token, templateElevation) {
  * Usage:
  *   const template = await SDX.templates.place({ type: "rect", size: 30 });
  *   const tokens = SDX.templates.getTokensInTemplate(template);
- *   const { template, tokens } = await SDX.templates.placeAndTarget({ type: "rect", size: 30, autoDelete: 3000 });
+ *   const { template, tokens } = await SDX.templates.placeAndTarget({
+ *     type: "rect", size: 30, autoDelete: 3000,
+ *   });
  */
 const SDX_TEMPLATES = {
 	/**
@@ -127,8 +135,10 @@ const SDX_TEMPLATES = {
 	 * @param {number} [options.angle] - Angle for cones (defaults to 53.13)
 	 * @param {string} [options.fillColor] - Fill color (defaults to "#4e9a06")
 	 * @param {string} [options.borderColor] - Border color (defaults to "#000000")
-	 * @param {number} [options.autoDelete] - Auto-delete template after X milliseconds (e.g., 3000 for 3 seconds)
-	 * @param {Object} [options.originFromCaster] - Lock origin to caster position (for cones/rays)
+	 * @param {number} [options.autoDelete] - Auto-delete template after X milliseconds
+ * (e.g., 3000 for 3 seconds)
+	 * @param {Object} [options.originFromCaster] - Lock origin to caster position
+ * (for cones/rays)
 	 * @param {number} options.originFromCaster.x - X coordinate of caster
 	 * @param {number} options.originFromCaster.y - Y coordinate of caster
 	 * @returns {Promise<MeasuredTemplateDocument|null>} - The placed template or null if cancelled
@@ -149,7 +159,8 @@ const SDX_TEMPLATES = {
 			tmfxPreset = null,
 			tmfxTint = null,
 			excludeCasterTokenId = null,  // Token ID to exclude from highlighting
-			templateFlags = null,  // v14: module flags written at create-time only (post-create setFlag silently drops)
+			templateFlags = null,  // v14: module flags written at create-time only
+			// (post-create setFlag silently drops)
 			levels = null,  // v14: Region.levels array of Level IDs — must be in creation data
 		} = options;
 
@@ -223,10 +234,11 @@ const SDX_TEMPLATES = {
 				templateData.direction = 0;
 		}
 
-		return new Promise((resolve) => {
+		return new Promise(resolve => {
 			let resolved = false;
 			let highlightedTokens = new Set(); // Track highlighted tokens
-			let currentElevation = elevation ?? originFromCaster?.elevation ?? 0; // Track template elevation
+			let currentElevation = elevation ?? originFromCaster?.elevation ?? 0;
+			// Track template elevation
 
 			// Clear all existing targets before starting template preview
 			// This prevents previously targeted tokens from interfering with template targeting
@@ -243,7 +255,7 @@ const SDX_TEMPLATES = {
 					try {
 						t.setTarget(false, { user: game.user, releaseOthers: false });
 					}
-					catch (e) { /* ignore */ }
+					catch(e) { /* ignore */ }
 				});
 
 				// 2. Force local cleanup (bypass hooks) to ensure state is clear
@@ -261,7 +273,8 @@ const SDX_TEMPLATES = {
 			forceClearTargets();
 
 			// Initial position - use caster position if originFromCaster, otherwise mouse position.
-			// v14: must be on templateData BEFORE constructing the doc so the shape computes during draw().
+			// v14: must be on templateData BEFORE constructing the doc so the shape
+			// computes during draw().
 			let initialPos;
 			if (originFromCaster) {
 				initialPos = { x: originFromCaster.x, y: originFromCaster.y };
@@ -270,7 +283,7 @@ const SDX_TEMPLATES = {
 				try {
 					initialPos = canvas.app.renderer.events.pointer.getLocalPosition(canvas.stage);
 				}
-				catch {
+				catch{
 					initialPos = { x: 0, y: 0 };
 				}
 			}
@@ -278,14 +291,16 @@ const SDX_TEMPLATES = {
 			templateData.y = initialPos.y;
 
 			// Create the template document (v14 namespace with v13 fallback)
-			const MTDocClass = foundry.documents?.MeasuredTemplateDocument || MeasuredTemplateDocument;
+			const MTDocClass = foundry.documents?.MeasuredTemplateDocument
+				|| MeasuredTemplateDocument;
 			const doc = new MTDocClass(templateData, { parent: canvas.scene });
 
 			// Create the template object for preview
 			const template = new CONFIG.MeasuredTemplate.objectClass(doc);
 
 			// Add to preview layer, then await draw before activating layer / refreshing
-			// (v14: template.draw() is async; not awaiting leaves shape=null and the preview invisible)
+			// (v14: template.draw() is async; not awaiting leaves shape=null and the
+			// preview invisible)
 			canvas.templates.preview.addChild(template);
 			template.draw().then(() => {
 				if (resolved) return;
@@ -297,27 +312,32 @@ const SDX_TEMPLATES = {
 			let lastHighlightTime = 0;
 			const HIGHLIGHT_THROTTLE = 1000 / 15; // 15fps
 
-			// Function to add visual-only highlight effect to a token (does NOT add to game.user.targets)
-			const addPreviewHighlight = (token) => {
+			// Function to add visual-only highlight effect to a token (does NOT add to
+			// game.user.targets)
+			const addPreviewHighlight = token => {
 				if (!token || token._sdxPreviewHighlight) return;
 
 				// Create a graphics object for the highlight border
 				const highlight = new PIXI.Graphics();
-				const bounds = token.bounds;
 				const padding = 4;
+				const tokenWidth = token.document.width * canvas.grid.size;
+				const tokenHeight = token.document.height * canvas.grid.size;
 
 				// Draw a pulsing orange border around the token
 				highlight.lineStyle(3, 0xff6600, 0.9);
 				highlight.drawRoundedRect(
-					-token.document.width * canvas.grid.size / 2 - padding,
-					-token.document.height * canvas.grid.size / 2 - padding,
-					token.document.width * canvas.grid.size + padding * 2,
-					token.document.height * canvas.grid.size + padding * 2,
+					-(tokenWidth / 2) - padding,
+					-(tokenHeight / 2) - padding,
+					tokenWidth + (padding * 2),
+					tokenHeight + (padding * 2),
 					8
 				);
 
 				// Position at token center
-				highlight.position.set(token.document.width * canvas.grid.size / 2, token.document.height * canvas.grid.size / 2);
+				highlight.position.set(
+					tokenWidth / 2,
+					tokenHeight / 2
+				);
 
 				// Add to token and track
 				token.addChild(highlight);
@@ -325,7 +345,7 @@ const SDX_TEMPLATES = {
 			};
 
 			// Function to remove visual highlight effect from a token
-			const removePreviewHighlight = (token) => {
+			const removePreviewHighlight = token => {
 				if (!token || !token._sdxPreviewHighlight) return;
 
 				token.removeChild(token._sdxPreviewHighlight);
@@ -341,7 +361,7 @@ const SDX_TEMPLATES = {
 					try {
 						template._refreshShape();
 					}
-					catch {}
+					catch{}
 				}
 				if (!template.shape) return;
 
@@ -357,9 +377,9 @@ const SDX_TEMPLATES = {
 					if (casterLevelId) {
 						if ((token.document?.level ?? null) !== casterLevelId) continue;
 					}
-					else {
+					else if ((token.document?.elevation ?? 0) !== currentElevation) {
 						// No level system — fall back to exact elevation match
-						if ((token.document?.elevation ?? 0) !== currentElevation) continue;
+						continue;
 					}
 
 					// Test if token center is inside the template shape
@@ -450,7 +470,7 @@ const SDX_TEMPLATES = {
 			};
 
 			// Mouse move handler - update template position (or direction if originFromCaster)
-			const onMouseMove = (event) => {
+			const onMouseMove = event => {
 				if (resolved) return;
 				const pos = event.getLocalPosition(canvas.stage);
 
@@ -483,7 +503,7 @@ const SDX_TEMPLATES = {
 
 			// Mouse wheel handler - rotate template when holding Shift, elevation when holding Alt
 			// Ctrl = angle snap to 45° increments
-			const onWheel = (event) => {
+			const onWheel = event => {
 				if (resolved) return;
 
 				// Alt key = elevation control
@@ -492,7 +512,8 @@ const SDX_TEMPLATES = {
 					event.stopPropagation();
 
 					const sign = Math.sign(event.deltaY);
-					currentElevation = Math.max(0, currentElevation - sign); // Invert scroll direction for intuitive up/down
+					currentElevation = Math.max(0, currentElevation - sign);
+					// Invert scroll direction for intuitive up/down
 
 					// Update elevation indicator
 					elevationText.text = `Elevation: ${currentElevation}`;
@@ -527,8 +548,7 @@ const SDX_TEMPLATES = {
 					let direction = currentDirection;
 					if (direction < 0) direction += 360;
 					direction = direction - (direction % snap);
-					if (currentDirection % snap !== 0 && sign < 0)
-						direction += snap;
+					if (currentDirection % snap !== 0 && sign < 0) direction += snap;
 					currentDirection = (direction + (snap * sign)) % 360;
 				}
 				else {
@@ -546,7 +566,7 @@ const SDX_TEMPLATES = {
 			};
 
 			// Left click handler - place the template
-			const onLeftClick = async (event) => {
+			const onLeftClick = async event => {
 				if (resolved) return;
 
 				// Only respond to left mouse button (button 0)
@@ -591,20 +611,23 @@ const SDX_TEMPLATES = {
 						let attempts = 0;
 						let newRegion = canvas.scene.regions?.get(placedTemplate.id);
 						while (!newRegion && attempts < 10) {
-							await new Promise(r => setTimeout(r, 50));
+							await new Promise(resolveWait => {
+								setTimeout(resolveWait, 50);
+							});
 							newRegion = canvas.scene.regions?.get(placedTemplate.id);
 							attempts++;
 						}
 
 						if (newRegion) {
 							await newRegion.update({ levels });
-							console.log(`shadowdark-extras | Set region.levels=${JSON.stringify(levels)} on ${newRegion.id}`);
 						}
 						else {
-							console.warn(`shadowdark-extras | Could not find auto-created Region with ID ${placedTemplate.id} to set levels`);
+							console.warn(
+								`shadowdark-extras | Could not find auto-created Region with ID ${placedTemplate.id} to set levels`
+							);
 						}
 					}
-					catch (e) {
+					catch(e) {
 						console.warn("shadowdark-extras | Failed to set region.levels:", e);
 					}
 				}
@@ -617,7 +640,7 @@ const SDX_TEMPLATES = {
 								await placedTemplate.delete();
 							}
 						}
-						catch (e) {
+						catch(e) {
 							console.warn(`${MODULE_ID} | Failed to auto-delete template:`, e);
 						}
 					}, autoDelete);
@@ -627,7 +650,7 @@ const SDX_TEMPLATES = {
 			};
 
 			// Right click handler - cancel placement
-			const onRightClick = (event) => {
+			const onRightClick = event => {
 				if (resolved) return;
 				event.preventDefault();
 				event.stopPropagation();
@@ -638,7 +661,7 @@ const SDX_TEMPLATES = {
 			};
 
 			// Escape key handler - cancel placement
-			const onKeyDown = (event) => {
+			const onKeyDown = event => {
 				if (resolved) return;
 
 				if (event.key === "Escape") {
@@ -647,11 +670,6 @@ const SDX_TEMPLATES = {
 					ui.notifications.info("Template placement cancelled.");
 					resolve(null);
 				}
-			};
-
-			// Key up handler - no longer needed
-			const onKeyUp = (event) => {
-				// Removed - Alt key is checked directly in wheel handler
 			};
 
 			// Attach event listeners
@@ -684,7 +702,7 @@ const SDX_TEMPLATES = {
 			try {
 				templateObject._refreshShape();
 			}
-			catch (e) {
+			catch(e) {
 				console.warn(`${MODULE_ID} | _refreshShape failed:`, e);
 			}
 		}
@@ -729,8 +747,11 @@ const SDX_TEMPLATES = {
 		}
 
 		// Wait one tick for the placeable to be attached, then force-compute its shape.
-		// (v14: placeable.shape is lazy and not auto-computed; getTokensInTemplate will _refreshShape internally)
-		await new Promise(r => setTimeout(r, 50));
+		// (v14: placeable.shape is lazy and not auto-computed;
+		// getTokensInTemplate will _refreshShape internally)
+		await new Promise(resolveWait => {
+			setTimeout(resolveWait, 50);
+		});
 		// Pass the caster's level ID directly so level filtering doesn't depend on flag lookup
 		const casterLevelId = options.levels?.[0] ?? null;
 		let tokens = this.getTokensInTemplate(template, casterLevelId);
@@ -746,8 +767,6 @@ const SDX_TEMPLATES = {
 		// We must ensure this function returns the tokens even if targeting fails.
 		// Target the tokens (safely)
 		// We wrap EACH call in try/catch to ensure we attempt all tokens
-		console.log(`${MODULE_ID} | placeAndTarget found ${tokens.length} tokens. Targeting...`);
-
 		// Enable multi-target bypass for players during template targeting
 		if (game.shadowdarkExtras) game.shadowdarkExtras.allowMultiTarget = true;
 		try {
@@ -755,7 +774,7 @@ const SDX_TEMPLATES = {
 				try {
 					await token.setTarget(true, { user: game.user, releaseOthers: false });
 				}
-				catch (e) {
+				catch(e) {
 					console.warn(`${MODULE_ID} | Safe targeting failed for token ${token.id} (system bug ignored):`, e);
 				}
 			}
@@ -770,21 +789,19 @@ const SDX_TEMPLATES = {
 			const module = game.modules.get(MODULE_ID);
 			if (module?.socket) {
 				const tokenIds = tokens.map(t => t.id);
-				console.log(`${MODULE_ID} | Syncing targets to GM:`, tokenIds);
 				module.socket.executeAsGM("syncTargetsToGM", tokenIds);
 			}
 		}
 
 		// Clear targets after 8 seconds to clean up targeting state
 		setTimeout(() => {
-			canvas.tokens.setTargets([])
+			canvas.tokens.setTargets([]);
 		}, 8000);
 
 		return { template, tokens };
 	},
 };
 
-//console.log(`${MODULE_ID} | SDX.templates API loaded`);
 
 /**
  * Install the square-template rotation fix and publish `SDX.templates`.

@@ -1,40 +1,8 @@
 /**
- * Module settings registration.
- *
- * The single largest unit of the Phase 3 structural track: 108
- * `game.settings.register` calls and 17 `registerMenu` calls lifted verbatim
- * out of the composition root, where they had grown to a third of the file.
- *
- * WHY A NEW FOLDER RATHER THAN AN EXISTING FEATURE. Every other Phase 3 move
- * extended a module that already owned the feature, per handoff rule 3. This
- * one cannot: the keys registered here span inventory, combat, character
- * sheets, carousing, NPCs, hex, dungeon, tray and canvas, so no feature has a
- * claim on it and `shared/` is for compatibility helpers that earn their place
- * at a second consumer. Cross-cutting world configuration is its own concern,
- * and `settings/` is where a stranger would look for it.
- *
- * WHY THIS MOVED ALONE, IN ITS OWN COMMIT. Settings keys and menu ids are
- * stored in every GM's world. A rename does not throw — the stored value is
- * orphaned and the setting silently reverts to its default, so the damage is
- * to saved user data rather than to a render, and it surfaces weeks later as
- * "my config keeps resetting". The settings-key snapshot is the gate that
- * catches it, and it only reads as a proof of THIS move if this move is the
- * only thing in the commit.
- *
- * The body below is the source range verbatim. Exactly two edits were applied
- * on top of the carry, both forced by the change of directory:
- *
- *   1. `function registerSettings` gained `export`.
- *   2. The dynamic `import("./dungeon/DDPackSettingsAppSD.mjs")` inside the
- *      Dungeondraft packs menu stub became `"../dungeon/…"`. It is the only
- *      path-dependent string in the whole range, and it is exactly the shape
- *      the import resolver exists to catch — a literal dynamic import that a
- *      move silently breaks, with no error until a GM opens that menu.
- *
- * `MODULE_ID` is imported from `shared/module-id.mjs` rather than carried as a
- * local const. The composition root declares its own copy; both are the string
- * "shadowdark-extras", so the 108 keys this file writes are unchanged, which
- * the settings-key snapshot proves rather than assumes.
+ * Register the module's world settings and configuration menus in their
+ * established order. Persisted setting keys and menu ids are intentionally
+ * kept in this coordinator; the drawing registrations and settings-page
+ * organization hook live in focused sibling modules.
  */
 
 import { registerCombatSettings } from "../combat/CombatSettingsSD.mjs";
@@ -58,6 +26,8 @@ import { openCarousingTablesEditor } from "../party/carousing/CarousingTablesApp
 import { openExpandedCarousingTablesEditor } from "../party/carousing/ExpandedCarousingTablesApp.mjs";
 import SheetEditorConfig from "../character-sheet/SheetEditorConfig.mjs";
 import { MODULE_ID } from "../shared/module-id.mjs";
+import { registerDrawingSettings } from "./drawing-settings.mjs";
+export { setupSettingsOrganization } from "./settings-organization.mjs";
 
 /**
  * Register module settings
@@ -225,6 +195,7 @@ export function registerSettings() {
 		icon: "fas fa-cubes",
 		type: class extends foundry.applications.api.ApplicationV2 {
 			static DEFAULT_OPTIONS = { id: "sdx-ddpack-settings-menu-stub", window: { title: "" } };
+
 			async render() {
 				const { DDPackSettingsApp } = await import("../dungeon/DDPackSettingsAppSD.mjs");
 				new DDPackSettingsApp().render(true);
@@ -427,15 +398,6 @@ export function registerSettings() {
 		scope: "world",
 		config: false,
 		default: "stretch",
-		type: String,
-		onChange: () => applySheetDecorationStyles(),
-	});
-
-	game.settings.register(MODULE_ID, "borderBackgroundColor", {
-		name: "Border Background Color",
-		scope: "world",
-		config: false,
-		default: "",
 		type: String,
 		onChange: () => applySheetDecorationStyles(),
 	});
@@ -845,18 +807,20 @@ export function registerSettings() {
 		choices: {
 			"shadowdark": "Shadowdark",
 			"5e": "5e",
-			parchment: "Parchment (Default)",
-			stone: "Stone Tablet",
-			leather: "Leather Bound",
-			iron: "Iron & Rust",
-			moss: "Moss & Decay",
-			blood: "Blood & Shadow",
+			"parchment": "Parchment (Default)",
+			"stone": "Stone Tablet",
+			"leather": "Leather Bound",
+			"iron": "Iron & Rust",
+			"moss": "Moss & Decay",
+			"blood": "Blood & Shadow",
 		},
 		onChange: () => {
 			// Re-render all open player sheets
 			const PlayerSheetClass = globalThis.shadowdark?.apps?.PlayerSheetSD;
 			if (PlayerSheetClass) {
-				Object.values(ui.windows).filter(app => app instanceof PlayerSheetClass).forEach(app => app.render());
+				Object.values(ui.windows)
+					.filter(app => app instanceof PlayerSheetClass)
+					.forEach(app => app.render());
 			}
 		},
 	});
@@ -926,8 +890,8 @@ export function registerSettings() {
 		default: "original",
 		type: String,
 		choices: {
-			"original": game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_mode.original"),
-			"expanded": game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_mode.expanded"),
+			original: game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_mode.original"),
+			expanded: game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_mode.expanded"),
 		},
 		onChange: () => {
 			// Re-render all open player sheets to update carousing tab
@@ -983,6 +947,7 @@ export function registerSettings() {
 		icon: "fas fa-beer",
 		type: class extends foundry.applications.api.ApplicationV2 {
 			static DEFAULT_OPTIONS = { id: "sdx-carousing-tables-menu-stub", window: { title: "" } };
+
 			async render() {
 				const mode = game.settings.get(MODULE_ID, "carousingMode") || "original";
 				if (mode === "expanded") openExpandedCarousingTablesEditor();
@@ -1130,201 +1095,5 @@ export function registerSettings() {
 	registerSDXCoordsSettings();
 	registerSDXCoordsMenu(SDXCoordsSettingsApp);
 
-	// ═══════════════════════════════════════════════════════════════
-	// 12. DRAWING TOOLS
-	// ═══════════════════════════════════════════════════════════════
-
-	game.settings.register(MODULE_ID, "drawing.enablePlayerDrawing", {
-		name: "Allow Player Drawing",
-		hint: "When enabled, players can use the drawing tools to mark up the map.",
-		scope: "world",
-		config: true,
-		default: true,
-		type: Boolean,
-	});
-
-	game.settings.register(MODULE_ID, "drawing.timedEraseTimeout", {
-		name: "Timed Erase Timeout (seconds)",
-		hint: "How long drawings persist before fading when Timed Erase is enabled.",
-		scope: "world",
-		config: true,
-		default: 30,
-		type: Number,
-		range: { min: 5, max: 120, step: 5 },
-	});
-
-	game.settings.register(MODULE_ID, "drawing.hotkeyEnabled", {
-		name: "Enable Drawing Hotkey",
-		hint: "Allow using a hotkey (hold) to quickly draw without opening the toolbar.",
-		scope: "client",
-		config: true,
-		default: true,
-		type: Boolean,
-	});
-
-	game.settings.register(MODULE_ID, "drawing.blockWhenTyping", {
-		name: "Block Drawing While Typing",
-		hint: "Prevent the drawing hotkey from activating while typing in text fields.",
-		scope: "client",
-		config: true,
-		default: true,
-		type: Boolean,
-	});
-
-	// Hidden toolbar state settings (persist between sessions)
-	game.settings.register(MODULE_ID, "drawing.toolbar.drawingMode", { scope: "client", config: false, default: "sketch", type: String });
-	game.settings.register(MODULE_ID, "drawing.toolbar.stampStyle", { scope: "client", config: false, default: "plus", type: String });
-	game.settings.register(MODULE_ID, "drawing.toolbar.symbolSize", { scope: "client", config: false, default: "medium", type: String });
-	game.settings.register(MODULE_ID, "drawing.toolbar.lineWidth", { scope: "client", config: false, default: 6, type: Number });
-	game.settings.register(MODULE_ID, "drawing.toolbar.lineStyle", { scope: "client", config: false, default: "solid", type: String });
-	game.settings.register(MODULE_ID, "drawing.toolbar.color", { scope: "client", config: false, default: "", type: String });
-	game.settings.register(MODULE_ID, "drawing.toolbar.timedEraseEnabled", { scope: "client", config: false, default: false, type: Boolean });
-	game.settings.register(MODULE_ID, "drawing.toolbar.opacity", { scope: "client", config: false, default: 1.0, type: Number });
-	game.settings.register(MODULE_ID, "drawing.toolbar.position", { scope: "client", config: false, default: "", type: String });
-
-	// Keybinding: Hold to draw
-	game.keybindings.register(MODULE_ID, "drawHotkey", {
-		name: "Drawing Tool Hotkey (Hold)",
-		hint: "Hold this key to draw on the canvas. Release to finish the stroke.",
-		editable: [{ key: "KeyL" }],
-		onDown: () => {
-			if (!game.settings.get(MODULE_ID, "drawing.hotkeyEnabled")) return false;
-			if (game.settings.get(MODULE_ID, "drawing.blockWhenTyping")) {
-				const active = document.activeElement;
-				if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable)) return false;
-			}
-			if (!canvas?.ready) return false;
-			if (game.shadowdarkExtras?.drawingTool) {
-				game.shadowdarkExtras.drawingTool.onHoldKeyDown();
-				return true;
-			}
-			return false;
-		},
-		onUp: () => {
-			if (game.shadowdarkExtras?.drawingTool) {
-				game.shadowdarkExtras.drawingTool.onHoldKeyUp();
-				return true;
-			}
-			return false;
-		},
-		restricted: false,
-		precedence: CONST.KEYBINDING_PRECEDENCE.NORMAL,
-	});
-}
-
-
-/**
- * Setup the renderSettingsConfig hook to organize settings with section headers
- *
- * Settings are organized into these groups:
- * 1. Configuration Menus: Combat, Effects, HP Waves, Inventory Styles menus
- * 2. Combat & Spells: Focus Tracker, Enhance Spells
- * 3. Character Sheet: Enhanced Header, backgrounds, Renown, Journal Notes, Add Coins, Conditions Theme
- * 4. Inventory: Containers, Nested Containers, Trading, Unidentified, Multi-select
- * 5. Carousing: Enable Carousing, Mode, Table menus
- * 6. NPC Features: NPC Inventory, Creature Type
- * 7. Visual & Animation: Torch Animations
- * 8. SDX Rolls: All SDX Rolls settings
- */
-export function setupSettingsOrganization() {
-	Hooks.on("renderSettingsConfig", (app, html, data) => {
-		// In Foundry v13, html may be a native HTMLElement instead of jQuery
-		const $html = html instanceof jQuery ? html : $(html);
-
-		// Only process if we're looking at our module's settings section
-		const sdxSection = $html.find(`[data-category="${MODULE_ID}"]`);
-		if (sdxSection.length === 0) return;
-
-		// Helper function to create a group header
-		const createHeader = (text, icon = null) => {
-			const iconHtml = icon ? `<i class="${icon}"></i> ` : "";
-			return $("<div>").addClass("form-group group-header sdx-settings-header").html(`${iconHtml}${text}`);
-		};
-
-		// Helper to insert header before first found element
-		const insertHeaderBefore = (selector, headerText, headerIcon) => {
-			const element = sdxSection.find(selector);
-			if (element.length) {
-				const formGroup = element.closest(".form-group");
-				if (formGroup.length && !formGroup.prev().hasClass("sdx-settings-header")) {
-					createHeader(headerText, headerIcon).insertBefore(formGroup);
-				}
-			}
-		};
-
-		// ═══════════════════════════════════════════════════════════════
-		// Insert section headers before specific settings
-		// The setting listed is the FIRST setting in that group
-		// ═══════════════════════════════════════════════════════════════
-
-		// 1. CONFIGURATION MENUS - First is Combat Settings Menu
-		insertHeaderBefore(
-			'[data-key="shadowdark-extras.combatSettingsMenu"]',
-			game.i18n.localize("SHADOWDARK_EXTRAS.settings.headers.configuration_menus"),
-			"fas fa-cogs"
-		);
-
-		// 2. COMBAT & SPELLS - First is Focus Tracker
-		insertHeaderBefore(
-			'[name="shadowdark-extras.enableFocusTracker"]',
-			game.i18n.localize("SHADOWDARK_EXTRAS.settings.headers.combat_spells"),
-			"fas fa-magic"
-		);
-
-		// 3. CHARACTER SHEET - First is Enhanced Header
-		insertHeaderBefore(
-			'[name="shadowdark-extras.enableEnhancedHeader"]',
-			game.i18n.localize("SHADOWDARK_EXTRAS.settings.headers.character_sheet"),
-			"fas fa-user"
-		);
-
-		// 4. INVENTORY - First is Containers
-		insertHeaderBefore(
-			'[name="shadowdark-extras.enableContainers"]',
-			game.i18n.localize("SHADOWDARK_EXTRAS.settings.headers.inventory"),
-			"fas fa-box-open"
-		);
-
-		// 5. CAROUSING - First is Enable Carousing
-		insertHeaderBefore(
-			'[name="shadowdark-extras.enableCarousing"]',
-			game.i18n.localize("SHADOWDARK_EXTRAS.settings.headers.carousing"),
-			"fas fa-beer-mug-empty"
-		);
-
-		// 6. NPC FEATURES - First is NPC Inventory
-		insertHeaderBefore(
-			'[name="shadowdark-extras.enableNpcInventory"]',
-			game.i18n.localize("SHADOWDARK_EXTRAS.settings.headers.npc_features"),
-			"fas fa-skull"
-		);
-
-		// 7. VISUAL & ANIMATION - First is Torch Animations
-		insertHeaderBefore(
-			'[name="shadowdark-extras.enableTorchAnimations"]',
-			game.i18n.localize("SHADOWDARK_EXTRAS.settings.headers.visual_features"),
-			"fas fa-sparkles"
-		);
-
-		// 8. SDX ROLLS - First is Recap Message
-		insertHeaderBefore(
-			'[name="shadowdark-extras.SDXROLLSRecapMessage"]',
-			game.i18n.localize("SHADOWDARK_EXTRAS.settings.headers.sdx_rolls"),
-			"fas fa-dice-d20"
-		);
-
-		// 9. TOKEN TOOLBAR - First is Enable Token Toolbar
-		insertHeaderBefore(
-			'[name="shadowdark-extras.tokenToolbar.enabled"]',
-			game.i18n.localize("SHADOWDARK_EXTRAS.settings.headers.token_toolbar"),
-			"fas fa-id-badge"
-		);
-
-		// 10. DRAWING TOOLS - First is Enable Player Drawing
-		insertHeaderBefore(
-			'[name="shadowdark-extras.drawing.enablePlayerDrawing"]',
-			"Drawing Tools",
-			"fas fa-pencil"
-		);
-	});
+	registerDrawingSettings();
 }
