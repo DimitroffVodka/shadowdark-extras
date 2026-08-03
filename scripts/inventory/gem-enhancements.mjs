@@ -9,11 +9,9 @@
  * inventory/ rather than character-sheet/: the gem bag and gem quantity are an
  * inventory concern, and this folder already owns containers and item slots.
  *
- * Registration-free, and apart from MODULE_ID it depended on nothing outside
- * itself. Zero registrations, so the registration snapshot is untouched.
+ * Registration-free, and it depends on nothing outside itself. Zero
+ * registrations, so the registration snapshot is untouched.
  */
-
-import { MODULE_ID } from "../shared/module-id.mjs";
 
 // ============================================
 // GEM ENHANCEMENTS (Quantity Support)

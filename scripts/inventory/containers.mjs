@@ -604,12 +604,6 @@ async function setContainedState(item, containerId) {
 	}
 }
 
-async function setItemContainerId(item, containerId) {
-	if (!item) return;
-	if (containerId) return item.setFlag(MODULE_ID, "containerId", containerId);
-	return item.unsetFlag(MODULE_ID, "containerId");
-}
-
 function injectBasicContainerUI(app, html) {
 	// Check if containers are enabled
 	if (!game.settings.get(MODULE_ID, "enableContainers")) return;
@@ -704,10 +698,6 @@ function injectBasicContainerUI(app, html) {
 		if (freeCarryInput.length) {
 			const currentValue = Number(item.system?.slots?.free_carry ?? 0);
 			const isChecked = currentValue > 0;
-			const freeCarryLabel = freeCarryInput.closest(".SD-grid").find("h3").filter(function() {
-				return $(this).text().trim().toLowerCase().includes("free");
-			});
-
 			const checkboxHtml = `
 				<input type="checkbox"
 					data-sdx-free-carry
@@ -1079,7 +1069,6 @@ function buildContainerTooltip(containerItem) {
 	const items = entries
 		.slice(0, 50)
 		.map(entry => {
-			const isOwnedItem = entry instanceof Item;
 			const name = entry?.name ?? "";
 			const qty = Number(entry?.system?.quantity ?? 1);
 			const qtySuffix = Number.isFinite(qty) && qty > 1 ? ` x${qty}` : "";
