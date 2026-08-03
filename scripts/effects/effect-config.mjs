@@ -182,7 +182,6 @@ export function registerActiveEffectConfigHooks() {
 				const requirementInput = $html.find(`input[name="flags.${MODULE_ID}.sourceRequirement"]`);
 				if (requirementInput.length > 0) {
 					const newRequirement = requirementInput.val()?.trim() || "";
-					//console.log(`${MODULE_ID} | Form submitting, will save requirement: "${newRequirement}"`);
 
 					// Store it in a temp variable on the effect to be picked up by preUpdate hook
 					effect._pendingSourceRequirement = newRequirement;
@@ -192,7 +191,6 @@ export function registerActiveEffectConfigHooks() {
 				const requireEquippedInput = $html.find(`input[name="flags.${MODULE_ID}.requireEquipped"]`);
 				if (requireEquippedInput.length > 0) {
 					const newRequireEquipped = requireEquippedInput.is(":checked");
-					//console.log(`${MODULE_ID} | Form submitting, will save requireEquipped: ${newRequireEquipped}`);
 
 					// Store it in a temp variable on the effect to be picked up by preUpdate hook
 					effect._pendingRequireEquipped = newRequireEquipped;
@@ -208,11 +206,9 @@ export function registerActiveEffectConfigHooks() {
 	 * Hook to save the source requirement when effect is updated
 	 */
 	Hooks.on("preUpdateActiveEffect", (effect, changes, options, userId) => {
-		//console.log(`${MODULE_ID} | preUpdateActiveEffect fired for effect: ${effect.name}`);
 
 		// Check if there's a pending source requirement from the form
 		if (effect._pendingSourceRequirement !== undefined) {
-			//console.log(`${MODULE_ID} | Found pending requirement: "${effect._pendingSourceRequirement}"`);
 
 			// Merge the requirement into the changes
 			if (!changes.flags) changes.flags = {};
@@ -222,12 +218,10 @@ export function registerActiveEffectConfigHooks() {
 			// Clean up the temp variable
 			delete effect._pendingSourceRequirement;
 
-			//console.log(`${MODULE_ID} | Merged requirement into update: "${changes.flags[MODULE_ID].sourceRequirement}"`);
 		}
 
 		// Check if there's a pending requireEquipped from the form
 		if (effect._pendingRequireEquipped !== undefined) {
-			//console.log(`${MODULE_ID} | Found pending requireEquipped: ${effect._pendingRequireEquipped}`);
 
 			// Merge the requireEquipped into the changes
 			if (!changes.flags) changes.flags = {};
@@ -237,17 +231,14 @@ export function registerActiveEffectConfigHooks() {
 			// Clean up the temp variable
 			delete effect._pendingRequireEquipped;
 
-			//console.log(`${MODULE_ID} | Merged requireEquipped into update: ${changes.flags[MODULE_ID].requireEquipped}`);
 		}
 
 		// Check if there's a flags update with our source requirement
 		if (changes.flags?.[MODULE_ID]?.sourceRequirement !== undefined) {
-			//console.log(`${MODULE_ID} | preUpdateActiveEffect: Saving requirement "${changes.flags[MODULE_ID].sourceRequirement}"`);
 		}
 
 		// Check if there's a flags update with our requireEquipped
 		if (changes.flags?.[MODULE_ID]?.requireEquipped !== undefined) {
-			//console.log(`${MODULE_ID} | preUpdateActiveEffect: Saving requireEquipped ${changes.flags[MODULE_ID].requireEquipped}`);
 		}
 	});
 }

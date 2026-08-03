@@ -40,7 +40,6 @@ export function registerPredefinedEffects() {
 			return;
 		}
 
-		//console.log(`${MODULE_ID} | Adding ability advantage predefined effects`);
 
 		// Define ability advantage effects for each ability score
 		const abilityAdvantageEffects = {
@@ -383,7 +382,6 @@ export function registerPredefinedEffects() {
 		// Merge ability advantage effects into the system's predefined effects
 		Object.assign(CONFIG.SHADOWDARK.PREDEFINED_EFFECTS, abilityAdvantageEffects);
 
-		//console.log(`${MODULE_ID} | Added ${Object.keys(abilityAdvantageEffects).length} extra advantage, resistance/immunity/vulnerability effects`);
 
 		// ============================================
 		// SPELL DISADVANTAGE HANDLER PATCH
@@ -423,6 +421,5 @@ export function registerPredefinedEffects() {
 			return originalModifyEffectChangesWithInput.call(this, item, effect, key);
 		};
 
-		//console.log(`${MODULE_ID} | Patched effects system for spellDisadvantage support`);
 	});
 }

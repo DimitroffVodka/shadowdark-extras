@@ -34,7 +34,6 @@ export function registerChatCardHooks() {
 				message.updateSource({
 					"flags.shadowdark-extras.targetIds": targetIds,
 				});
-				//console.log(`${MODULE_ID} | Stored ${targetIds.length} targets in message flags:`, targetIds);
 
 				// Mirror Image Automation
 				// If this is an attack roll targeting someone with Mirror Image duplicates
@@ -149,7 +148,6 @@ export function registerChatCardHooks() {
 						"flags.shadowdark-extras.itemConfig": itemConfig,
 					});
 
-					//console.log(`${MODULE_ID} | Stored item config for ${item.name}:`, itemConfig);
 				}
 			}
 

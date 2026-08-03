@@ -59,7 +59,6 @@ export function registerFreyasOmenHooks() {
 			ev.stopPropagation();
 			// Reroll the item
 			if (item) {
-				//console.log(`${MODULE_ID} | Rerrolling spell: ${item.name}`);
 
 				// Reconstruct roll data for a spell roll
 				// Based on system logic (which isn't exposed directly for us to reuse easily)
