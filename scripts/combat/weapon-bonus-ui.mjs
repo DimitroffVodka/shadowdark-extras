@@ -1562,5 +1562,3 @@ async function saveEffectRequirementsFromDom($tab, item) {
 
 	await saveWeaponBonusConfig(item, { effects });
 }
-
-
