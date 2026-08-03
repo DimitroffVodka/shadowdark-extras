@@ -85,11 +85,13 @@ async function showEffectSelectionDialog(effectOptions) {
 		let checkboxesHtml = "";
 		for (let i = 0; i < effectOptions.length; i++) {
 			const opt = effectOptions[i];
+			const escapedImg = foundry.utils.escapeHTML(opt.img || "icons/svg/mystery-man.svg");
+			const escapedName = foundry.utils.escapeHTML(opt.name || "Unknown Effect");
 			checkboxesHtml += `
 				<div class="sdx-effect-option" style="display: flex; align-items: center; gap: 8px; padding: 4px 0;">
 					<input type="checkbox" id="effect-${i}" name="effect-${i}" value="${i}" checked style="width: 16px; height: 16px;">
-					<img src="${opt.img}" alt="${opt.name}" style="width: 24px; height: 24px; border-radius: 4px;">
-					<label for="effect-${i}" style="cursor: pointer;">${opt.name}</label>
+					<img src="${escapedImg}" alt="${escapedName}" style="width: 24px; height: 24px; border-radius: 4px;">
+					<label for="effect-${i}" style="cursor: pointer;">${escapedName}</label>
 				</div>
 			`;
 		}
