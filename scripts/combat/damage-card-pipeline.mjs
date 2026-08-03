@@ -4,12 +4,12 @@
  */
 
 import { getWeaponEffectsToApply, calculateWeaponBonusDamage } from "./WeaponBonusConfig.mjs";
-import { startDurationSpell, linkEffectToDurationSpell, linkEffectToFocusSpell, linkTargetToFocusSpell, startFocusSpellIfNeeded } from "../effects/FocusSpellTrackerSD.mjs";
+import { startDurationSpell, linkEffectToDurationSpell, linkEffectToFocusSpell, startFocusSpellIfNeeded } from "../effects/FocusSpellTrackerSD.mjs";
 import { buildTemplateEffectsFlag, processTemplateCreationEffects } from "../effects/TemplateEffectsSD.mjs";
 import { createAuraOnActor } from "../effects/AuraEffectsSD.mjs";
 import { readSdRollOutcome, readSdDamageRoll, resolveCardContext } from "../shared/sd4Compat.mjs";
-import { buildRollBreakdown, buildDamageCardHtml, attachDamageCardListeners, spawnSummonedCreatures, giveItemsToCaster, applyCoatingPoison, normalizeConfiguredEffectUuids, evaluateFormulaExpressions, doubleDiceInFormula, parseTieredFormula, evaluateRequirement, buildTargetRollData } from "./damage-card.mjs";
-import { _spawnedMessages, _itemGiveMessages, _coatingPoisonMessages, _templatePlacedMessages, _autoAppliedMessages } from "./combat-settings-app.mjs";
+import { buildRollBreakdown, buildDamageCardHtml, spawnSummonedCreatures, giveItemsToCaster, applyCoatingPoison, normalizeConfiguredEffectUuids, evaluateFormulaExpressions, doubleDiceInFormula, parseTieredFormula, evaluateRequirement, buildTargetRollData } from "./damage-card.mjs";
+import { _spawnedMessages, _itemGiveMessages, _coatingPoisonMessages, _templatePlacedMessages } from "./combat-settings-app.mjs";
 import { finalizeDamageCard } from "./damage-card-finalization.mjs";
 
 const MODULE_ID = "shadowdark-extras";
