@@ -158,7 +158,9 @@ export function initAlignmentSpellFiltering() {
 				const fullSpell = await fromUuid(entry?.uuid);
 				const spell = fullSpell ?? entry;
 				const spellAlignment = spell?.flags?.[MODULE_ID]?.alignment;
-				if (!spellAlignment || spellAlignment === this.alignment) visibleEntries.push(entry);
+				if (!spellAlignment || spellAlignment === this.alignment) {
+					visibleEntries.push(entry);
+				}
 			}
 			spellList[tier] = visibleEntries;
 		}

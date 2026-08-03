@@ -17,32 +17,7 @@ Entries are numbered to match `pending-decisions.md` in the local architecture
 notes, where the fuller reasoning and the raw measurements live.
 
 ---
-
-
-
-
-## 14. Alignment-based spell filtering was dead: SDX patched the 3.x method location
-
-**Status:** fixed in Phase 5.3 / GitHub issue #63. Shadowdark 4.x stores
-`openSpellBook` on `CONFIG.Actor.dataModels.Player.prototype`, and the player
-sheet calls `actor.system.openSpellBook()`. The patch now targets that live
-data-model method and resolves classes through
-`shadowdark.utils.resolveSpellClasses(this.spellcasting.classes)`.
-
-The repair preserves Shadowdark's zero-, single-, and multi-class dialog
-behavior, assigns the actor alignment to each transient `SpellBookSD` before
-render, and filters only flagged spells whose alignment is not an exact match.
-Unflagged spells remain visible, unresolved UUIDs fall back to their original
-entries, and source actor/item documents are not mutated. Both prototype
-patches use stable global markers so repeated initialization cannot stack
-wrappers or hooks.
-
-Direct Node regression coverage reaches the patched data-model method and
-`SpellBookSD.getData` chain, including all alignments, zero/single/multi-class
-paths, UUID failures, missing seams, and repeated initialization.
-
 ---
-
 
 
 
@@ -65,5 +40,6 @@ Kept briefly so the same findings are not re-reported.
 | 10 | The weapon damage-bonus chat display was unreachable in SD 4.x — its only caller sat behind a `flags.itemId` gate 4.x messages never carry, and the function used jQuery against the v14 DOM; the live CombatSettingsSD pipeline already renders the breakdown from `weaponBonusResults` (with `bonusInFormula` de-dup), so `injectWeaponBonusDisplay` and its dead branch in hit-bonus.mjs were deleted | issue #55, Phase 5.2.8 |
 | 12 | The NPC item-chat icon was dead — `item.displayCard` does not exist in SD 4.x (unhandled rejection, nothing posted); all eight call sites (NPC sheet, token toolbar ×3, shapechanger ×3, party inventory) now use `shadowdark.chat.showItemCard(uuid)` inside try/catch so the next system change is loud instead of silent | issue #54, Phase 5.2.4 |
 | 13 | Unidentified magical item sheets exposed `system.magicItem` to non-GM players because SDX wrapped the generic ItemSheet before Shadowdark's ItemSheetSD added the `system` context; the generic SDX privacy sheet now covers Armor, Basic, Gem, Scroll, Wand, and Weapon, while Potion remains on SDX's AppV2 PotionSheetSD and masks only a cloned rendered context there, preserving its default identity, PARTS/actions, GM/identified behavior, and the Item document | issue #62, Phase 5.3 |
+| 14 | Alignment-based spell filtering targeted the removed SD 3.x method location, so Shadowdark 4.x spellbooks bypassed the patch; the fix targets `PlayerSD.openSpellBook`, resolves classes through `shadowdark.utils.resolveSpellClasses`, and filters flagged spells by exact alignment while preserving unflagged entries and source documents | issue #63, Phase 5.3 |
 | 15 | ToM's default scene background pointed at `assets/default-scene.jpg`, which was never shipped (404 from both model entry points); the promised asset now ships and both `TomSceneModel` implementations were deduplicated onto one shared default | issue #57, Phase 5.2.2 |
 

@@ -3,6 +3,8 @@ import test from "node:test";
 
 const MODULE_ID = "shadowdark-extras";
 const modulePath = "../../scripts/character-sheet/spellbook-filter.mjs";
+const PLAYER_PATCH = Symbol.for("shadowdark-extras.alignment-spellbook.player");
+const SPELLBOOK_PATCH = Symbol.for("shadowdark-extras.alignment-spellbook.get-data");
 let importSequence = 0;
 
 function snapshotGlobals() {
@@ -248,12 +250,14 @@ test("alignment filtering reaches the PlayerSD method and preserves Shadowdark 4
 		const entries = {
 			unflagged: { uuid: "spell-unflagged" },
 			lawful: { uuid: "spell-lawful" },
+			mixedCase: { uuid: "spell-mixed-case" },
 			neutral: { uuid: "spell-neutral" },
 			chaotic: { uuid: "spell-chaotic" },
 			fallback: { uuid: "spell-fallback", flags: { [MODULE_ID]: { alignment: "neutral" } } },
 		};
 		fake.uuidDocuments.set(entries.unflagged.uuid, { flags: {} });
 		fake.uuidDocuments.set(entries.lawful.uuid, { flags: { [MODULE_ID]: { alignment: "lawful" } } });
+		fake.uuidDocuments.set(entries.mixedCase.uuid, { flags: { [MODULE_ID]: { alignment: "Lawful" } } });
 		fake.uuidDocuments.set(entries.neutral.uuid, { flags: { [MODULE_ID]: { alignment: "neutral" } } });
 		fake.uuidDocuments.set(entries.chaotic.uuid, { flags: { [MODULE_ID]: { alignment: "chaotic" } } });
 		const originalActor = {
@@ -325,23 +329,57 @@ test("alignment filtering patches are repeat-safe and fail closed when a 4.x sea
 		assert.equal(fake.SpellBookSD.prototype.getData, getDataMethod);
 		assert.equal(fake.hooks.length, hookCount);
 
-		const missingPrevious = snapshotGlobals();
-		const missingFake = installFakeFoundry();
-		delete globalThis.CONFIG.Actor.dataModels.Player.prototype.openSpellBook;
-		const warnings = [];
-		const previousWarn = console.warn;
-		console.warn = message => warnings.push(message);
-		try {
-			const missingInit = await loadInitializer(true);
-			missingInit();
-		} finally {
-			console.warn = previousWarn;
+		const missingSeams = [
+			{
+				label: "CONFIG.Actor.dataModels.Player.prototype.openSpellBook",
+				remove: fake => delete fake.PlayerSD.prototype.openSpellBook,
+			},
+			{
+				label: "shadowdark.apps.SpellBookSD.prototype.getData",
+				remove: fake => delete fake.SpellBookSD.prototype.getData,
+			},
+			{
+				label: "shadowdark.utils.resolveSpellClasses",
+				remove: () => delete globalThis.shadowdark.utils.resolveSpellClasses,
+			},
+			{
+				label: "Hooks.on",
+				remove: () => delete globalThis.Hooks.on,
+			},
+		];
+		for (const seam of missingSeams) {
+			const missingPrevious = snapshotGlobals();
+			const missingFake = installFakeFoundry();
+			const hookCount = missingFake.hooks.length;
+			seam.remove(missingFake);
+			const playerMethod = missingFake.PlayerSD.prototype.openSpellBook;
+			const getDataMethod = missingFake.SpellBookSD.prototype.getData;
+			const warnings = [];
+			const previousWarn = console.warn;
+			console.warn = message => warnings.push(message);
+			try {
+				const missingInit = await loadInitializer(true);
+				assert.doesNotThrow(() => missingInit(), `${seam.label} fallback does not throw`);
+			} finally {
+				console.warn = previousWarn;
+			}
+			assert.equal(warnings.length, 1, `${seam.label} emits exactly one warning`);
+			assert.ok(warnings[0].includes(seam.label), `${seam.label} warning is actionable`);
+			assert.strictEqual(missingFake.PlayerSD.prototype.openSpellBook, playerMethod);
+			assert.strictEqual(missingFake.SpellBookSD.prototype.getData, getDataMethod);
+			assert.equal(missingFake.hooks.length, hookCount, `${seam.label} leaves hook count unchanged`);
+			assert.equal(
+				Object.prototype.hasOwnProperty.call(missingFake.PlayerSD.prototype, PLAYER_PATCH),
+				false,
+				`${seam.label} does not install a player marker`,
+			);
+			assert.equal(
+				Object.prototype.hasOwnProperty.call(missingFake.SpellBookSD.prototype, SPELLBOOK_PATCH),
+				false,
+				`${seam.label} does not install a spellbook marker`,
+			);
+			restoreGlobals(missingPrevious);
 		}
-		assert.equal(warnings.length, 1);
-		assert.match(warnings[0], /CONFIG\.Actor\.dataModels\.Player\.prototype\.openSpellBook/);
-		assert.equal(missingFake.hooks.length, 0, "missing seam does not install a partial hook");
-		assert.equal(typeof missingFake.SpellBookSD.prototype.getData, "function");
-		restoreGlobals(missingPrevious);
 	} finally {
 		restoreGlobals(previous);
 	}
