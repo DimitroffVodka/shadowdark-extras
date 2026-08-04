@@ -59,7 +59,7 @@ function registerMarchingSettings() {
 		type: String,
 		default: "",
 		// Keep every client (players included) in sync when the GM changes the leader.
-		onChange: (value) => {
+		onChange: value => {
 			leaderTokenId = value || null;
 			updateButtonStates();
 		},
@@ -74,7 +74,7 @@ function registerMarchingSettings() {
 		// Keep every client (players included) in sync when the GM toggles the mode.
 		// Without this, players' local marchingModeEnabled stays stale and keeps
 		// blocking their movement even after the GM switches to Free Movement.
-		onChange: (value) => {
+		onChange: value => {
 			marchingModeEnabled = !!value;
 			if (!marchingModeEnabled) {
 				leaderMovementPath = [];
@@ -153,7 +153,9 @@ export function initMarchingMode() {
 	// Show crown on newly created tokens if they're the leader
 	Hooks.on("createToken", async (tokenDoc, options, userId) => {
 		// Small delay to ensure token is fully initialized
-		await new Promise(resolve => setTimeout(resolve, 100));
+		await new Promise(resolve => {
+			setTimeout(resolve, 100);
+		});
 
 		if (tokenDoc.id === leaderTokenId) {
 			const token = canvas.tokens.get(tokenDoc.id);
@@ -295,7 +297,6 @@ function injectSidebarButtons($html) {
 	});
 
 
-
 	// Update button states
 	updateButtonStates();
 }
@@ -428,7 +429,8 @@ async function setLeader(tokenId) {
 	const newLeaderId = tokenId || null;
 	leaderTokenId = newLeaderId;
 
-	// Always remove ALL crowns first (handles refresh case where oldLeaderId is null but crowns persist)
+	// Always remove ALL crowns first (handles refresh case where oldLeaderId
+	// is null but crowns persist)
 	await removeAllLeaderCrowns();
 
 	// Reset marching state when leader changes
@@ -449,7 +451,9 @@ async function setLeader(tokenId) {
 			const newLeaderToken = canvas.tokens.get(newLeaderId);
 			if (newLeaderToken) {
 				// Small delay to ensure state is settled
-				await new Promise(resolve => setTimeout(resolve, 100));
+				await new Promise(resolve => {
+					setTimeout(resolve, 100);
+				});
 				calculateMarchingOrder(newLeaderToken);
 				console.log(`${MODULE_ID} | Recalculated marching order with new leader`);
 			}
@@ -692,17 +696,17 @@ function calculateMarchingOrder(leaderToken) {
 
 	// Find all player-owned tokens except the leader
 	const followerTokens = canvas.tokens.placeables.filter(t =>
-		t.id !== leaderToken.id &&
-        t.actor &&
-        t.actor.type === "Player" &&
-        t.actor.hasPlayerOwner
+		t.id !== leaderToken.id
+        && t.actor
+        && t.actor.type === "Player"
+        && t.actor.hasPlayerOwner
 	);
 
 	// Sort by distance from leader
 	const sortedFollowers = followerTokens.map(token => {
 		const distance = Math.sqrt(
-			Math.pow(token.x - leaderToken.x, 2) +
-            Math.pow(token.y - leaderToken.y, 2)
+			Math.pow(token.x - leaderToken.x, 2)
+            + Math.pow(token.y - leaderToken.y, 2)
 		);
 		return { token, distance };
 	}).sort((a, b) => a.distance - b.distance);
@@ -907,17 +911,6 @@ async function showLeaderCrown(token) {
 }
 
 /**
- * Remove the leader crown from a token
- */
-async function removeLeaderCrown(token) {
-	if (typeof Sequencer === "undefined") return;
-
-	const effectName = getLeaderCrownEffectName(token);
-	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
-	console.log(`${MODULE_ID} | Removed leader crown from ${token.name}`);
-}
-
-/**
  * Remove all leader crowns from all tokens
  */
 async function removeAllLeaderCrowns() {
@@ -943,7 +936,9 @@ async function restoreLeaderCrown() {
 	if (typeof Sequencer === "undefined") return;
 
 	// Small delay to ensure canvas is ready
-	await new Promise(resolve => setTimeout(resolve, 500));
+	await new Promise(resolve => {
+		setTimeout(resolve, 500);
+	});
 
 	// First, clean up any stale crowns that may have persisted from before refresh
 	await removeAllLeaderCrowns();

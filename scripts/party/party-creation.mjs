@@ -82,12 +82,10 @@ function addPartyOptionToSelect(html) {
 	const npcOption = typeSelect.find('option[value="NPC"]');
 	if (npcOption.length > 0) {
 		npcOption.after(`<option value="Party">${game.i18n.localize("SHADOWDARK_EXTRAS.party.name")}</option>`);
-		//console.log(`${MODULE_ID} | Added Party option to actor type select`);
 	}
 	else {
 		// Fallback: append to the end
 		typeSelect.append(`<option value="Party">${game.i18n.localize("SHADOWDARK_EXTRAS.party.name")}</option>`);
-		//console.log(`${MODULE_ID} | Added Party option to actor type select (appended)`);
 	}
 
 	// Also intercept form submission to convert Party to NPC before it's sent
@@ -167,8 +165,6 @@ export function wrapActorCreate() {
 
 		return originalCreate.call(this, Array.isArray(data) ? createData : createData[0], options);
 	};
-
-	//console.log(`${MODULE_ID} | Wrapped Actor.create to handle Party type`);
 }
 
 /**

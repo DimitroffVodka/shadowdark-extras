@@ -1,11 +1,9 @@
 import { MODULE_ID, FOCUS_SPELL_FLAG, DURATION_SPELL_FLAG, _endingFocusSpells } from "./focus-constants.mjs";
 import { linkEffectToDurationSpell, getSceneMeasuredTemplates } from "./duration-spell.mjs";
-
-// Focus-spell tracking domain — extracted from
-// scripts/effects/FocusSpellTrackerSD.mjs (Phase 5.1 split).
+import { renderFocusEndedChat, buildFocusSpellsHtml } from "./focus-ui.mjs";
 
 export async function startFocusSpell(actor, spell, perTurnConfig = null) {
-	// Cache spell data so we can still roll focus checks even if the item is deleted (e.g., scrolls)
+	// Cache spell data so focus checks still roll if the item is deleted (e.g. scrolls)
 	const spellData = {
 		tier: spell.system?.tier ?? 1,
 		ability: spell.system?.spellcasting?.ability ?? actor.system?.spellcastingAbility ?? actor.system?.ability ?? "INT",
@@ -100,7 +98,7 @@ export async function startFocusSpell(actor, spell, perTurnConfig = null) {
 			}
 		}
 	}
-	catch (err) {
+	catch(err) {
 		console.error("shadowdark-extras | Failed to create concentration effect:", err);
 	}
 
@@ -113,7 +111,8 @@ export async function startFocusSpell(actor, spell, perTurnConfig = null) {
 
 // Storage key for duration spell data in actor flags
 
-export async function startFocusSpellIfNeeded(casterActorId, spellId, spellName, perTurnConfig = null) {
+export async function startFocusSpellIfNeeded(casterActorId, spellId, spellName,
+	perTurnConfig = null) {
 	const caster = game.actors.get(casterActorId);
 	if (!caster) {
 		console.warn(`shadowdark-extras | Cannot start focus tracking: caster ${casterActorId} not found`);
@@ -189,12 +188,16 @@ export async function handleEffectCreated(item, options, userId) {
 	const targetToken = item.actor.getActiveTokens()?.[0];
 
 	if (focusEntry) {
-		await linkEffectToFocusSpell(sourceActor, sourceSpell.id, item.actor, targetToken?.id, item.id);
+		await linkEffectToFocusSpell(
+			sourceActor, sourceSpell.id, item.actor, targetToken?.id, item.id
+		);
 		return;
 	}
 
 	// Check if it's a duration spell being tracked
-	await linkEffectToDurationSpell(sourceActor, sourceSpell.id, item.actor, targetToken?.id, item.id);
+	await linkEffectToDurationSpell(
+		sourceActor, sourceSpell.id, item.actor, targetToken?.id, item.id
+	);
 }
 
 /**
@@ -344,7 +347,7 @@ export async function handleCombatUpdate(combat, changed, options, userId) {
 	try {
 		autoRollFocus = game.settings.get(MODULE_ID, "autoRollFocusOnTurn");
 	}
-	catch {
+	catch{
 		autoRollFocus = false;
 	}
 	if (autoRollFocus) {
@@ -354,7 +357,8 @@ export async function handleCombatUpdate(combat, changed, options, userId) {
 			: (game.user.isGM && game.users.activeGM?.id === game.user.id);
 		if (shouldRoll) {
 			// skipPrompt fast-forwards the roll dialog so the check is fully automatic.
-			for (const f of activeFocus) await rollFocusSpellWithTargets(actor, f.spellId, { skipPrompt: true });
+			for (const f of activeFocus) await rollFocusSpellWithTargets(actor, f.spellId,
+				{ skipPrompt: true });
 		}
 		return; // auto-roll replaces the manual reminder card
 	}
@@ -369,8 +373,8 @@ export async function handleCombatUpdate(combat, changed, options, userId) {
 
 	// Build a minimal reminder message with clickable focus roll buttons
 	const spellList = activeFocus.map(f => {
-		const targets = f.targetEffects.map(te => te.targetName).join(", ") ||
-			game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.no_targets");
+		const targets = f.targetEffects.map(te => te.targetName).join(", ")
+			|| game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.no_targets");
 		return `<div class="sdx-focus-reminder-spell">
 			<a class="sdx-focus-roll-btn" data-actor-id="${actor.id}" data-spell-id="${f.spellId}" data-tooltip="${game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.roll_focus")}">
 				<i class="fa-solid fa-brain"></i>
@@ -493,7 +497,7 @@ async function applyFocusSpellPerTurnDamage(focusSpell, targetActor, targetToken
 			speaker: ChatMessage.getSpeaker({ actor: targetActor }),
 		});
 	}
-	catch (err) {
+	catch(err) {
 		console.error("shadowdark-extras | Error applying per-turn damage for focus spell: ", err);
 	}
 }
@@ -574,11 +578,15 @@ export async function rollFocusSpellWithTargets(actor, spellId, opts = {}) {
 				console.log(`shadowdark-extras | Auto-targeting ${tokensToTarget.length} token(s) for focus spell: ${focusEntry.spellName}`);
 
 				// Clear existing targets first, then set new ones
-				game.user.targets.forEach(t => t.setTarget(false, { user: game.user, releaseOthers: false, groupSelection: false }));
+				game.user.targets.forEach(t => t.setTarget(
+					false, { user: game.user, releaseOthers: false, groupSelection: false }
+				));
 
 				// Set targets programmatically using the Token.setTarget method
 				for (const token of tokensToTarget) {
-					token.setTarget(true, { user: game.user, releaseOthers: false, groupSelection: true });
+					token.setTarget(
+						true, { user: game.user, releaseOthers: false, groupSelection: true }
+					);
 				}
 			}
 		}
@@ -635,7 +643,7 @@ async function rollFocusCheckFromCachedData(actor, focusEntry, opts = {}) {
 				classUuids = [actorClass.uuid];
 			}
 		}
-		catch (e) {
+		catch(e) {
 			console.warn("shadowdark-extras | Could not get actor class for temp spell", e);
 		}
 	}
@@ -686,13 +694,13 @@ async function rollFocusCheckFromCachedData(actor, focusEntry, opts = {}) {
 					console.log(`shadowdark-extras | Deleted temporary spell: ${spellName}`);
 				}
 			}
-			catch (err) {
+			catch(err) {
 				console.warn("shadowdark-extras | Could not delete temporary spell:", err);
 			}
 		}, 2000);
 
 	}
-	catch (err) {
+	catch(err) {
 		console.error("shadowdark-extras | Error rolling focus from cached data:", err);
 		ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.focus_roll_error") || "Error rolling focus check");
 	}
@@ -731,7 +739,7 @@ export async function endFocusSpell(casterId, spellId, reason = "manual") {
 		const focusEntry = activeFocus[focusIndex];
 
 		// Remove all effects applied to targets
-		const removalPromises = focusEntry.targetEffects.map(async (targetEffect) => {
+		const removalPromises = focusEntry.targetEffects.map(async targetEffect => {
 			try {
 			// For unlinked tokens, we need to get the actor from the token, not from game.actors
 			// The effect is on the synthetic token actor, not the base actor
@@ -785,7 +793,7 @@ export async function endFocusSpell(casterId, spellId, reason = "manual") {
 					});
 				}
 			}
-			catch (err) {
+			catch(err) {
 			// "does not exist" just means the effect was already removed elsewhere; benign.
 				console.warn(`shadowdark-extras | Effect ${targetEffect.effectItemId} already removed or unavailable:`, err?.message ?? err);
 			}
@@ -804,9 +812,9 @@ export async function endFocusSpell(casterId, spellId, reason = "manual") {
 			// Fallback: search for any concentration effect linked to this spell.
 			if (!concEffect) {
 				concEffect = caster.items.find(i =>
-					i.type === "Effect" &&
-				i.flags?.[MODULE_ID]?.isConcentration &&
-				i.flags?.[MODULE_ID]?.spellId === spellId
+					i.type === "Effect"
+				&& i.flags?.[MODULE_ID]?.isConcentration
+				&& i.flags?.[MODULE_ID]?.spellId === spellId
 				);
 			}
 			if (concEffect) {
@@ -814,7 +822,7 @@ export async function endFocusSpell(casterId, spellId, reason = "manual") {
 				console.log(`shadowdark-extras | Removed concentration effect ${concEffect.name} from caster`);
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn("shadowdark-extras | Concentration effect already removed or unavailable:", err?.message ?? err);
 		}
 
@@ -836,14 +844,14 @@ export async function endFocusSpell(casterId, spellId, reason = "manual") {
 							await template.delete();
 							console.log(`shadowdark-extras | Deleted template ${template.id}`);
 						}
-						catch (err) {
+						catch(err) {
 							console.warn(`shadowdark-extras | Failed to delete template ${template.id}:`, err);
 						}
 					}
 				}
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn("shadowdark-extras | Error cleaning up templates:", err);
 		}
 
@@ -877,122 +885,15 @@ export async function endFocusSpell(casterId, spellId, reason = "manual") {
 /**
  * Render chat message for when focus ends
  */
-async function renderFocusEndedChat(focusEntry, reason) {
-	const reasonText = game.i18n.localize(`SHADOWDARK_EXTRAS.focus_tracker.reason_${reason}`);
-
-	let targetList = "";
-	if (focusEntry.targetEffects.length > 0) {
-		targetList = "<ul>" + focusEntry.targetEffects.map(te =>
-			`<li>${te.targetName}</li>`
-		).join("") + "</ul>";
-	}
-
-	return `
-		<div class="shadowdark chat-card focus-ended">
-			<header class="card-header flexrow">
-				<img class="focus-ended-icon" src="${focusEntry.spellImg}" alt="${focusEntry.spellName}"/>
-				<div class="focus-ended-header-text">
-					<h3>${game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.focus_ended")}</h3>
-					<p class="spell-name">${focusEntry.spellName}</p>
-				</div>
-			</header>
-			<div class="card-content">
-				<p class="reason-text">${reasonText}</p>
-				${focusEntry.targetEffects.length > 0 ? `
-					<p>${game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.effects_removed")}:</p>
-					${targetList}
-				` : ""}
-			</div>
-		</div>
-	`;
-}
 
 /**
  * Inject focus spells UI into the player sheet's spells tab
  */
 
-export function buildFocusSpellsHtml(actor, activeFocus) {
-	let spellsHtml = "";
-
-	for (const focus of activeFocus) {
-		// Calculate how long focus has been maintained
-		const focusedTime = calculateFocusDuration(focus);
-
-		// Filter out concentration effects (effects on the caster) for display
-		const nonConcentrationEffects = focus.targetEffects.filter(te => te.targetActorId !== focus.casterId);
-		const targetCount = nonConcentrationEffects.length;
-
-		// Build target list for tooltip (excluding concentration on caster)
-		const targetsList = nonConcentrationEffects.map(te => te.targetName).join(", ") ||
-			game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.no_targets");
-
-		spellsHtml += `
-			<li class="item sdx-focus-spell" data-spell-id="${focus.spellId}">
-				<div class="item-image" style="background-image: url(${focus.spellImg})">
-					<i class="fa-solid fa-brain"></i>
-				</div>
-				<div class="sdx-focus-info">
-					<span class="sdx-focus-spell-name">${focus.spellName}</span>
-				</div>
-				<span class="sdx-focus-time" title="${game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.time_focused")}">${focusedTime}</span>
-				<span class="sdx-focus-targets" title="${targetsList}">
-					<i class="fas fa-bullseye"></i> ${targetCount}
-				</span>
-				<div class="actions">
-					<a data-action="focus-roll" data-spell-id="${focus.spellId}"
-					   data-tooltip="${game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.roll_focus")}">
-						<i class="fa-solid fa-brain"></i>
-					</a>
-					<a data-action="end-focus" data-spell-id="${focus.spellId}"
-					   data-tooltip="${game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.end_focus")}">
-						<i class="fa-solid fa-xmark" style="color: #ff6666;"></i>
-					</a>
-				</div>
-			</li>
-		`;
-	}
-
-	return `
-		<div class="SD-box sdx-focus-spells-section">
-			<div class="header">
-				<label>
-					<i class="fa-solid fa-brain"></i>
-					${game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.active_focus_spells")}
-				</label>
-			</div>
-			<div class="content">
-				<ol class="SD-list sdx-focus-spells-list">
-					${spellsHtml}
-				</ol>
-			</div>
-		</div>
-		<br>
-	`;
-}
 
 /**
  * Calculate how long focus has been maintained
  */
-function calculateFocusDuration(focus) {
-	if (game.combat && focus.startRound !== null) {
-		const rounds = game.combat.round - focus.startRound;
-		return game.i18n.format("SHADOWDARK_EXTRAS.focus_tracker.rounds", { count: rounds });
-	}
-
-	const seconds = game.time.worldTime - focus.startTime;
-
-	if (seconds < 60) {
-		return game.i18n.format("SHADOWDARK_EXTRAS.focus_tracker.seconds", { count: seconds });
-	}
-	else if (seconds < 3600) {
-		const minutes = Math.floor(seconds / 60);
-		return game.i18n.format("SHADOWDARK_EXTRAS.focus_tracker.minutes", { count: minutes });
-	}
-	else {
-		const hours = Math.floor(seconds / 3600);
-		return game.i18n.format("SHADOWDARK_EXTRAS.focus_tracker.hours", { count: hours });
-	}
-}
 
 /**
  * Get all active focus spells for an actor
@@ -1019,7 +920,8 @@ export function isFocusingOnSpell(actor, spellId) {
  * @param {string} targetTokenId - The target token ID (required for unlinked tokens)
  * @param {string} effectItemId - The effect item ID on the target
  */
-export async function linkEffectToFocusSpell(casterActorOrId, spellId, targetActorOrId, targetTokenId, effectItemId) {
+export async function linkEffectToFocusSpell(casterActorOrId, spellId, targetActorOrId,
+	targetTokenId, effectItemId) {
 	// Resolve caster actor
 	const casterActor = typeof casterActorOrId === "string"
 		? game.actors.get(casterActorOrId)
@@ -1112,7 +1014,8 @@ export async function linkEffectToFocusSpell(casterActorOrId, spellId, targetAct
  * @param {string|Actor} targetActorOrId - The target actor or their ID
  * @param {string} targetTokenId - The target token ID (required for unlinked tokens)
  */
-export async function linkTargetToFocusSpell(casterActorOrId, spellId, targetActorOrId, targetTokenId) {
+export async function linkTargetToFocusSpell(casterActorOrId, spellId, targetActorOrId,
+	targetTokenId) {
 	// Resolve caster actor
 	const casterActor = typeof casterActorOrId === "string"
 		? game.actors.get(casterActorOrId)
@@ -1157,8 +1060,8 @@ export async function linkTargetToFocusSpell(casterActorOrId, spellId, targetAct
 
 	// Check if this target is already linked (by actor/token)
 	const existing = focusEntry.targetEffects.find(
-		te => (te.targetTokenId && te.targetTokenId === resolvedTokenId) ||
-			(te.targetActorId === targetActor.id && !te.targetTokenId)
+		te => (te.targetTokenId && te.targetTokenId === resolvedTokenId)
+			|| (te.targetActorId === targetActor.id && !te.targetTokenId)
 	);
 
 	if (existing) {
@@ -1224,3 +1127,6 @@ export async function unlinkEffectFromFocusSpell(casterActorId, spellId, effectI
  * Handle wand uses tracking - decrement uses when a wand is cast
  * This runs on chat message render to detect wand casts
  */
+
+// Public surface preserved (Phase 5.3 lane-C split re-exports).
+export { buildFocusSpellsHtml };

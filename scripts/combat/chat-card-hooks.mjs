@@ -34,7 +34,6 @@ export function registerChatCardHooks() {
 				message.updateSource({
 					"flags.shadowdark-extras.targetIds": targetIds,
 				});
-				//console.log(`${MODULE_ID} | Stored ${targetIds.length} targets in message flags:`, targetIds);
 
 				// Mirror Image Automation
 				// If this is an attack roll targeting someone with Mirror Image duplicates
@@ -49,7 +48,8 @@ export function registerChatCardHooks() {
 							// Decrement duplicates
 							const newCount = mirrorImages - 1;
 
-							// Update actor flag and effect (async but we don't await blocking the message)
+							// Update actor flag and effect (async but we don't await
+							// blocking the message)
 							(async () => {
 								await targetActor.setFlag(MODULE_ID, "mirrorImages", newCount);
 
@@ -62,7 +62,9 @@ export function registerChatCardHooks() {
 										// If duration tracking is active, end it
 										// If duration tracking is active, end it
 										if (typeof endDurationSpell === "function") {
-											const activeSpells = getActiveDurationSpells(targetActor);
+											const activeSpells = getActiveDurationSpells(
+												targetActor
+											);
 											const mirrorSpell = activeSpells.find(s => s.spellName === "Mirror Image");
 											if (mirrorSpell) {
 												await endDurationSpell(targetActor.id, mirrorSpell.instanceId || mirrorSpell.spellId, "expired");
@@ -89,11 +91,12 @@ export function registerChatCardHooks() {
 
 							message.updateSource({
 								content: (message.content || "") + interceptHtml,
-								flavor: (message.flavor || "") + ` [Intercepted: ${targetActor.name}]`,
+								flavor: `${message.flavor || ""} [Intercepted: ${targetActor.name}]`,
 							});
 
-							// Only consume one duplicate per attack message even if multiple targets?
-							// Usually attacks only target one person in SD, so this is fine.
+							// Only consume one duplicate per attack message even if multiple
+							// targets? Usually attacks only target one person in SD, so this
+							// is fine.
 							break;
 						}
 					}
@@ -122,34 +125,43 @@ export function registerChatCardHooks() {
 
 					// Store summoning config if it exists
 					if (item.flags?.[MODULE_ID]?.summoning) {
-						itemConfig.summoning = foundry.utils.duplicate(item.flags[MODULE_ID].summoning);
+						itemConfig.summoning = foundry.utils.duplicate(
+							item.flags[MODULE_ID].summoning
+						);
 					}
 
 					// Store itemGive config if it exists
 					if (item.flags?.[MODULE_ID]?.itemGive) {
-						itemConfig.itemGive = foundry.utils.duplicate(item.flags[MODULE_ID].itemGive);
+						itemConfig.itemGive = foundry.utils.duplicate(
+							item.flags[MODULE_ID].itemGive
+						);
 					}
 
 					// Store auraEffects config if it exists
 					if (item.flags?.[MODULE_ID]?.auraEffects) {
-						itemConfig.auraEffects = foundry.utils.duplicate(item.flags[MODULE_ID].auraEffects);
+						itemConfig.auraEffects = foundry.utils.duplicate(
+							item.flags[MODULE_ID].auraEffects
+						);
 					}
 
 					// Store spellDamage config if it exists
 					if (item.flags?.[MODULE_ID]?.spellDamage) {
-						itemConfig.spellDamage = foundry.utils.duplicate(item.flags[MODULE_ID].spellDamage);
+						itemConfig.spellDamage = foundry.utils.duplicate(
+							item.flags[MODULE_ID].spellDamage
+						);
 					}
 
 					// Store coatingPoison config if it exists
 					if (item.flags?.[MODULE_ID]?.coatingPoison) {
-						itemConfig.coatingPoison = foundry.utils.duplicate(item.flags[MODULE_ID].coatingPoison);
+						itemConfig.coatingPoison = foundry.utils.duplicate(
+							item.flags[MODULE_ID].coatingPoison
+						);
 					}
 
 					message.updateSource({
 						"flags.shadowdark-extras.itemConfig": itemConfig,
 					});
 
-					//console.log(`${MODULE_ID} | Stored item config for ${item.name}:`, itemConfig);
 				}
 			}
 
@@ -166,7 +178,7 @@ export function registerChatCardHooks() {
 				foundry.utils.setProperty(message._source, `flags.${MODULE_ID}.targetIds`, targetIds);
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Failed to store data in message`, err);
 		}
 	});
@@ -176,7 +188,7 @@ export function registerChatCardHooks() {
 		try {
 			injectDamageCard(message, html, context);
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Failed to inject damage card`, err);
 		}
 
@@ -198,7 +210,7 @@ export function registerChatCardHooks() {
 				if (cardContent) cardContent.style.display = "none";
 			}
 		}
-		catch (err) {
+		catch(err) {
 			// Settings may not be registered yet, ignore
 		}
 	});

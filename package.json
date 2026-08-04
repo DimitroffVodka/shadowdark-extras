@@ -23,7 +23,8 @@
     "gate:bindings": "node dev/tools/binding-gate.mjs",
     "gate:named-exports": "node dev/tools/named-export-gate.mjs",
     "lint": "eslint .",
-    "lint:strict": "eslint . --max-warnings 0"
+    "lint:strict": "eslint . --max-warnings 0",
+    "metrics:phase5": "node dev/tools/phase5-metrics.mjs --json"
   },
   "//engines": "Node 24 is the supported runtime for release:check and the packs tooling. See dev/tools/README.md for the two environment failures that must not be recorded as a pass.",
   "engines": {

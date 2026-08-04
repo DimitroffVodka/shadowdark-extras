@@ -26,7 +26,8 @@ async function createAuraRegion(token, effect, config, sourceItem) {
 		const tokenDoc = token?.document;
 		if (!tokenDoc?.persisted || !canvas?.scene) return null;
 
-		const RegionDocument = foundry.documents?.RegionDocument?.implementation ?? foundry.documents?.RegionDocument;
+		const RegionDocument = foundry.documents?.RegionDocument?.implementation
+			?? foundry.documents?.RegionDocument;
 		if (typeof RegionDocument?.createTokenEmanation !== "function") return null;
 
 		const nativeRegion = config.nativeRegion || {};
@@ -66,7 +67,7 @@ async function createAuraRegion(token, effect, config, sourceItem) {
 				[`flags.${MODULE_ID}.auraActorId`]: effect.parent?.id,
 				[`flags.${MODULE_ID}.sourceItemUuid`]: sourceItem.uuid,
 				[`flags.${MODULE_ID}.tokenFilters`]: foundry.utils.deepClone(config.tokenFilters || {}),
-				visibility: auraRegionVisibility,
+				"visibility": auraRegionVisibility,
 				"restriction.enabled": true,
 				"restriction.type": "move",
 				"restriction.priority": 0,
@@ -77,7 +78,7 @@ async function createAuraRegion(token, effect, config, sourceItem) {
 
 		return region;
 	}
-	catch (err) {
+	catch(err) {
 		console.warn("shadowdark-extras | Failed to create attached aura Region:", err);
 		return null;
 	}
@@ -101,7 +102,7 @@ async function applyTokenMagicAuraRegionFx(region, visualFx) {
 	});
 
 	const tintValue = getTokenMagicTintValue(tmfx.tint);
-	const withTint = (request) => tintValue === null ? request : { ...request, color: tintValue };
+	const withTint = request => tintValue === null ? request : { ...request, color: tintValue };
 
 	let presetParams = null;
 	if (typeof globalThis.TokenMagic.getPreset === "function") {
@@ -124,9 +125,13 @@ async function applyTokenMagicAuraRegionFx(region, visualFx) {
 					String(p?.name || "").toLowerCase() === String(preset).toLowerCase()
                     && ["tmfx-region", "tmfx-template", "tmfx-main"].includes(p?.library)
 				);
-				if (match) presetParams = globalThis.TokenMagic.getPreset(withTint({ name: match.name, library: match.library }));
+				if (match) {
+					presetParams = globalThis.TokenMagic.getPreset(
+						withTint({ name: match.name, library: match.library })
+					);
+				}
 			}
-			catch (e) {
+			catch(e) {
 				// The setting is not guaranteed to exist across TokenMagic versions.
 			}
 		}
@@ -163,7 +168,7 @@ async function applyAuraRegionVisualFx(region, visualFx) {
 		if (engine === "tmfx") await applyTokenMagicAuraRegionFx(region, visualFx);
 		else if (engine === "indy") applyIndyFxAuraRegion(region, visualFx);
 	}
-	catch (err) {
+	catch(err) {
 		console.warn("shadowdark-extras | Failed to apply aura Region visual FX:", err);
 	}
 }
@@ -177,13 +182,14 @@ export async function deleteAuraRegion(effect) {
 		const regionId = auraConfig?.regionId;
 		const flaggedRegions = [...(scene.regions || [])].filter(r =>
 			r.id === regionId
-            || (r.flags?.[MODULE_ID]?.auraRegion && r.flags?.[MODULE_ID]?.auraEffectId === effect.id)
+			|| (r.flags?.[MODULE_ID]?.auraRegion
+				&& r.flags?.[MODULE_ID]?.auraEffectId === effect.id)
 		);
 
 		const ids = flaggedRegions.map(r => r.id);
 		if (ids.length) await scene.deleteEmbeddedDocuments("Region", ids);
 	}
-	catch (err) {
+	catch(err) {
 		console.warn("shadowdark-extras | Failed to delete attached aura Region:", err);
 	}
 }
@@ -215,14 +221,19 @@ export async function removeExistingAurasForSource(actor, sourceItem) {
  * @param {Item} sourceItem - The source item (spell)
  * @returns {ActiveEffect} The created effect
  */
-export async function createAuraOnActor(actor, auraConfig, sourceItem, duration = null, expiryRounds = null) {
+export async function createAuraOnActor(actor, auraConfig, sourceItem, duration = null,
+	expiryRounds = null) {
 	const creationKey = `${actor?.id || "actor"}:${sourceItem?.uuid || sourceItem?.id || "source"}`;
 	if (_auraCreationInFlight.has(creationKey)) {
-		await new Promise(resolve => setTimeout(resolve, 300));
+		await new Promise(resolve => {
+			setTimeout(resolve, 300);
+		});
 		const existing = [...(actor.effects || [])].find(effect => {
 			const existingConfig = effect.flags?.[MODULE_ID]?.aura;
 			if (!existingConfig?.enabled) return false;
-			return existingConfig.spellId === sourceItem.id || existingConfig.sourceItemUuid === sourceItem.uuid || effect.origin === sourceItem.uuid;
+			return existingConfig.spellId === sourceItem.id
+				|| existingConfig.sourceItemUuid === sourceItem.uuid
+				|| effect.origin === sourceItem.uuid;
 		});
 		if (existing) return existing;
 	}
@@ -245,7 +256,7 @@ export async function createAuraOnActor(actor, auraConfig, sourceItem, duration 
 		const auraStatusId = `sdx-aura-${sourceItem.id}`;
 
 		const effectData = {
-			name: sourceItem.name + " (Aura)",
+			name: `${sourceItem.name} (Aura)`,
 			img: sourceItem.img,
 			origin: sourceItem.uuid,
 			// Add statuses to show as icon on token
@@ -255,7 +266,12 @@ export async function createAuraOnActor(actor, auraConfig, sourceItem, duration 
 			// startTime} keys only survive via the legacy migration shim.
 			duration: { value: expiryRounds, units: "rounds", expiry: "turnStart" },
 			start: inCombat
-				? { combat: combatId, round: combatRound, turn: combatTurn, time: game.time.worldTime }
+				? {
+					combat: combatId,
+					round: combatRound,
+					turn: combatTurn,
+					time: game.time.worldTime,
+				}
 				: { time: game.time.worldTime },
 			flags: {
 				[MODULE_ID]: {
@@ -295,7 +311,7 @@ export async function createAuraOnActor(actor, auraConfig, sourceItem, duration 
 		}
 
 		// Process initial tokens in aura range (apply effects immediately on creation)
-		// IMPORTANT: Use canvas.tokens.placeables to get Token objects (with .center), NOT actor.token (TokenDocument)
+		// Use canvas.tokens.placeables (Token objects with .center), NOT actor.token
 		const sourceToken = getAuraBearerToken(actor, auraConfig.bearerTokenId);
 		// Dynamic import breaks the cluster<->SD cycle (Phase 5.1 split)
 		const { shouldAnyComponentTrigger } = await import("./AuraEffectsSD.mjs");
@@ -362,6 +378,7 @@ export async function createAuraOnActor(actor, auraConfig, sourceItem, duration 
 			}
 		}
 		else if (!sourceToken) {
+			// no source token to inspect
 		}
 
 		return effect;

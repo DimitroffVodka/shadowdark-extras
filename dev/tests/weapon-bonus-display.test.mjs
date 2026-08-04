@@ -74,10 +74,10 @@ test("the live hit-bonus display path is intact", () => {
 });
 
 test("the live damage pipeline still computes and renders the breakdown", () => {
-	const combatSettings = readFileSync(new URL("../../scripts/combat/CombatSettingsSD.mjs", import.meta.url), "utf8");
-	assert.ok(combatSettings.includes("calculateWeaponBonusDamage"), "pipeline still calls the calculator");
-	assert.ok(combatSettings.includes("weaponBonusResults"), "breakdown still persisted for the card");
-	assert.ok(combatSettings.includes("bonusInFormula"), "double-add de-dup still handled");
+	const pipeline = readFileSync(new URL("../../scripts/combat/damage-card-pipeline.mjs", import.meta.url), "utf8");
+	assert.ok(pipeline.includes("calculateWeaponBonusDamage"), "pipeline still calls the calculator");
+	assert.ok(pipeline.includes("weaponBonusResults"), "breakdown still persisted for the card");
+	assert.ok(pipeline.includes("bonusInFormula"), "double-add de-dup still handled");
 });
 
 test("calculateWeaponBonusDamage is still exported and used", () => {

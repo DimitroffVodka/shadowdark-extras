@@ -670,11 +670,12 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
 		const showBenefitsToPlayers = game.settings.get(MODULE_ID, "carousingShowBenefitsToPlayers") ?? true;
 		const showMishapsToPlayers = game.settings.get(MODULE_ID, "carousingShowMishapsToPlayers") ?? true;
 		const hiddenText = game.i18n.localize("SHADOWDARK_EXTRAS.carousing.hidden_description");
+		const esc = foundry.utils.escapeHTML ?? Handlebars.Utils.escapeExpression;
 
 		let playerContent = `
             <div class="sdx-carousing-player">
                 <div class="sdx-player-header">
-                    <img src="${actor.img}" class="sdx-player-portrait">
+                    <img src="${esc(actor.img ?? "")}" class="sdx-player-portrait">
                     <div class="sdx-player-info">
                         <strong class="sdx-player-name">${participant.isGmManaged ? participant.droppedActorName : participant.name}</strong>
                         <div class="sdx-outcome-roll">
@@ -900,6 +901,7 @@ export async function executeCarousingRolls() {
 		// Read visibility settings (use benefit setting for original mode outcomes)
 		const showBenefitsToPlayers = game.settings.get(MODULE_ID, "carousingShowBenefitsToPlayers") ?? true;
 		const hiddenText = game.i18n.localize("SHADOWDARK_EXTRAS.carousing.hidden_description");
+		const esc = foundry.utils.escapeHTML ?? Handlebars.Utils.escapeExpression;
 
 		// Build description HTML based on visibility setting
 		const descHtml = showBenefitsToPlayers
@@ -917,7 +919,7 @@ export async function executeCarousingRolls() {
 		chatContent.push(`
             <div class="sdx-carousing-player">
                 <div class="sdx-player-header">
-                    <img src="${actor.img}" class="sdx-player-portrait">
+                    <img src="${esc(actor.img ?? "")}" class="sdx-player-portrait">
                     <div class="sdx-player-info">
                         <strong class="sdx-player-name">${participant.isGmManaged ? participant.droppedActorName : participant.name}</strong>
                         <div class="sdx-outcome-roll">

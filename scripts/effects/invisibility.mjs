@@ -31,30 +31,25 @@ export function registerInvisibilityHooks() {
 		const isInvisibilityEffect = effect.changes.some(c => c.key === `flags.${MODULE_ID}.invisibility`);
 		if (!isInvisibilityEffect) return;
 
-		//console.log(`${MODULE_ID} | Invisibility effect updated:`, { disabled: effect.disabled, changes });
 
 		// If effect was disabled, restore visibility
 		if (changes.disabled === true) {
-			//console.log(`${MODULE_ID} | Restoring visibility (effect disabled)`);
 			// Effect.parent is the Item (Condition), we need the Actor that owns the item
 			const item = effect.parent;
 			const actor = item?.parent; // Item's parent is the Actor
 			if (actor) {
-				//console.log(`${MODULE_ID} | Character Actor:`, { id: actor.id, name: actor.name, type: actor.type });
 				// Find all token documents for this actor across all scenes
 				const tokens = [];
 				for (const scene of game.scenes) {
-					//console.log(`${MODULE_ID} | Checking scene: ${scene.name}, tokens: ${scene.tokens.size}`);
 					const sceneTokens = scene.tokens.filter(t => {
 						const match = t.actorId === actor.id || t.actor?.id === actor.id;
 						if (t.actor?.name === actor.name) {
-							//console.log(`${MODULE_ID} | Token found:`, { tokenId: t.id, actorId: t.actorId, tokenActorId: t.actor?.id, match });
+							// name match alone is not sufficient; actorId/actor id governs
 						}
 						return match;
 					});
 					tokens.push(...sceneTokens);
 				}
-				//console.log(`${MODULE_ID} | Found ${tokens.length} token documents to restore visibility`);
 				for (const tokenDoc of tokens) {
 					await tokenDoc.update({ hidden: false });
 				}
@@ -72,14 +67,12 @@ export function registerInvisibilityHooks() {
 		const item = effect.parent;
 		const actor = item?.parent; // Item's parent is the Actor
 		if (actor) {
-			//console.log(`${MODULE_ID} | Invisibility effect deleted, restoring visibility`);
 			// Find all token documents for this actor across all scenes
 			const tokens = [];
 			for (const scene of game.scenes) {
 				const sceneTokens = scene.tokens.filter(t => t.actorId === actor.id);
 				tokens.push(...sceneTokens);
 			}
-			//console.log(`${MODULE_ID} | Found ${tokens.length} token documents to restore visibility`);
 			for (const tokenDoc of tokens) {
 				await tokenDoc.update({ hidden: false });
 			}
@@ -87,7 +80,7 @@ export function registerInvisibilityHooks() {
 	});
 
 	// Apply invisibility visual effect to tokens using Foundry's built-in hidden property
-	Hooks.on("refreshToken", (token) => {
+	Hooks.on("refreshToken", token => {
 		const hasInvisibility = token.actor?.getFlag(MODULE_ID, "invisibility");
 
 		if (hasInvisibility) {
@@ -99,7 +92,7 @@ export function registerInvisibilityHooks() {
 	});
 
 	// Auto-disable invisibility when attacking or casting spells
-	Hooks.on("preCreateChatMessage", async (message) => {
+	Hooks.on("preCreateChatMessage", async message => {
 		const speaker = message.speaker;
 		if (!speaker?.actor) return;
 
@@ -125,7 +118,6 @@ export function registerInvisibilityHooks() {
 		}
 
 		if (isAttack || isSpell || isSpellCast) {
-			//console.log(`${MODULE_ID} | ${actor.name} attacks/casts while invisible - breaking invisibility`);
 
 			// Find and disable the invisibility effect
 			const effect = actor.effects.find(e =>
@@ -159,18 +151,15 @@ export function registerInvisibilityHooks() {
 		);
 		if (!hasInvisibilityEffect) return;
 
-		//console.log(`${MODULE_ID} | Condition with invisibility effect deleted, restoring visibility`);
 		// Item's parent is the Actor
 		const actor = item.parent;
 		if (actor) {
-			//console.log(`${MODULE_ID} | Character Actor:`, { id: actor.id, name: actor.name, type: actor.type });
 			// Find all token documents for this actor across all scenes
 			const tokens = [];
 			for (const scene of game.scenes) {
 				const sceneTokens = scene.tokens.filter(t => t.actorId === actor.id);
 				tokens.push(...sceneTokens);
 			}
-			//console.log(`${MODULE_ID} | Found ${tokens.length} token documents to restore visibility`);
 			for (const tokenDoc of tokens) {
 				await tokenDoc.update({ hidden: false });
 			}

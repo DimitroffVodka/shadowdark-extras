@@ -111,7 +111,6 @@ function injectWandUsesUI(html, item) {
 		});
 	});
 
-	//console.log(`${MODULE_ID} | Wand uses UI injected for`, item.name);
 }
 
 /**
@@ -122,7 +121,6 @@ export async function enhanceWandSheet(app, html) {
 	const item = app.item;
 	if (!item || item.type !== "Wand") return;
 
-	//console.log(`${MODULE_ID} | Enhancing wand sheet for`, item.name);
 
 	// ═══════════════════════════════════════════════════════════════
 	// WAND USES TRACKING UI
@@ -293,7 +291,6 @@ export async function enhanceWandSheet(app, html) {
 		const $detailsLink = $tabs.find('a[data-tab="tab-details"]');
 		if ($detailsLink.length) {
 			$detailsLink.after(activityTabLink);
-			//console.log(`${MODULE_ID} | Activity tab link added to navigation`);
 		}
 		else {
 			console.warn(`${MODULE_ID} | Could not find Details tab link`);
@@ -304,7 +301,6 @@ export async function enhanceWandSheet(app, html) {
 		const $detailsTab = html.find('section.tab-details[data-tab="tab-details"]');
 		if ($detailsTab.length) {
 			$detailsTab.after(activityTabContent);
-			//console.log(`${MODULE_ID} | Activity tab content created`);
 		}
 		else {
 			console.warn(`${MODULE_ID} | Could not find Details tab content`);
@@ -342,7 +338,6 @@ export async function enhanceWandSheet(app, html) {
 		return;
 	}
 
-	//console.log(`${MODULE_ID} | Activity tab found/created`);
 
 	let effectsListHtml = "";
 	let effectsArray = flags.effects || [];
@@ -467,7 +462,6 @@ export async function enhanceWandSheet(app, html) {
 
 	// Insert into Activity tab
 	$activityTab.append(damageHealHtml);
-	//console.log(`${MODULE_ID} | Damage/Heal box inserted into Activity tab`);
 
 	// Prevent auto-submission of form inputs in Activity tab to avoid unwanted re-renders
 	$activityTab.find("input, select, textarea").on("change", function(e) {
@@ -502,7 +496,6 @@ export async function enhanceWandSheet(app, html) {
 
 			// Update without re-rendering
 			item.update(updateData, { render: false }).then(() => {
-				//console.log(`${MODULE_ID} | Updated ${fieldName}:`, value);
 			}).catch(err => {
 				console.error(`${MODULE_ID} | Failed to update ${fieldName}:`, err);
 			});
@@ -762,7 +755,6 @@ export async function enhanceWandSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.summoning.enabled`] = enabled;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Summoning enabled state saved:`, enabled);
 		});
 	});
 
@@ -891,7 +883,6 @@ export async function enhanceWandSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.summoning.profiles`] = profiles;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Saved summon profiles:`, profiles);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save summon profiles:`, err);
 		});
@@ -904,7 +895,6 @@ export async function enhanceWandSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemGive.enabled`] = enabled;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Item give enabled state saved:`, enabled);
 		});
 	});
 
@@ -1014,7 +1004,6 @@ export async function enhanceWandSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemGive.profiles`] = profiles;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Saved item give profiles:`, profiles);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save item give profiles:`, err);
 		});
@@ -1029,7 +1018,6 @@ export async function enhanceWandSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemMacro.runAsGm`] = runAsGm;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Saved itemMacro.runAsGm:`, runAsGm);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save itemMacro.runAsGm:`, err);
 		});
@@ -1045,7 +1033,6 @@ export async function enhanceWandSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemMacro.triggers`] = triggers;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Saved itemMacro.triggers:`, triggers);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save itemMacro.triggers:`, err);
 		});
@@ -1062,5 +1049,4 @@ export async function enhanceWandSheet(app, html) {
 	// inert (nothing saved, no preview).
 	activateAnimationFxListeners(html, item);
 
-	//console.log(`${MODULE_ID} | Wand sheet enhanced for`, item.name);
 }

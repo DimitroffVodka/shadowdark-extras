@@ -10,6 +10,13 @@ const MODULE_ID = "shadowdark-extras";
 let socketlibSocket = null;
 
 export function setupCombatSocket() {
+	if (socketlibSocket) {
+		// Duplicate-registration guard: registerModule is idempotent, but a
+		// second .register("...") pass would throw socketlib "already
+		// registered" errors. Once initialized, keep the existing socket.
+		return socketlibSocket;
+	}
+
 	if (!globalThis.socketlib) {
 		console.error("shadowdark-extras | socketlib not found, combat socket cannot be initialized");
 		return;
@@ -974,6 +981,7 @@ export function setupCombatSocket() {
 		}
 	});
 
+	return socketlibSocket;
 }
 
 /**

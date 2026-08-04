@@ -116,12 +116,9 @@ function calculateNpcCoinSlots(coins) {
  * @param {Actor} actor - The NPC actor
  */
 export function injectNpcCreatureType(app, html, actor) {
-	//console.log(`${MODULE_ID} | injectNpcCreatureType called for ${actor.name}`);
-
 	// Check if feature is enabled
 	try {
 		const enabled = game.settings.get(MODULE_ID, "enableNpcCreatureType");
-		//console.log(`${MODULE_ID} | enableNpcCreatureType setting: ${enabled}`);
 		if (!enabled) return;
 	}
 	catch (e) {
@@ -135,8 +132,6 @@ export function injectNpcCreatureType(app, html, actor) {
 	// Handle both plain DOM element and jQuery object (for V13 compatibility)
 	const $html = html instanceof HTMLElement ? $(html) : html;
 	const currentType = getEffectiveCreatureType(actor);
-
-	//console.log(`${MODULE_ID} | Current creature type: "${currentType}"`);
 
 	// Build the options HTML using dynamic creature types
 	const creatureTypes = [...getCreatureTypes()];
@@ -164,20 +159,16 @@ export function injectNpcCreatureType(app, html, actor) {
 
 	// Find the attacks box (first SD-box in grid-1-columns on the right side)
 	const $gridRight = $html.find(".grid-1-columns");
-	//console.log(`${MODULE_ID} | Found ${$gridRight.length} elements with .grid-1-columns`);
 
 	const $attacksBox = $gridRight.find(".SD-box").first();
-	//console.log(`${MODULE_ID} | Found ${$attacksBox.length} potential attack boxes`);
 
 	if ($attacksBox.length) {
 		// Insert before the attacks box
 		$attacksBox.before(creatureTypeHtml);
-		//console.log(`${MODULE_ID} | Injected creature type box`);
 
 		// Attach change handler (GM only; players see it read-only)
 		if (isGM) $html.find(".sdx-creature-type-select").on("change", async function(e) {
 			const newType = $(this).val();
-			//console.log(`${MODULE_ID} | Changing creature type to: ${newType}`);
 			await actor.setFlag(MODULE_ID, "creatureType", newType);
 			ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.npc.creature_type.updated", {
 				name: actor.name,
@@ -191,7 +182,6 @@ export function injectNpcCreatureType(app, html, actor) {
 		const $anyBox = $html.find(".SD-box").first();
 		if ($anyBox.length) {
 			$anyBox.before(creatureTypeHtml);
-			//console.log(`${MODULE_ID} | Injected creature type box using fallback`);
 		}
 	}
 }

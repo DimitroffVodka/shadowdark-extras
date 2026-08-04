@@ -63,6 +63,4 @@ export function patchLightSourceTrackerForParty() {
 			});
 		}
 	};
-
-	//console.log(`${MODULE_ID} | Patched Light Source Tracker to include Party actors`);
 }

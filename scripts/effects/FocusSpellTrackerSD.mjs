@@ -15,8 +15,36 @@
 import { getSocket } from "../combat/CombatSettingsSD.mjs";
 import { resolveCardContext } from "../shared/sd4Compat.mjs";
 import { MODULE_ID, FOCUS_SPELL_FLAG, DURATION_SPELL_FLAG, _processedFocusRollMessages } from "./focus-constants.mjs";
-import { endDurationSpell, handleDurationSpellCombatUpdate, addTargetToDurationSpell, removeTargetFromDurationSpell, buildDurationSpellsHtml, onDurationDamageApplyClick } from "./duration-spell.mjs";
-import { handleEffectCreated, handleEffectDeleted, handleTokenDeleted, handleCombatUpdate, endFocusSpell, startFocusSpell, rollFocusSpellWithTargets, applyFocusSpellPerTurnToTargets, buildFocusSpellsHtml, onFocusReminderClick } from "./focus-spell.mjs";
+import {
+	startDurationSpell,
+	getActiveDurationSpells,
+	registerSpellModification,
+	endDurationSpell,
+	handleDurationSpellCombatUpdate,
+	linkEffectToDurationSpell,
+	addTargetToDurationSpell,
+	removeTargetFromDurationSpell,
+	buildDurationSpellsHtml,
+	onDurationDamageApplyClick,
+} from "./duration-spell.mjs";
+import {
+	handleEffectCreated,
+	handleEffectDeleted,
+	handleTokenDeleted,
+	handleCombatUpdate,
+	endFocusSpell,
+	startFocusSpell,
+	startFocusSpellIfNeeded,
+	rollFocusSpellWithTargets,
+	applyFocusSpellPerTurnToTargets,
+	buildFocusSpellsHtml,
+	onFocusReminderClick,
+	getActiveFocusSpells,
+	isFocusingOnSpell,
+	linkEffectToFocusSpell,
+	linkTargetToFocusSpell,
+	unlinkEffectFromFocusSpell,
+} from "./focus-spell.mjs";
 
 
 /**
@@ -29,7 +57,7 @@ import { handleEffectCreated, handleEffectDeleted, handleTokenDeleted, handleCom
  *   casterName: string,        // Display name of the caster
  *   startTime: number,         // World time when focus started
  *   startRound: number|null,   // Combat round when focus started (if in combat)
- *   spellData: {               // Cached spell data for rolls (in case item is deleted, e.g. scrolls)
+ *   spellData: {  // Cached spell data for rolls (in case item is deleted, e.g. scrolls)
  *     tier: number,            // Spell tier
  *     ability: string,         // Spellcasting ability (e.g. 'INT', 'WIS', 'CHA')
  *     dc: number,              // Spell DC
@@ -180,9 +208,9 @@ async function handleChatMessageRender(message, html, context) {
 	// reliable signal is the system's native focus flag on the roll config (set
 	// when casting with { cast: { focus: true } }). Keep the legacy flavor check
 	// as a fallback for older system versions.
-	const isFocusRoll = rollConfig?.cast?.focus === true ||
-		message.flavor?.includes(focusCheckText) ||
-		message.flavor?.includes("Focus Check");
+	const isFocusRoll = rollConfig?.cast?.focus === true
+		|| message.flavor?.includes(focusCheckText)
+		|| message.flavor?.includes("Focus Check");
 
 	console.log(`shadowdark-extras | Focus spell detected: ${item.name}`, {
 		isFocusRoll,
@@ -266,14 +294,14 @@ function injectFocusSpellsUI(sheet, html, data) {
 		spellsTab.prepend(durationHtml);
 
 		// Attach end duration event listener
-		spellsTab.find("[data-action='end-duration']").on("click", async (event) => {
+		spellsTab.find("[data-action='end-duration']").on("click", async event => {
 			event.preventDefault();
 			const instanceId = event.currentTarget.dataset.instanceId;
 			await endDurationSpell(actor.id, instanceId, "manual");
 		});
 
 		// Toggle targets list visibility
-		spellsTab.find("[data-action='toggle-duration-targets']").on("click", (event) => {
+		spellsTab.find("[data-action='toggle-duration-targets']").on("click", event => {
 			event.preventDefault();
 			const instanceId = event.currentTarget.dataset.instanceId;
 			const targetsList = spellsTab.find(`.sdx-duration-targets-list[data-instance-id="${instanceId}"]`);
@@ -290,7 +318,7 @@ function injectFocusSpellsUI(sheet, html, data) {
 		});
 
 		// Add target to duration spell
-		spellsTab.find("[data-action='add-duration-target']").on("click", async (event) => {
+		spellsTab.find("[data-action='add-duration-target']").on("click", async event => {
 			event.preventDefault();
 			const instanceId = event.currentTarget.dataset.instanceId;
 
@@ -326,7 +354,7 @@ function injectFocusSpellsUI(sheet, html, data) {
 		});
 
 		// Remove individual target from duration spell
-		spellsTab.find("[data-action='remove-duration-target']").on("click", async (event) => {
+		spellsTab.find("[data-action='remove-duration-target']").on("click", async event => {
 			event.preventDefault();
 			event.stopPropagation();
 			const instanceId = event.currentTarget.dataset.instanceId;
@@ -374,7 +402,7 @@ function injectFocusSpellsUI(sheet, html, data) {
 		});
 
 		// Click handler for pan button
-		spellsTab.find(".sdx-pan-to-target").on("click", (event) => {
+		spellsTab.find(".sdx-pan-to-target").on("click", event => {
 			event.preventDefault();
 			event.stopPropagation();
 			const tokenId = event.currentTarget.dataset.tokenId;
@@ -389,7 +417,7 @@ function injectFocusSpellsUI(sheet, html, data) {
 		});
 
 		// Hover handler for visual highlighting
-		spellsTab.find(".sdx-duration-target").on("mouseenter", (event) => {
+		spellsTab.find(".sdx-duration-target").on("mouseenter", event => {
 			const $target = $(event.currentTarget);
 			const tokenId = $target.data("token-id");
 			const token = canvas.tokens?.get(tokenId);
@@ -411,7 +439,7 @@ function injectFocusSpellsUI(sheet, html, data) {
 		spellsTab.prepend(focusHtml);
 
 		// Attach event listeners
-		spellsTab.find("[data-action='end-focus']").on("click", async (event) => {
+		spellsTab.find("[data-action='end-focus']").on("click", async event => {
 			event.preventDefault();
 			const spellId = event.currentTarget.dataset.spellId;
 
@@ -431,7 +459,7 @@ function injectFocusSpellsUI(sheet, html, data) {
 		});
 
 		// Focus roll button
-		spellsTab.find("[data-action='focus-roll']").on("click", async (event) => {
+		spellsTab.find("[data-action='focus-roll']").on("click", async event => {
 			event.preventDefault();
 			const spellId = event.currentTarget.dataset.spellId;
 			await rollFocusSpellWithTargets(actor, spellId);
@@ -446,7 +474,7 @@ function injectFocusSpellsUI(sheet, html, data) {
 				if (focusAction.length) {
 					focusAction.addClass("sdx-disabled");
 					focusAction.prop("disabled", true);
-					focusAction.off("click").on("click", (e) => e.preventDefault());
+					focusAction.off("click").on("click", e => e.preventDefault());
 				}
 			}
 		}
@@ -462,7 +490,7 @@ function disableSpellContextMenu(sheet, html, data) {
 
 	// Disable Foundry's context menu by overriding the context menu entries for spell items
 	spellsTab.find("li.item").each((i, el) => {
-		$(el).on("contextmenu", (e) => {
+		$(el).on("contextmenu", e => {
 			e.preventDefault();
 			e.stopImmediatePropagation();
 			return false;
@@ -481,7 +509,7 @@ async function handleWandUsesTracking(message, html, data) {
 	try {
 		if (!game.settings.get(MODULE_ID, "enableWandUses")) return;
 	}
-	catch {
+	catch{
 		return;
 	}
 
@@ -505,7 +533,6 @@ async function handleWandUsesTracking(message, html, data) {
 	if (!wandUsesFlags?.enabled) return;
 
 	const currentUses = wandUsesFlags.current ?? 0;
-	const maxUses = wandUsesFlags.max ?? 0;
 
 	// Check if this is a focus check (not initial cast) - don't consume uses for focus checks
 	const focusCheckText = game.i18n.localize("SHADOWDARK.chat.spell_focus_check");
@@ -540,7 +567,7 @@ function injectWandUsesDisplay(app, html, data) {
 	try {
 		if (!game.settings.get(MODULE_ID, "enableWandUses")) return;
 	}
-	catch {
+	catch{
 		return;
 	}
 
@@ -584,5 +611,21 @@ function injectWandUsesDisplay(app, html, data) {
 }
 
 // Full public surface preserved (Phase 5.1 split re-exports).
-export { startDurationSpell, getActiveDurationSpells, registerSpellModification, endDurationSpell, linkEffectToDurationSpell, addTargetToDurationSpell, removeTargetFromDurationSpell } from "./duration-spell.mjs";
-export { startFocusSpellIfNeeded, endFocusSpell, getActiveFocusSpells, isFocusingOnSpell, linkEffectToFocusSpell, linkTargetToFocusSpell, unlinkEffectFromFocusSpell } from "./focus-spell.mjs";
+export {
+	startDurationSpell,
+	getActiveDurationSpells,
+	registerSpellModification,
+	endDurationSpell,
+	linkEffectToDurationSpell,
+	addTargetToDurationSpell,
+	removeTargetFromDurationSpell,
+};
+export {
+	startFocusSpellIfNeeded,
+	endFocusSpell,
+	getActiveFocusSpells,
+	isFocusingOnSpell,
+	linkEffectToFocusSpell,
+	linkTargetToFocusSpell,
+	unlinkEffectFromFocusSpell,
+};

@@ -40,7 +40,6 @@ export function registerPredefinedEffects() {
 			return;
 		}
 
-		//console.log(`${MODULE_ID} | Adding ability advantage predefined effects`);
 
 		// Define ability advantage effects for each ability score
 		const abilityAdvantageEffects = {
@@ -214,7 +213,7 @@ export function registerPredefinedEffects() {
 			},
 		};
 
-		// Define all custom damage types with proper icons for resistance, immunity, and vulnerability
+		// Define custom damage types with icons for resistance, immunity, vulnerability
 		const sdxDamageTypes = [
 			{
 				id: "bludgeoning",
@@ -383,7 +382,6 @@ export function registerPredefinedEffects() {
 		// Merge ability advantage effects into the system's predefined effects
 		Object.assign(CONFIG.SHADOWDARK.PREDEFINED_EFFECTS, abilityAdvantageEffects);
 
-		//console.log(`${MODULE_ID} | Added ${Object.keys(abilityAdvantageEffects).length} extra advantage, resistance/immunity/vulnerability effects`);
 
 		// ============================================
 		// SPELL DISADVANTAGE HANDLER PATCH
@@ -413,8 +411,11 @@ export function registerPredefinedEffects() {
 		// SD 4.x renamed the AE change key from `system.bonuses.disadvantage` to
 		// `system.roll.spell.advantage.REPLACEME` (with negative value for disadvantage).
 		// Detect that pattern and route to SDX's spell-picker handler.
-		const originalModifyEffectChangesWithInput = shadowdark.effects.modifyEffectChangesWithInput;
-		shadowdark.effects.modifyEffectChangesWithInput = async function(item, effect, key = false) {
+		const originalModifyEffectChangesWithInput =
+			shadowdark.effects.modifyEffectChangesWithInput;
+		shadowdark.effects.modifyEffectChangesWithInput = async function(
+			item, effect, key = false
+		) {
 			if (!key && effect.changes?.some(c =>
 				c.key === "system.roll.spell.advantage.REPLACEME" && Number(c.value) < 0
 			)) {
@@ -423,6 +424,5 @@ export function registerPredefinedEffects() {
 			return originalModifyEffectChangesWithInput.call(this, item, effect, key);
 		};
 
-		//console.log(`${MODULE_ID} | Patched effects system for spellDisadvantage support`);
 	});
 }

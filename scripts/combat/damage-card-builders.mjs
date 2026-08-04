@@ -5,7 +5,7 @@
 // (window._lastSpellRoll etc., foundry.utils.escapeHTML) are candidates for
 // parameter injection toward full node-testability in the 5.3 pass.
 
-import { readSdRollOutcome, readSdDamageRoll } from "../shared/sd4Compat.mjs";
+import { readSdDamageRoll } from "../shared/sd4Compat.mjs";
 import { getEffectiveCreatureType } from "../npc/CreatureTypesApp.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -18,7 +18,7 @@ function normalizeConfiguredEffectUuids(rawEffects) {
 		try {
 			effects = JSON.parse(effects);
 		}
-		catch (err) {
+		catch(err) {
 			console.warn("shadowdark-extras | Failed to parse configured effects JSON:", err, rawEffects);
 			return [];
 		}
@@ -35,7 +35,6 @@ function normalizeConfiguredEffectUuids(rawEffects) {
 		})
 		.filter(effect => effect.uuid);
 }
-
 
 
 /**
@@ -74,30 +73,32 @@ function evaluateFormulaExpressions(formula, rollData) {
 			const numDice = Math.max(1, Math.floor(Roll.safeEval(expr))); // At least 1 die
 			return `${numDice}d${dieSize}`;
 		}
-		catch (e) {
+		catch(e) {
 			console.warn("shadowdark-extras | Could not evaluate expression:", expr, e);
 			return match;
 		}
 	});
 
 	// Clean up any remaining standalone floor/ceil expressions not attached to dice
-	evaluated = evaluated.replace(/(\d+)\s*\+\s*floor\s*\(\s*([^)]+)\s*\)/gi, (match, base, expr) => {
-		try {
-			// Pass bare floor() through — Roll.safeEval handles it natively.
-			const result = parseInt(base) + Math.floor(Roll.safeEval(expr));
-			return result.toString();
+	evaluated = evaluated.replace(
+		/(\d+)\s*\+\s*floor\s*\(\s*([^)]+)\s*\)/gi,
+		(match, base, expr) => {
+			try {
+				// Pass bare floor() through — Roll.safeEval handles it natively.
+				const result = parseInt(base) + Math.floor(Roll.safeEval(expr));
+				return result.toString();
+			}
+			catch(e) {
+				return match;
+			}
 		}
-		catch (e) {
-			return match;
-		}
-	});
+	);
 
 	// Clean up whitespace around 'd'
 	evaluated = evaluated.replace(/\s+d\s+/gi, "d");
 
 	return evaluated;
 }
-
 
 
 /**
@@ -119,7 +120,6 @@ function doubleDiceInFormula(formula) {
 
 	return doubled;
 }
-
 
 
 /**
@@ -172,7 +172,6 @@ function parseTieredFormula(tieredFormula, level) {
 }
 
 
-
 /**
  * Safely evaluate a requirement formula with roll data
  * Supports comparison operators: <, >, <=, >=, ==, !=
@@ -206,35 +205,41 @@ function evaluateRequirement(formula, rollData) {
 		// Auto-quote bareword string literals on the right side of comparisons
 		// This handles cases like "@target.subtype == undead" -> "..." == "undead"
 		// Match: comparison operator followed by a bareword (not a number, not already quoted)
-		evalFormula = evalFormula.replace(/(==|!=|<=?|>=?)\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*$/g, (match, op, word) => {
-			// Don't quote if it's a boolean or looks like a number
-			if (word === "true" || word === "false" || !isNaN(Number(word))) {
-				return match;
+		evalFormula = evalFormula.replace(
+			/(==|!=|<=?|>=?)\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*$/g,
+			(match, op, word) => {
+				// Don't quote if it's a boolean or looks like a number
+				if (word === "true" || word === "false" || !isNaN(Number(word))) {
+					return match;
+				}
+				return `${op} "${word}"`;
 			}
-			return `${op} "${word}"`;
-		});
+		);
 
 		// Also handle barewords after operators in the middle of expressions
-		evalFormula = evalFormula.replace(/(==|!=|<=?|>=?)\s*([a-zA-Z_][a-zA-Z0-9_]*)(\s+(?:&&|\|\|))/g, (match, op, word, rest) => {
-			if (word === "true" || word === "false" || !isNaN(Number(word))) {
-				return match;
+		evalFormula = evalFormula.replace(
+			/(==|!=|<=?|>=?)\s*([a-zA-Z_][a-zA-Z0-9_]*)(\s+(?:&&|\|\|))/g,
+			(match, op, word, rest) => {
+				if (word === "true" || word === "false" || !isNaN(Number(word))) {
+					return match;
+				}
+				return `${op} "${word}"${rest}`;
 			}
-			return `${op} "${word}"${rest}`;
-		});
+		);
 
 		// Requirement expressions support strings and boolean logic, which Roll.safeEval does not.
-		const func = new Function("return (" + evalFormula + ")");
+		// eslint-disable-next-line no-new-func -- scoped evaluator for requirement formulas
+		const func = new Function(`return (${evalFormula})`);
 		const result = func();
 
 		// Return true if result is truthy or > 0
 		return !!result;
 	}
-	catch (err) {
+	catch(err) {
 		console.warn(`shadowdark-extras | Failed to evaluate requirement: ${formula}`, err);
 		return true; // Fail-open: if we can't evaluate, allow the action
 	}
 }
-
 
 
 /**
@@ -263,14 +268,18 @@ function buildTargetRollData(targetActor) {
 				target[ability] = targetActorData.abilities[ability].mod;
 			}
 			if (targetActorData.abilities[ability]?.value !== undefined) {
-				target[ability + "Base"] = targetActorData.abilities[ability].value;
+				target[`${ability}Base`] = targetActorData.abilities[ability].value;
 			}
 		});
 	}
 
 	// Add target stats
-	if (targetActorData.attributes?.ac?.value !== undefined) target.ac = targetActorData.attributes.ac.value;
-	if (targetActorData.attributes?.hp?.value !== undefined) target.hp = targetActorData.attributes.hp.value;
+	if (targetActorData.attributes?.ac?.value !== undefined) {
+		target.ac = targetActorData.attributes.ac.value;
+	}
+	if (targetActorData.attributes?.hp?.value !== undefined) {
+		target.hp = targetActorData.attributes.hp.value;
+	}
 
 	// Add Ancestry and Subtype
 	target.ancestry = targetActor.system?.ancestry?.name || targetActor.system?.details?.ancestry || "";
@@ -281,7 +290,6 @@ function buildTargetRollData(targetActor) {
 }
 
 
-
 /**
  * Build roll breakdown information from message
  * Returns an object with formula, total, diceHtml, and bonusHtml
@@ -289,9 +297,6 @@ function buildTargetRollData(targetActor) {
 async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical = false, baseDamageType = "standard") {
 	// Try to get the damage roll (SD 4.x typed Roll OR v3 flag fallback)
 	const damageRollData = readSdDamageRoll(message).roll;
-
-	// Also check standard message rolls — prefer the main-typed Roll over rolls[0] for v4 safety
-	const messageRoll = readSdRollOutcome(message).mainRoll ?? message.rolls?.[0];
 
 	// Also check for synced spell roll in flags
 	const syncedSpellResults = message.getFlag(MODULE_ID, "spellDamageResults");
@@ -301,7 +306,7 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 		try {
 			spellRollFromFlag = (typeof sRollData === "string") ? Roll.fromJSON(sRollData) : Roll.fromData(sRollData);
 		}
-		catch (e) {
+		catch(e) {
 			console.error("shadowdark-extras | Error parsing roll from flag:", e);
 		}
 	}
@@ -318,12 +323,13 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 				? Roll.fromJSON(syncedNpcBaseResults.json)
 				: Roll.fromData(syncedNpcBaseResults.json);
 		}
-		catch (e) {
+		catch(e) {
 			console.error("shadowdark-extras | Error parsing NPC base roll:", e);
 		}
 	}
 
-	// Use whichever roll we can find (prioritize synced flags, then Shadowdark rolls, then window global).
+	// Use whichever roll we can find (prioritize synced flags, then Shadowdark
+	// rolls, then window global).
 	// IMPORTANT: do NOT fall back to messageRoll here. messageRoll is the SD "main" roll
 	// (the attack / spellcast d20) — it belongs to the SD card above. Rendering it as
 	// the SDX damage card's breakdown produces a misleading duplicate for non-damage
@@ -349,7 +355,6 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 
 	// Extract dice information
 	let diceResults = []; // Array of individual dice results
-	let totalDiceSum = 0;
 
 	// Handle Foundry Roll object
 	// Check roll.dice first (if it has items), otherwise check roll.terms for Die objects
@@ -377,7 +382,6 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 					cssClass: cssClass,
 					faces: faces,
 				});
-				totalDiceSum += val;
 			}
 		}
 	}
@@ -446,7 +450,8 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 		}
 
 		// Handle critical roll results
-		if (weaponBonusDamage.criticalRollResults && weaponBonusDamage.criticalRollResults.length > 0) {
+		if (weaponBonusDamage.criticalRollResults
+			&& weaponBonusDamage.criticalRollResults.length > 0) {
 			for (const result of weaponBonusDamage.criticalRollResults) {
 				if (result.faces > 0) {
 					const cssClass = result.isMax ? "sdx-die-max" : (result.isMin ? "sdx-die-min" : "");
@@ -610,10 +615,10 @@ function getAbilityModifier(actor, ability) {
 	const key = String(ability || "").toLowerCase();
 	const rollData = actor?.getRollData?.() ?? {};
 	return Number(
-		actor?.system?.abilities?.[key]?.mod ??
-		rollData?.abilities?.[key]?.mod ??
-		rollData?.[key] ??
-		0
+		actor?.system?.abilities?.[key]?.mod
+		?? rollData?.abilities?.[key]?.mod
+		?? rollData?.[key]
+		?? 0
 	) || 0;
 }
 
@@ -653,7 +658,9 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 
 	// Build roll breakdown HTML
 	let rollBreakdownHtml = "";
-	const rollBreakdown = await buildRollBreakdown(message, weaponBonusDamage, isCritical, baseDamageType);
+	const rollBreakdown = await buildRollBreakdown(
+		message, weaponBonusDamage, isCritical, baseDamageType
+	);
 	if (rollBreakdown) {
 		// Store formula for reroll - escape quotes for data attribute
 		const rerollFormula = (rollBreakdown.formula || "").replace(/"/g, "&quot;");
@@ -751,11 +758,6 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 				}
 
 
-				const hp = targetActor.system?.attributes?.hp;
-				const currentHp = hp?.value ?? 0;
-				const maxHp = hp?.max ?? 0;
-
-
 				const damageSign = isHealing ? "+" : "-";
 
 				// Check if this target has per-target damage
@@ -768,9 +770,9 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 					// Build breakdown for this specific target
 					const diceBreakdown = perTargetDamage.roll.dice.map(d => {
 						const results = d.results.map(r => r.result).join(", ");
-						return `${d.number}${d.faces === "f" ? "dF" : "d" + d.faces}: [${results}]`;
+						return `${d.number}${d.faces === "f" ? "dF" : `d${d.faces}`}: [${results}]`;
 					}).join(" + ");
-					rollBreakdown = perTargetDamage.formula + " = " + (diceBreakdown || targetSpecificDamage);
+					rollBreakdown = `${perTargetDamage.formula} = ${diceBreakdown || targetSpecificDamage}`;
 				}
 				const tooltipAttr = rollBreakdown ? `data-tooltip="${rollBreakdown}" title="${rollBreakdown}"` : "";
 
@@ -820,7 +822,7 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 					</div>
 							`;
 			}
-			catch (error) {
+			catch(error) {
 				console.error("shadowdark-extras | Error processing target:", error, target);
 			}
 		}
@@ -954,7 +956,7 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
  */
 function buildMultipliersHtml(multipliers, tokenId) {
 
-	let html = '<div class="sdx-multipliers" data-token-id="' + tokenId + '">';
+	let html = `<div class="sdx-multipliers" data-token-id="${tokenId}">`;
 
 	// Convert multipliers to array if it's an object
 	const multipliersArray = Array.isArray(multipliers) ? multipliers : Object.values(multipliers);

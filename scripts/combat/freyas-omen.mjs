@@ -54,12 +54,11 @@ export function registerFreyasOmenHooks() {
 		btn.style.marginTop = "5px";
 		btn.innerHTML = `<i class="fas fa-redo"></i> ${game.i18n.localize("SHADOWDARK.chat_card.button.freyas_omen_reroll")}`;
 
-		btn.addEventListener("click", async (ev) => {
+		btn.addEventListener("click", async ev => {
 			ev.preventDefault();
 			ev.stopPropagation();
 			// Reroll the item
 			if (item) {
-				//console.log(`${MODULE_ID} | Rerrolling spell: ${item.name}`);
 
 				// Reconstruct roll data for a spell roll
 				// Based on system logic (which isn't exposed directly for us to reuse easily)
@@ -100,7 +99,8 @@ export function registerFreyasOmenHooks() {
 				// Calculate bonuses
 				const abilityBonus = actor.abilityModifier(abilityId);
 				// Use system config if available, otherwise fallback map or Title Case
-				const abilityName = CONFIG.SHADOWDARK?.ABILITIES_LONG?.[abilityId] || abilityId.charAt(0).toUpperCase() + abilityId.slice(1);
+				const abilityName = CONFIG.SHADOWDARK?.ABILITIES_LONG?.[abilityId]
+					|| abilityId.charAt(0).toUpperCase() + abilityId.slice(1);
 
 				const data = {
 					rollType: "ability",
@@ -113,9 +113,10 @@ export function registerFreyasOmenHooks() {
 
 				const options = {
 					title: game.i18n.format("SHADOWDARK.dialog.ability_check.header", { ability: abilityName }),
-					flavor: game.i18n.format("SHADOWDARK.chat_card.button.freyas_omen_reroll") + ": " + item.name,
+					flavor: `${game.i18n.format("SHADOWDARK.chat_card.button.freyas_omen_reroll")}: ${item.name}`,
 					speaker: ChatMessage.getSpeaker({ actor: actor }),
-					// Trigger Freya's Omen specific behavior if we wanted, but standard roll is fine
+					// Trigger Freya's Omen specific behavior if we wanted, but standard
+					// roll is fine
 				};
 
 				item.rollSpell(parts, data, options);

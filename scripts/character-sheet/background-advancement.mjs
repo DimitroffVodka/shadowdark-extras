@@ -35,7 +35,6 @@ async function grantAdvancementItems(actor, background, entry) {
 	const backgroundGrants = granted[background.id] || [];
 
 	if (backgroundGrants.includes(entry.id)) {
-		//console.log(`${MODULE_ID} | Advancement ${entry.id} already granted to ${actor.name}, skipping`);
 		return;
 	}
 
@@ -61,10 +60,8 @@ async function grantAdvancementItems(actor, background, entry) {
 		await actor.createEmbeddedDocuments("Item", itemsToCreate);
 		const itemNames = itemsToCreate.map(i => i.name).join(", ");
 		ui.notifications.info(`${actor.name} gained: ${itemNames}`);
-		//console.log(`${MODULE_ID} | Granted ${itemsToCreate.length} items to ${actor.name} from advancement ${entry.id}`);
 	}
 	else {
-		//console.log(`${MODULE_ID} | No valid items to grant from advancement ${entry.id}`);
 	}
 
 	// Mark as granted
@@ -88,7 +85,6 @@ export function registerBackgroundAdvancementHooks() {
 		const backgroundUuid = changes.system.background;
 		if (!backgroundUuid) return; // Background was removed
 
-		//console.log(`${MODULE_ID} | Background set on actor "${actor.name}": ${backgroundUuid}`);
 
 		// Load the background item from UUID
 		const background = await fromUuid(backgroundUuid);
@@ -97,20 +93,15 @@ export function registerBackgroundAdvancementHooks() {
 			return;
 		}
 
-		//console.log(`${MODULE_ID} | Loaded background: ${background.name}`);
 
 		const advancement = background.getFlag(MODULE_ID, "advancement") || [];
-		//console.log(`${MODULE_ID} | Advancement data:`, advancement);
 
 		const immediateEntries = advancement.filter(e => e.level === 0);
-		//console.log(`${MODULE_ID} | Found ${immediateEntries.length} level 0 advancement entries`);
 
 		if (immediateEntries.length === 0) {
-			//console.log(`${MODULE_ID} | No level 0 entries to grant`);
 			return;
 		}
 
-		//console.log(`${MODULE_ID} | Granting ${immediateEntries.length} immediate advancement entries from ${background.name} to ${actor.name}`);
 
 		// Grant items from all level 0 entries
 		for (const entry of immediateEntries) {
@@ -130,16 +121,13 @@ export function registerBackgroundAdvancementHooks() {
 		if (!foundry.utils.hasProperty(changes, "system.level.value")) return;
 
 		const newLevel = changes.system.level.value;
-		//console.log(`${MODULE_ID} | Actor ${actor.name} level updated to ${newLevel}`);
 
 		// Get the actor's background UUID from system.background
 		const backgroundUuid = actor.system.background;
 		if (!backgroundUuid) {
-			//console.log(`${MODULE_ID} | No background set for ${actor.name}, skipping advancement`);
 			return;
 		}
 
-		//console.log(`${MODULE_ID} | Loading background from UUID: ${backgroundUuid}`);
 
 		// Load the background item from UUID
 		const background = await fromUuid(backgroundUuid);
@@ -148,20 +136,16 @@ export function registerBackgroundAdvancementHooks() {
 			return;
 		}
 
-		//console.log(`${MODULE_ID} | Found Background: ${background.name}`);
 
 		// Get advancement entries for this level
 		const advancement = background.getFlag(MODULE_ID, "advancement") || [];
-		//console.log(`${MODULE_ID} | Background has ${advancement.length} total advancement entries`);
 
 		const levelEntries = advancement.filter(e => e.level === newLevel);
 
 		if (levelEntries.length === 0) {
-			//console.log(`${MODULE_ID} | No advancement entries for level ${newLevel} in ${background.name}`);
 			return;
 		}
 
-		//console.log(`${MODULE_ID} | Found ${levelEntries.length} advancement entries for level ${newLevel}`);
 
 		// Grant items from all matching entries
 		// The grantAdvancementItems function has its own duplicate checking

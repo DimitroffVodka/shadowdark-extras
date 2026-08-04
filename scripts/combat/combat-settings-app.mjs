@@ -183,7 +183,7 @@ export function setupScrollingCombatText() {
 		try {
 			settings = game.settings.get(MODULE_ID, "combatSettings");
 		}
-		catch (e) {
+		catch(e) {
 			return; // Settings not registered yet
 		}
 
@@ -250,7 +250,6 @@ export function setupScrollingCombatText() {
 		if (newHp > 0) return;
 
 		// Only fire when HP actually transitioned to 0 from a positive value
-		const key = actor.isToken ? `token-${actor.token?.id}` : `actor-${actor.id}`;
 		// _preUpdateHp may have been cleared by the scrolling-text hook above; fall back to current
 		// (post-update) HP if we don't have a record (e.g., direct sheet edit). Skip in that case.
 		// To be safe, just call _setDefeated unconditionally on HP === 0 — it's idempotent
@@ -260,7 +259,7 @@ export function setupScrollingCombatText() {
 			try {
 				await actor._setDefeated();
 			}
-			catch (err) {
+			catch(err) {
 				console.error(`${MODULE_ID} | _setDefeated failed for ${actor.name}:`, err);
 			}
 		}
@@ -351,7 +350,7 @@ export function setupSummonExpiryHook() {
 					ui.notifications.info(`Deleted ${existingTokenIds.length} expired summoned creature(s)`);
 				}
 			}
-			catch (err) {
+			catch(err) {
 				console.error("shadowdark-extras | Error deleting expired summons:", err);
 			}
 		}
@@ -364,7 +363,7 @@ export function setupSummonExpiryHook() {
  * Called when untargetAtEndOfTurn is set to "dead"
  */
 export function untargetDeadTokens() {
-	game.user?.targets.forEach((token) => {
+	game.user?.targets.forEach(token => {
 		const hp = token.actor?.system?.attributes?.hp?.value;
 		if (hp !== undefined && hp <= 0) {
 			token.setTarget(false, { releaseOthers: false });
@@ -377,7 +376,7 @@ export function untargetDeadTokens() {
  * Called when untargetAtEndOfTurn is set to "all"
  */
 export function untargetAllTokens() {
-	game.user?.targets.forEach((token) => {
+	game.user?.targets.forEach(token => {
 		token.setTarget(false, { releaseOthers: false });
 	});
 }
@@ -398,7 +397,7 @@ export function setupUntargetHook() {
 		try {
 			settings = game.settings.get(MODULE_ID, "combatSettings");
 		}
-		catch (e) {
+		catch(e) {
 			return; // Settings not registered yet
 		}
 

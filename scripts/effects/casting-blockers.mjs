@@ -45,7 +45,7 @@ export function setupWandUsesBlocker() {
 					try {
 						item = await fromUuid(spellUuid);
 					}
-					catch (_) {
+					catch(_) {
 						item = null;
 					}
 				}
@@ -80,7 +80,7 @@ export function setupWandUsesBlocker() {
  * UUID rather than an item ID.
  */
 export function setupSilencedCastingBlocker() {
-	const patchModel = (model) => {
+	const patchModel = model => {
 		if (!model?.prototype?.castSpell) return false;
 		if (model.prototype.__sdxCastSpellSilencedPatched) return true;
 		const original = model.prototype.castSpell;
@@ -95,7 +95,7 @@ export function setupSilencedCastingBlocker() {
 						try {
 							item = await fromUuid(spellUuid);
 						}
-						catch (_) {
+						catch(_) {
 							item = null;
 						}
 					}
