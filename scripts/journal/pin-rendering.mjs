@@ -174,27 +174,6 @@ export class JournalPinGraphics extends PIXI.Container {
 		}
 	}
 
-	async update(pinData) {
-		this.pinData = foundry.utils.deepClone(pinData);
-
-		// Update Transform
-		this.position.set(this.pinData.x, this.pinData.y);
-
-		// Rebuild graphics if needed (style change)
-		// Ideally we check if style changed, but rebuilding is safer
-		await this._build();
-
-		// Refresh TMFX filters from flags
-		if (window.TokenMagic) {
-			const filters = this.getFlag("tokenmagic", "filters");
-			window.TokenMagic._clearImgFiltersByPlaceable(this);
-			if (filters) {
-				window.TokenMagic._assignFilters(this, filters);
-			}
-		}
-	}
-
-
 	animatePing(type = "ping") {
 		if (!window.gsap) {
 			if (canvas.ping) canvas.ping({ x: this.pinData.x, y: this.pinData.y });
@@ -1085,7 +1064,9 @@ export class JournalPinGraphics extends PIXI.Container {
 		tempDiv.innerHTML = `<i class="${iconClass}"></i>`;
 		document.body.appendChild(tempDiv);
 
-		await new Promise(r => setTimeout(r, 50));
+		await new Promise(r => {
+			setTimeout(r, 50);
+		});
 		if (this.destroyed) {
 			if (tempDiv.parentNode) document.body.removeChild(tempDiv);
 			return;
@@ -1191,7 +1172,9 @@ export class JournalPinGraphics extends PIXI.Container {
 		tempDiv.innerHTML = `<i class="${iconClass}"></i>`;
 		document.body.appendChild(tempDiv);
 
-		await new Promise(r => setTimeout(r, 50));
+		await new Promise(r => {
+			setTimeout(r, 50);
+		});
 		if (this.destroyed) {
 			if (tempDiv.parentNode) document.body.removeChild(tempDiv);
 			return;

@@ -639,7 +639,10 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 			drawer.style.maxHeight = "none";
 			const fullHeight = drawer.scrollHeight;
 			drawer.style.maxHeight = "0px";
-			// Force reflow then set final height
+			// Force reflow then set final height. Reading offsetHeight flushes
+			// pending layout so the max-height transition restarts from 0px;
+			// the value itself is intentionally discarded.
+			// eslint-disable-next-line no-unused-expressions
 			drawer.offsetHeight;
 			drawer.style.maxHeight = fullHeight + "px";
 		}

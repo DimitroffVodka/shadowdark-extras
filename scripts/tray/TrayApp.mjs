@@ -178,7 +178,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
             viewMode === "decor"
 		);
 		const { PoiTileSortApp } = await import("../canvas/PoiTileSortSD.mjs");
-		isPoiMode ? PoiTileSortApp.show() : PoiTileSortApp.hide();
+		if (isPoiMode) PoiTileSortApp.show();
+		else PoiTileSortApp.hide();
 	}
 
 	/**

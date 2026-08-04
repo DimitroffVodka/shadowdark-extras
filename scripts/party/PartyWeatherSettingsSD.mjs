@@ -78,13 +78,11 @@ export class PartyWeatherSettingsApp extends HandlebarsApplicationMixin(Applicat
 	async _prepareContext(options) {
 		const selectedUuid = getPartyWeatherTableUuid();
 		const tableGroups = [];
-		let selectedAvailable = !selectedUuid;
 
 		const worldTables = [...(game.tables?.contents ?? [])]
 			.sort((a, b) => a.name.localeCompare(b.name))
 			.map(table => {
 				const selected = table.uuid === selectedUuid;
-				if (selected) selectedAvailable = true;
 				return {
 					uuid: table.uuid,
 					name: table.name,
@@ -111,7 +109,6 @@ export class PartyWeatherSettingsApp extends HandlebarsApplicationMixin(Applicat
 					.sort((a, b) => a.name.localeCompare(b.name))
 					.map(entry => {
 						const selected = entry.uuid === selectedUuid;
-						if (selected) selectedAvailable = true;
 						return {
 							uuid: entry.uuid,
 							name: entry.name,
@@ -124,6 +121,11 @@ export class PartyWeatherSettingsApp extends HandlebarsApplicationMixin(Applicat
 				console.warn(`${MODULE_ID} | Could not index RollTable pack ${pack.collection}`, error);
 			}
 		}
+
+		// Derived after every group is built so the selection scan does not
+		// depend on assignments made inside the per-pack map callbacks.
+		const selectedAvailable = !selectedUuid
+			|| tableGroups.some(group => group.tables.some(table => table.selected));
 
 		return {
 			tableGroups,

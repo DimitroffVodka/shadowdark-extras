@@ -8,7 +8,7 @@
 // instance to operate on. Without that, tweens of the `pixi` property
 // (brightness/hue filters) warn "Missing plugin? gsap.registerPlugin()" every
 // frame. Defer to "init" so window.PIXI is guaranteed to be set up.
-import { MODULE_ID, FLAG_KEY, LAYER_NAME } from "./pin-style.mjs";
+import { MODULE_ID, FLAG_KEY, LAYER_NAME, getPinStyle, DEFAULT_PIN_STYLE, normalizeImageTint } from "./pin-style.mjs";
 function _registerGsapPixiPlugin() {
 	if (!window.gsap || !window.PixiPlugin || !window.PIXI) return;
 	try {
@@ -270,7 +270,6 @@ function initJournalPins() {
 // and re-exported to preserve the original JournalPinsSD surface.
 import { JournalPinManager, JournalPinDropHandler, PinPlacer } from "./pin-manager.mjs";
 import { JournalPinRenderer, JournalPinTooltip } from "./pin-rendering.mjs";
-import { getPinStyle, DEFAULT_PIN_STYLE, normalizeImageTint } from "./pin-style.mjs";
 export { JournalPinTooltip, JournalPinManager, JournalPinRenderer, PinPlacer, normalizeImageTint, DEFAULT_PIN_STYLE, getPinStyle, initJournalPins };
 
 // ================================================================

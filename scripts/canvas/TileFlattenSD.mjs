@@ -572,7 +572,9 @@ async function saveAsWebP(canvasEl, quality = 1.0) {
 	else if (typeof result === "string") path = result;
 	if (!path) path = `${UPLOAD_DIR}/${filename}`;
 
-	await new Promise(r => setTimeout(r, 200));
+	await new Promise(r => {
+		setTimeout(r, 200);
+	});
 	return path;
 }
 
@@ -630,7 +632,9 @@ async function createFlattenedTile(bounds, filePath, tiles) {
 	};
 
 	const created = await canvas.scene.createEmbeddedDocuments("Tile", [tileData]);
-	await new Promise(r => setTimeout(r, 100));
+	await new Promise(r => {
+		setTimeout(r, 100);
+	});
 	return created;
 }
 

@@ -862,6 +862,8 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 	}
 
 	static _wait(ms) {
-		return new Promise(r => setTimeout(r, ms));
+		return new Promise(r => {
+			setTimeout(r, ms);
+		});
 	}
 }
