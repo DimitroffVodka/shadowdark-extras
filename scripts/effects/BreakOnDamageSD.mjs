@@ -163,7 +163,8 @@ export async function clearBreakOnDamage(actorRef, effectId) {
 	}
 	const socket = getSocket();
 	return socket ? await socket.executeAsGM("markBreakOnDamage", {
-		targetActorId: actor.id, targetTokenId: tokenIdOf(actor), effectItemId: effectId, reason: null,
+		targetActorId: actor.id, targetTokenId: tokenIdOf(actor), effectItemId: effectId,
+		reason: null,
 	}) : false;
 }
 
@@ -171,7 +172,7 @@ export async function clearBreakOnDamage(actorRef, effectId) {
 
 /** All applied effects on an actor carrying an active break-on-damage marker. */
 function markedEffects(actor) {
-	const hit = (d) => !!d.getFlag(MODULE_ID, BREAK_FLAG);
+	const hit = d => !!d.getFlag(MODULE_ID, BREAK_FLAG);
 	return [
 		...(actor.items?.filter(hit) ?? []),
 		...(actor.effects?.filter(hit) ?? []),
@@ -196,7 +197,8 @@ async function onUpdateActor(actor, _changes, options, userId) {
 	const socket = getSocket();
 	for (const doc of markedEffects(actor)) {
 		const reason = doc.getFlag(MODULE_ID, BREAK_FLAG)?.reason || "damaged";
-		const payload = { targetActorId: actor.id, targetTokenId: tokenIdOf(actor), effectItemId: doc.id };
+		const payload = { targetActorId: actor.id, targetTokenId: tokenIdOf(actor),
+			effectItemId: doc.id };
 
 		if (game.user.isGM) {
 			await doc.delete();

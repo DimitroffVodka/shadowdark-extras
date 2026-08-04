@@ -175,9 +175,8 @@ export function registerActiveEffectConfigHooks() {
 		const form = $html.closest("form");
 		if (form.length > 0) {
 			// Store the original submit method
-			const originalSubmit = form[0].onsubmit;
 
-			form.on("submit", async (event) => {
+			form.on("submit", async event => {
 				// Get the requirement value
 				const requirementInput = $html.find(`input[name="flags.${MODULE_ID}.sourceRequirement"]`);
 				if (requirementInput.length > 0) {
@@ -235,10 +234,12 @@ export function registerActiveEffectConfigHooks() {
 
 		// Check if there's a flags update with our source requirement
 		if (changes.flags?.[MODULE_ID]?.sourceRequirement !== undefined) {
+			// no immediate action; evaluated by the requirement engine
 		}
 
 		// Check if there's a flags update with our requireEquipped
 		if (changes.flags?.[MODULE_ID]?.requireEquipped !== undefined) {
+			// no immediate action; evaluated by the requirement engine
 		}
 	});
 }

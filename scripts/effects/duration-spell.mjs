@@ -1,8 +1,6 @@
 import { MODULE_ID, DURATION_SPELL_FLAG, SPELL_MODIFICATIONS_FLAG } from "./focus-constants.mjs";
 import { getSocket } from "../shared/combat-socket.mjs";
-
-// Duration-spell tracking domain — extracted from
-// scripts/effects/FocusSpellTrackerSD.mjs (Phase 5.1 split).
+import { buildDurationSpellsHtml, onDurationDamageApplyClick } from "./duration-ui.mjs";
 
 
 /**
@@ -198,7 +196,7 @@ async function revertSpellModifications(spellId, casterId) {
 
 				// Restore each path to its original value
 				for (const path of mod.modifiedPaths) {
-					// Use getProperty to handle Foundry expanding dot-notation keys into nested objects
+					// getProperty handles Foundry's dot-notation nested keys
 					const originalValue = foundry.utils.getProperty(mod.originalState, path)
 						?? mod.originalState[path]; // fallback to flat key access
 					// Use null instead of undefined for proper deletion, or use the original value
@@ -231,7 +229,9 @@ async function revertSpellModifications(spellId, casterId) {
 				console.log(`shadowdark-extras | Reverted ${item.name} on ${actor.name}`, updates);
 
 				// Calculate remaining mods for cleanup
-				const remainingMods = mods.filter(m => !(m.spellId === spellId && m.casterId === casterId));
+				const remainingMods = mods.filter(
+					m => !(m.spellId === spellId && m.casterId === casterId)
+				);
 
 				// Remove the modification entries from the item
 				// This also needs permission check
@@ -256,7 +256,7 @@ async function revertSpellModifications(spellId, casterId) {
 
 				revertedItems.push({ item, actor, modEntry });
 			}
-			catch (err) {
+			catch(err) {
 				console.error(`shadowdark-extras | Failed to revert ${item.name}:`, err);
 			}
 		}
@@ -302,7 +302,7 @@ async function revertSpellModifications(spellId, casterId) {
 /**
  * End a duration spell and remove all associated effects from targets
  * @param {string} casterId - The caster actor ID
- * @param {string} instanceId - The unique instance ID of the spell (or spellId for backwards compatibility)
+ * @param {string} instanceId - Unique instance ID (or spellId for backwards compatibility)
  * @param {string} reason - The reason for ending ("expired" or "manual")
  */
 export async function endDurationSpell(casterId, instanceId, reason = "expired") {
@@ -327,8 +327,8 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 	if (durationEntry.targetEffects && durationEntry.targetEffects.length > 0) {
 		console.log(`shadowdark-extras | Removing ${durationEntry.targetEffects.length} effects from duration spell ${durationEntry.spellName}`);
 
-		// Create a copy of the array to iterate, as the original might be mutated by handleEffectDeleted hooks
-		// This fixes the "N-1" bug where one target might be skipped if the array shrinks during iteration
+		// Iterate over a copy; the original may be mutated by handleEffectDeleted hooks
+		// Fixes the "N-1" bug when the array shrinks during iteration
 		const effectsToRemove = [...durationEntry.targetEffects];
 
 		for (const targetEffect of effectsToRemove) {
@@ -373,7 +373,7 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 					}
 				}
 			}
-			catch (err) {
+			catch(err) {
 				console.warn("shadowdark-extras | Failed to remove effect:", err);
 			}
 		}
@@ -397,14 +397,16 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 			// Debug log to see what flags are set on weapons
 			if (holyWeaponSpellId || cleansingWeaponSpellId) {
 				console.log(`shadowdark-extras | [DEBUG] Weapon ${weapon.name} on ${actor.name} has flags:`, {
-					holyWeaponSpellId, holyWeaponCasterId, cleansingWeaponSpellId, cleansingWeaponCasterId,
+					holyWeaponSpellId, holyWeaponCasterId,
+					cleansingWeaponSpellId, cleansingWeaponCasterId,
 					targetSpellId: durationEntry.spellId, targetCasterId: casterId,
 				});
 			}
 
 			// Check if this weapon was blessed by the ending spell (old flag system)
-			if ((holyWeaponSpellId === durationEntry.spellId && holyWeaponCasterId === casterId) ||
-				(cleansingWeaponSpellId === durationEntry.spellId && cleansingWeaponCasterId === casterId)) {
+			if ((holyWeaponSpellId === durationEntry.spellId && holyWeaponCasterId === casterId)
+				|| (cleansingWeaponSpellId === durationEntry.spellId
+					&& cleansingWeaponCasterId === casterId)) {
 
 				const isCleansing = !!cleansingWeaponSpellId;
 				console.log(`shadowdark-extras | [Legacy] Removing ${isCleansing ? "Cleansing" : "Holy"} Weapon bonuses from ${weapon.name} on ${actor.name}`);
@@ -412,7 +414,7 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 				// Remove the weapon bonuses and magical status
 				const updates = {
 					"system.magicItem": false,
-					["flags.shadowdark-extras.weaponBonus"]: null,
+					"flags.shadowdark-extras.weaponBonus": null,
 				};
 
 				if (isCleansing) {
@@ -467,8 +469,8 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 					if (!templateFlags?.enabled) continue;
 
 					const matchesSpell = templateFlags.spellName === durationEntry.spellName;
-					const matchesCaster = templateFlags.casterActorId === casterId ||
-						templateFlags.casterId === casterId;
+					const matchesCaster = templateFlags.casterActorId === casterId
+						|| templateFlags.casterId === casterId;
 
 					if (matchesSpell && matchesCaster) {
 						templatesToDelete.push(template.id);
@@ -483,7 +485,7 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 			}
 		}
 	}
-	catch (err) {
+	catch(err) {
 		console.warn("shadowdark-extras | Failed to delete templates for ended spell:", err);
 	}
 
@@ -517,7 +519,7 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 				}
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn("shadowdark-extras | Failed to delete summoned tokens for ended spell:", err);
 		}
 	}
@@ -566,81 +568,6 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
  * @returns {boolean} - True if focus is now being tracked for this spell
  */
 
-export async function onDurationDamageApplyClick(event) {
-	const btn = event.target.closest(".sdx-duration-apply-btn");
-	if (!btn) return;
-
-	event.preventDefault();
-	event.stopPropagation();
-
-	// Disable immediately to prevent double-clicks
-	if (btn.disabled || btn.classList.contains("sdx-duration-applied")) {
-		return; // Already applied
-	}
-	btn.disabled = true;
-	const originalHtml = btn.innerHTML;
-	btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying...';
-
-	const tokenId = btn.dataset.tokenId;
-	const damage = parseInt(btn.dataset.damage);
-	const actorName = btn.dataset.actorName;
-
-	if (!tokenId || isNaN(damage)) {
-		console.warn("shadowdark-extras | Duration apply button missing tokenId or damage");
-		btn.disabled = false;
-		btn.innerHTML = originalHtml;
-		return;
-	}
-
-	try {
-		// Only GM can apply damage via socket or directly
-		if (!game.user.isGM) {
-			// Use socket to ask GM to apply
-			const socket = getSocket();
-			if (socket) {
-				// Use the registered applyTokenDamage handler (CombatSettingsSD).
-				// Note: the previous call site used "applyDamage" which was never registered.
-				socket.executeAsGM("applyTokenDamage", { tokenId, damage, actorName });
-			}
-			else {
-				ui.notifications.warn("Cannot apply damage - no GM connected.");
-				btn.disabled = false;
-				btn.innerHTML = originalHtml;
-				return;
-			}
-		}
-		else {
-			// GM applies directly
-			const token = canvas.tokens?.get(tokenId);
-			if (!token?.actor) {
-				ui.notifications.error("Could not find the target token.");
-				btn.disabled = false;
-				btn.innerHTML = originalHtml;
-				return;
-			}
-
-			const currentHp = token.actor.system.attributes.hp.value;
-			const newHp = Math.max(0, currentHp - damage);
-			await token.actor.update({ "system.attributes.hp.value": newHp });
-		}
-
-		// Update the button to show it was applied
-		btn.innerHTML = '<i class="fas fa-check"></i> Applied';
-		btn.classList.add("sdx-duration-applied");
-
-		// Update the message flags (resolve the message from the enclosing chat card)
-		const messageId = btn.closest("[data-message-id]")?.dataset.messageId;
-		const message = messageId ? game.messages.get(messageId) : null;
-		if (message) await message.setFlag(MODULE_ID, "applied", true);
-
-		ui.notifications.info(`Applied ${damage} damage to ${actorName}`);
-	}
-	catch (err) {
-		console.error("shadowdark-extras | Failed to apply duration damage:", err);
-		btn.disabled = false;
-		btn.innerHTML = originalHtml;
-	}
-}
 
 // Track which combat state we've already processed for duration spells
 let _lastDurationProcessKey = null;
@@ -675,7 +602,9 @@ export async function handleDurationSpellCombatUpdate(combat, changed, options, 
 		if (activeDuration.length === 0) continue;
 
 		console.log(`shadowdark-extras | [DEBUG] Actor ${actor.name} has ${activeDuration.length} duration spell(s):`,
-			activeDuration.map(d => ({ name: d.spellName, expiryRound: d.expiryRound, currentRound })));
+			activeDuration.map(
+				d => ({ name: d.spellName, expiryRound: d.expiryRound, currentRound })
+			));
 
 		let needsUpdate = false;
 		const expiredSpellIds = [];
@@ -719,7 +648,9 @@ export async function handleDurationSpellCombatUpdate(combat, changed, options, 
 						console.log(`shadowdark-extras | Applying per-turn damage for ${durationSpell.spellName} to ${currentActor.name}`);
 
 						// Apply per-turn damage to this target
-						await applyDurationSpellPerTurnDamage(durationSpell, currentActor, currentTokenId);
+						await applyDurationSpellPerTurnDamage(
+							durationSpell, currentActor, currentTokenId
+						);
 
 						// Mark this target as processed this round
 						durationSpell.processedTargetsThisRound[targetKey] = true;
@@ -809,7 +740,7 @@ async function applyDurationSpellPerTurnDamage(durationSpell, targetActor, targe
 		`;
 
 		// Create the chat message
-		const chatMessage = await ChatMessage.create({
+		await ChatMessage.create({
 			content: content,
 			speaker: ChatMessage.getSpeaker({ actor: game.actors.get(durationSpell.casterId) }),
 			flags: {
@@ -834,7 +765,7 @@ async function applyDurationSpellPerTurnDamage(durationSpell, targetActor, targe
 			console.log(`shadowdark-extras | Per-turn damage rolled for ${targetActor.name}: ${damage} ${damageType} (awaiting manual apply)`);
 		}
 	}
-	catch (err) {
+	catch(err) {
 		console.error("shadowdark-extras | Failed to apply per-turn damage:", err);
 	}
 }
@@ -852,12 +783,13 @@ async function applyDurationSpellPerTurnDamage(durationSpell, targetActor, targe
 /**
  * Link an applied effect to a duration spell for cleanup tracking
  * @param {string|Actor} casterActorOrId - The caster actor or ID
- * @param {string} instanceId - The unique instance ID of the spell (or spellId for backwards compatibility)
+ * @param {string} instanceId - Unique instance ID (or spellId for backwards compatibility)
  * @param {string|Actor} targetActorOrId - The target actor or ID
  * @param {string} targetTokenId - The target token ID
  * @param {string} effectItemId - The effect item ID
  */
-export async function linkEffectToDurationSpell(casterActorOrId, instanceId, targetActorOrId, targetTokenId, effectItemId) {
+export async function linkEffectToDurationSpell(casterActorOrId, instanceId, targetActorOrId,
+	targetTokenId, effectItemId) {
 	const caster = typeof casterActorOrId === "string" ? game.actors.get(casterActorOrId) : casterActorOrId;
 	if (!caster) {
 		console.warn("shadowdark-extras | Cannot link effect: caster not found");
@@ -908,8 +840,8 @@ export async function linkEffectToDurationSpell(casterActorOrId, instanceId, tar
 	// We allow the caster to be a target for Duration spells (e.g. self-buffs like Mage Armor)
 	if (targetActor || targetTokenId) {
 		const targetAlreadyInList = durationEntry.targets.some(t =>
-			(t.actorId && t.actorId === targetActor?.id) ||
-			(t.tokenId && t.tokenId === targetTokenId)
+			(t.actorId && t.actorId === targetActor?.id)
+			|| (t.tokenId && t.tokenId === targetTokenId)
 		);
 		if (!targetAlreadyInList) {
 			durationEntry.targets.push({
@@ -932,7 +864,7 @@ export async function linkEffectToDurationSpell(casterActorOrId, instanceId, tar
  * Used when a creature enters an area of effect
  *
  * @param {string} casterId - The caster actor ID
- * @param {string} instanceId - The unique instance ID of the spell (or spellId for backwards compatibility)
+ * @param {string} instanceId - Unique instance ID (or spellId for backwards compatibility)
  * @param {string} tokenId - The token ID to add
  */
 export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
@@ -982,7 +914,7 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
 			try {
 				effects = JSON.parse(effects);
 			}
-			catch (e) {
+			catch(e) {
 				effects = [];
 			}
 		}
@@ -1024,11 +956,13 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
 
 				if (createdEffectId) {
 					// Link the effect to the duration spell using instanceId
-					await linkEffectToDurationSpell(casterId, spellInstanceId, token.actor.id, tokenId, createdEffectId);
+					await linkEffectToDurationSpell(
+						casterId, spellInstanceId, token.actor.id, tokenId,
+						createdEffectId);
 					console.log(`shadowdark-extras | Applied effect to new target ${token.name}`);
 				}
 			}
-			catch (err) {
+			catch(err) {
 				console.warn("shadowdark-extras | Failed to apply effect to new target:", err);
 			}
 		}
@@ -1064,7 +998,7 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
  * Used when a creature leaves an area of effect
  *
  * @param {string} casterId - The caster actor ID
- * @param {string} instanceId - The unique instance ID of the spell (or spellId for backwards compatibility)
+ * @param {string} instanceId - Unique instance ID (or spellId for backwards compatibility)
  * @param {string} tokenId - The token ID to remove
  */
 export async function removeTargetFromDurationSpell(casterId, instanceId, tokenId) {
@@ -1097,7 +1031,9 @@ export async function removeTargetFromDurationSpell(casterId, instanceId, tokenI
 	durationEntry.targets.splice(targetIndex, 1);
 
 	// Remove any effects applied to this target
-	const effectsToRemove = durationEntry.targetEffects?.filter(te => te.targetTokenId === tokenId) || [];
+	const effectsToRemove = durationEntry.targetEffects?.filter(
+		te => te.targetTokenId === tokenId
+	) || [];
 
 	for (const targetEffect of effectsToRemove) {
 		try {
@@ -1138,13 +1074,15 @@ export async function removeTargetFromDurationSpell(casterId, instanceId, tokenI
 				}
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn("shadowdark-extras | Failed to remove effect from target:", err);
 		}
 	}
 
 	// Remove the effect references from tracking
-	durationEntry.targetEffects = durationEntry.targetEffects?.filter(te => te.targetTokenId !== tokenId) || [];
+	durationEntry.targetEffects = durationEntry.targetEffects?.filter(
+		te => te.targetTokenId !== tokenId
+	) || [];
 
 	await caster.setFlag(MODULE_ID, DURATION_SPELL_FLAG, activeDuration);
 
@@ -1192,100 +1130,9 @@ export function getSceneMeasuredTemplates(scene) {
 }
 
 
-export function buildDurationSpellsHtml(actor, activeDuration) {
-	const currentRound = game.combat?.round ?? 0;
-	let spellsHtml = "";
-
-	for (const duration of activeDuration) {
-		const remainingRounds = Math.max(0, duration.expiryRound - currentRound);
-		const targetCount = duration.targets?.length || 0;
-		// Use instanceId if available, fallback to spellId
-		const spellInstanceId = duration.instanceId || duration.spellId;
-
-		// Build target list HTML with individual remove buttons
-		let targetsListHtml = "";
-		if (duration.targets && duration.targets.length > 0) {
-			for (const target of duration.targets) {
-				// Check if this target has effects applied
-				const hasEffects = duration.targetEffects?.some(te =>
-					te.targetTokenId === target.tokenId || te.targetActorId === target.actorId
-				);
-
-				targetsListHtml += `
-					<div class="sdx-duration-target" data-token-id="${target.tokenId}" data-actor-id="${target.actorId || ""}">
-						<span class="sdx-target-name">
-							<i class="fas fa-user"></i> ${target.name}
-							${hasEffects ? '<i class="fas fa-magic" title="Has effects applied" style="color: #9b59b6; margin-left: 4px;"></i>' : ""}
-						</span>
-						<a class="sdx-remove-target" data-action="remove-duration-target"
-						   data-instance-id="${spellInstanceId}"
-						   data-token-id="${target.tokenId}"
-						   data-tooltip="Remove from spell (left area)">
-							<i class="fas fa-times" style="color: #ff6666;"></i>
-						</a>
-					</div>
-				`;
-			}
-		}
-		else {
-			targetsListHtml = '<div class="sdx-no-targets">No targets</div>';
-		}
-
-		spellsHtml += `
-			<li class="item sdx-duration-spell" data-instance-id="${spellInstanceId}" data-spell-id="${duration.spellId}">
-				<div class="sdx-duration-spell-header">
-					<div class="item-image" style="background-image: url(${duration.spellImg})">
-						<i class="fas fa-clock"></i>
-					</div>
-					<div class="sdx-focus-info">
-						<span class="sdx-duration-spell-name">${duration.spellName}</span>
-					</div>
-					<span class="sdx-duration-time" title="Remaining duration">
-						${remainingRounds} rnd${remainingRounds !== 1 ? "s" : ""}
-					</span>
-					<span class="sdx-focus-targets">
-						<i class="fas fa-bullseye"></i> ${targetCount}
-					</span>
-					<div class="actions">
-						<a data-action="toggle-duration-targets" data-instance-id="${spellInstanceId}"
-						   data-tooltip="Show/hide targets">
-							<i class="fas fa-chevron-down"></i>
-						</a>
-						<a data-action="add-duration-target" data-instance-id="${spellInstanceId}"
-						   data-tooltip="Add selected token to spell (entered area)">
-							<i class="fas fa-plus" style="color: #2ecc71;"></i>
-						</a>
-						<a data-action="end-duration" data-instance-id="${spellInstanceId}"
-						   data-tooltip="End this spell">
-							<i class="fa-solid fa-xmark" style="color: #ff6666;"></i>
-						</a>
-					</div>
-				</div>
-				<div class="sdx-duration-targets-list" data-instance-id="${spellInstanceId}" style="display: none;">
-					${targetsListHtml}
-				</div>
-			</li>
-		`;
-	}
-
-	return `
-		<div class="SD-box sdx-duration-spells-section">
-			<div class="header">
-				<label>
-					<i class="fas fa-clock"></i>
-					Active Duration Spells
-				</label>
-			</div>
-			<div class="content">
-				<ol class="SD-list sdx-duration-spells-list">
-					${spellsHtml}
-				</ol>
-			</div>
-		</div>
-		<br>
-	`;
-}
-
 /**
  * Disable right-click context menu on spell items
  */
+
+// Public surface preserved (Phase 5.3 lane-C split re-exports).
+export { buildDurationSpellsHtml, onDurationDamageApplyClick };

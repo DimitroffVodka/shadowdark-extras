@@ -44,6 +44,7 @@ export function registerInvisibilityHooks() {
 					const sceneTokens = scene.tokens.filter(t => {
 						const match = t.actorId === actor.id || t.actor?.id === actor.id;
 						if (t.actor?.name === actor.name) {
+							// name match alone is not sufficient; actorId/actor id governs
 						}
 						return match;
 					});
@@ -79,7 +80,7 @@ export function registerInvisibilityHooks() {
 	});
 
 	// Apply invisibility visual effect to tokens using Foundry's built-in hidden property
-	Hooks.on("refreshToken", (token) => {
+	Hooks.on("refreshToken", token => {
 		const hasInvisibility = token.actor?.getFlag(MODULE_ID, "invisibility");
 
 		if (hasInvisibility) {
@@ -91,7 +92,7 @@ export function registerInvisibilityHooks() {
 	});
 
 	// Auto-disable invisibility when attacking or casting spells
-	Hooks.on("preCreateChatMessage", async (message) => {
+	Hooks.on("preCreateChatMessage", async message => {
 		const speaker = message.speaker;
 		if (!speaker?.actor) return;
 

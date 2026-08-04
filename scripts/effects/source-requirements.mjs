@@ -72,7 +72,7 @@ async function evaluateSourceRequirement(requirement, actor, token = null, sourc
 					ancestryName = ancestryDoc.name?.toLowerCase() ?? "";
 				}
 			}
-			catch (e) {
+			catch(e) {
 				console.warn(`${MODULE_ID} | Could not resolve ancestry UUID`);
 			}
 		}
@@ -85,7 +85,7 @@ async function evaluateSourceRequirement(requirement, actor, token = null, sourc
 					className = classDoc.name?.toLowerCase() ?? "";
 				}
 			}
-			catch (e) {
+			catch(e) {
 				console.warn(`${MODULE_ID} | Could not resolve class UUID`);
 			}
 		}
@@ -98,7 +98,7 @@ async function evaluateSourceRequirement(requirement, actor, token = null, sourc
 					backgroundName = backgroundDoc.name?.toLowerCase() ?? "";
 				}
 			}
-			catch (e) {
+			catch(e) {
 				console.warn(`${MODULE_ID} | Could not resolve background UUID`);
 			}
 		}
@@ -121,13 +121,16 @@ async function evaluateSourceRequirement(requirement, actor, token = null, sourc
 
 		// Requirements support string comparisons and actor/token property access.
 		// Roll.safeEval is numeric-only, so keep the existing scoped expression evaluator.
+		// The context object is an allow-list of resolved actor/token values; the
+		// requirement string is the module author's saved configuration, not user input.
+		// eslint-disable-next-line no-new-func -- intentional scoped requirement evaluator
 		const fn = new Function(...Object.keys(context), `return ${requirement};`);
 		const result = fn(...Object.values(context));
 
 
 		return Boolean(result);
 	}
-	catch (error) {
+	catch(error) {
 		console.error(`${MODULE_ID} | Error evaluating source requirement "${requirement}":`, error);
 		return false;
 	}
@@ -137,13 +140,6 @@ async function evaluateSourceRequirement(requirement, actor, token = null, sourc
  * Check and update effect disabled state based on requirements
  */
 export async function checkEffectRequirements(actor) {
-
-	// Debug: log all effects and their flags
-	for (const effect of actor.effects) {
-		const requirement = effect.getFlag(MODULE_ID, "sourceRequirement");
-		const origin = effect.origin || "Unknown";
-		const isTransferred = effect.transfer;
-	}
 
 	const effectsToCheck = [];
 
@@ -164,7 +160,7 @@ export async function checkEffectRequirements(actor) {
 					sourceEffect = originDoc;
 				}
 			}
-			catch (err) {
+			catch(err) {
 			}
 		}
 
@@ -193,7 +189,7 @@ export async function checkEffectRequirements(actor) {
 
 	const token = actor.token?.object || actor.getActiveTokens()[0];
 
-	for (const { effect, sourceEffect, requirement } of effectsToCheck) {
+	for (const { sourceEffect, requirement } of effectsToCheck) {
 
 		// Check for manual override
 		const manualOverride = sourceEffect.getFlag(MODULE_ID, "manualOverride");
@@ -201,7 +197,9 @@ export async function checkEffectRequirements(actor) {
 			continue;
 		}
 
-		const requirementMet = await evaluateSourceRequirement(requirement, actor, token, sourceEffect);
+		const requirementMet = await evaluateSourceRequirement(
+			requirement, actor, token, sourceEffect
+		);
 
 		// Toggle the SOURCE effect's disabled state (this will propagate to transferred effects)
 		// Use the byRequirementSystem option to distinguish from manual changes
@@ -212,6 +210,7 @@ export async function checkEffectRequirements(actor) {
 			await sourceEffect.update({ disabled: true }, { byRequirementSystem: true });
 		}
 		else {
+			// state already matches the requirement outcome
 		}
 	}
 }
@@ -239,7 +238,9 @@ export function registerSourceRequirementHooks() {
 
 				if (actor && actor instanceof Actor) {
 					const token = actor.token?.object || actor.getActiveTokens()[0];
-					const requirementMet = await evaluateSourceRequirement(requirement, actor, token, effect);
+					const requirementMet = await evaluateSourceRequirement(
+						requirement, actor, token, effect
+					);
 
 					// Only allow manual override when DISABLING an effect that meets requirements
 					if (requirementMet && changes.disabled === true) {
@@ -339,6 +340,7 @@ export function registerSourceRequirementHooks() {
 			await effect.update({ disabled: true }, { byRequirementSystem: true });
 		}
 		else {
+			// state already matches the requirement outcome
 		}
 	});
 
