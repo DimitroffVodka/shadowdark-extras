@@ -90,7 +90,10 @@ export class WallContextMenuSD {
 
 			// Point-to-segment distance math
 			const l2 = Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
-			if (l2 === 0) return Math.sqrt(Math.pow(point.x - x1, 2) + Math.pow(point.y - y1, 2)) <= tolerance;
+			if (l2 === 0) {
+				return Math.sqrt(Math.pow(point.x - x1, 2)
+					+ Math.pow(point.y - y1, 2)) <= tolerance;
+			}
 
 			let t = (((point.x - x1) * (x2 - x1)) + ((point.y - y1) * (y2 - y1))) / l2;
 			t = Math.max(0, Math.min(1, t));
@@ -220,7 +223,11 @@ export class WallContextMenuSD {
 		menuItems.push({
 			name: blocksMove ? "Allow Movement" : "Block Movement",
 			icon: blocksMove ? '<i class="fas fa-walking"></i>' : '<i class="fas fa-hand-paper"></i>',
-			callback: () => wallDoc.update({ move: blocksMove ? CONST.WALL_MOVEMENT_TYPES.NONE : CONST.WALL_MOVEMENT_TYPES.NORMAL }),
+			callback: () => wallDoc.update({
+				move: blocksMove
+					? CONST.WALL_MOVEMENT_TYPES.NONE
+					: CONST.WALL_MOVEMENT_TYPES.NORMAL,
+			}),
 		});
 
 		menuItems.push({ type: "separator" });

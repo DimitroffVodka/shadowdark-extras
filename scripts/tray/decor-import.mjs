@@ -417,7 +417,8 @@ export class DecorImportApp extends ApplicationV2 {
 	}
 
 	_browseFoundry() {
-		const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
+		const FilePicker = foundry.applications.apps.FilePicker?.implementation
+			?? globalThis.FilePicker;
 		new FilePicker({
 			type: "image",
 			current: isSupportedDecorPath(this.foundryPath)
@@ -431,7 +432,8 @@ export class DecorImportApp extends ApplicationV2 {
 	}
 
 	_browseFoundryFolder() {
-		const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
+		const FilePicker = foundry.applications.apps.FilePicker?.implementation
+			?? globalThis.FilePicker;
 		const current = isSupportedDecorPath(this.foundryPath)
 			? this.foundryPath.split("/").slice(0, -1).join("/")
 			: this.foundryPath;

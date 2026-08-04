@@ -351,7 +351,8 @@ class SDXDrawingTool {
 					if (!self.state.isDrawing) self._startBox(e); else self._updateBoxPreview(e);
 				}
 				else if (mode === "ellipse") {
-					if (!self.state.isDrawing) self._startEllipse(e); else self._updateEllipsePreview(e);
+					if (!self.state.isDrawing) self._startEllipse(e);
+					else self._updateEllipsePreview(e);
 				}
 				else if (mode === "stamp") {
 					self._updatePreviewSymbol(e);
@@ -472,7 +473,9 @@ class SDXDrawingTool {
 		this._previewGraphics.lineStyle(this.state.brushSettings.size, 0x000000, 0.3);
 		if (pts.length > 0) {
 			this._previewGraphics.moveTo(sp.x + pts[0][0] + 2, sp.y + pts[0][1] + 2);
-			for (let i = 1; i < pts.length; i++) this._previewGraphics.lineTo(sp.x + pts[i][0] + 2, sp.y + pts[i][1] + 2);
+			for (let i = 1; i < pts.length; i++) {
+				this._previewGraphics.lineTo(sp.x + pts[i][0] + 2, sp.y + pts[i][1] + 2);
+			}
 		}
 		// Main
 		this._drawLineWithStyle(
@@ -602,7 +605,8 @@ class SDXDrawingTool {
 	}
 
 	_updateEllipsePreview(e) {
-		if (!this.state.isDrawing || !this._previewGraphics || !this.state.ellipseStartPoint) return;
+		if (!this.state.isDrawing || !this._previewGraphics
+			|| !this.state.ellipseStartPoint) return;
 		const wc = this._getWorldCoords(e);
 		if (!wc) return;
 		this.state.lastMousePosition = wc;
@@ -680,7 +684,9 @@ class SDXDrawingTool {
 		g.lineStyle(strokeWidth, 0x000000, 0.3);
 		if (points.length > 0) {
 			g.moveTo(startX + points[0][0] + 2, startY + points[0][1] + 2);
-			for (let i = 1; i < points.length; i++) g.lineTo(startX + points[i][0] + 2, startY + points[i][1] + 2);
+			for (let i = 1; i < points.length; i++) {
+				g.lineTo(startX + points[i][0] + 2, startY + points[i][1] + 2);
+			}
 		}
 		// Main
 		this._drawLineWithStyle(g, points, startX, startY, strokeWidth, color, 1.0, lineStyle);
@@ -1016,7 +1022,9 @@ class SDXDrawingTool {
 					const grid = canvas?.grid;
 					let pointyTop = false;
 					if (grid?.columns !== undefined) pointyTop = grid.columns;
-					else if (grid?.type !== undefined) pointyTop = (grid.type === 2 || grid.type === 3);
+					else if (grid?.type !== undefined) {
+						pointyTop = (grid.type === 2 || grid.type === 3);
+					}
 					// Detection inverted: pointyTop=true → flat hex, pointyTop=false → pointy hex
 					const r = (gridSize / 2) * 1.155; // Scale to match grid
 					const angleOffset = pointyTop ? 0 : Math.PI / 6;
@@ -1067,7 +1075,9 @@ class SDXDrawingTool {
 		g.lineStyle(sw, 0x000000, 0.3);
 		if (data.points.length > 0) {
 			g.moveTo(data.startX + data.points[0][0] + 2, data.startY + data.points[0][1] + 2);
-			for (let i = 1; i < data.points.length; i++) g.lineTo(data.startX + data.points[i][0] + 2, data.startY + data.points[i][1] + 2);
+			for (let i = 1; i < data.points.length; i++) {
+				g.lineTo(data.startX + data.points[i][0] + 2, data.startY + data.points[i][1] + 2);
+			}
 		}
 		this._drawLineWithStyle(
 			g, data.points, data.startX, data.startY, sw, color, 1.0, data.lineStyle || "solid"
@@ -1151,7 +1161,9 @@ class SDXDrawingTool {
 				if (d.graphics?.parent) this._fadeOutAndRemove(d.graphics);
 				this._permanentDrawings.splice(idx, 1);
 				if (this._lastPermanentDrawing?.id === data.drawingId) {
-					this._lastPermanentDrawing = this._permanentDrawings.length ? this._permanentDrawings[this._permanentDrawings.length - 1] : null;
+					this._lastPermanentDrawing = this._permanentDrawings.length
+						? this._permanentDrawings[this._permanentDrawings.length - 1]
+						: null;
 				}
 			}
 			return;
@@ -1218,7 +1230,9 @@ class SDXDrawingTool {
 		const d = this._lastPermanentDrawing;
 		if (d.graphics?.parent) this._fadeOutAndRemove(d.graphics);
 		this._permanentDrawings = this._permanentDrawings.filter(dd => dd.id !== d.id);
-		this._lastPermanentDrawing = this._permanentDrawings.length ? this._permanentDrawings[this._permanentDrawings.length - 1] : null;
+		this._lastPermanentDrawing = this._permanentDrawings.length
+			? this._permanentDrawings[this._permanentDrawings.length - 1]
+			: null;
 		// Update scene flag
 		if (game.user.isGM && canvas.scene) {
 			try {
@@ -1450,7 +1464,11 @@ class SDXDrawingTool {
 					g.moveTo(
 						data.startX + data.points[0][0] + 2, data.startY + data.points[0][1] + 2
 					);
-					for (let i = 1; i < data.points.length; i++) g.lineTo(data.startX + data.points[i][0] + 2, data.startY + data.points[i][1] + 2);
+					for (let i = 1; i < data.points.length; i++) {
+						g.lineTo(
+							data.startX + data.points[i][0] + 2, data.startY + data.points[i][1] + 2
+						);
+					}
 				}
 				this._drawLineWithStyle(
 					g, data.points, data.startX, data.startY, sw, color, 1.0,
@@ -1474,7 +1492,7 @@ class SDXDrawingTool {
 					hidden: data.hidden || false,
 					name: data.name || null,
 				});
-				this._lastPermanentDrawing = this._permanentDrawings[this._permanentDrawings.length - 1];
+				this._lastPermanentDrawing = this._permanentDrawings.at(-1);
 			}
 		}
 		catch(e) {
@@ -1758,7 +1776,9 @@ class SDXDrawingTool {
 			if (d.graphics?.parent) this._fadeOutAndRemove(d.graphics);
 			this._permanentDrawings.splice(permIdx, 1);
 			if (this._lastPermanentDrawing?.id === id) {
-				this._lastPermanentDrawing = this._permanentDrawings.length ? this._permanentDrawings[this._permanentDrawings.length - 1] : null;
+				this._lastPermanentDrawing = this._permanentDrawings.length
+					? this._permanentDrawings[this._permanentDrawings.length - 1]
+					: null;
 			}
 			if (canvas.scene) {
 				try {

@@ -322,7 +322,8 @@ export function getTravelActivities() {
 			if (Array.isArray(saved) && saved.length > 0) {
 				return normalizeTravelActivities(saved);
 			}
-			if (saved.activities && Array.isArray(saved.activities) && saved.activities.length > 0) {
+			if (saved.activities && Array.isArray(saved.activities)
+				&& saved.activities.length > 0) {
 				return normalizeTravelActivities(saved.activities);
 			}
 		}

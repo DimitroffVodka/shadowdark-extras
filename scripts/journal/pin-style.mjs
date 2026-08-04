@@ -10,7 +10,8 @@ export const PIN_SCHEMA_VERSION = 1;
 
 export const DEFAULT_PIN_STYLE = {
 	size: 32,
-	fitToHexGrid: false, // when true, size the pin to the active scene's grid hex so it covers the tile
+	// when true, size the pin to the active scene's grid hex so it covers the tile
+	fitToHexGrid: false,
 	shape: "circle",
 	ringColor: "#ffffff",
 	fillColor: "#000000",

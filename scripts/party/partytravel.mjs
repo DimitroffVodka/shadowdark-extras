@@ -285,7 +285,9 @@ export const PartyTravel = {
 		const selections = this.actor.getFlag(MODULE_ID, "travelSelections") ?? {};
 
 		const members = await this.getMembers();
-		const actorsToRoll = assignedIds.map(id => members.find(m => m.id === id || m.uuid === id)).filter(m => m);
+		const actorsToRoll = assignedIds
+			.map(id => members.find(m => m.id === id || m.uuid === id))
+			.filter(m => m);
 
 		if (actorsToRoll.length === 0) {
 			ui.notifications.warn(

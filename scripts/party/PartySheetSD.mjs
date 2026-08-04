@@ -402,11 +402,15 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				ancestryName: await this._getMemberAncestryName(member),
 				isOwner: member.isOwner,
 				// Calculate HP percentage for visual bar
-				hpPercent: Math.round(((member.system?.attributes?.hp?.value ?? 0) / (member.system?.attributes?.hp?.max
-					?? 1)) * 100)
-					|| 0,
+				hpPercent: Math.round(
+					((member.system?.attributes?.hp?.value ?? 0)
+						/ (member.system?.attributes?.hp?.max ?? 1)) * 100
+				) || 0,
 				// Wave translate: HP% - 15 = translateY% (100% HP = 85% hidden, 0% HP = visible)
-				hpWaveTranslate: Math.max(0, Math.round(((member.system?.attributes?.hp?.value ?? 0) / (member.system?.attributes?.hp?.max ?? 1)) * 100) - 15) || 0,
+				hpWaveTranslate: Math.max(0, Math.round(
+					((member.system?.attributes?.hp?.value ?? 0)
+						/ (member.system?.attributes?.hp?.max ?? 1)) * 100
+				) - 15) || 0,
 				// HP wave color based on ancestry (resolved name)
 				hpWaveColor: getHpWaveColor(member, await this._getMemberAncestryName(member)),
 				// HP waves enabled
@@ -652,7 +656,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 
 	/** @inheritdoc */
 	async _onDrop(event) {
-		const getDragEventData = foundry?.applications?.ux?.TextEditor?.implementation?.getDragEventData ?? TextEditor.getDragEventData;
+		const uxTextEditor = foundry?.applications?.ux?.TextEditor?.implementation;
+		const getDragEventData = uxTextEditor?.getDragEventData ?? TextEditor.getDragEventData;
 		const data = getDragEventData(event);
 
 		// Handle drop on travel task
@@ -860,7 +865,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 
 		const currentRaw = Number(this.actor.getFlag(MODULE_ID, "partyMaxSlots"));
 		const defaultRaw = Number(CONFIG?.SHADOWDARK?.DEFAULTS?.GEAR_SLOTS);
-		const current = Number.isFinite(currentRaw) ? currentRaw : (Number.isFinite(defaultRaw) ? defaultRaw : 10);
+		const current = Number.isFinite(currentRaw)
+			? currentRaw
+			: (Number.isFinite(defaultRaw) ? defaultRaw : 10);
 
 		const title = game.i18n.localize("SHADOWDARK_EXTRAS.party.slots.configure_title");
 		const content = `
@@ -1090,7 +1097,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			data.system = data.system ?? {};
 			data.system.isPhysical = false;
 			// Ensure we can restore if removed later
-			if (data.flags[MODULE_ID].containerOrigIsPhysical === undefined) data.flags[MODULE_ID].containerOrigIsPhysical = true;
+			if (data.flags[MODULE_ID].containerOrigIsPhysical === undefined) {
+				data.flags[MODULE_ID].containerOrigIsPhysical = true;
+			}
 			// Let Foundry assign fresh IDs
 			delete data._id;
 			return data;
@@ -1680,8 +1689,10 @@ export async function getBrightestPartyLight(partyActor) {
 						alpha: lightTemplate?.alpha ?? item.system.light.alpha ?? 0.5,
 						animation: lightTemplate?.animation ?? item.system.light.animation ?? {},
 						darkness: item.system.light.darkness ?? {},
-						attenuation: lightTemplate?.attenuation ?? item.system.light.attenuation ?? 0.5,
-						luminosity: lightTemplate?.luminosity ?? item.system.light.luminosity ?? 0.5,
+						attenuation: lightTemplate?.attenuation
+							?? item.system.light.attenuation ?? 0.5,
+						luminosity: lightTemplate?.luminosity
+							?? item.system.light.luminosity ?? 0.5,
 						saturation: lightTemplate?.saturation ?? item.system.light.saturation ?? 0,
 						contrast: lightTemplate?.contrast ?? item.system.light.contrast ?? 0,
 						shadows: lightTemplate?.shadows ?? item.system.light.shadows ?? 0,
@@ -1720,7 +1731,8 @@ export async function syncPartyTokenLight(partyActor) {
 	const brightestLight = await getBrightestPartyLight(partyActor);
 
 	// Find all tokens for this party actor on the current scene
-	const partyTokens = canvas?.tokens?.placeables?.filter(t => t.actor?.id === partyActor.id) ?? [];
+	const partyTokens = canvas?.tokens?.placeables
+		?.filter(t => t.actor?.id === partyActor.id) ?? [];
 
 	if (partyTokens.length === 0) {
 		console.log(`${MODULE_ID} | No party tokens found on canvas for ${partyActor.name}`);

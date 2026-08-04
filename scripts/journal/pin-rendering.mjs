@@ -722,7 +722,9 @@ export class JournalPinGraphics extends PIXI.Container {
 			if (this._buildId === buildId && !this.destroyed) {
 				// Final cleanup of any concurrent build's label that might have slipped in
 				if (this._labelContainer) {
-					if (this._labelContainer.parent) this._labelContainer.parent.removeChild(this._labelContainer);
+					if (this._labelContainer.parent) {
+						this._labelContainer.parent.removeChild(this._labelContainer);
+					}
 					this._labelContainer.destroy({ children: true });
 				}
 
@@ -817,7 +819,8 @@ export class JournalPinGraphics extends PIXI.Container {
 						this._pixelCanvas.height = texture.height;
 						const ctx = this._pixelCanvas.getContext("2d");
 						ctx.drawImage(source, 0, 0);
-						this._pixelData = ctx.getImageData(0, 0, texture.width, texture.height).data;
+						const imageData = ctx.getImageData(0, 0, texture.width, texture.height);
+						this._pixelData = imageData.data;
 					}
 
 					// Get alpha value at the pixel (RGBA = 4 bytes per pixel, alpha is 4th byte)
@@ -854,7 +857,8 @@ export class JournalPinGraphics extends PIXI.Container {
 						pc.height = tex.height;
 						const pctx = pc.getContext("2d");
 						pctx.drawImage(source, 0, 0);
-						this.hitArea._pixelData = pctx.getImageData(0, 0, tex.width, tex.height).data;
+						const hitPixels = pctx.getImageData(0, 0, tex.width, tex.height);
+						this.hitArea._pixelData = hitPixels.data;
 						this.hitArea._pixelCanvas = pc;
 					}
 				}

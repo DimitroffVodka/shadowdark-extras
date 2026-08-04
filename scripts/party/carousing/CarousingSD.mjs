@@ -41,7 +41,9 @@ export function getCarousingParticipants() {
 		? getExpandedCarousingData()
 		: getCarousingTableById(session.selectedTableId);
 
-	const selectedTier = session.selectedTier !== null ? activeTable.tiers[session.selectedTier] : null;
+	const selectedTier = session.selectedTier !== null
+		? activeTable.tiers[session.selectedTier]
+		: null;
 	const totalTierCost = selectedTier?.cost || 0;
 
 	// Calculate how many participants have characters dropped
@@ -1380,7 +1382,9 @@ export async function writeCarousingLogPage(session) {
 	const esc = Handlebars.Utils.escapeExpression;
 	const meta = session.logMeta || {};
 
-	const rows = normalizeCarousingLogResults(session, pid => getParticipantActor(pid)?.name).map(entry => {
+	const rows = normalizeCarousingLogResults(
+		session, pid => getParticipantActor(pid)?.name
+	).map(entry => {
 		let applied;
 		if (entry.appliedState === "automatic") {
 			applied = esc(

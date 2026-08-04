@@ -370,7 +370,10 @@ export class JournalPinManager {
 		return this.updateFolder(folderId, { collapsed: !!collapsed }, options);
 	}
 
-	/** Delete a folder: child folders + this scene's pins reparent to the folder's parent / null. */
+	/**
+	 * Delete a folder: child folders + this scene's pins reparent to the
+	 * folder's parent / null.
+	 */
 	static async deleteFolder(folderId, options = {}) {
 		if (!game.user?.isGM) throw new Error("Only GMs can delete pin folders");
 		const scene = this._getScene(options.sceneId);
@@ -402,7 +405,9 @@ export class JournalPinManager {
 		const pid = parentId ?? null;
 		const orderMap = new Map(orderedIds.map((id, i) => [id, i]));
 		const apply = arr => arr.map(f =>
-			(f.parentId ?? null) === pid && orderMap.has(f.id) ? { ...f, sort: orderMap.get(f.id) } : f
+			(f.parentId ?? null) === pid && orderMap.has(f.id)
+				? { ...f, sort: orderMap.get(f.id) }
+				: f
 		);
 		await this._setWorldFolders(apply(this._getWorldFolders()));
 		await this._setSceneFolders(scene, apply(this._getSceneFolders(scene)));
@@ -706,7 +711,9 @@ function checkTokenCanSeePinPosition(token, pinPosition) {
 	}
 
 	if (isIlluminated) {
-		const effectiveRange = visionRangePixels > 0 ? visionRangePixels : (60 / gridDistance) * gridSize;
+		const effectiveRange = visionRangePixels > 0
+			? visionRangePixels
+			: (60 / gridDistance) * gridSize;
 		if (distanceToPin <= effectiveRange) {
 			return true;
 		}

@@ -1293,7 +1293,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 							updatedFilter = {
 								...existingFilter,
 								...data,  // Update top-level properties
-								tmParams: foundry.utils.mergeObject(existingFilter.tmParams, data),  // Update tmParams
+								// Update tmParams
+								tmParams: foundry.utils.mergeObject(existingFilter.tmParams, data),
 							};
 						}
 						else {

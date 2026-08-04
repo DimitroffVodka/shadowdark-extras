@@ -927,7 +927,8 @@ export async function getNotesData() {
 				// Enrich the HTML for display (convert secrets etc if needed, though we probably
 				// want raw for now or enriched safely)
 				// We will enrich it so links work
-				const enriched = await (foundry.applications?.ux?.TextEditor || TextEditor).enrichHTML(noteContent, { async: true });
+				const textEditor = foundry.applications?.ux?.TextEditor || TextEditor;
+				const enriched = await textEditor.enrichHTML(noteContent, { async: true });
 
 				// Get Name
 				let name = doc.getFlag(MODULE_ID, "customName") || doc.name || "Unnamed";
@@ -982,7 +983,8 @@ export async function getNotesData() {
 			if (!isGM && !isVisible) continue;
 
 			if (noteContent) {
-				const enriched = await (foundry.applications?.ux?.TextEditor || TextEditor).enrichHTML(noteContent, { async: true });
+				const textEditor = foundry.applications?.ux?.TextEditor || TextEditor;
+				const enriched = await textEditor.enrichHTML(noteContent, { async: true });
 				const name = doc.getFlag(MODULE_ID, "customName") || doc.name || "Unnamed";
 
 				notesList.push({

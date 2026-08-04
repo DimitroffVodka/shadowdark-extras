@@ -115,7 +115,8 @@ export class SDXRollerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		el.querySelectorAll(".sdx-roller-actor-portrait").forEach(img => {
 			img.addEventListener("click", ev => {
 				const uuid = ev.currentTarget.dataset.uuid;
-				if (!this._participants.find(p => p.uuid === uuid) && !this._contestants.find(p => p.uuid === uuid)) {
+				if (!this._participants.find(p => p.uuid === uuid)
+					&& !this._contestants.find(p => p.uuid === uuid)) {
 					this._participants.push({ uuid });
 					this.render();
 				}
@@ -124,7 +125,8 @@ export class SDXRollerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			img.addEventListener("contextmenu", ev => {
 				ev.preventDefault();
 				const uuid = ev.currentTarget.dataset.uuid;
-				if (!this._contestants.find(p => p.uuid === uuid) && !this._participants.find(p => p.uuid === uuid)) {
+				if (!this._contestants.find(p => p.uuid === uuid)
+					&& !this._participants.find(p => p.uuid === uuid)) {
 					this._contestants.push({ uuid });
 					this.render();
 				}
@@ -376,7 +378,8 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 	_buildLabel(showDC) {
 		const abilityLabel = this.rollData.abilityLabel;
 		let label = abilityLabel === "None" ? "Roll" : `${abilityLabel} Check`;
-		if (showDC && Number.isFinite(this.rollData.dc) && this.rollData.dc > 0 && !this.contestants.length) {
+		if (showDC && Number.isFinite(this.rollData.dc)
+			&& this.rollData.dc > 0 && !this.contestants.length) {
 			label = `DC ${this.rollData.dc} ${label}`;
 		}
 		return label;
@@ -778,15 +781,22 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		}
 	}
 
+	/** Mean contestant result; the contested DC when contestants are present. */
+	_contestantAverage() {
+		const total = this.contestants.reduce((sum, c) => sum + (this._results[c.uuid] ?? 0), 0);
+		return total / this.contestants.length;
+	}
+
 	_computeSuccess() {
 		const dc = this.contestants.length
-			? this.contestants.reduce((sum, c) => sum + (this._results[c.uuid] ?? 0), 0) / this.contestants.length
+			? this._contestantAverage()
 			: this.rollData.dc;
 
 		if (!Number.isFinite(dc) || dc <= 0) return undefined;
 
 		if (this.rollData.useAverage) {
-			const avg = this.actors.reduce((sum, a) => sum + (this._results[a.uuid] ?? 0), 0) / this.actors.length;
+			const total = this.actors.reduce((sum, a) => sum + (this._results[a.uuid] ?? 0), 0);
+			const avg = total / this.actors.length;
 			return avg >= dc;
 		}
 		const passCount = this.actors.filter(a => (this._results[a.uuid] ?? 0) >= dc).length;
@@ -797,7 +807,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		if (!this._isAuthorityClient()) return;
 
 		const dc = this.contestants.length
-			? Math.round(this.contestants.reduce((sum, c) => sum + (this._results[c.uuid] ?? 0), 0) / this.contestants.length)
+			? Math.round(this._contestantAverage())
 			: this.rollData.dc;
 
 		const hasDC = Number.isFinite(dc) && dc > 0;

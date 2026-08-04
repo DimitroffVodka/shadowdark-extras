@@ -760,7 +760,9 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 			tiers: t.event ? tableResultsToEventTiers(t.event) : foundry.utils.deepClone(
 				defaults.tiers
 			),
-			outcomes: t.outcome ? tableResultsToExpandedOutcomes(t.outcome) : foundry.utils.deepClone(defaults.outcomes),
+			outcomes: t.outcome
+				? tableResultsToExpandedOutcomes(t.outcome)
+				: foundry.utils.deepClone(defaults.outcomes),
 			benefits: t.benefit ? toDescRows(t.benefit) : foundry.utils.deepClone(
 				defaults.benefits
 			),

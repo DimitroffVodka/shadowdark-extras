@@ -934,8 +934,10 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			// Persist settings
 			setGeneratorSettings({
 				rooms, density: dens, branching: branch, roomSize: roomSz,
-				symmetry: sym, stairs: stairsVal, stairsDown: stairsDownVal, clutter: clutterVal, decorLights: decorLightsVal,
-				textured: isTextured, wallShadows: isWallShadows, wallColor: wColor, thickness: thick, style, biomes: useBiomes,
+				symmetry: sym, stairs: stairsVal, stairsDown: stairsDownVal,
+				clutter: clutterVal, decorLights: decorLightsVal,
+				textured: isTextured, wallShadows: isWallShadows, wallColor: wColor,
+				thickness: thick, style, biomes: useBiomes,
 			});
 
 			const config = {
@@ -967,7 +969,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				);
 				const { generateMultiLevelDungeon } = await import("../dungeon/DungeonMultiLevelSD.mjs");
 				await generateMultiLevelDungeon({
-					...config, levelCount: levels, connectionsPerPair: links, variation, connectorVariety,
+					...config, levelCount: levels, connectionsPerPair: links,
+					variation, connectorVariety,
 				});
 			}
 			else {
@@ -1339,7 +1342,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		};
 
 		const ICON_DIR = "modules/shadowdark-extras/assets/icons/";
-		const FilePickerImpl = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
+		const FilePickerImpl = foundry.applications.apps.FilePicker?.implementation
+			?? globalThis.FilePicker;
 
 		const editFolderDialog = async folderId => {
 			const f = JournalPinManager.listFolders().find(x => x.id === folderId);
@@ -1434,7 +1438,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			}).catch(() => null);
 			if (!data) return;
 			const res = await JournalPinManager.convertNotesToPins({
-				noteIds: noteIds || undefined, folderId: data.folderId, deleteOriginals: data.deleteOriginals,
+				noteIds: noteIds || undefined, folderId: data.folderId,
+				deleteOriginals: data.deleteOriginals,
 			});
 			ui.notifications.info(`Created ${res.created} pin${res.created === 1 ? "" : "s"}${
 				res.deleted ? `, removed ${res.deleted} note${res.deleted === 1 ? "" : "s"}.` : "."}`);
@@ -1463,7 +1468,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					const action = btn.dataset.action;
 					if (action === "folder-add-child") {
 						const name = await promptFolderName("New Subfolder", "New Folder");
-						if (name) await JournalPinManager.createFolder({ name, parentId: folderId });
+						if (name) {
+							await JournalPinManager.createFolder({ name, parentId: folderId });
+						}
 					}
 					else if (action === "folder-edit") {
 						await editFolderDialog(folderId);

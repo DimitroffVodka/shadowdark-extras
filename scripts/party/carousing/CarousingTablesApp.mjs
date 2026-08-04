@@ -45,7 +45,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 
 	async _prepareContext(options) {
 		const tables = getCustomCarousingTables();
-		const editingTable = this.editingTable ? tables.find(t => t.id === this.editingTable) : null;
+		const editingTable = this.editingTable
+			? tables.find(t => t.id === this.editingTable)
+			: null;
 		return {
 			tables,
 			editingTable,
@@ -526,7 +528,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 		if (!picked) return;
 
 		const tiers = picked.tables.event ? tableResultsToEventTiers(picked.tables.event) : [];
-		const outcomes = picked.tables.outcome ? tableResultsToOriginalOutcomes(picked.tables.outcome) : [];
+		const outcomes = picked.tables.outcome
+			? tableResultsToOriginalOutcomes(picked.tables.outcome)
+			: [];
 
 		const tableData = {
 			id: foundry.utils.randomID(),
