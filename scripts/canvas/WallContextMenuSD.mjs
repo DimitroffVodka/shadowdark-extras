@@ -86,12 +86,12 @@ export class WallContextMenuSD {
 			const l2 = Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
 			if (l2 === 0) return Math.sqrt(Math.pow(point.x - x1, 2) + Math.pow(point.y - y1, 2)) <= tolerance;
 
-			let t = ((point.x - x1) * (x2 - x1) + (point.y - y1) * (y2 - y1)) / l2;
+			let t = (((point.x - x1) * (x2 - x1)) + ((point.y - y1) * (y2 - y1))) / l2;
 			t = Math.max(0, Math.min(1, t));
 
 			const dist = Math.sqrt(
-				Math.pow(point.x - (x1 + t * (x2 - x1)), 2)
-                + Math.pow(point.y - (y1 + t * (y2 - y1)), 2)
+				Math.pow(point.x - (x1 + (t * (x2 - x1))), 2)
+                + Math.pow(point.y - (y1 + (t * (y2 - y1))), 2)
 			);
 
 			return dist <= tolerance;

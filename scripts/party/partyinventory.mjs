@@ -189,12 +189,12 @@ export const PartyInventory = {
 			cp: Math.floor(cp / n),
 		};
 		const remainder = {
-			gp: gp - each.gp * n,
-			sp: sp - each.sp * n,
-			cp: cp - each.cp * n,
+			gp: gp - (each.gp * n),
+			sp: sp - (each.sp * n),
+			cp: cp - (each.cp * n),
 		};
 
-		const distributedTotal = each.gp * n + each.sp * n + each.cp * n;
+		const distributedTotal = (each.gp * n) + (each.sp * n) + (each.cp * n);
 		if (distributedTotal === 0) {
 			ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_nothing"));
 			return;

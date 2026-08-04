@@ -738,7 +738,7 @@ class SDXDrawingTool {
 			let total = 0; const segs = [];
 			for (let i = 0; i < pts.length - 1; i++) {
 				const dx = pts[i + 1][0] - pts[i][0]; const dy = pts[i + 1][1] - pts[i][1];
-				const d = Math.sqrt(dx * dx + dy * dy);
+				const d = Math.sqrt((dx * dx) + (dy * dy));
 				if (d > 0) {
 					segs.push({ x1: sx + pts[i][0], y1: sy + pts[i][1], dx, dy, dist: d }); total += d;
 				}
@@ -750,7 +750,7 @@ class SDXDrawingTool {
 					if (cur >= sl && cur < sl + seg.dist) {
 						const t = (cur - sl) / seg.dist;
 						g.beginFill(color, alpha);
-						g.drawCircle(seg.x1 + seg.dx * t, seg.y1 + seg.dy * t, dotR);
+						g.drawCircle(seg.x1 + (seg.dx * t), seg.y1 + (seg.dy * t), dotR);
 						g.endFill();
 						break;
 					}
@@ -764,7 +764,7 @@ class SDXDrawingTool {
 			let total = 0; const segs = [];
 			for (let i = 0; i < pts.length - 1; i++) {
 				const dx = pts[i + 1][0] - pts[i][0]; const dy = pts[i + 1][1] - pts[i][1];
-				const d = Math.sqrt(dx * dx + dy * dy);
+				const d = Math.sqrt((dx * dx) + (dy * dy));
 				if (d > 0) {
 					segs.push({ x1: sx + pts[i][0], y1: sy + pts[i][1], x2: sx + pts[i + 1][0], y2: sy + pts[i + 1][1], dx, dy, dist: d }); total += d;
 				}
@@ -777,10 +777,10 @@ class SDXDrawingTool {
 					let sl = 0; let startPt = null; let endPt = null;
 					for (const seg of segs) {
 						if (!startPt && cur >= sl && cur < sl + seg.dist) {
-							const t = (cur - sl) / seg.dist; startPt = { x: seg.x1 + seg.dx * t, y: seg.y1 + seg.dy * t };
+							const t = (cur - sl) / seg.dist; startPt = { x: seg.x1 + (seg.dx * t), y: seg.y1 + (seg.dy * t) };
 						}
 						if (!endPt && next >= sl && next <= sl + seg.dist) {
-							const t = (next - sl) / seg.dist; endPt = { x: seg.x1 + seg.dx * t, y: seg.y1 + seg.dy * t };
+							const t = (next - sl) / seg.dist; endPt = { x: seg.x1 + (seg.dx * t), y: seg.y1 + (seg.dy * t) };
 						}
 						if (startPt && endPt) break;
 						sl += seg.dist;
@@ -810,7 +810,7 @@ class SDXDrawingTool {
 	}
 
 	_drawEllipseWithStyle(g, x, y, w, h, style) {
-		const cx = x + w / 2; const cy = y + h / 2;
+		const cx = x + (w / 2); const cy = y + (h / 2);
 		const hw = Math.abs(w) / 2; const hh = Math.abs(h) / 2;
 		if (style === "solid") {
 			g.drawEllipse(cx, cy, hw, hh);
@@ -822,7 +822,7 @@ class SDXDrawingTool {
 			const pts = [];
 			for (let i = 0; i <= segs; i++) {
 				const t = (Math.PI * 2 * i) / segs;
-				pts.push([cx + hw * Math.cos(t), cy + hh * Math.sin(t)]);
+				pts.push([cx + (hw * Math.cos(t)), cy + (hh * Math.sin(t))]);
 			}
 			for (let i = 0; i < segs; i++) {
 				const [x0, y0] = pts[i]; const [x1, y1] = pts[i + 1];
@@ -868,7 +868,7 @@ class SDXDrawingTool {
 				let rot = [];
 				for (let i = 0; i < base.length; i += 2) {
 					const tx = base[i] - cx; const ty = base[i + 1] - cy;
-					rot.push(tx * Math.cos(angle) - ty * Math.sin(angle) + cx, tx * Math.sin(angle) + ty * Math.cos(angle) + cy);
+					rot.push((tx * Math.cos(angle)) - (ty * Math.sin(angle)) + cx, (tx * Math.sin(angle)) + (ty * Math.cos(angle)) + cy);
 				}
 				let shadow = rot.map((v, i) => v + shadowOff);
 				// Fix: shadow needs alternating offsets
@@ -922,8 +922,8 @@ class SDXDrawingTool {
 					const angleOffset = pointyTop ? 0 : Math.PI / 6;
 					const verts = [];
 					for (let i = 0; i < 6; i++) {
-						const angle = angleOffset + (Math.PI / 3) * i;
-						verts.push(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+						const angle = angleOffset + ((Math.PI / 3) * i);
+						verts.push(cx + (r * Math.cos(angle)), cy + (r * Math.sin(angle)));
 					}
 					g.lineStyle(sw, shadowColor, shadowAlpha);
 					g.drawPolygon(verts.map((v, i) => v + shadowOff));
@@ -1165,7 +1165,7 @@ class SDXDrawingTool {
 			timeout = game.settings.get(MODULE_ID, "drawing.timedEraseTimeout");
 		}
 		catch{ }
-		return timeout > 0 ? Date.now() + timeout * 1000 : null;
+		return timeout > 0 ? Date.now() + (timeout * 1000) : null;
 	}
 
 	_scheduleCleanup() {
@@ -1532,26 +1532,26 @@ class SDXDrawingTool {
 		const animate = () => {
 			if (!this._highlightedEntry || this._highlightedEntry !== entry) return;
 			const t = (Date.now() - this._highlightPulse) / 500;
-			const pulse = 0.5 + 0.5 * Math.sin(t * Math.PI);
+			const pulse = 0.5 + (0.5 * Math.sin(t * Math.PI));
 
 			if (this._highlightFilter) {
 				// Animate filter intensity based on filter type
 				if (this._highlightFilter.outerStrength !== undefined) {
 					// GlowFilter
-					this._highlightFilter.outerStrength = 2 + pulse * 3;
+					this._highlightFilter.outerStrength = 2 + (pulse * 3);
 				}
 				else if (this._highlightFilter.thickness !== undefined) {
 					// OutlineFilter
-					this._highlightFilter.thickness = 3 + pulse * 3;
+					this._highlightFilter.thickness = 3 + (pulse * 3);
 				}
 				else if (this._highlightFilter.matrix !== undefined) {
 					// ColorMatrixFilter - animate the blue channel intensity
-					this._highlightFilter.matrix[12] = 0.3 + pulse * 0.3; // Blue offset
+					this._highlightFilter.matrix[12] = 0.3 + (pulse * 0.3); // Blue offset
 				}
 			}
 
 			// Also do a subtle alpha pulse
-			entry.graphics.alpha = this._highlightOriginalAlpha * (0.85 + 0.15 * pulse);
+			entry.graphics.alpha = this._highlightOriginalAlpha * (0.85 + (0.15 * pulse));
 
 			requestAnimationFrame(animate);
 		};
@@ -1727,10 +1727,10 @@ class SDXDrawingTool {
 				// For pointy-top hex (columns): start at 0° so vertices are at top/bottom
 				// Note: grid.columns detection seems inverted, so we flip the logic
 				const angleOffset = isPointyTop ? 0 : Math.PI / 6;
-				const angle = angleOffset + (Math.PI / 3) * i;
+				const angle = angleOffset + ((Math.PI / 3) * i);
 				verts.push({
-					x: hx + r * Math.cos(angle),
-					y: hy + r * Math.sin(angle),
+					x: hx + (r * Math.cos(angle)),
+					y: hy + (r * Math.sin(angle)),
 				});
 			}
 			return verts;
@@ -1743,13 +1743,13 @@ class SDXDrawingTool {
 				// Actually flat-top: horizontal = 1.5*r, vertical = sqrt(3)*r
 				return {
 					x: gridSize * 0.75 * scaleFactor * q,
-					y: gridSize * (sqrt3 / 2) * scaleFactor * (ar + q / 2),
+					y: gridSize * (sqrt3 / 2) * scaleFactor * (ar + (q / 2)),
 				};
 			}
 			else {
 				// Actually pointy-top: horizontal = sqrt(3)*r, vertical = 1.5*r
 				return {
-					x: gridSize * (sqrt3 / 2) * scaleFactor * (q + ar / 2),
+					x: gridSize * (sqrt3 / 2) * scaleFactor * (q + (ar / 2)),
 					y: gridSize * 0.75 * scaleFactor * ar,
 				};
 			}

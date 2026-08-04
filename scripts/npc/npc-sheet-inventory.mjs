@@ -99,7 +99,7 @@ function calculateNpcCoinSlots(coins) {
 	const gp = Number(coins?.gp ?? 0) || 0;
 	const sp = Number(coins?.sp ?? 0) || 0;
 	const cp = Number(coins?.cp ?? 0) || 0;
-	const totalGpValue = gp + sp / 10 + cp / 100;
+	const totalGpValue = gp + (sp / 10) + (cp / 100);
 	return Math.max(0, Math.floor(totalGpValue / 100));
 }
 

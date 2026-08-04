@@ -434,7 +434,7 @@ export class JournalPinGraphics extends PIXI.Container {
 					const hexRadius = radius;
 					const hexOffset = shape === "hexagonFlat" ? 0 : -Math.PI / 2;
 					for (let i = 0; i < 6; i++) {
-						const angle = (Math.PI / 3) * i + hexOffset;
+						const angle = ((Math.PI / 3) * i) + hexOffset;
 						const hx = Math.cos(angle) * hexRadius;
 						const hy = Math.sin(angle) * hexRadius;
 						if (i === 0) this._circle.moveTo(hx, hy);
@@ -780,8 +780,8 @@ export class JournalPinGraphics extends PIXI.Container {
 					// sprite is anchored at 0.5, 0.5
 
 					// Convert to sprite local coords
-					const spriteX = x + sprite.width / 2;
-					const spriteY = y + sprite.height / 2;
+					const spriteX = x + (sprite.width / 2);
+					const spriteY = y + (sprite.height / 2);
 
 					// Convert to texture coords
 					const scaleX = texture.width / sprite.width;
@@ -807,7 +807,7 @@ export class JournalPinGraphics extends PIXI.Container {
 					}
 
 					// Get alpha value at the pixel (RGBA = 4 bytes per pixel, alpha is 4th byte)
-					const pixelIndex = (texY * texture.width + texX) * 4;
+					const pixelIndex = ((texY * texture.width) + texX) * 4;
 					const alpha = this._pixelData[pixelIndex + 3];
 
 					return alpha >= this._alphaThreshold;
@@ -883,8 +883,8 @@ export class JournalPinGraphics extends PIXI.Container {
 		const iconSize = radius * 1.2;
 		const canvas = document.createElement("canvas");
 		const padding = 4;
-		canvas.width = iconSize + padding * 2;
-		canvas.height = iconSize + padding * 2;
+		canvas.width = iconSize + (padding * 2);
+		canvas.height = iconSize + (padding * 2);
 		const ctx = canvas.getContext("2d");
 
 		const tempDiv = document.createElement("div");
@@ -990,8 +990,8 @@ export class JournalPinGraphics extends PIXI.Container {
 
 		const canvas = document.createElement("canvas");
 		const padding = 4;
-		canvas.width = iconSize + padding * 2;
-		canvas.height = iconSize + padding * 2;
+		canvas.width = iconSize + (padding * 2);
+		canvas.height = iconSize + (padding * 2);
 		const ctx = canvas.getContext("2d");
 
 		const tempDiv = document.createElement("div");

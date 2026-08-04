@@ -84,15 +84,15 @@ export function drawStyledStroke(graphics, shape, radius, width, color, opacity,
 			if (seg.type === "line") {
 				const dx = seg.x2 - seg.x1;
 				const dy = seg.y2 - seg.y1;
-				const len = Math.sqrt(dx * dx + dy * dy);
+				const len = Math.sqrt((dx * dx) + (dy * dy));
 				const nx = dx / len;
 				const ny = dy / len;
 
 				let dist = 0;
 				while (dist < len) {
 					const segLen = Math.min(dashLen, len - dist);
-					const sx = seg.x1 + nx * dist;
-					const sy = seg.y1 + ny * dist;
+					const sx = seg.x1 + (nx * dist);
+					const sy = seg.y1 + (ny * dist);
 
 					if (isDotted) {
 						graphics.lineStyle(0);
@@ -103,7 +103,7 @@ export function drawStyledStroke(graphics, shape, radius, width, color, opacity,
 					else {
 						graphics.lineStyle(width, color, opacity);
 						graphics.moveTo(sx, sy);
-						graphics.lineTo(sx + nx * segLen, sy + ny * segLen);
+						graphics.lineTo(sx + (nx * segLen), sy + (ny * segLen));
 					}
 					dist += dashLen + gapLen;
 				}
@@ -115,10 +115,10 @@ export function drawStyledStroke(graphics, shape, radius, width, color, opacity,
 				const dashAngle = (dashLen / arcLen) * (seg.endAngle - seg.startAngle);
 
 				for (let i = 0; i < numDashes; i++) {
-					const startAngle = seg.startAngle + i * angleStep;
+					const startAngle = seg.startAngle + (i * angleStep);
 					if (isDotted) {
-						const x = seg.cx + Math.cos(startAngle) * seg.r;
-						const y = seg.cy + Math.sin(startAngle) * seg.r;
+						const x = seg.cx + (Math.cos(startAngle) * seg.r);
+						const y = seg.cy + (Math.sin(startAngle) * seg.r);
 						graphics.lineStyle(0);
 						graphics.beginFill(color, opacity);
 						graphics.drawCircle(x, y, width / 2);
@@ -128,8 +128,8 @@ export function drawStyledStroke(graphics, shape, radius, width, color, opacity,
 						graphics.lineStyle(width, color, opacity);
 						graphics.arc(seg.cx, seg.cy, seg.r, startAngle, Math.min(startAngle + dashAngle, seg.endAngle));
 						if (i < numDashes - 1) {
-							const nextAngle = seg.startAngle + (i + 1) * angleStep;
-							graphics.moveTo(seg.cx + Math.cos(nextAngle) * seg.r, seg.cy + Math.sin(nextAngle) * seg.r);
+							const nextAngle = seg.startAngle + ((i + 1) * angleStep);
+							graphics.moveTo(seg.cx + (Math.cos(nextAngle) * seg.r), seg.cy + (Math.sin(nextAngle) * seg.r));
 						}
 					}
 				}
@@ -149,7 +149,7 @@ export function drawStyledStroke(graphics, shape, radius, width, color, opacity,
 		else if (shape === "hexagon" || shape === "hexagonFlat") {
 			const hexOffset = shape === "hexagonFlat" ? 0 : -Math.PI / 2;
 			for (let i = 0; i <= 6; i++) {
-				const angle = (Math.PI / 3) * i + hexOffset;
+				const angle = ((Math.PI / 3) * i) + hexOffset;
 				points.push({ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius });
 			}
 		}
@@ -159,15 +159,15 @@ export function drawStyledStroke(graphics, shape, radius, width, color, opacity,
 			const p2 = points[i + 1];
 			const dx = p2.x - p1.x;
 			const dy = p2.y - p1.y;
-			const len = Math.sqrt(dx * dx + dy * dy);
+			const len = Math.sqrt((dx * dx) + (dy * dy));
 			const nx = dx / len;
 			const ny = dy / len;
 
 			let dist = 0;
 			while (dist < len) {
 				const segLen = Math.min(dashLen, len - dist);
-				const sx = p1.x + nx * dist;
-				const sy = p1.y + ny * dist;
+				const sx = p1.x + (nx * dist);
+				const sy = p1.y + (ny * dist);
 
 				if (isDotted) {
 					graphics.lineStyle(0);
@@ -178,7 +178,7 @@ export function drawStyledStroke(graphics, shape, radius, width, color, opacity,
 				else {
 					graphics.lineStyle(width, color, opacity);
 					graphics.moveTo(sx, sy);
-					graphics.lineTo(sx + nx * segLen, sy + ny * segLen);
+					graphics.lineTo(sx + (nx * segLen), sy + (ny * segLen));
 				}
 				dist += dashLen + gapLen;
 			}

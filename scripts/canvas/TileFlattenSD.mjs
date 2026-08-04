@@ -69,8 +69,8 @@ function computeBounds(tiles) {
 			const rad = rot * (Math.PI / 180);
 			const cos = Math.cos(rad);
 			const sin = Math.sin(rad);
-			const cx = x + w / 2;
-			const cy = y + h / 2;
+			const cx = x + (w / 2);
+			const cy = y + (h / 2);
 			const corners = [
 				{ x, y },
 				{ x: x + w, y },
@@ -80,8 +80,8 @@ function computeBounds(tiles) {
 			for (const c of corners) {
 				const dx = c.x - cx;
 				const dy = c.y - cy;
-				const rx = cx + dx * cos - dy * sin;
-				const ry = cy + dx * sin + dy * cos;
+				const rx = cx + (dx * cos) - (dy * sin);
+				const ry = cy + (dx * sin) + (dy * cos);
 				minX = Math.min(minX, rx);
 				minY = Math.min(minY, ry);
 				maxX = Math.max(maxX, rx);
@@ -337,7 +337,7 @@ function cropTransparentBorders(canvasEl, bounds) {
 	let minX = w; let minY = h; let maxX = -1; let maxY = -1;
 	for (let y = 0; y < h; y++) {
 		for (let x = 0; x < w; x++) {
-			if (data[(y * w + x) * 4 + 3] > 0) {
+			if (data[(((y * w) + x) * 4) + 3] > 0) {
 				if (x < minX) minX = x;
 				if (x > maxX) maxX = x;
 				if (y < minY) minY = y;

@@ -203,7 +203,7 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				e.dataTransfer.dropEffect = "move";
 				if (li !== draggedEl) {
 					const rect = li.getBoundingClientRect();
-					const midY = rect.top + rect.height / 2;
+					const midY = rect.top + (rect.height / 2);
 					list.querySelectorAll(".poi-sort-item").forEach(el => {
 						el.classList.remove("drag-over");
 						el.classList.remove("drag-over-below");
@@ -227,7 +227,7 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				if (!draggedEl || li === draggedEl) return;
 
 				const rect = li.getBoundingClientRect();
-				const midY = rect.top + rect.height / 2;
+				const midY = rect.top + (rect.height / 2);
 				if (e.clientY < midY) {
 					list.insertBefore(draggedEl, li);
 				}
@@ -249,7 +249,7 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const count = items.length;
 
 		items.forEach((li, idx) => {
-			const sort = 100000 + (count - idx) * 100;
+			const sort = 100000 + ((count - idx) * 100);
 			updates.push({ _id: li.dataset.tileId, sort });
 			const meta = li.querySelector(".poi-sort-meta");
 			if (meta) {

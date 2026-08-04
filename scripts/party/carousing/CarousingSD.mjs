@@ -170,8 +170,8 @@ const CP_PER_SP = 10;
 /** An actor's carried coin, in copper. */
 function getActorCoinsCp(actor) {
 	const coins = actor?.system?.coins || {};
-	return (Number(coins.gp) || 0) * CP_PER_GP
-        + (Number(coins.sp) || 0) * CP_PER_SP
+	return ((Number(coins.gp) || 0) * CP_PER_GP)
+        + ((Number(coins.sp) || 0) * CP_PER_SP)
         + (Number(coins.cp) || 0);
 }
 
@@ -182,8 +182,8 @@ function getActorGearValueCp(actor) {
 		const cost = item.system?.cost;
 		if (!cost) continue;
 		const qty = Number(item.system?.quantity ?? 1) || 1;
-		total += ((Number(cost.gp) || 0) * CP_PER_GP
-            + (Number(cost.sp) || 0) * CP_PER_SP
+		total += (((Number(cost.gp) || 0) * CP_PER_GP)
+            + ((Number(cost.sp) || 0) * CP_PER_SP)
             + (Number(cost.cp) || 0)) * qty;
 	}
 	return total;
@@ -274,7 +274,7 @@ async function deductCoinsCp(actor, cpAmount) {
 	let sp = Number(src.sp) || 0;
 	let cp = Number(src.cp) || 0;
 
-	const purse = gp * CP_PER_GP + sp * CP_PER_SP + cp;
+	const purse = (gp * CP_PER_GP) + (sp * CP_PER_SP) + cp;
 	const total = Math.min(Math.max(0, Math.round(Number(cpAmount) || 0)), purse);
 	if (!total) return 0;
 

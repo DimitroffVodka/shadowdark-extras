@@ -1342,7 +1342,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				const pos = event.data.getLocalPosition(canvas.stage);
 				// Snap to grid
 				const snapped = canvas.grid.getSnappedPoint({ x: pos.x, y: pos.y }, { mode: CONST.GRID_SNAPPING_MODES.TOP_LEFT_CORNER });
-				preview.position.set(snapped.x + tokenSize / 2, snapped.y + tokenSize / 2);
+				preview.position.set(snapped.x + (tokenSize / 2), snapped.y + (tokenSize / 2));
 				preview.visible = true;
 			};
 

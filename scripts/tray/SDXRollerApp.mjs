@@ -476,7 +476,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 					{ duration: 350, easing: "ease-in", fill: "forwards", delay: i * 60 }
 				);
 			});
-			await SDXRollerOverlay._wait(350 + count * 60);
+			await SDXRollerOverlay._wait(350 + (count * 60));
 			tilesContainer.remove();
 		}
 
