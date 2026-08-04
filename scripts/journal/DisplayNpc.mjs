@@ -338,7 +338,8 @@ export async function enrichDisplayNpcCard(match, _options, detailed = false) {
 		container.dataset.npcId = parsedMatch.uuid;
 		if (match[2]) container.dataset.npcName = match[2];
 		container.classList.add("content-link", "broken");
-		container.innerHTML = `<i class="fas fa-unlink"></i> ${npcName ?? "Unknown NPC"}`;
+		const escapedName = foundry.utils.escapeHTML(npcName ?? "Unknown NPC");
+		container.innerHTML = `<i class="fas fa-unlink"></i> ${escapedName}`;
 	}
 
 	return container;

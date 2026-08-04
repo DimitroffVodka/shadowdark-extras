@@ -119,7 +119,8 @@ export async function enrichDisplayTable(match, _options) {
 		container.dataset.tableId = parsedMatch.uuid;
 		if (match[2]) container.dataset.tableName = match[2];
 		container.classList.add("content-link", "broken");
-		container.innerHTML = `<i class="fas fa-unlink"></i> ${tableName ?? "Unknown Table"}`;
+		const escapedName = foundry.utils.escapeHTML(tableName ?? "Unknown Table");
+		container.innerHTML = `<i class="fas fa-unlink"></i> ${escapedName}`;
 	}
 
 	return container;

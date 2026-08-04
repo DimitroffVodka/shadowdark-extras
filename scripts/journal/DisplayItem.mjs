@@ -375,7 +375,8 @@ export async function enrichDisplayItemCard(match, _options) {
 		container.dataset.itemId = parsedMatch.uuid;
 		if (match[2]) container.dataset.itemName = match[2];
 		container.classList.add("content-link", "broken");
-		container.innerHTML = `<i class="fas fa-unlink"></i> ${itemName ?? "Unknown Item"}`;
+		const escapedName = foundry.utils.escapeHTML(itemName ?? "Unknown Item");
+		container.innerHTML = `<i class="fas fa-unlink"></i> ${escapedName}`;
 	}
 
 	return container;
