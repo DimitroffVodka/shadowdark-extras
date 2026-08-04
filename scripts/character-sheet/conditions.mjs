@@ -559,12 +559,6 @@ function groupConditionsByBaseName(conditions) {
  * Show a submenu to select condition variant
  */
 function showConditionSubmenu($toggle, variants, actor, conditionItems) {
-	/**console.log(`${MODULE_ID} | showConditionSubmenu called`, {
-		toggle: $toggle[0],
-		variants: variants,
-		variantsLength: variants?.length,
-		actor: actor?.name
-	});*/
 
 	// Check if variants is valid
 	if (!variants || variants.length === 0) {
@@ -680,7 +674,6 @@ async function addConditionToActor(actor, conditionUuid) {
 		});
 
 		if (existingItem) {
-			//console.log(`${MODULE_ID} | Condition ${condition.name} already exists as item`);
 			return;
 		}
 

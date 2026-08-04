@@ -299,7 +299,6 @@ export async function injectEnhancedHeader(app, html, actor) {
 					avatarFilename: actor.img,
 				};
 				window.Tokenizer.launch(options, (response) => {
-					//console.log("shadowdark-extras | Tokenizer response:", response);
 					ui.notifications.success(`Tokenizer completed for ${actor.name}!`);
 				});
 			}
@@ -902,7 +901,6 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 					avatarFilename: actor.img,
 				};
 				window.Tokenizer.launch(options, (response) => {
-					//console.log("shadowdark-extras | Tokenizer response:", response);
 					ui.notifications.success(`Tokenizer completed for ${actor.name}!`);
 				});
 			}

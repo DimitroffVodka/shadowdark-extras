@@ -54,7 +54,6 @@ export async function executeSpellItemMacro(spellItem, actor, trigger, context =
 		return;
 	}
 
-	//console.log(`${MODULE_ID} | Executing spell Item Macro for ${spellItem.name}, trigger: ${trigger}`);
 
 	// Get the caster's token. A `runAsGm` socket execution has already resolved
 	// the caster's token from its UUID and passes it here — honour that even when
@@ -112,7 +111,6 @@ export async function executeSpellItemMacro(spellItem, actor, trigger, context =
 			originatingUserId: game.user.id,  // Track who initiated the spell for dialog routing
 		};
 
-		//console.log(`${MODULE_ID} | Sending spell Item Macro to GM for execution`);
 		const macroExecuteSocket = getMacroExecuteSocket();
 		if (macroExecuteSocket) {
 			await macroExecuteSocket.executeAsGM("executeSpellItemMacroAsGM", serializedContext);
