@@ -10,6 +10,7 @@ import {
 	renderTray,
 	toggleHideNpcsFromPlayers,
 } from "./TraySD.mjs";
+import { saveTrayScrollPositions, restoreTrayScrollPositions } from "./tray-scroll-state.mjs";
 import { TomPanels } from "./tom-panels.mjs";
 import { HexPainterBindings } from "./hex-painter-bindings.mjs";
 // Note: renderTray imported above is used by POI undo/redo handlers
@@ -85,82 +86,14 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Save scroll positions of tile grids and other UI state
      */
 	_saveScrollPositions() {
-		// Can't query inside this.element because it might not be rendered/attached yet in the way we expect if we use standard AppV2 accessors,
-		// but for now we look at the DOM since we are doing a re-render
-		const elem = document.querySelector(".sdx-tray");
-		if (!elem) return;
-
-		// Save scroll position of the main hex tile scroll container
-		const hexTileScroll = elem.querySelector(".hex-tile-scroll");
-		if (hexTileScroll) {
-			this._scrollPositions["hex-tile-scroll"] = hexTileScroll.scrollTop;
-		}
-
-		// Save scroll position of the dungeon tile scroll container
-		const dungeonTileScroll = elem.querySelector(".dungeon-tile-scroll");
-		if (dungeonTileScroll) {
-			this._scrollPositions["dungeon-tile-scroll"] = dungeonTileScroll.scrollTop;
-		}
-
-		// Save scroll position of the decor tile scroll container
-		const decorTileScroll = elem.querySelector(".decor-tile-scroll");
-		if (decorTileScroll) {
-			this._scrollPositions["decor-tile-scroll"] = decorTileScroll.scrollTop;
-		}
-
-		// Also save individual grid scroll positions if needed
-		elem.querySelectorAll(".hex-tile-grid").forEach(grid => {
-			const key = grid.dataset.tilePanel;
-			if (key) {
-				this._scrollPositions[key] = grid.scrollTop;
-			}
-		});
-
-		// Save procedural generator panel expanded state
-		const generatorControls = elem.querySelector(".hex-generator-controls");
-		if (generatorControls) {
-			this._generatorExpanded = !generatorControls.classList.contains("hidden");
-		}
+		return saveTrayScrollPositions(this);
 	}
 
 	/**
      * Restore scroll positions of tile grids and other UI state
      */
 	_restoreScrollPositions() {
-		const elem = document.querySelector(".sdx-tray");
-		if (!elem) return;
-
-		// Restore main hex tile scroll container position
-		const hexTileScroll = elem.querySelector(".hex-tile-scroll");
-		if (hexTileScroll && this._scrollPositions["hex-tile-scroll"] !== undefined) {
-			hexTileScroll.scrollTop = this._scrollPositions["hex-tile-scroll"];
-		}
-
-		// Restore dungeon tile scroll container position
-		const dungeonTileScroll = elem.querySelector(".dungeon-tile-scroll");
-		if (dungeonTileScroll && this._scrollPositions["dungeon-tile-scroll"] !== undefined) {
-			dungeonTileScroll.scrollTop = this._scrollPositions["dungeon-tile-scroll"];
-		}
-
-		// Restore decor tile scroll container position
-		const decorTileScroll = elem.querySelector(".decor-tile-scroll");
-		if (decorTileScroll && this._scrollPositions["decor-tile-scroll"] !== undefined) {
-			decorTileScroll.scrollTop = this._scrollPositions["decor-tile-scroll"];
-		}
-
-		// Restore individual grid scroll positions
-		elem.querySelectorAll(".hex-tile-grid").forEach(grid => {
-			const key = grid.dataset.tilePanel;
-			if (key && this._scrollPositions[key] !== undefined) {
-				grid.scrollTop = this._scrollPositions[key];
-			}
-		});
-
-		// Restore procedural generator panel expanded state
-		const generatorControls = elem.querySelector(".hex-generator-controls");
-		if (generatorControls && this._generatorExpanded) {
-			generatorControls.classList.remove("hidden");
-		}
+		return restoreTrayScrollPositions(this);
 	}
 
 	/**
