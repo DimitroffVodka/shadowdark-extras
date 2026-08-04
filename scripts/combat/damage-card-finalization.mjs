@@ -6,7 +6,13 @@ import { linkTargetToFocusSpell, startDurationSpell } from "../effects/FocusSpel
 const MODULE_ID = "shadowdark-extras";
 const _durationStartedMessages = new Set();
 
-export async function finalizeDamageCard({ html, message, item, settings, hideDamageCardFromPlayer, isSpellWithDamage, isSpellWithEffects, hasWeaponBonuses, weaponBonusDamage, isCritical, baseDamageType, totalDamage, damageType, spellDamageConfig, targets, actor, auraCreatedThisCall, casterTokenId, placedTemplateId, allEffects, challengeFailed, effectsChallengeFailed }) {
+export async function finalizeDamageCard({
+	html, message, item, settings, hideDamageCardFromPlayer,
+	isSpellWithDamage, isSpellWithEffects, hasWeaponBonuses, weaponBonusDamage,
+	isCritical, baseDamageType, totalDamage, damageType, spellDamageConfig,
+	targets, actor, auraCreatedThisCall, casterTokenId, placedTemplateId,
+	allEffects, challengeFailed, effectsChallengeFailed,
+}) {
 	// Integrate the SD roll card with SDX theming when the SDX damage card is shown
 	if (!hideDamageCardFromPlayer) {
 		const $sdCard = html.find(".shadowdark.chat-card, .chat-card").first();
@@ -32,7 +38,8 @@ export async function finalizeDamageCard({ html, message, item, settings, hideDa
 		attachDamageCardListeners(html, message.id);
 	}
 	else if (isSpellWithDamage || isSpellWithEffects || hasWeaponBonuses || allEffects.length > 0) {
-		// If damage card is hidden, show a minimal summary for both spells AND weapons (if they have bonuses)
+		// If damage card is hidden, show a minimal summary for both spells AND
+		// weapons (if they have bonuses)
 
 		// Hide native damage rolls to avoid redundancy when showing our summary
 		// This applies to Shadowdark's native weapon damage displays.
@@ -45,11 +52,10 @@ export async function finalizeDamageCard({ html, message, item, settings, hideDa
 			$sdLegacyCard.find('h4:contains("Damage Roll")').hide();
 		}
 
-		const isHealing = damageType?.toLowerCase() === "healing";
-		const damageLabel = isHealing ? "Healing" : "Damage";
-
 		// Build formula and results using buildRollBreakdown for consistency
-		const rollSummary = await buildRollBreakdown(message, weaponBonusDamage, isCritical, baseDamageType);
+		const rollSummary = await buildRollBreakdown(
+			message, weaponBonusDamage, isCritical, baseDamageType
+		);
 
 		let formula = rollSummary?.formula || "";
 		let results = rollSummary?.total || totalDamage;
@@ -114,10 +120,11 @@ export async function finalizeDamageCard({ html, message, item, settings, hideDa
 	// Check if this is a Focus Check (spell focus maintenance roll)
 	// Focus Checks should roll damage but NOT auto-apply effects (effects are already applied)
 	const focusCheckText = game.i18n.localize("SHADOWDARK.chat.spell_focus_check");
-	const isFocusCheck = message.flavor?.includes(focusCheckText) ||
-		message.flavor?.includes("Focus Check");
+	const isFocusCheck = message.flavor?.includes(focusCheckText)
+		|| message.flavor?.includes("Focus Check");
 
 	if (isFocusCheck) {
+		// No-op: focus checks roll damage but skip effect auto-application
 	}
 
 	// Auto-apply damage and/or conditions based on separate settings
@@ -137,7 +144,9 @@ export async function finalizeDamageCard({ html, message, item, settings, hideDa
 	const canApplyDamage = shouldAutoApplyDamage && !challengeFailed;
 	const canApplyConditions = shouldAutoApplyConditions && !effectsChallengeFailed;
 
-	if ((canApplyDamage || canApplyConditions) && hasValidTargets && messageAuthorId === game.user.id) {
+	if ((canApplyDamage || canApplyConditions)
+		&& hasValidTargets
+		&& messageAuthorId === game.user.id) {
 		// Check if this was an attack that hit
 		const autoApplyOutcome = readSdRollOutcome(message);
 		const mainRoll = autoApplyOutcome.mainRoll;
@@ -184,17 +193,21 @@ export async function finalizeDamageCard({ html, message, item, settings, hideDa
 					}
 				}
 				else if (isFocusCheck) {
+					// No-op: focus check effects were already applied on the initial cast
 				}
 			}, 100);
 		}
 		else {
+			// No-op: not auto-applying (masked roll, miss, aura, or already applied)
 		}
 	}
-	else if ((shouldAutoApplyDamage || shouldAutoApplyConditions) && messageAuthorId !== game.user.id) {
+	else if ((shouldAutoApplyDamage || shouldAutoApplyConditions)
+		&& messageAuthorId !== game.user.id) {
+		// No-op: only the message author auto-applies damage/conditions
 	}
 
 	// Add event listener for minimal summary toggle
-	html.find('[data-action="toggleDamageBreakdown"]').on("click", (event) => {
+	html.find('[data-action="toggleDamageBreakdown"]').on("click", event => {
 		event.preventDefault();
 		const $target = $(event.currentTarget);
 		const $tooltip = $target.find(".sdx-damage-tooltip");
@@ -207,17 +220,18 @@ export async function finalizeDamageCard({ html, message, item, settings, hideDa
 	// AND we haven't already started it (e.g. for an aura)
 	// AND it's NOT a focus spell (focus spells use focus tracker, not duration tracker)
 	const isFocusSpell = item?.system?.duration?.type === "focus";
-	if (item && ["Spell", "Scroll", "Wand", "NPC Spell"].includes(item.type) &&
-		spellDamageConfig?.trackDuration &&
-		!isFocusCheck &&
-		!isFocusSpell &&
-		messageAuthorId === game.user.id &&
-		!message.getFlag(MODULE_ID, "durationTrackerStarted")) {
+	if (item && ["Spell", "Scroll", "Wand", "NPC Spell"].includes(item.type)
+		&& spellDamageConfig?.trackDuration
+		&& !isFocusCheck
+		&& !isFocusSpell
+		&& messageAuthorId === game.user.id
+		&& !message.getFlag(MODULE_ID, "durationTrackerStarted")) {
 
 		const durationOutcome = readSdRollOutcome(message);
 		const mainRoll = durationOutcome.mainRoll;
 		// "No roll" (auto-success) OR roll succeeded. Skip on masked rolls.
-		const castSuccessful = !durationOutcome.isMasked && (!mainRoll || durationOutcome.isSuccess);
+		const castSuccessful = !durationOutcome.isMasked
+			&& (!mainRoll || durationOutcome.isSuccess);
 
 		if (castSuccessful) {
 			// Create a unique key for this message's duration tracking
@@ -236,7 +250,8 @@ export async function finalizeDamageCard({ html, message, item, settings, hideDa
 				let targetTokenIds = targets.map(t => t.id);
 
 				// For "Self" range spells, if no targets are selected, use the caster's token
-				// Range can be either a string directly (e.g., "self") or an object with a value property
+				// Range can be either a string directly (e.g., "self") or an object
+				// with a value property
 				const durationRawRange = item.system?.range;
 				const durationSpellRange = (typeof durationRawRange === "string" ? durationRawRange : durationRawRange?.value || "").toLowerCase();
 				if (targetTokenIds.length === 0 && durationSpellRange === "self") {
@@ -246,7 +261,9 @@ export async function finalizeDamageCard({ html, message, item, settings, hideDa
 					}
 					else {
 						// Fallback: find first token for this actor on the current scene
-						const casterToken = canvas.tokens?.placeables.find(t => t.actor?.id === actor.id);
+						const casterToken = canvas.tokens?.placeables.find(
+							t => t.actor?.id === actor.id
+						);
 						if (casterToken) {
 							targetTokenIds = [casterToken.id];
 						}
@@ -271,14 +288,15 @@ export async function finalizeDamageCard({ html, message, item, settings, hideDa
 				// Also mark message with flag for persistence (backup check)
 				await message.setFlag(MODULE_ID, "durationTrackerStarted", true);
 			}
-			catch (durationError) {
+			catch(durationError) {
 				console.warn("shadowdark-extras | Failed to start duration spell tracking:", durationError);
 			}
 		}
 	}
 
 	// Link targets to focus spells if no effects are being applied
-	// This ensures focus spells with only damage/healing (like Regenerate) show targets in the tracker
+	// This ensures focus spells with only damage/healing (like Regenerate)
+	// show targets in the tracker
 	if (isFocusSpell && targets.length > 0 && allEffects.length === 0 && !isFocusCheck) {
 		const spellId = item.id;
 		const casterActor = actor;
@@ -289,7 +307,9 @@ export async function finalizeDamageCard({ html, message, item, settings, hideDa
 			const targetTokenId = target.id;
 
 			if (targetActor) {
-				await linkTargetToFocusSpell(casterActor.id, spellId, targetActor.id, targetTokenId);
+				await linkTargetToFocusSpell(
+					casterActor.id, spellId, targetActor.id, targetTokenId
+				);
 			}
 		}
 	}

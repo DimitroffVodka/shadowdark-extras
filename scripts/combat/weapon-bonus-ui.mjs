@@ -42,7 +42,8 @@ export function getDefaultWeaponBonusConfig() {
 		itemMacro: {
 			enabled: false,
 			runAsGm: false,
-			triggers: [], // beforeAttack, onHit, onCritical, onMiss, onCriticalMiss, onEquip, onUnequip
+			// beforeAttack, onHit, onCritical, onMiss, onCriticalMiss, onEquip, onUnequip
+			triggers: [],
 		},
 	};
 }
@@ -124,7 +125,8 @@ export function injectWeaponBonusTab(app, html, item) {
 	// Activate tab functionality
 	activateWeaponBonusListeners(html, app, item);
 
-	// Restore active tab if it was the Bonuses tab - use setTimeout to run after Foundry's native handlers
+	// Restore active tab if it was the Bonuses tab - use setTimeout to run after
+	// Foundry's native handlers
 	if (app._shadowdarkExtrasActiveTab === "tab-bonuses") {
 		setTimeout(() => activateBonusesTab(app, html), 0);
 	}
@@ -165,7 +167,7 @@ export function injectWeaponAnimationButton(html, item) {
 	}
 
 	// Add click handler for the animation button
-	html.find(".sdx-weapon-animation-btn").on("click", async (event) => {
+	html.find(".sdx-weapon-animation-btn").on("click", async event => {
 		event.preventDefault();
 		event.stopPropagation();
 
@@ -619,46 +621,6 @@ function buildCriticalRequirementRowHtml(req, criticalType, reqIndex) {
 }
 
 /**
- * Build HTML for a single requirement row
- */
-function buildRequirementRowHtml(req, index) {
-	const type = req.type || "targetName";
-	const operator = req.operator || "contains";
-	const value = req.value || "";
-
-	const typeOptions = [
-		{ value: "targetName", label: "Target Name" },
-		{ value: "targetCondition", label: "Target Has Condition/Effect" },
-		{ value: "targetHpPercent", label: "Target HP %" },
-		{ value: "attackerHpPercent", label: "Attacker HP %" },
-		{ value: "targetAncestry", label: "Target Ancestry" },
-		{ value: "targetAlignment", label: "Target Alignment" },
-		{ value: "attackerCondition", label: "Attacker Has Condition/Effect" },
-	];
-
-	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
-		typeOptions.push({ value: "targetSubtype", label: "Target Subtype" });
-	}
-
-	const operatorOptions = getOperatorsForType(type);
-
-	return `
-		<div class="sdx-requirement-row" data-index="${index}">
-			<select class="sdx-req-type">
-				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
-			</select>
-			<select class="sdx-req-operator">
-				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
-			</select>
-			<input type="text" class="sdx-req-value" value="${value}" placeholder="${getPlaceholderForType(type)}" />
-			<button type="button" class="sdx-remove-requirement" data-index="${index}">
-				<i class="fas fa-trash"></i>
-			</button>
-		</div>
-	`;
-}
-
-/**
  * Get operators available for a requirement type
  */
 function getOperatorsForType(type) {
@@ -709,8 +671,10 @@ function buildEffectRowHtml(effect, index) {
 	const escapedName = foundry.utils.escapeHTML(name);
 	const escapedImg = foundry.utils.escapeHTML(img);
 	const chance = effect.chance ?? 100;
-	const applyToTarget = effect.applyToTarget !== false; // Default to true for backward compatibility
-	const cumulative = effect.cumulative !== false; // Default to true for backward compatibility (stack effects)
+	// Default to true for backward compatibility
+	const applyToTarget = effect.applyToTarget !== false;
+	// Default to true for backward compatibility (stack effects)
+	const cumulative = effect.cumulative !== false;
 	const requirements = effect.requirements || [];
 
 	// Build mini requirements for this effect
@@ -1395,7 +1359,11 @@ function activateWeaponBonusListeners(html, app, item) {
 	$tab.on("change", ".sdx-macro-run-as-gm", async function() {
 		const runAsGm = $(this).is(":checked");
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
-		const itemMacro = currentFlags.itemMacro || { enabled: false, runAsGm: false, triggers: [] };
+		const itemMacro = currentFlags.itemMacro || {
+			enabled: false,
+			runAsGm: false,
+			triggers: [],
+		};
 		itemMacro.runAsGm = runAsGm;
 		await saveWeaponBonusConfig(item, { itemMacro });
 	});
@@ -1418,7 +1386,11 @@ function activateWeaponBonusListeners(html, app, item) {
 	// Item Macro: Trigger checkboxes
 	$tab.on("change", ".sdx-macro-trigger-checkbox", async function() {
 		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
-		const itemMacro = currentFlags.itemMacro || { enabled: false, runAsGm: false, triggers: [] };
+		const itemMacro = currentFlags.itemMacro || {
+			enabled: false,
+			runAsGm: false,
+			triggers: [],
+		};
 
 		// Collect all checked triggers
 		const triggers = [];

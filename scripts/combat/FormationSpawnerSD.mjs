@@ -170,9 +170,11 @@ export class FormationSpawnerSD extends HandlebarsApplicationMixin(ApplicationV2
 
 				let markerHtml = "";
 				if (cellData?.uuid) {
+					const escapedImg = foundry.utils.escapeHTML(cellData.img || "icons/svg/mystery-man.svg");
+					const escapedName = foundry.utils.escapeHTML(cellData.name || "Unknown");
 					markerHtml = `
                         <div class="grid-marker" data-uuid="${cellData.uuid}">
-                            <img src="${cellData.img}" title="${cellData.name}" draggable="true"/>
+                            <img src="${escapedImg}" title="${escapedName}" draggable="true"/>
                             <a class="marker-delete" title="Remove"><i class="fa-solid fa-xmark"></i></a>
                         </div>
                     `;
@@ -209,7 +211,7 @@ export class FormationSpawnerSD extends HandlebarsApplicationMixin(ApplicationV2
 		// Grid size change
 		const sizeSelect = html.querySelector(".grid-size-select");
 		if (sizeSelect) {
-			sizeSelect.addEventListener("change", (e) => {
+			sizeSelect.addEventListener("change", e => {
 				this._changeGridSize(parseInt(e.target.value));
 			});
 			sizeSelect.value = this.gridSize;
@@ -217,7 +219,7 @@ export class FormationSpawnerSD extends HandlebarsApplicationMixin(ApplicationV2
 
 		// Marker delete buttons
 		html.querySelectorAll(".marker-delete").forEach(btn => {
-			btn.addEventListener("click", (e) => {
+			btn.addEventListener("click", e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const cell = e.target.closest(".grid-cell");
@@ -241,8 +243,8 @@ export class FormationSpawnerSD extends HandlebarsApplicationMixin(ApplicationV2
 			const leader = this._getLeaderFromGrid();
 			if (!leader) {
 				ui.notifications.warn(
-					game.i18n?.localize("SDX.formationSpawner.noLeader") ||
-                    "Please place a party member in the center square."
+					game.i18n?.localize("SDX.formationSpawner.noLeader")
+                    || "Please place a party member in the center square."
 				);
 				return false;
 			}
@@ -258,7 +260,7 @@ export class FormationSpawnerSD extends HandlebarsApplicationMixin(ApplicationV2
 
 			// Set up hook for token creation
 			const offsets = this._getPartyOffsets();
-			const hookId = Hooks.once("createToken", async (tokenDoc) => {
+			const hookId = Hooks.once("createToken", async tokenDoc => {
 				if (tokenDoc.baseActor?.uuid === leader.uuid) {
 					await this._spawnFormationTokens(tokenDoc, offsets);
 				}

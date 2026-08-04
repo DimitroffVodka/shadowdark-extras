@@ -272,8 +272,8 @@ export async function scanActorItems(actor, index) {
 
 		// Find all matches by name and type (whitespace-trimmed, case-insensitive)
 		const allMatches = index.filter(i =>
-			i.name.trim().toLowerCase() === matchName.trim().toLowerCase() &&
-            i.type === "Spell"
+			i.name.trim().toLowerCase() === matchName.trim().toLowerCase()
+            && i.type === "Spell"
 		);
 
 		if (allMatches.length === 0) continue;
@@ -484,7 +484,7 @@ export async function medkitScanWorld() {
 		return;
 	}
 
-	const esc = (s) => Handlebars.escapeExpression(s);
+	const esc = s => Handlebars.escapeExpression(s);
 	const rows = actors
 		.map(a => `<li><strong>${esc(a.actorName)}</strong> — ${a.updates.length} update${a.updates.length === 1 ? "" : "s"}</li>`)
 		.join("");
@@ -528,7 +528,7 @@ export function initMedkit() {
 		try {
 			if (!game.settings.get(MODULE_ID, "showMedkitIcon")) return;
 		}
-		catch {
+		catch{
 			// Setting not registered yet, don't show button
 			return;
 		}

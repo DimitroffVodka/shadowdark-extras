@@ -76,10 +76,11 @@ function overrideCrawlHelperDeathTimer() {
 
 	crawlerModel.prototype.rollDeathTimer = async function() {
 		const actor = this.parent.actor;
-		const user = game.users.find(u => (u.character?.id === actor.id) && u.active) ?? game.users.activeGM;
+		const user = game.users.find(u => (u.character?.id === actor.id) && u.active)
+			?? game.users.activeGM;
 
 		// Prompt the player to roll their death timer
-		const defaultFormula = "d4 +" + actor.system.abilities.con.mod;
+		const defaultFormula = `d4 +${actor.system.abilities.con.mod}`;
 		const fields = foundry.applications.fields;
 		const textInput = fields.createTextInput({ name: "formula", value: defaultFormula });
 		const textGroup = fields.createFormGroup({ input: textInput, label: "Roll:" });
