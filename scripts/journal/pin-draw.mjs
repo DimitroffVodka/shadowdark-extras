@@ -21,7 +21,9 @@
  * @param {string} style             "dotted" for dots; anything else dashes.
  * @param {number} [cornerRadius=4]  Corner radius for "square"; 0 gives sharp corners.
  */
-export function drawStyledStroke(graphics, shape, radius, width, color, opacity, style, cornerRadius = 4) {
+export function drawStyledStroke(
+	graphics, shape, radius, width, color, opacity, style, cornerRadius = 4
+) {
 	graphics.lineStyle(width, color, opacity);
 
 	const isDotted = style === "dotted";

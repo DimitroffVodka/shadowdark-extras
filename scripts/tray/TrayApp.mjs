@@ -1581,7 +1581,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						const tokenDoc = token.document;
 						// Check if token has its own note
 						const tokenNote = tokenDoc.getFlag("shadowdark-extras", "notes");
-						// If token has no note, but actor does, edit the actor's note (matching display logic)
+						// If token has no note, but actor does, edit the actor's note (matching
+						// display logic)
 						if (!tokenNote && token.actor && token.actor.getFlag("shadowdark-extras", "notes")) {
 							doc = token.actor;
 						}
@@ -1699,7 +1700,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						const tokenDoc = token.document;
 						// Check if token has its own note
 						const tokenNote = tokenDoc.getFlag("shadowdark-extras", "notes");
-						// If token has no note, but actor does, edit the actor's note (matching display logic)
+						// If token has no note, but actor does, edit the actor's note (matching
+						// display logic)
 						if (!tokenNote && token.actor && token.actor.getFlag("shadowdark-extras", "notes")) {
 							doc = token.actor;
 						}
@@ -1766,7 +1768,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			// Restore focus if we re-rendered and input was focused (simple heuristic)
 			// But actually ApplicationV2 re-renders the whole thing, so focus is lost.
 			// We can rely on value={pinSearchTerm} to restore value,
-			// but for smooth typing we might want to avoid full re-render on every keystroke if possible,
+			// but for smooth typing we might want to avoid full re-render on every keystroke if
+			// possible,
 			// or just use client-side filtering without re-render.
 
 			// We will use client-side filtering for better performance (no re-render)
@@ -1808,7 +1811,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const folderRows = pinsList.querySelectorAll(".pin-folder-header");
 
 		if (!lowerTerm) {
-			// Restore collapse-based visibility (clear inline display; CSS .sdx-row-hidden handles collapse)
+			// Restore collapse-based visibility (clear inline display; CSS .sdx-row-hidden handles
+			// collapse)
 			pinRows.forEach(r => {
 				r.style.display = "";
 			});

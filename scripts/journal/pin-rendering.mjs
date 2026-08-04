@@ -614,7 +614,8 @@ export class JournalPinGraphics extends PIXI.Container {
 						const sB = parseInt(style.labelBorderSliceBottom) || 15;
 						const sL = parseInt(style.labelBorderSliceLeft) || 15;
 
-						// PIXI.NineSlicePlane(texture, leftWidth, topHeight, rightWidth, bottomHeight)
+						// PIXI.NineSlicePlane(texture, leftWidth, topHeight, rightWidth,
+						// bottomHeight)
 						bg = new PIXI.NineSlicePlane(tex, sL, sT, sR, sB);
 
 						// The background size should cover the text plus padding
@@ -1514,7 +1515,8 @@ export class JournalPinTooltip {
 			if (content.length >= 200) content += "...";
 		}
 
-		// If no content and title is generic "Unlinked Pin" (and no custom title), maybe don't show?
+		// If no content and title is generic "Unlinked Pin" (and no custom title), maybe don't
+		// show?
 		// But we might want to just show the title.
 
 
@@ -1682,7 +1684,8 @@ export class JournalPinRenderer {
 		// or ensure it's indexed BEFORE any TMFX logic triggers lookups
 		const graphics = new JournalPinGraphics(pinData);
 
-		// Critical: Register in map BEFORE adding to container or any logic that might trigger TMFX calculatePadding
+		// Critical: Register in map BEFORE adding to container or any logic that might trigger TMFX
+		// calculatePadding
 		this._pins.set(pinData.id, graphics);
 
 		// Now add to container

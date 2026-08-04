@@ -323,12 +323,15 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		const maxSlots = Number(this.actor.getFlag(MODULE_ID, "partyMaxSlots"));
 		context.inventorySlots = {
 			used: this._calculateInventorySlotsUsed(),
-			max: Number.isFinite(maxSlots) ? maxSlots : (Number.isFinite(maxSlotsDefault) ? maxSlotsDefault : 10),
+			max: Number.isFinite(maxSlots) ? maxSlots : (Number.isFinite(maxSlotsDefault)
+				? maxSlotsDefault
+				: 10),
 		};
 		context.inventorySlots.over = context.inventorySlots.used > context.inventorySlots.max;
 
 		// Get party description (use namespaced TextEditor when available)
-		const enrichHTML = foundry?.applications?.ux?.TextEditor?.implementation?.enrichHTML ?? TextEditor.enrichHTML;
+		const enrichHTML = foundry?.applications?.ux?.TextEditor?.implementation?.enrichHTML
+			?? TextEditor.enrichHTML;
 		context.descriptionHTML = await enrichHTML(
 			this.actor.getFlag(MODULE_ID, "description") ?? "",
 			{
@@ -399,7 +402,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				ancestryName: await this._getMemberAncestryName(member),
 				isOwner: member.isOwner,
 				// Calculate HP percentage for visual bar
-				hpPercent: Math.round(((member.system?.attributes?.hp?.value ?? 0) / (member.system?.attributes?.hp?.max ?? 1)) * 100) || 0,
+				hpPercent: Math.round(((member.system?.attributes?.hp?.value ?? 0) / (member.system?.attributes?.hp?.max
+					?? 1)) * 100)
+					|| 0,
 				// Wave translate: HP% - 15 = translateY% (100% HP = 85% hidden, 0% HP = visible)
 				hpWaveTranslate: Math.max(0, Math.round(((member.system?.attributes?.hp?.value ?? 0) / (member.system?.attributes?.hp?.max ?? 1)) * 100) - 15) || 0,
 				// HP wave color based on ancestry (resolved name)
@@ -1316,7 +1321,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		const isCompendiumActor = member.uuid?.startsWith("Compendium.");
 
 		if (isCompendiumActor) {
-			// Check if already imported by looking for an actor with same name and compendium source
+			// Check if already imported by looking for an actor with same name and compendium
+			// source
 			let existingActor = game.actors.find(a =>
 				a.name === member.name
 				&& a.flags?.core?.sourceId === member.uuid
@@ -1327,7 +1333,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				try {
 					const imported = await Actor.implementation.create(member.toObject());
 					if (imported) {
-						// Record the compendium source on the imported actor without using the deprecated core.sourceId flag
+						// Record the compendium source on the imported actor without using the
+						// deprecated core.sourceId flag
 						try {
 							await imported.update({ "_stats.compendiumSource": member.uuid });
 						}

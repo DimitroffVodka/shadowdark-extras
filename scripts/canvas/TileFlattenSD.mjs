@@ -917,7 +917,9 @@ export function getFlattendDungeonLevels() {
  * included.
  * @returns {{ tiles: TileDocument[], drawings: DrawingDocument[] }}
  */
-export function getDungeonVisualDocs(elevation, { floors = true, walls = true, decor = true } = {}) {
+export function getDungeonVisualDocs(
+	elevation, { floors = true, walls = true, decor = true } = {}
+) {
 	const scene = canvas?.scene;
 	if (!scene) return { tiles: [], drawings: [] };
 	const atElev = e => Number(e ?? 0) === Number(elevation);

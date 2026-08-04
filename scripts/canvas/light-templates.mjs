@@ -51,7 +51,8 @@ export const DEFAULT_LIGHT_TEMPLATES = [
  * @returns {Object} object with keys as template IDs and values as template data
  */
 export function getCustomLightSources() {
-	const templates = game.settings.get(MODULE_ID, "customLightTemplates") || DEFAULT_LIGHT_TEMPLATES;
+	const templates = game.settings.get(MODULE_ID, "customLightTemplates")
+		|| DEFAULT_LIGHT_TEMPLATES;
 
 	const sources = {};
 	for (const t of templates) {
@@ -91,7 +92,9 @@ export function getCustomLightSources() {
 /**
  * Application for editing custom light templates
  */
-export class LightTemplateEditor extends foundry.applications.api.HandlebarsApplicationMixin(foundry.applications.api.ApplicationV2) {
+export class LightTemplateEditor extends foundry.applications.api.HandlebarsApplicationMixin(
+	foundry.applications.api.ApplicationV2
+) {
 	static DEFAULT_OPTIONS = {
 		id: "sdx-light-editor",
 		classes: ["shadowdark-extras", "light-editor"],
@@ -123,7 +126,8 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 	}
 
 	async _prepareContext(options) {
-		const templates = game.settings.get(MODULE_ID, "customLightTemplates") || foundry.utils.deepClone(DEFAULT_LIGHT_TEMPLATES);
+		const templates = game.settings.get(MODULE_ID, "customLightTemplates")
+			|| foundry.utils.deepClone(DEFAULT_LIGHT_TEMPLATES);
 
 		// Animation types for select dropdown
 		const animationTypes = {
@@ -204,7 +208,8 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 		// Edit Template
 		html.find('[data-action="editTemplate"]').on("click", ev => {
 			const index = $(ev.currentTarget).data("index");
-			const templates = game.settings.get(MODULE_ID, "customLightTemplates") || DEFAULT_LIGHT_TEMPLATES;
+			const templates = game.settings.get(MODULE_ID, "customLightTemplates")
+				|| DEFAULT_LIGHT_TEMPLATES;
 			this.editData = { ...templates[index], id: index }; // Use index as ID for update
 			this.render(true);
 		});
@@ -212,7 +217,8 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 		// Duplicate Template
 		html.find('[data-action="duplicateTemplate"]').on("click", async ev => {
 			const index = $(ev.currentTarget).data("index");
-			const templates = game.settings.get(MODULE_ID, "customLightTemplates") || DEFAULT_LIGHT_TEMPLATES;
+			const templates = game.settings.get(MODULE_ID, "customLightTemplates")
+				|| DEFAULT_LIGHT_TEMPLATES;
 			const template = foundry.utils.deepClone(templates[index]);
 
 			template.name = `${template.name} (Copy)`;
@@ -226,7 +232,8 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 		// Delete Template
 		html.find('[data-action="deleteTemplate"]').on("click", async ev => {
 			const index = $(ev.currentTarget).data("index");
-			const templates = game.settings.get(MODULE_ID, "customLightTemplates") || DEFAULT_LIGHT_TEMPLATES;
+			const templates = game.settings.get(MODULE_ID, "customLightTemplates")
+				|| DEFAULT_LIGHT_TEMPLATES;
 
 			const confirmed = await foundry.applications.api.DialogV2.confirm({
 				window: { title: "Delete Light Template" },
@@ -351,7 +358,8 @@ export function extendLightSources() {
 	if (CONFIG.SHADOWDARK?.LIGHT_SETTING_NAMES) {
 		const customSources = getCustomLightSources();
 		for (const [key, source] of Object.entries(customSources)) {
-			// If lang key starts with SHADOWDARK_EXTRAS, try to localize it, otherwise use raw string
+			// If lang key starts with SHADOWDARK_EXTRAS, try to localize it, otherwise use raw
+			// string
 			const label = source.lang.startsWith("SHADOWDARK_EXTRAS.")
 				? game.i18n.localize(source.lang)
 				: source.lang;

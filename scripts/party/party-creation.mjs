@@ -129,7 +129,8 @@ export function wrapActorCreate() {
 				foundry.utils.setProperty(d, "flags.shadowdark-extras.isParty", true);
 				foundry.utils.setProperty(d, "prototypeToken.actorLink", true);
 
-				// Set default prototype token settings (no vision/light like standard Shadowdark actors)
+				// Set default prototype token settings (no vision/light like standard Shadowdark
+				// actors)
 				foundry.utils.setProperty(d, "prototypeToken.sight", {
 					enabled: true,
 					range: 0,

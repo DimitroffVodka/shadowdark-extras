@@ -399,13 +399,16 @@ class SDXDrawingTool {
 		const v = canvas?.app?.view;
 		if (!v) return;
 		if (this._handlePointerDown) {
-			v.removeEventListener("pointerdown", this._handlePointerDown, true); this._handlePointerDown = null;
+			v.removeEventListener("pointerdown", this._handlePointerDown, true);
+			this._handlePointerDown = null;
 		}
 		if (this._handlePointerMove) {
-			v.removeEventListener("pointermove", this._handlePointerMove, true); this._handlePointerMove = null;
+			v.removeEventListener("pointermove", this._handlePointerMove, true);
+			this._handlePointerMove = null;
 		}
 		if (this._handlePointerUp) {
-			v.removeEventListener("pointerup", this._handlePointerUp, true); this._handlePointerUp = null;
+			v.removeEventListener("pointerup", this._handlePointerUp, true);
+			this._handlePointerUp = null;
 		}
 	}
 
@@ -805,7 +808,8 @@ class SDXDrawingTool {
 				const dx = pts[i + 1][0] - pts[i][0]; const dy = pts[i + 1][1] - pts[i][1];
 				const d = Math.sqrt((dx * dx) + (dy * dy));
 				if (d > 0) {
-					segs.push({ x1: sx + pts[i][0], y1: sy + pts[i][1], dx, dy, dist: d }); total += d;
+					segs.push({ x1: sx + pts[i][0], y1: sy + pts[i][1], dx, dy, dist: d });
+					total += d;
 				}
 			}
 			let cur = 0;
@@ -831,7 +835,11 @@ class SDXDrawingTool {
 				const dx = pts[i + 1][0] - pts[i][0]; const dy = pts[i + 1][1] - pts[i][1];
 				const d = Math.sqrt((dx * dx) + (dy * dy));
 				if (d > 0) {
-					segs.push({ x1: sx + pts[i][0], y1: sy + pts[i][1], x2: sx + pts[i + 1][0], y2: sy + pts[i + 1][1], dx, dy, dist: d }); total += d;
+					segs.push({
+						x1: sx + pts[i][0], y1: sy + pts[i][1], x2: sx + pts[i + 1][0],
+						y2: sy + pts[i + 1][1], dx, dy, dist: d,
+					});
+					total += d;
 				}
 			}
 			let cur = 0; let drawing = true;
@@ -903,7 +911,9 @@ class SDXDrawingTool {
 	}
 
 	// ── Symbol shape drawing ────────────────────────────────────
-	_drawSymbolShape(g, type, cx, cy, half, pad, sw, color, alpha, shadowColor, shadowAlpha, shadowOff) {
+	_drawSymbolShape(
+		g, type, cx, cy, half, pad, sw, color, alpha, shadowColor, shadowAlpha, shadowOff
+	) {
 		switch (type) {
 			case "plus": {
 				const arm = half - pad;
@@ -936,7 +946,8 @@ class SDXDrawingTool {
 			case "dot": {
 				const r = half - pad;
 				g.lineStyle(0);
-				g.beginFill(shadowColor, shadowAlpha); g.drawCircle(cx + shadowOff, cy + shadowOff, r); g.endFill();
+				g.beginFill(shadowColor, shadowAlpha);
+				g.drawCircle(cx + shadowOff, cy + shadowOff, r); g.endFill();
 				g.beginFill(color, alpha); g.drawCircle(cx, cy, r); g.endFill();
 				break;
 			}
@@ -964,14 +975,19 @@ class SDXDrawingTool {
 				break;
 			}
 			case "square": {
-				const sf = 0.85; const sh = (half - pad) * sf; const sz = sh * 2; const cr = sz * 0.08;
+				const sf = 0.85;
+				const sh = (half - pad) * sf; const sz = sh * 2; const cr = sz * 0.08;
 				g.lineStyle(0);
-				g.beginFill(shadowColor, shadowAlpha); g.drawRoundedRect(cx - sh + shadowOff, cy - sh + shadowOff, sz, sz, cr); g.endFill();
-				g.beginFill(color, alpha); g.drawRoundedRect(cx - sh, cy - sh, sz, sz, cr); g.endFill();
+				g.beginFill(shadowColor, shadowAlpha);
+				g.drawRoundedRect(cx - sh + shadowOff, cy - sh + shadowOff, sz, sz, cr);
+				g.endFill();
+				g.beginFill(color, alpha);
+				g.drawRoundedRect(cx - sh, cy - sh, sz, sz, cr); g.endFill();
 				break;
 			}
 			case "hex-outline": {
-				// Determine size tier from half (derived from STAMP_SIZES: small=40, medium=80, large=140)
+				// Determine size tier from half (derived from STAMP_SIZES: small=40, medium=80,
+				// large=140)
 				// half values: 20, 40, 70
 				let tier = "small";
 				if (half >= 35 && half < 60) tier = "medium";
@@ -1050,7 +1066,8 @@ class SDXDrawingTool {
 		const sw = data.strokeWidth || 6;
 		g.lineStyle(sw, 0x000000, 0.3);
 		if (data.points.length > 0) {
-			g.moveTo(data.startX + data.points[0][0] + 2, data.startY + data.points[0][1] + 2); for (let i = 1; i < data.points.length; i++) g.lineTo(data.startX + data.points[i][0] + 2, data.startY + data.points[i][1] + 2);
+			g.moveTo(data.startX + data.points[0][0] + 2, data.startY + data.points[0][1] + 2);
+			for (let i = 1; i < data.points.length; i++) g.lineTo(data.startX + data.points[i][0] + 2, data.startY + data.points[i][1] + 2);
 		}
 		this._drawLineWithStyle(
 			g, data.points, data.startX, data.startY, sw, color, 1.0, data.lineStyle || "solid"
@@ -1246,7 +1263,8 @@ class SDXDrawingTool {
 		this._lastDrawing = null;
 		const userDrawings = this._pixiDrawings.filter(dd => dd.userId === game.user.id);
 		if (userDrawings.length) {
-			userDrawings.sort((a, b) => b.createdAt - a.createdAt); this._lastDrawing = userDrawings[0];
+			userDrawings.sort((a, b) => b.createdAt - a.createdAt);
+			this._lastDrawing = userDrawings[0];
 		}
 		this._broadcast(
 			"sdx-drawing-deleted", { userId: game.user.id, drawingId: d.id, clearAll: false }
@@ -1260,7 +1278,8 @@ class SDXDrawingTool {
 		if (d.graphics?.parent) this._fadeOutAndRemove(d.graphics);
 		this._pixiDrawings.splice(idx, 1);
 		if (this._lastDrawing?.id === drawingId) {
-			this._lastDrawing = null; const ud = this._pixiDrawings.filter(dd => dd.userId === game.user.id); if (ud.length) {
+			this._lastDrawing = null;
+			const ud = this._pixiDrawings.filter(dd => dd.userId === game.user.id); if (ud.length) {
 				ud.sort((a, b) => b.createdAt - a.createdAt); this._lastDrawing = ud[0];
 			}
 		}
@@ -1766,7 +1785,11 @@ class SDXDrawingTool {
 	}
 
 	setStampStyle(style) {
-		const v = ["plus", "x", "dot", "arrow", "arrow-up", "arrow-down", "arrow-left", "square", "hex-outline"]; if (v.includes(style)) {
+		const v = [
+			"plus", "x", "dot", "arrow", "arrow-up", "arrow-down", "arrow-left", "square",
+			"hex-outline",
+		];
+		if (v.includes(style)) {
 			this.state.stampStyle = style; try {
 				game.settings.set(MODULE_ID, "drawing.toolbar.stampStyle", style);
 			}

@@ -205,8 +205,10 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 
 		// Item Macro content
 		context.macroId = item.id;
-		context.macroCommand = item.getFlag(MODULE_ID, "macroCommand") ?? item.flags?.itemacro?.macro?.command ?? "";
-		context.macroName = item.getFlag(MODULE_ID, "macroName") ?? item.flags?.itemacro?.macro?.name ?? item.name;
+		context.macroCommand = item.getFlag(MODULE_ID, "macroCommand")
+			?? item.flags?.itemacro?.macro?.command ?? "";
+		context.macroName = item.getFlag(MODULE_ID, "macroName")
+			?? item.flags?.itemacro?.macro?.name ?? item.name;
 
 		// Tabs
 		context.tabs = this._prepareTabs();
@@ -280,7 +282,8 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 			// Item macro
 			itemMacro: {
 				runAsGm: flags.itemMacro?.runAsGm ?? false,
-				executeOnUse: flags.itemMacro?.executeOnUse ?? (flags.itemMacro?.triggers?.includes?.("onCast") ?? true),
+				executeOnUse: flags.itemMacro?.executeOnUse ?? (flags.itemMacro?.triggers?.includes?.("onCast")
+					?? true),
 			},
 		};
 	}

@@ -66,7 +66,9 @@ function showToastGlobal(message, type) {
 	const toast = document.createElement("div");
 	toast.className = `sdx-carousing-toast sdx-toast-${type}`;
 	toast.innerHTML = `
-        <i class="fas ${type === "benefit" ? "fa-star" : type === "mishap" ? "fa-skull" : "fa-times"}"></i>
+        <i class="fas ${type === "benefit"
+        	? "fa-star"
+        	: type === "mishap" ? "fa-skull" : "fa-times"}"></i>
         <span>${message}</span>
     `;
 
@@ -222,7 +224,8 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		const allCanAfford = droppedParticipants.length > 0 && droppedParticipants.every(
 			p => p.canAfford
 		);
-		const canRoll = allConfirmed && allCanAfford && session.selectedTier !== null && droppedParticipants.length > 0;
+		const canRoll = allConfirmed && allCanAfford && session.selectedTier !== null
+			&& droppedParticipants.length > 0;
 
 		const customTables = availableTables.map(t => ({
 			...t,
@@ -240,8 +243,10 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		});
 
 		// Get visibility settings for benefits/mishaps
-		const showBenefitsToPlayers = game.settings.get(MODULE_ID, "carousingShowBenefitsToPlayers") ?? true;
-		const showMishapsToPlayers = game.settings.get(MODULE_ID, "carousingShowMishapsToPlayers") ?? true;
+		const showBenefitsToPlayers = game.settings.get(MODULE_ID, "carousingShowBenefitsToPlayers")
+			?? true;
+		const showMishapsToPlayers = game.settings.get(MODULE_ID, "carousingShowMishapsToPlayers")
+			?? true;
 
 		// Get available actors for GM to add (Player type not already in participants)
 		let availableActors = [];
@@ -379,7 +384,8 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
      * GM-only affordances for applying an Original-mode outcome to a sheet.
      * Expanded mode is excluded because it already grants its numeric XP column
      * automatically at roll time — offering Apply there would double-grant.
-     * @returns {{canApply: boolean, isApplied: boolean, appliedSummary?: string, applyEffectSummary?: string}}
+     * @returns {{canApply: boolean, isApplied: boolean, appliedSummary?: string,
+     * applyEffectSummary?: string}}
      */
 	_getApplyInfo(p) {
 		if (!game.user.isGM) return { canApply: false, isApplied: false };

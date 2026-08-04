@@ -124,7 +124,8 @@ export function getEffectiveCreatureType(actor) {
  * explicit creatureType flag. Does NOT touch compendiums.
  * @param {object} [opts]
  * @param {boolean} [opts.overwrite=false] - also overwrite actors with an existing flag
- * @returns {Promise<{updated:number, skipped:number, unmatched:number, failed:number, total:number}>}
+ * @returns {Promise<{updated:number, skipped:number, unmatched:number, failed:number,
+ * total:number}>}
  */
 export async function bakeCreatureTypesToWorldActors({ overwrite = false } = {}) {
 	if (!game.user?.isGM) {

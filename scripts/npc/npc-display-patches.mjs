@@ -155,7 +155,8 @@ function patchNpcDisplayBuilders() {
 				const escapedName = foundry.utils.escapeHTML(item.name);
 				const escapedImg = foundry.utils.escapeHTML(item.img);
 				const imgHtml = `<img src="${escapedImg}" alt="${escapedName}" class="sdx-npc-item-img" style="width: 18px; height: 18px; vertical-align: text-bottom; margin-right: 2px; border: none; border-radius: 2px;" />`;
-				// Insert image inside the anchor, right after the icon <i> tag (could be dice-d20 or comment)
+				// Insert image inside the anchor, right after the icon <i> tag (could be dice-d20
+				// or comment)
 				return baseHtml.replace(
 					/<i class="fas (fa-dice-d20|fa-comment)"><\/i>/,
 					`<i class="fas $1"></i>${imgHtml}`

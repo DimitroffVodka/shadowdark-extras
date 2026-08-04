@@ -3,7 +3,8 @@
  * @param {TrayApp} app - The tray application instance
  */
 export function saveTrayScrollPositions(app) {
-	// Can't query inside this.element because it might not be rendered/attached yet in the way we expect if we use standard AppV2 accessors,
+	// Can't query inside this.element because it might not be rendered/attached yet in the way we
+	// expect if we use standard AppV2 accessors,
 	// but for now we look at the DOM since we are doing a re-render
 	const elem = document.querySelector(".sdx-tray");
 	if (!elem) return;

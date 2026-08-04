@@ -266,7 +266,10 @@ function initJournalPins() {
 // and re-exported to preserve the original JournalPinsSD surface.
 import { JournalPinManager, JournalPinDropHandler, PinPlacer } from "./pin-manager.mjs";
 import { JournalPinRenderer, JournalPinTooltip } from "./pin-rendering.mjs";
-export { JournalPinTooltip, JournalPinManager, JournalPinRenderer, PinPlacer, normalizeImageTint, DEFAULT_PIN_STYLE, getPinStyle, initJournalPins };
+export {
+	JournalPinTooltip, JournalPinManager, JournalPinRenderer, PinPlacer, normalizeImageTint,
+	DEFAULT_PIN_STYLE, getPinStyle, initJournalPins,
+};
 
 // ================================================================
 // INITIALIZATION

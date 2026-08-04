@@ -35,7 +35,8 @@ export const PartyInventory = {
 			itemData.slotsCost = this._calculateItemSlotsCost(item, freeCarrySeen);
 
 			// Light source handling
-			itemData.isLightSource = ["Basic", "Effect"].includes(item.type) && item.system.light?.isSource;
+			itemData.isLightSource = ["Basic", "Effect"].includes(item.type)
+				&& item.system.light?.isSource;
 			itemData.lightActive = itemData.isLightSource && item.system.light?.active;
 
 			if (item.system.treasure) {

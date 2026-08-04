@@ -3,7 +3,8 @@
  *
  * Allows journal pages to display styled NPC stat cards using:
  * @DisplayNpcCard[Actor.UUID named]{Display Name}
- * @DisplayNpcCardDetailed[Actor.UUID named]{Display Name} - includes attacks, special attacks, features
+ * @DisplayNpcCardDetailed[Actor.UUID named]{Display Name} - includes attacks, special attacks,
+ * features
  *
  * Based on Dragonbane's DisplayMonsterCard implementation.
  */

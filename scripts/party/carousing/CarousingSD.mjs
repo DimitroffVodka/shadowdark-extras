@@ -531,7 +531,8 @@ export function getParticipantActor(participantId) {
  * @param {"benefit"|"mishap"} type - the table to roll on first
  * @param {number} outcomeModifier - the outcome row's d100 modifier
  * @param {object} playerMods - per-player custom modifiers ({benefits, mishaps})
- * @returns {Promise<{type: string, diceRoll: number, modifier: number, finalRoll: number, description: string}>}
+ * @returns {Promise<{type: string, diceRoll: number, modifier: number, finalRoll: number,
+ * description: string}>}
  */
 export async function rollExpandedD100(type, outcomeModifier, playerMods = {}) {
 	let result = null;
@@ -687,7 +688,8 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
 			for (const b of benefitResults) {
 				const renownNote = b.renownDelta
 					? ` <span class="sdx-renown-applied">(${b.renownDelta > 0 ? "+" : ""}${b.renownDelta} renown applied)</span>` : "";
-				// If benefits should be hidden from players, add both visible (GM) and hidden (player) versions
+				// If benefits should be hidden from players, add both visible (GM) and hidden
+				// (player) versions
 				const descHtml = showBenefitsToPlayers
 					? `<div class="sdx-result-desc">${b.description}${renownNote}</div>`
 					: `<div class="sdx-result-desc sdx-gm-only">${b.description}${renownNote}</div><div class="sdx-result-desc sdx-player-only">${hiddenText}</div>`;
@@ -707,7 +709,8 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
 			for (const m of mishapResults) {
 				const renownNote = m.renownDelta
 					? ` <span class="sdx-renown-applied">(${m.renownDelta > 0 ? "+" : ""}${m.renownDelta} renown applied)</span>` : "";
-				// If mishaps should be hidden from players, add both visible (GM) and hidden (player) versions
+				// If mishaps should be hidden from players, add both visible (GM) and hidden
+				// (player) versions
 				const descHtml = showMishapsToPlayers
 					? `<div class="sdx-result-desc">${m.description}${renownNote}</div>`
 					: `<div class="sdx-result-desc sdx-gm-only">${m.description}${renownNote}</div><div class="sdx-result-desc sdx-player-only">${hiddenText}</div>`;
@@ -1050,7 +1053,8 @@ export function getCarousingWealthBaseCp(actor) {
 
 /**
  * Coin and total-wealth figures for display on a participant card.
- * @returns {{coinsCp: number, gearCp: number, totalCp: number, coinsLabel: string, totalLabel: string}}
+ * @returns {{coinsCp: number, gearCp: number, totalCp: number, coinsLabel: string, totalLabel:
+ * string}}
  */
 export function getActorWealthDisplay(actor) {
 	const coinsCp = getActorCoinsCp(actor);
@@ -1614,4 +1618,15 @@ export async function injectCarousingButton(app, html, actor) {
 }
 
 // Full public surface preserved (Phase 5.1 split re-exports).
-export { getCarousingMode, getActiveCarousingTiers, getExpandedOutcome, getExpandedBenefit, getExpandedMishap, getDefaultExpandedData, getExpandedCarousingTables, saveExpandedCarousingTables, getExpandedCarousingData, saveExpandedCarousingData, refreshLinkedCarousingTables, initCarousing, getCarousingJournal, getCarousingTablesJournal, saveCarousingDrops, saveCarousingSession, ensureCarousingJournal, ensureCarousingTablesJournal, getCustomCarousingTables, saveCustomCarousingTables, getCarousingTableById, getCarousingGmActors, getCarousingDrops, getCarousingSession, setCarousingDrop, setCarousingTier, setCarousingTable, setPlayerConfirmation, setPlayerModifier, addGmParticipant, removeGmParticipant, resetCarousingSession, addCarousingResult, removeCarousingResult, pruneOfflineCarousingData };
+export {
+	getCarousingMode, getActiveCarousingTiers, getExpandedOutcome, getExpandedBenefit,
+	getExpandedMishap, getDefaultExpandedData, getExpandedCarousingTables,
+	saveExpandedCarousingTables, getExpandedCarousingData, saveExpandedCarousingData,
+	refreshLinkedCarousingTables, initCarousing, getCarousingJournal, getCarousingTablesJournal,
+	saveCarousingDrops, saveCarousingSession, ensureCarousingJournal, ensureCarousingTablesJournal,
+	getCustomCarousingTables, saveCustomCarousingTables, getCarousingTableById,
+	getCarousingGmActors, getCarousingDrops, getCarousingSession, setCarousingDrop,
+	setCarousingTier, setCarousingTable, setPlayerConfirmation, setPlayerModifier, addGmParticipant,
+	removeGmParticipant, resetCarousingSession, addCarousingResult, removeCarousingResult,
+	pruneOfflineCarousingData,
+};

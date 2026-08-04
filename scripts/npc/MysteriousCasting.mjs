@@ -81,7 +81,8 @@ export function initMysteriousCasting() {
 
 		const content = messageDoc.content ?? "";
 
-		// SD 4.x dropped item-card/chat-card wrappers; rollConfig and dice-roll mark SD roll messages.
+		// SD 4.x dropped item-card/chat-card wrappers; rollConfig and dice-roll mark SD roll
+		// messages.
 		if (!content.includes("item-card")
             && !content.includes("dice-roll")
             && !messageDoc.flags?.shadowdark?.rollConfig) return true;

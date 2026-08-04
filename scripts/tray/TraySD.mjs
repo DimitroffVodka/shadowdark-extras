@@ -137,9 +137,11 @@ export function initTray() {
 			_placeableRenderTimer = null;
 			// If painting is active, we don't need to re-render the tray for every tile placement.
 			// This prevents massive lag and scroll resetting issues.
-			// The only downside is if you place a tile that SHOULD trigger a note update, it won't show until you stop painting.
+			// The only downside is if you place a tile that SHOULD trigger a note update, it won't
+			// show until you stop painting.
 
-			// Double check: if isPainting() is true OR if we are in hexes/dungeons view (which implies painting mode)
+			// Double check: if isPainting() is true OR if we are in hexes/dungeons view (which
+			// implies painting mode)
 			// This makes the check more robust against state desyncs
 			if (!isPainting() && !isDungeonPainting() && getViewMode() !== "hexes" && getViewMode() !== "dungeons" && getViewMode() !== "decor") {
 				await renderTray();
@@ -151,7 +153,8 @@ export function initTray() {
 	Hooks.on("createWall", debouncedPlaceableRender);
 	Hooks.on("deleteWall", debouncedPlaceableRender);
 	Hooks.on("updateWall", (wallDoc, changes) => {
-		// Skip door state changes (ds = door state) - opening/closing doors doesn't affect tray content
+		// Skip door state changes (ds = door state) - opening/closing doors doesn't affect tray
+		// content
 		const isDoorStateOnly = ("ds" in changes)
             && !("c" in changes)  // wall coordinates
             && !("flags" in changes);  // flags might contain notes
@@ -921,7 +924,8 @@ export async function getNotesData() {
 			if (!isGM && !isVisible) continue;
 
 			if (noteContent) {
-				// Enrich the HTML for display (convert secrets etc if needed, though we probably want raw for now or enriched safely)
+				// Enrich the HTML for display (convert secrets etc if needed, though we probably
+				// want raw for now or enriched safely)
 				// We will enrich it so links work
 				const enriched = await (foundry.applications?.ux?.TextEditor || TextEditor).enrichHTML(noteContent, { async: true });
 
@@ -970,7 +974,8 @@ export async function getNotesData() {
 			// For tokens we check the token document first, then actor?
 			// Logic: If token has specific visibility flag, use it. If not, default to hidden?
 			// Or share visibility with the note source?
-			// Let's assume visibility flag is on the object that has the note, or just the token document itself for simplicity?
+			// Let's assume visibility flag is on the object that has the note, or just the token
+			// document itself for simplicity?
 			// Actually, keep it simple: visibility flag is on the Token Document.
 			const isVisible = !!doc.getFlag(MODULE_ID, "noteVisible");
 
@@ -997,7 +1002,8 @@ export async function getNotesData() {
 	}
 	// Tiles (TilesLayer is deprecated in V12? No, `canvas.tiles`)
 	await processPlaceables(canvas.tiles?.placeables, "Tile", "fa-solid fa-image");
-	// Walls (Walls don't technically support notes via standard config usually, but our code enabled it)
+	// Walls (Walls don't technically support notes via standard config usually, but our code
+	// enabled it)
 	// Wait, WallsLayer objects are `Wall` which is a Document.
 	// However, wall selection is tricky. But our PlaceableNotesSD attached to WallConfig.
 	// So yes, walls can have notes.

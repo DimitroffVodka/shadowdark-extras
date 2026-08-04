@@ -1246,7 +1246,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 				console.log("SDX Pin Editor | Proxy update called with:", data);
 
 				// Check if this is a TMFX filter parameter update
-				// TMFXFilterEditor sends flat params like {rotation: 35, filterId: "...", filterType: "...", filterInternalId: "..."}
+				// TMFXFilterEditor sends flat params like {rotation: 35, filterId: "...",
+				// filterType: "...", filterInternalId: "..."}
 				if (data.filterInternalId && data.filterType) {
 					// Get the current filters from the pin
 					const currentFilters = foundry.utils.deepClone(
@@ -1255,7 +1256,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 					console.log("SDX Pin Editor | Current filters:", currentFilters);
 
 					// Find the filter to update by its internal ID
-					// TokenMagic stores filters with nested structure: {tmFilters: {tmFilterInternalId: "..."}}
+					// TokenMagic stores filters with nested structure: {tmFilters:
+					// {tmFilterInternalId: "..."}}
 					// or flat structure: {filterInternalId: "..."}
 					const filterIndex = currentFilters.findIndex(f => {
 						// Check nested structure first (tmFilters.tmFilterInternalId)

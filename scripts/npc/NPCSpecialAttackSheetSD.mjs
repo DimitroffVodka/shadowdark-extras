@@ -135,9 +135,12 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 			damageFormula: specialAttack.damageFormula || item.system.damage?.value || "",
 			damageBonus: specialAttack.damageBonus ?? item.system.bonuses?.damageBonus ?? 0,
 			critical: {
-				multiplier: specialAttack.critical?.multiplier ?? item.system.bonuses?.critical?.multiplier ?? 2,
-				successThreshold: specialAttack.critical?.successThreshold ?? item.system.bonuses?.critical?.successThreshold ?? 20,
-				failureThreshold: specialAttack.critical?.failureThreshold ?? item.system.bonuses?.critical?.failureThreshold ?? 1,
+				multiplier: specialAttack.critical?.multiplier
+					?? item.system.bonuses?.critical?.multiplier ?? 2,
+				successThreshold: specialAttack.critical?.successThreshold
+					?? item.system.bonuses?.critical?.successThreshold ?? 20,
+				failureThreshold: specialAttack.critical?.failureThreshold
+					?? item.system.bonuses?.critical?.failureThreshold ?? 1,
 			},
 		};
 
