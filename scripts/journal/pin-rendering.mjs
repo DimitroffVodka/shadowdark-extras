@@ -3,6 +3,7 @@
 
 import { MODULE_ID, getPinStyle, normalizeImageTint } from "./pin-style.mjs";
 import { JournalPinManager, checkPinVisibility } from "./pin-manager.mjs";
+import { drawStyledStroke } from "./pin-draw.mjs";
 
 // ================================================================
 // PIN GRAPHICS - PIXI rendering
@@ -454,7 +455,7 @@ export class JournalPinGraphics extends PIXI.Container {
 			// Draw custom stroke if not solid AND not image
 			if (ringStyle !== "solid") {
 				const cornerRadius = style.borderRadius ?? 4;
-				this._drawStyledStroke(this._circle, shape, radius, size, ringWidth, ringColorNum, ringOpacity, ringStyle, cornerRadius);
+				drawStyledStroke(this._circle, shape, radius, ringWidth, ringColorNum, ringOpacity, ringStyle, cornerRadius);
 			}
 		}
 
@@ -875,175 +876,6 @@ export class JournalPinGraphics extends PIXI.Container {
 			const filters = this.getFlag("tokenmagic", "filters");
 			if (filters) {
 				window.TokenMagic._assignFilters(this, filters);
-			}
-		}
-	}
-	/**
-     * Draw a dashed or dotted stroke manually since PIXI.Graphics doesn't support them natively
-     * @param {number} cornerRadius - Border radius for square shapes
-     */
-	_drawStyledStroke(graphics, shape, radius, size, width, color, opacity, style, cornerRadius = 4) {
-		graphics.lineStyle(width, color, opacity);
-
-		const isDotted = style === "dotted";
-		const dashLen = isDotted ? width : width * 3;
-		const gapLen = isDotted ? width * 2 : width * 2;
-
-		if (shape === "circle") {
-			const circumference = 2 * Math.PI * radius;
-			const numSegments = Math.floor(circumference / (dashLen + gapLen));
-			const actualSegmentLen = circumference / numSegments;
-			const dashAngle = (dashLen / circumference) * 2 * Math.PI;
-			const gapAngle = (gapLen / circumference) * 2 * Math.PI;
-			const stepAngle = (actualSegmentLen / circumference) * 2 * Math.PI;
-
-			for (let i = 0; i < numSegments; i++) {
-				const startAngle = i * stepAngle;
-				if (isDotted) {
-					// Draw a small dot
-					const x = Math.cos(startAngle) * radius;
-					const y = Math.sin(startAngle) * radius;
-					graphics.lineStyle(0);
-					graphics.beginFill(color, opacity);
-					graphics.drawCircle(x, y, width / 2);
-					graphics.endFill();
-				}
-				else {
-					// Draw a dash arc
-					graphics.arc(0, 0, radius, startAngle, startAngle + dashAngle);
-					graphics.moveTo(Math.cos(startAngle + stepAngle) * radius, Math.sin(startAngle + stepAngle) * radius);
-				}
-			}
-		}
-		else if (shape === "square" && cornerRadius > 0) {
-			// Rounded square - draw edges with corner arcs
-			const cr = Math.min(cornerRadius, radius); // Clamp corner radius
-			const innerRadius = radius - cr;
-
-			// Build path segments: straight edges + corner arcs
-			// Corners are at: top-right, bottom-right, bottom-left, top-left
-			const segments = [];
-
-			// Top edge (left to right)
-			segments.push({ type: "line", x1: -innerRadius, y1: -radius, x2: innerRadius, y2: -radius });
-			// Top-right corner arc
-			segments.push({ type: "arc", cx: innerRadius, cy: -innerRadius, r: cr, startAngle: -Math.PI / 2, endAngle: 0 });
-			// Right edge (top to bottom)
-			segments.push({ type: "line", x1: radius, y1: -innerRadius, x2: radius, y2: innerRadius });
-			// Bottom-right corner arc
-			segments.push({ type: "arc", cx: innerRadius, cy: innerRadius, r: cr, startAngle: 0, endAngle: Math.PI / 2 });
-			// Bottom edge (right to left)
-			segments.push({ type: "line", x1: innerRadius, y1: radius, x2: -innerRadius, y2: radius });
-			// Bottom-left corner arc
-			segments.push({ type: "arc", cx: -innerRadius, cy: innerRadius, r: cr, startAngle: Math.PI / 2, endAngle: Math.PI });
-			// Left edge (bottom to top)
-			segments.push({ type: "line", x1: -radius, y1: innerRadius, x2: -radius, y2: -innerRadius });
-			// Top-left corner arc
-			segments.push({ type: "arc", cx: -innerRadius, cy: -innerRadius, r: cr, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 });
-
-			// Draw dashed/dotted pattern along the path
-			for (const seg of segments) {
-				if (seg.type === "line") {
-					const dx = seg.x2 - seg.x1;
-					const dy = seg.y2 - seg.y1;
-					const len = Math.sqrt(dx * dx + dy * dy);
-					const nx = dx / len;
-					const ny = dy / len;
-
-					let dist = 0;
-					while (dist < len) {
-						const segLen = Math.min(dashLen, len - dist);
-						const sx = seg.x1 + nx * dist;
-						const sy = seg.y1 + ny * dist;
-
-						if (isDotted) {
-							graphics.lineStyle(0);
-							graphics.beginFill(color, opacity);
-							graphics.drawCircle(sx, sy, width / 2);
-							graphics.endFill();
-						}
-						else {
-							graphics.lineStyle(width, color, opacity);
-							graphics.moveTo(sx, sy);
-							graphics.lineTo(sx + nx * segLen, sy + ny * segLen);
-						}
-						dist += dashLen + gapLen;
-					}
-				}
-				else if (seg.type === "arc") {
-					const arcLen = seg.r * Math.abs(seg.endAngle - seg.startAngle);
-					const numDashes = Math.max(1, Math.floor(arcLen / (dashLen + gapLen)));
-					const angleStep = (seg.endAngle - seg.startAngle) / numDashes;
-					const dashAngle = (dashLen / arcLen) * (seg.endAngle - seg.startAngle);
-
-					for (let i = 0; i < numDashes; i++) {
-						const startAngle = seg.startAngle + i * angleStep;
-						if (isDotted) {
-							const x = seg.cx + Math.cos(startAngle) * seg.r;
-							const y = seg.cy + Math.sin(startAngle) * seg.r;
-							graphics.lineStyle(0);
-							graphics.beginFill(color, opacity);
-							graphics.drawCircle(x, y, width / 2);
-							graphics.endFill();
-						}
-						else {
-							graphics.lineStyle(width, color, opacity);
-							graphics.arc(seg.cx, seg.cy, seg.r, startAngle, Math.min(startAngle + dashAngle, seg.endAngle));
-							if (i < numDashes - 1) {
-								const nextAngle = seg.startAngle + (i + 1) * angleStep;
-								graphics.moveTo(seg.cx + Math.cos(nextAngle) * seg.r, seg.cy + Math.sin(nextAngle) * seg.r);
-							}
-						}
-					}
-				}
-			}
-		}
-		else {
-			// Polygon shapes (non-rounded square, diamond, hexagon)
-			// For simplicity, we'll draw straight lines with patterns
-			const points = [];
-			if (shape === "square") {
-				points.push({ x: -radius, y: -radius }, { x: radius, y: -radius }, { x: radius, y: radius }, { x: -radius, y: radius }, { x: -radius, y: -radius });
-			}
-			else if (shape === "diamond") {
-				points.push({ x: 0, y: -radius }, { x: radius, y: 0 }, { x: 0, y: radius }, { x: -radius, y: 0 }, { x: 0, y: -radius });
-			}
-			else if (shape === "hexagon" || shape === "hexagonFlat") {
-				const hexOffset = shape === "hexagonFlat" ? 0 : -Math.PI / 2;
-				for (let i = 0; i <= 6; i++) {
-					const angle = (Math.PI / 3) * i + hexOffset;
-					points.push({ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius });
-				}
-			}
-
-			for (let i = 0; i < points.length - 1; i++) {
-				const p1 = points[i];
-				const p2 = points[i + 1];
-				const dx = p2.x - p1.x;
-				const dy = p2.y - p1.y;
-				const len = Math.sqrt(dx * dx + dy * dy);
-				const nx = dx / len;
-				const ny = dy / len;
-
-				let dist = 0;
-				while (dist < len) {
-					const segLen = Math.min(dashLen, len - dist);
-					const sx = p1.x + nx * dist;
-					const sy = p1.y + ny * dist;
-
-					if (isDotted) {
-						graphics.lineStyle(0);
-						graphics.beginFill(color, opacity);
-						graphics.drawCircle(sx, sy, width / 2);
-						graphics.endFill();
-					}
-					else {
-						graphics.lineStyle(width, color, opacity);
-						graphics.moveTo(sx, sy);
-						graphics.lineTo(sx + nx * segLen, sy + ny * segLen);
-					}
-					dist += dashLen + gapLen;
-				}
 			}
 		}
 	}

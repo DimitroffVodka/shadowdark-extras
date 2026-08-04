@@ -65,12 +65,9 @@ globalThis.game = {
 		},
 	},
 };
-globalThis.PIXI = { Container: class {} };
-globalThis.canvas = null;
-
 const { DEFAULT_PIN_STYLE, getPinStyle, normalizeImageTint } =
 	await import("../../scripts/journal/pin-style.mjs");
-const { JournalPinGraphics } = await import("../../scripts/journal/pin-rendering.mjs");
+const { drawStyledStroke } = await import("../../scripts/journal/pin-draw.mjs");
 
 // --- Recording graphics stub ------------------------------------------------
 
@@ -94,12 +91,9 @@ function recordingGraphics() {
 	};
 }
 
-// _drawStyledStroke never reads `this`, so it can be invoked detached.
-const drawStyledStroke = JournalPinGraphics.prototype._drawStyledStroke;
-
 function stroke(shape, style, { radius = 16, width = 3, cornerRadius = 4 } = {}) {
 	const g = recordingGraphics();
-	drawStyledStroke.call(null, g, shape, radius, radius * 2, width, 0xff0000, 0.5, style, cornerRadius);
+	drawStyledStroke(g, shape, radius, width, 0xff0000, 0.5, style, cornerRadius);
 	return g;
 }
 

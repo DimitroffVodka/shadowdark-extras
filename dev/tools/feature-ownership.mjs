@@ -207,6 +207,12 @@ export const FEATURE_OWNERS = {
     "EasyReferenceMenu.mjs",
     // Extracted from the composition root in Phase 3.
     "journal-ui.mjs",
+    // Split out of JournalPinsSD.mjs in Phase 5.1.
+    "pin-manager.mjs",
+    "pin-rendering.mjs",
+    "pin-style.mjs",
+    // Ring stroke geometry lifted out of pin-rendering.mjs in Phase 5.3.5.
+    "pin-draw.mjs",
   ],
   hex: [
     "HexPainterSD.mjs",
