@@ -675,6 +675,7 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 
 		const drops = getCarousingDrops();
 		const currentDropId = drops[userId];
+		const esc = foundry.utils.escapeHTML ?? Handlebars.Utils.escapeExpression;
 
 		const content = `
             <div class="sdx-character-select-dialog">
@@ -682,7 +683,7 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
                 <div class="sdx-character-list">
                     ${ownedActors.map(actor => `
                         <div class="sdx-character-option ${actor.id === currentDropId ? "selected" : ""}" data-actor-id="${actor.id}">
-                            <img src="${actor.img}" alt="${actor.name}" />
+                            <img src="${esc(actor.img ?? "")}" alt="${esc(actor.name ?? "")}" />
                             <span>${actor.name}</span>
                         </div>
                     `).join("")}
