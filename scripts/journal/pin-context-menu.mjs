@@ -11,7 +11,8 @@
  * gesture which opened the menu does not immediately close it.
  *
  * @param {Array<{icon: string, name: string, callback: Function}>} menuItems
- *   Rows to render, in order. `icon` is treated as markup.
+ *   Rows to render, in order. `icon` is caller-authored markup and is trusted;
+ *   `name` can carry a journal page title, so it is escaped.
  * @param {number} x  Viewport x position in pixels.
  * @param {number} y  Viewport y position in pixels.
  */
@@ -27,7 +28,8 @@ export function renderPinContextMenu(menuItems, x, y) {
 	menuItems.forEach(item => {
 		const menuItem = document.createElement("div");
 		menuItem.className = "sdx-journal-pin-menu-item";
-		menuItem.innerHTML = `${item.icon} ${item.name}`;
+		const escapedName = foundry.utils.escapeHTML(item.name);
+		menuItem.innerHTML = `${item.icon} ${escapedName}`;
 		menuItem.addEventListener("click", () => {
 			item.callback();
 			menu.remove();

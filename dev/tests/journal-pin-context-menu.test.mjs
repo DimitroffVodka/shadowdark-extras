@@ -85,6 +85,17 @@ globalThis.document = {
 
 globalThis.PIXI = { Container: class {} };
 
+globalThis.foundry = {
+	utils: {
+		escapeHTML: value => String(value)
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&#x27;"),
+	},
+};
+
 const { renderPinContextMenu } = await import("../../scripts/journal/pin-context-menu.mjs");
 
 // The builder defers listener registration by 10ms; this waits past that.
@@ -159,15 +170,28 @@ test("row markup is the item icon followed by its name", async () => {
 	await settle();
 });
 
-// Documents current behavior, not desired behavior: the item name is
-// interpolated into innerHTML unescaped, so markup in a name reaches the DOM.
-// See the Phase 5.3.5 notes — escaping it is a behavior change, not a refactor.
-test("item names are interpolated as raw HTML (unescaped)", async () => {
+// A pin's menu row carries a journal page title, which is not caller-authored
+// markup — so it is escaped. The icon beside it stays raw on purpose.
+test("item names are escaped before reaching innerHTML", async () => {
 	reset();
 	const item = { name: "<img src=x onerror=alert(1)>", icon: "", callback: () => {} };
 	renderPinContextMenu([item], 0, 0);
 
-	assert.match(menuEl().children[0].innerHTML, /<img src=x onerror=alert\(1\)>/);
+	const html = menuEl().children[0].innerHTML;
+	assert.doesNotMatch(html, /<img/);
+	assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+
+	await settle();
+});
+
+test("escaping covers quotes and ampersands without touching the icon markup", async () => {
+	reset();
+	const icon = "<i class=\"fa-solid fa-book\"></i>";
+	renderPinContextMenu([{ name: "Bell & \"Candle\"", icon, callback: () => {} }], 0, 0);
+
+	const html = menuEl().children[0].innerHTML;
+	assert.ok(html.startsWith(icon), "icon markup should pass through untouched");
+	assert.match(html, /Bell &amp; &quot;Candle&quot;/);
 
 	await settle();
 });
