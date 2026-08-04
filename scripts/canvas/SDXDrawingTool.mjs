@@ -1546,7 +1546,6 @@ class SDXDrawingTool {
 				}
 				else if (this._highlightFilter.matrix !== undefined) {
 					// ColorMatrixFilter - animate the blue channel intensity
-					const intensity = 0.3 + pulse * 0.4;
 					this._highlightFilter.matrix[12] = 0.3 + pulse * 0.3; // Blue offset
 				}
 			}

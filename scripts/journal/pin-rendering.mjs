@@ -987,7 +987,6 @@ export class JournalPinGraphics extends PIXI.Container {
 	async _addVisionIndicator(container, radius) {
 		const iconClass = "fa-solid fa-eye";
 		const iconSize = radius * 0.8;
-		const color = 0xFFFFFF;
 
 		const canvas = document.createElement("canvas");
 		const padding = 4;
@@ -1161,7 +1160,6 @@ export class JournalPinGraphics extends PIXI.Container {
 		}
 
 		// Hover Animation Reset
-		const style = this.pinData.style || {};
 		if (window.gsap) {
 			gsap.killTweensOf(this);
 			gsap.killTweensOf(this.scale);
@@ -1613,7 +1611,7 @@ export class JournalPinRenderer {
 		const incomingIds = new Set(incomingPins.map(p => p.id));
 
 		// 1. Remove pins that are no longer present or visible
-		for (const [id, graphics] of this._pins.entries()) {
+		for (const [id] of this._pins.entries()) {
 			if (!incomingIds.has(id)) {
 				this.removePin(id);
 			}

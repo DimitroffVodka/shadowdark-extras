@@ -388,7 +388,6 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		el.querySelectorAll(".sdx-adv-btn").forEach(btn => {
 			btn.addEventListener("click", ev => {
 				const tileEl = ev.currentTarget.closest(".sdx-overlay-tile");
-				const mode = ev.currentTarget.dataset.mode; // "advantage" or "disadvantage"
 				const isActive = ev.currentTarget.classList.contains("sdx-active");
 
 				// Deactivate all adv/dis buttons in this tile first

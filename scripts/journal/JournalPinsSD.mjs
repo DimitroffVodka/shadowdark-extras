@@ -45,10 +45,6 @@ Hooks.once("init", () => {
 // ================================================================
 
 class JournalPinsLayer extends foundry.canvas.layers.CanvasLayer {
-	constructor() {
-		super();
-	}
-
 	async _draw() {
 
 		// Make layer interactive

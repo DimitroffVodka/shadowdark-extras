@@ -8,9 +8,6 @@ export const MODULE_ID = "shadowdark-extras";
 const CAROUSING_JOURNAL_NAME = "__sdx_carousing_sync__";
 const CAROUSING_TABLES_JOURNAL_NAME = "__sdx_carousing_tables__";
 
-// Track active tab per player sheet (by actor ID) for persistence
-const carousingActiveTabTracker = new Map();
-
 // Cached journal references
 let _carousingJournal = null;
 let _carousingTablesJournal = null;
@@ -301,37 +298,6 @@ export async function saveExpandedCarousingData(data) {
 
 	await saveExpandedCarousingTables(tables);
 }
-
-/**
- * Get expanded outcome based on d8 roll (uses editable data)
- */
-function getExpandedOutcomeFromData(rollTotal) {
-	const data = getExpandedCarousingData();
-	const outcomes = data.outcomes || EXPANDED_OUTCOME_TABLE;
-	const capped = Math.min(rollTotal, 25);
-	return outcomes.find(o => o.roll === capped) || outcomes[outcomes.length - 1];
-}
-
-/**
- * Get expanded benefit by d100 roll (uses editable data)
- */
-function getExpandedBenefitFromData(rollTotal) {
-	const data = getExpandedCarousingData();
-	const benefits = data.benefits || EXPANDED_BENEFITS;
-	const capped = Math.max(1, Math.min(rollTotal, 100));
-	return benefits.find(b => b.roll === capped) || { roll: capped, description: `Benefit result ${capped}` };
-}
-
-/**
- * Get expanded mishap by d100 roll (uses editable data)
- */
-function getExpandedMishapFromData(rollTotal) {
-	const data = getExpandedCarousingData();
-	const mishaps = data.mishaps || EXPANDED_MISHAPS;
-	const capped = Math.max(1, Math.min(rollTotal, 100));
-	return mishaps.find(m => m.roll === capped) || { roll: capped, description: `Mishap result ${capped}` };
-}
-
 
 /**
  * Get the carousing journal entry

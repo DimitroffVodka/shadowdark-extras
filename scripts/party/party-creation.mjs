@@ -166,12 +166,3 @@ export function wrapActorCreate() {
 		return originalCreate.call(this, Array.isArray(data) ? createData : createData[0], options);
 	};
 }
-
-/**
- * Handle Party actor creation - convert to flagged NPC
- */
-async function handlePartyCreation(actor, options, userId) {
-	// This runs after the actor is created
-	// We can't intercept the type change before creation in a clean way,
-	// so we'll handle it via the preCreateActor hook
-}

@@ -3,7 +3,6 @@
  * Allows GMs to create, edit, and delete custom carousing tables.
  */
 
-const MODULE_ID = "shadowdark-extras";
 
 import { getCustomCarousingTables, saveCustomCarousingTables } from "./CarousingSD.mjs";
 import { pickFoundryTable, pickMultipleFoundryTables, tableResultsToOriginalOutcomes, tableResultsToEventTiers, resolveLinkedData, describeLinks, parsePipeTierLine, parsePipeOutcomeLine } from "./CarousingFoundryImport.mjs";

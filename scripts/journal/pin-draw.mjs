@@ -33,7 +33,6 @@ export function drawStyledStroke(graphics, shape, radius, width, color, opacity,
 		const numSegments = Math.floor(circumference / (dashLen + gapLen));
 		const actualSegmentLen = circumference / numSegments;
 		const dashAngle = (dashLen / circumference) * 2 * Math.PI;
-		const gapAngle = (gapLen / circumference) * 2 * Math.PI;
 		const stepAngle = (actualSegmentLen / circumference) * 2 * Math.PI;
 
 		for (let i = 0; i < numSegments; i++) {

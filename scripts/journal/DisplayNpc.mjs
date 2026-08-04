@@ -10,7 +10,6 @@
 
 import { getEffectiveCreatureType } from "../npc/CreatureTypesApp.mjs";
 
-const MODULE_ID = "shadowdark-extras";
 
 /**
  * Parse the brackets content to extract UUID and optional flags

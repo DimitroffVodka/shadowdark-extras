@@ -459,7 +459,6 @@ export class DecorImportApp extends ApplicationV2 {
 			ui.notifications.warn("Only GMs can add decor folders.");
 			return;
 		}
-		const FP = foundry.applications.apps.FilePicker.implementation;
 		const root = String(path || "").replace(/\/+$/, "");
 		if (!root) return;
 

@@ -55,7 +55,6 @@ export function getCarousingParticipants() {
 		if (user.role === CONST.USER_ROLES.ASSISTANT) return false;
 		return true;
 	}).map(user => {
-		const participantId = user.id; // Keep original ID for user drops to avoid breaking everything
 		const droppedActorId = drops[user.id];
 		const droppedActor = droppedActorId ? game.actors.get(droppedActorId) : null;
 		const actorGp = droppedActor ? getActorTotalGp(droppedActor) : 0;
@@ -69,6 +68,7 @@ export function getCarousingParticipants() {
 
 		return {
 			id: user.id,
+			// Keep the original user id for drops, to avoid breaking existing data.
 			participantId: user.id,
 			name: user.name,
 			character: user.character,
@@ -151,15 +151,6 @@ export function getCarousingParticipants() {
 
 	return [...userParticipants, ...gmParticipants];
 }
-
-/**
- * Get online players with their carousing data
- * @deprecated Use getCarousingParticipants instead
- */
-function getOnlinePlayers() {
-	return getCarousingParticipants().filter(p => !p.isGmManaged);
-}
-
 
 /**
  * Get actor's total GP (coins.gp + sp/10 + cp/100), rounded down to whole gp.
@@ -337,15 +328,6 @@ function getParticipants() {
 // ============================================
 // DICE SO NICE APPEARANCE CUSTOMIZATION
 // ============================================
-
-/**
- * Dice So Nice colorset configurations for carousing rolls
- */
-const DSN_CAROUSING_APPEARANCE = {
-	outcome: { colorset: "black" },      // Black dice for d8 outcome roll
-	benefit: { colorset: "acid" },       // Green dice for d100 benefit rolls
-	mishap: { colorset: "fire" },         // Red dice for d100 mishap rolls
-};
 
 /**
  * Show a roll with Dice So Nice using custom appearance
@@ -804,7 +786,6 @@ export async function executeCarousingRolls() {
 	await refreshLinkedCarousingTables();
 
 	const session = getCarousingSession();
-	const drops = getCarousingDrops();
 
 	// Get the correct table based on mode
 	const mode = getCarousingMode();
@@ -1608,111 +1589,6 @@ export async function injectCarousingButton(app, html, actor) {
 		});
 	}
 }
-
-/**
- * Activate event listeners for the carousing tab
- */
-function activateCarousingListeners(html, actor, app) {
-	const carousingSection = html.find(".tab-carousing");
-	if (carousingSection.length === 0) return;
-
-	// GM: Table selection
-	carousingSection.find('[data-action="select-table"]').change(async event => {
-		if (!game.user.isGM) return;
-		const tableId = event.target.value || "default";
-		await setCarousingTable(tableId);
-	});
-
-	// GM: Tier selection
-	carousingSection.find('[data-action="select-tier"]').change(async event => {
-		if (!game.user.isGM) return;
-		const val = event.target.value;
-		const tierIndex = val === "" ? null : parseInt(val);
-		await setCarousingTier(tierIndex);
-	});
-
-	// GM: Roll button
-	carousingSection.find('[data-action="roll-carousing"]').click(async event => {
-		event.preventDefault();
-		if (!game.user.isGM) return;
-		await executeCarousingRolls();
-	});
-
-	// GM: Reset button
-	carousingSection.find('[data-action="reset-carousing"]').click(async event => {
-		event.preventDefault();
-		if (!game.user.isGM) return;
-		await resetCarousingSession();
-	});
-
-	// Player: Confirm button
-	carousingSection.find('[data-action="confirm-carousing"]').click(async event => {
-		event.preventDefault();
-		const userId = $(event.currentTarget).data("user-id");
-		if (userId !== game.user.id) return;
-		await setPlayerConfirmation(userId, true);
-	});
-
-	// Player: Unconfirm button
-	carousingSection.find('[data-action="unconfirm-carousing"]').click(async event => {
-		event.preventDefault();
-		const userId = $(event.currentTarget).data("user-id");
-		if (userId !== game.user.id) return;
-		await setPlayerConfirmation(userId, false);
-	});
-
-	// Drag & drop for dropboxes
-	carousingSection.find(".sdx-carousing-dropbox-content").each((i, element) => {
-		const $dropbox = $(element);
-		const userId = $dropbox.data("user-id");
-
-		if (userId !== game.user.id) return;
-
-		element.addEventListener("dragover", event => {
-			event.preventDefault();
-			event.dataTransfer.dropEffect = "copy";
-			$dropbox.addClass("sdx-carousing-dropbox-hover");
-		});
-
-		element.addEventListener("dragleave", event => {
-			$dropbox.removeClass("sdx-carousing-dropbox-hover");
-		});
-
-		element.addEventListener("drop", async event => {
-			event.preventDefault();
-			$dropbox.removeClass("sdx-carousing-dropbox-hover");
-
-			let data;
-			try {
-				data = JSON.parse(event.dataTransfer.getData("text/plain"));
-			}
-			catch(e) {
-				return;
-			}
-
-			if (data.type !== "Actor") return;
-
-			const droppedActor = await fromUuid(data.uuid);
-			if (!droppedActor) return;
-
-			if (droppedActor.type !== "Player") {
-				ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.only_players"));
-				return;
-			}
-
-			await setCarousingDrop(userId, droppedActor.id);
-		});
-	});
-
-	// Clear button
-	carousingSection.find('[data-action="clear-carousing-drop"]').click(async event => {
-		event.preventDefault();
-		const userId = $(event.currentTarget).data("user-id");
-		if (userId !== game.user.id) return;
-		await setCarousingDrop(userId, null);
-	});
-}
-
 
 // Full public surface preserved (Phase 5.1 split re-exports).
 export { getCarousingMode, getActiveCarousingTiers, getExpandedOutcome, getExpandedBenefit, getExpandedMishap, getDefaultExpandedData, getExpandedCarousingTables, saveExpandedCarousingTables, getExpandedCarousingData, saveExpandedCarousingData, refreshLinkedCarousingTables, initCarousing, getCarousingJournal, getCarousingTablesJournal, saveCarousingDrops, saveCarousingSession, ensureCarousingJournal, ensureCarousingTablesJournal, getCustomCarousingTables, saveCustomCarousingTables, getCarousingTableById, getCarousingGmActors, getCarousingDrops, getCarousingSession, setCarousingDrop, setCarousingTier, setCarousingTable, setPlayerConfirmation, setPlayerModifier, addGmParticipant, removeGmParticipant, resetCarousingSession, addCarousingResult, removeCarousingResult, pruneOfflineCarousingData };

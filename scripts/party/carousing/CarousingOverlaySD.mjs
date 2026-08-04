@@ -197,7 +197,6 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 
 		// Get ALL participants (Online + GM added)
 		const participants = this._getParticipants(session, activeTable);
-		const onlinePlayers = participants.filter(p => !p.isGmManaged);
 
 		// Calculate split cost based on ALL dropped participants
 		const participantCount = participants.filter(p => p.hasDrop).length;

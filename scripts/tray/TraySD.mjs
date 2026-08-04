@@ -32,7 +32,6 @@ let _hideNpcsFromPlayers = true;
 
 // Current actor/token being displayed
 let _currentActor = null;
-let _currentToken = null;
 
 /**
  * Initialize the Character Tray
@@ -350,7 +349,6 @@ export function getCurrentActor() {
 		const tokens = canvas.tokens.controlled;
 		if (tokens.length === 1) {
 			const token = tokens[0];
-			_currentToken = token;
 			if (token.document.actorLink) {
 				_currentActor = game.actors.get(token.document.actorId);
 			}
@@ -373,7 +371,6 @@ export function getCurrentActor() {
 	}
 
 	_currentActor = character;
-	_currentToken = null;
 	return character;
 }
 
@@ -773,22 +770,20 @@ export function getPinsData() {
 			if (contentType === "text") {
 				displayContent = style.customText || "";
 			}
-			else {
-				// Number logic
-				if (pin.journalId && pin.pageId) {
-					const journal = game.journal.get(pin.journalId);
-					if (journal) {
-						const sortedPages = journal.pages.contents.sort((a, b) => a.sort - b.sort);
-						const idx = sortedPages.findIndex(p => p.id === pin.pageId);
-						displayContent = idx >= 0 ? idx : 0;
-					}
-					else {
-						displayContent = "0";
-					}
+			// Number logic
+			else if (pin.journalId && pin.pageId) {
+				const journal = game.journal.get(pin.journalId);
+				if (journal) {
+					const sortedPages = journal.pages.contents.sort((a, b) => a.sort - b.sort);
+					const idx = sortedPages.findIndex(p => p.id === pin.pageId);
+					displayContent = idx >= 0 ? idx : 0;
 				}
 				else {
 					displayContent = "0";
 				}
+			}
+			else {
+				displayContent = "0";
 			}
 		}
 

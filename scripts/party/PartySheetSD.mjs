@@ -689,8 +689,6 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				return;
 			}
 
-			const next = Array.from(new Set([...this.memberIds, memberKey]));
-
 			// Enforce sorting on add (Players first)
 			// We need to fetch all members to sort them
 			const currentMembers = await this.getMembers();
@@ -1024,7 +1022,6 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		}
 
 		// Container transfer/copy
-		const sourceActor = item.parent;
 		const contained = this._getContainedItems(item);
 		const containerData = item.toObject();
 		// Clear the packed items to prevent the createItem hook from unpacking them

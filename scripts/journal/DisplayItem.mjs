@@ -7,7 +7,6 @@
  * Supports different item types: Weapon, Armor, Spell, and generic items.
  */
 
-const MODULE_ID = "shadowdark-extras";
 
 /**
  * Parse the brackets content to extract UUID and optional flags

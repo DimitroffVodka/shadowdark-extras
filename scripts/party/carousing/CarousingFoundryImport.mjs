@@ -4,7 +4,6 @@
  * (ExpandedCarousingTablesApp) editors.
  */
 
-const MODULE_ID = "shadowdark-extras";
 
 /**
  * Build the `<optgroup>` HTML listing every world + compendium RollTable,
