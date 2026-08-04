@@ -4,6 +4,7 @@
 import { MODULE_ID, getPinStyle, normalizeImageTint } from "./pin-style.mjs";
 import { JournalPinManager, checkPinVisibility } from "./pin-manager.mjs";
 import { drawStyledStroke } from "./pin-draw.mjs";
+import { renderPinContextMenu } from "./pin-context-menu.mjs";
 
 // ================================================================
 // PIN GRAPHICS - PIXI rendering
@@ -1395,50 +1396,7 @@ export class JournalPinGraphics extends PIXI.Container {
 			});
 		}
 
-		this._renderContextMenu(menuItems, menuX, menuY);
-	}
-
-	_renderContextMenu(menuItems, x, y) {
-		const existing = document.getElementById("sdx-journal-pin-context-menu");
-		if (existing) existing.remove();
-
-		const menu = document.createElement("div");
-		menu.id = "sdx-journal-pin-context-menu";
-		menu.className = "sdx-journal-pin-context-menu";
-		menu.style.cssText = `position:fixed;left:${x}px;top:${y}px;z-index:10000;`;
-
-		menuItems.forEach(item => {
-			const menuItem = document.createElement("div");
-			menuItem.className = "sdx-journal-pin-menu-item";
-			menuItem.innerHTML = `${item.icon} ${item.name}`;
-			menuItem.addEventListener("click", () => {
-				item.callback();
-				menu.remove();
-			});
-			menu.appendChild(menuItem);
-		});
-
-		document.body.appendChild(menu);
-
-		const closeMenu = (e) => {
-			if (!menu.contains(e.target)) {
-				menu.remove();
-				document.removeEventListener("click", closeMenu);
-				document.removeEventListener("keydown", closeOnEscape);
-			}
-		};
-		const closeOnEscape = (e) => {
-			if (e.key === "Escape") {
-				menu.remove();
-				document.removeEventListener("click", closeMenu);
-				document.removeEventListener("keydown", closeOnEscape);
-			}
-		};
-
-		setTimeout(() => {
-			document.addEventListener("click", closeMenu);
-			document.addEventListener("keydown", closeOnEscape);
-		}, 10);
+		renderPinContextMenu(menuItems, menuX, menuY);
 	}
 
 	destroy(options) {

@@ -211,8 +211,10 @@ export const FEATURE_OWNERS = {
     "pin-manager.mjs",
     "pin-rendering.mjs",
     "pin-style.mjs",
-    // Ring stroke geometry lifted out of pin-rendering.mjs in Phase 5.3.5.
+    // Ring stroke geometry and context menu lifted out of pin-rendering.mjs
+    // in Phase 5.3.5.
     "pin-draw.mjs",
+    "pin-context-menu.mjs",
   ],
   hex: [
     "HexPainterSD.mjs",
