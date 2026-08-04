@@ -236,5 +236,4 @@ export function applySheetDecorationStyles() {
 
 	document.head.appendChild(style);
 
-	//console.log(`${MODULE_ID} | Applied sheet decoration styles`);
 }

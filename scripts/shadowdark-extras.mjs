@@ -383,7 +383,6 @@ function registerPartySheet() {
 		return originalGetSheetClass.call(this);
 	};
 
-	//console.log(`${MODULE_ID} | Party sheet registered`);
 }
 
 /**
@@ -397,7 +396,6 @@ function registerPotionSheet() {
 		label: "Shadowdark Extras: Potion Sheet",
 	});
 
-	//console.log(`${MODULE_ID} | Potion sheet registered`);
 }
 
 /**
@@ -411,7 +409,6 @@ function registerBackgroundSheet() {
 		label: "Shadowdark Extras: Background Sheet",
 	});
 
-	//console.log(`${MODULE_ID} | Background sheet registered`);
 }
 
 /**
@@ -425,7 +422,6 @@ function registerNPCAttackSheet() {
 		label: "Shadowdark Extras: NPC Attack Sheet",
 	});
 
-	//console.log(`${MODULE_ID} | NPC Attack sheet registered`);
 }
 
 /**
@@ -439,7 +435,6 @@ function registerNPCFeatureSheet() {
 		label: "Shadowdark Extras: NPC Feature/Spell Sheet",
 	});
 
-	//console.log(`${MODULE_ID} | NPC Feature sheet registered`);
 }
 
 /**
@@ -474,7 +469,6 @@ function registerClassAbilitySheet() {
 
 // Initialize when Foundry is ready
 Hooks.once("init", () => {
-	//console.log(`${MODULE_ID} | Initializing Shadowdark Extras`);
 
 	// Initialize Automated Animations integration
 	initAutoAnimationsIntegration();
@@ -593,7 +587,6 @@ Hooks.once("ready", async () => {
 		}
 	}
 
-	//console.log(`${MODULE_ID} | Setting up Shadowdark Extras`);
 
 	extendLightSources();
 	patchLightSourceMappings();
@@ -608,7 +601,6 @@ Hooks.once("ready", async () => {
 	// Setup combat socket for damage application (requires socketlib)
 	if (typeof socketlib !== "undefined") {
 		setupCombatSocket();
-		//console.log(`${MODULE_ID} | Combat socket initialized`);
 	}
 	else {
 		console.warn(`${MODULE_ID} | socketlib not found, damage application may not work for non-GMs`);
@@ -617,7 +609,6 @@ Hooks.once("ready", async () => {
 	// Initialize Focus Spell Tracker if enabled
 	if (game.settings.get(MODULE_ID, "enableFocusTracker")) {
 		initFocusSpellTracker();
-		//console.log(`${MODULE_ID} | Focus Spell Tracker initialized`);
 	}
 
 	// Break-on-damage effect expiry (marker-driven; hooks are inert until an
@@ -627,7 +618,6 @@ Hooks.once("ready", async () => {
 	// Setup wand uses blocking (prevent casting depleted wands)
 	if (game.settings.get(MODULE_ID, "enableWandUses")) {
 		setupWandUsesBlocker();
-		//console.log(`${MODULE_ID} | Wand Uses Blocker initialized`);
 	}
 
 	// Setup silenced casting blocking
@@ -657,15 +647,12 @@ Hooks.once("ready", async () => {
 
 	// Initialize Template Effects System (damage/effects for tokens in templates)
 	initTemplateEffects();
-	//console.log(`${MODULE_ID} | Template Effects System initialized`);
 
 	// Initialize Aura Effects System (token-attached effects that follow bearer)
 	initAuraEffects();
-	//console.log(`${MODULE_ID} | Aura Effects System initialized`);
 
 	// Initialize Marching Mode (GM-only token following system)
 	initMarchingMode();
-	//console.log(`${MODULE_ID} | Marching Mode initialized`);
 
 	patchLightSourceTrackerForParty();
 
@@ -702,7 +689,6 @@ Hooks.once("ready", async () => {
 				await this.actor.updateEmbeddedDocuments("Item", [dataUpdate]);
 				await this.actor.toggleLight?.(active, item.id);
 			};
-			//console.log(`${MODULE_ID} | Patched NpcSheetSD with _toggleLightSource method`);
 		}
 	}
 
@@ -710,7 +696,6 @@ Hooks.once("ready", async () => {
 	if (globalThis.shadowdark?.documents?.ActorSD) {
 		const ActorSD = globalThis.shadowdark.documents.ActorSD;
 		const RollSD = CONFIG.DiceSD;
-		//console.log(`${MODULE_ID} | Monkey-patching ActorSD methods and DiceSD`);
 		const original_learnSpell = ActorSD.prototype._learnSpell;
 
 		ActorSD.prototype._learnSpell = async function(item) {
@@ -728,7 +713,6 @@ Hooks.once("ready", async () => {
 			return result;
 		};
 
-		//console.log(`${MODULE_ID} | Wrapped ActorSD._learnSpell to preserve spell damage flags`);
 	}
 
 	// The weapon hit-bonus writer used to live here, wrapped onto
@@ -1090,7 +1074,6 @@ registerPredefinedEffects();
 // Invisibility hooks live in ./effects/invisibility.mjs; registered here to keep source order.
 registerInvisibilityHooks();
 
-//console.log(`${MODULE_ID} | Invisibility effect enabled with auto-disable on attack/spell`);
 
 
 // ============================================
@@ -1139,7 +1122,6 @@ Hooks.once("ready", () => {
 		registerPartyTravelSocket(macroExecuteSocket);
 		registerTemplateTargetSyncSocket(macroExecuteSocket);
 
-		//console.log(`${MODULE_ID} | Socketlib integration enabled for macro execution`);
 	}
 });
 
@@ -1254,7 +1236,6 @@ registerChatDispatch();
 // carried — an empty callback has no behaviour to preserve.
 registerNPCFeatureItemMacros();
 
-//console.log(`${MODULE_ID} | Module loaded - NPC Feature item macro hooks registered`);
 
 
 // ============================================
@@ -1430,7 +1411,6 @@ Hooks.on("setup", () => {
 				buildCellFloorMap: buildCellFloorMap,
 			},
 		};
-		//console.log(`${MODULE_ID} | Module API registered`);
 	}
 });
 

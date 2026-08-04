@@ -120,14 +120,12 @@ export async function injectJournalNotes(app, html, actor) {
 	// Use the app's element directly - more reliable than the html parameter
 	const sheetElement = app.element;
 	if (!sheetElement || sheetElement.length === 0) {
-		//console.log("SDX Journal: Sheet element not found");
 		return;
 	}
 
 	// Find the notes tab - it's a section with class "tab-notes" and data-tab="tab-notes"
 	const notesTab = sheetElement.find('section.tab-notes[data-tab="tab-notes"]');
 	if (notesTab.length === 0) {
-		//console.log("SDX Journal: Notes tab section not found");
 		return;
 	}
 

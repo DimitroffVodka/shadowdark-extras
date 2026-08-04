@@ -41,10 +41,8 @@ export async function enhanceScrollSheet(app, html) {
 	const item = app.item;
 	if (!item || item.type !== "Scroll") return;
 
-	//console.log(`${MODULE_ID} | Enhancing scroll sheet for`, item.name);
 
 	// Debug: Log all flags
-	//console.log(`${MODULE_ID} | Scroll flags:`, item.flags?.[MODULE_ID]);
 
 	// Remove any existing damage/heal boxes to prevent duplicates
 	html.find(".sdx-spell-damage-box").remove();
@@ -192,7 +190,6 @@ export async function enhanceScrollSheet(app, html) {
 		const $detailsLink = $tabs.find('a[data-tab="tab-details"]');
 		if ($detailsLink.length) {
 			$detailsLink.after(activityTabLink);
-			//console.log(`${MODULE_ID} | Activity tab link added to navigation`);
 		}
 		else {
 			console.warn(`${MODULE_ID} | Could not find Details tab link`);
@@ -203,7 +200,6 @@ export async function enhanceScrollSheet(app, html) {
 		const $detailsTab = html.find('section.tab-details[data-tab="tab-details"]');
 		if ($detailsTab.length) {
 			$detailsTab.after(activityTabContent);
-			//console.log(`${MODULE_ID} | Activity tab content created`);
 		}
 		else {
 			console.warn(`${MODULE_ID} | Could not find Details tab content`);
@@ -241,7 +237,6 @@ export async function enhanceScrollSheet(app, html) {
 		return;
 	}
 
-	//console.log(`${MODULE_ID} | Activity tab found/created`);
 
 	// Build list of current effects from stored UUIDs
 	let effectsListHtml = "";
@@ -267,7 +262,6 @@ export async function enhanceScrollSheet(app, html) {
 	});
 
 	if (effectsArray && effectsArray.length > 0) {
-		//console.log(`${MODULE_ID} | Loading ${effectsArray.length} effects from UUIDs:`, effectsArray);
 
 		// Load all effects in parallel and wait for them all
 		const effectPromises = effectsArray.map(effect => fromUuid(effect.uuid || effect));
@@ -327,7 +321,6 @@ export async function enhanceScrollSheet(app, html) {
 			}
 		}
 
-		//console.log(`${MODULE_ID} | Loaded effects HTML, length:`, effectsListHtml.length);
 	}
 
 	// Build summons list HTML
@@ -379,7 +372,6 @@ export async function enhanceScrollSheet(app, html) {
 
 	// Insert into Activity tab
 	$activityTab.append(damageHealHtml);
-	//console.log(`${MODULE_ID} | Damage/Heal box inserted into Activity tab`);
 
 	// Prevent auto-submission of form inputs in Activity tab to avoid unwanted re-renders
 	$activityTab.find("input, select, textarea").on("change", function(e) {
@@ -414,7 +406,6 @@ export async function enhanceScrollSheet(app, html) {
 
 			// Update without re-rendering
 			item.update(updateData, { render: false }).then(() => {
-				//console.log(`${MODULE_ID} | Updated ${fieldName}:`, value);
 			}).catch(err => {
 				console.error(`${MODULE_ID} | Failed to update ${fieldName}:`, err);
 			});
@@ -676,7 +667,6 @@ export async function enhanceScrollSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.summoning.enabled`] = enabled;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Summoning enabled state saved:`, enabled);
 		});
 	});
 
@@ -805,7 +795,6 @@ export async function enhanceScrollSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.summoning.profiles`] = profiles;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Saved summon profiles:`, profiles);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save summon profiles:`, err);
 		});
@@ -818,7 +807,6 @@ export async function enhanceScrollSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemGive.enabled`] = enabled;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Item give enabled state saved:`, enabled);
 		});
 	});
 
@@ -928,7 +916,6 @@ export async function enhanceScrollSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemGive.profiles`] = profiles;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Saved item give profiles:`, profiles);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save item give profiles:`, err);
 		});
@@ -943,7 +930,6 @@ export async function enhanceScrollSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemMacro.runAsGm`] = runAsGm;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Saved itemMacro.runAsGm:`, runAsGm);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save itemMacro.runAsGm:`, err);
 		});
@@ -959,7 +945,6 @@ export async function enhanceScrollSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemMacro.triggers`] = triggers;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Saved itemMacro.triggers:`, triggers);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save itemMacro.triggers:`, err);
 		});
@@ -976,5 +961,4 @@ export async function enhanceScrollSheet(app, html) {
 	// inert (nothing saved, no preview).
 	activateAnimationFxListeners(html, item);
 
-	//console.log(`${MODULE_ID} | Scroll sheet enhanced for`, item.name);
 }

@@ -253,12 +253,6 @@ export function registerChatDispatch() {
 		const hasD20Roll = html.querySelector(".d20-roll") !== null;
 
 		// Debug logging for troubleshooting
-		//console.log(`${MODULE_ID} | [DEBUG] Item Macro hook - checking message:`, {
-		//	hasDiceTotal,
-		//	hasD20Roll,
-		//	rollOutcome: readSdRollOutcome(message),
-		//	flavor: message.flavor?.substring(0, 50)
-		//});
 
 		const cardCtx = resolveCardContext(message, html);
 
@@ -282,7 +276,6 @@ export function registerChatDispatch() {
 					const config = getWeaponItemMacroConfig(actorItem);
 					if (config.enabled && config.triggers.length > 0) {
 						item = actorItem;
-						//console.log(`${MODULE_ID} | [DEBUG] Found weapon from content: ${item.name}`);
 						break;
 					}
 				}
@@ -294,7 +287,6 @@ export function registerChatDispatch() {
 		// Get the macro config
 		const macroConfig = getWeaponItemMacroConfig(item);
 		if (!macroConfig.enabled || macroConfig.triggers.length === 0) {
-			//console.log(`${MODULE_ID} | [DEBUG] Weapon ${item.name} has no enabled triggers`);
 			return;
 		}
 
@@ -302,29 +294,16 @@ export function registerChatDispatch() {
 		const flavor = message.flavor?.toLowerCase() || "";
 		const isAttackMessage = flavor.includes("attack roll");
 
-		//console.log(`${MODULE_ID} | [DEBUG] Attack detection for ${item.name}:`, {
-		//	isAttackMessage,
-		//	hasDiceTotal,
-		//	hasD20Roll,
-		//	macroConfig
-		//});
 
 		// Skip if this doesn't look like an attack with dice
 		if (!isAttackMessage && !hasDiceTotal && !hasD20Roll) {
-			//console.log(`${MODULE_ID} | [DEBUG] Skipping - not an attack message with dice`);
 			return;
 		}
 
 		const rollOutcome = readSdRollOutcome(message);
 
-		//console.log(`${MODULE_ID} | [DEBUG] Shadowdark roll data:`, {
-		//	mainRoll: rollOutcome.mainRoll,
-		//	success: rollOutcome.isSuccess,
-		//	critical: rollOutcome.isCriticalSuccess ? "success" : rollOutcome.isCriticalFailure ? "failure" : null
-		//});
 
 		if (!rollOutcome.mainRoll || rollOutcome.isMasked) {
-			//console.log(`${MODULE_ID} | [DEBUG] No main roll in shadowdark flags`);
 			return;
 		}
 
@@ -334,12 +313,6 @@ export function registerChatDispatch() {
 		const isHit = rollOutcome.isSuccess && !isCriticalMiss;
 		const isMiss = !rollOutcome.isSuccess || isCriticalMiss;
 
-		//console.log(`${MODULE_ID} | [DEBUG] Roll analysis:`, {
-		//	isCritical,
-		//	isCriticalMiss,
-		//	isHit,
-		//	isMiss
-		//});
 
 		// Get roll result from the mainRoll data
 		const rollResult = rollOutcome.total;
@@ -370,11 +343,9 @@ export function registerChatDispatch() {
 			triggersToFire.push("onMiss");
 		}
 
-		//console.log(`${MODULE_ID} | [DEBUG] Triggers to fire:`, triggersToFire);
 
 		// Execute all applicable triggers
 		for (const trigger of triggersToFire) {
-			//console.log(`${MODULE_ID} | [DEBUG] Firing trigger: ${trigger}`);
 			await executeWeaponItemMacro(item, actor, trigger, macroContext);
 		}
 	});

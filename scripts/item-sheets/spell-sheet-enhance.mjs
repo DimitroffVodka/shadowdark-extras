@@ -50,7 +50,6 @@ export function injectSpellAlignmentField(app, html) {
 	});
 
 	if (!$casterClassesBox.length) {
-		//console.log(`${MODULE_ID} | Could not find Caster Classes box in spell sheet`);
 		return;
 	}
 
@@ -93,7 +92,6 @@ export function injectSpellAlignmentField(app, html) {
 		}
 	}
 	else {
-		//console.log(`${MODULE_ID} | Could not find content area in Caster Classes box`);
 		return;
 	}
 
@@ -102,10 +100,8 @@ export function injectSpellAlignmentField(app, html) {
 		e.stopPropagation();
 		const newAlignment = $(this).val();
 		await item.setFlag(MODULE_ID, "alignment", newAlignment);
-		//console.log(`${MODULE_ID} | Set spell alignment to: ${newAlignment}`);
 	});
 
-	//console.log(`${MODULE_ID} | Injected alignment field for spell: ${item.name}`);
 }
 
 /**
@@ -124,7 +120,6 @@ export async function enhanceSpellSheet(app, html) {
 	const item = app.item;
 	if (!item || item.type !== "Spell") return;
 
-	//console.log(`${MODULE_ID} | Enhancing spell sheet for`, item.name);
 
 	// Remove any existing damage/heal boxes to prevent duplicates
 	html.find(".sdx-spell-damage-box").remove();
@@ -272,7 +267,6 @@ export async function enhanceSpellSheet(app, html) {
 		const $detailsLink = $tabs.find('a[data-tab="tab-details"]');
 		if ($detailsLink.length) {
 			$detailsLink.after(activityTabLink);
-			//console.log(`${MODULE_ID} | Activity tab link added to navigation`);
 		}
 		else {
 			console.warn(`${MODULE_ID} | Could not find Details tab link`);
@@ -283,7 +277,6 @@ export async function enhanceSpellSheet(app, html) {
 		const $detailsTab = html.find('section.tab-details[data-tab="tab-details"]');
 		if ($detailsTab.length) {
 			$detailsTab.after(activityTabContent);
-			//console.log(`${MODULE_ID} | Activity tab content created`);
 		}
 		else {
 			console.warn(`${MODULE_ID} | Could not find Details tab content`);
@@ -321,7 +314,6 @@ export async function enhanceSpellSheet(app, html) {
 		return;
 	}
 
-	//console.log(`${MODULE_ID} | Activity tab found/created`);
 
 	// Build list of current effects from stored UUIDs
 	let effectsListHtml = "";
@@ -347,7 +339,6 @@ export async function enhanceSpellSheet(app, html) {
 	});
 
 	if (effectsArray && effectsArray.length > 0) {
-		//console.log(`${MODULE_ID} | Loading ${effectsArray.length} effects from UUIDs:`, effectsArray);
 
 		// Load all effects in parallel and wait for them all
 		const effectPromises = effectsArray.map(effect => fromUuid(effect.uuid || effect));
@@ -407,7 +398,6 @@ export async function enhanceSpellSheet(app, html) {
 			}
 		}
 
-		//console.log(`${MODULE_ID} | Loaded effects HTML, length:`, effectsListHtml.length);
 	}
 
 	// Build summons list HTML
@@ -478,7 +468,6 @@ export async function enhanceSpellSheet(app, html) {
 	});
 
 	if (criticalEffectsArray && criticalEffectsArray.length > 0) {
-		//console.log(`${MODULE_ID} | Loading ${criticalEffectsArray.length} critical effects from UUIDs:`, criticalEffectsArray);
 
 		const critEffectPromises = criticalEffectsArray.map(effect => fromUuid(effect.uuid || effect));
 		const critEffectDocs = await Promise.all(critEffectPromises);
@@ -505,7 +494,6 @@ export async function enhanceSpellSheet(app, html) {
 			}
 		}
 
-		//console.log(`${MODULE_ID} | Loaded critical effects HTML, length:`, criticalEffectsListHtml.length);
 	}
 
 	// Build the damage/heal UI HTML using template (now includes summoning)
@@ -513,7 +501,6 @@ export async function enhanceSpellSheet(app, html) {
 
 	// Insert into Activity tab
 	$activityTab.append(damageHealHtml);
-	//console.log(`${MODULE_ID} | Damage/Heal box inserted into Activity tab`);
 
 	// Prevent auto-submission of form inputs in Activity tab to avoid unwanted re-renders
 	$activityTab.find("input:not(.sdx-duration-input), select, textarea").on("change", function(e) {
@@ -549,7 +536,6 @@ export async function enhanceSpellSheet(app, html) {
 
 			// Update without re-rendering
 			item.update(updateData, { render: false }).then(() => {
-				//console.log(`${MODULE_ID} | Updated ${fieldName}:`, value);
 			}).catch(err => {
 				console.error(`${MODULE_ID} | Failed to update ${fieldName}:`, err);
 			});
@@ -711,7 +697,6 @@ export async function enhanceSpellSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.spellDamage.effects`] = effects;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Saved spell effects:`, effects);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save spell effects:`, err);
 		});
@@ -891,7 +876,6 @@ export async function enhanceSpellSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.spellDamage.criticalEffects`] = effects;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Saved spell critical effects:`, effects);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save spell critical effects:`, err);
 		});
@@ -1002,7 +986,6 @@ export async function enhanceSpellSheet(app, html) {
 		updateData[`flags.${MODULE_ID}.spellDamage.applyToTarget`] = applyToTargetValue;
 
 		item.update(updateData).then(() => {
-			//console.log(`${MODULE_ID} | Saved applyToTarget:`, applyToTargetValue);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save applyToTarget:`, err);
 		});
@@ -1015,7 +998,6 @@ export async function enhanceSpellSheet(app, html) {
 		e.stopPropagation();
 		const enabled = $(this).prop("checked");
 
-		//console.log(`${MODULE_ID} | Summoning toggle changed to:`, enabled);
 
 		if (enabled) {
 			// Disable other activities
@@ -1180,7 +1162,6 @@ export async function enhanceSpellSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.summoning.profiles`] = profiles;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Saved summon profiles:`, profiles);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save summon profiles:`, err);
 		});
@@ -1193,7 +1174,6 @@ export async function enhanceSpellSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemGive.enabled`] = enabled;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Item give enabled state saved:`, enabled);
 		});
 	});
 
@@ -1303,7 +1283,6 @@ export async function enhanceSpellSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemGive.profiles`] = profiles;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Saved item give profiles:`, profiles);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save item give profiles:`, err);
 		});
@@ -1318,7 +1297,6 @@ export async function enhanceSpellSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemMacro.runAsGm`] = runAsGm;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Saved itemMacro.runAsGm:`, runAsGm);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save itemMacro.runAsGm:`, err);
 		});
@@ -1335,7 +1313,6 @@ export async function enhanceSpellSheet(app, html) {
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.itemMacro.triggers`] = triggers;
 		item.update(updateData, { render: false }).then(() => {
-			//console.log(`${MODULE_ID} | Saved itemMacro.triggers:`, triggers);
 		}).catch(err => {
 			console.error(`${MODULE_ID} | Failed to save itemMacro.triggers:`, err);
 		});
@@ -1351,5 +1328,4 @@ export async function enhanceSpellSheet(app, html) {
 	activateTemplateTargetingListeners(html[0], MODULE_ID);
 	activateTemplateTokenMagicStackHandlers(html, item);
 
-	//console.log(`${MODULE_ID} | Spell sheet enhanced for`, item.name);
 }

@@ -33,7 +33,6 @@ export function injectStaffSpellButton(app, html, item) {
 	// Find the header with class "light" (ITEM PROPERTIES header)
 	const $headerLight = html.find(".SD-box .header.light").first();
 	if (!$headerLight.length) {
-		//console.log(`${MODULE_ID} | Could not find header.light in weapon sheet`);
 		return;
 	}
 
@@ -59,7 +58,6 @@ export function injectStaffSpellButton(app, html, item) {
 	// Insert button after the header light
 	$headerLight.after($button);
 
-	//console.log(`${MODULE_ID} | Injected weapon spell button for weapon: ${item.name}`);
 }
 
 /**
@@ -545,7 +543,6 @@ export async function injectStaffSpellsUI(sheet, html, data) {
 		}
 	});
 
-	//console.log(`${MODULE_ID} | Injected ${staffSpells.length} weapon spells for actor: ${actor.name}`);
 }
 
 /**

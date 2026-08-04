@@ -58,12 +58,10 @@ async function executeMacroFromEffect(actor, macroValue, currentTrigger, options
 
 	// Check permissions - only execute if user owns the actor or is GM
 	if (!actor.isOwner && !game.user.isGM) {
-		//console.log(`${MODULE_ID} | User does not have permission to execute macro for actor ${actor.name}`);
 		return;
 	}
 
 	try {
-		//console.log(`${MODULE_ID} | Executing macro "${macroName}" for actor ${actor.name} on trigger "${currentTrigger}"`);
 
 		// Get the actor's token (if available on canvas)
 		const token = actor.token || canvas.tokens?.placeables.find(t => t.actor?.id === actor.id);
@@ -90,7 +88,6 @@ async function executeMacroFromEffect(actor, macroValue, currentTrigger, options
 			};
 
 			// Execute macro as GM via socketlib
-			//console.log(`${MODULE_ID} | Executing macro via GM (socketlib)`);
 			await macroExecuteSocket.executeAsGM("executeMacroAsGM", macro.id, contextData);
 		}
 		else {
@@ -294,7 +291,6 @@ export function registerEffectTriggerHooks() {
 			// Check if any effects on this item require equipped status
 			// Trigger requirement checks to enable/disable effects based on equipped status
 			if (actor instanceof Actor) {
-				//console.log(`${MODULE_ID} | Item "${item.name}" equipped status changed to ${nowEquipped}, checking effect requirements`);
 				await checkEffectRequirements(actor);
 			}
 		}
