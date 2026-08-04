@@ -77,19 +77,25 @@ function patchNpcDisplayBuilders() {
 
 		// Base Damage Type
 		if (sdxFlags.baseDamageType && sdxFlags.baseDamageType !== "physical") {
-			const typeLabel = game.i18n.localize(`SHADOWDARK_EXTRAS.damage_type.${sdxFlags.baseDamageType}`);
+			const typeLabel = game.i18n.localize(
+				`SHADOWDARK_EXTRAS.damage_type.${sdxFlags.baseDamageType}`
+			);
 			extraText += ` [${typeLabel}]`;
 		}
 
 		// Extra Damages
 		const extraDamagesFlag = sdxFlags.extraDamages || [];
-		const extraDamages = Array.isArray(extraDamagesFlag) ? extraDamagesFlag : Object.values(extraDamagesFlag);
+		const extraDamages = Array.isArray(extraDamagesFlag) ? extraDamagesFlag : Object.values(
+			extraDamagesFlag
+		);
 
 		if (extraDamages.length > 0) {
 			const parts = extraDamages
 				.filter(d => d.formula)
 				.map(d => {
-					const label = game.i18n.localize(`SHADOWDARK_EXTRAS.damage_type.${d.damageType}`);
+					const label = game.i18n.localize(
+						`SHADOWDARK_EXTRAS.damage_type.${d.damageType}`
+					);
 					return `${d.formula} [${label}]`;
 				});
 			if (parts.length > 0) {
@@ -120,7 +126,9 @@ function patchNpcDisplayBuilders() {
 			const escapedImg = foundry.utils.escapeHTML(item.img);
 			const imgHtml = `<img src="${escapedImg}" alt="${escapedName}" class="sdx-npc-item-img" style="width: 18px; height: 18px; vertical-align: text-bottom; margin-right: 2px; border: none; border-radius: 2px;" />`;
 			// Insert image inside the anchor, right after the icon <i> tag
-			return baseHtml.replace(/<i class="fas fa-dice-d20"><\/i>/, `<i class="fas fa-dice-d20"></i>${imgHtml}`);
+			return baseHtml.replace(
+				/<i class="fas fa-dice-d20"><\/i>/, `<i class="fas fa-dice-d20"></i>${imgHtml}`
+			);
 		}
 
 		return baseHtml;
@@ -148,7 +156,10 @@ function patchNpcDisplayBuilders() {
 				const escapedImg = foundry.utils.escapeHTML(item.img);
 				const imgHtml = `<img src="${escapedImg}" alt="${escapedName}" class="sdx-npc-item-img" style="width: 18px; height: 18px; vertical-align: text-bottom; margin-right: 2px; border: none; border-radius: 2px;" />`;
 				// Insert image inside the anchor, right after the icon <i> tag (could be dice-d20 or comment)
-				return baseHtml.replace(/<i class="fas (fa-dice-d20|fa-comment)"><\/i>/, `<i class="fas $1"></i>${imgHtml}`);
+				return baseHtml.replace(
+					/<i class="fas (fa-dice-d20|fa-comment)"><\/i>/,
+					`<i class="fas $1"></i>${imgHtml}`
+				);
 			}
 
 			return baseHtml;

@@ -472,7 +472,10 @@ class SDXDrawingTool {
 			for (let i = 1; i < pts.length; i++) this._previewGraphics.lineTo(sp.x + pts[i][0] + 2, sp.y + pts[i][1] + 2);
 		}
 		// Main
-		this._drawLineWithStyle(this._previewGraphics, pts, sp.x, sp.y, this.state.brushSettings.size, color, 1.0, this.state.lineStyle);
+		this._drawLineWithStyle(
+			this._previewGraphics, pts, sp.x, sp.y, this.state.brushSettings.size, color, 1.0,
+			this.state.lineStyle
+		);
 	}
 
 	_finishSketch(e) {
@@ -483,7 +486,10 @@ class SDXDrawingTool {
 		this._removePreview();
 		const sp = this.state.drawingStartPoint;
 		const pts = [...this.state.drawingPoints];
-		this._createPixiDrawing(sp.x, sp.y, pts, this.state.brushSettings.size, this.state.brushSettings.color, this.state.lineStyle, "sketch");
+		this._createPixiDrawing(
+			sp.x, sp.y, pts, this.state.brushSettings.size, this.state.brushSettings.color,
+			this.state.lineStyle, "sketch"
+		);
 		this._resetDrawingState();
 	}
 
@@ -511,8 +517,12 @@ class SDXDrawingTool {
 		const sw = this.state.brushSettings.size;
 		this._previewGraphics.clear();
 		this._previewGraphics.lineStyle(sw, 0x000000, 0.3);
-		this._drawLineWithStyle(this._previewGraphics, pts, s.x + 2, s.y + 2, sw, 0x000000, 0.3, "solid");
-		this._drawLineWithStyle(this._previewGraphics, pts, s.x, s.y, sw, color, 1.0, this.state.lineStyle);
+		this._drawLineWithStyle(
+			this._previewGraphics, pts, s.x + 2, s.y + 2, sw, 0x000000, 0.3, "solid"
+		);
+		this._drawLineWithStyle(
+			this._previewGraphics, pts, s.x, s.y, sw, color, 1.0, this.state.lineStyle
+		);
 	}
 
 	_finishLine(e) {
@@ -525,7 +535,10 @@ class SDXDrawingTool {
 		this._removePreview();
 		const s = this.state.lineStartPoint;
 		const pts = [[0, 0], [wc.x - s.x, wc.y - s.y]];
-		this._createPixiDrawing(s.x, s.y, pts, this.state.brushSettings.size, this.state.brushSettings.color, this.state.lineStyle, "line");
+		this._createPixiDrawing(
+			s.x, s.y, pts, this.state.brushSettings.size, this.state.brushSettings.color,
+			this.state.lineStyle, "line"
+		);
 		this._resetDrawingState();
 	}
 
@@ -637,7 +650,9 @@ class SDXDrawingTool {
 		const color = this._cssToPixi(this.state.brushSettings.color);
 		const half = sqSize / 2;
 		const pad = sqSize * 0.1;
-		this._drawSymbolShape(g, this.state.stampStyle, wc.x, wc.y, half, pad, sw, color, 0.5, 0x000000, 0.15, 2);
+		this._drawSymbolShape(
+			g, this.state.stampStyle, wc.x, wc.y, half, pad, sw, color, 0.5, 0x000000, 0.15, 2
+		);
 		g.alpha = this.state.opacity;
 		this.canvasLayer.addChild(g);
 		this._previewSymbol = g;
@@ -669,8 +684,19 @@ class SDXDrawingTool {
 		g.alpha = this.state.opacity;
 		this.canvasLayer.addChild(g);
 		const id = `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-		const data = { id, graphics: g, createdAt: Date.now(), expiresAt: this._getExpiration(), userId: game.user.id, userName: game.user.name, startX, startY, points, strokeWidth, strokeColor, lineStyle, type, opacity: this.state.opacity };
-		this._finalizeDrawing(data, { drawingId: id, userId: game.user.id, userName: game.user.name, startX, startY, points, strokeWidth, strokeColor, lineStyle, type, opacity: this.state.opacity, createdAt: data.createdAt, expiresAt: data.expiresAt });
+		const data = {
+			id, graphics: g, createdAt: Date.now(), expiresAt: this._getExpiration(),
+			userId: game.user.id, userName: game.user.name, startX, startY, points, strokeWidth,
+			strokeColor, lineStyle, type, opacity: this.state.opacity,
+		};
+		this._finalizeDrawing(
+			data,
+			{
+				drawingId: id, userId: game.user.id, userName: game.user.name, startX, startY,
+				points, strokeWidth, strokeColor, lineStyle, type, opacity: this.state.opacity,
+				createdAt: data.createdAt, expiresAt: data.expiresAt,
+			}
+		);
 	}
 
 	_createBoxDrawing(startX, startY, w, h) {
@@ -686,8 +712,21 @@ class SDXDrawingTool {
 		g.alpha = this.state.opacity;
 		this.canvasLayer.addChild(g);
 		const id = `box-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-		const data = { id, graphics: g, createdAt: Date.now(), expiresAt: this._getExpiration(), userId: game.user.id, userName: game.user.name, startX, startY, width: w, height: h, strokeWidth: sw, strokeColor: this.state.brushSettings.color, lineStyle: ls, type: "box", opacity: this.state.opacity };
-		this._finalizeDrawing(data, { drawingId: id, userId: game.user.id, userName: game.user.name, startX, startY, width: w, height: h, strokeWidth: sw, strokeColor: this.state.brushSettings.color, lineStyle: ls, type: "box", opacity: this.state.opacity, createdAt: data.createdAt, expiresAt: data.expiresAt });
+		const data = {
+			id, graphics: g, createdAt: Date.now(), expiresAt: this._getExpiration(),
+			userId: game.user.id, userName: game.user.name, startX, startY, width: w, height: h,
+			strokeWidth: sw, strokeColor: this.state.brushSettings.color, lineStyle: ls,
+			type: "box", opacity: this.state.opacity,
+		};
+		this._finalizeDrawing(
+			data,
+			{
+				drawingId: id, userId: game.user.id, userName: game.user.name, startX, startY,
+				width: w, height: h, strokeWidth: sw, strokeColor: this.state.brushSettings.color,
+				lineStyle: ls, type: "box", opacity: this.state.opacity, createdAt: data.createdAt,
+				expiresAt: data.expiresAt,
+			}
+		);
 	}
 
 	_createEllipseDrawing(startX, startY, w, h) {
@@ -703,8 +742,21 @@ class SDXDrawingTool {
 		g.alpha = this.state.opacity;
 		this.canvasLayer.addChild(g);
 		const id = `ellipse-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-		const data = { id, graphics: g, createdAt: Date.now(), expiresAt: this._getExpiration(), userId: game.user.id, userName: game.user.name, startX, startY, width: w, height: h, strokeWidth: sw, strokeColor: this.state.brushSettings.color, lineStyle: ls, type: "ellipse", opacity: this.state.opacity };
-		this._finalizeDrawing(data, { drawingId: id, userId: game.user.id, userName: game.user.name, startX, startY, width: w, height: h, strokeWidth: sw, strokeColor: this.state.brushSettings.color, lineStyle: ls, type: "ellipse", opacity: this.state.opacity, createdAt: data.createdAt, expiresAt: data.expiresAt });
+		const data = {
+			id, graphics: g, createdAt: Date.now(), expiresAt: this._getExpiration(),
+			userId: game.user.id, userName: game.user.name, startX, startY, width: w, height: h,
+			strokeWidth: sw, strokeColor: this.state.brushSettings.color, lineStyle: ls,
+			type: "ellipse", opacity: this.state.opacity,
+		};
+		this._finalizeDrawing(
+			data,
+			{
+				drawingId: id, userId: game.user.id, userName: game.user.name, startX, startY,
+				width: w, height: h, strokeWidth: sw, strokeColor: this.state.brushSettings.color,
+				lineStyle: ls, type: "ellipse", opacity: this.state.opacity,
+				createdAt: data.createdAt, expiresAt: data.expiresAt,
+			}
+		);
 	}
 
 	_createSymbolAt(symbolType, x, y) {
@@ -719,8 +771,21 @@ class SDXDrawingTool {
 		g.alpha = this.state.opacity;
 		this.canvasLayer.addChild(g);
 		const id = `symbol-${symbolType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-		const data = { id, graphics: g, createdAt: Date.now(), expiresAt: this._getExpiration(), userId: game.user.id, userName: game.user.name, symbolType, x, y, strokeWidth: sw, strokeColor: this.state.brushSettings.color, symbolSize: this.state.symbolSize, opacity: this.state.opacity };
-		this._finalizeDrawing(data, { drawingId: id, userId: game.user.id, userName: game.user.name, symbolType, x, y, strokeWidth: sw, strokeColor: this.state.brushSettings.color, symbolSize: this.state.symbolSize, opacity: this.state.opacity, createdAt: data.createdAt, expiresAt: data.expiresAt });
+		const data = {
+			id, graphics: g, createdAt: Date.now(), expiresAt: this._getExpiration(),
+			userId: game.user.id, userName: game.user.name, symbolType, x, y, strokeWidth: sw,
+			strokeColor: this.state.brushSettings.color, symbolSize: this.state.symbolSize,
+			opacity: this.state.opacity,
+		};
+		this._finalizeDrawing(
+			data,
+			{
+				drawingId: id, userId: game.user.id, userName: game.user.name, symbolType, x, y,
+				strokeWidth: sw, strokeColor: this.state.brushSettings.color,
+				symbolSize: this.state.symbolSize, opacity: this.state.opacity,
+				createdAt: data.createdAt, expiresAt: data.expiresAt,
+			}
+		);
 	}
 
 	// ══════════════════════════════════════════════════════════════
@@ -777,10 +842,14 @@ class SDXDrawingTool {
 					let sl = 0; let startPt = null; let endPt = null;
 					for (const seg of segs) {
 						if (!startPt && cur >= sl && cur < sl + seg.dist) {
-							const t = (cur - sl) / seg.dist; startPt = { x: seg.x1 + (seg.dx * t), y: seg.y1 + (seg.dy * t) };
+							const t = (cur - sl) / seg.dist; startPt = {
+								x: seg.x1 + (seg.dx * t), y: seg.y1 + (seg.dy * t),
+							};
 						}
 						if (!endPt && next >= sl && next <= sl + seg.dist) {
-							const t = (next - sl) / seg.dist; endPt = { x: seg.x1 + (seg.dx * t), y: seg.y1 + (seg.dy * t) };
+							const t = (next - sl) / seg.dist; endPt = {
+								x: seg.x1 + (seg.dx * t), y: seg.y1 + (seg.dy * t),
+							};
 						}
 						if (startPt && endPt) break;
 						sl += seg.dist;
@@ -826,7 +895,9 @@ class SDXDrawingTool {
 			}
 			for (let i = 0; i < segs; i++) {
 				const [x0, y0] = pts[i]; const [x1, y1] = pts[i + 1];
-				this._drawLineWithStyle(g, [[0, 0], [x1 - x0, y1 - y0]], x0, y0, sw, color, 1.0, style);
+				this._drawLineWithStyle(
+					g, [[0, 0], [x1 - x0, y1 - y0]], x0, y0, sw, color, 1.0, style
+				);
 			}
 		}
 	}
@@ -837,8 +908,12 @@ class SDXDrawingTool {
 			case "plus": {
 				const arm = half - pad;
 				g.lineStyle(sw, shadowColor, shadowAlpha);
-				g.moveTo(cx - arm + shadowOff, cy + shadowOff); g.lineTo(cx + arm + shadowOff, cy + shadowOff);
-				g.moveTo(cx + shadowOff, cy - arm + shadowOff); g.lineTo(cx + shadowOff, cy + arm + shadowOff);
+				g.moveTo(cx - arm + shadowOff, cy + shadowOff); g.lineTo(
+					cx + arm + shadowOff, cy + shadowOff
+				);
+				g.moveTo(cx + shadowOff, cy - arm + shadowOff); g.lineTo(
+					cx + shadowOff, cy + arm + shadowOff
+				);
 				g.lineStyle(sw, color, alpha);
 				g.moveTo(cx - arm, cy); g.lineTo(cx + arm, cy);
 				g.moveTo(cx, cy - arm); g.lineTo(cx, cy + arm);
@@ -847,8 +922,12 @@ class SDXDrawingTool {
 			case "x": {
 				const arm = (half - pad) * 0.707;
 				g.lineStyle(sw, shadowColor, shadowAlpha);
-				g.moveTo(cx - arm + shadowOff, cy - arm + shadowOff); g.lineTo(cx + arm + shadowOff, cy + arm + shadowOff);
-				g.moveTo(cx + arm + shadowOff, cy - arm + shadowOff); g.lineTo(cx - arm + shadowOff, cy + arm + shadowOff);
+				g.moveTo(cx - arm + shadowOff, cy - arm + shadowOff); g.lineTo(
+					cx + arm + shadowOff, cy + arm + shadowOff
+				);
+				g.moveTo(cx + arm + shadowOff, cy - arm + shadowOff); g.lineTo(
+					cx - arm + shadowOff, cy + arm + shadowOff
+				);
 				g.lineStyle(sw, color, alpha);
 				g.moveTo(cx - arm, cy - arm); g.lineTo(cx + arm, cy + arm);
 				g.moveTo(cx + arm, cy - arm); g.lineTo(cx - arm, cy + arm);
@@ -863,12 +942,17 @@ class SDXDrawingTool {
 			}
 			case "arrow": case "arrow-up": case "arrow-down": case "arrow-left": {
 				const sf = 0.70; const sh = (half - pad) * sf;
-				let base = [cx - sh, cy - sh, cx - sh + (2 * sh * 0.25), cy, cx - sh, cy + sh, cx + sh, cy];
+				let base = [
+					cx - sh, cy - sh, cx - sh + (2 * sh * 0.25), cy, cx - sh, cy + sh, cx + sh, cy,
+				];
 				let angle = type === "arrow-up" ? -Math.PI / 2 : type === "arrow-down" ? Math.PI / 2 : type === "arrow-left" ? Math.PI : 0;
 				let rot = [];
 				for (let i = 0; i < base.length; i += 2) {
 					const tx = base[i] - cx; const ty = base[i + 1] - cy;
-					rot.push((tx * Math.cos(angle)) - (ty * Math.sin(angle)) + cx, (tx * Math.sin(angle)) + (ty * Math.cos(angle)) + cy);
+					rot.push(
+						(tx * Math.cos(angle)) - (ty * Math.sin(angle)) + cx,
+						(tx * Math.sin(angle)) + (ty * Math.cos(angle)) + cy
+					);
 				}
 				let shadow = rot.map((v, i) => v + shadowOff);
 				// Fix: shadow needs alternating offsets
@@ -968,10 +1052,15 @@ class SDXDrawingTool {
 		if (data.points.length > 0) {
 			g.moveTo(data.startX + data.points[0][0] + 2, data.startY + data.points[0][1] + 2); for (let i = 1; i < data.points.length; i++) g.lineTo(data.startX + data.points[i][0] + 2, data.startY + data.points[i][1] + 2);
 		}
-		this._drawLineWithStyle(g, data.points, data.startX, data.startY, sw, color, 1.0, data.lineStyle || "solid");
+		this._drawLineWithStyle(
+			g, data.points, data.startX, data.startY, sw, color, 1.0, data.lineStyle || "solid"
+		);
 		if (data.opacity !== undefined) g.alpha = data.opacity;
 		this.canvasLayer.addChild(g);
-		this._pixiDrawings.push({ id: data.drawingId, graphics: g, createdAt: data.createdAt || Date.now(), expiresAt: data.expiresAt, userId: data.userId, userName: data.userName });
+		this._pixiDrawings.push({
+			id: data.drawingId, graphics: g, createdAt: data.createdAt || Date.now(),
+			expiresAt: data.expiresAt, userId: data.userId, userName: data.userName,
+		});
 		this._scheduleCleanup();
 	}
 
@@ -981,12 +1070,17 @@ class SDXDrawingTool {
 		const sw = data.strokeWidth || 6;
 		const ls = data.lineStyle || "solid";
 		g.lineStyle(sw, 0x000000, 0.3);
-		this._drawBoxWithStyle(g, data.startX + 2, data.startY + 2, data.width, data.height, "solid");
+		this._drawBoxWithStyle(
+			g, data.startX + 2, data.startY + 2, data.width, data.height, "solid"
+		);
 		g.lineStyle(sw, color, 1.0);
 		this._drawBoxWithStyle(g, data.startX, data.startY, data.width, data.height, ls);
 		if (data.opacity !== undefined) g.alpha = data.opacity;
 		this.canvasLayer.addChild(g);
-		this._pixiDrawings.push({ id: data.drawingId, graphics: g, createdAt: data.createdAt || Date.now(), expiresAt: data.expiresAt, userId: data.userId, userName: data.userName, type: "box" });
+		this._pixiDrawings.push({
+			id: data.drawingId, graphics: g, createdAt: data.createdAt || Date.now(),
+			expiresAt: data.expiresAt, userId: data.userId, userName: data.userName, type: "box",
+		});
 		this._scheduleCleanup();
 	}
 
@@ -996,12 +1090,18 @@ class SDXDrawingTool {
 		const sw = data.strokeWidth || 6;
 		const ls = data.lineStyle || "solid";
 		g.lineStyle(sw, 0x000000, 0.3);
-		this._drawEllipseWithStyle(g, data.startX + 2, data.startY + 2, data.width, data.height, "solid");
+		this._drawEllipseWithStyle(
+			g, data.startX + 2, data.startY + 2, data.width, data.height, "solid"
+		);
 		g.lineStyle(sw, color, 1.0);
 		this._drawEllipseWithStyle(g, data.startX, data.startY, data.width, data.height, ls);
 		if (data.opacity !== undefined) g.alpha = data.opacity;
 		this.canvasLayer.addChild(g);
-		this._pixiDrawings.push({ id: data.drawingId, graphics: g, createdAt: data.createdAt || Date.now(), expiresAt: data.expiresAt, userId: data.userId, userName: data.userName, type: "ellipse" });
+		this._pixiDrawings.push({
+			id: data.drawingId, graphics: g, createdAt: data.createdAt || Date.now(),
+			expiresAt: data.expiresAt, userId: data.userId, userName: data.userName,
+			type: "ellipse",
+		});
 		this._scheduleCleanup();
 	}
 
@@ -1011,10 +1111,16 @@ class SDXDrawingTool {
 		const sw = data.strokeWidth || sqSize * 0.30;
 		const color = this._cssToPixi(data.strokeColor);
 		const half = sqSize / 2; const pad = sqSize * 0.1;
-		this._drawSymbolShape(g, data.symbolType, data.x, data.y, half, pad, sw, color, 1.0, 0x000000, 0.3, 2);
+		this._drawSymbolShape(
+			g, data.symbolType, data.x, data.y, half, pad, sw, color, 1.0, 0x000000, 0.3, 2
+		);
 		if (data.opacity !== undefined) g.alpha = data.opacity;
 		this.canvasLayer.addChild(g);
-		this._pixiDrawings.push({ id: data.drawingId, graphics: g, createdAt: data.createdAt || Date.now(), expiresAt: data.expiresAt, userId: data.userId, userName: data.userName, symbolType: data.symbolType });
+		this._pixiDrawings.push({
+			id: data.drawingId, graphics: g, createdAt: data.createdAt || Date.now(),
+			expiresAt: data.expiresAt, userId: data.userId, userName: data.userName,
+			symbolType: data.symbolType,
+		});
 		this._scheduleCleanup();
 	}
 
@@ -1105,7 +1211,9 @@ class SDXDrawingTool {
 			}
 			catch{ }
 		}
-		this._broadcast("sdx-drawing-deleted", { userId: game.user.id, drawingId: d.id, permanent: true });
+		this._broadcast(
+			"sdx-drawing-deleted", { userId: game.user.id, drawingId: d.id, permanent: true }
+		);
 	}
 
 	clearUserDrawings(userId = game.user.id, broadcast = true) {
@@ -1140,7 +1248,9 @@ class SDXDrawingTool {
 		if (userDrawings.length) {
 			userDrawings.sort((a, b) => b.createdAt - a.createdAt); this._lastDrawing = userDrawings[0];
 		}
-		this._broadcast("sdx-drawing-deleted", { userId: game.user.id, drawingId: d.id, clearAll: false });
+		this._broadcast(
+			"sdx-drawing-deleted", { userId: game.user.id, drawingId: d.id, clearAll: false }
+		);
 	}
 
 	_deleteById(drawingId, broadcast = true) {
@@ -1282,7 +1392,9 @@ class SDXDrawingTool {
 				const sw = sqSize * 0.30;
 				const color = this._cssToPixi(data.strokeColor);
 				const half = sqSize / 2; const pad = sqSize * 0.1;
-				this._drawSymbolShape(g, data.symbolType, data.x, data.y, half, pad, sw, color, 1.0, 0x000000, 0.3, 2);
+				this._drawSymbolShape(
+					g, data.symbolType, data.x, data.y, half, pad, sw, color, 1.0, 0x000000, 0.3, 2
+				);
 			}
 			else if (data.type === "box") {
 				g = new PIXI.Graphics();
@@ -1290,7 +1402,9 @@ class SDXDrawingTool {
 				const sw = data.strokeWidth || 6;
 				const ls = data.lineStyle || "solid";
 				g.lineStyle(sw, 0x000000, 0.3);
-				this._drawBoxWithStyle(g, data.startX + 2, data.startY + 2, data.width, data.height, "solid");
+				this._drawBoxWithStyle(
+					g, data.startX + 2, data.startY + 2, data.width, data.height, "solid"
+				);
 				g.lineStyle(sw, color, 1.0);
 				this._drawBoxWithStyle(g, data.startX, data.startY, data.width, data.height, ls);
 			}
@@ -1300,9 +1414,13 @@ class SDXDrawingTool {
 				const sw = data.strokeWidth || 6;
 				const ls = data.lineStyle || "solid";
 				g.lineStyle(sw, 0x000000, 0.3);
-				this._drawEllipseWithStyle(g, data.startX + 2, data.startY + 2, data.width, data.height, "solid");
+				this._drawEllipseWithStyle(
+					g, data.startX + 2, data.startY + 2, data.width, data.height, "solid"
+				);
 				g.lineStyle(sw, color, 1.0);
-				this._drawEllipseWithStyle(g, data.startX, data.startY, data.width, data.height, ls);
+				this._drawEllipseWithStyle(
+					g, data.startX, data.startY, data.width, data.height, ls
+				);
 			}
 			else if (data.startX !== undefined && data.points) {
 				g = new PIXI.Graphics();
@@ -1310,10 +1428,15 @@ class SDXDrawingTool {
 				const sw = data.strokeWidth || 6;
 				g.lineStyle(sw, 0x000000, 0.3);
 				if (data.points.length > 0) {
-					g.moveTo(data.startX + data.points[0][0] + 2, data.startY + data.points[0][1] + 2);
+					g.moveTo(
+						data.startX + data.points[0][0] + 2, data.startY + data.points[0][1] + 2
+					);
 					for (let i = 1; i < data.points.length; i++) g.lineTo(data.startX + data.points[i][0] + 2, data.startY + data.points[i][1] + 2);
 				}
-				this._drawLineWithStyle(g, data.points, data.startX, data.startY, sw, color, 1.0, data.lineStyle || "solid");
+				this._drawLineWithStyle(
+					g, data.points, data.startX, data.startY, sw, color, 1.0,
+					data.lineStyle || "solid"
+				);
 			}
 			if (g) {
 				if (data.opacity !== undefined) g.alpha = data.opacity;
@@ -1378,7 +1501,9 @@ class SDXDrawingTool {
 			catch{ }
 		}
 		// Broadcast to other clients
-		this._broadcast("sdx-drawing-visibility", { drawingId: id, hidden: newHidden, userId: game.user.id });
+		this._broadcast(
+			"sdx-drawing-visibility", { drawingId: id, hidden: newHidden, userId: game.user.id }
+		);
 	}
 
 	_handleRemoteRename(data) {
@@ -1414,14 +1539,18 @@ class SDXDrawingTool {
 				}
 				catch{ }
 			}
-			this._broadcast("sdx-drawing-renamed", { drawingId: id, name: newName, userId: game.user.id });
+			this._broadcast(
+				"sdx-drawing-renamed", { drawingId: id, name: newName, userId: game.user.id }
+			);
 			return;
 		}
 		// Try temporary drawings
 		const tempEntry = this._pixiDrawings.find(d => d.id === id);
 		if (tempEntry) {
 			tempEntry.name = newName;
-			this._broadcast("sdx-drawing-renamed", { drawingId: id, name: newName, userId: game.user.id });
+			this._broadcast(
+				"sdx-drawing-renamed", { drawingId: id, name: newName, userId: game.user.id }
+			);
 		}
 	}
 
@@ -1473,7 +1602,9 @@ class SDXDrawingTool {
 
 	highlightDrawing(id) {
 		this.unhighlightDrawing();
-		const entry = this._pixiDrawings.find(d => d.id === id) || this._permanentDrawings.find(d => d.id === id);
+		const entry = this._pixiDrawings.find(d => d.id === id) || this._permanentDrawings.find(
+			d => d.id === id
+		);
 		if (!entry?.graphics?.parent) return;
 
 		// Store reference to the highlighted entry
@@ -1596,7 +1727,9 @@ class SDXDrawingTool {
 					ud.sort((a, b) => b.createdAt - a.createdAt); this._lastDrawing = ud[0];
 				}
 			}
-			this._broadcast("sdx-drawing-deleted", { userId: game.user.id, drawingId: id, clearAll: false });
+			this._broadcast(
+				"sdx-drawing-deleted", { userId: game.user.id, drawingId: id, clearAll: false }
+			);
 			return;
 		}
 		// Try permanent
@@ -1616,7 +1749,9 @@ class SDXDrawingTool {
 				}
 				catch{ }
 			}
-			this._broadcast("sdx-drawing-deleted", { userId: game.user.id, drawingId: id, permanent: true });
+			this._broadcast(
+				"sdx-drawing-deleted", { userId: game.user.id, drawingId: id, permanent: true }
+			);
 		}
 	}
 
@@ -1659,7 +1794,9 @@ class SDXDrawingTool {
 
 	setBrushSize(size) {
 		this.state.brushSettings.size = Math.max(1, Math.min(20, size)); try {
-			game.settings.set(MODULE_ID, "drawing.toolbar.lineWidth", this.state.brushSettings.size);
+			game.settings.set(
+				MODULE_ID, "drawing.toolbar.lineWidth", this.state.brushSettings.size
+			);
 		}
 		catch{ }
 	}
@@ -1841,7 +1978,9 @@ class SDXDrawingTool {
 			path.push(cursor.x, cursor.y);
 
 			// Check if we've closed the loop
-			const distToStart = Math.abs(cursor.x - startPoint.x) + Math.abs(cursor.y - startPoint.y);
+			const distToStart = Math.abs(cursor.x - startPoint.x) + Math.abs(
+				cursor.y - startPoint.y
+			);
 			if (distToStart < 2) {
 				break;
 			}

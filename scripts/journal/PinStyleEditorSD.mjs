@@ -46,7 +46,9 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		if (this.pinId) {
 			this.options.window.title = "SDX.pinStyleEditor.titleIndividual";
 			this._isSaved = false;
-			this._canvasUpdateDebounce = foundry.utils.debounce(this._updateCanvasPreview.bind(this), 150);
+			this._canvasUpdateDebounce = foundry.utils.debounce(
+				this._updateCanvasPreview.bind(this), 150
+			);
 		}
 	}
 
@@ -137,7 +139,9 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		];
 
 		// Merge and format
-		const combinedFonts = [...new Set([...standardFonts, ...SDX_FONTS, ...allCustomFontFamilies])];
+		const combinedFonts = [
+			...new Set([...standardFonts, ...SDX_FONTS, ...allCustomFontFamilies]),
+		];
 
 		const fontFamilies = combinedFonts.map(f => {
 			const cleanLabel = f.replace(/['"]/g, "") // remove quotes for label
@@ -321,7 +325,9 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		form.querySelector('[data-action="save"]')?.addEventListener("click", () => this._onSave());
 
 		// Reset button
-		form.querySelector('[data-action="reset"]')?.addEventListener("click", () => this._onReset());
+		form.querySelector('[data-action="reset"]')?.addEventListener(
+			"click", () => this._onReset()
+		);
 
 		// TMFX Preset dropdown change
 		const tmfxSelect = form.querySelector('[name="tmfxPreset"]');
@@ -337,13 +343,19 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		}
 
 		// TMFX Application button
-		form.querySelector('[data-action="apply-tmfx"]')?.addEventListener("click", () => this._onApplyTMFX());
+		form.querySelector('[data-action="apply-tmfx"]')?.addEventListener(
+			"click", () => this._onApplyTMFX()
+		);
 
 		// TMFX Save Preset button
-		form.querySelector('[data-action="save-tmfx-preset"]')?.addEventListener("click", () => this._onSaveTMFXPreset());
+		form.querySelector('[data-action="save-tmfx-preset"]')?.addEventListener(
+			"click", () => this._onSaveTMFXPreset()
+		);
 
 		// TMFX Delete Preset button
-		form.querySelector('[data-action="delete-tmfx-preset"]')?.addEventListener("click", () => this._onDeleteTMFXPreset());
+		form.querySelector('[data-action="delete-tmfx-preset"]')?.addEventListener(
+			"click", () => this._onDeleteTMFXPreset()
+		);
 
 		// Show/hide content options based on contentType selection
 		const contentTypeSelect = form.querySelector('[name="contentType"]');
@@ -445,8 +457,12 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		}
 
 		// TokenMagic FX listeners
-		form.querySelector('[data-action="apply-tmfx"]')?.addEventListener("click", () => this._onApplyTMFX());
-		form.querySelector('[data-action="clear-tmfx"]')?.addEventListener("click", () => this._onClearTMFX());
+		form.querySelector('[data-action="apply-tmfx"]')?.addEventListener(
+			"click", () => this._onApplyTMFX()
+		);
+		form.querySelector('[data-action="clear-tmfx"]')?.addEventListener(
+			"click", () => this._onClearTMFX()
+		);
 
 		// Individual TMFX remove buttons
 		form.querySelectorAll('[data-action="remove-tmfx"]').forEach(btn => {
@@ -652,7 +668,9 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 						let pageNumber = "";
 						const journal = game.journal.get(style.journalId);
 						if (journal && style.pageId) {
-							const sortedPages = journal.pages.contents.sort((a, b) => a.sort - b.sort);
+							const sortedPages = journal.pages.contents.sort(
+								(a, b) => a.sort - b.sort
+							);
 							const idx = sortedPages.findIndex(p => p.id === style.pageId);
 							pageNumber = idx !== -1 ? String(idx + 1) : "";
 						}
@@ -665,7 +683,9 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 							await document.fonts.load(`16px ${style.fontFamily}`);
 						}
 						catch(e) {
-							console.warn(`SDX Pin Editor | Failed to load font: ${style.fontFamily}`);
+							console.warn(
+								`SDX Pin Editor | Failed to load font: ${style.fontFamily}`
+							);
 						}
 					}
 
@@ -1056,7 +1076,9 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			const preset = libraryPresets.find(p => p.name === presetName);
 
 			if (!preset) {
-				ui.notifications.error(`Could not find TokenMagic preset: ${presetName} in library ${library}`);
+				ui.notifications.error(
+					`Could not find TokenMagic preset: ${presetName} in library ${library}`
+				);
 				return;
 			}
 
@@ -1227,7 +1249,9 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 				// TMFXFilterEditor sends flat params like {rotation: 35, filterId: "...", filterType: "...", filterInternalId: "..."}
 				if (data.filterInternalId && data.filterType) {
 					// Get the current filters from the pin
-					const currentFilters = foundry.utils.deepClone(pin.flags?.tokenmagic?.filters || []);
+					const currentFilters = foundry.utils.deepClone(
+						pin.flags?.tokenmagic?.filters || []
+					);
 					console.log("SDX Pin Editor | Current filters:", currentFilters);
 
 					// Find the filter to update by its internal ID
@@ -1256,7 +1280,9 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 								...data,  // Update top-level properties
 								tmFilters: {
 									...existingFilter.tmFilters,
-									tmParams: foundry.utils.mergeObject(existingFilter.tmFilters.tmParams, data),
+									tmParams: foundry.utils.mergeObject(
+										existingFilter.tmFilters.tmParams, data
+									),
 								},
 							};
 						}
@@ -1274,7 +1300,10 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 						}
 						currentFilters[filterIndex] = updatedFilter;
 
-						console.log("SDX Pin Editor | Updating filter at index", filterIndex, "with:", updatedFilter);
+						console.log(
+							"SDX Pin Editor | Updating filter at index", filterIndex, "with:",
+							updatedFilter
+						);
 
 						// Use the correct flag format for JournalPinManager.update
 						await JournalPinManager.update(pin.id, {
@@ -1288,7 +1317,9 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 						}
 					}
 					else {
-						console.warn("SDX Pin Editor | Filter not found for update:", data.filterInternalId);
+						console.warn(
+							"SDX Pin Editor | Filter not found for update:", data.filterInternalId
+						);
 						console.warn("SDX Pin Editor | Available filters:", currentFilters.map(f => ({
 							tmFilterInternalId: f.tmFilters?.tmFilterInternalId,
 							filterInternalId: f.filterInternalId,

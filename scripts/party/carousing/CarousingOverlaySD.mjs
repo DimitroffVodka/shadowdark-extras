@@ -216,8 +216,12 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		}
 
 		const droppedParticipants = participants.filter(p => p.hasDrop);
-		const allConfirmed = droppedParticipants.length > 0 && droppedParticipants.every(p => p.isConfirmed);
-		const allCanAfford = droppedParticipants.length > 0 && droppedParticipants.every(p => p.canAfford);
+		const allConfirmed = droppedParticipants.length > 0 && droppedParticipants.every(
+			p => p.isConfirmed
+		);
+		const allCanAfford = droppedParticipants.length > 0 && droppedParticipants.every(
+			p => p.canAfford
+		);
 		const canRoll = allConfirmed && allCanAfford && session.selectedTier !== null && droppedParticipants.length > 0;
 
 		const customTables = availableTables.map(t => ({
@@ -336,7 +340,9 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		}
 
 		const esc = Handlebars.Utils.escapeExpression;
-		const { lines } = previewOutcomeEffects(actor, participant.result.description, participant.result.benefit);
+		const { lines } = previewOutcomeEffects(
+			actor, participant.result.description, participant.result.benefit
+		);
 
 		const content = `
             <p>${game.i18n.format("SHADOWDARK_EXTRAS.carousing.apply_confirm_intro", { name: esc(actor.name) })}</p>
@@ -344,7 +350,9 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
         `;
 
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
-			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.apply_confirm_title") },
+			window: {
+				title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.apply_confirm_title"),
+			},
 			content,
 			rejectClose: false,
 		});
@@ -352,13 +360,17 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 
 		const applied = await applyCarousingOutcome(participantId);
 		if (!applied) {
-			ui.notifications.warn(game.i18n.format("SHADOWDARK_EXTRAS.carousing.apply_failed", { name: actor.name }));
+			ui.notifications.warn(
+				game.i18n.format("SHADOWDARK_EXTRAS.carousing.apply_failed", { name: actor.name })
+			);
 			return;
 		}
 
 		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.apply_done", {
 			name: applied.name,
-			summary: applied.summary || game.i18n.localize("SHADOWDARK_EXTRAS.carousing.effect_note"),
+			summary: applied.summary || game.i18n.localize(
+				"SHADOWDARK_EXTRAS.carousing.effect_note"
+			),
 		}));
 		this.render();
 	}
@@ -375,7 +387,9 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		if (!p.result || !p.droppedActor) return { canApply: false, isApplied: false };
 
 		if (p.result.applied) {
-			return { canApply: false, isApplied: true, appliedSummary: p.result.applied.summary || "" };
+			return {
+				canApply: false, isApplied: true, appliedSummary: p.result.applied.summary || "",
+			};
 		}
 
 		// Apply stays available even with nothing mechanical to grant, because
@@ -671,7 +685,9 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		);
 
 		if (ownedActors.length === 0) {
-			ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.no_owned_characters"));
+			ui.notifications.warn(
+				game.i18n.localize("SHADOWDARK_EXTRAS.carousing.no_owned_characters")
+			);
 			return;
 		}
 

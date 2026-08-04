@@ -72,7 +72,9 @@ export function getCarousingParticipants() {
 			participantId: user.id,
 			name: user.name,
 			character: user.character,
-			characterName: user.character?.name || game.i18n.localize("SHADOWDARK_EXTRAS.carousing.no_character"),
+			characterName: user.character?.name || game.i18n.localize(
+				"SHADOWDARK_EXTRAS.carousing.no_character"
+			),
 			color: user.color,
 			droppedActor: droppedActor,
 			droppedActorId: droppedActorId,
@@ -221,7 +223,9 @@ export async function recordCarousingDebt(actor, amountCp, sourceText = "") {
 	const addedCp = Math.max(0, Math.round(Number(amountCp) || 0));
 	if (!actor || !addedCp) return 0;
 
-	const existing = actor.items?.find?.(item => item.getFlag?.(MODULE_ID, "carousingDebt")?.amountCp !== undefined);
+	const existing = actor.items?.find?.(
+		item => item.getFlag?.(MODULE_ID, "carousingDebt")?.amountCp !== undefined
+	);
 	const previous = existing?.getFlag?.(MODULE_ID, "carousingDebt") || {};
 	const totalCp = Math.max(0, Math.round(Number(previous.amountCp) || 0)) + addedCp;
 	const esc = foundry.utils.escapeHTML ?? (value => String(value));
@@ -538,8 +542,12 @@ export async function rollExpandedD100(type, outcomeModifier, playerMods = {}) {
 
 		const diceRoll = roll.total;
 		const finalRoll = Math.max(1, Math.min(100, diceRoll + outcomeModifier));
-		const entry = type === "benefit" ? getExpandedBenefit(finalRoll) : getExpandedMishap(finalRoll);
-		result = { type, diceRoll, modifier: outcomeModifier, finalRoll, description: entry.description };
+		const entry = type === "benefit" ? getExpandedBenefit(finalRoll) : getExpandedMishap(
+			finalRoll
+		);
+		result = {
+			type, diceRoll, modifier: outcomeModifier, finalRoll, description: entry.description,
+		};
 
 		const redirect = type === "benefit"
 			? REROLL_AS_MISHAP.test(entry.description)
@@ -608,12 +616,16 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
 		const mishapResults = [];
 		for (let i = 0; i < outcome.benefits; i++) {
 			const r = await rollExpandedD100("benefit", outcome.modifier, playerMods);
-			r.renownDelta = await applyRenownDelta(actor, parseRenownDelta(r.description), r.description);
+			r.renownDelta = await applyRenownDelta(
+				actor, parseRenownDelta(r.description), r.description
+			);
 			(r.type === "benefit" ? benefitResults : mishapResults).push(r);
 		}
 		for (let i = 0; i < outcome.mishaps; i++) {
 			const r = await rollExpandedD100("mishap", outcome.modifier, playerMods);
-			r.renownDelta = await applyRenownDelta(actor, parseRenownDelta(r.description), r.description);
+			r.renownDelta = await applyRenownDelta(
+				actor, parseRenownDelta(r.description), r.description
+			);
 			(r.type === "mishap" ? mishapResults : benefitResults).push(r);
 		}
 
@@ -1203,7 +1215,9 @@ async function applyExpandedCarousingNotes(session) {
 				),
 			},
 		});
-		await appendCarousingNote(actor, note.description, "", note.summary, `${session.logId}:${participantId}`);
+		await appendCarousingNote(
+			actor, note.description, "", note.summary, `${session.logId}:${participantId}`
+		);
 		result.noteApplied = { at: Date.now(), actorName: actor.name };
 		changed = true;
 	}
@@ -1230,19 +1244,25 @@ export async function applyCarousingOutcome(participantId) {
 		return null;
 	}
 
-	const { effects, wealthLossCp, wealthShortfallCp } = previewOutcomeEffects(actor, result.description, result.benefit);
+	const { effects, wealthLossCp, wealthShortfallCp } = previewOutcomeEffects(
+		actor, result.description, result.benefit
+	);
 	const summaryParts = [];
 
 	if (effects.xp) {
 		const currentXp = actor.system?.level?.xp || 0;
 		await actor.update({ "system.level.xp": currentXp + effects.xp });
-		summaryParts.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_xp", { amount: effects.xp }));
+		summaryParts.push(
+			game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_xp", { amount: effects.xp })
+		);
 	}
 
 	if (effects.luck) {
 		const currentLuck = actor.system?.luck?.remaining ?? 0;
 		await actor.update({ "system.luck.remaining": currentLuck + effects.luck });
-		summaryParts.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_luck", { amount: effects.luck }));
+		summaryParts.push(
+			game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_luck", { amount: effects.luck })
+		);
 	}
 
 	if (wealthLossCp > 0) {
@@ -1253,7 +1273,10 @@ export async function applyCarousingOutcome(participantId) {
 	}
 
 	if (wealthShortfallCp > 0) {
-		await recordCarousingDebt(actor, wealthShortfallCp, [result.description, result.benefit].filter(Boolean).join(" — "));
+		await recordCarousingDebt(
+			actor, wealthShortfallCp,
+			[result.description, result.benefit].filter(Boolean).join(" — ")
+		);
 		summaryParts.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.effect_debt", {
 			amount: formatCoins(wealthShortfallCp),
 		}));

@@ -223,25 +223,35 @@ export class CreatureTypesApp extends HandlebarsApplicationMixin(ApplicationV2) 
 		// Reset to defaults
 		html.querySelector('[data-action="reset-defaults"]')?.addEventListener("click", async () => {
 			const confirmed = await foundry.applications.api.DialogV2.confirm({
-				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.reset_confirm_title") },
+				window: { title: game.i18n.localize(
+					"SHADOWDARK_EXTRAS.creature_types.reset_confirm_title"
+				) },
 				content: `<p>${game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.reset_confirm_content")}</p>`,
 				modal: true,
 			});
 			if (confirmed) {
 				await saveCreatureTypes(DEFAULT_CREATURE_TYPES.filter(t => t !== ""));
 				this.render();
-				ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.reset_success"));
+				ui.notifications.info(
+					game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.reset_success")
+				);
 			}
 		});
 
 		// Export types
-		html.querySelector('[data-action="export-types"]')?.addEventListener("click", () => this._exportTypes());
+		html.querySelector('[data-action="export-types"]')?.addEventListener(
+			"click", () => this._exportTypes()
+		);
 
 		// Import types
-		html.querySelector('[data-action="import-types"]')?.addEventListener("click", () => this._importTypes());
+		html.querySelector('[data-action="import-types"]')?.addEventListener(
+			"click", () => this._importTypes()
+		);
 
 		// Bake mapped creature types onto world actors
-		html.querySelector('[data-action="bake-types"]')?.addEventListener("click", () => this._bakeWorldActors());
+		html.querySelector('[data-action="bake-types"]')?.addEventListener(
+			"click", () => this._bakeWorldActors()
+		);
 	}
 
 	/**
@@ -250,14 +260,18 @@ export class CreatureTypesApp extends HandlebarsApplicationMixin(ApplicationV2) 
 	async _addType(newType) {
 		const currentTypes = getCreatureTypes().filter(t => t !== "");
 		if (currentTypes.includes(newType)) {
-			ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.type_exists"));
+			ui.notifications.warn(
+				game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.type_exists")
+			);
 			return;
 		}
 		currentTypes.push(newType);
 		currentTypes.sort((a, b) => a.localeCompare(b));
 		await saveCreatureTypes(currentTypes);
 		this.render();
-		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.creature_types.type_added", { type: newType }));
+		ui.notifications.info(
+			game.i18n.format("SHADOWDARK_EXTRAS.creature_types.type_added", { type: newType })
+		);
 	}
 
 	/**
@@ -267,7 +281,9 @@ export class CreatureTypesApp extends HandlebarsApplicationMixin(ApplicationV2) 
 		const currentTypes = getCreatureTypes().filter(t => t !== "" && t !== typeToDelete);
 		await saveCreatureTypes(currentTypes);
 		this.render();
-		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.creature_types.type_deleted", { type: typeToDelete }));
+		ui.notifications.info(game.i18n.format(
+			"SHADOWDARK_EXTRAS.creature_types.type_deleted", { type: typeToDelete }
+		));
 	}
 
 	/**
@@ -285,7 +301,9 @@ export class CreatureTypesApp extends HandlebarsApplicationMixin(ApplicationV2) 
 		const data = JSON.stringify(exportData, null, 2);
 		saveDataToFile(data, "application/json", filename);
 
-		ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.export_success"));
+		ui.notifications.info(
+			game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.export_success")
+		);
 	}
 
 	/**
@@ -305,7 +323,9 @@ export class CreatureTypesApp extends HandlebarsApplicationMixin(ApplicationV2) 
 				const importData = JSON.parse(text);
 
 				if (importData.type !== "shadowdark-creature-types" || !Array.isArray(importData.creatureTypes)) {
-					ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.invalid_import"));
+					ui.notifications.error(
+						game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.invalid_import")
+					);
 					return;
 				}
 
@@ -317,7 +337,9 @@ export class CreatureTypesApp extends HandlebarsApplicationMixin(ApplicationV2) 
 			}
 			catch(err) {
 				console.error(`${MODULE_ID} | Failed to import creature types:`, err);
-				ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.import_error"));
+				ui.notifications.error(
+					game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.import_error")
+				);
 			}
 		};
 
@@ -329,7 +351,9 @@ export class CreatureTypesApp extends HandlebarsApplicationMixin(ApplicationV2) 
      */
 	async _bakeWorldActors() {
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
-			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.bake_confirm_title") },
+			window: {
+				title: game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.bake_confirm_title"),
+			},
 			content: `<p>${game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.bake_confirm_content")}</p>`,
 			modal: true,
 		});

@@ -308,7 +308,9 @@ export class JournalPinManager {
 			}
 			const cur = this._locateFolder(folderId, scene); // may have moved store above
 			if (cur?.store === "world" && newParent && merged.find(f => f.id === newParent)?.scope !== "world") {
-				ui.notifications?.warn("A world folder can only be nested under another world folder.");
+				ui.notifications?.warn(
+					"A world folder can only be nested under another world folder."
+				);
 				return null;
 			}
 		}
@@ -347,7 +349,9 @@ export class JournalPinManager {
 		const dest = scope === "world" ? world : sc;
 		moving.sort = this._nextSort(dest, moving.parentId);
 
-		const newWorld = (located.store === "world" ? world.filter(f => f.id !== folderId) : [...world]);
+		const newWorld = (located.store === "world" ? world.filter(f => f.id !== folderId) : [
+			...world,
+		]);
 		const newScene = (located.store === "scene" ? sc.filter(f => f.id !== folderId) : [...sc]);
 		if (scope === "world") newWorld.push(moving); else newScene.push(moving);
 
@@ -663,10 +667,14 @@ function checkTokenCanSeePinPosition(token, pinPosition) {
 	let isBlocked = false;
 	if (window.foundry?.canvas?.geometry?.Ray) {
 		if (CONFIG.Canvas?.polygonBackends?.sight?.testCollision) {
-			isBlocked = CONFIG.Canvas.polygonBackends.sight.testCollision(startPos, endPos, { mode: "any", type: "sight" });
+			isBlocked = CONFIG.Canvas.polygonBackends.sight.testCollision(
+				startPos, endPos, { mode: "any", type: "sight" }
+			);
 		}
 		else if (canvas.edges?.testCollision) {
-			isBlocked = canvas.edges.testCollision(startPos, endPos, { mode: "any", type: "sight" });
+			isBlocked = canvas.edges.testCollision(
+				startPos, endPos, { mode: "any", type: "sight" }
+			);
 		}
 	}
 	else if (canvas.walls?.checkCollision) {
@@ -681,7 +689,9 @@ function checkTokenCanSeePinPosition(token, pinPosition) {
 	const distanceToPin = Math.hypot(endPos.x - startPos.x, endPos.y - startPos.y);
 	const gridDistance = canvas.scene?.grid?.distance || 5;
 	const tokenVisionRange = token.document.sight?.range || 0;
-	const tokenLightRange = Math.max(token.document.light?.dim || 0, token.document.light?.bright || 0);
+	const tokenLightRange = Math.max(
+		token.document.light?.dim || 0, token.document.light?.bright || 0
+	);
 
 	// Convert ranges from units (feet) to pixels
 	const visionRangePixels = (tokenVisionRange / gridDistance) * gridSize;
@@ -756,10 +766,14 @@ function checkWallCollision(startPos, endPos) {
 	let isBlocked = false;
 	if (window.foundry?.canvas?.geometry?.Ray) {
 		if (CONFIG.Canvas?.polygonBackends?.sight?.testCollision) {
-			isBlocked = CONFIG.Canvas.polygonBackends.sight.testCollision(startPos, endPos, { mode: "any", type: "sight" });
+			isBlocked = CONFIG.Canvas.polygonBackends.sight.testCollision(
+				startPos, endPos, { mode: "any", type: "sight" }
+			);
 		}
 		else if (canvas.edges?.testCollision) {
-			isBlocked = canvas.edges.testCollision(startPos, endPos, { mode: "any", type: "sight" });
+			isBlocked = canvas.edges.testCollision(
+				startPos, endPos, { mode: "any", type: "sight" }
+			);
 		}
 	}
 	else if (canvas.walls?.checkCollision) {

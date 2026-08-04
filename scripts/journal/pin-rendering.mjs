@@ -225,7 +225,10 @@ export class JournalPinGraphics extends PIXI.Container {
 
 		}
 		else if (pingAnim === "flash") {
-			gsap.fromTo(this, { pixi: { brightness: 3 } }, { pixi: { brightness: 1 }, duration: 1.0, ease: "power2.out" });
+			gsap.fromTo(
+				this, { pixi: { brightness: 3 } },
+				{ pixi: { brightness: 1 }, duration: 1.0, ease: "power2.out" }
+			);
 			gsap.fromTo(this.scale,
 				{ x: 1.5, y: 1.5 },
 				{ x: restingScale, y: restingScale, duration: 1.0, ease: "elastic.out(1, 0.5)" }
@@ -453,7 +456,10 @@ export class JournalPinGraphics extends PIXI.Container {
 			// Draw custom stroke if not solid AND not image
 			if (ringStyle !== "solid") {
 				const cornerRadius = style.borderRadius ?? 4;
-				drawStyledStroke(this._circle, shape, radius, ringWidth, ringColorNum, ringOpacity, ringStyle, cornerRadius);
+				drawStyledStroke(
+					this._circle, shape, radius, ringWidth, ringColorNum, ringOpacity, ringStyle,
+					cornerRadius
+				);
 			}
 		}
 
@@ -562,7 +568,9 @@ export class JournalPinGraphics extends PIXI.Container {
 					if (this._buildId !== buildId || this.destroyed) return;
 				}
 				catch(e) {
-					console.warn(`SDX Journal Pins | Failed to load label font: ${labelFontFamily}`);
+					console.warn(
+						`SDX Journal Pins | Failed to load label font: ${labelFontFamily}`
+					);
 				}
 			}
 
@@ -641,7 +649,10 @@ export class JournalPinGraphics extends PIXI.Container {
 				if ((style.labelBorderWidth ?? 0) > 0) {
 					bg.lineStyle(style.labelBorderWidth, borderColor, 1);
 				}
-				bg.drawRoundedRect(0, 0, labelText.width + (padX * 2), labelText.height + (padY * 2), style.labelBorderRadius || 4);
+				bg.drawRoundedRect(
+					0, 0, labelText.width + (padX * 2), labelText.height + (padY * 2),
+					style.labelBorderRadius || 4
+				);
 				bg.endFill();
 			}
 
@@ -720,7 +731,9 @@ export class JournalPinGraphics extends PIXI.Container {
 
 				const rendererLabelContainer = JournalPinRenderer.getLabelContainer();
 				if (rendererLabelContainer) {
-					this._labelContainer.position.set(this.position.x + posX, this.position.y + posY);
+					this._labelContainer.position.set(
+						this.position.x + posX, this.position.y + posY
+					);
 					rendererLabelContainer.addChild(this._labelContainer);
 				}
 				else {
@@ -852,11 +865,15 @@ export class JournalPinGraphics extends PIXI.Container {
 
 				const bounds = container.getLocalBounds();
 				if (bounds.width > 0 && bounds.height > 0) {
-					const texture = canvas.app.renderer.generateTexture(container, { resolution: 2 });
+					const texture = canvas.app.renderer.generateTexture(
+						container, { resolution: 2 }
+					);
 					// Guard: only use the cached texture if generation succeeded
 					if (texture && texture.valid) {
 						const cachedSprite = new PIXI.Sprite(texture);
-						cachedSprite.anchor.set(-bounds.x / bounds.width, -bounds.y / bounds.height);
+						cachedSprite.anchor.set(
+							-bounds.x / bounds.width, -bounds.y / bounds.height
+						);
 						this.removeChild(container);
 						container.destroy({ children: true });
 						this.addChild(cachedSprite);
@@ -1133,7 +1150,10 @@ export class JournalPinGraphics extends PIXI.Container {
 				gsap.to(this.scale, { x: 1.2, y: 1.2, duration: 0.3, ease: "back.out(1.7)" });
 			}
 			else if (animType === "pulse") {
-				gsap.to(this.scale, { x: 1.15, y: 1.15, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+				gsap.to(
+					this.scale,
+					{ x: 1.15, y: 1.15, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" }
+				);
 			}
 			else if (animType === "shake") {
 				gsap.to(this, {
@@ -1144,10 +1164,19 @@ export class JournalPinGraphics extends PIXI.Container {
 				gsap.to(this.scale, { x: 1.1, y: 1.1, duration: 0.2 });
 			}
 			else if (animType === "brightness") {
-				gsap.to(this, { pixi: { brightness: 1.5 }, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
+				gsap.to(
+					this,
+					{
+						pixi: { brightness: 1.5 }, duration: 0.4, yoyo: true, repeat: -1,
+						ease: "sine.inOut",
+					}
+				);
 			}
 			else if (animType === "hue") {
-				gsap.to(this, { pixi: { hue: 180 }, duration: 2, repeat: -1, yoyo: true, ease: "linear" });
+				gsap.to(
+					this,
+					{ pixi: { hue: 180 }, duration: 2, repeat: -1, yoyo: true, ease: "linear" }
+				);
 			}
 		}
 	}
@@ -1166,7 +1195,10 @@ export class JournalPinGraphics extends PIXI.Container {
 
 			// Smooth reset
 			gsap.to(this.scale, { x: 1.0, y: 1.0, duration: 0.3, ease: "power2.out" });
-			gsap.to(this, { rotation: 0, pixi: { brightness: 1, hue: 0 }, duration: 0.3, ease: "power2.out" });
+			gsap.to(
+				this,
+				{ rotation: 0, pixi: { brightness: 1, hue: 0 }, duration: 0.3, ease: "power2.out" }
+			);
 		}
 		else {
 			this.scale.set(1.0);
@@ -1236,7 +1268,9 @@ export class JournalPinGraphics extends PIXI.Container {
 
 			// Update label position if it exists and is separated
 			if (this._labelContainer && this._labelContainer.parent !== this) {
-				this._labelContainer.position.set(newX + this._labelOffset.x, newY + this._labelOffset.y);
+				this._labelContainer.position.set(
+					newX + this._labelOffset.x, newY + this._labelOffset.y
+				);
 			}
 		}
 	}
@@ -1465,7 +1499,9 @@ export class JournalPinTooltip {
 
 		// For content, we need at least OBSERVER permission on the PAGE to see text
 		// If no page, we rely on custom content (always visible if pin is visible)
-		const canSeeContent = !page || game.user?.isGM || page.testUserPermission(game.user, "OBSERVER");
+		const canSeeContent = !page || game.user?.isGM || page.testUserPermission(
+			game.user, "OBSERVER"
+		);
 
 		// Use custom tooltip content if provided, otherwise use page content
 		if (pinData.tooltipContent) {

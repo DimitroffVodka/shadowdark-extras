@@ -86,11 +86,15 @@ export class SDXRollerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			actors,
 			participants: this._participants.map(p => {
 				const a = fromUuidSync(p.uuid);
-				return { uuid: p.uuid, name: a?.name ?? "???", img: a?.img ?? "", contestant: false };
+				return {
+					uuid: p.uuid, name: a?.name ?? "???", img: a?.img ?? "", contestant: false,
+				};
 			}),
 			contestants: this._contestants.map(p => {
 				const a = fromUuidSync(p.uuid);
-				return { uuid: p.uuid, name: a?.name ?? "???", img: a?.img ?? "", contestant: true };
+				return {
+					uuid: p.uuid, name: a?.name ?? "???", img: a?.img ?? "", contestant: true,
+				};
 			}),
 			abilities,
 			dc: this._dc,
@@ -391,7 +395,9 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 				const isActive = ev.currentTarget.classList.contains("sdx-active");
 
 				// Deactivate all adv/dis buttons in this tile first
-				tileEl.querySelectorAll(".sdx-adv-btn").forEach(b => b.classList.remove("sdx-active"));
+				tileEl.querySelectorAll(".sdx-adv-btn").forEach(
+					b => b.classList.remove("sdx-active")
+				);
 
 				// Toggle: if it was active, turn off; otherwise activate the clicked one
 				if (!isActive) {
@@ -439,7 +445,9 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		if (!introEl) return;
 
 		// Play intro sound
-		foundry.audio.AudioHelper.play({ src: `modules/${MODULE_ID}/assets/intro.mp3`, volume: 0.8, loop: false }, true);
+		foundry.audio.AudioHelper.play(
+			{ src: `modules/${MODULE_ID}/assets/intro.mp3`, volume: 0.8, loop: false }, true
+		);
 
 		// Wait for intro text animation to finish
 		await new Promise(resolve => {
@@ -457,7 +465,10 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 			const count = tiles.length;
 			tiles.forEach((tile, i) => {
 				tile.animate(
-					[{ opacity: 0, transform: "scale(0.7)" }, { opacity: 1, transform: "scale(1)" }],
+					[
+						{ opacity: 0, transform: "scale(0.7)" },
+						{ opacity: 1, transform: "scale(1)" },
+					],
 					{ duration: 400, easing: "ease-out", fill: "forwards", delay: (count - i) * 80 }
 				);
 			});
@@ -472,7 +483,10 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 			const count = tiles.length;
 			tiles.forEach((tile, i) => {
 				tile.animate(
-					[{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.7)" }],
+					[
+						{ opacity: 1, transform: "scale(1)" },
+						{ opacity: 0, transform: "scale(0.7)" },
+					],
 					{ duration: 350, easing: "ease-in", fill: "forwards", delay: i * 60 }
 				);
 			});
@@ -731,7 +745,9 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 				await this.close();
 			}
 			catch(closeError) {
-				console.warn(`${MODULE_ID} | Could not close the failed SDX roll overlay`, closeError);
+				console.warn(
+					`${MODULE_ID} | Could not close the failed SDX roll overlay`, closeError
+				);
 			}
 		}
 		finally {

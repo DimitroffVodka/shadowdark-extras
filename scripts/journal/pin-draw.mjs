@@ -49,7 +49,10 @@ export function drawStyledStroke(graphics, shape, radius, width, color, opacity,
 			else {
 				// Draw a dash arc
 				graphics.arc(0, 0, radius, startAngle, startAngle + dashAngle);
-				graphics.moveTo(Math.cos(startAngle + stepAngle) * radius, Math.sin(startAngle + stepAngle) * radius);
+				graphics.moveTo(
+					Math.cos(startAngle + stepAngle) * radius,
+					Math.sin(startAngle + stepAngle) * radius
+				);
 			}
 		}
 	}
@@ -63,21 +66,37 @@ export function drawStyledStroke(graphics, shape, radius, width, color, opacity,
 		const segments = [];
 
 		// Top edge (left to right)
-		segments.push({ type: "line", x1: -innerRadius, y1: -radius, x2: innerRadius, y2: -radius });
+		segments.push(
+			{ type: "line", x1: -innerRadius, y1: -radius, x2: innerRadius, y2: -radius }
+		);
 		// Top-right corner arc
-		segments.push({ type: "arc", cx: innerRadius, cy: -innerRadius, r: cr, startAngle: -Math.PI / 2, endAngle: 0 });
+		segments.push({
+			type: "arc", cx: innerRadius, cy: -innerRadius, r: cr, startAngle: -Math.PI / 2,
+			endAngle: 0,
+		});
 		// Right edge (top to bottom)
 		segments.push({ type: "line", x1: radius, y1: -innerRadius, x2: radius, y2: innerRadius });
 		// Bottom-right corner arc
-		segments.push({ type: "arc", cx: innerRadius, cy: innerRadius, r: cr, startAngle: 0, endAngle: Math.PI / 2 });
+		segments.push({
+			type: "arc", cx: innerRadius, cy: innerRadius, r: cr, startAngle: 0,
+			endAngle: Math.PI / 2,
+		});
 		// Bottom edge (right to left)
 		segments.push({ type: "line", x1: innerRadius, y1: radius, x2: -innerRadius, y2: radius });
 		// Bottom-left corner arc
-		segments.push({ type: "arc", cx: -innerRadius, cy: innerRadius, r: cr, startAngle: Math.PI / 2, endAngle: Math.PI });
+		segments.push({
+			type: "arc", cx: -innerRadius, cy: innerRadius, r: cr, startAngle: Math.PI / 2,
+			endAngle: Math.PI,
+		});
 		// Left edge (bottom to top)
-		segments.push({ type: "line", x1: -radius, y1: innerRadius, x2: -radius, y2: -innerRadius });
+		segments.push(
+			{ type: "line", x1: -radius, y1: innerRadius, x2: -radius, y2: -innerRadius }
+		);
 		// Top-left corner arc
-		segments.push({ type: "arc", cx: -innerRadius, cy: -innerRadius, r: cr, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 });
+		segments.push({
+			type: "arc", cx: -innerRadius, cy: -innerRadius, r: cr, startAngle: Math.PI,
+			endAngle: 3 * Math.PI / 2,
+		});
 
 		// Draw dashed/dotted pattern along the path
 		for (const seg of segments) {
@@ -126,10 +145,16 @@ export function drawStyledStroke(graphics, shape, radius, width, color, opacity,
 					}
 					else {
 						graphics.lineStyle(width, color, opacity);
-						graphics.arc(seg.cx, seg.cy, seg.r, startAngle, Math.min(startAngle + dashAngle, seg.endAngle));
+						graphics.arc(
+							seg.cx, seg.cy, seg.r, startAngle,
+							Math.min(startAngle + dashAngle, seg.endAngle)
+						);
 						if (i < numDashes - 1) {
 							const nextAngle = seg.startAngle + ((i + 1) * angleStep);
-							graphics.moveTo(seg.cx + (Math.cos(nextAngle) * seg.r), seg.cy + (Math.sin(nextAngle) * seg.r));
+							graphics.moveTo(
+								seg.cx + (Math.cos(nextAngle) * seg.r),
+								seg.cy + (Math.sin(nextAngle) * seg.r)
+							);
 						}
 					}
 				}
@@ -141,10 +166,16 @@ export function drawStyledStroke(graphics, shape, radius, width, color, opacity,
 		// For simplicity, we'll draw straight lines with patterns
 		const points = [];
 		if (shape === "square") {
-			points.push({ x: -radius, y: -radius }, { x: radius, y: -radius }, { x: radius, y: radius }, { x: -radius, y: radius }, { x: -radius, y: -radius });
+			points.push(
+				{ x: -radius, y: -radius }, { x: radius, y: -radius }, { x: radius, y: radius },
+				{ x: -radius, y: radius }, { x: -radius, y: -radius }
+			);
 		}
 		else if (shape === "diamond") {
-			points.push({ x: 0, y: -radius }, { x: radius, y: 0 }, { x: 0, y: radius }, { x: -radius, y: 0 }, { x: 0, y: -radius });
+			points.push(
+				{ x: 0, y: -radius }, { x: radius, y: 0 }, { x: 0, y: radius },
+				{ x: -radius, y: 0 }, { x: 0, y: -radius }
+			);
 		}
 		else if (shape === "hexagon" || shape === "hexagonFlat") {
 			const hexOffset = shape === "hexagonFlat" ? 0 : -Math.PI / 2;

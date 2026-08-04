@@ -640,7 +640,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				const tilePath = tile.dataset.dungeonTile;
 				if (tilePath) {
 					selectFloorTile(tilePath);
-					elem.querySelectorAll(".dungeon-tile-thumb[data-dungeon-tile]").forEach(t => t.classList.remove("active"));
+					elem.querySelectorAll(".dungeon-tile-thumb[data-dungeon-tile]").forEach(
+						t => t.classList.remove("active")
+					);
 					tile.classList.add("active");
 				}
 			});
@@ -654,7 +656,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				const tilePath = tile.dataset.dungeonDoor;
 				if (tilePath) {
 					selectDoorTile(tilePath);
-					elem.querySelectorAll(".dungeon-tile-thumb[data-dungeon-door]").forEach(t => t.classList.remove("active"));
+					elem.querySelectorAll(".dungeon-tile-thumb[data-dungeon-door]").forEach(
+						t => t.classList.remove("active")
+					);
 					tile.classList.add("active");
 				}
 			});
@@ -668,7 +672,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				const tilePath = tile.dataset.dungeonWall;
 				if (tilePath) {
 					selectWallTile(tilePath);
-					elem.querySelectorAll(".dungeon-tile-thumb[data-dungeon-wall]").forEach(t => t.classList.remove("active"));
+					elem.querySelectorAll(".dungeon-tile-thumb[data-dungeon-wall]").forEach(
+						t => t.classList.remove("active")
+					);
 					tile.classList.add("active");
 				}
 			});
@@ -682,7 +688,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				const tilePath = tile.dataset.dungeonIntdoor;
 				if (tilePath) {
 					selectIntDoorTile(tilePath);
-					elem.querySelectorAll(".dungeon-intdoor-thumb[data-dungeon-intdoor]").forEach(t => t.classList.remove("active"));
+					elem.querySelectorAll(".dungeon-intdoor-thumb[data-dungeon-intdoor]").forEach(
+						t => t.classList.remove("active")
+					);
 					tile.classList.add("active");
 				}
 			});
@@ -696,7 +704,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				const tilePath = tile.dataset.dungeonIntwall;
 				if (tilePath) {
 					selectIntWallTile(tilePath);
-					elem.querySelectorAll(".dungeon-intwall-thumb[data-dungeon-intwall]").forEach(t => t.classList.remove("active"));
+					elem.querySelectorAll(".dungeon-intwall-thumb[data-dungeon-intwall]").forEach(
+						t => t.classList.remove("active")
+					);
 					tile.classList.add("active");
 				}
 			});
@@ -913,7 +923,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			const clutterVal = parseInt(elem.querySelector(".dgen-clutter")?.value || "0");
 			const decorLightsVal = parseInt(elem.querySelector(".dgen-decor-lights")?.value || "0");
 			const wColor = elem.querySelector(".dgen-wall-color")?.value || "#5C3D3D";
-			const thick = isTextured ? 20 : parseInt(elem.querySelector(".dgen-thickness")?.value || "20");
+			const thick = isTextured ? 20 : parseInt(
+				elem.querySelector(".dgen-thickness")?.value || "20"
+			);
 
 			const styleVal = elem.querySelector(".dgen-style")?.value;
 			const style = ["cave", "mixed", "maze", "rogue", "digger", "uniform"].includes(styleVal) ? styleVal : "rooms";
@@ -950,7 +962,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			if (levels >= 2) {
 				// Multi-level dungeon — standalone engine, loaded on demand.
 				const variation = parseFloat(elem.querySelector(".dgen-variation")?.value ?? "1");
-				const connectorVariety = parseFloat(elem.querySelector(".dgen-variety")?.value ?? "0.4");
+				const connectorVariety = parseFloat(
+					elem.querySelector(".dgen-variety")?.value ?? "0.4"
+				);
 				const { generateMultiLevelDungeon } = await import("../dungeon/DungeonMultiLevelSD.mjs");
 				await generateMultiLevelDungeon({
 					...config, levelCount: levels, connectionsPerPair: links, variation, connectorVariety,
@@ -1146,7 +1160,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				e.stopPropagation();
 				card.classList.remove("dragging");
 				elem.querySelectorAll(".scene-card").forEach(c => c.classList.remove("drag-over"));
-				elem.querySelectorAll(".scene-folder, .scene-uncat-container").forEach(z => z.classList.remove("drag-over"));
+				elem.querySelectorAll(".scene-folder, .scene-uncat-container").forEach(
+					z => z.classList.remove("drag-over")
+				);
 			});
 
 			card.addEventListener("dragover", e => {
@@ -1208,7 +1224,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				}
 				else if (action === "ping-pin") {
 					if (!JournalPinRenderer.getContainer()) return;
-					const pin = JournalPinRenderer.getContainer().children.find(c => c.pinData?.id === id);
+					const pin = JournalPinRenderer.getContainer().children.find(
+						c => c.pinData?.id === id
+					);
 
 					if (game.user.isGM) {
 						if (pin && pin.animatePing) pin.animatePing("ping");
@@ -1230,7 +1248,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						if (!isNaN(x) && !isNaN(y)) {
 							canvas.animatePan({ x, y, scale: 1.5, duration: 500 });
 							if (JournalPinRenderer.getContainer()) {
-								const pin = JournalPinRenderer.getContainer().children.find(c => c.pinData?.id === id);
+								const pin = JournalPinRenderer.getContainer().children.find(
+									c => c.pinData?.id === id
+								);
 								if (pin && pin.animatePing) pin.animatePing("bring");
 							}
 							game.socket.emit("module.shadowdark-extras", {
@@ -1311,7 +1331,10 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				window: { title },
 				content: `<div class="form-group"><label>Folder Name</label>
                     <input type="text" name="name" value="${esc(initial)}" autofocus></div>`,
-				ok: { label: "OK", callback: (event, button) => button.form.elements.name.value.trim() },
+				ok: {
+					label: "OK",
+					callback: (event, button) => button.form.elements.name.value.trim(),
+				},
 			}).catch(() => null);
 		};
 
@@ -1402,7 +1425,10 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				ok: {
 					label: "Convert", callback: (event, button) => {
 						const fm = button.form.elements;
-						return { folderId: fm.folderId.value || null, deleteOriginals: fm.deleteOriginals.checked };
+						return {
+							folderId: fm.folderId.value || null,
+							deleteOriginals: fm.deleteOriginals.checked,
+						};
 					},
 				},
 			}).catch(() => null);
@@ -1458,7 +1484,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const pinsList = elem.querySelector(".pins-view .sdx-pin-list:not(.map-notes-list)");
 		if (game.user.isGM && pinsList) {
 			let drag = null;
-			const clearOver = () => pinsList.querySelectorAll(".drag-over").forEach(n => n.classList.remove("drag-over"));
+			const clearOver = () => pinsList.querySelectorAll(".drag-over").forEach(
+				n => n.classList.remove("drag-over")
+			);
 
 			pinsList.querySelectorAll(".pin-entry[draggable='true'], .pin-folder-header[draggable='true']").forEach(row => {
 				row.addEventListener("dragstart", e => {
@@ -1499,10 +1527,14 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				try {
 					if (dragged.type === "pin") {
 						if (folderHeader) {
-							await JournalPinManager.movePin(dragged.id, folderHeader.dataset.folderId);
+							await JournalPinManager.movePin(
+								dragged.id, folderHeader.dataset.folderId
+							);
 						}
 						else if (pinRow && pinRow.dataset.id !== dragged.id) {
-							await JournalPinManager.movePin(dragged.id, pinRow.dataset.folderId || null, pinRow.dataset.id);
+							await JournalPinManager.movePin(
+								dragged.id, pinRow.dataset.folderId || null, pinRow.dataset.id
+							);
 						}
 						else if (!folderHeader && !pinRow) {
 							await JournalPinManager.movePin(dragged.id, null);
@@ -1510,7 +1542,9 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					}
 					else if (dragged.type === "folder") {
 						if (folderHeader && folderHeader.dataset.folderId !== dragged.id) {
-							await JournalPinManager.updateFolder(dragged.id, { parentId: folderHeader.dataset.folderId });
+							await JournalPinManager.updateFolder(
+								dragged.id, { parentId: folderHeader.dataset.folderId }
+							);
 						}
 						else if (!folderHeader && !pinRow) {
 							await JournalPinManager.updateFolder(dragged.id, { parentId: null });

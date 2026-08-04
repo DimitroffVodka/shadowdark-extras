@@ -62,7 +62,9 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
      */
 	static TABS = {
 		details: { id: "details", group: "primary", label: "Details", icon: "fas fa-list" },
-		description: { id: "description", group: "primary", label: "Description", icon: "fas fa-book" },
+		description: {
+			id: "description", group: "primary", label: "Description", icon: "fas fa-book",
+		},
 		source: { id: "source", group: "primary", label: "Source", icon: "fas fa-book-open" },
 	};
 
@@ -278,12 +280,27 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 		// Attack stats fields
 		const statFields = [
 			{ selector: "input[name='system.attack.num']", path: "system.attack.num" },
-			{ selector: "input[name='system.bonuses.attackBonus']", path: "system.bonuses.attackBonus", isNumber: true },
-			{ selector: "input[name='system.bonuses.damageBonus']", path: "system.bonuses.damageBonus", isNumber: true },
+			{
+				selector: "input[name='system.bonuses.attackBonus']",
+				path: "system.bonuses.attackBonus", isNumber: true,
+			},
+			{
+				selector: "input[name='system.bonuses.damageBonus']",
+				path: "system.bonuses.damageBonus", isNumber: true,
+			},
 			{ selector: "input[name='system.damage.value']", path: "system.damage.value" },
-			{ selector: "input[name='system.bonuses.critical.multiplier']", path: "system.bonuses.critical.multiplier", isNumber: true },
-			{ selector: "input[name='system.bonuses.critical.successThreshold']", path: "system.bonuses.critical.successThreshold", isNumber: true },
-			{ selector: "input[name='system.bonuses.critical.failureThreshold']", path: "system.bonuses.critical.failureThreshold", isNumber: true },
+			{
+				selector: "input[name='system.bonuses.critical.multiplier']",
+				path: "system.bonuses.critical.multiplier", isNumber: true,
+			},
+			{
+				selector: "input[name='system.bonuses.critical.successThreshold']",
+				path: "system.bonuses.critical.successThreshold", isNumber: true,
+			},
+			{
+				selector: "input[name='system.bonuses.critical.failureThreshold']",
+				path: "system.bonuses.critical.failureThreshold", isNumber: true,
+			},
 		];
 
 		for (const field of statFields) {
@@ -300,7 +317,9 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 		}
 
 		// Base damage type dropdown
-		const baseDamageTypeSelect = html.querySelector("select[name='flags.shadowdark-extras.baseDamageType']");
+		const baseDamageTypeSelect = html.querySelector(
+			"select[name='flags.shadowdark-extras.baseDamageType']"
+		);
 		if (baseDamageTypeSelect) {
 			baseDamageTypeSelect.addEventListener("change", async event => {
 				await this.item.setFlag(MODULE_ID, "baseDamageType", event.target.value);
@@ -326,7 +345,9 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 
 		// Observer to wait for the ProseMirror toolbar to be ready
 		const observer = new MutationObserver(() => {
-			const saveButton = proseMirrorEditor.querySelector(".editor-save, button[data-action='save']");
+			const saveButton = proseMirrorEditor.querySelector(
+				".editor-save, button[data-action='save']"
+			);
 			if (saveButton && !saveButton.dataset.sdxHandled) {
 				saveButton.dataset.sdxHandled = "true";
 				saveButton.addEventListener("click", async event => {
@@ -345,7 +366,9 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 
 		// Also check if it's already rendered
 		setTimeout(() => {
-			const saveButton = proseMirrorEditor.querySelector(".editor-save, button[data-action='save']");
+			const saveButton = proseMirrorEditor.querySelector(
+				".editor-save, button[data-action='save']"
+			);
 			if (saveButton && !saveButton.dataset.sdxHandled) {
 				saveButton.dataset.sdxHandled = "true";
 				saveButton.addEventListener("click", async event => {
@@ -369,7 +392,9 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 		extraDamageInputs.forEach(input => {
 			input.addEventListener("change", async event => {
 				// Parse the field name to get index and field
-				const match = event.target.name.match(/flags\.shadowdark-extras\.extraDamages\.(\d+)\.(formula|damageType)/);
+				const match = event.target.name.match(
+					/flags\.shadowdark-extras\.extraDamages\.(\d+)\.(formula|damageType)/
+				);
 				if (!match) return;
 
 				const index = parseInt(match[1]);

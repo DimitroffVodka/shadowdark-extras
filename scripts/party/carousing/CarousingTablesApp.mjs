@@ -122,13 +122,19 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 		html.find('[data-action="import-table"]').click(() => this._importTable());
 
 		// Import a Foundry RollTable as a new carousing table (seeds outcomes)
-		html.find('[data-action="import-foundry-table"]').click(() => this._importFoundryTableAsNew());
+		html.find('[data-action="import-foundry-table"]').click(
+			() => this._importFoundryTableAsNew()
+		);
 
 		// Populate the Outcomes tab from a Foundry RollTable
-		html.find('[data-action="import-foundry-outcomes"]').click(() => this._importFoundryOutcomes(html));
+		html.find('[data-action="import-foundry-outcomes"]').click(
+			() => this._importFoundryOutcomes(html)
+		);
 
 		// Populate the Carousing Event (tiers) tab from a Foundry RollTable
-		html.find('[data-action="import-foundry-event"]').click(() => this._importFoundryEvent(html));
+		html.find('[data-action="import-foundry-event"]').click(
+			() => this._importFoundryEvent(html)
+		);
 
 		// Re-pull data from the linked RollTables
 		html.find('[data-action="sync-linked"]').click(() => this._syncLinkedTables());
@@ -143,7 +149,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 		html.find('[data-action="add-tier"]').click(() => {
 			const tiersContainer = html.find(".tiers-list");
 			const newIndex = tiersContainer.find(".table-row").length;
-			const newRow = this._createTierRowHtml(newIndex, { cost: 100, bonus: 0, description: "" });
+			const newRow = this._createTierRowHtml(
+				newIndex, { cost: 100, bonus: 0, description: "" }
+			);
 			tiersContainer.append(newRow);
 		});
 
@@ -151,7 +159,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 		html.find('[data-action="add-outcome"]').click(() => {
 			const outcomesContainer = html.find(".outcomes-list");
 			const newIndex = outcomesContainer.find(".table-row").length;
-			const newRow = this._createOutcomeRowHtml(newIndex, { roll: String(newIndex + 1), description: "", benefit: "" });
+			const newRow = this._createOutcomeRowHtml(
+				newIndex, { roll: String(newIndex + 1), description: "", benefit: "" }
+			);
 			outcomesContainer.append(newRow);
 		});
 
@@ -308,7 +318,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 				entries.forEach((tier, index) => {
 					tiersContainer.append(this._createTierRowHtml(index, tier));
 				});
-				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
+				ui.notifications.info(game.i18n.format(
+					"SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }
+				));
 				return;
 			}
 
@@ -356,7 +368,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 				tiersContainer.append(this._createTierRowHtml(index, tier));
 			});
 
-			ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
+			ui.notifications.info(game.i18n.format(
+				"SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }
+			));
 		}
 	}
 
@@ -405,7 +419,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 				entries.forEach((outcome, index) => {
 					outcomesContainer.append(this._createOutcomeRowHtml(index, outcome));
 				});
-				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
+				ui.notifications.info(game.i18n.format(
+					"SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }
+				));
 				return;
 			}
 
@@ -451,7 +467,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 				outcomesContainer.append(this._createOutcomeRowHtml(index, outcome));
 			});
 
-			ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
+			ui.notifications.info(game.i18n.format(
+				"SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }
+			));
 		}
 	}
 
@@ -462,7 +480,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 		const tables = getCustomCarousingTables();
 		const table = tables.find(t => t.id === tableId);
 		if (!table) {
-			ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.table_not_found"));
+			ui.notifications.error(
+				game.i18n.localize("SHADOWDARK_EXTRAS.carousing.table_not_found")
+			);
 			return;
 		}
 
@@ -476,7 +496,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 		const data = JSON.stringify(exportData, null, 2);
 		saveDataToFile(data, "application/json", filename);
 
-		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.table_exported", { name: table.name }));
+		ui.notifications.info(
+			game.i18n.format("SHADOWDARK_EXTRAS.carousing.table_exported", { name: table.name })
+		);
 	}
 
 	/**
@@ -496,7 +518,10 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 	async _importFoundryTableAsNew() {
 		const picked = await pickMultipleFoundryTables([
 			{ key: "event", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_event") },
-			{ key: "outcome", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_outcome") },
+			{
+				key: "outcome",
+				label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_outcome"),
+			},
 		]);
 		if (!picked) return;
 
@@ -541,7 +566,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 			outcomesContainer.append(this._createOutcomeRowHtml(index, outcome));
 		});
 
-		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: outcomes.length }));
+		ui.notifications.info(game.i18n.format(
+			"SHADOWDARK_EXTRAS.carousing.imported_count", { count: outcomes.length }
+		));
 	}
 
 	/**
@@ -574,7 +601,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 			tiersContainer.append(this._createTierRowHtml(index, tier));
 		});
 
-		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: tiers.length }));
+		ui.notifications.info(
+			game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: tiers.length })
+		);
 	}
 
 	/**
@@ -594,7 +623,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 				const importData = JSON.parse(text);
 
 				if (importData.type !== "shadowdark-carousing-table" || !importData.table) {
-					ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.invalid_import_file"));
+					ui.notifications.error(
+						game.i18n.localize("SHADOWDARK_EXTRAS.carousing.invalid_import_file")
+					);
 					return;
 				}
 
@@ -608,12 +639,16 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 				tables.push(tableData);
 				await saveCustomCarousingTables(tables);
 
-				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.table_imported", { name: tableData.name }));
+				ui.notifications.info(game.i18n.format(
+					"SHADOWDARK_EXTRAS.carousing.table_imported", { name: tableData.name }
+				));
 				this.render();
 			}
 			catch(err) {
 				console.error("Failed to import carousing table:", err);
-				ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_error"));
+				ui.notifications.error(
+					game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_error")
+				);
 			}
 		};
 

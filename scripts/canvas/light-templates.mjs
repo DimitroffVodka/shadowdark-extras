@@ -310,7 +310,9 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 
 		// Validate Key
 		if (!newTemplateData.key.match(/^[a-zA-Z0-9_]+$/)) {
-			ui.notifications.error("Invalid Key. Only alphanumeric characters and underscores are allowed.");
+			ui.notifications.error(
+				"Invalid Key. Only alphanumeric characters and underscores are allowed."
+			);
 			return;
 		}
 
@@ -319,7 +321,9 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 		}
 		else {
 			if (templates.some(t => t.key === newTemplateData.key)) {
-				ui.notifications.error(`Template with key "${newTemplateData.key}" already exists.`);
+				ui.notifications.error(
+					`Template with key "${newTemplateData.key}" already exists.`
+				);
 				return;
 			}
 			templates.push(newTemplateData);

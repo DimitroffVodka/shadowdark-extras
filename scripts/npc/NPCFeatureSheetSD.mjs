@@ -74,7 +74,9 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
      */
 	static TABS = {
 		activity: { id: "activity", group: "primary", label: "Activity", icon: "fas fa-bolt" },
-		description: { id: "description", group: "primary", label: "Description", icon: "fas fa-book" },
+		description: {
+			id: "description", group: "primary", label: "Description", icon: "fas fa-book",
+		},
 		macro: { id: "macro", group: "primary", label: "Macro", icon: "fas fa-code" },
 	};
 
@@ -184,7 +186,9 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 
 		// Load effects from UUIDs
 		context.effectsList = await this._loadEffects(context.sdxFlags.effects || []);
-		context.criticalEffectsList = await this._loadEffects(context.sdxFlags.criticalEffects || []);
+		context.criticalEffectsList = await this._loadEffects(
+			context.sdxFlags.criticalEffects || []
+		);
 
 		// Load summon profiles
 		context.summonProfiles = context.sdxFlags.summoning?.profiles || [];
@@ -450,7 +454,9 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 			// Check valid type
 			const validTypes = ["Effect", "Condition", "NPC Feature"];
 			if (!validTypes.includes(doc.type)) {
-				ui.notifications.warn("Only Effect, Condition, or NPC Feature items can be dropped here");
+				ui.notifications.warn(
+					"Only Effect, Condition, or NPC Feature items can be dropped here"
+				);
 				return;
 			}
 
@@ -638,13 +644,17 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
      * Keep secondary challenge/defense settings visible while the checkbox is on.
      */
 	_setupChallengeToggles(html) {
-		const challengeToggle = html.querySelector('input[name="flags.shadowdark-extras.spellDamage.challenge.enabled"]');
+		const challengeToggle = html.querySelector(
+			'input[name="flags.shadowdark-extras.spellDamage.challenge.enabled"]'
+		);
 		const challengeSettings = html.querySelector(".challenge-settings");
 		challengeToggle?.addEventListener("change", () => {
 			if (challengeSettings) challengeSettings.style.display = challengeToggle.checked ? "" : "none";
 		});
 
-		const defenseToggle = html.querySelector('input[name="flags.shadowdark-extras.spellDamage.targetDefense.enabled"]');
+		const defenseToggle = html.querySelector(
+			'input[name="flags.shadowdark-extras.spellDamage.targetDefense.enabled"]'
+		);
 		const defenseSettings = html.querySelector(".target-defense-settings");
 		defenseToggle?.addEventListener("change", () => {
 			if (defenseSettings) defenseSettings.style.display = defenseToggle.checked ? "" : "none";
@@ -656,7 +666,9 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
      */
 	_setupFormulaTypeRadios(html) {
 		// Spell Damage formula type radios
-		const radios = html.querySelectorAll('input[name="flags.shadowdark-extras.spellDamage.formulaType"]');
+		const radios = html.querySelectorAll(
+			'input[name="flags.shadowdark-extras.spellDamage.formulaType"]'
+		);
 		const sections = {
 			basic: html.querySelector(".formula-basic"),
 			formula: html.querySelector(".formula-custom"),
@@ -672,7 +684,9 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 		};
 
 		// Initial state
-		const checked = html.querySelector('input[name="flags.shadowdark-extras.spellDamage.formulaType"]:checked');
+		const checked = html.querySelector(
+			'input[name="flags.shadowdark-extras.spellDamage.formulaType"]:checked'
+		);
 		if (checked) {
 			updateVisibility(checked.value);
 		}

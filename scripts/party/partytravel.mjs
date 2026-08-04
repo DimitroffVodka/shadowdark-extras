@@ -163,7 +163,9 @@ export const PartyTravel = {
 			await this._removeMemberFromTask(memberId);
 		}
 		else {
-			console.warn("Shadowdark Extras | Missing taskKey or memberId for removal", taskKey, memberId);
+			console.warn(
+				"Shadowdark Extras | Missing taskKey or memberId for removal", taskKey, memberId
+			);
 		}
 	},
 
@@ -321,7 +323,9 @@ export const PartyTravel = {
 					return;
 				}
 				catch(error) {
-					console.error("Shadowdark Extras | Error drawing Party weather RollTable:", error);
+					console.error(
+						"Shadowdark Extras | Error drawing Party weather RollTable:", error
+					);
 				}
 			}
 

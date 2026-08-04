@@ -198,7 +198,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 					initial: "tab-members",
 				},
 			],
-			dragDrop: [{ dragSelector: ".item-list .item, .member, .sdx-task-member", dropSelector: null }],
+			dragDrop: [
+				{ dragSelector: ".item-list .item, .member, .sdx-task-member", dropSelector: null },
+			],
 		});
 	}
 
@@ -426,12 +428,24 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				},
 				// Ability modifiers
 				abilities: {
-					str: member.system.abilities?.str?.mod ?? this._calculateMod(member.system.abilities?.str?.value ?? 10),
-					dex: member.system.abilities?.dex?.mod ?? this._calculateMod(member.system.abilities?.dex?.value ?? 10),
-					con: member.system.abilities?.con?.mod ?? this._calculateMod(member.system.abilities?.con?.value ?? 10),
-					int: member.system.abilities?.int?.mod ?? this._calculateMod(member.system.abilities?.int?.value ?? 10),
-					wis: member.system.abilities?.wis?.mod ?? this._calculateMod(member.system.abilities?.wis?.value ?? 10),
-					cha: member.system.abilities?.cha?.mod ?? this._calculateMod(member.system.abilities?.cha?.value ?? 10),
+					str: member.system.abilities?.str?.mod ?? this._calculateMod(
+						member.system.abilities?.str?.value ?? 10
+					),
+					dex: member.system.abilities?.dex?.mod ?? this._calculateMod(
+						member.system.abilities?.dex?.value ?? 10
+					),
+					con: member.system.abilities?.con?.mod ?? this._calculateMod(
+						member.system.abilities?.con?.value ?? 10
+					),
+					int: member.system.abilities?.int?.mod ?? this._calculateMod(
+						member.system.abilities?.int?.value ?? 10
+					),
+					wis: member.system.abilities?.wis?.mod ?? this._calculateMod(
+						member.system.abilities?.wis?.value ?? 10
+					),
+					cha: member.system.abilities?.cha?.mod ?? this._calculateMod(
+						member.system.abilities?.cha?.value ?? 10
+					),
 				},
 			};
 
@@ -503,7 +517,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		const avgAc = Math.round(members.reduce((sum, m) => sum + m.ac, 0) / members.length);
 		const levelMembers = members.filter(m => !m.isNPC && Number.isFinite(Number(m.level)));
 		const avgLevel = levelMembers.length
-			? Math.round(levelMembers.reduce((sum, m) => sum + Number(m.level), 0) / levelMembers.length)
+			? Math.round(
+				levelMembers.reduce((sum, m) => sum + Number(m.level), 0) / levelMembers.length
+			)
 			: 0;
 
 		return { totalHp, maxHp, avgAc, avgLevel };
@@ -524,7 +540,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			const dc = dcs[task.key] ?? 12;
 			const assignedMemberIds = assignments[task.key] ?? [];
 			const assignedMembers = assignedMemberIds
-				.map(memberId => membersData.find(m => m.memberKey === memberId || m.id === memberId))
+				.map(memberId => membersData.find(
+					m => m.memberKey === memberId || m.id === memberId
+				))
 				.filter(m => m !== undefined);
 
 			// Filter out empty strings from abilities
@@ -650,13 +668,17 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			const memberKey = isCompendiumActor ? dropped.uuid : dropped.id;
 
 			if (!this.memberIds.includes(memberKey)) {
-				ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.party.travel.warn_not_member"));
+				ui.notifications.warn(
+					game.i18n.localize("SHADOWDARK_EXTRAS.party.travel.warn_not_member")
+				);
 				return;
 			}
 
 			// Check ownership
 			if (!dropped.isOwner && !game.user.isGM) {
-				ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.party.travel.warn_not_owner"));
+				ui.notifications.warn(
+					game.i18n.localize("SHADOWDARK_EXTRAS.party.travel.warn_not_owner")
+				);
 				return;
 			}
 
@@ -764,20 +786,28 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		html.find("[data-action='sync-lights']").click(this._onSyncLights.bind(this));
 		html.find("[data-action='roll-weather']").click(this._onRollWeather.bind(this));
 		html.find("[data-action='configure-weather']").click(this._onConfigureWeather.bind(this));
-		html.find("[data-action='change-travel-speed']").change(this._onChangeTravelSpeed.bind(this));
+		html.find("[data-action='change-travel-speed']").change(
+			this._onChangeTravelSpeed.bind(this)
+		);
 
 		// XP controls
 		html.find("[data-action='xp-increment']").click(this._onXpIncrement.bind(this));
 		html.find("[data-action='xp-decrement']").click(this._onXpDecrement.bind(this));
 
 		// NPC spawn count controls
-		html.find("[data-action='npc-count-increment']").click(this._onNpcCountIncrement.bind(this));
-		html.find("[data-action='npc-count-decrement']").click(this._onNpcCountDecrement.bind(this));
+		html.find("[data-action='npc-count-increment']").click(
+			this._onNpcCountIncrement.bind(this)
+		);
+		html.find("[data-action='npc-count-decrement']").click(
+			this._onNpcCountDecrement.bind(this)
+		);
 		html.find("[data-action='npc-count-change']").change(this._onNpcCountChange.bind(this));
 
 		// Inventory interactions
 		html.find("[data-action='create-item']").click(this._onCreateItem.bind(this));
-		html.find("[data-action='configure-party-slots']").click(this._onConfigurePartySlots.bind(this));
+		html.find("[data-action='configure-party-slots']").click(
+			this._onConfigurePartySlots.bind(this)
+		);
 		html.find("[data-action='item-increment']").click(this._onItemIncrement.bind(this));
 		html.find("[data-action='item-decrement']").click(this._onItemDecrement.bind(this));
 		html.find("[data-action='toggle-light']").click(this._onToggleLightSource.bind(this));
@@ -799,7 +829,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 
 		// Travel Tab interactions
 		html.find("[data-action='reset-travel']").click(this._onResetTravel.bind(this));
-		html.find("[data-action='remove-travel-member']").click(this._onRemoveTravelMember.bind(this));
+		html.find("[data-action='remove-travel-member']").click(
+			this._onRemoveTravelMember.bind(this)
+		);
 		html.find("[data-action='select-travel-task']").change(
 			this._onSelectTravelTask.bind(this)
 		);
@@ -935,7 +967,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		// Check if actor is already a member
 		const memberIds = this.memberIds;
 		if (memberIds.includes(memberKey)) {
-			ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.party.warn.already_member"));
+			ui.notifications.info(
+				game.i18n.localize("SHADOWDARK_EXTRAS.party.warn.already_member")
+			);
 			return false;
 		}
 
@@ -949,7 +983,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			if (counts[memberKey] === undefined) await this._setNpcSpawnFormula(memberKey, "1");
 		}
 
-		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.party.member_added", { name: actor.name }));
+		ui.notifications.info(
+			game.i18n.format("SHADOWDARK_EXTRAS.party.member_added", { name: actor.name })
+		);
 		return true;
 	}
 
@@ -1032,7 +1068,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			delete containerData.flags[MODULE_ID].containerUnpacked;
 			delete containerData.flags[MODULE_ID].containerUnpackedOnActor;
 		}
-		const [createdContainer] = await targetActor.createEmbeddedDocuments("Item", [containerData]);
+		const [createdContainer] = await targetActor.createEmbeddedDocuments(
+			"Item", [containerData]
+		);
 		if (!createdContainer) {
 			if (move) return;
 			return;
@@ -1077,7 +1115,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 
 		// Update container slot cost to reflect contents
 		const baseSlotsUsed = Number(createdContainer.system?.slots?.slots_used ?? 1) || 1;
-		const containedSlots = childData.reduce((sum, d) => sum + this._calculateSlotsFromItemData(d), 0);
+		const containedSlots = childData.reduce(
+			(sum, d) => sum + this._calculateSlotsFromItemData(d), 0
+		);
 		await createdContainer.update({
 			"system.slots.slots_used": Math.max(baseSlotsUsed, containedSlots),
 		}, { sdxInternal: true });
@@ -1148,7 +1188,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			}
 		}
 
-		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.party.member_removed", { name: memberName }));
+		ui.notifications.info(
+			game.i18n.format("SHADOWDARK_EXTRAS.party.member_removed", { name: memberName })
+		);
 	}
 
 	async _onPlaceMembers(event) {
@@ -1174,7 +1216,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		if (hasPlayers && hasNpcs) {
 			filter = await new Promise(resolve => {
 				new foundry.applications.api.DialogV2({
-					window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.party.place_tokens_title") },
+					window: {
+						title: game.i18n.localize("SHADOWDARK_EXTRAS.party.place_tokens_title"),
+					},
 					content: `<p>${game.i18n.localize("SHADOWDARK_EXTRAS.party.place_tokens_prompt")}</p>`,
 					buttons: [
 						{
@@ -1228,7 +1272,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		}
 
 		if (membersToPlace.length === 0) {
-			ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.party.all_members_present"));
+			ui.notifications.info(
+				game.i18n.localize("SHADOWDARK_EXTRAS.party.all_members_present")
+			);
 			return;
 		}
 
@@ -1291,14 +1337,18 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 						}
 						existingActor = imported;
 						ui.notifications.info(
-							game.i18n.format("SHADOWDARK_EXTRAS.party.actor_imported", { name: member.name })
+							game.i18n.format(
+								"SHADOWDARK_EXTRAS.party.actor_imported", { name: member.name }
+							)
 						);
 					}
 				}
 				catch(e) {
 					console.error(`${MODULE_ID} | Failed to import compendium actor`, e);
 					ui.notifications.error(
-						game.i18n.format("SHADOWDARK_EXTRAS.party.import_failed", { name: member.name })
+						game.i18n.format(
+							"SHADOWDARK_EXTRAS.party.import_failed", { name: member.name }
+						)
 					);
 					return false;
 				}
@@ -1335,13 +1385,17 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		return new Promise(resolve => {
 			// Show placement instructions
 			ui.notifications.info(
-				game.i18n.format("SHADOWDARK_EXTRAS.party.place_member_instruction", { name: member.name })
+				game.i18n.format(
+					"SHADOWDARK_EXTRAS.party.place_member_instruction", { name: member.name }
+				)
 			);
 
 			const onMouseMove = event => {
 				const pos = event.data.getLocalPosition(canvas.stage);
 				// Snap to grid
-				const snapped = canvas.grid.getSnappedPoint({ x: pos.x, y: pos.y }, { mode: CONST.GRID_SNAPPING_MODES.TOP_LEFT_CORNER });
+				const snapped = canvas.grid.getSnappedPoint(
+					{ x: pos.x, y: pos.y }, { mode: CONST.GRID_SNAPPING_MODES.TOP_LEFT_CORNER }
+				);
 				preview.position.set(snapped.x + (tokenSize / 2), snapped.y + (tokenSize / 2));
 				preview.visible = true;
 			};
@@ -1349,7 +1403,9 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			const onClick = async event => {
 				// Left click to place
 				const pos = event.data.getLocalPosition(canvas.stage);
-				const snapped = canvas.grid.getSnappedPoint({ x: pos.x, y: pos.y }, { mode: CONST.GRID_SNAPPING_MODES.TOP_LEFT_CORNER });
+				const snapped = canvas.grid.getSnappedPoint(
+					{ x: pos.x, y: pos.y }, { mode: CONST.GRID_SNAPPING_MODES.TOP_LEFT_CORNER }
+				);
 
 				// Cleanup
 				canvas.stage.off("mousemove", onMouseMove);
@@ -1562,7 +1618,10 @@ export async function getBrightestPartyLight(partyActor) {
 						"systems/shadowdark/assets/mappings/map-light-sources.json"
 					);
 					lightTemplate = lightSources[templateName]?.light;
-					console.log(`${MODULE_ID} | Loaded template '${templateName}' from Shadowdark mappings:`, lightTemplate);
+					console.log(
+						`${MODULE_ID} | Loaded template '${templateName}' from Shadowdark mappings:`,
+						lightTemplate
+					);
 				}
 				catch(e) {
 					console.warn(`${MODULE_ID} | Failed to load light mappings:`, e);
@@ -1570,13 +1629,17 @@ export async function getBrightestPartyLight(partyActor) {
 
 				// If template not found in JSON, use fallback values
 				if (!lightTemplate) {
-					console.log(`${MODULE_ID} | Template '${templateName}' not in JSON, using fallback`);
+					console.log(
+						`${MODULE_ID} | Template '${templateName}' not in JSON, using fallback`
+					);
 					// Fallback values matching Shadowdark's actual light mappings
 					const FALLBACK_TEMPLATES = {
 						torch: { bright: 5, dim: 30, color: "#d1c846", alpha: 0.2, angle: 360 },
 						lantern: { bright: 15, dim: 60, color: "#d1c846", alpha: 0.2, angle: 360 },
 						lightSpellNear: { bright: 30, dim: 0, color: null, alpha: 0.2, angle: 360 },
-						lightSpellDouble: { bright: 60, dim: 0, color: null, alpha: 0.2, angle: 360 },
+						lightSpellDouble: {
+							bright: 60, dim: 0, color: null, alpha: 0.2, angle: 360,
+						},
 					};
 
 					// Merge custom templates
@@ -1638,7 +1701,9 @@ export async function syncPartyTokenLight(partyActor) {
 	console.log(`${MODULE_ID} | Has members flag:`, hasMembers);
 
 	if (!partyActor || !hasMembers) {
-		console.warn(`${MODULE_ID} | syncPartyTokenLight: Not a party actor (no members flag)`, partyActor);
+		console.warn(
+			`${MODULE_ID} | syncPartyTokenLight: Not a party actor (no members flag)`, partyActor
+		);
 		return;
 	}
 

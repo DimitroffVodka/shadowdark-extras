@@ -66,7 +66,9 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 		html.find('[data-action="delete-table"]').click(this._onDeleteTable.bind(this));
 		html.find('[data-action="export-table"]').click(this._onExportTable.bind(this));
 		html.find('[data-action="import-table"]').click(this._onImportTable.bind(this));
-		html.find('[data-action="import-foundry-table"]').click(this._onBuildFromFoundry.bind(this));
+		html.find('[data-action="import-foundry-table"]').click(
+			this._onBuildFromFoundry.bind(this)
+		);
 
 		// Mode switch (Original <-> Expanded) — swaps to the other editor
 		// at the same window position. Already-active mode is a no-op.
@@ -101,10 +103,18 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 		html.find('[data-action="import-mishaps"]').click(this._onImportMishaps.bind(this));
 
 		// Import Benefit/Mishap description tables from a Foundry RollTable
-		html.find('[data-action="import-foundry-benefits"]').click(() => this._onImportFoundryTable("benefits"));
-		html.find('[data-action="import-foundry-mishaps"]').click(() => this._onImportFoundryTable("mishaps"));
-		html.find('[data-action="import-foundry-outcomes"]').click(this._onImportFoundryOutcomes.bind(this));
-		html.find('[data-action="import-foundry-event"]').click(this._onImportFoundryEvent.bind(this));
+		html.find('[data-action="import-foundry-benefits"]').click(
+			() => this._onImportFoundryTable("benefits")
+		);
+		html.find('[data-action="import-foundry-mishaps"]').click(
+			() => this._onImportFoundryTable("mishaps")
+		);
+		html.find('[data-action="import-foundry-outcomes"]').click(
+			this._onImportFoundryOutcomes.bind(this)
+		);
+		html.find('[data-action="import-foundry-event"]').click(
+			this._onImportFoundryEvent.bind(this)
+		);
 		html.find('[data-action="sync-linked"]').click(this._onSyncLinked.bind(this));
 
 		// Tab switching (manual jQuery approach like CarousingTablesApp)
@@ -279,7 +289,9 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 		};
 
 		this.editingTable.tiers = extractArray("tier", ["cost", "bonus", "description"]);
-		this.editingTable.outcomes = extractArray("outcome", ["roll", "mishaps", "benefits", "modifier", "xp"]);
+		this.editingTable.outcomes = extractArray(
+			"outcome", ["roll", "mishaps", "benefits", "modifier", "xp"]
+		);
 		this.editingTable.benefits = extractArray("benefit", ["roll", "description"]);
 		this.editingTable.mishaps = extractArray("mishap", ["roll", "description"]);
 
@@ -315,7 +327,9 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 		const tables = getExpandedCarousingTables();
 		const table = tables.find(t => t.id === tableId);
 		if (!table) {
-			ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.table_not_found"));
+			ui.notifications.error(
+				game.i18n.localize("SHADOWDARK_EXTRAS.carousing.table_not_found")
+			);
 			return;
 		}
 
@@ -331,7 +345,9 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 		const data = JSON.stringify(exportData, null, 2);
 		saveDataToFile(data, "application/json", filename);
 
-		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.table_exported", { name: table.name }));
+		ui.notifications.info(
+			game.i18n.format("SHADOWDARK_EXTRAS.carousing.table_exported", { name: table.name })
+		);
 	}
 
 	/**
@@ -355,7 +371,9 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 
 				// Validate import data
 				if (importData.type !== "shadowdark-expanded-carousing-table" || !importData.table) {
-					ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.invalid_import_file"));
+					ui.notifications.error(
+						game.i18n.localize("SHADOWDARK_EXTRAS.carousing.invalid_import_file")
+					);
 					return;
 				}
 
@@ -376,12 +394,16 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 				tables.push(tableData);
 				await saveExpandedCarousingTables(tables);
 
-				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.table_imported", { name: tableData.name }));
+				ui.notifications.info(game.i18n.format(
+					"SHADOWDARK_EXTRAS.carousing.table_imported", { name: tableData.name }
+				));
 				this.render(true);
 			}
 			catch(err) {
 				console.error("Failed to import expanded carousing table:", err);
-				ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_error"));
+				ui.notifications.error(
+					game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_error")
+				);
 			}
 		};
 
@@ -443,10 +465,14 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 			if (entries.length > 0) {
 				this.editingTable.tiers = entries;
 				this.render(true);
-				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
+				ui.notifications.info(game.i18n.format(
+					"SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }
+				));
 			}
 			else {
-				ui.notifications.warn("No valid tier entries found. Format: cost gp description +bonus");
+				ui.notifications.warn(
+					"No valid tier entries found. Format: cost gp description +bonus"
+				);
 			}
 		}
 	}
@@ -521,10 +547,14 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 			if (entries.length > 0) {
 				this.editingTable.outcomes = entries;
 				this.render(true);
-				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
+				ui.notifications.info(game.i18n.format(
+					"SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }
+				));
 			}
 			else {
-				ui.notifications.warn("No valid outcome entries found. Format: roll mishaps benefits modifier xp");
+				ui.notifications.warn(
+					"No valid outcome entries found. Format: roll mishaps benefits modifier xp"
+				);
 			}
 		}
 	}
@@ -581,7 +611,9 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 			if (entries.length > 0) {
 				this.editingTable.benefits = entries;
 				this.render(true);
-				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
+				ui.notifications.info(game.i18n.format(
+					"SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }
+				));
 			}
 			else {
 				ui.notifications.warn("No valid benefit entries found. Format: roll description");
@@ -641,7 +673,9 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 			if (entries.length > 0) {
 				this.editingTable.mishaps = entries;
 				this.render(true);
-				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }));
+				ui.notifications.info(game.i18n.format(
+					"SHADOWDARK_EXTRAS.carousing.imported_count", { count: entries.length }
+				));
 			}
 			else {
 				ui.notifications.warn("No valid mishap entries found. Format: roll description");
@@ -663,7 +697,9 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 		const rows = tableResultsToDescriptionRows(table);
 		this.editingTable[section] = rows;
 		this.render(true);
-		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: rows.length }));
+		ui.notifications.info(
+			game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: rows.length })
+		);
 	}
 
 	/**
@@ -680,7 +716,10 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 
 		this.editingTable.outcomes = tableResultsToExpandedOutcomes(table);
 		this.render(true);
-		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: this.editingTable.outcomes.length }));
+		ui.notifications.info(game.i18n.format(
+			"SHADOWDARK_EXTRAS.carousing.imported_count",
+			{ count: this.editingTable.outcomes.length }
+		));
 	}
 
 	/**
@@ -691,8 +730,14 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 	async _onBuildFromFoundry() {
 		const picked = await pickMultipleFoundryTables([
 			{ key: "event", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_event") },
-			{ key: "outcome", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_outcome") },
-			{ key: "benefit", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_benefit") },
+			{
+				key: "outcome",
+				label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_outcome"),
+			},
+			{
+				key: "benefit",
+				label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_benefit"),
+			},
 			{ key: "mishap", label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.tab_mishap") },
 		]);
 		if (!picked) return;
@@ -712,9 +757,13 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 				benefit: picked.uuids.benefit || "",
 				mishap: picked.uuids.mishap || "",
 			},
-			tiers: t.event ? tableResultsToEventTiers(t.event) : foundry.utils.deepClone(defaults.tiers),
+			tiers: t.event ? tableResultsToEventTiers(t.event) : foundry.utils.deepClone(
+				defaults.tiers
+			),
 			outcomes: t.outcome ? tableResultsToExpandedOutcomes(t.outcome) : foundry.utils.deepClone(defaults.outcomes),
-			benefits: t.benefit ? toDescRows(t.benefit) : foundry.utils.deepClone(defaults.benefits),
+			benefits: t.benefit ? toDescRows(t.benefit) : foundry.utils.deepClone(
+				defaults.benefits
+			),
 			mishaps: t.mishap ? toDescRows(t.mishap) : foundry.utils.deepClone(defaults.mishaps),
 		};
 
@@ -762,7 +811,9 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 
 		this.editingTable.tiers = tableResultsToEventTiers(table);
 		this.render(true);
-		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.imported_count", { count: this.editingTable.tiers.length }));
+		ui.notifications.info(game.i18n.format(
+			"SHADOWDARK_EXTRAS.carousing.imported_count", { count: this.editingTable.tiers.length }
+		));
 	}
 }
 

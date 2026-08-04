@@ -122,14 +122,21 @@ export class TravelActivitiesSettingsApp extends HandlebarsApplicationMixin(Appl
 		html.querySelector(".sdx-reset-defaults")?.addEventListener("click", async ev => {
 			ev.preventDefault();
 			const confirmed = await foundry.applications.api.DialogV2.confirm({
-				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.travel_activities.reset_confirm_title") },
+				window: { title: game.i18n.localize(
+					"SHADOWDARK_EXTRAS.travel_activities.reset_confirm_title"
+				) },
 				content: `<p>${game.i18n.localize("SHADOWDARK_EXTRAS.travel_activities.reset_confirm_content")}</p>`,
 				modal: true,
 			});
 			if (confirmed) {
-				await game.settings.set(MODULE_ID, "travelActivities", { activities: foundry.utils.deepClone(DEFAULT_TRAVEL_ACTIVITIES) });
+				await game.settings.set(
+					MODULE_ID, "travelActivities",
+					{ activities: foundry.utils.deepClone(DEFAULT_TRAVEL_ACTIVITIES) }
+				);
 				this.render({ force: true });
-				ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.travel_activities.reset_complete"));
+				ui.notifications.info(
+					game.i18n.localize("SHADOWDARK_EXTRAS.travel_activities.reset_complete")
+				);
 			}
 		});
 

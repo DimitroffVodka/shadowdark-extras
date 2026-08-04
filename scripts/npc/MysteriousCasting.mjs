@@ -112,7 +112,9 @@ export function initMysteriousCasting() {
 			buttonsHtml = buttonsMatch[0];
 		}
 		else {
-			const actionButtons = content.match(/<button\s+[^>]*data-action[^>]*>[\s\S]*?<\/button>/gi);
+			const actionButtons = content.match(
+				/<button\s+[^>]*data-action[^>]*>[\s\S]*?<\/button>/gi
+			);
 			if (actionButtons) {
 				buttonsHtml = `<div class="card-buttons">${actionButtons.join("")}</div>`;
 			}

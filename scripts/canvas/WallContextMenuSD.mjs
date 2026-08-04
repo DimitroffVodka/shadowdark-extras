@@ -12,8 +12,14 @@ export class WallContextMenuSD {
 		// Hook into the right-click event on the WallsLayer (background)
 		const WallsLayerClass = foundry.canvas?.layers?.WallsLayer || globalThis.WallsLayer;
 		if (typeof libWrapper === "function") {
-			libWrapper.register(MODULE_ID, "foundry.canvas.layers.WallsLayer.prototype._onClickRight", this._onLayerRightClick, "WRAPPER");
-			libWrapper.register(MODULE_ID, "foundry.canvas.placeables.Wall.prototype._onClickRight", this._onWallRightClick, "WRAPPER");
+			libWrapper.register(
+				MODULE_ID, "foundry.canvas.layers.WallsLayer.prototype._onClickRight",
+				this._onLayerRightClick, "WRAPPER"
+			);
+			libWrapper.register(
+				MODULE_ID, "foundry.canvas.placeables.Wall.prototype._onClickRight",
+				this._onWallRightClick, "WRAPPER"
+			);
 		}
 		else {
 			const originalLayer = WallsLayerClass.prototype._onClickRight;
@@ -105,7 +111,9 @@ export class WallContextMenuSD {
 		const wallDoc = wall.document;
 		const isDoor = wallDoc.door !== CONST.WALL_DOOR_TYPES.NONE;
 
-		const globalPoint = event.global || event.data?.global || { x: event.clientX, y: event.clientY };
+		const globalPoint = event.global || event.data?.global || {
+			x: event.clientX, y: event.clientY,
+		};
 		const canvasRect = canvas.app.view.getBoundingClientRect();
 		const x = canvasRect.left + (globalPoint?.x || 0);
 		const y = canvasRect.top + (globalPoint?.y || 0);
@@ -119,7 +127,9 @@ export class WallContextMenuSD {
 			menuItems.push({
 				name: isLocked ? "Unlock Door" : "Lock Door",
 				icon: isLocked ? '<i class="fas fa-unlock"></i>' : '<i class="fas fa-lock"></i>',
-				callback: () => wallDoc.update({ ds: isLocked ? CONST.WALL_DOOR_STATES.CLOSED : CONST.WALL_DOOR_STATES.LOCKED }),
+				callback: () => wallDoc.update(
+					{ ds: isLocked ? CONST.WALL_DOOR_STATES.CLOSED : CONST.WALL_DOOR_STATES.LOCKED }
+				),
 			});
 
 			// Toggle Open/Closed
@@ -127,7 +137,9 @@ export class WallContextMenuSD {
 			menuItems.push({
 				name: isOpen ? "Close Door" : "Open Door",
 				icon: isOpen ? '<i class="fas fa-door-closed"></i>' : '<i class="fas fa-door-open"></i>',
-				callback: () => wallDoc.update({ ds: isOpen ? CONST.WALL_DOOR_STATES.CLOSED : CONST.WALL_DOOR_STATES.OPEN }),
+				callback: () => wallDoc.update(
+					{ ds: isOpen ? CONST.WALL_DOOR_STATES.CLOSED : CONST.WALL_DOOR_STATES.OPEN }
+				),
 			});
 
 			menuItems.push({ type: "separator" });

@@ -166,14 +166,18 @@ export const PartyInventory = {
 	async _onDivideCoins(event) {
 		event.preventDefault();
 		if (!game.user.isGM) {
-			ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_gm_only"));
+			ui.notifications.warn(
+				game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_gm_only")
+			);
 			return;
 		}
 
 		// Filter to only include Player type actors (exclude NPCs)
 		const members = this.members.filter(m => m.type === "Player");
 		if (members.length === 0) {
-			ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_no_members"));
+			ui.notifications.warn(
+				game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_no_members")
+			);
 			return;
 		}
 
@@ -196,7 +200,9 @@ export const PartyInventory = {
 
 		const distributedTotal = (each.gp * n) + (each.sp * n) + (each.cp * n);
 		if (distributedTotal === 0) {
-			ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_nothing"));
+			ui.notifications.info(
+				game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_nothing")
+			);
 			return;
 		}
 
@@ -401,7 +407,9 @@ export const PartyInventory = {
 				const lightSources = await foundry.utils.fetchJsonWithTimeout(
 					"systems/shadowdark/assets/mappings/map-light-sources.json"
 				);
-				lightData = lightSources[item.system.light.template]?.light ?? { dim: 0, bright: 0 };
+				lightData = lightSources[item.system.light.template]?.light ?? {
+					dim: 0, bright: 0,
+				};
 			}
 			catch(e) {
 				console.warn("Failed to load light source mappings:", e);
@@ -439,7 +447,9 @@ export const PartyInventory = {
 		// Only world actors can receive items (not compendium actors)
 		const members = this.members.filter(m => m.isOwner && !m.uuid?.startsWith("Compendium."));
 		if (members.length === 0) {
-			ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.party.warn.no_owned_members"));
+			ui.notifications.warn(
+				game.i18n.localize("SHADOWDARK_EXTRAS.party.warn.no_owned_members")
+			);
 			return;
 		}
 

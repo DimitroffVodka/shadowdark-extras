@@ -393,7 +393,9 @@ export function getPartyTokens() {
 		// module isn't active, so guard against that case)
 		let pileData;
 		if (game.modules.get("item-piles")?.active) {
-			pileData = token.document.getFlag("item-piles", "data") ?? actor.getFlag("item-piles", "data");
+			pileData = token.document.getFlag("item-piles", "data") ?? actor.getFlag(
+				"item-piles", "data"
+			);
 		}
 		if (pileData?.enabled) continue;
 
@@ -853,7 +855,9 @@ export function getPinsData() {
 	};
 
 	const INDENT = 14;
-	const isImagePath = s => !!s && (/\.(svg|png|jpe?g|webp|gif|avif)$/i.test(s) || s.includes("/"));
+	const isImagePath = s => !!s && (/\.(svg|png|jpe?g|webp|gif|avif)$/i.test(s) || s.includes(
+		"/"
+	));
 	const rows = [];
 	const emitFolder = (folder, depth, ancestors) => {
 		const selfAncestors = ancestors.concat(folder.id);
@@ -887,7 +891,9 @@ export function getPinsData() {
 
 	for (const f of (foldersByParent.get(null) || [])) emitFolder(f, 0, []);
 	for (const p of (pinsByFolder.get(null) || [])) {
-		rows.push({ ...p, rowType: "pin", depth: 0, indent: 0, parentId: null, ancestors: "", hidden: false });
+		rows.push({
+			...p, rowType: "pin", depth: 0, indent: 0, parentId: null, ancestors: "", hidden: false,
+		});
 	}
 
 	return rows;

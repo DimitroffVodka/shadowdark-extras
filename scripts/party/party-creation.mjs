@@ -81,11 +81,15 @@ function addPartyOptionToSelect(html) {
 	// Add Party option
 	const npcOption = typeSelect.find('option[value="NPC"]');
 	if (npcOption.length > 0) {
-		npcOption.after(`<option value="Party">${game.i18n.localize("SHADOWDARK_EXTRAS.party.name")}</option>`);
+		npcOption.after(
+			`<option value="Party">${game.i18n.localize("SHADOWDARK_EXTRAS.party.name")}</option>`
+		);
 	}
 	else {
 		// Fallback: append to the end
-		typeSelect.append(`<option value="Party">${game.i18n.localize("SHADOWDARK_EXTRAS.party.name")}</option>`);
+		typeSelect.append(
+			`<option value="Party">${game.i18n.localize("SHADOWDARK_EXTRAS.party.name")}</option>`
+		);
 	}
 
 	// Also intercept form submission to convert Party to NPC before it's sent
@@ -99,7 +103,9 @@ function addPartyOptionToSelect(html) {
 				// Store that this should be a party
 				let hiddenInput = $(this).find('input[name="flags.shadowdark-extras.isParty"]');
 				if (hiddenInput.length === 0) {
-					$(this).append('<input type="hidden" name="flags.shadowdark-extras.isParty" value="true">');
+					$(this).append(
+						'<input type="hidden" name="flags.shadowdark-extras.isParty" value="true">'
+					);
 				}
 			}
 		});

@@ -265,14 +265,18 @@ export class DecorImportApp extends ApplicationV2 {
 		addButton.className = "sdx-decor-import-selected";
 		addButton.disabled = !isSupportedDecorPath(this.foundryPath);
 		addButton.textContent = "Add Image";
-		addButton.addEventListener("click", () => this._registerServerAsset(this.foundryPath, "foundry"));
+		addButton.addEventListener(
+			"click", () => this._registerServerAsset(this.foundryPath, "foundry")
+		);
 
 		const addFolderButton = document.createElement("button");
 		addFolderButton.type = "button";
 		addFolderButton.className = "sdx-decor-import-selected";
 		addFolderButton.disabled = !this.foundryPath;
 		addFolderButton.textContent = "Add Folder";
-		addFolderButton.addEventListener("click", () => this._registerFoundryFolder(this.foundryPath));
+		addFolderButton.addEventListener(
+			"click", () => this._registerFoundryFolder(this.foundryPath)
+		);
 
 		controls.append(browseButton, browseFolderButton, pathInput, addButton, addFolderButton);
 	}
@@ -390,7 +394,10 @@ export class DecorImportApp extends ApplicationV2 {
 				await ensureDecorDirectory(target.folder);
 				const uploadFile = target.filename === entry.file.name
 					? entry.file
-					: new File([entry.file], target.filename, { type: entry.file.type, lastModified: entry.file.lastModified });
+					: new File(
+						[entry.file], target.filename,
+						{ type: entry.file.type, lastModified: entry.file.lastModified }
+					);
 				await FP.upload("data", target.folder, uploadFile, {}, { notify: false });
 				imported++;
 			}
