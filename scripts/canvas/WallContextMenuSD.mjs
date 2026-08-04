@@ -90,8 +90,8 @@ export class WallContextMenuSD {
 			t = Math.max(0, Math.min(1, t));
 
 			const dist = Math.sqrt(
-				Math.pow(point.x - (x1 + t * (x2 - x1)), 2) +
-                Math.pow(point.y - (y1 + t * (y2 - y1)), 2)
+				Math.pow(point.x - (x1 + t * (x2 - x1)), 2)
+                + Math.pow(point.y - (y1 + t * (y2 - y1)), 2)
 			);
 
 			return dist <= tolerance;
@@ -246,7 +246,7 @@ export class WallContextMenuSD {
 			const menuItem = document.createElement("div");
 			menuItem.className = "sdx-wall-menu-item";
 			menuItem.innerHTML = `${item.icon} <span>${item.name}</span>`;
-			menuItem.addEventListener("click", (e) => {
+			menuItem.addEventListener("click", e => {
 				e.stopPropagation();
 				item.callback();
 				menu.remove();
@@ -257,7 +257,7 @@ export class WallContextMenuSD {
 		document.body.appendChild(menu);
 
 		// Close logic
-		const closeMenu = (e) => {
+		const closeMenu = e => {
 			if (!menu.contains(e.target)) {
 				menu.remove();
 				document.removeEventListener("click", closeMenu);
@@ -265,7 +265,7 @@ export class WallContextMenuSD {
 				document.removeEventListener("keydown", closeOnEscape);
 			}
 		};
-		const closeOnEscape = (e) => {
+		const closeOnEscape = e => {
 			if (e.key === "Escape") {
 				menu.remove();
 				document.removeEventListener("click", closeMenu);

@@ -148,12 +148,12 @@ export async function pickMultipleFoundryTables(fields) {
 export async function resolveLinkedData(links = {}, mode = "original") {
 	const out = {};
 	const skipped = [];
-	const load = async (uuid) => {
+	const load = async uuid => {
 		if (!uuid) return null;
 		try {
 			return await fromUuid(uuid);
 		}
-		catch {
+		catch{
 			return null;
 		}
 	};
@@ -227,7 +227,7 @@ export function describeLinks(links = {}) {
 		try {
 			name = fromUuidSync(uuid)?.name ?? null;
 		}
-		catch { /* pack not loaded */ }
+		catch{ /* pack not loaded */ }
 		parts.push(`${game.i18n.localize(labels[key])}: ${name || "?"}`);
 	}
 	return parts.join(" • ");

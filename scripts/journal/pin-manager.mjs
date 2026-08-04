@@ -206,17 +206,20 @@ export class JournalPinManager {
 	static _getSceneFolders(scene) {
 		return scene?.getFlag(MODULE_ID, FOLDER_FLAG_KEY) || [];
 	}
+
 	static async _setSceneFolders(scene, arr) {
 		await scene.setFlag(MODULE_ID, FOLDER_FLAG_KEY, arr);
 	}
+
 	static _getWorldFolders() {
 		try {
 			return game.settings.get(MODULE_ID, "pinFoldersWorld") || [];
 		}
-		catch (e) {
+		catch(e) {
 			return [];
 		}
 	}
+
 	static async _setWorldFolders(arr) {
 		await game.settings.set(MODULE_ID, "pinFoldersWorld", arr);
 	}
@@ -371,7 +374,7 @@ export class JournalPinManager {
 		if (!located) throw new Error(`Folder not found: ${folderId}`);
 		const newParent = located.folder.parentId ?? null;
 
-		const reparent = (arr) => arr
+		const reparent = arr => arr
 			.filter(f => f.id !== folderId)
 			.map(f => (f.parentId === folderId ? { ...f, parentId: newParent } : f));
 		await this._setWorldFolders(reparent(this._getWorldFolders()));
@@ -394,7 +397,7 @@ export class JournalPinManager {
 		const scene = this._getScene(options.sceneId);
 		const pid = parentId ?? null;
 		const orderMap = new Map(orderedIds.map((id, i) => [id, i]));
-		const apply = (arr) => arr.map(f =>
+		const apply = arr => arr.map(f =>
 			(f.parentId ?? null) === pid && orderMap.has(f.id) ? { ...f, sort: orderMap.get(f.id) } : f
 		);
 		await this._setWorldFolders(apply(this._getWorldFolders()));
@@ -557,6 +560,7 @@ export class JournalPinManager {
  */
 export class PinPlacer {
 	static active = false;
+
 	static _cursor = "crosshair";
 
 	static activate() {
@@ -585,7 +589,7 @@ export class PinPlacer {
 		canvas.stage.off("rightdown", this._onRightClick);
 	}
 
-	static _onClick = async (event) => {
+	static _onClick = async event => {
 		if (!PinPlacer.active) return;
 
 		const pos = event.data.getLocalPosition(canvas.stage);
@@ -601,7 +605,7 @@ export class PinPlacer {
 		PinPlacer.deactivate();
 	};
 
-	static _onRightClick = (event) => {
+	static _onRightClick = event => {
 		if (!PinPlacer.active) return;
 		PinPlacer.deactivate();
 		ui.notifications.info("Pin placement cancelled.");
@@ -772,6 +776,7 @@ function checkWallCollision(startPos, endPos) {
 
 export class JournalPinDropHandler {
 	static _initialized = false;
+
 	static _skipNoteCreation = false; // Flag to prevent default note creation
 
 	static initialize() {

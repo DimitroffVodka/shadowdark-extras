@@ -15,7 +15,7 @@ function _registerGsapPixiPlugin() {
 		window.gsap.registerPlugin(window.PixiPlugin);
 		window.PixiPlugin.registerPIXI(window.PIXI);
 	}
-	catch (e) {
+	catch(e) {
 		console.warn("SDX Journal Pins | GSAP PixiPlugin registration failed:", e);
 	}
 }
@@ -100,7 +100,7 @@ function initJournalPins() {
 
 	// Register Socket Listener for "Bring Players Here"
 	Hooks.once("ready", () => {
-		game.socket.on("module.shadowdark-extras", (data) => {
+		game.socket.on("module.shadowdark-extras", data => {
 			if (data.type === "panToPin") {
 				// Check scene match
 				if (canvas.scene?.id !== data.sceneId) return;
@@ -228,7 +228,7 @@ function initJournalPins() {
 					try {
 						return originalCalculatePadding.call(this);
 					}
-					catch (err) {
+					catch(err) {
 						// Ignore rotation errors for pins that are being destroyed/removed
 						if (this.placeableType === "JournalPin") return;
 						throw err;

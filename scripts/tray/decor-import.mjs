@@ -54,7 +54,7 @@ async function ensureDecorDirectory(path) {
 		try {
 			await FP.browse("data", current);
 		}
-		catch {
+		catch{
 			await FP.createDirectory("data", current);
 		}
 	}
@@ -69,7 +69,7 @@ async function decorFileExists(path) {
 		const listing = await FP.browse("data", folder);
 		return (listing.files || []).some(file => file === path || file.endsWith(`/${filename}`));
 	}
-	catch {
+	catch{
 		return false;
 	}
 }
@@ -399,7 +399,7 @@ export class DecorImportApp extends ApplicationV2 {
 			ui.notifications.info(`Imported ${imported} decor asset${imported === 1 ? "" : "s"} to ${DECOR_IMPORT_DESTINATION}/.`);
 			this.selected.clear();
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Failed to import decor assets:`, err);
 			ui.notifications.error(`Failed to import decor assets: ${err?.message || err}`);
 		}
@@ -448,7 +448,7 @@ export class DecorImportApp extends ApplicationV2 {
 			Hooks.callAll("sdx.decorAssetsImported");
 			ui.notifications.info("Added decor asset to the Decor browser.");
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Failed to add decor asset:`, err);
 			ui.notifications.error(`Failed to add decor asset: ${err?.message || err}`);
 		}
@@ -479,7 +479,7 @@ export class DecorImportApp extends ApplicationV2 {
 			Hooks.callAll("sdx.decorAssetsImported");
 			ui.notifications.info(`Added ${images.length} decor asset${images.length === 1 ? "" : "s"} from Foundry folder.`);
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Failed to add decor folder:`, err);
 			ui.notifications.error(`Failed to add decor folder: ${err?.message || err}`);
 		}

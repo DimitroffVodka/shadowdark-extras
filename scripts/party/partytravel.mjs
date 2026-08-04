@@ -81,7 +81,7 @@ export const PartyTravel = {
 				)
 			);
 		}
-		catch (error) {
+		catch(error) {
 			console.error(
 				"Shadowdark Extras | Party travel update failed:",
 				error
@@ -205,7 +205,7 @@ export const PartyTravel = {
 					const { syncPartyTokenLight } = await import("./PartySheetSD.mjs");
 					return syncPartyTokenLight(this.actor);
 				}
-				catch (error) {
+				catch(error) {
 					console.error("Shadowdark Extras | Party light sync failed:", error);
 					return null;
 				}
@@ -257,7 +257,6 @@ export const PartyTravel = {
 
 		await this.actor.setFlag(MODULE_ID, "travelDCs", dcs);
 	},
-
 
 
 	async _onRollTravelTask(event) {
@@ -321,7 +320,7 @@ export const PartyTravel = {
 					);
 					return;
 				}
-				catch (error) {
+				catch(error) {
 					console.error("Shadowdark Extras | Error drawing Party weather RollTable:", error);
 				}
 			}
@@ -454,5 +453,5 @@ export const PartyTravel = {
 			content: content,
 			flavor: flavor,
 		});
-	}
+	},
 };

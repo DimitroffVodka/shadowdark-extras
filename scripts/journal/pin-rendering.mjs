@@ -79,9 +79,9 @@ export class JournalPinGraphics extends PIXI.Container {
 			getFlag: (s, k) => this.getFlag(s, k),
 			setFlag: (s, k, v) => this.setFlag(s, k, v),
 			unsetFlag: (s, k) => this.unsetFlag(s, k),
-			_TMFXsetFlag: (f) => this._TMFXsetFlag(f),
+			_TMFXsetFlag: f => this._TMFXsetFlag(f),
 			_TMFXunsetFlag: () => this._TMFXunsetFlag(),
-			_TMFXsetAnimeFlag: (f) => this._TMFXsetAnimeFlag(f),
+			_TMFXsetAnimeFlag: f => this._TMFXsetAnimeFlag(f),
 			_TMFXunsetAnimeFlag: () => this._TMFXunsetAnimeFlag(),
 			_TMFXgetPlaceableType: () => this._TMFXgetPlaceableType(),
 			_TMFXgetMaxFilterRank: () => this._TMFXgetMaxFilterRank(),
@@ -170,10 +170,8 @@ export class JournalPinGraphics extends PIXI.Container {
 		if (filters === null) {
 			this.filters = null;
 		}
-		else {
-			if (Array.isArray(filters)) this.filters = filters;
-			else this.filters.push(filters);
-		}
+		else if (Array.isArray(filters)) this.filters = filters;
+		else this.filters.push(filters);
 	}
 
 	animatePing(type = "ping") {
@@ -204,7 +202,7 @@ export class JournalPinGraphics extends PIXI.Container {
 				if (typeof color === "string" && color.startsWith("#")) colorNum = parseInt(color.slice(1), 16);
 				else if (typeof color === "number") colorNum = color;
 			}
-			catch (e) { }
+			catch(e) { }
 
 			const ripple = new PIXI.Graphics();
 			ripple.lineStyle(6, colorNum, 0.8);
@@ -319,7 +317,6 @@ export class JournalPinGraphics extends PIXI.Container {
 		const ringOpacity = (style.ringOpacity ?? 1.0) * baseOpacity;
 
 
-
 		// Use red dashed stroke if pin is GM-only (visible indicator for GM)
 		let ringColor;
 		let ringStyle = style.ringStyle || "solid";
@@ -395,7 +392,7 @@ export class JournalPinGraphics extends PIXI.Container {
 				// uses are confined to the non-image branch below.
 
 			}
-			catch (err) {
+			catch(err) {
 				console.error("SDX Journal Pins | Error loading pin image:", err);
 			}
 		}
@@ -516,7 +513,7 @@ export class JournalPinGraphics extends PIXI.Container {
 						await document.fonts.load(`16px ${fontFamily}`);
 						if (this._buildId !== buildId || this.destroyed) return;
 					}
-					catch (e) {
+					catch(e) {
 						console.warn(`SDX Journal Pins | Failed to load font: ${fontFamily}`);
 					}
 				}
@@ -564,7 +561,7 @@ export class JournalPinGraphics extends PIXI.Container {
 					await document.fonts.load(`16px ${labelFontFamily}`);
 					if (this._buildId !== buildId || this.destroyed) return;
 				}
-				catch (e) {
+				catch(e) {
 					console.warn(`SDX Journal Pins | Failed to load label font: ${labelFontFamily}`);
 				}
 			}
@@ -631,7 +628,7 @@ export class JournalPinGraphics extends PIXI.Container {
 						}
 					}
 				}
-				catch (e) {
+				catch(e) {
 					console.error("SDX Journal Pins | Failed to load label background", e);
 				}
 			}
@@ -815,7 +812,7 @@ export class JournalPinGraphics extends PIXI.Container {
 
 					return alpha >= this._alphaThreshold;
 				}
-				catch (err) {
+				catch(err) {
 					console.warn("SDX Journal Pins | Pixel-perfect detection failed:", err);
 					return inBounds;
 				}
@@ -867,7 +864,7 @@ export class JournalPinGraphics extends PIXI.Container {
 					}
 				}
 			}
-			catch (e) {
+			catch(e) {
 				// Keep the raw graphics container if caching fails
 			}
 		}
@@ -914,7 +911,7 @@ export class JournalPinGraphics extends PIXI.Container {
 
 				if (content && content !== "none" && content !== '""') {
 					const iconChar = content.replace(/['"]/g, "");
-					const colorHex = "#" + color.toString(16).padStart(6, "0");
+					const colorHex = `#${color.toString(16).padStart(6, "0")}`;
 					ctx.fillStyle = colorHex;
 					ctx.font = `${iconSize}px ${fontFamily}`;
 					ctx.textAlign = "center";
@@ -922,7 +919,7 @@ export class JournalPinGraphics extends PIXI.Container {
 					ctx.fillText(iconChar, canvas.width / 2, canvas.height / 2);
 				}
 			}
-			catch (e) {
+			catch(e) {
 				// Fallback
 			}
 		}
@@ -946,7 +943,7 @@ export class JournalPinGraphics extends PIXI.Container {
 			if (this.destroyed) return;
 
 			// Replace colors in SVG text - simple heuristic to colorize monochrome SVGs
-			const colorHex = "#" + color.toString(16).padStart(6, "0");
+			const colorHex = `#${color.toString(16).padStart(6, "0")}`;
 
 			// Replace existing fill/stroke attributes or add to root if missing
 			if (svgText.includes("fill=")) {
@@ -961,7 +958,7 @@ export class JournalPinGraphics extends PIXI.Container {
 			}
 
 			// Convert to base64 data URI
-			const svgBase64 = "data:image/svg+xml;base64," + btoa(svgText);
+			const svgBase64 = `data:image/svg+xml;base64,${btoa(svgText)}`;
 
 			// Load as texture using Foundry's standard helper
 			const texture = await loadTexture(svgBase64);
@@ -982,7 +979,7 @@ export class JournalPinGraphics extends PIXI.Container {
 
 			container.addChild(this._icon);
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`SDX Journal Pins | Failed to load custom SVG: ${iconPath}`, err);
 		}
 	}
@@ -1034,7 +1031,7 @@ export class JournalPinGraphics extends PIXI.Container {
 					ctx.fillText(iconChar, canvas.width / 2, canvas.height / 2);
 				}
 			}
-			catch (e) { }
+			catch(e) { }
 		}
 
 		document.body.removeChild(tempDiv);
@@ -1258,7 +1255,7 @@ export class JournalPinGraphics extends PIXI.Container {
 						y: Math.round(this.position.y),
 					});
 				}
-				catch (err) {
+				catch(err) {
 					console.error("SDX Journal Pins | Error updating pin position:", err);
 					this.position.set(this.pinData.x, this.pinData.y);
 				}
@@ -1541,7 +1538,9 @@ export class JournalPinTooltip {
 
 export class JournalPinRenderer {
 	static _container = null;
+
 	static _labelContainer = null;
+
 	static _pins = new Map();
 
 	static initialize(layer) {

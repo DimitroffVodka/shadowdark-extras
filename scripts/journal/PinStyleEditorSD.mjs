@@ -248,11 +248,12 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 				label: p.name.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
 			})).sort((a, b) => a.label.localeCompare(b.label));
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX | Error fetching TMFX presets:", err);
 			return [];
 		}
 	}
+
 	_getActiveFilters() {
 		if (!this.pinId) return [];
 		const pin = JournalPinManager.get(this.pinId);
@@ -405,7 +406,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		// Generic File Picker buttons
 		const filePickerBtns = form.querySelectorAll(".file-picker-btn");
 		filePickerBtns.forEach(btn => {
-			btn.addEventListener("click", (ev) => {
+			btn.addEventListener("click", ev => {
 				const targetName = btn.dataset.target;
 				const currentInput = form.querySelector(`[name="${targetName}"]`);
 
@@ -416,7 +417,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 
 				new FilePicker({
 					type: "image",
-					callback: (path) => {
+					callback: path => {
 						if (currentInput) {
 							currentInput.value = path;
 							// Trigger preview update
@@ -449,7 +450,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 
 		// Individual TMFX remove buttons
 		form.querySelectorAll('[data-action="remove-tmfx"]').forEach(btn => {
-			btn.addEventListener("click", (ev) => {
+			btn.addEventListener("click", ev => {
 				ev.preventDefault();
 				const filterId = btn.dataset.filterId;
 				this._onRemoveTMFX(filterId);
@@ -458,7 +459,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 
 		// Individual TMFX edit buttons
 		form.querySelectorAll('[data-action="edit-tmfx"]').forEach(btn => {
-			btn.addEventListener("click", (ev) => {
+			btn.addEventListener("click", ev => {
 				ev.preventDefault();
 				const { filterId, filterType, filterInternalId } = btn.dataset;
 				this._onEditTMFXFilter({ filterId, filterType, filterInternalId });
@@ -555,7 +556,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 
 			// Apply opacities to preview via background and border colors
 			// Note: This is an approximation for CSS preview
-			const parseHex = (hex) => {
+			const parseHex = hex => {
 				const r = parseInt(hex.slice(1, 3), 16);
 				const g = parseInt(hex.slice(3, 5), 16);
 				const b = parseInt(hex.slice(5, 7), 16);
@@ -663,7 +664,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 						try {
 							await document.fonts.load(`16px ${style.fontFamily}`);
 						}
-						catch (e) {
+						catch(e) {
 							console.warn(`SDX Pin Editor | Failed to load font: ${style.fontFamily}`);
 						}
 					}
@@ -974,7 +975,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 				}
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX | Error saving pin style:", err);
 			ui.notifications.error("Error saving pin style settings.");
 		}
@@ -1067,7 +1068,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			// Small delay to ensure flag updates propagate before re-render
 			setTimeout(() => this.render(), 100);
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX | Error applying TMFX preset:", err);
 			ui.notifications.error("Failed to apply TokenMagic FX preset.");
 		}
@@ -1114,7 +1115,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			ui.notifications.info(`Saved preset: ${finalName}`);
 			this.render();
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX | Error saving TMFX preset:", err);
 			ui.notifications.error("Failed to save preset.");
 		}
@@ -1149,7 +1150,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			ui.notifications.info(`Deleted preset: ${presetName}`);
 			this.render();
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX | Error deleting TMFX preset:", err);
 			ui.notifications.error("Failed to delete preset.");
 		}
@@ -1171,7 +1172,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			// Small delay to ensure flag updates propagate before re-render
 			setTimeout(() => this.render(), 100);
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`SDX Pin Editor | Error removing TMFX filter ${filterId}:`, err);
 		}
 	}
@@ -1192,7 +1193,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			// Small delay to ensure flag updates propagate before re-render
 			setTimeout(() => this.render(), 100);
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX | Error clearing TMFX filters:", err);
 		}
 	}

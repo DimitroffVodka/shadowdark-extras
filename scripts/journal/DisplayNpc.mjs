@@ -42,7 +42,7 @@ async function getActorFromUUID(uuid) {
 		}
 		return actor;
 	}
-	catch (e) {
+	catch(e) {
 		console.warn(`SDX DisplayNpcCard: Could not find actor for UUID: ${uuid}`);
 		return null;
 	}
@@ -115,13 +115,13 @@ async function buildDescriptionHtml(npc) {
  */
 function getLocalizedMove(moveKey) {
 	const moveLabels = {
-		"none": game.i18n.localize("SHADOWDARK.npc_move.none") || "None",
-		"close": game.i18n.localize("SHADOWDARK.npc_move.close") || "Close",
-		"near": game.i18n.localize("SHADOWDARK.npc_move.near") || "Near",
-		"doubleNear": game.i18n.localize("SHADOWDARK.range.double_near") || "Double Near",
-		"tripleNear": game.i18n.localize("SHADOWDARK.npc_move.triple_near") || "Triple Near",
-		"far": game.i18n.localize("SHADOWDARK.npc_move.far") || "Far",
-		"special": game.i18n.localize("SHADOWDARK.npc_move.special") || "Special",
+		none: game.i18n.localize("SHADOWDARK.npc_move.none") || "None",
+		close: game.i18n.localize("SHADOWDARK.npc_move.close") || "Close",
+		near: game.i18n.localize("SHADOWDARK.npc_move.near") || "Near",
+		doubleNear: game.i18n.localize("SHADOWDARK.range.double_near") || "Double Near",
+		tripleNear: game.i18n.localize("SHADOWDARK.npc_move.triple_near") || "Triple Near",
+		far: game.i18n.localize("SHADOWDARK.npc_move.far") || "Far",
+		special: game.i18n.localize("SHADOWDARK.npc_move.special") || "Special",
 	};
 	return moveLabels[moveKey] || moveKey || "-";
 }
@@ -143,11 +143,11 @@ function getCreatureType(npc) {
 function getRangeLabel(ranges) {
 	if (!ranges || ranges.length === 0) return "";
 	const rangeLabels = {
-		"close": "Close",
-		"near": "Near",
-		"far": "Far",
-		"doubleNear": "Double Near",
-		"tripleNear": "Triple Near",
+		close: "Close",
+		near: "Near",
+		far: "Far",
+		doubleNear: "Double Near",
+		tripleNear: "Triple Near",
 	};
 	return ranges.map(r => rangeLabels[r] || r).join(", ");
 }

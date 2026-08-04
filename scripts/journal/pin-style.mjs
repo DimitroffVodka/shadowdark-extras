@@ -86,7 +86,7 @@ export function getPinStyle() {
 		const stored = game.settings.get(MODULE_ID, "pinStyleDefaults") || {};
 		return foundry.utils.mergeObject(foundry.utils.deepClone(DEFAULT_PIN_STYLE), stored);
 	}
-	catch (e) {
+	catch(e) {
 		return foundry.utils.deepClone(DEFAULT_PIN_STYLE);
 	}
 }

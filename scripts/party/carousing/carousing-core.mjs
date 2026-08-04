@@ -34,7 +34,7 @@ export async function refreshLinkedCarousingTables() {
 		try {
 			_linkedDataCache.set(rec.id, await resolveLinkedData(rec.links, mode));
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to refresh linked carousing table "${rec.name}"`, err);
 		}
 	}
@@ -149,7 +149,7 @@ export function getCarousingMode() {
 	try {
 		return game.settings.get(MODULE_ID, "carousingMode") || "original";
 	}
-	catch {
+	catch{
 		return "original";
 	}
 }
@@ -242,7 +242,7 @@ export function getExpandedCarousingTables() {
 				tables = [migratedTable];
 			}
 		}
-		catch (e) {
+		catch(e) {
 			// No legacy data
 		}
 
@@ -365,12 +365,10 @@ export async function ensureCarousingJournal() {
 		});
 		console.log(`${MODULE_ID} | Carousing sync journal created:`, journal.id);
 	}
-	else {
-		if (journal.ownership.default !== CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) {
-			await journal.update({
-				ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER },
-			});
-		}
+	else if (journal.ownership.default !== CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) {
+		await journal.update({
+			ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER },
+		});
 	}
 
 	_carousingJournal = journal;
@@ -839,7 +837,7 @@ export async function pruneOfflineCarousingData() {
 
 	const drops = getCarousingDrops();
 	const session = getCarousingSession();
-	const isOffline = (userId) => {
+	const isOffline = userId => {
 		const user = game.users.get(userId);
 		return !user || !user.active;
 	};

@@ -70,7 +70,7 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 
 		// Mode switch (Original <-> Expanded) — swaps to the other editor
 		// at the same window position. Already-active mode is a no-op.
-		html.find('[data-action="switch-mode"]').click(async (event) => {
+		html.find('[data-action="switch-mode"]').click(async event => {
 			if (event.currentTarget.dataset.mode !== "original") return;
 			const position = foundry.utils.deepClone(this.position);
 			await this.close();
@@ -108,7 +108,7 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 		html.find('[data-action="sync-linked"]').click(this._onSyncLinked.bind(this));
 
 		// Tab switching (manual jQuery approach like CarousingTablesApp)
-		html.find(".tabs .item").click((event) => {
+		html.find(".tabs .item").click(event => {
 			event.preventDefault();
 			const tab = $(event.currentTarget).data("tab");
 			this._currentTab = tab; // Remember the active tab
@@ -345,7 +345,7 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 		input.type = "file";
 		input.accept = ".json";
 
-		input.onchange = async (fileEvent) => {
+		input.onchange = async fileEvent => {
 			const file = fileEvent.target.files[0];
 			if (!file) return;
 
@@ -379,7 +379,7 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.table_imported", { name: tableData.name }));
 				this.render(true);
 			}
-			catch (err) {
+			catch(err) {
 				console.error("Failed to import expanded carousing table:", err);
 				ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_error"));
 			}
@@ -501,7 +501,7 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 					const roll = parseInt(rollStr) || entries.length + 1;
 
 					// Parse other fields, "-" means 0
-					const parseField = (val) => val === "-" ? 0 : parseInt(val) || 0;
+					const parseField = val => val === "-" ? 0 : parseInt(val) || 0;
 
 					const mishaps = parseField(parts[1]);
 					const benefits = parseField(parts[2]);
@@ -699,7 +699,7 @@ export default class ExpandedCarousingTablesApp extends HandlebarsApplicationMix
 
 		const defaults = getDefaultExpandedData();
 		const t = picked.tables;
-		const toDescRows = (tbl) => tableResultsToDescriptionRows(tbl);
+		const toDescRows = tbl => tableResultsToDescriptionRows(tbl);
 
 		const tableData = {
 			id: foundry.utils.randomID(),

@@ -81,7 +81,7 @@ function injectHeadingsCollapseButton(app, html) {
 		}
 
 		// Toggle handler
-		toggleBtn.addEventListener("click", (e) => {
+		toggleBtn.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const isCollapsed = headingsOl.style.display === "none";

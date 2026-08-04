@@ -37,7 +37,7 @@ async function getPartyMemberActor(memberKey) {
 	try {
 		return await fromUuid(memberKey);
 	}
-	catch {
+	catch{
 		return null;
 	}
 }
@@ -227,7 +227,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			try {
 				actor = await fromUuid(memberKey);
 			}
-			catch {
+			catch{
 				// Ignore errors
 			}
 		}
@@ -251,7 +251,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 					try {
 						return fromUuidSync(id);
 					}
-					catch {
+					catch{
 						return null;
 					}
 				}
@@ -276,7 +276,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				try {
 					actor = await fromUuid(id);
 				}
-				catch {
+				catch{
 					// Ignore errors
 				}
 			}
@@ -286,6 +286,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		}
 		return members;
 	}
+
 	get memberIds() {
 		return this.actor.getFlag(MODULE_ID, "members") ?? [];
 	}
@@ -602,6 +603,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		const actor = game.actors.get(memberData.id);
 		return actor?.isOwner ?? false;
 	}
+
 	_onDragStart(event) {
 		const target = event.currentTarget;
 
@@ -751,6 +753,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		const nextIds = members.map(m => m.uuid?.startsWith("Compendium.") ? m.uuid : m.id);
 		await this.actor.setFlag(MODULE_ID, "members", nextIds);
 	}
+
 	activateListeners(html) {
 		super.activateListeners(html);
 
@@ -815,6 +818,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		html.find(".sdx-task-header").click(this._onRollTravelTask.bind(this));
 		html.find(".sdx-task-member").contextmenu(this._onToggleTravelAbility.bind(this));
 	}
+
 	async _onConfigurePartySlots(event) {
 		event.preventDefault();
 		if (!this.actor.isOwner) return;
@@ -833,7 +837,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			</form>
 		`;
 
-		const result = await new Promise((resolve) => {
+		const result = await new Promise(resolve => {
 			new foundry.applications.api.DialogV2({
 				window: { title },
 				content,
@@ -1123,7 +1127,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			try {
 				member = await fromUuid(memberKey);
 			}
-			catch {
+			catch{
 				// Ignore
 			}
 		}
@@ -1149,6 +1153,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 
 		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.party.member_removed", { name: memberName }));
 	}
+
 	async _onPlaceMembers(event) {
 		event.preventDefault();
 
@@ -1170,7 +1175,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		// If we have both types, show a selection dialog
 		let filter = "all";
 		if (hasPlayers && hasNpcs) {
-			filter = await new Promise((resolve) => {
+			filter = await new Promise(resolve => {
 				new foundry.applications.api.DialogV2({
 					window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.party.place_tokens_title") },
 					content: `<p>${game.i18n.localize("SHADOWDARK_EXTRAS.party.place_tokens_prompt")}</p>`,
@@ -1270,8 +1275,8 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		if (isCompendiumActor) {
 			// Check if already imported by looking for an actor with same name and compendium source
 			let existingActor = game.actors.find(a =>
-				a.name === member.name &&
-				a.flags?.core?.sourceId === member.uuid
+				a.name === member.name
+				&& a.flags?.core?.sourceId === member.uuid
 			);
 
 			if (!existingActor) {
@@ -1283,7 +1288,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 						try {
 							await imported.update({ "_stats.compendiumSource": member.uuid });
 						}
-						catch {
+						catch{
 							// Fallback to writing the legacy flag if update fails for any reason
 							await imported.setFlag("core", "sourceId", member.uuid);
 						}
@@ -1293,7 +1298,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 						);
 					}
 				}
-				catch (e) {
+				catch(e) {
 					console.error(`${MODULE_ID} | Failed to import compendium actor`, e);
 					ui.notifications.error(
 						game.i18n.format("SHADOWDARK_EXTRAS.party.import_failed", { name: member.name })
@@ -1330,13 +1335,13 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 
 		canvas.stage.addChild(preview);
 
-		return new Promise((resolve) => {
+		return new Promise(resolve => {
 			// Show placement instructions
 			ui.notifications.info(
 				game.i18n.format("SHADOWDARK_EXTRAS.party.place_member_instruction", { name: member.name })
 			);
 
-			const onMouseMove = (event) => {
+			const onMouseMove = event => {
 				const pos = event.data.getLocalPosition(canvas.stage);
 				// Snap to grid
 				const snapped = canvas.grid.getSnappedPoint({ x: pos.x, y: pos.y }, { mode: CONST.GRID_SNAPPING_MODES.TOP_LEFT_CORNER });
@@ -1344,7 +1349,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				preview.visible = true;
 			};
 
-			const onClick = async (event) => {
+			const onClick = async event => {
 				// Left click to place
 				const pos = event.data.getLocalPosition(canvas.stage);
 				const snapped = canvas.grid.getSnappedPoint({ x: pos.x, y: pos.y }, { mode: CONST.GRID_SNAPPING_MODES.TOP_LEFT_CORNER });
@@ -1364,7 +1369,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				resolve(true);
 			};
 
-			const onRightClick = (event) => {
+			const onRightClick = event => {
 				// Right click to cancel
 				canvas.stage.off("mousemove", onMouseMove);
 				canvas.stage.off("mousedown", onClick);
@@ -1375,7 +1380,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 				resolve(false);
 			};
 
-			const onKeyDown = (event) => {
+			const onKeyDown = event => {
 				if (event.key === "Escape") {
 					canvas.stage.off("mousemove", onMouseMove);
 					canvas.stage.off("mousedown", onClick);
@@ -1393,6 +1398,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			document.addEventListener("keydown", onKeyDown);
 		});
 	}
+
 	/**
 	 * Edit party description
 	 * @param {Event} event
@@ -1431,6 +1437,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 			],
 		}).render({ force: true });
 	}
+
 	async _onChangeTravelSpeed(event) {
 		event.preventDefault();
 		const speedKey = event.currentTarget.value;
@@ -1483,7 +1490,7 @@ export function registerPartyTravelSocket(socket) {
 					sender
 				);
 			}
-			catch (error) {
+			catch(error) {
 				console.warn(
 					`${MODULE_ID} | Rejected Party travel mutation from ${sender.name}:`,
 					error
@@ -1524,7 +1531,7 @@ export async function getBrightestPartyLight(partyActor) {
 			try {
 				actor = await fromUuid(id);
 			}
-			catch {
+			catch{
 				continue;
 			}
 		}
@@ -1560,7 +1567,7 @@ export async function getBrightestPartyLight(partyActor) {
 					lightTemplate = lightSources[templateName]?.light;
 					console.log(`${MODULE_ID} | Loaded template '${templateName}' from Shadowdark mappings:`, lightTemplate);
 				}
-				catch (e) {
+				catch(e) {
 					console.warn(`${MODULE_ID} | Failed to load light mappings:`, e);
 				}
 
@@ -1569,10 +1576,10 @@ export async function getBrightestPartyLight(partyActor) {
 					console.log(`${MODULE_ID} | Template '${templateName}' not in JSON, using fallback`);
 					// Fallback values matching Shadowdark's actual light mappings
 					const FALLBACK_TEMPLATES = {
-						"torch": { bright: 5, dim: 30, color: "#d1c846", alpha: 0.2, angle: 360 },
-						"lantern": { bright: 15, dim: 60, color: "#d1c846", alpha: 0.2, angle: 360 },
-						"lightSpellNear": { bright: 30, dim: 0, color: null, alpha: 0.2, angle: 360 },
-						"lightSpellDouble": { bright: 60, dim: 0, color: null, alpha: 0.2, angle: 360 },
+						torch: { bright: 5, dim: 30, color: "#d1c846", alpha: 0.2, angle: 360 },
+						lantern: { bright: 15, dim: 60, color: "#d1c846", alpha: 0.2, angle: 360 },
+						lightSpellNear: { bright: 30, dim: 0, color: null, alpha: 0.2, angle: 360 },
+						lightSpellDouble: { bright: 60, dim: 0, color: null, alpha: 0.2, angle: 360 },
 					};
 
 					// Merge custom templates

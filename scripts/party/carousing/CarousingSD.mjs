@@ -491,7 +491,7 @@ export async function applyRenownDelta(actor, delta, reason = "") {
 				result?.error
 			);
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(
 				`${MODULE_ID} | renown: Shadowdark Enhancer award failed, writing the field directly`,
 				err
@@ -646,7 +646,7 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
 		};
 
 		// Build roll breakdown string for benefits/mishaps (shows modifier)
-		const buildRollBreakdown = (r) => {
+		const buildRollBreakdown = r => {
 			// Show: diceRoll + modifier = final
 			if (r.modifier === 0) {
 				return `<span class="sdx-roll-dice">${r.diceRoll}</span> = <strong>${r.finalRoll}</strong>`;
@@ -1036,7 +1036,7 @@ export function getCarousingWealthBaseMode() {
 	try {
 		return game.settings.get(MODULE_ID, "carousingWealthBase") || "coins";
 	}
-	catch {
+	catch{
 		return "coins";
 	}
 }
@@ -1487,9 +1487,9 @@ export function initCarousingSocket() {
 		// appears as a defined value under the actual key (not a "-=" prefix),
 		// so this check catches both normal updates and deletions.
 		const hasCarousingChange =
-            flagChanges.carousingDrops !== undefined ||
-            flagChanges.carousingGmActors !== undefined ||
-            flagChanges.carousingSession !== undefined;
+            flagChanges.carousingDrops !== undefined
+            || flagChanges.carousingGmActors !== undefined
+            || flagChanges.carousingSession !== undefined;
 
 		if (hasCarousingChange) {
 			rerenderPlayerSheets();
@@ -1497,7 +1497,7 @@ export function initCarousingSocket() {
 	});
 
 	// Listen for carousing toast notifications from other clients
-	game.socket.on(`module.${MODULE_ID}`, (data) => {
+	game.socket.on(`module.${MODULE_ID}`, data => {
 		// Handle carousing toast messages from other users
 		if (data.type === "carousing-toast" && data.senderId !== game.user.id) {
 			_showCarousingToast(data.message, data.toastType);
@@ -1571,7 +1571,7 @@ export async function injectCarousingButton(app, html, actor) {
 	try {
 		if (!game.settings.get(MODULE_ID, "enableCarousing")) return;
 	}
-	catch {
+	catch{
 		return;
 	}
 
@@ -1599,7 +1599,7 @@ export async function injectCarousingButton(app, html, actor) {
 		header.after(buttonHtml);
 
 		// Add listener
-		app.element.find(".sdx-carousing-toggle-btn").click((event) => {
+		app.element.find(".sdx-carousing-toggle-btn").click(event => {
 			event.preventDefault();
 			event.stopPropagation();
 			if (window.sdxOpenCarousingOverlay) {
@@ -1617,14 +1617,14 @@ function activateCarousingListeners(html, actor, app) {
 	if (carousingSection.length === 0) return;
 
 	// GM: Table selection
-	carousingSection.find('[data-action="select-table"]').change(async (event) => {
+	carousingSection.find('[data-action="select-table"]').change(async event => {
 		if (!game.user.isGM) return;
 		const tableId = event.target.value || "default";
 		await setCarousingTable(tableId);
 	});
 
 	// GM: Tier selection
-	carousingSection.find('[data-action="select-tier"]').change(async (event) => {
+	carousingSection.find('[data-action="select-tier"]').change(async event => {
 		if (!game.user.isGM) return;
 		const val = event.target.value;
 		const tierIndex = val === "" ? null : parseInt(val);
@@ -1632,21 +1632,21 @@ function activateCarousingListeners(html, actor, app) {
 	});
 
 	// GM: Roll button
-	carousingSection.find('[data-action="roll-carousing"]').click(async (event) => {
+	carousingSection.find('[data-action="roll-carousing"]').click(async event => {
 		event.preventDefault();
 		if (!game.user.isGM) return;
 		await executeCarousingRolls();
 	});
 
 	// GM: Reset button
-	carousingSection.find('[data-action="reset-carousing"]').click(async (event) => {
+	carousingSection.find('[data-action="reset-carousing"]').click(async event => {
 		event.preventDefault();
 		if (!game.user.isGM) return;
 		await resetCarousingSession();
 	});
 
 	// Player: Confirm button
-	carousingSection.find('[data-action="confirm-carousing"]').click(async (event) => {
+	carousingSection.find('[data-action="confirm-carousing"]').click(async event => {
 		event.preventDefault();
 		const userId = $(event.currentTarget).data("user-id");
 		if (userId !== game.user.id) return;
@@ -1654,7 +1654,7 @@ function activateCarousingListeners(html, actor, app) {
 	});
 
 	// Player: Unconfirm button
-	carousingSection.find('[data-action="unconfirm-carousing"]').click(async (event) => {
+	carousingSection.find('[data-action="unconfirm-carousing"]').click(async event => {
 		event.preventDefault();
 		const userId = $(event.currentTarget).data("user-id");
 		if (userId !== game.user.id) return;
@@ -1668,17 +1668,17 @@ function activateCarousingListeners(html, actor, app) {
 
 		if (userId !== game.user.id) return;
 
-		element.addEventListener("dragover", (event) => {
+		element.addEventListener("dragover", event => {
 			event.preventDefault();
 			event.dataTransfer.dropEffect = "copy";
 			$dropbox.addClass("sdx-carousing-dropbox-hover");
 		});
 
-		element.addEventListener("dragleave", (event) => {
+		element.addEventListener("dragleave", event => {
 			$dropbox.removeClass("sdx-carousing-dropbox-hover");
 		});
 
-		element.addEventListener("drop", async (event) => {
+		element.addEventListener("drop", async event => {
 			event.preventDefault();
 			$dropbox.removeClass("sdx-carousing-dropbox-hover");
 
@@ -1686,7 +1686,7 @@ function activateCarousingListeners(html, actor, app) {
 			try {
 				data = JSON.parse(event.dataTransfer.getData("text/plain"));
 			}
-			catch (e) {
+			catch(e) {
 				return;
 			}
 
@@ -1705,7 +1705,7 @@ function activateCarousingListeners(html, actor, app) {
 	});
 
 	// Clear button
-	carousingSection.find('[data-action="clear-carousing-drop"]').click(async (event) => {
+	carousingSection.find('[data-action="clear-carousing-drop"]').click(async event => {
 		event.preventDefault();
 		const userId = $(event.currentTarget).data("user-id");
 		if (userId !== game.user.id) return;

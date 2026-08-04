@@ -131,10 +131,10 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 
 		// Attack ranges - prepare with checked state
 		const rangesConfig = CONFIG.SHADOWDARK?.RANGES || {
-			"close": "SHADOWDARK.ranges.close",
-			"near": "SHADOWDARK.ranges.near",
-			"far": "SHADOWDARK.ranges.far",
-			"nearLine": "SHADOWDARK.ranges.nearLine",
+			close: "SHADOWDARK.ranges.close",
+			near: "SHADOWDARK.ranges.near",
+			far: "SHADOWDARK.ranges.far",
+			nearLine: "SHADOWDARK.ranges.nearLine",
 		};
 
 		const selectedRanges = item.system.ranges || [];
@@ -215,7 +215,7 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 		// Setup tab click handlers
 		const tabLinks = html.querySelectorAll(".sheet-tabs .item");
 		tabLinks.forEach(link => {
-			link.addEventListener("click", (event) => {
+			link.addEventListener("click", event => {
 				event.preventDefault();
 				const tab = event.currentTarget.dataset.tab;
 				this._onChangeTab(tab);
@@ -226,12 +226,12 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 		const itemImage = html.querySelector(".item-image[data-edit='img']");
 		if (itemImage) {
 			itemImage.style.cursor = "pointer";
-			itemImage.addEventListener("click", (event) => {
+			itemImage.addEventListener("click", event => {
 				event.preventDefault();
 				const fp = new FilePicker({
 					type: "image",
 					current: this.item.img,
-					callback: async (path) => {
+					callback: async path => {
 						await this.item.update({ img: path });
 					},
 				});
@@ -289,7 +289,7 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 		for (const field of statFields) {
 			const input = html.querySelector(field.selector);
 			if (input) {
-				input.addEventListener("change", async (event) => {
+				input.addEventListener("change", async event => {
 					let value = event.target.value;
 					if (field.isNumber) {
 						value = parseInt(value) || 0;
@@ -302,7 +302,7 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 		// Base damage type dropdown
 		const baseDamageTypeSelect = html.querySelector("select[name='flags.shadowdark-extras.baseDamageType']");
 		if (baseDamageTypeSelect) {
-			baseDamageTypeSelect.addEventListener("change", async (event) => {
+			baseDamageTypeSelect.addEventListener("change", async event => {
 				await this.item.setFlag(MODULE_ID, "baseDamageType", event.target.value);
 			});
 		}
@@ -310,7 +310,7 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 		// Source select dropdown
 		const sourceSelect = html.querySelector("select[name='system.source.title']");
 		if (sourceSelect) {
-			sourceSelect.addEventListener("change", async (event) => {
+			sourceSelect.addEventListener("change", async event => {
 				await this.item.update({ "system.source.title": event.target.value });
 			});
 		}
@@ -329,7 +329,7 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 			const saveButton = proseMirrorEditor.querySelector(".editor-save, button[data-action='save']");
 			if (saveButton && !saveButton.dataset.sdxHandled) {
 				saveButton.dataset.sdxHandled = "true";
-				saveButton.addEventListener("click", async (event) => {
+				saveButton.addEventListener("click", async event => {
 					// Get the ProseMirror content
 					const editorContent = proseMirrorEditor.querySelector(".ProseMirror");
 					if (editorContent) {
@@ -348,7 +348,7 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 			const saveButton = proseMirrorEditor.querySelector(".editor-save, button[data-action='save']");
 			if (saveButton && !saveButton.dataset.sdxHandled) {
 				saveButton.dataset.sdxHandled = "true";
-				saveButton.addEventListener("click", async (event) => {
+				saveButton.addEventListener("click", async event => {
 					const editorContent = proseMirrorEditor.querySelector(".ProseMirror");
 					if (editorContent) {
 						const htmlContent = editorContent.innerHTML;
@@ -367,7 +367,7 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 		const extraDamageInputs = html.querySelectorAll("input[name^='flags.shadowdark-extras.extraDamages'], select[name^='flags.shadowdark-extras.extraDamages']");
 
 		extraDamageInputs.forEach(input => {
-			input.addEventListener("change", async (event) => {
+			input.addEventListener("change", async event => {
 				// Parse the field name to get index and field
 				const match = event.target.name.match(/flags\.shadowdark-extras\.extraDamages\.(\d+)\.(formula|damageType)/);
 				if (!match) return;
@@ -404,7 +404,7 @@ export default class NPCAttackSheetSD extends HandlebarsApplicationMixin(Documen
 		const rangeCheckboxes = html.querySelectorAll("input[name='system.ranges']");
 
 		rangeCheckboxes.forEach(checkbox => {
-			checkbox.addEventListener("change", async (event) => {
+			checkbox.addEventListener("change", async event => {
 				// Get all checked ranges
 				const checked = Array.from(rangeCheckboxes)
 					.filter(cb => cb.checked)

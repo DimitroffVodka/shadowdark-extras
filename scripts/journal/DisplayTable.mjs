@@ -37,7 +37,7 @@ async function getTableFromUUID(uuid) {
 		}
 		return table;
 	}
-	catch (e) {
+	catch(e) {
 		console.warn(`SDX DisplayTable: Could not find table for UUID: ${uuid}`);
 		return null;
 	}

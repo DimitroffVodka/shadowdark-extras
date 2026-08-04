@@ -63,7 +63,7 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 
 		// Mode switch (Original <-> Expanded) — swaps to the other editor
 		// at the same window position. Already-active mode is a no-op.
-		html.find('[data-action="switch-mode"]').click(async (event) => {
+		html.find('[data-action="switch-mode"]').click(async event => {
 			if (event.currentTarget.dataset.mode !== "expanded") return;
 			const position = foundry.utils.deepClone(this.position);
 			await this.close();
@@ -72,7 +72,7 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 		});
 
 		// Tab switching
-		html.find(".tabs .item").click((event) => {
+		html.find(".tabs .item").click(event => {
 			const tab = $(event.currentTarget).data("tab");
 			html.find(".tabs .item").removeClass("active");
 			$(event.currentTarget).addClass("active");
@@ -87,14 +87,14 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 		});
 
 		// Edit table button
-		html.find('[data-action="edit-table"]').click((event) => {
+		html.find('[data-action="edit-table"]').click(event => {
 			const tableId = $(event.currentTarget).data("table-id");
 			this.editingTable = tableId;
 			this.render();
 		});
 
 		// Delete table button
-		html.find('[data-action="delete-table"]').click(async (event) => {
+		html.find('[data-action="delete-table"]').click(async event => {
 			const tableId = $(event.currentTarget).data("table-id");
 			const tables = getCustomCarousingTables();
 			const table = tables.find(t => t.id === tableId);
@@ -114,7 +114,7 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 		});
 
 		// Export table button
-		html.find('[data-action="export-table"]').click((event) => {
+		html.find('[data-action="export-table"]').click(event => {
 			const tableId = $(event.currentTarget).data("table-id");
 			this._exportTable(tableId);
 		});
@@ -157,7 +157,7 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 		});
 
 		// Remove row (generic - works for both tiers and outcomes)
-		html.on("click", '[data-action="remove-row"]', (event) => {
+		html.on("click", '[data-action="remove-row"]', event => {
 			$(event.currentTarget).closest(".table-row").remove();
 		});
 
@@ -586,7 +586,7 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 		input.type = "file";
 		input.accept = ".json";
 
-		input.onchange = async (event) => {
+		input.onchange = async event => {
 			const file = event.target.files[0];
 			if (!file) return;
 
@@ -612,7 +612,7 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 				ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.table_imported", { name: tableData.name }));
 				this.render();
 			}
-			catch (err) {
+			catch(err) {
 				console.error("Failed to import carousing table:", err);
 				ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import_error"));
 			}

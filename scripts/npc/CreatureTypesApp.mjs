@@ -52,7 +52,7 @@ export function getCreatureTypes() {
 			return customTypes;
 		}
 	}
-	catch (e) {
+	catch(e) {
 		console.warn(`${MODULE_ID} | Error reading customCreatureTypes setting:`, e);
 	}
 	return DEFAULT_CREATURE_TYPES;
@@ -112,7 +112,7 @@ export function getEffectiveCreatureType(actor) {
 			? (actor.getFlag(MODULE_ID, "creatureType") || "")
 			: (actor.flags?.[MODULE_ID]?.creatureType || "");
 	}
-	catch (e) {
+	catch(e) {
 		flagVal = "";
 	}
 	if (flagVal) return flagVal;
@@ -149,7 +149,7 @@ export async function bakeCreatureTypesToWorldActors({ overwrite = false } = {})
 			await actor.setFlag(MODULE_ID, "creatureType", mapped);
 			updated++;
 		}
-		catch (e) {
+		catch(e) {
 			console.warn(`${MODULE_ID} | bake creature type failed for ${actor.name}:`, e);
 			failed++;
 		}
@@ -204,7 +204,7 @@ export class CreatureTypesApp extends HandlebarsApplicationMixin(ApplicationV2) 
 		});
 
 		// Allow Enter key to add
-		html.querySelector("#new-type-input")?.addEventListener("keypress", (e) => {
+		html.querySelector("#new-type-input")?.addEventListener("keypress", e => {
 			if (e.key === "Enter") {
 				e.preventDefault();
 				html.querySelector('[data-action="add-type"]')?.click();
@@ -212,7 +212,7 @@ export class CreatureTypesApp extends HandlebarsApplicationMixin(ApplicationV2) 
 		});
 
 		// Delete type (event delegation)
-		html.addEventListener("click", (event) => {
+		html.addEventListener("click", event => {
 			const deleteBtn = event.target.closest('[data-action="delete-type"]');
 			if (deleteBtn) {
 				const typeToDelete = deleteBtn.dataset.type;
@@ -296,7 +296,7 @@ export class CreatureTypesApp extends HandlebarsApplicationMixin(ApplicationV2) 
 		input.type = "file";
 		input.accept = ".json";
 
-		input.onchange = async (event) => {
+		input.onchange = async event => {
 			const file = event.target.files[0];
 			if (!file) return;
 
@@ -315,7 +315,7 @@ export class CreatureTypesApp extends HandlebarsApplicationMixin(ApplicationV2) 
 					count: importData.creatureTypes.length,
 				}));
 			}
-			catch (err) {
+			catch(err) {
 				console.error(`${MODULE_ID} | Failed to import creature types:`, err);
 				ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.creature_types.import_error"));
 			}

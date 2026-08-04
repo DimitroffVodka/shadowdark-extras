@@ -89,7 +89,7 @@ async function applyConsumption(entries, actorMap) {
 			if (!item) continue;
 			const nextQuantity = Math.max(0, Number(item.system?.quantity ?? 0) - entry.amount);
 			if (nextQuantity === 0) deletes.push(item.id);
-			else updates.push({ _id: item.id, "system.quantity": nextQuantity });
+			else updates.push({ "_id": item.id, "system.quantity": nextQuantity });
 		}
 		if (updates.length) await actor.updateEmbeddedDocuments("Item", updates);
 		if (deletes.length) await actor.deleteEmbeddedDocuments("Item", deletes);
@@ -155,7 +155,7 @@ async function refreshRestResources(actor) {
 
 	for (const item of actor.items) {
 		if (item.type === "Spell" && item.system?.lost) {
-			updates.push({ _id: item.id, "system.lost": false });
+			updates.push({ "_id": item.id, "system.lost": false });
 			spells++;
 			continue;
 		}
@@ -184,7 +184,7 @@ async function refreshRestResources(actor) {
 		if (item.type === "Wand" && Array.isArray(item.system?.spells)) {
 			if (!item.system.spells.some(spell => spell.lost)) continue;
 			updates.push({
-				_id: item.id,
+				"_id": item.id,
 				"system.spells": item.system.spells.map(spell => ({
 					...foundry.utils.deepClone(spell),
 					lost: false,
@@ -276,7 +276,7 @@ async function removeCampfire(partyActor, campfire) {
 			await partyActor.deleteEmbeddedDocuments("Item", [campfire.id]);
 		}
 	}
-	catch (error) {
+	catch(error) {
 		console.warn(`${MODULE_ID} | Could not clean up camping campfire`, error);
 	}
 }
@@ -815,7 +815,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.complete")
 			);
 		}
-		catch (error) {
+		catch(error) {
 			console.error(`${MODULE_ID} | Camping rest procedure failed`, error);
 			ui.notifications.error(
 				game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.failed", {

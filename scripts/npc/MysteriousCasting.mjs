@@ -58,7 +58,7 @@ export function initMysteriousCasting() {
 		$header.append(toggleHtml);
 
 		// Click handler
-		$header.find(".sdx-mysterious-toggle").on("click", async (event) => {
+		$header.find(".sdx-mysterious-toggle").on("click", async event => {
 			event.preventDefault();
 			event.stopPropagation();
 
@@ -97,9 +97,9 @@ export function initMysteriousCasting() {
 		if (!_mysteriousActors.has(actorId)) return true;
 
 		// IT IS MYSTERIOUS!
-		const isAttack = content.includes("card-attack-roll") ||
-            content.includes("card-damage-roll") ||
-            !!readSdDamageRoll(messageDoc).roll;
+		const isAttack = content.includes("card-attack-roll")
+            || content.includes("card-damage-roll")
+            || !!readSdDamageRoll(messageDoc).roll;
 		const mysteriousLabel = isAttack ? "Unknown Attack" : "Unknown Spell";
 
 		const mysteriousText = game.settings.get(MODULE_ID, "mysteriousCastingMessage");
@@ -150,7 +150,7 @@ export function initMysteriousCasting() {
         `;
 
 		const updateData = {
-			content: newContent,
+			"content": newContent,
 			"flags.shadowdark.isMysterious": true,
 		};
 

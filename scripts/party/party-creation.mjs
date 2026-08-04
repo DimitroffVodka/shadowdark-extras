@@ -42,7 +42,7 @@ export function extendActorCreationDialog() {
 	});
 
 	// Use MutationObserver to catch dynamically created dialogs
-	const observer = new MutationObserver((mutations) => {
+	const observer = new MutationObserver(mutations => {
 		for (const mutation of mutations) {
 			for (const node of mutation.addedNodes) {
 				if (node.nodeType === Node.ELEMENT_NODE) {
@@ -71,8 +71,8 @@ function addPartyOptionToSelect(html) {
 	if (typeSelect.length === 0) return;
 
 	// Check if this select has actor types (Light, NPC, Player)
-	const hasActorTypes = typeSelect.find('option[value="NPC"]').length > 0 ||
-		typeSelect.find('option[value="Player"]').length > 0;
+	const hasActorTypes = typeSelect.find('option[value="NPC"]').length > 0
+		|| typeSelect.find('option[value="Player"]').length > 0;
 	if (!hasActorTypes) return;
 
 	// Check if Party option already exists

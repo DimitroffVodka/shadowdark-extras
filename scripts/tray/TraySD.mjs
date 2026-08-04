@@ -82,7 +82,7 @@ export function initTray() {
 
 	// Hook into actor updates (HP, etc.) - debounced to handle rapid updates
 	let _actorUpdateTimer = null;
-	Hooks.on("updateActor", async (actor) => {
+	Hooks.on("updateActor", async actor => {
 		if (_actorUpdateTimer) clearTimeout(_actorUpdateTimer);
 		_actorUpdateTimer = setTimeout(async () => {
 			_actorUpdateTimer = null;
@@ -96,13 +96,13 @@ export function initTray() {
 	Hooks.on("updateActiveEffect", async () => await renderTray());
 
 	// Hook into item changes (Shadowdark stores conditions as Effect items)
-	Hooks.on("createItem", async (item) => {
+	Hooks.on("createItem", async item => {
 		if (item.type === "Effect") await renderTray();
 	});
-	Hooks.on("deleteItem", async (item) => {
+	Hooks.on("deleteItem", async item => {
 		if (item.type === "Effect") await renderTray();
 	});
-	Hooks.on("updateItem", async (item) => {
+	Hooks.on("updateItem", async item => {
 		if (item.type === "Effect") await renderTray();
 	});
 
@@ -230,7 +230,7 @@ export function initTray() {
 	});
 
 	// Keyboard shortcut: Ctrl to toggle Tiles/Doors mode in Dungeons tab
-	document.addEventListener("keydown", (event) => {
+	document.addEventListener("keydown", event => {
 		// Only respond to Ctrl key without other modifiers
 		if (event.key !== "Control" || event.shiftKey || event.altKey) return;
 
@@ -851,14 +851,14 @@ export function getPinsData() {
 	}
 
 	const collapsedSet = new Set(folders.filter(f => f.collapsed).map(f => f.id));
-	const countPins = (folderId) => {
+	const countPins = folderId => {
 		let n = (pinsByFolder.get(folderId) || []).length;
 		for (const child of (foldersByParent.get(folderId) || [])) n += countPins(child.id);
 		return n;
 	};
 
 	const INDENT = 14;
-	const isImagePath = (s) => !!s && (/\.(svg|png|jpe?g|webp|gif|avif)$/i.test(s) || s.includes("/"));
+	const isImagePath = s => !!s && (/\.(svg|png|jpe?g|webp|gif|avif)$/i.test(s) || s.includes("/"));
 	const rows = [];
 	const emitFolder = (folder, depth, ancestors) => {
 		const selfAncestors = ancestors.concat(folder.id);
@@ -1046,7 +1046,6 @@ export function getMapNotesData() {
 	enrichedNotes.sort((a, b) => a.name.localeCompare(b.name));
 	return enrichedNotes;
 }
-
 
 
 /**

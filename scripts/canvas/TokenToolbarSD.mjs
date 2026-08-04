@@ -34,7 +34,7 @@ export function initTokenToolbar() {
 	});
 
 	// Hook into actor updates (HP, luck, etc.)
-	Hooks.on("updateActor", async (actor) => {
+	Hooks.on("updateActor", async actor => {
 		const currentData = getTokenData();
 		if (currentData && (currentData.actorId === actor.id || currentData.uuid === actor.uuid)) {
 			await renderToolbar();
@@ -318,9 +318,7 @@ function getEquippedItems(actor) {
 		if (isNPC) {
 			if (!isNpcItem) continue;
 		}
-		else {
-			if (!item.system?.equipped) continue;
-		}
+		else if (!item.system?.equipped) continue;
 
 		// Build description based on item type
 		let description = "";
@@ -599,9 +597,9 @@ export function registerTokenToolbarSettings() {
 		config: true,
 		type: String,
 		choices: {
-			"both": "SHADOWDARK_EXTRAS.settings.tokenToolbar.visibility.both",
-			"gm": "SHADOWDARK_EXTRAS.settings.tokenToolbar.visibility.gm",
-			"players": "SHADOWDARK_EXTRAS.settings.tokenToolbar.visibility.players",
+			both: "SHADOWDARK_EXTRAS.settings.tokenToolbar.visibility.both",
+			gm: "SHADOWDARK_EXTRAS.settings.tokenToolbar.visibility.gm",
+			players: "SHADOWDARK_EXTRAS.settings.tokenToolbar.visibility.players",
 		},
 		default: "both",
 		requiresReload: false,

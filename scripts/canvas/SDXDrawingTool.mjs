@@ -107,7 +107,7 @@ class SDXDrawingTool {
 				try {
 					return game.settings.get(MODULE_ID, key);
 				}
-				catch {
+				catch{
 					return fallback;
 				}
 			};
@@ -129,7 +129,7 @@ class SDXDrawingTool {
 			const op = s("drawing.toolbar.opacity", 1.0);
 			if (typeof op === "number" && op >= 0.1 && op <= 1.0) this.state.opacity = op;
 		}
-		catch (e) {
+		catch(e) {
 			console.warn("SDX Drawing | Failed to load saved state:", e);
 		}
 	}
@@ -139,13 +139,13 @@ class SDXDrawingTool {
 		if (game.user?.color) {
 			if (game.user.color.constructor?.name === "Color") {
 				const v = Number(game.user.color);
-				if (!isNaN(v)) hex = "#" + v.toString(16).padStart(6, "0");
+				if (!isNaN(v)) hex = `#${v.toString(16).padStart(6, "0")}`;
 			}
 			else if (typeof game.user.color === "string") {
 				hex = game.user.color;
 			}
 			else if (typeof game.user.color === "number") {
-				hex = "#" + game.user.color.toString(16).padStart(6, "0");
+				hex = `#${game.user.color.toString(16).padStart(6, "0")}`;
 			}
 		}
 		if (!hex.startsWith("#")) hex = "#000000";
@@ -185,7 +185,7 @@ class SDXDrawingTool {
 
 	// ── Socket ──────────────────────────────────────────────────
 	_registerSocketHandlers() {
-		game.socket.on(SOCKET_NAME, (payload) => {
+		game.socket.on(SOCKET_NAME, payload => {
 			if (payload.type === "sdx-drawing-created") {
 				this._handleRemoteDrawing(payload.data);
 			}
@@ -292,7 +292,7 @@ class SDXDrawingTool {
 		try {
 			return game.settings.get(MODULE_ID, "drawing.enablePlayerDrawing");
 		}
-		catch {
+		catch{
 			return true;
 		}
 	}
@@ -308,7 +308,7 @@ class SDXDrawingTool {
 		if (!canvas?.app?.view) return;
 		const self = this;
 
-		this._handlePointerDown = (e) => {
+		this._handlePointerDown = e => {
 			if (!self.active) return;
 			// Track mouse button for toggle-mode click-drag gating.
 			if (e.button === 0) self._mouseButtonDown = true;
@@ -337,7 +337,7 @@ class SDXDrawingTool {
 			}
 		};
 
-		this._handlePointerMove = (e) => {
+		this._handlePointerMove = e => {
 			if (!self.active) return;
 			if (self._isInputActive()) {
 				const mode = self.state.drawingMode;
@@ -366,7 +366,7 @@ class SDXDrawingTool {
 			}
 		};
 
-		this._handlePointerUp = (e) => {
+		this._handlePointerUp = e => {
 			if (!self.active) return;
 			const wasMouseDown = self._mouseButtonDown;
 			if (e.button === 0) self._mouseButtonDown = false;
@@ -955,7 +955,7 @@ class SDXDrawingTool {
 			else if (data.type === "ellipse") this._createRemoteEllipse(data);
 			else if (data.startX !== undefined && data.points) this._createRemoteLine(data);
 		}
-		catch (e) {
+		catch(e) {
 			console.error("SDX Drawing | Remote drawing error:", e);
 		}
 	}
@@ -1083,7 +1083,7 @@ class SDXDrawingTool {
 			try {
 				await canvas.scene.setFlag(MODULE_ID, "permanentDrawings", []);
 			}
-			catch { }
+			catch{ }
 		}
 		if (broadcast) this._broadcast("sdx-permanent-cleared", { userId: game.user.id });
 	}
@@ -1103,7 +1103,7 @@ class SDXDrawingTool {
 				const updated = saved.filter(s => s.drawingId !== d.id);
 				await canvas.scene.setFlag(MODULE_ID, "permanentDrawings", updated);
 			}
-			catch { }
+			catch{ }
 		}
 		this._broadcast("sdx-drawing-deleted", { userId: game.user.id, drawingId: d.id, permanent: true });
 	}
@@ -1164,7 +1164,7 @@ class SDXDrawingTool {
 		try {
 			timeout = game.settings.get(MODULE_ID, "drawing.timedEraseTimeout");
 		}
-		catch { }
+		catch{ }
 		return timeout > 0 ? Date.now() + timeout * 1000 : null;
 	}
 
@@ -1248,7 +1248,7 @@ class SDXDrawingTool {
 			existing.push(data);
 			await scene.setFlag(MODULE_ID, "permanentDrawings", existing);
 		}
-		catch (e) {
+		catch(e) {
 			console.error("SDX Drawing | Failed to save permanent drawing:", e);
 		}
 	}
@@ -1335,7 +1335,7 @@ class SDXDrawingTool {
 				this._lastPermanentDrawing = this._permanentDrawings[this._permanentDrawings.length - 1];
 			}
 		}
-		catch (e) {
+		catch(e) {
 			console.error("SDX Drawing | Failed to render permanent drawing:", e);
 		}
 	}
@@ -1375,7 +1375,7 @@ class SDXDrawingTool {
 					await canvas.scene.setFlag(MODULE_ID, "permanentDrawings", saved);
 				}
 			}
-			catch { }
+			catch{ }
 		}
 		// Broadcast to other clients
 		this._broadcast("sdx-drawing-visibility", { drawingId: id, hidden: newHidden, userId: game.user.id });
@@ -1412,7 +1412,7 @@ class SDXDrawingTool {
 						await canvas.scene.setFlag(MODULE_ID, "permanentDrawings", saved);
 					}
 				}
-				catch { }
+				catch{ }
 			}
 			this._broadcast("sdx-drawing-renamed", { drawingId: id, name: newName, userId: game.user.id });
 			return;
@@ -1519,7 +1519,7 @@ class SDXDrawingTool {
 				this._highlightFilter = colorMatrix;
 			}
 		}
-		catch (e) {
+		catch(e) {
 			console.warn("SDX Drawing | Could not apply glow filter:", e);
 			// Fallback: simple alpha pulse without filter
 			this._highlightFilter = null;
@@ -1615,7 +1615,7 @@ class SDXDrawingTool {
 					const updated = saved.filter(s => s.drawingId !== id);
 					await canvas.scene.setFlag(MODULE_ID, "permanentDrawings", updated);
 				}
-				catch { }
+				catch{ }
 			}
 			this._broadcast("sdx-drawing-deleted", { userId: game.user.id, drawingId: id, permanent: true });
 		}
@@ -1627,64 +1627,72 @@ class SDXDrawingTool {
 			this.state.drawingMode = mode; try {
 				game.settings.set(MODULE_ID, "drawing.toolbar.drawingMode", mode);
 			}
-			catch { }
+			catch{ }
 		}
 	}
+
 	setStampStyle(style) {
 		const v = ["plus", "x", "dot", "arrow", "arrow-up", "arrow-down", "arrow-left", "square", "hex-outline"]; if (v.includes(style)) {
 			this.state.stampStyle = style; try {
 				game.settings.set(MODULE_ID, "drawing.toolbar.stampStyle", style);
 			}
-			catch { }
+			catch{ }
 		}
 	}
+
 	setSymbolSize(size) {
 		if (["small", "medium", "large"].includes(size)) {
 			this.state.symbolSize = size; try {
 				game.settings.set(MODULE_ID, "drawing.toolbar.symbolSize", size);
 			}
-			catch { }
+			catch{ }
 		}
 	}
+
 	setLineStyle(style) {
 		if (["solid", "dotted", "dashed"].includes(style)) {
 			this.state.lineStyle = style; try {
 				game.settings.set(MODULE_ID, "drawing.toolbar.lineStyle", style);
 			}
-			catch { }
+			catch{ }
 		}
 	}
+
 	setBrushSize(size) {
 		this.state.brushSettings.size = Math.max(1, Math.min(20, size)); try {
 			game.settings.set(MODULE_ID, "drawing.toolbar.lineWidth", this.state.brushSettings.size);
 		}
-		catch { }
+		catch{ }
 	}
+
 	setBrushColor(color) {
 		this.state.brushSettings.color = color; try {
 			game.settings.set(MODULE_ID, "drawing.toolbar.color", color);
 		}
-		catch { }
+		catch{ }
 	}
+
 	setTimedErase(enabled) {
 		this.state.timedEraseEnabled = enabled;
 		try {
 			game.settings.set(MODULE_ID, "drawing.toolbar.timedEraseEnabled", enabled);
 		}
-		catch { }
+		catch{ }
 		if (this._cleanupInterval) {
 			clearInterval(this._cleanupInterval); this._cleanupInterval = null;
 		}
 		if (this._pixiDrawings.length) this._scheduleCleanup();
 	}
+
 	setPermanentMode(enabled) {
 		this.state.permanentMode = !!enabled;
 	}
+
 	setOpacity(val) {
 		this.state.opacity = Math.max(0.1, Math.min(1.0, Number(val) || 1.0)); try {
 			game.settings.set(MODULE_ID, "drawing.toolbar.opacity", this.state.opacity);
 		}
-		catch { }
+		catch{ }
 	}
 
 	// ── Hex Outline Helper ──────────────────────────────────────
@@ -1777,8 +1785,8 @@ class SDXDrawingTool {
 		const allEdges = [];
 
 		// Round coordinates to avoid floating point issues (snap to 0.5 precision)
-		const snap = (v) => Math.round(v * 2) / 2;
-		const pointKey = (p) => `${snap(p.x)},${snap(p.y)}`;
+		const snap = v => Math.round(v * 2) / 2;
+		const pointKey = p => `${snap(p.x)},${snap(p.y)}`;
 
 		for (const axial of hexAxialCoords) {
 			const pixelPos = axialToPixel(axial.q, axial.r);

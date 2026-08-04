@@ -29,9 +29,9 @@ export const PartyInventory = {
 				? getMaskedItemName(item)
 				: item.name;
 
-			itemData.showQuantity = item.system.quantity > 1 ||
-				item.system.isAmmunition ||
-				(item.system.slots?.per_slot > 1);
+			itemData.showQuantity = item.system.quantity > 1
+				|| item.system.isAmmunition
+				|| (item.system.slots?.per_slot > 1);
 			itemData.slotsCost = this._calculateItemSlotsCost(item, freeCarrySeen);
 
 			// Light source handling
@@ -157,7 +157,7 @@ export const PartyInventory = {
 			const { syncPartyTokenLight } = await import("./PartySheetSD.mjs");
 			await syncPartyTokenLight(this.actor);
 		}
-		catch (error) {
+		catch(error) {
 			console.error("Shadowdark Extras | Party light sync failed:", error);
 			ui.notifications.error("Party light sync failed.");
 		}
@@ -238,7 +238,7 @@ export const PartyInventory = {
 			</div>
 		`;
 
-		const confirmed = await new Promise((resolve) => {
+		const confirmed = await new Promise(resolve => {
 			new foundry.applications.api.DialogV2({
 				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_title") },
 				content,
@@ -270,7 +270,7 @@ export const PartyInventory = {
 		const updates = members.map(m => {
 			const coins = m.system?.coins ?? {};
 			return {
-				_id: m.id,
+				"_id": m.id,
 				"system.coins.gp": (Number(coins.gp) || 0) + each.gp,
 				"system.coins.sp": (Number(coins.sp) || 0) + each.sp,
 				"system.coins.cp": (Number(coins.cp) || 0) + each.cp,
@@ -403,7 +403,7 @@ export const PartyInventory = {
 				);
 				lightData = lightSources[item.system.light.template]?.light ?? { dim: 0, bright: 0 };
 			}
-			catch (e) {
+			catch(e) {
 				console.warn("Failed to load light source mappings:", e);
 				lightData = { dim: 0, bright: 0 };
 			}

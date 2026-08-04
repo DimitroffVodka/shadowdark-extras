@@ -62,8 +62,8 @@ export class SDXRollerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			height: "auto",
 		},
 		actions: {
-			roll: SDXRollerApp._onStartRoll,
-			cancel: (app) => app.close(),
+			"roll": SDXRollerApp._onStartRoll,
+			"cancel": app => app.close(),
 			"remove-participant": SDXRollerApp._onRemoveParticipant,
 			"toggle-favorite": SDXRollerApp._onToggleFavorite, // Note: not in original but good for V2
 		},
@@ -271,6 +271,7 @@ export class SDXRollerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	}
 
 	static _activeOverlay = null;
+
 	static _clientId = null;
 
 	static _getClientId() {
@@ -340,7 +341,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		const label = this.rollData.customLabel
             || this._buildLabel(showDC);
 		this._introLabel = label;
-		const addMod = (a) => {
+		const addMod = a => {
 			const abilityId = getSdxActorAbility(this.rollData, a.uuid);
 			const isNone = abilityId === "none";
 			const defaultRollMode = this.rollData.actorRollModes?.[a.uuid] ?? "normal";
@@ -370,7 +371,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 
 	_buildLabel(showDC) {
 		const abilityLabel = this.rollData.abilityLabel;
-		let label = abilityLabel === "None" ? "Roll" : abilityLabel + " Check";
+		let label = abilityLabel === "None" ? "Roll" : `${abilityLabel} Check`;
 		if (showDC && Number.isFinite(this.rollData.dc) && this.rollData.dc > 0 && !this.contestants.length) {
 			label = `DC ${this.rollData.dc} ${label}`;
 		}
@@ -411,7 +412,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		});
 
 		// Manual complete
-		el.querySelector(".sdx-overlay-complete")?.addEventListener("click", (ev) => {
+		el.querySelector(".sdx-overlay-complete")?.addEventListener("click", ev => {
 			ev.currentTarget.classList.add("sdx-hidden-vis");
 			this._broadcastEnd({ button: true });
 		});
@@ -725,12 +726,12 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 			const el = this.element;
 			if (el) await this._runOutroSequence(el, result.success);
 		}
-		catch (error) {
+		catch(error) {
 			console.error(`${MODULE_ID} | Could not finish the SDX roll overlay`, error);
 			try {
 				await this.close();
 			}
-			catch (closeError) {
+			catch(closeError) {
 				console.warn(`${MODULE_ID} | Could not close the failed SDX roll overlay`, closeError);
 			}
 		}
@@ -757,7 +758,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		try {
 			await this.close();
 		}
-		catch (error) {
+		catch(error) {
 			console.warn(`${MODULE_ID} | Could not close the canceled SDX roll overlay`, error);
 		}
 	}
@@ -785,7 +786,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 			: this.rollData.dc;
 
 		const hasDC = Number.isFinite(dc) && dc > 0;
-		const buildDice = (r) => {
+		const buildDice = r => {
 			const dice = r.diceResults ?? [];
 			const mode = r.rollMode ?? "normal";
 			if (dice.length <= 1 || mode === "normal") return dice.map(v => ({ value: v, css: "" }));

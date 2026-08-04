@@ -26,7 +26,7 @@ export function getPartyWeatherTableUuid() {
 	try {
 		return String(game.settings.get(MODULE_ID, SETTING_KEY) ?? "").trim();
 	}
-	catch {
+	catch{
 		return "";
 	}
 }
@@ -43,7 +43,7 @@ export async function getConfiguredPartyWeatherTable() {
 		const table = await fromUuid(uuid);
 		return isRollTableDocument(table) ? table : null;
 	}
-	catch (error) {
+	catch(error) {
 		console.warn(`${MODULE_ID} | Could not resolve Party weather RollTable ${uuid}`, error);
 		return null;
 	}
@@ -117,7 +117,7 @@ export class PartyWeatherSettingsApp extends HandlebarsApplicationMixin(Applicat
 					});
 				tableGroups.push({ label: pack.metadata.label, tables });
 			}
-			catch (error) {
+			catch(error) {
 				console.warn(`${MODULE_ID} | Could not index RollTable pack ${pack.collection}`, error);
 			}
 		}
@@ -142,7 +142,7 @@ export class PartyWeatherSettingsApp extends HandlebarsApplicationMixin(Applicat
 			try {
 				table = await fromUuid(uuid);
 			}
-			catch (error) {
+			catch(error) {
 				console.warn(`${MODULE_ID} | Could not resolve selected Party weather RollTable`, error);
 			}
 

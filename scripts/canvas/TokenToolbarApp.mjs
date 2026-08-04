@@ -175,7 +175,7 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		try {
 			localStorage.setItem(POSITION_KEY, JSON.stringify({ x, y }));
 		}
-		catch (e) {
+		catch(e) {
 			console.warn("shadowdark-extras | Failed to save toolbar position:", e);
 		}
 	}
@@ -189,7 +189,7 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			const saved = localStorage.getItem(POSITION_KEY);
 			return saved ? JSON.parse(saved) : null;
 		}
-		catch (e) {
+		catch(e) {
 			console.warn("shadowdark-extras | Failed to load toolbar position:", e);
 			return null;
 		}
@@ -202,7 +202,7 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		try {
 			localStorage.removeItem(POSITION_KEY);
 		}
-		catch (e) {
+		catch(e) {
 			// Ignore
 		}
 		const elem = document.querySelector("#sdx-token-toolbar");
@@ -233,7 +233,7 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (luckAttr) {
 			const pulpMode = game.settings.get("shadowdark", "usePulpMode");
 
-			luckAttr.addEventListener("click", (e) => {
+			luckAttr.addEventListener("click", e => {
 				if (pulpMode) {
 					changeLuck(e, 1);
 				}
@@ -242,7 +242,7 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				}
 			});
 
-			luckAttr.addEventListener("contextmenu", (e) => {
+			luckAttr.addEventListener("contextmenu", e => {
 				e.preventDefault();
 				if (pulpMode) {
 					changeLuck(e, -1);
@@ -269,7 +269,7 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Click on equipped items to roll/use them
 		toolbar.querySelectorAll(".sdx-toolbar-icon-equipped").forEach(el => {
-			el.addEventListener("click", async (e) => {
+			el.addEventListener("click", async e => {
 				const actorUuid = el.dataset.actorUuid;
 				const itemId = el.dataset.itemId;
 				const itemType = el.dataset.itemType;
@@ -365,7 +365,7 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Right-click on effects to delete them
 		toolbar.querySelectorAll(".sdx-toolbar-icon-effect").forEach(el => {
-			el.addEventListener("contextmenu", async (e) => {
+			el.addEventListener("contextmenu", async e => {
 				e.preventDefault();
 
 				const actorUuid = el.dataset.actorUuid;
@@ -403,7 +403,7 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Right-click on spell icons to terminate them
 		toolbar.querySelectorAll(".sdx-toolbar-icon-spell").forEach(el => {
-			el.addEventListener("contextmenu", async (e) => {
+			el.addEventListener("contextmenu", async e => {
 				e.preventDefault();
 
 				const isFocus = el.dataset.isFocus === "true";
@@ -434,7 +434,7 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Add drag cursor indicator
 		dragHandle.style.cursor = "grab";
 
-		const onMouseDown = (e) => {
+		const onMouseDown = e => {
 			// Don't start drag if clicking on the sheet overlay
 			if (e.target.classList.contains("sdx-toolbar-sheet")) return;
 
@@ -456,7 +456,7 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			document.addEventListener("mouseup", onMouseUp);
 		};
 
-		const onMouseMove = (e) => {
+		const onMouseMove = e => {
 			if (!this._isDragging) return;
 
 			const x = e.clientX - this._dragOffset.x;
@@ -471,7 +471,7 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			toolbar.style.bottom = "auto";
 		};
 
-		const onMouseUp = (e) => {
+		const onMouseUp = e => {
 			if (!this._isDragging) return;
 
 			this._isDragging = false;
@@ -488,7 +488,7 @@ export class TokenToolbarApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		dragHandle.addEventListener("mousedown", onMouseDown);
 
 		// Double-click to reset position
-		dragHandle.addEventListener("dblclick", (e) => {
+		dragHandle.addEventListener("dblclick", e => {
 			if (e.target.classList.contains("sdx-toolbar-sheet")) return;
 			this.resetPosition();
 		});

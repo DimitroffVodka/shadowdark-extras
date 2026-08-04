@@ -98,7 +98,7 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Search
 		const search = html.querySelector(".poi-sort-search");
 		if (search) {
-			search.addEventListener("input", (e) => {
+			search.addEventListener("input", e => {
 				this._searchTerm = e.target.value.toLowerCase();
 				this._filterList(list);
 			});
@@ -108,7 +108,7 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		list.querySelectorAll(".poi-sort-item").forEach(li => {
 			const tileId = li.dataset.tileId;
 
-			li.addEventListener("click", (e) => {
+			li.addEventListener("click", e => {
 				if (e.target.closest(".poi-sort-btn")) return;
 				const tile = canvas.tiles.get(tileId);
 				if (!tile) return;
@@ -121,7 +121,7 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				}
 			});
 
-			li.addEventListener("dblclick", (e) => {
+			li.addEventListener("dblclick", e => {
 				if (e.target.closest(".poi-sort-btn")) return;
 				const tile = canvas.tiles.get(tileId);
 				tile?.document.sheet.render(true);
@@ -130,39 +130,39 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			li.addEventListener("mouseenter", () => this._createHighlight(tileId));
 			li.addEventListener("mouseleave", () => this._removeHighlight());
 
-			li.querySelector(".poi-sort-rotate-left")?.addEventListener("click", (e) => {
+			li.querySelector(".poi-sort-rotate-left")?.addEventListener("click", e => {
 				e.stopPropagation();
 				this._rotateTile(tileId, -90);
 			});
 
-			li.querySelector(".poi-sort-rotate-right")?.addEventListener("click", (e) => {
+			li.querySelector(".poi-sort-rotate-right")?.addEventListener("click", e => {
 				e.stopPropagation();
 				this._rotateTile(tileId, 90);
 			});
 
-			li.querySelector(".poi-sort-scale-down")?.addEventListener("click", (e) => {
+			li.querySelector(".poi-sort-scale-down")?.addEventListener("click", e => {
 				e.stopPropagation();
 				this._scaleTile(tileId, 0.8);
 			});
 
-			li.querySelector(".poi-sort-scale-up")?.addEventListener("click", (e) => {
+			li.querySelector(".poi-sort-scale-up")?.addEventListener("click", e => {
 				e.stopPropagation();
 				this._scaleTile(tileId, 1.25);
 			});
 
-			li.querySelector(".poi-sort-eye")?.addEventListener("click", (e) => {
+			li.querySelector(".poi-sort-eye")?.addEventListener("click", e => {
 				e.stopPropagation();
 				this._toggleHidden(tileId, li);
 			});
 
-			li.querySelector(".poi-sort-delete")?.addEventListener("click", (e) => {
+			li.querySelector(".poi-sort-delete")?.addEventListener("click", e => {
 				e.stopPropagation();
 				this._deleteTile(tileId);
 			});
 
 			const trackpoint = li.querySelector(".poi-sort-trackpoint");
 			if (trackpoint) {
-				trackpoint.addEventListener("mousedown", (e) => {
+				trackpoint.addEventListener("mousedown", e => {
 					e.stopPropagation();
 					e.preventDefault();
 					this._startTrackpoint(tileId, e, trackpoint);
@@ -182,7 +182,7 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		let draggedEl = null;
 
 		list.querySelectorAll(".poi-sort-item").forEach(li => {
-			li.addEventListener("dragstart", (e) => {
+			li.addEventListener("dragstart", e => {
 				draggedEl = li;
 				li.classList.add("dragging");
 				e.dataTransfer.effectAllowed = "move";
@@ -198,7 +198,7 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				draggedEl = null;
 			});
 
-			li.addEventListener("dragover", (e) => {
+			li.addEventListener("dragover", e => {
 				e.preventDefault();
 				e.dataTransfer.dropEffect = "move";
 				if (li !== draggedEl) {
@@ -222,7 +222,7 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				li.classList.remove("drag-over-below");
 			});
 
-			li.addEventListener("drop", (e) => {
+			li.addEventListener("drop", e => {
 				e.preventDefault();
 				if (!draggedEl || li === draggedEl) return;
 
@@ -385,7 +385,7 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		on("createTile", () => this._debouncedRender());
 		on("deleteTile", () => this._debouncedRender());
 		on("controlTile", () => this.updateControlled());
-		on("refreshTile", (tile) => {
+		on("refreshTile", tile => {
 			if (this._hiddenTileIds.has(tile.id)) {
 				if (tile.mesh) tile.mesh.alpha = 0;
 			}
@@ -432,7 +432,7 @@ export class PoiTileSortApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			pending: false,
 		};
 
-		const onMove = (ev) => {
+		const onMove = ev => {
 			const dx = Math.max(-maxRadius, Math.min(maxRadius, ev.clientX - originX));
 			const dy = Math.max(-maxRadius, Math.min(maxRadius, ev.clientY - originY));
 			state.vx = (dx / maxRadius) * speed;

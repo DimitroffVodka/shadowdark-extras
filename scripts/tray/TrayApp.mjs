@@ -174,8 +174,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	async _syncPoiSortPanel() {
 		const viewMode = getViewMode();
 		const isPoiMode = this._isExpanded && (
-			(viewMode === "hexes" && getActiveTileTab() === "symbols") ||
-            viewMode === "decor"
+			(viewMode === "hexes" && getActiveTileTab() === "symbols")
+            || viewMode === "decor"
 		);
 		const { PoiTileSortApp } = await import("../canvas/PoiTileSortSD.mjs");
 		if (isPoiMode) PoiTileSortApp.show();
@@ -200,7 +200,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			const { TomStore } = await import("../tom/TomStore.mjs");
 			activeSceneId = TomStore.activeSceneId || null;
 		}
-		catch (err) {
+		catch(err) {
 			// Ignore
 		}
 		this._tomActiveSceneId = activeSceneId;
@@ -246,7 +246,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				return { ...sceneData, isVideo };
 			});
 		}
-		catch (err) {
+		catch(err) {
 			console.error("Failed to load TomScenes:", err);
 			return [];
 		}
@@ -271,7 +271,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				return { ...folder, scenes };
 			});
 		}
-		catch (err) {
+		catch(err) {
 			console.error("Failed to load TomFolders:", err);
 			return [];
 		}
@@ -291,59 +291,59 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 
 		// Toggle button - click to expand/collapse
-		elem.querySelector(".tray-handle-button-toggle")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-toggle")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			this.toggleExpanded();
 		});
 
 		// View cycle button
-		elem.querySelector(".tray-handle-button-viewcycle")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-viewcycle")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			cycleViewMode();
 		});
 
 		// GM Tools Buttons
-		elem.querySelector(".tray-handle-button-tool[data-action='tom-scene-switcher']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='tom-scene-switcher']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			this._toggleTomScenePanel();
 		});
 
-		elem.querySelector(".tray-handle-button-tool[data-action='tom-overlay-manager']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='tom-overlay-manager']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			this._toggleTomOverlayPanel();
 		});
 
 		// GM Tools Buttons
-		elem.querySelector(".tray-handle-button-tool[data-action='leader']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='leader']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			showLeaderDialog();
 		});
 
-		elem.querySelector(".tray-handle-button-tool[data-action='marching']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='marching']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			showMovementModeDialog();
 		});
 
-		elem.querySelector(".tray-handle-button-tool[data-action='formation']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='formation']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			FormationSpawnerSD.show();
 		});
 
-		elem.querySelector(".tray-handle-button-tool[data-action='add-pin']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='add-pin']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			PinPlacer.activate();
 		});
 
 
-		elem.querySelector(".tray-handle-button-tool[data-action='pin-list']")?.addEventListener("click", async (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='pin-list']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			await setViewMode("pins");
@@ -352,7 +352,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 
 		// Light Tracker Button
-		elem.querySelector(".tray-handle-button-tool[data-action='light-tracker']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='light-tracker']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			// Use SDX AppV2 Light Tracker if available, fallback to system tracker
@@ -368,7 +368,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// Carousing Button
-		elem.querySelector(".tray-handle-button-tool[data-action='carousing']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='carousing']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			if (window.sdxOpenCarousingOverlay) {
@@ -380,7 +380,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// Drawing Tools Button
-		elem.querySelector(".tray-handle-button-tool[data-action='sdx-drawing']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='sdx-drawing']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			if (game.shadowdarkExtras?.drawingToolbar?.toggle) {
@@ -392,7 +392,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// Maphub Launcher Button
-		elem.querySelector(".tray-handle-button-tool[data-action='sdx-maphub-launcher']")?.addEventListener("click", async (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='sdx-maphub-launcher']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			if (!game.user.isGM) return;
@@ -401,7 +401,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// SDX Coords Toggle Button
-		elem.querySelector(".tray-handle-button-tool[data-action='sdx-coords']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='sdx-coords']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			if (window.SDXCoordinates) {
@@ -413,7 +413,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// Hex Tooltip Toggle Button
-		elem.querySelector(".tray-handle-button-tool[data-action='sdx-hex-tooltip']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='sdx-hex-tooltip']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			if (!canvas?.grid?.isHexagonal) {
@@ -425,7 +425,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// Hex Fog Toggle Button (GM only)
-		elem.querySelector(".tray-handle-button-tool[data-action='sdx-hex-fog']")?.addEventListener("click", async (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='sdx-hex-fog']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			if (!canvas?.grid?.isHexagonal) {
@@ -440,7 +440,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// Hex Fog Effects Context Menu (right-click on hex fog button)
-		elem.querySelector(".tray-handle-button-tool[data-action='sdx-hex-fog']")?.addEventListener("contextmenu", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='sdx-hex-fog']")?.addEventListener("contextmenu", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			if (!game.user.isGM) return;
@@ -468,7 +468,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 			// "None" option
 			const noneItem = document.createElement("div");
-			noneItem.className = "sdx-fog-effect-menu-item" + (!current ? " active" : "");
+			noneItem.className = `sdx-fog-effect-menu-item${!current ? " active" : ""}`;
 			noneItem.innerHTML = "<i class=\"fa-solid fa-ban\"></i><span>None</span>";
 			noneItem.addEventListener("click", () => {
 				setHexFogEffect(sceneId, null);
@@ -479,7 +479,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			// Effect options
 			for (const fx of effects) {
 				const item = document.createElement("div");
-				item.className = "sdx-fog-effect-menu-item" + (current === fx.name ? " active" : "");
+				item.className = `sdx-fog-effect-menu-item${current === fx.name ? " active" : ""}`;
 				item.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i><span>${fx.label}</span>`;
 				item.addEventListener("click", () => {
 					setHexFogEffect(sceneId, fx.name);
@@ -497,7 +497,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			document.body.appendChild(menu);
 
 			// Close on outside click
-			const closeMenu = (ev) => {
+			const closeMenu = ev => {
 				if (!menu.contains(ev.target)) {
 					menu.remove();
 					document.removeEventListener("mousedown", closeMenu, true);
@@ -507,7 +507,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// Solo Hex Mode Toggle Button (GM only)
-		elem.querySelector(".tray-handle-button-tool[data-action='sdx-solo-mode']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='sdx-solo-mode']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const active = toggleSoloMode();
@@ -515,7 +515,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// SDX Roller Button
-		elem.querySelector(".tray-handle-button-tool[data-action='sdx-roller']")?.addEventListener("click", async (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='sdx-roller']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const { SDXRollerApp } = await import("./SDXRollerApp.mjs");
@@ -523,7 +523,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// POI Undo Button
-		elem.querySelector(".tray-handle-button-tool[data-action='poi-undo']")?.addEventListener("click", async (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='poi-undo']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			await undoLastPoi();
@@ -532,7 +532,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// POI Redo Button
-		elem.querySelector(".tray-handle-button-tool[data-action='poi-redo']")?.addEventListener("click", async (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='poi-redo']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			await redoLastPoi();
@@ -541,7 +541,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// POI Scale Down Button
-		elem.querySelector(".tray-handle-button-tool[data-action='poi-scale-down']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='poi-scale-down']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			adjustPoiScale(-0.1);
@@ -549,7 +549,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// POI Scale Up Button
-		elem.querySelector(".tray-handle-button-tool[data-action='poi-scale-up']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='poi-scale-up']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			adjustPoiScale(0.1);
@@ -557,21 +557,21 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// POI Rotate Left Button
-		elem.querySelector(".tray-handle-button-tool[data-action='poi-rotate-left']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='poi-rotate-left']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			rotatePoiLeft();
 		});
 
 		// POI Rotate Right Button
-		elem.querySelector(".tray-handle-button-tool[data-action='poi-rotate-right']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='poi-rotate-right']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			rotatePoiRight();
 		});
 
 		// POI Mirror Button
-		elem.querySelector(".tray-handle-button-tool[data-action='poi-mirror']")?.addEventListener("click", (e) => {
+		elem.querySelector(".tray-handle-button-tool[data-action='poi-mirror']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			togglePoiMirror();
@@ -580,7 +580,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Tab buttons
 		elem.querySelectorAll(".tray-tab-button").forEach(btn => {
-			btn.addEventListener("click", async (e) => {
+			btn.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const view = btn.dataset.view;
@@ -621,7 +621,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Dungeon mode tabs (Tiles / Doors)
 		elem.querySelectorAll(".dungeon-mode-tab").forEach(tab => {
-			tab.addEventListener("click", (e) => {
+			tab.addEventListener("click", e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const mode = tab.dataset.dungeonMode;
@@ -634,7 +634,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Dungeon floor tile selection
 		elem.querySelectorAll(".dungeon-tile-thumb[data-dungeon-tile]").forEach(tile => {
-			tile.addEventListener("click", (e) => {
+			tile.addEventListener("click", e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const tilePath = tile.dataset.dungeonTile;
@@ -648,7 +648,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Dungeon door tile selection
 		elem.querySelectorAll(".dungeon-tile-thumb[data-dungeon-door]").forEach(tile => {
-			tile.addEventListener("click", (e) => {
+			tile.addEventListener("click", e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const tilePath = tile.dataset.dungeonDoor;
@@ -662,7 +662,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Dungeon wall tile selection
 		elem.querySelectorAll(".dungeon-tile-thumb[data-dungeon-wall]").forEach(tile => {
-			tile.addEventListener("click", (e) => {
+			tile.addEventListener("click", e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const tilePath = tile.dataset.dungeonWall;
@@ -676,7 +676,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Interior door tile selection
 		elem.querySelectorAll(".dungeon-intdoor-thumb[data-dungeon-intdoor]").forEach(tile => {
-			tile.addEventListener("click", (e) => {
+			tile.addEventListener("click", e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const tilePath = tile.dataset.dungeonIntdoor;
@@ -690,7 +690,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Interior wall tile selection
 		elem.querySelectorAll(".dungeon-intwall-thumb[data-dungeon-intwall]").forEach(tile => {
-			tile.addEventListener("click", (e) => {
+			tile.addEventListener("click", e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const tilePath = tile.dataset.dungeonIntwall;
@@ -705,7 +705,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Dungeon "No Foundry Walls" toggle
 		const noWallsCheckbox = elem.querySelector(".dungeon-no-walls-checkbox");
 		if (noWallsCheckbox) {
-			noWallsCheckbox.addEventListener("change", (e) => {
+			noWallsCheckbox.addEventListener("change", e => {
 				setNoFoundryWalls(e.target.checked);
 				renderTray();
 			});
@@ -714,7 +714,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Dungeon "Wall Shadows" toggle
 		const wallShadowsCheckbox = elem.querySelector(".dungeon-wall-shadows-checkbox");
 		if (wallShadowsCheckbox) {
-			wallShadowsCheckbox.addEventListener("change", (e) => {
+			wallShadowsCheckbox.addEventListener("change", e => {
 				setWallShadows(e.target.checked);
 			});
 		}
@@ -722,13 +722,13 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Dungeon "Curved Walls" toggle (re-walls painted floors with smoothed walls)
 		const curvedWallsCheckbox = elem.querySelector(".dungeon-curved-walls-checkbox");
 		if (curvedWallsCheckbox) {
-			curvedWallsCheckbox.addEventListener("change", (e) => {
+			curvedWallsCheckbox.addEventListener("change", e => {
 				setCurvedWalls(e.target.checked);
 			});
 		}
 
 		// Dungeon "Flatten Level" button
-		elem.querySelector(".dungeon-flatten-level-btn")?.addEventListener("click", async (e) => {
+		elem.querySelector(".dungeon-flatten-level-btn")?.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const byElevation = getDungeonFloorLevels();
@@ -772,7 +772,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// Dungeon "Unflatten Level" button
-		elem.querySelector(".dungeon-unflatten-level-btn")?.addEventListener("click", async (e) => {
+		elem.querySelector(".dungeon-unflatten-level-btn")?.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const flattenedTiles = getFlattendDungeonLevels();
@@ -820,13 +820,13 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Dungeon background select
 		const bgSelect = elem.querySelector(".dungeon-background-select");
 		if (bgSelect) {
-			bgSelect.addEventListener("change", (e) => {
+			bgSelect.addEventListener("change", e => {
 				setDungeonBackground(e.target.value);
 			});
 		}
 
 		// Dungeon Generator toggle
-		elem.querySelector(".dungeon-generator-toggle")?.addEventListener("click", (e) => {
+		elem.querySelector(".dungeon-generator-toggle")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			toggleGeneratorPanel();
@@ -834,7 +834,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// Dungeon Generator close button
-		elem.querySelector(".dungeon-generator-close")?.addEventListener("click", (e) => {
+		elem.querySelector(".dungeon-generator-close")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			toggleGeneratorPanel();
@@ -843,7 +843,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Generator slider value displays
 		elem.querySelectorAll(".dgen-row input[type='range']").forEach(slider => {
-			slider.addEventListener("input", (e) => {
+			slider.addEventListener("input", e => {
 				const valueSpan = e.target.closest(".dgen-row").querySelector(".dgen-value");
 				if (valueSpan) valueSpan.textContent = e.target.value;
 			});
@@ -854,12 +854,12 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const colorRow = elem.querySelector(".dgen-color-row");
 		const thicknessRow = elem.querySelector(".dgen-thickness")?.closest(".dgen-row");
 		if (texturedCheckbox) {
-			const updateTexturedVisibility = (checked) => {
+			const updateTexturedVisibility = checked => {
 				if (colorRow) colorRow.style.display = checked ? "none" : "";
 				if (thicknessRow) thicknessRow.style.display = checked ? "none" : "";
 			};
 			updateTexturedVisibility(texturedCheckbox.checked);
-			texturedCheckbox.addEventListener("change", (e) => {
+			texturedCheckbox.addEventListener("change", e => {
 				updateTexturedVisibility(e.target.checked);
 			});
 		}
@@ -870,16 +870,16 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (levelsSlider) {
 			const decorRows = [".dgen-stairs", ".dgen-stairsdown"]
 				.map(s => elem.querySelector(s)?.closest(".dgen-row")).filter(Boolean);
-			const updateMultiLevelUI = (n) => {
+			const updateMultiLevelUI = n => {
 				const multi = parseInt(n) >= 2;
 				for (const row of decorRows) row.style.display = multi ? "none" : "";
 			};
 			updateMultiLevelUI(levelsSlider.value);
-			levelsSlider.addEventListener("input", (e) => updateMultiLevelUI(e.target.value));
+			levelsSlider.addEventListener("input", e => updateMultiLevelUI(e.target.value));
 		}
 
 		// Generator seed refresh
-		elem.querySelector(".dgen-seed-refresh")?.addEventListener("click", (e) => {
+		elem.querySelector(".dgen-seed-refresh")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const newSeed = generateRandomSeed();
@@ -893,7 +893,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (styleSel) styleSel.value = getGeneratorSettings().style || "rooms";
 
 		// Generator apply button
-		elem.querySelector(".dgen-apply")?.addEventListener("click", async (e) => {
+		elem.querySelector(".dgen-apply")?.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 
@@ -967,14 +967,14 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		/* ------------------------------------------- */
 
 		// Create Scene
-		elem.querySelector("[data-action='create-scene']")?.addEventListener("click", async (e) => {
+		elem.querySelector("[data-action='create-scene']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			const { TomSceneEditor } = await import("../tom/TomEditors.mjs");
 			new TomSceneEditor().render(true);
 		});
 
 		// Create Folder
-		elem.querySelector("[data-action='create-folder']")?.addEventListener("click", async (e) => {
+		elem.querySelector("[data-action='create-folder']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			const name = await this._promptFolderName("Create Folder", "New Folder");
 			if (!name) return;
@@ -984,7 +984,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// Stop Broadcast (Header Button)
-		elem.querySelector("[data-action='stop-broadcast']")?.addEventListener("click", async (e) => {
+		elem.querySelector("[data-action='stop-broadcast']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
 			const { TomStore } = await import("../tom/TomStore.mjs");
@@ -996,7 +996,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Folder Actions
 		elem.querySelectorAll("[data-action='toggle-folder']").forEach(header => {
-			header.addEventListener("click", async (e) => {
+			header.addEventListener("click", async e => {
 				// Don't toggle if clicking an action button inside the header
 				if (e.target.closest("[data-action='rename-folder']") || e.target.closest("[data-action='delete-folder']")) return;
 				e.preventDefault();
@@ -1008,7 +1008,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		elem.querySelectorAll("[data-action='rename-folder']").forEach(btn => {
-			btn.addEventListener("click", async (e) => {
+			btn.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const folderId = btn.dataset.folderId;
@@ -1022,7 +1022,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		elem.querySelectorAll("[data-action='delete-folder']").forEach(btn => {
-			btn.addEventListener("click", async (e) => {
+			btn.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const folderId = btn.dataset.folderId;
@@ -1042,17 +1042,17 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		elem.querySelectorAll(".scene-folder, .scene-uncat-container").forEach(dropZone => {
 			const folderId = dropZone.dataset.folderId || null;
 
-			dropZone.addEventListener("dragover", (e) => {
+			dropZone.addEventListener("dragover", e => {
 				e.preventDefault();
 				e.dataTransfer.dropEffect = "move";
 				dropZone.classList.add("drag-over");
 			});
-			dropZone.addEventListener("dragleave", (e) => {
+			dropZone.addEventListener("dragleave", e => {
 				if (!dropZone.contains(e.relatedTarget)) {
 					dropZone.classList.remove("drag-over");
 				}
 			});
-			dropZone.addEventListener("drop", async (e) => {
+			dropZone.addEventListener("drop", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				dropZone.classList.remove("drag-over");
@@ -1097,7 +1097,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			const sceneId = card.dataset.sceneId;
 
 			// Activate Scene (Broadcast) - Clicking the thumbnail/name
-			card.querySelector(".scene-card-activate")?.addEventListener("click", async (e) => {
+			card.querySelector(".scene-card-activate")?.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
@@ -1108,7 +1108,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			});
 
 			// Edit Scene
-			card.querySelector("[data-action='edit-scene']")?.addEventListener("click", async (e) => {
+			card.querySelector("[data-action='edit-scene']")?.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const { TomSceneEditor } = await import("../tom/TomEditors.mjs");
@@ -1116,7 +1116,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			});
 
 			// Delete Scene
-			card.querySelector("[data-action='delete-scene']")?.addEventListener("click", async (e) => {
+			card.querySelector("[data-action='delete-scene']")?.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const sceneName = card.querySelector(".scene-name").textContent;
@@ -1135,21 +1135,21 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			});
 
 			// Drag and Drop — set data for folder-level drop handler
-			card.addEventListener("dragstart", (e) => {
+			card.addEventListener("dragstart", e => {
 				e.stopPropagation();
 				card.classList.add("dragging");
 				e.dataTransfer.effectAllowed = "move";
 				e.dataTransfer.setData("text/plain", sceneId);
 			});
 
-			card.addEventListener("dragend", (e) => {
+			card.addEventListener("dragend", e => {
 				e.stopPropagation();
 				card.classList.remove("dragging");
 				elem.querySelectorAll(".scene-card").forEach(c => c.classList.remove("drag-over"));
 				elem.querySelectorAll(".scene-folder, .scene-uncat-container").forEach(z => z.classList.remove("drag-over"));
 			});
 
-			card.addEventListener("dragover", (e) => {
+			card.addEventListener("dragover", e => {
 				e.preventDefault();
 				e.stopPropagation();
 				e.dataTransfer.dropEffect = "move";
@@ -1159,7 +1159,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				}
 			});
 
-			card.addEventListener("dragleave", (e) => {
+			card.addEventListener("dragleave", e => {
 				e.stopPropagation();
 				if (!card.contains(e.relatedTarget)) {
 					card.classList.remove("drag-over");
@@ -1168,20 +1168,20 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// Select party button
-		elem.querySelector('[data-action="select-party"]')?.addEventListener("click", (e) => {
+		elem.querySelector('[data-action="select-party"]')?.addEventListener("click", e => {
 			e.preventDefault();
 			selectPartyTokens();
 		});
 
 		// Toggle NPC visibility for players (GM only)
-		elem.querySelector('[data-action="toggle-npc-visibility"]')?.addEventListener("click", (e) => {
+		elem.querySelector('[data-action="toggle-npc-visibility"]')?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			toggleHideNpcsFromPlayers();
 		});
 
 		// Clear selection button
-		elem.querySelector(".button-clear")?.addEventListener("click", (e) => {
+		elem.querySelector(".button-clear")?.addEventListener("click", e => {
 			e.preventDefault();
 			clearTokenSelection();
 		});
@@ -1189,7 +1189,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Pin/Note List Pan Action
 		elem.querySelectorAll(".pin-control").forEach(btn => {
-			btn.addEventListener("click", async (e) => {
+			btn.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 
@@ -1303,7 +1303,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// ───────────────────────── PIN FOLDERS (GM) ─────────────────────────
-		const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+		const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;")
 			.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 		const promptFolderName = async (title, initial = "") => {
@@ -1318,7 +1318,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const ICON_DIR = "modules/shadowdark-extras/assets/icons/";
 		const FilePickerImpl = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
 
-		const editFolderDialog = async (folderId) => {
+		const editFolderDialog = async folderId => {
 			const f = JournalPinManager.listFolders().find(x => x.id === folderId);
 			if (!f) return;
 			const content = `
@@ -1350,7 +1350,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					new FilePickerImpl({
 						type: "image",
 						current: cur,
-						callback: (path) => {
+						callback: path => {
 							if (input) input.value = path;
 						},
 					}).browse();
@@ -1376,7 +1376,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		};
 
 		// New top-level folder
-		elem.querySelector(".pin-folder-newbtn[data-action='folder-new']")?.addEventListener("click", async (e) => {
+		elem.querySelector(".pin-folder-newbtn[data-action='folder-new']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			const name = await promptFolderName("New Folder", "New Folder");
 			if (name) await JournalPinManager.createFolder({ name });
@@ -1410,12 +1410,12 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			const res = await JournalPinManager.convertNotesToPins({
 				noteIds: noteIds || undefined, folderId: data.folderId, deleteOriginals: data.deleteOriginals,
 			});
-			ui.notifications.info(`Created ${res.created} pin${res.created === 1 ? "" : "s"}` +
-                (res.deleted ? `, removed ${res.deleted} note${res.deleted === 1 ? "" : "s"}.` : "."));
+			ui.notifications.info(`Created ${res.created} pin${res.created === 1 ? "" : "s"}${
+				res.deleted ? `, removed ${res.deleted} note${res.deleted === 1 ? "" : "s"}.` : "."}`);
 		};
 		this._runConvertDialog = runConvertDialog;
 
-		elem.querySelector(".pin-folder-newbtn[data-action='convert-notes']")?.addEventListener("click", (e) => {
+		elem.querySelector(".pin-folder-newbtn[data-action='convert-notes']")?.addEventListener("click", e => {
 			e.preventDefault();
 			runConvertDialog(null);
 		});
@@ -1423,7 +1423,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Folder header controls + collapse toggle
 		elem.querySelectorAll(".pin-folder-header").forEach(header => {
 			const folderId = header.dataset.folderId;
-			const toggle = async (e) => {
+			const toggle = async e => {
 				e.preventDefault(); e.stopPropagation();
 				const f = JournalPinManager.listFolders().find(x => x.id === folderId);
 				await JournalPinManager.setFolderCollapsed(folderId, !(f?.collapsed));
@@ -1432,7 +1432,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			header.querySelector(".pin-folder-name")?.addEventListener("click", toggle);
 
 			header.querySelectorAll(".pin-folder-control").forEach(btn => {
-				btn.addEventListener("click", async (e) => {
+				btn.addEventListener("click", async e => {
 					e.preventDefault(); e.stopPropagation();
 					const action = btn.dataset.action;
 					if (action === "folder-add-child") {
@@ -1461,7 +1461,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			const clearOver = () => pinsList.querySelectorAll(".drag-over").forEach(n => n.classList.remove("drag-over"));
 
 			pinsList.querySelectorAll(".pin-entry[draggable='true'], .pin-folder-header[draggable='true']").forEach(row => {
-				row.addEventListener("dragstart", (e) => {
+				row.addEventListener("dragstart", e => {
 					drag = row.classList.contains("pin-folder-header")
 						? { type: "folder", id: row.dataset.folderId }
 						: { type: "pin", id: row.dataset.id };
@@ -1469,7 +1469,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					try {
 						e.dataTransfer.setData("text/plain", drag.id);
 					}
-					catch (_) { }
+					catch(_) { }
 					row.classList.add("sdx-dragging");
 				});
 				row.addEventListener("dragend", () => {
@@ -1477,7 +1477,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				});
 			});
 
-			pinsList.addEventListener("dragover", (e) => {
+			pinsList.addEventListener("dragover", e => {
 				if (!drag) return;
 				e.preventDefault();
 				e.dataTransfer.dropEffect = "move";
@@ -1485,11 +1485,11 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				const target = e.target.closest(".pin-folder-header, .pin-entry");
 				if (target) target.classList.add("drag-over");
 			});
-			pinsList.addEventListener("dragleave", (e) => {
+			pinsList.addEventListener("dragleave", e => {
 				if (e.target === pinsList) clearOver();
 			});
 
-			pinsList.addEventListener("drop", async (e) => {
+			pinsList.addEventListener("drop", async e => {
 				if (!drag) return;
 				e.preventDefault();
 				clearOver();
@@ -1517,7 +1517,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						}
 					}
 				}
-				catch (err) {
+				catch(err) {
 					console.error("SDX | pin folder DnD error", err);
 				}
 			});
@@ -1525,17 +1525,17 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Note Actions
 		elem.querySelectorAll(".note-control").forEach(btn => {
-			btn.addEventListener("click", async (e) => {
+			btn.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const action = btn.dataset.action;
 				const entry = btn.closest(".note-entry");
 				const id = entry.dataset.id;
-				const type = entry.querySelector(".note-icon i").className.includes("fa-user") ? "Token" :
-					entry.querySelector(".note-icon i").className.includes("fa-lightbulb") ? "AmbientLight" :
-						entry.querySelector(".note-icon i").className.includes("fa-volume-high") ? "AmbientSound" :
-							entry.querySelector(".note-icon i").className.includes("fa-image") ? "Tile" :
-								entry.querySelector(".note-icon i").className.includes("fa-block-brick") ? "Wall" : null;
+				const type = entry.querySelector(".note-icon i").className.includes("fa-user") ? "Token"
+					: entry.querySelector(".note-icon i").className.includes("fa-lightbulb") ? "AmbientLight"
+						: entry.querySelector(".note-icon i").className.includes("fa-volume-high") ? "AmbientSound"
+							: entry.querySelector(".note-icon i").className.includes("fa-image") ? "Tile"
+								: entry.querySelector(".note-icon i").className.includes("fa-block-brick") ? "Wall" : null;
 
 				if (!type) return;
 
@@ -1622,7 +1622,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Note Toggle Action
 		elem.querySelectorAll(".note-header").forEach(header => {
-			header.addEventListener("click", (e) => {
+			header.addEventListener("click", e => {
 				// Don't toggle if clicking a control button
 				if (e.target.closest(".note-controls")) return;
 
@@ -1643,17 +1643,17 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Note Entry Context Menu (Edit)
 		elem.querySelectorAll(".note-entry").forEach(entry => {
-			entry.addEventListener("contextmenu", (e) => {
+			entry.addEventListener("contextmenu", e => {
 				if (!game.user.isGM) return;
 				e.preventDefault();
 				e.stopPropagation();
 
 				const id = entry.dataset.id;
-				const type = entry.querySelector(".note-icon i").className.includes("fa-user") ? "Token" :
-					entry.querySelector(".note-icon i").className.includes("fa-lightbulb") ? "AmbientLight" :
-						entry.querySelector(".note-icon i").className.includes("fa-volume-high") ? "AmbientSound" :
-							entry.querySelector(".note-icon i").className.includes("fa-image") ? "Tile" :
-								entry.querySelector(".note-icon i").className.includes("fa-block-brick") ? "Wall" : null;
+				const type = entry.querySelector(".note-icon i").className.includes("fa-user") ? "Token"
+					: entry.querySelector(".note-icon i").className.includes("fa-lightbulb") ? "AmbientLight"
+						: entry.querySelector(".note-icon i").className.includes("fa-volume-high") ? "AmbientSound"
+							: entry.querySelector(".note-icon i").className.includes("fa-image") ? "Tile"
+								: entry.querySelector(".note-icon i").className.includes("fa-block-brick") ? "Wall" : null;
 
 				if (!type) return;
 
@@ -1687,7 +1687,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Map Note Actions
 		elem.querySelectorAll(".map-note-control").forEach(btn => {
-			btn.addEventListener("click", async (e) => {
+			btn.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 
@@ -1736,7 +1736,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			// or just use client-side filtering without re-render.
 
 			// We will use client-side filtering for better performance (no re-render)
-			searchInput.addEventListener("input", (e) => {
+			searchInput.addEventListener("input", e => {
 				e.preventDefault();
 				const term = e.target.value;
 				this._pinSearchTerm = term;
@@ -1821,7 +1821,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
        ═══════════════════════════════════════════════════════════════ */
 
 	async _promptFolderName(title, defaultName = "") {
-		return new Promise((resolve) => {
+		return new Promise(resolve => {
 			const dialog = new foundry.applications.api.DialogV2({
 				window: { title },
 				content: `<div class="form-group"><label>Folder Name</label><input type="text" name="folderName" value="${defaultName}" autofocus></div>`,

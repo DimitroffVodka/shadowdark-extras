@@ -39,7 +39,7 @@ async function getItemFromUUID(uuid) {
 		}
 		return item;
 	}
-	catch (e) {
+	catch(e) {
 		console.warn(`SDX DisplayItemCard: Could not find item for UUID: ${uuid}`);
 		return null;
 	}
@@ -66,12 +66,12 @@ function formatCost(cost) {
  */
 function getRangeLabel(rangeKey) {
 	const rangeLabels = {
-		"close": "Close",
-		"near": "Near",
-		"far": "Far",
-		"doubleNear": "Double Near",
-		"tripleNear": "Triple Near",
-		"self": "Self",
+		close: "Close",
+		near: "Near",
+		far: "Far",
+		doubleNear: "Double Near",
+		tripleNear: "Triple Near",
+		self: "Self",
 	};
 	return rangeLabels[rangeKey] || rangeKey || "—";
 }

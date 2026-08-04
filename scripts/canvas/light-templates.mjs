@@ -202,7 +202,7 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 		});
 
 		// Edit Template
-		html.find('[data-action="editTemplate"]').on("click", (ev) => {
+		html.find('[data-action="editTemplate"]').on("click", ev => {
 			const index = $(ev.currentTarget).data("index");
 			const templates = game.settings.get(MODULE_ID, "customLightTemplates") || DEFAULT_LIGHT_TEMPLATES;
 			this.editData = { ...templates[index], id: index }; // Use index as ID for update
@@ -210,7 +210,7 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 		});
 
 		// Duplicate Template
-		html.find('[data-action="duplicateTemplate"]').on("click", async (ev) => {
+		html.find('[data-action="duplicateTemplate"]').on("click", async ev => {
 			const index = $(ev.currentTarget).data("index");
 			const templates = game.settings.get(MODULE_ID, "customLightTemplates") || DEFAULT_LIGHT_TEMPLATES;
 			const template = foundry.utils.deepClone(templates[index]);
@@ -224,7 +224,7 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 		});
 
 		// Delete Template
-		html.find('[data-action="deleteTemplate"]').on("click", async (ev) => {
+		html.find('[data-action="deleteTemplate"]').on("click", async ev => {
 			const index = $(ev.currentTarget).data("index");
 			const templates = game.settings.get(MODULE_ID, "customLightTemplates") || DEFAULT_LIGHT_TEMPLATES;
 
@@ -266,7 +266,7 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 		const templates = game.settings.get(MODULE_ID, "customLightTemplates") || foundry.utils.deepClone(DEFAULT_LIGHT_TEMPLATES);
 
 		// Helper to properly handle checkboxes and numbers
-		const processFormData = (data) => {
+		const processFormData = data => {
 			// Auto-generate key from name if empty
 			let key = data.key;
 

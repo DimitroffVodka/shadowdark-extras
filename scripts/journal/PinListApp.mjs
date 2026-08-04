@@ -106,21 +106,19 @@ export class PinListApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				if (contentType === "text") {
 					displayContent = style.customText || "";
 				}
-				else {
-					if (pin.journalId && pin.pageId) {
-						const journal = game.journal.get(pin.journalId);
-						if (journal) {
-							const sortedPages = journal.pages.contents.sort((a, b) => a.sort - b.sort);
-							const idx = sortedPages.findIndex(p => p.id === pin.pageId);
-							displayContent = idx >= 0 ? idx : 0;
-						}
-						else {
-							displayContent = "0";
-						}
+				else if (pin.journalId && pin.pageId) {
+					const journal = game.journal.get(pin.journalId);
+					if (journal) {
+						const sortedPages = journal.pages.contents.sort((a, b) => a.sort - b.sort);
+						const idx = sortedPages.findIndex(p => p.id === pin.pageId);
+						displayContent = idx >= 0 ? idx : 0;
 					}
 					else {
 						displayContent = "0";
 					}
+				}
+				else {
+					displayContent = "0";
 				}
 			}
 
@@ -155,7 +153,7 @@ export class PinListApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (!html) return;
 
 		// Pan to pin (event delegation handles both .pin-entry click and pan control)
-		html.addEventListener("click", (ev) => {
+		html.addEventListener("click", ev => {
 			const entry = ev.target.closest(".pin-entry");
 			if (!entry) return;
 			// Ignore clicks on other controls (none today, but future-proof)

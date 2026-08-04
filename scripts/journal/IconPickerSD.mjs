@@ -40,6 +40,7 @@ export class IconPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 	// Cache for icon list
 	static _iconCache = null;
+
 	static _categoriesCache = null;
 
 	constructor(options = {}) {
@@ -98,7 +99,7 @@ export class IconPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						});
 					}
 				}
-				catch (err) {
+				catch(err) {
 					console.warn(`SDX Icon Picker | Could not browse category: ${categoryPath}`, err);
 				}
 			}
@@ -108,7 +109,7 @@ export class IconPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			console.log(`SDX Icon Picker | Loaded ${icons.length} icons from ${categories.size} categories`);
 
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX Icon Picker | Failed to load icons:", err);
 			this._iconCache = [];
 			this._categoriesCache = [];
@@ -167,7 +168,7 @@ export class IconPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Category filter
 		const categorySelect = html.querySelector('[name="category"]');
 		if (categorySelect) {
-			categorySelect.addEventListener("change", async (e) => {
+			categorySelect.addEventListener("change", async e => {
 				this._selectedCategory = e.target.value;
 				this._currentPage = 0;
 				await this.render();
@@ -178,7 +179,7 @@ export class IconPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const searchInput = html.querySelector('[name="search"]');
 		if (searchInput) {
 			let searchTimeout;
-			searchInput.addEventListener("input", (e) => {
+			searchInput.addEventListener("input", e => {
 				clearTimeout(searchTimeout);
 				searchTimeout = setTimeout(async () => {
 					this._searchTerm = e.target.value;
@@ -192,7 +193,7 @@ export class IconPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		// Icon selection
 		html.querySelectorAll(".icon-item").forEach(item => {
-			item.addEventListener("click", (e) => {
+			item.addEventListener("click", e => {
 				const iconPath = e.currentTarget.dataset.path;
 				this._selectIcon(iconPath);
 			});
@@ -217,7 +218,7 @@ export class IconPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// ESC key to cancel
-		html.addEventListener("keydown", (e) => {
+		html.addEventListener("keydown", e => {
 			if (e.key === "Escape") {
 				e.preventDefault();
 				this._cancel();

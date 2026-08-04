@@ -101,10 +101,10 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 
 		// Attack ranges - prepare with checked state
 		const rangesConfig = CONFIG.SHADOWDARK?.RANGES || {
-			"close": "SHADOWDARK.ranges.close",
-			"near": "SHADOWDARK.ranges.near",
-			"far": "SHADOWDARK.ranges.far",
-			"nearLine": "SHADOWDARK.ranges.nearLine",
+			close: "SHADOWDARK.ranges.close",
+			near: "SHADOWDARK.ranges.near",
+			far: "SHADOWDARK.ranges.far",
+			nearLine: "SHADOWDARK.ranges.nearLine",
 		};
 
 		const selectedRanges = item.system.ranges || [];
@@ -160,7 +160,7 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 		// Base damage type dropdown
 		const baseDamageTypeSelect = html.querySelector("select[name='flags.shadowdark-extras.baseDamageType']");
 		if (baseDamageTypeSelect) {
-			baseDamageTypeSelect.addEventListener("change", async (event) => {
+			baseDamageTypeSelect.addEventListener("change", async event => {
 				await this.item.setFlag(MODULE_ID, "baseDamageType", event.target.value);
 			});
 		}
@@ -191,7 +191,7 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 			const saveButton = proseMirrorEditor.querySelector(".editor-save, button[data-action='save']");
 			if (saveButton && !saveButton.dataset.sdxHandled) {
 				saveButton.dataset.sdxHandled = "true";
-				saveButton.addEventListener("click", async (event) => {
+				saveButton.addEventListener("click", async event => {
 					// Get the ProseMirror content
 					const editorContent = proseMirrorEditor.querySelector(".ProseMirror");
 					if (editorContent) {
@@ -210,7 +210,7 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 			const saveButton = proseMirrorEditor.querySelector(".editor-save, button[data-action='save']");
 			if (saveButton && !saveButton.dataset.sdxHandled) {
 				saveButton.dataset.sdxHandled = "true";
-				saveButton.addEventListener("click", async (event) => {
+				saveButton.addEventListener("click", async event => {
 					const editorContent = proseMirrorEditor.querySelector(".ProseMirror");
 					if (editorContent) {
 						const htmlContent = editorContent.innerHTML;
@@ -240,7 +240,7 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 		for (const field of statFields) {
 			const input = html.querySelector(field.selector);
 			if (input) {
-				const save = async (event) => {
+				const save = async event => {
 					let value = event.target.value;
 					if (field.isNumber) {
 						value = parseInt(value) || 0;
@@ -267,7 +267,7 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 		const extraDamageInputs = html.querySelectorAll("input[name^='flags.shadowdark-extras.extraDamages'], select[name^='flags.shadowdark-extras.extraDamages']");
 
 		extraDamageInputs.forEach(input => {
-			input.addEventListener("change", async (event) => {
+			input.addEventListener("change", async event => {
 				const match = event.target.name.match(/flags\.shadowdark-extras\.extraDamages\.(\d+)\.(formula|damageType)/);
 				if (!match) return;
 
@@ -297,7 +297,7 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 		const rangeCheckboxes = html.querySelectorAll("input[name='system.ranges']");
 
 		rangeCheckboxes.forEach(checkbox => {
-			checkbox.addEventListener("change", async (event) => {
+			checkbox.addEventListener("change", async event => {
 				const checked = Array.from(rangeCheckboxes)
 					.filter(cb => cb.checked)
 					.map(cb => cb.value);

@@ -39,14 +39,14 @@ export function renderPinContextMenu(menuItems, x, y) {
 
 	document.body.appendChild(menu);
 
-	const closeMenu = (e) => {
+	const closeMenu = e => {
 		if (!menu.contains(e.target)) {
 			menu.remove();
 			document.removeEventListener("click", closeMenu);
 			document.removeEventListener("keydown", closeOnEscape);
 		}
 	};
-	const closeOnEscape = (e) => {
+	const closeOnEscape = e => {
 		if (e.key === "Escape") {
 			menu.remove();
 			document.removeEventListener("click", closeMenu);
