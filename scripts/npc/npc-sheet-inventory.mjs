@@ -64,9 +64,9 @@ function prepareNpcInventory(actor) {
 		}
 
 		// Check if item should show quantity
-		itemData.showQuantity = item.system.isAmmunition ||
-			(item.system.slots?.per_slot > 1) ||
-			item.system.quantity > 1;
+		itemData.showQuantity = item.system.isAmmunition
+			|| (item.system.slots?.per_slot > 1)
+			|| item.system.quantity > 1;
 
 		// Sort treasure items separately
 		if (item.system.treasure) {
@@ -99,7 +99,7 @@ function calculateNpcCoinSlots(coins) {
 	const gp = Number(coins?.gp ?? 0) || 0;
 	const sp = Number(coins?.sp ?? 0) || 0;
 	const cp = Number(coins?.cp ?? 0) || 0;
-	const totalGpValue = gp + sp / 10 + cp / 100;
+	const totalGpValue = gp + (sp / 10) + (cp / 100);
 	return Math.max(0, Math.floor(totalGpValue / 100));
 }
 
@@ -121,7 +121,7 @@ export function injectNpcCreatureType(app, html, actor) {
 		const enabled = game.settings.get(MODULE_ID, "enableNpcCreatureType");
 		if (!enabled) return;
 	}
-	catch (e) {
+	catch(e) {
 		console.warn(`${MODULE_ID} | Setting enableNpcCreatureType not registered or failed`, e);
 		return;
 	}
@@ -231,7 +231,7 @@ export async function injectNpcInventoryTab(app, html, data) {
 	const inventoryContent = contentBody.find('.tab[data-tab="tab-inventory"]');
 
 	// Handle inventory tab click manually since it's not part of the system's tab handler
-	inventoryTabBtn.click((event) => {
+	inventoryTabBtn.click(event => {
 		event.preventDefault();
 		event.stopPropagation();
 
@@ -282,7 +282,7 @@ export async function injectNpcInventoryTab(app, html, data) {
  */
 function activateNpcInventoryListeners(html, actor) {
 	// Create new item
-	html.find('[data-action="npc-create-item"]').click(async (event) => {
+	html.find('[data-action="npc-create-item"]').click(async event => {
 		event.preventDefault();
 		const itemData = {
 			name: game.i18n.localize("SHADOWDARK_EXTRAS.sheet.npc.inventory.new_item"),
@@ -293,7 +293,7 @@ function activateNpcInventoryListeners(html, actor) {
 	});
 
 	// Increment item quantity
-	html.find('[data-action="npc-item-increment"]').click(async (event) => {
+	html.find('[data-action="npc-item-increment"]').click(async event => {
 		event.preventDefault();
 		const itemId = event.currentTarget.dataset.itemId;
 		const item = actor.items.get(itemId);
@@ -304,7 +304,7 @@ function activateNpcInventoryListeners(html, actor) {
 	});
 
 	// Decrement item quantity
-	html.find('[data-action="npc-item-decrement"]').click(async (event) => {
+	html.find('[data-action="npc-item-decrement"]').click(async event => {
 		event.preventDefault();
 		const itemId = event.currentTarget.dataset.itemId;
 		const item = actor.items.get(itemId);
@@ -316,7 +316,7 @@ function activateNpcInventoryListeners(html, actor) {
 
 	// Make items draggable
 	html.find('.npc-item-list .item[draggable="true"]').each((i, li) => {
-		li.addEventListener("dragstart", (event) => {
+		li.addEventListener("dragstart", event => {
 			const uuid = li.dataset.uuid;
 			if (!uuid) return;
 
@@ -362,7 +362,7 @@ export function patchNpcSheetForItemDrops(app) {
 		try {
 			data = JSON.parse(event.dataTransfer.getData("text/plain"));
 		}
-		catch (err) {
+		catch(err) {
 			return;
 		}
 

@@ -4,7 +4,6 @@
  * (ExpandedCarousingTablesApp) editors.
  */
 
-const MODULE_ID = "shadowdark-extras";
 
 /**
  * Build the `<optgroup>` HTML listing every world + compendium RollTable,
@@ -16,7 +15,9 @@ async function buildTableOptionGroups() {
 	const groups = [];
 
 	// World tables
-	const worldTables = [...(game.tables?.contents ?? [])].sort((a, b) => a.name.localeCompare(b.name));
+	const worldTables = [...(game.tables?.contents ?? [])].sort(
+		(a, b) => a.name.localeCompare(b.name)
+	);
 	if (worldTables.length) {
 		const opts = worldTables
 			.map(t => `<option value="${t.uuid}">${esc(t.name)} (${t.results.size})</option>`)
@@ -120,7 +121,10 @@ export async function pickMultipleFoundryTables(fields) {
 			label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.import"),
 			callback: (event, button, dialog) => {
 				const root = dialog.element;
-				const out = { name: root.querySelector('[name="sdx-ft-name"]')?.value?.trim() || "", uuids: {} };
+				const out = {
+					name: root.querySelector('[name="sdx-ft-name"]')?.value?.trim() || "",
+					uuids: {},
+				};
 				for (const f of fields) out.uuids[f.key] = root.querySelector(`[name="sdx-ft-${f.key}"]`)?.value || "";
 				return out;
 			},
@@ -148,12 +152,12 @@ export async function pickMultipleFoundryTables(fields) {
 export async function resolveLinkedData(links = {}, mode = "original") {
 	const out = {};
 	const skipped = [];
-	const load = async (uuid) => {
+	const load = async uuid => {
 		if (!uuid) return null;
 		try {
 			return await fromUuid(uuid);
 		}
-		catch {
+		catch{
 			return null;
 		}
 	};
@@ -190,11 +194,17 @@ export async function resolveLinkedData(links = {}, mode = "original") {
 	if (mode === "expanded") {
 		const benefitTbl = await load(links.benefit);
 		if (benefitTbl) {
-			overlay("benefits", tableResultsToDescriptionRows(benefitTbl), b => b.description, benefitTbl.name);
+			overlay(
+				"benefits", tableResultsToDescriptionRows(benefitTbl), b => b.description,
+				benefitTbl.name
+			);
 		}
 		const mishapTbl = await load(links.mishap);
 		if (mishapTbl) {
-			overlay("mishaps", tableResultsToDescriptionRows(mishapTbl), m => m.description, mishapTbl.name);
+			overlay(
+				"mishaps", tableResultsToDescriptionRows(mishapTbl), m => m.description,
+				mishapTbl.name
+			);
 		}
 	}
 
@@ -227,7 +237,7 @@ export function describeLinks(links = {}) {
 		try {
 			name = fromUuidSync(uuid)?.name ?? null;
 		}
-		catch { /* pack not loaded */ }
+		catch{ /* pack not loaded */ }
 		parts.push(`${game.i18n.localize(labels[key])}: ${name || "?"}`);
 	}
 	return parts.join(" • ");

@@ -81,7 +81,7 @@ export const PartyTravel = {
 				)
 			);
 		}
-		catch (error) {
+		catch(error) {
 			console.error(
 				"Shadowdark Extras | Party travel update failed:",
 				error
@@ -163,7 +163,9 @@ export const PartyTravel = {
 			await this._removeMemberFromTask(memberId);
 		}
 		else {
-			console.warn("Shadowdark Extras | Missing taskKey or memberId for removal", taskKey, memberId);
+			console.warn(
+				"Shadowdark Extras | Missing taskKey or memberId for removal", taskKey, memberId
+			);
 		}
 	},
 
@@ -205,7 +207,7 @@ export const PartyTravel = {
 					const { syncPartyTokenLight } = await import("./PartySheetSD.mjs");
 					return syncPartyTokenLight(this.actor);
 				}
-				catch (error) {
+				catch(error) {
 					console.error("Shadowdark Extras | Party light sync failed:", error);
 					return null;
 				}
@@ -220,11 +222,9 @@ export const PartyTravel = {
 	async _onToggleTravelAbility(event) {
 		event.preventDefault();
 		event.stopPropagation();
-		console.log("Shadowdark Extras | Toggle Ability: Right Click Detected");
 		const target = event.currentTarget;
 		const taskKey = target.dataset.taskKey;
 		const memberId = target.dataset.memberId;
-		console.log("Shadowdark Extras | Toggle Ability Data:", { taskKey, memberId });
 
 		if (!taskKey || !memberId) return;
 
@@ -237,7 +237,6 @@ export const PartyTravel = {
 		const currentIdx = selections[taskKey]?.[memberId] ?? 0;
 		const nextIdx = (currentIdx + 1) % task.abilities.length;
 
-		console.log("Shadowdark Extras | New Selection Index:", nextIdx);
 		await this._requestPartyTravelMutation({
 			operation: "selectAbility",
 			memberId,
@@ -257,8 +256,6 @@ export const PartyTravel = {
 
 		await this.actor.setFlag(MODULE_ID, "travelDCs", dcs);
 	},
-
-
 
 	async _onRollTravelTask(event) {
 		event.preventDefault();
@@ -284,7 +281,9 @@ export const PartyTravel = {
 		const selections = this.actor.getFlag(MODULE_ID, "travelSelections") ?? {};
 
 		const members = await this.getMembers();
-		const actorsToRoll = assignedIds.map(id => members.find(m => m.id === id || m.uuid === id)).filter(m => m);
+		const actorsToRoll = assignedIds
+			.map(id => members.find(m => m.id === id || m.uuid === id))
+			.filter(m => m);
 
 		if (actorsToRoll.length === 0) {
 			ui.notifications.warn(
@@ -299,7 +298,6 @@ export const PartyTravel = {
 			selections[taskKey] ?? {},
 			dc
 		);
-		console.log("Shadowdark Extras | Dispatching cinematic travel task roll:", rollData);
 		SDXRollerApp.dispatchGroupRoll(rollData);
 	},
 
@@ -321,8 +319,10 @@ export const PartyTravel = {
 					);
 					return;
 				}
-				catch (error) {
-					console.error("Shadowdark Extras | Error drawing Party weather RollTable:", error);
+				catch(error) {
+					console.error(
+						"Shadowdark Extras | Error drawing Party weather RollTable:", error
+					);
 				}
 			}
 
@@ -454,5 +454,5 @@ export const PartyTravel = {
 			content: content,
 			flavor: flavor,
 		});
-	}
+	},
 };

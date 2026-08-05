@@ -75,7 +75,7 @@ export class SDXDrawingToolbar {
 
 		// Reflect the tool's active state on the draw-toggle button live —
 		// covers both toolbar-click and hotkey-hold activation paths.
-		Hooks.on("sdxDrawingActiveChanged", (active) => {
+		Hooks.on("sdxDrawingActiveChanged", active => {
 			this._el?.querySelector('[data-action="drawToggle"]')?.classList.toggle("sdx-dt-active", active);
 		});
 	}
@@ -130,10 +130,10 @@ export class SDXDrawingToolbar {
 
 		// Drag handle
 		const handle = el.querySelector(".sdx-dt-handle");
-		handle.addEventListener("pointerdown", (e) => this._onDragStart(e));
+		handle.addEventListener("pointerdown", e => this._onDragStart(e));
 
 		// Button clicks
-		el.addEventListener("click", (e) => {
+		el.addEventListener("click", e => {
 			const btn = e.target.closest("[data-action]");
 			if (!btn) return;
 			e.preventDefault();
@@ -141,7 +141,7 @@ export class SDXDrawingToolbar {
 		});
 
 		// Close stamp overlay when clicking outside
-		document.addEventListener("pointerdown", (e) => {
+		document.addEventListener("pointerdown", e => {
 			if (this._stampOverlay && !this._stampOverlay.contains(e.target)) {
 				const stampBtn = this._el?.querySelector('[data-action="mode"][data-value="stamp"]');
 				if (!stampBtn || !stampBtn.contains(e.target)) this._closeStampOverlay();
@@ -248,7 +248,7 @@ export class SDXDrawingToolbar {
 		try {
 			if (!game.settings.get(MODULE_ID, "drawing.hotkeyEnabled")) return "";
 		}
-		catch {}
+		catch{}
 		const bindings = game.keybindings?.bindings?.get(`${MODULE_ID}.drawHotkey`) || [];
 		const b = bindings[0];
 		if (!b?.key) return "";
@@ -350,7 +350,7 @@ export class SDXDrawingToolbar {
 				try {
 					if (cur === sdxDrawingTool._getPlayerColor()) return this._getPlayerHex();
 				}
-				catch { }
+				catch{ }
 			}
 			else if (COLORS[c.id] && cur === COLORS[c.id]) {
 				return c.hex;
@@ -387,18 +387,19 @@ export class SDXDrawingToolbar {
 			if (game.user?.color) {
 				if (game.user.color.constructor?.name === "Color") {
 					const v = Number(game.user.color);
-					if (!isNaN(v)) hex = "#" + v.toString(16).padStart(6, "0");
+					if (!isNaN(v)) hex = `#${v.toString(16).padStart(6, "0")}`;
 				}
 				else if (typeof game.user.color === "string") hex = game.user.color;
-				else if (typeof game.user.color === "number") hex = "#" + game.user.color.toString(16).padStart(6, "0");
+				else if (typeof game.user.color === "number") hex = `#${game.user.color.toString(16).padStart(6, "0")}`;
 			}
 		}
-		catch { }
+		catch{ }
 		return hex;
 	}
 
 	// ── Stamp dropdown overlay ───────────────────────────────
 	_stampOverlay = null;
+
 	_opacityOverlay = null;
 
 	_openStampOverlay() {
@@ -429,7 +430,7 @@ export class SDXDrawingToolbar {
 		h += "</div></div>";
 
 		overlay.innerHTML = h;
-		overlay.addEventListener("click", (e) => {
+		overlay.addEventListener("click", e => {
 			const btn = e.target.closest("[data-action]");
 			if (!btn) return;
 			e.preventDefault(); e.stopPropagation();
@@ -480,14 +481,14 @@ export class SDXDrawingToolbar {
             </div>`;
 		const range = overlay.querySelector(".sdx-dt-opacity-range");
 		const valLabel = overlay.querySelector(".sdx-dt-opacity-value");
-		range.addEventListener("input", (e) => {
+		range.addEventListener("input", e => {
 			const v = Number(e.target.value);
 			valLabel.textContent = `${v}%`;
 			sdxDrawingTool.setOpacity(v / 100);
 			this._updateOpacityBadge();
 		});
 		// Prevent pointer events from closing the overlay
-		overlay.addEventListener("pointerdown", (e) => e.stopPropagation());
+		overlay.addEventListener("pointerdown", e => e.stopPropagation());
 		document.body.appendChild(overlay);
 		this._opacityOverlay = overlay;
 		this._positionOpacityOverlay();
@@ -531,7 +532,7 @@ export class SDXDrawingToolbar {
 		});
 		h += "</div></div>";
 		overlay.innerHTML = h;
-		overlay.addEventListener("click", (e) => {
+		overlay.addEventListener("click", e => {
 			const btn = e.target.closest("[data-action]");
 			if (!btn) return;
 			e.preventDefault(); e.stopPropagation();
@@ -610,6 +611,7 @@ export class SDXDrawingToolbar {
 
 	// ── Drawing Inspector panel ──────────────────────────────────
 	_inspectorEl = null;
+
 	_inspectorInterval = null;
 
 	_toggleInspector() {
@@ -628,7 +630,7 @@ export class SDXDrawingToolbar {
 		// Drag handle on header
 		const header = el.querySelector(".sdx-dt-inspector-header");
 		header.style.cursor = "grab";
-		header.addEventListener("pointerdown", (e) => {
+		header.addEventListener("pointerdown", e => {
 			if (e.target.closest(".sdx-dt-inspector-close")) return;
 			this._onInspectorDragStart(e);
 		});
@@ -637,17 +639,17 @@ export class SDXDrawingToolbar {
 		requestAnimationFrame(() => this._positionInspector());
 
 		// Hover → highlight drawing on canvas
-		el.addEventListener("pointerenter", (e) => {
+		el.addEventListener("pointerenter", e => {
 			const item = e.target.closest(".sdx-dt-inspector-item");
 			if (item) sdxDrawingTool.highlightDrawing(item.dataset.drawingId);
 		}, true);
-		el.addEventListener("pointerleave", (e) => {
+		el.addEventListener("pointerleave", e => {
 			const item = e.target.closest(".sdx-dt-inspector-item");
 			if (item) sdxDrawingTool.unhighlightDrawing();
 		}, true);
 
 		// Click delegation
-		el.addEventListener("click", (e) => {
+		el.addEventListener("click", e => {
 			const closeBtn = e.target.closest(".sdx-dt-inspector-close");
 			if (closeBtn) {
 				this._closeInspector(); return;
@@ -675,7 +677,7 @@ export class SDXDrawingToolbar {
 		});
 
 		// Right-click to delete
-		el.addEventListener("contextmenu", (e) => {
+		el.addEventListener("contextmenu", e => {
 			const item = e.target.closest(".sdx-dt-inspector-item");
 			if (item) {
 				e.preventDefault();
@@ -712,7 +714,7 @@ export class SDXDrawingToolbar {
 		const entries = sdxDrawingTool.getAllDrawingEntries();
 		// Build a signature to avoid unnecessary DOM thrashing (which kills hover)
 		// Include hidden state and name so changes trigger refresh
-		const sig = entries.map(e => `${e.id}:${e.hidden}:${e.name || ""}`).join(",") + "|" + entries.length;
+		const sig = `${entries.map(e => `${e.id}:${e.hidden}:${e.name || ""}`).join(",")}|${entries.length}`;
 		if (sig === this._inspectorSnapshot) {
 			// Only update timed countdowns in-place
 			for (const e of entries) {
@@ -751,7 +753,7 @@ export class SDXDrawingToolbar {
 		const oy = e.clientY - rect.top;
 		const header = this._inspectorEl.querySelector(".sdx-dt-inspector-header");
 		if (header) header.style.cursor = "grabbing";
-		const onMove = (ev) => {
+		const onMove = ev => {
 			this._inspectorEl.style.left = `${Math.max(0, ev.clientX - ox)}px`;
 			this._inspectorEl.style.top = `${Math.max(0, ev.clientY - oy)}px`;
 		};
@@ -856,7 +858,7 @@ export class SDXDrawingToolbar {
 		input.focus();
 		input.select();
 
-		const finishRename = async (save) => {
+		const finishRename = async save => {
 			const newName = input.value.trim();
 			if (save && newName && newName !== currentName) {
 				await sdxDrawingTool.renameDrawing(drawingId, newName);
@@ -866,7 +868,7 @@ export class SDXDrawingToolbar {
 			this._refreshInspector();
 		};
 
-		input.addEventListener("keydown", (e) => {
+		input.addEventListener("keydown", e => {
 			if (e.key === "Enter") {
 				e.preventDefault();
 				finishRename(true);
@@ -889,7 +891,7 @@ export class SDXDrawingToolbar {
 		const rect = this._el.getBoundingClientRect();
 		this._dragOffset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
 		this._isDragging = true;
-		const onMove = (ev) => {
+		const onMove = ev => {
 			if (!this._isDragging) return;
 			const nx = ev.clientX - this._dragOffset.x;
 			const ny = ev.clientY - this._dragOffset.y;
@@ -913,7 +915,7 @@ export class SDXDrawingToolbar {
 		try {
 			game.settings.set(MODULE_ID, "drawing.toolbar.position", JSON.stringify(pos));
 		}
-		catch { }
+		catch{ }
 	}
 
 	_restorePosition() {
@@ -927,7 +929,7 @@ export class SDXDrawingToolbar {
 				this._el.style.right = "auto";
 			}
 		}
-		catch { }
+		catch{ }
 	}
 }
 

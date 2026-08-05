@@ -7,8 +7,6 @@
  * Supports different item types: Weapon, Armor, Spell, and generic items.
  */
 
-const MODULE_ID = "shadowdark-extras";
-
 /**
  * Parse the brackets content to extract UUID and optional flags
  * @param {String} match - The part between brackets
@@ -39,7 +37,7 @@ async function getItemFromUUID(uuid) {
 		}
 		return item;
 	}
-	catch (e) {
+	catch(e) {
 		console.warn(`SDX DisplayItemCard: Could not find item for UUID: ${uuid}`);
 		return null;
 	}
@@ -66,12 +64,12 @@ function formatCost(cost) {
  */
 function getRangeLabel(rangeKey) {
 	const rangeLabels = {
-		"close": "Close",
-		"near": "Near",
-		"far": "Far",
-		"doubleNear": "Double Near",
-		"tripleNear": "Triple Near",
-		"self": "Self",
+		close: "Close",
+		near: "Near",
+		far: "Far",
+		doubleNear: "Double Near",
+		tripleNear: "Triple Near",
+		self: "Self",
 	};
 	return rangeLabels[rangeKey] || rangeKey || "—";
 }
@@ -375,7 +373,8 @@ export async function enrichDisplayItemCard(match, _options) {
 		container.dataset.itemId = parsedMatch.uuid;
 		if (match[2]) container.dataset.itemName = match[2];
 		container.classList.add("content-link", "broken");
-		container.innerHTML = `<i class="fas fa-unlink"></i> ${itemName ?? "Unknown Item"}`;
+		const escapedName = foundry.utils.escapeHTML(itemName ?? "Unknown Item");
+		container.innerHTML = `<i class="fas fa-unlink"></i> ${escapedName}`;
 	}
 
 	return container;
@@ -390,5 +389,4 @@ export function registerDisplayItemEnricher() {
 		enricher: enrichDisplayItemCard,
 	});
 
-	console.log("SDX | Registered DisplayItemCard enricher");
 }

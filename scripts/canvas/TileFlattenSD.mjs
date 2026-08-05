@@ -29,7 +29,7 @@ function nextFrame() {
 		try {
 			requestAnimationFrame(finish);
 		}
-		catch (_) { /* fall through to timer */ }
+		catch(_) { /* fall through to timer */ }
 		setTimeout(finish, 50);
 	});
 }
@@ -69,8 +69,8 @@ function computeBounds(tiles) {
 			const rad = rot * (Math.PI / 180);
 			const cos = Math.cos(rad);
 			const sin = Math.sin(rad);
-			const cx = x + w / 2;
-			const cy = y + h / 2;
+			const cx = x + (w / 2);
+			const cy = y + (h / 2);
 			const corners = [
 				{ x, y },
 				{ x: x + w, y },
@@ -80,8 +80,8 @@ function computeBounds(tiles) {
 			for (const c of corners) {
 				const dx = c.x - cx;
 				const dy = c.y - cy;
-				const rx = cx + dx * cos - dy * sin;
-				const ry = cy + dx * sin + dy * cos;
+				const rx = cx + (dx * cos) - (dy * sin);
+				const ry = cy + (dx * sin) + (dy * cos);
 				minX = Math.min(minX, rx);
 				minY = Math.min(minY, ry);
 				maxX = Math.max(maxX, rx);
@@ -106,7 +106,7 @@ function isolateVisibility(docs, bounds) {
 	const selectedIds = new Set(docs.map(d => d.id).filter(Boolean));
 	const hidden = [];
 
-	const hide = (obj) => {
+	const hide = obj => {
 		if (!obj || obj.visible === false) return;
 		hidden.push({ obj, visible: obj.visible });
 		obj.visible = false;
@@ -213,13 +213,13 @@ function isolateVisibility(docs, bounds) {
 			try {
 				obj.visible = visible;
 			}
-			catch (_) { }
+			catch(_) { }
 		}
 		for (const { frame, visible } of hiddenFrames) {
 			try {
 				frame.visible = visible;
 			}
-			catch (_) { }
+			catch(_) { }
 		}
 		if (gridVis !== null && grid) grid.visible = gridVis;
 		if (iGridVis !== null && iGrid) iGrid.visible = iGridVis;
@@ -247,12 +247,12 @@ function patchPrimaryForTransparent(primary) {
 		try {
 			primary.clearColor = [0, 0, 0, 0];
 		}
-		catch (_) { }
+		catch(_) { }
 	}
 	try {
 		primary.renderDirty = true;
 	}
-	catch (_) { }
+	catch(_) { }
 
 	let restoreRender = null;
 	if (typeof primary._render === "function") {
@@ -277,19 +277,19 @@ function patchPrimaryForTransparent(primary) {
 				if (restoreClear) try {
 					restoreClear();
 				}
-				catch (_) { }
+				catch(_) { }
 			}
 		};
 		try {
 			primary.renderDirty = true;
 		}
-		catch (_) { }
+		catch(_) { }
 		restoreRender = () => {
 			primary._render = origRender;
 			try {
 				primary.renderDirty = true;
 			}
-			catch (_) { }
+			catch(_) { }
 		};
 	}
 
@@ -297,29 +297,29 @@ function patchPrimaryForTransparent(primary) {
 		try {
 			primary.displayed = prevDisplayed;
 		}
-		catch (_) { }
+		catch(_) { }
 		if (sprite) {
 			try {
 				sprite.visible = prevSpriteVis;
 			}
-			catch (_) { }
+			catch(_) { }
 			if (prevSpriteRend !== undefined) try {
 				sprite.renderable = prevSpriteRend;
 			}
-			catch (_) { }
+			catch(_) { }
 		}
 		if (prevClearColor) try {
 			primary.clearColor = prevClearColor;
 		}
-		catch (_) { }
+		catch(_) { }
 		try {
 			primary.renderDirty = true;
 		}
-		catch (_) { }
+		catch(_) { }
 		if (restoreRender) try {
 			restoreRender();
 		}
-		catch (_) { }
+		catch(_) { }
 	};
 }
 
@@ -337,7 +337,7 @@ function cropTransparentBorders(canvasEl, bounds) {
 	let minX = w; let minY = h; let maxX = -1; let maxY = -1;
 	for (let y = 0; y < h; y++) {
 		for (let x = 0; x < w; x++) {
-			if (data[(y * w + x) * 4 + 3] > 0) {
+			if (data[(((y * w) + x) * 4) + 3] > 0) {
 				if (x < minX) minX = x;
 				if (x > maxX) maxX = x;
 				if (y < minY) minY = y;
@@ -389,8 +389,8 @@ async function renderTilesToCanvas(tiles, bounds) {
 	const maxSize = gl?.getParameter?.(gl.MAX_TEXTURE_SIZE) ?? 4096;
 	if (pixelWidth > maxSize || pixelHeight > maxSize) {
 		throw new Error(
-			`Flattened image (${pixelWidth}×${pixelHeight}px) exceeds GPU texture limit (${maxSize}px). ` +
-            "Try selecting fewer tiles."
+			`Flattened image (${pixelWidth}×${pixelHeight}px) exceeds GPU texture limit (${maxSize}px). `
+            + "Try selecting fewer tiles."
 		);
 	}
 
@@ -423,7 +423,7 @@ async function renderTilesToCanvas(tiles, bounds) {
 		try {
 			renderTexture.baseTexture.clearColor = [0, 0, 0, 0];
 		}
-		catch (_) { }
+		catch(_) { }
 	}
 
 	let outputCanvas = null;
@@ -436,34 +436,34 @@ async function renderTilesToCanvas(tiles, bounds) {
 		try {
 			stage.pivot?.set?.(0, 0);
 		}
-		catch (_) { }
+		catch(_) { }
 		try {
 			stage.position?.set?.(-bounds.x * resolution, -bounds.y * resolution);
 		}
-		catch (_) { }
+		catch(_) { }
 		try {
 			stage.scale?.set?.(resolution, resolution);
 		}
-		catch (_) { }
+		catch(_) { }
 
 		if (rendBg) try {
 			rendBg.alpha = 0;
 		}
-		catch (_) { }
+		catch(_) { }
 		if (hasBgAlpha) try {
 			renderer.backgroundAlpha = 0;
 		}
-		catch (_) { }
+		catch(_) { }
 
 		await nextFrame();
 		try {
 			stage.updateTransform?.();
 		}
-		catch (_) { }
+		catch(_) { }
 		try {
 			primary?.updateTransform?.();
 		}
-		catch (_) { }
+		catch(_) { }
 		await nextFrame();
 
 		renderer.render(stage, { renderTexture, clear: true, skipUpdateTransform: false });
@@ -476,15 +476,15 @@ async function renderTilesToCanvas(tiles, bounds) {
 		try {
 			stage.scale?.set?.(origStage.scaleX, origStage.scaleY);
 		}
-		catch (_) { }
+		catch(_) { }
 		try {
 			stage.position?.set?.(origStage.posX, origStage.posY);
 		}
-		catch (_) { }
+		catch(_) { }
 		try {
 			stage.pivot?.set?.(origStage.pivotX, origStage.pivotY);
 		}
-		catch (_) { }
+		catch(_) { }
 		if (origScreen && renderer.screen) {
 			renderer.screen.width = origScreen.width;
 			renderer.screen.height = origScreen.height;
@@ -492,25 +492,25 @@ async function renderTilesToCanvas(tiles, bounds) {
 		try {
 			stage.updateTransform?.();
 		}
-		catch (_) { }
+		catch(_) { }
 
 		if (rendBg && prevBg) {
 			try {
 				rendBg.alpha = prevBg.alpha; rendBg.color = prevBg.color;
 			}
-			catch (_) { }
+			catch(_) { }
 		}
 		if (hasBgAlpha && prevBgAlpha !== null) {
 			try {
 				renderer.backgroundAlpha = prevBgAlpha;
 			}
-			catch (_) { }
+			catch(_) { }
 		}
 
 		if (restorePrimary) try {
 			restorePrimary();
 		}
-		catch (_) { }
+		catch(_) { }
 		restore();
 	}
 
@@ -524,12 +524,12 @@ async function ensureDir(dir) {
 		const FP = foundry.applications.apps.FilePicker.implementation;
 		await FP.browse("data", dir);
 	}
-	catch {
+	catch{
 		try {
 			const FP = foundry.applications.apps.FilePicker.implementation;
 			await FP.createDirectory("data", dir);
 		}
-		catch (_) { }
+		catch(_) { }
 	}
 }
 
@@ -550,7 +550,7 @@ async function saveAsWebP(canvasEl, quality = 1.0) {
 				for (let i = 0; i < arr.length; i++) arr[i] = bin.charCodeAt(i);
 				resolve(new Blob([arr], { type: "image/webp" }));
 			}
-			catch (e) {
+			catch(e) {
 				resolve(null);
 			}
 		}
@@ -572,7 +572,9 @@ async function saveAsWebP(canvasEl, quality = 1.0) {
 	else if (typeof result === "string") path = result;
 	if (!path) path = `${UPLOAD_DIR}/${filename}`;
 
-	await new Promise(r => setTimeout(r, 200));
+	await new Promise(r => {
+		setTimeout(r, 200);
+	});
 	return path;
 }
 
@@ -630,7 +632,9 @@ async function createFlattenedTile(bounds, filePath, tiles) {
 	};
 
 	const created = await canvas.scene.createEmbeddedDocuments("Tile", [tileData]);
-	await new Promise(r => setTimeout(r, 100));
+	await new Promise(r => {
+		setTimeout(r, 100);
+	});
 	return created;
 }
 
@@ -660,7 +664,7 @@ async function flattenTiles(tiles) {
 			try {
 				result.canvas.width = 0; result.canvas.height = 0;
 			}
-			catch (_) { }
+			catch(_) { }
 		}
 
 		ui.notifications.info("Saving flattened image…");
@@ -669,7 +673,7 @@ async function flattenTiles(tiles) {
 		try {
 			cropped.canvas.width = 0; cropped.canvas.height = 0;
 		}
-		catch (_) { }
+		catch(_) { }
 
 		ui.notifications.info("Creating flattened tile…");
 		await createFlattenedTile(cropped.bounds, filePath, tiles);
@@ -678,12 +682,11 @@ async function flattenTiles(tiles) {
 		ui.notifications.info(`Flattened ${tiles.length} tiles successfully!`);
 
 	}
-	catch (error) {
+	catch(error) {
 		console.error(`${MODULE_ID} | TileFlatten failed:`, error);
 		ui.notifications.error(`Failed to flatten tiles: ${error.message}`);
 	}
 }
-
 
 // --- UNFLATTEN (DECONSTRUCT) ---
 
@@ -707,7 +710,7 @@ async function unflattenTile(tileDoc) {
 		const offsetX = tileDoc.x - origin.x;
 		const offsetY = tileDoc.y - origin.y;
 
-		const prepare = (entry) => {
+		const prepare = entry => {
 			if (!entry.data) return null;
 			const data = foundry.utils.deepClone(entry.data);
 			// Remove ID and stats to create fresh
@@ -748,12 +751,11 @@ async function unflattenTile(tileDoc) {
 		ui.notifications.info(`Restored ${toCreateTiles.length} tiles + ${toCreateDrawings.length} drawings successfully!`);
 
 	}
-	catch (error) {
+	catch(error) {
 		console.error(`${MODULE_ID} | Unflatten failed:`, error);
 		ui.notifications.error(`Failed to unflatten tile: ${error.message}`);
 	}
 }
-
 
 // ─── HUD Injection ──────────────────────────────────────────────────────────
 
@@ -813,7 +815,7 @@ function injectHudButtons(hud, html) {
 			btn.title = label;
 			btn.innerHTML = '<i class="fas fa-layer-group" style="transform: scale(1, -1);"></i>'; // Inverted icon
 
-			btn.addEventListener("click", (ev) => {
+			btn.addEventListener("click", ev => {
 				ev.preventDefault();
 				ev.stopPropagation();
 				unflattenTile(tile);
@@ -834,7 +836,7 @@ function injectHudButtons(hud, html) {
 		btn.title = label;
 		btn.innerHTML = '<i class="fas fa-layer-group"></i>';
 
-		btn.addEventListener("click", (ev) => {
+		btn.addEventListener("click", ev => {
 			ev.preventDefault();
 			ev.stopPropagation();
 
@@ -858,13 +860,11 @@ function injectHudButtons(hud, html) {
 
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
-console.log(`${MODULE_ID} | TileFlattenSD: Module loaded. HUD hook registered.`);
-
 Hooks.on("renderTileHUD", (hud, html) => {
 	try {
 		injectHudButtons(hud, html);
 	}
-	catch (error) {
+	catch(error) {
 		console.error(`${MODULE_ID} | TileHUD flatten button error:`, error);
 	}
 });
@@ -880,8 +880,8 @@ export function getDungeonFloorLevels() {
 	const scene = canvas?.scene;
 	if (!scene) return {};
 	const tiles = scene.tiles.contents.filter(t =>
-		t.flags?.[MODULE_ID]?.dungeonFloor === true &&
-        !t.flags?.[MODULE_ID]?.flattenedTile
+		t.flags?.[MODULE_ID]?.dungeonFloor === true
+        && !t.flags?.[MODULE_ID]?.flattenedTile
 	);
 	const byElevation = {};
 	for (const tile of tiles) {
@@ -913,10 +913,12 @@ export function getFlattendDungeonLevels() {
  * included.
  * @returns {{ tiles: TileDocument[], drawings: DrawingDocument[] }}
  */
-export function getDungeonVisualDocs(elevation, { floors = true, walls = true, decor = true } = {}) {
+export function getDungeonVisualDocs(
+	elevation, { floors = true, walls = true, decor = true } = {}
+) {
 	const scene = canvas?.scene;
 	if (!scene) return { tiles: [], drawings: [] };
-	const atElev = (e) => Number(e ?? 0) === Number(elevation);
+	const atElev = e => Number(e ?? 0) === Number(elevation);
 
 	const tiles = scene.tiles.contents.filter(t => {
 		const f = t.flags?.[MODULE_ID];
@@ -968,7 +970,7 @@ export async function flattenDungeonLevel(elevation, options = {}) {
 			try {
 				result.canvas.width = 0; result.canvas.height = 0;
 			}
-			catch (_) {}
+			catch(_) {}
 		}
 
 		ui.notifications.info("Saving flattened image…");
@@ -976,7 +978,7 @@ export async function flattenDungeonLevel(elevation, options = {}) {
 		try {
 			cropped.canvas.width = 0; cropped.canvas.height = 0;
 		}
-		catch (_) {}
+		catch(_) {}
 
 		const originalTiles = tiles.map(t => ({ data: t.toObject(false) }));
 		const originalDrawings = drawings.map(d => ({ data: d.toObject(false) }));
@@ -1021,7 +1023,7 @@ export async function flattenDungeonLevel(elevation, options = {}) {
 		if (drawings.length) await canvas.scene.deleteEmbeddedDocuments("Drawing", drawings.map(d => d.id).filter(Boolean));
 		ui.notifications.info(`Flattened elevation ${elevation} (${tiles.length} tiles + ${drawings.length} drawings) successfully!`);
 	}
-	catch (error) {
+	catch(error) {
 		console.error(`${MODULE_ID} | FlattenDungeonLevel failed:`, error);
 		ui.notifications.error(`Failed to flatten level: ${error.message}`);
 	}

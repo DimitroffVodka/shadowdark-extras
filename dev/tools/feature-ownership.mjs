@@ -164,6 +164,29 @@ export const FEATURE_OWNERS = {
     // registrations, one of them a contended hook name — see its docblock.
     "party-creation.mjs",
     "party-light-tracker.mjs",
+    // Prototype mixins and helpers split out of PartySheetSD. Phase 5.1 took
+    // the travel, XP and inventory handlers plus the unidentified-item
+    // helpers; Phase 5.3 took roster preparation, drag/drop transfer, token
+    // placement and the token light search. carousing-core.mjs is the same
+    // shape one level down, split out of CarousingSD.
+    "partytravel.mjs",
+    "partyxp.mjs",
+    "partyinventory.mjs",
+    "party-unidentified.mjs",
+    "party-roster.mjs",
+    "party-drop-transfer.mjs",
+    "party-token-placement.mjs",
+    "party-token-light.mjs",
+    // Carousing, split the same way one level down: carousing-core.mjs holds
+    // the journal-backed session state, and Phase 5.3 took the coin maths,
+    // renown, actor notes, the session log and the UI out of CarousingSD.
+    // CarousingSD stays the public face and re-exports all of them.
+    "carousing-core.mjs",
+    "carousing-wealth.mjs",
+    "carousing-renown.mjs",
+    "carousing-notes.mjs",
+    "carousing-log.mjs",
+    "carousing-ui.mjs",
   ],
   npc: [
     "CreatureTypesApp.mjs",
@@ -207,6 +230,23 @@ export const FEATURE_OWNERS = {
     "EasyReferenceMenu.mjs",
     // Extracted from the composition root in Phase 3.
     "journal-ui.mjs",
+    // Split out of JournalPinsSD.mjs in Phase 5.1.
+    "pin-manager.mjs",
+    "pin-rendering.mjs",
+    "pin-style.mjs",
+    // Ring stroke geometry, context menu, pointer interactions and the hover
+    // tooltip lifted out of pin-rendering.mjs in Phase 5.3.5.
+    "pin-draw.mjs",
+    "pin-context-menu.mjs",
+    "pin-interactions.mjs",
+    "pin-tooltip.mjs",
+    "pin-tmfx-adapter.mjs",
+    "pin-icons.mjs",
+    // Form reading and saving, preview rendering and the TokenMagic panel
+    // lifted out of PinStyleEditorSD.mjs in Phase 5.3.5.
+    "pin-style-form.mjs",
+    "pin-style-preview.mjs",
+    "pin-style-tmfx.mjs",
   ],
   hex: [
     "HexPainterSD.mjs",
@@ -251,13 +291,41 @@ export const FEATURE_OWNERS = {
     // imports `getCustomLightSources` from it — the crossing that used to run
     // party -> root -> party, now a plain party -> canvas row in the matrix.
     "light-templates.mjs",
+    // Lifted out of SDXDrawingTool.mjs in Phase 5.3.5: the geometry first,
+    // then the shape lifecycle, remote synchronisation and entry bookkeeping.
+    // drawing-constants.mjs holds the palette and stamp sizes, which the tool,
+    // all three mixins and the toolbar read — it exists so none of them has to
+    // import back into another.
+    "drawing-geometry.mjs",
+    "drawing-constants.mjs",
+    "drawing-shapes.mjs",
+    "drawing-sync.mjs",
+    "drawing-entries.mjs",
     // Third-party compatibility: makes shadowdark-crawl-helper's lights-out
     // carousel draggable. Here rather than shared/ because shared takes a helper
     // at its SECOND consumer and this has one.
     "carousel-drag.mjs",
   ],
   scene: ["SceneImporter.mjs", "SceneExporter.mjs", "SceneNavBar.mjs"],
-  tray: ["TraySD.mjs", "TrayApp.mjs", "SDXRollerApp.mjs", "SDXRollerData.mjs"],
+  tray: [
+    "TraySD.mjs",
+    "TrayApp.mjs",
+    "SDXRollerApp.mjs",
+    "SDXRollerData.mjs",
+    // Prototype mixins and helpers split out of TrayApp. Phase 5.1 took the
+    // TOM panels, the hex-painter controls, the decor importer and the scroll
+    // state; Phase 5.3 took the four _onRender sections. All are tray UI —
+    // they reach into other features the way TrayApp always did, from the
+    // tray side, so ownership does not move with the code they call.
+    "tom-panels.mjs",
+    "hex-painter-bindings.mjs",
+    "decor-import.mjs",
+    "tray-scroll-state.mjs",
+    "tray-handle-bindings.mjs",
+    "dungeon-bindings.mjs",
+    "tom-scene-bindings.mjs",
+    "pin-list-bindings.mjs",
+  ],
   tom: [
     "TomSD.mjs",
     "TomConfig.mjs",
@@ -284,7 +352,13 @@ export const FEATURE_OWNERS = {
    * composition, the same shape as the root's own imports, so the crossings
    * the matrix records for it are expected rather than a coupling smell.
    */
-  settings: ["module-settings.mjs"],
+  settings: [
+    "module-settings.mjs",
+    // Prior extractions out of the settings root, named by plan section 8.2
+    // item 7 and missed when the rest of that item was closed.
+    "drawing-settings.mjs",
+    "settings-organization.mjs",
+  ],
   /**
    * Item DOCUMENT LIFECYCLE — not item sheets, and not inventory. Opened in
    * Phase 3 for the flag-preservation wraps: Foundry and Shadowdark both build
@@ -313,6 +387,9 @@ export const FEATURE_OWNERS = {
     // by any open question about where it belongs.
     "module-id.mjs",
     "combat-socket.mjs",
+    // Extracted from combat/CombatSettingsSD.mjs in Phase 5.1; here rather
+    // than combat/ because the combat socket handlers are its second consumer.
+    "scrolling-text.mjs",
     /**
      * Extracted from the composition root in Phase 3 (`851c3c1`).
      *

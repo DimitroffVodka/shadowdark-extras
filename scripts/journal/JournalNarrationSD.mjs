@@ -38,7 +38,7 @@ function addToolbarToBlockquotes(html) {
 		blockquotes = html.querySelectorAll("blockquote");
 	}
 
-	blockquotes.forEach((blockquote) => {
+	blockquotes.forEach(blockquote => {
 		// Skip if toolbar already exists
 		if (blockquote.querySelector(".sdx-journal-buttons-wrapper")) {
 			return;
@@ -164,7 +164,7 @@ export function initJournalNarration() {
 			if (!game.user.isGM) return;
 
 			const journalSheets = document.querySelectorAll(".journal-sheet.journal-entry");
-			journalSheets.forEach((sheet) => {
+			journalSheets.forEach(sheet => {
 				const editor = sheet.querySelector(".editor");
 				if (editor) return;
 

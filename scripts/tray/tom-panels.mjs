@@ -33,7 +33,6 @@ export const TomPanels = {
 	},
 
 
-
 	/**
      * Toggle the overlay manager panel
      */
@@ -94,7 +93,7 @@ export const TomPanels = {
 		clearBtn.className = `tom-overlay-clear-btn ${!currentOverlay ? "disabled" : ""}`;
 		clearBtn.innerHTML = '<i class="fas fa-times"></i> Clear Overlay';
 		clearBtn.disabled = !currentOverlay;
-		clearBtn.addEventListener("click", async (e) => {
+		clearBtn.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
@@ -139,7 +138,7 @@ export const TomPanels = {
 			list.appendChild(item);
 
 			// Click handler
-			item.addEventListener("click", async (e) => {
+			item.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 
@@ -173,7 +172,7 @@ export const TomPanels = {
 		document.body.appendChild(panel);
 
 		// Close on click outside
-		const closeHandler = (e) => {
+		const closeHandler = e => {
 			if (!panel.contains(e.target) && !e.target.closest(".tray-handle-button-tool[data-action='tom-overlay-manager']")) {
 				panel.remove();
 				document.removeEventListener("click", closeHandler);
@@ -238,7 +237,7 @@ export const TomPanels = {
 		document.body.appendChild(panel);
 
 		// Close on click outside
-		const closeHandler = (e) => {
+		const closeHandler = e => {
 			if (!panel.contains(e.target) && !e.target.closest(".tom-cast-manager-btn")) {
 				panel.remove();
 				document.removeEventListener("click", closeHandler);
@@ -303,7 +302,7 @@ export const TomPanels = {
 		const createSceneBtn = document.createElement("button");
 		createSceneBtn.className = "tom-switcher-create-btn";
 		createSceneBtn.innerHTML = '<i class="fas fa-plus"></i> Create new scene';
-		createSceneBtn.addEventListener("click", async (e) => {
+		createSceneBtn.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			panel.remove();
@@ -316,7 +315,7 @@ export const TomPanels = {
 		const createFolderBtn = document.createElement("button");
 		createFolderBtn.className = "tom-switcher-create-folder-btn";
 		createFolderBtn.innerHTML = '<i class="fas fa-folder-plus"></i> Create new folder';
-		createFolderBtn.addEventListener("click", async (e) => {
+		createFolderBtn.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const name = await this._promptFolderName("Create Folder", "New Folder");
@@ -333,7 +332,7 @@ export const TomPanels = {
 			const stopBtn = document.createElement("button");
 			stopBtn.className = "tom-switcher-stop-btn";
 			stopBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Broadcasting';
-			stopBtn.addEventListener("click", async (e) => {
+			stopBtn.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				panel.remove();
@@ -351,14 +350,14 @@ export const TomPanels = {
 		list.className = "tom-switcher-list";
 
 		// Helper to create a scene item element
-		const createSceneItem = (scene) => {
+		const createSceneItem = scene => {
 			const item = document.createElement("div");
 			item.className = `tom-switcher-scene ${scene.id === this._tomActiveSceneId ? "active" : ""}`;
 			item.dataset.sceneId = scene.id;
 			item.draggable = true;
 
 			// Drag start — store scene ID
-			item.addEventListener("dragstart", (e) => {
+			item.addEventListener("dragstart", e => {
 				e.dataTransfer.setData("text/plain", JSON.stringify({ type: "tom-scene", sceneId: scene.id }));
 				e.dataTransfer.effectAllowed = "move";
 				item.classList.add("dragging");
@@ -403,7 +402,7 @@ export const TomPanels = {
 			editBtn.className = "tom-switcher-action-btn tom-switcher-action-edit";
 			editBtn.title = "Edit Scene";
 			editBtn.innerHTML = '<i class="fas fa-pen-to-square"></i>';
-			editBtn.addEventListener("click", async (e) => {
+			editBtn.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				panel.remove();
@@ -415,7 +414,7 @@ export const TomPanels = {
 			deleteBtn.className = "tom-switcher-action-btn tom-switcher-action-delete";
 			deleteBtn.title = "Delete Scene";
 			deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-			deleteBtn.addEventListener("click", async (e) => {
+			deleteBtn.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const confirmed = await foundry.applications.api.DialogV2.confirm({
@@ -437,7 +436,7 @@ export const TomPanels = {
 			item.appendChild(actions);
 
 			// Click handler — broadcast scene
-			item.addEventListener("click", async (e) => {
+			item.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 
@@ -463,18 +462,18 @@ export const TomPanels = {
 
 		// Helper to set up drag-drop on a folder container (accepts scenes)
 		const setupFolderDrop = (dropTarget, folderId) => {
-			dropTarget.addEventListener("dragover", (e) => {
+			dropTarget.addEventListener("dragover", e => {
 				e.preventDefault();
 				e.dataTransfer.dropEffect = "move";
 				dropTarget.classList.add("drag-over");
 			});
-			dropTarget.addEventListener("dragleave", (e) => {
+			dropTarget.addEventListener("dragleave", e => {
 				// Only remove if leaving the actual target, not entering a child
 				if (!dropTarget.contains(e.relatedTarget)) {
 					dropTarget.classList.remove("drag-over");
 				}
 			});
-			dropTarget.addEventListener("drop", async (e) => {
+			dropTarget.addEventListener("drop", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				dropTarget.classList.remove("drag-over");
@@ -487,7 +486,7 @@ export const TomPanels = {
 						this._toggleTomScenePanel();
 					}
 				}
-				catch (err) { /* ignore non-scene drops */ }
+				catch(err) { /* ignore non-scene drops */ }
 			});
 		};
 
@@ -524,7 +523,7 @@ export const TomPanels = {
 			renameBtn.className = "tom-switcher-action-btn";
 			renameBtn.title = "Rename Folder";
 			renameBtn.innerHTML = '<i class="fas fa-pen"></i>';
-			renameBtn.addEventListener("click", async (e) => {
+			renameBtn.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const newName = await this._promptFolderName("Rename Folder", folder.name);
@@ -538,7 +537,7 @@ export const TomPanels = {
 			deleteFolderBtn.className = "tom-switcher-action-btn tom-switcher-action-delete";
 			deleteFolderBtn.title = "Delete Folder";
 			deleteFolderBtn.innerHTML = '<i class="fas fa-trash"></i>';
-			deleteFolderBtn.addEventListener("click", async (e) => {
+			deleteFolderBtn.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const confirmed = await foundry.applications.api.DialogV2.confirm({
@@ -562,7 +561,7 @@ export const TomPanels = {
 			folderHeader.appendChild(folderActions);
 
 			// Toggle collapse on header click
-			folderHeader.addEventListener("click", (e) => {
+			folderHeader.addEventListener("click", e => {
 				e.preventDefault();
 				e.stopPropagation();
 				TomStore.toggleFolderCollapsed(folder.id);
@@ -645,7 +644,7 @@ export const TomPanels = {
 		document.body.appendChild(panel);
 
 		// Close on click outside
-		const closeHandler = (e) => {
+		const closeHandler = e => {
 			if (!panel.contains(e.target) && !e.target.closest(".tray-handle-button-tool[data-action='tom-scene-switcher']")) {
 				panel.remove();
 				document.removeEventListener("click", closeHandler);

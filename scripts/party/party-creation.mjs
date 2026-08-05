@@ -42,7 +42,7 @@ export function extendActorCreationDialog() {
 	});
 
 	// Use MutationObserver to catch dynamically created dialogs
-	const observer = new MutationObserver((mutations) => {
+	const observer = new MutationObserver(mutations => {
 		for (const mutation of mutations) {
 			for (const node of mutation.addedNodes) {
 				if (node.nodeType === Node.ELEMENT_NODE) {
@@ -71,8 +71,8 @@ function addPartyOptionToSelect(html) {
 	if (typeSelect.length === 0) return;
 
 	// Check if this select has actor types (Light, NPC, Player)
-	const hasActorTypes = typeSelect.find('option[value="NPC"]').length > 0 ||
-		typeSelect.find('option[value="Player"]').length > 0;
+	const hasActorTypes = typeSelect.find('option[value="NPC"]').length > 0
+		|| typeSelect.find('option[value="Player"]').length > 0;
 	if (!hasActorTypes) return;
 
 	// Check if Party option already exists
@@ -81,11 +81,15 @@ function addPartyOptionToSelect(html) {
 	// Add Party option
 	const npcOption = typeSelect.find('option[value="NPC"]');
 	if (npcOption.length > 0) {
-		npcOption.after(`<option value="Party">${game.i18n.localize("SHADOWDARK_EXTRAS.party.name")}</option>`);
+		npcOption.after(
+			`<option value="Party">${game.i18n.localize("SHADOWDARK_EXTRAS.party.name")}</option>`
+		);
 	}
 	else {
 		// Fallback: append to the end
-		typeSelect.append(`<option value="Party">${game.i18n.localize("SHADOWDARK_EXTRAS.party.name")}</option>`);
+		typeSelect.append(
+			`<option value="Party">${game.i18n.localize("SHADOWDARK_EXTRAS.party.name")}</option>`
+		);
 	}
 
 	// Also intercept form submission to convert Party to NPC before it's sent
@@ -99,7 +103,9 @@ function addPartyOptionToSelect(html) {
 				// Store that this should be a party
 				let hiddenInput = $(this).find('input[name="flags.shadowdark-extras.isParty"]');
 				if (hiddenInput.length === 0) {
-					$(this).append('<input type="hidden" name="flags.shadowdark-extras.isParty" value="true">');
+					$(this).append(
+						'<input type="hidden" name="flags.shadowdark-extras.isParty" value="true">'
+					);
 				}
 			}
 		});
@@ -123,7 +129,8 @@ export function wrapActorCreate() {
 				foundry.utils.setProperty(d, "flags.shadowdark-extras.isParty", true);
 				foundry.utils.setProperty(d, "prototypeToken.actorLink", true);
 
-				// Set default prototype token settings (no vision/light like standard Shadowdark actors)
+				// Set default prototype token settings (no vision/light like standard Shadowdark
+				// actors)
 				foundry.utils.setProperty(d, "prototypeToken.sight", {
 					enabled: true,
 					range: 0,
@@ -165,13 +172,4 @@ export function wrapActorCreate() {
 
 		return originalCreate.call(this, Array.isArray(data) ? createData : createData[0], options);
 	};
-}
-
-/**
- * Handle Party actor creation - convert to flagged NPC
- */
-async function handlePartyCreation(actor, options, userId) {
-	// This runs after the actor is created
-	// We can't intercept the type change before creation in a clean way,
-	// so we'll handle it via the preCreateActor hook
 }

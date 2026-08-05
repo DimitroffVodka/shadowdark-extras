@@ -8,9 +8,6 @@ export const MODULE_ID = "shadowdark-extras";
 const CAROUSING_JOURNAL_NAME = "__sdx_carousing_sync__";
 const CAROUSING_TABLES_JOURNAL_NAME = "__sdx_carousing_tables__";
 
-// Track active tab per player sheet (by actor ID) for persistence
-const carousingActiveTabTracker = new Map();
-
 // Cached journal references
 let _carousingJournal = null;
 let _carousingTablesJournal = null;
@@ -34,7 +31,7 @@ export async function refreshLinkedCarousingTables() {
 		try {
 			_linkedDataCache.set(rec.id, await resolveLinkedData(rec.links, mode));
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to refresh linked carousing table "${rec.name}"`, err);
 		}
 	}
@@ -138,7 +135,6 @@ const EXPANDED_MISHAPS = Array.from({ length: 100 }, (_, i) => ({ roll: i + 1, d
  */
 
 export function initCarousing() {
-	console.log(`${MODULE_ID} | Carousing system initialized`);
 }
 
 /**
@@ -149,7 +145,7 @@ export function getCarousingMode() {
 	try {
 		return game.settings.get(MODULE_ID, "carousingMode") || "original";
 	}
-	catch {
+	catch{
 		return "original";
 	}
 }
@@ -242,7 +238,7 @@ export function getExpandedCarousingTables() {
 				tables = [migratedTable];
 			}
 		}
-		catch (e) {
+		catch(e) {
 			// No legacy data
 		}
 
@@ -303,37 +299,6 @@ export async function saveExpandedCarousingData(data) {
 }
 
 /**
- * Get expanded outcome based on d8 roll (uses editable data)
- */
-function getExpandedOutcomeFromData(rollTotal) {
-	const data = getExpandedCarousingData();
-	const outcomes = data.outcomes || EXPANDED_OUTCOME_TABLE;
-	const capped = Math.min(rollTotal, 25);
-	return outcomes.find(o => o.roll === capped) || outcomes[outcomes.length - 1];
-}
-
-/**
- * Get expanded benefit by d100 roll (uses editable data)
- */
-function getExpandedBenefitFromData(rollTotal) {
-	const data = getExpandedCarousingData();
-	const benefits = data.benefits || EXPANDED_BENEFITS;
-	const capped = Math.max(1, Math.min(rollTotal, 100));
-	return benefits.find(b => b.roll === capped) || { roll: capped, description: `Benefit result ${capped}` };
-}
-
-/**
- * Get expanded mishap by d100 roll (uses editable data)
- */
-function getExpandedMishapFromData(rollTotal) {
-	const data = getExpandedCarousingData();
-	const mishaps = data.mishaps || EXPANDED_MISHAPS;
-	const capped = Math.max(1, Math.min(rollTotal, 100));
-	return mishaps.find(m => m.roll === capped) || { roll: capped, description: `Mishap result ${capped}` };
-}
-
-
-/**
  * Get the carousing journal entry
  */
 export function getCarousingJournal() {
@@ -353,7 +318,6 @@ export async function ensureCarousingJournal() {
 	let journal = game.journal.find(j => j.name === CAROUSING_JOURNAL_NAME);
 
 	if (!journal) {
-		console.log(`${MODULE_ID} | Creating carousing sync journal...`);
 		journal = await JournalEntry.create({
 			name: CAROUSING_JOURNAL_NAME,
 			ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER },
@@ -363,14 +327,11 @@ export async function ensureCarousingJournal() {
 				},
 			},
 		});
-		console.log(`${MODULE_ID} | Carousing sync journal created:`, journal.id);
 	}
-	else {
-		if (journal.ownership.default !== CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) {
-			await journal.update({
-				ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER },
-			});
-		}
+	else if (journal.ownership.default !== CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) {
+		await journal.update({
+			ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER },
+		});
 	}
 
 	_carousingJournal = journal;
@@ -401,7 +362,6 @@ export async function ensureCarousingTablesJournal() {
 	let journal = game.journal.find(j => j.name === CAROUSING_TABLES_JOURNAL_NAME);
 
 	if (!journal) {
-		console.log(`${MODULE_ID} | Creating carousing tables journal...`);
 		journal = await JournalEntry.create({
 			name: CAROUSING_TABLES_JOURNAL_NAME,
 			ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER },
@@ -412,7 +372,6 @@ export async function ensureCarousingTablesJournal() {
 				},
 			},
 		});
-		console.log(`${MODULE_ID} | Carousing tables journal created:`, journal.id);
 	}
 
 	_carousingTablesJournal = journal;
@@ -689,7 +648,6 @@ export async function removeGmParticipant(actorId) {
 	rerenderPlayerSheets();
 }
 
-
 /**
  * Reset carousing session (GM only)
  */
@@ -839,7 +797,7 @@ export async function pruneOfflineCarousingData() {
 
 	const drops = getCarousingDrops();
 	const session = getCarousingSession();
-	const isOffline = (userId) => {
+	const isOffline = userId => {
 		const user = game.users.get(userId);
 		return !user || !user.active;
 	};

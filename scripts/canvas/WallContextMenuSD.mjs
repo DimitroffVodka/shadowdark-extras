@@ -7,13 +7,18 @@ const MODULE_ID = "shadowdark-extras";
 
 export class WallContextMenuSD {
 	static initialize() {
-		console.log("Shadowdark Extras | Initializing Wall Context Menu");
 
 		// Hook into the right-click event on the WallsLayer (background)
 		const WallsLayerClass = foundry.canvas?.layers?.WallsLayer || globalThis.WallsLayer;
 		if (typeof libWrapper === "function") {
-			libWrapper.register(MODULE_ID, "foundry.canvas.layers.WallsLayer.prototype._onClickRight", this._onLayerRightClick, "WRAPPER");
-			libWrapper.register(MODULE_ID, "foundry.canvas.placeables.Wall.prototype._onClickRight", this._onWallRightClick, "WRAPPER");
+			libWrapper.register(
+				MODULE_ID, "foundry.canvas.layers.WallsLayer.prototype._onClickRight",
+				this._onLayerRightClick, "WRAPPER"
+			);
+			libWrapper.register(
+				MODULE_ID, "foundry.canvas.placeables.Wall.prototype._onClickRight",
+				this._onWallRightClick, "WRAPPER"
+			);
 		}
 		else {
 			const originalLayer = WallsLayerClass.prototype._onClickRight;
@@ -53,7 +58,6 @@ export class WallContextMenuSD {
      * Intercept right-click directly on a wall object
      */
 	static _onWallRightClick(wrapped, event) {
-		console.log("Shadowdark Extras | Wall object right-click detected:", this.id);
 
 		// Always chain
 		const result = wrapped(event);
@@ -84,14 +88,17 @@ export class WallContextMenuSD {
 
 			// Point-to-segment distance math
 			const l2 = Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
-			if (l2 === 0) return Math.sqrt(Math.pow(point.x - x1, 2) + Math.pow(point.y - y1, 2)) <= tolerance;
+			if (l2 === 0) {
+				return Math.sqrt(Math.pow(point.x - x1, 2)
+					+ Math.pow(point.y - y1, 2)) <= tolerance;
+			}
 
-			let t = ((point.x - x1) * (x2 - x1) + (point.y - y1) * (y2 - y1)) / l2;
+			let t = (((point.x - x1) * (x2 - x1)) + ((point.y - y1) * (y2 - y1))) / l2;
 			t = Math.max(0, Math.min(1, t));
 
 			const dist = Math.sqrt(
-				Math.pow(point.x - (x1 + t * (x2 - x1)), 2) +
-                Math.pow(point.y - (y1 + t * (y2 - y1)), 2)
+				Math.pow(point.x - (x1 + (t * (x2 - x1))), 2)
+                + Math.pow(point.y - (y1 + (t * (y2 - y1))), 2)
 			);
 
 			return dist <= tolerance;
@@ -105,7 +112,9 @@ export class WallContextMenuSD {
 		const wallDoc = wall.document;
 		const isDoor = wallDoc.door !== CONST.WALL_DOOR_TYPES.NONE;
 
-		const globalPoint = event.global || event.data?.global || { x: event.clientX, y: event.clientY };
+		const globalPoint = event.global || event.data?.global || {
+			x: event.clientX, y: event.clientY,
+		};
 		const canvasRect = canvas.app.view.getBoundingClientRect();
 		const x = canvasRect.left + (globalPoint?.x || 0);
 		const y = canvasRect.top + (globalPoint?.y || 0);
@@ -119,7 +128,9 @@ export class WallContextMenuSD {
 			menuItems.push({
 				name: isLocked ? "Unlock Door" : "Lock Door",
 				icon: isLocked ? '<i class="fas fa-unlock"></i>' : '<i class="fas fa-lock"></i>',
-				callback: () => wallDoc.update({ ds: isLocked ? CONST.WALL_DOOR_STATES.CLOSED : CONST.WALL_DOOR_STATES.LOCKED }),
+				callback: () => wallDoc.update(
+					{ ds: isLocked ? CONST.WALL_DOOR_STATES.CLOSED : CONST.WALL_DOOR_STATES.LOCKED }
+				),
 			});
 
 			// Toggle Open/Closed
@@ -127,7 +138,9 @@ export class WallContextMenuSD {
 			menuItems.push({
 				name: isOpen ? "Close Door" : "Open Door",
 				icon: isOpen ? '<i class="fas fa-door-closed"></i>' : '<i class="fas fa-door-open"></i>',
-				callback: () => wallDoc.update({ ds: isOpen ? CONST.WALL_DOOR_STATES.CLOSED : CONST.WALL_DOOR_STATES.OPEN }),
+				callback: () => wallDoc.update(
+					{ ds: isOpen ? CONST.WALL_DOOR_STATES.CLOSED : CONST.WALL_DOOR_STATES.OPEN }
+				),
 			});
 
 			menuItems.push({ type: "separator" });
@@ -208,7 +221,11 @@ export class WallContextMenuSD {
 		menuItems.push({
 			name: blocksMove ? "Allow Movement" : "Block Movement",
 			icon: blocksMove ? '<i class="fas fa-walking"></i>' : '<i class="fas fa-hand-paper"></i>',
-			callback: () => wallDoc.update({ move: blocksMove ? CONST.WALL_MOVEMENT_TYPES.NONE : CONST.WALL_MOVEMENT_TYPES.NORMAL }),
+			callback: () => wallDoc.update({
+				move: blocksMove
+					? CONST.WALL_MOVEMENT_TYPES.NONE
+					: CONST.WALL_MOVEMENT_TYPES.NORMAL,
+			}),
 		});
 
 		menuItems.push({ type: "separator" });
@@ -246,7 +263,7 @@ export class WallContextMenuSD {
 			const menuItem = document.createElement("div");
 			menuItem.className = "sdx-wall-menu-item";
 			menuItem.innerHTML = `${item.icon} <span>${item.name}</span>`;
-			menuItem.addEventListener("click", (e) => {
+			menuItem.addEventListener("click", e => {
 				e.stopPropagation();
 				item.callback();
 				menu.remove();
@@ -257,7 +274,7 @@ export class WallContextMenuSD {
 		document.body.appendChild(menu);
 
 		// Close logic
-		const closeMenu = (e) => {
+		const closeMenu = e => {
 			if (!menu.contains(e.target)) {
 				menu.remove();
 				document.removeEventListener("click", closeMenu);
@@ -265,7 +282,7 @@ export class WallContextMenuSD {
 				document.removeEventListener("keydown", closeOnEscape);
 			}
 		};
-		const closeOnEscape = (e) => {
+		const closeOnEscape = e => {
 			if (e.key === "Escape") {
 				menu.remove();
 				document.removeEventListener("click", closeMenu);

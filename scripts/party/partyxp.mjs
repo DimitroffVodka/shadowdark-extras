@@ -67,7 +67,7 @@ export const PartyXp = {
 			const total = Math.floor(Number(roll.total));
 			return Math.max(1, Number.isFinite(total) ? total : 1);
 		}
-		catch (e) {
+		catch(e) {
 			ui.notifications.warn(`Invalid NPC spawn formula: ${formula}`);
 			return 1;
 		}
@@ -299,5 +299,5 @@ export const PartyXp = {
 				count: members.length,
 			})
 		);
-	}
+	},
 };

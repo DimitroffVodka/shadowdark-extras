@@ -31,9 +31,6 @@
       "Hooks.on:preUpdateActor",
       "Hooks.on:updateActor"
     ],
-    "CarousingSD.mjs": [
-      "Hooks.on:updateJournalEntry"
-    ],
     "DungeonBiomesSD.mjs": [
       "Hooks.once:init"
     ],
@@ -236,7 +233,6 @@
     ],
     "TrayApp.mjs": [
       "Hooks.on:sdx.decorAssetsImported",
-      "Hooks.once:renderDialogV2",
       "Hooks.once:init"
     ],
     "TraySD.mjs": [
@@ -296,6 +292,9 @@
     ],
     "carousel-drag.mjs": [
       "Hooks.once:ready"
+    ],
+    "carousing-ui.mjs": [
+      "Hooks.on:updateJournalEntry"
     ],
     "chat-card-hooks.mjs": [
       "Hooks.on:preCreateChatMessage",
@@ -409,6 +408,9 @@
       "Hooks.on:renderDialog",
       "Hooks.on:renderApplication",
       "Hooks.on:renderActorDirectory"
+    ],
+    "pin-list-bindings.mjs": [
+      "Hooks.once:renderDialogV2"
     ],
     "pin-manager.mjs": [
       "Hooks.on:dropCanvasData",

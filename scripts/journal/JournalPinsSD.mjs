@@ -8,14 +8,14 @@
 // instance to operate on. Without that, tweens of the `pixi` property
 // (brightness/hue filters) warn "Missing plugin? gsap.registerPlugin()" every
 // frame. Defer to "init" so window.PIXI is guaranteed to be set up.
-import { MODULE_ID, FLAG_KEY, LAYER_NAME } from "./pin-style.mjs";
+import { MODULE_ID, FLAG_KEY, LAYER_NAME, getPinStyle, DEFAULT_PIN_STYLE, normalizeImageTint } from "./pin-style.mjs";
 function _registerGsapPixiPlugin() {
 	if (!window.gsap || !window.PixiPlugin || !window.PIXI) return;
 	try {
 		window.gsap.registerPlugin(window.PixiPlugin);
 		window.PixiPlugin.registerPIXI(window.PIXI);
 	}
-	catch (e) {
+	catch(e) {
 		console.warn("SDX Journal Pins | GSAP PixiPlugin registration failed:", e);
 	}
 }
@@ -39,16 +39,11 @@ Hooks.once("init", () => {
 // PIN SCHEMA & DEFAULTS
 // ================================================================
 
-
 // ================================================================
 // CUSTOM CANVAS LAYER
 // ================================================================
 
 class JournalPinsLayer extends foundry.canvas.layers.CanvasLayer {
-	constructor() {
-		super();
-	}
-
 	async _draw() {
 
 		// Make layer interactive
@@ -100,7 +95,7 @@ function initJournalPins() {
 
 	// Register Socket Listener for "Bring Players Here"
 	Hooks.once("ready", () => {
-		game.socket.on("module.shadowdark-extras", (data) => {
+		game.socket.on("module.shadowdark-extras", data => {
 			if (data.type === "panToPin") {
 				// Check scene match
 				if (canvas.scene?.id !== data.sceneId) return;
@@ -136,7 +131,6 @@ function initJournalPins() {
 
 	// Load pins when canvas is ready
 	Hooks.on("canvasReady", () => {
-		console.log("SDX Journal Pins | Canvas ready");
 
 		// Always use canvas.interface for now (most reliable for interactivity)
 		JournalPinRenderer.initializeOnInterface();
@@ -184,7 +178,6 @@ function initJournalPins() {
 	// Ensure style is correct after all settings are loaded (Foundry refresh/init)
 	Hooks.once("ready", () => {
 		if (canvas.ready && canvas.scene) {
-			console.log("SDX Journal Pins | Game ready, refreshing pin styles");
 			// Ensure renderer is initialized if canvasReady fired too early or not at all
 			if (!JournalPinRenderer.getContainer()) {
 				JournalPinRenderer.initializeOnInterface();
@@ -228,7 +221,7 @@ function initJournalPins() {
 					try {
 						return originalCalculatePadding.call(this);
 					}
-					catch (err) {
+					catch(err) {
 						// Ignore rotation errors for pins that are being destroyed/removed
 						if (this.placeableType === "JournalPin") return;
 						throw err;
@@ -237,7 +230,6 @@ function initJournalPins() {
 			}
 
 			window.TokenMagic._sdxPatched = true;
-			console.log("SDX Journal Pins | Patched TokenMagic for JournalPin support");
 
 			// Re-apply filters for all pins on the current scene to ensure they show up
 			// This fixes the 'persistence' issue where filters are in flags but not rendering
@@ -263,15 +255,16 @@ function initJournalPins() {
 	window.JournalPinManager = JournalPinManager;
 	window.JournalPinRenderer = JournalPinRenderer;
 
-	console.log("SDX Journal Pins | initJournalPins called");
 }
 
 // Names moved to the split modules (Phase 5.1) — imported for initJournalPins
 // and re-exported to preserve the original JournalPinsSD surface.
 import { JournalPinManager, JournalPinDropHandler, PinPlacer } from "./pin-manager.mjs";
 import { JournalPinRenderer, JournalPinTooltip } from "./pin-rendering.mjs";
-import { getPinStyle, DEFAULT_PIN_STYLE, normalizeImageTint } from "./pin-style.mjs";
-export { JournalPinTooltip, JournalPinManager, JournalPinRenderer, PinPlacer, normalizeImageTint, DEFAULT_PIN_STYLE, getPinStyle, initJournalPins };
+export {
+	JournalPinTooltip, JournalPinManager, JournalPinRenderer, PinPlacer, normalizeImageTint,
+	DEFAULT_PIN_STYLE, getPinStyle, initJournalPins,
+};
 
 // ================================================================
 // INITIALIZATION
@@ -281,13 +274,10 @@ export { JournalPinTooltip, JournalPinManager, JournalPinRenderer, PinPlacer, no
 // Check if CONFIG.Canvas.layers exists (it should during init phase)
 if (typeof CONFIG !== "undefined" && CONFIG.Canvas?.layers) {
 	hookCanvas();
-	console.log("SDX Journal Pins | hookCanvas called at module load");
 }
 else {
 	// Fallback: try during init hook
 	Hooks.once("init", () => {
 		hookCanvas();
-		console.log("SDX Journal Pins | hookCanvas called during init hook");
 	});
-	console.log("SDX Journal Pins | hookCanvas scheduled for init hook");
 }

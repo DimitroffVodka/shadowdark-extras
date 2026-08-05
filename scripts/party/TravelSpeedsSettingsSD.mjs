@@ -72,13 +72,13 @@ export class TravelSpeedsSettingsApp extends HandlebarsApplicationMixin(Applicat
 		if (!html) return;
 
 		// Add new speed
-		html.querySelector(".sdx-add-speed")?.addEventListener("click", (ev) => {
+		html.querySelector(".sdx-add-speed")?.addEventListener("click", ev => {
 			ev.preventDefault();
 			this._addSpeed();
 		});
 
 		// Event delegation for row buttons
-		html.addEventListener("click", (ev) => {
+		html.addEventListener("click", ev => {
 			if (ev.target.closest(".sdx-remove-speed")) {
 				ev.preventDefault();
 				this._removeSpeed(ev);
@@ -94,7 +94,7 @@ export class TravelSpeedsSettingsApp extends HandlebarsApplicationMixin(Applicat
 		});
 
 		// Reset to defaults
-		html.querySelector(".sdx-reset-defaults")?.addEventListener("click", async (ev) => {
+		html.querySelector(".sdx-reset-defaults")?.addEventListener("click", async ev => {
 			ev.preventDefault();
 			const confirmed = await foundry.applications.api.DialogV2.confirm({
 				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.travel_speeds.reset_confirm_title") },
@@ -244,7 +244,7 @@ export function getTravelSpeeds() {
 			}
 		}
 	}
-	catch (e) {
+	catch(e) {
 		// Setting not registered yet, return defaults
 	}
 	return foundry.utils.deepClone(DEFAULT_TRAVEL_SPEEDS);

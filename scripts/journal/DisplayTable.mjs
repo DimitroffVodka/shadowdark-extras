@@ -5,8 +5,6 @@
  * @DisplayTable[RollTable.UUID]{Display Name}
  */
 
-const MODULE_ID = "shadowdark-extras";
-
 /**
  * Parse the brackets content to extract UUID and optional flags
  * @param {String} match - The part between brackets
@@ -37,7 +35,7 @@ async function getTableFromUUID(uuid) {
 		}
 		return table;
 	}
-	catch (e) {
+	catch(e) {
 		console.warn(`SDX DisplayTable: Could not find table for UUID: ${uuid}`);
 		return null;
 	}
@@ -119,7 +117,8 @@ export async function enrichDisplayTable(match, _options) {
 		container.dataset.tableId = parsedMatch.uuid;
 		if (match[2]) container.dataset.tableName = match[2];
 		container.classList.add("content-link", "broken");
-		container.innerHTML = `<i class="fas fa-unlink"></i> ${tableName ?? "Unknown Table"}`;
+		const escapedName = foundry.utils.escapeHTML(tableName ?? "Unknown Table");
+		container.innerHTML = `<i class="fas fa-unlink"></i> ${escapedName}`;
 	}
 
 	return container;
@@ -134,5 +133,4 @@ export function registerDisplayTableEnricher() {
 		enricher: enrichDisplayTable,
 	});
 
-	console.log("SDX | Registered DisplayTable enricher");
 }

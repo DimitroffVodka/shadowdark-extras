@@ -7,7 +7,6 @@ const MODULE_ID = "shadowdark-extras";
  * Call this on module ready
  */
 export function initEasyReferenceMenu() {
-	console.log("shadowdark-extras | Initializing Easy Reference Menu");
 
 	// Hook into ProseMirror menu creation
 	Hooks.on("getProseMirrorMenuDropDowns", (proseMirrorMenu, dropdowns) => {
@@ -20,7 +19,7 @@ export function initEasyReferenceMenu() {
  */
 function buildEasyReferenceMenu(proseMirrorMenu, dropdowns) {
 	// Helper function to insert text into the editor
-	const insertText = (text) => {
+	const insertText = text => {
 		if (!text) return;
 		proseMirrorMenu.view.dispatch(
 			proseMirrorMenu.view.state.tr.insertText(text).scrollIntoView()
@@ -135,7 +134,7 @@ function buildEasyReferenceMenu(proseMirrorMenu, dropdowns) {
 					title: game.i18n.localize("SHADOWDARK_EXTRAS.easy_reference.dice.custom"),
 					action: "dice-custom",
 					cmd: () => {
-						showDiceDialog((formula) => {
+						showDiceDialog(formula => {
 							insertText(`[[/r ${formula}]]`);
 						});
 					},
@@ -201,7 +200,7 @@ function showUuidInputDialog(title, docType, callback) {
 							const doc = await fromUuid(uuid);
 							displayName = doc?.name || "Unknown";
 						}
-						catch (e) {
+						catch(e) {
 							displayName = "Unknown";
 						}
 					}

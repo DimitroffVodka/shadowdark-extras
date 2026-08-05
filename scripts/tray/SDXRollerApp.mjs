@@ -62,8 +62,8 @@ export class SDXRollerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			height: "auto",
 		},
 		actions: {
-			roll: SDXRollerApp._onStartRoll,
-			cancel: (app) => app.close(),
+			"roll": SDXRollerApp._onStartRoll,
+			"cancel": app => app.close(),
 			"remove-participant": SDXRollerApp._onRemoveParticipant,
 			"toggle-favorite": SDXRollerApp._onToggleFavorite, // Note: not in original but good for V2
 		},
@@ -86,11 +86,15 @@ export class SDXRollerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			actors,
 			participants: this._participants.map(p => {
 				const a = fromUuidSync(p.uuid);
-				return { uuid: p.uuid, name: a?.name ?? "???", img: a?.img ?? "", contestant: false };
+				return {
+					uuid: p.uuid, name: a?.name ?? "???", img: a?.img ?? "", contestant: false,
+				};
 			}),
 			contestants: this._contestants.map(p => {
 				const a = fromUuidSync(p.uuid);
-				return { uuid: p.uuid, name: a?.name ?? "???", img: a?.img ?? "", contestant: true };
+				return {
+					uuid: p.uuid, name: a?.name ?? "???", img: a?.img ?? "", contestant: true,
+				};
 			}),
 			abilities,
 			dc: this._dc,
@@ -111,7 +115,8 @@ export class SDXRollerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		el.querySelectorAll(".sdx-roller-actor-portrait").forEach(img => {
 			img.addEventListener("click", ev => {
 				const uuid = ev.currentTarget.dataset.uuid;
-				if (!this._participants.find(p => p.uuid === uuid) && !this._contestants.find(p => p.uuid === uuid)) {
+				if (!this._participants.find(p => p.uuid === uuid)
+					&& !this._contestants.find(p => p.uuid === uuid)) {
 					this._participants.push({ uuid });
 					this.render();
 				}
@@ -120,7 +125,8 @@ export class SDXRollerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			img.addEventListener("contextmenu", ev => {
 				ev.preventDefault();
 				const uuid = ev.currentTarget.dataset.uuid;
-				if (!this._contestants.find(p => p.uuid === uuid) && !this._participants.find(p => p.uuid === uuid)) {
+				if (!this._contestants.find(p => p.uuid === uuid)
+					&& !this._participants.find(p => p.uuid === uuid)) {
 					this._contestants.push({ uuid });
 					this.render();
 				}
@@ -271,6 +277,7 @@ export class SDXRollerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	}
 
 	static _activeOverlay = null;
+
 	static _clientId = null;
 
 	static _getClientId() {
@@ -340,7 +347,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		const label = this.rollData.customLabel
             || this._buildLabel(showDC);
 		this._introLabel = label;
-		const addMod = (a) => {
+		const addMod = a => {
 			const abilityId = getSdxActorAbility(this.rollData, a.uuid);
 			const isNone = abilityId === "none";
 			const defaultRollMode = this.rollData.actorRollModes?.[a.uuid] ?? "normal";
@@ -370,8 +377,9 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 
 	_buildLabel(showDC) {
 		const abilityLabel = this.rollData.abilityLabel;
-		let label = abilityLabel === "None" ? "Roll" : abilityLabel + " Check";
-		if (showDC && Number.isFinite(this.rollData.dc) && this.rollData.dc > 0 && !this.contestants.length) {
+		let label = abilityLabel === "None" ? "Roll" : `${abilityLabel} Check`;
+		if (showDC && Number.isFinite(this.rollData.dc)
+			&& this.rollData.dc > 0 && !this.contestants.length) {
 			label = `DC ${this.rollData.dc} ${label}`;
 		}
 		return label;
@@ -387,11 +395,12 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		el.querySelectorAll(".sdx-adv-btn").forEach(btn => {
 			btn.addEventListener("click", ev => {
 				const tileEl = ev.currentTarget.closest(".sdx-overlay-tile");
-				const mode = ev.currentTarget.dataset.mode; // "advantage" or "disadvantage"
 				const isActive = ev.currentTarget.classList.contains("sdx-active");
 
 				// Deactivate all adv/dis buttons in this tile first
-				tileEl.querySelectorAll(".sdx-adv-btn").forEach(b => b.classList.remove("sdx-active"));
+				tileEl.querySelectorAll(".sdx-adv-btn").forEach(
+					b => b.classList.remove("sdx-active")
+				);
 
 				// Toggle: if it was active, turn off; otherwise activate the clicked one
 				if (!isActive) {
@@ -411,7 +420,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		});
 
 		// Manual complete
-		el.querySelector(".sdx-overlay-complete")?.addEventListener("click", (ev) => {
+		el.querySelector(".sdx-overlay-complete")?.addEventListener("click", ev => {
 			ev.currentTarget.classList.add("sdx-hidden-vis");
 			this._broadcastEnd({ button: true });
 		});
@@ -439,7 +448,9 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		if (!introEl) return;
 
 		// Play intro sound
-		foundry.audio.AudioHelper.play({ src: `modules/${MODULE_ID}/assets/intro.mp3`, volume: 0.8, loop: false }, true);
+		foundry.audio.AudioHelper.play(
+			{ src: `modules/${MODULE_ID}/assets/intro.mp3`, volume: 0.8, loop: false }, true
+		);
 
 		// Wait for intro text animation to finish
 		await new Promise(resolve => {
@@ -457,7 +468,10 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 			const count = tiles.length;
 			tiles.forEach((tile, i) => {
 				tile.animate(
-					[{ opacity: 0, transform: "scale(0.7)" }, { opacity: 1, transform: "scale(1)" }],
+					[
+						{ opacity: 0, transform: "scale(0.7)" },
+						{ opacity: 1, transform: "scale(1)" },
+					],
 					{ duration: 400, easing: "ease-out", fill: "forwards", delay: (count - i) * 80 }
 				);
 			});
@@ -472,11 +486,14 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 			const count = tiles.length;
 			tiles.forEach((tile, i) => {
 				tile.animate(
-					[{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.7)" }],
+					[
+						{ opacity: 1, transform: "scale(1)" },
+						{ opacity: 0, transform: "scale(0.7)" },
+					],
 					{ duration: 350, easing: "ease-in", fill: "forwards", delay: i * 60 }
 				);
 			});
-			await SDXRollerOverlay._wait(350 + count * 60);
+			await SDXRollerOverlay._wait(350 + (count * 60));
 			tilesContainer.remove();
 		}
 
@@ -725,13 +742,15 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 			const el = this.element;
 			if (el) await this._runOutroSequence(el, result.success);
 		}
-		catch (error) {
+		catch(error) {
 			console.error(`${MODULE_ID} | Could not finish the SDX roll overlay`, error);
 			try {
 				await this.close();
 			}
-			catch (closeError) {
-				console.warn(`${MODULE_ID} | Could not close the failed SDX roll overlay`, closeError);
+			catch(closeError) {
+				console.warn(
+					`${MODULE_ID} | Could not close the failed SDX roll overlay`, closeError
+				);
 			}
 		}
 		finally {
@@ -757,20 +776,27 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		try {
 			await this.close();
 		}
-		catch (error) {
+		catch(error) {
 			console.warn(`${MODULE_ID} | Could not close the canceled SDX roll overlay`, error);
 		}
 	}
 
+	/** Mean contestant result; the contested DC when contestants are present. */
+	_contestantAverage() {
+		const total = this.contestants.reduce((sum, c) => sum + (this._results[c.uuid] ?? 0), 0);
+		return total / this.contestants.length;
+	}
+
 	_computeSuccess() {
 		const dc = this.contestants.length
-			? this.contestants.reduce((sum, c) => sum + (this._results[c.uuid] ?? 0), 0) / this.contestants.length
+			? this._contestantAverage()
 			: this.rollData.dc;
 
 		if (!Number.isFinite(dc) || dc <= 0) return undefined;
 
 		if (this.rollData.useAverage) {
-			const avg = this.actors.reduce((sum, a) => sum + (this._results[a.uuid] ?? 0), 0) / this.actors.length;
+			const total = this.actors.reduce((sum, a) => sum + (this._results[a.uuid] ?? 0), 0);
+			const avg = total / this.actors.length;
 			return avg >= dc;
 		}
 		const passCount = this.actors.filter(a => (this._results[a.uuid] ?? 0) >= dc).length;
@@ -781,11 +807,11 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		if (!this._isAuthorityClient()) return;
 
 		const dc = this.contestants.length
-			? Math.round(this.contestants.reduce((sum, c) => sum + (this._results[c.uuid] ?? 0), 0) / this.contestants.length)
+			? Math.round(this._contestantAverage())
 			: this.rollData.dc;
 
 		const hasDC = Number.isFinite(dc) && dc > 0;
-		const buildDice = (r) => {
+		const buildDice = r => {
 			const dice = r.diceResults ?? [];
 			const mode = r.rollMode ?? "normal";
 			if (dice.length <= 1 || mode === "normal") return dice.map(v => ({ value: v, css: "" }));
@@ -862,6 +888,8 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 	}
 
 	static _wait(ms) {
-		return new Promise(r => setTimeout(r, ms));
+		return new Promise(r => {
+			setTimeout(r, ms);
+		});
 	}
 }

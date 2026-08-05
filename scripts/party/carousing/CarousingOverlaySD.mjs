@@ -66,7 +66,9 @@ function showToastGlobal(message, type) {
 	const toast = document.createElement("div");
 	toast.className = `sdx-carousing-toast sdx-toast-${type}`;
 	toast.innerHTML = `
-        <i class="fas ${type === "benefit" ? "fa-star" : type === "mishap" ? "fa-skull" : "fa-times"}"></i>
+        <i class="fas ${type === "benefit"
+        	? "fa-star"
+        	: type === "mishap" ? "fa-skull" : "fa-times"}"></i>
         <span>${message}</span>
     `;
 
@@ -197,7 +199,6 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 
 		// Get ALL participants (Online + GM added)
 		const participants = this._getParticipants(session, activeTable);
-		const onlinePlayers = participants.filter(p => !p.isGmManaged);
 
 		// Calculate split cost based on ALL dropped participants
 		const participantCount = participants.filter(p => p.hasDrop).length;
@@ -217,9 +218,14 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		}
 
 		const droppedParticipants = participants.filter(p => p.hasDrop);
-		const allConfirmed = droppedParticipants.length > 0 && droppedParticipants.every(p => p.isConfirmed);
-		const allCanAfford = droppedParticipants.length > 0 && droppedParticipants.every(p => p.canAfford);
-		const canRoll = allConfirmed && allCanAfford && session.selectedTier !== null && droppedParticipants.length > 0;
+		const allConfirmed = droppedParticipants.length > 0 && droppedParticipants.every(
+			p => p.isConfirmed
+		);
+		const allCanAfford = droppedParticipants.length > 0 && droppedParticipants.every(
+			p => p.canAfford
+		);
+		const canRoll = allConfirmed && allCanAfford && session.selectedTier !== null
+			&& droppedParticipants.length > 0;
 
 		const customTables = availableTables.map(t => ({
 			...t,
@@ -237,8 +243,10 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		});
 
 		// Get visibility settings for benefits/mishaps
-		const showBenefitsToPlayers = game.settings.get(MODULE_ID, "carousingShowBenefitsToPlayers") ?? true;
-		const showMishapsToPlayers = game.settings.get(MODULE_ID, "carousingShowMishapsToPlayers") ?? true;
+		const showBenefitsToPlayers = game.settings.get(MODULE_ID, "carousingShowBenefitsToPlayers")
+			?? true;
+		const showMishapsToPlayers = game.settings.get(MODULE_ID, "carousingShowMishapsToPlayers")
+			?? true;
 
 		// Get available actors for GM to add (Player type not already in participants)
 		let availableActors = [];
@@ -337,7 +345,9 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		}
 
 		const esc = Handlebars.Utils.escapeExpression;
-		const { lines } = previewOutcomeEffects(actor, participant.result.description, participant.result.benefit);
+		const { lines } = previewOutcomeEffects(
+			actor, participant.result.description, participant.result.benefit
+		);
 
 		const content = `
             <p>${game.i18n.format("SHADOWDARK_EXTRAS.carousing.apply_confirm_intro", { name: esc(actor.name) })}</p>
@@ -345,7 +355,9 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
         `;
 
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
-			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.apply_confirm_title") },
+			window: {
+				title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.apply_confirm_title"),
+			},
 			content,
 			rejectClose: false,
 		});
@@ -353,13 +365,17 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 
 		const applied = await applyCarousingOutcome(participantId);
 		if (!applied) {
-			ui.notifications.warn(game.i18n.format("SHADOWDARK_EXTRAS.carousing.apply_failed", { name: actor.name }));
+			ui.notifications.warn(
+				game.i18n.format("SHADOWDARK_EXTRAS.carousing.apply_failed", { name: actor.name })
+			);
 			return;
 		}
 
 		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.carousing.apply_done", {
 			name: applied.name,
-			summary: applied.summary || game.i18n.localize("SHADOWDARK_EXTRAS.carousing.effect_note"),
+			summary: applied.summary || game.i18n.localize(
+				"SHADOWDARK_EXTRAS.carousing.effect_note"
+			),
 		}));
 		this.render();
 	}
@@ -368,7 +384,8 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
      * GM-only affordances for applying an Original-mode outcome to a sheet.
      * Expanded mode is excluded because it already grants its numeric XP column
      * automatically at roll time — offering Apply there would double-grant.
-     * @returns {{canApply: boolean, isApplied: boolean, appliedSummary?: string, applyEffectSummary?: string}}
+     * @returns {{canApply: boolean, isApplied: boolean, appliedSummary?: string,
+     * applyEffectSummary?: string}}
      */
 	_getApplyInfo(p) {
 		if (!game.user.isGM) return { canApply: false, isApplied: false };
@@ -376,7 +393,9 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		if (!p.result || !p.droppedActor) return { canApply: false, isApplied: false };
 
 		if (p.result.applied) {
-			return { canApply: false, isApplied: true, appliedSummary: p.result.applied.summary || "" };
+			return {
+				canApply: false, isApplied: true, appliedSummary: p.result.applied.summary || "",
+			};
 		}
 
 		// Apply stays available even with nothing mechanical to grant, because
@@ -428,20 +447,20 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		};
 
 		// Close button
-		on('[data-action="close-overlay"]', "click", (e) => {
+		on('[data-action="close-overlay"]', "click", e => {
 			e.preventDefault();
 			this.close();
 		});
 
 		// GM: Table selection
-		on('[data-action="select-table"]', "change", async (event) => {
+		on('[data-action="select-table"]', "change", async event => {
 			if (!game.user.isGM) return;
 			const tableId = event.target.value || "default";
 			await setCarousingTable(tableId);
 		});
 
 		// GM: Switch carousing mode (Original <-> Expanded) from the overlay
-		on('[data-action="switch-carousing-mode"]', "click", async (event) => {
+		on('[data-action="switch-carousing-mode"]', "click", async event => {
 			event.preventDefault();
 			if (!game.user.isGM) return;
 			const mode = event.currentTarget.dataset.mode;
@@ -451,7 +470,7 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		});
 
 		// GM: Open the Carousing Tables editor for the active mode
-		on('[data-action="edit-carousing-tables"]', "click", async (event) => {
+		on('[data-action="edit-carousing-tables"]', "click", async event => {
 			event.preventDefault();
 			if (!game.user.isGM) return;
 			const mode = game.settings.get(MODULE_ID, "carousingMode") || "original";
@@ -466,7 +485,7 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		});
 
 		// GM: Tier selection
-		on('[data-action="select-tier"]', "change", async (event) => {
+		on('[data-action="select-tier"]', "change", async event => {
 			if (!game.user.isGM) return;
 			const val = event.target.value;
 			const tierIndex = val === "" ? null : parseInt(val);
@@ -474,21 +493,21 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		});
 
 		// GM: Roll button
-		on('[data-action="roll-carousing"]', "click", async (event) => {
+		on('[data-action="roll-carousing"]', "click", async event => {
 			event.preventDefault();
 			if (!game.user.isGM) return;
 			await executeCarousingRolls();
 		});
 
 		// GM: Reset button
-		on('[data-action="reset-carousing"]', "click", async (event) => {
+		on('[data-action="reset-carousing"]', "click", async event => {
 			event.preventDefault();
 			if (!game.user.isGM) return;
 			await resetCarousingSession();
 		});
 
 		// Player: Confirm button
-		on('[data-action="confirm-carousing"]', "click", async (event) => {
+		on('[data-action="confirm-carousing"]', "click", async event => {
 			event.preventDefault();
 			const pId = event.currentTarget.dataset.participantId;
 			const p = getCarousingParticipants().find(x => x.participantId === pId);
@@ -499,7 +518,7 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		});
 
 		// Player: Unconfirm button
-		on('[data-action="unconfirm-carousing"]', "click", async (event) => {
+		on('[data-action="unconfirm-carousing"]', "click", async event => {
 			event.preventDefault();
 			const pId = event.currentTarget.dataset.participantId;
 			const p = getCarousingParticipants().find(x => x.participantId === pId);
@@ -510,7 +529,7 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		});
 
 		// Player: Change character button
-		on('[data-action="change-character"]', "click", async (event) => {
+		on('[data-action="change-character"]', "click", async event => {
 			event.preventDefault();
 			const pId = event.currentTarget.dataset.participantId;
 			if (!game.user.isGM && pId !== game.user.id) return;
@@ -518,28 +537,28 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		});
 
 		// Flip card button
-		on('[data-action="flip-card"]', "click", (event) => {
+		on('[data-action="flip-card"]', "click", event => {
 			event.preventDefault();
 			const card = event.currentTarget.closest(".sdx-carousing-overlay-card");
 			card?.classList.toggle("flipped");
 		});
 
 		// GM: apply an outcome's mechanical effects to the character sheet
-		on('[data-action="apply-carousing-result"]', "click", async (event) => {
+		on('[data-action="apply-carousing-result"]', "click", async event => {
 			event.preventDefault();
 			if (!game.user.isGM) return;
 			await this._applyResult(event.currentTarget.dataset.participantId);
 		});
 
 		// GM: open the carousing log journal
-		on('[data-action="open-carousing-log"]', "click", async (event) => {
+		on('[data-action="open-carousing-log"]', "click", async event => {
 			event.preventDefault();
 			if (!game.user.isGM) return;
 			await openCarousingLog();
 		});
 
 		// Player: Clear drop button
-		on('[data-action="clear-carousing-drop"]', "click", async (event) => {
+		on('[data-action="clear-carousing-drop"]', "click", async event => {
 			event.preventDefault();
 			const pId = event.currentTarget.dataset.participantId;
 			if (!game.user.isGM && pId !== game.user.id) return;
@@ -547,7 +566,7 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		});
 
 		// Result actions (benefit/mishap)
-		on('[data-action="add-benefit"]', "click", async (event) => {
+		on('[data-action="add-benefit"]', "click", async event => {
 			event.preventDefault();
 			const pId = event.currentTarget.dataset.participantId;
 			const result = await addCarousingResult(pId, "benefit");
@@ -557,7 +576,7 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 			}
 		});
 
-		on('[data-action="add-mishap"]', "click", async (event) => {
+		on('[data-action="add-mishap"]', "click", async event => {
 			event.preventDefault();
 			const pId = event.currentTarget.dataset.participantId;
 			const result = await addCarousingResult(pId, "mishap");
@@ -568,20 +587,20 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		});
 
 		// GM: Add/Remove Offline Actor
-		on('[data-action="add-gm-actor"]', "click", async (event) => {
+		on('[data-action="add-gm-actor"]', "click", async event => {
 			event.preventDefault();
 			const actorId = event.currentTarget.dataset.actorId;
 			await addGmParticipant(actorId);
 		});
 
-		on('[data-action="remove-gm-participant"]', "click", async (event) => {
+		on('[data-action="remove-gm-participant"]', "click", async event => {
 			event.preventDefault();
 			const actorId = event.currentTarget.dataset.actorId;
 			await removeGmParticipant(actorId);
 		});
 
 		// Remove benefit/mishap
-		on('[data-action="remove-benefit"]', "click", async (event) => {
+		on('[data-action="remove-benefit"]', "click", async event => {
 			event.preventDefault();
 			const section = event.currentTarget.closest(".sdx-results-section");
 			const pId = section?.dataset.playerId;
@@ -593,7 +612,7 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 			}
 		});
 
-		on('[data-action="remove-mishap"]', "click", async (event) => {
+		on('[data-action="remove-mishap"]', "click", async event => {
 			event.preventDefault();
 			const section = event.currentTarget.closest(".sdx-results-section");
 			const pId = section?.dataset.playerId;
@@ -639,9 +658,12 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 			drawer.style.maxHeight = "none";
 			const fullHeight = drawer.scrollHeight;
 			drawer.style.maxHeight = "0px";
-			// Force reflow then set final height
+			// Force reflow then set final height. Reading offsetHeight flushes
+			// pending layout so the max-height transition restarts from 0px;
+			// the value itself is intentionally discarded.
+			// eslint-disable-next-line no-unused-expressions
 			drawer.offsetHeight;
-			drawer.style.maxHeight = fullHeight + "px";
+			drawer.style.maxHeight = `${fullHeight}px`;
 		}
 		else {
 			drawer.style.maxHeight = "0px";
@@ -669,7 +691,9 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		);
 
 		if (ownedActors.length === 0) {
-			ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.no_owned_characters"));
+			ui.notifications.warn(
+				game.i18n.localize("SHADOWDARK_EXTRAS.carousing.no_owned_characters")
+			);
 			return;
 		}
 

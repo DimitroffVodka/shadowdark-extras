@@ -74,7 +74,9 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
      */
 	static TABS = {
 		activity: { id: "activity", group: "primary", label: "Activity", icon: "fas fa-bolt" },
-		description: { id: "description", group: "primary", label: "Description", icon: "fas fa-book" },
+		description: {
+			id: "description", group: "primary", label: "Description", icon: "fas fa-book",
+		},
 		macro: { id: "macro", group: "primary", label: "Macro", icon: "fas fa-code" },
 	};
 
@@ -184,7 +186,9 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 
 		// Load effects from UUIDs
 		context.effectsList = await this._loadEffects(context.sdxFlags.effects || []);
-		context.criticalEffectsList = await this._loadEffects(context.sdxFlags.criticalEffects || []);
+		context.criticalEffectsList = await this._loadEffects(
+			context.sdxFlags.criticalEffects || []
+		);
 
 		// Load summon profiles
 		context.summonProfiles = context.sdxFlags.summoning?.profiles || [];
@@ -201,8 +205,10 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 
 		// Item Macro content
 		context.macroId = item.id;
-		context.macroCommand = item.getFlag(MODULE_ID, "macroCommand") ?? item.flags?.itemacro?.macro?.command ?? "";
-		context.macroName = item.getFlag(MODULE_ID, "macroName") ?? item.flags?.itemacro?.macro?.name ?? item.name;
+		context.macroCommand = item.getFlag(MODULE_ID, "macroCommand")
+			?? item.flags?.itemacro?.macro?.command ?? "";
+		context.macroName = item.getFlag(MODULE_ID, "macroName")
+			?? item.flags?.itemacro?.macro?.name ?? item.name;
 
 		// Tabs
 		context.tabs = this._prepareTabs();
@@ -276,7 +282,8 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 			// Item macro
 			itemMacro: {
 				runAsGm: flags.itemMacro?.runAsGm ?? false,
-				executeOnUse: flags.itemMacro?.executeOnUse ?? (flags.itemMacro?.triggers?.includes?.("onCast") ?? true),
+				executeOnUse: flags.itemMacro?.executeOnUse ?? (flags.itemMacro?.triggers?.includes?.("onCast")
+					?? true),
 			},
 		};
 	}
@@ -303,7 +310,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 					});
 				}
 			}
-			catch (err) {
+			catch(err) {
 				console.warn(`${MODULE_ID} | Failed to load effect ${uuid}:`, err);
 			}
 		}
@@ -346,7 +353,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 		// Setup tab click handlers
 		const tabLinks = html.querySelectorAll(".potion-sheet-tabs .tab-item");
 		tabLinks.forEach(link => {
-			link.addEventListener("click", (event) => {
+			link.addEventListener("click", event => {
 				event.preventDefault();
 				const tab = event.currentTarget.dataset.tab;
 				this._onChangeTab(tab);
@@ -357,12 +364,12 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 		const itemImage = html.querySelector(".item-image[data-edit='img']");
 		if (itemImage) {
 			itemImage.style.cursor = "pointer";
-			itemImage.addEventListener("click", (event) => {
+			itemImage.addEventListener("click", event => {
 				event.preventDefault();
 				const fp = new FilePicker({
 					type: "image",
 					current: this.item.img,
-					callback: async (path) => {
+					callback: async path => {
 						await this.item.update({ img: path });
 					},
 				});
@@ -402,7 +409,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 		const dropAreas = html.querySelectorAll(".effects-drop-area");
 
 		dropAreas.forEach(area => {
-			area.addEventListener("dragover", (event) => {
+			area.addEventListener("dragover", event => {
 				event.preventDefault();
 				area.classList.add("drag-over");
 			});
@@ -411,7 +418,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 				area.classList.remove("drag-over");
 			});
 
-			area.addEventListener("drop", async (event) => {
+			area.addEventListener("drop", async event => {
 				event.preventDefault();
 				area.classList.remove("drag-over");
 
@@ -450,7 +457,9 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 			// Check valid type
 			const validTypes = ["Effect", "Condition", "NPC Feature"];
 			if (!validTypes.includes(doc.type)) {
-				ui.notifications.warn("Only Effect, Condition, or NPC Feature items can be dropped here");
+				ui.notifications.warn(
+					"Only Effect, Condition, or NPC Feature items can be dropped here"
+				);
 				return;
 			}
 
@@ -471,7 +480,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 
 			ui.notifications.info(`Added ${doc.name} to ${isCritical ? "critical " : ""}effects`);
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Error handling effect drop:`, err);
 		}
 	}
@@ -483,7 +492,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 		const dropZones = html.querySelectorAll(".summon-creature-drop");
 
 		dropZones.forEach(zone => {
-			zone.addEventListener("dragover", (event) => {
+			zone.addEventListener("dragover", event => {
 				event.preventDefault();
 				zone.classList.add("drag-over");
 			});
@@ -492,7 +501,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 				zone.classList.remove("drag-over");
 			});
 
-			zone.addEventListener("drop", async (event) => {
+			zone.addEventListener("drop", async event => {
 				event.preventDefault();
 				zone.classList.remove("drag-over");
 
@@ -540,7 +549,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 				ui.notifications.info(`Added ${doc.name} to summon profile`);
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Error handling summon drop:`, err);
 		}
 	}
@@ -552,7 +561,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 		const dropZones = html.querySelectorAll(".item-give-drop");
 
 		dropZones.forEach(zone => {
-			zone.addEventListener("dragover", (event) => {
+			zone.addEventListener("dragover", event => {
 				event.preventDefault();
 				zone.classList.add("drag-over");
 			});
@@ -561,7 +570,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 				zone.classList.remove("drag-over");
 			});
 
-			zone.addEventListener("drop", async (event) => {
+			zone.addEventListener("drop", async event => {
 				event.preventDefault();
 				zone.classList.remove("drag-over");
 
@@ -609,7 +618,7 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 				ui.notifications.info(`Added ${doc.name} to give list`);
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Error handling item give drop:`, err);
 		}
 	}
@@ -638,13 +647,17 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
      * Keep secondary challenge/defense settings visible while the checkbox is on.
      */
 	_setupChallengeToggles(html) {
-		const challengeToggle = html.querySelector('input[name="flags.shadowdark-extras.spellDamage.challenge.enabled"]');
+		const challengeToggle = html.querySelector(
+			'input[name="flags.shadowdark-extras.spellDamage.challenge.enabled"]'
+		);
 		const challengeSettings = html.querySelector(".challenge-settings");
 		challengeToggle?.addEventListener("change", () => {
 			if (challengeSettings) challengeSettings.style.display = challengeToggle.checked ? "" : "none";
 		});
 
-		const defenseToggle = html.querySelector('input[name="flags.shadowdark-extras.spellDamage.targetDefense.enabled"]');
+		const defenseToggle = html.querySelector(
+			'input[name="flags.shadowdark-extras.spellDamage.targetDefense.enabled"]'
+		);
 		const defenseSettings = html.querySelector(".target-defense-settings");
 		defenseToggle?.addEventListener("change", () => {
 			if (defenseSettings) defenseSettings.style.display = defenseToggle.checked ? "" : "none";
@@ -656,14 +669,16 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
      */
 	_setupFormulaTypeRadios(html) {
 		// Spell Damage formula type radios
-		const radios = html.querySelectorAll('input[name="flags.shadowdark-extras.spellDamage.formulaType"]');
+		const radios = html.querySelectorAll(
+			'input[name="flags.shadowdark-extras.spellDamage.formulaType"]'
+		);
 		const sections = {
 			basic: html.querySelector(".formula-basic"),
 			formula: html.querySelector(".formula-custom"),
 			tiered: html.querySelector(".formula-tiered"),
 		};
 
-		const updateVisibility = (selected) => {
+		const updateVisibility = selected => {
 			Object.entries(sections).forEach(([key, section]) => {
 				if (section) {
 					section.style.display = key === selected ? "block" : "none";
@@ -672,7 +687,9 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 		};
 
 		// Initial state
-		const checked = html.querySelector('input[name="flags.shadowdark-extras.spellDamage.formulaType"]:checked');
+		const checked = html.querySelector(
+			'input[name="flags.shadowdark-extras.spellDamage.formulaType"]:checked'
+		);
 		if (checked) {
 			updateVisibility(checked.value);
 		}

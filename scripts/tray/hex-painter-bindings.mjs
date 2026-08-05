@@ -17,7 +17,7 @@ export const HexPainterBindings = {
 		const formatBtn = elem.querySelector(".hex-format-btn");
 		const formatControls = elem.querySelector(".hex-format-controls");
 		if (formatBtn && formatControls) {
-			formatBtn.addEventListener("click", (e) => {
+			formatBtn.addEventListener("click", e => {
 				e.preventDefault();
 				formatControls.classList.toggle("hidden");
 			});
@@ -25,7 +25,7 @@ export const HexPainterBindings = {
 
 		// Dimension sliders
 		elem.querySelectorAll(".hex-slider-row input[type='range']").forEach(slider => {
-			slider.addEventListener("input", (e) => {
+			slider.addEventListener("input", e => {
 				const val = parseInt(e.target.value);
 				const display = e.target.parentElement.querySelector(".hex-slider-value");
 				if (display) display.textContent = val;
@@ -35,13 +35,13 @@ export const HexPainterBindings = {
 		});
 
 		// Apply format button
-		elem.querySelector(".hex-apply-btn")?.addEventListener("click", async (e) => {
+		elem.querySelector(".hex-apply-btn")?.addEventListener("click", async e => {
 			e.preventDefault();
 			await formatActiveScene();
 		});
 
 		// Flatten all tiles button
-		elem.querySelector(".hex-flatten-btn")?.addEventListener("click", async (e) => {
+		elem.querySelector(".hex-flatten-btn")?.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 
@@ -69,7 +69,7 @@ export const HexPainterBindings = {
 		});
 
 		// Search filter (client-side filtering without re-render)
-		elem.querySelector(".hex-search-input")?.addEventListener("input", (e) => {
+		elem.querySelector(".hex-search-input")?.addEventListener("input", e => {
 			const searchTerm = e.target.value.toLowerCase();
 			setSearchFilter(searchTerm);
 
@@ -114,33 +114,33 @@ export const HexPainterBindings = {
 		});
 
 		// Water effect toggle
-		elem.querySelector(".hex-water-checkbox")?.addEventListener("change", (e) => {
+		elem.querySelector(".hex-water-checkbox")?.addEventListener("change", e => {
 			toggleWaterEffect();
 		});
 
 		// Wind effect toggle
-		elem.querySelector(".hex-wind-checkbox")?.addEventListener("change", (e) => {
+		elem.querySelector(".hex-wind-checkbox")?.addEventListener("change", e => {
 			toggleWindEffect();
 		});
 
 		// Fog animation toggle
-		elem.querySelector(".hex-fog-checkbox")?.addEventListener("change", (e) => {
+		elem.querySelector(".hex-fog-checkbox")?.addEventListener("change", e => {
 			toggleFogAnimation();
 		});
 
 		// Manual tint toggle
-		elem.querySelector(".hex-tint-checkbox")?.addEventListener("change", (e) => {
+		elem.querySelector(".hex-tint-checkbox")?.addEventListener("change", e => {
 			toggleTintEnabled();
 		});
 
 		// Black & White effect toggle
-		elem.querySelector(".hex-bw-checkbox")?.addEventListener("change", (e) => {
+		elem.querySelector(".hex-bw-checkbox")?.addEventListener("change", e => {
 			toggleBwEffect();
 		});
 
 		// Tile selection (multi-select) - exclude decor tiles (handled separately)
 		elem.querySelectorAll(".hex-tile-thumb:not(.decor-tile-thumb)").forEach(thumb => {
-			thumb.addEventListener("click", (e) => {
+			thumb.addEventListener("click", e => {
 				e.preventDefault();
 				const tilePath = thumb.dataset.tile;
 				if (!tilePath) return;
@@ -157,7 +157,7 @@ export const HexPainterBindings = {
 				thumb.classList.toggle("active");
 			});
 
-			thumb.addEventListener("contextmenu", (e) => {
+			thumb.addEventListener("contextmenu", e => {
 				e.preventDefault();
 				clearTileSelection();
 				// Remove active class from all tile thumbs
@@ -168,7 +168,7 @@ export const HexPainterBindings = {
 		// ── Procedural Generator ──
 
 		// Toggle generator panel
-		elem.querySelector(".hex-generator-toggle-btn")?.addEventListener("click", (e) => {
+		elem.querySelector(".hex-generator-toggle-btn")?.addEventListener("click", e => {
 			e.preventDefault();
 			const controls = elem.querySelector(".hex-generator-controls");
 			if (controls) {
@@ -180,14 +180,14 @@ export const HexPainterBindings = {
 
 		// Generator sliders - update display value
 		elem.querySelectorAll(".hex-gen-slider-row input[type='range']").forEach(slider => {
-			slider.addEventListener("input", (e) => {
+			slider.addEventListener("input", e => {
 				const display = e.target.parentElement.querySelector(".hex-gen-slider-value");
 				if (display) display.textContent = e.target.value;
 			});
 		});
 
 		// Generate button
-		elem.querySelector(".hex-gen-generate-btn")?.addEventListener("click", async (e) => {
+		elem.querySelector(".hex-gen-generate-btn")?.addEventListener("click", async e => {
 			e.preventDefault();
 			const water = parseInt(elem.querySelector("input[name='hex-gen-water']")?.value || 0) / 100;
 			const green = parseInt(elem.querySelector("input[name='hex-gen-green']")?.value || 0) / 100;
@@ -202,14 +202,14 @@ export const HexPainterBindings = {
 		});
 
 		// Clear button
-		elem.querySelector(".hex-gen-clear-btn")?.addEventListener("click", async (e) => {
+		elem.querySelector(".hex-gen-clear-btn")?.addEventListener("click", async e => {
 			e.preventDefault();
 			await clearGeneratedTiles();
 		});
 
 		// Tile tabs (Default / Colored / Custom)
 		elem.querySelectorAll(".hex-tile-tab").forEach(tab => {
-			tab.addEventListener("click", (e) => {
+			tab.addEventListener("click", e => {
 				e.preventDefault();
 				const tabName = tab.dataset.tileTab;
 				if (!tabName) return;
@@ -251,7 +251,7 @@ export const HexPainterBindings = {
 		});
 
 		elem.querySelectorAll(".hex-custom-chip").forEach(chip => {
-			chip.addEventListener("click", (e) => {
+			chip.addEventListener("click", e => {
 				e.preventDefault();
 				const name = chip.dataset.chipName;
 				if (!name) return;
@@ -261,7 +261,7 @@ export const HexPainterBindings = {
 		});
 
 		elem.querySelectorAll(".hex-custom-breadcrumb-segment").forEach(seg => {
-			seg.addEventListener("click", (e) => {
+			seg.addEventListener("click", e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const raw = seg.dataset.segments || "";
@@ -271,7 +271,7 @@ export const HexPainterBindings = {
 		});
 
 		elem.querySelectorAll(".hex-custom-up-btn").forEach(btn => {
-			btn.addEventListener("click", (e) => {
+			btn.addEventListener("click", e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const crumbs = Array.from(elem.querySelectorAll(".hex-custom-breadcrumb-segment"));
@@ -283,7 +283,7 @@ export const HexPainterBindings = {
 		});
 
 		elem.querySelectorAll(".hex-custom-reload-btn").forEach(btn => {
-			btn.addEventListener("click", async (e) => {
+			btn.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				btn.disabled = true;
@@ -299,7 +299,7 @@ export const HexPainterBindings = {
 
 		// Custom tile size inputs
 		elem.querySelectorAll(".hex-custom-size-input").forEach(input => {
-			input.addEventListener("change", (e) => {
+			input.addEventListener("change", e => {
 				const val = parseInt(e.target.value);
 				const axis = e.target.name === "custom-tile-width" ? "width" : "height";
 				setCustomTileDimension(axis, val);
@@ -308,7 +308,7 @@ export const HexPainterBindings = {
 
 		// Colored tile folder toggle (expand/collapse)
 		elem.querySelectorAll(".hex-colored-folder-header").forEach(header => {
-			header.addEventListener("click", (e) => {
+			header.addEventListener("click", e => {
 				e.preventDefault();
 				const folderKey = header.dataset.folder;
 				if (!folderKey) return;
@@ -341,7 +341,7 @@ export const HexPainterBindings = {
 
 		// Symbol tile folder toggle (expand/collapse)
 		elem.querySelectorAll(".hex-symbol-folder-header:not(.decor-folder-header)").forEach(header => {
-			header.addEventListener("click", (e) => {
+			header.addEventListener("click", e => {
 				e.preventDefault();
 				const folderKey = header.dataset.folder;
 				if (!folderKey) return;
@@ -376,7 +376,7 @@ export const HexPainterBindings = {
 
 		// Decor tile selection (multi-select, same as hex-tile-thumb but for decor)
 		elem.querySelectorAll(".decor-tile-thumb").forEach(thumb => {
-			thumb.addEventListener("click", (e) => {
+			thumb.addEventListener("click", e => {
 				e.preventDefault();
 				const tilePath = thumb.dataset.tile;
 				if (!tilePath) return;
@@ -384,7 +384,7 @@ export const HexPainterBindings = {
 				thumb.classList.toggle("active");
 			});
 
-			thumb.addEventListener("contextmenu", (e) => {
+			thumb.addEventListener("contextmenu", e => {
 				e.preventDefault();
 				clearTileSelection();
 				// Remove active class from all tile thumbs
@@ -393,7 +393,7 @@ export const HexPainterBindings = {
 		});
 
 		// Decor search filter (client-side filtering without re-render)
-		elem.querySelector(".decor-search-input")?.addEventListener("input", (e) => {
+		elem.querySelector(".decor-search-input")?.addEventListener("input", e => {
 			const searchTerm = e.target.value.toLowerCase();
 			setDecorSearchFilter(searchTerm);
 
@@ -416,7 +416,7 @@ export const HexPainterBindings = {
 			});
 		});
 
-		elem.querySelector(".decor-import-btn")?.addEventListener("click", (e) => {
+		elem.querySelector(".decor-import-btn")?.addEventListener("click", e => {
 			e.preventDefault();
 			if (!game.user?.isGM) {
 				ui.notifications.warn("Only GMs can import decor assets.");
@@ -425,7 +425,7 @@ export const HexPainterBindings = {
 			new DecorImportApp().render(true);
 		});
 
-		elem.querySelector(".decor-ddpack-btn")?.addEventListener("click", async (e) => {
+		elem.querySelector(".decor-ddpack-btn")?.addEventListener("click", async e => {
 			e.preventDefault();
 			if (!game.user?.isGM) {
 				ui.notifications.warn("Only GMs can manage Dungeondraft packs.");
@@ -437,7 +437,7 @@ export const HexPainterBindings = {
 
 		// Decor folder toggle (expand/collapse)
 		elem.querySelectorAll(".decor-folder-header").forEach(header => {
-			header.addEventListener("click", (e) => {
+			header.addEventListener("click", e => {
 				e.preventDefault();
 				const folderKey = header.dataset.folder;
 				if (!folderKey) return;
@@ -469,16 +469,16 @@ export const HexPainterBindings = {
 		});
 
 		// Decor elevation input
-		elem.querySelector(".decor-elevation-input")?.addEventListener("change", (e) => {
+		elem.querySelector(".decor-elevation-input")?.addEventListener("change", e => {
 			setDecorElevation(parseFloat(e.target.value) || 0);
 		});
 
 		// Decor sort input
-		elem.querySelector(".decor-sort-input")?.addEventListener("change", (e) => {
+		elem.querySelector(".decor-sort-input")?.addEventListener("change", e => {
 			const intVal = parseInt(e.target.value, 10) || 0;
 			e.target.value = intVal;
 			setDecorSort(intVal);
 		});
-	}
+	},
 
 };

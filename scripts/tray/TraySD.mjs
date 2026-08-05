@@ -32,7 +32,6 @@ let _hideNpcsFromPlayers = true;
 
 // Current actor/token being displayed
 let _currentActor = null;
-let _currentToken = null;
 
 /**
  * Initialize the Character Tray
@@ -41,14 +40,11 @@ let _currentToken = null;
 export function initTray() {
 	// Check if tray is enabled
 	if (!game.settings.get(MODULE_ID, "tray.enabled")) {
-		console.log("shadowdark-extras | Character Tray is disabled");
 		return;
 	}
 
 	// Add class to body to enable tray-specific CSS
 	document.body.classList.add("sdx-tray-enabled");
-
-	console.log("shadowdark-extras | Initializing Character Tray");
 
 	// Create the tray app
 	_trayApp = new TrayApp();
@@ -82,7 +78,7 @@ export function initTray() {
 
 	// Hook into actor updates (HP, etc.) - debounced to handle rapid updates
 	let _actorUpdateTimer = null;
-	Hooks.on("updateActor", async (actor) => {
+	Hooks.on("updateActor", async actor => {
 		if (_actorUpdateTimer) clearTimeout(_actorUpdateTimer);
 		_actorUpdateTimer = setTimeout(async () => {
 			_actorUpdateTimer = null;
@@ -96,13 +92,13 @@ export function initTray() {
 	Hooks.on("updateActiveEffect", async () => await renderTray());
 
 	// Hook into item changes (Shadowdark stores conditions as Effect items)
-	Hooks.on("createItem", async (item) => {
+	Hooks.on("createItem", async item => {
 		if (item.type === "Effect") await renderTray();
 	});
-	Hooks.on("deleteItem", async (item) => {
+	Hooks.on("deleteItem", async item => {
 		if (item.type === "Effect") await renderTray();
 	});
-	Hooks.on("updateItem", async (item) => {
+	Hooks.on("updateItem", async item => {
 		if (item.type === "Effect") await renderTray();
 	});
 
@@ -138,9 +134,11 @@ export function initTray() {
 			_placeableRenderTimer = null;
 			// If painting is active, we don't need to re-render the tray for every tile placement.
 			// This prevents massive lag and scroll resetting issues.
-			// The only downside is if you place a tile that SHOULD trigger a note update, it won't show until you stop painting.
+			// The only downside is if you place a tile that SHOULD trigger a note update, it won't
+			// show until you stop painting.
 
-			// Double check: if isPainting() is true OR if we are in hexes/dungeons view (which implies painting mode)
+			// Double check: if isPainting() is true OR if we are in hexes/dungeons view (which
+			// implies painting mode)
 			// This makes the check more robust against state desyncs
 			if (!isPainting() && !isDungeonPainting() && getViewMode() !== "hexes" && getViewMode() !== "dungeons" && getViewMode() !== "decor") {
 				await renderTray();
@@ -152,7 +150,8 @@ export function initTray() {
 	Hooks.on("createWall", debouncedPlaceableRender);
 	Hooks.on("deleteWall", debouncedPlaceableRender);
 	Hooks.on("updateWall", (wallDoc, changes) => {
-		// Skip door state changes (ds = door state) - opening/closing doors doesn't affect tray content
+		// Skip door state changes (ds = door state) - opening/closing doors doesn't affect tray
+		// content
 		const isDoorStateOnly = ("ds" in changes)
             && !("c" in changes)  // wall coordinates
             && !("flags" in changes);  // flags might contain notes
@@ -223,14 +222,13 @@ export function initTray() {
 	Hooks.on("userConnected", async (user, connected) => {
 		if (!game.user.isGM && user.isGM && connected) {
 			// GM just came online - try to reload dungeon tiles
-			console.log(`${MODULE_ID} | GM connected, reloading dungeon tiles...`);
 			await reloadDungeonAssets();
 			renderTray();
 		}
 	});
 
 	// Keyboard shortcut: Ctrl to toggle Tiles/Doors mode in Dungeons tab
-	document.addEventListener("keydown", (event) => {
+	document.addEventListener("keydown", event => {
 		// Only respond to Ctrl key without other modifiers
 		if (event.key !== "Control" || event.shiftKey || event.altKey) return;
 
@@ -243,7 +241,6 @@ export function initTray() {
 		renderTray();
 	});
 
-	console.log("shadowdark-extras | Character Tray initialized");
 }
 
 /**
@@ -350,7 +347,6 @@ export function getCurrentActor() {
 		const tokens = canvas.tokens.controlled;
 		if (tokens.length === 1) {
 			const token = tokens[0];
-			_currentToken = token;
 			if (token.document.actorLink) {
 				_currentActor = game.actors.get(token.document.actorId);
 			}
@@ -373,7 +369,6 @@ export function getCurrentActor() {
 	}
 
 	_currentActor = character;
-	_currentToken = null;
 	return character;
 }
 
@@ -396,7 +391,9 @@ export function getPartyTokens() {
 		// module isn't active, so guard against that case)
 		let pileData;
 		if (game.modules.get("item-piles")?.active) {
-			pileData = token.document.getFlag("item-piles", "data") ?? actor.getFlag("item-piles", "data");
+			pileData = token.document.getFlag("item-piles", "data") ?? actor.getFlag(
+				"item-piles", "data"
+			);
 		}
 		if (pileData?.enabled) continue;
 
@@ -608,7 +605,6 @@ export function cycleViewMode() {
 	renderTray();
 }
 
-
 /**
  * Toggle tray expansion
  */
@@ -617,7 +613,6 @@ export function toggleTray() {
 		_trayApp.toggleExpanded();
 	}
 }
-
 
 /**
  * Render the tray with current data
@@ -773,22 +768,20 @@ export function getPinsData() {
 			if (contentType === "text") {
 				displayContent = style.customText || "";
 			}
-			else {
-				// Number logic
-				if (pin.journalId && pin.pageId) {
-					const journal = game.journal.get(pin.journalId);
-					if (journal) {
-						const sortedPages = journal.pages.contents.sort((a, b) => a.sort - b.sort);
-						const idx = sortedPages.findIndex(p => p.id === pin.pageId);
-						displayContent = idx >= 0 ? idx : 0;
-					}
-					else {
-						displayContent = "0";
-					}
+			// Number logic
+			else if (pin.journalId && pin.pageId) {
+				const journal = game.journal.get(pin.journalId);
+				if (journal) {
+					const sortedPages = journal.pages.contents.sort((a, b) => a.sort - b.sort);
+					const idx = sortedPages.findIndex(p => p.id === pin.pageId);
+					displayContent = idx >= 0 ? idx : 0;
 				}
 				else {
 					displayContent = "0";
 				}
+			}
+			else {
+				displayContent = "0";
 			}
 		}
 
@@ -851,14 +844,16 @@ export function getPinsData() {
 	}
 
 	const collapsedSet = new Set(folders.filter(f => f.collapsed).map(f => f.id));
-	const countPins = (folderId) => {
+	const countPins = folderId => {
 		let n = (pinsByFolder.get(folderId) || []).length;
 		for (const child of (foldersByParent.get(folderId) || [])) n += countPins(child.id);
 		return n;
 	};
 
 	const INDENT = 14;
-	const isImagePath = (s) => !!s && (/\.(svg|png|jpe?g|webp|gif|avif)$/i.test(s) || s.includes("/"));
+	const isImagePath = s => !!s && (/\.(svg|png|jpe?g|webp|gif|avif)$/i.test(s) || s.includes(
+		"/"
+	));
 	const rows = [];
 	const emitFolder = (folder, depth, ancestors) => {
 		const selfAncestors = ancestors.concat(folder.id);
@@ -892,7 +887,9 @@ export function getPinsData() {
 
 	for (const f of (foldersByParent.get(null) || [])) emitFolder(f, 0, []);
 	for (const p of (pinsByFolder.get(null) || [])) {
-		rows.push({ ...p, rowType: "pin", depth: 0, indent: 0, parentId: null, ancestors: "", hidden: false });
+		rows.push({
+			...p, rowType: "pin", depth: 0, indent: 0, parentId: null, ancestors: "", hidden: false,
+		});
 	}
 
 	return rows;
@@ -920,9 +917,11 @@ export async function getNotesData() {
 			if (!isGM && !isVisible) continue;
 
 			if (noteContent) {
-				// Enrich the HTML for display (convert secrets etc if needed, though we probably want raw for now or enriched safely)
+				// Enrich the HTML for display (convert secrets etc if needed, though we probably
+				// want raw for now or enriched safely)
 				// We will enrich it so links work
-				const enriched = await (foundry.applications?.ux?.TextEditor || TextEditor).enrichHTML(noteContent, { async: true });
+				const textEditor = foundry.applications?.ux?.TextEditor || TextEditor;
+				const enriched = await textEditor.enrichHTML(noteContent, { async: true });
 
 				// Get Name
 				let name = doc.getFlag(MODULE_ID, "customName") || doc.name || "Unnamed";
@@ -969,14 +968,16 @@ export async function getNotesData() {
 			// For tokens we check the token document first, then actor?
 			// Logic: If token has specific visibility flag, use it. If not, default to hidden?
 			// Or share visibility with the note source?
-			// Let's assume visibility flag is on the object that has the note, or just the token document itself for simplicity?
+			// Let's assume visibility flag is on the object that has the note, or just the token
+			// document itself for simplicity?
 			// Actually, keep it simple: visibility flag is on the Token Document.
 			const isVisible = !!doc.getFlag(MODULE_ID, "noteVisible");
 
 			if (!isGM && !isVisible) continue;
 
 			if (noteContent) {
-				const enriched = await (foundry.applications?.ux?.TextEditor || TextEditor).enrichHTML(noteContent, { async: true });
+				const textEditor = foundry.applications?.ux?.TextEditor || TextEditor;
+				const enriched = await textEditor.enrichHTML(noteContent, { async: true });
 				const name = doc.getFlag(MODULE_ID, "customName") || doc.name || "Unnamed";
 
 				notesList.push({
@@ -996,7 +997,8 @@ export async function getNotesData() {
 	}
 	// Tiles (TilesLayer is deprecated in V12? No, `canvas.tiles`)
 	await processPlaceables(canvas.tiles?.placeables, "Tile", "fa-solid fa-image");
-	// Walls (Walls don't technically support notes via standard config usually, but our code enabled it)
+	// Walls (Walls don't technically support notes via standard config usually, but our code
+	// enabled it)
 	// Wait, WallsLayer objects are `Wall` which is a Document.
 	// However, wall selection is tricky. But our PlaceableNotesSD attached to WallConfig.
 	// So yes, walls can have notes.
@@ -1046,8 +1048,6 @@ export function getMapNotesData() {
 	enrichedNotes.sort((a, b) => a.name.localeCompare(b.name));
 	return enrichedNotes;
 }
-
-
 
 /**
  * Get party health bar status

@@ -27,7 +27,7 @@ export default class PlaceableNotesSD extends foundry.applications.api.Handlebar
 		},
 		actions: {
 			save: PlaceableNotesSD._onSave,
-			cancel: (app) => app.close(),
+			cancel: app => app.close(),
 		},
 	};
 

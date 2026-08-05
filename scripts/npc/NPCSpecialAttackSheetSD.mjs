@@ -66,7 +66,9 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
      */
 	static TABS = {
 		activity: { id: "activity", group: "primary", label: "Activity", icon: "fas fa-list" },
-		description: { id: "description", group: "primary", label: "Description", icon: "fas fa-book" },
+		description: {
+			id: "description", group: "primary", label: "Description", icon: "fas fa-book",
+		},
 		macro: { id: "macro", group: "primary", label: "Macro", icon: "fas fa-code" },
 	};
 
@@ -101,10 +103,10 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 
 		// Attack ranges - prepare with checked state
 		const rangesConfig = CONFIG.SHADOWDARK?.RANGES || {
-			"close": "SHADOWDARK.ranges.close",
-			"near": "SHADOWDARK.ranges.near",
-			"far": "SHADOWDARK.ranges.far",
-			"nearLine": "SHADOWDARK.ranges.nearLine",
+			close: "SHADOWDARK.ranges.close",
+			near: "SHADOWDARK.ranges.near",
+			far: "SHADOWDARK.ranges.far",
+			nearLine: "SHADOWDARK.ranges.nearLine",
 		};
 
 		const selectedRanges = item.system.ranges || [];
@@ -122,7 +124,9 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 		// Ensure "extraDamages" are pulled from flags correctly
 		const extraDamagesFlag = item.getFlag(MODULE_ID, "extraDamages") || [];
 		// Handle case where it might be an object instead of array
-		context.extraDamages = Array.isArray(extraDamagesFlag) ? extraDamagesFlag : Object.values(extraDamagesFlag);
+		context.extraDamages = Array.isArray(extraDamagesFlag) ? extraDamagesFlag : Object.values(
+			extraDamagesFlag
+		);
 
 		// Base Damage Type (flag)
 		context.baseDamageType = item.getFlag(MODULE_ID, "baseDamageType") || "physical";
@@ -131,9 +135,12 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 			damageFormula: specialAttack.damageFormula || item.system.damage?.value || "",
 			damageBonus: specialAttack.damageBonus ?? item.system.bonuses?.damageBonus ?? 0,
 			critical: {
-				multiplier: specialAttack.critical?.multiplier ?? item.system.bonuses?.critical?.multiplier ?? 2,
-				successThreshold: specialAttack.critical?.successThreshold ?? item.system.bonuses?.critical?.successThreshold ?? 20,
-				failureThreshold: specialAttack.critical?.failureThreshold ?? item.system.bonuses?.critical?.failureThreshold ?? 1,
+				multiplier: specialAttack.critical?.multiplier
+					?? item.system.bonuses?.critical?.multiplier ?? 2,
+				successThreshold: specialAttack.critical?.successThreshold
+					?? item.system.bonuses?.critical?.successThreshold ?? 20,
+				failureThreshold: specialAttack.critical?.failureThreshold
+					?? item.system.bonuses?.critical?.failureThreshold ?? 1,
 			},
 		};
 
@@ -158,9 +165,11 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 		}
 
 		// Base damage type dropdown
-		const baseDamageTypeSelect = html.querySelector("select[name='flags.shadowdark-extras.baseDamageType']");
+		const baseDamageTypeSelect = html.querySelector(
+			"select[name='flags.shadowdark-extras.baseDamageType']"
+		);
 		if (baseDamageTypeSelect) {
-			baseDamageTypeSelect.addEventListener("change", async (event) => {
+			baseDamageTypeSelect.addEventListener("change", async event => {
 				await this.item.setFlag(MODULE_ID, "baseDamageType", event.target.value);
 			});
 		}
@@ -188,10 +197,12 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 
 		// Observer to wait for the ProseMirror toolbar to be ready
 		const observer = new MutationObserver(() => {
-			const saveButton = proseMirrorEditor.querySelector(".editor-save, button[data-action='save']");
+			const saveButton = proseMirrorEditor.querySelector(
+				".editor-save, button[data-action='save']"
+			);
 			if (saveButton && !saveButton.dataset.sdxHandled) {
 				saveButton.dataset.sdxHandled = "true";
-				saveButton.addEventListener("click", async (event) => {
+				saveButton.addEventListener("click", async event => {
 					// Get the ProseMirror content
 					const editorContent = proseMirrorEditor.querySelector(".ProseMirror");
 					if (editorContent) {
@@ -207,10 +218,12 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 
 		// Also check if it's already rendered
 		setTimeout(() => {
-			const saveButton = proseMirrorEditor.querySelector(".editor-save, button[data-action='save']");
+			const saveButton = proseMirrorEditor.querySelector(
+				".editor-save, button[data-action='save']"
+			);
 			if (saveButton && !saveButton.dataset.sdxHandled) {
 				saveButton.dataset.sdxHandled = "true";
-				saveButton.addEventListener("click", async (event) => {
+				saveButton.addEventListener("click", async event => {
 					const editorContent = proseMirrorEditor.querySelector(".ProseMirror");
 					if (editorContent) {
 						const htmlContent = editorContent.innerHTML;
@@ -229,24 +242,44 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 		// Attack stats fields
 		const statFields = [
 			{ selector: "input[name='system.attack.num']", path: "system.attack.num" },
-			{ selector: "input[name='system.bonuses.attackBonus']", path: "system.bonuses.attackBonus", isNumber: true },
-			{ selector: "input[name='flags.shadowdark-extras.specialAttack.damageBonus']", flagPath: "damageBonus", isNumber: true },
-			{ selector: "input[name='flags.shadowdark-extras.specialAttack.damageFormula']", flagPath: "damageFormula" },
-			{ selector: "input[name='flags.shadowdark-extras.specialAttack.critical.multiplier']", flagPath: "critical.multiplier", isNumber: true },
-			{ selector: "input[name='flags.shadowdark-extras.specialAttack.critical.successThreshold']", flagPath: "critical.successThreshold", isNumber: true },
-			{ selector: "input[name='flags.shadowdark-extras.specialAttack.critical.failureThreshold']", flagPath: "critical.failureThreshold", isNumber: true },
+			{
+				selector: "input[name='system.bonuses.attackBonus']",
+				path: "system.bonuses.attackBonus", isNumber: true,
+			},
+			{
+				selector: "input[name='flags.shadowdark-extras.specialAttack.damageBonus']",
+				flagPath: "damageBonus", isNumber: true,
+			},
+			{
+				selector: "input[name='flags.shadowdark-extras.specialAttack.damageFormula']",
+				flagPath: "damageFormula",
+			},
+			{
+				selector: "input[name='flags.shadowdark-extras.specialAttack.critical.multiplier']",
+				flagPath: "critical.multiplier", isNumber: true,
+			},
+			{
+				selector: "input[name='flags.shadowdark-extras.specialAttack.critical.successThreshold']",
+				flagPath: "critical.successThreshold", isNumber: true,
+			},
+			{
+				selector: "input[name='flags.shadowdark-extras.specialAttack.critical.failureThreshold']",
+				flagPath: "critical.failureThreshold", isNumber: true,
+			},
 		];
 
 		for (const field of statFields) {
 			const input = html.querySelector(field.selector);
 			if (input) {
-				const save = async (event) => {
+				const save = async event => {
 					let value = event.target.value;
 					if (field.isNumber) {
 						value = parseInt(value) || 0;
 					}
 					if (field.flagPath) {
-						const specialAttack = foundry.utils.deepClone(this.item.getFlag(MODULE_ID, "specialAttack") || {});
+						const specialAttack = foundry.utils.deepClone(
+							this.item.getFlag(MODULE_ID, "specialAttack") || {}
+						);
 						foundry.utils.setProperty(specialAttack, field.flagPath, value);
 						await this.item.setFlag(MODULE_ID, "specialAttack", specialAttack);
 					}
@@ -267,8 +300,10 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 		const extraDamageInputs = html.querySelectorAll("input[name^='flags.shadowdark-extras.extraDamages'], select[name^='flags.shadowdark-extras.extraDamages']");
 
 		extraDamageInputs.forEach(input => {
-			input.addEventListener("change", async (event) => {
-				const match = event.target.name.match(/flags\.shadowdark-extras\.extraDamages\.(\d+)\.(formula|damageType)/);
+			input.addEventListener("change", async event => {
+				const match = event.target.name.match(
+					/flags\.shadowdark-extras\.extraDamages\.(\d+)\.(formula|damageType)/
+				);
 				if (!match) return;
 
 				const index = parseInt(match[1]);
@@ -297,7 +332,7 @@ export default class NPCSpecialAttackSheetSD extends NPCFeatureSheetSD {
 		const rangeCheckboxes = html.querySelectorAll("input[name='system.ranges']");
 
 		rangeCheckboxes.forEach(checkbox => {
-			checkbox.addEventListener("change", async (event) => {
+			checkbox.addEventListener("change", async event => {
 				const checked = Array.from(rangeCheckboxes)
 					.filter(cb => cb.checked)
 					.map(cb => cb.value);

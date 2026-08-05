@@ -1,5 +1,3 @@
-import { MODULE_ID } from "../shared/module-id.mjs";
-
 /**
  * Dragging the shadowdark-crawl-helper lights-out carousel.
  *
@@ -70,7 +68,7 @@ export function initCarouselDrag() {
 		rollAllBtn.parentNode.insertBefore(dragBtn, rollAllBtn);
 
 		// Attach drag handler
-		dragBtn.addEventListener("mousedown", (e) => {
+		dragBtn.addEventListener("mousedown", e => {
 			if (e.button !== 0) return;
 
 			isDragging = true;
@@ -110,7 +108,7 @@ export function initCarouselDrag() {
 						carousel.style.top = `${top}px`;
 					}
 				}
-				catch (e) {
+				catch(e) {
 					console.warn("shadowdark-extras | Failed to restore carousel position:", e);
 				}
 			}
@@ -121,7 +119,7 @@ export function initCarouselDrag() {
 	}
 
 	// Global mouse move handler
-	document.addEventListener("mousemove", (e) => {
+	document.addEventListener("mousemove", e => {
 		if (!isDragging) return;
 
 		const dx = e.clientX - dragStartX;
@@ -167,7 +165,7 @@ export function initCarouselDrag() {
 	});
 
 	// Watch for carousel to appear using MutationObserver
-	const observer = new MutationObserver((mutations) => {
+	const observer = new MutationObserver(mutations => {
 		// Check for carousel and setup any new portraits
 		const carousel = document.querySelector("#actorCarousel.lights-out-carousel");
 		if (carousel) {
@@ -192,6 +190,5 @@ export function initCarouselDrag() {
 			setupCarouselDrag(carousel);
 		}
 
-		console.log(`${MODULE_ID} | Carousel drag functionality initialized`);
 	});
 }

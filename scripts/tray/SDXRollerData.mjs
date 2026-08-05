@@ -67,7 +67,9 @@ export function buildTravelTaskRollData(task, actors, selections = {}, dc = 12) 
 
 		const memberKey = uuid.startsWith("Compendium.") ? uuid : String(actor.id ?? uuid);
 		const rawSelection = Number(selections?.[memberKey] ?? 0);
-		const selectionIndex = Number.isInteger(rawSelection) && rawSelection >= 0 ? rawSelection : 0;
+		const selectionIndex = Number.isInteger(rawSelection) && rawSelection >= 0
+			? rawSelection
+			: 0;
 		actorUuids.push(uuid);
 		actorAbilities[uuid] = taskAbilities[selectionIndex] ?? fallbackAbility;
 	}

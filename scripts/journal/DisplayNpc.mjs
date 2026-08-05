@@ -3,14 +3,13 @@
  *
  * Allows journal pages to display styled NPC stat cards using:
  * @DisplayNpcCard[Actor.UUID named]{Display Name}
- * @DisplayNpcCardDetailed[Actor.UUID named]{Display Name} - includes attacks, special attacks, features
+ * @DisplayNpcCardDetailed[Actor.UUID named]{Display Name} - includes attacks, special attacks,
+ * features
  *
  * Based on Dragonbane's DisplayMonsterCard implementation.
  */
 
 import { getEffectiveCreatureType } from "../npc/CreatureTypesApp.mjs";
-
-const MODULE_ID = "shadowdark-extras";
 
 /**
  * Parse the brackets content to extract UUID and optional flags
@@ -42,7 +41,7 @@ async function getActorFromUUID(uuid) {
 		}
 		return actor;
 	}
-	catch (e) {
+	catch(e) {
 		console.warn(`SDX DisplayNpcCard: Could not find actor for UUID: ${uuid}`);
 		return null;
 	}
@@ -115,13 +114,13 @@ async function buildDescriptionHtml(npc) {
  */
 function getLocalizedMove(moveKey) {
 	const moveLabels = {
-		"none": game.i18n.localize("SHADOWDARK.npc_move.none") || "None",
-		"close": game.i18n.localize("SHADOWDARK.npc_move.close") || "Close",
-		"near": game.i18n.localize("SHADOWDARK.npc_move.near") || "Near",
-		"doubleNear": game.i18n.localize("SHADOWDARK.range.double_near") || "Double Near",
-		"tripleNear": game.i18n.localize("SHADOWDARK.npc_move.triple_near") || "Triple Near",
-		"far": game.i18n.localize("SHADOWDARK.npc_move.far") || "Far",
-		"special": game.i18n.localize("SHADOWDARK.npc_move.special") || "Special",
+		none: game.i18n.localize("SHADOWDARK.npc_move.none") || "None",
+		close: game.i18n.localize("SHADOWDARK.npc_move.close") || "Close",
+		near: game.i18n.localize("SHADOWDARK.npc_move.near") || "Near",
+		doubleNear: game.i18n.localize("SHADOWDARK.range.double_near") || "Double Near",
+		tripleNear: game.i18n.localize("SHADOWDARK.npc_move.triple_near") || "Triple Near",
+		far: game.i18n.localize("SHADOWDARK.npc_move.far") || "Far",
+		special: game.i18n.localize("SHADOWDARK.npc_move.special") || "Special",
 	};
 	return moveLabels[moveKey] || moveKey || "-";
 }
@@ -143,11 +142,11 @@ function getCreatureType(npc) {
 function getRangeLabel(ranges) {
 	if (!ranges || ranges.length === 0) return "";
 	const rangeLabels = {
-		"close": "Close",
-		"near": "Near",
-		"far": "Far",
-		"doubleNear": "Double Near",
-		"tripleNear": "Triple Near",
+		close: "Close",
+		near: "Near",
+		far: "Far",
+		doubleNear: "Double Near",
+		tripleNear: "Triple Near",
 	};
 	return ranges.map(r => rangeLabels[r] || r).join(", ");
 }
@@ -338,7 +337,8 @@ export async function enrichDisplayNpcCard(match, _options, detailed = false) {
 		container.dataset.npcId = parsedMatch.uuid;
 		if (match[2]) container.dataset.npcName = match[2];
 		container.classList.add("content-link", "broken");
-		container.innerHTML = `<i class="fas fa-unlink"></i> ${npcName ?? "Unknown NPC"}`;
+		const escapedName = foundry.utils.escapeHTML(npcName ?? "Unknown NPC");
+		container.innerHTML = `<i class="fas fa-unlink"></i> ${escapedName}`;
 	}
 
 	return container;
@@ -366,6 +366,5 @@ export function registerDisplayNpcEnricher() {
 		enricher: enrichDisplayNpcCardDetailed,
 	});
 
-	console.log("SDX | Registered DisplayNpcCard and DisplayNpcCardDetailed enrichers");
 }
 

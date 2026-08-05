@@ -33,9 +33,9 @@ export function patchLightSourceTrackerForParty() {
 		for (const actor of partyActors) {
 			// Get active light sources for this party
 			const activeLightSources = actor.items.filter(
-				item => ["Basic", "Effect"].includes(item.type) &&
-					item.system.light?.isSource &&
-					item.system.light?.active
+				item => ["Basic", "Effect"].includes(item.type)
+					&& item.system.light?.isSource
+					&& item.system.light?.active
 			);
 
 			if (activeLightSources.length === 0) continue;

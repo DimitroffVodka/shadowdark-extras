@@ -1,8 +1,39 @@
-// Canvas pin rendering cluster (graphics, tooltip, renderer) — extracted
-// from scripts/journal/JournalPinsSD.mjs (Phase 5.1 split).
+// Canvas pin graphics + renderer — extracted from
+// scripts/journal/JournalPinsSD.mjs (Phase 5.1 split).
+//
+// Phase 5.3.5 moved the pointer interactions to pin-interactions.mjs and the
+// hover tooltip to pin-tooltip.mjs. JournalPinTooltip is re-exported here so
+// the original import surface still resolves.
 
 import { MODULE_ID, getPinStyle, normalizeImageTint } from "./pin-style.mjs";
-import { JournalPinManager, checkPinVisibility } from "./pin-manager.mjs";
+import { checkPinVisibility } from "./pin-manager.mjs";
+import { drawStyledStroke } from "./pin-draw.mjs";
+import { addGlyphIcon, addSvgIcon, addVisionIndicator } from "./pin-icons.mjs";
+import {
+	PIN_PLACEABLE_TYPE,
+	buildPinDocument,
+	getPinFlag,
+	setPinFlag,
+	tmfxAddFilters,
+	tmfxDeleteFilters,
+	tmfxMaxFilterRank,
+	tmfxSetRawFilters,
+	tmfxUpdateFilters,
+	unsetPinFlag,
+} from "./pin-tmfx-adapter.mjs";
+import {
+	attachPinListeners,
+	detachPinListeners,
+	onPointerDown,
+	onPointerEnter,
+	onPointerLeave,
+	onPointerMove,
+	onPointerUp,
+	openPinJournal,
+	showPinContextMenu,
+} from "./pin-interactions.mjs";
+
+export { JournalPinTooltip } from "./pin-tooltip.mjs";
 
 // ================================================================
 // PIN GRAPHICS - PIXI rendering
@@ -65,56 +96,29 @@ export class JournalPinGraphics extends PIXI.Container {
 	// ===========================================
 	// FOUNDRY / TOKENMAGIC INTERFACE MOCK
 	// ===========================================
+	// Bodies live in pin-tmfx-adapter.mjs. They stay as members here because
+	// TokenMagic reaches for them by name on the placeable it is handed.
 
-	// We MUST use a getter for document that returns a proxy/wrapper
-	// to avoid property collisions with PIXI (especially 'parent' and 'name')
 	get document() {
-		return {
-			id: this.pinData.id,
-			documentName: "JournalPin",
-			name: this.pinData.label || "Journal Pin",
-			parent: canvas.scene,
-			getFlag: (s, k) => this.getFlag(s, k),
-			setFlag: (s, k, v) => this.setFlag(s, k, v),
-			unsetFlag: (s, k) => this.unsetFlag(s, k),
-			_TMFXsetFlag: (f) => this._TMFXsetFlag(f),
-			_TMFXunsetFlag: () => this._TMFXunsetFlag(),
-			_TMFXsetAnimeFlag: (f) => this._TMFXsetAnimeFlag(f),
-			_TMFXunsetAnimeFlag: () => this._TMFXunsetAnimeFlag(),
-			_TMFXgetPlaceableType: () => this._TMFXgetPlaceableType(),
-			_TMFXgetMaxFilterRank: () => this._TMFXgetMaxFilterRank(),
-			get object() {
-				return this;
-			},
-		};
+		return buildPinDocument(this);
 	}
 
 	get id() {
 		return this.pinData.id;
 	}
 
-	// Mock getFlag for TokenMagic
 	getFlag(scope, key) {
-		const flags = this.pinData.flags || {};
-		if (scope && key) return foundry.utils.getProperty(flags, `${scope}.${key}`);
-		if (scope) return flags[scope];
-		return flags;
+		return getPinFlag(this, scope, key);
 	}
 
 	async setFlag(scope, key, value) {
-		const updateData = {};
-		updateData[`flags.${scope}.${key}`] = value;
-		return await JournalPinManager.update(this.pinData.id, updateData);
+		return await setPinFlag(this, scope, key, value);
 	}
 
 	async unsetFlag(scope, key) {
-		const updateData = {};
-		// v14+: use ForcedDeletion sentinel instead of legacy "-=" deletion key syntax.
-		updateData[`flags.${scope}.${key}`] = new foundry.data.operators.ForcedDeletion();
-		return await JournalPinManager.update(this.pinData.id, updateData);
+		return await unsetPinFlag(this, scope, key);
 	}
 
-	// Mock CanvasDocument / PlaceableObject methods for TMFX
 	async _TMFXsetFlag(flag) {
 		return await this.setFlag("tokenmagic", "filters", flag);
 	}
@@ -132,7 +136,7 @@ export class JournalPinGraphics extends PIXI.Container {
 	}
 
 	_TMFXgetPlaceableType() {
-		return "JournalPin";
+		return PIN_PLACEABLE_TYPE;
 	}
 
 	_TMFXgetSprite() {
@@ -144,56 +148,24 @@ export class JournalPinGraphics extends PIXI.Container {
 	}
 
 	_TMFXgetMaxFilterRank() {
-		const filters = this.filters || [];
-		if (filters.length === 0) return 10000;
-		return Math.max(...filters.map(f => f.rank || 0)) + 1;
+		return tmfxMaxFilterRank(this);
 	}
 
 	async TMFXaddFilters(paramsArray, replace = false) {
-		if (window.TokenMagic) await window.TokenMagic.addFilters(this, paramsArray, replace);
+		await tmfxAddFilters(this, paramsArray, replace);
 	}
 
 	async TMFXupdateFilters(paramsArray) {
-		if (window.TokenMagic) await window.TokenMagic.updateFiltersByPlaceable(this, paramsArray);
+		await tmfxUpdateFilters(this, paramsArray);
 	}
 
 	async TMFXdeleteFilters(filterId = null) {
-		if (window.TokenMagic) await window.TokenMagic.deleteFilters(this, filterId);
+		await tmfxDeleteFilters(this, filterId);
 	}
 
-	// Mimic PlaceableObjectProto._TMFXsetRawFilters
 	_TMFXsetRawFilters(filters) {
-		if (!this.filters) this.filters = [];
-		// Simple append for now as TMFX usually manages the array
-		if (filters === null) {
-			this.filters = null;
-		}
-		else {
-			if (Array.isArray(filters)) this.filters = filters;
-			else this.filters.push(filters);
-		}
+		tmfxSetRawFilters(this, filters);
 	}
-
-	async update(pinData) {
-		this.pinData = foundry.utils.deepClone(pinData);
-
-		// Update Transform
-		this.position.set(this.pinData.x, this.pinData.y);
-
-		// Rebuild graphics if needed (style change)
-		// Ideally we check if style changed, but rebuilding is safer
-		await this._build();
-
-		// Refresh TMFX filters from flags
-		if (window.TokenMagic) {
-			const filters = this.getFlag("tokenmagic", "filters");
-			window.TokenMagic._clearImgFiltersByPlaceable(this);
-			if (filters) {
-				window.TokenMagic._assignFilters(this, filters);
-			}
-		}
-	}
-
 
 	animatePing(type = "ping") {
 		if (!window.gsap) {
@@ -223,7 +195,7 @@ export class JournalPinGraphics extends PIXI.Container {
 				if (typeof color === "string" && color.startsWith("#")) colorNum = parseInt(color.slice(1), 16);
 				else if (typeof color === "number") colorNum = color;
 			}
-			catch (e) { }
+			catch(e) { }
 
 			const ripple = new PIXI.Graphics();
 			ripple.lineStyle(6, colorNum, 0.8);
@@ -246,7 +218,10 @@ export class JournalPinGraphics extends PIXI.Container {
 
 		}
 		else if (pingAnim === "flash") {
-			gsap.fromTo(this, { pixi: { brightness: 3 } }, { pixi: { brightness: 1 }, duration: 1.0, ease: "power2.out" });
+			gsap.fromTo(
+				this, { pixi: { brightness: 3 } },
+				{ pixi: { brightness: 1 }, duration: 1.0, ease: "power2.out" }
+			);
 			gsap.fromTo(this.scale,
 				{ x: 1.5, y: 1.5 },
 				{ x: restingScale, y: restingScale, duration: 1.0, ease: "elastic.out(1, 0.5)" }
@@ -311,7 +286,6 @@ export class JournalPinGraphics extends PIXI.Container {
 
 		// Don't remove children yet, wait until new content is ready
 
-
 		// Get global style settings
 		const globalStyle = getPinStyle();
 
@@ -336,8 +310,6 @@ export class JournalPinGraphics extends PIXI.Container {
 		const baseOpacity = style.opacity ?? 1.0;
 		const fillOpacity = (style.fillOpacity ?? 1.0) * baseOpacity;
 		const ringOpacity = (style.ringOpacity ?? 1.0) * baseOpacity;
-
-
 
 		// Use red dashed stroke if pin is GM-only (visible indicator for GM)
 		let ringColor;
@@ -414,7 +386,7 @@ export class JournalPinGraphics extends PIXI.Container {
 				// uses are confined to the non-image branch below.
 
 			}
-			catch (err) {
+			catch(err) {
 				console.error("SDX Journal Pins | Error loading pin image:", err);
 			}
 		}
@@ -456,7 +428,7 @@ export class JournalPinGraphics extends PIXI.Container {
 					const hexRadius = radius;
 					const hexOffset = shape === "hexagonFlat" ? 0 : -Math.PI / 2;
 					for (let i = 0; i < 6; i++) {
-						const angle = (Math.PI / 3) * i + hexOffset;
+						const angle = ((Math.PI / 3) * i) + hexOffset;
 						const hx = Math.cos(angle) * hexRadius;
 						const hy = Math.sin(angle) * hexRadius;
 						if (i === 0) this._circle.moveTo(hx, hy);
@@ -475,7 +447,10 @@ export class JournalPinGraphics extends PIXI.Container {
 			// Draw custom stroke if not solid AND not image
 			if (ringStyle !== "solid") {
 				const cornerRadius = style.borderRadius ?? 4;
-				this._drawStyledStroke(this._circle, shape, radius, size, ringWidth, ringColorNum, ringOpacity, ringStyle, cornerRadius);
+				drawStyledStroke(
+					this._circle, shape, radius, ringWidth, ringColorNum, ringOpacity, ringStyle,
+					cornerRadius
+				);
 			}
 		}
 
@@ -493,7 +468,7 @@ export class JournalPinGraphics extends PIXI.Container {
 				? parseInt(symbolColor.slice(1), 16)
 				: 0xFFFFFF;
 
-			await this._addIcon(container, iconClass, radius, symbolColorNum);
+			await addGlyphIcon(this, container, iconClass, radius, symbolColorNum);
 			if (this._buildId !== buildId || this.destroyed) return;
 		}
 		else if (contentType === "customIcon") {
@@ -504,7 +479,7 @@ export class JournalPinGraphics extends PIXI.Container {
 				const iconColorNum = typeof iconColor === "string" && iconColor.startsWith("#")
 					? parseInt(iconColor.slice(1), 16)
 					: 0xFFFFFF;
-				await this._addSvgIcon(container, iconPath, radius, iconColorNum);
+				await addSvgIcon(this, container, iconPath, radius, iconColorNum);
 				if (this._buildId !== buildId || this.destroyed) return;
 			}
 		}
@@ -535,7 +510,7 @@ export class JournalPinGraphics extends PIXI.Container {
 						await document.fonts.load(`16px ${fontFamily}`);
 						if (this._buildId !== buildId || this.destroyed) return;
 					}
-					catch (e) {
+					catch(e) {
 						console.warn(`SDX Journal Pins | Failed to load font: ${fontFamily}`);
 					}
 				}
@@ -583,8 +558,10 @@ export class JournalPinGraphics extends PIXI.Container {
 					await document.fonts.load(`16px ${labelFontFamily}`);
 					if (this._buildId !== buildId || this.destroyed) return;
 				}
-				catch (e) {
-					console.warn(`SDX Journal Pins | Failed to load label font: ${labelFontFamily}`);
+				catch(e) {
+					console.warn(
+						`SDX Journal Pins | Failed to load label font: ${labelFontFamily}`
+					);
 				}
 			}
 
@@ -628,7 +605,8 @@ export class JournalPinGraphics extends PIXI.Container {
 						const sB = parseInt(style.labelBorderSliceBottom) || 15;
 						const sL = parseInt(style.labelBorderSliceLeft) || 15;
 
-						// PIXI.NineSlicePlane(texture, leftWidth, topHeight, rightWidth, bottomHeight)
+						// PIXI.NineSlicePlane(texture, leftWidth, topHeight, rightWidth,
+						// bottomHeight)
 						bg = new PIXI.NineSlicePlane(tex, sL, sT, sR, sB);
 
 						// The background size should cover the text plus padding
@@ -650,7 +628,7 @@ export class JournalPinGraphics extends PIXI.Container {
 						}
 					}
 				}
-				catch (e) {
+				catch(e) {
 					console.error("SDX Journal Pins | Failed to load label background", e);
 				}
 			}
@@ -663,7 +641,10 @@ export class JournalPinGraphics extends PIXI.Container {
 				if ((style.labelBorderWidth ?? 0) > 0) {
 					bg.lineStyle(style.labelBorderWidth, borderColor, 1);
 				}
-				bg.drawRoundedRect(0, 0, labelText.width + (padX * 2), labelText.height + (padY * 2), style.labelBorderRadius || 4);
+				bg.drawRoundedRect(
+					0, 0, labelText.width + (padX * 2), labelText.height + (padY * 2),
+					style.labelBorderRadius || 4
+				);
 				bg.endFill();
 			}
 
@@ -732,7 +713,9 @@ export class JournalPinGraphics extends PIXI.Container {
 			if (this._buildId === buildId && !this.destroyed) {
 				// Final cleanup of any concurrent build's label that might have slipped in
 				if (this._labelContainer) {
-					if (this._labelContainer.parent) this._labelContainer.parent.removeChild(this._labelContainer);
+					if (this._labelContainer.parent) {
+						this._labelContainer.parent.removeChild(this._labelContainer);
+					}
 					this._labelContainer.destroy({ children: true });
 				}
 
@@ -742,7 +725,9 @@ export class JournalPinGraphics extends PIXI.Container {
 
 				const rendererLabelContainer = JournalPinRenderer.getLabelContainer();
 				if (rendererLabelContainer) {
-					this._labelContainer.position.set(this.position.x + posX, this.position.y + posY);
+					this._labelContainer.position.set(
+						this.position.x + posX, this.position.y + posY
+					);
 					rendererLabelContainer.addChild(this._labelContainer);
 				}
 				else {
@@ -802,8 +787,8 @@ export class JournalPinGraphics extends PIXI.Container {
 					// sprite is anchored at 0.5, 0.5
 
 					// Convert to sprite local coords
-					const spriteX = x + sprite.width / 2;
-					const spriteY = y + sprite.height / 2;
+					const spriteX = x + (sprite.width / 2);
+					const spriteY = y + (sprite.height / 2);
 
 					// Convert to texture coords
 					const scaleX = texture.width / sprite.width;
@@ -825,16 +810,17 @@ export class JournalPinGraphics extends PIXI.Container {
 						this._pixelCanvas.height = texture.height;
 						const ctx = this._pixelCanvas.getContext("2d");
 						ctx.drawImage(source, 0, 0);
-						this._pixelData = ctx.getImageData(0, 0, texture.width, texture.height).data;
+						const imageData = ctx.getImageData(0, 0, texture.width, texture.height);
+						this._pixelData = imageData.data;
 					}
 
 					// Get alpha value at the pixel (RGBA = 4 bytes per pixel, alpha is 4th byte)
-					const pixelIndex = (texY * texture.width + texX) * 4;
+					const pixelIndex = ((texY * texture.width) + texX) * 4;
 					const alpha = this._pixelData[pixelIndex + 3];
 
 					return alpha >= this._alphaThreshold;
 				}
-				catch (err) {
+				catch(err) {
 					console.warn("SDX Journal Pins | Pixel-perfect detection failed:", err);
 					return inBounds;
 				}
@@ -843,7 +829,7 @@ export class JournalPinGraphics extends PIXI.Container {
 
 		// Add status indicators for GM
 		if (game.user?.isGM && this.pinData.requiresVision) {
-			await this._addVisionIndicator(container, radius);
+			await addVisionIndicator(this, container, radius);
 		}
 
 		// Performance: Cache pin visual as a single sprite texture
@@ -862,7 +848,8 @@ export class JournalPinGraphics extends PIXI.Container {
 						pc.height = tex.height;
 						const pctx = pc.getContext("2d");
 						pctx.drawImage(source, 0, 0);
-						this.hitArea._pixelData = pctx.getImageData(0, 0, tex.width, tex.height).data;
+						const hitPixels = pctx.getImageData(0, 0, tex.width, tex.height);
+						this.hitArea._pixelData = hitPixels.data;
 						this.hitArea._pixelCanvas = pc;
 					}
 				}
@@ -874,11 +861,15 @@ export class JournalPinGraphics extends PIXI.Container {
 
 				const bounds = container.getLocalBounds();
 				if (bounds.width > 0 && bounds.height > 0) {
-					const texture = canvas.app.renderer.generateTexture(container, { resolution: 2 });
+					const texture = canvas.app.renderer.generateTexture(
+						container, { resolution: 2 }
+					);
 					// Guard: only use the cached texture if generation succeeded
 					if (texture && texture.valid) {
 						const cachedSprite = new PIXI.Sprite(texture);
-						cachedSprite.anchor.set(-bounds.x / bounds.width, -bounds.y / bounds.height);
+						cachedSprite.anchor.set(
+							-bounds.x / bounds.width, -bounds.y / bounds.height
+						);
 						this.removeChild(container);
 						container.destroy({ children: true });
 						this.addChild(cachedSprite);
@@ -886,7 +877,7 @@ export class JournalPinGraphics extends PIXI.Container {
 					}
 				}
 			}
-			catch (e) {
+			catch(e) {
 				// Keep the raw graphics container if caching fails
 			}
 		}
@@ -898,344 +889,6 @@ export class JournalPinGraphics extends PIXI.Container {
 				window.TokenMagic._assignFilters(this, filters);
 			}
 		}
-	}
-	/**
-     * Draw a dashed or dotted stroke manually since PIXI.Graphics doesn't support them natively
-     * @param {number} cornerRadius - Border radius for square shapes
-     */
-	_drawStyledStroke(graphics, shape, radius, size, width, color, opacity, style, cornerRadius = 4) {
-		graphics.lineStyle(width, color, opacity);
-
-		const isDotted = style === "dotted";
-		const dashLen = isDotted ? width : width * 3;
-		const gapLen = isDotted ? width * 2 : width * 2;
-
-		if (shape === "circle") {
-			const circumference = 2 * Math.PI * radius;
-			const numSegments = Math.floor(circumference / (dashLen + gapLen));
-			const actualSegmentLen = circumference / numSegments;
-			const dashAngle = (dashLen / circumference) * 2 * Math.PI;
-			const gapAngle = (gapLen / circumference) * 2 * Math.PI;
-			const stepAngle = (actualSegmentLen / circumference) * 2 * Math.PI;
-
-			for (let i = 0; i < numSegments; i++) {
-				const startAngle = i * stepAngle;
-				if (isDotted) {
-					// Draw a small dot
-					const x = Math.cos(startAngle) * radius;
-					const y = Math.sin(startAngle) * radius;
-					graphics.lineStyle(0);
-					graphics.beginFill(color, opacity);
-					graphics.drawCircle(x, y, width / 2);
-					graphics.endFill();
-				}
-				else {
-					// Draw a dash arc
-					graphics.arc(0, 0, radius, startAngle, startAngle + dashAngle);
-					graphics.moveTo(Math.cos(startAngle + stepAngle) * radius, Math.sin(startAngle + stepAngle) * radius);
-				}
-			}
-		}
-		else if (shape === "square" && cornerRadius > 0) {
-			// Rounded square - draw edges with corner arcs
-			const cr = Math.min(cornerRadius, radius); // Clamp corner radius
-			const innerRadius = radius - cr;
-
-			// Build path segments: straight edges + corner arcs
-			// Corners are at: top-right, bottom-right, bottom-left, top-left
-			const segments = [];
-
-			// Top edge (left to right)
-			segments.push({ type: "line", x1: -innerRadius, y1: -radius, x2: innerRadius, y2: -radius });
-			// Top-right corner arc
-			segments.push({ type: "arc", cx: innerRadius, cy: -innerRadius, r: cr, startAngle: -Math.PI / 2, endAngle: 0 });
-			// Right edge (top to bottom)
-			segments.push({ type: "line", x1: radius, y1: -innerRadius, x2: radius, y2: innerRadius });
-			// Bottom-right corner arc
-			segments.push({ type: "arc", cx: innerRadius, cy: innerRadius, r: cr, startAngle: 0, endAngle: Math.PI / 2 });
-			// Bottom edge (right to left)
-			segments.push({ type: "line", x1: innerRadius, y1: radius, x2: -innerRadius, y2: radius });
-			// Bottom-left corner arc
-			segments.push({ type: "arc", cx: -innerRadius, cy: innerRadius, r: cr, startAngle: Math.PI / 2, endAngle: Math.PI });
-			// Left edge (bottom to top)
-			segments.push({ type: "line", x1: -radius, y1: innerRadius, x2: -radius, y2: -innerRadius });
-			// Top-left corner arc
-			segments.push({ type: "arc", cx: -innerRadius, cy: -innerRadius, r: cr, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 });
-
-			// Draw dashed/dotted pattern along the path
-			for (const seg of segments) {
-				if (seg.type === "line") {
-					const dx = seg.x2 - seg.x1;
-					const dy = seg.y2 - seg.y1;
-					const len = Math.sqrt(dx * dx + dy * dy);
-					const nx = dx / len;
-					const ny = dy / len;
-
-					let dist = 0;
-					while (dist < len) {
-						const segLen = Math.min(dashLen, len - dist);
-						const sx = seg.x1 + nx * dist;
-						const sy = seg.y1 + ny * dist;
-
-						if (isDotted) {
-							graphics.lineStyle(0);
-							graphics.beginFill(color, opacity);
-							graphics.drawCircle(sx, sy, width / 2);
-							graphics.endFill();
-						}
-						else {
-							graphics.lineStyle(width, color, opacity);
-							graphics.moveTo(sx, sy);
-							graphics.lineTo(sx + nx * segLen, sy + ny * segLen);
-						}
-						dist += dashLen + gapLen;
-					}
-				}
-				else if (seg.type === "arc") {
-					const arcLen = seg.r * Math.abs(seg.endAngle - seg.startAngle);
-					const numDashes = Math.max(1, Math.floor(arcLen / (dashLen + gapLen)));
-					const angleStep = (seg.endAngle - seg.startAngle) / numDashes;
-					const dashAngle = (dashLen / arcLen) * (seg.endAngle - seg.startAngle);
-
-					for (let i = 0; i < numDashes; i++) {
-						const startAngle = seg.startAngle + i * angleStep;
-						if (isDotted) {
-							const x = seg.cx + Math.cos(startAngle) * seg.r;
-							const y = seg.cy + Math.sin(startAngle) * seg.r;
-							graphics.lineStyle(0);
-							graphics.beginFill(color, opacity);
-							graphics.drawCircle(x, y, width / 2);
-							graphics.endFill();
-						}
-						else {
-							graphics.lineStyle(width, color, opacity);
-							graphics.arc(seg.cx, seg.cy, seg.r, startAngle, Math.min(startAngle + dashAngle, seg.endAngle));
-							if (i < numDashes - 1) {
-								const nextAngle = seg.startAngle + (i + 1) * angleStep;
-								graphics.moveTo(seg.cx + Math.cos(nextAngle) * seg.r, seg.cy + Math.sin(nextAngle) * seg.r);
-							}
-						}
-					}
-				}
-			}
-		}
-		else {
-			// Polygon shapes (non-rounded square, diamond, hexagon)
-			// For simplicity, we'll draw straight lines with patterns
-			const points = [];
-			if (shape === "square") {
-				points.push({ x: -radius, y: -radius }, { x: radius, y: -radius }, { x: radius, y: radius }, { x: -radius, y: radius }, { x: -radius, y: -radius });
-			}
-			else if (shape === "diamond") {
-				points.push({ x: 0, y: -radius }, { x: radius, y: 0 }, { x: 0, y: radius }, { x: -radius, y: 0 }, { x: 0, y: -radius });
-			}
-			else if (shape === "hexagon" || shape === "hexagonFlat") {
-				const hexOffset = shape === "hexagonFlat" ? 0 : -Math.PI / 2;
-				for (let i = 0; i <= 6; i++) {
-					const angle = (Math.PI / 3) * i + hexOffset;
-					points.push({ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius });
-				}
-			}
-
-			for (let i = 0; i < points.length - 1; i++) {
-				const p1 = points[i];
-				const p2 = points[i + 1];
-				const dx = p2.x - p1.x;
-				const dy = p2.y - p1.y;
-				const len = Math.sqrt(dx * dx + dy * dy);
-				const nx = dx / len;
-				const ny = dy / len;
-
-				let dist = 0;
-				while (dist < len) {
-					const segLen = Math.min(dashLen, len - dist);
-					const sx = p1.x + nx * dist;
-					const sy = p1.y + ny * dist;
-
-					if (isDotted) {
-						graphics.lineStyle(0);
-						graphics.beginFill(color, opacity);
-						graphics.drawCircle(sx, sy, width / 2);
-						graphics.endFill();
-					}
-					else {
-						graphics.lineStyle(width, color, opacity);
-						graphics.moveTo(sx, sy);
-						graphics.lineTo(sx + nx * segLen, sy + ny * segLen);
-					}
-					dist += dashLen + gapLen;
-				}
-			}
-		}
-	}
-
-	async _addIcon(container, iconClass, radius, color) {
-		// Create icon using a canvas
-		const iconSize = radius * 1.2;
-		const canvas = document.createElement("canvas");
-		const padding = 4;
-		canvas.width = iconSize + padding * 2;
-		canvas.height = iconSize + padding * 2;
-		const ctx = canvas.getContext("2d");
-
-		const tempDiv = document.createElement("div");
-		tempDiv.style.position = "absolute";
-		tempDiv.style.left = "-9999px";
-		tempDiv.style.fontSize = `${iconSize}px`;
-		tempDiv.innerHTML = `<i class="${iconClass}"></i>`;
-		document.body.appendChild(tempDiv);
-
-		await new Promise(r => setTimeout(r, 50));
-		if (this.destroyed) {
-			if (tempDiv.parentNode) document.body.removeChild(tempDiv);
-			return;
-		}
-
-		const iconElement = tempDiv.querySelector("i");
-		if (iconElement) {
-			try {
-				const beforeStyle = window.getComputedStyle(iconElement, "::before");
-				const content = beforeStyle.content;
-				const fontFamily = beforeStyle.fontFamily;
-
-				if (content && content !== "none" && content !== '""') {
-					const iconChar = content.replace(/['"]/g, "");
-					const colorHex = "#" + color.toString(16).padStart(6, "0");
-					ctx.fillStyle = colorHex;
-					ctx.font = `${iconSize}px ${fontFamily}`;
-					ctx.textAlign = "center";
-					ctx.textBaseline = "middle";
-					ctx.fillText(iconChar, canvas.width / 2, canvas.height / 2);
-				}
-			}
-			catch (e) {
-				// Fallback
-			}
-		}
-
-		document.body.removeChild(tempDiv);
-
-		const texture = PIXI.Texture.from(canvas);
-		this._icon = new PIXI.Sprite(texture);
-		this._icon.anchor.set(0.5);
-		this._icon.position.set(0, 0);
-		container.addChild(this._icon);
-	}
-
-	async _addSvgIcon(container, iconPath, radius, color) {
-		// Custom SVGs usually need to be a bit bigger to fill the pin
-		const size = radius * 1.3;
-		try {
-			// Fetch SVG text
-			const response = await fetch(iconPath);
-			let svgText = await response.text();
-			if (this.destroyed) return;
-
-			// Replace colors in SVG text - simple heuristic to colorize monochrome SVGs
-			const colorHex = "#" + color.toString(16).padStart(6, "0");
-
-			// Replace existing fill/stroke attributes or add to root if missing
-			if (svgText.includes("fill=")) {
-				svgText = svgText.replace(/fill="[^"]*"/g, `fill="${colorHex}"`);
-			}
-			else {
-				svgText = svgText.replace("<svg ", `<svg fill="${colorHex}" `);
-			}
-
-			if (svgText.includes("stroke=")) {
-				svgText = svgText.replace(/stroke="[^"]*"/g, `stroke="${colorHex}"`);
-			}
-
-			// Convert to base64 data URI
-			const svgBase64 = "data:image/svg+xml;base64," + btoa(svgText);
-
-			// Load as texture using Foundry's standard helper
-			const texture = await loadTexture(svgBase64);
-			if (this.destroyed) return;
-
-			this._icon = new PIXI.Sprite(texture);
-			this._icon.width = size;
-			this._icon.height = size;
-			this._icon.anchor.set(0.5);
-			this._icon.position.set(0, 0);
-
-			// Handle rotation for diamond shape
-			const globalStyle = getPinStyle();
-			const style = { ...globalStyle, ...(this.pinData.style || {}) };
-			if (style.shape === "diamond") {
-				this._icon.rotation = -Math.PI / 4;
-			}
-
-			container.addChild(this._icon);
-		}
-		catch (err) {
-			console.error(`SDX Journal Pins | Failed to load custom SVG: ${iconPath}`, err);
-		}
-	}
-
-	async _addVisionIndicator(container, radius) {
-		const iconClass = "fa-solid fa-eye";
-		const iconSize = radius * 0.8;
-		const color = 0xFFFFFF;
-
-		const canvas = document.createElement("canvas");
-		const padding = 4;
-		canvas.width = iconSize + padding * 2;
-		canvas.height = iconSize + padding * 2;
-		const ctx = canvas.getContext("2d");
-
-		const tempDiv = document.createElement("div");
-		tempDiv.style.position = "absolute";
-		tempDiv.style.left = "-9999px";
-		tempDiv.style.fontSize = `${iconSize}px`;
-		tempDiv.innerHTML = `<i class="${iconClass}"></i>`;
-		document.body.appendChild(tempDiv);
-
-		await new Promise(r => setTimeout(r, 50));
-		if (this.destroyed) {
-			if (tempDiv.parentNode) document.body.removeChild(tempDiv);
-			return;
-		}
-
-		const iconElement = tempDiv.querySelector("i");
-		if (iconElement) {
-			try {
-				const beforeStyle = window.getComputedStyle(iconElement, "::before");
-				const content = beforeStyle.content;
-				const fontFamily = beforeStyle.fontFamily;
-
-				if (content && content !== "none" && content !== '""') {
-					const iconChar = content.replace(/['"]/g, "");
-
-					// Shadow for visibility
-					ctx.shadowBlur = 4;
-					ctx.shadowColor = "black";
-
-					ctx.fillStyle = "#ffffff";
-					ctx.font = `${iconSize}px ${fontFamily}`;
-					ctx.textAlign = "center";
-					ctx.textBaseline = "middle";
-					ctx.fillText(iconChar, canvas.width / 2, canvas.height / 2);
-				}
-			}
-			catch (e) { }
-		}
-
-		document.body.removeChild(tempDiv);
-
-		const texture = PIXI.Texture.from(canvas);
-		const indicator = new PIXI.Sprite(texture);
-		indicator.anchor.set(0.5);
-
-		// Position at top-right
-		const angle = -Math.PI / 4;
-		const dist = radius * 1.1;
-		indicator.position.set(
-			Math.cos(angle) * dist,
-			Math.sin(angle) * dist
-		);
-
-		container.addChild(indicator);
 	}
 
 	async update(newData) {
@@ -1279,351 +932,45 @@ export class JournalPinGraphics extends PIXI.Container {
 		this._setupEventListeners();
 	}
 
+	// Pointer interactions live in pin-interactions.mjs. These stay as methods
+	// because PIXI's off() matches on the (event, handler, context) triple, so
+	// attach and detach have to name the same references — and because keeping
+	// the seam here leaves the handlers overridable.
+
 	_setupEventListeners() {
-		this.on("pointerenter", this._onPointerEnter, this);
-		this.on("pointerleave", this._onPointerLeave, this);
-		this.on("pointerdown", this._onPointerDown, this);
-		this.on("pointerup", this._onPointerUp, this);
-		this.on("pointerupoutside", this._onPointerUp, this);
+		attachPinListeners(this);
 	}
 
 	_removeEventListeners() {
-		this.off("pointerenter", this._onPointerEnter, this);
-		this.off("pointerleave", this._onPointerLeave, this);
-		this.off("pointerdown", this._onPointerDown, this);
-		this.off("pointerup", this._onPointerUp, this);
-		this.off("pointerupoutside", this._onPointerUp, this);
-		this.off("globalpointermove", this._onPointerMove, this);
+		detachPinListeners(this);
 	}
 
 	_onPointerEnter(event) {
-		// Normalize hideTooltip from multiple sources
-		const style = this.pinData.style || {};
-		const hideTooltip = this.pinData.hideTooltip || style.hideTooltip || false;
-
-		if (!hideTooltip) {
-			JournalPinTooltip.show(this.pinData, event);
-		}
-		if (this._labelContainer && style.labelShowOnHover) {
-			this._labelContainer.visible = true;
-		}
-
-		// Hover Animation
-		let animType = style.hoverAnimation;
-		if (animType === true) animType = "scale";
-		if (!animType) animType = "none";
-
-		if (animType !== "none" && window.gsap) {
-			gsap.killTweensOf(this);
-			gsap.killTweensOf(this.scale);
-
-			if (animType === "scale") {
-				gsap.to(this.scale, { x: 1.2, y: 1.2, duration: 0.3, ease: "back.out(1.7)" });
-			}
-			else if (animType === "pulse") {
-				gsap.to(this.scale, { x: 1.15, y: 1.15, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
-			}
-			else if (animType === "shake") {
-				gsap.to(this, {
-					rotation: 0.2, duration: 0.05, yoyo: true, repeat: 5, ease: "power1.inOut", onComplete: () => {
-						gsap.to(this, { rotation: 0, duration: 0.1 });
-					},
-				});
-				gsap.to(this.scale, { x: 1.1, y: 1.1, duration: 0.2 });
-			}
-			else if (animType === "brightness") {
-				gsap.to(this, { pixi: { brightness: 1.5 }, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
-			}
-			else if (animType === "hue") {
-				gsap.to(this, { pixi: { hue: 180 }, duration: 2, repeat: -1, yoyo: true, ease: "linear" });
-			}
-		}
+		onPointerEnter(this, event);
 	}
 
 	_onPointerLeave(event) {
-
-		JournalPinTooltip.hide();
-		if (this._labelContainer && this.pinData.style?.labelShowOnHover) {
-			this._labelContainer.visible = false;
-		}
-
-		// Hover Animation Reset
-		const style = this.pinData.style || {};
-		if (window.gsap) {
-			gsap.killTweensOf(this);
-			gsap.killTweensOf(this.scale);
-
-			// Smooth reset
-			gsap.to(this.scale, { x: 1.0, y: 1.0, duration: 0.3, ease: "power2.out" });
-			gsap.to(this, { rotation: 0, pixi: { brightness: 1, hue: 0 }, duration: 0.3, ease: "power2.out" });
-		}
-		else {
-			this.scale.set(1.0);
-			this.rotation = 0;
-		}
+		onPointerLeave(this, event);
 	}
 
 	_onPointerDown(event) {
-		const originalEvent = event.data?.originalEvent || event.nativeEvent || event;
-		const button = originalEvent.button ?? 0;
-
-		// Restriction: Only GMs can drag or right-click pins
-		const isGm = game.user?.isGM;
-
-		if (button === 0) {
-			// Prevent Foundry from starting a selection marquee
-			event.stopPropagation();
-
-			if (isGm) {
-				this._isDragging = true;
-				this._hasDragged = false;
-
-				// Kill hover animations immediately when starting a drag.
-				// This prevents GSAP from holding stale sprite references
-				// during the subsequent update() → _build() on pointer up.
-				if (window.gsap) {
-					gsap.killTweensOf(this);
-					gsap.killTweensOf(this.scale);
-					this.scale.set(1.0);
-					this.rotation = 0;
-				}
-
-				const local = this.parent.toLocal(event.global);
-				this._dragOffset.x = this.position.x - local.x;
-				this._dragOffset.y = this.position.y - local.y;
-				this._dragStartPos.x = this.position.x;
-				this._dragStartPos.y = this.position.y;
-				this.on("globalpointermove", this._onPointerMove, this);
-			}
-			JournalPinTooltip.hide();
-		}
-		else if (button === 2) {
-			event.stopPropagation();
-			if (isGm) {
-				this._showContextMenu(event);
-			}
-		}
+		onPointerDown(this, event);
 	}
 
 	_onPointerMove(event) {
-		if (!this._isDragging) return;
-
-		event.stopPropagation();
-		const local = this.parent.toLocal(event.global);
-		const newX = local.x + this._dragOffset.x;
-		const newY = local.y + this._dragOffset.y;
-
-		const dx = Math.abs(newX - this._dragStartPos.x);
-		const dy = Math.abs(newY - this._dragStartPos.y);
-		if (dx > 5 || dy > 5) {
-			this._hasDragged = true;
-		}
-
-		if (this._hasDragged) {
-			this.position.x = newX;
-			this.position.y = newY;
-
-			// Update label position if it exists and is separated
-			if (this._labelContainer && this._labelContainer.parent !== this) {
-				this._labelContainer.position.set(newX + this._labelOffset.x, newY + this._labelOffset.y);
-			}
-		}
+		onPointerMove(this, event);
 	}
 
 	async _onPointerUp(event) {
-		if (this._isDragging) {
-			event.stopPropagation();
-
-			if (this._hasDragged) {
-				// Save position
-				try {
-					await JournalPinManager.update(this.pinData.id, {
-						x: Math.round(this.position.x),
-						y: Math.round(this.position.y),
-					});
-				}
-				catch (err) {
-					console.error("SDX Journal Pins | Error updating pin position:", err);
-					this.position.set(this.pinData.x, this.pinData.y);
-				}
-			}
-			else {
-				this._openJournal();
-			}
-		}
-
-		this.off("globalpointermove", this._onPointerMove, this);
-		this._isDragging = false;
-		this._hasDragged = false;
+		return await onPointerUp(this, event);
 	}
 
 	_openJournal() {
-		const journal = game.journal.get(this.pinData.journalId);
-		if (journal) {
-			if (this.pinData.pageId) {
-				journal.sheet.render(true, { pageId: this.pinData.pageId });
-			}
-			else {
-				journal.sheet.render(true);
-			}
-		}
-		else {
-			ui.notifications.warn("Journal not found");
-		}
+		openPinJournal(this);
 	}
 
 	_showContextMenu(event) {
-		const originalEvent = event.data?.originalEvent || event.nativeEvent || event;
-		if (originalEvent.preventDefault) originalEvent.preventDefault();
-
-		const globalPoint = event.global;
-		const canvasRect = canvas.app.view.getBoundingClientRect();
-		const menuX = canvasRect.left + (globalPoint?.x || 0);
-		const menuY = canvasRect.top + (globalPoint?.y || 0);
-
-		const menuItems = [
-			{
-				name: "Open Journal",
-				icon: '<i class="fa-solid fa-book-open"></i>',
-				callback: () => this._openJournal(),
-			},
-			{
-				name: "Bring Players Here",
-				icon: '<i class="fa-solid fa-location-crosshairs"></i>',
-				callback: async () => {
-					if (game.user.isGM) {
-						// Broadcast to others
-						game.socket.emit("module.shadowdark-extras", {
-							type: "panToPin",
-							x: this.pinData.x,
-							y: this.pinData.y,
-							sceneId: canvas.scene?.id,
-							pinId: this.pinData.id,
-						});
-						// Pan self
-						canvas.animatePan({ x: this.pinData.x, y: this.pinData.y });
-
-						if (this.animatePing) {
-							this.animatePing("bring");
-						}
-						else if (canvas.ping) {
-							canvas.ping({ x: this.pinData.x, y: this.pinData.y });
-						}
-					}
-					else {
-						ui.notifications.warn("Only the GM can bring players here.");
-					}
-				},
-			},
-			{
-				name: "Ping Pin",
-				icon: '<i class="fa-solid fa-bullseye"></i>',
-				callback: async () => {
-					// Broadcast ping only, no pan
-					if (game.user.isGM) {
-						game.socket.emit("module.shadowdark-extras", {
-							type: "pingPin",
-							sceneId: canvas.scene?.id,
-							pinId: this.pinData.id,
-						});
-						if (this.animatePing) this.animatePing();
-					}
-					else {
-						ui.notifications.warn("Only the GM can ping pins.");
-					}
-				},
-			},
-			{
-				name: "Edit Style",
-				icon: '<i class="fa-solid fa-palette"></i>',
-				callback: async () => {
-					const { PinStyleEditorApp } = await import("./PinStyleEditorSD.mjs");
-					new PinStyleEditorApp({ pinId: this.pinData.id }).render(true);
-				},
-			},
-			{
-				name: "Duplicate Pin",
-				icon: '<i class="fa-solid fa-clone"></i>',
-				callback: async () => await JournalPinManager.duplicate(this.pinData.id),
-			},
-		];
-
-		if (game.user?.isGM) {
-			menuItems.push({
-				name: "Copy Style",
-				icon: '<i class="fa-solid fa-copy"></i>',
-				callback: () => JournalPinManager.copyStyle(this.pinData),
-			});
-
-			if (JournalPinManager.hasCopiedStyle()) {
-				menuItems.push({
-					name: "Paste Style",
-					icon: '<i class="fa-solid fa-paste"></i>',
-					callback: async () => await JournalPinManager.pasteStyle(this.pinData.id),
-				});
-			}
-
-			// Toggle visibility option
-			const isGmOnly = this.pinData.gmOnly ?? false;
-			menuItems.push({
-				name: isGmOnly ? "Make Visible to All" : "Make GM-Only",
-				icon: isGmOnly ? '<i class="fa-solid fa-eye"></i>' : '<i class="fa-solid fa-eye-slash"></i>',
-				callback: async () => {
-					await JournalPinManager.update(this.pinData.id, { gmOnly: !isGmOnly });
-				},
-			});
-
-			menuItems.push({
-				name: "Delete Pin",
-				icon: '<i class="fa-solid fa-trash"></i>',
-				callback: async () => await JournalPinManager.delete(this.pinData.id),
-			});
-		}
-
-		this._renderContextMenu(menuItems, menuX, menuY);
-	}
-
-	_renderContextMenu(menuItems, x, y) {
-		const existing = document.getElementById("sdx-journal-pin-context-menu");
-		if (existing) existing.remove();
-
-		const menu = document.createElement("div");
-		menu.id = "sdx-journal-pin-context-menu";
-		menu.className = "sdx-journal-pin-context-menu";
-		menu.style.cssText = `position:fixed;left:${x}px;top:${y}px;z-index:10000;`;
-
-		menuItems.forEach(item => {
-			const menuItem = document.createElement("div");
-			menuItem.className = "sdx-journal-pin-menu-item";
-			menuItem.innerHTML = `${item.icon} ${item.name}`;
-			menuItem.addEventListener("click", () => {
-				item.callback();
-				menu.remove();
-			});
-			menu.appendChild(menuItem);
-		});
-
-		document.body.appendChild(menu);
-
-		const closeMenu = (e) => {
-			if (!menu.contains(e.target)) {
-				menu.remove();
-				document.removeEventListener("click", closeMenu);
-				document.removeEventListener("keydown", closeOnEscape);
-			}
-		};
-		const closeOnEscape = (e) => {
-			if (e.key === "Escape") {
-				menu.remove();
-				document.removeEventListener("click", closeMenu);
-				document.removeEventListener("keydown", closeOnEscape);
-			}
-		};
-
-		setTimeout(() => {
-			document.addEventListener("click", closeMenu);
-			document.addEventListener("keydown", closeOnEscape);
-		}, 10);
+		showPinContextMenu(this, event);
 	}
 
 	destroy(options) {
@@ -1650,130 +997,18 @@ export class JournalPinGraphics extends PIXI.Container {
 }
 
 // ================================================================
-// TOOLTIP
-// ================================================================
-
-export class JournalPinTooltip {
-	static _element = null;
-
-	static show(pinData, event) {
-		this.hide();
-
-		const journal = game.journal.get(pinData.journalId);
-		let page = null;
-		let hasAccess = true;
-
-		if (journal) {
-			// Get the page first
-			if (pinData.pageId) {
-				page = journal.pages.get(pinData.pageId);
-			}
-			else {
-				page = journal.pages.contents[0];
-			}
-
-			if (page) {
-				// Check if user has at least LIMITED permission on the PAGE
-				hasAccess = game.user?.isGM || page.testUserPermission(game.user, "LIMITED");
-			}
-		}
-
-		// If no access to the journal page AND no custom title/content, nothing to show
-		if (!hasAccess && !pinData.tooltipTitle && !pinData.tooltipContent) return;
-
-		// If no journal/page and no custom text, nothing to show
-		if (!page && !pinData.tooltipTitle && !pinData.tooltipContent) return;
-
-		// Clear page reference if user has no access (custom text will still show)
-		if (!hasAccess) page = null;
-
-		let content = "";
-		let title = page?.name || "Unlinked Pin";
-
-		// Use custom tooltip title if provided
-		if (pinData.tooltipTitle) {
-			title = pinData.tooltipTitle;
-		}
-
-		// For content, we need at least OBSERVER permission on the PAGE to see text
-		// If no page, we rely on custom content (always visible if pin is visible)
-		const canSeeContent = !page || game.user?.isGM || page.testUserPermission(game.user, "OBSERVER");
-
-		// Use custom tooltip content if provided, otherwise use page content
-		if (pinData.tooltipContent) {
-			content = pinData.tooltipContent;
-		}
-		else if (canSeeContent && page?.text?.content) {
-			const temp = document.createElement("div");
-			temp.innerHTML = page.text.content;
-			content = temp.textContent?.substring(0, 200) || "";
-			if (content.length >= 200) content += "...";
-		}
-
-		// If no content and title is generic "Unlinked Pin" (and no custom title), maybe don't show?
-		// But we might want to just show the title.
-
-
-		this._element = document.createElement("div");
-		this._element.id = "sdx-journal-pin-tooltip";
-		this._element.className = "sdx-journal-pin-tooltip";
-		// Tooltip text sizes come from the pin's resolved style (global default
-		// merged with any per-pin override), applied inline to override the CSS.
-		const tStyle = { ...getPinStyle(), ...(pinData.style || {}) };
-		const titlePx = tStyle.tooltipTitleFontSize || 17;
-		const bodyPx = tStyle.tooltipContentFontSize || 13;
-		this._element.innerHTML = `
-            <div class="sdx-journal-pin-tooltip-title" style="font-size:${titlePx}px">${title}</div>
-            ${content ? `<div class="sdx-journal-pin-tooltip-content" style="font-size:${bodyPx}px">${content}</div>` : ""}
-        `;
-
-		// Calculate position BEFORE appending to prevent flash at top-left
-		const globalPoint = event.global;
-		const canvasRect = canvas.app.view.getBoundingClientRect();
-		let tooltipX = canvasRect.left + (globalPoint?.x || 0) + 15;
-		let tooltipY = canvasRect.top + (globalPoint?.y || 0) + 15;
-
-		// Set initial position (will be adjusted after we know the size)
-		this._element.style.left = `${tooltipX}px`;
-		this._element.style.top = `${tooltipY}px`;
-		this._element.style.visibility = "hidden"; // Hide until positioned
-
-		document.body.appendChild(this._element);
-
-		// Adjust if overflowing viewport
-		const rect = this._element.getBoundingClientRect();
-		if (tooltipX + rect.width > window.innerWidth) {
-			tooltipX = window.innerWidth - rect.width - 10;
-		}
-		if (tooltipY + rect.height > window.innerHeight) {
-			tooltipY = window.innerHeight - rect.height - 10;
-		}
-
-		this._element.style.left = `${tooltipX}px`;
-		this._element.style.top = `${tooltipY}px`;
-		this._element.style.visibility = "visible"; // Show after positioned
-	}
-
-	static hide() {
-		if (this._element) {
-			this._element.remove();
-			this._element = null;
-		}
-	}
-}
-
-// ================================================================
 // PIN RENDERER
 // ================================================================
 
 export class JournalPinRenderer {
 	static _container = null;
+
 	static _labelContainer = null;
+
 	static _pins = new Map();
 
 	static initialize(layer) {
 		if (this._container) {
-			console.log("SDX Journal Pins | Container already initialized");
 			return;
 		}
 
@@ -1782,7 +1017,6 @@ export class JournalPinRenderer {
 		this._container.name = "sdx-pins-container";
 
 		layer.addChild(this._container);
-		console.log("SDX Journal Pins | Container added to layer");
 	}
 
 	/**
@@ -1811,7 +1045,6 @@ export class JournalPinRenderer {
 			this._labelContainer.interactiveChildren = false;
 			canvas.controls.addChild(this._labelContainer);
 
-			console.log("SDX Journal Pins | Containers added to canvas.controls");
 		}
 	}
 
@@ -1832,7 +1065,6 @@ export class JournalPinRenderer {
 		// If no pins, clear all
 		if (!pins || pins.length === 0) {
 			this.clear();
-			console.log("SDX Journal Pins | Cleared all pins for scene", sceneId);
 			return;
 		}
 
@@ -1841,7 +1073,7 @@ export class JournalPinRenderer {
 		const incomingIds = new Set(incomingPins.map(p => p.id));
 
 		// 1. Remove pins that are no longer present or visible
-		for (const [id, graphics] of this._pins.entries()) {
+		for (const [id] of this._pins.entries()) {
 			if (!incomingIds.has(id)) {
 				this.removePin(id);
 			}
@@ -1876,7 +1108,8 @@ export class JournalPinRenderer {
 		// or ensure it's indexed BEFORE any TMFX logic triggers lookups
 		const graphics = new JournalPinGraphics(pinData);
 
-		// Critical: Register in map BEFORE adding to container or any logic that might trigger TMFX calculatePadding
+		// Critical: Register in map BEFORE adding to container or any logic that might trigger TMFX
+		// calculatePadding
 		this._pins.set(pinData.id, graphics);
 
 		// Now add to container
@@ -1887,7 +1120,6 @@ export class JournalPinRenderer {
 			console.error(`SDX Journal Pins | Error initializing pin ${pinData.id}:`, err);
 		});
 
-		console.log(`SDX Journal Pins | Added pin ${pinData.id} at (${pinData.x}, ${pinData.y})`);
 	}
 
 	static addPin(pinData) {

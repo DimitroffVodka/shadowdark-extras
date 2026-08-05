@@ -29,13 +29,14 @@ export const PartyInventory = {
 				? getMaskedItemName(item)
 				: item.name;
 
-			itemData.showQuantity = item.system.quantity > 1 ||
-				item.system.isAmmunition ||
-				(item.system.slots?.per_slot > 1);
+			itemData.showQuantity = item.system.quantity > 1
+				|| item.system.isAmmunition
+				|| (item.system.slots?.per_slot > 1);
 			itemData.slotsCost = this._calculateItemSlotsCost(item, freeCarrySeen);
 
 			// Light source handling
-			itemData.isLightSource = ["Basic", "Effect"].includes(item.type) && item.system.light?.isSource;
+			itemData.isLightSource = ["Basic", "Effect"].includes(item.type)
+				&& item.system.light?.isSource;
 			itemData.lightActive = itemData.isLightSource && item.system.light?.active;
 
 			if (item.system.treasure) {
@@ -157,7 +158,7 @@ export const PartyInventory = {
 			const { syncPartyTokenLight } = await import("./PartySheetSD.mjs");
 			await syncPartyTokenLight(this.actor);
 		}
-		catch (error) {
+		catch(error) {
 			console.error("Shadowdark Extras | Party light sync failed:", error);
 			ui.notifications.error("Party light sync failed.");
 		}
@@ -166,14 +167,18 @@ export const PartyInventory = {
 	async _onDivideCoins(event) {
 		event.preventDefault();
 		if (!game.user.isGM) {
-			ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_gm_only"));
+			ui.notifications.warn(
+				game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_gm_only")
+			);
 			return;
 		}
 
 		// Filter to only include Player type actors (exclude NPCs)
 		const members = this.members.filter(m => m.type === "Player");
 		if (members.length === 0) {
-			ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_no_members"));
+			ui.notifications.warn(
+				game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_no_members")
+			);
 			return;
 		}
 
@@ -189,14 +194,16 @@ export const PartyInventory = {
 			cp: Math.floor(cp / n),
 		};
 		const remainder = {
-			gp: gp - each.gp * n,
-			sp: sp - each.sp * n,
-			cp: cp - each.cp * n,
+			gp: gp - (each.gp * n),
+			sp: sp - (each.sp * n),
+			cp: cp - (each.cp * n),
 		};
 
-		const distributedTotal = each.gp * n + each.sp * n + each.cp * n;
+		const distributedTotal = (each.gp * n) + (each.sp * n) + (each.cp * n);
 		if (distributedTotal === 0) {
-			ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_nothing"));
+			ui.notifications.info(
+				game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_nothing")
+			);
 			return;
 		}
 
@@ -238,7 +245,7 @@ export const PartyInventory = {
 			</div>
 		`;
 
-		const confirmed = await new Promise((resolve) => {
+		const confirmed = await new Promise(resolve => {
 			new foundry.applications.api.DialogV2({
 				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.party.divide_coins_title") },
 				content,
@@ -270,7 +277,7 @@ export const PartyInventory = {
 		const updates = members.map(m => {
 			const coins = m.system?.coins ?? {};
 			return {
-				_id: m.id,
+				"_id": m.id,
 				"system.coins.gp": (Number(coins.gp) || 0) + each.gp,
 				"system.coins.sp": (Number(coins.sp) || 0) + each.sp,
 				"system.coins.cp": (Number(coins.cp) || 0) + each.cp,
@@ -401,9 +408,11 @@ export const PartyInventory = {
 				const lightSources = await foundry.utils.fetchJsonWithTimeout(
 					"systems/shadowdark/assets/mappings/map-light-sources.json"
 				);
-				lightData = lightSources[item.system.light.template]?.light ?? { dim: 0, bright: 0 };
+				lightData = lightSources[item.system.light.template]?.light ?? {
+					dim: 0, bright: 0,
+				};
 			}
-			catch (e) {
+			catch(e) {
 				console.warn("Failed to load light source mappings:", e);
 				lightData = { dim: 0, bright: 0 };
 			}
@@ -439,7 +448,9 @@ export const PartyInventory = {
 		// Only world actors can receive items (not compendium actors)
 		const members = this.members.filter(m => m.isOwner && !m.uuid?.startsWith("Compendium."));
 		if (members.length === 0) {
-			ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.party.warn.no_owned_members"));
+			ui.notifications.warn(
+				game.i18n.localize("SHADOWDARK_EXTRAS.party.warn.no_owned_members")
+			);
 			return;
 		}
 

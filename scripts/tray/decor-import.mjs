@@ -54,7 +54,7 @@ async function ensureDecorDirectory(path) {
 		try {
 			await FP.browse("data", current);
 		}
-		catch {
+		catch{
 			await FP.createDirectory("data", current);
 		}
 	}
@@ -69,7 +69,7 @@ async function decorFileExists(path) {
 		const listing = await FP.browse("data", folder);
 		return (listing.files || []).some(file => file === path || file.endsWith(`/${filename}`));
 	}
-	catch {
+	catch{
 		return false;
 	}
 }
@@ -265,14 +265,18 @@ export class DecorImportApp extends ApplicationV2 {
 		addButton.className = "sdx-decor-import-selected";
 		addButton.disabled = !isSupportedDecorPath(this.foundryPath);
 		addButton.textContent = "Add Image";
-		addButton.addEventListener("click", () => this._registerServerAsset(this.foundryPath, "foundry"));
+		addButton.addEventListener(
+			"click", () => this._registerServerAsset(this.foundryPath, "foundry")
+		);
 
 		const addFolderButton = document.createElement("button");
 		addFolderButton.type = "button";
 		addFolderButton.className = "sdx-decor-import-selected";
 		addFolderButton.disabled = !this.foundryPath;
 		addFolderButton.textContent = "Add Folder";
-		addFolderButton.addEventListener("click", () => this._registerFoundryFolder(this.foundryPath));
+		addFolderButton.addEventListener(
+			"click", () => this._registerFoundryFolder(this.foundryPath)
+		);
 
 		controls.append(browseButton, browseFolderButton, pathInput, addButton, addFolderButton);
 	}
@@ -390,7 +394,10 @@ export class DecorImportApp extends ApplicationV2 {
 				await ensureDecorDirectory(target.folder);
 				const uploadFile = target.filename === entry.file.name
 					? entry.file
-					: new File([entry.file], target.filename, { type: entry.file.type, lastModified: entry.file.lastModified });
+					: new File(
+						[entry.file], target.filename,
+						{ type: entry.file.type, lastModified: entry.file.lastModified }
+					);
 				await FP.upload("data", target.folder, uploadFile, {}, { notify: false });
 				imported++;
 			}
@@ -399,7 +406,7 @@ export class DecorImportApp extends ApplicationV2 {
 			ui.notifications.info(`Imported ${imported} decor asset${imported === 1 ? "" : "s"} to ${DECOR_IMPORT_DESTINATION}/.`);
 			this.selected.clear();
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Failed to import decor assets:`, err);
 			ui.notifications.error(`Failed to import decor assets: ${err?.message || err}`);
 		}
@@ -410,7 +417,8 @@ export class DecorImportApp extends ApplicationV2 {
 	}
 
 	_browseFoundry() {
-		const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
+		const FilePicker = foundry.applications.apps.FilePicker?.implementation
+			?? globalThis.FilePicker;
 		new FilePicker({
 			type: "image",
 			current: isSupportedDecorPath(this.foundryPath)
@@ -424,7 +432,8 @@ export class DecorImportApp extends ApplicationV2 {
 	}
 
 	_browseFoundryFolder() {
-		const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
+		const FilePicker = foundry.applications.apps.FilePicker?.implementation
+			?? globalThis.FilePicker;
 		const current = isSupportedDecorPath(this.foundryPath)
 			? this.foundryPath.split("/").slice(0, -1).join("/")
 			: this.foundryPath;
@@ -448,7 +457,7 @@ export class DecorImportApp extends ApplicationV2 {
 			Hooks.callAll("sdx.decorAssetsImported");
 			ui.notifications.info("Added decor asset to the Decor browser.");
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Failed to add decor asset:`, err);
 			ui.notifications.error(`Failed to add decor asset: ${err?.message || err}`);
 		}
@@ -459,7 +468,6 @@ export class DecorImportApp extends ApplicationV2 {
 			ui.notifications.warn("Only GMs can add decor folders.");
 			return;
 		}
-		const FP = foundry.applications.apps.FilePicker.implementation;
 		const root = String(path || "").replace(/\/+$/, "");
 		if (!root) return;
 
@@ -479,7 +487,7 @@ export class DecorImportApp extends ApplicationV2 {
 			Hooks.callAll("sdx.decorAssetsImported");
 			ui.notifications.info(`Added ${images.length} decor asset${images.length === 1 ? "" : "s"} from Foundry folder.`);
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Failed to add decor folder:`, err);
 			ui.notifications.error(`Failed to add decor folder: ${err?.message || err}`);
 		}

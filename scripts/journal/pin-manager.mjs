@@ -206,17 +206,20 @@ export class JournalPinManager {
 	static _getSceneFolders(scene) {
 		return scene?.getFlag(MODULE_ID, FOLDER_FLAG_KEY) || [];
 	}
+
 	static async _setSceneFolders(scene, arr) {
 		await scene.setFlag(MODULE_ID, FOLDER_FLAG_KEY, arr);
 	}
+
 	static _getWorldFolders() {
 		try {
 			return game.settings.get(MODULE_ID, "pinFoldersWorld") || [];
 		}
-		catch (e) {
+		catch(e) {
 			return [];
 		}
 	}
+
 	static async _setWorldFolders(arr) {
 		await game.settings.set(MODULE_ID, "pinFoldersWorld", arr);
 	}
@@ -305,7 +308,9 @@ export class JournalPinManager {
 			}
 			const cur = this._locateFolder(folderId, scene); // may have moved store above
 			if (cur?.store === "world" && newParent && merged.find(f => f.id === newParent)?.scope !== "world") {
-				ui.notifications?.warn("A world folder can only be nested under another world folder.");
+				ui.notifications?.warn(
+					"A world folder can only be nested under another world folder."
+				);
 				return null;
 			}
 		}
@@ -344,7 +349,9 @@ export class JournalPinManager {
 		const dest = scope === "world" ? world : sc;
 		moving.sort = this._nextSort(dest, moving.parentId);
 
-		const newWorld = (located.store === "world" ? world.filter(f => f.id !== folderId) : [...world]);
+		const newWorld = (located.store === "world" ? world.filter(f => f.id !== folderId) : [
+			...world,
+		]);
 		const newScene = (located.store === "scene" ? sc.filter(f => f.id !== folderId) : [...sc]);
 		if (scope === "world") newWorld.push(moving); else newScene.push(moving);
 
@@ -363,7 +370,10 @@ export class JournalPinManager {
 		return this.updateFolder(folderId, { collapsed: !!collapsed }, options);
 	}
 
-	/** Delete a folder: child folders + this scene's pins reparent to the folder's parent / null. */
+	/**
+	 * Delete a folder: child folders + this scene's pins reparent to the
+	 * folder's parent / null.
+	 */
 	static async deleteFolder(folderId, options = {}) {
 		if (!game.user?.isGM) throw new Error("Only GMs can delete pin folders");
 		const scene = this._getScene(options.sceneId);
@@ -371,7 +381,7 @@ export class JournalPinManager {
 		if (!located) throw new Error(`Folder not found: ${folderId}`);
 		const newParent = located.folder.parentId ?? null;
 
-		const reparent = (arr) => arr
+		const reparent = arr => arr
 			.filter(f => f.id !== folderId)
 			.map(f => (f.parentId === folderId ? { ...f, parentId: newParent } : f));
 		await this._setWorldFolders(reparent(this._getWorldFolders()));
@@ -394,8 +404,10 @@ export class JournalPinManager {
 		const scene = this._getScene(options.sceneId);
 		const pid = parentId ?? null;
 		const orderMap = new Map(orderedIds.map((id, i) => [id, i]));
-		const apply = (arr) => arr.map(f =>
-			(f.parentId ?? null) === pid && orderMap.has(f.id) ? { ...f, sort: orderMap.get(f.id) } : f
+		const apply = arr => arr.map(f =>
+			(f.parentId ?? null) === pid && orderMap.has(f.id)
+				? { ...f, sort: orderMap.get(f.id) }
+				: f
 		);
 		await this._setWorldFolders(apply(this._getWorldFolders()));
 		await this._setSceneFolders(scene, apply(this._getSceneFolders(scene)));
@@ -557,6 +569,7 @@ export class JournalPinManager {
  */
 export class PinPlacer {
 	static active = false;
+
 	static _cursor = "crosshair";
 
 	static activate() {
@@ -585,7 +598,7 @@ export class PinPlacer {
 		canvas.stage.off("rightdown", this._onRightClick);
 	}
 
-	static _onClick = async (event) => {
+	static _onClick = async event => {
 		if (!PinPlacer.active) return;
 
 		const pos = event.data.getLocalPosition(canvas.stage);
@@ -601,7 +614,7 @@ export class PinPlacer {
 		PinPlacer.deactivate();
 	};
 
-	static _onRightClick = (event) => {
+	static _onRightClick = event => {
 		if (!PinPlacer.active) return;
 		PinPlacer.deactivate();
 		ui.notifications.info("Pin placement cancelled.");
@@ -659,10 +672,14 @@ function checkTokenCanSeePinPosition(token, pinPosition) {
 	let isBlocked = false;
 	if (window.foundry?.canvas?.geometry?.Ray) {
 		if (CONFIG.Canvas?.polygonBackends?.sight?.testCollision) {
-			isBlocked = CONFIG.Canvas.polygonBackends.sight.testCollision(startPos, endPos, { mode: "any", type: "sight" });
+			isBlocked = CONFIG.Canvas.polygonBackends.sight.testCollision(
+				startPos, endPos, { mode: "any", type: "sight" }
+			);
 		}
 		else if (canvas.edges?.testCollision) {
-			isBlocked = canvas.edges.testCollision(startPos, endPos, { mode: "any", type: "sight" });
+			isBlocked = canvas.edges.testCollision(
+				startPos, endPos, { mode: "any", type: "sight" }
+			);
 		}
 	}
 	else if (canvas.walls?.checkCollision) {
@@ -677,7 +694,9 @@ function checkTokenCanSeePinPosition(token, pinPosition) {
 	const distanceToPin = Math.hypot(endPos.x - startPos.x, endPos.y - startPos.y);
 	const gridDistance = canvas.scene?.grid?.distance || 5;
 	const tokenVisionRange = token.document.sight?.range || 0;
-	const tokenLightRange = Math.max(token.document.light?.dim || 0, token.document.light?.bright || 0);
+	const tokenLightRange = Math.max(
+		token.document.light?.dim || 0, token.document.light?.bright || 0
+	);
 
 	// Convert ranges from units (feet) to pixels
 	const visionRangePixels = (tokenVisionRange / gridDistance) * gridSize;
@@ -692,7 +711,9 @@ function checkTokenCanSeePinPosition(token, pinPosition) {
 	}
 
 	if (isIlluminated) {
-		const effectiveRange = visionRangePixels > 0 ? visionRangePixels : (60 / gridDistance) * gridSize;
+		const effectiveRange = visionRangePixels > 0
+			? visionRangePixels
+			: (60 / gridDistance) * gridSize;
 		if (distanceToPin <= effectiveRange) {
 			return true;
 		}
@@ -752,10 +773,14 @@ function checkWallCollision(startPos, endPos) {
 	let isBlocked = false;
 	if (window.foundry?.canvas?.geometry?.Ray) {
 		if (CONFIG.Canvas?.polygonBackends?.sight?.testCollision) {
-			isBlocked = CONFIG.Canvas.polygonBackends.sight.testCollision(startPos, endPos, { mode: "any", type: "sight" });
+			isBlocked = CONFIG.Canvas.polygonBackends.sight.testCollision(
+				startPos, endPos, { mode: "any", type: "sight" }
+			);
 		}
 		else if (canvas.edges?.testCollision) {
-			isBlocked = canvas.edges.testCollision(startPos, endPos, { mode: "any", type: "sight" });
+			isBlocked = canvas.edges.testCollision(
+				startPos, endPos, { mode: "any", type: "sight" }
+			);
 		}
 	}
 	else if (canvas.walls?.checkCollision) {
@@ -772,6 +797,7 @@ function checkWallCollision(startPos, endPos) {
 
 export class JournalPinDropHandler {
 	static _initialized = false;
+
 	static _skipNoteCreation = false; // Flag to prevent default note creation
 
 	static initialize() {
@@ -784,7 +810,6 @@ export class JournalPinDropHandler {
 		Hooks.on("preCreateNote", this._onPreCreateNote.bind(this));
 
 		this._initialized = true;
-		console.log("SDX Journal Pins | Drop handler initialized");
 	}
 
 	/**
@@ -792,7 +817,6 @@ export class JournalPinDropHandler {
      */
 	static _onPreCreateNote(noteDoc, data, options, userId) {
 		if (this._skipNoteCreation) {
-			console.log("SDX Journal Pins | Preventing default note creation");
 			this._skipNoteCreation = false;
 			return false; // Prevent creating the default note
 		}
@@ -855,7 +879,6 @@ export class JournalPinDropHandler {
 		});
 
 		// Return false IMMEDIATELY to prevent Foundry from showing the dialog
-		console.log("SDX Journal Pins | Returning false to prevent default note dialog");
 		return false;
 	}
 }

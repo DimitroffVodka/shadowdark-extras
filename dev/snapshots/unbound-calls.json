@@ -1,6 +1,6 @@
 {
   "$comment": "Accepted unbound call identifiers. The gate blocks anything NEW, not the absolute count — resolving every identifier without a scope-accurate parser leaves a residue of nested declarations and unlisted globals. New entries almost always mean an extraction left a dangling reference. Regenerate only with a reviewed reason: npm run gate:bindings -- --write",
-  "total": 110,
+  "total": 111,
   "byFile": {
     "scripts/MaphubViewerApp.mjs": [
       "CONST"
@@ -120,6 +120,12 @@
     "scripts/journal/JournalPinsSD.mjs": [
       "loadTexture"
     ],
+    "scripts/journal/pin-icons.mjs": [
+      "loadTexture"
+    ],
+    "scripts/journal/pin-rendering.mjs": [
+      "loadTexture"
+    ],
     "scripts/macros/shapechanger.mjs": [
       "CONST"
     ],
@@ -127,15 +133,19 @@
       "CONST"
     ],
     "scripts/party/PartySheetSD.mjs": [
-      "CONST",
-      "loadTexture"
+      "CONST"
     ],
     "scripts/party/carousing/CarousingFoundryImport.mjs": [
       "CONST"
     ],
     "scripts/party/carousing/CarousingSD.mjs": [
-      "CONST",
+      "CONST"
+    ],
+    "scripts/party/carousing/carousing-log.mjs": [
       "resolveActorName"
+    ],
+    "scripts/party/party-token-placement.mjs": [
+      "loadTexture"
     ],
     "scripts/scene/SceneExporter.mjs": [
       "JSZip"
@@ -182,9 +192,6 @@
     ],
     "scripts/tom/TomStore.mjs": [
       "TOM_CONFIG"
-    ],
-    "scripts/journal/pin-rendering.mjs": [
-      "loadTexture"
     ]
   }
 }

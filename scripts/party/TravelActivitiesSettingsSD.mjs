@@ -82,13 +82,13 @@ export class TravelActivitiesSettingsApp extends HandlebarsApplicationMixin(Appl
 		if (!html) return;
 
 		// Add new activity
-		html.querySelector(".sdx-add-activity")?.addEventListener("click", (ev) => {
+		html.querySelector(".sdx-add-activity")?.addEventListener("click", ev => {
 			ev.preventDefault();
 			this._addActivity();
 		});
 
 		// Event delegation for row buttons
-		html.addEventListener("click", (ev) => {
+		html.addEventListener("click", ev => {
 			if (ev.target.closest(".sdx-remove-activity")) {
 				ev.preventDefault();
 				this._removeActivity(ev);
@@ -109,7 +109,7 @@ export class TravelActivitiesSettingsApp extends HandlebarsApplicationMixin(Appl
 				const fp = new foundry.applications.apps.FilePicker.implementation({
 					type: "image",
 					current: input?.value || "",
-					callback: (path) => {
+					callback: path => {
 						if (input) input.value = path;
 						html.dispatchEvent(new SubmitEvent("submit", { cancelable: true }));
 					},
@@ -119,17 +119,24 @@ export class TravelActivitiesSettingsApp extends HandlebarsApplicationMixin(Appl
 		});
 
 		// Reset to defaults
-		html.querySelector(".sdx-reset-defaults")?.addEventListener("click", async (ev) => {
+		html.querySelector(".sdx-reset-defaults")?.addEventListener("click", async ev => {
 			ev.preventDefault();
 			const confirmed = await foundry.applications.api.DialogV2.confirm({
-				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.travel_activities.reset_confirm_title") },
+				window: { title: game.i18n.localize(
+					"SHADOWDARK_EXTRAS.travel_activities.reset_confirm_title"
+				) },
 				content: `<p>${game.i18n.localize("SHADOWDARK_EXTRAS.travel_activities.reset_confirm_content")}</p>`,
 				modal: true,
 			});
 			if (confirmed) {
-				await game.settings.set(MODULE_ID, "travelActivities", { activities: foundry.utils.deepClone(DEFAULT_TRAVEL_ACTIVITIES) });
+				await game.settings.set(
+					MODULE_ID, "travelActivities",
+					{ activities: foundry.utils.deepClone(DEFAULT_TRAVEL_ACTIVITIES) }
+				);
 				this.render({ force: true });
-				ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.travel_activities.reset_complete"));
+				ui.notifications.info(
+					game.i18n.localize("SHADOWDARK_EXTRAS.travel_activities.reset_complete")
+				);
 			}
 		});
 
@@ -315,12 +322,13 @@ export function getTravelActivities() {
 			if (Array.isArray(saved) && saved.length > 0) {
 				return normalizeTravelActivities(saved);
 			}
-			if (saved.activities && Array.isArray(saved.activities) && saved.activities.length > 0) {
+			if (saved.activities && Array.isArray(saved.activities)
+				&& saved.activities.length > 0) {
 				return normalizeTravelActivities(saved.activities);
 			}
 		}
 	}
-	catch (e) {
+	catch(e) {
 		// Setting not registered yet, return defaults
 	}
 	return foundry.utils.deepClone(DEFAULT_TRAVEL_ACTIVITIES);
