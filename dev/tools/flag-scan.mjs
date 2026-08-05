@@ -32,6 +32,12 @@ const MODULE_ID = "shadowdark-extras";
  * The first version of this gate covered only the method channel and reported
  * itself as repo-wide. It was not: 72 keys were invisible to it, 20 of them in
  * the very files the sweep-6 split was about to touch. See issue #91.
+ *
+ * KEYS ARE FULL DOTTED PATHS, not first segments. A flag value is frequently an
+ * object, and its sub-keys are stored on the document exactly as its top-level
+ * key is — `flags.<id>.aura.regionId` is one addressable path, and renaming
+ * `regionId` orphans data just as thoroughly as renaming `aura` would. Both
+ * literal channels record the deepest path each site touches. See issue #95.
  */
 
 /**
@@ -80,6 +86,91 @@ function staticKeyName(property) {
   if (property.key.type === "Identifier") return property.key.name;
   if (property.key.type === "Literal") return String(property.key.value);
   return null;
+}
+
+/** Foundry's legacy deletion form writes `-=key` to remove `key`. */
+function baseName(name) {
+  return name.startsWith("-=") ? name.slice(2) : name;
+}
+
+/**
+ * The literal name of a member-access segment, or null when computed at runtime.
+ */
+function staticSegmentName(member) {
+  if (member.computed) {
+    return member.property.type === "Literal" ? String(member.property.value) : null;
+  }
+  return member.property.type === "Identifier" ? member.property.name : null;
+}
+
+/** Is this node the `<anything>.flags[OURS]` root of a flag chain? */
+function isScopeAccess(node) {
+  return node?.type === "MemberExpression" && node.computed
+    && isOurScope(node.property)
+    && node.object?.type === "MemberExpression"
+    && !node.object.computed
+    && node.object.property?.name === "flags";
+}
+
+/**
+ * Peel a member chain back to its `.flags[OURS]` root.
+ *
+ * Returns the segments above that root, outermost last, with a null for every
+ * segment computed at runtime — or null when this is not a flag chain at all.
+ * `members` is every node walked through, so the caller can suppress the inner
+ * prefixes: `doc.flags[OURS].aura.regionId` is one path, not also `aura`.
+ */
+function flagChain(node) {
+  const segments = [];
+  const members = [];
+  let current = node;
+
+  while (current?.type === "MemberExpression") {
+    if (isScopeAccess(current)) return segments.length > 0 ? { segments, members } : null;
+    segments.unshift(staticSegmentName(current));
+    members.push(current);
+    current = current.object;
+  }
+
+  return null;
+}
+
+/**
+ * Walk a namespace payload object, recording the deepest path of each branch.
+ *
+ * Returns whether anything concrete was found, which decides what an object
+ * whose contents cannot be enumerated — `{}`, `{ ...rest }`, `{ [k]: v }` —
+ * contributes: the parent is still a real write, so it is recorded in its own
+ * right rather than disappearing along with the child that could not be read.
+ */
+function collectPayloadPaths(object, prefix, found) {
+  let concrete = false;
+
+  for (const entry of object.properties) {
+    if (entry.type !== "Property") continue;
+    const name = staticKeyName(entry);
+
+    if (name === null) {
+      found.push({ api: "payload", key: null, dynamic: true, line: entry.loc.start.line });
+      continue;
+    }
+
+    const path = [...prefix, baseName(name)];
+    if (entry.value.type === "ObjectExpression" && collectPayloadPaths(entry.value, path, found)) {
+      concrete = true;
+      continue;
+    }
+
+    found.push({
+      api: "payload",
+      key: path.join("."),
+      dynamic: false,
+      line: entry.loc.start.line,
+    });
+    concrete = true;
+  }
+
+  return concrete;
 }
 
 function visit(node, callback) {
@@ -132,7 +223,17 @@ export function scanFlagLiterals(source) {
 
   const found = [];
 
+  // Chains are read from the outside in, so the traversal reaches the longest
+  // form of each one first; its prefixes are then skipped rather than recorded
+  // as separate shallower keys. Callees are marked for the same reason: the
+  // `forEach` in `flags[OURS].tiles.forEach(…)` is a method on the flag's value,
+  // not a path stored under it.
+  const consumed = new Set();
+  const callees = new Set();
+
   visit(ast, (node) => {
+    if (node.type === "CallExpression" || node.type === "NewExpression") callees.add(node.callee);
+
     // Channel 2 — `flags: { [MODULE_ID]: { key: value } }` in a create/update
     // payload. These are writes: the payload is what gets persisted.
     if (
@@ -144,49 +245,37 @@ export function scanFlagLiterals(source) {
         if (scope.type !== "Property" || !isOurScope(scope.key)) continue;
         if (scope.value.type !== "ObjectExpression") continue;
 
-        for (const entry of scope.value.properties) {
-          if (entry.type !== "Property") continue;
-          const name = staticKeyName(entry);
-
-          if (name === null) {
-            found.push({ api: "payload", key: null, dynamic: true, line: entry.loc.start.line });
-            continue;
-          }
-
-          // Foundry's legacy deletion form writes `-=key` to remove `key`. It
-          // is an operation on that key's identity, so the base name counts.
-          found.push({
-            api: "payload",
-            key: name.startsWith("-=") ? name.slice(2) : name,
-            dynamic: false,
-            line: entry.loc.start.line,
-          });
-        }
+        collectPayloadPaths(scope.value, [], found);
       }
     }
 
     // Channel 3 — `doc.flags[MODULE_ID].key`, usually with optional links.
     // These are reads; nothing persists through a property access.
-    if (node.type === "MemberExpression") {
-      const scopeAccess = node.object;
-      if (
-        scopeAccess?.type === "MemberExpression" && scopeAccess.computed
-        && isOurScope(scopeAccess.property)
-        && scopeAccess.object?.type === "MemberExpression"
-        && !scopeAccess.object.computed
-        && scopeAccess.object.property?.name === "flags"
-      ) {
-        const name = node.computed
-          ? (node.property.type === "Literal" ? String(node.property.value) : null)
-          : (node.property.type === "Identifier" ? node.property.name : null);
+    if (node.type === "MemberExpression" && !consumed.has(node)) {
+      const chain = flagChain(node);
+      if (!chain) return;
 
-        found.push({
-          api: "property",
-          key: name === null ? null : (name.startsWith("-=") ? name.slice(2) : name),
-          dynamic: name === null,
-          line: node.loc.start.line,
-        });
+      for (const member of chain.members) consumed.add(member);
+
+      // A computed segment is a hole in the path. The prefix above it is still
+      // a key we know, so the path truncates there rather than being guessed
+      // at; a hole in the FIRST segment leaves no key at all, which is the
+      // dynamic site the snapshot records as its own blind spot.
+      const hole = chain.segments.indexOf(null);
+      if (hole === 0) {
+        found.push({ api: "property", key: null, dynamic: true, line: node.loc.start.line });
+        return;
       }
+
+      let path = hole === -1 ? chain.segments : chain.segments.slice(0, hole);
+      if (hole === -1 && callees.has(node) && path.length > 1) path = path.slice(0, -1);
+
+      found.push({
+        api: "property",
+        key: path.map(baseName).join("."),
+        dynamic: false,
+        line: node.loc.start.line,
+      });
     }
   });
 
