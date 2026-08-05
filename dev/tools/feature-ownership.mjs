@@ -271,6 +271,9 @@ export const FEATURE_OWNERS = {
     // Level-context / Foundry-levels adapter lifted out of DungeonPainterSD.mjs
     // (Phase 5.3 sweep 6).
     "dungeon-level-context.mjs",
+    // Selection-rectangle overlay lifted out of DungeonPainterSD.mjs
+    // (Phase 5.3 sweep 6).
+    "dungeon-selection-overlay.mjs",
     "DungeonCaveSD.mjs",
     "DungeonBiomesSD.mjs",
     "DungeonDecorSD.mjs",
