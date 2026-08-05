@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 
-import { scanFlags } from "./flag-scan.mjs";
+import { scanFlags, scanFlagLiterals } from "./flag-scan.mjs";
 import { listJsFiles, toRepoPath, isVendor } from "./project-scan.mjs";
 
 /**
@@ -38,7 +38,20 @@ export function collectFlagKeys() {
   const dynamic = [];
 
   for (const file of files) {
-    for (const entry of scanFlags(readFileSync(file, "utf8"))) {
+    const source = readFileSync(file, "utf8");
+
+    // Payload literals persist, so they are writes; property access only reads.
+    // Both are scoped to our namespace by construction — `scanFlagLiterals`
+    // matches nothing else — so they skip the foreign-scope branch below.
+    for (const entry of scanFlagLiterals(source)) {
+      if (entry.dynamic) {
+        dynamic.push(`${toRepoPath(file)}:${entry.line}`);
+        continue;
+      }
+      (entry.api === "payload" ? written : read).add(entry.key);
+    }
+
+    for (const entry of scanFlags(source)) {
       if (entry.dynamic) {
         dynamic.push(`${toRepoPath(file)}:${entry.line}`);
         continue;

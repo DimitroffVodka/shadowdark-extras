@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@foundryvtt/foundryvtt-cli": "^1.0.4",
+    "acorn": "^8.18.0",
     "eslint": "9.39.5",
     "globals": "14.0.0"
   },
