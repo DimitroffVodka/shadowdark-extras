@@ -107,6 +107,11 @@ export class SelectorNode {
 		this.innerHTML = "";
 		this.value = "";
 		this.checked = false;
+		// Select-element shape. A node stands in for any element, and code that
+		// reads the selected <option> must find an empty list rather than throw.
+		this.options = [];
+		this.selectedIndex = -1;
+		this.name = "";
 		this.removed = false;
 		this.appended = [];
 		this._queries = new Map();
