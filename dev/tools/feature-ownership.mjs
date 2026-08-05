@@ -270,6 +270,9 @@ export const FEATURE_OWNERS = {
     // POI placement undo/redo history lifted out of HexPainterSD.mjs
     // (Phase 5.3 sweep 6).
     "hex-poi-history.mjs",
+    // Tile display-label helper, shared by every hex tile store. Hoisted out
+    // of hex-decor.mjs, which only owned it by extraction order.
+    "hex-tile-labels.mjs",
   ],
   dungeon: [
     "DungeonGeneratorSD.mjs",

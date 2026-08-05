@@ -2,6 +2,9 @@ import { cache } from "../shared/SDXCache.mjs";
 import { BIOME_TILES, BIOME_TINTS } from "./HexGeneratorSD.mjs";
 import { getDoorTiles } from "../dungeon/DungeonPainterSD.mjs";
 import { setHexTerrain } from "./HexTooltipSD.mjs";
+// _formatLabel has a neutral leaf of its own: every tile store calls it, so it
+// is not owned by whichever one happened to be extracted first.
+import { _formatLabel } from "./hex-tile-labels.mjs";
 
 // The POI undo/redo history now lives in hex-poi-history.mjs. The painter
 // pushes onto _poiUndoStack (mutation is legal through a read-only import
@@ -36,7 +39,6 @@ import {
 	loadImportedDecorAssets,
 	getDDPackDecorAssets,
 	decorFolderLabel,
-	_formatLabel,
 	registerDecorAsset,
 	reloadDecorAssets,
 	setDecorSearchFilter,

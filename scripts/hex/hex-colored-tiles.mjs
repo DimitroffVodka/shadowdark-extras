@@ -8,7 +8,7 @@
 // extraction provable (read-only ESM bindings forbid cross-module assignment).
 
 import { cache } from "../shared/SDXCache.mjs";
-import { _formatLabel } from "./hex-decor.mjs";
+import { _formatLabel } from "./hex-tile-labels.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const COLORED_TILE_FOLDER = `modules/${MODULE_ID}/assets/Hexes`;

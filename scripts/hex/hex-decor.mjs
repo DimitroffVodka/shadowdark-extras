@@ -9,6 +9,7 @@
 // cross-module assignment).
 
 import { loadDDPackDecorTiles } from "../dungeon/DDPackManagerSD.mjs";
+import { _formatLabel } from "./hex-tile-labels.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const DECOR_IMPORT_FOLDER = "decor";
@@ -184,11 +185,4 @@ export function getDecorSort() {
 }
 export function setDecorSort(v) {
 	_decorSort = parseInt(v, 10) || 0;
-}
-
-export function _formatLabel(key) {
-	return key
-		.split("-")
-		.map(w => w.charAt(0).toUpperCase() + w.slice(1))
-		.join(" ");
 }
