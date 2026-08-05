@@ -6,6 +6,35 @@ import { setHexTerrain } from "./HexTooltipSD.mjs";
 // is not owned by whichever one happened to be extracted first.
 import { _formatLabel } from "./hex-tile-labels.mjs";
 
+// Tile-selection state (active tab, chosen tiles, search filter) and the symbol
+// tile store now live in hex-tile-selection.mjs. The painter reads the bindings
+// and writes them only through the moved setters, so that module can stay an
+// importless leaf. _chosenTiles is the exception the rule allows: it is never
+// rebound, only mutated, so the painter keeps calling .add/.delete/.clear on
+// the imported binding directly.
+import {
+	_symbolTiles,
+	_chosenTiles,
+	_searchFilter,
+	_activeTileTab,
+	loadSymbolTileAssets,
+	getSymbolTiles,
+	getFilteredSymbolTiles,
+	getActiveTileTab,
+	setActiveTileTab,
+	getSymbolTileFolders,
+	toggleSymbolFolderCollapsed,
+	setSearchFilter,
+	getSearchFilter,
+} from "./hex-tile-selection.mjs";
+
+// The tile-selection helpers that were public on this module stay public: the
+// tray, the generator and solo mode import them from here.
+export {
+	getSymbolTiles, getFilteredSymbolTiles, getActiveTileTab, setActiveTileTab,
+	getSymbolTileFolders, toggleSymbolFolderCollapsed, setSearchFilter, getSearchFilter,
+};
+
 // The POI undo/redo history now lives in hex-poi-history.mjs. The painter
 // pushes onto _poiUndoStack (mutation is legal through a read-only import
 // binding) and clears the redo stack only through clearPoiRedoStack, so the
@@ -99,7 +128,6 @@ const BIOME_TO_TERRAIN = {
 const MODULE_ID = "shadowdark-extras";
 const TILE_FOLDER = `modules/${MODULE_ID}/assets/tiles`;
 const CUSTOM_TILE_FOLDER = "hexes";
-const SYMBOLS_TILE_FOLDER = `modules/${MODULE_ID}/assets/symbols`;
 const HEX_TILE_W = 296;
 const HEX_TILE_H = 256;
 const COLORED_HEX_TILE_W = 572;
@@ -116,16 +144,12 @@ const COLORED_BIOME_SUBDIRS = ["Water", "Vegetation", "Mountains", "Desert", "sw
 
 let _tiles = null;           // Default tiles from module
 let _customTiles = null;     // Custom tiles from data/hexes
-let _symbolTiles = null;     // Symbol tiles from assets/symbols
 let _customTileBoundsCache = new Map();
-let _chosenTiles = new Set();
-let _searchFilter = "";
 let _waterEffect = false;
 let _windEffect = false;
 let _fogAnimation = false;
 let _tintEnabled = false;
 let _bwEffect = false;
-let _symbolFoldersCollapsed = {};  // Track collapsed state of symbol tile folders
 let _brushActive = false;
 let _lastCell = null;
 let _paintEnabled = false;
@@ -143,7 +167,6 @@ let _customTileWidth = 296;
 let _customTileHeight = 256;
 
 // Active tile tab ("default", "custom", or "colored")
-let _activeTileTab = "default";
 let _customNavPath = [];
 
 // POI (Symbol) tile state
@@ -351,90 +374,6 @@ export async function reloadCustomTiles() {
 }
 
 /**
- * Load symbol tiles from assets/symbols folder (inside the module)
- */
-async function loadSymbolTileAssets() {
-	_symbolTiles = [];
-
-	const metadataKey = "hex_tiles_metadata_symbol";
-	const cached = await cache.getMetadata(metadataKey);
-	if (cached) {
-		_symbolTiles = cached;
-		return;
-	}
-
-	try {
-		// Load tiles from main symbols folder
-		const mainListing = await foundry.applications.apps.FilePicker.implementation.browse("data", SYMBOLS_TILE_FOLDER);
-		const mainPngFiles = (mainListing.files || []).filter(f => f.endsWith(".png") || f.endsWith(".webp"));
-
-		for (const path of mainPngFiles) {
-			const filename = path.split("/").pop().replace(/\.(png|webp)$/, "");
-			_symbolTiles.push({
-				key: filename,
-				label: _formatLabel(filename),
-				path,
-				isSymbol: true,
-				category: null,
-			});
-		}
-
-		// Dynamically discover and load tiles from all subdirectories
-		const subdirs = mainListing.dirs || [];
-		for (const dirPath of subdirs) {
-			const category = dirPath.split("/").pop();
-			try {
-				const categoryListing = await foundry.applications.apps.FilePicker.implementation.browse("data", dirPath);
-				const categoryPngFiles = (categoryListing.files || []).filter(f => f.endsWith(".png") || f.endsWith(".webp"));
-
-				for (const path of categoryPngFiles) {
-					const filename = path.split("/").pop().replace(/\.(png|webp)$/, "");
-					_symbolTiles.push({
-						key: filename,
-						label: _formatLabel(filename),
-						path,
-						isSymbol: true,
-						category: category.toLowerCase(),
-					});
-				}
-			}
-			catch (err) {
-				// Subdirectory might not be accessible, that's okay
-			}
-		}
-
-		_symbolTiles.sort((a, b) => a.key.localeCompare(b.key));
-		await cache.setMetadata(metadataKey, _symbolTiles);
-		console.log(`${MODULE_ID} | Loaded ${_symbolTiles.length} symbol tiles from ${subdirs.length} folders`);
-	}
-	catch (err) {
-		console.warn(`${MODULE_ID} | Could not load symbol tiles:`, err);
-		_symbolTiles = [];
-	}
-}
-
-/**
- * Get symbol tiles array
- */
-export function getSymbolTiles() {
-	return _symbolTiles || [];
-}
-
-/**
- * Get filtered symbol tiles (by search filter)
- * @param {string[]} excludeCategories - Categories to exclude
- */
-export function getFilteredSymbolTiles(excludeCategories = []) {
-	if (!_symbolTiles) return [];
-	let tiles = _symbolTiles;
-	if (excludeCategories.length) {
-		tiles = tiles.filter(t => !excludeCategories.includes(t.category));
-	}
-	if (!_searchFilter) return tiles;
-	return tiles.filter(t => t.label.toLowerCase().includes(_searchFilter));
-}
-
-/**
  * Get custom tiles organized by biome for the generator
  */
 export function getCustomTilesByBiome() {
@@ -600,25 +539,6 @@ export async function getCustomTilePlacement(src, center, verticalNudge = 0) {
 }
 
 /**
- * Get active tile tab
- */
-export function getActiveTileTab() {
-	return _activeTileTab;
-}
-
-/**
- * Set active tile tab
- */
-export function setActiveTileTab(tab) {
-	if (tab === "custom" || tab === "colored" || tab === "symbols") {
-		_activeTileTab = tab;
-	}
-	else {
-		_activeTileTab = "default";
-	}
-}
-
-/**
  * Get current POI scale
  */
 export function getPoiScale() {
@@ -718,66 +638,6 @@ export async function getColoredTileFolders() {
 	});
 
 	return folders;
-}
-
-/**
- * Get symbol tiles grouped by folder for the tray UI.
- * Returns an array of { folder, label, collapsed, tiles[] } objects.
- */
-export async function getSymbolTileFolders() {
-	const filtered = getFilteredSymbolTiles(["dysonstyle"]);
-	if (!filtered.length) return [];
-
-	// Group tiles by category (folder)
-	const folderMap = new Map();
-
-	for (const tile of filtered) {
-		const folderKey = tile.category || "__root__";
-		if (!folderMap.has(folderKey)) {
-			folderMap.set(folderKey, []);
-		}
-		folderMap.get(folderKey).push({
-			key: tile.key,
-			label: tile.label,
-			path: tile.path,
-			active: _chosenTiles.has(tile.path),
-			category: tile.category,
-		});
-	}
-
-	// Build folder array, sorted alphabetically (root first if it exists)
-	const folders = [];
-	for (const [key, tiles] of folderMap) {
-		const label = key === "__root__" ? "Root" : key.charAt(0).toUpperCase() + key.slice(1);
-
-		const processedTiles = await Promise.all(tiles.map(async t => ({
-			...t,
-			src: await cache.getCachedSrc(t.path),
-		})));
-
-		folders.push({
-			folder: key,
-			label,
-			collapsed: !!_symbolFoldersCollapsed[key],
-			tiles: processedTiles,
-		});
-	}
-
-	// Sort: root first, then alphabetically
-	folders.sort((a, b) => {
-		if (a.folder === "__root__") return -1;
-		if (b.folder === "__root__") return 1;
-		return a.label.localeCompare(b.label);
-	});
-
-	return folders;
-}
-
-/**
- * Toggle collapsed state of a symbol tile folder
- */
-export function toggleSymbolFolderCollapsed(folderKey) {
-	_symbolFoldersCollapsed[folderKey] = !_symbolFoldersCollapsed[folderKey];
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1114,14 +974,6 @@ export function toggleTileSelection(tilePath) {
 export function clearTileSelection() {
 	_chosenTiles.clear();
 	destroyPreview();
-}
-
-export function setSearchFilter(term) {
-	_searchFilter = term.toLowerCase();
-}
-
-export function getSearchFilter() {
-	return _searchFilter;
 }
 
 export function getFilteredTiles() {

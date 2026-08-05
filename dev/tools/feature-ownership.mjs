@@ -273,6 +273,9 @@ export const FEATURE_OWNERS = {
     // Tile display-label helper, shared by every hex tile store. Hoisted out
     // of hex-decor.mjs, which only owned it by extraction order.
     "hex-tile-labels.mjs",
+    // Tile-selection state and the symbol tile store, lifted out of
+    // HexPainterSD.mjs (Phase 5.3 sweep 6).
+    "hex-tile-selection.mjs",
   ],
   dungeon: [
     "DungeonGeneratorSD.mjs",
