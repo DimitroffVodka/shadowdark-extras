@@ -714,7 +714,7 @@ export function disablePainting() {
 	_brushActive = false;
 	_lastCell = null;
 	_chosenTiles.clear();
-	_decorMode = false;
+	setDecorMode(false);
 	// Clean up POI-related state
 	destroyPreview();
 	clearPoiHistory();
