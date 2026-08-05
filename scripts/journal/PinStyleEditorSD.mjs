@@ -13,6 +13,19 @@ import { FilterEditor, getCloneFilterParams } from "../animation/TMFXFilterEdito
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 /**
+ * Read a number that may be missing, blank or unparseable.
+ *
+ * parseFloat returns NaN in all three cases, and `??` only substitutes for
+ * null and undefined — so `parseFloat(x) ?? fallback` never falls back, and
+ * the NaN travels into the saved style. Every opacity in this file goes
+ * through here instead.
+ */
+function readNumber(value, fallback) {
+	const parsed = parseFloat(value);
+	return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+/**
  * Pin Style Editor Application
  */
 export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
@@ -406,7 +419,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 					// Update preview image
 					const previewContainer = form.querySelector(".selected-icon-preview");
 					if (previewContainer) {
-						previewContainer.innerHTML = `<img src="${selectedPath}" alt="Selected Icon" />`;
+						previewContainer.innerHTML = `<img src="${foundry.utils.escapeHTML(selectedPath)}" alt="Selected Icon" />`;
 					}
 
 					// Update the pin preview
@@ -562,8 +575,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			previewPin.style.width = `${size}px`;
 			previewPin.style.height = `${size}px`;
 			const baseOpacity = parseFloat(style.opacity) || 1.0;
-			const fillOpacity = (parseFloat(style.fillOpacity) ?? 1.0) * baseOpacity;
-			const ringOpacity = (parseFloat(style.ringOpacity) ?? 1.0) * baseOpacity;
+			const fillOpacity = readNumber(style.fillOpacity, 1.0) * baseOpacity;
+			const ringOpacity = readNumber(style.ringOpacity, 1.0) * baseOpacity;
 
 			previewPin.style.backgroundColor = style.fillColor || "#000000";
 			previewPin.style.borderColor = style.ringColor || "#ffffff";
@@ -649,7 +662,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 				else if (type === "customIcon") {
 					// Custom SVG icon
 					if (style.customIconPath) {
-						content.innerHTML = `<img src="${style.customIconPath}" style="width: 70%; height: 70%; filter: invert(1);" />`;
+						content.innerHTML = `<img src="${foundry.utils.escapeHTML(style.customIconPath)}" style="width: 70%; height: 70%; filter: invert(1);" />`;
 					}
 					else {
 						content.innerHTML = "<i class=\"fa-solid fa-image\"></i>";
@@ -820,15 +833,15 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			opacity: (() => {
 				const shape = form.querySelector('[name="shape"]')?.value;
 				if (shape === "image") {
-					return parseFloat(form.querySelector('.image-opacity-option [name="opacity"]')?.value) ?? 1.0;
+					return readNumber(form.querySelector('.image-opacity-option [name="opacity"]')?.value, 1.0);
 				}
 				else {
-					return parseFloat(form.querySelector('.standard-style-options [name="opacity"]')?.value) ?? 1.0;
+					return readNumber(form.querySelector('.standard-style-options [name="opacity"]')?.value, 1.0);
 				}
 			})(),
 
-			fillOpacity: parseFloat(form.querySelector('[name="fillOpacity"]')?.value) ?? 1.0,
-			ringOpacity: parseFloat(form.querySelector('[name="ringOpacity"]')?.value) ?? 1.0,
+			fillOpacity: readNumber(form.querySelector('[name="fillOpacity"]')?.value, 1.0),
+			ringOpacity: readNumber(form.querySelector('[name="ringOpacity"]')?.value, 1.0),
 			contentType: form.querySelector('[name="contentType"]')?.value || "number",
 			customText: form.querySelector('[name="customText"]')?.value || "",
 			// Symbol (FontAwesome icons)
@@ -875,12 +888,12 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		// Handle conditional Background Color and Opacity inputs due to split UI
 		if (formData.labelBackground === "image") {
 			formData.labelBackgroundColor = form.querySelector('[name="labelImageBackgroundColor"]')?.value || "#000000";
-			formData.labelBackgroundOpacity = parseFloat(form.querySelector('[name="labelImageBackgroundOpacity"]')?.value) ?? 0.8;
+			formData.labelBackgroundOpacity = readNumber(form.querySelector('[name="labelImageBackgroundOpacity"]')?.value, 0.8);
 		}
 		else {
 			// Default/Solid inputs
 			formData.labelBackgroundColor = form.querySelector('[name="labelBackgroundColor"]')?.value || "#000000";
-			formData.labelBackgroundOpacity = parseFloat(form.querySelector('[name="labelBackgroundOpacity"]')?.value) ?? 0.8;
+			formData.labelBackgroundOpacity = readNumber(form.querySelector('[name="labelBackgroundOpacity"]')?.value, 0.8);
 		}
 
 		// Add pageId if editing individual pin

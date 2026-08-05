@@ -289,30 +289,42 @@ test("fill colour becomes rgba, with the shape's opacity folded in", async () =>
 	assert.equal(pin.style.backgroundColor, "rgba(16, 32, 48, 0.25)", "0.5 fill × 0.5 overall");
 });
 
-// KNOWN DEFECT, frozen here and fixed separately rather than inside the split.
-//
-// Six sites read an opacity as `parseFloat(x) ?? default`. parseFloat returns
-// NaN for a blank or missing input, and ?? only substitutes for null and
-// undefined — so the default never applies and the arithmetic yields NaN. The
-// line directly above them uses `|| 1.0`, which is what these meant.
-//
-// In the preview the damage is invisible: `rgba(r, g, b, NaN)` is not a valid
-// colour, the browser drops the assignment, and the opaque hex set a few lines
-// earlier survives. _getFormData has no such safety net — it hands NaN to
-// _onSave, which writes it to the pin's style flag.
-test("a blank ring opacity yields NaN rather than falling back to one", async () => {
+// Six sites used to read an opacity as `parseFloat(x) ?? default`, which never
+// falls back: parseFloat yields NaN for a blank input and ?? only substitutes
+// for null and undefined. readNumber replaced them.
+test("a blank ring opacity falls back to fully opaque", async () => {
 	const { pin } = await previewWithOpacity(
 		{ ringColor: "#ffffff" }, { opacity: "0.5" });
 
-	assert.equal(pin.style.borderColor, "rgba(255, 255, 255, NaN)");
+	assert.equal(pin.style.borderColor, "rgba(255, 255, 255, 0.5)", "1.0 ring × 0.5 overall");
 });
 
-test("the opacity fields read as NaN when their inputs are absent", () => {
+test("the opacity fields default to one when their inputs are absent", () => {
 	const style = makeEditor().app._getFormData();
 
-	assert.ok(Number.isNaN(style.opacity), "opacity");
-	assert.ok(Number.isNaN(style.fillOpacity), "fillOpacity");
-	assert.ok(Number.isNaN(style.ringOpacity), "ringOpacity");
+	assert.equal(style.opacity, 1.0);
+	assert.equal(style.fillOpacity, 1.0);
+	assert.equal(style.ringOpacity, 1.0);
+});
+
+test("an unparseable opacity falls back rather than poisoning the saved style", () => {
+	const { app, dom: d } = makeEditor({ fields: { fillOpacity: "wide open" } });
+	d.node(`${FORM} .standard-style-options [name="opacity"]`).value = "also not a number";
+
+	const style = app._getFormData();
+
+	assert.equal(style.fillOpacity, 1.0);
+	assert.equal(style.opacity, 1.0);
+});
+
+test("a real zero opacity is kept, not mistaken for a missing value", () => {
+	const { app, dom: d } = makeEditor({ fields: { fillOpacity: "0" } });
+	d.node(`${FORM} .standard-style-options [name="opacity"]`).value = "0";
+
+	const style = app._getFormData();
+
+	assert.equal(style.fillOpacity, 0, "a fully transparent fill is a legitimate choice");
+	assert.equal(style.opacity, 0);
 });
 
 test("each shape sets its own radius, rotation and clip path", async () => {
@@ -387,17 +399,25 @@ test("font styling reaches the preview content", async () => {
 	assert.equal(content.style.webkitTextStroke, "2px #123456");
 });
 
-// KNOWN DEFECT, frozen here and fixed separately rather than inside the split.
-// The custom-icon branch interpolates a user-chosen path straight into an
-// <img src="…"> with no escaping, so a path containing a double quote closes
-// the attribute and whatever follows is parsed as markup.
-test("a custom icon path is interpolated into markup unescaped", async () => {
+// A custom icon path is chosen by the user and interpolated into an
+// <img src="…">, so a double quote in it would otherwise close the attribute
+// and let what follows parse as markup.
+test("a custom icon path is escaped before it reaches the src attribute", async () => {
 	const { content } = await preview({
 		contentType: "customIcon", customIconPath: 'a.svg" onerror="alert(1)',
 	});
 
-	assert.ok(content.innerHTML.includes('onerror="alert(1)"'),
-		"the quote in the path escapes the src attribute");
+	assert.ok(!content.innerHTML.includes('onerror="alert(1)"'),
+		"the quote must not break out of the attribute");
+	assert.ok(content.innerHTML.includes("&quot;"), "it is escaped, not stripped");
+});
+
+test("an ordinary icon path survives escaping unchanged", async () => {
+	const { content } = await preview({
+		contentType: "customIcon", customIconPath: "modules/shadowdark-extras/assets/icons/inn.svg",
+	});
+
+	assert.ok(content.innerHTML.includes('src="modules/shadowdark-extras/assets/icons/inn.svg"'));
 });
 
 test("a custom icon with no path falls back to a placeholder glyph", async () => {
