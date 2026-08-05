@@ -307,6 +307,29 @@ export function installCanvasGlobals({ isGM = true, gsap = makeGsapRecorder() } 
 		// v14+ deletion sentinel, used by unsetFlag instead of the legacy "-=" key.
 		data: { operators: { ForcedDeletion: class ForcedDeletion {} } },
 		utils: {
+			// Foundry's Collection is a Map with lookup helpers; stores built at
+			// module load construct one, so it has to be a real constructor.
+			Collection: class Collection extends Map {
+				getName(name) {
+					return [...this.values()].find(entry => entry?.name === name) ?? null;
+				}
+
+				find(predicate) {
+					return [...this.values()].find(predicate) ?? null;
+				}
+
+				filter(predicate) {
+					return [...this.values()].filter(predicate);
+				}
+
+				map(transform) {
+					return [...this.values()].map(transform);
+				}
+
+				get contents() {
+					return [...this.values()];
+				}
+			},
 			deepClone: value => JSON.parse(JSON.stringify(value ?? null)),
 			getProperty: (obj, key) => key.split(".").reduce((o, k) => o?.[k], obj),
 			mergeObject: (a, b) => Object.assign(a, b),
