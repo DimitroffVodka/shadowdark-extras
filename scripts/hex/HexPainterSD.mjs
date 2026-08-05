@@ -1012,7 +1012,7 @@ export function toggleDecorFolderCollapsed(folderKey) {
 export function setDecorMode(enabled) {
 	_decorMode = !!enabled;
 	if (enabled) {
-		_activeTileTab = "symbols"; // Decor uses symbol tile placement logic
+		setActiveTileTab("symbols"); // Decor uses symbol tile placement logic
 	}
 }
 
