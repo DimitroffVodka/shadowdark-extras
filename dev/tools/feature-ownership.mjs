@@ -242,6 +242,11 @@ export const FEATURE_OWNERS = {
     "pin-tooltip.mjs",
     "pin-tmfx-adapter.mjs",
     "pin-icons.mjs",
+    // Form reading and saving, preview rendering and the TokenMagic panel
+    // lifted out of PinStyleEditorSD.mjs in Phase 5.3.5.
+    "pin-style-form.mjs",
+    "pin-style-preview.mjs",
+    "pin-style-tmfx.mjs",
   ],
   hex: [
     "HexPainterSD.mjs",
