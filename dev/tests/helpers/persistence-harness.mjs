@@ -17,82 +17,7 @@
 // `JournalPinsSD` → `foundry.canvas.layers.CanvasLayer` at module scope, which
 // is why a canvas-layer base class appears in a harness about persistence.
 
-/** Plain objects and arrays are cloned through; everything else is a leaf. */
-function isPlainContainer(value) {
-	if (Array.isArray(value)) return true;
-	if (!value || typeof value !== "object") return false;
-	const proto = Object.getPrototypeOf(value);
-	return proto === Object.prototype || proto === null;
-}
-
-/**
- * Stand-in for `foundry.utils.deepClone`.
- *
- * A JSON round-trip was the obvious shortcut and the wrong one: it silently
- * drops `undefined` values, turns a Date into a string, and throws on a cycle.
- * A harness whose contract is faithfulness cannot afford divergences its tests
- * would then assert against.
- *
- * Dates, Sets and Maps are cloned because real documents carry them. Anything
- * else with a prototype — a class instance, a Foundry Document — is returned by
- * reference, which is what Foundry's own non-strict clone does.
- */
-export function deepClone(value) {
-	if (value === null || typeof value !== "object") return value;
-	if (value instanceof Date) return new Date(value.getTime());
-	if (value instanceof Set) return new Set([...value].map(deepClone));
-	if (value instanceof Map) return new Map([...value].map(([k, v]) => [k, deepClone(v)]));
-	if (Array.isArray(value)) return value.map(deepClone);
-	if (!isPlainContainer(value)) return value;
-
-	const out = {};
-	for (const [key, item] of Object.entries(value)) out[key] = deepClone(item);
-	return out;
-}
-
-/**
- * Stand-in for `foundry.utils.mergeObject`, faithful for the options this
- * repository actually passes and LOUD about the rest.
- *
- * Two divergences from a naive `Object.assign` matter enough to implement:
- * the real merge is recursive, and it defaults to `inplace: true` — it mutates
- * and returns `original`. `applySceneLevelData` passes `{ inplace: false }`
- * precisely because it needs the other behaviour, so a stub that always copied
- * would make that call site look correct no matter which way it was written.
- *
- * Unimplemented options throw rather than being ignored. A silently ignored
- * option is how a test comes to assert against behaviour the real function
- * does not have.
- */
-export function mergeObject(original, other = {}, options = {}) {
-	const { inplace = true, insertKeys = true, overwrite = true, recursive = true, ...rest } = options;
-
-	const unsupported = Object.keys(rest);
-	if (unsupported.length > 0) {
-		throw new Error(
-			`persistence-harness mergeObject does not implement ${unsupported.join(", ")} — `
-			+ "implement it faithfully before relying on it in a test",
-		);
-	}
-
-	const target = inplace ? original : deepClone(original);
-
-	for (const [key, value] of Object.entries(other)) {
-		const has = Object.prototype.hasOwnProperty.call(target, key);
-		if (!has) {
-			if (insertKeys) target[key] = deepClone(value);
-			continue;
-		}
-		if (recursive && isPlainContainer(target[key]) && isPlainContainer(value)
-			&& !Array.isArray(target[key]) && !Array.isArray(value)) {
-			mergeObject(target[key], value, { inplace: true, insertKeys, overwrite, recursive });
-			continue;
-		}
-		if (overwrite) target[key] = deepClone(value);
-	}
-
-	return target;
-}
+import { deepClone, expandObject, mergeObject } from "./foundry-utils.mjs";
 
 /**
  * A document (scene or journal) whose flag writes are recorded.
@@ -180,6 +105,7 @@ export function installPersistenceGlobals({ isGM = true, settings = {} } = {}) {
 	globalThis.foundry = {
 		utils: {
 			deepClone,
+			expandObject,
 			mergeObject,
 			randomID: () => "test-id",
 		},

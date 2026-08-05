@@ -13,6 +13,11 @@
 //
 // Nothing here simulates rendering. Anything that needs a real texture belongs
 // in a live Foundry check, not in this harness.
+//
+// The `foundry.utils` helpers come from ./foundry-utils.mjs rather than being
+// hand-rolled here. They used to be local, shallow and wrong — see issue #92.
+
+import { deepClone, expandObject, getProperty, mergeObject } from "./foundry-utils.mjs";
 
 /** PIXI's EventEmitter dispatches with an explicit context argument. */
 export class StubEmitter {
@@ -333,9 +338,10 @@ export function installCanvasGlobals({ isGM = true, gsap = makeGsapRecorder() } 
 					return [...this.values()];
 				}
 			},
-			deepClone: value => JSON.parse(JSON.stringify(value ?? null)),
-			getProperty: (obj, key) => key.split(".").reduce((o, k) => o?.[k], obj),
-			mergeObject: (a, b) => Object.assign(a, b),
+			deepClone,
+			expandObject,
+			getProperty,
+			mergeObject,
 			randomID: () => "test-id",
 			escapeHTML: value => String(value)
 				.replace(/&/g, "&amp;")
