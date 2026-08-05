@@ -9,7 +9,6 @@
 import { MODULE_ID } from "../shared/module-id.mjs";
 import { getCustomLightSources } from "../canvas/light-templates.mjs";
 
-
 // ============================================
 // PARTY TOKEN LIGHT SYNCHRONIZATION
 // ============================================
@@ -48,17 +47,13 @@ export async function getBrightestPartyLight(partyActor) {
 	let maxDim = -1;
 
 	for (const member of members) {
-		console.log(`${MODULE_ID} | Checking member: ${member.name}`);
 		// Check all items for light sources
 		for (const item of member.items) {
 			// Light sources are Basic or Effect items with light.isSource = true
 			const isLightSource = ["Basic", "Effect"].includes(item.type) && item.system?.light?.isSource;
 			const isActive = item.system?.light?.active;
 
-			console.log(`${MODULE_ID} | Item: ${item.name}, type: ${item.type}, isLightSource: ${isLightSource}, isActive: ${isActive}`);
-
 			if (isLightSource && isActive) {
-				console.log(`${MODULE_ID} | Found active light: ${item.name}`, item.system.light);
 
 				// Load Shadowdark's official light source mappings
 				const templateName = item.system.light.template;
@@ -69,10 +64,6 @@ export async function getBrightestPartyLight(partyActor) {
 						"systems/shadowdark/assets/mappings/map-light-sources.json"
 					);
 					lightTemplate = lightSources[templateName]?.light;
-					console.log(
-						`${MODULE_ID} | Loaded template '${templateName}' from Shadowdark mappings:`,
-						lightTemplate
-					);
 				}
 				catch(e) {
 					console.warn(`${MODULE_ID} | Failed to load light mappings:`, e);
@@ -80,9 +71,6 @@ export async function getBrightestPartyLight(partyActor) {
 
 				// If template not found in JSON, use fallback values
 				if (!lightTemplate) {
-					console.log(
-						`${MODULE_ID} | Template '${templateName}' not in JSON, using fallback`
-					);
 					// Fallback values matching Shadowdark's actual light mappings
 					const FALLBACK_TEMPLATES = {
 						torch: { bright: 5, dim: 30, color: "#d1c846", alpha: 0.2, angle: 360 },
@@ -102,13 +90,9 @@ export async function getBrightestPartyLight(partyActor) {
 					lightTemplate = FALLBACK_TEMPLATES[templateName];
 				}
 
-				console.log(`${MODULE_ID} | Template: ${templateName}`, lightTemplate);
-
 				// Get bright and dim from the template or item
 				let bright = lightTemplate?.bright ?? item.system.light.bright ?? 0;
 				let dim = lightTemplate?.dim ?? item.system.light.dim ?? 0;
-
-				console.log(`${MODULE_ID} | Light values - bright: ${bright}, dim: ${dim}`);
 
 				// Compare brightness (bright distance is primary, dim is tiebreaker)
 				if (bright > maxBright || (bright === maxBright && dim > maxDim)) {
@@ -133,7 +117,6 @@ export async function getBrightestPartyLight(partyActor) {
 						shadows: lightTemplate?.shadows ?? item.system.light.shadows ?? 0,
 						coloration: lightTemplate?.coloration ?? item.system.light.coloration ?? 1,
 					};
-					console.log(`${MODULE_ID} | New brightest light:`, brightestLight);
 				}
 			}
 		}
@@ -147,11 +130,9 @@ export async function getBrightestPartyLight(partyActor) {
  * @param {Actor} partyActor - The party actor
  */
 export async function syncPartyTokenLight(partyActor) {
-	console.log(`${MODULE_ID} | syncPartyTokenLight called with:`, partyActor);
 
 	// Check if this is a party by looking for the members flag
 	const hasMembers = partyActor?.getFlag(MODULE_ID, "members");
-	console.log(`${MODULE_ID} | Has members flag:`, hasMembers);
 
 	if (!partyActor || !hasMembers) {
 		console.warn(
@@ -159,8 +140,6 @@ export async function syncPartyTokenLight(partyActor) {
 		);
 		return;
 	}
-
-	console.log(`${MODULE_ID} | Syncing light for party: ${partyActor.name}`);
 
 	// Get the brightest light from party members
 	const brightestLight = await getBrightestPartyLight(partyActor);
@@ -170,7 +149,6 @@ export async function syncPartyTokenLight(partyActor) {
 		?.filter(t => t.actor?.id === partyActor.id) ?? [];
 
 	if (partyTokens.length === 0) {
-		console.log(`${MODULE_ID} | No party tokens found on canvas for ${partyActor.name}`);
 		return;
 	}
 
@@ -194,14 +172,12 @@ export async function syncPartyTokenLight(partyActor) {
 			updates["light.shadows"] = brightestLight.shadows;
 			updates["light.coloration"] = brightestLight.coloration;
 
-			console.log(`${MODULE_ID} | Party token ${token.name} light ON: ${brightestLight.bright}/${brightestLight.dim}`);
 		}
 		else {
 			// No lights active - turn off party token light
 			updates["light.dim"] = 0;
 			updates["light.bright"] = 0;
 
-			console.log(`${MODULE_ID} | Party token ${token.name} light OFF`);
 		}
 
 		await token.document.update(updates);
