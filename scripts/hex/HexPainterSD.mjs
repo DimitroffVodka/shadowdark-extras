@@ -95,6 +95,35 @@ export {
 	appendCustomNavSegment, getCustomNavChips,
 };
 
+// The five map-effect toggles now live in hex-map-effects.mjs, on the same
+// terms as the seams above: an importless leaf, read here and written only
+// through the moved togglers.
+import {
+	_waterEffect,
+	_windEffect,
+	_fogAnimation,
+	_tintEnabled,
+	_bwEffect,
+	toggleWaterEffect,
+	isWaterEffect,
+	toggleWindEffect,
+	isWindEffect,
+	toggleFogAnimation,
+	isFogAnimation,
+	toggleTintEnabled,
+	isTintEnabled,
+	toggleBwEffect,
+	isBwEffect,
+} from "./hex-map-effects.mjs";
+
+// Every effect helper was public on this module and stays public: the tray
+// bindings toggle them and the generator reads them from here.
+export {
+	toggleWaterEffect, isWaterEffect, toggleWindEffect, isWindEffect,
+	toggleFogAnimation, isFogAnimation, toggleTintEnabled, isTintEnabled,
+	toggleBwEffect, isBwEffect,
+};
+
 // Maps default-tile biome keys to user-friendly terrain labels
 const BIOME_TO_TERRAIN = {
 	water: "Water",
@@ -130,11 +159,6 @@ let _tiles = null;           // Default tiles from module
 let _symbolTiles = null;     // Symbol tiles from assets/symbols
 let _chosenTiles = new Set();
 let _searchFilter = "";
-let _waterEffect = false;
-let _windEffect = false;
-let _fogAnimation = false;
-let _tintEnabled = false;
-let _bwEffect = false;
 let _symbolFoldersCollapsed = {};  // Track collapsed state of symbol tile folders
 let _brushActive = false;
 let _lastCell = null;
@@ -795,46 +819,6 @@ export function isPainting() {
 
 export function setGenerating(v) {
 	_isGenerating = !!v;
-}
-
-export function toggleWaterEffect() {
-	_waterEffect = !_waterEffect;
-}
-
-export function isWaterEffect() {
-	return _waterEffect;
-}
-
-export function toggleWindEffect() {
-	_windEffect = !_windEffect;
-}
-
-export function isWindEffect() {
-	return _windEffect;
-}
-
-export function toggleFogAnimation() {
-	_fogAnimation = !_fogAnimation;
-}
-
-export function isFogAnimation() {
-	return _fogAnimation;
-}
-
-export function toggleTintEnabled() {
-	_tintEnabled = !_tintEnabled;
-}
-
-export function isTintEnabled() {
-	return _tintEnabled;
-}
-
-export function toggleBwEffect() {
-	_bwEffect = !_bwEffect;
-}
-
-export function isBwEffect() {
-	return _bwEffect;
 }
 
 export function setMapDimension(axis, value) {
