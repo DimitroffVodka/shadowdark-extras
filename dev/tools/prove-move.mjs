@@ -98,10 +98,20 @@ function main() {
     argv.splice(flagIndex, 2);
   }
 
+  // `--derive` prints what left the origin and stops. It is a helper for
+  // writing the name list, NOT a way to run without one: a derived list proves
+  // everything that left arrived, but it cannot prove the RIGHT things left.
+  // An accidentally-moved extra function is identical in both files and would
+  // sail through. Naming them is the assertion of intent; the derived set is
+  // the completeness check. The gate wants both.
+  const deriveOnly = argv.includes("--derive");
+  if (deriveOnly) argv.splice(argv.indexOf("--derive"), 1);
+
   const [baseRef, fromPath, toPath, ...names] = argv;
   if (!baseRef || !fromPath || !toPath) {
     console.error(
-      "usage: prove-move.mjs [--origin-at <ref>] <baseRef> <fromPath> <toPath>[,<toPath>…] [name…]",
+      "usage: prove-move.mjs [--origin-at <ref>] [--derive] "
+        + "<baseRef> <fromPath> <toPath>[,<toPath>…] <name…>",
     );
     process.exit(2);
   }
@@ -138,17 +148,36 @@ function main() {
   const nowAtOrigin = declarations(parse(originSource, originLabel));
   const departed = [...before.keys()].filter(name => !nowAtOrigin.has(name));
 
-  const wanted = names.length > 0 ? names : departed;
-  const mismatched = [];
-  const missing = [];
-
-  if (wanted.length === 0) {
+  if (departed.length === 0) {
     console.log(
       `[BLOCK] prove-move: nothing to prove — no declaration left ${fromPath} since ${baseRef}. `
         + "A move that moved nothing is a mistake, not a pass.",
     );
     process.exit(1);
   }
+
+  if (deriveOnly) {
+    console.log(`${departed.length} declarations left ${fromPath} since ${baseRef}:`);
+    console.log(`  ${departed.join(" ")}`);
+    return;
+  }
+
+  if (names.length === 0) {
+    console.log(
+      "[BLOCK] prove-move: name the declarations you moved. Deriving the list from the tree "
+        + "proves everything that left arrived, but not that the right things left — an "
+        + "accidentally-moved function is identical in both files and passes silently.",
+    );
+    console.log(`  ${departed.length} left the origin; run with --derive to list them.`);
+    process.exit(1);
+  }
+
+  const wanted = names;
+  const mismatched = [];
+  const missing = [];
+
+  // Named but still in the origin: the claim is wrong in the other direction.
+  const notDeparted = wanted.filter(name => !departed.includes(name));
 
   for (const name of wanted) {
     if (!before.has(name)) { missing.push(`${name} — absent from ${fromPath}@${baseRef}`); continue; }
@@ -159,27 +188,32 @@ function main() {
     }
   }
 
-  // Anything that left the origin and was not named is unaccounted for. This is
-  // the case an explicit name list cannot catch on its own: the list is only as
-  // complete as whoever wrote it.
-  const unaccounted = departed.filter(name => !wanted.includes(name) && !after.has(name));
+  // Anything that left the origin and was not named. The list is only as
+  // complete as whoever wrote it, so this is what catches an omission — whether
+  // the declaration vanished entirely or was quietly moved without being
+  // declared. Both are failures: the first loses code, the second means the
+  // change is larger than the author claimed.
+  const undeclared = departed.filter(name => !wanted.includes(name));
 
-  for (const problem of missing) console.log(`  MISSING   ${problem}`);
-  for (const name of mismatched) console.log(`  CHANGED   ${name} — tree differs, this is not a pure move`);
-  for (const name of unaccounted) {
-    console.log(
-      `  LOST      ${name} — left ${fromPath} but is in none of ${toPaths.join(", ")} and was not named`,
-    );
+  for (const problem of missing) console.log(`  MISSING     ${problem}`);
+  for (const name of mismatched) console.log(`  CHANGED     ${name} — tree differs, this is not a pure move`);
+  for (const name of notDeparted) {
+    console.log(`  NOT MOVED   ${name} — named as moved, but it is still in ${fromPath}`);
+  }
+  for (const name of undeclared) {
+    const where = after.has(name) ? `it is in ${homeOf.get(name)}` : "it is in no destination given";
+    console.log(`  UNDECLARED  ${name} — left ${fromPath} without being named; ${where}`);
   }
 
   const proven = wanted.length - missing.length - mismatched.length;
   console.log(
-    `prove-move: ${proven}/${wanted.length} declarations ESTree-identical, `
-      + `${departed.length} left the origin, ${departed.length - unaccounted.length} accounted for `
+    `prove-move: ${proven}/${wanted.length} named declarations ESTree-identical, `
+      + `${departed.length} left the origin, ${undeclared.length} undeclared `
       + `(${fromPath}@${baseRef} -> ${toPaths.join(", ")})`,
   );
 
-  if (missing.length > 0 || mismatched.length > 0 || unaccounted.length > 0) process.exit(1);
+  const failed = missing.length + mismatched.length + notDeparted.length + undeclared.length;
+  if (failed > 0) process.exit(1);
 }
 
 main();
