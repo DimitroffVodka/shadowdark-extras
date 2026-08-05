@@ -271,7 +271,25 @@ export const FEATURE_OWNERS = {
     "carousel-drag.mjs",
   ],
   scene: ["SceneImporter.mjs", "SceneExporter.mjs", "SceneNavBar.mjs"],
-  tray: ["TraySD.mjs", "TrayApp.mjs", "SDXRollerApp.mjs", "SDXRollerData.mjs"],
+  tray: [
+    "TraySD.mjs",
+    "TrayApp.mjs",
+    "SDXRollerApp.mjs",
+    "SDXRollerData.mjs",
+    // Prototype mixins and helpers split out of TrayApp. Phase 5.1 took the
+    // TOM panels, the hex-painter controls, the decor importer and the scroll
+    // state; Phase 5.3 took the four _onRender sections. All are tray UI —
+    // they reach into other features the way TrayApp always did, from the
+    // tray side, so ownership does not move with the code they call.
+    "tom-panels.mjs",
+    "hex-painter-bindings.mjs",
+    "decor-import.mjs",
+    "tray-scroll-state.mjs",
+    "tray-handle-bindings.mjs",
+    "dungeon-bindings.mjs",
+    "tom-scene-bindings.mjs",
+    "pin-list-bindings.mjs",
+  ],
   tom: [
     "TomSD.mjs",
     "TomConfig.mjs",
