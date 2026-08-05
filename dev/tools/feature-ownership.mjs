@@ -352,7 +352,13 @@ export const FEATURE_OWNERS = {
    * composition, the same shape as the root's own imports, so the crossings
    * the matrix records for it are expected rather than a coupling smell.
    */
-  settings: ["module-settings.mjs"],
+  settings: [
+    "module-settings.mjs",
+    // Prior extractions out of the settings root, named by plan section 8.2
+    // item 7 and missed when the rest of that item was closed.
+    "drawing-settings.mjs",
+    "settings-organization.mjs",
+  ],
   /**
    * Item DOCUMENT LIFECYCLE — not item sheets, and not inventory. Opened in
    * Phase 3 for the flag-preservation wraps: Foundry and Shadowdark both build
@@ -381,6 +387,9 @@ export const FEATURE_OWNERS = {
     // by any open question about where it belongs.
     "module-id.mjs",
     "combat-socket.mjs",
+    // Extracted from combat/CombatSettingsSD.mjs in Phase 5.1; here rather
+    // than combat/ because the combat socket handlers are its second consumer.
+    "scrolling-text.mjs",
     /**
      * Extracted from the composition root in Phase 3 (`851c3c1`).
      *

@@ -16,6 +16,7 @@ import { collectEsmoduleExports, diffExports } from "../tools/api-export-snapsho
 import { collectSettingsKeys, diffSettings } from "../tools/settings-snapshot.mjs";
 import { findUnboundCalls } from "../tools/binding-scan.mjs";
 import { scanImports } from "../tools/import-scan.mjs";
+import { parse } from "espree";
 import { REPO_ROOT, listJsFiles, toRepoPath, isVendor } from "../tools/project-scan.mjs";
 
 /**
@@ -561,4 +562,83 @@ test("binding gate: CONST is a known global, not an unbound reference", () => {
   const source = "function f() {\n\treturn CONST.KEYBINDING_PRECEDENCE.NORMAL;\n}";
   assert.deepEqual(findUnboundCalls(source), [],
     "a real global must not read as an extraction leftover");
+});
+
+/**
+ * `super` in an object-literal method is not the base class.
+ *
+ * Phase 5.1 and 5.3 split several large classes by lifting methods into
+ * object-literal mixins merged on with `Object.assign(X.prototype, Mixin)`.
+ * The method bodies move byte-for-byte and every equivalence check passes,
+ * but one thing does change invisibly: a method's [[HomeObject]]. Inside a
+ * class body `super.foo()` reaches the base class; inside an object literal it
+ * reaches that literal's prototype, which is `Object.prototype` — so the call
+ * throws TypeError the first time the fallback path runs.
+ *
+ * PartySheetSD's three drag/drop overrides shipped that way and nothing
+ * caught it: the tests covered the paths that return early, and an
+ * AST comparison cannot see a [[HomeObject]]. This gate is the check that
+ * can, and it is cheap: no `Super` node may sit inside an object literal.
+ */
+test("no module uses super inside an object-literal method", () => {
+  const offenders = [];
+
+  for (const file of listJsFiles(["scripts"])) {
+    if (isVendor(toRepoPath(file))) continue;
+    const source = readFileSync(file, "utf8");
+    if (!source.includes("super")) continue;
+
+    let ast;
+    try {
+      ast = parse(source, { ecmaVersion: "latest", sourceType: "module", loc: true });
+    } catch {
+      continue; // non-module macro bodies are covered by their own gate
+    }
+
+    (function walk(node, home) {
+      if (!node || typeof node !== "object") return;
+      if (Array.isArray(node)) {
+        for (const child of node) walk(child, home);
+        return;
+      }
+      if (!node.type) return;
+      const next = node.type === "ClassBody" ? "class"
+        : node.type === "ObjectExpression" ? "object"
+          : home;
+      if (node.type === "Super" && next === "object") {
+        offenders.push(`${toRepoPath(file)}:${node.loc.start.line}`);
+      }
+      for (const [key, value] of Object.entries(node)) {
+        if (key !== "loc" && key !== "range") walk(value, next);
+      }
+    })(ast, null);
+  }
+
+  assert.deepEqual(offenders, [],
+    "super in an object literal resolves to Object.prototype, not the base class");
+});
+
+test("the object-literal super gate blocks a mixin that would throw", () => {
+  const ast = parse(
+    "export const Mixin = { _onDrop(event) { return super._onDrop(event); } };",
+    { ecmaVersion: "latest", sourceType: "module", loc: true },
+  );
+  let found = 0;
+  (function walk(node, home) {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      for (const child of node) walk(child, home);
+      return;
+    }
+    if (!node.type) return;
+    const next = node.type === "ClassBody" ? "class"
+      : node.type === "ObjectExpression" ? "object"
+        : home;
+    if (node.type === "Super" && next === "object") found++;
+    for (const [key, value] of Object.entries(node)) {
+      if (key !== "loc" && key !== "range") walk(value, next);
+    }
+  })(ast, null);
+
+  assert.equal(found, 1, "the synthetic offender must be detected");
 });

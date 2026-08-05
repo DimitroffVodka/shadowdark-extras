@@ -7,6 +7,23 @@
 import { MODULE_ID } from "../shared/module-id.mjs";
 import { getMaskedItemName, isItemUnidentified } from "./party-unidentified.mjs";
 
+/**
+ * The prototype these overrides fall back to.
+ *
+ * These methods override ActorSheet's drag/drop entry points and used to call
+ * `super` from inside the class body. They are now object-literal methods
+ * merged onto the prototype with Object.assign, and `super` in an object
+ * literal resolves against that literal's prototype — Object.prototype — not
+ * the sheet's base class, so every fallback path would throw TypeError.
+ *
+ * Resolved at call time, not at module load, because `foundry` does not exist
+ * when this module is imported under node:test. The expression is the same one
+ * PartySheetSD extends.
+ */
+function baseSheetPrototype() {
+	return (foundry.appv1?.sheets?.ActorSheet ?? ActorSheet).prototype;
+}
+
 export const PartyDropTransfer = {
 	/**
 	 * Check if current user can move a member in travel assignments
@@ -41,7 +58,7 @@ export const PartyDropTransfer = {
 		}
 
 		// Fall back to default behavior for items
-		return super._onDragStart(event);
+		return baseSheetPrototype()._onDragStart.call(this, event);
 	},
 
 	/** @inheritdoc */
@@ -134,7 +151,7 @@ export const PartyDropTransfer = {
 			return;
 		}
 
-		return super._onDrop(event);
+		return baseSheetPrototype()._onDrop.call(this, event);
 	},
 
 	/**
@@ -254,7 +271,7 @@ export const PartyDropTransfer = {
 		}
 
 		// Standard item drop to party inventory
-		return super._onDropItem(event, data);
+		return baseSheetPrototype()._onDropItem.call(this, event, data);
 	},
 
 	_isContainerItem(item) {

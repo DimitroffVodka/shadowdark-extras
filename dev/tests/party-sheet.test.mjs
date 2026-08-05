@@ -606,3 +606,95 @@ test("clearing a task deletes every selection and sets none", async () => {
 	assert.deepEqual(keys, [`flags.${MODULE_ID}.travelSelections.hunt.hero`]);
 	assert.ok(written[keys[0]] instanceof foundry.data.operators.ForcedDeletion);
 });
+
+// --- delegation to the base sheet -------------------------------------------
+//
+// These three methods override ActorSheet's drag/drop entry points and end in
+// a fallback to the base implementation. Inside the class body that was
+// `super._onDrop(event)`. As object-literal methods merged onto the prototype
+// it could not stay: `super` in an object literal resolves against that
+// literal's prototype, which is Object.prototype, so every fallback threw
+// TypeError — invisible to a byte-identical move, and to any test that only
+// exercised the paths which return early.
+
+/** A sheet whose base-class methods record that they were reached. */
+let dragPayload = { type: "Item", uuid: "Item.x" };
+
+function makeDelegatingSheet() {
+	const reached = [];
+	const base = {
+		_onDragStart(event) {
+			reached.push(["_onDragStart", event]);
+			return "base drag";
+		},
+		_onDrop(event) {
+			reached.push(["_onDrop", event]);
+			return "base drop";
+		},
+		_onDropItem(event, data) {
+			reached.push(["_onDropItem", event, data]);
+			return "base drop item";
+		},
+	};
+	const saved = { appv1: globalThis.foundry.appv1 };
+	globalThis.foundry.appv1 = { sheets: { ActorSheet: { prototype: base } } };
+	// foundry.applications is a vivifying proxy, so assigning the whole branch
+	// is shadowed by its overrides; set the leaf directly instead.
+	globalThis.foundry.applications.ux.TextEditor.implementation.getDragEventData =
+		() => dragPayload;
+	const sheet = makeSheet(makeActor({ id: "party", flags: {} }));
+	return {
+		sheet,
+		reached,
+		restore: () => {
+			globalThis.foundry.appv1 = saved.appv1;
+			delete globalThis.foundry.applications.ux.TextEditor.implementation.getDragEventData;
+		},
+	};
+}
+
+test("an item drag with no member row behind it falls back to the base sheet", () => {
+	const { sheet, reached, restore } = makeDelegatingSheet();
+	try {
+		const event = {
+			currentTarget: { classList: { contains: () => false }, closest: () => null },
+			dataTransfer: { setData() {} },
+		};
+
+		assert.equal(sheet._onDragStart(event), "base drag");
+		assert.deepEqual(reached.map(r => r[0]), ["_onDragStart"]);
+	}
+	finally {
+		restore();
+	}
+});
+
+test("a drop that is not an Actor falls back to the base sheet", async () => {
+	const { sheet, reached, restore } = makeDelegatingSheet();
+	try {
+		dragPayload = { type: "Item", uuid: "Item.x" };
+		const event = { preventDefault() {}, target: { closest: () => null } };
+
+		assert.equal(await sheet._onDrop(event), "base drop");
+		assert.deepEqual(reached.map(r => r[0]), ["_onDrop"]);
+	}
+	finally {
+		restore();
+	}
+});
+
+test("an item dropped outside a member row falls back to the base sheet", async () => {
+	const { sheet, reached, restore } = makeDelegatingSheet();
+	try {
+		uuidTable = new Map([["Item.x", { name: "Rope", parent: null }]]);
+		const event = { target: { closest: () => null } };
+		const data = { type: "Item", uuid: "Item.x" };
+
+		assert.equal(await sheet._onDropItem(event, data), "base drop item");
+		assert.deepEqual(reached.map(r => r[0]), ["_onDropItem"]);
+		assert.deepEqual(reached[0][2], data, "the payload is forwarded, not dropped");
+	}
+	finally {
+		restore();
+	}
+});
