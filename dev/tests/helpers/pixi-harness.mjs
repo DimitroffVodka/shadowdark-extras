@@ -259,6 +259,8 @@ export function installCanvasGlobals({ isGM = true, gsap = makeGsapRecorder() } 
 	};
 
 	globalThis.foundry = {
+		// v14+ deletion sentinel, used by unsetFlag instead of the legacy "-=" key.
+		data: { operators: { ForcedDeletion: class ForcedDeletion {} } },
 		utils: {
 			deepClone: value => JSON.parse(JSON.stringify(value ?? null)),
 			getProperty: (obj, key) => key.split(".").reduce((o, k) => o?.[k], obj),

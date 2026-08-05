@@ -6,8 +6,20 @@
 // the original import surface still resolves.
 
 import { MODULE_ID, getPinStyle, normalizeImageTint } from "./pin-style.mjs";
-import { JournalPinManager, checkPinVisibility } from "./pin-manager.mjs";
+import { checkPinVisibility } from "./pin-manager.mjs";
 import { drawStyledStroke } from "./pin-draw.mjs";
+import {
+	PIN_PLACEABLE_TYPE,
+	buildPinDocument,
+	getPinFlag,
+	setPinFlag,
+	tmfxAddFilters,
+	tmfxDeleteFilters,
+	tmfxMaxFilterRank,
+	tmfxSetRawFilters,
+	tmfxUpdateFilters,
+	unsetPinFlag,
+} from "./pin-tmfx-adapter.mjs";
 import {
 	attachPinListeners,
 	detachPinListeners,
@@ -83,56 +95,29 @@ export class JournalPinGraphics extends PIXI.Container {
 	// ===========================================
 	// FOUNDRY / TOKENMAGIC INTERFACE MOCK
 	// ===========================================
+	// Bodies live in pin-tmfx-adapter.mjs. They stay as members here because
+	// TokenMagic reaches for them by name on the placeable it is handed.
 
-	// We MUST use a getter for document that returns a proxy/wrapper
-	// to avoid property collisions with PIXI (especially 'parent' and 'name')
 	get document() {
-		return {
-			id: this.pinData.id,
-			documentName: "JournalPin",
-			name: this.pinData.label || "Journal Pin",
-			parent: canvas.scene,
-			getFlag: (s, k) => this.getFlag(s, k),
-			setFlag: (s, k, v) => this.setFlag(s, k, v),
-			unsetFlag: (s, k) => this.unsetFlag(s, k),
-			_TMFXsetFlag: f => this._TMFXsetFlag(f),
-			_TMFXunsetFlag: () => this._TMFXunsetFlag(),
-			_TMFXsetAnimeFlag: f => this._TMFXsetAnimeFlag(f),
-			_TMFXunsetAnimeFlag: () => this._TMFXunsetAnimeFlag(),
-			_TMFXgetPlaceableType: () => this._TMFXgetPlaceableType(),
-			_TMFXgetMaxFilterRank: () => this._TMFXgetMaxFilterRank(),
-			get object() {
-				return this;
-			},
-		};
+		return buildPinDocument(this);
 	}
 
 	get id() {
 		return this.pinData.id;
 	}
 
-	// Mock getFlag for TokenMagic
 	getFlag(scope, key) {
-		const flags = this.pinData.flags || {};
-		if (scope && key) return foundry.utils.getProperty(flags, `${scope}.${key}`);
-		if (scope) return flags[scope];
-		return flags;
+		return getPinFlag(this, scope, key);
 	}
 
 	async setFlag(scope, key, value) {
-		const updateData = {};
-		updateData[`flags.${scope}.${key}`] = value;
-		return await JournalPinManager.update(this.pinData.id, updateData);
+		return await setPinFlag(this, scope, key, value);
 	}
 
 	async unsetFlag(scope, key) {
-		const updateData = {};
-		// v14+: use ForcedDeletion sentinel instead of legacy "-=" deletion key syntax.
-		updateData[`flags.${scope}.${key}`] = new foundry.data.operators.ForcedDeletion();
-		return await JournalPinManager.update(this.pinData.id, updateData);
+		return await unsetPinFlag(this, scope, key);
 	}
 
-	// Mock CanvasDocument / PlaceableObject methods for TMFX
 	async _TMFXsetFlag(flag) {
 		return await this.setFlag("tokenmagic", "filters", flag);
 	}
@@ -150,7 +135,7 @@ export class JournalPinGraphics extends PIXI.Container {
 	}
 
 	_TMFXgetPlaceableType() {
-		return "JournalPin";
+		return PIN_PLACEABLE_TYPE;
 	}
 
 	_TMFXgetSprite() {
@@ -162,32 +147,23 @@ export class JournalPinGraphics extends PIXI.Container {
 	}
 
 	_TMFXgetMaxFilterRank() {
-		const filters = this.filters || [];
-		if (filters.length === 0) return 10000;
-		return Math.max(...filters.map(f => f.rank || 0)) + 1;
+		return tmfxMaxFilterRank(this);
 	}
 
 	async TMFXaddFilters(paramsArray, replace = false) {
-		if (window.TokenMagic) await window.TokenMagic.addFilters(this, paramsArray, replace);
+		await tmfxAddFilters(this, paramsArray, replace);
 	}
 
 	async TMFXupdateFilters(paramsArray) {
-		if (window.TokenMagic) await window.TokenMagic.updateFiltersByPlaceable(this, paramsArray);
+		await tmfxUpdateFilters(this, paramsArray);
 	}
 
 	async TMFXdeleteFilters(filterId = null) {
-		if (window.TokenMagic) await window.TokenMagic.deleteFilters(this, filterId);
+		await tmfxDeleteFilters(this, filterId);
 	}
 
-	// Mimic PlaceableObjectProto._TMFXsetRawFilters
 	_TMFXsetRawFilters(filters) {
-		if (!this.filters) this.filters = [];
-		// Simple append for now as TMFX usually manages the array
-		if (filters === null) {
-			this.filters = null;
-		}
-		else if (Array.isArray(filters)) this.filters = filters;
-		else this.filters.push(filters);
+		tmfxSetRawFilters(this, filters);
 	}
 
 	animatePing(type = "ping") {
