@@ -21,7 +21,6 @@ import { DrawingShapes } from "./drawing-shapes.mjs";
 import { DrawingSync } from "./drawing-sync.mjs";
 import { DrawingEntries } from "./drawing-entries.mjs";
 
-
 // ─── Drawing Tool Class ─────────────────────────────────────────
 class SDXDrawingTool {
 	constructor() {
@@ -90,7 +89,6 @@ class SDXDrawingTool {
 		Hooks.on("canvasTearDown", () => this.cleanup());
 
 		this._initialized = true;
-		console.log("shadowdark-extras | SDX Drawing Tool initialized");
 	}
 
 	// ── Load saved toolbar state from settings ──────────────────
@@ -481,7 +479,6 @@ class SDXDrawingTool {
 	// ══════════════════════════════════════════════════════════════
 	//  DRAWING PRIMITIVES
 	// ══════════════════════════════════════════════════════════════
-
 
 	// ══════════════════════════════════════════════════════════════
 	//  REMOTE DRAWING HANDLING

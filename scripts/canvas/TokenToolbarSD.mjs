@@ -15,11 +15,8 @@ let _toolbarApp = null;
 export function initTokenToolbar() {
 	// Check if toolbar is enabled
 	if (!game.settings.get(MODULE_ID, "tokenToolbar.enabled")) {
-		console.log("shadowdark-extras | Token Toolbar is disabled");
 		return;
 	}
-
-	console.log("shadowdark-extras | Initializing Token Toolbar");
 
 	// Create the toolbar app
 	_toolbarApp = new TokenToolbarApp();
@@ -71,7 +68,6 @@ export function initTokenToolbar() {
 		await renderToolbar();
 	});
 
-	console.log("shadowdark-extras | Token Toolbar initialized");
 }
 
 /**

@@ -39,7 +39,6 @@ Hooks.once("init", () => {
 // PIN SCHEMA & DEFAULTS
 // ================================================================
 
-
 // ================================================================
 // CUSTOM CANVAS LAYER
 // ================================================================
@@ -132,7 +131,6 @@ function initJournalPins() {
 
 	// Load pins when canvas is ready
 	Hooks.on("canvasReady", () => {
-		console.log("SDX Journal Pins | Canvas ready");
 
 		// Always use canvas.interface for now (most reliable for interactivity)
 		JournalPinRenderer.initializeOnInterface();
@@ -180,7 +178,6 @@ function initJournalPins() {
 	// Ensure style is correct after all settings are loaded (Foundry refresh/init)
 	Hooks.once("ready", () => {
 		if (canvas.ready && canvas.scene) {
-			console.log("SDX Journal Pins | Game ready, refreshing pin styles");
 			// Ensure renderer is initialized if canvasReady fired too early or not at all
 			if (!JournalPinRenderer.getContainer()) {
 				JournalPinRenderer.initializeOnInterface();
@@ -233,7 +230,6 @@ function initJournalPins() {
 			}
 
 			window.TokenMagic._sdxPatched = true;
-			console.log("SDX Journal Pins | Patched TokenMagic for JournalPin support");
 
 			// Re-apply filters for all pins on the current scene to ensure they show up
 			// This fixes the 'persistence' issue where filters are in flags but not rendering
@@ -259,7 +255,6 @@ function initJournalPins() {
 	window.JournalPinManager = JournalPinManager;
 	window.JournalPinRenderer = JournalPinRenderer;
 
-	console.log("SDX Journal Pins | initJournalPins called");
 }
 
 // Names moved to the split modules (Phase 5.1) — imported for initJournalPins
@@ -279,13 +274,10 @@ export {
 // Check if CONFIG.Canvas.layers exists (it should during init phase)
 if (typeof CONFIG !== "undefined" && CONFIG.Canvas?.layers) {
 	hookCanvas();
-	console.log("SDX Journal Pins | hookCanvas called at module load");
 }
 else {
 	// Fallback: try during init hook
 	Hooks.once("init", () => {
 		hookCanvas();
-		console.log("SDX Journal Pins | hookCanvas called during init hook");
 	});
-	console.log("SDX Journal Pins | hookCanvas scheduled for init hook");
 }

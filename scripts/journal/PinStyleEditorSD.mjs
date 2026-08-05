@@ -14,7 +14,6 @@ import { PinStyleTMFX } from "./pin-style-tmfx.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-
 /**
  * Pin Style Editor Application
  */
@@ -309,7 +308,6 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		if (contentTypeSelect && textSection && fontSection) {
 			const updateVisibility = () => {
 				const type = contentTypeSelect.value;
-				console.log(`SDX Pin Editor | Content Type changed to: ${type}`);
 
 				// Toggle sections based on type
 				textSection.style.display = type === "text" ? "block" : "none";

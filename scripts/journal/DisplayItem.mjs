@@ -7,7 +7,6 @@
  * Supports different item types: Weapon, Armor, Spell, and generic items.
  */
 
-
 /**
  * Parse the brackets content to extract UUID and optional flags
  * @param {String} match - The part between brackets
@@ -390,5 +389,4 @@ export function registerDisplayItemEnricher() {
 		enricher: enrichDisplayItemCard,
 	});
 
-	console.log("SDX | Registered DisplayItemCard enricher");
 }

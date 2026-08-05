@@ -135,7 +135,6 @@ const EXPANDED_MISHAPS = Array.from({ length: 100 }, (_, i) => ({ roll: i + 1, d
  */
 
 export function initCarousing() {
-	console.log(`${MODULE_ID} | Carousing system initialized`);
 }
 
 /**
@@ -319,7 +318,6 @@ export async function ensureCarousingJournal() {
 	let journal = game.journal.find(j => j.name === CAROUSING_JOURNAL_NAME);
 
 	if (!journal) {
-		console.log(`${MODULE_ID} | Creating carousing sync journal...`);
 		journal = await JournalEntry.create({
 			name: CAROUSING_JOURNAL_NAME,
 			ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER },
@@ -329,7 +327,6 @@ export async function ensureCarousingJournal() {
 				},
 			},
 		});
-		console.log(`${MODULE_ID} | Carousing sync journal created:`, journal.id);
 	}
 	else if (journal.ownership.default !== CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) {
 		await journal.update({
@@ -365,7 +362,6 @@ export async function ensureCarousingTablesJournal() {
 	let journal = game.journal.find(j => j.name === CAROUSING_TABLES_JOURNAL_NAME);
 
 	if (!journal) {
-		console.log(`${MODULE_ID} | Creating carousing tables journal...`);
 		journal = await JournalEntry.create({
 			name: CAROUSING_TABLES_JOURNAL_NAME,
 			ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER },
@@ -376,7 +372,6 @@ export async function ensureCarousingTablesJournal() {
 				},
 			},
 		});
-		console.log(`${MODULE_ID} | Carousing tables journal created:`, journal.id);
 	}
 
 	_carousingTablesJournal = journal;
@@ -652,7 +647,6 @@ export async function removeGmParticipant(actorId) {
 	const { rerenderPlayerSheets } = await import("./CarousingSD.mjs");
 	rerenderPlayerSheets();
 }
-
 
 /**
  * Reset carousing session (GM only)

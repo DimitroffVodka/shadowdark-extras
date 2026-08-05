@@ -810,7 +810,6 @@ export class JournalPinDropHandler {
 		Hooks.on("preCreateNote", this._onPreCreateNote.bind(this));
 
 		this._initialized = true;
-		console.log("SDX Journal Pins | Drop handler initialized");
 	}
 
 	/**
@@ -818,7 +817,6 @@ export class JournalPinDropHandler {
      */
 	static _onPreCreateNote(noteDoc, data, options, userId) {
 		if (this._skipNoteCreation) {
-			console.log("SDX Journal Pins | Preventing default note creation");
 			this._skipNoteCreation = false;
 			return false; // Prevent creating the default note
 		}
@@ -881,7 +879,6 @@ export class JournalPinDropHandler {
 		});
 
 		// Return false IMMEDIATELY to prevent Foundry from showing the dialog
-		console.log("SDX Journal Pins | Returning false to prevent default note dialog");
 		return false;
 	}
 }

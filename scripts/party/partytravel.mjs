@@ -222,11 +222,9 @@ export const PartyTravel = {
 	async _onToggleTravelAbility(event) {
 		event.preventDefault();
 		event.stopPropagation();
-		console.log("Shadowdark Extras | Toggle Ability: Right Click Detected");
 		const target = event.currentTarget;
 		const taskKey = target.dataset.taskKey;
 		const memberId = target.dataset.memberId;
-		console.log("Shadowdark Extras | Toggle Ability Data:", { taskKey, memberId });
 
 		if (!taskKey || !memberId) return;
 
@@ -239,7 +237,6 @@ export const PartyTravel = {
 		const currentIdx = selections[taskKey]?.[memberId] ?? 0;
 		const nextIdx = (currentIdx + 1) % task.abilities.length;
 
-		console.log("Shadowdark Extras | New Selection Index:", nextIdx);
 		await this._requestPartyTravelMutation({
 			operation: "selectAbility",
 			memberId,
@@ -259,7 +256,6 @@ export const PartyTravel = {
 
 		await this.actor.setFlag(MODULE_ID, "travelDCs", dcs);
 	},
-
 
 	async _onRollTravelTask(event) {
 		event.preventDefault();
@@ -302,7 +298,6 @@ export const PartyTravel = {
 			selections[taskKey] ?? {},
 			dc
 		);
-		console.log("Shadowdark Extras | Dispatching cinematic travel task roll:", rollData);
 		SDXRollerApp.dispatchGroupRoll(rollData);
 	},
 

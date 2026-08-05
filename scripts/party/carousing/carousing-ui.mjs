@@ -20,7 +20,6 @@ export async function showDSNRoll(roll, type = "outcome") {
 	};
 
 	const appearance = appearances[type] || {};
-	console.log(`${MODULE_ID} | showDSNRoll: type=${type}, setting dice appearance`, appearance);
 
 	// Set appearance directly on each die in the roll
 	for (const die of roll.dice) {
@@ -36,7 +35,6 @@ export async function showDSNRoll(roll, type = "outcome") {
  */
 export function broadcastRollAnnouncement(characterName) {
 	const message = `🎲 Rolling for ${characterName}!`;
-	console.log(`${MODULE_ID} | broadcastRollAnnouncement: ${message}`);
 
 	// Broadcast to all other clients
 	game.socket.emit(`module.${MODULE_ID}`, {
@@ -106,7 +104,6 @@ export function initCarousingSocket() {
 		}
 	});
 
-	console.log(`${MODULE_ID} | Carousing sync initialized (journal-based)`);
 }
 
 /**

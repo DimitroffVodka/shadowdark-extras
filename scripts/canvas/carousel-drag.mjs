@@ -1,5 +1,3 @@
-import { MODULE_ID } from "../shared/module-id.mjs";
-
 /**
  * Dragging the shadowdark-crawl-helper lights-out carousel.
  *
@@ -192,6 +190,5 @@ export function initCarouselDrag() {
 			setupCarouselDrag(carousel);
 		}
 
-		console.log(`${MODULE_ID} | Carousel drag functionality initialized`);
 	});
 }

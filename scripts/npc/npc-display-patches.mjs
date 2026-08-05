@@ -134,8 +134,6 @@ function patchNpcDisplayBuilders() {
 		return baseHtml;
 	};
 
-	console.log("shadowdark-extras | Patched NpcSD.prototype.buildNpcAttackDisplays");
-
 	// Also patch buildNpcSpecialDisplays to include item images
 	if (NpcModel.prototype.buildNpcSpecialDisplays) {
 		const originalBuildNpcSpecialDisplays = NpcModel.prototype.buildNpcSpecialDisplays;
@@ -166,7 +164,6 @@ function patchNpcDisplayBuilders() {
 			return baseHtml;
 		};
 
-		console.log("shadowdark-extras | Patched NpcSD.prototype.buildNpcSpecialDisplays");
 	}
 
 	// PLAYER WEAPON IMAGES (buildWeaponDisplay) removed: the underlying

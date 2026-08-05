@@ -11,7 +11,6 @@
 
 import { getEffectiveCreatureType } from "../npc/CreatureTypesApp.mjs";
 
-
 /**
  * Parse the brackets content to extract UUID and optional flags
  * @param {String} match - The part between brackets (e.g., "Actor.gwFbDqFlJJrjeM3a named")
@@ -367,6 +366,5 @@ export function registerDisplayNpcEnricher() {
 		enricher: enrichDisplayNpcCardDetailed,
 	});
 
-	console.log("SDX | Registered DisplayNpcCard and DisplayNpcCardDetailed enrichers");
 }
 

@@ -7,7 +7,6 @@ const MODULE_ID = "shadowdark-extras";
  * Call this on module ready
  */
 export function initEasyReferenceMenu() {
-	console.log("shadowdark-extras | Initializing Easy Reference Menu");
 
 	// Hook into ProseMirror menu creation
 	Hooks.on("getProseMirrorMenuDropDowns", (proseMirrorMenu, dropdowns) => {

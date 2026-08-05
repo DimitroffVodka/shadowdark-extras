@@ -286,7 +286,6 @@ export class JournalPinGraphics extends PIXI.Container {
 
 		// Don't remove children yet, wait until new content is ready
 
-
 		// Get global style settings
 		const globalStyle = getPinStyle();
 
@@ -311,7 +310,6 @@ export class JournalPinGraphics extends PIXI.Container {
 		const baseOpacity = style.opacity ?? 1.0;
 		const fillOpacity = (style.fillOpacity ?? 1.0) * baseOpacity;
 		const ringOpacity = (style.ringOpacity ?? 1.0) * baseOpacity;
-
 
 		// Use red dashed stroke if pin is GM-only (visible indicator for GM)
 		let ringColor;
@@ -1011,7 +1009,6 @@ export class JournalPinRenderer {
 
 	static initialize(layer) {
 		if (this._container) {
-			console.log("SDX Journal Pins | Container already initialized");
 			return;
 		}
 
@@ -1020,7 +1017,6 @@ export class JournalPinRenderer {
 		this._container.name = "sdx-pins-container";
 
 		layer.addChild(this._container);
-		console.log("SDX Journal Pins | Container added to layer");
 	}
 
 	/**
@@ -1049,7 +1045,6 @@ export class JournalPinRenderer {
 			this._labelContainer.interactiveChildren = false;
 			canvas.controls.addChild(this._labelContainer);
 
-			console.log("SDX Journal Pins | Containers added to canvas.controls");
 		}
 	}
 
@@ -1070,7 +1065,6 @@ export class JournalPinRenderer {
 		// If no pins, clear all
 		if (!pins || pins.length === 0) {
 			this.clear();
-			console.log("SDX Journal Pins | Cleared all pins for scene", sceneId);
 			return;
 		}
 
@@ -1126,7 +1120,6 @@ export class JournalPinRenderer {
 			console.error(`SDX Journal Pins | Error initializing pin ${pinData.id}:`, err);
 		});
 
-		console.log(`SDX Journal Pins | Added pin ${pinData.id} at (${pinData.x}, ${pinData.y})`);
 	}
 
 	static addPin(pinData) {

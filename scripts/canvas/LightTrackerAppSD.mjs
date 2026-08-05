@@ -168,8 +168,6 @@ export class LightTrackerAppSD extends HandlebarsApplicationMixin(ApplicationV2)
 		const item = actor.getEmbeddedDocument("Item", itemId);
 		if (!item) return;
 
-		console.log(`${MODULE_ID} | Turning off ${actor.name}'s ${item.name} light source`);
-
 		// Use the system's method if available
 		if (typeof actor.yourLightWentOut === "function") {
 			await actor.yourLightWentOut(itemId);
@@ -202,8 +200,6 @@ export class LightTrackerAppSD extends HandlebarsApplicationMixin(ApplicationV2)
 		const tracker = game.shadowdark?.lightSourceTracker;
 		if (!tracker || tracker.monitoredLightSources.length <= 0) return;
 
-		console.log(`${MODULE_ID} | Turning out all the lights`);
-
 		for (const actorData of tracker.monitoredLightSources) {
 			if (actorData.lightSources.length <= 0) continue;
 
@@ -216,7 +212,6 @@ export class LightTrackerAppSD extends HandlebarsApplicationMixin(ApplicationV2)
 			}
 
 			for (const itemData of actorData.lightSources) {
-				console.log(`${MODULE_ID} | Turning off ${actor.name}'s ${itemData.name} light source`);
 
 				if (itemData.type === "Effect") {
 					await actor.deleteEmbeddedDocuments("Item", [itemData._id]);
@@ -263,15 +258,12 @@ export class LightTrackerAppSD extends HandlebarsApplicationMixin(ApplicationV2)
 		const actorData = tracker?.monitoredLightSources?.find(a => a._id === actorId);
 		if (!actorData || actorData.lightSources.length <= 0) return;
 
-		console.log(`${MODULE_ID} | Turning off all lights for ${actor.name}`);
-
 		// Turn off the actor's light
 		if (typeof actor.turnLightOff === "function") {
 			await actor.turnLightOff();
 		}
 
 		for (const itemData of actorData.lightSources) {
-			console.log(`${MODULE_ID} | Turning off ${actor.name}'s ${itemData.name} light source`);
 
 			if (typeof actor.yourLightWentOut === "function") {
 				await actor.yourLightWentOut(itemData._id);
@@ -316,5 +308,4 @@ export function initLightTrackerApp() {
 		app: LightTrackerAppSD,
 	};
 
-	console.log(`${MODULE_ID} | Light Tracker AppV2 initialized`);
 }

@@ -5,7 +5,6 @@
  * @DisplayTable[RollTable.UUID]{Display Name}
  */
 
-
 /**
  * Parse the brackets content to extract UUID and optional flags
  * @param {String} match - The part between brackets
@@ -134,5 +133,4 @@ export function registerDisplayTableEnricher() {
 		enricher: enrichDisplayTable,
 	});
 
-	console.log("SDX | Registered DisplayTable enricher");
 }

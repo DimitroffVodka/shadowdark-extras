@@ -106,7 +106,6 @@ export class IconPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 			this._iconCache = icons;
 			this._categoriesCache = Array.from(categories).sort();
-			console.log(`SDX Icon Picker | Loaded ${icons.length} icons from ${categories.size} categories`);
 
 		}
 		catch(err) {

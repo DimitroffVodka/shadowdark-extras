@@ -40,14 +40,11 @@ let _currentActor = null;
 export function initTray() {
 	// Check if tray is enabled
 	if (!game.settings.get(MODULE_ID, "tray.enabled")) {
-		console.log("shadowdark-extras | Character Tray is disabled");
 		return;
 	}
 
 	// Add class to body to enable tray-specific CSS
 	document.body.classList.add("sdx-tray-enabled");
-
-	console.log("shadowdark-extras | Initializing Character Tray");
 
 	// Create the tray app
 	_trayApp = new TrayApp();
@@ -225,7 +222,6 @@ export function initTray() {
 	Hooks.on("userConnected", async (user, connected) => {
 		if (!game.user.isGM && user.isGM && connected) {
 			// GM just came online - try to reload dungeon tiles
-			console.log(`${MODULE_ID} | GM connected, reloading dungeon tiles...`);
 			await reloadDungeonAssets();
 			renderTray();
 		}
@@ -245,7 +241,6 @@ export function initTray() {
 		renderTray();
 	});
 
-	console.log("shadowdark-extras | Character Tray initialized");
 }
 
 /**
@@ -610,7 +605,6 @@ export function cycleViewMode() {
 	renderTray();
 }
 
-
 /**
  * Toggle tray expansion
  */
@@ -619,7 +613,6 @@ export function toggleTray() {
 		_trayApp.toggleExpanded();
 	}
 }
-
 
 /**
  * Render the tray with current data
@@ -1055,7 +1048,6 @@ export function getMapNotesData() {
 	enrichedNotes.sort((a, b) => a.name.localeCompare(b.name));
 	return enrichedNotes;
 }
-
 
 /**
  * Get party health bar status

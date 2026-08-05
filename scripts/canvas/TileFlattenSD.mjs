@@ -688,7 +688,6 @@ async function flattenTiles(tiles) {
 	}
 }
 
-
 // --- UNFLATTEN (DECONSTRUCT) ---
 
 async function unflattenTile(tileDoc) {
@@ -757,7 +756,6 @@ async function unflattenTile(tileDoc) {
 		ui.notifications.error(`Failed to unflatten tile: ${error.message}`);
 	}
 }
-
 
 // ─── HUD Injection ──────────────────────────────────────────────────────────
 
@@ -861,8 +859,6 @@ function injectHudButtons(hud, html) {
 }
 
 // ─── Hook ───────────────────────────────────────────────────────────────────
-
-console.log(`${MODULE_ID} | TileFlattenSD: Module loaded. HUD hook registered.`);
 
 Hooks.on("renderTileHUD", (hud, html) => {
 	try {

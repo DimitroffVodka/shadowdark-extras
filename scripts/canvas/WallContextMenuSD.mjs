@@ -7,7 +7,6 @@ const MODULE_ID = "shadowdark-extras";
 
 export class WallContextMenuSD {
 	static initialize() {
-		console.log("Shadowdark Extras | Initializing Wall Context Menu");
 
 		// Hook into the right-click event on the WallsLayer (background)
 		const WallsLayerClass = foundry.canvas?.layers?.WallsLayer || globalThis.WallsLayer;
@@ -59,7 +58,6 @@ export class WallContextMenuSD {
      * Intercept right-click directly on a wall object
      */
 	static _onWallRightClick(wrapped, event) {
-		console.log("Shadowdark Extras | Wall object right-click detected:", this.id);
 
 		// Always chain
 		const result = wrapped(event);

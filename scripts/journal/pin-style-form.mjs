@@ -217,7 +217,6 @@ export const PinStyleForm = {
 					delete style.hideTooltip;
 				}
 
-				console.log("SDX Pin Style Editor | Saving pin update:", { pinId, updateData });
 				await JournalPinManager.update(pinId, updateData);
 				ui.notifications.info(game.i18n.localize("SDX.pinStyleEditor.savedIndividual"));
 			}

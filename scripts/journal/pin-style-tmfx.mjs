@@ -40,8 +40,6 @@ export const PinStyleTMFX = {
 		const filters = pin?.flags?.tokenmagic?.filters;
 		if (!filters || !Array.isArray(filters)) return [];
 
-		console.log(`SDX Pin Editor | Active TMFX Filters for ${this.pinId}:`, filters);
-
 		return filters.map(f => {
 			// TokenMagic might nest data under tmFilters or use top-level tmFilterId/tmFilterType
 			// We'll search both levels for anything that looks like a type or ID
@@ -261,7 +259,6 @@ export const PinStyleTMFX = {
 				return pin.flags?.[scope]?.[key];
 			},
 			update: async (data, options) => {
-				console.log("SDX Pin Editor | Proxy update called with:", data);
 
 				// Check if this is a TMFX filter parameter update
 				// TMFXFilterEditor sends flat params like {rotation: 35, filterId: "...",
@@ -271,7 +268,6 @@ export const PinStyleTMFX = {
 					const currentFilters = foundry.utils.deepClone(
 						pin.flags?.tokenmagic?.filters || []
 					);
-					console.log("SDX Pin Editor | Current filters:", currentFilters);
 
 					// Find the filter to update by its internal ID
 					// TokenMagic stores filters with nested structure: {tmFilters:
@@ -320,11 +316,6 @@ export const PinStyleTMFX = {
 							updatedFilter = { ...existingFilter, ...data };
 						}
 						currentFilters[filterIndex] = updatedFilter;
-
-						console.log(
-							"SDX Pin Editor | Updating filter at index", filterIndex, "with:",
-							updatedFilter
-						);
 
 						// Use the correct flag format for JournalPinManager.update
 						await JournalPinManager.update(pin.id, {
