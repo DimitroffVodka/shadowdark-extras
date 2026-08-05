@@ -17,11 +17,30 @@
  * Dev-only: lives under dev/, is not in module.zip, and registration is guarded
  * so a released install with Quench enabled stays silent.
  *
- * Non-destructive: creates and deletes no documents, and writes no setting or
- * flag. The live-binding tests below do briefly move two pieces of in-memory
- * tool state — the selected wall tile, and the transient selection-rectangle
- * overlay — and restore both. Neither is persisted, so nothing survives the
- * run; the restore is in a `finally` so it survives a failure too.
+ * FOOTPRINT — read this before running it against a world you care about.
+ *
+ * Most of the batch only reads. Two groups do more:
+ *
+ *   - The live-binding tests briefly move two pieces of in-memory tool state
+ *     (the selected wall tile, the transient selection overlay) and restore
+ *     both in a `finally`. Neither is persisted.
+ *
+ *   - The interior-wall tests CREATE A SCRATCH SCENE, VIEW IT, paint into it,
+ *     and delete it. This goes further than `structural.batch.mjs`'s scratch
+ *     actor, and it does so because the three handlers under test read
+ *     `canvas.scene` directly — they take positions, not a scene, so the only
+ *     way to drive them without touching a real map is to make a throwaway
+ *     scene the viewed one.
+ *
+ *     `view()` is GM-LOCAL and reversible; it is not `activate()`, so no other
+ *     client is moved. The original scene is restored BEFORE the scratch scene
+ *     is deleted, because deleting the viewed scene would otherwise leave
+ *     Foundry to pick a replacement on its own. Restore and delete both live in
+ *     `afterEach`, so a failing assertion still cleans up, and `before` sweeps
+ *     any scratch scene left behind by a crashed earlier run.
+ *
+ *     Every document it creates lands on the scratch scene and dies with it.
+ *     Nothing is written to a real scene.
  *
  * RUNNING IT HEADLESSLY (Playwright, or any console driver): render the Quench
  * results app FIRST, exactly as `structural.batch.mjs` documents —
@@ -35,6 +54,14 @@
 
 const MODULE_ID = "shadowdark-extras";
 const BASE = `/modules/${MODULE_ID}/scripts`;
+
+/** Scratch scenes are named so a crashed run can be swept on the next one. */
+const SCRATCH_PREFIX = "sdx-split-scratch ";
+const SCRATCH_GRID = 100;
+
+/** Count embedded documents on a scene carrying one of our flags. */
+const withFlag = (collection, key) =>
+	[...collection].filter(doc => doc.flags?.[MODULE_ID]?.[key]);
 
 /**
  * Import a module the way the running module already reached it.
@@ -70,13 +97,14 @@ export function registerSplitBatch(quench) {
 	quench.registerBatch(
 		`${MODULE_ID}.split`,
 		(context) => {
-			const { describe, it, assert, before } = context;
+			const { describe, it, assert, before, beforeEach, afterEach } = context;
 
 			let levelContext = null;
 			let painter = null;
 			let generator = null;
 			let toolState = null;
 			let overlay = null;
+			let interiorWalls = null;
 
 			before(async function () {
 				this.timeout(30000);
@@ -85,6 +113,7 @@ export function registerSplitBatch(quench) {
 				generator = await load("dungeon/DungeonGeneratorSD.mjs");
 				toolState = await load("dungeon/dungeon-tool-state.mjs");
 				overlay = await load("dungeon/dungeon-selection-overlay.mjs");
+				interiorWalls = await load("dungeon/dungeon-interior-walls.mjs");
 			});
 
 			describe("dungeon-level-context extraction (0c63168)", function () {
@@ -206,6 +235,168 @@ export function registerSplitBatch(quench) {
 					}
 
 					assert.equal(overlay._selectionRect, null, "destroySelectionRect did not clear the binding");
+				});
+			});
+
+			describe("interior-wall painting against a scratch scene", function () {
+				// The three handlers moved in the interior-walls extraction create and
+				// delete real Wall and Drawing documents. Everything else in this batch
+				// only reads, so without this block the extraction's 545 moved lines
+				// would be covered by nothing but "the module loaded" — a green run that
+				// says nothing about the code that actually moved.
+				//
+				// They read `canvas.scene` rather than taking one, so the scratch scene
+				// has to be the viewed scene. See the footprint note at the top.
+
+				let scratch = null;
+				let previousSceneId = null;
+				let toolStateRestore = null;
+
+				before(async function () {
+					this.timeout(60000);
+					// Sweep anything a crashed earlier run left behind.
+					const stale = game.scenes.filter(s => s.name.startsWith(SCRATCH_PREFIX));
+					for (const scene of stale) await scene.delete();
+				});
+
+				beforeEach(async function () {
+					this.timeout(60000);
+					previousSceneId = canvas.scene?.id ?? null;
+					toolStateRestore = {
+						intWall: toolState.getSelectedIntWallTile(),
+						intDoor: toolState.getSelectedIntDoorTile(),
+						noFoundryWalls: toolState.getNoFoundryWalls(),
+						wallShadows: toolState.getWallShadows(),
+					};
+
+					scratch = await Scene.create({
+						name: `${SCRATCH_PREFIX}${foundry.utils.randomID()}`,
+						width: 2000,
+						height: 2000,
+						grid: { type: CONST.GRID_TYPES.SQUARE, size: SCRATCH_GRID },
+					});
+					await scratch.view();
+
+					// The handlers bail with a notification unless a tile is selected.
+					// Any path will do — nothing here asserts on the texture.
+					toolState.selectIntWallTile(`modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_horizontal.webp`);
+					toolState.selectIntDoorTile(`modules/${MODULE_ID}/assets/Dungeon/door_tiles/portal_horizontal.webp`);
+					// Shadows off: TokenMagic may not be installed, and its absence is
+					// not what these tests are about.
+					toolState.setWallShadows(false);
+					toolState.setNoFoundryWalls(false);
+				});
+
+				afterEach(async function () {
+					this.timeout(60000);
+					// Restore the view BEFORE deleting, or Foundry picks a replacement
+					// scene on its own and the GM lands somewhere arbitrary.
+					const previous = previousSceneId ? game.scenes.get(previousSceneId) : null;
+					if (previous && previous.id !== scratch?.id) await previous.view();
+					if (scratch) { await scratch.delete(); scratch = null; }
+
+					if (toolStateRestore) {
+						toolState.selectIntWallTile(toolStateRestore.intWall);
+						toolState.selectIntDoorTile(toolStateRestore.intDoor);
+						toolState.setNoFoundryWalls(toolStateRestore.noFoundryWalls);
+						toolState.setWallShadows(toolStateRestore.wallShadows);
+						toolStateRestore = null;
+					}
+				});
+
+				/** Drag a wall four grid squares long, well inside the scene. */
+				const dragAWall = () => interiorWalls.handleIntWallDrag(
+					{ x: SCRATCH_GRID * 2, y: SCRATCH_GRID * 2 },
+					{ x: SCRATCH_GRID * 6, y: SCRATCH_GRID * 2 },
+				);
+				const wallMidpoint = { x: SCRATCH_GRID * 4, y: SCRATCH_GRID * 2 };
+
+				it("a drag paints an interior wall and its visual", async function () {
+					this.timeout(60000);
+					assert.equal(withFlag(scratch.walls, "dungeonIntWall").length, 0, "scratch scene started dirty");
+
+					await dragAWall();
+
+					assert.ok(
+						withFlag(scratch.walls, "dungeonIntWall").length > 0,
+						"handleIntWallDrag created no flagged Wall document",
+					);
+					assert.ok(
+						withFlag(scratch.drawings, "dungeonIntWall").length > 0,
+						"handleIntWallDrag created no flagged Drawing document",
+					);
+				});
+
+				it("a drag creates nothing when no interior wall tile is selected", async function () {
+					this.timeout(60000);
+					toolState.selectIntWallTile(null);
+
+					await dragAWall();
+
+					assert.equal(
+						withFlag(scratch.walls, "dungeonIntWall").length, 0,
+						"a wall was painted despite no tile being selected",
+					);
+				});
+
+				it("clicking an interior wall inserts a door into it", async function () {
+					this.timeout(60000);
+					await dragAWall();
+					const before = withFlag(scratch.walls, "dungeonIntDoor").length;
+
+					await interiorWalls.handleIntWallClick(wallMidpoint);
+
+					assert.ok(
+						withFlag(scratch.walls, "dungeonIntDoor").length > before,
+						"handleIntWallClick inserted no door into the wall",
+					);
+				});
+
+				it("removing a door takes the door documents back out", async function () {
+					this.timeout(60000);
+					await dragAWall();
+					await interiorWalls.handleIntWallClick(wallMidpoint);
+					assert.ok(withFlag(scratch.walls, "dungeonIntDoor").length > 0, "no door to remove");
+
+					await interiorWalls.handleIntWallDoorRemove(wallMidpoint);
+
+					assert.equal(
+						withFlag(scratch.walls, "dungeonIntDoor").length, 0,
+						"handleIntWallDoorRemove left door documents behind",
+					);
+				});
+
+				it("the interior wall survives having a door inserted and removed", async function () {
+					this.timeout(60000);
+					// The round trip is the point: a door is cut into an existing wall
+					// and then healed. Losing the wall itself would be a silent
+					// regression that the per-step assertions above would not catch.
+					await dragAWall();
+					await interiorWalls.handleIntWallClick(wallMidpoint);
+					await interiorWalls.handleIntWallDoorRemove(wallMidpoint);
+
+					assert.ok(
+						withFlag(scratch.walls, "dungeonIntWall").length > 0,
+						"the interior wall vanished across the door round trip",
+					);
+				});
+
+				it("a non-GM paints nothing", async function () {
+					this.timeout(60000);
+					// All three start with `if (!game.user.isGM) return;`. Quench runs as
+					// whoever is logged in, so this only means anything for a GM — skip
+					// rather than assert something vacuous.
+					if (!game.user.isGM) { this.skip(); return; }
+
+					const original = game.user.isGM;
+					try {
+						Object.defineProperty(game.user, "isGM", { value: false, configurable: true });
+						await dragAWall();
+						assert.equal(withFlag(scratch.walls, "dungeonIntWall").length, 0);
+					}
+					finally {
+						Object.defineProperty(game.user, "isGM", { value: original, configurable: true });
+					}
 				});
 			});
 
