@@ -37,6 +37,27 @@ export {
 	getDecorElevation, setDecorElevation, getDecorSort, setDecorSort,
 };
 
+// Colored-hex tile assets and the colored-folder collapse state now live in
+// hex-colored-tiles.mjs, on the same terms as the decor seam above: an
+// importless-of-the-painter leaf, read here and written only through the moved
+// functions.
+import {
+	_coloredTiles,
+	_coloredFoldersCollapsed,
+	loadColoredTileAssets,
+	getColoredTiles,
+	getColoredTilesByBiome,
+	getColoredTileDimensions,
+	toggleColoredFolderCollapsed,
+} from "./hex-colored-tiles.mjs";
+
+// The colored-tile helpers that were public on this module stay public: the
+// generator, solo mode and the tray import them from here.
+export {
+	getColoredTiles, getColoredTilesByBiome, getColoredTileDimensions,
+	toggleColoredFolderCollapsed,
+};
+
 // Maps default-tile biome keys to user-friendly terrain labels
 const BIOME_TO_TERRAIN = {
 	water: "Water",
@@ -57,7 +78,6 @@ const BIOME_TO_TERRAIN = {
 const MODULE_ID = "shadowdark-extras";
 const TILE_FOLDER = `modules/${MODULE_ID}/assets/tiles`;
 const CUSTOM_TILE_FOLDER = "hexes";
-const COLORED_TILE_FOLDER = `modules/${MODULE_ID}/assets/Hexes`;
 const SYMBOLS_TILE_FOLDER = `modules/${MODULE_ID}/assets/symbols`;
 const HEX_TILE_W = 296;
 const HEX_TILE_H = 256;
@@ -75,7 +95,6 @@ const COLORED_BIOME_SUBDIRS = ["Water", "Vegetation", "Mountains", "Desert", "sw
 
 let _tiles = null;           // Default tiles from module
 let _customTiles = null;     // Custom tiles from data/hexes
-let _coloredTiles = null;    // Colored tiles from assets/Hexes
 let _symbolTiles = null;     // Symbol tiles from assets/symbols
 let _customTileBoundsCache = new Map();
 let _chosenTiles = new Set();
@@ -85,7 +104,6 @@ let _windEffect = false;
 let _fogAnimation = false;
 let _tintEnabled = false;
 let _bwEffect = false;
-let _coloredFoldersCollapsed = {}; // Track collapsed state of colored tile folders
 let _symbolFoldersCollapsed = {};  // Track collapsed state of symbol tile folders
 let _brushActive = false;
 let _lastCell = null;
@@ -314,69 +332,6 @@ export async function reloadCustomTiles() {
 }
 
 /**
- * Load colored tiles from assets/Hexes folder (inside the module)
- */
-async function loadColoredTileAssets() {
-	_coloredTiles = [];
-
-	const metadataKey = "hex_tiles_metadata_colored";
-	const cached = await cache.getMetadata(metadataKey);
-	if (cached) {
-		_coloredTiles = cached;
-		return;
-	}
-
-	try {
-		// Load tiles from main Hexes folder
-		const mainListing = await foundry.applications.apps.FilePicker.implementation.browse("data", COLORED_TILE_FOLDER);
-		const mainPngFiles = (mainListing.files || []).filter(f => f.endsWith(".png") || f.endsWith(".webp"));
-
-		for (const path of mainPngFiles) {
-			const filename = path.split("/").pop().replace(/\.(png|webp)$/, "");
-			_coloredTiles.push({
-				key: filename,
-				label: _formatLabel(filename),
-				path,
-				isColored: true,
-				biome: null,  // No biome for root folder tiles
-			});
-		}
-
-		// Dynamically discover and load tiles from all subdirectories
-		const subdirs = mainListing.dirs || [];
-		for (const dirPath of subdirs) {
-			const biome = dirPath.split("/").pop();
-			try {
-				const biomeListing = await foundry.applications.apps.FilePicker.implementation.browse("data", dirPath);
-				const biomePngFiles = (biomeListing.files || []).filter(f => f.endsWith(".png") || f.endsWith(".webp"));
-
-				for (const path of biomePngFiles) {
-					const filename = path.split("/").pop().replace(/\.(png|webp)$/, "");
-					_coloredTiles.push({
-						key: filename,
-						label: _formatLabel(filename),
-						path,
-						isColored: true,
-						biome: biome.toLowerCase(),  // Normalize to lowercase
-					});
-				}
-			}
-			catch (err) {
-				// Subdirectory might not be accessible, that's okay
-			}
-		}
-
-		_coloredTiles.sort((a, b) => a.key.localeCompare(b.key));
-		await cache.setMetadata(metadataKey, _coloredTiles);
-		console.log(`${MODULE_ID} | Loaded ${_coloredTiles.length} colored tiles from ${subdirs.length} folders`);
-	}
-	catch (err) {
-		console.warn(`${MODULE_ID} | Could not load colored tiles:`, err);
-		_coloredTiles = [];
-	}
-}
-
-/**
  * Load symbol tiles from assets/symbols folder (inside the module)
  */
 async function loadSymbolTileAssets() {
@@ -486,46 +441,6 @@ export function getCustomTilesByBiome() {
 	}
 
 	return byBiome;
-}
-
-/**
- * Get colored tiles organized by biome for the generator
- */
-export function getColoredTilesByBiome() {
-	if (!_coloredTiles) return {};
-
-	const byBiome = {
-		water: [],
-		vegetation: [],  // Maps to forest/grassland
-		mountains: [],
-		desert: [],
-		swamp: [],
-		badlands: [],
-		snow: [],
-		other: [],  // Tiles in root folder
-	};
-
-	for (const tile of _coloredTiles) {
-		if (tile.biome && tile.biome === "specials") {
-			// Exclude specials from generator
-			continue;
-		}
-		if (tile.biome && byBiome[tile.biome]) {
-			byBiome[tile.biome].push(tile.path);
-		}
-		else {
-			byBiome.other.push(tile.path);
-		}
-	}
-
-	return byBiome;
-}
-
-/**
- * Get colored tile dimensions (fixed size)
- */
-export function getColoredTileDimensions() {
-	return { width: COLORED_HEX_TILE_W, height: COLORED_HEX_TILE_H };
 }
 
 /**
@@ -725,13 +640,6 @@ export function loadPoiScale() {
 }
 
 /**
- * Get colored tiles array
- */
-export function getColoredTiles() {
-	return _coloredTiles || [];
-}
-
-/**
  * Get filtered colored tiles (by search filter)
  */
 export function getFilteredColoredTiles() {
@@ -791,13 +699,6 @@ export async function getColoredTileFolders() {
 	});
 
 	return folders;
-}
-
-/**
- * Toggle collapsed state of a colored tile folder
- */
-export function toggleColoredFolderCollapsed(folderKey) {
-	_coloredFoldersCollapsed[folderKey] = !_coloredFoldersCollapsed[folderKey];
 }
 
 /**

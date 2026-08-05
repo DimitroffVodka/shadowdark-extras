@@ -265,6 +265,8 @@ export const FEATURE_OWNERS = {
     "hex-tile-clamp.mjs",
     // Decor assets + decor-tab state lifted out of HexPainterSD.mjs in Phase 5.3.
     "hex-decor.mjs",
+    // Colored-hex tile assets, lifted out of HexPainterSD.mjs in Phase 5.3.
+    "hex-colored-tiles.mjs",
   ],
   dungeon: [
     "DungeonGeneratorSD.mjs",
