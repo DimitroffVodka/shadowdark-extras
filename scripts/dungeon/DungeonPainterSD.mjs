@@ -65,6 +65,20 @@ export {
 	setDungeonBackground, getDungeonBackground,
 };
 
+// The tile catalogue (floor/wall/door/background tile arrays) now lives in
+// dungeon-tile-catalog.mjs. The painter reads the bindings and writes them only
+// through the pure setters, so the module can stay an importless leaf.
+import {
+	_floorTiles,
+	_wallTiles,
+	_doorTiles,
+	_backgroundTiles,
+	setFloorTiles,
+	setWallTiles,
+	setDoorTiles,
+	setBackgroundTiles,
+} from "./dungeon-tile-catalog.mjs";
+
 /**
  * SDX Dungeon Painter - Room/Dungeon mapping tool
  * Paints floor tiles, auto-generates walls and wall visuals, and supports doors
@@ -105,16 +119,12 @@ Hooks.once("init", () => {
 });
 
 // State
-let _floorTiles = null;
-let _wallTiles = null;
-let _doorTiles = null;
 let _paintEnabled = false;
 let _isDragging = false;
 let _dragStart = null;
 let _isShiftHeld = false;
 let _rebuildTimeout = null;
 let _curvedWalls = false; // Toggle: wall painted floors with smoothed/curved (Dyson-style) walls instead of straight
-let _backgroundTiles = null;
 
 // Socket reference for player -> GM communication
 let _dungeonSocket = null;
@@ -194,17 +204,17 @@ export async function loadDungeonAssets() {
 	const cachedMetadata = await cache.getMetadata(metadataKey);
 
 	if (cachedMetadata) {
-		_floorTiles = cachedMetadata.floorTiles || [];
-		_wallTiles = cachedMetadata.wallTiles || [];
-		_doorTiles = cachedMetadata.doorTiles || [];
-		_backgroundTiles = cachedMetadata.backgroundTiles || [];
+		setFloorTiles(cachedMetadata.floorTiles || []);
+		setWallTiles(cachedMetadata.wallTiles || []);
+		setDoorTiles(cachedMetadata.doorTiles || []);
+		setBackgroundTiles(cachedMetadata.backgroundTiles || []);
 
 		// Always re-scan backgrounds from folder for GM (small folder, may have new images)
 		if (game.user.isGM) {
 			const freshBg = await loadTilesFromFolder(BG_TILE_FOLDER, "background");
 			if (freshBg.length !== _backgroundTiles.length ||
                 freshBg.some((t, i) => t.path !== _backgroundTiles[i]?.path)) {
-				_backgroundTiles = freshBg;
+				setBackgroundTiles(freshBg);
 				await cache.setMetadata(metadataKey, {
 					floorTiles: _floorTiles,
 					wallTiles: _wallTiles,
@@ -219,16 +229,16 @@ export async function loadDungeonAssets() {
 		await ensureDungeonFolders();
 
 		// Load floor tiles
-		_floorTiles = await loadTilesFromFolder(FLOOR_TILE_FOLDER, "floor");
+		setFloorTiles(await loadTilesFromFolder(FLOOR_TILE_FOLDER, "floor"));
 
 		// Load wall tiles
-		_wallTiles = await loadTilesFromFolder(WALL_TILE_FOLDER, "wall");
+		setWallTiles(await loadTilesFromFolder(WALL_TILE_FOLDER, "wall"));
 
 		// Load door tiles
-		_doorTiles = await loadTilesFromFolder(DOOR_TILE_FOLDER, "door");
+		setDoorTiles(await loadTilesFromFolder(DOOR_TILE_FOLDER, "door"));
 
 		// Load background tiles
-		_backgroundTiles = await loadTilesFromFolder(BG_TILE_FOLDER, "background");
+		setBackgroundTiles(await loadTilesFromFolder(BG_TILE_FOLDER, "background"));
 
 		// Save to cache
 		await cache.setMetadata(metadataKey, {
@@ -245,10 +255,10 @@ export async function loadDungeonAssets() {
 		try {
 			const tileData = await _dungeonSocket.executeAsGM("dungeonGetTileList");
 			if (tileData) {
-				_floorTiles = tileData.floorTiles || [];
-				_wallTiles = tileData.wallTiles || [];
-				_doorTiles = tileData.doorTiles || [];
-				_backgroundTiles = tileData.backgroundTiles || [];
+				setFloorTiles(tileData.floorTiles || []);
+				setWallTiles(tileData.wallTiles || []);
+				setDoorTiles(tileData.doorTiles || []);
+				setBackgroundTiles(tileData.backgroundTiles || []);
 				console.log(`${MODULE_ID} | Received tile list from GM: ${_floorTiles.length} floor, ${_wallTiles.length} wall, ${_doorTiles.length} door tiles`);
 			}
 		}
@@ -313,10 +323,10 @@ async function preloadDungeonImages() {
  * Reload tile assets (for players when GM comes online)
  */
 export async function reloadDungeonAssets() {
-	_floorTiles = null;
-	_wallTiles = null;
-	_doorTiles = null;
-	_backgroundTiles = null;
+	setFloorTiles(null);
+	setWallTiles(null);
+	setDoorTiles(null);
+	setBackgroundTiles(null);
 	selectFloorTile(null);
 	selectWallTile(null);
 	selectDoorTile(null);
