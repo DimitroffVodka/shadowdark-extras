@@ -9,6 +9,7 @@ import { setHexTerrain } from "./HexTooltipSD.mjs";
 // module can stay an importless leaf.
 import {
 	_poiUndoStack,
+	_poiRedoStack,
 	canUndoPoi,
 	canRedoPoi,
 	clearPoiHistory,
