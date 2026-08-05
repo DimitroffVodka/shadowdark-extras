@@ -2,7 +2,11 @@ import { cache } from "../shared/SDXCache.mjs";
 import { BIOME_TILES, BIOME_TINTS } from "./HexGeneratorSD.mjs";
 import { getDoorTiles } from "../dungeon/DungeonPainterSD.mjs";
 import { setHexTerrain } from "./HexTooltipSD.mjs";
-import { loadDDPackDecorTiles } from "../dungeon/DDPackManagerSD.mjs";
+
+// The POI undo/redo history now lives in hex-poi-history.mjs. The painter
+// pushes onto _poiUndoStack (mutation is legal through a read-only import
+// binding) and clears the redo stack only through clearPoiRedoStack, so the
+// module can stay an importless leaf.
 import {
 	_poiUndoStack,
 	canUndoPoi,
@@ -13,14 +17,64 @@ import {
 	redoLastPoi,
 } from "./hex-poi-history.mjs";
 
-// The POI undo/redo history now lives in hex-poi-history.mjs. The painter
-// pushes onto _poiUndoStack (mutation is legal through a read-only import
-// binding) and clears the redo stack only through clearPoiRedoStack, so the
-// module can stay an importless leaf.
-//
 // The POI helpers that were public on this module stay public: the tray and its
 // handle bindings import them from here.
 export { canUndoPoi, canRedoPoi, clearPoiHistory, undoLastPoi, redoLastPoi };
+
+// Decor assets and decor-tab state now live in hex-decor.mjs. The painter reads
+// the bindings and writes them only through the moved setters, so that module
+// can stay an importless leaf and the graph gains no cycle.
+import {
+	_importedDecorTiles,
+	_ddPackDecorTiles,
+	_decorSearchFilter,
+	_decorFoldersCollapsed,
+	_decorElevation,
+	_decorSort,
+	getRegisteredDecorTiles,
+	loadImportedDecorAssets,
+	getDDPackDecorAssets,
+	decorFolderLabel,
+	_formatLabel,
+	registerDecorAsset,
+	reloadDecorAssets,
+	setDecorSearchFilter,
+	getDecorSearchFilter,
+	toggleDecorFolderCollapsed,
+	getDecorElevation,
+	setDecorElevation,
+	getDecorSort,
+	setDecorSort,
+} from "./hex-decor.mjs";
+
+// The decor helpers that were public on this module stay public: the tray and
+// the Dungeondraft pack apps import them from here.
+export {
+	registerDecorAsset, loadImportedDecorAssets, reloadDecorAssets,
+	setDecorSearchFilter, getDecorSearchFilter, toggleDecorFolderCollapsed,
+	getDecorElevation, setDecorElevation, getDecorSort, setDecorSort,
+};
+
+// Colored-hex tile assets and the colored-folder collapse state now live in
+// hex-colored-tiles.mjs, on the same terms as the decor seam above: an
+// importless-of-the-painter leaf, read here and written only through the moved
+// functions.
+import {
+	_coloredTiles,
+	_coloredFoldersCollapsed,
+	loadColoredTileAssets,
+	getColoredTiles,
+	getColoredTilesByBiome,
+	getColoredTileDimensions,
+	toggleColoredFolderCollapsed,
+} from "./hex-colored-tiles.mjs";
+
+// The colored-tile helpers that were public on this module stay public: the
+// generator, solo mode and the tray import them from here.
+export {
+	getColoredTiles, getColoredTilesByBiome, getColoredTileDimensions,
+	toggleColoredFolderCollapsed,
+};
 
 // Maps default-tile biome keys to user-friendly terrain labels
 const BIOME_TO_TERRAIN = {
@@ -42,11 +96,7 @@ const BIOME_TO_TERRAIN = {
 const MODULE_ID = "shadowdark-extras";
 const TILE_FOLDER = `modules/${MODULE_ID}/assets/tiles`;
 const CUSTOM_TILE_FOLDER = "hexes";
-const COLORED_TILE_FOLDER = `modules/${MODULE_ID}/assets/Hexes`;
 const SYMBOLS_TILE_FOLDER = `modules/${MODULE_ID}/assets/symbols`;
-const DECOR_IMPORT_FOLDER = "decor";
-const DECOR_DDPACK_FOLDER = "decor/ddpacks";
-const DECOR_IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"];
 const HEX_TILE_W = 296;
 const HEX_TILE_H = 256;
 const COLORED_HEX_TILE_W = 572;
@@ -63,10 +113,7 @@ const COLORED_BIOME_SUBDIRS = ["Water", "Vegetation", "Mountains", "Desert", "sw
 
 let _tiles = null;           // Default tiles from module
 let _customTiles = null;     // Custom tiles from data/hexes
-let _coloredTiles = null;    // Colored tiles from assets/Hexes
 let _symbolTiles = null;     // Symbol tiles from assets/symbols
-let _importedDecorTiles = null; // Decor images imported into data/decor
-let _ddPackDecorTiles = null; // Dungeondraft decor images extracted into data/decor/ddpacks
 let _customTileBoundsCache = new Map();
 let _chosenTiles = new Set();
 let _searchFilter = "";
@@ -75,7 +122,6 @@ let _windEffect = false;
 let _fogAnimation = false;
 let _tintEnabled = false;
 let _bwEffect = false;
-let _coloredFoldersCollapsed = {}; // Track collapsed state of colored tile folders
 let _symbolFoldersCollapsed = {};  // Track collapsed state of symbol tile folders
 let _brushActive = false;
 let _lastCell = null;
@@ -84,11 +130,7 @@ let _isPainting = false;
 let _isGenerating = false;
 
 // Decor tab state
-let _decorSearchFilter = "";
-let _decorFoldersCollapsed = {};
 let _decorMode = false; // Whether we're in decor painting mode
-let _decorElevation = 0;
-let _decorSort = 0;
 
 let _mapColumns = 15;
 let _mapRows = 15;
@@ -306,69 +348,6 @@ export async function reloadCustomTiles() {
 }
 
 /**
- * Load colored tiles from assets/Hexes folder (inside the module)
- */
-async function loadColoredTileAssets() {
-	_coloredTiles = [];
-
-	const metadataKey = "hex_tiles_metadata_colored";
-	const cached = await cache.getMetadata(metadataKey);
-	if (cached) {
-		_coloredTiles = cached;
-		return;
-	}
-
-	try {
-		// Load tiles from main Hexes folder
-		const mainListing = await foundry.applications.apps.FilePicker.implementation.browse("data", COLORED_TILE_FOLDER);
-		const mainPngFiles = (mainListing.files || []).filter(f => f.endsWith(".png") || f.endsWith(".webp"));
-
-		for (const path of mainPngFiles) {
-			const filename = path.split("/").pop().replace(/\.(png|webp)$/, "");
-			_coloredTiles.push({
-				key: filename,
-				label: _formatLabel(filename),
-				path,
-				isColored: true,
-				biome: null,  // No biome for root folder tiles
-			});
-		}
-
-		// Dynamically discover and load tiles from all subdirectories
-		const subdirs = mainListing.dirs || [];
-		for (const dirPath of subdirs) {
-			const biome = dirPath.split("/").pop();
-			try {
-				const biomeListing = await foundry.applications.apps.FilePicker.implementation.browse("data", dirPath);
-				const biomePngFiles = (biomeListing.files || []).filter(f => f.endsWith(".png") || f.endsWith(".webp"));
-
-				for (const path of biomePngFiles) {
-					const filename = path.split("/").pop().replace(/\.(png|webp)$/, "");
-					_coloredTiles.push({
-						key: filename,
-						label: _formatLabel(filename),
-						path,
-						isColored: true,
-						biome: biome.toLowerCase(),  // Normalize to lowercase
-					});
-				}
-			}
-			catch (err) {
-				// Subdirectory might not be accessible, that's okay
-			}
-		}
-
-		_coloredTiles.sort((a, b) => a.key.localeCompare(b.key));
-		await cache.setMetadata(metadataKey, _coloredTiles);
-		console.log(`${MODULE_ID} | Loaded ${_coloredTiles.length} colored tiles from ${subdirs.length} folders`);
-	}
-	catch (err) {
-		console.warn(`${MODULE_ID} | Could not load colored tiles:`, err);
-		_coloredTiles = [];
-	}
-}
-
-/**
  * Load symbol tiles from assets/symbols folder (inside the module)
  */
 async function loadSymbolTileAssets() {
@@ -452,134 +431,6 @@ export function getFilteredSymbolTiles(excludeCategories = []) {
 	return tiles.filter(t => t.label.toLowerCase().includes(_searchFilter));
 }
 
-function isDecorImagePath(path) {
-	const lower = String(path || "").toLowerCase();
-	return DECOR_IMAGE_EXTENSIONS.some(ext => lower.split("?")[0].endsWith(ext));
-}
-
-function decorLabelFromPath(path) {
-	const file = String(path || "").split("/").pop() || "decor";
-	return _formatLabel(file.replace(/\.(png|jpe?g|webp|gif|svg)$/i, ""));
-}
-
-function decorCategoryFromPath(path) {
-	const relative = String(path || "").replace(/^decor\/?/, "");
-	const parts = relative.split("/").filter(Boolean);
-	if (parts.length <= 1) return "__root__";
-	return parts.slice(0, -1).join("/");
-}
-
-function getRegisteredDecorTiles() {
-	let assets = [];
-	try {
-		assets = game.settings.get(MODULE_ID, "customDecorAssets") || [];
-	}
-	catch {
-		assets = [];
-	}
-	return assets
-		.filter(asset => asset?.path && isDecorImagePath(asset.path))
-		.map(asset => ({
-			key: asset.path,
-			label: asset.label || decorLabelFromPath(asset.path),
-			path: asset.path,
-			category: asset.category || (asset.source === "web" ? "Web URL" : "Foundry Library"),
-			registered: true,
-			source: asset.source || "foundry",
-		}));
-}
-
-export async function registerDecorAsset(path, { label = null, source = "foundry", category = null } = {}) {
-	if (!isDecorImagePath(path)) {
-		throw new Error(`Unsupported decor image path: ${path}`);
-	}
-	const assets = game.settings.get(MODULE_ID, "customDecorAssets") || [];
-	const next = assets.filter(asset => asset?.path !== path);
-	next.push({
-		path,
-		label: label || decorLabelFromPath(path),
-		source,
-		category: category || (source === "web" ? "Web URL" : "Foundry Library"),
-	});
-	await game.settings.set(MODULE_ID, "customDecorAssets", next);
-}
-
-function decorFolderLabel(folderKey) {
-	if (folderKey === "__root__") return "Imported Decor";
-	let parts = folderKey
-		.split("/")
-		.filter(Boolean);
-	if (parts.length > 1 && parts[0].toLowerCase() === "imported") {
-		parts = parts.slice(1);
-	}
-	return parts
-		.map(part => {
-			const decoded = decodeURIComponent(part).replace(/[_-]+/g, " ");
-			return _formatLabel(decoded);
-		})
-		.join(" / ");
-}
-
-async function browseDecorFolderRecursive(folderPath, out = []) {
-	const normalizedFolder = String(folderPath || "").replace(/\\/g, "/").replace(/\/+$/, "");
-	if (normalizedFolder === DECOR_DDPACK_FOLDER || normalizedFolder.startsWith(`${DECOR_DDPACK_FOLDER}/`)) {
-		return out;
-	}
-	const FP = foundry.applications.apps.FilePicker.implementation;
-	const listing = await FP.browse("data", folderPath);
-	for (const file of listing.files || []) {
-		if (!isDecorImagePath(file)) continue;
-		out.push({
-			key: file,
-			label: decorLabelFromPath(file),
-			path: file,
-			category: decorCategoryFromPath(file),
-			imported: true,
-		});
-	}
-	for (const dir of listing.dirs || []) {
-		const normalizedDir = String(dir || "").replace(/\\/g, "/").replace(/\/+$/, "");
-		if (normalizedDir === DECOR_DDPACK_FOLDER || normalizedDir.startsWith(`${DECOR_DDPACK_FOLDER}/`)) continue;
-		await browseDecorFolderRecursive(dir, out);
-	}
-	return out;
-}
-
-export async function loadImportedDecorAssets({ force = false } = {}) {
-	if (_importedDecorTiles && !force) return _importedDecorTiles;
-	_importedDecorTiles = [];
-	if (!game.user?.isGM) return _importedDecorTiles;
-
-	try {
-		_importedDecorTiles = await browseDecorFolderRecursive(DECOR_IMPORT_FOLDER, []);
-		_importedDecorTiles.sort((a, b) => a.path.localeCompare(b.path));
-	}
-	catch (err) {
-		console.log(`${MODULE_ID} | Imported decor folder not available yet:`, err?.message || err);
-		_importedDecorTiles = [];
-	}
-	return _importedDecorTiles;
-}
-
-export async function reloadDecorAssets() {
-	_importedDecorTiles = null;
-	_ddPackDecorTiles = null;
-	await loadImportedDecorAssets({ force: true });
-	await getDDPackDecorAssets({ force: true });
-}
-
-async function getDDPackDecorAssets({ force = false } = {}) {
-	if (_ddPackDecorTiles && !force) return _ddPackDecorTiles;
-	try {
-		_ddPackDecorTiles = await loadDDPackDecorTiles();
-	}
-	catch (err) {
-		console.warn(`${MODULE_ID} | Dungeondraft decor packs not available yet:`, err?.message || err);
-		_ddPackDecorTiles = [];
-	}
-	return _ddPackDecorTiles;
-}
-
 /**
  * Get custom tiles organized by biome for the generator
  */
@@ -606,46 +457,6 @@ export function getCustomTilesByBiome() {
 	}
 
 	return byBiome;
-}
-
-/**
- * Get colored tiles organized by biome for the generator
- */
-export function getColoredTilesByBiome() {
-	if (!_coloredTiles) return {};
-
-	const byBiome = {
-		water: [],
-		vegetation: [],  // Maps to forest/grassland
-		mountains: [],
-		desert: [],
-		swamp: [],
-		badlands: [],
-		snow: [],
-		other: [],  // Tiles in root folder
-	};
-
-	for (const tile of _coloredTiles) {
-		if (tile.biome && tile.biome === "specials") {
-			// Exclude specials from generator
-			continue;
-		}
-		if (tile.biome && byBiome[tile.biome]) {
-			byBiome[tile.biome].push(tile.path);
-		}
-		else {
-			byBiome.other.push(tile.path);
-		}
-	}
-
-	return byBiome;
-}
-
-/**
- * Get colored tile dimensions (fixed size)
- */
-export function getColoredTileDimensions() {
-	return { width: COLORED_HEX_TILE_W, height: COLORED_HEX_TILE_H };
 }
 
 /**
@@ -845,13 +656,6 @@ export function loadPoiScale() {
 }
 
 /**
- * Get colored tiles array
- */
-export function getColoredTiles() {
-	return _coloredTiles || [];
-}
-
-/**
  * Get filtered colored tiles (by search filter)
  */
 export function getFilteredColoredTiles() {
@@ -911,13 +715,6 @@ export async function getColoredTileFolders() {
 	});
 
 	return folders;
-}
-
-/**
- * Toggle collapsed state of a colored tile folder
- */
-export function toggleColoredFolderCollapsed(folderKey) {
-	_coloredFoldersCollapsed[folderKey] = !_coloredFoldersCollapsed[folderKey];
 }
 
 /**
@@ -985,28 +782,6 @@ export function toggleSymbolFolderCollapsed(folderKey) {
    ═══════════════════════════════════════════════════════════════ */
 
 /**
- * Set decor search filter
- */
-export function setDecorSearchFilter(term) {
-	_decorSearchFilter = term.toLowerCase();
-}
-
-/**
- * Get decor search filter
- */
-export function getDecorSearchFilter() {
-	return _decorSearchFilter;
-}
-
-/**
- * Toggle collapsed state of a decor tile folder
- */
-export function toggleDecorFolderCollapsed(folderKey) {
-	const currentlyCollapsed = _decorFoldersCollapsed[folderKey] ?? true;
-	_decorFoldersCollapsed[folderKey] = !currentlyCollapsed;
-}
-
-/**
  * Set decor painting mode
  */
 export function setDecorMode(enabled) {
@@ -1021,19 +796,6 @@ export function setDecorMode(enabled) {
  */
 export function isDecorMode() {
 	return _decorMode;
-}
-
-export function getDecorElevation() {
-	return _decorElevation;
-}
-export function setDecorElevation(v) {
-	_decorElevation = parseFloat(v) || 0;
-}
-export function getDecorSort() {
-	return _decorSort;
-}
-export function setDecorSort(v) {
-	_decorSort = parseInt(v, 10) || 0;
 }
 
 /**
@@ -2096,13 +1858,6 @@ async function _stampAtPointer(ev, forceStamp = false) {
 			}
 		}
 	}
-}
-
-function _formatLabel(key) {
-	return key
-		.split("-")
-		.map(w => w.charAt(0).toUpperCase() + w.slice(1))
-		.join(" ");
 }
 
 function _decodePathLabel(value) {
