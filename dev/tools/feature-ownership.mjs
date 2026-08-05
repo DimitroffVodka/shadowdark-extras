@@ -268,6 +268,9 @@ export const FEATURE_OWNERS = {
     "DungeonGeneratorSD.mjs",
     "DungeonGenerator.mjs",
     "DungeonPainterSD.mjs",
+    // Level-context / Foundry-levels adapter lifted out of DungeonPainterSD.mjs
+    // (Phase 5.3 sweep 6).
+    "dungeon-level-context.mjs",
     "DungeonCaveSD.mjs",
     "DungeonBiomesSD.mjs",
     "DungeonDecorSD.mjs",
