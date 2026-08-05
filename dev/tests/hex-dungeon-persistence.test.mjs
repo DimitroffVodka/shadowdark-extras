@@ -205,6 +205,64 @@ test("a terrain batch updates only the terrain of a hex that already exists", as
 	});
 });
 
+// --- hexData: the defensive clone --------------------------------------------
+
+test("a write does not hand the journal the object the journal already owns", async () => {
+	// `loadAllHexDataSync` clones what `getFlag` returns. Foundry's getFlag
+	// hands back the document's LIVE flag object, so without that clone every
+	// writer would mutate stored data in place before deciding to save it.
+	//
+	// Pinned because the clone is invisible: dropping it leaves all the other
+	// tests here green. It is one `foundry.utils.deepClone` in the middle of a
+	// three-line function, exactly the sort of thing a split relocates and a
+	// reviewer's eye slides over.
+	await setHexTerrain("scene-1", "0_0", "Hills");
+	const stored = world.lastFlagValue();
+	world.clearRecords();
+
+	await setHexTerrain("scene-1", "1_1", "Coast");
+
+	assert.notEqual(
+		world.lastFlagValue(), stored,
+		"the second write handed back the very object the journal already held",
+	);
+});
+
+test("an earlier write's payload is not mutated by a later one", async () => {
+	// The consequence of the same missing clone, stated as a behaviour rather
+	// than an identity check: writes must be independent snapshots. Without the
+	// clone the first payload retroactively grows a hex it never contained.
+	await setHexTerrain("scene-1", "0_0", "Hills");
+	const firstPayload = world.flagWrites()[0].value;
+	const hexesAtFirstWrite = Object.keys(firstPayload["scene-1"]);
+
+	await setHexTerrain("scene-1", "1_1", "Coast");
+	await setHexTerrainBatch("scene-1", { "2_2": "Marsh" });
+
+	assert.deepEqual(
+		Object.keys(firstPayload["scene-1"]), hexesAtFirstWrite,
+		"a later write reached back into an earlier write's payload",
+	);
+	assert.deepEqual(hexesAtFirstWrite, ["0_0"]);
+});
+
+test("saveHexRecord puts the caller's own record object into the payload", async () => {
+	// CHARACTERIZATION, and a caller-beware note. The defensive clone protects
+	// what the journal already held; it does NOT clone the incoming record.
+	// saveHexRecord assigns the caller's object straight into the payload, so
+	// the record setHexTerrain returns is the same object that was written.
+	//
+	// Asserted at write time on purpose. What happens to that reference AFTER
+	// setFlag depends on Foundry's update pipeline rather than on any code
+	// here, and this harness cannot model it faithfully — so it does not try.
+	const returned = await setHexTerrain("scene-1", "0_0", "Hills");
+
+	assert.equal(
+		world.lastFlagValue()["scene-1"]["0_0"], returned,
+		"setHexTerrain no longer returns the object it wrote",
+	);
+});
+
 // --- hexData: permission asymmetry -------------------------------------------
 
 test("a non-GM still issues a hexData write when the journal exists", async () => {
