@@ -1,10 +1,26 @@
-// Canvas pin rendering cluster (graphics, tooltip, renderer) — extracted
-// from scripts/journal/JournalPinsSD.mjs (Phase 5.1 split).
+// Canvas pin graphics + renderer — extracted from
+// scripts/journal/JournalPinsSD.mjs (Phase 5.1 split).
+//
+// Phase 5.3.5 moved the pointer interactions to pin-interactions.mjs and the
+// hover tooltip to pin-tooltip.mjs. JournalPinTooltip is re-exported here so
+// the original import surface still resolves.
 
 import { MODULE_ID, getPinStyle, normalizeImageTint } from "./pin-style.mjs";
 import { JournalPinManager, checkPinVisibility } from "./pin-manager.mjs";
 import { drawStyledStroke } from "./pin-draw.mjs";
-import { renderPinContextMenu } from "./pin-context-menu.mjs";
+import {
+	attachPinListeners,
+	detachPinListeners,
+	onPointerDown,
+	onPointerEnter,
+	onPointerLeave,
+	onPointerMove,
+	onPointerUp,
+	openPinJournal,
+	showPinContextMenu,
+} from "./pin-interactions.mjs";
+
+export { JournalPinTooltip } from "./pin-tooltip.mjs";
 
 // ================================================================
 // PIN GRAPHICS - PIXI rendering
@@ -1113,324 +1129,45 @@ export class JournalPinGraphics extends PIXI.Container {
 		this._setupEventListeners();
 	}
 
+	// Pointer interactions live in pin-interactions.mjs. These stay as methods
+	// because PIXI's off() matches on the (event, handler, context) triple, so
+	// attach and detach have to name the same references — and because keeping
+	// the seam here leaves the handlers overridable.
+
 	_setupEventListeners() {
-		this.on("pointerenter", this._onPointerEnter, this);
-		this.on("pointerleave", this._onPointerLeave, this);
-		this.on("pointerdown", this._onPointerDown, this);
-		this.on("pointerup", this._onPointerUp, this);
-		this.on("pointerupoutside", this._onPointerUp, this);
+		attachPinListeners(this);
 	}
 
 	_removeEventListeners() {
-		this.off("pointerenter", this._onPointerEnter, this);
-		this.off("pointerleave", this._onPointerLeave, this);
-		this.off("pointerdown", this._onPointerDown, this);
-		this.off("pointerup", this._onPointerUp, this);
-		this.off("pointerupoutside", this._onPointerUp, this);
-		this.off("globalpointermove", this._onPointerMove, this);
+		detachPinListeners(this);
 	}
 
 	_onPointerEnter(event) {
-		// Normalize hideTooltip from multiple sources
-		const style = this.pinData.style || {};
-		const hideTooltip = this.pinData.hideTooltip || style.hideTooltip || false;
-
-		if (!hideTooltip) {
-			JournalPinTooltip.show(this.pinData, event);
-		}
-		if (this._labelContainer && style.labelShowOnHover) {
-			this._labelContainer.visible = true;
-		}
-
-		// Hover Animation
-		let animType = style.hoverAnimation;
-		if (animType === true) animType = "scale";
-		if (!animType) animType = "none";
-
-		if (animType !== "none" && window.gsap) {
-			gsap.killTweensOf(this);
-			gsap.killTweensOf(this.scale);
-
-			if (animType === "scale") {
-				gsap.to(this.scale, { x: 1.2, y: 1.2, duration: 0.3, ease: "back.out(1.7)" });
-			}
-			else if (animType === "pulse") {
-				gsap.to(
-					this.scale,
-					{ x: 1.15, y: 1.15, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" }
-				);
-			}
-			else if (animType === "shake") {
-				gsap.to(this, {
-					rotation: 0.2, duration: 0.05, yoyo: true, repeat: 5, ease: "power1.inOut", onComplete: () => {
-						gsap.to(this, { rotation: 0, duration: 0.1 });
-					},
-				});
-				gsap.to(this.scale, { x: 1.1, y: 1.1, duration: 0.2 });
-			}
-			else if (animType === "brightness") {
-				gsap.to(
-					this,
-					{
-						pixi: { brightness: 1.5 }, duration: 0.4, yoyo: true, repeat: -1,
-						ease: "sine.inOut",
-					}
-				);
-			}
-			else if (animType === "hue") {
-				gsap.to(
-					this,
-					{ pixi: { hue: 180 }, duration: 2, repeat: -1, yoyo: true, ease: "linear" }
-				);
-			}
-		}
+		onPointerEnter(this, event);
 	}
 
 	_onPointerLeave(event) {
-
-		JournalPinTooltip.hide();
-		if (this._labelContainer && this.pinData.style?.labelShowOnHover) {
-			this._labelContainer.visible = false;
-		}
-
-		// Hover Animation Reset
-		if (window.gsap) {
-			gsap.killTweensOf(this);
-			gsap.killTweensOf(this.scale);
-
-			// Smooth reset
-			gsap.to(this.scale, { x: 1.0, y: 1.0, duration: 0.3, ease: "power2.out" });
-			gsap.to(
-				this,
-				{ rotation: 0, pixi: { brightness: 1, hue: 0 }, duration: 0.3, ease: "power2.out" }
-			);
-		}
-		else {
-			this.scale.set(1.0);
-			this.rotation = 0;
-		}
+		onPointerLeave(this, event);
 	}
 
 	_onPointerDown(event) {
-		const originalEvent = event.data?.originalEvent || event.nativeEvent || event;
-		const button = originalEvent.button ?? 0;
-
-		// Restriction: Only GMs can drag or right-click pins
-		const isGm = game.user?.isGM;
-
-		if (button === 0) {
-			// Prevent Foundry from starting a selection marquee
-			event.stopPropagation();
-
-			if (isGm) {
-				this._isDragging = true;
-				this._hasDragged = false;
-
-				// Kill hover animations immediately when starting a drag.
-				// This prevents GSAP from holding stale sprite references
-				// during the subsequent update() → _build() on pointer up.
-				if (window.gsap) {
-					gsap.killTweensOf(this);
-					gsap.killTweensOf(this.scale);
-					this.scale.set(1.0);
-					this.rotation = 0;
-				}
-
-				const local = this.parent.toLocal(event.global);
-				this._dragOffset.x = this.position.x - local.x;
-				this._dragOffset.y = this.position.y - local.y;
-				this._dragStartPos.x = this.position.x;
-				this._dragStartPos.y = this.position.y;
-				this.on("globalpointermove", this._onPointerMove, this);
-			}
-			JournalPinTooltip.hide();
-		}
-		else if (button === 2) {
-			event.stopPropagation();
-			if (isGm) {
-				this._showContextMenu(event);
-			}
-		}
+		onPointerDown(this, event);
 	}
 
 	_onPointerMove(event) {
-		if (!this._isDragging) return;
-
-		event.stopPropagation();
-		const local = this.parent.toLocal(event.global);
-		const newX = local.x + this._dragOffset.x;
-		const newY = local.y + this._dragOffset.y;
-
-		const dx = Math.abs(newX - this._dragStartPos.x);
-		const dy = Math.abs(newY - this._dragStartPos.y);
-		if (dx > 5 || dy > 5) {
-			this._hasDragged = true;
-		}
-
-		if (this._hasDragged) {
-			this.position.x = newX;
-			this.position.y = newY;
-
-			// Update label position if it exists and is separated
-			if (this._labelContainer && this._labelContainer.parent !== this) {
-				this._labelContainer.position.set(
-					newX + this._labelOffset.x, newY + this._labelOffset.y
-				);
-			}
-		}
+		onPointerMove(this, event);
 	}
 
 	async _onPointerUp(event) {
-		if (this._isDragging) {
-			event.stopPropagation();
-
-			if (this._hasDragged) {
-				// Save position
-				try {
-					await JournalPinManager.update(this.pinData.id, {
-						x: Math.round(this.position.x),
-						y: Math.round(this.position.y),
-					});
-				}
-				catch(err) {
-					console.error("SDX Journal Pins | Error updating pin position:", err);
-					this.position.set(this.pinData.x, this.pinData.y);
-				}
-			}
-			else {
-				this._openJournal();
-			}
-		}
-
-		this.off("globalpointermove", this._onPointerMove, this);
-		this._isDragging = false;
-		this._hasDragged = false;
+		return await onPointerUp(this, event);
 	}
 
 	_openJournal() {
-		const journal = game.journal.get(this.pinData.journalId);
-		if (journal) {
-			if (this.pinData.pageId) {
-				journal.sheet.render(true, { pageId: this.pinData.pageId });
-			}
-			else {
-				journal.sheet.render(true);
-			}
-		}
-		else {
-			ui.notifications.warn("Journal not found");
-		}
+		openPinJournal(this);
 	}
 
 	_showContextMenu(event) {
-		const originalEvent = event.data?.originalEvent || event.nativeEvent || event;
-		if (originalEvent.preventDefault) originalEvent.preventDefault();
-
-		const globalPoint = event.global;
-		const canvasRect = canvas.app.view.getBoundingClientRect();
-		const menuX = canvasRect.left + (globalPoint?.x || 0);
-		const menuY = canvasRect.top + (globalPoint?.y || 0);
-
-		const menuItems = [
-			{
-				name: "Open Journal",
-				icon: '<i class="fa-solid fa-book-open"></i>',
-				callback: () => this._openJournal(),
-			},
-			{
-				name: "Bring Players Here",
-				icon: '<i class="fa-solid fa-location-crosshairs"></i>',
-				callback: async () => {
-					if (game.user.isGM) {
-						// Broadcast to others
-						game.socket.emit("module.shadowdark-extras", {
-							type: "panToPin",
-							x: this.pinData.x,
-							y: this.pinData.y,
-							sceneId: canvas.scene?.id,
-							pinId: this.pinData.id,
-						});
-						// Pan self
-						canvas.animatePan({ x: this.pinData.x, y: this.pinData.y });
-
-						if (this.animatePing) {
-							this.animatePing("bring");
-						}
-						else if (canvas.ping) {
-							canvas.ping({ x: this.pinData.x, y: this.pinData.y });
-						}
-					}
-					else {
-						ui.notifications.warn("Only the GM can bring players here.");
-					}
-				},
-			},
-			{
-				name: "Ping Pin",
-				icon: '<i class="fa-solid fa-bullseye"></i>',
-				callback: async () => {
-					// Broadcast ping only, no pan
-					if (game.user.isGM) {
-						game.socket.emit("module.shadowdark-extras", {
-							type: "pingPin",
-							sceneId: canvas.scene?.id,
-							pinId: this.pinData.id,
-						});
-						if (this.animatePing) this.animatePing();
-					}
-					else {
-						ui.notifications.warn("Only the GM can ping pins.");
-					}
-				},
-			},
-			{
-				name: "Edit Style",
-				icon: '<i class="fa-solid fa-palette"></i>',
-				callback: async () => {
-					const { PinStyleEditorApp } = await import("./PinStyleEditorSD.mjs");
-					new PinStyleEditorApp({ pinId: this.pinData.id }).render(true);
-				},
-			},
-			{
-				name: "Duplicate Pin",
-				icon: '<i class="fa-solid fa-clone"></i>',
-				callback: async () => await JournalPinManager.duplicate(this.pinData.id),
-			},
-		];
-
-		if (game.user?.isGM) {
-			menuItems.push({
-				name: "Copy Style",
-				icon: '<i class="fa-solid fa-copy"></i>',
-				callback: () => JournalPinManager.copyStyle(this.pinData),
-			});
-
-			if (JournalPinManager.hasCopiedStyle()) {
-				menuItems.push({
-					name: "Paste Style",
-					icon: '<i class="fa-solid fa-paste"></i>',
-					callback: async () => await JournalPinManager.pasteStyle(this.pinData.id),
-				});
-			}
-
-			// Toggle visibility option
-			const isGmOnly = this.pinData.gmOnly ?? false;
-			menuItems.push({
-				name: isGmOnly ? "Make Visible to All" : "Make GM-Only",
-				icon: isGmOnly ? '<i class="fa-solid fa-eye"></i>' : '<i class="fa-solid fa-eye-slash"></i>',
-				callback: async () => {
-					await JournalPinManager.update(this.pinData.id, { gmOnly: !isGmOnly });
-				},
-			});
-
-			menuItems.push({
-				name: "Delete Pin",
-				icon: '<i class="fa-solid fa-trash"></i>',
-				callback: async () => await JournalPinManager.delete(this.pinData.id),
-			});
-		}
-
-		renderPinContextMenu(menuItems, menuX, menuY);
+		showPinContextMenu(this, event);
 	}
 
 	destroy(options) {
@@ -1453,122 +1190,6 @@ export class JournalPinGraphics extends PIXI.Container {
 			this._cachedTexture = null;
 		}
 		super.destroy(options);
-	}
-}
-
-// ================================================================
-// TOOLTIP
-// ================================================================
-
-export class JournalPinTooltip {
-	static _element = null;
-
-	static show(pinData, event) {
-		this.hide();
-
-		const journal = game.journal.get(pinData.journalId);
-		let page = null;
-		let hasAccess = true;
-
-		if (journal) {
-			// Get the page first
-			if (pinData.pageId) {
-				page = journal.pages.get(pinData.pageId);
-			}
-			else {
-				page = journal.pages.contents[0];
-			}
-
-			if (page) {
-				// Check if user has at least LIMITED permission on the PAGE
-				hasAccess = game.user?.isGM || page.testUserPermission(game.user, "LIMITED");
-			}
-		}
-
-		// If no access to the journal page AND no custom title/content, nothing to show
-		if (!hasAccess && !pinData.tooltipTitle && !pinData.tooltipContent) return;
-
-		// If no journal/page and no custom text, nothing to show
-		if (!page && !pinData.tooltipTitle && !pinData.tooltipContent) return;
-
-		// Clear page reference if user has no access (custom text will still show)
-		if (!hasAccess) page = null;
-
-		let content = "";
-		let title = page?.name || "Unlinked Pin";
-
-		// Use custom tooltip title if provided
-		if (pinData.tooltipTitle) {
-			title = pinData.tooltipTitle;
-		}
-
-		// For content, we need at least OBSERVER permission on the PAGE to see text
-		// If no page, we rely on custom content (always visible if pin is visible)
-		const canSeeContent = !page || game.user?.isGM || page.testUserPermission(
-			game.user, "OBSERVER"
-		);
-
-		// Use custom tooltip content if provided, otherwise use page content
-		if (pinData.tooltipContent) {
-			content = pinData.tooltipContent;
-		}
-		else if (canSeeContent && page?.text?.content) {
-			const temp = document.createElement("div");
-			temp.innerHTML = page.text.content;
-			content = temp.textContent?.substring(0, 200) || "";
-			if (content.length >= 200) content += "...";
-		}
-
-		// If no content and title is generic "Unlinked Pin" (and no custom title), maybe don't
-		// show?
-		// But we might want to just show the title.
-
-
-		this._element = document.createElement("div");
-		this._element.id = "sdx-journal-pin-tooltip";
-		this._element.className = "sdx-journal-pin-tooltip";
-		// Tooltip text sizes come from the pin's resolved style (global default
-		// merged with any per-pin override), applied inline to override the CSS.
-		const tStyle = { ...getPinStyle(), ...(pinData.style || {}) };
-		const titlePx = tStyle.tooltipTitleFontSize || 17;
-		const bodyPx = tStyle.tooltipContentFontSize || 13;
-		this._element.innerHTML = `
-            <div class="sdx-journal-pin-tooltip-title" style="font-size:${titlePx}px">${title}</div>
-            ${content ? `<div class="sdx-journal-pin-tooltip-content" style="font-size:${bodyPx}px">${content}</div>` : ""}
-        `;
-
-		// Calculate position BEFORE appending to prevent flash at top-left
-		const globalPoint = event.global;
-		const canvasRect = canvas.app.view.getBoundingClientRect();
-		let tooltipX = canvasRect.left + (globalPoint?.x || 0) + 15;
-		let tooltipY = canvasRect.top + (globalPoint?.y || 0) + 15;
-
-		// Set initial position (will be adjusted after we know the size)
-		this._element.style.left = `${tooltipX}px`;
-		this._element.style.top = `${tooltipY}px`;
-		this._element.style.visibility = "hidden"; // Hide until positioned
-
-		document.body.appendChild(this._element);
-
-		// Adjust if overflowing viewport
-		const rect = this._element.getBoundingClientRect();
-		if (tooltipX + rect.width > window.innerWidth) {
-			tooltipX = window.innerWidth - rect.width - 10;
-		}
-		if (tooltipY + rect.height > window.innerHeight) {
-			tooltipY = window.innerHeight - rect.height - 10;
-		}
-
-		this._element.style.left = `${tooltipX}px`;
-		this._element.style.top = `${tooltipY}px`;
-		this._element.style.visibility = "visible"; // Show after positioned
-	}
-
-	static hide() {
-		if (this._element) {
-			this._element.remove();
-			this._element = null;
-		}
 	}
 }
 
