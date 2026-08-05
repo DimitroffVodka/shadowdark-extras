@@ -42,9 +42,10 @@ export function collectFlagKeys() {
   for (const file of files) {
     const source = readFileSync(file, "utf8");
 
-    // Payload literals persist, so they are writes; property access only reads.
-    // Both are scoped to our namespace by construction — `scanFlagLiterals`
-    // matches nothing else — so they skip the foreign-scope branch below.
+    // Each entry says whether it persists: payload literals do, a property read
+    // does not, and a dotted path does when it keys an update. All three are
+    // scoped to our namespace by construction — `scanFlagLiterals` matches
+    // nothing else — so they skip the foreign-scope branch below.
     const literals = scanFlagLiterals(source);
     if (literals.parseError) {
       // A first-party file the AST pass cannot read contributes no keys, which
@@ -58,7 +59,7 @@ export function collectFlagKeys() {
         dynamic.push(`${toRepoPath(file)}:${entry.line}`);
         continue;
       }
-      (entry.api === "payload" ? written : read).add(entry.key);
+      (entry.writes ? written : read).add(entry.key);
     }
 
     for (const entry of scanFlags(source)) {
