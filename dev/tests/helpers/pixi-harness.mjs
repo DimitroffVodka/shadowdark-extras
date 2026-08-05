@@ -144,6 +144,9 @@ export function makeRecordingGraphics({ precision = 4 } = {}) {
 		arc: record("arc"),
 		closePath: record("closePath"),
 		clear: record("clear"),
+		// Real Graphics objects are display objects too: code that tears a
+		// preview down calls destroy() on the same thing it drew through.
+		destroy: record("destroy"),
 	};
 }
 
