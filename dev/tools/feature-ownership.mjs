@@ -267,6 +267,9 @@ export const FEATURE_OWNERS = {
     "hex-decor.mjs",
     // Colored-hex tile assets, lifted out of HexPainterSD.mjs in Phase 5.3.
     "hex-colored-tiles.mjs",
+    // Custom-tile scan, sizing and nav state lifted out of HexPainterSD.mjs
+    // (Phase 5.3 sweep 6).
+    "hex-custom-tiles.mjs",
   ],
   dungeon: [
     "DungeonGeneratorSD.mjs",
