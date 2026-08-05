@@ -162,6 +162,259 @@ test("a payload write and a direct read of the same key are reported separately"
 	assert.deepEqual(keysOf(found, "property"), ["dungeonIntWall"]);
 });
 
+// --- nested paths (issue #95, finding 1) -------------------------------------
+//
+// A flag value is often an object, and its sub-keys are stored data in exactly
+// the same way its top-level key is. Recording only the first segment meant
+// renaming `aura.regionId` at every site left the gate green while every
+// existing document kept a `regionId` nobody read.
+//
+// Only the deepest path each site actually touches is recorded — the parent is
+// not recorded alongside it. A path string already names every ancestor, so a
+// rename at any level changes it; adding `aura` next to `aura.regionId` would
+// duplicate that signal against no call site. A parent still stands alone
+// wherever the code genuinely stops there (`?.aura` on its own, below).
+
+test("aura.regionId — a nested payload write records the full path (issue #95 fixture)", () => {
+	const found = scanFlagLiterals(`
+		await effect.update({ flags: { [MODULE_ID]: { aura: { regionId: region.id } } } });
+	`);
+
+	assert.deepEqual(keysOf(found, "payload"), ["aura.regionId"]);
+});
+
+test("aura.regionId — a nested direct read records the full path (issue #95 fixture)", () => {
+	// scripts/effects/aura-tokenmagic.mjs:163, the read half of the pair. The
+	// scanner stopped at `aura` here, so renaming `regionId` at both sites was
+	// invisible to the gate.
+	const found = scanFlagLiterals(`
+		const id = auraEffect?.flags?.[MODULE_ID]?.aura?.regionId;
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["aura.regionId"]);
+});
+
+test("a three-level path is recorded whole, through both channels", () => {
+	const found = scanFlagLiterals(`
+		const d = { flags: { [MODULE_ID]: { aura: { visualFx: { preset: "fire" } } } } };
+		const p = doc.flags[MODULE_ID].aura.visualFx.preset;
+	`);
+
+	assert.deepEqual(keysOf(found, "payload"), ["aura.visualFx.preset"]);
+	assert.deepEqual(keysOf(found, "property"), ["aura.visualFx.preset"]);
+});
+
+test("a single-segment key is unchanged by the added depth", () => {
+	// The regression that matters: `hexData` must stay `hexData`. Depth is
+	// additive, not a reshape of what was already recorded.
+	const found = scanFlagLiterals(`
+		const d = { flags: { [MODULE_ID]: { hexData: cells } } };
+		const v = scene.flags?.[MODULE_ID]?.hexData;
+	`);
+
+	assert.deepEqual(keysOf(found, "payload"), ["hexData"]);
+	assert.deepEqual(keysOf(found, "property"), ["hexData"]);
+});
+
+test("a read that stops at the namespace records the namespace", () => {
+	// scripts/effects/aura-regions.mjs:181 reads the whole `aura` object. The
+	// parent is a key in its own right wherever the code actually stops there.
+	const found = scanFlagLiterals(`const config = effect?.flags?.[MODULE_ID]?.aura;`);
+
+	assert.deepEqual(keysOf(found, "property"), ["aura"]);
+});
+
+test("only the deepest path is recorded, not every prefix of it", () => {
+	const found = scanFlagLiterals(`const v = doc.flags[MODULE_ID].aura.regionId;`);
+
+	assert.deepEqual(found.map(entry => entry.key), ["aura.regionId"]);
+});
+
+test("a computed first segment is a dynamic site, not a guessed path", () => {
+	const found = scanFlagLiterals(`const v = doc.flags?.[MODULE_ID]?.[someVar]?.regionId;`);
+
+	assert.equal(found.length, 1);
+	assert.equal(found[0].dynamic, true);
+	assert.equal(found[0].key, null);
+});
+
+test("a computed segment below a known key truncates to what is known", () => {
+	// `weaponBonus[slot]` indexes into a flag value. The prefix is a real key and
+	// stays one; the segment below it is not guessed at.
+	const found = scanFlagLiterals(`const v = item.flags?.[MODULE_ID]?.weaponBonus?.[slot]?.bonus;`);
+
+	assert.deepEqual(keysOf(found, "property"), ["weaponBonus"]);
+});
+
+test("a nested computed payload key leaves its parent recorded", () => {
+	// The parent is a real write even when the scan cannot enumerate what goes
+	// under it, so it must not vanish along with the unenumerable child.
+	const found = scanFlagLiterals(`
+		const d = { flags: { [MODULE_ID]: { aura: { [CAMPFIRE_FLAG]: true } } } };
+	`);
+
+	assert.deepEqual(keysOf(found, "payload"), ["aura"]);
+	assert.equal(found.filter(entry => entry.dynamic).length, 1);
+});
+
+test("a method called on a flag value is not mistaken for a sub-key", () => {
+	const found = scanFlagLiterals(`doc.flags?.[MODULE_ID]?.tiles?.forEach(fn);`);
+
+	assert.deepEqual(keysOf(found, "property"), ["tiles"]);
+});
+
+test("an empty payload object is a write of the namespace itself", () => {
+	const found = scanFlagLiterals(`const d = { flags: { [MODULE_ID]: { aura: {} } } };`);
+
+	assert.deepEqual(keysOf(found, "payload"), ["aura"]);
+});
+
+test("the legacy -=key deletion form is stripped at every depth", () => {
+	const found = scanFlagLiterals(`
+		await effect.update({ flags: { [MODULE_ID]: { aura: { "-=regionId": null } } } });
+	`);
+
+	assert.deepEqual(keysOf(found, "payload"), ["aura.regionId"]);
+});
+
+test("another package's nested flags are still not collected", () => {
+	const found = scanFlagLiterals(`
+		const d = { flags: { "levels-3d-preview": { camera: { floor: 2 } } } };
+		const v = doc.flags?.["levels-3d-preview"]?.camera?.floor;
+	`);
+
+	assert.deepEqual(found, []);
+});
+
+// --- channel 4: dotted update paths (issue #95, the fifth channel) -----------
+//
+// The other half of the same hazard. Foundry addresses a flag by path as well
+// as by namespace object, and this module does it 149 times — including the
+// write side of the very key issue #95 is about. `aura.regionId` was written
+// only here, so before this channel existed it was in neither list and could be
+// renamed with every gate green.
+//
+// The string is a path wherever it appears, so it is matched wherever it
+// appears. What differs by position is only whether it persists: a key position
+// is an update payload, anything else is reading a path.
+
+const writesOf = (entries) => entries.filter(entry => !entry.dynamic && entry.writes)
+	.map(entry => entry.key);
+const readsOf = (entries) => entries.filter(entry => !entry.dynamic && !entry.writes)
+	.map(entry => entry.key);
+
+test("aura.regionId — the dotted write site is finally visible (issue #95 fixture)", () => {
+	// scripts/effects/aura-regions.mjs:75. The write half of the pair the issue
+	// is named for, invisible to all three earlier channels.
+	const found = scanFlagLiterals(
+		"await effect.update({ [`flags.${MODULE_ID}.aura.regionId`]: region.id });",
+	);
+
+	assert.deepEqual(writesOf(found), ["aura.regionId"]);
+});
+
+test("a path assigned into an update object is a write", () => {
+	// scripts/item-sheets/activity-tab-widgets.mjs:236 — the commonest form of
+	// this channel by a wide margin, and not an object key at all.
+	const found = scanFlagLiterals(
+		"updateData[`flags.${MODULE_ID}.spellDamage.enabled`] = true;",
+	);
+
+	assert.deepEqual(writesOf(found), ["spellDamage.enabled"]);
+});
+
+test("a plain string key naming our namespace is a write", () => {
+	// scripts/combat/chat-card-hooks.mjs:35. No interpolation to key off.
+	const found = scanFlagLiterals(`
+		await card.update({ "flags.shadowdark-extras.targetIds": ids });
+	`);
+
+	assert.deepEqual(writesOf(found), ["targetIds"]);
+});
+
+test("a path read out of a document is a read, not a write", () => {
+	const found = scanFlagLiterals(
+		"const m = foundry.utils.getProperty(actor, `flags.${MODULE_ID}.members`);",
+	);
+
+	assert.deepEqual(readsOf(found), ["members"]);
+	assert.deepEqual(writesOf(found), []);
+});
+
+test("an interpolation in the key position is a dynamic site, not a guessed key", () => {
+	// scripts/combat/MedkitSD.mjs:362. Nothing about `key` is knowable here.
+	const found = scanFlagLiterals("set[`flags.${MODULE_ID}.${key}`] = value;");
+
+	assert.equal(found.length, 1);
+	assert.equal(found[0].dynamic, true);
+	assert.equal(found[0].key, null);
+});
+
+test("an interpolation below a known segment truncates to what is known", () => {
+	// scripts/party/carousing/carousing-core.mjs:511. A grep of these sites
+	// reports `carousingDrops.` — the trailing dot is an artefact of the text,
+	// not a key, and must not reach the snapshot.
+	const found = scanFlagLiterals(
+		"updates[`flags.${MODULE_ID}.carousingDrops.${userId}`] = actorId;",
+	);
+
+	assert.deepEqual(writesOf(found), ["carousingDrops"]);
+	assert.ok(found.every(entry => !entry.key?.endsWith(".")), "no key may end in a dot");
+});
+
+test("a deep path truncates at the interpolation, keeping every segment above it", () => {
+	// scripts/party/carousing/carousing-core.mjs:597.
+	const found = scanFlagLiterals(
+		"const p = `flags.${MODULE_ID}.carousingSession.modifiers.${userId}`;",
+	);
+
+	assert.deepEqual(readsOf(found), ["carousingSession.modifiers"]);
+});
+
+test("the legacy -=key deletion form is stripped in a dotted path too", () => {
+	// scripts/item-sheets/activity-tab-widgets.mjs:414.
+	const found = scanFlagLiterals("update[`flags.${MODULE_ID}.-=animationFx`] = null;");
+
+	assert.deepEqual(writesOf(found), ["animationFx"]);
+});
+
+test("the bare namespace path is not a key", () => {
+	// scripts/hex/SDXHexFogSD.mjs:621 reads `flags.${MODULE_ID}` whole. There is
+	// no key here to record, the same as a bare `doc.flags[MODULE_ID]`.
+	const found = scanFlagLiterals("const all = foundry.utils.getProperty(doc, `flags.${MODULE_ID}`);");
+
+	assert.deepEqual(found, []);
+});
+
+test("another package's dotted path is not collected", () => {
+	// scripts/dungeon/DungeonGeneratorSD.mjs:1358 and eight siblings write
+	// `wall-height` and `levels` paths. Not our stored data.
+	const found = scanFlagLiterals(`
+		await wall.update({ "flags.wall-height.bottom": 0, "flags.levels.rangeTop": 10 });
+	`);
+
+	assert.deepEqual(found, []);
+});
+
+test("an unresolvable scope is not assumed to be ours", () => {
+	// scripts/journal/pin-tmfx-adapter.mjs:54. `scope` is not MODULE_ID, so this
+	// path may belong to any package — the same rule the object channels use.
+	const found = scanFlagLiterals("updates[`flags.${scope}.${key}`] = value;");
+
+	assert.deepEqual(found, []);
+});
+
+test("a dotted path and an object payload for one key agree on its name", () => {
+	// The two write channels must produce the same string, or a rename would
+	// look like a removal in one list and an addition in the other.
+	const viaPath = scanFlagLiterals("d[`flags.${MODULE_ID}.aura.regionId`] = id;");
+	const viaPayload = scanFlagLiterals(
+		"const d = { flags: { [MODULE_ID]: { aura: { regionId: id } } } };",
+	);
+
+	assert.deepEqual(writesOf(viaPath), writesOf(viaPayload));
+});
+
 // --- robustness --------------------------------------------------------------
 
 test("a file the parser rejects reports the error instead of silently yielding nothing", () => {

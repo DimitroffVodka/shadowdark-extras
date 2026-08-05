@@ -267,6 +267,14 @@ export const FEATURE_OWNERS = {
     "hex-decor.mjs",
     // Colored-hex tile assets, lifted out of HexPainterSD.mjs in Phase 5.3.
     "hex-colored-tiles.mjs",
+    // Custom-tile scan, sizing and nav state lifted out of HexPainterSD.mjs
+    // (Phase 5.3 sweep 6).
+    "hex-custom-tiles.mjs",
+    // The five map-effect toggles, lifted out of HexPainterSD.mjs in Phase 5.3.
+    "hex-map-effects.mjs",
+    // Map dimensions + scene reformat, lifted out of HexPainterSD.mjs in
+    // Phase 5.3.
+    "hex-scene-format.mjs",
     // POI placement undo/redo history lifted out of HexPainterSD.mjs
     // (Phase 5.3 sweep 6).
     "hex-poi-history.mjs",
