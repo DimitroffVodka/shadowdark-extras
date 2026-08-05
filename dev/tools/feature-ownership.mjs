@@ -263,6 +263,8 @@ export const FEATURE_OWNERS = {
     "ContentRegistry.mjs",
     // Extracted from the composition root in Phase 3.
     "hex-tile-clamp.mjs",
+    // Decor assets + decor-tab state lifted out of HexPainterSD.mjs in Phase 5.3.
+    "hex-decor.mjs",
   ],
   dungeon: [
     "DungeonGeneratorSD.mjs",
