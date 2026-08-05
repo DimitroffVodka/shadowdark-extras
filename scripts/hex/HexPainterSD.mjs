@@ -1898,7 +1898,7 @@ async function _stampAtPointer(ev, forceStamp = false) {
 	// Track POI tiles for undo/redo
 	if (isSymbolTile && createdTiles && createdTiles.length > 0) {
 		_poiUndoStack.push({ id: createdTiles[0].id });
-		_poiRedoStack = []; // Clear redo stack on new placement
+		clearPoiRedoStack(); // Clear redo stack on new placement
 		// Advance to next tile in cycle
 		advancePreviewIndex();
 		// Update preview texture
@@ -2121,6 +2121,13 @@ export function canRedoPoi() {
  */
 export function clearPoiHistory() {
 	_poiUndoStack = [];
+	_poiRedoStack = [];
+}
+
+/**
+ * Clear the POI redo stack, leaving the undo stack alone
+ */
+function clearPoiRedoStack() {
 	_poiRedoStack = [];
 }
 
