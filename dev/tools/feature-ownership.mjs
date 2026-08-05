@@ -277,6 +277,12 @@ export const FEATURE_OWNERS = {
     // Tool-state (tile selection, dungeon mode, display toggles) lifted out of
     // DungeonPainterSD.mjs (Phase 5.3 sweep 6).
     "dungeon-tool-state.mjs",
+    // Tile catalogue (floor/wall/door/background arrays) lifted out of
+    // DungeonPainterSD.mjs (Phase 5.3 sweep 6).
+    "dungeon-tile-catalog.mjs",
+    // Interior-wall painting lifted out of DungeonPainterSD.mjs
+    // (Phase 5.3 sweep 6).
+    "dungeon-interior-walls.mjs",
     "DungeonCaveSD.mjs",
     "DungeonBiomesSD.mjs",
     "DungeonDecorSD.mjs",
