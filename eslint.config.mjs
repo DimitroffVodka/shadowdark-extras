@@ -26,6 +26,12 @@ export default [
 			"**/*compiled.mjs",
 			"scripts/maphub/**",
 			"eslint.config.mjs",
+			// Agent worktrees land here. They are git-ignored, but ESLint's flat
+			// config does not read .gitignore, so without this a second checkout
+			// of the tree gets linted alongside the real one — and the copies of
+			// dev/probes/*.mjs it contains are Foundry macro bodies that fail to
+			// parse outside a function, which turns the gate red.
+			".claude/**",
 			"dev/**",
 			"greensock/**",
 			"libs/**",
