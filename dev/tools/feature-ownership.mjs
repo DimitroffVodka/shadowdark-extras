@@ -291,8 +291,16 @@ export const FEATURE_OWNERS = {
     // imports `getCustomLightSources` from it — the crossing that used to run
     // party -> root -> party, now a plain party -> canvas row in the matrix.
     "light-templates.mjs",
-    // Drawing geometry lifted out of SDXDrawingTool.mjs in Phase 5.3.5.
+    // Lifted out of SDXDrawingTool.mjs in Phase 5.3.5: the geometry first,
+    // then the shape lifecycle, remote synchronisation and entry bookkeeping.
+    // drawing-constants.mjs holds the palette and stamp sizes, which the tool,
+    // all three mixins and the toolbar read — it exists so none of them has to
+    // import back into another.
     "drawing-geometry.mjs",
+    "drawing-constants.mjs",
+    "drawing-shapes.mjs",
+    "drawing-sync.mjs",
+    "drawing-entries.mjs",
     // Third-party compatibility: makes shadowdark-crawl-helper's lights-out
     // carousel draggable. Here rather than shared/ because shared takes a helper
     // at its SECOND consumer and this has one.
