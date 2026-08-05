@@ -133,8 +133,7 @@
       "CONST"
     ],
     "scripts/party/PartySheetSD.mjs": [
-      "CONST",
-      "loadTexture"
+      "CONST"
     ],
     "scripts/party/carousing/CarousingFoundryImport.mjs": [
       "CONST"
@@ -142,6 +141,9 @@
     "scripts/party/carousing/CarousingSD.mjs": [
       "CONST",
       "resolveActorName"
+    ],
+    "scripts/party/party-token-placement.mjs": [
+      "loadTexture"
     ],
     "scripts/scene/SceneExporter.mjs": [
       "JSZip"

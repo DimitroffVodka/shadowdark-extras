@@ -164,6 +164,20 @@ export const FEATURE_OWNERS = {
     // registrations, one of them a contended hook name — see its docblock.
     "party-creation.mjs",
     "party-light-tracker.mjs",
+    // Prototype mixins and helpers split out of PartySheetSD. Phase 5.1 took
+    // the travel, XP and inventory handlers plus the unidentified-item
+    // helpers; Phase 5.3 took roster preparation, drag/drop transfer, token
+    // placement and the token light search. carousing-core.mjs is the same
+    // shape one level down, split out of CarousingSD.
+    "partytravel.mjs",
+    "partyxp.mjs",
+    "partyinventory.mjs",
+    "party-unidentified.mjs",
+    "party-roster.mjs",
+    "party-drop-transfer.mjs",
+    "party-token-placement.mjs",
+    "party-token-light.mjs",
+    "carousing-core.mjs",
   ],
   npc: [
     "CreatureTypesApp.mjs",

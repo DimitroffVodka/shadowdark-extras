@@ -420,8 +420,13 @@ test("the root-import guard catches every import spelling, including backticks",
  * names" alone would have dropped the guard entirely, so the guard follows the
  * name to its new home: the module must export it, and the consumer must reach
  * it there rather than through the root.
+ *
+ * The consumer moved once more in the Phase 5.3 split — the brightest-light
+ * search left PartySheetSD for party-token-light.mjs and took the import with
+ * it. The guard follows the name again; what it protects is the direction of
+ * the import, not which file happens to hold the call.
  */
-test("light templates own getCustomLightSources, and PartySheetSD imports it from there", () => {
+test("light templates own getCustomLightSources, and the light module imports it from there", () => {
   const modulePath = path.join(REPO_ROOT, "scripts/canvas/light-templates.mjs");
   const moduleSource = readFileSync(modulePath, "utf8");
   assert.match(
@@ -430,11 +435,12 @@ test("light templates own getCustomLightSources, and PartySheetSD imports it fro
     "canvas/light-templates.mjs must export getCustomLightSources",
   );
 
-  const consumerSource = readFileSync(path.join(REPO_ROOT, "scripts/party/PartySheetSD.mjs"), "utf8");
+  const consumerSource = readFileSync(
+    path.join(REPO_ROOT, "scripts/party/party-token-light.mjs"), "utf8");
   assert.match(
     consumerSource,
     /import \{ getCustomLightSources \} from "\.\.\/canvas\/light-templates\.mjs";/,
-    "PartySheetSD.mjs must import getCustomLightSources from canvas/light-templates.mjs",
+    "party-token-light.mjs must import getCustomLightSources from canvas/light-templates.mjs",
   );
   assert.doesNotMatch(
     consumerSource,
