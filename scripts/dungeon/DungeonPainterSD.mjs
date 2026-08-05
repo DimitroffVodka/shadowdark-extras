@@ -14,6 +14,50 @@ import {
 // The level-context helpers that were public on this module stay public: the
 // dungeon generators and the composition root import them from here.
 export { getSceneLevelContext, getDocumentLevelId, applySceneLevelData, getCurrentElevation };
+
+// Tool-state (tile selection, dungeon mode, display toggles) now lives in
+// dungeon-tool-state.mjs. The painter reads the bindings and writes them only
+// through the pure setters, so the module can stay an importless leaf.
+import {
+	_selectedFloorTile,
+	_selectedWallTile,
+	_selectedDoorTile,
+	_selectedIntWallTile,
+	_selectedIntDoorTile,
+	_selectedBackground,
+	_dungeonMode,
+	_noFoundryWalls,
+	_wallShadows,
+	selectFloorTile,
+	selectWallTile,
+	selectDoorTile,
+	setDungeonMode,
+	getDungeonMode,
+	getSelectedFloorTile,
+	getSelectedWallTile,
+	getSelectedDoorTile,
+	setNoFoundryWalls,
+	getNoFoundryWalls,
+	setWallShadows,
+	getWallShadows,
+	selectIntWallTile,
+	getSelectedIntWallTile,
+	selectIntDoorTile,
+	getSelectedIntDoorTile,
+	setDungeonBackground,
+	getDungeonBackground,
+} from "./dungeon-tool-state.mjs";
+
+// The tool-state helpers that were public on this module stay public: the tray
+// and the dungeon generators import them from here.
+export {
+	setDungeonMode, getDungeonMode, selectFloorTile, getSelectedFloorTile,
+	selectWallTile, getSelectedWallTile, selectDoorTile, getSelectedDoorTile,
+	setNoFoundryWalls, getNoFoundryWalls, setWallShadows, getWallShadows,
+	selectIntWallTile, getSelectedIntWallTile, selectIntDoorTile, getSelectedIntDoorTile,
+	setDungeonBackground, getDungeonBackground,
+};
+
 /**
  * SDX Dungeon Painter - Room/Dungeon mapping tool
  * Paints floor tiles, auto-generates walls and wall visuals, and supports doors
@@ -57,23 +101,14 @@ Hooks.once("init", () => {
 let _floorTiles = null;
 let _wallTiles = null;
 let _doorTiles = null;
-let _selectedFloorTile = null;
-let _selectedWallTile = null;
-let _selectedDoorTile = null;
-let _dungeonMode = "tiles"; // "tiles", "intwalls", or "doors"
 let _paintEnabled = false;
 let _isDragging = false;
 let _dragStart = null;
 let _isShiftHeld = false;
 let _selectionRect = null;
 let _rebuildTimeout = null;
-let _noFoundryWalls = false; // Toggle to skip creating Foundry wall documents (but keep visuals)
-let _wallShadows = false; // Toggle to apply TokenMagic dropshadow2 to wall drawings
 let _curvedWalls = false; // Toggle: wall painted floors with smoothed/curved (Dyson-style) walls instead of straight
-let _selectedIntWallTile = null; // Selected tile for interior wall placement
-let _selectedIntDoorTile = null; // Selected door tile for interior wall door cutting
 let _backgroundTiles = null;
-let _selectedBackground = "none";
 
 // Socket reference for player -> GM communication
 let _dungeonSocket = null;
@@ -422,96 +457,10 @@ export async function getDungeonPainterData() {
 }
 
 /**
- * Set dungeon mode
- */
-export function setDungeonMode(mode) {
-	if (mode === "tiles" || mode === "doors" || mode === "intwalls") {
-		_dungeonMode = mode;
-	}
-}
-
-/**
- * Get current dungeon mode
- */
-export function getDungeonMode() {
-	return _dungeonMode;
-}
-
-/**
- * Select a floor tile
- */
-export function selectFloorTile(tilePath) {
-	_selectedFloorTile = tilePath;
-}
-
-/**
- * Select a wall tile
- */
-export function selectWallTile(tilePath) {
-	_selectedWallTile = tilePath;
-}
-
-/**
- * Select a door tile
- */
-export function selectDoorTile(tilePath) {
-	_selectedDoorTile = tilePath;
-}
-
-/**
- * Get selected floor tile path
- */
-export function getSelectedFloorTile() {
-	return _selectedFloorTile;
-}
-
-/**
- * Get selected wall tile path
- */
-export function getSelectedWallTile() {
-	return _selectedWallTile;
-}
-
-/**
- * Get selected door tile path
- */
-export function getSelectedDoorTile() {
-	return _selectedDoorTile;
-}
-
-/**
  * Get loaded door tiles array
  */
 export function getDoorTiles() {
 	return _doorTiles || [];
-}
-
-/**
- * Set whether to skip creating Foundry walls (visuals only)
- */
-export function setNoFoundryWalls(value) {
-	_noFoundryWalls = !!value;
-}
-
-/**
- * Get whether Foundry walls are disabled
- */
-export function getNoFoundryWalls() {
-	return _noFoundryWalls;
-}
-
-/**
- * Set whether to apply wall shadows (TokenMagic dropshadow2) to wall drawings
- */
-export function setWallShadows(value) {
-	_wallShadows = !!value;
-}
-
-/**
- * Get whether wall shadows are enabled
- */
-export function getWallShadows() {
-	return _wallShadows;
 }
 
 /**
@@ -529,48 +478,6 @@ export function setCurvedWalls(value) {
  */
 export function getCurvedWalls() {
 	return _curvedWalls;
-}
-
-/**
- * Select an interior wall tile
- */
-export function selectIntWallTile(path) {
-	_selectedIntWallTile = path || null;
-}
-
-/**
- * Get the selected interior wall tile path
- */
-export function getSelectedIntWallTile() {
-	return _selectedIntWallTile;
-}
-
-/**
- * Select a door tile for interior wall door cutting
- */
-export function selectIntDoorTile(path) {
-	_selectedIntDoorTile = path || null;
-}
-
-/**
- * Get the selected interior door tile path
- */
-export function getSelectedIntDoorTile() {
-	return _selectedIntDoorTile;
-}
-
-/**
- * Set dungeon background selection
- */
-export function setDungeonBackground(value) {
-	_selectedBackground = value;
-}
-
-/**
- * Get dungeon background selection
- */
-export function getDungeonBackground() {
-	return _selectedBackground;
 }
 
 /**

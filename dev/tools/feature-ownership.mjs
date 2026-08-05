@@ -271,6 +271,9 @@ export const FEATURE_OWNERS = {
     // Level-context / Foundry-levels adapter lifted out of DungeonPainterSD.mjs
     // (Phase 5.3 sweep 6).
     "dungeon-level-context.mjs",
+    // Tool-state (tile selection, dungeon mode, display toggles) lifted out of
+    // DungeonPainterSD.mjs (Phase 5.3 sweep 6).
+    "dungeon-tool-state.mjs",
     "DungeonCaveSD.mjs",
     "DungeonBiomesSD.mjs",
     "DungeonDecorSD.mjs",
