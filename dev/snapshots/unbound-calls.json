@@ -139,7 +139,9 @@
       "CONST"
     ],
     "scripts/party/carousing/CarousingSD.mjs": [
-      "CONST",
+      "CONST"
+    ],
+    "scripts/party/carousing/carousing-log.mjs": [
       "resolveActorName"
     ],
     "scripts/party/party-token-placement.mjs": [

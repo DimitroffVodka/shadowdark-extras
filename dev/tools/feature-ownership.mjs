@@ -177,7 +177,16 @@ export const FEATURE_OWNERS = {
     "party-drop-transfer.mjs",
     "party-token-placement.mjs",
     "party-token-light.mjs",
+    // Carousing, split the same way one level down: carousing-core.mjs holds
+    // the journal-backed session state, and Phase 5.3 took the coin maths,
+    // renown, actor notes, the session log and the UI out of CarousingSD.
+    // CarousingSD stays the public face and re-exports all of them.
     "carousing-core.mjs",
+    "carousing-wealth.mjs",
+    "carousing-renown.mjs",
+    "carousing-notes.mjs",
+    "carousing-log.mjs",
+    "carousing-ui.mjs",
   ],
   npc: [
     "CreatureTypesApp.mjs",

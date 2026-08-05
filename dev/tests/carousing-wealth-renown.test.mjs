@@ -161,10 +161,91 @@ test("the display card carries coins, gear and total, both raw and labelled", ()
 	});
 });
 
-// deductCoinsCp — the change-making deduction — has no public entry point in
-// this module today; it is reached only from the roll executors and
-// applyCarousingOutcome. The split gives it one, so its coverage lands with
-// the move rather than here. Nothing about its behaviour is asserted yet.
+// --- making change ----------------------------------------------------------
+//
+// New coverage, not carried across: deductCoinsCp had no public entry point
+// before the Phase 5.3 split — it was reached only from the roll executors and
+// applyCarousingOutcome — so nothing could reach it to assert. carousing-wealth
+// exports it, and these are its first tests.
+//
+// It spends the smallest coins first and breaks a larger one only when the
+// remainder cannot be covered, so the actor's coin COUNT stays as close to
+// unchanged as it can. In Shadowdark 100 coins is a gear slot regardless of
+// denomination, so silently normalising a purse would alter encumbrance.
+
+const { deductCoinsCp } = await import("../../scripts/party/carousing/carousing-wealth.mjs");
+
+/** Deduct and report both the purse left behind and what was actually taken. */
+async function deduct(coins, cpAmount) {
+	const actor = makeActor({ coins });
+	const spent = await deductCoinsCp(actor, cpAmount);
+	return { purse: actor.system.coins, spent, wrote: actor.updates.length };
+}
+
+test("copper alone covers a small debt, leaving larger coins whole", async () => {
+	const { purse, spent } = await deduct({ gp: 1, sp: 0, cp: 10 }, 5);
+
+	assert.deepEqual(purse, { gp: 1, sp: 0, cp: 5 }, "the gold piece is not broken for no reason");
+	assert.equal(spent, 5);
+});
+
+test("a silver is broken only when copper runs short, and the change comes back", async () => {
+	const { purse, spent } = await deduct({ gp: 0, sp: 1, cp: 0 }, 5);
+
+	assert.deepEqual(purse, { gp: 0, sp: 0, cp: 5 });
+	assert.equal(spent, 5);
+});
+
+test("breaking a gold piece returns change as silver and copper, not raw copper", async () => {
+	const { purse, spent } = await deduct({ gp: 1, sp: 0, cp: 0 }, 5);
+
+	assert.deepEqual(purse, { gp: 0, sp: 9, cp: 5 }, "95 copper of change, denominated");
+	assert.equal(spent, 5);
+});
+
+test("copper is spent first even when silver would cover the whole debt", async () => {
+	const { purse } = await deduct({ gp: 0, sp: 5, cp: 8 }, 8);
+
+	assert.deepEqual(purse, { gp: 0, sp: 5, cp: 0 }, "no silver was broken");
+});
+
+test("a debt beyond the purse takes everything and reports only what was there", async () => {
+	const { purse, spent } = await deduct({ gp: 2, sp: 0, cp: 0 }, 250);
+
+	assert.deepEqual(purse, { gp: 0, sp: 0, cp: 0 });
+	assert.equal(spent, 200, "clamped to the purse, not the amount asked for");
+});
+
+test("an exact payment empties the purse without leaving change", async () => {
+	const { purse, spent } = await deduct({ gp: 1, sp: 2, cp: 3 }, 123);
+
+	assert.deepEqual(purse, { gp: 0, sp: 0, cp: 0 });
+	assert.equal(spent, 123);
+});
+
+test("a zero, negative or unparseable amount writes nothing at all", async () => {
+	for (const amount of [0, -10, undefined, "nonsense"]) {
+		const { wrote, spent } = await deduct({ gp: 1, sp: 1, cp: 1 }, amount);
+		assert.equal(wrote, 0, `amount ${amount} should not touch the actor`);
+		assert.equal(spent, 0);
+	}
+});
+
+test("deducting from an empty purse is a no-op rather than a negative balance", async () => {
+	const { wrote, spent } = await deduct({ gp: 0, sp: 0, cp: 0 }, 50);
+
+	assert.equal(spent, 0);
+	assert.equal(wrote, 0);
+});
+
+test("a gold amount is converted to copper before being deducted", async () => {
+	const { deductCoins } = await import("../../scripts/party/carousing/carousing-wealth.mjs");
+	const actor = makeActor({ coins: { gp: 3, sp: 0, cp: 0 } });
+
+	await deductCoins(actor, 2);
+
+	assert.deepEqual(actor.system.coins, { gp: 1, sp: 0, cp: 0 }, "2 gp = 200 cp");
+});
 
 // --- renown deltas ----------------------------------------------------------
 

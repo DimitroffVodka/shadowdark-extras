@@ -31,9 +31,6 @@
       "Hooks.on:preUpdateActor",
       "Hooks.on:updateActor"
     ],
-    "CarousingSD.mjs": [
-      "Hooks.on:updateJournalEntry"
-    ],
     "DungeonBiomesSD.mjs": [
       "Hooks.once:init"
     ],
@@ -295,6 +292,9 @@
     ],
     "carousel-drag.mjs": [
       "Hooks.once:ready"
+    ],
+    "carousing-ui.mjs": [
+      "Hooks.on:updateJournalEntry"
     ],
     "chat-card-hooks.mjs": [
       "Hooks.on:preCreateChatMessage",
