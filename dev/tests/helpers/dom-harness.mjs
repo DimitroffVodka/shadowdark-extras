@@ -31,6 +31,19 @@
 export function stubNamespace(overrides = {}) {
 	const cache = new Map();
 	const base = class SdxStub {};
+	// A subclass calling super.someMethod() must find something callable, so
+	// unknown instance members resolve to no-ops. `then` is excluded, or
+	// awaiting an instance would treat it as a thenable and hang.
+	const OPAQUE = new Set(["then", "toJSON", "inspect", "nodeType"]);
+	Object.setPrototypeOf(base.prototype, new Proxy({}, {
+		get(target, key) {
+			if (typeof key === "symbol" || OPAQUE.has(key)) return Reflect.get(target, key);
+			return function stubMethod() {};
+		},
+		has() {
+			return true;
+		},
+	}));
 	return new Proxy(base, {
 		get(target, key) {
 			if (Object.hasOwn(overrides, key)) return overrides[key];
@@ -283,6 +296,56 @@ export function makeSelectorDom({ absent = [], lists = {}, seedAll = false, clos
 
 	dom.document = document;
 	return dom;
+}
+
+/**
+ * A jQuery stand-in for the AppV1 sheets, whose activateListeners(html) binds
+ * through `html.find(selector).click(handler)` rather than addEventListener.
+ *
+ * Same idea as makeSelectorDom: find() is keyed by selector string and records
+ * what gets bound to it, so activateListeners yields a manifest of the same
+ * shape and handlers stay reachable by selector.
+ *
+ * @param {Object} [dom] - Backing selector DOM, so html.get(0) and any
+ *   querySelector calls resolve against the same node set.
+ */
+export function makeJquery(dom = makeSelectorDom()) {
+	const EVENTS = ["click", "change", "contextmenu", "submit", "input", "focus", "blur",
+		"dblclick", "mousedown", "mouseup", "keydown", "keyup", "dragstart", "dragover", "drop"];
+
+	const wrap = (selector, node) => {
+		const api = {
+			selector,
+			get: index => (index === 0 ? node : undefined),
+			find: inner => wrap(`${selector} ${inner}`, dom.node(`${selector} ${inner}`)),
+			each(fn) {
+				fn.call(node, 0, node);
+				return api;
+			},
+			on(event, handler) {
+				dom.bindings.push({ selector, event, handler });
+				return api;
+			},
+			addClass: () => api,
+			removeClass: () => api,
+			attr: () => api,
+			val: () => node.value,
+			length: 1,
+			0: node,
+		};
+		for (const event of EVENTS) {
+			api[event] = handler => {
+				dom.bindings.push({ selector, event, handler });
+				return api;
+			};
+		}
+		return api;
+	};
+
+	const root = wrap(".sheet", dom.node(".sheet"));
+	root.find = inner => wrap(inner, dom.node(inner));
+	root.dom = dom;
+	return root;
 }
 
 /**
