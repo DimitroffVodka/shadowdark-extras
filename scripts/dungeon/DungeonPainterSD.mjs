@@ -218,19 +218,19 @@ export async function loadDungeonAssets() {
 
 	// Select first floor tile by default
 	if (_floorTiles.length > 0 && !_selectedFloorTile) {
-		_selectedFloorTile = _floorTiles[0].path;
+		selectFloorTile(_floorTiles[0].path);
 	}
 
 	// Select wall tile by default (prefer dyson)
 	if (_wallTiles.length > 0 && !_selectedWallTile) {
 		const dysonTile = _wallTiles.find(t => t.key.toLowerCase().includes("dyson"));
-		_selectedWallTile = dysonTile ? dysonTile.path : _wallTiles[0].path;
+		selectWallTile(dysonTile ? dysonTile.path : _wallTiles[0].path);
 	}
 
 	// Select door tile by default (prefer B&W-Portal-01)
 	if (_doorTiles.length > 0 && !_selectedDoorTile) {
 		const portalTile = _doorTiles.find(t => t.key.toLowerCase().includes("portal-01"));
-		_selectedDoorTile = portalTile ? portalTile.path : _doorTiles[0].path;
+		selectDoorTile(portalTile ? portalTile.path : _doorTiles[0].path);
 	}
 
 	console.log(`${MODULE_ID} | Loaded ${_floorTiles.length} floor tiles, ${_wallTiles.length} wall tiles, ${_doorTiles.length} door tiles, ${(_backgroundTiles || []).length} background tiles`);
@@ -276,9 +276,9 @@ export async function reloadDungeonAssets() {
 	_wallTiles = null;
 	_doorTiles = null;
 	_backgroundTiles = null;
-	_selectedFloorTile = null;
-	_selectedWallTile = null;
-	_selectedDoorTile = null;
+	selectFloorTile(null);
+	selectWallTile(null);
+	selectDoorTile(null);
 	// Clear cached metadata so loadDungeonAssets re-scans folders
 	await cache.setMetadata("dungeon_tiles_metadata", null);
 	await loadDungeonAssets();
@@ -1874,7 +1874,7 @@ async function rebuildWallsForLevel(scene, levelContext, { wallTilePath = null, 
 
 	const gridSize = scene.grid?.size || canvas.grid?.size || GRID_SIZE;
 	const originalWallTile = _selectedWallTile;
-	if (wallTilePath) _selectedWallTile = wallTilePath;
+	if (wallTilePath) selectWallTile(wallTilePath);
 
 	try {
 		const floors = new Set();
@@ -2038,7 +2038,7 @@ async function rebuildWallsForLevel(scene, levelContext, { wallTilePath = null, 
 		console.log(`${MODULE_ID} | ${logPrefix}Rebuilt ${noWalls ? "0 (disabled)" : totalWalls} walls and ${totalDrawings} wall visuals on level "${levelContext.levelId ?? "none"}"`);
 	}
 	finally {
-		_selectedWallTile = originalWallTile;
+		selectWallTile(originalWallTile);
 	}
 }
 
