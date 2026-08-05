@@ -6,10 +6,9 @@
 // PIXI.Graphics it is handed; none of it touches tool state, which is what
 // makes it assertable as a command sequence.
 //
-// getHexClusterOutline reads canvas.grid for hex metrics. It also has a known
-// defect: for the "medium" and "large" tiers the edge stitcher dead-ends and
-// it returns null, so those stamps draw no cluster outline. Frozen by test,
-// not fixed here — see dev/tests/canvas-drawing-geometry.test.mjs.
+// getHexClusterOutline reads canvas.grid for hex metrics, and returns null for
+// any cluster it cannot walk into a closed ring — the callers treat that as
+// "draw no outline". See dev/tests/canvas-drawing-geometry.test.mjs.
 
 export function cssToPixiColor(css) {
 	if (typeof css === "number") return css;
@@ -348,94 +347,98 @@ export function getHexClusterOutline(tier, centerX, centerY) {
 		hexAxialCoords.push(...ring2);
 	}
 
-	// Collect all edges from all hexes
-	// Use a map to track edges - shared edges (internal) will be added twice and removed
-	const allEdges = [];
-
-	// Round coordinates to avoid floating point issues (snap to 0.5 precision)
+	// Corners are quantised to a 0.5px lattice so the same corner reached from
+	// two different hexes compares equal. Quantising each raw value on its own
+	// is not enough: neighbouring hexes arrive at a shared corner through
+	// different arithmetic, so their copies differ by a few ULPs, and when the
+	// true coordinate sits exactly on a rounding tie — y = 57.75 on a 100px
+	// grid centred at the origin — those ULPs drop the copies into different
+	// lattice cells. The corner then reads as two separate points, its two
+	// half-edges stop cancelling, and interior edges leak into the boundary
+	// set. That is what used to leave medium and large clusters unstitchable.
+	//
+	// Resolving each raw corner against the corners already seen fixes it at
+	// the source: the tolerance sits far below the hex edge length and far
+	// above the numeric noise, so every copy of a corner collapses onto one
+	// shared object and both the cancelling and the stitching below become
+	// identity comparisons rather than string or distance approximations.
 	const snap = v => Math.round(v * 2) / 2;
-	const pointKey = p => `${snap(p.x)},${snap(p.y)}`;
+	const cellIndex = v => Math.round(v * 2);
+	const CORNER_EPSILON = 1e-6;
+	const cornersByCell = new Map();
+
+	const canonicalCorner = (x, y) => {
+		const cx = cellIndex(x);
+		const cy = cellIndex(y);
+		for (let dx = -1; dx <= 1; dx++) {
+			for (let dy = -1; dy <= 1; dy++) {
+				const seen = cornersByCell.get(`${cx + dx},${cy + dy}`);
+				if (seen
+					&& Math.abs(seen.rawX - x) < CORNER_EPSILON
+					&& Math.abs(seen.rawY - y) < CORNER_EPSILON) return seen;
+			}
+		}
+		const corner = { x: snap(x), y: snap(y), rawX: x, rawY: y, key: `${cx},${cy}` };
+		cornersByCell.set(corner.key, corner);
+		return corner;
+	};
+
+	// Collect every hex edge; the ones two hexes share cancel, and what is left
+	// is the boundary of the union. Edges are keyed on their unordered endpoint
+	// pair, so the two hexes meeting along an edge always land on the same key.
+	const edgesById = new Map();
 
 	for (const axial of hexAxialCoords) {
 		const pixelPos = axialToPixel(axial.q, axial.r);
 		const verts = getHexVertices(centerX + pixelPos.x, centerY + pixelPos.y);
+		const corners = verts.map(v => canonicalCorner(v.x, v.y));
 
 		for (let i = 0; i < 6; i++) {
-			const p1 = { x: snap(verts[i].x), y: snap(verts[i].y) };
-			const p2 = { x: snap(verts[(i + 1) % 6].x), y: snap(verts[(i + 1) % 6].y) };
-			allEdges.push({ p1, p2, key: `${pointKey(p1)}|${pointKey(p2)}` });
+			const a = corners[i];
+			const b = corners[(i + 1) % 6];
+			const id = a.key < b.key ? `${a.key}|${b.key}` : `${b.key}|${a.key}`;
+			const seen = edgesById.get(id);
+			if (seen) seen.count += 1;
+			else edgesById.set(id, { id, a, b, count: 1 });
 		}
 	}
 
-	// Remove shared edges (edges that appear in both directions)
-	const edgeCounts = new Map();
-	for (const edge of allEdges) {
-		const revKey = `${pointKey(edge.p2)}|${pointKey(edge.p1)}`;
-		if (edgeCounts.has(revKey)) {
-			edgeCounts.set(revKey, edgeCounts.get(revKey) + 1);
-		}
-		else if (edgeCounts.has(edge.key)) {
-			edgeCounts.set(edge.key, edgeCounts.get(edge.key) + 1);
-		}
-		else {
-			edgeCounts.set(edge.key, 1);
-		}
+	const boundaryEdges = [];
+	for (const edge of edgesById.values()) {
+		if (edge.count === 1) boundaryEdges.push(edge);
 	}
 
-	// Keep only edges that appear once (outer edges)
-	const outerEdges = allEdges.filter(edge => {
-		const revKey = `${pointKey(edge.p2)}|${pointKey(edge.p1)}`;
-		const count = edgeCounts.get(edge.key) || edgeCounts.get(revKey) || 0;
-		return count === 1;
-	});
+	if (boundaryEdges.length === 0) return null;
 
-	if (outerEdges.length === 0) return null;
-
-	// Stitch edges into a continuous path
+	// Stitch the boundary into one closed ring. Each step takes whichever
+	// unused edge touches the cursor at either end, so a boundary that is not
+	// consistently wound still walks; the ring is only returned once it closes
+	// back on the corner it started from, since a partial walk would render as
+	// a wrong shape rather than as no shape at all.
 	const path = [];
 	const used = new Set();
+	const startCorner = boundaryEdges[0].a;
+	let cursor = startCorner;
+	let closed = false;
 
-	// Start with first edge
-	let current = outerEdges[0];
-	used.add(current.key);
-	path.push(current.p1.x, current.p1.y);
+	for (let step = 0; step <= boundaryEdges.length; step++) {
+		const from = cursor;
+		path.push(from.x, from.y);
 
-	let cursor = current.p2;
-	const startPoint = current.p1;
-
-	let iterations = 0;
-	const maxIterations = outerEdges.length + 10;
-
-	while (iterations < maxIterations) {
-		path.push(cursor.x, cursor.y);
-
-		// Check if we've closed the loop
-		const distToStart = Math.abs(cursor.x - startPoint.x) + Math.abs(
-			cursor.y - startPoint.y
+		const next = boundaryEdges.find(
+			edge => !used.has(edge.id) && (edge.a === from || edge.b === from)
 		);
-		if (distToStart < 2) {
+		if (!next) break;
+
+		used.add(next.id);
+		cursor = next.a === from ? next.b : next.a;
+
+		if (cursor === startCorner) {
+			path.push(startCorner.x, startCorner.y);
+			closed = true;
 			break;
 		}
-
-		// Find next edge that starts at cursor
-		let found = false;
-		const cursorKey = pointKey(cursor);
-
-		for (const edge of outerEdges) {
-			if (used.has(edge.key)) continue;
-
-			// Check if this edge starts at cursor
-			if (pointKey(edge.p1) === cursorKey) {
-				used.add(edge.key);
-				cursor = edge.p2;
-				found = true;
-				break;
-			}
-		}
-
-		if (!found) break;
-		iterations++;
 	}
 
-	return path.length > 6 ? path : null;
+	return closed && path.length > 6 ? path : null;
 }

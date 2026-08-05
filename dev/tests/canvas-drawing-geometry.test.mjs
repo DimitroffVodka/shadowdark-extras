@@ -185,18 +185,65 @@ test("an unrecognised tier draws the single centre hex", () => {
 	);
 });
 
-// KNOWN DEFECT, frozen deliberately rather than fixed inside a refactor.
-//
-// medium adds a 6-hex ring and large a further 12. The shared-edge removal
-// works — 42 edges reduce to the 24 boundary edges of the flower, and 114 to
-// 44 for the 19-hex cluster. The stitcher that walks those edges into a path
-// is what fails: it chains one step, dead-ends, and returns a 3-point path,
-// which the trailing `path.length > 6` check converts to null. The caller then
-// skips drawing, so medium and large hex stamps render with no cluster
-// outline at all.
-test("medium and large clusters currently produce no outline", () => {
-	assert.equal(tool._getHexClusterOutline("medium", 0, 0), null);
-	assert.equal(tool._getHexClusterOutline("large", 0, 0), null);
+// medium adds a 6-hex ring and large a further 12. Cancelling the edges each
+// pair of hexes shares reduces the flower's 42 hex edges to an 18-edge
+// boundary, and the 19-hex cluster's 114 to 30. Each walks into a closed ring
+// of that many corners, plus the start corner repeated to close the path.
+test("medium and large clusters stitch into closed rings", () => {
+	const rings = [
+		["medium", tool._getHexClusterOutline("medium", 0, 0), 18],
+		["large", tool._getHexClusterOutline("large", 0, 0), 30],
+	];
+
+	for (const [tier, path, corners] of rings) {
+		assert.ok(Array.isArray(path), `${tier} produces an outline`);
+		assert.equal(path.length % 2, 0, `${tier} coordinates come in pairs`);
+		assert.equal(path.length / 2, corners + 1, `${tier} boundary plus its closing point`);
+		assert.ok(path.every(Number.isFinite), `no NaN in the ${tier} outline`);
+		assert.equal(path[0], path[path.length - 2], `${tier} ring closes in x`);
+		assert.equal(path[1], path[path.length - 1], `${tier} ring closes in y`);
+	}
+});
+
+test("each tier spans further than the one below it", () => {
+	const extent = path => {
+		const xs = path.filter((_, i) => i % 2 === 0);
+		const ys = path.filter((_, i) => i % 2 === 1);
+		return Math.max(
+			Math.max(...xs) - Math.min(...xs),
+			Math.max(...ys) - Math.min(...ys),
+		);
+	};
+
+	const small = extent(tool._getHexClusterOutline("small", 0, 0));
+	const medium = extent(tool._getHexClusterOutline("medium", 0, 0));
+	const large = extent(tool._getHexClusterOutline("large", 0, 0));
+
+	assert.ok(medium > small, `medium (${medium}) must span more than small (${small})`);
+	assert.ok(large > medium, `large (${large}) must span more than medium (${medium})`);
+});
+
+// The regression this replaces: a corner shared by two hexes was quantised to
+// a 0.5px lattice independently for each hex, and at centre (0, 0) the shared
+// y lands on 57.75 — exactly a rounding tie. The two copies differed by a few
+// ULPs, tipped either side of it, and read as two separate corners, so the
+// interior edges between them stopped cancelling and leaked into the boundary
+// set. The stitcher then walked one spurious edge, came straight back to where
+// it started, and returned a 3-point path that the caller discarded. Which
+// corners cancel must not depend on where the cluster is centred.
+test("the cluster outline does not depend on where it is centred", () => {
+	for (const tier of ["small", "medium", "large"]) {
+		const atOrigin = tool._getHexClusterOutline(tier, 0, 0);
+
+		for (const [cx, cy] of [[500, 500], [-320, 140], [37, -991]]) {
+			const moved = tool._getHexClusterOutline(tier, cx, cy);
+			assert.ok(moved, `${tier} produces an outline at (${cx}, ${cy})`);
+			assert.equal(
+				moved.length, atOrigin.length,
+				`${tier} keeps its corner count at (${cx}, ${cy})`,
+			);
+		}
+	}
 });
 
 // The code's own comments note the columns/type detection reads inverted from
