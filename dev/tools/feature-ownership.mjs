@@ -263,6 +263,9 @@ export const FEATURE_OWNERS = {
     "ContentRegistry.mjs",
     // Extracted from the composition root in Phase 3.
     "hex-tile-clamp.mjs",
+    // POI placement undo/redo history lifted out of HexPainterSD.mjs
+    // (Phase 5.3 sweep 6).
+    "hex-poi-history.mjs",
   ],
   dungeon: [
     "DungeonGeneratorSD.mjs",

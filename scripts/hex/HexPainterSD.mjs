@@ -3,6 +3,24 @@ import { BIOME_TILES, BIOME_TINTS } from "./HexGeneratorSD.mjs";
 import { getDoorTiles } from "../dungeon/DungeonPainterSD.mjs";
 import { setHexTerrain } from "./HexTooltipSD.mjs";
 import { loadDDPackDecorTiles } from "../dungeon/DDPackManagerSD.mjs";
+import {
+	_poiUndoStack,
+	canUndoPoi,
+	canRedoPoi,
+	clearPoiHistory,
+	clearPoiRedoStack,
+	undoLastPoi,
+	redoLastPoi,
+} from "./hex-poi-history.mjs";
+
+// The POI undo/redo history now lives in hex-poi-history.mjs. The painter
+// pushes onto _poiUndoStack (mutation is legal through a read-only import
+// binding) and clears the redo stack only through clearPoiRedoStack, so the
+// module can stay an importless leaf.
+//
+// The POI helpers that were public on this module stay public: the tray and its
+// handle bindings import them from here.
+export { canUndoPoi, canRedoPoi, clearPoiHistory, undoLastPoi, redoLastPoi };
 
 // Maps default-tile biome keys to user-friendly terrain labels
 const BIOME_TO_TERRAIN = {
@@ -87,8 +105,6 @@ let _customNavPath = [];
 let _poiScale = 0.5;             // Scale factor for POI tiles (0.1 - 2.0)
 let _poiRotation = 0;            // Rotation in degrees (0, 90, 180, 270)
 let _poiMirror = false;          // Horizontal mirror
-let _poiUndoStack = [];          // Stack of placed POI tile IDs and data
-let _poiRedoStack = [];          // Stack of tile data for redo
 let _previewSprite = null;       // PIXI sprite for preview
 let _previewContainer = null;    // Container for preview sprite
 let _previewEnabled = false;     // Whether preview is active
@@ -2096,88 +2112,6 @@ function _decodePathLabel(value) {
 	catch (_) {
 		return String(value || "");
 	}
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   POI UNDO/REDO
-   ═══════════════════════════════════════════════════════════════ */
-
-/**
- * Check if undo is available
- */
-export function canUndoPoi() {
-	return _poiUndoStack.length > 0;
-}
-
-/**
- * Check if redo is available
- */
-export function canRedoPoi() {
-	return _poiRedoStack.length > 0;
-}
-
-/**
- * Clear POI history (both stacks)
- */
-export function clearPoiHistory() {
-	_poiUndoStack = [];
-	_poiRedoStack = [];
-}
-
-/**
- * Clear the POI redo stack, leaving the undo stack alone
- */
-function clearPoiRedoStack() {
-	_poiRedoStack = [];
-}
-
-/**
- * Undo the last POI tile placement
- */
-export async function undoLastPoi() {
-	if (_poiUndoStack.length === 0) return false;
-
-	const lastEntry = _poiUndoStack.pop();
-	if (!lastEntry) return false;
-
-	// Find and delete the tile
-	const tile = canvas.tiles.get(lastEntry.id);
-	if (tile) {
-		// Store the full tile data for redo
-		const tileData = tile.document.toObject();
-		_poiRedoStack.push(tileData);
-
-		// Delete the tile
-		await canvas.scene.deleteEmbeddedDocuments("Tile", [lastEntry.id]);
-		return true;
-	}
-
-	return false;
-}
-
-/**
- * Redo the last undone POI tile
- */
-export async function redoLastPoi() {
-	if (_poiRedoStack.length === 0) return false;
-
-	const tileData = _poiRedoStack.pop();
-	if (!tileData) return false;
-
-	// Recreate the tile
-	try {
-		const created = await canvas.scene.createEmbeddedDocuments("Tile", [tileData]);
-		if (created && created.length > 0) {
-			// Add to undo stack
-			_poiUndoStack.push({ id: created[0].id });
-			return true;
-		}
-	}
-	catch (err) {
-		console.error(`${MODULE_ID} | Failed to redo POI tile:`, err);
-	}
-
-	return false;
 }
 
 /* ═══════════════════════════════════════════════════════════════
