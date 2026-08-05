@@ -91,13 +91,29 @@ origin sees it.
    later run is refused with *"Mocha instance is currently running tests"* until
    the page reloads.
 
-7. **Collect results.**
+7. **Collect results.** Quench does *not* put the outcome in the `<li>`'s class —
+   every test stays `class="test"` whether it passed or failed. The outcome is
+   the status icon inside it, so read that:
    ```js
-   () => [...document.querySelectorAll("#quench-results .test")].map(el => ({
-     title: el.querySelector(".test-title")?.textContent?.trim(),
-     state: el.className,
-   }))
+   () => {
+     const els = [...document.querySelectorAll("li.test")];
+     const tally = { pass: 0, fail: 0, pending: 0 };
+     const failures = [];
+     for (const el of els) {
+       const cls = el.querySelector("i.status-icon")?.className ?? "";
+       const title = el.querySelector(".summary")?.textContent?.trim();
+       if (/fa-check/.test(cls)) tally.pass++;
+       else if (/fa-times|fa-xmark|fa-exclamation/.test(cls)) {
+         tally.fail++;
+         failures.push({ title, error: el.querySelector(".error, pre")?.textContent?.trim() });
+       }
+       else tally.pending++;
+     }
+     return { total: els.length, ...tally, failures };
+   }
    ```
+   Reading `el.className` instead returns 0 passed and 0 failed for a fully
+   green run, which looks like "nothing executed" rather than success.
 
 8. **Diff the console against the baseline from step 5.** New errors are the
    finding; pre-existing ones are not.

@@ -140,13 +140,25 @@ export function registerSplitBatch(quench) {
 					assert.ok(Number.isFinite(levelContext.getCurrentElevation()));
 				});
 
-				it("getDocumentLevelId ignores the default level and tolerates absent levels", function () {
+				it("getDocumentLevelId prefers a real level but falls back to the default", function () {
+					// Measured against the live world, not predicted. The first
+					// draft of this test asserted null for a default-only document
+					// and failed: the function falls back to `defaultLevel0000`
+					// rather than returning null, and that fallback is load-bearing
+					// — world 0100's active scene reports exactly that level id, so
+					// a null here would strip level membership from every document
+					// created on an unlevelled scene.
 					const { getDocumentLevelId } = levelContext;
 
 					assert.equal(getDocumentLevelId(null), null);
 					assert.equal(getDocumentLevelId({}), null);
-					assert.equal(getDocumentLevelId({ levels: ["defaultLevel0000"] }), null);
+					assert.equal(getDocumentLevelId({ levels: [] }), null);
+					assert.equal(getDocumentLevelId({ levels: ["defaultLevel0000"] }), "defaultLevel0000");
+					assert.equal(getDocumentLevelId({ levels: ["abc123"] }), "abc123");
 					assert.equal(getDocumentLevelId({ levels: ["defaultLevel0000", "abc123"] }), "abc123");
+					assert.equal(getDocumentLevelId({ levels: ["", "abc123"] }), "abc123");
+					// Any iterable, not just an array — real documents hand it a Set.
+					assert.equal(getDocumentLevelId({ levels: new Set(["defaultLevel0000"]) }), "defaultLevel0000");
 				});
 
 				it("applySceneLevelData tags a wall with an absolute wall-height range", function () {
