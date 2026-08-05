@@ -14,6 +14,7 @@
     "snapshot:registrations": "node dev/tools/registration-snapshot.mjs",
     "snapshot:api": "node dev/tools/api-export-snapshot.mjs",
     "snapshot:settings": "node dev/tools/settings-snapshot.mjs",
+    "snapshot:flags": "node dev/tools/flag-snapshot.mjs",
     "inventory:entry": "node dev/tools/entry-state-inventory.mjs",
     "matrix:imports": "node dev/tools/feature-import-matrix.mjs",
     "premove": "node dev/tools/find-path-refs.mjs",
