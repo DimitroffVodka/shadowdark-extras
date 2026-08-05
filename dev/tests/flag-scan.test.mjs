@@ -164,8 +164,16 @@ test("a payload write and a direct read of the same key are reported separately"
 
 // --- robustness --------------------------------------------------------------
 
-test("a file the parser rejects yields nothing rather than failing the gate", () => {
-	assert.deepEqual(scanFlagLiterals("this is ( not javascript"), []);
+test("a file the parser rejects reports the error instead of silently yielding nothing", () => {
+	// This test previously asserted the opposite — that a parse failure returned
+	// an empty array — which blessed a silent green. A first-party file using
+	// syntax newer than the pinned ecmaVersion would contribute no keys at all
+	// and the snapshot would stay happy while a whole file went unscanned.
+	// `collectFlagKeys` now blocks on this rather than scanning less.
+	const result = scanFlagLiterals("this is ( not javascript");
+
+	assert.ok(result.parseError, "a parse failure must be reported, not swallowed");
+	assert.equal(Array.isArray(result), false);
 });
 
 test("a flags payload with no namespace nesting is ignored", () => {

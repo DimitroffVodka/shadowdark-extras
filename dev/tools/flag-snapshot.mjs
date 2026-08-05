@@ -37,13 +37,23 @@ export function collectFlagKeys() {
   const foreign = {};
   const dynamic = [];
 
+  const parseFailures = [];
+
   for (const file of files) {
     const source = readFileSync(file, "utf8");
 
     // Payload literals persist, so they are writes; property access only reads.
     // Both are scoped to our namespace by construction — `scanFlagLiterals`
     // matches nothing else — so they skip the foreign-scope branch below.
-    for (const entry of scanFlagLiterals(source)) {
+    const literals = scanFlagLiterals(source);
+    if (literals.parseError) {
+      // A first-party file the AST pass cannot read contributes no keys, which
+      // would otherwise be indistinguishable from a file that genuinely has
+      // none. Collect it and block rather than quietly scanning less.
+      parseFailures.push(`${toRepoPath(file)}: ${literals.parseError}`);
+      continue;
+    }
+    for (const entry of literals) {
       if (entry.dynamic) {
         dynamic.push(`${toRepoPath(file)}:${entry.line}`);
         continue;
@@ -69,6 +79,16 @@ export function collectFlagKeys() {
 
       (entry.api === "getFlag" ? read : written).add(entry.key);
     }
+  }
+
+  if (parseFailures.length > 0) {
+    console.log("[BLOCK] flag snapshot: first-party files the AST scan could not parse —");
+    for (const failure of parseFailures) console.log(`  ${failure}`);
+    console.log(
+      "  Their flag keys were NOT scanned. Fix the parse or raise the ecmaVersion; "
+        + "do not regenerate the snapshot while this is unresolved.",
+    );
+    process.exit(1);
   }
 
   return {

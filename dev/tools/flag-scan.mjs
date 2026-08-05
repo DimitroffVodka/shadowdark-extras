@@ -115,10 +115,19 @@ export function scanFlagLiterals(source) {
   try {
     ast = acorn.parse(source, { ecmaVersion: 2023, sourceType: "module", locations: true });
   }
-  catch {
-    // A file the parser rejects is left to the masked scan rather than failing
-    // the whole gate. Vendored trees are the realistic case.
-    return [];
+  catch (err) {
+    // FAILS OPEN ON PURPOSE, BUT LOUDLY — and the caller decides.
+    //
+    // The first version swallowed this and returned []. That is a silent
+    // green: a first-party file using syntax newer than the pinned ecmaVersion
+    // (Node accepts `using` declarations that acorn 2023 does not) would
+    // contribute no keys at all, and the snapshot would stay happy while a
+    // whole file's worth of flags went unscanned.
+    //
+    // Returning the error rather than throwing keeps vendored trees survivable
+    // while making the omission visible to `collectFlagKeys`, which blocks on
+    // it for first-party paths.
+    return { parseError: err.message ?? String(err) };
   }
 
   const found = [];
