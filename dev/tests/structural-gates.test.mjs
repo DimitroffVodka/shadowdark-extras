@@ -14,7 +14,7 @@ import {
 } from "../tools/registration-snapshot.mjs";
 import { collectEsmoduleExports, diffExports } from "../tools/api-export-snapshot.mjs";
 import { collectSettingsKeys, diffSettings } from "../tools/settings-snapshot.mjs";
-import { findUnboundCalls } from "../tools/binding-scan.mjs";
+import { findUnboundIdentifiers } from "../tools/binding-scan.mjs";
 import { scanImports } from "../tools/import-scan.mjs";
 import { parse } from "espree";
 import { REPO_ROOT, listJsFiles, toRepoPath, isVendor } from "../tools/project-scan.mjs";
@@ -468,13 +468,13 @@ test("binding gate: an assignment inside a function does NOT bind the name away"
     "}",
   ].join("\n");
 
-  const names = findUnboundCalls(source).map((u) => u.name);
+  const names = findUnboundIdentifiers(source).map((u) => u.name);
   assert.deepEqual(names, ["missingHelper"],
     "assigning to a name must not stop the gate reporting a call to it");
 });
 
 test("binding gate: a plain undefined call is still reported", () => {
-  const names = findUnboundCalls("function g() {\n\treturn genuinelyMissing();\n}").map((u) => u.name);
+  const names = findUnboundIdentifiers("function g() {\n\treturn genuinelyMissing();\n}").map((u) => u.name);
   assert.deepEqual(names, ["genuinelyMissing"]);
 });
 
@@ -487,7 +487,7 @@ test("binding gate: static class fields do not read as unbound calls", () => {
     "}",
   ].join("\n");
 
-  assert.deepEqual(findUnboundCalls(source), [],
+  assert.deepEqual(findUnboundIdentifiers(source), [],
     "the ApplicationV2 static-field idiom must not be reported");
 });
 
@@ -505,7 +505,7 @@ test("binding gate: static class fields do not read as unbound calls", () => {
  */
 test("binding gate: an undefined call directly inside if(...) is reported", () => {
   const source = "function f(actor) {\n\tif (isPartyActor(actor)) return;\n}";
-  assert.deepEqual(findUnboundCalls(source).map((u) => u.name), ["isPartyActor"],
+  assert.deepEqual(findUnboundIdentifiers(source).map((u) => u.name), ["isPartyActor"],
     "a consuming preceding-char group hides this shape entirely");
 });
 
@@ -515,19 +515,19 @@ test("binding gate: undefined calls inside while/return parens are reported", ()
     "function f(a) {\n\treturn (missingFn(a));\n}",
     "function f(a) {\n\tif (missingFn(a)) { return 1; }\n}",
   ]) {
-    assert.deepEqual(findUnboundCalls(source).map((u) => u.name), ["missingFn"], source);
+    assert.deepEqual(findUnboundIdentifiers(source).map((u) => u.name), ["missingFn"], source);
   }
 });
 
 test("binding gate: the lookbehind did not start flagging method definitions", () => {
   const source = "class C {\n\tfoo(a) { return a; }\n\tbar() { return this.foo(1); }\n}";
-  assert.deepEqual(findUnboundCalls(source), [],
+  assert.deepEqual(findUnboundIdentifiers(source), [],
     "a definition is `name(…) {` and must still be skipped");
 });
 
 test("binding gate: a locally declared function called inside if(...) is not reported", () => {
   const source = "function ok(a) { return a; }\nfunction f() {\n\tif (ok(1)) return;\n}";
-  assert.deepEqual(findUnboundCalls(source), [],
+  assert.deepEqual(findUnboundIdentifiers(source), [],
     "the fix must not turn every guarded call into a false positive");
 });
 
@@ -537,7 +537,7 @@ test("binding gate: an undefined call inside a template-literal interpolation is
   // the paren unescape needed. Interpolations are CODE, not string content, so
   // the masker keeps them and the scanner must see through to the inner call.
   const source = "function f(s) {\n\treturn `data:${btoa(missingFn(s))}`;\n}";
-  assert.deepEqual(findUnboundCalls(source).map((u) => u.name), ["missingFn"],
+  assert.deepEqual(findUnboundIdentifiers(source).map((u) => u.name), ["missingFn"],
     "a call nested inside an interpolation must not be hidden by its outer call");
 });
 
@@ -550,7 +550,7 @@ test("binding gate: a call to a name that is never imported is reported", () => 
     "\treturn helperLeftBehind(actor);",
     "}",
   ].join("\n");
-  assert.deepEqual(findUnboundCalls(source).map((u) => u.name), ["helperLeftBehind"],
+  assert.deepEqual(findUnboundIdentifiers(source).map((u) => u.name), ["helperLeftBehind"],
     "the imported name is bound; the un-imported one is the whole point of this gate");
 });
 
@@ -560,8 +560,101 @@ test("binding gate: CONST is a known global, not an unbound reference", () => {
   // read one of its members produced a baseline entry. Verified live in world
   // `0100` on Foundry 14.365: `CONST === foundry.CONST`.
   const source = "function f() {\n\treturn CONST.KEYBINDING_PRECEDENCE.NORMAL;\n}";
-  assert.deepEqual(findUnboundCalls(source), [],
+  assert.deepEqual(findUnboundIdentifiers(source), [],
     "a real global must not read as an extraction leftover");
+});
+
+/**
+ * Regression tests for the binding gate's `_name` read pass.
+ *
+ * WHAT IT WAS WRITTEN FOR. The Phase 5.3 split of HexPainterSD.mjs moved
+ * `_poiRedoStack` into hex-poi-history.mjs and left `getHexPainterData` behind
+ * still reading `_poiRedoStack.length`, with only `_poiUndoStack` in the import
+ * block. A property read is not a call and is not SCREAMING_SNAKE, so every
+ * gate in verify.sh passed — including this one — over a module that would have
+ * thrown ReferenceError as soon as the tray opened.
+ *
+ * Both directions are pinned. The narrowing rules below (definitions, object
+ * keys, write targets) each exist to kill a specific false positive, and each
+ * one is a plausible route to a false NEGATIVE if written slightly too wide —
+ * which is the failure mode this gate's history is made of.
+ */
+test("binding gate: a property read of an unimported _name is reported", () => {
+  // The exact defect, reduced: the binding moved out, the reader stayed.
+  const source = [
+    'import { _poiUndoStack } from "./hex-poi-history.mjs";',
+    "export function getData() {",
+    "\treturn { undo: _poiUndoStack.length, redo: _poiRedoStack.length };",
+    "}",
+  ].join("\n");
+  assert.deepEqual(findUnboundIdentifiers(source).map((u) => u.name), ["_poiRedoStack"],
+    "the imported stack is bound; the one left out of the import block is the whole point");
+});
+
+test("binding gate: an instance class field declaration is not reported", () => {
+  // `_colorOverlay = null;` at class-body position. Seven of the eight hits the
+  // read pass produced on its first run over this tree were exactly this shape.
+  const source = [
+    "class C {",
+    "\t_colorOverlay = null;",
+    "\t_inspectorEl = null;",
+    "\tclose() { if (this._colorOverlay) this._colorOverlay.remove(); }",
+    "}",
+  ].join("\n");
+  assert.deepEqual(findUnboundIdentifiers(source), [],
+    "every `this._x` use is excluded by the dot; only the declaration site can match");
+});
+
+test("binding gate: skipping write targets does not hide a read of the same name", () => {
+  // The write-target skip drops the OCCURRENCE, never the name. If it bound the
+  // name away instead, this returns [] and the gate has gone quiet — the exact
+  // regression the static-class-field rule was fixed for.
+  const source = "function f() {\n\t_missing = 1;\n\treturn _missing.length;\n}";
+  assert.deepEqual(findUnboundIdentifiers(source).map((u) => u.name), ["_missing"],
+    "assigning to a name must not stop the gate reporting a read of it");
+});
+
+test("binding gate: a private class method definition is not reported", () => {
+  const source = [
+    "class C {",
+    "\t_onRender(options) { return options; }",
+    "\t_prepareContext() { return this._onRender({}); }",
+    "}",
+  ].join("\n");
+  assert.deepEqual(findUnboundIdentifiers(source), [],
+    "`_name(…) {` is a definition, not a reference — the same rule the call pass uses");
+});
+
+test("binding gate: an object-literal key is not reported, but a ternary read is", () => {
+  // These two shapes are both `_name` followed by `:`. Keying the skip on the
+  // colon alone would silence the ternary, so it keys on what PRECEDES the name.
+  // `_poiMirror ? -_poiScale : _poiScale` is real code in this tree.
+  assert.deepEqual(findUnboundIdentifiers("const o = { _key: 1, _other: 2 };"), [],
+    "an object-literal key names nothing and must not be reported");
+
+  const ternary = "function f() {\n\treturn _mirror ? -_scale : _scale;\n}";
+  assert.deepEqual(findUnboundIdentifiers(ternary).map((u) => u.name), ["_mirror", "_scale"],
+    "a ternary consequent is also followed by ':' and must still be reported");
+});
+
+test("binding gate: a bare underscore is not reported", () => {
+  // `catch (_)` and `(_) => …` are the conventional throwaway, and `_` is a
+  // common library alias. The pass requires at least one character after it.
+  const source = "function f(xs) {\n\ttry { return xs.map((_, i) => i); }\n\tcatch (_) { return []; }\n}";
+  assert.deepEqual(findUnboundIdentifiers(source), [],
+    "the throwaway parameter must not read as module state");
+});
+
+test("binding gate: an imported or locally declared _name is not reported", () => {
+  const source = [
+    'import { _chosenTiles } from "./hex-tile-selection.mjs";',
+    "let _localState = null;",
+    "export function f() {",
+    "\treturn _chosenTiles.size + (_localState?.x ?? 0);",
+    "}",
+  ].join("\n");
+  assert.deepEqual(findUnboundIdentifiers(source), [],
+    "the widening must not turn every legitimate module-state read into a finding");
 });
 
 /**

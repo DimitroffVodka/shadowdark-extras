@@ -17,11 +17,29 @@ import { maskSource } from "./import-scan.mjs";
  * throws ReferenceError. Both of the first three Phase 3 extractions shipped
  * exactly that defect, and review caught it rather than any gate.
  *
- * WHAT THIS CHECKS. For each module: every identifier that is CALLED as a bare
- * function must be declared locally, imported, or a known global. Deliberately
- * conservative — it inspects calls only, not every reference — because that is
- * where the extraction failure mode lives and it keeps false positives near
- * zero without scope-accurate parsing.
+ * WHAT THIS CHECKS. For each module, three shapes must be declared locally,
+ * imported, or a known global:
+ *
+ *   1. any identifier CALLED as a bare function;
+ *   2. any SCREAMING_SNAKE_CASE reference — module constants like MODULE_ID are
+ *      read, never called, so the call pass cannot see them;
+ *   3. any `_name` READ — module-scope mutable state, the shape the Phase 5.3
+ *      seam extractions leave dangling.
+ *
+ * Shape-scoped rather than universal, on purpose. Resolving EVERY reference
+ * without a scope-accurate parser drowns in false positives; the two naming
+ * conventions above are what module-scope bindings actually look like in this
+ * codebase, which is where the extraction failure mode lives.
+ *
+ * Each pass was added because something shipped past the previous set. The call
+ * pass came from three Phase 3 extractions that called helpers left behind. The
+ * constant pass came from two that used MODULE_ID without importing it. The
+ * `_name` pass came from the Phase 5.3 HexPainterSD.mjs split: `_poiRedoStack`
+ * moved to a leaf, `getHexPainterData` stayed behind still reading
+ * `_poiRedoStack.length`, and the import block named only `_poiUndoStack`. A
+ * property read is not a call and is not SCREAMING_SNAKE, so all eight gates in
+ * verify.sh — including this one — passed over a file that would have thrown
+ * ReferenceError the moment the tray opened.
  */
 
 /** Globals available in a Foundry browser module, plus JS built-ins. */
@@ -139,9 +157,9 @@ function boundNames(masked) {
 }
 
 /**
- * @returns {Array<{name: string, line: number}>} identifiers called but never bound
+ * @returns {Array<{name: string, line: number}>} identifiers used but never bound
  */
-export function findUnboundCalls(source) {
+export function findUnboundIdentifiers(source) {
   const { masked } = maskSource(source);
   const bound = boundNames(masked);
   const lineStarts = [0];
@@ -196,6 +214,70 @@ export function findUnboundCalls(source) {
   for (const m of masked.matchAll(/(?<![\w$.?])([A-Z][A-Z0-9_]{2,})\b/g)) {
     const name = m[1];
     if (KEYWORDS.has(name) || KNOWN_GLOBALS.has(name) || bound.has(name) || seen.has(name)) continue;
+    seen.set(name, lineOf(m.index));
+  }
+
+  /**
+   * The other half of the read problem, and the one the SCREAMING_SNAKE pass
+   * above does not reach: module-scope MUTABLE state, which this codebase names
+   * with a leading underscore.
+   *
+   * The Phase 5.3 split of HexPainterSD.mjs shipped exactly this. `_poiRedoStack`
+   * moved to a new leaf; `getHexPainterData` stayed behind still reading
+   * `_poiRedoStack.length`; the import block named only `_poiUndoStack`. It is a
+   * property read, never a call, so the call pass could not see it, and it is
+   * not SCREAMING_SNAKE, so the constant pass could not either. Every gate in
+   * verify.sh passed — including this one — over a file that would throw
+   * ReferenceError the moment the tray opened.
+   *
+   * The seam-extraction work this repo is doing produces that shape constantly:
+   * a binding moves out, a reader stays behind. Scoping to the `_name`
+   * convention is the same trade the constant pass makes — narrow enough to keep
+   * false positives near zero without a scope-accurate parser, wide enough to
+   * cover what extraction actually leaves dangling. A bare `_` is excluded: it
+   * is the conventional throwaway parameter and a common library alias.
+   */
+  for (const m of masked.matchAll(/(?<![\w$.?#])(_[A-Za-z_$][\w$]*)\b/g)) {
+    const name = m[1];
+    if (KEYWORDS.has(name) || KNOWN_GLOBALS.has(name) || bound.has(name) || seen.has(name)) continue;
+
+    // A DEFINITION, not a reference — `_onRender(options) {`. Private class
+    // methods are the dominant `_name` shape in this tree after module state,
+    // and without this every one of them reads as unbound. Same rule the call
+    // pass uses, for the same reason.
+    const paren = masked.indexOf("(", m.index + name.length - 1);
+    if (paren !== -1 && masked.slice(m.index + name.length, paren).trim() === "") {
+      let after = afterParens(paren);
+      while (after < masked.length && /\s/.test(masked[after])) after += 1;
+      if (masked[after] === "{") continue;
+    }
+
+    // An object-literal KEY — `{ _foo: 1 }` — is not a reference to anything.
+    //
+    // Keyed off what PRECEDES the name, not merely a following `:`. A ternary
+    // consequent is also followed by `:` — `_poiMirror ? -_poiScale : _poiScale`
+    // is real code in this tree — and skipping on the colon alone would have
+    // made a genuine unbound read invisible. False negatives are the failure
+    // this gate's history is made of, so the narrower test is the right one.
+    const before = masked.slice(0, m.index).replace(/\s+$/, "");
+    const afterName = masked.slice(m.index + name.length).replace(/^\s+/, "");
+    if (afterName.startsWith(":") && !afterName.startsWith("::")
+      && (before.endsWith("{") || before.endsWith(","))) continue;
+
+    // A WRITE TARGET — `_colorOverlay = null` — is not a read, and this pass is
+    // a read scan. The occurrence is skipped, NOT the name: a genuine read of
+    // the same identifier anywhere else in the module still reports, which is
+    // what keeps this from becoming the false-negative generator the class-field
+    // rule in boundNames was fixed to avoid.
+    //
+    // The shape being excluded is the instance class field, `_inspectorEl = null;`
+    // at class-body position. It is the dominant `_name` declaration form in this
+    // tree — seven of the eight hits the first run of this pass produced were
+    // exactly that — and boundNames deliberately does not bind bare assignments,
+    // so there is nowhere else to handle it. `+=`, `==` and `===` are all reads
+    // and are left alone.
+    if (/^=[^=]/.test(afterName)) continue;
+
     seen.set(name, lineOf(m.index));
   }
 
