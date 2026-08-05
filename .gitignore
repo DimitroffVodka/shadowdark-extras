@@ -37,3 +37,12 @@ packs/**/lost/
 # Node toolchain
 node_modules/
 .deepcode/
+
+# repowise index (local, machine-specific)
+.repowise/
+
+# repowise API keys (local)
+.repowise/.env
+
+# coverage reports
+coverage.lcov
