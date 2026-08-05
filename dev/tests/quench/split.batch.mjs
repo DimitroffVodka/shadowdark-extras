@@ -55,6 +55,24 @@
 const MODULE_ID = "shadowdark-extras";
 const BASE = `/modules/${MODULE_ID}/scripts`;
 
+/**
+ * The scratch-scene block is OPT-IN and skipped by default.
+ *
+ * It is the only part of this batch that creates documents and changes which
+ * scene the GM is looking at. That is a fair price when you mean to run it and
+ * an unpleasant surprise when you do not — so a plain `runBatches()` gets the
+ * read-only subset, and the painting coverage is requested explicitly:
+ *
+ *   globalThis.SDX_SPLIT_SCRATCH = true;
+ *   await quench.runBatches(["shadowdark-extras.split"]);
+ *
+ * When it is skipped, the three document-writing handlers
+ * (`handleIntWallDrag`, `handleIntWallClick`, `handleIntWallDoorRemove`) are
+ * UNCOVERED by the live pass. `updateIntWallLine` is covered either way,
+ * because it touches only the PIXI overlay.
+ */
+const RUN_SCRATCH_SCENE_TESTS = globalThis.SDX_SPLIT_SCRATCH === true;
+
 /** Scratch scenes are named so a crashed run can be swept on the next one. */
 const SCRATCH_PREFIX = "sdx-split-scratch ";
 const SCRATCH_GRID = 100;
@@ -238,6 +256,57 @@ export function registerSplitBatch(quench) {
 				});
 			});
 
+			describe("interior-wall drag preview (no documents touched)", function () {
+				// The one moved painting function that writes nothing to the database.
+				// It draws the drag line onto the shared PIXI overlay, so it can be
+				// driven against a real world safely — and it is the only coverage the
+				// interior-walls extraction gets when the scratch-scene block is
+				// skipped, which is the default.
+				//
+				// It also exercises the cross-module path that extraction created:
+				// updateIntWallLine lives in dungeon-interior-walls.mjs, calls
+				// createSelectionRect() in dungeon-selection-overlay.mjs, and then
+				// immediately re-reads `_selectionRect` expecting to see the assignment
+				// the other module just made.
+
+				it("builds the overlay on demand and draws into it", function () {
+					if (overlay._selectionRect) {
+						// A real drag is in flight; leave it alone.
+						this.skip();
+						return;
+					}
+
+					try {
+						interiorWalls.updateIntWallLine({ x: 100, y: 100 }, { x: 400, y: 100 });
+
+						assert.ok(
+							overlay._selectionRect,
+							"updateIntWallLine did not leave an overlay behind — either "
+							+ "createSelectionRect was not reached, or the live binding did not propagate",
+						);
+					}
+					finally {
+						overlay.destroySelectionRect();
+					}
+				});
+
+				it("reuses an existing overlay rather than building a second", function () {
+					if (overlay._selectionRect) { this.skip(); return; }
+
+					try {
+						interiorWalls.updateIntWallLine({ x: 100, y: 100 }, { x: 400, y: 100 });
+						const first = overlay._selectionRect;
+
+						interiorWalls.updateIntWallLine({ x: 100, y: 100 }, { x: 500, y: 200 });
+
+						assert.equal(overlay._selectionRect, first, "a second overlay was created");
+					}
+					finally {
+						overlay.destroySelectionRect();
+					}
+				});
+			});
+
 			describe("interior-wall painting against a scratch scene", function () {
 				// The three handlers moved in the interior-walls extraction create and
 				// delete real Wall and Drawing documents. Everything else in this batch
@@ -254,6 +323,7 @@ export function registerSplitBatch(quench) {
 
 				before(async function () {
 					this.timeout(60000);
+					if (!RUN_SCRATCH_SCENE_TESTS) { this.skip(); return; }
 					// Sweep anything a crashed earlier run left behind.
 					const stale = game.scenes.filter(s => s.name.startsWith(SCRATCH_PREFIX));
 					for (const scene of stale) await scene.delete();
