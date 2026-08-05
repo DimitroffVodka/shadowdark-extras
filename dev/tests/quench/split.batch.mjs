@@ -17,8 +17,11 @@
  * Dev-only: lives under dev/, is not in module.zip, and registration is guarded
  * so a released install with Quench enabled stays silent.
  *
- * Non-destructive: creates and deletes nothing. Every assertion is a read or a
- * call against plain object literals.
+ * Non-destructive: creates and deletes no documents, and writes no setting or
+ * flag. The live-binding tests below do briefly move two pieces of in-memory
+ * tool state — the selected wall tile, and the transient selection-rectangle
+ * overlay — and restore both. Neither is persisted, so nothing survives the
+ * run; the restore is in a `finally` so it survives a failure too.
  *
  * RUNNING IT HEADLESSLY (Playwright, or any console driver): render the Quench
  * results app FIRST, exactly as `structural.batch.mjs` documents —
@@ -72,12 +75,16 @@ export function registerSplitBatch(quench) {
 			let levelContext = null;
 			let painter = null;
 			let generator = null;
+			let toolState = null;
+			let overlay = null;
 
 			before(async function () {
 				this.timeout(30000);
 				levelContext = await load("dungeon/dungeon-level-context.mjs");
 				painter = await load("dungeon/DungeonPainterSD.mjs");
 				generator = await load("dungeon/DungeonGeneratorSD.mjs");
+				toolState = await load("dungeon/dungeon-tool-state.mjs");
+				overlay = await load("dungeon/dungeon-selection-overlay.mjs");
 			});
 
 			describe("dungeon-level-context extraction (0c63168)", function () {
@@ -118,6 +125,87 @@ export function registerSplitBatch(quench) {
 					// DungeonGeneratorSD imports three of the moved names. If the
 					// re-export chain broke, this import would have thrown in before().
 					assert.ok(generator, "DungeonGeneratorSD.mjs failed to load after the split");
+				});
+			});
+
+			describe("ESM live bindings propagate across the extracted modules", function () {
+				// The mechanism the whole split rests on. Every extracted module owns
+				// some `let` that DungeonPainterSD.mjs still reads by bare identifier,
+				// through an import. That only works because an ESM import is a LIVE
+				// BINDING — a view onto the exporting module's variable — rather than a
+				// value copied at import time.
+				//
+				// No static gate can check this. `prove-move` compares declaration
+				// trees and is blind to it; the named-export and API snapshots only see
+				// names. If the semantics were a snapshot instead, every gate would
+				// stay green while the painter read stale state forever.
+
+				it("a tool-state setter is visible to a painter-local reader", async function () {
+					this.timeout(20000);
+					// The strong form. `selectWallTile` assigns inside
+					// dungeon-tool-state.mjs; `getDungeonPainterData` is declared in
+					// DungeonPainterSD.mjs and reads its IMPORTED `_selectedWallTile`.
+					// A snapshot import would return the pre-call value here.
+					const original = toolState.getSelectedWallTile();
+					const probe = "sdx-live-binding-probe.webp";
+
+					try {
+						toolState.selectWallTile(probe);
+
+						const data = await painter.getDungeonPainterData();
+						assert.equal(
+							data.selectedWallTile, probe,
+							"DungeonPainterSD read a stale value — its import is not a live binding",
+						);
+					}
+					finally {
+						toolState.selectWallTile(original);
+					}
+
+					assert.equal(toolState.getSelectedWallTile(), original, "the probe was not restored");
+				});
+
+				it("the exported binding itself updates, not just the getter", function () {
+					// Guards the narrower failure where a getter is re-exported correctly
+					// but the raw binding — which is what the painter actually imports —
+					// is not.
+					const original = toolState.getSelectedWallTile();
+					const probe = "sdx-live-binding-probe-2.webp";
+
+					try {
+						toolState.selectWallTile(probe);
+						assert.equal(toolState._selectedWallTile, probe);
+					}
+					finally {
+						toolState.selectWallTile(original);
+					}
+				});
+
+				it("the selection overlay's binding updates for its importers", function () {
+					// Same mechanism in the module DungeonPainterSD leans on hardest:
+					// updateIntWallLine calls createSelectionRect() and then immediately
+					// re-reads `_selectionRect`, expecting the assignment made inside the
+					// overlay module to be visible. If it were not, the overlay would be
+					// built and then discarded on every single interior-wall drag.
+					if (overlay._selectionRect) {
+						// A drag is in flight — leave it alone rather than destroying
+						// someone's in-progress selection.
+						this.skip();
+						return;
+					}
+
+					try {
+						overlay.createSelectionRect();
+						assert.ok(
+							overlay._selectionRect,
+							"createSelectionRect assigned, but importers still see null",
+						);
+					}
+					finally {
+						overlay.destroySelectionRect();
+					}
+
+					assert.equal(overlay._selectionRect, null, "destroySelectionRect did not clear the binding");
 				});
 			});
 
