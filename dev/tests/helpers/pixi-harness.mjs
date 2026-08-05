@@ -113,6 +113,40 @@ export class StubParent extends StubContainer {
 	}
 }
 
+/**
+ * Records PIXI.Graphics draw calls instead of rasterising them, so geometry
+ * can be asserted as a command sequence. Numbers are rounded to keep float
+ * noise out of the comparisons.
+ */
+export function makeRecordingGraphics({ precision = 4 } = {}) {
+	const ops = [];
+	const round = n => (typeof n === "number" ? Math.round(n * 10 ** precision) / 10 ** precision : n);
+	const record = name => (...args) => {
+		ops.push([name, ...args.map(round)]);
+		return undefined;
+	};
+	return {
+		ops,
+		count: name => ops.filter(op => op[0] === name).length,
+		names: () => ops.map(op => op[0]),
+		of: name => ops.filter(op => op[0] === name),
+		reset: () => { ops.length = 0; },
+		lineStyle: record("lineStyle"),
+		beginFill: record("beginFill"),
+		endFill: record("endFill"),
+		moveTo: record("moveTo"),
+		lineTo: record("lineTo"),
+		drawCircle: record("drawCircle"),
+		drawEllipse: record("drawEllipse"),
+		drawRect: record("drawRect"),
+		drawRoundedRect: record("drawRoundedRect"),
+		drawPolygon: record("drawPolygon"),
+		arc: record("arc"),
+		closePath: record("closePath"),
+		clear: record("clear"),
+	};
+}
+
 /** Records gsap calls rather than animating. Tween targets are kept by identity. */
 export function makeGsapRecorder() {
 	const calls = [];
