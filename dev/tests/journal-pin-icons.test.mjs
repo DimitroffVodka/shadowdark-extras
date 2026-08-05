@@ -16,6 +16,7 @@ installCanvasGlobals();
 installDom();
 
 const { JournalPinGraphics } = await import("../../scripts/journal/pin-rendering.mjs");
+const { addSvgIcon } = await import("../../scripts/journal/pin-icons.mjs");
 
 // --- capture the SVG on its way to a texture --------------------------------
 
@@ -33,7 +34,7 @@ async function colorize(svgText, color, { style = {} } = {}) {
 	fetched = svgText;
 	loadedUri = null;
 	const pin = new JournalPinGraphics({ id: "p", journalId: "j", x: 0, y: 0, style });
-	await pin._addSvgIcon(new StubContainer(), "icons/thing.svg", 20, color);
+	await addSvgIcon(pin, new StubContainer(), "icons/thing.svg", 20, color);
 	assert.ok(loadedUri, "no texture was loaded");
 	const base64 = loadedUri.replace("data:image/svg+xml;base64,", "");
 	return { svg: Buffer.from(base64, "base64").toString("utf8"), pin };
@@ -108,7 +109,7 @@ test("a destroyed pin abandons the load instead of building a sprite", async () 
 	const pin = new JournalPinGraphics({ id: "p", journalId: "j", x: 0, y: 0, style: {} });
 	pin.destroyed = true;
 
-	await pin._addSvgIcon(new StubContainer(), "icons/thing.svg", 20, 0xFFFFFF);
+	await addSvgIcon(pin, new StubContainer(), "icons/thing.svg", 20, 0xFFFFFF);
 
 	assert.equal(pin._icon, null);
 });
@@ -123,7 +124,7 @@ test("a failed fetch is reported and swallowed", async () => {
 
 	try {
 		// Must not reject — a missing icon should not break the whole build.
-		await pin._addSvgIcon(new StubContainer(), "icons/missing.svg", 20, 0xFFFFFF);
+		await addSvgIcon(pin, new StubContainer(), "icons/missing.svg", 20, 0xFFFFFF);
 	}
 	finally {
 		globalThis.fetch = realFetch;

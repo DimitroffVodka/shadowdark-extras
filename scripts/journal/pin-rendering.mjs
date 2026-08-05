@@ -8,6 +8,7 @@
 import { MODULE_ID, getPinStyle, normalizeImageTint } from "./pin-style.mjs";
 import { checkPinVisibility } from "./pin-manager.mjs";
 import { drawStyledStroke } from "./pin-draw.mjs";
+import { addGlyphIcon, addSvgIcon, addVisionIndicator } from "./pin-icons.mjs";
 import {
 	PIN_PLACEABLE_TYPE,
 	buildPinDocument,
@@ -469,7 +470,7 @@ export class JournalPinGraphics extends PIXI.Container {
 				? parseInt(symbolColor.slice(1), 16)
 				: 0xFFFFFF;
 
-			await this._addIcon(container, iconClass, radius, symbolColorNum);
+			await addGlyphIcon(this, container, iconClass, radius, symbolColorNum);
 			if (this._buildId !== buildId || this.destroyed) return;
 		}
 		else if (contentType === "customIcon") {
@@ -480,7 +481,7 @@ export class JournalPinGraphics extends PIXI.Container {
 				const iconColorNum = typeof iconColor === "string" && iconColor.startsWith("#")
 					? parseInt(iconColor.slice(1), 16)
 					: 0xFFFFFF;
-				await this._addSvgIcon(container, iconPath, radius, iconColorNum);
+				await addSvgIcon(this, container, iconPath, radius, iconColorNum);
 				if (this._buildId !== buildId || this.destroyed) return;
 			}
 		}
@@ -830,7 +831,7 @@ export class JournalPinGraphics extends PIXI.Container {
 
 		// Add status indicators for GM
 		if (game.user?.isGM && this.pinData.requiresVision) {
-			await this._addVisionIndicator(container, radius);
+			await addVisionIndicator(this, container, radius);
 		}
 
 		// Performance: Cache pin visual as a single sprite texture
@@ -890,178 +891,6 @@ export class JournalPinGraphics extends PIXI.Container {
 				window.TokenMagic._assignFilters(this, filters);
 			}
 		}
-	}
-
-	async _addIcon(container, iconClass, radius, color) {
-		// Create icon using a canvas
-		const iconSize = radius * 1.2;
-		const canvas = document.createElement("canvas");
-		const padding = 4;
-		canvas.width = iconSize + (padding * 2);
-		canvas.height = iconSize + (padding * 2);
-		const ctx = canvas.getContext("2d");
-
-		const tempDiv = document.createElement("div");
-		tempDiv.style.position = "absolute";
-		tempDiv.style.left = "-9999px";
-		tempDiv.style.fontSize = `${iconSize}px`;
-		tempDiv.innerHTML = `<i class="${iconClass}"></i>`;
-		document.body.appendChild(tempDiv);
-
-		await new Promise(r => {
-			setTimeout(r, 50);
-		});
-		if (this.destroyed) {
-			if (tempDiv.parentNode) document.body.removeChild(tempDiv);
-			return;
-		}
-
-		const iconElement = tempDiv.querySelector("i");
-		if (iconElement) {
-			try {
-				const beforeStyle = window.getComputedStyle(iconElement, "::before");
-				const content = beforeStyle.content;
-				const fontFamily = beforeStyle.fontFamily;
-
-				if (content && content !== "none" && content !== '""') {
-					const iconChar = content.replace(/['"]/g, "");
-					const colorHex = `#${color.toString(16).padStart(6, "0")}`;
-					ctx.fillStyle = colorHex;
-					ctx.font = `${iconSize}px ${fontFamily}`;
-					ctx.textAlign = "center";
-					ctx.textBaseline = "middle";
-					ctx.fillText(iconChar, canvas.width / 2, canvas.height / 2);
-				}
-			}
-			catch(e) {
-				// Fallback
-			}
-		}
-
-		document.body.removeChild(tempDiv);
-
-		const texture = PIXI.Texture.from(canvas);
-		this._icon = new PIXI.Sprite(texture);
-		this._icon.anchor.set(0.5);
-		this._icon.position.set(0, 0);
-		container.addChild(this._icon);
-	}
-
-	async _addSvgIcon(container, iconPath, radius, color) {
-		// Custom SVGs usually need to be a bit bigger to fill the pin
-		const size = radius * 1.3;
-		try {
-			// Fetch SVG text
-			const response = await fetch(iconPath);
-			let svgText = await response.text();
-			if (this.destroyed) return;
-
-			// Replace colors in SVG text - simple heuristic to colorize monochrome SVGs
-			const colorHex = `#${color.toString(16).padStart(6, "0")}`;
-
-			// Replace existing fill/stroke attributes or add to root if missing
-			if (svgText.includes("fill=")) {
-				svgText = svgText.replace(/fill="[^"]*"/g, `fill="${colorHex}"`);
-			}
-			else {
-				svgText = svgText.replace("<svg ", `<svg fill="${colorHex}" `);
-			}
-
-			if (svgText.includes("stroke=")) {
-				svgText = svgText.replace(/stroke="[^"]*"/g, `stroke="${colorHex}"`);
-			}
-
-			// Convert to base64 data URI
-			const svgBase64 = `data:image/svg+xml;base64,${btoa(svgText)}`;
-
-			// Load as texture using Foundry's standard helper
-			const texture = await loadTexture(svgBase64);
-			if (this.destroyed) return;
-
-			this._icon = new PIXI.Sprite(texture);
-			this._icon.width = size;
-			this._icon.height = size;
-			this._icon.anchor.set(0.5);
-			this._icon.position.set(0, 0);
-
-			// Handle rotation for diamond shape
-			const globalStyle = getPinStyle();
-			const style = { ...globalStyle, ...(this.pinData.style || {}) };
-			if (style.shape === "diamond") {
-				this._icon.rotation = -Math.PI / 4;
-			}
-
-			container.addChild(this._icon);
-		}
-		catch(err) {
-			console.error(`SDX Journal Pins | Failed to load custom SVG: ${iconPath}`, err);
-		}
-	}
-
-	async _addVisionIndicator(container, radius) {
-		const iconClass = "fa-solid fa-eye";
-		const iconSize = radius * 0.8;
-
-		const canvas = document.createElement("canvas");
-		const padding = 4;
-		canvas.width = iconSize + (padding * 2);
-		canvas.height = iconSize + (padding * 2);
-		const ctx = canvas.getContext("2d");
-
-		const tempDiv = document.createElement("div");
-		tempDiv.style.position = "absolute";
-		tempDiv.style.left = "-9999px";
-		tempDiv.style.fontSize = `${iconSize}px`;
-		tempDiv.innerHTML = `<i class="${iconClass}"></i>`;
-		document.body.appendChild(tempDiv);
-
-		await new Promise(r => {
-			setTimeout(r, 50);
-		});
-		if (this.destroyed) {
-			if (tempDiv.parentNode) document.body.removeChild(tempDiv);
-			return;
-		}
-
-		const iconElement = tempDiv.querySelector("i");
-		if (iconElement) {
-			try {
-				const beforeStyle = window.getComputedStyle(iconElement, "::before");
-				const content = beforeStyle.content;
-				const fontFamily = beforeStyle.fontFamily;
-
-				if (content && content !== "none" && content !== '""') {
-					const iconChar = content.replace(/['"]/g, "");
-
-					// Shadow for visibility
-					ctx.shadowBlur = 4;
-					ctx.shadowColor = "black";
-
-					ctx.fillStyle = "#ffffff";
-					ctx.font = `${iconSize}px ${fontFamily}`;
-					ctx.textAlign = "center";
-					ctx.textBaseline = "middle";
-					ctx.fillText(iconChar, canvas.width / 2, canvas.height / 2);
-				}
-			}
-			catch(e) { }
-		}
-
-		document.body.removeChild(tempDiv);
-
-		const texture = PIXI.Texture.from(canvas);
-		const indicator = new PIXI.Sprite(texture);
-		indicator.anchor.set(0.5);
-
-		// Position at top-right
-		const angle = -Math.PI / 4;
-		const dist = radius * 1.1;
-		indicator.position.set(
-			Math.cos(angle) * dist,
-			Math.sin(angle) * dist
-		);
-
-		container.addChild(indicator);
 	}
 
 	async update(newData) {

@@ -218,6 +218,7 @@ export const FEATURE_OWNERS = {
     "pin-interactions.mjs",
     "pin-tooltip.mjs",
     "pin-tmfx-adapter.mjs",
+    "pin-icons.mjs",
   ],
   hex: [
     "HexPainterSD.mjs",
