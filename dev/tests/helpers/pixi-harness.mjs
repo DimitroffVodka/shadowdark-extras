@@ -161,6 +161,84 @@ export function makePointerEvent({ button = 0, x = 0, y = 0, native = true } = {
 	return event;
 }
 
+/** Minimal DOM element, enough for menu/overlay builders. */
+export class StubElement {
+	constructor(tag) {
+		this.tagName = tag.toUpperCase();
+		this.id = "";
+		this.className = "";
+		this.innerHTML = "";
+		this.style = { cssText: "" };
+		this.children = [];
+		this.parent = null;
+		this.listeners = {};
+	}
+
+	appendChild(child) {
+		child.parent = this;
+		this.children.push(child);
+		return child;
+	}
+
+	remove() {
+		if (!this.parent) return;
+		this.parent.children = this.parent.children.filter(c => c !== this);
+		this.parent = null;
+	}
+
+	contains(node) {
+		return node === this || this.children.some(c => c.contains(node));
+	}
+
+	addEventListener(type, fn) {
+		(this.listeners[type] ??= []).push(fn);
+	}
+
+	removeEventListener(type, fn) {
+		this.listeners[type] = (this.listeners[type] ?? []).filter(f => f !== fn);
+	}
+
+	dispatch(type, event = {}) {
+		for (const fn of [...(this.listeners[type] ?? [])]) fn(event);
+	}
+
+	/** Visible text, with the icon markup stripped. */
+	get label() {
+		return this.innerHTML.replace(/<[^>]*>/g, "").trim();
+	}
+}
+
+/**
+ * Install a document stub. Separate from installCanvasGlobals because only
+ * the DOM-building paths (context menus, overlays) need it.
+ */
+export function installDom() {
+	const body = new StubElement("body");
+	const doc = {
+		body,
+		listeners: {},
+		createElement: tag => new StubElement(tag),
+		getElementById(id) {
+			const walk = node => {
+				if (node.id === id) return node;
+				for (const child of node.children) {
+					const hit = walk(child);
+					if (hit) return hit;
+				}
+				return null;
+			};
+			return walk(body);
+		},
+		addEventListener(type, fn) { (this.listeners[type] ??= []).push(fn); },
+		removeEventListener(type, fn) {
+			this.listeners[type] = (this.listeners[type] ?? []).filter(f => f !== fn);
+		},
+		reset() { body.children = []; this.listeners = {}; },
+	};
+	globalThis.document = doc;
+	return doc;
+}
+
 /**
  * Install the ambient globals the canvas modules read. Call BEFORE importing
  * the module under test — these are read at class-definition and call time.
@@ -186,6 +264,12 @@ export function installCanvasGlobals({ isGM = true, gsap = makeGsapRecorder() } 
 			getProperty: (obj, key) => key.split(".").reduce((o, k) => o?.[k], obj),
 			mergeObject: (a, b) => Object.assign(a, b),
 			randomID: () => "test-id",
+			escapeHTML: value => String(value)
+				.replace(/&/g, "&amp;")
+				.replace(/</g, "&lt;")
+				.replace(/>/g, "&gt;")
+				.replace(/"/g, "&quot;")
+				.replace(/'/g, "&#x27;"),
 		},
 	};
 

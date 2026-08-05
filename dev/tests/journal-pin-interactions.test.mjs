@@ -16,12 +16,14 @@ import test from "node:test";
 
 import {
 	installCanvasGlobals,
+	installDom,
 	makeGsapRecorder,
 	makePointerEvent,
 	StubParent,
 } from "./helpers/pixi-harness.mjs";
 
 const env = installCanvasGlobals();
+const dom = installDom();
 
 const { JournalPinGraphics, JournalPinTooltip } =
 	await import("../../scripts/journal/pin-rendering.mjs");
@@ -41,6 +43,13 @@ JournalPinManager.update = async (id, patch) => {
 	return true;
 };
 
+const managerCalls = [];
+let hasCopiedStyle = false;
+for (const name of ["duplicate", "copyStyle", "pasteStyle", "delete"]) {
+	JournalPinManager[name] = async arg => { managerCalls.push({ name, arg }); };
+}
+JournalPinManager.hasCopiedStyle = () => hasCopiedStyle;
+
 // --- fixtures ---------------------------------------------------------------
 
 function makePin({ style = {}, hideTooltip, x = 100, y = 200, pageId, journalId = "j1" } = {}) {
@@ -56,9 +65,27 @@ function reset({ isGM = true } = {}) {
 	tooltip.hidden = 0;
 	updates.length = 0;
 	updateFails = false;
+	managerCalls.length = 0;
+	hasCopiedStyle = false;
+	env.notifications.warn.length = 0;
+	env.rendered.length = 0;
+	dom.reset();
 	env.setGM(isGM);
 	env.setGsap(makeGsapRecorder());
 	return globalThis.gsap;
+}
+
+/** Labels of the context menu currently mounted, in order. */
+function menuLabels() {
+	const menu = dom.getElementById("sdx-journal-pin-context-menu");
+	return menu ? menu.children.map(row => row.label) : null;
+}
+
+function clickMenuItem(label) {
+	const menu = dom.getElementById("sdx-journal-pin-context-menu");
+	const row = menu.children.find(r => r.label === label);
+	assert.ok(row, `no menu row labelled "${label}"`);
+	row.dispatch("click");
 }
 
 // --- listener wiring --------------------------------------------------------
@@ -379,4 +406,108 @@ test("a missing journal warns instead of throwing", () => {
 	makePin({ journalId: "does-not-exist" })._openJournal();
 
 	assert.equal(env.notifications.warn.length, 1);
+});
+
+// --- context menu -----------------------------------------------------------
+
+const BASE_ITEMS = ["Open Journal", "Bring Players Here", "Ping Pin", "Edit Style", "Duplicate Pin"];
+
+test("a GM sees the base items plus the ownership actions", () => {
+	reset({ isGM: true });
+
+	makePin()._showContextMenu(makePointerEvent({ button: 2 }));
+
+	assert.deepEqual(menuLabels(), [
+		...BASE_ITEMS, "Copy Style", "Make GM-Only", "Delete Pin",
+	]);
+});
+
+test("Paste Style appears only once a style has been copied", () => {
+	reset({ isGM: true });
+	makePin()._showContextMenu(makePointerEvent({ button: 2 }));
+	assert.ok(!menuLabels().includes("Paste Style"));
+
+	reset({ isGM: true });
+	hasCopiedStyle = true;
+	makePin()._showContextMenu(makePointerEvent({ button: 2 }));
+	assert.ok(menuLabels().includes("Paste Style"));
+});
+
+test("the visibility toggle names the state it will move to", () => {
+	reset({ isGM: true });
+	const pin = makePin();
+	pin.pinData.gmOnly = false;
+	pin._showContextMenu(makePointerEvent({ button: 2 }));
+	assert.ok(menuLabels().includes("Make GM-Only"));
+
+	reset({ isGM: true });
+	const hidden = makePin();
+	hidden.pinData.gmOnly = true;
+	hidden._showContextMenu(makePointerEvent({ button: 2 }));
+	assert.ok(menuLabels().includes("Make Visible to All"));
+});
+
+// Documents current behavior. _onPointerDown only reaches _showContextMenu for
+// a GM, so in practice these rows are GM-only anyway — but the menu itself does
+// not gate them, and their callbacks refuse with a warning rather than being
+// absent. Worth knowing before anyone reuses this builder somewhere unguarded.
+test("the base items are built without a GM check", () => {
+	reset({ isGM: false });
+
+	makePin()._showContextMenu(makePointerEvent({ button: 2 }));
+
+	assert.deepEqual(menuLabels(), BASE_ITEMS);
+});
+
+test("a non-GM invoking Bring Players Here is refused with a warning", async () => {
+	reset({ isGM: false });
+	makePin()._showContextMenu(makePointerEvent({ button: 2 }));
+
+	clickMenuItem("Bring Players Here");
+	await new Promise(r => { setTimeout(r, 0); });
+
+	assert.equal(env.notifications.warn.length, 1);
+});
+
+test("the menu is positioned from the canvas rect plus the pointer position", () => {
+	reset({ isGM: true });
+	globalThis.canvas.app.view.getBoundingClientRect = () => ({ left: 40, top: 15 });
+
+	makePin()._showContextMenu(makePointerEvent({ button: 2, x: 200, y: 300 }));
+
+	const menu = dom.getElementById("sdx-journal-pin-context-menu");
+	assert.match(menu.style.cssText, /left:240px/);
+	assert.match(menu.style.cssText, /top:315px/);
+	globalThis.canvas.app.view.getBoundingClientRect = () => ({ left: 0, top: 0 });
+});
+
+test("opening the menu suppresses the browser's own context menu", () => {
+	reset({ isGM: true });
+	const event = makePointerEvent({ button: 2 });
+
+	makePin()._showContextMenu(event);
+
+	assert.equal(event.prevented, 1);
+});
+
+test("Delete Pin routes to the manager with this pin's id", async () => {
+	reset({ isGM: true });
+	makePin()._showContextMenu(makePointerEvent({ button: 2 }));
+
+	clickMenuItem("Delete Pin");
+	await new Promise(r => { setTimeout(r, 0); });
+
+	assert.deepEqual(managerCalls, [{ name: "delete", arg: "pin-1" }]);
+});
+
+test("the visibility toggle writes the inverted flag", async () => {
+	reset({ isGM: true });
+	const pin = makePin();
+	pin.pinData.gmOnly = false;
+	pin._showContextMenu(makePointerEvent({ button: 2 }));
+
+	clickMenuItem("Make GM-Only");
+	await new Promise(r => { setTimeout(r, 0); });
+
+	assert.deepEqual(updates, [{ id: "pin-1", patch: { gmOnly: true } }]);
 });
