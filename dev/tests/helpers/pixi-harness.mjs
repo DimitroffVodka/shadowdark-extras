@@ -254,8 +254,19 @@ export function installCanvasGlobals({ isGM = true, gsap = makeGsapRecorder() } 
 	globalThis.PIXI = {
 		Container: StubContainer,
 		Graphics: class extends StubContainer {},
-		Sprite: class extends StubContainer {},
+		// Sprites carry an anchor and explicit dimensions; without them the
+		// icon builders throw into their own catch and look like load failures.
+		Sprite: class extends StubContainer {
+			constructor(texture) {
+				super();
+				this.texture = texture;
+				this.anchor = new Point(0, 0);
+				this.width = 0;
+				this.height = 0;
+			}
+		},
 		Text: class extends StubContainer {},
+		Texture: { from: source => ({ source }) },
 	};
 
 	globalThis.foundry = {
