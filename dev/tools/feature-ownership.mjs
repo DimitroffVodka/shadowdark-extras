@@ -272,6 +272,9 @@ export const FEATURE_OWNERS = {
     "hex-custom-tiles.mjs",
     // The five map-effect toggles, lifted out of HexPainterSD.mjs in Phase 5.3.
     "hex-map-effects.mjs",
+    // Map dimensions + scene reformat, lifted out of HexPainterSD.mjs in
+    // Phase 5.3.
+    "hex-scene-format.mjs",
   ],
   dungeon: [
     "DungeonGeneratorSD.mjs",
