@@ -274,6 +274,9 @@ export const FEATURE_OWNERS = {
     // Selection-rectangle overlay lifted out of DungeonPainterSD.mjs
     // (Phase 5.3 sweep 6).
     "dungeon-selection-overlay.mjs",
+    // Tool-state (tile selection, dungeon mode, display toggles) lifted out of
+    // DungeonPainterSD.mjs (Phase 5.3 sweep 6).
+    "dungeon-tool-state.mjs",
     "DungeonCaveSD.mjs",
     "DungeonBiomesSD.mjs",
     "DungeonDecorSD.mjs",
