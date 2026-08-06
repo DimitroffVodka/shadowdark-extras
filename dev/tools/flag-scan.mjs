@@ -141,6 +141,138 @@ function flagChain(node) {
   return null;
 }
 
+function sameSegments(a, b) {
+  if (a.length !== b.length) return false;
+  return a.every((segment, index) => segment === b[index]);
+}
+
+/**
+ * Strip the wrappers an alias initializer can carry: the `ChainExpression`
+ * around any optional chain, and a `|| {}` / `?? {}` fallback around the root
+ * access itself. The fallback never carries flag keys, so only the left side
+ * matters.
+ */
+function unwrapAliasInit(node) {
+  let current = node;
+  for (;;) {
+    let next = current;
+    while (next?.type === "ChainExpression") next = next.expression;
+    while (
+      next?.type === "LogicalExpression"
+      && (next.operator === "||" || next.operator === "??")
+    ) next = next.left;
+    if (next === current) return current;
+    current = next;
+  }
+}
+
+/**
+ * The flag-key segments an alias initializer fixes, or null when it is not an
+ * alias of a `.flags[OURS]` chain at all. A bare root fixes nothing; a
+ * `weapon.flags[OURS].weaponBonus` fixes `weaponBonus`. A computed base
+ * segment is a hole the alias cannot speak to, so it is not an alias either.
+ */
+function aliasBase(node) {
+  if (isScopeAccess(node)) return [];
+  const chain = flagChain(node);
+  if (!chain || chain.segments.includes(null)) return null;
+  return chain.segments;
+}
+
+/**
+ * Collect local `const` aliases of the `.flags[OURS]` root — one hop, no more.
+ *
+ * `const flags = tileDoc.flags?.[MODULE_ID]` makes every later `flags.key` a
+ * flag read the chain matcher cannot see, because `flags` is a bare identifier
+ * with nothing about `.flags` left in it. Without this pass those keys look
+ * write-only to the gate, so removing their reads never moves them out of the
+ * "still read" list (issue #95 finding 2).
+ *
+ * Conservative by design:
+ *   - only `const` declarations whose initializer is a `.flags[OURS]` chain
+ *   - one hop from the root: an alias of an alias, a destructured slice, or a
+ *     reassigned binding is not followed, so it is simply not collected
+ *   - an alias only covers reads inside its own function (or the module body),
+ *     so an unrelated same-named local elsewhere cannot be mistaken for it
+ */
+function collectAliases(ast) {
+  const aliases = [];
+  const scopeEnds = [];
+
+  const walk = (node, callback) => {
+    if (!node || typeof node.type !== "string") return;
+    if (
+      node.type === "FunctionDeclaration" || node.type === "FunctionExpression"
+      || node.type === "ArrowFunctionExpression"
+    ) scopeEnds.push(node.end);
+
+    callback(node);
+
+    for (const key of Object.keys(node)) {
+      if (key === "type" || key === "start" || key === "end") continue;
+      const value = node[key];
+      if (Array.isArray(value)) {
+        for (const child of value) walk(child, callback);
+      }
+      else if (value && typeof value.type === "string") walk(value, callback);
+    }
+
+    if (
+      node.type === "FunctionDeclaration" || node.type === "FunctionExpression"
+      || node.type === "ArrowFunctionExpression"
+    ) scopeEnds.pop();
+  };
+
+  walk(ast, (node) => {
+    if (node.type !== "VariableDeclaration" || node.kind !== "const") return;
+    for (const declarator of node.declarations) {
+      if (declarator.id.type !== "Identifier" || !declarator.init) continue;
+      const base = aliasBase(unwrapAliasInit(declarator.init));
+      if (base === null) continue;
+      aliases.push({
+        name: declarator.id.name,
+        base,
+        start: node.start,
+        end: scopeEnds.length > 0 ? scopeEnds[scopeEnds.length - 1] : ast.end,
+      });
+    }
+  });
+
+  return aliases;
+}
+
+/**
+ * Resolve a member chain whose base is a local alias of the `.flags[OURS]`
+ * root. Returns the full flag-key segments (alias base first), the members to
+ * suppress as prefixes, or null when the chain is not an aliased flag read.
+ *
+ * Two same-named aliases with different bases make every use ambiguous, so
+ * they resolve to a dynamic site rather than a guess.
+ */
+function resolveAliasRead(node, aliases) {
+  const segments = [];
+  const members = [];
+  let current = node;
+
+  while (current?.type === "MemberExpression") {
+    if (isScopeAccess(current)) return null;
+    segments.unshift(staticSegmentName(current));
+    members.push(current);
+    current = current.object;
+  }
+  if (current?.type !== "Identifier") return null;
+
+  const matching = aliases.filter(
+    (alias) => alias.name === current.name && node.start >= alias.start && node.start <= alias.end,
+  );
+  if (matching.length === 0) return null;
+
+  const firstBase = matching[0].base;
+  if (matching.some((alias) => !sameSegments(alias.base, firstBase))) return { ambiguous: true };
+
+  return { segments: [...firstBase, ...segments], members };
+}
+
 /**
  * Read a template or string literal as a list of atoms — literal text, and the
  * interpolations between it. Null when the node is not a string at all.
@@ -328,6 +460,8 @@ export function scanFlagLiterals(source) {
   // reading a path rather than persisting through one.
   const keyPositions = new Set();
 
+  const aliases = collectAliases(ast);
+
   visit(ast, (node) => {
     if (node.type === "CallExpression" || node.type === "NewExpression") callees.add(node.callee);
     if (node.type === "Property") keyPositions.add(node.key);
@@ -354,18 +488,29 @@ export function scanFlagLiterals(source) {
     }
 
     // Channel 3 — `doc.flags[MODULE_ID].key`, usually with optional links.
-    // These are reads; nothing persists through a property access.
+    // These are reads; nothing persists through a property access. The chain
+    // matcher covers the direct form; a member chain rooted at a local alias
+    // of `.flags[OURS]` (issue #95 finding 2) is resolved through `aliases`.
     if (node.type === "MemberExpression" && !consumed.has(node)) {
       const chain = flagChain(node);
-      if (!chain) return;
+      const alias = chain ? null : resolveAliasRead(node, aliases);
+      if (!chain && !alias) return;
 
-      for (const member of chain.members) consumed.add(member);
+      if (alias?.ambiguous) {
+        found.push({
+          api: "property", key: null, dynamic: true, writes: false, line: node.loc.start.line,
+        });
+        return;
+      }
+
+      const segments = chain ? chain.segments : alias.segments;
+      for (const member of (chain ? chain.members : alias.members)) consumed.add(member);
 
       // A computed segment is a hole in the path. The prefix above it is still
       // a key we know, so the path truncates there rather than being guessed
       // at; a hole in the FIRST segment leaves no key at all, which is the
       // dynamic site the snapshot records as its own blind spot.
-      const hole = chain.segments.indexOf(null);
+      const hole = segments.indexOf(null);
       if (hole === 0) {
         found.push({
           api: "property", key: null, dynamic: true, writes: false, line: node.loc.start.line,
@@ -373,8 +518,14 @@ export function scanFlagLiterals(source) {
         return;
       }
 
-      let path = hole === -1 ? chain.segments : chain.segments.slice(0, hole);
+      let path = hole === -1 ? segments : segments.slice(0, hole);
       if (hole === -1 && callees.has(node) && path.length > 1) path = path.slice(0, -1);
+
+      // `.length` on a flag value is the array's length, not a stored sub-key —
+      // the same incidental access as a method call, and as recordable or not
+      // as one. No stored `*.length` key exists, so a trailing `length` is
+      // dropped the way a trailing callee is.
+      if (hole === -1 && path.length > 1 && path.at(-1) === "length") path = path.slice(0, -1);
 
       found.push({
         api: "property",

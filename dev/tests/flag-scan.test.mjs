@@ -415,6 +415,126 @@ test("a dotted path and an object payload for one key agree on its name", () => 
 	assert.deepEqual(writesOf(viaPath), writesOf(viaPayload));
 });
 
+// --- aliased reads through a local const (issue #95 finding 2) ----------------
+//
+// `const flags = tileDoc.flags?.[MODULE_ID]` makes every later `flags.key` a
+// flag read with nothing about `.flags` left in it. Before this pass those keys
+// looked write-only to the gate, so removing their reads never moved them out
+// of the "still read" list — the dead-persistence signal was blind to them.
+
+test("tiles / drawings / originalPosition — alias reads are found (issue #95 fixture)", () => {
+	// scripts/canvas/TileFlattenSD.mjs:696-707. The exact fixture from the issue.
+	const found = scanFlagLiterals(`
+		function unflattenTile(tileDoc) {
+			const flags = tileDoc.flags?.[MODULE_ID];
+			if (!flags?.flattenedTile || (!flags?.tiles?.length && !flags?.drawings?.length)) return;
+			const storedTiles = flags.tiles || [];
+			const origin = flags.originalPosition || {};
+			const x = flags.originalPosition.x;
+			const y = flags.originalPosition.y;
+		}
+	`);
+
+	assert.deepEqual([...new Set(keysOf(found, "property"))].sort(), [
+		"drawings", "flattenedTile", "originalPosition",
+		"originalPosition.x", "originalPosition.y", "tiles",
+	]);
+});
+
+test("the || {} fallback does not hide the alias (issue #95 fixture)", () => {
+	// scripts/character-sheet/BackgroundSheetSD.mjs:141.
+	const found = scanFlagLiterals(`
+		function getFlags(item) {
+			const flags = item.flags?.[MODULE_ID] || {};
+			return flags.advancement ?? [];
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["advancement"]);
+});
+
+test("the ?? {} fallback after a method call is an alias too (issue #95 fixture)", () => {
+	// scripts/combat/MedkitSD.mjs:116.
+	const found = scanFlagLiterals(`
+		function payload(doc) {
+			const flags = doc.toObject().flags?.[MODULE_ID] ?? {};
+			return flags.medkitSpellSource;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["medkitSpellSource"]);
+});
+
+test("an alias of a sub-path prefixes every read with that path (issue #95 fixture)", () => {
+	// scripts/combat/WeaponBonusConfig.mjs:194. `flags` is the `.weaponBonus`
+	// branch, so `flags.enabled` is the stored key `weaponBonus.enabled`.
+	const found = scanFlagLiterals(`
+		function hitBonuses(weapon) {
+			const flags = weapon.flags?.[MODULE_ID]?.weaponBonus;
+			if (!flags?.enabled) return [];
+			return flags.hitBonuses;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property").sort(), ["weaponBonus", "weaponBonus.enabled", "weaponBonus.hitBonuses"]);
+});
+
+test("an incidental .length on an array-valued flag is not a sub-key", () => {
+	const found = scanFlagLiterals(`
+		function count(tileDoc) {
+			const flags = tileDoc.flags?.[MODULE_ID];
+			return flags?.tiles?.length;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["tiles"]);
+});
+
+test("a computed member through an alias is a dynamic site, not a guessed key", () => {
+	// scripts/combat/MedkitSD.mjs:119 — `flags[key]` for a loop over the
+	// enhancement keys. Nothing about `key` is knowable.
+	const found = scanFlagLiterals(`
+		function payload(doc) {
+			const flags = doc.toObject().flags?.[MODULE_ID] ?? {};
+			return flags[key];
+		}
+	`);
+
+	assert.equal(found.length, 1);
+	assert.equal(found[0].dynamic, true);
+	assert.equal(found[0].key, null);
+});
+
+test("an alias of an alias is not followed", () => {
+	// `view` aliases `flags`, but only one hop from the root is supported.
+	const found = scanFlagLiterals(`
+		function read(tileDoc) {
+			const flags = tileDoc.flags?.[MODULE_ID];
+			const view = flags;
+			return view.tiles;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), []);
+});
+
+test("a shadowed alias whose bases differ is ambiguous, not guessed at", () => {
+	// A module-scope alias and a same-named function-scope alias can both be in
+	// range for a read; line-based scoping cannot tell which one binds, so the
+	// read is recorded as dynamic rather than resolving to either base.
+	const found = scanFlagLiterals(`
+		const flags = a.flags?.[MODULE_ID];
+		function read(b) {
+			const flags = b.flags?.[MODULE_ID]?.weaponBonus;
+			const miss = flags.enabled;
+		}
+	`);
+
+	assert.equal(keysOf(found, "property").includes("weaponBonus.enabled"), false,
+		"the ambiguous read must not be resolved to either base");
+	assert.ok(found.some(entry => entry.dynamic), "the ambiguous site records as dynamic");
+});
+
 // --- robustness --------------------------------------------------------------
 
 test("a file the parser rejects reports the error instead of silently yielding nothing", () => {
