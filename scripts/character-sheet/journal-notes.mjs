@@ -272,6 +272,59 @@ function activateJournalListeners(app, html, actor) {
 }
 
 /**
+ * The live ProseMirror view for each `<prose-mirror>` element, captured through
+ * the element's `plugins` event, plus whether the user has focused the editor.
+ *
+ * Foundry v14's HTMLProseMirrorElement keeps its ProseMirrorEditor in a private
+ * `#editor` field with no public accessor (foundry.mjs:96555), so `pmEl.editor`
+ * is always undefined and the old quick-insert path never ran. The element does
+ * expose the editor's plugin record via a bubbling `plugins` CustomEvent fired
+ * in `_configurePlugins` (foundry.mjs:96725): a plugin whose spec provides a
+ * `view` accessor is handed the live EditorView the moment the view is created,
+ * which is the only public route to it. The event fires on every activation, so
+ * the capture re-registers each time the editor is opened.
+ */
+const proseMirrorViews = new WeakMap();
+const watchedProseMirror = new WeakSet();
+
+/**
+ * Wire a `<prose-mirror>` element so `_onInsertSnippet` can dispatch into its
+ * live ProseMirror view instead of the broken `pmEl.editor`/value paths.
+ *
+ * @param {HTMLElement} pmEl  The `<prose-mirror>` element in the editor form.
+ */
+function captureProseMirrorView(pmEl) {
+	// Guard first: the listener below must be attached at most once per element.
+	// The editor may be re-rendered in place by the ApplicationV2 lifecycle, in
+	// which case the element is reused and a second addEventListener would
+	// accumulate closures (the sentinel only dedupes the plugin, not listeners).
+	if (watchedProseMirror.has(pmEl)) return;
+	watchedProseMirror.add(pmEl);
+
+	pmEl.addEventListener("plugins", (event) => {
+		const plugins = event?.detail;
+		if (!plugins || typeof plugins !== "object") return;
+		if (plugins.sdxJournalViewCapture) return;
+		plugins.sdxJournalViewCapture = new foundry.prosemirror.Plugin({
+			key: new foundry.prosemirror.PluginKey("sdx-journal-view-capture"),
+			view(view) {
+				proseMirrorViews.set(pmEl, { view, focused: false });
+				return {};
+			},
+		});
+	});
+
+	// Track when the user places a cursor in the editor body (not the toggle
+	// button), so inserts land at the cursor instead of appending at the end.
+	// Focus is lost to the button on click, so `view.hasFocus()` is unusable here.
+	pmEl.addEventListener("focusin", (event) => {
+		if (!event.target.closest(".ProseMirror")) return;
+		const entry = proseMirrorViews.get(pmEl);
+		if (entry) entry.focused = true;
+	});
+}
+
+/**
  * ApplicationV2-based journal page editor.
  *
  * Uses the native `<prose-mirror>` custom element (v14) instead of the legacy
@@ -344,11 +397,11 @@ class SdxJournalPageEditor extends foundry.applications.api.HandlebarsApplicatio
 	}
 
 	_onRender(context, options) {
-		// V2 actions don't bubble out of the prose-mirror toolbar, so the snippet
-		// buttons are wired here. Action attribute on the buttons (data-action=
-		// "insertSnippet") drops through to `_onInsertSnippet` automatically;
-		// this block is only a defensive backup if action dispatch isn't set up
-		// on the form root.
+		// Wire the quick-insert buttons to the editor's live ProseMirror view.
+		// The view only exists once the editor is activated, and the element is
+		// recreated on every render, so the capture is re-attached here.
+		const pmEl = this.element.querySelector('prose-mirror[name="content"]');
+		if (pmEl) captureProseMirrorView(pmEl);
 	}
 
 	static _onInsertSnippet(event, target) {
@@ -357,40 +410,37 @@ class SdxJournalPageEditor extends foundry.applications.api.HandlebarsApplicatio
 		const snippet = SdxJournalPageEditor.SNIPPETS[insertType];
 		if (!snippet) return;
 
-		// `<prose-mirror>` element exposes its ProseMirror view via the `editor`
-		// property once initialized.
-		const root = this.element;
-		const pmEl = root?.querySelector('prose-mirror[name="content"]');
-		const view = pmEl?.editor?.view;
-		if (view) {
+		const pmEl = this.element?.querySelector('prose-mirror[name="content"]');
+		if (!pmEl) return;
+
+		// The editor is active: dispatch a transaction into the live ProseMirror
+		// view so the snippet appears immediately, at the cursor when the user
+		// has placed one, otherwise at the end of the document.
+		const entry = proseMirrorViews.get(pmEl);
+		if (entry?.view && pmEl.classList.contains("active")) {
 			try {
-				const state = view.state;
-				const schema = state.schema;
-				const PMDOMParser = view.constructor.DOMParser || pmEl.editor.constructor?.DOMParser || globalThis.ProseMirror?.DOMParser;
-				if (PMDOMParser) {
-					const parser = PMDOMParser.fromSchema(schema);
-					const tmp = document.createElement("div");
-					tmp.innerHTML = snippet;
-					const doc = parser.parse(tmp);
-					const tr = state.tr;
-					tr.insert(state.doc.content.size, doc.content);
-					view.dispatch(tr);
-					view.focus();
-					return;
-				}
+				const { view, focused } = entry;
+				const tmp = document.createElement("div");
+				tmp.innerHTML = snippet;
+				const parser = foundry.prosemirror.DOMParser.fromSchema(view.state.schema);
+				const doc = parser.parse(tmp);
+				const { tr, selection } = view.state;
+				const from = focused ? selection.from : tr.doc.content.size;
+				view.dispatch(tr.insert(from, doc.content).scrollIntoView());
+				view.focus();
+				return;
 			}
 			catch (err) {
 				console.warn("SDX Journal: ProseMirror insertion failed:", err);
 			}
 		}
 
-		// Last-resort fallback: append to the element's value attribute.
-		if (pmEl) {
-			const existing = pmEl.value ?? pmEl.getAttribute("value") ?? "";
-			const next = existing + snippet;
-			pmEl.value = next;
-			pmEl.setAttribute("value", next);
-		}
+		// The editor is closed (or still activating): append the snippet to the
+		// underlying value and open the editor so it is immediately visible.
+		if (pmEl.classList.contains("active")) pmEl.save();
+		const next = (pmEl._getValue() ?? "") + snippet;
+		pmEl.value = next;
+		pmEl.open = true;
 	}
 
 	static async formHandler(event, form, formData) {
