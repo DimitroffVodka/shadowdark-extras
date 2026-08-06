@@ -140,15 +140,19 @@ export function initMarchingMode() {
 	Hooks.on("preUpdateToken", onPreUpdateToken);
 	Hooks.on("updateToken", onUpdateToken);
 
-	// Combat lifecycle (issue #99 + #101): suspend marching once per combat episode,
-	// but only for the active combat on the current scene (issue #101). Off-scene
-	// combats must not clear the current scene's trail; a global combat
-	// (scene:null) is active on every scene, so its id still matches
-	// game.combats.active and correctly clears when it is the active one.
+	// Combat lifecycle (issue #99 + #101 + #104): suspend marching once per
+	// combat episode. combatStart/updateCombat are gated on the active combat
+	// for the current scene (game.combats.active?.id === combat.id, issue
+	// #101); createCombat is scene-scoped only — (c.scene === null) ||
+	// (c.scene === game.scenes.current) (foundry.mjs:39899-39901) — and
+	// deliberately does not require c.active, because programmatic
+	// Combat.create({round:1}) leaves it false (foundry.mjs:18149/39905).
+	// Off-scene combats must not clear the current scene's trail; a global
+	// combat (scene:null) is active on every scene.
 	// combatStart fires when a combat begins (before its round-1 update, so
 	// force-start); updateCombat catches an already-started combat created via
 	// API/import or a manual round bump; createCombat catches an already-started
-	// combat created/imported with round>0 (foundry.mjs:50859 started===round>0,
+	// combat created/imported with round>0 (foundry.mjs:50729 started===round>0,
 	// generic create 159-165 emits createCombat only); deleteCombat re-arms for
 	// a replacement combat that never un-started.
 	Hooks.on("combatStart", combat => {
@@ -157,9 +161,11 @@ export function initMarchingMode() {
 	});
 	Hooks.on("updateCombat", combat => {
 		if (game.combats?.active?.id !== combat.id) return;
-		// An unstarted observation of the keyed combat (reset to round 0, or the
-		// round-1 update that follows combatStart) closes the episode: a later
-		// restart of the SAME combat must re-arm, so drop the latch.
+		// A round reset back to 0 on the keyed combat closes the episode: a later
+		// restart of the SAME combat must re-arm, so drop the latch. The round-1
+		// update that follows combatStart must not release it — started is already
+		// true there (foundry.mjs:50729) and dropping the latch would re-suspend
+		// on the next turn advance and clear the trail mid-combat.
 		if (!combat.started && combatSuspendKey === `${combat.id}:${combat.scene?.id ?? ""}`) {
 			combatSuspendKey = null;
 			return;
@@ -168,7 +174,18 @@ export function initMarchingMode() {
 	});
 	Hooks.on("createCombat", combat => {
 		if (!combat.started) return;
-		if (game.combats?.active?.id !== combat.id) return;
+		// Scene-scoped like CombatEncounters#combats (foundry.mjs:39899-39901):
+		// (c.scene === null) || (c.scene === game.scenes.current). A global
+		// combat (scene:null) is active on every scene. Do not require
+		// c.active — programmatic Combat.create({round:1}) leaves active false
+		// (BooleanField no initial, foundry.mjs:18149; CombatEncounters#active
+		// requires c.active, foundry.mjs:39905), so the previous active-id
+		// guard was inert for the imported/API case this handler exists for.
+		// Use game.scenes.current (not canvas.scene) to match Foundry's own
+		// semantics. For stub scenes in tests, also accept an id match.
+		if (!(combat.scene === null
+			|| combat.scene === game.scenes?.current
+			|| combat.scene?.id === game.scenes?.current?.id)) return;
 		handleCombatEpisode(combat);
 	});
 	Hooks.on("deleteCombat", combat => {
