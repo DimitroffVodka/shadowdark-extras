@@ -125,11 +125,6 @@ export function getCurrentElevation() {
 				return ui.levels._currentFloor;
 			}
 
-			// Try getting from Levels' internal state
-			if (typeof _levels?.currentElevation === "number") {
-				return _levels.currentElevation;
-			}
-
 			// Try scene flags
 			const sceneFlags = canvas.scene?.flags?.levels;
 			if (typeof sceneFlags?.currentElevation === "number") {
