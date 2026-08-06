@@ -248,7 +248,7 @@ test("unequip stops even when item resolves to nothing — orphan/legacy guard (
 	assert.ok(endEffectsCalls.some(c => c.object === token && c.name === getEffectName(sword.id)), "stop must carry object: token even for no-config item");
 });
 
-test("canvasReady and createToken restore the same set equip produced (master-list)", async () => {
+test("sequencer ready and createToken restore the same set equip produced (master-list)", async () => {
 	reset();
 	seedDaggerPreset();
 	initWeaponAnimations();
@@ -259,13 +259,13 @@ test("canvasReady and createToken restore the same set equip produced (master-li
 	globalThis.canvas.tokens.placeables = [token];
 	actor.items = [dagger, sword];
 
-	// canvasReady path (activeGM gate: testUser is activeGM)
+	// sequencer ready path (activeGM gate: testUser is activeGM) — weapon moved from canvasReady (see #110)
 	globalThis.Sequencer.EffectManager.effects = [];
 	endEffectsCalls.length = 0;
-	const canvasHandler = hooks.canvasReady;
-	assert.ok(canvasHandler, "canvasReady hook must be registered");
+	const canvasHandler = hooks.sequencerEffectManagerReady;
+	assert.ok(canvasHandler, "sequencerEffectManagerReady hook must be registered");
 	await canvasHandler();
-	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 1, "canvasReady must restore dagger only");
+	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 1, "sequencer ready must restore dagger only");
 	assert.equal(globalThis.Sequencer.EffectManager.effects[0].data.name, getEffectName(dagger.id));
 
 	// createToken path (only creator plays)
@@ -312,7 +312,7 @@ test("explicit per-item disable short-circuits master list — enabled:false is 
 	assert.equal(getResolvedWeaponAnimation(daggerDisabled), null);
 	assert.equal(getResolvedWeaponAnimation(daggerDisabled, { enabled: false, imagePath: "x.webp" }), null, "configOverride enabled:false must also be terminal");
 
-	// Must not animate on equip, canvasReady, or createToken either
+	// Must not animate on equip, sequencer ready, or createToken either
 	initWeaponAnimations();
 	const actor = makeActor("actor1", [daggerDisabled]);
 	const token = makeToken("tok1", actor);
@@ -324,10 +324,10 @@ test("explicit per-item disable short-circuits master list — enabled:false is 
 	await hooks.updateItem(daggerDisabled, { system: { equipped: true } }, {}, "testUser");
 	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 0, "explicitly disabled dagger must not animate on equip");
 
-	// canvasReady must not restore it
+	// sequencer ready must not restore it
 	globalThis.Sequencer.EffectManager.effects = [];
-	await hooks.canvasReady();
-	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 0, "explicitly disabled dagger must not be restored on canvasReady");
+	await hooks.sequencerEffectManagerReady();
+	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 0, "explicitly disabled dagger must not be restored on sequencer ready");
 
 	// createToken must not restore it
 	globalThis.Sequencer.EffectManager.effects = [];
@@ -373,7 +373,7 @@ test("disabling stops a live effect — playWeaponAnimation with null config ter
 	assert.ok(endEffectsCalls.some(c => c.object === token), "configOverride enabled:false must also stop with object: token");
 });
 
-test("canvasReady stops a live effect for a disabled item — reload gap", async () => {
+test("sequencer ready stops a live effect for a disabled item — reload gap", async () => {
 	reset();
 	seedDaggerPreset();
 	initWeaponAnimations();
@@ -387,9 +387,9 @@ test("canvasReady stops a live effect for a disabled item — reload gap", async
 	globalThis.Sequencer.EffectManager.effects = [live];
 	endEffectsCalls.length = 0;
 
-	await hooks.canvasReady();
-	assert.ok(endEffectsCalls.some(c => c.object === token && c.name === getEffectName(daggerDisabled.id)), "canvasReady must stop disabled item's live effect with object: token");
-	assert.ok(endEffectsCalls.some(c => c.name === getEffectName(daggerDisabled.id)), "canvasReady stop must carry classification name");
+	await hooks.sequencerEffectManagerReady();
+	assert.ok(endEffectsCalls.some(c => c.object === token && c.name === getEffectName(daggerDisabled.id)), "sequencer ready must stop disabled item's live effect with object: token");
+	assert.ok(endEffectsCalls.some(c => c.name === getEffectName(daggerDisabled.id)), "sequencer ready stop must carry classification name");
 });
 
 test("createToken stops a live effect for a disabled item", async () => {
