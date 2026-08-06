@@ -35,12 +35,24 @@ function checkDependencies() {
 }
 
 /**
- * Get the effect name for a token's torch animation
- * @param {Token} token - The token
+ * Get the effect name for a torch animation (classification key only).
+ * Token identity comes solely from Sequencer's `object`/`source` (see #105).
  * @param {string} itemId - The light source item ID
- * @returns {string} - Unique effect name
+ * @returns {string} - Classification key (module + kind + item id)
  */
-function getEffectName(token, itemId) {
+function getEffectName(itemId) {
+	return `${MODULE_ID}-torch-${itemId}`;
+}
+
+/**
+ * Legacy effect name for transition compatibility.
+ * Existing persisted effects use `${MODULE_ID}-torch-${tokenId}-${itemId}`.
+ * New code must terminate both new and legacy names, each with `object`.
+ * @param {Token|{id:string}} token - The token
+ * @param {string} itemId - The light source item ID
+ * @returns {string}
+ */
+function getLegacyEffectName(token, itemId) {
 	return `${MODULE_ID}-torch-${token.id}-${itemId}`;
 }
 
@@ -152,11 +164,12 @@ async function playTorchAnimation(token, item) {
 		return;
 	}
 
-	const effectName = getEffectName(token, item.id);
+	const effectName = getEffectName(item.id);
 	const config = getAnimationConfig(item);
 	const hasPatreon = game.modules.get("jb2a_patreon")?.active;
 
-	// End any existing animation for this light source (both base and _impact)
+	// End any existing animation for this light source (both base and _impact).
+	// Token-scoped — must carry `object` (source identity) after #105.
 	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
 	await Sequencer.EffectManager.endEffects({ name: `${effectName}_impact`, object: token });
 
@@ -302,13 +315,19 @@ async function stopTorchAnimation(token, itemId = null) {
 	if (!deps.hasSequencer) return;
 
 	if (itemId) {
-		const effectName = getEffectName(token, itemId);
+		const effectName = getEffectName(itemId);
+		const legacyName = getLegacyEffectName(token, itemId);
+		// Transition compatibility: terminate both new and legacy names, each with object.
 		await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
-		console.log(`${MODULE_ID} | Stopped torch animation: ${effectName}`);
+		await Sequencer.EffectManager.endEffects({ name: legacyName, object: token });
+		// Also cover _impact variant for both schemes (transient but safe).
+		await Sequencer.EffectManager.endEffects({ name: `${effectName}_impact`, object: token });
+		await Sequencer.EffectManager.endEffects({ name: `${legacyName}_impact`, object: token });
+		console.log(`${MODULE_ID} | Stopped torch animation: ${effectName} (and legacy ${legacyName})`);
 	}
 	else {
-		// Stop all torch animations for this token
-		await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-${token.id}-*`, object: token });
+		// Stop all torch animations for this token — kind wildcard plus object covers both schemes.
+		await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-*`, object: token });
 		console.log(`${MODULE_ID} | Stopped all torch animations for ${token.name}`);
 	}
 }
@@ -321,14 +340,17 @@ async function stopAllTorchAnimations(token) {
 	const deps = checkDependencies();
 	if (!deps.hasSequencer) return;
 
-	await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-${token.id}-*` });
+	await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-*`, object: token });
 	console.log(`${MODULE_ID} | Stopped all torch animations for ${token.name}`);
 }
 
 /**
- * Parse the token id out of a torch effect name.
- * Effect names are `${MODULE_ID}-torch-${tokenId}-${itemId}` and may carry an
- * `_impact` suffix. Returns null for non-torch names.
+ * Parse the token id out of a LEGACY torch effect name.
+ * Legacy names are `${MODULE_ID}-torch-${tokenId}-${itemId}` and may carry an
+ * `_impact` suffix. New names are `${MODULE_ID}-torch-${itemId}` (no token).
+ * Kept for transition compatibility and orphan-sweep fallback; for new-format
+ * (itemId only) returns the itemId — hasHyphen guard at call-site (455-463)
+ * spares single-segment names, null only for non-torch.
  *
  * Assumes Foundry `randomID` output (alphanumeric, no hyphens) for token and
  * item ids. Custom or imported document ids are only required by
@@ -346,6 +368,12 @@ function parseTorchTokenId(rawName) {
 	if (!rawName.startsWith(prefix)) return null;
 	let remainder = rawName.slice(prefix.length);
 	if (remainder.endsWith("_impact")) remainder = remainder.slice(0, -"_impact".length);
+	// New-format names have no token segment (just itemId) — single token,
+	// no hyphen. Legacy has tokenId-itemId (two hyphen segments). Without
+	// knowing both ids we cannot reliably distinguish; we return the first
+	// hyphen segment, which for new-format is the whole itemId. Caller must
+	// decide whether to treat single-segment names as non-orphan.
+	// For backwards compat we keep old behaviour: first hyphen segment.
 	const tokenId = remainder.split("-")[0];
 	return tokenId || null;
 }
@@ -365,12 +393,26 @@ export function isTorchCanvasRestoreAllowed() {
  * scene. Runs unconditionally (idempotent) to drain orphans from #102.
  * Safe to call multiple times — sequencerEffectManagerReady may fire more than
  * once on scene switches.
+ *
+ * After #105 names are classification-only (`${MODULE_ID}-torch-${itemId}`) and
+ * token identity is carried by `object`/`source`. Orphan detection therefore
+ * uses `effect.data.source` (UUID) rather than parsing tokenId from the name.
+ * Legacy names still carry a tokenId prefix; for those the fallback parse is
+ * retained, but the termination after detection uses `effects` ids so it does
+ * not require validating a missing source string (dist:11720-11729 would throw
+ * for a deleted token's UUID string). This matches Sequencer's own
+ * `initializePersistentEffects`→`effectsToRemove`→`flagManager.removeFlags`
+ * purge (dist:11919-11951) which is flag-level, not name-level.
  */
 async function sweepOrphanTorchEffects() {
 	const deps = checkDependencies();
 	if (!deps.hasSequencer) return;
 	const placeables = globalThis.canvas?.tokens?.placeables;
 	if (!placeables) return;
+	const viewedSceneId = globalThis.canvas?.scene?.id ?? globalThis.game?.user?.viewedScene ?? null;
+	// Present token identities: both UUID set (primary, matches effect.data.source)
+	// and id set (fallback for legacy name-parsed orphans where source missing).
+	const presentUuids = new Set(placeables.map(t => t.document?.uuid ?? (viewedSceneId && t.id ? `Scene.${viewedSceneId}.Token.${t.id}` : null) ?? t.document?.id).filter(Boolean));
 	const presentIds = new Set(placeables.map(t => t.id ?? t.document?.id).filter(Boolean));
 	let effects = [];
 	try {
@@ -398,7 +440,6 @@ async function sweepOrphanTorchEffects() {
 	// keeps creator's off-scene effects in the manager (dist:15145). Only
 	// effects whose scene matches the viewed scene are candidates; others
 	// are valid off-scene persistence and must be spared.
-	const viewedSceneId = globalThis.canvas?.scene?.id ?? globalThis.game?.user?.viewedScene ?? null;
 	let relevantEffects = effects;
 	if (viewedSceneId) {
 		relevantEffects = effects.filter(eff => {
@@ -408,21 +449,56 @@ async function sweepOrphanTorchEffects() {
 		});
 		if (!relevantEffects.length) return;
 	}
-	const orphanTokenIds = new Set();
+	const orphanEffectIds = [];
 	for (const eff of relevantEffects) {
-		const rawName = eff.data?.name ?? eff.name ?? "";
-		const tokenId = parseTorchTokenId(rawName);
-		if (!tokenId) continue;
-		if (!presentIds.has(tokenId)) orphanTokenIds.add(tokenId);
+		const source = eff.data?.source ?? eff.source ?? null;
+		const isUuid = typeof source === "string" && source.includes(".") && source.startsWith("Scene");
+		if (isUuid) {
+			if (!presentUuids.has(source)) {
+				const eid = eff.data?._id ?? eff.id ?? eff.data?.id;
+				if (eid) orphanEffectIds.push(eid);
+				else {
+					// Fallback: collect by name parse if id missing (should not happen)
+					const rawName = eff.data?.name ?? eff.name ?? "";
+					const tokenId = parseTorchTokenId(rawName);
+					if (tokenId && !presentIds.has(tokenId)) {
+						const fallbackId = eff.id ?? eff.data?.id;
+						if (fallbackId) orphanEffectIds.push(fallbackId);
+					}
+				}
+			}
+		}
+		else {
+			// Legacy or missing source — fallback to name parsing
+			const rawName = eff.data?.name ?? eff.name ?? "";
+			const tokenId = parseTorchTokenId(rawName);
+			if (!tokenId) continue;
+			// Heuristic: new-format names have no hyphen after prefix (single itemId).
+			// Those will parse as itemId, not tokenId; they should not be considered orphan via name.
+			// We check if remainder contains a hyphen (tokenId-itemId two parts). If not, skip.
+			const prefix = `${MODULE_ID}-torch-`;
+			if (!rawName.startsWith(prefix)) continue;
+			let remainder = rawName.slice(prefix.length);
+			if (remainder.endsWith("_impact")) remainder = remainder.slice(0, -"_impact".length);
+			const hasHyphen = remainder.includes("-");
+			// For new-format (no hyphen) we cannot decide orphan via name; require source.
+			if (!hasHyphen) continue;
+			if (!presentIds.has(tokenId)) {
+				const eid = eff.data?._id ?? eff.id ?? eff.data?.id;
+				if (eid) orphanEffectIds.push(eid);
+			}
+		}
 	}
-	for (const orphanId of orphanTokenIds) {
-		try {
-			await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-${orphanId}-*` });
-			console.log(`${MODULE_ID} | Swept orphan torch effects for token ${orphanId}`);
-		}
-		catch (e) {
-			/* ignore — sweep is best-effort */
-		}
+	if (!orphanEffectIds.length) return;
+	// Use `effects` filter (id-based) so we do not need to validate a missing source string
+	// (dist:11720-11729 would throw for a deleted token's UUID string). `effects` is
+	// validated as string ids only (dist:11779-11788) and filtered via exact id match (dist:11702).
+	try {
+		await Sequencer.EffectManager.endEffects({ effects: orphanEffectIds });
+		console.log(`${MODULE_ID} | Swept ${orphanEffectIds.length} orphan torch effects`);
+	}
+	catch (e) {
+		/* ignore — sweep is best-effort */
 	}
 }
 
@@ -567,8 +643,14 @@ export function initTorchAnimations() {
 		const deps = checkDependencies();
 		if (!deps.hasSequencer) return;
 
-		// End all effects for this token
-		await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-${tokenDoc.id}-*` });
+		// Verified alternative to `source: tokenDoc.uuid` string (dist:11720-11729
+		// would throw for a deleted token's UUID via get_object_from_scene →
+		// fromUuidSync → missing). Passing the Document object validates via
+		// get_object_identifier (dist:475-480, 11718-11720) without lookup.
+		// Name wildcard keeps kind-scoped; source disambiguates token.
+		// Fallback scene-load purge is Sequencer's initializePersistentEffects
+		// → effectsToRemove → flagManager.removeFlags (dist:11919-11951).
+		await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-*`, source: tokenDoc });
 	});
 
 	// Check for active light sources when a new token is created
@@ -613,6 +695,7 @@ export {
 	stopAllTorchAnimations,
 	checkDependencies,
 	getEffectName,
+	getLegacyEffectName,
 	parseTorchTokenId,
 	sweepOrphanTorchEffects,
 };
