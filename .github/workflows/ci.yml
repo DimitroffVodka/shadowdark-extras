@@ -10,6 +10,11 @@ on:
     branches: [main]
   push:
     branches: [main]
+  # Manual trigger from the Actions tab. Added 2026-08-06: a GitHub Actions
+  # outage swallowed the push-triggered run for 88bf4dce, and with only
+  # push/pull_request triggers there was no way to ask for a run afterwards —
+  # a merged commit could sit permanently unverified. This is the recovery path.
+  workflow_dispatch:
 
 permissions:
   contents: read
