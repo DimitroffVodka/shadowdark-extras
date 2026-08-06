@@ -46,6 +46,7 @@ settings.set("shadowdark-extras.marchingModeLeader", "leader");
 settings.set("shadowdark-extras.tray.enabled", true);
 
 globalThis.game.combats = { active: null };
+globalThis.game.scenes = { current: { id: "scene-1" } };
 
 // Canvas token stubs: conga followers are driven via `document.update`, and
 // `processCongaMovement` re-reads `canvas.tokens.get(...).x/y` each cycle, so
@@ -151,6 +152,7 @@ function assertF1MovesEast() {
 }
 
 test("combat suspend -> resume starts a fresh trail; off-path followers follow the NEW path", async () => {
+	globalThis.game.scenes.current = { id: "scene-1" };
 	await buildNorthTrail();
 
 	// Combat begins (lifecycle events) and suspends marching.
@@ -176,6 +178,7 @@ test("combat suspend -> resume starts a fresh trail; off-path followers follow t
 });
 
 test("a replacement combat re-arms the trail reset even though started never went false", async () => {
+	globalThis.game.scenes.current = { id: "scene-1" };
 	await buildNorthTrail();
 
 	// Combat A begins — its episode clears the pre-combat trail.
@@ -205,6 +208,7 @@ test("a replacement combat re-arms the trail reset even though started never wen
 });
 
 	test("a scene change mid-combat re-arms the trail reset for the new scene's combat", async () => {
+	globalThis.game.scenes.current = { id: "scene-1" };
 	await buildNorthTrail();
 
 	// Combat A on scene 1 begins — its episode clears the pre-combat trail.
@@ -214,6 +218,7 @@ test("a replacement combat re-arms the trail reset even though started never wen
 	// The GM switches to scene 2 while the combat is still started: the canvas
 	// reloads, and the active combat for the new scene is different (or none).
 	globalThis.game.combats.active = null;
+	globalThis.game.scenes.current = { id: "scene-2" };
 	canvasReady();
 
 	// A fresh trail is built on scene 2.
@@ -249,6 +254,7 @@ test("a replacement combat re-arms the trail reset even though started never wen
 });
 
 test("restarting the same combat after a round-0 reset re-arms the trail reset", async () => {
+	globalThis.game.scenes.current = { id: "scene-1" };
 	await buildNorthTrail();
 
 	// Combat begins — its episode clears the pre-combat trail.
@@ -295,6 +301,7 @@ test("restarting the same combat after a round-0 reset re-arms the trail reset",
 });
 
 test("forceStart ordering: combatStart sees started:false then updateCombat true still suspends", async () => {
+	globalThis.game.scenes.current = { id: "scene-1" };
 	await buildNorthTrail();
 
 	// Foundry's Combat.startCombat() emits combatStart while round is still 0
@@ -324,6 +331,7 @@ test("forceStart ordering: combatStart sees started:false then updateCombat true
 });
 
 test("imported already-started combat via createCombat suspends and follower follows new path", async () => {
+	globalThis.game.scenes.current = { id: "scene-1" };
 	await buildNorthTrail();
 
 	// A combat imported/created with round>0 is already started; Foundry's
@@ -347,12 +355,45 @@ test("imported already-started combat via createCombat suspends and follower fol
 	assertF1MovesEast();
 });
 
+test("createCombat on current scene with active:false still suspends (issue #104 — programmatic create)", async () => {
+	globalThis.game.scenes.current = { id: "scene-1" };
+	await buildNorthTrail();
+
+	// Reproduces the confirmed defect: Combat.create({round:1}) yields
+	// started:true, active:false (BooleanField no initial, foundry.mjs:18149;
+	// CombatEncounters#active requires c.active, foundry.mjs:39905) and
+	// game.combats.active === null, so the previous active-id guard was inert.
+	// The handler must suspend via the scene guard
+	// (CombatEncounters#combats, foundry.mjs:39899-39901) without requiring
+	// c.active — c.scene === null || c.scene === game.scenes.current.
+	const combatNoActive = { id: "combatNoActive", scene: { id: "scene-1" }, started: true, active: false, round: 1 };
+	globalThis.game.combats.active = null;
+	createCombat(combatNoActive);
+
+	// Drift follower off-path without going through updateToken's recalc
+	// (isCombatStarted is false when active is null, so that path would
+	// otherwise clear the trail for the wrong reason).
+	f1.x = 0;
+	f1.y = 300;
+
+	globalThis.game.combats.active = null;
+	deleteCombat(combatNoActive);
+
+	updates.length = 0;
+	await moveLeader([0, -200], [100, -200]);
+	await sleep(400);
+
+	assertF1MovesEast();
+});
+
 test("off-scene combat does not clear current trail", async () => {
+	globalThis.game.scenes.current = { id: "scene-1" };
 	await buildNorthTrail();
 
 	// Off-scene: a started combat on another scene must NOT clear the current
-	// scene's trail. Active is still the current scene's combat (or null), so
-	// the handler's game.combats.active.id !== combat.id filter must block it.
+	// scene's trail. For createCombat the scene guard (foundry.mjs:39899-
+	// 39901) must block it; for combatStart/updateCombat the active-id guard
+	// must block it.
 	const offScene = { id: "offScene", scene: { id: "scene-2" }, started: true };
 	// Do NOT set active to offScene — active remains null / current scene.
 	globalThis.game.combats.active = null;
@@ -381,6 +422,7 @@ test("off-scene combat does not clear current trail", async () => {
 });
 
 test("global scene:null combat still clears when it is the active combat", async () => {
+	globalThis.game.scenes.current = { id: "scene-1" };
 	await buildNorthTrail();
 
 	const globalCombat = { id: "global1", scene: null, started: true };
