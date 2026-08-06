@@ -408,6 +408,80 @@ export async function stopAllWeaponAnimations(token) {
 }
 
 /**
+ * Parse the token id out of a weapon effect name.
+ * Effect names are `${MODULE_ID}-weapon-${tokenId}-${itemId}`.
+ * Returns null for non-weapon names.
+ * @param {string} rawName
+ * @returns {string|null}
+ */
+export function parseWeaponTokenId(rawName) {
+	if (!rawName || typeof rawName !== "string") return null;
+	const prefix = `${MODULE_ID}-weapon-`;
+	if (!rawName.startsWith(prefix)) return null;
+	const remainder = rawName.slice(prefix.length);
+	const tokenId = remainder.split("-")[0];
+	return tokenId || null;
+}
+
+/**
+ * End any `shadowdark-extras-weapon-*` effects whose token is no longer on the scene.
+ * Runs unconditionally (idempotent) to mirror the torch orphan sweep.
+ */
+export async function sweepOrphanWeaponEffects() {
+	const deps = checkDependencies();
+	if (!deps.hasSequencer) return;
+	const placeables = globalThis.canvas?.tokens?.placeables;
+	if (!placeables) return;
+	const presentIds = new Set(placeables.map(t => t.id ?? t.document?.id).filter(Boolean));
+	let effects = [];
+	try {
+		const maybe = Sequencer.EffectManager.getEffects({ name: `${MODULE_ID}-weapon-*` });
+		if (Array.isArray(maybe)) effects = maybe;
+		else if (maybe) effects = Array.from(maybe);
+	}
+	catch (e) {
+		try {
+			const all = Sequencer.EffectManager.getEffects?.() ?? [];
+			const list = Array.isArray(all) ? all : Array.from(all);
+			effects = list.filter(entry => {
+				const n = entry.data?.name ?? entry.name ?? "";
+				return typeof n === "string" && n.startsWith(`${MODULE_ID}-weapon-`);
+			});
+		}
+		catch (inner) {
+			return;
+		}
+	}
+	if (!effects.length) return;
+	const orphanTokenIds = new Set();
+	for (const eff of effects) {
+		const rawName = eff.data?.name ?? eff.name ?? "";
+		const tokenId = parseWeaponTokenId(rawName);
+		if (!tokenId) continue;
+		if (!presentIds.has(tokenId)) orphanTokenIds.add(tokenId);
+	}
+	for (const orphanId of orphanTokenIds) {
+		try {
+			await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-weapon-${orphanId}-*` });
+			console.log(`${MODULE_ID} | Swept orphan weapon effects for token ${orphanId}`);
+		}
+		catch (e) {
+			/* ignore */
+		}
+	}
+}
+
+/**
+ * Whether the current client is the elected restorer for canvasReady.
+ * GM-authoritative — only the activeGM may restore, not "first active".
+ * @returns {boolean}
+ */
+export function isWeaponCanvasRestoreAllowed() {
+	const activeGM = globalThis.game?.users?.activeGM;
+	return !!activeGM && globalThis.game?.user?.id === activeGM?.id;
+}
+
+/**
  * Get tokens for an actor on the current scene
  * @param {Actor} actor - The actor
  * @returns {Token[]} - Array of tokens
@@ -447,9 +521,6 @@ export function initWeaponAnimations() {
 
 	// Hook into item updates to detect equip changes
 	Hooks.on("updateItem", async (item, changes, options, userId) => {
-		// Only the user who made the change should create the animation
-		if (userId !== game.user.id) return;
-
 		// Only process weapon and armor (shields) items
 		if (item.type !== "Weapon" && item.type !== "Armor") return;
 
@@ -469,18 +540,27 @@ export function initWeaponAnimations() {
 
 		// Check if this weapon has animation config
 		const animConfig = item.getFlag(MODULE_ID, "weaponAnimation");
-		if (!animConfig?.enabled) return;
+		if (!animConfig?.enabled) {
+			// No animation config — still allow unconditional stop on unequip
+			if (!isEquipped) {
+				for (const token of getTokensForActor(actor)) {
+					await stopWeaponAnimation(token, item.id);
+				}
+			}
+			return;
+		}
 
 		// Get all tokens for this actor
 		const tokens = getTokensForActor(actor);
 
 		for (const token of tokens) {
 			if (isEquipped) {
-				// Weapon equipped - play animation
+				// Play is origin-gated — duplicates are the bug
+				if (userId !== game.user.id) continue;
 				await playWeaponAnimation(token, item);
 			}
 			else {
-				// Weapon unequipped - stop animation
+				// Stop is unconditional — every client ends its own copy
 				await stopWeaponAnimation(token, item.id);
 			}
 		}
@@ -488,10 +568,11 @@ export function initWeaponAnimations() {
 
 	// Restore animations on scene ready
 	Hooks.on("canvasReady", async () => {
-		// Only the first GM or the first user should restore animations
-		// This prevents all clients from creating duplicate effects
-		const firstActiveUser = game.users.find(u => u.active);
-		if (game.user.id !== firstActiveUser?.id) return;
+		// Orphan sweep runs on every client (idempotent) before the restore election
+		await sweepOrphanWeaponEffects();
+
+		// GM-authoritative election — only the active GM restores animations
+		if (!isWeaponCanvasRestoreAllowed()) return;
 
 		// Small delay to ensure everything is loaded
 		await new Promise(resolve => setTimeout(resolve, 500));
@@ -521,9 +602,7 @@ export function initWeaponAnimations() {
 
 	// Clean up animations when token is deleted
 	Hooks.on("deleteToken", async (tokenDoc, options, userId) => {
-		// Only the user who deleted the token should clean up
-		if (userId !== game.user.id) return;
-
+		// Stop is unconditional — every client ends its own copy (idempotent)
 		const deps = checkDependencies();
 		if (!deps.hasSequencer) return;
 
