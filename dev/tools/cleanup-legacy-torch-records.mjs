@@ -16,19 +16,19 @@
  *
  * Safety:
  *   - Dry-run by default. Set `APPLY` to `true` at the top to mutate.
- *   - Prefers `Sequencer.EffectManager.endEffects({ effects: [...] })` (id-based,
+ *   - Uses `Sequencer.EffectManager.endEffects({ effects: [...] })` (id-based,
  *     `dist:14843-14844` `CanvasEffect.id === data._id`, filtered via
  *     `effects.includes(effect.id)` `dist:11694-11703`, persisted removal in
  *     `_endManyEffects` `dist:12062-12114` via `flagManager.removeFlags`). This
- *     keeps the visible canvas and the persisted journal in sync.
- *   - For records whose effect is not currently in the manager (e.g. off-scene
- *     tokens when the viewed scene is different), `endEffects` has nothing to
- *     filter and cannot reach the persisted flag. Those are removed by direct
- *     `sequencerDatabase` journal mutation as a justified fallback — the manager
- *     is scene-partitioned by its own `sceneId` handling and `shouldPlay`
- *     (`dist:15145`), so an API-only pass would leave off-scene foreign records
- *     behind. The fallback edits only the selected foreign ids and is verified
- *     by the after-inventory.
+ *     keeps the visible canvas and the persisted journal in sync and
+ *     socket-broadcasts to all clients (`dist:11636-11640`); a direct
+ *     `journal.update` would not, risking a visible effect stranded without a
+ *     backing record. API path is verified live: all 18 foreign records are
+ *     present in `Sequencer.EffectManager.effects` (not inert journal rows),
+ *     `_filterEffects` has no `sceneId` check (`dist:11694-11703`) and
+ *     `shouldPlay` keeps off-scene creator effects (`dist:15145`), so the
+ *     manager sees them. If any selected id survives the API call, the tool
+ *     aborts and reports loudly — no journal fallback (under-removal preferred).
  *   - Idempotent: re-running with no foreign records matches zero ids and is a
  *     no-op. Loud about anything unexpected (missing token, unparseable name).
  *
@@ -38,14 +38,18 @@
  *
  * Sequencer dist citations (4.2.3, `~/FoundryV14/Data/modules/sequencer/dist/sequencer.js`):
  *   - `CanvasEffect.id` getter → `data._id` :14768-74 / 14843-14844
- *   - `_filterEffects` `effects` branch         :11694-11703 (`effects.includes(effect.id)`)
+ *   - `_filterEffects` `effects` branch         :11694-11703 (`effects.includes(effect.id)`) — no sceneId check
  *   - `_validateFilters` effects→id map         :11779-11791
  *   - `_endManyEffects` persisted removal       :12062-12114 (groups by
  *     `context.uuid`, calls `flagManager.removeFlags` at 12081-12114; visible
- *     plus flag removal)
+ *     plus flag removal, socket broadcast at 11636-11640)
+ *   - `shouldPlay` keeps off-scene creator effects: 15145
  *   - `flagManager._getDatabaseData` key restore: 9580-9590 (dash→dot)
  *   - `flagManager.removeFlags` → `_removeFlags` → `updateFlags` debounced
  *     journal write: 9541-9680; database journal `sequencerDatabase` 589-595
+ *   - All 18 foreign records are live `Sequencer.EffectManager.effects` (persistent,
+ *     `attachTo`-active), so ending them via the API ends the visible flame
+ *     and its persisted flag together.
  */
 
 /* eslint-disable no-console */
@@ -57,6 +61,11 @@ const APPLY = false;
 const MODULE_ID = "shadowdark-extras";
 const TORCH_PREFIX = `${MODULE_ID}-torch-`;
 const DATABASE_NAME = "sequencerDatabase";
+
+function isTokenPersistKey(uuid) {
+  if (typeof uuid !== "string" || !uuid) return false;
+  return /^Scene[.-].*[.-]Token[.-].+$/.test(uuid);
+}
 
 function tokenIdFromUuid(uuid) {
   if (typeof uuid !== "string" || !uuid) return null;
@@ -100,6 +109,9 @@ function classifyRecord(effectName, tokenUuid) {
   if (!parsed) return { classification: "non-torch", parsed: null };
   if (parsed.format === "unparseable") return { classification: "unparseable", parsed, reason: parsed.reason };
   if (parsed.format === "new") return { classification: "new-format", parsed };
+  if (!isTokenPersistKey(tokenUuid)) {
+    return { classification: "unparseable", parsed, reason: `legacy name under non-token key "${tokenUuid}" — cannot determine attached token` };
+  }
   const attachedId = tokenIdFromUuid(tokenUuid);
   if (!attachedId) return { classification: "unparseable", parsed, reason: "cannot derive attached token id" };
   if (parsed.tokenId === attachedId) return { classification: "legacy-correct", parsed };
@@ -154,6 +166,12 @@ function selectForeignRecords(databaseEffects) {
         totals.total += 1;
         entries.push({ id: String(rawEntry?.[0] ?? "?"), name: "", classification: "unparseable", parsed: null, uuid });
         continue;
+      }
+      if (Array.isArray(rawEntry) && rawEntry.length >= 2) {
+        const data = rawEntry[1];
+        if (data && typeof data === "object" && typeof data.name !== "string") {
+          warnings.push(`UUID ${uuid}: record ${rec.id} has missing or non-string name — spared as non-torch`);
+        }
       }
       totals.total += 1;
       const { classification, parsed, reason } = classifyRecord(rec.name, uuid);
@@ -234,43 +252,38 @@ function printInventory(label, databaseEffects) {
   return { perUuid, totals, warnings };
 }
 
-async function removeForeignRecords(journal, foreignIds) {
+async function removeForeignRecords(foreignIds) {
   if (!foreignIds.length) {
     console.log(`[${MODULE_ID}] no foreign records to remove — nothing to do`);
-    return { viaApi: 0, viaJournal: 0, leftover: [] };
+    return { viaApi: 0, leftover: [] };
   }
   console.log(`[${MODULE_ID}] foreign ids (${foreignIds.length}):`, foreignIds);
+  console.log(`[${MODULE_ID}] ending ${foreignIds.length} live effects via Sequencer API — each is a persistent, attachTo-active effect (visible flame + persisted flag)`);
 
-  // 1) Prefer the Sequencer API — id-based filter so only the selected records
-  // are ended, and the visible effect plus its persisted flag are removed
-  // together (_endManyEffects dist:12062-12114). This is the proven path from
-  // #105's live verification; it is scene-aware and keeps canvas+journal in sync.
-  let apiEnded = [];
-  if (globalThis.Sequencer?.EffectManager?.endEffects) {
-    try {
-      // endEffects with {effects: [...] } matches effect.id (CanvasEffect.id is
-      // data._id dist:14843-14844, filtered via effects.includes(effect.id)
-      // dist:11694-11703, mapped in _validateFilters dist:11779-11791).
-      const before = globalThis.Sequencer.EffectManager.effects?.length ?? 0;
-      await globalThis.Sequencer.EffectManager.endEffects({ effects: foreignIds });
-      // Give the debounced flagManager.updateFlags a tick to flush (dist: 96xx)
-      await new Promise((r) => setTimeout(r, 400));
-      const after = globalThis.Sequencer.EffectManager.effects?.length ?? before;
-      apiEnded = foreignIds; // _endManyEffects is all-or-nothing per id; if the effect
-      // was not in the manager (off-scene) it simply wasn't matched — handled below.
-      console.log(`[${MODULE_ID}] endEffects({effects:[...${foreignIds.length}]}) done (manager ${before}→${after})`);
-    } catch (e) {
-      console.error(`[${MODULE_ID}] endEffects failed — will fall back to journal mutation`, e);
-    }
-  } else {
-    console.warn(`[${MODULE_ID}] Sequencer.EffectManager.endEffects not found — skipping API path`);
+  if (!globalThis.Sequencer?.EffectManager?.endEffects) {
+    console.error(`[${MODULE_ID}] Sequencer.EffectManager.endEffects not found — aborting (no mutation)`);
+    return { viaApi: 0, leftover: [...foreignIds] };
   }
 
-  // 2) Verify what is still persisted; direct journal mutation is the justified
-  // fallback for off-scene records that the manager could not see. This is the
-  // same journal path initializePersistentEffects uses to purge orphans
-  // (dist:11919-11951 flagManager.removeFlags), and objectDeleted uses to drain
-  // deleted objects (dist:12126-12134).
+  try {
+    // endEffects with {effects: [...]} matches effect.id (CanvasEffect.id is
+    // data._id dist:14843-14844, filtered via effects.includes(effect.id)
+    // dist:11694-11703, mapped in _validateFilters dist:11779-11791).
+    // _endManyEffects persists removal via flagManager.removeFlags dist:12062-12114
+    // and socket-broadcasts at 11636-11640 so all clients end the visible effect.
+    const before = globalThis.Sequencer.EffectManager.effects?.length ?? 0;
+    await globalThis.Sequencer.EffectManager.endEffects({ effects: foreignIds });
+    // Give the debounced flagManager.updateFlags a tick to flush (dist: 9541-9680)
+    await new Promise((r) => setTimeout(r, 500));
+    const after = globalThis.Sequencer.EffectManager.effects?.length ?? before;
+    console.log(`[${MODULE_ID}] endEffects({effects:[...${foreignIds.length}]}) done (manager ${before}→${after})`);
+  } catch (e) {
+    console.error(`[${MODULE_ID}] endEffects failed — no journal fallback (under-removal preferred)`, e);
+    // Return survivors as leftover; caller will re-read and report loudly.
+  }
+
+  // Verify what is still persisted. If anything survives, abort — no direct
+  // journal mutation (would strand a visible effect without a backing record).
   const { map: afterMap } = getDatabaseEffectsMap();
   const stillPresent = [];
   const remainingByUuid = {};
@@ -285,81 +298,13 @@ async function removeForeignRecords(journal, foreignIds) {
   }
 
   if (!stillPresent.length) {
-    console.log(`[${MODULE_ID}] all foreign records cleared via API path — no journal fallback needed`);
-    return { viaApi: foreignIds.length, viaJournal: 0, leftover: [] };
+    console.log(`[${MODULE_ID}] all foreign records cleared via API — visible + persisted removed ✓`);
+    return { viaApi: foreignIds.length, leftover: [] };
   }
 
-  console.warn(`[${MODULE_ID}] ${stillPresent.length} foreign record(s) still persisted after endEffects (expected for off-scene tokens) — removing via sequencerDatabase journal mutation (justified fallback)`);
-  console.warn(`[${MODULE_ID}] remaining:`, remainingByUuid);
-
-  // Journal mutation: rebuild each UUID's effect array without the foreign ids.
-  // Use journal.update with the flag path, mirroring flagManager.updateFlags'
-  // batch semantics (dist:9620-9660) but scoped to the selected ids only.
-  if (!journal) {
-    console.error(`[${MODULE_ID}] cannot mutate journal — sequencerDatabase not found`);
-    return { viaApi: foreignIds.length - stillPresent.length, viaJournal: 0, leftover: stillPresent };
-  }
-
-  // Read the raw (dash-keyed) effect flags to mutate in place
-  const rawEffects = foundry.utils.getProperty(journal, "flags.sequencer.effects") ?? {};
-  const updates = {};
-  let removed = 0;
-  for (const [rawKey, list] of Object.entries(rawEffects)) {
-    const dotKey = rawKey.includes(".") ? rawKey : rawKey.replaceAll("-", ".");
-    // Collect ids for this uuid that are in the still-present set
-    const toRemove = new Set(stillPresent);
-    const filtered = Array.isArray(list) ? list.filter(([id]) => !toRemove.has(id)) : list;
-    if (Array.isArray(list) && filtered.length !== list.length) {
-      removed += list.length - filtered.length;
-      // Foundry flag deletion uses "-=key" sentinel; for sequencer we rewrite the
-      // entire effects object per flagManager.updateFlags, so we set the new array.
-      // Keep rawKey form (dash-joined) to match the stored shape.
-      updates[`flags.sequencer.effects.${rawKey}`] = filtered;
-    }
-  }
-
-  if (!removed) {
-    console.warn(`[${MODULE_ID}] journal fallback: computed 0 removals — keys may be dot-joined already, retrying`);
-    // Retry with dot keys
-    for (const [uuid, list] of Object.entries(afterMap)) {
-      if (!Array.isArray(list)) continue;
-      const toRemove = new Set(stillPresent);
-      const filtered = list.filter(([id]) => !toRemove.has(id));
-      if (filtered.length !== list.length) {
-        const dashKey = uuid.replaceAll(".", "-");
-        updates[`flags.sequencer.effects.${dashKey}`] = filtered;
-        removed += list.length - filtered.length;
-      }
-    }
-  }
-
-  if (!Object.keys(updates).length) {
-    console.error(`[${MODULE_ID}] journal fallback: no update keys produced — manual inspection needed`);
-    return { viaApi: foreignIds.length - stillPresent.length, viaJournal: 0, leftover: stillPresent };
-  }
-
-  console.log(`[${MODULE_ID}] journal fallback: updating sequencerDatabase with ${removed} removal(s) across ${Object.keys(updates).length} key(s)`);
-  try {
-    await journal.update(updates);
-    console.log(`[${MODULE_ID}] journal fallback: update applied`);
-  } catch (e) {
-    console.error(`[${MODULE_ID}] journal fallback: update failed`, e);
-    return { viaApi: foreignIds.length - stillPresent.length, viaJournal: 0, leftover: stillPresent };
-  }
-
-  // Re-check
-  const { map: finalMap } = getDatabaseEffectsMap();
-  const leftover = [];
-  for (const list of Object.values(finalMap)) {
-    for (const entry of list) {
-      const rec = effectEntryToRecord(entry);
-      if (rec && foreignIds.includes(rec.id)) leftover.push(rec.id);
-    }
-  }
-  if (leftover.length) console.error(`[${MODULE_ID}] still leftover after journal fallback:`, leftover);
-  else console.log(`[${MODULE_ID}] journal fallback: all foreign records now removed`);
-
-  return { viaApi: foreignIds.length - stillPresent.length, viaJournal: removed, leftover };
+  console.error(`[${MODULE_ID}] ABORT: ${stillPresent.length} foreign record(s) still persisted after API — NOT falling back to journal mutation (would risk stranding a visible effect). Survivors:`, remainingByUuid);
+  console.error(`[${MODULE_ID}] Under-removal preferred: re-run is safe (idempotent), investigate survivors before retrying.`);
+  return { viaApi: foreignIds.length - stillPresent.length, leftover: stillPresent };
 }
 
 async function main() {
@@ -382,7 +327,7 @@ async function main() {
 
   if (!APPLY) {
     console.log(`\n%c[${MODULE_ID}] DRY-RUN — no changes made. Set const APPLY = true at the top and re-run to apply.`, "font-weight:bold; color:green");
-    console.log(`[${MODULE_ID}] on apply, this will call Sequencer.EffectManager.endEffects({effects:[...ids]}) for the ${foreignIds.length} foreign id(s), with a direct journal fallback for off-scene survivors`);
+    console.log(`[${MODULE_ID}] on apply, this will call Sequencer.EffectManager.endEffects({effects:[...ids]}) for the ${foreignIds.length} foreign id(s) (API-only, no journal fallback)`);
     return;
   }
 
@@ -391,23 +336,57 @@ async function main() {
     return;
   }
 
-  const result = await removeForeignRecords(journal, foreignIds);
+  const result = await removeForeignRecords(foreignIds);
 
   // After inventory (same shape as before)
   await new Promise((r) => setTimeout(r, 300));
   const { map: afterMap } = getDatabaseEffectsMap();
   const after = printInventory("AFTER", afterMap);
 
-  console.log(`\n[${MODULE_ID}] result: via API ${result.viaApi} | via journal ${result.viaJournal} | leftover ${result.leftover.length}`);
-  if (result.leftover.length) console.error(`[${MODULE_ID}] LEFTOVER — manual inspection needed:`, result.leftover);
+  console.log(`\n[${MODULE_ID}] result: via API ${result.viaApi} | leftover ${result.leftover.length}`);
+  if (result.leftover.length) console.error(`[${MODULE_ID}] LEFTOVER — manual inspection needed (not retrying via journal):`, result.leftover);
 
-  // Prove untouched: legacy-correct + new-format counts must be unchanged
-  const beforeKept = before.totals.legacy - before.totals.foreign + before.totals.newFormat;
-  const afterKept = after.totals.legacy - after.totals.foreign + after.totals.newFormat;
-  if (beforeKept !== afterKept) {
-    console.error(`[${MODULE_ID}] UNEXPECTED: kept-record count changed ${beforeKept}→${afterKept} — review before/after tables`);
-  } else {
-    console.log(`[${MODULE_ID}] kept records unchanged (${beforeKept}) — legacy-correct + new-format untouched ✓`);
+  // Prove untouched: per-UUID set equality over kept (non-foreign) ids — not aggregate counts
+  {
+    const keptIds = (group) => new Set(group.entries.filter((e) => e.classification !== "foreign").map((e) => e.id));
+    const beforeKept = new Map(before.perUuid.map((g) => [g.uuid, keptIds(g)]));
+    const afterKept = new Map(after.perUuid.map((g) => [g.uuid, keptIds(g)]));
+    let mismatch = 0;
+    for (const [uuid, bSet] of beforeKept) {
+      const aSet = afterKept.get(uuid);
+      if (!aSet || bSet.size !== aSet.size || [...bSet].some((id) => !aSet.has(id))) {
+        console.error(`[${MODULE_ID}] KEPT MISMATCH for ${uuid}: before ${[...bSet].join(",")} vs after ${aSet ? [...aSet].join(",") : "(missing uuid)"}`);
+        mismatch += 1;
+      }
+    }
+    for (const uuid of afterKept.keys()) {
+      if (!beforeKept.has(uuid)) {
+        console.error(`[${MODULE_ID}] KEPT MISMATCH: unexpected uuid after ${uuid}`);
+        mismatch += 1;
+      }
+    }
+    if (mismatch) {
+      console.error(`[${MODULE_ID}] UNEXPECTED: ${mismatch} uuid(s) have kept-record drift — review before/after tables`);
+    } else {
+      const keptTotal = [...beforeKept.values()].reduce((s, set) => s + set.size, 0);
+      console.log(`[${MODULE_ID}] kept records identical by id per uuid (${keptTotal} kept) ✓`);
+    }
+  }
+  // Explicit nine-key guard: each Thraxis foreign-holder still has its 2 correct ids
+  {
+    const nineIds = ["04bAh5wb50DAaLVD","Y4jqHVluru9NEp3O","btBoZVm8vR7iwFRJ","JrwJDS1ePiQR2wz0","iKIVrIbxY53mRwq6","7luPICUAJCOTdVZU","dGnJyeQFP7XThDpN","OMR5G1k86Zfiu9wL","urbXkHINYH3iSi4W"];
+    const afterByToken = new Map(after.perUuid.map((g) => [g.tokenId, g]));
+    let nineOk = 0;
+    for (const tid of nineIds) {
+      const g = afterByToken.get(tid);
+      if (!g) { console.error(`[${MODULE_ID}] NINE-KEY MISSING after: ${tid}`); continue; }
+      const keptCorrect = g.entries.filter((e) => e.classification === "legacy-correct");
+      if (keptCorrect.length !== 2) console.error(`[${MODULE_ID}] NINE-KEY ${tid} expected 2 legacy-correct, got ${keptCorrect.length}:`, keptCorrect.map((e) => e.name));
+      else if (!keptCorrect.every((e) => e.parsed.tokenId === tid)) console.error(`[${MODULE_ID}] NINE-KEY ${tid} correct ids mismatch:`, keptCorrect);
+      else nineOk += 1;
+    }
+    console.log(`[${MODULE_ID}] nine Thraxis keys guard: ${nineOk}/9 hold 2 legacy-correct ids ✓`);
+    if (nineOk !== 9) console.error(`[${MODULE_ID}] NINE-KEY GUARD FAILED`);
   }
 
   // Foreign should now be zero

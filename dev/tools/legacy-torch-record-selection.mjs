@@ -13,6 +13,22 @@ export const MODULE_ID = "shadowdark-extras";
 export const TORCH_PREFIX = `${MODULE_ID}-torch-`;
 
 /**
+ * Whether a persistence key is a token-scoped key (`Scene.<sceneId>.Token.<tokenId>`).
+ * Sequencer stores per-token effects under this shape; actor/scene keys are a
+ * separate path (only when `persistTokenPrototype` is set, `dist:9661-9698`,
+ * `.persist()` defaults to `false` `dist:23217`, so the module never hits it).
+ * Used to guard legacy classification — a legacy name under a non-token key
+ * would otherwise be mis-labelled `foreign` truthily.
+ * @param {string} uuid
+ * @returns {boolean}
+ */
+export function isTokenPersistKey(uuid) {
+  if (typeof uuid !== "string" || !uuid) return false;
+  // Handles both dot and dash-joined forms (`_getDatabaseData` dash→dot `dist:9580-9590`)
+  return /^Scene[.-].*[.-]Token[.-].+$/.test(uuid);
+}
+
+/**
  * Derive the token id from a Sequencer persistence UUID.
  * Sequencer persists per `Scene.<sceneId>.Token.<tokenId>` (or Actor) and stores
  * the key dash-joined in the journal; after `flagManager.getDatabaseFlags`
@@ -104,7 +120,11 @@ export function classifyRecord(effectName, tokenUuid) {
   if (!parsed) return { classification: "non-torch", parsed: null };
   if (parsed.format === "unparseable") return { classification: "unparseable", parsed, reason: parsed.reason };
   if (parsed.format === "new") return { classification: "new-format", parsed };
-  // legacy
+  // legacy — require a token-scoped key; otherwise a legacy name under an
+  // Actor/Scene key would be truthily marked foreign ( Hardening 1 )
+  if (!isTokenPersistKey(tokenUuid)) {
+    return { classification: "unparseable", parsed, reason: `legacy name under non-token key "${tokenUuid}" — cannot determine attached token` };
+  }
   const attachedId = tokenIdFromUuid(tokenUuid);
   if (!attachedId) return { classification: "unparseable", parsed, reason: "cannot derive attached token id from uuid" };
   if (parsed.tokenId === attachedId) return { classification: "legacy-correct", parsed };
@@ -123,11 +143,9 @@ export function effectEntryToRecord(entry) {
   if (Array.isArray(entry) && entry.length >= 2) {
     const [id, data] = entry;
     if (typeof id === "string" && data && typeof data === "object") {
-      const name = typeof data.name === "string" ? data.name : (typeof data._id === "string" ? "" : "");
-      // data.name may be missing on malformed records — still return id with empty name for warning
-      return { id, name: name ?? "" };
+      const name = typeof data.name === "string" ? data.name : "";
+      return { id, name };
     }
-    // also handle [id, {data:{name}}] nested?
     return null;
   }
   if (entry && typeof entry === "object") {
@@ -186,6 +204,13 @@ export function selectForeignRecords(databaseEffects) {
         totals.total += 1;
         entries.push({ id: String(rawEntry?.[0] ?? "?"), name: "", classification: "unparseable", parsed: null, uuid, rawEntry });
         continue;
+      }
+      // Hardening 2 — loud on missing/non-string name (spared as non-torch, dead ternary removed)
+      if (Array.isArray(rawEntry) && rawEntry.length >= 2) {
+        const data = rawEntry[1];
+        if (data && typeof data === "object" && typeof data.name !== "string") {
+          warnings.push(`UUID ${uuid}: record ${rec.id} has missing or non-string name — spared as non-torch`);
+        }
       }
       totals.total += 1;
       const { classification, parsed, reason } = classifyRecord(rec.name, uuid);

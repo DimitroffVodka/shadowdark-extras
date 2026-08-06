@@ -213,3 +213,44 @@ test("selectForeignRecords: idempotent — no false positives on second run", ()
   assert.equal(second.foreignIds.length, 0);
   assert.equal(second.totals.foreign, 0);
 });
+
+test("Hardening 1 — legacy under Actor/Scene key is unparseable, not foreign (truthy-but-wrong guard)", () => {
+  const actorUuid = `Actor.${TOKEN_A}`;
+  const sceneUuid = `Scene.ThraxisArena`;
+  // Both keys lack "Token." marker; legacy name would previously have been marked foreign truthily
+  const mapActor = { [actorUuid]: [tuple("act-1", `${TORCH_PREFIX}${FOREIGN_TOKEN}-${ITEM_X}`)] };
+  const mapScene = { [sceneUuid]: [tuple("scene-1", `${TORCH_PREFIX}${FOREIGN_TOKEN}-${ITEM_X}`)] };
+  for (const m of [mapActor, mapScene]) {
+    const { totals, foreignIds, warnings, perUuid } = selectForeignRecords(m);
+    assert.equal(totals.foreign, 0, "must not count as foreign");
+    assert.equal(totals.unparseable, 1);
+    assert.deepEqual(foreignIds, []);
+    assert.ok(warnings.some((w) => w.includes("non-token key")), `expected non-token warning, got ${warnings}`);
+    assert.equal(perUuid[0].entries[0].classification, "unparseable");
+  }
+  // Token key still works
+  const tokenMap = { [uuid(TOKEN_A)]: [tuple("tok-1", `${TORCH_PREFIX}${FOREIGN_TOKEN}-${ITEM_X}`)] };
+  const tok = selectForeignRecords(tokenMap);
+  assert.equal(tok.totals.foreign, 1);
+});
+
+test("Hardening 2 — missing/non-string name is spared as non-torch and warned", () => {
+  const map = {
+    [uuid(TOKEN_A)]: [
+      tuple("good", `${TORCH_PREFIX}${TOKEN_A}-${ITEM_X}`),
+      ["bad-missing", { _id: "bad-missing" }], // no name
+      ["bad-number", { _id: "bad-number", name: 123 }],
+      ["bad-null", { _id: "bad-null", name: null }],
+    ],
+  };
+  const { totals, foreignIds, warnings, perUuid } = selectForeignRecords(map);
+  // Good is legacy-correct, the three bad ones are spared as non-torch with warnings
+  assert.equal(totals.foreign, 0);
+  assert.equal(totals.legacy, 1);
+  assert.equal(totals.nonTorch, 3);
+  assert.deepEqual(foreignIds, []);
+  assert.equal(warnings.filter((w) => w.includes("missing or non-string name")).length, 3);
+  // Entries are spared (non-torch)
+  const bad = perUuid[0].entries.filter((e) => e.id.startsWith("bad"));
+  for (const e of bad) assert.equal(e.classification, "non-torch");
+});
