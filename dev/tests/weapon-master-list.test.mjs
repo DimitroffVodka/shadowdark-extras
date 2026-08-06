@@ -372,3 +372,41 @@ test("disabling stops a live effect — playWeaponAnimation with null config ter
 	await playWeaponAnimation(token, daggerDisabled, { enabled: false, imagePath: "x.webp" });
 	assert.ok(endEffectsCalls.some(c => c.object === token), "configOverride enabled:false must also stop with object: token");
 });
+
+test("canvasReady stops a live effect for a disabled item — reload gap", async () => {
+	reset();
+	seedDaggerPreset();
+	initWeaponAnimations();
+	const disabledFlag = { enabled: false, imagePath: "modules/shadowdark-extras/assets/Weapons/dagger.webp" };
+	const daggerDisabled = makeItem("itemD", "Dagger", true, disabledFlag);
+	const actor = makeActor("actor1", [daggerDisabled]);
+	const token = makeToken("tok1", actor);
+	globalThis.canvas.tokens.placeables = [token];
+	// Live effect from before disable — token still present, so sweep would spare it
+	const live = { data: { name: getEffectName(daggerDisabled.id), source: token.document.uuid, _id: "live-reload", sceneId: "sceneA" }, sprite: { filters: [] }, spriteContainer: { filters: [] } };
+	globalThis.Sequencer.EffectManager.effects = [live];
+	endEffectsCalls.length = 0;
+
+	await hooks.canvasReady();
+	assert.ok(endEffectsCalls.some(c => c.object === token && c.name === getEffectName(daggerDisabled.id)), "canvasReady must stop disabled item's live effect with object: token");
+	assert.ok(endEffectsCalls.some(c => c.name === getEffectName(daggerDisabled.id)), "canvasReady stop must carry classification name");
+});
+
+test("createToken stops a live effect for a disabled item", async () => {
+	reset();
+	seedDaggerPreset();
+	initWeaponAnimations();
+	const disabledFlag = { enabled: false };
+	const daggerDisabled = makeItem("itemD", "Dagger", true, disabledFlag);
+	const actor = makeActor("actor1", [daggerDisabled]);
+	const token = makeToken("tok1", actor);
+	globalThis.canvas.tokens.placeables = [token];
+	const live = { data: { name: getEffectName(daggerDisabled.id), source: token.document.uuid, _id: "live-create", sceneId: "sceneA" }, sprite: { filters: [] }, spriteContainer: { filters: [] } };
+	globalThis.Sequencer.EffectManager.effects = [live];
+	endEffectsCalls.length = 0;
+
+	const tokenDoc = { id: "tok1", uuid: token.document.uuid };
+	// createToken handler gates on userId === game.user.id (creator)
+	await hooks.createToken(tokenDoc, {}, "testUser");
+	assert.ok(endEffectsCalls.some(c => c.object === token && c.name === getEffectName(daggerDisabled.id)), "createToken must stop disabled item's live effect with object: token");
+});

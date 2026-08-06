@@ -210,8 +210,9 @@ function getImageName(filePath) {
  * @param {Token} token - The token to animate
  * @param {Item} item - The weapon item
  * @param {Object|null} configOverride - Optional config object for live preview (skips DB read)
+ * @param {string|null} userId - Origin user id for equip events; null = no origin gate (e.g. restore)
  */
-export async function playWeaponAnimation(token, item, configOverride = null) {
+export async function playWeaponAnimation(token, item, configOverride = null, userId = null) {
 	if (!isEnabled()) return;
 
 	const deps = checkDependencies();
@@ -239,9 +240,14 @@ export async function playWeaponAnimation(token, item, configOverride = null) {
 
 	const animConfig = getResolvedWeaponAnimation(item, configOverride);
 	if (!animConfig) {
-		await stopWeaponAnimation(token, item.id); // was animating via master list, now disabled — terminate
+		await stopWeaponAnimation(token, item.id); // was animating, now disabled/no-match — terminate
 		return;
 	}
+
+	// Equip play is origin-gated; stop above is not. A disabled equip is
+	// cleanup and must run on every client, but a new play must not duplicate
+	// across clients. See #107/#102 ordering discussion.
+	if (userId !== null && userId !== game.user.id) return;
 
 	const effectName = getEffectName(item.id);
 
@@ -626,7 +632,7 @@ export function initWeaponAnimations() {
 		}
 
 		// Stop is unconditional on unequip — every client ends its own copy
-		// (must survive regardless of config; see #102). Play is origin-gated.
+		// (must survive regardless of config; see #102).
 		if (!isEquipped) {
 			for (const token of getTokensForActor(actor)) {
 				await stopWeaponAnimation(token, item.id);
@@ -634,12 +640,12 @@ export function initWeaponAnimations() {
 			return;
 		}
 
-		// Equipped: only play if item resolves via per-item flag OR master list
-		if (!hasWeaponAnimation(item)) return;
-		if (userId !== game.user.id) return;
-
+		// Equipped: let playWeaponAnimation decide — it will play if enabled
+		// (origin-gated inside) or stop if disabled/no-match (unconditional).
+		// No pre-filter here; see #107 — entry-point predicate duplicated the
+		// decision and went stale. Single predicate inside play keeps them in sync.
 		for (const token of getTokensForActor(actor)) {
-			await playWeaponAnimation(token, item);
+			await playWeaponAnimation(token, item, null, userId);
 		}
 	});
 
@@ -669,14 +675,15 @@ export function initWeaponAnimations() {
 				continue;
 			}
 
-			// Get all equipped items that resolve to an animation (per-item or master list)
+			// Every equipped Weapon/Armor — let playWeaponAnimation decide to play or stop.
+			// No hasWeaponAnimation pre-filter here; see #107. Play will stop
+			// disabled/no-match items (unconditional cleanup) or play enabled ones.
 			const equippedItems = actor.items.filter(i =>
 				(i.type === "Weapon" || i.type === "Armor") &&
-                i.system?.equipped === true &&
-                hasWeaponAnimation(i)
+                i.system?.equipped === true
 			);
 
-			// Play animation for each equipped item
+			// Play (or stop) animation for each equipped item
 			for (const item of equippedItems) {
 				await playWeaponAnimation(token, item);
 			}
@@ -713,14 +720,14 @@ export function initWeaponAnimations() {
 			return;
 		}
 
-		// Get all equipped items that resolve to an animation (per-item or master list)
+		// Every equipped Weapon/Armor — let playWeaponAnimation decide to play or stop.
+		// No hasWeaponAnimation pre-filter; play will stop disabled/no-match items.
 		const equippedItems = actor.items.filter(i =>
 			(i.type === "Weapon" || i.type === "Armor") &&
-            i.system?.equipped === true &&
-            hasWeaponAnimation(i)
+            i.system?.equipped === true
 		);
 
-		// Play animation for each equipped item
+		// Play (or stop) animation for each equipped item
 		for (const item of equippedItems) {
 			await playWeaponAnimation(token, item);
 		}
