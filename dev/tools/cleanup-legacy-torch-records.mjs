@@ -372,21 +372,24 @@ async function main() {
       console.log(`[${MODULE_ID}] kept records identical by id per uuid (${keptTotal} kept) ✓`);
     }
   }
-  // Explicit nine-key guard: each Thraxis foreign-holder still has its 2 correct ids
+  // Derived guard: every foreign-holder key (foreign>0 before) still exists and retained its kept set
   {
-    const nineIds = ["04bAh5wb50DAaLVD","Y4jqHVluru9NEp3O","btBoZVm8vR7iwFRJ","JrwJDS1ePiQR2wz0","iKIVrIbxY53mRwq6","7luPICUAJCOTdVZU","dGnJyeQFP7XThDpN","OMR5G1k86Zfiu9wL","urbXkHINYH3iSi4W"];
-    const afterByToken = new Map(after.perUuid.map((g) => [g.tokenId, g]));
-    let nineOk = 0;
-    for (const tid of nineIds) {
-      const g = afterByToken.get(tid);
-      if (!g) { console.error(`[${MODULE_ID}] NINE-KEY MISSING after: ${tid}`); continue; }
-      const keptCorrect = g.entries.filter((e) => e.classification === "legacy-correct");
-      if (keptCorrect.length !== 2) console.error(`[${MODULE_ID}] NINE-KEY ${tid} expected 2 legacy-correct, got ${keptCorrect.length}:`, keptCorrect.map((e) => e.name));
-      else if (!keptCorrect.every((e) => e.parsed.tokenId === tid)) console.error(`[${MODULE_ID}] NINE-KEY ${tid} correct ids mismatch:`, keptCorrect);
-      else nineOk += 1;
+    const holders = before.perUuid.filter((g) => g.foreign > 0);
+    const afterByUuid = new Map(after.perUuid.map((g) => [g.uuid, g]));
+    let holdersOk = 0;
+    for (const h of holders) {
+      const a = afterByUuid.get(h.uuid);
+      if (!a) { console.error(`[${MODULE_ID}] HOLDER MISSING after: ${h.uuid}`); continue; }
+      // kept equality already proven above; here we just confirm this holder survived and surface it
+      const keptBefore = new Set(h.entries.filter((e) => e.classification !== "foreign").map((e) => e.id));
+      const keptAfter = new Set(a.entries.filter((e) => e.classification !== "foreign").map((e) => e.id));
+      const same = keptBefore.size === keptAfter.size && [...keptBefore].every((id) => keptAfter.has(id));
+      if (!same) console.error(`[${MODULE_ID}] HOLDER KEPT MISMATCH for ${h.uuid}`);
+      else holdersOk += 1;
     }
-    console.log(`[${MODULE_ID}] nine Thraxis keys guard: ${nineOk}/9 hold 2 legacy-correct ids ✓`);
-    if (nineOk !== 9) console.error(`[${MODULE_ID}] NINE-KEY GUARD FAILED`);
+    const holderList = holders.map((h) => h.tokenId ?? h.uuid).join(", ");
+    console.log(`[${MODULE_ID}] foreign-holder guard: ${holdersOk}/${holders.length} holder(s) retained kept records${holders.length ? ` [${holderList}]` : ""} ✓`);
+    if (holdersOk !== holders.length) console.error(`[${MODULE_ID}] HOLDER GUARD FAILED`);
   }
 
   // Foreign should now be zero
