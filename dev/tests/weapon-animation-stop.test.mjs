@@ -126,12 +126,13 @@ test("stop still produces string filters carrying the -* anchor (Sequencer would
 	endEffectsCalls.length = 0;
 	// Ensure sweep has a canvas to work with
 	const origCanvas = globalThis.canvas;
+	const origGame = globalThis.game;
 	const origGetEffects = globalThis.Sequencer.EffectManager.getEffects;
 	globalThis.canvas = {
 		tokens: { placeables: [{ id: "tokA", document: { uuid: "Scene.sceneA.Token.tokA" } }] },
 		scene: { id: "sceneA" },
 	};
-	globalThis.game.user = { id: "u1", viewedScene: "sceneA" };
+	globalThis.game = { ...origGame, user: { id: "u1", viewedScene: "sceneA" }, modules: origGame.modules, settings: origGame.settings };
 	globalThis.Sequencer.EffectManager.getEffects = () => [];
 
 	endEffectsCalls.length = 0;
@@ -167,5 +168,6 @@ test("stop still produces string filters carrying the -* anchor (Sequencer would
 
 	// Restore
 	globalThis.canvas = origCanvas;
+	globalThis.game = origGame;
 	globalThis.Sequencer.EffectManager.getEffects = origGetEffects;
 });

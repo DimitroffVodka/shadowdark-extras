@@ -419,11 +419,12 @@ test("sweepOrphanWeaponEffects fallback path when filtered getEffects throws", a
 	assert.ok(endEffectsCalls[0].effects.includes("o1"));
 });
 
-test("sweepOrphanWeaponEffects handles effects stored as .name fallback (data missing) via legacy parse", async () => {
+test("sweepOrphanWeaponEffects handles legacy-name parse when source is missing", async () => {
 	resetWorld();
 	globalThis.canvas.tokens.placeables = [{ id: "keepTok", document: { uuid: "Scene.sceneA.Token.keepTok" } }];
 	globalThis.canvas.scene = { id: "sceneA" };
-	// Legacy name with tokenId embedded and no source — fallback to name parsing
+	// Legacy name carries tokenId; when source is absent the sweep falls back to name parsing.
+	// Fixture retains data.name (real Sequencer always populates data.source, so data-missing is near-unreachable — tested path is source-missing).
 	const effects = [
 		{ name: `${MODULE_ID}-weapon-goneTok-item1`, data: { _id: "lgW1", name: `${MODULE_ID}-weapon-goneTok-item1`, sceneId: "sceneA" } },
 	];
@@ -434,13 +435,16 @@ test("sweepOrphanWeaponEffects handles effects stored as .name fallback (data mi
 	assert.ok(endEffectsCalls[0].effects.includes("lgW1"));
 });
 
-test("sweepOrphanWeaponEffects is idempotent and drains only after manager populated", async () => {
+test("sweepOrphanWeaponEffects re-issues termination for a still-present orphan", async () => {
+	// Covers re-sweep for a still-present orphan (hook wiring already verified by
+	// `initWeaponAnimations wires sweep to sequencerEffectManagerReady`). The mock
+	// retains the orphan, so a second sweep re-issues the same termination.
 	resetWorld();
 	globalThis.canvas.tokens.placeables = [];
 	globalThis.canvas.scene = { id: "sceneA" };
 	globalThis.Sequencer.EffectManager.getEffects = () => [];
 	await sweepOrphanWeaponEffects();
-	assert.equal(endEffectsCalls.length, 0, "empty manager must produce no sweep — early canvasReady would be no-op (Sequencer manager populated +125-475ms after canvasReady, dist:30881-30886)");
+	assert.equal(endEffectsCalls.length, 0, "empty manager must produce no sweep");
 
 	globalThis.Sequencer.EffectManager.getEffects = () => [
 		{ data: { _id: "orphW1", name: `${MODULE_ID}-weapon-item1`, source: "Scene.sceneA.Token.orphan", sceneId: "sceneA" } },
@@ -451,7 +455,7 @@ test("sweepOrphanWeaponEffects is idempotent and drains only after manager popul
 
 	endEffectsCalls.length = 0;
 	await sweepOrphanWeaponEffects();
-	assert.equal(endEffectsCalls.length, 1, "idempotent re-sweep still issues same orphan via effects");
+	assert.equal(endEffectsCalls.length, 1, "re-sweep still issues same orphan while it remains (termination re-issued)");
 });
 
 test("isWeaponCanvasRestoreAllowed mirrors torch election", () => {

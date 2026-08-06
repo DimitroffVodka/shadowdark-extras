@@ -1,149 +1,205 @@
-// Gap 1 — dropShadow PIXI lookup must carry source identity (see #105)
+// Weapon dropShadow + dedup identity regression (see #105)
 //
-// After #105 effect names are classification keys only:
-//   `shadowdark-extras-weapon-<itemId>` — no token segment.
-// Eleven unlinked tokens sharing a base actor therefore share an identical
-// name. The dropShadow post-play lookup in WeaponAnimationSD.mjs around :355
-// does a direct `Sequencer.EffectManager.effects.filter` on the live PIXI
-// manager. Before #105 it was name-only; post-#105 it must be
-// `name === effectName && source === tokenUuid`, otherwise it returns other
-// tokens' effects and the shadow attaches to the wrong sprite.
-//
-// This suite pins that invariant in two ways:
-//   1. Static: the source file must still contain the `&& ... source === tokenUuid` clause.
-//      Deleting the clause makes this test go red (verified fail-before/pass-after).
-//   2. Behavioural: with colliding names, a name-only filter returns N hits;
-//      name+source returns exactly the calling token's effect. This documents
-//      *why* the clause matters, even though the static check is the regression gate.
-//
-// The tokenUuid is derived with a `document.uuid` fallback:
-//   `token.document?.uuid ?? Scene.<viewedScene|sceneId>.Token.<token.id>`
-// Both paths are covered.
+// After #105 effect names are classification keys only (`shadowdark-extras-weapon-<itemId>`).
+// Eleven unlinked tokens sharing a base actor share one name by design.
+// Two token-scoped queries must carry identity:
+//   :223  playWeaponAnimation dedup `endEffects({name, object: token})` — fires on every play (equip, restore, createToken)
+//   :355  dropShadow PIXI lookup `effects.filter(e => e.data?.name === effectName && e.data?.source === tokenUuid)` — derives tokenUuid with document.uuid fallback
+// This suite drives the real `playWeaponAnimation` (configOverride bypasses unreachable master list) and asserts all three.
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 
 const MODULE_ID = "shadowdark-extras";
 
-// ---------------------------------------------------------------------------
-// 1. Static regression gate — fails if the source clause is deleted
-// ---------------------------------------------------------------------------
+// ---- shared world stand-ins (mirrors weapon-animation-stop.test.mjs) ----
+globalThis.foundry = globalThis.foundry ?? { applications: { apps: {} } };
+if (!globalThis.foundry.applications) globalThis.foundry.applications = { apps: {} };
 
-test("weapon dropShadow lookup filters by both name and source (regression gate for #105)", () => {
-	const filePath = fileURLToPath(new URL("../../scripts/animation/WeaponAnimationSD.mjs", import.meta.url));
-	const src = readFileSync(filePath, "utf8");
+const endEffectsCalls = [];
+const originalGame = globalThis.game;
+const originalSequencer = globalThis.Sequencer;
+const originalCanvas = globalThis.canvas;
+const originalPIXI = globalThis.PIXI;
+const originalSequence = globalThis.Sequence;
 
-	// The load-bearing filter around :355 — must be name plus source.
-	// We match the exact pattern so deleting `&& e.data?.source === tokenUuid` fails.
-	const hasNameAndSource = src.includes("e.data?.name === effectName && e.data?.source === tokenUuid");
-	assert.ok(
-		hasNameAndSource,
-		"WeaponAnimationSD dropShadow filter must be `e.data?.name === effectName && e.data?.source === tokenUuid` — name-only would collide across tokens (see #105)",
-	);
-
-	// Also pin the tokenUuid derivation with fallback, so the fallback path is not silently dropped.
-	assert.ok(
-		src.includes("token.document?.uuid"),
-		"dropShadow must derive tokenUuid with document.uuid fallback",
-	);
-	// Fallback uses viewedScene or canvas.scene.id
-	assert.ok(
-		src.includes("game.user?.viewedScene") || src.includes("viewedScene"),
-		"dropShadow fallback must consult game.user.viewedScene",
-	);
-	assert.ok(
-		src.includes("canvas?.scene?.id") || src.includes("canvas.scene.id"),
-		"dropShadow fallback must consult canvas.scene.id",
-	);
-});
-
-// ---------------------------------------------------------------------------
-// 2. Behavioural: why the clause matters — collision with shared name
-// ---------------------------------------------------------------------------
-
-function filterNameOnly(effects, effectName) {
-	return effects.filter(e => e.data?.name === effectName);
-}
-function filterNameAndSource(effects, effectName, tokenUuid) {
-	return effects.filter(e => e.data?.name === effectName && e.data?.source === tokenUuid);
+function installBaseWorld() {
+	globalThis.game = {
+		modules: { get: id => ({ active: id === "sequencer" || id === "JB2A_DnD5e" }) },
+		settings: { get: () => true },
+		user: { id: "testUser", viewedScene: "sceneA" },
+		users: { activeGM: { id: "testUser" }, find: () => ({ id: "testUser" }) },
+		scenes: { get: () => null },
+	};
+	globalThis.Sequencer = {
+		EffectManager: {
+			endEffects: async filter => endEffectsCalls.push(filter),
+			getEffects: () => [],
+			effects: [],
+		},
+	};
+	globalThis.canvas = {
+		tokens: { placeables: [], get: () => null },
+		scene: { id: "sceneA" },
+	};
+	globalThis.foundry = {
+		applications: { apps: {} },
+		abstract: { Document: class {} },
+		canvas: { placeables: { PlaceableObject: class {} } },
+		utils: { hasProperty: (obj, path) => { const parts = path.split("."); let cur = obj; for (const p of parts) { if (cur == null || !(p in cur)) return false; cur = cur[p]; } return true; }, mergeObject: (a,b) => Object.assign(a,b) },
+	};
+	globalThis.Hooks = { on: () => {}, once: () => {}, callAll: () => {} };
 }
 
-test("dropShadow: name-only filter collides across tokens sharing actor+item; name+source isolates", () => {
+installBaseWorld();
+
+// Mock Sequence + PIXI for playWeaponAnimation
+class MockEffect {
+	constructor() {
+		this._chain = this;
+	}
+	name() { return this; }
+	file() { return this; }
+	atLocation() { return this; }
+	attachTo() { return this; }
+	scaleToObject() { return this; }
+	scaleIn() { return this; }
+	scaleOut() { return this; }
+	spriteOffset() { return this; }
+	spriteRotation() { return this; }
+	spriteScale() { return this; }
+	filter() { return this; }
+	persist() { return this; }
+	zIndex() { return this; }
+	loopProperty() { return this; }
+	animateProperty() { return this; }
+	delay() { return this; }
+}
+
+class MockSequence {
+	constructor() {}
+	effect() { return new MockEffect(); }
+	async play() { return; }
+}
+
+globalThis.Sequence = MockSequence;
+globalThis.PIXI = globalThis.PIXI ?? {};
+globalThis.PIXI.filters = globalThis.PIXI.filters ?? {};
+let dropShadowInstances = [];
+globalThis.PIXI.filters.DropShadowFilter = class {
+	constructor(opts) { this.opts = opts; dropShadowInstances.push(this); }
+};
+
+const { playWeaponAnimation, getEffectName } = await import("../../scripts/animation/WeaponAnimationSD.mjs");
+
+function resetMocks() {
+	endEffectsCalls.length = 0;
+	dropShadowInstances.length = 0;
+	globalThis.Sequencer.EffectManager.effects = [];
+	globalThis.Sequencer.EffectManager.endEffects = async filter => endEffectsCalls.push(filter);
+	globalThis.Sequencer.EffectManager.getEffects = () => [];
+}
+
+function makeToken(id, uuid) {
+	return {
+		id,
+		name: `Token-${id}`,
+		document: { width: 100, texture: { scaleX: 1, scaleY: 1 }, ...(uuid ? { uuid } : {}) },
+		actor: { id: `actor-${id}` },
+	};
+}
+
+function makeItem(id) {
+	return {
+		id,
+		name: `Weapon-${id}`,
+		type: "Weapon",
+		system: { equipped: true },
+		getFlag: () => null,
+		parent: null,
+	};
+}
+
+test("weapon playWeaponAnimation dedup carries object and dropShadow isolates by name+source (with uuid fallback)", async () => {
+	// ------------------------------------------------------------------
+	// Sub-test A: dedup at :223 carries object + dropShadow isolates (uuid present)
+	// ------------------------------------------------------------------
+	resetMocks();
+	installBaseWorld();
+	globalThis.Sequence = MockSequence;
+	dropShadowInstances = [];
+	globalThis.PIXI.filters.DropShadowFilter = class { constructor(opts){ this.opts = opts; dropShadowInstances.push(this);} };
+
+	const tokenA = makeToken("tokA", "Scene.sceneA.Token.tokA");
+	const tokenB = makeToken("tokB", "Scene.sceneA.Token.tokB");
+	const tokenC = makeToken("tokC", "Scene.sceneA.Token.tokC");
 	const itemId = "itemX";
-	const effectName = `${MODULE_ID}-weapon-${itemId}`;
-	const tokenA = { id: "tokA", document: { uuid: "Scene.sceneA.Token.tokA" } };
-	const tokenB = { id: "tokB", document: { uuid: "Scene.sceneA.Token.tokB" } };
-	const tokenC = { id: "tokC", document: { uuid: "Scene.sceneA.Token.tokC" } };
+	const effectName = getEffectName(itemId);
 
-	const effects = [
-		{ data: { name: effectName, source: tokenA.document.uuid, _id: "effA" }, sprite: {} },
-		{ data: { name: effectName, source: tokenB.document.uuid, _id: "effB" }, sprite: {} },
-		{ data: { name: effectName, source: tokenC.document.uuid, _id: "effC" }, sprite: {} },
+	// Three effects sharing one name on three sources — only tokA should get shadow
+	const spriteA = { filters: [] };
+	const spriteB = { filters: [] };
+	const spriteC = { filters: [] };
+	globalThis.Sequencer.EffectManager.effects = [
+		{ data: { name: effectName, source: "Scene.sceneA.Token.tokA", _id: "effA" }, sprite: spriteA, spriteContainer: spriteA },
+		{ data: { name: effectName, source: "Scene.sceneA.Token.tokB", _id: "effB" }, sprite: spriteB, spriteContainer: spriteB },
+		{ data: { name: effectName, source: "Scene.sceneA.Token.tokC", _id: "effC" }, sprite: spriteC, spriteContainer: spriteC },
 	];
 
-	// Name-only returns all three — would attach shadow to siblings (the bug).
-	const nameOnly = filterNameOnly(effects, effectName);
-	assert.equal(nameOnly.length, 3, "name-only must collide (3 hits for 3 tokens sharing name)");
+	const item = makeItem(itemId);
+	const configOverride = {
+		enabled: true,
+		imagePath: "modules/shadowdark-extras/assets/Weapons/test.webp",
+		scale: 1,
+		offsetX: 0.35,
+		offsetY: 0.1,
+		filters: { dropShadow: { enabled: true, color: "#000000", alpha: 0.5, blur: 2, distance: 5, rotation: 45 } },
+		animationType: "none",
+		wobble: false,
+	};
 
-	// Name+source returns exactly the caller's effect.
-	for (const tok of [tokenA, tokenB, tokenC]) {
-		const tokenUuid = tok.document.uuid;
-		const hit = filterNameAndSource(effects, effectName, tokenUuid);
-		assert.equal(hit.length, 1, `name+source for ${tok.id} must isolate to 1`);
-		assert.equal(hit[0].data._id, `eff${tok.id.slice(-1).toUpperCase()}`);
-	}
-});
+	await playWeaponAnimation(tokenA, item, configOverride);
 
-// ---------------------------------------------------------------------------
-// 3. Fallback path — token without document.uuid
-// ---------------------------------------------------------------------------
+	// (a) dedup must carry object: token
+	assert.ok(endEffectsCalls.length >= 1, "dedup endEffects must have been called");
+	const dedup = endEffectsCalls[0];
+	assert.equal(dedup.name, effectName, "dedup name must be classification key");
+	assert.equal(dedup.object, tokenA, "dedup must carry object: token (see #105, :223)");
+	assert.ok(!dedup.name.includes(tokenA.id), "dedup name must not encode token id");
 
-test("dropShadow tokenUuid fallback: document.uuid missing falls back to Scene.<scene>.Token.<id>", () => {
-	const itemId = "itemY";
-	const effectName = `${MODULE_ID}-weapon-${itemId}`;
+	// (b) dropShadow isolates by name+source — only tokA's sprite got filter
+	assert.equal(spriteA.filters.length, 1, "tokA's effect should have received DropShadow");
+	assert.equal(spriteB.filters.length, 0, "tokB's colliding effect must not receive DropShadow");
+	assert.equal(spriteC.filters.length, 0, "tokC's colliding effect must not receive DropShadow");
+	assert.ok(dropShadowInstances.length === 1, "exactly one DropShadowFilter instance should be created");
 
-	// Simulate the derivation in WeaponAnimationSD.mjs:354
-	function deriveTokenUuid(token) {
-		return token.document?.uuid ?? `Scene.${globalThis.game?.user?.viewedScene ?? globalThis.canvas?.scene?.id ?? ""}.Token.${token.id}`;
-	}
-
-	// Case A: document.uuid present — used directly
-	const tokWithUuid = { id: "tokA", document: { uuid: "Scene.sceneA.Token.tokA" } };
-	globalThis.game = { user: { viewedScene: "sceneA" } };
-	globalThis.canvas = { scene: { id: "sceneA" } };
-	assert.equal(deriveTokenUuid(tokWithUuid), "Scene.sceneA.Token.tokA");
-
-	// Case B: no document.uuid — fallback via viewedScene
-	const tokNoUuid = { id: "tokB", document: {} };
-	globalThis.game = { user: { viewedScene: "sceneA" } };
-	globalThis.canvas = { scene: { id: "sceneA" } };
-	assert.equal(deriveTokenUuid(tokNoUuid), "Scene.sceneA.Token.tokB");
-
-	// Case C: no document at all — fallback still works
-	const tokBare = { id: "tokC" };
-	assert.equal(deriveTokenUuid(tokBare), "Scene.sceneA.Token.tokC");
-
-	// Case D: viewedScene missing — falls back to canvas.scene.id
-	const tokNoViewed = { id: "tokD", document: {} };
-	globalThis.game = { user: {} };
-	globalThis.canvas = { scene: { id: "sceneB" } };
-	assert.equal(deriveTokenUuid(tokNoViewed), "Scene.sceneB.Token.tokD");
-
-	// Behavioural: effects stored with fallback UUID are still isolated by source
-	const effects = [
-		{ data: { name: effectName, source: "Scene.sceneA.Token.tokB", _id: "effB" } },
-		{ data: { name: effectName, source: "Scene.sceneA.Token.tokC", _id: "effC" } },
+	// ------------------------------------------------------------------
+	// Sub-test B: fallback path — token without document.uuid uses viewedScene/canvas.scene.id
+	// ------------------------------------------------------------------
+	resetMocks();
+	installBaseWorld();
+	globalThis.game.user.viewedScene = "sceneA";
+	globalThis.canvas.scene.id = "sceneA";
+	globalThis.Sequence = MockSequence;
+	dropShadowInstances = [];
+	globalThis.PIXI.filters.DropShadowFilter = class { constructor(opts){ this.opts = opts; dropShadowInstances.push(this);} };
+	// keep same effectName
+	const spriteFallbackA = { filters: [] };
+	const spriteFallbackB = { filters: [] };
+	globalThis.Sequencer.EffectManager.effects = [
+		{ data: { name: effectName, source: "Scene.sceneA.Token.tokFallback", _id: "effFallback" }, sprite: spriteFallbackA, spriteContainer: spriteFallbackA },
+		{ data: { name: effectName, source: "Scene.sceneA.Token.other", _id: "effOther" }, sprite: spriteFallbackB, spriteContainer: spriteFallbackB },
 	];
-	globalThis.game = { user: { viewedScene: "sceneA" } };
-	globalThis.canvas = { scene: { id: "sceneA" } };
-	const uuidB = deriveTokenUuid(tokNoUuid);
-	const hit = filterNameAndSource(effects, effectName, uuidB);
-	assert.equal(hit.length, 1);
-	assert.equal(hit[0].data._id, "effB");
+	const tokenFallback = makeToken("tokFallback"); // no uuid -> fallback
+	delete tokenFallback.document.uuid;
+	const item2 = makeItem(itemId);
+	await playWeaponAnimation(tokenFallback, item2, configOverride);
 
-	// Cleanup globals set above to avoid polluting other suites
-	delete globalThis.game;
-	delete globalThis.canvas;
+	// (c) fallback-derived uuid still isolates
+	const dedup2 = endEffectsCalls[0];
+	// dedup object still token (not string)
+	assert.equal(dedup2.object, tokenFallback, "fallback dedup still carries object: token");
+	// dropShadow via fallback should hit only tokFallback
+	assert.equal(spriteFallbackA.filters.length, 1, "fallback token's effect should receive DropShadow via derived uuid");
+	assert.equal(spriteFallbackB.filters.length, 0, "other token must not receive DropShadow via fallback");
 });
