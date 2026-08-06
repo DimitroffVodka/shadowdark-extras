@@ -287,6 +287,9 @@ export const FEATURE_OWNERS = {
     // POI preview sprite and placement transform, lifted out of
     // HexPainterSD.mjs (Phase 5.3 sweep 6).
     "hex-poi-preview.mjs",
+    // Paint-session state, the canvas pointer handlers and _stampAtPointer,
+    // lifted out of HexPainterSD.mjs (Phase 5.3 sweep 6).
+    "hex-paint-session.mjs",
   ],
   dungeon: [
     "DungeonGeneratorSD.mjs",
