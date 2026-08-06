@@ -312,7 +312,7 @@ export const DEFAULT_WEAPON_SPRITE_PRESETS = {
 		patterns: "\\bshield\\b",
 		enabled: true,
 		imagePath: "modules/shadowdark-extras/assets/Weapons/Shields/Shield_Metal_04_A1_1x1.webp",
-		offsetX: 0.35,
+		offsetX: -0.35,
 		offsetY: 0.1,
 		rotation: 0,
 		scale: 1.0,
