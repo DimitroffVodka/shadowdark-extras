@@ -705,7 +705,7 @@ function onPreUpdateToken(tokenDoc, changes, options, userId) {
  * Hook: After token update (record path and move followers)
  */
 async function onUpdateToken(tokenDoc, changes, options, userId) {
-	if (!changes.x && !changes.y) return;
+	if (changes.x === undefined && changes.y === undefined) return;
 
 	// During started combat, no path recording and no conga — followers act independently.
 	if (isCombatStarted()) return;
