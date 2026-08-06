@@ -13,7 +13,10 @@
 // `canvas`, and the document-update channel, then:
 //   1. runs a normal single-follower conga to completion (happy path),
 //   2. forces the next follower update to REJECT and proves the queue stops,
-//   3. runs a fresh conga after the rejection — the exact step the bug breaks.
+//   3. runs a fresh conga after the rejection — the exact step the bug breaks,
+//   4. forces a follower update to throw SYNCHRONOUSLY during dispatch (which
+//      escapes any promise .catch entirely) and proves the queue still resets,
+//   5. runs a fresh conga after the synchronous throw.
 //
 // The module keeps its queue state module-scoped, so this is one ordered test
 // rather than a set of independent ones (same lifecycle pattern as
@@ -159,6 +162,14 @@ function installFollower(rejectNext) {
 	};
 }
 
+/** update() that throws SYNCHRONOUSLY, before it can return a promise. */
+function installFollowerSyncThrow() {
+	follower.document.update = (changes) => {
+		updateCalls.push({ ...changes });
+		throw new Error("simulated synchronous dispatch failure");
+	};
+}
+
 function installLeader() {
 	leader = makeToken({ id: "leader-1", name: "Leader", x: 100, y: 100 });
 }
@@ -185,7 +196,7 @@ async function moveLeader(fromX, fromY, toX, toY) {
 	await onUpdateToken(leaderDoc, { x: toX, y: toY }, {}, "user-1");
 }
 
-test("a rejected follower update resets the conga queue so the next leader move restarts it", async () => {
+test("a failed follower update — rejected or throwing synchronously — resets the conga queue so the next leader move restarts it", async () => {
 	installTokens();
 	updateCalls.length = 0;
 
@@ -211,4 +222,21 @@ test("a rejected follower update resets the conga queue so the next leader move 
 	await moveLeader(300, 300, 400, 400);
 	await sleep(450);
 	assert.equal(updateCalls.length, 4, "a fresh conga runs after the rejection (queue not wedged)");
+
+	// Phase 4 — SYNCHRONOUS throw during dispatch: update() throws before it
+	// returns a promise, so it escapes any promise .catch entirely. The step
+	// must still reset the queue flags (no wedge) and stop scheduling steps.
+	installFollowerSyncThrow();
+	await moveLeader(400, 400, 500, 500);
+	await sleep(350);
+	assert.equal(updateCalls.length, 5, "synchronously-throwing step counted once");
+	await sleep(300);
+	assert.equal(updateCalls.length, 5, "queue stops after a synchronous throw (no hidden steps)");
+
+	// Phase 5 — recovery after the synchronous throw: the next leader move
+	// starts a fresh conga and walks the follower the remaining two steps.
+	installFollower(false);
+	await moveLeader(500, 500, 600, 600);
+	await sleep(450);
+	assert.equal(updateCalls.length, 7, "a fresh conga runs after the synchronous throw (queue not wedged)");
 });
