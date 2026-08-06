@@ -1180,173 +1180,166 @@ async function rebuildWallsForLevel(scene, levelContext, { wallTilePath = null, 
 	if (!scene || !levelContext) return;
 
 	const gridSize = scene.grid?.size || canvas.grid?.size || GRID_SIZE;
-	const originalWallTile = _selectedWallTile;
-	if (wallTilePath) selectWallTile(wallTilePath);
 
-	try {
-		const floors = new Set();
-		for (const tile of scene.tiles) {
-			if (!tile.texture?.src?.includes("Dungeon/floor_tiles")) continue;
-			if (!documentMatchesLevel(tile, levelContext)) continue;
-			floors.add(`${Math.floor(tile.x / gridSize)},${Math.floor(tile.y / gridSize)}`);
-		}
+	const floors = new Set();
+	for (const tile of scene.tiles) {
+		if (!tile.texture?.src?.includes("Dungeon/floor_tiles")) continue;
+		if (!documentMatchesLevel(tile, levelContext)) continue;
+		floors.add(`${Math.floor(tile.x / gridSize)},${Math.floor(tile.y / gridSize)}`);
+	}
 
-		if (!noWalls) {
-			const wallsToDelete = scene.walls
-				.filter(w => {
-					if (w.door && w.door > 0) return false;
-					if (w.flags?.[MODULE_ID]?.dungeonIntWall) return false;
-					if (w.flags?.["wall-height"]?.bottom === undefined) return false;
-					return documentMatchesLevel(w, levelContext);
-				})
-				.map(w => w.id);
-			if (wallsToDelete.length > 0) await scene.deleteEmbeddedDocuments("Wall", wallsToDelete);
-		}
-
-		const drawingsToDelete = scene.drawings
-			.filter(d => {
-				if (!d.flags?.[MODULE_ID]?.dungeonWall) return false;
-				if (d.flags?.[MODULE_ID]?.dungeonIntWall) return false;
-				return documentMatchesLevel(d, levelContext);
+	if (!noWalls) {
+		const wallsToDelete = scene.walls
+			.filter(w => {
+				if (w.door && w.door > 0) return false;
+				if (w.flags?.[MODULE_ID]?.dungeonIntWall) return false;
+				if (w.flags?.["wall-height"]?.bottom === undefined) return false;
+				return documentMatchesLevel(w, levelContext);
 			})
-			.map(d => d.id);
-		if (drawingsToDelete.length > 0) await scene.deleteEmbeddedDocuments("Drawing", drawingsToDelete);
+			.map(w => w.id);
+		if (wallsToDelete.length > 0) await scene.deleteEmbeddedDocuments("Wall", wallsToDelete);
+	}
 
-		if (floors.size === 0) {
-			console.log(`${MODULE_ID} | ${logPrefix}No floors to rebuild on level "${levelContext.levelId ?? "none"}"`);
-			return;
+	const drawingsToDelete = scene.drawings
+		.filter(d => {
+			if (!d.flags?.[MODULE_ID]?.dungeonWall) return false;
+			if (d.flags?.[MODULE_ID]?.dungeonIntWall) return false;
+			return documentMatchesLevel(d, levelContext);
+		})
+		.map(d => d.id);
+	if (drawingsToDelete.length > 0) await scene.deleteEmbeddedDocuments("Drawing", drawingsToDelete);
+
+	if (floors.size === 0) {
+		console.log(`${MODULE_ID} | ${logPrefix}No floors to rebuild on level "${levelContext.levelId ?? "none"}"`);
+		return;
+	}
+
+	const wallHeightBottom = levelContext.elevation;
+	const wallHeightTop = levelContext.rangeTop;
+	const tolerance = 2;
+	const entranceEdges = [];
+	const existingDoors = scene.walls.filter(w => {
+		if (!w.door || w.door === 0) return false;
+		return documentMatchesLevel(w, levelContext);
+	});
+
+	for (const door of existingDoors) {
+		const [x1, y1, x2, y2] = door.c;
+		const midX = (x1 + x2) / 2;
+		const midY = (y1 + y2) / 2;
+
+		const isHorizontal = Math.abs(y1 - y2) < tolerance;
+		const isVertical = Math.abs(x1 - x2) < tolerance;
+
+		if (isHorizontal) {
+			const gy = Math.round(midY / gridSize);
+			const gx = Math.floor(midX / gridSize);
+			entranceEdges.push({ x: gx, y: gy - 1, dir: "S" });
+			entranceEdges.push({ x: gx, y: gy, dir: "N" });
 		}
-
-		const wallHeightBottom = levelContext.elevation;
-		const wallHeightTop = levelContext.rangeTop;
-		const tolerance = 2;
-		const entranceEdges = [];
-		const existingDoors = scene.walls.filter(w => {
-			if (!w.door || w.door === 0) return false;
-			return documentMatchesLevel(w, levelContext);
-		});
-
-		for (const door of existingDoors) {
-			const [x1, y1, x2, y2] = door.c;
-			const midX = (x1 + x2) / 2;
-			const midY = (y1 + y2) / 2;
-
-			const isHorizontal = Math.abs(y1 - y2) < tolerance;
-			const isVertical = Math.abs(x1 - x2) < tolerance;
-
-			if (isHorizontal) {
-				const gy = Math.round(midY / gridSize);
-				const gx = Math.floor(midX / gridSize);
-				entranceEdges.push({ x: gx, y: gy - 1, dir: "S" });
-				entranceEdges.push({ x: gx, y: gy, dir: "N" });
-			}
-			else if (isVertical) {
-				const gx = Math.round(midX / gridSize);
-				const gy = Math.floor(midY / gridSize);
-				entranceEdges.push({ x: gx - 1, y: gy, dir: "E" });
-				entranceEdges.push({ x: gx, y: gy, dir: "W" });
-			}
+		else if (isVertical) {
+			const gx = Math.round(midX / gridSize);
+			const gy = Math.floor(midY / gridSize);
+			entranceEdges.push({ x: gx - 1, y: gy, dir: "E" });
+			entranceEdges.push({ x: gx, y: gy, dir: "W" });
 		}
+	}
 
-		const entranceSet = new Set(entranceEdges.map(e => `${e.x},${e.y},${e.dir}`));
-		let totalWalls = 0;
-		let totalDrawings = 0;
+	const entranceSet = new Set(entranceEdges.map(e => `${e.x},${e.y},${e.dir}`));
+	let totalWalls = 0;
+	let totalDrawings = 0;
 
-		// Curved/organic mode traces the painted-floor boundary into smoothed
-		// loops and walls those; straight mode walls cell edges (with door gaps).
-		// Note: curved mode walls the whole perimeter, so only INTERIOR doors
-		// stay open (boundary doors get sealed) — same as cave-style generation.
-		const curvedLoops = _curvedWalls
-			? buildCaveLoops(floors, { x: 0, y: 0 }, gridSize, { isFloor: (k) => floors.has(k) })
-			: null;
+	// Curved/organic mode traces the painted-floor boundary into smoothed
+	// loops and walls those; straight mode walls cell edges (with door gaps).
+	// Note: curved mode walls the whole perimeter, so only INTERIOR doors
+	// stay open (boundary doors get sealed) — same as cave-style generation.
+	const curvedLoops = _curvedWalls
+		? buildCaveLoops(floors, { x: 0, y: 0 }, gridSize, { isFloor: (k) => floors.has(k) })
+		: null;
 
-		if (!noWalls) {
-			const wallsData = (curvedLoops
-				? generateCurvedWalls(curvedLoops, WALL_THICKNESS).map(w => ({
-					...w,
-					flags: { ...(w.flags || {}), "wall-height": { bottom: wallHeightBottom, top: wallHeightTop } },
-				}))
-				: generateWallsWithElevation(floors, entranceSet, gridSize, WALL_THICKNESS, wallHeightBottom, wallHeightTop)
-			).map(w => applySceneLevelData(w, "Wall", levelContext));
+	if (!noWalls) {
+		const wallsData = (curvedLoops
+			? generateCurvedWalls(curvedLoops, WALL_THICKNESS).map(w => ({
+				...w,
+				flags: { ...(w.flags || {}), "wall-height": { bottom: wallHeightBottom, top: wallHeightTop } },
+			}))
+			: generateWallsWithElevation(floors, entranceSet, gridSize, WALL_THICKNESS, wallHeightBottom, wallHeightTop)
+		).map(w => applySceneLevelData(w, "Wall", levelContext));
 
-			if (!curvedLoops && existingDoors.length > 0 && WALL_THICKNESS > 0) {
-				for (const door of existingDoors) {
-					const [px1, py1, px2, py2] = door.c;
+		if (!curvedLoops && existingDoors.length > 0 && WALL_THICKNESS > 0) {
+			for (const door of existingDoors) {
+				const [px1, py1, px2, py2] = door.c;
 
-					if (Math.abs(py1 - py2) < tolerance) {
-						const minX = Math.min(px1, px2);
-						const maxX = Math.max(px1, px2);
-						const y = py1;
-						wallsData.push(applySceneLevelData({
-							c: [minX - WALL_THICKNESS, y, minX, y],
-							light: 20, move: 20, sound: 20,
-						}, "Wall", levelContext));
-						wallsData.push(applySceneLevelData({
-							c: [maxX, y, maxX + WALL_THICKNESS, y],
-							light: 20, move: 20, sound: 20,
-						}, "Wall", levelContext));
-					}
-					else if (Math.abs(px1 - px2) < tolerance) {
-						const minY = Math.min(py1, py2);
-						const maxY = Math.max(py1, py2);
-						const x = px1;
-						wallsData.push(applySceneLevelData({
-							c: [x, minY - WALL_THICKNESS, x, minY],
-							light: 20, move: 20, sound: 20,
-						}, "Wall", levelContext));
-						wallsData.push(applySceneLevelData({
-							c: [x, maxY, x, maxY + WALL_THICKNESS],
-							light: 20, move: 20, sound: 20,
-						}, "Wall", levelContext));
-					}
+				if (Math.abs(py1 - py2) < tolerance) {
+					const minX = Math.min(px1, px2);
+					const maxX = Math.max(px1, px2);
+					const y = py1;
+					wallsData.push(applySceneLevelData({
+						c: [minX - WALL_THICKNESS, y, minX, y],
+						light: 20, move: 20, sound: 20,
+					}, "Wall", levelContext));
+					wallsData.push(applySceneLevelData({
+						c: [maxX, y, maxX + WALL_THICKNESS, y],
+						light: 20, move: 20, sound: 20,
+					}, "Wall", levelContext));
+				}
+				else if (Math.abs(px1 - px2) < tolerance) {
+					const minY = Math.min(py1, py2);
+					const maxY = Math.max(py1, py2);
+					const x = px1;
+					wallsData.push(applySceneLevelData({
+						c: [x, minY - WALL_THICKNESS, x, minY],
+						light: 20, move: 20, sound: 20,
+					}, "Wall", levelContext));
+					wallsData.push(applySceneLevelData({
+						c: [x, maxY, x, maxY + WALL_THICKNESS],
+						light: 20, move: 20, sound: 20,
+					}, "Wall", levelContext));
 				}
 			}
-
-			if (wallsData.length > 0) {
-				const chunkSize = 100;
-				for (let i = 0; i < wallsData.length; i += chunkSize) {
-					await scene.createEmbeddedDocuments("Wall", wallsData.slice(i, i + chunkSize));
-				}
-				totalWalls += wallsData.length;
-			}
 		}
 
-		const drawingsData = (curvedLoops
-			? generateCurvedWallVisuals(curvedLoops, { useTexture: true, wallColor: "#5C3D3D", wallThickness: WALL_THICKNESS, wallTilePath: _selectedWallTile })
-			: generateWallVisualsWithElevation(floors, entranceSet, gridSize, WALL_THICKNESS, 0, wallHeightTop)
-		).map(d => applySceneLevelData(d, "Drawing", levelContext));
-
-		if (drawingsData.length > 0) {
+		if (wallsData.length > 0) {
 			const chunkSize = 100;
-			for (let i = 0; i < drawingsData.length; i += chunkSize) {
-				const created = await scene.createEmbeddedDocuments("Drawing", drawingsData.slice(i, i + chunkSize));
-				if (_wallShadows && window.TokenMagic) {
-					const shadowParams = [{
-						filterType: "shadow",
-						filterId: "dropshadow2",
-						rotation: 0, distance: 0,
-						color: 0x000000, alpha: 1,
-						shadowOnly: false,
-						blur: 5, quality: 5, padding: 20,
-					}];
-					for (const doc of created) {
-						try {
-							await TokenMagic.addUpdateFilters(doc, shadowParams);
-						}
-						catch (err) {
-							console.warn(`${MODULE_ID} | Wall shadow failed:`, err);
-						}
+			for (let i = 0; i < wallsData.length; i += chunkSize) {
+				await scene.createEmbeddedDocuments("Wall", wallsData.slice(i, i + chunkSize));
+			}
+			totalWalls += wallsData.length;
+		}
+	}
+
+	const drawingsData = (curvedLoops
+		? generateCurvedWallVisuals(curvedLoops, { useTexture: true, wallColor: "#5C3D3D", wallThickness: WALL_THICKNESS, wallTilePath: wallTilePath ?? _selectedWallTile })
+		: generateWallVisualsWithElevation(floors, entranceSet, gridSize, WALL_THICKNESS, 0, wallHeightTop, wallTilePath ?? _selectedWallTile)
+	).map(d => applySceneLevelData(d, "Drawing", levelContext));
+
+	if (drawingsData.length > 0) {
+		const chunkSize = 100;
+		for (let i = 0; i < drawingsData.length; i += chunkSize) {
+			const created = await scene.createEmbeddedDocuments("Drawing", drawingsData.slice(i, i + chunkSize));
+			if (_wallShadows && window.TokenMagic) {
+				const shadowParams = [{
+					filterType: "shadow",
+					filterId: "dropshadow2",
+					rotation: 0, distance: 0,
+					color: 0x000000, alpha: 1,
+					shadowOnly: false,
+					blur: 5, quality: 5, padding: 20,
+				}];
+				for (const doc of created) {
+					try {
+						await TokenMagic.addUpdateFilters(doc, shadowParams);
+					}
+					catch (err) {
+						console.warn(`${MODULE_ID} | Wall shadow failed:`, err);
 					}
 				}
 			}
-			totalDrawings += drawingsData.length;
 		}
+		totalDrawings += drawingsData.length;
+	}
 
-		console.log(`${MODULE_ID} | ${logPrefix}Rebuilt ${noWalls ? "0 (disabled)" : totalWalls} walls and ${totalDrawings} wall visuals on level "${levelContext.levelId ?? "none"}"`);
-	}
-	finally {
-		selectWallTile(originalWallTile);
-	}
+	console.log(`${MODULE_ID} | ${logPrefix}Rebuilt ${noWalls ? "0 (disabled)" : totalWalls} walls and ${totalDrawings} wall visuals on level "${levelContext.levelId ?? "none"}"`);
 }
 
 /**
@@ -1446,12 +1439,12 @@ function generateWallsWithElevation(floors, entranceSet, gridSize, thickness, wa
 /**
  * Generate wall visual drawings with elevation support
  */
-function generateWallVisualsWithElevation(floors, entranceSet, gridSize, thickness, elevation, rangeTop) {
+export function generateWallVisualsWithElevation(floors, entranceSet, gridSize, thickness, elevation, rangeTop, wallTilePath = _selectedWallTile) {
 	const drawingsData = [];
 
 	// Get wall texture paths
-	const hTexture = _selectedWallTile || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_horizontal.webp`;
-	const vTexture = _selectedWallTile?.replace("horizontal", "vertical") || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_vertical.webp`;
+	const hTexture = wallTilePath || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_horizontal.webp`;
+	const vTexture = wallTilePath?.replace("horizontal", "vertical") || `modules/${MODULE_ID}/assets/Dungeon/wall_tiles/stone_brick_vertical.webp`;
 
 	// Identify wall segments
 	const segments = { N: {}, S: {}, E: {}, W: {} };
