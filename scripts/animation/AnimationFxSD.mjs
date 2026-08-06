@@ -308,7 +308,7 @@ export const AnimationFxSD = {
 	 * @returns {object|null} a config `playWeaponAnimation()` can consume
 	 */
 	resolveWeaponSprite(item) {
-		if (!item || item.type !== "Weapon") return null;
+		if (!item || (item.type !== "Weapon" && item.type !== "Armor")) return null;
 		if (!this._isCategoryEnabled("weaponSprites")) return null;
 
 		const map = this.getConfig().weaponSprites;
