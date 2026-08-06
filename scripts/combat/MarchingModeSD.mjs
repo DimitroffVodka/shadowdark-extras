@@ -140,13 +140,23 @@ export function initMarchingMode() {
 	Hooks.on("preUpdateToken", onPreUpdateToken);
 	Hooks.on("updateToken", onUpdateToken);
 
-	// Combat lifecycle (issue #99): suspend marching once per combat episode.
+	// Combat lifecycle (issue #99 + #101): suspend marching once per combat episode,
+	// but only for the active combat on the current scene (issue #101). Off-scene
+	// combats must not clear the current scene's trail; a global combat
+	// (scene:null) is active on every scene, so its id still matches
+	// game.combats.active and correctly clears when it is the active one.
 	// combatStart fires when a combat begins (before its round-1 update, so
 	// force-start); updateCombat catches an already-started combat created via
-	// API/import or a manual round bump; deleteCombat re-arms for a replacement
-	// combat that never un-started.
-	Hooks.on("combatStart", combat => handleCombatEpisode(combat, true));
+	// API/import or a manual round bump; createCombat catches an already-started
+	// combat created/imported with round>0 (foundry.mjs:50859 started===round>0,
+	// generic create 159-165 emits createCombat only); deleteCombat re-arms for
+	// a replacement combat that never un-started.
+	Hooks.on("combatStart", combat => {
+		if (game.combats?.active?.id !== combat.id) return;
+		handleCombatEpisode(combat, true);
+	});
 	Hooks.on("updateCombat", combat => {
+		if (game.combats?.active?.id !== combat.id) return;
 		// An unstarted observation of the keyed combat (reset to round 0, or the
 		// round-1 update that follows combatStart) closes the episode: a later
 		// restart of the SAME combat must re-arm, so drop the latch.
@@ -154,6 +164,11 @@ export function initMarchingMode() {
 			combatSuspendKey = null;
 			return;
 		}
+		handleCombatEpisode(combat);
+	});
+	Hooks.on("createCombat", combat => {
+		if (!combat.started) return;
+		if (game.combats?.active?.id !== combat.id) return;
 		handleCombatEpisode(combat);
 	});
 	Hooks.on("deleteCombat", combat => {
@@ -167,6 +182,11 @@ export function initMarchingMode() {
 	// Restore leader crown when canvas is ready; a scene change can surface a
 	// different active combat (or none), so re-key the suspension identity.
 	Hooks.on("canvasReady", onCanvasReady);
+	// Backfill for an already-active combat at load (e.g. refresh mid-combat
+	// or an imported started combat that existed before this module init). The
+	// canvasReady handler will also fire when the canvas reloads, but this
+	// covers the case where the active combat is already present at init time.
+	if (game.combats?.active?.started) handleCombatEpisode(game.combats.active);
 
 	// Clean up crown when token is deleted
 	Hooks.on("deleteToken", async (tokenDoc, options, userId) => {

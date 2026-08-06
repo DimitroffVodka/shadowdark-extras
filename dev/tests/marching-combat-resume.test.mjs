@@ -89,6 +89,7 @@ initMarchingMode();
 const updateToken = hooks.find(h => h.name === "updateToken").fn;
 const combatStart = hooks.find(h => h.name === "combatStart")?.fn;
 const updateCombat = hooks.find(h => h.name === "updateCombat")?.fn;
+const createCombat = hooks.find(h => h.name === "createCombat")?.fn;
 const deleteCombat = hooks.find(h => h.name === "deleteCombat")?.fn;
 const canvasReady = hooks.find(h => h.name === "canvasReady").fn;
 const f1 = tokens.get("f1");
@@ -100,6 +101,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 // incidental-observation reset (it registered no combat hooks at all).
 assert.ok(combatStart, "combatStart hook must be registered (issue #99)");
 assert.ok(updateCombat, "updateCombat hook must be registered (issue #99)");
+assert.ok(createCombat, "createCombat hook must be registered (issue #101 P1)");
 assert.ok(deleteCombat, "deleteCombat hook must be registered (issue #99)");
 
 /** Drive the module's updateToken hook as if the leader walked from -> to. */
@@ -290,4 +292,111 @@ test("restarting the same combat after a round-0 reset re-arms the trail reset",
 		"f1's first post-combat step must go along the NEW path (east), not the trail built between reset and restart"
 	);
 	assert.equal(f1Moves[0].y, -200, "f1 stays on the new eastward line");
+});
+
+test("forceStart ordering: combatStart sees started:false then updateCombat true still suspends", async () => {
+	await buildNorthTrail();
+
+	// Foundry's Combat.startCombat() emits combatStart while round is still 0
+	// (started === false) and only then updates to round 1 (started === true).
+	// The handler must treat combatStart as the signal even though started is
+	// still false at that moment.
+	const combatA = { id: "combatA", scene: { id: "scene-1" }, started: false };
+	globalThis.game.combats.active = combatA;
+	combatStart(combatA); // started:false here, forceStart must still suspend
+	assert.equal(combatA.started, false, "precondition: combatStart fires at round 0");
+	combatA.started = true;
+	globalThis.game.combats.active = combatA;
+	updateCombat(combatA);
+
+	// Follower drifts off-path while combat is started (guard bails, no recalc).
+	f1.x = 0;
+	f1.y = 300;
+	await updateToken({ id: "f1", _source: { x: 0, y: -200 }, x: 0, y: 300 }, { x: 0, y: 300 }, {}, "gm");
+
+	endCombat(combatA);
+
+	updates.length = 0;
+	await moveLeader([0, -200], [100, -200]);
+	await sleep(400);
+
+	assertF1MovesEast();
+});
+
+test("imported already-started combat via createCombat suspends and follower follows new path", async () => {
+	await buildNorthTrail();
+
+	// A combat imported/created with round>0 is already started; Foundry's
+	// generic create emits createCombat only (no combatStart). The handler
+	// must clear the pre-combat trail when started===true and active matches.
+	const combatImport = { id: "combatImport", scene: { id: "scene-1" }, started: true, round: 1, active: true };
+	globalThis.game.combats.active = combatImport;
+	createCombat(combatImport);
+
+	// Follower drifts off-path while the imported combat is started.
+	f1.x = 0;
+	f1.y = 300;
+	await updateToken({ id: "f1", _source: { x: 0, y: -200 }, x: 0, y: 300 }, { x: 0, y: 300 }, {}, "gm");
+
+	endCombat(combatImport);
+
+	updates.length = 0;
+	await moveLeader([0, -200], [100, -200]);
+	await sleep(400);
+
+	assertF1MovesEast();
+});
+
+test("off-scene combat does not clear current trail", async () => {
+	await buildNorthTrail();
+
+	// Off-scene: a started combat on another scene must NOT clear the current
+	// scene's trail. Active is still the current scene's combat (or null), so
+	// the handler's game.combats.active.id !== combat.id filter must block it.
+	const offScene = { id: "offScene", scene: { id: "scene-2" }, started: true };
+	// Do NOT set active to offScene — active remains null / current scene.
+	globalThis.game.combats.active = null;
+	createCombat(offScene);
+	combatStart(offScene);
+	offScene.started = true;
+	updateCombat(offScene);
+	// Trail must still be intact: move follower off-path directly (without
+	// going through the hook's recalc path, which would clear it while
+	// isCombatStarted is false). Direct assignment preserves the stale trail.
+	f1.x = 0;
+	f1.y = 300;
+	// Verify off-scene did not clear: leader east should drag along stale north
+	// points, not the fresh east line. We detect this by checking that f1's
+	// first step is NOT the fresh east point.
+	updates.length = 0;
+	await moveLeader([0, -200], [100, -200]);
+	await sleep(400);
+	const offMoves = updates.filter(u => u.id === "f1");
+	assert.ok(offMoves.length > 0, "conga must move follower even after off-scene combat");
+	// If the trail had been incorrectly cleared by off-scene combat, f1 would
+	// move directly to the fresh east point (100,-200). With the trail intact,
+	// its first step is still on the old north line (x===0).
+	assert.equal(offMoves[0].x, 0, "off-scene combat must NOT clear: f1's first step stays on stale north line");
+	assert.notEqual(offMoves[0].x, 100, "off-scene must not produce fresh east step");
+});
+
+test("global scene:null combat still clears when it is the active combat", async () => {
+	await buildNorthTrail();
+
+	const globalCombat = { id: "global1", scene: null, started: true };
+	globalThis.game.combats.active = globalCombat;
+	createCombat(globalCombat);
+
+	f1.x = 0;
+	f1.y = 300;
+	await updateToken({ id: "f1", _source: { x: 0, y: -200 }, x: 0, y: 300 }, { x: 0, y: 300 }, {}, "gm");
+
+	globalThis.game.combats.active = null;
+	deleteCombat(globalCombat);
+
+	updates.length = 0;
+	await moveLeader([0, -200], [100, -200]);
+	await sleep(400);
+
+	assertF1MovesEast();
 });
