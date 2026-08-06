@@ -89,6 +89,19 @@ if ! node dev/tools/settings-snapshot.mjs; then
   block_fail=1
 fi
 
+if ! node dev/tools/flag-snapshot.mjs; then
+  echo "[BLOCK] document flag key identity changed (stored on user documents)"
+  block_fail=1
+fi
+
+# The splits duplicate small constants into each extracted module on purpose, to
+# keep them import-free leaves. prove-move compares declaration trees without
+# resolving what they read, so it cannot see a duplicated constant drift.
+if ! node dev/tools/const-drift.mjs; then
+  echo "[BLOCK] duplicated constants disagree between modules"
+  block_fail=1
+fi
+
 # Phase 3 gates. An extraction can leave a call pointing at a helper that stayed
 # behind, or read a constant it never imported — valid syntax, resolvable
 # imports, green snapshots, and a ReferenceError the first time the hook fires.

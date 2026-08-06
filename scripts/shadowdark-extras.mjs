@@ -1099,6 +1099,13 @@ Hooks.on("quenchReady", async (quench) => {
 	catch (e) {
 		// Expected in a packaged install: dev/ is not shipped.
 	}
+	try {
+		const { registerSplitBatch } = await import("../dev/tests/quench/split.batch.mjs");
+		registerSplitBatch(quench);
+	}
+	catch (e) {
+		// Expected in a packaged install: dev/ is not shipped.
+	}
 });
 
 // Socket setup gets its own ready hook, with no await anywhere in it, so that

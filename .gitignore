@@ -36,6 +36,9 @@ packs/**/lost/
 
 # Node toolchain
 node_modules/
+# Both forms: a Traycer worktree symlinks node_modules at the checkout root, and
+# a symlink is a file to git, so the trailing-slash form alone misses it.
+node_modules
 .deepcode/
 
 # repowise index (local, machine-specific)

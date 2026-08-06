@@ -540,6 +540,7 @@
     "registerInvisibilityHooks",
     "registerWebpMigrationBatch",
     "registerStructuralBatch",
+    "registerSplitBatch",
     "initMacroExecuteSocket",
     "registerEffectMacroSocket",
     "registerItemMacroSocket",

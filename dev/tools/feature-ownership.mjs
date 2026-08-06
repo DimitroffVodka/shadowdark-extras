@@ -263,11 +263,53 @@ export const FEATURE_OWNERS = {
     "ContentRegistry.mjs",
     // Extracted from the composition root in Phase 3.
     "hex-tile-clamp.mjs",
+    // Decor assets + decor-tab state lifted out of HexPainterSD.mjs in Phase 5.3.
+    "hex-decor.mjs",
+    // Colored-hex tile assets, lifted out of HexPainterSD.mjs in Phase 5.3.
+    "hex-colored-tiles.mjs",
+    // Custom-tile scan, sizing and nav state lifted out of HexPainterSD.mjs
+    // (Phase 5.3 sweep 6).
+    "hex-custom-tiles.mjs",
+    // The five map-effect toggles, lifted out of HexPainterSD.mjs in Phase 5.3.
+    "hex-map-effects.mjs",
+    // Map dimensions + scene reformat, lifted out of HexPainterSD.mjs in
+    // Phase 5.3.
+    "hex-scene-format.mjs",
+    // POI placement undo/redo history lifted out of HexPainterSD.mjs
+    // (Phase 5.3 sweep 6).
+    "hex-poi-history.mjs",
+    // Tile display-label helper, shared by every hex tile store. Hoisted out
+    // of hex-decor.mjs, which only owned it by extraction order.
+    "hex-tile-labels.mjs",
+    // Tile-selection state and the symbol tile store, lifted out of
+    // HexPainterSD.mjs (Phase 5.3 sweep 6).
+    "hex-tile-selection.mjs",
+    // POI preview sprite and placement transform, lifted out of
+    // HexPainterSD.mjs (Phase 5.3 sweep 6).
+    "hex-poi-preview.mjs",
+    // Paint-session state, the canvas pointer handlers and _stampAtPointer,
+    // lifted out of HexPainterSD.mjs (Phase 5.3 sweep 6).
+    "hex-paint-session.mjs",
   ],
   dungeon: [
     "DungeonGeneratorSD.mjs",
     "DungeonGenerator.mjs",
     "DungeonPainterSD.mjs",
+    // Level-context / Foundry-levels adapter lifted out of DungeonPainterSD.mjs
+    // (Phase 5.3 sweep 6).
+    "dungeon-level-context.mjs",
+    // Selection-rectangle overlay lifted out of DungeonPainterSD.mjs
+    // (Phase 5.3 sweep 6).
+    "dungeon-selection-overlay.mjs",
+    // Tool-state (tile selection, dungeon mode, display toggles) lifted out of
+    // DungeonPainterSD.mjs (Phase 5.3 sweep 6).
+    "dungeon-tool-state.mjs",
+    // Tile catalogue (floor/wall/door/background arrays) lifted out of
+    // DungeonPainterSD.mjs (Phase 5.3 sweep 6).
+    "dungeon-tile-catalog.mjs",
+    // Interior-wall painting lifted out of DungeonPainterSD.mjs
+    // (Phase 5.3 sweep 6).
+    "dungeon-interior-walls.mjs",
     "DungeonCaveSD.mjs",
     "DungeonBiomesSD.mjs",
     "DungeonDecorSD.mjs",
