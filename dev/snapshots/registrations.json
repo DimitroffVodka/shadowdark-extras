@@ -282,7 +282,7 @@
     "WeaponAnimationSD.mjs": [
       "Hooks.on:updateItem",
       "Hooks.on:sequencerEffectManagerReady",
-      "Hooks.on:canvasReady",
+      "Hooks.on:sequencerEffectManagerReady",
       "Hooks.on:deleteToken",
       "Hooks.on:createToken"
     ],

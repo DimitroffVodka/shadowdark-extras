@@ -201,20 +201,30 @@ test("torch playTorchAnimation dedup carries object for both base and _impact an
 	await playTorchAnimation(tokenA, item);
 
 	// (a) dedup must carry object: token for BOTH lines independently (order-independent)
-	assert.ok(endEffectsCalls.length >= 2, `dedup should have called endEffects twice (got ${endEffectsCalls.length}): ${JSON.stringify(endEffectsCalls)}`);
+	// After #110 play terminates both new and legacy names (world 0100 holds 22 legacy torch records)
+	assert.ok(endEffectsCalls.length >= 4, `dedup should have called endEffects four times (new+legacy × base+_impact) (got ${endEffectsCalls.length}): ${JSON.stringify(endEffectsCalls)}`);
 	const dedupBase = endEffectsCalls.find(c => c.name === effectName);
 	const dedupImpact = endEffectsCalls.find(c => c.name === impactName);
-	assert.ok(dedupBase, `dedup :173 must have been called with ${effectName}`);
-	assert.equal(dedupBase.object, tokenA, "dedup :173 must carry object: token (see #105)");
-	assert.ok(!dedupBase.name.includes(tokenA.id), "dedup base name must not encode token id");
-	assert.ok(dedupImpact, `dedup :174 must have been called with ${impactName}`);
-	assert.equal(dedupImpact.object, tokenA, "dedup :174 must carry object: token (see #105 _impact variant)");
-	assert.ok(!dedupImpact.name.includes(tokenA.id), "dedup _impact name must not encode token id");
+	const legacyBase = `${effectName.split('-').slice(0,2).join('-')}-${tokenA.id}-${itemId}`;
+	// legacy names are `${MODULE_ID}-torch-${token.id}-${itemId}` — construct via getLegacyEffectName
+	const legacyName = `shadowdark-extras-torch-${tokenA.id}-${itemId}`;
+	const legacyImpactName = `${legacyName}_impact`;
+	const dedupLegacyBase = endEffectsCalls.find(c => c.name === legacyName);
+	const dedupLegacyImpact = endEffectsCalls.find(c => c.name === legacyImpactName);
+	assert.ok(dedupBase, `dedup must have been called with ${effectName}`);
+	assert.equal(dedupBase.object, tokenA, "dedup new base must carry object: token (see #105)");
+	assert.ok(!dedupBase.name.includes(tokenA.id) || dedupBase.name===legacyName, "dedup base name must not encode token id except legacy");
+	assert.ok(dedupImpact, `dedup must have been called with ${impactName}`);
+	assert.equal(dedupImpact.object, tokenA, "dedup new _impact must carry object: token");
+	assert.ok(dedupLegacyBase, `dedup must have been called with legacy ${legacyName}`);
+	assert.equal(dedupLegacyBase.object, tokenA, "dedup legacy base must carry object: token");
+	assert.ok(dedupLegacyImpact, `dedup must have been called with legacy ${legacyImpactName}`);
+	assert.equal(dedupLegacyImpact.object, tokenA, "dedup legacy _impact must carry object: token");
 	// dedup must precede play — otherwise the effect is created then immediately terminated
 	const firstPlayIdx = orderedEvents.indexOf("play");
 	assert.notEqual(firstPlayIdx, -1, "play() must have been called");
-	assert.equal(orderedEvents.filter(e => e === "end").length, 2, "exactly two dedup ends expected before play");
-	assert.ok(firstPlayIdx > 1, `both dedup ends must precede play (events: ${orderedEvents.join(",")})`);
+	assert.equal(orderedEvents.filter(e => e === "end").length, 4, "exactly four dedup ends expected before play (new+legacy × base+_impact)");
+	assert.ok(firstPlayIdx > 3, `all dedup ends must precede play (events: ${orderedEvents.join(",")})`);
 	assert.ok(orderedEvents.slice(0, firstPlayIdx).every(e => e === "end"), "no play before dedup completes");
 
 	// (b) play-registered effects are the ones the module actually named — rename at play time → red

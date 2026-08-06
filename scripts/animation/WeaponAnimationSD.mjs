@@ -12,6 +12,11 @@ import { isItemPilesActor } from "../inventory/ItemPilesCompatSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
+// Generation counter to serialize overlapping sequencerEffectManagerReady restores.
+// Hooks dispatch is not awaited, so rapid scene changes interleave as
+// A.end → B.end → A.play → B.play. The newer generation supersedes the older.
+let _weaponRestoreGen = 0;
+
 /**
  * Check if weapon animations are enabled in settings
  */
@@ -223,6 +228,11 @@ export async function playWeaponAnimation(token, item, configOverride = null, us
 		return;
 	}
 
+	// Capture restore generation for overlap check — if a newer
+	// sequencerEffectManagerReady fires while this play is in-flight,
+	// the newer generation supersedes this one (see restore guard).
+	const _myGen = _weaponRestoreGen;
+
 	// Item Piles actors are inventories, not creatures wielding their contents.
 	// A configured weapon may keep its animation flag while stored, but it must
 	// never render as an attached/equipped sprite on the pile token.
@@ -250,9 +260,16 @@ export async function playWeaponAnimation(token, item, configOverride = null, us
 	if (userId !== null && userId !== game.user.id) return;
 
 	const effectName = getEffectName(item.id);
+	const legacyName = getLegacyEffectName(token, item.id);
 
-	// End any existing animation for this weapon — token-scoped via object (see #105)
+	// End any existing animation for this weapon — token-scoped via object (see #105).
+	// Must terminate both new and legacy names (see stopWeaponAnimation); anchored
+	// globs do not match the other scheme, and 22 legacy torch / 10 legacy weapon
+	// records exist in world 0100.
 	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
+	if (_myGen !== _weaponRestoreGen) return;
+	await Sequencer.EffectManager.endEffects({ name: legacyName, object: token });
+	if (_myGen !== _weaponRestoreGen) return;
 
 	// Get token dimensions
 	const tokenWidth = token.document.width;
@@ -372,7 +389,13 @@ export async function playWeaponAnimation(token, item, configOverride = null, us
 			break;
 	}
 
+	if (_myGen !== _weaponRestoreGen) return;
 	await seq.play();
+	if (_myGen !== _weaponRestoreGen) {
+		// Superseded while playing — clean up the effect we just created
+		await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
+		return;
+	}
 
 	// Apply additional PIXI filters that Sequencer doesn't support natively
 	if (animConfig.filters?.dropShadow?.enabled) {
@@ -659,16 +682,22 @@ export function initWeaponAnimations() {
 	});
 
 	// Restore animations on scene ready
-	// Weapon stays on canvasReady (torch moved to sequencerEffectManagerReady;
-	// see TorchAnimationSD for asymmetry rationale). Weapon has zero persisted
-	// records today (see #110), so there is no Sequencer double-restore to
-	// order against — Sequencer readiness is irrelevant for weapon and
-	// canvasReady is the earliest correct signal. The GM election is the
-	// only gate that needed fixing.
-	Hooks.on("canvasReady", async () => {
+	// Weapon restore must run AFTER Sequencer has populated its manager
+	// (sequencerEffectManagerReady, dist:11953, +125-475ms after canvasReady)
+	// so our dedup sees Sequencer's persisted copy before playing a fresh
+	// one — net one, not duplicate. World 0100 now holds 10 weapon records
+	// (manual restore while diagnosing #110), so the earlier "zero persisted"
+	// rationale is stale; weapon now has the same ordering hazard as torch.
+	// sequencerEffectManagerReady fires even when there is nothing to restore
+	// (initializePersistentEffects does Promise.all([]) → resolves, dist:11919-11953)
+	// — verified against installed Sequencer 4.2.3; version-specific, not a
+	// generic guarantee. If Sequencer is absent, init returns before this
+	// hook is registered and playWeaponAnimation is a no-op via checkDependencies.
+	Hooks.on("sequencerEffectManagerReady", async () => {
+		const myGen = ++_weaponRestoreGen;
 		// GM-authoritative election — only the active GM restores animations.
-		// activeGM is not populated at canvasReady t=0 on a fresh load (see #110),
-		// so the gate must not be evaluated before state has had a chance to settle.
+		// activeGM is not populated at t=0 on a fresh load (see #110), so the
+		// gate must not be evaluated before state has had a chance to settle.
 		// Bounded poll replaces the fixed 500ms sleep that previously raced the
 		// unobserved user-sync transition and sat after the gate.
 		const timeoutMs = 2000;
@@ -676,15 +705,24 @@ export function initWeaponAnimations() {
 		const start = Date.now();
 		while (!globalThis.game?.users?.activeGM && Date.now() - start < timeoutMs) {
 			await new Promise(resolve => setTimeout(resolve, intervalMs));
+			if (myGen !== _weaponRestoreGen) return;
+		}
+		if (myGen !== _weaponRestoreGen) return;
+		if (!globalThis.game?.users?.activeGM) {
+			console.warn(`${MODULE_ID} | Weapon restore skipped — activeGM not found after ${timeoutMs}ms (slow user sync or no GM); will retry on next sequencerEffectManagerReady`);
+			return;
 		}
 		if (!isWeaponCanvasRestoreAllowed()) return;
+		if (myGen !== _weaponRestoreGen) return;
 
 		// Check all tokens for equipped weapons/shields with animations
 		for (const token of canvas.tokens.placeables) {
+			if (myGen !== _weaponRestoreGen) return;
 			const actor = token.actor;
 			if (!actor) continue;
 			if (isItemPilesActor(actor)) {
 				await stopAllWeaponAnimations(token);
+				if (myGen !== _weaponRestoreGen) return;
 				continue;
 			}
 
@@ -698,6 +736,7 @@ export function initWeaponAnimations() {
 
 			// Play (or stop) animation for each equipped item
 			for (const item of equippedItems) {
+				if (myGen !== _weaponRestoreGen) return;
 				await playWeaponAnimation(token, item);
 			}
 		}

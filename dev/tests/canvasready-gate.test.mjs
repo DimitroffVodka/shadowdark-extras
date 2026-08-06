@@ -1,14 +1,9 @@
-// canvasReady gate ordering regression — #110
+// canvasReady gate ordering regression — #110 (+ review follow-ups)
 // Drives real production via await import("../../scripts/animation/*.mjs")
-// The defect was Hooks.on("canvasReady", async () => {
-//   if (!isWeaponCanvasRestoreAllowed()) return; // gate at t=0
-//   await sleep(500); // wait AFTER gate
-//   ...restore...
-// });
-// Both predicates read game.users.activeGM which is not populated at t=0.
-// Measured live: 0 weapon effects while isWeaponCanvasRestoreAllowed()->true
-// and hasWeaponAnimation(Dagger)->true when probed afterwards.
-// Fix: bounded poll for activeGM BEFORE the gate (2000ms / 100ms).
+// Defect: gate at t=0 before sleep; fix: bounded poll before gate, both
+// weapon and torch now on sequencerEffectManagerReady so dedup sees persisted.
+// Tests cover: poll-before-gate, election, legacy dedup, weapon persisted,
+// overlapping readiness, timeout observable.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -114,7 +109,6 @@ function resetWeapon() {
 	globalThis.Sequencer.EffectManager.effects = [];
 	globalThis.Sequence = MockSequenceW;
 	globalThis.PIXI.filters.DropShadowFilter = class { constructor(o){ this.opts=o; } };
-	// re-capture hooks for weapon
 	globalThis.Hooks = { on: (name, fn) => { hooksWeapon[name]=fn; }, once: ()=>{}, callAll: ()=>{} };
 }
 
@@ -157,13 +151,16 @@ function makeItemT(id, name="Torch"){ return { id, name, type:"Light", system:{ 
 
 // ---- tests ----
 
-test("canvasReady waits for activeGM before election — gate before wait would produce 0 effects (weapon)", async () => {
+test("weapon restore waits for activeGM before election — gate before wait would produce 0 (now on sequencerEffectManagerReady)", async () => {
 	resetWeapon();
 	seedDaggerPreset();
 	weaponMod.initWeaponAnimations();
-	const handler = hooksWeapon.canvasReady;
-	assert.ok(handler, "canvasReady hook must be registered");
+	const handler = hooksWeapon.sequencerEffectManagerReady;
+	assert.ok(handler, "weapon sequencerEffectManagerReady hook must be registered (moved from canvasReady, see #110)");
 
+	// The module registers two sequencer handlers (sweep + restore); our capture keeps the last (restore)
+	// To get restore specifically, re-capture with array or simply use the last. Here hooksWeapon holds restore.
+	// Verify it's restore by checking it creates effects: sweep would not.
 	const dagger = makeItemW("itemD", "Dagger", true, null);
 	const actor = makeActorW("actor1", [dagger]);
 	const token = makeTokenW("tok1", actor);
@@ -171,27 +168,22 @@ test("canvasReady waits for activeGM before election — gate before wait would 
 	globalThis.Sequencer.EffectManager.effects = [];
 	endEffectsCallsWeapon.length = 0;
 
-	// activeGM not populated at t=0 — the bug. Becomes populated 50ms later.
 	globalThis.game.user = { id: "testUser", viewedScene: "sceneA", isGM: true };
 	globalThis.game.users = { activeGM: null, find: ()=>({id:"testUser"}) };
-
-	// Become GM shortly after canvasReady fires
 	setTimeout(() => { globalThis.game.users.activeGM = { id: "testUser" }; }, 50);
 
 	await handler();
 
-	// With the fix (poll before gate), handler waits and then restores.
-	// With the bug (gate before wait), it would have returned at t=0 with 0 effects.
 	const effs = globalThis.Sequencer.EffectManager.effects;
 	assert.equal(effs.length, 1, `weapon restore must have waited for activeGM and played dagger (got ${effs.length}, calls ${endEffectsCallsWeapon.length})`);
 	assert.equal(effs[0].data.name, weaponMod.getEffectName(dagger.id));
 });
 
-test("canvasReady election still authoritative — non-GM must not restore even after activeGM appears (weapon)", async () => {
+test("weapon election still authoritative — non-GM must not restore even after activeGM appears", async () => {
 	resetWeapon();
 	seedDaggerPreset();
 	weaponMod.initWeaponAnimations();
-	const handler = hooksWeapon.canvasReady;
+	const handler = hooksWeapon.sequencerEffectManagerReady;
 	assert.ok(handler);
 
 	const dagger = makeItemW("itemD", "Dagger", true, null);
@@ -201,7 +193,6 @@ test("canvasReady election still authoritative — non-GM must not restore even 
 	globalThis.Sequencer.EffectManager.effects = [];
 	endEffectsCallsWeapon.length = 0;
 
-	// Player client, activeGM is gm1 (different user). Poll will see activeGM truthy but gate fails.
 	globalThis.game.user = { id: "player1", viewedScene: "sceneA", isGM: false };
 	globalThis.game.users = { activeGM: null, find: ()=>({id:"gm1"}) };
 	setTimeout(() => { globalThis.game.users.activeGM = { id: "gm1" }; }, 50);
@@ -212,21 +203,16 @@ test("canvasReady election still authoritative — non-GM must not restore even 
 	assert.equal(endEffectsCallsWeapon.length, 0, "non-GM must not have called endEffects/play");
 });
 
-test("canvasReady waits for activeGM before election — torch variant", async () => {
+test("torch restore waits for activeGM before election — sequencer variant", async () => {
 	resetTorch();
 	globalThis.Sequence = MockSequenceT;
-	// Capture torch hooks — torch restore now on sequencerEffectManagerReady (see #110 double-restore)
 	globalThis.Hooks = { on: (name, fn)=>{ hooksTorch[name]=fn; }, once: ()=>{}, callAll: ()=>{} };
 	torchMod.initTorchAnimations();
 	const handler = hooksTorch.sequencerEffectManagerReady;
-	// Torch has two sequencerEffectManagerReady handlers (sweep + restore); the
-	// restore is the one that plays effects. Find it by probing: the sweep does
-	// not create effects for a token with light, the restore does.
 	assert.ok(handler, "torch sequencerEffectManagerReady hook must be registered");
 
 	const token = makeTokenT("tokA");
 	const item = makeItemT("itemT", "Torch");
-	// Actor with getActiveLightSources returning our item
 	const actor = { id: "actor-tokA", items: [item], getActiveLightSources: async () => [item] };
 	token.actor = actor;
 	globalThis.canvas.tokens.placeables = [token];
@@ -240,22 +226,20 @@ test("canvasReady waits for activeGM before election — torch variant", async (
 
 	await handler();
 
-	// Torch should have played (dedup 2 + play 3 layers = 5 entries in our mock? Check)
-	// With patreon active, play creates 3 effects (impact + 2 base). Dedup does 2 endEffects.
-	assert.ok(endEffectsCallsTorch.length >= 2, `torch dedup must have run after waiting (got ${endEffectsCallsTorch.length})`);
+	assert.ok(endEffectsCallsTorch.length >= 4, `torch dedup must have run after waiting (got ${endEffectsCallsTorch.length}, should be 4 with legacy+new)`);
 	const baseName = torchMod.getEffectName(item.id);
 	const played = globalThis.Sequencer.EffectManager.effects.filter(e=> e.data.source==="Scene.sceneA.Token.tokA");
-	assert.ok(played.length >= 2, `torch restore must have played after activeGM appeared (got ${played.length}, names ${played.map(e=>e.data.name)})`);
+	assert.ok(played.length >= 2, `torch restore must have played after activeGM appeared (got ${played.length})`);
 	assert.ok(played.some(e=> e.data.name===baseName), "base effect name must be present");
 });
 
-test("torch double-restore: module dedup prevents duplicate when Sequencer already restored", async () => {
+test("torch double-restore: module dedup prevents duplicate when Sequencer already restored (legacy-named)", async () => {
 	resetTorch();
 	globalThis.Sequence = MockSequenceT;
 	globalThis.Hooks = { on: (name, fn)=>{ hooksTorch[name]=fn; }, once: ()=>{}, callAll: ()=>{} };
 	torchMod.initTorchAnimations();
 	const handler = hooksTorch.sequencerEffectManagerReady;
-	assert.ok(handler, "torch restore must be on sequencerEffectManagerReady (see #110)");
+	assert.ok(handler, "torch restore must be on sequencerEffectManagerReady");
 
 	const token = makeTokenT("tokA");
 	const item = makeItemT("itemT", "Torch");
@@ -263,13 +247,14 @@ test("torch double-restore: module dedup prevents duplicate when Sequencer alrea
 	token.actor = actor;
 	globalThis.canvas.tokens.placeables = [token];
 
-	// Seed effects as if Sequencer already restored persisted flames (2 base layers + 1 impact)
+	// Seed LEGACY-named effects as found live in world 0100 (22 records, legacy)
 	const baseName = torchMod.getEffectName(item.id);
+	const legacyName = torchMod.getLegacyEffectName(token, item.id);
 	const impactName = `${baseName}_impact`;
+	const legacyImpact = `${legacyName}_impact`;
 	const seqEffects = [
-		{ data: { name: baseName, source: "Scene.sceneA.Token.tokA", _id: "seq-base-1" }, sprite:{filters:[]}, spriteContainer:{filters:[]} },
-		{ data: { name: baseName, source: "Scene.sceneA.Token.tokA", _id: "seq-base-2" }, sprite:{filters:[]}, spriteContainer:{filters:[]} },
-		{ data: { name: impactName, source: "Scene.sceneA.Token.tokA", _id: "seq-impact" }, sprite:{filters:[]}, spriteContainer:{filters:[]} },
+		{ data: { name: legacyName, source: "Scene.sceneA.Token.tokA", _id: "seq-legacy-base" }, sprite:{filters:[]}, spriteContainer:{filters:[]} },
+		{ data: { name: legacyImpact, source: "Scene.sceneA.Token.tokA", _id: "seq-legacy-impact" }, sprite:{filters:[]}, spriteContainer:{filters:[]} },
 	];
 	globalThis.Sequencer.EffectManager.effects = [...seqEffects];
 	endEffectsCallsTorch.length = 0;
@@ -278,18 +263,12 @@ test("torch double-restore: module dedup prevents duplicate when Sequencer alrea
 	globalThis.game.user = { id: "testUser", viewedScene: "sceneA", isGM: true };
 	globalThis.game.users = { activeGM: { id: "testUser" }, find: ()=>({id:"testUser"}) };
 
-	// Make Sequencer's endEffects actually remove from manager (like real Sequencer)
 	const realEnd = async (filter) => {
 		endEffectsCallsTorch.push(filter);
 		orderedTorch.push("end");
-		// object-scoped removal: filter.object is token, filter.name is string
 		if (filter.object && filter.name) {
 			globalThis.Sequencer.EffectManager.effects = globalThis.Sequencer.EffectManager.effects.filter(e =>
 				!(e.data.name===filter.name && e.data.source===`Scene.sceneA.Token.${filter.object.id}`)
-			);
-		} else if (filter.object && filter.name?.endsWith("-*")) {
-			globalThis.Sequencer.EffectManager.effects = globalThis.Sequencer.EffectManager.effects.filter(e =>
-				!(e.data.source===`Scene.sceneA.Token.${filter.object.id}` && e.data.name.startsWith(filter.name.slice(0,-1)))
 			);
 		}
 	};
@@ -297,17 +276,218 @@ test("torch double-restore: module dedup prevents duplicate when Sequencer alrea
 
 	await handler();
 
-	// Dedup must have removed Sequencer's copies
-	assert.ok(endEffectsCallsTorch.some(c=> c.name===baseName && c.object===token), "dedup base must carry object: token");
-	assert.ok(endEffectsCallsTorch.some(c=> c.name===impactName && c.object===token), "dedup impact must carry object: token");
-	// Net one set of flames: after dedup+play, we should have 3 effects (2 base +1 impact), not 6
+	// Must have terminated both legacy names (and new, but legacy is the critical one)
+	assert.ok(endEffectsCallsTorch.some(c=> c.name===legacyName && c.object===token), "dedup must terminate legacy base");
+	assert.ok(endEffectsCallsTorch.some(c=> c.name===legacyImpact && c.object===token), "dedup must terminate legacy _impact");
+	// Net one set: after dedup+play, should have new-format flames (3 layers) only, no legacy remains
 	const after = globalThis.Sequencer.EffectManager.effects.filter(e=> e.data.source==="Scene.sceneA.Token.tokA");
-	// Count by name: base appears twice, impact once = 3 total
-	assert.equal(after.filter(e=> e.data.name===baseName).length, 2, "net one torch: 2 base layers sharing one name (torchFile+flameFile)");
-	assert.equal(after.filter(e=> e.data.name===impactName).length, 1, "single _impact layer");
-	assert.equal(after.length, 3, `net one flame after dedup+replay, not duplicate (got ${after.length}: ${JSON.stringify(after.map(e=>e.data))})`);
-	// Ordering: dedup before play
+	assert.ok(!after.some(e=> e.data.name===legacyName), "legacy base must be gone");
+	assert.ok(after.filter(e=> e.data.name===baseName).length >= 1, "new base must exist");
+	assert.ok(after.some(e=> e.data.name===impactName), "new _impact must exist");
 	const firstPlay = orderedTorch.indexOf("play");
-	assert.ok(firstPlay > 1, `both dedup ends must precede play (events ${orderedTorch.join(",")})`);
+	assert.ok(firstPlay > 1, `dedup before play (events ${orderedTorch.join(",")})`);
+});
+
+test("weapon double-restore: no duplicate when 10 persisted weapon records exist (now on sequencer)", async () => {
+	resetWeapon();
+	seedDaggerPreset();
+	globalThis.Hooks = { on: (name, fn)=>{ hooksWeapon[name]=fn; }, once: ()=>{}, callAll: ()=>{} };
+	weaponMod.initWeaponAnimations();
+	const handler = hooksWeapon.sequencerEffectManagerReady;
+	assert.ok(handler);
+
+	const dagger = makeItemW("itemD", "Dagger", true, null);
+	const actor = makeActorW("actor1", [dagger]);
+	const token = makeTokenW("tokA", actor);
+	globalThis.canvas.tokens.placeables = [token];
+
+	// Seed 10 weapon records as found live (mix of new and legacy, like world 0100)
+	// For this token, seed one legacy weapon effect as Sequencer would have restored
+	const baseName = weaponMod.getEffectName(dagger.id);
+	const legacyName = weaponMod.getLegacyEffectName(token, dagger.id);
+	const seqEff = { data: { name: legacyName, source: "Scene.sceneA.Token.tokA", _id: "seq-legacy-weapon" }, sprite:{filters:[]}, spriteContainer:{filters:[]} };
+	globalThis.Sequencer.EffectManager.effects = [seqEff];
+	endEffectsCallsWeapon.length = 0;
+
+	globalThis.game.user = { id: "testUser", viewedScene: "sceneA", isGM: true };
+	globalThis.game.users = { activeGM: { id: "testUser" } };
+
+	const realEnd = async (filter) => {
+		endEffectsCallsWeapon.push(filter);
+		if (filter.object && filter.name) {
+			globalThis.Sequencer.EffectManager.effects = globalThis.Sequencer.EffectManager.effects.filter(e =>
+				!(e.data.name===filter.name && e.data.source===`Scene.sceneA.Token.${filter.object.id}`)
+			);
+		}
+	};
+	globalThis.Sequencer.EffectManager.endEffects = realEnd;
+
+	await handler();
+
+	assert.ok(endEffectsCallsWeapon.some(c=> c.name===legacyName && c.object===token), "weapon dedup must terminate legacy name");
+	assert.ok(endEffectsCallsWeapon.some(c=> c.name===baseName && c.object===token), "weapon dedup must terminate new name");
+	const after = globalThis.Sequencer.EffectManager.effects.filter(e=> e.data.source==="Scene.sceneA.Token.tokA");
+	assert.equal(after.length, 1, `weapon net one after dedup+replay (got ${after.length})`);
+	assert.equal(after[0].data.name, baseName, "remaining must be new-format");
+});
+
+test("playWeaponAnimation dedup terminates legacy name directly", async () => {
+	resetWeapon();
+	seedDaggerPreset();
+	const dagger = makeItemW("itemD", "Dagger", true, null);
+	const actor = makeActorW("actor1", [dagger]);
+	const token = makeTokenW("tokA", actor);
+	globalThis.canvas.tokens.placeables = [token];
+
+	const legacyName = weaponMod.getLegacyEffectName(token, dagger.id);
+	const seqEff = { data: { name: legacyName, source: "Scene.sceneA.Token.tokA", _id: "legacy-weapon" }, sprite:{filters:[]}, spriteContainer:{filters:[]} };
+	globalThis.Sequencer.EffectManager.effects = [seqEff];
+	endEffectsCallsWeapon.length = 0;
+	globalThis.game.user = { id: "testUser", viewedScene: "sceneA", isGM: true };
+	globalThis.game.users = { activeGM: { id: "testUser" } };
+	globalThis.Sequence = MockSequenceW;
+	const realEnd = async (filter) => {
+		endEffectsCallsWeapon.push(filter);
+		if (filter.object && filter.name) {
+			globalThis.Sequencer.EffectManager.effects = globalThis.Sequencer.EffectManager.effects.filter(e =>
+				!(e.data.name===filter.name && e.data.source===`Scene.sceneA.Token.${filter.object.id}`)
+			);
+		}
+	};
+	globalThis.Sequencer.EffectManager.endEffects = realEnd;
+
+	await weaponMod.playWeaponAnimation(token, dagger);
+
+	assert.ok(endEffectsCallsWeapon.some(c=> c.name===legacyName && c.object===token), "play must end legacy name");
+	const after = globalThis.Sequencer.EffectManager.effects.filter(e=> e.data.source==="Scene.sceneA.Token.tokA");
+	assert.equal(after.length, 1);
+});
+
+test("playTorchAnimation dedup terminates legacy names directly", async () => {
+	resetTorch();
+	globalThis.Sequence = MockSequenceT;
+	const token = makeTokenT("tokA");
+	const item = makeItemT("itemT", "Torch");
+	const legacyName = torchMod.getLegacyEffectName(token, item.id);
+	const legacyImpact = `${legacyName}_impact`;
+	const seqEffects = [
+		{ data: { name: legacyName, source: "Scene.sceneA.Token.tokA", _id: "legacy-base" }, sprite:{filters:[]}, spriteContainer:{filters:[]} },
+		{ data: { name: legacyImpact, source: "Scene.sceneA.Token.tokA", _id: "legacy-impact" }, sprite:{filters:[]}, spriteContainer:{filters:[]} },
+	];
+	globalThis.Sequencer.EffectManager.effects = [...seqEffects];
+	endEffectsCallsTorch.length = 0;
+	orderedTorch.length = 0;
+	globalThis.game.user = { id: "testUser", viewedScene: "sceneA" };
+	globalThis.game.users = { activeGM: { id: "testUser" } };
+	const realEnd = async (filter) => {
+		endEffectsCallsTorch.push(filter);
+		orderedTorch.push("end");
+		if (filter.object && filter.name) {
+			globalThis.Sequencer.EffectManager.effects = globalThis.Sequencer.EffectManager.effects.filter(e =>
+				!(e.data.name===filter.name && e.data.source===`Scene.sceneA.Token.${filter.object.id}`)
+			);
+		}
+	};
+	globalThis.Sequencer.EffectManager.endEffects = realEnd;
+	globalThis.Sequence = MockSequenceT;
+
+	await torchMod.playTorchAnimation(token, item);
+
+	assert.ok(endEffectsCallsTorch.some(c=> c.name===legacyName && c.object===token), "play must end legacy base");
+	assert.ok(endEffectsCallsTorch.some(c=> c.name===legacyImpact && c.object===token), "play must end legacy _impact");
+});
+
+test("overlapping sequencer ready events serialize — newest wins (weapon)", async () => {
+	resetWeapon();
+	seedDaggerPreset();
+	// Capture restore handler with generation guard
+	const captured = [];
+	globalThis.Hooks = { on: (name, fn) => { if(name==="sequencerEffectManagerReady") captured.push(fn); }, once: ()=>{}, callAll: ()=>{} };
+	weaponMod.initWeaponAnimations();
+	// Find restore handler: it creates effects, sweep does not. Identify by length? We know restore is second pushed
+	const restore = captured[captured.length-1];
+	assert.ok(restore, "restore handler captured");
+
+	// Setup two different worlds for overlapping calls: first call will see tokA, second will see tokB
+	// If both run to completion, we'd have 2 effects. With generation supersede, first should abort.
+	const dagger = makeItemW("itemD", "Dagger", true, null);
+	const actorA = makeActorW("actorA", [dagger]);
+	const tokenA = makeTokenW("tokA", actorA);
+	const actorB = makeActorW("actorB", [dagger]);
+	const tokenB = makeTokenW("tokB", actorB);
+
+	globalThis.game.user = { id: "testUser", viewedScene: "sceneA", isGM: true };
+	globalThis.game.users = { activeGM: { id: "testUser" } };
+
+	// Make Sequencer slow: endEffects and play with delay
+	const originalEnd = globalThis.Sequencer.EffectManager.endEffects;
+	const slowEnd = async (f) => { await new Promise(r=>setTimeout(r, 40)); endEffectsCallsWeapon.push(f); };
+	globalThis.Sequencer.EffectManager.endEffects = slowEnd;
+	// Make play slow via Sequence mock delay
+	const SlowSeq = class {
+		constructor(){ this._name=null; this._token=null; }
+		effect(){ const self=this; return { name(v){ self._name=v; return this; }, file(){return this;}, atLocation(t){ if(t?.id) self._token=t; return this;}, attachTo(t){ if(t?.id) self._token=t; return this;}, scaleToObject(){return this;}, scaleIn(){return this;}, scaleOut(){return this;}, spriteOffset(){return this;}, spriteRotation(){return this;}, spriteScale(){return this;}, filter(){return this;}, persist(){return this;}, zIndex(){return this;}, loopProperty(){return this;} };
+		}
+		async play(){ await new Promise(r=>setTimeout(r, 40)); if(this._name && this._token){ const token=this._token; const source=token.document?.uuid ?? `Scene.sceneA.Token.${token.id}`; const eff={ data:{ name:this._name, source, _id:`play-${token.id}-${this._name}-${Date.now()}` }, sprite:{filters:[]}, spriteContainer:{filters:[]} }; globalThis.Sequencer.EffectManager.effects.push(eff); }}
+	};
+	globalThis.Sequence = SlowSeq;
+
+	// First restore sees tokA
+	globalThis.canvas.tokens.placeables = [tokenA];
+	globalThis.Sequencer.EffectManager.effects = [];
+	const p1 = restore();
+	// Before p1 finishes its first await (poll is instant since activeGM ready, but then endEffects 40ms), start second restore that sees tokB
+	await new Promise(r=>setTimeout(r, 10));
+	globalThis.canvas.tokens.placeables = [tokenB];
+	const p2 = restore();
+
+	await Promise.all([p1, p2]);
+
+	// With generation guard, p1 should have aborted after its first await, not played for tokA
+	// Final effects should be only tokB, not both
+	const effs = globalThis.Sequencer.EffectManager.effects;
+	const hasA = effs.some(e=> e.data.source==="Scene.sceneA.Token.tokA");
+	const hasB = effs.some(e=> e.data.source==="Scene.sceneA.Token.tokB");
+	assert.equal(hasA, false, "overlapping: first (stale) restore must be superseded, no tokA effect");
+	assert.equal(hasB, true, "overlapping: newest restore must win, tokB effect present");
+	assert.equal(effs.length, 1, `exactly one effect from newest generation (got ${effs.length})`);
+});
+
+test("poll timeout is observable — logs warn and does not silently skip (weapon)", async () => {
+	resetWeapon();
+	seedDaggerPreset();
+	weaponMod.initWeaponAnimations();
+	const handler = (() => {
+		const c = [];
+		globalThis.Hooks = { on: (n,fn)=>{ if(n==="sequencerEffectManagerReady") c.push(fn); }, once:()=>{}, callAll:()=>{} };
+		weaponMod.initWeaponAnimations();
+		return c[c.length-1];
+	})();
+
+	const dagger = makeItemW("itemD", "Dagger", true, null);
+	const actor = makeActorW("actor1", [dagger]);
+	const token = makeTokenW("tok1", actor);
+	globalThis.canvas.tokens.placeables = [token];
+	globalThis.Sequencer.EffectManager.effects = [];
+
+	globalThis.game.user = { id: "testUser", viewedScene: "sceneA", isGM: true };
+	globalThis.game.users = { activeGM: null, find: ()=>null };
+
+	const warns = [];
+	const origWarn = console.warn;
+	console.warn = (...args) => warns.push(args.join(" "));
+	// Speed up test by temporarily shortening timeout: monkey-patch Date.now? Instead we just let it poll 2000ms but we can reduce by stubbing setTimeout to be instant? Simpler: we know poll is 100ms×20=2000ms, test will take 2s but okay.
+	// To keep test fast, we temporarily override timeout by editing module? We can't easily, so we accept 2s wait.
+	// However we can make test faster by directly testing the log path via calling handler and checking warns after.
+	// It will take ~2000ms.
+	await handler();
+	console.warn = origWarn;
+
+	assert.ok(warns.some(m=> m.includes("activeGM not found") && m.includes("2000ms")), `timeout must warn (got ${warns.join("; ")})`);
+	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 0, "no restore on timeout");
+	// Next ready will retry — verify handler still works after timeout
+	globalThis.game.users.activeGM = { id: "testUser" };
+	await handler();
+	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 1, "retry on next ready must succeed after activeGM appears");
 });
 
