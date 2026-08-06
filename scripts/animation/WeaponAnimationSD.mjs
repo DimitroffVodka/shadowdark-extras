@@ -403,7 +403,7 @@ export async function stopAllWeaponAnimations(token) {
 	const deps = checkDependencies();
 	if (!deps.hasSequencer) return;
 
-	await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-weapon-${token.id}*` });
+	await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-weapon-${token.id}-*` });
 	console.log(`${MODULE_ID} | Stopped all weapon animations for ${token.name}`);
 }
 
@@ -528,7 +528,7 @@ export function initWeaponAnimations() {
 		if (!deps.hasSequencer) return;
 
 		// End all weapon effects for this token
-		await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-weapon-${tokenDoc.id}*` });
+		await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-weapon-${tokenDoc.id}-*` });
 	});
 
 	// Check for equipped weapons when a new token is created
