@@ -60,7 +60,7 @@ test("the current first-party inventory is measured at the checked-in Git SHA", 
   assert.equal(metrics.schema, "phase5-metrics-v1");
   assert.match(metrics.gitSha, /^[0-9a-f]{40}$/);
   assert.equal(metrics.firstParty.files, 59);
-  assert.equal(metrics.firstParty.physicalLines, 28389);
+  assert.equal(metrics.firstParty.physicalLines, 28482);
   assert.equal(metrics.firstParty.activeConsole, 415);
   assert.equal(metrics.firstParty.commentedConsole, 0);
   assert.deepEqual(metrics.over2000, []);

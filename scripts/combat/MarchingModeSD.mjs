@@ -21,6 +21,7 @@ let tokenFollowers = new Map(); // tokenId -> {marchPosition, moving}
 let processingCongaMovement = false;
 let congaMovementPending = false; // Flag to re-trigger conga after current cycle
 let scheduledTimeouts = new Set(); // Track pending timeouts for cleanup
+let combatSuspendKey = null; // "<combatId>:<sceneId>" of the episode that last suspended marching
 
 /**
  * Save marching mode state to settings
@@ -139,8 +140,33 @@ export function initMarchingMode() {
 	Hooks.on("preUpdateToken", onPreUpdateToken);
 	Hooks.on("updateToken", onUpdateToken);
 
-	// Restore leader crown when canvas is ready
-	Hooks.on("canvasReady", restoreLeaderCrown);
+	// Combat lifecycle (issue #99): suspend marching once per combat episode.
+	// combatStart fires when a combat begins (before its round-1 update, so
+	// force-start); updateCombat catches an already-started combat created via
+	// API/import or a manual round bump; deleteCombat re-arms for a replacement
+	// combat that never un-started.
+	Hooks.on("combatStart", combat => handleCombatEpisode(combat, true));
+	Hooks.on("updateCombat", combat => {
+		// An unstarted observation of the keyed combat (reset to round 0, or the
+		// round-1 update that follows combatStart) closes the episode: a later
+		// restart of the SAME combat must re-arm, so drop the latch.
+		if (!combat.started && combatSuspendKey === `${combat.id}:${combat.scene?.id ?? ""}`) {
+			combatSuspendKey = null;
+			return;
+		}
+		handleCombatEpisode(combat);
+	});
+	Hooks.on("deleteCombat", combat => {
+		// The combat driving the suspension is gone. A replacement is a new
+		// episode: re-arm the identity latch against whatever is active now.
+		const active = game.combats?.active;
+		if (active?.started) handleCombatEpisode(active);
+		else combatSuspendKey = null;
+	});
+
+	// Restore leader crown when canvas is ready; a scene change can surface a
+	// different active combat (or none), so re-key the suspension identity.
+	Hooks.on("canvasReady", onCanvasReady);
 
 	// Clean up crown when token is deleted
 	Hooks.on("deleteToken", async (tokenDoc, options, userId) => {
@@ -562,9 +588,72 @@ function getTokenOwnerName(token) {
  * (round 0) must not suspend marching. game.combats.active is the active
  * combat for the current canvas scene, unlike game.combat (the viewed
  * tracker encounter).
+ *
+ * This predicate is deliberately pure — the combat-suspend reset is driven by
+ * the combat lifecycle hooks (see handleCombatEpisode), never by incidental
+ * calls to this check.
  */
 function isCombatStarted() {
 	return game.combats?.active?.started === true;
+}
+
+/**
+ * Reset the marching trail and conga flags when a combat episode begins.
+ *
+ * When marching suspends, followers freeze in place (the #87 bails stop the
+ * conga mid-cycle), so the leftover leaderMovementPath points would otherwise
+ * drag them back along the stale pre-combat route once combat ends. Emptying
+ * the trail here makes the first post-combat leader move seed a fresh path
+ * (see onUpdateToken), and clearing the conga flags guarantees a fresh cycle
+ * can start from a clean slate.
+ */
+function suspendMarchingForCombat() {
+	leaderMovementPath = [];
+	resetCongaQueue();
+	tokenFollowers.forEach(follower => {
+		follower.moving = false;
+	});
+}
+
+/**
+ * Combat-episode transition handler (issue #99).
+ *
+ * Marching must suspend once per combat EPISODE. An episode is identified by
+ * the active combat's document id plus the scene id, so a new combat replacing
+ * an already-started one (combat A -> combat B with `started` never false) or a
+ * scene switch that surfaces a different active combat re-arms the reset even
+ * though `.started` never went false in between. The first time an episode's
+ * identity is observed the stale pre-combat trail is discarded.
+ *
+ * @param {object} combat - The Combat document for the episode.
+ * @param {boolean} forceStart - combatStart fires before round is applied, so
+ * `combat.started` is still false there; treat the event itself as the signal.
+ */
+function handleCombatEpisode(combat, forceStart = false) {
+	if (!combat) return;
+	if (!forceStart && !combat.started) return;
+
+	const key = `${combat.id}:${combat.scene?.id ?? ""}`;
+	if (key === combatSuspendKey) return;
+
+	combatSuspendKey = key;
+	suspendMarchingForCombat();
+}
+
+/**
+ * Single reset for every way the conga queue can end (issue #98): a rejected
+ * follower update, a synchronous throw mid-step, the leader vanishing, or
+ * combat bailing the cycle. Clearing both flags is what guarantees the next
+ * leader move starts a fresh conga instead of short-circuiting at the
+ * "already processing" guard. The normal-completion path does NOT use this —
+ * it preserves pending waypoints and consumes them by re-triggering.
+ *
+ * Module-scope so the combat-suspend reset (issue #99) can reuse the same two
+ * flag assignments instead of duplicating them.
+ */
+function resetCongaQueue() {
+	processingCongaMovement = false;
+	congaMovementPending = false;
 }
 
 /**
@@ -759,17 +848,6 @@ function processCongaMovement() {
 
 	// Set processing flag
 	processingCongaMovement = true;
-
-	// Single reset for every way the queue can end (issue #98): a rejected
-	// follower update, a synchronous throw mid-step, the leader vanishing, or
-	// combat bailing the cycle. Clearing both flags is what guarantees the next
-	// leader move starts a fresh conga instead of short-circuiting at the
-	// "already processing" guard. The normal-completion path does NOT use this —
-	// it preserves pending waypoints and consumes them by re-triggering.
-	const resetCongaQueue = () => {
-		processingCongaMovement = false;
-		congaMovementPending = false;
-	};
 
 	// Setup state is function-scoped so the step closure below can read it,
 	// while the assignments themselves run inside the guarded setup try.
@@ -1034,6 +1112,21 @@ async function removeAllLeaderCrowns() {
 
 	await Promise.all(promises);
 	console.log(`${MODULE_ID} | Removed all leader crowns`);
+}
+
+/**
+ * Hook: canvas ready — restore the leader crown, then re-key the combat-suspend
+ * identity. A scene change can surface a different active combat (or none): if
+ * one is already started on the new scene, its episode is handled now; otherwise
+ * the latch is cleared so the next started combat on this scene re-arms (issue
+ * #99, scene-change family).
+ */
+function onCanvasReady() {
+	restoreLeaderCrown();
+
+	const active = game.combats?.active;
+	if (active?.started) handleCombatEpisode(active);
+	else combatSuspendKey = null;
 }
 
 /**
