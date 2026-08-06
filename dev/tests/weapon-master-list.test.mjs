@@ -302,3 +302,44 @@ test("per-item flag still wins and disabled preset disables", async () => {
 	assert.equal(hasWeaponAnimation(daggerWithFlag), true, "per-item enabled must resolve regardless of preset disabled");
 	assert.equal(getResolvedWeaponAnimation(daggerWithFlag).imagePath, perItem.imagePath);
 });
+
+test("explicit per-item disable short-circuits master list — enabled:false is terminal", async () => {
+	reset();
+	seedDaggerPreset(); // dagger would resolve via master list
+	const disabledFlag = { enabled: false, imagePath: "modules/shadowdark-extras/assets/Weapons/dagger.webp" };
+	const daggerDisabled = makeItem("itemD", "Dagger", true, disabledFlag);
+	assert.equal(hasWeaponAnimation(daggerDisabled), false, "explicit enabled:false must not fall through to master list");
+	assert.equal(getResolvedWeaponAnimation(daggerDisabled), null);
+	assert.equal(getResolvedWeaponAnimation(daggerDisabled, { enabled: false, imagePath: "x.webp" }), null, "configOverride enabled:false must also be terminal");
+
+	// Must not animate on equip, canvasReady, or createToken either
+	initWeaponAnimations();
+	const actor = makeActor("actor1", [daggerDisabled]);
+	const token = makeToken("tok1", actor);
+	globalThis.canvas.tokens.placeables = [token];
+
+	// equip via updateItem must not play
+	globalThis.Sequencer.EffectManager.effects = [];
+	endEffectsCalls.length = 0;
+	await hooks.updateItem(daggerDisabled, { system: { equipped: true } }, {}, "testUser");
+	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 0, "explicitly disabled dagger must not animate on equip");
+
+	// canvasReady must not restore it
+	globalThis.Sequencer.EffectManager.effects = [];
+	await hooks.canvasReady();
+	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 0, "explicitly disabled dagger must not be restored on canvasReady");
+
+	// createToken must not restore it
+	globalThis.Sequencer.EffectManager.effects = [];
+	const tokenDoc = { id: "tok2", uuid: "Scene.sceneA.Token.tok2" };
+	const token2 = makeToken("tok2", actor);
+	globalThis.canvas.tokens.placeables = [token, token2];
+	await hooks.createToken(tokenDoc, {}, "testUser");
+	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 0, "explicitly disabled dagger must not be restored on createToken");
+
+	// Direct play must also be a no-op (covers dialog live preview)
+	globalThis.Sequencer.EffectManager.effects = [];
+	endEffectsCalls.length = 0;
+	await playWeaponAnimation(token, daggerDisabled);
+	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 0, "playWeaponAnimation must not play when flag explicitly disabled");
+});

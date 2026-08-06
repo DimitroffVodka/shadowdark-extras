@@ -29,13 +29,17 @@ function isEnabled() {
  *   1. configOverride — live preview from the config dialog
  *   2. per-item flag   — what the Weapon Animation dialog saved
  *   3. master list     — pattern-matched default from the Animation FX list
- * Shared predicate for all three entry points so they agree on what animates.
+ * An explicit `enabled: false` on the per-item flag (or configOverride) is
+ * terminal — it short-circuits the master list. No flag (undefined) still
+ * falls through to the master list. Shared predicate for all three entry
+ * points so they agree on what animates.
  * @param {Item} item
  * @param {object|null} configOverride
  * @returns {object|null}
  */
 export function getResolvedWeaponAnimation(item, configOverride = null) {
 	let animConfig = configOverride ?? item.getFlag(MODULE_ID, "weaponAnimation");
+	if (animConfig?.enabled === false) return null; // explicit disable is terminal
 	if (!animConfig?.enabled || !animConfig?.imagePath) {
 		animConfig = AnimationFxSD.resolveWeaponSprite(item);
 	}
