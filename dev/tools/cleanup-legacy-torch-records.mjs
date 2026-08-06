@@ -31,6 +31,9 @@
  *     aborts and reports loudly — no journal fallback (under-removal preferred).
  *   - Idempotent: re-running with no foreign records matches zero ids and is a
  *     no-op. Loud about anything unexpected (missing token, unparseable name).
+ *   - Caveat: if the `sequencerDatabase` journal vanished between the before
+ *     and after reads, the after map would be empty and look clean — note it
+ *     but don't build machinery for it; operator must re-check journal presence.
  *
  * Twin of `dev/tools/legacy-torch-record-selection.mjs` — the classification
  * functions are duplicated here so the snippet is self-contained for pasting.
@@ -265,6 +268,7 @@ async function removeForeignRecords(foreignIds) {
     return { viaApi: 0, leftover: [...foreignIds] };
   }
 
+  let apiError = null;
   try {
     // endEffects with {effects: [...]} matches effect.id (CanvasEffect.id is
     // data._id dist:14843-14844, filtered via effects.includes(effect.id)
@@ -273,30 +277,61 @@ async function removeForeignRecords(foreignIds) {
     // and socket-broadcasts at 11636-11640 so all clients end the visible effect.
     const before = globalThis.Sequencer.EffectManager.effects?.length ?? 0;
     await globalThis.Sequencer.EffectManager.endEffects({ effects: foreignIds });
-    // Give the debounced flagManager.updateFlags a tick to flush (dist: 9541-9680)
-    await new Promise((r) => setTimeout(r, 500));
     const after = globalThis.Sequencer.EffectManager.effects?.length ?? before;
     console.log(`[${MODULE_ID}] endEffects({effects:[...${foreignIds.length}]}) done (manager ${before}→${after})`);
   } catch (e) {
-    console.error(`[${MODULE_ID}] endEffects failed — no journal fallback (under-removal preferred)`, e);
-    // Return survivors as leftover; caller will re-read and report loudly.
+    apiError = e;
+    console.error(`[${MODULE_ID}] endEffects threw — forcing ABORT (no journal fallback)`, e);
   }
 
-  // Verify what is still persisted. If anything survives, abort — no direct
-  // journal mutation (would strand a visible effect without a backing record).
-  const { map: afterMap } = getDatabaseEffectsMap();
-  const stillPresent = [];
-  const remainingByUuid = {};
-  for (const [uuid, list] of Object.entries(afterMap)) {
-    for (const entry of list) {
-      const rec = effectEntryToRecord(entry);
-      if (rec && foreignIds.includes(rec.id)) {
-        stillPresent.push(rec.id);
-        (remainingByUuid[uuid] ??= []).push(rec.id);
+  // Poll until persisted ids are gone or timeout. Foundry's debounce with
+  // omitted delay is setTimeout(0) (common/utils/helpers.mjs:104-115,
+  // dist:9576), so the scheduling delay is ~0; the real wait is the
+  // Journal update round-trip which the debounced wrapper does not await.
+  // A single 500 ms sleep is not provable, so poll instead. False-positive
+  // clear is unlikely: Foundry updates local source only after server
+  // response (client/data/client-backend.mjs:191-202, 290-350).
+  const deadline = Date.now() + 4000;
+  let stillPresent = [];
+  let remainingByUuid = {};
+  let timedOut = false;
+  while (Date.now() < deadline) {
+    const { map: afterMap } = getDatabaseEffectsMap();
+    stillPresent = [];
+    remainingByUuid = {};
+    for (const [uuid, list] of Object.entries(afterMap)) {
+      for (const entry of list) {
+        const rec = effectEntryToRecord(entry);
+        if (rec && foreignIds.includes(rec.id)) {
+          stillPresent.push(rec.id);
+          (remainingByUuid[uuid] ??= []).push(rec.id);
+        }
       }
     }
+    if (!stillPresent.length) break;
+    await new Promise((r) => setTimeout(r, 200));
+    if (Date.now() >= deadline) timedOut = true;
   }
 
+  // Canvas-side check: every selected id must also be absent from the live manager
+  const liveIds = new Set((globalThis.Sequencer?.EffectManager?.effects ?? []).map((e) => e.id ?? e.data?._id).filter(Boolean));
+  const stillLive = foreignIds.filter((id) => liveIds.has(id));
+
+  if (apiError) {
+    console.error(`[${MODULE_ID}] ABORT: endEffects threw — treating as failure regardless of survivor scan. Error:`, apiError);
+    if (stillPresent.length) console.error(`[${MODULE_ID}] survivors (persisted):`, remainingByUuid);
+    if (stillLive.length) console.error(`[${MODULE_ID}] survivors (live manager):`, stillLive);
+    return { viaApi: 0, leftover: [...new Set([...stillPresent, ...stillLive])] };
+  }
+  if (timedOut && stillPresent.length) {
+    console.error(`[${MODULE_ID}] ABORT: timed out waiting for persisted flags to clear (4 s). Survivors:`, remainingByUuid);
+    if (stillLive.length) console.error(`[${MODULE_ID}] survivors (live manager):`, stillLive);
+    return { viaApi: foreignIds.length - stillPresent.length, leftover: stillPresent };
+  }
+  if (stillLive.length) {
+    console.error(`[${MODULE_ID}] ABORT: ${stillLive.length} id(s) still in live EffectManager after persisted clear — canvas teardown may be incomplete:`, stillLive);
+    return { viaApi: foreignIds.length - stillPresent.length, leftover: [...new Set([...stillPresent, ...stillLive])] };
+  }
   if (!stillPresent.length) {
     console.log(`[${MODULE_ID}] all foreign records cleared via API — visible + persisted removed ✓`);
     return { viaApi: foreignIds.length, leftover: [] };
@@ -311,7 +346,7 @@ async function main() {
   console.log(`%c[${MODULE_ID}] legacy-torch cleanup — ${APPLY ? "APPLY mode" : "DRY-RUN (set APPLY=true to mutate)"}`, `font-weight:bold; color:${APPLY ? "red" : "green"}`);
   console.log(`[${MODULE_ID}] bias to under-removal — a stale record is clutter, a wrong removal kills a torch animation`);
 
-  const { map: beforeMap, journal } = getDatabaseEffectsMap();
+  const { map: beforeMap } = getDatabaseEffectsMap();
   const before = printInventory("BEFORE", beforeMap);
   const { foreignIds, warnings } = selectForeignRecords(beforeMap);
 
@@ -331,11 +366,6 @@ async function main() {
     return;
   }
 
-  if (!journal) {
-    console.error(`[${MODULE_ID}] APPLY requested but sequencerDatabase journal not found — aborting`);
-    return;
-  }
-
   const result = await removeForeignRecords(foreignIds);
 
   // After inventory (same shape as before)
@@ -347,15 +377,23 @@ async function main() {
   if (result.leftover.length) console.error(`[${MODULE_ID}] LEFTOVER — manual inspection needed (not retrying via journal):`, result.leftover);
 
   // Prove untouched: per-UUID set equality over kept (non-foreign) ids — not aggregate counts
+  // A uuid whose kept set is empty and disappears (Sequencer emits -=key at
+  // dist:9678-90) is a legitimate deletion, not a failure.
   {
     const keptIds = (group) => new Set(group.entries.filter((e) => e.classification !== "foreign").map((e) => e.id));
     const beforeKept = new Map(before.perUuid.map((g) => [g.uuid, keptIds(g)]));
     const afterKept = new Map(after.perUuid.map((g) => [g.uuid, keptIds(g)]));
     let mismatch = 0;
     for (const [uuid, bSet] of beforeKept) {
-      const aSet = afterKept.get(uuid);
-      if (!aSet || bSet.size !== aSet.size || [...bSet].some((id) => !aSet.has(id))) {
-        console.error(`[${MODULE_ID}] KEPT MISMATCH for ${uuid}: before ${[...bSet].join(",")} vs after ${aSet ? [...aSet].join(",") : "(missing uuid)"}`);
+      let aSet = afterKept.get(uuid);
+      if (!aSet) {
+        if (bSet.size === 0) continue; // empty kept set correctly deleted (dist:9678-90)
+        console.error(`[${MODULE_ID}] KEPT MISMATCH for ${uuid}: before ${[...bSet].join(",")} vs after (missing uuid) — non-empty kept set vanished`);
+        mismatch += 1;
+        continue;
+      }
+      if (bSet.size !== aSet.size || [...bSet].some((id) => !aSet.has(id))) {
+        console.error(`[${MODULE_ID}] KEPT MISMATCH for ${uuid}: before ${[...bSet].join(",")} vs after ${[...aSet].join(",")}`);
         mismatch += 1;
       }
     }
@@ -372,16 +410,20 @@ async function main() {
       console.log(`[${MODULE_ID}] kept records identical by id per uuid (${keptTotal} kept) ✓`);
     }
   }
-  // Derived guard: every foreign-holder key (foreign>0 before) still exists and retained its kept set
+  // Derived guard: every foreign-holder key (foreign>0 before) still has same kept set
+  // (holder disappearing is only ok if its kept set was empty — see dist:9678-90)
   {
     const holders = before.perUuid.filter((g) => g.foreign > 0);
     const afterByUuid = new Map(after.perUuid.map((g) => [g.uuid, g]));
     let holdersOk = 0;
     for (const h of holders) {
       const a = afterByUuid.get(h.uuid);
-      if (!a) { console.error(`[${MODULE_ID}] HOLDER MISSING after: ${h.uuid}`); continue; }
-      // kept equality already proven above; here we just confirm this holder survived and surface it
       const keptBefore = new Set(h.entries.filter((e) => e.classification !== "foreign").map((e) => e.id));
+      if (!a) {
+        if (keptBefore.size === 0) { holdersOk += 1; continue; }
+        console.error(`[${MODULE_ID}] HOLDER MISSING after: ${h.uuid} (had ${keptBefore.size} kept)`);
+        continue;
+      }
       const keptAfter = new Set(a.entries.filter((e) => e.classification !== "foreign").map((e) => e.id));
       const same = keptBefore.size === keptAfter.size && [...keptBefore].every((id) => keptAfter.has(id));
       if (!same) console.error(`[${MODULE_ID}] HOLDER KEPT MISMATCH for ${h.uuid}`);
