@@ -329,6 +329,14 @@ async function stopAllTorchAnimations(token) {
  * Parse the token id out of a torch effect name.
  * Effect names are `${MODULE_ID}-torch-${tokenId}-${itemId}` and may carry an
  * `_impact` suffix. Returns null for non-torch names.
+ *
+ * Assumes Foundry `randomID` output (alphanumeric, no hyphens) for token and
+ * item ids. Custom or imported document ids are only required by
+ * `DocumentIdField` to be a non-null string and could contain hyphens, in
+ * which case this split on the first hyphen would truncate the true tokenId.
+ * That case is not handled — the sweep would mis-group such effects — because
+ * the anchored glob sweep still requires a literal tokenId prefix and there is
+ * no reliable delimiter without knowing both ids a priori.
  * @param {string} rawName
  * @returns {string|null}
  */
@@ -355,6 +363,8 @@ export function isTorchCanvasRestoreAllowed() {
 /**
  * End any `shadowdark-extras-torch-*` effects whose token is no longer on the
  * scene. Runs unconditionally (idempotent) to drain orphans from #102.
+ * Safe to call multiple times — sequencerEffectManagerReady may fire more than
+ * once on scene switches.
  */
 async function sweepOrphanTorchEffects() {
 	const deps = checkDependencies();
@@ -372,18 +382,34 @@ async function sweepOrphanTorchEffects() {
 		try {
 			const all = Sequencer.EffectManager.getEffects?.() ?? [];
 			const list = Array.isArray(all) ? all : Array.from(all);
-			effects = list.filter(e => {
-				const n = e.data?.name ?? e.name ?? "";
+			effects = list.filter(entry => {
+				const n = entry.data?.name ?? entry.name ?? "";
 				return typeof n === "string" && n.startsWith(`${MODULE_ID}-torch-`);
 			});
 		}
 		catch (inner) {
+			console.warn(`${MODULE_ID} | sweepOrphanTorchEffects: getEffects failed twice`, inner);
 			return;
 		}
 	}
 	if (!effects.length) return;
+	// Scene-safe: Sequencer.getEffects({name}) returns ALL scenes' effects —
+	// _filterEffects never checks sceneId (dist:11694-11703) and shouldPlay
+	// keeps creator's off-scene effects in the manager (dist:15145). Only
+	// effects whose scene matches the viewed scene are candidates; others
+	// are valid off-scene persistence and must be spared.
+	const viewedSceneId = globalThis.canvas?.scene?.id ?? globalThis.game?.user?.viewedScene ?? null;
+	let relevantEffects = effects;
+	if (viewedSceneId) {
+		relevantEffects = effects.filter(eff => {
+			const effSceneId = eff.data?.sceneId ?? eff.sceneId ?? null;
+			if (!effSceneId) return true;
+			return effSceneId === viewedSceneId;
+		});
+		if (!relevantEffects.length) return;
+	}
 	const orphanTokenIds = new Set();
-	for (const eff of effects) {
+	for (const eff of relevantEffects) {
 		const rawName = eff.data?.name ?? eff.name ?? "";
 		const tokenId = parseTorchTokenId(rawName);
 		if (!tokenId) continue;
@@ -499,11 +525,20 @@ export function initTorchAnimations() {
 		}
 	});
 
+	// Orphan sweep: must run AFTER Sequencer has populated its manager.
+	// Sequencer populates +125-475 ms after canvasReady (dist:30881-30886 → 11919-11945)
+	// and getEffects at t=0 would see an empty set. The correct signal is
+	// `sequencerEffectManagerReady` (dist:11953) from initializePersistentEffects.
+	// It is scene-safe: the manager can hold cross-scene creator effects
+	// (shouldPlay permits creatorUserId off-scene, dist:15145; _filterEffects never
+	// checks sceneId, dist:11694-11703), so the sweep must not treat "not on
+	// this canvas" as orphaned — it filters to the viewed scene first.
+	Hooks.on("sequencerEffectManagerReady", async () => {
+		await sweepOrphanTorchEffects();
+	});
+
 	// Also hook into when an active light source is detected on scene ready
 	Hooks.on("canvasReady", async () => {
-		// Orphan sweep runs on every client (idempotent) before the restore election
-		await sweepOrphanTorchEffects();
-
 		// GM-authoritative election — only the active GM restores animations
 		if (!isTorchCanvasRestoreAllowed()) return;
 
