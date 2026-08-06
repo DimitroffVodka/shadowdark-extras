@@ -70,6 +70,36 @@ export function expandObject(source) {
 }
 
 /**
+ * Expand the dotted keys of a merge source, preserving literal keys.
+ *
+ * Foundry's `mergeObject` expands a dotted key (`"flags.scope.key"`) into
+ * nested structure while merging, but only when the dotted key is not already
+ * present as a literal key in the target — a literal `"a.b"` must be merged
+ * as itself, not split apart. Non-dotted keys are cloned as written, matching
+ * the harness `expandObject`'s recursive expansion for the expanded subtree.
+ */
+function expandMergeSource(original, other) {
+	const source = {};
+
+	for (const [key, value] of Object.entries(other)) {
+		if (key.includes(".") && !Object.prototype.hasOwnProperty.call(original, key)) {
+			const path = key.split(".");
+			let cursor = source;
+			for (const segment of path.slice(0, -1)) {
+				if (!isPlainObject(cursor[segment])) cursor[segment] = {};
+				cursor = cursor[segment];
+			}
+			cursor[path.at(-1)] = isPlainObject(value) ? expandObject(value) : deepClone(value);
+		}
+		else {
+			source[key] = deepClone(value);
+		}
+	}
+
+	return source;
+}
+
+/**
  * Stand-in for `foundry.utils.mergeObject`.
  *
  * Two divergences from a naive `Object.assign` matter enough to implement.
@@ -81,11 +111,23 @@ export function expandObject(source) {
  * the other behaviour, so a stub that always copied made that call site look
  * correct however it was written.
  *
+ * Three options mirror Foundry's semantics (issue #95 finding 5):
+ *   - `expand` — dotted keys in `other` are expanded to nested structure
+ *     before merging, unless the dotted key is already a literal key of
+ *     `original`.
+ *   - `insertKeys` — whether whole new keys are inserted AT THIS LEVEL.
+ *   - `insertValues` — whether new keys are inserted INTO an already-present
+ *     nested object. Foundry swaps this in for `insertKeys` when it recurses,
+ *     which is how one controls insertion at depth without blocking it deeper.
+ *
  * Unimplemented options throw. A silently ignored option is how a test comes to
  * assert against behaviour the real function does not have.
  */
 export function mergeObject(original, other = {}, options = {}) {
-	const { inplace = true, insertKeys = true, overwrite = true, recursive = true, ...rest } = options;
+	const {
+		inplace = true, insertKeys = true, insertValues = true, overwrite = true,
+		recursive = true, expand = true, ...rest
+	} = options;
 
 	const unsupported = Object.keys(rest);
 	if (unsupported.length > 0) {
@@ -96,14 +138,22 @@ export function mergeObject(original, other = {}, options = {}) {
 	}
 
 	const target = inplace ? original : deepClone(original);
+	const source = expand ? expandMergeSource(target, other) : other;
 
-	for (const [key, value] of Object.entries(other)) {
+	for (const [key, value] of Object.entries(source)) {
 		if (!Object.prototype.hasOwnProperty.call(target, key)) {
 			if (insertKeys) target[key] = deepClone(value);
 			continue;
 		}
 		if (recursive && isPlainObject(target[key]) && isPlainObject(value)) {
-			mergeObject(target[key], value, { inplace: true, insertKeys, overwrite, recursive });
+			mergeObject(target[key], value, {
+				inplace: true,
+				insertKeys: insertValues,
+				insertValues,
+				overwrite,
+				recursive,
+				expand: false,
+			});
 			continue;
 		}
 		if (overwrite) target[key] = deepClone(value);
