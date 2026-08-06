@@ -1,7 +1,7 @@
 import * as acorn from "acorn";
 
 import { maskSource } from "./import-scan.mjs";
-import { buildLineIndex, lineAt, literalArgument, literalIndex } from "./call-scan.mjs";
+import { buildLineIndex, lineAt, literalArgument, literalIndex, argumentOffsets } from "./call-scan.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -47,14 +47,78 @@ const MODULE_ID = "shadowdark-extras";
  */
 
 /**
+ * Module-level string constants, for resolving a dynamic scope argument.
+ *
+ * `actor.getFlag(MODULE_ID, key)` has no literal in the scope position, so a
+ * text scanner has to decide what `MODULE_ID` means. Almost every call site in
+ * this module declares `const MODULE_ID = "shadowdark-extras"` at module top;
+ * resolving that turns the site from a "treated as ours by assumption" into a
+ * literal "ours". A scope that resolves to some OTHER module's id is then
+ * classified foreign instead of ours (issue #95 finding 3).
+ *
+ * Only top-level `const` string declarations are resolved. Anything else — an
+ * import, a parameter, a non-string value — stays unresolved and the caller
+ * records the identifier name rather than guessing at its meaning.
+ */
+function moduleStringConstants(source) {
+  let ast;
+  try {
+    ast = acorn.parse(source, { ecmaVersion: 2023, sourceType: "module" });
+  }
+  catch {
+    return new Map();
+  }
+
+  const constants = new Map();
+  for (const node of ast.body) {
+    if (node.type !== "VariableDeclaration" || node.kind !== "const") continue;
+    for (const declarator of node.declarations) {
+      if (declarator.id.type !== "Identifier" || !declarator.init) continue;
+      const init = declarator.init;
+      let value = null;
+      if (init.type === "Literal" && typeof init.value === "string") value = init.value;
+      else if (init.type === "TemplateLiteral" && init.expressions.length === 0) {
+        const cooked = init.quasis[0]?.value.cooked;
+        if (typeof cooked === "string") value = cooked;
+      }
+      if (value !== null) constants.set(declarator.id.name, value);
+    }
+  }
+  return constants;
+}
+
+/** The text of one call argument, as written, for reporting an unresolved scope. */
+function argumentText(maskedChars, openParen, position) {
+  const offsets = argumentOffsets(maskedChars, openParen);
+  const offset = offsets[position];
+  if (offset === undefined) return null;
+
+  let depth = 0;
+  let end = offset;
+  while (end < maskedChars.length) {
+    const char = maskedChars[end];
+    if (char === "(" || char === "[" || char === "{") depth += 1;
+    else if (char === ")" || char === "]" || char === "}") {
+      if (depth === 0) break;
+      depth -= 1;
+    }
+    else if (char === "," && depth === 0) break;
+    end += 1;
+  }
+  return maskedChars.slice(offset, end).join("").trim() || null;
+}
+
+/**
  * @param {string} source
  * @returns {Array<{api: string, scope: string|null, key: string|null,
- *   dynamicScope: boolean, dynamic: boolean, line: number}>}
+ *   dynamicScope: boolean, dynamic: boolean, unresolvedScope: string|null,
+ *   line: number}>}
  */
 export function scanFlags(source) {
   const { masked, maskedChars, literals } = maskSource(source);
   const literalsByStart = literalIndex(literals);
   const lineStarts = buildLineIndex(source);
+  const constants = moduleStringConstants(source);
   const found = [];
 
   // Any receiver: the document varies (scene, journal, actor, token, item) and
@@ -62,16 +126,35 @@ export function scanFlags(source) {
   // enough on their own that a bare method-name match does not collide.
   for (const match of masked.matchAll(/\.\s*(setFlag|unsetFlag|getFlag)\s*\(/g)) {
     const openParen = match.index + match[0].length - 1;
-    const scope = literalArgument(maskedChars, literalsByStart, openParen, 0);
+    const scopeArg = literalArgument(maskedChars, literalsByStart, openParen, 0);
     const key = literalArgument(maskedChars, literalsByStart, openParen, 1);
+
+    let scope = scopeArg;
+    let unresolvedScope = null;
+    if (scopeArg.dynamic) {
+      // A bare identifier is usually the local `MODULE_ID` constant. Resolve it
+      // through the module's top-level constants so a foreign scope (a
+      // `const OTHER = "tokenmagic"` at a call site) is classified foreign and
+      // not silently treated as ours.
+      const name = argumentText(maskedChars, openParen, 0);
+      const resolved = name !== null ? constants.get(name) : undefined;
+      if (resolved !== undefined) {
+        scope = { name: resolved, dynamic: false };
+      }
+      else {
+        // Imported, a parameter, or otherwise unknowable — keep the historical
+        // "treated as ours" behaviour, but record the name so the snapshot can
+        // show what the gate is assuming about.
+        unresolvedScope = name;
+      }
+    }
 
     found.push({
       api: match[1],
-      // Usually the local `MODULE_ID` constant, which is not statically
-      // resolvable — a dynamic scope is therefore treated as "ours".
       scope: scope.dynamic ? null : scope.name,
       key: key.dynamic ? null : key.name,
       dynamicScope: scope.dynamic,
+      unresolvedScope,
       dynamic: key.dynamic,
       line: lineAt(lineStarts, openParen),
     });

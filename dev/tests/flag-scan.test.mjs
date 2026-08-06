@@ -535,6 +535,52 @@ test("a shadowed alias whose bases differ is ambiguous, not guessed at", () => {
 	assert.ok(found.some(entry => entry.dynamic), "the ambiguous site records as dynamic");
 });
 
+// --- scope constant resolution (issue #95 finding 3) --------------------------
+//
+// A bare identifier scope was assumed to be ours, so swapping `MODULE_ID` for a
+// foreign constant left the key list identical. Resolving module-level string
+// constants makes the swap visible: our id stays ours, another module's id
+// classifies foreign, and anything genuinely unknowable is recorded by name.
+
+test("a module-level const equal to our id resolves the scope to ours", () => {
+	const found = scanFlags(`
+		const MODULE_ID = "shadowdark-extras";
+		await scene.setFlag(MODULE_ID, "hexFogEnabled", true);
+	`);
+
+	assert.equal(found[0].dynamicScope, false);
+	assert.equal(found[0].scope, "shadowdark-extras");
+	assert.equal(found[0].unresolvedScope, null);
+});
+
+test("a module-level const naming another module resolves to a foreign scope", () => {
+	const [entry] = scanFlags(`
+		const OTHER_MODULE = "tokenmagic";
+		await token.setFlag(OTHER_MODULE, "filters", []);
+	`);
+
+	assert.equal(entry.dynamicScope, false);
+	assert.equal(entry.scope, "tokenmagic");
+});
+
+test("an unresolvable scope identifier is recorded, not guessed at", () => {
+	// scripts/journal/pin-tmfx-adapter.mjs:29 — `s` is a parameter.
+	const [entry] = scanFlags("const adapter = { getFlag: (s, k) => pin.getFlag(s, k) };");
+
+	assert.equal(entry.dynamicScope, true);
+	assert.equal(entry.unresolvedScope, "s");
+});
+
+test("a non-string constant does not resolve the scope", () => {
+	const [entry] = scanFlags(`
+		const COUNT = 5;
+		actor.getFlag(COUNT, "members");
+	`);
+
+	assert.equal(entry.dynamicScope, true);
+	assert.equal(entry.unresolvedScope, "COUNT");
+});
+
 // --- robustness --------------------------------------------------------------
 
 test("a file the parser rejects reports the error instead of silently yielding nothing", () => {
