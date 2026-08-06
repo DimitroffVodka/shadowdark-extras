@@ -296,11 +296,39 @@ function collectAliases(ast) {
   };
   // `var` is function-scoped: a var declaration anywhere in a function body
   // hoists to (and shadows within) the whole function, not just its block.
-  const bindVar = (name) => {
-    if (typeof name !== "string") return;
+  const bindVar = (pattern) => {
+    if (!pattern) return;
     let scope = current;
     while (scope && !scope.isFunction) scope = scope.parent;
-    if (scope) scope.bindings.set(name, { base: null });
+    if (!scope) return;
+    const target = scope;
+    const bindAt = (name) => {
+      if (typeof name === "string") target.bindings.set(name, { base: null });
+    };
+    // Same traversal as bindPattern, but writing into the function scope.
+    const bindVarPattern = (node) => {
+      switch (node.type) {
+        case "Identifier":
+          bindAt(node.name);
+          break;
+        case "ObjectPattern":
+          for (const property of node.properties) {
+            if (property.type === "RestElement") bindVarPattern(property.argument);
+            else bindVarPattern(property.value);
+          }
+          break;
+        case "ArrayPattern":
+          for (const element of node.elements) bindVarPattern(element);
+          break;
+        case "AssignmentPattern":
+          bindVarPattern(node.left);
+          break;
+        case "RestElement":
+          bindVarPattern(node.argument);
+          break;
+      }
+    };
+    bindVarPattern(pattern);
   };
   const bindPattern = (pattern, base) => {
     if (!pattern) return;
@@ -375,8 +403,11 @@ function collectAliases(ast) {
               const base = aliasBase(unwrapAliasInit(declarator.init));
               bind(declarator.id.name, base);
             }
-            else if (node.kind === "var") bindVar(declarator.id.name);
+            else if (node.kind === "var") bindVar(declarator.id);
             else bind(declarator.id.name, null);
+          }
+          else if (node.kind === "var") {
+            bindVar(declarator.id);
           }
           else {
             bindPattern(declarator.id, null);

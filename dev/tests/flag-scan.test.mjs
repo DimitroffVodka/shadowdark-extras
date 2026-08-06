@@ -562,6 +562,28 @@ test("a var declaration hoists to its function scope and shadows the alias", () 
 	assert.deepEqual(keysOf(found, "property"), []);
 });
 
+test("var destructuring hoists its bindings to the function scope", () => {
+	// Luna's follow-up: destructuring declarators are function-scoped too.
+	// `var {flags} = x` / `var [flags] = x` shadow the module alias for the
+	// whole function, exactly like a plain `var flags = x`.
+	for (const pattern of ["{ flags }", "[flags]", "{ flags: flags }"]) {
+		const found = scanFlagLiterals(`
+			const flags = doc.flags?.[MODULE_ID];
+			function f() {
+				{
+					var ${pattern} = x;
+				}
+				return flags.foo;
+			}
+		`);
+		assert.deepEqual(
+			keysOf(found, "property"),
+			[],
+			`var ${pattern} must shadow the alias across the function`,
+		);
+	}
+});
+
 test("a block-scoped alias is confined to its block", () => {
 	const found = scanFlagLiterals(`
 		const flags = doc.flags?.[MODULE_ID];
