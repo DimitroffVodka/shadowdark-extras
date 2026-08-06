@@ -10,6 +10,9 @@
 
 import { loadDDPackDecorTiles } from "../dungeon/DDPackManagerSD.mjs";
 import { _formatLabel } from "./hex-tile-labels.mjs";
+// Decor painting reuses the symbol tile tab, so setDecorMode drives it. Both
+// are leaves of the painter, so this edge adds no cycle.
+import { setActiveTileTab } from "./hex-tile-selection.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const DECOR_IMPORT_FOLDER = "decor";
@@ -23,6 +26,24 @@ export let _decorSearchFilter = "";
 export let _decorFoldersCollapsed = {};
 export let _decorElevation = 0;
 export let _decorSort = 0;
+export let _decorMode = false; // Whether we're in decor painting mode
+
+/**
+ * Set decor painting mode
+ */
+export function setDecorMode(enabled) {
+	_decorMode = !!enabled;
+	if (enabled) {
+		setActiveTileTab("symbols"); // Decor uses symbol tile placement logic
+	}
+}
+
+/**
+ * Check if decor mode is active
+ */
+export function isDecorMode() {
+	return _decorMode;
+}
 
 export function isDecorImagePath(path) {
 	const lower = String(path || "").toLowerCase();

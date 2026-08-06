@@ -64,6 +64,9 @@ import {
 	_decorFoldersCollapsed,
 	_decorElevation,
 	_decorSort,
+	_decorMode,
+	setDecorMode,
+	isDecorMode,
 	getRegisteredDecorTiles,
 	loadImportedDecorAssets,
 	getDDPackDecorAssets,
@@ -85,6 +88,7 @@ export {
 	registerDecorAsset, loadImportedDecorAssets, reloadDecorAssets,
 	setDecorSearchFilter, getDecorSearchFilter, toggleDecorFolderCollapsed,
 	getDecorElevation, setDecorElevation, getDecorSort, setDecorSort,
+	setDecorMode, isDecorMode,
 };
 
 // Colored-hex tile assets and the colored-folder collapse state now live in
@@ -230,7 +234,6 @@ let _isPainting = false;
 let _isGenerating = false;
 
 // Decor tab state
-let _decorMode = false; // Whether we're in decor painting mode
 
 // POI (Symbol) tile state
 let _poiScale = 0.5;             // Scale factor for POI tiles (0.1 - 2.0)
@@ -405,23 +408,6 @@ export async function getColoredTileFolders() {
 /* ═══════════════════════════════════════════════════════════════
    DECOR TAB
    ═══════════════════════════════════════════════════════════════ */
-
-/**
- * Set decor painting mode
- */
-export function setDecorMode(enabled) {
-	_decorMode = !!enabled;
-	if (enabled) {
-		setActiveTileTab("symbols"); // Decor uses symbol tile placement logic
-	}
-}
-
-/**
- * Check if decor mode is active
- */
-export function isDecorMode() {
-	return _decorMode;
-}
 
 /**
  * Get decor tiles grouped by folder for the tray UI.
