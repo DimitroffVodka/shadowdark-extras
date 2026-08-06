@@ -148,7 +148,7 @@ export function initMarchingMode() {
 	// combatStart fires when a combat begins (before its round-1 update, so
 	// force-start); updateCombat catches an already-started combat created via
 	// API/import or a manual round bump; createCombat catches an already-started
-	// combat created/imported with round>0 (foundry.mjs:50859 started===round>0,
+	// combat created/imported with round>0 (foundry.mjs:50729 started===round>0,
 	// generic create 159-165 emits createCombat only); deleteCombat re-arms for
 	// a replacement combat that never un-started.
 	Hooks.on("combatStart", combat => {
@@ -157,9 +157,11 @@ export function initMarchingMode() {
 	});
 	Hooks.on("updateCombat", combat => {
 		if (game.combats?.active?.id !== combat.id) return;
-		// An unstarted observation of the keyed combat (reset to round 0, or the
-		// round-1 update that follows combatStart) closes the episode: a later
-		// restart of the SAME combat must re-arm, so drop the latch.
+		// A round reset back to 0 on the keyed combat closes the episode: a later
+		// restart of the SAME combat must re-arm, so drop the latch. The round-1
+		// update that follows combatStart must not release it — started is already
+		// true there (foundry.mjs:50729) and dropping the latch would re-suspend
+		// on the next turn advance and clear the trail mid-combat.
 		if (!combat.started && combatSuspendKey === `${combat.id}:${combat.scene?.id ?? ""}`) {
 			combatSuspendKey = null;
 			return;
