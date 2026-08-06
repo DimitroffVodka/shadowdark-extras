@@ -1309,8 +1309,8 @@ async function rebuildWallsForLevel(scene, levelContext, { wallTilePath = null, 
 	}
 
 	const drawingsData = (curvedLoops
-		? generateCurvedWallVisuals(curvedLoops, { useTexture: true, wallColor: "#5C3D3D", wallThickness: WALL_THICKNESS, wallTilePath: wallTilePath ?? _selectedWallTile })
-		: generateWallVisualsWithElevation(floors, entranceSet, gridSize, WALL_THICKNESS, 0, wallHeightTop, wallTilePath ?? _selectedWallTile)
+		? generateCurvedWallVisuals(curvedLoops, { useTexture: true, wallColor: "#5C3D3D", wallThickness: WALL_THICKNESS, wallTilePath: wallTilePath || _selectedWallTile })
+		: generateWallVisualsWithElevation(floors, entranceSet, gridSize, WALL_THICKNESS, 0, wallHeightTop, wallTilePath || _selectedWallTile)
 	).map(d => applySceneLevelData(d, "Drawing", levelContext));
 
 	if (drawingsData.length > 0) {
