@@ -156,8 +156,9 @@ async function playTorchAnimation(token, item) {
 	const config = getAnimationConfig(item);
 	const hasPatreon = game.modules.get("jb2a_patreon")?.active;
 
-	// End any existing animation for this light source
+	// End any existing animation for this light source (both base and _impact)
 	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
+	await Sequencer.EffectManager.endEffects({ name: `${effectName}_impact`, object: token });
 
 	// Get token dimensions
 	const tokenWidth = token.document.width;
@@ -325,6 +326,107 @@ async function stopAllTorchAnimations(token) {
 }
 
 /**
+ * Parse the token id out of a torch effect name.
+ * Effect names are `${MODULE_ID}-torch-${tokenId}-${itemId}` and may carry an
+ * `_impact` suffix. Returns null for non-torch names.
+ *
+ * Assumes Foundry `randomID` output (alphanumeric, no hyphens) for token and
+ * item ids. Custom or imported document ids are only required by
+ * `DocumentIdField` to be a non-null string and could contain hyphens, in
+ * which case this split on the first hyphen would truncate the true tokenId.
+ * That case is not handled — the sweep would mis-group such effects — because
+ * the anchored glob sweep still requires a literal tokenId prefix and there is
+ * no reliable delimiter without knowing both ids a priori.
+ * @param {string} rawName
+ * @returns {string|null}
+ */
+function parseTorchTokenId(rawName) {
+	if (!rawName || typeof rawName !== "string") return null;
+	const prefix = `${MODULE_ID}-torch-`;
+	if (!rawName.startsWith(prefix)) return null;
+	let remainder = rawName.slice(prefix.length);
+	if (remainder.endsWith("_impact")) remainder = remainder.slice(0, -"_impact".length);
+	const tokenId = remainder.split("-")[0];
+	return tokenId || null;
+}
+
+/**
+ * Whether the current client is the elected restorer for canvasReady.
+ * GM-authoritative — only the activeGM may restore, not "first active".
+ * @returns {boolean}
+ */
+export function isTorchCanvasRestoreAllowed() {
+	const activeGM = globalThis.game?.users?.activeGM;
+	return !!activeGM && globalThis.game?.user?.id === activeGM?.id;
+}
+
+/**
+ * End any `shadowdark-extras-torch-*` effects whose token is no longer on the
+ * scene. Runs unconditionally (idempotent) to drain orphans from #102.
+ * Safe to call multiple times — sequencerEffectManagerReady may fire more than
+ * once on scene switches.
+ */
+async function sweepOrphanTorchEffects() {
+	const deps = checkDependencies();
+	if (!deps.hasSequencer) return;
+	const placeables = globalThis.canvas?.tokens?.placeables;
+	if (!placeables) return;
+	const presentIds = new Set(placeables.map(t => t.id ?? t.document?.id).filter(Boolean));
+	let effects = [];
+	try {
+		const maybe = Sequencer.EffectManager.getEffects({ name: `${MODULE_ID}-torch-*` });
+		if (Array.isArray(maybe)) effects = maybe;
+		else if (maybe) effects = Array.from(maybe);
+	}
+	catch (e) {
+		try {
+			const all = Sequencer.EffectManager.getEffects?.() ?? [];
+			const list = Array.isArray(all) ? all : Array.from(all);
+			effects = list.filter(entry => {
+				const n = entry.data?.name ?? entry.name ?? "";
+				return typeof n === "string" && n.startsWith(`${MODULE_ID}-torch-`);
+			});
+		}
+		catch (inner) {
+			console.warn(`${MODULE_ID} | sweepOrphanTorchEffects: getEffects failed twice`, inner);
+			return;
+		}
+	}
+	if (!effects.length) return;
+	// Scene-safe: Sequencer.getEffects({name}) returns ALL scenes' effects —
+	// _filterEffects never checks sceneId (dist:11694-11703) and shouldPlay
+	// keeps creator's off-scene effects in the manager (dist:15145). Only
+	// effects whose scene matches the viewed scene are candidates; others
+	// are valid off-scene persistence and must be spared.
+	const viewedSceneId = globalThis.canvas?.scene?.id ?? globalThis.game?.user?.viewedScene ?? null;
+	let relevantEffects = effects;
+	if (viewedSceneId) {
+		relevantEffects = effects.filter(eff => {
+			const effSceneId = eff.data?.sceneId ?? eff.sceneId ?? null;
+			if (!effSceneId) return true;
+			return effSceneId === viewedSceneId;
+		});
+		if (!relevantEffects.length) return;
+	}
+	const orphanTokenIds = new Set();
+	for (const eff of relevantEffects) {
+		const rawName = eff.data?.name ?? eff.name ?? "";
+		const tokenId = parseTorchTokenId(rawName);
+		if (!tokenId) continue;
+		if (!presentIds.has(tokenId)) orphanTokenIds.add(tokenId);
+	}
+	for (const orphanId of orphanTokenIds) {
+		try {
+			await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-${orphanId}-*` });
+			console.log(`${MODULE_ID} | Swept orphan torch effects for token ${orphanId}`);
+		}
+		catch (e) {
+			/* ignore — sweep is best-effort */
+		}
+	}
+}
+
+/**
  * Get tokens for an actor on the current scene
  * @param {Actor} actor - The actor
  * @returns {Token[]} - Array of tokens
@@ -370,9 +472,6 @@ export function initTorchAnimations() {
 
 	// Hook into item updates to detect light source toggling
 	Hooks.on("updateItem", async (item, changes, options, userId) => {
-		// Only the user who made the change should create the animation
-		if (userId !== game.user.id) return;
-
 		// Only process light items
 		if (!item.system?.light) return;
 
@@ -389,11 +488,12 @@ export function initTorchAnimations() {
 
 		for (const token of tokens) {
 			if (isActive) {
-				// Light turned on - play animation
+				// Play is origin-gated — duplicates are the bug; do not broadcast play
+				if (userId !== game.user.id) continue;
 				await playTorchAnimation(token, item);
 			}
 			else {
-				// Light turned off - stop animation
+				// Stop is unconditional — every client ends its own copy (idempotent)
 				await stopTorchAnimation(token, item.id);
 			}
 		}
@@ -402,8 +502,8 @@ export function initTorchAnimations() {
 	// Hook into actor light changes (for turnLightOn/turnLightOff)
 	// The actor's turnLightOn method changes the token's light settings
 	Hooks.on("updateToken", async (tokenDoc, changes, options, userId) => {
-		// Only the user who made the change should update the animation
-		if (userId !== game.user.id) return;
+		// Stop is unconditional — every client ends its own copy (idempotent)
+		// (no userId gate)
 
 		// Check if light settings were changed
 		const lightChanged = foundry.utils.hasProperty(changes, "light");
@@ -425,12 +525,22 @@ export function initTorchAnimations() {
 		}
 	});
 
+	// Orphan sweep: must run AFTER Sequencer has populated its manager.
+	// Sequencer populates +125-475 ms after canvasReady (dist:30881-30886 → 11919-11945)
+	// and getEffects at t=0 would see an empty set. The correct signal is
+	// `sequencerEffectManagerReady` (dist:11953) from initializePersistentEffects.
+	// It is scene-safe: the manager can hold cross-scene creator effects
+	// (shouldPlay permits creatorUserId off-scene, dist:15145; _filterEffects never
+	// checks sceneId, dist:11694-11703), so the sweep must not treat "not on
+	// this canvas" as orphaned — it filters to the viewed scene first.
+	Hooks.on("sequencerEffectManagerReady", async () => {
+		await sweepOrphanTorchEffects();
+	});
+
 	// Also hook into when an active light source is detected on scene ready
 	Hooks.on("canvasReady", async () => {
-		// Only the first GM or the first user should restore animations
-		// This prevents all clients from creating duplicate effects
-		const firstActiveUser = game.users.find(u => u.active);
-		if (game.user.id !== firstActiveUser?.id) return;
+		// GM-authoritative election — only the active GM restores animations
+		if (!isTorchCanvasRestoreAllowed()) return;
 
 		// Small delay to ensure everything is loaded
 		await new Promise(resolve => setTimeout(resolve, 500));
@@ -453,9 +563,7 @@ export function initTorchAnimations() {
 
 	// Clean up animations when token is deleted
 	Hooks.on("deleteToken", async (tokenDoc, options, userId) => {
-		// Only the user who deleted the token should clean up
-		if (userId !== game.user.id) return;
-
+		// Stop is unconditional — every client ends its own copy (idempotent)
 		const deps = checkDependencies();
 		if (!deps.hasSequencer) return;
 
@@ -504,4 +612,7 @@ export {
 	stopTorchAnimation,
 	stopAllTorchAnimations,
 	checkDependencies,
+	getEffectName,
+	parseTorchTokenId,
+	sweepOrphanTorchEffects,
 };
