@@ -4,8 +4,8 @@
 // Imports nothing from the painter by design: read-only ESM bindings forbid
 // cross-module assignment, so a moved function may only reference what already
 // lives in a leaf. Everything referenced here comes from the dungeon leaf
-// modules. MODULE_ID and WALL_THICKNESS are duplicated here exactly as
-// dungeon-level-context.mjs duplicates MODULE_ID.
+// modules. MODULE_ID, WALL_THICKNESS and GRID_SIZE are duplicated here exactly
+// as dungeon-level-context.mjs duplicates MODULE_ID.
 
 import {
 	_selectedIntWallTile,
@@ -26,6 +26,7 @@ import { _doorTiles } from "./dungeon-tile-catalog.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const WALL_THICKNESS = 20;
+const GRID_SIZE = 100;
 
 /**
  * Draw a line preview for interior wall drag
@@ -145,7 +146,7 @@ export async function handleIntWallClick(clickPos) {
 	const scene = canvas.scene;
 	if (!scene) return;
 
-	const gridSize = canvas.grid.size || canvas.grid.size;
+	const gridSize = scene.grid?.size || canvas.grid?.size || GRID_SIZE;
 	const clickX = clickPos.x;
 	const clickY = clickPos.y;
 
