@@ -419,6 +419,41 @@ test("sweepOrphanWeaponEffects fallback path when filtered getEffects throws", a
 	assert.ok(endEffectsCalls[0].effects.includes("o1"));
 });
 
+test("sweepOrphanWeaponEffects handles effects stored as .name fallback (data missing) via legacy parse", async () => {
+	resetWorld();
+	globalThis.canvas.tokens.placeables = [{ id: "keepTok", document: { uuid: "Scene.sceneA.Token.keepTok" } }];
+	globalThis.canvas.scene = { id: "sceneA" };
+	// Legacy name with tokenId embedded and no source — fallback to name parsing
+	const effects = [
+		{ name: `${MODULE_ID}-weapon-goneTok-item1`, data: { _id: "lgW1", name: `${MODULE_ID}-weapon-goneTok-item1`, sceneId: "sceneA" } },
+	];
+	delete effects[0].data.source;
+	globalThis.Sequencer.EffectManager.getEffects = () => effects;
+	await sweepOrphanWeaponEffects();
+	assert.equal(endEffectsCalls.length, 1);
+	assert.ok(endEffectsCalls[0].effects.includes("lgW1"));
+});
+
+test("sweepOrphanWeaponEffects is idempotent and drains only after manager populated", async () => {
+	resetWorld();
+	globalThis.canvas.tokens.placeables = [];
+	globalThis.canvas.scene = { id: "sceneA" };
+	globalThis.Sequencer.EffectManager.getEffects = () => [];
+	await sweepOrphanWeaponEffects();
+	assert.equal(endEffectsCalls.length, 0, "empty manager must produce no sweep — early canvasReady would be no-op (Sequencer manager populated +125-475ms after canvasReady, dist:30881-30886)");
+
+	globalThis.Sequencer.EffectManager.getEffects = () => [
+		{ data: { _id: "orphW1", name: `${MODULE_ID}-weapon-item1`, source: "Scene.sceneA.Token.orphan", sceneId: "sceneA" } },
+	];
+	await sweepOrphanWeaponEffects();
+	assert.equal(endEffectsCalls.length, 1);
+	assert.ok(endEffectsCalls[0].effects.includes("orphW1"));
+
+	endEffectsCalls.length = 0;
+	await sweepOrphanWeaponEffects();
+	assert.equal(endEffectsCalls.length, 1, "idempotent re-sweep still issues same orphan via effects");
+});
+
 test("isWeaponCanvasRestoreAllowed mirrors torch election", () => {
 	const orig = globalThis.game;
 	const gm = { id: "gm1" };

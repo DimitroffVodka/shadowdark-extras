@@ -41,7 +41,7 @@ globalThis.Hooks = {
 	on: (name, fn) => { hooks[name] = fn; },
 };
 
-const { stopAllWeaponAnimations, stopWeaponAnimation, initWeaponAnimations, getEffectName, getLegacyEffectName } = await import(
+const { stopAllWeaponAnimations, stopWeaponAnimation, initWeaponAnimations, getEffectName, getLegacyEffectName, sweepOrphanWeaponEffects } = await import(
 	"../../scripts/animation/WeaponAnimationSD.mjs"
 );
 
@@ -89,6 +89,9 @@ test("stopAllWeaponAnimations ends every weapon effect for the token", async () 
 });
 
 test("stopWeaponAnimation with an itemId still targets the exact effect name (and legacy)", async () => {
+	// Note: stopWeaponAnimation(token, null) is unreachable — all 6 call sites pass
+	// item.id and the weapon signature has no default (unlike torch's `itemId = null`);
+	// stopAllWeaponAnimations is the wildcard entry point.
 	endEffectsCalls.length = 0;
 	await stopWeaponAnimation(token, itemId);
 
@@ -114,4 +117,55 @@ test("deleteToken hook ends every weapon effect for the deleted token (source-ve
 	assert.equal(filter.name, `${MODULE_ID}-weapon-*`);
 	// Verified alternative: Document object validates without lookup (dist:475-480, 11718-11720)
 	assert.ok(filter.source === tokenDoc || filter.object === tokenDoc, "delete must carry source/object identity (not name-only)");
+});
+
+test("stop still produces string filters carrying the -* anchor (Sequencer would throw on RegExp)", async () => {
+	// Mirror torch case 14 — covers every weapon stop path including sweep.
+	// Sequencer's _validateFilters throws on RegExp name (dist:11772-11775);
+	// anchored glob string is correct and must not be converted to RegExp.
+	endEffectsCalls.length = 0;
+	// Ensure sweep has a canvas to work with
+	const origCanvas = globalThis.canvas;
+	const origGetEffects = globalThis.Sequencer.EffectManager.getEffects;
+	globalThis.canvas = {
+		tokens: { placeables: [{ id: "tokA", document: { uuid: "Scene.sceneA.Token.tokA" } }] },
+		scene: { id: "sceneA" },
+	};
+	globalThis.game.user = { id: "u1", viewedScene: "sceneA" };
+	globalThis.Sequencer.EffectManager.getEffects = () => [];
+
+	endEffectsCalls.length = 0;
+	await stopAllWeaponAnimations(token);
+	await stopWeaponAnimation(token, itemId);
+
+	// Sweep uses effects ids, not name globs — verify it doesn't produce RegExp either
+	globalThis.Sequencer.EffectManager.getEffects = () => [
+		{ data: { _id: "orphW1", name: `${MODULE_ID}-weapon-item1`, source: "Scene.sceneA.Token.orphan", sceneId: "sceneA" } },
+	];
+	globalThis.canvas.tokens.placeables = [];
+	await sweepOrphanWeaponEffects();
+
+	for (const call of endEffectsCalls) {
+		if (call.name) {
+			assert.equal(typeof call.name, "string", `Sequencer throws on RegExp name: got ${typeof call.name}`);
+			if (call.name.includes(`${MODULE_ID}-weapon-`)) {
+				assert.ok(
+					call.name.endsWith("-*") || call.name === effectName || call.name === legacyEffectName,
+					`anchored glob missing -* hyphen: ${call.name}`,
+				);
+			}
+		}
+		if (call.effects) {
+			assert.ok(Array.isArray(call.effects), "effects filter must be array of ids");
+			for (const id of call.effects) assert.equal(typeof id, "string");
+		}
+	}
+	// Ensure at least one anchored glob was produced among the stop calls
+	const nameCalls = endEffectsCalls.filter(c => c.name);
+	assert.ok(nameCalls.some(c => c.name.endsWith("-*") || c.name === `${MODULE_ID}-weapon-*`), "stop path must produce anchored glob");
+	assert.ok(nameCalls.every(c => typeof c.name === "string"), "never produce a RegExp name filter");
+
+	// Restore
+	globalThis.canvas = origCanvas;
+	globalThis.Sequencer.EffectManager.getEffects = origGetEffects;
 });
