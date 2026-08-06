@@ -415,6 +415,260 @@ test("a dotted path and an object payload for one key agree on its name", () => 
 	assert.deepEqual(writesOf(viaPath), writesOf(viaPayload));
 });
 
+// --- aliased reads through a local const (issue #95 finding 2) ----------------
+//
+// `const flags = tileDoc.flags?.[MODULE_ID]` makes every later `flags.key` a
+// flag read with nothing about `.flags` left in it. Before this pass those keys
+// looked write-only to the gate, so removing their reads never moved them out
+// of the "still read" list — the dead-persistence signal was blind to them.
+
+test("tiles / drawings / originalPosition — alias reads are found (issue #95 fixture)", () => {
+	// scripts/canvas/TileFlattenSD.mjs:696-707. The exact fixture from the issue.
+	const found = scanFlagLiterals(`
+		function unflattenTile(tileDoc) {
+			const flags = tileDoc.flags?.[MODULE_ID];
+			if (!flags?.flattenedTile || (!flags?.tiles?.length && !flags?.drawings?.length)) return;
+			const storedTiles = flags.tiles || [];
+			const origin = flags.originalPosition || {};
+			const x = flags.originalPosition.x;
+			const y = flags.originalPosition.y;
+		}
+	`);
+
+	assert.deepEqual([...new Set(keysOf(found, "property"))].sort(), [
+		"drawings", "flattenedTile", "originalPosition",
+		"originalPosition.x", "originalPosition.y", "tiles",
+	]);
+});
+
+test("the || {} fallback does not hide the alias (issue #95 fixture)", () => {
+	// scripts/character-sheet/BackgroundSheetSD.mjs:141.
+	const found = scanFlagLiterals(`
+		function getFlags(item) {
+			const flags = item.flags?.[MODULE_ID] || {};
+			return flags.advancement ?? [];
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["advancement"]);
+});
+
+test("the ?? {} fallback after a method call is an alias too (issue #95 fixture)", () => {
+	// scripts/combat/MedkitSD.mjs:116.
+	const found = scanFlagLiterals(`
+		function payload(doc) {
+			const flags = doc.toObject().flags?.[MODULE_ID] ?? {};
+			return flags.medkitSpellSource;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["medkitSpellSource"]);
+});
+
+test("an alias of a sub-path prefixes every read with that path (issue #95 fixture)", () => {
+	// scripts/combat/WeaponBonusConfig.mjs:194. `flags` is the `.weaponBonus`
+	// branch, so `flags.enabled` is the stored key `weaponBonus.enabled`.
+	const found = scanFlagLiterals(`
+		function hitBonuses(weapon) {
+			const flags = weapon.flags?.[MODULE_ID]?.weaponBonus;
+			if (!flags?.enabled) return [];
+			return flags.hitBonuses;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property").sort(), ["weaponBonus", "weaponBonus.enabled", "weaponBonus.hitBonuses"]);
+});
+
+test("an incidental .length on an array-valued flag is not a sub-key", () => {
+	const found = scanFlagLiterals(`
+		function count(tileDoc) {
+			const flags = tileDoc.flags?.[MODULE_ID];
+			return flags?.tiles?.length;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["tiles"]);
+});
+
+test("a computed member through an alias is a dynamic site, not a guessed key", () => {
+	// scripts/combat/MedkitSD.mjs:119 — `flags[key]` for a loop over the
+	// enhancement keys. Nothing about `key` is knowable.
+	const found = scanFlagLiterals(`
+		function payload(doc) {
+			const flags = doc.toObject().flags?.[MODULE_ID] ?? {};
+			return flags[key];
+		}
+	`);
+
+	assert.equal(found.length, 1);
+	assert.equal(found[0].dynamic, true);
+	assert.equal(found[0].key, null);
+});
+
+test("an alias of an alias is not followed", () => {
+	// `view` aliases `flags`, but only one hop from the root is supported.
+	const found = scanFlagLiterals(`
+		function read(tileDoc) {
+			const flags = tileDoc.flags?.[MODULE_ID];
+			const view = flags;
+			return view.tiles;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), []);
+});
+
+test("a shadowing declaration in an inner scope invalidates the alias", () => {
+	// Luna's repro: the module alias must NOT apply under an ordinary
+	// same-name shadow — `flags.foo` here reads a plain local, not our data.
+	const found = scanFlagLiterals(`
+		const flags = doc.flags?.[MODULE_ID];
+		function f(x) {
+			const flags = x;
+			return flags.foo;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), []);
+});
+
+test("the innermost binding wins — the alias is shadowed only where shadowed", () => {
+	const found = scanFlagLiterals(`
+		const flags = doc.flags?.[MODULE_ID];
+		const hit = flags.tiles;
+		function f(x) {
+			const flags = x;
+			return flags.foo;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["tiles"]);
+});
+
+test("a var declaration hoists to its function scope and shadows the alias", () => {
+	// Luna's var-scoping repro: `var` is function-scoped, so a var binding in
+	// a nested block shadows the module alias for the WHOLE function — the
+	// read must not be reported as a flag read.
+	const found = scanFlagLiterals(`
+		const flags = doc.flags?.[MODULE_ID];
+		function f() {
+			{
+				var flags = x;
+			}
+			return flags.foo;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), []);
+});
+
+test("var destructuring hoists its bindings to the function scope", () => {
+	// Luna's follow-up: destructuring declarators are function-scoped too.
+	// `var {flags} = x` / `var [flags] = x` shadow the module alias for the
+	// whole function, exactly like a plain `var flags = x`.
+	for (const pattern of ["{ flags }", "[flags]", "{ flags: flags }"]) {
+		const found = scanFlagLiterals(`
+			const flags = doc.flags?.[MODULE_ID];
+			function f() {
+				{
+					var ${pattern} = x;
+				}
+				return flags.foo;
+			}
+		`);
+		assert.deepEqual(
+			keysOf(found, "property"),
+			[],
+			`var ${pattern} must shadow the alias across the function`,
+		);
+	}
+});
+
+test("a block-scoped alias is confined to its block", () => {
+	const found = scanFlagLiterals(`
+		const flags = doc.flags?.[MODULE_ID];
+		{
+			const flags = other;
+			const miss = flags.foo;
+		}
+		const hit = flags.tiles;
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["tiles"]);
+});
+
+test("a destructured binding is not an alias and shadows one", () => {
+	const found = scanFlagLiterals(`
+		const flags = doc.flags?.[MODULE_ID];
+		const hit = flags.tiles;
+		function f(doc) {
+			const { flags } = doc.system;
+			return flags.foo;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["tiles"]);
+});
+
+test("a let/var binding is not an alias and shadows one", () => {
+	const found = scanFlagLiterals(`
+		const flags = doc.flags?.[MODULE_ID];
+		const hit = flags.tiles;
+		function f(doc) {
+			let flags = doc.system;
+			return flags.foo;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["tiles"]);
+});
+
+// --- scope constant resolution (issue #95 finding 3) --------------------------
+//
+// A bare identifier scope was assumed to be ours, so swapping `MODULE_ID` for a
+// foreign constant left the key list identical. Resolving module-level string
+// constants makes the swap visible: our id stays ours, another module's id
+// classifies foreign, and anything genuinely unknowable is recorded by name.
+
+test("a module-level const equal to our id resolves the scope to ours", () => {
+	const found = scanFlags(`
+		const MODULE_ID = "shadowdark-extras";
+		await scene.setFlag(MODULE_ID, "hexFogEnabled", true);
+	`);
+
+	assert.equal(found[0].dynamicScope, false);
+	assert.equal(found[0].scope, "shadowdark-extras");
+	assert.equal(found[0].unresolvedScope, null);
+});
+
+test("a module-level const naming another module resolves to a foreign scope", () => {
+	const [entry] = scanFlags(`
+		const OTHER_MODULE = "tokenmagic";
+		await token.setFlag(OTHER_MODULE, "filters", []);
+	`);
+
+	assert.equal(entry.dynamicScope, false);
+	assert.equal(entry.scope, "tokenmagic");
+});
+
+test("an unresolvable scope identifier is recorded, not guessed at", () => {
+	// scripts/journal/pin-tmfx-adapter.mjs:29 — `s` is a parameter.
+	const [entry] = scanFlags("const adapter = { getFlag: (s, k) => pin.getFlag(s, k) };");
+
+	assert.equal(entry.dynamicScope, true);
+	assert.equal(entry.unresolvedScope, "s");
+});
+
+test("a non-string constant does not resolve the scope", () => {
+	const [entry] = scanFlags(`
+		const COUNT = 5;
+		actor.getFlag(COUNT, "members");
+	`);
+
+	assert.equal(entry.dynamicScope, true);
+	assert.equal(entry.unresolvedScope, "COUNT");
+});
+
 // --- robustness --------------------------------------------------------------
 
 test("a file the parser rejects reports the error instead of silently yielding nothing", () => {

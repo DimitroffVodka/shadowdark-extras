@@ -36,6 +36,7 @@ export function collectFlagKeys() {
   const read = new Set();
   const foreign = {};
   const dynamic = [];
+  const unresolved = [];
 
   const parseFailures = [];
 
@@ -66,6 +67,14 @@ export function collectFlagKeys() {
       if (entry.dynamic) {
         dynamic.push(`${toRepoPath(file)}:${entry.line}`);
         continue;
+      }
+
+      // A scope argument that is not a literal — usually `MODULE_ID`, sometimes
+      // a parameter or an import — is treated as ours when it cannot be
+      // resolved. Record the unresolved name so the assumption is visible in
+      // the snapshot rather than silent (issue #95 finding 3).
+      if (entry.unresolvedScope) {
+        unresolved.push(`${toRepoPath(file)}:${entry.line} (scope=${entry.unresolvedScope})`);
       }
 
       // A literal scope naming another package ("core", "tokenmagic",
@@ -101,6 +110,7 @@ export function collectFlagKeys() {
         .map((scope) => [scope, [...foreign[scope]].sort()]),
     ),
     dynamicSites: dynamic.sort(),
+    unresolvedScopes: unresolved.sort(),
   };
 }
 
@@ -142,6 +152,15 @@ export function diffFlags(baseline, current) {
       `dynamic (unenumerable) call sites: ${baseline.dynamicSites.length} -> ` +
         `${current.dynamicSites.length} — the gate's blind spot changed size`,
     );
+  }
+
+  const unresolvedBefore = new Set(baseline.unresolvedScopes ?? []);
+  const unresolvedAfter = new Set(current.unresolvedScopes);
+  for (const site of [...unresolvedBefore].sort()) {
+    if (!unresolvedAfter.has(site)) differences.push(`unresolvedScopes: removed "${site}"`);
+  }
+  for (const site of [...unresolvedAfter].sort()) {
+    if (!unresolvedBefore.has(site)) differences.push(`unresolvedScopes: added "${site}"`);
   }
 
   return differences;

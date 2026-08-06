@@ -1,7 +1,7 @@
 import * as acorn from "acorn";
 
 import { maskSource } from "./import-scan.mjs";
-import { buildLineIndex, lineAt, literalArgument, literalIndex } from "./call-scan.mjs";
+import { buildLineIndex, lineAt, literalArgument, literalIndex, argumentOffsets } from "./call-scan.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -47,14 +47,78 @@ const MODULE_ID = "shadowdark-extras";
  */
 
 /**
+ * Module-level string constants, for resolving a dynamic scope argument.
+ *
+ * `actor.getFlag(MODULE_ID, key)` has no literal in the scope position, so a
+ * text scanner has to decide what `MODULE_ID` means. Almost every call site in
+ * this module declares `const MODULE_ID = "shadowdark-extras"` at module top;
+ * resolving that turns the site from a "treated as ours by assumption" into a
+ * literal "ours". A scope that resolves to some OTHER module's id is then
+ * classified foreign instead of ours (issue #95 finding 3).
+ *
+ * Only top-level `const` string declarations are resolved. Anything else — an
+ * import, a parameter, a non-string value — stays unresolved and the caller
+ * records the identifier name rather than guessing at its meaning.
+ */
+function moduleStringConstants(source) {
+  let ast;
+  try {
+    ast = acorn.parse(source, { ecmaVersion: 2023, sourceType: "module" });
+  }
+  catch {
+    return new Map();
+  }
+
+  const constants = new Map();
+  for (const node of ast.body) {
+    if (node.type !== "VariableDeclaration" || node.kind !== "const") continue;
+    for (const declarator of node.declarations) {
+      if (declarator.id.type !== "Identifier" || !declarator.init) continue;
+      const init = declarator.init;
+      let value = null;
+      if (init.type === "Literal" && typeof init.value === "string") value = init.value;
+      else if (init.type === "TemplateLiteral" && init.expressions.length === 0) {
+        const cooked = init.quasis[0]?.value.cooked;
+        if (typeof cooked === "string") value = cooked;
+      }
+      if (value !== null) constants.set(declarator.id.name, value);
+    }
+  }
+  return constants;
+}
+
+/** The text of one call argument, as written, for reporting an unresolved scope. */
+function argumentText(maskedChars, openParen, position) {
+  const offsets = argumentOffsets(maskedChars, openParen);
+  const offset = offsets[position];
+  if (offset === undefined) return null;
+
+  let depth = 0;
+  let end = offset;
+  while (end < maskedChars.length) {
+    const char = maskedChars[end];
+    if (char === "(" || char === "[" || char === "{") depth += 1;
+    else if (char === ")" || char === "]" || char === "}") {
+      if (depth === 0) break;
+      depth -= 1;
+    }
+    else if (char === "," && depth === 0) break;
+    end += 1;
+  }
+  return maskedChars.slice(offset, end).join("").trim() || null;
+}
+
+/**
  * @param {string} source
  * @returns {Array<{api: string, scope: string|null, key: string|null,
- *   dynamicScope: boolean, dynamic: boolean, line: number}>}
+ *   dynamicScope: boolean, dynamic: boolean, unresolvedScope: string|null,
+ *   line: number}>}
  */
 export function scanFlags(source) {
   const { masked, maskedChars, literals } = maskSource(source);
   const literalsByStart = literalIndex(literals);
   const lineStarts = buildLineIndex(source);
+  const constants = moduleStringConstants(source);
   const found = [];
 
   // Any receiver: the document varies (scene, journal, actor, token, item) and
@@ -62,16 +126,35 @@ export function scanFlags(source) {
   // enough on their own that a bare method-name match does not collide.
   for (const match of masked.matchAll(/\.\s*(setFlag|unsetFlag|getFlag)\s*\(/g)) {
     const openParen = match.index + match[0].length - 1;
-    const scope = literalArgument(maskedChars, literalsByStart, openParen, 0);
+    const scopeArg = literalArgument(maskedChars, literalsByStart, openParen, 0);
     const key = literalArgument(maskedChars, literalsByStart, openParen, 1);
+
+    let scope = scopeArg;
+    let unresolvedScope = null;
+    if (scopeArg.dynamic) {
+      // A bare identifier is usually the local `MODULE_ID` constant. Resolve it
+      // through the module's top-level constants so a foreign scope (a
+      // `const OTHER = "tokenmagic"` at a call site) is classified foreign and
+      // not silently treated as ours.
+      const name = argumentText(maskedChars, openParen, 0);
+      const resolved = name !== null ? constants.get(name) : undefined;
+      if (resolved !== undefined) {
+        scope = { name: resolved, dynamic: false };
+      }
+      else {
+        // Imported, a parameter, or otherwise unknowable — keep the historical
+        // "treated as ours" behaviour, but record the name so the snapshot can
+        // show what the gate is assuming about.
+        unresolvedScope = name;
+      }
+    }
 
     found.push({
       api: match[1],
-      // Usually the local `MODULE_ID` constant, which is not statically
-      // resolvable — a dynamic scope is therefore treated as "ours".
       scope: scope.dynamic ? null : scope.name,
       key: key.dynamic ? null : key.name,
       dynamicScope: scope.dynamic,
+      unresolvedScope,
       dynamic: key.dynamic,
       line: lineAt(lineStarts, openParen),
     });
@@ -138,6 +221,287 @@ function flagChain(node) {
     current = current.object;
   }
 
+  return null;
+}
+
+/**
+ * Strip the wrappers an alias initializer can carry: the `ChainExpression`
+ * around any optional chain, and a `|| {}` / `?? {}` fallback around the root
+ * access itself. The fallback never carries flag keys, so only the left side
+ * matters.
+ */
+function unwrapAliasInit(node) {
+  let current = node;
+  for (;;) {
+    let next = current;
+    while (next?.type === "ChainExpression") next = next.expression;
+    while (
+      next?.type === "LogicalExpression"
+      && (next.operator === "||" || next.operator === "??")
+    ) next = next.left;
+    if (next === current) return current;
+    current = next;
+  }
+}
+
+/**
+ * The flag-key segments an alias initializer fixes, or null when it is not an
+ * alias of a `.flags[OURS]` chain at all. A bare root fixes nothing; a
+ * `weapon.flags[OURS].weaponBonus` fixes `weaponBonus`. A computed base
+ * segment is a hole the alias cannot speak to, so it is not an alias either.
+ */
+function aliasBase(node) {
+  if (isScopeAccess(node)) return [];
+  const chain = flagChain(node);
+  if (!chain || chain.segments.includes(null)) return null;
+  return chain.segments;
+}
+
+/**
+ * Collect the lexical scopes of a module, each carrying the names its
+ * bindings declare — `const` flag aliases included.
+ *
+ * `const flags = tileDoc.flags?.[MODULE_ID]` makes every later `flags.key` a
+ * flag read the chain matcher cannot see, because `flags` is a bare identifier
+ * with nothing about `.flags` left in it. Without this pass those keys look
+ * write-only to the gate, so removing their reads never moves them out of the
+ * "still read" list (issue #95 finding 2).
+ *
+ * Matching has to be LEXICAL, not positional. A same-named binding in an inner
+ * scope shadows the alias (`function f(x) { const flags = x; return flags.foo }`
+ * reads nothing of ours), and a block-scoped alias only covers its own block.
+ * The returned scope tree is walked from the innermost scope containing a read
+ * outward, so the first binding of a name wins exactly as JavaScript resolves
+ * it.
+ *
+ * Conservative by design:
+ *   - only `const` declarations whose initializer is a `.flags[OURS]` chain
+ *     are aliases; every other binding (params, imports, `let`/`var`, a
+ *     destructured name) shadows rather than aliases
+ *   - one hop from the root: an alias of an alias, a destructured slice, or a
+ *     reassigned binding is not followed, so it is simply not an alias
+ */
+function collectAliases(ast) {
+  const scopes = [];
+  let current = null;
+
+  const push = (node, isFunction = false) => {
+    current = { parent: current, start: node.start, end: node.end, bindings: new Map(), isFunction };
+    scopes.push(current);
+  };
+  const pop = () => { current = current.parent; };
+
+  const bind = (name, base) => {
+    if (typeof name === "string" && current) current.bindings.set(name, { base });
+  };
+  // `var` is function-scoped: a var declaration anywhere in a function body
+  // hoists to (and shadows within) the whole function, not just its block.
+  const bindVar = (pattern) => {
+    if (!pattern) return;
+    let scope = current;
+    while (scope && !scope.isFunction) scope = scope.parent;
+    if (!scope) return;
+    const target = scope;
+    const bindAt = (name) => {
+      if (typeof name === "string") target.bindings.set(name, { base: null });
+    };
+    // Same traversal as bindPattern, but writing into the function scope.
+    const bindVarPattern = (node) => {
+      switch (node.type) {
+        case "Identifier":
+          bindAt(node.name);
+          break;
+        case "ObjectPattern":
+          for (const property of node.properties) {
+            if (property.type === "RestElement") bindVarPattern(property.argument);
+            else bindVarPattern(property.value);
+          }
+          break;
+        case "ArrayPattern":
+          for (const element of node.elements) bindVarPattern(element);
+          break;
+        case "AssignmentPattern":
+          bindVarPattern(node.left);
+          break;
+        case "RestElement":
+          bindVarPattern(node.argument);
+          break;
+      }
+    };
+    bindVarPattern(pattern);
+  };
+  const bindPattern = (pattern, base) => {
+    if (!pattern) return;
+    switch (pattern.type) {
+      case "Identifier":
+        bind(pattern.name, base);
+        break;
+      case "ObjectPattern":
+        for (const property of pattern.properties) {
+          if (property.type === "RestElement") bindPattern(property.argument, base);
+          else bindPattern(property.value, base);
+        }
+        break;
+      case "ArrayPattern":
+        for (const element of pattern.elements) bindPattern(element, base);
+        break;
+      case "AssignmentPattern":
+        bindPattern(pattern.left, base);
+        break;
+      case "RestElement":
+        bindPattern(pattern.argument, base);
+        break;
+    }
+  };
+
+  const walk = (node) => {
+    if (!node || typeof node.type !== "string") return;
+
+    switch (node.type) {
+      case "Program":
+      case "BlockStatement":
+        push(node);
+        for (const child of node.body) walk(child);
+        pop();
+        return;
+      case "FunctionDeclaration":
+        if (node.id) bind(node.id.name, null);
+        push(node, true);
+        for (const param of node.params) bindPattern(param, null);
+        walk(node.body);
+        pop();
+        return;
+      case "FunctionExpression":
+      case "ArrowFunctionExpression":
+        push(node, true);
+        if (node.id) bind(node.id.name, null);
+        for (const param of node.params) bindPattern(param, null);
+        walk(node.body);
+        pop();
+        return;
+      case "ClassDeclaration":
+        if (node.id) bind(node.id.name, null);
+        push(node);
+        walk(node.body);
+        pop();
+        return;
+      case "CatchClause":
+        push(node);
+        bindPattern(node.param, null);
+        walk(node.body);
+        pop();
+        return;
+      case "ImportDeclaration":
+        for (const specifier of node.specifiers) {
+          if (specifier.local) bind(specifier.local.name, null);
+        }
+        return;
+      case "VariableDeclaration":
+        for (const declarator of node.declarations) {
+          if (declarator.id.type === "Identifier") {
+            if (node.kind === "const") {
+              const base = aliasBase(unwrapAliasInit(declarator.init));
+              bind(declarator.id.name, base);
+            }
+            else if (node.kind === "var") bindVar(declarator.id);
+            else bind(declarator.id.name, null);
+          }
+          else if (node.kind === "var") {
+            bindVar(declarator.id);
+          }
+          else {
+            bindPattern(declarator.id, null);
+          }
+          if (declarator.init) walk(declarator.init);
+        }
+        return;
+      case "ForStatement":
+      case "ForInStatement":
+      case "ForOfStatement": {
+        const head = node.type === "ForStatement" ? node.init : node.left;
+        if (head?.type === "VariableDeclaration") {
+          push(node);
+          walk(head);
+          if (node.type === "ForStatement") {
+            walk(node.test);
+            walk(node.update);
+          }
+          else walk(node.right);
+          walk(node.body);
+          pop();
+          return;
+        }
+        if (node.type === "ForStatement") {
+          walk(node.init);
+          walk(node.test);
+          walk(node.update);
+        }
+        else {
+          walk(node.left);
+          walk(node.right);
+        }
+        walk(node.body);
+        return;
+      }
+      default:
+        for (const key of Object.keys(node)) {
+          if (key === "type" || key === "start" || key === "end") continue;
+          const value = node[key];
+          if (Array.isArray(value)) {
+            for (const child of value) walk(child);
+          }
+          else if (value && typeof value.type === "string") walk(value);
+        }
+    }
+  };
+
+  walk(ast);
+  return scopes;
+}
+
+/** The innermost scope whose node range contains `offset`, or null. */
+function scopeAt(scopes, offset) {
+  let best = null;
+  for (const scope of scopes) {
+    if (scope.start <= offset && offset < scope.end) {
+      if (!best || scope.end - scope.start < best.end - best.start) best = scope;
+    }
+  }
+  return best;
+}
+
+/**
+ * Resolve a member chain whose base is a lexical binding of the `.flags[OURS]`
+ * root. Returns the full flag-key segments (alias base first), the members to
+ * suppress as prefixes, or null when the chain is not an aliased flag read.
+ *
+ * The innermost binding of the base name wins, exactly as JavaScript resolves
+ * it: an inner `const flags = x` shadows the alias, and a block-scoped alias
+ * is invisible outside its block.
+ */
+function resolveAliasRead(node, scopes) {
+  const segments = [];
+  const members = [];
+  let current = node;
+
+  while (current?.type === "MemberExpression") {
+    if (isScopeAccess(current)) return null;
+    segments.unshift(staticSegmentName(current));
+    members.push(current);
+    current = current.object;
+  }
+  if (current?.type !== "Identifier") return null;
+
+  const name = current.name;
+  let scope = scopeAt(scopes, node.start);
+  while (scope) {
+    const binding = scope.bindings.get(name);
+    if (binding !== undefined) {
+      if (binding.base === null) return null;
+      return { segments: [...binding.base, ...segments], members };
+    }
+    scope = scope.parent;
+  }
   return null;
 }
 
@@ -328,6 +692,8 @@ export function scanFlagLiterals(source) {
   // reading a path rather than persisting through one.
   const keyPositions = new Set();
 
+  const scopes = collectAliases(ast);
+
   visit(ast, (node) => {
     if (node.type === "CallExpression" || node.type === "NewExpression") callees.add(node.callee);
     if (node.type === "Property") keyPositions.add(node.key);
@@ -354,18 +720,22 @@ export function scanFlagLiterals(source) {
     }
 
     // Channel 3 — `doc.flags[MODULE_ID].key`, usually with optional links.
-    // These are reads; nothing persists through a property access.
+    // These are reads; nothing persists through a property access. The chain
+    // matcher covers the direct form; a member chain rooted at a lexical alias
+    // of `.flags[OURS]` (issue #95 finding 2) is resolved through `scopes`.
     if (node.type === "MemberExpression" && !consumed.has(node)) {
       const chain = flagChain(node);
-      if (!chain) return;
+      const alias = chain ? null : resolveAliasRead(node, scopes);
+      if (!chain && !alias) return;
 
-      for (const member of chain.members) consumed.add(member);
+      const segments = chain ? chain.segments : alias.segments;
+      for (const member of (chain ? chain.members : alias.members)) consumed.add(member);
 
       // A computed segment is a hole in the path. The prefix above it is still
       // a key we know, so the path truncates there rather than being guessed
       // at; a hole in the FIRST segment leaves no key at all, which is the
       // dynamic site the snapshot records as its own blind spot.
-      const hole = chain.segments.indexOf(null);
+      const hole = segments.indexOf(null);
       if (hole === 0) {
         found.push({
           api: "property", key: null, dynamic: true, writes: false, line: node.loc.start.line,
@@ -373,8 +743,14 @@ export function scanFlagLiterals(source) {
         return;
       }
 
-      let path = hole === -1 ? chain.segments : chain.segments.slice(0, hole);
+      let path = hole === -1 ? segments : segments.slice(0, hole);
       if (hole === -1 && callees.has(node) && path.length > 1) path = path.slice(0, -1);
+
+      // `.length` on a flag value is the array's length, not a stored sub-key —
+      // the same incidental access as a method call, and as recordable or not
+      // as one. No stored `*.length` key exists, so a trailing `length` is
+      // dropped the way a trailing callee is.
+      if (hole === -1 && path.length > 1 && path.at(-1) === "length") path = path.slice(0, -1);
 
       found.push({
         api: "property",
