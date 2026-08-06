@@ -8,10 +8,11 @@ import { AnimationFxSD } from "./AnimationFxSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
-// Generation counter to serialize overlapping sequencerEffectManagerReady restores.
-// Hooks dispatch is not awaited, so rapid scene changes interleave as
-// A.end → B.end → A.play → B.play. Newer generation supersedes older.
-let _torchRestoreGen = 0;
+// Serialize overlapping sequencerEffectManagerReady restores — Hooks dispatch
+// is not awaited, so rapid scene changes would interleave as
+// A.end → B.end → A.play → B.play. Newer restores await the previous one
+// rather than racing and cleaning up afterwards (which would delete the winner).
+let _torchRestoreChain = Promise.resolve();
 
 /**
  * Check if torch animations are enabled in settings
@@ -20,7 +21,7 @@ function isEnabled() {
 	try {
 		return game.settings.get(MODULE_ID, "enableTorchAnimations") !== false;
 	}
-	catch (e) {
+	catch(e) {
 		return true; // Default to enabled if setting not registered yet
 	}
 }
@@ -145,7 +146,7 @@ function getAnimationConfig(item) {
 		else if (config.type === "candle") config.flameFile = ambient.candleFlame?.file || config.flameFile;
 		else config.flameFile = ambient.torchFlame?.file || config.flameFile; // torch / lantern / oil
 	}
-	catch (e) { /* keep hardcoded default */ }
+	catch(e) { /* keep hardcoded default */ }
 
 	return config;
 }
@@ -169,8 +170,6 @@ async function playTorchAnimation(token, item) {
 		return;
 	}
 
-	const _myGen = _torchRestoreGen;
-
 	const effectName = getEffectName(item.id);
 	const legacyName = getLegacyEffectName(token, item.id);
 	const config = getAnimationConfig(item);
@@ -182,13 +181,9 @@ async function playTorchAnimation(token, item) {
 	// globs do not match the other scheme, and world 0100 holds 22 legacy torch
 	// records.
 	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
-	if (_myGen !== _torchRestoreGen) return;
 	await Sequencer.EffectManager.endEffects({ name: legacyName, object: token });
-	if (_myGen !== _torchRestoreGen) return;
 	await Sequencer.EffectManager.endEffects({ name: `${effectName}_impact`, object: token });
-	if (_myGen !== _torchRestoreGen) return;
 	await Sequencer.EffectManager.endEffects({ name: `${legacyName}_impact`, object: token });
-	if (_myGen !== _torchRestoreGen) return;
 
 	// Get token dimensions
 	const tokenWidth = token.document.width;
@@ -256,11 +251,6 @@ async function playTorchAnimation(token, item) {
 			.zIndex(3);
 
 		await seq.play();
-		if (_myGen !== _torchRestoreGen) {
-			await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
-			await Sequencer.EffectManager.endEffects({ name: `${effectName}_impact`, object: token });
-			return;
-		}
 		return;
 	}
 
@@ -325,11 +315,6 @@ async function playTorchAnimation(token, item) {
 		.zIndex(3);
 
 	await seq.play();
-	if (_myGen !== _torchRestoreGen) {
-		await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
-		await Sequencer.EffectManager.endEffects({ name: `${effectName}_impact`, object: token });
-		return;
-	}
 }
 
 /**
@@ -447,7 +432,7 @@ async function sweepOrphanTorchEffects() {
 		if (Array.isArray(maybe)) effects = maybe;
 		else if (maybe) effects = Array.from(maybe);
 	}
-	catch (e) {
+	catch(e) {
 		try {
 			const all = Sequencer.EffectManager.getEffects?.() ?? [];
 			const list = Array.isArray(all) ? all : Array.from(all);
@@ -456,7 +441,7 @@ async function sweepOrphanTorchEffects() {
 				return typeof n === "string" && n.startsWith(`${MODULE_ID}-torch-`);
 			});
 		}
-		catch (inner) {
+		catch(inner) {
 			console.warn(`${MODULE_ID} | sweepOrphanTorchEffects: getEffects failed twice`, inner);
 			return;
 		}
@@ -524,7 +509,7 @@ async function sweepOrphanTorchEffects() {
 		await Sequencer.EffectManager.endEffects({ effects: orphanEffectIds });
 		console.log(`${MODULE_ID} | Swept ${orphanEffectIds.length} orphan torch effects`);
 	}
-	catch (e) {
+	catch(e) {
 		/* ignore — sweep is best-effort */
 	}
 }
@@ -572,6 +557,9 @@ export function initTorchAnimations() {
 	}
 
 	console.log(`${MODULE_ID} | Initializing torch animations`);
+
+	// Reset restore chain for test isolation — init is called per test in the harness
+	_torchRestoreChain = Promise.resolve();
 
 	// Hook into item updates to detect light source toggling
 	Hooks.on("updateItem", async (item, changes, options, userId) => {
@@ -660,40 +648,39 @@ export function initTorchAnimations() {
 	// Net one visible flame, no flicker (end+play in same microtask), but the
 	// journal write cycles. Avoiding churn would require skipping replay when
 	// the restored effect already matches current config — out of scope for #110.
-	Hooks.on("sequencerEffectManagerReady", async () => {
-		const myGen = ++_torchRestoreGen;
-		// Bounded poll for user sync — activeGM not ready at t=0 (see #110)
-		const timeoutMs = 2000;
-		const intervalMs = 100;
-		const start = Date.now();
-		while (!globalThis.game?.users?.activeGM && Date.now() - start < timeoutMs) {
-			await new Promise(resolve => setTimeout(resolve, intervalMs));
-			if (myGen !== _torchRestoreGen) return;
-		}
-		if (myGen !== _torchRestoreGen) return;
-		if (!globalThis.game?.users?.activeGM) {
-			console.warn(`${MODULE_ID} | Torch restore skipped — activeGM not found after ${timeoutMs}ms (slow user sync or no GM); will retry on next sequencerEffectManagerReady`);
-			return;
-		}
-		if (!isTorchCanvasRestoreAllowed()) return;
-		if (myGen !== _torchRestoreGen) return;
-
-		// Check all tokens for active light sources
-		for (const token of canvas.tokens.placeables) {
-			if (myGen !== _torchRestoreGen) return;
-			const actor = token.actor;
-			if (!actor) continue;
-
-			// Get active light sources
-			const activeLightSources = await actor.getActiveLightSources?.();
-			if (!activeLightSources || activeLightSources.length === 0) continue;
-
-			// Play animation for each active light source
-			for (const item of activeLightSources) {
-				if (myGen !== _torchRestoreGen) return;
-				await playTorchAnimation(token, item);
+	Hooks.on("sequencerEffectManagerReady", () => {
+		_torchRestoreChain = _torchRestoreChain.then(async () => {
+			// Bounded poll for user sync — activeGM not ready at t=0 (see #110)
+			const timeoutMs = 2000;
+			const intervalMs = 100;
+			const start = Date.now();
+			while (!globalThis.game?.users?.activeGM && Date.now() - start < timeoutMs) {
+				await new Promise(resolve => setTimeout(resolve, intervalMs));
 			}
-		}
+			if (!globalThis.game?.users?.activeGM) {
+				console.warn(`${MODULE_ID} | Torch restore skipped — activeGM not found after ${timeoutMs}ms (slow user sync or no GM); will retry on next sequencerEffectManagerReady`);
+				return;
+			}
+			if (!isTorchCanvasRestoreAllowed()) return;
+
+			// Check all tokens for active light sources
+			for (const token of canvas.tokens.placeables) {
+				const actor = token.actor;
+				if (!actor) continue;
+
+				// Get active light sources
+				const activeLightSources = await actor.getActiveLightSources?.();
+				if (!activeLightSources || activeLightSources.length === 0) continue;
+
+				// Play animation for each active light source
+				for (const item of activeLightSources) {
+					await playTorchAnimation(token, item);
+				}
+			}
+		}).catch(err => {
+			console.warn(`${MODULE_ID} | torch restore failed`, err);
+		});
+		return _torchRestoreChain;
 	});
 
 	// Clean up animations when token is deleted

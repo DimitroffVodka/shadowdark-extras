@@ -12,10 +12,11 @@ import { isItemPilesActor } from "../inventory/ItemPilesCompatSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
-// Generation counter to serialize overlapping sequencerEffectManagerReady restores.
-// Hooks dispatch is not awaited, so rapid scene changes interleave as
-// A.end → B.end → A.play → B.play. The newer generation supersedes the older.
-let _weaponRestoreGen = 0;
+// Serialize overlapping sequencerEffectManagerReady restores — Hooks dispatch
+// is not awaited, so rapid scene changes would interleave as
+// A.end → B.end → A.play → B.play. Newer restores await the previous one
+// rather than racing and cleaning up afterwards (which would delete the winner).
+let _weaponRestoreChain = Promise.resolve();
 
 /**
  * Check if weapon animations are enabled in settings
@@ -24,7 +25,7 @@ function isEnabled() {
 	try {
 		return game.settings.get(MODULE_ID, "enableWeaponAnimations") !== false;
 	}
-	catch (e) {
+	catch(e) {
 		return true; // Default to enabled if setting not registered yet
 	}
 }
@@ -147,7 +148,7 @@ export async function scanItemImages() {
 			}
 
 		}
-		catch (error) {
+		catch(error) {
 			console.warn(`${MODULE_ID} | Error scanning ${basePath}:`, error);
 		}
 	}
@@ -182,7 +183,7 @@ async function scanDirectory(dirPath, images, basePath) {
 			}
 		}
 	}
-	catch (error) {
+	catch(error) {
 		console.warn(`${MODULE_ID} | Error scanning directory ${dirPath}:`, error);
 	}
 }
@@ -228,11 +229,6 @@ export async function playWeaponAnimation(token, item, configOverride = null, us
 		return;
 	}
 
-	// Capture restore generation for overlap check — if a newer
-	// sequencerEffectManagerReady fires while this play is in-flight,
-	// the newer generation supersedes this one (see restore guard).
-	const _myGen = _weaponRestoreGen;
-
 	// Item Piles actors are inventories, not creatures wielding their contents.
 	// A configured weapon may keep its animation flag while stored, but it must
 	// never render as an attached/equipped sprite on the pile token.
@@ -267,9 +263,7 @@ export async function playWeaponAnimation(token, item, configOverride = null, us
 	// globs do not match the other scheme, and 22 legacy torch / 10 legacy weapon
 	// records exist in world 0100.
 	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
-	if (_myGen !== _weaponRestoreGen) return;
 	await Sequencer.EffectManager.endEffects({ name: legacyName, object: token });
-	if (_myGen !== _weaponRestoreGen) return;
 
 	// Get token dimensions
 	const tokenWidth = token.document.width;
@@ -389,13 +383,7 @@ export async function playWeaponAnimation(token, item, configOverride = null, us
 			break;
 	}
 
-	if (_myGen !== _weaponRestoreGen) return;
 	await seq.play();
-	if (_myGen !== _weaponRestoreGen) {
-		// Superseded while playing — clean up the effect we just created
-		await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
-		return;
-	}
 
 	// Apply additional PIXI filters that Sequencer doesn't support natively
 	if (animConfig.filters?.dropShadow?.enabled) {
@@ -445,7 +433,7 @@ export async function playWeaponAnimation(token, item, configOverride = null, us
 				sprite.filters = [...(sprite.filters || []), dropShadow];
 				console.log(`${MODULE_ID} | Applied DropShadow filter to ${effectName}:`, ds);
 			}
-			catch (e) {
+			catch(e) {
 				console.error(`${MODULE_ID} | Error applying DropShadow filter:`, e);
 			}
 		}
@@ -524,7 +512,7 @@ export async function sweepOrphanWeaponEffects() {
 		if (Array.isArray(maybe)) effects = maybe;
 		else if (maybe) effects = Array.from(maybe);
 	}
-	catch (e) {
+	catch(e) {
 		try {
 			const all = Sequencer.EffectManager.getEffects?.() ?? [];
 			const list = Array.isArray(all) ? all : Array.from(all);
@@ -533,7 +521,7 @@ export async function sweepOrphanWeaponEffects() {
 				return typeof n === "string" && n.startsWith(`${MODULE_ID}-weapon-`);
 			});
 		}
-		catch (inner) {
+		catch(inner) {
 			console.warn(`${MODULE_ID} | sweepOrphanWeaponEffects: getEffects failed twice`, inner);
 			return;
 		}
@@ -582,7 +570,7 @@ export async function sweepOrphanWeaponEffects() {
 		await Sequencer.EffectManager.endEffects({ effects: orphanEffectIds });
 		console.log(`${MODULE_ID} | Swept ${orphanEffectIds.length} orphan weapon effects`);
 	}
-	catch (e) {
+	catch(e) {
 		/* ignore */
 	}
 }
@@ -634,6 +622,9 @@ export function initWeaponAnimations() {
 	}
 
 	console.log(`${MODULE_ID} | Initializing weapon animations`);
+
+	// Reset restore chain for test isolation — init is called per test in the harness
+	_weaponRestoreChain = Promise.resolve();
 
 	// Hook into item updates to detect equip changes
 	Hooks.on("updateItem", async (item, changes, options, userId) => {
@@ -693,53 +684,51 @@ export function initWeaponAnimations() {
 	// — verified against installed Sequencer 4.2.3; version-specific, not a
 	// generic guarantee. If Sequencer is absent, init returns before this
 	// hook is registered and playWeaponAnimation is a no-op via checkDependencies.
-	Hooks.on("sequencerEffectManagerReady", async () => {
-		const myGen = ++_weaponRestoreGen;
-		// GM-authoritative election — only the active GM restores animations.
-		// activeGM is not populated at t=0 on a fresh load (see #110), so the
-		// gate must not be evaluated before state has had a chance to settle.
-		// Bounded poll replaces the fixed 500ms sleep that previously raced the
-		// unobserved user-sync transition and sat after the gate.
-		const timeoutMs = 2000;
-		const intervalMs = 100;
-		const start = Date.now();
-		while (!globalThis.game?.users?.activeGM && Date.now() - start < timeoutMs) {
-			await new Promise(resolve => setTimeout(resolve, intervalMs));
-			if (myGen !== _weaponRestoreGen) return;
-		}
-		if (myGen !== _weaponRestoreGen) return;
-		if (!globalThis.game?.users?.activeGM) {
-			console.warn(`${MODULE_ID} | Weapon restore skipped — activeGM not found after ${timeoutMs}ms (slow user sync or no GM); will retry on next sequencerEffectManagerReady`);
-			return;
-		}
-		if (!isWeaponCanvasRestoreAllowed()) return;
-		if (myGen !== _weaponRestoreGen) return;
-
-		// Check all tokens for equipped weapons/shields with animations
-		for (const token of canvas.tokens.placeables) {
-			if (myGen !== _weaponRestoreGen) return;
-			const actor = token.actor;
-			if (!actor) continue;
-			if (isItemPilesActor(actor)) {
-				await stopAllWeaponAnimations(token);
-				if (myGen !== _weaponRestoreGen) return;
-				continue;
+	Hooks.on("sequencerEffectManagerReady", () => {
+		_weaponRestoreChain = _weaponRestoreChain.then(async () => {
+			// GM-authoritative election — only the active GM restores animations.
+			// activeGM is not populated at t=0 on a fresh load (see #110), so the
+			// gate must not be evaluated before state has had a chance to settle.
+			// Bounded poll replaces the fixed 500ms sleep that previously raced the
+			// unobserved user-sync transition and sat after the gate.
+			const timeoutMs = 2000;
+			const intervalMs = 100;
+			const start = Date.now();
+			while (!globalThis.game?.users?.activeGM && Date.now() - start < timeoutMs) {
+				await new Promise(resolve => setTimeout(resolve, intervalMs));
 			}
-
-			// Every equipped Weapon/Armor — let playWeaponAnimation decide to play or stop.
-			// No hasWeaponAnimation pre-filter here; see #107. Play will stop
-			// disabled/no-match items (unconditional cleanup) or play enabled ones.
-			const equippedItems = actor.items.filter(i =>
-				(i.type === "Weapon" || i.type === "Armor") &&
-                i.system?.equipped === true
-			);
-
-			// Play (or stop) animation for each equipped item
-			for (const item of equippedItems) {
-				if (myGen !== _weaponRestoreGen) return;
-				await playWeaponAnimation(token, item);
+			if (!globalThis.game?.users?.activeGM) {
+				console.warn(`${MODULE_ID} | Weapon restore skipped — activeGM not found after ${timeoutMs}ms (slow user sync or no GM); will retry on next sequencerEffectManagerReady`);
+				return;
 			}
-		}
+			if (!isWeaponCanvasRestoreAllowed()) return;
+
+			// Check all tokens for equipped weapons/shields with animations
+			for (const token of canvas.tokens.placeables) {
+				const actor = token.actor;
+				if (!actor) continue;
+				if (isItemPilesActor(actor)) {
+					await stopAllWeaponAnimations(token);
+					continue;
+				}
+
+				// Every equipped Weapon/Armor — let playWeaponAnimation decide to play or stop.
+				// No hasWeaponAnimation pre-filter here; see #107. Play will stop
+				// disabled/no-match items (unconditional cleanup) or play enabled ones.
+				const equippedItems = actor.items.filter(i =>
+					(i.type === "Weapon" || i.type === "Armor")
+                && i.system?.equipped === true
+				);
+
+				// Play (or stop) animation for each equipped item
+				for (const item of equippedItems) {
+					await playWeaponAnimation(token, item);
+				}
+			}
+		}).catch(err => {
+			console.warn(`${MODULE_ID} | weapon restore failed`, err);
+		});
+		return _weaponRestoreChain;
 	});
 
 	// Clean up animations when token is deleted
@@ -775,8 +764,8 @@ export function initWeaponAnimations() {
 		// Every equipped Weapon/Armor — let playWeaponAnimation decide to play or stop.
 		// No hasWeaponAnimation pre-filter; play will stop disabled/no-match items.
 		const equippedItems = actor.items.filter(i =>
-			(i.type === "Weapon" || i.type === "Armor") &&
-            i.system?.equipped === true
+			(i.type === "Weapon" || i.type === "Armor")
+            && i.system?.equipped === true
 		);
 
 		// Play (or stop) animation for each equipped item

@@ -397,60 +397,107 @@ test("playTorchAnimation dedup terminates legacy names directly", async () => {
 	assert.ok(endEffectsCallsTorch.some(c=> c.name===legacyImpact && c.object===token), "play must end legacy _impact");
 });
 
-test("overlapping sequencer ready events serialize — newest wins (weapon)", async () => {
+test("overlapping sequencer ready events serialize — no interleaving, no winner deletion (same token)", async () => {
 	resetWeapon();
 	seedDaggerPreset();
-	// Capture restore handler with generation guard
 	const captured = [];
 	globalThis.Hooks = { on: (name, fn) => { if(name==="sequencerEffectManagerReady") captured.push(fn); }, once: ()=>{}, callAll: ()=>{} };
 	weaponMod.initWeaponAnimations();
-	// Find restore handler: it creates effects, sweep does not. Identify by length? We know restore is second pushed
 	const restore = captured[captured.length-1];
 	assert.ok(restore, "restore handler captured");
 
-	// Setup two different worlds for overlapping calls: first call will see tokA, second will see tokB
-	// If both run to completion, we'd have 2 effects. With generation supersede, first should abort.
+	// Same token for both restores — the bug at c8c8cb51 was A reaches seq.play(), B starts and dedups, then A's cleanup after play deletes B's effect (filter {name, object} matches B)
 	const dagger = makeItemW("itemD", "Dagger", true, null);
-	const actorA = makeActorW("actorA", [dagger]);
-	const tokenA = makeTokenW("tokA", actorA);
-	const actorB = makeActorW("actorB", [dagger]);
-	const tokenB = makeTokenW("tokB", actorB);
+	const actor = makeActorW("actor1", [dagger]);
+	const token = makeTokenW("tokA", actor);
 
 	globalThis.game.user = { id: "testUser", viewedScene: "sceneA", isGM: true };
 	globalThis.game.users = { activeGM: { id: "testUser" } };
 
-	// Make Sequencer slow: endEffects and play with delay
-	const originalEnd = globalThis.Sequencer.EffectManager.endEffects;
-	const slowEnd = async (f) => { await new Promise(r=>setTimeout(r, 40)); endEffectsCallsWeapon.push(f); };
-	globalThis.Sequencer.EffectManager.endEffects = slowEnd;
-	// Make play slow via Sequence mock delay
+	// Slow play to force interleaving: seq.play takes 60ms
 	const SlowSeq = class {
 		constructor(){ this._name=null; this._token=null; }
 		effect(){ const self=this; return { name(v){ self._name=v; return this; }, file(){return this;}, atLocation(t){ if(t?.id) self._token=t; return this;}, attachTo(t){ if(t?.id) self._token=t; return this;}, scaleToObject(){return this;}, scaleIn(){return this;}, scaleOut(){return this;}, spriteOffset(){return this;}, spriteRotation(){return this;}, spriteScale(){return this;}, filter(){return this;}, persist(){return this;}, zIndex(){return this;}, loopProperty(){return this;} };
 		}
-		async play(){ await new Promise(r=>setTimeout(r, 40)); if(this._name && this._token){ const token=this._token; const source=token.document?.uuid ?? `Scene.sceneA.Token.${token.id}`; const eff={ data:{ name:this._name, source, _id:`play-${token.id}-${this._name}-${Date.now()}` }, sprite:{filters:[]}, spriteContainer:{filters:[]} }; globalThis.Sequencer.EffectManager.effects.push(eff); }}
+		async play(){ await new Promise(r=>setTimeout(r, 60)); if(this._name && this._token){ const token=this._token; const source=token.document?.uuid ?? `Scene.sceneA.Token.${token.id}`; const eff={ data:{ name:this._name, source, _id:`play-${token.id}-${this._name}-${Date.now()}` }, sprite:{filters:[]}, spriteContainer:{filters:[]} }; globalThis.Sequencer.EffectManager.effects.push(eff); }}
 	};
 	globalThis.Sequence = SlowSeq;
+	// Make endEffects fast and actually remove (like real Sequencer) so dedup works
+	globalThis.Sequencer.EffectManager.endEffects = async f => {
+		endEffectsCallsWeapon.push(f);
+		if (f.object && f.name) {
+			globalThis.Sequencer.EffectManager.effects = globalThis.Sequencer.EffectManager.effects.filter(e => !(e.data.name===f.name && e.data.source===`Scene.sceneA.Token.${f.object.id}`));
+		}
+	};
 
-	// First restore sees tokA
-	globalThis.canvas.tokens.placeables = [tokenA];
+	globalThis.canvas.tokens.placeables = [token];
 	globalThis.Sequencer.EffectManager.effects = [];
+
+	// Start A (slow play 60ms)
 	const p1 = restore();
-	// Before p1 finishes its first await (poll is instant since activeGM ready, but then endEffects 40ms), start second restore that sees tokB
+	// After 10ms, while A is awaiting seq.play(), start B — with old cancellation, A's cleanup would delete B
 	await new Promise(r=>setTimeout(r, 10));
-	globalThis.canvas.tokens.placeables = [tokenB];
 	const p2 = restore();
 
 	await Promise.all([p1, p2]);
 
-	// With generation guard, p1 should have aborted after its first await, not played for tokA
-	// Final effects should be only tokB, not both
+	// With serialization (chain), A completes, then B starts, B dedups A's effect and recreates — net one, B's
+	// With old cancellation+cleanup, A would delete B after B played → 0 effects (worse than duplicate)
 	const effs = globalThis.Sequencer.EffectManager.effects;
-	const hasA = effs.some(e=> e.data.source==="Scene.sceneA.Token.tokA");
-	const hasB = effs.some(e=> e.data.source==="Scene.sceneA.Token.tokB");
-	assert.equal(hasA, false, "overlapping: first (stale) restore must be superseded, no tokA effect");
-	assert.equal(hasB, true, "overlapping: newest restore must win, tokB effect present");
-	assert.equal(effs.length, 1, `exactly one effect from newest generation (got ${effs.length})`);
+	assert.equal(effs.length, 1, `same-token overlapping: exactly one effect must survive (got ${effs.length}, ${JSON.stringify(effs.map(e=>e.data))})`);
+	assert.ok(effs[0].data.source==="Scene.sceneA.Token.tokA", "survivor must be tokA");
+	// Ensure it is B's effect, not A's stale: B's effect started after A finished, so its _id is newer (Date.now)
+	// We can't check _id directly, but we can check that at least one end was called for B's dedup after A's play
+	assert.ok(endEffectsCallsWeapon.length >= 2, "both restores must have deduped");
+});
+
+test("user equip play concurrent with restore — user's effect survives (restore must not cancel user)", async () => {
+	resetWeapon();
+	seedDaggerPreset();
+	const dagger = makeItemW("itemD", "Dagger", true, null);
+	const actor = makeActorW("actor1", [dagger]);
+	const token = makeTokenW("tokA", actor);
+	globalThis.canvas.tokens.placeables = [token];
+	globalThis.game.user = { id: "testUser", viewedScene: "sceneA", isGM: true };
+	globalThis.game.users = { activeGM: { id: "testUser" } };
+	globalThis.Sequencer.EffectManager.effects = [];
+	endEffectsCallsWeapon.length = 0;
+
+	// Slow restore
+	const captured = [];
+	globalThis.Hooks = { on: (n,fn)=>{ if(n==="sequencerEffectManagerReady") captured.push(fn); }, once:()=>{}, callAll:()=>{} };
+	weaponMod.initWeaponAnimations();
+	const restore = captured[captured.length-1];
+	const SlowSeq = class {
+		constructor(){ this._name=null; this._token=null; }
+		effect(){ const s=this; return { name(v){ s._name=v; return this; }, file(){return this;}, atLocation(t){ if(t?.id) s._token=t; return this;}, attachTo(t){ if(t?.id) s._token=t; return this;}, scaleToObject(){return this;}, scaleIn(){return this;}, scaleOut(){return this;}, spriteOffset(){return this;}, spriteRotation(){return this;}, spriteScale(){return this;}, filter(){return this;}, persist(){return this;}, zIndex(){return this;}, loopProperty(){return this;} };
+		}
+		async play(){ await new Promise(r=>setTimeout(r, 50)); if(this._name && this._token){ const tk=this._token; const src=tk.document?.uuid ?? `Scene.sceneA.Token.${tk.id}`; const eff={ data:{ name:this._name, source:src, _id:`play-${tk.id}-${this._name}-${Date.now()}` }, sprite:{filters:[]}, spriteContainer:{filters:[]} }; globalThis.Sequencer.EffectManager.effects.push(eff); }}
+	};
+	globalThis.Sequence = SlowSeq;
+	globalThis.Sequencer.EffectManager.endEffects = async f=>{
+		await new Promise(r=>setTimeout(r, 20));
+		endEffectsCallsWeapon.push(f);
+		if (f.object && f.name) {
+			globalThis.Sequencer.EffectManager.effects = globalThis.Sequencer.EffectManager.effects.filter(e => !(e.data.name===f.name && e.data.source===`Scene.sceneA.Token.${f.object.id}`));
+		}
+	};
+
+	globalThis.canvas.tokens.placeables = [token];
+	const pRestore = restore();
+	await new Promise(r=>setTimeout(r, 10));
+	// User equip (origin-gated) — call play directly (not via restore chain)
+	globalThis.Sequence = SlowSeq; // same slow
+	const pUser = weaponMod.playWeaponAnimation(token, dagger, null, "testUser");
+
+	await Promise.all([pRestore, pUser]);
+
+	// User's effect must survive; restore's dedup should not have deleted it via generation guard in play
+	// Both operate on same token+item, so they share name. With old guard in play, user play would be cancelled when restore increments gen.
+	// Now with serialization only in restore, user play is not on the chain and must not be cancelled.
+	const effs = globalThis.Sequencer.EffectManager.effects;
+	assert.ok(effs.length >= 1, `user effect must survive concurrent restore (got ${effs.length})`);
+	assert.ok(effs.some(e=> e.data.source==="Scene.sceneA.Token.tokA"), "tokA effect must exist");
 });
 
 test("poll timeout is observable — logs warn and does not silently skip (weapon)", async () => {
@@ -491,3 +538,59 @@ test("poll timeout is observable — logs warn and does not silently skip (weapo
 	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 1, "retry on next ready must succeed after activeGM appears");
 });
 
+
+test("poisoned restore chain self-heals — one throw does not kill next restore (weapon)", async () => {
+	resetWeapon();
+	seedDaggerPreset();
+	const captured = [];
+	globalThis.Hooks = { on: (n,fn)=>{ if(n==="sequencerEffectManagerReady") captured.push(fn); }, once:()=>{}, callAll:()=>{} };
+	weaponMod.initWeaponAnimations();
+	const restore = captured[captured.length-1];
+	assert.ok(restore);
+
+	const dagger = makeItemW("itemD", "Dagger", true, null);
+	const actor = makeActorW("actor1", [dagger]);
+	const token = makeTokenW("tokA", actor);
+	globalThis.canvas.tokens.placeables = [token];
+	globalThis.game.user = { id: "testUser", viewedScene: "sceneA", isGM: true };
+	globalThis.game.users = { activeGM: { id: "testUser" } };
+	globalThis.Sequencer.EffectManager.effects = [];
+	endEffectsCallsWeapon.length = 0;
+
+	// Make first endEffects throw
+	let firstCall = true;
+	const realEnd = globalThis.Sequencer.EffectManager.endEffects;
+	globalThis.Sequencer.EffectManager.endEffects = async (f) => {
+		if (firstCall) { firstCall = false; throw new Error("boom"); }
+		endEffectsCallsWeapon.push(f);
+		// also remove as real would
+		if (f.object && f.name) {
+			globalThis.Sequencer.EffectManager.effects = globalThis.Sequencer.EffectManager.effects.filter(e => !(e.data.name===f.name && e.data.source===`Scene.sceneA.Token.${f.object.id}`));
+		}
+	};
+	const warns = [];
+	const origWarn = console.warn;
+	console.warn = (...a)=> warns.push(a.join(" "));
+
+	const p1 = restore();
+	await p1;
+	// Chain should have caught and warned, and be resolved (not rejected)
+	assert.ok(warns.some(m=> m.includes("weapon restore failed") && m.includes("boom")), `first failure must be warned (got ${warns.join("; ")})`);
+	// Second restore should still run normally
+	globalThis.Sequencer.EffectManager.endEffects = async f => {
+		endEffectsCallsWeapon.push(f);
+		if (f.object && f.name) {
+			globalThis.Sequencer.EffectManager.effects = globalThis.Sequencer.EffectManager.effects.filter(e => !(e.data.name===f.name && e.data.source===`Scene.sceneA.Token.${f.object.id}`));
+		}
+	};
+	globalThis.Sequencer.EffectManager.effects = [];
+	endEffectsCallsWeapon.length = 0;
+	// Need new token to avoid dedup confusion
+	const token2 = makeTokenW("tokA", actor);
+	globalThis.canvas.tokens.placeables = [token2];
+	const p2 = restore();
+	await p2;
+	console.warn = origWarn;
+	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 1, `second restore must complete after first threw (got ${globalThis.Sequencer.EffectManager.effects.length})`);
+	assert.equal(globalThis.Sequencer.EffectManager.effects[0].data.name, weaponMod.getEffectName(dagger.id));
+});
