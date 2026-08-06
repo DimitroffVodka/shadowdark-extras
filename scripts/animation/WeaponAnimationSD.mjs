@@ -25,6 +25,35 @@ function isEnabled() {
 }
 
 /**
+ * Resolve the weapon animation config per documented 3-step order:
+ *   1. configOverride — live preview from the config dialog
+ *   2. per-item flag   — what the Weapon Animation dialog saved
+ *   3. master list     — pattern-matched default from the Animation FX list
+ * Shared predicate for all three entry points so they agree on what animates.
+ * @param {Item} item
+ * @param {object|null} configOverride
+ * @returns {object|null}
+ */
+export function getResolvedWeaponAnimation(item, configOverride = null) {
+	let animConfig = configOverride ?? item.getFlag(MODULE_ID, "weaponAnimation");
+	if (!animConfig?.enabled || !animConfig?.imagePath) {
+		animConfig = AnimationFxSD.resolveWeaponSprite(item);
+	}
+	if (!animConfig?.enabled || !animConfig?.imagePath) return null;
+	return animConfig;
+}
+
+/**
+ * Whether this item resolves to any weapon animation (per-item or master list).
+ * Single shared predicate used by updateItem / canvasReady / createToken.
+ * @param {Item} item
+ * @returns {boolean}
+ */
+export function hasWeaponAnimation(item) {
+	return !!getResolvedWeaponAnimation(item);
+}
+
+/**
  * Check if required modules are active
  */
 function checkDependencies() {
@@ -204,18 +233,8 @@ export async function playWeaponAnimation(token, item, configOverride = null) {
 		return;
 	}
 
-	// Resolution order:
-	//   1. configOverride  — live preview from the config dialog
-	//   2. per-item flag   — what the Weapon Animation dialog saved
-	//   3. master list     — pattern-matched default from the Animation FX list
-	// Without (3) every weapon had to be configured by hand, one dialog at a time.
-	let animConfig = configOverride ?? item.getFlag(MODULE_ID, "weaponAnimation");
-	if (!animConfig?.enabled || !animConfig?.imagePath) {
-		animConfig = AnimationFxSD.resolveWeaponSprite(item);
-	}
-	if (!animConfig?.enabled || !animConfig?.imagePath) {
-		return; // No animation configured and no master-list match
-	}
+	const animConfig = getResolvedWeaponAnimation(item, configOverride);
+	if (!animConfig) return; // No animation configured and no master-list match
 
 	const effectName = getEffectName(item.id);
 
@@ -599,31 +618,21 @@ export function initWeaponAnimations() {
 			return;
 		}
 
-		// Check if this weapon has animation config
-		const animConfig = item.getFlag(MODULE_ID, "weaponAnimation");
-		if (!animConfig?.enabled) {
-			// No animation config — still allow unconditional stop on unequip
-			if (!isEquipped) {
-				for (const token of getTokensForActor(actor)) {
-					await stopWeaponAnimation(token, item.id);
-				}
+		// Stop is unconditional on unequip — every client ends its own copy
+		// (must survive regardless of config; see #102). Play is origin-gated.
+		if (!isEquipped) {
+			for (const token of getTokensForActor(actor)) {
+				await stopWeaponAnimation(token, item.id);
 			}
 			return;
 		}
 
-		// Get all tokens for this actor
-		const tokens = getTokensForActor(actor);
+		// Equipped: only play if item resolves via per-item flag OR master list
+		if (!hasWeaponAnimation(item)) return;
+		if (userId !== game.user.id) return;
 
-		for (const token of tokens) {
-			if (isEquipped) {
-				// Play is origin-gated — duplicates are the bug
-				if (userId !== game.user.id) continue;
-				await playWeaponAnimation(token, item);
-			}
-			else {
-				// Stop is unconditional — every client ends its own copy
-				await stopWeaponAnimation(token, item.id);
-			}
+		for (const token of getTokensForActor(actor)) {
+			await playWeaponAnimation(token, item);
 		}
 	});
 
@@ -653,11 +662,11 @@ export function initWeaponAnimations() {
 				continue;
 			}
 
-			// Get all equipped items with animation config
+			// Get all equipped items that resolve to an animation (per-item or master list)
 			const equippedItems = actor.items.filter(i =>
 				(i.type === "Weapon" || i.type === "Armor") &&
                 i.system?.equipped === true &&
-                i.getFlag(MODULE_ID, "weaponAnimation")?.enabled
+                hasWeaponAnimation(i)
 			);
 
 			// Play animation for each equipped item
@@ -697,11 +706,11 @@ export function initWeaponAnimations() {
 			return;
 		}
 
-		// Get all equipped items with animation config
+		// Get all equipped items that resolve to an animation (per-item or master list)
 		const equippedItems = actor.items.filter(i =>
 			(i.type === "Weapon" || i.type === "Armor") &&
             i.system?.equipped === true &&
-            i.getFlag(MODULE_ID, "weaponAnimation")?.enabled
+            hasWeaponAnimation(i)
 		);
 
 		// Play animation for each equipped item

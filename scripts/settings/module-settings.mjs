@@ -1023,6 +1023,16 @@ export function registerSettings() {
 		requiresReload: true,
 	});
 
+	game.settings.register(MODULE_ID, "enableWeaponAnimations", {
+		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.enable_weapon_animations.name"),
+		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.enable_weapon_animations.hint"),
+		scope: "world",
+		config: true,
+		default: true,
+		type: Boolean,
+		requiresReload: true,
+	});
+
 	game.settings.register(MODULE_ID, "enableLevelUpAnimation", {
 		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.enable_level_up_animation.name"),
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.enable_level_up_animation.hint"),

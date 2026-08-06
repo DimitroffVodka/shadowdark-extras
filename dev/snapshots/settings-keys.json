@@ -1,5 +1,5 @@
 {
-  "$comment": "Settings keys and menu ids are stored in user worlds; renaming one silently orphans every GM's configured value. Statically enumerable keys only \u2014 dynamicSites records the call sites this scan cannot read, and the live total is verified by the shadowdark-extras.structural Quench batch. Regenerate with a reviewed reason: npm run snapshot:settings -- --write",
+  "$comment": "Settings keys and menu ids are stored in user worlds; renaming one silently orphans every GM's configured value. Statically enumerable keys only — dynamicSites records the call sites this scan cannot read, and the live total is verified by the shadowdark-extras.structural Quench batch. Regenerate with a reviewed reason: npm run snapshot:settings -- --write",
   "keys": [
     "aaAnimateOnSuccess",
     "aaAnimateSpellsWithoutTarget",
@@ -82,6 +82,7 @@
     "enableTorchAnimations",
     "enableTrading",
     "enableWandUses",
+    "enableWeaponAnimations",
     "enhanceSpells",
     "expandedCarousingData",
     "hexFog.defaultRevealRadius",
@@ -170,19 +171,18 @@
     ]
   },
   "dynamicSites": [
-    "scripts/AnimationFxSD.mjs:123",
-    "scripts/ContentRegistry.mjs:17",
-    "scripts/DungeonMultiLevelSD.mjs:781",
-    "scripts/DungeonPainterSD.mjs:31",
-    "scripts/FormationSpawnerSD.mjs:83",
-    "scripts/MarchingModeSD.mjs:55",
-    "scripts/MarchingModeSD.mjs:68",
-    "scripts/PartyWeatherSettingsSD.mjs:162",
-    "scripts/TomSD.mjs:104",
-    "scripts/TomSD.mjs:112",
-    "scripts/easy-reference/EasyReferenceMenu.mjs:327"
+    "scripts/animation/AnimationFxSD.mjs:123",
+    "scripts/combat/FormationSpawnerSD.mjs:83",
+    "scripts/combat/MarchingModeSD.mjs:56",
+    "scripts/combat/MarchingModeSD.mjs:69",
+    "scripts/dungeon/DungeonMultiLevelSD.mjs:821",
+    "scripts/dungeon/DungeonPainterSD.mjs:118",
+    "scripts/hex/ContentRegistry.mjs:17",
+    "scripts/journal/easy-reference/EasyReferenceMenu.mjs:327",
+    "scripts/party/PartyWeatherSettingsSD.mjs:168",
+    "scripts/tom/TomSD.mjs:104",
+    "scripts/tom/TomSD.mjs:112"
   ],
-  "liveCaptureNote": "dynamicKeys are the keys only a running world reveals: built in loops, so the static scan cannot enumerate them. Captured 2026-07-30, Foundry 14.365 / Shadowdark 4.0.6, autoanimations INACTIVE. The Quench batch asserts the exact live set equals (keys - inactive optionalModuleGated) + dynamicKeys.",
   "dynamicKeys": [
     "allowPlayerDungeonPainting",
     "animationFxCategory_npcActions",
@@ -202,5 +202,6 @@
     "partyWeatherTableUuid",
     "tom-dataVersion",
     "tom-scenes"
-  ]
+  ],
+  "liveCaptureNote": "dynamicKeys are the keys only a running world reveals: built in loops, so the static scan cannot enumerate them. Captured 2026-07-30, Foundry 14.365 / Shadowdark 4.0.6, autoanimations INACTIVE. The Quench batch asserts the exact live set equals (keys - inactive optionalModuleGated) + dynamicKeys."
 }
