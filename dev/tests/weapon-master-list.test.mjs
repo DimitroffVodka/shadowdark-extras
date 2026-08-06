@@ -343,3 +343,32 @@ test("explicit per-item disable short-circuits master list — enabled:false is 
 	await playWeaponAnimation(token, daggerDisabled);
 	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 0, "playWeaponAnimation must not play when flag explicitly disabled");
 });
+
+test("disabling stops a live effect — playWeaponAnimation with null config terminates", async () => {
+	reset();
+	seedDaggerPreset();
+	// Item was animating via master list, now explicitly disabled
+	const disabledFlag = { enabled: false };
+	const daggerDisabled = makeItem("itemD", "Dagger", true, disabledFlag);
+	const actor = makeActor("actor1", [daggerDisabled]);
+	const token = makeToken("tok1", actor);
+	globalThis.canvas.tokens.placeables = [token];
+
+	// Seed a live effect as if it was playing before disable
+	const live = { data: { name: getEffectName(daggerDisabled.id), source: token.document.uuid, _id: "live-before" }, sprite: { filters: [] }, spriteContainer: { filters: [] } };
+	globalThis.Sequencer.EffectManager.effects = [live];
+	endEffectsCalls.length = 0;
+
+	await playWeaponAnimation(token, daggerDisabled);
+	// Must have terminated via stopWeaponAnimation (dual name, object-scoped)
+	assert.ok(endEffectsCalls.length >= 1, "disabling must trigger stop");
+	assert.ok(endEffectsCalls.some(c => c.object === token && c.name === getEffectName(daggerDisabled.id)), "stop must carry object: token and classification name");
+	// No new effect should have been played
+	assert.equal(globalThis.Sequencer.EffectManager.effects.filter(e => e.data._id?.startsWith("play-")).length, 0, "no new effect should be played when disabled");
+
+	// Also via configOverride path (dialog save)
+	endEffectsCalls.length = 0;
+	globalThis.Sequencer.EffectManager.effects = [live];
+	await playWeaponAnimation(token, daggerDisabled, { enabled: false, imagePath: "x.webp" });
+	assert.ok(endEffectsCalls.some(c => c.object === token), "configOverride enabled:false must also stop with object: token");
+});

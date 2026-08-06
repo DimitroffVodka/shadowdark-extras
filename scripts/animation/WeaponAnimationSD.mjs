@@ -238,7 +238,10 @@ export async function playWeaponAnimation(token, item, configOverride = null) {
 	}
 
 	const animConfig = getResolvedWeaponAnimation(item, configOverride);
-	if (!animConfig) return; // No animation configured and no master-list match
+	if (!animConfig) {
+		await stopWeaponAnimation(token, item.id); // was animating via master list, now disabled — terminate
+		return;
+	}
 
 	const effectName = getEffectName(item.id);
 
