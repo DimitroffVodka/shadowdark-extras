@@ -64,6 +64,9 @@ import {
 	_decorFoldersCollapsed,
 	_decorElevation,
 	_decorSort,
+	_decorMode,
+	setDecorMode,
+	isDecorMode,
 	getRegisteredDecorTiles,
 	loadImportedDecorAssets,
 	getDDPackDecorAssets,
@@ -85,6 +88,7 @@ export {
 	registerDecorAsset, loadImportedDecorAssets, reloadDecorAssets,
 	setDecorSearchFilter, getDecorSearchFilter, toggleDecorFolderCollapsed,
 	getDecorElevation, setDecorElevation, getDecorSort, setDecorSort,
+	setDecorMode, isDecorMode,
 };
 
 // Colored-hex tile assets and the colored-folder collapse state now live in
@@ -192,6 +196,51 @@ export {
 	setMapDimension, getMapDimensions, formatActiveScene,
 };
 
+// The POI preview sprite, the placement transform (scale, rotation, mirror) and
+// the tile-cycling index now live in hex-poi-preview.mjs. The painter reads the
+// bindings and writes _currentPreviewIndex only through resetPreviewIndex, so
+// that module can stay a leaf of this one.
+import {
+	_poiScale,
+	_poiRotation,
+	_poiMirror,
+	_previewSprite,
+	_previewContainer,
+	_previewEnabled,
+	_currentPreviewIndex,
+	getPoiScale,
+	setPoiScale,
+	loadPoiScale,
+	adjustPoiScale,
+	getPoiRotation,
+	rotatePoiLeft,
+	rotatePoiRight,
+	getPoiMirror,
+	togglePoiMirror,
+	resetPoiTransform,
+	createPreview,
+	updatePreviewPosition,
+	destroyPreview,
+	enablePreview,
+	disablePreview,
+	isPreviewEnabled,
+	advancePreviewIndex,
+	resetPreviewIndex,
+	getCurrentPreviewIndex,
+	_getAvailablePoiTiles,
+} from "./hex-poi-preview.mjs";
+
+// The preview and transform helpers that were public on this module stay
+// public: the tray handle bindings drive every one of them.
+export {
+	getPoiScale, setPoiScale, loadPoiScale, adjustPoiScale,
+	getPoiRotation, rotatePoiLeft, rotatePoiRight,
+	getPoiMirror, togglePoiMirror, resetPoiTransform,
+	createPreview, updatePreviewPosition, destroyPreview,
+	enablePreview, disablePreview, isPreviewEnabled,
+	advancePreviewIndex, getCurrentPreviewIndex,
+};
+
 // Maps default-tile biome keys to user-friendly terrain labels
 const BIOME_TO_TERRAIN = {
 	water: "Water",
@@ -230,16 +279,6 @@ let _isPainting = false;
 let _isGenerating = false;
 
 // Decor tab state
-let _decorMode = false; // Whether we're in decor painting mode
-
-// POI (Symbol) tile state
-let _poiScale = 0.5;             // Scale factor for POI tiles (0.1 - 2.0)
-let _poiRotation = 0;            // Rotation in degrees (0, 90, 180, 270)
-let _poiMirror = false;          // Horizontal mirror
-let _previewSprite = null;       // PIXI sprite for preview
-let _previewContainer = null;    // Container for preview sprite
-let _previewEnabled = false;     // Whether preview is active
-let _currentPreviewIndex = 0;    // Index for cycling through selected tiles
 
 export async function loadTileAssets() {
 	if (_tiles) return;
@@ -298,46 +337,6 @@ export async function loadTileAssets() {
 
 	// Start background preloading
 	preloadHexImages();
-}
-
-/**
- * Get current POI scale
- */
-export function getPoiScale() {
-	return _poiScale;
-}
-
-/**
- * Set POI scale and persist to settings
- */
-export function setPoiScale(scale) {
-	_poiScale = Math.max(0.1, Math.min(2.0, scale));
-	try {
-		game.settings.set(MODULE_ID, "hexPainter.poiScale", _poiScale);
-	}
-	catch (e) {
-		// Settings might not be registered yet
-	}
-	// Update preview if active
-	if (_previewSprite && _previewEnabled) {
-		_updatePreviewTransform();
-	}
-}
-
-/**
- * Load POI scale from settings
- */
-export function loadPoiScale() {
-	try {
-		const saved = game.settings.get(MODULE_ID, "hexPainter.poiScale");
-		if (saved !== undefined) {
-			_poiScale = saved;
-		}
-	}
-	catch (e) {
-		// Settings not registered yet, use default
-		_poiScale = 0.5;
-	}
 }
 
 /**
@@ -405,23 +404,6 @@ export async function getColoredTileFolders() {
 /* ═══════════════════════════════════════════════════════════════
    DECOR TAB
    ═══════════════════════════════════════════════════════════════ */
-
-/**
- * Set decor painting mode
- */
-export function setDecorMode(enabled) {
-	_decorMode = !!enabled;
-	if (enabled) {
-		setActiveTileTab("symbols"); // Decor uses symbol tile placement logic
-	}
-}
-
-/**
- * Check if decor mode is active
- */
-export function isDecorMode() {
-	return _decorMode;
-}
 
 /**
  * Get decor tiles grouped by folder for the tray UI.
@@ -657,7 +639,7 @@ export function toggleTileSelection(tilePath) {
 		if (availableTiles.length > 0) {
 			// Reset index if out of bounds
 			if (_currentPreviewIndex >= availableTiles.length) {
-				_currentPreviewIndex = 0;
+				resetPreviewIndex();
 			}
 			// Create or update preview (if painting is enabled)
 			if (_paintEnabled) {
@@ -714,7 +696,7 @@ export function disablePainting() {
 	_brushActive = false;
 	_lastCell = null;
 	_chosenTiles.clear();
-	_decorMode = false;
+	setDecorMode(false);
 	// Clean up POI-related state
 	destroyPreview();
 	clearPoiHistory();
@@ -734,76 +716,6 @@ export function bindCanvasEvents() {
 	canvas.stage.on("mouseup", _onPointerUp);
 	canvas.stage.on("mouseupoutside", _onPointerUp);
 	canvas.stage.on("rightclick", _onRightClick);
-}
-
-/**
- * Adjust POI scale by a delta amount
- */
-export function adjustPoiScale(delta) {
-	const newScale = Math.max(0.1, Math.min(2.0, _poiScale + delta));
-	if (newScale !== _poiScale) {
-		setPoiScale(newScale);
-	}
-}
-
-/**
- * Get current POI rotation
- */
-export function getPoiRotation() {
-	return _poiRotation;
-}
-
-/**
- * Rotate POI left (counter-clockwise 90 degrees)
- */
-export function rotatePoiLeft() {
-	_poiRotation = (_poiRotation - 90 + 360) % 360;
-	_updatePreviewTransform();
-}
-
-/**
- * Rotate POI right (clockwise 90 degrees)
- */
-export function rotatePoiRight() {
-	_poiRotation = (_poiRotation + 90) % 360;
-	_updatePreviewTransform();
-}
-
-/**
- * Get current POI mirror state
- */
-export function getPoiMirror() {
-	return _poiMirror;
-}
-
-/**
- * Toggle POI horizontal mirror
- */
-export function togglePoiMirror() {
-	_poiMirror = !_poiMirror;
-	_updatePreviewTransform();
-}
-
-/**
- * Reset POI transform (rotation and mirror)
- */
-export function resetPoiTransform() {
-	_poiRotation = 0;
-	_poiMirror = false;
-	_updatePreviewTransform();
-}
-
-/**
- * Update preview sprite transform (rotation, mirror, scale)
- */
-function _updatePreviewTransform() {
-	if (_previewSprite) {
-		_previewSprite.rotation = (_poiRotation * Math.PI) / 180;
-		_previewSprite.scale.set(
-			_poiMirror ? -_poiScale : _poiScale,
-			_poiScale
-		);
-	}
 }
 
 function _isToolActive() {
@@ -1325,153 +1237,6 @@ async function _stampAtPointer(ev, forceStamp = false) {
    POI PREVIEW
    ═══════════════════════════════════════════════════════════════ */
 
-/**
- * Create preview sprite for POI painting
- */
-export async function createPreview() {
-	// Destroy existing preview first
-	destroyPreview();
-
-	if (!canvas.stage) return;
-
-	// Get available symbol tiles
-	const availableTiles = _getAvailablePoiTiles();
-	if (availableTiles.length === 0) return;
-
-	// Create container for preview
-	_previewContainer = new PIXI.Container();
-	_previewContainer.name = "sdx-poi-preview";
-	_previewContainer.eventMode = "none";
-	_previewContainer.interactiveChildren = false;
-
-	// Load texture for the first tile
-	const tilePath = availableTiles[_currentPreviewIndex % availableTiles.length];
-	try {
-		const texture = await foundry.canvas.loadTexture(tilePath);
-		if (texture) {
-			_previewSprite = new PIXI.Sprite(texture);
-			_previewSprite.anchor.set(0.5, 0.5);
-			_previewSprite.alpha = 0.6;
-			_previewSprite.rotation = (_poiRotation * Math.PI) / 180;
-			_previewSprite.scale.set(
-				_poiMirror ? -_poiScale : _poiScale,
-				_poiScale
-			);
-			_previewSprite._sdxTexturePath = tilePath;
-			_previewContainer.addChild(_previewSprite);
-			// Add to interface layer so it renders above tiles but below UI
-			const targetLayer = canvas.interface || canvas.stage;
-			targetLayer.addChild(_previewContainer);
-			_previewEnabled = true;
-		}
-	}
-	catch (e) {
-		console.warn(`${MODULE_ID} | Failed to create POI preview:`, e);
-	}
-}
-
-/**
- * Update preview position and texture
- */
-export async function updatePreviewPosition(pos) {
-	if (!_previewEnabled || !_previewContainer || !_previewSprite) return;
-
-	// Update position
-	_previewContainer.position.set(pos.x, pos.y);
-
-	// Check if we need to update texture (if tiles changed)
-	const availableTiles = _getAvailablePoiTiles();
-	if (availableTiles.length === 0) {
-		destroyPreview();
-		return;
-	}
-
-	// Update texture if needed
-	const currentPath = availableTiles[_currentPreviewIndex % availableTiles.length];
-	if (_previewSprite._sdxTexturePath !== currentPath) {
-		try {
-			const texture = await foundry.canvas.loadTexture(currentPath);
-			if (texture) {
-				_previewSprite.texture = texture;
-				_previewSprite._sdxTexturePath = currentPath;
-			}
-		}
-		catch (e) {
-			// Ignore texture load errors
-		}
-	}
-}
-
-/**
- * Destroy preview sprite
- */
-export function destroyPreview() {
-	if (_previewContainer) {
-		if (_previewContainer.parent) {
-			_previewContainer.parent.removeChild(_previewContainer);
-		}
-		_previewContainer.destroy({ children: true });
-		_previewContainer = null;
-	}
-	_previewSprite = null;
-	_previewEnabled = false;
-}
-
-/**
- * Enable preview
- */
-export function enablePreview() {
-	if (!_previewEnabled) {
-		createPreview();
-	}
-}
-
-/**
- * Disable preview
- */
-export function disablePreview() {
-	destroyPreview();
-}
-
-/**
- * Check if preview is enabled
- */
-export function isPreviewEnabled() {
-	return _previewEnabled;
-}
-
-/**
- * Advance to the next tile in the cycle
- */
-export function advancePreviewIndex() {
-	const availableTiles = _getAvailablePoiTiles();
-	if (availableTiles.length > 0) {
-		_currentPreviewIndex = (_currentPreviewIndex + 1) % availableTiles.length;
-	}
-}
-
-/**
- * Get current preview index
- */
-export function getCurrentPreviewIndex() {
-	return _currentPreviewIndex;
-}
-
-/**
- * Get array of available POI tiles from chosen tiles
- */
-function _getAvailablePoiTiles() {
-	if (_activeTileTab !== "symbols" && !_decorMode) return [];
-
-	const doorTiles = getDoorTiles();
-	return Array.from(_chosenTiles).filter(path =>
-		(_symbolTiles && _symbolTiles.some(t => t.path === path)) ||
-        (_decorMode && _importedDecorTiles && _importedDecorTiles.some(t => t.path === path)) ||
-        (_decorMode && _ddPackDecorTiles && _ddPackDecorTiles.some(t => t.path === path)) ||
-        (_decorMode && getRegisteredDecorTiles().some(t => t.path === path)) ||
-        (_decorMode && doorTiles.some(t => t.path === path))
-	);
-}
 /**
  * Background preloading of images into IndexedDB
  */
