@@ -284,6 +284,9 @@ export const FEATURE_OWNERS = {
     // Tile-selection state and the symbol tile store, lifted out of
     // HexPainterSD.mjs (Phase 5.3 sweep 6).
     "hex-tile-selection.mjs",
+    // POI preview sprite and placement transform, lifted out of
+    // HexPainterSD.mjs (Phase 5.3 sweep 6).
+    "hex-poi-preview.mjs",
   ],
   dungeon: [
     "DungeonGeneratorSD.mjs",
