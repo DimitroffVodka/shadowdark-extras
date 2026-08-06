@@ -12,9 +12,9 @@
 // `_levels` was never declared anywhere. `typeof` does not guard a member
 // expression, so `typeof _levels?.currentElevation` throws a ReferenceError on
 // the base identifier. That sat inside the function's `try`, so the throw was
-// swallowed by the catch and the function returned 0 — skipping the twelve
-// probes after it (scene flags, the `levels.currentFloor` setting, the Layer
-// Tool window, controlled-tile elevation, wall-height, levels-3d-preview)
+// swallowed by the catch and the function returned 0 — skipping the eight
+// value probes after it (scene flags, the `levels.currentFloor` setting, the
+// Layer Tool window, controlled-tile elevation, wall-height, levels-3d-preview)
 // whenever Levels was active.
 //
 // The installed Levels module (v7.0.3) exposes `CONFIG.Levels = { handlers,

@@ -1,9 +1,7 @@
 {
   "$comment": "Accepted unbound identifiers. The gate blocks anything NEW, not the absolute count — resolving every identifier without a scope-accurate parser leaves a residue of nested declarations and unlisted globals. New entries almost always mean an extraction left a dangling reference. Regenerate only with a reviewed reason: npm run gate:bindings -- --write. NOTE: --write rebuilds from the current tree and DISCARDS orphaned entries, which is why accepted findings are added by hand instead. See $notes for the ones that are real defects rather than scanner residue.",
-  "$notes": {
-    "scripts/dungeon/dungeon-level-context.mjs: _levels": "REAL DEFECT, pre-existing. getCurrentElevation reads `typeof _levels?.currentElevation` at line 129 and nothing declares _levels — it was already unbound in DungeonPainterSD.mjs before 0c63168 lifted the function out, so the extraction inherited it rather than caused it. typeof does not protect a member expression, so this throws ReferenceError, and the enclosing try swallows it: every probe AFTER that line (scene flags, the levels currentFloor setting, the Levels tool window, wall-height) is unreachable whenever the Levels module is active. Found by the _name read pass on its first run."
-  },
-  "total": 112,
+  "$notes": {},
+  "total": 111,
   "byFile": {
     "scripts/MaphubViewerApp.mjs": [
       "CONST"
@@ -58,9 +56,6 @@
     ],
     "scripts/dungeon/DungeonRegionsSD.mjs": [
       "loadTexture"
-    ],
-    "scripts/dungeon/dungeon-level-context.mjs": [
-      "_levels"
     ],
     "scripts/effects/AuraEffectsSD.mjs": [
       "CONST"
