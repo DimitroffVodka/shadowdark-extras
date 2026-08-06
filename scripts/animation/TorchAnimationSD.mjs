@@ -307,7 +307,7 @@ async function stopTorchAnimation(token, itemId = null) {
 	}
 	else {
 		// Stop all torch animations for this token
-		await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-${token.id}*`, object: token });
+		await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-${token.id}-*`, object: token });
 		console.log(`${MODULE_ID} | Stopped all torch animations for ${token.name}`);
 	}
 }
@@ -320,7 +320,7 @@ async function stopAllTorchAnimations(token) {
 	const deps = checkDependencies();
 	if (!deps.hasSequencer) return;
 
-	await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-${token.id}*` });
+	await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-${token.id}-*` });
 	console.log(`${MODULE_ID} | Stopped all torch animations for ${token.name}`);
 }
 
@@ -460,7 +460,7 @@ export function initTorchAnimations() {
 		if (!deps.hasSequencer) return;
 
 		// End all effects for this token
-		await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-${tokenDoc.id}*` });
+		await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-torch-${tokenDoc.id}-*` });
 	});
 
 	// Check for active light sources when a new token is created
