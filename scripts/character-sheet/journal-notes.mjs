@@ -294,6 +294,13 @@ const watchedProseMirror = new WeakSet();
  * @param {HTMLElement} pmEl  The `<prose-mirror>` element in the editor form.
  */
 function captureProseMirrorView(pmEl) {
+	// Guard first: the listener below must be attached at most once per element.
+	// The editor may be re-rendered in place by the ApplicationV2 lifecycle, in
+	// which case the element is reused and a second addEventListener would
+	// accumulate closures (the sentinel only dedupes the plugin, not listeners).
+	if (watchedProseMirror.has(pmEl)) return;
+	watchedProseMirror.add(pmEl);
+
 	pmEl.addEventListener("plugins", (event) => {
 		const plugins = event?.detail;
 		if (!plugins || typeof plugins !== "object") return;
@@ -306,8 +313,6 @@ function captureProseMirrorView(pmEl) {
 			},
 		});
 	});
-	if (watchedProseMirror.has(pmEl)) return;
-	watchedProseMirror.add(pmEl);
 
 	// Track when the user places a cursor in the editor body (not the toggle
 	// button), so inserts land at the cursor instead of appending at the end.
