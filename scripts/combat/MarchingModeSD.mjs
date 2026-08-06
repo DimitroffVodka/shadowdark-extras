@@ -557,11 +557,25 @@ function getTokenOwnerName(token) {
 }
 
 /**
+ * Predicate: is a combat currently started on the active scene?
+ * Combat#started is true once round > 0; a created-but-unstarted tracker
+ * (round 0) must not suspend marching. game.combats.active is the active
+ * combat for the current canvas scene, unlike game.combat (the viewed
+ * tracker encounter).
+ */
+function isCombatStarted() {
+	return game.combats?.active?.started === true;
+}
+
+/**
  * Hook: Before token update
  */
 function onPreUpdateToken(tokenDoc, changes, options, userId) {
 	// Skip if no position change (use === undefined so a move to x/y === 0 still counts)
 	if (changes.x === undefined && changes.y === undefined) return true;
+
+	// During started combat, let any token move freely — no marching blocking.
+	if (isCombatStarted()) return true;
 
 	if (!marchingModeEnabled) return true;
 	if (!leaderTokenId) return true;
@@ -583,6 +597,10 @@ function onPreUpdateToken(tokenDoc, changes, options, userId) {
  */
 async function onUpdateToken(tokenDoc, changes, options, userId) {
 	if (!changes.x && !changes.y) return;
+
+	// During started combat, no path recording and no conga — followers act independently.
+	if (isCombatStarted()) return;
+
 	if (!marchingModeEnabled) return;
 	if (!leaderTokenId) return;
 
@@ -728,6 +746,10 @@ function processCongaMovement() {
 	if (leaderMovementPath.length < 2) return;
 	if (tokenFollowers.size === 0) return;
 
+	// Don't start a new queue while combat is running — the hook guards stop
+	// path recording, so there is nothing new to process here.
+	if (isCombatStarted()) return;
+
 	// If already processing, signal that new path points need processing after current cycle
 	if (processingCongaMovement) {
 		congaMovementPending = true;
@@ -779,6 +801,14 @@ function processCongaMovement() {
 	// Move all tokens one step at a time
 	function moveAllTokensOneStep() {
 		if (!game.user.isGM) return;
+
+		// Combat started mid-cycle: stop the running queue at this step boundary.
+		// Reset the flags so a fresh cycle can start once marching resumes.
+		if (isCombatStarted()) {
+			processingCongaMovement = false;
+			congaMovementPending = false;
+			return;
+		}
 
 		// Check if all tokens have reached their targets
 		const allDone = followerStates.every(f => f.currentIndex <= f.targetIndex);
@@ -835,6 +865,13 @@ function processCongaMovement() {
 
 		// After all tokens have moved one step, wait then move again
 		Promise.all(promises).then(() => {
+			// Combat may have started while the step's updates were in flight —
+			// don't re-schedule another step; the queue stops here.
+			if (isCombatStarted()) {
+				processingCongaMovement = false;
+				congaMovementPending = false;
+				return;
+			}
 			scheduleTimeout(() => {
 				moveAllTokensOneStep();
 			}, 100);
