@@ -285,14 +285,22 @@ function collectAliases(ast) {
   const scopes = [];
   let current = null;
 
-  const push = (node) => {
-    current = { parent: current, start: node.start, end: node.end, bindings: new Map() };
+  const push = (node, isFunction = false) => {
+    current = { parent: current, start: node.start, end: node.end, bindings: new Map(), isFunction };
     scopes.push(current);
   };
   const pop = () => { current = current.parent; };
 
   const bind = (name, base) => {
     if (typeof name === "string" && current) current.bindings.set(name, { base });
+  };
+  // `var` is function-scoped: a var declaration anywhere in a function body
+  // hoists to (and shadows within) the whole function, not just its block.
+  const bindVar = (name) => {
+    if (typeof name !== "string") return;
+    let scope = current;
+    while (scope && !scope.isFunction) scope = scope.parent;
+    if (scope) scope.bindings.set(name, { base: null });
   };
   const bindPattern = (pattern, base) => {
     if (!pattern) return;
@@ -330,14 +338,14 @@ function collectAliases(ast) {
         return;
       case "FunctionDeclaration":
         if (node.id) bind(node.id.name, null);
-        push(node);
+        push(node, true);
         for (const param of node.params) bindPattern(param, null);
         walk(node.body);
         pop();
         return;
       case "FunctionExpression":
       case "ArrowFunctionExpression":
-        push(node);
+        push(node, true);
         if (node.id) bind(node.id.name, null);
         for (const param of node.params) bindPattern(param, null);
         walk(node.body);
@@ -363,8 +371,12 @@ function collectAliases(ast) {
       case "VariableDeclaration":
         for (const declarator of node.declarations) {
           if (declarator.id.type === "Identifier") {
-            const base = node.kind === "const" ? aliasBase(unwrapAliasInit(declarator.init)) : null;
-            bind(declarator.id.name, base);
+            if (node.kind === "const") {
+              const base = aliasBase(unwrapAliasInit(declarator.init));
+              bind(declarator.id.name, base);
+            }
+            else if (node.kind === "var") bindVar(declarator.id.name);
+            else bind(declarator.id.name, null);
           }
           else {
             bindPattern(declarator.id, null);

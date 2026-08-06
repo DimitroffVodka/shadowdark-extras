@@ -545,6 +545,23 @@ test("the innermost binding wins — the alias is shadowed only where shadowed",
 	assert.deepEqual(keysOf(found, "property"), ["tiles"]);
 });
 
+test("a var declaration hoists to its function scope and shadows the alias", () => {
+	// Luna's var-scoping repro: `var` is function-scoped, so a var binding in
+	// a nested block shadows the module alias for the WHOLE function — the
+	// read must not be reported as a flag read.
+	const found = scanFlagLiterals(`
+		const flags = doc.flags?.[MODULE_ID];
+		function f() {
+			{
+				var flags = x;
+			}
+			return flags.foo;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), []);
+});
+
 test("a block-scoped alias is confined to its block", () => {
 	const found = scanFlagLiterals(`
 		const flags = doc.flags?.[MODULE_ID];

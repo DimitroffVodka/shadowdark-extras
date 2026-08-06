@@ -148,9 +148,13 @@ function getType(variable) {
 	if (variable === null) return "null";
 	if (isPlainObject(variable)) return "Object";
 	if (Array.isArray(variable)) return "Array";
-	if (variable instanceof Date) return "Date";
-	if (variable instanceof Map) return "Map";
+	// Match Foundry's typePrototypes exactly (foundry.mjs:2298-2304): Set,
+	// Map, Promise, Error. Date is deliberately NOT classified — like other
+	// class instances it falls through to "Unknown", which is what lets a
+	// recursive merge into an existing Date proceed (Foundry recurses into
+	// it and retains the Date, rather than replacing it with a plain object).
 	if (variable instanceof Set) return "Set";
+	if (variable instanceof Map) return "Map";
 	return "Unknown";
 }
 

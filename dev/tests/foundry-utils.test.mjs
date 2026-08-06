@@ -92,6 +92,17 @@ test("performDeletions (deprecated) deletes a legacy -= key, matching v14", () =
 	assert.deepEqual(merged, { keep: 1 });
 });
 
+test("a Date is 'Unknown' like Foundry — recursion into an existing Date is preserved", () => {
+	// Foundry's typePrototypes (foundry.mjs:2298-2304) does not list Date, so
+	// getType(Date) is "Unknown" and the recursive merge treats it as
+	// object-like: it recurses INTO the existing Date rather than replacing it.
+	const original = { d: new Date(0) };
+	mergeObject(original, { d: { x: 1 } });
+
+	assert.ok(original.d instanceof Date, "the Date instance is retained");
+	assert.equal(original.d.x, 1, "the new key is merged into the Date");
+});
+
 test("applyOperators applies a ForcedDeletion value", () => {
 	const merged = mergeObject(
 		{ keep: 1, gone: 2 },
