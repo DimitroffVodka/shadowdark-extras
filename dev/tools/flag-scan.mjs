@@ -224,11 +224,6 @@ function flagChain(node) {
   return null;
 }
 
-function sameSegments(a, b) {
-  if (a.length !== b.length) return false;
-  return a.every((segment, index) => segment === b[index]);
-}
-
 /**
  * Strip the wrappers an alias initializer can carry: the `ChainExpression`
  * around any optional chain, and a `|| {}` / `?? {}` fallback around the root
@@ -263,7 +258,8 @@ function aliasBase(node) {
 }
 
 /**
- * Collect local `const` aliases of the `.flags[OURS]` root — one hop, no more.
+ * Collect the lexical scopes of a module, each carrying the names its
+ * bindings declare — `const` flag aliases included.
  *
  * `const flags = tileDoc.flags?.[MODULE_ID]` makes every later `flags.key` a
  * flag read the chain matcher cannot see, because `flags` is a bare identifier
@@ -271,68 +267,176 @@ function aliasBase(node) {
  * write-only to the gate, so removing their reads never moves them out of the
  * "still read" list (issue #95 finding 2).
  *
+ * Matching has to be LEXICAL, not positional. A same-named binding in an inner
+ * scope shadows the alias (`function f(x) { const flags = x; return flags.foo }`
+ * reads nothing of ours), and a block-scoped alias only covers its own block.
+ * The returned scope tree is walked from the innermost scope containing a read
+ * outward, so the first binding of a name wins exactly as JavaScript resolves
+ * it.
+ *
  * Conservative by design:
  *   - only `const` declarations whose initializer is a `.flags[OURS]` chain
+ *     are aliases; every other binding (params, imports, `let`/`var`, a
+ *     destructured name) shadows rather than aliases
  *   - one hop from the root: an alias of an alias, a destructured slice, or a
- *     reassigned binding is not followed, so it is simply not collected
- *   - an alias only covers reads inside its own function (or the module body),
- *     so an unrelated same-named local elsewhere cannot be mistaken for it
+ *     reassigned binding is not followed, so it is simply not an alias
  */
 function collectAliases(ast) {
-  const aliases = [];
-  const scopeEnds = [];
+  const scopes = [];
+  let current = null;
 
-  const walk = (node, callback) => {
-    if (!node || typeof node.type !== "string") return;
-    if (
-      node.type === "FunctionDeclaration" || node.type === "FunctionExpression"
-      || node.type === "ArrowFunctionExpression"
-    ) scopeEnds.push(node.end);
+  const push = (node) => {
+    current = { parent: current, start: node.start, end: node.end, bindings: new Map() };
+    scopes.push(current);
+  };
+  const pop = () => { current = current.parent; };
 
-    callback(node);
-
-    for (const key of Object.keys(node)) {
-      if (key === "type" || key === "start" || key === "end") continue;
-      const value = node[key];
-      if (Array.isArray(value)) {
-        for (const child of value) walk(child, callback);
-      }
-      else if (value && typeof value.type === "string") walk(value, callback);
+  const bind = (name, base) => {
+    if (typeof name === "string" && current) current.bindings.set(name, { base });
+  };
+  const bindPattern = (pattern, base) => {
+    if (!pattern) return;
+    switch (pattern.type) {
+      case "Identifier":
+        bind(pattern.name, base);
+        break;
+      case "ObjectPattern":
+        for (const property of pattern.properties) {
+          if (property.type === "RestElement") bindPattern(property.argument, base);
+          else bindPattern(property.value, base);
+        }
+        break;
+      case "ArrayPattern":
+        for (const element of pattern.elements) bindPattern(element, base);
+        break;
+      case "AssignmentPattern":
+        bindPattern(pattern.left, base);
+        break;
+      case "RestElement":
+        bindPattern(pattern.argument, base);
+        break;
     }
-
-    if (
-      node.type === "FunctionDeclaration" || node.type === "FunctionExpression"
-      || node.type === "ArrowFunctionExpression"
-    ) scopeEnds.pop();
   };
 
-  walk(ast, (node) => {
-    if (node.type !== "VariableDeclaration" || node.kind !== "const") return;
-    for (const declarator of node.declarations) {
-      if (declarator.id.type !== "Identifier" || !declarator.init) continue;
-      const base = aliasBase(unwrapAliasInit(declarator.init));
-      if (base === null) continue;
-      aliases.push({
-        name: declarator.id.name,
-        base,
-        start: node.start,
-        end: scopeEnds.length > 0 ? scopeEnds[scopeEnds.length - 1] : ast.end,
-      });
-    }
-  });
+  const walk = (node) => {
+    if (!node || typeof node.type !== "string") return;
 
-  return aliases;
+    switch (node.type) {
+      case "Program":
+      case "BlockStatement":
+        push(node);
+        for (const child of node.body) walk(child);
+        pop();
+        return;
+      case "FunctionDeclaration":
+        if (node.id) bind(node.id.name, null);
+        push(node);
+        for (const param of node.params) bindPattern(param, null);
+        walk(node.body);
+        pop();
+        return;
+      case "FunctionExpression":
+      case "ArrowFunctionExpression":
+        push(node);
+        if (node.id) bind(node.id.name, null);
+        for (const param of node.params) bindPattern(param, null);
+        walk(node.body);
+        pop();
+        return;
+      case "ClassDeclaration":
+        if (node.id) bind(node.id.name, null);
+        push(node);
+        walk(node.body);
+        pop();
+        return;
+      case "CatchClause":
+        push(node);
+        bindPattern(node.param, null);
+        walk(node.body);
+        pop();
+        return;
+      case "ImportDeclaration":
+        for (const specifier of node.specifiers) {
+          if (specifier.local) bind(specifier.local.name, null);
+        }
+        return;
+      case "VariableDeclaration":
+        for (const declarator of node.declarations) {
+          if (declarator.id.type === "Identifier") {
+            const base = node.kind === "const" ? aliasBase(unwrapAliasInit(declarator.init)) : null;
+            bind(declarator.id.name, base);
+          }
+          else {
+            bindPattern(declarator.id, null);
+          }
+          if (declarator.init) walk(declarator.init);
+        }
+        return;
+      case "ForStatement":
+      case "ForInStatement":
+      case "ForOfStatement": {
+        const head = node.type === "ForStatement" ? node.init : node.left;
+        if (head?.type === "VariableDeclaration") {
+          push(node);
+          walk(head);
+          if (node.type === "ForStatement") {
+            walk(node.test);
+            walk(node.update);
+          }
+          else walk(node.right);
+          walk(node.body);
+          pop();
+          return;
+        }
+        if (node.type === "ForStatement") {
+          walk(node.init);
+          walk(node.test);
+          walk(node.update);
+        }
+        else {
+          walk(node.left);
+          walk(node.right);
+        }
+        walk(node.body);
+        return;
+      }
+      default:
+        for (const key of Object.keys(node)) {
+          if (key === "type" || key === "start" || key === "end") continue;
+          const value = node[key];
+          if (Array.isArray(value)) {
+            for (const child of value) walk(child);
+          }
+          else if (value && typeof value.type === "string") walk(value);
+        }
+    }
+  };
+
+  walk(ast);
+  return scopes;
+}
+
+/** The innermost scope whose node range contains `offset`, or null. */
+function scopeAt(scopes, offset) {
+  let best = null;
+  for (const scope of scopes) {
+    if (scope.start <= offset && offset < scope.end) {
+      if (!best || scope.end - scope.start < best.end - best.start) best = scope;
+    }
+  }
+  return best;
 }
 
 /**
- * Resolve a member chain whose base is a local alias of the `.flags[OURS]`
+ * Resolve a member chain whose base is a lexical binding of the `.flags[OURS]`
  * root. Returns the full flag-key segments (alias base first), the members to
  * suppress as prefixes, or null when the chain is not an aliased flag read.
  *
- * Two same-named aliases with different bases make every use ambiguous, so
- * they resolve to a dynamic site rather than a guess.
+ * The innermost binding of the base name wins, exactly as JavaScript resolves
+ * it: an inner `const flags = x` shadows the alias, and a block-scoped alias
+ * is invisible outside its block.
  */
-function resolveAliasRead(node, aliases) {
+function resolveAliasRead(node, scopes) {
   const segments = [];
   const members = [];
   let current = node;
@@ -345,15 +449,17 @@ function resolveAliasRead(node, aliases) {
   }
   if (current?.type !== "Identifier") return null;
 
-  const matching = aliases.filter(
-    (alias) => alias.name === current.name && node.start >= alias.start && node.start <= alias.end,
-  );
-  if (matching.length === 0) return null;
-
-  const firstBase = matching[0].base;
-  if (matching.some((alias) => !sameSegments(alias.base, firstBase))) return { ambiguous: true };
-
-  return { segments: [...firstBase, ...segments], members };
+  const name = current.name;
+  let scope = scopeAt(scopes, node.start);
+  while (scope) {
+    const binding = scope.bindings.get(name);
+    if (binding !== undefined) {
+      if (binding.base === null) return null;
+      return { segments: [...binding.base, ...segments], members };
+    }
+    scope = scope.parent;
+  }
+  return null;
 }
 
 /**
@@ -543,7 +649,7 @@ export function scanFlagLiterals(source) {
   // reading a path rather than persisting through one.
   const keyPositions = new Set();
 
-  const aliases = collectAliases(ast);
+  const scopes = collectAliases(ast);
 
   visit(ast, (node) => {
     if (node.type === "CallExpression" || node.type === "NewExpression") callees.add(node.callee);
@@ -572,19 +678,12 @@ export function scanFlagLiterals(source) {
 
     // Channel 3 — `doc.flags[MODULE_ID].key`, usually with optional links.
     // These are reads; nothing persists through a property access. The chain
-    // matcher covers the direct form; a member chain rooted at a local alias
-    // of `.flags[OURS]` (issue #95 finding 2) is resolved through `aliases`.
+    // matcher covers the direct form; a member chain rooted at a lexical alias
+    // of `.flags[OURS]` (issue #95 finding 2) is resolved through `scopes`.
     if (node.type === "MemberExpression" && !consumed.has(node)) {
       const chain = flagChain(node);
-      const alias = chain ? null : resolveAliasRead(node, aliases);
+      const alias = chain ? null : resolveAliasRead(node, scopes);
       if (!chain && !alias) return;
-
-      if (alias?.ambiguous) {
-        found.push({
-          api: "property", key: null, dynamic: true, writes: false, line: node.loc.start.line,
-        });
-        return;
-      }
 
       const segments = chain ? chain.segments : alias.segments;
       for (const member of (chain ? chain.members : alias.members)) consumed.add(member);

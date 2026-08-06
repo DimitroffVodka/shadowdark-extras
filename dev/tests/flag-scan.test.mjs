@@ -518,21 +518,70 @@ test("an alias of an alias is not followed", () => {
 	assert.deepEqual(keysOf(found, "property"), []);
 });
 
-test("a shadowed alias whose bases differ is ambiguous, not guessed at", () => {
-	// A module-scope alias and a same-named function-scope alias can both be in
-	// range for a read; line-based scoping cannot tell which one binds, so the
-	// read is recorded as dynamic rather than resolving to either base.
+test("a shadowing declaration in an inner scope invalidates the alias", () => {
+	// Luna's repro: the module alias must NOT apply under an ordinary
+	// same-name shadow — `flags.foo` here reads a plain local, not our data.
 	const found = scanFlagLiterals(`
-		const flags = a.flags?.[MODULE_ID];
-		function read(b) {
-			const flags = b.flags?.[MODULE_ID]?.weaponBonus;
-			const miss = flags.enabled;
+		const flags = doc.flags?.[MODULE_ID];
+		function f(x) {
+			const flags = x;
+			return flags.foo;
 		}
 	`);
 
-	assert.equal(keysOf(found, "property").includes("weaponBonus.enabled"), false,
-		"the ambiguous read must not be resolved to either base");
-	assert.ok(found.some(entry => entry.dynamic), "the ambiguous site records as dynamic");
+	assert.deepEqual(keysOf(found, "property"), []);
+});
+
+test("the innermost binding wins — the alias is shadowed only where shadowed", () => {
+	const found = scanFlagLiterals(`
+		const flags = doc.flags?.[MODULE_ID];
+		const hit = flags.tiles;
+		function f(x) {
+			const flags = x;
+			return flags.foo;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["tiles"]);
+});
+
+test("a block-scoped alias is confined to its block", () => {
+	const found = scanFlagLiterals(`
+		const flags = doc.flags?.[MODULE_ID];
+		{
+			const flags = other;
+			const miss = flags.foo;
+		}
+		const hit = flags.tiles;
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["tiles"]);
+});
+
+test("a destructured binding is not an alias and shadows one", () => {
+	const found = scanFlagLiterals(`
+		const flags = doc.flags?.[MODULE_ID];
+		const hit = flags.tiles;
+		function f(doc) {
+			const { flags } = doc.system;
+			return flags.foo;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["tiles"]);
+});
+
+test("a let/var binding is not an alias and shadows one", () => {
+	const found = scanFlagLiterals(`
+		const flags = doc.flags?.[MODULE_ID];
+		const hit = flags.tiles;
+		function f(doc) {
+			let flags = doc.system;
+			return flags.foo;
+		}
+	`);
+
+	assert.deepEqual(keysOf(found, "property"), ["tiles"]);
 });
 
 // --- scope constant resolution (issue #95 finding 3) --------------------------
