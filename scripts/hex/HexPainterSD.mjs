@@ -657,7 +657,7 @@ export function toggleTileSelection(tilePath) {
 		if (availableTiles.length > 0) {
 			// Reset index if out of bounds
 			if (_currentPreviewIndex >= availableTiles.length) {
-				_currentPreviewIndex = 0;
+				resetPreviewIndex();
 			}
 			// Create or update preview (if painting is enabled)
 			if (_paintEnabled) {
@@ -1448,6 +1448,13 @@ export function advancePreviewIndex() {
 	if (availableTiles.length > 0) {
 		_currentPreviewIndex = (_currentPreviewIndex + 1) % availableTiles.length;
 	}
+}
+
+/**
+ * Reset the preview index to the start of the cycle
+ */
+function resetPreviewIndex() {
+	_currentPreviewIndex = 0;
 }
 
 /**
