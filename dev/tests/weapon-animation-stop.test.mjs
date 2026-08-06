@@ -1,14 +1,12 @@
-// Weapon animation stop-path regression test (issue #97).
+// Weapon animation stop-path regression test (issue #97) + #105 identity model.
 //
 // The "weapon went away" cleanup funnels through Sequencer.EffectManager
 // .endEffects with a NAME filter. Sequencer's name filter is a string that is
 // compiled to an anchored regex where `*` is a glob: `\*+` becomes `.*?`
 // (see Sequencer's `str_to_search_regex_str`). The historical bug was a
 // BARE `*` glued to the token id (`...weapon-<tokenId>*`), which is fragile
-// and non-anchored: token id `tokA` also matched token `tokA1`'s effects.
-// The effect names this module plays are
-// `shadowdark-extras-weapon-<tokenId>-<itemId>` (no suffix variant).
-//
+// and non-anchored. After #105 effect names are `shadowdark-extras-weapon-<itemId>`
+// (classification key only) and token identity is via `object`/`source`.
 // The stop paths must therefore pass a STRING name filter (Sequencer throws
 // on a RegExp — "inFilter.name must be of type string") that actually matches
 // the played effect names and carries the trailing-hyphen anchor. That
@@ -43,12 +41,13 @@ globalThis.Hooks = {
 	on: (name, fn) => { hooks[name] = fn; },
 };
 
-const { stopAllWeaponAnimations, stopWeaponAnimation, initWeaponAnimations } = await import(
+const { stopAllWeaponAnimations, stopWeaponAnimation, initWeaponAnimations, getEffectName, getLegacyEffectName } = await import(
 	"../../scripts/animation/WeaponAnimationSD.mjs"
 );
 
 const MODULE_ID = "shadowdark-extras";
-const effectName = `${MODULE_ID}-weapon-${token.id}-${itemId}`;
+const effectName = `${MODULE_ID}-weapon-${itemId}`;
+const legacyEffectName = `${MODULE_ID}-weapon-${token.id}-${itemId}`;
 const playedNames = [effectName];
 
 /**
@@ -75,15 +74,6 @@ function assertStopsEveryPlayedEffect(name) {
 	}
 }
 
-function assertDoesNotStopPrefixSharingToken(name) {
-	const matcher = sequencerNameFilter(name);
-	const foreignEffect = `${MODULE_ID}-weapon-tokA1-${itemId}`;
-	assert.ok(
-		!foreignEffect.match(matcher),
-		`name filter ${JSON.stringify(name)} must not match prefix-sharing token id ${foreignEffect}`
-	);
-}
-
 test("stopAllWeaponAnimations ends every weapon effect for the token", async () => {
 	endEffectsCalls.length = 0;
 	await stopAllWeaponAnimations(token);
@@ -91,31 +81,37 @@ test("stopAllWeaponAnimations ends every weapon effect for the token", async () 
 	assert.equal(endEffectsCalls.length, 1);
 	const filter = endEffectsCalls[0];
 	assertStopsEveryPlayedEffect(filter.name);
+	assert.equal(filter.name, `${MODULE_ID}-weapon-*`, "kind wildcard plus object covers both new and legacy (see #105)");
+	assert.equal(filter.object, token, "stopAll must carry object identity");
 	assert.ok(filter.name.endsWith("-*"), "anchored glob: itemId suffix follows the trailing hyphen");
-	assertDoesNotStopPrefixSharingToken(filter.name);
+	// After #105 names collide across tokens by design; object disambiguates
+	assert.ok(!getEffectName(itemId).includes(token.id), "effect name must not encode token id");
 });
 
-test("stopWeaponAnimation with an itemId still targets the exact effect name", async () => {
+test("stopWeaponAnimation with an itemId still targets the exact effect name (and legacy)", async () => {
 	endEffectsCalls.length = 0;
 	await stopWeaponAnimation(token, itemId);
 
-	assert.equal(endEffectsCalls.length, 1);
-	const filter = endEffectsCalls[0];
-	assert.equal(filter.name, effectName);
-	assert.equal(filter.object, token);
+	// After #105 dual termination for transition compatibility
+	assert.equal(endEffectsCalls.length, 2);
+	const names = endEffectsCalls.map(c => c.name);
+	assert.ok(names.includes(effectName), `new name ${effectName} must be terminated`);
+	assert.ok(names.includes(legacyEffectName), "legacy name must be terminated");
+	for (const f of endEffectsCalls) assert.equal(f.object, token);
 });
 
-test("deleteToken hook ends every weapon effect for the deleted token", async () => {
+test("deleteToken hook ends every weapon effect for the deleted token (source-verified)", async () => {
 	endEffectsCalls.length = 0;
 	initWeaponAnimations();
 
 	const handler = hooks.deleteToken;
 	assert.ok(typeof handler === "function", "deleteToken hook registered");
-	await handler({ id: token.id }, {}, game.user.id);
+	const tokenDoc = { id: token.id, uuid: `Scene.sceneA.Token.${token.id}` };
+	await handler(tokenDoc, {}, game.user.id);
 
 	assert.equal(endEffectsCalls.length, 1);
 	const filter = endEffectsCalls[0];
-	assertStopsEveryPlayedEffect(filter.name);
-	assert.ok(filter.name.endsWith("-*"), "anchored glob: itemId suffix follows the trailing hyphen");
-	assertDoesNotStopPrefixSharingToken(filter.name);
+	assert.equal(filter.name, `${MODULE_ID}-weapon-*`);
+	// Verified alternative: Document object validates without lookup (dist:475-480, 11718-11720)
+	assert.ok(filter.source === tokenDoc || filter.object === tokenDoc, "delete must carry source/object identity (not name-only)");
 });

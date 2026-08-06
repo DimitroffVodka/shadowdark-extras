@@ -37,12 +37,24 @@ function checkDependencies() {
 }
 
 /**
- * Get the effect name for a token's weapon animation
- * @param {Token} token - The token
+ * Get the effect name for a weapon animation (classification key only).
+ * Token identity comes solely from Sequencer's `object`/`source` (see #105).
  * @param {string} itemId - The weapon item ID
- * @returns {string} - Unique effect name
+ * @returns {string} - Classification key (module + kind + item id)
  */
-export function getEffectName(token, itemId) {
+export function getEffectName(itemId) {
+	return `${MODULE_ID}-weapon-${itemId}`;
+}
+
+/**
+ * Legacy effect name for transition compatibility.
+ * Existing persisted effects use `${MODULE_ID}-weapon-${tokenId}-${itemId}`.
+ * New code must terminate both new and legacy names, each with `object`.
+ * @param {Token|{id:string}} token
+ * @param {string} itemId
+ * @returns {string}
+ */
+export function getLegacyEffectName(token, itemId) {
 	return `${MODULE_ID}-weapon-${token.id}-${itemId}`;
 }
 
@@ -205,9 +217,9 @@ export async function playWeaponAnimation(token, item, configOverride = null) {
 		return; // No animation configured and no master-list match
 	}
 
-	const effectName = getEffectName(token, item.id);
+	const effectName = getEffectName(item.id);
 
-	// End any existing animation for this weapon
+	// End any existing animation for this weapon — token-scoped via object (see #105)
 	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
 
 	// Get token dimensions
@@ -335,8 +347,12 @@ export async function playWeaponAnimation(token, item, configOverride = null) {
 		// Wait briefly for the effect to be fully initialized
 		await new Promise(resolve => setTimeout(resolve, 100));
 
-		const effectName = getEffectName(token, item.id);
-		const effects = Sequencer.EffectManager.effects.filter(e => e.data?.name === effectName);
+		const effectName = getEffectName(item.id);
+		// Token-scoped lookup must carry source identity — after #105 names collide
+		// across tokens sharing an item, so a name-only filter would match siblings.
+		// Filter by both name and source (token document UUID).
+		const tokenUuid = token.document?.uuid ?? `Scene.${game.user?.viewedScene ?? canvas?.scene?.id ?? ""}.Token.${token.id}`;
+		const effects = Sequencer.EffectManager.effects.filter(e => e.data?.name === effectName && e.data?.source === tokenUuid);
 
 		for (const seqEffect of effects) {
 			try {
@@ -390,9 +406,12 @@ export async function stopWeaponAnimation(token, itemId) {
 	const deps = checkDependencies();
 	if (!deps.hasSequencer) return;
 
-	const effectName = getEffectName(token, itemId);
+	const effectName = getEffectName(itemId);
+	const legacyName = getLegacyEffectName(token, itemId);
+	// Transition compatibility: terminate both new and legacy names, each with object
 	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
-	console.log(`${MODULE_ID} | Stopped weapon animation: ${effectName}`);
+	await Sequencer.EffectManager.endEffects({ name: legacyName, object: token });
+	console.log(`${MODULE_ID} | Stopped weapon animation: ${effectName} (and legacy ${legacyName})`);
 }
 
 /**
@@ -403,20 +422,16 @@ export async function stopAllWeaponAnimations(token) {
 	const deps = checkDependencies();
 	if (!deps.hasSequencer) return;
 
-	await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-weapon-${token.id}-*` });
+	await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-weapon-*`, object: token });
 	console.log(`${MODULE_ID} | Stopped all weapon animations for ${token.name}`);
 }
 
 /**
- * Parse the token id out of a weapon effect name.
- * Effect names are `${MODULE_ID}-weapon-${tokenId}-${itemId}`.
- * Returns null for non-weapon names.
- *
- * Assumes Foundry `randomID` output (alphanumeric, no hyphens) for token and
- * item ids. Custom or imported document ids are only required by
- * `DocumentIdField` to be a non-null string and could contain hyphens, in
- * which case this split on the first hyphen would truncate the true tokenId.
- * That case is not handled — see Torch parse comment for rationale.
+ * Parse the token id out of a LEGACY weapon effect name.
+ * Legacy names are `${MODULE_ID}-weapon-${tokenId}-${itemId}`. New names are
+ * `${MODULE_ID}-weapon-${itemId}` (no token); for new-format returns the
+ * itemId — hasHyphen guard at call-site spares it. Kept for transition
+ * compatibility and orphan-sweep fallback.
  * @param {string} rawName
  * @returns {string|null}
  */
@@ -430,16 +445,23 @@ export function parseWeaponTokenId(rawName) {
 }
 
 /**
- * End any `shadowdark-extras-weapon-*` effects whose token is no longer on the scene.
- * Runs unconditionally (idempotent) to mirror the torch orphan sweep.
+ * End any `shadowdark-extras-weapon-*` effects whose token is no longer on the
+ * scene. Runs unconditionally (idempotent) to mirror the torch orphan sweep.
  * Safe to call multiple times — sequencerEffectManagerReady may fire more than
  * once on scene switches.
+ *
+ * After #105 names are classification-only and token identity is via `source`.
+ * Orphan detection uses `effect.data.source` (UUID) rather than parsing tokenId.
+ * Termination uses `effects` ids to avoid validating a missing source string
+ * (dist:11720-11729) — see torch sweep for full rationale and dist refs.
  */
 export async function sweepOrphanWeaponEffects() {
 	const deps = checkDependencies();
 	if (!deps.hasSequencer) return;
 	const placeables = globalThis.canvas?.tokens?.placeables;
 	if (!placeables) return;
+	const viewedSceneId = globalThis.canvas?.scene?.id ?? globalThis.game?.user?.viewedScene ?? null;
+	const presentUuids = new Set(placeables.map(t => t.document?.uuid ?? (viewedSceneId && t.id ? `Scene.${viewedSceneId}.Token.${t.id}` : null) ?? t.document?.id).filter(Boolean));
 	const presentIds = new Set(placeables.map(t => t.id ?? t.document?.id).filter(Boolean));
 	let effects = [];
 	try {
@@ -466,7 +488,6 @@ export async function sweepOrphanWeaponEffects() {
 	// _filterEffects never checks sceneId (dist:11694-11703) and shouldPlay
 	// keeps creator's off-scene effects (dist:15145). Only sweep effects for
 	// the viewed scene; off-scene persistence must be spared.
-	const viewedSceneId = globalThis.canvas?.scene?.id ?? globalThis.game?.user?.viewedScene ?? null;
 	let relevantEffects = effects;
 	if (viewedSceneId) {
 		relevantEffects = effects.filter(eff => {
@@ -476,21 +497,38 @@ export async function sweepOrphanWeaponEffects() {
 		});
 		if (!relevantEffects.length) return;
 	}
-	const orphanTokenIds = new Set();
+	const orphanEffectIds = [];
 	for (const eff of relevantEffects) {
-		const rawName = eff.data?.name ?? eff.name ?? "";
-		const tokenId = parseWeaponTokenId(rawName);
-		if (!tokenId) continue;
-		if (!presentIds.has(tokenId)) orphanTokenIds.add(tokenId);
+		const source = eff.data?.source ?? eff.source ?? null;
+		const isUuid = typeof source === "string" && source.includes(".") && source.startsWith("Scene");
+		if (isUuid) {
+			if (!presentUuids.has(source)) {
+				const eid = eff.data?._id ?? eff.id ?? eff.data?.id;
+				if (eid) orphanEffectIds.push(eid);
+			}
+		}
+		else {
+			const rawName = eff.data?.name ?? eff.name ?? "";
+			const tokenId = parseWeaponTokenId(rawName);
+			if (!tokenId) continue;
+			const prefix = `${MODULE_ID}-weapon-`;
+			if (!rawName.startsWith(prefix)) continue;
+			let remainder = rawName.slice(prefix.length);
+			const hasHyphen = remainder.includes("-");
+			if (!hasHyphen) continue;
+			if (!presentIds.has(tokenId)) {
+				const eid = eff.data?._id ?? eff.id ?? eff.data?.id;
+				if (eid) orphanEffectIds.push(eid);
+			}
+		}
 	}
-	for (const orphanId of orphanTokenIds) {
-		try {
-			await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-weapon-${orphanId}-*` });
-			console.log(`${MODULE_ID} | Swept orphan weapon effects for token ${orphanId}`);
-		}
-		catch (e) {
-			/* ignore */
-		}
+	if (!orphanEffectIds.length) return;
+	try {
+		await Sequencer.EffectManager.endEffects({ effects: orphanEffectIds });
+		console.log(`${MODULE_ID} | Swept ${orphanEffectIds.length} orphan weapon effects`);
+	}
+	catch (e) {
+		/* ignore */
 	}
 }
 
@@ -635,8 +673,10 @@ export function initWeaponAnimations() {
 		const deps = checkDependencies();
 		if (!deps.hasSequencer) return;
 
-		// End all weapon effects for this token
-		await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-weapon-${tokenDoc.id}-*` });
+		// Verified alternative to `source: tokenDoc.uuid` string (dist:11720-11729
+		// would throw for deleted token via get_object_from_scene). Passing
+		// Document object validates via get_object_identifier (dist:475-480).
+		await Sequencer.EffectManager.endEffects({ name: `${MODULE_ID}-weapon-*`, source: tokenDoc });
 	});
 
 	// Check for equipped weapons when a new token is created
