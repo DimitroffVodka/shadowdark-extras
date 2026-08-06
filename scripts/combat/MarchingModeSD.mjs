@@ -864,18 +864,28 @@ function processCongaMovement() {
 		});
 
 		// After all tokens have moved one step, wait then move again
-		Promise.all(promises).then(() => {
-			// Combat may have started while the step's updates were in flight —
-			// don't re-schedule another step; the queue stops here.
-			if (isCombatStarted()) {
+		Promise.all(promises)
+			.then(() => {
+				// Combat may have started while the step's updates were in flight —
+				// don't re-schedule another step; the queue stops here.
+				if (isCombatStarted()) {
+					processingCongaMovement = false;
+					congaMovementPending = false;
+					return;
+				}
+				scheduleTimeout(() => {
+					moveAllTokensOneStep();
+				}, 100);
+			})
+			.catch(error => {
+				// A follower update rejected mid-step (e.g. the follower token was
+				// deleted or lost ownership mid-drag). Never wedge the queue: the
+				// normal completion reset never runs on this path, so reset the
+				// flags here to let the next leader move start a fresh conga.
 				processingCongaMovement = false;
 				congaMovementPending = false;
-				return;
-			}
-			scheduleTimeout(() => {
-				moveAllTokensOneStep();
-			}, 100);
-		});
+				console.warn(`${MODULE_ID} | Conga step failed; queue state reset:`, error);
+			});
 	}
 
 	// Start the movement
