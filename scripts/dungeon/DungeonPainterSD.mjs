@@ -795,7 +795,7 @@ async function handleRectangleFill(startPos, endPos, isDeleting) {
 	const scene = canvas.scene;
 	if (!scene || !startPos || !endPos) return;
 
-	const gridSize = canvas.grid.size || canvas.grid.size;
+	const gridSize = scene.grid?.size || canvas.grid?.size || GRID_SIZE;
 
 	// Calculate grid bounds
 	const minPx = Math.min(startPos.x, endPos.x);
@@ -943,7 +943,7 @@ async function handleRectangleDelete(startPos, endPos, doorsOnly) {
 	const scene = canvas.scene;
 	if (!scene) return;
 
-	const gridSize = canvas.grid.size || canvas.grid.size;
+	const gridSize = scene.grid?.size || canvas.grid?.size || GRID_SIZE;
 	const minPx = Math.min(startPos.x, endPos.x);
 	const maxPx = Math.max(startPos.x, endPos.x);
 	const minPy = Math.min(startPos.y, endPos.y);
@@ -994,7 +994,7 @@ async function handleDoorClick(event, isDeleting) {
 	const scene = canvas.scene;
 	if (!scene) return;
 
-	const gridSize = canvas.grid.size || canvas.grid.size;
+	const gridSize = scene.grid?.size || canvas.grid?.size || GRID_SIZE;
 	const pos = event.data?.getLocalPosition(canvas.stage) || event;
 
 	const gx = Math.floor(pos.x / gridSize);
