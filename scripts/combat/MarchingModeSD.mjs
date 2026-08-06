@@ -557,11 +557,25 @@ function getTokenOwnerName(token) {
 }
 
 /**
+ * Predicate: is a combat currently started on the active scene?
+ * Combat#started is true once round > 0; a created-but-unstarted tracker
+ * (round 0) must not suspend marching. game.combats.active is the active
+ * combat for the current canvas scene, unlike game.combat (the viewed
+ * tracker encounter).
+ */
+function isCombatStarted() {
+	return game.combats?.active?.started === true;
+}
+
+/**
  * Hook: Before token update
  */
 function onPreUpdateToken(tokenDoc, changes, options, userId) {
 	// Skip if no position change (use === undefined so a move to x/y === 0 still counts)
 	if (changes.x === undefined && changes.y === undefined) return true;
+
+	// During started combat, let any token move freely — no marching blocking.
+	if (isCombatStarted()) return true;
 
 	if (!marchingModeEnabled) return true;
 	if (!leaderTokenId) return true;
@@ -583,6 +597,10 @@ function onPreUpdateToken(tokenDoc, changes, options, userId) {
  */
 async function onUpdateToken(tokenDoc, changes, options, userId) {
 	if (!changes.x && !changes.y) return;
+
+	// During started combat, no path recording and no conga — followers act independently.
+	if (isCombatStarted()) return;
+
 	if (!marchingModeEnabled) return;
 	if (!leaderTokenId) return;
 
