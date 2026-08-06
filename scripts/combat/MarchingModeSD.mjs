@@ -771,51 +771,23 @@ function processCongaMovement() {
 		congaMovementPending = false;
 	};
 
-	// Get the leader token
-	const leaderToken = canvas.tokens.get(leaderTokenId);
-	if (!leaderToken) {
-		resetCongaQueue();
-		return;
-	}
+	// Setup state is function-scoped so the step closure below can read it,
+	// while the assignments themselves run inside the guarded setup try.
+	let leaderToken = null;
+	let sortedFollowers = [];
+	let followerStates = [];
 
-	// Get sorted followers
-	const sortedFollowers = Array.from(tokenFollowers.entries())
-		.sort((a, b) => a[1].marchPosition - b[1].marchPosition);
-
-	// Store followers' current positions and target indices
-	const followerStates = sortedFollowers.map(([tokenId, state]) => {
-		const token = canvas.tokens.get(tokenId);
-		if (!token) return null;
-
-		// Find where in the path the token currently is
-		let currentIndex = leaderMovementPath.length - 1;
-		let isOnPath = false;
-
-		for (let i = 0; i < leaderMovementPath.length; i++) {
-			const pathPoint = leaderMovementPath[i];
-			if (Math.abs(pathPoint.x - token.x) < 1 && Math.abs(pathPoint.y - token.y) < 1) {
-				currentIndex = i;
-				isOnPath = true;
-				break;
-			}
-		}
-
-		return {
-			token,
-			currentIndex,
-			targetIndex: state.marchPosition,
-			state,
-			isOnPath,
-		};
-	}).filter(f => f !== null);
-
-	// Move all tokens one step at a time
+	// Move all tokens one step at a time.
+	//
+	// INNER guard: the whole step body runs inside a try/catch. A synchronous
+	// throw (a torn-down token, an update() that throws before it returns a
+	// promise) escapes any promise .catch entirely — it would leave
+	// processingCongaMovement set forever and wedge the conga. This guard covers
+	// the DISPATCH and every SCHEDULED step: the recursion runs on a later timer
+	// tick, long after the outer guard around the setup below has exited, so
+	// only this inner try can catch a throw there. Do not merge the two guards —
+	// each covers a different call stack.
 	function moveAllTokensOneStep() {
-		// A synchronous throw (a torn-down token, an update() that throws before
-		// it returns a promise) escapes any promise .catch entirely — it would
-		// leave processingCongaMovement set forever and wedge the conga. So the
-		// whole step body runs inside a try/catch that resets the queue flags on
-		// ANY synchronous failure before surfacing it.
 		try {
 			if (!game.user.isGM) {
 				resetCongaQueue();
@@ -919,8 +891,65 @@ function processCongaMovement() {
 		}
 	}
 
-	// Start the movement
-	moveAllTokensOneStep();
+	// OUTER guard: the SETUP region plus the initial synchronous step call.
+	// processingCongaMovement is set above, and everything in this try runs on
+	// the same synchronous stack before moveAllTokensOneStep's inner try exists
+	// to catch it — canvas.tokens.get(...), the marchPosition sort comparator,
+	// and the token.x/token.y coordinate getters are exactly the accessors that
+	// throw on a destroyed/torn-down token. A throw here would otherwise die as
+	// an uncaught exception with the flag still set. This guard covers ONLY the
+	// synchronous stack; the inner guard inside covers every scheduled step on a
+	// later tick. Do not merge the two.
+	try {
+		// Get the leader token
+		leaderToken = canvas.tokens.get(leaderTokenId);
+		if (!leaderToken) {
+			resetCongaQueue();
+			return;
+		}
+
+		// Get sorted followers
+		sortedFollowers = Array.from(tokenFollowers.entries())
+			.sort((a, b) => a[1].marchPosition - b[1].marchPosition);
+
+		// Store followers' current positions and target indices
+		followerStates = sortedFollowers.map(([tokenId, state]) => {
+			const token = canvas.tokens.get(tokenId);
+			if (!token) return null;
+
+			// Find where in the path the token currently is
+			let currentIndex = leaderMovementPath.length - 1;
+			let isOnPath = false;
+
+			for (let i = 0; i < leaderMovementPath.length; i++) {
+				const pathPoint = leaderMovementPath[i];
+				if (Math.abs(pathPoint.x - token.x) < 1 && Math.abs(pathPoint.y - token.y) < 1) {
+					currentIndex = i;
+					isOnPath = true;
+					break;
+				}
+			}
+
+			return {
+				token,
+				currentIndex,
+				targetIndex: state.marchPosition,
+				state,
+				isOnPath,
+			};
+		}).filter(f => f !== null);
+
+		// Start the movement
+		moveAllTokensOneStep();
+	}
+	catch (error) {
+		// A synchronous throw while setting up the queue (torn-down token,
+		// destroyed document, a stale marchPosition entry). Reset the flags and
+		// log; do not rethrow — the queue never started and the next leader move
+		// tries again from clean flags.
+		resetCongaQueue();
+		console.warn(`${MODULE_ID} | Conga setup failed; queue state reset:`, error);
+	}
 }
 
 /**

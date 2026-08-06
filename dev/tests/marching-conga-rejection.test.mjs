@@ -16,7 +16,10 @@
 //   3. runs a fresh conga after the rejection — the exact step the bug breaks,
 //   4. forces a follower update to throw SYNCHRONOUSLY during dispatch (which
 //      escapes any promise .catch entirely) and proves the queue still resets,
-//   5. runs a fresh conga after the synchronous throw.
+//   5. runs a fresh conga after the synchronous throw,
+//   6. forces canvas.tokens.get to throw SYNCHRONOUSLY during SETUP (before any
+//      dispatch promise exists) and proves the queue still resets,
+//   7. runs a fresh conga after the setup throw.
 //
 // The module keeps its queue state module-scoped, so this is one ordered test
 // rather than a set of independent ones (same lifecycle pattern as
@@ -170,6 +173,25 @@ function installFollowerSyncThrow() {
 	};
 }
 
+/**
+ * canvas.tokens.get throws SYNCHRONOUSLY for one token id — the realistic
+ * teardown shape where processCongaMovement's setup hits a destroyed token
+ * while building followerStates, before any dispatch promise exists.
+ */
+function installTokenLookupSyncThrow(tokenId) {
+	const realGet = canvas.tokens.get;
+	canvas.tokens.get = (id) => {
+		if (id === tokenId) {
+			throw new Error("simulated setup-time token lookup failure");
+		}
+		return realGet(id);
+	};
+}
+
+function restoreTokenLookup() {
+	canvas.tokens.get = (id) => tokenById.get(id) ?? null;
+}
+
 function installLeader() {
 	leader = makeToken({ id: "leader-1", name: "Leader", x: 100, y: 100 });
 }
@@ -196,7 +218,7 @@ async function moveLeader(fromX, fromY, toX, toY) {
 	await onUpdateToken(leaderDoc, { x: toX, y: toY }, {}, "user-1");
 }
 
-test("a failed follower update — rejected or throwing synchronously — resets the conga queue so the next leader move restarts it", async () => {
+test("a failed follower update, a dispatch throw, or a setup throw resets the conga queue so the next leader move restarts it", async () => {
 	installTokens();
 	updateCalls.length = 0;
 
@@ -239,4 +261,22 @@ test("a failed follower update — rejected or throwing synchronously — resets
 	await moveLeader(500, 500, 600, 600);
 	await sleep(450);
 	assert.equal(updateCalls.length, 7, "a fresh conga runs after the synchronous throw (queue not wedged)");
+
+	// Phase 6 — SYNCHRONOUS throw during SETUP: canvas.tokens.get throws for
+	// the follower while processCongaMovement builds followerStates, before any
+	// dispatch promise exists. The queue must still reset its flags (no wedge)
+	// and must not have dispatched anything.
+	installTokenLookupSyncThrow("follower-1");
+	await moveLeader(600, 600, 700, 700);
+	await sleep(350);
+	assert.equal(updateCalls.length, 7, "setup failure prevents any dispatch");
+	await sleep(300);
+	assert.equal(updateCalls.length, 7, "queue stops after a setup throw (no hidden steps)");
+
+	// Phase 7 — recovery after the setup throw: the next leader move starts a
+	// fresh conga and walks the follower the remaining two steps.
+	restoreTokenLookup();
+	await moveLeader(700, 700, 800, 800);
+	await sleep(450);
+	assert.equal(updateCalls.length, 9, "a fresh conga runs after the setup throw (queue not wedged)");
 });
