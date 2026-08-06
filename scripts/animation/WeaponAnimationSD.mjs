@@ -659,12 +659,25 @@ export function initWeaponAnimations() {
 	});
 
 	// Restore animations on scene ready
+	// Weapon stays on canvasReady (torch moved to sequencerEffectManagerReady;
+	// see TorchAnimationSD for asymmetry rationale). Weapon has zero persisted
+	// records today (see #110), so there is no Sequencer double-restore to
+	// order against — Sequencer readiness is irrelevant for weapon and
+	// canvasReady is the earliest correct signal. The GM election is the
+	// only gate that needed fixing.
 	Hooks.on("canvasReady", async () => {
-		// GM-authoritative election — only the active GM restores animations
+		// GM-authoritative election — only the active GM restores animations.
+		// activeGM is not populated at canvasReady t=0 on a fresh load (see #110),
+		// so the gate must not be evaluated before state has had a chance to settle.
+		// Bounded poll replaces the fixed 500ms sleep that previously raced the
+		// unobserved user-sync transition and sat after the gate.
+		const timeoutMs = 2000;
+		const intervalMs = 100;
+		const start = Date.now();
+		while (!globalThis.game?.users?.activeGM && Date.now() - start < timeoutMs) {
+			await new Promise(resolve => setTimeout(resolve, intervalMs));
+		}
 		if (!isWeaponCanvasRestoreAllowed()) return;
-
-		// Small delay to ensure everything is loaded
-		await new Promise(resolve => setTimeout(resolve, 500));
 
 		// Check all tokens for equipped weapons/shields with animations
 		for (const token of canvas.tokens.placeables) {

@@ -229,7 +229,7 @@
       "Hooks.on:updateItem",
       "Hooks.on:updateToken",
       "Hooks.on:sequencerEffectManagerReady",
-      "Hooks.on:canvasReady",
+      "Hooks.on:sequencerEffectManagerReady",
       "Hooks.on:deleteToken",
       "Hooks.on:createToken"
     ],

@@ -311,7 +311,10 @@ test("initTorchAnimations wires sweep to sequencerEffectManagerReady, not just c
 	initTorchAnimations();
 	globalThis.Hooks = origHooks;
 	assert.ok(hooks.includes("sequencerEffectManagerReady"), "sweep must be hooked to sequencerEffectManagerReady (dist:11953) — getEffects at canvasReady t=0 is empty (dist:30881)");
-	assert.ok(hooks.includes("canvasReady"), "GM restore still on canvasReady");
+	// After #110 torch restore also on sequencerEffectManagerReady (not canvasReady) so
+	// our dedup sees Sequencer's restored copy before replaying — net one, not duplicate.
+	assert.ok(hooks.filter(h => h === "sequencerEffectManagerReady").length >= 2, "torch restore must also be on sequencerEffectManagerReady (see #110 double-restore — canvasReady races Sequencer and produced duplicate)");
+	assert.ok(!hooks.includes("canvasReady"), "torch restore no longer on canvasReady — canvasReady raced Sequencer restore");
 });
 
 test("activeGM election: restores on GM, not on first-active non-GM", () => {

@@ -614,12 +614,34 @@ export function initTorchAnimations() {
 	});
 
 	// Also hook into when an active light source is detected on scene ready
-	Hooks.on("canvasReady", async () => {
-		// GM-authoritative election — only the active GM restores animations
+	// Torch restore must run AFTER Sequencer has populated its manager
+	// (sequencerEffectManagerReady, dist:11953, +125-475ms after canvasReady)
+	// so our dedup (:173-174) sees Sequencer's restored copy before playing
+	// a fresh one — net one effect, not duplicate. The signal is Sequencer
+	// readiness, not user sync, so the activeGM poll is still required inside.
+	// Asymmetry with WeaponAnimationSD (which stays on canvasReady): weapon
+	// has zero persisted records today, so no Sequencer double-restore to
+	// order against; torch has persisted flames and would otherwise race
+	// Sequencer (canvasReady ~0-100ms poll exit vs 125-475ms restore → net 6).
+	// sequencerEffectManagerReady fires even when there is nothing to restore
+	// (initializePersistentEffects does Promise.all([]) → resolves, dist:11919-11953),
+	// so this handler still runs on first load / empty journal. If Sequencer
+	// is absent, playTorchAnimation is a no-op via checkDependencies.
+	// NOTE: This handler churns the persisted record on every load — Sequencer
+	// restores the flame, we dedup it away (endEffects object-scoped), then
+	// replay with .persist() which rewrites the sequencerDatabase journal.
+	// Net one visible flame, no flicker (end+play in same microtask), but the
+	// journal write cycles. Avoiding churn would require skipping replay when
+	// the restored effect already matches current config — out of scope for #110.
+	Hooks.on("sequencerEffectManagerReady", async () => {
+		// Bounded poll for user sync — activeGM not ready at t=0 (see #110)
+		const timeoutMs = 2000;
+		const intervalMs = 100;
+		const start = Date.now();
+		while (!globalThis.game?.users?.activeGM && Date.now() - start < timeoutMs) {
+			await new Promise(resolve => setTimeout(resolve, intervalMs));
+		}
 		if (!isTorchCanvasRestoreAllowed()) return;
-
-		// Small delay to ensure everything is loaded
-		await new Promise(resolve => setTimeout(resolve, 500));
 
 		// Check all tokens for active light sources
 		for (const token of canvas.tokens.placeables) {
