@@ -11,7 +11,7 @@ import { MODULE_ID } from "../shared/module-id.mjs";
  * 4. Inventory: Containers, Nested Containers, Trading, Unidentified, Multi-select
  * 5. Carousing: Enable Carousing, Mode, Table menus
  * 6. NPC Features: NPC Inventory, Creature Type
- * 7. Visual & Animation: Torch Animations
+ * 7. Visual & Animation: Torch Animations, Weapon Animations, Level Up
  * 8. SDX Rolls: All SDX Rolls settings
  */
 export function setupSettingsOrganization() {

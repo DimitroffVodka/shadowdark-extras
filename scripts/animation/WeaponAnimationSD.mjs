@@ -25,6 +25,39 @@ function isEnabled() {
 }
 
 /**
+ * Resolve the weapon animation config per documented 3-step order:
+ *   1. configOverride — live preview from the config dialog
+ *   2. per-item flag   — what the Weapon Animation dialog saved
+ *   3. master list     — pattern-matched default from the Animation FX list
+ * An explicit `enabled: false` on the per-item flag (or configOverride) is
+ * terminal — it short-circuits the master list. No flag (undefined) still
+ * falls through to the master list. Shared predicate for all three entry
+ * points so they agree on what animates.
+ * @param {Item} item
+ * @param {object|null} configOverride
+ * @returns {object|null}
+ */
+export function getResolvedWeaponAnimation(item, configOverride = null) {
+	let animConfig = configOverride ?? item.getFlag(MODULE_ID, "weaponAnimation");
+	if (animConfig?.enabled === false) return null; // explicit disable is terminal
+	if (!animConfig?.enabled || !animConfig?.imagePath) {
+		animConfig = AnimationFxSD.resolveWeaponSprite(item);
+	}
+	if (!animConfig?.enabled || !animConfig?.imagePath) return null;
+	return animConfig;
+}
+
+/**
+ * Whether this item resolves to any weapon animation (per-item or master list).
+ * Single shared predicate used by updateItem / canvasReady / createToken.
+ * @param {Item} item
+ * @returns {boolean}
+ */
+export function hasWeaponAnimation(item) {
+	return !!getResolvedWeaponAnimation(item);
+}
+
+/**
  * Check if required modules are active
  */
 function checkDependencies() {
@@ -177,8 +210,9 @@ function getImageName(filePath) {
  * @param {Token} token - The token to animate
  * @param {Item} item - The weapon item
  * @param {Object|null} configOverride - Optional config object for live preview (skips DB read)
+ * @param {string|null} userId - Origin user id for equip events; null = no origin gate (e.g. restore)
  */
-export async function playWeaponAnimation(token, item, configOverride = null) {
+export async function playWeaponAnimation(token, item, configOverride = null, userId = null) {
 	if (!isEnabled()) return;
 
 	const deps = checkDependencies();
@@ -204,18 +238,16 @@ export async function playWeaponAnimation(token, item, configOverride = null) {
 		return;
 	}
 
-	// Resolution order:
-	//   1. configOverride  — live preview from the config dialog
-	//   2. per-item flag   — what the Weapon Animation dialog saved
-	//   3. master list     — pattern-matched default from the Animation FX list
-	// Without (3) every weapon had to be configured by hand, one dialog at a time.
-	let animConfig = configOverride ?? item.getFlag(MODULE_ID, "weaponAnimation");
-	if (!animConfig?.enabled || !animConfig?.imagePath) {
-		animConfig = AnimationFxSD.resolveWeaponSprite(item);
+	const animConfig = getResolvedWeaponAnimation(item, configOverride);
+	if (!animConfig) {
+		await stopWeaponAnimation(token, item.id); // was animating, now disabled/no-match — terminate
+		return;
 	}
-	if (!animConfig?.enabled || !animConfig?.imagePath) {
-		return; // No animation configured and no master-list match
-	}
+
+	// Equip play is origin-gated; stop above is not. A disabled equip is
+	// cleanup and must run on every client, but a new play must not duplicate
+	// across clients. See #107/#102 ordering discussion.
+	if (userId !== null && userId !== game.user.id) return;
 
 	const effectName = getEffectName(item.id);
 
@@ -599,31 +631,21 @@ export function initWeaponAnimations() {
 			return;
 		}
 
-		// Check if this weapon has animation config
-		const animConfig = item.getFlag(MODULE_ID, "weaponAnimation");
-		if (!animConfig?.enabled) {
-			// No animation config — still allow unconditional stop on unequip
-			if (!isEquipped) {
-				for (const token of getTokensForActor(actor)) {
-					await stopWeaponAnimation(token, item.id);
-				}
+		// Stop is unconditional on unequip — every client ends its own copy
+		// (must survive regardless of config; see #102).
+		if (!isEquipped) {
+			for (const token of getTokensForActor(actor)) {
+				await stopWeaponAnimation(token, item.id);
 			}
 			return;
 		}
 
-		// Get all tokens for this actor
-		const tokens = getTokensForActor(actor);
-
-		for (const token of tokens) {
-			if (isEquipped) {
-				// Play is origin-gated — duplicates are the bug
-				if (userId !== game.user.id) continue;
-				await playWeaponAnimation(token, item);
-			}
-			else {
-				// Stop is unconditional — every client ends its own copy
-				await stopWeaponAnimation(token, item.id);
-			}
+		// Equipped: let playWeaponAnimation decide — it will play if enabled
+		// (origin-gated inside) or stop if disabled/no-match (unconditional).
+		// No pre-filter here; see #107 — entry-point predicate duplicated the
+		// decision and went stale. Single predicate inside play keeps them in sync.
+		for (const token of getTokensForActor(actor)) {
+			await playWeaponAnimation(token, item, null, userId);
 		}
 	});
 
@@ -653,14 +675,15 @@ export function initWeaponAnimations() {
 				continue;
 			}
 
-			// Get all equipped items with animation config
+			// Every equipped Weapon/Armor — let playWeaponAnimation decide to play or stop.
+			// No hasWeaponAnimation pre-filter here; see #107. Play will stop
+			// disabled/no-match items (unconditional cleanup) or play enabled ones.
 			const equippedItems = actor.items.filter(i =>
 				(i.type === "Weapon" || i.type === "Armor") &&
-                i.system?.equipped === true &&
-                i.getFlag(MODULE_ID, "weaponAnimation")?.enabled
+                i.system?.equipped === true
 			);
 
-			// Play animation for each equipped item
+			// Play (or stop) animation for each equipped item
 			for (const item of equippedItems) {
 				await playWeaponAnimation(token, item);
 			}
@@ -697,14 +720,14 @@ export function initWeaponAnimations() {
 			return;
 		}
 
-		// Get all equipped items with animation config
+		// Every equipped Weapon/Armor — let playWeaponAnimation decide to play or stop.
+		// No hasWeaponAnimation pre-filter; play will stop disabled/no-match items.
 		const equippedItems = actor.items.filter(i =>
 			(i.type === "Weapon" || i.type === "Armor") &&
-            i.system?.equipped === true &&
-            i.getFlag(MODULE_ID, "weaponAnimation")?.enabled
+            i.system?.equipped === true
 		);
 
-		// Play animation for each equipped item
+		// Play (or stop) animation for each equipped item
 		for (const item of equippedItems) {
 			await playWeaponAnimation(token, item);
 		}
