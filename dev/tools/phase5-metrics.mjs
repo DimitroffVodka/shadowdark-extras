@@ -1,5 +1,12 @@
 /**
- * Phase 5.3 metrics for the effects/combat/animation ownership boundary.
+ * Phase 5.3 metrics for first-party `scripts/`.
+ *
+ * Scope note: this measured only `scripts/effects`, `scripts/combat` and
+ * `scripts/animation` (the sweep-4 roots) until 2026-08-06. That made it report
+ * clean on territory it had never looked at — 3 files over the review threshold
+ * when the repository actually had 10 — so it could not be used to judge sweeps
+ * 5-7 or the strict closeout. Widened to all of `scripts`; `scripts/maphub/**`
+ * stays excluded as vendored via `includeVendor: false`.
  *
  * This is intentionally a small, dependency-free inventory. It reports newline
  * counts (the same physical-line convention as `wc -l`), classifies console calls
@@ -14,7 +21,7 @@ import { fileURLToPath } from "node:url";
 import { maskSource } from "./import-scan.mjs";
 import { isVendor, listJsFiles, REPO_ROOT, toRepoPath } from "./project-scan.mjs";
 
-export const OWNED_ROOTS = ["scripts/effects", "scripts/combat", "scripts/animation"];
+export const OWNED_ROOTS = ["scripts"];
 export const LINE_THRESHOLDS = { review: 1200, split: 2000 };
 const CONSOLE_CALL = /console\.[A-Za-z_$][\w$]*\s*\(/;
 

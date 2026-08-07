@@ -59,9 +59,20 @@ test("the current first-party inventory is measured at the checked-in Git SHA", 
   const metrics = collectPhase5Metrics();
   assert.equal(metrics.schema, "phase5-metrics-v1");
   assert.match(metrics.gitSha, /^[0-9a-f]{40}$/);
-  assert.equal(metrics.firstParty.files, 59);
-  assert.equal(metrics.firstParty.physicalLines, 28971);
-  assert.equal(metrics.firstParty.activeConsole, 423);
+
+  // Scope regression guard. Until 2026-08-06 this tool measured only the three
+  // sweep-4 roots and therefore reported clean on the rest of scripts/ — it saw
+  // 3 files over the review threshold when the repo had 10. Assert the scope
+  // itself, so narrowing it again fails here rather than silently under-reporting.
+  assert.deepEqual(metrics.roots, ["scripts"]);
+  assert.ok(metrics.firstParty.files >= 250,
+    `expected whole-tree scope, measured only ${metrics.firstParty.files} files`);
+  assert.ok(metrics.firstParty.physicalLines >= 110_000,
+    `expected whole-tree scope, measured only ${metrics.firstParty.physicalLines} lines`);
+
+  // Exact totals are deliberately NOT asserted: with the roots widened to all of
+  // scripts/ they would churn on nearly every commit. The gates below are the
+  // acceptance criteria that actually matter, and they are asserted exactly.
   assert.equal(metrics.firstParty.commentedConsole, 0);
   assert.deepEqual(metrics.over2000, []);
 });
