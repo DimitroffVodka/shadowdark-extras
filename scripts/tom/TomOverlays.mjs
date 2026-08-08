@@ -9,7 +9,6 @@ export const TOM_OVERLAYS = [
 	{ name: "Dust", file: "dust.webm" },
 	{ name: "Campfire", file: "campfire.webm" },
 	{ name: "Burning", file: "burning.webm" },
-	{ name: "Gold", file: "gold.webm" },
 	{ name: "Purple", file: "purple.webm" },
 	{ name: "Light", file: "light.webm" },
 	{ name: "Storm", file: "storm.webm" },

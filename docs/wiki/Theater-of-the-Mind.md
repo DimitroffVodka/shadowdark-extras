@@ -150,7 +150,6 @@ The inline strip is driven by `scripts/tom/TomOverlays.mjs` (`TOM_OVERLAY_BASE` 
 | Dust | `dust.webm` | webm |
 | Campfire | `campfire.webm` | webm |
 | Burning | `burning.webm` | webm |
-| Gold | `gold.webm` | webm | *(recolored Aug 8 — was identical to Purple, now true gold)* |
 | Purple | `purple.webm` | webm |
 | Light | `light.webm` | webm |
 | Storm | `storm.webm` | webm |
@@ -170,7 +169,7 @@ The inline strip is driven by `scripts/tom/TomOverlays.mjs` (`TOM_OVERLAY_BASE` 
 The strip lives at `templates/sdx-tray/tray.hbs#tom-overlays-inline` (inside `scenes-view`, gated on `tomActiveSceneId`). Shape per `TomOverlays.mjs`:
 
 - Header `tom-overlays-inline-header[data-action="tom-overlays-toggle"]` — label + count `tom-overlays-count` (`(n)`) + `Clear all` button (`tom-overlay-clear`). The header toggles the strip (`collapsed` / `hidden` + `fa-chevron-down/right`, `aria-expanded`); `Clear all` uses `stopPropagation` so it never collapses the section.
-- List `tom-overlays-inline-list` → `button.tom-overlay-inline-item[data-overlay-path][data-action="tom-overlay-toggle"]` (preview `fa-play`, name, `tom-overlay-inline-check`). Up to 21 pills in a two-column grid; each click toggles that overlay in place. The list's scroll is snapshot-preserved (`tray-scroll-state.mjs` + `sdx.tomOverlayChanged`) so rapid audition does not jump to the top.
+- List `tom-overlays-inline-list` → `button.tom-overlay-inline-item[data-overlay-path][data-action="tom-overlay-toggle"]` (preview `fa-play`, name, `tom-overlay-inline-check`). Up to 20 pills in a two-column grid; each click toggles that overlay in place. The list's scroll is snapshot-preserved (`tray-scroll-state.mjs` + `sdx.tomOverlayChanged`) so rapid audition does not jump to the top.
 - Compat floating panel `tom-panels.mjs#_toggleTomOverlayPanel` keeps the same set in sync for any lingering callers; the old `tray-handle-button-tool[data-action="tom-overlay-manager"]` is removed from `tray.hbs` and `TrayHandleBindings`.
 
 ### Stacking + multi-select

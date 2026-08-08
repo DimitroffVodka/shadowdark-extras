@@ -76,7 +76,7 @@ folder-local Scene Navigation Bar are documented in
 [Theater of the Mind](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Theater-of-the-Mind).
 That page covers the full workflow (create → file into folders → broadcast →
 overlays (multi-select stack) → nav → stop), the scene record and editor fields (including Overlay Scale), the Scenes tab (collapsible inline strip) and
-inline header, broadcasting and the player view/arena, every arena grid style, all 21
+inline header, broadcasting and the player view/arena, every arena grid style, all 20
 video overlays, the navigation bar, storage/settings, GM-versus-player
 differences, and troubleshooting. The interactive demo is at
 [Theater of the Mind demo](https://dimitroffvodka.github.io/shadowdark-extras/docs/demo/theater-of-the-mind.html).
