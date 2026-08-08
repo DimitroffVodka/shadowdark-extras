@@ -4,6 +4,8 @@
 
 Theater of the Mind (ToM) presentation scenes — fullscreen image or video backdrops you broadcast to the whole table, with optional arena grids, video overlays, and a scene-to-scene nav bar. They are presentation records; Foundry canvas Scenes are separate documents.
 
+![Fighting Pit broadcast — fullscreen arena with isometric grid and stacked overlays](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/tom-player-view-arena.webp)
+
 ---
 
 ## Where it lives
@@ -48,6 +50,8 @@ Source: [`scripts/tom/TomSceneModel.mjs`](https://github.com/DimitroffVodka/shad
 
 ## Scene editor
 
+![Edit Scene — live preview with arena grid and Overlay Scale](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/tom-scene-editor.webp)
+
 `TomSceneEditor` (`templates/tom-scene-editor.hbs`) — a simple `ApplicationV2` form:
 
 - **Name** — `input[name="name"]`, placeholder `New Scene`, required.
@@ -69,6 +73,8 @@ Source: [`templates/tom-scene-editor.hbs`](https://github.com/DimitroffVodka/sha
 ---
 
 ## Library (Scenes tab)
+
+![Scenes tab — inline Overlays strip with 20 pills, 2 active](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/tom-scenes-tray.webp)
 
 Rendered from `templates/sdx-tray/tray.hbs` (`scenes-view`) via `TrayApp._getTomScenes()` / `_getTomFolders()` and bound in `scripts/tray/tom-scene-bindings.mjs`.
 
