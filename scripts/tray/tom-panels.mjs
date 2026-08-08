@@ -48,10 +48,10 @@ export const TomPanels = {
 		}
 
 		// Available overlays — single source via TomOverlays.mjs; TrayApp + this compat panel share it.
-		const { TOM_OVERLAYS, TOM_OVERLAY_BASE: _TOM_BASE } = await import("../tom/TomOverlays.mjs");
+		const { TOM_OVERLAYS, TOM_OVERLAY_BASE } = await import("../tom/TomOverlays.mjs");
 		const overlays = TOM_OVERLAYS;
 
-		const basePath = _TOM_BASE;
+		const basePath = TOM_OVERLAY_BASE;
 
 		// Get current overlays from TomStore (multi-select)
 		const { TomStore } = await import("../tom/TomStore.mjs");
