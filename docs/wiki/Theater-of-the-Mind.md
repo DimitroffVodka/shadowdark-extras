@@ -18,13 +18,9 @@ Theater of the Mind (ToM) presentation scenes — fullscreen image or video back
 
 ## Workflow
 
-<video controls muted playsinline poster="https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/tom-walkthrough-poster.webp" style="max-width:100%; border-radius:8px;">
-  <source src="https://raw.githubusercontent.com/DimitroffVodka/shadowdark-extras/main/assets/Tom/tom-walkthrough.webm" type="video/webm" />
-  <source src="https://raw.githubusercontent.com/DimitroffVodka/shadowdark-extras/main/assets/Tom/tom-walkthrough.mp4" type="video/mp4" />
-  Your browser does not support the video tag. <a href="https://raw.githubusercontent.com/DimitroffVodka/shadowdark-extras/main/assets/Tom/tom-walkthrough.webm">Download the walkthrough</a>.
-</video>
+[![Theater of the Mind walkthrough — click to play](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/tom-walkthrough-poster.webp)](https://raw.githubusercontent.com/DimitroffVodka/shadowdark-extras/main/docs/demo/videos/tom-walkthrough.webm)
 
-*29 s, no audio — create → broadcast → overlays (multi-select) → arena scale → nav → stop. Captured at 1280×804.*
+*29 s, no audio — [Watch the walkthrough](https://raw.githubusercontent.com/DimitroffVodka/shadowdark-extras/main/docs/demo/videos/tom-walkthrough.webm) (also [MP4](https://raw.githubusercontent.com/DimitroffVodka/shadowdark-extras/main/docs/demo/videos/tom-walkthrough.mp4)) — create → broadcast → overlays (multi-select) → arena scale → nav → stop. Or view it embedded on the [interactive demo](https://dimitroffvodka.github.io/shadowdark-extras/docs/demo/theater-of-the-mind.html).* (GitHub wikis strip `<video>` tags, so the clip is linked rather than inlined.)
 
 1. **Create.** Click `Create New Scene` in the Scenes tab header. Fill in the editor, then `Save Changes`. The preview updates the arena grid live as you adjust `Overlay Scale`.
 2. **File.** Drag scene cards between folders to file them (drag-over highlights), or leave them in `Uncategorized`. Collapse folders with the chevron; rename or delete them with the header actions.
