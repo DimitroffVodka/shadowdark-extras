@@ -47,36 +47,11 @@ export const TomPanels = {
 			return;
 		}
 
-		// Available overlays — single source of truth is
-		// scripts/tom/TomOverlays.mjs; this compat panel mirrors it so the
-		// inline tray (tray.hbs + TrayApp.mjs) and this floating panel never
-		// drift apart. Keep in sync or import that module at call time.
-		const overlays = [
-			{ name: "Fire", file: "fire.webm" },
-			{ name: "Snow", file: "snow.webm" },
-			{ name: "Wind", file: "wind.webm" },
-			{ name: "Rain", file: "rain.webm" },
-			{ name: "Dust", file: "dust.webm" },
-			{ name: "Campfire", file: "campfire.webm" },
-			{ name: "Burning", file: "burning.webm" },
-			{ name: "Gold", file: "gold.webm" },
-			{ name: "Purple", file: "purple.webm" },
-			{ name: "Light", file: "light.webm" },
-			{ name: "Storm", file: "storm.webm" },
-			{ name: "Fog", file: "fog.webm" },
-			{ name: "Gente Snow", file: "gentlesnow.mp4" },
-			{ name: "Light Rain", file: "lightrain.mp4" },
-			{ name: "Slow Snow", file: "slowsnow.mp4" },
-			{ name: "Light Snow", file: "lightsnow.mp4" },
-			{ name: "Blue Rays", file: "bluerays.mp4" },
-			{ name: "Embers", file: "embers.mp4" },
-			{ name: "Sparks", file: "sparks.mp4" },
-			{ name: "Glow", file: "aurora.mp4" },
-			{ name: "Aurora-green", file: "aurora2.mp4" },
+		// Available overlays — single source via TomOverlays.mjs; TrayApp + this compat panel share it.
+		const { TOM_OVERLAYS, TOM_OVERLAY_BASE: _TOM_BASE } = await import("../tom/TomOverlays.mjs");
+		const overlays = TOM_OVERLAYS;
 
-		];
-
-		const basePath = "modules/shadowdark-extras/assets/Tom/overlays/";
+		const basePath = _TOM_BASE;
 
 		// Get current overlays from TomStore (multi-select)
 		const { TomStore } = await import("../tom/TomStore.mjs");

@@ -51,6 +51,10 @@ export const TomSceneBindings = {
 			if (e.target.closest("[data-action='tom-overlay-clear']")) return;
 			e.preventDefault();
 			this._tomOverlaysCollapsed = !this._tomOverlaysCollapsed;
+			try {
+				globalThis.localStorage?.setItem("sdx.tomOverlaysCollapsed", String(this._tomOverlaysCollapsed));
+			}
+			catch{ /* no-op */ }
 			this.render();
 		});
 		// Clear all must not bubble to the toggle handler above.
@@ -75,8 +79,7 @@ export const TomSceneBindings = {
 			});
 		});
 		// Back-compat: old tray dom used tom-overlay-set as a single-select
-		// click. Keep it working (adds without removing) so stale docs/tests
-		// don't break — map to the same toggle for now.
+		// click. Map it to toggle so stale callers stack correctly.n't break — map to the same toggle for now.
 		elem.querySelectorAll("[data-action='tom-overlay-set']").forEach(btn => {
 			btn.addEventListener("click", async e => {
 				e.preventDefault();

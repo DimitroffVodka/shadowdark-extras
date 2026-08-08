@@ -58,7 +58,13 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		this._pinSearchTerm = "";
 		this._scrollPositions = {}; // Store scroll positions for tile grids
 		this._generatorExpanded = false; // Store procedural generator panel state
-		this._tomOverlaysCollapsed = false;
+		try {
+			const saved = globalThis.localStorage?.getItem("sdx.tomOverlaysCollapsed");
+			this._tomOverlaysCollapsed = saved === "true";
+		}
+		catch{
+			this._tomOverlaysCollapsed = false;
+		}
 
 		// Store static reference
 		TrayApp._instance = this;

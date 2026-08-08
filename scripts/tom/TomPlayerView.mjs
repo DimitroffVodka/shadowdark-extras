@@ -1,5 +1,6 @@
 import { TOM_CONFIG as CONFIG } from "./TomConfig.mjs";
 import { TomStore as Store } from "../tom/TomStore.mjs";
+import { arenaSvgForType } from "./TomArenaSvg.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -49,6 +50,16 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		super._onRender(context, options);
 		this._setFoundryUIOffsets();
 		this._ensureVideoPlays();
+		if (this.uiState.active) {
+			import("./TomSocketHandler.mjs").then(({ TomSocketHandler }) => {
+				try {
+					TomSocketHandler.syncOverlaysToDom();
+				}
+				catch(err) {
+				/* no-op */
+				}
+			}).catch(() => {});
+		}
 
 		// Apply in-animation when scene activates
 		if (this.uiState.isSceneTransition && this.uiState.active) {
@@ -768,6 +779,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 			isGM: game.user.isGM,
 
 			isArena: scene?.isArena || false,
+			arenaSvg: scene?.isArena ? arenaSvgForType(scene.arenaType) : "",
 
 			arenaTokens: Array.from(this.uiState.arenaTokens.values()).map(token => {
 				const typeLower = token.actorType?.toLowerCase() || "";
@@ -990,6 +1002,14 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 	static refresh() {
 		if (this._instance && this._instance.uiState.active) {
 			this._instance.render();
+			import("./TomSocketHandler.mjs").then(({ TomSocketHandler }) => {
+				try {
+					TomSocketHandler.syncOverlaysToDom();
+				}
+				catch(err) {
+				/* no-op */
+				}
+			}).catch(() => {});
 		}
 	}
 
