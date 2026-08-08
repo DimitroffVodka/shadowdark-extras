@@ -13,9 +13,9 @@ const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
 /**
  * Wiki screenshots are WebP since the asset conversion; a few may still be PNG.
- * Validate the magic bytes actually match the extension, so a mis-renamed or
- * truncated file is caught rather than silently served as a broken image.
- * WebP is a RIFF container: "RIFF" <4-byte size> "WEBP".
+ * The ToM walkthrough is a GIF (GitHub wikis strip <video>, so only ![gif]
+ * inlines and autoplays). Validate magic bytes match the extension.
+ * WebP is RIFF: "RIFF" <size> "WEBP"; GIF is "GIF87a" or "GIF89a".
  */
 function imageSignatureError(name, buffer) {
   if (name.toLowerCase().endsWith(".webp")) {
@@ -26,7 +26,11 @@ function imageSignatureError(name, buffer) {
   if (name.toLowerCase().endsWith(".png")) {
     return buffer.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE) ? null : "is not a valid PNG";
   }
-  return "has an unexpected image extension (expected .webp or .png)";
+  if (name.toLowerCase().endsWith(".gif")) {
+    const sig = buffer.subarray(0, 6).toString("latin1");
+    return sig === "GIF87a" || sig === "GIF89a" ? null : "is not a valid GIF";
+  }
+  return "has an unexpected image extension (expected .webp, .png, or .gif)";
 }
 
 test("Wiki links use published page routes and valid published images", async () => {
