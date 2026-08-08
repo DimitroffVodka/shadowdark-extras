@@ -18,6 +18,14 @@ Theater of the Mind (ToM) presentation scenes — fullscreen image or video back
 
 ## Workflow
 
+<video controls muted playsinline poster="https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/tom-walkthrough-poster.webp" style="max-width:100%; border-radius:8px;">
+  <source src="https://raw.githubusercontent.com/DimitroffVodka/shadowdark-extras/main/assets/Tom/tom-walkthrough.webm" type="video/webm" />
+  <source src="https://raw.githubusercontent.com/DimitroffVodka/shadowdark-extras/main/assets/Tom/tom-walkthrough.mp4" type="video/mp4" />
+  Your browser does not support the video tag. <a href="https://raw.githubusercontent.com/DimitroffVodka/shadowdark-extras/main/assets/Tom/tom-walkthrough.webm">Download the walkthrough</a>.
+</video>
+
+*29 s, no audio — create → broadcast → overlays (multi-select) → arena scale → nav → stop. Captured at 1280×804.*
+
 1. **Create.** Click `Create New Scene` in the Scenes tab header. Fill in the editor, then `Save Changes`. The preview updates the arena grid live as you adjust `Overlay Scale`.
 2. **File.** Drag scene cards between folders to file them (drag-over highlights), or leave them in `Uncategorized`. Collapse folders with the chevron; rename or delete them with the header actions.
 3. **Broadcast.** Click the card's thumbnail or name (`Click to Broadcast`). The `Play` overlay marks the active card. In Foundry this fans out via `game.socket` on `module.shadowdark-extras` — the live player view appears for every client.
