@@ -76,7 +76,7 @@ export class HpWavesSettingsApp extends HandlebarsApplicationMixin(ApplicationV2
 		if (!html) return;
 
 		// Add new ancestry color row
-		html.querySelector(".sdx-add-ancestry")?.addEventListener("click", (ev) => {
+		html.querySelector(".sdx-add-ancestry")?.addEventListener("click", ev => {
 			ev.preventDefault();
 			const list = html.querySelector(".sdx-ancestry-list");
 			if (!list) return;
@@ -99,7 +99,7 @@ export class HpWavesSettingsApp extends HandlebarsApplicationMixin(ApplicationV2
 		});
 
 		// Remove ancestry color row (event delegation)
-		html.addEventListener("click", (ev) => {
+		html.addEventListener("click", ev => {
 			const removeBtn = ev.target.closest(".sdx-remove-ancestry");
 			if (!removeBtn) return;
 			ev.preventDefault();
@@ -123,7 +123,7 @@ export class HpWavesSettingsApp extends HandlebarsApplicationMixin(ApplicationV2
 		});
 
 		// Reset to defaults
-		html.querySelector(".sdx-reset-defaults")?.addEventListener("click", async (ev) => {
+		html.querySelector(".sdx-reset-defaults")?.addEventListener("click", async ev => {
 			ev.preventDefault();
 			const confirmed = await foundry.applications.api.DialogV2.confirm({
 				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.hp_waves.reset_confirm_title") },

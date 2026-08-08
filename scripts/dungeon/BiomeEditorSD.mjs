@@ -23,7 +23,7 @@ const FilePickerImpl = foundry.applications.apps.FilePicker?.implementation ?? g
 
 /** Read a biome row's input values into a definition object. */
 function readRow(row) {
-	const q = (sel) => row?.querySelector(sel);
+	const q = sel => row?.querySelector(sel);
 	const props = (q(".biome-props")?.value || "")
 		.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 	return {
@@ -41,7 +41,7 @@ function pickImage(current, onPick) {
 		const fp = new FilePickerImpl({ type: "imagevideo", current: current || "", callback: onPick });
 		fp.render(true);
 	}
-	catch (e) {
+	catch(e) {
 		ui.notifications?.error(`Could not open file picker: ${e.message}`);
 	}
 }
@@ -97,7 +97,7 @@ export class BiomeEditorSD extends HandlebarsApplicationMixin(ApplicationV2) {
 	static onBrowseFloor(event, target) {
 		const row = target.closest(".biome-row");
 		const input = row?.querySelector(".biome-floor");
-		if (input) pickImage(input.value, (p) => {
+		if (input) pickImage(input.value, p => {
 			input.value = p;
 		});
 	}
@@ -105,8 +105,8 @@ export class BiomeEditorSD extends HandlebarsApplicationMixin(ApplicationV2) {
 	static onBrowseProp(event, target) {
 		const row = target.closest(".biome-row");
 		const ta = row?.querySelector(".biome-props");
-		if (ta) pickImage("", (p) => {
-			ta.value = (ta.value ? ta.value + "\n" : "") + p;
+		if (ta) pickImage("", p => {
+			ta.value = (ta.value ? `${ta.value}\n` : "") + p;
 		});
 	}
 
@@ -116,7 +116,7 @@ export class BiomeEditorSD extends HandlebarsApplicationMixin(ApplicationV2) {
 		try {
 			await setBiomeEnabled(key, target.checked);
 		}
-		catch (e) {
+		catch(e) {
 			ui.notifications.error(e.message);
 			this.render(); // resync checkbox to persisted state on failure
 		}
@@ -130,7 +130,7 @@ export class BiomeEditorSD extends HandlebarsApplicationMixin(ApplicationV2) {
 			await setCustomBiome(key, readRow(row));
 			ui.notifications.info(`Biome "${key}" saved.`);
 		}
-		catch (e) {
+		catch(e) {
 			ui.notifications.error(e.message);
 		}
 		this.render();
@@ -149,7 +149,7 @@ export class BiomeEditorSD extends HandlebarsApplicationMixin(ApplicationV2) {
 			ui.notifications.info(`Biome "${key}" added.`);
 			this.render();
 		}
-		catch (e) {
+		catch(e) {
 			ui.notifications.error(e.message);
 		}
 	}
@@ -192,7 +192,7 @@ export function openBiomeEditor() {
 // own render path, so the button works whenever and however it appears.
 if (!globalThis.__sdxBiomeEditorDelegated) {
 	globalThis.__sdxBiomeEditorDelegated = true;
-	document.addEventListener("click", (ev) => {
+	document.addEventListener("click", ev => {
 		const btn = ev.target?.closest?.(".dgen-edit-biomes");
 		if (!btn) return;
 		ev.preventDefault();

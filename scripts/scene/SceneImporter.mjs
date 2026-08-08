@@ -93,7 +93,7 @@ export class SceneImporter {
 
 			ui.notifications.info(`Scene "${sceneName}" imported successfully!`);
 		}
-		catch (error) {
+		catch(error) {
 			console.error(`${MODULE_ID} | Import failed:`, error);
 			ui.notifications.error(`Import failed: ${error.message}`);
 		}
@@ -105,7 +105,7 @@ export class SceneImporter {
 	static async getUniqueDocumentName(collectionName, baseName) {
 		let name = baseName;
 		let counter = 1;
-		const collection = game.collections.get(collectionName) || game[collectionName.toLowerCase() + "s"];
+		const collection = game.collections.get(collectionName) || game[`${collectionName.toLowerCase()}s`];
 		if (!collection) return baseName;
 
 		while (collection.getName(name)) {
@@ -165,7 +165,7 @@ export class SceneImporter {
 				// const newPath = `${uploadDir}/${filename}`;
 				// We actually don't trust the return path blindly, constructing it is safer if we know where we put it.
 			}
-			catch (e) {
+			catch(e) {
 				console.warn(`${MODULE_ID} | Failed to upload ${filename}`, e);
 			}
 		}
@@ -230,7 +230,7 @@ export class SceneImporter {
 					idMap[type].set(oldId, doc.id);
 					console.log(`${MODULE_ID} | Created ${type}: ${doc.name}`);
 				}
-				catch (e) {
+				catch(e) {
 					console.error(`${MODULE_ID} | Failed to create ${type}:`, e);
 				}
 			}
@@ -341,7 +341,7 @@ export class SceneImporter {
 		try {
 			await FilePicker.browse(source, path);
 		}
-		catch (e) {
+		catch(e) {
 			await FilePicker.createDirectory(source, path);
 		}
 	}

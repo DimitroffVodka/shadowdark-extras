@@ -40,32 +40,32 @@ export class MaphubLauncherApp extends HandlebarsApplicationMixin(ApplicationV2)
 
 		const html = this.element;
 
-		html.querySelector("[data-action='open-realm']")?.addEventListener("click", async (e) => {
+		html.querySelector("[data-action='open-realm']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			this._openGenerator("realm");
 		});
 
-		html.querySelector("[data-action='open-mfcg']")?.addEventListener("click", async (e) => {
+		html.querySelector("[data-action='open-mfcg']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			this._openGenerator("mfcg");
 		});
 
-		html.querySelector("[data-action='open-village']")?.addEventListener("click", async (e) => {
+		html.querySelector("[data-action='open-village']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			this._openGenerator("village");
 		});
 
-		html.querySelector("[data-action='open-dwellings']")?.addEventListener("click", async (e) => {
+		html.querySelector("[data-action='open-dwellings']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			this._openGenerator("dwellings");
 		});
 
-		html.querySelector("[data-action='open-cave']")?.addEventListener("click", async (e) => {
+		html.querySelector("[data-action='open-cave']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			this._openGenerator("cave");
 		});
 
-		html.querySelector("[data-action='open-dungeon']")?.addEventListener("click", async (e) => {
+		html.querySelector("[data-action='open-dungeon']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			this._openGenerator("dungeon");
 		});

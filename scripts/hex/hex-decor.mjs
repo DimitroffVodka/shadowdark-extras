@@ -67,7 +67,7 @@ export function getRegisteredDecorTiles() {
 	try {
 		assets = game.settings.get(MODULE_ID, "customDecorAssets") || [];
 	}
-	catch {
+	catch{
 		assets = [];
 	}
 	return assets
@@ -147,7 +147,7 @@ export async function loadImportedDecorAssets({ force = false } = {}) {
 		_importedDecorTiles = await browseDecorFolderRecursive(DECOR_IMPORT_FOLDER, []);
 		_importedDecorTiles.sort((a, b) => a.path.localeCompare(b.path));
 	}
-	catch (err) {
+	catch(err) {
 		console.log(`${MODULE_ID} | Imported decor folder not available yet:`, err?.message || err);
 		_importedDecorTiles = [];
 	}
@@ -166,7 +166,7 @@ export async function getDDPackDecorAssets({ force = false } = {}) {
 	try {
 		_ddPackDecorTiles = await loadDDPackDecorTiles();
 	}
-	catch (err) {
+	catch(err) {
 		console.warn(`${MODULE_ID} | Dungeondraft decor packs not available yet:`, err?.message || err);
 		_ddPackDecorTiles = [];
 	}

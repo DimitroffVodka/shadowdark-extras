@@ -54,9 +54,9 @@ const CONNECTOR = {
 	stairs: { twoWay: true,  size: 50, upper: `modules/${MODULE_ID}/assets/Dungeon/stairsdown.webp`, lower: `modules/${MODULE_ID}/assets/Dungeon/stairs.webp` },
 	spiral: { twoWay: true,  size: 96, upper: `${SYM}/stairspiral-1x1.webp`, lower: `${SYM}/stairspiral-1x1.webp` },
 	ladder: { twoWay: true,  size: 84, upper: `modules/${MODULE_ID}/assets/Hexes/Specials/holeladder.webp`, lower: `modules/${MODULE_ID}/assets/Hexes/Specials/holeladder.webp` },
-	shaft:  { twoWay: true,  size: 84, upper: `${SYM}/well_1.webp`, lower: `${SYM}/well_1.webp` },
-	drop:   { twoWay: false, size: 84, upper: `${SYM}/Trapdoor.webp`, lower: `${SYM}/Pitcircle1x1.webp` },
-	chute:  { twoWay: false, size: 84, upper: `${SYM}/Pit1x1.webp`, lower: `${SYM}/Pitcircle1x1.webp` },
+	shaft: { twoWay: true,  size: 84, upper: `${SYM}/well_1.webp`, lower: `${SYM}/well_1.webp` },
+	drop: { twoWay: false, size: 84, upper: `${SYM}/Trapdoor.webp`, lower: `${SYM}/Pitcircle1x1.webp` },
+	chute: { twoWay: false, size: 84, upper: `${SYM}/Pit1x1.webp`, lower: `${SYM}/Pitcircle1x1.webp` },
 };
 const TWO_WAY_VARIANTS = ["spiral", "ladder", "shaft"]; // art variety on the two-way mechanic
 const ONE_WAY_SHARE = 0.4;     // of varied EXTRA connectors (not the primary), share that are drops
@@ -97,8 +97,8 @@ async function ensureLevels(scene, count, levelHeight, entranceIndex = 0, names 
 		if (!lvl && r.index === 0) lvl = scene.levels.get("defaultLevel0000");
 		if (lvl) {
 			updates.push({
-				_id: lvl.id,
-				name: nameFor(r.index),
+				"_id": lvl.id,
+				"name": nameFor(r.index),
 				"elevation.bottom": r.bottom,
 				"elevation.top": r.top,
 				[`flags.${MODULE_ID}.mlLevelIndex`]: r.index,
@@ -188,7 +188,7 @@ function carveCorridorTo(floors, tx, ty) {
 /** Shift every coordinate-bearing part of a layout by (dx,dy). */
 function translateLayout(layout, dx, dy) {
 	if (dx === 0 && dy === 0) return;
-	const shiftSet = (set) => {
+	const shiftSet = set => {
 		const out = new Set();
 		for (const k of set) {
 			const [x, y] = k.split(",").map(Number); out.add(`${x + dx},${y + dy}`);
@@ -270,7 +270,7 @@ function pickAnchors(layouts, count, rng, maxCarve = 6) {
 	// A candidate's "carve cost" = the worst (max) distance from it to any level's nearest
 	// floor. Capping it keeps the per-level stair connector short, so independent (distinct)
 	// floors can still share aligned stair anchors without a long corridor sprawling out.
-	const build = (cap) => {
+	const build = cap => {
 		const out = [];
 		for (const [key, ov] of overlap) {
 			if (doorKeys.has(key)) continue;            // never put a connector on a door cell
@@ -388,7 +388,7 @@ async function browseClutter() {
 				const m = f.match(/-(\d+)x(\d+)\.\w+$/i); return { src: f, w: parseInt(m[1]), h: parseInt(m[2]) };
 			});
 	}
-	catch (e) {
+	catch(e) {
 		console.warn(`${MODULE_ID} | Could not browse clutter folder:`, e);
 		return [];
 	}
@@ -775,7 +775,7 @@ export async function generateMultiLevelDungeon(config = {}) {
 		);
 		return { levels: cfg.levelCount, connections: connectionCount, seed: cfg.seed };
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Multi-level dungeon generation failed:`, err);
 		ui.notifications?.error("SDX | Multi-level dungeon generation failed. See console.");
 		throw err;
@@ -805,7 +805,7 @@ function readMlSliders() {
 		const v = game.settings.get(MODULE_ID, ML_SLIDERS_KEY);
 		return { ...ML_SLIDERS_DEFAULT, ...(v && typeof v === "object" ? v : {}) };
 	}
-	catch {
+	catch{
 		return { ...ML_SLIDERS_DEFAULT };
 	}
 }
@@ -813,7 +813,7 @@ function saveMlSlider(key, value) {
 	try {
 		game.settings.set(MODULE_ID, ML_SLIDERS_KEY, { ...readMlSliders(), [key]: value });
 	}
-	catch { /* noop */ }
+	catch{ /* noop */ }
 }
 
 Hooks.once("init", () => {
@@ -822,7 +822,7 @@ Hooks.once("init", () => {
 			scope: "client", config: false, type: Object, default: { ...ML_SLIDERS_DEFAULT },
 		});
 	}
-	catch (e) {
+	catch(e) {
 		console.warn(`${MODULE_ID} | failed to register ${ML_SLIDERS_KEY} setting`, e);
 	}
 });

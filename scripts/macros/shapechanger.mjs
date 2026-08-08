@@ -36,7 +36,7 @@ const SPELL_CONFIGS = {
 		title: "Wolf Shape",
 		icon: "icons/creatures/mammals/wolf-howl-moon-forest-blue.webp",
 		description: "You transform into a wolf. You gain <strong>STR, DEX, CON, HP, AC, and attacks</strong>. You retain INT, WIS, CHA and can cast spells. If you reach 0 HP you revert to your true form at 0 HP.",
-		monsterNames: (casterActor) => {
+		monsterNames: casterActor => {
 			const names = ["Wolf"];
 			const level = casterActor?.system?.level?.value ?? 1;
 			if (level >= 5) names.push("Wolf, Dire", "Wolf, Winter");
@@ -120,7 +120,7 @@ function resolveNpcTokenImage(npcDoc) {
 			}
 		}
 	}
-	catch (e) {
+	catch(e) {
 		console.log(`${MODULE_ID} | Community tokens lookup failed:`, e.message);
 	}
 
@@ -330,7 +330,7 @@ export async function showShapechangerDialog(casterActor, casterItem, originatin
 		},
 	});
 
-	dialog.addEventListener("render", (event) => {
+	dialog.addEventListener("render", event => {
 		const dialogElement = dialog.element;
 		const grid = dialogElement.querySelector(".sdx-shapechanger-grid");
 		const hiddenInput = dialogElement.querySelector("input[name='selectedNpcId']");
@@ -339,7 +339,7 @@ export async function showShapechangerDialog(casterActor, casterItem, originatin
 		const setupItemSelection = () => {
 			const items = dialogElement.querySelectorAll(".sdx-shapechanger-npc-item");
 			items.forEach(itemEl => {
-				itemEl.addEventListener("click", (e) => {
+				itemEl.addEventListener("click", e => {
 					e.preventDefault();
 					e.stopPropagation();
 					items.forEach(i => i.classList.remove("selected"));
@@ -544,7 +544,7 @@ export async function applyShapechanger(casterActor, casterItem, npcDoc, isCriti
 				.play();
 		}
 	}
-	catch (e) {
+	catch(e) {
 		console.log(`${MODULE_ID} | Sequencer animation not available: ${e.message}`);
 	}
 
@@ -729,7 +729,7 @@ export async function revertShapechanger(actor, skipEndDuration = false) {
 				const { endDurationSpell } = await import("../effects/FocusSpellTrackerSD.mjs");
 				await endDurationSpell(durationActorId, backup.instanceId, "manual");
 			}
-			catch (e) {
+			catch(e) {
 				console.warn(`${MODULE_ID} | Could not end duration spell:`, e);
 			}
 		}
@@ -748,7 +748,7 @@ export async function revertShapechanger(actor, skipEndDuration = false) {
 				.play();
 		}
 	}
-	catch (e) {
+	catch(e) {
 		console.log(`${MODULE_ID} | Sequencer animation not available: ${e.message}`);
 	}
 
@@ -962,7 +962,7 @@ Hooks.on("renderPlayerSheetSD", (sheet, html, data) => {
 	}
 
 	// Attach click handlers for rolling/displaying items
-	html.find(".sdx-sc-item-rollable").on("click", async (event) => {
+	html.find(".sdx-sc-item-rollable").on("click", async event => {
 		event.preventDefault();
 		const el = event.currentTarget;
 		const itemId = el.dataset.itemId;
@@ -1024,7 +1024,7 @@ Hooks.on("renderPlayerSheetSD", (sheet, html, data) => {
 	});
 
 	// Attach revert button handler
-	html.find(".sdx-sc-revert-btn").on("click", async (event) => {
+	html.find(".sdx-sc-revert-btn").on("click", async event => {
 		event.preventDefault();
 		event.stopPropagation();
 		await revertShapechanger(actor);

@@ -105,7 +105,7 @@ async function executeClassAbilityItemMacro(item, actor, context = {}) {
 			scope.speaker, scope.flags, scope.success, scope.critical, scope.rolled, scope.scene, scope.game
 		);
 	}
-	catch (error) {
+	catch(error) {
 		console.error(`${MODULE_ID} | Error executing Class Ability macro:`, error);
 		ui.notifications.error("There was an error in your macro syntax. See the console (F12) for details");
 	}
@@ -120,7 +120,7 @@ export function registerClassAbilityItemMacros() {
 	Hooks.once("ready", () => {
 		const macroExecuteSocket = getMacroExecuteSocket();
 		if (macroExecuteSocket) {
-			macroExecuteSocket.register("executeClassAbilityMacroAsGM", async (serializedContext) => {
+			macroExecuteSocket.register("executeClassAbilityMacroAsGM", async serializedContext => {
 				const actor = game.actors.get(serializedContext.actorId);
 				if (!actor) return;
 
@@ -177,7 +177,7 @@ export function registerClassAbilityItemMacros() {
 						scope.speaker, scope.flags, scope.success, scope.critical, scope.rolled, scope.scene, scope.game
 					);
 				}
-				catch (error) {
+				catch(error) {
 					console.error(`${MODULE_ID} | GM execution of Class Ability macro failed:`, error);
 				}
 			});
@@ -205,7 +205,7 @@ export function registerClassAbilityItemMacros() {
 				try {
 					item = await fromUuid(abilityUuid);
 				}
-				catch (_) { }
+				catch(_) { }
 
 				// Only intercept Class Ability items
 				if (!item || item.type !== "Class Ability") {

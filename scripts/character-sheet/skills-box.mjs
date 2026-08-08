@@ -223,7 +223,7 @@ async function rollSkill(actor, skillName, ability) {
 				callback: (event, button, dialog) => processRoll("disadvantage", dialog),
 			},
 		],
-		submit: (result) => {
+		submit: result => {
 			// fallback if enter pressed (defaults to normal via default button, but just in case)
 			return "normal";
 		},
@@ -253,8 +253,8 @@ async function rollSkill(actor, skillName, ability) {
 		// Flavor text
 		let flavor = `<b>${escapeHtmlSkills(skillName)}</b>`;
 		const flavorParts = [];
-		if (ability !== "none") flavorParts.push(`${abilityLabel} mod: ${abilityMod >= 0 ? "+" + abilityMod : abilityMod}`);
-		if (bonus !== 0) flavorParts.push(`Bonus: ${bonus >= 0 ? "+" + bonus : bonus}`);
+		if (ability !== "none") flavorParts.push(`${abilityLabel} mod: ${abilityMod >= 0 ? `+${abilityMod}` : abilityMod}`);
+		if (bonus !== 0) flavorParts.push(`Bonus: ${bonus >= 0 ? `+${bonus}` : bonus}`);
 
 		if (flavorParts.length > 0) {
 			flavor += ` (${flavorParts.join(", ")})`;

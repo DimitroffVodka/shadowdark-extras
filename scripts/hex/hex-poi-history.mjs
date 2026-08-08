@@ -90,7 +90,7 @@ export async function redoLastPoi() {
 			return true;
 		}
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to redo POI tile:`, err);
 	}
 

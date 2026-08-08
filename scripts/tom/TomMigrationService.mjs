@@ -26,11 +26,11 @@ export class TomMigrationService {
 		try {
 			legacyData = game.settings.get(CONFIG.MODULE_ID, "data-v3");
 		}
-		catch (e) {
+		catch(e) {
 			try {
 				legacyData = game.settings.get(CONFIG.MODULE_ID, "data-v2");
 			}
-			catch (e2) {
+			catch(e2) {
 				// No legacy data
 			}
 		}

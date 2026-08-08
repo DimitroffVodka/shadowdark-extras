@@ -65,10 +65,10 @@ function _patchActorSheet(app, html) {
 		// Shadowdark inventory rows: name sits in an <h4> inside .item-name,
 		// or directly in .item-name.  Try the most specific selector first.
 		const nameEl =
-            el.querySelector(".item-name h4") ??
-            el.querySelector("h4.item-name") ??
-            el.querySelector(".item-name") ??
-            el.querySelector("h4");
+            el.querySelector(".item-name h4")
+            ?? el.querySelector("h4.item-name")
+            ?? el.querySelector(".item-name")
+            ?? el.querySelector("h4");
 		if (!nameEl) return;
 
 		_setNameText(nameEl, _gmName(item.name, item.system.identification.name));
@@ -115,7 +115,7 @@ async function _patchCompendiumDirectory(app, html) {
 			fields: ["system.identification.identified", "system.identification.name"],
 		});
 	}
-	catch (_e) { /* fall back to whatever is already indexed */ }
+	catch(_e) { /* fall back to whatever is already indexed */ }
 
 	root.querySelectorAll(".directory-item[data-entry-id], .directory-item[data-document-id]").forEach(el => {
 		const docId = el.dataset.entryId ?? el.dataset.documentId;

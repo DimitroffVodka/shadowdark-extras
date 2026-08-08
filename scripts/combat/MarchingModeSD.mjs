@@ -996,7 +996,7 @@ function processCongaMovement() {
 					console.warn(`${MODULE_ID} | Conga step failed; queue state reset:`, error);
 				});
 		}
-		catch (error) {
+		catch(error) {
 			// Synchronous failure while dispatching the step (torn-down token,
 			// update() throwing before it returns a promise). Reset the flags and
 			// log; do not rethrow — the queue stops here and the next leader move
@@ -1057,7 +1057,7 @@ function processCongaMovement() {
 		// Start the movement
 		moveAllTokensOneStep();
 	}
-	catch (error) {
+	catch(error) {
 		// A synchronous throw while setting up the queue (torn-down token,
 		// destroyed document, a stale marchPosition entry). Reset the flags and
 		// log; do not rethrow — the queue never started and the next leader move

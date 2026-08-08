@@ -26,12 +26,11 @@ function _revokeBlob(url) {
 	try {
 		URL.revokeObjectURL(url);
 	}
-	catch {}
+	catch{}
 }
 
 function _sweepDetachedBlobs() {
-	for (const [url, frame] of _blobFrames)
-		if (!frame.isConnected) _revokeBlob(url);
+	for (const [url, frame] of _blobFrames) if (!frame.isConnected) _revokeBlob(url);
 }
 
 // ── Placeholder → inline iframe ──────────────────────────────────────────────
@@ -58,7 +57,7 @@ async function replacePlaceholder(div) {
 	try {
 		extUrl = new URL(extBase);
 	}
-	catch {
+	catch{
 		console.warn(`${MODULE_ID} | ignoring maphub placeholder — invalid external URL:`, extBase);
 		return;
 	}
@@ -109,7 +108,7 @@ async function replacePlaceholder(div) {
 			}
 		}
 	}
-	catch (_) { /* network error — use external */ }
+	catch(_) { /* network error — use external */ }
 
 	// The journal may have re-rendered while we awaited the probe/fetch.
 	if (!div.isConnected) {
@@ -117,7 +116,7 @@ async function replacePlaceholder(div) {
 			try {
 				URL.revokeObjectURL(blobUrl);
 			}
-			catch {}
+			catch{}
 		}
 		return;
 	}
@@ -142,10 +141,8 @@ function scanAndReplace(root) {
 // ── Public API ───────────────────────────────────────────────────────────────
 
 export function registerMaphubHooks() {
-	const observer = new MutationObserver((mutations) => {
-		for (const m of mutations)
-			for (const node of m.addedNodes)
-				scanAndReplace(node);
+	const observer = new MutationObserver(mutations => {
+		for (const m of mutations) for (const node of m.addedNodes) scanAndReplace(node);
 		// Free Blob wrappers whose iframe was detached (journal close/re-render).
 		// Cheap: the map is empty except in the brief window before an iframe loads.
 		if (_blobFrames.size) _sweepDetachedBlobs();

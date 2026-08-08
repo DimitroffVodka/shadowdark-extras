@@ -191,7 +191,7 @@ export default class ClassAbilitySheetSD extends HandlebarsApplicationMixin(Docu
 		// Setup tab click handlers
 		const tabLinks = html.querySelectorAll(".potion-sheet-tabs .tab-item");
 		tabLinks.forEach(link => {
-			link.addEventListener("click", (event) => {
+			link.addEventListener("click", event => {
 				event.preventDefault();
 				const tab = event.currentTarget.dataset.tab;
 				this._onChangeTab(tab);
@@ -202,12 +202,12 @@ export default class ClassAbilitySheetSD extends HandlebarsApplicationMixin(Docu
 		const itemImage = html.querySelector(".item-image[data-edit='img']");
 		if (itemImage) {
 			itemImage.style.cursor = "pointer";
-			itemImage.addEventListener("click", (event) => {
+			itemImage.addEventListener("click", event => {
 				event.preventDefault();
 				const fp = new FilePicker({
 					type: "image",
 					current: this.item.img,
-					callback: async (path) => {
+					callback: async path => {
 						await this.item.update({ img: path });
 					},
 				});

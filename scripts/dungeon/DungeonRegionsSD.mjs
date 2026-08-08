@@ -38,7 +38,7 @@ export async function placeChangeLevelRegion({
 		if (ls.length < 2) throw new Error("levels not found on scene");
 		elev = {
 			bottom: Math.min(...ls.map(l => l.elevation?.bottom ?? 0)),
-			top:    Math.max(...ls.map(l => l.elevation?.top    ?? 0)),
+			top: Math.max(...ls.map(l => l.elevation?.top    ?? 0)),
 			topInclusive: false,
 		};
 	}
@@ -88,8 +88,8 @@ export async function placeDungeonSurface({ sceneId, levelId, name = "Dungeon Su
 	// Collect every dungeon-generated tile that belongs to this level.
 	// generateDungeon flags tiles with flags["shadowdark-extras"].dungeonFloor = true.
 	const tiles = [...scene.tiles].filter(t =>
-		t.flags?.[MODULE_ID]?.dungeonFloor === true &&
-        (t.levels?.includes?.(levelId) || t.levels?.has?.(levelId))
+		t.flags?.[MODULE_ID]?.dungeonFloor === true
+        && (t.levels?.includes?.(levelId) || t.levels?.has?.(levelId))
 	);
 
 	if (tiles.length === 0) {
@@ -110,7 +110,7 @@ export async function placeDungeonSurface({ sceneId, levelId, name = "Dungeon Su
 		shapes,
 		elevation: {
 			bottom: level.elevation?.bottom ?? 0,
-			top:    level.elevation?.top    ?? 20,
+			top: level.elevation?.top    ?? 20,
 			topInclusive: false,
 		},
 		levels: [levelId],

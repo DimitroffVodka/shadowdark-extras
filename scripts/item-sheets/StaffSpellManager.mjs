@@ -93,7 +93,7 @@ export default class StaffSpellManager extends HandlebarsApplicationMixin(Applic
 		if (!inputs) return;
 
 		inputs.forEach(input => {
-			input.addEventListener("change", async (event) => {
+			input.addEventListener("change", async event => {
 				const spellUuid = event.target.dataset.spellUuid;
 				const maxUses = event.target.value ? parseInt(event.target.value) : null;
 
@@ -125,7 +125,7 @@ export default class StaffSpellManager extends HandlebarsApplicationMixin(Applic
 		const checkbox = this.element.querySelector("#destroy-at-zero");
 		if (!checkbox) return;
 
-		checkbox.addEventListener("change", async (event) => {
+		checkbox.addEventListener("change", async event => {
 			const enabled = event.target.checked;
 			await this.weapon.setFlag(MODULE_ID, "destroyAtZero", enabled);
 			console.log(`${MODULE_ID} | Set destroyAtZero to ${enabled} for weapon: ${this.weapon.name}`);
@@ -139,7 +139,7 @@ export default class StaffSpellManager extends HandlebarsApplicationMixin(Applic
 		const dropZone = this.element.querySelector(".staff-spell-drop");
 		if (!dropZone) return;
 
-		dropZone.addEventListener("dragover", (event) => {
+		dropZone.addEventListener("dragover", event => {
 			event.preventDefault();
 			dropZone.classList.add("drag-over");
 		});
@@ -148,7 +148,7 @@ export default class StaffSpellManager extends HandlebarsApplicationMixin(Applic
 			dropZone.classList.remove("drag-over");
 		});
 
-		dropZone.addEventListener("drop", async (event) => {
+		dropZone.addEventListener("drop", async event => {
 			event.preventDefault();
 			dropZone.classList.remove("drag-over");
 			await this._onDropSpell(event);
@@ -214,7 +214,7 @@ export default class StaffSpellManager extends HandlebarsApplicationMixin(Applic
 			this.render();
 
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Error handling spell drop:`, err);
 			ui.notifications.error("Failed to add spell to staff");
 		}

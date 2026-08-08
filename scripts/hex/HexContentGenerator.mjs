@@ -13,7 +13,7 @@ async function loadData() {
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_data = await resp.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load hexroll data:`, err);
 		ui.notifications?.error("SDX | Could not load hexroll data.");
 		throw err;
@@ -29,7 +29,7 @@ async function loadCaravanFortunes() {
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_caravanFortunes = await resp.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load caravan fortunes:`, err);
 		throw err;
 	}
@@ -44,7 +44,7 @@ async function loadHiddenTraitsData() {
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_hiddenTraitsData = await resp.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load hidden NPC traits:`, err);
 		throw err;
 	}
@@ -59,7 +59,7 @@ async function loadPoiData() {
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_poiData = await resp.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load POI data:`, err);
 		throw err;
 	}
@@ -74,7 +74,7 @@ async function loadCircusData() {
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_circusData = await resp.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load circus data:`, err);
 		throw err;
 	}
@@ -89,7 +89,7 @@ async function loadCoastalMinorEvents() {
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_coastalMinorEventsData = await resp.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load coastal minor events:`, err);
 		throw err;
 	}
@@ -111,7 +111,7 @@ async function getMonsterIndex() {
 			_monsterIndex.set(entry.name, entry._id);
 		}
 	}
-	catch (err) {
+	catch(err) {
 		console.warn(`${MODULE_ID} | Could not load monster compendium index:`, err);
 	}
 	return _monsterIndex;
@@ -241,7 +241,7 @@ async function generateLandmarkInn(data, biomeKey, regionName) {
 		patrons.push(`<strong>${npc.name}</strong>, ${type}`);
 	}
 
-	const foodPool = inn.food[biomeKey] || inn.food["plains"];
+	const foodPool = inn.food[biomeKey] || inn.food.plains;
 	const drinkPool = inn.drinks;
 
 	const menuFood = [];
@@ -470,7 +470,7 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 				html += `<p><em><strong>As you travel:</strong> ${minorEvent}</em></p>`;
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Could not load coastal minor events:`, err);
 		}
 	}
@@ -505,7 +505,7 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 				html += "</section>";
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Could not load shipboard events:`, err);
 		}
 	}
@@ -523,7 +523,7 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 				html += "</section>";
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Could not load shipwrecks:`, err);
 		}
 	}
@@ -552,11 +552,11 @@ export async function generateHexHtml(biomeKey, hexLabel, nearOcean = false) {
 			{ key: "inn", gen: async (d, b, r) => await generateLandmarkInn(d, b, r) },
 			{ key: "watchtower", gen: (d, b) => generateLandmarkWatchtower(d, b) },
 			{ key: "abandonedVillage", gen: async (d, b) => await generateLandmarkAbandonedVillage(d, b) },
-			{ key: "altar", gen: (d) => generateLandmarkAltar(d) },
-			{ key: "signalingTower", gen: (d) => generateLandmarkSignalingTower(d) },
-			{ key: "wagons", gen: (d) => generateLandmarkWagons(d) },
-			{ key: "deadAdventurers", gen: (d) => generateLandmarkDeadAdventurers(d) },
-			{ key: "sacrificialSite", gen: (d) => generateLandmarkSacrificialSite(d) },
+			{ key: "altar", gen: d => generateLandmarkAltar(d) },
+			{ key: "signalingTower", gen: d => generateLandmarkSignalingTower(d) },
+			{ key: "wagons", gen: d => generateLandmarkWagons(d) },
+			{ key: "deadAdventurers", gen: d => generateLandmarkDeadAdventurers(d) },
+			{ key: "sacrificialSite", gen: d => generateLandmarkSacrificialSite(d) },
 			{ key: "deadMonster", gen: async (d, b) => await generateLandmarkDeadMonster(d, b) },
 		];
 

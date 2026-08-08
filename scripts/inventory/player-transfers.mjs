@@ -92,7 +92,7 @@ export async function transferItemToPlayer(sourceActor, item, targetActorId) {
 			})
 		);
 	}
-	catch (error) {
+	catch(error) {
 		console.error(`${MODULE_ID} | Error during transfer:`, error);
 		ui.notifications.error(
 			game.i18n.localize("SHADOWDARK_EXTRAS.notifications.transfer_failed")
@@ -117,9 +117,9 @@ export async function transferCoinsToPlayer(sourceActor, coins, targetActorId) {
 
 	// Validate source has enough coins
 	const sourceCoins = sourceActor.system?.coins || {};
-	if ((coins.gp || 0) > (sourceCoins.gp || 0) ||
-		(coins.sp || 0) > (sourceCoins.sp || 0) ||
-		(coins.cp || 0) > (sourceCoins.cp || 0)) {
+	if ((coins.gp || 0) > (sourceCoins.gp || 0)
+		|| (coins.sp || 0) > (sourceCoins.sp || 0)
+		|| (coins.cp || 0) > (sourceCoins.cp || 0)) {
 		ui.notifications.error(
 			game.i18n.localize("SHADOWDARK_EXTRAS.notifications.not_enough_coins_transfer")
 		);
@@ -206,7 +206,7 @@ export async function transferCoinsToPlayer(sourceActor, coins, targetActorId) {
 			})
 		);
 	}
-	catch (error) {
+	catch(error) {
 		console.error(`${MODULE_ID} | Error during coin transfer:`, error);
 		ui.notifications.error(
 			game.i18n.localize("SHADOWDARK_EXTRAS.notifications.transfer_failed")
@@ -337,7 +337,7 @@ export async function showCoinTransferDialog(sourceActor) {
 		</form>
 	`;
 
-	return new Promise((resolve) => {
+	return new Promise(resolve => {
 		const dialog = new foundry.applications.api.DialogV2({
 			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.transfer_coins_title") },
 			content,
@@ -524,7 +524,7 @@ export async function showTransferDialog(sourceActor, item) {
 		</form>
 	`;
 
-	return new Promise((resolve) => {
+	return new Promise(resolve => {
 		const dialog = new foundry.applications.api.DialogV2({
 			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.dialog.transfer_item_title") },
 			content,

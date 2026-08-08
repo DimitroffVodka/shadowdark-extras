@@ -15,7 +15,7 @@ function isEnabled() {
 	try {
 		return game.settings.get(MODULE_ID, "enableLevelUpAnimation") !== false;
 	}
-	catch (e) {
+	catch(e) {
 		return true; // Default to enabled if setting not registered yet
 	}
 }

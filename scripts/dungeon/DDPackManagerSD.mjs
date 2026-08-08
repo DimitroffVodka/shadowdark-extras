@@ -83,7 +83,7 @@ async function ensureDirectory(path) {
 		try {
 			await FP.browse("data", current);
 		}
-		catch {
+		catch{
 			await FP.createDirectory("data", current);
 		}
 	}
@@ -93,7 +93,7 @@ export function getDDPacks() {
 	try {
 		return game.settings.get(MODULE_ID, SETTING_KEY) || [];
 	}
-	catch {
+	catch{
 		return [];
 	}
 }
@@ -158,7 +158,7 @@ export async function extractDDPack(file, folderLabel, onProgress, selectedPaths
 		try {
 			await ensureDirectory(dir);
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Could not create Dungeondraft directory ${dir}:`, err);
 		}
 	}
@@ -176,7 +176,7 @@ export async function extractDDPack(file, folderLabel, onProgress, selectedPaths
 		try {
 			await FP.upload("data", uploadDir, uploadFile, {}, { notify: false });
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Could not upload Dungeondraft asset ${filename}:`, err);
 		}
 		uploaded++;
@@ -201,7 +201,7 @@ export async function extractDDPack(file, folderLabel, onProgress, selectedPaths
 	try {
 		await FP.upload("data", basePath, indexFile, {}, { notify: false });
 	}
-	catch {
+	catch{
 		// Index is helpful but not required for tray loading.
 	}
 
@@ -239,7 +239,7 @@ export async function loadDDPackDecorTiles() {
 			try {
 				listing = await FP.browse("data", dir);
 			}
-			catch {
+			catch{
 				continue;
 			}
 

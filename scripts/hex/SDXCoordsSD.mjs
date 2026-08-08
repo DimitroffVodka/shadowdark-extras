@@ -44,7 +44,7 @@ function getSettings() {
 		const saved = game.settings.get(MODULE_ID, "sdxCoordsSettings");
 		return foundry.utils.mergeObject(defaults, saved || {});
 	}
-	catch {
+	catch{
 		return defaults;
 	}
 }
@@ -54,9 +54,13 @@ function getSettings() {
  */
 class SDXCoord {
 	#state;
+
 	#overrideState;
+
 	#marginContainer;
+
 	#cellContainer;
+
 	#zineContainer;
 
 	constructor() {
@@ -370,7 +374,7 @@ class SDXCoord {
 	_addClickListener() {
 		canvas.stage.addListener(
 			"click",
-			(event) => {
+			event => {
 				if (game.keyboard.isModifierActive(this._keybindModifier)) {
 					this._showClickCoordinate();
 				}
@@ -481,7 +485,7 @@ export function initSDXCoords() {
 			try {
 				await document.fonts.load(`16px "${fontFamily}"`);
 			}
-			catch { /* font may not exist, PIXI will use fallback */ }
+			catch{ /* font may not exist, PIXI will use fallback */ }
 			window.SDXCoordinates = new SDXCoord();
 		}
 	});

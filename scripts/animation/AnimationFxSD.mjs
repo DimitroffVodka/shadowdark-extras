@@ -159,7 +159,7 @@ export const AnimationFxSD = {
 		try {
 			seeded = game.settings.get(MODULE_ID, "animationFxSeeded");
 		}
-		catch (e) {
+		catch(e) {
 			return;
 		} // settings not registered yet
 		if (seeded) return;
@@ -173,13 +173,13 @@ export const AnimationFxSD = {
 			const total = w.added + s.added + n.added + sp.added;
 			if (total > 0) {
 				console.log(
-					`${MODULE_ID} | Animation FX first-run seed — ` +
-					`weapons: ${w.added}, spells: ${s.added}, ` +
-					`NPC attacks: ${n.added}, sprites: ${sp.added}`
+					`${MODULE_ID} | Animation FX first-run seed — `
+					+ `weapons: ${w.added}, spells: ${s.added}, `
+					+ `NPC attacks: ${n.added}, sprites: ${sp.added}`
 				);
 			}
 		}
-		catch (e) {
+		catch(e) {
 			console.error(`${MODULE_ID} | Animation FX auto-seed failed`, e);
 		}
 	},
@@ -210,11 +210,11 @@ export const AnimationFxSD = {
 			if (!freeDb || typeof freeDb !== "object") return;
 			db.registerEntries("jb2a", freeDb);
 			console.log(
-				`${MODULE_ID} | Registered JB2A Sequencer database (fallback — ` +
-				"JB2A's own registration did not run in this world)"
+				`${MODULE_ID} | Registered JB2A Sequencer database (fallback — `
+				+ "JB2A's own registration did not run in this world)"
 			);
 		}
-		catch (e) {
+		catch(e) {
 			console.error(`${MODULE_ID} | JB2A fallback registration failed`, e);
 		}
 	},
@@ -232,7 +232,7 @@ export const AnimationFxSD = {
 		try {
 			stored = game.settings.get(MODULE_ID, "animationFxAmbient") || {};
 		}
-		catch (e) { /* not registered yet */ }
+		catch(e) { /* not registered yet */ }
 		return foundry.utils.mergeObject(foundry.utils.deepClone(DEFAULT_AMBIENT_FX), stored, { inplace: false });
 	},
 
@@ -327,7 +327,7 @@ export const AnimationFxSD = {
 		try {
 			return game.settings.get(MODULE_ID, `animationFxCategory_${category}`);
 		}
-		catch (e) {
+		catch(e) {
 			return true;
 		}
 	},
@@ -351,7 +351,7 @@ export const AnimationFxSD = {
 			const m = new RegExp(patterns, "i").exec(name);
 			return m ? m[0].length : 0;
 		}
-		catch (e) {
+		catch(e) {
 			return 0;
 		}
 	},
@@ -458,7 +458,7 @@ export const AnimationFxSD = {
 			const dbRoots = Sequencer?.Database?.getEntry ? this._sequencerDbRoots() : null;
 			if (dbRoots && !dbRoots.has(root)) return root;
 		}
-		catch (e) { /* ignore */ }
+		catch(e) { /* ignore */ }
 		return null;
 	},
 
@@ -469,7 +469,7 @@ export const AnimationFxSD = {
 			for (const p of paths) roots.add(String(p).split(".")[0]);
 			return roots;
 		}
-		catch (e) {
+		catch(e) {
 			return null;
 		}
 	},
@@ -518,7 +518,7 @@ export const AnimationFxSD = {
 			}
 			return resolved ? foundry.utils.getRoute(resolved) : "";
 		}
-		catch (e) {
+		catch(e) {
 			return "";
 		}
 	},
@@ -567,7 +567,7 @@ export const AnimationFxSD = {
 			await this._play(preset, source, targets, outcome);
 			return true;
 		}
-		catch (e) {
+		catch(e) {
 			console.warn(`${MODULE_ID} | preview failed:`, e);
 			ui.notifications.error("Preview failed — see console.");
 			return false;
@@ -580,7 +580,7 @@ export const AnimationFxSD = {
 		try {
 			return game.settings.get(MODULE_ID, "animationFxClientScale") || 1.0;
 		}
-		catch (e) {
+		catch(e) {
 			return 1.0;
 		}
 	},
@@ -590,7 +590,7 @@ export const AnimationFxSD = {
 			if (!game.settings.get(MODULE_ID, "animationFxSoundEnabled")) return 0;
 			return game.settings.get(MODULE_ID, "animationFxVolume") ?? 0.8;
 		}
-		catch (e) {
+		catch(e) {
 			return 0.8;
 		}
 	},
@@ -605,7 +605,7 @@ export const AnimationFxSD = {
 			seq.sound().file(block.sound).volume(volume);
 			await seq.play();
 		}
-		catch (e) { /* silent */ }
+		catch(e) { /* silent */ }
 	},
 
 	// ── Cone geometry ────────────────────────────────────────────────────────
@@ -653,14 +653,14 @@ export const AnimationFxSD = {
 		try {
 			if (!game.settings.get(MODULE_ID, "animationFxEnabled")) return;
 		}
-		catch (e) { /* setting may not be registered yet */ }
+		catch(e) { /* setting may not be registered yet */ }
 
 		// Trigger-on filter (world): skip misses when set to hit-only
 		try {
 			const triggerOn = game.settings.get(MODULE_ID, "animationFxTriggerOn");
 			if (outcome === "miss" && triggerOn === "hit") return;
 		}
-		catch (e) { /* default: always */ }
+		catch(e) { /* default: always */ }
 
 		const preset = this.resolvePreset(item);
 		if (!preset) return;
@@ -692,7 +692,7 @@ export const AnimationFxSD = {
 					return;
 				}
 			}
-			catch (e) { /* fall through and let play() handle it */ }
+			catch(e) { /* fall through and let play() handle it */ }
 		}
 
 		const globalScale = this._getClientScale();
@@ -710,7 +710,7 @@ export const AnimationFxSD = {
 					return;
 				}
 			}
-			catch (e) { /* ignore */ }
+			catch(e) { /* ignore */ }
 			try {
 				const seq = new Sequence(MODULE_ID);
 				seq.effect()
@@ -725,7 +725,7 @@ export const AnimationFxSD = {
 				await seq.play();
 				await this._playSound(block);
 			}
-			catch (e) {
+			catch(e) {
 				console.warn(`${MODULE_ID} | AnimationFx persistent play failed:`, e);
 			}
 			return;
@@ -816,11 +816,11 @@ export const AnimationFxSD = {
 				const cleanupAfter = hardDuration + fadeOut + 200;
 				setTimeout(() => this._endEffectsSafe({ name: safetyName }), cleanupAfter);
 			}
-			catch (e) {
+			catch(e) {
 				console.warn(`${MODULE_ID} | AnimationFx play failed:`, e);
 			}
 		}
-		catch (outer) {
+		catch(outer) {
 			console.warn(`${MODULE_ID} | AnimationFx setup failed for "${preset?.label ?? "?"}" (${block?.file ?? "?"}):`, outer);
 		}
 	},
@@ -851,7 +851,7 @@ export const AnimationFxSD = {
 			}
 			await Sequencer.EffectManager.endEffects(filter);
 		}
-		catch (e) { /* silent */ }
+		catch(e) { /* silent */ }
 	},
 
 	// ── Persistent helpers (for weapon glows etc.) ───────────────────────────

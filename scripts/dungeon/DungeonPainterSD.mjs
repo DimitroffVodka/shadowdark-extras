@@ -189,7 +189,7 @@ export function isPlayerPaintingAllowed() {
 	try {
 		return game.settings.get(MODULE_ID, SETTING_ALLOW_PLAYER_PAINT) === true;
 	}
-	catch (e) {
+	catch(e) {
 		return false;
 	}
 }
@@ -221,8 +221,8 @@ export async function loadDungeonAssets() {
 		// Always re-scan backgrounds from folder for GM (small folder, may have new images)
 		if (game.user.isGM) {
 			const freshBg = await loadTilesFromFolder(BG_TILE_FOLDER, "background");
-			if (freshBg.length !== _backgroundTiles.length ||
-                freshBg.some((t, i) => t.path !== _backgroundTiles[i]?.path)) {
+			if (freshBg.length !== _backgroundTiles.length
+                || freshBg.some((t, i) => t.path !== _backgroundTiles[i]?.path)) {
 				setBackgroundTiles(freshBg);
 				await cache.setMetadata(metadataKey, {
 					floorTiles: _floorTiles,
@@ -271,7 +271,7 @@ export async function loadDungeonAssets() {
 				console.log(`${MODULE_ID} | Received tile list from GM: ${_floorTiles.length} floor, ${_wallTiles.length} wall, ${_doorTiles.length} door tiles`);
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to get tile list from GM:`, err);
 		}
 	}
@@ -322,7 +322,7 @@ async function preloadDungeonImages() {
 				}
 			}
 		}
-		catch (err) {
+		catch(err) {
 			// Silently fail preloads
 		}
 	}
@@ -355,7 +355,7 @@ async function ensureDungeonFolders() {
 		try {
 			await FilePicker.browse("data", `${basePath}/${folder}`);
 		}
-		catch (e) {
+		catch(e) {
 			// Folder doesn't exist - that's ok, assets may not be installed yet
 		}
 	}
@@ -385,7 +385,7 @@ async function loadTilesFromFolder(folderPath, type) {
 
 		tiles.sort((a, b) => a.key.localeCompare(b.key));
 	}
-	catch (err) {
+	catch(err) {
 		console.warn(`${MODULE_ID} | Could not load ${type} tiles from ${folderPath}:`, err);
 	}
 
@@ -431,8 +431,8 @@ export async function getDungeonPainterData() {
 		// Clean up the label to remove "horizontal" suffix
 		label: t.label.replace(/\s*horizontal\s*/i, "").trim(),
 		src: await cache.getCachedSrc(t.path),
-		active: t.path === _selectedWallTile ||
-            t.path === _selectedWallTile?.replace("vertical", "horizontal"),
+		active: t.path === _selectedWallTile
+            || t.path === _selectedWallTile?.replace("vertical", "horizontal"),
 	})));
 
 	// Build background options
@@ -687,9 +687,9 @@ export async function ensureBackgroundDrawing(scene, elevation, backgroundSettin
 
 	// Check if a background drawing already exists at this elevation
 	const existing = scene.drawings.find(d =>
-		d.flags?.[MODULE_ID]?.dungeonBackground &&
-        d.elevation === bgElevation &&
-        documentMatchesLevel(d, levelContext)
+		d.flags?.[MODULE_ID]?.dungeonBackground
+        && d.elevation === bgElevation
+        && documentMatchesLevel(d, levelContext)
 	);
 
 	// Parse background setting
@@ -852,8 +852,8 @@ async function handleRectangleFill(startPos, endPos, isDeleting) {
 			const tileGx = Math.floor(tile.x / gridSize);
 			const tileGy = Math.floor(tile.y / gridSize);
 
-			if (tileGx >= minGx && tileGx <= maxGx && tileGy >= minGy && tileGy <= maxGy &&
-                documentMatchesLevel(tile, levelContext)) {
+			if (tileGx >= minGx && tileGx <= maxGx && tileGy >= minGy && tileGy <= maxGy
+                && documentMatchesLevel(tile, levelContext)) {
 				tilesToDelete.push(tile.id);
 			}
 		}
@@ -864,8 +864,8 @@ async function handleRectangleFill(startPos, endPos, isDeleting) {
 			const mx = (wall.c[0] + wall.c[2]) / 2;
 			const my = (wall.c[1] + wall.c[3]) / 2;
 
-			if (mx >= minPx && mx <= maxPx && my >= minPy && my <= maxPy &&
-                documentMatchesLevel(wall, levelContext)) {
+			if (mx >= minPx && mx <= maxPx && my >= minPy && my <= maxPy
+                && documentMatchesLevel(wall, levelContext)) {
 				doorsToDelete.push(wall.id);
 			}
 		}
@@ -896,10 +896,10 @@ async function handleRectangleFill(startPos, endPos, isDeleting) {
 			for (let gy = minGy; gy <= maxGy; gy++) {
 				// Only update an existing floor tile on the same native level.
 				const existing = scene.tiles.find(t =>
-					Math.floor(t.x / gridSize) === gx &&
-                    Math.floor(t.y / gridSize) === gy &&
-                    t.texture?.src?.includes("Dungeon/floor_tiles") &&
-                    documentMatchesLevel(t, levelContext)
+					Math.floor(t.x / gridSize) === gx
+                    && Math.floor(t.y / gridSize) === gy
+                    && t.texture?.src?.includes("Dungeon/floor_tiles")
+                    && documentMatchesLevel(t, levelContext)
 				);
 
 				if (existing) {
@@ -1003,10 +1003,10 @@ async function handleDoorClick(event, isDeleting) {
 
 	// Check if there's a floor tile here
 	const hasTile = scene.tiles.some(t =>
-		Math.floor(t.x / gridSize) === gx &&
-        Math.floor(t.y / gridSize) === gy &&
-        t.texture?.src?.includes("Dungeon/floor_tiles") &&
-        documentMatchesLevel(t, levelContext)
+		Math.floor(t.x / gridSize) === gx
+        && Math.floor(t.y / gridSize) === gy
+        && t.texture?.src?.includes("Dungeon/floor_tiles")
+        && documentMatchesLevel(t, levelContext)
 	);
 
 	if (!hasTile && !isDeleting) return;
@@ -1109,10 +1109,10 @@ async function handleDoorClick(event, isDeleting) {
 	// Check for existing wall/door at coords
 	const existingWall = scene.walls.find(w => {
 		const c = w.c;
-		const match1 = (Math.abs(c[0] - x1) < tolerance && Math.abs(c[1] - y1) < tolerance &&
-            Math.abs(c[2] - x2) < tolerance && Math.abs(c[3] - y2) < tolerance);
-		const match2 = (Math.abs(c[0] - x2) < tolerance && Math.abs(c[1] - y2) < tolerance &&
-            Math.abs(c[2] - x1) < tolerance && Math.abs(c[3] - y1) < tolerance);
+		const match1 = (Math.abs(c[0] - x1) < tolerance && Math.abs(c[1] - y1) < tolerance
+            && Math.abs(c[2] - x2) < tolerance && Math.abs(c[3] - y2) < tolerance);
+		const match2 = (Math.abs(c[0] - x2) < tolerance && Math.abs(c[1] - y2) < tolerance
+            && Math.abs(c[2] - x1) < tolerance && Math.abs(c[3] - y1) < tolerance);
 		return (match1 || match2) && documentMatchesLevel(w, levelContext);
 	});
 
@@ -1122,36 +1122,34 @@ async function handleDoorClick(event, isDeleting) {
 			scheduleWallRebuild(scene);
 		}
 	}
-	else {
-		if (existingWall) {
-			if (existingWall.door === 0) {
-				const updateData = { door: 1, ds: 0 };
-				if (doorTexture) {
-					updateData.animation = {
-						type: "swing",
-						texture: doorTexture,
-					};
-				}
-				await existingWall.update(updateData);
-				scheduleWallRebuild(scene);
-			}
-		}
-		else {
-			const wallData = applySceneLevelData({
-				c: [x1, y1, x2, y2],
-				door: 1,
-				ds: 0,
-				light: 20,
-				move: 20,
-				sound: 20,
-				doorSound: "woodBasic",
-			}, "Wall", levelContext);
+	else if (existingWall) {
+		if (existingWall.door === 0) {
+			const updateData = { door: 1, ds: 0 };
 			if (doorTexture) {
-				wallData.animation = { type: "swing", texture: doorTexture };
+				updateData.animation = {
+					type: "swing",
+					texture: doorTexture,
+				};
 			}
-			await scene.createEmbeddedDocuments("Wall", [wallData]);
+			await existingWall.update(updateData);
 			scheduleWallRebuild(scene);
 		}
+	}
+	else {
+		const wallData = applySceneLevelData({
+			c: [x1, y1, x2, y2],
+			door: 1,
+			ds: 0,
+			light: 20,
+			move: 20,
+			sound: 20,
+			doorSound: "woodBasic",
+		}, "Wall", levelContext);
+		if (doorTexture) {
+			wallData.animation = { type: "swing", texture: doorTexture };
+		}
+		await scene.createEmbeddedDocuments("Wall", [wallData]);
+		scheduleWallRebuild(scene);
 	}
 }
 
@@ -1254,7 +1252,7 @@ async function rebuildWallsForLevel(scene, levelContext, { wallTilePath = null, 
 	// Note: curved mode walls the whole perimeter, so only INTERIOR doors
 	// stay open (boundary doors get sealed) — same as cave-style generation.
 	const curvedLoops = _curvedWalls
-		? buildCaveLoops(floors, { x: 0, y: 0 }, gridSize, { isFloor: (k) => floors.has(k) })
+		? buildCaveLoops(floors, { x: 0, y: 0 }, gridSize, { isFloor: k => floors.has(k) })
 		: null;
 
 	if (!noWalls) {
@@ -1330,7 +1328,7 @@ async function rebuildWallsForLevel(scene, levelContext, { wallTilePath = null, 
 					try {
 						await TokenMagic.addUpdateFilters(doc, shadowParams);
 					}
-					catch (err) {
+					catch(err) {
 						console.warn(`${MODULE_ID} | Wall shadow failed:`, err);
 					}
 				}
@@ -1610,10 +1608,10 @@ async function _gmFillRectangle(data) {
 	for (let gx = minGx; gx <= maxGx; gx++) {
 		for (let gy = minGy; gy <= maxGy; gy++) {
 			const existing = scene.tiles.find(t =>
-				Math.floor(t.x / gridSize) === gx &&
-                Math.floor(t.y / gridSize) === gy &&
-                t.texture?.src?.includes("Dungeon/floor_tiles") &&
-                documentMatchesLevel(t, levelContext)
+				Math.floor(t.x / gridSize) === gx
+                && Math.floor(t.y / gridSize) === gy
+                && t.texture?.src?.includes("Dungeon/floor_tiles")
+                && documentMatchesLevel(t, levelContext)
 			);
 
 			if (existing) {
@@ -1673,8 +1671,8 @@ async function _gmDeleteRectangle(data) {
 			const tileGx = Math.floor(tile.x / gridSize);
 			const tileGy = Math.floor(tile.y / gridSize);
 
-			if (tileGx >= minGx && tileGx <= maxGx && tileGy >= minGy && tileGy <= maxGy &&
-                documentMatchesLevel(tile, levelContext)) {
+			if (tileGx >= minGx && tileGx <= maxGx && tileGy >= minGy && tileGy <= maxGy
+                && documentMatchesLevel(tile, levelContext)) {
 				tilesToDelete.push(tile.id);
 			}
 		}
@@ -1692,8 +1690,8 @@ async function _gmDeleteRectangle(data) {
 		const mx = (wall.c[0] + wall.c[2]) / 2;
 		const my = (wall.c[1] + wall.c[3]) / 2;
 
-		if (mx >= minPx && mx <= maxPx && my >= minPy && my <= maxPy &&
-            documentMatchesLevel(wall, levelContext)) {
+		if (mx >= minPx && mx <= maxPx && my >= minPy && my <= maxPy
+            && documentMatchesLevel(wall, levelContext)) {
 			doorsToDelete.push(wall.id);
 		}
 	}
@@ -1722,10 +1720,10 @@ async function _gmPlaceDoor(data) {
 	// Check for existing wall at coords
 	const existingWall = scene.walls.find(w => {
 		const c = w.c;
-		const match1 = (Math.abs(c[0] - x1) < tolerance && Math.abs(c[1] - y1) < tolerance &&
-            Math.abs(c[2] - x2) < tolerance && Math.abs(c[3] - y2) < tolerance);
-		const match2 = (Math.abs(c[0] - x2) < tolerance && Math.abs(c[1] - y2) < tolerance &&
-            Math.abs(c[2] - x1) < tolerance && Math.abs(c[3] - y1) < tolerance);
+		const match1 = (Math.abs(c[0] - x1) < tolerance && Math.abs(c[1] - y1) < tolerance
+            && Math.abs(c[2] - x2) < tolerance && Math.abs(c[3] - y2) < tolerance);
+		const match2 = (Math.abs(c[0] - x2) < tolerance && Math.abs(c[1] - y2) < tolerance
+            && Math.abs(c[2] - x1) < tolerance && Math.abs(c[3] - y1) < tolerance);
 		return (match1 || match2) && documentMatchesLevel(w, levelContext);
 	});
 
@@ -1778,10 +1776,10 @@ async function _gmRemoveDoor(data) {
 	const existingWall = scene.walls.find(w => {
 		if (!w.door || w.door === 0) return false;
 		const c = w.c;
-		const match1 = (Math.abs(c[0] - x1) < tolerance && Math.abs(c[1] - y1) < tolerance &&
-            Math.abs(c[2] - x2) < tolerance && Math.abs(c[3] - y2) < tolerance);
-		const match2 = (Math.abs(c[0] - x2) < tolerance && Math.abs(c[1] - y2) < tolerance &&
-            Math.abs(c[2] - x1) < tolerance && Math.abs(c[3] - y1) < tolerance);
+		const match1 = (Math.abs(c[0] - x1) < tolerance && Math.abs(c[1] - y1) < tolerance
+            && Math.abs(c[2] - x2) < tolerance && Math.abs(c[3] - y2) < tolerance);
+		const match2 = (Math.abs(c[0] - x2) < tolerance && Math.abs(c[1] - y2) < tolerance
+            && Math.abs(c[2] - x1) < tolerance && Math.abs(c[3] - y1) < tolerance);
 		return (match1 || match2) && documentMatchesLevel(w, levelContext);
 	});
 

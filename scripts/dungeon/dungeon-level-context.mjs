@@ -30,9 +30,9 @@ export function getSceneLevelContext(scene = canvas.scene, preferredLevelId = nu
 	const rawTop    = sceneLevel?.elevation?.top;
 	const top       = Number(rawTop ?? (bottom + LEVEL_HEIGHT - 1));
 	return {
-		levelId:   sceneLevel?.id ?? null,
+		levelId: sceneLevel?.id ?? null,
 		elevation: Number.isFinite(bottom) ? bottom : 0,
-		rangeTop:  Number.isFinite(top) ? top : (Number.isFinite(bottom) ? bottom + LEVEL_HEIGHT - 1 : LEVEL_HEIGHT - 1),
+		rangeTop: Number.isFinite(top) ? top : (Number.isFinite(bottom) ? bottom + LEVEL_HEIGHT - 1 : LEVEL_HEIGHT - 1),
 	};
 }
 
@@ -138,7 +138,7 @@ export function getCurrentElevation() {
 					return levelsFloor;
 				}
 			}
-			catch (e) { /* Setting doesn't exist */ }
+			catch(e) { /* Setting doesn't exist */ }
 
 			// Try accessing Levels Layer Tool's UI element directly
 			const levelsToolApp = Object.values(ui.windows).find(w =>
@@ -178,7 +178,7 @@ export function getCurrentElevation() {
 		}
 
 	}
-	catch (e) {
+	catch(e) {
 		console.warn(`${MODULE_ID} | Could not get current elevation from Levels:`, e);
 	}
 

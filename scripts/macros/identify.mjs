@@ -107,14 +107,14 @@ export async function showIdentifyDialog(targetActor, unidentifiedItems, identif
 		},
 	});
 
-	dialog.addEventListener("render", (event) => {
+	dialog.addEventListener("render", event => {
 		const dialogElement = dialog.element;
 		// Add click handlers for item selection
 		const items = dialogElement.querySelectorAll(".sdx-identify-item");
 		const hiddenInput = dialogElement.querySelector("input[name='selectedItemId']");
 
 		items.forEach(itemEl => {
-			itemEl.addEventListener("click", (e) => {
+			itemEl.addEventListener("click", e => {
 				e.preventDefault();
 				e.stopPropagation();
 				// Remove selected class from all
@@ -272,7 +272,7 @@ export async function showItemReveal(item, maskedName) {
 			}
 		}
 	}
-	catch (e) {
+	catch(e) {
 		// Silently fail if no JB2A effects available
 		console.log(`${MODULE_ID} | Sequencer animation not available: ${e.message}`);
 	}

@@ -114,7 +114,7 @@ const BIOME_TILES = {
 	},
 };
 
-const prefix = (p) => `modules/${MODULE_ID}/${p.replace(/^modules\/[^/]+\//, "")}`;
+const prefix = p => `modules/${MODULE_ID}/${p.replace(/^modules\/[^/]+\//, "")}`;
 
 // ── number / geometry helpers ───────────────────────────────────────────────
 
@@ -156,7 +156,7 @@ function makeGeom(dataset) {
 	return { pubCols, pubRows, gridCols, gridRows, offsetOf };
 }
 
-const offsetToHexKey = (off) => `${off.i}_${off.j}`;
+const offsetToHexKey = off => `${off.i}_${off.j}`;
 const variety = (i, j, len) => (len ? (Math.abs(i * 31 + j * 17) % len) : 0);
 
 // ── scene creation ──────────────────────────────────────────────────────────
@@ -345,7 +345,7 @@ export async function buildHexcrawl(dataset, opts = {}) {
 	try {
 		await canvas.tiles?.draw?.();
 	}
-	catch (err) {
+	catch(err) {
 		console.warn(`${MODULE_ID} | post-build tiles redraw failed`, err);
 	}
 
@@ -366,7 +366,7 @@ export async function buildHexcrawlFromFile(relPath, opts = {}) {
 	try {
 		dataset = await foundry.utils.fetchJsonWithTimeout(url);
 	}
-	catch (err) {
+	catch(err) {
 		ui.notifications?.error(`SDX | Could not load hexcrawl dataset: ${relPath}`);
 		console.error(`${MODULE_ID} | fetch hexcrawl dataset failed`, err);
 		return null;

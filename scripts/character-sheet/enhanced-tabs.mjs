@@ -93,7 +93,7 @@ function addInlineTalentControls($talentsTab, actor) {
 		$item.append($controls);
 
 		// Edit button
-		$controls.find(".sdx-talent-edit").on("click", async (e) => {
+		$controls.find(".sdx-talent-edit").on("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -101,7 +101,7 @@ function addInlineTalentControls($talentsTab, actor) {
 		});
 
 		// Transfer button
-		$controls.find(".sdx-talent-transfer").on("click", async (e) => {
+		$controls.find(".sdx-talent-transfer").on("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -114,7 +114,7 @@ function addInlineTalentControls($talentsTab, actor) {
 		});
 
 		// Delete button
-		$controls.find(".sdx-talent-delete").on("click", async (e) => {
+		$controls.find(".sdx-talent-delete").on("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);

@@ -70,8 +70,8 @@ export class TomSceneEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 			height: "auto",
 		},
 		actions: {
-			save: TomSceneEditor._onSave,
-			close: TomSceneEditor._onClose,
+			"save": TomSceneEditor._onSave,
+			"close": TomSceneEditor._onClose,
 			"tab-switch": TomSceneEditor._onTabSwitch,
 			"file-picked": TomSceneEditor._onFilePicked,
 		},
@@ -159,15 +159,15 @@ export class TomSceneEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 		super._onRender(context, options);
 		this._syncPreviewAspect();
 
-		this.element.querySelector('input[name="name"]')?.addEventListener("input", (e) => {
+		this.element.querySelector('input[name="name"]')?.addEventListener("input", e => {
 			this.uiState.data.name = e.target.value;
 		});
 
-		this.element.querySelector('input[name="background"]')?.addEventListener("change", (e) => {
+		this.element.querySelector('input[name="background"]')?.addEventListener("change", e => {
 			this._updateBackground(e.target.value);
 		});
 
-		this.element.querySelector(".file-picker")?.addEventListener("click", async (e) => {
+		this.element.querySelector(".file-picker")?.addEventListener("click", async e => {
 			e.preventDefault();
 			const bgInput = this.element.querySelector('input[name="background"]');
 			return new FilePicker({
@@ -182,12 +182,12 @@ export class TomSceneEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// Arena grid style — live preview without full re-render (keeps focus)
-		this.element.querySelector('select[name="arenaType"]')?.addEventListener("change", (e) => {
+		this.element.querySelector('select[name="arenaType"]')?.addEventListener("change", e => {
 			this.uiState.data.arenaType = e.target.value;
 			this._refreshArenaPreviewLive();
 		});
 
-		this.element.querySelector('input[name="isArena"]')?.addEventListener("change", (e) => {
+		this.element.querySelector('input[name="isArena"]')?.addEventListener("change", e => {
 			this.uiState.data.isArena = e.target.checked;
 			this.render();
 		});
@@ -195,7 +195,7 @@ export class TomSceneEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Arena scale — slider + number stay in sync, live overlay scale
 		const scaleRange = this.element.querySelector('input[name="arenaScale"]');
 		const scaleNum = this.element.querySelector('input[name="arenaScaleNum"]');
-		const onScaleInput = (raw) => {
+		const onScaleInput = raw => {
 			const v = clampArenaScale(raw);
 			this.uiState.data.arenaScale = v;
 			if (scaleRange && scaleRange.value !== String(v)) scaleRange.value = String(v);
@@ -207,15 +207,15 @@ export class TomSceneEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 			const pctEl = this.element.querySelector(".tom-arena-scale-pct");
 			if (pctEl) pctEl.textContent = `(${Math.round(v * 100)}%)`;
 		};
-		scaleRange?.addEventListener("input", (e) => onScaleInput(e.target.value));
-		scaleNum?.addEventListener("input", (e) => onScaleInput(e.target.value));
-		scaleNum?.addEventListener("change", (e) => onScaleInput(e.target.value));
+		scaleRange?.addEventListener("input", e => onScaleInput(e.target.value));
+		scaleNum?.addEventListener("input", e => onScaleInput(e.target.value));
+		scaleNum?.addEventListener("change", e => onScaleInput(e.target.value));
 
-		this.element.querySelector('select[name="inAnimation"]')?.addEventListener("change", (e) => {
+		this.element.querySelector('select[name="inAnimation"]')?.addEventListener("change", e => {
 			this.uiState.data.inAnimation = e.target.value;
 		});
 
-		this.element.querySelector('select[name="outAnimation"]')?.addEventListener("change", (e) => {
+		this.element.querySelector('select[name="outAnimation"]')?.addEventListener("change", e => {
 			this.uiState.data.outAnimation = e.target.value;
 		});
 	}
@@ -288,7 +288,7 @@ export class TomSceneEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 				ui.notifications.info(`Saved Scene: ${this.scene.name}`);
 			}
 		}
-		catch (error) {
+		catch(error) {
 			console.error("Tom | Error saving scene:", error);
 			ui.notifications.error("Failed to save scene. Check console for details.");
 			target.classList.remove("es-btn-loading");

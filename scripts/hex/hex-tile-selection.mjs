@@ -75,7 +75,7 @@ export async function loadSymbolTileAssets() {
 					});
 				}
 			}
-			catch (err) {
+			catch(err) {
 				// Subdirectory might not be accessible, that's okay
 			}
 		}
@@ -84,7 +84,7 @@ export async function loadSymbolTileAssets() {
 		await cache.setMetadata(metadataKey, _symbolTiles);
 		console.log(`${MODULE_ID} | Loaded ${_symbolTiles.length} symbol tiles from ${subdirs.length} folders`);
 	}
-	catch (err) {
+	catch(err) {
 		console.warn(`${MODULE_ID} | Could not load symbol tiles:`, err);
 		_symbolTiles = [];
 	}

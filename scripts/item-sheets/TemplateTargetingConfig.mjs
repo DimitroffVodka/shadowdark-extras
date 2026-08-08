@@ -38,7 +38,7 @@ function getTokenMagicPresets() {
 
 	const presets = [];
 	const allowedLibraries = new Set(["tmfx-region", "tmfx-template"]);
-	const addPresets = (source) => presets.push(...normalizeTokenMagicPresetEntries(source, allowedLibraries));
+	const addPresets = source => presets.push(...normalizeTokenMagicPresetEntries(source, allowedLibraries));
 	const tokenMagic = globalThis.TokenMagic;
 
 	try {
@@ -47,7 +47,7 @@ function getTokenMagicPresets() {
 			addPresets(tokenMagic.getPresets("tmfx-template"));
 		}
 	}
-	catch (e) {
+	catch(e) {
 		console.warn("shadowdark-extras | Failed to read TokenMagic presets via getPresets:", e);
 	}
 
@@ -55,7 +55,7 @@ function getTokenMagicPresets() {
 		try {
 			addPresets(tokenMagic[key]);
 		}
-		catch (e) {
+		catch(e) {
 			// Ignore unstable TokenMagic internals.
 		}
 	}
@@ -64,7 +64,7 @@ function getTokenMagicPresets() {
 		try {
 			addPresets(game.settings.get("tokenmagic", settingKey));
 		}
-		catch (e) {
+		catch(e) {
 			// Setting may not exist in this TokenMagic version.
 		}
 	}
@@ -561,7 +561,7 @@ export function activateTemplateTargetingListeners(html, MODULE_ID) {
 
 	if (modeRadios && templateSettings) {
 		modeRadios.forEach(radio => {
-			radio.addEventListener("change", (e) => {
+			radio.addEventListener("change", e => {
 				templateSettings.style.display = e.target.value === "template" ? "" : "none";
 			});
 		});
@@ -573,7 +573,7 @@ export function activateTemplateTargetingListeners(html, MODULE_ID) {
 
 	if (deleteModeRadios && durationInput) {
 		deleteModeRadios.forEach(radio => {
-			radio.addEventListener("change", (e) => {
+			radio.addEventListener("change", e => {
 				durationInput.disabled = e.target.value !== "duration";
 			});
 		});
@@ -584,10 +584,10 @@ export function activateTemplateTargetingListeners(html, MODULE_ID) {
 	const colorText = html.querySelector(".sdx-targeting-box .sdx-color-text");
 
 	if (colorPicker && colorText) {
-		colorPicker.addEventListener("input", (e) => {
+		colorPicker.addEventListener("input", e => {
 			colorText.value = e.target.value;
 		});
-		colorText.addEventListener("input", (e) => {
+		colorText.addEventListener("input", e => {
 			if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
 				colorPicker.value = e.target.value;
 			}
@@ -599,7 +599,7 @@ export function activateTemplateTargetingListeners(html, MODULE_ID) {
 	const templateEffectsConfig = html.querySelector(".sdx-template-effects-config");
 
 	if (templateEffectsEnabled && templateEffectsConfig) {
-		templateEffectsEnabled.addEventListener("change", (e) => {
+		templateEffectsEnabled.addEventListener("change", e => {
 			if (e.target.checked) {
 				templateEffectsConfig.style.opacity = "";
 				templateEffectsConfig.style.pointerEvents = "";
@@ -616,7 +616,7 @@ export function activateTemplateTargetingListeners(html, MODULE_ID) {
 	const templateSaveConfig = html.querySelector(".sdx-template-save-config");
 
 	if (templateSaveEnabled && templateSaveConfig) {
-		templateSaveEnabled.addEventListener("change", (e) => {
+		templateSaveEnabled.addEventListener("change", e => {
 			if (e.target.checked) {
 				templateSaveConfig.style.opacity = "";
 				templateSaveConfig.style.pointerEvents = "";

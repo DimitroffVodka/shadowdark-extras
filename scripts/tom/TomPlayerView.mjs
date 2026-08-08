@@ -92,15 +92,14 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (!arenaArea) return;
 
 
-
 		const playerView = this.element.querySelector(".tom-player-view");
 		if (playerView) {
-			playerView.addEventListener("dragover", (e) => {
+			playerView.addEventListener("dragover", e => {
 				e.preventDefault();
 				e.dataTransfer.dropEffect = "copy";
 			});
 
-			playerView.addEventListener("drop", async (e) => {
+			playerView.addEventListener("drop", async e => {
 				e.preventDefault();
 
 
@@ -153,7 +152,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 									filePath = parsed.src || parsed.path || parsed.img;
 								}
 							}
-							catch (e) { }
+							catch(e) { }
 						}
 
 						if (filePath) {
@@ -184,15 +183,14 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 
 
 						this._spawnActorToken(actor, image, x, y);
-						return;
+
 					}
 				}
-				catch (err) {
+				catch(err) {
 					console.error("Tom | Error handling drop:", err);
 				}
 			});
 		}
-
 
 
 		this._setupArenaTokenDragging();
@@ -267,7 +265,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 
 			const dragState = { isDragging: false };
 
-			asset.addEventListener("mousedown", (e) => {
+			asset.addEventListener("mousedown", e => {
 				if (e.button !== 0) return;
 				dragState.isDragging = true;
 				asset.classList.add("dragging");
@@ -280,7 +278,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 				e.stopPropagation();
 			});
 
-			document.addEventListener("mousemove", (e) => {
+			document.addEventListener("mousemove", e => {
 				if (!dragState.isDragging) return;
 
 				const rect = playerView.getBoundingClientRect();
@@ -301,7 +299,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 				}
 			});
 
-			document.addEventListener("mouseup", (e) => {
+			document.addEventListener("mouseup", e => {
 				if (!dragState.isDragging) return;
 				dragState.isDragging = false;
 				asset.classList.remove("dragging");
@@ -319,7 +317,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 			});
 
 
-			asset.addEventListener("wheel", (e) => {
+			asset.addEventListener("wheel", e => {
 				e.preventDefault();
 
 				const assetData = this.uiState.arenaAssets.get(assetId);
@@ -340,7 +338,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 			});
 
 
-			asset.addEventListener("contextmenu", (e) => {
+			asset.addEventListener("contextmenu", e => {
 				e.preventDefault();
 				import("../tom/TomSocketHandler.mjs").then(({ TomSocketHandler }) => {
 					TomSocketHandler.emitArenaAssetRemove({ assetId });
@@ -372,7 +370,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 
 
 			if (canRemove) {
-				token.addEventListener("contextmenu", (e) => {
+				token.addEventListener("contextmenu", e => {
 					e.preventDefault();
 					import("../tom/TomSocketHandler.mjs").then(({ TomSocketHandler }) => {
 						TomSocketHandler.emitArenaTokenRemove({ tokenId });
@@ -388,7 +386,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 
 			const dragState = { isDragging: false };
 
-			const onMouseDown = (e) => {
+			const onMouseDown = e => {
 				if (e.button !== 0) return;
 
 
@@ -407,7 +405,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 				e.stopPropagation();
 			};
 
-			const onMouseMove = (e) => {
+			const onMouseMove = e => {
 				if (!dragState.isDragging) return;
 
 				const rect = playerView.getBoundingClientRect();
@@ -430,7 +428,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 				}
 			};
 
-			const onMouseUp = (e) => {
+			const onMouseUp = e => {
 				if (!dragState.isDragging) return;
 				dragState.isDragging = false;
 				token.classList.remove("dragging");
@@ -470,7 +468,6 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		const rulerState = this.uiState.ruler;
 		const DRAG_THRESHOLD = 15;
-
 
 
 		const arenaRings = playerView.querySelector(".tom-arena-rings");
@@ -594,7 +591,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		};
 
 
-		const onMouseDown = (e) => {
+		const onMouseDown = e => {
 			if (e.button !== 2) return;
 
 			rightMouseDown = true;
@@ -618,7 +615,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		};
 
 
-		const onMouseMove = (e) => {
+		const onMouseMove = e => {
 			if (!rightMouseDown) return;
 
 			const viewRect = playerView.getBoundingClientRect();
@@ -659,7 +656,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		};
 
 
-		const onMouseUp = (e) => {
+		const onMouseUp = e => {
 			if (e.button !== 2) return;
 			if (!rightMouseDown) return;
 
@@ -681,7 +678,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		};
 
 
-		const onContextMenu = (e) => {
+		const onContextMenu = e => {
 			if (hasDragged) {
 				e.preventDefault();
 				e.stopPropagation();
@@ -695,7 +692,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		};
 
 
-		const onLeftClick = (e) => {
+		const onLeftClick = e => {
 			if (rulerState.active) {
 				rulerState.active = false;
 				rulerContainer.style.display = "none";
@@ -822,7 +819,6 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (!root) return;
 
 
-
 		let leftOffset = 10;
 		const controls = document.getElementById("controls");
 
@@ -890,7 +886,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 	}
 
 	static deactivate(outAnimation = "fade") {
-		return new Promise((resolve) => {
+		return new Promise(resolve => {
 			if (this._instance && this._instance.uiState.active) {
 
 				this._instance.uiState.arenaTokens.clear();
@@ -941,7 +937,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {Promise} Resolves when animation completes
    */
 	static playOutAnimation(outAnimation = "fade") {
-		return new Promise((resolve) => {
+		return new Promise(resolve => {
 			if (!this._instance || !this._instance.uiState.active) {
 				resolve();
 				return;
@@ -1109,8 +1105,8 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		}).join("");
 
 
-		const gmConditionsBtn = game.user.isGM ?
-			"<button class=\"tom-arena-conditions-btn\" title=\"Manage Conditions\"><i class=\"fas fa-heart-crack\"></i></button>" : "";
+		const gmConditionsBtn = game.user.isGM
+			? "<button class=\"tom-arena-conditions-btn\" title=\"Manage Conditions\"><i class=\"fas fa-heart-crack\"></i></button>" : "";
 
 		// Check if token should be in compact mode
 		const isCompact = tokenState?.isCompact || false;
@@ -1150,7 +1146,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (isOwner) {
 			const hpEl = tokenEl.querySelector(".tom-arena-token-hp");
 			if (hpEl) {
-				hpEl.addEventListener("click", (e) => {
+				hpEl.addEventListener("click", e => {
 					e.preventDefault();
 					e.stopPropagation();
 					this._showHpEditDialog(tokenId, actorId, isNPC, hpValue, hpMax, actorName);
@@ -1162,7 +1158,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (game.user.isGM) {
 			const condBtn = tokenEl.querySelector(".tom-arena-conditions-btn");
 			if (condBtn) {
-				condBtn.addEventListener("click", (e) => {
+				condBtn.addEventListener("click", e => {
 					e.preventDefault();
 					e.stopPropagation();
 					this._showConditionsPicker(tokenId, actorName, conditions, tokenEl);
@@ -1173,7 +1169,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Toggle button click handler (for all users)
 		const toggleBtn = tokenEl.querySelector(".tom-arena-token-toggle-btn");
 		if (toggleBtn) {
-			toggleBtn.addEventListener("click", (e) => {
+			toggleBtn.addEventListener("click", e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const newCompact = !tokenEl.classList.contains("compact");
@@ -1194,7 +1190,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Sheet button click handler (for owners)
 		const sheetBtn = tokenEl.querySelector(".tom-arena-token-sheet-btn");
 		if (sheetBtn && isOwner) {
-			sheetBtn.addEventListener("click", (e) => {
+			sheetBtn.addEventListener("click", e => {
 				e.preventDefault();
 				e.stopPropagation();
 				// Get the actor and render its sheet
@@ -1314,7 +1310,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		header.querySelector(".tom-conditions-close").addEventListener("click", () => picker.remove());
 
 
-		const closeHandler = (e) => {
+		const closeHandler = e => {
 			if (!picker.contains(e.target) && !e.target.closest(".tom-arena-conditions-btn")) {
 				picker.remove();
 				document.removeEventListener("click", closeHandler);
@@ -1638,7 +1634,6 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 				height: contentHeight,
 			};
 		}
-
 
 
 		let startPx; let endPx;

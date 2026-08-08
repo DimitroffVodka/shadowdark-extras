@@ -36,7 +36,7 @@ export const TomPanels = {
      * TomSceneBindings (tom-overlay-toggle / tom-overlay-clear). This compat
      * panel is now multi-select aware.
      */
-     async _toggleTomOverlayPanel() {
+	async _toggleTomOverlayPanel() {
 		// Close other panels first
 		document.querySelector(".tom-scene-switcher-panel")?.remove();
 		document.querySelector(".tom-cast-manager-panel")?.remove();

@@ -165,7 +165,7 @@ export default class BackgroundSheetSD extends HandlebarsApplicationMixin(Docume
 						img: doc?.img || itemRef.img || "icons/svg/mystery-man.svg",
 					});
 				}
-				catch (err) {
+				catch(err) {
 					console.warn(`${MODULE_ID} | Failed to load item ${itemRef.uuid}:`, err);
 					// Include it anyway with stored data
 					loadedItems.push({
@@ -222,7 +222,7 @@ export default class BackgroundSheetSD extends HandlebarsApplicationMixin(Docume
 		// Setup tab click handlers
 		const tabLinks = html.querySelectorAll(".background-sheet-tabs .tab-item");
 		tabLinks.forEach(link => {
-			link.addEventListener("click", (event) => {
+			link.addEventListener("click", event => {
 				event.preventDefault();
 				const tab = event.currentTarget.dataset.tab;
 				this._onChangeTab(tab);
@@ -233,12 +233,12 @@ export default class BackgroundSheetSD extends HandlebarsApplicationMixin(Docume
 		const itemImage = html.querySelector(".item-image[data-edit='img']");
 		if (itemImage) {
 			itemImage.style.cursor = "pointer";
-			itemImage.addEventListener("click", (event) => {
+			itemImage.addEventListener("click", event => {
 				event.preventDefault();
 				const fp = new FilePicker({
 					type: "image",
 					current: this.item.img,
-					callback: async (path) => {
+					callback: async path => {
 						await this.item.update({ img: path });
 					},
 				});
@@ -282,7 +282,7 @@ export default class BackgroundSheetSD extends HandlebarsApplicationMixin(Docume
 		const dropZones = html.querySelectorAll(".advancement-item-drop");
 
 		dropZones.forEach(zone => {
-			zone.addEventListener("dragover", (event) => {
+			zone.addEventListener("dragover", event => {
 				event.preventDefault();
 				zone.classList.add("drag-over");
 			});
@@ -291,7 +291,7 @@ export default class BackgroundSheetSD extends HandlebarsApplicationMixin(Docume
 				zone.classList.remove("drag-over");
 			});
 
-			zone.addEventListener("drop", async (event) => {
+			zone.addEventListener("drop", async event => {
 				event.preventDefault();
 				zone.classList.remove("drag-over");
 
@@ -308,7 +308,7 @@ export default class BackgroundSheetSD extends HandlebarsApplicationMixin(Docume
 		const levelSelects = html.querySelectorAll("select[name^='advancement.']");
 
 		levelSelects.forEach(select => {
-			select.addEventListener("change", async (event) => {
+			select.addEventListener("change", async event => {
 				const advancementId = event.target.dataset.advancementId;
 				const newLevel = parseInt(event.target.value);
 
@@ -338,7 +338,7 @@ export default class BackgroundSheetSD extends HandlebarsApplicationMixin(Docume
 			const saveButton = proseMirrorEditor.querySelector(".editor-save, button[data-action='save']");
 			if (saveButton && !saveButton.dataset.sdxHandled) {
 				saveButton.dataset.sdxHandled = "true";
-				saveButton.addEventListener("click", async (event) => {
+				saveButton.addEventListener("click", async event => {
 					// Get the ProseMirror content
 					const editorContent = proseMirrorEditor.querySelector(".ProseMirror");
 					if (editorContent) {
@@ -357,7 +357,7 @@ export default class BackgroundSheetSD extends HandlebarsApplicationMixin(Docume
 			const saveButton = proseMirrorEditor.querySelector(".editor-save, button[data-action='save']");
 			if (saveButton && !saveButton.dataset.sdxHandled) {
 				saveButton.dataset.sdxHandled = "true";
-				saveButton.addEventListener("click", async (event) => {
+				saveButton.addEventListener("click", async event => {
 					const editorContent = proseMirrorEditor.querySelector(".ProseMirror");
 					if (editorContent) {
 						const htmlContent = editorContent.innerHTML;
@@ -423,7 +423,7 @@ export default class BackgroundSheetSD extends HandlebarsApplicationMixin(Docume
 			ui.notifications.info(`Added ${doc.name} to advancement`);
 
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Error handling advancement item drop:`, err);
 		}
 	}

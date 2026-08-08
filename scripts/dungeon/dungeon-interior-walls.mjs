@@ -105,7 +105,7 @@ export async function handleIntWallDrag(startPos, endPos) {
 	if (created?.length > 0) {
 		// Update elevation post-creation to bypass Levels hooks
 		await scene.updateEmbeddedDocuments("Drawing", [{
-			_id: created[0].id,
+			"_id": created[0].id,
 			elevation,
 			"flags.levels.rangeTop": wallHeightTop,
 		}]);
@@ -120,7 +120,7 @@ export async function handleIntWallDrag(startPos, endPos) {
 			try {
 				await TokenMagic.addUpdateFilters(created[0], shadowParams);
 			}
-			catch (_) {}
+			catch(_) {}
 		}
 	}
 
@@ -247,10 +247,10 @@ export async function handleIntWallClick(clickPos) {
 		if (w.door && w.door > 0) return false;
 		const [wx1, wy1, wx2, wy2] = w.c;
 		return (
-			(Math.abs(wx1 - p1x) < wTol && Math.abs(wy1 - p1y) < wTol &&
-             Math.abs(wx2 - p2x) < wTol && Math.abs(wy2 - p2y) < wTol) ||
-            (Math.abs(wx1 - p2x) < wTol && Math.abs(wy1 - p2y) < wTol &&
-             Math.abs(wx2 - p1x) < wTol && Math.abs(wy2 - p1y) < wTol)
+			(Math.abs(wx1 - p1x) < wTol && Math.abs(wy1 - p1y) < wTol
+             && Math.abs(wx2 - p2x) < wTol && Math.abs(wy2 - p2y) < wTol)
+            || (Math.abs(wx1 - p2x) < wTol && Math.abs(wy1 - p2y) < wTol
+             && Math.abs(wx2 - p1x) < wTol && Math.abs(wy2 - p1y) < wTol)
 		);
 	});
 	if (matchingWall) {
@@ -320,7 +320,7 @@ export async function handleIntWallClick(clickPos) {
 		const created = await scene.createEmbeddedDocuments("Drawing", drawingsToCreate);
 		// Post-creation elevation update (Levels may override during creation)
 		const updates = created.map(d => ({
-			_id: d.id,
+			"_id": d.id,
 			elevation,
 			"flags.levels.rangeTop": wallHeightTop,
 			...(levelContext.levelId ? { levels: [levelContext.levelId] } : {}),
@@ -335,7 +335,7 @@ export async function handleIntWallClick(clickPos) {
 				try {
 					await TokenMagic.addUpdateFilters(doc, shadowParams);
 				}
-				catch (_) {}
+				catch(_) {}
 			}
 		}
 	}
@@ -407,7 +407,7 @@ export async function handleIntWallDoorRemove(clickPos) {
 	const endTol = 35;
 
 	// Helper: get both world-space endpoints of a rotated rect drawing
-	const getDrawingEndpoints = (d) => {
+	const getDrawingEndpoints = d => {
 		const theta = (d.rotation || 0) * Math.PI / 180;
 		const hw = d.shape.width / 2;
 		const cx = d.x + hw;
@@ -520,7 +520,7 @@ export async function handleIntWallDoorRemove(clickPos) {
 	const created = await scene.createEmbeddedDocuments("Drawing", [drawingData]);
 	if (created?.length > 0) {
 		await scene.updateEmbeddedDocuments("Drawing", [{
-			_id: created[0].id,
+			"_id": created[0].id,
 			elevation,
 			"flags.levels.rangeTop": wallHeightTop,
 			...(levelContext.levelId ? { levels: [levelContext.levelId] } : {}),
@@ -530,7 +530,7 @@ export async function handleIntWallDoorRemove(clickPos) {
 			try {
 				await TokenMagic.addUpdateFilters(created[0], shadowParams);
 			}
-			catch (_) {}
+			catch(_) {}
 		}
 	}
 

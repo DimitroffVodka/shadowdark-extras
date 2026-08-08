@@ -133,7 +133,7 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 			try {
 				enabled = game.settings.get(MODULE_ID, `animationFxCategory_${cat.key}`);
 			}
-			catch (e) { /* default */ }
+			catch(e) { /* default */ }
 
 			const map = working[cat.key] || {};
 			const presets = Object.entries(map).map(([key, p]) => {
@@ -182,11 +182,11 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 		try {
 			soundEnabled = game.settings.get(MODULE_ID, "animationFxSoundEnabled");
 		}
-		catch (e) { /* default */ }
+		catch(e) { /* default */ }
 		try {
 			volume = game.settings.get(MODULE_ID, "animationFxVolume");
 		}
-		catch (e) { /* default */ }
+		catch(e) { /* default */ }
 
 		// Ambient & Events (Torch, Level-Up) — SDX-native effects, file-only editable.
 		const amb = AnimationFxSD.getAmbient();
@@ -230,7 +230,7 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 		if (!root) return;
 
 		root.querySelectorAll(".sdx-animfx-add").forEach(btn => {
-			btn.addEventListener("click", (ev) => {
+			btn.addEventListener("click", ev => {
 				ev.preventDefault();
 				this._syncFromForm();
 				const cat = btn.dataset.category;
@@ -260,7 +260,7 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 		});
 
 		root.querySelectorAll(".sdx-animfx-delete").forEach(btn => {
-			btn.addEventListener("click", (ev) => {
+			btn.addEventListener("click", ev => {
 				ev.preventDefault();
 				this._syncFromForm();
 				const cat = btn.dataset.category;
@@ -291,7 +291,7 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 
 		// Play a preset on the canvas from the selected token.
 		root.querySelectorAll(".sdx-animfx-preview").forEach(btn => {
-			btn.addEventListener("click", async (ev) => {
+			btn.addEventListener("click", async ev => {
 				ev.preventDefault();
 				this._syncFromForm();
 				const preset = this._getWorking()[btn.dataset.category]?.[btn.dataset.key];
@@ -315,7 +315,7 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 
 		const clearBtn = root.querySelector(".sdx-animfx-clear-fx");
 		if (clearBtn) {
-			clearBtn.addEventListener("click", async (ev) => {
+			clearBtn.addEventListener("click", async ev => {
 				ev.preventDefault();
 				await AnimationFxSD.clearAllFx();
 				ui.notifications.info("Cleared lingering SDX effects.");
@@ -324,7 +324,7 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 
 		const seedBtn = root.querySelector(".sdx-animfx-seed-weapons");
 		if (seedBtn) {
-			seedBtn.addEventListener("click", async (ev) => {
+			seedBtn.addEventListener("click", async ev => {
 				ev.preventDefault();
 				this._syncFromForm();
 				// Persist current edits first so seeding merges into them, not over them.
@@ -335,10 +335,10 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 				const sp = await AnimationFxSD.seedWeaponSpritePresets();
 				this._working = null; // re-read the merged config
 				ui.notifications.info(
-					`Presets seeded — weapons: ${w.added} added / ${w.skipped} existing; ` +
-					`spells: ${s.added} added / ${s.skipped} existing; ` +
-					`NPC attacks: ${n.added} added / ${n.skipped} existing; ` +
-					`sprites: ${sp.added} added / ${sp.skipped} existing.`
+					`Presets seeded — weapons: ${w.added} added / ${w.skipped} existing; `
+					+ `spells: ${s.added} added / ${s.skipped} existing; `
+					+ `NPC attacks: ${n.added} added / ${n.skipped} existing; `
+					+ `sprites: ${sp.added} added / ${sp.skipped} existing.`
 				);
 				this.render();
 			});
@@ -346,14 +346,14 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 
 		const dbBtn = root.querySelector(".sdx-animfx-open-db");
 		if (dbBtn) {
-			dbBtn.addEventListener("click", (ev) => {
+			dbBtn.addEventListener("click", ev => {
 				ev.preventDefault();
 				try {
 					if (globalThis.Sequencer?.DatabaseViewer?.show) globalThis.Sequencer.DatabaseViewer.show();
 					else if (globalThis.Sequencer?.Database?.show) globalThis.Sequencer.Database.show();
 					else ui.notifications.warn("Sequencer Database viewer is not available.");
 				}
-				catch (e) { /* ignore */ }
+				catch(e) { /* ignore */ }
 			});
 		}
 	}

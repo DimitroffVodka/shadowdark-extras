@@ -229,7 +229,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 		context.remoteActor = this.remoteActor;
 
 		// Process items to mask unidentified names for non-GM users
-		const processItems = (items) => {
+		const processItems = items => {
 			if (game.user?.isGM) return items;
 			return items.map(itemData => {
 				// SD 4.x native: identification schema present on the raw data.
@@ -365,7 +365,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 		try {
 			data = JSON.parse(event.dataTransfer.getData("text/plain"));
 		}
-		catch (e) {
+		catch(e) {
 			return;
 		}
 
@@ -579,7 +579,7 @@ export default class TradeWindowSD extends HandlebarsApplicationMixin(Applicatio
 			await saveTradeData(this.tradeId, state);
 
 		}
-		catch (error) {
+		catch(error) {
 			console.error(`${MODULE_ID} | Trade execution failed:`, error);
 			ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.trade.failed"));
 		}
@@ -844,17 +844,17 @@ export async function initiateTradeWithPlayer(localActor, remoteActor) {
 
 	// Find the ONLINE non-GM owner of the remote actor
 	let remoteOwner = game.users.find(u =>
-		remoteActor.testUserPermission(u, "OWNER") &&
-		u.id !== game.user.id &&
-		u.active &&
-		!u.isGM
+		remoteActor.testUserPermission(u, "OWNER")
+		&& u.id !== game.user.id
+		&& u.active
+		&& !u.isGM
 	);
 
 	if (!remoteOwner) {
 		remoteOwner = game.users.find(u =>
-			remoteActor.testUserPermission(u, "OWNER") &&
-			u.id !== game.user.id &&
-			u.active
+			remoteActor.testUserPermission(u, "OWNER")
+			&& u.id !== game.user.id
+			&& u.active
 		);
 	}
 
@@ -923,7 +923,7 @@ export async function initiateTradeWithPlayer(localActor, remoteActor) {
 		}
 
 	}
-	catch (error) {
+	catch(error) {
 		console.error(`${MODULE_ID} | Error initiating trade:`, error);
 		ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.trade.failed"));
 	}
@@ -1011,7 +1011,7 @@ export async function showTradeDialog(localActor) {
 		</form>
 	`;
 
-	return new Promise((resolve) => {
+	return new Promise(resolve => {
 		const dialog = new foundry.applications.api.DialogV2({
 			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.trade.initiate_title") },
 			content,

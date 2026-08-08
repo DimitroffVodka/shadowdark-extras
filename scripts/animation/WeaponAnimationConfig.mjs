@@ -218,7 +218,7 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 		rangeInputs.forEach(slider => {
 			const valueSpan = slider.parentElement.querySelector(".slider-value");
 			if (valueSpan) {
-				slider.addEventListener("input", (e) => {
+				slider.addEventListener("input", e => {
 					let val = e.target.value;
 					if (e.target.name.includes("rotation") || e.target.name.includes("hue")) {
 						valueSpan.textContent = `${val}°`;
@@ -239,12 +239,12 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 			const editName = colorInput.dataset.edit;
 			const textInput = html.querySelector(`input[name="${editName}"]`);
 			if (textInput) {
-				colorInput.addEventListener("input", (e) => {
+				colorInput.addEventListener("input", e => {
 					textInput.value = e.target.value;
 					this._updatePreview();
 					this._scheduleLivePreview();
 				});
-				textInput.addEventListener("input", (e) => {
+				textInput.addEventListener("input", e => {
 					if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
 						colorInput.value = e.target.value;
 						this._updatePreview();
@@ -318,7 +318,7 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 		// Search filter
 		const searchInput = html.querySelector(".weapon-image-filter");
 		if (searchInput) {
-			searchInput.addEventListener("input", (e) => {
+			searchInput.addEventListener("input", e => {
 				const query = e.target.value.toLowerCase().trim();
 				const categories = html.querySelectorAll(".weapon-image-category");
 				let visibleCount = 0;
@@ -369,7 +369,7 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 
 		// Hover preview tooltip
 		thumbs.forEach(thumb => {
-			thumb.addEventListener("mouseenter", (e) => {
+			thumb.addEventListener("mouseenter", e => {
 				// Create tooltip if not exists
 				let tooltip = document.getElementById("weapon-image-tooltip");
 				if (!tooltip) {
@@ -404,36 +404,36 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 	_readCurrentConfig() {
 		const html = this.element;
 		return {
-			enabled:       html.querySelector(".weapon-animation-enabled")?.checked ?? false,
-			imagePath:     html.querySelector(".weapon-image-select")?.value ?? "",
-			offsetX:       parseFloat(html.querySelector('input[name="offsetX"]')?.value ?? 0.35),
-			offsetY:       parseFloat(html.querySelector('input[name="offsetY"]')?.value ?? 0.1),
-			rotation:      parseInt(html.querySelector('input[name="rotation"]')?.value ?? 0),
-			scale:         parseFloat(html.querySelector('input[name="scale"]')?.value ?? 1.0),
+			enabled: html.querySelector(".weapon-animation-enabled")?.checked ?? false,
+			imagePath: html.querySelector(".weapon-image-select")?.value ?? "",
+			offsetX: parseFloat(html.querySelector('input[name="offsetX"]')?.value ?? 0.35),
+			offsetY: parseFloat(html.querySelector('input[name="offsetY"]')?.value ?? 0.1),
+			rotation: parseInt(html.querySelector('input[name="rotation"]')?.value ?? 0),
+			scale: parseFloat(html.querySelector('input[name="scale"]')?.value ?? 1.0),
 			animationType: html.querySelector('select[name="animationType"]')?.value ?? "none",
-			flipX:         html.querySelector('input[name="flipX"]')?.checked ?? false,
-			flipY:         html.querySelector('input[name="flipY"]')?.checked ?? false,
+			flipX: html.querySelector('input[name="flipX"]')?.checked ?? false,
+			flipY: html.querySelector('input[name="flipY"]')?.checked ?? false,
 			filters: {
 				colorMatrix: {
-					hue:        parseInt(html.querySelector('input[name="filters.colorMatrix.hue"]')?.value ?? 0),
+					hue: parseInt(html.querySelector('input[name="filters.colorMatrix.hue"]')?.value ?? 0),
 					brightness: parseFloat(html.querySelector('input[name="filters.colorMatrix.brightness"]')?.value ?? 1),
-					contrast:   parseFloat(html.querySelector('input[name="filters.colorMatrix.contrast"]')?.value ?? 1),
-					saturate:   parseFloat(html.querySelector('input[name="filters.colorMatrix.saturate"]')?.value ?? 0),
+					contrast: parseFloat(html.querySelector('input[name="filters.colorMatrix.contrast"]')?.value ?? 1),
+					saturate: parseFloat(html.querySelector('input[name="filters.colorMatrix.saturate"]')?.value ?? 0),
 				},
 				glow: {
-					enabled:       html.querySelector('input[name="filters.glow.enabled"]')?.checked ?? false,
-					distance:      parseInt(html.querySelector('input[name="filters.glow.distance"]')?.value ?? 10),
+					enabled: html.querySelector('input[name="filters.glow.enabled"]')?.checked ?? false,
+					distance: parseInt(html.querySelector('input[name="filters.glow.distance"]')?.value ?? 10),
 					outerStrength: parseInt(html.querySelector('input[name="filters.glow.outerStrength"]')?.value ?? 4),
 					innerStrength: parseInt(html.querySelector('input[name="filters.glow.innerStrength"]')?.value ?? 0),
-					color:         html.querySelector('input[name="filters.glow.color"]')?.value || "#ffffff",
-					quality:       parseFloat(html.querySelector('input[name="filters.glow.quality"]')?.value ?? 0.1),
-					knockout:      html.querySelector('input[name="filters.glow.knockout"]')?.checked ?? false,
+					color: html.querySelector('input[name="filters.glow.color"]')?.value || "#ffffff",
+					quality: parseFloat(html.querySelector('input[name="filters.glow.quality"]')?.value ?? 0.1),
+					knockout: html.querySelector('input[name="filters.glow.knockout"]')?.checked ?? false,
 				},
 				dropShadow: {
-					enabled:  html.querySelector('input[name="filters.dropShadow.enabled"]')?.checked ?? false,
-					color:    html.querySelector('input[name="filters.dropShadow.color"]')?.value || "#000000",
-					alpha:    parseFloat(html.querySelector('input[name="filters.dropShadow.alpha"]')?.value ?? 0.5),
-					blur:     parseFloat(html.querySelector('input[name="filters.dropShadow.blur"]')?.value ?? 2),
+					enabled: html.querySelector('input[name="filters.dropShadow.enabled"]')?.checked ?? false,
+					color: html.querySelector('input[name="filters.dropShadow.color"]')?.value || "#000000",
+					alpha: parseFloat(html.querySelector('input[name="filters.dropShadow.alpha"]')?.value ?? 0.5),
+					blur: parseFloat(html.querySelector('input[name="filters.dropShadow.blur"]')?.value ?? 2),
 					distance: parseInt(html.querySelector('input[name="filters.dropShadow.distance"]')?.value ?? 5),
 					rotation: parseInt(html.querySelector('input[name="filters.dropShadow.rotation"]')?.value ?? 45),
 				},

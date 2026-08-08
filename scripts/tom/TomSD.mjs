@@ -7,6 +7,7 @@ import { TomSocketHandler } from "../tom/TomSocketHandler.mjs";
 
 export class TomSD {
 	static ID = TOM_CONFIG.MODULE_ID;
+
 	static FEATURE_ID = TOM_CONFIG.FEATURE_ID;
 
 	static initialize() {
@@ -48,8 +49,8 @@ export class TomSD {
    */
 	static _onActorUpdate(actor, changes, options, userId) {
 		// Only process HP changes
-		const hpChanged = foundry.utils.hasProperty(changes, "system.attributes.hp.value") ||
-      foundry.utils.hasProperty(changes, "system.hp.value");
+		const hpChanged = foundry.utils.hasProperty(changes, "system.attributes.hp.value")
+      || foundry.utils.hasProperty(changes, "system.hp.value");
 		if (!hpChanged) return;
 
 		// Import and update arena tokens that use this actor
@@ -124,7 +125,6 @@ export class TomSD {
 			default: [],
 		});
 	}
-
 
 
 	static async _onReady() {

@@ -47,7 +47,7 @@ export async function ensureCustomFolderStructure() {
 			await foundry.applications.apps.FilePicker.implementation.browse("data", CUSTOM_TILE_FOLDER);
 			hexesExists = true;
 		}
-		catch (e) {
+		catch(e) {
 			hexesExists = false;
 		}
 
@@ -63,14 +63,14 @@ export async function ensureCustomFolderStructure() {
 			try {
 				await foundry.applications.apps.FilePicker.implementation.browse("data", biomePath);
 			}
-			catch (e) {
+			catch(e) {
 				// Folder doesn't exist, create it
 				await foundry.applications.apps.FilePicker.implementation.createDirectory("data", biomePath);
 				console.log(`${MODULE_ID} | Created ${biomePath} folder`);
 			}
 		}
 	}
-	catch (err) {
+	catch(err) {
 		console.log(`${MODULE_ID} | Skipped custom tile folder setup (filesystem permission deferred):`, err?.message || err);
 	}
 }
@@ -81,7 +81,7 @@ export async function _scanCustomDir(dir, segments) {
 	try {
 		listing = await FP.browse("data", dir);
 	}
-	catch (err) {
+	catch(err) {
 		console.log(`${MODULE_ID} | Skipped ${dir} (${err?.message || err})`);
 		return [];
 	}
@@ -142,7 +142,7 @@ export async function loadCustomTileAssets() {
 		await cache.setMetadata(metadataKey, _customTiles);
 		console.log(`${MODULE_ID} | Loaded ${_customTiles.length} custom tiles (recursive scan)`);
 	}
-	catch (err) {
+	catch(err) {
 		// Filesystem browse can fail during early boot phases even for GMs
 		// in Foundry v14. Recoverable: log only, do not surface warnings.
 		console.log(`${MODULE_ID} | Skipped custom tile load (filesystem permission deferred):`, err?.message || err);
@@ -154,7 +154,7 @@ export async function reloadCustomTiles() {
 	try {
 		await cache.setMetadata("hex_tiles_metadata_custom_v2", null);
 	}
-	catch (_) {
+	catch(_) {
 		// Ignore cache clear failures; the in-memory scan still refreshes.
 	}
 	_customTiles = null;
@@ -242,7 +242,7 @@ export function loadCustomTileDimensions() {
 		_customTileWidth = game.settings.get(MODULE_ID, "hexPainter.customTileWidth") || 296;
 		_customTileHeight = game.settings.get(MODULE_ID, "hexPainter.customTileHeight") || 256;
 	}
-	catch (e) {
+	catch(e) {
 		// Settings not registered yet, use defaults
 		_customTileWidth = 296;
 		_customTileHeight = 256;
@@ -317,7 +317,7 @@ export async function getCustomTilePlacement(src, center, verticalNudge = 0) {
 			y: center.y - (_customTileHeight / 2) - visibleOffsetY - verticalNudge,
 		};
 	}
-	catch (err) {
+	catch(err) {
 		console.log(`${MODULE_ID} | Could not auto-fit custom tile ${src}:`, err?.message || err);
 		return {
 			width: _customTileWidth,
@@ -379,7 +379,7 @@ export function _decodePathLabel(value) {
 	try {
 		return decodeURIComponent(String(value || ""));
 	}
-	catch (_) {
+	catch(_) {
 		return String(value || "");
 	}
 }

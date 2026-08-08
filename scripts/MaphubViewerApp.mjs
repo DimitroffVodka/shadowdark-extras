@@ -118,16 +118,16 @@ export class MaphubViewerApp extends ApplicationV2 {
 		try {
 			const mapId = this._getMapIdFromQuery();
 			const saveStr = `data/maps/maphub/maphub_${mapId}.json`;
-			const reqUrl = window.location.origin + foundry.utils.getRoute("/" + saveStr.replace("data/", ""));
+			const reqUrl = window.location.origin + foundry.utils.getRoute(`/${saveStr.replace("data/", "")}`);
 			const headRes = this._mapType === "dungeon" ? null : await fetch(reqUrl, { method: "HEAD" });
 			if (headRes?.ok) {
 				const res = await fetch(reqUrl);
 				loadedJsonText = await res.text();
-				window.localStorage.setItem("_toy_town_buf_", "j" + loadedJsonText);
+				window.localStorage.setItem("_toy_town_buf_", `j${loadedJsonText}`);
 				ui.notifications.info("Loaded Maphub saved state!");
 			}
 		}
-		catch (err) {
+		catch(err) {
 			// No saved file exists, ignore
 		}
 
@@ -163,7 +163,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 							this._installIframeSaveHook(iframe);
 						}
 					}
-					catch (err) {
+					catch(err) {
 						console.warn(`${MODULE_ID} | Failed to ensure dungeon generator canvas`, err);
 					}
 				}, 250);
@@ -254,7 +254,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 				"border:1px solid var(--color-border-light-tertiary,#7a7971)",
 				"border-radius:4px", "flex:0 0 auto",
 			].join(";");
-			btn.addEventListener("click", (ev) => {
+			btn.addEventListener("click", ev => {
 				ev.preventDefault();
 				ev.stopPropagation();
 				this._importScene();
@@ -267,7 +267,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			if (anchor) header.insertBefore(btn, anchor);
 			else header.appendChild(btn);
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to inject Import Scene header button`, err);
 		}
 	}
@@ -309,7 +309,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			const name = params.get("name") || "noname";
 			return `${this._mapType}_${seed}_${name}`.replace(/[^a-zA-Z0-9_\-]/g, "");
 		}
-		catch (e) {
+		catch(e) {
 			return `unknown_${Date.now()}`;
 		}
 	}
@@ -342,7 +342,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			cw.saveAs = foundrySaveAs;
 			return true;
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to install Maphub save hook`, err);
 			return false;
 		}
@@ -374,7 +374,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 					ui.notifications.error("Failed to upload map state.");
 				}
 			}
-			catch (e) {
+			catch(e) {
 				console.error(`${MODULE_ID} | Failed to save map state`, e);
 				ui.notifications.error("Failed to upload map state.");
 			}
@@ -415,7 +415,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 					ui.notifications.error("Failed to upload map image.");
 				}
 			}
-			catch (e) {
+			catch(e) {
 				console.error(`${MODULE_ID} | Failed to save map image`, e);
 				if (this._pendingCaptureResolve) {
 					this._pendingCaptureResolve(null);
@@ -458,12 +458,12 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 		if (exportFn) {
 			ui.notifications.info("Generating high-resolution map...");
-			return new Promise((resolve) => {
+			return new Promise(resolve => {
 				this._pendingCaptureResolve = resolve;
 				try {
 					exportFn();
 				}
-				catch (e) {
+				catch(e) {
 					console.error("Failed to run high-res export", e);
 					this._pendingCaptureResolve = null;
 					resolve(null);
@@ -483,7 +483,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 		try {
 			canvas = iframe.contentDocument?.querySelector("canvas");
 		}
-		catch (e) {
+		catch(e) {
 			ui.notifications.error("Cannot access map canvas (cross-origin).");
 			return null;
 		}
@@ -516,7 +516,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			}
 			return response.path;
 		}
-		catch (e) {
+		catch(e) {
 			console.error(`${MODULE_ID} | Map capture failed:`, e);
 			ui.notifications.error(`Capture failed: ${e.message}`);
 			return null;
@@ -538,7 +538,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			});
 			ui.notifications.info("Map exported to chat!");
 		}
-		catch (e) {
+		catch(e) {
 			ui.notifications.error("Failed to create chat message.");
 		}
 	}
@@ -554,7 +554,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			ip.shareImage();
 			ui.notifications.info("Map shared with players!");
 		}
-		catch (e) {
+		catch(e) {
 			ui.notifications.error("Failed to share image.");
 		}
 	}
@@ -676,7 +676,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 				// one Foundry square — just at a sensible on-screen size.
 				const gridPx = this._normalizeGridPx(align.cellPx);
 				const f = gridPx / align.cellPx;
-				const phase = (v) => (((Math.round(v) % gridPx) + gridPx) % gridPx);
+				const phase = v => (((Math.round(v) % gridPx) + gridPx) % gridPx);
 				const shiftX = phase(align.origin.x * f);
 				const shiftY = phase(align.origin.y * f);
 				const aligned = await this._renderAlignedImage(imgPath, f, shiftX, shiftY);
@@ -703,7 +703,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 						return { ...n, x: m.x, y: m.y };
 					});
 				}
-				catch (e) {
+				catch(e) {
 					console.warn("Could not parse current Dungeon JSON for import", e);
 				}
 			}
@@ -732,7 +732,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			ui.notifications.info(`Imported ${scene?.name ?? "map"} as a Foundry scene${wallNote}${notesNote}.`);
 			this.close();
 		}
-		catch (e) {
+		catch(e) {
 			console.error(`${MODULE_ID} | Failed to import Maphub scene`, e);
 			ui.notifications.error(`Failed to import scene: ${e.message}`);
 			if (isDwellings) this._restoreAfterCapture(oldState);
@@ -744,7 +744,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 		try {
 			return this._iframe?.contentWindow?.__sdxDwellView ?? null;
 		}
-		catch (_) {
+		catch(_) {
 			return null;
 		}
 	}
@@ -766,10 +766,10 @@ export class MaphubViewerApp extends ApplicationV2 {
 			try {
 				layer.visible = visible;
 			}
-			catch (_) { }
+			catch(_) { }
 			return layer;
 		}
-		catch (_) {
+		catch(_) {
 			return null;
 		}
 	}
@@ -784,7 +784,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			off.getContext("2d").drawImage(canvas, 0, 0);
 			return off;
 		}
-		catch (_) {
+		catch(_) {
 			return null;
 		}
 	}
@@ -799,7 +799,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			const resp = await FP.upload("data", "maps/maphub", new File([blob], filename, { type: "image/png" }), {});
 			return resp?.path || null;
 		}
-		catch (e) {
+		catch(e) {
 			console.warn(`${MODULE_ID} | dwelling upload failed`, e); return null;
 		}
 	}
@@ -825,7 +825,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			if (!Number.isFinite(x0)) return null;
 			return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0, bg };
 		}
-		catch (_) {
+		catch(_) {
 			return null;
 		}
 	}
@@ -850,7 +850,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 				ctx.fillStyle = `rgb(${d[0]},${d[1]},${d[2]})`;
 				ctx.fillRect(0, 0, sceneW, sceneH);
 			}
-			catch (_) { }
+			catch(_) { }
 			// M maps node -> stage(CSS) px, but `off` is the canvas BACKING store (HiDPI:
 			// backing = CSS * devicePixelRatio). Read the node region in BACKING px by
 			// scaling M by dpr — otherwise the source rect is undersized and the floor
@@ -860,7 +860,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			ctx.drawImage(off, srcX, srcY, srcW, srcH, 0, 0, sceneW, sceneH);
 			return await this._uploadCanvas(out, `dwellfloor_${Date.now()}.png`);
 		}
-		catch (e) {
+		catch(e) {
 			console.warn(`${MODULE_ID} | dwelling warp failed`, e); return null;
 		}
 	}
@@ -879,8 +879,8 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 		try {
 			const LH = 10; // ft per level
-			const ordinal = (k) => {
-				const v = k % 100; const sfx = (v >= 11 && v <= 13) ? "th" : (["th","st","nd","rd"][k % 10] || "th"); return `${k}${sfx}`;
+			const ordinal = k => {
+				const v = k % 100; const sfx = (v >= 11 && v <= 13) ? "th" : (["th", "st", "nd", "rd"][k % 10] || "th"); return `${k}${sfx}`;
 			};
 			// Levels to import, bottom -> top: basement (if any), ground, then upper floors.
 			const units = [];
@@ -909,7 +909,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 						try {
 							this._iframe?.contentWindow?.dispatchEvent(new Event("resize"));
 						}
-						catch (_) { }
+						catch(_) { }
 					}
 					await new Promise(r => setTimeout(r, attempt === 0 ? 900 : 350));
 					const m = view.map.__getRenderTransform();
@@ -928,7 +928,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			// coords (x = node.j, y = node.i), plus a fixed roof/outer-wall margin. Shared
 			// by ALL levels so they stack.
 			let cmi = Infinity; let cmj = Infinity; let cMi = -Infinity; let cMj = -Infinity;
-			const accNode = (edges) => {
+			const accNode = edges => {
 				for (const e of (edges || [])) for (const nd of [e?.a, e?.b]) {
 					if (!nd) continue; cmi = Math.min(cmi, nd.i); cMi = Math.max(cMi, nd.i); cmj = Math.min(cmj, nd.j); cMj = Math.max(cMj, nd.j);
 				}
@@ -958,7 +958,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			// 3. Scene with a named elevation Level per unit, each its OWN background image
 			// (fit:"fill" — Foundry fills/centres it in the scene rect). One scene, many levels.
 			const sceneName = `${this._getMapLabel()} ${new Date().toLocaleString()}`;
-			const levelBg = (src) => ({ src, color: "#000000", tint: "#ffffff", alphaThreshold: 0 });
+			const levelBg = src => ({ src, color: "#000000", tint: "#ffffff", alphaThreshold: 0 });
 			const fillTex = { anchorX: 0.5, anchorY: 0.5, offsetX: 0, offsetY: 0, fit: "fill", scaleX: 1, scaleY: 1, rotation: 0 };
 			const sceneData = {
 				name: sceneName, width: sceneW, height: sceneH,
@@ -1028,7 +1028,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 						const C = [spObj.entrance.a, spObj.entrance.b].find(n1 => [spObj.exit.a, spObj.exit.b].some(n2 => n2 && n1 && n2.i === n1.i && n2.j === n1.j));
 						if (C) cell = { i: 2 * C.i - 1 - sp.i, j: 2 * C.j - 1 - sp.j };
 					}
-					catch (_) { }
+					catch(_) { }
 					const cc = nodeToScene(cell.j + 0.5, cell.i + 0.5);
 					regionByKey.set(`spiral|${sp.i},${sp.j}`, {
 						name: "Spiral Staircase",
@@ -1042,7 +1042,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 					});
 				}
 			}
-			catch (_) { }
+			catch(_) { }
 			const regions = [...regionByKey.values()];
 			if (regions.length) await scene.createEmbeddedDocuments("Region", regions);
 
@@ -1050,7 +1050,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			this.close();
 			return true;
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Multi-level dwelling import failed`, err);
 			ui.notifications.error(`Multi-level dwelling import failed: ${err.message}`);
 			return true; // handled (don't fall through to a second import)
@@ -1112,7 +1112,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 				}
 				else if (Array.isArray(rm.doors)) list = rm.doors;
 			}
-			catch (_) { }
+			catch(_) { }
 			for (const d of list) {
 				const e = d?.edge1; if (!e?.a || !e?.b) continue;
 				const t = (d.type?.name || d.type?._hx_name || "").toUpperCase();
@@ -1142,7 +1142,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 				}
 			}
 		}
-		catch (_) { }
+		catch(_) { }
 
 		// Spiral tower: enclose the round tower (the cells just outside the building
 		// around the spiral's corner) and OPEN the contour edges between it and the
@@ -1175,7 +1175,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 				}
 			}
 		}
-		catch (_) { }
+		catch(_) { }
 
 		const walls = [];
 		const used = new Set();
@@ -1226,11 +1226,11 @@ export class MaphubViewerApp extends ApplicationV2 {
 		const walls = [];
 		const used = new Set();
 
-		const point = (node) => ({
+		const point = node => ({
 			x: Math.round(offsetX + (node.j * gridSize)),
 			y: Math.round(offsetY + (node.i * gridSize)),
 		});
-		const key = (edge) => {
+		const key = edge => {
 			const a = point(edge.a);
 			const b = point(edge.b);
 			return [[a.x, a.y], [b.x, b.y]]
@@ -1280,6 +1280,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 
 		return walls;
 	}
+
 	/**
 	 * Close the viewer — clean up the cave/dungeon view, then let
 	 * ApplicationV2 tear down. (Phase 5.1 split: super.close must live

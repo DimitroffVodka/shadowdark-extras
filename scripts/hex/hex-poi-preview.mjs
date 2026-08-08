@@ -56,7 +56,7 @@ export function setPoiScale(scale) {
 	try {
 		game.settings.set(MODULE_ID, "hexPainter.poiScale", _poiScale);
 	}
-	catch (e) {
+	catch(e) {
 		// Settings might not be registered yet
 	}
 	// Update preview if active
@@ -75,7 +75,7 @@ export function loadPoiScale() {
 			_poiScale = saved;
 		}
 	}
-	catch (e) {
+	catch(e) {
 		// Settings not registered yet, use default
 		_poiScale = 0.5;
 	}
@@ -191,7 +191,7 @@ export async function createPreview() {
 			_previewEnabled = true;
 		}
 	}
-	catch (e) {
+	catch(e) {
 		console.warn(`${MODULE_ID} | Failed to create POI preview:`, e);
 	}
 }
@@ -222,7 +222,7 @@ export async function updatePreviewPosition(pos) {
 				_previewSprite._sdxTexturePath = currentPath;
 			}
 		}
-		catch (e) {
+		catch(e) {
 			// Ignore texture load errors
 		}
 	}
@@ -298,10 +298,10 @@ export function _getAvailablePoiTiles() {
 
 	const doorTiles = getDoorTiles();
 	return Array.from(_chosenTiles).filter(path =>
-		(_symbolTiles && _symbolTiles.some(t => t.path === path)) ||
-        (_decorMode && _importedDecorTiles && _importedDecorTiles.some(t => t.path === path)) ||
-        (_decorMode && _ddPackDecorTiles && _ddPackDecorTiles.some(t => t.path === path)) ||
-        (_decorMode && getRegisteredDecorTiles().some(t => t.path === path)) ||
-        (_decorMode && doorTiles.some(t => t.path === path))
+		(_symbolTiles && _symbolTiles.some(t => t.path === path))
+        || (_decorMode && _importedDecorTiles && _importedDecorTiles.some(t => t.path === path))
+        || (_decorMode && _ddPackDecorTiles && _ddPackDecorTiles.some(t => t.path === path))
+        || (_decorMode && getRegisteredDecorTiles().some(t => t.path === path))
+        || (_decorMode && doorTiles.some(t => t.path === path))
 	);
 }

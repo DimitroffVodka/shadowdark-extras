@@ -98,7 +98,7 @@ function paintHpValue($scope, newValue) {
 		if (Number.isFinite(max) && max > 0) {
 			const pct = Math.min(100, Math.max(0, (newValue / max) * 100));
 			const color = pct > 50 ? "#4ade80" : pct > 25 ? "#fbbf24" : "#ef4444";
-			$scope.find(".sdx-hp-bar").css({ width: `${pct}%`, "background-color": color });
+			$scope.find(".sdx-hp-bar").css({ "width": `${pct}%`, "background-color": color });
 			$scope.find(".hp-wave-container").css("--hp-translate", `${Math.max(0, Math.round(pct) - 15)}%`);
 		}
 	}
@@ -156,7 +156,7 @@ async function flushActorHpAdjustment(actorUuid) {
 				const actor = await fromUuid(actorUuid);
 				if (actor?.sheet?.rendered) actor.sheet.render(false);
 			}
-			catch (_e) { /* sheet closed mid-burst — nothing to reconcile */ }
+			catch(_e) { /* sheet closed mid-burst — nothing to reconcile */ }
 		}
 	}
 }
@@ -199,14 +199,14 @@ export function attachNativeHpQuickControls(app, html, actor) {
 	$hpBox.css("cursor", "pointer");
 	$hpBox.off("click.sdxQuickHp contextmenu.sdxQuickHp");
 
-	$hpBox.on("click.sdxQuickHp", async (event) => {
+	$hpBox.on("click.sdxQuickHp", async event => {
 		if ($(event.target).is("input, textarea, select, button, a")) return;
 		event.preventDefault();
 		event.stopPropagation();
 		applyHpQuickAdjust(actor, -1, $html);
 	});
 
-	$hpBox.on("contextmenu.sdxQuickHp", async (event) => {
+	$hpBox.on("contextmenu.sdxQuickHp", async event => {
 		if ($(event.target).is("input, textarea, select, button, a")) return;
 		event.preventDefault();
 		event.stopPropagation();

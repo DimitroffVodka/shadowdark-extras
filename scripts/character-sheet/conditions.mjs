@@ -58,14 +58,14 @@ function addInlineEffectControls($effectsTab, actor) {
 		$item.append($controls);
 
 		// Disable right-click context menu
-		$item.on("contextmenu", (e) => {
+		$item.on("contextmenu", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			return false;
 		});
 
 		// Edit button
-		$controls.find(".sdx-effect-edit").on("click", async (e) => {
+		$controls.find(".sdx-effect-edit").on("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -73,7 +73,7 @@ function addInlineEffectControls($effectsTab, actor) {
 		});
 
 		// Delete button
-		$controls.find(".sdx-effect-delete").on("click", async (e) => {
+		$controls.find(".sdx-effect-delete").on("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -105,8 +105,8 @@ export async function getConditionsData() {
 	if (sdxItemsPack) {
 		const sdxDocs = await sdxItemsPack.getDocuments();
 		const sdxConditions = sdxDocs.filter(doc =>
-			doc.type === "Effect" &&
-			(doc.name.startsWith("Condition:") || doc.name.startsWith("Absorption:"))
+			doc.type === "Effect"
+			&& (doc.name.startsWith("Condition:") || doc.name.startsWith("Absorption:"))
 		);
 		conditions.push(...sdxConditions);
 	}
@@ -166,8 +166,8 @@ export async function injectConditionsToggles(app, html, actor) {
 
 	// Get currently active condition items on the actor
 	const conditionItems = actor.items.filter(item =>
-		item.type === "Effect" &&
-		(item.name.startsWith("Condition:") || item.name.startsWith("Absorption:"))
+		item.type === "Effect"
+		&& (item.name.startsWith("Condition:") || item.name.startsWith("Absorption:"))
 	);
 
 	// Get the selected theme
@@ -212,8 +212,8 @@ export function showConditionsModal(actor, conditionDataMap, theme) {
 
 	// Get currently active condition items on the actor
 	const conditionItems = actor.items.filter(item =>
-		item.type === "Effect" &&
-		(item.name.startsWith("Condition:") || item.name.startsWith("Absorption:"))
+		item.type === "Effect"
+		&& (item.name.startsWith("Condition:") || item.name.startsWith("Absorption:"))
 	);
 
 	// Build the modal HTML
@@ -240,9 +240,9 @@ export function showConditionsModal(actor, conditionDataMap, theme) {
 		for (const condition of conditionGroup) {
 			// Check if this specific condition is active
 			const isActive = conditionItems.some(item =>
-				item.name === condition.name ||
-				(item._stats?.compendiumSource === condition.uuid) ||
-				(item.flags?.core?.sourceId === condition.uuid)
+				item.name === condition.name
+				|| (item._stats?.compendiumSource === condition.uuid)
+				|| (item.flags?.core?.sourceId === condition.uuid)
 			);
 
 			allConditions.push({
@@ -312,7 +312,7 @@ export function showConditionsModal(actor, conditionDataMap, theme) {
 	});
 
 	// ESC key handler
-	$(document).on("keydown.sdx-conditions-modal", (e) => {
+	$(document).on("keydown.sdx-conditions-modal", e => {
 		if (e.key === "Escape") {
 			$modal.remove();
 			$(document).off("keydown.sdx-conditions-modal");
@@ -374,8 +374,8 @@ export function showConditionsModal(actor, conditionDataMap, theme) {
 function refreshModalConditionOrder($grid, actor) {
 	// Get currently active condition items on the actor
 	const conditionItems = actor.items.filter(item =>
-		item.type === "Effect" &&
-		(item.name.startsWith("Condition:") || item.name.startsWith("Absorption:"))
+		item.type === "Effect"
+		&& (item.name.startsWith("Condition:") || item.name.startsWith("Absorption:"))
 	);
 
 	// Get all toggles from the grid
@@ -392,9 +392,9 @@ function refreshModalConditionOrder($grid, actor) {
 
 		// Update active class based on current actor state
 		const isActive = conditionItems.some(item =>
-			item.name === conditionName ||
-			(item._stats?.compendiumSource === conditionUuid) ||
-			(item.flags?.core?.sourceId === conditionUuid)
+			item.name === conditionName
+			|| (item._stats?.compendiumSource === conditionUuid)
+			|| (item.flags?.core?.sourceId === conditionUuid)
 		);
 
 		// Update the active class
@@ -439,9 +439,9 @@ function showConditionSubmenuInModal($toggle, variants, actor, conditionItems, $
 
 	for (const variant of variants) {
 		const isActive = conditionItems.some(item =>
-			item.name === variant.name ||
-			(item._stats?.compendiumSource === variant.uuid) ||
-			(item.flags?.core?.sourceId === variant.uuid)
+			item.name === variant.name
+			|| (item._stats?.compendiumSource === variant.uuid)
+			|| (item.flags?.core?.sourceId === variant.uuid)
 		);
 
 		// Extract the variant part (e.g., "1", "Cha", etc.)
@@ -472,18 +472,18 @@ function showConditionSubmenuInModal($toggle, variants, actor, conditionItems, $
 	// Position the submenu
 	$submenu.css({
 		"position": "fixed",
-		"left": rect.left + "px",
-		"width": rect.width + "px",
+		"left": `${rect.left}px`,
+		"width": `${rect.width}px`,
 		"min-width": "120px",
 	});
 
 	if (spaceBelow < submenuHeight && rect.top > submenuHeight) {
 		// Position above if not enough space below
-		$submenu.css("top", (rect.top - submenuHeight) + "px");
+		$submenu.css("top", `${rect.top - submenuHeight}px`);
 	}
 	else {
 		// Position below
-		$submenu.css("top", rect.bottom + "px");
+		$submenu.css("top", `${rect.bottom}px`);
 	}
 
 	// Handle submenu item clicks
@@ -577,9 +577,9 @@ function showConditionSubmenu($toggle, variants, actor, conditionItems) {
 
 	for (const variant of variants) {
 		const isActive = conditionItems.some(item =>
-			item.name === variant.name ||
-			(item._stats?.compendiumSource === variant.uuid) ||
-			(item.flags?.core?.sourceId === variant.uuid)
+			item.name === variant.name
+			|| (item._stats?.compendiumSource === variant.uuid)
+			|| (item.flags?.core?.sourceId === variant.uuid)
 		);
 
 		// Extract the variant part (e.g., "1", "Cha", etc.)
@@ -610,18 +610,18 @@ function showConditionSubmenu($toggle, variants, actor, conditionItems) {
 	// Position the submenu
 	$submenu.css({
 		"position": "fixed",
-		"left": rect.left + "px",
-		"width": rect.width + "px",
+		"left": `${rect.left}px`,
+		"width": `${rect.width}px`,
 		"min-width": "120px",
 	});
 
 	if (spaceBelow < submenuHeight && rect.top > submenuHeight) {
 		// Position above if not enough space below
-		$submenu.css("top", (rect.top - submenuHeight) + "px");
+		$submenu.css("top", `${rect.top - submenuHeight}px`);
 	}
 	else {
 		// Position below
-		$submenu.css("top", rect.bottom + "px");
+		$submenu.css("top", `${rect.bottom}px`);
 	}
 
 	// Handle submenu item clicks
@@ -689,7 +689,7 @@ async function addConditionToActor(actor, conditionUuid) {
 		await actor.createEmbeddedDocuments("Item", [itemData]);
 		ui.notifications.info(`Applied: ${condition.name}`);
 	}
-	catch (error) {
+	catch(error) {
 		console.error(`${MODULE_ID} | Error adding condition:`, error);
 		ui.notifications.error("Failed to apply condition");
 	}
@@ -702,10 +702,10 @@ async function removeConditionFromActor(actor, conditionName, conditionUuid) {
 	try {
 		// Find the condition item(s) matching this condition
 		const itemsToRemove = actor.items.filter(item =>
-			item.name === conditionName ||
-			(item.flags?.core?.sourceId === conditionUuid) ||
-			(item._stats?.compendiumSource === conditionUuid) ||
-			(item.getFlag(MODULE_ID, "conditionToggle") && item.name === conditionName)
+			item.name === conditionName
+			|| (item.flags?.core?.sourceId === conditionUuid)
+			|| (item._stats?.compendiumSource === conditionUuid)
+			|| (item.getFlag(MODULE_ID, "conditionToggle") && item.name === conditionName)
 		);
 
 		if (itemsToRemove.length > 0) {
@@ -714,7 +714,7 @@ async function removeConditionFromActor(actor, conditionName, conditionUuid) {
 			ui.notifications.info(`Removed: ${conditionName}`);
 		}
 	}
-	catch (error) {
+	catch(error) {
 		console.error(`${MODULE_ID} | Error removing condition:`, error);
 		ui.notifications.error("Failed to remove condition");
 	}

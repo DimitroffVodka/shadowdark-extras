@@ -32,7 +32,7 @@ function _load() {
 		if (raw && Array.isArray(raw.entries)) return raw;
 		return { entries: [] };
 	}
-	catch {
+	catch{
 		return { entries: [] };
 	}
 }

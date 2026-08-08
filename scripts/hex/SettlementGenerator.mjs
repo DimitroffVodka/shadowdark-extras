@@ -21,7 +21,7 @@ export async function loadSettlementData() {
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_data = await resp.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load settlement data:`, err);
 		ui.notifications?.error("SDX | Could not load settlement data.");
 		throw err;
@@ -37,7 +37,7 @@ export async function loadHiddenTraitsData() {
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_hiddenTraitsData = await resp.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load hidden NPC traits:`, err);
 		throw err;
 	}
@@ -51,7 +51,7 @@ export async function loadFortunateEventData() {
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_fortunateEventData = await resp.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load fortunate event data:`, err);
 		throw err;
 	}
@@ -65,7 +65,7 @@ async function loadQuestData() {
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_questData = await resp.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load quest data:`, err);
 		_questData = null;
 	}
@@ -80,7 +80,7 @@ async function loadNotableNpcData() {
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_notableNpcData = await resp.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load notable NPC data:`, err);
 		_notableNpcData = null;
 	}
@@ -94,7 +94,7 @@ async function loadSettlementEventData() {
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_eventPoolData = await resp.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load settlement event data:`, err);
 		_eventPoolData = null;
 	}
@@ -112,7 +112,7 @@ async function getMonsterIndex() {
 			_monsterIndex.set(entry.name, entry._id);
 		}
 	}
-	catch (err) {
+	catch(err) {
 		console.warn(`${MODULE_ID} | Could not load monster compendium index:`, err);
 	}
 	return _monsterIndex;
@@ -203,7 +203,7 @@ function getAdjacentOceanInfo(hexKey) {
 		result.hasOcean = result.oceanCount > 0;
 		result.allOcean = result.totalNeighbors > 0 && result.oceanCount === result.totalNeighbors;
 	}
-	catch { /* grid not ready */ }
+	catch{ /* grid not ready */ }
 
 	return result;
 }
@@ -300,7 +300,7 @@ function generateNearbyHexRef(hexKey) {
 	try {
 		return `Hex ${formatHexCoord({ i: ni, j: nj })}`;
 	}
-	catch {
+	catch{
 		return `Hex ${ni}.${nj}`;
 	}
 }
@@ -575,7 +575,7 @@ function hexKeyToLabel(hexKey) {
 	try {
 		return `Hex ${formatHexCoord({ i, j })}`;
 	}
-	catch {
+	catch{
 		return `Hex ${i}.${j}`;
 	}
 }
@@ -593,7 +593,7 @@ async function generateContextQuests(data, hexKey, typeKey, allNpcs) {
 		nearby = getNearbyContent(hexKey, 7);
 		nearbySettlementsWide = getNearbyContent(hexKey, 50, ["settlement"]);
 	}
-	catch (err) {
+	catch(err) {
 		console.warn(`${MODULE_ID} | Could not query content registry:`, err);
 		return null;
 	}
@@ -804,7 +804,7 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 	html += "</p>";
 
 	// Fortunate Event
-	const fortChance = { "village": 0.25, "town": 0.30, "city": 0.35 }[typeKey] || 0;
+	const fortChance = { village: 0.25, town: 0.30, city: 0.35 }[typeKey] || 0;
 	if (Math.random() < fortChance) {
 		const fortData = await loadFortunateEventData();
 		if (fortData) {
@@ -842,7 +842,7 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 			...nearbySettlementsWide,
 		];
 	}
-	catch (err) {
+	catch(err) {
 		console.warn(`${MODULE_ID} | Could not query content registry for shops:`, err);
 	}
 
@@ -959,7 +959,7 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 			}
 		}
 	}
-	catch (err) {
+	catch(err) {
 		console.warn(`${MODULE_ID} | Could not generate notable NPCs:`, err);
 	}
 
@@ -979,7 +979,7 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 
 // Global click listener for rolling settlement events
 Hooks.on("ready", () => {
-	document.addEventListener("click", async (event) => {
+	document.addEventListener("click", async event => {
 		const button = event.target.closest(".sdx-roll-settlement-event");
 		if (!button) return;
 
@@ -1022,7 +1022,7 @@ Hooks.on("ready", () => {
 			});
 
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX | Failed to roll settlement event:", err);
 		}
 	});

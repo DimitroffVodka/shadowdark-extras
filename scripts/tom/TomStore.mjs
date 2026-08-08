@@ -67,7 +67,7 @@ export class TomStoreClass {
 			try {
 				parsed = JSON.parse(data);
 			}
-			catch (e) {
+			catch(e) {
 				console.warn(`${CONFIG.MODULE_NAME} | Failed to parse data string: `, e);
 			}
 		}
@@ -97,7 +97,7 @@ export class TomStoreClass {
 		try {
 			this.folders = game.settings.get(CONFIG.MODULE_ID, "tom-folders") || [];
 		}
-		catch (e) {
+		catch(e) {
 			this.folders = [];
 		}
 
@@ -258,7 +258,9 @@ export const TomStore = new TomStoreClass();
 // We keep it as a getter/setter over the new array so nothing else has to
 // branch. Setting a string adds/replaces the single overlay; setting null/"" clears.
 Object.defineProperty(TomStoreClass.prototype, "currentOverlay", {
-	get() { return this.currentOverlays[0] ?? null; },
+	get() {
+		return this.currentOverlays[0] ?? null;
+	},
 	set(v) {
 		if (!v) this.currentOverlays = [];
 		else if (Array.isArray(v)) this.currentOverlays = [...v];

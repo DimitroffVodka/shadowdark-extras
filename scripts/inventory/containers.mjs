@@ -35,7 +35,7 @@ function isItemPilesEnabledActor(actor) {
 	try {
 		return Boolean(actor?.getFlag?.("item-piles", "data")?.enabled);
 	}
-	catch {
+	catch{
 		return false;
 	}
 }
@@ -236,7 +236,7 @@ export function registerContainerHooks() {
 						await currentItem.setFlag(MODULE_ID, "containerPackedItems", []);
 					}
 				}
-				catch (e) {
+				catch(e) {
 					// Ignore errors
 				}
 			}, 100);
@@ -284,7 +284,7 @@ async function releaseContainedItemsBeforeDelete(item, options, userId) {
 				if (!child) return null;
 				const restorePhysical = child.getFlag(MODULE_ID, "containerOrigIsPhysical");
 				return {
-					_id: id,
+					"_id": id,
 					"system.isPhysical": (restorePhysical === undefined) ? true : Boolean(restorePhysical),
 					[`flags.${MODULE_ID}.containerId`]: null,
 					[`flags.${MODULE_ID}.containerOrigIsPhysical`]: null,
@@ -295,7 +295,7 @@ async function releaseContainedItemsBeforeDelete(item, options, userId) {
 				try {
 					await actor.updateEmbeddedDocuments("Item", updates, { sdxInternal: true });
 				}
-				catch (e) {
+				catch(e) {
 					console.warn(`${MODULE_ID} | Could not release contained items`, e);
 				}
 			}
@@ -524,7 +524,7 @@ async function packItemToContainerData(sourceItem) {
 			await syncContainerPackedItems(sourceItem);
 		}
 	}
-	catch {
+	catch{
 		// Ignore snapshot refresh errors
 	}
 
@@ -654,7 +654,7 @@ function injectBasicContainerUI(app, html) {
 
 	// Bind toggle
 	const toggle = html.find(".sdx-container-toggle input[type=checkbox]").first();
-	toggle.on("change", async (ev) => {
+	toggle.on("change", async ev => {
 		if (!isEditable) return;
 		const enabled = Boolean(ev.currentTarget.checked);
 
@@ -710,7 +710,7 @@ function injectBasicContainerUI(app, html) {
 			freeCarryInput.replaceWith(checkboxHtml);
 
 			// Bind checkbox change event
-			html.find("[data-sdx-free-carry]").on("change", async (ev) => {
+			html.find("[data-sdx-free-carry]").on("change", async ev => {
 				if (!isEditable) return;
 				const checked = ev.currentTarget.checked;
 				// Set to 1 if checked, 0 if unchecked
@@ -874,7 +874,7 @@ function injectBasicContainerUI(app, html) {
 					try {
 						temp.updateSource(changes);
 					}
-					catch {
+					catch{
 						// If updateSource isn't available for some reason, fall back to default update.
 						return originalUpdate ? originalUpdate(changes, options) : temp;
 					}
@@ -904,13 +904,13 @@ function injectBasicContainerUI(app, html) {
 
 			temp?.sheet?.render(true);
 		}
-		catch {
+		catch{
 			// Give up silently
 		}
 	}
 
 	// Wire up actions
-	html.find('.sdx-container-box [data-action="open-item"]').on("click", async (ev) => {
+	html.find('.sdx-container-box [data-action="open-item"]').on("click", async ev => {
 		ev.preventDefault();
 		ev.stopPropagation();
 		const li = ev.currentTarget.closest("li.item");
@@ -932,7 +932,7 @@ function injectBasicContainerUI(app, html) {
 		await openPackedItemSheet(packedEntry, { containerItem: item, packedKey });
 	});
 
-	html.find('.sdx-container-box [data-action="remove-from-container"]').on("click", async (ev) => {
+	html.find('.sdx-container-box [data-action="remove-from-container"]').on("click", async ev => {
 		ev.preventDefault();
 		ev.stopPropagation();
 		if (!isEditable) return;
@@ -957,7 +957,7 @@ function injectBasicContainerUI(app, html) {
 	});
 
 	// Bind coin input changes
-	html.find(".sdx-container-box .sdx-container-coin-input").on("change", async (ev) => {
+	html.find(".sdx-container-box .sdx-container-coin-input").on("change", async ev => {
 		if (!isEditable) return;
 		const coinType = ev.currentTarget.dataset.coinType;
 		const value = Math.max(0, parseInt(ev.currentTarget.value) || 0);
@@ -970,11 +970,11 @@ function injectBasicContainerUI(app, html) {
 	// Drag/drop assignment (actor-owned or packed-only)
 	const dropzone = html.find(".sdx-container-box .sdx-container-dropzone").first();
 	if (dropzone.length) {
-		dropzone.on("dragover", (ev) => {
+		dropzone.on("dragover", ev => {
 			if (!isEditable) return;
 			ev.preventDefault();
 		});
-		dropzone.on("drop", async (ev) => {
+		dropzone.on("drop", async ev => {
 			if (!isEditable) return;
 			ev.preventDefault();
 			const originalEvent = ev.originalEvent ?? ev;
@@ -1017,7 +1017,7 @@ function injectBasicContainerUI(app, html) {
 					try {
 						await dropped.delete({ sdxInternal: true });
 					}
-					catch {
+					catch{
 						// Ignore delete failures
 					}
 				}
@@ -1039,7 +1039,7 @@ function injectBasicContainerUI(app, html) {
 				try {
 					await dropped.delete({ sdxInternal: true });
 				}
-				catch {
+				catch{
 					// Ignore delete failures
 				}
 			}
@@ -1094,7 +1094,7 @@ function attachContainerContentsToActorSheet(app, html) {
 		if (!itemId) return;
 		const item = actor.items?.get?.(itemId);
 		if (!item) return;
-		if (!(item.type === "Basic" && Boolean(item.getFlag(MODULE_ID, "isContainer")))) return;
+		if (!(item.type === "Basic" && item.getFlag(MODULE_ID, "isContainer"))) return;
 
 		// Build tooltip content
 		const tooltip = buildContainerTooltip(item);
@@ -1105,10 +1105,6 @@ function attachContainerContentsToActorSheet(app, html) {
 		$el.addClass("sdx-has-container-tooltip");
 	});
 }
-
-
-
-
 
 
 /**

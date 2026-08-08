@@ -25,7 +25,7 @@ export function isItemPilesActor(actor) {
 	try {
 		return actor?.getFlag?.(ITEM_PILES_ID, "data")?.enabled === true;
 	}
-	catch {
+	catch{
 		return false;
 	}
 }
@@ -62,11 +62,11 @@ export function getPileEquipmentUpdates(actor) {
 	if (!isItemPilesActor(actor)) return [];
 	return Array.from(actor?.items ?? [])
 		.filter(item =>
-			EQUIPPABLE_ITEM_TYPES.has(item?.type) &&
-			item?.system?.equipped === true
+			EQUIPPABLE_ITEM_TYPES.has(item?.type)
+			&& item?.system?.equipped === true
 		)
 		.map(item => ({
-			_id: item.id,
+			"_id": item.id,
 			"system.equipped": false,
 		}));
 }

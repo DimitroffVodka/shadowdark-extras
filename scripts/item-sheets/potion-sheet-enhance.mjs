@@ -35,7 +35,7 @@ export async function enhancePotionSheet(app, html) {
 	try {
 		if (!game.settings.get(MODULE_ID, "enhanceSpells")) return;
 	}
-	catch {
+	catch{
 		return;
 	}
 
@@ -209,7 +209,7 @@ export async function enhancePotionSheet(app, html) {
 		try {
 			effectsArray = JSON.parse(effectsArray);
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Could not parse effects string:`, effectsArray, err);
 			effectsArray = [];
 		}
@@ -294,7 +294,7 @@ export async function enhancePotionSheet(app, html) {
 		try {
 			summonProfilesArray = JSON.parse(summonProfilesArray);
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Could not parse summon profiles string:`, summonProfilesArray, err);
 			summonProfilesArray = [];
 		}
@@ -315,7 +315,7 @@ export async function enhancePotionSheet(app, html) {
 		try {
 			itemGiveProfilesArray = JSON.parse(itemGiveProfilesArray);
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Could not parse item give profiles string:`, itemGiveProfilesArray, err);
 			itemGiveProfilesArray = [];
 		}
@@ -338,8 +338,8 @@ export async function enhancePotionSheet(app, html) {
 	// Prevent auto-submission of form inputs in Activity tab to avoid unwanted re-renders
 	$activityTab.find("input, select, textarea").on("change", function(e) {
 		// Skip Item Macro inputs - they have their own handlers
-		if ($(this).hasClass("sdx-spell-macro-run-as-gm") ||
-			$(this).hasClass("sdx-spell-macro-trigger-checkbox")) {
+		if ($(this).hasClass("sdx-spell-macro-run-as-gm")
+			|| $(this).hasClass("sdx-spell-macro-trigger-checkbox")) {
 			return; // Let the event propagate to the Item Macro handlers
 		}
 
@@ -526,7 +526,7 @@ export async function enhancePotionSheet(app, html) {
 
 			ui.notifications.info(`Added ${doc.name} to potion effects`);
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Error handling drop:`, err);
 			ui.notifications.error("Failed to add effect");
 		}
@@ -661,7 +661,7 @@ export async function enhancePotionSheet(app, html) {
 			updateSummonsData();
 			ui.notifications.info(`Added ${creatureName} to summon profile`);
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Error handling creature drop:`, err);
 			ui.notifications.error("Failed to add creature");
 		}
@@ -786,7 +786,7 @@ export async function enhancePotionSheet(app, html) {
 			updateItemGiveData();
 			ui.notifications.info(`Added ${itemName} to caster item list`);
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Error handling item drop:`, err);
 			ui.notifications.error("Failed to add item");
 		}

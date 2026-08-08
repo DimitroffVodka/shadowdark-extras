@@ -587,33 +587,33 @@ export async function generateHexMap(params = {}) {
 		if (isWaterEffect() && window.TokenMagic) {
 			// Distortion only for colored tiles, distortion + adjustment for default/custom
 			const waterDistortion = {
-				"filterType": "distortion",
-				"filterId": "Sea",
-				"maskPath": "modules/tokenmagic/fx/assets/distortion-1.png",
-				"maskSpriteScaleX": 5,
-				"maskSpriteScaleY": 5,
-				"padding": 20,
-				"animated": {
-					"maskSpriteX": { "active": true, "speed": 0.05, "animType": "move" },
-					"maskSpriteY": { "active": true, "speed": 0.07, "animType": "move" },
+				filterType: "distortion",
+				filterId: "Sea",
+				maskPath: "modules/tokenmagic/fx/assets/distortion-1.png",
+				maskSpriteScaleX: 5,
+				maskSpriteScaleY: 5,
+				padding: 20,
+				animated: {
+					maskSpriteX: { active: true, speed: 0.05, animType: "move" },
+					maskSpriteY: { active: true, speed: 0.07, animType: "move" },
 				},
-				"rank": 10003,
-				"enabled": true,
+				rank: 10003,
+				enabled: true,
 			};
 			const waterAdjustment = {
-				"filterType": "adjustment",
-				"filterId": "Sea",
-				"saturation": 0.99,
-				"brightness": 0.26,
-				"contrast": 1.68,
-				"gamma": 0.1,
-				"red": 0.92,
-				"green": 0.92,
-				"blue": 1.06,
-				"alpha": 0.74,
-				"animated": {},
-				"rank": 10005,
-				"enabled": true,
+				filterType: "adjustment",
+				filterId: "Sea",
+				saturation: 0.99,
+				brightness: 0.26,
+				contrast: 1.68,
+				gamma: 0.1,
+				red: 0.92,
+				green: 0.92,
+				blue: 1.06,
+				alpha: 0.74,
+				animated: {},
+				rank: 10005,
+				enabled: true,
 			};
 
 			// For colored tiles, only use distortion (they already have nice colors)
@@ -631,7 +631,7 @@ export async function generateHexMap(params = {}) {
 							const params = useColored ? waterParamsColored : waterParamsFull;
 							await TokenMagic.addUpdateFilters(tileObj.document, params);
 						}
-						catch (err) {
+						catch(err) {
 							console.warn(`${MODULE_ID} | TMFX water effect failed:`, err);
 						}
 					}
@@ -643,19 +643,19 @@ export async function generateHexMap(params = {}) {
 		if (isBwEffect() && window.TokenMagic) {
 			const bwParams = [
 				{
-					"filterType": "adjustment",
-					"filterId": "blackandwhite",
-					"saturation": 0,
-					"brightness": 1.1,
-					"contrast": 2,
-					"gamma": 2,
-					"red": 1,
-					"green": 1,
-					"blue": 1,
-					"alpha": 1,
-					"animated": {},
-					"rank": 10004,
-					"enabled": true,
+					filterType: "adjustment",
+					filterId: "blackandwhite",
+					saturation: 0,
+					brightness: 1.1,
+					contrast: 2,
+					gamma: 2,
+					red: 1,
+					green: 1,
+					blue: 1,
+					alpha: 1,
+					animated: {},
+					rank: 10004,
+					enabled: true,
 				},
 			];
 
@@ -666,7 +666,7 @@ export async function generateHexMap(params = {}) {
 					try {
 						await TokenMagic.addUpdateFilters(tileObj.document, bwParams);
 					}
-					catch (err) {
+					catch(err) {
 						console.warn(`${MODULE_ID} | TMFX B&W effect failed:`, err);
 					}
 				}
@@ -681,7 +681,7 @@ export async function generateHexMap(params = {}) {
 				await setHexTerrainBatch(scene.id, terrainMap);
 				console.log(`${MODULE_ID} | Set terrain for ${Object.keys(terrainMap).length} hexes`);
 			}
-			catch (err) {
+			catch(err) {
 				console.warn(`${MODULE_ID} | Failed to batch-set hex terrain:`, err);
 			}
 		}

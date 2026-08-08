@@ -94,14 +94,14 @@ function checkRollSuccess(flags) {
 	const rolls = flags.rolls;
 	const itemType = rolls?.main?.data?.item?.type;
 
-	if (itemType === "Spell" || itemType === "Scroll" ||
-		itemType === "Wand" || itemType === "NPC Spell") {
+	if (itemType === "Spell" || itemType === "Scroll"
+		|| itemType === "Wand" || itemType === "NPC Spell") {
 		// Check setting for spells without target
 		let animateSpellsWithoutTarget = true;
 		try {
 			animateSpellsWithoutTarget = game.settings.get(MODULE_ID, "aaAnimateSpellsWithoutTarget");
 		}
-		catch (e) {
+		catch(e) {
 			// Use default
 		}
 		if (animateSpellsWithoutTarget) {
@@ -179,7 +179,7 @@ function setupAAIntegration() {
 	try {
 		integrationEnabled = game.settings.get(MODULE_ID, "aaIntegration");
 	}
-	catch (e) {
+	catch(e) {
 		// Settings not registered yet, use default
 	}
 
@@ -275,7 +275,7 @@ function setupAAIntegration() {
 				}
 			}
 		}
-		catch (e) {
+		catch(e) {
 			// Fall through to normal AA gating if anything goes sideways.
 			debug("SDX-primary check failed, deferring to AA gating:", e?.message);
 		}

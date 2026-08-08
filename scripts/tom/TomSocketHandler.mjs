@@ -360,7 +360,7 @@ export class TomSocketHandler {
 			this._removeOverlayElementForPath(overlayPath);
 			Store.currentOverlays = Store.currentOverlays.filter(p => p !== overlayPath);
 		}
- else {
+		else {
 			this._addOverlayElement(overlayPath);
 			Store.currentOverlays = [...Store.currentOverlays, overlayPath];
 		}
@@ -374,7 +374,7 @@ export class TomSocketHandler {
 			this._removeOverlayElementForPath(overlayPath);
 			Store.currentOverlays = Store.currentOverlays.filter(p => p !== overlayPath);
 		}
- else {
+		else {
 			this._removeAllOverlays();
 			Store.currentOverlays = [];
 		}
@@ -422,7 +422,7 @@ export class TomSocketHandler {
 			const esc = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(overlayPath) : overlayPath.replace(/"/g, "\\\"");
 			document.querySelector(`.tom-video-overlay[data-overlay-path="${esc}"]`)?.remove();
 		}
- catch {
+		catch{
 			// fallback: remove any matching by dataset scan
 			for (const el of document.querySelectorAll(".tom-video-overlay")) {
 				if (el.dataset.overlayPath === overlayPath) el.remove();
@@ -435,7 +435,9 @@ export class TomSocketHandler {
 	}
 
 	/** Back-compat alias: single-overlay callers used this name. */
-	static _removeOverlayElement() { return this._removeAllOverlays(); }
+	static _removeOverlayElement() {
+		return this._removeAllOverlays();
+	}
 
 	static emitOverlaySet(overlayPath) {
 		if (!game.user.isGM) return;
@@ -473,7 +475,7 @@ export class TomSocketHandler {
 
 			this._onOverlayClear({ overlayPath });
 		}
- else {
+		else {
 
 			console.log(`${CONFIG.MODULE_NAME} | Socket Message Emitted: overlay-clear (all)`);
 			game.socket.emit(CONFIG.SOCKET_NAME, {

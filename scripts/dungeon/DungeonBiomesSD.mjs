@@ -11,8 +11,8 @@ const GRID_SIZE = 100;
 
 const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
 
-const FLOOR = (f) => `modules/${MODULE_ID}/assets/Dungeon/floor_tiles/${f}`;
-const CLUT = (f) => `modules/${MODULE_ID}/assets/Dungeon/clutter/${f}`;
+const FLOOR = f => `modules/${MODULE_ID}/assets/Dungeon/floor_tiles/${f}`;
+const CLUT = f => `modules/${MODULE_ID}/assets/Dungeon/clutter/${f}`;
 
 /**
  * Biome definitions. floor = shipped floor tile; props = shipped clutter
@@ -20,15 +20,15 @@ const CLUT = (f) => `modules/${MODULE_ID}/assets/Dungeon/clutter/${f}`;
  * from if present; weight = relative frequency when assigning.
  */
 export const BIOME_DEFS = {
-	hall:       { label: "Hall",       floor: FLOOR("DQ_Floor_Stone_01.webp"),         props: [CLUT("pillar-50x50.webp"), CLUT("statue-100x100.webp")],                              ddpack: "hall",       weight: 2 },
-	crypt:      { label: "Crypt",      floor: FLOOR("DQ_Floor_Stone_05_black.webp"),   props: [CLUT("skull-26x30.webp"), CLUT("statue2-100x100.webp"), CLUT("rubble-100x100.webp")], ddpack: "crypt",      weight: 1 },
-	library:    { label: "Library",    floor: FLOOR("DQ_Floor_Stone_04_yellow.webp"),  props: [CLUT("paper-50x50.webp"), CLUT("pillar-50x50.webp")],                                 ddpack: "library",    weight: 1 },
-	temple:     { label: "Temple",     floor: FLOOR("DQ_Floor_Stone_02_blue.webp"),    props: [CLUT("statue-100x100.webp"), CLUT("fountain-100x100.webp"), CLUT("pillar-50x50.webp")], ddpack: "temple",     weight: 1 },
+	hall: { label: "Hall",       floor: FLOOR("DQ_Floor_Stone_01.webp"),         props: [CLUT("pillar-50x50.webp"), CLUT("statue-100x100.webp")],                              ddpack: "hall",       weight: 2 },
+	crypt: { label: "Crypt",      floor: FLOOR("DQ_Floor_Stone_05_black.webp"),   props: [CLUT("skull-26x30.webp"), CLUT("statue2-100x100.webp"), CLUT("rubble-100x100.webp")], ddpack: "crypt",      weight: 1 },
+	library: { label: "Library",    floor: FLOOR("DQ_Floor_Stone_04_yellow.webp"),  props: [CLUT("paper-50x50.webp"), CLUT("pillar-50x50.webp")],                                 ddpack: "library",    weight: 1 },
+	temple: { label: "Temple",     floor: FLOOR("DQ_Floor_Stone_02_blue.webp"),    props: [CLUT("statue-100x100.webp"), CLUT("fountain-100x100.webp"), CLUT("pillar-50x50.webp")], ddpack: "temple",     weight: 1 },
 	laboratory: { label: "Laboratory", floor: FLOOR("DQ_Floor_Stone_03.webp"),         props: [CLUT("glass-50x50.webp"), CLUT("paper-50x50.webp")],                                  ddpack: "laboratory", weight: 1 },
-	barracks:   { label: "Barracks",   floor: FLOOR("DQ_Floor_Cobble_01A.webp"),       props: [CLUT("rubble2-100x100.webp")],                                                       ddpack: "barracks",   weight: 1 },
-	prison:     { label: "Prison",     floor: FLOOR("DQ_Floor_Stone_02_black.webp"),   props: [CLUT("skull-26x30.webp"), CLUT("rubble-100x100.webp")],                               ddpack: "prison",     weight: 1 },
-	storage:    { label: "Storage",    floor: FLOOR("DQ_Floor_Cobble_02A_light.webp"), props: [CLUT("rubble2-100x100.webp"), CLUT("glass-50x50.webp")],                              ddpack: "storage",    weight: 1 },
-	ruins:      { label: "Ruins",      floor: FLOOR("DQ_Floor_Stone_04_red.webp"),     props: [CLUT("rubble-100x100.webp"), CLUT("rubble2-100x100.webp"), CLUT("pillar-50x50.webp")], ddpack: "ruins",      weight: 2 },
+	barracks: { label: "Barracks",   floor: FLOOR("DQ_Floor_Cobble_01A.webp"),       props: [CLUT("rubble2-100x100.webp")],                                                       ddpack: "barracks",   weight: 1 },
+	prison: { label: "Prison",     floor: FLOOR("DQ_Floor_Stone_02_black.webp"),   props: [CLUT("skull-26x30.webp"), CLUT("rubble-100x100.webp")],                               ddpack: "prison",     weight: 1 },
+	storage: { label: "Storage",    floor: FLOOR("DQ_Floor_Cobble_02A_light.webp"), props: [CLUT("rubble2-100x100.webp"), CLUT("glass-50x50.webp")],                              ddpack: "storage",    weight: 1 },
+	ruins: { label: "Ruins",      floor: FLOOR("DQ_Floor_Stone_04_red.webp"),     props: [CLUT("rubble-100x100.webp"), CLUT("rubble2-100x100.webp"), CLUT("pillar-50x50.webp")], ddpack: "ruins",      weight: 2 },
 };
 
 // ── Custom biome persistence (Ticket 5, slice 1) ───────────────────────────
@@ -56,7 +56,7 @@ Hooks.once("init", () => {
 			default: [],
 		});
 	}
-	catch (_) { /* already registered */ }
+	catch(_) { /* already registered */ }
 });
 
 /** Read the persisted custom-biome map (always a plain object). */
@@ -65,7 +65,7 @@ export function getCustomBiomes() {
 		const c = game.settings.get(MODULE_ID, "customBiomes");
 		return (c && typeof c === "object") ? c : {};
 	}
-	catch (_) {
+	catch(_) {
 		return {};
 	}
 }
@@ -129,7 +129,7 @@ export function getDisabledBiomes() {
 		const d = game.settings.get(MODULE_ID, "disabledBiomes");
 		return Array.isArray(d) ? d : [];
 	}
-	catch (_) {
+	catch(_) {
 		return [];
 	}
 }
@@ -195,7 +195,7 @@ export function buildCellFloorMap(roomData, biomeMap, floors) {
 /** Best-effort: image files in an imported decor pack folder matching `category`. */
 async function findDDPackProps(category) {
 	if (!category) return [];
-	const isImg = (f) => /\.(png|webp|jpg|jpeg)$/i.test(f);
+	const isImg = f => /\.(png|webp|jpg|jpeg)$/i.test(f);
 	const roots = ["decor/ddpacks", "decor"];
 	for (const root of roots) {
 		try {
@@ -208,7 +208,7 @@ async function findDDPackProps(category) {
 				}
 			}
 		}
-		catch (e) { /* path absent — fine */ }
+		catch(e) { /* path absent — fine */ }
 	}
 	return [];
 }
@@ -252,18 +252,14 @@ export async function placeBiomeProps(roomData, biomeMap, offset, gridSize, perR
 		const localOccupied = occupancy ? null : new Set();
 		const canPlace = (gx, gy, cellsW, cellsH) => {
 			if (occupancy) return occupancy.canPlaceRect({ gx, gy, cellsW, cellsH }, { padding: 0.15, doorPadding: 0.35 });
-			for (let ox = 0; ox < cellsW; ox++)
-				for (let oy = 0; oy < cellsH; oy++)
-					if (localOccupied.has(`${gx + ox},${gy + oy}`)) return false;
+			for (let ox = 0; ox < cellsW; ox++) for (let oy = 0; oy < cellsH; oy++) if (localOccupied.has(`${gx + ox},${gy + oy}`)) return false;
 			return true;
 		};
 		const reserve = (gx, gy, cellsW, cellsH) => {
 			if (occupancy) {
 				occupancy.occupyRect({ gx, gy, cellsW, cellsH }, { padding: 0.15, kind: "biome" }); return;
 			}
-			for (let ox = 0; ox < cellsW; ox++)
-				for (let oy = 0; oy < cellsH; oy++)
-					localOccupied.add(`${gx + ox},${gy + oy}`);
+			for (let ox = 0; ox < cellsW; ox++) for (let oy = 0; oy < cellsH; oy++) localOccupied.add(`${gx + ox},${gy + oy}`);
 		};
 		for (let c = 0; c < perRoom; c++) {
 			const item = items[Math.floor(rng() * items.length)];

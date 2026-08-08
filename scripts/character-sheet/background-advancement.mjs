@@ -49,7 +49,7 @@ async function grantAdvancementItems(actor, background, entry) {
 			}
 			itemsToCreate.push(doc.toObject());
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Error loading item ${itemRef.uuid}:`, err);
 			// Continue with other items
 		}

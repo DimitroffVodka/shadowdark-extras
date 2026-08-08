@@ -104,11 +104,11 @@ for (const [key, label] of Object.entries(BIOME_TO_TERRAIN_LABEL)) {
 	TERRAIN_LABEL_TO_BIOME[label] = key;
 }
 // Also map labels from the painter system
-TERRAIN_LABEL_TO_BIOME["Water"] = "ocean";
-TERRAIN_LABEL_TO_BIOME["Swamp"] = "swamps";
-TERRAIN_LABEL_TO_BIOME["Vegetation"] = "plains"; // generic vegetation → treat as plains for modifier
-TERRAIN_LABEL_TO_BIOME["Snow"] = "mountains"; // snow tiles treated as mountain-like
-TERRAIN_LABEL_TO_BIOME["Badlands"] = "desert"; // treat badlands as desert-like
+TERRAIN_LABEL_TO_BIOME.Water = "ocean";
+TERRAIN_LABEL_TO_BIOME.Swamp = "swamps";
+TERRAIN_LABEL_TO_BIOME.Vegetation = "plains"; // generic vegetation → treat as plains for modifier
+TERRAIN_LABEL_TO_BIOME.Snow = "mountains"; // snow tiles treated as mountain-like
+TERRAIN_LABEL_TO_BIOME.Badlands = "desert"; // treat badlands as desert-like
 
 /* ═══════════════════════════════════════════════════════════════
    DICE HELPERS
@@ -323,7 +323,7 @@ async function generateJournalForHex(hexKey, biomeKey, hexLabel, nearOcean = fal
 		htmlContent = result.html;
 		regionName = result.regionName;
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Solo mode: hex generation failed for ${hexKey}:`, err);
 		return;
 	}
@@ -447,7 +447,7 @@ async function onTokenMove(tokenDoc, changes) {
 				hexesToProcess.push({ offset: n, key: offsetToHexKey(n) });
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Solo mode: could not get adjacent hexes:`, err);
 		}
 
@@ -472,7 +472,7 @@ async function onTokenMove(tokenDoc, changes) {
 					if (biome) adjacentBiomes.push(biome);
 				}
 			}
-			catch { /* ignore */ }
+			catch{ /* ignore */ }
 
 			// Roll terrain
 			const biomeKey = rollTerrain(adjacentBiomes);
@@ -487,7 +487,7 @@ async function onTokenMove(tokenDoc, changes) {
 		}
 
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Solo mode error:`, err);
 		ui.notifications.error("SDX | Solo mode encountered an error.");
 	}

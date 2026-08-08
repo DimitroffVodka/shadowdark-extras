@@ -92,8 +92,8 @@ const Direction = {
 const DIRECTION_OFFSETS = {
 	[Direction.NORTH]: { dx: 0, dy: -1 },
 	[Direction.SOUTH]: { dx: 0, dy: 1 },
-	[Direction.EAST]:  { dx: 1, dy: 0 },
-	[Direction.WEST]:  { dx: -1, dy: 0 },
+	[Direction.EAST]: { dx: 1, dy: 0 },
+	[Direction.WEST]: { dx: -1, dy: 0 },
 };
 
 const OPPOSITE = {
@@ -106,8 +106,8 @@ const OPPOSITE = {
 const PERPENDICULAR = {
 	[Direction.NORTH]: [Direction.EAST, Direction.WEST],
 	[Direction.SOUTH]: [Direction.EAST, Direction.WEST],
-	[Direction.EAST]:  [Direction.NORTH, Direction.SOUTH],
-	[Direction.WEST]:  [Direction.NORTH, Direction.SOUTH],
+	[Direction.EAST]: [Direction.NORTH, Direction.SOUTH],
+	[Direction.WEST]: [Direction.NORTH, Direction.SOUTH],
 };
 
 // ═══════════════════════════════════════════════════════
@@ -145,27 +145,32 @@ class ProcgenRoom {
 	get left() {
 		return this.x;
 	}
+
 	get right() {
 		return this.x + this.w;
 	}
+
 	get top() {
 		return this.y;
 	}
+
 	get bottom() {
 		return this.y + this.h;
 	}
+
 	get cx() {
 		return this.x + Math.floor(this.w / 2);
 	}
+
 	get cy() {
 		return this.y + Math.floor(this.h / 2);
 	}
 
 	intersects(other, margin = 0) {
-		return !(this.right + margin <= other.left ||
-                 other.right + margin <= this.left ||
-                 this.bottom + margin <= other.top ||
-                 other.bottom + margin <= this.top);
+		return !(this.right + margin <= other.left
+                 || other.right + margin <= this.left
+                 || this.bottom + margin <= other.top
+                 || other.bottom + margin <= this.top);
 	}
 }
 
@@ -552,23 +557,21 @@ export function generateLayout(params, rng) {
 					entranceEdges.push({ x: roomB.right - 1, y: roomA.cy, dir: "E" });
 				}
 			}
+			else if (dy > 0) {
+				// South: corridor exits roomA's bottom edge
+				entranceEdges.push({ x: roomA.cx, y: roomA.bottom - 1, dir: "S" });
+				entranceEdges.push({ x: roomA.cx, y: roomA.bottom, dir: "N" });
+				// North: corridor enters roomB's top edge
+				entranceEdges.push({ x: roomA.cx, y: roomB.top - 1, dir: "S" });
+				entranceEdges.push({ x: roomA.cx, y: roomB.top, dir: "N" });
+			}
 			else {
-				if (dy > 0) {
-					// South: corridor exits roomA's bottom edge
-					entranceEdges.push({ x: roomA.cx, y: roomA.bottom - 1, dir: "S" });
-					entranceEdges.push({ x: roomA.cx, y: roomA.bottom, dir: "N" });
-					// North: corridor enters roomB's top edge
-					entranceEdges.push({ x: roomA.cx, y: roomB.top - 1, dir: "S" });
-					entranceEdges.push({ x: roomA.cx, y: roomB.top, dir: "N" });
-				}
-				else {
-					// North: corridor exits roomA's top edge
-					entranceEdges.push({ x: roomA.cx, y: roomA.top, dir: "N" });
-					entranceEdges.push({ x: roomA.cx, y: roomA.top - 1, dir: "S" });
-					// South: corridor enters roomB's bottom edge
-					entranceEdges.push({ x: roomA.cx, y: roomB.bottom, dir: "N" });
-					entranceEdges.push({ x: roomA.cx, y: roomB.bottom - 1, dir: "S" });
-				}
+				// North: corridor exits roomA's top edge
+				entranceEdges.push({ x: roomA.cx, y: roomA.top, dir: "N" });
+				entranceEdges.push({ x: roomA.cx, y: roomA.top - 1, dir: "S" });
+				// South: corridor enters roomB's bottom edge
+				entranceEdges.push({ x: roomA.cx, y: roomB.bottom, dir: "N" });
+				entranceEdges.push({ x: roomA.cx, y: roomB.bottom - 1, dir: "S" });
 			}
 
 			// Door on first corridor tile (guaranteed to be outside both rooms)
@@ -1087,13 +1090,13 @@ export function generateDoors(doorPositions, offset, wallThickness, doorTilePath
  * If levelsActive is false and no levelId, clears all dungeon documents.
  */
 export async function clearSceneAtLevel(scene, levelContext, levelsActive) {
-	const isDungeonTile = (t) => {
+	const isDungeonTile = t => {
 		const f = t.flags?.[MODULE_ID];
 		return f?.dungeonFloor || f?.dungeonStairs || f?.dungeonStairsDown || f?.dungeonClutter;
 	};
-	const isDungeonWall = (w) => w.flags?.[MODULE_ID]?.dungeonGenWall;
-	const isDungeonDrawing = (d) => d.flags?.[MODULE_ID]?.dungeonWall;
-	const isDungeonLight = (l) => l.flags?.[MODULE_ID]?.dungeonDecorLight;
+	const isDungeonWall = w => w.flags?.[MODULE_ID]?.dungeonGenWall;
+	const isDungeonDrawing = d => d.flags?.[MODULE_ID]?.dungeonWall;
+	const isDungeonLight = l => l.flags?.[MODULE_ID]?.dungeonDecorLight;
 
 	const matchesLevel = (doc, type) => {
 		// v14 native levels: match by levelId stored in doc.levels collection/array
@@ -1206,17 +1209,17 @@ export async function generateDungeon(config) {
 	const safeConfig = {
 		...config,
 		roomCount: Math.min(Math.max(1, config.roomCount ?? 10), 50),
-		stairs:    Math.min(Math.max(0, config.stairs ?? 0), 10),
-		stairsDown:Math.min(Math.max(0, config.stairsDown ?? 0), 10),
-		clutter:   Math.min(Math.max(0, config.clutter ?? 0), 20),
+		stairs: Math.min(Math.max(0, config.stairs ?? 0), 10),
+		stairsDown: Math.min(Math.max(0, config.stairsDown ?? 0), 10),
+		clutter: Math.min(Math.max(0, config.clutter ?? 0), 20),
 		decorLights: Math.min(Math.max(0, config.decorLights ?? 0), 4),
 		decorTiles: config.decorTiles ?? true,
-		density:   Math.min(Math.max(0, config.density ?? 0.8), 1),
+		density: Math.min(Math.max(0, config.density ?? 0.8), 1),
 		// string fields: validate or fall back
 		wallColor: /^#[0-9a-f]{6}$/i.test(config.wallColor) ? config.wallColor : "#5C3D3D",
-		seed:      typeof config.seed === "string" ? config.seed.slice(0, 100) : "default",
-		style:     ["cave", "mixed", ...ROTJS_STYLES].includes(config.style) ? config.style : "rooms",
-		biomes:    !!config.biomes,
+		seed: typeof config.seed === "string" ? config.seed.slice(0, 100) : "default",
+		style: ["cave", "mixed", ...ROTJS_STYLES].includes(config.style) ? config.style : "rooms",
+		biomes: !!config.biomes,
 	};
 
 	const {
@@ -1271,7 +1274,7 @@ export async function generateDungeon(config) {
 				await scene.deleteEmbeddedDocuments("Tile", [probe[0].id]);
 			}
 		}
-		catch (e) {
+		catch(e) {
 			elevation = getCurrentElevation();
 		}
 		wallHeightBottom = elevation;
@@ -1354,7 +1357,7 @@ export async function generateDungeon(config) {
 					if (type === "Wall") {
 						// Walls use absolute Z range — `wall-height.bottom`/`top` IS the slab.
 						const updates = created.map(w => ({
-							_id: w.id,
+							"_id": w.id,
 							"flags.wall-height.bottom": wallHeightBottom,
 							"flags.wall-height.top": wallHeightTop,
 						}));
@@ -1366,8 +1369,8 @@ export async function generateDungeon(config) {
 						// Writing the level's bottom into `elevation` double-encodes the
 						// slab and renders the tile at 2× the intended height.
 						const updates = created.map(t => ({
-							_id: t.id,
-							elevation: 0,
+							"_id": t.id,
+							"elevation": 0,
 							"flags.levels.rangeTop": wallHeightTop,
 						}));
 						await scene.updateEmbeddedDocuments("Tile", updates);
@@ -1375,8 +1378,8 @@ export async function generateDungeon(config) {
 					else if (type === "Drawing") {
 						// Same reasoning as Tile — base-of-level elevation.
 						const updates = created.map(d => ({
-							_id: d.id,
-							elevation: 0,
+							"_id": d.id,
+							"elevation": 0,
 							"flags.levels.rangeTop": wallHeightTop,
 						}));
 						await scene.updateEmbeddedDocuments("Drawing", updates);
@@ -1436,7 +1439,7 @@ export async function generateDungeon(config) {
 		// each side of the opening. In mixed maps the cave can erode the wall a
 		// room-generator door was set into, leaving it floating in open floor.
 		const doorTilePath = getSelectedDoorTile();
-		const doorWallsIntact = (d) => {
+		const doorWallsIntact = d => {
 			const ns = (d.dir === Direction.NORTH || d.dir === Direction.SOUTH);
 			const f1 = ns ? `${d.x - 1},${d.y}` : `${d.x},${d.y - 1}`;
 			const f2 = ns ? `${d.x + 1},${d.y}` : `${d.x},${d.y + 1}`;
@@ -1455,16 +1458,16 @@ export async function generateDungeon(config) {
 		// 12b. Apply TokenMagic dropshadow2 to wall drawings if Wall Shadows is enabled
 		if (wallShadows && window.TokenMagic) {
 			const shadowParams = [{
-				"filterType": "shadow",
-				"filterId": "dropshadow2",
-				"rotation": 0,
-				"distance": 0,
-				"color": 0x000000,
-				"alpha": 1,
-				"shadowOnly": false,
-				"blur": 5,
-				"quality": 5,
-				"padding": 20,
+				filterType: "shadow",
+				filterId: "dropshadow2",
+				rotation: 0,
+				distance: 0,
+				color: 0x000000,
+				alpha: 1,
+				shadowOnly: false,
+				blur: 5,
+				quality: 5,
+				padding: 20,
 			}];
 			const wallDrawings = canvas.drawings.placeables.filter(d => {
 				if (!d.document.flags?.[MODULE_ID]?.dungeonWall) return false;
@@ -1475,7 +1478,7 @@ export async function generateDungeon(config) {
 				try {
 					await TokenMagic.addUpdateFilters(drawing.document, shadowParams);
 				}
-				catch (err) {
+				catch(err) {
 					console.warn(`${MODULE_ID} | Wall shadow effect failed:`, err);
 				}
 			}
@@ -1564,7 +1567,7 @@ export async function generateDungeon(config) {
 				const result = await FilePicker.browse("data", clutterFolder);
 				clutterFiles = (result.files || []).filter(f => /\-(\d+)x(\d+)\.\w+$/i.test(f));
 			}
-			catch (e) {
+			catch(e) {
 				console.warn(`${MODULE_ID} | Could not browse clutter folder:`, e);
 			}
 
@@ -1664,7 +1667,7 @@ export async function generateDungeon(config) {
 			seed,
 		};
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Dungeon generation failed:`, err);
 		ui.notifications.error("SDX | Dungeon generation failed. Check console for details.");
 	}

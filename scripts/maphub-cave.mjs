@@ -29,7 +29,7 @@ export const caveMixin = {
 			const cw = this._iframe?.contentWindow;
 			return cw?.__maphubClasses?.["lime.app.Application"]?.current?.__window?.stage ?? null;
 		}
-		catch (_) {
+		catch(_) {
 			return null;
 		}
 	},
@@ -72,7 +72,7 @@ export const caveMixin = {
 							if (!best || score < best.score) best = { child, score };
 						}
 					}
-					catch (_) { /* some nodes refuse getBounds */ }
+					catch(_) { /* some nodes refuse getBounds */ }
 					visit(child, depth + 1);
 				}
 			};
@@ -88,7 +88,7 @@ export const caveMixin = {
 			});
 			return { toPixel, scale: Math.hypot(M.a, M.b) };
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to read maphub geometry transform`, err);
 			return null;
 		}
@@ -124,7 +124,7 @@ export const caveMixin = {
 			ui.notifications.warn("Cave render transform was not available; imported image without walls.");
 			return [];
 		}
-		const toPixel = (p) => transform.toPixel(p.x, p.y);
+		const toPixel = p => transform.toPixel(p.x, p.y);
 
 		const walls = [];
 		for (const poly of polys) {
@@ -232,7 +232,7 @@ export const caveMixin = {
 			canvas.dispatchEvent(new cw.MouseEvent("click", { ...eventInit, buttons: 0 }));
 			await new Promise(resolve => setTimeout(resolve, 250));
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to dismiss generator context menu`, err);
 		}
 	},
@@ -265,7 +265,7 @@ export const caveMixin = {
 			}
 			return false;
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to export dungeon JSON`, err);
 			return false;
 		}
@@ -281,7 +281,7 @@ export const caveMixin = {
 		try {
 			return this._iframe?.contentWindow?.__sdxDungeonView ?? null;
 		}
-		catch (_) {
+		catch(_) {
 			return null;
 		}
 	},
@@ -314,7 +314,7 @@ export const caveMixin = {
 				let b; try {
 					b = c.getBounds(map);
 				}
-				catch (_) {
+				catch(_) {
 					continue;
 				}
 				const cx = b.width / gW; const cy = b.height / gH;
@@ -328,7 +328,7 @@ export const caveMixin = {
 			}
 			return best?.cell || this._DUNGEON_CELL;
 		}
-		catch (_) {
+		catch(_) {
 			return this._DUNGEON_CELL;
 		}
 	},
@@ -355,7 +355,7 @@ export const caveMixin = {
 				}
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to force dungeon axis-aligned`, err);
 		}
 	},
@@ -389,7 +389,7 @@ export const caveMixin = {
 			const cellPx = cell * Math.hypot(M.a, M.b);
 			return { toPixel, cellPx };
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to read dungeon render transform`, err);
 			return null;
 		}
@@ -425,7 +425,7 @@ export const caveMixin = {
 				origin: transform.toPixel(left, top),
 			};
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to read cave align source`, err);
 			return null;
 		}
@@ -446,7 +446,7 @@ export const caveMixin = {
 				im.crossOrigin = "anonymous";
 				im.onload = () => res(im);
 				im.onerror = rej;
-				im.src = "/" + imgPath;
+				im.src = `/${imgPath}`;
 			});
 			const w = Math.max(1, Math.round(img.naturalWidth * scale));
 			const h = Math.max(1, Math.round(img.naturalHeight * scale));
@@ -462,7 +462,7 @@ export const caveMixin = {
 				ctx.fillStyle = `rgb(${d[0]},${d[1]},${d[2]})`;
 				ctx.fillRect(0, 0, w, h);
 			}
-			catch (_) { /* keep transparent */ }
+			catch(_) { /* keep transparent */ }
 			ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, -shiftX, -shiftY, w, h);
 			const blob = await new Promise(r => canvas.toBlob(r, "image/png"));
 			const FP = foundry.applications.apps.FilePicker?.implementation ?? FilePicker;
@@ -472,7 +472,7 @@ export const caveMixin = {
 			const resp = await FP.upload("data", "maps/maphub", file, {});
 			return { path: resp?.path || imgPath, width: w, height: h };
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to render aligned image`, err);
 			return { path: imgPath, width: null, height: null };
 		}
@@ -545,7 +545,7 @@ export const caveMixin = {
 				this.element.style.zIndex = "9999";
 			}
 		}
-		catch (e) {
+		catch(e) {
 			console.warn("Failed to maximize dialog window:", e);
 		}
 		// Give the iframe/canvas time to resize and redraw completely
@@ -631,7 +631,7 @@ export const caveMixin = {
 			};
 			img.src = imgPath;
 		}
-		catch (e) {
+		catch(e) {
 			console.error(`${MODULE_ID} | Failed to set scene background`, e);
 			ui.notifications.error("Failed to set scene background.");
 			if (isDwellings) this._restoreAfterCapture(oldState);
@@ -683,7 +683,7 @@ export const caveMixin = {
 			};
 			img.src = imgPath;
 		}
-		catch (e) {
+		catch(e) {
 			console.error(`${MODULE_ID} | Failed to add map as tile`, e);
 			ui.notifications.error("Failed to add map as tile.");
 			if (isDwellings) this._restoreAfterCapture(oldState);
@@ -727,7 +727,7 @@ export const caveMixin = {
 					window.localStorage.setItem(rotKey, val.replace("autoRotationf", "autoRotationt"));
 				}
 			}
-			catch (err) {
+			catch(err) {
 				console.warn(`${MODULE_ID} | Failed to restore dungeon rotation`, err);
 			}
 		}
@@ -750,7 +750,7 @@ export const caveMixin = {
 				try {
 					iframe.src = "about:blank";
 				}
-				catch (_) { }
+				catch(_) { }
 				setTimeout(() => graveyard.remove(), 500);
 			}, 100);
 		}
@@ -820,7 +820,7 @@ export const caveMixin = {
 				return this._blobUrl;
 			}
 		}
-		catch (_) { /* network error → fall through */ }
+		catch(_) { /* network error → fall through */ }
 
 		if (localOnly) {
 			const label = this._getMapLabel();
@@ -832,6 +832,6 @@ export const caveMixin = {
 		// Local files not present — fall back to external URL.
 		console.warn(`${MODULE_ID} | MaphubViewerApp: local files missing, using external: ${ext}`);
 		return ext;
-	}
+	},
 
 };

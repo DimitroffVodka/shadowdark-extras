@@ -1,5 +1,5 @@
 const getTokenMagic = () => window.TokenMagic;
-const isSDXVirtualDocument = (document) => Boolean(document?._sdxVirtualTMFX);
+const isSDXVirtualDocument = document => Boolean(document?._sdxVirtualTMFX);
 const PresetsLibrary = {
 	MAIN: "tmfx-main",
 	TEMPLATE: "tmfx-template",
@@ -51,7 +51,7 @@ export function filterEditor(placeable, sourceBounds) {
 export async function handleTMFXDropEvent(document, data) {
 	if (data.type === "TMFX-Preset" || data.type === "TMFX Preset") {
 		const { name, library } = data;
-		const preset = getTokenMagic().getPresets(library).find((p) => p.name === name);
+		const preset = getTokenMagic().getPresets(library).find(p => p.name === name);
 		if (!preset?.params?.length) return;
 
 		if (preset.defaultTexture && document.documentName === "MeasuredTemplate") {
@@ -116,7 +116,7 @@ export async function handleTMFXDropEvent(document, data) {
 				await getTokenMagic().addFilters(document, deepClone(preset.params));
 			}
 		}
-		catch (e) {
+		catch(e) {
 			console.warn("SDX | Failed to import TokenMagic gallery preset:", e);
 		}
 	}
@@ -158,7 +158,7 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 
 	get title() {
 		let title =
-            game.i18n.localize("TMFX.TokenMagic") + " " + game.i18n.localize("TMFX.app.filterSelector.window.title");
+            `${game.i18n.localize("TMFX.TokenMagic")} ${game.i18n.localize("TMFX.app.filterSelector.window.title")}`;
 		if (this._document.sdxTitle) title += ` [ ${this._document.sdxTitle} ]`;
 		else if (this._document.documentName === "Token" && this._document.name.trim()) title += ` [ ${this._document.name} ]`;
 		else title += ` [ ${this._document.documentName} ]`;
@@ -198,10 +198,10 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 		return document
 			.getFlag("tokenmagic", "filters")
 			?.find(
-				(f) =>
-					f.tmFilters.tmFilterId === filterId &&
-                    f.tmFilters.tmFilterType === filterType &&
-                    f.tmFilters.tmFilterInternalId === filterInternalId
+				f =>
+					f.tmFilters.tmFilterId === filterId
+                    && f.tmFilters.tmFilterType === filterType
+                    && f.tmFilters.tmFilterInternalId === filterInternalId
 			)?.tmFilters.tmParams;
 	}
 
@@ -222,12 +222,12 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 	_prepareHeaderContext(context, options) {
 		const filters = this._document.getFlag("tokenmagic", "filters");
 		const hasFilters = filters?.length;
-		const hasActiveRandomizedFields = filters?.some((f) => {
+		const hasActiveRandomizedFields = filters?.some(f => {
 			const params = f.tmFilters.tmParams;
 			if (params.hasOwnProperty("enabled") && !params.enabled) return false;
 
 			if (isEmpty(params.randomized)) return false;
-			return Object.values(params.randomized).some((r) => !r.hasOwnProperty("active") || r.active);
+			return Object.values(params.randomized).some(r => !r.hasOwnProperty("active") || r.active);
 		});
 
 		context.controls = [
@@ -259,10 +259,10 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 
 	async _prepareFiltersContext(context, options) {
 		this._paramArray = (this._document.getFlag("tokenmagic", "filters") ?? []).map(
-			(filter) => filter.tmFilters.tmParams
+			filter => filter.tmFilters.tmParams
 		);
 		this._filters = this._paramArray
-			.map((param) => {
+			.map(param => {
 				const { filterId, filterType, rank, enabled, filterInternalId, placeableId } = param;
 				return {
 					filterId,
@@ -305,11 +305,12 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 		super._attachFrameListeners();
 		this.element.querySelector(".window-content").addEventListener("drop", this._onWindowDrop.bind(this));
 	}
+
 	/** @override */
 	_attachPartListeners(partId, element, options) {
 		super._attachPartListeners(partId, element, options);
 
-		this.element.querySelectorAll(".filter").forEach((element) => {
+		this.element.querySelectorAll(".filter").forEach(element => {
 			element.addEventListener("dragstart", this._onDragStart.bind(this));
 			element.addEventListener("drop", this._onFilterDrop.bind(this));
 		});
@@ -337,12 +338,12 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 	async _onWindowDrop(event) {
 		const data = foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
 		if (
-			data.type === "TMFX-Preset" ||
-            data.type === "TMFX-Filter" ||
-            data.type === "TMFX Preset" ||
-            data.type === "TMFX Filter" ||
-            data.type === "TMFX Group" ||
-            data.type === "CommunityGalleryEntry"
+			data.type === "TMFX-Preset"
+            || data.type === "TMFX-Filter"
+            || data.type === "TMFX Preset"
+            || data.type === "TMFX Filter"
+            || data.type === "TMFX Group"
+            || data.type === "CommunityGalleryEntry"
 		) return handleTMFXDropEvent(this._document, data);
 		else if (data.type === "Macro") return this._onAddMacro(data);
 	}
@@ -360,8 +361,7 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		const { filterId, filterType, filterInternalId } = event.target.closest(".filter").dataset;
 		if (data.placeableId === this._document.id) {
-			if (data.filterId === filterId && data.filterType === filterType && data.filterInternalId === filterInternalId)
-				return;
+			if (data.filterId === filterId && data.filterType === filterType && data.filterInternalId === filterInternalId) return;
 
 			return this._onUpdateFilterRank(data, { filterId, filterType, filterInternalId });
 		}
@@ -374,7 +374,7 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (!filters || !filters.length) return;
 
 		// First make sure there are no duplicate ranks
-		const paramArray = filters.map((f) => f.tmFilters.tmParams).sort((f1, f2) => f1.rank - f2.rank);
+		const paramArray = filters.map(f => f.tmFilters.tmParams).sort((f1, f2) => f1.rank - f2.rank);
 		let resort = false;
 		for (let i = 0; i < paramArray.length - 1; i++) {
 			if (paramArray[i].rank === paramArray[i + 1].rank) {
@@ -433,12 +433,12 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		try {
 			const paramArray = parseTMFXFilterParams(macro.command);
-			if (paramArray.every((p) => typeof p === "object" && p.filterId && p.filterType)) {
+			if (paramArray.every(p => typeof p === "object" && p.filterId && p.filterType)) {
 				getTokenMagic().addFilters(this._document, paramArray);
 			}
 		}
-		catch (e) {
-			console.warn("No filter parameter array found within macro: " + macro.name);
+		catch(e) {
+			console.warn(`No filter parameter array found within macro: ${macro.name}`);
 		}
 	}
 
@@ -459,7 +459,7 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 				).render(true);
 			}
 		}
-		catch (e) {
+		catch(e) {
 			console.log(e);
 		}
 	}
@@ -502,13 +502,13 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 			try {
 				return await import("../../../tokenmagic/gui/apps/editor/PresetSearch.js");
 			}
-			catch {
+			catch{
 				return await import("../../../tokenmagic/gui/apps/PresetSearch.js");
 			}
 		};
-		loadPresetSearch().then((module) => {
+		loadPresetSearch().then(module => {
 			module.presetSearch(options);
-		}).catch((err) => {
+		}).catch(err => {
 			console.error("SDX | Failed to open TokenMagic preset search:", err);
 			ui.notifications.error("Could not open TokenMagic preset search.");
 		});
@@ -542,7 +542,7 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 				else if (tm.filters) {
 					const renderFieldsChanged = this._paramArrayCompare(
 						this._paramArray,
-						tm.filters.map((f) => f.tmFilters.tmParams)
+						tm.filters.map(f => f.tmFilters.tmParams)
 					);
 					if (renderFieldsChanged) this.render({ parts: ["header", "filters"] });
 				}
@@ -563,7 +563,7 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		for (const p1 of arr1) {
 			const p2 = arr2.find(
-				(p) =>
+				p =>
 					p.filterId === p1.filterId && p.filterType === p1.filterType && p.filterInternalId === p1.filterInternalId
 			);
 			if (!p2 || p1.enabled !== p2.enabled) return true;
@@ -576,7 +576,7 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 	/** @override */
 	async close(options = {}) {
 		await super.close(options);
-		this._hooks?.forEach((h) => {
+		this._hooks?.forEach(h => {
 			Hooks.off(h.hook, h.id);
 		});
 	}
@@ -710,7 +710,7 @@ export class FilterEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 			"randomized",
 			"enabled",
 			"rank",
-		].forEach((param) => delete this._params[param]);
+		].forEach(param => delete this._params[param]);
 	}
 
 	#genControl(param, value) {
@@ -836,8 +836,8 @@ export class FilterEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 			const INTERVAL_MS = 200;
 			let lastChangeTime = 0;
 			let trailingTimer = null;
-			element.querySelectorAll("color-picker").forEach((element) => {
-				element.addEventListener("input", (event) => {
+			element.querySelectorAll("color-picker").forEach(element => {
+				element.addEventListener("input", event => {
 					const now = performance.now();
 					if (now - lastChangeTime >= INTERVAL_MS) {
 						event.target.dispatchEvent(new Event("change"));
@@ -973,7 +973,7 @@ export class AnimationEditor extends HandlebarsApplicationMixin(ApplicationV2) {
             this._control.type === "color" ? AnimationEditor.colorKeywordControls : AnimationEditor.keywordControls;
 
 		const animOptions = {};
-		Object.keys(keyControls).forEach((k) => {
+		Object.keys(keyControls).forEach(k => {
 			animOptions[k] = genLabel(k);
 		});
 
@@ -988,7 +988,7 @@ export class AnimationEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 				order: 0,
 			},
 		];
-		keyControls[this._animParams.animType].forEach((param) => {
+		keyControls[this._animParams.animType].forEach(param => {
 			let control;
 			if (param === "val1" || param === "val2") {
 				control = { ...this._control, order: 1, disabled: false, label: null };
@@ -1041,8 +1041,7 @@ export class AnimationEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 		}
 
 		if (renderParent && this._parentApp.state === ApplicationV2.RENDER_STATES.RENDERED) {
-			if (FilterSelector.getFilter(this._document, this._filterIdentifier))
-				this._parentApp.render({ parts: ["filter"] });
+			if (FilterSelector.getFilter(this._document, this._filterIdentifier)) this._parentApp.render({ parts: ["filter"] });
 		}
 	}
 }
@@ -1170,7 +1169,7 @@ export class RandomizationEditor extends HandlebarsApplicationMixin(ApplicationV
 		}
 
 		const typeOptions = {};
-		Object.keys(TYPE_OPTIONS).forEach((k) => {
+		Object.keys(TYPE_OPTIONS).forEach(k => {
 			if (allowedTypes.includes(k)) typeOptions[k] = TYPE_OPTIONS[k];
 		});
 
@@ -1208,13 +1207,13 @@ export class RandomizationEditor extends HandlebarsApplicationMixin(ApplicationV
 		}
 
 		if (this._control.type === "color") {
-			controls.forEach((c) => (c.value = new Color(c.value).toString()));
+			controls.forEach(c => (c.value = new Color(c.value).toString()));
 		}
 
 		// Identify parameters eligible for linking
 		let linkables = {};
 		for (const [param, control] of Object.entries(this._controls)) {
-			if (this._param !== param && ["type", "min", "max", "step"].every((k) => this._control[k] === control[k])) {
+			if (this._param !== param && ["type", "min", "max", "step"].every(k => this._control[k] === control[k])) {
 				linkables[param] = control.label;
 			}
 		}
@@ -1254,7 +1253,7 @@ export class RandomizationEditor extends HandlebarsApplicationMixin(ApplicationV
 		if (params.list) params.list = Object.values(params.list);
 
 		if (this._control.type === "color") {
-			if (params.list) params.list = params.list.map((v) => Number(Color.fromString(v)));
+			if (params.list) params.list = params.list.map(v => Number(Color.fromString(v)));
 			if (params.val1) params.val1 = Number(Color.fromString(params.val1));
 			if (params.val2) params.val2 = Number(Color.fromString(params.val2));
 			params.color = true;
@@ -1290,9 +1289,9 @@ export class RandomizationEditor extends HandlebarsApplicationMixin(ApplicationV
 
 		if (render) await this.render({ parts: ["randomize"] });
 		if (
-			renderParent &&
-            this._parentApp.state === ApplicationV2.RENDER_STATES.RENDERED &&
-            FilterSelector.getFilter(this._document, this._filterIdentifier)
+			renderParent
+            && this._parentApp.state === ApplicationV2.RENDER_STATES.RENDERED
+            && FilterSelector.getFilter(this._document, this._filterIdentifier)
 		) {
 			this._parentApp.render({ parts: ["filter"] });
 		}
@@ -1318,17 +1317,17 @@ export class SavePreset extends HandlebarsApplicationMixin(ApplicationV2) {
 
 	_prepareParams() {
 		const params = deepClone(this._originalParams);
-		params.forEach((param) => {
+		params.forEach(param => {
 			param.filterId = this._name;
 			if (this._filterAnimated && param.animated) {
-				Object.keys(param.animated).forEach((k) => {
+				Object.keys(param.animated).forEach(k => {
 					if ("active" in param.animated[k] && !param.animated[k].active) {
 						delete param.animated[k];
 					}
 				});
 			}
 			if (this._filterRandomized && param.randomized) {
-				Object.keys(param.randomized).forEach((k) => {
+				Object.keys(param.randomized).forEach(k => {
 					if ("active" in param.randomized[k] && !param.randomized[k].active) {
 						delete param.randomized[k];
 					}
@@ -1350,10 +1349,10 @@ export class SavePreset extends HandlebarsApplicationMixin(ApplicationV2) {
      */
 	_paramHasFiniteLoops(param) {
 		return Object.values(param.animated ?? {}).some(
-			(anim) =>
-				(!anim.hasOwnProperty("active") || anim.active) &&
-                anim.loops &&
-                AnimationEditor.keywordControls[anim.animType]?.includes("loops")
+			anim =>
+				(!anim.hasOwnProperty("active") || anim.active)
+                && anim.loops
+                && AnimationEditor.keywordControls[anim.animType]?.includes("loops")
 		);
 	}
 
@@ -1399,7 +1398,7 @@ export class SavePreset extends HandlebarsApplicationMixin(ApplicationV2) {
 				context.filterAnimated = this._filterAnimated;
 				context.texture = this._texture;
 				context.documentName = this._document.documentName;
-				context.displayAutoDestroy = this._originalParams.some((param) => this._paramHasFiniteLoops(param));
+				context.displayAutoDestroy = this._originalParams.some(param => this._paramHasFiniteLoops(param));
 				if (this._displayMacro) context.macro = this._genMacro();
 				break;
 			case "footer":
@@ -1464,9 +1463,9 @@ export function getCloneFilterParams(document) {
 	);
 	if (!filters?.length) return null;
 
-	const params = filters.map((f) => f.tmFilters.tmParams);
-	params.forEach((param) => {
-		["updateId", "placeableId", "filterInternalId", "filterOwner", "placeableType"].forEach((k) => {
+	const params = filters.map(f => f.tmFilters.tmParams);
+	params.forEach(param => {
+		["updateId", "placeableId", "filterInternalId", "filterOwner", "placeableType"].forEach(k => {
 			delete param[k];
 		});
 	});

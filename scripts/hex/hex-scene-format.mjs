@@ -53,10 +53,10 @@ export async function formatActiveScene() {
 	const pxH = (_mapRows * HEX_TILE_H) - (HEX_TILE_H / 2);
 
 	const sceneData = {
-		width: pxW,
-		height: pxH,
-		padding: 0,
-		backgroundColor: "#3C3836",
+		"width": pxW,
+		"height": pxH,
+		"padding": 0,
+		"backgroundColor": "#3C3836",
 		"grid.type": CONST.GRID_TYPES.HEXODDQ,
 		"grid.size": HEX_TILE_H,
 		"grid.distance": 6,
@@ -79,7 +79,7 @@ export async function formatActiveScene() {
 		await scene.setFlag(MODULE_ID, "hexScene", true);
 		ui.notifications.info("SDX | Scene formatted for hex painting.");
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Scene format failed:`, err);
 		ui.notifications.error("SDX | Could not format the scene.");
 	}

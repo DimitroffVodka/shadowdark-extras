@@ -175,7 +175,7 @@ export async function executeSpellItemMacro(spellItem, actor, trigger, context =
 		const macroFn = new AsyncFunction(...safeParams, macroCommand);
 		await macroFn.call(scope, ...safeValues);
 	}
-	catch (error) {
+	catch(error) {
 		console.error(`${MODULE_ID} | Error executing spell macro:`, error);
 		ui.notifications.error("There was an error in your macro syntax. See the console (F12) for details");
 	}

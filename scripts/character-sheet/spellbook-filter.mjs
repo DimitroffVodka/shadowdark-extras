@@ -64,7 +64,7 @@ export function injectSpellbookCompendiumFilter(app, html) {
 
 	// Add event listener
 	const select = html.find(".sdx-spellbook-compendium-select");
-	select.on("change", (event) => {
+	select.on("change", event => {
 		const selectedCompendium = event.currentTarget.value;
 		filterSpellsByCompendium(html, selectedCompendium);
 	});

@@ -67,7 +67,7 @@ export async function loadColoredTileAssets() {
 					});
 				}
 			}
-			catch (err) {
+			catch(err) {
 				// Subdirectory might not be accessible, that's okay
 			}
 		}
@@ -76,7 +76,7 @@ export async function loadColoredTileAssets() {
 		await cache.setMetadata(metadataKey, _coloredTiles);
 		console.log(`${MODULE_ID} | Loaded ${_coloredTiles.length} colored tiles from ${subdirs.length} folders`);
 	}
-	catch (err) {
+	catch(err) {
 		console.warn(`${MODULE_ID} | Could not load colored tiles:`, err);
 		_coloredTiles = [];
 	}

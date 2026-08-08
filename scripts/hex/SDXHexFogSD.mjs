@@ -526,7 +526,6 @@ let _fogOverlayTexture = null;
 let _fogOverlayPath = null;
 
 
-
 export function isHexFogEnabled(sceneId) {
 	if (!sceneId) return false;
 	const scene = game.scenes.get(sceneId);
@@ -588,7 +587,7 @@ export function initHexFog() {
 	Hooks.on("updateScene", _onUpdateScene);
 	Hooks.on("updateToken", _onUpdateToken);
 
-	Hooks.on("updateJournalEntry", (journal) => {
+	Hooks.on("updateJournalEntry", journal => {
 		if (journal.name !== HEX_JOURNAL_NAME) return;
 		if (enabled) {
 			_drawFog();
@@ -596,7 +595,6 @@ export function initHexFog() {
 		}
 	});
 }
-
 
 
 function _onCanvasReady() {
@@ -754,7 +752,7 @@ function _getNeighborsAtDepth(center, depth, resultSet) {
 					}
 				}
 			}
-			catch { /* fallback if getAdjacentOffsets unavailable */ }
+			catch{ /* fallback if getAdjacentOffsets unavailable */ }
 		}
 		frontier = nextFrontier;
 	}
@@ -812,7 +810,7 @@ async function _processRollTables(scene, rollTableCells) {
 				}
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to roll table for hex ${tooltipKey}:`, err);
 		}
 	}
@@ -844,7 +842,6 @@ function _getExploredHexKeys(sceneId) {
 	}
 	return explored;
 }
-
 
 
 function _initFog() {
@@ -893,7 +890,7 @@ async function _loadFogOverlayTexture() {
 			if (fog) _drawFog();
 		}
 	}
-	catch (err) {
+	catch(err) {
 		console.warn(`${MODULE_ID} | Failed to load fog overlay texture:`, err);
 		_fogOverlayTexture = null;
 		_fogOverlayPath = null;
@@ -1140,7 +1137,7 @@ function _updateFogPinVisibility() {
 	try {
 		renderer = JournalPinRenderer;
 	}
-	catch {
+	catch{
 		return;
 	}
 	if (!renderer?._pins) return;

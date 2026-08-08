@@ -95,7 +95,7 @@ async function executeMacroFromEffect(actor, macroValue, currentTrigger, options
 			await macro.execute(context);
 		}
 	}
-	catch (error) {
+	catch(error) {
 		console.error(`${MODULE_ID} | Error executing macro "${macroName}":`, error);
 		ui.notifications.error(`Failed to execute macro "${macroName}": ${error.message}`);
 	}
@@ -163,8 +163,8 @@ export function registerEffectMacroSocket(socket) {
 		if (!sender) return;
 
 		// Reconstruct actor to check ownership
-		const actor = contextData.actorUuid ? await fromUuid(contextData.actorUuid) :
-					 (contextData.actorId ? game.actors.get(contextData.actorId) : null);
+		const actor = contextData.actorUuid ? await fromUuid(contextData.actorUuid)
+					 : (contextData.actorId ? game.actors.get(contextData.actorId) : null);
 
 		if (!sender.isGM && (!actor || !actor.testUserPermission(sender, "OWNER"))) {
 			console.warn(`${MODULE_ID} | Unauthorized macro execution attempt from user ${sender.name}`);

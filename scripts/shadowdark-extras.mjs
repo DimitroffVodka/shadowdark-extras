@@ -236,7 +236,7 @@ Hooks.once("init", () => {
 			console.log("Shadowdark Extras | Registered GSAP PixiPlugin");
 		}
 	}
-	catch (err) {
+	catch(err) {
 		console.error("Shadowdark Extras | Failed to register GSAP PixiPlugin:", err);
 	}
 
@@ -345,9 +345,6 @@ Hooks.once("init", () => {
 // and the two container hooks. These twelve functions called eight of those
 // directly, so co-locating them turns eight cross-module imports into local
 // calls; four are imported back because the sheet dispatchers below use them.
-
-
-
 
 
 // The four small tab enhancers moved to character-sheet/enhanced-tabs.mjs,
@@ -501,7 +498,7 @@ Hooks.once("init", () => {
 
 
 	// Register Handlebars helpers
-	Handlebars.registerHelper("numberSigned", (value) => {
+	Handlebars.registerHelper("numberSigned", value => {
 		const num = parseInt(value) || 0;
 		return num >= 0 ? `+${num}` : `${num}`;
 	});
@@ -736,7 +733,7 @@ Hooks.once("ready", async () => {
 	initCarousingSocket();
 
 	// SDX Roller socket listener
-	game.socket.on(`module.${MODULE_ID}`, (data) => {
+	game.socket.on(`module.${MODULE_ID}`, data => {
 		if (data.action?.startsWith("sdxRoller")) {
 			SDXRollerApp.handleSocketMessage(data);
 		}
@@ -754,8 +751,8 @@ registerItemCreateFlagPreservation();
 // Before party actor is created, ensure proper prototype token settings
 Hooks.on("preCreateActor", (actor, data, options, userId) => {
 	// Check if this is a party actor being created
-	const isParty = data.flags?.[MODULE_ID]?.isParty === true ||
-		actor.getFlag(MODULE_ID, "isParty") === true;
+	const isParty = data.flags?.[MODULE_ID]?.isParty === true
+		|| actor.getFlag(MODULE_ID, "isParty") === true;
 
 	if (isParty) {
 		// Force the correct prototype token settings for party actors
@@ -871,42 +868,42 @@ Hooks.on("renderItemSheet", (app, html, data) => {
 		injectBasicContainerUI(app, html);
 		injectAmmunitionBonuses(app, html);
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to inject Basic item container UI`, err);
 	}
 
 	try {
 		enhanceSpellSheet(app, html);
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to enhance spell sheet`, err);
 	}
 
 	try {
 		injectSpellAlignmentField(app, html);
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to inject spell alignment field`, err);
 	}
 
 	try {
 		enhancePotionSheet(app, html);
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to enhance potion sheet`, err);
 	}
 
 	try {
 		enhanceScrollSheet(app, html);
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to enhance scroll sheet`, err);
 	}
 
 	try {
 		enhanceWandSheet(app, html);
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to enhance wand sheet`, err);
 	}
 
@@ -923,7 +920,7 @@ Hooks.on("renderItemSheet", (app, html, data) => {
 			injectWeaponAnimationButton(html, item);
 		}
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to inject weapon bonus tab`, err);
 	}
 
@@ -936,7 +933,7 @@ Hooks.on("renderItemSheet", (app, html, data) => {
 			html.find('.tab[data-tab="tab-effects"]').remove();
 		}
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to hide effects tab`, err);
 	}
 
@@ -944,7 +941,7 @@ Hooks.on("renderItemSheet", (app, html, data) => {
 	try {
 		enhanceGemSheet(app, html);
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to enhance gem sheet`, err);
 	}
 });
@@ -1068,12 +1065,8 @@ registerPredefinedEffects();
 // ============================================
 
 
-
-
-
 // Invisibility hooks live in ./effects/invisibility.mjs; registered here to keep source order.
 registerInvisibilityHooks();
-
 
 
 // ============================================
@@ -1084,26 +1077,26 @@ registerInvisibilityHooks();
 // Dev-only Quench batches. These live under dev/ and are excluded from
 // module.zip, so a released install has nothing to import - stay silent there
 // rather than logging a spurious registration failure.
-Hooks.on("quenchReady", async (quench) => {
+Hooks.on("quenchReady", async quench => {
 	try {
 		const { registerWebpMigrationBatch } = await import("../dev/tests/quench/webp-migration.batch.mjs");
 		registerWebpMigrationBatch(quench);
 	}
-	catch (e) {
+	catch(e) {
 		// Expected in a packaged install: dev/ is not shipped.
 	}
 	try {
 		const { registerStructuralBatch } = await import("../dev/tests/quench/structural.batch.mjs");
 		registerStructuralBatch(quench);
 	}
-	catch (e) {
+	catch(e) {
 		// Expected in a packaged install: dev/ is not shipped.
 	}
 	try {
 		const { registerSplitBatch } = await import("../dev/tests/quench/split.batch.mjs");
 		registerSplitBatch(quench);
 	}
-	catch (e) {
+	catch(e) {
 		// Expected in a packaged install: dev/ is not shipped.
 	}
 });
@@ -1143,7 +1136,7 @@ Hooks.once("ready", async () => {
 	try {
 		await migrateWebpAssetPaths();
 	}
-	catch (e) {
+	catch(e) {
 		console.error(`${MODULE_ID} | webp asset migration threw:`, e);
 	}
 
@@ -1151,7 +1144,7 @@ Hooks.once("ready", async () => {
 	// load every document of every world pack, which would stall world load.
 	// It carries its own gate (webpPackSweepDone) so locked or failed packs are
 	// retried on later loads instead of being stranded by the document gate.
-	sweepWorldCompendiums().catch((e) =>
+	sweepWorldCompendiums().catch(e =>
 		console.error(`${MODULE_ID} | world compendium webp sweep failed:`, e)
 	);
 
@@ -1199,7 +1192,7 @@ Hooks.on("renderChatMessageHTML", (message, html, context) => {
 	const revertBtn = html.querySelector(".sdx-revert-shape-btn");
 	if (!revertBtn) return;
 
-	revertBtn.addEventListener("click", async (event) => {
+	revertBtn.addEventListener("click", async event => {
 		event.preventDefault();
 		event.stopPropagation();
 
@@ -1242,7 +1235,6 @@ registerChatDispatch();
 // third, empty ready hook ("Redundant handler removed") was dropped rather than
 // carried — an empty callback has no behaviour to preserve.
 registerNPCFeatureItemMacros();
-
 
 
 // ============================================
@@ -1513,7 +1505,7 @@ Hooks.once("ready", () => {
 	initTray();
 
 	// Global listener for @DisplayTable roll buttons
-	$(document).on("click", ".sdx-table-roll-btn", async (event) => {
+	$(document).on("click", ".sdx-table-roll-btn", async event => {
 		event.preventDefault();
 		const container = $(event.currentTarget).closest(".sdx-display-table-container");
 		const uuid = container.data("table-uuid");
@@ -1595,7 +1587,7 @@ Hooks.on("getSceneContextOptions", (document, menuItems) => {
 		label: "Export Scene as ZIP",
 		icon: '<i class="fas fa-file-archive"></i>',
 		visible: () => game.user.isGM,
-		callback: async (li) => {
+		callback: async li => {
 			// In Foundry v13, li is an HTMLElement, not jQuery
 			const element = li instanceof HTMLElement ? li : li[0];
 			const sceneId = element?.dataset?.documentId || element?.dataset?.entryId;
@@ -1662,7 +1654,7 @@ Hooks.on("renderApplication", (app, html, data) => {
 	try {
 		enhanceGemBag(app, html);
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to enhance gem bag`, err);
 	}
 });

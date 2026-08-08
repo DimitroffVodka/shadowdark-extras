@@ -102,7 +102,7 @@ export async function executeItemMacro(item, context = {}) {
 	try {
 		return await fn(actor, token, character, speaker, item, context.args ?? [], context);
 	}
-	catch (err) {
+	catch(err) {
 		ui.notifications.error(`Macro error on ${item.name}: ${err.message}`);
 		console.error(`${MODULE_ID} | Item macro error:`, err);
 		return null;

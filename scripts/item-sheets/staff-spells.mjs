@@ -68,8 +68,8 @@ async function getEquippedStaffSpells(actor) {
 
 	// Find all equipped weapon items
 	const equippedWeapons = actor.items.filter(item =>
-		item.type === "Weapon" &&
-		item.system?.equipped === true
+		item.type === "Weapon"
+		&& item.system?.equipped === true
 	);
 
 	// Load spells from each weapon
@@ -93,7 +93,7 @@ async function getEquippedStaffSpells(actor) {
 					});
 				}
 			}
-			catch (err) {
+			catch(err) {
 				console.warn(`${MODULE_ID} | Could not load spell ${spellRef.uuid} from weapon ${staff.name}:`, err);
 			}
 		}
@@ -230,7 +230,7 @@ export async function injectStaffSpellsUI(sheet, html, data) {
 	spellsTab.prepend(staffSpellsHtml);
 
 	// Attach click handler to show spell details
-	spellsTab.find("[data-action='show-details']").on("click", async (event) => {
+	spellsTab.find("[data-action='show-details']").on("click", async event => {
 		event.preventDefault();
 		const $spell = $(event.currentTarget).closest(".sdx-staff-spell");
 		const spellUuid = $spell.data("spell-uuid");
@@ -243,13 +243,13 @@ export async function injectStaffSpellsUI(sheet, html, data) {
 				spell.sheet.render(true);
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Error opening staff spell sheet:`, err);
 		}
 	});
 
 	// Attach click handler to cast staff spells
-	spellsTab.find("[data-action='cast-staff-spell']").on("click", async (event) => {
+	spellsTab.find("[data-action='cast-staff-spell']").on("click", async event => {
 		event.preventDefault();
 		const $link = $(event.currentTarget);
 		const spellUuid = $link.data("spell-uuid");
@@ -361,7 +361,7 @@ export async function injectStaffSpellsUI(sheet, html, data) {
 				try {
 					await tempWand.delete();
 				}
-				catch (err) {
+				catch(err) {
 					// Item may already be deleted, ignore error
 				}
 			}, 1000);
@@ -399,14 +399,14 @@ export async function injectStaffSpellsUI(sheet, html, data) {
 				sheet.render(false);
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Error casting staff spell:`, err);
 			ui.notifications.error("Failed to cast spell from staff");
 		}
 	});
 
 	// Attach click handler to focus on staff spells
-	spellsTab.find("[data-action='focus-staff-spell']").on("click", async (event) => {
+	spellsTab.find("[data-action='focus-staff-spell']").on("click", async event => {
 		event.preventDefault();
 		const $link = $(event.currentTarget);
 		const spellUuid = $link.data("spell-uuid");
@@ -518,7 +518,7 @@ export async function injectStaffSpellsUI(sheet, html, data) {
 				try {
 					await tempWand.delete();
 				}
-				catch (err) {
+				catch(err) {
 					// Item may already be deleted, ignore error
 				}
 			}, 1000);
@@ -537,7 +537,7 @@ export async function injectStaffSpellsUI(sheet, html, data) {
 				sheet.render(false);
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Error focusing on staff spell:`, err);
 			ui.notifications.error("Failed to focus on spell from staff");
 		}
@@ -585,7 +585,7 @@ export function injectWeaponSpellRechargeButtons(app, html, actor) {
 		`);
 
 		// Add click handler
-		$rechargeBtn.on("click", async (event) => {
+		$rechargeBtn.on("click", async event => {
 			event.preventDefault();
 			const itemId = $(event.currentTarget).data("item-id");
 			const weapon = actor.items.get(itemId);

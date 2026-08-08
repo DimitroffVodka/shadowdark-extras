@@ -56,7 +56,7 @@ export function generateSummoningConfigHTML(MODULE_ID, flags, summonsList, summo
  */
 export function generateSummonProfileHTML(profile, index) {
 	const truncatedName = (profile.creatureName || "Unknown").length > 8
-		? (profile.creatureName || "Unknown").substring(0, 8) + "…"
+		? `${(profile.creatureName || "Unknown").substring(0, 8)}…`
 		: (profile.creatureName || "Unknown");
 	return `
 		<div class="sdx-summon-profile" data-index="${index}">

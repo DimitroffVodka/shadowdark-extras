@@ -43,7 +43,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 	try {
 		if (!game.settings.get(MODULE_ID, "enableEnhancedHeader")) return;
 	}
-	catch {
+	catch{
 		return;
 	}
 
@@ -91,7 +91,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 			backgroundName = backgroundItem?.name || "";
 		}
 	}
-	catch (e) {
+	catch(e) {
 		console.warn("shadowdark-extras | Error fetching character details:", e);
 	}
 
@@ -248,7 +248,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 
 	// Portrait click to launch tokenizer (if vtta-tokenizer module is active)
 	// Hold Shift to open the default Foundry file picker instead
-	$enhancedContent.find(".sdx-portrait").on("click", async (e) => {
+	$enhancedContent.find(".sdx-portrait").on("click", async e => {
 		if (!actor.isOwner) return;
 		e.stopPropagation();
 
@@ -266,7 +266,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 			const fp = new FilePicker({
 				type: "image",
 				current: actor.img,
-				callback: async (path) => {
+				callback: async path => {
 					await actor.update({ img: path });
 				},
 			});
@@ -279,7 +279,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 			const fp = new FilePicker({
 				type: "image",
 				current: actor.img,
-				callback: async (path) => {
+				callback: async path => {
 					await actor.update({ img: path });
 				},
 			});
@@ -298,7 +298,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 					type: actor.type.toLowerCase(),
 					avatarFilename: actor.img,
 				};
-				window.Tokenizer.launch(options, (response) => {
+				window.Tokenizer.launch(options, response => {
 					ui.notifications.success(`Tokenizer completed for ${actor.name}!`);
 				});
 			}
@@ -307,14 +307,14 @@ export async function injectEnhancedHeader(app, html, actor) {
 				const fp = new FilePicker({
 					type: "image",
 					current: actor.img,
-					callback: async (path) => {
+					callback: async path => {
 						await actor.update({ img: path });
 					},
 				});
 				return fp.browse();
 			}
 		}
-		catch (error) {
+		catch(error) {
 			console.error("shadowdark-extras | Error launching tokenizer:", error);
 			ui.notifications.error(`Failed to launch tokenizer: ${error.message}`);
 		}
@@ -341,7 +341,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 		};
 
 		$input.on("blur", saveHp);
-		$input.on("keydown", (e) => {
+		$input.on("keydown", e => {
 			if (e.key === "Enter") {
 				e.preventDefault();
 				$input.blur();
@@ -353,13 +353,13 @@ export async function injectEnhancedHeader(app, html, actor) {
 		});
 	};
 
-	$enhancedContent.find(".sdx-hp-value").on("click", (e) => {
+	$enhancedContent.find(".sdx-hp-value").on("click", e => {
 		e.preventDefault();
 		e.stopPropagation();
 		openHpInput();
 	});
 
-	$enhancedContent.find(".sdx-hp-bar-container").on("click", async (e) => {
+	$enhancedContent.find(".sdx-hp-bar-container").on("click", async e => {
 		if (!actor.isOwner) return;
 		if ($(e.target).is("input, textarea, select, button, a") || $(e.target).closest(".sdx-hp-value").length) return;
 		e.preventDefault();
@@ -367,7 +367,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 		applyHpQuickAdjust(actor, -1, $sheet);
 	});
 
-	$enhancedContent.find(".sdx-hp-bar-container").on("contextmenu", async (e) => {
+	$enhancedContent.find(".sdx-hp-bar-container").on("contextmenu", async e => {
 		if (!actor.isOwner) return;
 		if ($(e.target).is("input, textarea, select, button, a")) return;
 		e.preventDefault();
@@ -380,7 +380,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 
 	if (usePulpMode) {
 		// Pulp mode: click to edit the number
-		$luckContainer.on("click", async (e) => {
+		$luckContainer.on("click", async e => {
 			if (!actor.isOwner) return;
 			e.stopPropagation();
 
@@ -405,7 +405,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 			};
 
 			$input.on("blur", saveLuck);
-			$input.on("keydown", (e) => {
+			$input.on("keydown", e => {
 				if (e.key === "Enter") {
 					e.preventDefault();
 					$input.blur();
@@ -429,7 +429,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 	// XP inline edit on click — the SD system's editable XP input lives on
 	// the Details tab and is easy to miss; mirror the luck container pattern.
 	const $xpRow = $enhancedContent.find(".sdx-xp-row");
-	$xpRow.on("click", async (e) => {
+	$xpRow.on("click", async e => {
 		if (!actor.isOwner) return;
 		e.stopPropagation();
 		if ($xpRow.find(".sdx-xp-input").length > 0) return;
@@ -449,7 +449,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 		};
 
 		$input.on("blur", saveXp);
-		$input.on("keydown", (ev) => {
+		$input.on("keydown", ev => {
 			if (ev.key === "Enter") {
 				ev.preventDefault();
 				$input.blur();
@@ -466,12 +466,12 @@ export async function injectEnhancedHeader(app, html, actor) {
 		if (!actor.isOwner) return;
 		const newName = $(this).val().trim();
 		if (newName && newName !== actor.name) {
-			await actor.update({ "name": newName });
+			await actor.update({ name: newName });
 		}
 	});
 
 	// Level-up interaction
-	$enhancedContent.find(".sdx-level-container.can-level-up").on("click", async (e) => {
+	$enhancedContent.find(".sdx-level-container.can-level-up").on("click", async e => {
 		if (!actor.isOwner) return;
 		e.stopPropagation();
 		e.preventDefault();
@@ -483,7 +483,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 				actorClass = await fromUuid(sys.class);
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn("shadowdark-extras | Could not fetch actor class:", err);
 		}
 
@@ -606,7 +606,7 @@ export function injectHeaderCustomization(app, html, actor) {
 	$(document).off(eventNS);
 
 	// Toggle menu visibility
-	$settingsBtn.on("click", (event) => {
+	$settingsBtn.on("click", event => {
 		event.preventDefault();
 		event.stopPropagation();
 		$settingsBtn.toggleClass("active");
@@ -614,7 +614,7 @@ export function injectHeaderCustomization(app, html, actor) {
 	});
 
 	// Close menu when clicking outside
-	$(document).on(`click${eventNS}`, (event) => {
+	$(document).on(`click${eventNS}`, event => {
 		if (!$(event.target).closest(".sdx-header-settings-btn, .sdx-header-settings-menu").length) {
 			$settingsBtn.removeClass("active");
 			$settingsMenu.removeClass("visible");
@@ -622,7 +622,7 @@ export function injectHeaderCustomization(app, html, actor) {
 	});
 
 	// Handle select image button
-	$settingsMenu.find(".sdx-header-select-image").on("click", async (event) => {
+	$settingsMenu.find(".sdx-header-select-image").on("click", async event => {
 		event.preventDefault();
 		event.stopPropagation();
 
@@ -635,7 +635,7 @@ export function injectHeaderCustomization(app, html, actor) {
 		const fp = new FilePicker({
 			type: "imagevideo",
 			current: currentImage,
-			callback: async (path) => {
+			callback: async path => {
 				await actor.setFlag(MODULE_ID, "headerBackground", path);
 				// Force sheet re-render to apply the background properly
 				app.render(false);
@@ -645,7 +645,7 @@ export function injectHeaderCustomization(app, html, actor) {
 	});
 
 	// Handle remove image button
-	$settingsMenu.find(".sdx-header-remove-image").on("click", async (event) => {
+	$settingsMenu.find(".sdx-header-remove-image").on("click", async event => {
 		event.preventDefault();
 		event.stopPropagation();
 
@@ -712,7 +712,7 @@ function applyHeaderBackground(html, actor) {
 		// Calculate from the top of header to the bottom of nav, relative to form
 		// Add extra padding to ensure it covers the full nav including border-bottom
 		const totalHeight = (navRect.bottom - formRect.top) + 30;
-		$form.find(".sdx-header-bg-extension").css("height", totalHeight + "px");
+		$form.find(".sdx-header-bg-extension").css("height", `${totalHeight}px`);
 	};
 
 	// Check if it's a video file
@@ -801,7 +801,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 	$(document).off(eventNS);
 
 	// Toggle menu visibility
-	$settingsBtn.on("click", (event) => {
+	$settingsBtn.on("click", event => {
 		event.preventDefault();
 		event.stopPropagation();
 		$settingsBtn.toggleClass("active");
@@ -809,7 +809,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 	});
 
 	// Close menu when clicking outside
-	$(document).on(`click${eventNS}`, (event) => {
+	$(document).on(`click${eventNS}`, event => {
 		if (!$(event.target).closest(".sdx-header-settings-btn, .sdx-header-settings-menu").length) {
 			$settingsBtn.removeClass("active");
 			$settingsMenu.removeClass("visible");
@@ -817,7 +817,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 	});
 
 	// Handle select image button
-	$settingsMenu.find(".sdx-header-select-image").on("click", async (event) => {
+	$settingsMenu.find(".sdx-header-select-image").on("click", async event => {
 		event.preventDefault();
 		event.stopPropagation();
 
@@ -830,7 +830,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 		const fp = new FilePicker({
 			type: "imagevideo",
 			current: currentImage,
-			callback: async (path) => {
+			callback: async path => {
 				await actor.setFlag(MODULE_ID, "partyHeaderBackground", path);
 				// Force sheet re-render to apply the background properly
 				app.render(false);
@@ -840,7 +840,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 	});
 
 	// Handle remove image button
-	$settingsMenu.find(".sdx-header-remove-image").on("click", async (event) => {
+	$settingsMenu.find(".sdx-header-remove-image").on("click", async event => {
 		event.preventDefault();
 		event.stopPropagation();
 
@@ -858,7 +858,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 	// Portrait click to launch tokenizer (if vtta-tokenizer module is active)
 	// Hold Shift to open the default Foundry file picker instead
 	const $portrait = $header.find(".party-portrait");
-	$portrait.off("click.sdxPartyPortrait").on("click.sdxPartyPortrait", async (e) => {
+	$portrait.off("click.sdxPartyPortrait").on("click.sdxPartyPortrait", async e => {
 		if (!actor.isOwner && !game.user.isGM) return;
 		e.preventDefault();
 		e.stopPropagation();
@@ -868,7 +868,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 			const fp = new FilePicker({
 				type: "image",
 				current: actor.img,
-				callback: async (path) => {
+				callback: async path => {
 					await actor.update({ img: path });
 				},
 			});
@@ -881,7 +881,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 			const fp = new FilePicker({
 				type: "image",
 				current: actor.img,
-				callback: async (path) => {
+				callback: async path => {
 					await actor.update({ img: path });
 				},
 			});
@@ -900,7 +900,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 					type: "npc", // Party actors are NPC type
 					avatarFilename: actor.img,
 				};
-				window.Tokenizer.launch(options, (response) => {
+				window.Tokenizer.launch(options, response => {
 					ui.notifications.success(`Tokenizer completed for ${actor.name}!`);
 				});
 			}
@@ -909,14 +909,14 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 				const fp = new FilePicker({
 					type: "image",
 					current: actor.img,
-					callback: async (path) => {
+					callback: async path => {
 						await actor.update({ img: path });
 					},
 				});
 				return fp.browse();
 			}
 		}
-		catch (error) {
+		catch(error) {
 			console.error("shadowdark-extras | Error launching tokenizer:", error);
 			ui.notifications.error(`Failed to launch tokenizer: ${error.message}`);
 		}
@@ -973,7 +973,7 @@ function applyPartyHeaderBackground(html, actor) {
 		// Calculate from the top of header to the bottom of nav, relative to form
 		// Add extra padding to ensure background covers full tab area
 		const totalHeight = (navRect.bottom - formRect.top) + 30;
-		$form.find(".sdx-party-header-bg-extension").css("height", totalHeight + "px");
+		$form.find(".sdx-party-header-bg-extension").css("height", `${totalHeight}px`);
 	};
 
 	// Check if it's a video file
@@ -1054,13 +1054,13 @@ export function injectAddCoinsButton(html, actor) {
 	headerSpan.html(buttonsHtml);
 
 	// Attach click handler for add coins
-	coinsBox.find('[data-action="add-coins"]').on("click", async (event) => {
+	coinsBox.find('[data-action="add-coins"]').on("click", async event => {
 		event.preventDefault();
 		await showAddCoinsDialog(actor);
 	});
 
 	// Attach click handler for transfer coins
-	coinsBox.find('[data-action="transfer-coins"]').on("click", async (event) => {
+	coinsBox.find('[data-action="transfer-coins"]').on("click", async event => {
 		event.preventDefault();
 		const result = await showCoinTransferDialog(actor);
 		if (result) {
@@ -1176,7 +1176,7 @@ export function injectTradeButton(html, actor) {
 	gemsSection.after(tradeButtonHtml);
 
 	// Attach click handler
-	html.find('.trade-btn[data-action="open-trade"]').on("click", async (event) => {
+	html.find('.trade-btn[data-action="open-trade"]').on("click", async event => {
 		event.preventDefault();
 		await showTradeDialog(actor);
 	});

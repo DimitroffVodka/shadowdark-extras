@@ -317,7 +317,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 					});
 				}
 			}
-			catch (err) {
+			catch(err) {
 				console.warn(`${MODULE_ID} | Failed to load effect ${uuid}:`, err);
 			}
 		}
@@ -380,7 +380,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 		// Setup tab click handlers
 		const tabLinks = html.querySelectorAll(".potion-sheet-tabs .tab-item");
 		tabLinks.forEach(link => {
-			link.addEventListener("click", (event) => {
+			link.addEventListener("click", event => {
 				event.preventDefault();
 				const tab = event.currentTarget.dataset.tab;
 				this._onChangeTab(tab);
@@ -391,12 +391,12 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 		const itemImage = html.querySelector(".item-image[data-edit='img']");
 		if (itemImage) {
 			itemImage.style.cursor = "pointer";
-			itemImage.addEventListener("click", (event) => {
+			itemImage.addEventListener("click", event => {
 				event.preventDefault();
 				const fp = new FilePicker({
 					type: "image",
 					current: this.item.img,
-					callback: async (path) => {
+					callback: async path => {
 						await this.item.update({ img: path });
 					},
 				});
@@ -435,7 +435,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 		const dropAreas = html.querySelectorAll(".effects-drop-area");
 
 		dropAreas.forEach(area => {
-			area.addEventListener("dragover", (event) => {
+			area.addEventListener("dragover", event => {
 				event.preventDefault();
 				area.classList.add("drag-over");
 			});
@@ -444,7 +444,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 				area.classList.remove("drag-over");
 			});
 
-			area.addEventListener("drop", async (event) => {
+			area.addEventListener("drop", async event => {
 				event.preventDefault();
 				area.classList.remove("drag-over");
 
@@ -504,7 +504,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 
 			ui.notifications.info(`Added ${doc.name} to ${isCritical ? "critical " : ""}effects`);
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Error handling effect drop:`, err);
 		}
 	}
@@ -516,7 +516,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 		const dropZones = html.querySelectorAll(".summon-creature-drop");
 
 		dropZones.forEach(zone => {
-			zone.addEventListener("dragover", (event) => {
+			zone.addEventListener("dragover", event => {
 				event.preventDefault();
 				zone.classList.add("drag-over");
 			});
@@ -525,7 +525,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 				zone.classList.remove("drag-over");
 			});
 
-			zone.addEventListener("drop", async (event) => {
+			zone.addEventListener("drop", async event => {
 				event.preventDefault();
 				zone.classList.remove("drag-over");
 
@@ -573,7 +573,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 				ui.notifications.info(`Added ${doc.name} to summon profile`);
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Error handling summon drop:`, err);
 		}
 	}
@@ -585,7 +585,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 		const dropZones = html.querySelectorAll(".item-give-drop");
 
 		dropZones.forEach(zone => {
-			zone.addEventListener("dragover", (event) => {
+			zone.addEventListener("dragover", event => {
 				event.preventDefault();
 				zone.classList.add("drag-over");
 			});
@@ -594,7 +594,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 				zone.classList.remove("drag-over");
 			});
 
-			zone.addEventListener("drop", async (event) => {
+			zone.addEventListener("drop", async event => {
 				event.preventDefault();
 				zone.classList.remove("drag-over");
 
@@ -642,7 +642,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 				ui.notifications.info(`Added ${doc.name} to give list`);
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Error handling item give drop:`, err);
 		}
 	}
@@ -679,7 +679,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 			tiered: html.querySelector(".formula-tiered"),
 		};
 
-		const updateVisibility = (selected) => {
+		const updateVisibility = selected => {
 			Object.entries(sections).forEach(([key, section]) => {
 				if (section) {
 					section.style.display = key === selected ? "block" : "none";
@@ -708,7 +708,7 @@ export default class PotionSheetSD extends HandlebarsApplicationMixin(DocumentSh
 			tiered: html.querySelector(".coating-poison-tiered"),
 		};
 
-		const updateCPVisibility = (selected) => {
+		const updateCPVisibility = selected => {
 			Object.entries(cpSections).forEach(([key, section]) => {
 				if (section) {
 					section.style.display = key === selected ? "block" : "none";

@@ -196,7 +196,7 @@ function chainAdjacency(n) {
  * are stitched into closed loops (outer boundary + any interior holes).
  * @returns {Array<Array<{x:number,y:number}>>} loops in CORNER (grid) coords
  */
-export function traceBoundaryLoops(cells, isFloor = (k) => cells.has(k), isCave = () => true) {
+export function traceBoundaryLoops(cells, isFloor = k => cells.has(k), isCave = () => true) {
 	// A boundary edge exists where the neighbour is NOT floor (void). `isFloor`
 	// lets callers test against a larger merged set (e.g. mixed room+cave maps)
 	// so the seam between a cave and an adjacent room is left open, not walled.
@@ -225,7 +225,7 @@ export function traceBoundaryLoops(cells, isFloor = (k) => cells.has(k), isCave 
 	const used = new Array(edges.length).fill(false);
 	const result = []; // { points, closed }
 
-	const dirOf = (e) => ({ x: e.b.x - e.a.x, y: e.b.y - e.a.y });
+	const dirOf = e => ({ x: e.b.x - e.a.x, y: e.b.y - e.a.y });
 
 	// At a junction, follow the boundary by turning as far clockwise (right) as
 	// possible — keeps the floor (which is on each edge's right) consistently on
@@ -248,7 +248,7 @@ export function traceBoundaryLoops(cells, isFloor = (k) => cells.has(k), isCave 
 	};
 
 	// Walk a boundary chain from startIdx; returns { pts, closed }.
-	const walk = (startIdx) => {
+	const walk = startIdx => {
 		const startCorner = `${edges[startIdx].a.x},${edges[startIdx].a.y}`;
 		const pts = [];
 		let curr = startIdx; let guard = 0; let closed = false;
@@ -410,7 +410,7 @@ function selectiveCavePass(pts) {
  * @returns {Array<{points:Array<{x,y}>, closed:boolean}>} pixel-space loops
  */
 export function buildMixedLoops(merged, caveCells, offset, gridSize = GRID_SIZE, { chaikin = 3, simplify = 0.1 } = {}) {
-	const traced = traceBoundaryLoops(merged, (k) => merged.has(k), (k) => caveCells.has(k));
+	const traced = traceBoundaryLoops(merged, k => merged.has(k), k => caveCells.has(k));
 	const tol = gridSize * simplify;
 	const result = [];
 	for (const { points } of traced) { // merged boundary loops are all closed
@@ -428,7 +428,7 @@ export function buildMixedLoops(merged, caveCells, offset, gridSize = GRID_SIZE,
  */
 export function buildCaveLoops(floors, offset, gridSize = GRID_SIZE, { chaikin = 3, simplify = 0.1, isFloor } = {}) {
 	const traced = traceBoundaryLoops(floors, isFloor); // [{ points, closed }]
-	const toPx = (p) => ({ x: (p.x + offset.x) * gridSize, y: (p.y + offset.y) * gridSize });
+	const toPx = p => ({ x: (p.x + offset.x) * gridSize, y: (p.y + offset.y) * gridSize });
 	const tol = gridSize * simplify;
 	const result = [];
 	for (const { points, closed } of traced) {

@@ -218,8 +218,8 @@ export async function _stampAtPointer(ev, forceStamp = false) {
 	const occupants = canvas.tiles.placeables.filter(t => {
 		const cx = t.document.x + t.document.width / 2;
 		const cy = t.document.y + t.document.height / 2;
-		return Math.abs(cx - center.x) < tolerance &&
-            Math.abs(cy - (center.y - verticalNudge)) < tolerance;
+		return Math.abs(cx - center.x) < tolerance
+            && Math.abs(cy - (center.y - verticalNudge)) < tolerance;
 	});
 
 	const erasing = ev.data?.originalEvent?.shiftKey ?? false;
@@ -243,11 +243,11 @@ export async function _stampAtPointer(ev, forceStamp = false) {
 		const doorTiles = getDoorTiles();
 		const ddPackDecorTiles = _decorMode ? await getDDPackDecorAssets() : [];
 		availableTiles = availableTiles.filter(path =>
-			(_symbolTiles && _symbolTiles.some(t => t.path === path)) ||
-            (_decorMode && _importedDecorTiles && _importedDecorTiles.some(t => t.path === path)) ||
-            (_decorMode && ddPackDecorTiles.some(t => t.path === path)) ||
-            (_decorMode && getRegisteredDecorTiles().some(t => t.path === path)) ||
-            (_decorMode && doorTiles.some(t => t.path === path))
+			(_symbolTiles && _symbolTiles.some(t => t.path === path))
+            || (_decorMode && _importedDecorTiles && _importedDecorTiles.some(t => t.path === path))
+            || (_decorMode && ddPackDecorTiles.some(t => t.path === path))
+            || (_decorMode && getRegisteredDecorTiles().some(t => t.path === path))
+            || (_decorMode && doorTiles.some(t => t.path === path))
 		);
 	}
 	else if (_activeTileTab === "custom") {
@@ -304,7 +304,7 @@ export async function _stampAtPointer(ev, forceStamp = false) {
 			tw = Math.floor(img.width * _poiScale);
 			th = Math.floor(img.height * _poiScale);
 		}
-		catch (e) {
+		catch(e) {
 			// Fallback to default size if image can't be loaded
 			tw = Math.floor(256 * _poiScale);
 			th = Math.floor(256 * _poiScale);
@@ -402,7 +402,7 @@ export async function _stampAtPointer(ev, forceStamp = false) {
 	try {
 		createdTiles = await canvas.scene.createEmbeddedDocuments("Tile", [tileData]);
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to create tile:`, err);
 		return;
 	}
@@ -487,45 +487,45 @@ export async function _stampAtPointer(ev, forceStamp = false) {
 				// Always add distortion effect
 				allParams.push(
 					{
-						"filterType": "distortion",
-						"filterId": "Sea",
-						"maskPath": "modules/tokenmagic/fx/assets/distortion-1.png",
-						"maskSpriteScaleX": 5,
-						"maskSpriteScaleY": 5,
-						"padding": 20,
-						"animated": {
-							"maskSpriteX": {
-								"active": true,
-								"speed": 0.05,
-								"animType": "move",
+						filterType: "distortion",
+						filterId: "Sea",
+						maskPath: "modules/tokenmagic/fx/assets/distortion-1.png",
+						maskSpriteScaleX: 5,
+						maskSpriteScaleY: 5,
+						padding: 20,
+						animated: {
+							maskSpriteX: {
+								active: true,
+								speed: 0.05,
+								animType: "move",
 							},
-							"maskSpriteY": {
-								"active": true,
-								"speed": 0.07,
-								"animType": "move",
+							maskSpriteY: {
+								active: true,
+								speed: 0.07,
+								animType: "move",
 							},
 						},
-						"rank": 10003,
-						"enabled": true,
+						rank: 10003,
+						enabled: true,
 					}
 				);
 				// Only add adjustment filter for non-colored tiles (colored tiles already have nice colors)
 				if (!isColoredTile) {
 					allParams.push(
 						{
-							"filterType": "adjustment",
-							"filterId": "Sea",
-							"saturation": 0.99,
-							"brightness": 0.29,
-							"contrast": 1.68,
-							"gamma": 0.1,
-							"red": 0.67,
-							"green": 0.9,
-							"blue": 1.24,
-							"alpha": 0.74,
-							"animated": {},
-							"rank": 10005,
-							"enabled": true,
+							filterType: "adjustment",
+							filterId: "Sea",
+							saturation: 0.99,
+							brightness: 0.29,
+							contrast: 1.68,
+							gamma: 0.1,
+							red: 0.67,
+							green: 0.9,
+							blue: 1.24,
+							alpha: 0.74,
+							animated: {},
+							rank: 10005,
+							enabled: true,
 						}
 					);
 				}
@@ -534,39 +534,39 @@ export async function _stampAtPointer(ev, forceStamp = false) {
 			if (_windEffect) {
 				allParams.push(
 					{
-						"filterType": "distortion",
-						"filterId": "Wind",
-						"maskPath": "modules/tokenmagic/fx/assets/distortion-1.png",
-						"maskSpriteScaleX": 0.3,
-						"maskSpriteScaleY": 0,
-						"padding": 177,
-						"animated": {
-							"maskSpriteX": {
-								"active": true,
-								"speed": 0.05,
-								"animType": "move",
+						filterType: "distortion",
+						filterId: "Wind",
+						maskPath: "modules/tokenmagic/fx/assets/distortion-1.png",
+						maskSpriteScaleX: 0.3,
+						maskSpriteScaleY: 0,
+						padding: 177,
+						animated: {
+							maskSpriteX: {
+								active: true,
+								speed: 0.05,
+								animType: "move",
 							},
-							"maskSpriteY": {
-								"active": true,
-								"speed": 0.07,
-								"animType": "move",
+							maskSpriteY: {
+								active: true,
+								speed: 0.07,
+								animType: "move",
 							},
-							"maskSpriteScaleX": {
-								"active": true,
-								"animType": "sinOscillation",
-								"speed": 0.0000025,
-								"val1": 2.6,
-								"val2": 0.9,
-								"loopDuration": 3000,
-								"syncShift": 0,
-								"loops": null,
-								"chaosFactor": 0.23,
-								"clockWise": true,
-								"wantInteger": false,
+							maskSpriteScaleX: {
+								active: true,
+								animType: "sinOscillation",
+								speed: 0.0000025,
+								val1: 2.6,
+								val2: 0.9,
+								loopDuration: 3000,
+								syncShift: 0,
+								loops: null,
+								chaosFactor: 0.23,
+								clockWise: true,
+								wantInteger: false,
 							},
 						},
-						"rank": 10000,
-						"enabled": true,
+						rank: 10000,
+						enabled: true,
 					}
 				);
 			}
@@ -574,37 +574,37 @@ export async function _stampAtPointer(ev, forceStamp = false) {
 			if (_fogAnimation) {
 				allParams.push(
 					{
-						"filterType": "smoke",
-						"filterId": "Fog",
-						"color": 16777215,
-						"time": 0,
-						"blend": 2,
-						"dimX": 0.01,
-						"dimY": 1,
-						"animated": {
-							"time": {
-								"active": true,
-								"speed": 0.001,
-								"animType": "move",
-								"val1": 24136.1,
-								"val2": 10186.3,
-								"loopDuration": 32740,
-								"syncShift": 0.76,
-								"loops": null,
+						filterType: "smoke",
+						filterId: "Fog",
+						color: 16777215,
+						time: 0,
+						blend: 2,
+						dimX: 0.01,
+						dimY: 1,
+						animated: {
+							time: {
+								active: true,
+								speed: 0.001,
+								animType: "move",
+								val1: 24136.1,
+								val2: 10186.3,
+								loopDuration: 32740,
+								syncShift: 0.76,
+								loops: null,
 							},
-							"dimX": {
-								"active": true,
-								"animType": "cosOscillation",
-								"speed": 0.0000025,
-								"val1": -0.03,
-								"val2": 0.03,
-								"loopDuration": 5000,
-								"syncShift": 0,
-								"loops": null,
+							dimX: {
+								active: true,
+								animType: "cosOscillation",
+								speed: 0.0000025,
+								val1: -0.03,
+								val2: 0.03,
+								loopDuration: 5000,
+								syncShift: 0,
+								loops: null,
 							},
 						},
-						"rank": 10002,
-						"enabled": true,
+						rank: 10002,
+						enabled: true,
 					}
 				);
 			}
@@ -612,19 +612,19 @@ export async function _stampAtPointer(ev, forceStamp = false) {
 			if (_bwEffect) {
 				allParams.push(
 					{
-						"filterType": "adjustment",
-						"filterId": "blackandwhite",
-						"saturation": 0,
-						"brightness": 1.1,
-						"contrast": 2,
-						"gamma": 2,
-						"red": 1,
-						"green": 1,
-						"blue": 1,
-						"alpha": 1,
-						"animated": {},
-						"rank": 10004,
-						"enabled": true,
+						filterType: "adjustment",
+						filterId: "blackandwhite",
+						saturation: 0,
+						brightness: 1.1,
+						contrast: 2,
+						gamma: 2,
+						red: 1,
+						green: 1,
+						blue: 1,
+						alpha: 1,
+						animated: {},
+						rank: 10004,
+						enabled: true,
 					}
 				);
 			}
@@ -633,7 +633,7 @@ export async function _stampAtPointer(ev, forceStamp = false) {
 				try {
 					await TokenMagic.addUpdateFilters(tileObj.document, allParams);
 				}
-				catch (err) {
+				catch(err) {
 					console.warn(`${MODULE_ID} | Could not apply effects:`, err);
 				}
 			}

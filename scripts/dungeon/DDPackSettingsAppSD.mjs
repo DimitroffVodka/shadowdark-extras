@@ -146,7 +146,7 @@ export class DDPackSettingsApp extends ApplicationV2 {
 				},
 			}).render(true);
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Could not read Dungeondraft pack:`, err);
 			ui.notifications.error(`Could not read pack: ${err?.message || err}`);
 			this.status = "";

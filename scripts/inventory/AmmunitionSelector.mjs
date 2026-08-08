@@ -10,8 +10,8 @@ export default class AmmunitionSelector {
      */
 	static async select(actor, weapon) {
 		const ammunition = actor.items.filter(i =>
-			i.system.isAmmunition &&
-            i.system.quantity > 0
+			i.system.isAmmunition
+            && i.system.quantity > 0
 		);
 
 		if (ammunition.length === 0) {

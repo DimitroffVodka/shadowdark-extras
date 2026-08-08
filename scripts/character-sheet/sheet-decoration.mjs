@@ -110,7 +110,7 @@ export function applySheetDecorationStyles() {
 		tabGradientStart = game.settings.get(MODULE_ID, "tabGradientStart") || "#000000";
 		tabGradientEnd = game.settings.get(MODULE_ID, "tabGradientEnd") || "#2f2b2b";
 	}
-	catch {
+	catch{
 		// Settings not registered yet, use defaults
 		sheetBorder = "panel-border-004.webp";
 		abilityPanel = "panel-013.webp";

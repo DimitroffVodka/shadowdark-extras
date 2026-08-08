@@ -36,7 +36,7 @@ export class SceneExporter {
 
 			ui.notifications.info(`Scene "${scene.name}" exported successfully!`);
 		}
-		catch (error) {
+		catch(error) {
 			console.error(`${MODULE_ID} | Export failed:`, error);
 			ui.notifications.error(`Export failed: ${error.message}`);
 		}
@@ -165,7 +165,7 @@ export class SceneExporter {
 					console.log(`${MODULE_ID} | Collected image: ${path} (${category})`);
 				}
 			}
-			catch (error) {
+			catch(error) {
 				console.warn(`${MODULE_ID} | Failed to fetch image: ${path}`, error);
 			}
 		};
@@ -319,7 +319,7 @@ export class SceneExporter {
 				throw new Error("File upload returned no path");
 			}
 		}
-		catch (error) {
+		catch(error) {
 			console.error(`${MODULE_ID} | Save failed:`, error);
 			ui.notifications.error(`Failed to save file: ${error.message}`);
 		}

@@ -125,7 +125,7 @@ export function enhanceInventoryWithDeleteAndMultiSelect(app, html) {
 	});
 
 	// Handle click for multi-select (Shift+Click to add to selection, Click to single select)
-	html.find(".item[data-item-id]").off("click.sdxSelect").on("click.sdxSelect", (ev) => {
+	html.find(".item[data-item-id]").off("click.sdxSelect").on("click.sdxSelect", ev => {
 		// Don't handle if clicking on a link, button, input, or the item name (which opens the sheet)
 		const target = ev.target;
 		if ($(target).closest("a:not(.sdx-edit-btn), button, input, .item-name, .item-image").length) {
@@ -175,7 +175,7 @@ export function enhanceInventoryWithDeleteAndMultiSelect(app, html) {
 	});
 
 	// Handle edit button click (for containers)
-	html.find(".sdx-edit-btn").off("click.sdxEdit").on("click.sdxEdit", async (ev) => {
+	html.find(".sdx-edit-btn").off("click.sdxEdit").on("click.sdxEdit", async ev => {
 		ev.preventDefault();
 		ev.stopPropagation();
 
@@ -218,7 +218,7 @@ function patchContextMenuForMultiDelete(app, html) {
 	// Shadowdark uses foundry.applications.ux.ContextMenu.implementation
 	// We'll add our own context menu handler for selected items
 
-	html.find(".item[data-item-id]").off("contextmenu.sdxMulti").on("contextmenu.sdxMulti", async (ev) => {
+	html.find(".item[data-item-id]").off("contextmenu.sdxMulti").on("contextmenu.sdxMulti", async ev => {
 		const selected = getSelectedItems(app);
 
 		// If multiple items selected and right-clicking on a selected item, show multi-delete menu

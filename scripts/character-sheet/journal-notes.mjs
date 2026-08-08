@@ -113,7 +113,7 @@ export async function injectJournalNotes(app, html, actor) {
 	try {
 		if (!game.settings.get(MODULE_ID, "enableJournalNotes")) return;
 	}
-	catch {
+	catch{
 		return;
 	}
 
@@ -217,7 +217,7 @@ function activateJournalListeners(app, html, actor) {
 	if (journalSection.length === 0) return;
 
 	// Page selection
-	journalSection.find(".sdx-journal-page-item").on("click", async (ev) => {
+	journalSection.find(".sdx-journal-page-item").on("click", async ev => {
 		// Don't trigger if clicking delete button
 		if ($(ev.target).closest(".sdx-page-delete").length) return;
 
@@ -227,14 +227,14 @@ function activateJournalListeners(app, html, actor) {
 	});
 
 	// Add page button
-	journalSection.find('[data-action="add-page"]').on("click", async (ev) => {
+	journalSection.find('[data-action="add-page"]').on("click", async ev => {
 		ev.preventDefault();
 		await addJournalPage(actor);
 		app.render(false);
 	});
 
 	// Delete page button
-	journalSection.find('[data-action="delete-page"]').on("click", async (ev) => {
+	journalSection.find('[data-action="delete-page"]').on("click", async ev => {
 		ev.preventDefault();
 		ev.stopPropagation();
 
@@ -256,7 +256,7 @@ function activateJournalListeners(app, html, actor) {
 	});
 
 	// Page title editing
-	journalSection.find(".sdx-page-title-input").on("change", async (ev) => {
+	journalSection.find(".sdx-page-title-input").on("change", async ev => {
 		const pageId = $(ev.currentTarget).data("page-id");
 		const newName = $(ev.currentTarget).val().trim() || game.i18n.localize("SHADOWDARK_EXTRAS.journal.untitled");
 		await updateJournalPage(actor, pageId, { name: newName });
@@ -264,7 +264,7 @@ function activateJournalListeners(app, html, actor) {
 	});
 
 	// Edit page content button
-	journalSection.find('[data-action="edit-page"]').on("click", async (ev) => {
+	journalSection.find('[data-action="edit-page"]').on("click", async ev => {
 		ev.preventDefault();
 		const pageId = $(ev.currentTarget).data("page-id");
 		await openJournalPageEditor(actor, pageId, app);
@@ -301,7 +301,7 @@ function captureProseMirrorView(pmEl) {
 	if (watchedProseMirror.has(pmEl)) return;
 	watchedProseMirror.add(pmEl);
 
-	pmEl.addEventListener("plugins", (event) => {
+	pmEl.addEventListener("plugins", event => {
 		const plugins = event?.detail;
 		if (!plugins || typeof plugins !== "object") return;
 		if (plugins.sdxJournalViewCapture) return;
@@ -317,7 +317,7 @@ function captureProseMirrorView(pmEl) {
 	// Track when the user places a cursor in the editor body (not the toggle
 	// button), so inserts land at the cursor instead of appending at the end.
 	// Focus is lost to the button on click, so `view.hasFocus()` is unusable here.
-	pmEl.addEventListener("focusin", (event) => {
+	pmEl.addEventListener("focusin", event => {
 		if (!event.target.closest(".ProseMirror")) return;
 		const entry = proseMirrorViews.get(pmEl);
 		if (entry) entry.focused = true;
@@ -430,7 +430,7 @@ class SdxJournalPageEditor extends foundry.applications.api.HandlebarsApplicatio
 				view.focus();
 				return;
 			}
-			catch (err) {
+			catch(err) {
 				console.warn("SDX Journal: ProseMirror insertion failed:", err);
 			}
 		}

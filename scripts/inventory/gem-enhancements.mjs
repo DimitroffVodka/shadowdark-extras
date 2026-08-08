@@ -112,7 +112,7 @@ export function enhanceGemBag(app, html) {
 	}
 
 	// Override sell-gem to account for quantity
-	$html.find("[data-action='sell-gem']").off("click").on("click", async (event) => {
+	$html.find("[data-action='sell-gem']").off("click").on("click", async event => {
 		event.preventDefault();
 		const itemId = $(event.currentTarget).data("item-id");
 		const item = actor.getEmbeddedDocument("Item", itemId);
@@ -161,7 +161,7 @@ export function enhanceGemBag(app, html) {
 	});
 
 	// Override sell-all-gems to account for quantity
-	$html.find("[data-action='sell-all-gems']").off("click").on("click", async (event) => {
+	$html.find("[data-action='sell-all-gems']").off("click").on("click", async event => {
 		event.preventDefault();
 
 		const confirmHtml = await foundry.applications.handlebars.renderTemplate(

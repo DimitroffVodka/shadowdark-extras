@@ -21,7 +21,7 @@ export async function loadDungeonData() {
 			}
 		}
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load dungeon data:`, err);
 		ui.notifications?.error("SDX | Could not load dungeon data.");
 		throw err;
@@ -37,7 +37,7 @@ export async function loadBookData() {
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_bookData = await resp.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load dungeon books:`, err);
 		throw err;
 	}
@@ -52,7 +52,7 @@ export async function loadMotivationsData() {
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		_motivationsData = await resp.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Failed to load dungeon motivations:`, err);
 		throw err;
 	}
@@ -70,7 +70,7 @@ async function getMonsterIndex() {
 			_monsterIndex.set(entry.name, entry._id);
 		}
 	}
-	catch (err) {
+	catch(err) {
 		console.warn(`${MODULE_ID} | Could not load monster compendium index:`, err);
 	}
 	return _monsterIndex;
@@ -248,10 +248,10 @@ function buildRoomConnections(roomCount, data) {
 
 function reverseDirection(dir) {
 	const map = {
-		"North": "South", "South": "North",
-		"East": "West", "West": "East",
-		"Northeast": "Southwest", "Southwest": "Northeast",
-		"Northwest": "Southeast", "Southeast": "Northwest",
+		North: "South", South: "North",
+		East: "West", West: "East",
+		Northeast: "Southwest", Southwest: "Northeast",
+		Northwest: "Southeast", Southeast: "Northwest",
 	};
 	return map[dir] || "opposite";
 }
@@ -269,14 +269,14 @@ function buildDungeonLayout(connections) {
 	const visited = new Set([1]);
 
 	const dirOffsets = {
-		"North": { dx: 0, dy: -1 },
-		"South": { dx: 0, dy: 1 },
-		"East": { dx: 1, dy: 0 },
-		"West": { dx: -1, dy: 0 },
-		"Northeast": { dx: 1, dy: -1 },
-		"Northwest": { dx: -1, dy: -1 },
-		"Southeast": { dx: 1, dy: 1 },
-		"Southwest": { dx: -1, dy: 1 },
+		North: { dx: 0, dy: -1 },
+		South: { dx: 0, dy: 1 },
+		East: { dx: 1, dy: 0 },
+		West: { dx: -1, dy: 0 },
+		Northeast: { dx: 1, dy: -1 },
+		Northwest: { dx: -1, dy: -1 },
+		Southeast: { dx: 1, dy: 1 },
+		Southwest: { dx: -1, dy: 1 },
 	};
 
 	// Attempt to place rooms. If there's a collision, we'll try to nudge them.
@@ -536,10 +536,10 @@ async function generateRoom(data, roomNum, roomType, connections, keyMap, typeKe
 	const roomDeco = resolveTemplate(rawDeco, tables);
 
 	if (data.wallDescriptions && data.wallDescriptions.length > 0) {
-		roomDesc += " " + pick(data.wallDescriptions);
+		roomDesc += ` ${pick(data.wallDescriptions)}`;
 	}
 	if (data.ceilingDescriptions && data.ceilingDescriptions.length > 0) {
-		roomDesc += " " + pick(data.ceilingDescriptions);
+		roomDesc += ` ${pick(data.ceilingDescriptions)}`;
 	}
 
 	// Appearance detail
@@ -746,7 +746,7 @@ export async function generateDungeonHtml(typeKey, sizeKey, hexLabel, hexKey) {
 		try {
 			await FilePicker.createDirectory("data", targetFolder);
 		}
-		catch (e) {
+		catch(e) {
 			// Directory probably exists, ignore
 		}
 
@@ -754,7 +754,7 @@ export async function generateDungeonHtml(typeKey, sizeKey, hexLabel, hexKey) {
 		const uploadResult = await FilePicker.upload("data", targetFolder, fileObj);
 		mapSrc = uploadResult.path;
 	}
-	catch (err) {
+	catch(err) {
 		console.warn(`${MODULE_ID} | Failed to upload dungeon map:`, err);
 		// Fallback to inline data URI if upload fails (some browsers might still display it)
 		mapSrc = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;

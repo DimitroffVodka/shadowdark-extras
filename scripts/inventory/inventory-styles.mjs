@@ -242,7 +242,7 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 		const html = $(root);
 
 		// ---- Tab Navigation ----
-		html.find(".sdx-tab").on("click", (ev) => {
+		html.find(".sdx-tab").on("click", ev => {
 			const $tab = $(ev.currentTarget);
 			const categoryKey = $tab.data("category");
 
@@ -256,7 +256,7 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 		});
 
 		// ---- Color Pickers ----
-		html.find('input[type="color"]').on("input", (ev) => {
+		html.find('input[type="color"]').on("input", ev => {
 			const input = ev.currentTarget;
 			const fieldName = input.dataset.edit;
 			if (fieldName) {
@@ -269,7 +269,7 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 		});
 
 		// Text input change for colors - sync back to color picker
-		html.find(".sdx-color-text").on("input", (ev) => {
+		html.find(".sdx-color-text").on("input", ev => {
 			const input = ev.currentTarget;
 			const fieldName = input.name;
 			const colorInput = html.find(`input[type="color"][data-edit="${fieldName}"]`);
@@ -280,7 +280,7 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 		});
 
 		// ---- Range Sliders ----
-		html.find('input[type="range"]').on("input", (ev) => {
+		html.find('input[type="range"]').on("input", ev => {
 			const $input = $(ev.currentTarget);
 			const $valueDisplay = $input.siblings(".sdx-range-value");
 			const value = $input.val();
@@ -302,7 +302,7 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 		});
 
 		// ---- Checkbox changes ----
-		html.find('input[type="checkbox"]').on("change", (ev) => {
+		html.find('input[type="checkbox"]').on("change", ev => {
 			const $checkbox = $(ev.currentTarget);
 			const $panel = $checkbox.closest(".sdx-panel");
 
@@ -318,7 +318,7 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 		});
 
 		// ---- Shadow Builder Toggle ----
-		html.find(".sdx-shadow-toggle").on("click", (ev) => {
+		html.find(".sdx-shadow-toggle").on("click", ev => {
 			ev.preventDefault();
 			const $btn = $(ev.currentTarget);
 			const shadowType = $btn.data("target");
@@ -334,7 +334,7 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 		});
 
 		// ---- Shadow Control Updates ----
-		html.find(".sdx-shadow-popup input").on("input", (ev) => {
+		html.find(".sdx-shadow-popup input").on("input", ev => {
 			const $popup = $(ev.currentTarget).closest(".sdx-shadow-popup");
 			this._updateShadowValue($popup);
 			this._updateShadowPreview($popup);
@@ -342,7 +342,7 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 		});
 
 		// ---- Remove Shadow Button ----
-		html.find(".sdx-shadow-remove").on("click", (ev) => {
+		html.find(".sdx-shadow-remove").on("click", ev => {
 			ev.preventDefault();
 			const $popup = $(ev.currentTarget).closest(".sdx-shadow-popup");
 			const shadowType = $popup.data("shadow-type");
@@ -362,7 +362,7 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 		});
 
 		// ---- Border Builder Controls ----
-		html.find(".sdx-border-builder input, .sdx-border-builder select").on("input change", (ev) => {
+		html.find(".sdx-border-builder input, .sdx-border-builder select").on("input change", ev => {
 			const $builder = $(ev.currentTarget).closest(".sdx-border-builder");
 			this._updateBorderValue($builder);
 			this._updateLivePreview(html);
@@ -374,32 +374,32 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 		});
 
 		// ---- Presets Panel Toggle ----
-		html.find(".sdx-presets-btn").on("click", (ev) => {
+		html.find(".sdx-presets-btn").on("click", ev => {
 			ev.preventDefault();
 			html.find(".sdx-presets-panel").slideToggle(200);
 		});
 
 		// ---- Preset Selection ----
-		html.find(".sdx-preset-card").on("click", async (ev) => {
+		html.find(".sdx-preset-card").on("click", async ev => {
 			ev.preventDefault();
 			const preset = $(ev.currentTarget).data("preset");
 			await this._applyPreset(preset);
 		});
 
 		// ---- Export Theme ----
-		html.find(".sdx-export-btn").on("click", async (ev) => {
+		html.find(".sdx-export-btn").on("click", async ev => {
 			ev.preventDefault();
 			await this._exportTheme();
 		});
 
 		// ---- Import Theme ----
-		html.find(".sdx-import-btn").on("click", (ev) => {
+		html.find(".sdx-import-btn").on("click", ev => {
 			ev.preventDefault();
 			this._importTheme();
 		});
 
 		// ---- Reset Button ----
-		html.find(".sdx-reset-styles").on("click", async (ev) => {
+		html.find(".sdx-reset-styles").on("click", async ev => {
 			ev.preventDefault();
 			const confirm = await foundry.applications.api.DialogV2.confirm({
 				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.inventory_styles.reset_confirm_title") },
@@ -653,7 +653,7 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 		const input = document.createElement("input");
 		input.type = "file";
 		input.accept = ".json";
-		input.onchange = async (e) => {
+		input.onchange = async e => {
 			const file = e.target.files[0];
 			if (!file) return;
 
@@ -679,8 +679,8 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 
 				ui.notifications.info("Theme imported successfully!");
 			}
-			catch (err) {
-				ui.notifications.error("Failed to import theme: " + err.message);
+			catch(err) {
+				ui.notifications.error(`Failed to import theme: ${err.message}`);
 			}
 		};
 		input.click();
@@ -774,7 +774,7 @@ export function applyInventoryStylesToSheet(html, actor) {
 	// Use event delegation and only attach once
 	if (!html.data("sdx-expand-handler-attached")) {
 		html.data("sdx-expand-handler-attached", true);
-		html.on("click", ".item-name[data-action='show-details'], [data-action='show-details']", (event) => {
+		html.on("click", ".item-name[data-action='show-details'], [data-action='show-details']", event => {
 			const $row = $(event.target).closest(".item[data-item-id], .item[data-uuid]");
 			if ($row.length) {
 				// Delay slightly to allow the details to be rendered

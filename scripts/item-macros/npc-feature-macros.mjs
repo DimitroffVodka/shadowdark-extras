@@ -178,7 +178,7 @@ async function processNPCFeatureDamage(item, actor, token, targetToken, targetAc
 	// Create chat message for the roll
 	const flavor = isHealing
 		? `${item.name} heals for`
-		: `${item.name} deals${damageType ? " " + damageType : ""} damage`;
+		: `${item.name} deals${damageType ? ` ${damageType}` : ""} damage`;
 	const escapedItemImg = foundry.utils.escapeHTML(item.img ?? "");
 	const escapedItemName = foundry.utils.escapeHTML(item.name);
 
@@ -203,7 +203,7 @@ async function processNPCFeatureDamage(item, actor, token, targetToken, targetAc
 		speaker: ChatMessage.getSpeaker({ actor }),
 		rolls: [roll],
 		flags: {
-			"shadowdark": {
+			shadowdark: {
 				itemId: item.uuid,
 				isHealing: isHealing,
 				rollType: "damage",
@@ -268,7 +268,7 @@ async function processNPCFeatureEffects(item, actor, token, targetToken, targetA
 			await recipient.createEmbeddedDocuments("Item", [effectDataObj]);
 			ui.notifications.info(`Applied ${effectDoc.name} to ${recipient.name}`);
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Failed to apply effect ${effectUuid}:`, err);
 		}
 	}
@@ -321,7 +321,7 @@ async function processNPCFeatureItemGive(item, actor, token, targetToken, target
 			await recipient.createEmbeddedDocuments("Item", [itemData]);
 			ui.notifications.info(`Gave ${quantity}x ${itemDoc.name} to ${recipient.name}`);
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Failed to give item:`, err);
 		}
 	}
@@ -364,7 +364,7 @@ export function registerNPCFeatureItemMacros() {
 						await executeNPCFeatureItemMacro(this, actor, {});
 						await processNPCFeatureActivities(this, actor, token);
 					}
-					catch (err) {
+					catch(err) {
 						console.error(`${MODULE_ID} | NPC Feature macro/activity execution failed:`, err);
 					}
 				}

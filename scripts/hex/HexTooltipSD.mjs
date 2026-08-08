@@ -2,7 +2,6 @@
 const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
 
 
-
 import { getAvailableBiomes, generateHexHtml } from "./HexContentGenerator.mjs";
 import { getSettlementTypes, generateSettlementHtml } from "./SettlementGenerator.mjs";
 import { getDungeonTypes, getDungeonSizes, generateDungeonHtml } from "../dungeon/DungeonGenerator.mjs";
@@ -122,7 +121,7 @@ function hexKeyToLabel(hexKey) {
 	try {
 		return formatHexCoord({ i, j });
 	}
-	catch {
+	catch{
 		return `${i}.${j}`;
 	}
 }
@@ -216,25 +215,43 @@ function buildTooltipHtml(hexKey, record, isGM) {
 
 export class SDXHexTooltip {
 	#enabled = false;
+
 	#tooltipEl = null;
+
 	#imgTooltipEl = null;
+
 	#allData = {};
+
 	#lastKey = null;
+
 	#lastOffset = null;
+
 	#clickTime = 0;
+
 	#clickKey = null;
+
 	#hlName = "SDXHexTooltip";
+
 	#hlAllName = "SDXHexTooltipAll";
+
 	#markerLayer = null;
+
 	#altHeld = false;
+
 	#ctxMenuEl = null;
+
 	#ctxMenuCloseHandler = null;
 
 	#onMoveRef = null;
+
 	#onDownRef = null;
+
 	#onRightDownRef = null;
+
 	#onJournalRef = null;
+
 	#onKeyDownRef = null;
+
 	#onKeyUpRef = null;
 
 	constructor() {
@@ -260,7 +277,7 @@ export class SDXHexTooltip {
 			if (canvas.grid.highlightLayers?.[this.#hlName]) canvas.grid.destroyHighlightLayer(this.#hlName);
 			canvas.grid.addHighlightLayer(this.#hlName);
 		}
-		catch {
+		catch{
 			this.#hlName = null;
 		}
 
@@ -269,14 +286,14 @@ export class SDXHexTooltip {
 			if (canvas.grid.highlightLayers?.[this.#hlAllName]) canvas.grid.destroyHighlightLayer(this.#hlAllName);
 			canvas.grid.addHighlightLayer(this.#hlAllName);
 		}
-		catch {
+		catch{
 			this.#hlAllName = null;
 		}
 
 		try {
 			this.#ensureMarkerLayer();
 		}
-		catch {
+		catch{
 			this.#markerLayer = null;
 		}
 
@@ -295,7 +312,7 @@ export class SDXHexTooltip {
 		document.addEventListener("keyup", this.#onKeyUpRef);
 
 		// Sync cache when any client updates the journal
-		this.#onJournalRef = (journal) => {
+		this.#onJournalRef = journal => {
 			if (journal.name !== HEX_JOURNAL_NAME) return;
 			this.#allData = loadAllHexDataSync();
 			this.#lastKey = null;
@@ -316,7 +333,7 @@ export class SDXHexTooltip {
 			try {
 				this.#markerLayer?.clear();
 			}
-			catch {
+			catch{
 				this.#markerLayer = null;
 			}
 			this.#hide();
@@ -342,11 +359,11 @@ export class SDXHexTooltip {
 		if (this.#hlName) try {
 			canvas.grid.destroyHighlightLayer(this.#hlName);
 		}
-		catch { }
+		catch{ }
 		if (this.#hlAllName) try {
 			canvas.grid.destroyHighlightLayer(this.#hlAllName);
 		}
-		catch { }
+		catch{ }
 		this.#destroyMarkerLayer();
 		this.#markerLayer = null;
 		if (this.#onJournalRef) Hooks.off("updateJournalEntry", this.#onJournalRef);
@@ -362,7 +379,7 @@ export class SDXHexTooltip {
 		try {
 			return canvas.grid.getOffset(worldPos);
 		}
-		catch {
+		catch{
 			return null;
 		}
 	}
@@ -370,9 +387,9 @@ export class SDXHexTooltip {
 	#inSceneBounds(offset) {
 		const tl = canvas.grid.getTopLeftPoint(offset);
 		const d = canvas.dimensions;
-		return !(tl.x < d.sceneX || tl.y < d.sceneY ||
-			tl.x >= d.sceneX + d.sceneWidth ||
-			tl.y >= d.sceneY + d.sceneHeight);
+		return !(tl.x < d.sceneX || tl.y < d.sceneY
+			|| tl.x >= d.sceneX + d.sceneWidth
+			|| tl.y >= d.sceneY + d.sceneHeight);
 	}
 
 	#ensureMarkerLayer() {
@@ -391,11 +408,11 @@ export class SDXHexTooltip {
 		try {
 			this.#markerLayer.parent?.removeChild(this.#markerLayer);
 		}
-		catch { }
+		catch{ }
 		try {
 			if (!this.#markerLayer.destroyed) this.#markerLayer.destroy();
 		}
-		catch (err) {
+		catch(err) {
 			if (!String(err?.message || err).includes("refCount")) throw err;
 		}
 	}
@@ -408,7 +425,7 @@ export class SDXHexTooltip {
 			this.#markerLayer.drawCircle(x, y, radius);
 			this.#markerLayer.endFill();
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to draw hex tooltip marker:`, err);
 		}
 	}
@@ -418,13 +435,13 @@ export class SDXHexTooltip {
 		try {
 			this.#markerLayer.clear();
 		}
-		catch {
+		catch{
 			this.#markerLayer = null;
 			if (!this.#ensureMarkerLayer()) return;
 			try {
 				this.#markerLayer.clear();
 			}
-			catch {
+			catch{
 				return;
 			}
 		}
@@ -672,7 +689,7 @@ export class SDXHexTooltip {
 
 		// Maphub eye button handlers
 		menu.querySelectorAll(".sdx-hex-ctx-maphub-btn").forEach(btn => {
-			btn.addEventListener("click", (e) => {
+			btn.addEventListener("click", e => {
 				e.stopPropagation();
 				try {
 					const maphubData = JSON.parse(btn.dataset.maphub);
@@ -682,7 +699,7 @@ export class SDXHexTooltip {
 						externalBase: maphubData.externalBase,
 					}).render(true);
 				}
-				catch (err) {
+				catch(err) {
 					console.error(`${MODULE_ID} | Failed to launch MaphubViewerApp:`, err);
 				}
 				this.#closeContextMenu();
@@ -723,7 +740,7 @@ export class SDXHexTooltip {
 		});
 
 		// Close on outside click
-		const onClose = (e) => {
+		const onClose = e => {
 			if (!menu.contains(e.target)) {
 				this.#closeContextMenu();
 			}
@@ -748,7 +765,7 @@ export class SDXHexTooltip {
 		try {
 			biomes = await getAvailableBiomes();
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX | Failed to load biomes:", err);
 			return;
 		}
@@ -779,7 +796,7 @@ export class SDXHexTooltip {
 			});
 		});
 
-		const onClose = (e) => {
+		const onClose = e => {
 			if (!menu.contains(e.target)) {
 				this.#closeContextMenu();
 			}
@@ -808,7 +825,7 @@ export class SDXHexTooltip {
 				}
 			}
 		}
-		catch { /* grid not available — skip check */ }
+		catch{ /* grid not available — skip check */ }
 
 		// Generate content
 		let htmlContent; let regionName;
@@ -817,7 +834,7 @@ export class SDXHexTooltip {
 			htmlContent = result.html;
 			regionName = result.regionName;
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX | Hex generation failed:", err);
 			ui.notifications.error("SDX | Hex content generation failed.");
 			return;
@@ -897,7 +914,7 @@ export class SDXHexTooltip {
 		try {
 			types = await getSettlementTypes();
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX | Failed to load settlement types:", err);
 			return;
 		}
@@ -928,7 +945,7 @@ export class SDXHexTooltip {
 			});
 		});
 
-		const onClose = (e) => {
+		const onClose = e => {
 			if (!menu.contains(e.target)) {
 				this.#closeContextMenu();
 			}
@@ -950,7 +967,7 @@ export class SDXHexTooltip {
 			settlementName = result.settlementName;
 			maphubData = result.maphubData;
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX | Settlement generation failed:", err);
 			ui.notifications.error("SDX | Settlement content generation failed.");
 			return;
@@ -1031,7 +1048,7 @@ export class SDXHexTooltip {
 		try {
 			types = await getDungeonTypes();
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX | Failed to load dungeon types:", err);
 			return;
 		}
@@ -1062,7 +1079,7 @@ export class SDXHexTooltip {
 			});
 		});
 
-		const onClose = (e) => {
+		const onClose = e => {
 			if (!menu.contains(e.target)) {
 				this.#closeContextMenu();
 			}
@@ -1107,7 +1124,7 @@ export class SDXHexTooltip {
 			});
 		});
 
-		const onClose = (e) => {
+		const onClose = e => {
 			if (!menu.contains(e.target)) {
 				this.#closeContextMenu();
 			}
@@ -1129,7 +1146,7 @@ export class SDXHexTooltip {
 			dungeonName = result.dungeonName;
 			roomCount = result.roomCount || 0;
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX | Dungeon generation failed:", err);
 			ui.notifications.error("SDX | Dungeon content generation failed.");
 			return;
@@ -1212,7 +1229,7 @@ export class SDXHexTooltip {
 				hexLabel, hexKey, typeKey, sizeKey,
 			}));
 		}
-		catch (err) {
+		catch(err) {
 			console.error("SDX | Dungeon map generation failed:", err);
 			ui.notifications.error("SDX | Dungeon map generation failed. Check console for details.");
 			return;
@@ -1307,7 +1324,7 @@ export class SDXHexTooltip {
 				border: border, borderAlpha: 1.0,
 			});
 		}
-		catch { }
+		catch{ }
 	}
 
 	#clearHighlight() {
@@ -1315,7 +1332,7 @@ export class SDXHexTooltip {
 		try {
 			canvas.interface.grid.clearHighlightLayer(this.#hlName);
 		}
-		catch { }
+		catch{ }
 	}
 
 	#onKeyDown(e) {
@@ -1335,7 +1352,7 @@ export class SDXHexTooltip {
 		try {
 			canvas.interface.grid.clearHighlightLayer(this.#hlAllName);
 		}
-		catch {
+		catch{
 			return;
 		}
 		const sceneId = canvas.scene?.id;
@@ -1361,7 +1378,7 @@ export class SDXHexTooltip {
 		try {
 			canvas.interface.grid.clearHighlightLayer(this.#hlAllName);
 		}
-		catch { }
+		catch{ }
 	}
 
 	#positionAtHex(offset) {
@@ -1532,7 +1549,7 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Browse image
 		el.querySelector("[data-action='browse-image']")?.addEventListener("click", () => {
 			const input = el.querySelector("[name='hex-image']");
-			new FilePicker({ type: "image", current: input.value, callback: (path) => {
+			new FilePicker({ type: "image", current: input.value, callback: path => {
 				input.value = path;
 			} }).browse();
 		});
@@ -1548,13 +1565,13 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// Remove note / feature (delegated)
-		el.addEventListener("click", (e) => {
+		el.addEventListener("click", e => {
 			if (e.target.closest("[data-action='remove-note']")) e.target.closest(".sdx-hex-note-row").remove();
 			if (e.target.closest("[data-action='remove-feature']")) e.target.closest(".sdx-hex-feat-row").remove();
 		});
 
 		// Zone color swatches
-		el.querySelector(".sdx-hex-color-swatches")?.addEventListener("click", (e) => {
+		el.querySelector(".sdx-hex-color-swatches")?.addEventListener("click", e => {
 			const swatch = e.target.closest(".sdx-hex-color-swatch");
 			if (!swatch) return;
 			el.querySelectorAll(".sdx-hex-color-swatch").forEach(s => s.classList.remove("active"));
@@ -1563,7 +1580,7 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		// Alt+click on canvas to add hex to Reveal Cells
-		this._altClickRef = (event) => {
+		this._altClickRef = event => {
 			if (!event.altKey) return;
 			const clientX = event.client?.x ?? 0;
 			const clientY = event.client?.y ?? 0;
@@ -1595,7 +1612,7 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Drag-drop RollTable UUID
 		const rtInput = el.querySelector("[name='hex-roll-table']");
 		if (rtInput) {
-			rtInput.addEventListener("drop", (event) => {
+			rtInput.addEventListener("drop", event => {
 				event.preventDefault();
 				const data = TextEditor.getDragEventData(event);
 				if (data?.uuid) rtInput.value = data.uuid;
@@ -1686,14 +1703,14 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		}
 
 		// Switch between name input and journal selects on type change
-		row.querySelector(".sdx-hex-feat-type").addEventListener("change", (e) => {
+		row.querySelector(".sdx-hex-feat-type").addEventListener("change", e => {
 			const isJ = e.target.value === "journal";
 			row.querySelector(".sdx-hex-feat-name").classList.toggle("sdx-hidden", isJ);
 			row.querySelector(".sdx-hex-feat-journal-wrap").classList.toggle("sdx-hidden", !isJ);
 		});
 
 		// Populate page select when journal changes
-		row.querySelector(".sdx-hex-feat-journal").addEventListener("change", (e) => {
+		row.querySelector(".sdx-hex-feat-journal").addEventListener("change", e => {
 			this.#populatePageSelect(row.querySelector(".sdx-hex-feat-page"), e.target.value, "");
 		});
 
@@ -1802,7 +1819,7 @@ export function initHexTooltip() {
 
 	// Must wait for "ready" — game.socket is undefined before that hook fires
 	Hooks.once("ready", () => {
-		game.socket.on("module.shadowdark-extras", async (data) => {
+		game.socket.on("module.shadowdark-extras", async data => {
 
 			// GM side: player requests journal access without OBSERVER permission.
 			// Only the first active GM handles it to avoid duplicate updates.
@@ -1872,13 +1889,13 @@ export function initHexTooltip() {
 						openPage();
 					};
 
-					const jHookId = Hooks.on("updateJournalEntry", (doc) => {
+					const jHookId = Hooks.on("updateJournalEntry", doc => {
 						if (doc.id !== journalId) return;
 						journalOk = doc.testUserPermission(game.user, "LIMITED");
 						tryOpen();
 					});
 
-					const pHookId = pid ? Hooks.on("updateJournalEntryPage", (doc) => {
+					const pHookId = pid ? Hooks.on("updateJournalEntryPage", doc => {
 						if (doc.id !== pid) return;
 						pageOk = doc.testUserPermission(game.user, "OBSERVER");
 						tryOpen();

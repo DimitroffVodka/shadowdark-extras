@@ -69,7 +69,7 @@ const _sdxItemMacroProcessedMessages = new Set();
  * etc. Only act on messages created after this client loaded.
  */
 const SDX_MACRO_EPOCH = Date.now();
-const sdxIsHistoricalMessage = (message) => (message?.timestamp ?? 0) < SDX_MACRO_EPOCH;
+const sdxIsHistoricalMessage = message => (message?.timestamp ?? 0) < SDX_MACRO_EPOCH;
 
 /** Message ids already animated, so repeated re-renders never replay the FX. */
 const _sdxFxProcessedMessages = new Set();
@@ -187,7 +187,7 @@ export function registerChatDispatch() {
 		try {
 			if (!game.settings.get(MODULE_ID, "animationFxEnabled")) return;
 		}
-		catch (e) {
+		catch(e) {
 			return;
 		}
 
@@ -229,7 +229,7 @@ export function registerChatDispatch() {
 		try {
 			await AnimationFxSD.playForItem({ item, actor, targets, outcome, tokenId });
 		}
-		catch (e) {
+		catch(e) {
 			console.warn(`${MODULE_ID} | AnimationFx trigger failed:`, e);
 		}
 	});

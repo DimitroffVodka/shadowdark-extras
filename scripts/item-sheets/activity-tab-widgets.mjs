@@ -36,7 +36,7 @@ export function activateTemplateTokenMagicStackHandlers(html, item) {
 		return Array.isArray(filters) ? foundry.utils.deepClone(filters) : [];
 	};
 
-	const saveFilters = async (filters) => {
+	const saveFilters = async filters => {
 		const clonedFilters = Array.isArray(filters) ? foundry.utils.deepClone(filters) : [];
 		await item.update({
 			[`flags.${MODULE_ID}.targeting.template.tokenMagic.filters`]: clonedFilters,
@@ -63,7 +63,7 @@ export function activateTemplateTokenMagicStackHandlers(html, item) {
 		html.find(".sdx-tm-clear-stack").prop("disabled", count === 0);
 	};
 
-	const updateStoredFilter = async (data) => {
+	const updateStoredFilter = async data => {
 		const currentFilters = getFilters();
 		const filterIndex = currentFilters.findIndex(f => {
 			if (f.tmFilters?.tmFilterInternalId === data.filterInternalId) return true;
@@ -153,7 +153,7 @@ export function activateTemplateTokenMagicStackHandlers(html, item) {
 			if (scope === "tokenmagic" && key === "filters") return getFilters();
 			return item.flags?.[scope]?.[key];
 		},
-		update: async (data) => {
+		update: async data => {
 			if (data?.filterInternalId && data?.filterType) {
 				await updateStoredFilter(data);
 				return;
@@ -174,7 +174,7 @@ export function activateTemplateTokenMagicStackHandlers(html, item) {
 				.map(Number);
 			return ranks.length ? Math.max(...ranks) + 1 : 10000;
 		},
-		_TMFXsetFlag: async (filters) => {
+		_TMFXsetFlag: async filters => {
 			await saveFilters(filters);
 			updateStackSummary();
 			refreshOpenTMFXStackWindows();
@@ -468,7 +468,7 @@ export function activateAnimationFxListeners(html, item) {
 				ui.notifications.warn("Sequencer Database viewer is not available.");
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Could not open Sequencer Database:`, err);
 		}
 	});

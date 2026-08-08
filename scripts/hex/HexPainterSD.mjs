@@ -264,8 +264,6 @@ const COLORED_HEX_TILE_H = 500;
 const COLORED_BIOME_SUBDIRS = ["Water", "Vegetation", "Mountains", "Desert", "swamp", "Badlands", "snow", "Specials"];
 
 
-
-
 let _tiles = null;           // Default tiles from module
 // Decor tab state
 
@@ -312,7 +310,7 @@ export async function loadTileAssets() {
 
 			await cache.setMetadata(metadataKey, _tiles);
 		}
-		catch (err) {
+		catch(err) {
 			console.error(`${MODULE_ID} | Failed to discover hex tiles:`, err);
 			_tiles = [];
 		}
@@ -499,7 +497,7 @@ export async function getHexPainterData() {
 		customNavBreadcrumb: [{ label: "All", segments: [] }],
 	};
 
-	const processTiles = async (tiles) => {
+	const processTiles = async tiles => {
 		return Promise.all(tiles.map(async t => ({
 			...t,
 			src: await cache.getCachedSrc(t.path),
@@ -699,6 +697,6 @@ async function preloadHexImages() {
 				}
 			}
 		}
-		catch (err) { }
+		catch(err) { }
 	}
 }

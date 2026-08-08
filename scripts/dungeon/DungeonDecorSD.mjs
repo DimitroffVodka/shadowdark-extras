@@ -107,10 +107,10 @@ function pointToRectDistance(point, rect) {
 
 function rectsOverlap(a, b, padding = 0) {
 	return !(
-		a.gx + a.cellsW + padding <= b.gx ||
-        b.gx + b.cellsW + padding <= a.gx ||
-        a.gy + a.cellsH + padding <= b.gy ||
-        b.gy + b.cellsH + padding <= a.gy
+		a.gx + a.cellsW + padding <= b.gx
+        || b.gx + b.cellsW + padding <= a.gx
+        || a.gy + a.cellsH + padding <= b.gy
+        || b.gy + b.cellsH + padding <= a.gy
 	);
 }
 

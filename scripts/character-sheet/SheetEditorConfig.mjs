@@ -141,7 +141,7 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
 			// Sort by number
 			images.sort((a, b) => a.number - b.number);
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Failed to scan ${folderPath}:`, err);
 		}
 		return images;
@@ -228,7 +228,7 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
 		// Search filters
 		const searchInputs = html.querySelectorAll(".sheet-editor-filter");
 		searchInputs.forEach(input => {
-			input.addEventListener("input", (e) => {
+			input.addEventListener("input", e => {
 				const query = e.target.value.toLowerCase().trim();
 				const category = input.closest(".sheet-editor-category");
 				const grid = category.querySelector(".sheet-editor-grid");
@@ -255,7 +255,7 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
 
 		// Hover preview tooltip
 		thumbs.forEach(thumb => {
-			thumb.addEventListener("mouseenter", (e) => {
+			thumb.addEventListener("mouseenter", e => {
 				let tooltip = document.getElementById("sheet-editor-tooltip");
 				if (!tooltip) {
 					tooltip = document.createElement("div");
@@ -286,7 +286,7 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
 		// Frame tweak inputs (number, select, color)
 		const frameInputs = html.querySelectorAll(".frame-controls input, .frame-controls select, .box-frame-controls input");
 		frameInputs.forEach(input => {
-			input.addEventListener("input", (e) => {
+			input.addEventListener("input", e => {
 				const settingKey = input.dataset.setting;
 				let value;
 				if (input.type === "number") {
@@ -305,7 +305,7 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
 
 			// Also handle change event for select elements
 			if (input.tagName === "SELECT") {
-				input.addEventListener("change", (e) => {
+				input.addEventListener("change", e => {
 					const settingKey = input.dataset.setting;
 					this._previewState[settingKey] = e.target.value;
 					this._updatePreview();
@@ -518,10 +518,10 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
 			const file = input.files[0];
 			if (!file) return;
 
-			const readJSON = (file) => new Promise((resolve, reject) => {
+			const readJSON = file => new Promise((resolve, reject) => {
 				const reader = new FileReader();
-				reader.onload = (e) => resolve(JSON.parse(e.target.result));
-				reader.onerror = (e) => reject(e);
+				reader.onload = e => resolve(JSON.parse(e.target.result));
+				reader.onerror = e => reject(e);
 				reader.readAsText(file);
 			});
 
@@ -550,7 +550,7 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
 						const result = await FilePicker.browse("data", `${basePath}/${cat}`);
 						validImages[cat] = new Set(result.files.map(f => f.split("/").pop()));
 					}
-					catch (e) {
+					catch(e) {
 						console.warn(`${MODULE_ID} | Failed to scan ${cat} for validation`, e);
 						validImages[cat] = new Set();
 					}
@@ -588,7 +588,7 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
 					ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.sheetEditor.themeImported"));
 				}
 			}
-			catch (err) {
+			catch(err) {
 				console.error("Shadowdark Extras | Failed to import theme:", err);
 				ui.notifications.error(game.i18n.localize("SHADOWDARK_EXTRAS.sheetEditor.importError"));
 			}

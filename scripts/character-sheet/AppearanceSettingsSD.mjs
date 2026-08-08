@@ -19,7 +19,7 @@ export function registerAppearanceSettings() {
 		config: true,
 		type: Boolean,
 		default: true,
-		onChange: (value) => toggleDarkMode(value),
+		onChange: value => toggleDarkMode(value),
 	});
 
 	// Initialize dark mode class on load without overwriting custom settings
@@ -40,7 +40,7 @@ async function loadTheme(path) {
 		}
 		return await response.json();
 	}
-	catch (err) {
+	catch(err) {
 		console.error(`${MODULE_ID} | Error loading theme:`, err);
 		return null;
 	}
@@ -61,7 +61,7 @@ async function applyTheme(theme) {
 				await game.settings.set(MODULE_ID, key, value);
 			}
 		}
-		catch (err) {
+		catch(err) {
 			console.warn(`${MODULE_ID} | Could not apply setting ${key}:`, err);
 		}
 	}

@@ -90,7 +90,7 @@ export function enhanceSpellsTab(app, html, actor) {
 		$itemName.after($actions);
 
 		// Edit button handler
-		$actions.find(".sdx-edit-spell").on("click", (e) => {
+		$actions.find(".sdx-edit-spell").on("click", e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -98,7 +98,7 @@ export function enhanceSpellsTab(app, html, actor) {
 		});
 
 		// Create Macro button handler
-		$actions.find(".sdx-create-macro").on("click", async (e) => {
+		$actions.find(".sdx-create-macro").on("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -107,7 +107,7 @@ export function enhanceSpellsTab(app, html, actor) {
 		});
 
 		// Transfer button handler
-		$actions.find(".sdx-transfer-spell").on("click", async (e) => {
+		$actions.find(".sdx-transfer-spell").on("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -168,7 +168,7 @@ export function enhanceSpellsTab(app, html, actor) {
 		});
 
 		// Delete button handler
-		$actions.find(".sdx-delete-spell").on("click", async (e) => {
+		$actions.find(".sdx-delete-spell").on("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 			const item = actor.items.get(itemId);
@@ -212,7 +212,7 @@ async function createItemMacro(actor, item) {
 
 	// For focus spells, ask if they want Cast or Focus macro
 	if (isFocusSpell && itemType === "Spell") {
-		const choice = await new Promise((resolve) => {
+		const choice = await new Promise(resolve => {
 			new foundry.applications.api.DialogV2({
 				window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.macro.focus_choice_title") },
 				content: `<p>${game.i18n.format("SHADOWDARK_EXTRAS.macro.focus_choice_content", { name: itemName })}</p>`,

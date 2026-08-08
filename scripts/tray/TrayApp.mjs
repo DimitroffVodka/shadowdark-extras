@@ -41,6 +41,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			positioned: false,
 		},
 	};
+
 	static PARTS = {
 		main: {
 			template: "modules/shadowdark-extras/templates/sdx-tray/tray.hbs",
@@ -49,6 +50,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 	// Static instance reference for easy access
 	static _instance = null;
+
 	constructor(data = {}, options = {}) {
 		super(options);
 		this.trayData = data;
@@ -61,6 +63,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Store static reference
 		TrayApp._instance = this;
 	}
+
 	/**
      * Update the tray data and re-render
      * @param {Object} data - Tray data
@@ -70,18 +73,21 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		this.trayData = data;
 		this.render();
 	}
+
 	/**
      * Save scroll positions of tile grids and other UI state
      */
 	_saveScrollPositions() {
 		return saveTrayScrollPositions(this);
 	}
+
 	/**
      * Restore scroll positions of tile grids and other UI state
      */
 	_restoreScrollPositions() {
 		return restoreTrayScrollPositions(this);
 	}
+
 	/**
      * Toggle expanded state
      */
@@ -93,6 +99,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		document.querySelector(".tom-cast-manager-panel")?.remove();
 		document.querySelector(".tom-overlay-manager-panel")?.remove();
 	}
+
 	/**
      * Set expanded state
      */
@@ -104,6 +111,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		document.querySelector(".tom-cast-manager-panel")?.remove();
 		document.querySelector(".tom-overlay-manager-panel")?.remove();
 	}
+
 	/**
      * Apply the expanded state to the DOM
      */
@@ -148,6 +156,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		this._syncPoiSortPanel();
 	}
+
 	/**
      * Sync the POI Tile Sort panel visibility based on current mode
      */
@@ -161,6 +170,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (isPoiMode) PoiTileSortApp.show();
 		else PoiTileSortApp.hide();
 	}
+
 	/**
      * Check if tray is expanded
      * @returns {boolean}
@@ -168,6 +178,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	isExpanded() {
 		return this._isExpanded;
 	}
+
 	/**
      * Prepare context data for the template
      */
@@ -227,6 +238,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			soloModeActive: isSoloMode(),
 		};
 	}
+
 	/**
      * Get list of sections from TomStore
      */
@@ -247,6 +259,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			return [];
 		}
 	}
+
 	/**
      * Get folder data from TomStore, with scenes grouped inside each folder
      * @returns {Array} Array of { id, name, collapsed, scenes: [] }

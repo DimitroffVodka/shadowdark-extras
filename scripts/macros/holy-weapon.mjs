@@ -58,8 +58,8 @@ export async function showHolyWeaponDialog(casterActor, casterItem, targetActor,
 
 			// 1. Always exclude if it already has THIS spell's bonus
 			const hasHolyBonus = hasExistingBonuses && (
-				bonusData?.hitBonuses?.some(b => b.label === "Holy Weapon") ||
-                bonusData?.damageBonuses?.some(b => b.label === "Holy Weapon")
+				bonusData?.hitBonuses?.some(b => b.label === "Holy Weapon")
+                || bonusData?.damageBonuses?.some(b => b.label === "Holy Weapon")
 			);
 			if (hasHolyBonus) return false;
 
@@ -175,7 +175,7 @@ export async function showHolyWeaponDialog(casterActor, casterItem, targetActor,
 		},
 	});
 
-	dialog.addEventListener("render", (event) => {
+	dialog.addEventListener("render", event => {
 		const dialogElement = dialog.element;
 		const grid = dialogElement.querySelector(".sdx-spell-weapon-grid");
 		const hiddenInput = dialogElement.querySelector("input[name='selectedWeaponId']");
@@ -185,7 +185,7 @@ export async function showHolyWeaponDialog(casterActor, casterItem, targetActor,
 		const setupItemSelection = () => {
 			const items = dialogElement.querySelectorAll(".sdx-spell-weapon-item");
 			items.forEach(itemEl => {
-				itemEl.addEventListener("click", (e) => {
+				itemEl.addEventListener("click", e => {
 					e.preventDefault();
 					e.stopPropagation();
 					items.forEach(i => i.classList.remove("selected"));
@@ -295,7 +295,7 @@ export async function applyHolyWeapon(weapon, casterActor, casterItem, targetAct
 			}
 		}
 	}
-	catch (e) {
+	catch(e) {
 		console.log(`${MODULE_ID} | Sequencer animation not available: ${e.message}`);
 	}
 

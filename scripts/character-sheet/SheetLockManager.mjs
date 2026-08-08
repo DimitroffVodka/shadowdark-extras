@@ -145,7 +145,7 @@ export default class SheetLockManager {
 		if (!rootElement.classList.contains("sdx-sheet-locked")) return;
 
 		// Define Handler
-		const handler = (ev) => {
+		const handler = ev => {
 			if (game.user.isGM) return;
 
 			const target = ev.target;
@@ -235,7 +235,6 @@ export default class SheetLockManager {
 	}
 
 
-
 	static _injectLockToggle(app, html) {
 		const header = html.closest(".window-app").find(".window-header .window-title");
 		let toggleBtn = html.closest(".window-app").find(".sdx-sheet-lock-toggle");
@@ -249,7 +248,7 @@ export default class SheetLockManager {
 			// Create if doesn't exist
 			toggleBtn = $(`<a class="sdx-sheet-lock-toggle" title="${tooltip}"><i class="${iconClass}"></i></a>`);
 
-			toggleBtn.on("click", async (ev) => {
+			toggleBtn.on("click", async ev => {
 				ev.preventDefault();
 				ev.stopPropagation();
 				// Get fresh lock state on click

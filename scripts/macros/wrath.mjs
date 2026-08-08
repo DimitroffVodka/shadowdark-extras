@@ -59,8 +59,8 @@ export async function applyWrathToAllWeapons(casterActor, casterItem, originatin
 		const existingBonus = weapon.getFlag(MODULE_ID, "weaponBonus") || {};
 
 		// Skip if already has Wrath bonus
-		const hasWrathBonus = existingBonus.hitBonuses?.some(b => b.label === "Wrath") ||
-            existingBonus.damageBonuses?.some(b => b.label === "Wrath");
+		const hasWrathBonus = existingBonus.hitBonuses?.some(b => b.label === "Wrath")
+            || existingBonus.damageBonuses?.some(b => b.label === "Wrath");
 		if (hasWrathBonus) continue;
 
 		const wrathWeaponBonus = {
@@ -127,7 +127,7 @@ export async function applyWrathToAllWeapons(casterActor, casterItem, originatin
 			}
 		}
 	}
-	catch (e) {
+	catch(e) {
 		console.log(`${MODULE_ID} | Sequencer animation not available: ${e.message}`);
 	}
 

@@ -39,7 +39,7 @@ export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
 	try {
 		inherited = AnimationFxSD.inheritedPresetFor(item);
 	}
-	catch (e) {
+	catch(e) {
 		console.warn(`${MODULE_ID} | Could not resolve inherited animation preset:`, e);
 	}
 
