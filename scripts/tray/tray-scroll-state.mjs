@@ -42,7 +42,10 @@ export function saveTrayScrollPositions(app) {
 	}
 
 	const tomList = elem.querySelector(".tom-overlays-inline-list");
-	if (tomList) {
+	// When the overlay section is collapsed the list is hidden (display:none);
+	// reading scrollTop (0) would overwrite the preserved scroll. Only save
+	// when the tray says the section is expanded.
+	if (tomList && !app._tomOverlaysCollapsed) {
 		app._scrollPositions["tom-overlays-inline-list"] = tomList.scrollTop;
 	}
 }

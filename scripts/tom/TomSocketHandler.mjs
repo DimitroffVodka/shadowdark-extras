@@ -368,7 +368,7 @@ export class TomSocketHandler {
 	}
 
 	/** Clear one overlay (data.overlayPath) or all (no path). */
-	static _onOverlayClear(data = {}) {
+	static _onOverlayClear(data) {
 		const { overlayPath } = data ?? {};
 		if (overlayPath) {
 			this._removeOverlayElementForPath(overlayPath);
@@ -432,6 +432,49 @@ export class TomSocketHandler {
 
 	static _removeAllOverlays() {
 		for (const el of document.querySelectorAll(".tom-video-overlay")) el.remove();
+	}
+
+	static syncOverlaysToDom() {
+		try {
+			const wanted = Array.isArray(Store.currentOverlays) ? Store.currentOverlays : [];
+			if (!wanted.length) {
+				this._removeAllOverlays();
+				return;
+			}
+			const wantedSet = new Set(wanted);
+			for (const el of document.querySelectorAll(".tom-video-overlay")) {
+				if (!wantedSet.has(el.dataset.overlayPath)) el.remove();
+			}
+			for (const path of wanted) {
+				let exists = false;
+				try {
+					const esc = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(path) : path.replace(/"/g, "\\\"");
+					exists = !!document.querySelector(`.tom-video-overlay[data-overlay-path="${esc}"]`);
+				}
+				catch{
+					exists = [...document.querySelectorAll(".tom-video-overlay")].some(e => e.dataset.overlayPath === path);
+				}
+				if (!exists) this._addOverlayElement(path);
+			}
+			const playerView = document.querySelector(".tom-player-view");
+			if (!playerView) return;
+			const anchor = playerView.querySelector(".tom-arena-tokens") || playerView.querySelector(".tom-arena-assets") || playerView.querySelector(".tom-arena-rings") || playerView.querySelector(".tom-pv-cast");
+			if (!anchor) return;
+			for (const path of wanted) {
+				let el = null;
+				try {
+					const esc = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(path) : path.replace(/"/g, "\\\"");
+					el = document.querySelector(`.tom-video-overlay[data-overlay-path="${esc}"]`);
+				}
+				catch{
+					el = [...document.querySelectorAll(".tom-video-overlay")].find(e => e.dataset.overlayPath === path);
+				}
+				if (el) playerView.insertBefore(el, anchor);
+			}
+		}
+		catch(err) {
+			console.warn("Tom | syncOverlaysToDom failed", err);
+		}
 	}
 
 	/** Back-compat alias: single-overlay callers used this name. */
