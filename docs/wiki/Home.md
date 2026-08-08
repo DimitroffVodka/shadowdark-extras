@@ -41,6 +41,7 @@ a session actually calls for it.
 | [Inventory & Trading](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Inventory-and-Trading) | Containers, identification, bulk selection, inventory styles, coins, and player transfers |
 | [Carousing](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Carousing) | Original and Expanded modes, custom tables, costs, outcome application, and the log |
 | [Canvas & Table Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Canvas-and-Table-Tools) | Token toolbar, light tracker, drawing tools, SDX Roller, scene navigation, overlays, and scene transfer |
+| [Theater of the Mind](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Theater-of-the-Mind) | ToM presentation scenes, arena grids, video overlays, the nav bar, and the stage — with [live demo](https://dimitroffvodka.github.io/shadowdark-extras/docs/demo/theater-of-the-mind.html) |
 
 ## Characters and creatures
 

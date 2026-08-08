@@ -17,9 +17,7 @@ export const TomPanels = {
 		this.render();
 	},
 
-
 	// Cast manager button has been removed
-
 
 	/**
      * Hide the Tom cast manager button
@@ -27,16 +25,18 @@ export const TomPanels = {
 	hideTomCastManager() {
 		const btn = document.querySelector(".tom-cast-manager-btn");
 		if (btn) btn.remove();
-
 		const panel = document.querySelector(".tom-cast-manager-panel");
 		if (panel) panel.remove();
 	},
 
-
 	/**
-     * Toggle the overlay manager panel
+     * Toggle the overlay manager panel — kept for compatibility (Programmatic
+     * callers). The tray handle button that used to call this is gone;
+     * overlays now live inline in tray.hbs scenes-view and use
+     * TomSceneBindings (tom-overlay-toggle / tom-overlay-clear). This compat
+     * panel is now multi-select aware.
      */
-	async _toggleTomOverlayPanel() {
+     async _toggleTomOverlayPanel() {
 		// Close other panels first
 		document.querySelector(".tom-scene-switcher-panel")?.remove();
 		document.querySelector(".tom-cast-manager-panel")?.remove();
@@ -47,7 +47,10 @@ export const TomPanels = {
 			return;
 		}
 
-		// Available overlays (hardcoded for now, could be made dynamic)
+		// Available overlays — single source of truth is
+		// scripts/tom/TomOverlays.mjs; this compat panel mirrors it so the
+		// inline tray (tray.hbs + TrayApp.mjs) and this floating panel never
+		// drift apart. Keep in sync or import that module at call time.
 		const overlays = [
 			{ name: "Fire", file: "fire.webm" },
 			{ name: "Snow", file: "snow.webm" },
@@ -69,14 +72,16 @@ export const TomPanels = {
 			{ name: "Embers", file: "embers.mp4" },
 			{ name: "Sparks", file: "sparks.mp4" },
 			{ name: "Glow", file: "aurora.mp4" },
+			{ name: "Aurora-green", file: "aurora2.mp4" },
 
 		];
 
 		const basePath = "modules/shadowdark-extras/assets/Tom/overlays/";
 
-		// Get current overlay from TomStore
+		// Get current overlays from TomStore (multi-select)
 		const { TomStore } = await import("../tom/TomStore.mjs");
-		const currentOverlay = TomStore.currentOverlay;
+		const currentSet = new Set(TomStore.currentOverlays ?? (TomStore.currentOverlay ? [TomStore.currentOverlay] : []));
+		const hasAny = currentSet.size > 0;
 
 		// Create panel
 		const panel = document.createElement("div");
@@ -90,9 +95,9 @@ export const TomPanels = {
 
 		// Clear overlay button
 		const clearBtn = document.createElement("button");
-		clearBtn.className = `tom-overlay-clear-btn ${!currentOverlay ? "disabled" : ""}`;
-		clearBtn.innerHTML = '<i class="fas fa-times"></i> Clear Overlay';
-		clearBtn.disabled = !currentOverlay;
+		clearBtn.className = `tom-overlay-clear-btn ${!hasAny ? "disabled" : ""}`;
+		clearBtn.innerHTML = '<i class="fas fa-times"></i> Clear All';
+		clearBtn.disabled = !hasAny;
 		clearBtn.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
@@ -109,7 +114,7 @@ export const TomPanels = {
 
 		for (const overlay of overlays) {
 			const overlayPath = basePath + overlay.file;
-			const isActive = currentOverlay === overlayPath;
+			const isActive = currentSet.has(overlayPath);
 
 			const item = document.createElement("div");
 			item.className = `tom-overlay-item ${isActive ? "active" : ""}`;
@@ -137,21 +142,13 @@ export const TomPanels = {
 			item.appendChild(name);
 			list.appendChild(item);
 
-			// Click handler
+			// Click handler — multi-select toggle (don't close panel)
 			item.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 
 				const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
-
-				if (isActive) {
-					// Clicking active overlay clears it
-					TomSocketHandler.emitOverlayClear();
-				}
-				else {
-					// Set new overlay
-					TomSocketHandler.emitOverlaySet(overlayPath);
-				}
+				TomSocketHandler.emitOverlayToggle(overlayPath);
 
 				panel.remove();
 				this._toggleTomOverlayPanel(); // Refresh panel
@@ -180,7 +177,6 @@ export const TomPanels = {
 		};
 		setTimeout(() => document.addEventListener("click", closeHandler), 10);
 	},
-
 
 	/**
      * Toggle the cast manager panel
@@ -221,9 +217,7 @@ export const TomPanels = {
 
 		// Character creation has been removed
 
-
 		// Character list has been removed
-
 
 		// Position panel next to button
 		const btn = document.querySelector(".tom-cast-manager-btn");
@@ -257,7 +251,6 @@ export const TomPanels = {
 		}
 	},
 
-
 	/**
      * Update the active scene highlight in the panel
      * @param {string} sceneId - New active scene ID
@@ -273,7 +266,6 @@ export const TomPanels = {
 			});
 		}
 	},
-
 
 	/**
      * Toggle the scene switcher panel
@@ -425,7 +417,7 @@ export const TomPanels = {
 				if (!confirmed) return;
 				panel.remove();
 				TomStore.deleteItem(scene.id, "scene");
-				ui.notifications.info(`Scene "${scene.name}" deleted.`);
+				ui.notifications.info(`Scene \"${scene.name}\" deleted.`);
 			});
 
 			actions.appendChild(editBtn);
@@ -441,7 +433,6 @@ export const TomPanels = {
 				e.stopPropagation();
 
 				if (scene.id === this._tomActiveSceneId) return; // Already playing
-
 				panel.remove();
 
 				const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
@@ -496,137 +487,68 @@ export const TomPanels = {
 			folderContainer.className = "tom-switcher-folder";
 			folderContainer.dataset.folderId = folder.id;
 
-			// Folder header
+			// Folder header with toggle
 			const folderHeader = document.createElement("div");
-			folderHeader.className = `tom-switcher-folder-header ${folder.collapsed ? "collapsed" : ""}`;
-
-			const folderChevron = document.createElement("i");
-			folderChevron.className = `fas ${folder.collapsed ? "fa-caret-right" : "fa-caret-down"} tom-folder-chevron`;
-
-			const folderIcon = document.createElement("i");
-			folderIcon.className = `fas ${folder.collapsed ? "fa-folder" : "fa-folder-open"} tom-folder-icon`;
-
-			const folderName = document.createElement("span");
-			folderName.className = "tom-switcher-folder-name";
-			folderName.textContent = folder.name;
-
-			const folderCount = document.createElement("span");
-			folderCount.className = "tom-switcher-folder-count";
-			const sceneCount = TomStore.getScenesInFolder(folder.id).length;
-			folderCount.textContent = `(${sceneCount})`;
-
-			// Folder actions
-			const folderActions = document.createElement("div");
-			folderActions.className = "tom-switcher-folder-actions";
-
-			const renameBtn = document.createElement("button");
-			renameBtn.className = "tom-switcher-action-btn";
-			renameBtn.title = "Rename Folder";
-			renameBtn.innerHTML = '<i class="fas fa-pen"></i>';
-			renameBtn.addEventListener("click", async e => {
-				e.preventDefault();
-				e.stopPropagation();
-				const newName = await this._promptFolderName("Rename Folder", folder.name);
-				if (!newName) return;
-				TomStore.renameFolder(folder.id, newName);
-				panel.remove();
-				this._toggleTomScenePanel();
-			});
-
-			const deleteFolderBtn = document.createElement("button");
-			deleteFolderBtn.className = "tom-switcher-action-btn tom-switcher-action-delete";
-			deleteFolderBtn.title = "Delete Folder";
-			deleteFolderBtn.innerHTML = '<i class="fas fa-trash"></i>';
-			deleteFolderBtn.addEventListener("click", async e => {
-				e.preventDefault();
-				e.stopPropagation();
-				const confirmed = await foundry.applications.api.DialogV2.confirm({
-					window: { title: "Delete Folder" },
-					content: `<p>Delete folder <strong>${folder.name}</strong>?</p><p>Scenes inside will become uncategorized.</p>`,
-					modal: true,
-				});
-				if (!confirmed) return;
-				TomStore.deleteFolder(folder.id);
-				panel.remove();
-				this._toggleTomScenePanel();
-			});
-
-			folderActions.appendChild(renameBtn);
-			folderActions.appendChild(deleteFolderBtn);
-
-			folderHeader.appendChild(folderChevron);
-			folderHeader.appendChild(folderIcon);
-			folderHeader.appendChild(folderName);
-			folderHeader.appendChild(folderCount);
-			folderHeader.appendChild(folderActions);
-
-			// Toggle collapse on header click
-			folderHeader.addEventListener("click", e => {
-				e.preventDefault();
-				e.stopPropagation();
+			folderHeader.className = "tom-switcher-folder-header";
+			folderHeader.innerHTML = `
+				<i class="fas ${folder.collapsed ? "fa-chevron-right" : "fa-chevron-down"}"></i>
+				<span>${folder.name}</span>
+				<span class="tom-switcher-folder-count">(${folder.scenes?.length || 0})</span>
+			`;
+			folderHeader.addEventListener("click", () => {
 				TomStore.toggleFolderCollapsed(folder.id);
 				panel.remove();
 				this._toggleTomScenePanel();
 			});
-
 			folderContainer.appendChild(folderHeader);
 
-			// Folder content (scenes)
-			const folderContent = document.createElement("div");
-			folderContent.className = "tom-switcher-folder-content";
-			if (folder.collapsed) {
-				folderContent.style.display = "none";
+			if (!folder.collapsed) {
+				const folderContent = document.createElement("div");
+				folderContent.className = "tom-switcher-folder-content";
+				setupFolderDrop(folderContent, folder.id);
+
+				const folderScenes = scenes.filter(s => s.folderId === folder.id);
+				if (folderScenes.length === 0) {
+					const empty = document.createElement("div");
+					empty.className = "tom-switcher-empty";
+					empty.textContent = "No scenes";
+					folderContent.appendChild(empty);
+				}
+				else {
+					for (const scene of folderScenes) {
+						folderContent.appendChild(createSceneItem(scene));
+					}
+				}
+				folderContainer.appendChild(folderContent);
 			}
 
-			const folderScenes = TomStore.getScenesInFolder(folder.id);
-			for (const scene of folderScenes) {
-				folderContent.appendChild(createSceneItem(scene));
-			}
-
-			if (folderScenes.length === 0) {
-				const emptyHint = document.createElement("div");
-				emptyHint.className = "tom-switcher-folder-empty";
-				emptyHint.textContent = "Drag scenes here";
-				folderContent.appendChild(emptyHint);
-			}
-
-			folderContainer.appendChild(folderContent);
-
-			// Make the entire folder a drop target
+			// Allow dropping onto the whole folder row too
 			setupFolderDrop(folderContainer, folder.id);
-
 			list.appendChild(folderContainer);
 		}
 
-		// Uncategorized scenes (no folderId)
+		// Uncategorized scenes (no folder)
 		const uncategorized = scenes.filter(s => !s.folderId);
-		if (uncategorized.length > 0 || folders.length > 0) {
-			// Only show "Uncategorized" header if folders exist
+		if (uncategorized.length > 0) {
 			if (folders.length > 0) {
-				const uncatHeader = document.createElement("div");
-				uncatHeader.className = "tom-switcher-uncat-header";
-				uncatHeader.textContent = "Uncategorized";
-				list.appendChild(uncatHeader);
+				const divider = document.createElement("div");
+				divider.className = "tom-switcher-divider";
+				divider.textContent = "Uncategorized";
+				list.appendChild(divider);
 			}
-
 			const uncatContainer = document.createElement("div");
-			uncatContainer.className = "tom-switcher-uncat-container";
-
+			uncatContainer.className = "tom-switcher-uncat";
+			setupFolderDrop(uncatContainer, null);
 			for (const scene of uncategorized) {
 				uncatContainer.appendChild(createSceneItem(scene));
 			}
-
-			// Uncategorized is also a drop target (to remove from folder)
-			setupFolderDrop(uncatContainer, null);
-
 			list.appendChild(uncatContainer);
 		}
 
-		// If no scenes at all
-		if (scenes.length === 0 && folders.length === 0) {
+		if (scenes.length === 0) {
 			const empty = document.createElement("div");
 			empty.className = "tom-switcher-empty";
-			empty.textContent = "Click above to create a new Scene";
+			empty.textContent = "No scenes yet";
 			list.appendChild(empty);
 		}
 

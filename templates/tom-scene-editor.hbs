@@ -6,17 +6,22 @@
 
   <section class="tom-editor-content-simple">
 
-    <!-- Scene Preview - Centered -->
-    <div class="tom-scene-preview-centered">
-      {{#if isVideo}}
-      <video src="{{scene.background}}" muted loop autoplay></video>
-      {{else if scene.background}}
-      <img src="{{scene.background}}" alt="Scene preview">
-      {{else}}
-      <div class="tom-scene-placeholder">
-        <i class="fas fa-image"></i>
-        <span>No image selected</span>
+    <!-- Scene Preview - Centered with live arena overlay -->
+    <div class="tom-scene-preview-centered" style="--arena-scale: {{arenaScale}};">
+      <div class="tom-scene-preview-media">
+        {{#if isVideo}}
+        <video src="{{scene.background}}" muted loop autoplay></video>
+        {{else if scene.background}}
+        <img src="{{scene.background}}" alt="Scene preview">
+        {{else}}
+        <div class="tom-scene-placeholder">
+          <i class="fas fa-image"></i>
+          <span>No image selected</span>
+        </div>
+        {{/if}}
       </div>
+      {{#if showArenaPreview}}
+      <div class="tom-scene-preview-arena" aria-hidden="true">{{{arenaPreviewSvg}}}</div>
       {{/if}}
     </div>
 
@@ -43,7 +48,7 @@
       <span class="tom-hint-simple">Allows players with spawn permission to place tokens on this scene</span>
     </div>
 
-    <!-- Arena Grid Style -->
+    <!-- Arena Grid Style + Scale -->
     {{#if scene.isArena}}
     <div class="form-group-simple">
       <label>Arena Grid Style</label>
@@ -55,6 +60,16 @@
         {{/each}}
       </select>
     </div>
+    {{#if showArenaScale}}
+    <div class="form-group-simple tom-arena-scale-group">
+      <label>Overlay Scale — <span class="tom-arena-scale-value">{{arenaScaleDisplay}}×</span> <span class="tom-arena-scale-pct">({{arenaScalePct}}%)</span></label>
+      <div class="tom-range-row">
+        <input type="range" name="arenaScale" min="0.25" max="5" step="0.05" value="{{scene.arenaScale}}">
+        <input type="number" name="arenaScaleNum" min="0.25" max="5" step="0.05" value="{{scene.arenaScale}}">
+      </div>
+      <span class="tom-hint-simple" style="margin-left:0;margin-top:4px;">Fit the grid to your image — 0.25× to 5×. Updates the preview live.</span>
+    </div>
+    {{/if}}
     {{/if}}
 
     <!-- Animation Settings -->

@@ -7,7 +7,7 @@ export class TomStoreClass {
 		this.scenes = new foundry.utils.Collection();
 		this.folders = [];
 		this.activeSceneId = null;
-		this.currentOverlay = null;
+		this.currentOverlays = [];
 		this.isInitialized = false;
 
 		// Sequence state for slideshow functionality
@@ -253,3 +253,15 @@ export class TomStoreClass {
 }
 
 export const TomStore = new TomStoreClass();
+
+// Back-compat shim: old callers read/write `.currentOverlay` as a single string.
+// We keep it as a getter/setter over the new array so nothing else has to
+// branch. Setting a string adds/replaces the single overlay; setting null/"" clears.
+Object.defineProperty(TomStoreClass.prototype, "currentOverlay", {
+	get() { return this.currentOverlays[0] ?? null; },
+	set(v) {
+		if (!v) this.currentOverlays = [];
+		else if (Array.isArray(v)) this.currentOverlays = [...v];
+		else this.currentOverlays = [String(v)];
+	},
+});

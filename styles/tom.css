@@ -767,9 +767,12 @@
   object-fit: cover;
 }
 
-/* Ken Burns effect only for images, not videos */
+/* Ken Burns disabled while arena active — preview fidelity */
 img.tom-pv-bg-media {
   animation: tom-ken-burns 60s infinite alternate ease-in-out;
+}
+.tom-player-view:has(.tom-arena-rings) img.tom-pv-bg-media {
+  animation: none;
 }
 
 /* Video-specific styles */
@@ -811,13 +814,14 @@ video.tom-pv-bg-media {
   align-items: center;
   justify-content: center;
   animation: arenaFadeIn 0.8s ease-out;
+  --arena-scale: 1;
 }
 
 .tom-arena-rings svg {
-  width: 1200px;
-  height: 720px;
-  min-width: 1200px;
-  min-height: 720px;
+  width: 92%;
+  height: auto;
+  transform: scale(var(--arena-scale));
+  transform-origin: center center;
 }
 
 .tom-arena-ring {
@@ -3183,27 +3187,7 @@ video.tom-pv-bg-media {
 
 
 /* Scene Editor */
-.tom-scene-preview {
-  width: 40%;
-  /* aspect-ratio: 16 / 9; */
-  background: #000;
-  border-radius: var(--tom-radius-md);
-  overflow: hidden;
-  /* margin-bottom: var(--tom-space-lg); */
-  border: 1px solid var(--tom-border-subtle);
-  /* display: flex
-; */
-  align-items: center;
-  justify-content: center !important;
-  min-height: 100px;
-  /* align-content: center; */
-}
-
-.tom-scene-preview img,
-.tom-scene-preview video {
-  width: 100%;
-  height: 100%;
-}
+/* .tom-scene-preview — legacy, replaced by .tom-scene-preview-centered */
 
 
 /* Drag & Drop Feedback */
@@ -8382,14 +8366,48 @@ video.tom-pv-bg-media {
 /* Scene Preview - Centered */
 .tom-scene-preview-centered {
   width: 100%;
-  aspect-ratio: 16/9;
+  aspect-ratio: var(--tom-live-aspect, 16/9);
   background: var(--tom-bg-deep, #1a1a1a);
   border: 1px solid var(--tom-border-subtle, #444);
   border-radius: 6px;
   overflow: hidden;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  --arena-scale: 1;
+}
+
+.tom-scene-preview-media {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.tom-scene-preview-media img,
+.tom-scene-preview-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tom-scene-preview-arena {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.tom-scene-preview-arena svg {
+  width: 92%;
+  height: auto;
+  transform: scale(var(--arena-scale));
+  transform-origin: center center;
 }
 
 .tom-scene-preview-centered img,
@@ -8559,6 +8577,32 @@ video.tom-pv-bg-media {
 .form-group-simple select:focus {
   border-color: var(--tom-gold-base, #f59e0b);
 }
+
+/* Arena scale row */
+.tom-range-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.tom-range-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--tom-gold-base, #f59e0b);
+}
+
+.tom-range-row input[type="number"] {
+  width: 84px;
+  flex: 0 0 84px;
+  background: var(--tom-bg-panel, #2a2a2a);
+  border: 1px solid var(--tom-border-subtle, #444);
+  border-radius: 4px;
+  color: var(--tom-text-primary, #fff);
+  padding: 6px 8px;
+  outline: none;
+}
+
+.tom-arena-scale-value { color: var(--tom-gold-base, #f59e0b); }
+.tom-arena-scale-pct { color: var(--tom-text-muted, #888); font-weight: 400; }
 
 /* Footer with buttons */
 .tom-editor-footer-simple {

@@ -1,6 +1,7 @@
 // Tray handle bindings — extracted from scripts/tray/TrayApp.mjs (Phase 5.3
 // split). Prototype mixin: the handle strip that stays visible when the tray
-// is collapsed — expand/collapse, view cycling, every GM tool button, and the
+// is collapsed. Theatre of the Mind overlays used to live here as
+// tom-overlay-manager; they now live inline in tray.hbs scenes-view (see
 // POI transform controls. Merged via Object.assign(TrayApp.prototype, ...).
 
 import { FormationSpawnerSD } from "../combat/FormationSpawnerSD.mjs";
@@ -41,13 +42,7 @@ export const TrayHandleBindings = {
 			this._toggleTomScenePanel();
 		});
 
-		elem.querySelector(".tray-handle-button-tool[data-action='tom-overlay-manager']")?.addEventListener("click", e => {
-			e.preventDefault();
-			e.stopPropagation();
-			this._toggleTomOverlayPanel();
-		});
-
-		// GM Tools Buttons
+		// GM Tools — overlays are now inlined in tray.hbs scenes-view (no handle btn)
 		elem.querySelector(".tray-handle-button-tool[data-action='leader']")?.addEventListener("click", e => {
 			e.preventDefault();
 			e.stopPropagation();

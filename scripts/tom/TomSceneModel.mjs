@@ -9,6 +9,7 @@ export class TomSceneModel {
 		this.bgType = data.bgType || "image";
 		this.isArena = data.isArena || false;
 		this.arenaType = data.arenaType || "isometric";
+		this.arenaScale = Number.isFinite(data.arenaScale) ? Math.min(5, Math.max(0.25, data.arenaScale)) : 1;
 		this.inAnimation = data.inAnimation || "fade";
 		this.outAnimation = data.outAnimation || "fade";
 		this.folderId = data.folderId || null;
@@ -23,7 +24,7 @@ export class TomSceneModel {
 	}
 
 	toJSON() {
-		const { id, name, type, background, bgType, isArena, arenaType, inAnimation, outAnimation, folderId } = this;
+		const { id, name, type, background, bgType, isArena, arenaType, arenaScale, inAnimation, outAnimation, folderId } = this;
 		const result = {
 			id,
 			name,
@@ -32,6 +33,7 @@ export class TomSceneModel {
 			bgType,
 			isArena,
 			arenaType,
+			arenaScale,
 			inAnimation,
 			outAnimation,
 			folderId,

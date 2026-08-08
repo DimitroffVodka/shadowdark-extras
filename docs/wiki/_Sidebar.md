@@ -12,6 +12,7 @@
 - [Inventory & Trading](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Inventory-and-Trading)
 - [Carousing](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Carousing)
 - [Canvas & Table Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Canvas-and-Table-Tools)
+- [Theater of the Mind](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Theater-of-the-Mind)
 
 ### Characters and creatures
 

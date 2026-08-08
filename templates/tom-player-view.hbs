@@ -52,7 +52,7 @@
     {{/each}}
   </div>
 
-  <div class="tom-arena-rings">
+  <div class="tom-arena-rings" style="--arena-scale: {{#if scene.arenaScale}}{{scene.arenaScale}}{{else}}1{{/if}};">
     <svg viewBox="0 -50 1000 700" preserveAspectRatio="xMidYMid meet">
       <defs>
         <!-- Glow filter for the rings -->

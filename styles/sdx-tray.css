@@ -2114,6 +2114,80 @@ body.sdx-tray-enabled #camera-views.vertical.left {
     opacity: 0.7;
 }
 
+/* TOM: Video Overlays — live inline in tray.hbs scenes-view.
+   The old floating .tom-overlay-manager-panel still exists for compat
+   (code-path callers of _toggleTomOverlayPanel); its CSS stays below. */
+.tom-overlays-inline {
+    margin-top: 4px;
+    border: 1px solid rgba(251, 191, 36, 0.22);
+    border-radius: 8px;
+    background: rgba(15, 15, 15, 0.9);
+    overflow: hidden;
+}
+.tom-overlays-inline-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 10px;
+    background: rgba(251, 191, 36, 0.08);
+    border-bottom: 1px solid rgba(251, 191, 36, 0.18);
+    color: #fbbf24;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    user-select: none;
+}
+.tom-overlays-inline.collapsed .tom-overlays-inline-header { border-bottom-color: transparent; }
+.tom-overlays-collapse-chevron { font-size: 10px; width: 12px; text-align: center; opacity: 0.9; }
+.tom-overlays-inline-header span { flex: 1; }
+.tom-overlays-count { font-style: normal; font-weight: 700; opacity: 0.95; }
+.tom-overlays-clear-btn {
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.14);
+    color: #fca5a5;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+ }
+.tom-overlays-clear-btn:hover:not(.disabled):not(:disabled) {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.7);
+    color: #fecaca;
+}
+.tom-overlays-clear-btn.disabled,
+.tom-overlays-clear-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.tom-overlays-inline-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    max-height: 260px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+.tom-overlay-inline-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: rgba(40, 40, 40, 0.55);
+    color: #d4d4d4;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.tom-overlay-inline-item:hover { background: rgba(60, 60, 60, 0.75); border-color: rgba(255, 255, 255, 0.08); }
+.tom-overlay-inline-item.active { background: rgba(251,191,36,0.12); border-color: rgba(251,191,36,0.45); color: #fbbf24; }
+.tom-overlay-inline-preview { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; background: linear-gradient(135deg, rgba(251,191,36,0.18), rgba(217,119,6,0.28)); color: rgba(251,191,36,0.85); font-size: 11px; flex: 0 0 auto; }
+.tom-overlay-inline-item.active .tom-overlay-inline-preview { background: linear-gradient(135deg, rgba(251,191,36,0.32), rgba(217,119,6,0.48)); color: #fbbf24; }
+.tom-overlay-inline-name { flex: 1; font-size: 12px; font-weight: 600; }
+.tom-overlay-inline-check { font-size: 11px; color: #22c55e; }
+
 /* Overlay Manager Panel */
 .tom-overlay-manager-panel {
     background: rgba(20, 20, 20, 0.98);

@@ -179,6 +179,8 @@ export function initTray() {
 		await renderTray();
 	});
 
+	Hooks.on("sdx.tomOverlayChanged", () => renderTray());
+
 	// Hook into Map Notes
 	Hooks.on("createNote", async () => await renderTray());
 	Hooks.on("updateNote", async () => await renderTray());

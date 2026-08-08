@@ -69,17 +69,17 @@ DC, campfire disadvantage, and rest context.
 
 ![The SDX Roller configured for a Strength check with participants and an opposing contestant](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-roller.webp)
 
-## ToM scenes and video overlays
+## Theater of the Mind
 
-The tray's GM **Scenes** tab manages ToM presentation scenes. Create a scene
-card with an image or video background, file cards into folders, edit or delete
-them, click one to broadcast, stop broadcasting, and manage the active video
-overlays.
-
-Players receive the broadcast through the socket-backed player view. The
-top-center Scene Navigation Bar moves the GM to the previous or next ToM scene
-inside the same folder, wrapping at the ends and using the next scene's entrance
-animation.
+The tray's GM **Scenes** tab, socket-broadcast player view, video overlays, and
+folder-local Scene Navigation Bar are documented in
+[Theater of the Mind](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Theater-of-the-Mind).
+That page covers the full workflow (create → file into folders → broadcast →
+overlays (multi-select stack) → nav → stop), the scene record and editor fields (including Overlay Scale), the Scenes tab (collapsible inline strip) and
+inline header, broadcasting and the player view/arena, every arena grid style, all 21
+video overlays, the navigation bar, storage/settings, GM-versus-player
+differences, and troubleshooting. The interactive demo is at
+[Theater of the Mind demo](https://dimitroffvodka.github.io/shadowdark-extras/docs/demo/theater-of-the-mind.html).
 
 ToM scenes are presentation records. Foundry canvas Scenes are separate
 documents.
@@ -139,7 +139,8 @@ SDX drawing hotkey off.
 template declares explicit actions and non-submitting buttons.
 
 **Players do not receive a ToM broadcast.** Confirm socketlib, an active GM, and
-the player's module version.
+the player's module version. Full diagnostics are in
+[Theater of the Mind](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Theater-of-the-Mind).
 
 **Scene export misses an image.** That source is probably cross-origin,
 protected, or unreadable. Swap it for a Foundry-hosted user-data asset and
@@ -151,5 +152,6 @@ in the module manifest.
 ---
 
 **Related:** [The SDX Tray & Party Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Tray-and-Party-Tools) ·
+[Theater of the Mind](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Theater-of-the-Mind) ·
 [Map Generators](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Map-Generators) ·
 [Troubleshooting](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Troubleshooting)

@@ -34,13 +34,6 @@
             </button>
 
 
-
-            {{#if showTomOverlays}}
-            <button class="tray-handle-button-tool tom-overlay-manager-btn" data-action="tom-overlay-manager"
-                title="Video Overlays">
-                <i class="fa-solid fa-film"></i>
-            </button>
-            {{/if}}
             {{/if}}
             <button class="tray-handle-button-tool" data-action="carousing" title="Carousing">
                 <i class="fa-solid fa-beer"></i>
@@ -227,7 +220,7 @@
                 style="overflow-y: hidden; display: flex; flex-direction: column;">
 
                 <!-- Create/Stop Header -->
-                <div class="scenes-header" style="flex: 0 0 auto; padding: 10px;">
+                <div class="scenes-header" style="flex: 0 0 auto; padding: 10px; display: flex; flex-direction: column; gap: 8px;">
                     <button class="tray-btn-full" data-action="create-scene">
                         <i class="fas fa-plus"></i> Create New Scene
                     </button>
@@ -238,6 +231,27 @@
                     <button class="tray-btn-full danger mt-2" data-action="stop-broadcast">
                         <i class="fas fa-stop"></i> Stop Broadcasting
                     </button>
+                    {{/if}}
+                    {{#if tomActiveSceneId}}
+                    <section class="tom-overlays-inline {{#if tomOverlaysCollapsed}}collapsed{{/if}}" aria-label="Video Overlays">
+                        <div class="tom-overlays-inline-header" data-action="tom-overlays-toggle" title="{{#if tomOverlaysCollapsed}}Expand Overlays{{else}}Collapse Overlays{{/if}}">
+                            <i class="fas {{#if tomOverlaysCollapsed}}fa-chevron-right{{else}}fa-chevron-down{{/if}} tom-overlays-collapse-chevron"></i>
+                            <i class="fa-solid fa-film"></i>
+                            <span>Overlays{{#if tomOverlayCount}} <em class="tom-overlays-count">({{tomOverlayCount}})</em>{{/if}}</span>
+                            <button class="tom-overlays-clear-btn{{#unless tomOverlayCount}} disabled{{/unless}}" data-action="tom-overlay-clear" {{#unless tomOverlayCount}}disabled{{/unless}} title="{{#if tomOverlayCount}}Clear all overlays{{else}}No overlays active{{/if}}">
+                                <i class="fas fa-times"></i> {{#if tomOverlayCount}}Clear all{{else}}Clear{{/if}}
+                            </button>
+                        </div>
+                        <div class="tom-overlays-inline-list {{#if tomOverlaysCollapsed}}hidden{{/if}}">
+                            {{#each tomOverlayOptions}}
+                            <button type="button" class="tom-overlay-inline-item{{#if active}} active{{/if}}" data-action="tom-overlay-toggle" data-overlay-path="{{path}}" title="{{#if active}}Click to remove{{else}}Click to add{{/if}}">
+                                <span class="tom-overlay-inline-preview"><i class="fas fa-play"></i></span>
+                                <span class="tom-overlay-inline-name">{{name}}</span>
+                                {{#if active}}<i class="fas fa-check tom-overlay-inline-check"></i>{{/if}}
+                            </button>
+                            {{/each}}
+                        </div>
+                    </section>
                     {{/if}}
                 </div>
 

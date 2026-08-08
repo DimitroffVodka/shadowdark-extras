@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Theater of the Mind — Shadowdark Extras · Demo</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<link rel="stylesheet" href="../../styles/tom-theme.css">
+<link rel="stylesheet" href="../../styles/tom.css">
+<link rel="stylesheet" href="../../styles/scene-nav-bar.css">
+<style>
+  :root { --demo-bg: #0d0d0d; --demo-panel: #161616; --demo-border: #2a2a2a; --demo-text: #e8e8e8; --demo-muted: #9a9a9a; --demo-accent: #d4a843; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background: var(--demo-bg); color: var(--demo-text); font-family: "Signika", system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  a { color: var(--demo-accent); }
+  .demo-banner { background: #1a1a00; border-bottom: 1px solid #4a4000; color: #ffec8b; text-align:center; padding: 8px 16px; font-size: 13px; line-height: 1.4; }
+  .demo-banner strong { color: #fff4a0; }
+  .demo-header { display:flex; align-items:center; gap:16px; padding: 14px 20px; border-bottom: 1px solid var(--demo-border); background: #111; flex-wrap:wrap; }
+  .demo-header h1 { margin:0; font-size: 18px; letter-spacing: .4px; font-weight: 700; }
+  .demo-header h1 span { color: var(--demo-accent); }
+  .demo-header .links { margin-left:auto; display:flex; gap:12px; font-size: 13px; flex-wrap:wrap; align-items:center; }
+  .demo-header .links a { text-decoration:none; border:1px solid var(--demo-border); padding:6px 10px; border-radius:6px; background:#1a1a1a; }
+  .demo-header .links a:hover { background:#222; }
+  #resetBtn { border:1px solid #3a2f1a; background:#221d0a; color:#e8d8a0; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:13px; }
+  #resetBtn:hover { background:#2e2812; }
+  .demo-layout { display:flex; min-height: calc(100vh - 92px); }
+  @media (max-width: 980px) { .demo-layout { flex-direction: column; } }
+  /* GM pane */
+  .gm-pane { width: 420px; min-width: 340px; background: var(--demo-panel); border-right: 1px solid var(--demo-border); display:flex; flex-direction:column; overflow:hidden; }
+  @media (max-width: 980px) { .gm-pane { width:100%; border-right:none; border-bottom:1px solid var(--demo-border); } }
+  .gm-head { padding: 12px; border-bottom:1px solid var(--demo-border); background:#151515; }
+  .gm-head .row { display:flex; gap:8px; margin-bottom:8px; }
+  .gm-head .row:last-child { margin-bottom:0; }
+  .gm-search { flex:1; display:flex; align-items:center; gap:8px; background:#0f0f0f; border:1px solid var(--demo-border); border-radius:8px; padding:8px 10px; }
+  .gm-search i { color: var(--demo-muted); }
+  .gm-search input { flex:1; background:transparent; border:none; outline:none; color:var(--demo-text); font-size:13px; }
+  .gm-search button { background:transparent; border:none; color:var(--demo-muted); cursor:pointer; }
+  .gm-actions { display:flex; gap:8px; flex-wrap:wrap; }
+  .gm-actions button { flex:1; min-width: 0; padding:9px 10px; border-radius:8px; border:1px solid var(--demo-border); background:#1e1e1e; color:var(--demo-text); cursor:pointer; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .gm-actions button.primary { background: #2a2310; border-color:#4a3f1a; color:#f0d98a; }
+  .gm-actions button.danger { background: #2a1414; border-color:#4a2222; color:#ffb0b0; }
+  .gm-actions button:disabled { opacity:.45; cursor:default; }
+  .gm-body { flex:1; overflow:auto; padding: 10px; scrollbar-width: thin; }
+  .folder { border:1px solid var(--demo-border); border-radius:10px; margin-bottom:10px; background:#141414; overflow:hidden; }
+  .folder-hd { display:flex; align-items:center; gap:8px; padding:10px 10px; cursor:pointer; user-select:none; background:#1a1a1a; border-bottom:1px solid var(--demo-border); }
+  .folder-hd:hover { background:#1f1f1f; }
+  .folder-hd .name { font-weight:700; font-size:13px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .folder-hd .count { color:var(--demo-muted); font-size:12px; }
+  .folder-hd .actions { display:flex; gap:4px; }
+  .folder-hd .actions button { width:28px; height:28px; border-radius:6px; border:1px solid var(--demo-border); background:#151515; color:#bbb; cursor:pointer; display:grid; place-items:center; }
+  .folder-hd .actions button.danger { border-color:#3d2222; color:#d98a8a; }
+  .folder.collapsed .folder-content { display:none; }
+  .folder.collapsed .folder-hd { border-bottom:none; }
+  .folder-content { padding:8px; display:flex; flex-direction:column; gap:8px; min-height: 24px; }
+  .folder-content.drag-over { outline:2px dashed var(--demo-accent); outline-offset:-2px; background:#1b1b0f; }
+  .uncat-title { font-size:11px; letter-spacing:.6px; text-transform:uppercase; color:var(--demo-muted); padding: 6px 4px 4px; }
+  .uncat-box { border:1px dashed var(--demo-border); border-radius:10px; padding:8px; min-height:48px; display:flex; flex-direction:column; gap:8px; }
+  .uncat-box.drag-over { outline:2px dashed var(--demo-accent); outline-offset:-2px; background:#1b1b0f; }
+  .scene-card { display:flex; gap:0; border:1px solid var(--demo-border); border-radius:10px; overflow:hidden; background:#0f0f0f; cursor:pointer; }
+  .scene-card.active { border-color:#6b5520; box-shadow: 0 0 0 1px #6b5520 inset; }
+  .scene-card.dragging { opacity:.5; }
+  .scene-activate { flex:1; display:flex; gap:10px; padding:8px; align-items:center; min-width:0; }
+  .scene-thumb { width:72px; height:48px; border-radius:6px; overflow:hidden; background:#111; flex:0 0 72px; position:relative; border:1px solid #222; display:grid; place-items:center; }
+  .scene-thumb img, .scene-thumb video { width:100%; height:100%; object-fit:cover; display:block; }
+  .scene-thumb .playing { position:absolute; inset:0; display:grid; place-items:center; background: rgba(0,0,0,.45); color:#ffd84d; font-size:18px; }
+  .scene-thumb .vid-badge { position:absolute; bottom:4px; right:4px; background: rgba(0,0,0,.7); color:#fff; font-size:10px; padding:2px 5px; border-radius:4px; border:1px solid rgba(255,255,255,.18); }
+  .scene-info { flex:1; min-width:0; }
+  .scene-name { font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .scene-meta { display:flex; gap:6px; margin-top:4px; flex-wrap:wrap; }
+  .scene-tag { font-size:10px; padding:2px 6px; border-radius:999px; border:1px solid #333; background:#1a1a1a; color:#bbb; }
+  .scene-tag.arena { border-color:#4a3a1a; background:#241f0d; color:#e0c98a; }
+  .scene-tag.video { border-color:#22404a; background:#0d1e24; color:#8ad0e0; }
+  .scene-actions { display:flex; flex-direction:column; gap:0; border-left:1px solid var(--demo-border); }
+  .scene-actions button { flex:1; width:38px; border:none; background:#151515; color:#bbb; cursor:pointer; display:grid; place-items:center; }
+  .scene-actions button:hover { background:#1f1f1f; color:#fff; }
+  .scene-actions button.danger { color:#c98a8a; }
+  .empty-hint { text-align:center; color:var(--demo-muted); font-size:12px; padding:10px; border:1px dashed var(--demo-border); border-radius:8px; background:#101010; }
+  /* overlays panel */
+  .overlay-panel { margin-top:10px; border:1px solid #3a3418; border-radius:10px; overflow:hidden; background:#14120a; }
+  .overlay-panel-hd { padding:8px 10px; font-size:12px; font-weight:700; letter-spacing:.3px; background:#1d1b0f; border-bottom:1px solid #3a3418; display:flex; align-items:center; gap:8px; justify-content:space-between; }
+  .overlay-clear { padding:7px 10px; margin:8px; border-radius:8px; border:1px solid #4a3a22; background:#201c0c; color:#f0d98a; cursor:pointer; width:calc(100% - 16px); font-weight:700; font-size:12px; }
+  .overlay-clear:disabled { opacity:.45; cursor:default; }
+  .overlay-grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:8px; padding:8px; }
+  .overlay-item { border:1px solid var(--demo-border); border-radius:8px; background:#0f0f0f; padding:8px; display:flex; gap:8px; align-items:center; cursor:pointer; }
+  .overlay-item.active { border-color:#6b5520; background:#1e1a0a; }
+  .overlay-item .prev { width:36px; height:36px; border-radius:6px; background:#111; display:grid; place-items:center; border:1px solid #222; color:#aaa; flex:0 0 36px; }
+  .overlay-item .label { font-size:12px; font-weight:700; line-height:1.1; }
+  .overlay-item .sub { font-size:11px; color:var(--demo-muted); }
+  /* stage pane */
+  .stage-pane { flex:1; display:flex; flex-direction:column; background: #0a0a0a; min-width:0; }
+  .stage-toolbar { display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--demo-border); background:#111; flex-wrap:wrap; }
+  .stage-toolbar .pill { font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid var(--demo-border); background:#151515; color:#ccc; }
+  .stage-toolbar .pill strong { color:#fff; }
+  .stage-wrap { flex:1; padding:12px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; background: radial-gradient(700px 400px at 50% -10%, #1a1a1a, #070707); overflow:auto; }
+  .stage-frame { width:min(980px, 100%); aspect-ratio: 16 / 9; max-height: 62vh; background:#080808; border:1px solid #222; border-radius:12px; overflow:hidden; position:relative; box-shadow: 0 18px 40px rgba(0,0,0,.6); flex:0 0 auto; }
+  .stage-frame .tom-player-view,
+  .stage-frame #tom-player-view { position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; max-width:100% !important; max-height:100% !important; min-width:0 !important; min-height:0 !important; margin:0 !important; transform:none !important; }
+  .stage-frame .tom-player-view .tom-pv-background { position:absolute !important; inset:0 !important; }
+  .stage-frame .tom-player-view .tom-pv-background .tom-pv-bg-media { width:100% !important; height:100% !important; object-fit:cover !important; display:block; }
+  .stage-placeholder { position:absolute; inset:0; display:grid; place-items:center; text-align:center; padding:24px; color:#9a9a9a; }
+  .stage-placeholder .big { font-size:13px; font-weight:800; letter-spacing:.5px; color:#e0e0e0; margin-bottom:6px; }
+  .stage-placeholder .hint { font-size:12px; line-height:1.5; max-width: 520px; color:#8a8a8a; }
+  .sdx-scene-nav-bar { position:absolute !important; top:10px !important; left:50% !important; transform: translateX(-50%) !important; z-index: 30 !important; display:flex !important; align-items:center !important; gap:10px !important; padding:6px 10px !important; background: rgba(0,0,0,.55) !important; border:1px solid rgba(255,255,255,.18) !important; border-radius:999px !important; backdrop-filter: blur(6px) !important; font-family: system-ui, sans-serif !important; pointer-events:auto; }
+  .sdx-scene-nav-bar .scene-nav-name { font-size:12px !important; font-weight:800 !important; letter-spacing:.8px !important; color:#fff !important; text-transform:uppercase !important; max-width: 28ch !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; font-family: system-ui, sans-serif !important; text-shadow: 0 0 6px rgba(0,0,0,.9) !important; line-height:1 !important; }
+  .sdx-scene-nav-bar .scene-nav-btn { width:28px !important; height:28px !important; border-radius:999px !important; border:1px solid rgba(255,255,255,.18) !important; background: rgba(0,0,0,.35) !important; color:#fff !important; cursor:pointer !important; display:grid !important; place-items:center !important; opacity:1 !important; transform:none !important; background-image:none !important; background-size:auto !important; padding:0 !important; }
+  .sdx-scene-nav-bar .scene-nav-btn i { display:block !important; }
+  .sdx-scene-nav-bar .scene-nav-btn:hover { background: rgba(255,255,255,.12) !important; transform:none !important; opacity:1 !important; }
+  .sdx-scene-nav-bar .scene-nav-next { transform:none !important; }
+  .sdx-scene-nav-bar .scene-nav-next:hover { transform:none !important; }
+  .stage-foot { padding:10px 12px; border-top:1px solid var(--demo-border); background:#111; display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:12px; color:#aaa; }
+  .stage-foot code { background:#1a1a1a; border:1px solid #2a2a2a; padding:3px 6px; border-radius:6px; color:#ddd; }
+  /* ensure tom video overlay covers correctly inside stage-frame */
+  .stage-frame .tom-video-overlay { position:absolute; inset:0; pointer-events:none; }
+  .stage-frame .tom-video-overlay video { width:100%; height:100%; object-fit:cover; display:block; opacity:.92; }
+  .stage-frame .tom-video-overlay.blend-mode { mix-blend-mode: screen; opacity:.88; }
+  .stage-frame .tom-arena-rings { position:absolute !important; inset:0 !important; pointer-events:none !important; display:grid !important; place-items:center !important; overflow:hidden !important; }
+  .stage-frame .tom-arena-rings svg { width:92% !important; height:auto !important; min-width:0 !important; min-height:0 !important; max-width:92% !important; max-height:92% !important; }
+  .stage-frame .tom-arena-label { fill:#fff; font-size:13px; font-weight:800; text-shadow: 0 0 6px rgba(0,0,0,.9); font-family: system-ui; }
+  /* modal */
+  .modal-backdrop { position:fixed; inset:0; background: rgba(0,0,0,.62); display:none; place-items:center; z-index: 50; padding:16px; }
+  .modal-backdrop.open { display:grid; }
+  .modal { width:min(560px, 100%); background:#161616; border:1px solid #2a2a2a; border-radius:12px; overflow:hidden; box-shadow: 0 18px 50px rgba(0,0,0,.7); }
+  .modal-hd { padding:12px 14px; border-bottom:1px solid #2a2a2a; display:flex; align-items:center; gap:10px; font-weight:800; }
+  .modal-hd button { margin-left:auto; border:1px solid #2a2a2a; background:#151515; color:#bbb; border-radius:8px; width:32px; height:32px; cursor:pointer; display:grid; place-items:center; }
+  .modal-body { padding:14px; display:flex; flex-direction:column; gap:12px; max-height: 78vh; overflow:auto; }
+  .preview { height:180px; border-radius:10px; overflow:hidden; background:#0f0f0f; border:1px solid #222; display:grid; place-items:center; position:relative; }
+  .preview img, .preview video { width:100%; height:100%; object-fit:cover; display:block; }
+  .preview .ph { color:#777; font-size:12px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .field { display:flex; flex-direction:column; gap:6px; }
+  .field label { font-size:11px; letter-spacing:.4px; text-transform:uppercase; color:#aaa; font-weight:700; }
+  .field input[type="text"], .field select { width:100%; padding:10px 10px; border-radius:8px; border:1px solid #2a2a2a; background:#0f0f0f; color:#e8e8e8; outline:none; }
+  .field input[type="text"]:focus, .field select:focus { border-color:#4a3f1a; }
+  .file-row { display:flex; gap:8px; }
+  .file-row button { padding:10px 12px; border-radius:8px; border:1px solid #2a2a2a; background:#1a1a1a; color:#ddd; cursor:pointer; white-space:nowrap; }
+  .toggle-row { display:flex; align-items:center; gap:10px; padding:10px; border:1px solid #2a2a2a; border-radius:10px; background:#0f0f0f; }
+  .toggle-row input { width:18px; height:18px; }
+  .toggle-row .hint { font-size:11px; color:#8a8a8a; }
+  .anim-grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .modal-foot { padding:12px 14px; border-top:1px solid #2a2a2a; display:flex; gap:8px; justify-content:flex-end; background:#141414; }
+  .modal-foot button { padding:10px 14px; border-radius:8px; border:1px solid #2a2a2a; cursor:pointer; font-weight:800; }
+  .modal-foot .cancel { background:#151515; color:#bbb; }
+  .modal-foot .save { background:#2a2310; border-color:#4a3f1a; color:#f0d98a; }
+  .drop-hint { font-size:11px; color:#8a8a8a; text-align:center; padding:6px; }
+</style>
+</head>
+<body>
+<div class="demo-banner">In Foundry this is a socket broadcast to players via <code>module.shadowdark-extras</code> — simulated here in one tab. FilePicker, permissions, and multi-client sockets are simulated. Animations and overlays use the module's real stylesheets and assets.</div>
+<header class="demo-header">
+  <h1><span>Theater of the Mind</span> — Shadowdark Extras · Interactive Demo</h1>
+  <nav class="links">
+    <a href="../wiki/Theater-of-the-Mind.html" onclick="event.preventDefault(); alert('On GitHub Pages this points to the wiki. In a local clone open docs/wiki/Theater-of-the-Mind.md');"><i class="fa-solid fa-book"></i> Wiki page</a>
+    <a href="https://github.com/DimitroffVodka/shadowdark-extras/blob/main/templates/tom-player-view.hbs" target="_blank" rel="noopener"><i class="fa-solid fa-code"></i> Template</a>
+    <button id="resetBtn" title="Reset demo data"><i class="fa-solid fa-rotate"></i> Reset</button>
+  </nav>
+</header>
+
+<main class="demo-layout">
+  <section class="gm-pane">
+    <div class="gm-head">
+      <div class="row">
+        <label class="gm-search" aria-label="Search scenes">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input id="searchInput" type="text" placeholder="Search scenes..." autocomplete="off">
+          <button id="clearSearch" title="Clear search" style="display:none"><i class="fa-solid fa-xmark"></i></button>
+        </label>
+      </div>
+      <div class="gm-actions">
+        <button class="primary" id="createSceneBtn"><i class="fa-solid fa-plus"></i> New Scene</button>
+        <button id="createFolderBtn"><i class="fa-solid fa-folder-plus"></i> New Folder</button>
+        <button class="danger" id="stopBroadcastBtn" style="display:none"><i class="fa-solid fa-stop"></i> Stop</button>
+      </div>
+      <div class="drop-hint">Drag scene cards between folders to file them. Drag within a folder to reorder.</div>
+    </div>
+    <div class="gm-body" id="gmBody"></div>
+  </section>
+
+  <section class="stage-pane">
+    <div class="stage-toolbar">
+      <span class="pill"><i class="fa-solid fa-images"></i> Stage — <strong id="stageLabel">No broadcast</strong></span>
+      <span class="pill" id="stageMeta" style="display:none"></span>
+      <span style="margin-left:auto; font-size:12px; color:#8a8a8a;">Uses real <code>styles/tom.css</code> + <code>assets/Tom/overlays/*</code> · Font Awesome via CDN</span>
+    </div>
+    <div class="stage-wrap">
+      <div class="stage-frame" id="stageFrame">
+        <!-- injected by JS -->
+      </div>
+    </div>
+    <div class="stage-foot">
+      <span><i class="fa-solid fa-film"></i> Video overlays — socket <code>overlay-set / overlay-toggle / overlay-clear</code> (stacked, multi-select) on <code>module.shadowdark-extras</code></span>
+      <code id="overlayPathCode" style="margin-left:auto; display:none"></code>
+    </div>
+  </section>
+</main>
+
+<div class="modal-backdrop" id="editorBackdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Scene Editor">
+    <div class="modal-hd"><i class="fa-solid fa-pen-to-square"></i> <span id="editorTitle">Create New Scene</span> <button id="editorClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="preview" id="editorPreview"></div>
+      <div class="field"><label>Scene name</label><input id="fName" type="text" placeholder="New Scene" maxlength="80"></div>
+      <div class="field"><label>Background media — image or video path (or upload)</label>
+        <div class="file-row"><input id="fBg" type="text" placeholder="../../assets/default-scene.jpg or https://…"><button id="pickFileBtn"><i class="fa-solid fa-file-arrow-up"></i> Upload</button><input id="fileInput" type="file" accept="image/*,video/*,.webm,.mp4,.m4v" style="display:none"></div>
+        <div style="font-size:11px;color:#8a8a8a;">Extension <code>.webm/.mp4/.m4v</code> → <code>video</code>, else <code>image</code>. In Foundry this is a <code>FilePicker imagevideo</code>; here we simulate it with a path or upload.</div>
+      </div>
+      <label class="toggle-row"><input id="fIsArena" type="checkbox"><span style="font-weight:800; font-size:13px;"><i class="fa-solid fa-swords"></i> It's an Arena?</span><span class="hint">Allows players with spawn permission to place tokens</span></label>
+      <div class="field" id="arenaTypeWrap" style="display:none"><label>Arena grid style</label>
+        <select id="fArenaType">
+          <option value="isometric">Isometric (Ellipse)</option>
+          <option value="topdown">Top Down (Circle)</option>
+          <option value="expanded">Expanded (Radial Grid)</option>
+          <option value="ladder">Ladder (Linear Track)</option>
+          <option value="none">No Grid (None)</option>
+        </select>
+      </div>
+      <div class="field" id="arenaScaleWrap" style="display:none">
+        <label>Overlay Scale — <span id="fScaleLabel">1× (100%)</span></label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input id="fArenaScale" type="range" min="0.25" max="5" step="0.05" style="flex:1">
+          <input id="fArenaScaleNum" type="number" min="0.25" max="5" step="0.05" style="width:86px" class="field" >
+        </div>
+        <div style="font-size:11px; color:#8a8a8a; margin-top:4px;">Fit the grid to your image — 0.25× to 5×. Updates the preview live.</div>
+      </div>
+      <div class="anim-grid">
+        <div class="field"><label><i class="fa-solid fa-sign-in-alt"></i> In animation</label><select id="fIn"></select></div>
+        <div class="field"><label><i class="fa-solid fa-sign-out-alt"></i> Out animation</label><select id="fOut"></select></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="cancel" id="editorCancel">Cancel</button><button class="save" id="editorSave"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button></div>
+  </div>
+</div>
+
+<script>
+const LS_SCENES = "sdx-tom-demo-scenes-v1";
+const LS_FOLDERS = "sdx-tom-demo-folders-v1";
+const LS_ACTIVE = "sdx-tom-demo-active-v1";
+const LS_OVERLAY = "sdx-tom-demo-overlays-v1"; // array<String> — stacked (single "overlay-v1" string migrated)
+
+const ANIMATIONS = [
+  ["fade","Fade"], ["slide-left","Slide Left"], ["slide-right","Slide Right"], ["slide-top","Slide Top"], ["slide-bottom","Slide Bottom"],
+  ["zoom-in","Zoom In"], ["zoom-out","Zoom Out"], ["rotate","Rotate"], ["blur","Blur"], ["none","None (Instant)"]
+];
+const ARENA_TYPES = ["isometric","topdown","expanded","ladder","none"];
+const OVERLAYS = [
+  { name:"Fire", file:"fire.webm" }, { name:"Snow", file:"snow.webm" }, { name:"Wind", file:"wind.webm" }, { name:"Rain", file:"rain.webm" }, { name:"Dust", file:"dust.webm" }, { name:"Campfire", file:"campfire.webm" }, { name:"Burning", file:"burning.webm" }, { name:"Gold", file:"gold.webm" }, { name:"Purple", file:"purple.webm" }, { name:"Light", file:"light.webm" }, { name:"Storm", file:"storm.webm" }, { name:"Fog", file:"fog.webm" }, { name:"Gente Snow", file:"gentlesnow.mp4" }, { name:"Light Rain", file:"lightrain.mp4" }, { name:"Slow Snow", file:"slowsnow.mp4" }, { name:"Light Snow", file:"lightsnow.mp4" }, { name:"Blue Rays", file:"bluerays.mp4" }, { name:"Embers", file:"embers.mp4" }, { name:"Sparks", file:"sparks.mp4" }, { name:"Glow", file:"aurora.mp4" }, { name:"Aurora-green", file:"aurora2.mp4" },
+];
+const BASE_OVERLAY = "../../assets/Tom/overlays/";
+const DEFAULT_BG = "../../assets/default-scene.jpg";
+const ALT_BG = "../../assets/Tom/banner_tom.png";
+
+function rid(){ return Math.random().toString(36).slice(2,9); }
+function isVideoPath(p){ return /\.(webm|mp4|m4v)$/i.test(p||""); }
+
+let state = { scenes: [], folders: [], activeSceneId: null, currentOverlays: [], search:"" }; // stacked
+let editingId = null;
+let dragId = null;
+
+function seed(){
+  const f1Id = rid(), f2Id = rid();
+  state.folders = [
+    { id: f1Id, name:"Adventure — Act I", collapsed:false },
+    { id: f2Id, name:"Arenas", collapsed:false },
+  ];
+  state.scenes = [
+    { id: rid(), name:"Tavern at Night", background: DEFAULT_BG, bgType:"image", isArena:false, arenaType:"isometric", arenaScale:1, inAnimation:"fade", outAnimation:"fade", folderId: f1Id },
+    { id: rid(), name:"Haunted Woods — Tracking Shot", background: BASE_OVERLAY + "fog.webm", bgType:"video", isArena:false, arenaType:"isometric", arenaScale:1, inAnimation:"slide-left", outAnimation:"fade", folderId: f1Id },
+    { id: rid(), name:"Blood Pit — Arena", background: ALT_BG, bgType:"image", isArena:true, arenaType:"isometric", arenaScale:1, inAnimation:"zoom-in", outAnimation:"zoom-out", folderId: f2Id },
+    { id: rid(), name:"Starlit Camp", background: DEFAULT_BG, bgType:"image", isArena:true, arenaType:"expanded", arenaScale:1, inAnimation:"blur", outAnimation:"fade", folderId: null },
+  ];
+  state.activeSceneId = null;
+  state.currentOverlays = [];
+}
+
+function load(){
+  try{
+    const s = JSON.parse(localStorage.getItem(LS_SCENES)||"null");
+    const f = JSON.parse(localStorage.getItem(LS_FOLDERS)||"null");
+    const a = JSON.parse(localStorage.getItem(LS_ACTIVE)||"null");
+    let o = JSON.parse(localStorage.getItem(LS_OVERLAY)||"null");
+    // migrate old single-overlay storage (sdx-tom-demo-overlay-v1) if present
+    if(o==null){
+      try{
+        const legacy = JSON.parse(localStorage.getItem("sdx-tom-demo-overlay-v1")||"null");
+        if(typeof legacy==="string" && legacy) o = [legacy];
+      }catch(_){}
+    }
+    if(Array.isArray(s) && s.length){ state.scenes = s; } else { seed(); save(); return; }
+    if(Array.isArray(f)) state.folders = f;
+    state.activeSceneId = a;
+    state.currentOverlays = Array.isArray(o) ? o.filter(x=> typeof x==="string") : (typeof o==="string" && o ? [o] : []);
+    // normalize missing fields
+    for(const sc of state.scenes){
+      if(!sc.inAnimation) sc.inAnimation="fade";
+      if(!sc.outAnimation) sc.outAnimation="fade";
+      if(!sc.arenaType) sc.arenaType="isometric";
+      if(sc.isArena==null) sc.isArena=false;
+      if(!Number.isFinite(sc.arenaScale)) sc.arenaScale = 1;
+      else sc.arenaScale = Math.min(5, Math.max(0.25, sc.arenaScale));
+      if(!sc.bgType) sc.bgType = isVideoPath(sc.background) ? "video" : "image";
+      if(sc.folderId===undefined) sc.folderId=null;
+    }
+  }catch(e){ seed(); save(); }
+}
+function save(){
+  localStorage.setItem(LS_SCENES, JSON.stringify(state.scenes));
+  localStorage.setItem(LS_FOLDERS, JSON.stringify(state.folders));
+  localStorage.setItem(LS_ACTIVE, JSON.stringify(state.activeSceneId));
+  localStorage.setItem(LS_OVERLAY, JSON.stringify(state.currentOverlays));
+  try{ localStorage.removeItem("sdx-tom-demo-overlay-v1"); }catch(_){}
+}
+
+function getScene(id){ return state.scenes.find(s=>s.id===id) || null; }
+function scenesInFolder(folderId){ return state.scenes.filter(s=> (s.folderId||null)===(folderId||null)); }
+
+function arenaSVG(arenaType){
+  if(arenaType==="none") return "";
+  if(arenaType==="topdown"){
+    return `<svg viewBox="0 -50 1000 700" preserveAspectRatio="xMidYMid meet"><defs><filter id="arenaGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter><linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#fbbf24;stop-opacity:1"/><stop offset="100%" style="stop-color:#d97706;stop-opacity:1"/></linearGradient></defs><circle cx="500" cy="300" r="280" class="tom-arena-ring tom-arena-ring-90" fill="none" stroke="url(#ringGradient)" stroke-width="2" filter="url(#arenaGlow)" opacity="0.7"/><text x="500" y="10" class="tom-arena-label" text-anchor="middle">FAR</text><circle cx="500" cy="300" r="140" class="tom-arena-ring tom-arena-ring-30" fill="none" stroke="url(#ringGradient)" stroke-width="2" filter="url(#arenaGlow)" opacity="0.9"/><text x="500" y="150" class="tom-arena-label" text-anchor="middle">NEAR</text><circle cx="500" cy="300" r="140" class="tom-arena-center" fill="rgba(251,191,36,0.1)" stroke="url(#ringGradient)" stroke-width="3" filter="url(#arenaGlow)"/><text x="500" y="305" class="tom-arena-label tom-arena-label-center" text-anchor="middle">CLOSE</text></svg>`;
+  }
+  if(arenaType==="expanded"){
+    return `<svg viewBox="0 -50 1000 700" preserveAspectRatio="xMidYMid meet"><circle cx="500" cy="300" r="320" fill="rgba(59,130,246,0.1)" stroke="#3b82f6" stroke-width="2" opacity="0.8"/><circle cx="500" cy="300" r="255" fill="rgba(34,197,94,0.1)" stroke="#22c55e" stroke-width="2" opacity="0.8"/><circle cx="500" cy="300" r="190" fill="rgba(234,179,8,0.1)" stroke="#eab308" stroke-width="2" opacity="0.8"/><circle cx="500" cy="300" r="125" fill="rgba(249,115,22,0.1)" stroke="#f97316" stroke-width="2" opacity="0.8"/><circle cx="500" cy="300" r="55" fill="rgba(239,68,68,0.3)" stroke="#ef4444" stroke-width="4"/><text x="500" y="305" fill="#fff" style="font-weight:bold;font-family:sans-serif;font-size:14px;text-shadow:0 0 4px #000;" text-anchor="middle">ENGAGED</text><text x="500" y="212" fill="#fff" style="font-weight:bold;font-family:sans-serif;font-size:12px;text-shadow:0 0 4px #000;" text-anchor="middle">SHORT</text><text x="500" y="146" fill="#fff" style="font-weight:bold;font-family:sans-serif;font-size:12px;text-shadow:0 0 4px #000;" text-anchor="middle">MEDIUM</text><text x="500" y="80" fill="#fff" style="font-weight:bold;font-family:sans-serif;font-size:12px;text-shadow:0 0 4px #000;" text-anchor="middle">LONG</text><text x="500" y="14" fill="#fff" style="font-weight:bold;font-family:sans-serif;font-size:12px;text-shadow:0 0 4px #000;" text-anchor="middle">EXTREME</text><g stroke="#000" stroke-width="2" opacity="0.5"><line x1="500" y1="50" x2="500" y2="10" transform="rotate(0 500 300)"/><line x1="500" y1="50" x2="500" y2="10" transform="rotate(30 500 300)"/><line x1="500" y1="50" x2="500" y2="10" transform="rotate(60 500 300)"/><line x1="500" y1="50" x2="500" y2="10" transform="rotate(90 500 300)"/><line x1="500" y1="50" x2="500" y2="10" transform="rotate(120 500 300)"/><line x1="500" y1="50" x2="500" y2="10" transform="rotate(150 500 300)"/><line x1="500" y1="50" x2="500" y2="10" transform="rotate(180 500 300)"/><line x1="500" y1="50" x2="500" y2="10" transform="rotate(210 500 300)"/><line x1="500" y1="50" x2="500" y2="10" transform="rotate(240 500 300)"/><line x1="500" y1="50" x2="500" y2="10" transform="rotate(270 500 300)"/><line x1="500" y1="50" x2="500" y2="10" transform="rotate(300 500 300)"/><line x1="500" y1="50" x2="500" y2="10" transform="rotate(330 500 300)"/></g></svg>`;
+  }
+  if(arenaType==="ladder"){
+    return `<svg viewBox="0 200 1000 200" preserveAspectRatio="xMidYMid meet"><rect x="50" y="250" width="900" height="100" rx="10" ry="10" fill="rgba(0,0,0,0.3)" stroke="#444" stroke-width="2"/><rect x="50" y="250" width="180" height="100" rx="10" ry="0" fill="rgba(239,68,68,0.4)"/><text x="140" y="310" fill="#fff" style="font-weight:bold;font-family:sans-serif;font-size:16px;text-shadow:0 0 4px #000;" text-anchor="middle">ENGAGED</text><rect x="230" y="250" width="180" height="100" fill="rgba(249,115,22,0.3)"/><text x="320" y="310" fill="#fff" style="font-weight:bold;font-family:sans-serif;font-size:16px;text-shadow:0 0 4px #000;" text-anchor="middle">CLOSE</text><rect x="410" y="250" width="180" height="100" fill="rgba(234,179,8,0.3)"/><text x="500" y="310" fill="#fff" style="font-weight:bold;font-family:sans-serif;font-size:16px;text-shadow:0 0 4px #000;" text-anchor="middle">NEAR</text><rect x="590" y="250" width="180" height="100" fill="rgba(34,197,94,0.3)"/><text x="680" y="310" fill="#fff" style="font-weight:bold;font-family:sans-serif;font-size:16px;text-shadow:0 0 4px #000;" text-anchor="middle">FAR</text><rect x="770" y="250" width="180" height="100" rx="0" ry="10" fill="rgba(59,130,246,0.3)"/><text x="860" y="310" fill="#fff" style="font-weight:bold;font-family:sans-serif;font-size:14px;text-shadow:0 0 4px #000;" text-anchor="middle">OUT OF RANGE</text><line x1="230" y1="250" x2="230" y2="350" stroke="#888" stroke-width="2"/><line x1="410" y1="250" x2="410" y2="350" stroke="#888" stroke-width="2"/><line x1="590" y1="250" x2="590" y2="350" stroke="#888" stroke-width="2"/><line x1="770" y1="250" x2="770" y2="350" stroke="#888" stroke-width="2"/></svg>`;
+  }
+  // isometric default
+  return `<svg viewBox="0 -50 1000 700" preserveAspectRatio="xMidYMid meet"><defs><filter id="arenaGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter><linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#fbbf24;stop-opacity:1"/><stop offset="100%" style="stop-color:#d97706;stop-opacity:1"/></linearGradient></defs><ellipse cx="500" cy="300" rx="420" ry="210" class="tom-arena-ring tom-arena-ring-90" fill="none" stroke="url(#ringGradient)" stroke-width="2" filter="url(#arenaGlow)" opacity="0.7"/><text x="500" y="60" class="tom-arena-label" text-anchor="middle">FAR</text><ellipse cx="500" cy="300" rx="180" ry="90" class="tom-arena-ring tom-arena-ring-30" fill="none" stroke="url(#ringGradient)" stroke-width="2" filter="url(#arenaGlow)" opacity="0.9"/><text x="500" y="180" class="tom-arena-label" text-anchor="middle">NEAR</text><ellipse cx="500" cy="300" rx="180" ry="90" class="tom-arena-ring tom-arena-center" fill="rgba(251,191,36,0.1)" stroke="url(#ringGradient)" stroke-width="3" filter="url(#arenaGlow)"/><text x="500" y="305" class="tom-arena-label tom-arena-label-center" text-anchor="middle">CLOSE</text></svg>`;
+}
+
+function matchesSearch(scene, q){
+  if(!q) return true;
+  q = q.toLowerCase();
+  return scene.name.toLowerCase().includes(q) || scene.background.toLowerCase().includes(q) || (scene.arenaType||"").toLowerCase().includes(q);
+}
+
+function renderGM(){
+  const body = document.getElementById("gmBody");
+  const q = (state.search||"").trim();
+  const stopBtn = document.getElementById("stopBroadcastBtn");
+  stopBtn.style.display = state.activeSceneId ? "inline-flex" : "none";
+  const clearBtn = document.getElementById("clearSearch");
+  clearBtn.style.display = q ? "inline-grid" : "none";
+
+  let html = "";
+  const visibleFolders = state.folders;
+  // folders
+  for(const folder of visibleFolders){
+    const collapsed = folder.collapsed ? " collapsed" : "";
+    const count = scenesInFolder(folder.id).filter(s=>matchesSearch(s,q)).length;
+    const total = scenesInFolder(folder.id).length;
+    html += `<div class="folder${collapsed}" data-folder-id="${folder.id}" draggable="false">
+      <div class="folder-hd" data-action="toggle-folder" data-folder-id="${folder.id}">
+        <i class="fa-solid ${folder.collapsed ? "fa-caret-right" : "fa-caret-down"}"></i>
+        <i class="fa-solid ${folder.collapsed ? "fa-folder" : "fa-folder-open"}"></i>
+        <span class="name">${esc(folder.name)}</span>
+        <span class="count">(${total})</span>
+        <span class="actions" onclick="event.stopPropagation()">
+          <button data-action="rename-folder" data-folder-id="${folder.id}" title="Rename"><i class="fa-solid fa-pen"></i></button>
+          <button class="danger" data-action="delete-folder" data-folder-id="${folder.id}" title="Delete"><i class="fa-solid fa-trash"></i></button>
+        </span>
+      </div>
+      <div class="folder-content" data-folder-id="${folder.id}">`;
+    const fScenes = state.scenes.filter(s=> (s.folderId||null)===folder.id).filter(s=>matchesSearch(s,q));
+    if(!fScenes.length){
+      html += `<div class="empty-hint" style="margin:2px">Drag scenes here</div>`;
+    } else {
+      for(const s of fScenes) html += sceneCardHTML(s);
+    }
+    html += `</div></div>`;
+  }
+  // uncategorized
+  const uncat = state.scenes.filter(s=> !s.folderId ).filter(s=>matchesSearch(s,q));
+  const hasFolders = visibleFolders.length>0;
+  if(hasFolders) html += `<div class="uncat-title">Uncategorized</div>`;
+  html += `<div class="uncat-box" data-folder-id="">`;
+  if(!uncat.length && !q) {
+    if(state.scenes.length===0) html += `<div class="empty-hint">No Scenes Created</div>`;
+    else html += `<div class="empty-hint">Drag scenes here</div>`;
+  } else if(!uncat.length && q){
+    html += `<div class="empty-hint">No matches in Uncategorized</div>`;
+  } else {
+    for(const s of uncat) html += sceneCardHTML(s);
+  }
+  html += `</div>`;
+
+  if(q && state.scenes.filter(s=>matchesSearch(s,q)).length===0){
+    html = `<div class="empty-hint">No results for “${esc(q)}”</div>` + html;
+  }
+
+  // overlay panel — only when broadcasting (inline strip, multi-select)
+  if(state.activeSceneId){
+    const curSet = new Set(state.currentOverlays||[]);
+    const cnt = curSet.size;
+    html += `<div class="overlay-panel"><div class="overlay-panel-hd"><span><i class="fa-solid fa-film"></i> Video Overlays${cnt ? ` <span style="color:#ffd84d">(${cnt})</span>` : ""}</span><span style="color:#9a9a9a; font-weight:600; font-size:11px;">multi-select — click to toggle</span></div>
+      <button class="overlay-clear" id="overlayClearBtn" ${!cnt ? "disabled" : ""}><i class="fa-solid fa-xmark"></i> Clear all${cnt ? ` (${cnt})` : ""}</button>
+      <div class="overlay-grid">`;
+    for(const ov of OVERLAYS){
+      const path = BASE_OVERLAY + ov.file;
+      const active = curSet.has(path) ? " active" : "";
+      const ext = ov.file.split(".").pop();
+      html += `<div class="overlay-item${active}" data-overlay-path="${path}"><div class="prev"><i class="fa-solid fa-play"></i></div><div><div class="label">${esc(ov.name)}</div><div class="sub">${esc(ext)} · ${esc(ov.file)}</div></div>${active ? '<span style="margin-left:auto;color:#ffd84d"><i class="fa-solid fa-check"></i></span>' : ''}</div>`;
+    }
+    html += `</div><div style="padding:0 8px 8px; font-size:11px; color:#8a8a8a;">Inline strip (while broadcasting). Pills toggle in place — multiple can be active; header shows count and <code>Clear all</code> wipes the stack. In Foundry these emit <code>overlay-set / overlay-toggle / overlay-clear</code> on <code>module.shadowdark-extras</code>. Each active overlay is its own <code>.tom-video-overlay[data-overlay-path]</code> before the arena/cast layer; <code>.mp4</code> adds <code>blend-mode: screen</code>.</div></div>`;
+  }
+
+  body.innerHTML = html;
+  bindGMEvents();
+  updateDragState();
+}
+
+function sceneCardHTML(s){
+  const active = (s.id===state.activeSceneId) ? " active" : "";
+  const isVideo = s.bgType==="video";
+  const thumb = isVideo
+    ? `<video src="${attr(s.background)}" muted loop preload="metadata"></video><span class="vid-badge"><i class="fa-solid fa-film"></i> video</span>${s.id===state.activeSceneId ? '<span class="playing"><i class="fa-solid fa-play"></i></span>' : ''}`
+    : `<img src="${attr(s.background)}" alt="" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid'"><div style="display:none; color:#777; font-size:20px;"><i class='fa-solid fa-image'></i></div>${s.id===state.activeSceneId ? '<span class="playing"><i class="fa-solid fa-play"></i></span>' : ''}`;
+  const scNum = Number.isFinite(s.arenaScale) ? s.arenaScale : 1;
+  const arenaTag = s.isArena ? `<span class="scene-tag arena">Arena · ${esc(s.arenaType)}${scNum!==1 ? ` · ${scNum}×` : ""}</span>` : "";
+  const videoTag = isVideo ? `<span class="scene-tag video">${esc(s.bgType)}</span>` : "";
+  return `<div class="scene-card${active}" data-scene-id="${s.id}" draggable="true">
+    <div class="scene-activate" data-action="broadcast" data-scene-id="${s.id}" title="Click to Broadcast">
+      <div class="scene-thumb">${thumb}</div>
+      <div class="scene-info"><div class="scene-name">${esc(s.name)}</div><div class="scene-meta">${arenaTag}${videoTag}<span class="scene-tag">${esc(s.inAnimation)} → ${esc(s.outAnimation)}</span></div></div>
+    </div>
+    <div class="scene-actions">
+      <button data-action="edit-scene" data-scene-id="${s.id}" title="Edit Scene"><i class="fa-solid fa-pen"></i></button>
+      <button class="danger" data-action="delete-scene" data-scene-id="${s.id}" title="Delete Scene"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  </div>`;
+}
+
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function attr(s){ return esc(s).replace(/'/g,"&#39;"); }
+
+function bindGMEvents(){
+  document.querySelectorAll('[data-action="toggle-folder"]').forEach(el=>{
+    el.addEventListener("click", e=>{
+      if(e.target.closest('[data-action="rename-folder"]') || e.target.closest('[data-action="delete-folder"]')) return;
+      const fid = el.dataset.folderId;
+      const f = state.folders.find(x=>x.id===fid);
+      if(f){ f.collapsed=!f.collapsed; save(); renderGM(); }
+    });
+  });
+  document.querySelectorAll('[data-action="rename-folder"]').forEach(b=>{
+    b.addEventListener("click", async e=>{
+      e.stopPropagation();
+      const fid = b.dataset.folderId;
+      const f = state.folders.find(x=>x.id===fid);
+      const nv = prompt("Rename folder", f ? f.name : "");
+      if(nv===null) return;
+      const t = nv.trim(); if(!t) return;
+      if(f){ f.name=t; save(); renderGM(); }
+    });
+  });
+  document.querySelectorAll('[data-action="delete-folder"]').forEach(b=>{
+    b.addEventListener("click", async e=>{
+      e.stopPropagation();
+      const fid = b.dataset.folderId;
+      const f = state.folders.find(x=>x.id===fid);
+      if(!f) return;
+      if(!confirm(`Delete folder "${f.name}"?\nScenes inside will become Uncategorized.`)) return;
+      state.folders = state.folders.filter(x=>x.id!==fid);
+      for(const s of state.scenes) if(s.folderId===fid) s.folderId=null;
+      save(); renderGM(); renderStage();
+    });
+  });
+  document.querySelectorAll('[data-action="broadcast"]').forEach(el=>{
+    el.addEventListener("click", ()=> broadcast(el.dataset.sceneId));
+  });
+  document.querySelectorAll('[data-action="edit-scene"]').forEach(b=>{
+    b.addEventListener("click", e=>{ e.stopPropagation(); openEditor(b.dataset.sceneId); });
+  });
+  document.querySelectorAll('[data-action="delete-scene"]').forEach(b=>{
+    b.addEventListener("click", e=>{
+      e.stopPropagation();
+      const id = b.dataset.sceneId;
+      const s = getScene(id);
+      if(!s) return;
+      if(!confirm(`Delete scene "${s.name}"?`)) return;
+      if(state.activeSceneId===id){ state.activeSceneId=null; state.currentOverlays=[]; }
+      state.scenes = state.scenes.filter(x=>x.id!==id);
+      save(); renderGM(); renderStage();
+    });
+  });
+  // overlay interactions
+  document.getElementById("overlayClearBtn")?.addEventListener("click", ()=>{
+    clearOverlays();
+  });
+  document.querySelectorAll("[data-overlay-path]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const p = el.dataset.overlayPath;
+      toggleOverlay(p);
+    });
+  });
+  // drag-drop for scenes
+  document.querySelectorAll(".scene-card").forEach(card=>{
+    card.addEventListener("dragstart", e=>{
+      dragId = card.dataset.sceneId;
+      e.dataTransfer.setData("text/plain", dragId);
+      e.dataTransfer.effectAllowed="move";
+      setTimeout(()=> card.classList.add("dragging"), 0);
+    });
+    card.addEventListener("dragend", ()=>{ card.classList.remove("dragging"); dragId=null; document.querySelectorAll(".drag-over").forEach(x=>x.classList.remove("drag-over")); });
+  });
+  document.querySelectorAll(".folder-content, .uncat-box").forEach(zone=>{
+    zone.addEventListener("dragover", e=>{ e.preventDefault(); e.dataTransfer.dropEffect="move"; zone.classList.add("drag-over"); });
+    zone.addEventListener("dragleave", e=>{ if(!zone.contains(e.relatedTarget)) zone.classList.remove("drag-over"); });
+    zone.addEventListener("drop", e=>{
+      e.preventDefault(); e.stopPropagation(); zone.classList.remove("drag-over");
+      const dragged = e.dataTransfer.getData("text/plain") || dragId;
+      if(!dragged) return;
+      const targetFolderId = zone.dataset.folderId || null;
+      const draggedScene = getScene(dragged); if(!draggedScene) return;
+      const currFolder = draggedScene.folderId || null;
+      // check if dropping onto a card for reorder
+      const targetCard = e.target.closest(".scene-card");
+      if(currFolder !== targetFolderId){
+        draggedScene.folderId = targetFolderId || null;
+      } else if(targetCard){
+        const targetId = targetCard.dataset.sceneId;
+        if(targetId!==dragged){
+          const ids = state.scenes.map(s=>s.id);
+          const di = ids.indexOf(dragged); const ti = ids.indexOf(targetId);
+          if(di!==-1 && ti!==-1){ ids.splice(di,1); ids.splice(ti,0,dragged); state.scenes = ids.map(id=> getScene(id)); }
+        }
+      }
+      save(); renderGM();
+    });
+  });
+}
+
+function updateDragState(){ /* placeholder for future scroll state */ }
+
+async function broadcast(sceneId){
+  const next = getScene(sceneId); if(!next) return;
+  const inAnim = next.inAnimation || "fade";
+  const curId = state.activeSceneId;
+  const cur = curId ? getScene(curId) : null;
+  const outAnim = cur ? (cur.outAnimation||"fade") : "fade";
+  if(curId && curId!==sceneId && outAnim!=="none"){
+    await playOutAnimation(outAnim);
+    // stage will still show cur until we switch; after out we swap
+  }
+  state.activeSceneId = sceneId;
+  // keep stacked currentOverlays (persist across nav until cleared or stop)
+  save();
+  renderGM();
+  await renderStageWithIn(inAnim);
+  renderGM(); // refresh playing indicator
+}
+
+async function stopBroadcast(){
+  const cur = state.activeSceneId ? getScene(state.activeSceneId) : null;
+  const outAnim = cur ? (cur.outAnimation||"fade") : "fade";
+  if(outAnim!=="none") await playOutAnimation(outAnim);
+  state.activeSceneId=null;
+  state.currentOverlays=[];
+  save();
+  renderGM();
+  renderStage();
+}
+
+function playOutAnimation(name){
+  return new Promise(res=>{
+    const pv = document.querySelector(".tom-player-view");
+    if(!pv || !name || name==="none") return res();
+    pv.className = pv.className.replace(/anim-(in|out)-[\w-]+/g,"").trim();
+    // force reflow
+    void pv.offsetWidth;
+    pv.classList.add(`anim-out-${name}`);
+    const onEnd = ()=>{ pv.classList.remove(`anim-out-${name}`); res(); };
+    pv.addEventListener("animationend", onEnd, {once:true});
+    // fallback timeout if animation never fires
+    setTimeout(()=>{ try{pv.classList.remove(`anim-out-${name}`);}catch(e){} res(); }, 900);
+  });
+}
+async function renderStageWithIn(inAnim){
+  renderStage();
+  // next tick so DOM exists
+  await new Promise(r=> requestAnimationFrame(()=> requestAnimationFrame(r)));
+  const pv = document.querySelector(".tom-player-view");
+  if(!pv || !inAnim || inAnim==="none") return;
+  pv.className = pv.className.replace(/anim-(in|out)-[\w-]+/g,"").trim();
+  void pv.offsetWidth;
+  pv.classList.add(`anim-in-${inAnim}`);
+  pv.addEventListener("animationend", ()=> pv.classList.remove(`anim-in-${inAnim}`), {once:true});
+}
+
+function setOverlay(path){
+  if(!path){ state.currentOverlays=[]; } else if(!state.currentOverlays.includes(path)) state.currentOverlays.push(path);
+  save();
+  renderGM();
+  renderStage();
+}
+function toggleOverlay(path){
+  const i = state.currentOverlays.indexOf(path);
+  if(i>=0) state.currentOverlays.splice(i,1); else state.currentOverlays.push(path);
+  save(); renderGM(); renderStage();
+}
+function clearOverlays(path){
+  if(path==null || path===""){
+    state.currentOverlays=[];
+  } else {
+    state.currentOverlays = state.currentOverlays.filter(p=> p!==path);
+  }
+  save(); renderGM(); renderStage();
+}
+// legacy single-store alias used by older localStorage migration paths
+function clearOverlay(){ clearOverlays(); }
+
+function renderStage(){
+  const frame = document.getElementById("stageFrame");
+  const label = document.getElementById("stageLabel");
+  const meta = document.getElementById("stageMeta");
+  const overlayCode = document.getElementById("overlayPathCode");
+  if(!state.activeSceneId){
+    label.textContent = "No broadcast";
+    meta.style.display="none";
+    overlayCode.style.display="none";
+    frame.innerHTML = `<div class="stage-placeholder"><div><div class="big"><i class="fa-solid fa-images"></i> No ToM scene broadcasting</div><div class="hint">Click a scene card's thumbnail or name in the GM library to broadcast. the inline <strong>Overlays</strong> strip appears in the GM pane — click pills to toggle, multiple can be active — use the overlay grid in the GM pane to layer looping <code>fire.webm</code>, <code>rain.webm</code>, <code>fog.webm</code>, <code>embers.mp4</code>, <code>aurora.mp4</code> etc. over the backdrop. Includes Aurora-green (aurora2.mp4). Try the Arena scenes to see the SVG ring grids.</div></div></div>`;
+    return;
+  }
+  const sc = getScene(state.activeSceneId);
+  if(!sc){
+    state.activeSceneId=null; state.currentOverlays=[]; save(); renderStage(); renderGM(); return;
+  }
+  const isVideo = sc.bgType==="video";
+  const bgMedia = isVideo
+    ? `<video class="tom-pv-bg-media" src="${attr(sc.background)}" muted loop autoplay playsinline></video>`
+    : `<img class="tom-pv-bg-media" src="${attr(sc.background)}" alt="" onerror="this.style.display='none'">`;
+  const folderName = sc.folderId ? (state.folders.find(f=>f.id===sc.folderId)?.name || "—") : "Uncategorized";
+  label.textContent = sc.name;
+  meta.style.display="inline-block";
+  meta.innerHTML = `${sc.isArena ? `<i class="fa-solid fa-swords"></i> ${esc(sc.arenaType)}` : `<i class="fa-solid fa-image"></i> ${esc(sc.bgType)}`} · <i class="fa-solid fa-folder"></i> ${esc(folderName)} · ${esc(sc.inAnimation)} → ${esc(sc.outAnimation)}`;
+
+  // stacked overlays: one div.tom-video-overlay[data-overlay-path] per active entry (insertion order)
+  const overlayHTML = (state.currentOverlays||[]).map(path=>{
+    const isMp4 = /\.mp4$/i.test(path);
+    const mime = isMp4 ? "video/mp4" : "video/webm";
+    return `<div class="tom-video-overlay${isMp4 ? " blend-mode" : ""}" data-overlay-path="${attr(path)}"><video loop autoplay muted playsinline><source src="${attr(path)}" type="${mime}"></video></div>`;
+  }).join("");
+  if((state.currentOverlays||[]).length){
+    overlayCode.style.display="inline-block";
+    overlayCode.textContent = state.currentOverlays.join("  ·  ");
+  } else {
+    overlayCode.style.display="none";
+    overlayCode.textContent="";
+  }
+
+  const arenaHTML = sc.isArena ? `<div class="tom-arena-rings" style="--arena-scale:${Number.isFinite(sc.arenaScale)?sc.arenaScale:1}">${arenaSVG(sc.arenaType)}</div>` : "";
+
+  // nav bar is folder-local, wrapping, uses next scene's inAnimation
+  const folderScenes = scenesInFolder(sc.folderId||null);
+  const navHTML = folderScenes.length>1 ? `<div class="sdx-scene-nav-bar"><button class="scene-nav-btn scene-nav-prev" data-action="prev-scene" title="Previous Scene"><i class="fa-solid fa-caret-left"></i></button><div class="scene-nav-name">${esc(sc.name)}</div><button class="scene-nav-btn scene-nav-next" data-action="next-scene" title="Next Scene"><i class="fa-solid fa-caret-right"></i></button></div>` : "";
+
+  frame.innerHTML = `<div class="tom-player-view active" data-scene-id="${attr(sc.id)}">
+    <div class="tom-pv-background">${bgMedia}</div>
+    <div class="tom-pv-overlay"></div>
+    ${overlayHTML}
+    ${arenaHTML}
+    ${navHTML}
+  </div>`;
+
+  // bind nav
+  frame.querySelector('[data-action="prev-scene"]')?.addEventListener("click", ()=> navigateScene(-1));
+  frame.querySelector('[data-action="next-scene"]')?.addEventListener("click", ()=> navigateScene(1));
+
+  // ensure videos play (autoplay may be blocked until user gesture)
+  frame.querySelectorAll("video").forEach(v=>{ v.muted=true; const p=v.play(); if(p && p.catch) p.catch(()=>{}); });
+  vlog(`stage: rendering ${sc.name} bgType=${sc.bgType} arena=${sc.isArena?sc.arenaType:"—"} overlays=${(state.currentOverlays||[]).join(",")||"none"}`);
+}
+
+async function navigateScene(dir){
+  const cur = getScene(state.activeSceneId); if(!cur) return;
+  const list = scenesInFolder(cur.folderId||null);
+  if(list.length<=1) return;
+  const idx = list.findIndex(s=> s.id===state.activeSceneId);
+  if(idx===-1) return;
+  let ni = idx + dir;
+  if(ni<0) ni = list.length-1;
+  if(ni>=list.length) ni=0;
+  const nxt = list[ni];
+  await broadcast(nxt.id);
+}
+
+function vlog(msg){ console.log(`[ToM demo] ${msg}`); }
+
+// Editor
+function clampArenaScale(v){ const n = parseFloat(v); if(!Number.isFinite(n)) return 1; return Math.min(5, Math.max(0.25, n)); }
+function updateArenaEditorVisibility(){
+  const on = document.getElementById("fIsArena").checked;
+  document.getElementById("arenaTypeWrap").style.display = on ? "block" : "none";
+  document.getElementById("arenaScaleWrap").style.display = on ? "block" : "none";
+  if(on){
+    const sc = editingId ? getScene(editingId) : null;
+    const v = clampArenaScale(sc ? sc.arenaScale : 1);
+    document.getElementById("fArenaScale").value = String(v);
+    document.getElementById("fArenaScaleNum").value = String(v);
+    syncArenaScaleUI(v);
+  }
+  renderEditorPreview();
+}
+function syncArenaScaleUI(v){
+  const n = clampArenaScale(v);
+  const pct = Math.round(n*100);
+  document.getElementById("fScaleLabel").textContent = `${n}× (${pct}%)`;
+}
+function openEditor(id){
+  editingId = id || null;
+  const sc = id ? getScene(id) : null;
+  const isCreate = !sc;
+  document.getElementById("editorTitle").textContent = isCreate ? "Create New Scene" : "Edit Scene";
+  document.getElementById("fName").value = sc ? sc.name : "New Scene";
+  document.getElementById("fBg").value = sc ? sc.background : DEFAULT_BG;
+  document.getElementById("fIsArena").checked = sc ? !!sc.isArena : false;
+  document.getElementById("fArenaType").value = sc ? sc.arenaType : "isometric";
+  updateArenaEditorVisibility();
+  const inSel = document.getElementById("fIn"), outSel=document.getElementById("fOut");
+  inSel.innerHTML = ANIMATIONS.map(([v,l])=> `<option value="${v}" ${ (sc?sc.inAnimation:"fade")===v?"selected":""}>${l}</option>`).join("");
+  outSel.innerHTML = ANIMATIONS.map(([v,l])=> `<option value="${v}" ${ (sc?sc.outAnimation:"fade")===v?"selected":""}>${l}</option>`).join("");
+  renderEditorPreview();
+  document.getElementById("editorBackdrop").classList.add("open");
+  document.getElementById("editorBackdrop").setAttribute("aria-hidden","false");
+}
+function closeEditor(){ document.getElementById("editorBackdrop").classList.remove("open"); document.getElementById("editorBackdrop").setAttribute("aria-hidden","true"); editingId=null; }
+function renderEditorPreview(){
+  const bg = document.getElementById("fBg").value.trim() || DEFAULT_BG;
+  const isV = isVideoPath(bg);
+  const isArena = document.getElementById("fIsArena").checked;
+  const arenaType = document.getElementById("fArenaType").value;
+  const scale = clampArenaScale(document.getElementById("fArenaScale")?.value ?? 1);
+  const wrap = document.getElementById("editorPreview");
+  const arenaOverlay = isArena && arenaType !== "none" ? `<div class="tom-arena-rings" style="position:absolute; inset:0; display:grid; place-items:center; pointer-events:none; overflow:hidden;">${arenaSVG(arenaType)}</div>` : "";
+  const scaledArena = arenaOverlay ? `<div style="position:absolute; inset:0; display:grid; place-items:center; pointer-events:none;"><div style="width:92%; height:auto; transform: scale(${scale}); transform-origin:center;">${arenaSVG(arenaType)}</div></div>` : "";
+  const media = isV ? `<video src="${attr(bg)}" muted loop autoplay playsinline style="width:100%;height:100%;object-fit:cover"></video>` : (bg ? `<img src="${attr(bg)}" alt="preview" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='<div class=\\'ph\\'><i class=\\'fa-solid fa-image\\'></i> Not found<br><small style=color:#666; word-break:break-all;'>+esc(bg)+'</small></div>'">` : "");
+  if(media || arenaOverlay){
+    // Centered like the real editor: media fills, arena sits on top scaled
+    wrap.style.position = "relative";
+    wrap.style.display = "block";
+    wrap.innerHTML = `<div style="position:absolute; inset:0;">${media}</div>${arenaOverlay ? scaledArena : ""}<div style="position:absolute; left:8px; top:8px; background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.18); padding:3px 6px; border-radius:6px; font-size:11px; color:#ddd;">${scale}× (${Math.round(scale*100)}%)</div>`;
+    if(isArena) syncArenaScaleUI(scale);
+  } else {
+    wrap.style.position = "";
+    wrap.innerHTML = `<div class="ph"><i class="fa-solid fa-image"></i> No image selected</div>`;
+  }
+  const v = wrap.querySelector("video"); if(v){ v.muted=true; const p=v.play(); if(p&&p.catch) p.catch(()=>{}); }
+}
+function saveEditor(){
+  const name = document.getElementById("fName").value.trim() || "New Scene";
+  const bg = document.getElementById("fBg").value.trim() || DEFAULT_BG;
+  const isArena = document.getElementById("fIsArena").checked;
+  const arenaType = document.getElementById("fArenaType").value;
+  const arenaScale = clampArenaScale(document.getElementById("fArenaScale")?.value ?? 1);
+  const inA = document.getElementById("fIn").value;
+  const outA = document.getElementById("fOut").value;
+  const bgType = isVideoPath(bg) ? "video" : "image";
+  if(editingId){
+    const sc = getScene(editingId); if(!sc) return;
+    Object.assign(sc, { name, background:bg, bgType, isArena, arenaType, arenaScale, inAnimation:inA, outAnimation:outA });
+  } else {
+    const folderId = state.folders[0]?.id || null;
+    const sc = { id: rid(), name, background:bg, bgType, isArena, arenaType, arenaScale, inAnimation:inA, outAnimation:outA, folderId };
+    state.scenes.push(sc);
+  }
+  save(); renderGM(); renderStage(); closeEditor();
+}
+
+// wiring
+document.getElementById("createSceneBtn").addEventListener("click", ()=> openEditor(null));
+document.getElementById("createFolderBtn").addEventListener("click", ()=>{
+  const name = prompt("Create Folder", "New Folder");
+  if(name===null) return; const t=name.trim(); if(!t) return;
+  state.folders.push({ id: rid(), name:t, collapsed:false }); save(); renderGM();
+});
+document.getElementById("stopBroadcastBtn").addEventListener("click", stopBroadcast);
+document.getElementById("searchInput").addEventListener("input", e=>{ state.search = e.target.value; renderGM(); });
+document.getElementById("clearSearch").addEventListener("click", ()=>{ state.search=""; document.getElementById("searchInput").value=""; renderGM(); });
+document.getElementById("editorClose").addEventListener("click", closeEditor);
+document.getElementById("editorCancel").addEventListener("click", closeEditor);
+document.getElementById("editorBackdrop").addEventListener("click", e=>{ if(e.target===e.currentTarget) closeEditor(); });
+document.getElementById("editorSave").addEventListener("click", saveEditor);
+document.getElementById("fBg").addEventListener("input", renderEditorPreview);
+document.getElementById("fArenaType").addEventListener("change", renderEditorPreview);
+document.getElementById("fArenaScale").addEventListener("input", e=>{ syncArenaScaleUI(e.target.value); document.getElementById("fArenaScaleNum").value = e.target.value; renderEditorPreview(); });
+document.getElementById("fArenaScaleNum").addEventListener("input", e=>{ const v = clampArenaScale(e.target.value); document.getElementById("fArenaScale").value = String(v); syncArenaScaleUI(v); renderEditorPreview(); });
+document.getElementById("fIsArena").addEventListener("change", updateArenaEditorVisibility);
+document.getElementById("pickFileBtn").addEventListener("click", ()=> document.getElementById("fileInput").click());
+document.getElementById("fileInput").addEventListener("change", e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const reader=new FileReader();
+  reader.onload = ()=>{ document.getElementById("fBg").value = reader.result; renderEditorPreview(); };
+  reader.readAsDataURL(f);
+});
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && document.getElementById("editorBackdrop").classList.contains("open")) closeEditor(); });
+document.getElementById("resetBtn").addEventListener("click", ()=>{
+  if(!confirm("Reset Theater of the Mind demo data? This clears localStorage for this demo.")) return;
+  localStorage.removeItem(LS_SCENES); localStorage.removeItem(LS_FOLDERS); localStorage.removeItem(LS_ACTIVE); localStorage.removeItem(LS_OVERLAY);
+  load(); renderGM(); renderStage();
+});
+
+// init
+load();
+renderGM();
+renderStage();
+vlog("ready — real stylesheets: ../../styles/tom.css + tom-theme.css + scene-nav-bar.css · overlays: 21 · animations: 10");
+</script>
+</body>
+</html>

@@ -1,5 +1,3 @@
-
-
 import {
 	getViewMode,
 	selectPartyTokens,
@@ -16,6 +14,7 @@ import { DungeonBindings } from "./dungeon-bindings.mjs";
 import { TomSceneBindings } from "./tom-scene-bindings.mjs";
 import { PinListBindings } from "./pin-list-bindings.mjs";
 
+import { TOM_OVERLAYS, TOM_OVERLAY_BASE } from "../tom/TomOverlays.mjs";
 import { enablePainting, disablePainting, isTintEnabled, getPoiScale, enablePreview, disablePreview, getActiveTileTab, setDecorMode } from "../hex/HexPainterSD.mjs";
 import { enableDungeonPainting, disableDungeonPainting } from "../dungeon/DungeonPainterSD.mjs";
 import { isGeneratorExpanded, getGeneratorSeed, getGeneratorSettings } from "../dungeon/DungeonGeneratorSD.mjs";
@@ -27,9 +26,7 @@ import { isSoloMode } from "../hex/SoloHexMode.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-
 Hooks.on("sdx.decorAssetsImported", () => renderTray());
-
 
 export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	static DEFAULT_OPTIONS = {
@@ -44,7 +41,6 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			positioned: false,
 		},
 	};
-
 	static PARTS = {
 		main: {
 			template: "modules/shadowdark-extras/templates/sdx-tray/tray.hbs",
@@ -53,7 +49,6 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 	// Static instance reference for easy access
 	static _instance = null;
-
 	constructor(data = {}, options = {}) {
 		super(options);
 		this.trayData = data;
@@ -61,11 +56,11 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		this._pinSearchTerm = "";
 		this._scrollPositions = {}; // Store scroll positions for tile grids
 		this._generatorExpanded = false; // Store procedural generator panel state
+		this._tomOverlaysCollapsed = false;
 
 		// Store static reference
 		TrayApp._instance = this;
 	}
-
 	/**
      * Update the tray data and re-render
      * @param {Object} data - Tray data
@@ -75,47 +70,40 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		this.trayData = data;
 		this.render();
 	}
-
 	/**
      * Save scroll positions of tile grids and other UI state
      */
 	_saveScrollPositions() {
 		return saveTrayScrollPositions(this);
 	}
-
 	/**
      * Restore scroll positions of tile grids and other UI state
      */
 	_restoreScrollPositions() {
 		return restoreTrayScrollPositions(this);
 	}
-
 	/**
      * Toggle expanded state
      */
 	toggleExpanded() {
 		this._isExpanded = !this._isExpanded;
 		this._applyExpandedState();
-
-		// Close Tom panels if open (they're positioned relative to handle)
+		// Close Tom panels if open (they're positioned off the handle/content)
 		document.querySelector(".tom-scene-switcher-panel")?.remove();
 		document.querySelector(".tom-cast-manager-panel")?.remove();
 		document.querySelector(".tom-overlay-manager-panel")?.remove();
 	}
-
 	/**
      * Set expanded state
      */
 	setExpanded(expanded) {
 		this._isExpanded = expanded;
 		this._applyExpandedState();
-
 		// Close Tom panels if open
 		document.querySelector(".tom-scene-switcher-panel")?.remove();
 		document.querySelector(".tom-cast-manager-panel")?.remove();
 		document.querySelector(".tom-overlay-manager-panel")?.remove();
 	}
-
 	/**
      * Apply the expanded state to the DOM
      */
@@ -131,7 +119,6 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				icon.classList.toggle("fa-chevron-left", this._isExpanded);
 			}
 		}
-
 		const viewMode = getViewMode();
 
 		if (this._isExpanded && viewMode === "hexes") {
@@ -161,7 +148,6 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		this._syncPoiSortPanel();
 	}
-
 	/**
      * Sync the POI Tile Sort panel visibility based on current mode
      */
@@ -175,7 +161,6 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (isPoiMode) PoiTileSortApp.show();
 		else PoiTileSortApp.hide();
 	}
-
 	/**
      * Check if tray is expanded
      * @returns {boolean}
@@ -183,21 +168,35 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	isExpanded() {
 		return this._isExpanded;
 	}
-
 	/**
      * Prepare context data for the template
      */
 	async _prepareContext(options) {
 		// Tom Broadcast State
 		let activeSceneId = null;
+		let currentOverlays = [];
 		try {
 			const { TomStore } = await import("../tom/TomStore.mjs");
 			activeSceneId = TomStore.activeSceneId || null;
+			// Prefer new array, fall back to legacy single string via getter
+			currentOverlays = TomStore.currentOverlays?.length ? [...TomStore.currentOverlays] : (TomStore.currentOverlay ? [TomStore.currentOverlay] : []);
 		}
 		catch(err) {
-			// Ignore
+			// Ignore — TomStore not ready yet (tests/harness)
 		}
 		this._tomActiveSceneId = activeSceneId;
+
+		// Derive overlay options inline for the Scenes tab (no handle button).
+		// Same source as the old floating manager — now rendered as part of
+		// the scenes-view so it lives where scenes live.
+		const tomActiveSet = new Set(currentOverlays);
+		const tomOverlayOptions = TOM_OVERLAYS.map(o => {
+			const path = `${TOM_OVERLAY_BASE}${o.file}`;
+			return { name: o.name, path, active: tomActiveSet.has(path) };
+		});
+		const tomCurrentOverlay = currentOverlays[0] ?? null;
+		const tomCurrentOverlays = currentOverlays;
+		const tomOverlayCount = currentOverlays.length;
 
 		// Calculate POI scale percentage for display
 		const poiScale = getPoiScale();
@@ -209,7 +208,11 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			viewMode: getViewMode(),
 			pinSearchTerm: this._pinSearchTerm,
 			tomActiveSceneId: activeSceneId,
-			showTomOverlays: !!activeSceneId,
+			tomCurrentOverlay,
+			tomCurrentOverlays,
+			tomOverlayCount,
+			tomOverlayOptions,
+			tomOverlaysCollapsed: this._tomOverlaysCollapsed,
 			tomScenes: await this._getTomScenes(),
 			tomFolders: await this._getTomFolders(),
 			tintEnabled: isTintEnabled(),
@@ -224,7 +227,6 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			soloModeActive: isSoloMode(),
 		};
 	}
-
 	/**
      * Get list of sections from TomStore
      */
@@ -245,7 +247,6 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			return [];
 		}
 	}
-
 	/**
      * Get folder data from TomStore, with scenes grouped inside each folder
      * @returns {Array} Array of { id, name, collapsed, scenes: [] }
@@ -271,7 +272,6 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		}
 	}
 
-
 	/**
      * Attach event listeners after render
      */
@@ -284,11 +284,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (!elem) return;
 
 		this._bindHandleButtons(elem);
-
 		this._bindDungeonEvents(elem);
-
 		this._bindTomSceneEvents(elem);
-
 		// Select party button
 		elem.querySelector('[data-action="select-party"]')?.addEventListener("click", e => {
 			e.preventDefault();
@@ -309,7 +306,6 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		this._bindPinListEvents(elem);
-
 		// Hex Painter tab bindings
 		this._bindHexPainterEvents(elem);
 	}

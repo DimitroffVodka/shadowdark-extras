@@ -40,6 +40,11 @@ export function saveTrayScrollPositions(app) {
 	if (generatorControls) {
 		app._generatorExpanded = !generatorControls.classList.contains("hidden");
 	}
+
+	const tomList = elem.querySelector(".tom-overlays-inline-list");
+	if (tomList) {
+		app._scrollPositions["tom-overlays-inline-list"] = tomList.scrollTop;
+	}
 }
 
 /**
@@ -80,5 +85,10 @@ export function restoreTrayScrollPositions(app) {
 	const generatorControls = elem.querySelector(".hex-generator-controls");
 	if (generatorControls && app._generatorExpanded) {
 		generatorControls.classList.remove("hidden");
+	}
+
+	const tomListRestore = elem.querySelector(".tom-overlays-inline-list");
+	if (tomListRestore && app._scrollPositions["tom-overlays-inline-list"] !== undefined) {
+		tomListRestore.scrollTop = app._scrollPositions["tom-overlays-inline-list"];
 	}
 }

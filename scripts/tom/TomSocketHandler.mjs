@@ -56,7 +56,13 @@ export class TomSocketHandler {
 				this._onOverlaySet(payload.data);
 				break;
 			case "overlay-clear":
-				this._onOverlayClear();
+				this._onOverlayClear(payload.data);
+				break;
+			case "overlay-toggle":
+				this._onOverlayToggle(payload.data);
+				break;
+			case "overlay-add":
+				this._onOverlaySet(payload.data);
 				break;
 			case "arena-ruler-update":
 				this._onArenaRulerUpdate(payload.data);
@@ -86,8 +92,8 @@ export class TomSocketHandler {
 		const { outAnimation } = data;
 		await TomPlayerView.deactivate(outAnimation || "fade");
 		Store.clearActiveScene();
-		this._removeOverlayElement();
-		Store.currentOverlay = null;
+		this._removeAllOverlays();
+		Store.currentOverlays = [];
 		game.user.isGM && this._hideTraySceneSwitcher();
 		game.user.isGM && this._hideSceneNavBar();
 	}
@@ -101,7 +107,6 @@ export class TomSocketHandler {
 			trayApp.render();
 		});
 	}
-
 
 	static _hideTraySceneSwitcher() {
 		import("../tray/TrayApp.mjs").then(({ TrayApp }) => {
@@ -144,6 +149,7 @@ export class TomSocketHandler {
 			type: "stop-broadcast",
 			data: { outAnimation },
 		});
+
 		this._onStopBroadcast({ outAnimation });
 	}
 
@@ -177,6 +183,7 @@ export class TomSocketHandler {
 			type: "arena-token-spawn",
 			data,
 		});
+
 		this._onArenaTokenSpawn(data);
 	}
 
@@ -194,6 +201,7 @@ export class TomSocketHandler {
 			type: "arena-token-remove",
 			data,
 		});
+
 		this._onArenaTokenRemove(data);
 	}
 
@@ -202,6 +210,7 @@ export class TomSocketHandler {
 			type: "arena-token-hp-update",
 			data,
 		});
+
 		this._onArenaTokenHpUpdate(data);
 	}
 
@@ -210,6 +219,7 @@ export class TomSocketHandler {
 			type: "arena-token-conditions-update",
 			data,
 		});
+
 		this._onArenaTokenConditionsUpdate(data);
 	}
 
@@ -223,6 +233,7 @@ export class TomSocketHandler {
 			type: "arena-token-compact-toggle",
 			data,
 		});
+
 		// Note: local update already done in click handler, so we don't call _onArenaTokenCompactToggle here
 	}
 
@@ -247,6 +258,7 @@ export class TomSocketHandler {
 			type: "arena-asset-spawn",
 			data,
 		});
+
 		this._onArenaAssetSpawn(data);
 	}
 
@@ -256,6 +268,7 @@ export class TomSocketHandler {
 			data,
 		});
 
+		this._onArenaAssetMove(data);
 	}
 
 	static emitArenaAssetResize(data) {
@@ -264,6 +277,7 @@ export class TomSocketHandler {
 			data,
 		});
 
+		this._onArenaAssetResize(data);
 	}
 
 	static emitArenaAssetRemove(data) {
@@ -271,6 +285,7 @@ export class TomSocketHandler {
 			type: "arena-asset-remove",
 			data,
 		});
+
 		this._onArenaAssetRemove(data);
 	}
 
@@ -290,23 +305,19 @@ export class TomSocketHandler {
 
 		setTimeout(() => {
 
-			this._removeOverlayElement();
-			Store.currentOverlay = null;
-
+			this._removeAllOverlays();
+			Store.currentOverlays = [];
 
 			Store.setActiveScene(sceneId);
 			TomPlayerView.activate(sceneId);
-
 
 			if (game.user.isGM) {
 				this._updateTraySceneSwitcher(sceneId);
 				this._showSceneNavBar(sceneId);
 			}
 
-
 			setTimeout(() => {
 				overlay.classList.remove("active");
-
 
 				setTimeout(() => {
 					overlay.remove();
@@ -328,66 +339,103 @@ export class TomSocketHandler {
 		this._onSceneFadeTransition({ sceneId });
 	}
 
+	// ── Overlays (multi-select) ─────────────────────────────────────
 
+	/** Add a single overlay (idempotent). Used for additive clicks. */
 	static _onOverlaySet(data) {
 		const { overlayPath } = data;
+		if (!overlayPath) return;
+		if (Store.currentOverlays.includes(overlayPath)) return;
 
+		this._addOverlayElement(overlayPath);
+		Store.currentOverlays = [...Store.currentOverlays, overlayPath];
+		Hooks.callAll("sdx.tomOverlayChanged", [...Store.currentOverlays]);
+	}
 
-		this._removeOverlayElement();
+	/** Toggle a single overlay on/off. */
+	static _onOverlayToggle(data) {
+		const { overlayPath } = data;
+		if (!overlayPath) return;
+		if (Store.currentOverlays.includes(overlayPath)) {
+			this._removeOverlayElementForPath(overlayPath);
+			Store.currentOverlays = Store.currentOverlays.filter(p => p !== overlayPath);
+		}
+ else {
+			this._addOverlayElement(overlayPath);
+			Store.currentOverlays = [...Store.currentOverlays, overlayPath];
+		}
+		Hooks.callAll("sdx.tomOverlayChanged", [...Store.currentOverlays]);
+	}
 
+	/** Clear one overlay (data.overlayPath) or all (no path). */
+	static _onOverlayClear(data = {}) {
+		const { overlayPath } = data ?? {};
+		if (overlayPath) {
+			this._removeOverlayElementForPath(overlayPath);
+			Store.currentOverlays = Store.currentOverlays.filter(p => p !== overlayPath);
+		}
+ else {
+			this._removeAllOverlays();
+			Store.currentOverlays = [];
+		}
+		Hooks.callAll("sdx.tomOverlayChanged", [...Store.currentOverlays]);
+	}
 
+	static _addOverlayElement(overlayPath) {
 		const playerView = document.querySelector(".tom-player-view");
 		if (!playerView) return;
-
 
 		const extension = overlayPath.split(".").pop().toLowerCase();
 		const mimeType = extension === "mp4" ? "video/mp4" : "video/webm";
 		const isMp4 = extension === "mp4";
 
 
+		if (playerView.querySelector(`.tom-video-overlay[data-overlay-path="${CSS.escape(overlayPath)}"]`)) return;
 
 		const overlay = document.createElement("div");
 		overlay.className = `tom-video-overlay ${isMp4 ? "blend-mode" : ""}`;
+		overlay.dataset.overlayPath = overlayPath;
 		overlay.innerHTML = `
       <video loop autoplay muted playsinline disablepictureinpicture>
         <source src="${overlayPath}" type="${mimeType}">
       </video>
     `;
 
+		// Insert just before arena assets/tokens so overlays sit over the
+		// background but under the interactive arena layer. Order among
+		// overlays is insertion order, which matches Store.currentOverlays.
 
-		const arenaRings = playerView.querySelector(".tom-arena-rings");
+		const arenaTokens = playerView.querySelector(".tom-arena-tokens");
 		const arenaAssets = playerView.querySelector(".tom-arena-assets");
+		const arenaRings = playerView.querySelector(".tom-arena-rings");
 		const castLayer = playerView.querySelector(".tom-pv-cast");
-
-		if (arenaAssets) {
-			playerView.insertBefore(overlay, arenaAssets);
-		}
-		else if (arenaRings) {
-			playerView.insertBefore(overlay, arenaRings);
-		}
-		else if (castLayer) {
-			playerView.insertBefore(overlay, castLayer);
-		}
-		else {
-			playerView.appendChild(overlay);
-		}
-
-
-		Store.currentOverlay = overlayPath;
+		if (arenaTokens) playerView.insertBefore(overlay, arenaTokens);
+		else if (arenaAssets) playerView.insertBefore(overlay, arenaAssets);
+		else if (arenaRings) playerView.insertBefore(overlay, arenaRings);
+		else if (castLayer) playerView.insertBefore(overlay, castLayer);
+		else playerView.appendChild(overlay);
 	}
 
-
-	static _onOverlayClear() {
-		this._removeOverlayElement();
-		Store.currentOverlay = null;
+	static _removeOverlayElementForPath(overlayPath) {
+		if (!overlayPath) return;
+		try {
+			const esc = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(overlayPath) : overlayPath.replace(/"/g, "\\\"");
+			document.querySelector(`.tom-video-overlay[data-overlay-path="${esc}"]`)?.remove();
+		}
+ catch {
+			// fallback: remove any matching by dataset scan
+			for (const el of document.querySelectorAll(".tom-video-overlay")) {
+				if (el.dataset.overlayPath === overlayPath) el.remove();
+			}
+		}
 	}
 
-
-	static _removeOverlayElement() {
-		const existing = document.querySelector(".tom-video-overlay");
-		if (existing) existing.remove();
+	static _removeAllOverlays() {
+		for (const el of document.querySelectorAll(".tom-video-overlay")) el.remove();
 	}
 
+	/** Back-compat alias: single-overlay callers used this name. */
+	static _removeOverlayElement() { return this._removeAllOverlays(); }
 
 	static emitOverlaySet(overlayPath) {
 		if (!game.user.isGM) return;
@@ -401,17 +449,40 @@ export class TomSocketHandler {
 		this._onOverlaySet({ overlayPath });
 	}
 
-
-	static emitOverlayClear() {
+	static emitOverlayToggle(overlayPath) {
 		if (!game.user.isGM) return;
 
-		console.log(`${CONFIG.MODULE_NAME} | Socket Message Emitted: overlay-clear`);
+		console.log(`${CONFIG.MODULE_NAME} | Socket Message Emitted: overlay-toggle`, { overlayPath });
 		game.socket.emit(CONFIG.SOCKET_NAME, {
-			type: "overlay-clear",
-			data: {},
+			type: "overlay-toggle",
+			data: { overlayPath },
 		});
 
-		this._onOverlayClear();
+		this._onOverlayToggle({ overlayPath });
+	}
+
+	static emitOverlayClear(overlayPath = null) {
+		if (!game.user.isGM) return;
+
+		if (overlayPath) {
+			console.log(`${CONFIG.MODULE_NAME} | Socket Message Emitted: overlay-clear`, { overlayPath });
+			game.socket.emit(CONFIG.SOCKET_NAME, {
+				type: "overlay-clear",
+				data: { overlayPath },
+			});
+
+			this._onOverlayClear({ overlayPath });
+		}
+ else {
+
+			console.log(`${CONFIG.MODULE_NAME} | Socket Message Emitted: overlay-clear (all)`);
+			game.socket.emit(CONFIG.SOCKET_NAME, {
+				type: "overlay-clear",
+				data: {},
+			});
+
+			this._onOverlayClear({});
+		}
 	}
 
 	static _onArenaRulerUpdate(data) {
@@ -421,13 +492,12 @@ export class TomSocketHandler {
 		TomPlayerView.showRemoteRuler({ userId, userName, startX, startY, endX, endY, distance, isGreen });
 	}
 
-
 	static _onArenaRulerHide(data) {
 		const { userId } = data;
+
 		if (userId === game.user.id) return;
 		TomPlayerView.hideRemoteRuler(userId);
 	}
-
 
 	static emitArenaRulerUpdate(data) {
 		game.socket.emit(CONFIG.SOCKET_NAME, {

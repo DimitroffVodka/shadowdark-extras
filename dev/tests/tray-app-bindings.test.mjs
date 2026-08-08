@@ -153,7 +153,6 @@ const BINDINGS = [
 	".sdx-tray .tray-handle-button-tool[data-action='sdx-maphub-launcher'] :: click",
 	".sdx-tray .tray-handle-button-tool[data-action='sdx-roller'] :: click",
 	".sdx-tray .tray-handle-button-tool[data-action='sdx-solo-mode'] :: click",
-	".sdx-tray .tray-handle-button-tool[data-action='tom-overlay-manager'] :: click",
 	".sdx-tray .tray-handle-button-tool[data-action='tom-scene-switcher'] :: click",
 	".sdx-tray .tray-handle-button-viewcycle :: click",
 	".sdx-tray .tray-tab-button[0] :: click",
@@ -165,6 +164,10 @@ const BINDINGS = [
 	".sdx-tray [data-action='rename-folder'][0] :: click",
 	".sdx-tray [data-action='stop-broadcast'] :: click",
 	".sdx-tray [data-action='toggle-folder'][0] :: click",
+	".sdx-tray [data-action='tom-overlay-clear'] :: click",
+	".sdx-tray [data-action='tom-overlay-set'][0] :: click",
+	".sdx-tray [data-action='tom-overlay-toggle'][0] :: click",
+	".sdx-tray [data-action='tom-overlays-toggle'] :: click",
 ];
 
 test("a render binds exactly this set of selectors and events", () => {

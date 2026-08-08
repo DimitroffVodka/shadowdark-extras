@@ -44,6 +44,51 @@ export const TomSceneBindings = {
 			TomSocketHandler.emitStopBroadcast(outAnimation);
 		});
 
+		// Inlined Overlay Controls — multi-select toggle.
+		// Each item toggles itself; Clear removes all. Header toggles collapse.
+		elem.querySelector("[data-action='tom-overlays-toggle']")?.addEventListener("click", e => {
+			// Clear click must not toggle the section.
+			if (e.target.closest("[data-action='tom-overlay-clear']")) return;
+			e.preventDefault();
+			this._tomOverlaysCollapsed = !this._tomOverlaysCollapsed;
+			this.render();
+		});
+		// Clear all must not bubble to the toggle handler above.
+		elem.querySelector("[data-action='tom-overlay-clear']")?.addEventListener("click", async e => {
+			e.preventDefault();
+			e.stopPropagation();
+			const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
+			TomSocketHandler.emitOverlayClear();
+			// Optimistic UI: dim until TomStore propagates
+			e.currentTarget?.classList.add("disabled");
+			if (e.currentTarget && "disabled" in e.currentTarget) e.currentTarget.disabled = true;
+		});
+		elem.querySelectorAll("[data-action='tom-overlay-toggle']").forEach(btn => {
+			btn.addEventListener("click", async e => {
+				e.preventDefault();
+				const path = e.currentTarget?.dataset?.overlayPath
+					|| btn.dataset.overlayPath
+					|| e.currentTarget?.getAttribute?.("data-overlay-path");
+				if (!path) return;
+				const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
+				TomSocketHandler.emitOverlayToggle(path);
+			});
+		});
+		// Back-compat: old tray dom used tom-overlay-set as a single-select
+		// click. Keep it working (adds without removing) so stale docs/tests
+		// don't break — map to the same toggle for now.
+		elem.querySelectorAll("[data-action='tom-overlay-set']").forEach(btn => {
+			btn.addEventListener("click", async e => {
+				e.preventDefault();
+				const path = e.currentTarget?.dataset?.overlayPath
+					|| btn.dataset.overlayPath
+					|| e.currentTarget?.getAttribute?.("data-overlay-path");
+				if (!path) return;
+				const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
+				TomSocketHandler.emitOverlayToggle(path);
+			});
+		});
+
 		// Folder Actions
 		elem.querySelectorAll("[data-action='toggle-folder']").forEach(header => {
 			header.addEventListener("click", async e => {
@@ -180,7 +225,7 @@ export const TomSceneBindings = {
 				if (confirmed) {
 					const { TomStore } = await import("../tom/TomStore.mjs");
 					TomStore.deleteItem(sceneId, "scene");
-					ui.notifications.info(`Scene "${sceneName}" deleted.`);
+					ui.notifications.info(`Scene \"${sceneName}\" deleted.`);
 				}
 			});
 
