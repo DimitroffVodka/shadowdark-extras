@@ -1,0 +1,1576 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Journal Pins — Shadowdark Extras · Demo</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<link rel="stylesheet" href="../../styles/journal-pins.css">
+<link rel="stylesheet" href="../../styles/pin-style-editor.css">
+<style>
+  :root { --demo-bg:#0f0f0f; --demo-panel:#161616; --demo-border:#2a2a2a; --demo-text:#e8e8e8; --demo-muted:#9a9a9a; --demo-accent:#d4a843; --gold:#c9aa58; }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--demo-bg);color:var(--demo-text);font-family:"Signika",system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  a{color:var(--demo-accent)}
+  .demo-banner{background:#1a1a00;border-bottom:1px solid #4a4000;color:#ffec8b;text-align:center;padding:8px 16px;font-size:13px;line-height:1.45}
+  .demo-banner strong{color:#fff4a0}
+  .demo-banner code{background:#2a2a00;border:1px solid #4a4000;padding:1px 5px;border-radius:4px;color:#ffec8b}
+  .demo-header{display:flex;align-items:center;gap:16px;padding:12px 16px;border-bottom:1px solid var(--demo-border);background:#111;flex-wrap:wrap}
+  .demo-header h1{margin:0;font-size:16px;letter-spacing:.3px;font-weight:800}
+  .demo-header h1 span{color:var(--demo-accent)}
+  .demo-header .sub{font-size:12px;color:var(--demo-muted);margin-left:6px;font-weight:500}
+  .demo-header .links{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .demo-header .links a{font-size:12px;text-decoration:none;border:1px solid var(--demo-border);padding:6px 10px;border-radius:6px;background:#1a1a1a;color:#ddd}
+  .demo-header .links a:hover{background:#222}
+  #resetBtn{border:1px solid #3a2f1a;background:#221d0a;color:#e8d8a0;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700}
+  #resetBtn:hover{background:#2e2812}
+  .demo-layout{display:flex;min-height:calc(100vh - 92px)}
+  @media(max-width:1080px){.demo-layout{flex-direction:column}}
+  /* GM pane */
+  .gm-pane{width:420px;min-width:340px;background:var(--demo-panel);border-right:1px solid var(--demo-border);display:flex;flex-direction:column;overflow:hidden}
+  @media(max-width:1080px){.gm-pane{width:100%;border-right:none;border-bottom:1px solid var(--demo-border)}}
+  .gm-head{padding:10px;border-bottom:1px solid var(--demo-border);background:#151515;display:flex;flex-direction:column;gap:8px}
+  .gm-head-row{display:flex;gap:8px;flex-wrap:wrap}
+  .gm-search{flex:1;display:flex;align-items:center;gap:8px;background:#0f0f0f;border:1px solid var(--demo-border);border-radius:8px;padding:7px 10px;min-width:140px}
+  .gm-search i{color:var(--demo-muted)}
+  .gm-search input{flex:1;background:transparent;border:none;outline:none;color:var(--demo-text);font-size:13px}
+  .gm-search button{background:transparent;border:none;color:var(--demo-muted);cursor:pointer}
+  .gm-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .gm-actions button{flex:1;min-width:0;padding:8px 8px;border-radius:8px;border:1px solid var(--demo-border);background:#1e1e1e;color:var(--demo-text);cursor:pointer;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:5px}
+  .gm-actions button.primary{background:#1b1b0f;border-color:#4a3f1a;color:#f0d98a}
+  .gm-actions button.ghost{background:#151515}
+  .gm-actions button.danger{background:#2a1414;border-color:#4a2222;color:#ffb0b0}
+  .gm-actions button.active{border-color:var(--gold);background:#241f0d;color:#ffd86b}
+  .gm-actions button:disabled{opacity:.45;cursor:default}
+  .hint{font-size:11px;color:#8a8a8a;line-height:1.35}
+  .gm-body{flex:1;overflow:auto;padding:10px;scrollbar-width:thin;display:flex;flex-direction:column;gap:10px}
+  .folder{border:1px solid var(--demo-border);border-radius:10px;overflow:hidden;background:#141414}
+  .folder-hd{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;user-select:none;background:#1a1a1a;border-bottom:1px solid var(--demo-border)}
+  .folder-hd:hover{background:#1f1f1f}
+  .folder.collapsed .folder-content{display:none}
+  .folder.collapsed .folder-hd{border-bottom:none}
+  .folder-hd .fname{font-weight:800;font-size:12px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .folder-hd .count{font-size:11px;color:var(--demo-muted)}
+  .folder-hd .scope{font-size:9px;padding:2px 5px;border-radius:999px;border:1px solid #333;background:#111;color:#bbb;letter-spacing:.4px}
+  .folder-hd .scope.world{border-color:#4a3a1a;background:#241f0d;color:#e0c98a}
+  .folder-hd .f-actions{display:flex;gap:4px}
+  .folder-hd .f-actions button{width:24px;height:24px;border-radius:6px;border:1px solid var(--demo-border);background:#151515;color:#bbb;cursor:pointer;display:grid;place-items:center;font-size:11px}
+  .folder-hd .f-actions button:hover{background:#1f1f1f;color:#fff}
+  .folder-content{padding:8px;display:flex;flex-direction:column;gap:6px;min-height:28px}
+  .folder-content.drag-over,.uncat-box.drag-over{outline:2px dashed var(--demo-accent);outline-offset:-2px;background:#1b1b0f}
+  .uncat-title{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--demo-muted);padding:4px 4px 2px}
+  .uncat-box{border:1px dashed var(--demo-border);border-radius:10px;padding:8px;min-height:48px;display:flex;flex-direction:column;gap:6px}
+  .empty-hint{text-align:center;color:var(--demo-muted);font-size:11px;padding:10px;border:1px dashed var(--demo-border);border-radius:8px;background:#101010}
+  .pin-entry{display:flex;align-items:center;gap:10px;border:1px solid #2a2a2a;border-radius:8px;padding:7px 8px;background:#111;cursor:pointer;transition:border-color .15s,background .15s}
+  .pin-entry:hover{border-color:#3a3a3a;background:#151515}
+  .pin-entry.selected{border-color:#6b5520;background:#1e1a0a;box-shadow:0 0 0 1px #6b5520 inset}
+  .pin-entry .pin-icon{flex:0 0 36px;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;border:2px solid #fff;background:#000;overflow:hidden;position:relative}
+  .pin-entry .pin-icon img{width:22px;height:22px;object-fit:contain;display:block}
+  .pin-entry .pin-info{flex:1;min-width:0}
+  .pin-entry .pin-name{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pin-entry .pin-page{font-size:10px;color:var(--demo-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pin-entry .pin-badges{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap}
+  .pin-entry .badge{font-size:9px;padding:1px 5px;border-radius:999px;border:1px solid #333;background:#1a1a1a;color:#bbb}
+  .pin-entry .badge.gm{border-color:#4a2222;background:#241010;color:#ff9a9a}
+  .pin-entry .pin-acts{display:flex;gap:4px;flex-wrap:wrap}
+  .pin-entry .pin-acts button{width:26px;height:26px;border-radius:6px;border:1px solid #2a2a2a;background:#1a1a1a;color:#bbb;cursor:pointer;display:grid;place-items:center}
+  .pin-entry .pin-acts button:hover{background:#222;color:#fff;border-color:#3a3a3a}
+  /* stage */
+  .stage-pane{flex:1;display:flex;flex-direction:column;background:#0a0a0a;min-width:0}
+  .stage-toolbar{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--demo-border);background:#111;flex-wrap:wrap}
+  .stage-toolbar .pill{font-size:11px;padding:5px 9px;border-radius:999px;border:1px solid var(--demo-border);background:#151515;color:#ccc;display:inline-flex;align-items:center;gap:6px}
+  .stage-toolbar .pill strong{color:#fff}
+  .stage-toolbar select,.stage-toolbar button{font-size:11px;padding:5px 8px;border-radius:6px;border:1px solid #2a2a2a;background:#1a1a1a;color:#ddd;cursor:pointer}
+  .stage-wrap{flex:1;padding:12px;display:flex;justify-content:center;align-items:flex-start;background:radial-gradient(700px 400px at 50% -10%, #1e1e1e, #070707);overflow:auto}
+  .stage-frame{width:min(980px,100%);aspect-ratio:16/10;max-height:62vh;background:#0b0b0b;border:1px solid #222;border-radius:12px;overflow:hidden;position:relative;box-shadow:0 18px 40px rgba(0,0,0,.6)}
+  .stage-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.95)}
+  .stage-grid{position:absolute;inset:0;pointer-events:none;opacity:.18;background-size:48px 42px;background-image:linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)}
+  .stage-hex{position:absolute;inset:0;pointer-events:none;opacity:.14;background: radial-gradient(circle at 24px 21px, transparent 23px, #fff 23px, #fff 24px, transparent 24px); background-size:48px 42px}
+  .canvas-pin{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;cursor:grab;user-select:none;touch-action:none}
+  .canvas-pin.dragging{cursor:grabbing;z-index:50;opacity:.9}
+  .canvas-pin .pin-body{position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-sizing:border-box}
+  .canvas-pin .pin-body img.pin-image{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
+  .canvas-pin .pin-content{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;line-height:1}
+  .canvas-pin .pin-label{position:absolute;white-space:nowrap;pointer-events:none;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.9);max-width:160px;overflow:hidden;text-overflow:ellipsis}
+  .canvas-pin .pin-label.bg-solid{padding:3px 7px;border-radius:6px}
+  .canvas-pin .pin-label.bg-image{padding:6px 10px;border:6px solid transparent}
+  .placer-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:11px;padding:6px 10px;border-radius:999px;backdrop-filter:blur(6px);pointer-events:none}
+  .stage-foot{padding:8px 10px;border-top:1px solid var(--demo-border);background:#111;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:11px;color:#aaa}
+  .stage-foot code{background:#1a1a1a;border:1px solid #2a2a2a;padding:2px 6px;border-radius:6px;color:#ddd}
+  /* tooltip */
+  .sdx-journal-pin-tooltip{position:fixed;z-index:5000;background:#000;border:8px solid transparent;border-image:var(--sdx-box-border, none) 40 fill;border-image-width:40px;padding:10px 14px;max-width:320px;pointer-events:none;animation:sdx-pin-tooltip-fade-in .18s ease;font-family:Montserrat-medium,serif}
+  .sdx-journal-pin-tooltip.fallback{border:1px solid #333;background:#0f0f0f;border-image:none;border-radius:8px}
+  @keyframes sdx-pin-tooltip-fade-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  .sdx-journal-pin-tooltip-title{font-family:'Old Newspaper Font',serif;font-size:17px;color:#f0f0f0;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.18);text-shadow:1px 1px 2px #000}
+  .sdx-journal-pin-tooltip-content{font-size:13px;color:#d0d0d0;line-height:1.5;max-height:120px;overflow:hidden}
+  /* animations */
+  @keyframes pin-pulse{0%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.12)}100%{transform:translate(-50%,-50%) scale(1)}}
+  @keyframes pin-shake{0%,100%{transform:translate(-50%,-50%) translateX(0)}25%{transform:translate(-50%,-50%) translateX(-4px)}50%{transform:translate(-50%,-50%) translateX(4px)}75%{transform:translate(-50%,-50%) translateX(-3px)}}
+  @keyframes pin-flash{0%,100%{filter:brightness(1)}50%{filter:brightness(2) saturate(1.4)}}
+  @keyframes pin-ping-ripple{0%{box-shadow:0 0 0 0 rgba(255,215,0,.9)}100%{box-shadow:0 0 0 26px rgba(255,215,0,0)}}
+  .anim-pulse{animation:pin-pulse 900ms ease-in-out infinite}
+  .anim-shake{animation:pin-shake 420ms ease}
+  .anim-flash{animation:pin-flash 520ms ease}
+  .anim-ping{animation:pin-ping-ripple 700ms ease}
+  .anim-scale:hover{transform:translate(-50%,-50%) scale(1.14) !important}
+  .hover-bright:hover{filter:brightness(1.35) !important}
+  .hover-hue:hover{filter:hue-rotate(90deg) saturate(1.3) !important}
+  /* context menu */
+  .ctx{position:fixed;z-index:6000;min-width:200px;background:#0f0f0f;border:1px solid #333;border-radius:8px;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,.6);display:none}
+  .ctx.open{display:block}
+  .ctx button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;background:transparent;border:none;color:#ddd;cursor:pointer;font-size:12px}
+  .ctx button:hover{background:#1e1e1e;color:#fff}
+  .ctx button i{width:16px;text-align:center;color:var(--gold)}
+  .ctx .sep{height:1px;background:#222;margin:4px 0}
+  /* modal editor */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;place-items:center;z-index:7000;padding:14px}
+  .modal-backdrop.open{display:grid}
+  .modal{width:min(560px,100%);max-height:88vh;background:#161616;border:1px solid #2a2a2a;border-radius:12px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.7);display:flex;flex-direction:column}
+  .modal-hd{padding:12px 14px;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;gap:10px;font-weight:800;background:#151515;flex:0 0 auto}
+  .modal-hd button{margin-left:auto;border:1px solid #2a2a2a;background:#1a1a1a;color:#bbb;border-radius:8px;width:32px;height:32px;cursor:pointer;display:grid;place-items:center}
+  .modal-body{padding:12px;display:flex;flex-direction:column;gap:12px;overflow:auto;flex:1;background:#1a1a1a;color:#f0f0f0}
+  .modal-body .editor-section{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:12px}
+  .modal-body .editor-section h3{margin:0 0 10px 0;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08);font-family:'Old Newspaper Font',serif;font-size:15px;color:var(--gold);display:flex;gap:8px;align-items:center}
+  .modal-body .preview-section{background:linear-gradient(135deg,rgba(40,40,40,.8),rgba(20,20,20,.9))}
+  .modal-body .pin-preview-canvas{display:flex;justify-content:center;align-items:center;min-height:88px;background:repeating-linear-gradient(45deg,rgba(50,50,50,.5),rgba(50,50,50,.5) 10px,rgba(30,30,30,.5) 10px,rgba(30,30,30,.5) 20px);border-radius:6px;padding:18px;gap:10px;flex-wrap:wrap}
+  .modal-body .preview-pin{display:flex;justify-content:center;align-items:center;flex:0 0 auto}
+  .modal-body .preview-label{padding:3px 8px;font-size:13px;white-space:nowrap}
+  .modal-body .form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+  .modal-body .form-group:last-child{margin-bottom:0}
+  .modal-body .form-group label{font-size:12px;color:#ccc}
+  .modal-body .form-group label span{color:var(--gold);font-weight:800;margin-left:4px}
+  .modal-body .hint{font-size:11px;color:#8a8a8a}
+  .modal-body select,.modal-body input[type=text],.modal-body textarea{width:100%;padding:8px 10px;border-radius:6px;border:1px solid #333;background:#0f0f0f;color:#e8e8e8;outline:none}
+  .modal-body textarea{resize:vertical;min-height:56px}
+  .modal-body input[type=color]{width:48px;height:26px;padding:0;border:1px solid #333;border-radius:4px;background:transparent;cursor:pointer}
+  .modal-body input[type=range]{width:100%}
+  .modal-body .color-group{flex-direction:row;align-items:center;justify-content:space-between}
+  .modal-body .checkbox-group{flex-direction:row;align-items:center;gap:8px}
+  .modal-body .checkbox-group input{width:16px;height:16px}
+  .modal-body .file-row{display:flex;gap:6px}
+  .modal-body .file-row button{padding:8px 10px;border-radius:6px;border:1px solid #333;background:#1a1a1a;color:#ddd;cursor:pointer;white-space:nowrap}
+  .modal-body .icon-row{display:flex;gap:8px;align-items:center}
+  .modal-body .icon-row .sw{width:34px;height:34px;border-radius:6px;border:1px solid #333;background:#0f0f0f;display:grid;place-items:center;overflow:hidden}
+  .modal-body .icon-row .sw img{width:22px;height:22px;object-fit:contain}
+  .modal-body .slice-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;background:rgba(0,0,0,.2);border-radius:6px}
+  @media(max-width:600px){.modal-body .slice-grid{grid-template-columns:1fr}}
+  .modal-foot{padding:10px 12px;border-top:1px solid #2a2a2a;display:flex;gap:8px;justify-content:flex-end;background:#141414;flex:0 0 auto}
+  .modal-foot button{padding:9px 12px;border-radius:8px;border:1px solid #2a2a2a;cursor:pointer;font-weight:800;font-size:12px}
+  .modal-foot .cancel{background:#151515;color:#bbb}
+  .modal-foot .save{background:#2a2310;border-color:#4a3f1a;color:#f0d98a}
+  .modal-foot .reset{margin-right:auto;background:#1a1a1a;color:#ddd}
+  .banner-tip{font-size:11px;color:#8a8a8a;background:#0f0f0f;border:1px solid #222;border-radius:6px;padding:6px 8px}
+</style>
+</head>
+<body>
+<div class="demo-banner">
+  AK Bay demo — Scene <code>v5jFewvPb3vxnvQe</code> (3559×3494, pointy-top hex, grid 168). 7 pins in 3 folders, straight from <code>scene.flags[\"shadowdark-extras\"][\"journalPins\"]</code>. Background is the live <code>maps/maphub/aligned_realm_1786248717692.png</code> (webp copy here). Pins drag, tooltip, Pan/Ping/Bring and the 50-field <strong>Pin Style Editor</strong> are simulated in one tab — same stylesheets + FA CDN as Foundry.
+</div>
+<header class="demo-header">
+  <h1><span>Journal Pins</span> — Shadowdark Extras <span class="sub">+ Pin Style Editor · Interactive Demo</span></h1>
+  <nav class="links">
+    <a href="../wiki/Journal-Tools-and-Pins.html" onclick="event.preventDefault(); alert('On GitHub Pages this points to the wiki. In a local clone open docs/wiki/Journal-Tools-and-Pins.md');"><i class="fa-solid fa-book"></i> Wiki</a>
+    <a href="https://github.com/DimitroffVodka/shadowdark-extras/blob/main/templates/pin-style-editor.hbs" target="_blank" rel="noopener"><i class="fa-solid fa-code"></i> Template</a>
+    <button id="resetBtn" title="Reset demo data"><i class="fa-solid fa-rotate"></i> Reset</button>
+  </nav>
+</header>
+
+<main class="demo-layout">
+  <section class="gm-pane">
+    <div class="gm-head">
+      <div class="gm-head-row">
+        <label class="gm-search" aria-label="Search pins"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" placeholder="Search pins, folders, journals..." autocomplete="off"><button id="clearSearch" style="display:none"><i class="fa-solid fa-xmark"></i></button></label>
+      </div>
+      <div class="gm-actions">
+        <button class="primary" id="addPinBtn"><i class="fa-solid fa-map-pin"></i> Add Pin</button>
+        <button id="placeModeBtn" title="Toggle placement mode"><i class="fa-solid fa-crosshairs"></i> Click to Place</button>
+        <button class="ghost" id="newFolderBtn"><i class="fa-solid fa-folder-plus"></i> Folder</button>
+        <button class="ghost" id="convertNotesBtn" title="Simulate Foundry Map Notes conversion"><i class="fa-solid fa-right-left"></i> Notes→Pins</button>
+      </div>
+      <div class="gm-actions">
+        <button class="ghost" id="defaultsBtn"><i class="fa-solid fa-palette"></i> Defaults</button>
+        <button class="ghost" id="gridBtn"><i class="fa-solid fa-border-all"></i> Grid: On</button>
+        <button class="ghost" id="hexBtn"><i class="fa-solid fa-hexagon"></i> Hex: Off</button>
+        <button class="ghost" id="perfBtn"><i class="fa-solid fa-bolt"></i> Pixel-Perfect: Off</button>
+      </div>
+      <div class="hint">Folders drag to reorder; pins drag between folders. Search reaches collapsed folders. In Foundry this is the <strong>SDX Tray → Pins</strong> tab with scene/world scopes.</div>
+    </div>
+    <div class="gm-body" id="gmBody"></div>
+  </section>
+
+  <section class="stage-pane">
+    <div class="stage-toolbar">
+      <span class="pill"><i class="fa-solid fa-map"></i> Canvas — <strong id="stageLabel">Drag, pan, right-click a pin for the menu</strong></span>
+      <span class="pill" id="stageCount" style="display:none"></span>
+      <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+        <label class="pill" style="gap:4px"><input id="showGmOnly" type="checkbox" checked> GM-only</label>
+        <select id="bgSelect" title="Canvas background"><option value="akbay" selected>Ak Bay</option><option value="default">Parchment</option><option value="dungeon">Dungeon Tile</option><option value="hex">Hex Grid</option></select>
+      </span>
+    </div>
+    <div class="stage-wrap">
+      <div class="stage-frame" id="stageFrame">
+        <img class="stage-bg" id="stageBg" alt="" src="assets/ak-bay/ak-bay-map.webp">
+        <div class="stage-grid" id="stageGrid"></div>
+        <div class="stage-hex" id="stageHex" style="display:none"></div>
+        <!-- pins injected -->
+        <div class="placer-hint" id="placerHint" style="display:none"><i class="fa-solid fa-arrow-pointer"></i> Click the canvas to place a pin — Esc to cancel</div>
+      </div>
+    </div>
+    <div class="stage-foot">
+      <span><i class="fa-solid fa-arrows-up-down-left-right"></i> Drag pins · <i class="fa-solid fa-eye"></i> Hover for tooltip · Right-click for <code>Pan</code> / <code>Ping</code> / <code>Bring Players</code></span>
+      <span style="margin-left:auto;color:#7a7a7a">Storage: <code>pinStyleDefaults</code> + <code>scene.flags.journalPins</code> · Hover anim via <code>hoverAnimation</code> · <code>pingAnimation</code>/<code>bringAnimation</code></span>
+    </div>
+  </section>
+</main>
+
+<!-- tooltip host -->
+<div id="tooltipHost" aria-hidden="true"></div>
+<!-- context menu -->
+<div class="ctx" id="ctxMenu" role="menu"></div>
+
+<!-- Pin Style Editor modal -->
+<div class="modal-backdrop" id="editorBackdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Pin Style Editor">
+    <div class="modal-hd"><i class="fa-solid fa-palette"></i> <span id="editorTitle">Pin Style Editor</span> <button id="editorClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body" id="editorBody"><!-- injected --></div>
+    <div class="modal-foot"><button class="reset" id="editorReset"><i class="fa-solid fa-rotate-left"></i> Reset</button><button class="cancel" id="editorCancel">Cancel</button><button class="save" id="editorSave"><i class="fa-solid fa-floppy-disk"></i> Save</button></div>
+  </div>
+</div>
+
+<script>
+const LS_KEY = "sdx-demo-pins-v3-akbay";
+const LS_FOLDERS = "sdx-demo-pin-folders-v3-akbay";
+const LS_DEFAULTS = "sdx-demo-pin-defaults-v3-akbay";
+
+const ICONS = [
+ ["fa-solid fa-book-open","Book Open"],["fa-solid fa-book","Book"],["fa-solid fa-scroll","Scroll"],["fa-solid fa-map","Map"],["fa-solid fa-landmark","Landmark"],
+ ["fa-solid fa-dungeon","Dungeon"],["fa-solid fa-tower-observation","Tower"],["fa-solid fa-skull","Skull"],["fa-solid fa-star","Star"],["fa-solid fa-gem","Gem"],["fa-solid fa-coins","Coins"],
+ ["fa-solid fa-crown","Crown"],["fa-solid fa-shield","Shield"],["fa-solid fa-sword","Sword"],["fa-solid fa-wand-sparkles","Wand"],["fa-solid fa-fire","Fire"],["fa-solid fa-droplet","Water"],["fa-solid fa-tree","Tree"],["fa-solid fa-mountain","Mountain"],["fa-solid fa-house","House"],
+];
+const FONT_FAMILIES = ["Arial","Verdana","Georgia","Times New Roman","Courier New","Old Newspaper Font","Montserrat-medium","JSL Blackletter","ACaslonPro-Bold","Cardinal","BaksoSapi","Ghost-theory-2","IronSans","LUMOS"];
+const SHAPES = [
+ ["circle","Circle"],["square","Square"],["diamond","Diamond"],["hexagon","Hexagon (Pointy)"],["hexagonFlat","Hexagon (Flat)"],["image","Image"],
+];
+const RING_STYLES=[["solid","Solid"],["dashed","Dashed"],["dotted","Dotted"]];
+const NAME_SOURCES=[["auto","Auto (journal → tooltip → label)"],["journal","Journal / Page Name"],["tooltip","Tooltip Title"],["label","Canvas Label Text"]];
+const HOVER_ANIMS=[["highlight","Highlight (tint + border)"],["none","None"],["scale","Scale"],["pulse","Pulse"],["shake","Shake"],["brightness","Brightness"],["hue","Color Cycle"]];
+const PING_ANIMS=[["ripple","Ripple"],["shake","Shake"],["flash","Flash"],["none","None"],["rotate","Rotate (legacy)"]];
+
+const DEFAULT_STYLE = {
+  size: 32, fitToHexGrid:false, shape:"circle", ringColor:"#ffffff", fillColor:"#000000", ringWidth:3, ringStyle:"solid",
+  opacity:1.0, fillOpacity:1.0, ringOpacity:1.0, hoverAnimation:"highlight", pingAnimation:"ripple", bringAnimation:"ripple",
+  imagePath:"", imageTint:"", hoverImageTint:"#ff7a00", hoverRingColor:"#ff7a00", hoverRingWidth:6,
+  contentType:"number", iconClass:"fa-solid fa-book-open", iconColor:"#ffffff", symbolColor:"#ffffff", customIconPath:"", customText:"",
+  fontSize:14, fontFamily:"Arial", fontColor:"#ffffff", fontWeight:"bold", fontItalic:false, fontStroke:"#000000", fontStrokeThickness:0,
+  labelText:"", labelShowOnHover:true, labelFontFamily:"Arial", labelFontSize:16, labelColor:"#ffffff", labelStroke:"#000000", labelStrokeThickness:4,
+  labelBackground:"none", labelBackgroundColor:"#000000", labelBackgroundOpacity:0.8, labelBorderColor:"#ffffff", labelBorderWidth:2, labelBorderRadius:4,
+  labelBold:false, labelItalic:false, labelBorderImagePath:"", labelBorderSliceTop:54,labelBorderSliceRight:54,labelBorderSliceBottom:54,labelBorderSliceLeft:54,
+  labelImageBackgroundColor:"#000000", labelImageBackgroundOpacity:0.85, labelAnchor:"bottom", labelOffset:5,
+  tooltipTitleFontSize:17, tooltipContentFontSize:13, hideTooltip:false, borderRadius:4,
+};
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function rid(){ return Math.random().toString(36).slice(2,9); }
+function hexToRgb(hex){
+  if(!hex || hex.length<4) return null;
+  const h=hex.replace('#','');
+  const exp=h.length===3?h.split('').map(c=>c+c).join(''):h;
+  const n=parseInt(exp,16);
+  return {r:(n>>16)&255,g:(n>>8)&255,b:n&255};
+}
+function rgba(hex, alpha){
+  const c=hexToRgb(hex); if(!c) return hex;
+  return `rgba(${c.r},${c.g},${c.b},${alpha})`;
+}
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function attr(s){ return esc(s).replace(/'/g,"&#39;"); }
+
+let state = { pins:[], folders:[], search:"", defaults:null, selectedPinId:null, placement:false, grid:true, hex:false, pixelPerfect:false, pixelAlpha:100, bg:"default", showGmOnly:true, copyBuf:null };
+let journals = [];
+let draggingId = null;
+let dragOffset = {x:0,y:0};
+let editingId = null; // null = defaults, string = pin id
+let pendingStyle = null; // live style object while editor open
+
+function seedJournals(){
+  // Ak Bay — straight from world 0100, folder PILvOAdanm7Hs5W2
+  journals = [
+    {id:"ZSoIvN0n0TUU5y8F", name:"Brightmill", pages:[
+      {id:"HDnUNgXEeUMxD5Fs", name:"Brightmill", excerpt:"Village — hex q9_r16. A coastal village. 🛠️ Generate this map (village)."}
+    ]},
+    {id:"a46ShxuXQtcajMka", name:"Coldtalon", pages:[
+      {id:"T9Ok2UcJm5MO2dL2", name:"Coldtalon", excerpt:"Village — hex q17_r7. A riverside village. 🛠️ Generate this map (village)."}
+    ]},
+    {id:"cpYwWyQ7HIFcfxOH", name:"Crimson Mill", pages:[
+      {id:"aRl7m5xqetOmJ1VI", name:"Crimson Mill", excerpt:"Village — hex q6_r13. A logging village. Touchstone: a shrine. 🛠️ Generate this map (village)."}
+    ]},
+    {id:"DIvcYyVM3oFEXpYi", name:"Lair Of Night", pages:[
+      {id:"1cR8j22kXPgO0jMc", name:"Lair Of Night", excerpt:"Dungeon (danger) — hex q17_r3. 🛠️ Generate this map (dungeon)."}
+    ]},
+    {id:"3RszqXSXy1LEav5R", name:"Library Of The Silent God", pages:[
+      {id:"m07xwBZYp6kT6wN1", name:"Library Of The Silent God", excerpt:"Dungeon (danger) — hex q2_r15. 🛠️ Generate this map (dungeon)."}
+    ]},
+    {id:"1msT9n9nRDRMIOQ3", name:"New Cove", pages:[
+      {id:"s9XchG8wxoYvBvBi", name:"New Cove", excerpt:"City (town) — hex q12_r8. A walled whaling town of scarce trade. Touchstone: a monument. 🛠️ Generate this map (city)."}
+    ]},
+    {id:"jC83DpwtgeyVT1BG", name:"Orn", pages:[
+      {id:"9ODlJmIOidqotxNp", name:"Orn", excerpt:"City (city) — hex q4_r19. A walled riverside city of scarce leadership and beauty. Touchstone: a monument. 🛠️ Generate this map (city)."}
+    ]},
+    {id:"u9vEyxYSRMdYcZSG", name:"Ak Bay — Overview", pages:[
+      {id:"overview", name:"Overview", excerpt:"Ak Bay. Source: perilous-shores seed 619863482 (bay, lowland, chaotic, 1800×1800, hexes 2). Dungeons, Villages, Cities listed. 🗺️ Open the realm map."}
+    ]},
+  ];
+}
+function seed(){
+  // Folders are scene-scoped on Ak Bay (scene.flags["shadowdark-extras"].pinFolders)
+  // IDs match the live scene so the demo mirrors Foundry's tray exactly.
+  state.folders = [
+    {id:"sm0RS3WO5fPKyWHJ", name:"Dungeons", color:"#85733f", icon:"fa-solid fa-dungeon", scope:"scene", collapsed:false},
+    {id:"uxy61voDrqrB53Fj", name:"Cities", color:"#4a6b8a", icon:"fa-solid fa-city", scope:"scene", collapsed:false},
+    {id:"HrhPikWpHpuWOQiA", name:"Villages", color:"#5a7a3a", icon:"fa-solid fa-house-chimney", scope:"scene", collapsed:false},
+  ];
+  // Ak Bay pins — x/y as % of 3559×3494 (rounded from pixel coords)
+  // Brightmill 1270,2712 -> 35.7,77.6; Coldtalon 2434,1200 -> 68.4,34.3; Crimson Mill 834,2124 -> 23.4,60.8
+  // Lair Of Night 2434,528 -> 68.4,15.1; Library 252,2460 -> 7.1,70.4; New Cove 1707,1284 -> 48.0,36.7; Orn 543,3132 -> 15.3,89.6
+  state.pins = [
+    {id:"5pzA1kuLTyzI2HMm", x:35.7, y:77.6, journalId:"ZSoIvN0n0TUU5y8F", pageId:"HDnUNgXEeUMxD5Fs", label:"Brightmill", nameSource:"auto", size:64,
+      style:{shape:"image", imagePath:"assets/ak-bay/village.svg", contentType:"none"}, gmOnly:false, requiresVision:false, aboveFog:false, hideTooltip:false, tooltipTitle:"", tooltipContent:""},
+    {id:"o4Iwfm8WQJHMHzZ2", x:68.4, y:34.3, journalId:"a46ShxuXQtcajMka", pageId:"T9Ok2UcJm5MO2dL2", label:"Coldtalon", nameSource:"auto", size:64,
+      style:{shape:"image", imagePath:"assets/ak-bay/village.svg", contentType:"none"}, gmOnly:false, requiresVision:false, aboveFog:false, hideTooltip:false, tooltipTitle:"", tooltipContent:""},
+    {id:"cRjzCTQoXYCB4TX5", x:23.4, y:60.8, journalId:"cpYwWyQ7HIFcfxOH", pageId:"aRl7m5xqetOmJ1VI", label:"Crimson Mill", nameSource:"auto", size:64,
+      style:{shape:"image", imagePath:"assets/ak-bay/village.svg", contentType:"none"}, gmOnly:false, requiresVision:false, aboveFog:false, hideTooltip:false, tooltipTitle:"", tooltipContent:""},
+    {id:"PB2RShnZ3l71Mqxz", x:68.4, y:15.1, journalId:"DIvcYyVM3oFEXpYi", pageId:"1cR8j22kXPgO0jMc", label:"Lair Of Night", nameSource:"auto", size:64,
+      style:{shape:"image", imagePath:"assets/ak-bay/skull.svg", contentType:"none"}, gmOnly:false, requiresVision:false, aboveFog:false, hideTooltip:false, tooltipTitle:"", tooltipContent:""},
+    {id:"cilLyzeiy4tChn3B", x:7.1, y:70.4, journalId:"3RszqXSXy1LEav5R", pageId:"m07xwBZYp6kT6wN1", label:"Library Of The Silent God", nameSource:"auto", size:64,
+      style:{shape:"image", imagePath:"assets/ak-bay/skull.svg", contentType:"none"}, gmOnly:false, requiresVision:false, aboveFog:false, hideTooltip:false, tooltipTitle:"", tooltipContent:""},
+    {id:"BhU6tUTbn1YQMveX", x:48.0, y:36.7, journalId:"1msT9n9nRDRMIOQ3", pageId:"s9XchG8wxoYvBvBi", label:"New Cove", nameSource:"auto", size:64,
+      style:{shape:"image", imagePath:"assets/ak-bay/city.svg", contentType:"none"}, gmOnly:false, requiresVision:false, aboveFog:false, hideTooltip:false, tooltipTitle:"", tooltipContent:""},
+    {id:"g1KO4kgcau0OrTZi", x:15.3, y:89.6, journalId:"jC83DpwtgeyVT1BG", pageId:"9ODlJmIOidqotxNp", label:"Orn", nameSource:"auto", size:64,
+      style:{shape:"image", imagePath:"assets/ak-bay/city.svg", contentType:"none"}, gmOnly:false, requiresVision:false, aboveFog:false, hideTooltip:false, tooltipTitle:"", tooltipContent:""},
+  ];
+  state.defaults = clone(DEFAULT_STYLE);
+  state.bg = "akbay";
+}
+function load(){
+  try{
+    const p = JSON.parse(localStorage.getItem(LS_KEY)||"null");
+    const f = JSON.parse(localStorage.getItem(LS_FOLDERS)||"null");
+    const d = JSON.parse(localStorage.getItem(LS_DEFAULTS)||"null");
+    seedJournals();
+    if(Array.isArray(p) && p.length){ state.pins = p; seedJournals(); } else { seed(); save(); return; }
+    if(Array.isArray(f) && f.length) state.folders = f;
+    else if(!Array.isArray(f)) { /* keep seeded */ }
+    if(d && typeof d==="object") state.defaults = {...clone(DEFAULT_STYLE), ...d};
+    else state.defaults = clone(DEFAULT_STYLE);
+    // normalize pins
+    for(const pin of state.pins){
+      if(!pin.style) pin.style={};
+      if(pin.size!=null && pin.style.size==null) pin.style.size = pin.size;
+      if(pin.requiresVision==null) pin.requiresVision=false;
+      if(pin.aboveFog==null) pin.aboveFog=false;
+      if(!pin.nameSource) pin.nameSource="auto";
+    }
+  }catch(e){ seedJournals(); seed(); }
+  if(!state.defaults) state.defaults=clone(DEFAULT_STYLE);
+  if(!journals.length) seedJournals();
+}
+function save(){
+  localStorage.setItem(LS_KEY, JSON.stringify(state.pins));
+  localStorage.setItem(LS_FOLDERS, JSON.stringify(state.folders));
+  localStorage.setItem(LS_DEFAULTS, JSON.stringify(state.defaults));
+}
+function getPin(id){ return state.pins.find(p=>p.id===id)||null; }
+function getFolder(id){ return state.folders.find(f=>f.id===id)||null; }
+function journalById(id){ return journals.find(j=>j.id===id)||null; }
+function pageById(jid,pid){ const j=journalById(jid); return j? (j.pages.find(p=>p.id===pid)||null):null; }
+function pinDisplayName(pin){
+  const src = pin.nameSource||"auto";
+  const page = pageById(pin.journalId, pin.pageId);
+  const journal = journalById(pin.journalId);
+  if(src==="journal"){ return page? `${journal.name} — ${page.name}` : (journal? journal.name : (pin.label||"Unlinked Pin")); }
+  if(src==="tooltip"){ return pin.tooltipTitle|| pin.label || (page? page.name : "Unlinked Pin"); }
+  if(src==="label"){ return pin.style?.labelText || pin.label || "Unlinked Pin"; }
+  // auto
+  if(page) return `${page.name}`;
+  if(pin.tooltipTitle) return pin.tooltipTitle;
+  if(pin.style?.labelText) return pin.style.labelText;
+  if(pin.label && pin.label!=="New Pin" && pin.label!=="Journal Pin") return pin.label;
+  if(journal) return journal.name;
+  return "Unlinked Pin";
+}
+function pinPageName(pin){
+  const page = pageById(pin.journalId,pin.pageId);
+  return page? page.name : (pin.journalId? "— missing page —" : "");
+}
+function resolvedStyle(pin){
+  const base = state.defaults? clone(state.defaults) : clone(DEFAULT_STYLE);
+  const ps = pin?.style||{};
+  return {...base, ...ps, size: (ps.size!=null? ps.size : (pin?.size!=null? pin.size : base.size)) };
+}
+function pinsInFolder(fid){ return state.pins.filter(p=> (p.folderId||null)===(fid||null)); }
+function matchesSearch(pin,q){
+  if(!q) return true;
+  q=q.toLowerCase();
+  const name=pinDisplayName(pin).toLowerCase();
+  const page=pinPageName(pin).toLowerCase();
+  const label=(pin.style?.labelText||"").toLowerCase();
+  const journal=(journalById(pin.journalId)?.name||"").toLowerCase();
+  const tt=(pin.tooltipTitle||"").toLowerCase() + " " + (pin.tooltipContent||"").toLowerCase();
+  return name.includes(q)||page.includes(q)||label.includes(q)||journal.includes(q)||tt.includes(q);
+}
+
+/* rendering GM pane */
+function renderGM(){
+  const body=document.getElementById("gmBody");
+  const q=(state.search||"").trim().toLowerCase();
+  // folders
+  let html="";
+  for(const folder of state.folders){
+    const fPins = state.pins.filter(p=> (p.folderId||null)===folder.id).filter(p=> matchesSearch(p,q));
+    const total = pinsInFolder(folder.id).length;
+    const countLabel = q? `${fPins.length}/${total}` : `${total}`;
+    const collapsed = folder.collapsed? " collapsed":"";
+    const scopeCls = folder.scope==="world"?" world":"";
+    html+=`<div class="folder${collapsed}" data-folder-id="${attr(folder.id)}">
+      <div class="folder-hd" data-action="toggle-folder" data-folder-id="${attr(folder.id)}">
+        <i class="fa-solid ${folder.collapsed?"fa-caret-right":"fa-caret-down"}"></i>
+        <i class="${attr(folder.icon||'fa-solid fa-folder')}"></i>
+        <span class="fname">${esc(folder.name)}</span>
+        <span class="scope${scopeCls}">${folder.scope==="world"?'<i class="fa-solid fa-globe"></i> world':'scene'}</span>
+        <span class="count">(${esc(countLabel)})</span>
+        <span class="f-actions" onclick="event.stopPropagation()">
+          <button data-action="edit-folder" data-folder-id="${attr(folder.id)}" title="Rename"><i class="fa-solid fa-pen"></i></button>
+          <button data-action="delete-folder" data-folder-id="${attr(folder.id)}" title="Delete"><i class="fa-solid fa-trash"></i></button>
+        </span>
+      </div>
+      <div class="folder-content" data-folder-id="${attr(folder.id)}">
+        ${fPins.length? fPins.map(p=> pinRowHTML(p)).join("") : `<div class="empty-hint">Drag pins here</div>`}
+      </div>
+    </div>`;
+  }
+  const uncat = state.pins.filter(p=> !p.folderId).filter(p=> matchesSearch(p,q));
+  const hasFolders = state.folders.length>0;
+  if(hasFolders) html+=`<div class="uncat-title">Uncategorized</div>`;
+  html+=`<div class="uncat-box" data-folder-id="">${uncat.length? uncat.map(p=>pinRowHTML(p)).join("") : (q? `<div class="empty-hint">No matches in Uncategorized</div>` : (state.pins.length? `<div class="empty-hint">Drag pins here</div>`:`<div class="empty-hint">No pins. Click Add Pin or click the map.</div>`))}</div>`;
+  if(q && state.pins.filter(p=> matchesSearch(p,q)).length===0){
+    html=`<div class="empty-hint">No results for “${esc(state.search)}”</div>`+html;
+  }
+  // summary footer inside gm-body
+  const gmOnlyHidden = state.pins.filter(p=> p.gmOnly && !state.showGmOnly).length;
+  html+=`<div class="banner-tip"><i class="fa-solid fa-circle-info"></i> Pins live on the <strong>current scene</strong> — folders marked <i class="fa-solid fa-globe"></i> world appear on every scene, but pins stay per-scene. <code>pinFoldersWorld</code> vs <code>scene.flags.journalPins</code>. ${gmOnlyHidden? `<br><em>${gmOnlyHidden} GM-only pin(s) hidden — toggle “GM-only” above.</em>`:""} <br><a href="#" onclick="document.getElementById('defaultsBtn').click();return false;">Try the Defaults editor</a> — then edit one pin to see per-pin overrides.</div>`;
+  body.innerHTML = html;
+  bindGMEvents();
+  updateCounts();
+}
+
+function pinRowHTML(pin){
+  const st = resolvedStyle(pin);
+  const sel = state.selectedPinId===pin.id ? " selected":"";
+  const name = esc(pinDisplayName(pin));
+  const page = esc(pinPageName(pin));
+  const gmBadge = pin.gmOnly? `<span class="badge gm"><i class="fa-solid fa-eye-slash"></i> GM</span>`:"";
+  const visionBadge = pin.requiresVision? `<span class="badge"><i class="fa-solid fa-eye"></i> LOS</span>`:"";
+  const fogBadge = pin.aboveFog? `<span class="badge"><i class="fa-solid fa-cloud"></i> above fog</span>`:"";
+  const shapeBadge = `<span class="badge">${esc(st.shape)}</span>`;
+  // icon preview like tray: small 36px circle using actual style
+  const iconHTML = pinIconTinyHTML(st, pin);
+  return `<div class="pin-entry${sel}" data-pin-id="${attr(pin.id)}" draggable="true">
+    <div class="pin-icon" style="${pinTinyStyleInline(st)}">${iconHTML}</div>
+    <div class="pin-info"><div class="pin-name">${name}</div>${page?`<div class="pin-page">${page}</div>`:""}<div class="pin-badges">${gmBadge}${visionBadge}${fogBadge}${shapeBadge}</div></div>
+    <div class="pin-acts" onclick="event.stopPropagation()">
+      <button data-action="pan" data-pin-id="${attr(pin.id)}" title="Pan to pin"><i class="fa-solid fa-crosshairs"></i></button>
+      <button data-action="ping" data-pin-id="${attr(pin.id)}" title="Ping"><i class="fa-solid fa-bullseye"></i></button>
+      <button data-action="edit" data-pin-id="${attr(pin.id)}" title="Edit pin style"><i class="fa-solid fa-palette"></i></button>
+      <button data-action="dup" data-pin-id="${attr(pin.id)}" title="Duplicate"><i class="fa-solid fa-copy"></i></button>
+    </div>
+  </div>`;
+}
+function pinTinyStyleInline(st){
+  const fill = rgba(st.fillColor, (parseFloat(st.fillOpacity)||1)*(parseFloat(st.opacity)||1));
+  const ring = rgba(st.ringColor, (parseFloat(st.ringOpacity)||1)*(parseFloat(st.opacity)||1));
+  let s=`background:${fill};border-color:${ring};border-width:${st.ringWidth||3}px;border-style:${st.ringStyle||"solid"};`;
+  if(st.shape==="square") s+=`border-radius:${st.borderRadius||4}px;`;
+  if(st.shape==="circle") s+=`border-radius:50%;`;
+  if(st.shape==="diamond") s+=`border-radius:${st.borderRadius||4}px;transform:rotate(45deg);`;
+  // hexagon via clip
+  return s;
+}
+function pinIconTinyHTML(st,pin){
+  const ct=st.contentType;
+  if(ct==="none") return "";
+  if(ct==="text") return `<span style="font-family:${st.fontFamily};font-size:13px;color:${st.fontColor};font-weight:${st.fontWeight==='bold'?'800':'600'};${st.fontItalic?'font-style:italic;':''}">${esc(st.customText||"?")}</span>`;
+  if(ct==="symbol"||ct==="icon"){
+    const cls=st.symbolClass||st.iconClass||"fa-solid fa-book-open";
+    const col=st.symbolColor||st.iconColor||"#fff";
+    return `<i class="${attr(cls)}" style="color:${col};font-size:15px;${st.shape==='diamond'?'transform:rotate(-45deg);':''}"></i>`;
+  }
+  if(ct==="customIcon"){
+    const src=st.customIconPath||"../../assets/crown.svg";
+    return `<img src="${attr(src)}" alt="" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); ${st.iconColor && st.iconColor.toLowerCase()!=="#ffffff"?`background:${st.iconColor}; -webkit-mask:url('${src}') center/contain no-repeat; mask:url('${src}') center/contain no-repeat;`:''}">`;
+  }
+  // number = page index
+  const j = journalById(pin.journalId);
+  if(j){
+    const idx = j.pages.findIndex(p=>p.id===pin.pageId);
+    const n = idx>=0? idx+1 : 1;
+    return `<span style="font-family:${st.fontFamily};font-size:13px;color:${st.fontColor};font-weight:800">${n}</span>`;
+  }
+  return `<span style="font-family:${st.fontFamily};font-size:13px;color:${st.fontColor};font-weight:800">•</span>`;
+}
+
+function bindGMEvents(){
+  document.querySelectorAll('[data-action="toggle-folder"]').forEach(el=>{
+    el.addEventListener("click", e=>{
+      if(e.target.closest('[data-action="edit-folder"]')||e.target.closest('[data-action="delete-folder"]')) return;
+      const f=getFolder(el.dataset.folderId); if(f){ f.collapsed=!f.collapsed; save(); renderGM(); }
+    });
+  });
+  document.querySelectorAll('[data-action="edit-folder"]').forEach(b=> b.addEventListener("click", e=>{
+    e.stopPropagation(); const f=getFolder(b.dataset.folderId); if(!f) return;
+    const nv=prompt("Rename folder", f.name); if(nv==null) return; const t=nv.trim(); if(!t) return; f.name=t; save(); renderGM();
+  }));
+  document.querySelectorAll('[data-action="delete-folder"]').forEach(b=> b.addEventListener("click", e=>{
+    e.stopPropagation(); const f=getFolder(b.dataset.folderId); if(!f) return;
+    if(!confirm(`Delete folder “${f.name}”? Pins inside become Uncategorized.`)) return;
+    state.folders = state.folders.filter(x=>x.id!==f.id);
+    for(const p of state.pins) if(p.folderId===f.id) p.folderId=null;
+    save(); renderGM(); renderCanvas();
+  }));
+  document.querySelectorAll('.pin-entry').forEach(el=>{
+    el.addEventListener("click", ()=>{ state.selectedPinId = el.dataset.pinId; renderGM(); highlightPin(el.dataset.pinId); });
+    el.addEventListener("dragstart", e=>{
+      draggingId = el.dataset.pinId; e.dataTransfer.setData("text/plain", draggingId); e.dataTransfer.effectAllowed="move"; setTimeout(()=> el.style.opacity=".5",0);
+    });
+    el.addEventListener("dragend", ()=>{ el.style.opacity=""; draggingId=null; document.querySelectorAll(".drag-over").forEach(x=>x.classList.remove("drag-over")); });
+  });
+  document.querySelectorAll('[data-action="pan"]').forEach(b=> b.addEventListener("click", e=>{ e.stopPropagation(); panToPin(b.dataset.pinId); }));
+  document.querySelectorAll('[data-action="ping"]').forEach(b=> b.addEventListener("click", e=>{ e.stopPropagation(); pingPin(b.dataset.pinId, "ping"); }));
+  document.querySelectorAll('[data-action="edit"]').forEach(b=> b.addEventListener("click", e=>{ e.stopPropagation(); openEditor(b.dataset.pinId); }));
+  document.querySelectorAll('[data-action="dup"]').forEach(b=> b.addEventListener("click", e=>{ e.stopPropagation(); duplicatePin(b.dataset.pinId); }));
+  // drag zones
+  document.querySelectorAll(".folder-content,.uncat-box").forEach(zone=>{
+    zone.addEventListener("dragover", e=>{ e.preventDefault(); e.dataTransfer.dropEffect="move"; zone.classList.add("drag-over"); });
+    zone.addEventListener("dragleave", e=>{ if(!zone.contains(e.relatedTarget)) zone.classList.remove("drag-over"); });
+    zone.addEventListener("drop", e=>{
+      e.preventDefault(); e.stopPropagation(); zone.classList.remove("drag-over");
+      const id = e.dataTransfer.getData("text/plain")||draggingId; if(!id) return;
+      const pin=getPin(id); if(!pin) return;
+      const targetFolder = zone.dataset.folderId||null;
+      const card = e.target.closest(".pin-entry");
+      if((pin.folderId||null) !== (targetFolder||null)){
+        pin.folderId = targetFolder||null;
+      } else if(card && card.dataset.pinId!==id){
+        // reorder within same folder: move dragged before target
+        const ids = state.pins.map(p=>p.id);
+        const di=ids.indexOf(id), ti=ids.indexOf(card.dataset.pinId);
+        if(di!==-1&&ti!==-1){ const arr=state.pins.slice(); const [moved]=arr.splice(di,1); arr.splice(ti,0,moved); state.pins=arr; }
+      }
+      save(); renderGM(); renderCanvas();
+    });
+  });
+}
+
+function updateCounts(){
+  const cnt=document.getElementById("stageCount");
+  const visible = state.pins.filter(p=> state.showGmOnly || !p.gmOnly).length;
+  cnt.textContent = `${visible} pin${visible!==1?"s":""}${state.search?" (filtered)":""}`;
+  cnt.style.display="inline-flex";
+}
+
+/* Canvas rendering */
+function renderCanvas(){
+  const frame=document.getElementById("stageFrame");
+  // clear old pins (keep bg/grid/hex/hint)
+  [...frame.querySelectorAll(".canvas-pin")].forEach(n=> n.remove());
+  // bg selection
+  const bgImg=document.getElementById("stageBg");
+  const sel=document.getElementById("bgSelect").value || state.bg || "akbay";
+  if(sel==="akbay"){ bgImg.src="assets/ak-bay/ak-bay-map.webp"; bgImg.onerror=()=> bgImg.src="../../assets/default-scene.jpg"; }
+  else if(sel==="dungeon"){ bgImg.src="../../assets/tiles/dungeon-floor.webp"; bgImg.onerror=()=> bgImg.src="../../assets/default-scene.jpg"; }
+  else if(sel==="hex"){ bgImg.src="../../assets/Hexes/hex-grass.webp"; bgImg.onerror=()=> bgImg.src="../../assets/default-scene.jpg"; }
+  else bgImg.src="../../assets/default-scene.jpg";
+  document.getElementById("stageGrid").style.display = state.grid? "block":"none";
+  document.getElementById("stageHex").style.display = state.hex? "block":"none";
+  document.getElementById("perfBtn").innerHTML = state.pixelPerfect? '<i class="fa-solid fa-bolt"></i> Pixel-Perfect: On' : '<i class="fa-solid fa-bolt"></i> Pixel-Perfect: Off';
+  document.getElementById("perfBtn").classList.toggle("active", !!state.pixelPerfect);
+  // place pins
+  for(const pin of state.pins){
+    if(!state.showGmOnly && pin.gmOnly) continue;
+    if(state.search && !matchesSearch(pin, state.search.trim().toLowerCase())) continue;
+    const el = buildCanvasPin(pin);
+    frame.appendChild(el);
+  }
+}
+
+function buildCanvasPin(pin){
+  const st = resolvedStyle(pin);
+  const size = st.fitToHexGrid ? 48 : (parseInt(st.size)||32);
+  const wrap=document.createElement("div");
+  wrap.className="canvas-pin";
+  wrap.dataset.pinId = pin.id;
+  wrap.style.left = pin.x+"%";
+  wrap.style.top = pin.y+"%";
+  // hover animation class
+  const hoverCls = st.hoverAnimation==="pulse"? " anim-pulse" : (st.hoverAnimation==="scale"?" anim-scale":"") + (st.hoverAnimation==="brightness"?" hover-bright":"") + (st.hoverAnimation==="hue"?" hover-hue":"") ;
+  // to avoid conflict pulse infinite vs hover scale, handle separately
+  if(st.hoverAnimation==="pulse") wrap.classList.add("anim-pulse");
+  if(st.hoverAnimation==="shake") wrap.dataset.hoverShake="1";
+  // construct body
+  const body=document.createElement("div");
+  body.className="pin-body";
+  // shape specifics
+  body.style.width = size+"px";
+  body.style.height = size+"px";
+  const fillAlpha = (parseFloat(st.fillOpacity)||1)*(parseFloat(st.opacity)||1);
+  const ringAlpha = (parseFloat(st.ringOpacity)||1)*(parseFloat(st.opacity)||1);
+  const fill = rgba(st.fillColor, fillAlpha);
+  const ring = rgba(st.ringColor, ringAlpha);
+  const ringW = parseInt(st.ringWidth)||3;
+  body.style.backgroundColor = st.shape==="image"? "transparent" : fill;
+  body.style.borderColor = ring;
+  body.style.borderWidth = st.shape==="image"? "0" : ringW+"px";
+  body.style.borderStyle = st.shape==="image"? "none" : (st.ringStyle||"solid");
+  // shape geometry
+  body.style.clipPath="none";
+  body.style.transform="none";
+  body.style.borderRadius="0";
+  body.style.overflow="hidden";
+  if(st.shape==="circle"){ body.style.borderRadius="50%"; }
+  else if(st.shape==="square"){ body.style.borderRadius=(st.borderRadius||4)+"px"; }
+  else if(st.shape==="diamond"){ body.style.borderRadius=(st.borderRadius||4)+"px"; body.style.transform="rotate(45deg)"; }
+  else if(st.shape==="hexagon"){ body.style.clipPath="polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)"; }
+  else if(st.shape==="hexagonFlat"){ body.style.clipPath="polygon(0% 50%, 25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%)"; }
+  else if(st.shape==="image"){
+    body.style.backgroundImage = st.imagePath? `url("${st.imagePath}")` : "none";
+    body.style.backgroundSize="contain";
+    body.style.backgroundPosition="center";
+    body.style.backgroundRepeat="no-repeat";
+    body.style.backgroundColor="transparent";
+    body.style.border="none";
+    // tint via filter approximation: use background-color with mix? For demo use filter drop with tint if set
+    if(st.imageTint && st.imageTint.toLowerCase()!=="#ffffff"){
+      body.style.filter = `drop-shadow(0 0 0 ${st.imageTint})`;
+      // simpler tint via background blend: create overlay via pseudo? approximate with opacity
+    }
+  }
+  // handle dashed/dotted via border-style approximation for non-pixi: for demo, keep border-style dotted/dashed already
+  if(st.ringStyle==="dotted" && st.shape==="circle"){
+    // CSS dotted circle already handled; for square/hex we keep dashed/dotted as border-style
+  }
+  // hover highlight swatch
+  const isHighlight = st.hoverAnimation==="highlight";
+  const highlightTint = isHighlight ? (st.hoverImageTint||"#ff7a00") : "";
+  const highlightRing = isHighlight ? (st.hoverRingColor||highlightTint||"#ff7a00") : "";
+  const highlightRingW = isHighlight ? (parseInt(st.hoverRingWidth)||6) : ringW;
+  // content
+  const content=document.createElement("div");
+  content.className="pin-content";
+  // For diamond, counter-rotate content
+  if(st.shape==="diamond") content.style.transform="rotate(-45deg)";
+  if(st.shape==="hexagon"||st.shape==="hexagonFlat") content.style.transform="none";
+  const ct=st.contentType;
+  if(ct==="none"){ /* empty */ }
+  else if(ct==="text"){
+    const span=document.createElement("span");
+    span.textContent = st.customText||"?";
+    span.style.fontFamily = st.fontFamily;
+    span.style.fontSize = (st.fontSize||14)+"px";
+    span.style.color = st.fontColor||"#fff";
+    span.style.fontWeight = st.fontWeight==="bold"? "800":"600";
+    span.style.fontStyle = st.fontItalic? "italic":"normal";
+    span.style.webkitTextStroke = st.fontStrokeThickness? `${st.fontStrokeThickness}px ${st.fontStroke}` : "0 transparent";
+    span.style.paintOrder="stroke fill";
+    content.appendChild(span);
+  } else if(ct==="symbol"||ct==="icon"){
+    const i=document.createElement("i");
+    const cls=st.symbolClass||st.iconClass||"fa-solid fa-book-open";
+    i.className=cls;
+    i.style.color=st.symbolColor||st.iconColor||"#fff";
+    i.style.fontSize=Math.round(size*0.5)+"px";
+    if(st.shape==="diamond") i.style.transform="rotate(-45deg)";
+    content.appendChild(i);
+  } else if(ct==="customIcon"){
+    const img=document.createElement("img");
+    img.className="pin-image";
+    img.src=st.customIconPath||"../../assets/crown.svg";
+    img.style.width = Math.round(size*0.62)+"px";
+    img.style.height = Math.round(size*0.62)+"px";
+    img.style.objectFit="contain";
+    // iconColor recolour via filter if not white: use CSS filter to tint mono svg approx via drop shadow masking? For demo use style filter
+    if(st.iconColor && st.iconColor.toLowerCase()!=="#ffffff"){
+      img.style.backgroundColor=st.iconColor;
+      img.style.webkitMask=`url("${img.src}") center/contain no-repeat`;
+      img.style.mask=`url("${img.src}") center/contain no-repeat`;
+      // hide original src rendering by making image transparent but mask shows color
+      img.style.opacity="1";
+    }
+    if(st.shape==="diamond") img.style.transform="rotate(-45deg)";
+    content.appendChild(img);
+  } else { // number
+    const j=journalById(pin.journalId);
+    let n="•";
+    if(j){ const idx=j.pages.findIndex(p=>p.id===pin.pageId); n = idx>=0? String(idx+1): "1"; }
+    const span=document.createElement("span");
+    span.textContent=n;
+    span.style.fontFamily=st.fontFamily;
+    span.style.fontSize=(st.fontSize||14)+"px";
+    span.style.color=st.fontColor||"#fff";
+    span.style.fontWeight=st.fontWeight==="bold"?"800":"600";
+    span.style.fontStyle=st.fontItalic?"italic":"normal";
+    span.style.webkitTextStroke = st.fontStrokeThickness? `${st.fontStrokeThickness}px ${st.fontStroke}` : "0 transparent";
+    span.style.paintOrder="stroke fill";
+    content.appendChild(span);
+  }
+  body.appendChild(content);
+  wrap.appendChild(body);
+
+  // label
+  if(st.labelText){
+    const label=document.createElement("div");
+    label.className="pin-label";
+    label.textContent=st.labelText;
+    label.style.fontFamily=st.labelFontFamily||"Arial";
+    label.style.fontSize=(st.labelFontSize||14)+"px";
+    label.style.color=st.labelColor||"#fff";
+    label.style.fontWeight=st.labelBold?"800":"600";
+    label.style.fontStyle=st.labelItalic?"italic":"normal";
+    label.style.webkitTextStroke = st.labelStrokeThickness? `${st.labelStrokeThickness}px ${st.labelStroke}` : "0 transparent";
+    label.style.paintOrder="stroke fill";
+    label.style.opacity= String(st.labelBackground==="none"? 1 : (st.labelBackgroundOpacity!=null? st.labelBackgroundOpacity : 0.85));
+    // background
+    if(st.labelBackground==="solid"){
+      label.classList.add("bg-solid");
+      label.style.backgroundColor=rgba(st.labelBackgroundColor, st.labelBackgroundOpacity!=null? st.labelBackgroundOpacity:0.8);
+      label.style.border = `${st.labelBorderWidth||0}px solid ${st.labelBorderColor||"#fff"}`;
+      label.style.borderRadius=(st.labelBorderRadius||4)+"px";
+    } else if(st.labelBackground==="image"||st.labelBackground==="playerSheet"){
+      label.classList.add("bg-image");
+      label.style.backgroundColor=rgba(st.labelImageBackgroundColor||"#000", st.labelImageBackgroundOpacity!=null? st.labelImageBackgroundOpacity:0.85);
+      if(st.labelBorderImagePath){
+        label.style.borderImage=`url("${st.labelBorderImagePath}") ${st.labelBorderSliceTop} ${st.labelBorderSliceRight} ${st.labelBorderSliceBottom} ${st.labelBorderSliceLeft} fill`;
+        label.style.borderImageSlice=`${st.labelBorderSliceTop} ${st.labelBorderSliceRight} ${st.labelBorderSliceBottom} ${st.labelBorderSliceLeft} fill`;
+        label.style.borderImageWidth="12px";
+        label.style.borderStyle="solid";
+        label.style.borderWidth="8px";
+      } else {
+        label.style.border="1px solid rgba(255,255,255,.18)";
+        label.style.borderRadius="6px";
+      }
+    }
+    // anchor positioning
+    const gap = parseInt(st.labelOffset)||5;
+    const bw = body.getBoundingClientRect ? 0 : 0; // layout after attach; use size for offset
+    // position via absolute inside wrap: we'll set label's own transform via offsets relative to body
+    // Approach: label is sibling of body inside wrap; wrap is centered at pin x/y. Place label offset from wrap center.
+    // We'll set label style left/top based on anchor.
+    label.style.left="50%"; label.style.top="50%";
+    // anchor logic: center of pin = wrap center, body centered. Label offset accordingly.
+    const sHalf = size/2;
+    if(st.labelAnchor==="top"){ label.style.transform=`translate(-50%, calc(-50% - ${sHalf+gap}px)) translateY(-100%)`; }
+    else if(st.labelAnchor==="bottom"){ label.style.transform=`translate(-50%, calc(-50% + ${sHalf+gap}px))`; }
+    else if(st.labelAnchor==="left"){ label.style.transform=`translate(calc(-50% - ${sHalf+gap}px), -50%) translateX(-100%)`; }
+    else if(st.labelAnchor==="right"){ label.style.transform=`translate(calc(-50% + ${sHalf+gap}px), -50%)`; }
+    else { // center
+      label.style.transform="translate(-50%,-50%)";
+      label.style.backgroundColor = label.style.backgroundColor||"rgba(0,0,0,.65)";
+      label.style.padding="3px 6px"; label.style.borderRadius="6px";
+    }
+    if(st.labelShowOnHover){
+      label.style.opacity="0"; label.style.transition="opacity .18s";
+      wrap.addEventListener("mouseenter", ()=> label.style.opacity="1");
+      wrap.addEventListener("mouseleave", ()=> label.style.opacity="0");
+    }
+    wrap.appendChild(label);
+  }
+
+  // interactions
+  if(isHighlight){
+    wrap.addEventListener("mouseenter", ()=>{
+      if(st.shape==="image"){
+        body.style.outline=`${highlightRingW}px solid ${highlightRing}`;
+        body.style.outlineOffset="2px";
+        if(highlightTint && highlightTint.toLowerCase()!=="#ffffff") body.style.filter = `sepia(1) hue-rotate(320deg) saturate(2) brightness(1.1)`;
+      } else {
+        body.style.borderColor=highlightRing;
+        body.style.borderWidth=highlightRingW+"px";
+      }
+    });
+    wrap.addEventListener("mouseleave", ()=>{
+      body.style.borderColor=ring; body.style.borderWidth=ringW+"px"; body.style.outline="none"; body.style.filter= st.shape==="image" && st.imageTint && st.imageTint.toLowerCase()!=="#ffffff" ? `drop-shadow(0 0 0 ${st.imageTint})` : "none";
+    });
+  } else if(st.hoverAnimation==="shake" && wrap.dataset.hoverShake){
+    wrap.addEventListener("mouseenter", ()=>{
+      wrap.classList.remove("anim-shake"); void wrap.offsetWidth; wrap.classList.add("anim-shake");
+      setTimeout(()=> wrap.classList.remove("anim-shake"), 500);
+    });
+  }
+  // tooltip
+  wrap.addEventListener("mouseenter", e=> showTooltip(pin, e));
+  wrap.addEventListener("mouseleave", ()=> hideTooltip());
+  wrap.addEventListener("mousemove", e=> positionTooltip(e));
+  // click to select
+  wrap.addEventListener("click", e=>{
+    if(wrap._hasDragged) return;
+    e.stopPropagation();
+    state.selectedPinId=pin.id; renderGM(); highlightPin(pin.id);
+    // open journal simulated on double click? For now single click selects, double opens
+  });
+  wrap.addEventListener("dblclick", e=>{ e.stopPropagation(); openPinJournal(pin); });
+  // context menu
+  wrap.addEventListener("contextmenu", e=>{ e.preventDefault(); e.stopPropagation(); openCtxMenu(pin, e.clientX, e.clientY); });
+  // drag
+  let startX=0,startY=0,origX=0,origY=0,hasDragged=false;
+  wrap.addEventListener("pointerdown", e=>{
+    if(e.button!==0) return;
+    wrap.setPointerCapture(e.pointerId);
+    const rect=document.getElementById("stageFrame").getBoundingClientRect();
+    startX=e.clientX; startY=e.clientY; origX=pin.x; origY=pin.y; hasDragged=false; wrap._hasDragged=false;
+    wrap.classList.add("dragging");
+    const onMove=(ev)=>{
+      const dx=ev.clientX-startX, dy=ev.clientY-startY;
+      if(Math.hypot(dx,dy)>4) hasDragged=true;
+      const nx = Math.min(98, Math.max(2, origX + (dx/rect.width)*100));
+      const ny = Math.min(98, Math.max(2, origY + (dy/rect.height)*100));
+      wrap.style.left=nx+"%"; wrap.style.top=ny+"%";
+      hideTooltip();
+    };
+    const onUp=(ev)=>{
+      wrap.releasePointerCapture(ev.pointerId);
+      wrap.classList.remove("dragging");
+      window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp);
+      if(hasDragged){
+        const rect2=document.getElementById("stageFrame").getBoundingClientRect();
+        const dx=ev.clientX-startX, dy=ev.clientY-startY;
+        pin.x = Math.min(98, Math.max(2, origX + (dx/rect2.width)*100));
+        pin.y = Math.min(98, Math.max(2, origY + (dy/rect2.height)*100));
+        wrap._hasDragged=true; setTimeout(()=> wrap._hasDragged=false, 300);
+        save(); renderGM();
+      }
+    };
+    window.addEventListener("pointermove", onMove); window.addEventListener("pointerup", onUp);
+  });
+
+  // GM-only visual dim if not GM view: here we simulate player view hide? We have toggle, already filtered hidden pins.
+  if(pin.gmOnly) wrap.style.filter = wrap.style.filter? wrap.style.filter+" brightness(0.85)":"brightness(0.92)";
+  if(pin.requiresVision) wrap.title="Requires Vision (LOS)";
+
+  return wrap;
+}
+
+// tooltip
+let tooltipEl=null, tooltipPin=null;
+function showTooltip(pin, evt){
+  const st = resolvedStyle(pin);
+  if(st.hideTooltip || pin.hideTooltip) return;
+  const title = pin.tooltipTitle || (pageById(pin.journalId,pin.pageId)?.name) || (pin.label && pin.label!=="New Pin"? pin.label : (journalById(pin.journalId)?.name || "Unlinked Pin"));
+  let content = pin.tooltipContent;
+  if(!content){
+    const page = pageById(pin.journalId,pin.pageId);
+    if(page) content = page.excerpt||"";
+    else if(!pin.tooltipTitle) content = "Unlinked pin — edit the Pin Style Editor to link a journal or write a custom tooltip.";
+  }
+  hideTooltip();
+  tooltipEl=document.createElement("div");
+  tooltipEl.className="sdx-journal-pin-tooltip fallback";
+  tooltipEl.innerHTML = `<div class="sdx-journal-pin-tooltip-title" style="font-size:${st.tooltipTitleFontSize||17}px">${esc(title)}</div>${content?`<div class="sdx-journal-pin-tooltip-content" style="font-size:${st.tooltipContentFontSize||13}px">${esc(content)}</div>`:""}`;
+  document.body.appendChild(tooltipEl);
+  tooltipPin=pin;
+  positionTooltip(evt);
+}
+function positionTooltip(evt){
+  if(!tooltipEl) return;
+  const pad=14;
+  let x = (evt.clientX||0)+16, y=(evt.clientY||0)+16;
+  const r=tooltipEl.getBoundingClientRect();
+  if(x+r.width > window.innerWidth - pad) x = window.innerWidth - r.width - pad;
+  if(y+r.height > window.innerHeight - pad) y = window.innerHeight - r.height - pad;
+  tooltipEl.style.left=x+"px"; tooltipEl.style.top=y+"px";
+}
+function hideTooltip(){ if(tooltipEl){ tooltipEl.remove(); tooltipEl=null; tooltipPin=null; } }
+
+// context menu
+function openCtxMenu(pin, x, y){
+  const menu=document.getElementById("ctxMenu");
+  menu.innerHTML = `
+    <button data-act="open"><i class="fa-solid fa-book-open"></i> Open Journal</button>
+    <button data-act="edit"><i class="fa-solid fa-palette"></i> Edit Style…</button>
+    <button data-act="copy"><i class="fa-solid fa-copy"></i> Copy Style</button>
+    <button data-act="paste" ${!state.copyBuf? "disabled style='opacity:.4;cursor:default'":""}><i class="fa-solid fa-paste"></i> Paste Style</button>
+    <button data-act="dup"><i class="fa-solid fa-clone"></i> Duplicate</button>
+    <div class="sep"></div>
+    <button data-act="pan"><i class="fa-solid fa-crosshairs"></i> Pan to</button>
+    <button data-act="ping"><i class="fa-solid fa-bullseye"></i> Ping (${resolvedStyle(pin).pingAnimation})</button>
+    <button data-act="bring"><i class="fa-solid fa-people-group"></i> Bring Players Here (${resolvedStyle(pin).bringAnimation})</button>
+    <div class="sep"></div>
+    <button data-act="gm" style="color:${pin.gmOnly?'#ff9a9a':'#ddd'}"><i class="fa-solid ${pin.gmOnly?'fa-eye-slash':'fa-eye'}"></i> ${pin.gmOnly?'GM-only — click to make visible':'Player-visible — click for GM-only'}</button>
+    <button data-act="delete" style="color:#ff9a9a"><i class="fa-solid fa-trash"></i> Delete</button>
+  `;
+  menu.style.left=x+"px"; menu.style.top=y+"px"; menu.classList.add("open");
+  const place = menu.getBoundingClientRect();
+  if(place.right>window.innerWidth) menu.style.left=(window.innerWidth-place.width-8)+"px";
+  if(place.bottom>window.innerHeight) menu.style.top=(window.innerHeight-place.height-8)+"px";
+  menu.querySelectorAll("button").forEach(btn=> btn.addEventListener("click", e=>{
+    e.stopPropagation(); const act=btn.dataset.act; menu.classList.remove("open");
+    if(act==="open") openPinJournal(pin);
+    else if(act==="edit") openEditor(pin.id);
+    else if(act==="copy"){ state.copyBuf= clone(resolvedStyle(pin)); flash(`Copied style from “${pinDisplayName(pin)}”`); }
+    else if(act==="paste"){ if(!state.copyBuf) return; pin.style = clone(state.copyBuf); save(); renderGM(); renderCanvas(); flash("Pasted style"); }
+    else if(act==="dup") duplicatePin(pin.id);
+    else if(act==="pan") panToPin(pin.id);
+    else if(act==="ping") pingPin(pin.id, "ping");
+    else if(act==="bring") pingPin(pin.id, "bring");
+    else if(act==="gm"){ pin.gmOnly=!pin.gmOnly; save(); renderGM(); renderCanvas(); }
+    else if(act==="delete"){ if(confirm(`Delete “${pinDisplayName(pin)}”?`)){ state.pins=state.pins.filter(p=>p.id!==pin.id); save(); renderGM(); renderCanvas(); } }
+  }));
+  setTimeout(()=> {
+    const close=(e)=>{ if(!menu.contains(e.target)){ menu.classList.remove("open"); window.removeEventListener("click", close); } };
+    window.addEventListener("click", close);
+  },0);
+}
+function openPinJournal(pin){
+  const j=journalById(pin.journalId), p=pageById(pin.journalId,pin.pageId);
+  if(!j){ alert("Unlinked pin — no journal. Edit the pin and link a journal/page in the Pin Style Editor."); return; }
+  alert(`Journal: ${j.name}\nPage: ${p? p.name : "— first page —"}\n\nIn Foundry this opens the JournalEntrySheet at that page.`);
+}
+function panToPin(id){
+  const pin=getPin(id); if(!pin) return;
+  const el=document.querySelector(`.canvas-pin[data-pin-id="${id}"]`);
+  if(el){ el.scrollIntoView({behavior:"smooth", block:"center"}); el.animate([{transform:"translate(-50%,-50%) scale(1)"},{transform:"translate(-50%,-50%) scale(1.08)"},{transform:"translate(-50%,-50%) scale(1)"}],{duration:420}); }
+  flash(`Pan to “${pinDisplayName(pin)}” — in Foundry: canvas.animatePan(x,y)`);
+}
+function pingPin(id, kind){
+  const pin=getPin(id); if(!pin) return;
+  const st=resolvedStyle(pin);
+  const anim = kind==="bring"? (st.bringAnimation||"ripple") : (st.pingAnimation||"ripple");
+  const el=document.querySelector(`.canvas-pin[data-pin-id="${id}"]`);
+  if(!el){ flash("Pin not on current canvas (filtered?)"); return; }
+  const body=el.querySelector(".pin-body");
+  const eff = anim==="none"? null : anim;
+  if(!eff){ flash(`${kind==="bring"?"Bring":"Ping"} — animation is “None” (edit the pin to enable ripple/shake/flash)`); return; }
+  // map rotate legacy to shake
+  const cls = eff==="ripple"? "anim-ping" : eff==="shake"||eff==="rotate"? "anim-shake" : eff==="flash"? "anim-flash":"anim-ping";
+  body.classList.remove("anim-ping","anim-shake","anim-flash"); void body.offsetWidth; body.classList.add(cls);
+  setTimeout(()=> body.classList.remove(cls), 800);
+  if(kind==="bring") flash(`Bring Players Here — socket panToPin + ${anim} on “${pinDisplayName(pin)}”`);
+  else flash(`Ping — ${anim} on “${pinDisplayName(pin)}”`);
+}
+function highlightPin(id){
+  document.querySelectorAll(".canvas-pin").forEach(n=> n.style.outline="none");
+  const el=document.querySelector(`.canvas-pin[data-pin-id="${id}"]`);
+  if(el){ el.style.outline="2px solid #ff6b00"; el.style.outlineOffset="3px"; setTimeout(()=> el.style.outline="none", 900); }
+}
+function duplicatePin(id){
+  const pin=getPin(id); if(!pin) return;
+  const np=clone(pin); np.id=rid(); np.x=Math.min(98,pin.x+3); np.y=Math.min(98,pin.y+3); np.label=pin.label+" (copy)";
+  state.pins.push(np); save(); renderGM(); renderCanvas(); flash(`Duplicated “${pinDisplayName(pin)}”`);
+}
+function flash(msg){
+  let n=document.getElementById("_flash");
+  if(!n){ n=document.createElement("div"); n.id="_flash"; n.style.cssText="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid #333;color:#ffd86b;padding:8px 14px;border-radius:999px;font-size:12px;z-index:8000;box-shadow:0 8px 20px rgba(0,0,0,.5)"; document.body.appendChild(n); }
+  n.textContent=msg; n.style.opacity="1"; n.style.transition="none";
+  clearTimeout(n._t); n._t=setTimeout(()=>{ n.style.transition="opacity 400ms"; n.style.opacity="0"; }, 1800);
+}
+
+// Editor modal
+function openEditor(pinId){
+  editingId = pinId||null;
+  const isDefaults = editingId==null;
+  const pin = isDefaults? null : getPin(editingId);
+  if(!isDefaults && !pin){ alert("Pin not found"); return; }
+  // merge style
+  const base = clone(state.defaults);
+  const cur = isDefaults? clone(base) : {...clone(base), ...(pin.style||{}), size: pin.style?.size ?? pin.size ?? base.size };
+  pendingStyle = clone(cur);
+  // keep original for reset
+  pendingStyle.__orig = clone(cur);
+  pendingStyle.__pinSnapshot = pin? clone(pin):null;
+  document.getElementById("editorTitle").textContent = isDefaults? "Pin Style Editor — World Defaults" : `Pin Style Editor — “${pinDisplayName(pin)}”`;
+  renderEditorBody();
+  document.getElementById("editorBackdrop").classList.add("open");
+  // live preview canvas already rendered
+}
+function closeEditor(){ document.getElementById("editorBackdrop").classList.remove("open"); editingId=null; pendingStyle=null; }
+function renderEditorBody(){
+  const body=document.getElementById("editorBody");
+  const st=pendingStyle;
+  const isDefaults = editingId==null;
+  const pin = isDefaults? null : getPin(editingId);
+
+  function selOptions(arr, val){ return arr.map(([v,l])=> `<option value="${attr(v)}" ${v===val?"selected":""}>${esc(l)}</option>`).join(""); }
+  function faOptions(val){
+    return ICONS.map(([v,l])=> `<option value="${attr(v)}" ${v===val?"selected":""}>${esc(l)}</option>`).join("");
+  }
+  function fontOptions(val){
+    return FONT_FAMILIES.map(f=> `<option value="${attr(f.includes(' ')?`'${f}'`:f)}" ${f===val||`'${f}'`===val?"selected":""}>${esc(f)}</option>`).join("");
+  }
+  function shapeOpts(val){ return SHAPES.map(([v,l])=> `<option value="${attr(v)}" ${v===val?"selected":""}>${esc(l)}</option>`).join(""); }
+
+  // helper to render range row
+  const rangeRow=(name,label,min,max,step,val)=>`<div class="form-group"><label>${label} <span data-for="${name}">${val}</span></label><input type="range" name="${name}" min="${min}" max="${max}" step="${step}" value="${attr(String(val))}"></div>`;
+  const colorRow=(name,label,val)=>`<div class="form-group color-group"><label>${label}</label><input type="color" name="${name}" value="${attr(val||'#ffffff')}"></div>`;
+
+  let html="";
+  // preview
+  html+=`<section class="editor-section preview-section"><h3><i class="fa-solid fa-eye"></i> Preview <span style="margin-left:auto;font-size:11px;opacity:.6">Live — updates the canvas too for single pins</span></h3><div class="pin-preview-canvas" id="editorPreviewCanvas"></div><p class="hint">The preview uses the same CSS as the canvas pins. In Foundry the marker is a <code>PIXI.Graphics</code> via <code>JournalPinGraphics</code>.</p></section>`;
+
+  // Journal Page (individual only)
+  if(!isDefaults){
+    html+=`<section class="editor-section"><h3><i class="fa-solid fa-book"></i> Journal &amp; Page</h3>
+      <div class="form-group"><label>Select Journal</label><select name="journalId">${['',...journals.map(j=>j.id)].map(id=> {
+        const j=journals.find(x=>x.id===id);
+        const name=id? j.name : "- None (unlinked) -";
+        return `<option value="${attr(id)}" ${pin.journalId===id?"selected":""}>${esc(name)}</option>`;
+      }).join("")}</select></div>
+      <div class="form-group"><label>Select Page</label><select name="pageId">${(()=>{
+        const j=journalById(pin.journalId);
+        if(!j) return `<option value="">— no journal selected —</option>`;
+        return j.pages.map(p=> `<option value="${attr(p.id)}" ${pin.pageId===p.id?"selected":""}>${esc(p.name)}</option>`).join("");
+      })()}</select></div>
+      <div class="form-group"><label>Pin Name</label><select name="nameSource">${selOptions(NAME_SOURCES, pin.nameSource||"auto")}</select><p class="hint">Which value shows as the pin's name in the Pins list. Auto falls back: journal → tooltip → label. Placeholder “New Pin” is skipped.</p></div>
+    </section>`;
+    html+=`<section class="editor-section"><h3><i class="fa-solid fa-eye"></i> Visibility</h3>
+      <div class="form-group checkbox-group"><label><input type="checkbox" name="requiresVision" ${pin.requiresVision?"checked":""}> Requires Vision</label><p class="hint">Players need a token with line of sight to see this pin.</p></div>
+      <div class="form-group checkbox-group"><label><input type="checkbox" name="aboveFog" ${pin.aboveFog?"checked":""}> Show Above Fog</label><p class="hint">Keep visible even in fogged hexes. Without it, pins in unexplored fog are hidden for players.</p></div>
+      <div class="form-group checkbox-group"><label><input type="checkbox" name="gmOnly" ${pin.gmOnly?"checked":""}> GM-only</label><p class="hint">Hide from players entirely.</p></div>
+    </section>`;
+    html+=`<section class="editor-section"><h3><i class="fa-solid fa-comment"></i> Custom Tooltip</h3>
+      <div class="form-group"><label>Tooltip Title</label><input type="text" name="tooltipTitle" value="${attr(pin.tooltipTitle||"")}" placeholder="Leave empty to use page title"></div>
+      <div class="form-group"><label>Tooltip Content</label><textarea name="tooltipContent" rows="3" placeholder="Leave empty to use page excerpt">${esc(pin.tooltipContent||"")}</textarea></div>
+      <div class="form-group checkbox-group"><label><input type="checkbox" name="hideTooltip" ${pin.hideTooltip?"checked":""}> Hide Hover Tooltip</label><p class="hint">Disables the tooltip popup for this pin.</p></div>
+    </section>`;
+  }
+  // Tooltip Text sizes (shared)
+  html+=`<section class="editor-section"><h3><i class="fa-solid fa-comment-dots"></i> Tooltip Text <span style="font-size:11px;opacity:.6;margin-left:auto">px</span></h3><p class="hint">Font sizes for the hover tooltip popup (title + body), stored per-pin as <code>tooltipTitleFontSize</code> / <code>tooltipContentFontSize</code>.</p>
+    ${rangeRow("tooltipTitleFontSize","Title Size",10,40,1,st.tooltipTitleFontSize||17)}
+    ${rangeRow("tooltipContentFontSize","Body Size",8,32,1,st.tooltipContentFontSize||13)}
+  </section>`;
+  // Shape & Size
+  html+=`<section class="editor-section"><h3><i class="fa-solid fa-shapes"></i> Shape &amp; Size</h3>
+    <div class="form-group"><label>Shape</label><select name="shape">${shapeOpts(st.shape)}</select></div>
+    <div class="form-group border-radius-row" style="display:${st.shape==="square"?"flex":"none"}"><label>Border Radius <span data-for="borderRadius">${st.borderRadius||4}</span>px</label><input type="range" name="borderRadius" min="0" max="50" value="${st.borderRadius||4}"></div>
+    ${rangeRow("size","Size",16,128,1,st.size||32)}
+    <div class="form-group checkbox-group"><label><input type="checkbox" name="fitToHexGrid" ${st.fitToHexGrid?"checked":""}> Fit to hex grid</label><p class="hint">Size the pin to the active scene's hex so it covers the tile (overrides the size slider). Best with Image or Hexagon. Stored as <code>fitToHexGrid</code>.</p></div>
+    <div class="image-shape-options" style="display:${st.shape==="image"?"block":"none"}">
+      <div class="form-group"><label>Selected Image</label><div class="file-row"><input type="text" name="imagePath" value="${attr(st.imagePath||"")}" placeholder="path/to/image.png or https://…"><button type="button" data-action="pick-image"><i class="fa-solid fa-file-arrow-up"></i> Upload</button><input type="file" id="imageFileInput" accept="image/*,.svg,.webp,.png,.jpg" style="display:none"></div><p class="hint">In Foundry this is a <code>FilePicker image</code>. Here paste a URL or upload. Try <code>../../assets/crown.svg</code>.</p></div>
+      ${colorRow("imageTint","Image Tint (white = none)", st.imageTint||"#ffffff")}
+    </div>
+    <div class="standard-shape-options" style="display:${st.shape==="image"?"none":"block"}">
+      ${rangeRow("ringWidth","Ring Width",1,8,1,st.ringWidth||3)}
+      <div class="form-group"><label>Ring Style</label><select name="ringStyle">${selOptions(RING_STYLES, st.ringStyle||"solid")}</select></div>
+      ${rangeRow("opacity","Overall Opacity",0.3,1,0.1,st.opacity ?? 1.0)}
+      ${rangeRow("fillOpacity","Background Opacity",0,1,0.1,st.fillOpacity ?? 1.0)}
+      ${rangeRow("ringOpacity","Ring Opacity",0,1,0.1,st.ringOpacity ?? 1.0)}
+    </div>
+    <div class="image-opacity-row" style="display:${st.shape==="image"?"block":"none"}">${rangeRow("opacity","Overall Opacity",0.3,1,0.1,st.opacity ?? 1.0)}</div>
+    <div class="form-group"><label>Highlight on Hover</label><select name="hoverAnimation">${selOptions(HOVER_ANIMS, st.hoverAnimation||"highlight")}</select><p class="hint">Highlight tints the icon and draws a border on hover. The color swatch below drives both.</p></div>
+    <div class="form-group color-group highlight-row" style="display:${(st.hoverAnimation||"highlight")==="highlight"?"flex":"none"}"><label>Highlight Color</label><input type="color" name="hoverImageTint" value="${attr(st.hoverImageTint||"#ff7a00")}"><span class="hint" style="margin-left:8px">Applies to tint + hover border</span></div>
+    <div class="form-group"><label>Ping Animation</label><select name="pingAnimation">${selOptions(PING_ANIMS, st.pingAnimation||"ripple")}</select></div>
+    <div class="form-group"><label>Bring Animation</label><select name="bringAnimation">${selOptions(PING_ANIMS, st.bringAnimation||"ripple")}</select></div>
+  </section>`;
+  // Colors (standard only)
+  html+=`<section class="editor-section standard-colors" style="display:${st.shape==="image"?"none":"block"}"><h3><i class="fa-solid fa-palette"></i> Colors</h3>
+    ${colorRow("ringColor","Ring Color", st.ringColor||"#ffffff")}
+    ${colorRow("fillColor","Fill Color", st.fillColor||"#000000")}
+  </section>`;
+  // Content
+  html+=`<section class="editor-section"><h3><i class="fa-solid fa-font"></i> Content</h3>
+    <div class="form-group"><label>Content Type</label><select name="contentType">
+      <option value="number" ${st.contentType==="number"?"selected":""}>Page Number</option>
+      <option value="symbol" ${st.contentType==="symbol"||st.contentType==="icon"?"selected":""}>Symbol (FontAwesome)</option>
+      <option value="customIcon" ${st.contentType==="customIcon"?"selected":""}>Custom Icon (SVG)</option>
+      <option value="text" ${st.contentType==="text"?"selected":""}>Custom Text</option>
+      <option value="none" ${st.contentType==="none"?"selected":""}>None</option>
+    </select></div>
+    <div class="text-row" style="display:${st.contentType==="text"?"block":"none"}"><div class="form-group"><label>Custom Text</label><input type="text" name="customText" value="${attr(st.customText||"")}" placeholder="e.g. A, B, 10..."></div></div>
+    <div class="symbol-row" style="display:${st.contentType==="symbol"||st.contentType==="icon"?"block":"none"}">
+      <div class="form-group"><label>Symbol Type</label><select name="symbolClass">${faOptions(st.symbolClass||st.iconClass||"fa-solid fa-book-open")}</select></div>
+      ${colorRow("symbolColor","Symbol Color", st.symbolColor||"#ffffff")}
+    </div>
+    <div class="custom-icon-row" style="display:${st.contentType==="customIcon"?"block":"none"}">
+      <div class="form-group"><label>Selected Icon</label><div class="icon-row"><div class="sw">${st.customIconPath? `<img src="${attr(st.customIconPath)}">` : `<i class="fa-solid fa-image"></i>`}</div><button type="button" data-action="browse-icons"><i class="fa-solid fa-folder-open"></i> Browse Icons</button><button type="button" data-action="pick-custom-icon"><i class="fa-solid fa-file-arrow-up"></i> Upload</button><input type="file" id="customIconFileInput" accept="image/svg+xml,image/*,.svg,.png,.webp" style="display:none"></div><input type="hidden" name="customIconPath" value="${attr(st.customIconPath||"")}"><p class="hint">Custom Icons are SVGs from <code>assets/icons/…</code> or any image path. In Foundry: Icon Picker.</p></div>
+      ${colorRow("iconColor","Icon Color", st.iconColor||"#ffffff")}
+    </div>
+    <div class="font-row" style="display:${st.contentType==="number"||st.contentType==="text"?"block":"none"}">
+      <div class="form-group"><label>Font Family</label><select name="fontFamily">${fontOptions(st.fontFamily||"Arial")}</select></div>
+      ${rangeRow("fontSize","Font Size",8,120,1,st.fontSize||14)}
+      ${colorRow("fontColor","Font Color", st.fontColor||"#ffffff")}
+      ${colorRow("fontStroke","Text Outline", st.fontStroke||"#000000")}
+      ${rangeRow("fontStrokeThickness","Outline Width",0,10,1,st.fontStrokeThickness||0)}
+      <div class="form-group checkbox-group"><label><input type="checkbox" name="fontWeight" ${st.fontWeight==="bold"?"checked":""}> Bold</label><label style="margin-left:10px"><input type="checkbox" name="fontItalic" ${st.fontItalic?"checked":""}> Italic</label></div>
+    </div>
+  </section>`;
+  // Label
+  html+=`<section class="editor-section"><h3><i class="fa-solid fa-tag"></i> Label <span style="font-size:11px;opacity:.6;margin-left:auto">Canvas text beside the pin</span></h3>
+    <div class="form-group"><label>Label Text <i class="fa-solid fa-circle-info" title="Supports multiple lines"></i></label><textarea name="labelText" rows="2" placeholder="Optional hover label…">${esc(st.labelText||"")}</textarea></div>
+    <div class="form-group checkbox-group"><label><input type="checkbox" name="labelShowOnHover" ${st.labelShowOnHover?"checked":""}> Show only on hover</label></div>
+    <div class="form-group"><label>Label Position</label><select name="labelAnchor"><option value="top" ${st.labelAnchor==="top"?"selected":""}>Top</option><option value="bottom" ${st.labelAnchor==="bottom"?"selected":""}>Bottom</option><option value="left" ${st.labelAnchor==="left"?"selected":""}>Left</option><option value="right" ${st.labelAnchor==="right"?"selected":""}>Right</option><option value="center" ${st.labelAnchor==="center"?"selected":""}>Center</option></select></div>
+    ${rangeRow("labelOffset","Label Offset",-50,100,1,st.labelOffset||5)}
+    <div class="form-group"><label>Font Family</label><select name="labelFontFamily">${fontOptions(st.labelFontFamily||"Arial")}</select></div>
+    ${rangeRow("labelFontSize","Font Size",8,64,1,st.labelFontSize||16)}
+    ${colorRow("labelColor","Text Color", st.labelColor||"#ffffff")}
+    ${colorRow("labelStroke","Text Outline", st.labelStroke||"#000000")}
+    ${rangeRow("labelStrokeThickness","Outline Width",0,10,1,st.labelStrokeThickness||4)}
+    <div class="form-group checkbox-group"><label><input type="checkbox" name="labelBold" ${st.labelBold?"checked":""}> Bold</label><label style="margin-left:10px"><input type="checkbox" name="labelItalic" ${st.labelItalic?"checked":""}> Italic</label></div>
+    <div class="form-group"><label>Background</label><select name="labelBackground"><option value="none" ${st.labelBackground==="none"?"selected":""}>None</option><option value="solid" ${st.labelBackground==="solid"?"selected":""}>Solid Color</option><option value="image" ${st.labelBackground==="image"?"selected":""}>Image Border</option></select></div>
+    <div class="label-bg-solid" style="display:${st.labelBackground==="solid"?"block":"none"}">
+      ${colorRow("labelBackgroundColor","BG Color", st.labelBackgroundColor||"#000000")}
+      ${colorRow("labelBorderColor","Border Color", st.labelBorderColor||"#ffffff")}
+      ${rangeRow("labelBackgroundOpacity","Opacity",0,1,0.1,st.labelBackgroundOpacity||0.8)}
+      ${rangeRow("labelBorderWidth","Border Width",0,10,1,st.labelBorderWidth||2)}
+      ${rangeRow("labelBorderRadius","Corner Radius",0,20,1,st.labelBorderRadius||4)}
+    </div>
+    <div class="label-bg-image" style="display:${st.labelBackground==="image"?"block":"none"}">
+      ${colorRow("labelImageBackgroundColor","BG Color", st.labelImageBackgroundColor||"#000000")}
+      ${rangeRow("labelImageBackgroundOpacity","Opacity",0,1,0.1,st.labelImageBackgroundOpacity||0.85)}
+      <div class="form-group"><label>Custom Border Path</label><div class="file-row"><input type="text" name="labelBorderImagePath" value="${attr(st.labelBorderImagePath||"")}" placeholder="path/to/border.png"><button type="button" data-action="pick-border"><i class="fa-solid fa-file-import"></i> Browse</button><input type="file" id="borderFileInput" accept="image/*,.png,.webp" style="display:none"></div><p class="hint">Border-image for the label — in Foundry this is a <code>FilePicker</code> plus 9-slice controls.</p></div>
+      <details style="margin-top:8px" ${st.labelBorderImagePath?"open":""}><summary><i class="fa-solid fa-gear"></i> Advanced Border Settings</summary>
+        <div class="slice-grid">
+          ${rangeRow("labelBorderSliceTop","Slice Top",1,250,1,st.labelBorderSliceTop||54)}
+          ${rangeRow("labelBorderSliceRight","Slice Right",1,250,1,st.labelBorderSliceRight||54)}
+          ${rangeRow("labelBorderSliceBottom","Slice Bottom",1,250,1,st.labelBorderSliceBottom||54)}
+          ${rangeRow("labelBorderSliceLeft","Slice Left",1,250,1,st.labelBorderSliceLeft||54)}
+        </div>
+      </details>
+    </div>
+  </section>`;
+  // TMFX simulated
+  html+=`<section class="editor-section"><h3><i class="fa-solid fa-wand-magic-sparkles"></i> Filters and Effects <span style="font-size:10px;opacity:.6;margin-left:auto">TokenMagic FX — simulated</span></h3>
+    <div class="form-group"><label>Apply Preset</label><div class="file-row"><select name="tmfxPreset" disabled><option>- Select Preset -</option><option>Glow</option><option>Outline</option><option>Blur (requires TokenMagic)</option></select><button type="button" disabled title="Requires TokenMagic in Foundry"><i class="fa-solid fa-plus"></i></button></div><p class="hint">In Foundry, pins that live on the canvas can host TokenMagic filters (<code>addFilters / updateFilters</code> via <code>TokenMagic.getPresets(\"sdx-presets\")</code>). Not available in a static page — shown here for completeness.</p></div>
+    <div class="banner-tip" style="margin-top:6px"><code>pixelPerfectPins</code> (experimental) + <code>pixelPerfectPinsAlpha</code> (0–255) control hit testing for transparent image pins — toggle with the “Pixel-Perfect” button in the Pins toolbar.</div>
+  </section>`;
+
+  body.innerHTML = html;
+  // inject preview pin via JS (reuse canvas pin builder for mini)
+  renderEditorPreview();
+  bindEditorEvents();
+}
+
+function getEditorFormData(){
+  const form=document.querySelector("#editorBody");
+  if(!form) return clone(pendingStyle);
+  const q=(sel)=> form.querySelector(sel);
+  const readNum=(v,fallback)=>{ const n=parseFloat(v); return Number.isFinite(n)? n: fallback; };
+  const isDefaults = editingId==null;
+  const st={ ...clone(pendingStyle) };
+  // journal linkage (individual only)
+  if(!isDefaults){
+    const pin=getPin(editingId);
+    const jSel=q('[name="journalId"]'); if(jSel) pin._pendingJournalId = jSel.value; // we'll apply on save via pin fields not style
+    const pSel=q('[name="pageId"]'); if(pSel) pin._pendingPageId = pSel.value;
+    const ns=q('[name="nameSource"]'); if(ns) pin._pendingNameSource = ns.value;
+    const rv=q('[name="requiresVision"]'); if(rv) pin._pendingRequiresVision = rv.checked;
+    const af=q('[name="aboveFog"]'); if(af) pin._pendingAboveFog = af.checked;
+    const gm=q('[name="gmOnly"]'); if(gm) pin._pendingGmOnly = gm.checked;
+    const tt=q('[name="tooltipTitle"]'); if(tt) pin._pendingTooltipTitle = tt.value;
+    const tc=q('[name="tooltipContent"]'); if(tc) pin._pendingTooltipContent = tc.value;
+    const ht=q('[name="hideTooltip"]'); if(ht) pin._pendingHideTooltip = ht.checked;
+  }
+  const shape = q('[name="shape"]')?.value || st.shape;
+  st.shape = shape;
+  st.borderRadius = parseInt(q('[name="borderRadius"]')?.value)||4;
+  st.size = parseInt(q('[name="size"]')?.value)||32;
+  st.fitToHexGrid = !!q('[name="fitToHexGrid"]')?.checked;
+  st.tooltipTitleFontSize = parseInt(q('[name="tooltipTitleFontSize"]')?.value)||17;
+  st.tooltipContentFontSize = parseInt(q('[name="tooltipContentFontSize"]')?.value)||13;
+  st.imagePath = q('[name="imagePath"]')?.value || "";
+  st.imageTint = q('[name="imageTint"]')?.value || "";
+  st.hoverAnimation = q('[name="hoverAnimation"]')?.value || "highlight";
+  const hv = q('[name="hoverImageTint"]')?.value;
+  st.hoverImageTint = hv || "#ff7a00";
+  st.hoverRingColor = hv || "#ff7a00";
+  st.pingAnimation = q('[name="pingAnimation"]')?.value || "ripple";
+  st.bringAnimation = q('[name="bringAnimation"]')?.value || "ripple";
+  // opacity split by shape
+  if(shape==="image"){
+    st.opacity = readNum(q('.image-opacity-row [name="opacity"]')?.value ?? q('[name="opacity"]')?.value, 1.0);
+    // for image, fill/ring opacity irrelevant but keep
+  } else {
+    st.ringWidth = parseInt(q('[name="ringWidth"]')?.value)||3;
+    st.ringStyle = q('[name="ringStyle"]')?.value||"solid";
+    const opA = q('.standard-shape-options [name="opacity"]')?.value; st.opacity = readNum(opA, 1.0);
+    st.fillOpacity = readNum(q('[name="fillOpacity"]')?.value, 1.0);
+    st.ringOpacity = readNum(q('[name="ringOpacity"]')?.value, 1.0);
+  }
+  st.ringColor = q('[name="ringColor"]')?.value || st.ringColor;
+  st.fillColor = q('[name="fillColor"]')?.value || st.fillColor;
+  st.contentType = q('[name="contentType"]')?.value || st.contentType;
+  st.customText = q('[name="customText"]')?.value || "";
+  st.symbolClass = q('[name="symbolClass"]')?.value || q('[name="iconClass"]')?.value || st.symbolClass;
+  st.symbolColor = q('[name="symbolColor"]')?.value || st.symbolColor;
+  st.customIconPath = q('[name="customIconPath"]')?.value || "";
+  st.iconColor = q('[name="iconColor"]')?.value || st.iconColor;
+  st.iconClass = st.symbolClass;
+  st.fontSize = parseInt(q('[name="fontSize"]')?.value)||14;
+  st.fontFamily = q('[name="fontFamily"]')?.value || st.fontFamily;
+  st.fontColor = q('[name="fontColor"]')?.value || st.fontColor;
+  st.fontStroke = q('[name="fontStroke"]')?.value || st.fontStroke;
+  st.fontStrokeThickness = parseInt(q('[name="fontStrokeThickness"]')?.value)||0;
+  st.fontWeight = q('[name="fontWeight"]')?.checked? "bold":"normal";
+  st.fontItalic = !!q('[name="fontItalic"]')?.checked;
+  st.labelText = q('[name="labelText"]')?.value || "";
+  st.labelShowOnHover = !!q('[name="labelShowOnHover"]')?.checked;
+  st.labelAnchor = q('[name="labelAnchor"]')?.value || st.labelAnchor;
+  st.labelOffset = parseInt(q('[name="labelOffset"]')?.value)||5;
+  st.labelFontFamily = q('[name="labelFontFamily"]')?.value || st.labelFontFamily;
+  st.labelFontSize = parseInt(q('[name="labelFontSize"]')?.value)||16;
+  st.labelColor = q('[name="labelColor"]')?.value || st.labelColor;
+  st.labelStroke = q('[name="labelStroke"]')?.value || st.labelStroke;
+  st.labelStrokeThickness = parseInt(q('[name="labelStrokeThickness"]')?.value)||0;
+  st.labelBold = !!q('[name="labelBold"]')?.checked;
+  st.labelItalic = !!q('[name="labelItalic"]')?.checked;
+  st.labelBackground = q('[name="labelBackground"]')?.value || st.labelBackground;
+  st.labelBackgroundColor = q('[name="labelBackgroundColor"]')?.value || st.labelBackgroundColor;
+  st.labelBorderColor = q('[name="labelBorderColor"]')?.value || st.labelBorderColor;
+  st.labelBackgroundOpacity = readNum(q('[name="labelBackgroundOpacity"]')?.value, 0.8);
+  st.labelBorderWidth = parseInt(q('[name="labelBorderWidth"]')?.value)||0;
+  st.labelBorderRadius = parseInt(q('[name="labelBorderRadius"]')?.value)||4;
+  st.labelImageBackgroundColor = q('[name="labelImageBackgroundColor"]')?.value || st.labelImageBackgroundColor;
+  st.labelImageBackgroundOpacity = readNum(q('[name="labelImageBackgroundOpacity"]')?.value, 0.85);
+  st.labelBorderImagePath = q('[name="labelBorderImagePath"]')?.value || "";
+  st.labelBorderSliceTop = parseInt(q('[name="labelBorderSliceTop"]')?.value)||54;
+  st.labelBorderSliceRight = parseInt(q('[name="labelBorderSliceRight"]')?.value)||54;
+  st.labelBorderSliceBottom = parseInt(q('[name="labelBorderSliceBottom"]')?.value)||54;
+  st.labelBorderSliceLeft = parseInt(q('[name="labelBorderSliceLeft"]')?.value)||54;
+  return st;
+}
+
+function renderEditorPreview(){
+  const host=document.getElementById("editorPreviewCanvas"); if(!host) return;
+  // build a mini pin using current pendingStyle (simulate a pin with that style)
+  const st = getEditorFormData();
+  pendingStyle = st; // keep live
+  // Create temp pin object
+  const isDefaults = editingId==null;
+  const pin = isDefaults? {id:"preview", x:50,y:50, journalId:journals[0].id, pageId:journals[0].pages[0].id, style:st, label:"Label Name"} : getPin(editingId);
+  // override pin style for preview
+  const stForPin = {...resolvedStyle(pin), ...st};
+  // Build preview body (simplified, centered)
+  host.innerHTML="";
+  const size = stForPin.fitToHexGrid? 48 : (parseInt(stForPin.size)||32);
+  const wrap=document.createElement("div");
+  wrap.style.display="flex"; wrap.style.alignItems="center"; wrap.style.gap="10px"; wrap.style.flexWrap="wrap"; wrap.style.justifyContent="center";
+  const body=document.createElement("div");
+  body.className="preview-pin";
+  body.style.width=size+"px"; body.style.height=size+"px";
+  body.style.flex="0 0 "+size+"px";
+  body.style.display="grid"; body.style.placeItems="center"; body.style.position="relative"; body.style.boxSizing="border-box";
+  const fillAlpha=(parseFloat(stForPin.fillOpacity)||1)*(parseFloat(stForPin.opacity)||1);
+  const ringAlpha=(parseFloat(stForPin.ringOpacity)||1)*(parseFloat(stForPin.opacity)||1);
+  if(stForPin.shape==="image"){
+    body.style.backgroundImage = stForPin.imagePath? `url("${stForPin.imagePath}")` : "none";
+    body.style.backgroundSize="contain"; body.style.backgroundPosition="center"; body.style.backgroundRepeat="no-repeat";
+    body.style.backgroundColor="transparent"; body.style.border="none"; body.style.borderRadius="0"; body.style.clipPath="none";
+  } else {
+    body.style.backgroundColor=rgba(stForPin.fillColor, fillAlpha);
+    body.style.borderColor=rgba(stForPin.ringColor, ringAlpha);
+    body.style.borderWidth=(stForPin.ringWidth||3)+"px";
+    body.style.borderStyle=stForPin.ringStyle||"solid";
+    body.style.clipPath="none"; body.style.transform="none"; body.style.borderRadius="0";
+    if(stForPin.shape==="circle") body.style.borderRadius="50%";
+    else if(stForPin.shape==="square") body.style.borderRadius=(stForPin.borderRadius||4)+"px";
+    else if(stForPin.shape==="diamond"){ body.style.borderRadius=(stForPin.borderRadius||4)+"px"; body.style.transform="rotate(45deg)"; }
+    else if(stForPin.shape==="hexagon") body.style.clipPath="polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
+    else if(stForPin.shape==="hexagonFlat") body.style.clipPath="polygon(0% 50%, 25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%)";
+  }
+  // content
+  const ct=stForPin.contentType;
+  const content=document.createElement("div"); content.style.position="absolute"; content.style.inset="0"; content.style.display="grid"; content.style.placeItems="center"; content.style.pointerEvents="none";
+  if(stForPin.shape==="diamond") content.style.transform="rotate(-45deg)";
+  if(ct==="text"){
+    const s=document.createElement("span"); s.textContent=stForPin.customText||"A"; s.style.fontFamily=stForPin.fontFamily; s.style.fontSize=(stForPin.fontSize||14)+"px"; s.style.color=stForPin.fontColor||"#fff"; s.style.fontWeight=stForPin.fontWeight==="bold"?"800":"600"; s.style.fontStyle=stForPin.fontItalic?"italic":"normal"; s.style.webkitTextStroke=stForPin.fontStrokeThickness? `${stForPin.fontStrokeThickness}px ${stForPin.fontStroke}`:"0 transparent"; s.style.paintOrder="stroke fill"; content.appendChild(s);
+  } else if(ct==="symbol"||ct==="icon"){
+    const i=document.createElement("i"); i.className=stForPin.symbolClass||stForPin.iconClass||"fa-solid fa-book-open"; i.style.color=stForPin.symbolColor||"#fff"; i.style.fontSize=Math.round(size*0.5)+"px"; if(stForPin.shape==="diamond") i.style.transform="rotate(-45deg)"; content.appendChild(i);
+  } else if(ct==="customIcon"){
+    const img=document.createElement("img"); img.src=stForPin.customIconPath||"../../assets/crown.svg"; img.style.width=Math.round(size*0.58)+"px"; img.style.height=Math.round(size*0.58)+"px"; img.style.objectFit="contain"; if(stForPin.iconColor && stForPin.iconColor.toLowerCase()!=="#ffffff"){ img.style.backgroundColor=stForPin.iconColor; img.style.webkitMask=`url("${img.src}") center/contain no-repeat`; img.style.mask=`url("${img.src}") center/contain no-repeat`; } if(stForPin.shape==="diamond") img.style.transform="rotate(-45deg)"; content.appendChild(img);
+  } else if(ct==="number"){
+    const nSpan=document.createElement("span"); const j=journalById(pin?.journalId||journals[0].id); const idx=j? j.pages.findIndex(p=>p.id===(pin?.pageId||j.pages[0].id)) : 0; nSpan.textContent=String((idx>=0?idx:0)+1); nSpan.style.fontFamily=stForPin.fontFamily; nSpan.style.fontSize=(stForPin.fontSize||14)+"px"; nSpan.style.color=stForPin.fontColor||"#fff"; nSpan.style.fontWeight=stForPin.fontWeight==="bold"?"800":"600"; nSpan.style.fontStyle=stForPin.fontItalic?"italic":"normal"; nSpan.style.webkitTextStroke=stForPin.fontStrokeThickness? `${stForPin.fontStrokeThickness}px ${stForPin.fontStroke}`:"0 transparent"; nSpan.style.paintOrder="stroke fill"; content.appendChild(nSpan);
+  }
+  body.appendChild(content);
+  wrap.appendChild(body);
+  // label preview
+  if(stForPin.labelText){
+    const lab=document.createElement("div"); lab.className="preview-label";
+    lab.textContent=stForPin.labelText;
+    lab.style.fontFamily=stForPin.labelFontFamily; lab.style.fontSize=(stForPin.labelFontSize||16)+"px"; lab.style.color=stForPin.labelColor||"#fff"; lab.style.fontWeight=stForPin.labelBold?"800":"600"; lab.style.fontStyle=stForPin.labelItalic?"italic":"normal"; lab.style.webkitTextStroke=stForPin.labelStrokeThickness? `${stForPin.labelStrokeThickness}px ${stForPin.labelStroke}`:"0 transparent"; lab.style.paintOrder="stroke fill";
+    if(stForPin.labelBackground==="solid"){ lab.style.backgroundColor=rgba(stForPin.labelBackgroundColor, stForPin.labelBackgroundOpacity); lab.style.border=`${stForPin.labelBorderWidth||0}px solid ${stForPin.labelBorderColor}`; lab.style.borderRadius=(stForPin.labelBorderRadius||4)+"px"; lab.style.padding="4px 8px"; }
+    else if(stForPin.labelBackground==="image"){ lab.style.backgroundColor=rgba(stForPin.labelImageBackgroundColor, stForPin.labelImageBackgroundOpacity); lab.style.padding="6px 10px"; lab.style.border="6px solid transparent"; if(stForPin.labelBorderImagePath){ lab.style.borderImage=`url("${stForPin.labelBorderImagePath}") ${stForPin.labelBorderSliceTop} ${stForPin.labelBorderSliceRight} ${stForPin.labelBorderSliceBottom} ${stForPin.labelBorderSliceLeft} fill`; } }
+    else { lab.style.padding="2px 6px"; }
+    lab.style.anchorName="—"; // placeholder
+    wrap.appendChild(lab);
+  }
+  // highlight demo: small badge
+  if(stForPin.hoverAnimation==="highlight"){
+    const tip=document.createElement("div"); tip.style.fontSize="11px"; tip.style.color="#ffbf40"; tip.style.border="1px dashed #4a3a1a"; tip.style.padding="3px 6px"; tip.style.borderRadius="999px"; tip.innerHTML='<i class="fa-solid fa-wand-magic-sparkles"></i> highlight on hover';
+    wrap.appendChild(tip);
+  }
+  host.appendChild(wrap);
+  // also live update the canvas pin if individual
+  if(editingId){
+    const pinLive=getPin(editingId);
+    if(pinLive){
+      // apply pending style to pin.style for live canvas (not yet saved, but preview)
+      // We'll keep a shadow copy: renderCanvas reads pin.style, so we need to temporarily set
+      // Save original to restore on cancel; for now update live.
+      pinLive.style = {...(pinLive.style||{}), ...st};
+      // keep size top-level for converted notes compat
+      pinLive.size = st.size;
+      // do not save yet
+      renderCanvas();
+    }
+  }
+}
+
+function bindEditorEvents(){
+  const body=document.getElementById("editorBody");
+  // inputs
+  body.querySelectorAll("input, select, textarea").forEach(inp=>{
+    const ev = inp.type==="range"||inp.type==="color"? "input":"change";
+    inp.addEventListener(ev, ()=>{
+      // update displays
+      body.querySelectorAll('[data-for]').forEach(span=>{
+        const n=span.dataset.for;
+        const field=body.querySelector(`[name="${n}"]`);
+        if(field) span.textContent=field.value;
+      });
+      // handle visibility toggles
+      const st=getEditorFormData(); // this also updates pendingStyle live but we need to re-render conditional sections
+      const shape=body.querySelector('[name="shape"]')?.value;
+      const ct=body.querySelector('[name="contentType"]')?.value;
+      const lb=body.querySelector('[name="labelBackground"]')?.value;
+      const ha=body.querySelector('[name="hoverAnimation"]')?.value;
+      body.querySelector(".border-radius-row").style.display = shape==="square"? "flex":"none";
+      body.querySelector(".image-shape-options").style.display = shape==="image"? "block":"none";
+      body.querySelector(".standard-shape-options").style.display = shape==="image"? "none":"block";
+      body.querySelector(".image-opacity-row").style.display = shape==="image"? "block":"none";
+      body.querySelector(".standard-colors").style.display = shape==="image"? "none":"block";
+      body.querySelector(".highlight-row").style.display = ha==="highlight"? "flex":"none";
+      body.querySelector(".text-row").style.display = ct==="text"? "block":"none";
+      body.querySelector(".symbol-row").style.display = (ct==="symbol"||ct==="icon")? "block":"none";
+      body.querySelector(".custom-icon-row").style.display = ct==="customIcon"? "block":"none";
+      body.querySelector(".font-row").style.display = (ct==="number"||ct==="text")? "block":"none";
+      body.querySelector(".label-bg-solid").style.display = lb==="solid"? "block":"none";
+      body.querySelector(".label-bg-image").style.display = lb==="image"? "block":"none";
+      renderEditorPreview();
+    });
+  });
+  // range displays
+  body.querySelectorAll('input[type="range"]').forEach(inp=>{
+    const disp=body.querySelector(`[data-for="${inp.name}"]`);
+    if(disp){ inp.addEventListener("input", ()=> disp.textContent=inp.value ); }
+  });
+  // journal -> page cascade
+  const jSel=body.querySelector('[name="journalId"]');
+  if(jSel) jSel.addEventListener("change", ()=>{
+    const pid=body.querySelector('[name="pageId"]');
+    if(!pid) return;
+    const j=journalById(jSel.value);
+    if(!j){ pid.innerHTML='<option value="">— no journal selected —</option>'; return; }
+    pid.innerHTML = j.pages.map(p=> `<option value="${attr(p.id)}">${esc(p.name)}</option>`).join("");
+    renderEditorPreview();
+  });
+  // file inputs
+  body.querySelector('[data-action="pick-image"]')?.addEventListener("click", ()=> document.getElementById("imageFileInput")?.click());
+  document.getElementById("imageFileInput")?.addEventListener("change", e=>{
+    const file=e.target.files[0]; if(!file) return;
+    const url=URL.createObjectURL(file);
+    const inp=body.querySelector('[name="imagePath"]'); if(inp) inp.value=url;
+    renderEditorPreview();
+  });
+  body.querySelector('[data-action="pick-custom-icon"]')?.addEventListener("click", ()=> document.getElementById("customIconFileInput")?.click());
+  document.getElementById("customIconFileInput")?.addEventListener("change", e=>{
+    const file=e.target.files[0]; if(!file) return;
+    const url=URL.createObjectURL(file);
+    const inp=body.querySelector('[name="customIconPath"]'); if(inp) inp.value=url;
+    const sw=body.querySelector(".custom-icon-row .sw"); if(sw) sw.innerHTML=`<img src="${attr(url)}">`;
+    renderEditorPreview();
+  });
+  body.querySelector('[data-action="browse-icons"]')?.addEventListener("click", ()=>{
+    const icons = ["../../assets/crown.svg","../../assets/icons/lorc/crowned-heart.svg","../../assets/icons/delapouite/candle-skull.svg","../../assets/icons/faithtoken/overhead.svg"];
+    const choice=prompt("Browse Icons — paste one of these or your own path:\n"+icons.join("\n")+"\n\nAlso try: assets/icons/*/*.svg (Game-icons.net via SDX)", icons[0]);
+    if(choice==null) return; const inp=body.querySelector('[name="customIconPath"]'); if(inp) inp.value=choice.trim();
+    const sw=body.querySelector(".custom-icon-row .sw"); if(sw && choice.trim()) sw.innerHTML=`<img src="${attr(choice.trim())}">`;
+    renderEditorPreview();
+  });
+  body.querySelector('[data-action="pick-border"]')?.addEventListener("click", ()=> document.getElementById("borderFileInput")?.click());
+  document.getElementById("borderFileInput")?.addEventListener("change", e=>{
+    const file=e.target.files[0]; if(!file) return;
+    const url=URL.createObjectURL(file);
+    const inp=body.querySelector('[name="labelBorderImagePath"]'); if(inp) inp.value=url;
+    renderEditorPreview();
+  });
+}
+
+function saveEditor(){
+  const isDefaults = editingId==null;
+  const st=getEditorFormData();
+  // strip transient orig key
+  const toSave={...st}; delete toSave.__orig; delete toSave.__pinSnapshot;
+  if(isDefaults){
+    state.defaults = toSave;
+    save();
+    closeEditor();
+    renderGM(); renderCanvas(); flash(`World defaults saved — ${st.shape} · ${st.contentType} · ${st.labelBackground} label`);
+    return;
+  }
+  const pin=getPin(editingId); if(!pin) return;
+  // apply pending journal fields
+  if(pin._pendingJournalId!==undefined) pin.journalId = pin._pendingJournalId||null;
+  if(pin._pendingPageId!==undefined) pin.pageId = pin._pendingPageId||null;
+  if(pin._pendingNameSource!==undefined) pin.nameSource = pin._pendingNameSource;
+  if(pin._pendingRequiresVision!==undefined) pin.requiresVision = !!pin._pendingRequiresVision;
+  if(pin._pendingAboveFog!==undefined) pin.aboveFog = !!pin._pendingAboveFog;
+  if(pin._pendingGmOnly!==undefined) pin.gmOnly = !!pin._pendingGmOnly;
+  if(pin._pendingTooltipTitle!==undefined) pin.tooltipTitle = pin._pendingTooltipTitle;
+  if(pin._pendingTooltipContent!==undefined) pin.tooltipContent = pin._pendingTooltipContent;
+  if(pin._pendingHideTooltip!==undefined) pin.hideTooltip = !!pin._pendingHideTooltip;
+  // clean pending temp
+  delete pin._pendingJournalId; delete pin._pendingPageId; delete pin._pendingNameSource; delete pin._pendingRequiresVision; delete pin._pendingAboveFog; delete pin._pendingGmOnly; delete pin._pendingTooltipTitle; delete pin._pendingTooltipContent; delete pin._pendingHideTooltip;
+  pin.style = toSave;
+  pin.size = toSave.size;
+  save(); closeEditor(); renderGM(); renderCanvas(); flash(`Saved “${pinDisplayName(pin)}”`);
+}
+function resetEditor(){
+  const isDefaults = editingId==null;
+  if(isDefaults){
+    if(!confirm("Reset world defaults to the module's built-in style?")) return;
+    state.defaults = clone(DEFAULT_STYLE);
+    pendingStyle = clone(state.defaults);
+    renderEditorBody(); renderCanvas(); save(); flash("Defaults reset");
+    return;
+  }
+  if(!confirm("Reset this pin to the current world defaults? (clears per-pin overrides)")) return;
+  const pin=getPin(editingId); if(!pin) return;
+  pin.style = {};
+  pin.size = state.defaults.size;
+  pin._pendingTooltipTitle=undefined; pin._pendingTooltipContent=undefined;
+  // keep journal linkage etc, but reset visual
+  save(); closeEditor(); renderGM(); renderCanvas(); flash("Pin reset to defaults");
+}
+
+// placement
+function togglePlacement(){
+  state.placement = !state.placement;
+  document.getElementById("placeModeBtn").classList.toggle("active", state.placement);
+  document.getElementById("placeModeBtn").innerHTML = state.placement? '<i class="fa-solid fa-xmark"></i> Placing — Esc to cancel' : '<i class="fa-solid fa-crosshairs"></i> Click to Place';
+  document.getElementById("placerHint").style.display = state.placement? "block":"none";
+  document.getElementById("stageFrame").style.cursor = state.placement? "crosshair":"default";
+}
+document.getElementById("stageFrame").addEventListener("click", e=>{
+  if(!state.placement) return;
+  if(e.target.closest(".canvas-pin")) return;
+  const rect=e.currentTarget.getBoundingClientRect();
+  const x=((e.clientX-rect.left)/rect.width)*100;
+  const y=((e.clientY-rect.top)/rect.height)*100;
+  const np={ id:rid(), x: Math.min(98,Math.max(2,x)), y: Math.min(98,Math.max(2,y)), journalId:null, pageId:null, label:"New Pin", nameSource:"auto", style:{}, gmOnly:false, requiresVision:false, aboveFog:false, tooltipTitle:"", tooltipContent:"", hideTooltip:false };
+  // assign to last selected folder or uncategorized
+  const selFolder = document.querySelector(".folder:not(.collapsed)"); // heuristic
+  // default to first folder if any
+  if(state.folders.length && !np.folderId){ np.folderId = state.folders[0].id; }
+  state.pins.push(np);
+  save(); renderGM(); renderCanvas();
+  state.selectedPinId=np.id;
+  openEditor(np.id);
+});
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && state.placement) togglePlacement(); if(e.key==="Escape" && document.getElementById("editorBackdrop").classList.contains("open")){ // if editor open, restore live preview without saving
+    if(editingId){
+      const pin=getPin(editingId);
+      if(pin && pendingStyle?.__pinSnapshot){ pin.style = clone(pendingStyle.__pinSnapshot.style||{}); pin.size = pendingStyle.__pinSnapshot.size; }
+      renderCanvas();
+    }
+    closeEditor();
+  } });
+
+// top bar actions
+document.getElementById("addPinBtn").addEventListener("click", ()=>{
+  if(!state.placement) togglePlacement();
+  flash("Click the canvas to place — or press Esc to cancel");
+});
+document.getElementById("placeModeBtn").addEventListener("click", togglePlacement);
+document.getElementById("newFolderBtn").addEventListener("click", ()=>{
+  const name=prompt("Folder name"); if(!name) return; const t=name.trim(); if(!t) return;
+  const scope=confirm("Make this a World folder? OK = World (globe, appears on every scene), Cancel = Scene folder")? "world":"scene";
+  state.folders.push({id:rid(), name:t, icon:"fa-solid fa-folder", scope, collapsed:false, color: scope==="world"?"#8ad0e0":"#c9aa58"});
+  save(); renderGM(); flash(`${scope==="world"?"World":"Scene"} folder “${t}” created`);
+});
+document.getElementById("convertNotesBtn").addEventListener("click", ()=>{
+  const folderName = prompt("Convert Foundry Map Notes → Pins\n\nHow many mock Map Notes to convert? Enter 1–5 (or cancel).", "3");
+  if(folderName===null) return;
+  const n = Math.max(1, Math.min(5, parseInt(folderName)||3));
+  let targetFolder = state.folders[0]?.id||null;
+  if(state.folders.length>1){
+    const choice=prompt(`Pick a target folder:\n${state.folders.map((f,i)=>`${i}: ${f.name} (${f.scope})`).join("\n")}\nEnter number or leave empty for Uncategorized`, "0");
+    if(choice!==null && choice.trim()!==""){ const idx=parseInt(choice); if(!isNaN(idx) && state.folders[idx]) targetFolder=state.folders[idx].id; if(choice.trim()==="u") targetFolder=null; }
+  }
+  const del = confirm("Delete original Map Notes after converting? OK = delete originals, Cancel = keep them (so you can compare).");
+  for(let i=0;i<n;i++){
+    const x=12+Math.random()*72, y=16+Math.random()*64;
+    const sz = 24+Math.floor(Math.random()*18);
+    state.pins.push({ id:rid(), x, y, journalId:journals[Math.floor(Math.random()*journals.length)].id, pageId:null, label:`Map Note ${i+1}`, nameSource:"auto", size:sz, style:{shape:"circle", fillColor:"#1a1a1a", ringColor:"#d4a843", contentType:"number"}, gmOnly:false, requiresVision:false, aboveFog:false, tooltipTitle:"", tooltipContent:"", hideTooltip:false, folderId: targetFolder });
+  }
+  save(); renderGM(); renderCanvas();
+  flash(`${n} Map Note(s) converted to pins in ${targetFolder? getFolder(targetFolder).name : "Uncategorized"} — ${del?"originals deleted (simulated)":"originals kept for comparison"}`);
+});
+document.getElementById("defaultsBtn").addEventListener("click", ()=> openEditor(null));
+document.getElementById("gridBtn").addEventListener("click", ()=>{
+  state.grid=!state.grid; document.getElementById("gridBtn").textContent = `Grid: ${state.grid?"On":"Off"}`; renderCanvas();
+});
+document.getElementById("hexBtn").addEventListener("click", ()=>{
+  state.hex=!state.hex; document.getElementById("hexBtn").textContent = `Hex: ${state.hex?"On":"Off"}`; renderCanvas();
+});
+document.getElementById("perfBtn").addEventListener("click", ()=>{
+  state.pixelPerfect=!state.pixelPerfect;
+  document.getElementById("perfBtn").classList.toggle("active", state.pixelPerfect);
+  document.getElementById("perfBtn").innerHTML = state.pixelPerfect? '<i class="fa-solid fa-bolt"></i> Pixel-Perfect: On' : '<i class="fa-solid fa-bolt"></i> Pixel-Perfect: Off';
+  flash(state.pixelPerfect? `Pixel-Perfect hit testing ON · alpha ${state.pixelAlpha} (image pins need opaque center pixel)` : "Pixel-Perfect OFF — plain shape hit testing (cheap default)");
+});
+document.getElementById("bgSelect").addEventListener("change", e=>{ state.bg=e.target.value; renderCanvas(); });
+document.getElementById("showGmOnly").addEventListener("change", e=>{ state.showGmOnly=e.target.checked; renderGM(); renderCanvas(); });
+document.getElementById("searchInput").addEventListener("input", e=>{ state.search=e.target.value; document.getElementById("clearSearch").style.display = state.search? "inline-grid":"none"; renderGM(); renderCanvas(); });
+document.getElementById("clearSearch").addEventListener("click", ()=>{ state.search=""; document.getElementById("searchInput").value=""; document.getElementById("clearSearch").style.display="none"; renderGM(); renderCanvas(); });
+
+document.getElementById("resetBtn").addEventListener("click", ()=>{
+  if(!confirm("Reset demo pins, folders, and world defaults?")) return;
+  localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_FOLDERS); localStorage.removeItem(LS_DEFAULTS);
+  load(); save(); renderGM(); renderCanvas(); flash("Demo reset");
+});
+document.getElementById("editorClose").addEventListener("click", ()=>{
+  if(editingId){
+    const pin=getPin(editingId);
+    if(pin && pendingStyle?.__pinSnapshot){ pin.style = clone(pendingStyle.__pinSnapshot.style||{}); pin.size = pendingStyle.__pinSnapshot.size; delete pin._pendingJournalId; delete pin._pendingPageId; delete pin._pendingNameSource; delete pin._pendingRequiresVision; delete pin._pendingAboveFog; delete pin._pendingGmOnly; delete pin._pendingTooltipTitle; delete pin._pendingTooltipContent; delete pin._pendingHideTooltip; renderCanvas(); }
+  }
+  closeEditor();
+});
+document.getElementById("editorCancel").addEventListener("click", ()=>{
+  if(editingId){
+    const pin=getPin(editingId);
+    if(pin && pendingStyle?.__pinSnapshot){ pin.style = clone(pendingStyle.__pinSnapshot.style||{}); pin.size = pendingStyle.__pinSnapshot.size; delete pin._pendingJournalId; delete pin._pendingPageId; delete pin._pendingNameSource; delete pin._pendingRequiresVision; delete pin._pendingAboveFog; delete pin._pendingGmOnly; delete pin._pendingTooltipTitle; delete pin._pendingTooltipContent; delete pin._pendingHideTooltip; renderCanvas(); }
+  }
+  closeEditor();
+});
+document.getElementById("editorSave").addEventListener("click", saveEditor);
+document.getElementById("editorReset").addEventListener("click", resetEditor);
+document.getElementById("editorBackdrop").addEventListener("click", e=>{ if(e.target.id==="editorBackdrop"){ if(editingId){ const pin=getPin(editingId); if(pin && pendingStyle?.__pinSnapshot){ pin.style = clone(pendingStyle.__pinSnapshot.style||{}); pin.size = pendingStyle.__pinSnapshot.size; renderCanvas(); } } closeEditor(); } });
+
+// clicking empty frame deselects
+document.getElementById("stageFrame").addEventListener("pointerdown", e=>{ if(!e.target.closest(".canvas-pin")) hideTooltip(); });
+document.addEventListener("click", e=>{
+  if(!e.target.closest(".canvas-pin") && !e.target.closest(".pin-entry") && !e.target.closest(".ctx")) {
+    // close ctx if open
+    const ctx=document.getElementById("ctxMenu"); if(ctx.classList.contains("open") && !ctx.contains(e.target)) ctx.classList.remove("open");
+  }
+});
+
+function init(){
+  load();
+  // ensure select reflects stored/seeded bg
+  const bgSel=document.getElementById("bgSelect"); if(bgSel){ if(state.bg) bgSel.value=state.bg; else { state.bg="akbay"; bgSel.value="akbay"; } }
+  renderGM();
+  renderCanvas();
+  // expose for debugging
+  window.SDXPinsDemo = { state, journals, pinDisplayName, resolvedStyle };
+  flash("Tip: click a pin to select it, double-click to open its journal, right-click for Pan / Ping / Bring");
+}
+init();
+</script>
+</body>
+</html>
