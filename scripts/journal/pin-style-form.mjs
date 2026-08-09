@@ -44,6 +44,8 @@ export const PinStyleForm = {
 			tooltipTitleFontSize: parseInt(form.querySelector('[name="tooltipTitleFontSize"]')?.value) || 17,
 			tooltipContentFontSize: parseInt(form.querySelector('[name="tooltipContentFontSize"]')?.value) || 13,
 			shape: form.querySelector('[name="shape"]')?.value || "circle",
+			iconShapePath: form.querySelector('[name="iconShapePath"]')?.value || "",
+			iconShapeTint: form.querySelector('[name="iconShapeTint"]')?.value || "",
 			imagePath: form.querySelector('[name="imagePath"]')?.value || "",
 			imageTint: form.querySelector('[name="imageTint"]')?.value || "",
 			// Highlight color — single swatch drives both tint and border color
@@ -71,7 +73,7 @@ export const PinStyleForm = {
 			// Get opacity based on shape (handle duplicate inputs)
 			opacity: (() => {
 				const shape = form.querySelector('[name="shape"]')?.value;
-				if (shape === "image") {
+				if (shape === "image" || shape === "icon") {
 					return readNumber(form.querySelector('.image-opacity-option [name="opacity"]')?.value, 1.0);
 				}
 				else {

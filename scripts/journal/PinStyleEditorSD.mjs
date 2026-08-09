@@ -166,6 +166,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			{ value: "diamond", label: game.i18n.localize("SDX.pinStyleEditor.shapeDiamond") },
 			{ value: "hexagon", label: "Hexagon (Point)" },
 			{ value: "hexagonFlat", label: "Hexagon (Flat)" },
+			{ value: "icon", label: "Icon — full-bleed SVG" },
 			{ value: "image", label: game.i18n.localize("SDX.pinStyleEditor.shapeImage") },
 		];
 
@@ -212,13 +213,60 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			style.hoverAnimation = style.hoverAnimation ? "scale" : "none";
 		}
 		if (!style.hoverAnimation) style.hoverAnimation = "highlight";
-
+		const ICON_BASE = `modules/${MODULE_ID}/assets/icons`;
+		const iconShapePresets = [
+			{ path: `${ICON_BASE}/delapouite/castle.svg`, label: "Castle" },
+			{ path: `${ICON_BASE}/delapouite/castle-ruins.svg`, label: "Castle Ruins" },
+			{ path: `${ICON_BASE}/delapouite/village.svg`, label: "Village" },
+			{ path: `${ICON_BASE}/delapouite/huts-village.svg`, label: "Huts Village" },
+			{ path: `${ICON_BASE}/caro-asercion/medieval-village-01.svg`, label: "Medieval Village" },
+			{ path: `${ICON_BASE}/delapouite/church.svg`, label: "Church" },
+			{ path: `${ICON_BASE}/delapouite/byzantin-temple.svg`, label: "Byzantine Temple" },
+			{ path: `${ICON_BASE}/delapouite/greek-temple.svg`, label: "Greek Temple" },
+			{ path: `${ICON_BASE}/delapouite/egyptian-temple.svg`, label: "Egyptian Temple" },
+			{ path: `${ICON_BASE}/delapouite/crystal-shrine.svg`, label: "Crystal Shrine" },
+			{ path: `${ICON_BASE}/delapouite/fire-shrine.svg`, label: "Fire Shrine" },
+			{ path: `${ICON_BASE}/delapouite/cave-entrance.svg`, label: "Cave Entrance" },
+			{ path: `${ICON_BASE}/delapouite/mountain-cave.svg`, label: "Mountain Cave" },
+			{ path: `${ICON_BASE}/delapouite/forest.svg`, label: "Forest" },
+			{ path: `${ICON_BASE}/delapouite/forest-camp.svg`, label: "Forest Camp" },
+			{ path: `${ICON_BASE}/delapouite/goblin-camp.svg`, label: "Goblin Camp" },
+			{ path: `${ICON_BASE}/delapouite/camping-tent.svg`, label: "Tent" },
+			{ path: `${ICON_BASE}/delapouite/barracks-tent.svg`, label: "Barracks Tent" },
+			{ path: `${ICON_BASE}/delapouite/hill-fort.svg`, label: "Hill Fort" },
+			{ path: `${ICON_BASE}/delapouite/military-fort.svg`, label: "Military Fort" },
+			{ path: `${ICON_BASE}/delapouite/dungeon-gate.svg`, label: "Dungeon Gate" },
+			{ path: `${ICON_BASE}/delapouite/medieval-gate.svg`, label: "Medieval Gate" },
+			{ path: `${ICON_BASE}/delapouite/arch-bridge.svg`, label: "Arch Bridge" },
+			{ path: `${ICON_BASE}/delapouite/rope-bridge.svg`, label: "Rope Bridge" },
+			{ path: `${ICON_BASE}/delapouite/drawbridge.svg`, label: "Drawbridge" },
+			{ path: `${ICON_BASE}/delapouite/graveyard.svg`, label: "Graveyard" },
+			{ path: `${ICON_BASE}/delapouite/obelisk.svg`, label: "Obelisk" },
+			{ path: `${ICON_BASE}/delapouite/menhir.svg`, label: "Menhir" },
+			{ path: `${ICON_BASE}/delapouite/lighthouse.svg`, label: "Lighthouse" },
+			{ path: `${ICON_BASE}/delapouite/harbor-dock.svg`, label: "Harbor Dock" },
+			{ path: `${ICON_BASE}/delapouite/ancient-ruins.svg`, label: "Ancient Ruins" },
+			{ path: `${ICON_BASE}/delapouite/hut.svg`, label: "Hut" },
+			{ path: `${ICON_BASE}/delapouite/hobbit-dwelling.svg`, label: "Hobbit Dwelling" },
+			{ path: `${ICON_BASE}/delapouite/evil-tower.svg`, label: "Evil Tower" },
+			{ path: `${ICON_BASE}/delapouite/control-tower.svg`, label: "Control Tower" },
+			{ path: `${ICON_BASE}/lorc/castle.svg`, label: "Castle (Lorc)" },
+			{ path: `${ICON_BASE}/lorc/stone-tower.svg`, label: "Stone Tower" },
+			{ path: `${ICON_BASE}/lorc/white-tower.svg`, label: "White Tower" },
+			{ path: `${ICON_BASE}/lorc/guarded-tower.svg`, label: "Guarded Tower" },
+			{ path: `${ICON_BASE}/delapouite/chest.svg`, label: "Chest" },
+			{ path: `${ICON_BASE}/delapouite/skull.svg`, label: "Skull" },
+			{ path: `${ICON_BASE}/delapouite/goblin-head.svg`, label: "Goblin Head" },
+			{ path: `${ICON_BASE}/delapouite/orc-head.svg`, label: "Orc Head" },
+			{ path: `${ICON_BASE}/delapouite/dragon-orb.svg`, label: "Dragon Orb" },
+		];
 		return {
 			style,
 			fontFamilies,
 			shapes,
 			ringStyles,
 			iconOptions,
+			iconShapePresets,
 			borderStyles,
 			journalPages,
 			currentPageId,
@@ -338,23 +386,37 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			contentTypeSelect.addEventListener("change", updateVisibility);
 		}
 
+		// Custom content icon — curated preset dropdown + full icon browser
+		const customIconPath = form.querySelector('[name="customIconPath"]');
+		const customIconPreset = form.querySelector('[name="customIconPreset"]');
+		const customIconPreview = form.querySelector(".selected-icon-preview");
+		const syncCustomIcon = () => {
+			const path = (customIconPath?.value || "").trim();
+			if (customIconPreview) {
+				customIconPreview.innerHTML = path
+					? `<img src="${foundry.utils.escapeHTML(path)}" alt="Selected Icon" />`
+					: '<i class="fa-solid fa-image"></i>';
+			}
+			if (customIconPreset && customIconPreset.value !== path) {
+				const hasPreset = [...customIconPreset.options].some(option => option.value === path);
+				customIconPreset.value = hasPreset ? path : "";
+			}
+		};
+		customIconPreset?.addEventListener("change", () => {
+			if (customIconPath) customIconPath.value = customIconPreset.value;
+			syncCustomIcon();
+			this._updatePreview();
+		});
+		syncCustomIcon();
+
 		// Browse icons button - open icon picker modal
 		const browseIconsBtn = form.querySelector('[data-action="browse-icons"]');
 		if (browseIconsBtn) {
 			browseIconsBtn.addEventListener("click", async () => {
 				const selectedPath = await IconPickerApp.pick();
 				if (selectedPath) {
-					// Update hidden input
-					const pathInput = form.querySelector('[name="customIconPath"]');
-					if (pathInput) pathInput.value = selectedPath;
-
-					// Update preview image
-					const previewContainer = form.querySelector(".selected-icon-preview");
-					if (previewContainer) {
-						previewContainer.innerHTML = `<img src="${foundry.utils.escapeHTML(selectedPath)}" alt="Selected Icon" />`;
-					}
-
-					// Update the pin preview
+					if (customIconPath) customIconPath.value = selectedPath;
+					syncCustomIcon();
 					this._updatePreview();
 				}
 			});
@@ -430,35 +492,80 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		// Show/hide options based on shape selection
 		const shapeSelect = form.querySelector('[name="shape"]');
 		const borderRadiusSection = form.querySelector(".border-radius-options");
-		const standardStyleSection = form.querySelector(".standard-style-options");
+		const standardStyleSection = form.querySelectorAll(".standard-style-options");
 		const imageShapeOptions = form.querySelector(".image-shape-options");
+		const iconShapeOptions = form.querySelector(".icon-shape-options");
 
 		if (shapeSelect) {
 			const updateShapeVisibility = () => {
 				const shape = shapeSelect.value;
-
-				// Toggle Border Radius (Square only)
-				if (borderRadiusSection) {
-					borderRadiusSection.style.display = shape === "square" ? "flex" : "none";
-				}
-
-				// Toggle Standard Options vs Image Options
-				if (shape === "image") {
-					if (standardStyleSection) standardStyleSection.style.display = "none";
-					if (imageShapeOptions) imageShapeOptions.style.display = "block";
-				}
-				else {
-					if (standardStyleSection) standardStyleSection.style.display = "block";
-					if (imageShapeOptions) imageShapeOptions.style.display = "none";
-				}
+				if (borderRadiusSection) borderRadiusSection.style.display = shape === "square" ? "flex" : "none";
+				const isImage = shape === "image";
+				const isIcon = shape === "icon";
+				const hideStd = isImage || isIcon;
+				standardStyleSection.forEach(el => el.style.display = hideStd ? "none" : "block");
+				if (imageShapeOptions) imageShapeOptions.style.display = isImage ? "block" : "none";
+				if (iconShapeOptions) iconShapeOptions.style.display = isIcon ? "block" : "none";
 			};
 			updateShapeVisibility();
 			shapeSelect.addEventListener("change", updateShapeVisibility);
 		}
 
+		// Icon shape picker — Browse / clear / preset dropdown (SVG as the pin body)
+		{
+			const input = form.querySelector('[name="iconShapePath"]');
+			const presetSelect = form.querySelector('[name="iconShapePreset"]');
+			const browseBtn = form.querySelector('[data-action="browse-icon-shape"]');
+			const preview = form.querySelector(".icon-shape-preview");
+			const clearBtn = form.querySelector('[data-action="clear-icon-shape"]');
+			if (input) {
+				const sync = () => {
+					const p = (input.value || "").trim();
+					if (preview) {
+						preview.innerHTML = p
+							? `<img src="${foundry.utils.escapeHTML(p)}" alt="" />`
+							: "<i class=\"fa-solid fa-icons\" style=\"opacity:.45\"></i>";
+						const img = preview.querySelector("img");
+						if (img) {
+							img.style.width = "28px"; img.style.height = "28px"; img.style.objectFit = "contain";
+						}
+					}
+					if (clearBtn) clearBtn.style.display = p ? "" : "none";
+					if (presetSelect && presetSelect.value !== p) {
+						// keep dropdown in sync when Browse sets a path outside the preset list — leave it on None
+						const has = [...presetSelect.options].some(o => o.value === p);
+						presetSelect.value = has ? p : "";
+					}
+				};
+				sync();
+				input.addEventListener("change", sync);
+				input.addEventListener("input", sync);
+				presetSelect?.addEventListener("change", () => {
+					input.value = presetSelect.value;
+					sync(); this._updatePreview();
+					// Icon shape defaults to no badge/content like converted map notes
+					const ct = form.querySelector('[name="contentType"]');
+					if (presetSelect.value && ct && ct.value !== "none") {
+						// leave content choice to user, but ensure preview updates
+					}
+				});
+				if (browseBtn) {
+					browseBtn.addEventListener("click", async () => {
+						const picked = await IconPickerApp.pick();
+						if (picked) {
+							input.value = picked; sync(); this._updatePreview();
+						}
+					});
+				}
+				clearBtn?.addEventListener("click", () => {
+					input.value = ""; sync(); this._updatePreview();
+				});
+			}
+		}
+
 		// Highlight color visibility — only relevant when hoverAnimation is highlight (image pins benefit most)
 		const hoverSelect = form.querySelector('[name="hoverAnimation"]');
-		const highlightRows = form.querySelectorAll('.highlight-color-row');
+		const highlightRows = form.querySelectorAll(".highlight-color-row");
 		if (hoverSelect && highlightRows.length) {
 			const syncHighlightRows = () => {
 				const isHighlight = hoverSelect.value === "highlight";

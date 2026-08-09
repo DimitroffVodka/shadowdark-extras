@@ -55,7 +55,9 @@ function makeEditor({ fields = {}, absent = [], lists = {}, seedAll = false, pin
 const BINDINGS = [
 	`${FORM} .file-picker-btn[0] :: click`,
 	`${FORM} [data-action="apply-tmfx"] :: click`,
+	`${FORM} [data-action="browse-icon-shape"] :: click`,
 	`${FORM} [data-action="browse-icons"] :: click`,
+	`${FORM} [data-action="clear-icon-shape"] :: click`,
 	`${FORM} [data-action="clear-tmfx"] :: click`,
 	`${FORM} [data-action="delete-tmfx-preset"] :: click`,
 	`${FORM} [data-action="edit-tmfx"][0] :: click`,
@@ -64,6 +66,11 @@ const BINDINGS = [
 	`${FORM} [data-action="save"] :: click`,
 	`${FORM} [data-action="save-tmfx-preset"] :: click`,
 	`${FORM} [name="contentType"] :: change`,
+	`${FORM} [name="customIconPreset"] :: change`,
+	`${FORM} [name="hoverAnimation"] :: change`,
+	`${FORM} [name="iconShapePath"] :: change`,
+	`${FORM} [name="iconShapePath"] :: input`,
+	`${FORM} [name="iconShapePreset"] :: change`,
 	`${FORM} [name="journalId"] :: change`,
 	`${FORM} [name="labelBackground"] :: change`,
 	`${FORM} [name="shape"] :: change`,
@@ -100,6 +107,19 @@ test("a render with no form in the dialog binds nothing", () => {
 	app._onRender({}, {});
 
 	assert.deepEqual(bound.bindings, []);
+});
+
+test("an icon body keeps the Content section and selected overlay type available", () => {
+	const { app, dom: bound } = makeEditor({
+		fields: { shape: "icon", contentType: "customIcon" },
+		seedAll: true,
+	});
+	app._updatePreview = async () => {};
+
+	app._onRender({}, {});
+
+	assert.notEqual(bound.node(`${FORM} .content-section`).style.display, "none");
+	assert.equal(bound.node(`${FORM} [name="contentType"]`).value, "customIcon");
 });
 
 // A range slider writes its value into the companion readout at render time,
@@ -360,6 +380,18 @@ test("an image shape with no path shows a dashed placeholder instead", async () 
 
 	assert.equal(pin.style.backgroundImage, "none");
 	assert.equal(pin.style.border, "1px dashed #666");
+});
+
+test("an icon body renders a second custom icon as its content overlay", async () => {
+	const { pin, content } = await preview({
+		shape: "icon",
+		iconShapePath: "modules/test/outer.svg",
+		contentType: "customIcon",
+		customIconPath: "modules/test/inner.svg",
+	});
+
+	assert.equal(pin.style.backgroundImage, 'url("modules/test/outer.svg")');
+	assert.match(content.innerHTML, /modules\/test\/inner\.svg/);
 });
 
 test("a symbol renders as a FontAwesome element at half the pin size", async () => {

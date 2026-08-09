@@ -1255,5 +1255,12 @@
   "SHADOWDARK_EXTRAS.camping_rest.spells_refreshed": "spells refreshed",
   "SHADOWDARK_EXTRAS.camping_rest.abilities_refreshed": "abilities refreshed",
   "SHADOWDARK_EXTRAS.camping_rest.wands_refreshed": "wands refreshed",
-  "SDX.pinStyleEditor.hoverAnimationHighlight": "Highlight"
+  "SDX.pinStyleEditor.hoverAnimationHighlight": "Highlight",
+  "SDX.pinStyleEditor.shapeIcon": "Icon",
+  "SDX.pinStyleEditor.iconShapePath": "Icon",
+  "SDX.pinStyleEditor.iconShapePathHint": "SVG icon used as the pin body (replaces the geometric shape).",
+  "SDX.pinStyleEditor.browseIconShapes": "Browse Icons",
+  "SDX.pinStyleEditor.iconShapeTint": "Icon Tint",
+  "SDX.pinStyleEditor.clearIconShape": "Clear",
+  "SDX.pinStyleEditor.iconShapeNone": "— None —"
 }

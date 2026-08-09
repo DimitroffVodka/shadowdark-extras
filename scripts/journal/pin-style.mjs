@@ -29,6 +29,8 @@ export const DEFAULT_PIN_STYLE = {
 	hoverRingColor: "#ff7a00", // Highlight border color (used when hoverAnimation is "highlight")
 	hoverRingWidth: 6,  // Ring width while hovered (0 = no hover ring)
 	contentType: "number", // "number", "icon", "text", "customIcon", "none"
+	iconShapePath: "", // SVG path for shape === "icon"
+	iconShapeTint: "", // optional tint for icon shape (hex, white = none)
 	iconClass: "fa-solid fa-book-open",
 	iconColor: "#ffffff",
 	symbolColor: "#ffffff",
