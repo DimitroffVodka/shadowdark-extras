@@ -8,17 +8,29 @@
  *
  *   1. BLIND  — each reviewer sees only the diff. No peer output. Findings are
  *               independent by construction, not by instruction.
- *   2. REBUT  — each reviewer sees ONLY the other's findings and is asked to
- *               refute them, defaulting to "refuted" under uncertainty. Asking
- *               for refutation rather than "review" is what keeps the round
+ *   2. REBUT  — each reviewer sees ONLY the others' findings and attacks them,
+ *               answering refuted / corroborated / unverified. Asking for
+ *               refutation rather than "review" is what keeps the round
  *               adversarial; a neutral prompt here reliably produces nodding.
- *   3. JUDGE  — one model adjudicates claim + rebuttal on cited evidence.
+ *               The third state matters: "I could not check this" is not
+ *               counter-evidence, and collapsing it into "refuted" silently
+ *               buries real defects.
+ *   3. JUDGE   — one or more models adjudicate claim + rebuttal on cited
+ *               evidence. With `--judge a,b` they run independently and any
+ *               disagreement resolves to `uncertain`, never a majority.
  *
- * Findings reach the rebuttal and judge rounds as "Reviewer A" / "Reviewer B",
- * never as model names. With only two participants the judge is always also a
- * participant, so it would otherwise be scoring its own work against a rival's;
- * anonymising is the cheapest mitigation available short of a third vendor. The
- * A/B -> model mapping is kept in the transcript, just not in the prompts.
+ * Identity isolation has three parts, because the first two alone leak:
+ *   - findings travel as "Reviewer A/B/C", never as model names;
+ *   - labels are assigned randomly per run, so a fixed map cannot be assumed;
+ *   - NOTHING is written to disk until the last judge has answered. Reviewers
+ *     hold read-only access to the repository under review, so a model-named
+ *     `blind-codex.txt` sitting in `.debate-review/` mid-run would let a judge
+ *     that is also a contestant rebuild the map by matching text to findings.
+ *
+ * A run that loses a reviewer skips cross-examination and adjudication
+ * entirely, titles its report `# DEGRADED SINGLE-REVIEWER RUN`, and exits 2
+ * unless `--allow-degraded`. The sole survivor must never judge its own work,
+ * and the durable artifact must never read like a debate that did not happen.
  *
  * Reviewers run read-only. Codex gets `-s read-only`, Claude gets
  * `--permission-mode plan` plus an explicit tool denylist, so both can read the
@@ -32,18 +44,23 @@
  * Usage:
  *   node dev/tools/debate-review.mjs --base HEAD~1
  *   node dev/tools/debate-review.mjs --base main --judge codex
+ *   node dev/tools/debate-review.mjs --base main --judge codex,claude
+ *   node dev/tools/debate-review.mjs --reviewers codex,claude --allow-degraded
  *   node dev/tools/debate-review.mjs --diff-file /tmp/change.diff --dry-run
+ *   node dev/tools/debate-review.mjs --rejudge .debate-review/<stamp> --judge codex
  */
 
 import { spawn, execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const MAX_DIFF_CHARS = 200_000;
 const DEFAULTS = {
   base: "HEAD~1",
   head: "HEAD",
   out: ".debate-review",
+  reviewers: "codex,claude",
   judge: "claude",
   timeout: 900,
   codexModel: "gpt-5.6-luna",
@@ -65,6 +82,8 @@ function parseArgs(argv) {
     else if (a === "--allow-dirty") opts.allowDirty = true;
     else if (a === "--out") opts.out = next();
     else if (a === "--judge") opts.judge = next();
+    else if (a === "--reviewers") opts.reviewers = next();
+    else if (a === "--allow-degraded") opts.allowDegraded = true;
     else if (a === "--timeout") opts.timeout = Number(next());
     else if (a === "--codex-model") opts.codexModel = next();
     else if (a === "--claude-model") opts.claudeModel = next();
@@ -73,9 +92,12 @@ function parseArgs(argv) {
     else if (a === "--help" || a === "-h") opts.help = true;
     else throw new Error(`Unknown argument: ${a}`);
   }
-  if (!["claude", "codex"].includes(opts.judge)) {
-    throw new Error(`--judge must be "claude" or "codex", got "${opts.judge}"`);
-  }
+  const list = (s) => String(s).split(",").map((x) => x.trim()).filter(Boolean);
+  opts.reviewers = list(opts.reviewers);
+  // `--judge a,b` runs both independently; disagreement resolves to uncertain.
+  opts.judges = list(opts.judge);
+  if (!opts.reviewers.length) throw new Error("--reviewers cannot be empty");
+  if (!opts.judges.length) throw new Error("--judge cannot be empty");
   return opts;
 }
 
@@ -215,17 +237,23 @@ ${diff}`;
 function rebutPrompt(diff, peerFindings) {
   return `You are cross-examining another reviewer's findings on the code change below. You have read-only repository access; verify claims against the actual code.
 
-Your job is to REFUTE. For each finding, try to show it is wrong: the code path is unreachable, the input cannot occur, a guard exists elsewhere, the reviewer misread the diff, or the claim is too vague to act on. Only concede a finding when you have positively confirmed it against the source.
+Your job is to attack each finding: show the code path is unreachable, the input cannot occur, a guard exists elsewhere, the reviewer misread the diff, or the claim is too vague to act on.
 
-Default to "refuted": true when you are uncertain. An unrefuted finding should mean "I tried to break this and could not", never "I did not check".
+Report one of three verdicts per finding, and keep them distinct — "I could not verify this" is NOT "I disproved this":
+
+  "refuted"      you have concrete counter-evidence. Cite it.
+  "corroborated" you positively confirmed the defect against the source. Cite it.
+  "unverified"   you lack the evidence to decide either way. Say what you could not check.
+
+Never report "refuted" merely because you are unsure; that is "unverified". A "corroborated" finding should mean "I tried to break this and could not", never "I did not check".
 
 Output ONLY a fenced \`\`\`json block, no prose after it:
 [
   {
     "id": "A1",
-    "refuted": true | false,
+    "verdict": "refuted" | "corroborated" | "unverified",
     "confidence": "high" | "medium" | "low",
-    "reasoning": "Why it fails, or what you confirmed. Cite file:line."
+    "reasoning": "The evidence, cited as file:line. For 'unverified', what blocked you."
   }
 ]
 
@@ -240,6 +268,8 @@ function judgePrompt(diff, findings, rebuttals) {
   return `You are adjudicating a code review dispute. Two reviewers worked independently; each then attempted to refute the other's findings. Decide each finding on the evidence alone.
 
 Rules: a finding survives only if it names a concrete failure — inputs or state leading to a wrong result. Reject anything speculative, stylistic, or already handled by a guard the rebuttal identified. Verbosity is not evidence; a terse correct claim beats a long vague one. Where claim and rebuttal conflict, prefer whichever cites checkable code.
+
+A rebuttal of "unverified" carries no evidential weight in either direction — it means the cross-examiner could not check. Do NOT read it as support for rejecting the finding. Judge such findings on the original evidence alone, and answer "uncertain" when that evidence is insufficient.
 
 Output ONLY a fenced \`\`\`json block, no prose after it:
 [
@@ -318,19 +348,26 @@ async function rejudge(opts) {
   const findings = Object.keys(t.findings).flatMap((n) => stripAuthorship(t.findings[n]));
   const rebuttals = Object.values(t.rebuttals).flatMap((l) => l ?? []);
 
-  console.error(`Re-adjudicating ${findings.length} finding(s) with ${opts.judge}...`);
-  const r = await REVIEWERS[opts.judge](judgePrompt(diff, findings, rebuttals), opts);
-  writeFileSync(join(dir, `judge-${opts.judge}.txt`), r.text || r.stderr);
-  const verdicts = (r.ok && extractJson(r.text)) || [];
-  if (!verdicts.length) {
-    console.error(`${opts.judge} produced no parseable verdict${r.timedOut ? " (TIMED OUT)" : ""}.`);
-    process.exit(1);
+  console.error(`Re-adjudicating ${findings.length} finding(s) with ${opts.judges.join(", ")}...`);
+  const perJudge = {};
+  for (const j of opts.judges) {
+    const r = await REVIEWERS[j](judgePrompt(diff, findings, rebuttals), opts);
+    writeFileSync(join(dir, `judge-${j}.txt`), r.text || r.stderr);
+    const parsed = (r.ok && extractJson(r.text)) || null;
+    if (!parsed) {
+      console.error(`${j} produced no parseable verdict${r.timedOut ? " (TIMED OUT)" : ""}.`);
+      continue;
+    }
+    perJudge[j] = parsed;
   }
-  // The original run's report is left intact so the two judges can be compared.
-  const swapped = { ...t, judge: opts.judge, verdicts };
-  writeFileSync(join(dir, `report-judge-${opts.judge}.md`), renderReport(swapped));
+  if (!Object.keys(perJudge).length) process.exit(1);
+
+  // The original run's report is left intact so judges can be compared.
+  const tag = opts.judges.join("-");
+  const swapped = { ...t, judges: opts.judges, verdicts: aggregateVerdicts(findings, opts.judges, perJudge) };
+  writeFileSync(join(dir, `report-judge-${tag}.md`), renderReport(swapped));
   console.log(renderReport(swapped));
-  console.error(`\nWrote ${dir}/report-judge-${opts.judge}.md`);
+  console.error(`\nWrote ${dir}/report-judge-${tag}.md`);
 }
 
 async function main() {
@@ -338,6 +375,12 @@ async function main() {
   if (opts.help) {
     console.log("See the header comment in dev/tools/debate-review.mjs for usage.");
     return;
+  }
+
+  for (const n of new Set([...opts.reviewers, ...opts.judges])) {
+    if (!REVIEWERS[n]) {
+      throw new Error(`unknown reviewer "${n}" — known: ${Object.keys(REVIEWERS).join(", ")}`);
+    }
   }
 
   if (opts.rejudge) return rejudge(opts);
@@ -361,93 +404,180 @@ async function main() {
     return;
   }
 
+  // The output directory is NOT created yet — nothing may exist on disk while
+  // reviewers and judges are running. See runDebate.
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const outDir = join(opts.out, stamp);
+
+  console.error(`Round 1/3  blind review (${opts.reviewers.join(", ")} in parallel)...`);
+  const { transcript, degraded, raw } = await runDebate({ diff, registry: REVIEWERS, opts });
+
+  for (const f of transcript.failures) console.error(`  FAILED: ${f}`);
+  if (degraded) {
+    console.error(
+      `\nDEGRADED: only ${transcript.survivors.length} reviewer(s) survived round 1. ` +
+      `This is NOT a debate — cross-examination and adjudication were skipped.`,
+    );
+  }
+
+  // Artifacts land only now, after every judge has answered. See runDebate.
   mkdirSync(outDir, { recursive: true });
-  // Persisted so --rejudge can replay adjudication against the exact same text.
   writeFileSync(join(outDir, "diff.txt"), diff);
-
-  // Round 1 — blind. Both reviewers in parallel; neither sees the other.
-  console.error("Round 1/3  blind review (codex, claude in parallel)...");
-  const names = ["codex", "claude"];
-  const blind = await Promise.all(
-    names.map((n) => REVIEWERS[n](blindPrompt(diff), opts)),
-  );
-
-  const labels = { codex: "A", claude: "B" };
-  const findings = {};
-  const failures = [];
-  const survived = new Set();
-  names.forEach((n, i) => {
-    const r = blind[i];
-    const parsed = r.ok ? extractJson(r.text) : null;
-    writeFileSync(join(outDir, `blind-${n}.txt`), r.text || r.stderr);
-    findings[n] = [];
-    if (!parsed) {
-      failures.push(`${n} (round 1): ${r.timedOut ? `TIMED OUT after ${opts.timeout}s` : `exit ${r.code}, unparseable output`}`);
-      return;
-    }
-    // An empty array is a valid result — "I found nothing" is not a failure.
-    survived.add(n);
-    findings[n] = parsed.map((f, idx) => ({ id: `${labels[n]}${idx + 1}`, ...f }));
-  });
-
-  for (const f of failures) console.error(`  FAILED: ${f}`);
-  if (survived.size < 2) {
-    console.error(`\nDEGRADED: only ${survived.size} reviewer(s) survived round 1. This is NOT a debate.`);
-  }
-
-  // Round 2 — rebut. Each reviewer sees only the peer's findings, anonymised.
-  console.error("Round 2/3  cross-examination...");
-  const peerOf = { codex: "claude", claude: "codex" };
-  const rebuttals = {};
-  await Promise.all(
-    names.map(async (n) => {
-      const peer = findings[peerOf[n]];
-      if (!peer.length) {
-        rebuttals[n] = [];
-        return;
-      }
-      const r = await REVIEWERS[n](rebutPrompt(diff, stripAuthorship(peer)), opts);
-      writeFileSync(join(outDir, `rebut-${n}.txt`), r.text || r.stderr);
-      const parsed = r.ok ? extractJson(r.text) : null;
-      if (!parsed) {
-        failures.push(`${n} (round 2): ${r.timedOut ? "TIMED OUT" : `exit ${r.code}, unparseable`}`);
-        rebuttals[n] = [];
-        return;
-      }
-      rebuttals[n] = parsed;
-    }),
-  );
-
-  // Round 3 — judge. Sees anonymised claims and rebuttals together.
-  console.error(`Round 3/3  adjudication (${opts.judge})...`);
-  const allFindings = names.flatMap((n) => stripAuthorship(findings[n]));
-  const allRebuttals = names.flatMap((n) => rebuttals[n] ?? []);
-  let verdicts = [];
-  if (allFindings.length) {
-    const r = await REVIEWERS[opts.judge](judgePrompt(diff, allFindings, allRebuttals), opts);
-    writeFileSync(join(outDir, "judge.txt"), r.text || r.stderr);
-    verdicts = (r.ok && extractJson(r.text)) || [];
-    if (!verdicts.length) failures.push(`${opts.judge} (round 3): ${r.timedOut ? "TIMED OUT" : "unparseable verdict"}`);
-  }
-
-  const transcript = {
-    base: opts.base,
-    judge: opts.judge,
-    models: { codex: opts.codexModel, claude: opts.claudeModel },
-    labelMap: labels,
-    findings,
-    rebuttals,
-    verdicts,
-    failures,
-  };
+  for (const [n, text] of Object.entries(raw.blind)) writeFileSync(join(outDir, `blind-${n}.txt`), text);
+  for (const [n, text] of Object.entries(raw.rebut)) writeFileSync(join(outDir, `rebut-${n}.txt`), text);
+  for (const [n, text] of Object.entries(raw.judge)) writeFileSync(join(outDir, `judge-${n}.txt`), text);
   writeFileSync(join(outDir, "transcript.json"), JSON.stringify(transcript, null, 2));
   const report = renderReport(transcript);
   writeFileSync(join(outDir, "report.md"), report);
 
   console.log(report);
   console.error(`\nArtifacts: ${outDir}/`);
+  // Fail closed: a degraded run must not read as a pass to a caller or CI step.
+  if (degraded && !opts.allowDegraded) process.exitCode = 2;
+}
+
+/* --------------------------------------------------------------- core ---- */
+
+/** Fisher-Yates, so label assignment carries no information about the roster order. */
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/**
+ * Collapse each judge's verdicts into one. Unanimity keeps the verdict;
+ * any disagreement resolves to `uncertain` rather than a majority.
+ *
+ * Majority voting looks stronger and is not: correlated models outvote a
+ * correct minority, and the panel manufactures confidence precisely where the
+ * evidence was thinnest. An unresolved finding is a more honest artifact than
+ * a 2-1 verdict.
+ */
+function aggregateVerdicts(findings, judges, perJudge) {
+  const out = [];
+  for (const f of findings) {
+    const votes = judges
+      .map((j) => {
+        const v = (perJudge[j] ?? []).find((x) => x.id === f.id);
+        return v ? { judge: j, verdict: v.verdict, severity: v.severity, rationale: v.rationale } : null;
+      })
+      .filter(Boolean);
+    if (!votes.length) continue;
+
+    const agreed = new Set(votes.map((v) => v.verdict)).size === 1;
+    out.push({
+      id: f.id,
+      verdict: agreed ? votes[0].verdict : "uncertain",
+      severity: votes[0].severity,
+      rationale: agreed
+        ? votes[0].rationale
+        : `Judges disagreed (${votes.map((v) => `${v.judge}: ${v.verdict}`).join("; ")}) — left unresolved. ` +
+          votes.map((v) => v.rationale).filter(Boolean).join(" / "),
+      judgeVerdicts: votes,
+    });
+  }
+  return out;
+}
+
+/**
+ * The debate itself: reviewers in, transcript out, nothing touched on disk.
+ *
+ * The IO-free boundary is a security property, not tidiness. Reviewers hold
+ * read-only access to the repository under review, so a `blind-codex.txt`
+ * sitting in `.debate-review/` while adjudication runs lets a judge that is
+ * also a contestant rebuild the label map by matching text to findings —
+ * randomised labels would merely relocate that leak. Holding every artifact in
+ * memory until the last judge has answered removes it structurally: the
+ * function cannot leak what it has no means to write.
+ */
+export async function runDebate({ diff, registry, opts }) {
+  const names = opts.reviewers;
+  const raw = { blind: {}, rebut: {}, judge: {} };
+  const failures = [];
+
+  // Round 1 — blind. Reviewers in parallel; none sees another's output.
+  const blind = await Promise.all(names.map((n) => registry[n](blindPrompt(diff), opts)));
+
+  const letters = shuffle(names.map((_, i) => String.fromCharCode(65 + i)));
+  const labels = Object.fromEntries(names.map((n, i) => [n, letters[i]]));
+
+  const findings = {};
+  const survived = [];
+  names.forEach((n, i) => {
+    const r = blind[i];
+    raw.blind[n] = r.text || r.stderr || "";
+    findings[n] = [];
+    const parsed = r.ok ? extractJson(r.text) : null;
+    if (!parsed) {
+      failures.push(
+        `${n} (round 1): ${r.timedOut ? `TIMED OUT after ${opts.timeout}s` : `exit ${r.code}, unparseable output`}`,
+      );
+      return;
+    }
+    // An empty array is a valid result — "I found nothing" is not a failure.
+    survived.push(n);
+    findings[n] = parsed.map((f, idx) => ({ id: `${labels[n]}${idx + 1}`, ...f }));
+  });
+
+  const degraded = survived.length < 2;
+
+  // Round 2 — cross-examination. Each reviewer sees every OTHER reviewer's
+  // findings, anonymised, and never its own.
+  const rebuttals = {};
+  if (!degraded) {
+    await Promise.all(names.map(async (n) => {
+      rebuttals[n] = [];
+      const peer = names.filter((other) => other !== n).flatMap((other) => findings[other]);
+      if (!peer.length) return;
+      const r = await registry[n](rebutPrompt(diff, stripAuthorship(peer)), opts);
+      raw.rebut[n] = r.text || r.stderr || "";
+      const parsed = r.ok ? extractJson(r.text) : null;
+      if (!parsed) {
+        failures.push(`${n} (round 2): ${r.timedOut ? "TIMED OUT" : `exit ${r.code}, unparseable`}`);
+        return;
+      }
+      rebuttals[n] = parsed;
+    }));
+  }
+
+  // Round 3 — adjudication. Skipped entirely when degraded: the sole survivor
+  // would otherwise be scoring its own findings.
+  const allFindings = names.flatMap((n) => stripAuthorship(findings[n]));
+  const allRebuttals = Object.values(rebuttals).flat();
+  let verdicts = [];
+  if (!degraded && allFindings.length) {
+    const perJudge = {};
+    for (const j of opts.judges) {
+      const r = await registry[j](judgePrompt(diff, allFindings, allRebuttals), opts);
+      raw.judge[j] = r.text || r.stderr || "";
+      const parsed = (r.ok && extractJson(r.text)) || null;
+      if (!parsed) {
+        failures.push(`${j} (round 3): ${r.timedOut ? "TIMED OUT" : "unparseable verdict"}`);
+        continue;
+      }
+      perJudge[j] = parsed;
+    }
+    verdicts = aggregateVerdicts(allFindings, opts.judges, perJudge);
+  }
+
+  const transcript = {
+    base: opts.base,
+    judges: opts.judges,
+    models: Object.fromEntries(names.map((n) => [
+      n, n === "codex" ? opts.codexModel : n === "claude" ? opts.claudeModel : n,
+    ])),
+    labelMap: labels,
+    degraded,
+    survivors: survived,
+    findings,
+    rebuttals,
+    verdicts,
+    failures,
+  };
+  return { transcript, degraded, raw };
 }
 
 /** Reviewer identity is stripped before any prompt that another model will read. */
@@ -456,7 +586,7 @@ function stripAuthorship(list) {
     ({ id, file, line, severity, category, claim, evidence }));
 }
 
-function renderReport(t) {
+export function renderReport(t) {
   const byId = new Map();
   for (const n of Object.keys(t.findings)) {
     for (const f of t.findings[n]) byId.set(f.id, { ...f, author: n });
@@ -471,8 +601,24 @@ function renderReport(t) {
     .filter((v) => v.verdict === "confirmed")
     .sort((a, b) => (rank[a.severity] ?? 3) - (rank[b.severity] ?? 3));
 
-  const lines = [`# Debate review — base \`${t.base}\``, ""];
-  lines.push(`Reviewers: codex (\`${t.models.codex}\`) = **A**, claude (\`${t.models.claude}\`) = **B**. Judge: **${t.judge}**.`);
+  // The heading is the whole point of the degraded flag: stderr scrolls away,
+  // this file is what someone reads a week later.
+  const lines = t.degraded
+    ? [
+      `# DEGRADED SINGLE-REVIEWER RUN — base \`${t.base}\``,
+      "",
+      "**This is not a debate.** Fewer than two reviewers survived the blind round, so"
+      + " cross-examination and adjudication were skipped. Nothing here has been"
+      + " adjudicated, and no finding below may be treated as confirmed.",
+      "",
+    ]
+    : [`# Debate review — base \`${t.base}\``, ""];
+
+  const roster = Object.entries(t.labelMap ?? {})
+    .map(([n, l]) => `${n} (\`${t.models?.[n] ?? "?"}\`) = **${l}**`)
+    .join(", ");
+  const judges = (t.judges ?? []).join(", ") || "none";
+  lines.push(`Reviewers: ${roster}. Judge${(t.judges ?? []).length > 1 ? "s" : ""}: **${judges}**.`);
   lines.push(`Raised: ${byId.size} · confirmed: ${rows.length} · rejected: ${t.verdicts.filter((v) => v.verdict === "rejected").length} · uncertain: ${t.verdicts.filter((v) => v.verdict === "uncertain").length}`);
   lines.push("");
 
@@ -481,7 +627,12 @@ function renderReport(t) {
   }
 
   if (!rows.length) {
-    lines.push("_No findings survived cross-examination._", "");
+    lines.push(
+      t.degraded
+        ? `_${byId.size} finding(s) were raised but none were adjudicated._`
+        : "_No findings survived cross-examination._",
+      "",
+    );
   }
   for (const v of rows) {
     const f = byId.get(v.id) ?? {};
@@ -490,7 +641,10 @@ function renderReport(t) {
     lines.push(`\`${f.file ?? "?"}:${f.line ?? "?"}\` · ${f.category ?? "?"} · raised by **${f.author ?? "?"}** (${v.id})`);
     lines.push("");
     if (f.evidence) lines.push(`**Evidence:** ${f.evidence}`, "");
-    if (reb) lines.push(`**Cross-examination:** ${reb.refuted ? "challenged" : "conceded"} (${reb.confidence}) — ${reb.reasoning}`, "");
+    if (reb) {
+      const stance = { refuted: "refuted", corroborated: "corroborated", unverified: "could not verify" };
+      lines.push(`**Cross-examination:** ${stance[reb.verdict] ?? reb.verdict ?? "?"} (${reb.confidence}) — ${reb.reasoning}`, "");
+    }
     lines.push(`**Verdict:** ${v.rationale}`, "");
   }
 
@@ -506,7 +660,11 @@ function renderReport(t) {
   return lines.join("\n");
 }
 
-main().catch((err) => {
-  console.error(err.message);
-  process.exit(1);
-});
+// Only run when invoked directly; importing this module (for tests) must not
+// start a review.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error(err.message);
+    process.exit(1);
+  });
+}
