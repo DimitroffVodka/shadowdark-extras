@@ -92,6 +92,36 @@ export const PinStylePreview = {
 						previewPin.style.backgroundSize = "contain";
 						previewPin.style.backgroundPosition = "center";
 						previewPin.style.backgroundRepeat = "no-repeat";
+						// Preview hover tint/border: apply as filter + outline on hover
+						const isHighlight = style.hoverAnimation === "highlight";
+						const ht = isHighlight && style.hoverImageTint && style.hoverImageTint.toLowerCase() !== "#ffffff" ? style.hoverImageTint : "";
+						const hrw = isHighlight ? (parseInt(style.hoverRingWidth) || 0) : 0;
+						const hrc = isHighlight ? (style.hoverRingColor || "#ff7a00") : "";
+						if (previewPin._sdxHoverHandlers) {
+							previewPin.removeEventListener("mouseenter", previewPin._sdxHoverHandlers.enter);
+							previewPin.removeEventListener("mouseleave", previewPin._sdxHoverHandlers.leave);
+						}
+						const enter = () => {
+							if (ht) {
+								// Approximate multiply tint via CSS filter on the background image:
+								// use a colored overlay via box-shadow inset or background-color blend.
+								previewPin.style.backgroundColor = ht;
+								previewPin.style.backgroundBlendMode = "multiply";
+							}
+							if (hrw > 0) {
+								previewPin.style.outline = `${hrw}px solid ${hrc}`;
+								previewPin.style.outlineOffset = "0px";
+								previewPin.style.borderRadius = "10px";
+							}
+						};
+						const leave = () => {
+							previewPin.style.backgroundColor = "transparent";
+							previewPin.style.backgroundBlendMode = "normal";
+							previewPin.style.outline = "none";
+						};
+						previewPin.addEventListener("mouseenter", enter);
+						previewPin.addEventListener("mouseleave", leave);
+						previewPin._sdxHoverHandlers = { enter, leave };
 					}
 					else {
 						// Fallback placeholder
@@ -268,10 +298,19 @@ export const PinStylePreview = {
 			const originalPin = JournalPinManager.get(this.pinId);
 			if (!originalPin) return;
 
-			// Merge current form style into original pin data for a temporary update
+			// Converted map notes carry note.iconSize at top-level pin.size,
+			// while the slider writes style.size. If the pin has no explicit
+			// style.size yet, keep the live preview at the rendered size
+			// (the global default is 32, which would shrink the preview on
+			// first open even though the canvas pin is e.g. 64).
+			const effectiveStyle = { ...style };
+			if (originalPin.size != null && originalPin.style?.size == null && effectiveStyle.size === 32) {
+				effectiveStyle.size = originalPin.size;
+			}
+
 			const tempData = foundry.utils.mergeObject(
 				foundry.utils.deepClone(originalPin),
-				{ style },
+				{ style: effectiveStyle },
 				{ inplace: false }
 			);
 

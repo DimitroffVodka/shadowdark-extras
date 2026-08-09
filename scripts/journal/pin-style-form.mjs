@@ -46,6 +46,20 @@ export const PinStyleForm = {
 			shape: form.querySelector('[name="shape"]')?.value || "circle",
 			imagePath: form.querySelector('[name="imagePath"]')?.value || "",
 			imageTint: form.querySelector('[name="imageTint"]')?.value || "",
+			// Highlight color — single swatch drives both tint and border color
+			hoverImageTint: (() => {
+				const v = form.querySelector('[name="hoverImageTint"]')?.value;
+				if (v) return v;
+				// No input (form not rendered yet) — keep existing value or fall back to global highlight tint
+				const existing = this.pinId ? (form.querySelector('[name="hoverImageTint"]') ? null : null) : null;
+				return (foundry.utils.deepClone(getPinStyle()).hoverImageTint || "#ff7a00");
+			})(),
+			hoverRingColor: (() => {
+				const v = form.querySelector('[name="hoverImageTint"]')?.value;
+				if (v) return v;
+				return (foundry.utils.deepClone(getPinStyle()).hoverRingColor || "#ff7a00");
+			})(),
+			hoverRingWidth: form.querySelector('[name="hoverRingWidth"]') ? (parseInt(form.querySelector('[name="hoverRingWidth"]')?.value) || 0) : 6,
 			hoverAnimation: form.querySelector('[name="hoverAnimation"]')?.value || "none",
 			pingAnimation: form.querySelector('[name="pingAnimation"]')?.value || "ripple",
 			bringAnimation: form.querySelector('[name="bringAnimation"]')?.value || "ripple",

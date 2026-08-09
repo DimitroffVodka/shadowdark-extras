@@ -71,6 +71,10 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		if (this.pinId) {
 			const pin = JournalPinManager.get(this.pinId);
 			style = { ...DEFAULT_PIN_STYLE, ...getPinStyle(), ...(pin?.style || {}) };
+			// Converted map notes store note.iconSize at pin.size (top-level),
+			// not in pin.style. Seed the slider with the effective rendered
+			// size so the editor doesn't snap the preview to the 32px global.
+			if (pin?.size != null && pin.style?.size == null) style.size = pin.size;
 
 			// Load all journals for the dropdown
 			allJournals = game.journal.contents
@@ -207,7 +211,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		if (typeof style.hoverAnimation === "boolean") {
 			style.hoverAnimation = style.hoverAnimation ? "scale" : "none";
 		}
-		if (!style.hoverAnimation) style.hoverAnimation = "none";
+		if (!style.hoverAnimation) style.hoverAnimation = "highlight";
 
 		return {
 			style,
@@ -260,6 +264,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		form.querySelectorAll('input[type="color"]').forEach(input => {
 			input.addEventListener("input", async () => await this._updatePreview());
 		});
+
+		// (Highlight hover controls removed — highlight preset drives tint/ring via style defaults)
 
 		// Save button
 		form.querySelector('[data-action="save"]')?.addEventListener("click", () => this._onSave());
@@ -448,6 +454,18 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			};
 			updateShapeVisibility();
 			shapeSelect.addEventListener("change", updateShapeVisibility);
+		}
+
+		// Highlight color visibility — only relevant when hoverAnimation is highlight (image pins benefit most)
+		const hoverSelect = form.querySelector('[name="hoverAnimation"]');
+		const highlightRows = form.querySelectorAll('.highlight-color-row');
+		if (hoverSelect && highlightRows.length) {
+			const syncHighlightRows = () => {
+				const isHighlight = hoverSelect.value === "highlight";
+				highlightRows.forEach(r => r.style.display = isHighlight ? "" : "none");
+			};
+			hoverSelect.addEventListener("change", syncHighlightRows);
+			syncHighlightRows();
 		}
 
 		// Journal dropdown changes - update page options

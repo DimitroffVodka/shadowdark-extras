@@ -20,11 +20,14 @@ export const DEFAULT_PIN_STYLE = {
 	opacity: 1.0,
 	fillOpacity: 1.0,
 	ringOpacity: 1.0,
-	hoverAnimation: "none", // "none", "scale", "pulse", "rotate", "shake"
+	hoverAnimation: "highlight", // "none", "scale", "pulse", "shake", "brightness", "hue", "highlight" — highlight = tint+border (default)
 	pingAnimation: "ripple", // "ripple", "rotate", "shake", "none"
 	bringAnimation: "ripple", // "ripple", "rotate", "shake", "none"
 	imagePath: "", // Path to image for "image" shape
 	imageTint: "", // Optional multiply tint for "image" shape (e.g. from a map note)
+	hoverImageTint: "#ff7a00", // Highlight tint (used when hoverAnimation is "highlight")
+	hoverRingColor: "#ff7a00", // Highlight border color (used when hoverAnimation is "highlight")
+	hoverRingWidth: 6,  // Ring width while hovered (0 = no hover ring)
 	contentType: "number", // "number", "icon", "text", "customIcon", "none"
 	iconClass: "fa-solid fa-book-open",
 	iconColor: "#ffffff",

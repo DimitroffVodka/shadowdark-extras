@@ -289,15 +289,19 @@ export class JournalPinGraphics extends PIXI.Container {
 		// Get global style settings
 		const globalStyle = getPinStyle();
 
-		// Merge: global defaults < pin-specific style overrides
-		const style = { ...globalStyle, ...(this.pinData.style || {}) };
+		// Pin size precedence: per-pin style.size (explicit override) wins,
+		// then the top-level pinData.size (e.g. converted map notes carry
+		// note.iconSize here), then the global default.  The merged `style`
+		// always has a global size, so we must check the per-pin style
+		// directly before falling through to top-level.
+		const pinStyle = this.pinData.style || {};
+		let size;
+		if (pinStyle.size != null) size = pinStyle.size;
+		else if (this.pinData.size != null) size = this.pinData.size;
+		else size = globalStyle.size ?? 32;
 
-		// Pin size: normally the style's size slider, but "Fit to hex grid"
-		// overrides it with the active scene's grid cell so the pin covers the
-		// whole hex (image/hexagon overlays). Math.max picks the larger hex
-		// axis (flat-top width vs pointy height); falls back to grid.size for
-		// square grids.
-		let size = style.size || 32;
+		// Merge: global defaults < pin-specific style overrides (for everything else)
+		const style = { ...globalStyle, ...pinStyle };
 		if (style.fitToHexGrid && canvas?.grid) {
 			const g = canvas.grid;
 			const cell = Math.max(Number(g.sizeX) || 0, Number(g.sizeY) || 0, Number(g.size) || 0);
@@ -350,7 +354,7 @@ export class JournalPinGraphics extends PIXI.Container {
 						// Let's use "contain" logic within the size box
 
 						const maxDim = Math.max(texture.width, texture.height);
-						const scale = size / maxDim;
+												const scale = size / maxDim;
 
 						sprite.width = texture.width * scale;
 						sprite.height = texture.height * scale;
@@ -362,8 +366,36 @@ export class JournalPinGraphics extends PIXI.Container {
 						// normalizeImageTint drops invalid values and the white no-op.
 						const imageTint = normalizeImageTint(style.imageTint);
 						if (imageTint) sprite.tint = Number(imageTint);
+						else sprite.tint = 0xFFFFFF;
+						sprite._sdxBaseTint = sprite.tint;
+						const gs = getPinStyle();
+						const effHoverTintStr = (style.hoverImageTint && style.hoverImageTint !== "") ? style.hoverImageTint : gs.hoverImageTint;
+						const effHoverTint = normalizeImageTint(effHoverTintStr);
+						sprite._sdxHoverTint = effHoverTint ?? normalizeImageTint(gs.hoverImageTint) ?? null;
+						const effHoverW = (style.hoverRingWidth != null && String(style.hoverRingWidth) !== "" && Number(style.hoverRingWidth) > 0) ? Number(style.hoverRingWidth) : (Number(gs.hoverRingWidth) || 6);
+						const effHoverCStr = (style.hoverRingColor && style.hoverRingColor !== "") ? style.hoverRingColor : gs.hoverRingColor;
 
-						// Store reference for pixel-perfect hover detection
+						// Hover border for image pins: rounded-rect outline behind the sprite
+						let hoverBorder = null;
+						const hoverRingW = Number(effHoverW) || 0;
+						let hoverRingC = null;
+						try {
+							const effRingColor = effHoverCStr;
+							hoverRingC = normalizeImageTint(effRingColor) || (effRingColor ? foundry.utils.Color.from(effRingColor) : null);
+						} catch(e) {}
+						if (hoverRingW > 0 && hoverRingC && hoverRingC.valid) {
+							hoverBorder = new PIXI.Graphics();
+							hoverBorder.lineStyle(hoverRingW, Number(hoverRingC), 1);
+							const r = Math.max(6, Math.min(14, Math.round(size * 0.18)));
+							hoverBorder.drawRoundedRect(-radius, -radius, size, size, r);
+							hoverBorder.endFill();
+							hoverBorder.visible = false;
+							hoverBorder._sdxHover = true;
+							container.addChildAt(hoverBorder, 0);
+						}
+
+						// Keep refs for the pointer handlers (cached-texture path destroys container)
+						sprite._sdxHoverBorder = hoverBorder;
 						this._imageSprite = sprite;
 
 						container.addChild(sprite);
@@ -839,10 +871,17 @@ export class JournalPinGraphics extends PIXI.Container {
 			if (this._buildId !== buildId || this.destroyed) return;
 		}
 
-		// Performance: Cache pin visual as a single sprite texture
-		// Converts PIXI.Graphics draw calls into one batchable Sprite per pin
-		// Critical for Chromium/ANGLE on macOS which has high per-draw-call overhead
-		if (canvas?.app?.renderer && container.children.length > 0) {
+		// Keep image-highlight pins live (cached texture would bake the icon
+			// and can't tint per-hover). Skip caching when this pin will use the
+			// Highlight tint/border on hover (shape image + highlight).
+		const _skipCacheForHighlight = style.shape === "image" && style.hoverAnimation === "highlight";
+		if (_skipCacheForHighlight) {
+			// Hold live container directly — don't generate a texture
+			if (this._cachedTexture) { this._cachedTexture.destroy(true); this._cachedTexture = null; }
+			this.addChild(container);
+			// hoverBorder already lives inside container; tint is on _imageSprite inside container
+		}
+		else if (canvas?.app?.renderer && container.children.length > 0) {
 			try {
 				// Pre-cache pixel data for pixel-perfect detection before converting
 				if (this.hitArea?._sprite && !this.hitArea._pixelCanvas) {
@@ -910,7 +949,9 @@ export class JournalPinGraphics extends PIXI.Container {
 		if (window.gsap) {
 			gsap.killTweensOf(this);
 			gsap.killTweensOf(this.scale);
+			if (this._imageSprite) gsap.killTweensOf(this._imageSprite);
 		}
+		if (this._sdxHoverBorderCached) { this._sdxHoverBorderCached.destroy({children:true}); this._sdxHoverBorderCached=null; }
 
 		// Rebuild the graphics
 		await this._build();
@@ -990,6 +1031,8 @@ export class JournalPinGraphics extends PIXI.Container {
 			this._labelContainer.destroy({ children: true });
 			this._labelContainer = null;
 		}
+		if (this._imageSprite && window.gsap) gsap.killTweensOf(this._imageSprite);
+		if (this._sdxHoverBorderCached) { this._sdxHoverBorderCached.destroy({children:true}); this._sdxHoverBorderCached=null; }
 		if (this._cachedTexture) {
 			this._cachedTexture.destroy(true);
 			this._cachedTexture = null;

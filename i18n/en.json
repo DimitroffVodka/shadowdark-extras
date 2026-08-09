@@ -19,7 +19,7 @@
   "SHADOWDARK_EXTRAS.sheet_lock.stats": "Lock Stats (Ability Scores)",
   "SHADOWDARK_EXTRAS.sheet_lock.luck": "Lock Luck",
   "SHADOWDARK_EXTRAS.settings.show_medkit_icon.name": "Show Medkit Icon",
-"SHADOWDARK_EXTRAS.settings.show_medkit_icon.hint": "Show the Medkit button on actor sheets for owners to update items from the Shadowdark Extras compendium",
+  "SHADOWDARK_EXTRAS.settings.show_medkit_icon.hint": "Show the Medkit button on actor sheets for owners to update items from the Shadowdark Extras compendium",
   "SHADOWDARK_EXTRAS.settings.medkit_world_scan.name": "Medkit: Scan All Actors",
   "SHADOWDARK_EXTRAS.settings.medkit_world_scan.label": "Scan World",
   "SHADOWDARK_EXTRAS.settings.medkit_world_scan.hint": "Scan every actor in the world for available Medkit spell updates and apply them in one pass, without opening each sheet.",
@@ -1254,5 +1254,6 @@
   "SHADOWDARK_EXTRAS.camping_rest.rest_failed": "No rest recovery",
   "SHADOWDARK_EXTRAS.camping_rest.spells_refreshed": "spells refreshed",
   "SHADOWDARK_EXTRAS.camping_rest.abilities_refreshed": "abilities refreshed",
-  "SHADOWDARK_EXTRAS.camping_rest.wands_refreshed": "wands refreshed"
+  "SHADOWDARK_EXTRAS.camping_rest.wands_refreshed": "wands refreshed",
+  "SDX.pinStyleEditor.hoverAnimationHighlight": "Highlight"
 }

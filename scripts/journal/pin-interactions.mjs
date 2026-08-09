@@ -13,6 +13,7 @@
 import { JournalPinTooltip } from "./pin-tooltip.mjs";
 import { JournalPinManager } from "./pin-manager.mjs";
 import { renderPinContextMenu } from "./pin-context-menu.mjs";
+import { getPinStyle } from "./pin-style.mjs";
 
 /** Subscribe the standing pointer listeners. globalpointermove is not one of
  *  them — it is added only for the duration of a drag. */
@@ -36,8 +37,15 @@ export function detachPinListeners(pin) {
 }
 
 export function onPointerEnter(pin, event) {
-	// Normalize hideTooltip from multiple sources
-	const style = pin.pinData.style || {};
+	// Merge global highlight defaults for style reads (per-pin blanks inherit highlight tint/ring)
+	const _gs = getPinStyle();
+	const _ps = pin.pinData.style || {};
+	const style = { ..._gs, ..._ps };
+	// Per-pin blank highlight values must inherit global — flip blanks back
+	if (!_ps.hoverImageTint) style.hoverImageTint = _gs.hoverImageTint;
+	if (!_ps.hoverRingColor) style.hoverRingColor = _gs.hoverRingColor;
+	if (_ps.hoverRingWidth == null || String(_ps.hoverRingWidth) === "" || (style.hoverAnimation === "highlight" && Number(_ps.hoverRingWidth) === 0)) style.hoverRingWidth = _gs.hoverRingWidth;
+	// Also keep pinData flags at top-level level
 	const hideTooltip = pin.pinData.hideTooltip || style.hideTooltip || false;
 
 	if (!hideTooltip) {
@@ -46,6 +54,56 @@ export function onPointerEnter(pin, event) {
 	if (pin._labelContainer && style.labelShowOnHover) {
 		pin._labelContainer.visible = true;
 	}
+
+	// Highlight hover — tint + border (image pins only, when hoverAnimation is "highlight")
+	// Other hover modes (scale/pulse/shake/brightness/hue) don't tint. Default is "highlight".
+	try {
+		const isHighlight = style.hoverAnimation === "highlight";
+		if (!isHighlight) throw Object.assign(new Error("__skip_highlight__"), {__sdxSkipHighlight:true});
+		const spr = pin._imageSprite;
+		if (spr && spr._sdxHoverTint) {
+			if (window.gsap) gsap.killTweensOf(spr);
+			if (window.gsap) gsap.to(spr, { pixi: { tint: Number(spr._sdxHoverTint) }, duration: 0.18, ease: "power2.out" });
+			else spr.tint = Number(spr._sdxHoverTint);
+		}
+		// Border lives on the sprite in raw mode; in cached mode the
+		// container is replaced by a texture, so we apply a color-matrix
+		// tint to the whole pin instead and keep a PIXI.Graphics border
+		// as a separate child of the pin (not the cached container).
+			const bw = (() => {
+			const v = Number(style.hoverRingWidth);
+			if (Number.isFinite(v) && v > 0) return v;
+			// Highlight pins with 0/blank inherit the global highlight width
+			if (style.hoverAnimation === "highlight") return Number(_gs.hoverRingWidth) || 6;
+			return 0;
+		})();
+		if (bw > 0) {
+			if (spr?._sdxHoverBorder) {
+				spr._sdxHoverBorder.visible = true;
+			}
+			else if (pin._cachedTexture) {
+				// Cached path: no live Graphics border — add one now on the pin
+				if (!pin._sdxHoverBorderCached) {
+					try {
+						const effCol = (style.hoverRingColor && style.hoverRingColor !== "") ? style.hoverRingColor : "#ff7a00";
+						const c = foundry.utils.Color.from(effCol);
+						if (c.valid) {
+							const g = new PIXI.Graphics();
+							g.lineStyle(bw, Number(c), 1);
+							const b = pin.getLocalBounds();
+							const r = Math.max(6, Math.min(14, Math.round(b.width * 0.18)));
+							g.drawRoundedRect(-b.width/2, -b.height/2, b.width, b.height, r);
+							g.endFill();
+							g._sdxHover = true;
+							pin._sdxHoverBorderCached = g;
+							pin.addChildAt(g, 0);
+						}
+					} catch(e) {}
+				}
+				if (pin._sdxHoverBorderCached) pin._sdxHoverBorderCached.visible = true;
+			}
+		}
+	} catch(e) { if (e?.__sdxSkipHighlight) {/* not highlight — no tint/border */} }
 
 	// Hover Animation
 	let animType = style.hoverAnimation;
@@ -96,6 +154,18 @@ export function onPointerLeave(pin, event) {
 	if (pin._labelContainer && pin.pinData.style?.labelShowOnHover) {
 		pin._labelContainer.visible = false;
 	}
+
+	// Highlight tint + border reset (uses same merged style so reset matches enter)
+	try {
+		const spr = pin._imageSprite;
+		if (spr && spr._sdxBaseTint != null) {
+			if (window.gsap) gsap.killTweensOf(spr);
+			if (window.gsap) gsap.to(spr, { pixi: { tint: spr._sdxBaseTint }, duration: 0.18, ease: "power2.out" });
+			else spr.tint = spr._sdxBaseTint;
+		}
+		if (spr?._sdxHoverBorder) spr._sdxHoverBorder.visible = false;
+		if (pin._sdxHoverBorderCached) pin._sdxHoverBorderCached.visible = false;
+	} catch(e) { if (e?.__sdxSkipHighlight) {/* not highlight — no tint/border */} }
 
 	// Hover Animation Reset
 	if (window.gsap) {
