@@ -162,7 +162,7 @@
                 </div>
                 <select name="iconShapePreset" style="margin-top:6px">
                     <option value="">{{localize "SDX.pinStyleEditor.iconShapeNone"}}</option>
-                    {{#each iconShapePresets}}
+                    {{#each svgIconPresets}}
                     <option value="{{this.path}}" {{#if (eq this.path ../style.iconShapePath)}}selected{{/if}}>{{this.label}}</option>
                     {{/each}}
                 </select>
@@ -197,7 +197,7 @@
         </div>
 
         <!-- Standard Shape Options (Ring, Fill, Etc) -->
-        <div class="standard-style-options" style="{{#if (eq style.shape 'image')}}display: none;{{/if}}{{#if (eq style.shape 'icon')}}display: none;{{/if}}">
+        <div class="standard-style-options" style="{{#if isMediaShape}}display: none;{{/if}}">
             <div class="form-group">
                 <label>{{localize "SDX.pinStyleEditor.ringWidth"}} <span
                         data-for="ringWidth">{{style.ringWidth}}</span>px</label>
@@ -234,7 +234,7 @@
         </div>
 
         <!-- Opacity for Image/Icon (Outside standard options) -->
-        <div class="image-opacity-option" style="{{#unless (eq style.shape 'image')}}{{#unless (eq style.shape 'icon')}}display: none;{{/unless}}{{/unless}}">
+        <div class="image-opacity-option" style="{{#unless isMediaShape}}display: none;{{/unless}}">
             <div class="form-group">
                 <label>{{localize "SDX.pinStyleEditor.opacity"}} <span
                         data-for="opacity">{{style.opacity}}</span></label>
@@ -367,7 +367,7 @@
                 <label>{{localize "SDX.pinStyleEditor.iconShapePath"}}</label>
                 <select name="customIconPreset">
                     <option value="">{{localize "SDX.pinStyleEditor.iconShapeNone"}}</option>
-                    {{#each iconShapePresets}}
+                    {{#each svgIconPresets}}
                     <option value="{{this.path}}" {{#if (eq this.path ../style.customIconPath)}}selected{{/if}}>
                         {{this.label}}
                     </option>

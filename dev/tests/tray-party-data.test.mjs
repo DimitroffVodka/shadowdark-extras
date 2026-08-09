@@ -18,9 +18,10 @@ import { installAppGlobals, makeSelectorDom } from "./helpers/dom-harness.mjs";
 
 installCanvasGlobals();
 installAppGlobals({ dom: makeSelectorDom() });
+let showNPCs = true;
 globalThis.game.settings = {
 	get: (moduleId, key) =>
-		moduleId === "shadowdark-extras" && key === "tray.showNPCs" ? true : undefined,
+		moduleId === "shadowdark-extras" && key === "tray.showNPCs" ? showNPCs : undefined,
 	set: async () => {},
 	register() {},
 };
@@ -61,7 +62,8 @@ function makeToken(id, actor, { hidden = false } = {}) {
 	};
 }
 
-function setCanvasTokens(tokens) {
+function setCanvasTokens(tokens, sceneId = "scene-current") {
+	globalThis.canvas.scene = { id: sceneId };
 	globalThis.canvas.tokens = {
 		placeables: tokens,
 		controlled: [],
@@ -72,9 +74,10 @@ function setCanvasTokens(tokens) {
 // Receive a snapshot the way a player client does: through the socket
 // handler, with a fake socketlib socket.
 const socketHandlers = {};
+const broadcasts = [];
 registerPartyStatsSocket({
 	register: (name, fn) => { socketHandlers[name] = fn; },
-	executeForEveryone: () => {},
+	executeForEveryone: (name, payload) => broadcasts.push({ name, payload }),
 });
 
 function receiveSnapshot(stats) {
@@ -161,6 +164,80 @@ test("the GM's broadcast payload carries percent-only NPC stats and no hidden to
 		assert.equal(payload[hiddenNpc.id], undefined, "hidden tokens never leave the GM");
 	}
 	finally {
+		globalThis.game.user.isGM = prevGM;
+	}
+});
+
+test("authoritative NPC data ignores the GM's client-only tray filter", () => {
+	const prevGM = globalThis.game.user.isGM;
+	const previousShowNPCs = showNPCs;
+	globalThis.game.user.isGM = true;
+	showNPCs = false;
+	const npc = makeToken("npcFilteredLocally", makeActor({ hp: 4, max: 10, ac: 15 }));
+	setCanvasTokens([npc]);
+
+	try {
+		assert.equal(getPartyTokens().npcTokens.length, 0, "GM-local tray remains filtered");
+		const authoritative = getPartyTokens({ includeAllNPCs: true });
+		assert.equal(authoritative.npcTokens.length, 1, "wire roster bypasses the local filter");
+		assert.deepEqual(
+			buildPartyStatsPayload(authoritative.partyTokens, authoritative.npcTokens)[npc.id],
+			{ hp: { percent: 40 }, ac: null, luck: null }
+		);
+	}
+	finally {
+		showNPCs = previousShowNPCs;
+		globalThis.game.user.isGM = prevGM;
+	}
+});
+
+test("a snapshot for another scene cannot replace the active scene's stats", async () => {
+	const prevGM = globalThis.game.user.isGM;
+	globalThis.game.user.isGM = false;
+	const limitedPc = makeToken("duplicate-id", makeActor({ type: "Player", system: {} }));
+	setCanvasTokens([limitedPc], "scene-b");
+
+	try {
+		await receiveSnapshot({
+			sceneId: "scene-a",
+			stats: { "duplicate-id": { hp: { value: 1, max: 10, percent: 10 }, ac: 9, luck: 0 } },
+		});
+		assert.equal(getPartyTokens().partyTokens[0].hp.value, 0,
+			"scene A's duplicate token id is ignored on scene B");
+
+		await receiveSnapshot({
+			sceneId: "scene-b",
+			stats: { "duplicate-id": { hp: { value: 8, max: 10, percent: 80 }, ac: 14, luck: 1 } },
+		});
+		assert.equal(getPartyTokens().partyTokens[0].hp.value, 8);
+		assert.equal(getPartyTokens().partyTokens[0].ac, 14);
+	}
+	finally {
+		globalThis.game.user.isGM = prevGM;
+	}
+});
+
+test("the GM answers a player's requested scene rather than the GM canvas scene", async () => {
+	const prevGM = globalThis.game.user.isGM;
+	const previousScenes = globalThis.game.scenes;
+	globalThis.game.user.isGM = true;
+	setCanvasTokens([], "gm-scene");
+	const remoteActor = makeActor({ type: "Player", owner: true, hp: 7, max: 9, ac: 13 });
+	globalThis.game.scenes = new Map([["player-scene", {
+		id: "player-scene",
+		tokens: { contents: [{ id: "remote-pc", name: "Remote PC", actor: remoteActor, hidden: false }] },
+	}]]);
+	broadcasts.length = 0;
+
+	try {
+		await socketHandlers.sdxTrayRequestPartyStats("player-scene");
+		assert.equal(broadcasts.at(-1).name, "sdxTrayPartyStats");
+		assert.equal(broadcasts.at(-1).payload.sceneId, "player-scene");
+		assert.deepEqual(broadcasts.at(-1).payload.stats["remote-pc"].hp,
+			{ value: 7, max: 9, percent: (7 / 9) * 100 });
+	}
+	finally {
+		globalThis.game.scenes = previousScenes;
 		globalThis.game.user.isGM = prevGM;
 	}
 });

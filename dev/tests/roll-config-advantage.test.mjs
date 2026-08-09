@@ -473,7 +473,7 @@ test("dialog rolls are not double-applied by the rollFromConfig patch", async ()
 	}
 });
 
-test("ready setup wraps an immutable rollFromConfig namespace in a shallow copy", async () => {
+test("ready setup preserves an immutable rollFromConfig namespace's descriptors", async () => {
 	const readySteps = [];
 	const previousHooks = globalThis.Hooks;
 	const previousShadowdark = globalThis.shadowdark;
@@ -487,8 +487,20 @@ test("ready setup wraps an immutable rollFromConfig namespace in a shallow copy"
 			if (name === "ready") readySteps.push(callback);
 		},
 	};
-	// A frozen-style namespace: non-writable, non-configurable property.
-	const originalDice = {};
+	// A frozen-style namespace with the data shapes a shallow spread would lose.
+	const prototype = { inheritedHelper: () => "inherited" };
+	const symbolHelper = Symbol("symbolHelper");
+	const originalDice = Object.create(prototype);
+	Object.defineProperty(originalDice, "nonEnumerableHelper", {
+		value: () => "hidden",
+		enumerable: false,
+	});
+	let getterReads = 0;
+	Object.defineProperty(originalDice, "liveValue", {
+		get: () => ++getterReads,
+		enumerable: true,
+	});
+	originalDice[symbolHelper] = () => "symbol";
 	Object.defineProperty(originalDice, "rollFromConfig", {
 		value: originalRollFromConfig,
 		writable: false,
@@ -503,10 +515,17 @@ test("ready setup wraps an immutable rollFromConfig namespace in a shallow copy"
 		});
 		await readySteps.at(-1)();
 
-		// The namespace itself is replaced by a shallow copy; the property
+		// The namespace itself is replaced by a descriptor-preserving copy; the property
 		// reads the SDX wrapper instead of the immutable original.
 		assert.notEqual(globalThis.shadowdark.dice, originalDice, "dice namespace is replaced");
 		assert.notEqual(globalThis.shadowdark.dice.rollFromConfig, originalRollFromConfig);
+		assert.equal(Object.getPrototypeOf(globalThis.shadowdark.dice), prototype);
+		assert.equal(globalThis.shadowdark.dice.inheritedHelper(), "inherited");
+		assert.equal(globalThis.shadowdark.dice.nonEnumerableHelper(), "hidden");
+		assert.equal(Object.keys(globalThis.shadowdark.dice).includes("nonEnumerableHelper"), false);
+		assert.equal(globalThis.shadowdark.dice[symbolHelper](), "symbol");
+		assert.equal(getterReads, 0, "copying the namespace does not eagerly evaluate getters");
+		assert.equal(globalThis.shadowdark.dice.liveValue, 1);
 		const firstWrapped = globalThis.shadowdark.dice.rollFromConfig;
 
 		// Calling through the copy runs the SDX wrapper, then the original.

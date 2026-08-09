@@ -8,6 +8,11 @@ export const LAYER_NAME = "sdx-journal-pins-layer";
 
 export const PIN_SCHEMA_VERSION = 1;
 
+/** Image-backed pin bodies share rendering and form behavior. */
+export function isMediaPinShape(shape) {
+	return shape === "image" || shape === "icon";
+}
+
 export const DEFAULT_PIN_STYLE = {
 	size: 32,
 	// when true, size the pin to the active scene's grid hex so it covers the tile

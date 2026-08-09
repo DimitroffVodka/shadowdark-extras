@@ -6,13 +6,47 @@ const MODULE_ID = "shadowdark-extras";
 /**
  * We import style logic from JournalPinsSD to avoid circular dependencies
  */
-import { getPinStyle, JournalPinManager, JournalPinRenderer, DEFAULT_PIN_STYLE } from "./JournalPinsSD.mjs";
+import {
+	getPinStyle, JournalPinManager, JournalPinRenderer, DEFAULT_PIN_STYLE, isMediaPinShape,
+} from "./JournalPinsSD.mjs";
 import { IconPickerApp } from "./IconPickerSD.mjs";
 import { PinStyleForm } from "./pin-style-form.mjs";
 import { PinStylePreview } from "./pin-style-preview.mjs";
 import { PinStyleTMFX } from "./pin-style-tmfx.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+
+/** Bind a hidden icon path, its preset select, and its live preview. */
+function bindIconPathControl({
+	input, presetSelect, preview, clearButton = null, emptyMarkup,
+	imageAlt = "", imageStyle = "", onUpdate,
+}) {
+	if (!input) return null;
+	const sync = () => {
+		const path = (input.value || "").trim();
+		if (preview) {
+			const style = imageStyle ? ` style="${imageStyle}"` : "";
+			preview.innerHTML = path
+				? `<img src="${foundry.utils.escapeHTML(path)}" alt="${imageAlt}"${style} />`
+				: emptyMarkup;
+		}
+		if (clearButton) clearButton.style.display = path ? "" : "none";
+		if (presetSelect && presetSelect.value !== path) {
+			const hasPreset = [...presetSelect.options].some(option => option.value === path);
+			presetSelect.value = hasPreset ? path : "";
+		}
+	};
+	const setPath = path => {
+		input.value = path || "";
+		sync();
+		onUpdate?.();
+	};
+	input.addEventListener("change", sync);
+	input.addEventListener("input", sync);
+	presetSelect?.addEventListener("change", () => setPath(presetSelect.value));
+	sync();
+	return { setPath, sync };
+}
 
 /**
  * Pin Style Editor Application
@@ -166,7 +200,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			{ value: "diamond", label: game.i18n.localize("SDX.pinStyleEditor.shapeDiamond") },
 			{ value: "hexagon", label: "Hexagon (Point)" },
 			{ value: "hexagonFlat", label: "Hexagon (Flat)" },
-			{ value: "icon", label: "Icon — full-bleed SVG" },
+			{ value: "icon", label: game.i18n.localize("SDX.pinStyleEditor.shapeIcon") },
 			{ value: "image", label: game.i18n.localize("SDX.pinStyleEditor.shapeImage") },
 		];
 
@@ -214,7 +248,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		}
 		if (!style.hoverAnimation) style.hoverAnimation = "highlight";
 		const ICON_BASE = `modules/${MODULE_ID}/assets/icons`;
-		const iconShapePresets = [
+		const svgIconPresets = [
 			{ path: `${ICON_BASE}/delapouite/castle.svg`, label: "Castle" },
 			{ path: `${ICON_BASE}/delapouite/castle-ruins.svg`, label: "Castle Ruins" },
 			{ path: `${ICON_BASE}/delapouite/village.svg`, label: "Village" },
@@ -266,7 +300,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			shapes,
 			ringStyles,
 			iconOptions,
-			iconShapePresets,
+			svgIconPresets,
+			isMediaShape: isMediaPinShape(style.shape),
 			borderStyles,
 			journalPages,
 			currentPageId,
@@ -411,35 +446,21 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		const customIconPath = form.querySelector('[name="customIconPath"]');
 		const customIconPreset = form.querySelector('[name="customIconPreset"]');
 		const customIconPreview = form.querySelector(".selected-icon-preview");
-		const syncCustomIcon = () => {
-			const path = (customIconPath?.value || "").trim();
-			if (customIconPreview) {
-				customIconPreview.innerHTML = path
-					? `<img src="${foundry.utils.escapeHTML(path)}" alt="Selected Icon" />`
-					: '<i class="fa-solid fa-image"></i>';
-			}
-			if (customIconPreset && customIconPreset.value !== path) {
-				const hasPreset = [...customIconPreset.options].some(option => option.value === path);
-				customIconPreset.value = hasPreset ? path : "";
-			}
-		};
-		customIconPreset?.addEventListener("change", () => {
-			if (customIconPath) customIconPath.value = customIconPreset.value;
-			syncCustomIcon();
-			this._updatePreview();
+		const customIconControl = bindIconPathControl({
+			input: customIconPath,
+			presetSelect: customIconPreset,
+			preview: customIconPreview,
+			emptyMarkup: '<i class="fa-solid fa-image"></i>',
+			imageAlt: "Selected Icon",
+			onUpdate: () => this._updatePreview(),
 		});
-		syncCustomIcon();
 
 		// Browse icons button - open icon picker modal
 		const browseIconsBtn = form.querySelector('[data-action="browse-icons"]');
 		if (browseIconsBtn) {
 			browseIconsBtn.addEventListener("click", async () => {
 				const selectedPath = await IconPickerApp.pick();
-				if (selectedPath) {
-					if (customIconPath) customIconPath.value = selectedPath;
-					syncCustomIcon();
-					this._updatePreview();
-				}
+				if (selectedPath) customIconControl?.setPath(selectedPath);
 			});
 		}
 
@@ -516,7 +537,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		// Show/hide options based on shape selection
 		const shapeSelect = form.querySelector('[name="shape"]');
 		const borderRadiusSection = form.querySelector(".border-radius-options");
-		const standardStyleSection = form.querySelectorAll(".standard-style-options");
+		const standardStyleSections = form.querySelectorAll(".standard-style-options");
 		const mediaOpacitySection = form.querySelector(".image-opacity-option");
 		const imageShapeOptions = form.querySelector(".image-shape-options");
 		const iconShapeOptions = form.querySelector(".icon-shape-options");
@@ -527,8 +548,8 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 				if (borderRadiusSection) borderRadiusSection.style.display = shape === "square" ? "flex" : "none";
 				const isImage = shape === "image";
 				const isIcon = shape === "icon";
-				const hideStd = isImage || isIcon;
-				standardStyleSection.forEach(el => el.style.display = hideStd ? "none" : "block");
+				const hideStd = isMediaPinShape(shape);
+				standardStyleSections.forEach(el => el.style.display = hideStd ? "none" : "block");
 				if (mediaOpacitySection) mediaOpacitySection.style.display = hideStd ? "block" : "none";
 				if (imageShapeOptions) imageShapeOptions.style.display = isImage ? "block" : "none";
 				if (iconShapeOptions) iconShapeOptions.style.display = isIcon ? "block" : "none";
@@ -538,58 +559,27 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		}
 
 		// Icon shape picker — Browse / clear / preset dropdown (SVG as the pin body)
-		{
-			const input = form.querySelector('[name="iconShapePath"]');
-			const presetSelect = form.querySelector('[name="iconShapePreset"]');
-			const browseBtn = form.querySelector('[data-action="browse-icon-shape"]');
-			const preview = form.querySelector(".icon-shape-preview");
-			const clearBtn = form.querySelector('[data-action="clear-icon-shape"]');
-			if (input) {
-				const sync = () => {
-					const p = (input.value || "").trim();
-					if (preview) {
-						preview.innerHTML = p
-							? `<img src="${foundry.utils.escapeHTML(p)}" alt="" />`
-							: "<i class=\"fa-solid fa-icons\" style=\"opacity:.45\"></i>";
-						const img = preview.querySelector("img");
-						if (img) {
-							img.style.width = "28px"; img.style.height = "28px"; img.style.objectFit = "contain";
-						}
-					}
-					if (clearBtn) clearBtn.style.display = p ? "" : "none";
-					if (presetSelect && presetSelect.value !== p) {
-						// keep dropdown in sync when Browse sets a path outside the preset list — leave it on None
-						const has = [...presetSelect.options].some(o => o.value === p);
-						presetSelect.value = has ? p : "";
-					}
-				};
-				sync();
-				input.addEventListener("change", sync);
-				input.addEventListener("input", sync);
-				presetSelect?.addEventListener("change", () => {
-					input.value = presetSelect.value;
-					sync(); this._updatePreview();
-					// Icon shape defaults to no badge/content like converted map notes
-					const ct = form.querySelector('[name="contentType"]');
-					if (presetSelect.value && ct && ct.value !== "none") {
-						// leave content choice to user, but ensure preview updates
-					}
-				});
-				if (browseBtn) {
-					browseBtn.addEventListener("click", async () => {
-						const picked = await IconPickerApp.pick();
-						if (picked) {
-							input.value = picked; sync(); this._updatePreview();
-						}
-					});
-				}
-				clearBtn?.addEventListener("click", () => {
-					input.value = ""; sync(); this._updatePreview();
-				});
-			}
-		}
+		const iconShapeInput = form.querySelector('[name="iconShapePath"]');
+		const iconShapePreset = form.querySelector('[name="iconShapePreset"]');
+		const browseIconShape = form.querySelector('[data-action="browse-icon-shape"]');
+		const iconShapePreview = form.querySelector(".icon-shape-preview");
+		const clearIconShape = form.querySelector('[data-action="clear-icon-shape"]');
+		const iconShapeControl = bindIconPathControl({
+			input: iconShapeInput,
+			presetSelect: iconShapePreset,
+			preview: iconShapePreview,
+			clearButton: clearIconShape,
+			emptyMarkup: '<i class="fa-solid fa-icons" style="opacity:.45"></i>',
+			imageStyle: "width:28px;height:28px;object-fit:contain",
+			onUpdate: () => this._updatePreview(),
+		});
+		browseIconShape?.addEventListener("click", async () => {
+			const picked = await IconPickerApp.pick();
+			if (picked) iconShapeControl?.setPath(picked);
+		});
+		clearIconShape?.addEventListener("click", () => iconShapeControl?.setPath(""));
 
-		// Highlight color visibility — only relevant when hoverAnimation is highlight (image pins benefit most)
+		// Highlight color is only relevant to the highlight hover animation.
 		const hoverSelect = form.querySelector('[name="hoverAnimation"]');
 		const highlightRows = form.querySelectorAll(".highlight-color-row");
 		if (hoverSelect && highlightRows.length) {

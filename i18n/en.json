@@ -977,6 +977,8 @@
   "SHADOWDARK_EXTRAS.tray.settings.showHealthBars.hint": "Display health bars on the tray handle",
   "SHADOWDARK_EXTRAS.tray.settings.showNPCs.name": "Show NPCs (GM Only)",
   "SHADOWDARK_EXTRAS.tray.settings.showNPCs.hint": "Display NPC/Monster tokens in the party view for the GM",
+  "SHADOWDARK_EXTRAS.tray.party.armorClass": "Armor Class",
+  "SHADOWDARK_EXTRAS.tray.party.luckTokens": "Luck Tokens",
   "SHADOWDARK_EXTRAS.settings.headers.character_tray": "Character Tray",
   "SHADOWDARK_EXTRAS.potionSheet.tabs.details": "Details",
   "SHADOWDARK_EXTRAS.potionSheet.tabs.activity": "Activity",

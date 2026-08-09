@@ -9,7 +9,9 @@
 //
 // Merged via Object.assign(PinStyleEditorApp.prototype, PinStyleForm).
 
-import { JournalPinManager, JournalPinRenderer, getPinStyle } from "./JournalPinsSD.mjs";
+import {
+	JournalPinManager, JournalPinRenderer, getPinStyle, isMediaPinShape,
+} from "./JournalPinsSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -73,7 +75,7 @@ export const PinStyleForm = {
 			// Get opacity based on shape (handle duplicate inputs)
 			opacity: (() => {
 				const shape = form.querySelector('[name="shape"]')?.value;
-				if (shape === "image" || shape === "icon") {
+				if (isMediaPinShape(shape)) {
 					return readNumber(form.querySelector('.image-opacity-option [name="opacity"]')?.value, 1.0);
 				}
 				else {

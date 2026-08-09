@@ -688,15 +688,6 @@ export function setupRollConfigPatches() {
 	// the old wrapper's generation-time behaviour. The dialog hook flags its
 	// configs (`_sdxDialogRendered`) so the patch never double-applies or
 	// overrides a user's radio choice.
-	//
-	// SD 4.x ships `shadowdark.dice` as a frozen rollup namespace, so its
-	// properties are non-writable by spec and direct assignment silently
-	// fails (this used to log "rollFromConfig is immutable" and skip, which
-	// left ammo bonuses and dialog-less advantage dead). The namespace is
-	// then replaced with a shallow copy carrying the wrapped function —
-	// every `shadowdark.dice.rollFromConfig(...)` call site, system and
-	// module, reads the copy's own property. Writable objects keep the
-	// direct assignment for parity with earlier versions.
 	const dice = globalThis.shadowdark?.dice;
 	if (dice?.rollFromConfig && !patchedDiceNamespaces.has(dice)) {
 		const originalRollFromConfig = dice.rollFromConfig;
@@ -728,16 +719,26 @@ export function setupRollConfigPatches() {
 		// which left ammo bonuses and dialog-less advantage dead). A Proxy
 		// cannot override a non-configurable data property either (ES
 		// invariant), so when the property is immutable the namespace is
-		// replaced with a shallow copy carrying the wrapped function: every
+		// replaced with a descriptor-preserving copy carrying the wrapper:
+		// every
 		// `shadowdark.dice.rollFromConfig(...)` call site — system and
-		// module — reads the copy's own property. Nothing in the system
-		// holds the namespace by reference; all access is property lookup at
-		// call time. Writable objects keep the direct assignment (and the
-		// marker stamp) for parity with earlier versions.
+		// module — reads the copy's own property. Writable objects keep the
+		// direct assignment (and marker stamp) for parity with earlier versions.
 		const descriptor = Object.getOwnPropertyDescriptor(dice, "rollFromConfig");
 		const immutable = descriptor?.writable === false && descriptor?.configurable === false;
 		if (immutable) {
-			globalThis.shadowdark.dice = { ...dice, rollFromConfig: wrappedRollFromConfig };
+			const wrappedDice = Object.create(Object.getPrototypeOf(dice));
+			for (const key of Reflect.ownKeys(dice)) {
+				if (key === "rollFromConfig") continue;
+				Object.defineProperty(wrappedDice, key, Object.getOwnPropertyDescriptor(dice, key));
+			}
+			Object.defineProperty(wrappedDice, "rollFromConfig", {
+				value: wrappedRollFromConfig,
+				writable: true,
+				enumerable: descriptor.enumerable,
+				configurable: true,
+			});
+			globalThis.shadowdark.dice = wrappedDice;
 		}
 		else {
 			dice.rollFromConfig = wrappedRollFromConfig;

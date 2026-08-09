@@ -90,6 +90,7 @@ export function initTray() {
 
 	// Initial render
 	renderTray();
+	_broadcastScenePartyStats(_activeSceneId());
 
 	// Players: ask the GM for the current party/NPC stat snapshot. The GM's
 	// userConnected force-broadcast can race ahead of this client's socket
@@ -129,6 +130,7 @@ export function initTray() {
 		if (_actorUpdateTimer) clearTimeout(_actorUpdateTimer);
 		_actorUpdateTimer = setTimeout(async () => {
 			_actorUpdateTimer = null;
+			_broadcastActorPartyStats(actor);
 			await renderTray();
 		}, 100);
 	});
@@ -150,8 +152,14 @@ export function initTray() {
 	});
 
 	// Hook into token creation/deletion for party view & notes
-	Hooks.on("createToken", async () => await renderTray());
-	Hooks.on("deleteToken", async () => await renderTray());
+	Hooks.on("createToken", async tokenDoc => {
+		_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+		await renderTray();
+	});
+	Hooks.on("deleteToken", async tokenDoc => {
+		_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+		await renderTray();
+	});
 
 	// Debounced token update handler to prevent lag during token movement
 	// Token movement triggers many updateToken events per second - we only need to update
@@ -169,6 +177,7 @@ export function initTray() {
 		if (_tokenUpdateTimer) clearTimeout(_tokenUpdateTimer);
 		_tokenUpdateTimer = setTimeout(async () => {
 			_tokenUpdateTimer = null;
+			_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
 			await renderTray();
 		}, 100);
 	});
@@ -223,6 +232,7 @@ export function initTray() {
 	Hooks.on("canvasReady", async () => {
 		bindCanvasEvents();
 		bindDungeonCanvasEvents();
+		_broadcastScenePartyStats(_activeSceneId());
 		// If this client is a player, the GM's broadcast for the previous
 		// scene does not help — ask for a snapshot scoped to the scene we
 		// just entered. The GM answers for that scene id even if they are
@@ -284,8 +294,7 @@ export function initTray() {
 		if (game.user.isGM && connected && !user.isGM) {
 			// A player just joined: push the current party/NPC stat snapshot
 			// (bypassing the dedupe, which would otherwise swallow it).
-			const { partyTokens, npcTokens } = getPartyTokens({ includeAllNPCs: true });
-			_broadcastPartyStats(partyTokens, npcTokens, true, _activeSceneId());
+			_broadcastScenePartyStats(_activeSceneId(), true);
 		}
 		if (!game.user.isGM && user.isGM && connected) {
 			// GM just came online - try to reload dungeon tiles
@@ -759,7 +768,7 @@ export function registerPartyStatsSocket(socket) {
 			stats = payload;
 		}
 		_partyStats.set(sceneId, new Map(Object.entries(stats ?? {})));
-		renderTray();
+		if (sceneId === _activeSceneId()) renderTray();
 		return true;
 	});
 	socket.register("sdxTrayRequestPartyStats", async requestedSceneId => {
@@ -826,6 +835,26 @@ function _broadcastPartyStats(partyTokens, npcTokens, force = false, sceneId = _
 	if (!force && key === prev) return;
 	_setBroadcastKeyForScene(sceneId, key);
 	_partySocket.executeForEveryone("sdxTrayPartyStats", { sceneId, stats });
+}
+
+/** Broadcast one scene's authoritative roster outside the render path. */
+function _broadcastScenePartyStats(sceneId = _activeSceneId(), force = false) {
+	if (!game.user.isGM || !sceneId) return;
+	const roster = sceneId === _activeSceneId()
+		? getPartyTokens({ includeAllNPCs: true })
+		: _getPartyTokensForScene(sceneId);
+	_broadcastPartyStats(roster.partyTokens, roster.npcTokens, force, sceneId);
+}
+
+/** Broadcast every scene containing an actor whose stats changed. */
+function _broadcastActorPartyStats(actor) {
+	if (!game.user.isGM || !actor?.id) return;
+	const sceneIds = (game.scenes?.contents ?? [])
+		.filter(scene => scene.tokens?.some(token =>
+			(token.actorId ?? token.actor?.id) === actor.id))
+		.map(scene => scene.id);
+	if (!sceneIds.length && _activeSceneId()) sceneIds.push(_activeSceneId());
+	for (const sceneId of new Set(sceneIds)) _broadcastScenePartyStats(sceneId);
 }
 
 /**
@@ -902,16 +931,6 @@ export async function renderTray() {
 	const showPartyTab = game.settings.get(MODULE_ID, "tray.showPartyTab");
 	const partyName = game.settings.get(MODULE_ID, "tray.partyName");
 	const showHealthBars = game.settings.get(MODULE_ID, "tray.showHealthBars");
-
-	// GM pushes the current HP/AC/luck snapshot to players (deduped by
-	// _broadcastPartyStats, so token movement doesn't spam the socket).
-	// Broadcast must include every NPC regardless of the GM's personal
-	// tray.showNPCs toggle — players need the percent even when the GM
-	// hides NPCs locally. Re-collect with includeAllNPCs:true for the wire.
-	{
-		const { partyTokens: bParty, npcTokens: bNpc } = getPartyTokens({ includeAllNPCs: true });
-		_broadcastPartyStats(bParty, bNpc, false, _activeSceneId());
-	}
 
 	// Calculate party totals
 	let partyTotalHP = 0;

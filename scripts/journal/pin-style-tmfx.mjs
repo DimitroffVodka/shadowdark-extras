@@ -23,7 +23,7 @@ export const PinStyleTMFX = {
 			const doomed = new Set();
 			const kept = [];
 			for (const f of g.filters) {
-				if (f?._sdxPreview || f?.transient === true) {
+				if (f?.[this._sdxPreviewKey] === true) {
 					doomed.add(f.filterId);
 					try {
 						f.enabled = false; f.destroy();
@@ -37,7 +37,8 @@ export const PinStyleTMFX = {
 			try {
 				const m = window.TokenMagic._getAnimeMap?.();
 				if (m) for (const [k, anime] of [...m.entries()]) {
-					if (anime?.puppet?.placeableId === g.id && doomed.has(anime.puppet.filterId)) m.delete(k);
+					const belongsToPin = anime?.puppet?.placeableId === g.id;
+					if (belongsToPin && doomed.has(anime.puppet.filterId)) m.delete(k);
 				}
 			}
 			catch{}
@@ -51,94 +52,25 @@ export const PinStyleTMFX = {
 	_clearTMFXPreview() {
 		this._clearTMFXPreviewFiltersOnly();
 		this._sdxActivePreview = null;
-		this._sdxLastPreview = null;
 	},
 
-	/** Re-apply the stored preview after the canvas pin rebuilt (update() nukes filters). */
-	async _reapplyTMFXPreview() {
-		const req = this._sdxActivePreview;
-		if (!req?.name || !this.pinId || !window.TokenMagic) return;
-		const g = JournalPinRenderer.getPin(this.pinId);
-		if (!g) return;
-		// Don't double-stack if preview already present (fast path)
-		if (g.filters?.some(f => f?._sdxPreview || f?.transient === true)) return;
-		// Re-run creation path without clearing the stored request
-		this._clearTMFXPreviewFiltersOnly();
+	/** Build SDX-owned transient PIXI filters for a preset without mutating the pin. */
+	_buildTMFXPreviewFilters(g, presetName, library, contextLabel = "preview") {
 		let preset;
 		try {
-			const all = window.TokenMagic.getPresets(req.library || "tmfx-main") || [];
-			preset = all.find(p => p.name === req.name);
+			const all = window.TokenMagic.getPresets(library || "tmfx-main") || [];
+			preset = all.find(candidate => candidate.name === presetName);
 		}
 		catch{
-			return;
+			return null;
 		}
-		if (!preset?.params?.length) return;
-		const liveIds = new Set((g.filters || []).map(f => `${f.filterType}::${f.filterId}`));
-		const FT = window.TokenMagic.filterTypes || window.TokenMagic.FilterType || null;
-		if (!FT) return;
-		const clone = foundry.utils.deepClone(preset.params);
-		const toPush = [];
-		for (const tmParams of clone) {
-			if (liveIds.has(`${tmParams.filterType}::${tmParams.filterId}`)) continue;
-			tmParams.placeableId = g.id ?? this.pinId;
-			tmParams.placeableType = g._TMFXgetPlaceableType?.() || "JournalPin";
-			tmParams.filterInternalId = foundry.utils.randomID();
-			tmParams.filterOwner = game.data?.userId || game.user?.id;
-			if (typeof tmParams.enabled !== "boolean") tmParams.enabled = true;
-			if (tmParams.rank == null) {
-				try {
-					tmParams.rank = g._TMFXgetMaxFilterRank?.() ?? 10000;
-				}
-				catch{
-					tmParams.rank = 10000;
-				}
-			}
-			let f; try {
-				f = new FT[tmParams.filterType](tmParams);
-			}
-			catch(err) {
-				console.warn("SDX | reapply filter ctor failed:", tmParams.filterType, err); continue;
-			}
-			f.transient = true; f[this._sdxPreviewKey] = true;
-			toPush.push(f);
-		}
-		if (!toPush.length) return;
-		g.filters = [...(g.filters || []), ...toPush];
-	},
+		if (!preset?.params?.length) return null;
 
-	/**
-	 * Live-preview a preset on the real canvas pin without touching scene flags.
-	 * Additive: stacks on top of persisted. Empty name clears the preview.
-	 * Stores the request so _updateCanvasPreview can restore it after rebuilds.
-	 */
-	async _previewTMFXPreset(presetName, library) {
-		if (!this.pinId) return;
-		const g = JournalPinRenderer.getPin(this.pinId);
-		if (!g || !window.TokenMagic) return;
-		this._clearTMFXPreviewFiltersOnly();
-		if (!presetName) {
-			this._sdxActivePreview = null;
-			this._sdxLastPreview = null;
-			return;
-		}
-		const lib = library || "tmfx-main";
-		let preset;
-		try {
-			const all = window.TokenMagic.getPresets(lib) || [];
-			preset = all.find(p => p.name === presetName);
-		}
-		catch{
-			return;
-		}
-		if (!preset?.params?.length) return;
-		// Avoid double-stacking a preset whose filterId is already live (persisted)
-		// — previewing "glow" when glow is already active would double intensity.
 		const liveIds = new Set((g.filters || []).map(f => `${f.filterType}::${f.filterId}`));
-		const FT = window.TokenMagic.filterTypes || window.TokenMagic.FilterType || null;
-		if (!FT) return;
-		const clone = foundry.utils.deepClone(preset.params);
-		const toPush = [];
-		for (const tmParams of clone) {
+		const filterTypes = window.TokenMagic.filterTypes || window.TokenMagic.FilterType || null;
+		if (!filterTypes) return null;
+		const filters = [];
+		for (const tmParams of foundry.utils.deepClone(preset.params)) {
 			const key = `${tmParams.filterType}::${tmParams.filterId}`;
 			if (liveIds.has(key)) continue;
 			tmParams.placeableId = g.id ?? this.pinId;
@@ -154,26 +86,54 @@ export const PinStyleTMFX = {
 					tmParams.rank = 10000;
 				}
 			}
-			let f;
 			try {
-				f = new FT[tmParams.filterType](tmParams);
+				const FilterType = filterTypes[tmParams.filterType];
+				if (!FilterType) continue;
+				const filter = new FilterType(tmParams);
+				filter.transient = true;
+				filter[this._sdxPreviewKey] = true;
+				filters.push(filter);
 			}
 			catch(err) {
-				console.warn("SDX | preview filter ctor failed:", tmParams.filterType, err); continue;
+				console.warn(`SDX | ${contextLabel} filter ctor failed:`, tmParams.filterType, err);
 			}
-			f.transient = true;
-			f[this._sdxPreviewKey] = true;
-			toPush.push(f);
 		}
-		if (!toPush.length) {
-			// Already live (persisted) — remember intent anyway so rebuild keeps it visible
-			this._sdxActivePreview = { name: presetName, library: lib };
-			this._sdxLastPreview = { name: presetName, library: lib };
+		return filters;
+	},
+
+	/** Re-apply the stored preview after the canvas pin rebuilt (update() nukes filters). */
+	async _reapplyTMFXPreview() {
+		const req = this._sdxActivePreview;
+		if (!req?.name || !this.pinId || !window.TokenMagic) return;
+		const g = JournalPinRenderer.getPin(this.pinId);
+		if (!g) return;
+		// Don't double-stack if preview already present (fast path)
+		if (g.filters?.some(f => f?.[this._sdxPreviewKey] === true)) return;
+		const filters = this._buildTMFXPreviewFilters(g, req.name, req.library, "reapply");
+		if (filters?.length) g.filters = [...(g.filters || []), ...filters];
+	},
+
+	/**
+	 * Live-preview a preset on the real canvas pin without touching scene flags.
+	 * Additive: stacks on top of persisted. Empty name clears the preview.
+	 * Stores the request so _updateCanvasPreview can restore it after rebuilds.
+	 */
+	async _previewTMFXPreset(presetName, library) {
+		if (!this.pinId) return;
+		const g = JournalPinRenderer.getPin(this.pinId);
+		if (!g || !window.TokenMagic) return;
+		this._clearTMFXPreviewFiltersOnly();
+		if (!presetName) {
+			this._sdxActivePreview = null;
 			return;
 		}
-		g.filters = [...(g.filters || []), ...toPush];
+		const lib = library || "tmfx-main";
+		const filters = this._buildTMFXPreviewFilters(g, presetName, lib);
+		if (filters === null) return;
+		if (filters.length) g.filters = [...(g.filters || []), ...filters];
+		// Remember intent even when the same filter is already persisted; a
+		// rebuild must keep that preset visible without double-stacking it.
 		this._sdxActivePreview = { name: presetName, library: lib };
-		this._sdxLastPreview = { name: presetName, library: lib };
 	},
 
 	_getTMFXPresets() {

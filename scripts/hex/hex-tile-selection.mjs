@@ -16,6 +16,7 @@
 
 import { cache } from "../shared/SDXCache.mjs";
 import { _formatLabel } from "./hex-tile-labels.mjs";
+import { browseAssetsAsGM } from "./hex-asset-browser.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const SYMBOLS_TILE_FOLDER = `modules/${MODULE_ID}/assets/symbols`;
@@ -40,13 +41,10 @@ export async function loadSymbolTileAssets() {
 		return;
 	}
 
-	// FilePicker.browse requires GM permission. Skip for non-GMs; they'll
-	// get whatever the GM has cached, but never produce permission warnings.
-	if (!game.user?.isGM) return;
-
 	try {
 		// Load tiles from main symbols folder
-		const mainListing = await foundry.applications.apps.FilePicker.implementation.browse("data", SYMBOLS_TILE_FOLDER);
+		const mainListing = await browseAssetsAsGM("data", SYMBOLS_TILE_FOLDER);
+		if (!mainListing) return;
 		const mainPngFiles = (mainListing.files || []).filter(f => f.endsWith(".png") || f.endsWith(".webp"));
 
 		for (const path of mainPngFiles) {
@@ -65,7 +63,8 @@ export async function loadSymbolTileAssets() {
 		for (const dirPath of subdirs) {
 			const category = dirPath.split("/").pop();
 			try {
-				const categoryListing = await foundry.applications.apps.FilePicker.implementation.browse("data", dirPath);
+				const categoryListing = await browseAssetsAsGM("data", dirPath);
+				if (!categoryListing) continue;
 				const categoryPngFiles = (categoryListing.files || []).filter(f => f.endsWith(".png") || f.endsWith(".webp"));
 
 				for (const path of categoryPngFiles) {

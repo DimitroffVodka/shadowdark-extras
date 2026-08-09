@@ -5,7 +5,9 @@
 // hover tooltip to pin-tooltip.mjs. JournalPinTooltip is re-exported here so
 // the original import surface still resolves.
 
-import { MODULE_ID, getPinStyle, normalizeImageTint } from "./pin-style.mjs";
+import {
+	MODULE_ID, getPinStyle, normalizeImageTint, isMediaPinShape,
+} from "./pin-style.mjs";
 import { checkPinVisibility } from "./pin-manager.mjs";
 import { drawStyledStroke } from "./pin-draw.mjs";
 import { addGlyphIcon, addSvgIcon, addVisionIndicator } from "./pin-icons.mjs";
@@ -335,7 +337,7 @@ export class JournalPinGraphics extends PIXI.Container {
 		const shape = style.shape || "circle";
 
 		// Special handling for Image / Icon Shape (icon = SVG as the pin body)
-		if (shape === "image" || shape === "icon") {
+		if (isMediaPinShape(shape)) {
 			try {
 				// If shape is image/icon, we skip the standard graphics builder
 				// We create a sprite directly container
@@ -505,385 +507,382 @@ export class JournalPinGraphics extends PIXI.Container {
 		}
 
 		// Content may be layered over any pin body, including an icon body.
-		{
-			const contentType = style.contentType || (style.showIcon ? "symbol" : "number");
+		const contentType = style.contentType || (style.showIcon ? "symbol" : "number");
 
-			if (contentType === "none") {
+		if (contentType === "none") {
 			// No content overlay (e.g. pins converted from map notes)
-			}
-			else if (contentType === "symbol" || contentType === "icon") {
+		}
+		else if (contentType === "symbol" || contentType === "icon") {
 			// FontAwesome icon (renamed to symbol)
-				const iconClass = style.symbolClass || style.iconClass || "fa-solid fa-book-open";
-				const symbolColor = style.symbolColor || style.fontColor || "#ffffff";
-				const symbolColorNum = typeof symbolColor === "string" && symbolColor.startsWith("#")
-					? parseInt(symbolColor.slice(1), 16)
-					: 0xFFFFFF;
+			const iconClass = style.symbolClass || style.iconClass || "fa-solid fa-book-open";
+			const symbolColor = style.symbolColor || style.fontColor || "#ffffff";
+			const symbolColorNum = typeof symbolColor === "string" && symbolColor.startsWith("#")
+				? parseInt(symbolColor.slice(1), 16)
+				: 0xFFFFFF;
 
-				await addGlyphIcon(this, container, iconClass, radius, symbolColorNum);
+			await addGlyphIcon(this, container, iconClass, radius, symbolColorNum);
+			if (this._buildId !== buildId || this.destroyed) return;
+		}
+		else if (contentType === "customIcon") {
+			// Custom SVG icon from assets
+			const iconPath = style.customIconPath;
+			if (iconPath) {
+				const iconColor = style.iconColor || "#ffffff";
+				const iconColorNum = typeof iconColor === "string" && iconColor.startsWith("#")
+					? parseInt(iconColor.slice(1), 16)
+					: 0xFFFFFF;
+				await addSvgIcon(this, container, iconPath, radius, iconColorNum);
 				if (this._buildId !== buildId || this.destroyed) return;
 			}
-			else if (contentType === "customIcon") {
-			// Custom SVG icon from assets
-				const iconPath = style.customIconPath;
-				if (iconPath) {
-					const iconColor = style.iconColor || "#ffffff";
-					const iconColorNum = typeof iconColor === "string" && iconColor.startsWith("#")
-						? parseInt(iconColor.slice(1), 16)
-						: 0xFFFFFF;
-					await addSvgIcon(this, container, iconPath, radius, iconColorNum);
-					if (this._buildId !== buildId || this.destroyed) return;
-				}
+		}
+		else {
+			// Show text (page number or custom)
+			const fontColor = style.fontColor || "#ffffff";
+			const fontColorNum = typeof fontColor === "string" && fontColor.startsWith("#")
+				? parseInt(fontColor.slice(1), 16)
+				: 0xFFFFFF;
+
+			let textValue = "";
+			if (contentType === "text") {
+				textValue = style.customText || "";
 			}
 			else {
-			// Show text (page number or custom)
-				const fontColor = style.fontColor || "#ffffff";
-				const fontColorNum = typeof fontColor === "string" && fontColor.startsWith("#")
-					? parseInt(fontColor.slice(1), 16)
-					: 0xFFFFFF;
-
-				let textValue = "";
-				if (contentType === "text") {
-					textValue = style.customText || "";
-				}
-				else {
-					const pageNumber = this._getPageNumber();
-					textValue = pageNumber !== null ? String(pageNumber) : "";
-				}
-
-				if (textValue !== "") {
-					const fontSize = style.fontSize || Math.max(10, radius * 0.9);
-					const fontFamily = style.fontFamily || "Arial";
-					const fontWeight = style.fontWeight || "bold";
-
-					// Await font loading if it's a custom font
-					if (fontFamily && fontFamily !== "Arial") {
-						try {
-							await document.fonts.load(`16px ${fontFamily}`);
-							if (this._buildId !== buildId || this.destroyed) return;
-						}
-						catch(e) {
-							console.warn(`SDX Journal Pins | Failed to load font: ${fontFamily}`);
-						}
-					}
-
-					const label = new PIXI.Text(textValue, {
-						fontFamily: fontFamily,
-						fontSize: fontSize * 4,
-						fontWeight: fontWeight,
-						fill: fontColorNum,
-						stroke: style.fontStroke || "#000000",
-						strokeThickness: (style.fontStrokeThickness ?? 0) * 4,
-						fontStyle: style.fontItalic ? "italic" : "normal",
-						align: "center",
-						resolution: 4,
-					});
-					label.scale.set(0.25);
-					label.anchor.set(0.5, 0.5);
-					label.position.set(0, 0);
-
-					// For diamond shape, we need to rotate the text back
-					if (shape === "diamond") {
-						label.rotation = -Math.PI / 4;
-					}
-
-					container.addChild(label);
-				}
+				const pageNumber = this._getPageNumber();
+				textValue = pageNumber !== null ? String(pageNumber) : "";
 			}
 
-			// Everything is ready, add the new container
-			// (old children were already removed at the start of _build)
-			this.removeChildren();
-			this.addChild(container);
-
-			// ===================================
-			// ADD OPTIONAL HOVER LABEL
-			// ===================================
-			if (style.labelText) {
-				newLabelContainer = new PIXI.Container();
-
-				const labelFontFamily = style.labelFontFamily || "Arial";
+			if (textValue !== "") {
+				const fontSize = style.fontSize || Math.max(10, radius * 0.9);
+				const fontFamily = style.fontFamily || "Arial";
+				const fontWeight = style.fontWeight || "bold";
 
 				// Await font loading if it's a custom font
-				if (labelFontFamily && labelFontFamily !== "Arial") {
+				if (fontFamily && fontFamily !== "Arial") {
 					try {
-						await document.fonts.load(`16px ${labelFontFamily}`);
+						await document.fonts.load(`16px ${fontFamily}`);
 						if (this._buildId !== buildId || this.destroyed) return;
 					}
 					catch(e) {
-						console.warn(
-							`SDX Journal Pins | Failed to load label font: ${labelFontFamily}`
-						);
+						console.warn(`SDX Journal Pins | Failed to load font: ${fontFamily}`);
 					}
 				}
 
-				// Create text with extra padding for script/italic fonts that bleed outside bounds
-				const fontSize = style.labelFontSize || 16;
-				const labelText = new PIXI.Text(style.labelText, {
-					fontFamily: labelFontFamily,
+				const label = new PIXI.Text(textValue, {
+					fontFamily: fontFamily,
 					fontSize: fontSize * 4,
-					fill: style.labelColor || "#ffffff",
-					stroke: style.labelStroke || "#000000",
-					strokeThickness: (style.labelStrokeThickness ?? 4) * 4,
-					fontWeight: style.labelBold ? "bold" : "normal",
-					fontStyle: style.labelItalic ? "italic" : "normal",
+					fontWeight: fontWeight,
+					fill: fontColorNum,
+					stroke: style.fontStroke || "#000000",
+					strokeThickness: (style.fontStrokeThickness ?? 0) * 4,
+					fontStyle: style.fontItalic ? "italic" : "normal",
 					align: "center",
-					padding: Math.ceil(fontSize * 0.4) * 4, // Extra padding for script/decorative fonts
 					resolution: 4,
 				});
-				labelText.scale.set(0.25);
+				label.scale.set(0.25);
+				label.anchor.set(0.5, 0.5);
+				label.position.set(0, 0);
 
-				// Background
-				const padX = 8;
-				const padY = 4;
-				let bg;
-				let bgColorGraphic;
-
-				if (style.labelBackground === "image") {
-					try {
-						let path;
-
-						// Check for custom image path first
-						if (style.labelBorderImagePath && typeof style.labelBorderImagePath === "string" && style.labelBorderImagePath.trim() !== "") {
-							path = style.labelBorderImagePath.trim();
-						}
-
-						if (!path) return;
-
-						const tex = await loadTexture(path);
-						if (tex) {
-							const sT = parseInt(style.labelBorderSliceTop) || 15;
-							const sR = parseInt(style.labelBorderSliceRight) || 15;
-							const sB = parseInt(style.labelBorderSliceBottom) || 15;
-							const sL = parseInt(style.labelBorderSliceLeft) || 15;
-
-							// PIXI.NineSlicePlane(texture, leftWidth, topHeight, rightWidth,
-							// bottomHeight)
-							bg = new PIXI.NineSlicePlane(tex, sL, sT, sR, sB);
-
-							// The background size should cover the text plus padding
-							bg.width = labelText.width + (padX * 4);
-							bg.height = labelText.height + (padY * 4);
-
-							// Create optional background color behind the image
-							const colorVal = style.labelBackgroundColor;
-							// Check if opacity is > 0
-							if (style.labelBackgroundOpacity > 0) {
-								bgColorGraphic = new PIXI.Graphics();
-								const bgColor = typeof Color !== "undefined" ? Color.from(colorVal || "#000000") : (colorVal || "#000000");
-								bgColorGraphic.beginFill(bgColor, style.labelBackgroundOpacity);
-
-								// Fill slightly smaller than the full border to fit inside
-								// For a complex border, a simple rect is often best "behind" it.
-								bgColorGraphic.drawRect(0, 0, bg.width, bg.height);
-								bgColorGraphic.endFill();
-							}
-						}
-					}
-					catch(e) {
-						console.error("SDX Journal Pins | Failed to load label background", e);
-					}
+				// For diamond shape, we need to rotate the text back
+				if (shape === "diamond") {
+					label.rotation = -Math.PI / 4;
 				}
-				else if (style.labelBackground === "solid") {
-					bg = new PIXI.Graphics();
-					const bgColor = typeof Color !== "undefined" ? Color.from(style.labelBackgroundColor || "#000000") : (style.labelBackgroundColor || "#000000");
-					const borderColor = typeof Color !== "undefined" ? Color.from(style.labelBorderColor || "#ffffff") : (style.labelBorderColor || "#ffffff");
 
-					bg.beginFill(bgColor, style.labelBackgroundOpacity ?? 0.8);
-					if ((style.labelBorderWidth ?? 0) > 0) {
-						bg.lineStyle(style.labelBorderWidth, borderColor, 1);
-					}
-					bg.drawRoundedRect(
-						0, 0, labelText.width + (padX * 2), labelText.height + (padY * 2),
-						style.labelBorderRadius || 4
+				container.addChild(label);
+			}
+		}
+
+		// Everything is ready, add the new container
+		// (old children were already removed at the start of _build)
+		this.removeChildren();
+		this.addChild(container);
+
+		// ===================================
+		// ADD OPTIONAL HOVER LABEL
+		// ===================================
+		if (style.labelText) {
+			newLabelContainer = new PIXI.Container();
+
+			const labelFontFamily = style.labelFontFamily || "Arial";
+
+			// Await font loading if it's a custom font
+			if (labelFontFamily && labelFontFamily !== "Arial") {
+				try {
+					await document.fonts.load(`16px ${labelFontFamily}`);
+					if (this._buildId !== buildId || this.destroyed) return;
+				}
+				catch(e) {
+					console.warn(
+						`SDX Journal Pins | Failed to load label font: ${labelFontFamily}`
 					);
-					bg.endFill();
 				}
+			}
 
-				// Assemble container
-				if (bg) {
-					const w = bg.width;
-					const h = bg.height;
-					const pivotX = w / 2;
-					const pivotY = h / 2;
+			// Create text with extra padding for script/italic fonts that bleed outside bounds
+			const fontSize = style.labelFontSize || 16;
+			const labelText = new PIXI.Text(style.labelText, {
+				fontFamily: labelFontFamily,
+				fontSize: fontSize * 4,
+				fill: style.labelColor || "#ffffff",
+				stroke: style.labelStroke || "#000000",
+				strokeThickness: (style.labelStrokeThickness ?? 4) * 4,
+				fontWeight: style.labelBold ? "bold" : "normal",
+				fontStyle: style.labelItalic ? "italic" : "normal",
+				align: "center",
+				padding: Math.ceil(fontSize * 0.4) * 4, // Extra padding for script/decorative fonts
+				resolution: 4,
+			});
+			labelText.scale.set(0.25);
 
-					// Add color layer first (behind)
-					if (bgColorGraphic) {
-						bgColorGraphic.pivot.set(pivotX, pivotY);
-						bgColorGraphic.position.set(0, 0);
-						newLabelContainer.addChild(bgColorGraphic);
+			// Background
+			const padX = 8;
+			const padY = 4;
+			let bg;
+			let bgColorGraphic;
+
+			if (style.labelBackground === "image") {
+				try {
+					let path;
+
+					// Check for custom image path first
+					if (style.labelBorderImagePath && typeof style.labelBorderImagePath === "string" && style.labelBorderImagePath.trim() !== "") {
+						path = style.labelBorderImagePath.trim();
 					}
 
-					// Add border/frame
-					if (bg instanceof PIXI.Graphics) bg.pivot.set(pivotX, pivotY);
-					else bg.pivot.set(pivotX, pivotY);
-					bg.position.set(0, 0);
-					newLabelContainer.addChild(bg);
-				}
+					if (!path) return;
 
-				// Center text
-				labelText.anchor.set(0.5, 0.5);
-				labelText.position.set(0, 0);
-				newLabelContainer.addChild(labelText);
+					const tex = await loadTexture(path);
+					if (tex) {
+						const sT = parseInt(style.labelBorderSliceTop) || 15;
+						const sR = parseInt(style.labelBorderSliceRight) || 15;
+						const sB = parseInt(style.labelBorderSliceBottom) || 15;
+						const sL = parseInt(style.labelBorderSliceLeft) || 15;
 
-				// Position container relative to pin
-				const bgW = bg ? bg.width : labelText.width;
-				const bgH = bg ? bg.height : labelText.height;
-				const pinRadius = radius; // effective radius (honors Fit to hex grid)
-				const padding = style.labelOffset ?? 5;
+						// PIXI.NineSlicePlane(texture, leftWidth, topHeight, rightWidth,
+						// bottomHeight)
+						bg = new PIXI.NineSlicePlane(tex, sL, sT, sR, sB);
 
-				let posX = 0;
-				let posY = 0;
+						// The background size should cover the text plus padding
+						bg.width = labelText.width + (padX * 4);
+						bg.height = labelText.height + (padY * 4);
 
-				switch (style.labelAnchor) {
-					case "top":
-						posY = -pinRadius - (bgH / 2) - padding;
-						break;
-					case "left":
-						posX = -pinRadius - (bgW / 2) - padding;
-						break;
-					case "right":
-						posX = pinRadius + (bgW / 2) + padding;
-						break;
-					case "center":
-						posX = 0;
-						posY = 0;
-						break;
-					case "bottom":
-					default:
-						posY = pinRadius + (bgH / 2) + padding;
-						break;
-				}
+						// Create optional background color behind the image
+						const colorVal = style.labelBackgroundColor;
+						// Check if opacity is > 0
+						if (style.labelBackgroundOpacity > 0) {
+							bgColorGraphic = new PIXI.Graphics();
+							const bgColor = typeof Color !== "undefined" ? Color.from(colorVal || "#000000") : (colorVal || "#000000");
+							bgColorGraphic.beginFill(bgColor, style.labelBackgroundOpacity);
 
-				newLabelContainer.position.set(posX, posY);
-
-				// Initial Visibility
-				newLabelContainer.visible = !style.labelShowOnHover;
-
-				// Winner takes all: Only update instance variables and
-				// add to canvas if this build is still the latest one.
-				if (this._buildId === buildId && !this.destroyed) {
-				// Final cleanup of any concurrent build's label that might have slipped in
-					if (this._labelContainer) {
-						if (this._labelContainer.parent) {
-							this._labelContainer.parent.removeChild(this._labelContainer);
+							// Fill slightly smaller than the full border to fit inside
+							// For a complex border, a simple rect is often best "behind" it.
+							bgColorGraphic.drawRect(0, 0, bg.width, bg.height);
+							bgColorGraphic.endFill();
 						}
-						this._labelContainer.destroy({ children: true });
 					}
+				}
+				catch(e) {
+					console.error("SDX Journal Pins | Failed to load label background", e);
+				}
+			}
+			else if (style.labelBackground === "solid") {
+				bg = new PIXI.Graphics();
+				const bgColor = typeof Color !== "undefined" ? Color.from(style.labelBackgroundColor || "#000000") : (style.labelBackgroundColor || "#000000");
+				const borderColor = typeof Color !== "undefined" ? Color.from(style.labelBorderColor || "#ffffff") : (style.labelBorderColor || "#ffffff");
 
-					this._labelContainer = newLabelContainer;
-					this._labelContainer.cullable = true;
-					this._labelOffset = { x: posX, y: posY };
+				bg.beginFill(bgColor, style.labelBackgroundOpacity ?? 0.8);
+				if ((style.labelBorderWidth ?? 0) > 0) {
+					bg.lineStyle(style.labelBorderWidth, borderColor, 1);
+				}
+				bg.drawRoundedRect(
+					0, 0, labelText.width + (padX * 2), labelText.height + (padY * 2),
+					style.labelBorderRadius || 4
+				);
+				bg.endFill();
+			}
 
-					const rendererLabelContainer = JournalPinRenderer.getLabelContainer();
-					if (rendererLabelContainer) {
-						this._labelContainer.position.set(
-							this.position.x + posX, this.position.y + posY
-						);
-						rendererLabelContainer.addChild(this._labelContainer);
+			// Assemble container
+			if (bg) {
+				const w = bg.width;
+				const h = bg.height;
+				const pivotX = w / 2;
+				const pivotY = h / 2;
+
+				// Add color layer first (behind)
+				if (bgColorGraphic) {
+					bgColorGraphic.pivot.set(pivotX, pivotY);
+					bgColorGraphic.position.set(0, 0);
+					newLabelContainer.addChild(bgColorGraphic);
+				}
+
+				// Add border/frame
+				if (bg instanceof PIXI.Graphics) bg.pivot.set(pivotX, pivotY);
+				else bg.pivot.set(pivotX, pivotY);
+				bg.position.set(0, 0);
+				newLabelContainer.addChild(bg);
+			}
+
+			// Center text
+			labelText.anchor.set(0.5, 0.5);
+			labelText.position.set(0, 0);
+			newLabelContainer.addChild(labelText);
+
+			// Position container relative to pin
+			const bgW = bg ? bg.width : labelText.width;
+			const bgH = bg ? bg.height : labelText.height;
+			const pinRadius = radius; // effective radius (honors Fit to hex grid)
+			const padding = style.labelOffset ?? 5;
+
+			let posX = 0;
+			let posY = 0;
+
+			switch (style.labelAnchor) {
+				case "top":
+					posY = -pinRadius - (bgH / 2) - padding;
+					break;
+				case "left":
+					posX = -pinRadius - (bgW / 2) - padding;
+					break;
+				case "right":
+					posX = pinRadius + (bgW / 2) + padding;
+					break;
+				case "center":
+					posX = 0;
+					posY = 0;
+					break;
+				case "bottom":
+				default:
+					posY = pinRadius + (bgH / 2) + padding;
+					break;
+			}
+
+			newLabelContainer.position.set(posX, posY);
+
+			// Initial Visibility
+			newLabelContainer.visible = !style.labelShowOnHover;
+
+			// Winner takes all: Only update instance variables and
+			// add to canvas if this build is still the latest one.
+			if (this._buildId === buildId && !this.destroyed) {
+				// Final cleanup of any concurrent build's label that might have slipped in
+				if (this._labelContainer) {
+					if (this._labelContainer.parent) {
+						this._labelContainer.parent.removeChild(this._labelContainer);
 					}
-					else {
-						this.addChild(this._labelContainer);
-					}
+					this._labelContainer.destroy({ children: true });
+				}
+
+				this._labelContainer = newLabelContainer;
+				this._labelContainer.cullable = true;
+				this._labelOffset = { x: posX, y: posY };
+
+				const rendererLabelContainer = JournalPinRenderer.getLabelContainer();
+				if (rendererLabelContainer) {
+					this._labelContainer.position.set(
+						this.position.x + posX, this.position.y + posY
+					);
+					rendererLabelContainer.addChild(this._labelContainer);
 				}
 				else {
-				// This build was superseded, clean up our local container
-					newLabelContainer.destroy({ children: true });
+					this.addChild(this._labelContainer);
 				}
 			}
-
-			// A newer build took over while this one was awaiting. The shared
-			// tree, hit area, vision badge, and sprite cache belong to the
-			// winning build — a stale build touching them can destroy a texture
-			// the live sprite still references (filtered render → getBounds crash).
-			if (this._buildId !== buildId || this.destroyed) return;
-
-			// Hit area based on shape
-			if (shape === "circle") {
-				this.hitArea = new PIXI.Circle(0, 0, radius);
-			}
 			else {
-				this.hitArea = new PIXI.Rectangle(-radius, -radius, size, size);
+				// This build was superseded, clean up our local container
+				newLabelContainer.destroy({ children: true });
 			}
+		}
 
-			// CRITICAL: Interactivity settings
-			this.interactive = true;
-			this.eventMode = "static";
-			this.cursor = "pointer";
-			this.interactiveChildren = false;
+		// A newer build took over while this one was awaiting. The shared
+		// tree, hit area, vision badge, and sprite cache belong to the
+		// winning build — a stale build touching them can destroy a texture
+		// the live sprite still references (filtered render → getBounds crash).
+		if (this._buildId !== buildId || this.destroyed) return;
 
-			// Pixel-perfect hover detection for image-shaped pins
-			if (this._imageSprite && game.settings.get(MODULE_ID, "pixelPerfectPins")) {
-				const sprite = this._imageSprite;
-				const alphaThreshold = game.settings.get(MODULE_ID, "pixelPerfectPinsAlpha") ?? 100;
+		// Hit area based on shape
+		if (shape === "circle") {
+			this.hitArea = new PIXI.Circle(0, 0, radius);
+		}
+		else {
+			this.hitArea = new PIXI.Rectangle(-radius, -radius, size, size);
+		}
 
-				// Store original contains function
-				this.hitArea._originalContains = this.hitArea.contains.bind(this.hitArea);
-				this.hitArea._sprite = sprite;
-				this.hitArea._pinGraphics = this;
-				this.hitArea._alphaThreshold = alphaThreshold;
+		// CRITICAL: Interactivity settings
+		this.interactive = true;
+		this.eventMode = "static";
+		this.cursor = "pointer";
+		this.interactiveChildren = false;
 
-				// Override contains to use pixel-perfect detection
-				this.hitArea.contains = function(x, y) {
+		// Pixel-perfect hover detection for image-shaped pins
+		if (this._imageSprite && game.settings.get(MODULE_ID, "pixelPerfectPins")) {
+			const sprite = this._imageSprite;
+			const alphaThreshold = game.settings.get(MODULE_ID, "pixelPerfectPinsAlpha") ?? 100;
+
+			// Store original contains function
+			this.hitArea._originalContains = this.hitArea.contains.bind(this.hitArea);
+			this.hitArea._sprite = sprite;
+			this.hitArea._pinGraphics = this;
+			this.hitArea._alphaThreshold = alphaThreshold;
+
+			// Override contains to use pixel-perfect detection
+			this.hitArea.contains = function(x, y) {
 				// First check if point is within basic bounds
-					const inBounds = this._originalContains(x, y);
-					if (!inBounds) return false;
+				const inBounds = this._originalContains(x, y);
+				if (!inBounds) return false;
 
-					// Then check pixel alpha
-					const sprite = this._sprite;
-					if (!sprite || !sprite.texture?.baseTexture?.resource?.source) {
-						return inBounds;
-					}
+				// Then check pixel alpha
+				const sprite = this._sprite;
+				if (!sprite || !sprite.texture?.baseTexture?.resource?.source) {
+					return inBounds;
+				}
 
-					try {
+				try {
 					// Get the texture source (canvas or image)
-						const source = sprite.texture.baseTexture.resource.source;
-						const texture = sprite.texture;
+					const source = sprite.texture.baseTexture.resource.source;
+					const texture = sprite.texture;
 
-						// Calculate the point in texture coordinates
-						// x, y are relative to the pin center (hitArea local coords)
-						// sprite is anchored at 0.5, 0.5
+					// Calculate the point in texture coordinates
+					// x, y are relative to the pin center (hitArea local coords)
+					// sprite is anchored at 0.5, 0.5
 
-						// Convert to sprite local coords
-						const spriteX = x + (sprite.width / 2);
-						const spriteY = y + (sprite.height / 2);
+					// Convert to sprite local coords
+					const spriteX = x + (sprite.width / 2);
+					const spriteY = y + (sprite.height / 2);
 
-						// Convert to texture coords
-						const scaleX = texture.width / sprite.width;
-						const scaleY = texture.height / sprite.height;
+					// Convert to texture coords
+					const scaleX = texture.width / sprite.width;
+					const scaleY = texture.height / sprite.height;
 
-						const texX = Math.floor(spriteX * scaleX);
-						const texY = Math.floor(spriteY * scaleY);
+					const texX = Math.floor(spriteX * scaleX);
+					const texY = Math.floor(spriteY * scaleY);
 
-						// Bounds check
-						if (texX < 0 || texX >= texture.width || texY < 0 || texY >= texture.height) {
-							return false;
-						}
-
-						// Get pixel alpha from canvas
-						// We need to render texture to canvas to read pixel data
-						if (!this._pixelCanvas) {
-							this._pixelCanvas = document.createElement("canvas");
-							this._pixelCanvas.width = texture.width;
-							this._pixelCanvas.height = texture.height;
-							const ctx = this._pixelCanvas.getContext("2d");
-							ctx.drawImage(source, 0, 0);
-							const imageData = ctx.getImageData(0, 0, texture.width, texture.height);
-							this._pixelData = imageData.data;
-						}
-
-						// Get alpha value at the pixel (RGBA = 4 bytes per pixel, alpha is 4th byte)
-						const pixelIndex = ((texY * texture.width) + texX) * 4;
-						const alpha = this._pixelData[pixelIndex + 3];
-
-						return alpha >= this._alphaThreshold;
+					// Bounds check
+					if (texX < 0 || texX >= texture.width || texY < 0 || texY >= texture.height) {
+						return false;
 					}
-					catch(err) {
-						console.warn("SDX Journal Pins | Pixel-perfect detection failed:", err);
-						return inBounds;
-					}
-				};
-			}
 
+					// Get pixel alpha from canvas
+					// We need to render texture to canvas to read pixel data
+					if (!this._pixelCanvas) {
+						this._pixelCanvas = document.createElement("canvas");
+						this._pixelCanvas.width = texture.width;
+						this._pixelCanvas.height = texture.height;
+						const ctx = this._pixelCanvas.getContext("2d");
+						ctx.drawImage(source, 0, 0);
+						const imageData = ctx.getImageData(0, 0, texture.width, texture.height);
+						this._pixelData = imageData.data;
+					}
+
+					// Get alpha value at the pixel (RGBA = 4 bytes per pixel, alpha is 4th byte)
+					const pixelIndex = ((texY * texture.width) + texX) * 4;
+					const alpha = this._pixelData[pixelIndex + 3];
+
+					return alpha >= this._alphaThreshold;
+				}
+				catch(err) {
+					console.warn("SDX Journal Pins | Pixel-perfect detection failed:", err);
+					return inBounds;
+				}
+			};
 		}
 
 		// Add status indicators for GM
@@ -895,7 +894,8 @@ export class JournalPinGraphics extends PIXI.Container {
 		// Keep image-highlight pins live (cached texture would bake the icon
 		// and can't tint per-hover). Skip caching when this pin will use the
 		// Highlight tint/border on hover (shape image + highlight).
-		const _skipCacheForHighlight = (style.shape === "image" || style.shape === "icon") && style.hoverAnimation === "highlight";
+		const _skipCacheForHighlight = isMediaPinShape(style.shape)
+			&& style.hoverAnimation === "highlight";
 		if (_skipCacheForHighlight) {
 			// Hold live container directly — don't generate a texture
 			if (this._cachedTexture) {
