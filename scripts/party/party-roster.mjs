@@ -35,7 +35,7 @@ export const PartyRoster = {
 				uuid: member.uuid,
 				memberKey, // The key used for storage (ID or UUID)
 				name: member.name,
-				img: member.img,
+				img: member.img || "icons/svg/mystery-man.svg",
 				isNPC,
 				isCompendiumActor,
 				spawnFormula: isNPC ? this._getNpcSpawnFormula(memberKey) : null,
