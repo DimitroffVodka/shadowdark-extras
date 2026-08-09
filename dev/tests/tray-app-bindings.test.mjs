@@ -320,7 +320,15 @@ test("the feather icon opens the card's actor sheet", () => {
 	let opened = null;
 	const prev = globalThis.canvas.tokens;
 	globalThis.canvas.tokens = {
-		get: id => ({ id, actor: { sheet: { render: () => { opened = id; } } } }),
+		// Real actors always carry testUserPermission; openTokenSheet checks it
+		// before rendering, so the double has to answer it too.
+		get: id => ({
+			id,
+			actor: {
+				testUserPermission: () => true,
+				sheet: { render: () => { opened = id; } },
+			},
+		}),
 	};
 	try {
 		const { dom } = render({

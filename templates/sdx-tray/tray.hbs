@@ -521,7 +521,9 @@
                         </div>
                     </div>
                     <div class="party-card-actions">
+                        {{#if npc.isOwner}}
                         <i class="fa-solid fa-feather-alt open-sheet" title="Open Character Sheet" data-token-id="{{npc.id}}"></i>
+                        {{/if}}
                     </div>
                 </div>
                 {{/each}}

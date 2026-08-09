@@ -33,6 +33,7 @@ const {
 	toggleHideNpcsFromPlayers,
 	registerPartyStatsSocket,
 	buildPartyStatsPayload,
+	openTokenSheet,
 } = await import("../../scripts/tray/TraySD.mjs");
 
 /** A fake actor with Shadowdark-shaped system data (limited actors have {}). */
@@ -264,4 +265,32 @@ test("the GM sees full numbers and AC for NPCs", () => {
 	finally {
 		globalThis.game.user.isGM = prevGM;
 	}
+});
+
+// 3. The tray never offers a sheet the viewer cannot open. Player-visible NPC
+//    cards are built with `isOwner: false` and the template gates the feather
+//    on it, but the affordance and the capability live in two different files —
+//    so this pins the second one. Every NPC in a normal world has default
+//    ownership NONE, so an ungated feather meant a player clicking a monster
+//    got Foundry's bare "no permission" warning and no sheet.
+test("openTokenSheet declines to render a sheet the user cannot view", () => {
+	const rendered = [];
+	const sheetActor = (allowed) => ({
+		name: "Monster",
+		testUserPermission: () => allowed,
+		sheet: { render: (force) => rendered.push(force) },
+	});
+	setCanvasTokens([
+		makeToken("npc-denied", sheetActor(false)),
+		makeToken("npc-allowed", sheetActor(true)),
+	]);
+
+	openTokenSheet("npc-denied");
+	assert.deepEqual(rendered, [], "a user below LIMITED must not trigger a sheet render");
+
+	openTokenSheet("npc-allowed");
+	assert.deepEqual(rendered, [true], "LIMITED or better still opens the sheet");
+
+	openTokenSheet("no-such-token");
+	assert.deepEqual(rendered, [true], "an unknown token id is a no-op, not a throw");
 });

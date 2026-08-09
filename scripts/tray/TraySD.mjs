@@ -1374,11 +1374,19 @@ function getPartyHealthbarStatus(remaining, total) {
 
 /**
  * Open actor sheet for a token
+ *
+ * The LIMITED check is not redundant with the template gating the feather on
+ * `isOwner`: NPC cards are built with `isOwner: true` for the GM and `false`
+ * for everyone else, so a player who reaches this function anyway — a stale
+ * card rendered before a permission change, or a future call site — would ask
+ * Foundry to render a sheet it will refuse, which surfaces as a bare
+ * "no permission" warning and no sheet. Declining here keeps the affordance
+ * and the capability in agreement.
  * @param {string} tokenId
  */
 export function openTokenSheet(tokenId) {
 	const token = canvas.tokens.get(tokenId);
-	if (token?.actor) {
+	if (token?.actor?.testUserPermission(game.user, "LIMITED")) {
 		token.actor.sheet.render(true);
 	}
 }
