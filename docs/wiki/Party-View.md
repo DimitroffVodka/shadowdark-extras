@@ -6,11 +6,11 @@ Party View is the live roster in the SDX Tray — every eligible token on the cu
 
 > The Tray lives on the left edge of the canvas. The chevron expands it.
 
-![Party cards as players see them — HP bar + AC + luck, monsters bar-only](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-tray-party-view-player.webp)
-*What players see — their party's numbers plus each monster's health bar.*
+![Party View — the expanded Tray in Party tab with player and monster cards](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-tray-party-view.webp)
 
-![Party cards as the GM sees them — full AC and HP on every card](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-tray-party-view-gm.webp)
-*What the GM sees — full AC and HP on every card, player or monster.*
+![Party View walkthrough — click to select, double-click to pan, feather to open sheet, eye to hide monsters](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-tray-party-view-walkthrough.gif)
+
+*Walkthrough: click → select, double-click → center, feather → open sheet, eye → hide the monster section.*
 
 ---
 
