@@ -714,16 +714,27 @@ export function setupRollConfigPatches() {
 		};
 
 		// SD 4.x ships `shadowdark.dice` as a frozen rollup namespace, so its
-		// properties are non-writable by spec and direct assignment silently
-		// fails (this used to log "rollFromConfig is immutable" and skip,
-		// which left ammo bonuses and dialog-less advantage dead). A Proxy
-		// cannot override a non-configurable data property either (ES
-		// invariant), so when the property is immutable the namespace is
-		// replaced with a descriptor-preserving copy carrying the wrapper:
-		// every
-		// `shadowdark.dice.rollFromConfig(...)` call site — system and
-		// module — reads the copy's own property. Writable objects keep the
-		// direct assignment (and marker stamp) for parity with earlier versions.
+		// properties are non-writable by spec. This file is an ES module and
+		// therefore always strict, so a direct assignment does not silently
+		// no-op — it THROWS a TypeError, uncaught, aborting the rest of the
+		// `ready` handler that calls setupRollConfigPatches(). (An earlier
+		// version logged "rollFromConfig is immutable" and skipped, which left
+		// ammo bonuses and dialog-less advantage dead.) A Proxy cannot override
+		// a non-configurable data property either (ES invariant), so when the
+		// property is immutable the namespace is replaced with a
+		// descriptor-preserving copy carrying the wrapper: every
+		// `shadowdark.dice.rollFromConfig(...)` call site — system and module —
+		// reads the copy's own property. Writable objects keep the direct
+		// assignment (and marker stamp) for parity with earlier versions.
+		//
+		// KNOWN GAP: the predicate below only recognises non-writable,
+		// non-configurable *data* properties. A genuine Module Namespace exotic
+		// object reports `writable: true`, and a rollup live-binding namespace
+		// exposes an accessor whose `writable` is undefined — both fail the test,
+		// fall to the else branch, and throw as described above. That is latent
+		// rather than live only because SD 4.x freezes the namespace into the
+		// shape this predicate does match; a system-side refactor to a real
+		// module namespace would surface it.
 		const descriptor = Object.getOwnPropertyDescriptor(dice, "rollFromConfig");
 		const immutable = descriptor?.writable === false && descriptor?.configurable === false;
 		if (immutable) {
