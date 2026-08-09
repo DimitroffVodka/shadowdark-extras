@@ -740,6 +740,12 @@ export class JournalPinGraphics extends PIXI.Container {
 			}
 		}
 
+		// A newer build took over while this one was awaiting. The shared
+		// tree, hit area, vision badge, and sprite cache belong to the
+		// winning build — a stale build touching them can destroy a texture
+		// the live sprite still references (filtered render → getBounds crash).
+		if (this._buildId !== buildId || this.destroyed) return;
+
 		// Hit area based on shape
 		if (shape === "circle") {
 			this.hitArea = new PIXI.Circle(0, 0, radius);
@@ -830,6 +836,7 @@ export class JournalPinGraphics extends PIXI.Container {
 		// Add status indicators for GM
 		if (game.user?.isGM && this.pinData.requiresVision) {
 			await addVisionIndicator(this, container, radius);
+			if (this._buildId !== buildId || this.destroyed) return;
 		}
 
 		// Performance: Cache pin visual as a single sprite texture
@@ -852,11 +859,6 @@ export class JournalPinGraphics extends PIXI.Container {
 						this.hitArea._pixelData = hitPixels.data;
 						this.hitArea._pixelCanvas = pc;
 					}
-				}
-
-				if (this._cachedTexture) {
-					this._cachedTexture.destroy(true);
-					this._cachedTexture = null;
 				}
 
 				const bounds = container.getLocalBounds();
