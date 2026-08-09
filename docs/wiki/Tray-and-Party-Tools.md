@@ -63,15 +63,9 @@ and the general utilities live in
 
 ## Party view
 
-Party view is a live roster of eligible tokens on the current scene. A Party
-actor is a separate document with its own sheet, covered further down.
+Party view is a live roster of eligible tokens on the current scene — now on its own page:
 
-Player cards carry a portrait, name, level, HP, and a sheet shortcut. Click a
-portrait to select the token and pan to it. The GM can pull NPCs in with the
-per-client **Show NPCs** setting and can hide or reveal that NPC section to
-players independently. HP bars can be turned off per client.
-
-The heading text comes from the world **Party Name** setting.
+**→ [Party View](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Party-View)** — click/dblclick/feather, AC/luck chips, player-vs-GM monster visibility, hidden-token handling, and the world/client settings that drive it.
 
 ## Party actors
 

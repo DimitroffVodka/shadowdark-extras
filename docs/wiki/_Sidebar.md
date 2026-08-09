@@ -6,6 +6,7 @@
 ### At the table
 
 - [The SDX Tray & Party Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Tray-and-Party-Tools)
+  - [Party View](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Party-View)
 - [Combat & Damage](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Combat-and-Damage)
 - [Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Spell-Automation)
 - [Animation FX](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Animation-FX)
