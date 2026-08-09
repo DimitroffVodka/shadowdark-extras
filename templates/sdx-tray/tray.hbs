@@ -447,11 +447,19 @@
                                 </div>
                             </div>
                             {{/if}}
+                            <div class="party-card-stats">
+                                {{#if member.ac}}
+                                <span class="party-stat" title="Armor Class"><i class="fa-solid fa-shield-halved"></i> {{member.ac}}</span>
+                                {{/if}}
+                                {{#if member.hasLuck}}
+                                <span class="party-stat" title="Luck Tokens"><i class="fa-solid fa-clover"></i> {{member.luck}}</span>
+                                {{/if}}
+                            </div>
                         </div>
                     </div>
                     <div class="party-card-actions">
                         {{#if member.isOwner}}
-                        <i class="fa-solid fa-feather-alt open-sheet" title="Open Character Sheet"></i>
+                        <i class="fa-solid fa-feather-alt open-sheet" title="Open Character Sheet" data-token-id="{{member.id}}"></i>
                         {{/if}}
                     </div>
                 </div>
@@ -482,7 +490,7 @@
                         title="Click to select token">
                         {{#if npc.hp}}
                         <div class="health-overlay" style="height: {{healthOverlayHeight npc.hp}}"></div>
-                        {{#if (eq npc.hp.value 0)}}
+                        {{#if (eq npc.hp.percent 0)}}
                         <i class="fa-solid fa-skull death-skull"></i>
                         {{/if}}
                         {{/if}}
@@ -492,19 +500,28 @@
                         <div class="party-card-details">
                             {{#if npc.hp}}
                             <div class="party-hp-bar">
+                                {{#if npc.showHpNumbers}}
                                 <div class="hp-current">
                                     <span class="hp-value">{{npc.hp.value}}</span>
                                 </div>
+                                {{/if}}
                                 <div class="hp-fill {{npc.healthbarStatus}}" style="width: {{npc.hp.percent}}%"></div>
+                                {{#if npc.showHpNumbers}}
                                 <div class="hp-max">
                                     <span class="hp-value">{{npc.hp.max}}</span>
                                 </div>
+                                {{/if}}
                             </div>
                             {{/if}}
+                            <div class="party-card-stats">
+                                {{#if npc.showAc}}
+                                <span class="party-stat" title="Armor Class"><i class="fa-solid fa-shield-halved"></i> {{npc.ac}}</span>
+                                {{/if}}
+                            </div>
                         </div>
                     </div>
                     <div class="party-card-actions">
-                        <i class="fa-solid fa-feather-alt open-sheet" title="Open Character Sheet"></i>
+                        <i class="fa-solid fa-feather-alt open-sheet" title="Open Character Sheet" data-token-id="{{npc.id}}"></i>
                     </div>
                 </div>
                 {{/each}}

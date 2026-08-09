@@ -13,6 +13,7 @@ import { TrayHandleBindings } from "./tray-handle-bindings.mjs";
 import { DungeonBindings } from "./dungeon-bindings.mjs";
 import { TomSceneBindings } from "./tom-scene-bindings.mjs";
 import { PinListBindings } from "./pin-list-bindings.mjs";
+import { PartyBindings } from "./party-bindings.mjs";
 
 import { TOM_OVERLAYS, TOM_OVERLAY_BASE } from "../tom/TomOverlays.mjs";
 import { enablePainting, disablePainting, isTintEnabled, getPoiScale, enablePreview, disablePreview, getActiveTileTab, setDecorMode } from "../hex/HexPainterSD.mjs";
@@ -318,6 +319,8 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			toggleHideNpcsFromPlayers();
 		});
 
+		this._bindPartyEvents(elem);
+
 		// Clear selection button
 		elem.querySelector(".button-clear")?.addEventListener("click", e => {
 			e.preventDefault();
@@ -394,3 +397,5 @@ Object.assign(TrayApp.prototype, TrayHandleBindings);
 Object.assign(TrayApp.prototype, DungeonBindings);
 Object.assign(TrayApp.prototype, TomSceneBindings);
 Object.assign(TrayApp.prototype, PinListBindings);
+// Party tab card interactions (select / center / open sheet)
+Object.assign(TrayApp.prototype, PartyBindings);

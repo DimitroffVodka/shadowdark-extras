@@ -40,6 +40,10 @@ export async function loadSymbolTileAssets() {
 		return;
 	}
 
+	// FilePicker.browse requires GM permission. Skip for non-GMs; they'll
+	// get whatever the GM has cached, but never produce permission warnings.
+	if (!game.user?.isGM) return;
+
 	try {
 		// Load tiles from main symbols folder
 		const mainListing = await foundry.applications.apps.FilePicker.implementation.browse("data", SYMBOLS_TILE_FOLDER);

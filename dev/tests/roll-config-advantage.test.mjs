@@ -473,11 +473,12 @@ test("dialog rolls are not double-applied by the rollFromConfig patch", async ()
 	}
 });
 
-test("ready setup skips an immutable rollFromConfig descriptor without blocking later ready steps", async () => {
+test("ready setup wraps an immutable rollFromConfig namespace in a shallow copy", async () => {
 	const readySteps = [];
 	const previousHooks = globalThis.Hooks;
 	const previousShadowdark = globalThis.shadowdark;
-	const originalRollFromConfig = async () => {};
+	const originalCalls = [];
+	const originalRollFromConfig = async config => { originalCalls.push(config); };
 	let readySentinelRan = false;
 
 	globalThis.Hooks = {
@@ -486,12 +487,14 @@ test("ready setup skips an immutable rollFromConfig descriptor without blocking 
 			if (name === "ready") readySteps.push(callback);
 		},
 	};
-	globalThis.shadowdark = { dice: {} };
-	Object.defineProperty(globalThis.shadowdark.dice, "rollFromConfig", {
+	// A frozen-style namespace: non-writable, non-configurable property.
+	const originalDice = {};
+	Object.defineProperty(originalDice, "rollFromConfig", {
 		value: originalRollFromConfig,
 		writable: false,
 		configurable: false,
 	});
+	globalThis.shadowdark = { dice: originalDice };
 
 	try {
 		setupRollConfigPatches();
@@ -500,8 +503,26 @@ test("ready setup skips an immutable rollFromConfig descriptor without blocking 
 		});
 		await readySteps.at(-1)();
 
-		assert.equal(globalThis.shadowdark.dice.rollFromConfig, originalRollFromConfig);
-		assert.equal(globalThis.shadowdark.dice.__sdxRollFromConfigPatched, undefined);
+		// The namespace itself is replaced by a shallow copy; the property
+		// reads the SDX wrapper instead of the immutable original.
+		assert.notEqual(globalThis.shadowdark.dice, originalDice, "dice namespace is replaced");
+		assert.notEqual(globalThis.shadowdark.dice.rollFromConfig, originalRollFromConfig);
+		const firstWrapped = globalThis.shadowdark.dice.rollFromConfig;
+
+		// Calling through the copy runs the SDX wrapper, then the original.
+		const config = { type: "attack" };
+		await globalThis.shadowdark.dice.rollFromConfig(config);
+		assert.equal(originalCalls.length, 1);
+		assert.equal(originalCalls[0], config);
+
+		// Idempotency: a second setup must not wrap the wrapper again.
+		setupRollConfigPatches();
+		await readySteps.at(-1)();
+		assert.equal(globalThis.shadowdark.dice.rollFromConfig, firstWrapped, "no double wrap");
+
+		// The frozen target was never mutated.
+		assert.equal(Object.getOwnPropertyDescriptor(originalDice, "rollFromConfig").value, originalRollFromConfig);
+		assert.equal(originalDice.__sdxRollFromConfigPatched, undefined);
 		assert.equal(readySentinelRan, true);
 	} finally {
 		globalThis.Hooks = previousHooks;

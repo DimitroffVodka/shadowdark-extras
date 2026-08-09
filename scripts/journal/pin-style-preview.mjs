@@ -339,29 +339,25 @@ export const PinStylePreview = {
      */
 	async _updateCanvasPreview(style) {
 		if (!this.pinId) return;
-
 		const pinGraphics = JournalPinRenderer.getPin(this.pinId);
-		if (pinGraphics) {
-			const originalPin = JournalPinManager.get(this.pinId);
-			if (!originalPin) return;
-
-			// Converted map notes carry note.iconSize at top-level pin.size,
-			// while the slider writes style.size. If the pin has no explicit
-			// style.size yet, keep the live preview at the rendered size
-			// (the global default is 32, which would shrink the preview on
-			// first open even though the canvas pin is e.g. 64).
-			const effectiveStyle = { ...style };
-			if (originalPin.size != null && originalPin.style?.size == null && effectiveStyle.size === 32) {
-				effectiveStyle.size = originalPin.size;
-			}
-
-			const tempData = foundry.utils.mergeObject(
-				foundry.utils.deepClone(originalPin),
-				{ style: effectiveStyle },
-				{ inplace: false }
-			);
-
-			await pinGraphics.update(tempData);
+		if (!pinGraphics) return;
+		const originalPin = JournalPinManager.get(this.pinId);
+		if (!originalPin) return;
+		const effectiveStyle = { ...style };
+		if (originalPin.size != null && originalPin.style?.size == null && effectiveStyle.size === 32) {
+			effectiveStyle.size = originalPin.size;
 		}
+		const tempData = foundry.utils.mergeObject(
+			foundry.utils.deepClone(originalPin),
+			{ style: effectiveStyle },
+			{ inplace: false }
+		);
+		await pinGraphics.update(tempData);
+		// Style edits rebuild the PIXI pin (update() clears filters then re-adds only persisted).
+		// Re-attach any active TMFX preview so it doesn't blip for a frame.
+		try {
+			await this._reapplyTMFXPreview?.();
+		}
+		catch{}
 	},
 };

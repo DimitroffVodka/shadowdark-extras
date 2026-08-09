@@ -255,7 +255,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			{ path: `${ICON_BASE}/lorc/white-tower.svg`, label: "White Tower" },
 			{ path: `${ICON_BASE}/lorc/guarded-tower.svg`, label: "Guarded Tower" },
 			{ path: `${ICON_BASE}/delapouite/chest.svg`, label: "Chest" },
-			{ path: `${ICON_BASE}/delapouite/skull.svg`, label: "Skull" },
+			{ path: `${ICON_BASE}/lorc/skull-crack.svg`, label: "Skull" },
 			{ path: `${ICON_BASE}/delapouite/goblin-head.svg`, label: "Goblin Head" },
 			{ path: `${ICON_BASE}/delapouite/orc-head.svg`, label: "Orc Head" },
 			{ path: `${ICON_BASE}/delapouite/dragon-orb.svg`, label: "Dragon Orb" },
@@ -291,8 +291,9 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		const form = html.querySelector("form");
 		if (!form) return;
 
-		// All inputs - update preview on change
+		// All inputs - update preview on change (exclude TMFX preset - it has its own live preview)
 		form.querySelectorAll("input, select").forEach(input => {
+			if (input.name === "tmfxPreset") return;
 			input.addEventListener("change", async () => await this._updatePreview());
 		});
 
@@ -323,7 +324,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			"click", () => this._onReset()
 		);
 
-		// TMFX Preset dropdown change
+		// TMFX Preset dropdown — Phase 1 live preview (transient, no flag write)
 		const tmfxSelect = form.querySelector('[name="tmfxPreset"]');
 		if (tmfxSelect) {
 			const deleteBtn = form.querySelector('[data-action="delete-tmfx-preset"]');
@@ -332,13 +333,33 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 				const isRemovable = opt?.dataset.removable === "true";
 				if (deleteBtn) deleteBtn.style.display = isRemovable ? "block" : "none";
 			};
-			tmfxSelect.addEventListener("change", toggleDelete);
+			const previewFromSelect = () => {
+				const opt = tmfxSelect.options[tmfxSelect.selectedIndex];
+				const name = tmfxSelect.value || "";
+				const library = opt?.dataset.library || "tmfx-main";
+				// fire-and-forget; _previewTMFXPreset clears previous preview itself
+				this._previewTMFXPreset(name, library);
+			};
+			tmfxSelect.addEventListener("change", () => {
+				toggleDelete(); previewFromSelect();
+			});
+			// Native <select> doesn't fire change while the list is open in most browsers;
+			// keyup (arrow keys) + input give us navigation preview without commit.
+			tmfxSelect.addEventListener("input", previewFromSelect);
+			tmfxSelect.addEventListener("keyup", previewFromSelect);
 			toggleDelete();
 		}
 
-		// TMFX Application button
+		// TMFX Application button (+ Apply) — clear preview then persist
 		form.querySelector('[data-action="apply-tmfx"]')?.addEventListener(
-			"click", () => this._onApplyTMFX()
+			"click", async () => {
+				// Drop the transient preview so addFilters doesn't double-stack
+				try {
+					this._clearTMFXPreview();
+				}
+				catch{}
+				await this._onApplyTMFX();
+			}
 		);
 
 		// TMFX Save Preset button
@@ -463,12 +484,15 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			updateLabelBgVisibility();
 		}
 
-		// TokenMagic FX listeners
-		form.querySelector('[data-action="apply-tmfx"]')?.addEventListener(
-			"click", () => this._onApplyTMFX()
-		);
+		// TokenMagic FX: clear all persisted effects (also drops any transient preview)
 		form.querySelector('[data-action="clear-tmfx"]')?.addEventListener(
-			"click", () => this._onClearTMFX()
+			"click", async () => {
+				try {
+					this._clearTMFXPreview?.();
+				}
+				catch{}
+				await this._onClearTMFX();
+			}
 		);
 
 		// Individual TMFX remove buttons
@@ -493,6 +517,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 		const shapeSelect = form.querySelector('[name="shape"]');
 		const borderRadiusSection = form.querySelector(".border-radius-options");
 		const standardStyleSection = form.querySelectorAll(".standard-style-options");
+		const mediaOpacitySection = form.querySelector(".image-opacity-option");
 		const imageShapeOptions = form.querySelector(".image-shape-options");
 		const iconShapeOptions = form.querySelector(".icon-shape-options");
 
@@ -504,6 +529,7 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 				const isIcon = shape === "icon";
 				const hideStd = isImage || isIcon;
 				standardStyleSection.forEach(el => el.style.display = hideStd ? "none" : "block");
+				if (mediaOpacitySection) mediaOpacitySection.style.display = hideStd ? "block" : "none";
 				if (imageShapeOptions) imageShapeOptions.style.display = isImage ? "block" : "none";
 				if (iconShapeOptions) iconShapeOptions.style.display = isIcon ? "block" : "none";
 			};
@@ -606,6 +632,11 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 	}
 
 	async close(options = {}) {
+		// Drop any transient TMFX preview (additive PIXI filters, never persisted) before reverting
+		try {
+			this._clearTMFXPreview?.();
+		}
+		catch{}
 		// Revert individual pin changes if closed without saving
 		if (this.pinId && !this._isSaved) {
 			const originalPin = JournalPinManager.get(this.pinId);

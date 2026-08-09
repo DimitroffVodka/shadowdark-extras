@@ -32,6 +32,10 @@ export async function loadColoredTileAssets() {
 		return;
 	}
 
+	// FilePicker.browse requires GM permission. Skip for non-GMs; they'll
+	// get whatever the GM has cached, but never produce permission warnings.
+	if (!game.user?.isGM) return;
+
 	try {
 		// Load tiles from main Hexes folder
 		const mainListing = await foundry.applications.apps.FilePicker.implementation.browse("data", COLORED_TILE_FOLDER);

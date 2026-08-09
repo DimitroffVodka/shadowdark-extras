@@ -59,7 +59,7 @@ export function onPointerEnter(pin, event) {
 	// Other hover modes (scale/pulse/shake/brightness/hue) don't tint. Default is "highlight".
 	try {
 		const isHighlight = style.hoverAnimation === "highlight";
-		if (!isHighlight) throw Object.assign(new Error("__skip_highlight__"), {__sdxSkipHighlight:true});
+		if (!isHighlight) throw Object.assign(new Error("__skip_highlight__"), {__sdxSkipHighlight: true});
 		const spr = pin._imageSprite;
 		if (spr && spr._sdxHoverTint) {
 			if (window.gsap) gsap.killTweensOf(spr);
@@ -70,7 +70,7 @@ export function onPointerEnter(pin, event) {
 		// container is replaced by a texture, so we apply a color-matrix
 		// tint to the whole pin instead and keep a PIXI.Graphics border
 		// as a separate child of the pin (not the cached container).
-			const bw = (() => {
+		const bw = (() => {
 			const v = Number(style.hoverRingWidth);
 			if (Number.isFinite(v) && v > 0) return v;
 			// Highlight pins with 0/blank inherit the global highlight width
@@ -98,12 +98,16 @@ export function onPointerEnter(pin, event) {
 							pin._sdxHoverBorderCached = g;
 							pin.addChildAt(g, 0);
 						}
-					} catch(e) {}
+					}
+					catch(e) {}
 				}
 				if (pin._sdxHoverBorderCached) pin._sdxHoverBorderCached.visible = true;
 			}
 		}
-	} catch(e) { if (e?.__sdxSkipHighlight) {/* not highlight — no tint/border */} }
+	}
+	catch(e) {
+		if (e?.__sdxSkipHighlight) {/* not highlight — no tint/border */}
+	}
 
 	// Hover Animation
 	let animType = style.hoverAnimation;
@@ -165,7 +169,10 @@ export function onPointerLeave(pin, event) {
 		}
 		if (spr?._sdxHoverBorder) spr._sdxHoverBorder.visible = false;
 		if (pin._sdxHoverBorderCached) pin._sdxHoverBorderCached.visible = false;
-	} catch(e) { if (e?.__sdxSkipHighlight) {/* not highlight — no tint/border */} }
+	}
+	catch(e) {
+		if (e?.__sdxSkipHighlight) {/* not highlight — no tint/border */}
+	}
 
 	// Hover Animation Reset
 	if (window.gsap) {

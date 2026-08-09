@@ -270,6 +270,10 @@ let _tiles = null;           // Default tiles from module
 export async function loadTileAssets() {
 	if (_tiles) return;
 
+	// FilePicker.browse requires GM permission; the Hex Painter tab is
+	// GM-only, so players never need the asset listing.
+	if (!game.user?.isGM) return;
+
 	// Load saved custom tile dimensions
 	loadCustomTileDimensions();
 

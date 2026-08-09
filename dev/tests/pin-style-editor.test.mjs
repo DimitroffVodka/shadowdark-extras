@@ -75,6 +75,8 @@ const BINDINGS = [
 	`${FORM} [name="labelBackground"] :: change`,
 	`${FORM} [name="shape"] :: change`,
 	`${FORM} [name="tmfxPreset"] :: change`,
+	`${FORM} [name="tmfxPreset"] :: input`,
+	`${FORM} [name="tmfxPreset"] :: keyup`,
 	`${FORM} input, select[0] :: change`,
 	`${FORM} input[type="color"][0] :: input`,
 	`${FORM} input[type="range"][0] :: input`,

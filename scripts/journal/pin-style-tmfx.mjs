@@ -8,6 +8,174 @@ import { FilterEditor, getCloneFilterParams } from "../animation/TMFXFilterEdito
 import { JournalPinManager, JournalPinRenderer } from "./JournalPinsSD.mjs";
 
 export const PinStyleTMFX = {
+	/** Phase 1 live preview (transient, no flag write). Marker key on PIXI filters. */
+	_sdxPreviewKey: "_sdxPreview",
+
+	/** Desired preview that survives canvas rebuilds (one editor instance). */
+	_sdxActivePreview: null,
+
+	/** Split internal so _preview can keep the stored request on entry. */
+	_clearTMFXPreviewFiltersOnly() {
+		try {
+			if (!this.pinId || !window.TokenMagic) return;
+			const g = JournalPinRenderer.getPin(this.pinId);
+			if (!g?.filters?.length) return;
+			const doomed = new Set();
+			const kept = [];
+			for (const f of g.filters) {
+				if (f?._sdxPreview || f?.transient === true) {
+					doomed.add(f.filterId);
+					try {
+						f.enabled = false; f.destroy();
+					}
+					catch{}
+				}
+				else kept.push(f);
+			}
+			if (doomed.size === 0) return;
+			g.filters = kept.length ? kept : null;
+			try {
+				const m = window.TokenMagic._getAnimeMap?.();
+				if (m) for (const [k, anime] of [...m.entries()]) {
+					if (anime?.puppet?.placeableId === g.id && doomed.has(anime.puppet.filterId)) m.delete(k);
+				}
+			}
+			catch{}
+		}
+		catch(err) {
+			console.warn("SDX | _clearTMFXPreviewFiltersOnly failed:", err);
+		}
+	},
+
+	/** Clear transient preview filters and forget the desired preview. */
+	_clearTMFXPreview() {
+		this._clearTMFXPreviewFiltersOnly();
+		this._sdxActivePreview = null;
+		this._sdxLastPreview = null;
+	},
+
+	/** Re-apply the stored preview after the canvas pin rebuilt (update() nukes filters). */
+	async _reapplyTMFXPreview() {
+		const req = this._sdxActivePreview;
+		if (!req?.name || !this.pinId || !window.TokenMagic) return;
+		const g = JournalPinRenderer.getPin(this.pinId);
+		if (!g) return;
+		// Don't double-stack if preview already present (fast path)
+		if (g.filters?.some(f => f?._sdxPreview || f?.transient === true)) return;
+		// Re-run creation path without clearing the stored request
+		this._clearTMFXPreviewFiltersOnly();
+		let preset;
+		try {
+			const all = window.TokenMagic.getPresets(req.library || "tmfx-main") || [];
+			preset = all.find(p => p.name === req.name);
+		}
+		catch{
+			return;
+		}
+		if (!preset?.params?.length) return;
+		const liveIds = new Set((g.filters || []).map(f => `${f.filterType}::${f.filterId}`));
+		const FT = window.TokenMagic.filterTypes || window.TokenMagic.FilterType || null;
+		if (!FT) return;
+		const clone = foundry.utils.deepClone(preset.params);
+		const toPush = [];
+		for (const tmParams of clone) {
+			if (liveIds.has(`${tmParams.filterType}::${tmParams.filterId}`)) continue;
+			tmParams.placeableId = g.id ?? this.pinId;
+			tmParams.placeableType = g._TMFXgetPlaceableType?.() || "JournalPin";
+			tmParams.filterInternalId = foundry.utils.randomID();
+			tmParams.filterOwner = game.data?.userId || game.user?.id;
+			if (typeof tmParams.enabled !== "boolean") tmParams.enabled = true;
+			if (tmParams.rank == null) {
+				try {
+					tmParams.rank = g._TMFXgetMaxFilterRank?.() ?? 10000;
+				}
+				catch{
+					tmParams.rank = 10000;
+				}
+			}
+			let f; try {
+				f = new FT[tmParams.filterType](tmParams);
+			}
+			catch(err) {
+				console.warn("SDX | reapply filter ctor failed:", tmParams.filterType, err); continue;
+			}
+			f.transient = true; f[this._sdxPreviewKey] = true;
+			toPush.push(f);
+		}
+		if (!toPush.length) return;
+		g.filters = [...(g.filters || []), ...toPush];
+	},
+
+	/**
+	 * Live-preview a preset on the real canvas pin without touching scene flags.
+	 * Additive: stacks on top of persisted. Empty name clears the preview.
+	 * Stores the request so _updateCanvasPreview can restore it after rebuilds.
+	 */
+	async _previewTMFXPreset(presetName, library) {
+		if (!this.pinId) return;
+		const g = JournalPinRenderer.getPin(this.pinId);
+		if (!g || !window.TokenMagic) return;
+		this._clearTMFXPreviewFiltersOnly();
+		if (!presetName) {
+			this._sdxActivePreview = null;
+			this._sdxLastPreview = null;
+			return;
+		}
+		const lib = library || "tmfx-main";
+		let preset;
+		try {
+			const all = window.TokenMagic.getPresets(lib) || [];
+			preset = all.find(p => p.name === presetName);
+		}
+		catch{
+			return;
+		}
+		if (!preset?.params?.length) return;
+		// Avoid double-stacking a preset whose filterId is already live (persisted)
+		// — previewing "glow" when glow is already active would double intensity.
+		const liveIds = new Set((g.filters || []).map(f => `${f.filterType}::${f.filterId}`));
+		const FT = window.TokenMagic.filterTypes || window.TokenMagic.FilterType || null;
+		if (!FT) return;
+		const clone = foundry.utils.deepClone(preset.params);
+		const toPush = [];
+		for (const tmParams of clone) {
+			const key = `${tmParams.filterType}::${tmParams.filterId}`;
+			if (liveIds.has(key)) continue;
+			tmParams.placeableId = g.id ?? this.pinId;
+			tmParams.placeableType = g._TMFXgetPlaceableType?.() || "JournalPin";
+			tmParams.filterInternalId = foundry.utils.randomID();
+			tmParams.filterOwner = game.data?.userId || game.user?.id;
+			if (typeof tmParams.enabled !== "boolean") tmParams.enabled = true;
+			if (tmParams.rank == null) {
+				try {
+					tmParams.rank = g._TMFXgetMaxFilterRank?.() ?? 10000;
+				}
+				catch{
+					tmParams.rank = 10000;
+				}
+			}
+			let f;
+			try {
+				f = new FT[tmParams.filterType](tmParams);
+			}
+			catch(err) {
+				console.warn("SDX | preview filter ctor failed:", tmParams.filterType, err); continue;
+			}
+			f.transient = true;
+			f[this._sdxPreviewKey] = true;
+			toPush.push(f);
+		}
+		if (!toPush.length) {
+			// Already live (persisted) — remember intent anyway so rebuild keeps it visible
+			this._sdxActivePreview = { name: presetName, library: lib };
+			this._sdxLastPreview = { name: presetName, library: lib };
+			return;
+		}
+		g.filters = [...(g.filters || []), ...toPush];
+		this._sdxActivePreview = { name: presetName, library: lib };
+		this._sdxLastPreview = { name: presetName, library: lib };
+	},
+
 	_getTMFXPresets() {
 		if (!game.modules.get("tokenmagic")?.active || !window.TokenMagic) return [];
 

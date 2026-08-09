@@ -25,6 +25,7 @@
 - [Map Generators](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Map-Generators)
 - [Hexcrawls & Dungeons](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Hexcrawls-and-Dungeons)
 - [Journal Tools & Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Tools-and-Pins)
+  - [Journal Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Pins)
 - [Easy Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Easy-Reference)
 
 ### Reference
