@@ -117,6 +117,10 @@ test("a player sees NPC cards with the bar but never numbers or AC", async () =>
 		assert.equal(npc.showAc, false, "no AC for NPCs");
 		assert.equal(npc.hp.percent, 20, "the bar still knows the percentage");
 		assert.equal(npc.hasLuck, false, "no luck chip on NPCs");
+		// tray.hbs gates the NPC sheet feather on this flag. No test compiles the
+		// template, so this assertion is what stops the feather coming back for
+		// players if the entry ever regresses to isOwner: true.
+		assert.equal(npc.isOwner, false, "player-visible NPC cards are never owned");
 
 		const pc2Entry = partyTokens.find(t => t.id === "pc2");
 		assert.equal(pc2Entry.hp.value, 8, "party member HP from snapshot");
@@ -261,6 +265,8 @@ test("the GM sees full numbers and AC for NPCs", () => {
 		assert.equal(entry.hp.value, 3);
 		assert.equal(entry.hp.max, 15);
 		assert.equal(entry.ac, 14);
+		// The other half of the feather gate: the GM must keep the affordance.
+		assert.equal(entry.isOwner, true, "the GM owns NPC cards, so the feather renders");
 	}
 	finally {
 		globalThis.game.user.isGM = prevGM;
