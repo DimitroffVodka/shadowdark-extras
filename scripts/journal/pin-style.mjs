@@ -8,6 +8,11 @@ export const LAYER_NAME = "sdx-journal-pins-layer";
 
 export const PIN_SCHEMA_VERSION = 1;
 
+/** Image-backed pin bodies share rendering and form behavior. */
+export function isMediaPinShape(shape) {
+	return shape === "image" || shape === "icon";
+}
+
 export const DEFAULT_PIN_STYLE = {
 	size: 32,
 	// when true, size the pin to the active scene's grid hex so it covers the tile
@@ -29,6 +34,8 @@ export const DEFAULT_PIN_STYLE = {
 	hoverRingColor: "#ff7a00", // Highlight border color (used when hoverAnimation is "highlight")
 	hoverRingWidth: 6,  // Ring width while hovered (0 = no hover ring)
 	contentType: "number", // "number", "icon", "text", "customIcon", "none"
+	iconShapePath: "", // SVG path for shape === "icon"
+	iconShapeTint: "", // optional tint for icon shape (hex, white = none)
 	iconClass: "fa-solid fa-book-open",
 	iconColor: "#ffffff",
 	symbolColor: "#ffffff",

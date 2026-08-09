@@ -26,6 +26,7 @@ globalThis.game.modules = { get: () => undefined };
 globalThis.game.journal = { get: () => null };
 
 const { PinStyleEditorApp } = await import("../../scripts/journal/PinStyleEditorSD.mjs");
+const { JournalPinRenderer } = await import("../../scripts/journal/JournalPinsSD.mjs");
 
 const ROOT = ".sdx-pin-style-editor";
 const FORM = `${ROOT} form`;
@@ -55,7 +56,9 @@ function makeEditor({ fields = {}, absent = [], lists = {}, seedAll = false, pin
 const BINDINGS = [
 	`${FORM} .file-picker-btn[0] :: click`,
 	`${FORM} [data-action="apply-tmfx"] :: click`,
+	`${FORM} [data-action="browse-icon-shape"] :: click`,
 	`${FORM} [data-action="browse-icons"] :: click`,
+	`${FORM} [data-action="clear-icon-shape"] :: click`,
 	`${FORM} [data-action="clear-tmfx"] :: click`,
 	`${FORM} [data-action="delete-tmfx-preset"] :: click`,
 	`${FORM} [data-action="edit-tmfx"][0] :: click`,
@@ -64,10 +67,19 @@ const BINDINGS = [
 	`${FORM} [data-action="save"] :: click`,
 	`${FORM} [data-action="save-tmfx-preset"] :: click`,
 	`${FORM} [name="contentType"] :: change`,
+	`${FORM} [name="customIconPath"] :: change`,
+	`${FORM} [name="customIconPath"] :: input`,
+	`${FORM} [name="customIconPreset"] :: change`,
+	`${FORM} [name="hoverAnimation"] :: change`,
+	`${FORM} [name="iconShapePath"] :: change`,
+	`${FORM} [name="iconShapePath"] :: input`,
+	`${FORM} [name="iconShapePreset"] :: change`,
 	`${FORM} [name="journalId"] :: change`,
 	`${FORM} [name="labelBackground"] :: change`,
 	`${FORM} [name="shape"] :: change`,
 	`${FORM} [name="tmfxPreset"] :: change`,
+	`${FORM} [name="tmfxPreset"] :: input`,
+	`${FORM} [name="tmfxPreset"] :: keyup`,
 	`${FORM} input, select[0] :: change`,
 	`${FORM} input[type="color"][0] :: input`,
 	`${FORM} input[type="range"][0] :: input`,
@@ -100,6 +112,44 @@ test("a render with no form in the dialog binds nothing", () => {
 	app._onRender({}, {});
 
 	assert.deepEqual(bound.bindings, []);
+});
+
+test("an icon body keeps the Content section and selected overlay type available", () => {
+	const { app, dom: bound } = makeEditor({
+		fields: { shape: "icon", contentType: "customIcon" },
+		seedAll: true,
+	});
+	app._updatePreview = async () => {};
+
+	app._onRender({}, {});
+
+	assert.notEqual(bound.node(`${FORM} .content-section`).style.display, "none");
+	assert.equal(bound.node(`${FORM} [name="contentType"]`).value, "customIcon");
+});
+
+test("shape changes keep media opacity and shape-specific controls synchronized", () => {
+	const { app, dom: bound } = makeEditor({ fields: { shape: "circle" }, seedAll: true });
+	app._updatePreview = async () => {};
+	app._onRender({}, {});
+	const shape = bound.node(`${FORM} [name="shape"]`);
+	const standard = bound.node(`${FORM} .standard-style-options[0]`);
+	const mediaOpacity = bound.node(`${FORM} .image-opacity-option`);
+	const imageOptions = bound.node(`${FORM} .image-shape-options`);
+	const iconOptions = bound.node(`${FORM} .icon-shape-options`);
+
+	shape.value = "icon";
+	shape.dispatch("change");
+	assert.equal(standard.style.display, "none");
+	assert.equal(mediaOpacity.style.display, "block");
+	assert.equal(imageOptions.style.display, "none");
+	assert.equal(iconOptions.style.display, "block");
+
+	shape.value = "circle";
+	shape.dispatch("change");
+	assert.equal(standard.style.display, "block");
+	assert.equal(mediaOpacity.style.display, "none");
+	assert.equal(imageOptions.style.display, "none");
+	assert.equal(iconOptions.style.display, "none");
 });
 
 // A range slider writes its value into the companion readout at render time,
@@ -362,6 +412,18 @@ test("an image shape with no path shows a dashed placeholder instead", async () 
 	assert.equal(pin.style.border, "1px dashed #666");
 });
 
+test("an icon body renders a second custom icon as its content overlay", async () => {
+	const { pin, content } = await preview({
+		shape: "icon",
+		iconShapePath: "modules/test/outer.svg",
+		contentType: "customIcon",
+		customIconPath: "modules/test/inner.svg",
+	});
+
+	assert.equal(pin.style.backgroundImage, 'url("modules/test/outer.svg")');
+	assert.match(content.innerHTML, /modules\/test\/inner\.svg/);
+});
+
 test("a symbol renders as a FontAwesome element at half the pin size", async () => {
 	const { content } = await preview({
 		contentType: "symbol", symbolClass: "fa-solid fa-skull", symbolColor: "#ff0000", size: "40",
@@ -474,4 +536,63 @@ test("a throwing TokenMagic yields no presets rather than breaking the dialog", 
 
 test("a style editor with no pin behind it has no active filters", () => {
 	assert.deepEqual(makeEditor().app._getActiveFilters(), []);
+});
+
+test("clearing an SDX preview never destroys another module's transient filter", () => {
+	const previousTokenMagic = globalThis.window.TokenMagic;
+	globalThis.window.TokenMagic = {};
+	const destroyed = [];
+	const foreign = {
+		filterId: "foreign", transient: true, destroy: () => destroyed.push("foreign"),
+	};
+	const own = {
+		filterId: "own", transient: true, _sdxPreview: true,
+		destroy: () => destroyed.push("own"),
+	};
+	const graphics = {
+		filters: [foreign, own],
+		_TMFSetAnimeFlag: () => {},
+	};
+	JournalPinRenderer._pins.set("preview-pin", graphics);
+	try {
+		makeEditor({ pinId: "preview-pin" }).app._clearTMFXPreviewFiltersOnly();
+		assert.deepEqual(graphics.filters, [foreign]);
+		assert.deepEqual(destroyed, ["own"]);
+	}
+	finally {
+		JournalPinRenderer._pins.delete("preview-pin");
+		globalThis.window.TokenMagic = previousTokenMagic;
+	}
+});
+
+test("preview filter construction dedupes by type and id and marks only SDX filters", () => {
+	class GlowFilter {
+		constructor(params) { Object.assign(this, params); }
+	}
+	const previousTokenMagic = globalThis.window.TokenMagic;
+	globalThis.window.TokenMagic = {
+		getPresets: () => [{
+			name: "glow",
+			params: [
+				{ filterType: "glow", filterId: "already-live" },
+				{ filterType: "glow", filterId: "preview-only" },
+			],
+		}],
+		filterTypes: { glow: GlowFilter },
+	};
+	try {
+		const { app } = makeEditor({ pinId: "preview-pin" });
+		const graphics = {
+			id: "preview-pin",
+			filters: [{ filterType: "glow", filterId: "already-live", transient: true }],
+		};
+		const filters = app._buildTMFXPreviewFilters(graphics, "glow", "tmfx-main");
+		assert.equal(filters.length, 1);
+		assert.equal(filters[0].filterId, "preview-only");
+		assert.equal(filters[0]._sdxPreview, true);
+		assert.equal(filters[0].transient, true);
+	}
+	finally {
+		globalThis.window.TokenMagic = previousTokenMagic;
+	}
 });

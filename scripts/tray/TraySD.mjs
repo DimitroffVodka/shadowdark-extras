@@ -27,8 +27,43 @@ let _trayApp = null;
 // Current view mode
 let _viewMode = "player"; // "player" or "party"
 
-// Hide NPCs from players toggle (GM only)
+// Hide NPCs from players (GM only). Cached from the world-scope setting
+// tray.hideNpcsFromPlayers so it syncs to every client and survives reloads.
 let _hideNpcsFromPlayers = true;
+
+// Party/NPC stat snapshot broadcast by the GM, so players can render cards
+// for tokens whose actors they can't fully read (limited ownership exposes
+// no system data). Keyed by token id, scoped by scene id so a player on a
+// different scene from the GM does not clobber their current-scene cards.
+// _partyStats is a Map<sceneId, Map<tokenId, stats>>; _partyStatsKey is
+// Map<sceneId, jsonKey>.
+let _partyStats = new Map();
+// Compat: legacy callers that read _partyStats as Map tokenId->stats keep
+// working via the active scene's sub-map (see _scenePartyMap).
+let _partyStatsKey = new Map();
+// The socketlib socket, set by registerPartyStatsSocket at ready.
+let _partySocket = null;
+// Current canvas scene id, falling back to "" when no scene is active.
+function _activeSceneId() {
+	return canvas.scene?.id ?? "";
+}
+
+function _scenePartyMap(sceneId = _activeSceneId()) {
+	let m = _partyStats.get(sceneId);
+	if (!m) {
+		m = new Map(); _partyStats.set(sceneId, m);
+	}
+	return m;
+}
+
+function _broadcastKeyForScene(sceneId) {
+	return _partyStatsKey.get(sceneId) ?? null;
+}
+
+function _setBroadcastKeyForScene(sceneId, key) {
+	_partyStatsKey.set(sceneId, key);
+}
+
 
 // Current actor/token being displayed
 let _currentActor = null;
@@ -46,12 +81,25 @@ export function initTray() {
 	// Add class to body to enable tray-specific CSS
 	document.body.classList.add("sdx-tray-enabled");
 
+	// Cache the world-scope NPC visibility toggle (synced to all clients)
+	_hideNpcsFromPlayers = game.settings.get(MODULE_ID, "tray.hideNpcsFromPlayers") ?? true;
+
 	// Create the tray app
 	_trayApp = new TrayApp();
 	_trayApp.render(true);
 
 	// Initial render
 	renderTray();
+	_broadcastScenePartyStats(_activeSceneId());
+
+	// Players: ask the GM for the current party/NPC stat snapshot. The GM's
+	// userConnected force-broadcast can race ahead of this client's socket
+	// handler registration and be dropped, so a fresh client requests it
+	// explicitly. (No GM connected: nothing to ask, the catch keeps the
+	// rejection silent.)
+	if (!game.user.isGM) {
+		_partySocket?.executeAsGM("sdxTrayRequestPartyStats", canvas.scene?.id)?.catch?.(() => {});
+	}
 
 	// Load hex tile assets for the painter tab
 	loadTileAssets().then(() => renderTray());
@@ -82,6 +130,7 @@ export function initTray() {
 		if (_actorUpdateTimer) clearTimeout(_actorUpdateTimer);
 		_actorUpdateTimer = setTimeout(async () => {
 			_actorUpdateTimer = null;
+			_broadcastActorPartyStats(actor);
 			await renderTray();
 		}, 100);
 	});
@@ -103,8 +152,14 @@ export function initTray() {
 	});
 
 	// Hook into token creation/deletion for party view & notes
-	Hooks.on("createToken", async () => await renderTray());
-	Hooks.on("deleteToken", async () => await renderTray());
+	Hooks.on("createToken", async tokenDoc => {
+		_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+		await renderTray();
+	});
+	Hooks.on("deleteToken", async tokenDoc => {
+		_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+		await renderTray();
+	});
 
 	// Debounced token update handler to prevent lag during token movement
 	// Token movement triggers many updateToken events per second - we only need to update
@@ -122,6 +177,7 @@ export function initTray() {
 		if (_tokenUpdateTimer) clearTimeout(_tokenUpdateTimer);
 		_tokenUpdateTimer = setTimeout(async () => {
 			_tokenUpdateTimer = null;
+			_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
 			await renderTray();
 		}, 100);
 	});
@@ -176,6 +232,14 @@ export function initTray() {
 	Hooks.on("canvasReady", async () => {
 		bindCanvasEvents();
 		bindDungeonCanvasEvents();
+		_broadcastScenePartyStats(_activeSceneId());
+		// If this client is a player, the GM's broadcast for the previous
+		// scene does not help — ask for a snapshot scoped to the scene we
+		// just entered. The GM answers for that scene id even if they are
+		// viewing a different scene themselves.
+		if (!game.user.isGM) {
+			_partySocket?.executeAsGM("sdxTrayRequestPartyStats", canvas.scene?.id)?.catch?.(() => {});
+		}
 		await renderTray();
 	});
 
@@ -218,10 +282,20 @@ export function initTray() {
 		if (setting.key === `${MODULE_ID}.pinFoldersWorld`) {
 			renderTray();
 		}
+		// GM toggled NPC visibility for players — every client picks it up.
+		if (setting.key === `${MODULE_ID}.tray.hideNpcsFromPlayers`) {
+			_hideNpcsFromPlayers = !!setting.value;
+			renderTray();
+		}
 	});
 
 	// Hook to reload dungeon tiles when GM comes online (for players)
 	Hooks.on("userConnected", async (user, connected) => {
+		if (game.user.isGM && connected && !user.isGM) {
+			// A player just joined: push the current party/NPC stat snapshot
+			// (bypassing the dedupe, which would otherwise swallow it).
+			_broadcastScenePartyStats(_activeSceneId(), true);
+		}
 		if (!game.user.isGM && user.isGM && connected) {
 			// GM just came online - try to reload dungeon tiles
 			await reloadDungeonAssets();
@@ -291,6 +365,18 @@ export function registerTraySettings() {
 		hint: "SHADOWDARK_EXTRAS.tray.settings.showNPCs.hint",
 		scope: "client",
 		config: true,
+		type: Boolean,
+		default: true,
+	});
+
+	// World-scope GM toggle: hidden from the settings UI (the tray button is
+	// the only control). Foundry's setting sync carries it to every client,
+	// where the updateSetting hook in initTray refreshes the cache.
+	game.settings.register(MODULE_ID, "tray.hideNpcsFromPlayers", {
+		name: "Hide NPCs from Players (tray)",
+		hint: "Whether monsters and NPCs are hidden from players in the tray's Party view.",
+		scope: "world",
+		config: false,
 		type: Boolean,
 		default: true,
 	});
@@ -376,10 +462,15 @@ export function getCurrentActor() {
 
 /**
  * Get all party tokens on the current scene
- * @returns {Array}
+ * @param {Object} [opts]
+ * @param {boolean} [opts.includeAllNPCs=false] - when true the GM's tray.showNPCs
+ *  client setting is ignored so broadcasts always carry every NPC (players
+ *  still receive only a percent). Callers that render the tray should leave
+ *  this false so the GM's personal filter is respected.
+ * @returns {{partyTokens: Array, npcTokens: Array}}
  */
-export function getPartyTokens() {
-	if (!canvas.tokens) return [];
+export function getPartyTokens({ includeAllNPCs = false } = {}) {
+	if (!canvas.tokens) return { partyTokens: [], npcTokens: [] };
 
 	const tokens = canvas.tokens.placeables;
 	const partyTokens = [];
@@ -388,6 +479,10 @@ export function getPartyTokens() {
 	for (const token of tokens) {
 		const actor = token.actor;
 		if (!actor) continue;
+
+		// Players never see hidden tokens in the tracker, whether or not NPCs
+		// are revealed to them — the canvas hidden flag wins over everything.
+		if (!game.user.isGM && token.document?.hidden) continue;
 
 		// Skip item-piles enabled tokens/actors (v14: getFlag throws when scope's
 		// module isn't active, so guard against that case)
@@ -401,51 +496,120 @@ export function getPartyTokens() {
 
 		// Check if this is a player character
 		if (actor.type === "Player") {
-			partyTokens.push({
-				token: token,
-				actor: actor,
-				id: token.id,
-				name: token.name,
-				img: actor.img,
-				hp: getActorHP(actor),
-				healthbarStatus: getHealthbarStatus(actor),
-				isOwner: actor.isOwner,
-				isSelected: canvas.tokens.controlled.some(t => t.id === token.id),
-			});
+			partyTokens.push(buildPartyCardEntry(token, actor, { isOwner: actor.isOwner }));
 		}
-		else if (game.user.isGM && game.settings.get(MODULE_ID, "tray.showNPCs")) {
-			// NPCs/monsters for GM
-			npcTokens.push({
-				token: token,
-				actor: actor,
-				id: token.id,
-				name: token.name,
-				img: actor.img,
-				hp: getActorHP(actor),
-				healthbarStatus: getHealthbarStatus(actor),
-				isOwner: true,
-				isNPC: true,
-				isSelected: canvas.tokens.controlled.some(t => t.id === token.id),
-			});
+		else if (game.user.isGM) {
+			// NPCs/monsters — the on-screen tray respects tray.showNPCs, but the
+			// GM -> players broadcast must not be gated by that personal toggle.
+			// Callers that build the broadcast pass includeAllNPCs:true.
+			if (includeAllNPCs || game.settings.get(MODULE_ID, "tray.showNPCs")) {
+				npcTokens.push(buildPartyCardEntry(token, actor, { isNPC: true, isOwner: true }));
+			}
 		}
-		else if (!game.user.isGM && !_hideNpcsFromPlayers && !actor.hasPlayerOwner) {
+		else if (!_hideNpcsFromPlayers && !actor.hasPlayerOwner) {
 			// NPCs visible to players when GM allows it
-			npcTokens.push({
-				token: token,
-				actor: actor,
-				id: token.id,
-				name: token.name,
-				img: actor.img,
-				hp: getActorHP(actor),
-				healthbarStatus: getHealthbarStatus(actor),
-				isOwner: false,
-				isNPC: true,
-				isSelected: canvas.tokens.controlled.some(t => t.id === token.id),
-			});
+			npcTokens.push(buildPartyCardEntry(token, actor, { isNPC: true, isOwner: false }));
 		}
 	}
 
 	return { partyTokens, npcTokens };
+}
+
+/**
+ * Build party/NPC card entries for a specific scene id (GM answering a
+ * player's request for a scene that may not be the GM's current canvas).
+ * Falls back to the live canvas when the requested scene is the active one.
+ * @param {string} sceneId
+ * @returns {{partyTokens: Array, npcTokens: Array}}
+ */
+function _getPartyTokensForScene(sceneId) {
+	if (!sceneId || sceneId === _activeSceneId()) {
+		return getPartyTokens({ includeAllNPCs: true });
+	}
+	const scene = game.scenes?.get?.(sceneId);
+	if (!scene) return { partyTokens: [], npcTokens: [] };
+	const partyTokens = [];
+	const npcTokens = [];
+	let docs = [];
+	try {
+		if (scene.tokens?.contents) docs = scene.tokens.contents;
+		else if (scene.tokens && typeof scene.tokens.values === "function") docs = [...scene.tokens.values()];
+		else if (scene.tokens) docs = [...scene.tokens];
+	}
+	catch{
+		docs = [];
+	}
+	for (const doc of docs) {
+		const actor = doc.actor ?? (doc.actorId ? game.actors?.get?.(doc.actorId) : null);
+		if (!actor) continue;
+		const isHidden = doc.hidden ?? doc.document?.hidden ?? false;
+		if (isHidden) continue;
+		let pileData;
+		try {
+			if (game.modules.get("item-piles")?.active) {
+				pileData = doc.getFlag?.("item-piles", "data") ?? actor.getFlag?.("item-piles", "data");
+			}
+		}
+		catch{}
+		if (pileData?.enabled) continue;
+		if (actor.type === "Player") {
+			const wrapper = { id: doc.id, name: doc.name ?? actor.name, actor, document: doc };
+			partyTokens.push(buildPartyCardEntry(wrapper, actor, { isOwner: !!actor.isOwner }));
+		}
+		else {
+			const wrapper = { id: doc.id, name: doc.name ?? actor.name, actor, document: doc };
+			npcTokens.push(buildPartyCardEntry(wrapper, actor, { isNPC: true, isOwner: true }));
+		}
+	}
+	return { partyTokens, npcTokens };
+}
+
+/**
+ * Build a party card entry for one token.
+ *
+ * HP/AC/luck come from the GM's stat snapshot when this client cannot read
+ * the actor directly (limited ownership exposes no system data); otherwise
+ * they are read live from the actor.
+ */
+function buildPartyCardEntry(token, actor, { isNPC = false, isOwner = false } = {}) {
+	const stats = _scenePartyMap().get(token.id);
+	const hp = stats?.hp ?? getActorHP(actor);
+	const luck = stats?.luck ?? (isNPC ? null : getLuckTokens(actor));
+	// The GM sees full numbers everywhere. Players see exact HP/AC only for
+	// party members — monster/NPC cards show the bar but never the digits.
+	const showFullStats = game.user.isGM || !isNPC;
+	return {
+		token,
+		actor,
+		id: token.id,
+		name: token.name,
+		img: actor.img,
+		hp,
+		healthbarStatus: getHealthbarStatusFromHP(hp),
+		ac: stats?.ac ?? actor.system?.attributes?.ac?.value ?? 0,
+		luck,
+		hasLuck: luck !== null,
+		showHpNumbers: showFullStats,
+		showAc: showFullStats,
+		isOwner,
+		isNPC,
+		isSelected: canvas.tokens.controlled.some(t => t.id === token.id),
+	};
+}
+
+/**
+ * Current luck token count for a player actor, mirroring the system's
+ * hasLuckToken getter: pulp mode counts remaining luck points, standard
+ * mode has a single available token.
+ * @param {Actor} actor
+ * @returns {number}
+ */
+function getLuckTokens(actor) {
+	const luck = actor.system?.luck;
+	if (!luck) return 0;
+	return game.settings.get("shadowdark", "usePulpMode")
+		? (luck.remaining ?? 0)
+		: (luck.available ? 1 : 0);
 }
 
 /**
@@ -470,8 +634,16 @@ export function getActorHP(actor) {
  * @returns {string}
  */
 export function getHealthbarStatus(actor) {
-	const hp = getActorHP(actor);
-	const percent = hp.percent;
+	return getHealthbarStatusFromHP(getActorHP(actor));
+}
+
+/**
+ * Get health bar status class from an HP object
+ * @param {Object} hp - HP data { value, max, percent }
+ * @returns {string}
+ */
+export function getHealthbarStatusFromHP(hp) {
+	const percent = hp?.percent ?? 0;
 
 	if (percent <= 0) return "dead";
 	if (percent <= 25) return "critical";
@@ -482,13 +654,23 @@ export function getHealthbarStatus(actor) {
 
 /**
  * Get health overlay height for character portrait
- * @param {Object} hp - HP object with value and max
+ * @param {Object} hp - HP object with value and max (or percent only, for
+ * players viewing NPCs — the overlay is a percentage, so exact HP is not
+ * needed to render it)
  * @returns {string}
  */
 export function getHealthOverlayHeight(hp) {
-	if (!hp || !hp.max) return "0%";
+	if (!hp) return "0%";
+	// Percent-only HP (players viewing NPCs): the wounded share is the
+	// missing percentage.
+	if (!hp.max) {
+		const percent = 100 - (hp.percent ?? 0);
+		if (!Number.isFinite(percent)) return "0%";
+		return `${Math.min(100, Math.max(0, percent))}%`;
+	}
 	const missing = hp.max - hp.value;
 	const percent = (missing / hp.max) * 100;
+	if (!Number.isFinite(percent)) return "0%";
 	return `${Math.min(100, Math.max(0, percent))}%`;
 }
 
@@ -538,12 +720,19 @@ export function getViewMode() {
 }
 
 /**
- * Toggle whether NPCs are hidden from players
+ * Toggle whether NPCs are hidden from players.
+ *
+ * Persists to the world-scope setting tray.hideNpcsFromPlayers; Foundry's
+ * setting sync pushes it to every client, where the updateSetting hook in
+ * initTray refreshes the cache and re-renders the tray.
  */
 export function toggleHideNpcsFromPlayers() {
-	_hideNpcsFromPlayers = !_hideNpcsFromPlayers;
+	if (!game.user.isGM) return _hideNpcsFromPlayers;
+	const next = !_hideNpcsFromPlayers;
+	_hideNpcsFromPlayers = next;
+	game.settings.set(MODULE_ID, "tray.hideNpcsFromPlayers", next);
 	renderTray();
-	return _hideNpcsFromPlayers;
+	return next;
 }
 
 /**
@@ -551,6 +740,121 @@ export function toggleHideNpcsFromPlayers() {
  */
 export function getHideNpcsFromPlayers() {
 	return _hideNpcsFromPlayers;
+}
+
+/**
+ * Register the GM -> players party stat snapshot handler.
+ *
+ * Called from the composition root's ready hook alongside the other socket
+ * handlers. The GM broadcasts HP/AC/luck for every scene token; players
+ * store the snapshot and merge it into the party cards, because a limited
+ * ownership actor exposes no system data to read locally.
+ */
+export function registerPartyStatsSocket(socket) {
+	if (!socket) return;
+	_partySocket = socket;
+	socket.register("sdxTrayPartyStats", async payload => {
+		// The GM already reads full actor data; only players need the snapshot.
+		if (game.user.isGM) return true;
+		// New wire shape is { sceneId, stats }; tolerate legacy plain stats for tests/compat.
+		let sceneId;
+		let stats;
+		if (payload && typeof payload === "object" && "sceneId" in payload && "stats" in payload) {
+			sceneId = payload.sceneId ?? _activeSceneId();
+			stats = payload.stats;
+		}
+		else {
+			sceneId = _activeSceneId();
+			stats = payload;
+		}
+		_partyStats.set(sceneId, new Map(Object.entries(stats ?? {})));
+		if (sceneId === _activeSceneId()) renderTray();
+		return true;
+	});
+	socket.register("sdxTrayRequestPartyStats", async requestedSceneId => {
+		// A player finished loading: push the snapshot for the scene they are
+		// actually viewing. The GM's userConnected force-broadcast can race
+		// ahead of the joining client's handler registration and be dropped,
+		// so fresh clients ask for it explicitly.
+		if (!game.user.isGM) return true;
+		const sceneId = typeof requestedSceneId === "string" && requestedSceneId ? requestedSceneId : _activeSceneId();
+		let partyTokens;
+		let npcTokens;
+		if (sceneId && sceneId !== _activeSceneId()) {
+			({ partyTokens, npcTokens } = _getPartyTokensForScene(sceneId));
+		}
+		else {
+			({ partyTokens, npcTokens } = getPartyTokens({ includeAllNPCs: true }));
+		}
+		_broadcastPartyStats(partyTokens, npcTokens, true, sceneId);
+		return true;
+	});
+}
+
+/**
+ * Build the GM -> players stat payload for the current roster.
+ *
+ * Exported so the wire shape is testable: party members keep full
+ * HP/AC/luck; monsters/NPCs are stripped to the HP percent (players may see
+ * the bar and everything derived from it, never the exact numbers or AC);
+ * hidden tokens are skipped entirely.
+ * @param {Object[]} partyTokens - Party card entries from getPartyTokens
+ * @param {Object[]} npcTokens - NPC card entries from getPartyTokens
+ * @returns {Object} Payload keyed by token id
+ */
+export function buildPartyStatsPayload(partyTokens, npcTokens) {
+	const stats = {};
+	for (const t of [...partyTokens, ...npcTokens]) {
+		if (!t.actor) continue;
+		if (t.token?.document?.hidden) continue;
+		stats[t.id] = t.isNPC
+			? { hp: { percent: t.hp?.percent ?? 0 }, ac: null, luck: null }
+			: { hp: t.hp, ac: t.ac, luck: t.hasLuck ? t.luck : null };
+	}
+	return stats;
+}
+
+/**
+ * Broadcast the current party/NPC stat snapshot to every client (GM only).
+ *
+ * Party members get full HP/AC/luck. Monsters/NPCs get only the HP percent —
+ * players may see the bar (and the wounded overlay / death skull derived
+ * from it) but never the exact numbers or AC, even when NPCs are revealed
+ * to them. Hidden tokens are skipped entirely: players can't see them, so
+ * their stats are not broadcast either.
+ *
+ * Deduped by JSON comparison so token movement (which re-renders the tray
+ * constantly) never spams the socket; `force` bypasses the dedupe for
+ * players who join after the last broadcast.
+ */
+function _broadcastPartyStats(partyTokens, npcTokens, force = false, sceneId = _activeSceneId()) {
+	if (!game.user.isGM || !_partySocket) return;
+	const stats = buildPartyStatsPayload(partyTokens, npcTokens);
+	const key = JSON.stringify(stats);
+	const prev = _broadcastKeyForScene(sceneId);
+	if (!force && key === prev) return;
+	_setBroadcastKeyForScene(sceneId, key);
+	_partySocket.executeForEveryone("sdxTrayPartyStats", { sceneId, stats });
+}
+
+/** Broadcast one scene's authoritative roster outside the render path. */
+function _broadcastScenePartyStats(sceneId = _activeSceneId(), force = false) {
+	if (!game.user.isGM || !sceneId) return;
+	const roster = sceneId === _activeSceneId()
+		? getPartyTokens({ includeAllNPCs: true })
+		: _getPartyTokensForScene(sceneId);
+	_broadcastPartyStats(roster.partyTokens, roster.npcTokens, force, sceneId);
+}
+
+/** Broadcast every scene containing an actor whose stats changed. */
+function _broadcastActorPartyStats(actor) {
+	if (!game.user.isGM || !actor?.id) return;
+	const sceneIds = (game.scenes?.contents ?? [])
+		.filter(scene => scene.tokens?.some(token =>
+			(token.actorId ?? token.actor?.id) === actor.id))
+		.map(scene => scene.id);
+	if (!sceneIds.length && _activeSceneId()) sceneIds.push(_activeSceneId());
+	for (const sceneId of new Set(sceneIds)) _broadcastScenePartyStats(sceneId);
 }
 
 /**
@@ -1086,6 +1390,22 @@ export function openTokenSheet(tokenId) {
 export function selectToken(tokenId) {
 	const token = canvas.tokens.get(tokenId);
 	if (token) {
+		token.control({ releaseOthers: true });
+	}
+}
+
+/**
+ * Center the canvas on a token.
+ *
+ * Works for tokens the user doesn't own (e.g. another player's character),
+ * which is what the party tracker's double-click uses it for.
+ * @param {string} tokenId
+ */
+export function centerOnToken(tokenId) {
+	const token = canvas.tokens?.get(tokenId);
+	if (!token) return;
+	canvas.animatePan({ x: token.center.x, y: token.center.y });
+	if (game.user.isGM || token.isOwner) {
 		token.control({ releaseOthers: true });
 	}
 }

@@ -9,6 +9,7 @@
 
 import { cache } from "../shared/SDXCache.mjs";
 import { _formatLabel } from "./hex-tile-labels.mjs";
+import { browseAssetsAsGM } from "./hex-asset-browser.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const COLORED_TILE_FOLDER = `modules/${MODULE_ID}/assets/Hexes`;
@@ -34,7 +35,8 @@ export async function loadColoredTileAssets() {
 
 	try {
 		// Load tiles from main Hexes folder
-		const mainListing = await foundry.applications.apps.FilePicker.implementation.browse("data", COLORED_TILE_FOLDER);
+		const mainListing = await browseAssetsAsGM("data", COLORED_TILE_FOLDER);
+		if (!mainListing) return;
 		const mainPngFiles = (mainListing.files || []).filter(f => f.endsWith(".png") || f.endsWith(".webp"));
 
 		for (const path of mainPngFiles) {
@@ -53,7 +55,8 @@ export async function loadColoredTileAssets() {
 		for (const dirPath of subdirs) {
 			const biome = dirPath.split("/").pop();
 			try {
-				const biomeListing = await foundry.applications.apps.FilePicker.implementation.browse("data", dirPath);
+				const biomeListing = await browseAssetsAsGM("data", dirPath);
+				if (!biomeListing) continue;
 				const biomePngFiles = (biomeListing.files || []).filter(f => f.endsWith(".png") || f.endsWith(".webp"));
 
 				for (const path of biomePngFiles) {

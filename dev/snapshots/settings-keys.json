@@ -134,6 +134,7 @@
     "travelActivities",
     "travelSpeeds",
     "tray.enabled",
+    "tray.hideNpcsFromPlayers",
     "tray.partyName",
     "tray.showHealthBars",
     "tray.showNPCs",
@@ -180,8 +181,8 @@
     "scripts/hex/ContentRegistry.mjs:17",
     "scripts/journal/easy-reference/EasyReferenceMenu.mjs:327",
     "scripts/party/PartyWeatherSettingsSD.mjs:168",
-    "scripts/tom/TomSD.mjs:104",
-    "scripts/tom/TomSD.mjs:112"
+    "scripts/tom/TomSD.mjs:105",
+    "scripts/tom/TomSD.mjs:113"
   ],
   "dynamicKeys": [
     "allowPlayerDungeonPainting",

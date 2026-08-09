@@ -179,7 +179,7 @@ test("hover reveals the label only when labelShowOnHover is set", () => {
 	assert.equal(shown._labelContainer.visible, true);
 
 	reset();
-	const hidden = makePin({ style: {} });
+	const hidden = makePin({ style: { labelShowOnHover: false } });
 	hidden._labelContainer = { visible: false, parent: null, position: { set() {} } };
 	hidden._onPointerEnter(makePointerEvent());
 	assert.equal(hidden._labelContainer.visible, false);

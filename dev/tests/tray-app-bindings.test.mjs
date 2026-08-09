@@ -108,6 +108,9 @@ const BINDINGS = [
 	".sdx-tray .note-control[0] :: click",
 	".sdx-tray .note-entry[0] :: contextmenu",
 	".sdx-tray .note-header[0] :: click",
+	".sdx-tray .party-card .open-sheet[0] :: click",
+	".sdx-tray .party-card[0] :: click",
+	".sdx-tray .party-card[0] :: dblclick",
 	".sdx-tray .pin-control[0] :: click",
 	".sdx-tray .pin-folder-header[0] .pin-folder-caret :: click",
 	".sdx-tray .pin-folder-header[0] .pin-folder-control[0] :: click",
@@ -309,6 +312,75 @@ test("the POI scale buttons step the painter scale in both directions", () => {
 	dom.fire(".sdx-tray .tray-handle-button-tool[data-action='poi-scale-down']", "click");
 
 	assert.ok(getPoiScale() < up);
+});
+
+// --- party card interactions -------------------------------------------------
+
+test("the feather icon opens the card's actor sheet", () => {
+	let opened = null;
+	const prev = globalThis.canvas.tokens;
+	globalThis.canvas.tokens = {
+		get: id => ({ id, actor: { sheet: { render: () => { opened = id; } } } }),
+	};
+	try {
+		const { dom } = render({
+			lists: { ".party-card .open-sheet": [{ dataset: { tokenId: "tok-1" } }] },
+		});
+		dom.fire(".sdx-tray .party-card .open-sheet[0]", "click");
+		assert.equal(opened, "tok-1");
+	}
+	finally {
+		globalThis.canvas.tokens = prev;
+	}
+});
+
+test("clicking a party card selects its token", () => {
+	let controlled = null;
+	const prev = globalThis.canvas.tokens;
+	globalThis.canvas.tokens = {
+		get: id => ({ id, control: opts => { controlled = { id, opts }; } }),
+	};
+	try {
+		const { dom } = render({
+			lists: { ".party-card": [{ dataset: { tokenId: "tok-1" } }] },
+		});
+		dom.fire(".sdx-tray .party-card[0]", "click");
+		assert.deepEqual(controlled, { id: "tok-1", opts: { releaseOthers: true } });
+	}
+	finally {
+		globalThis.canvas.tokens = prev;
+	}
+});
+
+test("double-clicking a party card centers on its token even without ownership", () => {
+	const pans = [];
+	const controlled = [];
+	const prevTokens = globalThis.canvas.tokens;
+	const prevPan = globalThis.canvas.animatePan;
+	const prevGM = globalThis.game.user.isGM;
+	globalThis.game.user.isGM = false;
+	globalThis.canvas.tokens = {
+		get: id => ({
+			id,
+			center: { x: 100, y: 200 },
+			isOwner: false,
+			control: opts => { controlled.push(opts); },
+		}),
+	};
+	globalThis.canvas.animatePan = pos => { pans.push(pos); };
+	try {
+		const { dom } = render({
+			lists: { ".party-card": [{ dataset: { tokenId: "tok-1" } }] },
+		});
+		dom.fire(".sdx-tray .party-card[0]", "dblclick");
+		assert.deepEqual(pans, [{ x: 100, y: 200 }]);
+		assert.deepEqual(controlled, [], "no control attempt on a token the user doesn't own");
+	}
+	finally {
+		globalThis.canvas.tokens = prevTokens;
+		globalThis.canvas.animatePan = prevPan;
+		globalThis.game.user.isGM = prevGM;
+	}
 });
 
 test("the search input records its term on the application", () => {

@@ -211,6 +211,14 @@
     width: 100%;
 }
 
+.sdx-pin-style-editor .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+    align-items: stretch;
+}
+
 .sdx-pin-style-editor .form-group:last-child {
     margin-bottom: 0;
 }
@@ -219,6 +227,35 @@
     font-size: 14px;
     color: #ccc;
     flex-shrink: 0;
+    display: block;
+}
+
+.sdx-pin-style-editor .form-group.checkbox-group {
+    flex-direction: row;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sdx-pin-style-editor .form-group.checkbox-group .hint {
+    flex: 0 0 100%;
+    margin: 0;
+    padding-left: 24px;
+}
+
+.sdx-pin-style-editor .form-group.color-group {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.sdx-pin-style-editor .form-group:not(.checkbox-group):not(.color-group) > input[type="text"],
+.sdx-pin-style-editor .form-group:not(.checkbox-group):not(.color-group) > textarea,
+.sdx-pin-style-editor .form-group:not(.checkbox-group):not(.color-group) > select,
+.sdx-pin-style-editor .form-group:not(.checkbox-group):not(.color-group) > input[type="range"] {
+    width: 100%;
+    flex: none;
 }
 
 .sdx-pin-style-editor .form-group label span {

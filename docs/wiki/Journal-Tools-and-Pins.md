@@ -43,37 +43,20 @@ From the Pins tab you can search, pan or ping, bring players to the location,
 open and edit the pin, copy and paste style, duplicate it, flip it between
 GM-only and player-visible, require line of sight, and remove or delete it.
 
+For the full walkthrough — every setting in the editor, folders, conversion, and
+a live browser demo — see **[Journal Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Pins)**. The rest of this section is a short pointer; the detail lives there and the demo is at **[Journal Pins demo](https://dimitroffvodka.github.io/shadowdark-extras/docs/demo/journal-pins.html)**.
+
+> **Try it right now, no Foundry needed**
+>
+> Open the **[Journal Pins demo](https://dimitroffvodka.github.io/shadowdark-extras/docs/demo/journal-pins.html)**. Drag pins on the parchment, hover for tooltips, right-click for Pan / Ping / Bring, and open any pin's **Pin Style Editor** — the same fifty-setting editor you use in Foundry.
+
+![The Pin Style Editor preview with shape, ring, and color controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-style-editor.webp)
+
 ## Pin Style Editor
 
-Edit one pin, or the world defaults. The marker itself can be a Font Awesome
-icon, an image, or custom text, and it takes its own color and tint, a
-background and border, and a shape drawn from circle, square, pointy hex, or
-flat hex. Size and scale are adjustable, while **Fit to hex grid** snaps the
-whole thing to the grid. The rest covers content and behavior: label and tooltip
-text, title and body font sizes, player visibility, line-of-sight behavior, and
-where the display name comes from.
+Edit one pin, or the world defaults. The marker takes a shape (circle, square, diamond, pointy hex, flat hex, or image), a content type (page number, symbol, custom icon, text, or none), its own colors and ring, a label with its own font and background, tooltip title and body text with independent font sizes, and visibility rules (GM-only, requires vision, above fog, hide tooltip).
 
-![The Pin Style Editor preview and its tooltip, shape, size, and ring controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-style-editor.webp)
-
-### Pin name source
-
-| Choice | Display name |
-|---|---|
-| **Auto** | Journal/page → tooltip title → canvas label |
-| **Journal/Page** | Linked document name |
-| **Tooltip** | Tooltip title |
-| **Canvas Label** | Marker label |
-
-Auto skips placeholder names like "New Pin" when it can find a better source.
-
-### Pixel-perfect hit testing
-
-Irregular transparent images do better with **Pixel perfect on Pins** enabled.
-The alpha threshold decides which pixels count as clickable: lower values accept
-more translucent pixels, higher values demand more opaque ones.
-
-Experimental, and it costs real CPU. Plain shape hit testing stays the cheap
-default.
+The full field-by-field guide is on the **[Journal Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Pins)** page. Open the **[Pin Style Editor in the demo](https://dimitroffvodka.github.io/shadowdark-extras/docs/demo/journal-pins.html)** and click any pin's palette button to see every section live.
 
 ## Pin folders
 
@@ -92,7 +75,7 @@ Pins stay scene-owned even inside a world folder. A world folder is a shared
 organizational definition that shows up everywhere, while each pin keeps living
 on its own scene.
 
-Search reaches matches inside collapsed folders.
+Search reaches matches inside collapsed folders. See **[Journal Pins → Folders](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Pins#folders)** and try dragging pins between folders in the **[demo](https://dimitroffvodka.github.io/shadowdark-extras/docs/demo/journal-pins.html)**.
 
 ## Convert Foundry Map Notes
 
@@ -103,7 +86,8 @@ The new pin carries over position, the Journal or page link, the text label, and
 the icon path, tint, and size.
 
 Choose a target folder and decide whether the original Note gets deleted.
-Deletion is optional so you can compare the converted result first.
+Deletion is optional so you can compare the converted result first. The
+**[demo's Notes→Pins button](https://dimitroffvodka.github.io/shadowdark-extras/docs/demo/journal-pins.html)** simulates this — pick a count and a target folder.
 
 ## Generated room pins
 
@@ -148,6 +132,6 @@ threshold. For map-sized hex art, use Fit to hex grid.
 
 ---
 
-**Related:** [Hexcrawls & Dungeons](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Hexcrawls-and-Dungeons) ·
+**Related:** [Journal Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Pins) · [Hexcrawls & Dungeons](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Hexcrawls-and-Dungeons) ·
 [Easy Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Easy-Reference) ·
 [Character Sheets](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Character-Sheets)

@@ -762,6 +762,7 @@ body.sdx-tray-enabled #camera-views.vertical.left {
     padding: 3px;
     font-size: 1.2em;
     border: 2px solid rgba(68, 68, 68, 0.9);
+    cursor: pointer;
     margin-bottom: 8px;
     display: flex;
     justify-content: space-between;
@@ -876,6 +877,32 @@ body.sdx-tray-enabled #camera-views.vertical.left {
 
 .sdx-tray .party-card-actions i:hover {
     color: #fff;
+}
+
+/* Party Card Stats */
+.sdx-tray .party-card-stats {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.sdx-tray .party-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.6em;
+    font-weight: 700;
+    color: #9f9275;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(159, 146, 117, 0.25);
+    border-radius: 3px;
+    padding: 1px 6px;
+    line-height: 1.4;
+}
+
+.sdx-tray .party-stat i {
+    font-size: 0.85em;
+    color: #b3a67f;
 }
 
 /* Section Divider */

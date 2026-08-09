@@ -56,7 +56,7 @@ sheet header button.
 
 **Configure Sheet Locks** · `sheetLockMenu` · `SheetLockConfig`
 
-![Sheet Lock Configuration — General, Attributes, Items & Inventory, and Effects sections](images/sheet-lock-config.webp)
+![Sheet Lock Configuration — General, Attributes, Items & Inventory, and Effects sections](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sheet-lock-config.webp)
 
 - **General** — Lock XP (`xp`), Lock Coins (`coins`).
 - **Attributes** — Lock HP (`hp`), Lock Stats/Ability Scores (`stats`), Lock Luck (`luck`).
@@ -70,7 +70,7 @@ still accept sanctioned transfers (the trade window, Transfer to Player).
 
 **Configure Animations** · `animationFxListMenu` · `AnimationFxListApp`
 
-![Animation FX Master List — preset table with previews, categories, and sound controls](images/animation-fx-master-list.webp)
+![Animation FX Master List — preset table with previews, categories, and sound controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/animation-fx-master-list.webp)
 
 The master list assigns animations to items by name; each preset matches many
 items via a regex pattern (most-specific match wins). A per-item override on
@@ -88,7 +88,7 @@ than in the normal settings list.
 
 **Configure Combat Settings** · `combatSettingsMenu` · `CombatSettingsApp`
 
-![Combat Settings — damage card options, sub-settings, and multipliers](images/combat-settings.webp)
+![Combat Settings — damage card options, sub-settings, and multipliers](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/combat-settings.webp)
 
 **Damage Card Settings**
 
@@ -122,7 +122,7 @@ entry, which is a different thing from applying zero damage.
 
 **Configure Effects** · `effectsSettingsMenu` · `EffectsSettingsApp`
 
-![Effects & Conditions — the Silenced collapsible category](images/effects-settings.webp)
+![Effects & Conditions — the Silenced collapsible category](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/effects-settings.webp)
 
 - **Silenced** (collapsible) — "Configure which item types are blocked."
   - **Block Spells** (`silenced.blocksSpells`) — prevents casting Spell and NPC Spell items.
@@ -134,7 +134,7 @@ entry, which is a different thing from applying zero damage.
 
 **Configure HP Waves** · `hpWavesSettingsMenu` · `HpWavesSettingsApp`
 
-![HP Wave Animation — enable, default color, and ancestry color rows](images/hp-waves-settings.webp)
+![HP Wave Animation — enable, default color, and ancestry color rows](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/hp-waves-settings.webp)
 
 - **Enable HP Waves** — animated waves on character portraits that rise as HP decreases.
 - **Default Wave Color** — used when no ancestry match is found.
@@ -144,7 +144,7 @@ entry, which is a different thing from applying zero damage.
 
 **Configure Activities** · `travelActivitiesMenu` · `TravelActivitiesSettingsApp`
 
-![Travel Activities — reorderable activity rows with abilities and banner images](images/travel-activities-settings.webp)
+![Travel Activities — reorderable activity rows with abilities and banner images](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/travel-activities-settings.webp)
 
 Travel/camping activities shown in the Party Sheet Travel tab. Rows are
 reorderable (up/down) and removable.
@@ -156,7 +156,7 @@ reorderable (up/down) and removable.
 
 **Configure Speeds** · `travelSpeedsMenu` · `TravelSpeedsSettingsApp`
 
-![Travel Speeds — the default Slow, Normal, Fast rows](images/travel-speeds-settings.webp)
+![Travel Speeds — the default Slow, Normal, Fast rows](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/travel-speeds-settings.webp)
 
 Travel speeds shown in the Party Sheet Travel tab; defaults are Slow, Normal,
 and Fast. Per row: **Speed Name** and hidden **Key**. **Add Speed** and
@@ -166,7 +166,7 @@ and Fast. Per row: **Speed Name** and hidden **Key**. **Add Speed** and
 
 **Configure Weather Table** · `partyWeatherTableMenu` · `PartyWeatherSettingsApp`
 
-![Party Weather — RollTable selection](images/party-weather-settings.webp)
+![Party Weather — RollTable selection](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/party-weather-settings.webp)
 
 - **Weather RollTable** (`tableUuid`) — link a Foundry RollTable (world or compendium) used by the party sheet weather tab, or leave unset.
 
@@ -174,7 +174,7 @@ and Fast. Per row: **Speed Name** and hidden **Key**. **Add Speed** and
 
 **Edit Inventory CSS** · `inventoryStylesMenu` · `InventoryStylesApp`
 
-![Inventory Item Styles — theme editor with per-category tabs](images/inventory-styles.webp)
+![Inventory Item Styles — theme editor with per-category tabs](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/inventory-styles.webp)
 
 Theme editor that restyles inventory items in the actor sheet, applied per item
 category (each category has its own tab, enable toggle, and priority slider).
@@ -191,7 +191,7 @@ category (each category has its own tab, enable toggle, and priority slider).
 
 **Sheet Style Editor** · `sheetEditorMenu` · `SheetEditorConfig`
 
-![Sheet Style Editor — border pickers, tweaking fields, and text colors](images/sheet-style-editor.webp)
+![Sheet Style Editor — border pickers, tweaking fields, and text colors](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sheet-style-editor.webp)
 
 Real-time-preview theme editor for the whole character sheet. Border and panel
 categories show a searchable thumbnail grid of bundled images; tweaking
@@ -210,7 +210,7 @@ categories expose numeric/select/color fields. Changes apply live.
 
 **Manage Packs** · `decorDungeondraftPacksMenu` · stub that opens `DDPackSettingsApp`
 
-![Dungeondraft Decor Packs — import panel with the empty state](images/decor-packs-settings.webp)
+![Dungeondraft Decor Packs — import panel with the empty state](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/decor-packs-settings.webp)
 
 Import, enable, or hide Dungeondraft object packs in the SDX Decor tray. The
 settings entry is a stub that immediately opens the real pack-manager window
@@ -220,7 +220,7 @@ settings entry is a stub that immediately opens the real pack-manager window
 
 **Light Templates** · `customLightTemplatesMenu` · `LightTemplateEditor`
 
-![Light Templates — the candle and torch defaults](images/light-templates.webp)
+![Light Templates — the candle and torch defaults](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/light-templates.webp)
 
 Custom light templates for items (the "Custom" option in item light settings).
 
@@ -241,7 +241,7 @@ actor sheet header button.
 
 **Manage Carousing Tables** · `carousingTablesMenu` · `CarousingTablesApp` (Original) / `ExpandedCarousingTablesApp` (Expanded)
 
-![Carousing Tables — the expanded editor with mode switch and custom tables](images/carousing-tables-settings.webp)
+![Carousing Tables — the expanded editor with mode switch and custom tables](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/carousing-tables-settings.webp)
 
 One editor hosts both modes via an in-window (and overlay-header) switch, and
 opens on the mode selected in **Carousing Mode**. Tables can link live Foundry
@@ -259,7 +259,7 @@ linked tables are re-resolved at roll time.
 
 **Manage Creature Types** · `manageCreatureTypes` · `CreatureTypesApp`
 
-![Manage Creature Types — the type list with export, import, reset, and bake](images/creature-types-settings.webp)
+![Manage Creature Types — the type list with export, import, reset, and bake](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/creature-types-settings.webp)
 
 Editor for the creature-type mapping used by NPC sheets (displayed type name,
 mapping to system types).
@@ -272,7 +272,7 @@ mapping to system types).
 
 **Configure Pin Styles** · `pinStyleEditorMenu` · `PinStyleEditorApp`
 
-![Pin Style Editor — preview, visibility, shape, colors, and label options](images/pin-style-editor.webp)
+![Pin Style Editor — preview, visibility, shape, colors, and label options](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-style-editor.webp)
 
 World defaults for journal pins; also opens for a single selected pin. Live
 preview at the top.
@@ -292,7 +292,7 @@ preview at the top.
 
 **Configure Coordinates** · `sdxCoordsMenu` · `SDXCoordsSettingsApp`
 
-![Map Coordinates Settings — appearance, labels, and click coordinate](images/map-coordinates-settings.webp)
+![Map Coordinates Settings — appearance, labels, and click coordinate](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/map-coordinates-settings.webp)
 
 Coordinate overlay for hex maps, stored in `sdxCoordsSettings`.
 

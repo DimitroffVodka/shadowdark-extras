@@ -977,6 +977,8 @@
   "SHADOWDARK_EXTRAS.tray.settings.showHealthBars.hint": "Display health bars on the tray handle",
   "SHADOWDARK_EXTRAS.tray.settings.showNPCs.name": "Show NPCs (GM Only)",
   "SHADOWDARK_EXTRAS.tray.settings.showNPCs.hint": "Display NPC/Monster tokens in the party view for the GM",
+  "SHADOWDARK_EXTRAS.tray.party.armorClass": "Armor Class",
+  "SHADOWDARK_EXTRAS.tray.party.luckTokens": "Luck Tokens",
   "SHADOWDARK_EXTRAS.settings.headers.character_tray": "Character Tray",
   "SHADOWDARK_EXTRAS.potionSheet.tabs.details": "Details",
   "SHADOWDARK_EXTRAS.potionSheet.tabs.activity": "Activity",
@@ -1255,5 +1257,12 @@
   "SHADOWDARK_EXTRAS.camping_rest.spells_refreshed": "spells refreshed",
   "SHADOWDARK_EXTRAS.camping_rest.abilities_refreshed": "abilities refreshed",
   "SHADOWDARK_EXTRAS.camping_rest.wands_refreshed": "wands refreshed",
-  "SDX.pinStyleEditor.hoverAnimationHighlight": "Highlight"
+  "SDX.pinStyleEditor.hoverAnimationHighlight": "Highlight",
+  "SDX.pinStyleEditor.shapeIcon": "Icon",
+  "SDX.pinStyleEditor.iconShapePath": "Icon",
+  "SDX.pinStyleEditor.iconShapePathHint": "SVG icon used as the pin body (replaces the geometric shape).",
+  "SDX.pinStyleEditor.browseIconShapes": "Browse Icons",
+  "SDX.pinStyleEditor.iconShapeTint": "Icon Tint",
+  "SDX.pinStyleEditor.clearIconShape": "Clear",
+  "SDX.pinStyleEditor.iconShapeNone": "— None —"
 }

@@ -6,7 +6,9 @@ import {
 	getPromptableHitBonuses,
 } from "./WeaponBonusConfig.mjs";
 
-let rollFromConfigPatchWarningIssued = false;
+// Namespaces already wrapped (a frozen target cannot be stamped with a
+// marker property, so the WeakSet carries the idempotency instead).
+const patchedDiceNamespaces = new WeakSet();
 
 /**
  * The attack-roll and roll-config prototype patches.
@@ -680,25 +682,16 @@ export function setupRollConfigPatches() {
 	// Dialog-less rolls (skipPrompt: shift/alt/ctrl-clicked checks,
 	// RequestCheckSD, LevelUpSD) never fire renderRollDialogSD, so the dialog
 	// hook above cannot apply talent advantage there — the retired generator
-	// wrapper used to. Patch shadowdark.dice.rollFromConfig (the single roll
-	// entry point, a stable global — no lifecycle problem) to apply advantage
-	// only to configs that never went through the dialog, mirroring the old
-	// wrapper's generation-time behaviour. The dialog hook flags its configs
-	// (`_sdxDialogRendered`) so the patch never double-applies or overrides a
-	// user's radio choice.
+	// wrapper used to. Intercept shadowdark.dice.rollFromConfig (the single
+	// roll entry point, a stable global — no lifecycle problem) to apply
+	// advantage only to configs that never went through the dialog, mirroring
+	// the old wrapper's generation-time behaviour. The dialog hook flags its
+	// configs (`_sdxDialogRendered`) so the patch never double-applies or
+	// overrides a user's radio choice.
 	const dice = globalThis.shadowdark?.dice;
-	if (dice?.rollFromConfig && !dice.__sdxRollFromConfigPatched) {
-		const descriptor = Object.getOwnPropertyDescriptor(dice, "rollFromConfig");
-		if (descriptor?.writable === false && descriptor.configurable === false) {
-			if (!rollFromConfigPatchWarningIssued) {
-				console.warn(`${MODULE_ID} | shadowdark.dice.rollFromConfig is immutable; skipping SDX roll-config wrapper`);
-				rollFromConfigPatchWarningIssued = true;
-			}
-			return;
-		}
-
+	if (dice?.rollFromConfig && !patchedDiceNamespaces.has(dice)) {
 		const originalRollFromConfig = dice.rollFromConfig;
-		dice.rollFromConfig = async function(config, ...args) {
+		const wrappedRollFromConfig = async function(config, ...args) {
 			if (config) {
 				// Dialog-less rolls never fired renderRollDialogSD, so the
 				// dialog hook could not apply talent advantage there.
@@ -719,6 +712,41 @@ export function setupRollConfigPatches() {
 			}
 			return originalRollFromConfig.call(this, config, ...args);
 		};
-		dice.__sdxRollFromConfigPatched = true;
+
+		// SD 4.x ships `shadowdark.dice` as a frozen rollup namespace, so its
+		// properties are non-writable by spec and direct assignment silently
+		// fails (this used to log "rollFromConfig is immutable" and skip,
+		// which left ammo bonuses and dialog-less advantage dead). A Proxy
+		// cannot override a non-configurable data property either (ES
+		// invariant), so when the property is immutable the namespace is
+		// replaced with a descriptor-preserving copy carrying the wrapper:
+		// every
+		// `shadowdark.dice.rollFromConfig(...)` call site — system and
+		// module — reads the copy's own property. Writable objects keep the
+		// direct assignment (and marker stamp) for parity with earlier versions.
+		const descriptor = Object.getOwnPropertyDescriptor(dice, "rollFromConfig");
+		const immutable = descriptor?.writable === false && descriptor?.configurable === false;
+		if (immutable) {
+			const wrappedDice = Object.create(Object.getPrototypeOf(dice));
+			for (const key of Reflect.ownKeys(dice)) {
+				if (key === "rollFromConfig") continue;
+				Object.defineProperty(wrappedDice, key, Object.getOwnPropertyDescriptor(dice, key));
+			}
+			Object.defineProperty(wrappedDice, "rollFromConfig", {
+				value: wrappedRollFromConfig,
+				writable: true,
+				enumerable: descriptor.enumerable,
+				configurable: true,
+			});
+			globalThis.shadowdark.dice = wrappedDice;
+		}
+		else {
+			dice.rollFromConfig = wrappedRollFromConfig;
+			dice.__sdxRollFromConfigPatched = true;
+		}
+		// Track the LIVE namespace: on the immutable path the copy replaced
+		// the original, and a second setup would otherwise wrap the copy's
+		// already-wrapped function (double-applying advantage).
+		patchedDiceNamespaces.add(globalThis.shadowdark.dice);
 	}
 }

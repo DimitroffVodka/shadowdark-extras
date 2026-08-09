@@ -80,7 +80,50 @@ export const PinStylePreview = {
 					// Flat-top hexagon
 					previewPin.style.clipPath = "polygon(0% 50%, 25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%)";
 					break;
+				case "icon":
+					previewPin.style.backgroundColor = "transparent";
+					previewPin.style.border = "none";
+					previewPin.style.borderRadius = "0";
+					previewPin.style.transform = "rotate(0deg)";
+					previewPin.style.overflow = "hidden";
+					if (style.iconShapePath) {
+						previewPin.style.backgroundImage = `url("${style.iconShapePath}")`;
+						// Full-bleed: 112% to hide the ~25 px SVG padding, clipped to the pin size (like canvas mask)
+						previewPin.style.backgroundSize = "112% 112%";
+						previewPin.style.backgroundPosition = "center";
+						previewPin.style.backgroundRepeat = "no-repeat";
+						const isHighlightI = style.hoverAnimation === "highlight";
+						const htI = isHighlightI && style.iconShapeTint && style.iconShapeTint.toLowerCase() !== "#ffffff" ? style.iconShapeTint : "";
+						const hrwI = isHighlightI ? (parseInt(style.hoverRingWidth) || 0) : 0;
+						const hrcI = isHighlightI ? (style.hoverRingColor || "#ff7a00") : "";
+						if (previewPin._sdxHoverHandlers) {
+							previewPin.removeEventListener("mouseenter", previewPin._sdxHoverHandlers.enter);
+							previewPin.removeEventListener("mouseleave", previewPin._sdxHoverHandlers.leave);
+						}
+						const enterI = () => {
+							if (htI) {
+								previewPin.style.backgroundColor = htI; previewPin.style.backgroundBlendMode = "multiply";
+							}
+							if (hrwI > 0) {
+								previewPin.style.outline = `${hrwI}px solid ${hrcI}`; previewPin.style.outlineOffset = "0px"; previewPin.style.borderRadius = "10px";
+							}
+						};
+						const leaveI = () => {
+							previewPin.style.backgroundColor = "transparent";
+							previewPin.style.backgroundBlendMode = "normal";
+							previewPin.style.outline = "none";
+						};
+						previewPin.addEventListener("mouseenter", enterI);
+						previewPin.addEventListener("mouseleave", leaveI);
+						previewPin._sdxHoverHandlers = { enter: enterI, leave: leaveI };
+					}
+					else {
+						previewPin.style.backgroundImage = "none";
+						previewPin.style.border = "1px dashed #666";
+					}
+					break;
 				case "image":
+					previewPin.style.overflow = "visible";
 					previewPin.style.backgroundColor = "transparent";
 					previewPin.style.border = "none";
 					previewPin.style.borderRadius = "0";
@@ -136,7 +179,11 @@ export const PinStylePreview = {
 			if (content) {
 				const type = style.contentType || (style.showIcon ? "symbol" : "number");
 
-				if (type === "symbol" || type === "icon") {
+				if (type === "none") {
+					content.innerHTML = "";
+					content.textContent = "";
+				}
+				else if (type === "symbol" || type === "icon") {
 					// FontAwesome icon (now Symbol)
 					const symbolClass = style.symbolClass || style.iconClass || "fa-solid fa-book-open";
 					content.innerHTML = `<i class="${symbolClass}"></i>`;
@@ -292,29 +339,25 @@ export const PinStylePreview = {
      */
 	async _updateCanvasPreview(style) {
 		if (!this.pinId) return;
-
 		const pinGraphics = JournalPinRenderer.getPin(this.pinId);
-		if (pinGraphics) {
-			const originalPin = JournalPinManager.get(this.pinId);
-			if (!originalPin) return;
-
-			// Converted map notes carry note.iconSize at top-level pin.size,
-			// while the slider writes style.size. If the pin has no explicit
-			// style.size yet, keep the live preview at the rendered size
-			// (the global default is 32, which would shrink the preview on
-			// first open even though the canvas pin is e.g. 64).
-			const effectiveStyle = { ...style };
-			if (originalPin.size != null && originalPin.style?.size == null && effectiveStyle.size === 32) {
-				effectiveStyle.size = originalPin.size;
-			}
-
-			const tempData = foundry.utils.mergeObject(
-				foundry.utils.deepClone(originalPin),
-				{ style: effectiveStyle },
-				{ inplace: false }
-			);
-
-			await pinGraphics.update(tempData);
+		if (!pinGraphics) return;
+		const originalPin = JournalPinManager.get(this.pinId);
+		if (!originalPin) return;
+		const effectiveStyle = { ...style };
+		if (originalPin.size != null && originalPin.style?.size == null && effectiveStyle.size === 32) {
+			effectiveStyle.size = originalPin.size;
 		}
+		const tempData = foundry.utils.mergeObject(
+			foundry.utils.deepClone(originalPin),
+			{ style: effectiveStyle },
+			{ inplace: false }
+		);
+		await pinGraphics.update(tempData);
+		// Style edits rebuild the PIXI pin (update() clears filters then re-adds only persisted).
+		// Re-attach any active TMFX preview so it doesn't blip for a frame.
+		try {
+			await this._reapplyTMFXPreview?.();
+		}
+		catch{}
 	},
 };

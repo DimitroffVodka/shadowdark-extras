@@ -14,6 +14,7 @@
 // that wants its own tests, not a side effect of a move.
 
 import { getPinStyle } from "./pin-style.mjs";
+import { normalizeSvgIntrinsicSize } from "./pin-svg-texture.mjs";
 
 export async function addGlyphIcon(pin, container, iconClass, radius, color) {
 	// Create icon using a canvas
@@ -93,6 +94,7 @@ export async function addSvgIcon(pin, container, iconPath, radius, color) {
 		if (svgText.includes("stroke=")) {
 			svgText = svgText.replace(/stroke="[^"]*"/g, `stroke="${colorHex}"`);
 		}
+		svgText = normalizeSvgIntrinsicSize(svgText);
 
 		// Convert to base64 data URI
 		const svgBase64 = `data:image/svg+xml;base64,${btoa(svgText)}`;

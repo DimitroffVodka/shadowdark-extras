@@ -3,6 +3,7 @@ import { getDoorTiles } from "../dungeon/DungeonPainterSD.mjs";
 // _formatLabel has a neutral leaf of its own: every tile store calls it, so it
 // is not owned by whichever one happened to be extracted first.
 import { _formatLabel } from "./hex-tile-labels.mjs";
+import { browseAssetsAsGM } from "./hex-asset-browser.mjs";
 
 // Tile-selection state (active tab, chosen tiles, search filter) and the symbol
 // tile store now live in hex-tile-selection.mjs. The painter reads the bindings
@@ -288,7 +289,8 @@ export async function loadTileAssets() {
 	}
 	else {
 		try {
-			const listing = await foundry.applications.apps.FilePicker.implementation.browse("data", TILE_FOLDER);
+			const listing = await browseAssetsAsGM("data", TILE_FOLDER);
+			if (!listing) return;
 			const pngFiles = (listing.files || []).filter(f => f.endsWith(".png") || f.endsWith(".webp"));
 
 			_tiles = pngFiles

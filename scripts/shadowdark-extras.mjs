@@ -125,7 +125,7 @@ import { initPlaceableNotes } from "./journal/PlaceableNotesSD.mjs";
 import NPCFeatureSheetSD from "./npc/NPCFeatureSheetSD.mjs";
 import ClassAbilitySheetSD from "./item-sheets/ClassAbilitySheetSD.mjs";
 import { initTokenToolbar } from "./canvas/TokenToolbarSD.mjs";
-import { initTray } from "./tray/TraySD.mjs";
+import { initTray, registerPartyStatsSocket } from "./tray/TraySD.mjs";
 import { initAppearanceSettings } from "./character-sheet/AppearanceSettingsSD.mjs";
 import { injectStaffSpellButton, injectStaffSpellsUI, injectWeaponSpellRechargeButtons, patchCanUseMagicItems, registerStaffSpellHooks } from "./item-sheets/staff-spells.mjs";
 import { initJournalNarration } from "./journal/JournalNarrationSD.mjs";
@@ -1121,6 +1121,7 @@ Hooks.once("ready", () => {
 		registerItemMacroSocket(macroExecuteSocket);
 		registerPartyTravelSocket(macroExecuteSocket);
 		registerTemplateTargetSyncSocket(macroExecuteSocket);
+		registerPartyStatsSocket(macroExecuteSocket);
 
 	}
 });

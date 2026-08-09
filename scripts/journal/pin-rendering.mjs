@@ -5,10 +5,13 @@
 // hover tooltip to pin-tooltip.mjs. JournalPinTooltip is re-exported here so
 // the original import surface still resolves.
 
-import { MODULE_ID, getPinStyle, normalizeImageTint } from "./pin-style.mjs";
+import {
+	MODULE_ID, getPinStyle, normalizeImageTint, isMediaPinShape,
+} from "./pin-style.mjs";
 import { checkPinVisibility } from "./pin-manager.mjs";
 import { drawStyledStroke } from "./pin-draw.mjs";
 import { addGlyphIcon, addSvgIcon, addVisionIndicator } from "./pin-icons.mjs";
+import { loadIntrinsicSvgTexture } from "./pin-svg-texture.mjs";
 import {
 	PIN_PLACEABLE_TYPE,
 	buildPinDocument,
@@ -333,15 +336,18 @@ export class JournalPinGraphics extends PIXI.Container {
 
 		const shape = style.shape || "circle";
 
-		// Special handling for Image Shape
-		if (shape === "image") {
+		// Special handling for Image / Icon Shape (icon = SVG as the pin body)
+		if (isMediaPinShape(shape)) {
 			try {
-				// If shape is image, we skip the standard graphics builder
+				// If shape is image/icon, we skip the standard graphics builder
 				// We create a sprite directly container
-
-				const imagePath = style.imagePath;
+				const isIcon = shape === "icon";
+				const imagePath = isIcon ? style.iconShapePath : style.imagePath;
 				if (imagePath) {
-					const texture = await (foundry.canvas?.loadTexture || loadTexture)(imagePath);
+					const textureLoader = foundry.canvas?.loadTexture || loadTexture;
+					const texture = isIcon
+						? await loadIntrinsicSvgTexture(imagePath, textureLoader)
+						: await textureLoader(imagePath);
 					if (this._buildId !== buildId || this.destroyed) return;
 
 					if (texture) {
@@ -349,22 +355,35 @@ export class JournalPinGraphics extends PIXI.Container {
 						// Center anchor
 						sprite.anchor.set(0.5);
 
-						// Scale to fit size, maintaining aspect ratio usually,
-						// but here we might force square fit or contain?
-						// Let's use "contain" logic within the size box
-
-						const maxDim = Math.max(texture.width, texture.height);
-												const scale = size / maxDim;
-
+						// Full-bleed for icon: delapouite/lorc SVGs have ~25 px padding on
+						// a 512 viewBox (content ~462). Mapping 512→size leaves a visible
+						// border; mapping content→size bleeds the padding off the edge.
+						// Image stays contain (raster should not be cropped).
+						const maxDim = Math.max(texture.width, texture.height) || size;
+						const bleed = isIcon ? 1.12 : 1.0;
+						const scale = (size / maxDim) * bleed;
 						sprite.width = texture.width * scale;
 						sprite.height = texture.height * scale;
+						sprite.position.set(0, 0);
+
+						// For full-bleed icon, clip the 12% overflow so the pin bounds stay `size`×`size`
+						// (otherwise image 64 vs icon 64 would be 64 vs 71). Use a PIXI mask on the sprite's parent container instead of growing it.
+						if (isIcon && bleed !== 1.0) {
+							const clip = new PIXI.Graphics();
+							clip.beginFill(0xFFFFFF, 1);
+							clip.drawRect(-radius, -radius, size, size);
+							clip.endFill();
+							container.addChild(clip);
+							container.mask = clip;
+						}
 
 						// Apply opacity
 						sprite.alpha = baseOpacity;
 
 						// Optional multiply tint (e.g. carried over from a map note).
 						// normalizeImageTint drops invalid values and the white no-op.
-						const imageTint = normalizeImageTint(style.imageTint);
+						const rawTint = isIcon ? style.iconShapeTint : style.imageTint;
+						const imageTint = normalizeImageTint(rawTint);
 						if (imageTint) sprite.tint = Number(imageTint);
 						else sprite.tint = 0xFFFFFF;
 						sprite._sdxBaseTint = sprite.tint;
@@ -382,7 +401,8 @@ export class JournalPinGraphics extends PIXI.Container {
 						try {
 							const effRingColor = effHoverCStr;
 							hoverRingC = normalizeImageTint(effRingColor) || (effRingColor ? foundry.utils.Color.from(effRingColor) : null);
-						} catch(e) {}
+						}
+						catch(e) {}
 						if (hoverRingW > 0 && hoverRingC && hoverRingC.valid) {
 							hoverBorder = new PIXI.Graphics();
 							hoverBorder.lineStyle(hoverRingW, Number(hoverRingC), 1);
@@ -486,7 +506,7 @@ export class JournalPinGraphics extends PIXI.Container {
 			}
 		}
 
-		// Add content: number, symbol, custom icon, custom text, or none
+		// Content may be layered over any pin body, including an icon body.
 		const contentType = style.contentType || (style.showIcon ? "symbol" : "number");
 
 		if (contentType === "none") {
@@ -872,12 +892,15 @@ export class JournalPinGraphics extends PIXI.Container {
 		}
 
 		// Keep image-highlight pins live (cached texture would bake the icon
-			// and can't tint per-hover). Skip caching when this pin will use the
-			// Highlight tint/border on hover (shape image + highlight).
-		const _skipCacheForHighlight = style.shape === "image" && style.hoverAnimation === "highlight";
+		// and can't tint per-hover). Skip caching when this pin will use the
+		// Highlight tint/border on hover (shape image + highlight).
+		const _skipCacheForHighlight = isMediaPinShape(style.shape)
+			&& style.hoverAnimation === "highlight";
 		if (_skipCacheForHighlight) {
 			// Hold live container directly — don't generate a texture
-			if (this._cachedTexture) { this._cachedTexture.destroy(true); this._cachedTexture = null; }
+			if (this._cachedTexture) {
+				this._cachedTexture.destroy(true); this._cachedTexture = null;
+			}
 			this.addChild(container);
 			// hoverBorder already lives inside container; tint is on _imageSprite inside container
 		}
@@ -951,7 +974,9 @@ export class JournalPinGraphics extends PIXI.Container {
 			gsap.killTweensOf(this.scale);
 			if (this._imageSprite) gsap.killTweensOf(this._imageSprite);
 		}
-		if (this._sdxHoverBorderCached) { this._sdxHoverBorderCached.destroy({children:true}); this._sdxHoverBorderCached=null; }
+		if (this._sdxHoverBorderCached) {
+			this._sdxHoverBorderCached.destroy({children: true}); this._sdxHoverBorderCached=null;
+		}
 
 		// Rebuild the graphics
 		await this._build();
@@ -1032,7 +1057,9 @@ export class JournalPinGraphics extends PIXI.Container {
 			this._labelContainer = null;
 		}
 		if (this._imageSprite && window.gsap) gsap.killTweensOf(this._imageSprite);
-		if (this._sdxHoverBorderCached) { this._sdxHoverBorderCached.destroy({children:true}); this._sdxHoverBorderCached=null; }
+		if (this._sdxHoverBorderCached) {
+			this._sdxHoverBorderCached.destroy({children: true}); this._sdxHoverBorderCached=null;
+		}
 		if (this._cachedTexture) {
 			this._cachedTexture.destroy(true);
 			this._cachedTexture = null;

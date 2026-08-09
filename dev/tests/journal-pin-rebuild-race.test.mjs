@@ -97,7 +97,7 @@ globalThis.document.createElement = tag => {
 // The image-shape placeholder is a Graphics with draw methods the harness
 // StubContainer does not implement; stub them so the container keeps a child
 // and the sprite cache actually runs.
-for (const method of ["lineStyle", "moveTo", "lineTo", "drawRect", "endFill"]) {
+for (const method of ["lineStyle", "moveTo", "lineTo", "drawRect", "endFill", "beginFill", "drawCircle", "endHole", "lineTo"]) {
 	globalThis.PIXI.Graphics.prototype[method] = () => undefined;
 }
 
@@ -111,7 +111,7 @@ const pinData = {
 	requiresVision: true, // forces the unguarded 50ms vision-badge await
 	gmOnly: false,
 	aboveFog: false,
-	style: { shape: "image", size: 32, contentType: "none" },
+	style: { shape: "image", size: 32, contentType: "none", hoverAnimation: "none" },
 	flags: { tokenmagic: { filters: [] } }, // like a TMFX preset write
 };
 

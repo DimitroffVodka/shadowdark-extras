@@ -151,6 +151,31 @@
             <p class="hint">Size the pin to the active scene's hex so it covers the tile (overrides the size slider above). Best with the Image or Hexagon shape.</p>
         </div>
 
+        <!-- Icon Shape Options (SVG as the pin body — full-bleed like converted map notes) -->
+        <div class="icon-shape-options" style="{{#unless (eq style.shape 'icon')}}display: none;{{/unless}}">
+            <div class="form-group">
+                <label>{{localize "SDX.pinStyleEditor.iconShapePath"}} <span class="hint" style="font-weight:normal">— full-bleed SVG (the whole pin, no circle)</span></label>
+                <div style="display:flex;gap:6px;align-items:center">
+                    <div class="icon-shape-preview" style="min-width:36px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.12);border-radius:6px;background:rgba(0,0,0,.04)">{{#if style.iconShapePath}}<img src="{{style.iconShapePath}}" alt="" style="width:28px;height:28px" />{{else}}<i class="fa-solid fa-icons" style="opacity:.45"></i>{{/if}}</div>
+                    <button type="button" class="icon-shape-browse" data-action="browse-icon-shape" style="flex:0 0 auto"><i class="fa-solid fa-folder-open"></i> {{localize "SDX.pinStyleEditor.browseIconShapes"}}</button>
+                    <button type="button" data-action="clear-icon-shape" title="{{localize 'SDX.pinStyleEditor.clearIconShape'}}" style="flex:0 0 auto;{{#unless style.iconShapePath}}display:none;{{/unless}}"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <select name="iconShapePreset" style="margin-top:6px">
+                    <option value="">{{localize "SDX.pinStyleEditor.iconShapeNone"}}</option>
+                    {{#each svgIconPresets}}
+                    <option value="{{this.path}}" {{#if (eq this.path ../style.iconShapePath)}}selected{{/if}}>{{this.label}}</option>
+                    {{/each}}
+                </select>
+                <input type="hidden" name="iconShapePath" value="{{style.iconShapePath}}" />
+                <p class="hint">{{localize "SDX.pinStyleEditor.iconShapePathHint"}} — like “Convert Map Notes → Pins”: no number/badge, just the icon.</p>
+            </div>
+            <div class="form-group color-group">
+                <label>{{localize "SDX.pinStyleEditor.iconShapeTint"}}</label>
+                <input type="color" name="iconShapeTint" value="{{#if style.iconShapeTint}}{{style.iconShapeTint}}{{else}}#ffffff{{/if}}" />
+                <span class="hint">White = original SVG colors</span>
+            </div>
+        </div>
+
         <!-- Image Shape Options -->
         <div class="image-shape-options" style="{{#unless (eq style.shape 'image')}}display: none;{{/unless}}">
             <div class="form-group">
@@ -172,7 +197,7 @@
         </div>
 
         <!-- Standard Shape Options (Ring, Fill, Etc) -->
-        <div class="standard-style-options" style="{{#if (eq style.shape 'image')}}display: none;{{/if}}">
+        <div class="standard-style-options" style="{{#if isMediaShape}}display: none;{{/if}}">
             <div class="form-group">
                 <label>{{localize "SDX.pinStyleEditor.ringWidth"}} <span
                         data-for="ringWidth">{{style.ringWidth}}</span>px</label>
@@ -208,8 +233,8 @@
             </div>
         </div>
 
-        <!-- Opacity for Image (Outside standard options) -->
-        <div class="image-opacity-option" style="{{#unless (eq style.shape 'image')}}display: none;{{/unless}}">
+        <!-- Opacity for Image/Icon (Outside standard options) -->
+        <div class="image-opacity-option" style="{{#unless isMediaShape}}display: none;{{/unless}}">
             <div class="form-group">
                 <label>{{localize "SDX.pinStyleEditor.opacity"}} <span
                         data-for="opacity">{{style.opacity}}</span></label>
@@ -272,7 +297,7 @@
 
     <!-- Colors (Standard Only) -->
     <section class="editor-section standard-style-options"
-        style="{{#if (eq style.shape 'image')}}display: none;{{/if}}">
+        style="{{#if (eq style.shape 'image')}}display: none;{{/if}}{{#if (eq style.shape 'icon')}}display: none;{{/if}}">
         <h3><i class="fa-solid fa-palette"></i> {{localize "SDX.pinStyleEditor.colors"}}</h3>
 
         <div class="form-group color-group">
@@ -287,7 +312,7 @@
     </section>
 
     <!-- Content Type -->
-    <section class="editor-section">
+    <section class="editor-section content-section">
         <h3><i class="fa-solid fa-font"></i> {{localize "SDX.pinStyleEditor.content"}}</h3>
 
         <div class="form-group">
@@ -338,6 +363,17 @@
         <!-- Custom Icon Options (SVG from assets) -->
         <div class="custom-icon-options"
             style="{{#unless (eq style.contentType 'customIcon')}}display: none;{{/unless}}">
+            <div class="form-group">
+                <label>{{localize "SDX.pinStyleEditor.iconShapePath"}}</label>
+                <select name="customIconPreset">
+                    <option value="">{{localize "SDX.pinStyleEditor.iconShapeNone"}}</option>
+                    {{#each svgIconPresets}}
+                    <option value="{{this.path}}" {{#if (eq this.path ../style.customIconPath)}}selected{{/if}}>
+                        {{this.label}}
+                    </option>
+                    {{/each}}
+                </select>
+            </div>
             <div class="form-group">
                 <label>{{localize "SDX.pinStyleEditor.selectedIcon"}}</label>
                 <div class="icon-selection-row">
