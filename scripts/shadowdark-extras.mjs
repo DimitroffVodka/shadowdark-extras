@@ -673,7 +673,7 @@ Hooks.once("ready", async () => {
 	// Shadowdark 4.x owns renown natively. Reconcile the retired SDX actor flag
 	// once from the primary GM client, then remove it to keep one source of truth.
 	if (
-		game.user.isGM
+		featureEnabled(FEATURE_IDS.CAROUSING) && game.user.isGM
 		&& (!game.users.activeGM || game.users.activeGM.id === game.user.id)
 	) {
 		const migratedRenown = await migrateLegacyRenown(game.actors);
@@ -1234,7 +1234,14 @@ if (featureEnabled(FEATURE_IDS.SPELL_ACTIVITY)) Hooks.on("preUpdateItem", (item,
 
 
 // Chat-card target stash and damage-card injection; registered here to keep hook order
-if (featureEnabled(FEATURE_IDS.DAMAGE_CARDS)) registerChatCardHooks();
+if (anyFeatureEnabled(
+	FEATURE_IDS.DAMAGE_CARDS,
+	FEATURE_IDS.WEAPON_BONUSES,
+	FEATURE_IDS.ITEM_MACROS,
+	FEATURE_IDS.ANIMATION_FX
+)) {
+	registerChatCardHooks();
+}
 
 // The unidentified magicItem context wrap moved to
 // inventory/UnidentifiedDisplaySD.mjs, beside the GM display it mirrors.
@@ -1374,6 +1381,7 @@ Hooks.on("quenchReady", async quench => {
 if (anyFeatureEnabled(
 	FEATURE_IDS.ITEM_MACROS,
 	FEATURE_IDS.SPELL_ACTIVITY,
+	FEATURE_IDS.PARTY_MANAGEMENT,
 	FEATURE_IDS.DAMAGE_CARDS,
 	FEATURE_IDS.CASTING_BLOCKERS,
 	FEATURE_IDS.DAMAGE_TYPES,
@@ -1848,7 +1856,7 @@ if (anyFeatureEnabled(
 // and must keep doing so.
 
 // Active Effect config hooks live in ./effects/effect-config.mjs; registered here to keep source order.
-if (featureEnabled(FEATURE_IDS.DAMAGE_TYPES)) registerActiveEffectConfigHooks();
+if (featureEnabled(FEATURE_IDS.SOURCE_REQUIREMENTS)) registerActiveEffectConfigHooks();
 // The five source-requirement hooks, in their original order, immediately after
 // the config hooks above.
 if (featureEnabled(FEATURE_IDS.SOURCE_REQUIREMENTS)) registerSourceRequirementHooks();

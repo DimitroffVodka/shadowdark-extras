@@ -18,27 +18,50 @@
  */
 
 import { MODULE_ID } from "../shared/module-id.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 import { endDurationSpell, getActiveDurationSpells } from "../effects/FocusSpellTrackerSD.mjs";
 import { injectDamageCard } from "./CombatSettingsSD.mjs";
 import { processWeaponBonuses } from "./hit-bonus.mjs";
 
-export function registerChatCardHooks() {
-	// Store original user's targets in chat message flags (for damage cards)
-	Hooks.on("preCreateChatMessage", (message, data, options, userId) => {
+function getChatCardOwnerOptions() {
+	const damageCards = isFeatureEnabled(FEATURE_IDS.DAMAGE_CARDS);
+	const weaponBonuses = isFeatureEnabled(FEATURE_IDS.WEAPON_BONUSES);
+	return {
+		captureTargets: damageCards
+			|| isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)
+			|| isFeatureEnabled(FEATURE_IDS.ANIMATION_FX),
+		damageCards,
+		weaponBonuses,
+		hideItemDescription: damageCards || weaponBonuses,
+	};
+}
+
+export function registerChatCardHooks({
+	captureTargets = true,
+	damageCards = true,
+	weaponBonuses = true,
+	hideItemDescription = true,
+} = getChatCardOwnerOptions()) {
+	const shouldCaptureTargets = captureTargets || damageCards;
+	if (shouldCaptureTargets) Hooks.on("preCreateChatMessage", (message, data, options, userId) => {
 		try {
 			// Get current user's targets
 			const targets = Array.from(game.user.targets || []);
 			if (targets.length > 0) {
-				// Store target token IDs in message flags
-				const targetIds = targets.map(t => t.id);
-				message.updateSource({
-					"flags.shadowdark-extras.targetIds": targetIds,
-				});
+				if (shouldCaptureTargets) {
+					// Store target token IDs in message flags
+					const targetIds = targets.map(t => t.id);
+					message.updateSource({
+						"flags.shadowdark-extras.targetIds": targetIds,
+					});
+				}
 
 				// Mirror Image Automation
 				// If this is an attack roll targeting someone with Mirror Image duplicates
-				const isAttack = message.rolls?.some(r => r.terms?.some(t => t.faces === 20));
-				if (isAttack) {
+				const isAttack = damageCards && message.rolls?.some(
+					r => r.terms?.some(t => t.faces === 20)
+				);
+				if (damageCards && isAttack) {
 					for (const targetToken of targets) {
 						const targetActor = targetToken.actor;
 						if (!targetActor) continue;
@@ -103,65 +126,67 @@ export function registerChatCardHooks() {
 				}
 			}
 
-			// Store item configuration for consumables (scrolls, potions, wands)
-			// This is needed because these items are consumed and removed from the actor
-			// before the chat message is processed
-			const content = message.content || "";
-			const actorIdMatch = content.match(/data-actor-id="([^"]+)"/);
-			const itemIdMatch = content.match(/data-item-id="([^"]+)"/);
+			if (damageCards) {
+				// Store item configuration for consumables (scrolls, potions, wands)
+				// This is needed because these items are consumed and removed from the actor
+				// before the chat message is processed
+				const content = message.content || "";
+				const actorIdMatch = content.match(/data-actor-id="([^"]+)"/);
+				const itemIdMatch = content.match(/data-item-id="([^"]+)"/);
 
-			if (actorIdMatch && itemIdMatch) {
-				const actorId = actorIdMatch[1];
-				const itemId = itemIdMatch[1];
-				const actor = game.actors.get(actorId);
-				const item = actor?.items.get(itemId);
+				if (actorIdMatch && itemIdMatch) {
+					const actorId = actorIdMatch[1];
+					const itemId = itemIdMatch[1];
+					const actor = game.actors.get(actorId);
+					const item = actor?.items.get(itemId);
 
-				if (item && ["Spell", "NPC Spell", "Scroll", "Potion", "Wand"].includes(item.type)) {
-					// Store the item type and relevant configurations
-					const itemConfig = {
-						type: item.type,
-						name: item.name,
-					};
+					if (item && ["Spell", "NPC Spell", "Scroll", "Potion", "Wand"].includes(item.type)) {
+						// Store the item type and relevant configurations
+						const itemConfig = {
+							type: item.type,
+							name: item.name,
+						};
 
-					// Store summoning config if it exists
-					if (item.flags?.[MODULE_ID]?.summoning) {
-						itemConfig.summoning = foundry.utils.duplicate(
-							item.flags[MODULE_ID].summoning
-						);
+						// Store summoning config if it exists
+						if (item.flags?.[MODULE_ID]?.summoning) {
+							itemConfig.summoning = foundry.utils.duplicate(
+								item.flags[MODULE_ID].summoning
+							);
+						}
+
+						// Store itemGive config if it exists
+						if (item.flags?.[MODULE_ID]?.itemGive) {
+							itemConfig.itemGive = foundry.utils.duplicate(
+								item.flags[MODULE_ID].itemGive
+							);
+						}
+
+						// Store auraEffects config if it exists
+						if (item.flags?.[MODULE_ID]?.auraEffects) {
+							itemConfig.auraEffects = foundry.utils.duplicate(
+								item.flags[MODULE_ID].auraEffects
+							);
+						}
+
+						// Store spellDamage config if it exists
+						if (item.flags?.[MODULE_ID]?.spellDamage) {
+							itemConfig.spellDamage = foundry.utils.duplicate(
+								item.flags[MODULE_ID].spellDamage
+							);
+						}
+
+						// Store coatingPoison config if it exists
+						if (item.flags?.[MODULE_ID]?.coatingPoison) {
+							itemConfig.coatingPoison = foundry.utils.duplicate(
+								item.flags[MODULE_ID].coatingPoison
+							);
+						}
+
+						message.updateSource({
+							"flags.shadowdark-extras.itemConfig": itemConfig,
+						});
+
 					}
-
-					// Store itemGive config if it exists
-					if (item.flags?.[MODULE_ID]?.itemGive) {
-						itemConfig.itemGive = foundry.utils.duplicate(
-							item.flags[MODULE_ID].itemGive
-						);
-					}
-
-					// Store auraEffects config if it exists
-					if (item.flags?.[MODULE_ID]?.auraEffects) {
-						itemConfig.auraEffects = foundry.utils.duplicate(
-							item.flags[MODULE_ID].auraEffects
-						);
-					}
-
-					// Store spellDamage config if it exists
-					if (item.flags?.[MODULE_ID]?.spellDamage) {
-						itemConfig.spellDamage = foundry.utils.duplicate(
-							item.flags[MODULE_ID].spellDamage
-						);
-					}
-
-					// Store coatingPoison config if it exists
-					if (item.flags?.[MODULE_ID]?.coatingPoison) {
-						itemConfig.coatingPoison = foundry.utils.duplicate(
-							item.flags[MODULE_ID].coatingPoison
-						);
-					}
-
-					message.updateSource({
-						"flags.shadowdark-extras.itemConfig": itemConfig,
-					});
-
 				}
 			}
 
@@ -173,7 +198,11 @@ export function registerChatCardHooks() {
 			// See combat/hit-bonus.mjs.
 
 			// Store current targets in flags for Item Macro use
-			if (game.user.targets.size > 0 && !message.flags[MODULE_ID]?.targetIds) {
+			if (
+				captureTargets
+				&& game.user.targets.size > 0
+				&& !message.flags[MODULE_ID]?.targetIds
+			) {
 				const targetIds = Array.from(game.user.targets).map(t => t.id);
 				foundry.utils.setProperty(message._source, `flags.${MODULE_ID}.targetIds`, targetIds);
 			}
@@ -183,13 +212,14 @@ export function registerChatCardHooks() {
 		}
 	});
 
-	// Inject damage card into chat messages
-	Hooks.on("renderChatMessageHTML", (message, html, context) => {
-		try {
-			injectDamageCard(message, html, context);
-		}
-		catch(err) {
-			console.error(`${MODULE_ID} | Failed to inject damage card`, err);
+	if (damageCards || weaponBonuses || hideItemDescription) Hooks.on("renderChatMessageHTML", (message, html, context) => {
+		if (damageCards) {
+			try {
+				injectDamageCard(message, html, context);
+			}
+			catch(err) {
+				console.error(`${MODULE_ID} | Failed to inject damage card`, err);
+			}
 		}
 
 		// Also process weapon bonuses for weapon attack messages.
@@ -197,21 +227,23 @@ export function registerChatCardHooks() {
 		// promise that a surrounding try/catch can never observe — which is exactly
 		// how a `html.find is not a function` TypeError went unreported here for as
 		// long as it did. Attach the handler to the promise instead.
-		processWeaponBonuses(message, html).catch(err => {
+		if (weaponBonuses) processWeaponBonuses(message, html).catch(err => {
 			console.error(`${MODULE_ID} | Failed to process weapon bonuses`, err);
 		});
 
 		// Hide item description if setting is enabled
-		try {
-			const combatSettings = game.settings.get(MODULE_ID, "combatSettings");
-			if (combatSettings?.hideItemDescription) {
-				// Hide the card-content which contains weapon/spell descriptions
-				const cardContent = html.querySelector(".card-content");
-				if (cardContent) cardContent.style.display = "none";
+		if (hideItemDescription) {
+			try {
+				const combatSettings = game.settings.get(MODULE_ID, "combatSettings");
+				if (combatSettings?.hideItemDescription) {
+					// Hide the card-content which contains weapon/spell descriptions
+					const cardContent = html.querySelector(".card-content");
+					if (cardContent) cardContent.style.display = "none";
+				}
 			}
-		}
-		catch(err) {
-			// Settings may not be registered yet, ignore
+			catch(err) {
+				// Settings may not be registered yet, ignore
+			}
 		}
 	});
 }
