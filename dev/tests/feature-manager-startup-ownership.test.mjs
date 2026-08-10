@@ -88,7 +88,7 @@ function configureEnabledFeatures(...enabledIds) {
 	};
 }
 
-	test("Party-only startup satisfies the outer socket gate and installs both party handlers", () => {
+	test("minimal socket owners enter the gate, while unrelated features do not", () => {
 	const marker = "// Socket setup gets its own ready hook";
 	const markerStart = rootSource.indexOf(marker);
 	const gateStart = rootSource.indexOf("anyFeatureEnabled(", markerStart);
@@ -101,6 +101,11 @@ function configureEnabledFeatures(...enabledIds) {
 		evaluateGate(FEATURE_IDS, (...ids) => ids.some(id => partyOnly.has(id))),
 		true,
 		"Party Management must be sufficient to enter socket registration",
+	);
+	assert.equal(
+		evaluateGate(FEATURE_IDS, id => id === FEATURE_IDS.DAMAGE_TYPES),
+		false,
+		"an unrelated feature must not enter the socket registration",
 	);
 
 	const ready = extractArrowBody(rootSource, rootSource.indexOf(")) Hooks.once(\"ready\", () => {", markerStart));
@@ -131,6 +136,53 @@ function configureEnabledFeatures(...enabledIds) {
 	);
 
 	assert.deepEqual(calls, ["party-travel", "party-stats"]);
+});
+
+test("chat-card registration gate includes every owner and excludes unrelated features", () => {
+	const marker = "// Chat-card target stash and damage-card injection";
+	const gate = extractIfBlock(rootSource, rootSource.indexOf(marker));
+	const evaluateGate = Function("FEATURE_IDS", "anyFeatureEnabled", `return (${gate.condition});`);
+	const owners = [
+		FEATURE_IDS.DAMAGE_CARDS,
+		FEATURE_IDS.WEAPON_BONUSES,
+		FEATURE_IDS.ITEM_MACROS,
+		FEATURE_IDS.ANIMATION_FX,
+	];
+
+	for (const owner of owners) {
+		assert.equal(
+			evaluateGate(FEATURE_IDS, (...ids) => ids.includes(owner)),
+			true,
+			`${owner} must enter chat-card registration`,
+		);
+	}
+	assert.equal(
+		evaluateGate(FEATURE_IDS, id => id === FEATURE_IDS.SOURCE_REQUIREMENTS),
+		false,
+		"an unrelated feature must not enter chat-card registration",
+	);
+});
+
+test("feature-derived chat-card options keep disabled Damage Cards from owning render work", async () => {
+	const hooks = [];
+	globalThis.Hooks = { on: (name, callback) => hooks.push({ name, callback }) };
+	globalThis.game = {
+		settings: {
+			get: (namespace, key) => key === "disabledFeatures"
+				? [FEATURE_IDS.DAMAGE_CARDS, FEATURE_IDS.WEAPON_BONUSES]
+				: true,
+		},
+		user: { targets: new Set() },
+		actors: new Map(),
+	};
+	const { registerChatCardHooks } = await import("../../scripts/combat/chat-card-hooks.mjs");
+	registerChatCardHooks();
+
+	assert.deepEqual(
+		hooks.map(hook => hook.name),
+		["preCreateChatMessage"],
+		"Item Macros retain target capture without either combat render owner",
+	);
 });
 
 test("target-aware Item Macros capture targets when Damage Cards is disabled", async () => {
@@ -166,7 +218,7 @@ test("target-aware Item Macros capture targets when Damage Cards is disabled", a
 	assert.deepEqual(message._source.flags["shadowdark-extras"].targetIds, [target.id]);
 });
 
-test("chat-card render behavior is not registered for a disabled owner", async () => {
+test("Weapon Bonuses keeps render behavior when Damage Cards is disabled", async () => {
 	const hooks = [];
 	globalThis.Hooks = { on: (name, callback) => hooks.push({ name, callback }) };
 	configureEnabledFeatures(FEATURE_IDS.WEAPON_BONUSES);

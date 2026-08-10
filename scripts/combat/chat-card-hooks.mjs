@@ -42,19 +42,17 @@ export function registerChatCardHooks({
 	weaponBonuses = true,
 	hideItemDescription = true,
 } = getChatCardOwnerOptions()) {
-	const shouldCaptureTargets = captureTargets || damageCards;
-	if (shouldCaptureTargets) Hooks.on("preCreateChatMessage", (message, data, options, userId) => {
+	const shouldCaptureTargetIds = captureTargets || damageCards;
+	if (shouldCaptureTargetIds) Hooks.on("preCreateChatMessage", (message, data, options, userId) => {
 		try {
 			// Get current user's targets
 			const targets = Array.from(game.user.targets || []);
 			if (targets.length > 0) {
-				if (shouldCaptureTargets) {
-					// Store target token IDs in message flags
-					const targetIds = targets.map(t => t.id);
-					message.updateSource({
-						"flags.shadowdark-extras.targetIds": targetIds,
-					});
-				}
+				// Store target token IDs for every feature that consumes the card later.
+				const targetIds = targets.map(t => t.id);
+				message.updateSource({
+					"flags.shadowdark-extras.targetIds": targetIds,
+				});
 
 				// Mirror Image Automation
 				// If this is an attack roll targeting someone with Mirror Image duplicates
