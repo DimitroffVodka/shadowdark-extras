@@ -126,15 +126,19 @@ import NPCFeatureSheetSD from "./npc/NPCFeatureSheetSD.mjs";
 import ClassAbilitySheetSD from "./item-sheets/ClassAbilitySheetSD.mjs";
 import { initTokenToolbar } from "./canvas/TokenToolbarSD.mjs";
 import { initTray, registerPartyStatsSocket } from "./tray/TraySD.mjs";
+import { registerTrayAppHooks } from "./tray/TrayApp.mjs";
 import { initAppearanceSettings } from "./character-sheet/AppearanceSettingsSD.mjs";
 import { injectStaffSpellButton, injectStaffSpellsUI, injectWeaponSpellRechargeButtons, patchCanUseMagicItems, registerStaffSpellHooks } from "./item-sheets/staff-spells.mjs";
 import { initJournalNarration } from "./journal/JournalNarrationSD.mjs";
 import { initMedkit, registerMedkitPack, unregisterMedkitPack, getMedkitPacks, scanWorldForUpdates, applyWorldMedkitUpdates, medkitScanWorld } from "./combat/MedkitSD.mjs";
 import { initLightTrackerApp } from "./canvas/LightTrackerAppSD.mjs";
-import { initMarchingMode } from "./combat/MarchingModeSD.mjs";
+import { registerTileFlattenHooks } from "./canvas/TileFlattenSD.mjs";
+import { initMarchingMode, initSidebarTools } from "./combat/MarchingModeSD.mjs";
+import { initFormationSpawner } from "./combat/FormationSpawnerSD.mjs";
 import { SceneExporter } from "./scene/SceneExporter.mjs";
 import { SceneImporter } from "./scene/SceneImporter.mjs";
 import { initJournalPins } from "./journal/JournalPinsSD.mjs";
+import { registerPinListHooks } from "./journal/PinListApp.mjs";
 import { registerJournalUIHooks } from "./journal/journal-ui.mjs";
 import SheetLockManager from "./character-sheet/SheetLockManager.mjs";
 import { enhanceInventoryTab, attachNativeHpQuickControls } from "./character-sheet/enhanced-inventory-tab.mjs";
@@ -147,7 +151,7 @@ import { enhanceInventoryWithDeleteAndMultiSelect } from "./inventory/inventory-
 import { enhanceSpellsTab } from "./character-sheet/enhanced-spells-tab.mjs";
 import { getConditionsData, injectConditionsToggles, showConditionsModal } from "./character-sheet/conditions.mjs";
 import { registerBackgroundAdvancementHooks } from "./character-sheet/background-advancement.mjs";
-import "./item-macros/SpellMacrosSD.mjs";
+
 import { initMysteriousCasting } from "./npc/MysteriousCasting.mjs";
 import { TomSD } from "./tom/TomSD.mjs";
 import { WallContextMenuSD } from "./canvas/WallContextMenuSD.mjs";
@@ -199,13 +203,16 @@ import { initItemPilesCompatibility } from "./inventory/ItemPilesCompatSD.mjs";
 import { generateDungeon, getGeneratorSettings, setGeneratorSettings, generateRandomSeed, generateLayout, generateMixedLayout } from "./dungeon/DungeonGeneratorSD.mjs";
 import { buildHexDungeonScene } from "./hex/HexDungeonBridgeSD.mjs";
 import { generateCaveLayout, buildCaveLoops, traceBoundaryLoops } from "./dungeon/DungeonCaveSD.mjs";
-import { assignBiomes, buildCellFloorMap, getBiomeDefs, getCustomBiomes, setCustomBiome, removeCustomBiome, resetCustomBiomes, getEnabledBiomeKeys, getDisabledBiomes, setBiomeEnabled } from "./dungeon/DungeonBiomesSD.mjs";
-import { openBiomeEditor } from "./dungeon/BiomeEditorSD.mjs";
+import { assignBiomes, buildCellFloorMap, getBiomeDefs, getCustomBiomes, setCustomBiome, removeCustomBiome, resetCustomBiomes, getEnabledBiomeKeys, getDisabledBiomes, setBiomeEnabled, registerDungeonBiomeSettings } from "./dungeon/DungeonBiomesSD.mjs";
+import { openBiomeEditor, registerBiomeEditorDelegation } from "./dungeon/BiomeEditorSD.mjs";
 import { generateHexMap, clearGeneratedTiles } from "./hex/HexGeneratorSD.mjs";
 import { buildHexcrawl, buildHexcrawlFromFile } from "./hex/HexcrawlBuilderSD.mjs";
-import { getSceneLevelContext, applySceneLevelData, getDungeonBackground } from "./dungeon/DungeonPainterSD.mjs";
+import { getSceneLevelContext, applySceneLevelData, getDungeonBackground, registerDungeonPainterSettings } from "./dungeon/DungeonPainterSD.mjs";
 import { placeChangeLevelRegion, placeDungeonSurface, placeDungeonDecor } from "./dungeon/DungeonRegionsSD.mjs";
 import { registerSettings, setupSettingsOrganization } from "./settings/module-settings.mjs";
+import { registerFeatureManagerSettings } from "./settings/FeatureManagerApp.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "./settings/feature-gates.mjs";
+import { registerDungeonMultiLevelHooks } from "./dungeon/DungeonMultiLevelSD.mjs";
 
 // Backward-compatible declared-esmodule surface. These names were public before
 // the reorganization; internal feature modules import from their owners instead.
@@ -213,25 +220,56 @@ export { getCustomLightSources } from "./canvas/light-templates.mjs";
 export { executeItemMacro, hasItemMacro } from "./item-macros/item-macro-engine.mjs";
 
 const MODULE_ID = "shadowdark-extras";
+const featureEnabled = featureId => isFeatureEnabled(featureId);
+const anyFeatureEnabled = (...featureIds) => featureIds.some(featureEnabled);
+
+// Register the world gate first, then evaluate every feature-owned startup seam.
+Hooks.once("init", registerFeatureManagerSettings);
+/* eslint-disable indent -- keep the gated composition root mechanically stable */
+Hooks.once("init", () => {
+
+if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) {
+	import("./item-macros/SpellMacrosSD.mjs")
+		.then(module => module.registerSpellMacrosApi())
+		.catch(error => console.error(`${MODULE_ID} | Failed to load spell macro API`, error));
+}
 
 // ============================================
 // JOURNAL NARRATION INITIALIZATION
 // ============================================
-initJournalNarration();
-initMedkit();
-initJournalPins();
-initSDXCoords();
-initHexTooltip();
-initHexFog();
-registerMaphubHooks();
-initUnidentifiedGMDisplay();
-initTemplateElevationBadge();
+if (featureEnabled(FEATURE_IDS.JOURNAL_NARRATION)) initJournalNarration();
+if (featureEnabled(FEATURE_IDS.MEDKIT)) initMedkit();
+if (featureEnabled(FEATURE_IDS.JOURNAL_PINS)) {
+	initJournalPins();
+	registerPinListHooks();
+}
+if (featureEnabled(FEATURE_IDS.COORDINATES)) initSDXCoords();
+if (featureEnabled(FEATURE_IDS.HEX_TOOLTIP)) initHexTooltip();
+if (featureEnabled(FEATURE_IDS.HEX_FOG)) initHexFog();
+if (featureEnabled(FEATURE_IDS.MAP_GENERATORS)) registerMaphubHooks();
+if (featureEnabled(FEATURE_IDS.UNIDENTIFIED_ITEMS)) initUnidentifiedGMDisplay();
+if (featureEnabled(FEATURE_IDS.TEMPLATE_EFFECTS)) initTemplateElevationBadge();
+if (featureEnabled(FEATURE_IDS.DUNGEON_PAINTER)) registerDungeonMultiLevelHooks();
+if (featureEnabled(FEATURE_IDS.TILE_FLATTEN)) registerTileFlattenHooks();
+if (featureEnabled(FEATURE_IDS.TRAY)) registerTrayAppHooks();
 // patchHexTilePositionClamp moved to hex/hex-tile-clamp.mjs
 
-Hooks.once("init", () => {
+function initializeEarlyFeatures() {
 	// Register GSAP Plugins (GSAP is loaded by Foundry core)
 	try {
-		if (typeof gsap !== "undefined" && typeof PixiPlugin !== "undefined") {
+		if (
+			anyFeatureEnabled(
+				FEATURE_IDS.JOURNAL_PINS,
+				FEATURE_IDS.ANIMATION_FX,
+				FEATURE_IDS.TORCH_ANIMATIONS,
+				FEATURE_IDS.LEVEL_UP_ANIMATIONS,
+				FEATURE_IDS.WEAPON_SPRITES,
+				FEATURE_IDS.TMFX_EDITOR,
+				FEATURE_IDS.SHEET_STYLING
+			)
+			&& typeof gsap !== "undefined"
+			&& typeof PixiPlugin !== "undefined"
+		) {
 			gsap.registerPlugin(PixiPlugin);
 			console.log("Shadowdark Extras | Registered GSAP PixiPlugin");
 		}
@@ -241,13 +279,13 @@ Hooks.once("init", () => {
 	}
 
 	// Backport Shadowdark 4.0 fix: suppress AEs from stashed / unequipped / unidentified items
-	patchArmorActiveEffects();
-	initItemPilesCompatibility();
+	if (featureEnabled(FEATURE_IDS.SOURCE_REQUIREMENTS)) patchArmorActiveEffects();
+	if (featureEnabled(FEATURE_IDS.ITEM_PILES)) initItemPilesCompatibility();
 
 	// Allow SDX-painted hex tiles to keep their true position at the scene's
 	// left/top edge instead of being clamped inward (fixes first-column / top-row
 	// hex misalignment). See patchHexTilePositionClamp for the full rationale.
-	patchHexTilePositionClamp();
+	if (featureEnabled(FEATURE_IDS.HEX_PAINTER)) patchHexTilePositionClamp();
 
 	// Fix system's removeTorchTimer error when chat messages don't have .light-source element
 	// The system hook at hooks.mjs:168 calls html.querySelector(".light-source").remove() without null checking
@@ -266,20 +304,38 @@ Hooks.once("init", () => {
 	// The system hook at targeting.mjs:11 calls game.user.updateTokenTargets([token.id]) which is deprecated/removed
 	// We add a polyfill that implements the expected behavior
 	// ALSO: The system restricts players to 1 target, which breaks template spells. We add a bypass flag.
-	Hooks.once("ready", () => {
+	if (anyFeatureEnabled(
+		FEATURE_IDS.DRAWING_TOOLS,
+		FEATURE_IDS.LIGHT_TRACKER,
+		FEATURE_IDS.SPELL_ACTIVITY,
+		FEATURE_IDS.MYSTERIOUS_CASTING,
+		FEATURE_IDS.SHEET_LOCKING,
+		FEATURE_IDS.TOM_SCENES,
+		FEATURE_IDS.WALL_CONTEXT_MENU,
+		FEATURE_IDS.SHEET_STYLING
+	)) Hooks.once("ready", () => {
 		// Add a bypass flag for template targeting to allow multi-targeting for players
-		game.shadowdarkExtras = game.shadowdarkExtras || {};
-		game.shadowdarkExtras.allowMultiTarget = false;
+		if (anyFeatureEnabled(FEATURE_IDS.DRAWING_TOOLS, FEATURE_IDS.SPELL_ACTIVITY)) {
+			game.shadowdarkExtras = game.shadowdarkExtras || {};
+		}
+		if (featureEnabled(FEATURE_IDS.SPELL_ACTIVITY)) {
+			game.shadowdarkExtras.allowMultiTarget = false;
+		}
 
 		// Initialize Drawing Tools
-		game.shadowdarkExtras.drawingTool = sdxDrawingTool;
-		game.shadowdarkExtras.drawingToolbar = sdxDrawingToolbar;
-		sdxDrawingTool.initialize();
+		if (featureEnabled(FEATURE_IDS.DRAWING_TOOLS)) {
+			game.shadowdarkExtras.drawingTool = sdxDrawingTool;
+			game.shadowdarkExtras.drawingToolbar = sdxDrawingToolbar;
+			sdxDrawingTool.initialize();
+		}
 
 		// Initialize Light Tracker AppV2
-		initLightTrackerApp();
+		if (featureEnabled(FEATURE_IDS.LIGHT_TRACKER)) initLightTrackerApp();
 
-		if (typeof game.user.updateTokenTargets !== "function") {
+		if (
+			featureEnabled(FEATURE_IDS.SPELL_ACTIVITY)
+			&& typeof game.user.updateTokenTargets !== "function"
+		) {
 			game.user.updateTokenTargets = function(tokenIds = []) {
 				// If the bypass flag is set, don't restrict targeting
 				if (game.shadowdarkExtras?.allowMultiTarget) {
@@ -287,19 +343,22 @@ Hooks.once("init", () => {
 				}
 				// Clear current targets and set new ones
 				const tokens = tokenIds.map(id => canvas.tokens.get(id)).filter(t => t);
-				canvas.tokens.targetObjects(Object.fromEntries(tokens.map(t => [t.id, true])), { releaseOthers: true });
+				canvas.tokens.targetObjects(
+					Object.fromEntries(tokens.map(t => [t.id, true])),
+					{ releaseOthers: true }
+				);
 			};
 			console.log("Shadowdark Extras | Added polyfill for game.user.updateTokenTargets");
 		}
 	});
 
-	initMysteriousCasting();
-	SheetLockManager.init();
-	TomSD.initialize();
-	WallContextMenuSD.initialize();
+	if (featureEnabled(FEATURE_IDS.MYSTERIOUS_CASTING)) initMysteriousCasting();
+	if (featureEnabled(FEATURE_IDS.SHEET_LOCKING)) SheetLockManager.init();
+	if (featureEnabled(FEATURE_IDS.TOM_SCENES)) TomSD.initialize();
+	if (featureEnabled(FEATURE_IDS.WALL_CONTEXT_MENU)) WallContextMenuSD.initialize();
 
 	// Register Custom Fonts
-	const SDX_FONTS = [
+	const SDX_FONTS = featureEnabled(FEATURE_IDS.SHEET_STYLING) ? [
 		"ACaslonPro-Bold", "ArabDances", "BaksoSapi", "BalletHarmony", "Cardinal", "CaslonAntique-Bold",
 		"Cathallina", "ChildWriting-Regular", "Comic-ink", "DREAMERS-BRUSH", "DSnet_Stamped", "DUNGRG",
 		"DancingVampyrish", "Dreamy-Land-Medium", "FairProsper", "Fast-In-My-Car", "FuturaHandwritten",
@@ -313,24 +372,28 @@ Hooks.once("init", () => {
 		"fontopoSUBWAY-Regular", "fontopoSunnyDay-Regular", "glashou", "go3v2", "happyfrushzero",
 		"himagsikan", "kindergarten", "kirsty-rg", "makayla", "oko", "shoplift", "stereofidelic",
 		"stonehen", "times_new_yorker", "venus-rising-rg",
-	];
+	] : [];
 
-	if (CONFIG.fontFamilies instanceof Set) {
-		for (const font of SDX_FONTS) CONFIG.fontFamilies.add(font);
-	}
-	else {
-		CONFIG.fontFamilies = [...new Set([...(CONFIG.fontFamilies || []), ...SDX_FONTS])];
-	}
+	if (SDX_FONTS.length) {
+		if (CONFIG.fontFamilies instanceof Set) {
+			for (const font of SDX_FONTS) CONFIG.fontFamilies.add(font);
+		}
+		else {
+			CONFIG.fontFamilies = [...new Set([...(CONFIG.fontFamilies || []), ...SDX_FONTS])];
+		}
 
-	if (window.FontsLoader) {
-		window.FontsLoader.load({
-			custom: {
-				families: SDX_FONTS,
-				urls: ["modules/shadowdark-extras/styles/fonts.css"],
-			},
-		});
+		if (window.FontsLoader) {
+			window.FontsLoader.load({
+				custom: {
+					families: SDX_FONTS,
+					urls: ["modules/shadowdark-extras/styles/fonts.css"],
+				},
+			});
+		}
 	}
-});
+}
+
+initializeEarlyFeatures();
 
 
 // ============================================
@@ -464,15 +527,20 @@ function registerClassAbilitySheet() {
 // HOOKS
 // ============================================
 
-// Initialize when Foundry is ready
-Hooks.once("init", () => {
+// Initialize during Foundry's init phase (the bootstrap imports this module there).
+function initializeFeatures() {
+	if (featureEnabled(FEATURE_IDS.DUNGEON_PAINTER)) {
+		registerDungeonPainterSettings();
+		registerDungeonBiomeSettings();
+		registerBiomeEditorDelegation();
+	}
 
 	// Initialize Automated Animations integration
-	initAutoAnimationsIntegration();
+	if (featureEnabled(FEATURE_IDS.AUTOMATED_ANIMATIONS)) initAutoAnimationsIntegration();
 
 	// Register SDX-native Sequencer animation FX settings + master-list menu
-	AnimationFxSD.registerSettings();
-	registerAnimationFxMenu();
+	if (featureEnabled(FEATURE_IDS.ANIMATION_FX)) AnimationFxSD.registerSettings();
+	if (featureEnabled(FEATURE_IDS.ANIMATION_FX)) registerAnimationFxMenu();
 
 	// Defensive JB2A registration: spell presets reference `jb2a.*` Sequencer
 	// DB keys, and JB2A's own sequencer.ready registration is load-order flaky.
@@ -484,17 +552,21 @@ Hooks.once("init", () => {
 	// call this from `ready`: in some worlds that hook fires before Sequencer's
 	// own ready emits sequencer.ready, which is exactly the race that warns.
 	// See AnimationFxSD.ensureJb2aRegistered.
-	Hooks.on("sequencer.ready", () => {
-		Promise.resolve().then(() => AnimationFxSD.ensureJb2aRegistered());
-	});
+	if (featureEnabled(FEATURE_IDS.ANIMATION_FX)) {
+		Hooks.on("sequencer.ready", () => {
+			Promise.resolve().then(() => AnimationFxSD.ensureJb2aRegistered());
+		});
+	}
 
 	// First-run: seed the bundled preset libraries into any world that has
 	// never been seeded, so new worlds come up fully populated (GM-only,
 	// one-time, merge-not-overwrite — see AnimationFxSD.autoSeedIfNeeded).
-	Hooks.once("ready", () => AnimationFxSD.autoSeedIfNeeded());
+	if (featureEnabled(FEATURE_IDS.ANIMATION_FX)) {
+		Hooks.once("ready", () => AnimationFxSD.autoSeedIfNeeded());
+	}
 
 	// Patch CharacterGeneratorSD to show rolls in chat
-	patchCharacterGeneratorRolls();
+	if (featureEnabled(FEATURE_IDS.CHARACTER_GENERATOR)) patchCharacterGeneratorRolls();
 
 
 	// Register Handlebars helpers
@@ -508,64 +580,87 @@ Hooks.once("init", () => {
 		return (parseInt(a) || 0) + (parseInt(b) || 0);
 	});
 
-	// Preload templates
-	(foundry.applications?.handlebars?.loadTemplates || loadTemplates)([
-		`modules/${MODULE_ID}/templates/npc-inventory.hbs`,
-		`modules/${MODULE_ID}/templates/party.hbs`,
-		`modules/${MODULE_ID}/templates/trade-window.hbs`,
-		`modules/${MODULE_ID}/templates/journal-notes.hbs`,
-		`modules/${MODULE_ID}/templates/journal-editor.hbs`,
-		`modules/${MODULE_ID}/templates/potion-sheet/header.hbs`,
-		`modules/${MODULE_ID}/templates/potion-sheet/tabs.hbs`,
-		`modules/${MODULE_ID}/templates/potion-sheet/details.hbs`,
-		`modules/${MODULE_ID}/templates/potion-sheet/activity.hbs`,
-		`modules/${MODULE_ID}/templates/potion-sheet/description.hbs`,
-		`modules/${MODULE_ID}/templates/background-sheet/header.hbs`,
-		`modules/${MODULE_ID}/templates/background-sheet/tabs.hbs`,
-		`modules/${MODULE_ID}/templates/background-sheet/description.hbs`,
-		`modules/${MODULE_ID}/templates/background-sheet/advancement.hbs`,
-		`modules/${MODULE_ID}/templates/npc-attack-sheet/header.hbs`,
-		`modules/${MODULE_ID}/templates/npc-attack-sheet/tabs.hbs`,
-		`modules/${MODULE_ID}/templates/npc-attack-sheet/details.hbs`,
-		`modules/${MODULE_ID}/templates/npc-attack-sheet/description.hbs`,
-		`modules/${MODULE_ID}/templates/npc-attack-sheet/source.hbs`,
-		`modules/${MODULE_ID}/templates/staff-spell-config.hbs`,
-		`modules/${MODULE_ID}/templates/class-ability-sheet/header.hbs`,
-		`modules/${MODULE_ID}/templates/class-ability-sheet/tabs.hbs`,
-		`modules/${MODULE_ID}/templates/class-ability-sheet/details.hbs`,
-		`modules/${MODULE_ID}/templates/class-ability-sheet/description.hbs`,
-		`modules/${MODULE_ID}/templates/class-ability-sheet/macro.hbs`,
-	]);
+	// Preload only templates owned by enabled features.
+	const templates = [];
+	const addTemplates = (...paths) => templates.push(
+		...paths.map(path => `modules/${MODULE_ID}/templates/${path}`)
+	);
+	if (featureEnabled(FEATURE_IDS.NPC_INVENTORY)) addTemplates("npc-inventory.hbs");
+	if (featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) addTemplates("party.hbs");
+	if (featureEnabled(FEATURE_IDS.TRADING)) addTemplates("trade-window.hbs");
+	if (featureEnabled(FEATURE_IDS.JOURNAL_NOTES)) {
+		addTemplates("journal-notes.hbs", "journal-editor.hbs");
+	}
+	if (featureEnabled(FEATURE_IDS.MAGIC_ITEM_SHEETS)) addTemplates(
+		"potion-sheet/header.hbs",
+		"potion-sheet/tabs.hbs",
+		"potion-sheet/details.hbs",
+		"potion-sheet/activity.hbs",
+		"potion-sheet/description.hbs",
+		"staff-spell-config.hbs"
+	);
+	if (featureEnabled(FEATURE_IDS.BACKGROUND_ADVANCEMENT)) addTemplates(
+		"background-sheet/header.hbs",
+		"background-sheet/tabs.hbs",
+		"background-sheet/description.hbs",
+		"background-sheet/advancement.hbs"
+	);
+	if (featureEnabled(FEATURE_IDS.NPC_CUSTOM_SHEETS)) addTemplates(
+		"npc-attack-sheet/header.hbs",
+		"npc-attack-sheet/tabs.hbs",
+		"npc-attack-sheet/details.hbs",
+		"npc-attack-sheet/description.hbs",
+		"npc-attack-sheet/source.hbs"
+	);
+	if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) addTemplates(
+		"class-ability-sheet/header.hbs",
+		"class-ability-sheet/tabs.hbs",
+		"class-ability-sheet/details.hbs",
+		"class-ability-sheet/description.hbs",
+		"class-ability-sheet/macro.hbs"
+	);
+	if (templates.length) {
+		(foundry.applications?.handlebars?.loadTemplates || loadTemplates)(templates);
+	}
 
 	// Register the Party sheet early
-	registerPartySheet();
+	if (featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) registerPartySheet();
 
 	// Register the Potion sheet
-	registerPotionSheet();
+	if (featureEnabled(FEATURE_IDS.MAGIC_ITEM_SHEETS)) registerPotionSheet();
 
 	// Register the Background sheet
-	registerBackgroundSheet();
+	if (featureEnabled(FEATURE_IDS.BACKGROUND_ADVANCEMENT)) registerBackgroundSheet();
 
 	// Register the NPC Attack sheet
-	registerNPCAttackSheet();
+	if (featureEnabled(FEATURE_IDS.NPC_CUSTOM_SHEETS)) registerNPCAttackSheet();
 
 	// Register the NPC Feature sheet
-	registerNPCFeatureSheet();
+	if (featureEnabled(FEATURE_IDS.NPC_CUSTOM_SHEETS)) registerNPCFeatureSheet();
 
 	// Register the Class Ability sheet
-	registerClassAbilitySheet();
+	if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) registerClassAbilitySheet();
 
 	// Wrap Actor.create to handle Party type conversion
-	wrapActorCreate();
+	if (featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) wrapActorCreate();
 
 	// Initialize settings and early styles
 	registerSettings();
-	applySheetDecorationStyles();
+	if (featureEnabled(FEATURE_IDS.SHEET_STYLING)) applySheetDecorationStyles();
 	setupSettingsOrganization();
-});
+}
+
+initializeFeatures();
 
 // Journal chrome: hide the internal sync journals, add the headings toggle
-registerJournalUIHooks();
+if (anyFeatureEnabled(
+	FEATURE_IDS.JOURNAL_NOTES,
+	FEATURE_IDS.TRADING,
+	FEATURE_IDS.CAROUSING,
+	FEATURE_IDS.HEX_TOOLTIP
+)) {
+	registerJournalUIHooks();
+}
 
 // Setup after Shadowdark system is ready
 Hooks.once("ready", async () => {
@@ -577,7 +672,10 @@ Hooks.once("ready", async () => {
 
 	// Shadowdark 4.x owns renown natively. Reconcile the retired SDX actor flag
 	// once from the primary GM client, then remove it to keep one source of truth.
-	if (game.user.isGM && (!game.users.activeGM || game.users.activeGM.id === game.user.id)) {
+	if (
+		game.user.isGM
+		&& (!game.users.activeGM || game.users.activeGM.id === game.user.id)
+	) {
 		const migratedRenown = await migrateLegacyRenown(game.actors);
 		if (migratedRenown > 0) {
 			console.log(`${MODULE_ID} | Migrated native renown for ${migratedRenown} actor(s)`);
@@ -585,78 +683,112 @@ Hooks.once("ready", async () => {
 	}
 
 
-	extendLightSources();
-	patchLightSourceMappings();
-	extendActorCreationDialog();
-	patchCtrlMoveOnActorSheetDrops();
-	patchPlayerSheetForTransfers();
-	patchPlayerSheetUseAbility();
-	initializeTradeSocket();
-	patchCanUseMagicItems();
+	if (featureEnabled(FEATURE_IDS.MAGIC_ITEM_SHEETS)) {
+		extendLightSources();
+		patchLightSourceMappings();
+		patchCanUseMagicItems();
+	}
+	if (featureEnabled(FEATURE_IDS.CHARACTER_GENERATOR)) extendActorCreationDialog();
+	if (featureEnabled(FEATURE_IDS.PLAYER_TRANSFERS)) {
+		patchCtrlMoveOnActorSheetDrops();
+		patchPlayerSheetForTransfers();
+	}
+	if (featureEnabled(FEATURE_IDS.ENHANCED_TABS)) patchPlayerSheetUseAbility();
+	if (featureEnabled(FEATURE_IDS.TRADING)) initializeTradeSocket();
 
 
-	// Setup combat socket for damage application (requires socketlib)
-	if (typeof socketlib !== "undefined") {
+	// Initialize the shared socket only when at least one owning feature needs it.
+	const needsCombatSocket = anyFeatureEnabled(
+		FEATURE_IDS.DAMAGE_CARDS,
+		FEATURE_IDS.SCROLLING_COMBAT_TEXT,
+		FEATURE_IDS.SPELL_ACTIVITY,
+		FEATURE_IDS.PREDEFINED_EFFECTS,
+		FEATURE_IDS.FOCUS_TRACKER,
+		FEATURE_IDS.BREAK_ON_DAMAGE,
+		FEATURE_IDS.TEMPLATE_EFFECTS,
+		FEATURE_IDS.AURAS,
+		FEATURE_IDS.TRADING,
+		FEATURE_IDS.ITEM_MACROS,
+		FEATURE_IDS.PLAYER_TRANSFERS
+	);
+	if (needsCombatSocket && typeof socketlib !== "undefined") {
 		setupCombatSocket();
 	}
-	else {
+	else if (featureEnabled(FEATURE_IDS.DAMAGE_CARDS)) {
 		console.warn(`${MODULE_ID} | socketlib not found, damage application may not work for non-GMs`);
 	}
 
 	// Initialize Focus Spell Tracker if enabled
-	if (game.settings.get(MODULE_ID, "enableFocusTracker")) {
+	if (featureEnabled(FEATURE_IDS.FOCUS_TRACKER) && game.settings.get(MODULE_ID, "enableFocusTracker")) {
 		initFocusSpellTracker();
 	}
 
 	// Break-on-damage effect expiry (marker-driven; hooks are inert until an
 	// effect carries flags.shadowdark-extras.breakOnDamage). Safe to run always.
-	initBreakOnDamage();
+	if (featureEnabled(FEATURE_IDS.BREAK_ON_DAMAGE)) initBreakOnDamage();
 
 	// Setup wand uses blocking (prevent casting depleted wands)
-	if (game.settings.get(MODULE_ID, "enableWandUses")) {
+	if (featureEnabled(FEATURE_IDS.MAGIC_ITEM_SHEETS) && game.settings.get(MODULE_ID, "enableWandUses")) {
 		setupWandUsesBlocker();
 	}
 
 	// Setup silenced casting blocking
-	setupSilencedCastingBlocker();
+	if (featureEnabled(FEATURE_IDS.CASTING_BLOCKERS)) setupSilencedCastingBlocker();
 
 	// Patch getPhysicalItems to exclude items inside SDX containers (SD 4.x
 	// made isPhysical a hardcoded getter, so setting it to false no longer works)
-	patchGetPhysicalItemsForContainers();
+	if (featureEnabled(FEATURE_IDS.CONTAINERS)) patchGetPhysicalItemsForContainers();
 
 	// Setup consolidated rollAttack patches
-	setupRollAttackPatches();
+	if (anyFeatureEnabled(
+		FEATURE_IDS.DAMAGE_CARDS, FEATURE_IDS.AMMUNITION
+	)) {
+		setupRollAttackPatches();
+	}
 
 	// Setup roll config generators and dialog hooks
-	setupRollConfigPatches();
+	if (anyFeatureEnabled(
+		FEATURE_IDS.WEAPON_BONUSES,
+		FEATURE_IDS.AMMUNITION,
+		FEATURE_IDS.ENHANCED_TABS
+	)) {
+		setupRollConfigPatches();
+	}
 
 	// Setup scrolling combat text (floating damage/healing numbers)
-	setupScrollingCombatText();
+	if (featureEnabled(FEATURE_IDS.SCROLLING_COMBAT_TEXT)) setupScrollingCombatText();
 
 	// Setup torch animations (requires Sequencer and JB2A)
-	initTorchAnimations();
+	if (featureEnabled(FEATURE_IDS.TORCH_ANIMATIONS)) initTorchAnimations();
 
 	// Setup weapon animations (requires Sequencer)
-	initWeaponAnimations();
+	if (featureEnabled(FEATURE_IDS.WEAPON_SPRITES)) initWeaponAnimations();
 
 	// Setup level-up token animations (requires Sequencer)
-	initLevelUpAnimations();
+	if (featureEnabled(FEATURE_IDS.LEVEL_UP_ANIMATIONS)) initLevelUpAnimations();
 
 	// Initialize Template Effects System (damage/effects for tokens in templates)
-	initTemplateEffects();
+	if (featureEnabled(FEATURE_IDS.TEMPLATE_EFFECTS)) initTemplateEffects();
 
 	// Initialize Aura Effects System (token-attached effects that follow bearer)
-	initAuraEffects();
+	if (featureEnabled(FEATURE_IDS.AURAS)) initAuraEffects();
 
 	// Initialize Marching Mode (GM-only token following system)
-	initMarchingMode();
+	if (featureEnabled(FEATURE_IDS.MARCHING_MODE)) initMarchingMode();
+	if (featureEnabled(FEATURE_IDS.FORMATION_SPAWNER)) initFormationSpawner();
+	if (anyFeatureEnabled(
+		FEATURE_IDS.MARCHING_MODE,
+		FEATURE_IDS.FORMATION_SPAWNER,
+		FEATURE_IDS.JOURNAL_PINS,
+		FEATURE_IDS.CAROUSING
+	)) initSidebarTools();
 
-	patchLightSourceTrackerForParty();
+	if (featureEnabled(FEATURE_IDS.LIGHT_TRACKER)) patchLightSourceTrackerForParty();
 
 	// Patch NPC sheets to add _toggleLightSource method
 	// The Shadowdark system's ActorSheetSD._deleteItem tries to call this method,
 	// but it only exists on PlayerSheetSD, causing errors when deleting torch items from NPCs
-	if (globalThis.shadowdark?.sheets?.NpcSheetSD) {
+	if (featureEnabled(FEATURE_IDS.LIGHT_TRACKER) && globalThis.shadowdark?.sheets?.NpcSheetSD) {
 		const NpcSheetSD = globalThis.shadowdark.sheets.NpcSheetSD;
 		if (!NpcSheetSD.prototype._toggleLightSource) {
 			NpcSheetSD.prototype._toggleLightSource = async function(item, options = {}) {
@@ -690,7 +822,7 @@ Hooks.once("ready", async () => {
 	}
 
 	// Wrap ActorSD._learnSpell to preserve spell damage flags from scrolls
-	if (globalThis.shadowdark?.documents?.ActorSD) {
+	if (featureEnabled(FEATURE_IDS.SPELL_ACTIVITY) && globalThis.shadowdark?.documents?.ActorSD) {
 		const ActorSD = globalThis.shadowdark.documents.ActorSD;
 		const RollSD = CONFIG.DiceSD;
 		const original_learnSpell = ActorSD.prototype._learnSpell;
@@ -725,31 +857,45 @@ Hooks.once("ready", async () => {
 	// card on the roll config as `_sdxHitBonusInfo`. See combat/hit-bonus.mjs.
 
 	// Ensure trade journal exists (GM only creates it)
-	await ensureTradeJournal();
+	if (featureEnabled(FEATURE_IDS.TRADING)) await ensureTradeJournal();
 
 	// Ensure carousing journal exists and initialize sync (GM only creates it)
-	await ensureCarousingJournal();
-	await ensureCarousingTablesJournal();
-	initCarousingSocket();
+	if (featureEnabled(FEATURE_IDS.CAROUSING)) {
+		await ensureCarousingJournal();
+		await ensureCarousingTablesJournal();
+		initCarousingSocket();
+	}
 
 	// SDX Roller socket listener
-	game.socket.on(`module.${MODULE_ID}`, data => {
-		if (data.action?.startsWith("sdxRoller")) {
-			SDXRollerApp.handleSocketMessage(data);
-		}
-	});
+	if (featureEnabled(FEATURE_IDS.SDX_ROLLER)) {
+		game.socket.on(`module.${MODULE_ID}`, data => {
+			if (data.action?.startsWith("sdxRoller")) {
+				SDXRollerApp.handleSocketMessage(data);
+			}
+		});
+	}
 
 	// Register global callback for carousing overlay refresh
-	window.sdxCarousingOverlayRefresh = refreshCarousingOverlay;
-	window.sdxOpenCarousingOverlay = openCarousingOverlay;
+	if (featureEnabled(FEATURE_IDS.CAROUSING)) {
+		window.sdxCarousingOverlayRefresh = refreshCarousingOverlay;
+		window.sdxOpenCarousingOverlay = openCarousingOverlay;
+	}
 });
 
 // Flag preservation on item creation moved to items/item-flag-preservation.mjs.
-registerItemCreateFlagPreservation();
+if (anyFeatureEnabled(
+	FEATURE_IDS.SPELL_ACTIVITY,
+	FEATURE_IDS.ITEM_MACROS,
+	FEATURE_IDS.TEMPLATE_EFFECTS,
+	FEATURE_IDS.AURAS
+)) {
+	registerItemCreateFlagPreservation();
+}
 
 
 // Before party actor is created, ensure proper prototype token settings
-Hooks.on("preCreateActor", (actor, data, options, userId) => {
+if (featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) Hooks.on("preCreateActor", (actor, data, options, userId) => {
+	if (!featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) return;
 	// Check if this is a party actor being created
 	const isParty = data.flags?.[MODULE_ID]?.isParty === true
 		|| actor.getFlag(MODULE_ID, "isParty") === true;
@@ -769,7 +915,8 @@ Hooks.on("preCreateActor", (actor, data, options, userId) => {
 });
 
 // After party actor is created, set the sheet
-Hooks.on("createActor", async (actor, options, userId) => {
+if (featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) Hooks.on("createActor", async (actor, options, userId) => {
+	if (!featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) return;
 	if (game.user.id !== userId) return;
 
 	// If this is a newly created party, set the party sheet as default
@@ -780,128 +927,220 @@ Hooks.on("createActor", async (actor, options, userId) => {
 });
 
 // Inject Renown into player sheets
-Hooks.on("renderPlayerSheetSD", async (app, html, data) => {
+if (anyFeatureEnabled(
+	FEATURE_IDS.ENHANCED_HEADER,
+	FEATURE_IDS.ENHANCED_TABS,
+	FEATURE_IDS.SKILLS_BOX,
+	FEATURE_IDS.MAGIC_ITEM_SHEETS,
+	FEATURE_IDS.GEM_ENHANCEMENTS,
+	FEATURE_IDS.CONTAINERS,
+	FEATURE_IDS.MULTI_SELECT,
+	FEATURE_IDS.TRADING,
+	FEATURE_IDS.ADD_COINS,
+	FEATURE_IDS.INVENTORY_STYLING,
+	FEATURE_IDS.SHEET_STYLING,
+	FEATURE_IDS.JOURNAL_NOTES,
+	FEATURE_IDS.QUICK_CONDITIONS,
+	FEATURE_IDS.ITEM_MACROS
+)) Hooks.on("renderPlayerSheetSD", async (app, html, data) => {
 	if (app.actor?.type !== "Player") return;
 
-	await injectEnhancedHeader(app, html, app.actor);
-	attachNativeHpQuickControls(app, html, app.actor);
-	enhanceDetailsTab(app, html, app.actor);
-	enhanceAbilitiesTab(app, html, app.actor);
-	injectSkillsBox(html, app.actor);
-	enhanceSpellsTab(app, html, app.actor);
-	await injectStaffSpellsUI(app, html, data);
-	enhanceTalentsTab(app, html, app.actor);
-	enhanceInventoryTab(app, html, app.actor);
-	enhanceGemInventory(app, html, app.actor);
-	injectWeaponSpellRechargeButtons(app, html, app.actor);
-	enhanceEffectsTab(app, html, app.actor);
-	attachContainerContentsToActorSheet(app, html);
-	enhanceInventoryWithDeleteAndMultiSelect(app, html);
-	injectTradeButton(html, app.actor);
-	injectAddCoinsButton(html, app.actor);
-	applyInventoryStylesToSheet(html, app.actor);
-	injectHeaderCustomization(app, html, app.actor);
-	await injectJournalNotes(app, html, app.actor);
-	await injectConditionsToggles(app, html, app.actor);
+	if (featureEnabled(FEATURE_IDS.ENHANCED_HEADER)) {
+		await injectEnhancedHeader(app, html, app.actor);
+		attachNativeHpQuickControls(app, html, app.actor);
+	}
+	if (featureEnabled(FEATURE_IDS.ENHANCED_TABS)) {
+		enhanceDetailsTab(app, html, app.actor);
+		enhanceAbilitiesTab(app, html, app.actor);
+		enhanceSpellsTab(app, html, app.actor);
+		enhanceTalentsTab(app, html, app.actor);
+		enhanceInventoryTab(app, html, app.actor);
+		enhanceEffectsTab(app, html, app.actor);
+	}
+	if (featureEnabled(FEATURE_IDS.SKILLS_BOX)) injectSkillsBox(html, app.actor);
+	if (featureEnabled(FEATURE_IDS.MAGIC_ITEM_SHEETS)) {
+		await injectStaffSpellsUI(app, html, data);
+		injectWeaponSpellRechargeButtons(app, html, app.actor);
+	}
+	if (featureEnabled(FEATURE_IDS.GEM_ENHANCEMENTS)) {
+		enhanceGemInventory(app, html, app.actor);
+	}
+	if (featureEnabled(FEATURE_IDS.CONTAINERS)) attachContainerContentsToActorSheet(app, html);
+	if (featureEnabled(FEATURE_IDS.MULTI_SELECT)) {
+		enhanceInventoryWithDeleteAndMultiSelect(app, html);
+	}
+	if (featureEnabled(FEATURE_IDS.TRADING)) injectTradeButton(html, app.actor);
+	if (featureEnabled(FEATURE_IDS.ADD_COINS)) injectAddCoinsButton(html, app.actor);
+	if (featureEnabled(FEATURE_IDS.INVENTORY_STYLING)) {
+		applyInventoryStylesToSheet(html, app.actor);
+	}
+	if (featureEnabled(FEATURE_IDS.SHEET_STYLING)) {
+		injectHeaderCustomization(app, html, app.actor);
+	}
+	if (featureEnabled(FEATURE_IDS.JOURNAL_NOTES)) {
+		await injectJournalNotes(app, html, app.actor);
+	}
+	if (featureEnabled(FEATURE_IDS.QUICK_CONDITIONS)) {
+		await injectConditionsToggles(app, html, app.actor);
+	}
 	// if (!game.settings.get(MODULE_ID, "tray.enabled")) {
 	// 	await injectCarousingButton(app, html, app.actor);
 	// }
-	enableItemChatIcon(app, html);
+	if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) enableItemChatIcon(app, html);
 });
 
 // applyNpcPlayerTheme moved to npc/npc-sheet-inventory.mjs
 
 // Inject Inventory tab into NPC sheets (but not Party sheets)
-Hooks.on("renderNpcSheetSD", async (app, html, data) => {
+if (anyFeatureEnabled(
+	FEATURE_IDS.SHEET_STYLING,
+	FEATURE_IDS.ENHANCED_HEADER,
+	FEATURE_IDS.NPC_INVENTORY,
+	FEATURE_IDS.CONTAINERS,
+	FEATURE_IDS.INVENTORY_STYLING,
+	FEATURE_IDS.ITEM_MACROS,
+	FEATURE_IDS.QUICK_CONDITIONS
+)) Hooks.on("renderNpcSheetSD", async (app, html, data) => {
 	if (app.actor?.type !== "NPC") return;
 
 	// Don't inject into Party actors (they have their own inventory)
 	if (isPartyActor(app.actor)) return;
 
-	applyNpcPlayerTheme(app, html, app.actor);
-	attachNativeHpQuickControls(app, html, app.actor);
+	if (featureEnabled(FEATURE_IDS.SHEET_STYLING)) applyNpcPlayerTheme(app, html, app.actor);
+	if (featureEnabled(FEATURE_IDS.ENHANCED_HEADER)) {
+		attachNativeHpQuickControls(app, html, app.actor);
+	}
 
-	// Check if NPC inventory is enabled
-	if (!game.settings.get(MODULE_ID, "enableNpcInventory")) return;
-
-	await injectNpcInventoryTab(app, html, data);
-	patchNpcSheetForItemDrops(app);
-	attachContainerContentsToActorSheet(app, html);
-	applyInventoryStylesToSheet(html, app.actor);
-	enableItemChatIcon(app, html);
-	await injectConditionsToggles(app, html, app.actor);
+	if (
+		featureEnabled(FEATURE_IDS.NPC_INVENTORY)
+		&& game.settings.get(MODULE_ID, "enableNpcInventory")
+	) {
+		await injectNpcInventoryTab(app, html, data);
+		patchNpcSheetForItemDrops(app);
+	}
+	if (featureEnabled(FEATURE_IDS.CONTAINERS)) attachContainerContentsToActorSheet(app, html);
+	if (featureEnabled(FEATURE_IDS.INVENTORY_STYLING)) {
+		applyInventoryStylesToSheet(html, app.actor);
+	}
+	if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) enableItemChatIcon(app, html);
+	if (featureEnabled(FEATURE_IDS.QUICK_CONDITIONS)) {
+		await injectConditionsToggles(app, html, app.actor);
+	}
 });
 
 // Inject Creature Type dropdown into NPC sheets
-Hooks.on("renderNpcSheetSD", (app, html, data) => {
+if (featureEnabled(FEATURE_IDS.NPC_CREATURE_TYPES)) Hooks.on("renderNpcSheetSD", (app, html, data) => {
+	if (!featureEnabled(FEATURE_IDS.NPC_CREATURE_TYPES)) return;
 	if (app.actor?.type !== "NPC") return;
 
 	// Don't inject into Party actors
 	if (isPartyActor(app.actor)) return;
 
-	applyNpcPlayerTheme(app, html, app.actor);
-	attachNativeHpQuickControls(app, html, app.actor);
+	if (featureEnabled(FEATURE_IDS.SHEET_STYLING)) applyNpcPlayerTheme(app, html, app.actor);
+	if (featureEnabled(FEATURE_IDS.ENHANCED_HEADER)) {
+		attachNativeHpQuickControls(app, html, app.actor);
+	}
 
 	// Inject the creature type dropdown (before ATTACKS section)
 	injectNpcCreatureType(app, html, app.actor);
 });
 
 // Apply inventory styles to Party sheets
-Hooks.on("renderActorSheet", (app, html, data) => {
+if (featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) Hooks.on("renderActorSheet", (app, html, data) => {
+	if (!featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) return;
 	// Only handle Party sheets
 	if (!(app instanceof PartySheetSD)) return;
 	if (!isPartyActor(app.actor)) return;
 
-	applyInventoryStylesToSheet(html, app.actor);
-	injectPartyHeaderCustomization(app, html, app.actor);
+	if (featureEnabled(FEATURE_IDS.INVENTORY_STYLING)) {
+		applyInventoryStylesToSheet(html, app.actor);
+	}
+	if (featureEnabled(FEATURE_IDS.SHEET_STYLING)) {
+		injectPartyHeaderCustomization(app, html, app.actor);
+	}
 });
 
 // Weapon ("staff") spells live in `item-sheets/staff-spells.mjs`. This call sits
 // where that module's `updateItem` hook did, so its place in the registration
 // order is unchanged.
-registerStaffSpellHooks();
+if (featureEnabled(FEATURE_IDS.MAGIC_ITEM_SHEETS)) registerStaffSpellHooks();
 
 
 // Inject container UI into Basic item sheets
-Hooks.on("renderItemSheet", (app, html, data) => {
+if (anyFeatureEnabled(
+	FEATURE_IDS.CONTAINERS,
+	FEATURE_IDS.AMMUNITION,
+	FEATURE_IDS.SPELL_ACTIVITY,
+	FEATURE_IDS.SPELL_CONFIGS,
+	FEATURE_IDS.TEMPLATE_EFFECTS,
+	FEATURE_IDS.AURAS,
+	FEATURE_IDS.MAGIC_ITEM_SHEETS,
+	FEATURE_IDS.ITEM_MACROS,
+	FEATURE_IDS.ANIMATION_ITEM_OVERRIDES,
+	FEATURE_IDS.WEAPON_BONUSES,
+	FEATURE_IDS.DAMAGE_TYPES,
+	FEATURE_IDS.WEAPON_SPRITES,
+	FEATURE_IDS.UNIDENTIFIED_ITEMS
+)) Hooks.on("renderItemSheet", (app, html, data) => {
 	try {
-		injectBasicContainerUI(app, html);
-		injectAmmunitionBonuses(app, html);
+		if (featureEnabled(FEATURE_IDS.CONTAINERS)) injectBasicContainerUI(app, html);
+		if (featureEnabled(FEATURE_IDS.AMMUNITION)) injectAmmunitionBonuses(app, html);
 	}
 	catch(err) {
 		console.error(`${MODULE_ID} | Failed to inject Basic item container UI`, err);
 	}
 
 	try {
-		enhanceSpellSheet(app, html);
+		if (anyFeatureEnabled(
+			FEATURE_IDS.SPELL_ACTIVITY,
+			FEATURE_IDS.SPELL_CONFIGS,
+			FEATURE_IDS.TEMPLATE_EFFECTS,
+			FEATURE_IDS.AURAS,
+			FEATURE_IDS.ITEM_MACROS,
+			FEATURE_IDS.ANIMATION_ITEM_OVERRIDES
+		)) enhanceSpellSheet(app, html);
 	}
 	catch(err) {
 		console.error(`${MODULE_ID} | Failed to enhance spell sheet`, err);
 	}
 
 	try {
-		injectSpellAlignmentField(app, html);
+		if (featureEnabled(FEATURE_IDS.SPELL_ACTIVITY)) injectSpellAlignmentField(app, html);
 	}
 	catch(err) {
 		console.error(`${MODULE_ID} | Failed to inject spell alignment field`, err);
 	}
 
 	try {
-		enhancePotionSheet(app, html);
+		if (anyFeatureEnabled(
+			FEATURE_IDS.MAGIC_ITEM_SHEETS,
+			FEATURE_IDS.SPELL_CONFIGS,
+			FEATURE_IDS.ITEM_MACROS
+		)) enhancePotionSheet(app, html);
 	}
 	catch(err) {
 		console.error(`${MODULE_ID} | Failed to enhance potion sheet`, err);
 	}
 
 	try {
-		enhanceScrollSheet(app, html);
+		if (anyFeatureEnabled(
+			FEATURE_IDS.MAGIC_ITEM_SHEETS,
+			FEATURE_IDS.SPELL_CONFIGS,
+			FEATURE_IDS.ITEM_MACROS,
+			FEATURE_IDS.ANIMATION_ITEM_OVERRIDES
+		)) enhanceScrollSheet(app, html);
 	}
 	catch(err) {
 		console.error(`${MODULE_ID} | Failed to enhance scroll sheet`, err);
 	}
 
 	try {
-		enhanceWandSheet(app, html);
+		if (anyFeatureEnabled(
+			FEATURE_IDS.MAGIC_ITEM_SHEETS,
+			FEATURE_IDS.SPELL_CONFIGS,
+			FEATURE_IDS.ITEM_MACROS,
+			FEATURE_IDS.ANIMATION_ITEM_OVERRIDES
+		)) enhanceWandSheet(app, html);
 	}
 	catch(err) {
 		console.error(`${MODULE_ID} | Failed to enhance wand sheet`, err);
@@ -911,11 +1150,17 @@ Hooks.on("renderItemSheet", (app, html, data) => {
 	try {
 		const item = app.item || app.document;
 		if (item?.type === "Weapon") {
-			injectWeaponBonusTab(app, html, item);
-			injectWeaponDamageTypeDropdown(app, html, item);
-			injectStaffSpellButton(app, html, item);
+			if (featureEnabled(FEATURE_IDS.WEAPON_BONUSES)) {
+				injectWeaponBonusTab(app, html, item);
+			}
+			if (featureEnabled(FEATURE_IDS.DAMAGE_TYPES)) {
+				injectWeaponDamageTypeDropdown(app, html, item);
+			}
+			if (featureEnabled(FEATURE_IDS.MAGIC_ITEM_SHEETS)) {
+				injectStaffSpellButton(app, html, item);
+			}
 		}
-		else if (item?.type === "Armor") {
+		else if (featureEnabled(FEATURE_IDS.WEAPON_SPRITES) && item?.type === "Armor") {
 			// For shields (Armor), just inject the animation button
 			injectWeaponAnimationButton(html, item);
 		}
@@ -928,7 +1173,10 @@ Hooks.on("renderItemSheet", (app, html, data) => {
 	// Hide already-rendered Effects tab elements for non-GM players viewing unidentified items
 	try {
 		const item = app?.item;
-		if (item && isUnidentified(item) && !game.user?.isGM) {
+		if (
+			featureEnabled(FEATURE_IDS.UNIDENTIFIED_ITEMS)
+			&& item && isUnidentified(item) && !game.user?.isGM
+		) {
 			html.find('a[data-tab="tab-effects"]').remove();
 			html.find('.tab[data-tab="tab-effects"]').remove();
 		}
@@ -939,7 +1187,7 @@ Hooks.on("renderItemSheet", (app, html, data) => {
 
 	// Enhance Gem item sheet with quantity field
 	try {
-		enhanceGemSheet(app, html);
+		if (featureEnabled(FEATURE_IDS.GEM_ENHANCEMENTS)) enhanceGemSheet(app, html);
 	}
 	catch(err) {
 		console.error(`${MODULE_ID} | Failed to enhance gem sheet`, err);
@@ -947,10 +1195,16 @@ Hooks.on("renderItemSheet", (app, html, data) => {
 });
 
 // V1/V2 header button bridge for SDX's AppV2 item sheets
-registerAppV2HeaderBridge();
+if (anyFeatureEnabled(
+	FEATURE_IDS.MAGIC_ITEM_SHEETS,
+	FEATURE_IDS.NPC_CUSTOM_SHEETS,
+	FEATURE_IDS.BACKGROUND_ADVANCEMENT,
+	FEATURE_IDS.ITEM_MACROS
+)) registerAppV2HeaderBridge();
 
 // Convert string values to booleans for spell damage flags
-Hooks.on("preUpdateItem", (item, updateData, options, userId) => {
+if (featureEnabled(FEATURE_IDS.SPELL_ACTIVITY)) Hooks.on("preUpdateItem", (item, updateData, options, userId) => {
+	if (!featureEnabled(FEATURE_IDS.SPELL_ACTIVITY)) return;
 	// Check if we're updating spell damage applyToTarget
 	const applyToTargetPath = `flags.${MODULE_ID}.spellDamage.applyToTarget`;
 	if (foundry.utils.hasProperty(updateData, applyToTargetPath)) {
@@ -980,18 +1234,24 @@ Hooks.on("preUpdateItem", (item, updateData, options, userId) => {
 
 
 // Chat-card target stash and damage-card injection; registered here to keep hook order
-registerChatCardHooks();
+if (featureEnabled(FEATURE_IDS.DAMAGE_CARDS)) registerChatCardHooks();
 
 // The unidentified magicItem context wrap moved to
 // inventory/UnidentifiedDisplaySD.mjs, beside the GM display it mirrors.
-initUnidentifiedSheetContext();
+if (featureEnabled(FEATURE_IDS.UNIDENTIFIED_ITEMS)) initUnidentifiedSheetContext();
 
 // Shadowdark's createItemFromSpell strips module flags; the wrap that puts
 // them back lives in items/item-flag-preservation.mjs.
-registerSpellItemFlagPreservation();
+if (anyFeatureEnabled(
+	FEATURE_IDS.SPELL_ACTIVITY,
+	FEATURE_IDS.UNIDENTIFIED_ITEMS,
+	FEATURE_IDS.ITEM_MACROS,
+	FEATURE_IDS.TEMPLATE_EFFECTS,
+	FEATURE_IDS.AURAS
+)) registerSpellItemFlagPreservation();
 
 // Container hooks live in inventory/containers.mjs; registered here to keep source order.
-registerContainerHooks();
+if (featureEnabled(FEATURE_IDS.CONTAINERS)) registerContainerHooks();
 
 
 // The two container-deletion hooks moved into inventory/containers.mjs and
@@ -999,7 +1259,8 @@ registerContainerHooks();
 // original order: updateItem, createItem, preDeleteItem, deleteItem.
 
 // Handle updates when the sheet is submitted
-Hooks.on("preUpdateActor", (actor, changes, options, userId) => {
+if (featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) Hooks.on("preUpdateActor", (actor, changes, options, userId) => {
+	if (!featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) return;
 	// Validate NPC coins
 	if (changes.flags?.[MODULE_ID]?.coins) {
 		const coins = changes.flags[MODULE_ID].coins;
@@ -1010,16 +1271,16 @@ Hooks.on("preUpdateActor", (actor, changes, options, userId) => {
 });
 
 // Party sheets re-render when a member changes; registered here to keep hook order
-registerPartySheetRerenderHooks();
+if (featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) registerPartySheetRerenderHooks();
 
 // Background advancement grants on background-set and level-up; registered here to keep hook order
-registerBackgroundAdvancementHooks();
+if (featureEnabled(FEATURE_IDS.BACKGROUND_ADVANCEMENT)) registerBackgroundAdvancementHooks();
 
 // Freya's Omen reroll button on critically-failed spell cards; registered here to keep hook order
-registerFreyasOmenHooks();
+if (featureEnabled(FEATURE_IDS.FREYAS_OMEN)) registerFreyasOmenHooks();
 
 // Party membership cleanup on actor delete; registered here to keep hook order
-registerPartyCleanupHooks();
+if (featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) registerPartyCleanupHooks();
 
 // Condition-toggles refresh hooks were removed in 5.2.5 (issue #56): they
 // were a permanent no-op (toggles live in the BODY modal, never the sheet),
@@ -1038,7 +1299,7 @@ registerPartyCleanupHooks();
 
 // The two ammunition-consumption patches moved to
 // inventory/ammunition-bonuses.mjs, beside the sheet UI they enable.
-registerAmmunitionPatches();
+if (featureEnabled(FEATURE_IDS.AMMUNITION)) registerAmmunitionPatches();
 
 // ============================================
 // AMMUNITION BONUS UI INJECTION
@@ -1050,7 +1311,7 @@ registerAmmunitionPatches();
 // ============================================
 // Moved to effects/predefined-effects.mjs. Called here so its init hook keeps
 // its position relative to every other registration.
-registerPredefinedEffects();
+if (featureEnabled(FEATURE_IDS.PREDEFINED_EFFECTS)) registerPredefinedEffects();
 
 // The "SILENCED EFFECT - PREVENT SPELL CASTING" ready hook that stood here was
 // an empty husk and has been deleted. Every patch it once installed had already
@@ -1066,7 +1327,7 @@ registerPredefinedEffects();
 
 
 // Invisibility hooks live in ./effects/invisibility.mjs; registered here to keep source order.
-registerInvisibilityHooks();
+if (featureEnabled(FEATURE_IDS.INVISIBILITY)) registerInvisibilityHooks();
 
 
 // ============================================
@@ -1110,18 +1371,43 @@ Hooks.on("quenchReady", async quench => {
 // A socket handler is a promise made to other clients: a player who acts in
 // that window gets "No socket handler with the name ... has been registered",
 // not a retry. Registration therefore has to be synchronous with `ready`.
-Hooks.once("ready", () => {
-	const macroExecuteSocket = initMacroExecuteSocket();
+if (anyFeatureEnabled(
+	FEATURE_IDS.ITEM_MACROS,
+	FEATURE_IDS.SPELL_ACTIVITY,
+	FEATURE_IDS.DAMAGE_CARDS,
+	FEATURE_IDS.CASTING_BLOCKERS,
+	FEATURE_IDS.DAMAGE_TYPES,
+	FEATURE_IDS.BREAK_ON_DAMAGE,
+	FEATURE_IDS.PREDEFINED_EFFECTS,
+	FEATURE_IDS.FOCUS_TRACKER,
+	FEATURE_IDS.AURAS,
+	FEATURE_IDS.TRADING,
+	FEATURE_IDS.PLAYER_TRANSFERS
+)) Hooks.once("ready", () => {
+	const macroExecuteSocket = anyFeatureEnabled(
+		FEATURE_IDS.ITEM_MACROS,
+		FEATURE_IDS.SPELL_ACTIVITY,
+		FEATURE_IDS.PARTY_MANAGEMENT,
+		FEATURE_IDS.TEMPLATE_EFFECTS
+	) ? initMacroExecuteSocket() : null;
 	if (macroExecuteSocket) {
 		// Each feature registers its own handlers on the shared socket. They are
 		// called here, in their original order, so this hook is the single place
 		// socket registration order is decided — and the single place that has to
 		// stay free of awaits.
-		registerEffectMacroSocket(macroExecuteSocket);
-		registerItemMacroSocket(macroExecuteSocket);
-		registerPartyTravelSocket(macroExecuteSocket);
-		registerTemplateTargetSyncSocket(macroExecuteSocket);
-		registerPartyStatsSocket(macroExecuteSocket);
+		if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) {
+			registerEffectMacroSocket(macroExecuteSocket);
+			registerItemMacroSocket(macroExecuteSocket);
+		}
+		if (featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) {
+			registerPartyTravelSocket(macroExecuteSocket);
+		}
+		if (featureEnabled(FEATURE_IDS.TEMPLATE_EFFECTS)) {
+			registerTemplateTargetSyncSocket(macroExecuteSocket);
+		}
+		if (featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) {
+			registerPartyStatsSocket(macroExecuteSocket);
+		}
 
 	}
 });
@@ -1152,13 +1438,13 @@ Hooks.once("ready", async () => {
 	// The legacy itemacro migration lives with the flag it writes, in
 	// item-macros/item-macro-engine.mjs. Awaited here so its position in the
 	// migration sequence is unchanged.
-	await migrateLegacyItemMacros();
+	if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) await migrateLegacyItemMacros();
 });
 
 // Moved to item-macros/effect-trigger-macros.mjs, all five hooks together with
 // the two functions behind them. Called here so their position relative to every
 // other registration is unchanged.
-registerEffectTriggerHooks();
+if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) registerEffectTriggerHooks();
 
 // ============================================
 // NATIVE ITEM MACRO ENGINE
@@ -1184,12 +1470,13 @@ registerEffectTriggerHooks();
 // its runAsGm path calls back through — the executor and its GM-side handler
 // are two ends of one call. Registered here so that registration keeps its
 // position relative to every other registration in this file.
-registerSpellItemMacroSocket();
+if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) registerSpellItemMacroSocket();
 
 /**
  * Hook into chat message rendering to bind Shapechanger revert button
  */
-Hooks.on("renderChatMessageHTML", (message, html, context) => {
+if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) Hooks.on("renderChatMessageHTML", (message, html, context) => {
+	if (!featureEnabled(FEATURE_IDS.ITEM_MACROS)) return;
 	const revertBtn = html.querySelector(".sdx-revert-shape-btn");
 	if (!revertBtn) return;
 
@@ -1225,7 +1512,9 @@ Hooks.on("renderChatMessageHTML", (message, html, context) => {
 // handlers cannot be separated from that state. Called here so all three
 // registrations keep their position: the shapechanger revert-button handler
 // above still registers before them.
-registerChatDispatch();
+if (anyFeatureEnabled(FEATURE_IDS.ITEM_MACROS, FEATURE_IDS.ANIMATION_FX)) {
+	registerChatDispatch();
+}
 
 // ============================================
 // NPC FEATURE ITEM MACRO EXECUTION
@@ -1235,7 +1524,7 @@ registerChatDispatch();
 // registrations keep their position relative to every other registration. A
 // third, empty ready hook ("Redundant handler removed") was dropped rather than
 // carried — an empty callback has no behaviour to preserve.
-registerNPCFeatureItemMacros();
+if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) registerNPCFeatureItemMacros();
 
 
 // ============================================
@@ -1243,7 +1532,7 @@ registerNPCFeatureItemMacros();
 // ============================================
 // Moved to item-macros/class-ability-macros.mjs. Called here so both of its
 // ready registrations keep their position relative to every other registration.
-registerClassAbilityItemMacros();
+if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) registerClassAbilityItemMacros();
 
 
 // ============================================
@@ -1411,6 +1700,18 @@ Hooks.on("setup", () => {
 				buildCellFloorMap: buildCellFloorMap,
 			},
 		};
+
+		const removeApi = (featureId, keys) => {
+			if (featureEnabled(featureId)) return;
+			for (const key of keys) delete module.api[key];
+		};
+		removeApi(FEATURE_IDS.SPELL_ACTIVITY, ["templates", "dev", "applySpellEffect", "startDurationSpell", "endDurationSpell", "registerSpellModification", "getActiveDurationSpells"]);
+		removeApi(FEATURE_IDS.NPC_CREATURE_TYPES, ["getCreatureType", "getMappedCreatureType"]);
+		removeApi(FEATURE_IDS.BREAK_ON_DAMAGE, ["breakEffectOnDamage", "clearBreakOnDamage"]);
+		removeApi(FEATURE_IDS.MEDKIT, ["registerMedkitPack", "unregisterMedkitPack", "getMedkitPacks", "scanWorldForUpdates", "applyWorldMedkitUpdates", "medkitScanWorld"]);
+		removeApi(FEATURE_IDS.QUICK_CONDITIONS, ["showConditionsModal", "getConditionsData"]);
+		removeApi(FEATURE_IDS.DUNGEON_PAINTER, ["generateDungeon", "getGeneratorSettings", "setGeneratorSettings", "generateRandomSeed", "buildHexDungeonScene", "getBiomeDefinitions", "getCustomBiomes", "setCustomBiome", "removeCustomBiome", "resetCustomBiomes", "getEnabledBiomeKeys", "getDisabledBiomes", "setBiomeEnabled", "openBiomeEditor", "placeChangeLevelRegion", "placeDungeonSurface", "placeDungeonDecor", "internal"]);
+		removeApi(FEATURE_IDS.HEX_PAINTER, ["generateHexMap", "clearGeneratedTiles", "buildHexcrawl", "buildHexcrawlFromFile"]);
 	}
 });
 
@@ -1419,7 +1720,8 @@ Hooks.on("setup", () => {
 // ============================================
 
 // Sync party light when an item is updated (e.g., light toggled)
-Hooks.on("updateItem", async (item, changes, options, userId) => {
+if (featureEnabled(FEATURE_IDS.LIGHT_TRACKER)) Hooks.on("updateItem", async (item, changes, options, userId) => {
+	if (!featureEnabled(FEATURE_IDS.LIGHT_TRACKER)) return;
 	// Only care about light-related changes
 	if (!foundry.utils.hasProperty(changes, "system.light")) return;
 
@@ -1437,7 +1739,8 @@ Hooks.on("updateItem", async (item, changes, options, userId) => {
 });
 
 // Sync party light when party members change
-Hooks.on("updateActor", async (actor, changes, options, userId) => {
+if (featureEnabled(FEATURE_IDS.LIGHT_TRACKER)) Hooks.on("updateActor", async (actor, changes, options, userId) => {
+	if (!featureEnabled(FEATURE_IDS.LIGHT_TRACKER)) return;
 	// Check if this actor has party members and they changed
 	if (foundry.utils.hasProperty(changes, `flags.${MODULE_ID}.members`)) {
 		await syncPartyTokenLight(actor);
@@ -1445,7 +1748,8 @@ Hooks.on("updateActor", async (actor, changes, options, userId) => {
 });
 
 // Sync party light when party sheet is rendered (delayed to ensure canvas is ready)
-Hooks.on("renderActorSheet", async (app, html, data) => {
+if (featureEnabled(FEATURE_IDS.LIGHT_TRACKER)) Hooks.on("renderActorSheet", async (app, html, data) => {
+	if (!featureEnabled(FEATURE_IDS.LIGHT_TRACKER)) return;
 	// Check if this actor has party members (indicates it's a party)
 	const hasMembers = app.actor.getFlag(MODULE_ID, "members");
 	if (hasMembers) {
@@ -1457,7 +1761,8 @@ Hooks.on("renderActorSheet", async (app, html, data) => {
 });
 
 // Sync party light when party token is placed on scene
-Hooks.on("createToken", async (tokenDoc, options, userId) => {
+if (featureEnabled(FEATURE_IDS.LIGHT_TRACKER)) Hooks.on("createToken", async (tokenDoc, options, userId) => {
+	if (!featureEnabled(FEATURE_IDS.LIGHT_TRACKER)) return;
 	const actor = tokenDoc.actor;
 	if (!actor) return;
 
@@ -1478,7 +1783,8 @@ Hooks.on("createToken", async (tokenDoc, options, userId) => {
 // injectSpellbookCompendiumFilter moved to character-sheet/spellbook-filter.mjs
 
 // Hook into the SpellBookSD rendering
-Hooks.on("renderApplication", (app, html, data) => {
+if (featureEnabled(FEATURE_IDS.SPELLBOOK_FILTER)) Hooks.on("renderApplication", (app, html, data) => {
+	if (!featureEnabled(FEATURE_IDS.SPELLBOOK_FILTER)) return;
 	// Check if this is the SpellBookSD app
 	if (app.constructor.name === "SpellBookSD") {
 		injectSpellbookCompendiumFilter(app, html);
@@ -1490,23 +1796,32 @@ Hooks.on("renderApplication", (app, html, data) => {
 // ============================================
 
 // Register the DisplayNpcCard enricher
-Hooks.once("ready", () => {
-	initAppearanceSettings();
-	registerDisplayNpcEnricher();
-	registerDisplayTableEnricher();
-	registerDisplayItemEnricher();
+if (anyFeatureEnabled(
+	FEATURE_IDS.SHEET_STYLING,
+	FEATURE_IDS.DISPLAY_CARDS,
+	FEATURE_IDS.EASY_REFERENCE,
+	FEATURE_IDS.TOKEN_TOOLBAR,
+	FEATURE_IDS.TRAY,
+	FEATURE_IDS.SPELLBOOK_FILTER
+)) Hooks.once("ready", () => {
+	if (featureEnabled(FEATURE_IDS.SHEET_STYLING)) initAppearanceSettings();
+	if (featureEnabled(FEATURE_IDS.DISPLAY_CARDS)) {
+		registerDisplayNpcEnricher();
+		registerDisplayTableEnricher();
+		registerDisplayItemEnricher();
+	}
 
 	// Initialize Easy Reference ProseMirror menu
-	initEasyReferenceMenu();
+	if (featureEnabled(FEATURE_IDS.EASY_REFERENCE)) initEasyReferenceMenu();
 
 	// Initialize Token Toolbar
-	initTokenToolbar();
+	if (featureEnabled(FEATURE_IDS.TOKEN_TOOLBAR)) initTokenToolbar();
 
 	// Initialize Character Tray
-	initTray();
+	if (featureEnabled(FEATURE_IDS.TRAY)) initTray();
 
 	// Global listener for @DisplayTable roll buttons
-	$(document).on("click", ".sdx-table-roll-btn", async event => {
+	if (featureEnabled(FEATURE_IDS.DISPLAY_CARDS)) $(document).on("click", ".sdx-table-roll-btn", async event => {
 		event.preventDefault();
 		const container = $(event.currentTarget).closest(".sdx-display-table-container");
 		const uuid = container.data("table-uuid");
@@ -1521,7 +1836,7 @@ Hooks.once("ready", () => {
 
 	// Alignment-based spell filtering joins the compendium filter in
 	// character-sheet/spellbook-filter.mjs — same dialog, same feature.
-	initAlignmentSpellFiltering();
+	if (featureEnabled(FEATURE_IDS.SPELLBOOK_FILTER)) initAlignmentSpellFiltering();
 });
 
 // ===================================================================
@@ -1533,20 +1848,21 @@ Hooks.once("ready", () => {
 // and must keep doing so.
 
 // Active Effect config hooks live in ./effects/effect-config.mjs; registered here to keep source order.
-registerActiveEffectConfigHooks();
+if (featureEnabled(FEATURE_IDS.DAMAGE_TYPES)) registerActiveEffectConfigHooks();
 // The five source-requirement hooks, in their original order, immediately after
 // the config hooks above.
-registerSourceRequirementHooks();
+if (featureEnabled(FEATURE_IDS.SOURCE_REQUIREMENTS)) registerSourceRequirementHooks();
 
 /* ------------------------------------------------ */
 /*  NPC Attack Display Patch                        */
 /* ------------------------------------------------ */
-registerNpcDisplayPatches();
+if (featureEnabled(FEATURE_IDS.NPC_CUSTOM_SHEETS)) registerNpcDisplayPatches();
 
 /**
  * Hook to add item images to NPC Features on the Abilities tab
  */
-Hooks.on("renderNpcSheetSD", (app, html, data) => {
+if (featureEnabled(FEATURE_IDS.NPC_CUSTOM_SHEETS)) Hooks.on("renderNpcSheetSD", (app, html, data) => {
+	if (!featureEnabled(FEATURE_IDS.NPC_CUSTOM_SHEETS)) return;
 	const $html = html instanceof jQuery ? html : $(html);
 
 	// Find all feature items and add images
@@ -1583,7 +1899,8 @@ Hooks.on("renderNpcSheetSD", (app, html, data) => {
 /**
  * Add "Export Scene as ZIP" option to scene context menu
  */
-Hooks.on("getSceneContextOptions", (document, menuItems) => {
+if (featureEnabled(FEATURE_IDS.MAP_GENERATORS)) Hooks.on("getSceneContextOptions", (document, menuItems) => {
+	if (!featureEnabled(FEATURE_IDS.MAP_GENERATORS)) return;
 	menuItems.push({
 		label: "Export Scene as ZIP",
 		icon: '<i class="fas fa-file-archive"></i>',
@@ -1628,30 +1945,31 @@ console.log(`${MODULE_ID} | Scene export context menu registered`);
 // call below runs, so that call site — not this position — fixes its order.
 
 // Initialize carousel drag
-initCarouselDrag();
+if (featureEnabled(FEATURE_IDS.CRAWL_HELPER_DEATH_TIMER)) initCarouselDrag();
 
 // Crawl-helper's player-rolled death timer lives in
 // combat/crawl-helper-death-timer.mjs.
-registerCrawlHelperDeathTimer();
+if (featureEnabled(FEATURE_IDS.CRAWL_HELPER_DEATH_TIMER)) registerCrawlHelperDeathTimer();
 
 // Initialize Placeable Notes
-Hooks.once("ready", () => {
-	initPlaceableNotes();
+if (featureEnabled(FEATURE_IDS.PLACEABLE_NOTES)) Hooks.once("ready", () => {
+	if (featureEnabled(FEATURE_IDS.PLACEABLE_NOTES)) initPlaceableNotes();
 });
 
-Hooks.once("init", () => {
+if (featureEnabled(FEATURE_IDS.NPC_CUSTOM_SHEETS)) {
 	// Register NPC Special Attack Sheet
 	foundry.documents.collections.Items.registerSheet("shadowdark", NPCSpecialAttackSheetSD, {
 		types: ["NPC Special Attack"],
 		makeDefault: true,
 		label: "SDX Special Attack Sheet (V2)",
 	});
-});
+}
 
 // ============================================
 // GEM BAG ENHANCEMENT HOOK
 // ============================================
-Hooks.on("renderApplication", (app, html, data) => {
+if (featureEnabled(FEATURE_IDS.GEM_ENHANCEMENTS)) Hooks.on("renderApplication", (app, html, data) => {
+	if (!featureEnabled(FEATURE_IDS.GEM_ENHANCEMENTS)) return;
 	try {
 		enhanceGemBag(app, html);
 	}
@@ -1660,4 +1978,5 @@ Hooks.on("renderApplication", (app, html, data) => {
 	}
 });
 
-
+});
+/* eslint-enable indent */

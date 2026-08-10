@@ -40,6 +40,7 @@ import {
 	showShapechangerDialog,
 	applyShapechanger,
 	revertShapechanger,
+	registerShapechangerHooks,
 } from "../macros/shapechanger.mjs";
 
 // Re-export all functions for backward compatibility
@@ -69,10 +70,15 @@ export {
 // ============================================
 // API REGISTRATION
 // ============================================
-// Register API functions immediately when module loads
-Hooks.once("ready", () => {
-	const module = game.modules.get(MODULE_ID);
-	if (module) {
+let apiHookRegistered = false;
+
+export function registerSpellMacrosApi() {
+	if (apiHookRegistered) return;
+	apiHookRegistered = true;
+	registerShapechangerHooks();
+	Hooks.once("ready", () => {
+		const module = game.modules.get(MODULE_ID);
+		if (!module) return;
 		module.api = module.api || {};
 		// Identify spell
 		module.api.isUnidentified = isUnidentified;
@@ -95,5 +101,5 @@ Hooks.once("ready", () => {
 		module.api.applyShapechanger = applyShapechanger;
 		module.api.revertShapechanger = revertShapechanger;
 		console.log(`${MODULE_ID} | Spell Macros API registered`);
-	}
-});
+	});
+}

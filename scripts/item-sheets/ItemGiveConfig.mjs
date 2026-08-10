@@ -1,7 +1,10 @@
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
+
 /**
  * Generate the Give Item configuration HTML for the spell Activity tab
  */
 export function generateItemGiveConfigHTML(MODULE_ID, flags, itemsList, itemProfilesArray) {
+	if (!isFeatureEnabled(FEATURE_IDS.SPELL_CONFIGS)) return "";
 	return `
 		<div class="SD-box sdx-item-give-box grid-colspan-3">
 			<div class="header light">

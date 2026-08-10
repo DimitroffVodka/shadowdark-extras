@@ -978,52 +978,57 @@ export async function generateSettlementHtml(typeKey, hexLabel, hexKey) {
 }
 
 // Global click listener for rolling settlement events
-Hooks.on("ready", () => {
-	document.addEventListener("click", async event => {
-		const button = event.target.closest(".sdx-roll-settlement-event");
-		if (!button) return;
+let settlementHooksRegistered = false;
 
-		event.preventDefault();
+export function registerSettlementHooks() {
+	if (settlementHooksRegistered) return;
+	settlementHooksRegistered = true;
+	Hooks.on("ready", () => {
+		document.addEventListener("click", async event => {
+			const button = event.target.closest(".sdx-roll-settlement-event");
+			if (!button) return;
 
-		const type = button.dataset.settlementType;
-		const name = button.dataset.settlementName;
+			event.preventDefault();
 
-		try {
-			const eventData = await loadSettlementEventData();
-			const pool = eventData[type] || eventData.generic || [];
-			if (pool.length === 0) {
-				ui.notifications.warn(`SDX | No events found for settlement type: ${type}`);
-				return;
-			}
+			const type = button.dataset.settlementType;
+			const name = button.dataset.settlementName;
 
-			const randomEvent = pool[Math.floor(Math.random() * pool.length)];
+			try {
+				const eventData = await loadSettlementEventData();
+				const pool = eventData[type] || eventData.generic || [];
+				if (pool.length === 0) {
+					ui.notifications.warn(`SDX | No events found for settlement type: ${type}`);
+					return;
+				}
 
-			// Create chat message
-			const content = `
-				<div class="shadowdark-chat-card">
-					<header class="card-header">
-						<img src="icons/svg/dice-target.svg" width="36" height="36" />
-						<h3>Settlement Event: ${name}</h3>
-					</header>
-					<div class="card-content">
-						<p>${randomEvent}</p>
+				const randomEvent = pool[Math.floor(Math.random() * pool.length)];
+
+				// Create chat message
+				const content = `
+					<div class="shadowdark-chat-card">
+						<header class="card-header">
+							<img src="icons/svg/dice-target.svg" width="36" height="36" />
+							<h3>Settlement Event: ${name}</h3>
+						</header>
+						<div class="card-content">
+							<p>${randomEvent}</p>
+						</div>
+						<footer class="card-footer">
+							<span>${type.charAt(0).toUpperCase() + type.slice(1)} Event</span>
+						</footer>
 					</div>
-					<footer class="card-footer">
-						<span>${type.charAt(0).toUpperCase() + type.slice(1)} Event</span>
-					</footer>
-				</div>
-			`;
+				`;
 
-			await ChatMessage.create({
-				user: game.user.id,
-				speaker: { alias: "Settlement Guide" },
-				content: content,
-				whisper: game.users.filter(u => u.isGM).map(u => u.id),
-			});
-
-		}
-		catch(err) {
-			console.error("SDX | Failed to roll settlement event:", err);
-		}
+				await ChatMessage.create({
+					user: game.user.id,
+					speaker: { alias: "Settlement Guide" },
+					content: content,
+					whisper: game.users.filter(u => u.isGM).map(u => u.id),
+				});
+			}
+			catch(err) {
+				console.error("SDX | Failed to roll settlement event:", err);
+			}
+		});
 	});
-});
+}

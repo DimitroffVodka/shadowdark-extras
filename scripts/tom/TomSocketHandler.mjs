@@ -1,6 +1,7 @@
 import { TOM_CONFIG as CONFIG } from "./TomConfig.mjs";
 import { TomPlayerView } from "../tom/TomPlayerView.mjs";
 import { TomStore as Store } from "./TomStore.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 export class TomSocketHandler {
 	static initialize() {
@@ -84,8 +85,8 @@ export class TomSocketHandler {
 
 		Store.setActiveScene(sceneId);
 		TomPlayerView.activate(sceneId, inAnimation || "fade");
-		game.user.isGM && this._updateTraySceneSwitcher(sceneId);
-		game.user.isGM && this._showSceneNavBar(sceneId);
+		if (game.user.isGM) this._updateTraySceneSwitcher(sceneId);
+		if (game.user.isGM) this._showSceneNavBar(sceneId);
 	}
 
 	static async _onStopBroadcast(data = {}) {
@@ -94,8 +95,8 @@ export class TomSocketHandler {
 		Store.clearActiveScene();
 		this._removeAllOverlays();
 		Store.currentOverlays = [];
-		game.user.isGM && this._hideTraySceneSwitcher();
-		game.user.isGM && this._hideSceneNavBar();
+		if (game.user.isGM) this._hideTraySceneSwitcher();
+		if (game.user.isGM) this._hideSceneNavBar();
 	}
 
 
@@ -117,12 +118,14 @@ export class TomSocketHandler {
 	}
 
 	static _showSceneNavBar(sceneId) {
+		if (!isFeatureEnabled(FEATURE_IDS.TOM_SCENE_NAVIGATION)) return;
 		import("../scene/SceneNavBar.mjs").then(({ SceneNavBar }) => {
 			SceneNavBar.show(sceneId);
 		});
 	}
 
 	static _hideSceneNavBar() {
+		if (!isFeatureEnabled(FEATURE_IDS.TOM_SCENE_NAVIGATION)) return;
 		import("../scene/SceneNavBar.mjs").then(({ SceneNavBar }) => {
 			SceneNavBar.hide();
 		});
@@ -343,6 +346,7 @@ export class TomSocketHandler {
 
 	/** Add a single overlay (idempotent). Used for additive clicks. */
 	static _onOverlaySet(data) {
+		if (!isFeatureEnabled(FEATURE_IDS.TOM_VIDEO_OVERLAYS)) return;
 		const { overlayPath } = data;
 		if (!overlayPath) return;
 		if (Store.currentOverlays.includes(overlayPath)) return;
@@ -354,6 +358,7 @@ export class TomSocketHandler {
 
 	/** Toggle a single overlay on/off. */
 	static _onOverlayToggle(data) {
+		if (!isFeatureEnabled(FEATURE_IDS.TOM_VIDEO_OVERLAYS)) return;
 		const { overlayPath } = data;
 		if (!overlayPath) return;
 		if (Store.currentOverlays.includes(overlayPath)) {
@@ -369,6 +374,7 @@ export class TomSocketHandler {
 
 	/** Clear one overlay (data.overlayPath) or all (no path). */
 	static _onOverlayClear(data) {
+		if (!isFeatureEnabled(FEATURE_IDS.TOM_VIDEO_OVERLAYS)) return;
 		const { overlayPath } = data ?? {};
 		if (overlayPath) {
 			this._removeOverlayElementForPath(overlayPath);
@@ -483,7 +489,7 @@ export class TomSocketHandler {
 	}
 
 	static emitOverlaySet(overlayPath) {
-		if (!game.user.isGM) return;
+		if (!game.user.isGM || !isFeatureEnabled(FEATURE_IDS.TOM_VIDEO_OVERLAYS)) return;
 
 		console.log(`${CONFIG.MODULE_NAME} | Socket Message Emitted: overlay-set`, { overlayPath });
 		game.socket.emit(CONFIG.SOCKET_NAME, {
@@ -495,7 +501,7 @@ export class TomSocketHandler {
 	}
 
 	static emitOverlayToggle(overlayPath) {
-		if (!game.user.isGM) return;
+		if (!game.user.isGM || !isFeatureEnabled(FEATURE_IDS.TOM_VIDEO_OVERLAYS)) return;
 
 		console.log(`${CONFIG.MODULE_NAME} | Socket Message Emitted: overlay-toggle`, { overlayPath });
 		game.socket.emit(CONFIG.SOCKET_NAME, {
@@ -507,7 +513,7 @@ export class TomSocketHandler {
 	}
 
 	static emitOverlayClear(overlayPath = null) {
-		if (!game.user.isGM) return;
+		if (!game.user.isGM || !isFeatureEnabled(FEATURE_IDS.TOM_VIDEO_OVERLAYS)) return;
 
 		if (overlayPath) {
 			console.log(`${CONFIG.MODULE_NAME} | Socket Message Emitted: overlay-clear`, { overlayPath });

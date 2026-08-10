@@ -21,13 +21,18 @@ import { DEFAULT_INVENTORY_STYLES, InventoryStylesApp } from "../inventory/inven
 import { DEFAULT_LIGHT_TEMPLATES, LightTemplateEditor } from "../canvas/light-templates.mjs";
 import { MedkitWorldScanMenu } from "../combat/MedkitSD.mjs";
 import { CreatureTypesApp } from "../npc/CreatureTypesApp.mjs";
-import { applySheetDecorationStyles } from "../character-sheet/sheet-decoration.mjs";
+import { applySheetDecorationStyles as applyUnconditionalSheetDecorationStyles } from "../character-sheet/sheet-decoration.mjs";
 import { openCarousingTablesEditor } from "../party/carousing/CarousingTablesApp.mjs";
 import { openExpandedCarousingTablesEditor } from "../party/carousing/ExpandedCarousingTablesApp.mjs";
 import SheetEditorConfig from "../character-sheet/SheetEditorConfig.mjs";
 import { MODULE_ID } from "../shared/module-id.mjs";
 import { registerDrawingSettings } from "./drawing-settings.mjs";
+import { FEATURE_IDS, anyFeatureEnabled, isFeatureEnabled } from "./feature-gates.mjs";
 export { setupSettingsOrganization } from "./settings-organization.mjs";
+
+const applySheetDecorationStyles = () => {
+	if (isFeatureEnabled(FEATURE_IDS.SHEET_STYLING)) applyUnconditionalSheetDecorationStyles();
+};
 
 /**
  * Register module settings
@@ -49,22 +54,35 @@ export function registerSettings() {
 	// ═══════════════════════════════════════════════════════════════
 
 	// Combat Settings Menu (registered via registerCombatSettings)
-	registerCombatSettings();
+	if (anyFeatureEnabled(
+		FEATURE_IDS.DAMAGE_CARDS,
+		FEATURE_IDS.SCROLLING_COMBAT_TEXT,
+		FEATURE_IDS.WEAPON_BONUSES
+	)) registerCombatSettings();
 
 	// Effects Settings Menu (registered via registerEffectsSettings)
-	registerEffectsSettings();
+	if (anyFeatureEnabled(
+		FEATURE_IDS.DAMAGE_TYPES,
+		FEATURE_IDS.PREDEFINED_EFFECTS,
+		FEATURE_IDS.TEMPLATE_EFFECTS,
+		FEATURE_IDS.AURAS,
+		FEATURE_IDS.BREAK_ON_DAMAGE,
+		FEATURE_IDS.CASTING_BLOCKERS,
+		FEATURE_IDS.INVISIBILITY,
+		FEATURE_IDS.SOURCE_REQUIREMENTS
+	)) registerEffectsSettings();
 
 	// HP Waves Settings Menu (registered via registerHpWavesSettings)
-	registerHpWavesSettings();
+	if (isFeatureEnabled(FEATURE_IDS.HP_WAVES)) registerHpWavesSettings();
 
 	// Travel Activities Settings Menu (registered via registerTravelActivitiesSettings)
-	registerTravelActivitiesSettings();
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) registerTravelActivitiesSettings();
 
 	// Travel Speeds Settings Menu (registered via registerTravelSpeedsSettings)
-	registerTravelSpeedsSettings();
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) registerTravelSpeedsSettings();
 
 	// Party Weather RollTable Settings Menu
-	registerPartyWeatherSettings();
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) registerPartyWeatherSettings();
 
 	// Inventory Styles data setting (hidden)
 	game.settings.register(MODULE_ID, "itemacroMigrationDone", {
@@ -101,7 +119,7 @@ export function registerSettings() {
 	});
 
 	// Inventory Styles Menu
-	game.settings.registerMenu(MODULE_ID, "inventoryStylesMenu", {
+	if (isFeatureEnabled(FEATURE_IDS.INVENTORY_STYLING)) game.settings.registerMenu(MODULE_ID, "inventoryStylesMenu", {
 		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.inventory_styles.name"),
 		label: game.i18n.localize("SHADOWDARK_EXTRAS.settings.inventory_styles.label"),
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.inventory_styles.hint"),
@@ -111,7 +129,7 @@ export function registerSettings() {
 	});
 
 	// Sheet Style Editor Menu
-	game.settings.registerMenu(MODULE_ID, "sheetEditorMenu", {
+	if (isFeatureEnabled(FEATURE_IDS.SHEET_STYLING)) game.settings.registerMenu(MODULE_ID, "sheetEditorMenu", {
 		name: game.i18n.localize("SHADOWDARK_EXTRAS.sheetEditor.menuName"),
 		label: game.i18n.localize("SHADOWDARK_EXTRAS.sheetEditor.menuLabel"),
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.sheetEditor.menuHint"),
@@ -188,7 +206,7 @@ export function registerSettings() {
 		default: [],
 	});
 
-	game.settings.registerMenu(MODULE_ID, "decorDungeondraftPacksMenu", {
+	if (isFeatureEnabled(FEATURE_IDS.DECOR_PAINTER)) game.settings.registerMenu(MODULE_ID, "decorDungeondraftPacksMenu", {
 		name: "Dungeondraft Decor Packs",
 		label: "Manage Packs",
 		hint: "Import, enable, or hide Dungeondraft object packs in the SDX Decor tray.",
@@ -206,7 +224,7 @@ export function registerSettings() {
 	});
 
 	// Custom Light Templates Menu
-	game.settings.registerMenu(MODULE_ID, "customLightTemplatesMenu", {
+	if (isFeatureEnabled(FEATURE_IDS.LIGHT_TRACKER)) game.settings.registerMenu(MODULE_ID, "customLightTemplatesMenu", {
 		name: "Light Templates",
 		label: "Light Templates",
 		hint: "Configure custom light templates for items.",
@@ -240,7 +258,7 @@ export function registerSettings() {
 
 	// Medkit World Scan — GM-only button that scans every actor and applies
 	// available spell updates in one pass (no per-actor sheet clicking).
-	game.settings.registerMenu(MODULE_ID, "medkitWorldScanMenu", {
+	if (isFeatureEnabled(FEATURE_IDS.MEDKIT)) game.settings.registerMenu(MODULE_ID, "medkitWorldScanMenu", {
 		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.medkit_world_scan.name"),
 		label: game.i18n.localize("SHADOWDARK_EXTRAS.settings.medkit_world_scan.label"),
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.medkit_world_scan.hint"),
@@ -267,6 +285,7 @@ export function registerSettings() {
 		type: Boolean,
 		requiresReload: false,
 		onChange: () => {
+			if (!isFeatureEnabled(FEATURE_IDS.SHEET_STYLING)) return;
 			for (const app of Object.values(ui.windows ?? {})) {
 				if (app.actor?.type === "NPC") app.render(false);
 			}
@@ -815,6 +834,7 @@ export function registerSettings() {
 			"blood": "Blood & Shadow",
 		},
 		onChange: () => {
+			if (!isFeatureEnabled(FEATURE_IDS.QUICK_CONDITIONS)) return;
 			// Re-render all open player sheets
 			const PlayerSheetClass = globalThis.shadowdark?.apps?.PlayerSheetSD;
 			if (PlayerSheetClass) {
@@ -894,6 +914,7 @@ export function registerSettings() {
 			expanded: game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_mode.expanded"),
 		},
 		onChange: () => {
+			if (!isFeatureEnabled(FEATURE_IDS.CAROUSING)) return;
 			// Re-render all open player sheets to update carousing tab
 			Object.values(ui.windows).forEach(app => {
 				if (app.actor?.type === "Player") app.render();
@@ -940,7 +961,7 @@ export function registerSettings() {
 	// Carousing Tables Editor Menu Button
 	// Opens a single editor that hosts both modes via an in-window Original/Expanded
 	// switch. It opens on the mode currently selected in the Carousing Mode setting.
-	game.settings.registerMenu(MODULE_ID, "carousingTablesMenu", {
+	if (isFeatureEnabled(FEATURE_IDS.CAROUSING)) game.settings.registerMenu(MODULE_ID, "carousingTablesMenu", {
 		name: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.manage_tables"),
 		label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.manage_tables"),
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.manage_tables_hint"),
@@ -1000,7 +1021,7 @@ export function registerSettings() {
 	});
 
 	// Menu button to open creature types editor
-	game.settings.registerMenu(MODULE_ID, "manageCreatureTypes", {
+	if (isFeatureEnabled(FEATURE_IDS.NPC_CREATURE_TYPES)) game.settings.registerMenu(MODULE_ID, "manageCreatureTypes", {
 		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.manage_creature_types.name"),
 		label: game.i18n.localize("SHADOWDARK_EXTRAS.settings.manage_creature_types.name"),
 		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.manage_creature_types.hint"),
@@ -1051,6 +1072,7 @@ export function registerSettings() {
 		type: Boolean,
 		requiresReload: false,
 		onChange: () => {
+			if (!isFeatureEnabled(FEATURE_IDS.JOURNAL_PINS)) return;
 			if (canvas?.scene && window.JournalPinRenderer) {
 				const pins = window.JournalPinManager?.list({ sceneId: canvas.scene.id }) || [];
 				window.JournalPinRenderer.loadScenePins(canvas.scene.id, pins);
@@ -1072,6 +1094,7 @@ export function registerSettings() {
 		},
 		requiresReload: false,
 		onChange: () => {
+			if (!isFeatureEnabled(FEATURE_IDS.JOURNAL_PINS)) return;
 			if (canvas?.scene && window.JournalPinRenderer) {
 				const pins = window.JournalPinManager?.list({ sceneId: canvas.scene.id }) || [];
 				window.JournalPinRenderer.loadScenePins(canvas.scene.id, pins);
@@ -1083,13 +1106,13 @@ export function registerSettings() {
 	// ═══════════════════════════════════════════════════════════════
 
 	// Easy Reference ProseMirror menu settings
-	registerEasyReferenceSettings();
+	if (isFeatureEnabled(FEATURE_IDS.EASY_REFERENCE)) registerEasyReferenceSettings();
 
 	// 10. TOKEN TOOLBAR
 	// ═══════════════════════════════════════════════════════════════
 
 	// Token Toolbar settings
-	registerTokenToolbarSettings();
+	if (isFeatureEnabled(FEATURE_IDS.TOKEN_TOOLBAR)) registerTokenToolbarSettings();
 
 	// Character Tray settings
 	registerTraySettings();
@@ -1098,12 +1121,14 @@ export function registerSettings() {
 	// ═══════════════════════════════════════════════════════════════
 
 	// Pin Style Editor settings
-	registerPinStyleSettings();
+	if (isFeatureEnabled(FEATURE_IDS.JOURNAL_PINS)) registerPinStyleSettings();
 
 	// 11b. SDX COORDS
 	// ═══════════════════════════════════════════════════════════════
-	registerSDXCoordsSettings();
-	registerSDXCoordsMenu(SDXCoordsSettingsApp);
+	if (isFeatureEnabled(FEATURE_IDS.COORDINATES)) {
+		registerSDXCoordsSettings();
+		registerSDXCoordsMenu(SDXCoordsSettingsApp);
+	}
 
 	registerDrawingSettings();
 }

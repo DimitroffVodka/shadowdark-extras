@@ -5,6 +5,7 @@ import {
 	getPromptableDamageBonuses,
 	getPromptableHitBonuses,
 } from "./WeaponBonusConfig.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 // Namespaces already wrapped (a frozen target cannot be stamped with a
 // marker property, so the WeakSet carries the idempotency instead).
@@ -81,6 +82,9 @@ function getEdgeToEdgeDistance(token1, token2) {
  * Covers: Target required, Range check, and Ammunition selection.
  */
 export function setupRollAttackPatches() {
+	const damageCardsEnabled = isFeatureEnabled(FEATURE_IDS.DAMAGE_CARDS);
+	const ammunitionEnabled = isFeatureEnabled(FEATURE_IDS.AMMUNITION);
+	if (!damageCardsEnabled && !ammunitionEnabled) return;
 	const patchModel = model => {
 		if (!model?.prototype?.rollAttack) return false;
 		if (model.prototype.__sdxRollAttackPatched) return true;
@@ -119,7 +123,9 @@ export function setupRollAttackPatches() {
 			const itemName = item?.name || "weapon";
 
 			try {
-				const combatSettings = game.settings.get(MODULE_ID, "combatSettings");
+				const combatSettings = damageCardsEnabled
+					? game.settings.get(MODULE_ID, "combatSettings")
+					: {};
 				const requireTarget = combatSettings?.requireTargetForAttack || "none";
 				const checkRange = combatSettings?.checkWeaponRange || "none";
 				const hasTargets = game.user.targets && game.user.targets.size > 0;
@@ -176,7 +182,10 @@ export function setupRollAttackPatches() {
 				}
 
 				// --- AMMUNITION SELECTION ---
-				if (item && item.type === "Weapon" && item.system.type === "ranged" && item.usesAmmunition) {
+				if (
+					ammunitionEnabled && item?.type === "Weapon"
+					&& item.system.type === "ranged" && item.usesAmmunition
+				) {
 					if (options?._sdxAmmoSelected) {
 						return originalRollAttack.call(this, forwardId, options);
 					}
@@ -214,7 +223,7 @@ export function setupRollAttackPatches() {
 	patchModel(CONFIG.Actor.dataModels?.NPC);
 
 	// Patch ammunitionItems to return all ammunition prioritized by key
-	const ActorSD = globalThis.shadowdark?.documents?.ActorSD;
+	const ActorSD = ammunitionEnabled ? globalThis.shadowdark?.documents?.ActorSD : null;
 	if (ActorSD && !ActorSD.prototype.__sdxAmmunitionItemsPatched) {
 		ActorSD.prototype.ammunitionItems = function(key) {
 			const allAmmo = this.items.filter(i => i.system.isAmmunition && i.system.quantity > 0);
@@ -414,6 +423,10 @@ async function applyAmmoBonuses(config) {
  * generator).
  */
 export function setupRollConfigPatches() {
+	const weaponBonusesEnabled = isFeatureEnabled(FEATURE_IDS.WEAPON_BONUSES);
+	const ammunitionEnabled = isFeatureEnabled(FEATURE_IDS.AMMUNITION);
+	const talentAdvantageEnabled = isFeatureEnabled(FEATURE_IDS.ENHANCED_TABS);
+	if (!weaponBonusesEnabled && !ammunitionEnabled && !talentAdvantageEnabled) return;
 	// --- ROLL DIALOG HOOK ---
 	// Async so we can look up the weapon via fromUuid. Runs after rendering
 	// and updates the formula inputs directly. Rebuilds the hit formula from
@@ -445,7 +458,11 @@ export function setupRollConfigPatches() {
 		// died on every actor.update(); the hook survives because it resolves the
 		// actor per render. Dialog-less rolls (skipPrompt) are covered by the
 		// rollFromConfig patch below.
-		let { tooltip: advantageTooltip, weapon } = await applyTalentAdvantage(config, rollActor);
+		let advantageTooltip = "";
+		let weapon = null;
+		if (talentAdvantageEnabled) {
+			({ tooltip: advantageTooltip, weapon } = await applyTalentAdvantage(config, rollActor));
+		}
 
 		// The dialog rendered its advantage radios from the config BEFORE this
 		// hook ran (RollDialogSD._prepareContext builds advantageOptions from
@@ -471,6 +488,7 @@ export function setupRollConfigPatches() {
 			}
 			return;
 		}
+		if (!weaponBonusesEnabled) return;
 
 		if (!weapon) weapon = await fromUuid(config.itemUuid);
 		if (!weapon) return;
@@ -695,7 +713,10 @@ export function setupRollConfigPatches() {
 			if (config) {
 				// Dialog-less rolls never fired renderRollDialogSD, so the
 				// dialog hook could not apply talent advantage there.
-				if (!config._sdxDialogRendered && (config.actorUuid || config.actorId)) {
+				if (
+					talentAdvantageEnabled
+					&& !config._sdxDialogRendered && (config.actorUuid || config.actorId)
+				) {
 					const rollActor = config.actorUuid
 						? await fromUuid(config.actorUuid)
 						: game.actors.get(config.actorId);
@@ -706,7 +727,10 @@ export function setupRollConfigPatches() {
 				// that sees it for both dialog and skipPrompt rolls. Applies
 				// for dialog configs too (the advantage guard above is about
 				// the dialog's radio ownership, not the ammo).
-				if (config.type === "attack" && config.attack?.selectedAmmunition) {
+				if (
+					ammunitionEnabled
+					&& config.type === "attack" && config.attack?.selectedAmmunition
+				) {
 					await applyAmmoBonuses(config);
 				}
 			}

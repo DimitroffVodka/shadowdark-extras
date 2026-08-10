@@ -5,9 +5,10 @@
  * other tokens follow the leader's exact movement path.
  */
 
-import { FormationSpawnerSD, initFormationSpawner } from "./FormationSpawnerSD.mjs";
+import { FormationSpawnerSD } from "./FormationSpawnerSD.mjs";
 import { PinPlacer } from "../journal/JournalPinsSD.mjs";
 import { PinListApp } from "../journal/PinListApp.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const SETTING_KEY_LEADER = "marchingModeLeader";
@@ -119,22 +120,8 @@ export function initMarchingMode() {
 	// Register settings
 	registerMarchingSettings();
 
-	// Initialize Formation Spawner settings
-	initFormationSpawner();
-
 	// Load saved state
 	loadMarchingState();
-
-	// Register the renderSidebar hook
-	Hooks.on("renderSidebar", onRenderSidebar);
-
-	// If sidebar already exists, inject buttons now
-	const sidebar = document.getElementById("sidebar");
-	if (sidebar) {
-		if (!game.settings.get(MODULE_ID, "tray.enabled")) {
-			injectSidebarButtons($(sidebar));
-		}
-	}
 
 	// Hook into token movement
 	Hooks.on("preUpdateToken", onPreUpdateToken);
@@ -229,11 +216,29 @@ export function initMarchingMode() {
 	});
 }
 
+let sidebarToolsRegistered = false;
+
+/** Register Foundry-sidebar fallbacks independently of Marching Mode. */
+export function initSidebarTools() {
+	if (sidebarToolsRegistered) return;
+	sidebarToolsRegistered = true;
+	Hooks.on("renderSidebar", onRenderSidebar);
+
+	const sidebar = document.getElementById("sidebar");
+	if (sidebar && shouldUseSidebarTools()) {
+		injectSidebarButtons($(sidebar));
+	}
+}
+
+function shouldUseSidebarTools() {
+	return !isFeatureEnabled(FEATURE_IDS.TRAY) || !game.settings.get(MODULE_ID, "tray.enabled");
+}
+
 /**
  * Hook callback for renderSidebar
  */
 function onRenderSidebar(sidebar, html) {
-	if (!game.settings.get(MODULE_ID, "tray.enabled")) {
+	if (shouldUseSidebarTools()) {
 		injectSidebarButtons(html);
 	}
 }
@@ -249,7 +254,7 @@ function injectSidebarButtons($html) {
 	}
 
 	// Check if buttons already exist
-	if ($tabs.find(".sdx-marching-leader-btn").length) {
+	if ($tabs.find(".sdx-marching-btn-container").length) {
 		console.log(`${MODULE_ID} | Marching buttons already exist, skipping injection`);
 		return;
 	}
@@ -301,20 +306,28 @@ function injectSidebarButtons($html) {
 
 	// Insert before settings
 	if (game.user.isGM) {
-		$settingsBtn.before($leaderBtn);
-		$settingsBtn.before($movementBtn);
-		$settingsBtn.before($formationBtn);
-		$settingsBtn.before($addPinBtn);
+		if (isFeatureEnabled(FEATURE_IDS.MARCHING_MODE)) {
+			$settingsBtn.before($leaderBtn);
+			$settingsBtn.before($movementBtn);
+		}
+		if (isFeatureEnabled(FEATURE_IDS.FORMATION_SPAWNER)) {
+			$settingsBtn.before($formationBtn);
+		}
+		if (isFeatureEnabled(FEATURE_IDS.JOURNAL_PINS)) $settingsBtn.before($addPinBtn);
 	}
 
 	// Add event handlers
 	if (game.user.isGM) {
-		$leaderBtn.find("button").on("click", showLeaderDialog);
-		$movementBtn.find("button").on("click", showMovementModeDialog);
-		$formationBtn.find("button").on("click", () => FormationSpawnerSD.show());
+		if (isFeatureEnabled(FEATURE_IDS.MARCHING_MODE)) {
+			$leaderBtn.find("button").on("click", showLeaderDialog);
+			$movementBtn.find("button").on("click", showMovementModeDialog);
+		}
+		if (isFeatureEnabled(FEATURE_IDS.FORMATION_SPAWNER)) {
+			$formationBtn.find("button").on("click", () => FormationSpawnerSD.show());
+		}
 
 		// SDX Pins - Menu Dialog
-		$addPinBtn.find("button").on("click", () => {
+		if (isFeatureEnabled(FEATURE_IDS.JOURNAL_PINS)) $addPinBtn.find("button").on("click", () => {
 			new foundry.applications.api.DialogV2({
 				window: { title: "SDX Pins" },
 				content: "<p>Select an action:</p>",
@@ -347,10 +360,10 @@ function injectSidebarButtons($html) {
         </li>
     `);
 
-	$settingsBtn.before($carousingBtn);
+	if (isFeatureEnabled(FEATURE_IDS.CAROUSING)) $settingsBtn.before($carousingBtn);
 
 	// Add Carousing handler
-	$carousingBtn.find("button").on("click", () => {
+	if (isFeatureEnabled(FEATURE_IDS.CAROUSING)) $carousingBtn.find("button").on("click", () => {
 		if (window.sdxOpenCarousingOverlay) {
 			window.sdxOpenCarousingOverlay();
 		}

@@ -1,3 +1,5 @@
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
+
 /**
  * Generate the Spell Damage/Heal configuration HTML
  * @param {string} MODULE_ID - The module identifier
@@ -11,6 +13,7 @@
  * @returns {string} HTML string
  */
 export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml, effectsArray, effectsApplyToTarget, options = {}, criticalEffectsListHtml = "", criticalEffectsArray = []) {
+	if (!isFeatureEnabled(FEATURE_IDS.SPELL_CONFIGS)) return "";
 	const {
 		targetLabel = "TARGET",
 		formulaHelp = "Available variables:&#10;CASTER: @level, @str, @dex, @con, @int, @wis, @cha, @strBase, @dexBase, @conBase, @intBase, @wisBase, @chaBase, @hp, @ac&#10;TARGET: @target.level, @target.str, @target.dex, @target.con, @target.int, @target.wis, @target.cha, @target.strBase, @target.dexBase, @target.conBase, @target.intBase, @target.wisBase, @target.chaBase, @target.hp, @target.ac, @target.ancestry, @target.subtype&#10;&#10;Examples:&#10;(1 + floor(@level / 2))d6&#10;(@level)d6 + @int&#10;3d6 + @target.level&#10;(floor(@target.chaBase / 3))d6&#10;(@level + @target.level)d6",

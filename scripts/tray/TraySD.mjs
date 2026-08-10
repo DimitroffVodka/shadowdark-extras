@@ -1,6 +1,6 @@
 
 
-import { TrayApp } from "./TrayApp.mjs";
+import { TrayApp, registerTrayAppHooks } from "./TrayApp.mjs";
 import { JournalPinManager, normalizeImageTint } from "../journal/JournalPinsSD.mjs";
 import { initSoloHexMode } from "../hex/SoloHexMode.mjs";
 import { getHexPainterData, loadTileAssets, bindCanvasEvents, enablePainting, disablePainting, isPainting, setDecorMode, canUndoPoi, canRedoPoi } from "../hex/HexPainterSD.mjs";
@@ -18,6 +18,13 @@ import {
 	initDungeonSocket,
 	canPlayerPaint,
 } from "../dungeon/DungeonPainterSD.mjs";
+import {
+	FEATURE_IDS,
+	getDisabledFeatureIds,
+	getFeatureFlagContext,
+	getVisibleTrayModes,
+	isFeatureEnabled,
+} from "../settings/feature-gates.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -74,9 +81,10 @@ let _currentActor = null;
  */
 export function initTray() {
 	// Check if tray is enabled
-	if (!game.settings.get(MODULE_ID, "tray.enabled")) {
+	if (!isFeatureEnabled(FEATURE_IDS.TRAY) || !game.settings.get(MODULE_ID, "tray.enabled")) {
 		return;
 	}
+	registerTrayAppHooks();
 
 	// Add class to body to enable tray-specific CSS
 	document.body.classList.add("sdx-tray-enabled");
@@ -90,33 +98,33 @@ export function initTray() {
 
 	// Initial render
 	renderTray();
-	_broadcastScenePartyStats(_activeSceneId());
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) _broadcastScenePartyStats(_activeSceneId());
 
 	// Players: ask the GM for the current party/NPC stat snapshot. The GM's
 	// userConnected force-broadcast can race ahead of this client's socket
 	// handler registration and be dropped, so a fresh client requests it
 	// explicitly. (No GM connected: nothing to ask, the catch keeps the
 	// rejection silent.)
-	if (!game.user.isGM) {
+	if (!game.user.isGM && isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) {
 		_partySocket?.executeAsGM("sdxTrayRequestPartyStats", canvas.scene?.id)?.catch?.(() => {});
 	}
 
 	// Load hex tile assets for the painter tab
-	loadTileAssets().then(() => renderTray());
+	if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) loadTileAssets().then(() => renderTray());
 
 	// Initialize dungeon socket FIRST (so players can request tiles from GM)
-	initDungeonSocket();
+	if (isFeatureEnabled(FEATURE_IDS.DUNGEON_PAINTER)) initDungeonSocket();
 
 	// Initialize Solo Hex Mode (registers updateToken hook)
-	initSoloHexMode();
+	if (isFeatureEnabled(FEATURE_IDS.SOLO_HEX_MODE)) initSoloHexMode();
 
 	// Load dungeon tile assets (after socket init so players can request from GM)
-	loadDungeonAssets().then(() => renderTray());
+	if (isFeatureEnabled(FEATURE_IDS.DUNGEON_PAINTER)) loadDungeonAssets().then(() => renderTray());
 
 	// Bind canvas events now if canvas is already ready (page refresh)
 	if (canvas?.stage) {
-		bindCanvasEvents();
-		bindDungeonCanvasEvents();
+		if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) bindCanvasEvents();
+		if (isFeatureEnabled(FEATURE_IDS.DUNGEON_PAINTER)) bindDungeonCanvasEvents();
 	}
 
 	// Hook into token selection changes
@@ -130,7 +138,7 @@ export function initTray() {
 		if (_actorUpdateTimer) clearTimeout(_actorUpdateTimer);
 		_actorUpdateTimer = setTimeout(async () => {
 			_actorUpdateTimer = null;
-			_broadcastActorPartyStats(actor);
+			if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) _broadcastActorPartyStats(actor);
 			await renderTray();
 		}, 100);
 	});
@@ -153,11 +161,15 @@ export function initTray() {
 
 	// Hook into token creation/deletion for party view & notes
 	Hooks.on("createToken", async tokenDoc => {
-		_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+		if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) {
+			_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+		}
 		await renderTray();
 	});
 	Hooks.on("deleteToken", async tokenDoc => {
-		_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+		if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) {
+			_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+		}
 		await renderTray();
 	});
 
@@ -177,7 +189,9 @@ export function initTray() {
 		if (_tokenUpdateTimer) clearTimeout(_tokenUpdateTimer);
 		_tokenUpdateTimer = setTimeout(async () => {
 			_tokenUpdateTimer = null;
-			_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+			if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) {
+				_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+			}
 			await renderTray();
 		}, 100);
 	});
@@ -225,19 +239,19 @@ export function initTray() {
 
 	// Hook into canvas teardown (before scene change) to clean up
 	Hooks.on("canvasTearDown", () => {
-		cleanupDungeonPainting();
+		if (isFeatureEnabled(FEATURE_IDS.DUNGEON_PAINTER)) cleanupDungeonPainting();
 	});
 
 	// Hook into scene changes
 	Hooks.on("canvasReady", async () => {
-		bindCanvasEvents();
-		bindDungeonCanvasEvents();
-		_broadcastScenePartyStats(_activeSceneId());
+		if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) bindCanvasEvents();
+		if (isFeatureEnabled(FEATURE_IDS.DUNGEON_PAINTER)) bindDungeonCanvasEvents();
+		if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) _broadcastScenePartyStats(_activeSceneId());
 		// If this client is a player, the GM's broadcast for the previous
 		// scene does not help — ask for a snapshot scoped to the scene we
 		// just entered. The GM answers for that scene id even if they are
 		// viewing a different scene themselves.
-		if (!game.user.isGM) {
+		if (!game.user.isGM && isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) {
 			_partySocket?.executeAsGM("sdxTrayRequestPartyStats", canvas.scene?.id)?.catch?.(() => {});
 		}
 		await renderTray();
@@ -291,12 +305,18 @@ export function initTray() {
 
 	// Hook to reload dungeon tiles when GM comes online (for players)
 	Hooks.on("userConnected", async (user, connected) => {
-		if (game.user.isGM && connected && !user.isGM) {
+		if (
+			isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)
+			&& game.user.isGM && connected && !user.isGM
+		) {
 			// A player just joined: push the current party/NPC stat snapshot
 			// (bypassing the dedupe, which would otherwise swallow it).
 			_broadcastScenePartyStats(_activeSceneId(), true);
 		}
-		if (!game.user.isGM && user.isGM && connected) {
+		if (
+			isFeatureEnabled(FEATURE_IDS.DUNGEON_PAINTER)
+			&& !game.user.isGM && user.isGM && connected
+		) {
 			// GM just came online - try to reload dungeon tiles
 			await reloadDungeonAssets();
 			renderTray();
@@ -679,6 +699,13 @@ export function getHealthOverlayHeight(hp) {
  * @param {string} mode - "player" or "party"
  */
 export async function setViewMode(mode) {
+	const modes = getVisibleTrayModes({
+		isGM: game.user.isGM,
+		canPlayerPaint: canPlayerPaint(),
+		showPartyTab: game.settings.get(MODULE_ID, "tray.showPartyTab"),
+		disabledFeatureIds: getDisabledFeatureIds(),
+	});
+	if (!modes.includes(mode)) mode = modes[0];
 	_viewMode = mode;
 	// Toggle hex painting based on active tab
 	if (mode === "hexes") {
@@ -751,7 +778,7 @@ export function getHideNpcsFromPlayers() {
  * ownership actor exposes no system data to read locally.
  */
 export function registerPartyStatsSocket(socket) {
-	if (!socket) return;
+	if (!socket || !isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) return;
 	_partySocket = socket;
 	socket.register("sdxTrayPartyStats", async payload => {
 		// The GM already reads full actor data; only players need the snapshot.
@@ -863,23 +890,12 @@ function _broadcastActorPartyStats(actor) {
 export function cycleViewMode() {
 	const showParty = game.settings.get(MODULE_ID, "tray.showPartyTab");
 	const isGM = game.user.isGM;
-
-	const modes = [];
-
-	// GM sees Scenes instead of Token/Player
-	if (isGM) {
-		modes.push("scenes");
-	}
-	else {
-		modes.push("player");
-	}
-
-	if (showParty) modes.push("party");
-	if (isGM) modes.push("pins");
-	modes.push("notes"); // Notes mode for everyone (filtered for players)
-	if (isGM) modes.push("hexes");
-	if (isGM || canPlayerPaint()) modes.push("dungeons");
-	if (isGM) modes.push("decor");
+	const modes = getVisibleTrayModes({
+		isGM,
+		canPlayerPaint: canPlayerPaint(),
+		showPartyTab: showParty,
+		disabledFeatureIds: getDisabledFeatureIds(),
+	});
 
 	const currentIndex = modes.indexOf(_viewMode);
 	// If current mode isn't in list (e.g. switched from player to GM view), start at 0
@@ -926,9 +942,22 @@ export function toggleTray() {
 export async function renderTray() {
 	if (!_trayApp) return;
 
+	const disabledFeatureIds = getDisabledFeatureIds();
+	const features = getFeatureFlagContext(disabledFeatureIds);
+	const modes = getVisibleTrayModes({
+		isGM: game.user.isGM,
+		canPlayerPaint: canPlayerPaint(),
+		showPartyTab: game.settings.get(MODULE_ID, "tray.showPartyTab"),
+		disabledFeatureIds,
+	});
+	if (!modes.includes(_viewMode)) _viewMode = modes[0];
+
 	const actor = getCurrentActor();
-	const { partyTokens, npcTokens } = getPartyTokens();
-	const showPartyTab = game.settings.get(MODULE_ID, "tray.showPartyTab");
+	const { partyTokens, npcTokens } = features.partyManagement
+		? getPartyTokens()
+		: { partyTokens: [], npcTokens: [] };
+	const showPartyTab = features.partyManagement
+		&& game.settings.get(MODULE_ID, "tray.showPartyTab");
 	const partyName = game.settings.get(MODULE_ID, "tray.partyName");
 	const showHealthBars = game.settings.get(MODULE_ID, "tray.showHealthBars");
 
@@ -944,6 +973,7 @@ export async function renderTray() {
 	const otherPartyMembers = partyTokens.filter(m => !actor || m.actor.id !== actor.id);
 
 	const data = {
+		features,
 		actor: actor,
 		actorDisplayName: actor?.name || "Select a Character",
 		viewMode: _viewMode,
@@ -971,17 +1001,17 @@ export async function renderTray() {
 		showSelectionBox: canvas.tokens?.controlled.length > 1,
 
 		// Pins Data
-		pins: game.user.isGM ? getPinsData() : [],
-		mapNotes: getMapNotesData(),
+		pins: features.journalPins && game.user.isGM ? getPinsData() : [],
+		mapNotes: features.journalPins ? getMapNotesData() : [],
 
 		// Notes Data
-		notes: await getNotesData(),
+		notes: features.journalPlaceableNotes ? await getNotesData() : [],
 
 		// Hex Painter Data
-		...(await getHexPainterData()),
+		...(features.hexPainter || features.hexDecorPainter ? await getHexPainterData() : {}),
 
 		// Dungeon Painter Data
-		...(await getDungeonPainterData()),
+		...(features.dungeonPainter ? await getDungeonPainterData() : {}),
 
 		// Active Effects
 		activeEffects: (() => {

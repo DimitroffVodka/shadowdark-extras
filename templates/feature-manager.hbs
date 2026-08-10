@@ -1,0 +1,55 @@
+<div class="sdx-feature-manager">
+	<header class="sdx-feature-manager-header">
+		<div>
+			<h2><i class="fas fa-toggle-on"></i> Feature Manager</h2>
+			<p class="notes">
+				Disabled features do not initialize their hooks, patches, sockets, applications, or tray controls.
+				A reload is required after saving.
+			</p>
+		</div>
+		<div class="sdx-feature-manager-global-actions">
+			<button type="button" data-feature-action="enable-all">
+				<i class="fas fa-check-double"></i> Enable All
+			</button>
+			<button type="button" data-feature-action="disable-all">
+				<i class="fas fa-ban"></i> Disable All
+			</button>
+		</div>
+	</header>
+
+	<div class="sdx-feature-manager-groups">
+		{{#each groups}}
+		<section class="sdx-feature-group" data-feature-group="{{id}}">
+			<header class="sdx-feature-group-header">
+				<h3>{{name}}</h3>
+				<div class="sdx-feature-group-actions">
+					<button type="button" data-feature-group-action="enable">Enable all</button>
+					<button type="button" data-feature-group-action="disable">Disable all</button>
+				</div>
+			</header>
+
+			<div class="sdx-feature-list">
+				{{#each features}}
+				<label class="sdx-feature-row{{#if blocked}} blocked{{/if}}">
+					<span class="sdx-feature-copy">
+						<strong>{{name}}{{#if visible}} <i class="fas fa-eye" data-tooltip="Visible tray or canvas feature"></i>{{/if}}</strong>
+						<span>{{description}}</span>
+						{{#if blocked}}
+						<em><i class="fas fa-link"></i> Also blocked because {{blockedByName}} is disabled.</em>
+						{{/if}}
+					</span>
+					<input type="checkbox" name="features" value="{{id}}" data-feature-id="{{id}}" {{checked checked}} {{#if blocked}}disabled{{/if}}>
+				</label>
+				{{/each}}
+			</div>
+		</section>
+		{{/each}}
+	</div>
+
+	<footer class="sheet-footer flexrow sdx-feature-manager-footer">
+		<span><i class="fas fa-rotate"></i> Reload Foundry after saving.</span>
+		<button type="submit" name="submit">
+			<i class="fas fa-save"></i> Save Feature Settings
+		</button>
+	</footer>
+</div>

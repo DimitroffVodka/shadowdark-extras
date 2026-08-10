@@ -47,6 +47,7 @@
     "defaultHeaderBgPath",
     "detailsRowColor",
     "disabledBiomes",
+    "disabledFeatures",
     "drawing.blockWhenTyping",
     "drawing.enablePlayerDrawing",
     "drawing.hotkeyEnabled",
@@ -152,6 +153,7 @@
     "customLightTemplatesMenu",
     "decorDungeondraftPacksMenu",
     "effectsSettingsMenu",
+    "featureManagerMenu",
     "hpWavesSettingsMenu",
     "inventoryStylesMenu",
     "manageCreatureTypes",
@@ -174,15 +176,15 @@
   "dynamicSites": [
     "scripts/animation/AnimationFxSD.mjs:123",
     "scripts/combat/FormationSpawnerSD.mjs:83",
-    "scripts/combat/MarchingModeSD.mjs:56",
-    "scripts/combat/MarchingModeSD.mjs:69",
-    "scripts/dungeon/DungeonMultiLevelSD.mjs:821",
-    "scripts/dungeon/DungeonPainterSD.mjs:118",
+    "scripts/combat/MarchingModeSD.mjs:57",
+    "scripts/combat/MarchingModeSD.mjs:70",
+    "scripts/dungeon/DungeonMultiLevelSD.mjs:825",
+    "scripts/dungeon/DungeonPainterSD.mjs:122",
     "scripts/hex/ContentRegistry.mjs:17",
     "scripts/journal/easy-reference/EasyReferenceMenu.mjs:327",
     "scripts/party/PartyWeatherSettingsSD.mjs:168",
-    "scripts/tom/TomSD.mjs:105",
-    "scripts/tom/TomSD.mjs:113"
+    "scripts/tom/TomSD.mjs:109",
+    "scripts/tom/TomSD.mjs:117"
   ],
   "dynamicKeys": [
     "allowPlayerDungeonPainting",

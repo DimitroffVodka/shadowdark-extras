@@ -6,6 +6,7 @@ import {
 	setupActivityRadioToggles,
 	activateAnimationFxListeners,
 } from "./activity-tab-widgets.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 // v13+ FilePicker namespaced under foundry.applications.apps.
 const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globalThis.FilePicker;
@@ -319,7 +320,8 @@ export async function enhanceSpellSheet(app, html) {
 	let effectsListHtml = "";
 
 	// Handle case where effects might be a string instead of an array (from form submission)
-	let effectsArray = flags.effects || [];
+	const spellConfigsEnabled = isFeatureEnabled(FEATURE_IDS.SPELL_CONFIGS);
+	let effectsArray = spellConfigsEnabled ? flags.effects || [] : [];
 	if (typeof effectsArray === "string") {
 		try {
 			effectsArray = JSON.parse(effectsArray);
@@ -402,7 +404,7 @@ export async function enhanceSpellSheet(app, html) {
 
 	// Build summons list HTML
 	let summonsList = "";
-	let summonProfilesArray = summoningFlags.profiles || [];
+	let summonProfilesArray = spellConfigsEnabled ? summoningFlags.profiles || [] : [];
 
 	// Handle case where profiles might be a string
 	if (typeof summonProfilesArray === "string") {
@@ -424,7 +426,7 @@ export async function enhanceSpellSheet(app, html) {
 	}
 
 	let itemGiveList = "";
-	let itemGiveProfilesArray = itemGiveFlags.profiles || [];
+	let itemGiveProfilesArray = spellConfigsEnabled ? itemGiveFlags.profiles || [] : [];
 
 	if (typeof itemGiveProfilesArray === "string") {
 		try {
@@ -448,7 +450,7 @@ export async function enhanceSpellSheet(app, html) {
 	let criticalEffectsListHtml = "";
 
 	// Handle case where critical effects might be a string instead of an array
-	let criticalEffectsArray = flags.criticalEffects || [];
+	let criticalEffectsArray = spellConfigsEnabled ? flags.criticalEffects || [] : [];
 	if (typeof criticalEffectsArray === "string") {
 		try {
 			criticalEffectsArray = JSON.parse(criticalEffectsArray);

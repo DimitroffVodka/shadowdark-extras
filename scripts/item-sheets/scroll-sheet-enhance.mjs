@@ -1,4 +1,5 @@
 import { MODULE_ID } from "../shared/module-id.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 import { generateScrollConfig } from "./ItemTypeConfigs.mjs";
 import { activateTemplateTargetingListeners } from "./TemplateTargetingConfig.mjs";
 import {
@@ -242,7 +243,8 @@ export async function enhanceScrollSheet(app, html) {
 	let effectsListHtml = "";
 
 	// Handle case where effects might be a string instead of an array (from form submission)
-	let effectsArray = flags.effects || [];
+	const spellConfigsEnabled = isFeatureEnabled(FEATURE_IDS.SPELL_CONFIGS);
+	let effectsArray = spellConfigsEnabled ? flags.effects || [] : [];
 	if (typeof effectsArray === "string") {
 		try {
 			effectsArray = JSON.parse(effectsArray);
@@ -325,7 +327,7 @@ export async function enhanceScrollSheet(app, html) {
 
 	// Build summons list HTML
 	let summonsList = "";
-	let summonProfilesArray = summoningFlags.profiles || [];
+	let summonProfilesArray = spellConfigsEnabled ? summoningFlags.profiles || [] : [];
 
 	// Handle case where profiles might be a string
 	if (typeof summonProfilesArray === "string") {
@@ -347,7 +349,7 @@ export async function enhanceScrollSheet(app, html) {
 	}
 
 	let itemGiveList = "";
-	let itemGiveProfilesArray = itemGiveFlags.profiles || [];
+	let itemGiveProfilesArray = spellConfigsEnabled ? itemGiveFlags.profiles || [] : [];
 
 	if (typeof itemGiveProfilesArray === "string") {
 		try {

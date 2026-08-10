@@ -26,18 +26,12 @@
  */
 
 import { HEX_JOURNAL_NAME } from "../hex/HexTooltipSD.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 const TRADE_JOURNAL_NAME = "__sdx_trade_sync__"; // Must match TradeWindowSD.mjs
 const CAROUSING_JOURNAL_NAME = "__sdx_carousing_sync__"; // Must match CarousingSD.mjs
 const CAROUSING_TABLES_JOURNAL_NAME = "__sdx_carousing_tables__"; // Must match CarousingSD.mjs
 
-// All internal journals that should be hidden from the sidebar
-const HIDDEN_JOURNAL_NAMES = [
-	TRADE_JOURNAL_NAME,
-	CAROUSING_JOURNAL_NAME,
-	CAROUSING_TABLES_JOURNAL_NAME,
-	HEX_JOURNAL_NAME,
-];
 
 // Inject collapse/expand button for journal page headings sidebar
 function injectHeadingsCollapseButton(app, html) {
@@ -91,9 +85,20 @@ function injectHeadingsCollapseButton(app, html) {
 	}
 }
 
+let journalDirectoryHookRegistered = false;
+let journalHeadingsHooksRegistered = false;
+
 export function registerJournalUIHooks() {
+	const hiddenJournalNames = [];
+	if (isFeatureEnabled(FEATURE_IDS.TRADING)) hiddenJournalNames.push(TRADE_JOURNAL_NAME);
+	if (isFeatureEnabled(FEATURE_IDS.CAROUSING)) {
+		hiddenJournalNames.push(CAROUSING_JOURNAL_NAME, CAROUSING_TABLES_JOURNAL_NAME);
+	}
+	if (isFeatureEnabled(FEATURE_IDS.HEX_TOOLTIP)) hiddenJournalNames.push(HEX_JOURNAL_NAME);
+
 	// Hide internal trade journal from the sidebar (Foundry v13 compatible)
-	Hooks.on("renderJournalDirectory", (app, html, data) => {
+	if (hiddenJournalNames.length && !journalDirectoryHookRegistered) Hooks.on("renderJournalDirectory", (app, html, data) => {
+		journalDirectoryHookRegistered = true;
 		// In v13, html might be an HTMLElement or jQuery - handle both
 		const element = html instanceof jQuery ? html[0] : html;
 
@@ -103,7 +108,7 @@ export function registerJournalUIHooks() {
 			const entryId = entry.dataset?.entryId || entry.dataset?.documentId;
 			if (entryId) {
 				const journal = game.journal.get(entryId);
-				if (journal && HIDDEN_JOURNAL_NAMES.includes(journal.name)) {
+				if (journal && hiddenJournalNames.includes(journal.name)) {
 					entry.remove();
 					return;
 				}
@@ -111,11 +116,14 @@ export function registerJournalUIHooks() {
 			// Also check by name in the entry text as fallback
 			const nameEl = entry.querySelector(".entry-name, .document-name");
 			const entryName = nameEl?.textContent?.trim();
-			if (entryName && HIDDEN_JOURNAL_NAMES.includes(entryName)) {
+			if (entryName && hiddenJournalNames.includes(entryName)) {
 				entry.remove();
 			}
 		});
 	});
-	Hooks.on("renderJournalEntrySheet", injectHeadingsCollapseButton);
-	Hooks.on("renderJournalSheet", injectHeadingsCollapseButton);
+	if (isFeatureEnabled(FEATURE_IDS.JOURNAL_NOTES) && !journalHeadingsHooksRegistered) {
+		journalHeadingsHooksRegistered = true;
+		Hooks.on("renderJournalEntrySheet", injectHeadingsCollapseButton);
+		Hooks.on("renderJournalSheet", injectHeadingsCollapseButton);
+	}
 }

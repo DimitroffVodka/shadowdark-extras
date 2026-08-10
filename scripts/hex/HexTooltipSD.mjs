@@ -3,7 +3,9 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
 
 
 import { getAvailableBiomes, generateHexHtml } from "./HexContentGenerator.mjs";
-import { getSettlementTypes, generateSettlementHtml } from "./SettlementGenerator.mjs";
+import {
+	getSettlementTypes, generateSettlementHtml, registerSettlementHooks,
+} from "./SettlementGenerator.mjs";
 import { getDungeonTypes, getDungeonSizes, generateDungeonHtml } from "../dungeon/DungeonGenerator.mjs";
 import { buildHexDungeonScene } from "./HexDungeonBridgeSD.mjs";
 import { formatHexCoord } from "./SDXCoordsSD.mjs";
@@ -1812,10 +1814,9 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 // ─── Initialization ───────────────────────────────────────────────────────────
 
 export function initHexTooltip() {
-	// Register the content-registry world setting (must happen during 'init', not at load time)
-	Hooks.once("init", () => {
-		registerContentRegistrySetting();
-	});
+	registerSettlementHooks();
+	// The bootstrap invokes this during Foundry's init phase.
+	registerContentRegistrySetting();
 
 	// Must wait for "ready" — game.socket is undefined before that hook fires
 	Hooks.once("ready", () => {

@@ -4,6 +4,7 @@ import { TOM_CONFIG } from "./TomConfig.mjs";
 import { TomStore } from "../tom/TomStore.mjs";
 import { TomMigrationService } from "../tom/TomMigrationService.mjs";
 import { TomSocketHandler } from "../tom/TomSocketHandler.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 export class TomSD {
 	static ID = TOM_CONFIG.MODULE_ID;
@@ -24,7 +25,9 @@ export class TomSD {
 		Hooks.on("ready", this._onReady.bind(this));
 
 		// Listen for actor HP changes to update arena tokens
-		Hooks.on("updateActor", this._onActorUpdate.bind(this));
+		if (isFeatureEnabled(FEATURE_IDS.TOM_PLAYER_VIEW)) {
+			Hooks.on("updateActor", this._onActorUpdate.bind(this));
+		}
 
 		// Hook to fix critical failure styling
 		Hooks.on("renderChatMessageHTML", (message, html, context) => {
@@ -48,6 +51,7 @@ export class TomSD {
    * Handle actor updates to sync arena token HP display
    */
 	static _onActorUpdate(actor, changes, options, userId) {
+		if (!isFeatureEnabled(FEATURE_IDS.TOM_PLAYER_VIEW)) return;
 		// Only process HP changes
 		const hpChanged = foundry.utils.hasProperty(changes, "system.attributes.hp.value")
       || foundry.utils.hasProperty(changes, "system.hp.value");
@@ -136,8 +140,8 @@ export class TomSD {
 		// Run Migration
 		await TomMigrationService.migrate();
 
-		// Initialize Sockets
-		TomSocketHandler.initialize();
+		// Initialize player-facing broadcasts and sockets only when enabled.
+		if (isFeatureEnabled(FEATURE_IDS.TOM_PLAYER_VIEW)) TomSocketHandler.initialize();
 	}
 
 	/**

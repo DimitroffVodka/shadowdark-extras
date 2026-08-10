@@ -13,60 +13,84 @@
 
             <!-- GM TOOLS -->
             {{#if isGM}}
+            {{#if features.combatMarchingMode}}
             <button class="tray-handle-button-tool" data-action="leader" title="Choose Party Leader">
                 <i class="fa-solid fa-crown"></i>
             </button>
             <button class="tray-handle-button-tool" data-action="marching" title="Marching Mode">
                 <i class="fa-solid fa-person-walking"></i>
             </button>
+            {{/if}}
+            {{#if features.combatFormationSpawner}}
             <button class="tray-handle-button-tool" data-action="formation" title="Formation Spawner">
                 <i class="fa-solid fa-users-viewfinder"></i>
             </button>
+            {{/if}}
+            {{#if features.journalPins}}
             <button class="tray-handle-button-tool" data-action="add-pin" title="Add Pin">
                 <i class="fa-solid fa-map-pin"></i>
             </button>
             <button class="tray-handle-button-tool" data-action="pin-list" title="Pin List">
                 <i class="fa-solid fa-list"></i>
             </button>
+            {{/if}}
 
+            {{#if features.canvasLightTracker}}
             <button class="tray-handle-button-tool" data-action="light-tracker" title="Light Source Tracker">
                 <i class="fa-solid fa-fire"></i>
             </button>
+            {{/if}}
 
 
             {{/if}}
+            {{#if features.partyCarousing}}
             <button class="tray-handle-button-tool" data-action="carousing" title="Carousing">
                 <i class="fa-solid fa-beer"></i>
             </button>
+            {{/if}}
+            {{#if features.canvasDrawingTools}}
             <button class="tray-handle-button-tool" data-action="sdx-drawing" title="Drawing Tools">
                 <i class="fa-solid fa-pencil"></i>
             </button>
+            {{/if}}
             {{#if isGM}}
+            {{#if features.sceneMapGenerators}}
             <button class="tray-handle-button-tool" data-action="sdx-maphub-launcher" title="Map Generators">
                 <i class="fa-solid fa-map-location-dot"></i>
             </button>
             {{/if}}
+            {{/if}}
+            {{#if features.hexCoordinates}}
             <button class="tray-handle-button-tool" data-action="sdx-coords" title="Toggle Coordinates">
                 <i class="far fa-globe"></i>
             </button>
+            {{/if}}
+            {{#if features.hexTooltip}}
             <button class="tray-handle-button-tool{{#unless isHexagonal}} disabled{{/unless}}"
                 data-action="sdx-hex-tooltip" title="Hex Tooltip / Hexplorer">
                 <i class="fa-solid fa-circle-info"></i>
             </button>
+            {{/if}}
             {{#if isGM}}
+            {{#if features.hexFog}}
             <button class="tray-handle-button-tool{{#if hexFogActive}} active{{/if}}" data-action="sdx-hex-fog"
                 title="Hex Fog">
                 <i class="fa-solid fa-smog"></i>
             </button>
+            {{/if}}
+            {{#if features.hexSoloMode}}
             <button class="tray-handle-button-tool{{#if soloModeActive}} active{{/if}}" data-action="sdx-solo-mode"
                 title="Solo Hex Mode">
                 <i class="fa-solid fa-compass"></i>
             </button>
             {{/if}}
+            {{/if}}
             {{#if isGM}}
+            {{#if features.trayRoller}}
             <button class="tray-handle-button-tool" data-action="sdx-roller" title="SDX Roller">
                 <i class="fa-solid fa-dice"></i>
             </button>
+            {{/if}}
             {{#if (or (and (eq viewMode 'hexes') (eq activeTileTab 'symbols')) (eq viewMode 'decor'))}}
             <button class="tray-handle-button-tool poi-undo-btn {{#unless canUndoPoi}}disabled{{/unless}}"
                 data-action="poi-undo" title="Undo Last POI">
@@ -109,10 +133,17 @@
         <!-- TRAY TABS -->
         <div class="tray-view-tabs">
             {{#if isGM}}
+            {{#if features.tomScenes}}
             <button class="tray-tab-button {{#if (eq viewMode 'scenes')}}active{{/if}}" data-view="scenes"
                 title="Scenes View">
                 <i class="fa-solid fa-images"></i> Scenes
             </button>
+            {{else}}
+            <button class="tray-tab-button {{#if (eq viewMode 'player')}}active{{/if}}" data-view="player"
+                title="Player View">
+                <i class="fa-solid fa-user"></i> Token
+            </button>
+            {{/if}}
             {{else}}
             <button class="tray-tab-button {{#if (eq viewMode 'player')}}active{{/if}}" data-view="player"
                 title="Player View">
@@ -126,33 +157,43 @@
             </button>
             {{/if}}
             {{#if isGM}}
+            {{#if features.journalPins}}
             <button class="tray-tab-button {{#if (eq viewMode 'pins')}}active{{/if}}" data-view="pins"
                 title="Journal Pins">
                 <i class="fa-solid fa-map-pin"></i> Pins
             </button>
             {{/if}}
+            {{/if}}
+            {{#if features.journalPlaceableNotes}}
             <button class="tray-tab-button {{#if (eq viewMode 'notes')}}active{{/if}}" data-view="notes"
                 title="Placeable Notes">
                 <i class="fa-solid fa-sticky-note"></i> Notes
             </button>
+            {{/if}}
         </div>
-        {{#if (or isGM canPlayerPaint)}}
+        {{#if (or (and isGM (or features.hexPainter features.dungeonPainter features.hexDecorPainter)) (and canPlayerPaint features.dungeonPainter))}}
         <div class="tray-view-tabs tray-view-tabs-row2">
             {{#if isGM}}
+            {{#if features.hexPainter}}
             <button class="tray-tab-button {{#if (eq viewMode 'hexes')}}active{{/if}}" data-view="hexes"
                 title="Hex Painter">
                 <i class="fas fa-border-all"></i> Hexes
             </button>
             {{/if}}
+            {{/if}}
+            {{#if features.dungeonPainter}}
             <button class="tray-tab-button {{#if (eq viewMode 'dungeons')}}active{{/if}}" data-view="dungeons"
                 title="Dungeon Painter{{#unless isGM}} (GM Online){{/unless}}">
                 <i class="fas fa-dungeon"></i> Dungeons
             </button>
+            {{/if}}
             {{#if isGM}}
+            {{#if features.hexDecorPainter}}
             <button class="tray-tab-button {{#if (eq viewMode 'decor')}}active{{/if}}" data-view="decor"
                 title="Decor Painter">
                 <i class="fas fa-couch"></i> Decor
             </button>
+            {{/if}}
             {{/if}}
         </div>
         {{/if}}
@@ -215,24 +256,26 @@
             </div>
 
             <!-- SCENES TAB (GM ONLY) -->
-            {{#if isGM}}
+            {{#if (and isGM features.tomScenes)}}
             <div class="tray-view-content scenes-view {{#unless (eq viewMode 'scenes')}}hidden{{/unless}}"
                 style="overflow-y: hidden; display: flex; flex-direction: column;">
 
                 <!-- Create/Stop Header -->
                 <div class="scenes-header" style="flex: 0 0 auto; padding: 10px; display: flex; flex-direction: column; gap: 8px;">
+                    {{#if features.tomSceneEditor}}
                     <button class="tray-btn-full" data-action="create-scene">
                         <i class="fas fa-plus"></i> Create New Scene
                     </button>
                     <button class="tray-btn-full folder-create-btn" data-action="create-folder">
                         <i class="fas fa-folder-plus"></i> Create New Folder
                     </button>
+                    {{/if}}
                     {{#if tomActiveSceneId}}
                     <button class="tray-btn-full danger mt-2" data-action="stop-broadcast">
                         <i class="fas fa-stop"></i> Stop Broadcasting
                     </button>
                     {{/if}}
-                    {{#if tomActiveSceneId}}
+                    {{#if (and tomActiveSceneId features.tomVideoOverlays)}}
                     <section class="tom-overlays-inline {{#if tomOverlaysCollapsed}}collapsed{{/if}}" aria-label="Video Overlays">
                         <div class="tom-overlays-inline-header" data-action="tom-overlays-toggle" title="{{#if tomOverlaysCollapsed}}Expand Overlays{{else}}Collapse Overlays{{/if}}">
                             <i class="fas {{#if tomOverlaysCollapsed}}fa-chevron-right{{else}}fa-chevron-down{{/if}} tom-overlays-collapse-chevron"></i>
@@ -270,6 +313,7 @@
                                 class="fas {{#if this.collapsed}}fa-folder{{else}}fa-folder-open{{/if}} scene-folder-icon"></i>
                             <span class="scene-folder-name">{{this.name}}</span>
                             <span class="scene-folder-count">({{this.scenes.length}})</span>
+                            {{#if ../features.tomSceneEditor}}
                             <div class="scene-folder-actions">
                                 <button class="scene-action-btn" data-action="rename-folder"
                                     data-folder-id="{{this.id}}" data-folder-name="{{this.name}}" title="Rename Folder">
@@ -280,6 +324,7 @@
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
+                            {{/if}}
                         </div>
                         <div class="scene-folder-content {{#if this.collapsed}}hidden{{/if}}"
                             data-folder-id="{{this.id}}">
@@ -385,6 +430,7 @@
             {{/if}}
 
             <!-- PARTY TAB -->
+            {{#if features.partyManagement}}
             <div class="tray-view-content party-view {{#unless (eq viewMode 'party')}}hidden{{/unless}}">
 
                 <!-- Party Toolbar -->
@@ -530,8 +576,10 @@
                 {{/if}}
                 {{/if}}
             </div>
+            {{/if}}
 
             <!-- PINS TAB -->
+            {{#if features.journalPins}}
             <div class="tray-view-content pins-view {{#unless (eq viewMode 'pins')}}hidden{{/unless}}"
                 style="overflow-y: hidden; display: flex; flex-direction: column;">
 
@@ -707,7 +755,9 @@
                     {{/unless}}
                 </div>
             </div>
+            {{/if}}
             <!-- NOTES TAB -->
+            {{#if features.journalPlaceableNotes}}
             <div class="tray-view-content notes-view {{#unless (eq viewMode 'notes')}}hidden{{/unless}}"
                 style="overflow-y: hidden; display: flex; flex-direction: column;">
 
@@ -760,9 +810,10 @@
                 {{/if}}
 
             </div>
+            {{/if}}
 
             <!-- HEXES TAB (GM ONLY) -->
-            {{#if isGM}}
+            {{#if (and isGM features.hexPainter)}}
             <div class="tray-view-content hexes-view {{#unless (eq viewMode 'hexes')}}hidden{{/unless}}"
                 style="overflow-y: hidden; display: flex; flex-direction: column;">
 
@@ -772,9 +823,11 @@
                         <button class="hex-format-btn" data-action="hex-format-scene">
                             <i class="fas fa-ruler-combined"></i> Format Map
                         </button>
+                        {{#if features.canvasTileFlatten}}
                         <button class="hex-flatten-btn" data-action="hex-flatten-all">
                             <i class="fas fa-layer-group"></i> Flatten Hexagons
                         </button>
+                        {{/if}}
                     </div>
                     <div class="hex-format-controls hidden">
                         <div class="hex-slider-row">
@@ -1074,7 +1127,7 @@
             {{/if}}
 
             <!-- DUNGEONS TAB (GM or Player with GM online) -->
-            {{#if (or isGM canPlayerPaint)}}
+            {{#if (and features.dungeonPainter (or isGM canPlayerPaint))}}
             <div class="tray-view-content dungeons-view {{#unless (eq viewMode 'dungeons')}}hidden{{/unless}}"
                 style="overflow-y: hidden; display: flex; flex-direction: column;">
 
@@ -1125,6 +1178,7 @@
                 </div>
 
                 {{#unless (eq dungeonMode 'intwalls')}}
+                {{#if features.canvasTileFlatten}}
                 <!-- Flatten Level Buttons -->
                 <div class="dungeon-flatten-buttons">
                     <button class="dungeon-flatten-level-btn">
@@ -1134,6 +1188,7 @@
                         <i class="fas fa-layer-group" style="transform:scaleY(-1)"></i> Unflatten Level
                     </button>
                 </div>
+                {{/if}}
 
                 <!-- Generator Button -->
                 <label class="dungeon-option-toggle dungeon-generator-toggle">
@@ -1435,7 +1490,7 @@
             {{/if}}
 
             <!-- DECOR TAB (GM ONLY) -->
-            {{#if isGM}}
+            {{#if (and isGM features.hexDecorPainter)}}
             <div class="tray-view-content decor-view {{#unless (eq viewMode 'decor')}}hidden{{/unless}}"
                 style="overflow-y: hidden; display: flex; flex-direction: column;">
 

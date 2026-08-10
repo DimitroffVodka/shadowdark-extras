@@ -22,8 +22,12 @@ import { DrawingSync } from "./drawing-sync.mjs";
 import { DrawingEntries } from "./drawing-entries.mjs";
 
 // ─── Drawing Tool Class ─────────────────────────────────────────
-class SDXDrawingTool {
+class SDXDrawingToolMixinBase {}
+Object.assign(SDXDrawingToolMixinBase.prototype, DrawingShapes, DrawingSync, DrawingEntries);
+
+class SDXDrawingTool extends SDXDrawingToolMixinBase {
 	constructor() {
+		super();
 		this.active = false;
 		this._keyDown = false;
 		// Toggle-driven (click-to-draw) state. Mirrors _keyDown but is driven
@@ -752,13 +756,6 @@ class SDXDrawingTool {
 
 	// ── Hex Outline Helper ──────────────────────────────────────
 }
-
-// Shape lifecycle, remote synchronisation and the drawing-entry bookkeeping
-// were split out in Phase 5.3. Prototype methods, so `this` is the tool
-// exactly as it was inline.
-Object.assign(SDXDrawingTool.prototype, DrawingShapes);
-Object.assign(SDXDrawingTool.prototype, DrawingSync);
-Object.assign(SDXDrawingTool.prototype, DrawingEntries);
 
 // ── Singleton ───────────────────────────────────────────────────
 export const sdxDrawingTool = new SDXDrawingTool();

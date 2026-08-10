@@ -187,10 +187,9 @@ export function openBiomeEditor() {
 	return _instance;
 }
 
-// Wire the tray's "Edit Biomes…" button via event delegation (no TrayApp.mjs
-// edit). Delegation handles the dungeon panel being rendered/re-rendered on its
-// own render path, so the button works whenever and however it appears.
-if (!globalThis.__sdxBiomeEditorDelegated) {
+/** Wire the tray's Edit Biomes button only when Dungeon Painter is enabled. */
+export function registerBiomeEditorDelegation() {
+	if (globalThis.__sdxBiomeEditorDelegated) return;
 	globalThis.__sdxBiomeEditorDelegated = true;
 	document.addEventListener("click", ev => {
 		const btn = ev.target?.closest?.(".dgen-edit-biomes");

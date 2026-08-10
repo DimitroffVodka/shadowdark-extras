@@ -780,7 +780,7 @@ export async function revertShapechanger(actor, skipEndDuration = false) {
  * For self-transform spells (Shapechanger, Wolf Shape), backup is on the caster.
  * For target-other spells (Polymorph), backup is on the target, not the caster.
  */
-Hooks.on("sdx.durationSpellEnded", async (caster, durationEntry, reason) => {
+const onDurationSpellEnded = async (caster, durationEntry, reason) => {
 	if (!caster) return;
 
 	// Check caster first (self-transform spells)
@@ -810,12 +810,12 @@ Hooks.on("sdx.durationSpellEnded", async (caster, durationEntry, reason) => {
 			}
 		}
 	}
-});
+};
 
 /**
  * Auto-revert hook: HP reaches 0 (for spells with revertAt0HP like Wolf Shape)
  */
-Hooks.on("updateActor", async (actor, changes, options, userId) => {
+const onUpdateActor = async (actor, changes, options, userId) => {
 	// Only react to HP changes
 	if (!foundry.utils.hasProperty(changes, "system.attributes.hp.value")) return;
 
@@ -830,14 +830,14 @@ Hooks.on("updateActor", async (actor, changes, options, userId) => {
 
 	console.log(`${MODULE_ID} | ${backup.spellTitle || "Shapechanger"} auto-revert: ${actor.name} reached 0 HP`);
 	await revertShapechanger(actor);
-});
+};
 
 /**
  * Inject Shapechanger abilities into the Player sheet
  * NPC item types (NPC Attack, NPC Special Attack, NPC Feature) are not normally
  * visible on the Player sheet, so we inject a custom section when transformed.
  */
-Hooks.on("renderPlayerSheetSD", (sheet, html, data) => {
+const onRenderPlayerSheet = (sheet, html, data) => {
 	const actor = sheet.actor;
 	if (!actor) return;
 
@@ -1029,4 +1029,15 @@ Hooks.on("renderPlayerSheetSD", (sheet, html, data) => {
 		event.stopPropagation();
 		await revertShapechanger(actor);
 	});
-});
+};
+
+let shapechangerHooksRegistered = false;
+
+/** Register shapechanger lifecycle and sheet hooks exactly once. */
+export function registerShapechangerHooks() {
+	if (shapechangerHooksRegistered) return;
+	shapechangerHooksRegistered = true;
+	Hooks.on("sdx.durationSpellEnded", onDurationSpellEnded);
+	Hooks.on("updateActor", onUpdateActor);
+	Hooks.on("renderPlayerSheetSD", onRenderPlayerSheet);
+}

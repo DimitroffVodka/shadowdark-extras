@@ -860,14 +860,20 @@ function injectHudButtons(hud, html) {
 
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
-Hooks.on("renderTileHUD", (hud, html) => {
-	try {
-		injectHudButtons(hud, html);
-	}
-	catch(error) {
-		console.error(`${MODULE_ID} | TileHUD flatten button error:`, error);
-	}
-});
+let hooksRegistered = false;
+
+export function registerTileFlattenHooks() {
+	if (hooksRegistered) return;
+	hooksRegistered = true;
+	Hooks.on("renderTileHUD", (hud, html) => {
+		try {
+			injectHudButtons(hud, html);
+		}
+		catch(error) {
+			console.error(`${MODULE_ID} | TileHUD flatten button error:`, error);
+		}
+	});
+}
 
 // ─── Dungeon Level Flatten/Unflatten ─────────────────────────────────────────
 

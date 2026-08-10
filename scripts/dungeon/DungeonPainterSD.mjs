@@ -114,7 +114,11 @@ const WALL_THICKNESS = 20;
 // Register the GM-only opt-in for player dungeon painting. World scope so the
 // GM's choice applies to everyone; config:true exposes it in module settings.
 // Default false → players have no access to the Dungeons tab until enabled.
-Hooks.once("init", () => {
+let dungeonPainterSettingsRegistered = false;
+
+export function registerDungeonPainterSettings() {
+	if (dungeonPainterSettingsRegistered) return;
+	dungeonPainterSettingsRegistered = true;
 	game.settings.register(MODULE_ID, SETTING_ALLOW_PLAYER_PAINT, {
 		name: "Allow Players to Paint Dungeons",
 		hint: "When enabled, players can see and use the Dungeons tab in the SDX tray (painting via the GM connection while a GM is online). When disabled, the Dungeons tab is GM-only.",
@@ -125,7 +129,7 @@ Hooks.once("init", () => {
 		// Tray re-render on change is handled by the updateSetting hook in TraySD.mjs,
 		// which fires on every client (so players' trays refresh too).
 	});
-});
+}
 
 // State
 let _paintEnabled = false;
