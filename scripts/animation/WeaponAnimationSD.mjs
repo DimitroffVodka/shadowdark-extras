@@ -8,6 +8,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  */
 
 import { AnimationFxSD } from "./AnimationFxSD.mjs";
+import { initAnimationEffectDedup } from "./AnimationEffectDedupSD.mjs";
 import { isItemPilesActor } from "../inventory/ItemPilesCompatSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -622,6 +623,7 @@ export function initWeaponAnimations() {
 	}
 
 	console.log(`${MODULE_ID} | Initializing weapon animations`);
+	initAnimationEffectDedup();
 
 	// Reset restore chain for test isolation — init is called per test in the harness
 	_weaponRestoreChain = Promise.resolve();

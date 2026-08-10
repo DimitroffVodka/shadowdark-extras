@@ -5,6 +5,7 @@
  */
 
 import { AnimationFxSD } from "./AnimationFxSD.mjs";
+import { initAnimationEffectDedup } from "./AnimationEffectDedupSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -557,6 +558,7 @@ export function initTorchAnimations() {
 	}
 
 	console.log(`${MODULE_ID} | Initializing torch animations`);
+	initAnimationEffectDedup();
 
 	// Reset restore chain for test isolation — init is called per test in the harness
 	_torchRestoreChain = Promise.resolve();

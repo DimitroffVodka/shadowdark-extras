@@ -5,6 +5,7 @@
  */
 
 import { AnimationFxSD } from "./AnimationFxSD.mjs";
+import { initAnimationEffectDedup } from "./AnimationEffectDedupSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -205,6 +206,7 @@ export function initLevelUpAnimations() {
 	}
 
 	console.log(`${MODULE_ID} | Initializing level-up animations`);
+	initAnimationEffectDedup();
 
 	// Hook into actor updates to detect XP or level changes
 	Hooks.on("updateActor", async (actor, changes, options, userId) => {
