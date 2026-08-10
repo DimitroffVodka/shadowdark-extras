@@ -88,29 +88,42 @@ function configureEnabledFeatures(...enabledIds) {
 	};
 }
 
-	test("minimal socket owners enter the gate, while unrelated features do not", () => {
+	test("socket ready gate has exactly its callback owners", () => {
 	const marker = "// Socket setup gets its own ready hook";
 	const markerStart = rootSource.indexOf(marker);
 	const gateStart = rootSource.indexOf("anyFeatureEnabled(", markerStart);
 	const gateClose = matchingDelimiter(rootSource, rootSource.indexOf("(", gateStart), "(", ")");
 	const gate = rootSource.slice(gateStart, gateClose + 1);
 	const evaluateGate = Function("FEATURE_IDS", "anyFeatureEnabled", `return ${gate};`);
-	const partyOnly = new Set([FEATURE_IDS.PARTY_MANAGEMENT]);
+	const owners = [
+		FEATURE_IDS.ITEM_MACROS,
+		FEATURE_IDS.SPELL_ACTIVITY,
+		FEATURE_IDS.PARTY_MANAGEMENT,
+		FEATURE_IDS.TEMPLATE_EFFECTS,
+	];
+	const gateOwners = [...gate.matchAll(/FEATURE_IDS\.([A-Z_]+)/g)]
+		.map(([, name]) => FEATURE_IDS[name]);
+	assert.deepEqual(gateOwners, owners, "the outer gate must match the callback owners in order");
 
-	assert.equal(
-		evaluateGate(FEATURE_IDS, (...ids) => ids.some(id => partyOnly.has(id))),
-		true,
-		"Party Management must be sufficient to enter socket registration",
-	);
-	assert.equal(
-		evaluateGate(FEATURE_IDS, id => id === FEATURE_IDS.DAMAGE_TYPES),
-		false,
-		"an unrelated feature must not enter the socket registration",
-	);
+	for (const owner of owners) {
+		const enabled = new Set([owner]);
+		assert.equal(
+			evaluateGate(FEATURE_IDS, (...ids) => ids.some(id => enabled.has(id))),
+			true,
+			`${owner} must be sufficient to enter socket registration`,
+		);
+	}
+	for (const unrelated of [FEATURE_IDS.DAMAGE_CARDS, FEATURE_IDS.DAMAGE_TYPES]) {
+		const enabled = new Set([unrelated]);
+		assert.equal(
+			evaluateGate(FEATURE_IDS, (...ids) => ids.some(id => enabled.has(id))),
+			false,
+			`${unrelated} must not enter socket registration`,
+		);
+	}
 
 	const ready = extractArrowBody(rootSource, rootSource.indexOf(")) Hooks.once(\"ready\", () => {", markerStart));
-	const calls = [];
-	const executeReady = Function(
+	const executeReadyBody = Function(
 		"FEATURE_IDS",
 		"anyFeatureEnabled",
 		"featureEnabled",
@@ -122,20 +135,48 @@ function configureEnabledFeatures(...enabledIds) {
 		"registerPartyStatsSocket",
 		ready,
 	);
-	const featureEnabled = featureId => partyOnly.has(featureId);
-	executeReady(
-		FEATURE_IDS,
-		(...ids) => ids.some(id => partyOnly.has(id)),
-		featureEnabled,
-		() => ({}),
-		() => calls.push("effect-macro"),
-		() => calls.push("item-macro"),
-		() => calls.push("party-travel"),
-		() => calls.push("template-target-sync"),
-		() => calls.push("party-stats"),
-	);
+	const runReadyBody = (...enabledIds) => {
+		const enabled = new Set(enabledIds);
+		const calls = [];
+		let bodyRuns = 0;
+		let socketInitializations = 0;
+		const anyFeatureEnabled = (...ids) => ids.some(id => enabled.has(id));
+		if (evaluateGate(FEATURE_IDS, anyFeatureEnabled)) {
+			bodyRuns += 1;
+			executeReadyBody(
+				FEATURE_IDS,
+				anyFeatureEnabled,
+				featureId => enabled.has(featureId),
+				() => {
+					socketInitializations += 1;
+					return {};
+				},
+				() => calls.push("effect-macro"),
+				() => calls.push("item-macro"),
+				() => calls.push("party-travel"),
+				() => calls.push("template-target-sync"),
+				() => calls.push("party-stats"),
+			);
+		}
+		return { bodyRuns, calls, socketInitializations };
+	};
 
-	assert.deepEqual(calls, ["party-travel", "party-stats"]);
+	assert.deepEqual(
+		runReadyBody(FEATURE_IDS.PARTY_MANAGEMENT),
+		{
+			bodyRuns: 1,
+			calls: ["party-travel", "party-stats"],
+			socketInitializations: 1,
+		},
+		"Party Management must invoke only its two party handlers",
+	);
+	for (const enabledIds of [[], [FEATURE_IDS.DAMAGE_CARDS], [FEATURE_IDS.DAMAGE_TYPES]]) {
+		assert.deepEqual(
+			runReadyBody(...enabledIds),
+			{ bodyRuns: 0, calls: [], socketInitializations: 0 },
+			`${enabledIds.length ? enabledIds[0] : "no features"} must not register or run the socket body`,
+		);
+	}
 });
 
 test("chat-card registration gate includes every owner and excludes unrelated features", () => {
@@ -157,7 +198,7 @@ test("chat-card registration gate includes every owner and excludes unrelated fe
 		);
 	}
 	assert.equal(
-		evaluateGate(FEATURE_IDS, id => id === FEATURE_IDS.SOURCE_REQUIREMENTS),
+		evaluateGate(FEATURE_IDS, (...ids) => ids.includes(FEATURE_IDS.SOURCE_REQUIREMENTS)),
 		false,
 		"an unrelated feature must not enter chat-card registration",
 	);
