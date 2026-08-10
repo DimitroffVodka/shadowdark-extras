@@ -270,7 +270,7 @@
                         <i class="fas fa-folder-plus"></i> Create New Folder
                     </button>
                     {{/if}}
-                    {{#if tomActiveSceneId}}
+                    {{#if (and tomActiveSceneId features.tomPlayerView)}}
                     <button class="tray-btn-full danger mt-2" data-action="stop-broadcast">
                         <i class="fas fa-stop"></i> Stop Broadcasting
                     </button>
@@ -332,7 +332,7 @@
                             {{#each this.scenes}}
                             <div class="scene-card {{#if (eq this.id ../../tomActiveSceneId)}}active{{/if}}"
                                 data-scene-id="{{this.id}}" draggable="true">
-                                <div class="scene-card-activate" title="Click to Broadcast">
+                                <div class="{{#if ../../features.tomPlayerView}}scene-card-activate{{else}}scene-card-preview{{/if}}" style="flex: 1; display: flex; min-width: 0;"{{#if ../../features.tomPlayerView}} title="Click to Broadcast"{{/if}}>
                                     <div class="scene-card-thumb">
                                         {{#if this.isVideo}}
                                         <video src="{{this.background}}" muted loop preload="metadata"
@@ -382,7 +382,7 @@
                         {{#unless this.folderId}}
                         <div class="scene-card {{#if (eq this.id ../tomActiveSceneId)}}active{{/if}}"
                             data-scene-id="{{this.id}}" draggable="true">
-                            <div class="scene-card-activate" title="Click to Broadcast">
+                            <div class="{{#if ../features.tomPlayerView}}scene-card-activate{{else}}scene-card-preview{{/if}}" style="flex: 1; display: flex; min-width: 0;"{{#if ../features.tomPlayerView}} title="Click to Broadcast"{{/if}}>
                                 <div class="scene-card-thumb">
                                     {{#if this.isVideo}}
                                     <video src="{{this.background}}" muted loop preload="metadata"
