@@ -1,4 +1,5 @@
 import { MODULE_ID } from "../shared/module-id.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "./feature-gates.mjs";
 
 /**
  * Register drawing-tool settings and its hold-to-draw keybinding.
@@ -7,6 +8,8 @@ import { MODULE_ID } from "../shared/module-id.mjs";
  * registration order within registerSettings().
  */
 export function registerDrawingSettings() {
+	if (!isFeatureEnabled(FEATURE_IDS.DRAWING_TOOLS)) return;
+
 	// ═══════════════════════════════════════════════════════════════
 	// 12. DRAWING TOOLS
 	// ═══════════════════════════════════════════════════════════════

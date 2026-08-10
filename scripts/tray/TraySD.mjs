@@ -55,6 +55,11 @@ function _activeSceneId() {
 	return canvas.scene?.id ?? "";
 }
 
+function _getPartySetting(key, fallback) {
+	if (!isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) return fallback;
+	return game.settings.get(MODULE_ID, key) ?? fallback;
+}
+
 function _scenePartyMap(sceneId = _activeSceneId()) {
 	let m = _partyStats.get(sceneId);
 	if (!m) {
@@ -90,7 +95,7 @@ export function initTray() {
 	document.body.classList.add("sdx-tray-enabled");
 
 	// Cache the world-scope NPC visibility toggle (synced to all clients)
-	_hideNpcsFromPlayers = game.settings.get(MODULE_ID, "tray.hideNpcsFromPlayers") ?? true;
+	_hideNpcsFromPlayers = _getPartySetting("tray.hideNpcsFromPlayers", true);
 
 	// Create the tray app
 	_trayApp = new TrayApp();
@@ -343,7 +348,7 @@ export function initTray() {
  * Register tray settings
  */
 export function registerTraySettings() {
-	game.settings.register(MODULE_ID, "tray.enabled", {
+	if (isFeatureEnabled(FEATURE_IDS.TRAY)) game.settings.register(MODULE_ID, "tray.enabled", {
 		name: "SHADOWDARK_EXTRAS.tray.settings.enabled.name",
 		hint: "SHADOWDARK_EXTRAS.tray.settings.enabled.hint",
 		scope: "client",
@@ -353,7 +358,7 @@ export function registerTraySettings() {
 		requiresReload: true,
 	});
 
-	game.settings.register(MODULE_ID, "tray.showPartyTab", {
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) game.settings.register(MODULE_ID, "tray.showPartyTab", {
 		name: "SHADOWDARK_EXTRAS.tray.settings.showPartyTab.name",
 		hint: "SHADOWDARK_EXTRAS.tray.settings.showPartyTab.hint",
 		scope: "client",
@@ -362,7 +367,7 @@ export function registerTraySettings() {
 		default: true,
 	});
 
-	game.settings.register(MODULE_ID, "tray.partyName", {
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) game.settings.register(MODULE_ID, "tray.partyName", {
 		name: "SHADOWDARK_EXTRAS.tray.settings.partyName.name",
 		hint: "SHADOWDARK_EXTRAS.tray.settings.partyName.hint",
 		scope: "world",
@@ -371,7 +376,7 @@ export function registerTraySettings() {
 		default: "Party",
 	});
 
-	game.settings.register(MODULE_ID, "tray.showHealthBars", {
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) game.settings.register(MODULE_ID, "tray.showHealthBars", {
 		name: "SHADOWDARK_EXTRAS.tray.settings.showHealthBars.name",
 		hint: "SHADOWDARK_EXTRAS.tray.settings.showHealthBars.hint",
 		scope: "client",
@@ -380,7 +385,7 @@ export function registerTraySettings() {
 		default: true,
 	});
 
-	game.settings.register(MODULE_ID, "tray.showNPCs", {
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) game.settings.register(MODULE_ID, "tray.showNPCs", {
 		name: "SHADOWDARK_EXTRAS.tray.settings.showNPCs.name",
 		hint: "SHADOWDARK_EXTRAS.tray.settings.showNPCs.hint",
 		scope: "client",
@@ -392,7 +397,7 @@ export function registerTraySettings() {
 	// World-scope GM toggle: hidden from the settings UI (the tray button is
 	// the only control). Foundry's setting sync carries it to every client,
 	// where the updateSetting hook in initTray refreshes the cache.
-	game.settings.register(MODULE_ID, "tray.hideNpcsFromPlayers", {
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) game.settings.register(MODULE_ID, "tray.hideNpcsFromPlayers", {
 		name: "Hide NPCs from Players (tray)",
 		hint: "Whether monsters and NPCs are hidden from players in the tray's Party view.",
 		scope: "world",
@@ -402,7 +407,7 @@ export function registerTraySettings() {
 	});
 
 	// Hidden settings for hex painter (not shown in config)
-	game.settings.register(MODULE_ID, "hexFog.defaultRevealRadius", {
+	if (isFeatureEnabled(FEATURE_IDS.HEX_FOG)) game.settings.register(MODULE_ID, "hexFog.defaultRevealRadius", {
 		name: "Hex Fog: Default Reveal Radius",
 		hint: "How many rings of hexes to reveal around a token when it moves. 0 = only the token's hex, 1 = token + adjacent hexes, 2 = two rings out, etc.",
 		scope: "world",
@@ -412,28 +417,28 @@ export function registerTraySettings() {
 		range: { min: 0, max: 5, step: 1 },
 	});
 
-	game.settings.register(MODULE_ID, "hexPainter.customTileWidth", {
+	if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) game.settings.register(MODULE_ID, "hexPainter.customTileWidth", {
 		scope: "client",
 		config: false,
 		type: Number,
 		default: 296,
 	});
 
-	game.settings.register(MODULE_ID, "hexPainter.customTileHeight", {
+	if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) game.settings.register(MODULE_ID, "hexPainter.customTileHeight", {
 		scope: "client",
 		config: false,
 		type: Number,
 		default: 256,
 	});
 
-	game.settings.register(MODULE_ID, "hexPainter.poiScale", {
+	if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) game.settings.register(MODULE_ID, "hexPainter.poiScale", {
 		scope: "client",
 		config: false,
 		type: Number,
 		default: 0.5,
 	});
 
-	game.settings.register(MODULE_ID, "settlement.useLocalMaphub", {
+	if (isFeatureEnabled(FEATURE_IDS.MAP_GENERATORS)) game.settings.register(MODULE_ID, "settlement.useLocalMaphub", {
 		name: "Settlement Maps: Use Local Maphub",
 		hint: "Load settlement map visuals from the locally-built maphub files (scripts/maphub/) instead of watabou.github.io. Enables offline use. Requires building and copying maphub files first — see module README.",
 		scope: "world",
@@ -522,7 +527,7 @@ export function getPartyTokens({ includeAllNPCs = false } = {}) {
 			// NPCs/monsters — the on-screen tray respects tray.showNPCs, but the
 			// GM -> players broadcast must not be gated by that personal toggle.
 			// Callers that build the broadcast pass includeAllNPCs:true.
-			if (includeAllNPCs || game.settings.get(MODULE_ID, "tray.showNPCs")) {
+			if (includeAllNPCs || _getPartySetting("tray.showNPCs", true)) {
 				npcTokens.push(buildPartyCardEntry(token, actor, { isNPC: true, isOwner: true }));
 			}
 		}
@@ -702,7 +707,7 @@ export async function setViewMode(mode) {
 	const modes = getVisibleTrayModes({
 		isGM: game.user.isGM,
 		canPlayerPaint: canPlayerPaint(),
-		showPartyTab: game.settings.get(MODULE_ID, "tray.showPartyTab"),
+		showPartyTab: _getPartySetting("tray.showPartyTab", true),
 		disabledFeatureIds: getDisabledFeatureIds(),
 	});
 	if (!modes.includes(mode)) mode = modes[0];
@@ -754,7 +759,9 @@ export function getViewMode() {
  * initTray refreshes the cache and re-renders the tray.
  */
 export function toggleHideNpcsFromPlayers() {
-	if (!game.user.isGM) return _hideNpcsFromPlayers;
+	if (!game.user.isGM || !isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) {
+		return _hideNpcsFromPlayers;
+	}
 	const next = !_hideNpcsFromPlayers;
 	_hideNpcsFromPlayers = next;
 	game.settings.set(MODULE_ID, "tray.hideNpcsFromPlayers", next);
@@ -888,7 +895,7 @@ function _broadcastActorPartyStats(actor) {
  * Cycle to the next view mode
  */
 export function cycleViewMode() {
-	const showParty = game.settings.get(MODULE_ID, "tray.showPartyTab");
+	const showParty = _getPartySetting("tray.showPartyTab", true);
 	const isGM = game.user.isGM;
 	const modes = getVisibleTrayModes({
 		isGM,
@@ -947,7 +954,7 @@ export async function renderTray() {
 	const modes = getVisibleTrayModes({
 		isGM: game.user.isGM,
 		canPlayerPaint: canPlayerPaint(),
-		showPartyTab: game.settings.get(MODULE_ID, "tray.showPartyTab"),
+		showPartyTab: _getPartySetting("tray.showPartyTab", true),
 		disabledFeatureIds,
 	});
 	if (!modes.includes(_viewMode)) _viewMode = modes[0];
@@ -957,9 +964,9 @@ export async function renderTray() {
 		? getPartyTokens()
 		: { partyTokens: [], npcTokens: [] };
 	const showPartyTab = features.partyManagement
-		&& game.settings.get(MODULE_ID, "tray.showPartyTab");
-	const partyName = game.settings.get(MODULE_ID, "tray.partyName");
-	const showHealthBars = game.settings.get(MODULE_ID, "tray.showHealthBars");
+		&& _getPartySetting("tray.showPartyTab", true);
+	const partyName = _getPartySetting("tray.partyName", "Party");
+	const showHealthBars = _getPartySetting("tray.showHealthBars", true);
 
 	// Calculate party totals
 	let partyTotalHP = 0;

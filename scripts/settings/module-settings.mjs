@@ -1115,7 +1115,13 @@ export function registerSettings() {
 	if (isFeatureEnabled(FEATURE_IDS.TOKEN_TOOLBAR)) registerTokenToolbarSettings();
 
 	// Character Tray settings
-	registerTraySettings();
+	if (anyFeatureEnabled(
+		FEATURE_IDS.TRAY,
+		FEATURE_IDS.PARTY_MANAGEMENT,
+		FEATURE_IDS.HEX_PAINTER,
+		FEATURE_IDS.HEX_FOG,
+		FEATURE_IDS.MAP_GENERATORS
+	)) registerTraySettings();
 
 	// 11. PIN STYLE EDITOR
 	// ═══════════════════════════════════════════════════════════════
@@ -1130,5 +1136,5 @@ export function registerSettings() {
 		registerSDXCoordsMenu(SDXCoordsSettingsApp);
 	}
 
-	registerDrawingSettings();
+	if (isFeatureEnabled(FEATURE_IDS.DRAWING_TOOLS)) registerDrawingSettings();
 }
