@@ -863,3 +863,18 @@ test("binding gate: a real destructured parameter list still binds", () => {
   assert.deepEqual(findUnboundIdentifiers(fn), [], "a parameter list must still bind");
   assert.deepEqual(findUnboundIdentifiers(arrow), [], "an arrow parameter list must still bind");
 });
+
+test("binding gate: a control-flow head does not bind like a parameter list", () => {
+  // `for ({ a } of list) { … }` puts an object pattern in parens whose `)` is
+  // followed by a body `{`, so the parameter-list test alone cannot tell it
+  // from a real parameter list. Only the for-of form occurs in real code.
+  const source = [
+    "export function f(list) {",
+    "\tfor ({ _missingState } of list) { break; }",
+    "\treturn _missingState.length;",
+    "}",
+  ].join("\n");
+
+  assert.ok(findUnboundIdentifiers(source).map((u) => u.name).includes("_missingState"),
+    "a for-of assignment head is not a parameter list");
+});

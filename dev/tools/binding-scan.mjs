@@ -192,6 +192,14 @@ function addDestructuredParamNames(masked, add) {
     }
     if (depth !== 0) continue;
 
+    // A control-flow head is never a parameter list, and its `)` IS followed by
+    // a body `{`, so the parameter-list test below cannot tell it apart:
+    // `if ({ handler }) { … }` would bind handler and silence a genuine unbound
+    // reference elsewhere. `for ({ a } of list)` is the form that occurs in real
+    // code; the `if`/`while` variants are pathological but cost nothing to skip.
+    const beforeParen = masked.slice(0, i).replace(/\s+$/, "");
+    if (/\b(?:if|while|for|switch|catch)$/.test(beforeParen)) { i = close; continue; }
+
     // MUST be a parameter list, not a call argument. `(` followed by `{` also
     // matches `configure({ onDone: handler })`, and binding an argument object's
     // names silently swallows a genuine unbound reference to the same name
