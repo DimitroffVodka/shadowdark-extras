@@ -1701,11 +1701,19 @@ Hooks.on("setup", () => {
 			},
 		};
 
-		const removeApi = (featureId, keys) => {
-			if (featureEnabled(featureId)) return;
+		// Owners may be a single feature id or several: a key survives while ANY
+		// owner is still enabled, so shared APIs are not torn out from under a
+		// feature that has no dependency on the one being disabled.
+		const removeApi = (featureIds, keys) => {
+			const owners = Array.isArray(featureIds) ? featureIds : [featureIds];
+			if (owners.some(featureId => featureEnabled(featureId))) return;
 			for (const key of keys) delete module.api[key];
 		};
-		removeApi(FEATURE_IDS.SPELL_ACTIVITY, ["templates", "dev", "applySpellEffect", "startDurationSpell", "endDurationSpell", "registerSpellModification", "getActiveDurationSpells"]);
+		removeApi(FEATURE_IDS.SPELL_ACTIVITY, ["templates", "dev", "applySpellEffect"]);
+		removeApi(
+			[FEATURE_IDS.SPELL_ACTIVITY, FEATURE_IDS.ITEM_MACROS],
+			["startDurationSpell", "endDurationSpell", "registerSpellModification", "getActiveDurationSpells"]
+		);
 		removeApi(FEATURE_IDS.NPC_CREATURE_TYPES, ["getCreatureType", "getMappedCreatureType"]);
 		removeApi(FEATURE_IDS.BREAK_ON_DAMAGE, ["breakEffectOnDamage", "clearBreakOnDamage"]);
 		removeApi(FEATURE_IDS.MEDKIT, ["registerMedkitPack", "unregisterMedkitPack", "getMedkitPacks", "scanWorldForUpdates", "applyWorldMedkitUpdates", "medkitScanWorld"]);

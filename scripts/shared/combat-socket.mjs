@@ -5,7 +5,7 @@
 
 import { endFocusSpell } from "../effects/FocusSpellTrackerSD.mjs";
 import { showScrollingText } from "./scrolling-text.mjs";
-import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
+import { FEATURE_IDS, isFeatureEnabled, anyFeatureEnabled } from "../settings/feature-gates.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 let socketlibSocket = null;
@@ -309,10 +309,15 @@ export function setupCombatSocket() {
 		showScrollingText(token, data.amount, data.isHealing);
 	});
 
-	// Register socket handler for applying conditions/effects
-	if ([
-		FEATURE_IDS.SPELL_ACTIVITY, FEATURE_IDS.PREDEFINED_EFFECTS,
-	].some(isFeatureEnabled)) socketlibSocket.register("applyTokenCondition", async data => {
+	// Register socket handler for applying conditions/effects.
+	// Use anyFeatureEnabled rather than .some(isFeatureEnabled): some() passes the
+	// array index as the second argument, which isFeatureEnabled reads as the
+	// disabled-id list, so every id would test as enabled.
+	// DAMAGE_CARDS is an owner too: damage-card.mjs is the only caller of this
+	// handler, and the .some() defect above masked its absence from the list.
+	if (anyFeatureEnabled(
+		FEATURE_IDS.SPELL_ACTIVITY, FEATURE_IDS.PREDEFINED_EFFECTS, FEATURE_IDS.DAMAGE_CARDS
+	)) socketlibSocket.register("applyTokenCondition", async data => {
 		const token = canvas.tokens.get(data.tokenId);
 		if (!token || !token.actor) {
 			console.warn("shadowdark-extras | Token not found for condition:", data.tokenId);
