@@ -5,6 +5,34 @@
 
 import { MODULE_ID } from "../shared/module-id.mjs";
 
+/**
+ * Find every token on a scene whose actor is a Player member of the Party.
+ * NPC members, unrelated actors, and the Party actor itself are excluded.
+ * @param {Scene} scene
+ * @param {Actor[]} members
+ * @returns {string[]}
+ */
+export function getRecallablePlayerTokenIds(scene, members) {
+	const players = members.filter(member => member?.type === "Player");
+	const playerActorIds = new Set(players.map(member => member.id).filter(Boolean));
+	const playerSourceUuids = new Set(
+		players.map(member => member.uuid).filter(uuid => uuid?.startsWith("Compendium."))
+	);
+	if (playerActorIds.size === 0 && playerSourceUuids.size === 0) return [];
+
+	const tokens = scene?.tokens?.contents
+		?? (scene?.tokens && typeof scene.tokens.values === "function" ? [...scene.tokens.values()] : []);
+	return tokens
+		.filter(token => {
+			if (playerActorIds.has(token.actorId ?? token.actor?.id)) return true;
+			const sourceUuid = token.actor?._stats?.compendiumSource
+				?? token.actor?._source?._stats?.compendiumSource
+				?? token.actor?.flags?.core?.sourceId;
+			return playerSourceUuids.has(sourceUuid);
+		})
+		.map(token => token.id);
+}
+
 export const PartyTokenPlacement = {
 	async _onPlaceMembers(event) {
 		event.preventDefault();
@@ -118,6 +146,50 @@ export const PartyTokenPlacement = {
 		}
 	},
 
+	async _onRecallMembers(event) {
+		event.preventDefault();
+		if (!game.user.isGM) return;
+
+		const scene = canvas.scene;
+		if (!scene) {
+			ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.party.warn.no_scene"));
+			return;
+		}
+
+		const members = await this.getMembers();
+		const tokenIds = getRecallablePlayerTokenIds(scene, members);
+		if (tokenIds.length === 0) {
+			ui.notifications.info(
+				game.i18n.localize("SHADOWDARK_EXTRAS.party.recall_none")
+			);
+			return;
+		}
+
+		const confirmed = await foundry.applications.api.DialogV2.confirm({
+			window: {
+				title: game.i18n.localize("SHADOWDARK_EXTRAS.party.recall_title"),
+			},
+			content: `<p>${game.i18n.format(
+				"SHADOWDARK_EXTRAS.party.recall_confirm", { count: tokenIds.length }
+			)}</p>`,
+			modal: true,
+		});
+		if (!confirmed) return;
+
+		try {
+			await scene.deleteEmbeddedDocuments("Token", tokenIds);
+			ui.notifications.info(game.i18n.format(
+				"SHADOWDARK_EXTRAS.party.recalled", { count: tokenIds.length }
+			));
+		}
+		catch(error) {
+			console.error(`${MODULE_ID} | Failed to recall Party player tokens`, error);
+			ui.notifications.error(game.i18n.format(
+				"SHADOWDARK_EXTRAS.party.recall_failed", { message: error.message }
+			));
+		}
+	},
+
 	/**
 	 * Place a single token with crosshair preview
 	 * @param {Actor} member - The actor to place
@@ -184,7 +256,7 @@ export const PartyTokenPlacement = {
 		const tokenData = tokenDocument.toObject();
 
 		// Create a preview token sprite for the cursor
-		const texture = await loadTexture(tokenData.texture.src);
+		const texture = await foundry.canvas.loadTexture(tokenData.texture.src);
 		const preview = new PIXI.Sprite(texture);
 		const gridSize = canvas.grid.size;
 		const tokenSize = tokenData.width * gridSize;
@@ -226,6 +298,7 @@ export const PartyTokenPlacement = {
 				canvas.stage.off("mousemove", onMouseMove);
 				canvas.stage.off("mousedown", onClick);
 				canvas.stage.off("rightdown", onRightClick);
+				document.removeEventListener("keydown", onKeyDown);
 				canvas.stage.removeChild(preview);
 				preview.destroy();
 
@@ -242,6 +315,7 @@ export const PartyTokenPlacement = {
 				canvas.stage.off("mousemove", onMouseMove);
 				canvas.stage.off("mousedown", onClick);
 				canvas.stage.off("rightdown", onRightClick);
+				document.removeEventListener("keydown", onKeyDown);
 				canvas.stage.removeChild(preview);
 				preview.destroy();
 
@@ -267,3 +341,12 @@ export const PartyTokenPlacement = {
 		});
 	},
 };
+
+/**
+ * Enter the existing click-to-place flow for any world actor.
+ * @param {Actor} actor
+ * @returns {Promise<boolean>}
+ */
+export function placeActorTokenWithPreview(actor) {
+	return PartyTokenPlacement._placeTokenWithPreview(actor);
+}

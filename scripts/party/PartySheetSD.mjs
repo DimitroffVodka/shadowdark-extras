@@ -456,6 +456,7 @@ export default class PartySheetSD extends PartySheetMixinBase {
 		html.find("[data-action='open-member']").click(this._onOpenMember.bind(this));
 		html.find("[data-action='remove-member']").click(this._onRemoveMember.bind(this));
 		html.find("[data-action='place-members']").click(this._onPlaceMembers.bind(this));
+		html.find("[data-action='recall-members']").click(this._onRecallMembers.bind(this));
 		html.find("[data-action='reward-xp']").click(this._onRewardXp.bind(this));
 		html.find("[data-action='reward-coins']").click(this._onRewardCoins.bind(this));
 		html.find("[data-action='sync-lights']").click(this._onSyncLights.bind(this));

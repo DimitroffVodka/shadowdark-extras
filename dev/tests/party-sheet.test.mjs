@@ -90,6 +90,7 @@ const ROUTING = [
 	"[data-action='npc-count-increment'] :: click -> bound _onNpcCountIncrement",
 	"[data-action='open-member'] :: click -> bound _onOpenMember",
 	"[data-action='place-members'] :: click -> bound _onPlaceMembers",
+	"[data-action='recall-members'] :: click -> bound _onRecallMembers",
 	"[data-action='remove-member'] :: click -> bound _onRemoveMember",
 	"[data-action='remove-travel-member'] :: click -> bound _onRemoveTravelMember",
 	"[data-action='reset-travel'] :: click -> bound _onResetTravel",
@@ -146,6 +147,212 @@ test("the item context menu is built against the raw element, not the jQuery wra
 
 	assert.equal(contextMenus.length, 1);
 	assert.equal(typeof contextMenus[0].querySelector, "function");
+});
+
+// --- party token recall -----------------------------------------------------
+
+test("recall removes every Player-member token while leaving NPC and Party tokens", async () => {
+	const player = makeActor({ id: "hero", type: "Player" });
+	const compendiumPlayer = {
+		id: "compendium-hero",
+		type: "Player",
+		uuid: "Compendium.shadowdark.actors.compendium-hero",
+	};
+	const npc = makeActor({ id: "guide", type: "NPC" });
+	const party = makeActor({ id: "party", type: "NPC", flags: { isParty: true } });
+	const deleted = [];
+	const previousScene = globalThis.canvas.scene;
+	const previousUser = globalThis.game.user;
+	const previousConfirm = foundry.applications.api.DialogV2.confirm;
+
+	globalThis.game.user = { id: "gm", isGM: true };
+	globalThis.canvas.scene = {
+		tokens: {
+			contents: [
+				{ id: "hero-1", actorId: "hero" },
+				{ id: "hero-2", actorId: "hero" },
+				{
+					id: "imported-hero-1",
+					actorId: "imported-hero",
+					actor: { _stats: { compendiumSource: compendiumPlayer.uuid } },
+				},
+				{
+					id: "imported-hero-2",
+					actorId: "imported-hero-2",
+					actor: { _source: { _stats: { compendiumSource: compendiumPlayer.uuid } } },
+				},
+				{
+					id: "legacy-imported-hero",
+					actorId: "legacy-imported-hero",
+					actor: { flags: { core: { sourceId: compendiumPlayer.uuid } } },
+				},
+				{ id: "guide-1", actorId: "guide" },
+				{ id: "party-1", actorId: "party" },
+				{ id: "stranger-1", actorId: "stranger" },
+			],
+		},
+		deleteEmbeddedDocuments: async (type, ids) => deleted.push({ type, ids }),
+	};
+	foundry.applications.api.DialogV2.confirm = async () => true;
+
+	try {
+		const sheet = makeSheet(party);
+		sheet.getMembers = async () => [player, compendiumPlayer, npc];
+		await sheet._onRecallMembers({ preventDefault() {} });
+
+		assert.deepEqual(deleted, [{
+			type: "Token",
+			ids: [
+				"hero-1",
+				"hero-2",
+				"imported-hero-1",
+				"imported-hero-2",
+				"legacy-imported-hero",
+			],
+		}]);
+	}
+	finally {
+		globalThis.canvas.scene = previousScene;
+		globalThis.game.user = previousUser;
+		foundry.applications.api.DialogV2.confirm = previousConfirm;
+	}
+});
+
+test("canceling recall leaves every scene token untouched", async () => {
+	const player = makeActor({ id: "hero", type: "Player" });
+	const deleted = [];
+	const previousScene = globalThis.canvas.scene;
+	const previousUser = globalThis.game.user;
+	const previousConfirm = foundry.applications.api.DialogV2.confirm;
+
+	globalThis.game.user = { id: "gm", isGM: true };
+	globalThis.canvas.scene = {
+		tokens: { contents: [{ id: "hero-1", actorId: "hero" }] },
+		deleteEmbeddedDocuments: async (type, ids) => deleted.push({ type, ids }),
+	};
+	foundry.applications.api.DialogV2.confirm = async () => false;
+
+	try {
+		const sheet = makeSheet();
+		sheet.getMembers = async () => [player];
+		await sheet._onRecallMembers({ preventDefault() {} });
+		assert.deepEqual(deleted, []);
+	}
+	finally {
+		globalThis.canvas.scene = previousScene;
+		globalThis.game.user = previousUser;
+		foundry.applications.api.DialogV2.confirm = previousConfirm;
+	}
+});
+
+test("recall deletes from the scene that opened the confirmation", async () => {
+	const player = makeActor({ id: "hero", type: "Player" });
+	const originalDeletes = [];
+	const switchedDeletes = [];
+	const previousScene = globalThis.canvas.scene;
+	const previousUser = globalThis.game.user;
+	const previousConfirm = foundry.applications.api.DialogV2.confirm;
+	const switchedScene = {
+		tokens: { contents: [] },
+		deleteEmbeddedDocuments: async (type, ids) => switchedDeletes.push({ type, ids }),
+	};
+	const originalScene = {
+		tokens: { contents: [{ id: "hero-1", actorId: "hero" }] },
+		deleteEmbeddedDocuments: async (type, ids) => originalDeletes.push({ type, ids }),
+	};
+
+	globalThis.game.user = { id: "gm", isGM: true };
+	globalThis.canvas.scene = originalScene;
+	foundry.applications.api.DialogV2.confirm = async () => {
+		globalThis.canvas.scene = switchedScene;
+		return true;
+	};
+
+	try {
+		const sheet = makeSheet();
+		sheet.getMembers = async () => [player];
+		await sheet._onRecallMembers({ preventDefault() {} });
+
+		assert.deepEqual(originalDeletes, [{ type: "Token", ids: ["hero-1"] }]);
+		assert.deepEqual(switchedDeletes, []);
+	}
+	finally {
+		globalThis.canvas.scene = previousScene;
+		globalThis.game.user = previousUser;
+		foundry.applications.api.DialogV2.confirm = previousConfirm;
+	}
+});
+
+test("non-GMs cannot recall Party tokens", async () => {
+	const player = makeActor({ id: "hero", type: "Player" });
+	const deleted = [];
+	const previousScene = globalThis.canvas.scene;
+	const previousUser = globalThis.game.user;
+	const previousConfirm = foundry.applications.api.DialogV2.confirm;
+
+	globalThis.game.user = { id: "player", isGM: false };
+	globalThis.canvas.scene = {
+		tokens: { contents: [{ id: "hero-1", actorId: "hero" }] },
+		deleteEmbeddedDocuments: async (type, ids) => deleted.push({ type, ids }),
+	};
+	foundry.applications.api.DialogV2.confirm = async () => {
+		throw new Error("non-GM recall reached confirmation");
+	};
+
+	try {
+		const sheet = makeSheet();
+		sheet.getMembers = async () => [player];
+		await sheet._onRecallMembers({ preventDefault() {} });
+		assert.deepEqual(deleted, []);
+	}
+	finally {
+		globalThis.canvas.scene = previousScene;
+		globalThis.game.user = previousUser;
+		foundry.applications.api.DialogV2.confirm = previousConfirm;
+	}
+});
+
+test("recall handles no scene, no matching tokens, and deletion failure safely", async () => {
+	const player = makeActor({ id: "hero", type: "Player" });
+	const previousScene = globalThis.canvas.scene;
+	const previousUser = globalThis.game.user;
+	const previousConfirm = foundry.applications.api.DialogV2.confirm;
+	const previousError = globalThis.ui.notifications.error;
+	let confirmCount = 0;
+	const errors = [];
+
+	globalThis.game.user = { id: "gm", isGM: true };
+	foundry.applications.api.DialogV2.confirm = async () => {
+		confirmCount++;
+		return true;
+	};
+	globalThis.ui.notifications.error = message => errors.push(message);
+
+	try {
+		const sheet = makeSheet();
+		sheet.getMembers = async () => [player];
+
+		globalThis.canvas.scene = null;
+		await sheet._onRecallMembers({ preventDefault() {} });
+
+		globalThis.canvas.scene = { tokens: { contents: [] } };
+		await sheet._onRecallMembers({ preventDefault() {} });
+
+		globalThis.canvas.scene = {
+			tokens: { contents: [{ id: "hero-1", actorId: "hero" }] },
+			deleteEmbeddedDocuments: async () => { throw new Error("delete failed"); },
+		};
+		await sheet._onRecallMembers({ preventDefault() {} });
+
+		assert.equal(confirmCount, 1);
+		assert.deepEqual(errors, ["SHADOWDARK_EXTRAS.party.recall_failed"]);
+	}
+	finally {
+		globalThis.canvas.scene = previousScene;
+		globalThis.game.user = previousUser;
+		foundry.applications.api.DialogV2.confirm = previousConfirm;
+		globalThis.ui.notifications.error = previousError;
+	}
 });
 
 // --- ability modifiers ------------------------------------------------------
