@@ -163,10 +163,12 @@ export async function injectEnhancedHeader(app, html, actor) {
 				</div>` : "";
 
 	// Build the enhanced header content
+	const escapedActorImg = foundry.utils.escapeHTML(actor.img || "icons/svg/mystery-man.svg");
+	const escapedActorName = foundry.utils.escapeHTML(actor.name);
 	const enhancedContent = `
 		<div class="sdx-enhanced-content">
 			<div class="sdx-portrait-container">
-				<img class="sdx-portrait" src="${actor.img}" data-edit="img" data-tooltip="${actor.name}" />
+				<img class="sdx-portrait" src="${escapedActorImg}" data-edit="img" data-tooltip="${escapedActorName}" />
 				${hpWavesHtml}
 				<div class="sdx-hp-bar-container" data-tooltip="${HP_QUICK_ADJUST_TOOLTIP}">
 					<div class="sdx-hp-bar" style="width: ${hpPercent}%; background-color: ${hpColor};"></div>

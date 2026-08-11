@@ -138,19 +138,21 @@ export async function applyWrathToAllWeapons(casterActor, casterItem, originatin
 	const duration = casterItem.system?.duration?.value || "?";
 	const weaponCount = weaponUpdates.length;
 	const criticalBadge = isCritical ? ' <span style="color: gold; font-weight: bold;">[CRITICAL SUCCESS]</span>' : "";
+	const escapedImg = foundry.utils.escapeHTML(casterItem.img || "icons/svg/mystery-man.svg");
+	const escapedCasterName = foundry.utils.escapeHTML(casterActor.name);
 
 	await ChatMessage.create({
 		speaker: ChatMessage.getSpeaker({ actor: casterActor }),
 		content: `
             <div class="shadowdark chat-card sdx-wrath-chat">
                 <header class="card-header flexrow">
-                    <img class="item-image" src="${casterItem.img}" alt="Wrath"/>
+                    <img class="item-image" src="${escapedImg}" alt="Wrath"/>
                     <div class="header-text">
                         <h3><i class="fas fa-gavel"></i> Wrath${criticalBadge}</h3>
                     </div>
                 </header>
                 <div class="card-content">
-                    <p><strong>${casterActor.name}</strong> empowers their weapons with Wrath!</p>
+                    <p><strong>${escapedCasterName}</strong> empowers their weapons with Wrath!</p>
                     <p class="spell-effect"><em>${weaponCount} weapon${weaponCount !== 1 ? "s" : ""} become magical, gain +${hitBonus} to hit, and deal +${damageBonus} physical damage for ${duration} rounds.</em></p>
                 </div>
             </div>

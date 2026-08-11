@@ -253,15 +253,16 @@ export async function showShapechangerDialog(casterActor, casterItem, originatin
 		}
 
 		return filtered.map(monster => {
-			const img = monster.img || "icons/svg/mystery-man.svg";
+			const img = foundry.utils.escapeHTML(monster.img || "icons/svg/mystery-man.svg");
+			const name = foundry.utils.escapeHTML(monster.name);
 			const level = monster.system?.level?.value ?? "?";
 			return `
 				<div class="sdx-spell-weapon-item sdx-shapechanger-npc-item" data-npc-id="${monster._id}">
 					<div class="sdx-spell-weapon-img">
-						<img src="${img}" alt="${monster.name}">
+						<img src="${img}" alt="${name}">
 						<span class="sdx-weapon-badge" title="Level ${level}">LV ${level}</span>
 					</div>
-					<div class="sdx-spell-weapon-name">${monster.name}</div>
+					<div class="sdx-spell-weapon-name">${name}</div>
 				</div>
 			`;
 		}).join("");
@@ -601,12 +602,15 @@ export async function applyShapechanger(casterActor, casterItem, npcDoc, isCriti
 	// Revert button: use transformActor id, include token id for unlinked tokens
 	const revertTokenAttr = transformToken ? ` data-token-id="${transformToken.id}"` : "";
 
+	const escapedNpcImg = foundry.utils.escapeHTML(npcDoc.img || "icons/svg/mystery-man.svg");
+	const escapedNpcName = foundry.utils.escapeHTML(npcDoc.name);
+
 	await ChatMessage.create({
 		speaker: ChatMessage.getSpeaker({ actor: casterActor }),
 		content: `
 			<div class="shadowdark chat-card sdx-shapechanger-chat">
 				<header class="card-header flexrow">
-					<img class="item-image" src="${npcDoc.img}" alt="${npcDoc.name}"/>
+					<img class="item-image" src="${escapedNpcImg}" alt="${escapedNpcName}"/>
 					<div class="header-text">
 						<h3>${renderIcon(opts.icon)} ${opts.title}${criticalBadge}</h3>
 					</div>
@@ -864,12 +868,14 @@ const onRenderPlayerSheet = (sheet, html, data) => {
 		const damage = atk.system.damage?.value ?? "";
 		const num = atk.system.attack?.num ?? 1;
 		const isSpecialType = atk.system.attackType === "special";
+		const escapedImg = foundry.utils.escapeHTML(atk.img || "icons/svg/mystery-man.svg");
+		const escapedName = foundry.utils.escapeHTML(atk.name);
 
 		attacksHtml += `
 			<div class="sdx-sc-item ${isSpecialType ? "" : "sdx-sc-item-rollable"}" data-item-id="${atk.id}" data-item-type="NPC Attack" title="${isSpecialType ? "View details" : "Click to roll attack"}">
-				<img class="sdx-sc-item-img" src="${atk.img}" alt="${atk.name}">
+				<img class="sdx-sc-item-img" src="${escapedImg}" alt="${escapedName}">
 				<div class="sdx-sc-item-info">
-					<span class="sdx-sc-item-name">${atk.name}</span>
+					<span class="sdx-sc-item-name">${escapedName}</span>
 					<span class="sdx-sc-item-detail">${num}x ${bonusStr} ${damage ? `(${damage})` : ""}</span>
 				</div>
 			</div>`;
@@ -880,12 +886,14 @@ const onRenderPlayerSheet = (sheet, html, data) => {
 	for (const sp of specials) {
 		const desc = sp.system.description ?? "";
 		const cleanDesc = desc.replace(/<[^>]*>/g, "").substring(0, 80);
+		const escapedImg = foundry.utils.escapeHTML(sp.img || "icons/svg/mystery-man.svg");
+		const escapedName = foundry.utils.escapeHTML(sp.name);
 
 		specialsHtml += `
 			<div class="sdx-sc-item sdx-sc-item-rollable" data-item-id="${sp.id}" data-item-type="NPC Special Attack" title="Click to display">
-				<img class="sdx-sc-item-img" src="${sp.img}" alt="${sp.name}">
+				<img class="sdx-sc-item-img" src="${escapedImg}" alt="${escapedName}">
 				<div class="sdx-sc-item-info">
-					<span class="sdx-sc-item-name">${sp.name}</span>
+					<span class="sdx-sc-item-name">${escapedName}</span>
 					${cleanDesc ? `<span class="sdx-sc-item-detail">${cleanDesc}${desc.length > 80 ? "..." : ""}</span>` : ""}
 				</div>
 			</div>`;
@@ -896,12 +904,14 @@ const onRenderPlayerSheet = (sheet, html, data) => {
 	for (const feat of features) {
 		const desc = feat.system.description ?? "";
 		const cleanDesc = desc.replace(/<[^>]*>/g, "").substring(0, 80);
+		const escapedImg = foundry.utils.escapeHTML(feat.img || "icons/svg/mystery-man.svg");
+		const escapedName = foundry.utils.escapeHTML(feat.name);
 
 		featuresHtml += `
 			<div class="sdx-sc-item sdx-sc-item-rollable" data-item-id="${feat.id}" data-item-type="NPC Feature" title="Click to display">
-				<img class="sdx-sc-item-img" src="${feat.img}" alt="${feat.name}">
+				<img class="sdx-sc-item-img" src="${escapedImg}" alt="${escapedName}">
 				<div class="sdx-sc-item-info">
-					<span class="sdx-sc-item-name">${feat.name}</span>
+					<span class="sdx-sc-item-name">${escapedName}</span>
 					${cleanDesc ? `<span class="sdx-sc-item-detail">${cleanDesc}${desc.length > 80 ? "..." : ""}</span>` : ""}
 				</div>
 			</div>`;
@@ -914,12 +924,14 @@ const onRenderPlayerSheet = (sheet, html, data) => {
 		const range = sp.system.range ?? "";
 		const durationType = sp.system.duration?.type ?? "";
 		const detail = [dc, range, durationType].filter(Boolean).join(" · ");
+		const escapedImg = foundry.utils.escapeHTML(sp.img || "icons/svg/mystery-man.svg");
+		const escapedName = foundry.utils.escapeHTML(sp.name);
 
 		spellsHtml += `
 			<div class="sdx-sc-item sdx-sc-item-rollable" data-item-id="${sp.id}" data-item-type="NPC Spell" title="Click to display">
-				<img class="sdx-sc-item-img" src="${sp.img}" alt="${sp.name}">
+				<img class="sdx-sc-item-img" src="${escapedImg}" alt="${escapedName}">
 				<div class="sdx-sc-item-info">
-					<span class="sdx-sc-item-name">${sp.name}</span>
+					<span class="sdx-sc-item-name">${escapedName}</span>
 					${detail ? `<span class="sdx-sc-item-detail">${detail}</span>` : ""}
 				</div>
 			</div>`;

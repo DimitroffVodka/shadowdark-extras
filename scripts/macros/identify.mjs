@@ -45,8 +45,8 @@ export async function showIdentifyDialog(targetActor, unidentifiedItems, identif
 
 	// Build item cards HTML
 	const itemsHtml = unidentifiedItems.map(item => {
-		const maskedName = getUnidentifiedName(item);
-		const img = item.img || "icons/svg/mystery-man.svg";
+		const maskedName = foundry.utils.escapeHTML(getUnidentifiedName(item));
+		const img = foundry.utils.escapeHTML(item.img || "icons/svg/mystery-man.svg");
 		return `
 			<div class="sdx-identify-item" data-item-id="${item.id}">
 				<div class="sdx-identify-item-img">
@@ -180,19 +180,22 @@ export async function identifyItem(item, identifySpell) {
 	await showItemReveal(item, maskedName);
 
 	// Post chat message
+	const escapedImg = foundry.utils.escapeHTML(item.img || "icons/svg/mystery-man.svg");
+	const escapedName = foundry.utils.escapeHTML(item.name);
+	const escapedMaskedName = foundry.utils.escapeHTML(maskedName);
 	const chatContent = `
 		<div class="shadowdark chat-card sdx-identify-chat">
 			<header class="card-header flexrow">
-				<img class="item-image" src="${item.img}" alt="${item.name}"/>
+				<img class="item-image" src="${escapedImg}" alt="${escapedName}"/>
 				<div class="header-text">
 					<h3><i class="fas fa-sparkles"></i> ${game.i18n.localize("SHADOWDARK_EXTRAS.identify.revealed")}</h3>
 				</div>
 			</header>
 			<div class="card-content">
 				<p class="reveal-text">
-					<em>${maskedName}</em> ${game.i18n.localize("SHADOWDARK_EXTRAS.identify.isActually")}
+					<em>${escapedMaskedName}</em> ${game.i18n.localize("SHADOWDARK_EXTRAS.identify.isActually")}
 				</p>
-				<p class="item-name"><strong>${item.name}</strong></p>
+				<p class="item-name"><strong>${escapedName}</strong></p>
 				${item.system?.description ? `<div class="item-description">${item.system.description}</div>` : ""}
 			</div>
 		</div>
@@ -213,16 +216,18 @@ export async function identifyItem(item, identifySpell) {
  * @param {string} maskedName - The original masked name
  */
 export async function showItemReveal(item, maskedName) {
+	const escapedImg = foundry.utils.escapeHTML(item.img || "icons/svg/mystery-man.svg");
+	const escapedName = foundry.utils.escapeHTML(item.name);
 	const content = `
 		<div class="sdx-identify-reveal">
 			<div class="sdx-reveal-glow"></div>
 			<div class="sdx-reveal-content">
 				<div class="sdx-reveal-image">
-					<img src="${item.img}" alt="${item.name}">
+					<img src="${escapedImg}" alt="${escapedName}">
 				</div>
 				<div class="sdx-reveal-name">
 					<i class="fas fa-sparkles"></i>
-					<span>${item.name}</span>
+					<span>${escapedName}</span>
 					<i class="fas fa-sparkles"></i>
 				</div>
 				${item.system?.description ? `
