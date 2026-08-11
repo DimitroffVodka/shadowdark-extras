@@ -18562,11 +18562,13 @@ body.sdx-dark-mode .sdx-carousing-toggle-btn i {
     transform: scale(1.1);
 }
 
-.sdx-marching-leader-btn.active {
+.sdx-marching-leader-btn.active,
+.tray-handle-button-tool[data-action="leader"].active {
     color: #ffd700 !important;
 }
 
-.sdx-marching-mode-btn.active {
+.sdx-marching-mode-btn.active,
+.tray-handle-button-tool[data-action="marching"].active {
     color: #4CAF50 !important;
 }
 

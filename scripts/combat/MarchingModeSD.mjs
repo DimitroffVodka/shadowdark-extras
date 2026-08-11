@@ -244,9 +244,18 @@ function onRenderSidebar(sidebar, html) {
 }
 
 /**
- * Inject sidebar buttons into the given HTML
+ * Inject sidebar buttons into the given HTML.
+ *
+ * `html` arrives as a native HTMLElement from the v14 renderSidebar hook but as
+ * a jQuery object from the init-time direct call, so normalise before using the
+ * jQuery API. Passing the hook's raw <aside> straight through threw
+ * "html.find is not a function" on every sidebar render, which silently killed
+ * the whole fallback for tray-disabled worlds (#119).
+ *
+ * @param {jQuery|HTMLElement} html - The sidebar root
  */
-function injectSidebarButtons($html) {
+function injectSidebarButtons(html) {
+	const $html = html instanceof jQuery ? html : $(html);
 	const $tabs = $html.find("#sidebar-tabs");
 	if (!$tabs.length) {
 		console.warn(`${MODULE_ID} | Could not find #sidebar-tabs`);
@@ -595,7 +604,43 @@ async function setMovementMode(enabled) {
 }
 
 /**
- * Update button states to show active mode
+ * Toggle one indicator button's active styling.
+ *
+ * @param {HTMLElement|null} btn - The button, or null when that surface is absent
+ * @param {boolean} on - Whether the mode this button reflects is active
+ * @param {string} colour - The active colour
+ */
+function setIndicator(btn, on, colour) {
+	if (!btn) return;
+	btn.classList.toggle("active", on);
+	btn.style.color = on ? colour : "";
+}
+
+/**
+ * Apply the leader / marching active styling to a tray handle rail.
+ *
+ * Separate from updateButtonStates because the tray rebuilds these buttons from
+ * the template on every render, which drops the styling — the tray bindings
+ * call this with the element they just rendered. Native DOM, matching the rest
+ * of tray-handle-bindings.
+ *
+ * @param {ParentNode|null} root - The rendered tray root, or a document
+ */
+export function applyRailIndicators(root) {
+	if (!root?.querySelector) return;
+	setIndicator(root.querySelector(".tray-handle-button-tool[data-action='leader']"),
+		!!leaderTokenId, "#ffd700");
+	setIndicator(root.querySelector(".tray-handle-button-tool[data-action='marching']"),
+		marchingModeEnabled, "#4CAF50");
+}
+
+/**
+ * Update button states to show active mode.
+ *
+ * Covers both surfaces that expose these actions: the Foundry-sidebar fallback
+ * (tray disabled) and the tray handle rail (tray enabled). The rail was never
+ * updated at all, so on a tray-enabled world — the default — the leader and
+ * marching indicators never lit up (#119).
  */
 function updateButtonStates() {
 	const $leaderBtn = $("#sidebar-tabs .sdx-marching-leader-btn");
@@ -616,6 +661,8 @@ function updateButtonStates() {
 	else {
 		$modeBtn.removeClass("active").css("color", "");
 	}
+
+	applyRailIndicators(globalThis.document);
 }
 
 /**

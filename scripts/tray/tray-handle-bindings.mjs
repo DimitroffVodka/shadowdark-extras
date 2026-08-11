@@ -5,7 +5,7 @@
 // POI transform controls. Merged via Object.assign(TrayApp.prototype, ...).
 
 import { FormationSpawnerSD } from "../combat/FormationSpawnerSD.mjs";
-import { showLeaderDialog, showMovementModeDialog } from "../combat/MarchingModeSD.mjs";
+import { applyRailIndicators, showLeaderDialog, showMovementModeDialog } from "../combat/MarchingModeSD.mjs";
 import { disableDungeonPainting, enableDungeonPainting } from "../dungeon/DungeonPainterSD.mjs";
 import { adjustPoiScale, canRedoPoi, canUndoPoi, disablePainting, disablePreview, enablePainting, enablePreview, getActiveTileTab, getPoiMirror, getPoiScale, redoLastPoi, rotatePoiLeft, rotatePoiRight, setDecorMode, togglePoiMirror, undoLastPoi } from "../hex/HexPainterSD.mjs";
 import { getActiveHexFogEffect, getAvailableHexFogEffects, isFogEffectsEnabled, isHexFogEnabled, setHexFogEffect, setHexFogEnabled } from "../hex/SDXHexFogSD.mjs";
@@ -54,6 +54,10 @@ export const TrayHandleBindings = {
 			e.stopPropagation();
 			showMovementModeDialog();
 		});
+
+		// A render rebuilds these buttons from the template, which drops the
+		// leader/marching active styling. Re-apply it from the live state.
+		applyRailIndicators(elem);
 
 		elem.querySelector(".tray-handle-button-tool[data-action='formation']")?.addEventListener("click", e => {
 			e.preventDefault();
