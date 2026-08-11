@@ -583,6 +583,8 @@
     "registerSheet(NPCAttackSheetSD)",
     "registerSheet(NPCFeatureSheetSD)",
     "registerSheet(ClassAbilitySheetSD)",
+    "registerTemplatesApi(FEATURE_IDS)",
+    "registerTemplatesApi(SPELL_ACTIVITY)",
     "registerSheet(NPCSpecialAttackSheetSD)"
   ]
 }

@@ -1542,7 +1542,14 @@ if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) registerClassAbilityItemMacros();
 // it uses and the square-template rotation fix. Called here rather than run on
 // import so `globalThis.SDX` is created at exactly this point in this file's
 // evaluation — the DEV HELPERS block below assigns `SDX.dev` onto it.
-registerTemplatesApi();
+// The call is therefore unconditional, but its two effects are gated: the
+// prototype override belongs to Spell Activity and must not survive disabling
+// it, while SDX.templates is co-owned with Damage Cards, whose targeting path
+// calls SDX.templates.placeAndTarget.
+registerTemplatesApi({
+	installRotationFix: featureEnabled(FEATURE_IDS.SPELL_ACTIVITY),
+	publishApi: featureEnabled(FEATURE_IDS.SPELL_ACTIVITY) || featureEnabled(FEATURE_IDS.DAMAGE_CARDS),
+});
 
 // ============================================
 // DEV HELPERS — headless test affordances
