@@ -1542,10 +1542,9 @@ if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) registerClassAbilityItemMacros();
 // it uses and the square-template rotation fix. Called here rather than run on
 // import so `globalThis.SDX` is created at exactly this point in this file's
 // evaluation — the DEV HELPERS block below assigns `SDX.dev` onto it.
-// The call is therefore unconditional, but its two effects are gated: the
-// prototype override belongs to Spell Activity and must not survive disabling
-// it, while SDX.templates is co-owned with Damage Cards, whose targeting path
-// calls SDX.templates.placeAndTarget.
+// The call stays unconditional; its two effects are gated separately. The
+// prototype override is Spell Activity's, but SDX.templates is co-owned with
+// Damage Cards, whose targeting path calls SDX.templates.placeAndTarget.
 registerTemplatesApi({
 	installRotationFix: featureEnabled(FEATURE_IDS.SPELL_ACTIVITY),
 	publishApi: featureEnabled(FEATURE_IDS.SPELL_ACTIVITY) || featureEnabled(FEATURE_IDS.DAMAGE_CARDS),
@@ -1708,19 +1707,18 @@ Hooks.on("setup", () => {
 			},
 		};
 
-		// Owners may be a single feature id or several: a key survives while ANY
-		// owner is still enabled, so shared APIs are not torn out from under a
-		// feature that has no dependency on the one being disabled.
+		// One owner or several: a key survives while ANY owner is still enabled, so
+		// a shared API is not torn out from under a feature that never depended on
+		// the one being disabled.
 		const removeApi = (featureIds, keys) => {
 			const owners = Array.isArray(featureIds) ? featureIds : [featureIds];
 			if (owners.some(featureId => featureEnabled(featureId))) return;
 			for (const key of keys) delete module.api[key];
 		};
-		removeApi(FEATURE_IDS.SPELL_ACTIVITY, ["templates", "dev", "applySpellEffect"]);
-		removeApi(
-			[FEATURE_IDS.SPELL_ACTIVITY, FEATURE_IDS.ITEM_MACROS],
-			["startDurationSpell", "endDurationSpell", "registerSpellModification", "getActiveDurationSpells"]
-		);
+		// "dev" deliberately absent: SDX.dev.castSpell calls the SYSTEM's
+		// actor.system.castSpell, so gating it here only broke the headless probe.
+		removeApi(FEATURE_IDS.SPELL_ACTIVITY, ["templates", "applySpellEffect"]);
+		removeApi([FEATURE_IDS.SPELL_ACTIVITY, FEATURE_IDS.ITEM_MACROS], ["startDurationSpell", "endDurationSpell", "registerSpellModification", "getActiveDurationSpells"]);
 		removeApi(FEATURE_IDS.NPC_CREATURE_TYPES, ["getCreatureType", "getMappedCreatureType"]);
 		removeApi(FEATURE_IDS.BREAK_ON_DAMAGE, ["breakEffectOnDamage", "clearBreakOnDamage"]);
 		removeApi(FEATURE_IDS.MEDKIT, ["registerMedkitPack", "unregisterMedkitPack", "getMedkitPacks", "scanWorldForUpdates", "applyWorldMedkitUpdates", "medkitScanWorld"]);
