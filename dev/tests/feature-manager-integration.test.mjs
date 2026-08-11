@@ -29,7 +29,11 @@ test("every catalog switch gates at least one runtime path outside the catalog",
 	const entries = await readdir(scriptsRoot, { recursive: true, withFileTypes: true });
 	const runtimeSource = [];
 	for (const entry of entries) {
-		if (!entry.isFile() || !entry.name.endsWith(".mjs") || entry.name === "feature-gates.mjs") continue;
+		if (
+			!entry.isFile()
+			|| !entry.name.endsWith(".mjs")
+			|| ["feature-gates.mjs", "feature-manager-choices.mjs"].includes(entry.name)
+		) continue;
 		const file = `${entry.parentPath}/${entry.name}`;
 		runtimeSource.push(await readFile(file, "utf8"));
 	}
@@ -72,6 +76,41 @@ test("Feature Manager registers one restricted menu backed by a hidden world set
 	assert.equal(menus[0].config.restricted, true);
 });
 
+test("the Scenes form choice disables and re-enables every ToM runtime gate together", async () => {
+	const { FEATURE_IDS } = await import("../../scripts/settings/feature-gates.mjs");
+	const { FeatureManagerApp } = await import("../../scripts/settings/FeatureManagerApp.mjs");
+	const sceneIds = [
+		FEATURE_IDS.TOM_SCENES,
+		FEATURE_IDS.TOM_VIDEO_OVERLAYS,
+		FEATURE_IDS.TOM_SCENE_EDITOR,
+		FEATURE_IDS.TOM_PLAYER_VIEW,
+		FEATURE_IDS.TOM_SCENE_NAVIGATION,
+	];
+	let stored = [];
+	globalThis.ui = { notifications: { info: () => {} } };
+	globalThis.game = {
+		settings: {
+			get: () => stored,
+			set: async (_namespace, _key, value) => {
+				stored = value;
+			},
+		},
+	};
+
+	const form = checked => ({
+		querySelectorAll: selector => {
+			if (selector === 'input[name="featureChoices"]') return [{ value: "scenes", checked }];
+			return [];
+		},
+	});
+
+	await FeatureManagerApp.formHandler(null, form(false));
+	assert.deepEqual(stored, sceneIds);
+
+	await FeatureManagerApp.formHandler(null, form(true));
+	assert.deepEqual(stored, []);
+});
+
 test("every visible tray control and panel is feature-conditional", async () => {
 	const template = await source("templates/sdx-tray/tray.hbs");
 	const requiredBranches = [
@@ -102,6 +141,20 @@ test("every visible tray control and panel is feature-conditional", async () => 
 
 test("the gated tray template has balanced Handlebars blocks", async () => {
 	const template = await source("templates/sdx-tray/tray.hbs");
+	const stack = [];
+	for (const match of template.matchAll(/{{([#/])(if|unless|each|with)\b[^}]*}}/g)) {
+		if (match[1] === "#") stack.push({ name: match[2], index: match.index });
+		else {
+			const open = stack.pop();
+			assert.ok(open, `unexpected {{/${match[2]}}} at ${match.index}`);
+			assert.equal(match[2], open.name, `{{#${open.name}}} at ${open.index} closes as {{/${match[2]}}}`);
+		}
+	}
+	assert.deepEqual(stack, [], "unclosed Handlebars blocks");
+});
+
+test("the visual Feature Manager template has balanced Handlebars blocks", async () => {
+	const template = await source("templates/feature-manager.hbs");
 	const stack = [];
 	for (const match of template.matchAll(/{{([#/])(if|unless|each|with)\b[^}]*}}/g)) {
 		if (match[1] === "#") stack.push({ name: match[2], index: match.index });
