@@ -24,6 +24,7 @@
  */
 
 import { MODULE_ID } from "../shared/module-id.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 /** `preCreateItem`: covers item-piles transfers, compendium drops, and the
  *  scroll-to-spell "Learn Spell" path. */
@@ -32,7 +33,7 @@ function preserveFlagsOnItemCreate(item, data, options, userId) {
 
 	// Preserve spell damage flags when learning a spell from a scroll
 	// This handles the "Learn Spell" button functionality
-	if (item.type === "Spell" && item.parent) {
+	if (isFeatureEnabled(FEATURE_IDS.SPELL_ACTIVITY) && item.type === "Spell" && item.parent) {
 		// Check if there's a scroll being learned from (stored in temporary flag)
 		const sourceScrollId = item.parent.getFlag(MODULE_ID, "_learningFromScroll");
 		if (sourceScrollId) {
@@ -51,13 +52,13 @@ function preserveFlagsOnItemCreate(item, data, options, userId) {
 					});
 				}
 				// Preserve template effects configuration from the scroll
-				if (sourceScroll.flags?.[MODULE_ID]?.templateEffects) {
+				if (isFeatureEnabled(FEATURE_IDS.TEMPLATE_EFFECTS) && sourceScroll.flags?.[MODULE_ID]?.templateEffects) {
 					item.updateSource({
 						[`flags.${MODULE_ID}.templateEffects`]: foundry.utils.duplicate(sourceScroll.flags[MODULE_ID].templateEffects),
 					});
 				}
 				// Preserve aura effects configuration from the scroll
-				if (sourceScroll.flags?.[MODULE_ID]?.auraEffects) {
+				if (isFeatureEnabled(FEATURE_IDS.AURAS) && sourceScroll.flags?.[MODULE_ID]?.auraEffects) {
 					item.updateSource({
 						[`flags.${MODULE_ID}.auraEffects`]: foundry.utils.duplicate(sourceScroll.flags[MODULE_ID].auraEffects),
 					});
@@ -67,35 +68,35 @@ function preserveFlagsOnItemCreate(item, data, options, userId) {
 	}
 
 	// Preserve Item Macro trigger configuration flags
-	if (data.flags?.[MODULE_ID]?.itemMacro) {
+	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS) && data.flags?.[MODULE_ID]?.itemMacro) {
 		item.updateSource({
 			[`flags.${MODULE_ID}.itemMacro`]: foundry.utils.duplicate(data.flags[MODULE_ID].itemMacro),
 		});
 	}
 
 	// Preserve Targeting configuration flags
-	if (data.flags?.[MODULE_ID]?.targeting) {
+	if (isFeatureEnabled(FEATURE_IDS.SPELL_ACTIVITY) && data.flags?.[MODULE_ID]?.targeting) {
 		item.updateSource({
 			[`flags.${MODULE_ID}.targeting`]: foundry.utils.duplicate(data.flags[MODULE_ID].targeting),
 		});
 	}
 
 	// Preserve Template Effects configuration flags
-	if (data.flags?.[MODULE_ID]?.templateEffects) {
+	if (isFeatureEnabled(FEATURE_IDS.TEMPLATE_EFFECTS) && data.flags?.[MODULE_ID]?.templateEffects) {
 		item.updateSource({
 			[`flags.${MODULE_ID}.templateEffects`]: foundry.utils.duplicate(data.flags[MODULE_ID].templateEffects),
 		});
 	}
 
 	// Preserve Aura Effects configuration flags
-	if (data.flags?.[MODULE_ID]?.auraEffects) {
+	if (isFeatureEnabled(FEATURE_IDS.AURAS) && data.flags?.[MODULE_ID]?.auraEffects) {
 		item.updateSource({
 			[`flags.${MODULE_ID}.auraEffects`]: foundry.utils.duplicate(data.flags[MODULE_ID].auraEffects),
 		});
 	}
 
 	// Preserve Item Macro module's macro data (itemacro module)
-	if (data.flags?.itemacro?.macro) {
+	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS) && data.flags?.itemacro?.macro) {
 		item.updateSource({
 			"flags.itemacro.macro": foundry.utils.duplicate(data.flags.itemacro.macro),
 		});
@@ -123,48 +124,48 @@ function wrapCreateItemFromSpell() {
 			itemData.flags[MODULE_ID] = itemData.flags[MODULE_ID] || {};
 
 			// Preserve spell damage configuration flags
-			if (spell.flags?.[MODULE_ID]?.spellDamage) {
+			if (isFeatureEnabled(FEATURE_IDS.SPELL_ACTIVITY) && spell.flags?.[MODULE_ID]?.spellDamage) {
 				itemData.flags[MODULE_ID].spellDamage = foundry.utils.duplicate(spell.flags[MODULE_ID].spellDamage);
 			}
 
 			// Preserve Targeting configuration flags
-			if (spell.flags?.[MODULE_ID]?.targeting) {
+			if (isFeatureEnabled(FEATURE_IDS.SPELL_ACTIVITY) && spell.flags?.[MODULE_ID]?.targeting) {
 				itemData.flags[MODULE_ID].targeting = foundry.utils.duplicate(spell.flags[MODULE_ID].targeting);
 			}
 
 			// Preserve summoning configuration flags
-			if (spell.flags?.[MODULE_ID]?.summoning) {
+			if (isFeatureEnabled(FEATURE_IDS.SPELL_ACTIVITY) && spell.flags?.[MODULE_ID]?.summoning) {
 				itemData.flags[MODULE_ID].summoning = foundry.utils.duplicate(spell.flags[MODULE_ID].summoning);
 			}
 
 			// Preserve item give configuration flags
-			if (spell.flags?.[MODULE_ID]?.itemGive) {
+			if (isFeatureEnabled(FEATURE_IDS.SPELL_ACTIVITY) && spell.flags?.[MODULE_ID]?.itemGive) {
 				itemData.flags[MODULE_ID].itemGive = foundry.utils.duplicate(spell.flags[MODULE_ID].itemGive);
 			}
 
 			// Preserve unidentified flags
-			if (spell.flags?.[MODULE_ID]?.unidentified) {
+			if (isFeatureEnabled(FEATURE_IDS.UNIDENTIFIED_ITEMS) && spell.flags?.[MODULE_ID]?.unidentified) {
 				itemData.flags[MODULE_ID].unidentified = spell.flags[MODULE_ID].unidentified;
 				itemData.flags[MODULE_ID].unidentifiedDescription = spell.flags[MODULE_ID].unidentifiedDescription || "";
 			}
 
 			// Preserve Item Macro trigger configuration flags
-			if (spell.flags?.[MODULE_ID]?.itemMacro) {
+			if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS) && spell.flags?.[MODULE_ID]?.itemMacro) {
 				itemData.flags[MODULE_ID].itemMacro = foundry.utils.duplicate(spell.flags[MODULE_ID].itemMacro);
 			}
 
 			// Preserve Template Effects configuration flags
-			if (spell.flags?.[MODULE_ID]?.templateEffects) {
+			if (isFeatureEnabled(FEATURE_IDS.TEMPLATE_EFFECTS) && spell.flags?.[MODULE_ID]?.templateEffects) {
 				itemData.flags[MODULE_ID].templateEffects = foundry.utils.duplicate(spell.flags[MODULE_ID].templateEffects);
 			}
 
 			// Preserve Aura Effects configuration flags
-			if (spell.flags?.[MODULE_ID]?.auraEffects) {
+			if (isFeatureEnabled(FEATURE_IDS.AURAS) && spell.flags?.[MODULE_ID]?.auraEffects) {
 				itemData.flags[MODULE_ID].auraEffects = foundry.utils.duplicate(spell.flags[MODULE_ID].auraEffects);
 			}
 
 			// Preserve Item Macro module's macro data (itemacro module)
-			if (spell.flags?.itemacro?.macro) {
+			if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS) && spell.flags?.itemacro?.macro) {
 				itemData.flags.itemacro = itemData.flags.itemacro || {};
 				itemData.flags.itemacro.macro = foundry.utils.duplicate(spell.flags.itemacro.macro);
 			}

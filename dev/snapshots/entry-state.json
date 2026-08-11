@@ -1,15 +1,15 @@
 {
   "$comment": "Phase 3 gate. Module-scope state of the composition root, with mutability judged per variable (const freezes the binding, not the value). An extraction that touches a variable absent from this inventory stops until the inventory is corrected. Regenerate: npm run inventory:entry -- --write",
   "file": "scripts/shadowdark-extras.mjs",
-  "lines": 19578,
+  "lines": 1998,
   "totals": {
-    "declarations": 17,
-    "const": 17,
+    "declarations": 4,
+    "const": 4,
     "let": 0,
-    "mutable": 10,
-    "immutable": 7,
-    "hookRegistrations": 79,
-    "leafRegistrations": 75
+    "mutable": 0,
+    "immutable": 4,
+    "hookRegistrations": 31,
+    "leafRegistrations": 31
   },
   "declarations": [
     {
@@ -23,142 +23,27 @@
     {
       "name": "MODULE_ID",
       "kind": "const",
-      "line": 120,
+      "line": 222,
       "shape": "string",
       "mutable": false,
       "exported": false
     },
     {
-      "name": "TRADE_JOURNAL_NAME",
+      "name": "featureEnabled",
       "kind": "const",
-      "line": 121,
-      "shape": "string",
+      "line": 223,
+      "shape": "function",
       "mutable": false,
       "exported": false
     },
     {
-      "name": "CAROUSING_JOURNAL_NAME",
+      "name": "anyFeatureEnabled",
       "kind": "const",
-      "line": 122,
-      "shape": "string",
-      "mutable": false,
-      "exported": false
-    },
-    {
-      "name": "CAROUSING_TABLES_JOURNAL_NAME",
-      "kind": "const",
-      "line": 123,
-      "shape": "string",
-      "mutable": false,
-      "exported": false
-    },
-    {
-      "name": "HIDDEN_JOURNAL_NAMES",
-      "kind": "const",
-      "line": 126,
-      "shape": "Array",
-      "mutable": true,
-      "exported": false
-    },
-    {
-      "name": "DEFAULT_INVENTORY_STYLES",
-      "kind": "const",
-      "line": 313,
-      "shape": "Object",
-      "mutable": true,
-      "exported": false
-    },
-    {
-      "name": "_pendingHitBonusInfo",
-      "kind": "const",
-      "line": 1221,
-      "shape": "Map",
-      "mutable": true,
-      "exported": false
-    },
-    {
-      "name": "_selectedItems",
-      "kind": "const",
-      "line": 1866,
-      "shape": "WeakMap",
-      "mutable": true,
-      "exported": false
-    },
-    {
-      "name": "DEFAULT_LIGHT_TEMPLATES",
-      "kind": "const",
-      "line": 2172,
-      "shape": "Array",
-      "mutable": true,
-      "exported": false
-    },
-    {
-      "name": "NPC_INVENTORY_TYPES",
-      "kind": "const",
-      "line": 2484,
-      "shape": "Array",
-      "mutable": true,
-      "exported": false
-    },
-    {
-      "name": "npcActiveTabTracker",
-      "kind": "const",
-      "line": 2495,
-      "shape": "Map",
-      "mutable": true,
-      "exported": false
-    },
-    {
-      "name": "DEFAULT_JOURNAL_PAGE",
-      "kind": "const",
-      "line": 4032,
-      "shape": "Object",
-      "mutable": true,
-      "exported": false
-    },
-    {
-      "name": "HP_QUICK_ADJUST_TOOLTIP",
-      "kind": "const",
-      "line": 6223,
-      "shape": "string",
-      "mutable": false,
-      "exported": false
-    },
-    {
-      "name": "hpQuickAdjustments",
-      "kind": "const",
-      "line": 6224,
-      "shape": "Map",
-      "mutable": true,
-      "exported": false
-    },
-    {
-      "name": "_SDX_V2_ITEM_SHEETS",
-      "kind": "const",
-      "line": 15534,
-      "shape": "Set",
-      "mutable": true,
-      "exported": false
-    },
-    {
-      "name": "_originalGetRectShape",
-      "kind": "const",
-      "line": 17459,
-      "shape": "expression",
+      "line": 224,
+      "shape": "function",
       "mutable": false,
       "exported": false
     }
   ],
-  "sharedBy": {
-    "HIDDEN_JOURNAL_NAMES": [
-      9093
-    ],
-    "_pendingHitBonusInfo": [
-      9171,
-      15613
-    ],
-    "_SDX_V2_ITEM_SHEETS": [
-      15542
-    ]
-  }
+  "sharedBy": {}
 }

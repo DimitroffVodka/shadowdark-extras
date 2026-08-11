@@ -267,16 +267,20 @@ export function showConditionsModal(actor, conditionDataMap, theme) {
 	for (const { condition, isActive } of sortedConditions) {
 		const displayName = condition.name.replace("Condition: ", "");
 		const rawDescription = condition.description || "";
-		const processedDescription = rawDescription.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+		const processedDescription = foundry.utils.escapeHTML(rawDescription);
+		const escapedUuid = foundry.utils.escapeHTML(condition.uuid);
+		const escapedConditionName = foundry.utils.escapeHTML(condition.name);
+		const escapedDisplayName = foundry.utils.escapeHTML(displayName);
+		const escapedImg = foundry.utils.escapeHTML(condition.img || "icons/svg/mystery-man.svg");
 
 		modalHtml += `
 			<div class="sdx-condition-toggle ${isActive ? "active" : ""}"
-				 data-condition-uuid="${condition.uuid}"
-				 data-condition-name="${condition.name}"
-				 data-display-name="${displayName}"
+				 data-condition-uuid="${escapedUuid}"
+				 data-condition-name="${escapedConditionName}"
+				 data-display-name="${escapedDisplayName}"
 				 data-condition-description="${processedDescription}">
-				<img src="${condition.img}" alt="${displayName}" />
-				<span class="sdx-condition-name">${displayName}</span>
+				<img src="${escapedImg}" alt="${escapedDisplayName}" />
+				<span class="sdx-condition-name">${escapedDisplayName}</span>
 			</div>
 		`;
 	}

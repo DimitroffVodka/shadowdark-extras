@@ -37,7 +37,11 @@ export const BIOME_DEFS = {
 // now these are driven through module.api (getBiomeDefinitions / setCustomBiome
 // / removeCustomBiome / resetCustomBiomes).
 
-Hooks.once("init", () => {
+let dungeonBiomeSettingsRegistered = false;
+
+export function registerDungeonBiomeSettings() {
+	if (dungeonBiomeSettingsRegistered) return;
+	dungeonBiomeSettingsRegistered = true;
 	try {
 		game.settings.register(MODULE_ID, "customBiomes", {
 			name: "Custom Dungeon Biomes",
@@ -57,7 +61,7 @@ Hooks.once("init", () => {
 		});
 	}
 	catch(_) { /* already registered */ }
-});
+}
 
 /** Read the persisted custom-biome map (always a plain object). */
 export function getCustomBiomes() {

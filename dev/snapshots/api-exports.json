@@ -18,6 +18,7 @@
         "getUnidentifiedName",
         "identifyItem",
         "isUnidentified",
+        "registerSpellMacrosApi",
         "revertShapechanger",
         "showCleansingWeaponDialog",
         "showHolyWeaponDialog",
@@ -34,6 +35,7 @@
         "getDungeonFloorLevels",
         "getDungeonVisualDocs",
         "getFlattendDungeonLevels",
+        "registerTileFlattenHooks",
         "unflattenTile"
       ]
     },

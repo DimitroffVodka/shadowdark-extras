@@ -13,15 +13,14 @@ import { finalizeDamageCard } from "./damage-card-finalization.mjs";
 import { resolveDamageCardTargets } from "./damage-card-targeting.mjs";
 
 const MODULE_ID = "shadowdark-extras";
-globalThis.window._sdx_calculatingMessages = globalThis.window._sdx_calculatingMessages
-	|| new Set();
-globalThis.window._sdx_localDamageResults = globalThis.window._sdx_localDamageResults || {};
 
 // Damage-card injection pipeline — the full combat-message rendering stage
 // (card HTML, template/aura placement, spell/damage computation, auto-apply,
 // duration tracking). Remains a single staged function by design; see the
 // demonstrated-exception record in the phase log.
 export async function injectDamageCard(message, html, data) {
+	window._sdx_calculatingMessages ||= new Set();
+	window._sdx_localDamageResults ||= {};
 
 	// v14: renderChatMessageHTML passes a raw HTMLElement, not jQuery.
 	// Re-wrap so the existing jQuery API inside this large function keeps working.

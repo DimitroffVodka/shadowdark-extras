@@ -250,20 +250,16 @@ export class TomStoreClass {
 		return this.folders.find(f => f.id === scene.folderId) || null;
 	}
 
+	// Back-compat shim: old callers read/write one overlay string.
+	get currentOverlay() {
+		return this.currentOverlays[0] ?? null;
+	}
+
+	set currentOverlay(value) {
+		if (!value) this.currentOverlays = [];
+		else if (Array.isArray(value)) this.currentOverlays = [...value];
+		else this.currentOverlays = [String(value)];
+	}
 }
 
 export const TomStore = new TomStoreClass();
-
-// Back-compat shim: old callers read/write `.currentOverlay` as a single string.
-// We keep it as a getter/setter over the new array so nothing else has to
-// branch. Setting a string adds/replaces the single overlay; setting null/"" clears.
-Object.defineProperty(TomStoreClass.prototype, "currentOverlay", {
-	get() {
-		return this.currentOverlays[0] ?? null;
-	},
-	set(v) {
-		if (!v) this.currentOverlays = [];
-		else if (Array.isArray(v)) this.currentOverlays = [...v];
-		else this.currentOverlays = [String(v)];
-	},
-});

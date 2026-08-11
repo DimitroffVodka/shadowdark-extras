@@ -4,6 +4,8 @@
 // folders. _promptFolderName travels with them because both this tab and
 // tom-panels.mjs open that dialog. Merged onto TrayApp.prototype.
 
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
+
 export const TomSceneBindings = {
 	/**
      * Theatre of the Mind scenes tab: scene and folder CRUD, broadcast
@@ -11,20 +13,35 @@ export const TomSceneBindings = {
      * @param {HTMLElement} elem - The rendered tray root
      */
 	_bindTomSceneEvents(elem) {
+		const sceneEditorEnabled = isFeatureEnabled(FEATURE_IDS.TOM_SCENE_EDITOR);
+		const playerViewEnabled = isFeatureEnabled(FEATURE_IDS.TOM_PLAYER_VIEW);
+		const editorElement = selector => sceneEditorEnabled ? elem.querySelector(selector) : null;
+		const playerElement = selector => playerViewEnabled ? elem.querySelector(selector) : null;
+		const editorElements = selector => sceneEditorEnabled ? elem.querySelectorAll(selector) : [];
+		if (!sceneEditorEnabled) {
+			elem.querySelectorAll([
+				"[data-action='create-scene']",
+				"[data-action='create-folder']",
+				"[data-action='rename-folder']",
+				"[data-action='delete-folder']",
+				"[data-action='edit-scene']",
+				"[data-action='delete-scene']",
+			].join(",")).forEach(control => control.remove());
+		}
 
 		/* ------------------------------------------- */
 		/*  SCENES TAB ACTIONS                        */
 		/* ------------------------------------------- */
 
 		// Create Scene
-		elem.querySelector("[data-action='create-scene']")?.addEventListener("click", async e => {
+		editorElement("[data-action='create-scene']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			const { TomSceneEditor } = await import("../tom/TomEditors.mjs");
 			new TomSceneEditor().render(true);
 		});
 
 		// Create Folder
-		elem.querySelector("[data-action='create-folder']")?.addEventListener("click", async e => {
+		editorElement("[data-action='create-folder']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			const name = await this._promptFolderName("Create Folder", "New Folder");
 			if (!name) return;
@@ -34,7 +51,7 @@ export const TomSceneBindings = {
 		});
 
 		// Stop Broadcast (Header Button)
-		elem.querySelector("[data-action='stop-broadcast']")?.addEventListener("click", async e => {
+		playerElement("[data-action='stop-broadcast']")?.addEventListener("click", async e => {
 			e.preventDefault();
 			const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
 			const { TomStore } = await import("../tom/TomStore.mjs");
@@ -105,7 +122,7 @@ export const TomSceneBindings = {
 			});
 		});
 
-		elem.querySelectorAll("[data-action='rename-folder']").forEach(btn => {
+		editorElements("[data-action='rename-folder']").forEach(btn => {
 			btn.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
@@ -119,7 +136,7 @@ export const TomSceneBindings = {
 			});
 		});
 
-		elem.querySelectorAll("[data-action='delete-folder']").forEach(btn => {
+		editorElements("[data-action='delete-folder']").forEach(btn => {
 			btn.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
@@ -137,7 +154,7 @@ export const TomSceneBindings = {
 		});
 
 		// Drag-drop onto folders and uncategorized container
-		elem.querySelectorAll(".scene-folder, .scene-uncat-container").forEach(dropZone => {
+		editorElements(".scene-folder, .scene-uncat-container").forEach(dropZone => {
 			const folderId = dropZone.dataset.folderId || null;
 
 			dropZone.addEventListener("dragover", e => {
@@ -195,7 +212,7 @@ export const TomSceneBindings = {
 			const sceneId = card.dataset.sceneId;
 
 			// Activate Scene (Broadcast) - Clicking the thumbnail/name
-			card.querySelector(".scene-card-activate")?.addEventListener("click", async e => {
+			(playerViewEnabled ? card.querySelector(".scene-card-activate") : null)?.addEventListener("click", async e => {
 				e.preventDefault();
 				e.stopPropagation();
 				const { TomSocketHandler } = await import("../tom/TomSocketHandler.mjs");
@@ -231,6 +248,7 @@ export const TomSceneBindings = {
 					ui.notifications.info(`Scene \"${sceneName}\" deleted.`);
 				}
 			});
+			if (!sceneEditorEnabled) return;
 
 			// Drag and Drop — set data for folder-level drop handler
 			card.addEventListener("dragstart", e => {

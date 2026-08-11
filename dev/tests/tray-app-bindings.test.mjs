@@ -159,6 +159,7 @@ const BINDINGS = [
 	".sdx-tray .tray-handle-button-tool[data-action='tom-scene-switcher'] :: click",
 	".sdx-tray .tray-handle-button-viewcycle :: click",
 	".sdx-tray .tray-tab-button[0] :: click",
+	`.sdx-tray [data-action="create-party-token"] :: click`,
 	`.sdx-tray [data-action="select-party"] :: click`,
 	`.sdx-tray [data-action="toggle-npc-visibility"] :: click`,
 	".sdx-tray [data-action='create-folder'] :: click",
@@ -314,13 +315,78 @@ test("the POI scale buttons step the painter scale in both directions", () => {
 	assert.ok(getPoiScale() < up);
 });
 
+test("double-clicking Create Party starts only one creation flow", async () => {
+	const selector = `.sdx-tray [data-action="create-party-token"]`;
+	const previousCreate = CONFIG.Actor.documentClass.create;
+	const previousScene = globalThis.canvas.scene;
+	const previousTokens = globalThis.canvas.tokens;
+	const previousUser = globalThis.game.user;
+	const previousUsers = globalThis.game.users;
+	const previousI18n = globalThis.game.i18n;
+	let resolveCreation;
+	let createCount = 0;
+	const creation = new Promise(resolve => { resolveCreation = resolve; });
+
+	CONFIG.Actor.documentClass.create = async () => {
+		createCount++;
+		return creation;
+	};
+	globalThis.canvas.scene = { id: "scene" };
+	globalThis.canvas.tokens = {
+		controlled: [{
+			actor: {
+				id: "hero",
+				type: "Player",
+				testUserPermission: () => false,
+			},
+		}],
+	};
+	globalThis.game.user = { id: "gm", isGM: true };
+	globalThis.game.users = [];
+	globalThis.game.i18n = {
+		localize: key => key,
+		format: key => key,
+	};
+
+	try {
+		const { app, dom } = render();
+		const button = dom.node(selector);
+		dom.fire(selector, "click");
+		dom.fire(selector, "click");
+		await Promise.resolve();
+
+		assert.equal(createCount, 1);
+		assert.equal(button.disabled, true);
+
+		resolveCreation({ id: "party", name: "Party" });
+		await app._partyCreationPending;
+		assert.equal(button.disabled, false);
+	}
+	finally {
+		CONFIG.Actor.documentClass.create = previousCreate;
+		globalThis.canvas.scene = previousScene;
+		globalThis.canvas.tokens = previousTokens;
+		globalThis.game.user = previousUser;
+		globalThis.game.users = previousUsers;
+		globalThis.game.i18n = previousI18n;
+	}
+});
+
 // --- party card interactions -------------------------------------------------
 
 test("the feather icon opens the card's actor sheet", () => {
 	let opened = null;
 	const prev = globalThis.canvas.tokens;
 	globalThis.canvas.tokens = {
-		get: id => ({ id, actor: { sheet: { render: () => { opened = id; } } } }),
+		// Real actors always carry testUserPermission; openTokenSheet checks it
+		// before rendering, so the double has to answer it too.
+		get: id => ({
+			id,
+			actor: {
+				testUserPermission: () => true,
+				sheet: { render: () => { opened = id; } },
+			},
+		}),
 	};
 	try {
 		const { dom } = render({

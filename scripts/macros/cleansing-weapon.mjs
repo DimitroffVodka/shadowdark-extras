@@ -81,14 +81,16 @@ export async function showCleansingWeaponDialog(casterActor, casterItem, targetA
 		}
 
 		return filteredWeapons.map(weapon => {
-			const img = weapon.img || "icons/svg/sword.svg";
+			const img = foundry.utils.escapeHTML(weapon.img || "icons/svg/sword.svg");
 			const bonusData = weapon.getFlag(MODULE_ID, "weaponBonus");
 			const hasExistingBonuses = bonusData?.enabled;
 			const isMagical = weapon.system?.magicItem || false;
 
 			// Check for unidentified status
 			const isUnidentifiedItem = isUnidentified(weapon);
-			const displayName = isUnidentifiedItem ? getUnidentifiedName(weapon) : weapon.name;
+			const displayName = foundry.utils.escapeHTML(
+				isUnidentifiedItem ? getUnidentifiedName(weapon) : weapon.name
+			);
 
 			let badge = "";
 			if (hasExistingBonuses) {
@@ -337,18 +339,22 @@ export async function applyCleansingWeapon(weapon, casterActor, casterItem, targ
 	// Post chat message
 	const duration = casterItem.system?.duration?.value || "?";
 	const criticalBadge = isCritical ? ' <span style="color: gold; font-weight: bold;">[CRITICAL SUCCESS]</span>' : "";
+	const escapedImg = foundry.utils.escapeHTML(weapon.img || "icons/svg/mystery-man.svg");
+	const escapedDisplayName = foundry.utils.escapeHTML(displayName);
+	const escapedCasterName = foundry.utils.escapeHTML(casterActor.name);
+	const escapedTargetName = foundry.utils.escapeHTML(targetActor.name);
 	await ChatMessage.create({
 		speaker: ChatMessage.getSpeaker({ actor: casterActor }),
 		content: `
             <div class="shadowdark chat-card sdx-cleansingweapon-chat">
                 <header class="card-header flexrow">
-                    <img class="item-image" src="${weapon.img}" alt="${displayName}"/>
+                    <img class="item-image" src="${escapedImg}" alt="${escapedDisplayName}"/>
                     <div class="header-text">
                         <h3><i class="fas fa-fire"></i> Cleansing Weapon${criticalBadge}</h3>
                     </div>
                 </header>
                 <div class="card-content">
-                    <p><strong>${casterActor.name}</strong> wreaths <strong>${targetActor.name}'s ${displayName}</strong> in purifying flames!</p>
+                    <p><strong>${escapedCasterName}</strong> wreaths <strong>${escapedTargetName}'s ${escapedDisplayName}</strong> in purifying flames!</p>
                     <p class="spell-effect"><em>The weapon burns with cleansing fire, dealing +${baseDamage} damage (+${undeadDamage} vs. undead) for ${duration} rounds.</em></p>
                 </div>
             </div>

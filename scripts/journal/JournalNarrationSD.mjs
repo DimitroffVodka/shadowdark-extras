@@ -116,9 +116,7 @@ function debounce(func, wait) {
  */
 export function initJournalNarration() {
 	// Register settings
-	Hooks.once("init", () => {
-		registerSettings();
-	});
+	registerSettings();
 
 	// Register the journal page sheet hook
 	Hooks.on("renderJournalPageSheet", (journalPageSheet, html, data) => {

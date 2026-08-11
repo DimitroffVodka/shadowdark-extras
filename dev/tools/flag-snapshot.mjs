@@ -154,12 +154,33 @@ export function diffFlags(baseline, current) {
     );
   }
 
-  const unresolvedBefore = new Set(baseline.unresolvedScopes ?? []);
-  const unresolvedAfter = new Set(current.unresolvedScopes);
-  for (const site of [...unresolvedBefore].sort()) {
-    if (!unresolvedAfter.has(site)) differences.push(`unresolvedScopes: removed "${site}"`);
+  // Compared by file+scope and COUNT, not by the exact `file:line (scope=…)`
+  // string the snapshot stores. A site's line number moves whenever anything
+  // above it is edited, so the exact-string compare turned every ordinary edit
+  // into a wall of matched removed/added pairs — 50 of them blocked #126, each
+  // one the same file and the same scope at a shifted line, none of them a
+  // change to what the gate is actually watching. dynamicSites above already
+  // takes this approach by comparing length alone.
+  //
+  // Signal is preserved: a scope going unresolved in a file that had none, one
+  // disappearing entirely, or the number of unresolved sites in a file changing
+  // all still report. Only the line drift is filtered.
+  const byFileAndScope = (sites) => {
+    const counts = new Map();
+    for (const site of sites ?? []) {
+      const key = site.replace(/:\d+\s/, " ");
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  };
+  const unresolvedBefore = byFileAndScope(baseline.unresolvedScopes);
+  const unresolvedAfter = byFileAndScope(current.unresolvedScopes);
+  for (const [site, before] of [...unresolvedBefore].sort()) {
+    const after = unresolvedAfter.get(site) ?? 0;
+    if (after === 0) differences.push(`unresolvedScopes: removed "${site}"`);
+    else if (after !== before) differences.push(`unresolvedScopes: "${site}" ${before} -> ${after} site(s)`);
   }
-  for (const site of [...unresolvedAfter].sort()) {
+  for (const [site] of [...unresolvedAfter].sort()) {
     if (!unresolvedBefore.has(site)) differences.push(`unresolvedScopes: added "${site}"`);
   }
 

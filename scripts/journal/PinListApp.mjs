@@ -173,17 +173,23 @@ export class PinListApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	}
 }
 
-// Hooks to ensure the Pin List updates when pins change or scene changes
-Hooks.on("updateScene", (document, change, options, userId) => {
-	if (change.flags?.[MODULE_ID]?.journalPins) {
+let hooksRegistered = false;
+
+/** Register Pin List refresh hooks only when Journal Pins is enabled. */
+export function registerPinListHooks() {
+	if (hooksRegistered) return;
+	hooksRegistered = true;
+	Hooks.on("updateScene", (document, change, options, userId) => {
+		if (change.flags?.[MODULE_ID]?.journalPins) {
+			if (PinListApp._instance && PinListApp._instance.rendered) {
+				PinListApp._instance.render();
+			}
+		}
+	});
+
+	Hooks.on("canvasReady", () => {
 		if (PinListApp._instance && PinListApp._instance.rendered) {
 			PinListApp._instance.render();
 		}
-	}
-});
-
-Hooks.on("canvasReady", () => {
-	if (PinListApp._instance && PinListApp._instance.rendered) {
-		PinListApp._instance.render();
-	}
-});
+	});
+}

@@ -4,6 +4,7 @@
  */
 
 import { generateAuraConfigHTML, setupAuraConfigHandlers } from "../effects/AuraConfig.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 function normalizeTokenMagicPresetEntries(source, allowedLibraries = null) {
 	const entries = [];
@@ -278,6 +279,7 @@ function generateTemplateEffectsHTML(MODULE_ID, flags) {
  * @returns {string} HTML string for the targeting configuration
  */
 export function generateTemplateTargetingConfigHTML(MODULE_ID, flags) {
+	if (!isFeatureEnabled(FEATURE_IDS.SPELL_CONFIGS)) return "";
 	const targeting = flags.targeting || {
 		mode: "targeted", // 'targeted' or 'template'
 		template: {

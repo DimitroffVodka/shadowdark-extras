@@ -5,6 +5,7 @@
 
 import { endFocusSpell } from "../effects/FocusSpellTrackerSD.mjs";
 import { showScrollingText } from "./scrolling-text.mjs";
+import { FEATURE_IDS, isFeatureEnabled, anyFeatureEnabled } from "../settings/feature-gates.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 let socketlibSocket = null;
@@ -28,8 +29,7 @@ export function setupCombatSocket() {
 		console.error("shadowdark-extras | Failed to register socket module. Make sure 'socket: true' is set in module.json");
 		return;
 	}
-
-	socketlibSocket.register("setTargetDefenseResult", async ({ messageId, tokenId, result }) => {
+	if (isFeatureEnabled(FEATURE_IDS.DAMAGE_CARDS)) socketlibSocket.register("setTargetDefenseResult", async ({ messageId, tokenId, result }) => {
 		const message = game.messages.get(messageId);
 		if (!message || !tokenId) return false;
 
@@ -40,7 +40,7 @@ export function setupCombatSocket() {
 	});
 
 	// Register socket handler for applying damage/healing
-	socketlibSocket.register("applyTokenDamage", async data => {
+	if (isFeatureEnabled(FEATURE_IDS.DAMAGE_CARDS)) socketlibSocket.register("applyTokenDamage", async data => {
 		const token = canvas.tokens.get(data.tokenId);
 		if (!token || !token.actor) {
 			console.warn("shadowdark-extras | Token not found:", data.tokenId);
@@ -302,15 +302,22 @@ export function setupCombatSocket() {
 	});
 
 	// Register socket handler for showing scrolling text on all clients
-	socketlibSocket.register("showScrollingText", data => {
+	if (isFeatureEnabled(FEATURE_IDS.SCROLLING_COMBAT_TEXT)) socketlibSocket.register("showScrollingText", data => {
 		const token = canvas.tokens?.get(data.tokenId);
 		if (!token) return;
 
 		showScrollingText(token, data.amount, data.isHealing);
 	});
 
-	// Register socket handler for applying conditions/effects
-	socketlibSocket.register("applyTokenCondition", async data => {
+	// Register socket handler for applying conditions/effects.
+	// Use anyFeatureEnabled rather than .some(isFeatureEnabled): some() passes the
+	// array index as the second argument, which isFeatureEnabled reads as the
+	// disabled-id list, so every id would test as enabled.
+	// DAMAGE_CARDS is an owner too: damage-card.mjs is the only caller of this
+	// handler, and the .some() defect above masked its absence from the list.
+	if (anyFeatureEnabled(
+		FEATURE_IDS.SPELL_ACTIVITY, FEATURE_IDS.PREDEFINED_EFFECTS, FEATURE_IDS.DAMAGE_CARDS
+	)) socketlibSocket.register("applyTokenCondition", async data => {
 		const token = canvas.tokens.get(data.tokenId);
 		if (!token || !token.actor) {
 			console.warn("shadowdark-extras | Token not found for condition:", data.tokenId);
@@ -465,7 +472,7 @@ export function setupCombatSocket() {
 	});
 
 	// Register socket handlers for focus/duration spell operations
-	socketlibSocket.register("removeTargetEffect", async ({ targetActorId, targetTokenId, effectItemId }) => {
+	if (isFeatureEnabled(FEATURE_IDS.FOCUS_TRACKER)) socketlibSocket.register("removeTargetEffect", async ({ targetActorId, targetTokenId, effectItemId }) => {
 		let targetActor = null;
 
 		// Try to get the actor from the token first (for unlinked tokens)
@@ -506,7 +513,7 @@ export function setupCombatSocket() {
 	// Stamp/clear the break-on-damage marker so non-owners (e.g. a player targeting
 	// an NPC) can register an effect for auto-removal on the bearer's next HP loss.
 	// Flag key ("breakOnDamage") is shared with BreakOnDamageSD.mjs. reason === null clears.
-	socketlibSocket.register("markBreakOnDamage", async ({ targetActorId, targetTokenId, effectItemId, reason }) => {
+	if (isFeatureEnabled(FEATURE_IDS.BREAK_ON_DAMAGE)) socketlibSocket.register("markBreakOnDamage", async ({ targetActorId, targetTokenId, effectItemId, reason }) => {
 		let targetActor = null;
 
 		// Try to get the actor from the token first (for unlinked tokens)
@@ -545,7 +552,7 @@ export function setupCombatSocket() {
 		return true;
 	});
 
-	socketlibSocket.register("applyEffectToTarget", async ({ targetActorId, targetTokenId, effectUuid, casterId, spellId, templateId }) => {
+	if (isFeatureEnabled(FEATURE_IDS.TEMPLATE_EFFECTS)) socketlibSocket.register("applyEffectToTarget", async ({ targetActorId, targetTokenId, effectUuid, casterId, spellId, templateId }) => {
 		let targetActor = null;
 
 		// Try to get the actor from the token first (for unlinked tokens)
@@ -598,14 +605,14 @@ export function setupCombatSocket() {
 	});
 
 	// Register socket handler to end a focus spell
-	socketlibSocket.register("endFocusSpell", async ({ casterId, spellId, reason }) => {
+	if (isFeatureEnabled(FEATURE_IDS.FOCUS_TRACKER)) socketlibSocket.register("endFocusSpell", async ({ casterId, spellId, reason }) => {
 		await endFocusSpell(casterId, spellId, reason);
 		return true;
 	});
 
 	// --- Aura Socket Handlers ---
 
-	socketlibSocket.register("applyAuraEffectViaGM", async ({ sourceTokenId, targetTokenId, trigger, config, auraEffectId, auraEffectActorId }) => {
+	if (isFeatureEnabled(FEATURE_IDS.AURAS)) socketlibSocket.register("applyAuraEffectViaGM", async ({ sourceTokenId, targetTokenId, trigger, config, auraEffectId, auraEffectActorId }) => {
 		const sourceToken = canvas.tokens.get(sourceTokenId);
 		const targetToken = canvas.tokens.get(targetTokenId);
 		const auraActor = game.actors.get(auraEffectActorId);
@@ -620,7 +627,7 @@ export function setupCombatSocket() {
 		return applyAuraEffect(sourceToken, targetToken, trigger, config, auraEffect);
 	});
 
-	socketlibSocket.register("removeAuraEffectViaGM", async ({ auraEffectId, auraEffectActorId, targetTokenId }) => {
+	if (isFeatureEnabled(FEATURE_IDS.AURAS)) socketlibSocket.register("removeAuraEffectViaGM", async ({ auraEffectId, auraEffectActorId, targetTokenId }) => {
 		const auraActor = game.actors.get(auraEffectActorId);
 		const auraEffect = auraActor?.effects.get(auraEffectId);
 		const targetToken = canvas.tokens.get(targetTokenId);
@@ -634,7 +641,7 @@ export function setupCombatSocket() {
 		return removeAuraEffectsFromToken(auraEffect, targetToken);
 	});
 
-	socketlibSocket.register("applyAuraConditionsViaGM", async ({ auraEffectId, auraEffectActorId, targetTokenId, effectUuids }) => {
+	if (isFeatureEnabled(FEATURE_IDS.AURAS)) socketlibSocket.register("applyAuraConditionsViaGM", async ({ auraEffectId, auraEffectActorId, targetTokenId, effectUuids }) => {
 		const targetToken = canvas.tokens.get(targetTokenId);
 		let auraActor = game.actors.get(auraEffectActorId);
 
@@ -660,7 +667,7 @@ export function setupCombatSocket() {
 		return applyAuraConditions(auraEffect, targetToken, effectUuids);
 	});
 
-	socketlibSocket.register("applyAuraDamageViaGM", async ({ targetTokenId, config, savedSuccessfully }) => {
+	if (isFeatureEnabled(FEATURE_IDS.AURAS)) socketlibSocket.register("applyAuraDamageViaGM", async ({ targetTokenId, config, savedSuccessfully }) => {
 		const targetToken = canvas.tokens.get(targetTokenId);
 		if (!targetToken) {
 			console.error("shadowdark-extras | applyAuraDamageViaGM: Target token not found", targetTokenId);
@@ -671,7 +678,7 @@ export function setupCombatSocket() {
 		return applyAuraDamage(targetToken, config, savedSuccessfully);
 	});
 
-	socketlibSocket.register("removeAuraEffectsFromAllViaGM", async ({ auraEffectId, auraEffectActorId }) => {
+	if (isFeatureEnabled(FEATURE_IDS.AURAS)) socketlibSocket.register("removeAuraEffectsFromAllViaGM", async ({ auraEffectId, auraEffectActorId }) => {
 		const auraActor = game.actors.get(auraEffectActorId);
 		const auraEffect = auraActor?.effects.get(auraEffectId);
 
@@ -688,7 +695,7 @@ export function setupCombatSocket() {
 	// These are for player-to-player trade requests using socketlib prompts
 
 	// Handler: Show trade request prompt to target player
-	socketlibSocket.register("showTradeRequestPrompt", async ({ initiatorActorId, targetActorId, initiatorUserId, tradeId }) => {
+	if (isFeatureEnabled(FEATURE_IDS.TRADING)) socketlibSocket.register("showTradeRequestPrompt", async ({ initiatorActorId, targetActorId, initiatorUserId, tradeId }) => {
 		const initiatorActor = game.actors.get(initiatorActorId);
 		const targetActor = game.actors.get(targetActorId);
 
@@ -714,7 +721,7 @@ export function setupCombatSocket() {
 	});
 
 	// Handler: Open trade window on this client
-	socketlibSocket.register("openTradeWindow", async ({ tradeId, localActorId, remoteActorId, isInitiator }) => {
+	if (isFeatureEnabled(FEATURE_IDS.TRADING)) socketlibSocket.register("openTradeWindow", async ({ tradeId, localActorId, remoteActorId, isInitiator }) => {
 		const localActor = game.actors.get(localActorId);
 		const remoteActor = game.actors.get(remoteActorId);
 
@@ -742,7 +749,7 @@ export function setupCombatSocket() {
 	});
 
 	// Handler: Notify initiator that trade was declined
-	socketlibSocket.register("notifyTradeDeclined", async ({ targetActorName }) => {
+	if (isFeatureEnabled(FEATURE_IDS.TRADING)) socketlibSocket.register("notifyTradeDeclined", async ({ targetActorName }) => {
 		ui.notifications.info(game.i18n.format("SHADOWDARK_EXTRAS.trade.declined_by", { player: targetActorName }));
 	});
 
@@ -751,7 +758,7 @@ export function setupCombatSocket() {
 	// when executing macros with runAsGm enabled
 
 	// Handler: Show Holy Weapon dialog on player's client
-	socketlibSocket.register("showHolyWeaponDialogForUser", async ({ casterActorId, casterItemId, targetActorId, targetTokenId, isCritical }) => {
+	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)) socketlibSocket.register("showHolyWeaponDialogForUser", async ({ casterActorId, casterItemId, targetActorId, targetTokenId, isCritical }) => {
 		const casterActor = game.actors.get(casterActorId);
 		const casterItem = casterActor?.items.get(casterItemId);
 		const targetActor = game.actors.get(targetActorId);
@@ -771,7 +778,7 @@ export function setupCombatSocket() {
 	});
 
 	// Handler: Show Identify dialog on player's client
-	socketlibSocket.register("showIdentifyDialogForUser", async ({ targetActorId, unidentifiedItemIds, identifySpellId, casterActorId }) => {
+	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)) socketlibSocket.register("showIdentifyDialogForUser", async ({ targetActorId, unidentifiedItemIds, identifySpellId, casterActorId }) => {
 		const casterActor = game.actors.get(casterActorId);
 		const targetActor = game.actors.get(targetActorId);
 		const identifySpell = casterActor?.items.get(identifySpellId);
@@ -790,7 +797,7 @@ export function setupCombatSocket() {
 	});
 
 	// Handler: Show Cleansing Weapon dialog on player's client
-	socketlibSocket.register("showCleansingWeaponDialogForUser", async ({ casterActorId, casterItemId, targetActorId, targetTokenId, isCritical }) => {
+	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)) socketlibSocket.register("showCleansingWeaponDialogForUser", async ({ casterActorId, casterItemId, targetActorId, targetTokenId, isCritical }) => {
 		const casterActor = game.actors.get(casterActorId);
 		const casterItem = casterActor?.items.get(casterItemId);
 		const targetActor = game.actors.get(targetActorId);
@@ -810,7 +817,7 @@ export function setupCombatSocket() {
 	});
 
 	// Handler: Apply Wrath to all weapons on player's client
-	socketlibSocket.register("showWrathWeaponDialogForUser", async ({ casterActorId, casterItemId, targetActorId, targetTokenId, isCritical }) => {
+	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)) socketlibSocket.register("showWrathWeaponDialogForUser", async ({ casterActorId, casterItemId, targetActorId, targetTokenId, isCritical }) => {
 		const casterActor = game.actors.get(casterActorId);
 		const casterItem = casterActor?.items.get(casterItemId);
 
@@ -826,7 +833,7 @@ export function setupCombatSocket() {
 	});
 
 	// Handler: Show Shapechanger dialog on player's client
-	socketlibSocket.register("showShapechangerDialogForUser", async ({ casterActorId, casterItemId, isCritical, options, targetActorId, targetTokenId }) => {
+	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)) socketlibSocket.register("showShapechangerDialogForUser", async ({ casterActorId, casterItemId, isCritical, options, targetActorId, targetTokenId }) => {
 		const casterActor = game.actors.get(casterActorId);
 		const casterItem = casterActor?.items.get(casterItemId);
 
@@ -852,7 +859,7 @@ export function setupCombatSocket() {
 	});
 
 	// Handler: Revert Shapechanger as GM (when player doesn't have ownership)
-	socketlibSocket.register("revertShapechangerAsGM", async actorUuid => {
+	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)) socketlibSocket.register("revertShapechangerAsGM", async actorUuid => {
 		const actor = await fromUuid(actorUuid);
 		if (!actor) {
 			console.warn(`${MODULE_ID} | revertShapechangerAsGM: Actor not found: ${actorUuid}`);
@@ -866,7 +873,7 @@ export function setupCombatSocket() {
 	});
 
 	// Handler: Apply Shapechanger as GM (when player doesn't have ownership)
-	socketlibSocket.register("applyShapechangerAsGM", async (actorUuid, itemUuid, npcUuid, isCritical, opts, targetActorUuid, targetTokenUuid) => {
+	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)) socketlibSocket.register("applyShapechangerAsGM", async (actorUuid, itemUuid, npcUuid, isCritical, opts, targetActorUuid, targetTokenUuid) => {
 		const casterActor = await fromUuid(actorUuid);
 		const casterItem = await fromUuid(itemUuid);
 		const npcDoc = await fromUuid(npcUuid);
@@ -900,7 +907,7 @@ export function setupCombatSocket() {
 	// These handle reverting spell modifications when the player doesn't own the target item
 
 	// Handler: Revert item modifications (when spell ends)
-	socketlibSocket.register("revertItemModificationAsGM", async ({ itemUuid, updates }) => {
+	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)) socketlibSocket.register("revertItemModificationAsGM", async ({ itemUuid, updates }) => {
 		const item = await fromUuid(itemUuid);
 		if (!item) {
 			console.warn(`${MODULE_ID} | revertItemModificationAsGM: Item not found: ${itemUuid}`);
@@ -918,7 +925,7 @@ export function setupCombatSocket() {
 	});
 
 	// Handler: Update item flags (for cleaning up modification tracking)
-	socketlibSocket.register("updateItemFlagsAsGM", async ({ itemUuid, flagPath, flagValue }) => {
+	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)) socketlibSocket.register("updateItemFlagsAsGM", async ({ itemUuid, flagPath, flagValue }) => {
 		const item = await fromUuid(itemUuid);
 		if (!item) {
 			console.warn(`${MODULE_ID} | updateItemFlagsAsGM: Item not found: ${itemUuid}`);
@@ -943,7 +950,7 @@ export function setupCombatSocket() {
 	// Cross-owner item transfer ("Transfer to Player"). Runs on the GM so a
 	// player can hand an item to a PC they don't own. Replaces the Item Piles
 	// dependency — see nativeTransferItems in TradeWindowSD.mjs.
-	socketlibSocket.register("transferItemsAsGM", async ({ sourceActorId, targetActorId, items }) => {
+	if (isFeatureEnabled(FEATURE_IDS.PLAYER_TRANSFERS)) socketlibSocket.register("transferItemsAsGM", async ({ sourceActorId, targetActorId, items }) => {
 		const sourceActor = game.actors.get(sourceActorId);
 		const targetActor = game.actors.get(targetActorId);
 		if (!sourceActor || !targetActor) {
@@ -963,7 +970,7 @@ export function setupCombatSocket() {
 
 	// Cross-owner coin transfer ("Transfer to Player"). Runs on the GM.
 	// Replaces the Item Piles dependency — see nativeTransferCoins in TradeWindowSD.mjs.
-	socketlibSocket.register("transferCoinsAsGM", async ({ sourceActorId, targetActorId, coins }) => {
+	if (isFeatureEnabled(FEATURE_IDS.PLAYER_TRANSFERS)) socketlibSocket.register("transferCoinsAsGM", async ({ sourceActorId, targetActorId, coins }) => {
 		const sourceActor = game.actors.get(sourceActorId);
 		const targetActor = game.actors.get(targetActorId);
 		if (!sourceActor || !targetActor) {

@@ -1,5 +1,6 @@
 import { cache } from "../shared/SDXCache.mjs";
 import { getDoorTiles } from "../dungeon/DungeonPainterSD.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 // _formatLabel has a neutral leaf of its own: every tile store calls it, so it
 // is not owned by whichever one happened to be extracted first.
 import { _formatLabel } from "./hex-tile-labels.mjs";
@@ -322,7 +323,7 @@ export async function loadTileAssets() {
 	await loadCustomTileAssets();
 	await loadColoredTileAssets();
 	await loadSymbolTileAssets();
-	await loadImportedDecorAssets();
+	if (isFeatureEnabled(FEATURE_IDS.DECOR_PAINTER)) await loadImportedDecorAssets();
 
 	// Start background preloading
 	preloadHexImages();
@@ -399,6 +400,8 @@ export async function getColoredTileFolders() {
  * Only includes Dysonstyle category tiles.
  */
 export async function getDecorTileFolders() {
+	if (!isFeatureEnabled(FEATURE_IDS.DECOR_PAINTER)) return [];
+
 	let tiles = [
 		...((_symbolTiles || []).filter(t => t.category === "dysonstyle")),
 		...(_importedDecorTiles || []),
@@ -681,10 +684,14 @@ async function preloadHexImages() {
 		...(_customTiles || []),
 		...(_coloredTiles || []),
 		...(_symbolTiles || []),
-		...(_importedDecorTiles || []),
-		...(_ddPackDecorTiles || []),
-		...getRegisteredDecorTiles(),
 	];
+	if (isFeatureEnabled(FEATURE_IDS.DECOR_PAINTER)) {
+		allTiles.push(
+			...(_importedDecorTiles || []),
+			...(_ddPackDecorTiles || []),
+			...getRegisteredDecorTiles()
+		);
+	}
 
 	// Preload process: fetch image and store as blob in cache if not already there
 	// Limit concurrency or use a small delay to avoid freezing the UI

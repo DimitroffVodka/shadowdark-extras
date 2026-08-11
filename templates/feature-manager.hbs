@@ -1,0 +1,108 @@
+<div class="sdx-feature-manager">
+	<header class="sdx-feature-manager-header">
+		<div>
+			<h2><i class="fas fa-toggle-on"></i> Feature Manager</h2>
+			<p class="notes">
+				Choose features by the controls you recognize in the SDX Tray. Disabled features do not initialize
+				their hooks, patches, sockets, applications, or tray controls. A reload is required after saving.
+			</p>
+		</div>
+		<div class="sdx-feature-manager-global-actions">
+			<button type="button" data-feature-action="enable-all">
+				<i class="fas fa-check-double"></i> Enable All
+			</button>
+			<button type="button" data-feature-action="disable-all">
+				<i class="fas fa-ban"></i> Disable All
+			</button>
+		</div>
+	</header>
+
+	<div class="sdx-feature-manager-groups">
+		<section class="sdx-feature-master" data-feature-section="master">
+			<h3>Master Control</h3>
+			<label class="sdx-feature-card master{{#if masterChoice.blocked}} blocked{{/if}}">
+				<img src="{{masterChoice.preview}}" alt="" loading="lazy">
+				<span class="sdx-feature-card-copy">
+					<strong>{{masterChoice.name}}</strong>
+					<span class="sdx-feature-location"><i class="fas fa-location-dot"></i> {{masterChoice.location}}</span>
+					<span>{{masterChoice.description}}</span>
+					{{#if masterChoice.partial}}<em>Some parts are currently disabled.</em>{{/if}}
+				</span>
+				<input type="checkbox" name="featureChoices" value="{{masterChoice.id}}" data-feature-input
+					data-partial="{{masterChoice.partial}}" {{checked masterChoice.checked}} {{#if masterChoice.blocked}}disabled{{/if}}>
+			</label>
+		</section>
+
+		{{#each visibleGroups}}
+		<section class="sdx-feature-group sdx-visible-feature-group" data-feature-section="{{id}}">
+			<header class="sdx-feature-group-header">
+				<h3>{{name}}</h3>
+				<div class="sdx-feature-group-actions">
+					<button type="button" data-feature-group-action="enable">Enable all</button>
+					<button type="button" data-feature-group-action="disable">Disable all</button>
+				</div>
+			</header>
+
+			<div class="sdx-feature-card-grid">
+				{{#each features}}
+				<label class="sdx-feature-card{{#if blocked}} blocked{{/if}}{{#if partial}} partial{{/if}}">
+					<img src="{{preview}}" alt="" loading="lazy">
+					<span class="sdx-feature-card-copy">
+						<strong>{{name}}</strong>
+						<span class="sdx-feature-location"><i class="fas fa-location-dot"></i> {{location}}</span>
+						<span>{{description}}</span>
+						{{#if partial}}<em>Some parts are currently disabled.</em>{{/if}}
+						{{#if blocked}}
+						<em><i class="fas fa-link"></i> Also blocked because {{blockedByName}} is disabled.</em>
+						{{/if}}
+					</span>
+					<input type="checkbox" name="featureChoices" value="{{id}}" data-feature-input
+						data-partial="{{partial}}" {{checked checked}} {{#if blocked}}disabled{{/if}}>
+				</label>
+				{{/each}}
+			</div>
+		</section>
+		{{/each}}
+
+		<details class="sdx-feature-advanced">
+			<summary>
+				<span><i class="fas fa-gears"></i> Advanced &amp; Hidden Features</span>
+				<small>{{advancedCount}} internal hooks, automations, and sheet enhancements</small>
+			</summary>
+			<p class="notes">These controls affect behavior that does not have its own SDX Tray button or tab.</p>
+			{{#each advancedGroups}}
+			<section class="sdx-feature-group" data-feature-section="advanced-{{id}}">
+				<header class="sdx-feature-group-header">
+					<h3>{{name}}</h3>
+					<div class="sdx-feature-group-actions">
+						<button type="button" data-feature-group-action="enable">Enable all</button>
+						<button type="button" data-feature-group-action="disable">Disable all</button>
+					</div>
+				</header>
+				<div class="sdx-feature-list">
+					{{#each features}}
+					<label class="sdx-feature-row{{#if blocked}} blocked{{/if}}">
+						<span class="sdx-feature-copy">
+							<strong>{{name}}</strong>
+							<span>{{description}}</span>
+							{{#if blocked}}
+							<em><i class="fas fa-link"></i> Also blocked because {{blockedByName}} is disabled.</em>
+							{{/if}}
+						</span>
+						<input type="checkbox" name="features" value="{{id}}" data-feature-input
+							{{checked checked}} {{#if blocked}}disabled{{/if}}>
+					</label>
+					{{/each}}
+				</div>
+			</section>
+			{{/each}}
+		</details>
+	</div>
+
+	<footer class="sheet-footer flexrow sdx-feature-manager-footer">
+		<span><i class="fas fa-rotate"></i> Reload Foundry after saving.</span>
+		<button type="submit" name="submit">
+			<i class="fas fa-save"></i> Save Feature Settings
+		</button>
+	</footer>
+</div>

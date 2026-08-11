@@ -1,3 +1,5 @@
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
+
 /**
  * Generate the Item Macro configuration HTML
  * @param {string} MODULE_ID - The module identifier
@@ -10,6 +12,7 @@
  * @returns {string} HTML string
  */
 export function generateItemMacroConfigHTML(MODULE_ID, flags, itemType = "spell") {
+	if (!isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)) return "";
 	const macroFlags = flags.itemMacro || { enabled: false, runAsGm: false, triggers: [] };
 	const runAsGm = macroFlags.runAsGm || false;
 	const triggers = macroFlags.triggers || [];

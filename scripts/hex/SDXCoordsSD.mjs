@@ -63,6 +63,11 @@ class SDXCoord {
 
 	#zineContainer;
 
+	// Label sets are built on first display, not on construction. A scene that
+	// never turns coordinates on builds nothing; the states are mutually
+	// exclusive, so a scene that does turn them on builds one set, not three.
+	#built = new Set();
+
 	constructor() {
 		const settings = getSettings();
 		const rect = canvas.dimensions.sceneRect;
@@ -114,15 +119,12 @@ class SDXCoord {
 		this.#cellContainer.visible = false;
 		this.#zineContainer.visible = false;
 
-		// Render labels
-		this._renderMarginLabels();
-		this._renderCellLabels();
-		this._renderZineLabels();
-
-		// Click listener for one-click coordinate display
+		// Click listener for one-click coordinate display. Independent of the
+		// label sets — modifier-click reports a coordinate even while hidden.
 		this._addClickListener();
 
-		// Restore display state from scene flags
+		// Restore display state from scene flags. _applyState builds whichever
+		// label set the state actually calls for; HIDDEN builds none.
 		this.#state = this._readSceneState();
 		this._applyState(this.#state);
 	}
@@ -405,10 +407,38 @@ class SDXCoord {
 		return canvas?.scene?.getFlag(MODULE_ID, "sdxcoords-state") || DISPLAY_STATES.HIDDEN;
 	}
 
+	/**
+	 * Build the label set for a display state, once. Called from _applyState
+	 * immediately before the matching container is shown, so the cost is paid
+	 * only by states the scene actually reaches.
+	 *
+	 * @param {string} state - The display state about to be shown
+	 */
+	_ensureBuilt(state) {
+		if (state === DISPLAY_STATES.HIDDEN || this.#built.has(state)) return;
+		this.#built.add(state);
+
+		switch (state) {
+			case DISPLAY_STATES.MARGIN:
+				this._renderMarginLabels();
+				break;
+			case DISPLAY_STATES.CELL:
+				this._renderCellLabels();
+				break;
+			case DISPLAY_STATES.ZINE:
+				this._renderZineLabels();
+				break;
+			default:
+				break;
+		}
+	}
+
 	_applyState(state) {
 		this.#marginContainer.visible = false;
 		this.#cellContainer.visible = false;
 		this.#zineContainer.visible = false;
+
+		this._ensureBuilt(state);
 
 		switch (state) {
 			case DISPLAY_STATES.MARGIN:

@@ -5,9 +5,10 @@
  * other tokens follow the leader's exact movement path.
  */
 
-import { FormationSpawnerSD, initFormationSpawner } from "./FormationSpawnerSD.mjs";
+import { FormationSpawnerSD } from "./FormationSpawnerSD.mjs";
 import { PinPlacer } from "../journal/JournalPinsSD.mjs";
 import { PinListApp } from "../journal/PinListApp.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const SETTING_KEY_LEADER = "marchingModeLeader";
@@ -119,22 +120,8 @@ export function initMarchingMode() {
 	// Register settings
 	registerMarchingSettings();
 
-	// Initialize Formation Spawner settings
-	initFormationSpawner();
-
 	// Load saved state
 	loadMarchingState();
-
-	// Register the renderSidebar hook
-	Hooks.on("renderSidebar", onRenderSidebar);
-
-	// If sidebar already exists, inject buttons now
-	const sidebar = document.getElementById("sidebar");
-	if (sidebar) {
-		if (!game.settings.get(MODULE_ID, "tray.enabled")) {
-			injectSidebarButtons($(sidebar));
-		}
-	}
 
 	// Hook into token movement
 	Hooks.on("preUpdateToken", onPreUpdateToken);
@@ -229,19 +216,46 @@ export function initMarchingMode() {
 	});
 }
 
+let sidebarToolsRegistered = false;
+
+/** Register Foundry-sidebar fallbacks independently of Marching Mode. */
+export function initSidebarTools() {
+	if (sidebarToolsRegistered) return;
+	sidebarToolsRegistered = true;
+	Hooks.on("renderSidebar", onRenderSidebar);
+
+	const sidebar = document.getElementById("sidebar");
+	if (sidebar && shouldUseSidebarTools()) {
+		injectSidebarButtons($(sidebar));
+	}
+}
+
+function shouldUseSidebarTools() {
+	return !isFeatureEnabled(FEATURE_IDS.TRAY) || !game.settings.get(MODULE_ID, "tray.enabled");
+}
+
 /**
  * Hook callback for renderSidebar
  */
 function onRenderSidebar(sidebar, html) {
-	if (!game.settings.get(MODULE_ID, "tray.enabled")) {
+	if (shouldUseSidebarTools()) {
 		injectSidebarButtons(html);
 	}
 }
 
 /**
- * Inject sidebar buttons into the given HTML
+ * Inject sidebar buttons into the given HTML.
+ *
+ * `html` arrives as a native HTMLElement from the v14 renderSidebar hook but as
+ * a jQuery object from the init-time direct call, so normalise before using the
+ * jQuery API. Passing the hook's raw <aside> straight through threw
+ * "html.find is not a function" on every sidebar render, which silently killed
+ * the whole fallback for tray-disabled worlds (#119).
+ *
+ * @param {jQuery|HTMLElement} html - The sidebar root
  */
-function injectSidebarButtons($html) {
+function injectSidebarButtons(html) {
+	const $html = html instanceof jQuery ? html : $(html);
 	const $tabs = $html.find("#sidebar-tabs");
 	if (!$tabs.length) {
 		console.warn(`${MODULE_ID} | Could not find #sidebar-tabs`);
@@ -249,7 +263,7 @@ function injectSidebarButtons($html) {
 	}
 
 	// Check if buttons already exist
-	if ($tabs.find(".sdx-marching-leader-btn").length) {
+	if ($tabs.find(".sdx-marching-btn-container").length) {
 		console.log(`${MODULE_ID} | Marching buttons already exist, skipping injection`);
 		return;
 	}
@@ -301,20 +315,28 @@ function injectSidebarButtons($html) {
 
 	// Insert before settings
 	if (game.user.isGM) {
-		$settingsBtn.before($leaderBtn);
-		$settingsBtn.before($movementBtn);
-		$settingsBtn.before($formationBtn);
-		$settingsBtn.before($addPinBtn);
+		if (isFeatureEnabled(FEATURE_IDS.MARCHING_MODE)) {
+			$settingsBtn.before($leaderBtn);
+			$settingsBtn.before($movementBtn);
+		}
+		if (isFeatureEnabled(FEATURE_IDS.FORMATION_SPAWNER)) {
+			$settingsBtn.before($formationBtn);
+		}
+		if (isFeatureEnabled(FEATURE_IDS.JOURNAL_PINS)) $settingsBtn.before($addPinBtn);
 	}
 
 	// Add event handlers
 	if (game.user.isGM) {
-		$leaderBtn.find("button").on("click", showLeaderDialog);
-		$movementBtn.find("button").on("click", showMovementModeDialog);
-		$formationBtn.find("button").on("click", () => FormationSpawnerSD.show());
+		if (isFeatureEnabled(FEATURE_IDS.MARCHING_MODE)) {
+			$leaderBtn.find("button").on("click", showLeaderDialog);
+			$movementBtn.find("button").on("click", showMovementModeDialog);
+		}
+		if (isFeatureEnabled(FEATURE_IDS.FORMATION_SPAWNER)) {
+			$formationBtn.find("button").on("click", () => FormationSpawnerSD.show());
+		}
 
 		// SDX Pins - Menu Dialog
-		$addPinBtn.find("button").on("click", () => {
+		if (isFeatureEnabled(FEATURE_IDS.JOURNAL_PINS)) $addPinBtn.find("button").on("click", () => {
 			new foundry.applications.api.DialogV2({
 				window: { title: "SDX Pins" },
 				content: "<p>Select an action:</p>",
@@ -347,10 +369,10 @@ function injectSidebarButtons($html) {
         </li>
     `);
 
-	$settingsBtn.before($carousingBtn);
+	if (isFeatureEnabled(FEATURE_IDS.CAROUSING)) $settingsBtn.before($carousingBtn);
 
 	// Add Carousing handler
-	$carousingBtn.find("button").on("click", () => {
+	if (isFeatureEnabled(FEATURE_IDS.CAROUSING)) $carousingBtn.find("button").on("click", () => {
 		if (window.sdxOpenCarousingOverlay) {
 			window.sdxOpenCarousingOverlay();
 		}
@@ -582,7 +604,43 @@ async function setMovementMode(enabled) {
 }
 
 /**
- * Update button states to show active mode
+ * Toggle one indicator button's active styling.
+ *
+ * @param {HTMLElement|null} btn - The button, or null when that surface is absent
+ * @param {boolean} on - Whether the mode this button reflects is active
+ * @param {string} colour - The active colour
+ */
+function setIndicator(btn, on, colour) {
+	if (!btn) return;
+	btn.classList.toggle("active", on);
+	btn.style.color = on ? colour : "";
+}
+
+/**
+ * Apply the leader / marching active styling to a tray handle rail.
+ *
+ * Separate from updateButtonStates because the tray rebuilds these buttons from
+ * the template on every render, which drops the styling — the tray bindings
+ * call this with the element they just rendered. Native DOM, matching the rest
+ * of tray-handle-bindings.
+ *
+ * @param {ParentNode|null} root - The rendered tray root, or a document
+ */
+export function applyRailIndicators(root) {
+	if (!root?.querySelector) return;
+	setIndicator(root.querySelector(".tray-handle-button-tool[data-action='leader']"),
+		!!leaderTokenId, "#ffd700");
+	setIndicator(root.querySelector(".tray-handle-button-tool[data-action='marching']"),
+		marchingModeEnabled, "#4CAF50");
+}
+
+/**
+ * Update button states to show active mode.
+ *
+ * Covers both surfaces that expose these actions: the Foundry-sidebar fallback
+ * (tray disabled) and the tray handle rail (tray enabled). The rail was never
+ * updated at all, so on a tray-enabled world — the default — the leader and
+ * marching indicators never lit up (#119).
  */
 function updateButtonStates() {
 	const $leaderBtn = $("#sidebar-tabs .sdx-marching-leader-btn");
@@ -603,6 +661,8 @@ function updateButtonStates() {
 	else {
 		$modeBtn.removeClass("active").css("color", "");
 	}
+
+	applyRailIndicators(globalThis.document);
 }
 
 /**

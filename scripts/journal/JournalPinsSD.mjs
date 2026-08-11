@@ -22,22 +22,6 @@ function _registerGsapPixiPlugin() {
 		console.warn("SDX Journal Pins | GSAP PixiPlugin registration failed:", e);
 	}
 }
-// Try at module load (usually PIXI is already a global by then)…
-_registerGsapPixiPlugin();
-// …and again at init, in case PIXI wasn't ready yet.
-Hooks.once("init", _registerGsapPixiPlugin);
-
-// World-shared pin folders (P2). Definitions live here and appear on every
-// scene; pins always remain per-scene, grouped under the shared folder.
-Hooks.once("init", () => {
-	game.settings.register(MODULE_ID, "pinFoldersWorld", {
-		scope: "world",
-		config: false,
-		type: Array,
-		default: [],
-	});
-});
-
 // ================================================================
 // PIN SCHEMA & DEFAULTS
 // ================================================================
@@ -92,7 +76,22 @@ const hookCanvas = () => {
 // PIN MANAGER - CRUD operations stored in scene flags
 // ================================================================
 
+let initialized = false;
+
 function initJournalPins() {
+	if (initialized) return;
+	initialized = true;
+
+	_registerGsapPixiPlugin();
+	game.settings.register(MODULE_ID, "pinFoldersWorld", {
+		scope: "world",
+		config: false,
+		type: Array,
+		default: [],
+	});
+	if (typeof CONFIG !== "undefined" && CONFIG.Canvas?.layers) hookCanvas();
+	else Hooks.once("setup", hookCanvas);
+
 	// Initialize drop handler
 	JournalPinDropHandler.initialize();
 
@@ -268,19 +267,3 @@ export {
 	JournalPinTooltip, JournalPinManager, JournalPinRenderer, PinPlacer, normalizeImageTint,
 	DEFAULT_PIN_STYLE, getPinStyle, isMediaPinShape, initJournalPins,
 };
-
-// ================================================================
-// INITIALIZATION
-// ================================================================
-
-// Register layer IMMEDIATELY at module load time
-// Check if CONFIG.Canvas.layers exists (it should during init phase)
-if (typeof CONFIG !== "undefined" && CONFIG.Canvas?.layers) {
-	hookCanvas();
-}
-else {
-	// Fallback: try during init hook
-	Hooks.once("init", () => {
-		hookCanvas();
-	});
-}

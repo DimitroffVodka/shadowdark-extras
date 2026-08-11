@@ -1,4 +1,5 @@
 import { MODULE_ID } from "../shared/module-id.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 import { generateWandConfig } from "./ItemTypeConfigs.mjs";
 import { activateTemplateTargetingListeners } from "./TemplateTargetingConfig.mjs";
 import {
@@ -126,7 +127,8 @@ export async function enhanceWandSheet(app, html) {
 	// WAND USES TRACKING UI
 	// ═══════════════════════════════════════════════════════════════
 	try {
-		if (game.settings.get(MODULE_ID, "enableWandUses")) {
+		if (isFeatureEnabled(FEATURE_IDS.MAGIC_ITEM_SHEETS)
+			&& game.settings.get(MODULE_ID, "enableWandUses")) {
 			// Inject wand uses UI after the Range field
 			injectWandUsesUI(html, item);
 		}
@@ -340,7 +342,8 @@ export async function enhanceWandSheet(app, html) {
 
 
 	let effectsListHtml = "";
-	let effectsArray = flags.effects || [];
+	const spellConfigsEnabled = isFeatureEnabled(FEATURE_IDS.SPELL_CONFIGS);
+	let effectsArray = spellConfigsEnabled ? flags.effects || [] : [];
 	if (typeof effectsArray === "string") {
 		try {
 			effectsArray = JSON.parse(effectsArray);
@@ -416,7 +419,7 @@ export async function enhanceWandSheet(app, html) {
 
 	// Build summons list HTML
 	let summonsList = "";
-	let summonProfilesArray = summoningFlags.profiles || [];
+	let summonProfilesArray = spellConfigsEnabled ? summoningFlags.profiles || [] : [];
 
 	// Handle case where profiles might be a string
 	if (typeof summonProfilesArray === "string") {
@@ -438,7 +441,7 @@ export async function enhanceWandSheet(app, html) {
 	}
 
 	let itemGiveList = "";
-	let itemGiveProfilesArray = itemGiveFlags.profiles || [];
+	let itemGiveProfilesArray = spellConfigsEnabled ? itemGiveFlags.profiles || [] : [];
 
 	if (typeof itemGiveProfilesArray === "string") {
 		try {

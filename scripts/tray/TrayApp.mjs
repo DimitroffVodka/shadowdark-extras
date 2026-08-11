@@ -19,15 +19,20 @@ import { TOM_OVERLAYS, TOM_OVERLAY_BASE } from "../tom/TomOverlays.mjs";
 import { enablePainting, disablePainting, isTintEnabled, getPoiScale, enablePreview, disablePreview, getActiveTileTab, setDecorMode } from "../hex/HexPainterSD.mjs";
 import { enableDungeonPainting, disableDungeonPainting } from "../dungeon/DungeonPainterSD.mjs";
 import { isGeneratorExpanded, getGeneratorSeed, getGeneratorSettings } from "../dungeon/DungeonGeneratorSD.mjs";
-// Side-effect import: loads the multi-level engine at startup so it can register the standalone
-// mlSliders client setting + the renderTrayApp persistence hook (Levels/Links/Variation/Variety).
-import "../dungeon/DungeonMultiLevelSD.mjs";
 import { isHexFogEnabled } from "../hex/SDXHexFogSD.mjs";
 import { isSoloMode } from "../hex/SoloHexMode.mjs";
+import { getFeatureFlagContext } from "../settings/feature-gates.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-Hooks.on("sdx.decorAssetsImported", () => renderTray());
+let trayAppHooksRegistered = false;
+
+export function registerTrayAppHooks() {
+	if (trayAppHooksRegistered) return;
+	trayAppHooksRegistered = true;
+	registerTrayHandlebarsHelpers();
+	Hooks.on("sdx.decorAssetsImported", () => renderTray());
+}
 
 export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	static DEFAULT_OPTIONS = {
@@ -54,6 +59,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 	constructor(data = {}, options = {}) {
 		super(options);
+		registerTrayAppMixins();
 		this.trayData = data;
 		this._isExpanded = false;
 		this._pinSearchTerm = "";
@@ -190,14 +196,19 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Prepare context data for the template
      */
 	async _prepareContext(options) {
+		const features = this.trayData.features ?? getFeatureFlagContext();
 		// Tom Broadcast State
 		let activeSceneId = null;
 		let currentOverlays = [];
 		try {
-			const { TomStore } = await import("../tom/TomStore.mjs");
-			activeSceneId = TomStore.activeSceneId || null;
-			// Prefer new array, fall back to legacy single string via getter
-			currentOverlays = TomStore.currentOverlays?.length ? [...TomStore.currentOverlays] : (TomStore.currentOverlay ? [TomStore.currentOverlay] : []);
+			if (features.tomScenes) {
+				const { TomStore } = await import("../tom/TomStore.mjs");
+				activeSceneId = TomStore.activeSceneId || null;
+				// Prefer new array, fall back to legacy single string via getter
+				currentOverlays = TomStore.currentOverlays?.length
+					? [...TomStore.currentOverlays]
+					: (TomStore.currentOverlay ? [TomStore.currentOverlay] : []);
+			}
 		}
 		catch(err) {
 			// Ignore — TomStore not ready yet (tests/harness)
@@ -208,10 +219,10 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// Same source as the old floating manager — now rendered as part of
 		// the scenes-view so it lives where scenes live.
 		const tomActiveSet = new Set(currentOverlays);
-		const tomOverlayOptions = TOM_OVERLAYS.map(o => {
+		const tomOverlayOptions = features.tomVideoOverlays ? TOM_OVERLAYS.map(o => {
 			const path = `${TOM_OVERLAY_BASE}${o.file}`;
 			return { name: o.name, path, active: tomActiveSet.has(path) };
-		});
+		}) : [];
 		const tomCurrentOverlay = currentOverlays[0] ?? null;
 		const tomCurrentOverlays = currentOverlays;
 		const tomOverlayCount = currentOverlays.length;
@@ -222,6 +233,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		return {
 			...this.trayData,
+			features,
 			isExpanded: this._isExpanded,
 			viewMode: getViewMode(),
 			pinSearchTerm: this._pinSearchTerm,
@@ -231,18 +243,18 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			tomOverlayCount,
 			tomOverlayOptions,
 			tomOverlaysCollapsed: this._tomOverlaysCollapsed,
-			tomScenes: await this._getTomScenes(),
-			tomFolders: await this._getTomFolders(),
-			tintEnabled: isTintEnabled(),
+			tomScenes: features.tomScenes ? await this._getTomScenes() : [],
+			tomFolders: features.tomScenes ? await this._getTomFolders() : [],
+			tintEnabled: features.hexPainter ? isTintEnabled() : false,
 
 			poiScale: poiScale,
 			poiScalePercent: poiScalePercent,
-			generatorExpanded: isGeneratorExpanded(),
-			generatorSeed: getGeneratorSeed(),
-			generatorSettings: getGeneratorSettings(),
-			hexFogActive: isHexFogEnabled(canvas.scene?.id),
+			generatorExpanded: features.dungeonPainter ? isGeneratorExpanded() : false,
+			generatorSeed: features.dungeonPainter ? getGeneratorSeed() : "",
+			generatorSettings: features.dungeonPainter ? getGeneratorSettings() : {},
+			hexFogActive: features.hexFog ? isHexFogEnabled(canvas.scene?.id) : false,
 			isHexagonal: !!canvas?.grid?.isHexagonal,
-			soloModeActive: isSoloMode(),
+			soloModeActive: features.hexSoloMode ? isSoloMode() : false,
 		};
 	}
 
@@ -334,68 +346,73 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 }
 
 // Register Handlebars helpers for the tray
-Hooks.once("init", () => {
-	// Helper to check equality
-	Handlebars.registerHelper("eq", function(a, b) {
-		return a === b;
-	});
+function registerTrayHandlebarsHelpers() {
+	const registerHelpers = () => {
+		// Helper to check equality
+		Handlebars.registerHelper("eq", function(a, b) {
+			return a === b;
+		});
 
-	// Helper for health overlay height
-	Handlebars.registerHelper("healthOverlayHeight", function(hp) {
-		return getHealthOverlayHeight(hp);
-	});
+		// Helper for health overlay height
+		Handlebars.registerHelper("healthOverlayHeight", function(hp) {
+			return getHealthOverlayHeight(hp);
+		});
 
-	// Helper for multiplication
-	Handlebars.registerHelper("multiply", function(a, b) {
-		return (a || 0) * (b || 0);
-	});
+		// Helper for multiplication
+		Handlebars.registerHelper("multiply", function(a, b) {
+			return (a || 0) * (b || 0);
+		});
 
-	// Helper for division
-	Handlebars.registerHelper("divide", function(a, b) {
-		if (!b || b === 0) return 0;
-		return (a || 0) / b;
-	});
+		// Helper for division
+		Handlebars.registerHelper("divide", function(a, b) {
+			if (!b || b === 0) return 0;
+			return (a || 0) / b;
+		});
 
-	// Helper to check if value is in array
-	Handlebars.registerHelper("includes", function(arr, value) {
-		if (!Array.isArray(arr)) return false;
-		return arr.includes(value);
-	});
+		// Helper to check if value is in array
+		Handlebars.registerHelper("includes", function(arr, value) {
+			if (!Array.isArray(arr)) return false;
+			return arr.includes(value);
+		});
 
-	// Helper for default values
-	Handlebars.registerHelper("default", function(value, defaultValue) {
-		return value ?? defaultValue;
-	});
+		// Helper for default values
+		Handlebars.registerHelper("default", function(value, defaultValue) {
+			return value ?? defaultValue;
+		});
 
-	// Helper for logical NOT
-	Handlebars.registerHelper("not", function(value) {
-		return !value;
-	});
+		// Helper for logical NOT
+		Handlebars.registerHelper("not", function(value) {
+			return !value;
+		});
 
-	// Helper for logical OR
-	Handlebars.registerHelper("or", function(...args) {
-		// Remove the Handlebars options object from the end
-		args.pop();
-		return args.some(Boolean);
-	});
+		// Helper for logical OR
+		Handlebars.registerHelper("or", function(...args) {
+			// Remove the Handlebars options object from the end
+			args.pop();
+			return args.some(Boolean);
+		});
 
-	// Helper for logical AND
-	Handlebars.registerHelper("and", function(...args) {
-		// Remove the Handlebars options object from the end
-		args.pop();
-		return args.every(Boolean);
-	});
-});
+		// Helper for logical AND
+		Handlebars.registerHelper("and", function(...args) {
+			// Remove the Handlebars options object from the end
+			args.pop();
+			return args.every(Boolean);
+		});
+	};
+	registerHelpers();
+}
 
-// TOM panel methods (overlay/cast/scene panels) extracted to tom-panels.mjs
-Object.assign(TrayApp.prototype, TomPanels);
-// Hex-painter control bindings extracted to hex-painter-bindings.mjs
-Object.assign(TrayApp.prototype, HexPainterBindings);
-// _onRender's bindings, one mixin per tray section. Each is a prototype
-// method, so `this` is the application exactly as it was inline.
-Object.assign(TrayApp.prototype, TrayHandleBindings);
-Object.assign(TrayApp.prototype, DungeonBindings);
-Object.assign(TrayApp.prototype, TomSceneBindings);
-Object.assign(TrayApp.prototype, PinListBindings);
-// Party tab card interactions (select / center / open sheet)
-Object.assign(TrayApp.prototype, PartyBindings);
+let trayAppMixinsRegistered = false;
+
+/** Install tray-only prototype methods on first tray construction. */
+function registerTrayAppMixins() {
+	if (trayAppMixinsRegistered) return;
+	trayAppMixinsRegistered = true;
+	Object.assign(TrayApp.prototype, TomPanels);
+	Object.assign(TrayApp.prototype, HexPainterBindings);
+	Object.assign(TrayApp.prototype, TrayHandleBindings);
+	Object.assign(TrayApp.prototype, DungeonBindings);
+	Object.assign(TrayApp.prototype, TomSceneBindings);
+	Object.assign(TrayApp.prototype, PinListBindings);
+	Object.assign(TrayApp.prototype, PartyBindings);
+}

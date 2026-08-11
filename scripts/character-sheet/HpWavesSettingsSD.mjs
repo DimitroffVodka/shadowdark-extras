@@ -3,6 +3,8 @@
  * Allows enabling/disabling HP waves and customizing colors by ancestry
  */
 
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
+
 const MODULE_ID = "shadowdark-extras";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -209,6 +211,7 @@ export function getHpWaveColor(actor, ancestryName = "") {
  * @returns {boolean}
  */
 export function isHpWavesEnabled() {
+	if (!isFeatureEnabled(FEATURE_IDS.HP_WAVES)) return false;
 	const settings = game.settings.get(MODULE_ID, "hpWavesSettings");
 	return settings?.enabled ?? true;
 }

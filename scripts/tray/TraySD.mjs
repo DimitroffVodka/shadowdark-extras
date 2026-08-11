@@ -1,6 +1,6 @@
 
 
-import { TrayApp } from "./TrayApp.mjs";
+import { TrayApp, registerTrayAppHooks } from "./TrayApp.mjs";
 import { JournalPinManager, normalizeImageTint } from "../journal/JournalPinsSD.mjs";
 import { initSoloHexMode } from "../hex/SoloHexMode.mjs";
 import { getHexPainterData, loadTileAssets, bindCanvasEvents, enablePainting, disablePainting, isPainting, setDecorMode, canUndoPoi, canRedoPoi } from "../hex/HexPainterSD.mjs";
@@ -18,6 +18,13 @@ import {
 	initDungeonSocket,
 	canPlayerPaint,
 } from "../dungeon/DungeonPainterSD.mjs";
+import {
+	FEATURE_IDS,
+	getDisabledFeatureIds,
+	getFeatureFlagContext,
+	getVisibleTrayModes,
+	isFeatureEnabled,
+} from "../settings/feature-gates.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -48,6 +55,11 @@ function _activeSceneId() {
 	return canvas.scene?.id ?? "";
 }
 
+function _getPartySetting(key, fallback) {
+	if (!isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) return fallback;
+	return game.settings.get(MODULE_ID, key) ?? fallback;
+}
+
 function _scenePartyMap(sceneId = _activeSceneId()) {
 	let m = _partyStats.get(sceneId);
 	if (!m) {
@@ -74,15 +86,16 @@ let _currentActor = null;
  */
 export function initTray() {
 	// Check if tray is enabled
-	if (!game.settings.get(MODULE_ID, "tray.enabled")) {
+	if (!isFeatureEnabled(FEATURE_IDS.TRAY) || !game.settings.get(MODULE_ID, "tray.enabled")) {
 		return;
 	}
+	registerTrayAppHooks();
 
 	// Add class to body to enable tray-specific CSS
 	document.body.classList.add("sdx-tray-enabled");
 
 	// Cache the world-scope NPC visibility toggle (synced to all clients)
-	_hideNpcsFromPlayers = game.settings.get(MODULE_ID, "tray.hideNpcsFromPlayers") ?? true;
+	_hideNpcsFromPlayers = _getPartySetting("tray.hideNpcsFromPlayers", true);
 
 	// Create the tray app
 	_trayApp = new TrayApp();
@@ -90,33 +103,33 @@ export function initTray() {
 
 	// Initial render
 	renderTray();
-	_broadcastScenePartyStats(_activeSceneId());
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) _broadcastScenePartyStats(_activeSceneId());
 
 	// Players: ask the GM for the current party/NPC stat snapshot. The GM's
 	// userConnected force-broadcast can race ahead of this client's socket
 	// handler registration and be dropped, so a fresh client requests it
 	// explicitly. (No GM connected: nothing to ask, the catch keeps the
 	// rejection silent.)
-	if (!game.user.isGM) {
+	if (!game.user.isGM && isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) {
 		_partySocket?.executeAsGM("sdxTrayRequestPartyStats", canvas.scene?.id)?.catch?.(() => {});
 	}
 
 	// Load hex tile assets for the painter tab
-	loadTileAssets().then(() => renderTray());
+	if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) loadTileAssets().then(() => renderTray());
 
 	// Initialize dungeon socket FIRST (so players can request tiles from GM)
-	initDungeonSocket();
+	if (isFeatureEnabled(FEATURE_IDS.DUNGEON_PAINTER)) initDungeonSocket();
 
 	// Initialize Solo Hex Mode (registers updateToken hook)
-	initSoloHexMode();
+	if (isFeatureEnabled(FEATURE_IDS.SOLO_HEX_MODE)) initSoloHexMode();
 
 	// Load dungeon tile assets (after socket init so players can request from GM)
-	loadDungeonAssets().then(() => renderTray());
+	if (isFeatureEnabled(FEATURE_IDS.DUNGEON_PAINTER)) loadDungeonAssets().then(() => renderTray());
 
 	// Bind canvas events now if canvas is already ready (page refresh)
 	if (canvas?.stage) {
-		bindCanvasEvents();
-		bindDungeonCanvasEvents();
+		if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) bindCanvasEvents();
+		if (isFeatureEnabled(FEATURE_IDS.DUNGEON_PAINTER)) bindDungeonCanvasEvents();
 	}
 
 	// Hook into token selection changes
@@ -130,7 +143,7 @@ export function initTray() {
 		if (_actorUpdateTimer) clearTimeout(_actorUpdateTimer);
 		_actorUpdateTimer = setTimeout(async () => {
 			_actorUpdateTimer = null;
-			_broadcastActorPartyStats(actor);
+			if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) _broadcastActorPartyStats(actor);
 			await renderTray();
 		}, 100);
 	});
@@ -153,11 +166,15 @@ export function initTray() {
 
 	// Hook into token creation/deletion for party view & notes
 	Hooks.on("createToken", async tokenDoc => {
-		_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+		if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) {
+			_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+		}
 		await renderTray();
 	});
 	Hooks.on("deleteToken", async tokenDoc => {
-		_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+		if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) {
+			_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+		}
 		await renderTray();
 	});
 
@@ -177,7 +194,9 @@ export function initTray() {
 		if (_tokenUpdateTimer) clearTimeout(_tokenUpdateTimer);
 		_tokenUpdateTimer = setTimeout(async () => {
 			_tokenUpdateTimer = null;
-			_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+			if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) {
+				_broadcastScenePartyStats(tokenDoc.parent?.id ?? _activeSceneId());
+			}
 			await renderTray();
 		}, 100);
 	});
@@ -225,19 +244,19 @@ export function initTray() {
 
 	// Hook into canvas teardown (before scene change) to clean up
 	Hooks.on("canvasTearDown", () => {
-		cleanupDungeonPainting();
+		if (isFeatureEnabled(FEATURE_IDS.DUNGEON_PAINTER)) cleanupDungeonPainting();
 	});
 
 	// Hook into scene changes
 	Hooks.on("canvasReady", async () => {
-		bindCanvasEvents();
-		bindDungeonCanvasEvents();
-		_broadcastScenePartyStats(_activeSceneId());
+		if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) bindCanvasEvents();
+		if (isFeatureEnabled(FEATURE_IDS.DUNGEON_PAINTER)) bindDungeonCanvasEvents();
+		if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) _broadcastScenePartyStats(_activeSceneId());
 		// If this client is a player, the GM's broadcast for the previous
 		// scene does not help — ask for a snapshot scoped to the scene we
 		// just entered. The GM answers for that scene id even if they are
 		// viewing a different scene themselves.
-		if (!game.user.isGM) {
+		if (!game.user.isGM && isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) {
 			_partySocket?.executeAsGM("sdxTrayRequestPartyStats", canvas.scene?.id)?.catch?.(() => {});
 		}
 		await renderTray();
@@ -291,12 +310,18 @@ export function initTray() {
 
 	// Hook to reload dungeon tiles when GM comes online (for players)
 	Hooks.on("userConnected", async (user, connected) => {
-		if (game.user.isGM && connected && !user.isGM) {
+		if (
+			isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)
+			&& game.user.isGM && connected && !user.isGM
+		) {
 			// A player just joined: push the current party/NPC stat snapshot
 			// (bypassing the dedupe, which would otherwise swallow it).
 			_broadcastScenePartyStats(_activeSceneId(), true);
 		}
-		if (!game.user.isGM && user.isGM && connected) {
+		if (
+			isFeatureEnabled(FEATURE_IDS.DUNGEON_PAINTER)
+			&& !game.user.isGM && user.isGM && connected
+		) {
 			// GM just came online - try to reload dungeon tiles
 			await reloadDungeonAssets();
 			renderTray();
@@ -323,7 +348,7 @@ export function initTray() {
  * Register tray settings
  */
 export function registerTraySettings() {
-	game.settings.register(MODULE_ID, "tray.enabled", {
+	if (isFeatureEnabled(FEATURE_IDS.TRAY)) game.settings.register(MODULE_ID, "tray.enabled", {
 		name: "SHADOWDARK_EXTRAS.tray.settings.enabled.name",
 		hint: "SHADOWDARK_EXTRAS.tray.settings.enabled.hint",
 		scope: "client",
@@ -333,7 +358,7 @@ export function registerTraySettings() {
 		requiresReload: true,
 	});
 
-	game.settings.register(MODULE_ID, "tray.showPartyTab", {
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) game.settings.register(MODULE_ID, "tray.showPartyTab", {
 		name: "SHADOWDARK_EXTRAS.tray.settings.showPartyTab.name",
 		hint: "SHADOWDARK_EXTRAS.tray.settings.showPartyTab.hint",
 		scope: "client",
@@ -342,7 +367,7 @@ export function registerTraySettings() {
 		default: true,
 	});
 
-	game.settings.register(MODULE_ID, "tray.partyName", {
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) game.settings.register(MODULE_ID, "tray.partyName", {
 		name: "SHADOWDARK_EXTRAS.tray.settings.partyName.name",
 		hint: "SHADOWDARK_EXTRAS.tray.settings.partyName.hint",
 		scope: "world",
@@ -351,7 +376,7 @@ export function registerTraySettings() {
 		default: "Party",
 	});
 
-	game.settings.register(MODULE_ID, "tray.showHealthBars", {
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) game.settings.register(MODULE_ID, "tray.showHealthBars", {
 		name: "SHADOWDARK_EXTRAS.tray.settings.showHealthBars.name",
 		hint: "SHADOWDARK_EXTRAS.tray.settings.showHealthBars.hint",
 		scope: "client",
@@ -360,7 +385,7 @@ export function registerTraySettings() {
 		default: true,
 	});
 
-	game.settings.register(MODULE_ID, "tray.showNPCs", {
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) game.settings.register(MODULE_ID, "tray.showNPCs", {
 		name: "SHADOWDARK_EXTRAS.tray.settings.showNPCs.name",
 		hint: "SHADOWDARK_EXTRAS.tray.settings.showNPCs.hint",
 		scope: "client",
@@ -372,7 +397,7 @@ export function registerTraySettings() {
 	// World-scope GM toggle: hidden from the settings UI (the tray button is
 	// the only control). Foundry's setting sync carries it to every client,
 	// where the updateSetting hook in initTray refreshes the cache.
-	game.settings.register(MODULE_ID, "tray.hideNpcsFromPlayers", {
+	if (isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) game.settings.register(MODULE_ID, "tray.hideNpcsFromPlayers", {
 		name: "Hide NPCs from Players (tray)",
 		hint: "Whether monsters and NPCs are hidden from players in the tray's Party view.",
 		scope: "world",
@@ -382,7 +407,7 @@ export function registerTraySettings() {
 	});
 
 	// Hidden settings for hex painter (not shown in config)
-	game.settings.register(MODULE_ID, "hexFog.defaultRevealRadius", {
+	if (isFeatureEnabled(FEATURE_IDS.HEX_FOG)) game.settings.register(MODULE_ID, "hexFog.defaultRevealRadius", {
 		name: "Hex Fog: Default Reveal Radius",
 		hint: "How many rings of hexes to reveal around a token when it moves. 0 = only the token's hex, 1 = token + adjacent hexes, 2 = two rings out, etc.",
 		scope: "world",
@@ -392,28 +417,28 @@ export function registerTraySettings() {
 		range: { min: 0, max: 5, step: 1 },
 	});
 
-	game.settings.register(MODULE_ID, "hexPainter.customTileWidth", {
+	if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) game.settings.register(MODULE_ID, "hexPainter.customTileWidth", {
 		scope: "client",
 		config: false,
 		type: Number,
 		default: 296,
 	});
 
-	game.settings.register(MODULE_ID, "hexPainter.customTileHeight", {
+	if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) game.settings.register(MODULE_ID, "hexPainter.customTileHeight", {
 		scope: "client",
 		config: false,
 		type: Number,
 		default: 256,
 	});
 
-	game.settings.register(MODULE_ID, "hexPainter.poiScale", {
+	if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) game.settings.register(MODULE_ID, "hexPainter.poiScale", {
 		scope: "client",
 		config: false,
 		type: Number,
 		default: 0.5,
 	});
 
-	game.settings.register(MODULE_ID, "settlement.useLocalMaphub", {
+	if (isFeatureEnabled(FEATURE_IDS.MAP_GENERATORS)) game.settings.register(MODULE_ID, "settlement.useLocalMaphub", {
 		name: "Settlement Maps: Use Local Maphub",
 		hint: "Load settlement map visuals from the locally-built maphub files (scripts/maphub/) instead of watabou.github.io. Enables offline use. Requires building and copying maphub files first — see module README.",
 		scope: "world",
@@ -502,7 +527,7 @@ export function getPartyTokens({ includeAllNPCs = false } = {}) {
 			// NPCs/monsters — the on-screen tray respects tray.showNPCs, but the
 			// GM -> players broadcast must not be gated by that personal toggle.
 			// Callers that build the broadcast pass includeAllNPCs:true.
-			if (includeAllNPCs || game.settings.get(MODULE_ID, "tray.showNPCs")) {
+			if (includeAllNPCs || _getPartySetting("tray.showNPCs", true)) {
 				npcTokens.push(buildPartyCardEntry(token, actor, { isNPC: true, isOwner: true }));
 			}
 		}
@@ -679,6 +704,13 @@ export function getHealthOverlayHeight(hp) {
  * @param {string} mode - "player" or "party"
  */
 export async function setViewMode(mode) {
+	const modes = getVisibleTrayModes({
+		isGM: game.user.isGM,
+		canPlayerPaint: canPlayerPaint(),
+		showPartyTab: _getPartySetting("tray.showPartyTab", true),
+		disabledFeatureIds: getDisabledFeatureIds(),
+	});
+	if (!modes.includes(mode)) mode = modes[0];
 	_viewMode = mode;
 	// Toggle hex painting based on active tab
 	if (mode === "hexes") {
@@ -727,7 +759,9 @@ export function getViewMode() {
  * initTray refreshes the cache and re-renders the tray.
  */
 export function toggleHideNpcsFromPlayers() {
-	if (!game.user.isGM) return _hideNpcsFromPlayers;
+	if (!game.user.isGM || !isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) {
+		return _hideNpcsFromPlayers;
+	}
 	const next = !_hideNpcsFromPlayers;
 	_hideNpcsFromPlayers = next;
 	game.settings.set(MODULE_ID, "tray.hideNpcsFromPlayers", next);
@@ -751,7 +785,7 @@ export function getHideNpcsFromPlayers() {
  * ownership actor exposes no system data to read locally.
  */
 export function registerPartyStatsSocket(socket) {
-	if (!socket) return;
+	if (!socket || !isFeatureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) return;
 	_partySocket = socket;
 	socket.register("sdxTrayPartyStats", async payload => {
 		// The GM already reads full actor data; only players need the snapshot.
@@ -861,25 +895,14 @@ function _broadcastActorPartyStats(actor) {
  * Cycle to the next view mode
  */
 export function cycleViewMode() {
-	const showParty = game.settings.get(MODULE_ID, "tray.showPartyTab");
+	const showParty = _getPartySetting("tray.showPartyTab", true);
 	const isGM = game.user.isGM;
-
-	const modes = [];
-
-	// GM sees Scenes instead of Token/Player
-	if (isGM) {
-		modes.push("scenes");
-	}
-	else {
-		modes.push("player");
-	}
-
-	if (showParty) modes.push("party");
-	if (isGM) modes.push("pins");
-	modes.push("notes"); // Notes mode for everyone (filtered for players)
-	if (isGM) modes.push("hexes");
-	if (isGM || canPlayerPaint()) modes.push("dungeons");
-	if (isGM) modes.push("decor");
+	const modes = getVisibleTrayModes({
+		isGM,
+		canPlayerPaint: canPlayerPaint(),
+		showPartyTab: showParty,
+		disabledFeatureIds: getDisabledFeatureIds(),
+	});
 
 	const currentIndex = modes.indexOf(_viewMode);
 	// If current mode isn't in list (e.g. switched from player to GM view), start at 0
@@ -926,11 +949,24 @@ export function toggleTray() {
 export async function renderTray() {
 	if (!_trayApp) return;
 
+	const disabledFeatureIds = getDisabledFeatureIds();
+	const features = getFeatureFlagContext(disabledFeatureIds);
+	const modes = getVisibleTrayModes({
+		isGM: game.user.isGM,
+		canPlayerPaint: canPlayerPaint(),
+		showPartyTab: _getPartySetting("tray.showPartyTab", true),
+		disabledFeatureIds,
+	});
+	if (!modes.includes(_viewMode)) _viewMode = modes[0];
+
 	const actor = getCurrentActor();
-	const { partyTokens, npcTokens } = getPartyTokens();
-	const showPartyTab = game.settings.get(MODULE_ID, "tray.showPartyTab");
-	const partyName = game.settings.get(MODULE_ID, "tray.partyName");
-	const showHealthBars = game.settings.get(MODULE_ID, "tray.showHealthBars");
+	const { partyTokens, npcTokens } = features.partyManagement
+		? getPartyTokens()
+		: { partyTokens: [], npcTokens: [] };
+	const showPartyTab = features.partyManagement
+		&& _getPartySetting("tray.showPartyTab", true);
+	const partyName = _getPartySetting("tray.partyName", "Party");
+	const showHealthBars = _getPartySetting("tray.showHealthBars", true);
 
 	// Calculate party totals
 	let partyTotalHP = 0;
@@ -944,6 +980,7 @@ export async function renderTray() {
 	const otherPartyMembers = partyTokens.filter(m => !actor || m.actor.id !== actor.id);
 
 	const data = {
+		features,
 		actor: actor,
 		actorDisplayName: actor?.name || "Select a Character",
 		viewMode: _viewMode,
@@ -971,17 +1008,17 @@ export async function renderTray() {
 		showSelectionBox: canvas.tokens?.controlled.length > 1,
 
 		// Pins Data
-		pins: game.user.isGM ? getPinsData() : [],
-		mapNotes: getMapNotesData(),
+		pins: features.journalPins && game.user.isGM ? getPinsData() : [],
+		mapNotes: features.journalPins ? getMapNotesData() : [],
 
 		// Notes Data
-		notes: await getNotesData(),
+		notes: features.journalPlaceableNotes ? await getNotesData() : [],
 
 		// Hex Painter Data
-		...(await getHexPainterData()),
+		...(features.hexPainter || features.hexDecorPainter ? await getHexPainterData() : {}),
 
 		// Dungeon Painter Data
-		...(await getDungeonPainterData()),
+		...(features.dungeonPainter ? await getDungeonPainterData() : {}),
 
 		// Active Effects
 		activeEffects: (() => {
@@ -1374,11 +1411,19 @@ function getPartyHealthbarStatus(remaining, total) {
 
 /**
  * Open actor sheet for a token
+ *
+ * The LIMITED check is not redundant with the template gating the feather on
+ * `isOwner`: NPC cards are built with `isOwner: true` for the GM and `false`
+ * for everyone else, so a player who reaches this function anyway — a stale
+ * card rendered before a permission change, or a future call site — would ask
+ * Foundry to render a sheet it will refuse, which surfaces as a bare
+ * "no permission" warning and no sheet. Declining here keeps the affordance
+ * and the capability in agreement.
  * @param {string} tokenId
  */
 export function openTokenSheet(tokenId) {
 	const token = canvas.tokens.get(tokenId);
-	if (token?.actor) {
+	if (token?.actor?.testUserPermission(game.user, "LIMITED")) {
 		token.actor.sheet.render(true);
 	}
 }

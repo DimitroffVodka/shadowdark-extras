@@ -1,3 +1,5 @@
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
+
 /**
  * Generate the Summoning configuration HTML for use with Portal library
  * @param {string} MODULE_ID - The module identifier
@@ -7,6 +9,7 @@
  * @returns {string} HTML string
  */
 export function generateSummoningConfigHTML(MODULE_ID, flags, summonsList, summonProfilesArray) {
+	if (!isFeatureEnabled(FEATURE_IDS.SPELL_CONFIGS)) return "";
 	return `
 		<div class="SD-box sdx-summoning-box grid-colspan-3">
 			<div class="header light">

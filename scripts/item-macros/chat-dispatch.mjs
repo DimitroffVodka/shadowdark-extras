@@ -4,6 +4,7 @@ import { AnimationFxSD } from "../animation/AnimationFxSD.mjs";
 import { getWeaponItemMacroConfig } from "../combat/WeaponBonusConfig.mjs";
 import { getSpellItemMacroConfig, executeSpellItemMacro } from "./spell-item-macros.mjs";
 import { executeWeaponItemMacro } from "./weapon-item-macros.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 /**
  * Chat-card dispatch: read a rendered card, decide what it was, fire the right
@@ -82,7 +83,7 @@ export function registerChatDispatch() {
 	/**
 	 * Hook into spell cast messages to trigger Item Macros
 	 */
-	Hooks.on("renderChatMessageHTML", async (message, html, context) => {
+	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)) Hooks.on("renderChatMessageHTML", async (message, html, context) => {
 		// Don't re-fire macros for chat history re-rendered after a reload
 		if (sdxIsHistoricalMessage(message)) return;
 
@@ -171,7 +172,7 @@ export function registerChatDispatch() {
 	 * and of Automated Animations. Resolves the animation via AnimationFxSD's
 	 * two-tier model (per-item override -> master pattern list).
 	 */
-	Hooks.on("renderChatMessageHTML", async (message, html, context) => {
+	if (isFeatureEnabled(FEATURE_IDS.ANIMATION_FX)) Hooks.on("renderChatMessageHTML", async (message, html, context) => {
 		// Chat history re-renders on every page load, and _sdxFxProcessedMessages only
 		// lives for the lifetime of that page. Without this age gate every historical
 		// attack/cast card in the backlog replays its animation AND its sound on reload.
@@ -238,7 +239,7 @@ export function registerChatDispatch() {
 	 * Hook into weapon attack rolls to trigger Item Macros
 	 * Use renderChatMessageHTML for v14 compatibility
 	 */
-	Hooks.on("renderChatMessageHTML", async (message, html, context) => {
+	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)) Hooks.on("renderChatMessageHTML", async (message, html, context) => {
 		// Don't re-fire macros for chat history re-rendered after a reload
 		if (sdxIsHistoricalMessage(message)) return;
 

@@ -782,16 +782,6 @@ export async function generateMultiLevelDungeon(config = {}) {
 	}
 }
 
-// Expose on the module API once loaded (this file is registered in module.json esmodules,
-// so it loads at startup; also a no-op-safe path for MCP dynamic-import testing).
-Hooks.once("ready", () => {
-	const mod = game.modules.get(MODULE_ID);
-	if (mod) {
-		mod.api ??= {};
-		mod.api.generateMultiLevelDungeon = generateMultiLevelDungeon;
-	}
-});
-
 /* ─────────────── tray Multi-Level slider persistence (standalone) ─────────────── */
 // Persists the tray's Multi-Level sliders (Levels / Links / Variation / Variety) WITHOUT
 // touching the lead dev's `generatorSettings` schema — a separate client setting + a render
@@ -816,7 +806,21 @@ function saveMlSlider(key, value) {
 	catch{ /* noop */ }
 }
 
-Hooks.once("init", () => {
+let hooksRegistered = false;
+
+/** Register multi-level settings, API, and tray persistence hooks. */
+export function registerDungeonMultiLevelHooks() {
+	if (hooksRegistered) return;
+	hooksRegistered = true;
+
+	Hooks.once("ready", () => {
+		const mod = game.modules.get(MODULE_ID);
+		if (mod) {
+			mod.api ??= {};
+			mod.api.generateMultiLevelDungeon = generateMultiLevelDungeon;
+		}
+	});
+
 	try {
 		game.settings.register(MODULE_ID, ML_SLIDERS_KEY, {
 			scope: "client", config: false, type: Object, default: { ...ML_SLIDERS_DEFAULT },
@@ -825,38 +829,35 @@ Hooks.once("init", () => {
 	catch(e) {
 		console.warn(`${MODULE_ID} | failed to register ${ML_SLIDERS_KEY} setting`, e);
 	}
-});
 
-Hooks.on("renderTrayApp", (app, html) => {
-	const root = html instanceof HTMLElement ? html : (html?.[0] ?? null);
-	if (!root || !root.querySelector?.(".dgen-levels")) return; // generator panel not in DOM
-	const saved = readMlSliders();
-	const bind = (sel, key, toNum) => {
-		const slider = root.querySelector(sel);
-		if (!slider) return;
-		slider.value = String(saved[key]);
-		const span = slider.closest(".dgen-row")?.querySelector(".dgen-value");
-		if (span) span.textContent = slider.value;
-		slider.addEventListener("change", () => saveMlSlider(key, toNum(slider.value)));
-	};
-	bind(".dgen-levels", "levels", v => parseInt(v));
-	bind(".dgen-links", "links", v => parseInt(v));
-	bind(".dgen-variation", "variation", v => parseFloat(v));
-	bind(".dgen-variety", "variety", v => parseFloat(v));
+	Hooks.on("renderTrayApp", (app, html) => {
+		const root = html instanceof HTMLElement ? html : (html?.[0] ?? null);
+		if (!root || !root.querySelector?.(".dgen-levels")) return;
+		const saved = readMlSliders();
+		const bind = (sel, key, toNum) => {
+			const slider = root.querySelector(sel);
+			if (!slider) return;
+			slider.value = String(saved[key]);
+			const span = slider.closest(".dgen-row")?.querySelector(".dgen-value");
+			if (span) span.textContent = slider.value;
+			slider.addEventListener("change", () => saveMlSlider(key, toNum(slider.value)));
+		};
+		bind(".dgen-levels", "levels", v => parseInt(v));
+		bind(".dgen-links", "links", v => parseInt(v));
+		bind(".dgen-variation", "variation", v => parseFloat(v));
+		bind(".dgen-variety", "variety", v => parseFloat(v));
 
-	// Variation/Variety only apply to multi-level — mirror the existing "Levels>=2" gating that
-	// hides the single-level Stairs rows, but in reverse (show these only when Levels>=2).
-	const levels = root.querySelector(".dgen-levels");
-	const extraRows = [".dgen-variation", ".dgen-variety"]
-		.map(s => root.querySelector(s)?.closest(".dgen-row")).filter(Boolean);
-	const syncExtras = n => {
-		const multi = parseInt(n) >= 2; for (const r of extraRows) r.style.display = multi ? "" : "none";
-	};
-	if (levels) {
-		syncExtras(levels.value);
-		levels.addEventListener("input", e => syncExtras(e.target.value));
-		// Re-trigger the lead dev's own Levels>=2 listener so the restored value hides/shows the
-		// single-level Stairs rows correctly on first render.
-		levels.dispatchEvent(new Event("input", { bubbles: true }));
-	}
-});
+		const levels = root.querySelector(".dgen-levels");
+		const extraRows = [".dgen-variation", ".dgen-variety"]
+			.map(s => root.querySelector(s)?.closest(".dgen-row")).filter(Boolean);
+		const syncExtras = n => {
+			const multi = parseInt(n) >= 2;
+			for (const row of extraRows) row.style.display = multi ? "" : "none";
+		};
+		if (levels) {
+			syncExtras(levels.value);
+			levels.addEventListener("input", e => syncExtras(e.target.value));
+			levels.dispatchEvent(new Event("input", { bubbles: true }));
+		}
+	});
+}

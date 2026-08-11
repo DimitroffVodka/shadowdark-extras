@@ -13,6 +13,7 @@ import { IconPickerApp } from "./IconPickerSD.mjs";
 import { PinStyleForm } from "./pin-style-form.mjs";
 import { PinStylePreview } from "./pin-style-preview.mjs";
 import { PinStyleTMFX } from "./pin-style-tmfx.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -457,7 +458,10 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 
 		// Browse icons button - open icon picker modal
 		const browseIconsBtn = form.querySelector('[data-action="browse-icons"]');
-		if (browseIconsBtn) {
+		if (browseIconsBtn && !isFeatureEnabled(FEATURE_IDS.ICON_PICKER)) {
+			browseIconsBtn.remove();
+		}
+		else if (browseIconsBtn) {
 			browseIconsBtn.addEventListener("click", async () => {
 				const selectedPath = await IconPickerApp.pick();
 				if (selectedPath) customIconControl?.setPath(selectedPath);
@@ -573,7 +577,10 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			imageStyle: "width:28px;height:28px;object-fit:contain",
 			onUpdate: () => this._updatePreview(),
 		});
-		browseIconShape?.addEventListener("click", async () => {
+		if (browseIconShape && !isFeatureEnabled(FEATURE_IDS.ICON_PICKER)) {
+			browseIconShape.remove();
+		}
+		else browseIconShape?.addEventListener("click", async () => {
 			const picked = await IconPickerApp.pick();
 			if (picked) iconShapeControl?.setPath(picked);
 		});

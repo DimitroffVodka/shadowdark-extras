@@ -81,14 +81,16 @@ export async function showHolyWeaponDialog(casterActor, casterItem, targetActor,
 		}
 
 		return filteredWeapons.map(weapon => {
-			const img = weapon.img || "icons/svg/sword.svg";
+			const img = foundry.utils.escapeHTML(weapon.img || "icons/svg/sword.svg");
 			const bonusData = weapon.getFlag(MODULE_ID, "weaponBonus");
 			const hasExistingBonuses = bonusData?.enabled;
 			const isMagical = weapon.system?.magicItem || false;
 
 			// Check for unidentified status
 			const isUnidentifiedItem = isUnidentified(weapon);
-			const displayName = isUnidentifiedItem ? getUnidentifiedName(weapon) : weapon.name;
+			const displayName = foundry.utils.escapeHTML(
+				isUnidentifiedItem ? getUnidentifiedName(weapon) : weapon.name
+			);
 
 			let badge = "";
 			if (hasExistingBonuses) {
@@ -308,18 +310,22 @@ export async function applyHolyWeapon(weapon, casterActor, casterItem, targetAct
 	// Post chat message
 	const duration = casterItem.system?.duration?.value || "?";
 	const criticalBadge = isCritical ? ' <span style="color: gold; font-weight: bold;">[CRITICAL SUCCESS]</span>' : "";
+	const escapedImg = foundry.utils.escapeHTML(weapon.img || "icons/svg/mystery-man.svg");
+	const escapedDisplayName = foundry.utils.escapeHTML(displayName);
+	const escapedCasterName = foundry.utils.escapeHTML(casterActor.name);
+	const escapedTargetName = foundry.utils.escapeHTML(targetActor.name);
 	await ChatMessage.create({
 		speaker: ChatMessage.getSpeaker({ actor: casterActor }),
 		content: `
             <div class="shadowdark chat-card sdx-holyweapon-chat">
                 <header class="card-header flexrow">
-                    <img class="item-image" src="${weapon.img}" alt="${displayName}"/>
+                    <img class="item-image" src="${escapedImg}" alt="${escapedDisplayName}"/>
                     <div class="header-text">
                         <h3><i class="fas fa-hand-sparkles"></i> Holy Weapon${criticalBadge}</h3>
                     </div>
                 </header>
                 <div class="card-content">
-                    <p><strong>${casterActor.name}</strong> blesses <strong>${targetActor.name}'s ${displayName}</strong> with holy power!</p>
+                    <p><strong>${escapedCasterName}</strong> blesses <strong>${escapedTargetName}'s ${escapedDisplayName}</strong> with holy power!</p>
                     <p class="spell-effect"><em>The weapon glows with divine energy, granting +${bonusAmount} to attack and damage rolls for ${duration} rounds.</em></p>
                 </div>
             </div>

@@ -807,13 +807,25 @@ const SDX_TEMPLATES = {
  * Install the square-template rotation fix and publish `SDX.templates`.
  *
  * Call position is load-bearing — see the module docblock.
+ *
+ * @param {object}  [options]
+ * @param {boolean} [options.installRotationFix]  Apply the global
+ *   MeasuredTemplate.getRectShape override. Spell Activity owns it: a disabled
+ *   feature must not leave a patched prototype behind.
+ * @param {boolean} [options.publishApi]  Publish `globalThis.SDX.templates`.
+ *   Co-owned with Damage Cards, whose targeting path calls
+ *   `SDX.templates.placeAndTarget`, so it outlives Spell Activity alone.
+ *
+ * The `globalThis.SDX` namespace is created unconditionally regardless of both
+ * flags: the composition root assigns a bare `SDX.dev` immediately after this
+ * call, so skipping it would throw ReferenceError before the module loads.
  */
-export function registerTemplatesApi() {
-	installSquareTemplateRotationFix();
+export function registerTemplatesApi({ installRotationFix = true, publishApi = true } = {}) {
+	if (installRotationFix) installSquareTemplateRotationFix();
 	globalThis.SDX = globalThis.SDX || {};
 	// Through `globalThis` rather than the bare global the root used. Same
 	// binding, but the binding gate reads a bare `SDX` as an unbound
 	// identifier, and baselining a name that is genuinely resolvable is worse
 	// than writing where it comes from.
-	globalThis.SDX.templates = SDX_TEMPLATES;
+	if (publishApi) globalThis.SDX.templates = SDX_TEMPLATES;
 }

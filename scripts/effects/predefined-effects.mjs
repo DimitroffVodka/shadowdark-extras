@@ -33,7 +33,7 @@ import { MODULE_ID } from "../shared/module-id.mjs";
  * the source position the `init` hook occupied.
  */
 export function registerPredefinedEffects() {
-	Hooks.once("init", () => {
+	const registerEffects = () => {
 		// Only extend if CONFIG.SHADOWDARK exists (system is loaded)
 		if (!CONFIG.SHADOWDARK?.PREDEFINED_EFFECTS) {
 			console.warn(`${MODULE_ID} | CONFIG.SHADOWDARK.PREDEFINED_EFFECTS not found, skipping ability advantage effects`);
@@ -423,6 +423,6 @@ export function registerPredefinedEffects() {
 			}
 			return originalModifyEffectChangesWithInput.call(this, item, effect, key);
 		};
-
-	});
+	};
+	registerEffects();
 }

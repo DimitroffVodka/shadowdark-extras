@@ -1,15 +1,19 @@
 {
   "$comment": "Static registration call-site inventory. Keyed by module basename so it survives feature-folder moves. Order within each module and the root's register/init invocation order are contracts; runtime firing behaviour is proved by the smoke matrix, not by this file. Regenerate only with a reviewed reason: npm run snapshot:registrations -- --write",
   "totals": {
-    "Hooks.once": 43,
-    "Hooks.on": 225,
+    "Hooks.once": 33,
+    "Hooks.on": 227,
     "Hooks.off": 8,
     "socket.register": 48,
     "libWrapper.register": 3,
     "socketlib.registerModule": 3,
-    "all": 330
+    "all": 322
   },
   "modules": {
+    "AnimationEffectDedupSD.mjs": [
+      "Hooks.on:sequencerEffectManagerReady",
+      "Hooks.on:createSequencerEffect"
+    ],
     "AuraEffectsSD.mjs": [
       "Hooks.on:preUpdateToken",
       "Hooks.on:updateToken",
@@ -31,16 +35,11 @@
       "Hooks.on:preUpdateActor",
       "Hooks.on:updateActor"
     ],
-    "DungeonBiomesSD.mjs": [
-      "Hooks.once:init"
-    ],
     "DungeonMultiLevelSD.mjs": [
       "Hooks.once:ready",
-      "Hooks.once:init",
       "Hooks.on:renderTrayApp"
     ],
     "DungeonPainterSD.mjs": [
-      "Hooks.once:init",
       "socketlib.registerModule:<dynamic>",
       "socket.register:dungeonFillRectangle",
       "socket.register:dungeonDeleteRectangle",
@@ -71,7 +70,6 @@
     "HexTooltipSD.mjs": [
       "Hooks.on:updateJournalEntry",
       "Hooks.off:updateJournalEntry",
-      "Hooks.once:init",
       "Hooks.once:ready",
       "Hooks.off:updateJournalEntry",
       "Hooks.off:updateJournalEntryPage",
@@ -87,13 +85,11 @@
       "Hooks.once:item-piles-ready"
     ],
     "JournalNarrationSD.mjs": [
-      "Hooks.once:init",
       "Hooks.on:renderJournalPageSheet",
       "Hooks.once:ready"
     ],
     "JournalPinsSD.mjs": [
-      "Hooks.once:init",
-      "Hooks.once:init",
+      "Hooks.once:setup",
       "Hooks.once:ready",
       "Hooks.on:canvasReady",
       "Hooks.on:canvasTearDown",
@@ -101,8 +97,7 @@
       "Hooks.on:updateToken",
       "Hooks.on:sightRefresh",
       "Hooks.once:ready",
-      "Hooks.once:ready",
-      "Hooks.once:init"
+      "Hooks.once:ready"
     ],
     "LevelUpAnimationSD.mjs": [
       "Hooks.on:updateActor",
@@ -114,7 +109,6 @@
       "Hooks.once:ready"
     ],
     "MarchingModeSD.mjs": [
-      "Hooks.on:renderSidebar",
       "Hooks.on:preUpdateToken",
       "Hooks.on:updateToken",
       "Hooks.on:combatStart",
@@ -123,7 +117,8 @@
       "Hooks.on:deleteCombat",
       "Hooks.on:canvasReady",
       "Hooks.on:deleteToken",
-      "Hooks.on:createToken"
+      "Hooks.on:createToken",
+      "Hooks.on:renderSidebar"
     ],
     "MedkitSD.mjs": [
       "Hooks.on:getActorSheetHeaderButtons"
@@ -237,8 +232,7 @@
       "Hooks.on:updateJournalEntry"
     ],
     "TrayApp.mjs": [
-      "Hooks.on:sdx.decorAssetsImported",
-      "Hooks.once:init"
+      "Hooks.on:sdx.decorAssetsImported"
     ],
     "TraySD.mjs": [
       "Hooks.on:controlToken",
@@ -425,9 +419,6 @@
       "Hooks.on:dropCanvasData",
       "Hooks.on:preCreateNote"
     ],
-    "predefined-effects.mjs": [
-      "Hooks.once:init"
-    ],
     "roll-patches.mjs": [
       "Hooks.on:renderRollDialogSD"
     ],
@@ -436,9 +427,9 @@
     ],
     "shadowdark-extras.mjs": [
       "Hooks.once:init",
+      "Hooks.once:init",
       "Hooks.on:renderChatMessageHTML",
       "Hooks.once:ready",
-      "Hooks.once:init",
       "Hooks.on:sequencer.ready",
       "Hooks.once:ready",
       "Hooks.once:ready",
@@ -465,7 +456,6 @@
       "Hooks.on:renderNpcSheetSD",
       "Hooks.on:getSceneContextOptions",
       "Hooks.once:ready",
-      "Hooks.once:init",
       "Hooks.on:renderApplication"
     ],
     "shapechanger.mjs": [
@@ -505,15 +495,22 @@
     "initJournalNarration",
     "initMedkit",
     "initJournalPins",
+    "registerPinListHooks",
     "initSDXCoords",
     "initHexTooltip",
     "initHexFog",
     "registerMaphubHooks",
     "initUnidentifiedGMDisplay",
     "initTemplateElevationBadge",
+    "registerDungeonMultiLevelHooks",
+    "registerTileFlattenHooks",
+    "registerTrayAppHooks",
     "initItemPilesCompatibility",
     "initLightTrackerApp",
     "initMysteriousCasting",
+    "registerDungeonPainterSettings",
+    "registerDungeonBiomeSettings",
+    "registerBiomeEditorDelegation",
     "initAutoAnimationsIntegration",
     "registerAnimationFxMenu",
     "registerPartySheet",
@@ -532,6 +529,8 @@
     "initTemplateEffects",
     "initAuraEffects",
     "initMarchingMode",
+    "initFormationSpawner",
+    "initSidebarTools",
     "initCarousingSocket",
     "registerItemCreateFlagPreservation",
     "registerStaffSpellHooks",
@@ -584,6 +583,8 @@
     "registerSheet(NPCAttackSheetSD)",
     "registerSheet(NPCFeatureSheetSD)",
     "registerSheet(ClassAbilitySheetSD)",
+    "registerTemplatesApi(FEATURE_IDS)",
+    "registerTemplatesApi(SPELL_ACTIVITY)",
     "registerSheet(NPCSpecialAttackSheetSD)"
   ]
 }

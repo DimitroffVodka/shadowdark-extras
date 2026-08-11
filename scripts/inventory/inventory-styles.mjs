@@ -19,6 +19,7 @@
  */
 
 import { MODULE_ID } from "../shared/module-id.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 import { isPartyActor } from "../party/PartySheetSD.mjs";
 import { isContainerItem } from "./containers.mjs";
 
@@ -200,7 +201,8 @@ export class InventoryStylesApp extends foundry.applications.api.HandlebarsAppli
 			{ inplace: false, recursive: true }
 		);
 
-		const containersEnabled = game.settings.get(MODULE_ID, "enableContainers");
+		const containersEnabled = isFeatureEnabled(FEATURE_IDS.CONTAINERS)
+			&& game.settings.get(MODULE_ID, "enableContainers");
 
 		// Build category list with visibility flags
 		const categories = Object.entries(styles.categories).map(([key, config]) => {
@@ -768,7 +770,8 @@ export function applyInventoryStylesToSheet(html, actor) {
 		return;
 	}
 
-	const containersEnabled = game.settings.get(MODULE_ID, "enableContainers");
+	const containersEnabled = isFeatureEnabled(FEATURE_IDS.CONTAINERS)
+		&& game.settings.get(MODULE_ID, "enableContainers");
 
 	// Set up click handler to re-apply styles when items are expanded
 	// Use event delegation and only attach once

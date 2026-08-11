@@ -18,6 +18,7 @@
  */
 
 import { AnimationFxSD } from "./AnimationFxSD.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 /** Escape a value for interpolation into an HTML attribute. */
 function esc(v) {
@@ -30,6 +31,7 @@ function esc(v) {
 }
 
 export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
+	if (!isFeatureEnabled(FEATURE_IDS.ANIMATION_ITEM_OVERRIDES)) return "";
 	const fx = flags.animationFx || {};
 	const stored = fx.preset || {};
 	const enabled = !!fx.enabled;

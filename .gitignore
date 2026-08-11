@@ -49,3 +49,6 @@ node_modules
 
 # coverage reports
 coverage.lcov
+
+# debate-review transcripts (local, contains full diffs + model output)
+.debate-review/

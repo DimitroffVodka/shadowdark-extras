@@ -4,8 +4,8 @@
 // and the apply/save/delete/remove/clear/edit handlers behind the TMFX panel.
 // Merged via Object.assign(PinStyleEditorApp.prototype, PinStyleTMFX).
 
-import { FilterEditor, getCloneFilterParams } from "../animation/TMFXFilterEditor.mjs";
 import { JournalPinManager, JournalPinRenderer } from "./JournalPinsSD.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 export const PinStyleTMFX = {
 	/** Phase 1 live preview (transient, no flag write). Marker key on PIXI filters. */
@@ -241,10 +241,12 @@ export const PinStyleTMFX = {
 	},
 
 	async _onSaveTMFXPreset() {
+		if (!isFeatureEnabled(FEATURE_IDS.TMFX_EDITOR)) return;
 		if (!this.pinId) return;
 		const pin = JournalPinManager.get(this.pinId);
 		if (!pin) return;
 
+		const { getCloneFilterParams } = await import("../animation/TMFXFilterEditor.mjs");
 		const params = getCloneFilterParams(pin);
 		if (!params || params.length === 0) {
 			ui.notifications.warn("No active filters to save.");
@@ -365,7 +367,9 @@ export const PinStyleTMFX = {
 	},
 
 	async _onEditTMFXFilter({ filterId, filterType, filterInternalId }) {
+		if (!isFeatureEnabled(FEATURE_IDS.TMFX_EDITOR)) return;
 		if (!this.pinId) return;
+		const { FilterEditor } = await import("../animation/TMFXFilterEditor.mjs");
 		const pin = JournalPinManager.get(this.pinId);
 		if (!pin) return;
 

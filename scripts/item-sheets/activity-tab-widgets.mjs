@@ -1,6 +1,6 @@
 import { MODULE_ID } from "../shared/module-id.mjs";
 import AnimationFxSD from "../animation/AnimationFxSD.mjs";
-import { filterEditor as openTMFXFilterEditor } from "../animation/TMFXFilterEditor.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 /**
  * Activity-tab widget wiring, shared by every item-type sheet enhancer.
@@ -29,6 +29,7 @@ import { filterEditor as openTMFXFilterEditor } from "../animation/TMFXFilterEdi
  * @param {Item} item - The item being edited
  */
 export function activateTemplateTokenMagicStackHandlers(html, item) {
+	if (!isFeatureEnabled(FEATURE_IDS.TMFX_EDITOR)) return;
 	if (!html?.on || !item) return;
 
 	const getFilters = () => {
@@ -194,14 +195,15 @@ export function activateTemplateTokenMagicStackHandlers(html, item) {
 		_TMFXunsetAnimeFlag: async () => {},
 	});
 
-	html.on("click", ".sdx-tm-edit-stack", function(event) {
+	html.on("click", ".sdx-tm-edit-stack", async function(event) {
 		event.preventDefault();
 		event.stopPropagation();
 		if (!game.modules.get("tokenmagic")?.active || !globalThis.TokenMagic) {
 			ui.notifications.warn("TokenMagic FX is not active.");
 			return;
 		}
-		openTMFXFilterEditor(makeProxyDocument(), event.currentTarget.getBoundingClientRect());
+		const { filterEditor } = await import("../animation/TMFXFilterEditor.mjs");
+		filterEditor(makeProxyDocument(), event.currentTarget.getBoundingClientRect());
 	});
 
 	html.on("click", ".sdx-tm-clear-stack", async function(event) {

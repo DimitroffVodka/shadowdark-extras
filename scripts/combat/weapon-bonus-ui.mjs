@@ -3,7 +3,12 @@
  * WeaponBonusConfig.mjs; public names are re-exported by the facade.
  */
 
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
+
 const MODULE_ID = "shadowdark-extras";
+
+const npcCreatureTypesEnabled = () => isFeatureEnabled(FEATURE_IDS.NPC_CREATURE_TYPES)
+	&& game.settings.get(MODULE_ID, "enableNpcCreatureType");
 
 async function saveWeaponBonusConfig(item, updates) {
 	const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
@@ -92,7 +97,7 @@ export function injectWeaponBonusTab(app, html, item) {
 	// inject the animation button (it's a separate icon-only tab) and bail
 	// out of the SDX bonus content injection.
 	if ($nav.find('[data-tab="tab-bonuses"]').length) {
-		injectWeaponAnimationButton(html, item);
+		if (isFeatureEnabled(FEATURE_IDS.WEAPON_SPRITES)) injectWeaponAnimationButton(html, item);
 		return;
 	}
 
@@ -140,7 +145,7 @@ export function injectWeaponBonusTab(app, html, item) {
 	});
 
 	// Inject Animation button after the Bonuses tab
-	injectWeaponAnimationButton(html, item);
+	if (isFeatureEnabled(FEATURE_IDS.WEAPON_SPRITES)) injectWeaponAnimationButton(html, item);
 }
 
 /**
@@ -227,7 +232,9 @@ function buildWeaponBonusTabHtml(flags, item) {
 	});
 
 	// Build Item Macro section HTML
-	const itemMacroHtml = buildItemMacroSectionHtml(itemMacro, itemMacroCommand);
+	const itemMacroHtml = isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)
+		? buildItemMacroSectionHtml(itemMacro, itemMacroCommand)
+		: "";
 
 	// Build critical requirements HTML
 	let criticalDiceReqsHtml = "";
@@ -366,7 +373,7 @@ function buildWeaponBonusTabHtml(flags, item) {
 								<strong>Attacker HP %</strong> - Your health percentage<br>
 								<strong>Target Ancestry</strong> - Target's ancestry<br>
 								<strong>Target Alignment</strong> - Target's alignment (chaotic, neutral, lawful)<br>
-								${game.settings.get(MODULE_ID, "enableNpcCreatureType") ? "<strong>Target Subtype</strong> - Target's creature type" : ""}
+								${npcCreatureTypesEnabled() ? "<strong>Target Subtype</strong> - Target's creature type" : ""}
 							</div>
 						</div>
 					</fieldset>
@@ -445,7 +452,7 @@ function buildHitBonusRequirementRowHtml(req, bonusIndex, reqIndex) {
 		{ value: "targetAlignment", label: "Target Alignment" },
 	];
 
-	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
+	if (npcCreatureTypesEnabled()) {
 		typeOptions.push({ value: "targetSubtype", label: "Target Subtype" });
 	}
 
@@ -556,7 +563,7 @@ function buildDamageBonusRequirementRowHtml(req, bonusIndex, reqIndex) {
 		{ value: "targetAlignment", label: "Target Alignment" },
 	];
 
-	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
+	if (npcCreatureTypesEnabled()) {
 		typeOptions.push({ value: "targetSubtype", label: "Target Subtype" });
 	}
 
@@ -598,7 +605,7 @@ function buildCriticalRequirementRowHtml(req, criticalType, reqIndex) {
 		{ value: "targetAlignment", label: "Target Alignment" },
 	];
 
-	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
+	if (npcCreatureTypesEnabled()) {
 		typeOptions.push({ value: "targetSubtype", label: "Target Subtype" });
 	}
 
@@ -747,7 +754,7 @@ function buildEffectRequirementRowHtml(req, effectIndex, reqIndex) {
 		{ value: "targetAlignment", label: "Target Alignment" },
 	];
 
-	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
+	if (npcCreatureTypesEnabled()) {
 		typeOptions.push({ value: "targetSubtype", label: "Target Subtype" });
 	}
 
@@ -1353,56 +1360,60 @@ function activateWeaponBonusListeners(html, app, item) {
 		await saveEffectRequirementsFromDom($tab, item);
 	});
 
-	// ========== ITEM MACRO LISTENERS ==========
+	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)) {
+		// ========== ITEM MACRO LISTENERS ==========
 
-	// Item Macro: Run as GM toggle
-	$tab.on("change", ".sdx-macro-run-as-gm", async function() {
-		const runAsGm = $(this).is(":checked");
-		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
-		const itemMacro = currentFlags.itemMacro || {
-			enabled: false,
-			runAsGm: false,
-			triggers: [],
-		};
-		itemMacro.runAsGm = runAsGm;
-		await saveWeaponBonusConfig(item, { itemMacro });
-	});
-
-	// Item Macro: Command text change - debounced save
-	$tab.on("input", ".sdx-item-macro-command", function() {
-		clearTimeout(saveTimeout);
-		saveTimeout = setTimeout(async () => {
-			const command = $(this).val();
-			await item.setFlag(MODULE_ID, "macroCommand", command);
-		}, 500);
-	});
-
-	$tab.on("blur", ".sdx-item-macro-command", async function() {
-		clearTimeout(saveTimeout);
-		const command = $(this).val();
-		await item.setFlag(MODULE_ID, "macroCommand", command);
-	});
-
-	// Item Macro: Trigger checkboxes
-	$tab.on("change", ".sdx-macro-trigger-checkbox", async function() {
-		const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
-		const itemMacro = currentFlags.itemMacro || {
-			enabled: false,
-			runAsGm: false,
-			triggers: [],
-		};
-
-		// Collect all checked triggers
-		const triggers = [];
-		$tab.find(".sdx-macro-trigger-checkbox:checked").each(function() {
-			triggers.push($(this).val());
+		// Item Macro: Run as GM toggle
+		$tab.on("change", ".sdx-macro-run-as-gm", async function() {
+			const runAsGm = $(this).is(":checked");
+			const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus
+				|| getDefaultWeaponBonusConfig();
+			const itemMacro = currentFlags.itemMacro || {
+				enabled: false,
+				runAsGm: false,
+				triggers: [],
+			};
+			itemMacro.runAsGm = runAsGm;
+			await saveWeaponBonusConfig(item, { itemMacro });
 		});
 
-		itemMacro.triggers = triggers;
-		// Enable item macro if any triggers are selected
-		itemMacro.enabled = triggers.length > 0;
-		await saveWeaponBonusConfig(item, { itemMacro });
-	});
+		// Item Macro: Command text change - debounced save
+		$tab.on("input", ".sdx-item-macro-command", function() {
+			clearTimeout(saveTimeout);
+			saveTimeout = setTimeout(async () => {
+				const command = $(this).val();
+				await item.setFlag(MODULE_ID, "macroCommand", command);
+			}, 500);
+		});
+
+		$tab.on("blur", ".sdx-item-macro-command", async function() {
+			clearTimeout(saveTimeout);
+			const command = $(this).val();
+			await item.setFlag(MODULE_ID, "macroCommand", command);
+		});
+
+		// Item Macro: Trigger checkboxes
+		$tab.on("change", ".sdx-macro-trigger-checkbox", async function() {
+			const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus
+				|| getDefaultWeaponBonusConfig();
+			const itemMacro = currentFlags.itemMacro || {
+				enabled: false,
+				runAsGm: false,
+				triggers: [],
+			};
+
+			// Collect all checked triggers
+			const triggers = [];
+			$tab.find(".sdx-macro-trigger-checkbox:checked").each(function() {
+				triggers.push($(this).val());
+			});
+
+			itemMacro.triggers = triggers;
+			// Enable item macro if any triggers are selected
+			itemMacro.enabled = triggers.length > 0;
+			await saveWeaponBonusConfig(item, { itemMacro });
+		});
+	}
 }
 
 /**

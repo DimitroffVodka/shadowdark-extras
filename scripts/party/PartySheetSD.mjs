@@ -41,10 +41,21 @@ async function getPartyMemberActor(memberKey) {
 }
 
 /**
- * Party Actor Sheet
+ * Party Sheet
  * Extends the base ActorSheet to provide party management functionality
  */
-export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || ActorSheet) {
+class PartySheetMixinBase extends (foundry.appv1?.sheets?.ActorSheet || ActorSheet) {}
+Object.assign(
+	PartySheetMixinBase.prototype,
+	PartyTravel,
+	PartyXp,
+	PartyInventory,
+	PartyRoster,
+	PartyDropTransfer,
+	PartyTokenPlacement
+);
+
+export default class PartySheetSD extends PartySheetMixinBase {
 
 	/**
 	 * Apply one validated Party travel mutation on the authoritative client.
@@ -445,6 +456,7 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
 		html.find("[data-action='open-member']").click(this._onOpenMember.bind(this));
 		html.find("[data-action='remove-member']").click(this._onRemoveMember.bind(this));
 		html.find("[data-action='place-members']").click(this._onPlaceMembers.bind(this));
+		html.find("[data-action='recall-members']").click(this._onRecallMembers.bind(this));
 		html.find("[data-action='reward-xp']").click(this._onRewardXp.bind(this));
 		html.find("[data-action='reward-coins']").click(this._onRewardCoins.bind(this));
 		html.find("[data-action='sync-lights']").click(this._onSyncLights.bind(this));
@@ -733,18 +745,6 @@ export default class PartySheetSD extends (foundry.appv1?.sheets?.ActorSheet || 
  *
  * @param {object} socket - The module's socketlib socket.
  */
-// Travel/camping + XP/NPC/reward + inventory/light handlers extracted to
-// partytravel.mjs / partyxp.mjs / partyinventory.mjs (Phase 5.1 split) —
-// merged as prototype mixins.
-Object.assign(PartySheetSD.prototype, PartyTravel);
-Object.assign(PartySheetSD.prototype, PartyXp);
-Object.assign(PartySheetSD.prototype, PartyInventory);
-// Roster preparation, drag/drop transfer and token placement extracted in the
-// Phase 5.3 split. Prototype methods, so `this` is the sheet as it always was.
-Object.assign(PartySheetSD.prototype, PartyRoster);
-Object.assign(PartySheetSD.prototype, PartyDropTransfer);
-Object.assign(PartySheetSD.prototype, PartyTokenPlacement);
-
 export function registerPartyTravelSocket(socket) {
 	// Player-facing Party task selectors write to a GM-owned Party actor.
 	// Route those writes through the active GM while preserving ownership
