@@ -4,6 +4,59 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.11.0] — 2026-08-10 — Feature Manager, real feature ownership, party tokens, and a chat-card escaping fix
+
+First minor bump of the 6.x line. Every previous 6.10.x release was a patch,
+but this one adds a settings UI, changes what "disabled" means for every
+feature in the module, and introduces party tokens.
+
+### Added
+
+- **Feature Manager.** A settings panel that turns every feature in the module on or off individually. Features are presented as grouped choices with preview art rather than one flat list of eighty-odd switches, with the flat view still available under advanced controls.
+
+- **Disabling a feature now genuinely disables it.** Previously a disabled feature could still register hooks, open sockets, publish API surface, and ship assets — it was hidden, not off. Ownership gates now run at startup, in the UI layer, on socket registration, and over feature-owned assets and registrations, so a disabled feature costs nothing at runtime.
+
+- **Party tokens.** Create a party token from the current selection and recall it later, with the roster carried on the token.
+
+- **Journal Pins: composable icon pin styles**, plus a default Highlight hover (orange tint and border) that preserves converted-note sizing.
+
+- **Theater of the Mind: arena grid, inline overlays, and stacked multi-select**, with a demo scene and showcase.
+
+- **A reviewable cleanup tool for stale torch Sequencer records** left behind under foreign names. (Issue #106)
+
+### Fixed
+
+- **Image and name interpolations are escaped in chat cards and sheets.** Unescaped interpolation of actor and item names into card markup allowed markup injection through a crafted name. The same class was fixed in carousing chat portraits and effect image/name markup.
+
+- **Marching mode works again on Foundry v14.** Sidebar injection had broken against the v14 DOM and the tray rail indicator was dead; `createCombat` is now scene-scoped without requiring an active combat. (Issue #104)
+
+- **Weapon and torch animations stop when you turn them off.** An explicit disable is now terminal instead of falling through to the master list, null resolution terminates a live effect, and the master list is reachable again. Effect names no longer encode token identity in a structurally ambiguous way, the restore chain is serialized and self-heals on failure, and `resolveWeaponSprite` accepts Armor so shield sprites mirror correctly. (Issues #105, #110, #111)
+
+- **Duplicate sway effects no longer accumulate.**
+
+- **The tray no longer offers players NPC sheets they cannot open.**
+
+- **Journal pin rebuilds no longer destroy the live sprite texture** when a stale rebuild lands.
+
+- **The party roster falls back cleanly for actors with no art**, instead of raising an empty-src media error.
+
+- **Unidentified magic stays hidden from players**, with gem and potion privacy preserved on the sheet.
+
+- **Alignment spell filtering on the character sheet is repaired**, and the dungeon generator's tautological `gridSize` fallback is replaced with a scene-first chain.
+
+### Performance
+
+- **Hex coordinate labels are built lazily on first display** rather than eagerly for the whole grid.
+
+### Internal
+
+- Flag scanning resolves constant scopes and local `const` aliases through lexical scope rather than name ranges, and surfaces unresolved scope names instead of assuming them. (Issue #95)
+- Three classes of `verify.sh` false positive that blocked CI were fixed — SCREAMING_SNAKE object-literal keys and destructured parameters read as unbound identifiers, and line-sensitive flag-snapshot comparison. Four false negatives found by adversarially probing those fixes were closed in turn. Two known gaps are recorded as issues #128 and #129.
+- Phase 5.3 seam splits across the effect and combat modules, `getTokensForActor` lifted into one shared tested module, and an adversarial multi-model debate-review tool.
+- The regression suite grew to 999 tests.
+
+---
+
 ## [6.10.53] — 2026-08-02 — Phase 5.2 known-defect pass: nine fixes across combat, effects, items, and the character sheet
 
 ### Fixed
