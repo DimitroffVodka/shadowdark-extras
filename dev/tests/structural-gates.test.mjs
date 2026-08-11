@@ -803,3 +803,63 @@ test("binding gate: a helper left behind by an extraction is still reported", ()
   assert.deepEqual(findUnboundIdentifiers(source).map((u) => u.name), ["helperLeftBehind"],
     "the shape this gate exists to catch must survive both exclusions");
 });
+
+// ---------------------------------------------------------------------------
+// binding gate: a CALL's object argument must not bind like a parameter list.
+//
+// The destructured-parameter fix scanned for "(" followed by "{", which also
+// matches `configure({ onDone: handler })`. Binding an argument object's names
+// silently swallowed a genuine unbound reference to the same name elsewhere in
+// the module — a false negative introduced by a false-positive fix, which is
+// the trade this gate must never make.
+// ---------------------------------------------------------------------------
+
+test("binding gate: an object ARGUMENT does not bind an identifier value", () => {
+  const source = [
+    "configure({ onDone: missingHelper });",
+    "export function f() { return missingHelper(); }",
+  ].join("\n");
+
+  assert.ok(findUnboundIdentifiers(source).map((u) => u.name).includes("missingHelper"),
+    "a call argument is not a parameter list and must not bind its values");
+});
+
+test("binding gate: an object ARGUMENT does not bind a shorthand property", () => {
+  const source = [
+    "configure({ missingHelper });",
+    "export function f() { return missingHelper(); }",
+  ].join("\n");
+
+  assert.ok(findUnboundIdentifiers(source).map((u) => u.name).includes("missingHelper"),
+    "shorthand in an argument object is a reference, not a binding");
+});
+
+test("binding gate: an object ARGUMENT does not bind SCREAMING_SNAKE or _name reads", () => {
+  const constSrc = [
+    "configure({ MISSING_CONST });",
+    "export function f() { return `${MISSING_CONST}`; }",
+  ].join("\n");
+  const stateSrc = [
+    "configure({ _missingState });",
+    "export function f() { return _missingState.length; }",
+  ].join("\n");
+
+  assert.ok(findUnboundIdentifiers(constSrc).map((u) => u.name).includes("MISSING_CONST"),
+    "the constant pass must survive the argument-object shape");
+  assert.ok(findUnboundIdentifiers(stateSrc).map((u) => u.name).includes("_missingState"),
+    "the _name read pass must survive the argument-object shape");
+});
+
+test("binding gate: a real destructured parameter list still binds", () => {
+  const fn = [
+    "export async function go({",
+    "\tcreateActor = data => CONFIG.Actor.documentClass.create(data),",
+    "} = {}) {",
+    "\treturn createActor({});",
+    "}",
+  ].join("\n");
+  const arrow = "export const f = ({ a, b = 1 }) => a + b;";
+
+  assert.deepEqual(findUnboundIdentifiers(fn), [], "a parameter list must still bind");
+  assert.deepEqual(findUnboundIdentifiers(arrow), [], "an arrow parameter list must still bind");
+});

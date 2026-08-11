@@ -191,6 +191,25 @@ function addDestructuredParamNames(masked, add) {
       else if (masked[close] === "}") { depth -= 1; if (depth === 0) break; }
     }
     if (depth !== 0) continue;
+
+    // MUST be a parameter list, not a call argument. `(` followed by `{` also
+    // matches `configure({ onDone: handler })`, and binding an argument object's
+    // names silently swallows a genuine unbound reference to the same name
+    // elsewhere in the module — the exact false negative this gate exists to
+    // catch, reintroduced by the fix for the false positive. A parameter list
+    // is the only one whose closing `)` is followed by `=>` or a body `{`; the
+    // same test the regex-based parameter pass in boundNames uses.
+    let end = close;
+    let parens = 0;
+    for (let j = i; j < masked.length; j += 1) {
+      if (masked[j] === "(") parens += 1;
+      else if (masked[j] === ")") { parens -= 1; if (parens === 0) { end = j; break; } }
+    }
+    let after = end + 1;
+    while (after < masked.length && /\s/.test(masked[after])) after += 1;
+    const isParamList = masked[after] === "{" || masked.slice(after, after + 2) === "=>";
+    if (!isParamList) { i = close; continue; }
+
     for (const name of destructuredBindingNames(masked.slice(open + 1, close))) add(name);
     i = close;
   }
