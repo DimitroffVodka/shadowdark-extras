@@ -735,3 +735,71 @@ test("the object-literal super gate blocks a mixin that would throw", () => {
 
   assert.equal(found, 1, "the synthetic offender must be detected");
 });
+
+// ---------------------------------------------------------------------------
+// binding gate: the two false-positive shapes that blocked PR #126.
+//
+// 83 of its 85 NEW findings were correct code. Both exclusions below are
+// narrow on purpose: the paired "still reported" test in each pair is the one
+// that matters, because this gate's entire history is false NEGATIVES.
+// ---------------------------------------------------------------------------
+
+test("binding gate: SCREAMING_SNAKE object-literal keys are not references", () => {
+  const source = [
+    "export const FEATURE_IDS = Object.freeze({",
+    "\tCAROUSING: \"party.carousing\",",
+    "\tANIMATION_FX: \"animation.fx\",",
+    "});",
+  ].join("\n");
+
+  assert.deepEqual(findUnboundIdentifiers(source), [],
+    "a frozen id map declares properties; its keys reference nothing");
+});
+
+test("binding gate: a SCREAMING_SNAKE VALUE in an object literal is still reported", () => {
+  const source = "export const map = {\n\tkey: MISSING_CONST,\n};";
+
+  assert.deepEqual(findUnboundIdentifiers(source).map((u) => u.name), ["MISSING_CONST"],
+    "only the key side is a declaration — the value is a real reference");
+});
+
+test("binding gate: a SCREAMING_SNAKE ternary consequent is still reported", () => {
+  const source = "function f(flag) {\n\treturn flag ? MISSING_A : MISSING_B;\n}";
+
+  assert.deepEqual(findUnboundIdentifiers(source).map((u) => u.name), ["MISSING_A", "MISSING_B"],
+    "a ternary consequent is also followed by ':' and must not be skipped");
+});
+
+test("binding gate: destructured params bind even when a default contains a call", () => {
+  const source = [
+    "export async function createPartyFromSelectedTokens({",
+    "\ttokens = globalThis.canvas?.tokens?.controlled ?? [],",
+    "\tcreateActor = data => CONFIG.Actor.documentClass.create(data),",
+    "\tplaceToken = placeActorTokenWithPreview,",
+    "} = {}) {",
+    "\tconst actor = await createActor({});",
+    "\treturn placeToken(actor);",
+    "}",
+  ].join("\n");
+
+  assert.deepEqual(findUnboundIdentifiers(source), [],
+    "the injected params bind, so neither call site is a dangling reference");
+});
+
+test("binding gate: an unbound helper called INSIDE a param default is still reported", () => {
+  const source = "function f({ a = missingHelper() } = {}) {\n\treturn a;\n}";
+
+  assert.deepEqual(findUnboundIdentifiers(source).map((u) => u.name), ["missingHelper"],
+    "only the binding half of a destructured part is bound, never the default");
+});
+
+test("binding gate: a helper left behind by an extraction is still reported", () => {
+  const source = [
+    "export function getData({ items = [] } = {}) {",
+    "\treturn helperLeftBehind(items);",
+    "}",
+  ].join("\n");
+
+  assert.deepEqual(findUnboundIdentifiers(source).map((u) => u.name), ["helperLeftBehind"],
+    "the shape this gate exists to catch must survive both exclusions");
+});

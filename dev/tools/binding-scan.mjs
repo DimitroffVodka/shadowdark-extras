@@ -153,7 +153,89 @@ function boundNames(masked) {
   }
   for (const m of masked.matchAll(/([A-Za-z_$][\w$]*)\s*=>/g)) add(m[1]);
   for (const m of masked.matchAll(/\bcatch\s*\(\s*([A-Za-z_$][\w$]*)/g)) add(m[1]);
+  addDestructuredParamNames(masked, add);
   return bound;
+}
+
+/**
+ * Destructured PARAMETERS whose defaults contain parentheses.
+ *
+ * The parameter pass above matches `\(([^()]*)\)` — a parameter list with no
+ * nested parens. That excludes the dependency-injection shape this codebase
+ * uses for testability:
+ *
+ *   export async function createPartyFromSelectedTokens({
+ *     createActor = data => CONFIG.Actor.documentClass.create(data),
+ *     placeToken = placeActorTokenWithPreview,
+ *   } = {}) {
+ *
+ * The default value contains `(data)`, so the whole list fails to match and
+ * NOTHING in it binds. Both names then read as unbound at their call sites and
+ * the gate blocks a PR over correct code — which is what happened on #126.
+ *
+ * Brace-balanced rather than regex, because the defaults can contain arbitrary
+ * nesting. Only the BINDING half of each part is taken (left of `=`, right of
+ * `:`), so an unbound helper called inside a default value still reports.
+ */
+function addDestructuredParamNames(masked, add) {
+  for (let i = 0; i < masked.length; i += 1) {
+    if (masked[i] !== "(") continue;
+    let open = i + 1;
+    while (open < masked.length && /\s/.test(masked[open])) open += 1;
+    if (masked[open] !== "{") continue;
+
+    let depth = 0;
+    let close = open;
+    for (; close < masked.length; close += 1) {
+      if (masked[close] === "{") depth += 1;
+      else if (masked[close] === "}") { depth -= 1; if (depth === 0) break; }
+    }
+    if (depth !== 0) continue;
+    for (const name of destructuredBindingNames(masked.slice(open + 1, close))) add(name);
+    i = close;
+  }
+}
+
+/** Binding names declared by one destructuring body, nested patterns included. */
+function destructuredBindingNames(body) {
+  const names = [];
+  for (const part of splitTopLevel(body)) {
+    // Left of the first default `=` — never `=>`, `==`, `<=`, `>=`, `!=`.
+    let binding = part;
+    for (let i = 0; i < part.length; i += 1) {
+      if (part[i] !== "=") continue;
+      if (part[i + 1] === "=" || part[i + 1] === ">") break;
+      if ("=!<>".includes(part[i - 1])) continue;
+      binding = part.slice(0, i);
+      break;
+    }
+    // `{ key: local }` binds local; `{ key: { nested } }` recurses.
+    const colon = binding.indexOf(":");
+    if (colon !== -1) binding = binding.slice(colon + 1);
+    binding = binding.trim().replace(/^\.\.\./, "").trim();
+
+    if (binding.startsWith("{") || binding.startsWith("[")) {
+      names.push(...destructuredBindingNames(binding.replace(/^[{[]|[\]}]$/g, "")));
+      continue;
+    }
+    if (/^[A-Za-z_$][\w$]*$/.test(binding)) names.push(binding);
+  }
+  return names;
+}
+
+/** Split on commas that sit outside every (), {} and [] pair. */
+function splitTopLevel(body) {
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < body.length; i += 1) {
+    const c = body[i];
+    if ("({[".includes(c)) depth += 1;
+    else if (")}]".includes(c)) depth -= 1;
+    else if (c === "," && depth === 0) { parts.push(body.slice(start, i)); start = i + 1; }
+  }
+  parts.push(body.slice(start));
+  return parts.filter((p) => p.trim() !== "");
 }
 
 /**
@@ -214,6 +296,22 @@ export function findUnboundIdentifiers(source) {
   for (const m of masked.matchAll(/(?<![\w$.?])([A-Z][A-Z0-9_]{2,})\b/g)) {
     const name = m[1];
     if (KEYWORDS.has(name) || KNOWN_GLOBALS.has(name) || bound.has(name) || seen.has(name)) continue;
+
+    // An object-literal KEY — `{ CAROUSING: "party.carousing" }` — declares a
+    // property, it does not reference anything. A SCREAMING_SNAKE id map is the
+    // natural shape for this codebase's feature catalog, and without this the
+    // whole map reads as unbound: FEATURE_IDS alone put 81 false findings into
+    // #126 and blocked it.
+    //
+    // Same narrow test the `_name` pass below uses, and for the same reason —
+    // keyed on what PRECEDES the name, because a ternary consequent is also
+    // followed by `:`. A shorthand `{ FOO }` and a value `{ k: FOO }` are both
+    // real references and both still report.
+    const before = masked.slice(0, m.index).replace(/\s+$/, "");
+    const afterName = masked.slice(m.index + name.length).replace(/^\s+/, "");
+    if (afterName.startsWith(":") && !afterName.startsWith("::")
+      && (before.endsWith("{") || before.endsWith(","))) continue;
+
     seen.set(name, lineOf(m.index));
   }
 
