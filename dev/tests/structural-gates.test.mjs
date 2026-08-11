@@ -878,3 +878,32 @@ test("binding gate: a control-flow head does not bind like a parameter list", ()
   assert.ok(findUnboundIdentifiers(source).map((u) => u.name).includes("_missingState"),
     "a for-of assignment head is not a parameter list");
 });
+
+test("binding gate: a call followed by an ASI-separated block is not a param list", () => {
+  // Valid JS: an expression statement, then a block statement. It throws
+  // ReferenceError at runtime, and allowing a newline between ")" and "{" made
+  // the scanner read the call's argument object as a parameter list.
+  const source = [
+    "function configure() {}",
+    "configure({ MISSING_CONST })",
+    "{ console.log(MISSING_CONST); }",
+  ].join("\n");
+
+  assert.ok(findUnboundIdentifiers(source).map((u) => u.name).includes("MISSING_CONST"),
+    "ASI between a call and a block must not bind the argument object");
+});
+
+test("binding gate: `for await (` does not bind like a parameter list", () => {
+  // The token immediately before "(" is `await`, not `for`, so a bare keyword
+  // list lets the for-await head through. maskSource turns comments into
+  // whitespace, so the interposed-comment form is covered by the same rule.
+  const source = [
+    "export async function f() {",
+    "\tfor await ({ MISSING_CONST } of [{}]) { break; }",
+    "\treturn MISSING_CONST;",
+    "}",
+  ].join("\n");
+
+  assert.ok(findUnboundIdentifiers(source).map((u) => u.name).includes("MISSING_CONST"),
+    "for-await is a control-flow head, not a parameter list");
+});

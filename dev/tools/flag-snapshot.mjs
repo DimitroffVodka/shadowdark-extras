@@ -74,7 +74,14 @@ export function collectFlagKeys() {
       // resolved. Record the unresolved name so the assumption is visible in
       // the snapshot rather than silent (issue #95 finding 3).
       if (entry.unresolvedScope) {
-        unresolved.push(`${toRepoPath(file)}:${entry.line} (scope=${entry.unresolvedScope})`);
+        // api and key are part of the identity, not decoration: the diff below
+        // compares these entries with the line stripped, so without them a site
+        // REPLACED by a different flag operation in the same file and scope is
+        // indistinguishable from the same site drifting down a few lines.
+        unresolved.push(
+          `${toRepoPath(file)}:${entry.line} `
+          + `(api=${entry.api} key=${entry.key ?? "*"} scope=${entry.unresolvedScope})`,
+        );
       }
 
       // A literal scope naming another package ("core", "tokenmagic",
@@ -162,9 +169,19 @@ export function diffFlags(baseline, current) {
   // change to what the gate is actually watching. dynamicSites above already
   // takes this approach by comparing length alone.
   //
-  // Signal is preserved: a scope going unresolved in a file that had none, one
-  // disappearing entirely, or the number of unresolved sites in a file changing
-  // all still report. Only the line drift is filtered.
+  // Signal preserved: a scope going unresolved in a file that had none, one
+  // disappearing entirely, a changed count, and — because api and key are part
+  // of the recorded identity — a site REPLACED by a different flag operation in
+  // the same file and scope.
+  //
+  // KNOWN GAP, and the reason "only line drift is filtered" would be too strong
+  // a claim: the receiver is deliberately not captured by the scanner (see
+  // flag-scan.mjs, "the document varies"), so swapping `actor.getFlag(MODULE_ID,
+  // "state")` for `scene.getFlag(MODULE_ID, "state")` keeps api, key, scope,
+  // file and count identical and stays invisible here. Flag storage is
+  // document-specific, so that substitution does change where state is read.
+  // Closing it means teaching flag-scan.mjs to record the receiver, which is a
+  // larger change than this diff.
   const byFileAndScope = (sites) => {
     const counts = new Map();
     for (const site of sites ?? []) {

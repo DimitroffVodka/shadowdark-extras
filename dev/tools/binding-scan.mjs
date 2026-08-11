@@ -139,7 +139,13 @@ function boundNames(masked) {
   // `fn({ a, b: c })` binds a and c. Without stripping the braces each part
   // still carries one, fails the identifier test, and the name reads as unbound
   // everywhere it is used.
-  for (const m of masked.matchAll(/(?:function\s*\*?\s*[A-Za-z_$][\w$]*)?\s*\(([^()]*)\)\s*(?:=>|\{)/g)) {
+  // `\)[^\S\n]*`, not `\)\s*`: allowing a newline between the `)` and the `{`
+  // made a call statement followed by an ASI-separated block read as a
+  // parameter list — `configure({ MISSING_CONST })\n{ … }` bound MISSING_CONST
+  // and hid a genuine ReferenceError. Pre-dates the destructuring work; the
+  // scanner at 9e2b396f is equally silent on it. Costs a false positive on an
+  // Allman-style body, which is the safe direction for this gate.
+  for (const m of masked.matchAll(/(?:function\s*\*?\s*[A-Za-z_$][\w$]*)?\s*\(([^()]*)\)[^\S\n]*(?:=>|\{)/g)) {
     for (const part of m[1].split(",")) {
       const name = part
         .replace(/[{}[\]]/g, " ")
@@ -197,8 +203,12 @@ function addDestructuredParamNames(masked, add) {
     // `if ({ handler }) { … }` would bind handler and silence a genuine unbound
     // reference elsewhere. `for ({ a } of list)` is the form that occurs in real
     // code; the `if`/`while` variants are pathological but cost nothing to skip.
+    // `for await (` must be matched explicitly: the token immediately before the
+    // "(" is `await`, so a bare keyword list lets it through and silences
+    // `for await ({ X } of …)`. maskSource turns comments into whitespace, so
+    // `\s+` also covers `for /* c */ await (`.
     const beforeParen = masked.slice(0, i).replace(/\s+$/, "");
-    if (/\b(?:if|while|for|switch|catch)$/.test(beforeParen)) { i = close; continue; }
+    if (/(?:\b(?:if|while|switch|catch)|\bfor(?:\s+await)?)$/.test(beforeParen)) { i = close; continue; }
 
     // MUST be a parameter list, not a call argument. `(` followed by `{` also
     // matches `configure({ onDone: handler })`, and binding an argument object's
@@ -213,8 +223,20 @@ function addDestructuredParamNames(masked, add) {
       if (masked[j] === "(") parens += 1;
       else if (masked[j] === ")") { parens -= 1; if (parens === 0) { end = j; break; } }
     }
+    // No LINE TERMINATOR between ")" and "{". A call statement followed by a
+    // block is valid JS via ASI, and it throws at runtime:
+    //
+    //   configure({ MISSING_CONST })
+    //   { console.log(MISSING_CONST); }   // ReferenceError
+    //
+    // Skipping the newline made that read as a parameter list and silenced the
+    // reference. A lexical `){` test cannot tell that from an Allman-style body,
+    // so the newline is the only signal available without a parser. The cost is
+    // a FALSE POSITIVE on an Allman-style destructured parameter list, which is
+    // the safe direction — it blocks loudly instead of hiding a ReferenceError.
+    // Arrow bodies are unaffected: JS forbids a line terminator before "=>".
     let after = end + 1;
-    while (after < masked.length && /\s/.test(masked[after])) after += 1;
+    while (after < masked.length && /[^\S\n]/.test(masked[after])) after += 1;
     const isParamList = masked[after] === "{" || masked.slice(after, after + 2) === "=>";
     if (!isParamList) { i = close; continue; }
 
