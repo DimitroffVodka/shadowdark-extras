@@ -2,9 +2,10 @@
 
 [← Wiki home](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Home)
 
-Every setting and GM configuration menu the module registers, verified live in
-world `0100` on Foundry **14.365** with module **6.10.53**: **157 registered
-settings, 17 settings menus**.
+Every setting and GM configuration menu the module registers — snapshot-verified on
+module **6.11.0** (Foundry **14**, Shadowdark **4.0.6**): **144 static settings, 18 configuration menus**
+(plus up to 18 dynamic keys and 3 optional-module settings depending on world state — a live world on
+6.11.0 shows 159 settings without Automated Animations, 162 with it).
 
 **World** settings apply to everyone in the world. **Client** settings belong
 to one browser and user. Where a row says "Reload", the setting asks for a
@@ -16,6 +17,13 @@ Controls) → Detach** pops any of them into its own browser window; the same
 menu shows **Attach** to dock it back. There are no module-custom pop-out
 buttons.
 
+> **Feature Manager owns this page.** Most menus and many settings below are
+> gated by **Configure Settings → Shadowdark Extras → Feature Manager** (·  `featureManagerMenu` ·  `FeatureManagerApp` ·  **Configure Features**, GM only, reload required).
+> Disabling a feature there hides its menu, its settings, its hooks/sockets, and its tray controls
+> without deleting stored data (journal pages, actor/item flags, Regions, style values, etc.).
+> Re-enable and reload to bring it back. A dedicated Feature Manager page is coming next — this row
+> covers its placement until then.
+
 ---
 
 ## Configuration menus
@@ -24,6 +32,7 @@ Each of these opens a dedicated editor instead of flipping one checkbox.
 
 | Menu | Key | What it configures |
 |---|---|---|
+| **Feature Manager** | `featureManagerMenu` | Master enable/disable for every SDX feature — hooks, sheets, tray tabs, sockets, animations (GM only, reload required) — shows as **Configure Features** |
 | **Configure Sheet Locks** | `sheetLockMenu` | Which player-sheet fields and item operations are locked |
 | **Configure Animations** | `animationFxListMenu` | Animation FX master presets, categories, sound, ambient effects |
 | **Configure Combat Settings** | `combatSettingsMenu` | Damage cards, auto-application, targets, multipliers, range, untargeting |
@@ -49,6 +58,22 @@ Medkit's entry is a launcher, not a panel: clicking it immediately runs the
 world scan (updating items and actors against the module's compendium
 versions) and stays closed. The per-actor Medkit window opens from the actor
 sheet header button.
+
+---
+
+## Feature Manager
+
+**Feature Manager** · `featureManagerMenu` · `FeatureManagerApp` · button label **Configure Features** (GM only, reload required)
+
+Master switchboard for the whole module. Open **Configure Settings → Shadowdark Extras → Feature Manager**,
+tick the SDX Tray tabs and tools you recognize (Scenes, Party, Pins, Notes, Hexes, Dungeons, Decor and the
+handle tools), keep the collapsed **Advanced & Hidden Features** enabled unless you mean to turn off underlying
+automation, then **Save Feature Settings** and reload when Foundry prompts you.
+
+- **World, hidden, requires reload** — stored in `disabledFeatures` (`Array`, default `[]`, `config: false`). No direct toggle lives in Configure Settings — only this editor writes it.
+- **What disabling does** — the feature's menu, settings, hooks, libWrapper patches, sockets, templates, and tray controls do not initialize. Stored data stays (container flags, journal pin pages, aura Regions, carousing sessions, style values, granted advancements, etc.).
+- **Blocked by dependency** — some features depend on another (e.g. Decor Painter → Hex Painter, Per-Item Animation Overrides → Animation FX, Template Effects/Auras/Spell Configs → Spell Activity System). Disabling the parent disables the child and the UI shows “Also blocked because … is disabled.”
+- **Where the choice previews come from** — `assets/feature-manager/*.webp` (one per visible choice).
 
 ---
 
@@ -426,7 +451,7 @@ never appear in Configure Settings:
 - **Sheet editor style vars** — ~40 keys: `sheetBorderStyle`, `borderWidth`, `borderImage*`, `sdBoxBorder*`, `journalBorder*`, `conditionModalBorder*`, `abilityPanelStyle`, `acPanelStyle`, `statPanelStyle`, the text/background color fields, `enableEnhancedDetails`, and the rest of the Sheet Style Editor outputs
 - **Animation FX** — `animationFxEnabled`, `animationFxTriggerOn`, `animationFxConfig`, `animationFxAmbient`, `animationFxCategory_*`, `animationFxClientScale`, `animationFxSoundEnabled`, `animationFxVolume`, `animationFxSeeded`
 - **Hex and toolbar** — `hexPainter.customTileWidth`, `hexPainter.customTileHeight`, `hexPainter.poiScale`, `drawing.toolbar.*` (8 keys)
-- **Other** — `sheetLockConfig`, `tom-dataVersion`, `tom-scenes`, `tom-folders`, `marchingModeLeader`, `marchingModeEnabled`, `currentFormation`, `mlSliders`, `contentRegistry`, `pinFoldersWorld`, `itemacroMigrationDone`, `webpMigrationDone`, `webpPackSweepDone`
+- **Other** — `sheetLockConfig`, `tom-dataVersion`, `tom-scenes`, `tom-folders`, `marchingModeLeader`, `marchingModeEnabled`, `currentFormation`, `mlSliders`, `contentRegistry`, `pinFoldersWorld`, `itemacroMigrationDone`, `webpMigrationDone`, `webpPackSweepDone`, `disabledFeatures` (Feature Manager state — world, hidden, reload required)
 
 Hex tile dimensions, POI scale, dungeon level sliders, marching state,
 formation state, the content registry, and pin folders are all internal,

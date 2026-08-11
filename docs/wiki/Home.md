@@ -63,6 +63,7 @@ a session actually calls for it.
 
 | Page | What it covers |
 |---|---|
+| [Feature Manager](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager) | Master enable/disable for every SDX feature (GM only, reload required) |
 | [Installation & Setup](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Installation-and-Setup) | Supported versions, dependencies, permissions, updates, and disabling |
 | [Settings Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Settings-Reference) | Visible settings, configuration menus, defaults, scopes, and reload requirements |
 | [Compendium Packs](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Compendium-Packs) | The four bundled SDX packs and safe customization practices |

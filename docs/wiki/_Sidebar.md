@@ -30,6 +30,7 @@
 
 ### Reference
 
+- [Feature Manager](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager)
 - [Settings Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Settings-Reference)
 - [Compendium Packs](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Compendium-Packs)
 - [Troubleshooting](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Troubleshooting)
