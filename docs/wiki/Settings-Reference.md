@@ -18,11 +18,10 @@ menu shows **Attach** to dock it back. There are no module-custom pop-out
 buttons.
 
 > **Feature Manager owns this page.** Most menus and many settings below are
-> gated by **Configure Settings → Shadowdark Extras → Feature Manager** (·  `featureManagerMenu` ·  `FeatureManagerApp` ·  **Configure Features**, GM only, reload required).
+> gated by **Configure Settings → Shadowdark Extras → Feature Manager** ([Feature Manager](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager) · `featureManagerMenu` · `FeatureManagerApp` · **Configure Features**, GM only, reload required).
 > Disabling a feature there hides its menu, its settings, its hooks/sockets, and its tray controls
 > without deleting stored data (journal pages, actor/item flags, Regions, style values, etc.).
-> Re-enable and reload to bring it back. A dedicated Feature Manager page is coming next — this row
-> covers its placement until then.
+> Re-enable and reload to bring it back.
 
 ---
 
@@ -72,7 +71,7 @@ automation, then **Save Feature Settings** and reload when Foundry prompts you.
 
 - **World, hidden, requires reload** — stored in `disabledFeatures` (`Array`, default `[]`, `config: false`). No direct toggle lives in Configure Settings — only this editor writes it.
 - **What disabling does** — the feature's menu, settings, hooks, libWrapper patches, sockets, templates, and tray controls do not initialize. Stored data stays (container flags, journal pin pages, aura Regions, carousing sessions, style values, granted advancements, etc.).
-- **Blocked by dependency** — some features depend on another (e.g. Decor Painter → Hex Painter, Per-Item Animation Overrides → Animation FX, Template Effects/Auras/Spell Configs → Spell Activity System). Disabling the parent disables the child and the UI shows “Also blocked because … is disabled.”
+- **Blocked by dependency** — some features depend on another (e.g. Decor → Hexes, Per-Item Animation Overrides → Animation FX, Template Effects/Auras/Spell Configs → Spell Activity System). Disabling the parent disables the child and the UI shows “Also blocked because … is disabled.”
 - **Where the choice previews come from** — `assets/feature-manager/*.webp` (one per visible choice).
 
 ---

@@ -8,6 +8,8 @@ read-aloud narration.
 
 ---
 
+> **Pins, Notes, or journal menus missing?** Pins and Notes tabs are under [**Feature Manager → SDX Tray Tabs**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#sdx-tray-tabs); narration, display cards, and icon picker are under [**Advanced & Hidden Features → Journal & Reference**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#journal-reference).
+
 ## Character Journal Notes
 
 With **Enable Journal Notes** on, a Player's Notes tab becomes a small

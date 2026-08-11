@@ -8,6 +8,8 @@ most of the map and session tools.
 
 ---
 
+> **If a tab or tool is missing:** it may be turned off in [**Feature Manager**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager) — **Configure Settings → Shadowdark Extras → Feature Manager** (**Configure Features**, GM only, reload required). Tabs live under [**SDX Tray Tabs**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#sdx-tray-tabs), tools under [**SDX Tray Tools**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#sdx-tray-tools); **Decor** needs **Hexes** enabled first.
+
 ## Opening and changing the view
 
 The chevron on the tray handle expands and collapses it. Next to that, the view

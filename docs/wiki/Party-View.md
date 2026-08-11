@@ -14,6 +14,8 @@ Party View is the live roster in the SDX Tray — every eligible token on the cu
 
 ---
 
+> **Party tab missing?** Check [**Feature Manager → SDX Tray Tabs → Party**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#sdx-tray-tabs) (and the [**Master Control → SDX Tray**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#what-it-controls) card above it). GM only, reload after you re-enable.
+
 ## Use it
 
 1. Put your party (and any monsters/NPCs) on the current scene.

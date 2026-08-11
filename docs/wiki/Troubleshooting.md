@@ -32,6 +32,29 @@ Check the
 Settings marked **Reload** attach their behavior at startup, so the world needs
 a reload after you change them.
 
+### A tray tab, tool, menu, or automation disappeared
+
+Since **6.11.0** most features are gated by
+[Feature Manager](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager)
+(**Configure Settings → Shadowdark Extras → Feature Manager**, button
+**Configure Features**, GM only). Open it and re-check the feature — a single
+unchecked box (or its parent) explains most missing tabs.
+
+Quick triage:
+
+1. Open **Feature Manager** as GM.
+2. Look for an unchecked row or an *Also blocked because … is disabled.* note —
+   for example **Decor** is blocked when **Hexes** is disabled, and
+   **Template Effects** and **Auras** are blocked when the
+   **Spell Activity System** is disabled; **Spell Configuration Panels** is under
+   **Advanced & Hidden Features → Item Automation** with the same dependency.
+3. Re-check the row (and its parent if needed), click **Save Feature Settings**,
+   and **reload**.
+4. If it still doesn't appear, check [Settings Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Settings-Reference) for a world/client
+   scope or permission difference, and [Installation & Setup → Permissions](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Installation-and-Setup#permissions) for
+   who can run that tool.
+5. Stuck? Use **Enable All** at the top of Feature Manager, save, and reload.
+
 ---
 
 ## Dependencies and animations

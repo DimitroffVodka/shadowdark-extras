@@ -10,6 +10,8 @@ Journal Pins are styled markers you drop on the canvas. Link one to a Journal or
 
 ![The Pin Style Editor preview with shape, ring, and color controls](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-style-editor.webp)
 
+> **Pins missing?** The Pins tab and Add Pin tool are gated by [**Feature Manager → SDX Tray Tabs → Pins**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#sdx-tray-tabs); the Pin Style Editor is always available when Pins is enabled.
+
 ---
 
 ## Where to find it

@@ -238,7 +238,7 @@ Only a GM sees **Feature Manager** (`restricted: true`). Disabling a feature rem
 - **A tray tab or tool is missing** — open Feature Manager and re-check it. A single unchecked box (or its parent) explains most missing tabs.
 - **A settings menu is gone** — the menu is gated by its feature. Re-enable the feature group it belongs to and reload.
 - **Nothing changed after saving** — reload. `disabledFeatures` has `requiresReload: true`; hooks, sheets, and tray modes attach at startup.
-- **Decor disappeared but Hexes still works** — expected. Decor depends on Hex Painter; re-enable Hexes and Decor together.
+- **Decor disappeared but Hexes still works** — expected. Decor depends on Hexes; re-enable Hexes and Decor together.
 - **I want everything back** — click **Enable All** at the top, save, and reload. The stored value is `disabledFeatures` (`Array`, default `[]`); `[]` means nothing disabled.
 
 ---

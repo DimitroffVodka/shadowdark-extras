@@ -8,6 +8,8 @@ weapon sprites, torches, and level-up indicators.
 
 ---
 
+> **Animations or previews missing?** Check [**Feature Manager → Advanced & Hidden Features → Animation**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#animation) — 7 toggles; **Per-Item Animation Overrides** is *also blocked when Animation FX is disabled*.
+
 ## What you need
 
 **Sequencer** is required by the current module manifest, and a **JB2A** pack

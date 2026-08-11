@@ -8,6 +8,8 @@ references without anyone at the table memorizing enricher syntax.
 
 ---
 
+> **Cards or reference menus missing?** They live under [**Feature Manager → Advanced & Hidden Features → Journal & Reference**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#journal-reference) — **Display Cards** and **Easy Reference Menu**.
+
 ## Enable categories
 
 Five world settings, all on by default: NPC cards, item cards, RollTables,

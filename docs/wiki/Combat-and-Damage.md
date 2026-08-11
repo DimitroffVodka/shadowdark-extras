@@ -8,6 +8,8 @@ attack automation.
 
 ---
 
+> **No damage card, range check, or marching tool?** Check [**Feature Manager**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager) — [**Advanced & Hidden Features → Combat**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#combat) (damage cards, scrolling text, weapon bonuses, medkit, omen, death timer) and [**SDX Tray Tools → Marching Mode / Formation Spawner**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#sdx-tray-tools).
+
 ## Configure combat once
 
 Open **Configure Settings → Shadowdark Extras → Configure Combat Settings**.

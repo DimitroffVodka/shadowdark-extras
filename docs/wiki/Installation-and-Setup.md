@@ -13,8 +13,10 @@ Straight from the module manifest:
 | Foundry VTT | v13 | v14 |
 | Shadowdark RPG system | v3.0.0 | v4.0.6 |
 
+> **New in 6.11.0:** most features can be turned off world-wide from **Configure Settings → Shadowdark Extras → Feature Manager** (**Configure Features**, GM only, reload required) — see [Feature Manager](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager).
+
 `module.json` carries the version you actually have installed. This manual
-describes the 6.10.49-era interface plus the current working tree.
+describes module **6.11.0** (Foundry 14, Shadowdark 4.0.6).
 
 ## Install
 
@@ -151,7 +153,8 @@ UI stays visible while the world change behind it quietly has nowhere to go.
 Update from Foundry's Add-on Modules screen. Afterwards:
 
 1. Relaunch the world if the manifest, required files, sheets, or
-   reload-required settings changed.
+   reload-required settings changed — including any change made in
+   [Feature Manager](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager), **reload required**.
 2. Hard-refresh with `Ctrl+Shift+R` when styles or templates look stale.
 3. Open the browser console with `F12` if the module doesn't load at all.
 4. Run the **Medkit** to compare owned spells, scrolls, and wands against

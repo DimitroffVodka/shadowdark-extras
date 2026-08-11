@@ -7,6 +7,8 @@ their current output into a Foundry Scene.
 
 ---
 
+> **Map Generators button missing?** It's [**Feature Manager → SDX Tray Tools → Map Generators**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#sdx-tray-tools).
+
 ## Open the launcher
 
 Click the map-location icon on the SDX Tray, then choose:

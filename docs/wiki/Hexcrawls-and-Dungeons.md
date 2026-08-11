@@ -9,6 +9,8 @@ Dungeons tab handles square-grid interiors, either painted by hand or generated.
 
 ---
 
+> **Hexes, Dungeons, or Decor not showing?** They are gated by [**Feature Manager → SDX Tray Tabs**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#sdx-tray-tabs) — **Hexes**, **Dungeons**, and **Decor**. Decor also needs Hexes — the app shows *Also blocked because Hexes is disabled*.
+
 ## Hex workflow
 
 ### 1. Format the map

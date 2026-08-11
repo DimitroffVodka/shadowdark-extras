@@ -7,6 +7,8 @@ player-ready result cards, copper-precise costs, and a persistent GM log.
 
 ---
 
+> **Carousing button or overlay missing?** It's [**Feature Manager → SDX Tray Tools → Carousing**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#sdx-tray-tools).
+
 ## Open it
 
 The beer icon on the SDX Tray. It appears whenever **Enable Carousing** is on.

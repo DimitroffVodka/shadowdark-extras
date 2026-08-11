@@ -8,6 +8,8 @@ is per client.
 
 ---
 
+> **Header, waves, or sheet controls missing?** These are toggled in [**Feature Manager → Advanced & Hidden Features → Character Sheets**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#character-sheets) — 12 toggles from **Enhanced Header** through **Character Generator**.
+
 ## Enhanced player header
 
 With **Enable Enhanced Header** on, a Player sheet gets an interactive summary

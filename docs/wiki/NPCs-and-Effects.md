@@ -8,6 +8,8 @@ effects library.
 
 ---
 
+> **NPC inventory, creature types, or effect automation missing?** See [**Feature Manager**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager) — [**Advanced & Hidden Features → NPCs**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#npcs) (4 toggles) and [**Effects & Spells**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#effects-spells) (aura gating needs **Spell Activity System**).
+
 ## NPC inventory
 
 With **Enable NPC Inventory Tab** on, ordinary NPC sheets pick up an item list,

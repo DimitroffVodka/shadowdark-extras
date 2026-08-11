@@ -9,6 +9,8 @@ rules, multi-selection, player transfers, party storage, and quick coin tools.
 
 ---
 
+> **Containers, trading, or styling missing?** Toggled in [**Feature Manager → Advanced & Hidden Features → Inventory**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#inventory) — 9 toggles from **Ammunition per User** through **Player Transfers**.
+
 ## Containers
 
 Mark an owned item **Is Container** and it can hold other items belonging to the

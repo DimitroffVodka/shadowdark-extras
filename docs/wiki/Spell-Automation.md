@@ -8,6 +8,8 @@ effects, track duration, summon creatures, hand out items, run macros.
 
 ---
 
+> **Activity tab, templates, or auras missing?** Check [**Feature Manager → Advanced & Hidden Features → Effects & Spells**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#effects-spells) — the **Spell Activity System** and its dependents **Template Effects** and **Auras** are *also blocked when Spell Activity System is disabled*. **Spell Configuration Panels** lives under [**Advanced & Hidden Features → Item Automation**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#item-automation) with the same dependency.
+
 ## Before configuring an item
 
 1. Enable **Enhance Spells** and reload.

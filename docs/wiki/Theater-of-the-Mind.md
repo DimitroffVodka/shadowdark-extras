@@ -12,6 +12,8 @@ Theater of the Mind puts a fullscreen image or video on everyone's screen. You c
 
 ---
 
+> **Scenes tab or broadcast missing?** All five ToM traits live under [**Feature Manager → SDX Tray Tabs → Scenes**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#sdx-tray-tabs) — **ToM Scenes & Broadcasting**, **ToM Video Overlays**, **ToM Scene Editor**, **ToM Player View**, and **ToM Scene Navigation**. **Video Overlays** needs **ToM Player View** enabled.
+
 ## Where to find it
 
 - **SDX Tray → Scenes tab** — the Images tab on the left edge of the tray. Only the GM sees this.

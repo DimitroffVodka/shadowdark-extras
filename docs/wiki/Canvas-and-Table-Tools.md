@@ -8,6 +8,8 @@ scene navigation, and portable scene archives.
 
 ---
 
+> **Missing a toolbar or tool?** [**Feature Manager**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager) gates these outside the tray as well — look under [**Advanced & Hidden Features → Tray & Canvas**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#tray-canvas) (**Token Toolbar**, **Wall Context Menu**) and [**SDX Tray Tools**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager#sdx-tray-tools) (**Drawing Tools**, **Light Source Tracker**, **SDX Roller**, etc.). GM only, reload required.
+
 ## Token Toolbar
 
 Off by default. Enable it in settings and reload.
