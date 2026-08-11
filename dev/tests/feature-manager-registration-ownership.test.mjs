@@ -13,6 +13,7 @@ const MODULE_ID = "shadowdark-extras";
 let disabledFeatureIds = [];
 const settings = new Map();
 const settingRegistrations = [];
+const menuRegistrations = [];
 const keybindingRegistrations = [];
 const browseCalls = [];
 const cacheCalls = [];
@@ -28,10 +29,14 @@ globalThis.game.settings = {
 	},
 	set: async (namespace, key, value) => settings.set(`${namespace}.${key}`, value),
 	register: (namespace, key, config) => settingRegistrations.push({ namespace, key, config }),
-	registerMenu() {},
+	registerMenu: (namespace, key, config) => menuRegistrations.push({ namespace, key, config }),
 };
 globalThis.game.keybindings = {
 	register: (namespace, key, config) => keybindingRegistrations.push({ namespace, key, config }),
+};
+globalThis.game.i18n = {
+	localize: key => key,
+	format: (key, data) => `${key}:${JSON.stringify(data)}`,
 };
 globalThis.foundry.applications.apps.FilePicker = {
 	implementation: {
@@ -72,9 +77,11 @@ cache.getCachedSrc = async key => {
 
 const { registerTraySettings, getPartyTokens } = await import("../../scripts/tray/TraySD.mjs");
 const drawingSettings = await import("../../scripts/settings/drawing-settings.mjs");
+const { registerSettings, SETTING_OWNERS } = await import("../../scripts/settings/module-settings.mjs");
 
 function resetSpies() {
 	settingRegistrations.length = 0;
+	menuRegistrations.length = 0;
 	keybindingRegistrations.length = 0;
 	browseCalls.length = 0;
 	cacheCalls.length = 0;
@@ -83,6 +90,23 @@ function resetSpies() {
 
 function registeredSettingKeys() {
 	return settingRegistrations.map(registration => registration.key);
+}
+
+function registeredMenuKeys() {
+	return menuRegistrations.map(registration => registration.key);
+}
+
+function registerModuleSettings(...featureIds) {
+	resetSpies();
+	withDisabled(...featureIds);
+	const previousLog = console.log;
+	console.log = () => {};
+	try {
+		registerSettings();
+	}
+	finally {
+		console.log = previousLog;
+	}
 }
 
 function withDisabled(...featureIds) {
@@ -104,6 +128,108 @@ const HEX_KEYS = [
 	"hexPainter.poiScale",
 ];
 const MAP_GENERATOR_KEYS = ["settlement.useLocalMaphub"];
+const MENU_KEYS = new Set([
+	"inventoryStylesMenu",
+	"sheetEditorMenu",
+	"decorDungeondraftPacksMenu",
+	"customLightTemplatesMenu",
+	"medkitWorldScanMenu",
+	"carousingTablesMenu",
+	"manageCreatureTypes",
+	"combatSettingsMenu",
+	"effectsSettingsMenu",
+	"hpWavesSettingsMenu",
+	"travelActivitiesMenu",
+	"travelSpeedsMenu",
+	"partyWeatherTableMenu",
+	"pinStyleEditorMenu",
+	"sdxCoordsMenu",
+]);
+
+test("registerSettings registers exactly the mapped settings and menus when all owners are enabled", () => {
+	registerModuleSettings();
+
+	const actualSettings = new Set(registeredSettingKeys());
+	const actualMenus = new Set(registeredMenuKeys());
+	const expectedSettings = new Set(
+		Object.keys(SETTING_OWNERS).filter(key => !MENU_KEYS.has(key)),
+	);
+	const expectedMenus = new Set(
+		Object.keys(SETTING_OWNERS).filter(key => MENU_KEYS.has(key)),
+	);
+
+	assert.deepEqual([...actualSettings].sort(), [...expectedSettings].sort());
+	assert.deepEqual([...actualMenus].sort(), [...expectedMenus].sort());
+	assert.deepEqual(registeredSettingKeys().slice(0, 8), [
+		"combatSettings",
+		"effectsSettings",
+		"hpWavesSettings",
+		"travelActivities",
+		"travelSpeeds",
+		"partyWeatherTableUuid",
+		"itemacroMigrationDone",
+		"webpMigrationDone",
+	]);
+	assert.equal(settingRegistrations.find(r => r.key === "webpMigrationDone").config.default, false);
+	assert.equal(settingRegistrations.find(r => r.key === "customDecorAssets").config.config, false);
+	assert.equal(settingRegistrations.find(r => r.key === "customDecorAssets").config.scope, "world");
+	for (const [key, expected] of Object.entries({
+		"enableFocusTracker": { default: true, scope: "world" },
+		"enhanceSpells": { default: true, scope: "world" },
+		"enableEnhancedHeader": { default: true, scope: "world" },
+		"enableJournalNotes": { default: true, scope: "world" },
+		"enableContainers": { default: true, scope: "world" },
+		"enableCarousing": { default: true, scope: "world" },
+		"enableNpcInventory": { default: true, scope: "world" },
+		"enableTorchAnimations": { default: true, scope: "world" },
+		"pixelPerfectPins": { default: false, scope: "world" },
+	})) {
+		const config = settingRegistrations.find(registration => registration.key === key)?.config;
+		assert.equal(config?.default, expected.default, `${key} default changed`);
+		assert.equal(config?.scope, expected.scope, `${key} scope changed`);
+	}
+});
+
+test("ownership matrix disables single-owner registrations and preserves shared registrations", () => {
+	for (const [key, featureIds] of Object.entries(SETTING_OWNERS)) {
+		if (featureIds === null) continue;
+		const isMenu = MENU_KEYS.has(key);
+		const registrations = () => isMenu ? registeredMenuKeys() : registeredSettingKeys();
+
+		for (const featureId of featureIds) {
+			registerModuleSettings(featureId);
+			assert.equal(
+				registrations().includes(key),
+				featureIds.length > 1,
+				`${key} must ${featureIds.length > 1 ? "survive" : "disappear"} when ${featureId} is disabled`,
+			);
+		}
+
+		registerModuleSettings(...featureIds);
+		assert.equal(registrations().includes(key), false, `${key} must disappear when all owners are disabled`);
+	}
+});
+
+test("hidden feature data registrations have an ownership entry and disappear with their owner", () => {
+	registerModuleSettings();
+	const hiddenKeys = settingRegistrations
+		.filter(registration => registration.config.config === false)
+		.map(registration => registration.key);
+
+	assert.ok(hiddenKeys.length > 50, "the matrix should include the hidden settings surface");
+	for (const key of hiddenKeys) {
+		assert.notEqual(SETTING_OWNERS[key], undefined, `${key} is missing from the ownership map`);
+		const ownersForKey = SETTING_OWNERS[key];
+		if (ownersForKey === null) continue;
+		registerModuleSettings(...ownersForKey);
+		const isMenu = MENU_KEYS.has(key);
+		assert.equal(
+			(isMenu ? registeredMenuKeys() : registeredSettingKeys()).includes(key),
+			false,
+			`${key} remained registered after all feature owners were disabled`,
+		);
+	}
+});
 
 test("enabled tray setting owners preserve the established keys, defaults, and order", () => {
 	resetSpies();

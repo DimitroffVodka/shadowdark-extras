@@ -14,6 +14,7 @@
 
 import { getSocket } from "../combat/CombatSettingsSD.mjs";
 import { resolveCardContext } from "../shared/sd4Compat.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 import { MODULE_ID, FOCUS_SPELL_FLAG, DURATION_SPELL_FLAG, _processedFocusRollMessages } from "./focus-constants.mjs";
 import {
 	startDurationSpell,
@@ -502,6 +503,7 @@ function disableSpellContextMenu(sheet, html, data) {
  * Build HTML for the active focus spells section
  */
 async function handleWandUsesTracking(message, html, data) {
+	if (!isFeatureEnabled(FEATURE_IDS.MAGIC_ITEM_SHEETS)) return;
 	// Only process if current user is the author to avoid duplicate processing
 	if (message.author?.id !== game.user.id) return;
 
@@ -563,6 +565,7 @@ async function handleWandUsesTracking(message, html, data) {
  * Shows current/max uses next to wand names in the "SPELLS FROM ITEMS" section
  */
 function injectWandUsesDisplay(app, html, data) {
+	if (!isFeatureEnabled(FEATURE_IDS.MAGIC_ITEM_SHEETS)) return;
 	// Check if wand uses tracking is enabled
 	try {
 		if (!game.settings.get(MODULE_ID, "enableWandUses")) return;

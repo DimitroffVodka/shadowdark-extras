@@ -7,6 +7,9 @@ import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
+const npcCreatureTypesEnabled = () => isFeatureEnabled(FEATURE_IDS.NPC_CREATURE_TYPES)
+	&& game.settings.get(MODULE_ID, "enableNpcCreatureType");
+
 async function saveWeaponBonusConfig(item, updates) {
 	const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
 	const newFlags = foundry.utils.mergeObject(currentFlags, updates);
@@ -370,7 +373,7 @@ function buildWeaponBonusTabHtml(flags, item) {
 								<strong>Attacker HP %</strong> - Your health percentage<br>
 								<strong>Target Ancestry</strong> - Target's ancestry<br>
 								<strong>Target Alignment</strong> - Target's alignment (chaotic, neutral, lawful)<br>
-								${game.settings.get(MODULE_ID, "enableNpcCreatureType") ? "<strong>Target Subtype</strong> - Target's creature type" : ""}
+								${npcCreatureTypesEnabled() ? "<strong>Target Subtype</strong> - Target's creature type" : ""}
 							</div>
 						</div>
 					</fieldset>
@@ -449,7 +452,7 @@ function buildHitBonusRequirementRowHtml(req, bonusIndex, reqIndex) {
 		{ value: "targetAlignment", label: "Target Alignment" },
 	];
 
-	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
+	if (npcCreatureTypesEnabled()) {
 		typeOptions.push({ value: "targetSubtype", label: "Target Subtype" });
 	}
 
@@ -560,7 +563,7 @@ function buildDamageBonusRequirementRowHtml(req, bonusIndex, reqIndex) {
 		{ value: "targetAlignment", label: "Target Alignment" },
 	];
 
-	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
+	if (npcCreatureTypesEnabled()) {
 		typeOptions.push({ value: "targetSubtype", label: "Target Subtype" });
 	}
 
@@ -602,7 +605,7 @@ function buildCriticalRequirementRowHtml(req, criticalType, reqIndex) {
 		{ value: "targetAlignment", label: "Target Alignment" },
 	];
 
-	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
+	if (npcCreatureTypesEnabled()) {
 		typeOptions.push({ value: "targetSubtype", label: "Target Subtype" });
 	}
 
@@ -751,7 +754,7 @@ function buildEffectRequirementRowHtml(req, effectIndex, reqIndex) {
 		{ value: "targetAlignment", label: "Target Alignment" },
 	];
 
-	if (game.settings.get(MODULE_ID, "enableNpcCreatureType")) {
+	if (npcCreatureTypesEnabled()) {
 		typeOptions.push({ value: "targetSubtype", label: "Target Subtype" });
 	}
 

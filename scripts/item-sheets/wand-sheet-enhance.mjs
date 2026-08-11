@@ -127,7 +127,8 @@ export async function enhanceWandSheet(app, html) {
 	// WAND USES TRACKING UI
 	// ═══════════════════════════════════════════════════════════════
 	try {
-		if (game.settings.get(MODULE_ID, "enableWandUses")) {
+		if (isFeatureEnabled(FEATURE_IDS.MAGIC_ITEM_SHEETS)
+			&& game.settings.get(MODULE_ID, "enableWandUses")) {
 			// Inject wand uses UI after the Range field
 			injectWandUsesUI(html, item);
 		}

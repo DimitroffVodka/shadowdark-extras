@@ -22,6 +22,7 @@
  */
 
 import { MODULE_ID } from "../shared/module-id.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 import { getCreatureTypes, getEffectiveCreatureType } from "./CreatureTypesApp.mjs";
 import { calculateSlotsCostForItemData } from "../inventory/containers.mjs";
 import { isPartyActor } from "../party/PartySheetSD.mjs";
@@ -116,6 +117,7 @@ function calculateNpcCoinSlots(coins) {
  * @param {Actor} actor - The NPC actor
  */
 export function injectNpcCreatureType(app, html, actor) {
+	if (!isFeatureEnabled(FEATURE_IDS.NPC_CREATURE_TYPES)) return;
 	// Check if feature is enabled
 	try {
 		const enabled = game.settings.get(MODULE_ID, "enableNpcCreatureType");
@@ -417,6 +419,7 @@ export function patchNpcSheetForItemDrops(app) {
 export function applyNpcPlayerTheme(app, html, actor) {
 	if (actor?.type !== "NPC") return;
 	if (isPartyActor(actor)) return;
+	if (!isFeatureEnabled(FEATURE_IDS.SHEET_STYLING)) return;
 
 	const $html = html instanceof jQuery ? html : $(html);
 	const $sheet = $html.closest(".shadowdark.sheet.npc").length
