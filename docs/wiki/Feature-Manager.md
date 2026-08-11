@@ -50,6 +50,8 @@ Below that, two visible groups map directly to tray controls you can see:
 | **Dungeons** | SDX Tray → Dungeons tab | Dungeon painting, generation, biomes, levels, and tile flatten |
 | **Decor** | SDX Tray → Decor tab | Decor assets and POI transforms (needs Hexes) |
 
+![SDX Tray Tabs — Scenes, Party, Pins, Notes, Hexes, Dungeons, and Decor](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/feature-manager-visible-tabs.webp)
+
 ### SDX Tray Tools
 
 | Choice | Location | What it hides when off |
@@ -66,11 +68,153 @@ Below that, two visible groups map directly to tray controls you can see:
 | **Solo Hex Mode** | Tray handle → Compass button | Wilderness hex generation while exploring |
 | **SDX Roller** | Tray handle → Dice button | Cinematic rolls, group checks, and recap cards |
 
+![SDX Tray Tools — Marching Mode through SDX Roller](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/feature-manager-visible-tools.webp)
+
 Each choice shows a preview image, a short description, and where it lives on the tray.
 
 ### Advanced & Hidden Features
 
-A collapsed section at the bottom. It groups automation that has no tray tab of its own — combat cards, spell activity, auras, inventory containers, sheet enhancements, and similar hooks. Leave it enabled unless you intend to turn off that underlying behavior. See [Settings Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Settings-Reference) for what each hidden key stores.
+A collapsed section at the bottom. It groups automation that has no tray tab of its own. Each subsection below is a separate card inside **Advanced & Hidden Features** — use its **Enable all / Disable all** to toggle the group, or individual checkboxes to keep the hooks you need.
+
+#### Tray & Canvas
+
+Canvas helpers that don't have a tray button of their own.
+
+| Toggle | What it hides when off |
+|---|---|
+| **Token Toolbar** | Quick canvas controls for effects and equipped items |
+| **Wall Context Menu** | Extra right-click actions for walls |
+
+![Tray & Canvas — Token Toolbar and Wall Context Menu](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/feature-manager-advanced-tray-canvas.webp)
+
+#### Combat
+
+Combat automation and display. All seven are independent (no dependencies).
+
+| Toggle | What it hides when off |
+|---|---|
+| **Enhanced Damage Cards** | Targeting, range checks, multipliers, and damage application |
+| **Scrolling Combat Text** | Floating damage and healing numbers above tokens |
+| **Weapon Bonuses** | Hit, damage, critical, on-hit, and item-macro weapon bonuses |
+| **Focus Spell Tracker** | Focus checks, duration tracking, and effect cleanup |
+| **Medkit** | Actor and world spell-enhancement scans |
+| **Freya's Omen** | Omen reroll handling on spell cards |
+| **Crawl Helper Death Timer** | Death-timer integration with SD Crawler Helper |
+
+![Combat — Enhanced Damage Cards through Crawl Helper Death Timer](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/feature-manager-advanced-combat.webp)
+
+#### Animation
+
+Sequencer / TokenMagic / Automated Animations. One dependency: per-item overrides need Animation FX.
+
+| Toggle | What it hides when off |
+|---|---|
+| **Animation FX** | Regex-matched Sequencer animation presets and playback |
+| **Per-Item Animation Overrides** | Item-level Animation FX configuration on activity and weapon sheets — *also blocked when Animation FX is disabled* |
+| **Torch Animations** | Persistent torch prop and flame animations on tokens |
+| **Level-Up Animations** | Level-up arrows and token celebration effects |
+| **Weapon & Shield Sprites** | Equipped weapon and shield sprites rendered on tokens |
+| **TokenMagic Filter Editor** | Edit TokenMagic filter parameters used by effects and presets |
+| **Automated Animations Integration** | Coordinate SDX animation playback with Automated Animations |
+
+![Animation — Animation FX through Automated Animations Integration](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/feature-manager-advanced-animation.webp)
+
+#### Character Sheets
+
+Player and NPC sheet enhancements — 12 toggles, all independent.
+
+| Toggle | What it hides when off |
+|---|---|
+| **Enhanced Header** | HP, AC, abilities, luck, XP, and custom header backgrounds |
+| **HP Wave Animation** | Animated portrait waves based on current HP |
+| **Quick Conditions** | Condition controls on player and NPC sheets |
+| **Character Journal Notes** | Multi-page journal notes on player sheets |
+| **Add Coins Button** | Quick coin adjustment controls on character and party sheets |
+| **Sheet Locking** | Prevent players from editing configured sheet fields |
+| **Sheet Styling & Dark Mode** | Sheet frames, panels, colors, backgrounds, and themes |
+| **Background Sheet & Advancement** | Enhanced background sheets and advancement grants |
+| **Skills Box** | Skills display on character sheets |
+| **Spellbook Filter** | Alignment-based spellbook filtering |
+| **Enhanced Sheet Tabs** | Enhanced details, abilities, talents, inventory, spells, and effects tabs |
+| **Character Generator** | Character-generation helpers and chat roll integration |
+
+![Character Sheets — 12 toggles from Enhanced Header through Character Generator](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/feature-manager-advanced-character-sheets.webp)
+
+#### Inventory
+
+Containers, trading, and display — 9 toggles, all independent.
+
+| Toggle | What it hides when off |
+|---|---|
+| **Ammunition per User** | Select, apply bonuses from, and consume actor ammunition |
+| **Container System** | Nested storage, coin storage, and container slot calculations |
+| **Trading System** | Player trading windows, socket prompts, transfers, and journal |
+| **Unidentified Items** | Mask unidentified item identity and preserve its flags |
+| **Multi-Select & Bulk Delete** | Select and modify multiple inventory rows |
+| **Inventory Styling** | Theme inventory rows by type, magic, rarity, and custom CSS |
+| **Gem Enhancements** | Gem bag, quantity, and value enhancements |
+| **Item Piles Compatibility** | Keep SDX item state safe when Item Piles moves or displays items |
+| **Player Transfers** | Actor-to-actor and party inventory transfers |
+
+![Inventory — Ammunition through Player Transfers](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/feature-manager-advanced-inventory.webp)
+
+#### Effects & Spells
+
+Core spell/effect automation. Three toggles depend on the Spell Activity System.
+
+| Toggle | What it hides when off |
+|---|---|
+| **Spell Activity System** | Spell damage, healing, targeting, duration, summoning, item-give, and alignment fields |
+| **Damage Type System** | Resistance, immunity, and vulnerability processing by damage type |
+| **Predefined Effects Library** | SDX effect definitions, configuration controls, and condition data |
+| **Template Effects** | Apply effects when tokens enter or take turns in templates — *also blocked when Spell Activity System is disabled* |
+| **Auras** | Persistent aura regions, turn triggers, LOS, Sequencer, and TokenMagic — *also blocked when Spell Activity System is disabled* |
+| **Break on Damage** | Expire configured effects when their bearer takes damage |
+| **Casting Blockers** | Prevent casting under configured active-effect conditions |
+| **Invisibility** | Synchronize invisibility effects with token visibility |
+| **Effect Source Requirements** | Enable or suppress effects based on source item state |
+
+![Effects & Spells — Spell Activity through Source Requirements](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/feature-manager-advanced-effects-spells.webp)
+
+#### NPCs
+
+NPC sheet and casting helpers — 4 toggles, all independent.
+
+| Toggle | What it hides when off |
+|---|---|
+| **NPC Inventory** | Inventory and coin management on NPC sheets |
+| **NPC Creature Types** | Creature type assignment and targeting support |
+| **Mysterious Casting** | Hide configured NPC spellcasting details |
+| **NPC Item Sheets** | Dedicated NPC attack, special attack, and feature sheets |
+
+![NPCs — NPC Inventory, Creature Types, Mysterious Casting, Item Sheets](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/feature-manager-advanced-npcs.webp)
+
+#### Journal & Reference
+
+ProseMirror enrichers and journal helpers — 4 toggles, all independent.
+
+| Toggle | What it hides when off |
+|---|---|
+| **Display Cards** | NPC, item, and RollTable ProseMirror enrichers |
+| **Easy Reference Menu** | ProseMirror menu for cards, checks, and dice references |
+| **Journal Narration** | Send selected journal content to chat narration cards |
+| **Icon Picker** | Icon selection app used by pins and placeable notes |
+
+![Journal & Reference — Display Cards, Easy Reference Menu, Narration, Icon Picker](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/feature-manager-advanced-journal-reference.webp)
+
+#### Item Automation
+
+Item and spell sheet automation — one dependency: spell config panels need the Spell Activity System.
+
+| Toggle | What it hides when off |
+|---|---|
+| **Item Macro Engine** | Execute item, effect, spell, weapon, class, and NPC feature macros |
+| **Potion, Scroll, Wand & Staff Enhancements** | Enhanced magic-item sheets, wand charges, and staff spell management |
+| **Spell Configuration Panels** | Per-spell damage, targeting, summoning, and item-give controls — *also blocked when Spell Activity System is disabled* |
+
+![Item Automation — Item Macro Engine, Potion/Scroll/Wand Enhancements, Spell Configuration Panels](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/feature-manager-advanced-item-automation.webp)
+
+Leave these enabled unless you intend to turn off that underlying behavior. See [Settings Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Settings-Reference) for what each hidden key stores.
 
 ---
 
