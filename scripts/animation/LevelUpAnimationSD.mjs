@@ -6,6 +6,7 @@
 
 import { AnimationFxSD } from "./AnimationFxSD.mjs";
 import { initAnimationEffectDedup } from "./AnimationEffectDedupSD.mjs";
+import { getTokensForActor } from "./token-resolution.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -147,26 +148,6 @@ export async function stopLevelUpAnimation(token) {
 	const effectName = getEffectName(token);
 	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
 	console.log(`${MODULE_ID} | Stopped level-up animation for ${token.name}`);
-}
-
-/**
- * Get tokens for an actor on the current scene
- * @param {Actor} actor - The actor
- * @returns {Token[]} - Array of tokens
- */
-function getTokensForActor(actor) {
-	if (!canvas.scene) return [];
-
-	// For synthetic/unlinked tokens
-	if (actor.isToken) {
-		const token = canvas.tokens.get(actor.token?.id);
-		return token ? [token] : [];
-	}
-
-	// For linked tokens, find all tokens on the scene
-	return canvas.tokens.placeables.filter(t =>
-		t.actor?.id === actor.id && t.document.actorLink
-	);
 }
 
 /**

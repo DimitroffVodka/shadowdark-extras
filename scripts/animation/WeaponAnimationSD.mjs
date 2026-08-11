@@ -9,6 +9,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
 
 import { AnimationFxSD } from "./AnimationFxSD.mjs";
 import { initAnimationEffectDedup } from "./AnimationEffectDedupSD.mjs";
+import { getTokensForActor } from "./token-resolution.mjs";
 import { isItemPilesActor } from "../inventory/ItemPilesCompatSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -584,26 +585,6 @@ export async function sweepOrphanWeaponEffects() {
 export function isWeaponCanvasRestoreAllowed() {
 	const activeGM = globalThis.game?.users?.activeGM;
 	return !!activeGM && globalThis.game?.user?.id === activeGM?.id;
-}
-
-/**
- * Get tokens for an actor on the current scene
- * @param {Actor} actor - The actor
- * @returns {Token[]} - Array of tokens
- */
-function getTokensForActor(actor) {
-	if (!canvas.scene) return [];
-
-	// For synthetic/unlinked tokens
-	if (actor.isToken) {
-		const token = canvas.tokens.get(actor.token?.id);
-		return token ? [token] : [];
-	}
-
-	// For linked tokens, find all tokens on the scene
-	return canvas.tokens.placeables.filter(t =>
-		t.actor?.id === actor.id && t.document.actorLink
-	);
 }
 
 /**
