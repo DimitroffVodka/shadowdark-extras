@@ -1,7 +1,7 @@
 {
   "$comment": "Attribute interpolations that reach HTML without escaping. The gate blocks anything NEW, not the absolute count — see #125 for the ~90 pre-existing sites and their triage tiers. Entries are compared by file + attribute + expression, so a site that merely moves lines is silent. Line numbers are recorded for navigation only. This file should only ever SHRINK: regenerate after a cleanup commit with `npm run gate:attr-escape -- --write`. If it grows, something shipped an unescaped interpolation into markup that renders on every connected client.",
-  "total": 201,
-  "files": 56,
+  "total": 177,
+  "files": 50,
   "byFile": {
     "scripts/MaphubSD.mjs": [
       "href=localDirUrl (line 100)"
@@ -74,26 +74,16 @@
       "value=type.id (line 947)"
     ],
     "scripts/combat/damage-card-actions.mjs": [
-      "alt=name (line 282)",
-      "src=img (line 282)",
       "value=i (line 86)",
       "value=w.id (line 824)"
     ],
     "scripts/combat/damage-card-builders.mjs": [
-      "data-tooltip=rollBreakdown (line 777)",
-      "title=bonus.label || \"\" (line 513)",
       "title=die.faces (line 490)",
-      "title=die.faces (line 502)",
-      "title=labelTitle (line 502)",
-      "title=rollBreakdown (line 777)"
+      "title=die.faces (line 502)"
     ],
     "scripts/combat/damage-card.mjs": [
-      "title=bonus.label || \"\" (line 335)",
       "title=die.faces (line 324)",
       "title=die.faces (line 344)"
-    ],
-    "scripts/combat/hit-bonus.mjs": [
-      "data-tooltip=tooltip (line 73)"
     ],
     "scripts/combat/weapon-bonus-ui.mjs": [
       "placeholder=getPlaceholderForType(type) (line 86)",
@@ -127,11 +117,6 @@
       "value=save.dc || 12 (line 485)",
       "value=tmOpacity (line 333)",
       "value=tmTint || \"#ffffff\" (line 328)"
-    ],
-    "scripts/effects/focus-ui.mjs": [
-      "alt=focusEntry.spellName (line 20)",
-      "src=focusEntry.spellImg (line 20)",
-      "title=targetsList (line 63)"
     ],
     "scripts/hex/HexTooltipSD.mjs": [
       "src=img (line 1295)",
@@ -237,33 +222,12 @@
     "scripts/journal/easy-reference/EasyReferenceMenu.mjs": [
       "value=a (line 228)"
     ],
-    "scripts/macros/cleansing-weapon.mjs": [
-      "alt=displayName (line 107)",
-      "src=img (line 107)"
-    ],
-    "scripts/macros/holy-weapon.mjs": [
-      "alt=displayName (line 107)",
-      "src=img (line 107)"
-    ],
-    "scripts/macros/identify.mjs": [
-      "alt=maskedName (line 53)",
-      "src=img (line 53)"
-    ],
     "scripts/macros/shapechanger.mjs": [
-      "alt=name (line 262)",
       "src=icon (line 76)",
-      "src=img (line 262)",
-      "title=isSpecialType ? \"View details\" : \"Click to roll attack\" (line 875)",
-      "title=level (line 263)"
+      "title=isSpecialType ? \"View details\" : \"Click to roll attack\" (line 875)"
     ],
     "scripts/maphub-cave.mjs": [
       "href=localBaseDir (line 816)"
-    ],
-    "scripts/npc/MysteriousCasting.mjs": [
-      "data-tooltip=tooltip (line 53)",
-      "src=mysteriousIcon (line 142)",
-      "title=mysteriousLabel (line 142)",
-      "title=tooltip (line 54)"
     ],
     "scripts/npc/npc-sheet-inventory.mjs": [
       "value=type (line 145)"

@@ -70,7 +70,7 @@ function injectHitBonusDisplay(html, hitBonusInfo) {
 		}
 	}
 
-	const tooltipAttr = tooltip ? `data-tooltip="${tooltip}"` : "";
+	const tooltipAttr = tooltip ? `data-tooltip="${foundry.utils.escapeHTML(tooltip)}"` : "";
 
 	// Show "= N" only for a bonus that is entirely constant. A dice-valued bonus
 	// is rolled inside the d20 roll, so no total is known here; showing the

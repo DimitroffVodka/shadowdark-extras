@@ -17,7 +17,7 @@ export async function renderFocusEndedChat(focusEntry, reason) {
 	return `
 		<div class="shadowdark chat-card focus-ended">
 			<header class="card-header flexrow">
-				<img class="focus-ended-icon" src="${focusEntry.spellImg}" alt="${focusEntry.spellName}"/>
+				<img class="focus-ended-icon" src="${foundry.utils.escapeHTML(focusEntry.spellImg ?? "")}" alt="${foundry.utils.escapeHTML(focusEntry.spellName ?? "")}"/>
 				<div class="focus-ended-header-text">
 					<h3>${game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.focus_ended")}</h3>
 					<p class="spell-name">${focusEntry.spellName}</p>
@@ -60,7 +60,7 @@ export function buildFocusSpellsHtml(actor, activeFocus) {
 					<span class="sdx-focus-spell-name">${focus.spellName}</span>
 				</div>
 				<span class="sdx-focus-time" title="${game.i18n.localize("SHADOWDARK_EXTRAS.focus_tracker.time_focused")}">${focusedTime}</span>
-				<span class="sdx-focus-targets" title="${targetsList}">
+				<span class="sdx-focus-targets" title="${foundry.utils.escapeHTML(targetsList)}">
 					<i class="fas fa-bullseye"></i> ${targetCount}
 				</span>
 				<div class="actions">

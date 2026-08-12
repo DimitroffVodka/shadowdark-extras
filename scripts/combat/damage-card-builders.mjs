@@ -499,7 +499,7 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 		const extraClass = die.isCritBonus ? "sdx-crit-bonus" : "sdx-weapon-bonus";
 		const labelTitle = die.label ? `${die.label} - ` : "";
 		breakdownParts.push({
-			html: `<span class="sdx-die sdx-die-clickable ${die.cssClass} ${extraClass}" data-die-index="${dieIndex}" data-faces="${die.faces}" title="${labelTitle}Click to reroll this d${die.faces}">${die.value}</span>`,
+			html: `<span class="sdx-die sdx-die-clickable ${die.cssClass} ${extraClass}" data-die-index="${dieIndex}" data-faces="${die.faces}" title="${foundry.utils.escapeHTML(labelTitle)}Click to reroll this d${die.faces}">${die.value}</span>`,
 			value: die.value,
 			faces: die.faces,
 		});
@@ -510,7 +510,7 @@ async function buildRollBreakdown(message, weaponBonusDamage = null, isCritical 
 	for (const bonus of bonuses) {
 		const absValue = Math.abs(bonus.value);
 		breakdownParts.push({
-			html: `<span class="sdx-bonus-val" title="${bonus.label || ""}">${absValue}</span>`,
+			html: `<span class="sdx-bonus-val" title="${foundry.utils.escapeHTML(bonus.label || "")}">${absValue}</span>`,
 			value: bonus.value,
 		});
 	}
@@ -774,7 +774,8 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 					}).join(" + ");
 					rollBreakdown = `${perTargetDamage.formula} = ${diceBreakdown || targetSpecificDamage}`;
 				}
-				const tooltipAttr = rollBreakdown ? `data-tooltip="${rollBreakdown}" title="${rollBreakdown}"` : "";
+				const escapedBreakdown = foundry.utils.escapeHTML(rollBreakdown ?? "");
+				const tooltipAttr = rollBreakdown ? `data-tooltip="${escapedBreakdown}" title="${escapedBreakdown}"` : "";
 
 				// Only show damage preview if there's actual damage/healing
 				let damagePreviewHtml = "";

@@ -50,8 +50,8 @@ export function initMysteriousCasting() {
 
 		const toggleHtml = `
             <a class="sdx-mysterious-toggle ${activeClass}"
-               data-tooltip="${tooltip}"
-               title="${tooltip}">
+               data-tooltip="${foundry.utils.escapeHTML(tooltip)}"
+               title="${foundry.utils.escapeHTML(tooltip)}">
                 <i class="fas fa-mask"></i>
             </a>`;
 
@@ -139,7 +139,7 @@ export function initMysteriousCasting() {
 		const newContent = `
             <div ${wrapperAttributes}>
                 <header class="card-header flexrow">
-                    <img src="${mysteriousIcon}" title="${mysteriousLabel}" width="36" height="36"/>
+                    <img src="${foundry.utils.escapeHTML(mysteriousIcon)}" title="${foundry.utils.escapeHTML(mysteriousLabel)}" width="36" height="36"/>
                     <h3 class="item-name">${mysteriousLabel}</h3>
                 </header>
                 <div class="card-content">

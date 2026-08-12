@@ -332,7 +332,7 @@ function attachDamageCardListeners(html, messageId) {
 			for (const bonus of bonuses) {
 				const absValue = Math.abs(bonus.value);
 				breakdownParts.push({
-					html: `<span class="sdx-bonus-val" title="${bonus.label || ""}">${absValue}</span>`,
+					html: `<span class="sdx-bonus-val" title="${foundry.utils.escapeHTML(bonus.label || "")}">${absValue}</span>`,
 					value: bonus.value,
 				});
 			}

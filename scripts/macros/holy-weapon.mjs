@@ -104,7 +104,7 @@ export async function showHolyWeaponDialog(casterActor, casterItem, targetActor,
 			return `
                 <div class="sdx-spell-weapon-item" data-weapon-id="${weapon.id}">
                     <div class="sdx-spell-weapon-img">
-                        <img src="${img}" alt="${displayName}">
+                        <img src="${foundry.utils.escapeHTML(img)}" alt="${foundry.utils.escapeHTML(displayName)}">
                         ${badge}
                     </div>
                     <div class="sdx-spell-weapon-name">${displayName}</div>
