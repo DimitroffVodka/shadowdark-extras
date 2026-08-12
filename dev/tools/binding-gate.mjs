@@ -58,14 +58,29 @@ export function collectUnbound() {
   });
 
   const byFile = {};
+  const parseErrors = [];
   let total = 0;
   for (const file of files) {
-    const hits = findUnboundIdentifiers(readFileSync(file, "utf8"));
+    let hits;
+    try {
+      hits = findUnboundIdentifiers(readFileSync(file, "utf8"));
+    }
+    catch (err) {
+      // The parameter pass parses; a file it cannot read contributes no
+      // bindings, so scanning it anyway would report every parameter in it as
+      // unbound. Record and let main() block rather than guess.
+      parseErrors.push(`${toRepoPath(file)}: ${err.message}`);
+      continue;
+    }
     if (hits.length === 0) continue;
     byFile[toRepoPath(file)] = hits.map((h) => h.name).sort();
     total += hits.length;
   }
-  return { total, byFile: Object.fromEntries(Object.keys(byFile).sort().map((k) => [k, byFile[k]])) };
+  return {
+    total,
+    byFile: Object.fromEntries(Object.keys(byFile).sort().map((k) => [k, byFile[k]])),
+    parseErrors,
+  };
 }
 
 export function diffUnbound(baseline, current) {
@@ -81,6 +96,19 @@ export function diffUnbound(baseline, current) {
 
 function main() {
   const current = collectUnbound();
+
+  // Refuse both to report and to regenerate while any file failed to parse. A
+  // baseline written from a partial scan is worse than no baseline: it looks
+  // authoritative and is missing whole files.
+  if (current.parseErrors.length > 0) {
+    for (const error of current.parseErrors) console.log(`  ${error}`);
+    console.log(
+      `[BLOCK] ${current.parseErrors.length} file(s) failed to parse. The parameter pass binds nothing for `
+        + "them, so their findings would be noise. Fix the syntax, or raise acorn's ecmaVersion if the file "
+        + "uses newer syntax than the parser is pinned to.",
+    );
+    process.exit(1);
+  }
 
   if (process.argv.includes("--write")) {
     mkdirSync(new URL(".", SNAPSHOT_PATH), { recursive: true });

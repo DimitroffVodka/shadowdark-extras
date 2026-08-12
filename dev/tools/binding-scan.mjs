@@ -1,3 +1,5 @@
+import * as acorn from "acorn";
+
 import { maskSource } from "./import-scan.mjs";
 
 /**
@@ -135,156 +137,101 @@ function boundNames(masked) {
   }
   for (const m of masked.matchAll(/import\s+([A-Za-z_$][\w$]*)/g)) add(m[1]);
   for (const m of masked.matchAll(/import\s*\*\s*as\s+([A-Za-z_$][\w$]*)/g)) add(m[1]);
-  // function parameters and arrow parameters, including destructured ones —
-  // `fn({ a, b: c })` binds a and c. Without stripping the braces each part
-  // still carries one, fails the identifier test, and the name reads as unbound
-  // everywhere it is used.
-  // `\)[^\S\n]*`, not `\)\s*`: allowing a newline between the `)` and the `{`
-  // made a call statement followed by an ASI-separated block read as a
-  // parameter list — `configure({ MISSING_CONST })\n{ … }` bound MISSING_CONST
-  // and hid a genuine ReferenceError. Pre-dates the destructuring work; the
-  // scanner at 9e2b396f is equally silent on it. Costs a false positive on an
-  // Allman-style body, which is the safe direction for this gate.
-  for (const m of masked.matchAll(/(?:function\s*\*?\s*[A-Za-z_$][\w$]*)?\s*\(([^()]*)\)[^\S\n]*(?:=>|\{)/g)) {
-    for (const part of m[1].split(",")) {
-      const name = part
-        .replace(/[{}[\]]/g, " ")
-        .trim()
-        .split("=")[0]      // default value
-        .split(":").pop()   // `{ a: localName }` binds localName
-        .trim()
-        .replace(/^\.\.\./, "");
-      if (/^[A-Za-z_$][\w$]*$/.test(name)) add(name);
-    }
-  }
-  for (const m of masked.matchAll(/([A-Za-z_$][\w$]*)\s*=>/g)) add(m[1]);
+  // Parameters are NOT matched here. They come from a real parse — see
+  // parameterBindings below and the docblock on why the lexical version could
+  // not be repaired. `catch` stays lexical: its binding is a single unambiguous
+  // form that never leaked, and #129 scopes the parser to parameters only.
   for (const m of masked.matchAll(/\bcatch\s*\(\s*([A-Za-z_$][\w$]*)/g)) add(m[1]);
-  addDestructuredParamNames(masked, add);
   return bound;
 }
 
 /**
- * Destructured PARAMETERS whose defaults contain parentheses.
+ * Parameter bindings, from a real parse.
  *
- * The parameter pass above matches `\(([^()]*)\)` — a parameter list with no
- * nested parens. That excludes the dependency-injection shape this codebase
- * uses for testability:
+ * WHY A PARSER, FOR THIS ONE DECISION. The lexical version asked "is this
+ * group's closing `)` followed by `=>` or `{`, with no line terminator?" That
+ * question cannot in principle separate
  *
- *   export async function createPartyFromSelectedTokens({
- *     createActor = data => CONFIG.Actor.documentClass.create(data),
- *     placeToken = placeActorTokenWithPreview,
- *   } = {}) {
+ *   function f({ a })      // Allman body -> IS a parameter list
+ *   { return a; }
  *
- * The default value contains `(data)`, so the whole list fails to match and
- * NOTHING in it binds. Both names then read as unbound at their call sites and
- * the gate blocks a PR over correct code — which is what happened on #126.
+ *   configure({ a })       // call statement, then a block -> is NOT
+ *   { console.log(a); }
  *
- * Brace-balanced rather than regex, because the defaults can contain arbitrary
- * nesting. Only the BINDING half of each part is taken (left of `=`, right of
- * `:`), so an unbound helper called inside a default value still reports.
+ * The no-line-terminator rule told them apart only because this tree does not
+ * write Allman-style function bodies. That is a property of the codebase, not
+ * of the language. Across #126 and #127 the lexical rule leaked four times —
+ * call-argument objects, `for ({ x } of …)`, `for await ({ x } of …)`, and the
+ * ASI call-then-block above — and each fix leaked again in a new shape. Every
+ * one was a FALSE NEGATIVE: a genuine unbound reference stopped being reported
+ * and a ReferenceError would ship past a green gate. #129 replaced the decision
+ * rather than the pattern.
+ *
+ * Scope is deliberately narrow. This resolves PARAMETER BINDINGS only, not
+ * scopes: full scope resolution without a scope-accurate implementation drowns
+ * in false positives, which the module docblock rejects for good reason.
+ *
+ * acorn, not espree. #129 proposed espree on the grounds that it is already a
+ * devDependency — it is not. `package.json` declares acorn and eslint; espree
+ * is present only as a hoisted transitive of eslint, so building on it would
+ * deepen a dependency this repo never declared. acorn is already the parser in
+ * flag-scan.mjs, which keeps dev/tools on one.
+ *
+ * @param {string} source ORIGINAL source, not masked — a parser handles strings
+ *   and comments natively, and masking would corrupt the very tokens it reads.
+ * @returns {{names: Set<string>} | {parseError: string}}
  */
-function addDestructuredParamNames(masked, add) {
-  for (let i = 0; i < masked.length; i += 1) {
-    if (masked[i] !== "(") continue;
-    let open = i + 1;
-    while (open < masked.length && /\s/.test(masked[open])) open += 1;
-    if (masked[open] !== "{") continue;
-
-    let depth = 0;
-    let close = open;
-    for (; close < masked.length; close += 1) {
-      if (masked[close] === "{") depth += 1;
-      else if (masked[close] === "}") { depth -= 1; if (depth === 0) break; }
-    }
-    if (depth !== 0) continue;
-
-    // A control-flow head is never a parameter list, and its `)` IS followed by
-    // a body `{`, so the parameter-list test below cannot tell it apart:
-    // `if ({ handler }) { … }` would bind handler and silence a genuine unbound
-    // reference elsewhere. `for ({ a } of list)` is the form that occurs in real
-    // code; the `if`/`while` variants are pathological but cost nothing to skip.
-    // `for await (` must be matched explicitly: the token immediately before the
-    // "(" is `await`, so a bare keyword list lets it through and silences
-    // `for await ({ X } of …)`. maskSource turns comments into whitespace, so
-    // `\s+` also covers `for /* c */ await (`.
-    const beforeParen = masked.slice(0, i).replace(/\s+$/, "");
-    if (/(?:\b(?:if|while|switch|catch)|\bfor(?:\s+await)?)$/.test(beforeParen)) { i = close; continue; }
-
-    // MUST be a parameter list, not a call argument. `(` followed by `{` also
-    // matches `configure({ onDone: handler })`, and binding an argument object's
-    // names silently swallows a genuine unbound reference to the same name
-    // elsewhere in the module — the exact false negative this gate exists to
-    // catch, reintroduced by the fix for the false positive. A parameter list
-    // is the only one whose closing `)` is followed by `=>` or a body `{`; the
-    // same test the regex-based parameter pass in boundNames uses.
-    let end = close;
-    let parens = 0;
-    for (let j = i; j < masked.length; j += 1) {
-      if (masked[j] === "(") parens += 1;
-      else if (masked[j] === ")") { parens -= 1; if (parens === 0) { end = j; break; } }
-    }
-    // No LINE TERMINATOR between ")" and "{". A call statement followed by a
-    // block is valid JS via ASI, and it throws at runtime:
-    //
-    //   configure({ MISSING_CONST })
-    //   { console.log(MISSING_CONST); }   // ReferenceError
-    //
-    // Skipping the newline made that read as a parameter list and silenced the
-    // reference. A lexical `){` test cannot tell that from an Allman-style body,
-    // so the newline is the only signal available without a parser. The cost is
-    // a FALSE POSITIVE on an Allman-style destructured parameter list, which is
-    // the safe direction — it blocks loudly instead of hiding a ReferenceError.
-    // Arrow bodies are unaffected: JS forbids a line terminator before "=>".
-    let after = end + 1;
-    while (after < masked.length && /[^\S\n]/.test(masked[after])) after += 1;
-    const isParamList = masked[after] === "{" || masked.slice(after, after + 2) === "=>";
-    if (!isParamList) { i = close; continue; }
-
-    for (const name of destructuredBindingNames(masked.slice(open + 1, close))) add(name);
-    i = close;
+export function parameterBindings(source) {
+  let ast;
+  try {
+    ast = acorn.parse(source, { ecmaVersion: 2023, sourceType: "module" });
   }
-}
-
-/** Binding names declared by one destructuring body, nested patterns included. */
-function destructuredBindingNames(body) {
-  const names = [];
-  for (const part of splitTopLevel(body)) {
-    // Left of the first default `=` — never `=>`, `==`, `<=`, `>=`, `!=`.
-    let binding = part;
-    for (let i = 0; i < part.length; i += 1) {
-      if (part[i] !== "=") continue;
-      if (part[i + 1] === "=" || part[i + 1] === ">") break;
-      if ("=!<>".includes(part[i - 1])) continue;
-      binding = part.slice(0, i);
-      break;
-    }
-    // `{ key: local }` binds local; `{ key: { nested } }` recurses.
-    const colon = binding.indexOf(":");
-    if (colon !== -1) binding = binding.slice(colon + 1);
-    binding = binding.trim().replace(/^\.\.\./, "").trim();
-
-    if (binding.startsWith("{") || binding.startsWith("[")) {
-      names.push(...destructuredBindingNames(binding.replace(/^[{[]|[\]}]$/g, "")));
-      continue;
-    }
-    if (/^[A-Za-z_$][\w$]*$/.test(binding)) names.push(binding);
+  catch (err) {
+    // FAILS LOUDLY, AND THE CALLER DECIDES — the same shape as flag-scan.mjs.
+    // Swallowing this would silently bind nothing for the file, so every
+    // parameter in it would read as unbound: a wall of false positives, or
+    // worse, a baseline regenerated to accept them.
+    return { parseError: err.message ?? String(err) };
   }
-  return names;
-}
 
-/** Split on commas that sit outside every (), {} and [] pair. */
-function splitTopLevel(body) {
-  const parts = [];
-  let depth = 0;
-  let start = 0;
-  for (let i = 0; i < body.length; i += 1) {
-    const c = body[i];
-    if ("({[".includes(c)) depth += 1;
-    else if (")}]".includes(c)) depth -= 1;
-    else if (c === "," && depth === 0) { parts.push(body.slice(start, i)); start = i + 1; }
-  }
-  parts.push(body.slice(start));
-  return parts.filter((p) => p.trim() !== "");
+  const names = new Set();
+
+  /** Collect every binding identifier a parameter pattern introduces. */
+  const collect = (node) => {
+    if (!node) return;
+    switch (node.type) {
+      case "Identifier": names.add(node.name); break;
+      case "ObjectPattern":
+        for (const property of node.properties) {
+          // `{ key: local }` binds local; `{ ...rest }` is a RestElement.
+          collect(property.type === "Property" ? property.value : property);
+        }
+        break;
+      // Array patterns can hold holes: `([, second]) => …` has a null element.
+      case "ArrayPattern": for (const element of node.elements) collect(element); break;
+      case "AssignmentPattern": collect(node.left); break;
+      case "RestElement": collect(node.argument); break;
+      default: break;
+    }
+  };
+
+  const FUNCTIONS = new Set(["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"]);
+
+  // Methods and object-literal function properties are reached through this
+  // walk too: a MethodDefinition's or Property's `value` IS a FunctionExpression
+  // node, so it needs no case of its own.
+  const visit = (node) => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) { for (const child of node) visit(child); return; }
+    if (typeof node.type === "string" && FUNCTIONS.has(node.type)) for (const param of node.params) collect(param);
+    for (const key of Object.keys(node)) {
+      if (key === "type" || key === "start" || key === "end" || key === "loc") continue;
+      visit(node[key]);
+    }
+  };
+  visit(ast);
+
+  return { names };
 }
 
 /**
@@ -293,6 +240,17 @@ function splitTopLevel(body) {
 export function findUnboundIdentifiers(source) {
   const { masked } = maskSource(source);
   const bound = boundNames(masked);
+
+  // Parameters come from the ORIGINAL source: masking neutralises strings and
+  // comments for the regex passes, which a parser does natively and which would
+  // corrupt what it reads. The reporting passes below stay on `masked`.
+  const parameters = parameterBindings(source);
+  if (parameters.parseError) {
+    throw new Error(
+      `binding-scan: parse failed, so no parameter binds and every parameter would read as unbound — ${parameters.parseError}`,
+    );
+  }
+  for (const name of parameters.names) bound.add(name);
   const lineStarts = [0];
   for (let i = 0; i < masked.length; i += 1) if (masked[i] === "\n") lineStarts.push(i + 1);
   const lineOf = (o) => { let lo = 0, hi = lineStarts.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (lineStarts[m] <= o) lo = m; else hi = m - 1; } return lo + 1; };

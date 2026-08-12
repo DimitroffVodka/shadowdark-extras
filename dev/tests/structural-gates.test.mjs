@@ -14,7 +14,7 @@ import {
 } from "../tools/registration-snapshot.mjs";
 import { collectEsmoduleExports, diffExports } from "../tools/api-export-snapshot.mjs";
 import { collectSettingsKeys, diffSettings } from "../tools/settings-snapshot.mjs";
-import { findUnboundIdentifiers } from "../tools/binding-scan.mjs";
+import { findUnboundIdentifiers, parameterBindings } from "../tools/binding-scan.mjs";
 import { scanImports } from "../tools/import-scan.mjs";
 import { scanUnescapedAttrs } from "../tools/attr-escape-scan.mjs";
 import { collectUnescaped, diffUnescaped } from "../tools/attr-escape-gate.mjs";
@@ -1046,4 +1046,103 @@ test("attr-escape gate: a hand-rolled quote replace is still reported", () => {
   const findings = scanUnescapedAttrs('const h = `<img alt="${name.replace(/"/g, "&quot;")}">`;');
 
   assert.equal(findings.length, 1);
+});
+
+/**
+ * #129 — the parameter decision now comes from acorn. The four shapes that
+ * leaked through the lexical rule across #126 and #127 are pinned below and
+ * must still REPORT: every one of them was a false negative, which is the
+ * failure mode that lets a ReferenceError ship past a green gate.
+ */
+test("binding gate (AST): a call-argument object still does not bind its names", () => {
+  const source = [
+    "function configure() {}",
+    "configure({ onDone: MISSING_HELPER });",
+  ].join("\n");
+
+  assert.ok(findUnboundIdentifiers(source).map((u) => u.name).includes("MISSING_HELPER"));
+});
+
+test("binding gate (AST): `for ({ x } of …)` is not a parameter list", () => {
+  const source = [
+    "export function f(list) {",
+    "\tfor ({ a } of list) { void a; }",
+    "\treturn MISSING_CONST;",
+    "}",
+  ].join("\n");
+
+  assert.ok(findUnboundIdentifiers(source).map((u) => u.name).includes("MISSING_CONST"));
+});
+
+test("binding gate (AST): `for await ({ x } of …)` is not a parameter list", () => {
+  const source = [
+    "export async function f(list) {",
+    "\tfor await ({ MISSING_CONST } of list) { break; }",
+    "\treturn MISSING_CONST;",
+    "}",
+  ].join("\n");
+
+  assert.ok(findUnboundIdentifiers(source).map((u) => u.name).includes("MISSING_CONST"));
+});
+
+test("binding gate (AST): ASI call-then-block still reports", () => {
+  const source = [
+    "function configure() {}",
+    "configure({ MISSING_CONST })",
+    "{ console.log(MISSING_CONST); }",
+  ].join("\n");
+
+  assert.ok(findUnboundIdentifiers(source).map((u) => u.name).includes("MISSING_CONST"));
+});
+
+/**
+ * The case the lexical rule could not do in either direction. Its test was
+ * "closing `)` followed by `{` with no line terminator", so an Allman body was
+ * a false POSITIVE — the parameter did not bind and every use of it reported.
+ */
+test("binding gate (AST): an Allman-style function body binds its parameters", () => {
+  const source = [
+    "export function f({ a })",
+    "{",
+    "\treturn a;",
+    "}",
+  ].join("\n");
+
+  assert.deepEqual(findUnboundIdentifiers(source).map((u) => u.name), []);
+});
+
+test("binding gate (AST): a parameter whose default is an arrow binds", () => {
+  // The #126 false-positive shape: the default contains parens, so the lexical
+  // parameter pass failed to match the list and NOTHING in it bound. Two real
+  // sites in this tree (traceBoundaryLoops, normalizeCarousingLogResults) were
+  // reported for exactly this until the parser replaced the rule.
+  const source = [
+    "export function traceBoundaryLoops(cells, isFloor = k => cells.has(k), isCave = () => true) {",
+    "\treturn isFloor(1) && isCave(2);",
+    "}",
+  ].join("\n");
+
+  assert.deepEqual(findUnboundIdentifiers(source).map((u) => u.name), []);
+});
+
+test("binding gate (AST): nested, defaulted and rest patterns all bind", () => {
+  const source = [
+    "export function f({ a: { b }, c = 1, ...rest }, [d, , e], ...more) {",
+    "\treturn [b, c, rest, d, e, more];",
+    "}",
+    "export const g = ({ h }) => h;",
+    "export class K { m({ i }) { return i; } }",
+    "const obj = { n({ j }) { return j; } };",
+    "void obj;",
+  ].join("\n");
+
+  assert.deepEqual(findUnboundIdentifiers(source).map((u) => u.name), []);
+});
+
+test("binding gate (AST): a parse failure is loud, never a silent empty result", () => {
+  // Swallowing it would bind nothing for the file, so every parameter in it
+  // would read as unbound — a wall of false positives, or a baseline
+  // regenerated to accept them.
+  assert.throws(() => findUnboundIdentifiers("export function ("), /parse failed/);
+  assert.ok(parameterBindings("export function (").parseError);
 });
