@@ -7,328 +7,359 @@
  *     src="\$\{[A-Za-z_$][A-Za-z0-9_$]*\.(img|image)\}"
  *
  * It required the interpolation to be exactly `${identifier.img}`. Every one of
- * the ~90 unescaped sites found in #125 fails that shape — they use a local
- * (`${img}`), a fallback (`${doc.img || "icons/svg/mystery-man.svg"}`), or a
- * differently-named property (`${durationEntry.spellImg}`, `${condDef.icon}`).
- * So the scan matched nothing at all and reported the class clean, which is
- * worse than having no gate: it reads as green. A chat card renders on every
- * connected client, so a player who renames a spell to `x" onerror="alert(1)`
- * gets script execution in the GM's session.
+ * the ~90 unescaped sites found in #125 fails that shape, so it matched nothing
+ * and reported the class clean, which is worse than no gate: it reads as green.
+ * A chat card renders on every connected client, so a player who renames a spell
+ * to `x" onerror="alert(1)` gets script execution in the GM's session.
  *
- * WHAT IT MATCHES. Any `${...}` inside a quoted value — single or double — of
- * one of ATTRIBUTES or any `data-*`, with optional whitespace around the `=`.
- * Values are read with brace-depth tracking rather than a regex, which is what
- * lets it see `${doc.img || "fallback.svg"}` and nested template literals that a
- * `[^}]*` pattern truncates at the first `}`. A value may span lines.
+ * WHY THIS IS A PARSER AND NOT A TEXT SCANNER ANY MORE. The first three
+ * versions counted brace depth over text and decided escaping by matching the
+ * expression string. Review found eight distinct false negatives across two
+ * rounds, and they were all one defect wearing different clothes — a textual
+ * guess about JavaScript structure. Each fix bought one shape and left the
+ * class:
  *
- * Each of those was a blind spot in the first version, and every one was found
- * by review rather than by the gate: `title = "${…}"` with spaces, a value
- * broken across lines, `data-actor-name="${targetActor.name}"` on a chat card,
- * and three single-quoted attributes. The pattern to notice is that all four
- * were excluded by a rule written as "this tree doesn't do that" — a claim about
- * the codebase, not the language, and one that stops being true silently.
+ *   - `<` and `>` inside a quoted value read as an unterminated quote, so
+ *     `title="level > ${doc.name}"` was skipped in silence
+ *   - `${x || "{"}` raised the depth count and never brought it back down
+ *   - a value whose first interpolation sat past a length cap vanished
+ *   - `${(escapeHTML(raw))}` and an escape call followed by a comment reported,
+ *     because parens and comments are not part of a call expression's extent
+ *   - an apostrophe inside a double-quoted string read as a mismeasured value
  *
- * WHAT IT DELIBERATELY SKIPS.
+ * All of those are free here: acorn already knows where an expression starts
+ * and ends, what is a comment, and what is a string. The only thing still done
+ * textually is walking the HTML inside the template's literal chunks, which
+ * really is text.
  *
- *   1. Expressions already escaped: a call to an escape helper, or a bare local
- *      RESOLVED to a `const x = escapeHTML(…)` declaration in scope. See
- *      isEscaped — the resolution is scope-aware and deliberately not a name
- *      test, because the version that trusted `escaped*` names both accepted
- *      things it should not and reported correct code, and "fixing" the latter
- *      double-escapes.
- *   2. Expressions built only from `game.i18n.localize` / `game.i18n.format`
- *      and string literals. Those are module-owned text from our own lang
- *      files, not user data.
+ * WHAT IT MATCHES. Any interpolation inside a quoted value — single or double —
+ * of one of ATTRIBUTES or any `data-*`, with any whitespace around the `=`,
+ * across any number of lines. A template literal nested inside an interpolation
+ * is visited in its own right, so its attributes are covered too.
  *
- * Everything else is reported and lands in the baseline. That is deliberate:
- * excluding more shapes by heuristic is how a scanner acquires false NEGATIVES,
- * and a false negative here ships an XSS past a green gate. A noisy baseline is
- * reviewable; a blind spot is not.
+ * WHAT IT SKIPS, and only this:
  *
- * KNOWN LIMITS, kept short because a long list of them is a sign the design is
- * wrong. Brace depth is counted textually, so an unbalanced brace inside a
- * string literal (`${x || "}"}`) mis-measures where the expression ends; it
- * reports a wrong entry rather than going silent. `style` is not scanned — CSS
- * injection is a different analysis. Escaping is resolved one declaration deep,
- * so `const a = escapeHTML(x); const b = a;` leaves `${b}` reported.
+ *   1. An expression that IS a call to a named escape helper (ESCAPE_NAMES), or
+ *      an identifier resolving to a declaration initialised from one. The
+ *      resolution is real scope analysis — see declaredEscapedNames — because
+ *      the versions that guessed produced a user-visible double-escaping bug and
+ *      six unsound shadowing shapes.
+ *   2. An expression that can only produce module-owned text: a literal, or a
+ *      `game.i18n.localize` / `game.i18n.format` call over literals.
+ *
+ * Everything else reports. A false negative here ships an XSS past a green gate,
+ * so where the two are in tension this errs loudly.
  */
 
 import * as acorn from "acorn";
 
-/**
- * Attributes this tree interpolates user data into.
- *
- * `value` was added after the first pass: #125 counted src/alt/title/
- * data-tooltip, but the hidden inputs that back the summon and item-give
- * profiles store an actor name straight into `value="${profile.creatureName}"`,
- * and a name carrying `">` closes the tag and injects an element. That is 150+
- * sites, so adding it grew the baseline once — a widening is a deliberate,
- * reviewed event, not the drift the "should only ever shrink" note warns about.
- *
- * data-tooltip is no longer listed here because ALL `data-*` are matched by the
- * pattern below — see the note there.
- */
-const ATTRIBUTES = ["src", "alt", "title", "value", "href", "placeholder"];
-
-// ANY data-* attribute, not a named few. The first pass listed data-tooltip
-// alone; review found `data-actor-name="${targetActor.name}"` on a chat card,
-// which is the same breakout and was invisible because the attribute happened
-// not to be on the list. Enumerating attribute names is how a gate acquires a
-// blind spot shaped like whatever nobody thought of.
-//
-// Whitespace is allowed around the `=`: `title = "${…}"` is valid HTML and the
-// tighter pattern skipped it silently.
-const ATTRIBUTE_START = new RegExp(
-  `\\b(${ATTRIBUTES.join("|")}|data-[a-z][a-z0-9-]*)\\s*=\\s*(["'])`,
-  "g",
-);
-
-/** A call to an escape helper: foundry.utils.escapeHTML, esc, escapeAttr, … */
-const ESCAPE_CALL = /\besc[A-Za-z]*\s*\(/;
-
-/** Runaway guard for an attribute value that never closes its quote. */
-const MAX_VALUE_LENGTH = 4000;
+/** Attributes this tree interpolates user data into, plus any `data-*`. */
+const ATTRIBUTES = new Set(["src", "alt", "title", "value", "href", "placeholder"]);
 
 /**
- * Whether an interpolated expression is already escaped.
+ * Escape helpers BY NAME, exhaustively.
  *
- * WHY THIS IS NOT A NAME TEST ANY MORE. It used to also accept any identifier
- * matching `escaped[A-Z]`, which trusts a name rather than a fact. Worse, it
- * could not see the OPPOSITE case: this tree overwhelmingly escapes at
- * assignment and interpolates a plain local —
- *
- *   const img = foundry.utils.escapeHTML(actor.img);
- *   …  `<img src="${img}">`                       // correct, but read as raw
- *
- * so every such site was reported, and "fixing" one by wrapping it again
- * double-escapes: a name containing `&` renders as `&amp;amp;`. That happened
- * five times in one pass before review caught it. A scanner whose false
- * positives lead directly to a user-visible bug is not paying for itself.
- *
- * So an identifier is resolved against its DECLARATION, innermost scope first.
- * A `const x = escapeHTML(…)` in scope makes `${x}` escaped; a `const x = raw`
- * shadowing it in an inner scope makes it raw again. Unresolvable identifiers
- * stay reported, which is the safe direction.
+ * This used to be `/\besc[A-Za-z]*\(/`, which accepts `escalate(doc.name)` and
+ * `service.escalate(doc.name)` — ordinary verbs that escape nothing. A prefix
+ * pattern is name-trust with extra steps; an explicit list is the only version
+ * of this that means anything. Extend it deliberately.
  */
-function isEscaped(expression, offset, escapedNames) {
-  const bare = expression.trim();
+const ESCAPE_NAMES = new Set([
+	"escapeHTML", "escapeHtml", "esc", "escapeAttr", "escapeAttribute",
+	// skills-box.mjs defines its own, and it is a full five-character escape.
+	"escapeHtmlSkills",
+]);
 
-  // The WHOLE expression must be the escape call, not merely contain one.
-  // `${escapeHTML("") + doc.name}` contains one and is completely unescaped;
-  // a substring test accepted it. Parsing is the only honest way to ask
-  // "is this expression a call to an escape helper".
-  if (ESCAPE_CALL.test(bare)) {
-    try {
-      const parsed = acorn.parseExpressionAt(bare, 0, { ecmaVersion: 2023 });
-      const isWholeCall = parsed.type === "CallExpression"
-        && parsed.end === bare.length
-        && ESCAPE_CALL.test(`${bare.slice(parsed.callee.start, parsed.callee.end)}(`);
-      if (isWholeCall) return true;
-    }
-    catch {
-      // Unparseable on its own (a template fragment, say). Fall through and
-      // report, which is the safe direction.
-    }
-    return false;
-  }
+/** Does this callee name an escape helper — bare, or as a member call? */
+function isEscapeCallee(callee) {
+	if (!callee) return false;
+	if (callee.type === "Identifier") return ESCAPE_NAMES.has(callee.name);
+	if (callee.type === "MemberExpression" && !callee.computed && callee.property?.type === "Identifier") {
+		return ESCAPE_NAMES.has(callee.property.name);
+	}
+	return false;
+}
 
-  if (!/^[A-Za-z_$][\w$]*$/.test(bare)) return false;
-  return escapedNames(offset, bare);
+const isEscapeCall = (node) => node?.type === "CallExpression" && isEscapeCallee(node.callee);
+
+/** Walk every node in an ESTree tree. */
+function visit(node, enter) {
+	if (!node || typeof node !== "object") return;
+	if (Array.isArray(node)) { for (const child of node) visit(child, enter); return; }
+	if (typeof node.type !== "string") return;
+	enter(node);
+	for (const key of Object.keys(node)) {
+		if (key === "type" || key === "start" || key === "end" || key === "loc") continue;
+		visit(node[key], enter);
+	}
 }
 
 /**
- * Resolve, for any offset, whether a name is bound there to an escape call.
+ * Which names are bound to an escape call at any given offset.
  *
- * Scope-aware on purpose. A file-scoped answer would be a FALSE NEGATIVE
- * generator: a name escaped in one function and raw in another would read as
- * escaped everywhere, hiding the raw one. That is the failure this whole gate
- * exists to prevent, so it is not a trade worth making for less code.
+ * REAL SCOPE ANALYSIS, because six review findings came from approximating it.
+ * `var` hoists to the nearest FUNCTION; `let`/`const`/`class`, parameters and a
+ * catch binding belong to the nearest BLOCK. Blocks include switch bodies, class
+ * static blocks, loop heads and catch clauses — every one of those was a hole.
  *
- * @returns {(offset: number, name: string) => boolean}
+ * Any write that is not itself an escape call marks the name unescaped,
+ * destructuring assignment included. Flow-insensitive on purpose: it can only
+ * turn an accept into a report, never the reverse, which is the only direction
+ * this gate can afford to be wrong in.
  */
-function escapedNameResolver(source) {
-  let ast;
-  try {
-    ast = acorn.parse(source, { ecmaVersion: 2023, sourceType: "module" });
-  }
-  catch {
-    // No resolution available. Every bare local then reports, which is noisy
-    // but safe — and the gate's own parse failure surfaces elsewhere.
-    return () => false;
-  }
+function declaredEscapedNames(ast) {
+	const scopes = [];
+	const makeScope = (node, kind, parent) => {
+		const scope = { start: node.start, end: node.end, kind, parent, names: new Map() };
+		scopes.push(scope);
+		return scope;
+	};
 
-  // One entry per scope. BLOCKS are scopes too, not just functions: the first
-  // version recorded every declaration into the enclosing FUNCTION, so a
-  // block-local `const x = escapeHTML(…)` overwrote a raw outer `x` for the
-  // whole function and silenced its uses. That is a false negative, which is
-  // the direction this gate cannot afford.
-  const scopes = [{ start: ast.start, end: ast.end, names: new Map() }];
-  const SCOPE_TYPES = new Set([
-    "FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression",
-    "BlockStatement", "ForStatement", "ForOfStatement", "ForInStatement", "CatchClause",
-  ]);
+	const FUNCTIONS = new Set(["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"]);
+	const BLOCKS = new Set([
+		"BlockStatement", "StaticBlock", "SwitchStatement", "CatchClause",
+		"ForStatement", "ForOfStatement", "ForInStatement", "ClassBody",
+	]);
 
-  /** Every binding identifier a parameter pattern introduces — none escaped. */
-  const declareParams = (node, scope) => {
-    const walkPattern = (pattern) => {
-      if (!pattern) return;
-      switch (pattern.type) {
-        case "Identifier": scope.names.set(pattern.name, false); break;
-        case "ObjectPattern":
-          for (const property of pattern.properties) {
-            walkPattern(property.type === "Property" ? property.value : property);
-          }
-          break;
-        case "ArrayPattern": for (const element of pattern.elements) walkPattern(element); break;
-        case "AssignmentPattern": walkPattern(pattern.left); break;
-        case "RestElement": walkPattern(pattern.argument); break;
-        default: break;
-      }
-    };
-    for (const param of node.params ?? []) walkPattern(param);
-  };
+	const root = makeScope(ast, "function", null);
 
-  const isEscapeCall = (init) => init?.type === "CallExpression"
-    && ESCAPE_CALL.test(`${source.slice(init.callee.start, init.callee.end)}(`);
+	/** The nearest enclosing function scope, for `var`. */
+	const functionScope = (scope) => {
+		let current = scope;
+		while (current && current.kind !== "function") current = current.parent;
+		return current ?? root;
+	};
 
-  const walk = (node, scope) => {
-    if (!node || typeof node !== "object") return;
-    if (Array.isArray(node)) { for (const child of node) walk(child, scope); return; }
+	const declarePattern = (pattern, scope, escaped) => {
+		if (!pattern) return;
+		switch (pattern.type) {
+			case "Identifier": scope.names.set(pattern.name, escaped); break;
+			case "ObjectPattern":
+				for (const property of pattern.properties) {
+					declarePattern(property.type === "Property" ? property.value : property, scope, false);
+				}
+				break;
+			case "ArrayPattern": for (const element of pattern.elements) declarePattern(element, scope, false); break;
+			case "AssignmentPattern": declarePattern(pattern.left, scope, false); break;
+			case "RestElement": declarePattern(pattern.argument, scope, false); break;
+			case "MemberExpression": break; // `obj.x = …` binds nothing
+			default: break;
+		}
+	};
 
-    let current = scope;
-    if (typeof node.type === "string" && SCOPE_TYPES.has(node.type)) {
-      current = { start: node.start, end: node.end, names: new Map() };
-      scopes.push(current);
-      // A parameter SHADOWS an escaped outer const of the same name, so it has
-      // to be recorded as unescaped rather than left absent.
-      if (node.params) declareParams(node, current);
-    }
+	/** Mark a write against the scope that DECLARES the name, not the current one. */
+	const assignPattern = (pattern, scope, escaped) => {
+		if (!pattern) return;
+		if (pattern.type === "Identifier") {
+			let owner = scope;
+			while (owner && !owner.names.has(pattern.name)) owner = owner.parent;
+			// Never declared in this file: record on the root so it still poisons.
+			(owner ?? root).names.set(pattern.name, escaped);
+			return;
+		}
+		// Any other target is a pattern; nothing it binds can be considered escaped.
+		declarePattern(pattern, scope, false);
+	};
 
-    if (node.type === "VariableDeclarator" && node.id?.type === "Identifier") {
-      current.names.set(node.id.name, isEscapeCall(node.init));
-    }
+	const walk = (node, scope) => {
+		if (!node || typeof node !== "object") return;
+		if (Array.isArray(node)) { for (const child of node) walk(child, scope); return; }
+		if (typeof node.type !== "string") return;
 
-    // ANY later assignment poisons the name for the whole scope:
-    // `let x = escapeHTML(a); x = raw;` left x accepted as escaped. This is
-    // flow-insensitive on purpose — it can only turn an accept into a report.
-    if (node.type === "AssignmentExpression" && node.left?.type === "Identifier") {
-      if (!isEscapeCall(node.right)) current.names.set(node.left.name, false);
-    }
+		let current = scope;
+		if (FUNCTIONS.has(node.type)) {
+			current = makeScope(node, "function", scope);
+			for (const param of node.params ?? []) declarePattern(param, current, false);
+		}
+		else if (BLOCKS.has(node.type)) {
+			current = makeScope(node, "block", scope);
+			if (node.type === "CatchClause") declarePattern(node.param, current, false);
+		}
 
-    for (const key of Object.keys(node)) {
-      if (key === "type" || key === "start" || key === "end" || key === "loc") continue;
-      walk(node[key], current);
-    }
-  };
-  walk(ast, scopes[0]);
+		if (node.type === "VariableDeclaration") {
+			for (const declarator of node.declarations) {
+				const target = node.kind === "var" ? functionScope(current) : current;
+				declarePattern(declarator.id, target, isEscapeCall(declarator.init));
+			}
+		}
 
-  return (offset, name) => {
-    const containing = scopes
-      .filter((scope) => scope.start <= offset && offset < scope.end && scope.names.has(name))
-      .sort((a, b) => (b.end - b.start) - (a.end - a.start));
-    const innermost = containing[containing.length - 1];
-    return innermost ? innermost.names.get(name) : false;
-  };
+		// An assignment WRITES an existing binding; it does not create one in the
+		// scope where it happens. Declaring it locally let `{ x = raw; }` inside a
+		// block leave an escaped outer `x` still marked escaped.
+		if (node.type === "AssignmentExpression") assignPattern(node.left, current, isEscapeCall(node.right));
+		if (node.type === "UpdateExpression") assignPattern(node.argument, current, false);
+
+		for (const key of Object.keys(node)) {
+			if (key === "type" || key === "start" || key === "end" || key === "loc") continue;
+			walk(node[key], current);
+		}
+	};
+	walk(ast, root);
+
+	return (offset, name) => {
+		// The innermost scope containing the offset that knows this name wins, so
+		// a shadowing raw declaration beats an escaped outer one.
+		const containing = scopes
+			.filter((scope) => scope.start <= offset && offset < scope.end && scope.names.has(name))
+			.sort((a, b) => (b.end - b.start) - (a.end - a.start));
+		const innermost = containing[containing.length - 1];
+		return innermost ? innermost.names.get(name) : false;
+	};
 }
 
-/** Module-owned text: i18n lookups and string literals, nothing else. */
-function isModuleOwnedText(expression) {
-  const withoutStrings = expression.replace(/"[^"]*"|'[^']*'/g, "");
-  const withoutI18n = withoutStrings.replace(/game\.i18n\.(localize|format)\s*\(/g, "");
-  return !/[A-Za-z_$][A-Za-z0-9_$]*/.test(withoutI18n);
+/** Can this expression only ever produce text this module owns? */
+function isModuleOwned(node) {
+	if (!node) return false;
+	if (node.type === "Literal") return true;
+	if (node.type === "TemplateLiteral") return node.expressions.every(isModuleOwned);
+	if (node.type === "BinaryExpression" && node.operator === "+") {
+		return isModuleOwned(node.left) && isModuleOwned(node.right);
+	}
+	// `game.i18n.localize(K) || "fallback"` — both sides module text.
+	if (node.type === "LogicalExpression") {
+		return isModuleOwned(node.left) && isModuleOwned(node.right);
+	}
+	if (node.type === "ConditionalExpression") {
+		return isModuleOwned(node.consequent) && isModuleOwned(node.alternate);
+	}
+	if (node.type === "CallExpression") {
+		const callee = node.callee;
+		const isI18n = callee?.type === "MemberExpression"
+			&& callee.object?.type === "MemberExpression"
+			&& callee.object.object?.name === "game"
+			&& callee.object.property?.name === "i18n"
+			&& ["localize", "format"].includes(callee.property?.name);
+		return isI18n && node.arguments.every(isModuleOwned);
+	}
+	return false;
 }
 
 /**
- * Read the attribute value starting at `start` (the character after the opening
- * quote), tracking brace depth so a quote inside an interpolation does not end
- * it. Returns the raw value and every interpolation expression inside it.
+ * Which interpolations of a template literal sit inside a matched attribute.
+ *
+ * The chunks between interpolations are genuinely HTML text, so this part is a
+ * character walk — but only over text acorn has already identified as text,
+ * never over code.
+ *
+ * @returns {Map<number, string>} expression index -> attribute name
  */
-function readAttributeValue(source, start, quote) {
-  const expressions = [];
-  let index = start;
-  let depth = 0;
-  let expressionStart = -1;
+function attributeInterpolations(template) {
+	const inside = new Map();
+	let attribute = null;   // attribute whose value is being read
+	let quote = null;       // the quote that opened that value
+	let pending = "";       // token being accumulated, for the name
+	let lastToken = "";     // the completed token before any whitespace
+	// Attributes count inside a tag — and also in a bare FRAGMENT, because this
+	// tree builds them: `` `data-item-id="${entry.id}"` `` is assembled on its own
+	// and interpolated into a tag elsewhere (containers.mjs:767). Requiring a `<`
+	// dropped those, which is a false negative.
+	//
+	// What must stay excluded is a SELECTOR — `.row[data-token-id="${t.id}"]`,
+	// `[data-action="${A}"]` — which is not markup at all. Selector syntax
+	// announces itself with `[`, `.` or `#` before any tag, so a fragment counts
+	// only until one of those appears. The old text scanner got this right by
+	// accident, gluing the selector prefix onto the name; this states the rule.
+	let inTag = false;
+	let sawTag = false;
+	let sawSelector = false;
 
-  while (index < source.length) {
-    const char = source[index];
+	for (let i = 0; i < template.quasis.length; i += 1) {
+		const text = template.quasis[i].value.cooked ?? template.quasis[i].value.raw;
 
-    if (depth === 0 && char === quote) break;
-    // NOTHING inside the value stops the scan early. A newline is legal, and so
-    // are `<` and `>` — `title="level > ${doc.name}"` is valid HTML, and bailing
-    // on them silently skipped the whole attribute. The only stop is the RUNAWAY
-    // guard below: if no closing quote turns up within a sane distance, the
-    // value was never terminated (an unbalanced brace inside a string literal
-    // does this) and whatever was collected is reported anyway rather than
-    // dropped. Going silent is the one behaviour this scanner must not have.
-    if (index - start > MAX_VALUE_LENGTH) {
-      return expressions.length > 0 ? { value: "", end: index, expressions, unterminated: true } : null;
-    }
+		for (let c = 0; c < text.length; c += 1) {
+			const char = text[c];
 
-    if (char === "$" && source[index + 1] === "{") {
-      if (depth === 0) expressionStart = index + 2;
-      depth += 1;
-      index += 2;
-      continue;
-    }
-    if (depth > 0 && char === "{") depth += 1;
-    if (depth > 0 && char === "}") {
-      depth -= 1;
-      if (depth === 0 && expressionStart >= 0) {
-        expressions.push(source.slice(expressionStart, index).trim());
-        expressionStart = -1;
-      }
-    }
-    index += 1;
-  }
+			if (quote) {
+				if (char === quote) { quote = null; attribute = null; }
+				continue;
+			}
 
-  // Ran off the end, or a brace never balanced: report what was found instead of
-  // returning nothing. The entry may be wrong; silence would be worse.
-  if (index >= source.length || depth !== 0) {
-    return expressions.length > 0 ? { value: "", end: index, expressions, unterminated: true } : null;
-  }
-  return { value: source.slice(start, index), end: index, expressions };
+			if (char === "<") { inTag = true; sawTag = true; pending = ""; lastToken = ""; attribute = null; continue; }
+			if (char === ">") { inTag = false; pending = ""; lastToken = ""; attribute = null; continue; }
+
+			if (!sawTag && (char === "[" || char === "." || char === "#")) {
+				sawSelector = true;
+				pending = "";
+				lastToken = "";
+				attribute = null;
+				continue;
+			}
+
+			if (char === "=" && (inTag || (!sawTag && !sawSelector))) {
+				// `title = "…"` is legal: whitespace ends the NAME token but must not
+				// discard it, so fall back to the last completed token.
+				const name = (pending || lastToken).trim().toLowerCase();
+				attribute = (ATTRIBUTES.has(name) || /^data-[a-z][a-z0-9-]*$/.test(name)) ? name : null;
+				pending = "";
+				lastToken = "";
+				continue;
+			}
+
+			if (char === '"' || char === "'") {
+				if (attribute) quote = char;
+				pending = "";
+				lastToken = "";
+				continue;
+			}
+
+			if (/[\s/]/.test(char)) {
+				if (pending) lastToken = pending;
+				pending = "";
+				// Deliberately does NOT clear `attribute`: between `title =` and its
+				// opening quote there is whitespace, and clearing here dropped the
+				// match. It is cleared on `<`, `>`, a closing quote, and a `=` whose
+				// name does not match.
+				continue;
+			}
+			pending += char;
+		}
+
+		// The interpolation that follows this chunk.
+		if (i < template.expressions.length && quote && attribute) inside.set(i, attribute);
+	}
+
+	return inside;
 }
 
 /**
  * Find unescaped attribute interpolations in one file's source.
+ *
  * @param {string} source
  * @returns {Array<{attr: string, expr: string, line: number}>}
+ * @throws if the source does not parse — the caller decides, as in flag-scan.
  */
 export function scanUnescapedAttrs(source) {
-  const findings = [];
-  const escapedNames = escapedNameResolver(source);
-  ATTRIBUTE_START.lastIndex = 0;
+	let ast;
+	try {
+		ast = acorn.parse(source, { ecmaVersion: 2023, sourceType: "module" });
+	}
+	catch (err) {
+		throw new Error(`attr-escape-scan: parse failed, so nothing in this file was scanned — ${err.message}`);
+	}
 
-  let match;
-  while ((match = ATTRIBUTE_START.exec(source)) !== null) {
-    const attr = match[1];
-    const parsed = readAttributeValue(source, match.index + match[0].length, match[2]);
-    if (!parsed) continue;
+	const resolveEscaped = declaredEscapedNames(ast);
+	const findings = [];
 
-    for (const expression of parsed.expressions) {
-      // An expression with an odd number of quotes was mis-measured: the brace
-      // depth ran through a `}` inside a string literal, so what was captured is
-      // a fragment. Report it before any skip can swallow it — the docblock
-      // promises a wrong entry rather than silence, and `${"}" + doc.name}`
-      // otherwise looks literal-only and is skipped as module-owned text.
-      const misMeasured = (expression.split('"').length - 1) % 2 === 1
-        || (expression.split("'").length - 1) % 2 === 1;
+	visit(ast, (node) => {
+		if (node.type !== "TemplateLiteral") return;
 
-      if (!misMeasured) {
-        if (isEscaped(expression, match.index, escapedNames)) continue;
-        if (isModuleOwnedText(expression)) continue;
-      }
-      findings.push({
-        attr,
-        expr: expression.replace(/\s+/g, " "),
-        line: source.slice(0, match.index).split("\n").length,
-      });
-    }
-    // Resume after the value so a `"` inside it cannot start a phantom match.
-    ATTRIBUTE_START.lastIndex = parsed.end;
-  }
+		for (const [index, attribute] of attributeInterpolations(node)) {
+			const expression = node.expressions[index];
+			if (!expression) continue;
 
-  return findings;
+			if (isEscapeCall(expression)) continue;
+			if (expression.type === "Identifier" && resolveEscaped(expression.start, expression.name)) continue;
+			if (isModuleOwned(expression)) continue;
+
+			findings.push({
+				attr: attribute,
+				expr: source.slice(expression.start, expression.end).replace(/\s+/g, " "),
+				line: source.slice(0, expression.start).split("\n").length,
+			});
+		}
+	});
+
+	return findings;
 }
 
-export { ATTRIBUTES };
+export { ATTRIBUTES, ESCAPE_NAMES };

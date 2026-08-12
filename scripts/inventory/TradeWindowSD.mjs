@@ -971,7 +971,7 @@ export async function showTradeDialog(localActor) {
 			const userName = user ? user.name : "";
 			const displayUserName = userName ? ` (${userName})` : "";
 			const searchText = `${p.name} ${userName}`.toLowerCase();
-			optionsHtml += `<option value="${p.id}" data-search="${searchText}">🟢 ${p.name}${displayUserName}</option>`;
+			optionsHtml += `<option value="${p.id}" data-search="${foundry.utils.escapeHTML(searchText)}">🟢 ${p.name}${displayUserName}</option>`;
 		}
 		optionsHtml += "</optgroup>";
 	}
@@ -984,7 +984,7 @@ export async function showTradeDialog(localActor) {
 			const owners = game.users.filter(u => p.testUserPermission(u, "OWNER"));
 			const ownerNames = owners.map(u => u.name).join(" ");
 			const searchText = `${p.name} ${ownerNames}`.toLowerCase();
-			optionsHtml += `<option value="${p.id}" data-search="${searchText}">⚪ ${p.name}</option>`;
+			optionsHtml += `<option value="${p.id}" data-search="${foundry.utils.escapeHTML(searchText)}">⚪ ${p.name}</option>`;
 		}
 		optionsHtml += "</optgroup>";
 	}

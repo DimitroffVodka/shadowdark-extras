@@ -72,8 +72,16 @@ export function collectFlagKeys() {
       // the key is an identifier — carried no receiver at all, and an
       // actor -> scene swap in one of them still diffed to []. The key is
       // recorded as "*" for those; the receiver is what this entry is for.
+      // SCOPE is part of the identity. Without it, own-scope and foreign-scope
+      // calls share a bucket: swapping the receivers of
+      // `actor.getFlag(OURS, "state")` and `scene.getFlag("tokenmagic", "state")`
+      // left the multiset unchanged and diffed to [], even though our own read
+      // moved actor -> scene. MedkitSD.mjs already has an own/foreign collision
+      // on the same file+api+key ("sourceId").
+      const scopeLabel = entry.dynamicScope ? (entry.unresolvedScope ?? "«dynamic»") : entry.scope;
       sites.push(
-        `${toRepoPath(file)} (api=${entry.api} key=${entry.key ?? "*"} receiver=${entry.receiver})`,
+        `${toRepoPath(file)} (api=${entry.api} scope=${scopeLabel} key=${entry.key ?? "*"} `
+        + `receiver=${entry.receiver})`,
       );
 
       if (entry.dynamic) {

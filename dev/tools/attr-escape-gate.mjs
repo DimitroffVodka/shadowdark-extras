@@ -82,9 +82,19 @@ export function collectUnescaped() {
   const files = listJsFiles(["scripts"]).filter((file) => !isVendor(toRepoPath(file)));
 
   const byFile = {};
+  const parseErrors = [];
   let total = 0;
   for (const file of files) {
-    const findings = scanUnescapedAttrs(readFileSync(file, "utf8"));
+    let findings;
+    try {
+      findings = scanUnescapedAttrs(readFileSync(file, "utf8"));
+    }
+    catch (err) {
+      // The scanner parses now, so a file it cannot read contributes NOTHING —
+      // indistinguishable from a clean file. Block rather than scan less.
+      parseErrors.push(`${toRepoPath(file)}: ${err.message}`);
+      continue;
+    }
     if (findings.length === 0) continue;
     byFile[toRepoPath(file)] = findings
       .map((f) => `${f.attr}=${f.expr} (line ${f.line})`)
@@ -94,6 +104,7 @@ export function collectUnescaped() {
 
   return {
     total,
+    parseErrors,
     files: Object.keys(byFile).length,
     byFile: Object.fromEntries(Object.keys(byFile).sort().map((k) => [k, byFile[k]])),
   };
@@ -131,6 +142,15 @@ export function diffUnescaped(baseline, current) {
 
 function main() {
   const current = collectUnescaped();
+
+  if (current.parseErrors.length > 0) {
+    for (const error of current.parseErrors) console.log(`  ${error}`);
+    console.log(
+      `[BLOCK] ${current.parseErrors.length} file(s) failed to parse and were NOT scanned. `
+        + "Fix the syntax, or raise acorn's ecmaVersion if the file uses newer syntax.",
+    );
+    process.exit(1);
+  }
 
   if (process.argv.includes("--write")) {
     mkdirSync(new URL(".", SNAPSHOT_PATH), { recursive: true });

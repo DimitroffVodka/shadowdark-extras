@@ -155,10 +155,10 @@ export async function createInteractiveTemplateCard(templateDoc, token, trigger,
 	let content = `
         <div class="sdx-template-effect-card" style="background: #1a1a1a; border: 1px solid #333; border-radius: 4px; padding: 10px; color: #e0e0e0;">
             <div style="border-bottom: 1px solid #333; padding-bottom: 6px; margin-bottom: 8px;">
-                <strong style="font-size: 14px;">${spellName}</strong>
+                <strong style="font-size: 14px;">${foundry.utils.escapeHTML(spellName ?? "")}</strong>
             </div>
             <p style="margin: 0 0 8px 0; font-size: 12px;">
-                <strong>${token.name}</strong> ${triggerText} the area
+                <strong>${foundry.utils.escapeHTML(token.name)}</strong> ${triggerText} the area
             </p>
     `;
 
@@ -220,20 +220,20 @@ export async function createInteractiveTemplateCard(templateDoc, token, trigger,
 
 	// Show damage info with apply button
 	if (damageRoll) {
-		const typeText = config.damage?.type ? ` ${config.damage.type}` : "";
+		const typeText = config.damage?.type ? ` ${foundry.utils.escapeHTML(config.damage.type)}` : "";
 		content += `
             <div style="background: #252525; border: 1px solid #333; border-radius: 3px; padding: 8px;">
                 <p style="margin: 0 0 4px 0; font-size: 13px;">
                     <i class="fas fa-heart-broken" style="color: #ddd; margin-right: 4px;"></i>
                     <strong>${damageTotal}</strong>${typeText}
                 </p>
-                <p style="margin: 0 0 8px 0; font-size: 10px; color: #888;">${config.damage.formula} = ${damageRoll.result}</p>
+                <p style="margin: 0 0 8px 0; font-size: 10px; color: #888;">${foundry.utils.escapeHTML(config.damage.formula)} = ${damageRoll.result}</p>
                 <button type="button" class="sdx-template-apply-damage-btn"
                     data-token-id="${token.document?.id || token.id}"
                     data-actor-id="${actor?.id}"
                     data-damage="${damageTotal}"
-                    data-damage-type="${config.damage?.type || "damage"}"
-                    data-actor-name="${actor?.name || token.name}"
+                    data-damage-type="${foundry.utils.escapeHTML(config.damage?.type || "damage")}"
+                    data-actor-name="${foundry.utils.escapeHTML(actor?.name || token.name)}"
                     style="width: 100%; background: #111; color: #f2f2f2; border: 1px solid #777; padding: 6px; cursor: pointer; border-radius: 3px; margin-bottom: 4px;">
                     <i class="fas fa-heart-broken"></i> Apply ${damageTotal} Damage
                 </button>
@@ -241,8 +241,8 @@ export async function createInteractiveTemplateCard(templateDoc, token, trigger,
                     data-token-id="${token.document?.id || token.id}"
                     data-actor-id="${actor?.id}"
                     data-damage="${Math.floor(damageTotal / 2)}"
-                    data-damage-type="${config.damage?.type || "damage"}"
-                    data-actor-name="${actor?.name || token.name}"
+                    data-damage-type="${foundry.utils.escapeHTML(config.damage?.type || "damage")}"
+                    data-actor-name="${foundry.utils.escapeHTML(actor?.name || token.name)}"
                     style="width: 100%; background: #111; color: #f2f2f2; border: 1px solid #777; padding: 6px; cursor: pointer; border-radius: 3px;">
                     <i class="fas fa-shield-alt"></i> Apply ${Math.floor(damageTotal / 2)} (Half)
                 </button>

@@ -263,7 +263,7 @@ export async function showCoinTransferDialog(sourceActor) {
 	if (partyActors.length > 0) {
 		optionsHtml += "<optgroup label=\"📦 Party Storage\" data-group=\"party\">";
 		for (const p of partyActors) {
-			optionsHtml += `<option value="${p.id}" data-search="${p.name.toLowerCase()}">🎒 ${p.name}</option>`;
+			optionsHtml += `<option value="${p.id}" data-search="${foundry.utils.escapeHTML(p.name.toLowerCase())}">🎒 ${p.name}</option>`;
 		}
 		optionsHtml += "</optgroup>";
 	}
@@ -275,7 +275,7 @@ export async function showCoinTransferDialog(sourceActor) {
 			const userName = user ? user.name : "";
 			const displayUserName = userName ? ` (${userName})` : "";
 			const searchText = `${p.name} ${userName}`.toLowerCase();
-			optionsHtml += `<option value="${p.id}" data-search="${searchText}">🟢 ${p.name}${displayUserName}</option>`;
+			optionsHtml += `<option value="${p.id}" data-search="${foundry.utils.escapeHTML(searchText)}">🟢 ${p.name}${displayUserName}</option>`;
 		}
 		optionsHtml += "</optgroup>";
 	}
@@ -286,7 +286,7 @@ export async function showCoinTransferDialog(sourceActor) {
 			const owners = game.users.filter(u => p.testUserPermission(u, "OWNER"));
 			const ownerNames = owners.map(u => u.name).join(" ");
 			const searchText = `${p.name} ${ownerNames}`.toLowerCase();
-			optionsHtml += `<option value="${p.id}" data-search="${searchText}">⚪ ${p.name}</option>`;
+			optionsHtml += `<option value="${p.id}" data-search="${foundry.utils.escapeHTML(searchText)}">⚪ ${p.name}</option>`;
 		}
 		optionsHtml += "</optgroup>";
 	}
@@ -470,7 +470,7 @@ export async function showTransferDialog(sourceActor, item) {
 	if (partyActors.length > 0) {
 		optionsHtml += "<optgroup label=\"📦 Party Storage\" data-group=\"party\">";
 		for (const p of partyActors) {
-			optionsHtml += `<option value="${p.id}" data-search="${p.name.toLowerCase()}">🎒 ${p.name}</option>`;
+			optionsHtml += `<option value="${p.id}" data-search="${foundry.utils.escapeHTML(p.name.toLowerCase())}">🎒 ${p.name}</option>`;
 		}
 		optionsHtml += "</optgroup>";
 	}
@@ -483,7 +483,7 @@ export async function showTransferDialog(sourceActor, item) {
 			const userName = user ? user.name : "";
 			const displayUserName = userName ? ` (${userName})` : "";
 			const searchText = `${p.name} ${userName}`.toLowerCase();
-			optionsHtml += `<option value="${p.id}" data-search="${searchText}">🟢 ${p.name}${displayUserName}</option>`;
+			optionsHtml += `<option value="${p.id}" data-search="${foundry.utils.escapeHTML(searchText)}">🟢 ${p.name}${displayUserName}</option>`;
 		}
 		optionsHtml += "</optgroup>";
 	}
@@ -496,7 +496,7 @@ export async function showTransferDialog(sourceActor, item) {
 			const owners = game.users.filter(u => p.testUserPermission(u, "OWNER"));
 			const ownerNames = owners.map(u => u.name).join(" ");
 			const searchText = `${p.name} ${ownerNames}`.toLowerCase();
-			optionsHtml += `<option value="${p.id}" data-search="${searchText}">⚪ ${p.name}</option>`;
+			optionsHtml += `<option value="${p.id}" data-search="${foundry.utils.escapeHTML(searchText)}">⚪ ${p.name}</option>`;
 		}
 		optionsHtml += "</optgroup>";
 	}

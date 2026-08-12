@@ -1393,3 +1393,119 @@ test("flag scan: a private field stays part of the receiver chain", () => {
 
   assert.deepEqual(scanFlags(source).map((e) => e.receiver), ["this.#actor", "other.#actor"]);
 });
+
+/**
+ * Round-three hardening. The scanner is a parser now: three review rounds of
+ * false negatives all traced to guessing at JavaScript structure from text.
+ */
+test("attr-escape gate: an ordinary verb starting with esc is not an escape helper", () => {
+  // `/\besc[A-Za-z]*\(/` accepted `escalate(…)`. A prefix pattern is name-trust
+  // with extra steps; ESCAPE_NAMES is an explicit list.
+  for (const source of [
+    'const h = `<img alt="${escalate(doc.name)}">`;',
+    'const h = `<img alt="${service.escalate(doc.name)}">`;',
+    'const f = () => { const n = escalate(doc.name); return `<img alt="${n}">`; };',
+  ]) {
+    assert.equal(scanUnescapedAttrs(source).length, 1, source);
+  }
+});
+
+test("attr-escape gate: every shadowing shape that hid a raw value now reports", () => {
+  const cases = [
+    // catch binding shadows an escaped outer const
+    'const e = foundry.utils.escapeHTML(a);\nexport function f(){ try{}catch(e){ return `<img alt="${e}">`; } }',
+    // nested `var` re-declaration in the same function scope
+    'export function f(raw){ var x = foundry.utils.escapeHTML(raw); { var x = raw; } return `<img alt="${x}">`; }',
+    // assignment in an inner block writes the OUTER binding
+    'export function f(raw){ let x = foundry.utils.escapeHTML(raw); { x = raw; } return `<img alt="${x}">`; }',
+    // an escaped switch-case local must not free the outer raw one
+    'export function f(raw,k){ const x = raw; switch(k){ case 1: { const x = foundry.utils.escapeHTML(raw); void x; } } return `<img alt="${x}">`; }',
+    // destructuring assignment rebinds from an unknown source
+    'export function f(obj,raw){ let x = foundry.utils.escapeHTML(raw); ({x} = obj); return `<img alt="${x}">`; }',
+  ];
+
+  for (const source of cases) assert.equal(scanUnescapedAttrs(source).length, 1, source);
+});
+
+test("attr-escape gate: a CSS or DOM selector is not markup", () => {
+  // These carry no HTML sink. The text scanner excluded them only because the
+  // selector prefix happened to glue onto the attribute name.
+  for (const source of [
+    'const r = $card.find(`.sdx-target-item[data-token-id="${target.id}"]`);',
+    'const e = column.querySelector(`[data-action="${FLATTEN_ACTION}"]`);',
+    'const e = el.querySelector(`#box[data-x="${y}"]`);',
+  ]) {
+    assert.deepEqual(scanUnescapedAttrs(source), [], source);
+  }
+});
+
+test("attr-escape gate: a bare attribute fragment is markup and reports", () => {
+  // containers.mjs:767 builds one of these on its own and interpolates it into
+  // a tag elsewhere. Requiring a `<` in the same template dropped it.
+  assert.equal(scanUnescapedAttrs('const a = cond ? "" : `data-item-id="${entry.id}"`;').length, 1);
+  assert.equal(scanUnescapedAttrs('const a = `alt="${doc.name}"`;').length, 1);
+});
+
+test("attr-escape gate: safe formatting does not manufacture findings", () => {
+  // Parens and comments are not part of a CallExpression's extent, and an
+  // apostrophe inside a double-quoted string is not evidence of anything. All
+  // three used to report, so a formatting edit grew the baseline.
+  for (const source of [
+    'const h = `<img alt="${(foundry.utils.escapeHTML(raw))}">`;',
+    'const h = `<img alt="${foundry.utils.escapeHTML(raw) /* safe */}">`;',
+    'const h = `<img alt="${foundry.utils.escapeHTML("don\'t")}">`;',
+  ]) {
+    assert.deepEqual(scanUnescapedAttrs(source), [], source);
+  }
+});
+
+test("attr-escape gate: a brace inside a string no longer hides the value", () => {
+  // `${raw || "{"}` raised the textual depth count and never lowered it, so the
+  // whole attribute went unreported.
+  assert.equal(scanUnescapedAttrs('const h = `<img alt="${raw || "{"}">`;').length, 1);
+});
+
+test("attr-escape gate: a long value does not outrun the scan", () => {
+  // The old runaway guard was a length cap, so an interpolation past it vanished.
+  const source = `const h = \`<img alt="${"x".repeat(5000)}\${doc.name}">\`;`;
+
+  assert.equal(scanUnescapedAttrs(source).length, 1);
+});
+
+test("attr-escape gate: an unparseable file throws rather than reporting clean", () => {
+  // The scanner parses now, so a file it cannot read contributes nothing —
+  // indistinguishable from a clean one unless it is loud.
+  assert.throws(() => scanUnescapedAttrs("export function ("), /parse failed/);
+});
+
+test("flag snapshot: scope is part of flagSites identity", () => {
+  // Own-scope and foreign-scope calls used to share a bucket, so swapping the
+  // receivers of an own read and a foreign read left the multiset unchanged.
+  const sites = (scope, receiver) => ({
+    writtenKeys: [], readKeys: [], foreignScopes: {}, dynamicSites: [], unresolvedScopes: [],
+    flagSites: [`scripts/a.mjs (api=getFlag scope=${scope} key=state receiver=${receiver})`],
+  });
+
+  const differences = diffFlags(
+    sites("shadowdark-extras", "actor"),
+    sites("shadowdark-extras", "scene"),
+  );
+  assert.equal(differences.length, 2);
+
+  // And the collision case: same file/api/key, different scope, receivers swapped.
+  const before = {
+    writtenKeys: [], readKeys: [], foreignScopes: {}, dynamicSites: [], unresolvedScopes: [],
+    flagSites: [
+      "scripts/a.mjs (api=getFlag scope=shadowdark-extras key=state receiver=actor)",
+      "scripts/a.mjs (api=getFlag scope=tokenmagic key=state receiver=scene)",
+    ],
+  };
+  const after = {
+    ...before,
+    flagSites: [
+      "scripts/a.mjs (api=getFlag scope=shadowdark-extras key=state receiver=scene)",
+      "scripts/a.mjs (api=getFlag scope=tokenmagic key=state receiver=actor)",
+    ],
+  };
+  assert.ok(diffFlags(before, after).length > 0, "an own/foreign receiver swap must report");
+});

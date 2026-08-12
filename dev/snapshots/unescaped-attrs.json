@@ -8,8 +8,9 @@
     "maphub <base href> injection": "`MaphubSD.mjs` and `maphub-cave.mjs` inject a `<base href>` built from a local directory path the module computes. Not a document field, and escaping it would corrupt the URL it exists to set.",
     "WITHDRAWN — GM-authored config formulas": "This category used to accept `flags.formula`, `damage.formula` and the weapon-bonus inputs as \"settings a GM types into their own dialog\". That was wrong, and review caught it. They are ITEM FLAGS, so a player who owns the item controls them, and they render when the GM opens that item's sheet — the payload arrives from the player and executes in the GM's session. The lesson generalises: \"who types it\" is not a trust boundary, \"where it is stored\" is. Anything reachable from a document a player can edit is player-controlled no matter which dialog authored it. EVERY member is now escaped rather than accepted: weapon-bonus-ui's formula and label, SpellDamageConfig's formula/tieredFormula/requirement/perTurnDamage/numDice/scalingDice/bonus, AuraConfig and TemplateTargetingConfig's damage.formula, the damage-card reroll formula and effects-requirement data attributes, and effect-config's sourceRequirement. Withdrawing the note while leaving its members baselined — which is what the first attempt did — left the snapshot asserting something the notes contradicted."
   },
-  "total": 405,
-  "files": 71,
+  "total": 335,
+  "parseErrors": [],
+  "files": 62,
   "byFile": {
     "scripts/MaphubSD.mjs": [
       "href=localDirUrl (line 100)"
@@ -23,8 +24,6 @@
     ],
     "scripts/canvas/SDXDrawingToolbar.mjs": [
       "data-action=action (line 236)",
-      "data-action=action (line 370)",
-      "data-drawing-id=e.id (line 722)",
       "data-drawing-id=e.id (line 796)",
       "data-value=c.id (line 531)",
       "data-value=it.id (line 236)",
@@ -35,13 +34,6 @@
       "title=opPct (line 208)",
       "title=opStr (line 804)",
       "value=pct (line 478)"
-    ],
-    "scripts/canvas/TileFlattenSD.mjs": [
-      "data-action=FLATTEN_ACTION (line 788)",
-      "data-action=UNFLATTEN_ACTION (line 791)"
-    ],
-    "scripts/character-sheet/character-generator.mjs": [
-      "data-message-id=msgId (line 86)"
     ],
     "scripts/character-sheet/conditions.mjs": [
       "data-condition-name=variant.name (line 458)",
@@ -54,7 +46,6 @@
       "data-ability=key (line 120)",
       "data-tooltip=HP_QUICK_ADJUST_TOOLTIP (line 173)",
       "data-tooltip=key.toUpperCase() (line 120)",
-      "data-tooltip=levelUp ? \"Ready to Level Up!\" : \"Level\" (line 225)",
       "data-tooltip=luck (line 136)",
       "data-tooltip=luckStatus (line 147)",
       "data-tooltip=xp (line 194)",
@@ -101,8 +92,6 @@
       "data-spell-info=spellInfoData (line 319)",
       "data-token-id=tokenId (line 275)",
       "data-token-id=tokenId (line 279)",
-      "data-token-id=tokenId (line 365)",
-      "data-token-id=tokenId (line 471)",
       "value=i (line 86)",
       "value=w.id (line 824)"
     ],
@@ -144,7 +133,6 @@
       "data-die-index=dieIndex (line 344)",
       "data-faces=die.faces (line 324)",
       "data-faces=die.faces (line 344)",
-      "data-token-id=target.id (line 871)",
       "title=die.faces (line 324)",
       "title=die.faces (line 344)"
     ],
@@ -192,10 +180,6 @@
       "value=opt.value (line 843)",
       "value=usage (line 604)"
     ],
-    "scripts/dungeon/DDPackSettingsAppSD.mjs": [
-      "data-enabled=pack.enabled === false ? \"false\" : \"true\" (line 73)",
-      "title=pack.enabled === false ? \"Show in Decor tray\" : \"Hide from Decor tray\" (line 73)"
-    ],
     "scripts/effects/AuraConfig.mjs": [
       "value=indyAlpha (line 347)",
       "value=indyScale (line 353)",
@@ -207,8 +191,6 @@
       "value=tmTint || \"#ffffff\" (line 328)"
     ],
     "scripts/effects/FocusSpellTrackerSD.mjs": [
-      "data-instance-id=instanceId (line 308)",
-      "data-item-id=spellId (line 472)",
       "data-token-id=tokenId (line 395)"
     ],
     "scripts/effects/aura-application.mjs": [
@@ -256,10 +238,6 @@
       "data-actor-id=actor?.id (line 208)",
       "data-actor-id=actor?.id (line 233)",
       "data-actor-id=actor?.id (line 242)",
-      "data-actor-name=actor?.name || token.name (line 236)",
-      "data-actor-name=actor?.name || token.name (line 245)",
-      "data-damage-type=config.damage?.type || \"damage\" (line 235)",
-      "data-damage-type=config.damage?.type || \"damage\" (line 244)",
       "data-damage=Math.floor(damageTotal / 2) (line 243)",
       "data-damage=damageTotal (line 234)",
       "data-dc=dc (line 190)",
@@ -285,7 +263,6 @@
       "data-pid=f.pageId ?? \"\" (line 616)",
       "data-sid=f.sceneId (line 627)",
       "data-stype=t.key (line 928)",
-      "data-tab=tab.dataset.tab (line 1541)",
       "value=j.id (line 1677)",
       "value=t (line 1669)"
     ],
@@ -294,8 +271,6 @@
       "data-settlement-type=settClassRoll (line 969)"
     ],
     "scripts/inventory/TradeWindowSD.mjs": [
-      "data-search=searchText (line 974)",
-      "data-search=searchText (line 987)",
       "value=p.id (line 974)",
       "value=p.id (line 987)"
     ],
@@ -315,23 +290,7 @@
     "scripts/inventory/inventory-multi-select.mjs": [
       "data-item-id=itemId (line 112)"
     ],
-    "scripts/inventory/inventory-styles.mjs": [
-      "data-category=categoryKey (line 257)",
-      "data-category=categoryKey (line 314)",
-      "data-category=categoryKey (line 564)",
-      "data-edit=fieldName (line 277)",
-      "data-shadow-type=shadowType (line 328)",
-      "data-shadow-type=shadowType (line 331)",
-      "data-shadow-type=shadowType (line 354)",
-      "data-shadow-type=shadowType (line 465)"
-    ],
     "scripts/inventory/player-transfers.mjs": [
-      "data-search=p.name.toLowerCase() (line 266)",
-      "data-search=p.name.toLowerCase() (line 473)",
-      "data-search=searchText (line 278)",
-      "data-search=searchText (line 289)",
-      "data-search=searchText (line 486)",
-      "data-search=searchText (line 499)",
       "value=p.id (line 266)",
       "value=p.id (line 278)",
       "value=p.id (line 289)",
@@ -374,12 +333,9 @@
     ],
     "scripts/item-sheets/potion-sheet-enhance.mjs": [
       "data-effect-index=i (line 244)",
-      "data-tab=app._shadowdarkExtrasActiveTab (line 182)",
-      "data-tab=app._shadowdarkExtrasActiveTab (line 183)",
       "data-uuid=creatureUuid (line 664)",
       "data-uuid=itemUuid (line 793)",
       "data-uuid=uuid (line 244)",
-      "data-uuid=uuid (line 513)",
       "data-uuid=uuid (line 522)",
       "value=duration.rounds || \"\" (line 264)",
       "value=duration.seconds || \"\" (line 254)",
@@ -390,12 +346,9 @@
     ],
     "scripts/item-sheets/scroll-sheet-enhance.mjs": [
       "data-effect-index=i (line 282)",
-      "data-tab=app._shadowdarkExtrasActiveTab (line 220)",
-      "data-tab=app._shadowdarkExtrasActiveTab (line 221)",
       "data-uuid=creatureUuid (line 771)",
       "data-uuid=itemUuid (line 900)",
       "data-uuid=uuid (line 282)",
-      "data-uuid=uuid (line 627)",
       "data-uuid=uuid (line 635)",
       "value=duration.rounds || \"\" (line 302)",
       "value=duration.seconds || \"\" (line 292)",
@@ -409,15 +362,11 @@
       "data-effect-index=effectIndex (line 962)",
       "data-effect-index=i (line 359)",
       "data-effect-index=i (line 489)",
-      "data-tab=app._shadowdarkExtrasActiveTab (line 297)",
-      "data-tab=app._shadowdarkExtrasActiveTab (line 298)",
       "data-uuid=creatureUuid (line 1142)",
       "data-uuid=itemUuid (line 1271)",
       "data-uuid=uuid (line 359)",
       "data-uuid=uuid (line 489)",
-      "data-uuid=uuid (line 772)",
       "data-uuid=uuid (line 782)",
-      "data-uuid=uuid (line 952)",
       "data-uuid=uuid (line 962)",
       "value=duration.rounds || \"\" (line 379)",
       "value=duration.seconds || \"\" (line 369)",
@@ -428,7 +377,6 @@
       "value=key (line 69)"
     ],
     "scripts/item-sheets/staff-spells.mjs": [
-      "data-item-id=item.id (line 567)",
       "data-item-id=item.id (line 580)",
       "data-spell-uuid=spell.uuid (line 151)",
       "data-spell-uuid=spell.uuid (line 163)",
@@ -439,12 +387,9 @@
     ],
     "scripts/item-sheets/wand-sheet-enhance.mjs": [
       "data-effect-index=i (line 378)",
-      "data-tab=app._shadowdarkExtrasActiveTab (line 322)",
-      "data-tab=app._shadowdarkExtrasActiveTab (line 323)",
       "data-uuid=creatureUuid (line 860)",
       "data-uuid=itemUuid (line 989)",
       "data-uuid=uuid (line 378)",
-      "data-uuid=uuid (line 716)",
       "data-uuid=uuid (line 724)",
       "value=duration.rounds || \"\" (line 398)",
       "value=duration.seconds || \"\" (line 388)",
@@ -460,9 +405,6 @@
     ],
     "scripts/journal/DisplayNpc.mjs": [
       "data-actor-uuid=npc.uuid (line 298)"
-    ],
-    "scripts/journal/PinStyleEditorSD.mjs": [
-      "data-for=input.name (line 338)"
     ],
     "scripts/journal/easy-reference/EasyReferenceMenu.mjs": [
       "value=a (line 228)"
@@ -484,8 +426,7 @@
       "data-item-id=sp.id (line 931)",
       "data-npc-id=monster._id (line 260)",
       "data-token-id=transformToken.id (line 603)",
-      "src=icon (line 76)",
-      "title=isSpecialType ? \"View details\" : \"Click to roll attack\" (line 875)"
+      "src=icon (line 76)"
     ],
     "scripts/maphub-cave.mjs": [
       "href=localBaseDir (line 816)"
@@ -515,44 +456,16 @@
       "data-actor-id=actor.id (line 709)"
     ],
     "scripts/party/carousing/CarousingTablesApp.mjs": [
-      "data-tab=tab (line 81)",
       "value=tier.bonus (line 255)",
       "value=tier.cost (line 254)"
-    ],
-    "scripts/party/carousing/ExpandedCarousingTablesApp.mjs": [
-      "data-tab=tab (line 128)",
-      "data-tab=this._currentTab (line 134)",
-      "data-tab=this._currentTab (line 136)"
     ],
     "scripts/party/partyinventory.mjs": [
       "value=m.id (line 459)"
     ],
-    "scripts/settings/settings-organization.mjs": [
-      "data-category=MODULE_ID (line 23)"
-    ],
     "scripts/tom/TomPlayerView.mjs": [
-      "data-asset-id=assetId (line 1567)",
-      "data-asset-id=assetId (line 1585)",
-      "data-asset-id=assetId (line 1599)",
       "data-condition=c (line 1122)",
       "data-condition=c (line 1468)",
-      "data-token-id=tokenId (line 1401)",
-      "data-token-id=tokenId (line 1418)",
-      "data-token-id=tokenId (line 1439)",
-      "data-token-id=tokenId (line 1461)",
-      "data-token-id=tokenId (line 1490)",
-      "data-user-id=userId (line 1688)",
-      "data-user-id=userId (line 1728)",
       "value=currentHp (line 1349)"
-    ],
-    "scripts/tom/TomSocketHandler.mjs": [
-      "data-overlay-path=esc (line 429)",
-      "data-overlay-path=esc (line 458)",
-      "data-overlay-path=esc (line 473)"
-    ],
-    "scripts/tray/SDXRollerApp.mjs": [
-      "data-uuid=data.uuid (line 619)",
-      "data-uuid=uuid (line 692)"
     ],
     "scripts/tray/dungeon-bindings.mjs": [
       "value=el (line 156)",
