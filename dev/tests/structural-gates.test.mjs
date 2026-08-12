@@ -1026,3 +1026,24 @@ test("attr-escape gate: covers value, href and placeholder, not only src/alt", (
     ["value", "href", "placeholder"],
   );
 });
+
+test("attr-escape gate: recognises the local escape-helper spellings this tree uses", () => {
+  // Several modules define their own helper instead of calling foundry.utils
+  // directly. Reporting those as unescaped is a false positive, and a gate that
+  // cries wolf gets its baseline regenerated unread.
+  const source = [
+    'const a = `<img src="${esc(actor.img ?? "")}">`;',
+    'const b = `<img alt="${escapeAttr(value)}">`;',
+    'const c = `<img title="${escapeAttribute(p.name)}">`;',
+  ].join("\n");
+
+  assert.deepEqual(scanUnescapedAttrs(source), []);
+});
+
+test("attr-escape gate: a hand-rolled quote replace is still reported", () => {
+  // `.replace(/"/g, "&quot;")` keeps the value inside the attribute but is
+  // silently wrong about `&`. It stays a finding so the migration is visible.
+  const findings = scanUnescapedAttrs('const h = `<img alt="${name.replace(/"/g, "&quot;")}">`;');
+
+  assert.equal(findings.length, 1);
+});

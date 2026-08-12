@@ -66,8 +66,18 @@ const ATTRIBUTES = ["src", "alt", "title", "data-tooltip", "value", "href", "pla
 
 const ATTRIBUTE_START = new RegExp(`\\b(${ATTRIBUTES.join("|")})="`, "g");
 
-/** Escaping is recognised by the call OR by the local-name convention it feeds. */
-const ESCAPED = /escapeHTML|escapeHtml|\bescaped[A-Z_]/;
+/**
+ * Escaping is recognised three ways, because this tree spells it three ways:
+ * `foundry.utils.escapeHTML(...)`, a local helper (`esc(...)`, `escapeAttr(...)`,
+ * `escapeAttribute(...)` — several files define their own), and the
+ * `const escapedName = …` convention that feeds a bare local into the markup.
+ *
+ * Missing the local-helper spelling made the first baseline report ~16 already-
+ * escaped sites as findings. False positives are the cheaper failure here, but
+ * they are not free: a gate that cries wolf gets its baseline regenerated
+ * unread, which is how the real findings get lost.
+ */
+const ESCAPED = /\besc[A-Za-z]*\s*\(|\bescaped[A-Z_]/;
 
 /** Module-owned text: i18n lookups and string literals, nothing else. */
 function isModuleOwnedText(expression) {
