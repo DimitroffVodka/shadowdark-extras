@@ -118,6 +118,27 @@ test("damage-card.mjs stays under the 1200-line split ceiling", () => {
 	assert.ok(lines <= 1200, `damage-card.mjs is ${lines} lines, expected <= 1200`);
 });
 
+test("applying damage also marks the system's apply-damage anchors as applied", () => {
+	// The system fades its own `.apply-damage` anchors off `flags.shadowdark.damageApplied`
+	// (ChatMessageSD#_addEventHandlers adds `.damage-applied`, opacity 0.4). SDX applies the
+	// same damage from its own button, so it has to set that flag or the anchors stay live
+	// and invite a second application. Source gate: the runtime path is inside a jQuery
+	// click handler with no seam to call directly.
+	assert.ok(
+		damageCardSource.includes('setFlag("shadowdark", "damageApplied", true)'),
+		"damage-card.mjs must set the shadowdark-scope damageApplied flag when damage is applied"
+	);
+	assert.ok(
+		damageCardSource.includes("markSystemAnchorsApplied($card)"),
+		"damage-card.mjs must fade the on-screen system anchors immediately"
+	);
+	assert.match(
+		damageCardSource,
+		/function markSystemAnchorsApplied[\s\S]*?addClass\("damage-applied"\)/,
+		"markSystemAnchorsApplied must apply the system's own .damage-applied class"
+	);
+});
+
 test("the action layer is extracted and re-exported through damage-card.mjs", () => {
 	// action layer exists as its own module
 	assert.ok(actionsSource.includes("trackSummonedTokensForExpiry"));

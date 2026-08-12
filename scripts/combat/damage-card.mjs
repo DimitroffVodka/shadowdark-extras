@@ -34,6 +34,23 @@ import {
 const MODULE_ID = "shadowdark-extras";
 
 /**
+ * Grey out the system's own apply-damage anchors on the message hosting this card.
+ *
+ * The system fades an anchor by adding `.damage-applied` (opacity 0.4) whenever
+ * `flags.shadowdark.damageApplied` is set at render time. Setting that flag is what
+ * makes the state stick; this only repaints the anchors already on screen so the fade
+ * is immediate rather than waiting on the update round-trip.
+ *
+ * @param {jQuery} $card - The `.sdx-damage-card` element
+ */
+function markSystemAnchorsApplied($card) {
+	$card
+		.closest(".message-content")
+		.find('[data-action="apply-damage"]')
+		.addClass("damage-applied");
+}
+
+/**
  * Attach event listeners to damage card elements
  */
 function attachDamageCardListeners(html, messageId) {
@@ -598,12 +615,25 @@ function attachDamageCardListeners(html, messageId) {
 				ui.notifications.info(`${appliedText} applied to ${appliedCount} target(s)`);
 				$btn.html('<i class="fas fa-check"></i> APPLIED');
 				$btn.attr("data-already-applied", "true");
+				// The system's own `.apply-damage` anchors sit on this same message, and
+				// SDX has just applied the damage they would apply. Fade them now so the
+				// card reads the same as a manual system apply.
+				markSystemAnchorsApplied($card);
+
 				// v14/SD4.x: Persist applied state so re-renders show "APPLIED" and the
-				// click handler refuses a second apply attempt.
+				// click handler refuses a second apply attempt. The matching system-scope
+				// flag makes the system re-add `.damage-applied` to its own anchors on
+				// every later render, and turns a stray click there into the system's
+				// reapply confirmation instead of a silent double-apply. Written with
+				// setFlag rather than one flattened update() so both writes stay visible
+				// to the flag-inventory gate.
 				try {
 					const persistMsg = game.messages.get(messageId);
 					if (persistMsg && !persistMsg.getFlag(MODULE_ID, "damageApplied")) {
 						await persistMsg.setFlag(MODULE_ID, "damageApplied", true);
+					}
+					if (persistMsg && !persistMsg.getFlag("shadowdark", "damageApplied")) {
+						await persistMsg.setFlag("shadowdark", "damageApplied", true);
 					}
 				}
 				catch(flagErr) {

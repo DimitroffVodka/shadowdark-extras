@@ -515,6 +515,9 @@
     "item-piles": [
       "data"
     ],
+    "shadowdark": [
+      "damageApplied"
+    ],
     "tokenmagic": [
       "animeInfo",
       "filters"
@@ -727,9 +730,11 @@
     "scripts/combat/damage-card-pipeline.mjs (api=setFlag scope=shadowdark-extras key=spellDamageResults receiver=message)",
     "scripts/combat/damage-card-pipeline.mjs (api=setFlag scope=shadowdark-extras key=weaponBonusResults receiver=message)",
     "scripts/combat/damage-card-targeting.mjs (api=setFlag scope=shadowdark-extras key=templatePlaced receiver=message)",
+    "scripts/combat/damage-card.mjs (api=getFlag scope=shadowdark key=damageApplied receiver=persistMsg)",
     "scripts/combat/damage-card.mjs (api=getFlag scope=shadowdark-extras key=conditionsApplied receiver=messageDoc)",
     "scripts/combat/damage-card.mjs (api=getFlag scope=shadowdark-extras key=damageApplied receiver=persistMsg)",
     "scripts/combat/damage-card.mjs (api=getFlag scope=shadowdark-extras key=weaponBonusResults receiver=message)",
+    "scripts/combat/damage-card.mjs (api=setFlag scope=shadowdark key=damageApplied receiver=persistMsg)",
     "scripts/combat/damage-card.mjs (api=setFlag scope=shadowdark-extras key=conditionsApplied receiver=messageDoc)",
     "scripts/combat/damage-card.mjs (api=setFlag scope=shadowdark-extras key=damageApplied receiver=persistMsg)",
     "scripts/combat/freyas-omen.mjs (api=getFlag scope=MODULE_ID key=freyasOmen receiver=actor)",
