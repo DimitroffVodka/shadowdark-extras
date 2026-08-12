@@ -31,6 +31,40 @@ import { listJsFiles, toRepoPath, isVendor } from "./project-scan.mjs";
 
 const SNAPSHOT_PATH = new URL("../snapshots/unescaped-attrs.json", import.meta.url);
 
+/**
+ * The #125 Tier 3 triage, recorded here rather than in the snapshot so `--write`
+ * cannot silently drop it. Everything backed by a player-editable document field
+ * has been escaped; what remains is listed below BY CATEGORY, with the reason.
+ *
+ * An accepted entry is not a verdict that the site is unreachable. It means the
+ * value is module-owned or structurally incapable of carrying a quote, so
+ * escaping it would add noise rather than close a hole.
+ */
+const NOTES = {
+  "document ids and slugs":
+    "`p.id`, `s.id`, `w.id`, `t.uuid`, `pack.id`, `type.id` and friends. Foundry ids are generated "
+    + "alphanumerics and the toolbar slugs are module-defined constants; neither can contain a quote.",
+  "numeric and boolean values":
+    "`die.faces`, `currentHp`, `xp`, `radius`, `tmOpacity`, the `duration.*` fields on the four "
+    + "sheet-enhance modules, and the loop indices. Numbers coerced into an attribute cannot break out.",
+  "module-owned label text":
+    "`HP_QUICK_ADJUST_TOOLTIP`, `formulaHelp`/`tieredFormulaHelp`/`requirementExamples` in "
+    + "SpellDamageConfig, and the literal ternaries such as `levelUp ? \"Ready to Level Up!\" : \"Level\"`. "
+    + "These are help strings this module ships, not user data. #125 calls out the SpellDamageConfig "
+    + "ones by name as noise rather than fixes.",
+  "shapechanger renderIcon":
+    "`scripts/macros/shapechanger.mjs` `src=icon` takes `renderIcon(opts.icon)` with internal values. "
+    + "#125 names this one explicitly as module-owned.",
+  "maphub <base href> injection":
+    "`MaphubSD.mjs` and `maphub-cave.mjs` inject a `<base href>` built from a local directory path the "
+    + "module computes. Not a document field, and escaping it would corrupt the URL it exists to set.",
+  "GM-authored config formulas":
+    "`flags.formula`, `damage.formula`, `save.dc`, the weapon-bonus and template-targeting inputs. "
+    + "These are settings a GM types into their own dialog and reads back in the same dialog. They are "
+    + "the weakest members of this list — if any of them starts rendering into a card other clients "
+    + "draw, escape it then.",
+};
+
 /** `file: attr=expr` — the identity the gate compares, without the line. */
 function identity(file, finding) {
   return `${file}: ${finding.attr}=${finding.expr}`;
@@ -102,7 +136,9 @@ function main() {
             + "compared by file + attribute + expression, so a site that merely moves lines is silent. Line "
             + "numbers are recorded for navigation only. This file should only ever SHRINK: regenerate after a "
             + "cleanup commit with `npm run gate:attr-escape -- --write`. If it grows, something shipped an "
-            + "unescaped interpolation into markup that renders on every connected client.",
+            + "unescaped interpolation into markup that renders on every connected client. See $notes for "
+            + "why the remaining entries were triaged as module-owned rather than fixed.",
+          $notes: NOTES,
           ...current,
         },
         null,

@@ -290,7 +290,7 @@ export const TomSceneBindings = {
 		return new Promise(resolve => {
 			const dialog = new foundry.applications.api.DialogV2({
 				window: { title },
-				content: `<div class="form-group"><label>Folder Name</label><input type="text" name="folderName" value="${defaultName}" autofocus></div>`,
+				content: `<div class="form-group"><label>Folder Name</label><input type="text" name="folderName" value="${foundry.utils.escapeHTML(defaultName)}" autofocus></div>`,
 				buttons: [
 					{
 						action: "ok",

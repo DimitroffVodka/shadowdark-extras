@@ -160,8 +160,8 @@ export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml,
 					</div>
 				</div>
 			</div>
-			<input type="hidden" name="flags.${MODULE_ID}.spellDamage.effects" class="sdx-effects-data" value="${JSON.stringify(effectsArray).replace(/"/g, "&quot;")}" />
-			<input type="hidden" name="flags.${MODULE_ID}.spellDamage.criticalEffects" class="sdx-critical-effects-data" value="${JSON.stringify(criticalEffectsArray).replace(/"/g, "&quot;")}" />
+			<input type="hidden" name="flags.${MODULE_ID}.spellDamage.effects" class="sdx-effects-data" value="${foundry.utils.escapeHTML(JSON.stringify(effectsArray))}" />
+			<input type="hidden" name="flags.${MODULE_ID}.spellDamage.criticalEffects" class="sdx-critical-effects-data" value="${foundry.utils.escapeHTML(JSON.stringify(criticalEffectsArray))}" />
 
 			<!-- Requirement for effects -->
 			<h3 class="sdx-section-title sdx-section-title-small">Effects Requirement <i class="fas fa-question-circle sdx-help-icon" title="Formula that must be true for effects to apply. Leave blank to always apply.&#10;Examples: ${effectsRequirementExamples}"></i></h3>

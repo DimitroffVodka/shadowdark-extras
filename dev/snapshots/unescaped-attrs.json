@@ -1,7 +1,15 @@
 {
-  "$comment": "Attribute interpolations that reach HTML without escaping. The gate blocks anything NEW, not the absolute count — see #125 for the ~90 pre-existing sites and their triage tiers. Entries are compared by file + attribute + expression, so a site that merely moves lines is silent. Line numbers are recorded for navigation only. This file should only ever SHRINK: regenerate after a cleanup commit with `npm run gate:attr-escape -- --write`. If it grows, something shipped an unescaped interpolation into markup that renders on every connected client.",
-  "total": 150,
-  "files": 41,
+  "$comment": "Attribute interpolations that reach HTML without escaping. The gate blocks anything NEW, not the absolute count — see #125 for the ~90 pre-existing sites and their triage tiers. Entries are compared by file + attribute + expression, so a site that merely moves lines is silent. Line numbers are recorded for navigation only. This file should only ever SHRINK: regenerate after a cleanup commit with `npm run gate:attr-escape -- --write`. If it grows, something shipped an unescaped interpolation into markup that renders on every connected client. See $notes for why the remaining entries were triaged as module-owned rather than fixed.",
+  "$notes": {
+    "document ids and slugs": "`p.id`, `s.id`, `w.id`, `t.uuid`, `pack.id`, `type.id` and friends. Foundry ids are generated alphanumerics and the toolbar slugs are module-defined constants; neither can contain a quote.",
+    "numeric and boolean values": "`die.faces`, `currentHp`, `xp`, `radius`, `tmOpacity`, the `duration.*` fields on the four sheet-enhance modules, and the loop indices. Numbers coerced into an attribute cannot break out.",
+    "module-owned label text": "`HP_QUICK_ADJUST_TOOLTIP`, `formulaHelp`/`tieredFormulaHelp`/`requirementExamples` in SpellDamageConfig, and the literal ternaries such as `levelUp ? \"Ready to Level Up!\" : \"Level\"`. These are help strings this module ships, not user data. #125 calls out the SpellDamageConfig ones by name as noise rather than fixes.",
+    "shapechanger renderIcon": "`scripts/macros/shapechanger.mjs` `src=icon` takes `renderIcon(opts.icon)` with internal values. #125 names this one explicitly as module-owned.",
+    "maphub <base href> injection": "`MaphubSD.mjs` and `maphub-cave.mjs` inject a `<base href>` built from a local directory path the module computes. Not a document field, and escaping it would corrupt the URL it exists to set.",
+    "GM-authored config formulas": "`flags.formula`, `damage.formula`, `save.dc`, the weapon-bonus and template-targeting inputs. These are settings a GM types into their own dialog and reads back in the same dialog. They are the weakest members of this list — if any of them starts rendering into a card other clients draw, escape it then."
+  },
+  "total": 137,
+  "files": 39,
   "byFile": {
     "scripts/MaphubSD.mjs": [
       "href=localDirUrl (line 100)"
@@ -82,7 +90,6 @@
       "value=indyScale (line 353)",
       "value=indySpeed (line 350)",
       "value=nativeRegionColor (line 297)",
-      "value=p.name (line 563)",
       "value=radius (line 279)",
       "value=save.dc || 12 (line 485)",
       "value=tmOpacity (line 333)",
@@ -90,9 +97,7 @@
     ],
     "scripts/hex/HexTooltipSD.mjs": [
       "value=j.id (line 1677)",
-      "value=name.replace(/\"/g, \"&quot;\") (line 1685)",
-      "value=t (line 1669)",
-      "value=text.replace(/\"/g, \"&quot;\") (line 1645)"
+      "value=t (line 1669)"
     ],
     "scripts/inventory/TradeWindowSD.mjs": [
       "value=p.id (line 974)",
@@ -123,8 +128,6 @@
       "title=formulaHelp (line 117)",
       "title=requirementExamples (line 59)",
       "title=tieredFormulaHelp (line 132)",
-      "value=JSON.stringify(criticalEffectsArray).replace(/\"/g, \"&quot;\") (line 164)",
-      "value=JSON.stringify(effectsArray).replace(/\"/g, \"&quot;\") (line 163)",
       "value=flags.bonus (line 96)",
       "value=flags.damageRequirement || \"\" (line 57)",
       "value=flags.effectsRequirement || \"\" (line 169)",
@@ -210,14 +213,8 @@
       "value=t.uuid (line 23)"
     ],
     "scripts/party/carousing/CarousingTablesApp.mjs": [
-      "placeholder=benefitLabel (line 272)",
-      "placeholder=descLabel (line 271)",
-      "value=outcome.benefit || \"\" (line 272)",
-      "value=outcome.description || \"\" (line 271)",
-      "value=outcome.roll || \"\" (line 270)",
       "value=tier.bonus (line 255)",
-      "value=tier.cost (line 254)",
-      "value=tier.description (line 256)"
+      "value=tier.cost (line 254)"
     ],
     "scripts/party/partyinventory.mjs": [
       "value=m.id (line 459)"
@@ -228,12 +225,6 @@
     "scripts/tray/dungeon-bindings.mjs": [
       "value=el (line 156)",
       "value=t.id (line 201)"
-    ],
-    "scripts/tray/pin-list-bindings.mjs": [
-      "value=currentName (line 431)"
-    ],
-    "scripts/tray/tom-scene-bindings.mjs": [
-      "value=defaultName (line 293)"
     ]
   }
 }

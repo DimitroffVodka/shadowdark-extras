@@ -560,7 +560,7 @@ export function generateAuraConfigHTML(moduleId, flags) {
                                     <label style="font-size: 11px; color: #999;">TokenMagic Preset</label>
                                     <select name="flags.${moduleId}.auraEffects.tokenFilters.preset" style="width: 100%;">
                                         <option value="" ${!tokenFilters.preset ? "selected" : ""}>-- Select Preset --</option>
-                                        ${tmTokenPresets.map(p => `<option value="${p.name}" ${tokenFilters.preset === p.name ? "selected" : ""}>${p.name}</option>`).join("")}
+                                        ${tmTokenPresets.map(p => `<option value="${foundry.utils.escapeHTML(p.name)}" ${tokenFilters.preset === p.name ? "selected" : ""}>${foundry.utils.escapeHTML(p.name)}</option>`).join("")}
                                     </select>
                                 </div>
                                 <p style="font-size: 10px; color: #888; margin: 8px 0 0 0;">

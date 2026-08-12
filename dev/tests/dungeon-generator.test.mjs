@@ -40,7 +40,20 @@ globalThis.fetch = async url => {
 };
 globalThis.ui = { notifications: { error() {} } };
 globalThis.game = { packs: { get: () => null } };
-globalThis.foundry = { applications: { apps: {} }, utils: { randomID: () => "test-id" } };
+// escapeHTML mirrors Foundry's real escaping rather than the identity stub used
+// in some harnesses, so assertions about generated markup stay meaningful.
+globalThis.foundry = {
+	applications: { apps: {} },
+	utils: {
+		randomID: () => "test-id",
+		escapeHTML: v => String(v)
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&#x27;"),
+	},
+};
 
 /**
  * Replace Math.random with a deterministic sequence for one call.

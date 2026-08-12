@@ -428,7 +428,7 @@ export const PinListBindings = {
                             <form>
                                 <div class="form-group">
                                     <label>Name:</label>
-                                    <input type="text" name="name" value="${currentName}" autofocus>
+                                    <input type="text" name="name" value="${foundry.utils.escapeHTML(currentName)}" autofocus>
                                 </div>
                             </form>
                         `,

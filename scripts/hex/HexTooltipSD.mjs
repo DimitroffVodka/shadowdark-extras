@@ -1642,7 +1642,7 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		row.className = "sdx-hex-note-row";
 		row.dataset.nid = id;
 		row.innerHTML = `
-			<input  class="sdx-hex-note-text" type="text" placeholder="Note text..." value="${text.replace(/"/g, "&quot;")}">
+			<input  class="sdx-hex-note-text" type="text" placeholder="Note text..." value="${foundry.utils.escapeHTML(text)}">
 			<label  class="sdx-hex-feat-vis" title="Visible to players">
 				<input type="checkbox"${visible ? " checked" : ""}><i class="fas fa-eye"></i>
 			</label>
@@ -1682,7 +1682,7 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		row.dataset.fid = id;
 		row.innerHTML = `
 			<select class="sdx-hex-feat-type">${typeOpts}</select>
-			<input  class="sdx-hex-feat-name${isJournal ? " sdx-hidden" : ""}" type="text" placeholder="Label..." value="${name.replace(/"/g, "&quot;")}">
+			<input  class="sdx-hex-feat-name${isJournal ? " sdx-hidden" : ""}" type="text" placeholder="Label..." value="${foundry.utils.escapeHTML(name)}">
 			<div    class="sdx-hex-feat-journal-wrap${isJournal ? "" : " sdx-hidden"}">
 				<select class="sdx-hex-feat-journal">
 					<option value="">— Journal —</option>

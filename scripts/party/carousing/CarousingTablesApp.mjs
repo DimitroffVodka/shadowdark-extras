@@ -253,7 +253,7 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
             <div class="table-row flexrow">
                 <input type="number" name="tier-cost-${index}" value="${tier.cost}" placeholder="GP" style="width:80px" />
                 <input type="number" name="tier-bonus-${index}" value="${tier.bonus}" placeholder="+0" style="width:60px" />
-                <input type="text" name="tier-description-${index}" value="${tier.description}" placeholder="Description" style="flex:1" />
+                <input type="text" name="tier-description-${index}" value="${foundry.utils.escapeHTML(tier.description)}" placeholder="Description" style="flex:1" />
                 <a data-action="remove-row" title="Remove"><i class="fas fa-trash"></i></a>
             </div>
         `;
@@ -267,9 +267,9 @@ export class CarousingTablesApp extends HandlebarsApplicationMixin(ApplicationV2
 		const benefitLabel = game.i18n.localize("SHADOWDARK_EXTRAS.carousing.benefit");
 		return `
             <div class="table-row flexrow">
-                <input type="text" name="outcome-roll-${index}" value="${outcome.roll || ""}" placeholder="1" style="width:60px; text-align:center" />
-                <input type="text" name="outcome-description-${index}" value="${outcome.description || ""}" placeholder="${descLabel}" style="flex:1" />
-                <input type="text" name="outcome-benefit-${index}" value="${outcome.benefit || ""}" placeholder="${benefitLabel}" style="flex:1" />
+                <input type="text" name="outcome-roll-${index}" value="${foundry.utils.escapeHTML(outcome.roll || "")}" placeholder="1" style="width:60px; text-align:center" />
+                <input type="text" name="outcome-description-${index}" value="${foundry.utils.escapeHTML(outcome.description || "")}" placeholder="${foundry.utils.escapeHTML(descLabel)}" style="flex:1" />
+                <input type="text" name="outcome-benefit-${index}" value="${foundry.utils.escapeHTML(outcome.benefit || "")}" placeholder="${foundry.utils.escapeHTML(benefitLabel)}" style="flex:1" />
                 <a data-action="remove-row" title="Remove"><i class="fas fa-trash"></i></a>
             </div>
         `;
