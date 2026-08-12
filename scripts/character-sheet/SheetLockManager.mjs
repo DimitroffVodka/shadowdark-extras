@@ -246,7 +246,7 @@ export default class SheetLockManager {
 
 		if (toggleBtn.length === 0) {
 			// Create if doesn't exist
-			toggleBtn = $(`<a class="sdx-sheet-lock-toggle" title="${tooltip}"><i class="${iconClass}"></i></a>`);
+			toggleBtn = $(`<a class="sdx-sheet-lock-toggle" title="${foundry.utils.escapeHTML(tooltip)}"><i class="${iconClass}"></i></a>`);
 
 			toggleBtn.on("click", async ev => {
 				ev.preventDefault();

@@ -1292,7 +1292,7 @@ export class SDXHexTooltip {
 		// Image tooltip
 		const img = record?.image;
 		if (img && this.#imgTooltipEl) {
-			this.#imgTooltipEl.innerHTML = `<img src="${img}">`;
+			this.#imgTooltipEl.innerHTML = `<img src="${foundry.utils.escapeHTML(img)}">`;
 			this.#imgTooltipEl.style.display = "block";
 			requestAnimationFrame(() => this.#imgTooltipEl?.classList.add("sdx-visible"));
 		}

@@ -28,7 +28,7 @@ function bindIconPathControl({
 		if (preview) {
 			const style = imageStyle ? ` style="${imageStyle}"` : "";
 			preview.innerHTML = path
-				? `<img src="${foundry.utils.escapeHTML(path)}" alt="${imageAlt}"${style} />`
+				? `<img src="${foundry.utils.escapeHTML(path)}" alt="${foundry.utils.escapeHTML(imageAlt)}"${style} />`
 				: emptyMarkup;
 		}
 		if (clearButton) clearButton.style.display = path ? "" : "none";

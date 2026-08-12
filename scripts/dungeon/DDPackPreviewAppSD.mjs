@@ -211,7 +211,7 @@ export class DDPackPreviewApp extends ApplicationV2 {
 		grid.innerHTML = files.map(file => {
 			const selected = this.selected.has(file.path);
 			return `<button type="button" class="sdx-ddp-thumb${selected ? " selected" : ""}" data-path="${escapeHtml(file.path)}" title="${escapeHtml(file.filename)}">
-                <span class="sdx-ddp-check"></span><img src="${file.previewUrl}" loading="lazy" alt=""><span>${escapeHtml(formatLabel(file.filename))}</span>
+                <span class="sdx-ddp-check"></span><img src="${escapeHtml(file.previewUrl)}" loading="lazy" alt=""><span>${escapeHtml(formatLabel(file.filename))}</span>
             </button>`;
 		}).join("");
 		grid.querySelectorAll(".sdx-ddp-thumb").forEach(button => {

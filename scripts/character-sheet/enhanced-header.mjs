@@ -182,7 +182,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 
 			<div class="sdx-header-main">
 				<div class="sdx-actor-name-row">
-					<input class="sdx-actor-name" data-field="name" type="text" value="${actor.name}" placeholder="Character Name" />
+					<input class="sdx-actor-name" data-field="name" type="text" value="${foundry.utils.escapeHTML(actor.name)}" placeholder="Character Name" />
 				</div>
 
 				<div class="sdx-char-details-row">
@@ -727,7 +727,7 @@ function applyHeaderBackground(html, actor) {
 		const videoType = headerBg.split(".").pop().toLowerCase();
 		const $video = $(`
 			<video autoplay loop muted playsinline>
-				<source src="${headerBg}" type="video/${videoType}">
+				<source src="${foundry.utils.escapeHTML(headerBg)}" type="video/${videoType}">
 			</video>
 		`);
 		$bgExtension.append($video);
@@ -988,7 +988,7 @@ function applyPartyHeaderBackground(html, actor) {
 		const videoType = headerBg.split(".").pop().toLowerCase();
 		const $video = $(`
 			<video autoplay loop muted playsinline>
-				<source src="${headerBg}" type="video/${videoType}">
+				<source src="${foundry.utils.escapeHTML(headerBg)}" type="video/${videoType}">
 			</video>
 		`);
 		$bgExtension.append($video);

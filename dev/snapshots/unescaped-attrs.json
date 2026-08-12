@@ -1,46 +1,25 @@
 {
   "$comment": "Attribute interpolations that reach HTML without escaping. The gate blocks anything NEW, not the absolute count — see #125 for the ~90 pre-existing sites and their triage tiers. Entries are compared by file + attribute + expression, so a site that merely moves lines is silent. Line numbers are recorded for navigation only. This file should only ever SHRINK: regenerate after a cleanup commit with `npm run gate:attr-escape -- --write`. If it grows, something shipped an unescaped interpolation into markup that renders on every connected client.",
-  "total": 177,
-  "files": 50,
+  "total": 150,
+  "files": 41,
   "byFile": {
     "scripts/MaphubSD.mjs": [
       "href=localDirUrl (line 100)"
-    ],
-    "scripts/MaphubViewerApp.mjs": [
-      "src=imgPath (line 535)"
     ],
     "scripts/animation/AnimationFxConfig.mjs": [
       "value=v (line 78)",
       "value=v (line 80)"
     ],
-    "scripts/animation/WeaponAnimationConfig.mjs": [
-      "alt=name (line 385)",
-      "src=path (line 306)",
-      "src=path (line 385)"
-    ],
     "scripts/canvas/SDXDrawingToolbar.mjs": [
       "title=MODULE_ID (line 170)",
-      "title=c.label (line 531)",
-      "title=eyeTitle (line 808)",
-      "title=it.label (line 236)",
       "title=opPct (line 208)",
       "title=opStr (line 804)",
-      "title=s.label (line 419)",
-      "title=s.label (line 428)",
-      "title=w.label (line 191)",
       "value=c.id (line 531)",
       "value=it.id (line 236)",
       "value=pct (line 478)",
       "value=s.id (line 419)",
       "value=s.id (line 428)",
       "value=w.id (line 191)"
-    ],
-    "scripts/character-sheet/SheetEditorConfig.mjs": [
-      "alt=name (line 270)",
-      "src=path (line 270)"
-    ],
-    "scripts/character-sheet/SheetLockManager.mjs": [
-      "title=tooltip (line 249)"
     ],
     "scripts/character-sheet/enhanced-header.mjs": [
       "data-tooltip=HP_QUICK_ADJUST_TOOLTIP (line 173)",
@@ -50,9 +29,6 @@
       "data-tooltip=luckStatus (line 147)",
       "data-tooltip=xp (line 194)",
       "data-tooltip=xpForNextLevel (line 194)",
-      "src=headerBg (line 730)",
-      "src=headerBg (line 991)",
-      "value=actor.name (line 185)",
       "value=currentHp (line 337)",
       "value=currentLuck (line 396)",
       "value=currentXp (line 442)"
@@ -97,14 +73,8 @@
       "value=opt.value (line 843)",
       "value=usage (line 604)"
     ],
-    "scripts/dungeon/DDPackPreviewAppSD.mjs": [
-      "src=file.previewUrl (line 214)"
-    ],
     "scripts/dungeon/DDPackSettingsAppSD.mjs": [
       "title=pack.enabled === false ? \"Show in Decor tray\" : \"Hide from Decor tray\" (line 73)"
-    ],
-    "scripts/dungeon/DungeonGenerator.mjs": [
-      "src=mapSrc (line 770)"
     ],
     "scripts/effects/AuraConfig.mjs": [
       "value=damage.formula || \"\" (line 421)",
@@ -119,7 +89,6 @@
       "value=tmTint || \"#ffffff\" (line 328)"
     ],
     "scripts/hex/HexTooltipSD.mjs": [
-      "src=img (line 1295)",
       "value=j.id (line 1677)",
       "value=name.replace(/\"/g, \"&quot;\") (line 1685)",
       "value=t (line 1669)",
@@ -203,9 +172,6 @@
       "value=duration.turns || \"\" (line 383)",
       "value=key (line 69)"
     ],
-    "scripts/item-sheets/staff-spells.mjs": [
-      "title=staffName (line 155)"
-    ],
     "scripts/item-sheets/wand-sheet-enhance.mjs": [
       "value=duration.rounds || \"\" (line 398)",
       "value=duration.seconds || \"\" (line 388)",
@@ -215,9 +181,6 @@
       "value=duration.turns || \"\" (line 402)",
       "value=usesCurrent (line 83)",
       "value=usesMax (line 91)"
-    ],
-    "scripts/journal/PinStyleEditorSD.mjs": [
-      "alt=imageAlt (line 31)"
     ],
     "scripts/journal/easy-reference/EasyReferenceMenu.mjs": [
       "value=a (line 228)"
@@ -260,15 +223,7 @@
       "value=m.id (line 459)"
     ],
     "scripts/tom/TomPlayerView.mjs": [
-      "src=cond.icon (line 1279)",
-      "src=condDef.icon (line 1123)",
-      "src=condDef.icon (line 1469)",
-      "title=condDef.name (line 1122)",
-      "title=condDef.name (line 1468)",
       "value=currentHp (line 1349)"
-    ],
-    "scripts/tom/TomSocketHandler.mjs": [
-      "src=overlayPath (line 406)"
     ],
     "scripts/tray/dungeon-bindings.mjs": [
       "value=el (line 156)",

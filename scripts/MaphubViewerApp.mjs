@@ -532,7 +532,7 @@ export class MaphubViewerApp extends ApplicationV2 {
 			await ChatMessage.create({
 				content: `<div style="text-align:center;">
 					<p><strong>🗺️ ${this._getMapLabel()}</strong></p>
-					<img src="${imgPath}" style="max-width:100%;border-radius:6px;border:1px solid #555;" />
+					<img src="${foundry.utils.escapeHTML(imgPath)}" style="max-width:100%;border-radius:6px;border:1px solid #555;" />
 				</div>`,
 				speaker: ChatMessage.getSpeaker(),
 			});

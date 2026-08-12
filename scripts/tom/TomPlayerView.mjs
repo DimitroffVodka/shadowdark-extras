@@ -1119,8 +1119,8 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 		const conditionsHtml = conditions.map(c => {
 			const condDef = this.ARENA_CONDITIONS.find(def => def.id === c);
 			if (!condDef) return "";
-			return `<div class="tom-arena-condition" data-condition="${c}" title="${condDef.name}">
-        ${condDef.icon.startsWith("fa") ? `<i class="${condDef.icon}"></i>` : `<img src="${condDef.icon}">`}
+			return `<div class="tom-arena-condition" data-condition="${c}" title="${foundry.utils.escapeHTML(condDef.name)}">
+        ${condDef.icon.startsWith("fa") ? `<i class="${condDef.icon}"></i>` : `<img src="${foundry.utils.escapeHTML(condDef.icon)}">`}
       </div>`;
 		}).join("");
 
@@ -1276,7 +1276,7 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 			item.dataset.conditionId = cond.id;
 			item.title = cond.name;
 			item.innerHTML = `
-        ${cond.icon.startsWith("fa") ? `<i class="${cond.icon}"></i>` : `<img src="${cond.icon}">`}
+        ${cond.icon.startsWith("fa") ? `<i class="${cond.icon}"></i>` : `<img src="${foundry.utils.escapeHTML(cond.icon)}">`}
         <span>${cond.name}</span>
       `;
 
@@ -1465,8 +1465,8 @@ export class TomPlayerView extends HandlebarsApplicationMixin(ApplicationV2) {
 				const conditionsHtml = conditions.map(c => {
 					const condDef = this.ARENA_CONDITIONS.find(def => def.id === c);
 					if (!condDef) return "";
-					return `<div class="tom-arena-condition" data-condition="${c}" title="${condDef.name}">
-            ${condDef.icon.startsWith("fa") ? `<i class="${condDef.icon}"></i>` : `<img src="${condDef.icon}">`}
+					return `<div class="tom-arena-condition" data-condition="${c}" title="${foundry.utils.escapeHTML(condDef.name)}">
+            ${condDef.icon.startsWith("fa") ? `<i class="${condDef.icon}"></i>` : `<img src="${foundry.utils.escapeHTML(condDef.icon)}">`}
           </div>`;
 				}).join("");
 				conditionsContainer.innerHTML = conditionsHtml;

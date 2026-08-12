@@ -767,7 +767,7 @@ export async function generateDungeonHtml(typeKey, sizeKey, hexLabel, hexKey) {
 		const mapSecretId = `secret-${(typeof foundry !== "undefined" && foundry.utils) ? foundry.utils.randomID() : Math.random().toString(36).substring(2, 10)}`;
 		html += `<section id="${mapSecretId}" class="secret">`;
 		html += "<div style=\"text-align: center; margin: 10px 0;\">";
-		html += `<img src="${mapSrc}" alt="Dungeon Map" style="max-width: 450px; width: 100%; border: 1px solid #ccc; border-radius: 8px;">`;
+		html += `<img src="${foundry.utils.escapeHTML(mapSrc)}" alt="Dungeon Map" style="max-width: 450px; width: 100%; border: 1px solid #ccc; border-radius: 8px;">`;
 		html += "</div>";
 		html += "</section>";
 	}

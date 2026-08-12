@@ -188,7 +188,7 @@ export class SDXDrawingToolbar {
 		h += "<div class=\"sdx-dt-group-label\">Weight</div>";
 		LINE_WEIGHTS.forEach(w => {
 			const active = w.id === st.brushSettings.size ? " sdx-dt-active" : "";
-			h += `<button class="sdx-dt-btn sdx-dt-lw ${w.css}${active}" data-action="lineWeight" data-value="${w.id}" title="${w.label}"><i class="fa-solid ${w.icon}"></i></button>`;
+			h += `<button class="sdx-dt-btn sdx-dt-lw ${w.css}${active}" data-action="lineWeight" data-value="${w.id}" title="${foundry.utils.escapeHTML(w.label)}"><i class="fa-solid ${w.icon}"></i></button>`;
 		});
 		h += "</div>";
 
@@ -233,7 +233,7 @@ export class SDXDrawingToolbar {
 		let h = `<div class="sdx-dt-group"><div class="sdx-dt-group-label">${label}</div>`;
 		items.forEach(it => {
 			const active = (String(it.id) === String(current)) ? " sdx-dt-active" : "";
-			h += `<button class="sdx-dt-btn${active}" data-action="${action}" data-value="${it.id}" title="${it.label}"><i class="fa-solid ${it.icon}"></i></button>`;
+			h += `<button class="sdx-dt-btn${active}" data-action="${action}" data-value="${it.id}" title="${foundry.utils.escapeHTML(it.label)}"><i class="fa-solid ${it.icon}"></i></button>`;
 		});
 		h += "</div>";
 		return h;
@@ -416,7 +416,7 @@ export class SDXDrawingToolbar {
 		h += "<div class=\"sdx-dt-overlay-grid\">";
 		STAMP_STYLES.forEach(s => {
 			const active = s.id === st.stampStyle ? " sdx-dt-active" : "";
-			h += `<button class="sdx-dt-btn${active}" data-action="stampStyle" data-value="${s.id}" title="${s.label}"><i class="fa-solid ${s.icon}"></i></button>`;
+			h += `<button class="sdx-dt-btn${active}" data-action="stampStyle" data-value="${s.id}" title="${foundry.utils.escapeHTML(s.label)}"><i class="fa-solid ${s.icon}"></i></button>`;
 		});
 		h += "</div></div>";
 
@@ -425,7 +425,7 @@ export class SDXDrawingToolbar {
 		h += "<div class=\"sdx-dt-overlay-grid\">";
 		SYMBOL_SIZES.forEach(s => {
 			const active = s.id === st.symbolSize ? " sdx-dt-active" : "";
-			h += `<button class="sdx-dt-btn${active}" data-action="symbolSize" data-value="${s.id}" title="${s.label}"><i class="fa-solid ${s.icon}"></i></button>`;
+			h += `<button class="sdx-dt-btn${active}" data-action="symbolSize" data-value="${s.id}" title="${foundry.utils.escapeHTML(s.label)}"><i class="fa-solid ${s.icon}"></i></button>`;
 		});
 		h += "</div></div>";
 
@@ -528,7 +528,7 @@ export class SDXDrawingToolbar {
 			const bg = c.hex ?? this._getPlayerHex();
 			const active = this._isColorActive(c.id) ? " sdx-dt-active" : "";
 			const isPlayer = c.id === "player" ? " sdx-dt-color-player" : "";
-			h += `<button class="sdx-dt-color-cell${active}${isPlayer}" data-action="color" data-value="${c.id}" title="${c.label}" style="background:${bg}"></button>`;
+			h += `<button class="sdx-dt-color-cell${active}${isPlayer}" data-action="color" data-value="${c.id}" title="${foundry.utils.escapeHTML(c.label)}" style="background:${bg}"></button>`;
 		});
 		h += "</div></div>";
 		overlay.innerHTML = h;
@@ -805,7 +805,7 @@ export class SDXDrawingToolbar {
 		h += permBadge;
 		h += "</div>";
 		if (e.permanent) {
-			h += `<button class="sdx-dt-inspector-visibility" title="${eyeTitle}"><i class="fa-solid ${eyeIcon}"></i></button>`;
+			h += `<button class="sdx-dt-inspector-visibility" title="${foundry.utils.escapeHTML(eyeTitle)}"><i class="fa-solid ${eyeIcon}"></i></button>`;
 		}
 		h += "<button class=\"sdx-dt-inspector-delete\" title=\"Delete (or right-click row)\"><i class=\"fa-solid fa-trash-can\"></i></button>";
 		h += "</div>";

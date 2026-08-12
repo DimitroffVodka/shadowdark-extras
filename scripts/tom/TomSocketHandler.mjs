@@ -403,7 +403,7 @@ export class TomSocketHandler {
 		overlay.dataset.overlayPath = overlayPath;
 		overlay.innerHTML = `
       <video loop autoplay muted playsinline disablepictureinpicture>
-        <source src="${overlayPath}" type="${mimeType}">
+        <source src="${foundry.utils.escapeHTML(overlayPath)}" type="${mimeType}">
       </video>
     `;
 

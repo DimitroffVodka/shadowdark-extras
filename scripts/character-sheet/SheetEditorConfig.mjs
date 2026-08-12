@@ -267,7 +267,7 @@ export default class SheetEditorConfig extends HandlebarsApplicationMixin(Applic
 				const path = thumb.dataset.path;
 				const name = thumb.dataset.name;
 				tooltip.innerHTML = `
-					<img src="${path}" alt="${name}">
+					<img src="${foundry.utils.escapeHTML(path)}" alt="${foundry.utils.escapeHTML(name)}">
 					<span>${name}</span>
 				`;
 				tooltip.style.display = "block";

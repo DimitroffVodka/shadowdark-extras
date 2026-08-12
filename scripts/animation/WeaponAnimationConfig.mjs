@@ -303,7 +303,7 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 				const currentDisplay = html.querySelector(".weapon-image-current");
 				if (currentDisplay) {
 					currentDisplay.innerHTML = `
-                        <img src="${path}" alt="Selected">
+                        <img src="${foundry.utils.escapeHTML(path)}" alt="Selected">
                         <span class="weapon-image-name">${name}</span>
                         <i class="fas fa-folder-open weapon-image-browse-icon"></i>
                     `;
@@ -382,7 +382,7 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 				const path = thumb.dataset.path;
 				const name = thumb.dataset.name;
 				tooltip.innerHTML = `
-                    <img src="${path}" alt="${name}">
+                    <img src="${foundry.utils.escapeHTML(path)}" alt="${foundry.utils.escapeHTML(name)}">
                     <span>${name}</span>
                 `;
 				tooltip.style.display = "block";

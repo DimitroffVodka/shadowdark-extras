@@ -152,7 +152,7 @@ function buildStaffSpellsHtml(staffSpells) {
 				<div class="item-image" style="background-image: url(${spellImg})">
 					<i class="fas fa-comment fa-lg"></i>
 				</div>
-				<a class="item-name sdx-staff-spell-name" data-action="show-details" title="From ${staffName}">${spellName}</a>
+				<a class="item-name sdx-staff-spell-name" data-action="show-details" title="From ${foundry.utils.escapeHTML(staffName)}">${foundry.utils.escapeHTML(spellName)}</a>
 				<div class="duration">${durationDisplay}</div>
 				<div class="range">${rangeKey ? CONFIG.SHADOWDARK?.spellRanges?.[rangeKey] || rangeKey : ""}</div>
 				<div class="actions">
