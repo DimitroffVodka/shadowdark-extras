@@ -35,7 +35,7 @@ export function generateSummoningConfigHTML(MODULE_ID, flags, summonsList, summo
 					</button>
 
 					<!-- Hidden input to store JSON data -->
-					<input type="hidden" name="flags.${MODULE_ID}.summoning.profiles" class="sdx-summons-data" value="${JSON.stringify(summonProfilesArray).replace(/"/g, "&quot;")}" />
+					<input type="hidden" name="flags.${MODULE_ID}.summoning.profiles" class="sdx-summons-data" value="${foundry.utils.escapeHTML(JSON.stringify(summonProfilesArray))}" />
 
 					<!-- Delete at expiry option -->
 					<div class="sdx-summoning-option" style="margin-top: 8px;">
@@ -61,28 +61,42 @@ export function generateSummonProfileHTML(profile, index) {
 	const truncatedName = (profile.creatureName || "Unknown").length > 8
 		? `${(profile.creatureName || "Unknown").substring(0, 8)}…`
 		: (profile.creatureName || "Unknown");
+
+	// Every field here comes from a dropped actor or from GM-typed text, and each
+	// lands in an attribute. Truncate first, then escape — escaping first would
+	// let substring(0, 8) cut an entity in half.
+	const escapedName = foundry.utils.escapeHTML(profile.creatureName || "Unknown");
+	const escapedAltName = foundry.utils.escapeHTML(profile.creatureName || "Creature");
+	const escapedTruncatedName = foundry.utils.escapeHTML(truncatedName);
+	const escapedImg = foundry.utils.escapeHTML(profile.creatureImg || "icons/svg/mystery-man.svg");
+	const escapedUuid = foundry.utils.escapeHTML(profile.creatureUuid || "");
+	const escapedRawName = foundry.utils.escapeHTML(profile.creatureName || "");
+	const escapedRawImg = foundry.utils.escapeHTML(profile.creatureImg || "");
+	const escapedCount = foundry.utils.escapeHTML(profile.count || "1");
+	const escapedDisplayName = foundry.utils.escapeHTML(profile.displayName || "");
+
 	return `
 		<div class="sdx-summon-profile" data-index="${index}">
 			<div class="sdx-profile-grid">
 				<!-- Creature Drop Zone -->
 				<div class="sdx-summon-creature-drop">
 					${profile.creatureUuid ? `
-						<div class="sdx-summon-creature-display" data-uuid="${profile.creatureUuid}" title="${profile.creatureName || "Unknown"}">
-							<img src="${profile.creatureImg || "icons/svg/mystery-man.svg"}" alt="${profile.creatureName || "Creature"}" />
-							<span>${truncatedName}</span>
+						<div class="sdx-summon-creature-display" data-uuid="${escapedUuid}" title="${escapedName}">
+							<img src="${escapedImg}" alt="${escapedAltName}" />
+							<span>${escapedTruncatedName}</span>
 						</div>
 					` : `
 						<span><i class="fas fa-crosshairs"></i> Drop creature here</span>
 					`}
 				</div>
-				<input type="hidden" class="sdx-creature-uuid" value="${profile.creatureUuid || ""}" />
-				<input type="hidden" class="sdx-creature-name" value="${profile.creatureName || ""}" />
-				<input type="hidden" class="sdx-creature-img" value="${profile.creatureImg || ""}" />
+				<input type="hidden" class="sdx-creature-uuid" value="${escapedUuid}" />
+				<input type="hidden" class="sdx-creature-name" value="${escapedRawName}" />
+				<input type="hidden" class="sdx-creature-img" value="${escapedRawImg}" />
 
 				<!-- Count Formula -->
 				<div class="sdx-profile-field">
 					<label>Count</label>
-					<input type="text" class="sdx-summon-count" value="${profile.count || "1"}"
+					<input type="text" class="sdx-summon-count" value="${escapedCount}"
 					       placeholder="1, 1d4, etc."
 					       title="Number of creatures to summon. Can be a number or dice formula (e.g., 1d4, 2d6)." />
 				</div>
@@ -90,7 +104,7 @@ export function generateSummonProfileHTML(profile, index) {
 				<!-- Display Name -->
 				<div class="sdx-profile-field">
 					<label>Display Name</label>
-					<input type="text" class="sdx-summon-display-name" value="${profile.displayName || ""}"
+					<input type="text" class="sdx-summon-display-name" value="${escapedDisplayName}"
 					       placeholder="Optional custom name" />
 				</div>
 

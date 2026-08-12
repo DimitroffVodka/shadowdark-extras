@@ -25,7 +25,7 @@ export function generateItemGiveConfigHTML(MODULE_ID, flags, itemsList, itemProf
 					<button type="button" class="sdx-add-item-give-btn" data-action="addItemGiveProfile">
 						<i class="fas fa-plus"></i> Add Item to Give
 					</button>
-					<input type="hidden" name="flags.${MODULE_ID}.itemGive.profiles" class="sdx-item-give-data" value="${JSON.stringify(itemProfilesArray).replace(/"/g, "&quot;")}" />
+					<input type="hidden" name="flags.${MODULE_ID}.itemGive.profiles" class="sdx-item-give-data" value="${foundry.utils.escapeHTML(JSON.stringify(itemProfilesArray))}" />
 				</div>
 			</div>
 		</div>
@@ -33,25 +33,34 @@ export function generateItemGiveConfigHTML(MODULE_ID, flags, itemsList, itemProf
 }
 
 export function generateItemGiveProfileHTML(profile, index) {
+	// Item name and image come from a dropped item a player can rename, and the
+	// quantity is GM-typed text. Each lands in an attribute value.
+	const escapedImg = foundry.utils.escapeHTML(profile.itemImg || "icons/svg/mystery-man.svg");
+	const escapedName = foundry.utils.escapeHTML(profile.itemName || "Item");
+	const escapedUuid = foundry.utils.escapeHTML(profile.itemUuid || "");
+	const escapedRawName = foundry.utils.escapeHTML(profile.itemName || "");
+	const escapedRawImg = foundry.utils.escapeHTML(profile.itemImg || "");
+	const escapedQuantity = foundry.utils.escapeHTML(profile.quantity || "1");
+
 	return `
 		<div class="sdx-item-give-profile" data-index="${index}">
 			<div class="sdx-profile-grid">
 				<div class="sdx-item-give-drop">
 					${profile.itemUuid ? `
-						<div class="sdx-item-give-display" data-uuid="${profile.itemUuid}">
-							<img src="${profile.itemImg || "icons/svg/mystery-man.svg"}" alt="${profile.itemName || "Item"}" />
-							<span>${profile.itemName || "Item"}</span>
+						<div class="sdx-item-give-display" data-uuid="${escapedUuid}">
+							<img src="${escapedImg}" alt="${escapedName}" />
+							<span>${escapedName}</span>
 						</div>
 					` : `
 						<span><i class="fas fa-hand-holding"></i> Drop item here</span>
 					`}
 				</div>
-				<input type="hidden" class="sdx-item-give-uuid" value="${profile.itemUuid || ""}" />
-				<input type="hidden" class="sdx-item-give-name" value="${profile.itemName || ""}" />
-				<input type="hidden" class="sdx-item-give-img" value="${profile.itemImg || ""}" />
+				<input type="hidden" class="sdx-item-give-uuid" value="${escapedUuid}" />
+				<input type="hidden" class="sdx-item-give-name" value="${escapedRawName}" />
+				<input type="hidden" class="sdx-item-give-img" value="${escapedRawImg}" />
 				<div class="sdx-profile-field">
 					<label>Quantity</label>
-					<input type="text" class="sdx-item-give-quantity" value="${profile.quantity || "1"}" placeholder="1 or 1d4" title="Quantity or dice formula to roll" />
+					<input type="text" class="sdx-item-give-quantity" value="${escapedQuantity}" placeholder="1 or 1d4" title="Quantity or dice formula to roll" />
 				</div>
 				<button type="button" class="sdx-remove-item-give-btn" data-index="${index}"
 				        data-action="removeItemGiveProfile" title="Remove this item">

@@ -1,7 +1,7 @@
 {
   "$comment": "Attribute interpolations that reach HTML without escaping. The gate blocks anything NEW, not the absolute count — see #125 for the ~90 pre-existing sites and their triage tiers. Entries are compared by file + attribute + expression, so a site that merely moves lines is silent. Line numbers are recorded for navigation only. This file should only ever SHRINK: regenerate after a cleanup commit with `npm run gate:attr-escape -- --write`. If it grows, something shipped an unescaped interpolation into markup that renders on every connected client.",
-  "total": 238,
-  "files": 60,
+  "total": 222,
+  "files": 58,
   "byFile": {
     "scripts/MaphubSD.mjs": [
       "href=localDirUrl (line 100)"
@@ -174,15 +174,6 @@
       "value=p.id (line 486)",
       "value=p.id (line 499)"
     ],
-    "scripts/item-sheets/ItemGiveConfig.mjs": [
-      "alt=profile.itemName || \"Item\" (line 42)",
-      "src=profile.itemImg || \"icons/svg/mystery-man.svg\" (line 42)",
-      "value=JSON.stringify(itemProfilesArray).replace(/\"/g, \"&quot;\") (line 28)",
-      "value=profile.itemImg || \"\" (line 51)",
-      "value=profile.itemName || \"\" (line 50)",
-      "value=profile.itemUuid || \"\" (line 49)",
-      "value=profile.quantity || \"1\" (line 54)"
-    ],
     "scripts/item-sheets/SpellDamageConfig.mjs": [
       "title=effectsRequirementExamples (line 167)",
       "title=formulaHelp (line 117)",
@@ -198,17 +189,6 @@
       "value=flags.perTurnDamage || \"\" (line 233)",
       "value=flags.scalingDice (line 107)",
       "value=flags.tieredFormula || \"\" (line 136)"
-    ],
-    "scripts/item-sheets/SummoningConfig.mjs": [
-      "alt=profile.creatureName || \"Creature\" (line 71)",
-      "src=profile.creatureImg || \"icons/svg/mystery-man.svg\" (line 71)",
-      "title=profile.creatureName || \"Unknown\" (line 70)",
-      "value=JSON.stringify(summonProfilesArray).replace(/\"/g, \"&quot;\") (line 38)",
-      "value=profile.count || \"1\" (line 85)",
-      "value=profile.creatureImg || \"\" (line 80)",
-      "value=profile.creatureName || \"\" (line 79)",
-      "value=profile.creatureUuid || \"\" (line 78)",
-      "value=profile.displayName || \"\" (line 93)"
     ],
     "scripts/item-sheets/TemplateTargetingConfig.mjs": [
       "value=damage.formula || \"\" (line 184)",
