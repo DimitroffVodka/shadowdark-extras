@@ -36,6 +36,7 @@ export function collectFlagKeys() {
   const read = new Set();
   const foreign = {};
   const dynamic = [];
+  const sites = [];
   const unresolved = [];
 
   const parseFailures = [];
@@ -101,6 +102,19 @@ export function collectFlagKeys() {
       }
 
       (entry.api === "getFlag" ? read : written).add(entry.key);
+
+      // EVERY our-scope method call, with its receiver — not just the ones
+      // whose scope argument failed to resolve. Recording the receiver only in
+      // unresolvedScopes left #128 half-closed: most files declare
+      // `const MODULE_ID = "shadowdark-extras"` locally, so the scope RESOLVES,
+      // the site never reaches unresolvedScopes, and an actor -> scene swap in
+      // one of them was still invisible. Review caught that.
+      //
+      // No line number: identity is file + api + key + receiver, counted, for
+      // the same reason as unresolvedScopes — #127's line-drift immunity.
+      sites.push(
+        `${toRepoPath(file)} (api=${entry.api} key=${entry.key ?? "*"} receiver=${entry.receiver})`,
+      );
     }
   }
 
@@ -123,6 +137,7 @@ export function collectFlagKeys() {
         .map((scope) => [scope, [...foreign[scope]].sort()]),
     ),
     dynamicSites: dynamic.sort(),
+    flagSites: sites.sort(),
     unresolvedScopes: unresolved.sort(),
   };
 }
@@ -201,6 +216,25 @@ export function diffFlags(baseline, current) {
     }
     return counts;
   };
+  // flagSites carries the receiver for EVERY our-scope call, so an actor ->
+  // scene swap reports even in a file whose MODULE_ID resolves locally and
+  // therefore never appears in unresolvedScopes. Counted, never line-keyed.
+  const siteCounts = (sites) => {
+    const counts = new Map();
+    for (const site of sites ?? []) counts.set(site, (counts.get(site) ?? 0) + 1);
+    return counts;
+  };
+  const sitesBefore = siteCounts(baseline.flagSites);
+  const sitesAfter = siteCounts(current.flagSites);
+  for (const [site, before] of [...sitesBefore].sort()) {
+    const after = sitesAfter.get(site) ?? 0;
+    if (after === 0) differences.push(`flagSites: removed "${site}"`);
+    else if (after !== before) differences.push(`flagSites: "${site}" ${before} -> ${after} site(s)`);
+  }
+  for (const [site] of [...sitesAfter].sort()) {
+    if (!sitesBefore.has(site)) differences.push(`flagSites: added "${site}"`);
+  }
+
   const unresolvedBefore = byFileAndScope(baseline.unresolvedScopes);
   const unresolvedAfter = byFileAndScope(current.unresolvedScopes);
   for (const [site, before] of [...unresolvedBefore].sort()) {
