@@ -78,9 +78,15 @@ export function collectFlagKeys() {
         // compares these entries with the line stripped, so without them a site
         // REPLACED by a different flag operation in the same file and scope is
         // indistinguishable from the same site drifting down a few lines.
+        // receiver closes the #128 gap: flag storage is document-specific, so
+        // `actor.getFlag(MODULE_ID, "state")` and `scene.getFlag(MODULE_ID,
+        // "state")` read different persisted values. Without it both produce
+        // the same tuple and a refactor moving a read between document kinds
+        // was invisible to the gate.
         unresolved.push(
           `${toRepoPath(file)}:${entry.line} `
-          + `(api=${entry.api} key=${entry.key ?? "*"} scope=${entry.unresolvedScope})`,
+          + `(api=${entry.api} key=${entry.key ?? "*"} scope=${entry.unresolvedScope} `
+          + `receiver=${entry.receiver})`,
         );
       }
 
@@ -174,14 +180,19 @@ export function diffFlags(baseline, current) {
   // of the recorded identity — a site REPLACED by a different flag operation in
   // the same file and scope.
   //
-  // KNOWN GAP, and the reason "only line drift is filtered" would be too strong
-  // a claim: the receiver is deliberately not captured by the scanner (see
-  // flag-scan.mjs, "the document varies"), so swapping `actor.getFlag(MODULE_ID,
-  // "state")` for `scene.getFlag(MODULE_ID, "state")` keeps api, key, scope,
-  // file and count identical and stays invisible here. Flag storage is
-  // document-specific, so that substitution does change where state is read.
-  // Closing it means teaching flag-scan.mjs to record the receiver, which is a
-  // larger change than this diff.
+  // THE RECEIVER GAP IS CLOSED (#128). Swapping `actor.getFlag(MODULE_ID,
+  // "state")` for `scene.getFlag(MODULE_ID, "state")` used to keep api, key,
+  // scope, file and count identical and stay invisible here, even though flag
+  // storage is document-specific and the substitution changes where state is
+  // read. flag-scan.mjs now records the receiver and it is part of the identity
+  // below, so that swap reports as a removed site plus an added one.
+  //
+  // REMAINING GAP, stated rather than implied: a receiver the scanner cannot
+  // read statically is recorded as "«dynamic»" (a call or computed index) or
+  // "«unknown»". Two different documents reached through the same dynamic
+  // expression still collapse to one identity. That is strictly narrower than
+  // before, where every receiver collapsed, and it keeps the fact visible the
+  // way dynamicSites does rather than dropping it.
   const byFileAndScope = (sites) => {
     const counts = new Map();
     for (const site of sites ?? []) {

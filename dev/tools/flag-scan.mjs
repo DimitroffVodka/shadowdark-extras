@@ -109,10 +109,81 @@ function argumentText(maskedChars, openParen, position) {
 }
 
 /**
+ * The receiver expression a flag call is made on — `actor`, `scene`,
+ * `game.user`, `token.document`, `this`.
+ *
+ * WHY IT IS RECORDED (#128). Foundry flag storage is document-specific:
+ * `actor.getFlag(MODULE_ID, "state")` and `scene.getFlag(MODULE_ID, "state")`
+ * read different persisted values despite identical namespace and key. Until
+ * this existed, `scanFlags` returned the same tuple for both, so a refactor
+ * that moved a flag read from one document kind to another was invisible to the
+ * gate whose whole purpose is that flag keys are a rename invariant.
+ *
+ * WHY `this` IS RECORDED AS ITSELF. A receiver of `this` inside a class is not
+ * resolved to the class name. It does not need to be: snapshot identity already
+ * includes the FILE, and `this` is stable within one. Resolving it would mean
+ * tracking enclosing-class scope for no gain in what the gate can detect, and
+ * would churn every entry the first time a class is renamed.
+ *
+ * A chain containing a CALL or a computed index is recorded as "«dynamic»"
+ * rather than dropped — #128 asks for the fact to be kept, the same way
+ * dynamicSites keeps unenumerable keys visible instead of silently absent.
+ *
+ * @param {string} source original source, for readable text
+ * @param {string} masked masked source, for structure
+ * @param {number} dot offset of the "." that precedes the flag method
+ * @returns {string} receiver text, "«dynamic»", or "«unknown»"
+ */
+function receiverText(source, masked, dot) {
+  let i = dot - 1;
+  const skipSpace = () => { while (i >= 0 && /\s/.test(masked[i])) i -= 1; };
+  const skipBalanced = (close, open) => {
+    let depth = 0;
+    for (; i >= 0; i -= 1) {
+      if (masked[i] === close) depth += 1;
+      else if (masked[i] === open) { depth -= 1; if (depth === 0) { i -= 1; return true; } }
+    }
+    return false;
+  };
+
+  skipSpace();
+  // The matched "." may be the tail of an optional link — `token.document?.
+  // getFlag(…)`. Step over the "?" first, or the receiver reads as empty.
+  if (i >= 0 && masked[i] === "?") { i -= 1; skipSpace(); }
+  let end = i + 1;
+  let dynamic = false;
+
+  for (;;) {
+    skipSpace();
+    if (i < 0) break;
+
+    if (masked[i] === ")") { dynamic = true; if (!skipBalanced(")", "(")) return "«unknown»"; }
+    else if (masked[i] === "]") { dynamic = true; if (!skipBalanced("]", "[")) return "«unknown»"; }
+    else if (/[\w$]/.test(masked[i])) { while (i >= 0 && /[\w$]/.test(masked[i])) i -= 1; }
+    else break;
+
+    // Continue through a member link, optional chaining included.
+    skipSpace();
+    if (i >= 0 && masked[i] === ".") {
+      i -= 1;
+      skipSpace();
+      if (i >= 0 && masked[i] === "?") i -= 1;
+      continue;
+    }
+    break;
+  }
+
+  const start = i + 1;
+  if (start >= end) return "«unknown»";
+  if (dynamic) return "«dynamic»";
+  return source.slice(start, end).replace(/\s+/g, "");
+}
+
+/**
  * @param {string} source
  * @returns {Array<{api: string, scope: string|null, key: string|null,
  *   dynamicScope: boolean, dynamic: boolean, unresolvedScope: string|null,
- *   line: number}>}
+ *   receiver: string, line: number}>}
  */
 export function scanFlags(source) {
   const { masked, maskedChars, literals } = maskSource(source);
@@ -121,9 +192,10 @@ export function scanFlags(source) {
   const constants = moduleStringConstants(source);
   const found = [];
 
-  // Any receiver: the document varies (scene, journal, actor, token, item) and
-  // is rarely a resolvable name at the call site. The flag APIs are distinctive
-  // enough on their own that a bare method-name match does not collide.
+  // Any receiver is MATCHED: the document varies (scene, journal, actor, token,
+  // item) and is rarely a resolvable name at the call site. The flag APIs are
+  // distinctive enough on their own that a bare method-name match does not
+  // collide. Since #128 the receiver is also RECORDED — see receiverText.
   for (const match of masked.matchAll(/\.\s*(setFlag|unsetFlag|getFlag)\s*\(/g)) {
     const openParen = match.index + match[0].length - 1;
     const scopeArg = literalArgument(maskedChars, literalsByStart, openParen, 0);
@@ -151,6 +223,7 @@ export function scanFlags(source) {
 
     found.push({
       api: match[1],
+      receiver: receiverText(source, masked, match.index),
       scope: scope.dynamic ? null : scope.name,
       key: key.dynamic ? null : key.name,
       dynamicScope: scope.dynamic,

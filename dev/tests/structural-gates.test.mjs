@@ -16,6 +16,8 @@ import { collectEsmoduleExports, diffExports } from "../tools/api-export-snapsho
 import { collectSettingsKeys, diffSettings } from "../tools/settings-snapshot.mjs";
 import { findUnboundIdentifiers, parameterBindings } from "../tools/binding-scan.mjs";
 import { scanImports } from "../tools/import-scan.mjs";
+import { scanFlags } from "../tools/flag-scan.mjs";
+import { collectFlagKeys, diffFlags } from "../tools/flag-snapshot.mjs";
 import { scanUnescapedAttrs } from "../tools/attr-escape-scan.mjs";
 import { collectUnescaped, diffUnescaped } from "../tools/attr-escape-gate.mjs";
 import { parse } from "espree";
@@ -1145,4 +1147,70 @@ test("binding gate (AST): a parse failure is loud, never a silent empty result",
   // regenerated to accept them.
   assert.throws(() => findUnboundIdentifiers("export function ("), /parse failed/);
   assert.ok(parameterBindings("export function (").parseError);
+});
+
+/**
+ * #128 — the receiver is part of flag-site identity. Flag storage is
+ * document-specific, so moving a read from one document kind to another
+ * changes where state comes from even when namespace and key are identical.
+ */
+test("flag scan: the receiver is recorded for each flag site", () => {
+  const source = [
+    'export const load = actor => actor.getFlag(MODULE_ID, "state");',
+    'export const save = scene => scene.setFlag(MODULE_ID, "state", 1);',
+    'export const user = () => game.user.getFlag(MODULE_ID, "pref");',
+    'export const opt = token => token.document?.getFlag(MODULE_ID, "x");',
+    'export class K { read() { return this.getFlag(MODULE_ID, "y"); } }',
+  ].join("\n");
+
+  assert.deepEqual(
+    scanFlags(source).map((entry) => entry.receiver),
+    ["actor", "scene", "game.user", "token.document", "this"],
+  );
+});
+
+test("flag scan: a dynamic receiver is recorded as a fact, not dropped", () => {
+  const source = [
+    'export const a = () => getDoc().getFlag(MODULE_ID, "x");',
+    'export const b = list => list[0].getFlag(MODULE_ID, "y");',
+  ].join("\n");
+
+  assert.deepEqual(scanFlags(source).map((entry) => entry.receiver), ["«dynamic»", "«dynamic»"]);
+});
+
+test("flag snapshot: an actor -> scene receiver swap is no longer invisible", () => {
+  // The exact #128 reproduction. Before the receiver was recorded, both of
+  // these produced `(api=getFlag key=state scope=MODULE_ID)` and diffFlags
+  // returned [] — the gate said nothing while the read moved to a different
+  // document kind.
+  const before = {
+    writtenKeys: [], readKeys: [], foreignScopes: {}, dynamicSites: [],
+    unresolvedScopes: ["scripts/a.mjs:2 (api=getFlag key=state scope=MODULE_ID receiver=actor)"],
+  };
+  const after = {
+    writtenKeys: [], readKeys: [], foreignScopes: {}, dynamicSites: [],
+    unresolvedScopes: ["scripts/a.mjs:9 (api=getFlag key=state scope=MODULE_ID receiver=scene)"],
+  };
+
+  const differences = diffFlags(before, after);
+  assert.ok(differences.some((d) => d.includes('removed') && d.includes("receiver=actor")), differences.join("; "));
+  assert.ok(differences.some((d) => d.includes('added') && d.includes("receiver=scene")), differences.join("; "));
+});
+
+test("flag snapshot: line drift is still immune after adding the receiver", () => {
+  // #127's win must survive #128: an identical site at a shifted line reports
+  // nothing. Reintroducing line sensitivity would bring back the 50-finding
+  // churn that blocked #126.
+  const site = (line) => ({
+    writtenKeys: [], readKeys: [], foreignScopes: {}, dynamicSites: [],
+    unresolvedScopes: [`scripts/a.mjs:${line} (api=getFlag key=state scope=MODULE_ID receiver=actor)`],
+  });
+
+  assert.deepEqual(diffFlags(site(2), site(400)), []);
+});
+
+test("flag snapshot: the real tree matches the committed flag baseline", () => {
+  const baseline = JSON.parse(readFileSync(path.join(REPO_ROOT, "dev/snapshots/flag-keys.json"), "utf8"));
+
+  assert.deepEqual(diffFlags(baseline, collectFlagKeys()), []);
 });
