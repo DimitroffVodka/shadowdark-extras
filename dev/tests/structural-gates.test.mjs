@@ -18,7 +18,10 @@ import { findUnboundIdentifiers, parameterBindings } from "../tools/binding-scan
 import { scanImports } from "../tools/import-scan.mjs";
 import { scanFlags } from "../tools/flag-scan.mjs";
 import { collectFlagKeys, diffFlags } from "../tools/flag-snapshot.mjs";
-import { parse } from "espree";
+// acorn, not espree: espree is not a declared dependency here — it exists only
+// because eslint hoists it, so one dedupe or eslint major breaks this suite.
+// acorn is a direct devDependency and already the parser in dev/tools.
+import { parse } from "acorn";
 import { REPO_ROOT, listJsFiles, toRepoPath, isVendor } from "../tools/project-scan.mjs";
 
 /**
@@ -685,7 +688,7 @@ test("no module uses super inside an object-literal method", () => {
 
     let ast;
     try {
-      ast = parse(source, { ecmaVersion: "latest", sourceType: "module", loc: true });
+      ast = parse(source, { ecmaVersion: "latest", sourceType: "module", locations: true });
     } catch {
       continue; // non-module macro bodies are covered by their own gate
     }
@@ -716,7 +719,7 @@ test("no module uses super inside an object-literal method", () => {
 test("the object-literal super gate blocks a mixin that would throw", () => {
   const ast = parse(
     "export const Mixin = { _onDrop(event) { return super._onDrop(event); } };",
-    { ecmaVersion: "latest", sourceType: "module", loc: true },
+    { ecmaVersion: "latest", sourceType: "module", locations: true },
   );
   let found = 0;
   (function walk(node, home) {
