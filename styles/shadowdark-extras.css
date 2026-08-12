@@ -4098,11 +4098,17 @@ li.entry.sdx-sidebar-unidentified {
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Icons and buttons */
+/* Icons and buttons. Deliberately no `.actions i` — the system tints state
+   indicators with an inline color:var(--primary), and an !important rule here
+   outranks that inline style. Untinted icons still inherit white from the <a>. */
 .shadowdark.sheet .tab-spells.sdx-enhanced-spells .actions a,
-.shadowdark.sheet .tab-spells.sdx-enhanced-spells .actions i,
 .shadowdark.sheet .tab-spells.sdx-enhanced-spells button {
     color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* See the inventory tab's note: --primary is black and disappears on this dark tab. */
+.shadowdark.sheet .tab-spells.sdx-enhanced-spells .actions {
+    --primary: #ff9500;
 }
 
 .shadowdark.sheet .tab-spells.sdx-enhanced-spells .actions a:hover,
@@ -4272,11 +4278,19 @@ li.entry.sdx-sidebar-unidentified {
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Icons and buttons */
+/* Icons and buttons. Deliberately no `.actions i` — the system tints handedness
+   and equipped state with an inline color:var(--primary), and an !important rule
+   here outranks that inline style. Untinted icons still inherit white from the <a>. */
 .shadowdark.sheet .tab-inventory.sdx-enhanced-inventory .actions a,
-.shadowdark.sheet .tab-inventory.sdx-enhanced-inventory .actions i,
 .shadowdark.sheet .tab-inventory.sdx-enhanced-inventory button {
     color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* The system's --primary is black, which reads as "active" on its light parchment
+   but vanishes against this dark tab. Re-point it inside .actions only, so the
+   state icons the system tints with it become the active accent used elsewhere here. */
+.shadowdark.sheet .tab-inventory.sdx-enhanced-inventory .actions {
+    --primary: #ff9500;
 }
 
 .shadowdark.sheet .tab-inventory.sdx-enhanced-inventory .actions a:hover,
