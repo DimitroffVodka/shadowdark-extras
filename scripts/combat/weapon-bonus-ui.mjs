@@ -503,9 +503,9 @@ function buildHitBonusRowHtml(bonus, index) {
 		<div class="sdx-hit-bonus-row" data-index="${index}">
 			<div class="sdx-hit-bonus-header">
 				<div class="sdx-hit-bonus-inputs">
-					<input type="text" class="sdx-hit-bonus-formula" value="${formula}"
+					<input type="text" class="sdx-hit-bonus-formula" value="${foundry.utils.escapeHTML(formula)}"
 						placeholder="e.g., 2 or @abilities.dex.mod" title="To hit bonus" />
-					<input type="text" class="sdx-hit-bonus-label" value="${label}"
+					<input type="text" class="sdx-hit-bonus-label" value="${foundry.utils.escapeHTML(label)}"
 						placeholder="Label (optional, e.g., vs Undead)" title="Label" />
 				</div>
 				<button type="button" class="sdx-remove-hit-bonus" data-index="${index}">
@@ -581,9 +581,9 @@ function buildDamageBonusRowHtml(bonus, index) {
 		<div class="sdx-damage-bonus-row" data-index="${index}">
 			<div class="sdx-damage-bonus-header">
 				<div class="sdx-damage-bonus-inputs">
-					<input type="text" class="sdx-damage-bonus-formula" value="${formula}"
+					<input type="text" class="sdx-damage-bonus-formula" value="${foundry.utils.escapeHTML(formula)}"
 						placeholder="e.g., 1d4 or @abilities.str.mod" title="Damage formula" />
-					<input type="text" class="sdx-damage-bonus-label" value="${label}"
+					<input type="text" class="sdx-damage-bonus-label" value="${foundry.utils.escapeHTML(label)}"
 						placeholder="Label (optional, e.g., vs Undead)" title="Label" />
 					<select class="sdx-damage-bonus-type" title="Damage Type">
 						<option value="" ${!bonus.damageType ? "selected" : ""}>Standard Damage</option>

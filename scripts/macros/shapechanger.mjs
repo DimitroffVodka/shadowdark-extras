@@ -259,7 +259,7 @@ export async function showShapechangerDialog(casterActor, casterItem, originatin
 			return `
 				<div class="sdx-spell-weapon-item sdx-shapechanger-npc-item" data-npc-id="${monster._id}">
 					<div class="sdx-spell-weapon-img">
-						<img src="${foundry.utils.escapeHTML(img)}" alt="${foundry.utils.escapeHTML(name)}">
+						<img src="${img}" alt="${name}">
 						<span class="sdx-weapon-badge" title="Level ${foundry.utils.escapeHTML(String(level))}">LV ${level}</span>
 					</div>
 					<div class="sdx-spell-weapon-name">${name}</div>

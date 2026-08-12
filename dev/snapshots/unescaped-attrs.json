@@ -6,10 +6,10 @@
     "module-owned label text": "`HP_QUICK_ADJUST_TOOLTIP`, `formulaHelp`/`tieredFormulaHelp`/`requirementExamples` in SpellDamageConfig, and the literal ternaries such as `levelUp ? \"Ready to Level Up!\" : \"Level\"`. These are help strings this module ships, not user data. #125 calls out the SpellDamageConfig ones by name as noise rather than fixes.",
     "shapechanger renderIcon": "`scripts/macros/shapechanger.mjs` `src=icon` takes `renderIcon(opts.icon)` with internal values. #125 names this one explicitly as module-owned.",
     "maphub <base href> injection": "`MaphubSD.mjs` and `maphub-cave.mjs` inject a `<base href>` built from a local directory path the module computes. Not a document field, and escaping it would corrupt the URL it exists to set.",
-    "GM-authored config formulas": "`flags.formula`, `damage.formula`, `save.dc`, the weapon-bonus and template-targeting inputs. These are settings a GM types into their own dialog and reads back in the same dialog. They are the weakest members of this list — if any of them starts rendering into a card other clients draw, escape it then."
+    "WITHDRAWN — GM-authored config formulas": "This category used to accept `flags.formula`, `damage.formula` and the weapon-bonus inputs as \"settings a GM types into their own dialog\". That was wrong, and review caught it. They are ITEM FLAGS, so a player who owns the item controls them, and they render when the GM opens that item's sheet — the payload arrives from the player and executes in the GM's session. weapon-bonus-ui.mjs's formula and label inputs are now escaped. The lesson generalises: \"who types it\" is not a trust boundary, \"where it is stored\" is. Anything reachable from a document a player can edit is player-controlled no matter which dialog authored it. The template-targeting and aura numeric inputs remain accepted as numerics, not as GM-authored."
   },
-  "total": 137,
-  "files": 39,
+  "total": 419,
+  "files": 72,
   "byFile": {
     "scripts/MaphubSD.mjs": [
       "href=localDirUrl (line 100)"
@@ -18,18 +18,40 @@
       "value=v (line 78)",
       "value=v (line 80)"
     ],
+    "scripts/animation/AutoAnimationsSD.mjs": [
+      "data-item-id=itemId (line 204)"
+    ],
     "scripts/canvas/SDXDrawingToolbar.mjs": [
+      "data-action=action (line 236)",
+      "data-action=action (line 370)",
+      "data-drawing-id=e.id (line 722)",
+      "data-drawing-id=e.id (line 796)",
+      "data-value=c.id (line 531)",
+      "data-value=it.id (line 236)",
+      "data-value=s.id (line 419)",
+      "data-value=s.id (line 428)",
+      "data-value=w.id (line 191)",
       "title=MODULE_ID (line 170)",
       "title=opPct (line 208)",
       "title=opStr (line 804)",
-      "value=c.id (line 531)",
-      "value=it.id (line 236)",
-      "value=pct (line 478)",
-      "value=s.id (line 419)",
-      "value=s.id (line 428)",
-      "value=w.id (line 191)"
+      "value=pct (line 478)"
+    ],
+    "scripts/canvas/TileFlattenSD.mjs": [
+      "data-action=FLATTEN_ACTION (line 788)",
+      "data-action=UNFLATTEN_ACTION (line 791)"
+    ],
+    "scripts/character-sheet/character-generator.mjs": [
+      "data-message-id=msgId (line 86)"
+    ],
+    "scripts/character-sheet/conditions.mjs": [
+      "data-condition-name=variant.name (line 458)",
+      "data-condition-name=variant.name (line 596)",
+      "data-condition-uuid=variant.uuid (line 457)",
+      "data-condition-uuid=variant.uuid (line 595)",
+      "data-uuid=uuid (line 532)"
     ],
     "scripts/character-sheet/enhanced-header.mjs": [
+      "data-ability=key (line 120)",
       "data-tooltip=HP_QUICK_ADJUST_TOOLTIP (line 173)",
       "data-tooltip=key.toUpperCase() (line 120)",
       "data-tooltip=levelUp ? \"Ready to Level Up!\" : \"Level\" (line 225)",
@@ -45,11 +67,22 @@
       "value=p.id (line 122)"
     ],
     "scripts/character-sheet/skills-box.mjs": [
+      "data-skill-ability=skill.ability (line 54)",
+      "data-skill-id=skill.id (line 50)",
+      "data-skill-id=skill.id (line 54)",
+      "data-skill-id=skill.id (line 55)",
+      "data-skill-id=skill.id (line 56)",
       "value=ab (line 111)",
       "value=abilityMod (line 182)"
     ],
     "scripts/character-sheet/spellbook-filter.mjs": [
       "value=pack.id (line 41)"
+    ],
+    "scripts/combat/FormationSpawnerSD.mjs": [
+      "data-cell=c (line 187)",
+      "data-row=r (line 186)",
+      "data-row=r (line 192)",
+      "data-uuid=cellData.uuid (line 176)"
     ],
     "scripts/combat/MarchingModeSD.mjs": [
       "value=t.id (line 407)"
@@ -58,30 +91,112 @@
       "value=type.id (line 947)"
     ],
     "scripts/combat/damage-card-actions.mjs": [
+      "data-actor-id=actorId (line 279)",
+      "data-apply-to-target=applyToTarget (line 317)",
+      "data-base-damage=baseDamage (line 284)",
+      "data-base-damage=baseDamage (line 404)",
+      "data-damage-type=damageType (line 332)",
+      "data-effect-selection-mode=effectSelectionMode (line 320)",
+      "data-effects-requirement=effectsRequirement (line 318)",
+      "data-effects=effectsData (line 316)",
+      "data-spell-info=spellInfoData (line 319)",
+      "data-token-id=tokenId (line 275)",
+      "data-token-id=tokenId (line 279)",
+      "data-token-id=tokenId (line 365)",
+      "data-token-id=tokenId (line 471)",
       "value=i (line 86)",
       "value=w.id (line 824)"
     ],
     "scripts/combat/damage-card-builders.mjs": [
+      "data-ability=targetDefenseConfig.ability (line 801)",
+      "data-actor-id=targetActor.id (line 814)",
+      "data-apply-to-target=effectsApplyToTarget (line 895)",
+      "data-base-damage-type=baseDamageType (line 927)",
+      "data-base-damage=targetSpecificDamage (line 783)",
+      "data-base-damage=totalDamage (line 927)",
+      "data-caster-actor-id=actor?.id || \"\" (line 927)",
+      "data-caster-token-id=casterTokenId (line 927)",
+      "data-damage-type=damageType (line 855)",
+      "data-damage-type=damageType (line 927)",
+      "data-defense-action=targetDefenseConfig.successAction (line 795)",
+      "data-die-index=dieIndex (line 490)",
+      "data-die-index=dieIndex (line 502)",
+      "data-effect-selection-mode=spellDamageConfig?.effectSelectionMode || \"all\" (line 898)",
+      "data-effects-requirement=effectsRequirement.replace(/\"/g, \"&quot;\") (line 896)",
+      "data-effects=effectsJson (line 894)",
+      "data-faces=die.faces (line 490)",
+      "data-faces=die.faces (line 502)",
+      "data-formula=rerollFormula (line 685)",
+      "data-is-magical-weapon=isMagicalWeapon (line 927)",
+      "data-item-id=spellItem?.id || \"\" (line 927)",
+      "data-message-id=message.id (line 927)",
+      "data-multiplier=multValue (line 977)",
+      "data-spell-info=spellInfoJson (line 897)",
+      "data-success-action=targetDefenseConfig.successAction (line 801)",
+      "data-token-id=target.id (line 801)",
+      "data-token-id=target.id (line 808)",
+      "data-token-id=target.id (line 814)",
+      "data-token-id=tokenId (line 960)",
+      "data-token-id=tokenId (line 978)",
+      "data-weapon-bonus=weaponBonusData (line 685)",
       "title=die.faces (line 490)",
       "title=die.faces (line 502)"
     ],
     "scripts/combat/damage-card.mjs": [
+      "data-die-index=dieIndex (line 324)",
+      "data-die-index=dieIndex (line 344)",
+      "data-faces=die.faces (line 324)",
+      "data-faces=die.faces (line 344)",
+      "data-token-id=target.id (line 871)",
       "title=die.faces (line 324)",
       "title=die.faces (line 344)"
     ],
     "scripts/combat/weapon-bonus-ui.mjs": [
+      "data-bonus-index=bonusIndex (line 547)",
+      "data-bonus-index=bonusIndex (line 555)",
+      "data-bonus-index=bonusIndex (line 643)",
+      "data-bonus-index=bonusIndex (line 651)",
+      "data-bonus-index=index (line 519)",
+      "data-bonus-index=index (line 523)",
+      "data-bonus-index=index (line 526)",
+      "data-bonus-index=index (line 530)",
+      "data-bonus-index=index (line 615)",
+      "data-bonus-index=index (line 619)",
+      "data-bonus-index=index (line 622)",
+      "data-bonus-index=index (line 626)",
+      "data-critical-type=criticalType (line 670)",
+      "data-critical-type=criticalType (line 678)",
+      "data-effect-index=effectIndex (line 804)",
+      "data-effect-index=effectIndex (line 812)",
+      "data-effect-index=index (line 766)",
+      "data-effect-index=index (line 771)",
+      "data-effect-index=index (line 776)",
+      "data-effect-index=index (line 783)",
+      "data-effect-index=index (line 787)",
+      "data-index=index (line 503)",
+      "data-index=index (line 511)",
+      "data-index=index (line 581)",
+      "data-index=index (line 607)",
+      "data-index=index (line 749)",
+      "data-index=index (line 758)",
+      "data-req-index=reqIndex (line 547)",
+      "data-req-index=reqIndex (line 555)",
+      "data-req-index=reqIndex (line 643)",
+      "data-req-index=reqIndex (line 651)",
+      "data-req-index=reqIndex (line 670)",
+      "data-req-index=reqIndex (line 678)",
+      "data-req-index=reqIndex (line 804)",
+      "data-req-index=reqIndex (line 812)",
+      "data-uuid=uuid (line 749)",
       "placeholder=getPlaceholderForType(type) (line 86)",
       "value=chance (line 755)",
       "value=criticalExtraDamage (line 417)",
       "value=criticalExtraDice (line 397)",
-      "value=formula (line 506)",
-      "value=formula (line 584)",
-      "value=label (line 508)",
-      "value=label (line 586)",
       "value=opt.value (line 843)",
       "value=usage (line 604)"
     ],
     "scripts/dungeon/DDPackSettingsAppSD.mjs": [
+      "data-enabled=pack.enabled === false ? \"false\" : \"true\" (line 73)",
       "title=pack.enabled === false ? \"Show in Decor tray\" : \"Hide from Decor tray\" (line 73)"
     ],
     "scripts/effects/AuraConfig.mjs": [
@@ -95,11 +210,99 @@
       "value=tmOpacity (line 333)",
       "value=tmTint || \"#ffffff\" (line 328)"
     ],
+    "scripts/effects/FocusSpellTrackerSD.mjs": [
+      "data-instance-id=instanceId (line 308)",
+      "data-item-id=spellId (line 472)",
+      "data-token-id=tokenId (line 395)"
+    ],
+    "scripts/effects/aura-application.mjs": [
+      "data-aura-actor-id=auraEffect.parent?.id (line 570)",
+      "data-aura-effect-id=auraEffect.id (line 569)",
+      "data-effect-uuids=(config.effects || []).join(\",\") (line 571)",
+      "data-half-damage=config.save?.halfOnSuccess || false (line 575)",
+      "data-save-ability=config.save?.ability || \"\" (line 574)",
+      "data-save-dc=config.save?.dc || \"\" (line 573)",
+      "data-source-token-id=sourceToken.id (line 567)",
+      "data-target-token-id=targetToken.id (line 568)"
+    ],
+    "scripts/effects/duration-spell.mjs": [
+      "data-damage=damage (line 723)",
+      "data-token-id=targetTokenId (line 722)"
+    ],
+    "scripts/effects/duration-ui.mjs": [
+      "data-actor-id=target.actorId || \"\" (line 105)",
+      "data-instance-id=spellInstanceId (line 111)",
+      "data-instance-id=spellInstanceId (line 125)",
+      "data-instance-id=spellInstanceId (line 140)",
+      "data-instance-id=spellInstanceId (line 144)",
+      "data-instance-id=spellInstanceId (line 148)",
+      "data-instance-id=spellInstanceId (line 154)",
+      "data-spell-id=duration.spellId (line 125)",
+      "data-token-id=target.tokenId (line 105)",
+      "data-token-id=target.tokenId (line 112)"
+    ],
+    "scripts/effects/effect-config.mjs": [
+      "value=escapedRequirement (line 62)"
+    ],
+    "scripts/effects/focus-spell.mjs": [
+      "data-actor-id=actor.id (line 379)",
+      "data-actor-id=actor.id (line 387)",
+      "data-spell-id=f.spellId (line 379)"
+    ],
+    "scripts/effects/focus-ui.mjs": [
+      "data-spell-id=focus.spellId (line 55)",
+      "data-spell-id=focus.spellId (line 67)",
+      "data-spell-id=focus.spellId (line 71)"
+    ],
+    "scripts/effects/template-application.mjs": [
+      "data-ability=config.save.ability (line 189)",
+      "data-ability=config.save.ability (line 199)",
+      "data-ability=config.save.ability (line 209)",
+      "data-actor-id=actor?.id (line 188)",
+      "data-actor-id=actor?.id (line 198)",
+      "data-actor-id=actor?.id (line 208)",
+      "data-actor-id=actor?.id (line 233)",
+      "data-actor-id=actor?.id (line 242)",
+      "data-actor-name=actor?.name || token.name (line 236)",
+      "data-actor-name=actor?.name || token.name (line 245)",
+      "data-damage-type=config.damage?.type || \"damage\" (line 235)",
+      "data-damage-type=config.damage?.type || \"damage\" (line 244)",
+      "data-damage=Math.floor(damageTotal / 2) (line 243)",
+      "data-damage=damageTotal (line 234)",
+      "data-dc=dc (line 190)",
+      "data-dc=dc (line 200)",
+      "data-dc=dc (line 210)",
+      "data-half-on-success=config.save.halfOnSuccess (line 191)",
+      "data-half-on-success=config.save.halfOnSuccess (line 201)",
+      "data-half-on-success=config.save.halfOnSuccess (line 211)",
+      "data-token-id=token.document?.id || token.id (line 187)",
+      "data-token-id=token.document?.id || token.id (line 197)",
+      "data-token-id=token.document?.id || token.id (line 207)",
+      "data-token-id=token.document?.id || token.id (line 232)",
+      "data-token-id=token.document?.id || token.id (line 241)"
+    ],
     "scripts/hex/HexTooltipSD.mjs": [
+      "data-biome=b.key (line 779)",
+      "data-dsize=s.key (line 1102)",
+      "data-dtype=t.key (line 1062)",
+      "data-jid=f.journalId (line 607)",
+      "data-jid=f.journalId (line 616)",
+      "data-maphub=JSON.stringify(f.maphub).replace(/'/g, \"&#39;\") (line 610)",
+      "data-pid=f.pageId ?? \"\" (line 607)",
+      "data-pid=f.pageId ?? \"\" (line 616)",
+      "data-sid=f.sceneId (line 627)",
+      "data-stype=t.key (line 928)",
+      "data-tab=tab.dataset.tab (line 1541)",
       "value=j.id (line 1677)",
       "value=t (line 1669)"
     ],
+    "scripts/hex/SettlementGenerator.mjs": [
+      "data-settlement-name=settlementName (line 969)",
+      "data-settlement-type=settClassRoll (line 969)"
+    ],
     "scripts/inventory/TradeWindowSD.mjs": [
+      "data-search=searchText (line 974)",
+      "data-search=searchText (line 987)",
       "value=p.id (line 974)",
       "value=p.id (line 987)"
     ],
@@ -108,6 +311,7 @@
       "value=hitBonus (line 32)"
     ],
     "scripts/inventory/containers.mjs": [
+      "data-item-id=entry.id (line 767)",
       "value=coinCP (line 821)",
       "value=coinGP (line 815)",
       "value=coinSP (line 818)"
@@ -115,13 +319,43 @@
     "scripts/inventory/gem-enhancements.mjs": [
       "value=qty (line 47)"
     ],
+    "scripts/inventory/inventory-multi-select.mjs": [
+      "data-item-id=itemId (line 112)"
+    ],
+    "scripts/inventory/inventory-styles.mjs": [
+      "data-category=categoryKey (line 257)",
+      "data-category=categoryKey (line 314)",
+      "data-category=categoryKey (line 564)",
+      "data-edit=fieldName (line 277)",
+      "data-shadow-type=shadowType (line 328)",
+      "data-shadow-type=shadowType (line 331)",
+      "data-shadow-type=shadowType (line 354)",
+      "data-shadow-type=shadowType (line 465)"
+    ],
     "scripts/inventory/player-transfers.mjs": [
+      "data-search=p.name.toLowerCase() (line 266)",
+      "data-search=p.name.toLowerCase() (line 473)",
+      "data-search=searchText (line 278)",
+      "data-search=searchText (line 289)",
+      "data-search=searchText (line 486)",
+      "data-search=searchText (line 499)",
       "value=p.id (line 266)",
       "value=p.id (line 278)",
       "value=p.id (line 289)",
       "value=p.id (line 473)",
       "value=p.id (line 486)",
       "value=p.id (line 499)"
+    ],
+    "scripts/item-macros/ItemMacroConfig.mjs": [
+      "data-trigger=opt.value (line 69)"
+    ],
+    "scripts/item-macros/npc-feature-macros.mjs": [
+      "data-actor-id=actor.id (line 188)",
+      "data-item-id=item.id (line 188)"
+    ],
+    "scripts/item-sheets/ItemGiveConfig.mjs": [
+      "data-index=index (line 46)",
+      "data-index=index (line 65)"
     ],
     "scripts/item-sheets/SpellDamageConfig.mjs": [
       "title=effectsRequirementExamples (line 167)",
@@ -137,6 +371,10 @@
       "value=flags.scalingDice (line 107)",
       "value=flags.tieredFormula || \"\" (line 136)"
     ],
+    "scripts/item-sheets/SummoningConfig.mjs": [
+      "data-index=index (line 112)",
+      "data-index=index (line 79)"
+    ],
     "scripts/item-sheets/TemplateTargetingConfig.mjs": [
       "value=damage.formula || \"\" (line 184)",
       "value=deleteDuration (line 432)",
@@ -151,6 +389,14 @@
       "value=tmTint || \"#ffffff\" (line 514)"
     ],
     "scripts/item-sheets/potion-sheet-enhance.mjs": [
+      "data-effect-index=i (line 244)",
+      "data-tab=app._shadowdarkExtrasActiveTab (line 182)",
+      "data-tab=app._shadowdarkExtrasActiveTab (line 183)",
+      "data-uuid=creatureUuid (line 664)",
+      "data-uuid=itemUuid (line 793)",
+      "data-uuid=uuid (line 244)",
+      "data-uuid=uuid (line 513)",
+      "data-uuid=uuid (line 522)",
       "value=duration.rounds || \"\" (line 264)",
       "value=duration.seconds || \"\" (line 254)",
       "value=duration.startRound || \"\" (line 274)",
@@ -159,6 +405,14 @@
       "value=duration.turns || \"\" (line 268)"
     ],
     "scripts/item-sheets/scroll-sheet-enhance.mjs": [
+      "data-effect-index=i (line 282)",
+      "data-tab=app._shadowdarkExtrasActiveTab (line 220)",
+      "data-tab=app._shadowdarkExtrasActiveTab (line 221)",
+      "data-uuid=creatureUuid (line 771)",
+      "data-uuid=itemUuid (line 900)",
+      "data-uuid=uuid (line 282)",
+      "data-uuid=uuid (line 627)",
+      "data-uuid=uuid (line 635)",
       "value=duration.rounds || \"\" (line 302)",
       "value=duration.seconds || \"\" (line 292)",
       "value=duration.startRound || \"\" (line 312)",
@@ -167,6 +421,20 @@
       "value=duration.turns || \"\" (line 306)"
     ],
     "scripts/item-sheets/spell-sheet-enhance.mjs": [
+      "data-effect-index=effectIndex (line 782)",
+      "data-effect-index=effectIndex (line 962)",
+      "data-effect-index=i (line 359)",
+      "data-effect-index=i (line 489)",
+      "data-tab=app._shadowdarkExtrasActiveTab (line 297)",
+      "data-tab=app._shadowdarkExtrasActiveTab (line 298)",
+      "data-uuid=creatureUuid (line 1142)",
+      "data-uuid=itemUuid (line 1271)",
+      "data-uuid=uuid (line 359)",
+      "data-uuid=uuid (line 489)",
+      "data-uuid=uuid (line 772)",
+      "data-uuid=uuid (line 782)",
+      "data-uuid=uuid (line 952)",
+      "data-uuid=uuid (line 962)",
       "value=duration.rounds || \"\" (line 379)",
       "value=duration.seconds || \"\" (line 369)",
       "value=duration.startRound || \"\" (line 389)",
@@ -175,7 +443,25 @@
       "value=duration.turns || \"\" (line 383)",
       "value=key (line 69)"
     ],
+    "scripts/item-sheets/staff-spells.mjs": [
+      "data-item-id=item.id (line 567)",
+      "data-item-id=item.id (line 580)",
+      "data-spell-uuid=spell.uuid (line 151)",
+      "data-spell-uuid=spell.uuid (line 163)",
+      "data-spell-uuid=spell.uuid (line 174)",
+      "data-staff-id=staffId (line 151)",
+      "data-staff-id=staffId (line 164)",
+      "data-staff-id=staffId (line 175)"
+    ],
     "scripts/item-sheets/wand-sheet-enhance.mjs": [
+      "data-effect-index=i (line 378)",
+      "data-tab=app._shadowdarkExtrasActiveTab (line 322)",
+      "data-tab=app._shadowdarkExtrasActiveTab (line 323)",
+      "data-uuid=creatureUuid (line 860)",
+      "data-uuid=itemUuid (line 989)",
+      "data-uuid=uuid (line 378)",
+      "data-uuid=uuid (line 716)",
+      "data-uuid=uuid (line 724)",
       "value=duration.rounds || \"\" (line 398)",
       "value=duration.seconds || \"\" (line 388)",
       "value=duration.startRound || \"\" (line 408)",
@@ -185,15 +471,43 @@
       "value=usesCurrent (line 83)",
       "value=usesMax (line 91)"
     ],
+    "scripts/journal/DisplayItem.mjs": [
+      "data-item-uuid=item.uuid (line 360)"
+    ],
+    "scripts/journal/DisplayNpc.mjs": [
+      "data-actor-uuid=npc.uuid (line 298)"
+    ],
+    "scripts/journal/PinStyleEditorSD.mjs": [
+      "data-for=input.name (line 338)"
+    ],
     "scripts/journal/easy-reference/EasyReferenceMenu.mjs": [
       "value=a (line 228)"
     ],
+    "scripts/macros/cleansing-weapon.mjs": [
+      "data-weapon-id=weapon.id (line 105)"
+    ],
+    "scripts/macros/holy-weapon.mjs": [
+      "data-weapon-id=weapon.id (line 105)"
+    ],
+    "scripts/macros/identify.mjs": [
+      "data-item-id=item.id (line 51)"
+    ],
     "scripts/macros/shapechanger.mjs": [
+      "data-actor-id=transformActor.id (line 626)",
+      "data-item-id=atk.id (line 875)",
+      "data-item-id=feat.id (line 911)",
+      "data-item-id=sp.id (line 893)",
+      "data-item-id=sp.id (line 931)",
+      "data-npc-id=monster._id (line 260)",
+      "data-token-id=transformToken.id (line 603)",
       "src=icon (line 76)",
       "title=isSpecialType ? \"View details\" : \"Click to roll attack\" (line 875)"
     ],
     "scripts/maphub-cave.mjs": [
       "href=localBaseDir (line 816)"
+    ],
+    "scripts/npc/MysteriousCasting.mjs": [
+      "data-actor-id=actorId (line 131)"
     ],
     "scripts/npc/npc-sheet-inventory.mjs": [
       "value=type (line 145)"
@@ -202,6 +516,7 @@
       "value=current (line 543)"
     ],
     "scripts/party/TravelActivitiesSettingsSD.mjs": [
+      "data-index=newIndex (line 206)",
       "value=ab (line 158)",
       "value=newKey (line 176)"
     ],
@@ -212,15 +527,48 @@
       "value=e.uuid (line 35)",
       "value=t.uuid (line 23)"
     ],
+    "scripts/party/carousing/CarousingOverlaySD.mjs": [
+      "data-actor-id=actor.id (line 709)"
+    ],
     "scripts/party/carousing/CarousingTablesApp.mjs": [
+      "data-tab=tab (line 81)",
       "value=tier.bonus (line 255)",
       "value=tier.cost (line 254)"
+    ],
+    "scripts/party/carousing/ExpandedCarousingTablesApp.mjs": [
+      "data-tab=tab (line 128)",
+      "data-tab=this._currentTab (line 134)",
+      "data-tab=this._currentTab (line 136)"
     ],
     "scripts/party/partyinventory.mjs": [
       "value=m.id (line 459)"
     ],
+    "scripts/settings/settings-organization.mjs": [
+      "data-category=MODULE_ID (line 23)"
+    ],
     "scripts/tom/TomPlayerView.mjs": [
+      "data-asset-id=assetId (line 1567)",
+      "data-asset-id=assetId (line 1585)",
+      "data-asset-id=assetId (line 1599)",
+      "data-condition=c (line 1122)",
+      "data-condition=c (line 1468)",
+      "data-token-id=tokenId (line 1401)",
+      "data-token-id=tokenId (line 1418)",
+      "data-token-id=tokenId (line 1439)",
+      "data-token-id=tokenId (line 1461)",
+      "data-token-id=tokenId (line 1490)",
+      "data-user-id=userId (line 1688)",
+      "data-user-id=userId (line 1728)",
       "value=currentHp (line 1349)"
+    ],
+    "scripts/tom/TomSocketHandler.mjs": [
+      "data-overlay-path=esc (line 429)",
+      "data-overlay-path=esc (line 458)",
+      "data-overlay-path=esc (line 473)"
+    ],
+    "scripts/tray/SDXRollerApp.mjs": [
+      "data-uuid=data.uuid (line 619)",
+      "data-uuid=uuid (line 692)"
     ],
     "scripts/tray/dungeon-bindings.mjs": [
       "value=el (line 156)",

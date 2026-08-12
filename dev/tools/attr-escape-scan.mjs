@@ -15,20 +15,27 @@
  * connected client, so a player who renames a spell to `x" onerror="alert(1)`
  * gets script execution in the GM's session.
  *
- * WHAT IT MATCHES. Any `${...}` inside a double-quoted value of one of
- * ATTRIBUTES, found by scanning with brace depth rather than by regex. Depth
- * tracking is what lets it see `${doc.img || "fallback.svg"}` and nested
- * template literals, which a `[^}]*` pattern truncates at the first `}`.
+ * WHAT IT MATCHES. Any `${...}` inside a quoted value — single or double — of
+ * one of ATTRIBUTES or any `data-*`, with optional whitespace around the `=`.
+ * Values are read with brace-depth tracking rather than a regex, which is what
+ * lets it see `${doc.img || "fallback.svg"}` and nested template literals that a
+ * `[^}]*` pattern truncates at the first `}`. A value may span lines.
+ *
+ * Each of those was a blind spot in the first version, and every one was found
+ * by review rather than by the gate: `title = "${…}"` with spaces, a value
+ * broken across lines, `data-actor-name="${targetActor.name}"` on a chat card,
+ * and three single-quoted attributes. The pattern to notice is that all four
+ * were excluded by a rule written as "this tree doesn't do that" — a claim about
+ * the codebase, not the language, and one that stops being true silently.
  *
  * WHAT IT DELIBERATELY SKIPS.
  *
- *   1. Expressions that mention escapeHTML/escapeHtml, or an `escaped*`
- *      identifier. The repo's convention is to escape at assignment
- *      (`const escapedName = foundry.utils.escapeHTML(actor.name)`) and
- *      interpolate the local, so matching the call alone would flag every
- *      correctly-fixed site. This trusts a NAME: `const escapedFoo = doc.name`
- *      defeats it. That is the same trade every scanner in this directory
- *      makes, and it is worth stating rather than pretending otherwise.
+ *   1. Expressions already escaped: a call to an escape helper, or a bare local
+ *      RESOLVED to a `const x = escapeHTML(…)` declaration in scope. See
+ *      isEscaped — the resolution is scope-aware and deliberately not a name
+ *      test, because the version that trusted `escaped*` names both accepted
+ *      things it should not and reported correct code, and "fixing" the latter
+ *      double-escapes.
  *   2. Expressions built only from `game.i18n.localize` / `game.i18n.format`
  *      and string literals. Those are module-owned text from our own lang
  *      files, not user data.
@@ -38,13 +45,15 @@
  * and a false negative here ships an XSS past a green gate. A noisy baseline is
  * reviewable; a blind spot is not.
  *
- * KNOWN LIMITS. Brace depth is counted without a JS parser, so an unbalanced
- * brace inside a string literal (`${x || "}"}`) mis-measures the expression's
- * end. Single-quoted attribute values are not scanned — this tree writes HTML
- * attributes with double quotes, and adding a second delimiter without evidence
- * of use would widen the surface for no gain. Both are visible as a wrong or
- * missing entry in the baseline diff rather than as silence.
+ * KNOWN LIMITS, kept short because a long list of them is a sign the design is
+ * wrong. Brace depth is counted textually, so an unbalanced brace inside a
+ * string literal (`${x || "}"}`) mis-measures where the expression ends; it
+ * reports a wrong entry rather than going silent. `style` is not scanned — CSS
+ * injection is a different analysis. Escaping is resolved one declaration deep,
+ * so `const a = escapeHTML(x); const b = a;` leaves `${b}` reported.
  */
+
+import * as acorn from "acorn";
 
 /**
  * Attributes this tree interpolates user data into.
@@ -56,28 +65,113 @@
  * sites, so adding it grew the baseline once — a widening is a deliberate,
  * reviewed event, not the drift the "should only ever shrink" note warns about.
  *
- * NOT covered, and worth stating rather than leaving implied: `style` (this tree
- * builds it from module constants, and a CSS-injection gate is a different
- * analysis) and arbitrary `data-*` beyond data-tooltip (overwhelmingly document
- * ids). Both are residual surface. If user data starts reaching either, this
- * list is where to extend.
+ * data-tooltip is no longer listed here because ALL `data-*` are matched by the
+ * pattern below — see the note there.
  */
-const ATTRIBUTES = ["src", "alt", "title", "data-tooltip", "value", "href", "placeholder"];
+const ATTRIBUTES = ["src", "alt", "title", "value", "href", "placeholder"];
 
-const ATTRIBUTE_START = new RegExp(`\\b(${ATTRIBUTES.join("|")})="`, "g");
+// ANY data-* attribute, not a named few. The first pass listed data-tooltip
+// alone; review found `data-actor-name="${targetActor.name}"` on a chat card,
+// which is the same breakout and was invisible because the attribute happened
+// not to be on the list. Enumerating attribute names is how a gate acquires a
+// blind spot shaped like whatever nobody thought of.
+//
+// Whitespace is allowed around the `=`: `title = "${…}"` is valid HTML and the
+// tighter pattern skipped it silently.
+const ATTRIBUTE_START = new RegExp(
+  `\\b(${ATTRIBUTES.join("|")}|data-[a-z][a-z0-9-]*)\\s*=\\s*(["'])`,
+  "g",
+);
+
+/** A call to an escape helper: foundry.utils.escapeHTML, esc, escapeAttr, … */
+const ESCAPE_CALL = /\besc[A-Za-z]*\s*\(/;
 
 /**
- * Escaping is recognised three ways, because this tree spells it three ways:
- * `foundry.utils.escapeHTML(...)`, a local helper (`esc(...)`, `escapeAttr(...)`,
- * `escapeAttribute(...)` — several files define their own), and the
- * `const escapedName = …` convention that feeds a bare local into the markup.
+ * Whether an interpolated expression is already escaped.
  *
- * Missing the local-helper spelling made the first baseline report ~16 already-
- * escaped sites as findings. False positives are the cheaper failure here, but
- * they are not free: a gate that cries wolf gets its baseline regenerated
- * unread, which is how the real findings get lost.
+ * WHY THIS IS NOT A NAME TEST ANY MORE. It used to also accept any identifier
+ * matching `escaped[A-Z]`, which trusts a name rather than a fact. Worse, it
+ * could not see the OPPOSITE case: this tree overwhelmingly escapes at
+ * assignment and interpolates a plain local —
+ *
+ *   const img = foundry.utils.escapeHTML(actor.img);
+ *   …  `<img src="${img}">`                       // correct, but read as raw
+ *
+ * so every such site was reported, and "fixing" one by wrapping it again
+ * double-escapes: a name containing `&` renders as `&amp;amp;`. That happened
+ * five times in one pass before review caught it. A scanner whose false
+ * positives lead directly to a user-visible bug is not paying for itself.
+ *
+ * So an identifier is resolved against its DECLARATION, innermost scope first.
+ * A `const x = escapeHTML(…)` in scope makes `${x}` escaped; a `const x = raw`
+ * shadowing it in an inner scope makes it raw again. Unresolvable identifiers
+ * stay reported, which is the safe direction.
  */
-const ESCAPED = /\besc[A-Za-z]*\s*\(|\bescaped[A-Z_]/;
+function isEscaped(expression, offset, escapedNames) {
+  if (ESCAPE_CALL.test(expression)) return true;
+  const bare = expression.trim();
+  if (!/^[A-Za-z_$][\w$]*$/.test(bare)) return false;
+  return escapedNames(offset, bare);
+}
+
+/**
+ * Resolve, for any offset, whether a name is bound there to an escape call.
+ *
+ * Scope-aware on purpose. A file-scoped answer would be a FALSE NEGATIVE
+ * generator: a name escaped in one function and raw in another would read as
+ * escaped everywhere, hiding the raw one. That is the failure this whole gate
+ * exists to prevent, so it is not a trade worth making for less code.
+ *
+ * @returns {(offset: number, name: string) => boolean}
+ */
+function escapedNameResolver(source) {
+  let ast;
+  try {
+    ast = acorn.parse(source, { ecmaVersion: 2023, sourceType: "module" });
+  }
+  catch {
+    // No resolution available. Every bare local then reports, which is noisy
+    // but safe — and the gate's own parse failure surfaces elsewhere.
+    return () => false;
+  }
+
+  // One entry per scope: where it spans, and what each name declared in it
+  // resolves to.
+  const scopes = [{ start: ast.start, end: ast.end, names: new Map() }];
+  const SCOPE_TYPES = new Set(["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"]);
+
+  const walk = (node, scope) => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) { for (const child of node) walk(child, scope); return; }
+
+    let current = scope;
+    if (typeof node.type === "string" && SCOPE_TYPES.has(node.type)) {
+      current = { start: node.start, end: node.end, names: new Map() };
+      scopes.push(current);
+    }
+
+    if (node.type === "VariableDeclarator" && node.id?.type === "Identifier") {
+      const init = node.init;
+      const escaped = init?.type === "CallExpression"
+        && ESCAPE_CALL.test(source.slice(init.callee.start, init.callee.end) + "(");
+      current.names.set(node.id.name, escaped);
+    }
+
+    for (const key of Object.keys(node)) {
+      if (key === "type" || key === "start" || key === "end" || key === "loc") continue;
+      walk(node[key], current);
+    }
+  };
+  walk(ast, scopes[0]);
+
+  return (offset, name) => {
+    const containing = scopes
+      .filter((scope) => scope.start <= offset && offset < scope.end && scope.names.has(name))
+      .sort((a, b) => (b.end - b.start) - (a.end - a.start));
+    const innermost = containing[containing.length - 1];
+    return innermost ? innermost.names.get(name) : false;
+  };
+}
 
 /** Module-owned text: i18n lookups and string literals, nothing else. */
 function isModuleOwnedText(expression) {
@@ -91,7 +185,7 @@ function isModuleOwnedText(expression) {
  * quote), tracking brace depth so a quote inside an interpolation does not end
  * it. Returns the raw value and every interpolation expression inside it.
  */
-function readAttributeValue(source, start) {
+function readAttributeValue(source, start, quote) {
   const expressions = [];
   let index = start;
   let depth = 0;
@@ -100,10 +194,12 @@ function readAttributeValue(source, start) {
   while (index < source.length) {
     const char = source[index];
 
-    if (depth === 0 && char === '"') break;
-    // A newline at depth 0 means the quote was never closed on this line: this
-    // is not an attribute we can reason about, so give up rather than run on.
-    if (depth === 0 && char === "\n") return null;
+    if (depth === 0 && char === quote) break;
+    // A value may legally span lines, so a newline is NOT a stop condition — the
+    // earlier version bailed on one and silently skipped every multi-line
+    // attribute. What does stop it is evidence the quote never closed: a `<`
+    // or `>` outside an interpolation means we have run into the next tag.
+    if (depth === 0 && (char === "<" || char === ">")) return null;
 
     if (char === "$" && source[index + 1] === "{") {
       if (depth === 0) expressionStart = index + 2;
@@ -133,16 +229,17 @@ function readAttributeValue(source, start) {
  */
 export function scanUnescapedAttrs(source) {
   const findings = [];
+  const escapedNames = escapedNameResolver(source);
   ATTRIBUTE_START.lastIndex = 0;
 
   let match;
   while ((match = ATTRIBUTE_START.exec(source)) !== null) {
     const attr = match[1];
-    const parsed = readAttributeValue(source, match.index + match[0].length);
+    const parsed = readAttributeValue(source, match.index + match[0].length, match[2]);
     if (!parsed) continue;
 
     for (const expression of parsed.expressions) {
-      if (ESCAPED.test(expression)) continue;
+      if (isEscaped(expression, match.index, escapedNames)) continue;
       if (isModuleOwnedText(expression)) continue;
       findings.push({
         attr,

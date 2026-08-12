@@ -279,7 +279,7 @@ function rebuildTargetsList($card, messageId, baseDamage) {
 							<div class="sdx-target-item" data-token-id="${tokenId}" data-actor-id="${actorId}" data-enabled="true">
 								${enableCheckbox}
 					<div class="sdx-target-header">
-						<img src="${foundry.utils.escapeHTML(img)}" alt="${foundry.utils.escapeHTML(name)}" class="sdx-target-img" />
+						<img src="${img}" alt="${name}" class="sdx-target-img" />
 						<div class="sdx-target-name">${name}</div>
 						<div class="sdx-damage-preview">${damageSign}<span class="sdx-damage-value" data-base-damage="${baseDamage}">${baseDamage}</span></div>
 					</div>

@@ -58,11 +58,15 @@ const NOTES = {
   "maphub <base href> injection":
     "`MaphubSD.mjs` and `maphub-cave.mjs` inject a `<base href>` built from a local directory path the "
     + "module computes. Not a document field, and escaping it would corrupt the URL it exists to set.",
-  "GM-authored config formulas":
-    "`flags.formula`, `damage.formula`, `save.dc`, the weapon-bonus and template-targeting inputs. "
-    + "These are settings a GM types into their own dialog and reads back in the same dialog. They are "
-    + "the weakest members of this list — if any of them starts rendering into a card other clients "
-    + "draw, escape it then.",
+  "WITHDRAWN — GM-authored config formulas":
+    "This category used to accept `flags.formula`, `damage.formula` and the weapon-bonus inputs as "
+    + "\"settings a GM types into their own dialog\". That was wrong, and review caught it. They are "
+    + "ITEM FLAGS, so a player who owns the item controls them, and they render when the GM opens "
+    + "that item's sheet — the payload arrives from the player and executes in the GM's session. "
+    + "weapon-bonus-ui.mjs's formula and label inputs are now escaped. The lesson generalises: "
+    + "\"who types it\" is not a trust boundary, \"where it is stored\" is. Anything reachable from a "
+    + "document a player can edit is player-controlled no matter which dialog authored it. The "
+    + "template-targeting and aura numeric inputs remain accepted as numerics, not as GM-authored.",
 };
 
 /** `file: attr=expr` — the identity the gate compares, without the line. */

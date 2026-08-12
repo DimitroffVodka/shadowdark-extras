@@ -50,7 +50,7 @@ export async function showIdentifyDialog(targetActor, unidentifiedItems, identif
 		return `
 			<div class="sdx-identify-item" data-item-id="${item.id}">
 				<div class="sdx-identify-item-img">
-					<img src="${foundry.utils.escapeHTML(img)}" alt="${foundry.utils.escapeHTML(maskedName)}">
+					<img src="${img}" alt="${maskedName}">
 				</div>
 				<div class="sdx-identify-item-name">${maskedName}</div>
 			</div>

@@ -947,20 +947,61 @@ test("attr-escape gate: reads a fallback expression containing a quoted string",
 });
 
 test("attr-escape gate: recognises escaping at the call and at the local it feeds", () => {
+  // Both spellings this tree uses. The second is only accepted because the
+  // locals RESOLVE to escape calls — the names alone would not earn it.
   const source = [
     'const a = `<img src="${foundry.utils.escapeHTML(doc.img)}">`;',
+    'const escapedImg = foundry.utils.escapeHTML(doc.img);',
+    'const escapedName = foundry.utils.escapeHTML(doc.name);',
     'const b = `<img src="${escapedImg}" alt="${escapedName}">`;',
   ].join("\n");
 
   assert.deepEqual(scanUnescapedAttrs(source), []);
 });
 
-test("attr-escape gate: an identifier that merely starts with \"escaped\" still reports", () => {
-  // The convention is `escaped<Name>`. Requiring the capital keeps the exclusion
-  // from swallowing unrelated identifiers that happen to share the prefix.
-  const findings = scanUnescapedAttrs('const html = `<img alt="${escapedaemon.name}">`;');
+test("attr-escape gate: a name that only LOOKS escaped is not trusted", () => {
+  // Escaping is resolved against the declaration, not the identifier's spelling.
+  // `escapedName` assigned from a raw read must still report — the old name-test
+  // accepted it on sight.
+  const source = 'const f = () => { const escapedName = doc.name; return `<img alt="${escapedName}">`; };';
 
-  assert.deepEqual(findings.map((f) => f.expr), ["escapedaemon.name"]);
+  assert.deepEqual(scanUnescapedAttrs(source).map((f) => f.expr), ["escapedName"]);
+});
+
+test("attr-escape gate: a local escaped at assignment is not reported", () => {
+  // The false positive that caused a real bug: this is CORRECT code, and
+  // "fixing" it by wrapping again renders `&` as `&amp;amp;`.
+  const source = 'const f = () => { const img = foundry.utils.escapeHTML(a.img); return `<img src="${img}">`; };';
+
+  assert.deepEqual(scanUnescapedAttrs(source), []);
+});
+
+test("attr-escape gate: escaping resolution is scope-aware, not file-wide", () => {
+  // A name escaped in one function and raw in another must still report the raw
+  // one. A file-scoped answer would hide it — a false negative, the expensive
+  // direction for this gate.
+  const source = [
+    'export function p() { const n = foundry.utils.escapeHTML(a.n); return `<img alt="${n}">`; }',
+    'export function q() { const n = a.n; return `<img alt="${n}">`; }',
+  ].join("\n");
+
+  assert.deepEqual(scanUnescapedAttrs(source).map((f) => f.expr), ["n"]);
+});
+
+test("attr-escape gate: sees spaced =, multi-line values, any data-*, single quotes", () => {
+  // Four shapes the first version skipped. Each was excluded by a rule of the
+  // form "this tree doesn't do that" — a claim about the codebase, not the
+  // language, and one that stops being true without saying so.
+  const cases = [
+    'const a = `<span title = "${doc.name}">x</span>`;',
+    'const b = `<img\n  src="${doc.img}"\n  alt="y">`;',
+    'const c = `<button data-actor-name="${actor.name}">x</button>`;',
+    "const d = `<img src='${doc.img}'>`;",
+  ];
+
+  for (const source of cases) {
+    assert.equal(scanUnescapedAttrs(source).length, 1, source);
+  }
 });
 
 test("attr-escape gate: skips module-owned i18n text", () => {
@@ -1213,4 +1254,56 @@ test("flag snapshot: the real tree matches the committed flag baseline", () => {
   const baseline = JSON.parse(readFileSync(path.join(REPO_ROOT, "dev/snapshots/flag-keys.json"), "utf8"));
 
   assert.deepEqual(diffFlags(baseline, collectFlagKeys()), []);
+});
+
+test("flag snapshot: a receiver swap reports even when the scope resolves locally", () => {
+  // The half of #128 that stayed open after the first attempt: most files
+  // declare `const MODULE_ID = "shadowdark-extras"`, so the scope RESOLVES and
+  // the site never reaches unresolvedScopes. Recording the receiver only there
+  // left those files — the majority — still blind to an actor -> scene swap.
+  const local = 'const MODULE_ID = "shadowdark-extras";\n';
+  const sites = (source) => ({
+    writtenKeys: [], readKeys: [], foreignScopes: {}, dynamicSites: [], unresolvedScopes: [],
+    flagSites: scanFlags(source).map(
+      (e) => `scripts/a.mjs (api=${e.api} key=${e.key} receiver=${e.receiver})`,
+    ),
+  });
+
+  const differences = diffFlags(
+    sites(`${local}export const load = actor => actor.getFlag(MODULE_ID, "state");`),
+    sites(`${local}export const load = scene => scene.getFlag(MODULE_ID, "state");`),
+  );
+
+  assert.ok(differences.some((d) => d.startsWith("flagSites: removed") && d.includes("receiver=actor")));
+  assert.ok(differences.some((d) => d.startsWith("flagSites: added") && d.includes("receiver=scene")));
+});
+
+test("flag snapshot: a receiver swap reports with a literal scope too", () => {
+  const sites = (source) => ({
+    writtenKeys: [], readKeys: [], foreignScopes: {}, dynamicSites: [], unresolvedScopes: [],
+    flagSites: scanFlags(source).map(
+      (e) => `scripts/a.mjs (api=${e.api} key=${e.key} receiver=${e.receiver})`,
+    ),
+  });
+
+  const differences = diffFlags(
+    sites('export const load = actor => actor.getFlag("shadowdark-extras", "state");'),
+    sites('export const load = scene => scene.getFlag("shadowdark-extras", "state");'),
+  );
+
+  assert.equal(differences.length, 2);
+});
+
+test("flag snapshot: flagSites stays immune to line drift", () => {
+  // Identity carries no line, so padding a file reports nothing. #127's win has
+  // to survive every later widening of this gate.
+  const source = 'export const load = actor => actor.getFlag("shadowdark-extras", "state");';
+  const sites = (src) => ({
+    writtenKeys: [], readKeys: [], foreignScopes: {}, dynamicSites: [], unresolvedScopes: [],
+    flagSites: scanFlags(src).map(
+      (e) => `scripts/a.mjs (api=${e.api} key=${e.key} receiver=${e.receiver})`,
+    ),
+  });
+
+  assert.deepEqual(diffFlags(sites(source), sites(`\n\n\n\n\n${source}`)), []);
 });

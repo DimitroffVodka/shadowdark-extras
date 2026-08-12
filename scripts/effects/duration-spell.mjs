@@ -721,7 +721,7 @@ async function applyDurationSpellPerTurnDamage(durationSpell, targetActor, targe
 			<button type="button" class="sdx-duration-apply-btn"
 				data-token-id="${targetTokenId}"
 				data-damage="${damage}"
-				data-actor-name="${targetActor.name}">
+				data-actor-name="${foundry.utils.escapeHTML(targetActor.name)}">
 				<i class="fas fa-heart-broken"></i> Apply Damage
 			</button>
 		` : "";

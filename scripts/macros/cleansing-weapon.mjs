@@ -104,7 +104,7 @@ export async function showCleansingWeaponDialog(casterActor, casterItem, targetA
 			return `
                 <div class="sdx-spell-weapon-item" data-weapon-id="${weapon.id}">
                     <div class="sdx-spell-weapon-img">
-                        <img src="${foundry.utils.escapeHTML(img)}" alt="${foundry.utils.escapeHTML(displayName)}">
+                        <img src="${img}" alt="${displayName}">
                         ${badge}
                     </div>
                     <div class="sdx-spell-weapon-name">${displayName}</div>
