@@ -1010,3 +1010,19 @@ test("attr-escape gate: reports the four #125 Tier 1 shapes it was written for",
     "auraEffect.img || sourceToken.document.texture.src",
   ]);
 });
+
+test("attr-escape gate: covers value, href and placeholder, not only src/alt", () => {
+  // The first pass scanned src/alt/title/data-tooltip only. A hidden input
+  // storing an actor name (`value="${profile.creatureName}"`) is the same
+  // breakout: a name carrying `">` closes the tag and injects an element.
+  const source = [
+    'const a = `<input type="hidden" value="${profile.creatureName}" />`;',
+    'const b = `<a href="${doc.url}">x</a>`;',
+    'const c = `<input placeholder="${doc.name}" />`;',
+  ].join("\n");
+
+  assert.deepEqual(
+    scanUnescapedAttrs(source).map((f) => f.attr),
+    ["value", "href", "placeholder"],
+  );
+});

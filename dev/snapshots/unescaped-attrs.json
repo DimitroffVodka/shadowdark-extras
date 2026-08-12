@@ -1,13 +1,23 @@
 {
   "$comment": "Attribute interpolations that reach HTML without escaping. The gate blocks anything NEW, not the absolute count — see #125 for the ~90 pre-existing sites and their triage tiers. Entries are compared by file + attribute + expression, so a site that merely moves lines is silent. Line numbers are recorded for navigation only. This file should only ever SHRINK: regenerate after a cleanup commit with `npm run gate:attr-escape -- --write`. If it grows, something shipped an unescaped interpolation into markup that renders on every connected client.",
-  "total": 81,
-  "files": 30,
+  "total": 238,
+  "files": 60,
   "byFile": {
+    "scripts/MaphubSD.mjs": [
+      "href=localDirUrl (line 100)"
+    ],
     "scripts/MaphubViewerApp.mjs": [
       "src=imgPath (line 535)"
     ],
     "scripts/animation/AnimationFxConfig.mjs": [
-      "src=esc(videoSrc) (line 100)"
+      "src=esc(videoSrc) (line 100)",
+      "value=esc(duration) (line 179)",
+      "value=esc(file) (line 133)",
+      "value=esc(opacity) (line 184)",
+      "value=esc(scale) (line 174)",
+      "value=esc(sound) (line 147)",
+      "value=v (line 78)",
+      "value=v (line 80)"
     ],
     "scripts/animation/WeaponAnimationConfig.mjs": [
       "alt=name (line 385)",
@@ -23,7 +33,13 @@
       "title=opStr (line 804)",
       "title=s.label (line 419)",
       "title=s.label (line 428)",
-      "title=w.label (line 191)"
+      "title=w.label (line 191)",
+      "value=c.id (line 531)",
+      "value=it.id (line 236)",
+      "value=pct (line 478)",
+      "value=s.id (line 419)",
+      "value=s.id (line 428)",
+      "value=w.id (line 191)"
     ],
     "scripts/character-sheet/SheetEditorConfig.mjs": [
       "alt=name (line 270)",
@@ -41,11 +57,33 @@
       "data-tooltip=xp (line 194)",
       "data-tooltip=xpForNextLevel (line 194)",
       "src=headerBg (line 730)",
-      "src=headerBg (line 991)"
+      "src=headerBg (line 991)",
+      "value=actor.name (line 185)",
+      "value=currentHp (line 337)",
+      "value=currentLuck (line 396)",
+      "value=currentXp (line 442)"
+    ],
+    "scripts/character-sheet/enhanced-spells-tab.mjs": [
+      "value=p.id (line 122)"
+    ],
+    "scripts/character-sheet/skills-box.mjs": [
+      "value=ab (line 111)",
+      "value=abilityMod (line 182)"
+    ],
+    "scripts/character-sheet/spellbook-filter.mjs": [
+      "value=pack.id (line 41)"
+    ],
+    "scripts/combat/MarchingModeSD.mjs": [
+      "value=t.id (line 407)"
+    ],
+    "scripts/combat/WeaponBonusConfig.mjs": [
+      "value=type.id (line 947)"
     ],
     "scripts/combat/damage-card-actions.mjs": [
       "alt=name (line 282)",
-      "src=img (line 282)"
+      "src=img (line 282)",
+      "value=i (line 86)",
+      "value=w.id (line 824)"
     ],
     "scripts/combat/damage-card-builders.mjs": [
       "data-tooltip=rollBreakdown (line 777)",
@@ -63,6 +101,20 @@
     "scripts/combat/hit-bonus.mjs": [
       "data-tooltip=tooltip (line 73)"
     ],
+    "scripts/combat/weapon-bonus-ui.mjs": [
+      "placeholder=getPlaceholderForType(type) (line 86)",
+      "value=chance (line 755)",
+      "value=criticalExtraDamage (line 417)",
+      "value=criticalExtraDice (line 397)",
+      "value=escapeAttr(opt.value) (line 63)",
+      "value=escapeAttr(value) (line 86)",
+      "value=formula (line 506)",
+      "value=formula (line 584)",
+      "value=label (line 508)",
+      "value=label (line 586)",
+      "value=opt.value (line 843)",
+      "value=usage (line 604)"
+    ],
     "scripts/dungeon/DDPackPreviewAppSD.mjs": [
       "src=file.previewUrl (line 214)"
     ],
@@ -72,34 +124,149 @@
     "scripts/dungeon/DungeonGenerator.mjs": [
       "src=mapSrc (line 770)"
     ],
+    "scripts/effects/AuraConfig.mjs": [
+      "value=damage.formula || \"\" (line 421)",
+      "value=escapeAttribute(p.name) (line 322)",
+      "value=escapeAttribute(s.id) (line 343)",
+      "value=indyAlpha (line 347)",
+      "value=indyScale (line 353)",
+      "value=indySpeed (line 350)",
+      "value=nativeRegionColor (line 297)",
+      "value=p.name (line 563)",
+      "value=radius (line 279)",
+      "value=save.dc || 12 (line 485)",
+      "value=tmOpacity (line 333)",
+      "value=tmTint || \"#ffffff\" (line 328)"
+    ],
     "scripts/effects/focus-ui.mjs": [
       "alt=focusEntry.spellName (line 20)",
       "src=focusEntry.spellImg (line 20)",
       "title=targetsList (line 63)"
     ],
     "scripts/hex/HexTooltipSD.mjs": [
-      "src=img (line 1295)"
+      "src=img (line 1295)",
+      "value=j.id (line 1677)",
+      "value=name.replace(/\"/g, \"&quot;\") (line 1685)",
+      "value=t (line 1669)",
+      "value=text.replace(/\"/g, \"&quot;\") (line 1645)"
+    ],
+    "scripts/inventory/TradeWindowSD.mjs": [
+      "value=p.id (line 974)",
+      "value=p.id (line 987)"
+    ],
+    "scripts/inventory/ammunition-bonuses.mjs": [
+      "value=damageBonus (line 36)",
+      "value=hitBonus (line 32)"
+    ],
+    "scripts/inventory/containers.mjs": [
+      "value=coinCP (line 821)",
+      "value=coinGP (line 815)",
+      "value=coinSP (line 818)"
+    ],
+    "scripts/inventory/gem-enhancements.mjs": [
+      "value=qty (line 47)"
+    ],
+    "scripts/inventory/player-transfers.mjs": [
+      "value=p.id (line 266)",
+      "value=p.id (line 278)",
+      "value=p.id (line 289)",
+      "value=p.id (line 473)",
+      "value=p.id (line 486)",
+      "value=p.id (line 499)"
     ],
     "scripts/item-sheets/ItemGiveConfig.mjs": [
       "alt=profile.itemName || \"Item\" (line 42)",
-      "src=profile.itemImg || \"icons/svg/mystery-man.svg\" (line 42)"
+      "src=profile.itemImg || \"icons/svg/mystery-man.svg\" (line 42)",
+      "value=JSON.stringify(itemProfilesArray).replace(/\"/g, \"&quot;\") (line 28)",
+      "value=profile.itemImg || \"\" (line 51)",
+      "value=profile.itemName || \"\" (line 50)",
+      "value=profile.itemUuid || \"\" (line 49)",
+      "value=profile.quantity || \"1\" (line 54)"
     ],
     "scripts/item-sheets/SpellDamageConfig.mjs": [
       "title=effectsRequirementExamples (line 167)",
       "title=formulaHelp (line 117)",
       "title=requirementExamples (line 59)",
-      "title=tieredFormulaHelp (line 132)"
+      "title=tieredFormulaHelp (line 132)",
+      "value=JSON.stringify(criticalEffectsArray).replace(/\"/g, \"&quot;\") (line 164)",
+      "value=JSON.stringify(effectsArray).replace(/\"/g, \"&quot;\") (line 163)",
+      "value=flags.bonus (line 96)",
+      "value=flags.damageRequirement || \"\" (line 57)",
+      "value=flags.effectsRequirement || \"\" (line 169)",
+      "value=flags.formula (line 121)",
+      "value=flags.numDice (line 82)",
+      "value=flags.perTurnDamage || \"\" (line 233)",
+      "value=flags.scalingDice (line 107)",
+      "value=flags.tieredFormula || \"\" (line 136)"
     ],
     "scripts/item-sheets/SummoningConfig.mjs": [
       "alt=profile.creatureName || \"Creature\" (line 71)",
       "src=profile.creatureImg || \"icons/svg/mystery-man.svg\" (line 71)",
-      "title=profile.creatureName || \"Unknown\" (line 70)"
+      "title=profile.creatureName || \"Unknown\" (line 70)",
+      "value=JSON.stringify(summonProfilesArray).replace(/\"/g, \"&quot;\") (line 38)",
+      "value=profile.count || \"1\" (line 85)",
+      "value=profile.creatureImg || \"\" (line 80)",
+      "value=profile.creatureName || \"\" (line 79)",
+      "value=profile.creatureUuid || \"\" (line 78)",
+      "value=profile.displayName || \"\" (line 93)"
+    ],
+    "scripts/item-sheets/TemplateTargetingConfig.mjs": [
+      "value=damage.formula || \"\" (line 184)",
+      "value=deleteDuration (line 432)",
+      "value=deleteSeconds (line 449)",
+      "value=escapeAttribute(p.name) (line 507)",
+      "value=fillColor (line 391)",
+      "value=fillColor (line 394)",
+      "value=save.dc || 12 (line 220)",
+      "value=templateSize (line 383)",
+      "value=tmOpacity (line 497)",
+      "value=tmTexture (line 484)",
+      "value=tmTint (line 518)",
+      "value=tmTint || \"#ffffff\" (line 514)"
+    ],
+    "scripts/item-sheets/potion-sheet-enhance.mjs": [
+      "value=duration.rounds || \"\" (line 264)",
+      "value=duration.seconds || \"\" (line 254)",
+      "value=duration.startRound || \"\" (line 274)",
+      "value=duration.startTime || \"\" (line 258)",
+      "value=duration.startTurn || \"\" (line 278)",
+      "value=duration.turns || \"\" (line 268)"
+    ],
+    "scripts/item-sheets/scroll-sheet-enhance.mjs": [
+      "value=duration.rounds || \"\" (line 302)",
+      "value=duration.seconds || \"\" (line 292)",
+      "value=duration.startRound || \"\" (line 312)",
+      "value=duration.startTime || \"\" (line 296)",
+      "value=duration.startTurn || \"\" (line 316)",
+      "value=duration.turns || \"\" (line 306)"
+    ],
+    "scripts/item-sheets/spell-sheet-enhance.mjs": [
+      "value=duration.rounds || \"\" (line 379)",
+      "value=duration.seconds || \"\" (line 369)",
+      "value=duration.startRound || \"\" (line 389)",
+      "value=duration.startTime || \"\" (line 373)",
+      "value=duration.startTurn || \"\" (line 393)",
+      "value=duration.turns || \"\" (line 383)",
+      "value=key (line 69)"
     ],
     "scripts/item-sheets/staff-spells.mjs": [
       "title=staffName (line 155)"
     ],
+    "scripts/item-sheets/wand-sheet-enhance.mjs": [
+      "value=duration.rounds || \"\" (line 398)",
+      "value=duration.seconds || \"\" (line 388)",
+      "value=duration.startRound || \"\" (line 408)",
+      "value=duration.startTime || \"\" (line 392)",
+      "value=duration.startTurn || \"\" (line 412)",
+      "value=duration.turns || \"\" (line 402)",
+      "value=usesCurrent (line 83)",
+      "value=usesMax (line 91)"
+    ],
     "scripts/journal/PinStyleEditorSD.mjs": [
       "alt=imageAlt (line 31)"
+    ],
+    "scripts/journal/easy-reference/EasyReferenceMenu.mjs": [
+      "value=a (line 228)"
     ],
     "scripts/macros/cleansing-weapon.mjs": [
       "alt=displayName (line 107)",
@@ -120,11 +287,32 @@
       "title=isSpecialType ? \"View details\" : \"Click to roll attack\" (line 875)",
       "title=level (line 263)"
     ],
+    "scripts/maphub-cave.mjs": [
+      "href=localBaseDir (line 816)"
+    ],
     "scripts/npc/MysteriousCasting.mjs": [
       "data-tooltip=tooltip (line 53)",
       "src=mysteriousIcon (line 142)",
       "title=mysteriousLabel (line 142)",
       "title=tooltip (line 54)"
+    ],
+    "scripts/npc/npc-sheet-inventory.mjs": [
+      "value=type (line 145)"
+    ],
+    "scripts/party/PartySheetSD.mjs": [
+      "value=current (line 543)"
+    ],
+    "scripts/party/TravelActivitiesSettingsSD.mjs": [
+      "value=ab (line 158)",
+      "value=newKey (line 176)"
+    ],
+    "scripts/party/TravelSpeedsSettingsSD.mjs": [
+      "value=newKey (line 136)"
+    ],
+    "scripts/party/carousing/CarousingFoundryImport.mjs": [
+      "placeholder=esc(game.i18n.localize(\"SHADOWDARK_EXTRAS.carousing.table_name_placeholder\")) (line 112)",
+      "value=e.uuid (line 35)",
+      "value=t.uuid (line 23)"
     ],
     "scripts/party/carousing/CarousingOverlaySD.mjs": [
       "alt=esc(actor.name ?? \"\") (line 710)",
@@ -134,15 +322,44 @@
       "src=esc(actor.img ?? \"\") (line 338)",
       "src=esc(actor.img ?? \"\") (line 583)"
     ],
+    "scripts/party/carousing/CarousingTablesApp.mjs": [
+      "placeholder=benefitLabel (line 272)",
+      "placeholder=descLabel (line 271)",
+      "value=outcome.benefit || \"\" (line 272)",
+      "value=outcome.description || \"\" (line 271)",
+      "value=outcome.roll || \"\" (line 270)",
+      "value=tier.bonus (line 255)",
+      "value=tier.cost (line 254)",
+      "value=tier.description (line 256)"
+    ],
+    "scripts/party/partyinventory.mjs": [
+      "value=m.id (line 459)"
+    ],
     "scripts/tom/TomPlayerView.mjs": [
       "src=cond.icon (line 1279)",
       "src=condDef.icon (line 1123)",
       "src=condDef.icon (line 1469)",
       "title=condDef.name (line 1122)",
-      "title=condDef.name (line 1468)"
+      "title=condDef.name (line 1468)",
+      "value=currentHp (line 1349)"
     ],
     "scripts/tom/TomSocketHandler.mjs": [
       "src=overlayPath (line 406)"
+    ],
+    "scripts/tray/dungeon-bindings.mjs": [
+      "value=el (line 156)",
+      "value=t.id (line 201)"
+    ],
+    "scripts/tray/pin-list-bindings.mjs": [
+      "value=currentName (line 431)",
+      "value=esc(f.color || \"#85733f\") (line 165)",
+      "value=esc(f.icon || \"\") (line 174)",
+      "value=esc(f.id) (line 229)",
+      "value=esc(f.name) (line 163)",
+      "value=esc(initial) (line 146)"
+    ],
+    "scripts/tray/tom-scene-bindings.mjs": [
+      "value=defaultName (line 293)"
     ]
   }
 }

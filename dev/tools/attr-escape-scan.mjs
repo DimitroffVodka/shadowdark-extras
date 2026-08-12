@@ -46,8 +46,23 @@
  * missing entry in the baseline diff rather than as silence.
  */
 
-/** Attributes whose values are parsed as URLs or text, where injection executes. */
-const ATTRIBUTES = ["src", "alt", "title", "data-tooltip"];
+/**
+ * Attributes this tree interpolates user data into.
+ *
+ * `value` was added after the first pass: #125 counted src/alt/title/
+ * data-tooltip, but the hidden inputs that back the summon and item-give
+ * profiles store an actor name straight into `value="${profile.creatureName}"`,
+ * and a name carrying `">` closes the tag and injects an element. That is 150+
+ * sites, so adding it grew the baseline once — a widening is a deliberate,
+ * reviewed event, not the drift the "should only ever shrink" note warns about.
+ *
+ * NOT covered, and worth stating rather than leaving implied: `style` (this tree
+ * builds it from module constants, and a CSS-injection gate is a different
+ * analysis) and arbitrary `data-*` beyond data-tooltip (overwhelmingly document
+ * ids). Both are residual surface. If user data starts reaching either, this
+ * list is where to extend.
+ */
+const ATTRIBUTES = ["src", "alt", "title", "data-tooltip", "value", "href", "placeholder"];
 
 const ATTRIBUTE_START = new RegExp(`\\b(${ATTRIBUTES.join("|")})="`, "g");
 
