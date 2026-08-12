@@ -34,6 +34,39 @@ export function evaluateRequirements(requirements, attacker, target) {
 }
 
 /**
+ * Resolve an actor's ancestry to a comparable name.
+ *
+ * SD 4.x declares `PlayerSD.ancestry` as a `DocumentUUIDField`, so the stored
+ * value is a UUID *string* — `system.ancestry.name` was always `undefined`, and
+ * the old `system.details.ancestry` fallback does not exist in 4.x at all, so
+ * every `targetAncestry` requirement compared against "" and never matched.
+ * `NpcSD` has no ancestry field whatsoever; "" is the right answer there.
+ *
+ * Kept synchronous (`fromUuidSync`) because `evaluateRequirements` is called
+ * from sync loops in the roll-dialog hook. For a compendium UUID that returns
+ * the pack index entry rather than the Document, which still carries `name`.
+ *
+ * @param {Actor|null} actor
+ * @returns {string} the ancestry name, or "" when the actor has none
+ */
+function resolveAncestryName(actor) {
+	const ancestry = actor?.system?.ancestry;
+	if (!ancestry) return "";
+
+	// Pre-4.x data (and hand-authored fixtures) stored an object or a bare name.
+	if (typeof ancestry !== "string") return ancestry.name || "";
+	if (!ancestry.includes(".")) return ancestry;
+
+	if (typeof fromUuidSync !== "function") return "";
+	try {
+		return fromUuidSync(ancestry)?.name || "";
+	}
+	catch(e) {
+		return "";
+	}
+}
+
+/**
  * Evaluate a single requirement
  */
 function evaluateSingleRequirement(req, attacker, target) {
@@ -79,7 +112,7 @@ function evaluateSingleRequirement(req, attacker, target) {
 			return evaluateNumeric(attackerPercent, operator, parseFloat(value));
 
 		case "targetAncestry":
-			testValue = target?.system?.ancestry?.name || target?.system?.details?.ancestry || "";
+			testValue = resolveAncestryName(target);
 			break;
 
 		case "targetAlignment":

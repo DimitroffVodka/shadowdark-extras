@@ -16,6 +16,15 @@ globalThis.foundry = {
 	utils: {
 		mergeObject: (base, updates) => ({ ...base, ...updates }),
 	},
+	// weapon-bonus-ui imports getCreatureTypes from CreatureTypesApp, whose
+	// module scope builds an ApplicationV2 subclass. Only the import needs to
+	// survive here; the editor app itself is never opened by these tests.
+	applications: {
+		api: {
+			ApplicationV2: class {},
+			HandlebarsApplicationMixin: Base => class extends Base {},
+		},
+	},
 };
 
 const { FEATURE_IDS } = await import("../../scripts/settings/feature-gates.mjs");

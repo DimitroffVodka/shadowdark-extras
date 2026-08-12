@@ -4,11 +4,111 @@
  */
 
 import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
+import { getCreatureTypes } from "../npc/CreatureTypesApp.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
 const npcCreatureTypesEnabled = () => isFeatureEnabled(FEATURE_IDS.NPC_CREATURE_TYPES)
 	&& game.settings.get(MODULE_ID, "enableNpcCreatureType");
+
+/**
+ * Persisted `type` for the creature-type requirement. The stored value stays
+ * `targetSubtype` — every existing weapon config and `macros/cleansing-weapon.mjs`
+ * write it — while the label users see is now "Target Creature Type", matching
+ * the NPC Creature Types feature it actually reads.
+ */
+const CREATURE_TYPE_REQUIREMENT = "targetSubtype";
+
+/** Escape a user-supplied string for interpolation into an HTML attribute. */
+function escapeAttr(value) {
+	return String(value ?? "")
+		.replace(/&/g, "&amp;")
+		.replace(/"/g, "&quot;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;");
+}
+
+/**
+ * Requirement type options, shared by all four requirement row builders.
+ *
+ * `selectedType` is always present in the result even when its option would
+ * otherwise be filtered out (a creature-type requirement saved while the NPC
+ * Creature Types feature was on, then read back with it off). Without that, the
+ * `<select>` renders with nothing selected, the browser reports option 0, and
+ * the next save silently rewrites the requirement to `targetName`.
+ *
+ * @param {string} selectedType - the requirement's persisted type
+ * @returns {{value: string, label: string}[]}
+ */
+function getRequirementTypeOptions(selectedType) {
+	const options = [
+		{ value: "targetName", label: "Target Name" },
+		{ value: "targetCondition", label: "Target Has Condition" },
+		{ value: "targetHpPercent", label: "Target HP %" },
+		{ value: "attackerHpPercent", label: "Attacker HP %" },
+		{ value: "targetAncestry", label: "Target Ancestry" },
+		{ value: "targetAlignment", label: "Target Alignment" },
+	];
+
+	if (npcCreatureTypesEnabled() || selectedType === CREATURE_TYPE_REQUIREMENT) {
+		options.push({ value: CREATURE_TYPE_REQUIREMENT, label: "Target Creature Type" });
+	}
+
+	return options;
+}
+
+/** Render an option list, marking `selected` as chosen. */
+function buildOptionsHtml(options, selected) {
+	return options
+		.map(opt => `<option value="${escapeAttr(opt.value)}" ${selected === opt.value ? "selected" : ""}>${opt.label}</option>`)
+		.join("");
+}
+
+/**
+ * The value control for a requirement row.
+ *
+ * A creature-type requirement gets a dropdown of the configured creature types
+ * rather than free text — the value has to match `getEffectiveCreatureType()`
+ * exactly, and typing it by hand was the main way to get a requirement that
+ * never fires. Every other type keeps its free-text input.
+ *
+ * The saved value is always offered as an option, so a type removed from the
+ * world's list (or one written by a macro) is not silently rewritten to the
+ * first entry on the next save.
+ *
+ * @param {string} cssClass - the row's value-control class, e.g. `sdx-hit-bonus-req-value`
+ * @param {string} type - the requirement's persisted type
+ * @param {string} value - the requirement's persisted value
+ * @returns {string} HTML for an `<input>` or a `<select>` carrying `cssClass`
+ */
+function buildRequirementValueHtml(cssClass, type, value) {
+	if (type !== CREATURE_TYPE_REQUIREMENT) {
+		return `<input type="text" class="${cssClass}" value="${escapeAttr(value)}" placeholder="${getPlaceholderForType(type)}" />`;
+	}
+
+	const types = [...getCreatureTypes()];
+	if (value && !types.includes(value)) types.push(value);
+
+	const options = types.map(t => ({
+		value: t,
+		label: t || game.i18n?.localize("SHADOWDARK_EXTRAS.npc.creature_type.none") || "(None)",
+	}));
+
+	return `<select class="${cssClass}">${buildOptionsHtml(options, value)}</select>`;
+}
+
+/**
+ * Re-render the sheet with the Bonuses tab still active.
+ *
+ * Changing a requirement's type has to rebuild its row: the operator list is
+ * type-dependent, and a creature-type requirement swaps its free-text value box
+ * for a dropdown. The other requirement fields save in place without this — a
+ * re-render on every keystroke would steal focus.
+ */
+function rerenderBonusesTab(app) {
+	app._shadowdarkExtrasActiveTab = "tab-bonuses";
+	app.render(false);
+}
 
 async function saveWeaponBonusConfig(item, updates) {
 	const currentFlags = item.flags?.[MODULE_ID]?.weaponBonus || getDefaultWeaponBonusConfig();
@@ -371,9 +471,9 @@ function buildWeaponBonusTabHtml(flags, item) {
 								<strong>Target Condition</strong> - Check target's effects<br>
 								<strong>Target HP %</strong> - Target's health percentage<br>
 								<strong>Attacker HP %</strong> - Your health percentage<br>
-								<strong>Target Ancestry</strong> - Target's ancestry<br>
+								<strong>Target Ancestry</strong> - Target's ancestry (Players only; NPCs have none)<br>
 								<strong>Target Alignment</strong> - Target's alignment (chaotic, neutral, lawful)<br>
-								${npcCreatureTypesEnabled() ? "<strong>Target Subtype</strong> - Target's creature type" : ""}
+								${npcCreatureTypesEnabled() ? "<strong>Target Creature Type</strong> - Target's creature type, e.g. Undead" : ""}
 							</div>
 						</div>
 					</fieldset>
@@ -443,30 +543,15 @@ function buildHitBonusRequirementRowHtml(req, bonusIndex, reqIndex) {
 	const operator = req.operator || "contains";
 	const value = req.value || "";
 
-	const typeOptions = [
-		{ value: "targetName", label: "Target Name" },
-		{ value: "targetCondition", label: "Target Has Condition" },
-		{ value: "targetHpPercent", label: "Target HP %" },
-		{ value: "attackerHpPercent", label: "Attacker HP %" },
-		{ value: "targetAncestry", label: "Target Ancestry" },
-		{ value: "targetAlignment", label: "Target Alignment" },
-	];
-
-	if (npcCreatureTypesEnabled()) {
-		typeOptions.push({ value: "targetSubtype", label: "Target Subtype" });
-	}
-
-	const operatorOptions = getOperatorsForType(type);
-
 	return `
 		<div class="sdx-hit-bonus-req-row" data-bonus-index="${bonusIndex}" data-req-index="${reqIndex}">
 			<select class="sdx-hit-bonus-req-type">
-				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
+				${buildOptionsHtml(getRequirementTypeOptions(type), type)}
 			</select>
 			<select class="sdx-hit-bonus-req-operator">
-				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
+				${buildOptionsHtml(getOperatorsForType(type), operator)}
 			</select>
-			<input type="text" class="sdx-hit-bonus-req-value" value="${value}" placeholder="${getPlaceholderForType(type)}" />
+			${buildRequirementValueHtml("sdx-hit-bonus-req-value", type, value)}
 			<button type="button" class="sdx-remove-hit-bonus-requirement" data-bonus-index="${bonusIndex}" data-req-index="${reqIndex}">
 				<i class="fas fa-times"></i>
 			</button>
@@ -554,30 +639,15 @@ function buildDamageBonusRequirementRowHtml(req, bonusIndex, reqIndex) {
 	const operator = req.operator || "contains";
 	const value = req.value || "";
 
-	const typeOptions = [
-		{ value: "targetName", label: "Target Name" },
-		{ value: "targetCondition", label: "Target Has Condition" },
-		{ value: "targetHpPercent", label: "Target HP %" },
-		{ value: "attackerHpPercent", label: "Attacker HP %" },
-		{ value: "targetAncestry", label: "Target Ancestry" },
-		{ value: "targetAlignment", label: "Target Alignment" },
-	];
-
-	if (npcCreatureTypesEnabled()) {
-		typeOptions.push({ value: "targetSubtype", label: "Target Subtype" });
-	}
-
-	const operatorOptions = getOperatorsForType(type);
-
 	return `
 		<div class="sdx-damage-bonus-req-row" data-bonus-index="${bonusIndex}" data-req-index="${reqIndex}">
 			<select class="sdx-damage-bonus-req-type">
-				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
+				${buildOptionsHtml(getRequirementTypeOptions(type), type)}
 			</select>
 			<select class="sdx-damage-bonus-req-operator">
-				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
+				${buildOptionsHtml(getOperatorsForType(type), operator)}
 			</select>
-			<input type="text" class="sdx-damage-bonus-req-value" value="${value}" placeholder="${getPlaceholderForType(type)}" />
+			${buildRequirementValueHtml("sdx-damage-bonus-req-value", type, value)}
 			<button type="button" class="sdx-remove-damage-bonus-requirement" data-bonus-index="${bonusIndex}" data-req-index="${reqIndex}">
 				<i class="fas fa-times"></i>
 			</button>
@@ -596,30 +666,15 @@ function buildCriticalRequirementRowHtml(req, criticalType, reqIndex) {
 	const operator = req.operator || "contains";
 	const value = req.value || "";
 
-	const typeOptions = [
-		{ value: "targetName", label: "Target Name" },
-		{ value: "targetCondition", label: "Target Has Condition" },
-		{ value: "targetHpPercent", label: "Target HP %" },
-		{ value: "attackerHpPercent", label: "Attacker HP %" },
-		{ value: "targetAncestry", label: "Target Ancestry" },
-		{ value: "targetAlignment", label: "Target Alignment" },
-	];
-
-	if (npcCreatureTypesEnabled()) {
-		typeOptions.push({ value: "targetSubtype", label: "Target Subtype" });
-	}
-
-	const operatorOptions = getOperatorsForType(type);
-
 	return `
 		<div class="sdx-critical-req-row" data-critical-type="${criticalType}" data-req-index="${reqIndex}">
 			<select class="sdx-critical-req-type">
-				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
+				${buildOptionsHtml(getRequirementTypeOptions(type), type)}
 			</select>
 			<select class="sdx-critical-req-operator">
-				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
+				${buildOptionsHtml(getOperatorsForType(type), operator)}
 			</select>
-			<input type="text" class="sdx-critical-req-value" value="${value}" placeholder="${getPlaceholderForType(type)}" />
+			${buildRequirementValueHtml("sdx-critical-req-value", type, value)}
 			<button type="button" class="sdx-remove-critical-requirement" data-critical-type="${criticalType}" data-req-index="${reqIndex}">
 				<i class="fas fa-times"></i>
 			</button>
@@ -660,7 +715,7 @@ function getPlaceholderForType(type) {
 		case "targetCondition": return "e.g., Frightened, Paralyzed";
 		case "targetHpPercent": return "e.g., 30";
 		case "attackerHpPercent": return "e.g., 50";
-		case "targetAncestry": return "e.g., Undead, Humanoid";
+		case "targetAncestry": return "e.g., Dwarf, Elf, Human";
 		case "targetAlignment": return "e.g., chaotic, neutral, lawful";
 		case "targetSubtype": return "e.g., Beast, Ooze, Undead";
 		case "attackerCondition": return "e.g., Blessed, Inspired";
@@ -745,30 +800,15 @@ function buildEffectRequirementRowHtml(req, effectIndex, reqIndex) {
 	const operator = req.operator || "contains";
 	const value = req.value || "";
 
-	const typeOptions = [
-		{ value: "targetName", label: "Target Name" },
-		{ value: "targetCondition", label: "Target Has Condition" },
-		{ value: "targetHpPercent", label: "Target HP %" },
-		{ value: "attackerHpPercent", label: "Attacker HP %" },
-		{ value: "targetAncestry", label: "Target Ancestry" },
-		{ value: "targetAlignment", label: "Target Alignment" },
-	];
-
-	if (npcCreatureTypesEnabled()) {
-		typeOptions.push({ value: "targetSubtype", label: "Target Subtype" });
-	}
-
-	const operatorOptions = getOperatorsForType(type);
-
 	return `
 		<div class="sdx-effect-req-row" data-effect-index="${effectIndex}" data-req-index="${reqIndex}">
 			<select class="sdx-effect-req-type">
-				${typeOptions.map(opt => `<option value="${opt.value}" ${type === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
+				${buildOptionsHtml(getRequirementTypeOptions(type), type)}
 			</select>
 			<select class="sdx-effect-req-operator">
-				${operatorOptions.map(opt => `<option value="${opt.value}" ${operator === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
+				${buildOptionsHtml(getOperatorsForType(type), operator)}
 			</select>
-			<input type="text" class="sdx-effect-req-value" value="${value}" placeholder="${getPlaceholderForType(type)}" />
+			${buildRequirementValueHtml("sdx-effect-req-value", type, value)}
 			<button type="button" class="sdx-remove-effect-requirement" data-effect-index="${effectIndex}" data-req-index="${reqIndex}">
 				<i class="fas fa-times"></i>
 			</button>
@@ -981,6 +1021,7 @@ function activateWeaponBonusListeners(html, app, item) {
 	// Critical requirement changes - immediate save on select/input change
 	$tab.on("change", ".sdx-critical-req-type, .sdx-critical-req-operator", async function() {
 		await saveCriticalRequirementsFromDom($tab, item);
+		if ($(this).hasClass("sdx-critical-req-type")) rerenderBonusesTab(app);
 	});
 
 	$tab.on("input", ".sdx-critical-req-value", function() {
@@ -1080,6 +1121,7 @@ function activateWeaponBonusListeners(html, app, item) {
 	// Hit bonus requirement type/operator/value change
 	$tab.on("change", ".sdx-hit-bonus-req-type, .sdx-hit-bonus-req-operator, .sdx-hit-bonus-req-value", async function() {
 		await saveHitBonusesFromDom($tab, item);
+		if ($(this).hasClass("sdx-hit-bonus-req-type")) rerenderBonusesTab(app);
 	});
 
 	// Hit bonus exclusive checkbox change
@@ -1191,6 +1233,7 @@ function activateWeaponBonusListeners(html, app, item) {
 	// Damage bonus requirement type/operator/value change
 	$tab.on("change", ".sdx-damage-bonus-req-type, .sdx-damage-bonus-req-operator, .sdx-damage-bonus-req-value", async function() {
 		await saveDamageBonusesFromDom($tab, item);
+		if ($(this).hasClass("sdx-damage-bonus-req-type")) rerenderBonusesTab(app);
 	});
 
 	// Exclusive checkbox change - only one can be exclusive at a time
@@ -1358,6 +1401,7 @@ function activateWeaponBonusListeners(html, app, item) {
 	// Effect requirement changes
 	$tab.on("change", ".sdx-effect-req-type, .sdx-effect-req-operator, .sdx-effect-req-value", async function() {
 		await saveEffectRequirementsFromDom($tab, item);
+		if ($(this).hasClass("sdx-effect-req-type")) rerenderBonusesTab(app);
 	});
 
 	if (isFeatureEnabled(FEATURE_IDS.ITEM_MACROS)) {
