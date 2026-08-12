@@ -353,11 +353,13 @@ export async function enhanceSpellSheet(app, html) {
 			const duration = effectData.duration || {};
 
 			if (doc) {
+				const escapedImg = foundry.utils.escapeHTML(doc.img || "icons/svg/mystery-man.svg");
+				const escapedName = foundry.utils.escapeHTML(doc.name);
 				effectsListHtml += `
 					<div class="sdx-spell-effect-item" data-uuid="${uuid}" data-effect-index="${i}">
 						<div class="sdx-effect-header">
-							<img src="${doc.img || "icons/svg/mystery-man.svg"}" alt="${doc.name}" />
-							<span class="sdx-effect-name">${doc.name}</span>
+							<img src="${escapedImg}" alt="${escapedName}" />
+							<span class="sdx-effect-name">${escapedName}</span>
 							<a class="sdx-remove-effect" data-tooltip="Remove"><i class="fas fa-times"></i></a>
 						</div>
 						<div class="sdx-effect-duration-override">
@@ -481,11 +483,13 @@ export async function enhanceSpellSheet(app, html) {
 			const duration = effectData.duration || {};
 
 			if (doc) {
+				const escapedImg = foundry.utils.escapeHTML(doc.img || "icons/svg/mystery-man.svg");
+				const escapedName = foundry.utils.escapeHTML(doc.name);
 				criticalEffectsListHtml += `
 					<div class="sdx-spell-effect-item sdx-critical-effect-item" data-uuid="${uuid}" data-effect-index="${i}">
 						<div class="sdx-effect-header">
-							<img src="${doc.img || "icons/svg/mystery-man.svg"}" alt="${doc.name}" />
-							<span class="sdx-effect-name">${doc.name}</span>
+							<img src="${escapedImg}" alt="${escapedName}" />
+							<span class="sdx-effect-name">${escapedName}</span>
 							<a class="sdx-remove-critical-effect" data-tooltip="Remove"><i class="fas fa-times"></i></a>
 						</div>
 					</div>
@@ -772,11 +776,13 @@ export async function enhanceSpellSheet(app, html) {
 
 			// Add the effect to the list
 			const effectIndex = $effectsList.find(".sdx-spell-effect-item").length;
+			const escapedImg = foundry.utils.escapeHTML(doc.img || "icons/svg/mystery-man.svg");
+			const escapedName = foundry.utils.escapeHTML(doc.name);
 			const effectHtml = `
 				<div class="sdx-spell-effect-item" data-uuid="${uuid}" data-effect-index="${effectIndex}">
 					<div class="sdx-effect-header">
-						<img src="${doc.img || "icons/svg/mystery-man.svg"}" alt="${doc.name}" />
-						<span class="sdx-effect-name">${doc.name}</span>
+						<img src="${escapedImg}" alt="${escapedName}" />
+						<span class="sdx-effect-name">${escapedName}</span>
 						<a class="sdx-remove-effect" data-tooltip="Remove"><i class="fas fa-times"></i></a>
 					</div>
 					<div class="sdx-effect-duration-override">
@@ -950,11 +956,13 @@ export async function enhanceSpellSheet(app, html) {
 
 			// Add the effect to the list (simplified without duration override)
 			const effectIndex = $critEffectsList.find(".sdx-critical-effect-item").length;
+			const escapedImg = foundry.utils.escapeHTML(doc.img || "icons/svg/mystery-man.svg");
+			const escapedName = foundry.utils.escapeHTML(doc.name);
 			const effectHtml = `
 				<div class="sdx-spell-effect-item sdx-critical-effect-item" data-uuid="${uuid}" data-effect-index="${effectIndex}">
 					<div class="sdx-effect-header">
-						<img src="${doc.img || "icons/svg/mystery-man.svg"}" alt="${doc.name}" />
-						<span class="sdx-effect-name">${doc.name}</span>
+						<img src="${escapedImg}" alt="${escapedName}" />
+						<span class="sdx-effect-name">${escapedName}</span>
 						<a class="sdx-remove-critical-effect" data-tooltip="Remove"><i class="fas fa-times"></i></a>
 					</div>
 				</div>
@@ -1126,11 +1134,14 @@ export async function enhanceSpellSheet(app, html) {
 			$profile.find(".sdx-creature-name").val(creatureName);
 			$profile.find(".sdx-creature-img").val(creatureImg);
 
-			// Update display
+			// Update display. Escape for markup only — the hidden inputs above store
+			// the raw values, and escaping at assignment would persist the entities.
+			const escapedCreatureImg = foundry.utils.escapeHTML(creatureImg);
+			const escapedCreatureName = foundry.utils.escapeHTML(creatureName);
 			$(this).html(`
 				<div class="sdx-summon-creature-display" data-uuid="${creatureUuid}">
-					<img src="${creatureImg}" alt="${creatureName}" style="width: 40px; height: 40px; border-radius: 4px;" />
-					<span style="margin-left: 4px; font-size: 0.9em;">${creatureName}</span>
+					<img src="${escapedCreatureImg}" alt="${escapedCreatureName}" style="width: 40px; height: 40px; border-radius: 4px;" />
+					<span style="margin-left: 4px; font-size: 0.9em;">${escapedCreatureName}</span>
 				</div>
 			`);
 
@@ -1253,10 +1264,13 @@ export async function enhanceSpellSheet(app, html) {
 			$profile.find(".sdx-item-give-uuid").val(itemUuid);
 			$profile.find(".sdx-item-give-name").val(itemName);
 			$profile.find(".sdx-item-give-img").val(itemImg);
+			// Escape for markup only; the hidden inputs above keep the raw values.
+			const escapedItemImg = foundry.utils.escapeHTML(itemImg);
+			const escapedItemName = foundry.utils.escapeHTML(itemName);
 			$(this).html(`
 				<div class="sdx-item-give-display" data-uuid="${itemUuid}">
-					<img src="${itemImg}" alt="${itemName}" style="width: 40px; height: 40px; border-radius: 4px;" />
-					<span style="margin-left: 4px; font-size: 0.9em;">${itemName}</span>
+					<img src="${escapedItemImg}" alt="${escapedItemName}" style="width: 40px; height: 40px; border-radius: 4px;" />
+					<span style="margin-left: 4px; font-size: 0.9em;">${escapedItemName}</span>
 				</div>
 			`);
 			updateItemGiveData();

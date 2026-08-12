@@ -1,7 +1,7 @@
 {
   "$comment": "Attribute interpolations that reach HTML without escaping. The gate blocks anything NEW, not the absolute count — see #125 for the ~90 pre-existing sites and their triage tiers. Entries are compared by file + attribute + expression, so a site that merely moves lines is silent. Line numbers are recorded for navigation only. This file should only ever SHRINK: regenerate after a cleanup commit with `npm run gate:attr-escape -- --write`. If it grows, something shipped an unescaped interpolation into markup that renders on every connected client.",
-  "total": 117,
-  "files": 34,
+  "total": 105,
+  "files": 33,
   "byFile": {
     "scripts/MaphubViewerApp.mjs": [
       "src=imgPath (line 535)"
@@ -114,20 +114,6 @@
       "src=doc.img || \"icons/svg/mystery-man.svg\" (line 282)",
       "src=doc.img || \"icons/svg/mystery-man.svg\" (line 632)",
       "src=itemImg (line 891)"
-    ],
-    "scripts/item-sheets/spell-sheet-enhance.mjs": [
-      "alt=creatureName (line 1132)",
-      "alt=doc.name (line 359)",
-      "alt=doc.name (line 487)",
-      "alt=doc.name (line 778)",
-      "alt=doc.name (line 956)",
-      "alt=itemName (line 1258)",
-      "src=creatureImg (line 1132)",
-      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 359)",
-      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 487)",
-      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 778)",
-      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 956)",
-      "src=itemImg (line 1258)"
     ],
     "scripts/item-sheets/staff-spells.mjs": [
       "title=staffName (line 155)"
