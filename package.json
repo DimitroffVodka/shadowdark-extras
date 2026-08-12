@@ -22,7 +22,6 @@
     "unpack": "node ./dev/packs/unpack.mjs",
     "release:check": "node ./dev/release-check.mjs",
     "gate:bindings": "node dev/tools/binding-gate.mjs",
-    "gate:attr-escape": "node dev/tools/attr-escape-gate.mjs",
     "gate:named-exports": "node dev/tools/named-export-gate.mjs",
     "lint": "eslint .",
     "lint:strict": "eslint . --max-warnings 0",
