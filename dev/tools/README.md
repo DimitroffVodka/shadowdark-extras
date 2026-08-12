@@ -24,6 +24,7 @@ npm run gate:imports && npm run gate:script-paths && npm run gate:named-exports 
 | API-export snapshot | `npm run snapshot:api` | The four manifest-declared esmodules export the same names. |
 | Settings-key snapshot | `npm run snapshot:settings` | No settings key or menu id was renamed or removed. These are stored in user worlds, so a rename silently orphans every GM's configured value. |
 | Named-export gate | `npm run gate:named-exports` | Every named import resolves to a name the target actually exports. |
+| Attribute-escape gate | `npm run gate:attr-escape` | No NEW `${…}` reaches an HTML `src`/`alt`/`title`/`data-tooltip` unescaped. Blocks the delta, not the absolute: the ~90 pre-existing sites from #125 are baselined for tiered cleanup. Regenerate after a cleanup commit with `-- --write`; the baseline should only ever shrink. |
 
 ## The runtime tier — Quench
 

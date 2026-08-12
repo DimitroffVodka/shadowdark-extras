@@ -1,0 +1,192 @@
+{
+  "$comment": "Attribute interpolations that reach HTML without escaping. The gate blocks anything NEW, not the absolute count — see #125 for the ~90 pre-existing sites and their triage tiers. Entries are compared by file + attribute + expression, so a site that merely moves lines is silent. Line numbers are recorded for navigation only. This file should only ever SHRINK: regenerate after a cleanup commit with `npm run gate:attr-escape -- --write`. If it grows, something shipped an unescaped interpolation into markup that renders on every connected client.",
+  "total": 117,
+  "files": 34,
+  "byFile": {
+    "scripts/MaphubViewerApp.mjs": [
+      "src=imgPath (line 535)"
+    ],
+    "scripts/animation/AnimationFxConfig.mjs": [
+      "src=esc(videoSrc) (line 100)"
+    ],
+    "scripts/animation/WeaponAnimationConfig.mjs": [
+      "alt=name (line 385)",
+      "src=path (line 306)",
+      "src=path (line 385)"
+    ],
+    "scripts/canvas/SDXDrawingToolbar.mjs": [
+      "title=MODULE_ID (line 170)",
+      "title=c.label (line 531)",
+      "title=eyeTitle (line 808)",
+      "title=it.label (line 236)",
+      "title=opPct (line 208)",
+      "title=opStr (line 804)",
+      "title=s.label (line 419)",
+      "title=s.label (line 428)",
+      "title=w.label (line 191)"
+    ],
+    "scripts/character-sheet/SheetEditorConfig.mjs": [
+      "alt=name (line 270)",
+      "src=path (line 270)"
+    ],
+    "scripts/character-sheet/SheetLockManager.mjs": [
+      "title=tooltip (line 249)"
+    ],
+    "scripts/character-sheet/enhanced-header.mjs": [
+      "data-tooltip=HP_QUICK_ADJUST_TOOLTIP (line 173)",
+      "data-tooltip=key.toUpperCase() (line 120)",
+      "data-tooltip=levelUp ? \"Ready to Level Up!\" : \"Level\" (line 225)",
+      "data-tooltip=luck (line 136)",
+      "data-tooltip=luckStatus (line 147)",
+      "data-tooltip=xp (line 194)",
+      "data-tooltip=xpForNextLevel (line 194)",
+      "src=headerBg (line 730)",
+      "src=headerBg (line 991)"
+    ],
+    "scripts/combat/damage-card-actions.mjs": [
+      "alt=name (line 282)",
+      "src=img (line 282)"
+    ],
+    "scripts/combat/damage-card-builders.mjs": [
+      "data-tooltip=rollBreakdown (line 777)",
+      "title=bonus.label || \"\" (line 513)",
+      "title=die.faces (line 490)",
+      "title=die.faces (line 502)",
+      "title=labelTitle (line 502)",
+      "title=rollBreakdown (line 777)"
+    ],
+    "scripts/combat/damage-card.mjs": [
+      "title=bonus.label || \"\" (line 335)",
+      "title=die.faces (line 324)",
+      "title=die.faces (line 344)"
+    ],
+    "scripts/combat/hit-bonus.mjs": [
+      "data-tooltip=tooltip (line 73)"
+    ],
+    "scripts/dungeon/DDPackPreviewAppSD.mjs": [
+      "src=file.previewUrl (line 214)"
+    ],
+    "scripts/dungeon/DDPackSettingsAppSD.mjs": [
+      "title=pack.enabled === false ? \"Show in Decor tray\" : \"Hide from Decor tray\" (line 73)"
+    ],
+    "scripts/dungeon/DungeonGenerator.mjs": [
+      "src=mapSrc (line 770)"
+    ],
+    "scripts/effects/focus-ui.mjs": [
+      "alt=focusEntry.spellName (line 20)",
+      "src=focusEntry.spellImg (line 20)",
+      "title=targetsList (line 63)"
+    ],
+    "scripts/hex/HexTooltipSD.mjs": [
+      "src=img (line 1295)"
+    ],
+    "scripts/item-sheets/ItemGiveConfig.mjs": [
+      "alt=profile.itemName || \"Item\" (line 42)",
+      "src=profile.itemImg || \"icons/svg/mystery-man.svg\" (line 42)"
+    ],
+    "scripts/item-sheets/SpellDamageConfig.mjs": [
+      "title=effectsRequirementExamples (line 167)",
+      "title=formulaHelp (line 117)",
+      "title=requirementExamples (line 59)",
+      "title=tieredFormulaHelp (line 132)"
+    ],
+    "scripts/item-sheets/SummoningConfig.mjs": [
+      "alt=profile.creatureName || \"Creature\" (line 71)",
+      "src=profile.creatureImg || \"icons/svg/mystery-man.svg\" (line 71)",
+      "title=profile.creatureName || \"Unknown\" (line 70)"
+    ],
+    "scripts/item-sheets/potion-sheet-enhance.mjs": [
+      "alt=creatureName (line 658)",
+      "alt=doc.name (line 244)",
+      "alt=doc.name (line 519)",
+      "alt=itemName (line 784)",
+      "src=creatureImg (line 658)",
+      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 244)",
+      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 519)",
+      "src=itemImg (line 784)"
+    ],
+    "scripts/item-sheets/scroll-sheet-enhance.mjs": [
+      "alt=creatureName (line 765)",
+      "alt=doc.name (line 282)",
+      "alt=doc.name (line 632)",
+      "alt=itemName (line 891)",
+      "src=creatureImg (line 765)",
+      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 282)",
+      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 632)",
+      "src=itemImg (line 891)"
+    ],
+    "scripts/item-sheets/spell-sheet-enhance.mjs": [
+      "alt=creatureName (line 1132)",
+      "alt=doc.name (line 359)",
+      "alt=doc.name (line 487)",
+      "alt=doc.name (line 778)",
+      "alt=doc.name (line 956)",
+      "alt=itemName (line 1258)",
+      "src=creatureImg (line 1132)",
+      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 359)",
+      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 487)",
+      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 778)",
+      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 956)",
+      "src=itemImg (line 1258)"
+    ],
+    "scripts/item-sheets/staff-spells.mjs": [
+      "title=staffName (line 155)"
+    ],
+    "scripts/item-sheets/wand-sheet-enhance.mjs": [
+      "alt=creatureName (line 854)",
+      "alt=doc.name (line 378)",
+      "alt=doc.name (line 721)",
+      "alt=itemName (line 980)",
+      "src=creatureImg (line 854)",
+      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 378)",
+      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 721)",
+      "src=itemImg (line 980)"
+    ],
+    "scripts/journal/PinStyleEditorSD.mjs": [
+      "alt=imageAlt (line 31)"
+    ],
+    "scripts/macros/cleansing-weapon.mjs": [
+      "alt=displayName (line 107)",
+      "src=img (line 107)"
+    ],
+    "scripts/macros/holy-weapon.mjs": [
+      "alt=displayName (line 107)",
+      "src=img (line 107)"
+    ],
+    "scripts/macros/identify.mjs": [
+      "alt=maskedName (line 53)",
+      "src=img (line 53)"
+    ],
+    "scripts/macros/shapechanger.mjs": [
+      "alt=name (line 262)",
+      "src=icon (line 76)",
+      "src=img (line 262)",
+      "title=isSpecialType ? \"View details\" : \"Click to roll attack\" (line 875)",
+      "title=level (line 263)"
+    ],
+    "scripts/npc/MysteriousCasting.mjs": [
+      "data-tooltip=tooltip (line 53)",
+      "src=mysteriousIcon (line 142)",
+      "title=mysteriousLabel (line 142)",
+      "title=tooltip (line 54)"
+    ],
+    "scripts/party/carousing/CarousingOverlaySD.mjs": [
+      "alt=esc(actor.name ?? \"\") (line 710)",
+      "src=esc(actor.img ?? \"\") (line 710)"
+    ],
+    "scripts/party/carousing/CarousingSD.mjs": [
+      "src=esc(actor.img ?? \"\") (line 338)",
+      "src=esc(actor.img ?? \"\") (line 583)"
+    ],
+    "scripts/tom/TomPlayerView.mjs": [
+      "src=cond.icon (line 1279)",
+      "src=condDef.icon (line 1123)",
+      "src=condDef.icon (line 1469)",
+      "title=condDef.name (line 1122)",
+      "title=condDef.name (line 1468)"
+    ],
+    "scripts/tom/TomSocketHandler.mjs": [
+      "src=overlayPath (line 406)"
+    ]
+  }
+}

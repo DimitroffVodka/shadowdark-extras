@@ -16,6 +16,8 @@ import { collectEsmoduleExports, diffExports } from "../tools/api-export-snapsho
 import { collectSettingsKeys, diffSettings } from "../tools/settings-snapshot.mjs";
 import { findUnboundIdentifiers } from "../tools/binding-scan.mjs";
 import { scanImports } from "../tools/import-scan.mjs";
+import { scanUnescapedAttrs } from "../tools/attr-escape-scan.mjs";
+import { collectUnescaped, diffUnescaped } from "../tools/attr-escape-gate.mjs";
 import { parse } from "espree";
 import { REPO_ROOT, listJsFiles, toRepoPath, isVendor } from "../tools/project-scan.mjs";
 
@@ -906,4 +908,105 @@ test("binding gate: `for await (` does not bind like a parameter list", () => {
 
   assert.ok(findUnboundIdentifiers(source).map((u) => u.name).includes("MISSING_CONST"),
     "for-await is a control-flow head, not a parameter list");
+});
+
+/**
+ * The attr-escape gate replaces a grep that matched exactly `${identifier.img}`
+ * and therefore matched NOTHING in this tree — it reported the class clean while
+ * ~90 unescaped sites sat in it. Each exclusion below is pinned by a paired case
+ * that must STILL report, because the failure mode that matters here is a false
+ * negative: a site that stops being reported ships an XSS past a green gate.
+ */
+test("attr-escape gate: the real tree matches the committed baseline", () => {
+  const baseline = JSON.parse(
+    readFileSync(path.join(REPO_ROOT, "dev/snapshots/unescaped-attrs.json"), "utf8"),
+  );
+
+  assert.deepEqual(diffUnescaped(baseline, collectUnescaped()), []);
+});
+
+test("attr-escape gate: catches a bare local, which the old img/image regex could not", () => {
+  const findings = scanUnescapedAttrs('const html = `<img src="${img}" alt="${name}">`;');
+
+  assert.deepEqual(findings.map((f) => `${f.attr}=${f.expr}`), ["src=img", "alt=name"]);
+});
+
+/**
+ * The old pattern was `\$\{[^}]*\}` in spirit: it stops at the first `}` and so
+ * truncates any expression containing a nested brace or a quoted fallback. This
+ * is the single most common shape in the tree.
+ */
+test("attr-escape gate: reads a fallback expression containing a quoted string", () => {
+  const source = 'const html = `<img src="${doc.img || "icons/svg/mystery-man.svg"}">`;';
+  const findings = scanUnescapedAttrs(source);
+
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].expr, 'doc.img || "icons/svg/mystery-man.svg"');
+});
+
+test("attr-escape gate: recognises escaping at the call and at the local it feeds", () => {
+  const source = [
+    'const a = `<img src="${foundry.utils.escapeHTML(doc.img)}">`;',
+    'const b = `<img src="${escapedImg}" alt="${escapedName}">`;',
+  ].join("\n");
+
+  assert.deepEqual(scanUnescapedAttrs(source), []);
+});
+
+test("attr-escape gate: an identifier that merely starts with \"escaped\" still reports", () => {
+  // The convention is `escaped<Name>`. Requiring the capital keeps the exclusion
+  // from swallowing unrelated identifiers that happen to share the prefix.
+  const findings = scanUnescapedAttrs('const html = `<img alt="${escapedaemon.name}">`;');
+
+  assert.deepEqual(findings.map((f) => f.expr), ["escapedaemon.name"]);
+});
+
+test("attr-escape gate: skips module-owned i18n text", () => {
+  const source = 'const html = `<a title="${game.i18n.localize("SHADOWDARK_EXTRAS.tooltip")}">x</a>`;';
+
+  assert.deepEqual(scanUnescapedAttrs(source), []);
+});
+
+test("attr-escape gate: i18n carrying a document field still reports", () => {
+  // The i18n exclusion is about OUR lang files. The moment a document field is
+  // interpolated through one, the value is user data again.
+  const source = 'const html = `<a title="${game.i18n.format("KEY", { name: doc.name })}">x</a>`;';
+  const findings = scanUnescapedAttrs(source);
+
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].expr, /doc\.name/);
+});
+
+test("attr-escape gate: a site that only moves lines is not a finding", () => {
+  const baseline = { byFile: { "scripts/a.mjs": ["src=doc.img (line 10)"] } };
+  const current = { byFile: { "scripts/a.mjs": ["src=doc.img (line 412)"] } };
+
+  assert.deepEqual(diffUnescaped(baseline, current), []);
+});
+
+test("attr-escape gate: a second occurrence of an accepted expression reports", () => {
+  const baseline = { byFile: { "scripts/a.mjs": ["src=doc.img (line 10)"] } };
+  const current = {
+    byFile: { "scripts/a.mjs": ["src=doc.img (line 10)", "src=doc.img (line 40)"] },
+  };
+
+  const differences = diffUnescaped(baseline, current);
+  assert.equal(differences.length, 1);
+  assert.match(differences[0], /1 -> 2 site\(s\)/);
+});
+
+test("attr-escape gate: reports the four #125 Tier 1 shapes it was written for", () => {
+  // The exact expressions from duration-spell.mjs and aura-application.mjs
+  // before the Tier 1 fix. The old regex matched none of them.
+  const source = [
+    'const a = `<img class="focus-ended-icon" src="${durationEntry.spellImg}" alt="${durationEntry.spellName}"/>`;',
+    'const b = `<img src="${auraEffect.img || sourceToken.document.texture.src}" style="width: 32px;">`;',
+  ].join("\n");
+
+  const findings = scanUnescapedAttrs(source).map((f) => f.expr);
+  assert.deepEqual(findings, [
+    "durationEntry.spellImg",
+    "durationEntry.spellName",
+    "auraEffect.img || sourceToken.document.texture.src",
+  ]);
 });

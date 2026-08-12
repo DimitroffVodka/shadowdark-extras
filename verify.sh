@@ -123,6 +123,18 @@ if ! node dev/tools/export-surface-compare.mjs; then
   block_fail=1
 fi
 
+# Replaces the WARNING-level `raw src=${...img/image}` grep below, which required
+# the interpolation to be exactly ${identifier.img}. Every unescaped site in the
+# tree failed that shape, so it matched nothing and reported the class clean
+# while ~90 sites sat in it (#125). A gate that cannot see the majority of its
+# own vulnerability class is worse than no gate, because it reads as green.
+# Blocks on NEW sites only; the pre-existing ones are baselined for tiered
+# cleanup. See dev/tools/attr-escape-scan.mjs for what it skips and why.
+if ! node dev/tools/attr-escape-gate.mjs; then
+  echo "[BLOCK] new unescaped attribute interpolation(s) — XSS surface in client-rendered markup"
+  block_fail=1
+fi
+
 # Phase 5.0 gates — permanent lint enforcement (5.0.7).
 # `npm run lint` (eslint 9 flat config, scripts/**/*.mjs) is error-level
 # blocking: 0 errors / 4,760 warnings is the recorded 5.0.5+5.0.6 baseline.
@@ -186,9 +198,10 @@ echo "=== WARNING — pre-existing tech debt (use --strict to block) ==="
 scan_warn "raw eval( — use Roll.safeEval for formulas, new Function for scoped" \
   '^[^/]*[^.]eval\(' "${mjs_paths[@]}"
 
-# Unescaped img.src — pre-existing in macro/carousing/formation files. XSS surface.
-scan_warn "raw src=\${...img/image} — wrap in foundry.utils.escapeHTML for XSS safety" \
-  'src="\$\{[A-Za-z_$][A-Za-z0-9_$]*\.(img|image)\}"' "${mjs_paths[@]}"
+# Unescaped attribute interpolations are now a BLOCKING delta gate above
+# (attr-escape-gate.mjs). The grep that used to live here is gone rather than
+# demoted: it matched nothing in this tree, so keeping it would only restate a
+# green result the new gate already covers properly.
 
 echo "=== pack runtime state ==="
 if [ -f packs/pack-sdxeffects/LOCK ]; then
