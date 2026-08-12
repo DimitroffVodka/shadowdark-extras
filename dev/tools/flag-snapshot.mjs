@@ -65,6 +65,17 @@ export function collectFlagKeys() {
     }
 
     for (const entry of scanFlags(source)) {
+      // Receiver identity is recorded BEFORE the dynamic-key bail. The first
+      // version pushed flagSites at the end of the loop, so all 98 dynamic-key
+      // sites — including ordinary constant-key calls like
+      // `actor.getFlag(MODULE_ID, DURATION_SPELL_FLAG)`, dynamic only because
+      // the key is an identifier — carried no receiver at all, and an
+      // actor -> scene swap in one of them still diffed to []. The key is
+      // recorded as "*" for those; the receiver is what this entry is for.
+      sites.push(
+        `${toRepoPath(file)} (api=${entry.api} key=${entry.key ?? "*"} receiver=${entry.receiver})`,
+      );
+
       if (entry.dynamic) {
         dynamic.push(`${toRepoPath(file)}:${entry.line}`);
         continue;
@@ -102,19 +113,6 @@ export function collectFlagKeys() {
       }
 
       (entry.api === "getFlag" ? read : written).add(entry.key);
-
-      // EVERY our-scope method call, with its receiver — not just the ones
-      // whose scope argument failed to resolve. Recording the receiver only in
-      // unresolvedScopes left #128 half-closed: most files declare
-      // `const MODULE_ID = "shadowdark-extras"` locally, so the scope RESOLVES,
-      // the site never reaches unresolvedScopes, and an actor -> scene swap in
-      // one of them was still invisible. Review caught that.
-      //
-      // No line number: identity is file + api + key + receiver, counted, for
-      // the same reason as unresolvedScopes — #127's line-drift immunity.
-      sites.push(
-        `${toRepoPath(file)} (api=${entry.api} key=${entry.key ?? "*"} receiver=${entry.receiver})`,
-      );
     }
   }
 

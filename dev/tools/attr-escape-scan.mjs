@@ -86,6 +86,9 @@ const ATTRIBUTE_START = new RegExp(
 /** A call to an escape helper: foundry.utils.escapeHTML, esc, escapeAttr, … */
 const ESCAPE_CALL = /\besc[A-Za-z]*\s*\(/;
 
+/** Runaway guard for an attribute value that never closes its quote. */
+const MAX_VALUE_LENGTH = 4000;
+
 /**
  * Whether an interpolated expression is already escaped.
  *
@@ -108,8 +111,27 @@ const ESCAPE_CALL = /\besc[A-Za-z]*\s*\(/;
  * stay reported, which is the safe direction.
  */
 function isEscaped(expression, offset, escapedNames) {
-  if (ESCAPE_CALL.test(expression)) return true;
   const bare = expression.trim();
+
+  // The WHOLE expression must be the escape call, not merely contain one.
+  // `${escapeHTML("") + doc.name}` contains one and is completely unescaped;
+  // a substring test accepted it. Parsing is the only honest way to ask
+  // "is this expression a call to an escape helper".
+  if (ESCAPE_CALL.test(bare)) {
+    try {
+      const parsed = acorn.parseExpressionAt(bare, 0, { ecmaVersion: 2023 });
+      const isWholeCall = parsed.type === "CallExpression"
+        && parsed.end === bare.length
+        && ESCAPE_CALL.test(`${bare.slice(parsed.callee.start, parsed.callee.end)}(`);
+      if (isWholeCall) return true;
+    }
+    catch {
+      // Unparseable on its own (a template fragment, say). Fall through and
+      // report, which is the safe direction.
+    }
+    return false;
+  }
+
   if (!/^[A-Za-z_$][\w$]*$/.test(bare)) return false;
   return escapedNames(offset, bare);
 }
@@ -135,10 +157,39 @@ function escapedNameResolver(source) {
     return () => false;
   }
 
-  // One entry per scope: where it spans, and what each name declared in it
-  // resolves to.
+  // One entry per scope. BLOCKS are scopes too, not just functions: the first
+  // version recorded every declaration into the enclosing FUNCTION, so a
+  // block-local `const x = escapeHTML(…)` overwrote a raw outer `x` for the
+  // whole function and silenced its uses. That is a false negative, which is
+  // the direction this gate cannot afford.
   const scopes = [{ start: ast.start, end: ast.end, names: new Map() }];
-  const SCOPE_TYPES = new Set(["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"]);
+  const SCOPE_TYPES = new Set([
+    "FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression",
+    "BlockStatement", "ForStatement", "ForOfStatement", "ForInStatement", "CatchClause",
+  ]);
+
+  /** Every binding identifier a parameter pattern introduces — none escaped. */
+  const declareParams = (node, scope) => {
+    const walkPattern = (pattern) => {
+      if (!pattern) return;
+      switch (pattern.type) {
+        case "Identifier": scope.names.set(pattern.name, false); break;
+        case "ObjectPattern":
+          for (const property of pattern.properties) {
+            walkPattern(property.type === "Property" ? property.value : property);
+          }
+          break;
+        case "ArrayPattern": for (const element of pattern.elements) walkPattern(element); break;
+        case "AssignmentPattern": walkPattern(pattern.left); break;
+        case "RestElement": walkPattern(pattern.argument); break;
+        default: break;
+      }
+    };
+    for (const param of node.params ?? []) walkPattern(param);
+  };
+
+  const isEscapeCall = (init) => init?.type === "CallExpression"
+    && ESCAPE_CALL.test(`${source.slice(init.callee.start, init.callee.end)}(`);
 
   const walk = (node, scope) => {
     if (!node || typeof node !== "object") return;
@@ -148,13 +199,20 @@ function escapedNameResolver(source) {
     if (typeof node.type === "string" && SCOPE_TYPES.has(node.type)) {
       current = { start: node.start, end: node.end, names: new Map() };
       scopes.push(current);
+      // A parameter SHADOWS an escaped outer const of the same name, so it has
+      // to be recorded as unescaped rather than left absent.
+      if (node.params) declareParams(node, current);
     }
 
     if (node.type === "VariableDeclarator" && node.id?.type === "Identifier") {
-      const init = node.init;
-      const escaped = init?.type === "CallExpression"
-        && ESCAPE_CALL.test(source.slice(init.callee.start, init.callee.end) + "(");
-      current.names.set(node.id.name, escaped);
+      current.names.set(node.id.name, isEscapeCall(node.init));
+    }
+
+    // ANY later assignment poisons the name for the whole scope:
+    // `let x = escapeHTML(a); x = raw;` left x accepted as escaped. This is
+    // flow-insensitive on purpose — it can only turn an accept into a report.
+    if (node.type === "AssignmentExpression" && node.left?.type === "Identifier") {
+      if (!isEscapeCall(node.right)) current.names.set(node.left.name, false);
     }
 
     for (const key of Object.keys(node)) {
@@ -195,11 +253,16 @@ function readAttributeValue(source, start, quote) {
     const char = source[index];
 
     if (depth === 0 && char === quote) break;
-    // A value may legally span lines, so a newline is NOT a stop condition — the
-    // earlier version bailed on one and silently skipped every multi-line
-    // attribute. What does stop it is evidence the quote never closed: a `<`
-    // or `>` outside an interpolation means we have run into the next tag.
-    if (depth === 0 && (char === "<" || char === ">")) return null;
+    // NOTHING inside the value stops the scan early. A newline is legal, and so
+    // are `<` and `>` — `title="level > ${doc.name}"` is valid HTML, and bailing
+    // on them silently skipped the whole attribute. The only stop is the RUNAWAY
+    // guard below: if no closing quote turns up within a sane distance, the
+    // value was never terminated (an unbalanced brace inside a string literal
+    // does this) and whatever was collected is reported anyway rather than
+    // dropped. Going silent is the one behaviour this scanner must not have.
+    if (index - start > MAX_VALUE_LENGTH) {
+      return expressions.length > 0 ? { value: "", end: index, expressions, unterminated: true } : null;
+    }
 
     if (char === "$" && source[index + 1] === "{") {
       if (depth === 0) expressionStart = index + 2;
@@ -218,7 +281,11 @@ function readAttributeValue(source, start, quote) {
     index += 1;
   }
 
-  if (index >= source.length || depth !== 0) return null;
+  // Ran off the end, or a brace never balanced: report what was found instead of
+  // returning nothing. The entry may be wrong; silence would be worse.
+  if (index >= source.length || depth !== 0) {
+    return expressions.length > 0 ? { value: "", end: index, expressions, unterminated: true } : null;
+  }
   return { value: source.slice(start, index), end: index, expressions };
 }
 
@@ -239,8 +306,18 @@ export function scanUnescapedAttrs(source) {
     if (!parsed) continue;
 
     for (const expression of parsed.expressions) {
-      if (isEscaped(expression, match.index, escapedNames)) continue;
-      if (isModuleOwnedText(expression)) continue;
+      // An expression with an odd number of quotes was mis-measured: the brace
+      // depth ran through a `}` inside a string literal, so what was captured is
+      // a fragment. Report it before any skip can swallow it — the docblock
+      // promises a wrong entry rather than silence, and `${"}" + doc.name}`
+      // otherwise looks literal-only and is skipped as module-owned text.
+      const misMeasured = (expression.split('"').length - 1) % 2 === 1
+        || (expression.split("'").length - 1) % 2 === 1;
+
+      if (!misMeasured) {
+        if (isEscaped(expression, match.index, escapedNames)) continue;
+        if (isModuleOwnedText(expression)) continue;
+      }
       findings.push({
         attr,
         expr: expression.replace(/\s+/g, " "),

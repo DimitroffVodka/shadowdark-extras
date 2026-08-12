@@ -1307,3 +1307,89 @@ test("flag snapshot: flagSites stays immune to line drift", () => {
 
   assert.deepEqual(diffFlags(sites(source), sites(`\n\n\n\n\n${source}`)), []);
 });
+
+/**
+ * Re-review hardening. Each case below passed the gate CLEAN before this round
+ * — they are the shapes an escaping heuristic gets wrong, and every one is a
+ * false negative, which for an XSS gate is the failure that ships.
+ */
+test("attr-escape gate: a parameter shadowing an escaped outer const reports", () => {
+  const source = [
+    'const x = foundry.utils.escapeHTML(a);',
+    'export function f(x) { return `<img alt="${x}">`; }',
+  ].join("\n");
+
+  assert.deepEqual(scanUnescapedAttrs(source).map((f) => f.expr), ["x"]);
+});
+
+test("attr-escape gate: reassignment after an escaped declaration reports", () => {
+  const source = 'export function f(raw) { let x = foundry.utils.escapeHTML(raw); x = raw; return `<img alt="${x}">`; }';
+
+  assert.deepEqual(scanUnescapedAttrs(source).map((f) => f.expr), ["x"]);
+});
+
+test("attr-escape gate: a block-local escaped name does not silence an outer raw one", () => {
+  // Scopes are per BLOCK, not per function. Recording declarations against the
+  // enclosing function let an inner `const x = escapeHTML(…)` mark the outer
+  // raw `x` escaped for the whole function.
+  const source = [
+    'export function f(raw) {',
+    '\tconst x = raw;',
+    '\t{ const x = foundry.utils.escapeHTML(raw); void x; }',
+    '\treturn `<img alt="${x}">`;',
+    '}',
+  ].join("\n");
+
+  assert.deepEqual(scanUnescapedAttrs(source).map((f) => f.expr), ["x"]);
+});
+
+test("attr-escape gate: an escape call CONCATENATED with raw data reports", () => {
+  // Containing an escape call is not being one. `${escapeHTML("") + doc.name}`
+  // is completely unescaped and a substring test accepted it.
+  const source = 'const h = `<img alt="${foundry.utils.escapeHTML("") + doc.name}">`;';
+
+  assert.equal(scanUnescapedAttrs(source).length, 1);
+});
+
+test("attr-escape gate: legal angle brackets inside a value do not silence it", () => {
+  // `title="level > ${doc.name}"` is valid HTML. Treating `<` and `>` as
+  // evidence of an unterminated quote skipped the whole attribute.
+  for (const source of [
+    'const h = `<img title="level > ${doc.name}">`;',
+    'const h = `<img title="level < ${doc.name}">`;',
+  ]) {
+    assert.equal(scanUnescapedAttrs(source).length, 1, source);
+  }
+});
+
+test("attr-escape gate: a mis-measured expression reports rather than going silent", () => {
+  // An unbalanced brace inside a string literal breaks the depth count. The
+  // docblock promises a wrong entry over silence, and the captured fragment
+  // otherwise looks literal-only and is skipped as module-owned text.
+  const source = 'const h = `<img title="${"}" + doc.name}">`;';
+
+  assert.equal(scanUnescapedAttrs(source).length, 1);
+});
+
+test("flag scan: an interposed comment is not captured as the receiver", () => {
+  // Sliced from the masked source, which blanks comments. Slicing the original
+  // recorded "//Persisttheflag(async,…)message" as a receiver, so a
+  // comment-only edit produced a removed+added pair — the #127 churn again.
+  const source = [
+    'const f = () => {',
+    '\t// Persist the flag (async, but in-memory set handles the gap)',
+    '\tmessage.setFlag(MODULE_ID, "autoApplied", 1);',
+    '};',
+  ].join("\n");
+
+  assert.equal(scanFlags(source)[0].receiver, "message");
+});
+
+test("flag scan: a private field stays part of the receiver chain", () => {
+  const source = [
+    'class K { m() { return this.#actor.getFlag(MODULE_ID, "x"); } }',
+    'class J { m(other) { return other.#actor.getFlag(MODULE_ID, "x"); } }',
+  ].join("\n");
+
+  assert.deepEqual(scanFlags(source).map((e) => e.receiver), ["this.#actor", "other.#actor"]);
+});

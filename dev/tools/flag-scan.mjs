@@ -159,7 +159,9 @@ function receiverText(source, masked, dot) {
 
     if (masked[i] === ")") { dynamic = true; if (!skipBalanced(")", "(")) return "«unknown»"; }
     else if (masked[i] === "]") { dynamic = true; if (!skipBalanced("]", "[")) return "«unknown»"; }
-    else if (/[\w$]/.test(masked[i])) { while (i >= 0 && /[\w$]/.test(masked[i])) i -= 1; }
+    // `#` is part of a private-field name: without it `this.#actor.getFlag` and
+    // `other.#actor.getFlag` both truncated to "actor", hiding a receiver swap.
+    else if (/[\w$#]/.test(masked[i])) { while (i >= 0 && /[\w$#]/.test(masked[i])) i -= 1; }
     else break;
 
     // Continue through a member link, optional chaining included.
@@ -176,7 +178,13 @@ function receiverText(source, masked, dot) {
   const start = i + 1;
   if (start >= end) return "«unknown»";
   if (dynamic) return "«dynamic»";
-  return source.slice(start, end).replace(/\s+/g, "");
+  // Sliced from MASKED, not the original. maskSource blanks comments and string
+  // bodies while preserving length, so slicing the original captured any
+  // interposed comment into the receiver — one real site recorded
+  // "//Persisttheflag(async,…)message". A comment-only edit then produced a
+  // removed+added pair in flagSites, which is exactly the #127 churn this gate
+  // is supposed to be immune to.
+  return masked.slice(start, end).replace(/\s+/g, "");
 }
 
 /**

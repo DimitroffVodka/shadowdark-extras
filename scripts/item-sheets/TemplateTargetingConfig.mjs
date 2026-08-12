@@ -181,7 +181,7 @@ function generateTemplateEffectsHTML(MODULE_ID, flags) {
 						<label style="font-size: 11px; color: #999;">Damage Formula</label>
 						<input type="text"
 							name="flags.${MODULE_ID}.templateEffects.damage.formula"
-							value="${damage.formula || ""}"
+							value="${foundry.utils.escapeHTML(damage.formula || "")}"
 							placeholder="e.g., 2d10"
 							style="width: 100%;">
 					</div>

@@ -315,7 +315,7 @@ function rebuildTargetsList($card, messageId, baseDamage) {
 			<button type="button" class="sdx-apply-condition-btn"
 				data-effects='${effectsData}'
 				data-apply-to-target="${applyToTarget}"
-				data-effects-requirement="${effectsRequirement}"
+				data-effects-requirement="${foundry.utils.escapeHTML(effectsRequirement)}"
 				data-spell-info="${spellInfoData}"
 				data-effect-selection-mode="${effectSelectionMode}"
 				${condBtnAppliedAttr} ${condBtnDisabled}>

@@ -54,7 +54,7 @@ export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml,
 
 					<h3>Requirement</h3>
 					<input type="text" name="flags.${MODULE_ID}.spellDamage.damageRequirement"
-					       value="${flags.damageRequirement || ""}"
+					       value="${foundry.utils.escapeHTML(flags.damageRequirement || "")}"
 					       placeholder="e.g., @target.ancestry == &quot;Undead&quot;"
 					       title="Formula that must be true for damage to apply. Leave blank to always apply.&#10;Examples: ${requirementExamples}"
 					       style="grid-column: span 2;" />
@@ -79,7 +79,7 @@ export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml,
 					<div class="sdx-formula-section sdx-basic-formula" style="display: ${!flags.formulaType || flags.formulaType === "basic" ? "grid" : "none"}; grid-template-columns: subgrid; grid-column: 1 / -1; gap: 4px; padding-left: 24px;">
 							<h3>Number</h3>
 							<input type="number" name="flags.${MODULE_ID}.spellDamage.numDice"
-							       value="${flags.numDice}" min="1" step="1" />
+							       value="${foundry.utils.escapeHTML(flags.numDice)}" min="1" step="1" />
 
 							<h3>Die</h3>
 							<select name="flags.${MODULE_ID}.spellDamage.dieType">
@@ -93,7 +93,7 @@ export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml,
 
 							<h3>Bonus</h3>
 							<input type="number" name="flags.${MODULE_ID}.spellDamage.bonus"
-							       value="${flags.bonus}" step="1" />
+							       value="${foundry.utils.escapeHTML(flags.bonus)}" step="1" />
 
 							<h3>Scaling</h3>
 							<select name="flags.${MODULE_ID}.spellDamage.scaling">
@@ -104,7 +104,7 @@ export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml,
 
 							<h3>Dice</h3>
 							<input type="number" name="flags.${MODULE_ID}.spellDamage.scalingDice"
-							       value="${flags.scalingDice}" min="0" step="1" />
+							       value="${foundry.utils.escapeHTML(flags.scalingDice)}" min="0" step="1" />
 						</div>
 					</div>
 
@@ -118,7 +118,7 @@ export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml,
 					</label>
 					<div class="sdx-formula-section sdx-custom-formula" style="display: ${flags.formulaType === "formula" ? "grid" : "none"}; grid-template-columns: subgrid; grid-column: 1 / -1; gap: 4px; padding-left: 24px;">
 							<input type="text" name="flags.${MODULE_ID}.spellDamage.formula"
-							       value="${flags.formula}" placeholder="e.g., (@level)d6 + @int"
+							       value="${foundry.utils.escapeHTML(flags.formula)}" placeholder="e.g., (@level)d6 + @int"
 							       style="grid-column: 1 / -1;" />
 						</div>
 					</div>
@@ -133,7 +133,7 @@ export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml,
 					</label>
 					<div class="sdx-formula-section sdx-tiered-formula" style="display: ${flags.formulaType === "tiered" ? "grid" : "none"}; grid-template-columns: subgrid; grid-column: 1 / -1; gap: 4px; padding-left: 24px;">
 							<input type="text" name="flags.${MODULE_ID}.spellDamage.tieredFormula"
-							       value="${flags.tieredFormula || ""}"
+							       value="${foundry.utils.escapeHTML(flags.tieredFormula || "")}"
 							       placeholder="e.g., 1-3:1d6, 4-6:2d8, 7-9:3d10, 10+:4d12"
 							       style="grid-column: 1 / -1;" />
 						</div>
@@ -166,7 +166,7 @@ export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml,
 			<!-- Requirement for effects -->
 			<h3 class="sdx-section-title sdx-section-title-small">Effects Requirement <i class="fas fa-question-circle sdx-help-icon" title="Formula that must be true for effects to apply. Leave blank to always apply.&#10;Examples: ${effectsRequirementExamples}"></i></h3>
 			<input type="text" name="flags.${MODULE_ID}.spellDamage.effectsRequirement"
-			       value="${flags.effectsRequirement || ""}"
+			       value="${foundry.utils.escapeHTML(flags.effectsRequirement || "")}"
 			       placeholder="e.g., @target.subtype == &quot;Undead&quot;"
 			       class="sdx-full-width-input" />
 
@@ -230,7 +230,7 @@ export function generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml,
 
 					<label>Per-Turn Damage:</label>
 					<input type="text" name="flags.${MODULE_ID}.spellDamage.perTurnDamage"
-					       value="${flags.perTurnDamage || ""}"
+					       value="${foundry.utils.escapeHTML(flags.perTurnDamage || "")}"
 					       placeholder="e.g., 2d6"
 					       title="Damage formula rolled each turn" />
 

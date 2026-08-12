@@ -63,10 +63,14 @@ const NOTES = {
     + "\"settings a GM types into their own dialog\". That was wrong, and review caught it. They are "
     + "ITEM FLAGS, so a player who owns the item controls them, and they render when the GM opens "
     + "that item's sheet — the payload arrives from the player and executes in the GM's session. "
-    + "weapon-bonus-ui.mjs's formula and label inputs are now escaped. The lesson generalises: "
-    + "\"who types it\" is not a trust boundary, \"where it is stored\" is. Anything reachable from a "
-    + "document a player can edit is player-controlled no matter which dialog authored it. The "
-    + "template-targeting and aura numeric inputs remain accepted as numerics, not as GM-authored.",
+    + "The lesson generalises: \"who types it\" is not a trust boundary, \"where it is stored\" is. "
+    + "Anything reachable from a document a player can edit is player-controlled no matter which "
+    + "dialog authored it. EVERY member is now escaped rather than accepted: weapon-bonus-ui's "
+    + "formula and label, SpellDamageConfig's formula/tieredFormula/requirement/perTurnDamage/"
+    + "numDice/scalingDice/bonus, AuraConfig and TemplateTargetingConfig's damage.formula, the "
+    + "damage-card reroll formula and effects-requirement data attributes, and effect-config's "
+    + "sourceRequirement. Withdrawing the note while leaving its members baselined — which is what "
+    + "the first attempt did — left the snapshot asserting something the notes contradicted.",
 };
 
 /** `file: attr=expr` — the identity the gate compares, without the line. */

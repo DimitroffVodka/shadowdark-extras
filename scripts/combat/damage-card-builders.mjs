@@ -682,7 +682,7 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 						<div class="sdx-roll-breakdown">
 								<div class="sdx-roll-formula-row">
 									<div class="sdx-roll-formula">${rollBreakdown.formula}</div>
-									<button type="button" class="sdx-reroll-btn" data-formula="${rerollFormula}" data-weapon-bonus="${weaponBonusData}" title="Reroll damage (e.g., for Luck token)">
+									<button type="button" class="sdx-reroll-btn" data-formula="${foundry.utils.escapeHTML(rerollFormula)}" data-weapon-bonus="${weaponBonusData}" title="Reroll damage (e.g., for Luck token)">
 										<i class="fas fa-dice"></i>
 									</button>
 								</div>
@@ -893,7 +893,7 @@ async function buildDamageCardHtml(actor, targets, totalDamage, damageType, allE
 						<button type="button" class="sdx-apply-condition-btn"
 					data-effects='${effectsJson}'
 					data-apply-to-target="${effectsApplyToTarget}"
-					data-effects-requirement="${effectsRequirement.replace(/"/g, "&quot;")}"
+					data-effects-requirement="${foundry.utils.escapeHTML(effectsRequirement)}"
 					data-spell-info="${spellInfoJson}"
 					data-effect-selection-mode="${spellDamageConfig?.effectSelectionMode || "all"}"
 					${conditionBtnAppliedAttr} ${conditionBtnDisabled}>

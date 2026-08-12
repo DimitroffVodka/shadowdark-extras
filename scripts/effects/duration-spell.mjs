@@ -730,11 +730,11 @@ async function applyDurationSpellPerTurnDamage(durationSpell, targetActor, targe
 			<div class="sdx-duration-damage-card">
 				<div class="sdx-duration-damage-header">
 					<i class="fa-solid fa-hourglass-half"></i>
-					<span class="sdx-duration-damage-title">${durationSpell.spellName}</span>
+					<span class="sdx-duration-damage-title">${foundry.utils.escapeHTML(durationSpell.spellName ?? "")}</span>
 				</div>
 				<div class="sdx-duration-damage-content">
 					<span class="sdx-duration-damage-target">
-						<strong>${token.name}</strong> takes <strong class="sdx-damage-value">${damage}</strong> ${damageType} damage!
+						<strong>${foundry.utils.escapeHTML(token.name)}</strong> takes <strong class="sdx-damage-value">${damage}</strong> ${damageType} damage!
 					</span>
 					<span class="sdx-duration-damage-roll">${formula} = ${roll.result}</span>
 				</div>

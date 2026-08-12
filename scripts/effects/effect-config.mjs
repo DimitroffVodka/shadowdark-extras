@@ -33,8 +33,10 @@ export function registerActiveEffectConfigHooks() {
 		}
 
 		const currentRequirement = effect.getFlag?.(MODULE_ID, "sourceRequirement") || "";
-		// Escape HTML entities for safe insertion into HTML attribute
-		const escapedRequirement = currentRequirement.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+		// Escape for safe insertion into an HTML attribute. Was a hand-rolled
+		// quote/apostrophe replace, which stays inside the attribute but is
+		// silently wrong about `&`.
+		const escapedRequirement = foundry.utils.escapeHTML(currentRequirement);
 
 		// Get the requireEquipped flag
 		const requireEquipped = effect.getFlag?.(MODULE_ID, "requireEquipped") || false;

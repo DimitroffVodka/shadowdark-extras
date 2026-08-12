@@ -6,10 +6,10 @@
     "module-owned label text": "`HP_QUICK_ADJUST_TOOLTIP`, `formulaHelp`/`tieredFormulaHelp`/`requirementExamples` in SpellDamageConfig, and the literal ternaries such as `levelUp ? \"Ready to Level Up!\" : \"Level\"`. These are help strings this module ships, not user data. #125 calls out the SpellDamageConfig ones by name as noise rather than fixes.",
     "shapechanger renderIcon": "`scripts/macros/shapechanger.mjs` `src=icon` takes `renderIcon(opts.icon)` with internal values. #125 names this one explicitly as module-owned.",
     "maphub <base href> injection": "`MaphubSD.mjs` and `maphub-cave.mjs` inject a `<base href>` built from a local directory path the module computes. Not a document field, and escaping it would corrupt the URL it exists to set.",
-    "WITHDRAWN — GM-authored config formulas": "This category used to accept `flags.formula`, `damage.formula` and the weapon-bonus inputs as \"settings a GM types into their own dialog\". That was wrong, and review caught it. They are ITEM FLAGS, so a player who owns the item controls them, and they render when the GM opens that item's sheet — the payload arrives from the player and executes in the GM's session. weapon-bonus-ui.mjs's formula and label inputs are now escaped. The lesson generalises: \"who types it\" is not a trust boundary, \"where it is stored\" is. Anything reachable from a document a player can edit is player-controlled no matter which dialog authored it. The template-targeting and aura numeric inputs remain accepted as numerics, not as GM-authored."
+    "WITHDRAWN — GM-authored config formulas": "This category used to accept `flags.formula`, `damage.formula` and the weapon-bonus inputs as \"settings a GM types into their own dialog\". That was wrong, and review caught it. They are ITEM FLAGS, so a player who owns the item controls them, and they render when the GM opens that item's sheet — the payload arrives from the player and executes in the GM's session. The lesson generalises: \"who types it\" is not a trust boundary, \"where it is stored\" is. Anything reachable from a document a player can edit is player-controlled no matter which dialog authored it. EVERY member is now escaped rather than accepted: weapon-bonus-ui's formula and label, SpellDamageConfig's formula/tieredFormula/requirement/perTurnDamage/numDice/scalingDice/bonus, AuraConfig and TemplateTargetingConfig's damage.formula, the damage-card reroll formula and effects-requirement data attributes, and effect-config's sourceRequirement. Withdrawing the note while leaving its members baselined — which is what the first attempt did — left the snapshot asserting something the notes contradicted."
   },
-  "total": 419,
-  "files": 72,
+  "total": 405,
+  "files": 71,
   "byFile": {
     "scripts/MaphubSD.mjs": [
       "href=localDirUrl (line 100)"
@@ -97,7 +97,6 @@
       "data-base-damage=baseDamage (line 404)",
       "data-damage-type=damageType (line 332)",
       "data-effect-selection-mode=effectSelectionMode (line 320)",
-      "data-effects-requirement=effectsRequirement (line 318)",
       "data-effects=effectsData (line 316)",
       "data-spell-info=spellInfoData (line 319)",
       "data-token-id=tokenId (line 275)",
@@ -122,11 +121,9 @@
       "data-die-index=dieIndex (line 490)",
       "data-die-index=dieIndex (line 502)",
       "data-effect-selection-mode=spellDamageConfig?.effectSelectionMode || \"all\" (line 898)",
-      "data-effects-requirement=effectsRequirement.replace(/\"/g, \"&quot;\") (line 896)",
       "data-effects=effectsJson (line 894)",
       "data-faces=die.faces (line 490)",
       "data-faces=die.faces (line 502)",
-      "data-formula=rerollFormula (line 685)",
       "data-is-magical-weapon=isMagicalWeapon (line 927)",
       "data-item-id=spellItem?.id || \"\" (line 927)",
       "data-message-id=message.id (line 927)",
@@ -200,7 +197,6 @@
       "title=pack.enabled === false ? \"Show in Decor tray\" : \"Hide from Decor tray\" (line 73)"
     ],
     "scripts/effects/AuraConfig.mjs": [
-      "value=damage.formula || \"\" (line 421)",
       "value=indyAlpha (line 347)",
       "value=indyScale (line 353)",
       "value=indySpeed (line 350)",
@@ -240,9 +236,6 @@
       "data-spell-id=duration.spellId (line 125)",
       "data-token-id=target.tokenId (line 105)",
       "data-token-id=target.tokenId (line 112)"
-    ],
-    "scripts/effects/effect-config.mjs": [
-      "value=escapedRequirement (line 62)"
     ],
     "scripts/effects/focus-spell.mjs": [
       "data-actor-id=actor.id (line 379)",
@@ -361,22 +354,13 @@
       "title=effectsRequirementExamples (line 167)",
       "title=formulaHelp (line 117)",
       "title=requirementExamples (line 59)",
-      "title=tieredFormulaHelp (line 132)",
-      "value=flags.bonus (line 96)",
-      "value=flags.damageRequirement || \"\" (line 57)",
-      "value=flags.effectsRequirement || \"\" (line 169)",
-      "value=flags.formula (line 121)",
-      "value=flags.numDice (line 82)",
-      "value=flags.perTurnDamage || \"\" (line 233)",
-      "value=flags.scalingDice (line 107)",
-      "value=flags.tieredFormula || \"\" (line 136)"
+      "title=tieredFormulaHelp (line 132)"
     ],
     "scripts/item-sheets/SummoningConfig.mjs": [
       "data-index=index (line 112)",
       "data-index=index (line 79)"
     ],
     "scripts/item-sheets/TemplateTargetingConfig.mjs": [
-      "value=damage.formula || \"\" (line 184)",
       "value=deleteDuration (line 432)",
       "value=deleteSeconds (line 449)",
       "value=fillColor (line 391)",
