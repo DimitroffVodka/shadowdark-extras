@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { escapeHTML } from "./helpers/escape-html.mjs";
 
 // Requirement evaluation and requirement-row UI for weapon bonuses.
 //
@@ -34,7 +35,7 @@ globalThis.foundry = {
 			HandlebarsApplicationMixin: (base) => base,
 		},
 	},
-	utils: { mergeObject: (base, overrides) => ({ ...base, ...overrides }) },
+	utils: { mergeObject: (base, overrides) => ({ ...base, ...overrides }), escapeHTML },
 };
 globalThis.game = {
 	settings: {

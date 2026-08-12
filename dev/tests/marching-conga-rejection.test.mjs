@@ -29,6 +29,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { deepClone, expandObject, mergeObject } from "./helpers/foundry-utils.mjs";
+import { escapeHTML } from "./helpers/escape-html.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -100,7 +101,7 @@ globalThis.foundry = {
 		getType: (value) => typeof value,
 		debounce: (fn) => fn,
 		Color: { from: (value) => ({ css: String(value) }) },
-		escapeHTML: (value) => String(value),
+		escapeHTML,
 	},
 };
 globalThis.PIXI = {

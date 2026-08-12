@@ -18,6 +18,7 @@
 // hand-rolled here. They used to be local, shallow and wrong — see issue #92.
 
 import { deepClone, expandObject, getProperty, mergeObject } from "./foundry-utils.mjs";
+import { escapeHTML } from "./escape-html.mjs";
 
 /** PIXI's EventEmitter dispatches with an explicit context argument. */
 export class StubEmitter {
@@ -343,12 +344,7 @@ export function installCanvasGlobals({ isGM = true, gsap = makeGsapRecorder() } 
 			getProperty,
 			mergeObject,
 			randomID: () => "test-id",
-			escapeHTML: value => String(value)
-				.replace(/&/g, "&amp;")
-				.replace(/</g, "&lt;")
-				.replace(/>/g, "&gt;")
-				.replace(/"/g, "&quot;")
-				.replace(/'/g, "&#x27;"),
+			escapeHTML,
 		},
 	};
 

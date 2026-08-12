@@ -7,6 +7,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { escapeHTML } from "./helpers/escape-html.mjs";
 
 // --- Minimal DOM ------------------------------------------------------------
 
@@ -87,12 +88,7 @@ globalThis.PIXI = { Container: class {} };
 
 globalThis.foundry = {
 	utils: {
-		escapeHTML: value => String(value)
-			.replace(/&/g, "&amp;")
-			.replace(/</g, "&lt;")
-			.replace(/>/g, "&gt;")
-			.replace(/"/g, "&quot;")
-			.replace(/'/g, "&#x27;"),
+		escapeHTML,
 	},
 };
 

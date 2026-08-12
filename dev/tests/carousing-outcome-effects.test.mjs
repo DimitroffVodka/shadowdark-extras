@@ -1,3 +1,4 @@
+import { escapeHTML } from "./helpers/escape-html.mjs";
 /**
  * Parser tests for carousing outcome effect extraction.
  * Run: node dev/tests/carousing-outcome-effects.test.mjs
@@ -9,7 +10,7 @@
 // parseOutcomeEffects is pure, but the module is written against Foundry
 // globals; stub the few that exist at import time.
 globalThis.CONST = { TABLE_RESULT_TYPES: { TEXT: "text", DOCUMENT: "document" }, USER_ROLES: {}, DOCUMENT_OWNERSHIP_LEVELS: { NONE: 0 } };
-globalThis.foundry = { utils: { escapeHTML: value => String(value) } };
+globalThis.foundry = { utils: { escapeHTML } };
 
 const { parseOutcomeEffects, hasOutcomeEffects, recordCarousingDebt } = await import("../../scripts/party/carousing/CarousingSD.mjs");
 

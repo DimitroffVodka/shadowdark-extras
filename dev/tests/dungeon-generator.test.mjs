@@ -23,6 +23,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { escapeHTML } from "./helpers/escape-html.mjs";
 
 const REPO_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -46,12 +47,7 @@ globalThis.foundry = {
 	applications: { apps: {} },
 	utils: {
 		randomID: () => "test-id",
-		escapeHTML: v => String(v)
-			.replace(/&/g, "&amp;")
-			.replace(/</g, "&lt;")
-			.replace(/>/g, "&gt;")
-			.replace(/"/g, "&quot;")
-			.replace(/'/g, "&#x27;"),
+		escapeHTML,
 	},
 };
 

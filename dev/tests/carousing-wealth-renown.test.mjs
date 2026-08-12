@@ -14,6 +14,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { escapeHTML } from "./helpers/escape-html.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -22,7 +23,7 @@ globalThis.CONST = {
 	USER_ROLES: {},
 	DOCUMENT_OWNERSHIP_LEVELS: { NONE: 0 },
 };
-globalThis.foundry = { utils: { escapeHTML: value => String(value) } };
+globalThis.foundry = { utils: { escapeHTML } };
 
 /** Settings are read through a try/catch, so a throwing get is a real case. */
 let settings = new Map();

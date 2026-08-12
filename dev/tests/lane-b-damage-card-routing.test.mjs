@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { escapeHTML } from "./helpers/escape-html.mjs";
 
 // Lane-B combat split test (Phase 5.3, work items 3/5 — damage-card split).
 // Pure-builders behavior + action-layer routing. The DOM listener attachment
@@ -22,7 +23,7 @@ globalThis.foundry = {
 	utils: {
 		randomID: () => "id",
 		Collection: class extends Map {},
-		escapeHTML: (value) => String(value),
+		escapeHTML,
 	},
 };
 globalThis.game = {

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { escapeHTML } from "./helpers/escape-html.mjs";
 
 // Lane-B combat split test (Phase 5.3, work items 7/8 — combat-socket boundary).
 // Socket authority: setupCombatSocket owns the single socketlib module
@@ -29,7 +30,7 @@ globalThis.foundry = {
 		randomID: () => "id",
 		Collection: class extends Map {},
 		deepClone: (value) => JSON.parse(JSON.stringify(value)),
-		escapeHTML: (value) => String(value),
+		escapeHTML,
 	},
 };
 globalThis.CONST = { TEXT_ANCHOR_POINTS: { TOP: 0, BOTTOM: 1 } };

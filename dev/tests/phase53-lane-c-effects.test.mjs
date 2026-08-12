@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { execSync } from "node:child_process";
+import { escapeHTML } from "./helpers/escape-html.mjs";
 
 // Phase 5.3 lane-C tests: the effects split (AuraEffectsSD / TemplateEffectsSD
 // / duration-spell / focus-spell -> slim mains + geometry/state/tokenmagic/
@@ -80,12 +81,7 @@ globalThis.foundry = {
 	// elsewhere, so the chat-card inertness assertions below actually test something.
 	utils: {
 		deepClone: v => JSON.parse(JSON.stringify(v)),
-		escapeHTML: v => String(v)
-			.replace(/&/g, "&amp;")
-			.replace(/</g, "&lt;")
-			.replace(/>/g, "&gt;")
-			.replace(/"/g, "&quot;")
-			.replace(/'/g, "&#x27;"),
+		escapeHTML,
 	},
 };
 globalThis.CONFIG = { Canvas: {} };
