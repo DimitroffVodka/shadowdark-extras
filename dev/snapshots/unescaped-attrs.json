@@ -1,7 +1,7 @@
 {
   "$comment": "Attribute interpolations that reach HTML without escaping. The gate blocks anything NEW, not the absolute count — see #125 for the ~90 pre-existing sites and their triage tiers. Entries are compared by file + attribute + expression, so a site that merely moves lines is silent. Line numbers are recorded for navigation only. This file should only ever SHRINK: regenerate after a cleanup commit with `npm run gate:attr-escape -- --write`. If it grows, something shipped an unescaped interpolation into markup that renders on every connected client.",
-  "total": 89,
-  "files": 31,
+  "total": 81,
+  "files": 30,
   "byFile": {
     "scripts/MaphubViewerApp.mjs": [
       "src=imgPath (line 535)"
@@ -97,16 +97,6 @@
     ],
     "scripts/item-sheets/staff-spells.mjs": [
       "title=staffName (line 155)"
-    ],
-    "scripts/item-sheets/wand-sheet-enhance.mjs": [
-      "alt=creatureName (line 854)",
-      "alt=doc.name (line 378)",
-      "alt=doc.name (line 721)",
-      "alt=itemName (line 980)",
-      "src=creatureImg (line 854)",
-      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 378)",
-      "src=doc.img || \"icons/svg/mystery-man.svg\" (line 721)",
-      "src=itemImg (line 980)"
     ],
     "scripts/journal/PinStyleEditorSD.mjs": [
       "alt=imageAlt (line 31)"
