@@ -528,14 +528,17 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 	activeDuration.splice(spellIndex, 1);
 	await caster.setFlag(MODULE_ID, DURATION_SPELL_FLAG, activeDuration);
 
-	// Post to chat
+	// Post to chat. spellImg/spellName come from a player-owned, player-renameable
+	// spell item and render on every connected client, so escape both.
+	const escapedSpellImg = foundry.utils.escapeHTML(durationEntry.spellImg ?? "");
+	const escapedSpellName = foundry.utils.escapeHTML(durationEntry.spellName ?? "");
 	const chatContent = `
 		<div class="shadowdark chat-card focus-ended">
 			<header class="card-header flexrow">
-				<img class="focus-ended-icon" src="${durationEntry.spellImg}" alt="${durationEntry.spellName}"/>
+				<img class="focus-ended-icon" src="${escapedSpellImg}" alt="${escapedSpellName}"/>
 				<div class="focus-ended-header-text">
 					<h3>${game.i18n.localize("SHADOWDARK_EXTRAS.duration_tracker.spell_ended_title")}</h3>
-					<p class="spell-name">${durationEntry.spellName}</p>
+					<p class="spell-name">${escapedSpellName}</p>
 				</div>
 			</header>
 			<div class="card-content">
@@ -971,15 +974,18 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
 	ui.notifications.info(`Added ${token.name} to ${durationEntry.spellName}`);
 	caster.sheet?.render(false);
 
-	// Post to chat
+	// Post to chat. Spell and token names are player-editable, so escape them.
+	const escapedSpellImg = foundry.utils.escapeHTML(durationEntry.spellImg ?? "");
+	const escapedSpellName = foundry.utils.escapeHTML(durationEntry.spellName ?? "");
+	const escapedTokenName = foundry.utils.escapeHTML(token.name ?? "");
 	const content = `
 		<div class="shadowdark chat-card sdx-duration-damage">
 			<header class="card-header flexrow">
-				<img src="${durationEntry.spellImg}" alt="${durationEntry.spellName}"/>
-				<h3>${durationEntry.spellName} - Target Added</h3>
+				<img src="${escapedSpellImg}" alt="${escapedSpellName}"/>
+				<h3>${escapedSpellName} - Target Added</h3>
 			</header>
 			<div class="card-content">
-				<p><strong>${token.name}</strong> has entered the area of effect.</p>
+				<p><strong>${escapedTokenName}</strong> has entered the area of effect.</p>
 			</div>
 		</div>
 	`;
@@ -1089,15 +1095,18 @@ export async function removeTargetFromDurationSpell(casterId, instanceId, tokenI
 	ui.notifications.info(`Removed ${removedTarget.name} from ${durationEntry.spellName}`);
 	caster.sheet?.render(false);
 
-	// Post to chat
+	// Post to chat. Spell and token names are player-editable, so escape them.
+	const escapedSpellImg = foundry.utils.escapeHTML(durationEntry.spellImg ?? "");
+	const escapedSpellName = foundry.utils.escapeHTML(durationEntry.spellName ?? "");
+	const escapedTargetName = foundry.utils.escapeHTML(removedTarget.name ?? "");
 	const content = `
 		<div class="shadowdark chat-card sdx-duration-damage">
 			<header class="card-header flexrow">
-				<img src="${durationEntry.spellImg}" alt="${durationEntry.spellName}"/>
-				<h3>${durationEntry.spellName} - Target Removed</h3>
+				<img src="${escapedSpellImg}" alt="${escapedSpellName}"/>
+				<h3>${escapedSpellName} - Target Removed</h3>
 			</header>
 			<div class="card-content">
-				<p><strong>${removedTarget.name}</strong> has left the area of effect.</p>
+				<p><strong>${escapedTargetName}</strong> has left the area of effect.</p>
 				${effectsToRemove.length > 0 ? "<p>Effects removed.</p>" : ""}
 			</div>
 		</div>

@@ -554,6 +554,14 @@ export async function createInteractiveAuraCard(sourceToken, targetToken, trigge
 		turnEnd: "ended turn in",
 	}[trigger] || trigger;
 
+	// This card renders on every connected client. The effect image/name and the
+	// token name come from documents a player can edit, and the damage formula is
+	// free text, so escape them. Document ids are system-generated and left as-is.
+	const escapedImg = foundry.utils.escapeHTML(auraEffect.img || sourceToken.document.texture.src || "");
+	const escapedEffectName = foundry.utils.escapeHTML(auraEffect.name ?? "");
+	const escapedTargetName = foundry.utils.escapeHTML(targetToken.name ?? "");
+	const escapedFormula = foundry.utils.escapeHTML(config.damage?.formula || "");
+
 	const content = `
         <div class="shadowdark chat-card sdx-aura-effect-card" style="background: #1a1a1a; border-radius: 6px; padding: 8px; color: #e0e0e0;"
              data-source-token-id="${sourceToken.id}"
@@ -561,22 +569,22 @@ export async function createInteractiveAuraCard(sourceToken, targetToken, trigge
              data-aura-effect-id="${auraEffect.id}"
              data-aura-actor-id="${auraEffect.parent?.id}"
              data-effect-uuids="${(config.effects || []).join(",")}"
-             data-damage-formula="${config.damage?.formula || ""}"
+             data-damage-formula="${escapedFormula}"
              data-save-dc="${config.save?.dc || ""}"
              data-save-ability="${config.save?.ability || ""}"
              data-half-damage="${config.save?.halfOnSuccess || false}">
 
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 6px;">
-                <img src="${auraEffect.img || sourceToken.document.texture.src}" style="width: 32px; height: 32px; border-radius: 4px; border: 1px solid #555;">
+                <img src="${escapedImg}" style="width: 32px; height: 32px; border-radius: 4px; border: 1px solid #555;">
                 <div>
-                    <strong style="color: #fff;">${auraEffect.name}</strong>
-                    <div style="font-size: 11px; color: #aaa;">${targetToken.name} ${triggerName} aura</div>
+                    <strong style="color: #fff;">${escapedEffectName}</strong>
+                    <div style="font-size: 11px; color: #aaa;">${escapedTargetName} ${triggerName} aura</div>
                 </div>
             </div>
 
             ${config.damage?.formula ? `
             <div style="margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-                <span><i class="fas fa-dice-d6"></i> ${config.damage.formula} ${config.damage.type || ""}</span>
+                <span><i class="fas fa-dice-d6"></i> ${escapedFormula} ${foundry.utils.escapeHTML(config.damage.type || "")}</span>
                 <button type="button" class="sdx-aura-apply-damage" style="width: auto; height: 24px; line-height: 24px; font-size: 12px; padding: 0 8px;">
                     Apply Damage
                 </button>

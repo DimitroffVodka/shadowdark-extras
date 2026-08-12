@@ -76,7 +76,17 @@ globalThis.foundry = {
 	},
 	documents: { RegionDocument: { implementation: class RegionDocument {} } },
 	canvas: { geometry: { Ray: class Ray {} } },
-	utils: { deepClone: v => JSON.parse(JSON.stringify(v)) },
+	// escapeHTML mirrors Foundry's real escaping rather than the identity stub used
+	// elsewhere, so the chat-card inertness assertions below actually test something.
+	utils: {
+		deepClone: v => JSON.parse(JSON.stringify(v)),
+		escapeHTML: v => String(v)
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&#x27;"),
+	},
 };
 globalThis.CONFIG = { Canvas: {} };
 globalThis.Hooks = { on: () => {}, off: () => {}, callAll: () => {}, call: () => {} };
@@ -490,6 +500,38 @@ test("duration lifecycle: startDurationSpell writes a new entry and endDurationS
 
 	await durationSpell.endDurationSpell(actor.id, entry.instanceId, "expired");
 	assert.equal(durationSpell.getActiveDurationSpells(actor).length, 0);
+});
+
+test("duration lifecycle: a spell name carrying an attribute-breakout payload renders inert", async () => {
+	const actor = makeActorWithFlags();
+	const payload = 'x" onerror="alert(1)';
+	const spell = {
+		id: "spell-xss",
+		name: payload,
+		img: `${payload}.png`,
+		system: { duration: { value: 1, type: "rounds" } },
+	};
+	globalThis.game = {
+		combat: { round: 1 },
+		time: { worldTime: 100 },
+		user: { isGM: true },
+		actors: { get: () => actor, contents: [] },
+		i18n: { format: (key, data) => `${key}:${data.spellName}`, localize: key => key },
+	};
+	globalThis.ui = { notifications: { info: () => {} } };
+	let posted = null;
+	globalThis.ChatMessage = { create: async (data) => { posted = data; }, getSpeaker: () => ({}) };
+	makeCanvas();
+
+	const entry = await durationSpell.startDurationSpell(actor, spell, [], {});
+	await durationSpell.endDurationSpell(actor.id, entry.instanceId, "expired");
+
+	assert.ok(posted, "the spell-ended card was posted");
+	// The payload must survive only as escaped text: no bare quote can close src=""
+	// or alt="" and start an onerror handler.
+	assert.ok(!posted.content.includes('onerror="'), "no live onerror attribute");
+	assert.ok(!posted.content.includes(`${payload}`), "the raw unescaped payload is absent");
+	assert.ok(posted.content.includes("&quot; onerror=&quot;alert(1)"), "the payload is present as escaped text");
 });
 
 test("duration lifecycle: endDurationSpell with an unknown instance is a safe no-op", async () => {
