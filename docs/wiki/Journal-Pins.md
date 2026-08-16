@@ -21,6 +21,8 @@ Journal Pins are styled markers you drop on the canvas. Link one to a Journal or
 - **Pin Style Editor** — right-click a pin → **Edit Style…**, the palette button in the list, or **Configure Settings → Pin Style Editor** (world defaults). In the demo all three open the same modal.
 - **Settings → Pixel Perfect** — two world toggles: **Enable Pixel perfect on Pins** and **Pin Pixel Perfect Alpha Threshold** (0–255).
 
+![The Pins tab — search box, New Folder and Notes→Pins buttons, and pins grouped into collapsible folders. Each row carries pan / ping / bring, copy / paste / duplicate style, edit, move-to-folder and delete controls, with the eye and binoculars on the right toggling player visibility and Requires Vision](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pins-tab-folders.webp)
+
 ---
 
 ## How to use it
@@ -44,19 +46,35 @@ Try the main style groups in the demo — open a pin's palette button and work t
 
 **Journal & Page (single pin only)** — journal and page pickers plus **Pin Name** — which text shows in the Pins list. **Auto** prefers the page name, then tooltip title, then label, and skips placeholder names like "New Pin" when it can. **Journal**, **Tooltip**, and **Label** pin the name to one source.
 
-**Visibility (single pin only)** — **Requires Vision** (players need a token with line of sight), **Show Above Fog** (keep the pin visible even in fogged hexes — without it, pins in unexplored fog are hidden), **GM-only** (hide from players entirely), and **Hide Hover Tooltip** (suppress the popup).
+![Journal Page section — Select Journal and Select Page dropdowns with Pin Name set to "Auto (journal → tooltip → label)"](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-journal-page-link.webp)
+
+**Visibility (single pin only)** — **Requires Vision** (players need a token with line of sight), **Show Above Fog** (keep the pin visible even in fogged hexes — without it, pins in unexplored fog are hidden), **GM-only** (hide from players entirely), and **Hide Hover Tooltip** (suppress the popup). These change who the pin renders for and whether its popup appears; none of them add a marker to the pin itself.
+
+![Visibility section — Requires Vision checked, Show Above Fog unchecked, each with its explanatory hint](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-visibility-options.webp)
+
+**Custom Tooltip (single pin only)** — **Tooltip Title** and **Tooltip Content** override the hover popup. Leave either empty to fall back to the linked page's title and text; fill them in and the pin shows custom hover text even with no page link. **Hide Hover Tooltip** turns the popup off for this pin.
+
+![Custom Tooltip section — Tooltip Title and Tooltip Content fields, both showing "Leave empty to use page…" placeholders, above the Hide Hover Tooltip checkbox](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-custom-tooltip.webp)
 
 **Tooltip Text** — two sliders for the hover popup's **Title Size** and **Body Size** in pixels. These live per-pin and come from `tooltipTitleFontSize` / `tooltipContentFontSize`.
 
 **Shape & Size** — **Shape**, square **Border Radius**, **Size** (16–128 px), **Fit to hex grid** (size the pin to the scene's grid hex so it covers the tile — best with Image or Hexagon), image **Selected Image** + **Image Tint**, **Ring Width/Style** / opacities (or a single **Overall Opacity** for image pins), and three animation pickers: **Highlight on Hover** (the default is orange tint + border), **Ping Animation**, and **Bring Animation** (`ripple` / `shake` / `flash` / `none`; `rotate` is legacy).
 
+![Shape & Size section with Shape set to Image — Size 64px, Fit to hex grid, Selected Image icons/svg/city.svg, Image Tint, a single Overall Opacity slider, and the Highlight on Hover / Ping / Bring animation pickers](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-shape-size-image.webp)
+
 **Colors (standard shapes)** — **Ring Color** and **Fill Color**. Opacity is handled in the Shape section so the slider numbers stay next to the swatches they affect.
 
 **Content** — what sits inside the ring. **Page Number** shows the linked page's index, **Symbol** picks a FontAwesome glyph, **Custom Icon** picks an SVG from `assets/icons/` (or any image path), **Custom Text** is free text, and **None** leaves it empty. Number and Text expose font family, size, color, outline and bold/italic; Symbol exposes **Symbol Color**; Custom Icon exposes **Icon Color**.
 
+![Content section — Content Type set to None, with the font family, size, color, text outline, outline width and bold/italic controls beneath it](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-content-options.webp)
+
 **Label** — text beside the pin. Multiline is allowed. **Show only on hover** keeps it quiet until needed. **Label Position** and **Label Offset** place it, then font, color, outline, bold/italic, and **Background**: None, **Solid Color** (bg, border, opacity, border width, corner radius) or **Image Border** (bg, opacity, a **Custom Border Path**, and four 9-slice sliders for top/right/bottom/left).
 
+![Label section — Label Text box, Show only on hover checked, Label Position Bottom with a 5px offset, then font family, size, color, outline, bold/italic and a Background picker set to None](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-label-options.webp)
+
 **Filters and Effects (single pin, requires TokenMagic)** — a preset picker that calls `TokenMagic.getPresets("sdx-presets")` and `addFilters` on the live placeable. The demo shows the panel disabled and explains it — static pages can't host TokenMagic, but the shape matches Foundry.
+
+![Filters and Effects section — Apply Preset set to "Evade Stance" with save and add-preset buttons and a Clear All Effects button, above the editor's Reset to Default and Save footer](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/pin-filters-and-effects.webp)
 
 Fifty settings is a lot. Skim it in the demo: set Shape to Hexagon, Content to Custom Icon (`../../assets/crown.svg`), Label to hover at Top, and hover the pin.
 
@@ -96,6 +114,8 @@ The tray's **Notes → Pins** button and each individual note's convert control 
 
 Keeping the originals is the safe default so you can compare. Use the **delete-originals** option once you are happy with the converted pins.
 
+**Converted pins start GM-only.** Map Notes are usually prep material — keyed rooms, secret doors, what the party finds here — so every pin the conversion creates begins hidden from players, whatever the source note's own permissions were. Reveal each one deliberately once you want it at the table: click the red eye-slash on its row in the Pins tab, or clear **GM-only** in the editor. Until you do, nothing you converted is visible to players.
+
 Converted notes that stored their size as `note.iconSize` seed the editor's size slider with the effective rendered size, so the preview doesn't snap to 32 px on open.
 
 ---
@@ -108,7 +128,9 @@ Leave it off unless picking at an irregular transparent image is actually a prob
 
 ## What the GM sees vs what players see
 
-**You as GM:** You see the full Pins tab — folders, creation, conversion, style defaults, and per-pin menus. You edit, copy/paste, duplicate, move, and delete. **GM-only** pins are fully visible to you with a dim pass; **Requires Vision** and **Show Above Fog** only gate what players see, not what you see.
+**You as GM:** You see the full Pins tab — folders, creation, conversion, style defaults, and per-pin menus. You edit, copy/paste, duplicate, move, and delete. **GM-only** pins draw for you exactly as they draw for anyone allowed to see them: SDX paints no status marker on the canvas — no dim pass, no red dashed ring, and no eye badge beside the pin. Those overlays were removed because image and icon pins cover the pin's edge, so the indicator read as damaged art rather than as a status. **Requires Vision** and **Show Above Fog** are still enforced and still gate only what players see, not what you see — they simply no longer announce themselves on the map.
+
+Read a pin's current state from the controls instead. In the Pins tab every row carries an **eye** (green = visible to players, red eye-slash = GM-only) and a **binoculars** icon (green = Requires Vision on, grey = off), and both are toggles — click to flip that pin. The Pin Style Editor's **Visibility** section shows the full set for the selected pin.
 
 **Players:** They see player-visible pins and the hover tooltip (if not hidden and if they can read the linked page — or if a custom tooltip exists). They can double-click to open pages they have at least Limited permission on, but they cannot create pins, open the Pins tab's folder controls, or toggle GM-only.
 
@@ -136,7 +158,7 @@ Storage, renderer, and template pointers if you need them:
 - Defaults: world setting `pinStyleDefaults` read via `getPinStyle()` in `scripts/journal/pin-style.mjs` — `DEFAULT_PIN_STYLE` merged over the stored blob. About fifty keys (size, shape, ring/fill, opacity, hover/bring/ping animations, image paths, content type + font/icon/label, tooltip font sizes).
 - Per pin: `scene.flags["shadowdark-extras"]["journalPins"]` — each entry keeps `x, y, journalId, pageId, label, nameSource, folderId, sort, size, style{}, gmOnly, requiresVision, aboveFog, tooltipTitle, tooltipContent, hideTooltip, flags.tokenmagic` plus `version`.
 - Folders: world setting `pinFoldersWorld` (`[{id, name, color, icon, scope: "scene"|"world", collapsed}]`) via `scripts/journal/pin-manager.mjs` — definitions are world-wide, pins remain per-scene.
-- Renderer: `scripts/journal/pin-rendering.mjs` / `JournalPinGraphics` (PIXI.Container) with `pin-draw.mjs` (ring geometry for dotted/dashed) and `pin-icons.mjs` (glyph/SVG/vision badge). Tooltip: `scripts/journal/pin-tooltip.mjs` (`JournalPinTooltip.show/hide`). Interactions: `scripts/journal/pin-interactions.mjs` (drag via `pointerdown/move/up`, pan, ping, context menu). Label: inline `PIXI.Text` / canvas label container.
+- Renderer: `scripts/journal/pin-rendering.mjs` / `JournalPinGraphics` (PIXI.Container) with `pin-draw.mjs` (ring geometry for dotted/dashed) and `pin-icons.mjs` (glyph/SVG; `addVisionIndicator` is still exported but no longer called — the canvas vision badge and the GM-only red dashed ring were both removed, so `gmOnly` / `requiresVision` are enforced without drawing anything). Tooltip: `scripts/journal/pin-tooltip.mjs` (`JournalPinTooltip.show/hide`). Interactions: `scripts/journal/pin-interactions.mjs` (drag via `pointerdown/move/up`, pan, ping, context menu). Label: inline `PIXI.Text` / canvas label container.
 - Editor: `templates/pin-style-editor.hbs` via `scripts/journal/PinStyleEditorSD.mjs` plus `pin-style-form.mjs` (_getFormData / _onSave to `JournalPinManager.update` or `game.settings.set("pinStyleDefaults")`), `pin-style-preview.mjs` (_updatePreview, live `_updateCanvasPreview` debounce 150ms), `pin-style-tmfx.mjs` (`TokenMagic.getPresets` / `addFilters`), and `pin-icons` picker.
 - Layer: `sdx-journal-pins-layer` inserted after `walls` in `CONFIG.Canvas.layers` (`scripts/journal/JournalPinsSD.mjs`).
 - Styles: `styles/journal-pins.css` (tooltip + context menu), `styles/pin-style-editor.css` (editor chrome), `styles/sdx-tray.css` (Pins list rows).

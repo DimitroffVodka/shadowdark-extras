@@ -42,10 +42,19 @@ test("Wiki links use published page routes and valid published images", async ()
 
   for (const filename of markdownFiles) {
     const markdown = await readFile(new URL(filename, WIKI_DIR), "utf8");
-    const links = markdown.matchAll(/(!?)\[[^\]]*]\(([^)]+)\)/g);
+    const links = markdown.matchAll(/(!?)\[([^\]]*)]\(([^)]+)\)/g);
 
     for (const match of links) {
-      const target = match[2].trim();
+      const isEmbed = match[1] === "!";
+      const label = match[2].trim();
+      const target = match[3].trim();
+
+      // Alt text is what a reader actually gets when the raw.githubusercontent
+      // asset 404s or is blocked, and what a screen reader announces. An image
+      // that silently loses it degrades to nothing on the page.
+      if (isEmbed && !label) {
+        failures.push(`${filename}: Wiki image has no alt text: ${target}`);
+      }
 
       if (target.startsWith(PAGE_BASE)) {
         pageLinks += 1;

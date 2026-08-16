@@ -29,9 +29,13 @@ With **Enable Notes on placeables and Notes tab in tray** on, the configuration
 windows for Tokens, Tiles, Walls, Ambient Lights, and Ambient Sounds all gain a
 Notes control.
 
+![A token configuration window's header bar — the SDX Notes button, a highlighted sticky-note icon, sits between Sheet and Medkit](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/placeable-notes-token-header.webp)
+
 Write rich text and save. The tray's **Notes** tab lists every annotated object
 on the current scene, where you can expand or collapse the note, pan to the
 object, rename the note label, toggle player visibility, and delete it.
+
+![The tray's Notes tab — an expanded note on the token "Bazogo" reading "Bazogo Backstory", with collapse, hide-from-players, rename, delete, and pan-to-object controls on the row](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/placeable-notes-tray-tab.webp)
 
 These notes are metadata attached to the placeable. Delete the placeable and its
 note goes with it.
@@ -88,7 +92,11 @@ The new pin carries over position, the Journal or page link, the text label, and
 the icon path, tint, and size.
 
 Choose a target folder and decide whether the original Note gets deleted.
-Deletion is optional so you can compare the converted result first. The
+Deletion is optional so you can compare the converted result first.
+
+Converted pins start **GM-only**, whatever the source Note allowed — Map Notes
+are prep material, so nothing you convert reaches players until you reveal it
+with the pin row's visibility control. The
 **[demo's Notes→Pins button](https://dimitroffvodka.github.io/shadowdark-extras/docs/demo/journal-pins.html)** simulates this — pick a count and a target folder.
 
 ## Generated room pins
