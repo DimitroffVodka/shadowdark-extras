@@ -1,6 +1,10 @@
 
 const MODULE_ID = "shadowdark-extras";
 
+// Shared by both header-control hooks so the V2 ⋮ entry and the V1 actor-sheet
+// button name the control identically, in the user's language.
+const CONTROL_LABEL_KEY = "SHADOWDARK_EXTRAS.placeable_notes.control_label";
+
 /**
  * Enhanced notes for any placeable object
  */
@@ -38,8 +42,22 @@ export default class PlaceableNotesSD extends foundry.applications.api.Handlebar
 	};
 
 	async _prepareContext(options) {
+		const notes = this.object.getFlag(MODULE_ID, "notes") || "";
+
+		// The template renders `enrichedNotes` in both branches — the editor's
+		// initial content for a GM, and the whole of the read-only view for
+		// everyone else. Without it a saved note simply does not appear.
+		// Secrets stay GM-only, matching how every other sheet in the module
+		// enriches.
+		const TextEditorImpl = foundry.applications?.ux?.TextEditor?.implementation ?? TextEditor;
+		const enrichedNotes = await TextEditorImpl.enrichHTML(notes, {
+			async: true,
+			secrets: game.user.isGM,
+		});
+
 		return {
-			notes: this.object.getFlag(MODULE_ID, "notes") || "",
+			notes,
+			enrichedNotes,
 			isGM: game.user.isGM,
 			objectName: this.object.name || this.object.id,
 		};
@@ -83,9 +101,14 @@ export default class PlaceableNotesSD extends foundry.applications.api.Handlebar
 		if (!object.documentName || !supportedTypes.includes(object.documentName)) return;
 
 		const hasNotes = !!object.getFlag(MODULE_ID, "notes");
+		const label = game.i18n.localize(CONTROL_LABEL_KEY);
 
+		// No `tooltip` here: v14's `_renderHeaderControl` builds the entry from
+		// `icon` + `_loc(label)` and never reads one, so the localized label is
+		// the only text a user can see. See the V1 hook below, where core does
+		// render a tooltip.
 		controls.unshift({
-			label: "SDX Notes",
+			label,
 			action: "open-sdx-notes",
 			icon: hasNotes ? "fas fa-sticky-note" : "far fa-sticky-note",
 			onClick: () => {
@@ -109,9 +132,14 @@ export default class PlaceableNotesSD extends foundry.applications.api.Handlebar
 		if (!object || object.documentName !== "Actor") return;
 
 		const hasNotes = !!object.getFlag(MODULE_ID, "notes");
+		const label = game.i18n.localize(CONTROL_LABEL_KEY);
 
 		buttons.unshift({
-			label: "SDX Notes",
+			label,
+			// V1 sheet headers can collapse a button to its icon; `tooltip`
+			// becomes the anchor's data-tooltip, so the control still says what
+			// it is on hover (see Foundry's templates/app-window.html).
+			tooltip: label,
 			class: "open-sdx-notes",
 			icon: hasNotes ? "fas fa-sticky-note" : "far fa-sticky-note",
 			onclick: () => {
