@@ -3547,14 +3547,16 @@ body.sdx-tray-enabled #camera-views.vertical.left {
 }
 
 .sdx-tray .dungeon-option-toggle:has(.dungeon-no-walls-checkbox:checked),
-.sdx-tray .dungeon-option-toggle:has(.dungeon-wall-shadows-checkbox:checked) {
+.sdx-tray .dungeon-option-toggle:has(.dungeon-wall-shadows-checkbox:checked),
+.sdx-tray .dungeon-option-toggle:has(.dungeon-curved-walls-checkbox:checked) {
     border-color: #f97316;
     background: rgba(249, 115, 22, 0.15);
     color: #fdba74;
 }
 
 .sdx-tray .dungeon-option-toggle:has(.dungeon-no-walls-checkbox:checked) i,
-.sdx-tray .dungeon-option-toggle:has(.dungeon-wall-shadows-checkbox:checked) i {
+.sdx-tray .dungeon-option-toggle:has(.dungeon-wall-shadows-checkbox:checked) i,
+.sdx-tray .dungeon-option-toggle:has(.dungeon-curved-walls-checkbox:checked) i {
     color: #f97316;
 }
 
