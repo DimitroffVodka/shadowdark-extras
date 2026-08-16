@@ -26,15 +26,6 @@
                 <i class="fa-solid fa-users-viewfinder"></i>
             </button>
             {{/if}}
-            {{#if features.journalPins}}
-            <button class="tray-handle-button-tool" data-action="add-pin" title="Add Pin">
-                <i class="fa-solid fa-map-pin"></i>
-            </button>
-            <button class="tray-handle-button-tool" data-action="pin-list" title="Pin List">
-                <i class="fa-solid fa-list"></i>
-            </button>
-            {{/if}}
-
             {{#if features.canvasLightTracker}}
             <button class="tray-handle-button-tool" data-action="light-tracker" title="Light Source Tracker">
                 <i class="fa-solid fa-fire"></i>
@@ -596,6 +587,10 @@
 
                 <!-- Folder toolbar -->
                 <div class="pin-folder-toolbar">
+                    {{#if isGM}}
+                    <button type="button" class="pin-folder-newbtn" data-action="add-pin"
+                        title="Add a pin to this scene"><i class="fa-solid fa-map-pin"></i> Add Pin</button>
+                    {{/if}}
                     <button type="button" class="pin-folder-newbtn" data-action="folder-new"
                         title="Create a new pin folder"><i class="fa-solid fa-folder-plus"></i> New Folder</button>
                     <button type="button" class="pin-folder-newbtn" data-action="convert-notes"

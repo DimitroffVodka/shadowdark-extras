@@ -330,3 +330,40 @@ test("enabled-by-default ToM Player View retains stop and scene activation affor
 	assert.equal((rendered.match(/scene-card-activate/g) ?? []).length, 2);
 	assert.equal((rendered.match(/scene-card-preview/g) ?? []).length, 0);
 });
+
+test("Journal Pins owns one Add Pin action inside Pins and no pin launchers on the handle", async () => {
+	const template = await readFile(new URL("templates/sdx-tray/tray.hbs", ROOT), "utf8");
+	const rendered = renderNodes(parseTemplate(template), [{
+		isGM: true,
+		viewMode: "pins",
+		features: { journalPins: true },
+		pins: [],
+		mapNotes: [],
+	}]);
+	const handle = rendered.slice(
+		rendered.indexOf("<!-- TRAY HANDLE -->"),
+		rendered.indexOf("<!-- TRAY CONTENT -->")
+	);
+	const pins = rendered.slice(
+		rendered.indexOf("<!-- PINS TAB -->"),
+		rendered.indexOf("<!-- NOTES TAB -->")
+	);
+
+	assert.doesNotMatch(handle, /data-action="(?:add-pin|pin-list)"/);
+	assert.match(pins, /class="pin-folder-toolbar"[\s\S]*data-action="add-pin"/);
+	assert.equal((rendered.match(/data-action="add-pin"/g) ?? []).length, 1);
+	assert.match(rendered, /data-view="pins"/, "the existing Pins tab remains the navigation path");
+});
+
+test("players receive no Add Pin control when Journal Pins is enabled", async () => {
+	const template = await readFile(new URL("templates/sdx-tray/tray.hbs", ROOT), "utf8");
+	const rendered = renderNodes(parseTemplate(template), [{
+		isGM: false,
+		viewMode: "player",
+		features: { journalPins: true },
+		pins: [],
+		mapNotes: [],
+	}]);
+
+	assert.doesNotMatch(rendered, /data-action="add-pin"/);
+});

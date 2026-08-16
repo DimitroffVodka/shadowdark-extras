@@ -20,7 +20,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import "./helpers/foundry-loader.mjs";
-import { installCanvasGlobals } from "./helpers/pixi-harness.mjs";
+import { installCanvasGlobals, StubEmitter } from "./helpers/pixi-harness.mjs";
 import { installAppGlobals, makeSelectorDom } from "./helpers/dom-harness.mjs";
 
 installCanvasGlobals();
@@ -32,6 +32,7 @@ globalThis.canvas.grid = { size: 100, isHexagonal: true };
 const { TrayApp } = await import("../../scripts/tray/TrayApp.mjs");
 const { getViewMode } = await import("../../scripts/tray/TraySD.mjs");
 const { getPoiMirror, getPoiScale } = await import("../../scripts/hex/HexPainterSD.mjs");
+const { PinPlacer } = await import("../../scripts/journal/JournalPinsSD.mjs");
 
 /**
  * Render a tray into a fresh selector-keyed DOM.
@@ -115,6 +116,7 @@ const BINDINGS = [
 	".sdx-tray .pin-folder-header[0] .pin-folder-caret :: click",
 	".sdx-tray .pin-folder-header[0] .pin-folder-control[0] :: click",
 	".sdx-tray .pin-folder-header[0] .pin-folder-name :: click",
+	".sdx-tray .pin-folder-newbtn[data-action='add-pin'] :: click",
 	".sdx-tray .pin-folder-newbtn[data-action='convert-notes'] :: click",
 	".sdx-tray .pin-folder-newbtn[data-action='folder-new'] :: click",
 	".sdx-tray .pin-search-input :: input",
@@ -135,13 +137,11 @@ const BINDINGS = [
 	".sdx-tray .scene-folder, .scene-uncat-container[0] :: dragover",
 	".sdx-tray .scene-folder, .scene-uncat-container[0] :: drop",
 	".sdx-tray .tray-handle-button-toggle :: click",
-	".sdx-tray .tray-handle-button-tool[data-action='add-pin'] :: click",
 	".sdx-tray .tray-handle-button-tool[data-action='carousing'] :: click",
 	".sdx-tray .tray-handle-button-tool[data-action='formation'] :: click",
 	".sdx-tray .tray-handle-button-tool[data-action='leader'] :: click",
 	".sdx-tray .tray-handle-button-tool[data-action='light-tracker'] :: click",
 	".sdx-tray .tray-handle-button-tool[data-action='marching'] :: click",
-	".sdx-tray .tray-handle-button-tool[data-action='pin-list'] :: click",
 	".sdx-tray .tray-handle-button-tool[data-action='poi-mirror'] :: click",
 	".sdx-tray .tray-handle-button-tool[data-action='poi-redo'] :: click",
 	".sdx-tray .tray-handle-button-tool[data-action='poi-rotate-left'] :: click",
@@ -272,6 +272,37 @@ test("setExpanded closes the TOM panels as well", () => {
 });
 
 // --- action routing ---------------------------------------------------------
+
+test("Add Pin in the Pins toolbar starts canvas placement", () => {
+	const previousStage = canvas.stage;
+	canvas.stage = new StubEmitter();
+	PinPlacer.deactivate();
+	const { dom } = render();
+
+	try {
+		assert.equal(PinPlacer.active, false);
+		dom.fire(".sdx-tray .pin-folder-newbtn[data-action='add-pin']", "click");
+
+		assert.equal(PinPlacer.active, true);
+		assert.equal(canvas.stage.listenerCount("mousedown"), 1);
+		assert.equal(canvas.stage.listenerCount("rightdown"), 1);
+	}
+	finally {
+		PinPlacer.deactivate();
+		canvas.stage = previousStage;
+	}
+});
+
+test("pin actions register inside Pins, never on the collapsed handle", () => {
+	const { dom } = render();
+	const pinLaunchers = dom.manifest().filter(binding =>
+		binding.includes("data-action='add-pin'") || binding.includes("data-action='pin-list'")
+	);
+
+	assert.deepEqual(pinLaunchers, [
+		".sdx-tray .pin-folder-newbtn[data-action='add-pin'] :: click",
+	]);
+});
 
 test("a tab button routes its data-view to the view mode", () => {
 	const { dom } = render({ lists: { ".tray-tab-button": [{ dataset: { view: "dungeons" } }] } });

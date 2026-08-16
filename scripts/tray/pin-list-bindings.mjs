@@ -4,7 +4,7 @@
 // the Map-Notes conversion dialog, and the search box together with the
 // filter it drives. Merged via Object.assign(TrayApp.prototype, ...).
 
-import { JournalPinManager, JournalPinRenderer } from "../journal/JournalPinsSD.mjs";
+import { JournalPinManager, JournalPinRenderer, PinPlacer } from "../journal/JournalPinsSD.mjs";
 import { PinStyleEditorApp } from "../journal/PinStyleEditorSD.mjs";
 import { PlaceableNotesSD } from "../journal/PlaceableNotesSD.mjs";
 import { openPinTarget } from "../journal/pin-access.mjs";
@@ -16,6 +16,11 @@ export const PinListBindings = {
      * @param {HTMLElement} elem - The rendered tray root
      */
 	_bindPinListEvents(elem) {
+		elem.querySelector(".pin-folder-newbtn[data-action='add-pin']")?.addEventListener("click", e => {
+			e.preventDefault();
+			e.stopPropagation();
+			PinPlacer.activate();
+		});
 
 		// Pin/Note List Pan Action
 		elem.querySelectorAll(".pin-control").forEach(btn => {

@@ -10,7 +10,6 @@ import { disableDungeonPainting, enableDungeonPainting } from "../dungeon/Dungeo
 import { adjustPoiScale, canRedoPoi, canUndoPoi, disablePainting, disablePreview, enablePainting, enablePreview, getActiveTileTab, getPoiMirror, getPoiScale, redoLastPoi, rotatePoiLeft, rotatePoiRight, setDecorMode, togglePoiMirror, undoLastPoi } from "../hex/HexPainterSD.mjs";
 import { getActiveHexFogEffect, getAvailableHexFogEffects, isFogEffectsEnabled, isHexFogEnabled, setHexFogEffect, setHexFogEnabled } from "../hex/SDXHexFogSD.mjs";
 import { toggleSoloMode } from "../hex/SoloHexMode.mjs";
-import { PinPlacer } from "../journal/JournalPinsSD.mjs";
 import { cycleViewMode, setViewMode } from "./TraySD.mjs";
 
 export const TrayHandleBindings = {
@@ -64,21 +63,6 @@ export const TrayHandleBindings = {
 			e.stopPropagation();
 			FormationSpawnerSD.show();
 		});
-
-		elem.querySelector(".tray-handle-button-tool[data-action='add-pin']")?.addEventListener("click", e => {
-			e.preventDefault();
-			e.stopPropagation();
-			PinPlacer.activate();
-		});
-
-
-		elem.querySelector(".tray-handle-button-tool[data-action='pin-list']")?.addEventListener("click", async e => {
-			e.preventDefault();
-			e.stopPropagation();
-			await setViewMode("pins");
-			this.setExpanded(true);
-		});
-
 
 		// Light Tracker Button
 		elem.querySelector(".tray-handle-button-tool[data-action='light-tracker']")?.addEventListener("click", e => {
