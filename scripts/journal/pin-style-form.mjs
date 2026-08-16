@@ -125,7 +125,6 @@ export const PinStyleForm = {
 			labelBorderSliceLeft: parseInt(form.querySelector('[name="labelBorderSliceLeft"]')?.value) || 15,
 			labelAnchor: form.querySelector('[name="labelAnchor"]')?.value || "bottom",
 			labelOffset: parseInt(form.querySelector('[name="labelOffset"]')?.value) || 0,
-			hideTooltip: form.querySelector('[name="hideTooltip"]')?.checked || false,
 		};
 
 		// Handle conditional Background Color and Opacity inputs due to split UI
@@ -174,6 +173,11 @@ export const PinStyleForm = {
 			const nameSourceSelect = form.querySelector('[name="nameSource"]');
 			if (nameSourceSelect) {
 				formData.nameSource = nameSourceSelect.value || "auto";
+			}
+
+			const hideTooltipCheckbox = form.querySelector('[name="hideTooltip"]');
+			if (hideTooltipCheckbox) {
+				formData.hideTooltip = hideTooltipCheckbox.checked;
 			}
 		}
 

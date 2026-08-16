@@ -7,6 +7,17 @@
 import { JournalPinManager, JournalPinRenderer } from "./JournalPinsSD.mjs";
 import { readNumber } from "./pin-style-form.mjs";
 
+function colorWithAlpha(color, alpha) {
+	const value = String(color || "").trim();
+	const match = /^#([0-9a-f]{6})$/i.exec(value);
+	if (!match) return value || "transparent";
+	const number = Number.parseInt(match[1], 16);
+	const r = (number >> 16) & 0xff;
+	const g = (number >> 8) & 0xff;
+	const b = number & 0xff;
+	return alpha >= 1 ? value : `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export const PinStylePreview = {
 	async _updatePreview() {
 		const html = this.element;
@@ -26,8 +37,62 @@ export const PinStylePreview = {
 		const size = parseInt(style.size) || 32;
 		const previewPin = html.querySelector(".preview-pin");
 		if (previewPin) {
+			const mediaBody = previewPin.querySelector(".preview-media-body");
+			const mediaTint = previewPin.querySelector(".preview-media-tint");
+			const mediaRing = previewPin.querySelector(".preview-media-ring");
+			const mediaTarget = mediaBody || previewPin;
+			// Clear media-only presentation before applying the selected shape. Without
+			// this reset, changing image/icon -> geometric leaves the old background
+			// image (and its hover treatment) painted over the new preview.
+			if (previewPin._sdxHoverHandlers) {
+				previewPin.removeEventListener("mouseenter", previewPin._sdxHoverHandlers.enter);
+				previewPin.removeEventListener("mouseleave", previewPin._sdxHoverHandlers.leave);
+				previewPin._sdxHoverHandlers = null;
+			}
+			previewPin.style.backgroundImage = "none";
+			previewPin.style.backgroundSize = "initial";
+			previewPin.style.backgroundPosition = "initial";
+			previewPin.style.backgroundRepeat = "initial";
+			previewPin.style.backgroundBlendMode = "normal";
+			previewPin.style.overflow = "visible";
+			previewPin.style.outline = "none";
+			previewPin.style.borderImage = "none";
+			previewPin.style.border = "";
+			previewPin.style.borderRadius = "0";
+			previewPin.style.transform = "rotate(0deg)";
+			previewPin.style.opacity = "1";
+			mediaTarget.style.display = "none";
+			mediaTarget.style.backgroundImage = "none";
+			mediaTarget.style.backgroundSize = "initial";
+			mediaTarget.style.backgroundPosition = "initial";
+			mediaTarget.style.backgroundRepeat = "initial";
+			mediaTarget.style.backgroundBlendMode = "normal";
+			mediaTarget.style.backgroundColor = "transparent";
+			mediaTarget.style.opacity = "1";
+			mediaTarget.style.overflow = "visible";
+			mediaTarget.style.outline = "none";
+			mediaTarget.style.border = "";
+			if (mediaTint) {
+				mediaTint.style.display = "none";
+				mediaTint.style.backgroundColor = "transparent";
+				mediaTint.style.backgroundImage = "none";
+				mediaTint.style.backgroundBlendMode = "normal";
+				mediaTint.style.backgroundSize = "initial";
+				mediaTint.style.backgroundPosition = "initial";
+				mediaTint.style.backgroundRepeat = "initial";
+				mediaTint.style.maskImage = "none";
+				mediaTint.style.webkitMaskImage = "none";
+			}
+			if (mediaRing) {
+				mediaRing.style.display = "none";
+				mediaRing.style.outline = "none";
+				mediaRing.style.outlineOffset = "0px";
+				mediaRing.style.borderRadius = "0";
+			}
 			previewPin.style.width = `${size}px`;
 			previewPin.style.height = `${size}px`;
+			mediaTarget.style.width = `${size}px`;
+			mediaTarget.style.height = `${size}px`;
 			const baseOpacity = parseFloat(style.opacity) || 1.0;
 			const fillOpacity = readNumber(style.fillOpacity, 1.0) * baseOpacity;
 			const ringOpacity = readNumber(style.ringOpacity, 1.0) * baseOpacity;
@@ -83,17 +148,49 @@ export const PinStylePreview = {
 				case "icon":
 					previewPin.style.backgroundColor = "transparent";
 					previewPin.style.border = "none";
-					previewPin.style.borderRadius = "0";
-					previewPin.style.transform = "rotate(0deg)";
-					previewPin.style.overflow = "hidden";
+					previewPin.style.borderColor = "transparent";
+					mediaTarget.style.display = "block";
+					mediaTarget.style.opacity = String(baseOpacity);
+					mediaTarget.style.backgroundColor = "transparent";
+					mediaTarget.style.border = "none";
+					mediaTarget.style.borderRadius = "0";
+					mediaTarget.style.overflow = "hidden";
 					if (style.iconShapePath) {
-						previewPin.style.backgroundImage = `url("${style.iconShapePath}")`;
-						// Full-bleed: 112% to hide the ~25 px SVG padding, clipped to the pin size (like canvas mask)
-						previewPin.style.backgroundSize = "112% 112%";
-						previewPin.style.backgroundPosition = "center";
-						previewPin.style.backgroundRepeat = "no-repeat";
+						const iconPath = JSON.stringify(String(style.iconShapePath));
+						const iconUrl = `url(${iconPath})`;
+						mediaTarget.style.backgroundImage = iconUrl;
+						const iconTint = style.iconShapeTint && style.iconShapeTint.toLowerCase() !== "#ffffff"
+							? style.iconShapeTint : "";
 						const isHighlightI = style.hoverAnimation === "highlight";
-						const htI = isHighlightI && style.iconShapeTint && style.iconShapeTint.toLowerCase() !== "#ffffff" ? style.iconShapeTint : "";
+						const htI = isHighlightI && style.hoverImageTint && style.hoverImageTint.toLowerCase() !== "#ffffff" ? style.hoverImageTint : "";
+						const tintI = color => {
+							if (!mediaTint) return;
+							const active = Boolean(iconTint || htI);
+							// The tint layer is the media source while active. Hiding the
+							// untinted copy keeps transparent source pixels transparent.
+							mediaTarget.style.backgroundImage = active ? "none" : iconUrl;
+							mediaTint.style.display = active ? "block" : "none";
+							mediaTint.style.backgroundColor = "transparent";
+							mediaTint.style.backgroundImage = active
+								? `linear-gradient(${color}, ${color}), ${iconUrl}` : "none";
+							mediaTint.style.backgroundBlendMode = active ? "multiply" : "normal";
+							mediaTint.style.maskImage = iconUrl;
+							mediaTint.style.webkitMaskImage = iconUrl;
+							mediaTint.style.maskSize = "112% 112%";
+							mediaTint.style.webkitMaskSize = "112% 112%";
+							mediaTint.style.backgroundSize = "112% 112%";
+							mediaTint.style.webkitMaskPosition = "center";
+							mediaTint.style.maskPosition = "center";
+							mediaTint.style.backgroundPosition = "center";
+							mediaTint.style.maskRepeat = "no-repeat";
+							mediaTint.style.webkitMaskRepeat = "no-repeat";
+							mediaTint.style.backgroundRepeat = "no-repeat";
+						};
+						tintI(iconTint || "#ffffff");
+						// Full-bleed: 112% to hide the ~25 px SVG padding, clipped to the pin size (like canvas mask)
+						mediaTarget.style.backgroundSize = "112% 112%";
+						mediaTarget.style.backgroundPosition = "center";
+						mediaTarget.style.backgroundRepeat = "no-repeat";
 						const hrwI = isHighlightI ? (parseInt(style.hoverRingWidth) || 0) : 0;
 						const hrcI = isHighlightI ? (style.hoverRingColor || "#ff7a00") : "";
 						if (previewPin._sdxHoverHandlers) {
@@ -101,43 +198,82 @@ export const PinStylePreview = {
 							previewPin.removeEventListener("mouseleave", previewPin._sdxHoverHandlers.leave);
 						}
 						const enterI = () => {
-							if (htI) {
-								previewPin.style.backgroundColor = htI; previewPin.style.backgroundBlendMode = "multiply";
-							}
+							tintI(htI || iconTint || "#ffffff");
 							if (hrwI > 0) {
-								previewPin.style.outline = `${hrwI}px solid ${hrcI}`; previewPin.style.outlineOffset = "0px"; previewPin.style.borderRadius = "10px";
+								if (mediaRing) {
+									mediaRing.style.display = "block";
+									mediaRing.style.outline = `${hrwI}px solid ${hrcI}`;
+									mediaRing.style.outlineOffset = "0px";
+									mediaRing.style.borderRadius = "10px";
+								}
 							}
 						};
 						const leaveI = () => {
-							previewPin.style.backgroundColor = "transparent";
-							previewPin.style.backgroundBlendMode = "normal";
-							previewPin.style.outline = "none";
+							tintI(iconTint || "#ffffff");
+							if (mediaRing) {
+								mediaRing.style.display = "none";
+								mediaRing.style.outline = "none";
+								mediaRing.style.borderRadius = "0";
+							}
 						};
 						previewPin.addEventListener("mouseenter", enterI);
 						previewPin.addEventListener("mouseleave", leaveI);
 						previewPin._sdxHoverHandlers = { enter: enterI, leave: leaveI };
 					}
 					else {
-						previewPin.style.backgroundImage = "none";
-						previewPin.style.border = "1px dashed #666";
+						mediaTarget.style.backgroundImage = "none";
+						mediaTarget.style.border = "1px dashed #666";
 					}
 					break;
 				case "image":
-					previewPin.style.overflow = "visible";
 					previewPin.style.backgroundColor = "transparent";
 					previewPin.style.border = "none";
-					previewPin.style.borderRadius = "0";
+					previewPin.style.borderColor = "transparent";
+					mediaTarget.style.display = "block";
+					mediaTarget.style.opacity = String(baseOpacity);
+					mediaTarget.style.overflow = "visible";
+					mediaTarget.style.backgroundColor = "transparent";
+					mediaTarget.style.border = "none";
+					mediaTarget.style.borderRadius = "0";
 					previewPin.style.transform = "rotate(0deg)";
 
 					// Add background image to preview
 					if (style.imagePath) {
-						previewPin.style.backgroundImage = `url("${style.imagePath}")`;
-						previewPin.style.backgroundSize = "contain";
-						previewPin.style.backgroundPosition = "center";
-						previewPin.style.backgroundRepeat = "no-repeat";
-						// Preview hover tint/border: apply as filter + outline on hover
+						const imagePath = JSON.stringify(String(style.imagePath));
+						const imageUrl = `url(${imagePath})`;
+						mediaTarget.style.backgroundImage = imageUrl;
+						const imageTint = style.imageTint && style.imageTint.toLowerCase() !== "#ffffff"
+							? style.imageTint : "";
 						const isHighlight = style.hoverAnimation === "highlight";
 						const ht = isHighlight && style.hoverImageTint && style.hoverImageTint.toLowerCase() !== "#ffffff" ? style.hoverImageTint : "";
+						const tint = color => {
+							if (!mediaTint) return;
+							const active = Boolean(imageTint || ht);
+							// The tint layer is the media source while active. Hiding the
+							// untinted copy keeps transparent source pixels transparent.
+							mediaTarget.style.backgroundImage = active ? "none" : imageUrl;
+							mediaTint.style.display = active ? "block" : "none";
+							mediaTint.style.backgroundColor = "transparent";
+							mediaTint.style.backgroundImage = active
+								? `linear-gradient(${color}, ${color}), ${imageUrl}` : "none";
+							mediaTint.style.backgroundBlendMode = active ? "multiply" : "normal";
+							mediaTint.style.maskImage = imageUrl;
+							mediaTint.style.webkitMaskImage = imageUrl;
+							mediaTint.style.maskSize = "contain";
+							mediaTint.style.webkitMaskSize = "contain";
+							mediaTint.style.backgroundSize = "contain";
+							mediaTint.style.maskPosition = "center";
+							mediaTint.style.webkitMaskPosition = "center";
+							mediaTint.style.backgroundPosition = "center";
+							mediaTint.style.maskRepeat = "no-repeat";
+							mediaTint.style.webkitMaskRepeat = "no-repeat";
+							mediaTint.style.backgroundRepeat = "no-repeat";
+						};
+						tint(imageTint || "#ffffff");
+						mediaTarget.style.backgroundSize = "contain";
+						mediaTarget.style.backgroundPosition = "center";
+						mediaTarget.style.backgroundRepeat = "no-repeat";
+						// Preview hover tint and ring are separate from the media body.
 						const hrw = isHighlight ? (parseInt(style.hoverRingWidth) || 0) : 0;
 						const hrc = isHighlight ? (style.hoverRingColor || "#ff7a00") : "";
 						if (previewPin._sdxHoverHandlers) {
@@ -145,22 +281,23 @@ export const PinStylePreview = {
 							previewPin.removeEventListener("mouseleave", previewPin._sdxHoverHandlers.leave);
 						}
 						const enter = () => {
-							if (ht) {
-								// Approximate multiply tint via CSS filter on the background image:
-								// use a colored overlay via box-shadow inset or background-color blend.
-								previewPin.style.backgroundColor = ht;
-								previewPin.style.backgroundBlendMode = "multiply";
-							}
+							tint(ht || imageTint || "#ffffff");
 							if (hrw > 0) {
-								previewPin.style.outline = `${hrw}px solid ${hrc}`;
-								previewPin.style.outlineOffset = "0px";
-								previewPin.style.borderRadius = "10px";
+								if (mediaRing) {
+									mediaRing.style.display = "block";
+									mediaRing.style.outline = `${hrw}px solid ${hrc}`;
+									mediaRing.style.outlineOffset = "0px";
+									mediaRing.style.borderRadius = "10px";
+								}
 							}
 						};
 						const leave = () => {
-							previewPin.style.backgroundColor = "transparent";
-							previewPin.style.backgroundBlendMode = "normal";
-							previewPin.style.outline = "none";
+							tint(imageTint || "#ffffff");
+							if (mediaRing) {
+								mediaRing.style.display = "none";
+								mediaRing.style.outline = "none";
+								mediaRing.style.borderRadius = "0";
+							}
 						};
 						previewPin.addEventListener("mouseenter", enter);
 						previewPin.addEventListener("mouseleave", leave);
@@ -168,10 +305,10 @@ export const PinStylePreview = {
 					}
 					else {
 						// Fallback placeholder
-						previewPin.style.backgroundImage = "none";
-						previewPin.style.border = "1px dashed #666";
+						mediaTarget.style.backgroundImage = "none";
+						mediaTarget.style.border = "1px dashed #666";
 					}
-					return; // Skip content addition for image shape background
+				// Image bodies still receive the common content and label overlays below.
 			}
 
 			// Content (number, symbol, custom icon, or text)
@@ -193,7 +330,23 @@ export const PinStylePreview = {
 				else if (type === "customIcon") {
 					// Custom SVG icon
 					if (style.customIconPath) {
-						content.innerHTML = `<img src="${foundry.utils.escapeHTML(style.customIconPath)}" style="width: 70%; height: 70%; filter: invert(1);" />`;
+						const iconPath = JSON.stringify(String(style.customIconPath));
+						const iconColor = style.iconColor || "#ffffff";
+						content.innerHTML = "<span class=\"preview-custom-icon\"></span>";
+						const icon = content.querySelector(".preview-custom-icon");
+						if (icon) {
+							icon.style.width = "70%";
+							icon.style.height = "70%";
+							icon.style.backgroundColor = iconColor;
+							icon.style.maskImage = `url(${iconPath})`;
+							icon.style.webkitMaskImage = `url(${iconPath})`;
+							icon.style.maskSize = "contain";
+							icon.style.webkitMaskSize = "contain";
+							icon.style.maskPosition = "center";
+							icon.style.webkitMaskPosition = "center";
+							icon.style.maskRepeat = "no-repeat";
+							icon.style.webkitMaskRepeat = "no-repeat";
+						}
 					}
 					else {
 						content.innerHTML = "<i class=\"fa-solid fa-image\"></i>";
@@ -255,53 +408,96 @@ export const PinStylePreview = {
 			const previewLabel = preview.querySelector(".preview-label");
 			if (previewLabel) {
 				const labelBg = style.labelBackground;
-				previewLabel.style.display = labelBg === "none" ? "none" : "flex";
+				previewLabel.textContent = style.labelText || "";
+				previewLabel.style.display = style.labelText ? "flex" : "none";
+				if (previewPin._sdxLabelHoverHandlers) {
+					previewPin.removeEventListener("mouseenter", previewPin._sdxLabelHoverHandlers.enter);
+					previewPin.removeEventListener("mouseleave", previewPin._sdxLabelHoverHandlers.leave);
+					previewPin._sdxLabelHoverHandlers = null;
+				}
+				if (style.labelText && style.labelShowOnHover) {
+					const enter = () => {
+						previewLabel.style.display = "flex";
+					};
+					const leave = () => {
+						previewLabel.style.display = "none";
+					};
+					previewLabel.style.display = "none";
+					previewPin.addEventListener("mouseenter", enter);
+					previewPin.addEventListener("mouseleave", leave);
+					previewPin._sdxLabelHoverHandlers = { enter, leave };
+				}
+				previewLabel.style.fontFamily = style.labelFontFamily || "Arial";
+				previewLabel.style.position = "absolute";
+				previewLabel.style.fontSize = `${style.labelFontSize || 16}px`;
+				previewLabel.style.color = style.labelColor || "#ffffff";
+				previewLabel.style.fontWeight = style.labelBold ? "bold" : "normal";
+				previewLabel.style.fontStyle = style.labelItalic ? "italic" : "normal";
+				const labelStrokeThickness = Number(style.labelStrokeThickness) || 0;
+				if (labelStrokeThickness > 0) {
+					previewLabel.style.webkitTextStroke = `${labelStrokeThickness}px ${style.labelStroke || "#000000"}`;
+					previewLabel.style.paintOrder = "stroke fill";
+				}
+				else {
+					previewLabel.style.webkitTextStroke = "unset";
+					previewLabel.style.paintOrder = "normal";
+				}
+
+				// Reset frame/background state so switching modes cannot retain a
+				// solid border or image-slice settings from the previous selection.
+				previewLabel.style.opacity = "1";
+				previewLabel.style.backgroundColor = "transparent";
+				previewLabel.style.border = "none";
+				previewLabel.style.borderRadius = "0";
+				previewLabel.style.borderStyle = "none";
+				previewLabel.style.borderWidth = "0";
+				previewLabel.style.borderImage = "none";
+				previewLabel.style.borderImageSource = "none";
+				previewLabel.style.borderImageSlice = "";
+				previewLabel.style.borderImageWidth = "";
+				previewLabel.style.borderImageOutset = "";
+				previewLabel.style.borderImageRepeat = "";
 
 				// Position preview label relative to pin using CSS transform
 				const anchor = style.labelAnchor || "bottom";
 				const offsetSq = style.labelOffset ?? 5;
 				const pinHalf = (style.size || 40) / 2;
+				previewLabel.style.left = "50%";
+				previewLabel.style.top = "50%";
 
-				let tx = 0; let ty = 0;
-				let originX = "center"; let originY = "center";
+				let transform = "translate(-50%, -50%)";
 
 				switch (anchor) {
 					case "top":
-						ty = -(pinHalf + offsetSq);
-						originY = "bottom";
+						transform = `translate(-50%, calc(-100% - ${pinHalf + offsetSq}px))`;
 						break;
 					case "bottom":
-						ty = (pinHalf + offsetSq);
-						originY = "top";
+						transform = `translate(-50%, ${pinHalf + offsetSq}px)`;
 						break;
 					case "left":
-						tx = -(pinHalf + offsetSq);
-						originX = "right";
+						transform = `translate(calc(-100% - ${pinHalf + offsetSq}px), -50%)`;
 						break;
 					case "right":
-						tx = (pinHalf + offsetSq);
-						originX = "left";
-						break;
-					case "center":
-						tx = 0;
-						ty = 0;
+						transform = `translate(${pinHalf + offsetSq}px, -50%)`;
 						break;
 				}
 
-				previewLabel.style.transform = `translate(-50%, -50%) translate(${tx}px, ${ty}px)`;
-				previewLabel.style.transformOrigin = `${originX} ${originY}`;
+				previewLabel.style.transform = transform;
+				previewLabel.style.transformOrigin = "center center";
 
 				if (labelBg === "solid") {
 					previewLabel.style.border = `${style.labelBorderWidth}px solid ${style.labelBorderColor || "#ffffff"}`;
 					previewLabel.style.borderRadius = `${style.labelBorderRadius}px`;
-					previewLabel.style.backgroundColor = style.labelBackgroundColor || "rgba(0,0,0,0.8)";
-					previewLabel.style.opacity = style.labelBackgroundOpacity ?? 1.0;
-					previewLabel.style.borderImage = "none";
+					previewLabel.style.backgroundColor = colorWithAlpha(
+						style.labelBackgroundColor || "#000000",
+						readNumber(style.labelBackgroundOpacity, 1.0)
+					);
 				}
 				else if (labelBg === "image") {
 					previewLabel.style.borderRadius = "0";
 
-					if (style.labelBorderImagePath) {
+					const borderImagePath = String(style.labelBorderImagePath || "").trim();
+					if (borderImagePath) {
 						const sT = style.labelBorderSliceTop || 15;
 						const sR = style.labelBorderSliceRight || 15;
 						const sB = style.labelBorderSliceBottom || 15;
@@ -309,24 +505,15 @@ export const PinStylePreview = {
 
 						previewLabel.style.borderStyle = "solid";
 						previewLabel.style.borderWidth = "0px"; // Slices will define the visible border via fill
-						previewLabel.style.borderImageSource = `url("${style.labelBorderImagePath}")`;
+						previewLabel.style.borderImageSource = `url("${borderImagePath}")`;
 						previewLabel.style.borderImageSlice = `${sT} ${sR} ${sB} ${sL} fill`;
 						previewLabel.style.borderImageWidth = "auto";
 						previewLabel.style.borderImageOutset = "0px";
 						previewLabel.style.borderImageRepeat = "stretch";
-
-						if (style.labelBackgroundOpacity > 0) {
-							previewLabel.style.backgroundColor = style.labelBackgroundColor || "#000000";
-							previewLabel.style.opacity = style.labelBackgroundOpacity;
-						}
-						else {
-							previewLabel.style.backgroundColor = "transparent";
-						}
-					}
-					else {
-						previewLabel.style.border = "1px dashed #666";
-						previewLabel.style.backgroundColor = "transparent";
-						previewLabel.style.borderImage = "none";
+						previewLabel.style.backgroundColor = colorWithAlpha(
+							style.labelBackgroundColor || "#000000",
+							readNumber(style.labelBackgroundOpacity, 1.0)
+						);
 					}
 				}
 			}

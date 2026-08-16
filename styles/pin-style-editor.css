@@ -139,6 +139,7 @@
 }
 
 .sdx-pin-style-editor .pin-preview-canvas {
+    position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -153,24 +154,59 @@
 }
 
 .sdx-pin-style-editor .preview-pin {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+	position: relative;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.sdx-pin-style-editor .preview-media-body {
+	position: absolute;
+	inset: 0;
+	display: none;
+	background-position: center;
+	background-repeat: no-repeat;
+	pointer-events: none;
+}
+
+.sdx-pin-style-editor .preview-media-tint,
+.sdx-pin-style-editor .preview-media-ring {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.sdx-pin-style-editor .preview-media-tint {
+	display: none;
+	background: transparent;
+	background-position: center;
+	background-repeat: no-repeat;
+	background-size: 100% 100%;
+}
+
+.sdx-pin-style-editor .preview-media-ring {
+	display: none;
+	z-index: 2;
 }
 
 .sdx-pin-style-editor .preview-content {
-    display: flex;
+	position: relative;
+	z-index: 1;
+	display: flex;
     justify-content: center;
     align-items: center;
 }
 
 .sdx-pin-style-editor .preview-label {
-    margin-left: 10px;
+    margin-left: 0;
     padding: 2px 8px;
     font-size: 14px;
     font-family: inherit;
     color: #ffffff;
     pointer-events: none;
+    position: absolute;
+    left: 50%;
+    top: 50%;
     white-space: nowrap;
     display: flex;
     align-items: center;

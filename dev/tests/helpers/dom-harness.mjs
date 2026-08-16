@@ -191,9 +191,13 @@ export class SelectorNode {
  * @param {boolean} [options.seedAll] - Give every unseeded querySelectorAll a
  *   single node, so a render's per-element bindings reach the manifest without
  *   each collection having to be enumerated first.
+ * @param {boolean} [options.coalesceFormControls] - Return already-resolved
+ *   named form nodes from the generic `input, select` query. This models a
+ *   browser DOM where the generic and field-specific listeners share the same
+ *   rendered control.
  * @param {Object} [options.closest] - Fallback closest() results by selector.
  */
-export function makeSelectorDom({ absent = [], lists = {}, seedAll = false, closest = {} } = {}) {
+export function makeSelectorDom({ absent = [], lists = {}, seedAll = false, coalesceFormControls = false, closest = {} } = {}) {
 	const absentSet = new Set(absent);
 
 	const dom = {
@@ -219,6 +223,16 @@ export function makeSelectorDom({ absent = [], lists = {}, seedAll = false, clos
 
 		_resolveAll(parent, selector) {
 			const path = parent ? `${parent.path} ${selector}` : selector;
+			if (coalesceFormControls && (selector === "input, select" || selector === "textarea")) {
+				const namedPrefix = `${parent?.path ?? ""} [name="`;
+				const namedNodes = [...this.nodes.entries()]
+					.filter(([nodePath]) => nodePath.startsWith(namedPrefix))
+					.map(([, node]) => node)
+					.filter(node => selector === "textarea"
+						? node.tagName === "TEXTAREA"
+						: node.tagName !== "TEXTAREA");
+				if (namedNodes.length > 0) return namedNodes;
+			}
 			const seeds = this.listSeeds.get(selector) ?? this.listSeeds.get(path) ?? (seedAll ? [{}] : null);
 			if (!seeds) return [];
 			return seeds.map((seed, index) => {
@@ -398,6 +412,7 @@ export function installAppGlobals({ dom = makeSelectorDom(), applications = {} }
 	// Keep whatever installCanvasGlobals put on foundry.utils / foundry.data.
 	const utils = globalThis.foundry?.utils ?? {};
 	const data = globalThis.foundry?.data ?? {};
+	utils.debounce ??= fn => fn;
 
 	class StubApplicationV2 {
 		static DEFAULT_OPTIONS = {};
@@ -405,7 +420,13 @@ export function installAppGlobals({ dom = makeSelectorDom(), applications = {} }
 		static PARTS = {};
 
 		constructor(options = {}) {
-			this.options = options;
+			const defaults = this.constructor.DEFAULT_OPTIONS || {};
+			this.options = {
+				...defaults,
+				...options,
+				position: { ...(defaults.position || {}), ...(options.position || {}) },
+				window: { ...(defaults.window || {}), ...(options.window || {}) },
+			};
 			this.renderCount = 0;
 			this.closeCount = 0;
 		}

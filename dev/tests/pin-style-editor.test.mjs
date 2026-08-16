@@ -37,14 +37,26 @@ const FORM = `${ROOT} form`;
  * `fields` seeds form inputs by name; anything not named still resolves to a
  * node, but with an empty value, which is how the defaults get exercised.
  */
-function makeEditor({ fields = {}, absent = [], lists = {}, seedAll = false, pinId = null } = {}) {
-	const editorDom = makeSelectorDom({ absent, lists, seedAll });
+function makeEditor({ fields = {}, absent = [], lists = {}, seedAll = false, coalesceFormControls = false, pinId = null } = {}) {
+	const editorDom = makeSelectorDom({ absent, lists, seedAll, coalesceFormControls });
 	globalThis.document = editorDom.document;
 	const app = Object.create(PinStyleEditorApp.prototype);
 	app.element = editorDom.node(ROOT);
 	app.pinId = pinId;
+	const previewPin = editorDom.node(`${ROOT} .preview-pin`);
+	const mediaBody = editorDom.node(`${ROOT} .preview-pin .preview-media-body`);
+	const mediaTint = editorDom.node(`${ROOT} .preview-pin .preview-media-body .preview-media-tint`);
+	const mediaRing = editorDom.node(`${ROOT} .preview-pin .preview-media-ring`);
+	mediaBody.parentElement = previewPin;
+	mediaTint.parentElement = mediaBody;
+	mediaRing.parentElement = previewPin;
+	// The production query starts at .preview-pin and asks for the descendant
+	// class; alias that lookup to the explicitly modeled nested template node.
+	editorDom.nodes.set(`${ROOT} .preview-pin .preview-media-tint`, mediaTint);
+	editorDom.nodes.set(`${ROOT} .preview-pin .preview-media-ring`, mediaRing);
 	for (const [name, value] of Object.entries(fields)) {
 		const node = editorDom.node(`${FORM} [name="${name}"]`);
+		node.tagName = name === "labelText" ? "TEXTAREA" : "INPUT";
 		if (typeof value === "boolean") node.checked = value;
 		else node.value = value;
 	}
@@ -83,6 +95,7 @@ const BINDINGS = [
 	`${FORM} input, select[0] :: change`,
 	`${FORM} input[type="color"][0] :: input`,
 	`${FORM} input[type="range"][0] :: input`,
+	`${FORM} textarea[0] :: input`,
 ];
 
 test("a render binds exactly this set of selectors and events", () => {
@@ -300,11 +313,15 @@ test("opacity is read from the panel belonging to the selected shape", () => {
 
 /** Render a preview for a style and hand back the element it wrote to. */
 async function preview(fields) {
-	const { app, dom: d } = makeEditor({ fields });
+	const { app, dom: d } = makeEditor({ fields, coalesceFormControls: true });
 	const pin = d.node(`${ROOT} .preview-pin`);
+	const media = d.node(`${ROOT} .preview-pin .preview-media-body`);
+	const tint = d.node(`${ROOT} .preview-pin .preview-media-body .preview-media-tint`);
+	const ring = d.node(`${ROOT} .preview-pin .preview-media-ring`);
 	const content = d.node(`${ROOT} .preview-pin .preview-content`);
-	await app._updatePreview();
-	return { pin, content, dom: d };
+	app._onRender({}, {});
+	await Promise.all(d.node(`${FORM} [name="shape"]`).dispatch("change"));
+	return { pin, media, tint, ring, content, dom: d };
 }
 
 test("nothing is drawn when the dialog has no preview canvas", async () => {
@@ -325,10 +342,11 @@ test("the preview box takes its size from the form", async () => {
 
 /** Preview with the panel-scoped opacity input the shape actually reads. */
 async function previewWithOpacity(fields, { panel = ".standard-style-options", opacity } = {}) {
-	const { app, dom: d } = makeEditor({ fields });
+	const { app, dom: d } = makeEditor({ fields, coalesceFormControls: true });
 	if (opacity !== undefined) d.node(`${FORM} ${panel} [name="opacity"]`).value = opacity;
 	const pin = d.node(`${ROOT} .preview-pin`);
-	await app._updatePreview();
+	app._onRender({}, {});
+	await Promise.all(d.node(`${FORM} [name="shape"]`).dispatch("change"));
 	return { pin, dom: d };
 }
 
@@ -397,31 +415,456 @@ test("each shape sets its own radius, rotation and clip path", async () => {
 });
 
 test("an image shape drops its own fill and border in favour of the picture", async () => {
-	const { pin } = await preview({ shape: "image", imagePath: "worlds/test/pin.webp" });
+	const { pin, media } = await preview({ shape: "image", imagePath: "worlds/test/pin.webp" });
 
 	assert.equal(pin.style.backgroundColor, "transparent");
 	assert.equal(pin.style.border, "none");
-	assert.equal(pin.style.backgroundImage, 'url("worlds/test/pin.webp")');
-	assert.equal(pin.style.backgroundSize, "contain");
+	assert.equal(media.style.backgroundColor, "transparent");
+	assert.equal(media.style.border, "none");
+	assert.equal(media.style.backgroundImage, 'url("worlds/test/pin.webp")');
+	assert.equal(media.style.backgroundSize, "contain");
 });
 
 test("an image shape with no path shows a dashed placeholder instead", async () => {
-	const { pin } = await preview({ shape: "image" });
+	const { pin, media } = await preview({ shape: "image" });
 
+	assert.equal(pin.style.backgroundColor, "transparent");
+	assert.equal(pin.style.border, "none");
+	assert.equal(media.style.backgroundImage, "none");
+	assert.equal(media.style.border, "1px dashed #666");
+});
+
+test("changing the rendered shape control clears media preview state", async () => {
+	const { app, dom: d } = makeEditor({
+		fields: { shape: "image", imagePath: "worlds/test/pin.webp" },
+		seedAll: true,
+		coalesceFormControls: true,
+	});
+	app._onRender({}, {});
+	await Promise.resolve();
+
+	const pin = d.node(`${ROOT} .preview-pin`);
+	const media = d.node(`${ROOT} .preview-pin .preview-media-body`);
+	const tint = d.node(`${ROOT} .preview-pin .preview-media-body .preview-media-tint`);
+	const ring = d.node(`${ROOT} .preview-pin .preview-media-ring`);
+	assert.equal(media.style.backgroundImage, 'url("worlds/test/pin.webp")');
+	assert.equal(pin.listeners.get("mouseenter")?.length, 1);
+	assert.equal(pin.listeners.get("mouseleave")?.length, 1);
+	let rebuilds = 0;
+	const updatePreview = app._updatePreview;
+	app._updatePreview = async function countShapeRebuild() {
+		rebuilds += 1;
+		return updatePreview.call(this);
+	};
+
+	const shape = d.node(`${FORM} [name="shape"]`);
+	shape.value = "circle";
+	assert.equal(shape.listeners.get("change")?.length, 2,
+		"the coalesced rendered shape owns generic preview and visibility listeners");
+	await Promise.all(shape.dispatch("change"));
+	assert.equal(rebuilds, 1, "one rendered shape event rebuilds the preview once");
+
+	assert.equal(media.style.backgroundImage, "none");
+	assert.equal(media.style.backgroundSize, "initial");
+	assert.equal(media.style.backgroundRepeat, "initial");
+	assert.equal(media.style.backgroundPosition, "initial");
+	assert.equal(tint.style.display, "none");
+	assert.equal(tint.style.backgroundColor, "transparent");
+	assert.equal(tint.style.backgroundImage, "none");
+	assert.equal(tint.style.backgroundSize, "initial");
+	assert.equal(tint.style.backgroundPosition, "initial");
+	assert.equal(tint.style.backgroundRepeat, "initial");
+	assert.equal(tint.style.maskImage, "none");
+	assert.equal(tint.style.webkitMaskImage, "none");
+	assert.equal(ring.style.display, "none");
+	assert.equal(ring.style.outline, "none");
+	assert.equal(ring.style.outlineOffset, "0px");
+	assert.equal(ring.style.borderRadius, "0");
+	assert.equal(media.style.borderRadius, "0");
+	assert.equal(media.style.opacity, "1");
+	assert.equal(media.style.overflow, "visible");
+	assert.equal(pin.style.opacity, "1");
 	assert.equal(pin.style.backgroundImage, "none");
-	assert.equal(pin.style.border, "1px dashed #666");
+	assert.equal(pin.style.backgroundSize, "initial");
+	assert.equal(pin.style.backgroundPosition, "initial");
+	assert.equal(pin.style.backgroundRepeat, "initial");
+	assert.equal(pin._sdxHoverHandlers, null);
+	assert.equal(pin.listeners.get("mouseenter")?.length, 0);
+	assert.equal(pin.listeners.get("mouseleave")?.length, 0);
+});
+
+test("an image preview renders common content and labels from the shared shape event", async () => {
+	const { app, dom: d } = makeEditor({
+		fields: {
+			shape: "image",
+			imagePath: "worlds/test/pin.webp",
+			contentType: "none",
+			labelText: "Gate",
+			labelBackground: "solid",
+		},
+		coalesceFormControls: true,
+	});
+	const content = d.node(`${ROOT} .preview-pin .preview-content`);
+	const label = d.node(`${ROOT} .pin-preview-canvas .preview-label`);
+	content.textContent = "3";
+	label.textContent = "Label Name";
+
+	app._onRender({}, {});
+	const shape = d.node(`${FORM} [name="shape"]`);
+	assert.equal(d.bindings.filter(binding => binding.selector === shape.path && binding.event === "change").length, 2,
+		"the rendered shape owns generic preview and visibility listeners");
+	await Promise.all(shape.dispatch("change"));
+
+	assert.equal(content.textContent, "", "none removes the template-seeded sample content");
+	assert.equal(label.style.display, "flex", "image bodies still run common label preview handling");
+});
+
+test("image previews keep the renderer's common content overlay semantics", async () => {
+	const cases = [
+		{
+			name: "text",
+			fields: { contentType: "text", customText: "Room 7" },
+			assertContent: content => assert.equal(content.textContent, "Room 7"),
+		},
+		{
+			name: "symbol",
+			fields: { contentType: "symbol", symbolClass: "fa-solid fa-skull" },
+			assertContent: content => assert.equal(content.innerHTML, '<i class="fa-solid fa-skull"></i>'),
+		},
+		{
+			name: "custom icon",
+			fields: { contentType: "customIcon", customIconPath: "modules/test/gate.svg" },
+			assertContent: content => assert.match(content.innerHTML, /preview-custom-icon/),
+		},
+	];
+
+	for (const testCase of cases) {
+		const { app, dom: d } = makeEditor({
+			fields: {
+				shape: "image",
+				imagePath: "worlds/test/pin.webp",
+				...testCase.fields,
+			},
+			coalesceFormControls: true,
+		});
+		const content = d.node(`${ROOT} .preview-pin .preview-content`);
+		app._onRender({}, {});
+		const shape = d.node(`${FORM} [name="shape"]`);
+		await Promise.all(shape.dispatch("change"));
+		testCase.assertContent(content);
+	}
+});
+
+test("media preview applies the renderer's base tint and opacity controls", async () => {
+	for (const fields of [
+		{ shape: "image", imagePath: "worlds/test/pin.webp", imageTint: "#123456" },
+		{ shape: "icon", iconShapePath: "modules/test/outer.svg", iconShapeTint: "#654321" },
+	]) {
+		const { app, dom: d } = makeEditor({ fields, coalesceFormControls: true });
+		d.node(`${FORM} .image-opacity-option [name="opacity"]`).value = "0.5";
+		app._onRender({}, {});
+		const shape = d.node(`${FORM} [name="shape"]`);
+		await Promise.all(shape.dispatch("change"));
+		const pin = d.node(`${ROOT} .preview-pin`);
+		const tint = d.node(`${ROOT} .preview-pin .preview-media-body .preview-media-tint`);
+
+		assert.equal(pin.style.opacity, "1");
+		assert.equal(d.node(`${ROOT} .preview-pin .preview-media-body`).style.opacity, "0.5");
+		assert.match(tint.style.backgroundImage, /^linear-gradient\(/);
+		assert.equal(tint.style.backgroundBlendMode, "multiply");
+		assert.equal(tint.style.display, "block");
+		assert.match(tint.style.maskImage, /^url\(/);
+	}
+});
+
+test("media preview hover leave restores the base tint", async () => {
+	const { app, dom: d } = makeEditor({
+		fields: {
+			shape: "image",
+			imagePath: "worlds/test/pin.webp",
+			imageTint: "#123456",
+			hoverAnimation: "highlight",
+			hoverImageTint: "#ff0000",
+		},
+		coalesceFormControls: true,
+	});
+	app._onRender({}, {});
+	const shape = d.node(`${FORM} [name="shape"]`);
+	await Promise.all(shape.dispatch("change"));
+	const pin = d.node(`${ROOT} .preview-pin`);
+	const tint = d.node(`${ROOT} .preview-pin .preview-media-body .preview-media-tint`);
+	const media = d.node(`${ROOT} .preview-pin .preview-media-body`);
+	const baseRadius = media.style.borderRadius;
+
+	await Promise.all(pin.dispatch("mouseenter"));
+	assert.match(tint.style.backgroundImage, /#ff0000/);
+	await Promise.all(pin.dispatch("mouseleave"));
+	assert.match(tint.style.backgroundImage, /#123456/);
+	assert.equal(media.style.borderRadius, baseRadius);
+});
+
+test("media hover tint activates with a white or empty base tint", async () => {
+	for (const fields of [
+		{ shape: "image", imagePath: "worlds/test/pin.webp" },
+		{ shape: "icon", iconShapePath: "modules/test/body.svg", iconShapeTint: "#ffffff" },
+	]) {
+		const { app, dom: d } = makeEditor({
+			fields: { ...fields, hoverAnimation: "highlight", hoverImageTint: "#00ff00" },
+			coalesceFormControls: true,
+		});
+		app._onRender({}, {});
+		const pin = d.node(`${ROOT} .preview-pin`);
+		const tint = d.node(`${ROOT} .preview-pin .preview-media-body .preview-media-tint`);
+		await Promise.all(d.node(`${FORM} [name="shape"]`).dispatch("change"));
+		assert.equal(tint.style.display, "block");
+		assert.match(tint.style.backgroundImage, /#ffffff/);
+		await Promise.all(pin.dispatch("mouseenter"));
+		assert.match(tint.style.backgroundImage, /#00ff00/);
+		await Promise.all(pin.dispatch("mouseleave"));
+		assert.match(tint.style.backgroundImage, /#ffffff/);
+	}
+});
+
+test("media composites have no geometric backing and only show the hover ring", async () => {
+	for (const fields of [
+		{
+			shape: "image", imagePath: "modules/test/transparent.svg", imageTint: "#123456",
+			hoverAnimation: "highlight", hoverImageTint: "#ff0000", hoverRingWidth: "4",
+		},
+		{
+			shape: "icon", iconShapePath: "modules/test/transparent.svg", iconShapeTint: "#123456",
+			hoverAnimation: "highlight", hoverImageTint: "#ff0000", hoverRingWidth: "4",
+		},
+	]) {
+		const { app, dom: d } = makeEditor({ fields, coalesceFormControls: true });
+		const pin = d.node(`${ROOT} .preview-pin`);
+		const media = d.node(`${ROOT} .preview-pin .preview-media-body`);
+		const ring = d.node(`${ROOT} .preview-pin .preview-media-ring`);
+		const content = d.node(`${ROOT} .preview-pin .preview-content`);
+		media.parentElement = pin;
+		content.parentElement = pin;
+		pin.children = [media, content];
+		assert.deepEqual(pin.children, [media, content], "test models the rendered template composite");
+		app._onRender({}, {});
+		await Promise.all(d.node(`${FORM} [name="shape"]`).dispatch("change"));
+		assert.equal(pin.style.backgroundColor, "transparent");
+		assert.equal(pin.style.border, "none");
+		await Promise.all(pin.dispatch("mouseenter"));
+		assert.equal(ring.style.outline, "4px solid #ff0000");
+		assert.equal(ring.style.borderRadius, "10px");
+		await Promise.all(pin.dispatch("mouseleave"));
+		assert.equal(ring.style.outline, "none");
+		assert.equal(ring.style.borderRadius, "0");
+		assert.equal(media.style.borderRadius, "0");
+	}
+});
+
+test("rendered label controls update text and typography without a background frame", async () => {
+	const { app, dom: d } = makeEditor({
+		fields: {
+			labelText: "Vault",
+			labelFontFamily: "Georgia",
+			labelFontSize: "22",
+			labelColor: "#ffcc00",
+			labelStroke: "#110000",
+			labelStrokeThickness: "2",
+			labelBold: true,
+			labelItalic: true,
+			labelBackground: "none",
+		},
+		coalesceFormControls: true,
+	});
+	const label = d.node(`${ROOT} .pin-preview-canvas .preview-label`);
+	label.textContent = "Label Name";
+	app._onRender({}, {});
+
+	const labelText = d.node(`${FORM} [name="labelText"]`);
+	assert.equal(d.bindings.filter(binding => binding.selector === labelText.path && binding.event === "input").length, 1);
+	await Promise.all(labelText.dispatch("input"));
+
+	assert.equal(label.textContent, "Vault");
+	assert.equal(label.style.display, "flex", "a label remains visible without a background");
+	assert.equal(label.style.fontFamily, "Georgia");
+	assert.equal(label.style.fontSize, "22px");
+	assert.equal(label.style.color, "#ffcc00");
+	assert.equal(label.style.fontWeight, "bold");
+	assert.equal(label.style.fontStyle, "italic");
+	assert.equal(label.style.webkitTextStroke, "2px #110000");
+	assert.equal(label.style.opacity, "1");
+	assert.equal(label.style.border, "none");
+});
+
+test("label background modes reset stale frames and keep opacity off the text", async () => {
+	const { app, dom: d } = makeEditor({
+		fields: {
+			labelText: "Gate",
+			labelBackground: "solid",
+			labelBackgroundColor: "#102030",
+			labelBackgroundOpacity: "0.4",
+			labelImageBackgroundColor: "#102030",
+			labelBorderImagePath: "",
+			labelBorderColor: "#ffffff",
+			labelBorderWidth: "2",
+			labelBorderRadius: "6",
+		},
+		coalesceFormControls: true,
+	});
+	const label = d.node(`${ROOT} .pin-preview-canvas .preview-label`);
+	app._onRender({}, {});
+
+	assert.equal(label.style.backgroundColor, "rgba(16, 32, 48, 0.4)");
+	assert.equal(label.style.opacity, "1", "solid background opacity must not fade label text");
+	assert.equal(label.style.border, "2px solid #ffffff");
+
+	const background = d.node(`${FORM} [name="labelBackground"]`);
+	const imagePath = d.node(`${FORM} [name="labelBorderImagePath"]`);
+	const imageOpacity = d.node(`${FORM} [name="labelImageBackgroundOpacity"]`);
+	background.value = "image";
+	imageOpacity.value = "0.6";
+	imagePath.value = "";
+	await Promise.all(background.dispatch("change"));
+
+	assert.equal(label.textContent, "Gate");
+	assert.equal(label.style.display, "flex");
+	assert.equal(label.style.border, "none", "an empty image path has no stale solid frame");
+	assert.equal(label.style.borderImageSource, "none");
+	assert.equal(label.style.opacity, "1");
+	assert.equal(label.style.backgroundColor, "transparent", "empty image paths fall back to text without a frame");
+
+	imagePath.value = "modules/test/frame.png";
+	await Promise.all(imagePath.dispatch("change"));
+	assert.equal(label.style.borderImageSource, 'url("modules/test/frame.png")');
+	assert.equal(label.style.backgroundColor, "rgba(16, 32, 48, 0.6)");
+
+	background.value = "none";
+	await Promise.all(background.dispatch("change"));
+	assert.equal(label.style.display, "flex");
+	assert.equal(label.style.backgroundColor, "transparent");
+	assert.equal(label.style.border, "none");
+	assert.equal(label.style.borderImageSource, "none");
+	assert.equal(label.style.opacity, "1");
+});
+
+test("label hover visibility is expressed by the rendered preview control", async () => {
+	const { app, dom: d } = makeEditor({
+		fields: { labelText: "Whisper", labelShowOnHover: true, labelBackground: "none" },
+		coalesceFormControls: true,
+	});
+	const label = d.node(`${ROOT} .pin-preview-canvas .preview-label`);
+	const pin = d.node(`${ROOT} .preview-pin`);
+	app._onRender({}, {});
+
+	assert.equal(label.style.display, "none", "hover-only labels start hidden in the preview");
+	await Promise.all(pin.dispatch("mouseenter"));
+	assert.equal(label.style.display, "flex");
+	await Promise.all(pin.dispatch("mouseleave"));
+	assert.equal(label.style.display, "none");
+
+	await Promise.all(d.node(`${FORM} [name="labelText"]`).dispatch("input"));
+	await Promise.all(d.node(`${FORM} [name="labelText"]`).dispatch("input"));
+	assert.equal(pin.listeners.get("mouseenter")?.length, 1);
+	assert.equal(pin.listeners.get("mouseleave")?.length, 1);
+});
+
+test("label anchors are positioned from the preview canvas, not sibling flex flow", async () => {
+	const cases = [
+		["center", "translate(-50%, -50%)", 0],
+		["top", "translate(-50%, calc(-100% - 25px))", 25],
+		["bottom", "translate(-50%, 25px)", 25],
+		["left", "translate(calc(-100% - 25px), -50%)", 25],
+		["right", "translate(25px, -50%)", 25],
+	];
+	for (const [anchor, expectedTransform, gap] of cases) {
+		const { app, dom: d } = makeEditor({ fields: {
+			labelText: "Vault", labelAnchor: anchor, labelOffset: "5", size: "40",
+		}, coalesceFormControls: true });
+		app._onRender({}, {});
+		await Promise.all(d.node(`${FORM} [name="labelAnchor"]`).dispatch("change"));
+		const label = d.node(`${ROOT} .pin-preview-canvas .preview-label`);
+		// This is the independent edge-origin contract: the browser resolves the
+		// percentage component from the label's own dimensions, then adds gap.
+		assert.equal(label.style.position, "absolute");
+		assert.equal(label.style.left, "50%");
+		assert.equal(label.style.top, "50%");
+		assert.equal(label.style.transform, expectedTransform, anchor);
+		assert.equal(gap, anchor === "center" ? 0 : 25);
+	}
+});
+
+test("label anchor contract preserves positive and negative edge clearances", async () => {
+	for (const [anchor, offset, expectedGap] of [
+		["top", 5, 25], ["bottom", 5, 25], ["left", 5, 25], ["right", 5, 25],
+		["top", -5, 15], ["bottom", -5, 15], ["left", -5, 15], ["right", -5, 15],
+	]) {
+		const { app, dom: d } = makeEditor({ fields: {
+			labelText: "Vault", labelAnchor: anchor, labelOffset: String(offset), size: "40",
+		}, coalesceFormControls: true });
+		app._onRender({}, {});
+		await Promise.all(d.node(`${FORM} [name="labelOffset"]`).dispatch("input"));
+		const transform = d.node(`${ROOT} .pin-preview-canvas .preview-label`).style.transform;
+		assert.match(transform, new RegExp(`${expectedGap}px`), `${anchor} offset ${offset}`);
+		assert.match(transform, /-100%|25px|15px/);
+	}
+});
+
+test("icon hover highlight uses hoverImageTint and restores iconShapeTint", async () => {
+	const { app, dom: d } = makeEditor({ fields: {
+		shape: "icon", iconShapePath: "modules/test/body.svg", iconShapeTint: "#123456",
+		hoverAnimation: "highlight", hoverImageTint: "#ff0000",
+	}, coalesceFormControls: true });
+	app._onRender({}, {});
+	await Promise.all(d.node(`${FORM} [name="shape"]`).dispatch("change"));
+	const pin = d.node(`${ROOT} .preview-pin`);
+	const tint = d.node(`${ROOT} .preview-pin .preview-media-body .preview-media-tint`);
+	await Promise.all(pin.dispatch("mouseenter"));
+	assert.match(tint.style.backgroundImage, /#ff0000/);
+	await Promise.all(pin.dispatch("mouseleave"));
+	assert.match(tint.style.backgroundImage, /#123456/);
+});
+
+test("custom-icon preview masks the asset with iconColor", async () => {
+	const { app, dom: d } = makeEditor({
+		fields: { contentType: "customIcon", customIconPath: "modules/test/gate.svg", iconColor: "#abcdef" },
+		coalesceFormControls: true,
+	});
+	app._onRender({}, {});
+	await Promise.all(d.node(`${FORM} [name="customIconPath"]`).dispatch("input"));
+	const content = d.node(`${ROOT} .preview-pin .preview-content`);
+	const icon = content.querySelector(".preview-custom-icon");
+	assert.equal(icon.style.backgroundColor, "#abcdef");
+	assert.equal(icon.style.maskImage, 'url("modules/test/gate.svg")');
+});
+
+test("label image paths trim whitespace and preserve all four slice values", async () => {
+	const { app, dom: d } = makeEditor({ fields: {
+		labelText: "Vault", labelBackground: "image", labelBorderImagePath: "  modules/test/frame.png  ",
+		labelBorderSliceTop: "11", labelBorderSliceRight: "22", labelBorderSliceBottom: "33", labelBorderSliceLeft: "44",
+	}, coalesceFormControls: true });
+	app._onRender({}, {});
+	await Promise.all(d.node(`${FORM} [name="labelBackground"]`).dispatch("change"));
+	const label = d.node(`${ROOT} .pin-preview-canvas .preview-label`);
+	assert.equal(label.style.borderImageSource, 'url("modules/test/frame.png")');
+	assert.equal(label.style.borderImageSlice, "11 22 33 44 fill");
 });
 
 test("an icon body renders a second custom icon as its content overlay", async () => {
-	const { pin, content } = await preview({
-		shape: "icon",
-		iconShapePath: "modules/test/outer.svg",
-		contentType: "customIcon",
-		customIconPath: "modules/test/inner.svg",
+	const { app, dom: d } = makeEditor({
+		fields: {
+			shape: "icon",
+			iconShapePath: "modules/test/outer.svg",
+			contentType: "customIcon",
+			customIconPath: "modules/test/inner.svg",
+		},
+		coalesceFormControls: true,
 	});
+	app._onRender({}, {});
+	await Promise.all(d.node(`${FORM} [name="customIconPath"]`).dispatch("input"));
+	const media = d.node(`${ROOT} .preview-pin .preview-media-body`);
+	const content = d.node(`${ROOT} .preview-pin .preview-content`);
 
-	assert.equal(pin.style.backgroundImage, 'url("modules/test/outer.svg")');
-	assert.match(content.innerHTML, /modules\/test\/inner\.svg/);
+	assert.equal(media.style.backgroundImage, 'url("modules/test/outer.svg")');
+	assert.equal(content.querySelector(".preview-custom-icon").style.maskImage,
+		'url("modules/test/inner.svg")');
 });
 
 test("a symbol renders as a FontAwesome element at half the pin size", async () => {
@@ -461,25 +904,34 @@ test("font styling reaches the preview content", async () => {
 	assert.equal(content.style.webkitTextStroke, "2px #123456");
 });
 
-// A custom icon path is chosen by the user and interpolated into an
-// <img src="…">, so a double quote in it would otherwise close the attribute
-// and let what follows parse as markup.
-test("a custom icon path is escaped before it reaches the src attribute", async () => {
-	const { content } = await preview({
-		contentType: "customIcon", customIconPath: 'a.svg" onerror="alert(1)',
+// A custom icon path is used in a CSS mask URL, so it must be escaped before
+// it reaches the generated preview markup.
+test("a custom icon path is serialized as a CSS URL without HTML escaping", async () => {
+	const { app, dom: d } = makeEditor({
+		fields: { contentType: "customIcon", customIconPath: 'a.svg" onerror="alert(1)' },
+		coalesceFormControls: true,
 	});
+	app._onRender({}, {});
+	await Promise.all(d.node(`${FORM} [name="customIconPath"]`).dispatch("input"));
+	const content = d.node(`${ROOT} .preview-pin .preview-content`);
 
-	assert.ok(!content.innerHTML.includes('onerror="alert(1)"'),
-		"the quote must not break out of the attribute");
-	assert.ok(content.innerHTML.includes("&quot;"), "it is escaped, not stripped");
+	const mask = content.querySelector(".preview-custom-icon").style.maskImage;
+	assert.ok(!mask.includes("&quot;") && !content.innerHTML.includes("onerror"),
+		"CSS URL context must not use HTML escaping or create markup");
+	assert.match(mask, /a\.svg\\" onerror=\\"alert\(1\)/);
 });
 
-test("an ordinary icon path survives escaping unchanged", async () => {
-	const { content } = await preview({
-		contentType: "customIcon", customIconPath: "modules/shadowdark-extras/assets/icons/inn.svg",
+test("an ordinary icon path with spaces and ampersand survives CSS serialization", async () => {
+	const { app, dom: d } = makeEditor({
+		fields: { contentType: "customIcon", customIconPath: "modules/test/a&b space.svg" },
+		coalesceFormControls: true,
 	});
+	app._onRender({}, {});
+	await Promise.all(d.node(`${FORM} [name="customIconPath"]`).dispatch("input"));
+	const content = d.node(`${ROOT} .preview-pin .preview-content`);
 
-	assert.ok(content.innerHTML.includes('src="modules/shadowdark-extras/assets/icons/inn.svg"'));
+	assert.equal(content.querySelector(".preview-custom-icon").style.maskImage,
+		'url("modules/test/a&b space.svg")');
 });
 
 test("a custom icon with no path falls back to a placeholder glyph", async () => {

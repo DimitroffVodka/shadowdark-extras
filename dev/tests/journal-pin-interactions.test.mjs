@@ -197,14 +197,14 @@ test("hovering shows the tooltip by default", () => {
 	assert.equal(tooltip.shown, 1);
 });
 
-test("hideTooltip is honored from the pin or from its style", () => {
+test("hideTooltip is individual pin metadata, never a style fallback", () => {
 	reset();
 	makePin({ hideTooltip: true })._onPointerEnter(makePointerEvent());
 	assert.equal(tooltip.shown, 0, "pin-level flag ignored");
 
 	reset();
-	makePin({ style: { hideTooltip: true } })._onPointerEnter(makePointerEvent());
-	assert.equal(tooltip.shown, 0, "style-level flag ignored");
+	makePin({ hideTooltip: false, style: { hideTooltip: true } })._onPointerEnter(makePointerEvent());
+	assert.equal(tooltip.shown, 1, "style-level value overrode explicit pin metadata");
 });
 
 test("hoverAnimation true is treated as scale, and absent as none", () => {

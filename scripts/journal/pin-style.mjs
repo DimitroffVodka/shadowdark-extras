@@ -74,7 +74,6 @@ export const DEFAULT_PIN_STYLE = {
 	// Hover tooltip popup text sizes (px)
 	tooltipTitleFontSize: 17,
 	tooltipContentFontSize: 13,
-	hideTooltip: false,
 };
 
 /**

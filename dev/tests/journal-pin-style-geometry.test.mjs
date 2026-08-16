@@ -106,7 +106,8 @@ test("DEFAULT_PIN_STYLE keeps the documented shape and content defaults", () => 
 	assert.equal(DEFAULT_PIN_STYLE.ringWidth, 3);
 	assert.equal(DEFAULT_PIN_STYLE.ringStyle, "solid");
 	assert.equal(DEFAULT_PIN_STYLE.fitToHexGrid, false);
-	assert.equal(DEFAULT_PIN_STYLE.hideTooltip, false);
+	assert.equal(Object.hasOwn(DEFAULT_PIN_STYLE, "hideTooltip"), false,
+		"individual pin metadata does not leak into shared style defaults");
 });
 
 test("getPinStyle layers stored settings over the defaults", () => {

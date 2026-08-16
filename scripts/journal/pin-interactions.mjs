@@ -75,8 +75,9 @@ export function onPointerEnter(pin, event) {
 	if (!_ps.hoverImageTint) style.hoverImageTint = _gs.hoverImageTint;
 	if (!_ps.hoverRingColor) style.hoverRingColor = _gs.hoverRingColor;
 	if (_ps.hoverRingWidth == null || String(_ps.hoverRingWidth) === "" || (style.hoverAnimation === "highlight" && Number(_ps.hoverRingWidth) === 0)) style.hoverRingWidth = _gs.hoverRingWidth;
-	// Also keep pinData flags at top-level level
-	const hideTooltip = pin.pinData.hideTooltip || style.hideTooltip || false;
+	// Tooltip visibility is per pin. Ignore stale values that old/programmatic
+	// world-style objects may still carry so an explicit per-pin false wins.
+	const hideTooltip = pin.pinData.hideTooltip ?? false;
 
 	if (!hideTooltip) {
 		JournalPinTooltip.show(pin.pinData, event);
@@ -185,7 +186,8 @@ export function onPointerEnter(pin, event) {
 
 export function onPointerLeave(pin, event) {
 	JournalPinTooltip.hide();
-	if (pin._labelContainer && pin.pinData.style?.labelShowOnHover) {
+	const effectiveStyle = { ...getPinStyle(), ...(pin.pinData.style || {}) };
+	if (pin._labelContainer && effectiveStyle.labelShowOnHover) {
 		pin._labelContainer.visible = false;
 	}
 

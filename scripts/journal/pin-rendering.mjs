@@ -646,35 +646,35 @@ export class JournalPinGraphics extends PIXI.Container {
 						path = style.labelBorderImagePath.trim();
 					}
 
-					if (!path) return;
+					if (path) {
+						const tex = await loadTexture(path);
+						if (tex) {
+							const sT = parseInt(style.labelBorderSliceTop) || 15;
+							const sR = parseInt(style.labelBorderSliceRight) || 15;
+							const sB = parseInt(style.labelBorderSliceBottom) || 15;
+							const sL = parseInt(style.labelBorderSliceLeft) || 15;
 
-					const tex = await loadTexture(path);
-					if (tex) {
-						const sT = parseInt(style.labelBorderSliceTop) || 15;
-						const sR = parseInt(style.labelBorderSliceRight) || 15;
-						const sB = parseInt(style.labelBorderSliceBottom) || 15;
-						const sL = parseInt(style.labelBorderSliceLeft) || 15;
+							// PIXI.NineSlicePlane(texture, leftWidth, topHeight, rightWidth,
+							// bottomHeight)
+							bg = new PIXI.NineSlicePlane(tex, sL, sT, sR, sB);
 
-						// PIXI.NineSlicePlane(texture, leftWidth, topHeight, rightWidth,
-						// bottomHeight)
-						bg = new PIXI.NineSlicePlane(tex, sL, sT, sR, sB);
+							// The background size should cover the text plus padding
+							bg.width = labelText.width + (padX * 4);
+							bg.height = labelText.height + (padY * 4);
 
-						// The background size should cover the text plus padding
-						bg.width = labelText.width + (padX * 4);
-						bg.height = labelText.height + (padY * 4);
+							// Create optional background color behind the image
+							const colorVal = style.labelBackgroundColor;
+							// Check if opacity is > 0
+							if (style.labelBackgroundOpacity > 0) {
+								bgColorGraphic = new PIXI.Graphics();
+								const bgColor = typeof Color !== "undefined" ? Color.from(colorVal || "#000000") : (colorVal || "#000000");
+								bgColorGraphic.beginFill(bgColor, style.labelBackgroundOpacity);
 
-						// Create optional background color behind the image
-						const colorVal = style.labelBackgroundColor;
-						// Check if opacity is > 0
-						if (style.labelBackgroundOpacity > 0) {
-							bgColorGraphic = new PIXI.Graphics();
-							const bgColor = typeof Color !== "undefined" ? Color.from(colorVal || "#000000") : (colorVal || "#000000");
-							bgColorGraphic.beginFill(bgColor, style.labelBackgroundOpacity);
-
-							// Fill slightly smaller than the full border to fit inside
-							// For a complex border, a simple rect is often best "behind" it.
-							bgColorGraphic.drawRect(0, 0, bg.width, bg.height);
-							bgColorGraphic.endFill();
+								// Fill slightly smaller than the full border to fit inside
+								// For a complex border, a simple rect is often best "behind" it.
+								bgColorGraphic.drawRect(0, 0, bg.width, bg.height);
+								bgColorGraphic.endFill();
+							}
 						}
 					}
 				}

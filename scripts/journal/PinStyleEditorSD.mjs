@@ -333,6 +333,12 @@ export class PinStyleEditorApp extends HandlebarsApplicationMixin(ApplicationV2)
 			input.addEventListener("change", async () => await this._updatePreview());
 		});
 
+		// Textareas are rendered controls too; update the preview while label text
+		// is being typed rather than waiting for focus to leave the field.
+		form.querySelectorAll("textarea").forEach(textarea => {
+			textarea.addEventListener("input", async () => await this._updatePreview());
+		});
+
 		// Range sliders - show value and update preview on input
 		form.querySelectorAll('input[type="range"]').forEach(input => {
 			const valueDisplay = form.querySelector(`[data-for="${input.name}"]`);
