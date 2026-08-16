@@ -10,7 +10,8 @@
     border-image: var(--sdx-box-border) var(--sdx-box-border-image-slice, 40) fill !important;
     border-image-repeat: stretch !important;
     border-image-width: var(--sdx-box-border-image-width, 40px) !important;
-    max-height: 80vh !important;
+    /* Foundry's ApplicationV2 viewport cap must remain authoritative
+       so resizing can use the available screen. */
     transition: none !important;
     animation: none !important;
 }
@@ -38,7 +39,7 @@
     padding: 0 !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
-    max-height: 70vh !important;
+    /* The window frame owns the height; this flexing content area scrolls within it. */
 }
 
 /* Form Styles */
