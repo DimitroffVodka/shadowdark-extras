@@ -310,6 +310,18 @@ function tomContext(playerView) {
 	};
 }
 
+test("GM ToM tray tab renders its visible label as ToM", async () => {
+	const template = await readFile(new URL("templates/sdx-tray/tray.hbs", ROOT), "utf8");
+	const rendered = renderNodes(parseTemplate(template), [tomContext(false)]);
+	const scenesTab = rendered.match(/<button[^>]*data-view="scenes"[^>]*>[\s\S]*?<\/button>/)?.[0];
+	assert.ok(scenesTab, "the ToM tab should retain its scenes view navigation");
+
+	const visibleBody = scenesTab.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+	assert.equal(visibleBody, "ToM");
+	assert.match(scenesTab, /data-view="scenes"/);
+	assert.match(scenesTab, /title="Scenes View"/);
+});
+
 test("disabled ToM Player View removes broadcast affordances but preserves scene browsing and editor controls", async () => {
 	const template = await readFile(new URL("templates/sdx-tray/tray.hbs", ROOT), "utf8");
 	const rendered = renderSceneTemplate(template, tomContext(false));
