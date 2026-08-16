@@ -107,6 +107,10 @@ const FLOOR_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/floor_tiles`;
 const WALL_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/wall_tiles`;
 const DOOR_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/door_tiles`;
 const BG_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/backgrounds`;
+const DUNGEON_TILE_METADATA_KEY = "dungeon_tiles_metadata";
+// IndexedDB survives module upgrades. Bump this when shipped tile filenames or
+// the cached catalogue shape changes so every browser performs one fresh scan.
+const DUNGEON_TILE_CACHE_VERSION = 1;
 
 const GRID_SIZE = 100;
 const WALL_THICKNESS = 20;
@@ -213,10 +217,9 @@ export async function loadDungeonAssets() {
 	if (_floorTiles) return;
 
 	// Try to load from cache first
-	const metadataKey = "dungeon_tiles_metadata";
-	const cachedMetadata = await cache.getMetadata(metadataKey);
+	const cachedMetadata = await cache.getMetadata(DUNGEON_TILE_METADATA_KEY);
 
-	if (cachedMetadata) {
+	if (cachedMetadata?.version === DUNGEON_TILE_CACHE_VERSION) {
 		setFloorTiles(cachedMetadata.floorTiles || []);
 		setWallTiles(cachedMetadata.wallTiles || []);
 		setDoorTiles(cachedMetadata.doorTiles || []);
@@ -228,7 +231,8 @@ export async function loadDungeonAssets() {
 			if (freshBg.length !== _backgroundTiles.length
                 || freshBg.some((t, i) => t.path !== _backgroundTiles[i]?.path)) {
 				setBackgroundTiles(freshBg);
-				await cache.setMetadata(metadataKey, {
+				await cache.setMetadata(DUNGEON_TILE_METADATA_KEY, {
+					version: DUNGEON_TILE_CACHE_VERSION,
 					floorTiles: _floorTiles,
 					wallTiles: _wallTiles,
 					doorTiles: _doorTiles,
@@ -254,12 +258,21 @@ export async function loadDungeonAssets() {
 		setBackgroundTiles(await loadTilesFromFolder(BG_TILE_FOLDER, "background"));
 
 		// Save to cache
-		await cache.setMetadata(metadataKey, {
+		await cache.setMetadata(DUNGEON_TILE_METADATA_KEY, {
+			version: DUNGEON_TILE_CACHE_VERSION,
 			floorTiles: _floorTiles,
 			wallTiles: _wallTiles,
 			doorTiles: _doorTiles,
 			backgroundTiles: _backgroundTiles,
 		});
+	}
+	else {
+		// Players cannot browse module folders. Reject legacy metadata without
+		// leaving null catalogue state behind; a connected GM may fill it below.
+		setFloorTiles([]);
+		setWallTiles([]);
+		setDoorTiles([]);
+		setBackgroundTiles([]);
 	}
 
 	// If player couldn't load tiles (no browse permission), request from GM
@@ -272,6 +285,13 @@ export async function loadDungeonAssets() {
 				setWallTiles(tileData.wallTiles || []);
 				setDoorTiles(tileData.doorTiles || []);
 				setBackgroundTiles(tileData.backgroundTiles || []);
+				await cache.setMetadata(DUNGEON_TILE_METADATA_KEY, {
+					version: DUNGEON_TILE_CACHE_VERSION,
+					floorTiles: _floorTiles,
+					wallTiles: _wallTiles,
+					doorTiles: _doorTiles,
+					backgroundTiles: _backgroundTiles,
+				});
 				console.log(`${MODULE_ID} | Received tile list from GM: ${_floorTiles.length} floor, ${_wallTiles.length} wall, ${_doorTiles.length} door tiles`);
 			}
 		}
@@ -344,7 +364,7 @@ export async function reloadDungeonAssets() {
 	selectWallTile(null);
 	selectDoorTile(null);
 	// Clear cached metadata so loadDungeonAssets re-scans folders
-	await cache.setMetadata("dungeon_tiles_metadata", null);
+	await cache.setMetadata(DUNGEON_TILE_METADATA_KEY, null);
 	await loadDungeonAssets();
 }
 
