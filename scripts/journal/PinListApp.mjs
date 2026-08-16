@@ -2,6 +2,10 @@
  * Application for displaying a list of journal pins on the current scene
  */
 import { JournalPinManager, normalizeImageTint } from "./JournalPinsSD.mjs";
+// Imported from the module that owns it rather than through the JournalPinsSD
+// re-export, which is a fixed public surface.
+import { checkPinVisibility } from "./pin-manager.mjs";
+import { getPinJournalSubtitle, openPinTarget } from "./pin-access.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -46,28 +50,17 @@ export class PinListApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			return { pins: [], MODULE_ID };
 		}
 
-		// Get all pins for the current scene
-		const pins = JournalPinManager.list({ sceneId: canvas.scene.id });
+		// Get the pins for the current scene this user may see. A row carries the
+		// pin's name and opens its journal, so it is gated by the same predicate
+		// the canvas renderer uses.
+		const pins = JournalPinManager.list({ sceneId: canvas.scene.id })
+			.filter(pin => checkPinVisibility(pin));
 
 		// Enrich pin data
 		const enrichedPins = pins.map(pin => {
 			// Resolve display name honoring the pin's nameSource preference
 			let pinName = JournalPinManager.getDisplayName(pin);
-			let pageName = "";
-
-			// Subtitle: show "Journal • Page" when linked
-			if (pin.journalId) {
-				const journal = game.journal.get(pin.journalId);
-				if (journal) {
-					if (pin.pageId) {
-						const page = journal.pages.get(pin.pageId);
-						pageName = page ? `${journal.name} • ${page.name}` : journal.name;
-					}
-					else {
-						pageName = journal.name;
-					}
-				}
-			}
+			const pageName = getPinJournalSubtitle(pin);
 
 			// Determine Display Type & Content
 			const style = pin.style || {};
@@ -142,8 +135,9 @@ export class PinListApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			};
 		});
 
-		// Sort alphabetically
-		enrichedPins.sort((a, b) => a.name.localeCompare(b.name));
+		// Sort alphabetically, with digit runs compared as numbers so "Room 2"
+		// precedes "Room 10" instead of following it.
+		enrichedPins.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 
 		return { pins: enrichedPins, MODULE_ID };
 	}
@@ -164,6 +158,17 @@ export class PinListApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			if (!isNaN(x) && !isNaN(y)) {
 				canvas.animatePan({ x, y, scale: 1.5, duration: 500 });
 			}
+		});
+
+		// Open the linked journal/page. On double-click, so a single click keeps
+		// panning to the pin.
+		html.addEventListener("dblclick", ev => {
+			const entry = ev.target.closest(".pin-entry");
+			if (!entry) return;
+			// A row control clicked twice is still that control, not the row.
+			if (ev.target.closest(".pin-control")) return;
+			const pin = JournalPinManager.get(entry.dataset.id);
+			if (pin) openPinTarget(pin);
 		});
 	}
 

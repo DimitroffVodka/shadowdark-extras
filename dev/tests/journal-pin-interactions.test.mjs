@@ -28,6 +28,7 @@ const dom = installDom();
 const { JournalPinGraphics, JournalPinTooltip } =
 	await import("../../scripts/journal/pin-rendering.mjs");
 const { JournalPinManager } = await import("../../scripts/journal/pin-manager.mjs");
+const { openPinJournal } = await import("../../scripts/journal/pin-interactions.mjs");
 
 // --- collaborator interception ----------------------------------------------
 
@@ -52,9 +53,9 @@ JournalPinManager.hasCopiedStyle = () => hasCopiedStyle;
 
 // --- fixtures ---------------------------------------------------------------
 
-function makePin({ style = {}, hideTooltip, x = 100, y = 200, pageId, journalId = "j1" } = {}) {
+function makePin({ id = "pin-1", style = {}, hideTooltip, x = 100, y = 200, pageId, journalId = "j1" } = {}) {
 	const pin = new JournalPinGraphics({
-		id: "pin-1", journalId, pageId, x, y, style, hideTooltip,
+		id, journalId, pageId, x, y, style, hideTooltip,
 	});
 	pin.parent = new StubParent({ offsetX: 10, offsetY: 20 });
 	return pin;
@@ -73,6 +74,41 @@ function reset({ isGM = true } = {}) {
 	env.setGM(isGM);
 	env.setGsap(makeGsapRecorder());
 	return globalThis.gsap;
+}
+
+/**
+ * Drive Date.now() by hand. Pairing two releases into a double-click is timed,
+ * and the clock is an external boundary, so tests move it rather than wait on
+ * it. Always restore in a finally — every other test shares this global.
+ */
+const realDateNow = Date.now;
+function installClock(start = 1_000_000) {
+	let now = start;
+	Date.now = () => now;
+	return {
+		advance(ms) {
+			now += ms;
+		},
+		restore() {
+			Date.now = realDateNow;
+		},
+	};
+}
+
+/** One complete press-and-release on the pin, with no movement between. */
+async function pressAndRelease(pin) {
+	pin._onPointerDown(makePointerEvent({ button: 0 }));
+	await pin._onPointerUp(makePointerEvent());
+}
+
+function addReadableJournal(id, { pageIds = [] } = {}) {
+	const pages = new foundry.utils.Collection();
+	for (const pageId of pageIds) {
+		pages.set(pageId, { id: pageId, testUserPermission: () => true });
+	}
+	const journal = env.addJournal(id, { pages });
+	journal.testUserPermission = () => true;
+	return journal;
 }
 
 /** Labels of the context menu currently mounted, in order. */
@@ -101,7 +137,7 @@ test("setup subscribes exactly the five pointer events, bound to the pin", () =>
 	]);
 });
 
-test("teardown releases every listener, including the drag-only one", () => {
+test("teardown releases every listener, including press-scoped movement", () => {
 	reset();
 	const pin = makePin();
 	pin._setupEventListeners();
@@ -113,7 +149,7 @@ test("teardown releases every listener, including the drag-only one", () => {
 	assert.deepEqual(pin.listenerEvents(), []);
 });
 
-test("pointerup and pointerupoutside share one handler", () => {
+test("pointerupoutside ends an active drag just like pointerup", () => {
 	reset();
 	const pin = makePin();
 	pin._setupEventListeners();
@@ -123,6 +159,33 @@ test("pointerup and pointerupoutside share one handler", () => {
 	pin.emit("pointerupoutside", makePointerEvent());
 
 	assert.equal(pin._isDragging, false);
+});
+
+test("teardown clears an eligible player release before listeners are reattached", () => {
+	reset({ isGM: false });
+	addReadableJournal("j1");
+	const pin = makePin();
+	const clock = installClock();
+	pin._setupEventListeners();
+
+	try {
+		pin.emit("pointerdown", makePointerEvent({ button: 0 }));
+		pin.emit("pointerup", makePointerEvent({ button: 0 }));
+		pin._removeEventListeners();
+		assert.deepEqual(pin.listenerEvents(), []);
+
+		clock.advance(100);
+		pin._setupEventListeners();
+		pin.emit("pointerdown", makePointerEvent({ button: 0 }));
+		pin.emit("pointerup", makePointerEvent({ button: 0 }));
+
+		assert.equal(env.rendered.length, 0);
+		assert.equal(pin.listenerCount("globalpointermove"), 0);
+	}
+	finally {
+		clock.restore();
+		pin._removeEventListeners();
+	}
 });
 
 // --- hover ------------------------------------------------------------------
@@ -225,15 +288,17 @@ test("a GM left-press starts a drag and subscribes global movement", () => {
 	assert.deepEqual([pin._dragStartPos.x, pin._dragStartPos.y], [100, 200]);
 });
 
-test("a non-GM left-press never starts a drag, but still hides the tooltip", () => {
+test("a non-GM left-press tracks click movement without starting a drag", () => {
 	reset({ isGM: false });
 	const pin = makePin();
 
 	pin._onPointerDown(makePointerEvent({ button: 0 }));
 
 	assert.equal(pin._isDragging, false);
-	assert.equal(pin.listenerCount("globalpointermove"), 0);
+	assert.equal(pin.listenerCount("globalpointermove"), 1);
 	assert.equal(tooltip.hidden, 1);
+	pin._onPointerUpOutside(makePointerEvent({ button: 0 }));
+	assert.equal(pin.listenerCount("globalpointermove"), 0);
 });
 
 test("left-press always stops propagation, GM or not", () => {
@@ -342,6 +407,233 @@ test("a press and release without movement opens the journal instead", async () 
 	assert.equal(env.rendered.length, 1);
 });
 
+// A player cannot drag, so their press never sets _isDragging and the release
+// used to fall straight through to the cleanup — leaving a player with no way
+// to open a pin at all. Double-click, so a single click still passes through to
+// the canvas the way it always has.
+test("a player opens the pin's journal by double-clicking it, once", async () => {
+	reset({ isGM: false });
+	addReadableJournal("j1", { pageIds: ["p9"] });
+	const pin = makePin({ journalId: "j1", pageId: "p9" });
+	const clock = installClock();
+
+	try {
+		await pressAndRelease(pin);
+		assert.equal(env.rendered.length, 0, "one click must not open anything");
+
+		clock.advance(399);
+		await pressAndRelease(pin);
+
+		assert.deepEqual(env.rendered.map(r => r.args), [[true, { pageId: "p9" }]]);
+	}
+	finally {
+		clock.restore();
+	}
+});
+
+test("two releases further apart than the window are two clicks, not a double", async () => {
+	reset({ isGM: false });
+	env.addJournal("j1");
+	const pin = makePin({ journalId: "j1", pageId: "p9" });
+	const clock = installClock();
+
+	try {
+		await pressAndRelease(pin);
+		clock.advance(401);
+		await pressAndRelease(pin);
+
+		assert.equal(env.rendered.length, 0);
+	}
+	finally {
+		clock.restore();
+	}
+});
+
+// A pair is consumed by the open, so the third click starts a fresh pair rather
+// than opening again off the second one.
+test("a third click after a double-click does not open the journal again", async () => {
+	reset({ isGM: false });
+	addReadableJournal("j1", { pageIds: ["p9"] });
+	const pin = makePin({ journalId: "j1", pageId: "p9" });
+	const clock = installClock();
+
+	try {
+		await pressAndRelease(pin);
+		clock.advance(100);
+		await pressAndRelease(pin);
+		clock.advance(100);
+		await pressAndRelease(pin);
+
+		assert.equal(env.rendered.length, 1);
+	}
+	finally {
+		clock.restore();
+	}
+});
+
+test("a player's double-click never writes a pin position", async () => {
+	reset({ isGM: false });
+	env.addJournal("j1");
+	const pin = makePin({ journalId: "j1" });
+	const clock = installClock();
+
+	try {
+		for (const _ of [1, 2]) {
+			pin._onPointerDown(makePointerEvent({ button: 0, x: 400, y: 400 }));
+			pin._onPointerMove(makePointerEvent({ x: 900, y: 900 }));
+			await pin._onPointerUp(makePointerEvent({ button: 0, x: 900, y: 900 }));
+			clock.advance(100);
+		}
+	}
+	finally {
+		clock.restore();
+	}
+
+	assert.deepEqual(updates, [], "a player may open a pin, never move one");
+	assert.deepEqual([pin.position.x, pin.position.y], [100, 200]);
+	assert.equal(env.rendered.length, 0, "moved releases are not click candidates");
+});
+
+test("a moved player release invalidates an earlier eligible click", async () => {
+	reset({ isGM: false });
+	env.addJournal("j1");
+	const pin = makePin();
+	const clock = installClock();
+
+	try {
+		await pressAndRelease(pin);
+		clock.advance(100);
+		pin._onPointerDown(makePointerEvent({ button: 0, x: 10, y: 10 }));
+		pin._onPointerMove(makePointerEvent({ button: 0, x: 16, y: 10 }));
+		await pin._onPointerUp(makePointerEvent({ button: 0, x: 16, y: 10 }));
+		clock.advance(100);
+		await pressAndRelease(pin);
+
+		assert.equal(env.rendered.length, 0);
+	}
+	finally {
+		clock.restore();
+	}
+});
+
+test("registered player movement invalidates a click pair and cleans up its listener", () => {
+	reset({ isGM: false });
+	addReadableJournal("j1");
+	const pin = makePin();
+	const clock = installClock();
+	pin._setupEventListeners();
+
+	try {
+		pin.emit("pointerdown", makePointerEvent({ button: 0, x: 10, y: 10 }));
+		assert.equal(pin.listenerCount("globalpointermove"), 1);
+		pin.emit("pointerup", makePointerEvent({ button: 0, x: 10, y: 10 }));
+		assert.equal(pin.listenerCount("globalpointermove"), 0);
+
+		clock.advance(100);
+		pin.emit("pointerdown", makePointerEvent({ button: 0, x: 10, y: 10 }));
+		pin.emit("globalpointermove", makePointerEvent({ button: 0, x: 16, y: 10 }));
+		assert.equal(pin.listenerCount("globalpointermove"), 0);
+		pin.emit("pointerup", makePointerEvent({ button: 0, x: 16, y: 10 }));
+
+		clock.advance(100);
+		pin.emit("pointerdown", makePointerEvent({ button: 0, x: 10, y: 10 }));
+		pin.emit("pointerup", makePointerEvent({ button: 0, x: 10, y: 10 }));
+
+		assert.equal(env.rendered.length, 0);
+		assert.deepEqual(updates, []);
+		assert.deepEqual([pin.position.x, pin.position.y], [100, 200]);
+		assert.equal(pin.listenerCount("globalpointermove"), 0);
+	}
+	finally {
+		clock.restore();
+		pin._removeEventListeners();
+	}
+});
+
+test("a right click invalidates a player's eligible click pair", async () => {
+	reset({ isGM: false });
+	env.addJournal("j1");
+	const pin = makePin();
+	const clock = installClock();
+
+	try {
+		await pressAndRelease(pin);
+		clock.advance(100);
+		pin._onPointerDown(makePointerEvent({ button: 2 }));
+		await pin._onPointerUp(makePointerEvent({ button: 2 }));
+		clock.advance(100);
+		await pressAndRelease(pin);
+
+		assert.equal(env.rendered.length, 0);
+	}
+	finally {
+		clock.restore();
+	}
+});
+
+test("an outside release invalidates a player's eligible click pair", async () => {
+	reset({ isGM: false });
+	env.addJournal("j1");
+	const pin = makePin();
+	const clock = installClock();
+
+	try {
+		await pressAndRelease(pin);
+		clock.advance(100);
+		pin._onPointerDown(makePointerEvent({ button: 0 }));
+		await pin._onPointerUpOutside(makePointerEvent({ button: 0 }));
+		clock.advance(100);
+		await pressAndRelease(pin);
+
+		assert.equal(env.rendered.length, 0);
+	}
+	finally {
+		clock.restore();
+	}
+});
+
+test("mixed pointer buttons cannot complete a player's click pair", async () => {
+	reset({ isGM: false });
+	env.addJournal("j1");
+	const pin = makePin();
+	const clock = installClock();
+
+	try {
+		await pressAndRelease(pin);
+		clock.advance(100);
+		pin._onPointerDown(makePointerEvent({ button: 0 }));
+		await pin._onPointerUp(makePointerEvent({ button: 2 }));
+		clock.advance(100);
+		await pressAndRelease(pin);
+
+		assert.equal(env.rendered.length, 0);
+	}
+	finally {
+		clock.restore();
+	}
+});
+
+test("an intervening different pin invalidates a player's click pair", async () => {
+	reset({ isGM: false });
+	env.addJournal("j1");
+	const first = makePin({ id: "pin-1" });
+	const second = makePin({ id: "pin-2" });
+	const clock = installClock();
+
+	try {
+		await pressAndRelease(first);
+		clock.advance(100);
+		await pressAndRelease(second);
+		clock.advance(100);
+		await pressAndRelease(first);
+
+		assert.equal(env.rendered.length, 0);
+	}
+	finally {
+		clock.restore();
+	}
+});
+
 test("a failed position save snaps the pin back to its stored coordinates", async () => {
 	reset();
 	const pin = makePin({ x: 100, y: 200 });
@@ -379,10 +671,21 @@ test("releasing without an active drag still clears the movement listener", asyn
 
 // --- opening ----------------------------------------------------------------
 
+test("the protected openPinJournal export keeps its graphics-pin call contract", () => {
+	reset();
+	addReadableJournal("j1", { pageIds: ["p9"] });
+	const pin = makePin({ journalId: "j1", pageId: "p9" });
+
+	const result = openPinJournal(pin);
+
+	assert.equal(result, undefined);
+	assert.deepEqual(env.rendered[0].args, [true, { pageId: "p9" }]);
+});
+
 test("opening passes the pageId through when the pin targets a page", () => {
 	reset();
 	env.rendered.length = 0;
-	env.addJournal("j1");
+	addReadableJournal("j1", { pageIds: ["p9"] });
 
 	makePin({ journalId: "j1", pageId: "p9" })._openJournal();
 

@@ -10,8 +10,9 @@ import {
 } from "./pin-style.mjs";
 import { checkPinVisibility } from "./pin-manager.mjs";
 import { drawStyledStroke } from "./pin-draw.mjs";
-import { addGlyphIcon, addSvgIcon, addVisionIndicator } from "./pin-icons.mjs";
+import { addGlyphIcon, addSvgIcon } from "./pin-icons.mjs";
 import { loadIntrinsicSvgTexture } from "./pin-svg-texture.mjs";
+import { openPinTarget } from "./pin-access.mjs";
 import {
 	PIN_PLACEABLE_TYPE,
 	buildPinDocument,
@@ -32,7 +33,7 @@ import {
 	onPointerLeave,
 	onPointerMove,
 	onPointerUp,
-	openPinJournal,
+	onPointerUpOutside,
 	showPinContextMenu,
 } from "./pin-interactions.mjs";
 
@@ -318,16 +319,13 @@ export class JournalPinGraphics extends PIXI.Container {
 		const fillOpacity = (style.fillOpacity ?? 1.0) * baseOpacity;
 		const ringOpacity = (style.ringOpacity ?? 1.0) * baseOpacity;
 
-		// Use red dashed stroke if pin is GM-only (visible indicator for GM)
-		let ringColor;
-		let ringStyle = style.ringStyle || "solid";
-		if (this.pinData.gmOnly && game.user?.isGM) {
-			ringColor = "#FF4444"; // Red for GM-only pins
-			ringStyle = "dashed";  // Forced dashed for GM-only
-		}
-		else {
-			ringColor = style.ringColor || "#ffffff";
-		}
+		// The pin's configured stroke, for every user. A GM-only pin used to be
+		// forced to a red dashed ring here; that indicator was removed because it
+		// reads as an artefact wherever image or icon art covers the pin's edge.
+		// gmOnly still governs who sees the pin, and is shown as a toggle in the
+		// tray and pin list rather than painted onto the canvas.
+		const ringStyle = style.ringStyle || "solid";
+		const ringColor = style.ringColor || "#ffffff";
 
 		const fillColorNum = parseInt(fillColor.slice(1), 16);
 		const ringColorNum = parseInt(ringColor.slice(1), 16);
@@ -885,11 +883,11 @@ export class JournalPinGraphics extends PIXI.Container {
 			};
 		}
 
-		// Add status indicators for GM
-		if (game.user?.isGM && this.pinData.requiresVision) {
-			await addVisionIndicator(this, container, radius);
-			if (this._buildId !== buildId || this.destroyed) return;
-		}
+		// No GM status indicator is drawn on the pin. The vision badge that used
+		// to sit outside the pin body (requiresVision) was removed: it is covered
+		// by any sizeable image or icon and reads as a stray fragment of an eye.
+		// requiresVision still governs visibility, and the tray and pin list show
+		// its state. addVisionIndicator remains exported from pin-icons.mjs.
 
 		// Keep image-highlight pins live (cached texture would bake the icon
 		// and can't tint per-hover). Skip caching when this pin will use the
@@ -1033,8 +1031,12 @@ export class JournalPinGraphics extends PIXI.Container {
 		return await onPointerUp(this, event);
 	}
 
+	async _onPointerUpOutside(event) {
+		return await onPointerUpOutside(this, event);
+	}
+
 	_openJournal() {
-		openPinJournal(this);
+		openPinTarget(this);
 	}
 
 	_showContextMenu(event) {

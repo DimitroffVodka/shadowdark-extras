@@ -14,25 +14,55 @@ import { JournalPinTooltip } from "./pin-tooltip.mjs";
 import { JournalPinManager } from "./pin-manager.mjs";
 import { renderPinContextMenu } from "./pin-context-menu.mjs";
 import { getPinStyle } from "./pin-style.mjs";
+import { openPinTarget } from "./pin-access.mjs";
 
-/** Subscribe the standing pointer listeners. globalpointermove is not one of
- *  them — it is added only for the duration of a drag. */
+/** How long after a release a second one still counts as a double-click.
+ *  Pointer events carry no click count (`detail` is 0 for pointerdown/up by
+ *  spec), so the pairing is timed here rather than read off the event. */
+const DOUBLE_CLICK_MS = 400;
+const PLAYER_MOVE_TOLERANCE = 5;
+
+// Player click pairing spans pin instances: touching a different pin must
+// break the pair, not leave a per-pin timestamp waiting to open later.
+const playerClickState = {
+	press: null,
+	lastPin: null,
+	lastReleaseAt: 0,
+};
+
+function pointerButton(event) {
+	const originalEvent = event.data?.originalEvent || event.nativeEvent || event;
+	return originalEvent.button ?? 0;
+}
+
+function invalidatePlayerClick(pin = null) {
+	if (pin && playerClickState.press?.pin !== pin && playerClickState.lastPin !== pin) return;
+	const activePin = playerClickState.press?.pin;
+	if (activePin) activePin.off("globalpointermove", activePin._onPointerMove, activePin);
+	playerClickState.press = null;
+	playerClickState.lastPin = null;
+	playerClickState.lastReleaseAt = 0;
+}
+
+/** Subscribe standing listeners. globalpointermove is scoped to an active
+ *  left press so both GM drags and player click eligibility observe movement. */
 export function attachPinListeners(pin) {
 	pin.on("pointerenter", pin._onPointerEnter, pin);
 	pin.on("pointerleave", pin._onPointerLeave, pin);
 	pin.on("pointerdown", pin._onPointerDown, pin);
 	pin.on("pointerup", pin._onPointerUp, pin);
-	pin.on("pointerupoutside", pin._onPointerUp, pin);
+	pin.on("pointerupoutside", pin._onPointerUpOutside, pin);
 }
 
-/** Release everything, including the drag-only globalpointermove, which may
- *  still be attached if teardown happens mid-drag. */
+/** Release everything, including press-scoped globalpointermove, which may
+ *  still be attached if teardown happens mid-press or mid-drag. */
 export function detachPinListeners(pin) {
+	invalidatePlayerClick(pin);
 	pin.off("pointerenter", pin._onPointerEnter, pin);
 	pin.off("pointerleave", pin._onPointerLeave, pin);
 	pin.off("pointerdown", pin._onPointerDown, pin);
 	pin.off("pointerup", pin._onPointerUp, pin);
-	pin.off("pointerupoutside", pin._onPointerUp, pin);
+	pin.off("pointerupoutside", pin._onPointerUpOutside, pin);
 	pin.off("globalpointermove", pin._onPointerMove, pin);
 }
 
@@ -193,11 +223,28 @@ export function onPointerLeave(pin, event) {
 }
 
 export function onPointerDown(pin, event) {
-	const originalEvent = event.data?.originalEvent || event.nativeEvent || event;
-	const button = originalEvent.button ?? 0;
+	const button = pointerButton(event);
 
 	// Restriction: Only GMs can drag or right-click pins
 	const isGm = game.user?.isGM;
+	if (!isGm) {
+		if (button !== 0) {
+			invalidatePlayerClick();
+		}
+		else {
+			if (playerClickState.press
+				|| (playerClickState.lastPin && playerClickState.lastPin !== pin)) {
+				invalidatePlayerClick();
+			}
+			playerClickState.press = {
+				pin,
+				x: event.global?.x ?? 0,
+				y: event.global?.y ?? 0,
+			};
+			pin.off("globalpointermove", pin._onPointerMove, pin);
+			pin.on("globalpointermove", pin._onPointerMove, pin);
+		}
+	}
 
 	if (button === 0) {
 		// Prevent Foundry from starting a selection marquee
@@ -235,6 +282,12 @@ export function onPointerDown(pin, event) {
 }
 
 export function onPointerMove(pin, event) {
+	if (!game.user?.isGM && playerClickState.press?.pin === pin) {
+		const dx = (event.global?.x ?? 0) - playerClickState.press.x;
+		const dy = (event.global?.y ?? 0) - playerClickState.press.y;
+		if (Math.hypot(dx, dy) > PLAYER_MOVE_TOLERANCE) invalidatePlayerClick();
+	}
+
 	if (!pin._isDragging) return;
 
 	event.stopPropagation();
@@ -282,25 +335,43 @@ export async function onPointerUp(pin, event) {
 			pin._openJournal();
 		}
 	}
+	else if (!game.user?.isGM) {
+		const press = playerClickState.press;
+		if (pointerButton(event) !== 0 || press?.pin !== pin) {
+			invalidatePlayerClick();
+		}
+		else {
+			const now = Date.now();
+			playerClickState.press = null;
+			if (playerClickState.lastPin === pin
+				&& playerClickState.lastReleaseAt
+				&& (now - playerClickState.lastReleaseAt) <= DOUBLE_CLICK_MS) {
+				invalidatePlayerClick();
+				pin._openJournal();
+			}
+			else {
+				playerClickState.lastPin = pin;
+				playerClickState.lastReleaseAt = now;
+			}
+		}
+	}
 
 	pin.off("globalpointermove", pin._onPointerMove, pin);
 	pin._isDragging = false;
 	pin._hasDragged = false;
 }
 
+export async function onPointerUpOutside(pin, event) {
+	if (game.user?.isGM) return await onPointerUp(pin, event);
+	invalidatePlayerClick();
+	pin.off("globalpointermove", pin._onPointerMove, pin);
+	pin._isDragging = false;
+	pin._hasDragged = false;
+}
+
+/** Protected compatibility export: accepts JournalPinGraphics and returns undefined. */
 export function openPinJournal(pin) {
-	const journal = game.journal.get(pin.pinData.journalId);
-	if (journal) {
-		if (pin.pinData.pageId) {
-			journal.sheet.render(true, { pageId: pin.pinData.pageId });
-		}
-		else {
-			journal.sheet.render(true);
-		}
-	}
-	else {
-		ui.notifications.warn("Journal not found");
-	}
+	openPinTarget(pin);
 }
 
 export function showPinContextMenu(pin, event) {

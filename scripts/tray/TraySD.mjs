@@ -2,6 +2,10 @@
 
 import { TrayApp, registerTrayAppHooks } from "./TrayApp.mjs";
 import { JournalPinManager, normalizeImageTint } from "../journal/JournalPinsSD.mjs";
+// Imported from the module that owns it rather than through the JournalPinsSD
+// re-export, which is a fixed public surface.
+import { checkPinVisibility } from "../journal/pin-manager.mjs";
+import { getPinJournalSubtitle } from "../journal/pin-access.mjs";
 import { initSoloHexMode } from "../hex/SoloHexMode.mjs";
 import { getHexPainterData, loadTileAssets, bindCanvasEvents, enablePainting, disablePainting, isPainting, setDecorMode, canUndoPoi, canRedoPoi } from "../hex/HexPainterSD.mjs";
 import {
@@ -1047,28 +1051,17 @@ export async function renderTray() {
 export function getPinsData() {
 	if (!canvas.scene) return [];
 
-	// Get all pins for the current scene
-	const pins = JournalPinManager.list({ sceneId: canvas.scene.id });
+	// Get the pins for the current scene this user may see. A row carries the
+	// pin's name and opens its journal, so it is gated by the same predicate the
+	// canvas renderer uses.
+	const pins = JournalPinManager.list({ sceneId: canvas.scene.id })
+		.filter(pin => checkPinVisibility(pin));
 
 	// Enrich pin data
 	const enrichedPins = pins.map(pin => {
 		// Resolve display name honoring the pin's nameSource preference
 		let pinName = JournalPinManager.getDisplayName(pin);
-		let pageName = "";
-
-		// Subtitle: show "Journal • Page" when linked
-		if (pin.journalId) {
-			const journal = game.journal.get(pin.journalId);
-			if (journal) {
-				if (pin.pageId) {
-					const page = journal.pages.get(pin.pageId);
-					pageName = page ? `${journal.name} • ${page.name}` : journal.name;
-				}
-				else {
-					pageName = journal.name;
-				}
-			}
-		}
+		const pageName = getPinJournalSubtitle(pin);
 
 		// Determine Display Type & Content
 		const style = pin.style || {};
@@ -1172,8 +1165,11 @@ export function getPinsData() {
 		if (!pinsByFolder.has(key)) pinsByFolder.set(key, []);
 		pinsByFolder.get(key).push(p);
 	}
+	// Names tie-break on `sort`, with digit runs compared as numbers so
+	// "Room 2" precedes "Room 10" instead of following it.
 	for (const arr of pinsByFolder.values()) {
-		arr.sort((a, b) => (a.sort - b.sort) || a.name.localeCompare(b.name));
+		arr.sort((a, b) => (a.sort - b.sort)
+			|| a.name.localeCompare(b.name, undefined, { numeric: true }));
 	}
 
 	const foldersByParent = new Map();
@@ -1183,7 +1179,8 @@ export function getPinsData() {
 		foldersByParent.get(key).push(f);
 	}
 	for (const arr of foldersByParent.values()) {
-		arr.sort((a, b) => ((a.sort ?? 0) - (b.sort ?? 0)) || a.name.localeCompare(b.name));
+		arr.sort((a, b) => ((a.sort ?? 0) - (b.sort ?? 0))
+			|| a.name.localeCompare(b.name, undefined, { numeric: true }));
 	}
 
 	const collapsedSet = new Set(folders.filter(f => f.collapsed).map(f => f.id));

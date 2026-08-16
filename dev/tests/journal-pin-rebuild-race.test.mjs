@@ -3,9 +3,9 @@
 // Applying a TokenMagic preset writes scene flags, which triggers TWO
 // overlapping rebuilds of the same pin: the module's updateScene hook runs
 // loadScenePins → updatePin while JournalPinManager.update also calls
-// updatePin directly, and neither awaits the other. The build suspends at
-// the GM vision-badge 50ms timer (requiresVision), and the older build used
-// to resume from that unguarded await and run the sprite-cache block, whose
+// updatePin directly, and neither awaits the other. A build can suspend at a
+// texture load, and the older build used to resume from that unguarded await
+// and run the sprite-cache block, whose
 // unguarded `_cachedTexture.destroy(true)` killed the texture the winning
 // build had just attached to the live sprite. With filters applied (the
 // preset), the next render tick calls FilterSystem.push → getBounds →
@@ -15,6 +15,9 @@
 // These tests freeze the invariant: an overlapping rebuild must never leave
 // a destroyed texture attached to the pin, and the sprite cache must belong
 // to exactly one build.
+//
+// The test gates the real media texture-loader boundary: the old build pauses,
+// distinct new pin data wins, and only then is the old load released.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -23,6 +26,16 @@ import { installCanvasGlobals, installDom, StubContainer, StubElement } from "./
 
 installCanvasGlobals();
 installDom();
+globalThis.foundry.utils.Color = class StubColor extends Number {
+	constructor(value) {
+		super(value);
+		this.valid = true;
+	}
+
+	static from(value) {
+		return new StubColor(parseInt(String(value).replace("#", ""), 16) || 0);
+	}
+};
 
 const { JournalPinGraphics } = await import("../../scripts/journal/pin-rendering.mjs");
 
@@ -35,6 +48,11 @@ StubContainer.prototype.removeChildren = function removeChildren() {
 	const removed = this.children;
 	this.children = [];
 	return removed;
+};
+StubContainer.prototype.addChildAt = function addChildAt(child, index) {
+	child.parent = this;
+	this.children.splice(index, 0, child);
+	return child;
 };
 
 // The hit area is a PIXI.Rectangle for non-circle shapes.
@@ -49,11 +67,20 @@ globalThis.PIXI.Rectangle = class Rectangle {
 
 const textures = [];
 globalThis.canvas.app.renderer = {
-	generateTexture() {
+	generateTexture(container) {
+		const findSource = node => {
+			if (node?.texture?.sourceId) return node.texture.sourceId;
+			for (const child of node?.children ?? []) {
+				const sourceId = findSource(child);
+				if (sourceId) return sourceId;
+			}
+			return null;
+		};
 		const texture = {
 			valid: true,
 			width: 32,
 			height: 32,
+			sourceId: findSource(container),
 			destroyed: false,
 			destroy() {
 				this.destroyed = true;
@@ -97,7 +124,7 @@ globalThis.document.createElement = tag => {
 // The image-shape placeholder is a Graphics with draw methods the harness
 // StubContainer does not implement; stub them so the container keeps a child
 // and the sprite cache actually runs.
-for (const method of ["lineStyle", "moveTo", "lineTo", "drawRect", "endFill", "beginFill", "drawCircle", "endHole", "lineTo"]) {
+for (const method of ["lineStyle", "moveTo", "lineTo", "drawRect", "drawRoundedRect", "endFill", "beginFill", "drawCircle", "endHole", "lineTo"]) {
 	globalThis.PIXI.Graphics.prototype[method] = () => undefined;
 }
 
@@ -108,7 +135,7 @@ const pinData = {
 	journalId: null,
 	pageId: null,
 	label: "Pin",
-	requiresVision: true, // forces the unguarded 50ms vision-badge await
+	requiresVision: true, // as in the original report; no longer suspends the build
 	gmOnly: false,
 	aboveFog: false,
 	style: { shape: "image", size: 32, contentType: "none", hoverAnimation: "none" },
@@ -127,18 +154,47 @@ function assertNoDestroyedTextureInTree(pin) {
 test("overlapping rebuilds (hook + updatePin) leave a live texture in the tree", async () => {
 	textures.length = 0;
 	const pin = new JournalPinGraphics(pinData);
+	let releaseOld;
+	let markOldStarted;
+	const oldStarted = new Promise(resolve => { markOldStarted = resolve; });
+	globalThis.foundry.canvas = {
+		loadTexture: path => {
+			if (path === "old.png") {
+				markOldStarted();
+				return new Promise(resolve => {
+					releaseOld = () => resolve({ width: 32, height: 32, sourceId: path });
+				});
+			}
+			return Promise.resolve({ width: 32, height: 32, sourceId: path });
+		},
+	};
 
-	// Both un-awaited, exactly like the updateScene hook + JournalPinManager
-	// double dispatch on a scene flag write.
-	const first = pin.update(pinData);
-	const second = pin.update(pinData);
-	await Promise.allSettled([first, second]);
-	await new Promise(r => setTimeout(r, 20)); // let both vision timers fire
+	const oldData = {
+		...pinData,
+		label: "Old pin",
+		style: { ...pinData.style, imagePath: "old.png" },
+	};
+	const newData = {
+		...pinData,
+		label: "New pin",
+		style: { ...pinData.style, imagePath: "new.png" },
+	};
 
-	assert.ok(textures.length > 0, "expected the sprite cache to run");
-	for (const texture of textures) {
-		assert.ok(!texture.destroyed, "a rebuild destroyed a texture the tree still referenced");
-	}
+	const oldBuild = pin.update(oldData);
+	await oldStarted;
+	const newBuild = pin.update(newData);
+	await newBuild;
+
+	const winner = pin._cachedTexture;
+	assert.equal(winner?.sourceId, "new.png", "the new build must win before the old load resumes");
+	releaseOld();
+	await oldBuild;
+
+	assert.equal(pin.pinData.label, "New pin");
+	assert.equal(textures.length, 1, "the stale completion must never rasterize a replacement");
+	assert.equal(pin._cachedTexture, winner, "the stale completion replaced the winning cache");
+	assert.ok(!winner.destroyed, "the stale completion destroyed the winning cache");
+	assert.equal(pin.children[0]?.texture, winner, "the live rendered tree no longer holds the winner");
 	assertNoDestroyedTextureInTree(pin);
 });
 

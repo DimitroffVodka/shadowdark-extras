@@ -7,6 +7,7 @@
 // module here means no cycle.
 
 import { getPinStyle } from "./pin-style.mjs";
+import { resolvePinTarget } from "./pin-access.mjs";
 
 export class JournalPinTooltip {
 	static _element = null;
@@ -14,16 +15,13 @@ export class JournalPinTooltip {
 	static show(pinData, event) {
 		this.hide();
 
-		const journal = game.journal.get(pinData.journalId);
-		let page = null;
+		const target = resolvePinTarget(pinData);
+		const journal = target.journal;
+		let page = pinData.pageId ? target.page : null;
 		let hasAccess = true;
 
 		if (journal) {
-			// Get the page first
-			if (pinData.pageId) {
-				page = journal.pages.get(pinData.pageId);
-			}
-			else {
+			if (!pinData.pageId) {
 				page = journal.pages.contents[0];
 			}
 

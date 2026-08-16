@@ -2,6 +2,7 @@
 // scripts/journal/JournalPinsSD.mjs (Phase 5.1 split).
 
 import { MODULE_ID, FLAG_KEY, FOLDER_FLAG_KEY, PIN_SCHEMA_VERSION, normalizeImageTint } from "./pin-style.mjs";
+import { getAccessiblePinTargetName } from "./pin-access.mjs";
 
 export class JournalPinManager {
 	static FLAG_KEY = FLAG_KEY;
@@ -169,15 +170,9 @@ export class JournalPinManager {
 	static getDisplayName(pin) {
 		if (!pin) return "Unnamed Pin";
 
-		// Journal / page name
-		let journalName = "";
-		if (pin.journalId) {
-			const journal = game.journal.get(pin.journalId);
-			if (journal) {
-				const page = pin.pageId ? journal.pages.get(pin.pageId) : null;
-				journalName = page?.name || journal.name || "";
-			}
-		}
+		// Journal/page names are candidates only at LIMITED ownership. If the
+		// target is unreadable, the existing fallback chain remains in charge.
+		const journalName = getAccessiblePinTargetName(pin);
 
 		const tooltip = (pin.tooltipTitle || "").trim();
 		const label = (pin.style?.labelText || "").trim();
@@ -491,7 +486,10 @@ export class JournalPinManager {
 				sort: 0,
 				size: note.iconSize ?? undefined,  // keep the note's icon size
 				style,
-				gmOnly: false,
+				// Map notes are prep material — keyed rooms, secret doors, what
+				// the party finds here — so a converted pin starts hidden and is
+				// revealed deliberately through the visibility toggle.
+				gmOnly: true,
 				requiresVision: false,
 				aboveFog: false,
 				hideTooltip: false,

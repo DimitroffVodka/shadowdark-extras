@@ -7,6 +7,7 @@
 import { JournalPinManager, JournalPinRenderer } from "../journal/JournalPinsSD.mjs";
 import { PinStyleEditorApp } from "../journal/PinStyleEditorSD.mjs";
 import { PlaceableNotesSD } from "../journal/PlaceableNotesSD.mjs";
+import { openPinTarget } from "../journal/pin-access.mjs";
 
 export const PinListBindings = {
 	/**
@@ -134,6 +135,20 @@ export const PinListBindings = {
 				}
 			});
 		});
+
+		// Open a pin's linked journal/page. Double-click, so a single click is
+		// still free for the row's own controls and for the drag that reorders
+		// it. Map-note rows are excluded: they open through their own control.
+		elem.querySelectorAll(".pins-view .sdx-pin-list:not(.map-notes-list) .pin-entry")
+			.forEach(row => {
+				row.addEventListener("dblclick", e => {
+					// A row control clicked twice is still that control.
+					if (e.target.closest(".pin-control")) return;
+					e.preventDefault();
+					const pin = JournalPinManager.get(row.dataset.id);
+					if (pin) openPinTarget(pin);
+				});
+			});
 
 		// ───────────────────────── PIN FOLDERS (GM) ─────────────────────────
 		const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;")

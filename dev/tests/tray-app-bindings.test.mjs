@@ -118,6 +118,7 @@ const BINDINGS = [
 	".sdx-tray .pin-folder-newbtn[data-action='convert-notes'] :: click",
 	".sdx-tray .pin-folder-newbtn[data-action='folder-new'] :: click",
 	".sdx-tray .pin-search-input :: input",
+	".sdx-tray .pins-view .sdx-pin-list:not(.map-notes-list) .pin-entry[0] :: dblclick",
 	".sdx-tray .pins-view .sdx-pin-list:not(.map-notes-list) .pin-entry[draggable='true'], .pin-folder-header[draggable='true'][0] :: dragend",
 	".sdx-tray .pins-view .sdx-pin-list:not(.map-notes-list) .pin-entry[draggable='true'], .pin-folder-header[draggable='true'][0] :: dragstart",
 	".sdx-tray .pins-view .sdx-pin-list:not(.map-notes-list) :: dragleave",
@@ -479,6 +480,44 @@ function renderPinList(entries) {
 	dom.node(".sdx-tray .map-notes-list .pin-entry[0] .pin-name").textContent = "Old Well";
 	return { app, dom };
 }
+
+// --- opening a pin row's journal ---------------------------------------------
+
+// The tray's rows are the same list as the standalone window's, so they open
+// the same way: double-click, leaving single click to the row's own controls.
+test("double-clicking a tray pin row opens its linked journal page", () => {
+	const rendered = [];
+	const prevScene = globalThis.canvas.scene;
+	const prevJournal = globalThis.game.journal;
+	const flags = {
+		"shadowdark-extras.journalPins": [
+			{ id: "pin-1", x: 0, y: 0, journalId: "j1", pageId: "p9", label: "Room 1", style: {} },
+		],
+	};
+	globalThis.canvas.scene = { id: "scene-1", getFlag: (scope, key) => flags[`${scope}.${key}`] };
+	globalThis.game.journal = {
+		get: id => (id === "j1"
+			? {
+				id,
+				pages: { get: pageId => (pageId === "p9" ? { id: pageId } : null) },
+				sheet: { render: (...args) => rendered.push({ id, args }) },
+			}
+			: null),
+	};
+	try {
+		const { dom } = render({
+			lists: { [`${PINS} .pin-entry`]: [{ dataset: { id: "pin-1" } }] },
+		});
+
+		dom.fire(`${PINS} .pin-entry[0]`, "dblclick");
+
+		assert.deepEqual(rendered, [{ id: "j1", args: [true, { pageId: "p9" }] }]);
+	}
+	finally {
+		globalThis.canvas.scene = prevScene;
+		globalThis.game.journal = prevJournal;
+	}
+});
 
 test("an empty search term clears the inline display of every row", () => {
 	const { app, dom } = renderPinList([{ name: "Goblin Camp", folder: "f1" }]);
