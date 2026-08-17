@@ -221,6 +221,24 @@ test("players are not offered the notes control at all", () => {
 	}
 });
 
+// The two tests below pin which document types a sheet header offers the
+// control for. They are characterization: they describe behaviour that already
+// exists, so that moving the supported-type list into the shared note-index
+// predicate can be proven to change nothing a user can see. Drawing and Region
+// are excluded by design, not by omission.
+test("exactly the six supported document types are offered the v14 notes control", () => {
+	const offered = [
+		"Token", "Actor", "Tile", "Wall", "AmbientLight", "AmbientSound", "Drawing", "Region",
+	].filter(documentName => headerControlsFor(makeDocument({ documentName }))
+		.some(control => control.action === "open-sdx-notes"));
+
+	assert.deepEqual(offered, ["Token", "Actor", "Tile", "Wall", "AmbientLight", "AmbientSound"]);
+});
+
+test("the legacy actor-sheet hook offers its button only for actors", () => {
+	assert.deepEqual(actorHeaderButtonsFor(makeDocument({ documentName: "Token" })), []);
+});
+
 test("the notes window is titled in words, not with a translation key", () => {
 	opened.length = 0;
 	headerControlsFor(makeDocument()).find(c => c.action === "open-sdx-notes").onClick();

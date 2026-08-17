@@ -1,4 +1,6 @@
 
+import { isSupportedNoteSource } from "./placeable-note-index.mjs";
+
 const MODULE_ID = "shadowdark-extras";
 
 // Shared by both header-control hooks so the V2 ⋮ entry and the V1 actor-sheet
@@ -95,10 +97,10 @@ export default class PlaceableNotesSD extends foundry.applications.api.Handlebar
 		if (!game.user.isGM) return;
 
 		const object = app.document || app.object || app.token;
-		if (!object) return;
 
-		const supportedTypes = ["AmbientLight", "AmbientSound", "Token", "Wall", "Tile", "Actor"];
-		if (!object.documentName || !supportedTypes.includes(object.documentName)) return;
+		// The supported-type list lives in the note-index model, so the control
+		// and the index can never disagree about what carries a note.
+		if (!isSupportedNoteSource(object)) return;
 
 		const hasNotes = !!object.getFlag(MODULE_ID, "notes");
 		const label = game.i18n.localize(CONTROL_LABEL_KEY);
@@ -129,7 +131,11 @@ export default class PlaceableNotesSD extends foundry.applications.api.Handlebar
 		if (!game.user.isGM) return;
 
 		const object = app.document || app.actor || app.object;
-		if (!object || object.documentName !== "Actor") return;
+
+		// Same shared predicate as the v14 hook — it also covers the missing
+		// document case — then narrowed to Actor, because this legacy hook
+		// speaks only for Shadowdark's V1 actor sheets.
+		if (!isSupportedNoteSource(object) || object.documentName !== "Actor") return;
 
 		const hasNotes = !!object.getFlag(MODULE_ID, "notes");
 		const label = game.i18n.localize(CONTROL_LABEL_KEY);
