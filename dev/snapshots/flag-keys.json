@@ -164,6 +164,7 @@
     "partyHeaderBackground",
     "partyMaxSlots",
     "permanentDrawings",
+    "placeableNotesExcluded",
     "probe",
     "renown",
     "sdxcoords-state",

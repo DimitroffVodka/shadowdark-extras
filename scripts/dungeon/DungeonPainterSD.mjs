@@ -791,7 +791,7 @@ export async function ensureBackgroundDrawing(scene, elevation, backgroundSettin
 		elevation: bgElevation,
 		levels: levelContext.levelId ? [levelContext.levelId] : [],
 		flags: {
-			[MODULE_ID]: { dungeonBackground: true },
+			[MODULE_ID]: { dungeonBackground: true, placeableNotesExcluded: true },
 			levels: { rangeTop: rangeTop },
 		},
 	};
@@ -1554,7 +1554,7 @@ export function generateWallVisualsWithElevation(floors, entranceSet, gridSize, 
 			fillAlpha: 1.0,
 			texture: isHorizontal ? hTexture : vTexture,
 			flags: {
-				[MODULE_ID]: { dungeonWall: true },
+				[MODULE_ID]: { dungeonWall: true, placeableNotesExcluded: true },
 				levels: { rangeTop: rangeTop }, // Set rangeTop for Levels compatibility
 			},
 		};

@@ -49,6 +49,7 @@ async function createAuraRegion(token, effect, config, sourceItem) {
 			flags: {
 				[MODULE_ID]: {
 					auraRegion: true,
+					placeableNotesExcluded: true,
 					auraEffectId: effect.id,
 					auraActorId: effect.parent?.id,
 					sourceItemUuid: sourceItem.uuid,

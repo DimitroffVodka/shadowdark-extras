@@ -924,7 +924,7 @@ export function generateWallVisuals(floors, offset, options, entranceEdges, soli
 			strokeAlpha: 0,
 			fillAlpha: 1.0,
 			flags: {
-				[MODULE_ID]: { dungeonWall: true },
+				[MODULE_ID]: { dungeonWall: true, placeableNotesExcluded: true },
 			},
 		};
 

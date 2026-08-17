@@ -6,9 +6,8 @@
  * token stepping on a stair changes level (z) while keeping the same x/y.
  *
  * Design: this is purely an orchestration layer. It REUSES the existing
- * single-level generator's pure helpers (layout + render) and the existing
- * `placeChangeLevelRegion` API. The only change to existing files is that those
- * helpers were given the `export` keyword (no logic change).
+ * single-level generator's pure helpers (layout + render) and keeps its
+ * connector Region creation bounded to this lifecycle-owned path.
  *
  * Keystone: every level renders with ONE shared grid offset (computed from the
  * union of all levels' floor cells). Without a shared offset the same logical
@@ -31,7 +30,6 @@ import {
 } from "./DungeonGeneratorSD.mjs";
 import { generateCaveLayout, rotjsLayout, buildCaveLoops, buildMixedLoops, generateCurvedWalls, generateCurvedWallVisuals } from "./DungeonCaveSD.mjs";
 import { applySceneLevelData, getSelectedFloorTile, getSelectedWallTile, getSelectedDoorTile } from "./DungeonPainterSD.mjs";
-import { placeChangeLevelRegion } from "./DungeonRegionsSD.mjs";
 import { createDungeonOccupancy, generateDungeonDecor } from "./DungeonDecorSD.mjs";
 
 const ROTJS_STYLES = ["maze", "rogue", "digger", "uniform"];
@@ -525,6 +523,41 @@ async function placeConnectorTile(scene, level, px, py, src, size, flagKey, type
 }
 
 /**
+ * Persist the connector-specific changeLevel Region. This is intentionally
+ * private to the multi-level lifecycle: the public one-time Region helper
+ * remains contract-identical and eligible for placeable notes.
+ */
+async function placeConnectorRegion(
+	scene,
+	{ x, y, width = GRID_SIZE, height = GRID_SIZE, levels, elevation, name, movementActions = [] },
+) {
+	const [region] = await scene.createEmbeddedDocuments("Region", [{
+		name,
+		color: "#28c9cc",
+		shapes: [{
+			type: "rectangle",
+			x: x - width / 2,
+			y: y - height / 2,
+			width,
+			height,
+			hole: false,
+		}],
+		elevation,
+		levels,
+		visibility: 1,
+		locked: false,
+		behaviors: [{
+			name: "Change Level",
+			type: "changeLevel",
+			system: { movementActions },
+		}],
+		flags: { [MODULE_ID]: { placeableNotesExcluded: true } },
+	}]);
+
+	return { id: region.id, name: region.name };
+}
+
+/**
  * Place a full connector between an upper and a lower level (same xy): the upper tile, the
  * lower tile, and a changeLevel region. TWO-WAY links use a band spanning both levels' floors
  * (walk down OR up). ONE-WAY links (drop/chute) use a band covering ONLY the upper floor — a
@@ -538,8 +571,7 @@ async function placeConnectorPair(scene, upper, lower, px, py, type, label) {
 	const elevation = def.twoWay
 		? { bottom: lower.bottom, top: upper.bottom + STAIR_REGION_MARGIN, topInclusive: false }
 		: { bottom: upper.bottom, top: upper.bottom + STAIR_REGION_MARGIN, topInclusive: false };
-	const { id } = await placeChangeLevelRegion({
-		sceneId: scene.id,
+	const { id } = await placeConnectorRegion(scene, {
 		x: px + GRID_SIZE / 2,
 		y: py + GRID_SIZE / 2,
 		width: GRID_SIZE,

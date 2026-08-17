@@ -505,7 +505,7 @@ export function generateCurvedWallVisuals(loops, options) {
 				strokeWidth: 0,
 				strokeAlpha: 0,
 				fillAlpha: 1.0,
-				flags: { [MODULE_ID]: { dungeonWall: true, dungeonGenCurvedWall: true } },
+				flags: { [MODULE_ID]: { dungeonWall: true, dungeonGenCurvedWall: true, placeableNotesExcluded: true } },
 			};
 			if (useTexture) {
 				drawing.fillType = 2; // pattern

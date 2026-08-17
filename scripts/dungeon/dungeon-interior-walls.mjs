@@ -95,7 +95,7 @@ export async function handleIntWallDrag(startPos, endPos) {
 		texture: _selectedIntWallTile,
 		elevation,
 		flags: {
-			[MODULE_ID]: { dungeonWall: true, dungeonIntWall: true },
+			[MODULE_ID]: { dungeonWall: true, dungeonIntWall: true, placeableNotesExcluded: true },
 			levels: { rangeTop: wallHeightTop },
 		},
 	}, "Drawing", levelContext);
@@ -268,7 +268,7 @@ export async function handleIntWallClick(clickPos) {
 		fillAlpha: 1.0,
 		elevation,
 		flags: {
-			[MODULE_ID]: { dungeonWall: true, dungeonIntWall: true },
+			[MODULE_ID]: { dungeonWall: true, dungeonIntWall: true, placeableNotesExcluded: true },
 		},
 	}, "Drawing", levelContext);
 
@@ -513,7 +513,7 @@ export async function handleIntWallDoorRemove(clickPos) {
 		texture: wallTexture,
 		elevation,
 		flags: {
-			[MODULE_ID]: { dungeonWall: true, dungeonIntWall: true },
+			[MODULE_ID]: { dungeonWall: true, dungeonIntWall: true, placeableNotesExcluded: true },
 		},
 	}, "Drawing", levelContext);
 
