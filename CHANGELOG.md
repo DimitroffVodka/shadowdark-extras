@@ -4,6 +4,25 @@ All notable changes to this fork of `shadowdark-extras` are documented here.
 
 Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+
+- **Placeable Notes now have a grouped tray view.** Notes are collected into fixed Tokens, Actors, Tiles, Walls, Lights, and Sounds groups with viewer-safe counts and natural sorting. Token and Actor notes remain separate exact sources, and group/row expansion state lasts for the tray session.
+
+### Changed
+
+- **Foundry VTT 14 is now the minimum supported version.**
+
+### Fixed
+
+- **Placeable-note actions and lifecycle updates are now exact and resilient.** Edit, rename, sharing, delete, and pan actions target the exact source document, enforce GM and active-scene checks, and refresh safely across document lifecycle changes and overlapping asynchronous renders. A failed note enrichment no longer removes sibling rows or exposes rejection details. Drawing and Region notes remain unsupported.
+- **The system's apply-damage buttons stayed live after SDX had already applied the damage.** Shadowdark's roll card carries its own pair of apply-damage buttons, and SDX injects its damage card into that same chat message — so once SDX applied the damage, whether automatically or from its own APPLY DAMAGE button, those buttons still read as unused and clicking one applied the same damage a second time. The system does not fade a button on click: `ChatMessageSD` sets `flags.shadowdark.damageApplied` and re-adds the faded state from that flag on every later render, so the only way to reproduce the fade is to write the flag the system reads. SDX now sets it alongside its own applied flag, which also hands the double-apply guard back to the system — a stray click raises its reapply confirmation instead of silently landing damage twice. Verified live on Foundry 14.365 / Shadowdark 4.0.6, for both GM- and player-authored attacks.
+
+### Internal
+
+- The flag-key snapshot records a `shadowdark`-scope write for the first time: SDX writes `damageApplied` into the system's own flag namespace so the system's chat card renders as applied. The write goes through two `setFlag` calls rather than one flattened `update()`, because the flag-scan gate matches on `setFlag`/`getFlag` call sites and a flattened update would be invisible to it — a second re-render in exchange for keeping the persistence channel auditable.
+
 ## [6.11.0] — 2026-08-10 — Feature Manager, real feature ownership, party tokens, and a chat-card escaping fix
 
 First minor bump of the 6.x line. Every previous 6.10.x release was a patch,
