@@ -14,62 +14,31 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import "./helpers/foundry-loader.mjs";
-import { installCanvasGlobals } from "./helpers/pixi-harness.mjs";
-import { installAppGlobals, makeSelectorDom } from "./helpers/dom-harness.mjs";
+import { makeSelectorDom } from "./helpers/dom-harness.mjs";
+import {
+	MODULE_ID,
+	installEnricher,
+	installTrayHarness,
+	makeTrayDriver,
+	noted,
+	traceEnrichment,
+} from "./helpers/placeable-note-tray.mjs";
 
-installCanvasGlobals();
-installAppGlobals({ dom: makeSelectorDom({ seedAll: true }) });
-
-// Which features the tray believes are on. A test that needs a feature off
-// assigns to this; `getDisabledFeatureIds` re-reads the setting on every render,
-// so the tray sees the change without anything being re-imported.
-let disabledFeatures = [];
-
-globalThis.game.settings = {
-	get: (_scope, key) => {
-		if (key === "tray.enabled") return true;
-		if (key === "disabledFeatures") return disabledFeatures;
-		return undefined;
-	},
-	set: async () => {},
-	register() {},
-};
-globalThis.game.scenes = new Map();
-globalThis.game.modules = new Map();
-globalThis.game.actors = new Map();
-globalThis.game.users = [];
-globalThis.game.i18n = { localize: key => key, format: key => key };
-globalThis.canvas.grid = { size: 100, isHexagonal: true };
-globalThis.canvas.tokens = { controlled: [], placeables: [] };
-globalThis.game.user = { id: "user-1", isGM: true };
+// The world a real tray reads at load and render time, shared with the
+// lifecycle suite: the ambient Foundry surface, the feature switch, the
+// note-bearing document doubles, and the enrichment tracer both files use as
+// their oracle. What is not shared is scene shape — this file's scenes are its
+// own.
+const { features } = installTrayHarness();
 
 const { TrayApp } = await import("../../scripts/tray/TrayApp.mjs");
 const TraySD = await import("../../scripts/tray/TraySD.mjs");
-const {
-	getNoteGroupsData,
-	getViewMode,
-	initTray,
-	renderTray,
-	setViewMode,
-} = TraySD;
+const { getNoteGroupsData, getViewMode, renderTray, setViewMode } = TraySD;
 
-// The one boundary this vertical does not own. Ticket 1 proved the enrichment
-// policy against it; here it only has to give the rows something to carry.
-foundry.applications.ux.TextEditor = { implementation: { enrichHTML: async html => html } };
-
-const MODULE_ID = "shadowdark-extras";
+installEnricher();
+const tray = makeTrayDriver(TraySD, features);
 
 // --- scene fixtures ----------------------------------------------------------
-
-/** A document carrying an SDX note, plus whatever else a test needs to set. */
-function noted(documentName, uuid, extra = {}) {
-	return {
-		documentName,
-		uuid,
-		...extra,
-		flags: { [MODULE_ID]: { notes: `<p>note on ${uuid}</p>`, ...extra.flags?.[MODULE_ID] } },
-	};
-}
 
 /** Install a scene as the one the tray is looking at, and who is looking. */
 function stage({ isGM = true, scene = null } = {}) {
@@ -277,44 +246,13 @@ test("a Drawing and a Region with notes reach no group at all", async () => {
 // context was empty", but "the enricher was never called".
 
 /** Start the real tray application, once, without the painters' asset loads. */
-let trayStarted = false;
-function startTray() {
-	if (trayStarted) return;
-	trayStarted = true;
-	// The hex and dungeon painters read their tile catalogue from IndexedDB at
-	// startup, which a Node process has none of. They are switched back on
-	// immediately afterwards, so every mode below is still reachable.
-	disabledFeatures = ["hex.painter", "dungeon.painter"];
-	initTray();
-	disabledFeatures = [];
-}
-
-/** Count what Foundry's enricher is asked to enrich, and restore it afterwards. */
-function traceEnrichment(t) {
-	const calls = [];
-	const previous = foundry.applications.ux.TextEditor.implementation.enrichHTML;
-	foundry.applications.ux.TextEditor.implementation.enrichHTML = async (html, options) => {
-		calls.push({ html, options });
-		return html;
-	};
-	t.after(() => {
-		foundry.applications.ux.TextEditor.implementation.enrichHTML = previous;
-	});
-	return calls;
-}
+const startTray = () => tray.start();
 
 /** Every tray view except the Notes tab, for a GM with every feature on. */
 const OTHER_VIEWS = ["scenes", "party", "pins", "hexes", "dungeons", "decor"];
 
-/**
- * Switch tab and wait for the tray to be rebuilt. `setViewMode` starts a render
- * without waiting for it, which is right for a click and useless for a
- * measurement, so the render is repeated and awaited.
- */
-async function showView(mode) {
-	await setViewMode(mode);
-	await renderTray();
-}
+/** Switch tab and wait for the tray to be rebuilt. */
+const showView = mode => tray.showView(mode);
 
 test("no view but Notes enriches a note", async t => {
 	stage({ scene: sceneWithEveryType() });
@@ -341,12 +279,14 @@ test("with Placeable Notes switched off, no view enriches a note", async t => {
 	stage({ scene: sceneWithEveryType() });
 	startTray();
 	const enriched = traceEnrichment(t);
-	disabledFeatures = ["journal.placeableNotes"];
-	t.after(() => {
-		disabledFeatures = [];
-	});
+	features.disable(["journal.placeableNotes"]);
+	t.after(() => features.enableAll());
 
-	await showView("notes");
+	// Asking for the tab rather than being put on it: `showView` insists the
+	// tray arrived where it was sent, and the whole point here is that it
+	// refuses to go.
+	await setViewMode("notes");
+	await renderTray();
 
 	assert.notEqual(getViewMode(), "notes", "the Notes tab is not offered at all");
 	assert.deepEqual(enriched, []);
@@ -468,7 +408,7 @@ function deferEnrichment(t) {
 
 		/** Let one source's note finish enriching. */
 		release(sourceUuid) {
-			const key = `<p>note on ${sourceUuid}</p>`;
+			const key = `<p>body of ${sourceUuid}</p>`;
 			const resolve = pending.get(key);
 			assert.ok(resolve, `no enrichment in flight for ${sourceUuid}`);
 			pending.delete(key);
@@ -558,7 +498,7 @@ test("of two renders of one scene, the one that started last is the one that sho
 
 	// The note is edited, and render B begins on that same scene.
 	scene.tiles.contents[0].flags[MODULE_ID].notes
-		= "<p>note on Scene.scene-e.Tile.t1 (edited)</p>";
+		= "<p>body of Scene.scene-e.Tile.t1 (edited)</p>";
 	const renderB = renderTray();
 	await enricher.inFlight(2);
 
@@ -571,7 +511,7 @@ test("of two renders of one scene, the one that started last is the one that sho
 
 	assert.deepEqual(
 		context.noteGroups.flatMap(group => group.rows).map(row => row.enrichedContent),
-		["<p>note on Scene.scene-e.Tile.t1 (edited)</p>"],
+		["<p>body of Scene.scene-e.Tile.t1 (edited)</p>"],
 		"the earlier render's stale copy of the note did not come back over the edit"
 	);
 });

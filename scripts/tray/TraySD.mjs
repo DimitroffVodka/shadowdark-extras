@@ -33,6 +33,30 @@ import {
 
 const MODULE_ID = "shadowdark-extras";
 
+/**
+ * The Token fields a tray rebuild would learn nothing from.
+ *
+ * A row is named from `customName`/`name`, grouped by the Actor a Token
+ * represents, and panned to by reading the drawn placeable rather than anything
+ * captured when the row was built — so moving and turning a token changes
+ * nothing the tray shows. Everything NOT in here forces a rebuild, including
+ * fields that do not exist yet: the tray is not required to keep a list of
+ * every Token field that matters, only of the few that provably do not.
+ *
+ * Foundry 14 counts more fields than these as a movement action
+ * (`BaseToken.MOVEMENT_FIELDS` adds `width`, `height`, `depth`, `shape` and
+ * `level`); they are deliberately absent, because a token resized or moved
+ * between levels is a cheap rebuild rather than a step-by-step one.
+ */
+const TRAY_BLIND_TOKEN_KEYS = new Set(["x", "y", "rotation", "elevation"]);
+
+/**
+ * Foundry's own bookkeeping on a document differential, which is never a reason
+ * to rebuild anything. `_id` is how an update is routed to its document, so it
+ * rides along with even a plain drag and must not be mistaken for a change.
+ */
+const DOCUMENT_METADATA_KEYS = new Set(["_id", "_stats"]);
+
 // Tray instance
 let _trayApp = null;
 
@@ -157,6 +181,19 @@ export function initTray() {
 		}, 100);
 	});
 
+	// An Actor arriving or leaving the world, which the Notes tab can see even
+	// though an Actor is not on a scene.
+	//
+	// An Actor is in the note index because a Token on the active scene
+	// represents it, so a Token being created or deleted usually carries the
+	// Actor row with it — but not always, and the exception is the whole reason
+	// these two exist. The Token can sit still the entire time: delete the
+	// world Actor and its rendered row names something that is gone, create one
+	// and a Token that was pointing nowhere resolves. Neither is a Token event,
+	// and nothing else would rebuild.
+	Hooks.on("createActor", async () => await renderTray());
+	Hooks.on("deleteActor", async () => await renderTray());
+
 	// Hook into effect changes
 	Hooks.on("createActiveEffect", async () => await renderTray());
 	Hooks.on("deleteActiveEffect", async () => await renderTray());
@@ -192,12 +229,30 @@ export function initTray() {
 	// the tray for HP changes, not position changes
 	let _tokenUpdateTimer = null;
 	Hooks.on("updateToken", async (tokenDoc, changes) => {
-		// Skip position-only updates (token movement) - these don't affect tray content
-		const isPositionOnly = ("x" in changes || "y" in changes || "rotation" in changes || "elevation" in changes)
-            && !("actorData" in changes)
-            && !("name" in changes)
-            && !("texture" in changes);
-		if (isPositionOnly) return;
+		// Skip updates that only moved the token.
+		//
+		// Asked as "is EVERY changed field one the tray does not read", rather
+		// than the other way round. A denylist — a movement key is present and
+		// none of these three other keys are — has to be extended every time a
+		// field starts mattering, and until it is, any compound update carrying
+		// that field is silently filed as a drag. `{x, actorId}` reassigns which
+		// Actor a Token represents, so one Actor row has to retire and another
+		// appear; read the old way it was indistinguishable from a step.
+		//
+		// The cost of the safe direction is a rebuild nobody needed. The cost of
+		// the other one is a tray showing a row the scene no longer has.
+		const changedKeys = Object.keys(changes).filter(key => !DOCUMENT_METADATA_KEYS.has(key));
+
+		// Nothing but Foundry's bookkeeping, or nothing at all. Rebuilding for
+		// this would contradict what DOCUMENT_METADATA_KEYS says about it, and a
+		// no-op save on a busy scene would cost a full re-enrichment.
+		//
+		// Both of these are a return and nothing else. Clearing the pending timer
+		// on the way out would let bookkeeping traffic — which nobody asked for
+		// and which arrives whenever it likes — postpone or swallow the rebuild a
+		// real change already scheduled.
+		if (changedKeys.length === 0) return;
+		if (changedKeys.every(key => TRAY_BLIND_TOKEN_KEYS.has(key))) return;
 
 		// Debounce other updates
 		if (_tokenUpdateTimer) clearTimeout(_tokenUpdateTimer);

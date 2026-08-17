@@ -668,27 +668,48 @@ test("a player gets nothing rather than a guess when a secret section is malform
 	assert.ok(!enrichedContent.includes("GM only"), "an unremovable secret payload reached a player");
 });
 
-/** Records what the model would have written to the console. */
+/**
+ * Records what the model would have written to the console. Errors are
+ * recorded as well as warnings: a note this module recovers from being reported
+ * at error level is its own defect, and only a logger that could receive one
+ * can show that none was.
+ */
 function makeLogger() {
 	const warnings = [];
-	return { warnings, warn: (...args) => warnings.push(args) };
+	const errors = [];
+	return {
+		warnings,
+		errors,
+		warn: (...args) => warnings.push(args),
+		error: (...args) => errors.push(args),
+	};
 }
 
-// A note that silently renders as a stub is a bug report nobody can act on.
-// The warning has to name which note failed and carry the original error —
-// and it must not paste the note's content into the console, because a GM
-// secret in a shared world's log is the same disclosure by another route.
-test("a broken note is reported once, by uuid, with the error that caused it", async () => {
-	const error = new Error("enrichment exploded");
+// A note that silently renders as a stub is a bug report nobody can act on, so
+// the warning has to name which note failed. It must carry nothing else: a GM
+// secret in a shared world's log is the same disclosure by another route, and
+// every field of the rejection is a place the enricher could have put one.
+//
+// This test used to require the original error object as a second argument, and
+// then the error's `name`. Both requirements were withdrawn in Ticket 4: an
+// error composed by the enrichment boundary can quote the note it rejected in
+// any of its fields, so passing any of them on reopened exactly the disclosure
+// the rendered fallback closes. See the adversarial tests below.
+test("a broken note is reported once, by uuid, and by nothing else", async () => {
+	const error = new TypeError("enrichment exploded");
 	const { enrichHTML } = makeFailingEnricher(BROKEN_NOTE, error);
 	const logger = makeLogger();
 
 	await buildPlaceableNoteIndex(makeSceneWithABrokenNote(), { isGM: true, enrichHTML, logger });
 
 	assert.equal(logger.warnings.length, 1);
-	const [message, cause] = logger.warnings[0];
+	assert.equal(logger.warnings[0].length, 1, "only the module's own message is logged");
+	const [message] = logger.warnings[0];
 	assert.ok(message.includes("Scene.scene1.Tile.broken"), "the warning does not say which note failed");
-	assert.equal(cause, error);
+	assert.ok(!message.includes("enrichment exploded"),
+		"the enricher's own message was passed through");
+	assert.ok(!message.includes("TypeError"),
+		"a field the enricher chose the value of was passed through");
 });
 
 test("a broken note's content stays out of the log", async () => {
@@ -697,7 +718,174 @@ test("a broken note's content stays out of the log", async () => {
 
 	await buildPlaceableNoteIndex(makeSceneWithABrokenNote(), { isGM: true, enrichHTML, logger });
 
-	assert.ok(!JSON.stringify(logger.warnings[0][0]).includes("breaks enrichment"));
+	assert.ok(!JSON.stringify(logger.warnings[0]).includes("breaks enrichment"));
+});
+
+// The note's own text is not the only way it can reach the console. An
+// enricher rejects with an error IT composed, and a parser that quotes the
+// input it choked on — which is ordinary, helpful behaviour for a parser —
+// puts the whole note inside `error.message`. Logging that error hands a
+// player the exact secret the rendered fallback refused them, through a
+// console they can open. So nothing the enricher authored is logged at all.
+const SECRET_NOTE = '<p>public part</p><section class="secret">DO-NOT-LOG-THE-DAGGER</section>';
+
+/** An enricher that rejects with the note it was given, quoted in full. */
+function makeQuotingEnricher(brokenHtml) {
+	return {
+		enrichHTML: async html => {
+			if (html === brokenHtml) throw new Error(`parser rejected: ${html}`);
+			return html;
+		},
+	};
+}
+
+/** Everything a warning would put in front of a reader, as one string. */
+function warningText(warning) {
+	return warning.map(part => (part instanceof Error
+		? `${part.name}: ${part.message}\n${part.stack ?? ""}`
+		: String(part))).join(" ");
+}
+
+test("an enrichment error that quotes the note does not carry it into the log", async () => {
+	const { enrichHTML } = makeQuotingEnricher(SECRET_NOTE);
+	const logger = makeLogger();
+	const scene = makeSceneWithABrokenNote(SECRET_NOTE);
+
+	await buildPlaceableNoteIndex(scene, { isGM: false, enrichHTML, logger });
+
+	assert.equal(logger.warnings.length, 1, "one note failed, so one warning");
+	const text = warningText(logger.warnings[0]);
+	assert.ok(!text.includes("DO-NOT-LOG-THE-DAGGER"),
+		`the secret reached the console: ${text}`);
+	assert.ok(!text.includes("public part"),
+		`the note's public text reached the console: ${text}`);
+});
+
+test("the warning about a quoting error still says which note to go and look at", async () => {
+	const { enrichHTML } = makeQuotingEnricher(SECRET_NOTE);
+	const logger = makeLogger();
+
+	await buildPlaceableNoteIndex(makeSceneWithABrokenNote(SECRET_NOTE),
+		{ isGM: false, enrichHTML, logger });
+
+	const text = warningText(logger.warnings[0]);
+	assert.ok(text.includes("Scene.scene1.Tile.broken"), "the warning does not say which note failed");
+	assert.equal(text, "SDX Note Index | Could not enrich the note on Scene.scene1.Tile.broken",
+		"the warning carries something beyond the uuid of the note to go and look at");
+});
+
+test("a player still sees nothing of a note whose error quoted it", async () => {
+	const { enrichHTML } = makeQuotingEnricher(SECRET_NOTE);
+
+	const groups = await buildPlaceableNoteIndex(makeSceneWithABrokenNote(SECRET_NOTE),
+		{ isGM: false, enrichHTML, logger: silentLogger });
+	const rows = groups.find(group => group.id === "tiles").rows;
+
+	assert.equal(rows.find(row => row.sourceUuid === "Scene.scene1.Tile.broken").enrichedContent, "");
+	assert.deepEqual(rows.map(row => row.sourceUuid),
+		["Scene.scene1.Tile.broken", "Scene.scene1.Tile.healthy"],
+		"and the healthy row beside it is untouched");
+});
+
+// A regression case, kept for the shape filter that used to stand here. The
+// builder once logged `error.name` whenever it still LOOKED like a class name,
+// on the reasoning that a note is HTML and a run of letters and digits is not.
+// This payload is the half of that bet the filter won — HTML punctuation in
+// `name`, rejected on sight — and it is exactly why the bet read as safe. The
+// other half is the next test below: a note can be a door code, and a door code
+// looks like a class name. No field of the rejection is read or logged now, so
+// this case passes for the reason every other one does rather than for a
+// property of the payload.
+test("an error whose name has been loaded with note text is not logged either", async () => {
+	const enrichHTML = async html => {
+		const error = new Error("rejected");
+		error.name = 'TypeError: <section class="secret">DO-NOT-LOG-THE-DAGGER</section>';
+		throw error;
+	};
+	const logger = makeLogger();
+
+	await buildPlaceableNoteIndex(makeSceneWithABrokenNote(SECRET_NOTE),
+		{ isGM: false, enrichHTML, logger });
+
+	const text = logger.warnings.map(warningText).join(" ");
+	assert.ok(!text.includes("DO-NOT-LOG-THE-DAGGER"), `the secret reached the console: ${text}`);
+});
+
+// A note is not always HTML. It can be a door code, a password, a name — a run
+// of letters and digits and nothing else — and any test of what a value LOOKS
+// like passes such a note straight through. This is the case that closed the
+// question of whether the rejection could be inspected safely at all: it cannot,
+// so none of it is read.
+const ALPHANUMERIC_SECRET = "DungeonPassword123";
+
+/** An enricher that rejects with the note itself loaded into `error.name`. */
+function makeNameLoadingEnricher(brokenHtml) {
+	return async html => {
+		if (html !== brokenHtml) return html;
+		const error = new Error("rejected");
+		error.name = html;
+		throw error;
+	};
+}
+
+test("a note that is only letters and digits does not reach the log through error.name", async () => {
+	const enrichHTML = makeNameLoadingEnricher(ALPHANUMERIC_SECRET);
+	const logger = makeLogger();
+
+	const groups = await buildPlaceableNoteIndex(makeSceneWithABrokenNote(ALPHANUMERIC_SECRET),
+		{ isGM: false, enrichHTML, logger });
+	const rows = groups.find(group => group.id === "tiles").rows;
+
+	assert.equal(logger.warnings.length, 1, "one note failed, so one warning");
+	assert.deepEqual(logger.errors, [], "a note this module recovers from was reported as an error");
+	const text = warningText(logger.warnings[0]);
+	assert.ok(!text.includes(ALPHANUMERIC_SECRET), `the secret reached the console: ${text}`);
+	assert.ok(text.includes("Scene.scene1.Tile.broken"), "the warning does not say which note failed");
+
+	assert.equal(rows.find(row => row.sourceUuid === "Scene.scene1.Tile.broken").enrichedContent, "",
+		"a player was shown something of a note that never enriched");
+	assert.deepEqual(rows.map(row => row.sourceUuid),
+		["Scene.scene1.Tile.broken", "Scene.scene1.Tile.healthy"],
+		"and the healthy row beside it is untouched");
+});
+
+// Reading a field off the rejection is not only a disclosure risk, it is not
+// even safe to attempt: the enricher chooses what it throws, and a getter is
+// allowed to detonate. A read inside the catch block escapes it, and one broken
+// note takes the whole scene's index with it — the exact failure the catch is
+// there to prevent.
+const BOOBY_TRAPPED_NOTE = "<p>the note whose rejection fights back</p>";
+
+/** An enricher that rejects with an object no property of which can be touched. */
+function makeDetonatingEnricher(brokenHtml) {
+	return async html => {
+		if (html !== brokenHtml) return html;
+		throw {
+			get name() { throw new Error("getter detonated"); },
+			get message() { throw new Error("getter detonated"); },
+			get stack() { throw new Error("getter detonated"); },
+			toString() { throw new Error("getter detonated"); },
+		};
+	};
+}
+
+test("a rejection whose name getter detonates does not take the index with it", async () => {
+	const enrichHTML = makeDetonatingEnricher(BOOBY_TRAPPED_NOTE);
+	const logger = makeLogger();
+
+	const groups = await buildPlaceableNoteIndex(makeSceneWithABrokenNote(BOOBY_TRAPPED_NOTE),
+		{ isGM: false, enrichHTML, logger });
+	const rows = groups.find(group => group.id === "tiles").rows;
+
+	assert.equal(logger.warnings.length, 1, "one note failed, so one warning");
+	assert.deepEqual(logger.errors, [], "a note this module recovers from was reported as an error");
+	assert.ok(warningText(logger.warnings[0]).includes("Scene.scene1.Tile.broken"),
+		"the warning does not say which note failed");
+
+	assert.equal(rows.find(row => row.sourceUuid === "Scene.scene1.Tile.broken").enrichedContent, "");
+	assert.deepEqual(rows.map(row => row.sourceUuid),
+		["Scene.scene1.Tile.broken", "Scene.scene1.Tile.healthy"],
+		"a rejection that fights back cost the scene the row beside it");
 });
 
 test("the healthy note beside a reported one is still indexed", async () => {

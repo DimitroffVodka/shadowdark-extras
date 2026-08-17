@@ -216,11 +216,29 @@ async function enrichOrFallBack(source, isGM, enrichHTML, logger) {
 	try {
 		return await enrichHTML(noteOf(source), { async: true, secrets: isGM });
 	}
-	catch(error) {
-		// The UUID says which note to go and look at; the error says what went
-		// wrong. The note's own text is deliberately absent — a GM secret in a
-		// shared console is the same disclosure by another route.
-		logger.warn(`SDX Note Index | Could not enrich the note on ${source.uuid}`, error);
+	catch{
+		// The rejection is not bound, and that is the point rather than a
+		// tidiness: NOTHING about it may be read, and a value the catch does not
+		// have is a property nobody can weaken later.
+		//
+		// The enricher is a boundary a module can replace, so what it throws is
+		// as untrusted as the note itself. A parser that quotes the input it
+		// rejected — ordinary, helpful behaviour — puts the whole note in
+		// `message`; an enricher that means harm puts it in `name`, where no
+		// test of the value's SHAPE can catch it, because a note can be a door
+		// code and a door code is letters and digits. Either way, logging it
+		// hands a player, in a console they can open, the exact secret the
+		// rendered fallback just refused them.
+		//
+		// Touching it at all is unsafe besides. `error.name` runs a getter the
+		// enricher wrote, and a getter that throws escapes this catch and takes
+		// the whole scene's index with it — precisely the collapse this block
+		// exists to stop.
+		//
+		// So the message is fixed and says only which note to go and look at.
+		// The kind of failure is worth less than the two guarantees that buys.
+		// Anything more actionable belongs in the note, not in a shared log.
+		logger.warn(`SDX Note Index | Could not enrich the note on ${source.uuid}`);
 		return fallbackTextFor(noteOf(source), isGM);
 	}
 }

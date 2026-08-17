@@ -45,7 +45,7 @@ Below that, two visible groups map directly to tray controls you can see:
 | **Scenes** | SDX Tray → Scenes tab | ToM scenes, player view, navigation, arena editor, and video overlays |
 | **Party** | SDX Tray → Party tab | Roster, health cards, travel, camping, weather, and stat sync |
 | **Pins** | SDX Tray → Pins tab, Add Pin, and Pin List | Pin list, placement, canvas rendering, folders, and styles |
-| **Notes** | SDX Tray → Notes tab | Notes on tiles, walls, lights, sounds, and tokens |
+| **Notes** | SDX Tray → Notes tab | Notes on tokens, actors, tiles, walls, lights, and sounds |
 | **Hexes** | SDX Tray → Hexes tab | Hex tile, symbol, custom tile, POI, and terrain painting |
 | **Dungeons** | SDX Tray → Dungeons tab | Dungeon painting, generation, biomes, levels, and tile flatten |
 | **Decor** | SDX Tray → Decor tab | Decor assets and POI transforms (needs Hexes) |

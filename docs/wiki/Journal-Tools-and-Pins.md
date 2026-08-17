@@ -25,20 +25,64 @@ switch note systems.
 
 ## Notes on placeables
 
-With **Enable Notes on placeables and Notes tab in tray** on, the configuration
-windows for Tokens, Tiles, Walls, Ambient Lights, and Ambient Sounds all gain a
-Notes control.
+With **Enable Notes on placeables and Notes tab in tray** on, six kinds of
+document gain a Notes control in their sheet header: **Tokens, Actors, Tiles,
+Walls, Ambient Lights, and Ambient Sounds**. Those six are the whole list —
+Drawings and Regions have no Notes control and never appear in the tray.
 
 ![A token configuration window's header bar — the SDX Notes button, a highlighted sticky-note icon, sits between Sheet and Medkit](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/placeable-notes-token-header.webp)
 
 Write rich text and save. The tray's **Notes** tab lists every annotated object
 on the current scene, where you can expand or collapse the note, pan to the
-object, rename the note label, toggle player visibility, and delete it.
+object, open it for editing, rename the note label, toggle player visibility,
+and delete it. Right-clicking a row is a shortcut for the edit control.
 
 ![The tray's Notes tab — an expanded note on the token "Bazogo" reading "Bazogo Backstory", with collapse, hide-from-players, rename, delete, and pan-to-object controls on the row](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/placeable-notes-tray-tab.webp)
 
-These notes are metadata attached to the placeable. Delete the placeable and its
-note goes with it.
+### Type groups
+
+The tab is grouped into folders, one per type, always in the same order:
+**Tokens, Actors, Tiles, Walls, Lights, Sounds**. The headers are fixed — you
+cannot add, rename, reorder, or nest them, and a type with no notes on the
+scene is left out rather than shown empty. Click a header to fold it; each
+group's number is how many rows it is showing you.
+
+Within a group, rows are sorted by name the way you would count them, so
+*Room 2* comes before *Room 10*.
+
+### A Token note and its Actor note are two different notes
+
+A note lives on the document you opened, so a Token and the Actor behind it can
+each carry their own — a note about *this* goblin on *this* map, and a note
+about the goblin in general. Both show up, in their own groups, and the group
+tells you which is which even when they share a name. Renaming, hiding, or
+deleting one never touches the other.
+
+An Actor with several linked tokens on the scene still gets a single Actor row.
+Panning from it centres on one of its tokens.
+
+Notes are metadata on the document. Delete a placeable and its note goes with
+it; an Actor's note stays with the Actor, and its row leaves the tab when the
+last token representing it is off the scene.
+
+### Sharing a note with players
+
+Every note is GM-only until you say otherwise. The visibility control on a row
+shares that one note; a player then sees it in their own Notes tab, whether or
+not they own the underlying document.
+
+What a player gets is deliberately narrow:
+
+- only the rows explicitly shared with them, and group counts that reflect only
+  those rows, so a count cannot hint at a note they were not shown;
+- the note without its GM secret blocks;
+- read and pan only. Editing, renaming, sharing, and deleting stay with the GM,
+  and that is enforced by the command rather than by hiding the buttons.
+
+Sharing a Token's note does not share the Actor's note behind it. Notes made
+before Actor-level sharing existed are the one exception: an Actor note that was
+being shared through its token stays shared until you toggle it, and toggling it
+records the decision on the Actor from then on.
 
 ## Journal pins
 
@@ -122,7 +166,13 @@ and dice syntax. See
 ## Troubleshooting
 
 **Placeable Notes button is absent.** Enable the setting and reload. Foundry v14
-uses the DocumentSheetV2 header-controls hook.
+uses the DocumentSheetV2 header-controls hook. Drawings and Regions are not
+supported and will not show the control.
+
+**A note is missing from the Notes tab.** The tab only ever lists the active
+scene. An Actor's note needs a token representing it on that scene; a note on a
+document belonging to another scene is not listed, and a row left over from a
+scene you have since left does nothing but refresh the list.
 
 **A note saved blank.** Reopen after updating SDX. Current builds read the real
 ProseMirror field path.
