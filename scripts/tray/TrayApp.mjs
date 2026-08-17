@@ -13,6 +13,7 @@ import { TrayHandleBindings } from "./tray-handle-bindings.mjs";
 import { DungeonBindings } from "./dungeon-bindings.mjs";
 import { TomSceneBindings } from "./tom-scene-bindings.mjs";
 import { PinListBindings } from "./pin-list-bindings.mjs";
+import { PlaceableNoteBindings } from "./placeable-note-bindings.mjs";
 import { PartyBindings } from "./party-bindings.mjs";
 
 import { TOM_OVERLAYS, TOM_OVERLAY_BASE } from "../tom/TomOverlays.mjs";
@@ -340,6 +341,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 
 		this._bindPinListEvents(elem);
+		this._bindPlaceableNoteEvents(elem);
 		// Hex Painter tab bindings
 		this._bindHexPainterEvents(elem);
 	}
@@ -414,5 +416,6 @@ function registerTrayAppMixins() {
 	Object.assign(TrayApp.prototype, DungeonBindings);
 	Object.assign(TrayApp.prototype, TomSceneBindings);
 	Object.assign(TrayApp.prototype, PinListBindings);
+	Object.assign(TrayApp.prototype, PlaceableNoteBindings);
 	Object.assign(TrayApp.prototype, PartyBindings);
 }

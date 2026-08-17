@@ -768,11 +768,11 @@
                     <ul class="sdx-note-list">
                         {{#each notes}}
                         <li class="note-entry {{#if (and ../isGM (not this.isVisible))}}hidden-note{{/if}}"
-                            data-id="{{this.id}}" data-x="{{this.x}}" data-y="{{this.y}}">
+                            data-note-uuid="{{this.sourceUuid}}" data-note-type="{{this.sourceType}}">
                             <div class="note-header">
                                 <span class="toggle-icon"><i class="fas fa-chevron-right"></i></span>
                                 <div class="note-icon"><i class="{{this.icon}}"></i></div>
-                                <span class="note-name">{{this.name}}</span>
+                                <span class="note-name">{{this.displayName}}</span>
                                 <div class="note-controls">
                                     {{#if ../isGM}}
                                     <a class="note-control" data-action="toggle-visibility"
@@ -790,7 +790,7 @@
                                 </div>
                             </div>
                             <div class="note-content hidden">
-                                {{{this.content}}}
+                                {{{this.enrichedContent}}}
                             </div>
                         </li>
                         {{/each}}

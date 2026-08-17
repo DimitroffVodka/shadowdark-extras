@@ -125,11 +125,20 @@ function representingTokens(actor, tokens) {
 }
 
 /**
- * Whether this viewer may see a note. An Actor note predating Actor-level
- * sharing was shared through the Token representing it, so that decision still
- * counts.
+ * Whether a note has been shared with players. An Actor note predating
+ * Actor-level sharing was shared through the Token representing it, so that
+ * decision still counts.
+ *
+ * Exported because the tray's visibility toggle must flip exactly the state the
+ * row was rendered from: a second reading of the legacy rule in the command
+ * path could disagree with this one, and the row would then toggle to where it
+ * already was.
+ *
+ * @param {object} source The document that owns the note.
+ * @param {object[]} tokens The Token documents on the source's own Scene.
+ * @returns {boolean}
  */
-function isNoteShared(source, tokens) {
+export function isNoteSharedWithPlayers(source, tokens) {
 	if (source.documentName !== "Actor") return isSharedWithPlayers(source);
 
 	// An explicit decision on the Actor is the answer, either way. The legacy
@@ -268,7 +277,7 @@ export async function buildPlaceableNoteIndex(scene, options) {
 		// is never handed to the enricher at all.
 		const included = sources[id]
 			.filter(hasNote)
-			.filter(source => options.isGM || isNoteShared(source, tokens));
+			.filter(source => options.isGM || isNoteSharedWithPlayers(source, tokens));
 		if (included.length === 0) continue;
 
 		const rows = await Promise.all(included.map(async source => ({
@@ -279,7 +288,7 @@ export async function buildPlaceableNoteIndex(scene, options) {
 			displayName: displayNameOf(source),
 			// The resolved policy, not the raw flag: a GM sees every row, and
 			// this is what tells them which ones a player can see.
-			isVisible: isNoteShared(source, tokens),
+			isVisible: isNoteSharedWithPlayers(source, tokens),
 			enrichedContent: await enrichOrFallBack(source, options.isGM, enrichHTML, logger),
 		})));
 		rows.sort(byNaturalName);

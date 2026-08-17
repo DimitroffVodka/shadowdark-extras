@@ -1,12 +1,15 @@
 // Journal pin and map note list bindings — extracted from
 // scripts/tray/TrayApp.mjs (Phase 5.3 split). Prototype mixin: the pin list
-// and its folders, note entries, the drag-drop that assigns pins to folders,
-// the Map-Notes conversion dialog, and the search box together with the
-// filter it drives. Merged via Object.assign(TrayApp.prototype, ...).
+// and its folders, the drag-drop that assigns pins to folders, the Map-Notes
+// conversion dialog, and the search box together with the filter it drives.
+// Merged via Object.assign(TrayApp.prototype, ...).
+//
+// Placeable notes are NOT here. They are a flag on a Token, Actor, Tile, Wall,
+// light or sound rather than anything to do with a journal pin, and they live
+// in placeable-note-bindings.mjs.
 
 import { JournalPinManager, JournalPinRenderer, PinPlacer } from "../journal/JournalPinsSD.mjs";
 import { PinStyleEditorApp } from "../journal/PinStyleEditorSD.mjs";
-import { PlaceableNotesSD } from "../journal/PlaceableNotesSD.mjs";
 import { openPinTarget } from "../journal/pin-access.mjs";
 
 export const PinListBindings = {
@@ -393,170 +396,6 @@ export const PinListBindings = {
 				}
 			});
 		}
-
-		// Note Actions
-		elem.querySelectorAll(".note-control").forEach(btn => {
-			btn.addEventListener("click", async e => {
-				e.preventDefault();
-				e.stopPropagation();
-				const action = btn.dataset.action;
-				const entry = btn.closest(".note-entry");
-				const id = entry.dataset.id;
-				const type = entry.querySelector(".note-icon i").className.includes("fa-user") ? "Token"
-					: entry.querySelector(".note-icon i").className.includes("fa-lightbulb") ? "AmbientLight"
-						: entry.querySelector(".note-icon i").className.includes("fa-volume-high") ? "AmbientSound"
-							: entry.querySelector(".note-icon i").className.includes("fa-image") ? "Tile"
-								: entry.querySelector(".note-icon i").className.includes("fa-block-brick") ? "Wall" : null;
-
-				if (!type) return;
-
-				// Find the document
-				let doc;
-				if (type === "Token") {
-					const token = canvas.tokens.get(id);
-					if (token) {
-						const tokenDoc = token.document;
-						// Check if token has its own note
-						const tokenNote = tokenDoc.getFlag("shadowdark-extras", "notes");
-						// If token has no note, but actor does, edit the actor's note (matching
-						// display logic)
-						if (!tokenNote && token.actor && token.actor.getFlag("shadowdark-extras", "notes")) {
-							doc = token.actor;
-						}
-						else {
-							doc = tokenDoc;
-						}
-					}
-				}
-				else if (type === "AmbientLight") doc = canvas.lighting.get(id)?.document;
-				else if (type === "AmbientSound") doc = canvas.sounds.get(id)?.document;
-				else if (type === "Tile") doc = canvas.tiles.get(id)?.document;
-				else if (type === "Wall") doc = canvas.walls.get(id)?.document;
-
-				if (!doc) return;
-
-				if (action === "pan") {
-					const x = parseFloat(entry.dataset.x);
-					const y = parseFloat(entry.dataset.y);
-					canvas.animatePan({ x, y, scale: 1.5, duration: 500 });
-				}
-				else if (action === "rename") {
-					const currentName = doc.getFlag("shadowdark-extras", "customName") || doc.name || "";
-					new foundry.applications.api.DialogV2({
-						window: { title: "Rename Placeable Note" },
-						content: `
-                            <form>
-                                <div class="form-group">
-                                    <label>Name:</label>
-                                    <input type="text" name="name" value="${foundry.utils.escapeHTML(currentName)}" autofocus>
-                                </div>
-                            </form>
-                        `,
-						buttons: [
-							{
-								action: "save",
-								label: "Save",
-								icon: "fas fa-check",
-								default: true,
-								callback: async (event, button) => {
-									const newName = button.form.elements.name.value;
-									await doc.setFlag("shadowdark-extras", "customName", newName);
-								},
-							},
-							{
-								action: "reset",
-								label: "Reset",
-								icon: "fas fa-undo",
-								callback: async () => {
-									await doc.unsetFlag("shadowdark-extras", "customName");
-								},
-							},
-						],
-					}).render({ force: true });
-				}
-				else if (action === "toggle-visibility") {
-					const isVisible = !!doc.getFlag("shadowdark-extras", "noteVisible");
-					await doc.setFlag("shadowdark-extras", "noteVisible", !isVisible);
-				}
-				else if (action === "delete") {
-					const ok = await foundry.applications.api.DialogV2.confirm({
-						window: { title: "Delete Note" },
-						content: `<p>Are you sure you want to delete the note for <strong>${doc.name}</strong>?</p>`,
-						modal: true,
-					});
-					if (ok) {
-						await doc.unsetFlag("shadowdark-extras", "notes");
-						await doc.unsetFlag("shadowdark-extras", "noteVisible");
-					}
-				}
-			});
-		});
-
-		// Note Toggle Action
-		elem.querySelectorAll(".note-header").forEach(header => {
-			header.addEventListener("click", e => {
-				// Don't toggle if clicking a control button
-				if (e.target.closest(".note-controls")) return;
-
-				e.preventDefault();
-				e.stopPropagation();
-				const entry = header.closest(".note-entry");
-				const content = entry.querySelector(".note-content");
-				if (content) {
-					content.classList.toggle("hidden");
-					const icon = header.querySelector(".toggle-icon i");
-					if (icon) {
-						icon.classList.toggle("fa-chevron-right");
-						icon.classList.toggle("fa-chevron-down");
-					}
-				}
-			});
-		});
-
-		// Note Entry Context Menu (Edit)
-		elem.querySelectorAll(".note-entry").forEach(entry => {
-			entry.addEventListener("contextmenu", e => {
-				if (!game.user.isGM) return;
-				e.preventDefault();
-				e.stopPropagation();
-
-				const id = entry.dataset.id;
-				const type = entry.querySelector(".note-icon i").className.includes("fa-user") ? "Token"
-					: entry.querySelector(".note-icon i").className.includes("fa-lightbulb") ? "AmbientLight"
-						: entry.querySelector(".note-icon i").className.includes("fa-volume-high") ? "AmbientSound"
-							: entry.querySelector(".note-icon i").className.includes("fa-image") ? "Tile"
-								: entry.querySelector(".note-icon i").className.includes("fa-block-brick") ? "Wall" : null;
-
-				if (!type) return;
-
-				// Find the document
-				let doc;
-				if (type === "Token") {
-					const token = canvas.tokens.get(id);
-					if (token) {
-						const tokenDoc = token.document;
-						// Check if token has its own note
-						const tokenNote = tokenDoc.getFlag("shadowdark-extras", "notes");
-						// If token has no note, but actor does, edit the actor's note (matching
-						// display logic)
-						if (!tokenNote && token.actor && token.actor.getFlag("shadowdark-extras", "notes")) {
-							doc = token.actor;
-						}
-						else {
-							doc = tokenDoc;
-						}
-					}
-				}
-				else if (type === "AmbientLight") doc = canvas.lighting.get(id)?.document;
-				else if (type === "AmbientSound") doc = canvas.sounds.get(id)?.document;
-				else if (type === "Tile") doc = canvas.tiles.get(id)?.document;
-				else if (type === "Wall") doc = canvas.walls.get(id)?.document;
-
-				if (!doc) return;
-
-				new PlaceableNotesSD(doc).render(true);
-			});
-		});
 
 		// Map Note Actions
 		elem.querySelectorAll(".map-note-control").forEach(btn => {
