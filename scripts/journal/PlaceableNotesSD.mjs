@@ -88,11 +88,12 @@ export default class PlaceableNotesSD extends foundry.applications.api.Handlebar
      * longer fire the legacy `get<App>ConfigHeaderButtons` hooks. Header
      * actions are now contributed via `getHeaderControls<ClassName>` and read
      * from the returned controls array (rendered in the window's ⋮ menu).
- * `getHeaderControlsDocumentSheetV2` is the shared-ancestor hook that fires
- * for every document sheet (Tile/Drawing/Wall/Light/Sound/Region/Token/Actor),
- * so a single registration covers all supported types. A control's `onClick`
- * callback is
-     * honored by ApplicationV2 (`_renderHeaderControl` / `_headerControlContextEntries`).
+     * `getHeaderControlsDocumentSheetV2` is the shared-ancestor hook that fires
+     * for every document sheet
+     * (Tile/Drawing/Wall/Light/Sound/Region/Token/Actor), so a single
+     * registration covers all supported types. A control's `onClick` callback
+     * is honored by ApplicationV2 (`_renderHeaderControl` /
+     * `_headerControlContextEntries`).
      */
 	static addHeaderControl(app, controls) {
 		if (!game.user.isGM) return;
