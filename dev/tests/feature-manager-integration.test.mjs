@@ -171,7 +171,7 @@ test("tray mode cycling and expensive loaders use the feature gate context", asy
 	const tray = await source("scripts/tray/TraySD.mjs");
 	assert.match(tray, /getVisibleTrayModes\(/);
 	assert.match(tray, /features\.journalPins \? getMapNotesData\(\) : \[\]/);
-	assert.match(tray, /features\.journalPlaceableNotes \? await getNotesData\(\) : \[\]/);
+	assert.match(tray, /features\.journalPlaceableNotes && viewMode === "notes"\s*\?\s*await getNoteGroupsData\(scene\)\s*:\s*null/);
 	assert.match(tray, /features\.dungeonPainter \? await getDungeonPainterData\(\) : \{\}/);
 	assert.match(tray, /features\.hexPainter \|\| features\.hexDecorPainter/);
 });

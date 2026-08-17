@@ -66,6 +66,21 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		this._pinSearchTerm = "";
 		this._scrollPositions = {}; // Store scroll positions for tile grids
 		this._generatorExpanded = false; // Store procedural generator panel state
+		// Where the user is in the Notes list: which groups they folded shut.
+		// A group is open until it is in here, so the Set holds the exceptions
+		// and a new group arrives open. This is a browsing position rather than
+		// a preference, so it lives on the application and is never written to a
+		// setting or a document.
+		this._collapsedNoteGroups = new Set();
+		// The other half of that position: which notes the user has opened to
+		// read, keyed by the source UUID the row was built from so a row stays
+		// open across the rerenders that reorder the list around it.
+		this._expandedNoteRows = new Set();
+		// The scene those two were formed on. Group ids are the same six words
+		// on every scene, so a fold has to be tied to the scene it was made on
+		// or it silently applies to the next one. `null` until a Notes context
+		// has actually been built.
+		this._noteSceneId = null;
 		try {
 			const saved = globalThis.localStorage?.getItem("sdx.tomOverlaysCollapsed");
 			this._tomOverlaysCollapsed = saved === "true";
@@ -244,6 +259,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			tomOverlayCount,
 			tomOverlayOptions,
 			tomOverlaysCollapsed: this._tomOverlaysCollapsed,
+			noteGroups: this._noteGroupsForRender(),
 			tomScenes: features.tomScenes ? await this._getTomScenes() : [],
 			tomFolders: features.tomScenes ? await this._getTomFolders() : [],
 			tintEnabled: features.hexPainter ? isTintEnabled() : false,
@@ -257,6 +273,50 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			isHexagonal: !!canvas?.grid?.isHexagonal,
 			soloModeActive: features.hexSoloMode ? isSoloMode() : false,
 		};
+	}
+
+	/**
+     * The Notes groups to render, with this session's browsing state on them.
+     *
+     * `null` means the Notes tab is not the one being shown, so no index was
+     * built for this render.
+     *
+     * @returns {Array}
+     */
+	_noteGroupsForRender() {
+		const groups = this.trayData.noteGroups;
+		if (!groups) return [];
+
+		// A row UUID names one document in the world, but a group id is one of
+		// six fixed words that every scene reuses. So "tiles" folded here is a
+		// perfectly valid group over there, and pruning cannot tell the two
+		// apart: the new scene would open with a group already folded that this
+		// user never touched. Changing scene therefore drops the whole browsing
+		// position rather than trying to carry part of it across.
+		const sceneId = this.trayData.noteSceneId ?? null;
+		if (this._noteSceneId !== null && sceneId !== this._noteSceneId) {
+			this._collapsedNoteGroups.clear();
+			this._expandedNoteRows.clear();
+		}
+		this._noteSceneId = sceneId;
+
+		// Within one scene, a key that outlives what it named is worse than
+		// forgotten state: a note deleted while the tray was elsewhere would
+		// leave a key that folds its group again if it ever comes back. Only
+		// what this context still has is remembered — and only when there is a
+		// context to compare against, so switching tab is not forgetting.
+		forgetKeysAbsentFrom(this._collapsedNoteGroups, groups.map(group => group.id));
+		forgetKeysAbsentFrom(this._expandedNoteRows,
+			groups.flatMap(group => group.rows.map(row => row.sourceUuid)));
+
+		return groups.map(group => ({
+			...group,
+			collapsed: this._collapsedNoteGroups.has(group.id),
+			rows: group.rows.map(row => ({
+				...row,
+				expanded: this._expandedNoteRows.has(row.sourceUuid),
+			})),
+		}));
 	}
 
 	/**
@@ -402,6 +462,14 @@ function registerTrayHandlebarsHelpers() {
 		});
 	};
 	registerHelpers();
+}
+
+/** Drop every key of `state` that is not among `present`. */
+function forgetKeysAbsentFrom(state, present) {
+	const kept = new Set(present);
+	for (const key of state) {
+		if (!kept.has(key)) state.delete(key);
+	}
 }
 
 let trayAppMixinsRegistered = false;

@@ -36,6 +36,10 @@ const MODULE_ID = "shadowdark-extras";
 // Tray instance
 let _trayApp = null;
 
+// Bumped at the start of every tray render, so a render finishing after a later
+// one started can tell that it has been overtaken. See renderTray.
+let _renderGeneration = 0;
+
 // Current view mode
 let _viewMode = "player"; // "player" or "party"
 
@@ -954,6 +958,13 @@ export function toggleTray() {
 export async function renderTray() {
 	if (!_trayApp) return;
 
+	// Which render this is. Building the context waits — notes are enriched,
+	// painter catalogues are read — and the world does not wait with it. Two
+	// renders can therefore be in flight over two different scenes and finish in
+	// either order, so completion order must not decide what the user sees: the
+	// render that STARTED last is the one describing the world as it is now.
+	const generation = ++_renderGeneration;
+
 	const disabledFeatureIds = getDisabledFeatureIds();
 	const features = getFeatureFlagContext(disabledFeatureIds);
 	const modes = getVisibleTrayModes({
@@ -963,6 +974,14 @@ export async function renderTray() {
 		disabledFeatureIds,
 	});
 	if (!modes.includes(_viewMode)) _viewMode = modes[0];
+
+	// What this render is describing, read once and then used throughout rather
+	// than re-read after each await. Reading the active scene again on the far
+	// side of enrichment is how a render built from one scene came to publish
+	// its rows under another scene's name.
+	const trayApp = _trayApp;
+	const viewMode = _viewMode;
+	const scene = canvas.scene ?? null;
 
 	const actor = getCurrentActor();
 	const { partyTokens, npcTokens } = features.partyManagement
@@ -1016,8 +1035,18 @@ export async function renderTray() {
 		pins: features.journalPins && game.user.isGM ? getPinsData() : [],
 		mapNotes: features.journalPins ? getMapNotesData() : [],
 
-		// Notes Data
-		notes: features.journalPlaceableNotes ? await getNotesData() : [],
+		// Notes Data. Built for the tab that shows it and for nothing else:
+		// enriching every note on the scene is the expensive part of this
+		// context, and the other six views would only throw it away. Switching
+		// into Notes rerenders the tray, so nothing is missing when it is needed.
+		noteGroups: features.journalPlaceableNotes && viewMode === "notes"
+			? await getNoteGroupsData(scene)
+			: null,
+		// Which scene those groups describe. The tray's session-only collapse
+		// state is keyed by group id, and every scene reuses the same six ids,
+		// so the identity has to travel with them — and it is the identity this
+		// render was built from, not whatever the canvas is showing by now.
+		noteSceneId: scene?.id ?? null,
 
 		// Hex Painter Data
 		...(features.hexPainter || features.hexDecorPainter ? await getHexPainterData() : {}),
@@ -1041,7 +1070,21 @@ export async function renderTray() {
 		})(),
 	};
 
-	_trayApp.updateData(data);
+	// Everything above describes the world as it was when this render started.
+	// Publishing it now is only honest if that is still the world.
+	//
+	// The generation is the decision: a newer render has started, so whatever
+	// this one built has already been superseded and must not be shown, still
+	// less reconciled against the tray's browsing state as though it were
+	// current. The three identity checks catch the case where nothing has
+	// replaced this render yet but what it describes is already gone — the tray
+	// was rebuilt, the user changed tab, or the canvas changed scene — and the
+	// render that will replace it has not begun.
+	if (generation !== _renderGeneration) return;
+	if (trayApp !== _trayApp || viewMode !== _viewMode) return;
+	if ((canvas.scene ?? null) !== scene) return;
+
+	trayApp.updateData(data);
 }
 
 /**
@@ -1237,11 +1280,12 @@ export function getPinsData() {
 }
 
 /**
- * The icon each supported source type is shown with in the flat list.
+ * The icon each supported source type is shown with.
  *
  * Presentation flows from the type the index recorded, never the other way
- * round: no command may work out what a row is by reading its icon back.
- * Ticket 3 replaces this with per-group icons on folder-like headers.
+ * round: no command may work out what a row is by reading its icon back. It is
+ * what tells a Token note from the Actor note beside it, since a GM who names
+ * both after the same character leaves the rows reading identically.
  */
 const NOTE_ICONS = {
 	Token: "fa-solid fa-user",
@@ -1253,22 +1297,67 @@ const NOTE_ICONS = {
 };
 
 /**
- * The active scene's notes, as rows for the tray.
+ * What each group of the Notes tab is called. The index names a group after the
+ * scene collection it was gathered from; a reader wants a heading.
  *
- * The scene index decides what is in here and who may see it. This flattens its
- * groups into the one list the current template renders — an interim shape, kept
- * only until Ticket 3 gives the groups their headers. Each row keeps the exact
- * source identity it was built with, which is what its commands route by.
+ * Deliberately just a label. Which document type a group holds is the index's
+ * knowledge, and the rows it hands back already say so — restating that mapping
+ * here would be a second copy of it, free to drift.
+ */
+const NOTE_GROUP_LABELS = {
+	tokens: "Tokens",
+	actors: "Actors",
+	tiles: "Tiles",
+	walls: "Walls",
+	lights: "Lights",
+	sounds: "Sounds",
+};
+
+/**
+ * A scene's notes, as the groups the tray renders.
+ *
+ * The scene index decides what is in here, who may see it, and what order it is
+ * in. This adds only what the tray needs to draw it: a heading per group and an
+ * icon per row.
+ *
+ * @param {Scene|null} [scene] The scene to index, defaulting to the active one.
+ *   A render passes the scene it started on: enriching notes takes time, and the
+ *   canvas can move on while it happens, so the answer must be about the scene
+ *   that was asked about rather than whichever one is current when it returns.
+ * @returns {Promise<Array>}
+ */
+export async function getNoteGroupsData(scene = canvas.scene ?? null) {
+	const groups = await buildPlaceableNoteIndex(scene, { isGM: game.user.isGM });
+
+	return groups.map(group => ({
+		...group,
+		label: NOTE_GROUP_LABELS[group.id],
+		// A group's heading wears its rows' icon. The index emits no empty
+		// group, and every row in one is the same type, so the first row is
+		// where that type is already recorded.
+		icon: NOTE_ICONS[group.rows[0]?.sourceType],
+		rows: group.rows.map(row => ({ ...row, icon: NOTE_ICONS[row.sourceType] })),
+	}));
+}
+
+/**
+ * The active scene's notes as one flat list of rows.
+ *
+ * This export predates the grouped tab, and a name that is simply gone breaks an
+ * importing module when it LINKS rather than when it calls: the failure is not a
+ * wrong answer but a module that will not load. So it stays, forwarding to the
+ * grouped builder rather than keeping a second copy of the index call.
+ *
+ * The tray no longer renders from this — the Notes view renders the groups
+ * themselves, behind the view gate — so nothing here is on the path an inactive
+ * view takes.
  *
  * @returns {Promise<Array>}
  */
 export async function getNotesData() {
-	const groups = await buildPlaceableNoteIndex(canvas.scene ?? null, { isGM: game.user.isGM });
+	const groups = await getNoteGroupsData();
 
-	return groups.flatMap(group => group.rows.map(row => ({
-		...row,
-		icon: NOTE_ICONS[row.sourceType],
-	})));
+	return groups.flatMap(group => group.rows);
 }
 
 /**

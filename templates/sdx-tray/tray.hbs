@@ -764,34 +764,50 @@
                 <!-- Note List Content -->
                 <div class="note-list-scroll-container"
                     style="flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.2) rgba(0, 0, 0, 0.1);">
-                    {{#if notes.length}}
+                    {{#if noteGroups.length}}
                     <ul class="sdx-note-list">
-                        {{#each notes}}
-                        <li class="note-entry {{#if (and ../isGM (not this.isVisible))}}hidden-note{{/if}}"
-                            data-note-uuid="{{this.sourceUuid}}" data-note-type="{{this.sourceType}}">
-                            <div class="note-header">
-                                <span class="toggle-icon"><i class="fas fa-chevron-right"></i></span>
-                                <div class="note-icon"><i class="{{this.icon}}"></i></div>
-                                <span class="note-name">{{this.displayName}}</span>
-                                <div class="note-controls">
-                                    {{#if ../isGM}}
-                                    <a class="note-control" data-action="toggle-visibility"
-                                        title="{{#if this.isVisible}}Make Hidden{{else}}Make Visible{{/if}}">
-                                        <i class="fas {{#if this.isVisible}}fa-eye{{else}}fa-eye-slash{{/if}}"
-                                            style="{{#if this.isVisible}}color: #4ade80;{{else}}color: #999;{{/if}}"></i>
-                                    </a>
-                                    <a class="note-control" data-action="rename" title="Rename Note"><i
-                                            class="fas fa-pen"></i></a>
-                                    <a class="note-control danger" data-action="delete" title="Delete Note"><i
-                                            class="fas fa-times" style="color: #ff3333;"></i></a>
-                                    {{/if}}
-                                    <a class="note-control" data-action="pan" title="Pan to Object"><i
-                                            class="fas fa-crosshairs"></i></a>
-                                </div>
+                        {{#each noteGroups}}
+                        <li class="note-group {{#if this.collapsed}}collapsed{{/if}}">
+                            <div class="note-group-header" data-note-group="{{this.id}}">
+                                <span class="note-group-caret"><i
+                                        class="fas {{#if this.collapsed}}fa-chevron-right{{else}}fa-chevron-down{{/if}}"></i></span>
+                                <div class="note-group-icon"><i class="{{this.icon}}"></i></div>
+                                <span class="note-group-label">{{this.label}}</span>
+                                <span class="note-group-count">{{this.count}}</span>
                             </div>
-                            <div class="note-content hidden">
-                                {{{this.enrichedContent}}}
-                            </div>
+                            <ul class="note-group-rows {{#if this.collapsed}}hidden{{/if}}">
+                                {{#each this.rows}}
+                                <li class="note-entry {{#if (and @root.isGM (not this.isVisible))}}hidden-note{{/if}}"
+                                    data-note-uuid="{{this.sourceUuid}}" data-note-type="{{this.sourceType}}">
+                                    <div class="note-header">
+                                        <span class="toggle-icon"><i
+                                                class="fas {{#if this.expanded}}fa-chevron-down{{else}}fa-chevron-right{{/if}}"></i></span>
+                                        <div class="note-icon"><i class="{{this.icon}}"></i></div>
+                                        <span class="note-name">{{this.displayName}}</span>
+                                        <div class="note-controls">
+                                            {{#if @root.isGM}}
+                                            <a class="note-control" data-action="edit" title="Edit Note Content"><i
+                                                    class="fas fa-pen-to-square"></i></a>
+                                            <a class="note-control" data-action="toggle-visibility"
+                                                title="{{#if this.isVisible}}Make Hidden{{else}}Make Visible{{/if}}">
+                                                <i class="fas {{#if this.isVisible}}fa-eye{{else}}fa-eye-slash{{/if}}"
+                                                    style="{{#if this.isVisible}}color: #4ade80;{{else}}color: #999;{{/if}}"></i>
+                                            </a>
+                                            <a class="note-control" data-action="rename" title="Rename Note"><i
+                                                    class="fas fa-pen"></i></a>
+                                            <a class="note-control danger" data-action="delete" title="Delete Note"><i
+                                                    class="fas fa-times" style="color: #ff3333;"></i></a>
+                                            {{/if}}
+                                            <a class="note-control" data-action="pan" title="Pan to Object"><i
+                                                    class="fas fa-crosshairs"></i></a>
+                                        </div>
+                                    </div>
+                                    <div class="note-content {{#unless this.expanded}}hidden{{/unless}}">
+                                        {{{this.enrichedContent}}}
+                                    </div>
+                                </li>
+                                {{/each}}
+                            </ul>
                         </li>
                         {{/each}}
                     </ul>

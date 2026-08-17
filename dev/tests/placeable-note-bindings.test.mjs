@@ -24,7 +24,7 @@ globalThis.canvas.grid = { size: 100, isHexagonal: true };
 
 const { TrayApp } = await import("../../scripts/tray/TrayApp.mjs");
 const { PlaceableNotesSD } = await import("../../scripts/journal/PlaceableNotesSD.mjs");
-const { getNotesData } = await import("../../scripts/tray/TraySD.mjs");
+const { getNoteGroupsData } = await import("../../scripts/tray/TraySD.mjs");
 
 // The one boundary this vertical does not own. Ticket 1 proved the enrichment
 // policy against it; here it only has to give the rows something to carry.
@@ -160,7 +160,8 @@ function captureDialogs(t) {
 // a delete confirmation is asked for twice.
 const NOTE_SELECTORS = [
 	[".sdx-tray .note-control[0]", "click"],
-	[".sdx-tray .note-header[0]", "click"],
+	[".sdx-tray .note-group-header[0]", "click"],
+	[".sdx-tray .note-entry[0] .note-header", "click"],
 	[".sdx-tray .note-entry[0]", "contextmenu"],
 ];
 
@@ -184,8 +185,9 @@ test("the Notes affordances belong to the Notes module, not the pin list", () =>
 
 	assert.deepEqual(notesDom.manifest(), [
 		".sdx-tray .note-control[0] :: click",
+		".sdx-tray .note-entry[0] .note-header :: click",
 		".sdx-tray .note-entry[0] :: contextmenu",
-		".sdx-tray .note-header[0] :: click",
+		".sdx-tray .note-group-header[0] :: click",
 	]);
 	assert.deepEqual(pinsDom.manifest().filter(entry => entry.includes(".note-")), [],
 		"the pin list keeps no Notes handler");
@@ -680,10 +682,18 @@ test("a Token row whose UUID now names the Actor is refused", async t => {
 
 // --- the list the commands are rendered from ---------------------------------
 
-// The tray still shows one flat list — the folder-like groups come later — but
-// the rows in it are now the scene index's, so each one names the exact source
-// its commands will act on. Flattening is presentation; the identity is not.
-test("the Notes list is the scene index, flattened, one row per exact source", async () => {
+// Grouping is presentation; the identity is not. Whatever heading a row ends up
+// under, it names the exact source its commands will act on — which is what
+// keeps a Token and its same-named Actor two separate rows acting on two
+// separate documents.
+
+/** Every row of the grouped Notes context, in the order it is rendered. */
+async function noteRows() {
+	const groups = await getNoteGroupsData();
+	return groups.flatMap(group => group.rows);
+}
+
+test("the Notes list is the scene index, one row per exact source", async () => {
 	const actor = makeDocument({
 		documentName: "Actor", uuid: "Actor.a1", id: "a1", name: "Grix",
 		flags: { notes: "<p>actor note</p>" },
@@ -702,7 +712,7 @@ test("the Notes list is the scene index, flattened, one row per exact source", a
 		sceneCollections: { tiles: [tile] },
 	});
 
-	const rows = await getNotesData();
+	const rows = await noteRows();
 
 	assert.deepEqual(rows.map(row => [row.sourceUuid, row.sourceType]), [
 		["Scene.scene-1.Token.t1", "Token"],
@@ -726,7 +736,7 @@ test("a player's Notes list holds only the rows shared with them", async () => {
 	});
 	stage({ isGM: false, documents: [shared, hidden], sceneCollections: { tiles: [shared, hidden] } });
 
-	const rows = await getNotesData();
+	const rows = await noteRows();
 
 	assert.deepEqual(rows.map(row => row.sourceUuid), ["Scene.scene-1.Tile.x1"]);
 });
@@ -968,4 +978,281 @@ test("the edit context menu on an Actor row whose last Token is gone opens nothi
 	assert.deepEqual(sheets, [], "and is still not opened");
 	assert.deepEqual(actor.calls, []);
 	assert.equal(refreshes.length, 1);
+});
+
+// --- session-local browsing state --------------------------------------------
+//
+// Which groups are folded shut and which notes are open is where the user is in
+// the list, not something they configured. It survives a rerender — the tray
+// rebuilds itself whenever anything on the scene moves, and a list that snapped
+// shut each time would be unusable — and it is deliberately not persisted.
+//
+// The seam is the real render context: `_prepareContext` is what the template
+// reads, so what it says about a group is what the user sees.
+
+/** A note group shaped the way the tray context carries one. */
+function noteGroup(id, uuids) {
+	return {
+		id,
+		label: id,
+		icon: "fa-solid fa-cube",
+		count: uuids.length,
+		rows: uuids.map(uuid => ({
+			sourceUuid: uuid,
+			sourceType: "Tile",
+			displayName: uuid,
+			icon: "fa-solid fa-image",
+		})),
+	};
+}
+
+const TWO_GROUPS = () => [
+	noteGroup("tokens", ["Scene.scene-1.Token.t1"]),
+	noteGroup("tiles", ["Scene.scene-1.Tile.x1"]),
+];
+
+/**
+ * The context a tray produces for the note groups it was last given.
+ *
+ * `sceneId` is which scene those groups describe; the tray keys its collapse
+ * state by group id, and every scene reuses the same six ids. Tests that are
+ * not about scene changes leave it alone.
+ */
+async function noteContext(app, groups, sceneId = null) {
+	app.trayData = { ...app.trayData, noteGroups: groups, noteSceneId: sceneId };
+	const context = await app._prepareContext({});
+	return context.noteGroups;
+}
+
+test("a group nobody has touched is open, so the list reads as it did before", async () => {
+	const app = new TrayApp({});
+
+	const groups = await noteContext(app, TWO_GROUPS());
+
+	assert.deepEqual(groups.map(group => [group.id, group.collapsed]), [
+		["tokens", false],
+		["tiles", false],
+	]);
+});
+
+/** Render a tray whose Notes list holds the named groups, ready to be clicked. */
+function renderGroups(ids) {
+	const dom = makeSelectorDom({
+		seedAll: true,
+		lists: { ".note-group-header": ids.map(id => ({ dataset: { noteGroup: id } })) },
+	});
+
+	globalThis.document = dom.document;
+	const app = new TrayApp({});
+	app._onRender({}, {});
+	return { app, dom };
+}
+
+const GROUP_HEADER = index => `.sdx-tray .note-group-header[${index}]`;
+
+test("collapsing one group folds that group and leaves its neighbour alone", () => {
+	stage();
+	const { app, dom } = renderGroups(["tokens", "tiles"]);
+
+	dom.fire(GROUP_HEADER(0), "click");
+
+	assert.deepEqual([...app._collapsedNoteGroups], ["tokens"]);
+	assert.deepEqual(dom.node(`${GROUP_HEADER(1)} .note-group-caret i`).classLog, [],
+		"the other group's caret never moved");
+});
+
+// CHARACTERIZATION of the two slices above taken together: the collapse is
+// recorded on the application rather than in the markup, so a rerender — which
+// the tray does whenever anything on the scene changes — rebuilds the list with
+// the group still folded.
+test("a folded group is still folded after the tray rerenders", async () => {
+	stage();
+	const { app, dom } = renderGroups(["tokens", "tiles"]);
+
+	dom.fire(GROUP_HEADER(0), "click");
+	const groups = await noteContext(app, TWO_GROUPS());
+
+	assert.deepEqual(groups.map(group => [group.id, group.collapsed]), [
+		["tokens", true],
+		["tiles", false],
+	]);
+});
+
+// Switching scenes replaces every group and every row. A key that outlives what
+// it named is worse than forgotten state: the group it refers to comes back
+// folded shut some other session, for no reason the user can see.
+test("a group key from a scene that is gone is discarded, not kept for its return", async () => {
+	stage();
+	const { app, dom } = renderGroups(["tokens", "tiles"]);
+	dom.fire(GROUP_HEADER(0), "click");
+
+	await noteContext(app, [noteGroup("walls", ["Scene.scene-2.Wall.w1"])]);
+
+	assert.deepEqual([...app._collapsedNoteGroups], []);
+	const returned = await noteContext(app, TWO_GROUPS());
+	assert.deepEqual(returned.map(group => group.collapsed), [false, false]);
+});
+
+// Switching to another tab is not the scene changing. The Notes context is not
+// built for the other views at all, so there is nothing to compare against and
+// nothing may be forgotten — otherwise a glance at the Pins tab would silently
+// unfold every group.
+test("looking at another tab does not forget where the user was", async () => {
+	stage();
+	const { app, dom } = renderGroups(["tokens", "tiles"]);
+	dom.fire(GROUP_HEADER(0), "click");
+
+	await noteContext(app, null);
+	const returned = await noteContext(app, TWO_GROUPS());
+
+	assert.deepEqual(returned.map(group => [group.id, group.collapsed]), [
+		["tokens", true],
+		["tiles", false],
+	]);
+});
+
+// --- opening a note to read it -----------------------------------------------
+
+/**
+ * Render a tray whose Notes list holds the given rows, each already shut the way
+ * the template renders it.
+ */
+function renderRows(uuids) {
+	const dom = makeSelectorDom({
+		seedAll: true,
+		lists: {
+			".note-entry": uuids.map(uuid => ({ dataset: { noteUuid: uuid, noteType: "Tile" } })),
+		},
+	});
+
+	globalThis.document = dom.document;
+	const app = new TrayApp({});
+	app._onRender({}, {});
+
+	uuids.forEach((uuid, index) => {
+		const content = dom.node(`${ROW(index)} .note-content`);
+		content.classList.add("hidden");
+		content.classLog.length = 0;
+	});
+	return { app, dom };
+}
+
+const ROW = index => `.sdx-tray .note-entry[${index}]`;
+
+test("opening one note opens that note alone, and records which one", () => {
+	stage();
+	const { app, dom } = renderRows(["Scene.scene-1.Tile.x1", "Scene.scene-1.Tile.x2"]);
+
+	dom.fire(`${ROW(0)} .note-header`, "click");
+
+	assert.deepEqual([...app._expandedNoteRows], ["Scene.scene-1.Tile.x1"]);
+	assert.equal(dom.node(`${ROW(0)} .note-content`).classList.contains("hidden"), false);
+	assert.deepEqual(dom.node(`${ROW(1)} .note-content`).classLog, [],
+		"the other row never moved");
+});
+
+test("a note opened to be read is still open after the tray rerenders", async () => {
+	stage();
+	const { app, dom } = renderRows(["Scene.scene-1.Token.t1", "Scene.scene-1.Tile.x1"]);
+
+	dom.fire(`${ROW(0)} .note-header`, "click");
+	const groups = await noteContext(app, TWO_GROUPS());
+
+	assert.deepEqual(groups.flatMap(group => group.rows).map(row => [row.sourceUuid, row.expanded]), [
+		["Scene.scene-1.Token.t1", true],
+		["Scene.scene-1.Tile.x1", false],
+	]);
+});
+
+test("a row key for a note the new scene does not have is discarded", async () => {
+	stage();
+	const { app, dom } = renderRows(["Scene.scene-1.Token.t1"]);
+	dom.fire(`${ROW(0)} .note-header`, "click");
+
+	await noteContext(app, [noteGroup("walls", ["Scene.scene-2.Wall.w1"])]);
+
+	assert.deepEqual([...app._expandedNoteRows], []);
+	const returned = await noteContext(app, TWO_GROUPS());
+	assert.deepEqual(returned.flatMap(group => group.rows).map(row => row.expanded), [false, false]);
+});
+
+// --- the explicit edit control ------------------------------------------------
+//
+// Editing a note used to be discoverable only through a footer line telling the
+// GM to right-click. The row now carries the control as well, which makes the
+// authorization question sharper rather than softer: there is now a second,
+// visible way in, and a forged one must be refused exactly as the first is.
+
+test("the explicit edit control opens the note on the exact source its row names", async t => {
+	const tile = notedTile();
+	stage({ documents: [tile], sceneTokens: [] });
+	const sheets = captureSheets(t);
+
+	const { dom } = render({ control: { action: "edit" }, entry: TILE_ROW });
+	await dom.fire(NOTE_CONTROL, "click");
+
+	assert.deepEqual(sheets, [tile]);
+});
+
+// The same oracle as the other three forged controls: the Actor is one this
+// player owns and could legitimately write to, so only the GM check can stop
+// the command — and it has to stop it before the row is resolved, or the
+// refusal itself confirms that the note exists.
+test("a forged edit control from a non-GM resolves nothing and opens nothing", async t => {
+	const actor = makeDocument({
+		documentName: "Actor", uuid: "Actor.a1", id: "a1", name: "Grix",
+		flags: { notes: "<p>secret</p>", noteVisible: false },
+		isOwner: true,
+		testUserPermission: () => true,
+	});
+	const { resolved } = stage({ isGM: false, documents: [actor] });
+	const sheets = captureSheets(t);
+
+	const { app, dom } = render({ control: { action: "edit" }, entry: ACTOR_ROW });
+	const refreshes = watchRefresh(app);
+	await dom.fire(NOTE_CONTROL, "click");
+
+	assert.deepEqual(resolved, [], "the row's UUID is never resolved");
+	assert.deepEqual(sheets, [], "no note sheet is opened");
+	assert.deepEqual(actor.calls, [], "the Actor is never touched");
+	assert.equal(refreshes.length, 0, "and nothing is rebuilt on their behalf");
+});
+
+// CHARACTERIZATION of the reuse, not a new rule: the explicit control goes
+// through the same command decision as every other one, so it inherits the
+// active-Scene revalidation too. Asserted because a control that only checked
+// `game.user.isGM` would pass the forged-DOM test above and still edit a note
+// belonging to a scene nobody is looking at.
+test("the explicit edit control on a row from another scene opens nothing and refreshes", async t => {
+	const tile = notedTile();
+	const { resolved } = stage({ sceneId: "scene-2", documents: [tile] });
+	const sheets = captureSheets(t);
+
+	const { app, dom } = render({ control: { action: "edit" }, entry: TILE_ROW });
+	const refreshes = watchRefresh(app);
+	await dom.fire(NOTE_CONTROL, "click");
+
+	assert.deepEqual(resolved, ["Scene.scene-1.Tile.x1"], "the Tile does resolve");
+	assert.deepEqual(sheets, [], "and is still not opened");
+	assert.deepEqual(tile.calls, []);
+	assert.equal(refreshes.length, 1);
+});
+
+// The other side of the scene rule, and the reason it cannot simply be "clear
+// the state on every render": a rerender of the SAME scene — which the tray
+// does whenever anything on it changes — must leave the user exactly where they
+// were. Proved with the scene named explicitly, so a reset that ignored the
+// comparison would fail here rather than pass by accident.
+test("a folded group survives a rerender of the same scene", async () => {
+	stage();
+	const { app, dom } = renderGroups(["tokens", "tiles"]);
+	await noteContext(app, TWO_GROUPS(), "scene-1");
+
+	dom.fire(GROUP_HEADER(0), "click");
+	const groups = await noteContext(app, TWO_GROUPS(), "scene-1");
+
+	assert.deepEqual(groups.map(group => [group.id, group.collapsed]), [
+		["tokens", true],
+		["tiles", false],
+	]);
 });

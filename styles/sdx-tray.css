@@ -1356,6 +1356,72 @@ body.sdx-tray-enabled #camera-views.vertical.left {
     padding: 0;
 }
 
+/* Note Group (folder-like heading over the rows of one document type) */
+.sdx-tray .note-group {
+    list-style: none;
+    margin: 0 0 6px 0;
+    padding: 0;
+}
+
+.sdx-tray .note-group-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    cursor: pointer;
+    color: #c9b98f;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.85em;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid rgba(159, 146, 117, 0.35);
+}
+
+.sdx-tray .note-group-header:hover {
+    color: #ffb545;
+}
+
+.sdx-tray .note-group-caret {
+    flex: none;
+    width: 12px;
+    text-align: center;
+    font-size: 0.8em;
+}
+
+.sdx-tray .note-group-icon {
+    flex: none;
+    width: 18px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #9f9275;
+}
+
+.sdx-tray .note-group-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sdx-tray .note-group-count {
+    flex: none;
+    color: #8a8163;
+    font-weight: normal;
+}
+
+.sdx-tray .note-group-rows {
+    list-style: none;
+    margin: 6px 0 0 0;
+    padding: 0;
+}
+
+.sdx-tray .note-group-rows.hidden {
+    display: none;
+}
+
 /* Note Entry */
 .sdx-tray .note-entry {
     background: rgba(10, 10, 10, 0.9);

@@ -20,7 +20,7 @@ const MODULE_ID = "shadowdark-extras";
  * these controls for a GM alone is presentation; this set is the authorization,
  * and it is consulted before anything about the row is resolved.
  */
-const MANAGEMENT_ACTIONS = new Set(["rename", "toggle-visibility", "delete"]);
+const MANAGEMENT_ACTIONS = new Set(["edit", "rename", "toggle-visibility", "delete"]);
 
 /**
  * The document a row was built from, or null if the row no longer describes a
@@ -165,6 +165,15 @@ async function toggleNoteVisibility(source) {
 }
 
 /**
+ * Open a source's note for editing. Reached two ways — the row's own control
+ * and the right-click shortcut it replaces the footer instruction for — and
+ * both arrive here having already passed the same command decision.
+ */
+function openNoteEditor(source) {
+	new PlaceableNotesSD(source).render(true);
+}
+
+/**
  * Rename the note on a source, or reset it to the document's own name.
  *
  * `source` supplies the name to prefill, read now, while the row is known good.
@@ -256,6 +265,30 @@ export const PlaceableNoteBindings = {
 	 * @param {HTMLElement} elem - The rendered tray root
 	 */
 	_bindPlaceableNoteEvents(elem) {
+		// Folding a group shut. This changes where the user is in the list and
+		// nothing about the scene, so it is applied to the rendered list rather
+		// than paid for with a rerender that would re-enrich every note.
+		elem.querySelectorAll(".note-group-header").forEach(header => {
+			header.addEventListener("click", e => {
+				e.preventDefault();
+				e.stopPropagation();
+
+				const groupId = header.dataset.noteGroup;
+				if (!groupId) return;
+
+				const collapsed = !this._collapsedNoteGroups.has(groupId);
+				if (collapsed) this._collapsedNoteGroups.add(groupId);
+				else this._collapsedNoteGroups.delete(groupId);
+
+				const group = header.closest(".note-group");
+				group?.classList.toggle("collapsed", collapsed);
+				group?.querySelector(".note-group-rows")?.classList.toggle("hidden", collapsed);
+				const caret = header.querySelector(".note-group-caret i");
+				caret?.classList.toggle("fa-chevron-right", collapsed);
+				caret?.classList.toggle("fa-chevron-down", !collapsed);
+			});
+		});
+
 		elem.querySelectorAll(".note-control").forEach(button => {
 			button.addEventListener("click", async e => {
 				e.preventDefault();
@@ -272,37 +305,49 @@ export const PlaceableNoteBindings = {
 				if (!source) return;
 
 				if (action === "pan") panToSource(source);
+				else if (action === "edit") openNoteEditor(source);
 				else if (action === "rename") renameNote(source, identity, this);
 				else if (action === "toggle-visibility") await toggleNoteVisibility(source);
 				else if (action === "delete") await deleteNote(source, identity, this);
 			});
 		});
 
-		// Expanding a row to read its note is not a command against the source:
-		// it opens content this viewer was already given, so it neither resolves
-		// a UUID nor asks who is looking.
-		elem.querySelectorAll(".note-header").forEach(header => {
-			header.addEventListener("click", e => {
+		// Both of a row's own affordances, bound with the row itself in hand.
+		// Neither wants "the nearest ancestor that looks like a row" — they want
+		// this row, whose identity and content are already right here.
+		elem.querySelectorAll(".note-entry").forEach(row => {
+			// Expanding a row to read its note is not a command against the
+			// source: it opens content this viewer was already given, so it
+			// neither resolves a UUID nor asks who is looking.
+			row.querySelector(".note-header")?.addEventListener("click", e => {
 				// A row control clicked is still that control.
 				if (e.target.closest(".note-controls")) return;
 
 				e.preventDefault();
 				e.stopPropagation();
-				const content = header.closest(".note-entry")?.querySelector(".note-content");
+				const content = row.querySelector(".note-content");
 				if (!content) return;
 
-				content.classList.toggle("hidden");
-				const icon = header.querySelector(".toggle-icon i");
+				const expanded = !content.classList.toggle("hidden");
+				const icon = row.querySelector(".note-header .toggle-icon i");
 				if (icon) {
-					icon.classList.toggle("fa-chevron-right");
-					icon.classList.toggle("fa-chevron-down");
+					icon.classList.toggle("fa-chevron-right", !expanded);
+					icon.classList.toggle("fa-chevron-down", expanded);
 				}
-			});
-		});
 
-		// Right-click a row to edit its note. GM-only markup is presentation, so
-		// the authorization is here, before the row's UUID is resolved.
-		elem.querySelectorAll(".note-entry").forEach(row => {
+				// Remembered by source UUID rather than by position, so the row
+				// stays open across the rerenders that reorder the list around
+				// it. The row is identified the same way its commands identify
+				// it; nothing else in the markup is trusted.
+				const { sourceUuid } = rowIdentity(row);
+				if (!sourceUuid) return;
+				if (expanded) this._expandedNoteRows.add(sourceUuid);
+				else this._expandedNoteRows.delete(sourceUuid);
+			});
+
+			// Right-click a row to edit its note. GM-only markup is
+			// presentation, so the authorization is here, before the row's UUID
+			// is resolved.
 			row.addEventListener("contextmenu", e => {
 				// Checked here as well as inside the resolver, so a player keeps
 				// their browser's own context menu instead of having it
@@ -317,7 +362,7 @@ export const PlaceableNoteBindings = {
 				});
 				if (!source) return;
 
-				new PlaceableNotesSD(source).render(true);
+				openNoteEditor(source);
 			});
 		});
 	},
