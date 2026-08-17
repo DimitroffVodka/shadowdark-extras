@@ -12,7 +12,7 @@ Join my new discord server to have discussions about the module, ask for fixes, 
 
 A comprehensive enhancement module for [Shadowdark RPG](https://www.thearcanelibrary.com/pages/shadowdark) in [Foundry VTT](https://foundryvtt.com/). This module adds quality-of-life features, automation, visual enhancements, and expanded gameplay options to elevate your Shadowdark experience. Most of the features can be turned on/off, while others are embedded. **This module was made the improve my own games based on my own taste**. If you would like the request a feature, open a issue enhancement/feature ticket. 
 
-![Foundry VTT](https://img.shields.io/badge/Foundry-v13+-informational)
+![Foundry VTT](https://img.shields.io/badge/Foundry-v14+-informational)
 ![Shadowdark](https://img.shields.io/badge/System-Shadowdark-purple)
 
 ---
@@ -370,7 +370,7 @@ All features can be individually enabled/disabled in module settings. Settings a
 
 ## 🤝 Compatibility
 
-- **Foundry VTT**: v12+
+- **Foundry VTT**: v14+
 - **Shadowdark System**: Latest version
 - Tested with popular modules including Dice So Nice, Token Action HUD, SD crawler helper
 

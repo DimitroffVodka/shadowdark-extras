@@ -10,7 +10,7 @@ Straight from the module manifest:
 
 | Component | Minimum | Verified |
 |---|---:|---:|
-| Foundry VTT | v13 | v14 |
+| Foundry VTT | v14 | v14 |
 | Shadowdark RPG system | v3.0.0 | v4.0.6 |
 
 > **New in 6.11.0:** most features can be turned off world-wide from **Configure Settings → Shadowdark Extras → Feature Manager** (**Configure Features**, GM only, reload required) — see [Feature Manager](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Feature-Manager).
