@@ -76,7 +76,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		// read, keyed by the source UUID the row was built from so a row stays
 		// open across the rerenders that reorder the list around it.
 		this._expandedNoteRows = new Set();
-		// The scene those two were formed on. Group ids are the same six words
+		// The scene those two were formed on. Group ids are the same eight words
 		// on every scene, so a fold has to be tied to the scene it was made on
 		// or it silently applies to the next one. `null` until a Notes context
 		// has actually been built.
@@ -288,7 +288,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (!groups) return [];
 
 		// A row UUID names one document in the world, but a group id is one of
-		// six fixed words that every scene reuses. So "tiles" folded here is a
+		// eight fixed words that every scene reuses. So "tiles" folded here is a
 		// perfectly valid group over there, and pruning cannot tell the two
 		// apart: the new scene would open with a group already folded that this
 		// user never touched. Changing scene therefore drops the whole browsing

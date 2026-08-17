@@ -37,6 +37,7 @@ const { hooks, features } = installTrayHarness();
 
 const { TrayApp } = await import("../../scripts/tray/TrayApp.mjs");
 const TraySD = await import("../../scripts/tray/TraySD.mjs");
+const { PlaceableNotesSD } = await import("../../scripts/journal/PlaceableNotesSD.mjs");
 
 installEnricher();
 const tray = makeTrayDriver(TraySD, features);
@@ -151,6 +152,12 @@ function publishedLabels() {
 		.flatMap(group => group.rows.map(row => [row.displayName, row.isVisible]));
 }
 
+/** The enriched body last published for each row, in group/render order. */
+function publishedContent() {
+	return (TrayApp._instance.trayData.noteGroups ?? [])
+		.flatMap(group => group.rows.map(row => row.enrichedContent));
+}
+
 /**
  * Put the tray on the Notes tab looking at `scene`, with a clock the test
  * drives and nothing left in flight.
@@ -163,6 +170,81 @@ async function showNotes(t, scene, options) {
 	await clock.idle();
 	return clock;
 }
+
+test("Notes scroll position survives a rendered Notes to Party to Notes switch", async t => {
+	const scene = makeScene();
+	place(scene, noted("Tile", "Scene.scene-a.Tile.scroll", { name: "Overflowing list" }));
+	const clock = await showNotes(t, scene);
+	const app = TrayApp._instance;
+	const previousDocument = globalThis.document;
+	const notesDom = makeSelectorDom();
+	const quietPartyDom = makeSelectorDom();
+	const absentPartyDom = makeSelectorDom({ absent: [".note-list-scroll-container"] });
+	const restoredNotesDom = makeSelectorDom();
+	const restoredAfterAbsentDom = makeSelectorDom();
+
+	const overflowPosition = 319.8333435058594;
+	const seedOverflowingNotesList = dom => {
+		const list = dom.node(".sdx-tray .note-list-scroll-container");
+		list.scrollHeight = 1607;
+		list.clientHeight = 1099;
+		list.scrollTop = 0;
+		return list;
+	};
+	const quietList = quietPartyDom.node(".sdx-tray .note-list-scroll-container");
+	quietList.scrollHeight = 0;
+	quietList.clientHeight = 0;
+	let quietScrollTop = 0;
+	Object.defineProperty(quietList, "scrollTop", {
+		configurable: true,
+		get: () => quietScrollTop,
+		set: value => {
+			const maxScrollTop = Math.max(0, quietList.scrollHeight - quietList.clientHeight);
+			quietScrollTop = Math.min(Math.max(0, value), maxScrollTop);
+		},
+	});
+
+	t.after(() => {
+		globalThis.document = previousDocument;
+	});
+
+	// A real render replaces the old element before ApplicationV2's render hook
+	// restores state. The harness drives that public lifecycle explicitly while
+	// keeping the actual production save/update/render/restore calls intact.
+	globalThis.document = notesDom.document;
+	const firstList = seedOverflowingNotesList(notesDom);
+	firstList.scrollTop = overflowPosition;
+	assert.ok(firstList.scrollHeight > firstList.clientHeight, "the Notes fixture really overflows");
+	await tray.showView("party");
+	globalThis.document = quietPartyDom.document;
+	app._onRender({}, {});
+	assert.equal(quietList.scrollTop, 0,
+		"a zero-range browser scroll container clamps its effective scrollTop to zero");
+
+	await tray.showView("notes");
+	globalThis.document = restoredNotesDom.document;
+	const firstRestoredList = seedOverflowingNotesList(restoredNotesDom);
+	assert.equal(firstRestoredList.scrollTop, 0, "a rerender starts a fresh Notes container at the top");
+	app._onRender({}, {});
+	assert.equal(firstRestoredList.scrollTop, overflowPosition,
+		"the overflowing Notes position returns after the Party tab");
+
+	// An actually absent Notes container must be just as non-destructive as the
+	// hidden, non-overflowing one above: it cannot replace a preserved value.
+	const secondPosition = 271.25;
+	firstRestoredList.scrollTop = secondPosition;
+	await tray.showView("party");
+	globalThis.document = absentPartyDom.document;
+	app._onRender({}, {});
+
+	await tray.showView("notes");
+	globalThis.document = restoredAfterAbsentDom.document;
+	const secondRestoredList = seedOverflowingNotesList(restoredAfterAbsentDom);
+	app._onRender({}, {});
+	assert.equal(secondRestoredList.scrollTop, secondPosition,
+		"an absent Notes container cannot overwrite the preserved position");
+	await clock.idle();
+});
 
 // --- 1. the registered hook matrix ------------------------------------------
 
@@ -797,6 +879,173 @@ test("a burst of note saves is coalesced into a single rebuild", async t => {
 		"three rows enriched once each — one rebuild, not one per update");
 });
 
+test("named Drawing and Region geometry updates do not rebuild the Notes tab", async t => {
+	const scene = makeScene();
+	const drawing = place(scene, noted("Drawing", "Scene.scene-a.Drawing.d1", {
+		name: "Drawing", text: "Map label", x: 100, y: 100,
+	}));
+	const region = place(scene, noted("Region", "Scene.scene-a.Region.r1", {
+		name: "Named zone", bounds: { left: 200, top: 200, right: 300, bottom: 300 },
+	}));
+	const clock = await showNotes(t, scene);
+	const enriched = traceEnrichment(t);
+
+	await fire("updateDrawing", drawing, { _id: "d1", x: 500, y: 600 });
+	await fire("updateRegion", region, { _id: "r1", shapes: [{ type: "rectangle", x: 700, y: 800 }] });
+	await clock.settle();
+
+	assert.deepEqual(enriched, [],
+		"geometry-only updates rebuilt rows whose labels do not depend on geometry");
+});
+
+// CHARACTERIZATION: coordinate fallback is part of the rendered row label, so
+// a geometry differential on an unnamed source must rebuild and publish its
+// new coordinates. The optimizer is allowed to skip geometry only after the
+// index proves the row has a non-coordinate label. Each registered hook gets
+// its own scene and debounce clock so one type cannot cover the other.
+for (const type of ["Drawing", "Region"]) {
+	test(`${type} coordinate-fallback geometry updates rebuild with current labels`, async t => {
+		const scene = makeScene();
+		const source = type === "Drawing"
+			? place(scene, noted("Drawing", "Scene.scene-a.Drawing.d1", {
+				name: "Drawing", text: "", x: 100, y: 200,
+			}))
+			: place(scene, noted("Region", "Scene.scene-a.Region.r1", {
+				name: "Region", bounds: { left: 300, top: 400, right: 350, bottom: 450 },
+			}));
+		const clock = await showNotes(t, scene);
+		const enriched = traceEnrichment(t);
+
+		const changes = type === "Drawing"
+			? { _id: "d1", x: 500, y: 600 }
+			: { _id: "r1", shapes: [{ type: "rectangle", x: 700, y: 800 }] };
+		if (type === "Drawing") {
+			source.x = 500;
+			source.y = 600;
+		}
+		else source.bounds = { left: 700, top: 800, right: 750, bottom: 850 };
+
+		await fire(`update${type}`, source, changes);
+		await clock.settle();
+
+		assert.equal(enriched.length, 1, "the registered hook scheduled this type's rebuild");
+		assert.equal(enriched[0].html, `<p>body of ${source.uuid}</p>`);
+		assert.deepEqual(publishedLabels().map(([name]) => name), [
+			type === "Drawing" ? "Drawing (500, 600)" : "Region (700, 800)",
+		]);
+	});
+}
+
+// CHARACTERIZATION: customName is a non-coordinate label for both extension
+// types, so a registered geometry update is tray-blind in either branch.
+for (const type of ["Drawing", "Region"]) {
+	test(`${type} customName geometry updates do not rebuild the Notes tab`, async t => {
+		const scene = makeScene();
+		const source = type === "Drawing"
+			? place(scene, noted("Drawing", "Scene.scene-a.Drawing.custom", {
+				name: "Drawing", text: "", x: 100, y: 200,
+				flags: { [MODULE_ID]: { customName: "Pinned label" } },
+			}))
+			: place(scene, noted("Region", "Scene.scene-a.Region.custom", {
+				name: "Region", bounds: { left: 300, top: 400, right: 350, bottom: 450 },
+				flags: { [MODULE_ID]: { customName: "Pinned label" } },
+			}));
+		const clock = await showNotes(t, scene);
+		const enriched = traceEnrichment(t);
+
+		const changes = type === "Drawing"
+			? { _id: "custom", x: 500, y: 600 }
+			: { _id: "custom", shapes: [{ type: "rectangle", x: 700, y: 800 }] };
+		await fire(`update${type}`, source, changes);
+		await clock.settle();
+
+		assert.deepEqual(enriched, [], "customName keeps geometry tray-blind");
+		assert.deepEqual(publishedLabels(), [["Pinned label", false]]);
+	});
+}
+
+test("Drawing and Region bookkeeping updates do not postpone a pending rebuild", async t => {
+	const scene = makeScene();
+	const drawing = place(scene, noted("Drawing", "Scene.scene-a.Drawing.d1", {
+		name: "Drawing", text: "Before", x: 100, y: 100,
+	}));
+	const region = place(scene, noted("Region", "Scene.scene-a.Region.r1", {
+		name: "Before", bounds: { left: 200, top: 200, right: 300, bottom: 300 },
+	}));
+	const clock = await showNotes(t, scene);
+	const enriched = traceEnrichment(t);
+
+	drawing.text = "After";
+	region.name = "After";
+	await fire("updateDrawing", drawing, { _id: "d1", text: "After" });
+	await fire("updateRegion", region, { _id: "r1", name: "After" });
+	await clock.settle(150);
+	assert.deepEqual(enriched, [], "the semantic rebuild ran before its debounce window closed");
+
+	await fire("updateDrawing", drawing, { _id: "d1" });
+	await fire("updateRegion", region, { _id: "r1", _stats: { modifiedTime: 1 } });
+	await clock.settle(150);
+
+	assert.equal(enriched.length, 2,
+		"empty/bookkeeping-only updates postponed the semantic rebuild already due");
+});
+
+test("Drawing and Region style-only updates do not re-enrich the Notes tab", async t => {
+	const scene = makeScene();
+	const drawing = place(scene, noted("Drawing", "Scene.scene-a.Drawing.d1", {
+		name: "Drawing", text: "Map label", x: 100, y: 100,
+	}));
+	const region = place(scene, noted("Region", "Scene.scene-a.Region.r1", {
+		name: "Named zone", bounds: { left: 200, top: 200, right: 300, bottom: 300 },
+	}));
+	const clock = await showNotes(t, scene);
+	const enriched = traceEnrichment(t);
+
+	await fire("updateDrawing", drawing, {
+		_id: "d1", fillType: 1, fillColor: "#ffffff", fillAlpha: 0.5,
+		strokeWidth: 2, strokeColor: "#000000", strokeAlpha: 0.5,
+		textAlpha: 0.5, textColor: "#ffffff", fontFamily: "Arial", fontSize: 24,
+		texture: "worlds/example.webp", elevation: 5, levels: ["level-1"],
+		sort: 3, hidden: true, interface: true, locked: true, name: "A different metadata name",
+	});
+	await fire("updateRegion", region, {
+		_id: "r1", color: "#00ff00", elevation: 5, levels: ["level-1"],
+		locked: true, visibility: 1, behaviors: [{ type: "pauseGame" }],
+		attachment: { token: "tok-1" }, ownership: { default: 0 }, hidden: true,
+		highlightMode: "coverage", displayMeasurements: true,
+	});
+	await clock.settle();
+
+	assert.deepEqual(enriched, [],
+		"style-only fields the index cannot observe re-enriched the Notes tab");
+});
+
+for (const type of ["Drawing", "Region"]) {
+	test(`${type} unknown update keys rebuild conservatively`, async t => {
+		const scene = makeScene();
+		const source = type === "Drawing"
+			? place(scene, noted("Drawing", "Scene.scene-a.Drawing.unknown", {
+				name: "Drawing", text: "Map label", x: 100, y: 100,
+			}))
+			: place(scene, noted("Region", "Scene.scene-a.Region.unknown", {
+				name: "Named zone", bounds: { left: 200, top: 200, right: 300, bottom: 300 },
+			}));
+		const clock = await showNotes(t, scene);
+		const enriched = traceEnrichment(t);
+
+		source.futureField = true;
+		await fire(`update${type}`, source, { _id: source.id, futureField: true });
+		await clock.settle();
+
+		assert.equal(enriched.length, 1,
+			"an unrecognized semantic field was treated as tray-blind");
+		assert.equal(enriched[0].html, `<p>body of ${source.uuid}</p>`);
+		assert.deepEqual(publishedRows(), [
+			`${type === "Drawing" ? "drawings" : "regions"}:${source.uuid}`,
+		]);
+	});
+}
+
 test("a door opening does not rebuild the Notes tab, but a Wall note saved does", async t => {
 	const scene = makeScene();
 	const wall = place(scene, noted("Wall", "Scene.scene-a.Wall.w1", { c: [0, 0, 100, 100] }));
@@ -928,8 +1177,11 @@ test("no lifecycle hook enriches a note while another tab is showing", async t =
 		await fire("createToken", token, {}, "user-1");
 		await fire("deleteToken", token, {}, "user-1");
 		await fire("updateTile", tile, { _id: "t1", flags: { [MODULE_ID]: { notes: "<p>c</p>" } } });
+		await fire("createDrawing", drawing, {}, "user-1");
 		await fire("updateDrawing", drawing, { _id: "d1", text: "Sketch" });
+		await fire("deleteDrawing", drawing, {}, "user-1");
 		await fire("createRegion", region, {}, "user-1");
+		await fire("updateRegion", region, { _id: "r1", name: "Zone" });
 		await fire("deleteRegion", region, {}, "user-1");
 		await fire("createWall", wall, {}, "user-1");
 		await fire("deleteWall", wall, {}, "user-1");
@@ -977,6 +1229,53 @@ function bridgeWritesToHooks(document) {
 		await fire(`update${document.documentName}`, document, { _id: document.id, flags: changes });
 	};
 	return bridge;
+}
+
+for (const type of ["Drawing", "Region"]) {
+	test(`${type} save callback changes the list only through its update hook`, async t => {
+		const scene = makeScene();
+		const document = place(scene, noted(type, `Scene.scene-a.${type}.saved`, {
+			name: type === "Drawing" ? "Drawing" : "Zone",
+			text: type === "Drawing" ? "Sketch" : undefined,
+			x: 100, y: 100,
+			bounds: type === "Region" ? { left: 100, top: 100, right: 200, bottom: 200 } : undefined,
+		}));
+		const bridge = bridgeWritesToHooks(document);
+		const clock = await showNotes(t, scene);
+		traceEnrichment(t);
+		const previousFormDataExtended = foundry.applications.ux.FormDataExtended;
+		foundry.applications.ux.FormDataExtended = class {
+			constructor(element) {
+				this.object = element?.formData ?? {};
+			}
+		};
+		t.after(() => {
+			foundry.applications.ux.FormDataExtended = previousFormDataExtended;
+		});
+
+		const app = new PlaceableNotesSD(document);
+		app.element = { formData: { "flags.shadowdark-extras.notes": "<p>saved from sheet</p>" } };
+		bridge.live = false;
+		await PlaceableNotesSD._onSave.call(app);
+		await clock.settle();
+
+		assert.deepEqual(document.calls.filter(call => call.startsWith("setFlag")),
+			["setFlag:notes=<p>saved from sheet</p>"], "the sheet Save wrote the exact source");
+		assert.deepEqual(publishedRows(), [`${type === "Drawing" ? "drawings" : "regions"}:Scene.scene-a.${type}.saved`],
+			"the row stayed present without an update hook");
+		assert.deepEqual(publishedContent(), ["<p>body of Scene.scene-a." + type + ".saved</p>"],
+			"the saved body stayed stale without an update hook — Save was not optimistic");
+
+		bridge.live = true;
+		app.element = { formData: { "flags.shadowdark-extras.notes": "<p>saved through hook</p>" } };
+		await PlaceableNotesSD._onSave.call(app);
+		await clock.settle();
+
+		assert.deepEqual(publishedRows(), [`${type === "Drawing" ? "drawings" : "regions"}:Scene.scene-a.${type}.saved`],
+			"the hook-driven Save retained the exact source row");
+		assert.deepEqual(publishedContent(), ["<p>saved through hook</p>"],
+			"the hook-driven Save published the new body");
+	});
 }
 
 test("the visibility control changes the list only through the update it causes", async t => {
@@ -1072,6 +1371,73 @@ test("the delete control changes the list only through the update it causes", as
 	assert.deepEqual(publishedRows(), ["tiles:Scene.scene-a.Tile.t2"],
 		"the hook-driven rebuild is what removed the row");
 });
+
+for (const type of ["Drawing", "Region"]) {
+	test(`${type} share, rename, and delete callbacks publish only through hooks`, async t => {
+		const scene = makeScene();
+		const group = type === "Drawing" ? "drawings" : "regions";
+		const source = place(scene, noted(type, `Scene.scene-a.${type}.d1`, {
+			name: type === "Drawing" ? "Drawing" : "Zone",
+			text: type === "Drawing" ? "Sketch" : undefined,
+			x: 100, y: 100,
+			bounds: type === "Region" ? { left: 100, top: 100, right: 200, bottom: 200 } : undefined,
+		}));
+		const bridge = bridgeWritesToHooks(source);
+		const clock = await showNotes(t, scene);
+		traceEnrichment(t);
+		const rendered = { noteUuid: source.uuid, noteType: type };
+
+		bridge.live = false;
+		await fireRowControl(rendered, "toggle-visibility");
+		await clock.settle();
+		assert.deepEqual(source.calls.filter(call => call.startsWith("setFlag")),
+			["setFlag:noteVisible=true"], "share wrote the exact source");
+		assert.deepEqual(publishedLabels().map(([, visible]) => visible), [false],
+			"sharing changed the list without an update hook");
+
+		bridge.live = true;
+		await fireRowControl(rendered, "toggle-visibility");
+		await clock.settle();
+		await fireRowControl(rendered, "toggle-visibility");
+		await clock.settle();
+		assert.deepEqual(publishedLabels().map(([, visible]) => visible), [true],
+			"the live share hook changed the viewer state");
+
+		const dialogs = captureDialogs(t);
+		bridge.live = false;
+		source.calls.length = 0;
+		await fireRowControl(rendered, "rename");
+		await saveRename(dialogs, "Renamed while quiet");
+		await clock.settle();
+		assert.deepEqual(source.calls.filter(call => call.startsWith("setFlag")),
+			["setFlag:customName=Renamed while quiet"], "rename wrote the exact source");
+		assert.deepEqual(publishedLabels().map(([name]) => name), [
+			type === "Drawing" ? "Sketch" : "Zone",
+		], "rename changed the list without an update hook");
+
+		bridge.live = true;
+		await fireRowControl(rendered, "rename");
+		await saveRename(dialogs, "Renamed through hook");
+		await clock.settle();
+		assert.deepEqual(publishedLabels().map(([name]) => name), ["Renamed through hook"]);
+
+		confirmDeletes(t, true);
+		bridge.live = false;
+		source.calls.length = 0;
+		await fireRowControl(rendered, "delete");
+		await clock.settle();
+		assert.deepEqual(source.calls.filter(call => call.startsWith("unsetFlag")),
+			["unsetFlag:notes", "unsetFlag:noteVisible"], "delete wrote the exact source");
+		assert.deepEqual(publishedRows(), [`${group}:Scene.scene-a.${type}.d1`],
+			"delete changed the list without an update hook");
+
+		source.flags[MODULE_ID].notes = `<p>body of Scene.scene-a.${type}.d1</p>`;
+		bridge.live = true;
+		await fireRowControl(rendered, "delete");
+		await clock.settle();
+		assert.deepEqual(publishedRows(), [], "the hook-driven delete removed the row");
+	});
+}
 
 /**
  * Capture every DialogV2 a command opens. The rename flow builds its dialog and

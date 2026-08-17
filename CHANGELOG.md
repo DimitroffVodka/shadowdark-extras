@@ -8,7 +8,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
-- **Placeable Notes now have a grouped tray view.** Notes are collected into fixed Tokens, Actors, Tiles, Walls, Lights, and Sounds groups with viewer-safe counts and natural sorting. Token and Actor notes remain separate exact sources, and group/row expansion state lasts for the tray session.
+- **Placeable Notes now have a grouped tray view.** Notes are collected into fixed Tokens, Actors, Tiles, Drawings, Walls, Lights, Sounds, and Regions groups with viewer-safe counts and natural sorting. Token and Actor notes remain separate exact sources, and group/row expansion state lasts for the tray session. Drawing/Region labels use native text or names before coordinate fallbacks, and lifetime-owned transient/rebuild sources remain excluded.
 
 ### Changed
 
@@ -16,7 +16,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
-- **Placeable-note actions and lifecycle updates are now exact and resilient.** Edit, rename, sharing, delete, and pan actions target the exact source document, enforce GM and active-scene checks, and refresh safely across document lifecycle changes and overlapping asynchronous renders. A failed note enrichment no longer removes sibling rows or exposes rejection details. Drawing and Region notes remain unsupported.
+- **Placeable-note actions and lifecycle updates are now exact and resilient.** Edit, rename, sharing, delete, and pan actions target the exact source document, enforce GM and active-scene checks, and refresh safely across document lifecycle changes and overlapping asynchronous renders. A failed note enrichment no longer removes sibling rows or exposes rejection details. Drawing and Region lifecycle updates now apply label-aware differential refreshes while preserving live-center pan and explicit player sharing.
 - **The system's apply-damage buttons stayed live after SDX had already applied the damage.** Shadowdark's roll card carries its own pair of apply-damage buttons, and SDX injects its damage card into that same chat message — so once SDX applied the damage, whether automatically or from its own APPLY DAMAGE button, those buttons still read as unused and clicking one applied the same damage a second time. The system does not fade a button on click: `ChatMessageSD` sets `flags.shadowdark.damageApplied` and re-adds the faded state from that flag on every later render, so the only way to reproduce the fade is to write the flag the system reads. SDX now sets it alongside its own applied flag, which also hands the double-apply guard back to the system — a stray click raises its reapply confirmation instead of silently landing damage twice. Verified live on Foundry 14.365 / Shadowdark 4.0.6, for both GM- and player-authored attacks.
 
 ### Internal

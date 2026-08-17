@@ -48,6 +48,14 @@ export function saveTrayScrollPositions(app) {
 	if (tomList && !app._tomOverlaysCollapsed) {
 		app._scrollPositions["tom-overlays-inline-list"] = tomList.scrollTop;
 	}
+
+	const noteList = elem.querySelector(".note-list-scroll-container");
+	// The Notes view stays in the template while another tab is active. Its
+	// hidden or empty container has no meaningful position and must not replace
+	// a preserved offset from an overflowing Notes list with zero.
+	if (noteList && noteList.scrollHeight > noteList.clientHeight) {
+		app._scrollPositions["note-list-scroll-container"] = noteList.scrollTop;
+	}
 }
 
 /**
@@ -93,5 +101,10 @@ export function restoreTrayScrollPositions(app) {
 	const tomListRestore = elem.querySelector(".tom-overlays-inline-list");
 	if (tomListRestore && app._scrollPositions["tom-overlays-inline-list"] !== undefined) {
 		tomListRestore.scrollTop = app._scrollPositions["tom-overlays-inline-list"];
+	}
+
+	const noteListRestore = elem.querySelector(".note-list-scroll-container");
+	if (noteListRestore && app._scrollPositions["note-list-scroll-container"] !== undefined) {
+		noteListRestore.scrollTop = app._scrollPositions["note-list-scroll-container"];
 	}
 }

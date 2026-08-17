@@ -159,6 +159,26 @@ function hasUsefulName(document) {
 	return !!name && !GENERIC_NAMES[document.documentName]?.includes(name);
 }
 
+/**
+ * Whether the row's label is derived from the document's current geometry.
+ * Drawing and Region lifecycle handlers use this same label rule to decide
+ * whether a geometry differential is visible to the Notes index.
+ *
+ * @param {{documentName?: string, flags?: object, text?: string, name?: string}} document
+ * @returns {boolean}
+ */
+export function usesCoordinateFallback(document) {
+	if (!document) return false;
+	if (document?.flags?.[MODULE_ID]?.customName) return false;
+
+	if (document.documentName === "Drawing") {
+		return !(typeof document.text === "string" && document.text.trim());
+	}
+
+	if (document.documentName === "Region") return !hasUsefulName(document);
+	return false;
+}
+
 /** A stable coordinate pair read from the document, never from a canvas object. */
 function coordinatesOf(document) {
 	if (document.documentName === "Region") {

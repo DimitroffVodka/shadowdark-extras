@@ -346,6 +346,24 @@ function sceneWithTiles(id) {
 	};
 }
 
+/** A scene with both extension source types, for the async publication guard. */
+function sceneWithDrawingAndRegion(id) {
+	return {
+		id,
+		tokens: { contents: [] },
+		drawings: {
+			contents: [noted("Drawing", `Scene.${id}.Drawing.d1`, {
+				name: "Drawing", text: `Sketch ${id}`, x: 100, y: 100,
+			})],
+		},
+		regions: {
+			contents: [noted("Region", `Scene.${id}.Region.r1`, {
+				name: `Zone ${id}`, bounds: { left: 200, top: 200, right: 300, bottom: 300 },
+			})],
+		},
+	};
+}
+
 /** Fold a group shut through the binding a render registers. */
 function collapseGroupThroughBinding(app, groupId) {
 	const dom = makeSelectorDom({
@@ -483,6 +501,41 @@ test("a render that finishes late is discarded, not published over the newer one
 		context.noteGroups.flatMap(group => group.rows).map(row => row.sourceUuid),
 		["Scene.scene-b.Tile.t1"],
 		"and holds scene B's rows, not the late render's scene A rows"
+	);
+});
+
+test("a late render with Drawing and Region rows cannot replace the newest Scene", async t => {
+	stage({ scene: { id: "scene-quiet", tokens: { contents: [] } } });
+	startTray();
+	await showView("notes");
+	const app = TrayApp._instance;
+	const probeGroups = await getNoteGroupsData(sceneWithDrawingAndRegion("probe"));
+	assert.deepEqual(probeGroups.map(group => group.id), ["drawings", "regions"]);
+	const enricher = deferEnrichment(t);
+
+	stage({ scene: sceneWithDrawingAndRegion("scene-a") });
+	const renderA = renderTray();
+	await enricher.inFlight(1);
+	enricher.release("Scene.scene-a.Drawing.d1");
+	await enricher.inFlight(1);
+
+	stage({ scene: sceneWithDrawingAndRegion("scene-b") });
+	const renderB = renderTray();
+	await enricher.inFlight(2);
+	enricher.release("Scene.scene-b.Drawing.d1");
+	await enricher.inFlight(2);
+	enricher.release("Scene.scene-b.Region.r1");
+	await renderB;
+
+	enricher.release("Scene.scene-a.Region.r1");
+	await renderA;
+
+	const context = await app._prepareContext({});
+	assert.equal(app.trayData.noteSceneId, "scene-b");
+	assert.deepEqual(
+		context.noteGroups.flatMap(group => group.rows).map(row => row.sourceUuid),
+		["Scene.scene-b.Drawing.d1", "Scene.scene-b.Region.r1"],
+		"the stale Drawing/Region render did not publish over the current Scene"
 	);
 });
 

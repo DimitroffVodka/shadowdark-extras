@@ -148,7 +148,7 @@ These tools operate on the active Scene and elevation Level. Read **[Map Generat
 
 - **[Theater of the Mind](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Theater-of-the-Mind):** broadcast fullscreen image/video scenes, arena grids, 20 built-in video overlays, stacked overlays, folder-based scene navigation, and player token placement on arena scenes.
 - **[Journal Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Pins):** styled canvas markers, folders, labels, tooltips, visibility rules, pixel-perfect selection, map-note conversion, and live pan/ping/bring actions.
-- **[Placeable Notes](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Tools-and-Pins):** rich-text notes on Tokens, Actors, Tiles, Walls, Lights, and Sounds, collected into fixed type groups in the tray. Token and Actor notes remain separate exact sources; Drawing and Region notes are not supported.
+- **[Placeable Notes](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Tools-and-Pins):** rich-text notes on Tokens, Actors, Tiles, Drawings, Walls, Lights, Sounds, and user-managed Regions, collected into fixed type groups in the tray. Token and Actor notes remain separate exact sources; transient or rebuild-owned Drawing/Region sources stay excluded by exact ownership evidence.
 - **[Easy Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Easy-Reference):** ProseMirror inserts for NPC cards, item cards, RollTable cards, ability checks/requests, and dice rolls.
 - **[Scene Export/Import](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Canvas-and-Table-Tools):** portable ZIP archives containing scene data, embedded documents, referenced assets, journals, actors, and SDX hex data where available.
 

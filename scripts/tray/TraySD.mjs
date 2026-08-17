@@ -6,7 +6,7 @@ import { JournalPinManager, normalizeImageTint } from "../journal/JournalPinsSD.
 // re-export, which is a fixed public surface.
 import { checkPinVisibility } from "../journal/pin-manager.mjs";
 import { getPinJournalSubtitle } from "../journal/pin-access.mjs";
-import { buildPlaceableNoteIndex } from "../journal/placeable-note-index.mjs";
+import { buildPlaceableNoteIndex, usesCoordinateFallback } from "../journal/placeable-note-index.mjs";
 import { initSoloHexMode } from "../hex/SoloHexMode.mjs";
 import { getHexPainterData, loadTileAssets, bindCanvasEvents, enablePainting, disablePainting, isPainting, setDecorMode, canUndoPoi, canRedoPoi } from "../hex/HexPainterSD.mjs";
 import {
@@ -56,6 +56,58 @@ const TRAY_BLIND_TOKEN_KEYS = new Set(["x", "y", "rotation", "elevation"]);
  * rides along with even a plain drag and must not be mistaken for a change.
  */
 const DOCUMENT_METADATA_KEYS = new Set(["_id", "_stats"]);
+
+/**
+ * Foundry fields that can change a Drawing's geometry. A geometry-only update
+ * is tray-blind when the row has a custom/native label, but it changes the
+ * coordinate fallback for an unnamed Drawing and must rebuild in that case.
+ */
+const DRAWING_GEOMETRY_KEYS = new Set(["x", "y", "rotation", "shape", "bezierFactor"]);
+
+/**
+ * Foundry's Drawing presentation and placement fields are not read by the
+ * Notes index. Keep this set explicit: an unknown key takes the safe rebuild
+ * path rather than being guessed to be cosmetic.
+ */
+const DRAWING_TRAY_BLIND_KEYS = new Set([
+	"author", "fillType", "fillColor", "fillAlpha", "strokeWidth", "strokeColor",
+	"strokeAlpha", "textAlpha", "textColor", "fontFamily", "fontSize", "texture",
+	"elevation", "levels", "sort", "hidden", "interface", "locked", "name",
+]);
+
+/**
+ * Region fields that alter shape geometry and can therefore affect a
+ * coordinate-fallback label. The index does not use behavior/style data.
+ */
+const REGION_GEOMETRY_KEYS = new Set(["shapes", "_shapeConstraints", "restriction"]);
+
+/**
+ * Region presentation, placement, and behavior fields the Notes index cannot
+ * observe. Unknown keys deliberately remain rebuild-worthy.
+ */
+const REGION_TRAY_BLIND_KEYS = new Set([
+	"color", "elevation", "levels", "locked", "visibility", "behaviors", "attachment",
+	"ownership", "hidden", "highlightMode", "displayMeasurements",
+]);
+
+function shouldRefreshDrawingRegion(documentName, document, changes) {
+	const changedKeys = Object.keys(changes ?? {})
+		.filter(key => !DOCUMENT_METADATA_KEYS.has(key));
+	if (changedKeys.length === 0) return false;
+
+	const geometryKeys = documentName === "Drawing"
+		? DRAWING_GEOMETRY_KEYS
+		: REGION_GEOMETRY_KEYS;
+	const trayBlindKeys = documentName === "Drawing"
+		? DRAWING_TRAY_BLIND_KEYS
+		: REGION_TRAY_BLIND_KEYS;
+
+	if (changedKeys.every(key => trayBlindKeys.has(key))) return false;
+	if (changedKeys.every(key => geometryKeys.has(key))) {
+		return usesCoordinateFallback(document);
+	}
+	return true;
+}
 
 // Tray instance
 let _trayApp = null;
@@ -302,7 +354,11 @@ export function initTray() {
 	const placeableHooks = ["AmbientLight", "AmbientSound", "Tile", "Drawing", "Region"];
 	placeableHooks.forEach(type => {
 		Hooks.on(`create${type}`, debouncedPlaceableRender);
-		Hooks.on(`update${type}`, debouncedPlaceableRender);
+		Hooks.on(`update${type}`, (document, changes) => {
+			if ((type === "Drawing" || type === "Region")
+				&& !shouldRefreshDrawingRegion(type, document, changes)) return;
+			debouncedPlaceableRender();
+		});
 		Hooks.on(`delete${type}`, debouncedPlaceableRender);
 	});
 

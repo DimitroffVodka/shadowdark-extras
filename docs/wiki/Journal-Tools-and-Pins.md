@@ -25,10 +25,15 @@ switch note systems.
 
 ## Notes on placeables
 
-With **Enable Notes on placeables and Notes tab in tray** on, six kinds of
+With **Enable Notes on placeables and Notes tab in tray** on, eight kinds of
 document gain a Notes control in their sheet header: **Tokens, Actors, Tiles,
-Walls, Ambient Lights, and Ambient Sounds**. Those six are the whole list —
-Drawings and Regions have no Notes control and never appear in the tray.
+Drawings, Walls, Ambient Lights, Ambient Sounds, and Regions**. Drawings and
+Regions are eligible when they are user-managed. A source that Foundry or SDX
+still owns for a transient effect or rebuild — such as an aura, a measured
+template companion, a dungeon visual, or a stair connector — is excluded by
+its exact ownership marker and never appears in the tray. Creation by SDX
+alone is not an exclusion rule; durable imported or helper-created Regions can
+carry notes.
 
 ![A token configuration window's header bar — the SDX Notes button, a highlighted sticky-note icon, sits between Sheet and Medkit](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/placeable-notes-token-header.webp)
 
@@ -42,13 +47,20 @@ and delete it. Right-clicking a row is a shortcut for the edit control.
 ### Type groups
 
 The tab is grouped into folders, one per type, always in the same order:
-**Tokens, Actors, Tiles, Walls, Lights, Sounds**. The headers are fixed — you
-cannot add, rename, reorder, or nest them, and a type with no notes on the
-scene is left out rather than shown empty. Click a header to fold it; each
-group's number is how many rows it is showing you.
+**Tokens, Actors, Tiles, Drawings, Walls, Lights, Sounds, Regions**. The
+headers are fixed — you cannot add, rename, reorder, or nest them, and a type
+with no notes on the scene is left out rather than shown empty. Click a header
+to fold it; each group's number is how many rows it is showing you.
 
 Within a group, rows are sorted by name the way you would count them, so
 *Room 2* comes before *Room 10*.
+
+Drawing rows use the custom label first, then trimmed Drawing text, and finally
+`Drawing (x, y)` when the source has no useful label. Region rows use the
+custom label, then the Region name, and finally `Region (x, y)`. These labels
+are escaped as text. Moving or reshaping a coordinate-labelled source refreshes
+its label; a named source can skip that tray rebuild, while pan always reads the
+placeable's current canvas center.
 
 ### A Token note and its Actor note are two different notes
 
@@ -61,15 +73,18 @@ deleting one never touches the other.
 An Actor with several linked tokens on the scene still gets a single Actor row.
 Panning from it centres on one of its tokens.
 
-Notes are metadata on the document. Delete a placeable and its note goes with
-it; an Actor's note stays with the Actor, and its row leaves the tab when the
-last token representing it is off the scene.
+Notes are metadata on the document. Delete or rebuild a placeable and its note
+goes with that source; SDX does not preserve it across document replacement.
+An Actor's note stays with the Actor, and its row leaves the tab when the last
+token representing it is off the scene.
 
 ### Sharing a note with players
 
 Every note is GM-only until you say otherwise. The visibility control on a row
 shares that one note; a player then sees it in their own Notes tab, whether or
-not they own the underlying document.
+not they own the underlying document. This explicit share is independent of
+the source Drawing/Region layer visibility, so hiding a canvas layer does not
+silently revoke a deliberate share.
 
 What a player gets is deliberately narrow:
 
@@ -166,8 +181,9 @@ and dice syntax. See
 ## Troubleshooting
 
 **Placeable Notes button is absent.** Enable the setting and reload. Foundry v14
-uses the DocumentSheetV2 header-controls hook. Drawings and Regions are not
-supported and will not show the control.
+uses the DocumentSheetV2 header-controls hook. An excluded Drawing or Region
+will not show the control; inspect its exact ownership flag or marker. Ordinary
+user-managed Drawings and Regions are supported.
 
 **A note is missing from the Notes tab.** The tab only ever lists the active
 scene. An Actor's note needs a token representing it on that scene; a note on a

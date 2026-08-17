@@ -805,6 +805,41 @@ test("the note beside a broken one is enriched as usual", async () => {
 	assert.equal(healthy.enrichedContent, HEALTHY_NOTE);
 });
 
+// CHARACTERIZATION: Drawing and Region rows use the same UUID-only enrichment
+// boundary as every existing source type. Keeping both extension types in the
+// adversarial fixture proves one rejected row cannot erase its sibling or put
+// enricher-authored diagnostics in the shared warning.
+for (const [documentName, groupId] of [["Drawing", "drawings"], ["Region", "regions"]]) {
+	test(`${documentName} enrichment failures keep sibling rows and diagnostics fixed`, async () => {
+		const broken = noted(documentName, `Scene.scene1.${documentName}.broken`, { name: "Broken" });
+		broken.flags["shadowdark-extras"].notes = BROKEN_NOTE;
+		broken.flags["shadowdark-extras"].noteVisible = true;
+		const healthy = noted(documentName, `Scene.scene1.${documentName}.healthy`, { name: "Healthy" });
+		healthy.flags["shadowdark-extras"].notes = HEALTHY_NOTE;
+		healthy.flags["shadowdark-extras"].noteVisible = true;
+		const scene = sceneOf(groupId, [broken, healthy]);
+		const logger = { warnings: [], warn(...args) { this.warnings.push(args); } };
+		const { enrichHTML } = makeFailingEnricher(BROKEN_NOTE, new Error("enrichment exploded"));
+
+		const groups = await buildPlaceableNoteIndex(scene, {
+			isGM: true,
+			enrichHTML,
+			logger,
+		});
+
+		assert.deepEqual(sourceUuids(groups, groupId), [
+			`Scene.scene1.${documentName}.broken`,
+			`Scene.scene1.${documentName}.healthy`,
+		]);
+		assert.equal(groups.find(group => group.id === groupId)
+			.rows.find(row => row.sourceUuid.endsWith(".healthy")).enrichedContent, HEALTHY_NOTE);
+		assert.equal(logger.warnings.length, 1);
+		assert.deepEqual(logger.warnings[0], [
+			`SDX Note Index | Could not enrich the note on Scene.scene1.${documentName}.broken`,
+		]);
+	});
+}
+
 // The dangerous case: enrichment is what removes secret sections, so when it
 // fails the model — not Foundry — has to keep the GM's secret away from the
 // player who was shown this note.

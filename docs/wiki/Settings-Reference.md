@@ -357,7 +357,7 @@ headers the module injects.
 | **Enable Default Header Background** | World | off | no | Uses one image/video when a sheet has no per-actor background |
 | **Default Header Background Image** | World | blank | no | Image/video path for the previous option |
 | **Enable Journal Notes** | World | on | yes | Replaces simple character notes with the multi-page editor |
-| **Enable Notes on placeables and Notes tab in tray** | World | on | yes | Adds notes to Token/Actor/Tile/Wall/Light/Sound sheets and the grouped tray tab |
+| **Enable Notes on placeables and Notes tab in tray** | World | on | yes | Adds notes to Token/Actor/Tile/Drawing/Wall/Light/Sound/Region sheets and the grouped tray tab; exact lifetime-owned transient/rebuild sources remain excluded |
 | **Enable Add Coins Button** | World | on | yes | Quick coin adjustment without dialogs |
 | **Conditions theme** | World | Shadowdark | no | Shadowdark, 5e, Parchment, Stone, Leather, Iron, Moss, or Blood |
 
