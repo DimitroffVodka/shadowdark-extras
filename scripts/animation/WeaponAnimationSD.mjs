@@ -99,17 +99,73 @@ export function getLegacyEffectName(token, itemId) {
 	return `${MODULE_ID}-weapon-${token.id}-${itemId}`;
 }
 
+/** Where the build-time manifest of the bundled weapon art lives. */
+const WEAPON_MANIFEST_PATH = `modules/${MODULE_ID}/assets/Weapons/manifest.json`;
+
+/** Parsed manifest images, or `null` once a load has been attempted and failed. */
+let _bundledManifest;
+
 /**
- * Recursively scan the Weapons folder for all image files
+ * The bundled weapon art, read from a shipped JSON file rather than discovered.
+ *
+ * `FilePicker.browse` requires the `FILES_BROWSE` permission, which the PLAYER
+ * role does not hold by default. Browsing therefore returned nothing for every
+ * player, the scan yielded an empty list, and the picker reported the folder as
+ * empty — a claim about the folder for what was really a permission failure.
+ * Fetching a shipped JSON file needs no permission, so the same art is
+ * available to every role.
+ *
+ * @returns {Promise<Array|null>} manifest images, or null if unavailable
+ */
+async function loadBundledWeaponImages() {
+	if (_bundledManifest !== undefined) return _bundledManifest;
+
+	try {
+		const route = foundry.utils?.getRoute?.(WEAPON_MANIFEST_PATH) ?? WEAPON_MANIFEST_PATH;
+		const response = await fetch(route);
+		if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+		const data = await response.json();
+		if (!Array.isArray(data?.images)) throw new Error("manifest has no images array");
+
+		// Trust the shape only as far as it is checked: a malformed entry is
+		// dropped rather than handed to the template as a broken thumbnail.
+		_bundledManifest = data.images.filter(img => img
+			&& typeof img.path === "string"
+			&& typeof img.name === "string"
+			&& typeof img.category === "string");
+	}
+	catch(error) {
+		console.warn(`${MODULE_ID} | Bundled weapon manifest unavailable, falling back to a directory scan:`, error);
+		_bundledManifest = null;
+	}
+
+	return _bundledManifest;
+}
+
+/**
+ * All selectable weapon images: the bundled SDX art, plus any Forgotten
+ * Adventures Nexus art this world happens to have.
  * @returns {Promise<Array>} Array of {path, name, category} objects
  */
 export async function scanItemImages() {
+	const imageMap = new Map(); // Use Map to de-duplicate by filename
+
+	const bundled = await loadBundledWeaponImages();
+	for (const img of bundled ?? []) {
+		if (!imageMap.has(img.name)) imageMap.set(img.name, img);
+	}
+
 	const basePaths = [
-		{ path: `modules/${MODULE_ID}/assets/Weapons`, category: "Weapons" },
+		// Walk the bundled folder only when the manifest could not be read — an
+		// unbuilt dev checkout, say. With a manifest this is redundant, and for a
+		// player it would fail anyway.
+		...(bundled ? [] : [{ path: `modules/${MODULE_ID}/assets/Weapons`, category: "Weapons" }]),
+		// Another module's art, so it cannot be manifested here. This stays a
+		// browse, and so stays GM-only in practice.
 		{ path: "fa-nexus-assets/!Core_Settlements/Combat/Weapons", category: "Weapons" },
 		{ path: "fa-nexus-assets/!Core_Settlements/Combat/Weapons/Shields", category: "Shields" },
 	];
-	const imageMap = new Map(); // Use Map to de-duplicate by filename
 
 	for (const config of basePaths) {
 		const basePath = config.path;

@@ -20,6 +20,7 @@
     "premove": "node dev/tools/find-path-refs.mjs",
     "pack": "node ./dev/packs/pack.mjs",
     "unpack": "node ./dev/packs/unpack.mjs",
+    "weapon-manifest": "node ./dev/build-weapon-manifest.mjs",
     "release:check": "node ./dev/release-check.mjs",
     "gate:bindings": "node dev/tools/binding-gate.mjs",
     "gate:named-exports": "node dev/tools/named-export-gate.mjs",
