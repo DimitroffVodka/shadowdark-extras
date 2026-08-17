@@ -109,6 +109,7 @@ function makeDocument({ notes = "", documentName = "Token", name = "Goblin" } = 
 		documentName,
 		name,
 		id: "abc123",
+		flags,
 		getFlag: (scope, key) => flags[scope]?.[key],
 		setFlag: async (scope, key, value) => {
 			(flags[scope] ??= {})[key] = value;
@@ -149,6 +150,20 @@ test("clicking the control on a v14 sheet opens that placeable's notes", async (
 
 	assert.equal(opened.length, 1);
 	assert.equal(opened[0].app.object, document);
+});
+
+test("an excluded Drawing receives no v14 Notes control", () => {
+	const document = makeDocument({ documentName: "Drawing" });
+	document.flags["shadowdark-extras"].placeableNotesExcluded = true;
+
+	assert.deepEqual(headerControlsFor(document), []);
+});
+
+test("an excluded Region receives no v14 Notes control", () => {
+	const document = makeDocument({ documentName: "Region" });
+	document.flags["shadowdark-extras"].auraRegion = true;
+
+	assert.deepEqual(headerControlsFor(document), []);
 });
 
 test("clicking the control on a legacy actor sheet opens that actor's notes", async () => {
@@ -225,14 +240,16 @@ test("players are not offered the notes control at all", () => {
 // control for. They are characterization: they describe behaviour that already
 // exists, so that moving the supported-type list into the shared note-index
 // predicate can be proven to change nothing a user can see. Drawing and Region
-// are excluded by design, not by omission.
-test("exactly the six supported document types are offered the v14 notes control", () => {
+// are now eligible when their exact instance-level ownership policy allows it.
+test("exactly the eight supported document types are offered the v14 notes control", () => {
 	const offered = [
 		"Token", "Actor", "Tile", "Wall", "AmbientLight", "AmbientSound", "Drawing", "Region",
 	].filter(documentName => headerControlsFor(makeDocument({ documentName }))
 		.some(control => control.action === "open-sdx-notes"));
 
-	assert.deepEqual(offered, ["Token", "Actor", "Tile", "Wall", "AmbientLight", "AmbientSound"]);
+	assert.deepEqual(offered, [
+		"Token", "Actor", "Tile", "Wall", "AmbientLight", "AmbientSound", "Drawing", "Region",
+	]);
 });
 
 test("the legacy actor-sheet hook offers its button only for actors", () => {

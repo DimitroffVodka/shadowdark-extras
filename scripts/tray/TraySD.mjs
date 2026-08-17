@@ -299,7 +299,7 @@ export function initTray() {
 	});
 
 	// Other placeables
-	const placeableHooks = ["AmbientLight", "AmbientSound", "Tile"];
+	const placeableHooks = ["AmbientLight", "AmbientSound", "Tile", "Drawing", "Region"];
 	placeableHooks.forEach(type => {
 		Hooks.on(`create${type}`, debouncedPlaceableRender);
 		Hooks.on(`update${type}`, debouncedPlaceableRender);
@@ -1098,7 +1098,7 @@ export async function renderTray() {
 			? await getNoteGroupsData(scene)
 			: null,
 		// Which scene those groups describe. The tray's session-only collapse
-		// state is keyed by group id, and every scene reuses the same six ids,
+		// state is keyed by group id, and every scene reuses the same eight ids,
 		// so the identity has to travel with them — and it is the identity this
 		// render was built from, not whatever the canvas is showing by now.
 		noteSceneId: scene?.id ?? null,
@@ -1346,9 +1346,11 @@ const NOTE_ICONS = {
 	Token: "fa-solid fa-user",
 	Actor: "fa-solid fa-address-card",
 	Tile: "fa-solid fa-image",
+	Drawing: "fa-solid fa-pencil",
 	Wall: "fa-solid fa-block-brick",
 	AmbientLight: "fa-solid fa-lightbulb",
 	AmbientSound: "fa-solid fa-volume-high",
+	Region: "fa-solid fa-draw-polygon",
 };
 
 /**
@@ -1363,9 +1365,11 @@ const NOTE_GROUP_LABELS = {
 	tokens: "Tokens",
 	actors: "Actors",
 	tiles: "Tiles",
+	drawings: "Drawings",
 	walls: "Walls",
 	lights: "Lights",
 	sounds: "Sounds",
+	regions: "Regions",
 };
 
 /**

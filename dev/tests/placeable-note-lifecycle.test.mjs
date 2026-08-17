@@ -55,9 +55,11 @@ function makeScene(id = "scene-a") {
 		uuid: `Scene.${id}`,
 		tokens: { contents: [] },
 		tiles: { contents: [] },
+		drawings: { contents: [] },
 		walls: { contents: [] },
 		lights: { contents: [] },
 		sounds: { contents: [] },
+		regions: { contents: [] },
 		// Foundry's own Map Notes, which the Pins tab lists and this ticket does
 		// not touch. An empty collection keeps that tab renderable.
 		notes: [],
@@ -69,9 +71,11 @@ function makeScene(id = "scene-a") {
 const SCENE_COLLECTIONS = {
 	Token: "tokens",
 	Tile: "tiles",
+	Drawing: "drawings",
 	Wall: "walls",
 	AmbientLight: "lights",
 	AmbientSound: "sounds",
+	Region: "regions",
 };
 
 /**
@@ -162,14 +166,14 @@ async function showNotes(t, scene, options) {
 
 // --- 1. the registered hook matrix ------------------------------------------
 
-// Ticket 4 requires registered create/update/delete coverage for all six
+// Ticket 4 requires registered create/update/delete coverage for all eight
 // supported source types. This asks only what was installed; the behavioural
 // matrix below is what proves each registration does something.
-test("all six supported types have create, update and delete hooks registered", async t => {
+test("all eight supported types have create, update and delete hooks registered", async t => {
 	await showNotes(t, makeScene());
 
 	const missing = [];
-	for (const type of ["Token", "Actor", "Tile", "Wall", "AmbientLight", "AmbientSound"]) {
+	for (const type of ["Token", "Actor", "Tile", "Drawing", "Wall", "AmbientLight", "AmbientSound", "Region"]) {
 		for (const verb of ["create", "update", "delete"]) {
 			if (!isRegistered(`${verb}${type}`)) missing.push(`${verb}${type}`);
 		}
@@ -177,7 +181,7 @@ test("all six supported types have create, update and delete hooks registered", 
 
 	assert.deepEqual(missing, [], "the tray registers no handler for these");
 
-	// The scene itself changing is the seventh lifecycle event, and the one that
+	// The scene itself changing is the ninth lifecycle event, and the one that
 	// invalidates every row at once.
 	assert.ok(isRegistered("canvasReady"), "a scene change would never rebuild the index");
 });
@@ -229,9 +233,27 @@ const LIFECYCLE = [
 		},
 	},
 	{
+		type: "Drawing", group: "drawings", uuid: "Scene.scene-a.Drawing.d1",
+		arrive(scene) {
+			return place(scene, noted("Drawing", this.uuid, { name: "Sketch" }));
+		},
+		depart(scene, document) {
+			unplace(scene, document);
+		},
+	},
+	{
 		type: "Wall", group: "walls", uuid: "Scene.scene-a.Wall.w1",
 		arrive(scene) {
 			return place(scene, noted("Wall", this.uuid, { c: [0, 0, 100, 100] }));
+		},
+		depart(scene, document) {
+			unplace(scene, document);
+		},
+	},
+	{
+		type: "Region", group: "regions", uuid: "Scene.scene-a.Region.r1",
+		arrive(scene) {
+			return place(scene, noted("Region", this.uuid, { name: "Zone" }));
 		},
 		depart(scene, document) {
 			unplace(scene, document);
@@ -885,10 +907,12 @@ function captureConsole(t) {
 // nothing — otherwise a busy scene pays for the Notes tab on every view.
 test("no lifecycle hook enriches a note while another tab is showing", async t => {
 	const scene = makeScene();
-	const [token, tile, wall] = place(scene,
+	const [token, tile, wall, drawing, region] = place(scene,
 		noted("Token", "Scene.scene-a.Token.t1", { name: "Grix" }),
 		noted("Tile", "Scene.scene-a.Tile.t1", { name: "Mural" }),
-		noted("Wall", "Scene.scene-a.Wall.w1", { c: [0, 0, 100, 100] }));
+		noted("Wall", "Scene.scene-a.Wall.w1", { c: [0, 0, 100, 100] }),
+		noted("Drawing", "Scene.scene-a.Drawing.d1", { name: "Sketch" }),
+		noted("Region", "Scene.scene-a.Region.r1", { name: "Zone" }));
 	token.actor = noted("Actor", "Actor.a1", { name: "Grix" });
 	const clock = await showNotes(t, scene);
 	const enriched = traceEnrichment(t);
@@ -904,6 +928,9 @@ test("no lifecycle hook enriches a note while another tab is showing", async t =
 		await fire("createToken", token, {}, "user-1");
 		await fire("deleteToken", token, {}, "user-1");
 		await fire("updateTile", tile, { _id: "t1", flags: { [MODULE_ID]: { notes: "<p>c</p>" } } });
+		await fire("updateDrawing", drawing, { _id: "d1", text: "Sketch" });
+		await fire("createRegion", region, {}, "user-1");
+		await fire("deleteRegion", region, {}, "user-1");
 		await fire("createWall", wall, {}, "user-1");
 		await fire("deleteWall", wall, {}, "user-1");
 		await fire("canvasReady");

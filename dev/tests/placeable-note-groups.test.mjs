@@ -59,8 +59,8 @@ function stage({ isGM = true, scene = null } = {}) {
 
 /**
  * A scene shaped the way Foundry 14 shapes one, holding a note on each of the
- * six supported types. The Token reaches its Actor through `.actor`, which is
- * the only way an Actor enters a scene-scoped index.
+ * six legacy supported types. The Token reaches its Actor through `.actor`,
+ * which is the only way an Actor enters a scene-scoped index.
  */
 function sceneWithEveryType() {
 	const token = noted("Token", "Scene.s1.Token.t1", { name: "Grix" });
@@ -218,7 +218,7 @@ test("rows keep the index's natural order: Room 2 comes before Room 10", async (
 		["Room 1", "Room 2", "Room 10"]);
 });
 
-test("a Drawing and a Region with notes reach no group at all", async () => {
+test("Drawing and Region notes reach fixed groups beside the existing groups", async () => {
 	stage({
 		scene: {
 			id: "s1",
@@ -231,8 +231,42 @@ test("a Drawing and a Region with notes reach no group at all", async () => {
 
 	const groups = await getNoteGroupsData();
 
-	assert.deepEqual(groups.map(entry => entry.id), ["tiles"],
-		"the supported Tile in the same scene proves the fixture is reachable");
+	assert.deepEqual(groups.map(entry => entry.id), ["tiles", "drawings", "regions"]);
+	assert.equal(group(groups, "drawings").rows[0].sourceType, "Drawing");
+	assert.equal(group(groups, "regions").rows[0].sourceType, "Region");
+});
+
+// REVIEW-DRIVEN CHARACTERIZATION: all eight groups must be present together so
+// order, labels, and both new icon mappings are proved by one real context.
+test("all eight grouped sources keep their exact order, labels, and icons", async () => {
+	const scene = sceneWithEveryType();
+	scene.drawings = {
+		contents: [noted("Drawing", "Scene.s1.Drawing.d1", {
+			name: "Drawing", text: "Sketch", x: 10, y: 20,
+		})],
+	};
+	scene.regions = {
+		contents: [noted("Region", "Scene.s1.Region.r1", {
+			name: "Zone", bounds: { left: 0, top: 0, right: 100, bottom: 100 },
+			shapes: [{ type: "rectangle", x: 0, y: 0, width: 100, height: 100 }],
+		})],
+	};
+	stage({ scene });
+
+	const groups = await getNoteGroupsData();
+
+	assert.deepEqual(groups.map(group => [group.id, group.label, group.icon]), [
+		["tokens", "Tokens", "fa-solid fa-user"],
+		["actors", "Actors", "fa-solid fa-address-card"],
+		["tiles", "Tiles", "fa-solid fa-image"],
+		["drawings", "Drawings", "fa-solid fa-pencil"],
+		["walls", "Walls", "fa-solid fa-block-brick"],
+		["lights", "Lights", "fa-solid fa-lightbulb"],
+		["sounds", "Sounds", "fa-solid fa-volume-high"],
+		["regions", "Regions", "fa-solid fa-draw-polygon"],
+	]);
+	assert.equal(group(groups, "drawings").rows[0].icon, "fa-solid fa-pencil");
+	assert.equal(group(groups, "regions").rows[0].icon, "fa-solid fa-draw-polygon");
 });
 
 // --- the inactive-view gate --------------------------------------------------
@@ -294,7 +328,7 @@ test("with Placeable Notes switched off, no view enriches a note", async t => {
 
 // --- browsing state belongs to the scene it was formed on ---------------------
 //
-// Group ids are the same six words on every scene, so "tiles" folded on one
+// Group ids are the same eight words on every scene, so "tiles" folded on one
 // scene names a perfectly valid group on the next one — pruning cannot tell
 // them apart, and the new scene would open with a group already folded that
 // this user never touched. Row UUIDs do not have that problem; group ids do.

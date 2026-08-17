@@ -6,20 +6,21 @@
 // driven with document-shaped fixtures.
 //
 // The supported-source list is a product decision recorded in the technical
-// design (Token, Actor, Tile, Wall, AmbientLight, AmbientSound); Drawing and
-// Region are explicitly out of scope. Both halves are asserted as independent
-// tests so a regression in one cannot hide behind a failure in the other.
+// design (Token, Actor, Tile, Drawing, Wall, AmbientLight, AmbientSound,
+// Region). Both halves are asserted as independent tests so a regression in
+// one cannot hide behind a failure in the other.
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
 	buildPlaceableNoteIndex,
+	isEligibleNoteSource,
 	isSupportedNoteSource,
 } from "../../scripts/journal/placeable-note-index.mjs";
 
-test("the six document types SDX Notes supports are recognized as note sources", () => {
-	for (const documentName of ["Token", "Actor", "Tile", "Wall", "AmbientLight", "AmbientSound"]) {
+test("the eight document types SDX Notes supports are recognized as note sources", () => {
+	for (const documentName of ["Token", "Actor", "Tile", "Drawing", "Wall", "AmbientLight", "AmbientSound", "Region"]) {
 		assert.equal(
 			isSupportedNoteSource({ documentName }),
 			true,
@@ -29,12 +30,98 @@ test("the six document types SDX Notes supports are recognized as note sources",
 });
 
 test("document types outside the supported set are not note sources", () => {
-	for (const documentName of ["Drawing", "Region", "Note", "MeasuredTemplate"]) {
+	for (const documentName of ["Note", "MeasuredTemplate"]) {
 		assert.equal(
 			isSupportedNoteSource({ documentName }),
 			false,
 			`${documentName} has no SDX Notes control and must not be a note source`
 		);
+	}
+});
+
+test("eligible sources distinguish durable Drawing and Region instances from owned lifetimes", () => {
+	const scene = {
+		id: "scene1",
+		regions: { contents: [] },
+		templates: { contents: [] },
+	};
+	const ordinaryDrawing = { documentName: "Drawing", flags: {}, parent: scene };
+	const ordinaryRegion = { documentName: "Region", flags: {}, parent: scene };
+	const importedRegion = {
+		documentName: "Region",
+		flags: { "shadowdark-extras": { spiral: "imported-once" } },
+		parent: scene,
+	};
+	const helperRegion = {
+		documentName: "Region",
+		flags: { "shadowdark-extras": { behaviors: true } },
+		parent: scene,
+	};
+
+	assert.equal(isEligibleNoteSource(ordinaryDrawing), true);
+	assert.equal(isEligibleNoteSource(ordinaryRegion), true);
+	assert.equal(isEligibleNoteSource(importedRegion), true,
+		"a durable one-time import remains eligible");
+	assert.equal(isEligibleNoteSource(helperRegion), true,
+		"a durable helper Region remains eligible");
+});
+
+test("eligible sources reject the explicit opt-out and exact lifetime markers", () => {
+	const excludedDrawing = {
+		documentName: "Drawing",
+		flags: { "shadowdark-extras": { placeableNotesExcluded: true } },
+	};
+	const excludedRegion = {
+		documentName: "Region",
+		flags: { "shadowdark-extras": { placeableNotesExcluded: true } },
+	};
+	const dungeonMarkers = ["dungeonWall", "dungeonBackground", "dungeonGenWall", "dungeonGenCurvedWall", "dungeonIntWall"];
+	for (const marker of dungeonMarkers) {
+		assert.equal(isEligibleNoteSource({
+			documentName: "Drawing",
+			flags: { "shadowdark-extras": { [marker]: true } },
+		}), false, `${marker} keeps a dungeon Drawing out of Notes`);
+	}
+	for (const marker of ["auraRegion", "mlStairRegion"]) {
+		assert.equal(isEligibleNoteSource({
+			documentName: "Region",
+			flags: { "shadowdark-extras": { [marker]: true } },
+		}), false, `${marker} keeps an owned Region out of Notes`);
+	}
+	assert.equal(isEligibleNoteSource(excludedDrawing), false);
+	assert.equal(isEligibleNoteSource(excludedRegion), false);
+});
+
+test("a Region with an exact same-id MeasuredTemplate companion is ineligible", () => {
+	const scene = {
+		id: "scene1",
+		regions: { contents: [] },
+		templates: { contents: [{ documentName: "MeasuredTemplate", id: "region1" }] },
+	};
+	const region = {
+		documentName: "Region",
+		id: "region1",
+		parent: scene,
+		flags: {},
+	};
+
+	assert.equal(isEligibleNoteSource(region), false);
+});
+
+test("a V14 auto-created Region carrying the exact MeasuredTemplate marker is ineligible", () => {
+	const region = {
+		documentName: "Region",
+		id: "region1",
+		parent: { id: "scene1", regions: { contents: [] } },
+		flags: { core: { MeasuredTemplate: true } },
+	};
+
+	assert.equal(isEligibleNoteSource(region), false);
+});
+
+test("the instance eligibility predicate leaves the six existing source types unchanged", () => {
+	for (const documentName of ["Token", "Actor", "Tile", "Wall", "AmbientLight", "AmbientSound"]) {
+		assert.equal(isEligibleNoteSource({ documentName, flags: {} }), true, documentName);
 	}
 });
 
@@ -129,12 +216,30 @@ function makeScene() {
 	};
 }
 
-test("a scene's notes are indexed as the six fixed groups, in order", async () => {
+test("a scene's notes are indexed as the eight fixed groups, in order", async () => {
 	const groups = await buildPlaceableNoteIndex(makeScene(), { isGM: true, enrichHTML });
 
 	assert.deepEqual(
 		groups.map(group => group.id),
 		["tokens", "actors", "tiles", "walls", "lights", "sounds"]
+	);
+});
+
+test("Drawing and Region notes are indexed in their fixed groups", async () => {
+	const groups = await buildPlaceableNoteIndex({
+		tokens: { contents: [] },
+		tiles: { contents: [noted("Tile", "Scene.scene1.Tile.tile1")] },
+		drawings: { contents: [noted("Drawing", "Scene.scene1.Drawing.drawing1")] },
+		regions: { contents: [noted("Region", "Scene.scene1.Region.region1")] },
+	}, { isGM: true, enrichHTML });
+
+	assert.deepEqual(
+		groups.map(group => [group.id, group.rows.map(row => row.sourceType)]),
+		[
+			["tiles", ["Tile"]],
+			["drawings", ["Drawing"]],
+			["regions", ["Region"]],
+		]
 	);
 });
 
@@ -258,6 +363,70 @@ test("a note's custom name wins over the document's own name", async () => {
 	const groups = await buildPlaceableNoteIndex(sceneOf("tiles", [tile]), { isGM: true, enrichHTML });
 
 	assert.deepEqual(displayNames(groups, "tiles"), ["Throne Room"]);
+});
+
+test("a Drawing label trims its text, with customName taking precedence", async () => {
+	const drawing = noted("Drawing", "Scene.scene1.Drawing.drawing1", {
+		name: "Native drawing name",
+		text: "  Room 2 — <unsafe>  ",
+		x: 120,
+		y: 240,
+	});
+	let groups = await buildPlaceableNoteIndex(sceneOf("drawings", [drawing]), { isGM: true, enrichHTML });
+	assert.deepEqual(displayNames(groups, "drawings"), ["Room 2 — <unsafe>"]);
+
+	drawing.flags["shadowdark-extras"].customName = "Hand-labelled";
+	groups = await buildPlaceableNoteIndex(sceneOf("drawings", [drawing]), { isGM: true, enrichHTML });
+	assert.deepEqual(displayNames(groups, "drawings"), ["Hand-labelled"]);
+});
+
+test("a Drawing with no useful text falls back to deterministic coordinates", async () => {
+	const drawing = noted("Drawing", "Scene.scene1.Drawing.drawing1", {
+		name: "Default drawing name",
+		text: "   ",
+		x: 120.4,
+		y: 240.6,
+	});
+
+	const groups = await buildPlaceableNoteIndex(sceneOf("drawings", [drawing]), { isGM: true, enrichHTML });
+	assert.deepEqual(displayNames(groups, "drawings"), ["Drawing (120, 241)"]);
+});
+
+test("a Region uses a useful trimmed name, customName, then coordinates", async () => {
+	const region = noted("Region", "Scene.scene1.Region.region1", {
+		name: "  Chamber  ",
+		bounds: { left: 300, top: 400, right: 500, bottom: 600 },
+		shapes: [{ type: "rectangle", x: 300, y: 400, width: 200, height: 200 }],
+	});
+	let groups = await buildPlaceableNoteIndex(sceneOf("regions", [region]), { isGM: true, enrichHTML });
+	assert.deepEqual(displayNames(groups, "regions"), ["Chamber"]);
+
+	region.flags["shadowdark-extras"].customName = "Secret room";
+	groups = await buildPlaceableNoteIndex(sceneOf("regions", [region]), { isGM: true, enrichHTML });
+	assert.deepEqual(displayNames(groups, "regions"), ["Secret room"]);
+
+	delete region.flags["shadowdark-extras"].customName;
+	region.name = "Region";
+	groups = await buildPlaceableNoteIndex(sceneOf("regions", [region]), { isGM: true, enrichHTML });
+	assert.deepEqual(displayNames(groups, "regions"), ["Region (300, 400)"]);
+});
+
+test("a V14-shaped Region fallback uses bounds over legacy coordinate guesses", async () => {
+	const region = noted("Region", "Scene.scene1.Region.region1", {
+		name: "Region",
+		x: 900,
+		y: 901,
+		position: { x: 800, y: 801 },
+		shape: { x: 700, y: 701 },
+		bounds: { left: 0, top: 0, right: 100, bottom: 100 },
+		shapes: [{ type: "rectangle", x: 0, y: 0, width: 100, height: 100 }],
+	});
+
+	const groups = await buildPlaceableNoteIndex(sceneOf("regions", [region]), {
+		isGM: true,
+		enrichHTML,
+	});
+	assert.deepEqual(displayNames(groups, "regions"), ["Region (0, 0)"]);
 });
 
 // The descriptive fallbacks are for documents with nothing to say. A wall that
@@ -491,14 +660,9 @@ test("a gm's actor row carries the visibility the legacy token share gives it", 
 	assert.deepEqual(visibilityByUuid(groups, "actors"), { "Actor.actor1": true });
 });
 
-/**
- * A scene whose only noted documents are ones the index does not support:
- * Drawings, Regions, and a world Actor collection sitting on the scene object
- * where a careless enumeration would find it. Every supported collection is
- * empty, so anything that shows up here arrived by being traversed when it
- * should not have been.
- */
-function makeSceneOfUnsupportedSources() {
+/** A scene with the new supported types and a world Actor collection that must
+ * still not be traversed as a scene source. */
+function makeSceneWithDrawingRegionSources() {
 	return {
 		drawings: { contents: [noted("Drawing", "Scene.scene1.Drawing.drawing1", { name: "Sketch" })] },
 		regions: { contents: [noted("Region", "Scene.scene1.Region.region1", { name: "Danger" })] },
@@ -513,28 +677,67 @@ function makeSceneOfUnsupportedSources() {
 	};
 }
 
-test("notes on drawings, regions, and world actors do not enter a scene's index", async () => {
-	const groups = await buildPlaceableNoteIndex(makeSceneOfUnsupportedSources(), {
+test("notes on Drawings and Regions enter the scene index, but world Actors do not", async () => {
+	const groups = await buildPlaceableNoteIndex(makeSceneWithDrawingRegionSources(), {
 		isGM: true,
 		enrichHTML,
 	});
 
-	assert.deepEqual(groups, []);
+	assert.deepEqual(
+		groups.map(group => [group.id, group.rows.map(row => row.sourceUuid)]),
+		[
+			["drawings", ["Scene.scene1.Drawing.drawing1"]],
+			["regions", ["Scene.scene1.Region.region1"]],
+		]
+	);
 });
 
 // The control for the test above: on the very same scene shape, a supported
 // source does appear. Without this, an empty index would be equally consistent
 // with the builder having failed to read the fixture at all.
 test("a supported source on that same scene is still indexed", async () => {
-	const scene = makeSceneOfUnsupportedSources();
+	const scene = makeSceneWithDrawingRegionSources();
 	scene.tiles.contents.push(noted("Tile", "Scene.scene1.Tile.tile1", { name: "Vault" }));
 
 	const groups = await buildPlaceableNoteIndex(scene, { isGM: true, enrichHTML });
 
 	assert.deepEqual(
 		groups.map(group => [group.id, group.rows.map(row => row.sourceUuid)]),
-		[["tiles", ["Scene.scene1.Tile.tile1"]]]
+		[
+			["tiles", ["Scene.scene1.Tile.tile1"]],
+			["drawings", ["Scene.scene1.Drawing.drawing1"]],
+			["regions", ["Scene.scene1.Region.region1"]],
+		]
 	);
+});
+
+test("excluded Drawing and Region sources are filtered before note enrichment", async () => {
+	const excludedDrawing = noted("Drawing", "Scene.scene1.Drawing.excluded", {
+		name: "Generated wall",
+		flags: { "shadowdark-extras": {
+			notes: "<p>drawing secret</p>",
+			placeableNotesExcluded: true,
+		} },
+	});
+	const excludedRegion = noted("Region", "Scene.scene1.Region.excluded", {
+		name: "Aura",
+		flags: { "shadowdark-extras": {
+			notes: "<p>region secret</p>",
+			auraRegion: true,
+		} },
+	});
+	const included = noted("Tile", "Scene.scene1.Tile.included", { name: "Mural" });
+	const enricher = makeEnricher();
+
+	const groups = await buildPlaceableNoteIndex({
+		tokens: { contents: [] },
+		tiles: { contents: [included] },
+		drawings: { contents: [excludedDrawing] },
+		regions: { contents: [excludedRegion] },
+	}, { isGM: true, enrichHTML: enricher.enrichHTML });
+
+	assert.deepEqual(groups.flatMap(group => group.rows).map(row => row.sourceUuid), [included.uuid]);
+	assert.deepEqual(enricher.calls.map(call => call.html), [included.flags["shadowdark-extras"].notes]);
 });
 
 /** A logger for tests whose enrichment failure is expected, not the subject. */

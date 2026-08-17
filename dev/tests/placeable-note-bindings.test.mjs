@@ -95,9 +95,11 @@ function stage({
 	Object.assign(globalThis.canvas, {
 		tokens: layer("tokens"),
 		tiles: layer("tiles"),
+		drawings: layer("drawings"),
 		walls: layer("walls"),
 		lighting: layer("lighting"),
 		sounds: layer("sounds"),
+		regions: layer("regions"),
 		animatePan: target => pans.push(target),
 	});
 
@@ -384,6 +386,135 @@ test("panning to an Actor row centres on a Token representing it on this scene",
 
 	assert.deepEqual(pans, [{ x: 420, y: 240, scale: 1.5, duration: 500 }]);
 });
+
+for (const type of ["Drawing", "Region"]) {
+	test(`panning to a ${type} row uses its live placeable center`, async () => {
+		const scene = { id: "scene-1" };
+		const source = makeDocument({
+			documentName: type,
+			uuid: `Scene.scene-1.${type}.source`,
+			id: "source",
+			name: "Same name",
+			parent: scene,
+			flags: { notes: "<p>note</p>" },
+		});
+		const { pans } = stage({
+			documents: [source],
+			sceneCollections: { [type === "Drawing" ? "drawings" : "regions"]: [source] },
+			placeables: {
+				[type === "Drawing" ? "drawings" : "regions"]: {
+					source: { id: "source", center: { x: 100, y: 120 } },
+				},
+			},
+		});
+
+		const { dom } = render({
+			control: { action: "pan" },
+			entry: { noteUuid: source.uuid, noteType: type },
+		});
+		dom.nodes.get(NOTE_CONTROL).dataset.noteType = type;
+		await dom.fire(NOTE_CONTROL, "click");
+
+		assert.deepEqual(pans, [{ x: 100, y: 120, scale: 1.5, duration: 500 }]);
+	});
+}
+
+for (const type of ["Drawing", "Region"]) {
+	test(`renaming a ${type} row hits the exact same-named source`, async t => {
+		const scene = { id: "scene-1" };
+		const source = makeDocument({
+			documentName: type,
+			uuid: `Scene.scene-1.${type}.source`,
+			id: "source",
+			name: "Same name",
+			parent: scene,
+		});
+		const otherType = type === "Drawing" ? "Region" : "Drawing";
+		const decoy = makeDocument({
+			documentName: otherType,
+			uuid: `Scene.scene-1.${otherType}.decoy`,
+			id: "decoy",
+			name: "Same name",
+			parent: scene,
+		});
+		stage({ documents: [source, decoy] });
+		const dialogs = captureDialogs(t);
+
+		const { dom } = render({
+			control: { action: "rename" },
+			entry: { noteUuid: source.uuid, noteType: type },
+		});
+		await dom.fire(NOTE_CONTROL, "click");
+		const save = dialogs[0].buttons.find(button => button.action === "save");
+		await save.callback({}, { form: { elements: { name: { value: "Exact source" } } } });
+
+		assert.deepEqual(source.calls, ["getFlag:customName", "setFlag:customName=Exact source"]);
+		assert.deepEqual(decoy.calls, []);
+	});
+}
+
+test("Drawing and Region visibility commands write only their exact source", async () => {
+	const scene = { id: "scene-1" };
+	const drawing = makeDocument({
+		documentName: "Drawing", uuid: "Scene.scene-1.Drawing.d1", id: "d1", name: "Same name",
+		parent: scene, flags: { notes: "<p>drawing</p>", noteVisible: false },
+	});
+	const region = makeDocument({
+		documentName: "Region", uuid: "Scene.scene-1.Region.r1", id: "r1", name: "Same name",
+		parent: scene, flags: { notes: "<p>region</p>", noteVisible: false },
+	});
+	stage({ documents: [drawing, region] });
+	const { dom: drawingDom } = render({
+		control: { action: "toggle-visibility" },
+		entry: { noteUuid: drawing.uuid, noteType: "Drawing" },
+	});
+	await drawingDom.fire(NOTE_CONTROL, "click");
+	const { dom: regionDom } = render({
+		control: { action: "toggle-visibility" },
+		entry: { noteUuid: region.uuid, noteType: "Region" },
+	});
+	await regionDom.fire(NOTE_CONTROL, "click");
+
+	assert.equal(drawing.flags[MODULE_ID].noteVisible, true);
+	assert.equal(region.flags[MODULE_ID].noteVisible, true);
+	assert.deepEqual(drawing.calls, ["setFlag:noteVisible=true"]);
+	assert.deepEqual(region.calls, ["setFlag:noteVisible=true"]);
+});
+
+for (const type of ["Drawing", "Region"]) {
+	test(`the edit context menu opens the exact ${type} source`, async t => {
+		const source = makeDocument({
+			documentName: type,
+			uuid: `Scene.scene-1.${type}.source`, id: "source", name: "Same name",
+			parent: { id: "scene-1" }, flags: { notes: "<p>note</p>" },
+		});
+		stage({ documents: [source] });
+		const sheets = captureSheets(t);
+
+		const { dom } = render({ entry: { noteUuid: source.uuid, noteType: type } });
+		await dom.fire(".sdx-tray .note-entry[0]", "contextmenu");
+
+		assert.deepEqual(sheets, [source]);
+	});
+
+	test(`deleting a ${type} removes only its note and sharing flags`, async t => {
+		const source = makeDocument({
+			documentName: type,
+			uuid: `Scene.scene-1.${type}.source`, id: "source", name: "Same name",
+			parent: { id: "scene-1" }, flags: { notes: "<p>note</p>", noteVisible: true },
+		});
+		stage({ documents: [source] });
+		answerConfirm(t, true);
+
+		const { dom } = render({
+			control: { action: "delete" },
+			entry: { noteUuid: source.uuid, noteType: type },
+		});
+		await dom.fire(NOTE_CONTROL, "click");
+
+		assert.deepEqual(source.calls, ["unsetFlag:notes", "unsetFlag:noteVisible"]);
+	});
+}
 
 // --- visibility --------------------------------------------------------------
 
@@ -741,14 +872,14 @@ test("a player's Notes list holds only the rows shared with them", async () => {
 	assert.deepEqual(rows.map(row => row.sourceUuid), ["Scene.scene-1.Tile.x1"]);
 });
 
-// Drawings and Regions have no SDX Notes control and never enter the index, so
-// no honest row names one. A forged row that does is not a note row at all, and
-// the shared supported-source rule is what says so — the command path does not
-// keep a second opinion about which types carry notes.
-test("a row naming a document type that cannot carry a note is refused", async t => {
+// Excluded Drawings and Regions have no SDX Notes control and never enter the
+// index, so no honest row names one. A forged row that does is not a note row
+// at all, and the shared eligibility rule is what says so — the command path
+// does not keep a second opinion about which instances carry notes.
+test("a row naming an explicitly excluded Drawing is refused", async t => {
 	const drawing = makeDocument({
 		documentName: "Drawing", uuid: "Scene.scene-1.Drawing.d1", id: "d1", name: "Sketch",
-		parent: { id: "scene-1" },
+		parent: { id: "scene-1" }, flags: { placeableNotesExcluded: true },
 	});
 	stage({ documents: [drawing] });
 	const dialogs = captureDialogs(t);
@@ -765,6 +896,33 @@ test("a row naming a document type that cannot carry a note is refused", async t
 	assert.equal(refreshes.length, 1);
 });
 
+for (const [type, marker] of [["Drawing", "dungeonWall"], ["Region", "mlStairRegion"]]) {
+	test(`an excluded ${type} row is refused by the registered command`, async t => {
+		const source = makeDocument({
+			documentName: type,
+			uuid: `Scene.scene-1.${type}.excluded`,
+			id: "excluded",
+			name: "Owned geometry",
+			parent: { id: "scene-1" },
+			flags: { notes: "<p>note</p>", [marker]: true },
+		});
+		const { resolved } = stage({ documents: [source] });
+		const dialogs = captureDialogs(t);
+
+		const { app, dom } = render({
+			control: { action: "rename" },
+			entry: { noteUuid: source.uuid, noteType: type },
+		});
+		const refreshes = watchRefresh(app);
+		await dom.fire(NOTE_CONTROL, "click");
+
+		assert.deepEqual(resolved, [source.uuid]);
+		assert.deepEqual(source.calls, []);
+		assert.deepEqual(dialogs, []);
+		assert.equal(refreshes.length, 1);
+	});
+}
+
 // --- reauthorization at the moment of mutation -------------------------------
 
 // A dialog button is a later user action, not part of the click that opened it.
@@ -777,6 +935,13 @@ test("a row naming a document type that cannot carry a note is refused", async t
 function notedTile() {
 	return makeDocument({
 		documentName: "Tile", uuid: "Scene.scene-1.Tile.x1", id: "x1", name: "Mural",
+		parent: { id: "scene-1" }, flags: { notes: "<p>note</p>", noteVisible: true },
+	});
+}
+
+function notedDrawing() {
+	return makeDocument({
+		documentName: "Drawing", uuid: "Scene.scene-1.Drawing.d1", id: "d1", name: "Sketch",
 		parent: { id: "scene-1" }, flags: { notes: "<p>note</p>", noteVisible: true },
 	});
 }
@@ -935,6 +1100,89 @@ test("a rename Save still writes when nothing changed while the dialog was open"
 	assert.equal(refreshes.length, 0);
 });
 
+test("a rename Save after Drawing eligibility changes writes nothing and refreshes", async t => {
+	const drawing = notedDrawing();
+	const { refreshes, buttons } = await openRename(t, {
+		documents: [drawing], entry: { noteUuid: drawing.uuid, noteType: "Drawing" },
+	});
+
+	drawing.flags[MODULE_ID].placeableNotesExcluded = true;
+	await buttons.save.callback({}, { form: { elements: { name: { value: "stale write" } } } });
+
+	assert.deepEqual(drawing.calls, ["getFlag:customName"]);
+	assert.equal(drawing.flags[MODULE_ID].customName, undefined);
+	assert.equal(refreshes.length, 1);
+});
+
+// CHARACTERIZATION: the same delayed authorization boundary applies to Reset
+// for a Region after an eligibility flip. This is intentionally not presented
+// as a new RED: the shared currentSourceFor path was already proven by the
+// Drawing Save test above.
+test("a rename Reset after Region eligibility changes writes nothing and refreshes", async t => {
+	const region = makeDocument({
+		documentName: "Region", uuid: "Scene.scene-1.Region.r1", id: "r1", name: "Zone",
+		parent: { id: "scene-1" }, flags: { notes: "<p>note</p>", customName: "Old" },
+	});
+	const { refreshes, buttons } = await openRename(t, {
+		documents: [region], entry: { noteUuid: region.uuid, noteType: "Region" },
+	});
+
+	region.flags[MODULE_ID].placeableNotesExcluded = true;
+	await buttons.reset.callback({}, {});
+
+	assert.deepEqual(region.calls, ["getFlag:customName"]);
+	assert.equal(region.flags[MODULE_ID].customName, "Old");
+	assert.equal(refreshes.length, 1);
+});
+
+// CHARACTERIZATION: confirmed Delete also reauthorizes eligibility after its
+// asynchronous confirmation wait, preserving note flags rather than treating
+// exclusion as deletion.
+test("a confirmed Delete after Region eligibility changes removes nothing and refreshes", async t => {
+	const region = makeDocument({
+		documentName: "Region", uuid: "Scene.scene-1.Region.r1", id: "r1", name: "Zone",
+		parent: { id: "scene-1" }, flags: { notes: "<p>note</p>", noteVisible: true },
+	});
+	stage({ documents: [region] });
+	answerConfirm(t, true, () => {
+		region.flags[MODULE_ID].placeableNotesExcluded = true;
+	});
+
+	const { app, dom } = render({
+		control: { action: "delete" },
+		entry: { noteUuid: region.uuid, noteType: "Region" },
+	});
+	const refreshes = watchRefresh(app);
+	await dom.fire(NOTE_CONTROL, "click");
+
+	assert.deepEqual(region.calls, []);
+	assert.equal(region.flags[MODULE_ID].notes, "<p>note</p>");
+	assert.equal(region.flags[MODULE_ID].noteVisible, true);
+	assert.equal(refreshes.length, 1);
+});
+
+// MUTATION PROBE: a document replacement under the same UUID and expected
+// type must be the only object a delayed Save mutates. The row identity is
+// re-resolved at the button transition; it is never permission to retain the
+// object captured when the dialog opened.
+test("a Drawing rename Save mutates only the replacement same-UUID document", async t => {
+	const original = notedDrawing();
+	const replacement = makeDocument({
+		documentName: "Drawing", uuid: original.uuid, id: original.id, name: "Replacement",
+		parent: { id: "scene-1" }, flags: { notes: "<p>replacement</p>" },
+	});
+	const { resolved, buttons } = await openRename(t, {
+		documents: [original], entry: { noteUuid: original.uuid, noteType: "Drawing" },
+	});
+	globalThis.fromUuidSync = uuid => uuid === replacement.uuid ? replacement : null;
+
+	await buttons.save.callback({}, { form: { elements: { name: { value: "New label" } } } });
+
+	assert.ok(resolved.length >= 1);
+	assert.deepEqual(original.calls, ["getFlag:customName"]);
+	assert.deepEqual(replacement.calls, ["setFlag:customName=New label"]);
+});
+
 // --- edit/open, for both halves of a same-named pair -------------------------
 
 // The Actor half of this pair is proved above. A Token and its Actor can carry
@@ -1015,7 +1263,7 @@ const TWO_GROUPS = () => [
  * The context a tray produces for the note groups it was last given.
  *
  * `sceneId` is which scene those groups describe; the tray keys its collapse
- * state by group id, and every scene reuses the same six ids. Tests that are
+ * state by group id, and every scene reuses the same eight ids. Tests that are
  * not about scene changes leave it alone.
  */
 async function noteContext(app, groups, sceneId = null) {

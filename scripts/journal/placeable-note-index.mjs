@@ -11,17 +11,20 @@ const MODULE_ID = "shadowdark-extras";
 
 /**
  * The document types that can carry an SDX note, and the only types the index
- * will ever group. Drawing and Region are deliberately absent: they are
- * separate product work, not an oversight.
+ * will ever group. Instance-level lifetime eligibility is a separate question
+ * below: a supported Drawing or Region can still be excluded when another
+ * subsystem owns its lifetime.
  */
-const SUPPORTED_NOTE_SOURCE_TYPES = ["Token", "Actor", "Tile", "Wall", "AmbientLight", "AmbientSound"];
+const SUPPORTED_NOTE_SOURCE_TYPES = [
+	"Token", "Actor", "Tile", "Drawing", "Wall", "AmbientLight", "AmbientSound", "Region",
+];
 
 /**
  * The groups the tray shows, in the order it shows them. Fixed rather than
  * discovered, so browsing a scene's notes is predictable; empty groups are
  * dropped rather than rendered as empty folders.
  */
-const GROUP_ORDER = ["tokens", "actors", "tiles", "walls", "lights", "sounds"];
+const GROUP_ORDER = ["tokens", "actors", "tiles", "drawings", "walls", "lights", "sounds", "regions"];
 
 /**
  * Whether a document can carry an SDX note.
@@ -35,6 +38,88 @@ export function isSupportedNoteSource(document) {
 	return SUPPORTED_NOTE_SOURCE_TYPES.includes(document?.documentName);
 }
 
+// These are exact, persisted SDX markers for documents whose lifetime is still
+// owned by a dungeon rebuild. The list is deliberately explicit: names,
+// shapes, behaviours, and the fact that SDX created a document are not
+// ownership evidence.
+const DUNGEON_DRAWING_LIFETIME_MARKERS = [
+	"dungeonWall",
+	"dungeonBackground",
+	"dungeonGenWall",
+	"dungeonGenCurvedWall",
+	"dungeonIntWall",
+];
+
+/** Read a document's SDX flags without asking the document for anything. */
+function sdxFlags(document) {
+	return document?.flags?.[MODULE_ID] ?? {};
+}
+
+/** Find an exact id in any Foundry collection shape used by tests or V14. */
+function collectionDocument(collection, id) {
+	if (!collection || !id) return null;
+	const direct = collection.get?.(id);
+	if (direct) return direct;
+	const contents = collection.contents ?? collection;
+	if (typeof contents?.[Symbol.iterator] !== "function") return null;
+	return [...contents].find(document => document?.id === id) ?? null;
+}
+
+/** Whether the Region has a same-id MeasuredTemplate in its parent Scene. */
+function isMeasuredTemplateCompanion(region) {
+	if (region?.documentName !== "Region") return false;
+	// Foundry V14 persists this exact marker on the Region that represents a
+	// MeasuredTemplate. It is the warning-free runtime test: Scene#templates is
+	// a deprecated synthesized getter and must not be touched for ordinary
+	// Regions.
+	if (region.flags?.core?.MeasuredTemplate === true) return true;
+	if (!region.parent || !region.id) return false;
+
+	// Older/test-shaped scenes may expose an own templates or measuredTemplates
+	// collection. Own-property checks keep the actual V14 prototype getter cold.
+	const collections = [];
+	if (Object.hasOwn(region.parent, "templates")) collections.push(region.parent.templates);
+	if (Object.hasOwn(region.parent, "measuredTemplates")) collections.push(region.parent.measuredTemplates);
+	if (Object.hasOwn(region.parent, "getEmbeddedCollection")) {
+		collections.push(region.parent.getEmbeddedCollection?.("MeasuredTemplate"));
+	}
+	for (const collection of collections) {
+		const companion = collectionDocument(collection, region.id);
+		if (companion?.documentName === "MeasuredTemplate") return true;
+	}
+
+	return false;
+}
+
+/**
+ * Whether this exact document is a stable home for an SDX note.
+ *
+ * Type support and lifetime ownership are intentionally separate. This
+ * instance-level predicate is the one boundary every header, index, command,
+ * and delayed mutation path must ask once Drawing/Region support is enabled.
+ */
+export function isEligibleNoteSource(document) {
+	if (!isSupportedNoteSource(document)) return false;
+
+	const flags = sdxFlags(document);
+	// Keep this exact read visible to the flag snapshot: unlike the lifetime
+	// marker aliases below, this is a persisted note-policy key that must be
+	// tracked as an existing document read.
+	if (document?.flags?.[MODULE_ID]?.placeableNotesExcluded === true) return false;
+
+	if (document.documentName === "Drawing"
+		&& DUNGEON_DRAWING_LIFETIME_MARKERS.some(marker => flags[marker] === true)) {
+		return false;
+	}
+
+	if (document.documentName === "Region"
+		&& (flags.auraRegion === true || flags.mlStairRegion === true)) {
+		return false;
+	}
+
+	return !isMeasuredTemplateCompanion(document);
+}
+
 /**
  * The documents that are exactly this type. A scene's collection is trusted to
  * be a collection, not to hold only what it is named for — a module, macro, or
@@ -44,7 +129,7 @@ export function isSupportedNoteSource(document) {
  */
 function ofExactType(documents, documentName) {
 	return documents.filter(document =>
-		isSupportedNoteSource(document) && document.documentName === documentName);
+		isEligibleNoteSource(document) && document.documentName === documentName);
 }
 
 /** The given documents, keeping the first occurrence of each exact UUID. */
@@ -61,14 +146,39 @@ function distinctByUuid(documents) {
  * one it is. A row showing one of these is a row worth labelling descriptively.
  */
 const GENERIC_NAMES = {
+	Drawing: ["Drawing"],
 	Wall: ["Wall"],
 	AmbientLight: ["Light", "Ambient Light"],
 	AmbientSound: ["Sound", "Ambient Sound"],
+	Region: ["Region"],
 };
 
 /** Whether a document's own name would tell a reader which one it is. */
 function hasUsefulName(document) {
-	return !!document.name && !GENERIC_NAMES[document.documentName]?.includes(document.name);
+	const name = typeof document.name === "string" ? document.name.trim() : "";
+	return !!name && !GENERIC_NAMES[document.documentName]?.includes(name);
+}
+
+/** A stable coordinate pair read from the document, never from a canvas object. */
+function coordinatesOf(document) {
+	if (document.documentName === "Region") {
+		const bounds = document.bounds;
+		const shapes = document.shapes ?? document._source?.shapes;
+		const firstShape = Array.isArray(shapes) ? shapes[0] : null;
+		const x = Number(bounds?.left ?? bounds?.x ?? firstShape?.x ?? 0);
+		const y = Number(bounds?.top ?? bounds?.y ?? firstShape?.y ?? 0);
+		return [
+			Number.isFinite(x) ? Math.round(x) : 0,
+			Number.isFinite(y) ? Math.round(y) : 0,
+		];
+	}
+
+	const x = Number(document.x ?? document.position?.x ?? document.shape?.x ?? 0);
+	const y = Number(document.y ?? document.position?.y ?? document.shape?.y ?? 0);
+	return [
+		Number.isFinite(x) ? Math.round(x) : 0,
+		Number.isFinite(y) ? Math.round(y) : 0,
+	];
 }
 
 /**
@@ -77,6 +187,11 @@ function hasUsefulName(document) {
  * the index never depends on a placeable being drawn.
  */
 function describe(document) {
+	if (document.documentName === "Drawing" || document.documentName === "Region") {
+		const [x, y] = coordinatesOf(document);
+		return `${document.documentName} (${x}, ${y})`;
+	}
+
 	if (document.documentName === "Wall") {
 		const [x0, y0, x1, y1] = document.c ?? [];
 		return `Wall (${Math.round((x0 + x1) / 2)}, ${Math.round((y0 + y1) / 2)})`;
@@ -102,7 +217,18 @@ function displayNameOf(document) {
 	const customName = document.flags?.[MODULE_ID]?.customName;
 	if (customName) return customName;
 
-	return hasUsefulName(document) ? document.name : describe(document);
+	if (document.documentName === "Drawing") {
+		const text = typeof document.text === "string" ? document.text.trim() : "";
+		if (text) return text;
+		return describe(document);
+	}
+
+	if (document.documentName === "Region") {
+		return hasUsefulName(document) ? document.name.trim() : describe(document);
+	}
+
+	if (hasUsefulName(document)) return document.name.trim();
+	return describe(document);
 }
 
 /** Order rows the way a person reads a numbered list: Room 2 before Room 10. */
@@ -281,9 +407,11 @@ export async function buildPlaceableNoteIndex(scene, options) {
 		// than the Token that reached it.
 		actors: ofExactType(distinctByUuid(tokens.map(token => token.actor).filter(Boolean)), "Actor"),
 		tiles: ofExactType(scene?.tiles?.contents ?? [], "Tile"),
+		drawings: ofExactType(scene?.drawings?.contents ?? [], "Drawing"),
 		walls: ofExactType(scene?.walls?.contents ?? [], "Wall"),
 		lights: ofExactType(scene?.lights?.contents ?? [], "AmbientLight"),
 		sounds: ofExactType(scene?.sounds?.contents ?? [], "AmbientSound"),
+		regions: ofExactType(scene?.regions?.contents ?? [], "Region"),
 	};
 
 	const enrichHTML = options.enrichHTML ?? enrichThroughFoundry;

@@ -1,5 +1,5 @@
 
-import { isSupportedNoteSource } from "./placeable-note-index.mjs";
+import { isEligibleNoteSource } from "./placeable-note-index.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -88,9 +88,10 @@ export default class PlaceableNotesSD extends foundry.applications.api.Handlebar
      * longer fire the legacy `get<App>ConfigHeaderButtons` hooks. Header
      * actions are now contributed via `getHeaderControls<ClassName>` and read
      * from the returned controls array (rendered in the window's ⋮ menu).
-     * `getHeaderControlsDocumentSheetV2` is the shared-ancestor hook that fires
-     * for every document sheet (Tile/Wall/Light/Sound/Token/Actor), so a single
-     * registration covers all supported types. A control's `onClick` callback is
+ * `getHeaderControlsDocumentSheetV2` is the shared-ancestor hook that fires
+ * for every document sheet (Tile/Drawing/Wall/Light/Sound/Region/Token/Actor),
+ * so a single registration covers all supported types. A control's `onClick`
+ * callback is
      * honored by ApplicationV2 (`_renderHeaderControl` / `_headerControlContextEntries`).
      */
 	static addHeaderControl(app, controls) {
@@ -100,7 +101,7 @@ export default class PlaceableNotesSD extends foundry.applications.api.Handlebar
 
 		// The supported-type list lives in the note-index model, so the control
 		// and the index can never disagree about what carries a note.
-		if (!isSupportedNoteSource(object)) return;
+		if (!isEligibleNoteSource(object)) return;
 
 		const hasNotes = !!object.getFlag(MODULE_ID, "notes");
 		const label = game.i18n.localize(CONTROL_LABEL_KEY);
@@ -135,7 +136,7 @@ export default class PlaceableNotesSD extends foundry.applications.api.Handlebar
 		// Same shared predicate as the v14 hook — it also covers the missing
 		// document case — then narrowed to Actor, because this legacy hook
 		// speaks only for Shadowdark's V1 actor sheets.
-		if (!isSupportedNoteSource(object) || object.documentName !== "Actor") return;
+		if (!isEligibleNoteSource(object) || object.documentName !== "Actor") return;
 
 		const hasNotes = !!object.getFlag(MODULE_ID, "notes");
 		const label = game.i18n.localize(CONTROL_LABEL_KEY);
@@ -162,7 +163,8 @@ export function initPlaceableNotes() {
 
 	// Foundry v14 ApplicationV2 header-controls hook. Fires for every document
 	// sheet via the shared DocumentSheetV2 ancestor, covering the placeable config
-	// sheets (Tile/Wall/AmbientLight/AmbientSound/Token). The control's icon/state
+	// sheets (Tile/Drawing/Wall/AmbientLight/AmbientSound/Region/Token). The
+	// control's icon/state
 	// is recomputed on each render, so no separate post-render refresh is needed.
 	Hooks.on("getHeaderControlsDocumentSheetV2", PlaceableNotesSD.addHeaderControl);
 

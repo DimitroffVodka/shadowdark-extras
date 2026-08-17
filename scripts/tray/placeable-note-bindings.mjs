@@ -1,15 +1,15 @@
 // Tray bindings for the placeable-note list.
 //
 // Split out of pin-list-bindings.mjs, which owned these handlers only by
-// accident of history: a note is a flag on a Token, Actor, Tile, Wall, light or
-// sound, and has nothing to do with journal pins.
+// accident of history: a note is a flag on a Token, Actor, Tile, Drawing, Wall,
+// light, sound or Region, and has nothing to do with journal pins.
 //
 // Every command routes by the exact source the row was built from — the
 // `sourceUuid` and `sourceType` the scene index recorded — rather than by a
 // canvas-layer id and a Font Awesome class. Two rows can share a display name
 // and even an id; only the UUID says which document owns the note.
 
-import { isNoteSharedWithPlayers, isSupportedNoteSource } from "../journal/placeable-note-index.mjs";
+import { isEligibleNoteSource, isNoteSharedWithPlayers } from "../journal/placeable-note-index.mjs";
 import { PlaceableNotesSD } from "../journal/PlaceableNotesSD.mjs";
 import { renderTray } from "./TraySD.mjs";
 
@@ -31,15 +31,15 @@ const MANAGEMENT_ACTIONS = new Set(["edit", "rename", "toggle-visibility", "dele
  * and is refused rather than acted on.
  *
  * Which types can carry a note at all is the index's rule, asked rather than
- * restated — a row naming a Drawing did not come from the index, so it is not a
- * note row and nothing here will treat it as one.
+ * restated — an excluded Drawing or Region row did not come from the index, so
+ * it is not a note row and nothing here will treat it as one.
  */
 function resolveSource(sourceUuid, sourceType) {
 	if (!sourceUuid || !sourceType) return null;
 
 	const source = fromUuidSync(sourceUuid);
 	if (!source || source.documentName !== sourceType) return null;
-	if (!isSupportedNoteSource(source)) return null;
+	if (!isEligibleNoteSource(source)) return null;
 
 	return source;
 }
@@ -68,9 +68,11 @@ function isOnActiveScene(source) {
 const PAN_LAYERS = {
 	Token: "tokens",
 	Tile: "tiles",
+	Drawing: "drawings",
 	Wall: "walls",
 	AmbientLight: "lighting",
 	AmbientSound: "sounds",
+	Region: "regions",
 };
 
 /** The Tokens on the active Scene that represent exactly this Actor. */
