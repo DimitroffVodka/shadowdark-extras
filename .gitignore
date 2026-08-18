@@ -10,6 +10,9 @@ Thumbs.db
 .claude/
 .gemini/
 .planning/
+.commandcode/
+.hermes/
+.vscode/
 docs/claude/
 docs/gemini/
 Geminis-*.txt
@@ -18,6 +21,21 @@ GEMINI.md
 CLAUDE.md
 *.tmp
 *.swp
+# Project-scope MCP config: per-machine server commands and paths, so it is
+# never the same file on two checkouts. Contrast openwiki/, which is also
+# generated but IS committed — the update workflow's add-paths expects it there.
+.mcp.json
+# Browser console dumps from playwright-mcp runs, one file per session.
+.playwright-mcp/
+
+# Wiki review scratch. docs/wiki/ itself is published and gate-tested (see the
+# wiki-links test), but .review/ holds drafts and image dumps that are not.
+docs/wiki/.review/
+
+# Literate-program export. Generated, and the generator lives outside this repo,
+# so a committed copy would go stale with nothing to catch it.
+shadowdark-extras.lit.md
+shadowdark-extras.lit.map.json
 
 # Cross-session handoff specs — internal working notes, never publish.
 dev/HANDOFF-*.md
