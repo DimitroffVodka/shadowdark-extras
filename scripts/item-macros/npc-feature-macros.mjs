@@ -1,5 +1,6 @@
 import { MODULE_ID } from "../shared/module-id.mjs";
 import { spawnSummonedCreatures } from "../combat/CombatSettingsSD.mjs";
+import { readSummonProfiles } from "../shared/summon-profiles.mjs";
 import { hasItemMacro, executeItemMacro } from "./item-macro-engine.mjs";
 
 /**
@@ -108,9 +109,7 @@ async function processNPCFeatureActivities(item, actor, token) {
 	*/
 
 	// 3. Process Summoning
-	const summoningProfiles = Array.isArray(summoning.profiles)
-		? summoning.profiles
-		: (summoning.profiles && typeof summoning.profiles === "object" ? Object.values(summoning.profiles) : []);
+	const summoningProfiles = readSummonProfiles(summoning);
 	if (summoning.enabled && summoningProfiles.length > 0) {
 		await processNPCFeatureSummoning(item, actor, token, { ...summoning, profiles: summoningProfiles });
 	}
@@ -278,9 +277,7 @@ async function processNPCFeatureEffects(item, actor, token, targetToken, targetA
  * Process summoning for NPC Feature
  */
 async function processNPCFeatureSummoning(item, actor, token, summoning) {
-	const profiles = Array.isArray(summoning.profiles)
-		? summoning.profiles
-		: (summoning.profiles && typeof summoning.profiles === "object" ? Object.values(summoning.profiles) : []);
+	const profiles = readSummonProfiles(summoning);
 	if (profiles.length === 0) return;
 
 	// Use the same summoning logic as spells (Portal library)

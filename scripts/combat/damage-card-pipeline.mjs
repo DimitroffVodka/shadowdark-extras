@@ -11,6 +11,7 @@ import { buildDamageCardHtml, spawnSummonedCreatures, giveItemsToCaster, applyCo
 import { _spawnedMessages, _itemGiveMessages, _coatingPoisonMessages } from "./combat-settings-app.mjs";
 import { finalizeDamageCard } from "./damage-card-finalization.mjs";
 import { resolveDamageCardTargets } from "./damage-card-targeting.mjs";
+import { readSummonProfiles } from "../shared/summon-profiles.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -298,9 +299,9 @@ export async function injectDamageCard(message, html, data) {
 
 	// Check for summoning configuration (independent of damage/effects)
 	const summoningConfig = item?.flags?.[MODULE_ID]?.summoning;
-	const summoningProfiles = Array.isArray(summoningConfig?.profiles)
-		? summoningConfig.profiles
-		: (summoningConfig?.profiles && typeof summoningConfig.profiles === "object" ? Object.values(summoningConfig.profiles) : []);
+	// Stored as a JSON string by the item sheet; readSummonProfiles is the one
+	// place that knows every shape it can arrive in.
+	const summoningProfiles = readSummonProfiles(summoningConfig);
 	if (summoningConfig?.enabled && summoningProfiles.length > 0) {
 
 		// Only spawn for the user who created the message (the caster)
@@ -331,17 +332,7 @@ export async function injectDamageCard(message, html, data) {
 			_spawnedMessages.add(message.id);
 
 
-			// Parse profiles if it's a string
-			let profiles = summoningProfiles;
-			if (typeof profiles === "string") {
-				try {
-					profiles = JSON.parse(profiles);
-				}
-				catch(err) {
-					console.error("shadowdark-extras | Failed to parse profiles:", err);
-					return;
-				}
-			}
+			const profiles = summoningProfiles;
 
 			// Check for critical success to double duration
 			const isCriticalSuccess = summonOutcome.isCriticalSuccess;
