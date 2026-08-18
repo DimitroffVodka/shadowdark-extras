@@ -37,6 +37,17 @@ export function generateSummoningConfigHTML(MODULE_ID, flags, summonsList, summo
 					<!-- Hidden input to store JSON data -->
 					<input type="hidden" name="flags.${MODULE_ID}.summoning.profiles" class="sdx-summons-data" value="${foundry.utils.escapeHTML(JSON.stringify(summonProfilesArray))}" />
 
+					<!-- Which profiles to summon when more than one is listed -->
+					<div class="sdx-summoning-option" style="margin-top: 8px;">
+						<label class="sdx-select-label" style="display: flex; align-items: center; gap: 6px;">
+							<span>When several are listed <i class="fas fa-question-circle sdx-help-icon" style="opacity: 0.6; font-size: 0.9em;" title="Summon all: every profile is summoned together (the default).&#10;Ask which one: the caster picks a single creature, for spells that read &quot;a zombie or skeleton&quot;.&#10;Only applies when more than one profile is listed."></i></span>
+							<select name="flags.${MODULE_ID}.summoning.creatureSelectionMode">
+								<option value="all" ${flags.creatureSelectionMode === "prompt" ? "" : "selected"}>Summon all</option>
+								<option value="prompt" ${flags.creatureSelectionMode === "prompt" ? "selected" : ""}>Ask which one</option>
+							</select>
+						</label>
+					</div>
+
 					<!-- Delete at expiry option -->
 					<div class="sdx-summoning-option" style="margin-top: 8px;">
 						<label class="sdx-checkbox-label" style="display: flex; align-items: center; gap: 6px;">

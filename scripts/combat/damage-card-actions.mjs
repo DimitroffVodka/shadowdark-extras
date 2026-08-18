@@ -529,6 +529,76 @@ async function _resolveActorForSummon(uuid) {
 	}
 }
 
+/**
+ * Ask which single creature to summon.
+ *
+ * Single-select rather than the effect dialog's checkboxes: this exists for
+ * spells that summon one creature *or* another, so offering "both" would defeat
+ * the point. A spell that really does summon several keeps the default "all"
+ * mode and never reaches here.
+ *
+ * @param {Array} profiles - resolved summon profiles, each carrying
+ *   {creatureName, creatureImg, count, displayName}
+ * @returns {Promise<object|null>} the chosen profile, or null if cancelled
+ */
+async function showSummonSelectionDialog(profiles) {
+	return new Promise(resolve => {
+		let optionsHtml = "";
+		for (let i = 0; i < profiles.length; i++) {
+			const profile = profiles[i];
+			// Creature names and images come from documents a player can rename, so
+			// they are escaped at the markup (#125).
+			const escapedImg = foundry.utils.escapeHTML(profile.creatureImg || "icons/svg/mystery-man.svg");
+			const rawName = profile.displayName || profile.creatureName || "Unknown Creature";
+			const escapedName = foundry.utils.escapeHTML(rawName);
+			const count = String(profile.count || "1");
+			const escapedCount = foundry.utils.escapeHTML(count);
+			const countLabel = count === "1" ? "" : ` <span style="opacity: 0.7;">&times;${escapedCount}</span>`;
+			optionsHtml += `
+				<div class="sdx-summon-option" style="display: flex; align-items: center; gap: 8px; padding: 4px 0;">
+					<input type="radio" id="summon-${i}" name="summon-choice" value="${i}" ${i === 0 ? "checked" : ""} style="width: 16px; height: 16px;">
+					<img src="${escapedImg}" alt="${escapedName}" style="width: 32px; height: 32px; border-radius: 4px;">
+					<label for="summon-${i}" style="cursor: pointer;">${escapedName}${countLabel}</label>
+				</div>
+			`;
+		}
+
+		const dialogContent = `
+			<form>
+				<p style="margin-bottom: 12px;">Which creature do you summon?</p>
+				<div class="sdx-summon-options" style="display: flex; flex-direction: column; gap: 4px;">
+					${optionsHtml}
+				</div>
+			</form>
+		`;
+
+		new foundry.applications.api.DialogV2({
+			window: { title: "Choose a Summon" },
+			content: dialogContent,
+			buttons: [
+				{
+					action: "summon",
+					icon: "fas fa-check",
+					label: "Summon",
+					default: true,
+					callback: (event, button, dialog) => {
+						const checked = dialog.element.querySelector("input[name=\"summon-choice\"]:checked");
+						const index = Number(checked?.value);
+						resolve(Number.isInteger(index) ? profiles[index] ?? null : null);
+					},
+				},
+				{
+					action: "cancel",
+					icon: "fas fa-times",
+					label: "Cancel",
+					callback: () => resolve(null),
+				},
+			],
+			close: () => resolve(null),
+		}).render({ force: true });
+	});
+}
+
 async function spawnSummonedCreatures(
 	casterActor, item, profiles, summoningConfig = {}, isCriticalSuccess = false
 ) {
@@ -576,12 +646,26 @@ async function spawnSummonedCreatures(
 			return;
 		}
 
+		// A spell listing several creatures normally summons all of them, and that
+		// stays the default. Some spells are the other shape — Undeath reads "rises
+		// as a zombie or skeleton", one creature chosen when it is cast. Opting a
+		// spell into "prompt" asks which, mirroring the effect list's existing
+		// all/prompt vocabulary so both configs read the same way.
+		let spawnProfiles = resolvedProfiles;
+		if ((summoningConfig?.creatureSelectionMode || "all") === "prompt" && resolvedProfiles.length > 1) {
+			const chosen = await showSummonSelectionDialog(resolvedProfiles);
+			// Cancelling means the caster declined to summon, which is not the same
+			// as "summon everything" — spawn nothing.
+			if (!chosen) return;
+			spawnProfiles = [chosen];
+		}
+
 		// Create Portal instance and set origin
 		const portal = new Portal();
 		portal.origin(casterToken);
 
 		// Add each creature profile (using the resolved world UUID)
-		for (const profile of resolvedProfiles) {
+		for (const profile of spawnProfiles) {
 			// Parse count formula if it's a dice formula
 			let count = 1;
 			const countFormula = profile.count || "1";
