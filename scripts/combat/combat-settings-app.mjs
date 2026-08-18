@@ -6,7 +6,7 @@
 
 import { getSocket } from "../shared/combat-socket.mjs";
 import { showScrollingText } from "../shared/scrolling-text.mjs";
-import { getSummonedTokensExpiry, saveSummonedTokensExpiry } from "./damage-card.mjs";
+import { getSummonedTokensExpiry, saveSummonedTokensExpiry, partitionExpiredSummons, convertRoundExpiryToWorldTime } from "./damage-card.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -273,89 +273,116 @@ export const _itemGiveMessages = new Set();
 export const _coatingPoisonMessages = new Set();
 
 
+/** How much of its duration an entry has left, phrased for the status card. */
+function summonTimeRemaining(entry, { round, worldTime }) {
+	if (Number.isFinite(entry.expiryRound) && Number.isFinite(round)) {
+		const rounds = entry.expiryRound - round;
+		return `${rounds} round${rounds !== 1 ? "s" : ""} remaining`;
+	}
+	if (Number.isFinite(entry.expiryWorldTime) && Number.isFinite(worldTime)) {
+		const seconds = Math.max(0, entry.expiryWorldTime - worldTime);
+		return `${seconds} second${seconds !== 1 ? "s" : ""} remaining`;
+	}
+	return "duration unknown";
+}
+
 /**
- * Setup hook to delete expired summoned tokens when combat advances
+ * Retire whichever summons are due, judged against the clock that just moved.
+ *
+ * One body for both clocks: rounds while an encounter is running, world time
+ * otherwise. Splitting this per hook is how the two would drift apart.
+ *
+ * @param {{round?: number|null, worldTime?: number|null}} now
  */
-export function setupSummonExpiryHook() {
-	Hooks.on("updateCombat", async (combat, changed, options, userId) => {
+async function expireDueSummons(now) {
+	if (!game.user.isGM) return;
 
-		// Only process on round changes
-		if (!("round" in changed)) {
-			return;
-		}
+	const sceneId = canvas.scene?.id;
+	if (!sceneId) return;
 
-		// Only run for GM
-		if (!game.user.isGM) return;
+	const expiryList = getSummonedTokensExpiry(sceneId);
+	if (!expiryList || expiryList.length === 0) return;
 
-		const currentRound = combat.round;
-		const sceneId = canvas.scene?.id;
+	const { expired, remaining } = partitionExpiredSummons(expiryList, now);
+	if (expired.length === 0 && remaining.length === expiryList.length) {
+		// Nothing is due. Only speak up when something actually changed, so a
+		// world-time tick does not narrate every unchanged summon.
+		if (now.worldTime !== undefined && now.round === undefined) return;
+	}
 
+	await saveSummonedTokensExpiry(sceneId, remaining);
 
-		if (!sceneId) return;
-
-		const expiryList = getSummonedTokensExpiry(sceneId);
-		if (!expiryList || expiryList.length === 0) {
-			return;
-		}
-
-
-		// expiryList already retrieved above
-		const tokensToDelete = [];
-		const remainingExpiry = [];
-		const expiringMessages = [];
-		const remainingMessages = [];
-
-		for (const entry of expiryList) {
-			const roundsRemaining = entry.expiryRound - currentRound;
-
-			if (currentRound >= entry.expiryRound) {
-				tokensToDelete.push(...entry.tokenIds);
-				expiringMessages.push(`<b>${entry.spellName}</b> has expired!`);
-			}
-			else {
-				remainingExpiry.push(entry);
-				remainingMessages.push(`<b>${entry.spellName}</b>: ${roundsRemaining} round${roundsRemaining !== 1 ? "s" : ""} remaining`);
-			}
-		}
-
-		// Update the tracking list
-		await saveSummonedTokensExpiry(sceneId, remainingExpiry);
-
-		// Post chat message with summon status
-		const allMessages = [...expiringMessages, ...remainingMessages];
-		if (allMessages.length > 0) {
-			const content = `
+	const messages = [
+		...expired.map(e => `<b>${e.spellName}</b> has expired!`),
+		...remaining.map(e => `<b>${e.spellName}</b>: ${summonTimeRemaining(e, now)}`),
+	];
+	if (messages.length > 0) {
+		ChatMessage.create({
+			content: `
 				<div class="sdx-summon-status">
 					<h4 style="margin: 0 0 6px 0; border-bottom: 1px solid #666; padding-bottom: 4px;">
 						<i class="fas fa-dragon"></i> Summon Status
 					</h4>
 					<ul style="margin: 0; padding-left: 16px; list-style-type: none;">
-						${allMessages.map(m => `<li style="margin: 2px 0;">${m}</li>`).join("")}
+						${messages.map(m => `<li style="margin: 2px 0;">${m}</li>`).join("")}
 					</ul>
 				</div>
-			`;
-			ChatMessage.create({
-				content: content,
-				whisper: [game.user.id], // Whisper to GM only
-			});
-		}
+			`,
+			whisper: [game.user.id], // Whisper to GM only
+		});
+	}
 
-		// Delete expired tokens
-		if (tokensToDelete.length > 0) {
-			try {
-				// Filter to only tokens that still exist on the scene
-				const existingTokenIds = tokensToDelete.filter(id => canvas.tokens.get(id));
-				if (existingTokenIds.length > 0) {
-					await canvas.scene.deleteEmbeddedDocuments("Token", existingTokenIds);
-					ui.notifications.info(`Deleted ${existingTokenIds.length} expired summoned creature(s)`);
-				}
-			}
-			catch(err) {
-				console.error("shadowdark-extras | Error deleting expired summons:", err);
+	const tokensToDelete = expired.flatMap(e => e.tokenIds ?? []);
+	if (tokensToDelete.length > 0) {
+		try {
+			// Filter to only tokens that still exist on the scene
+			const existingTokenIds = tokensToDelete.filter(id => canvas.tokens.get(id));
+			if (existingTokenIds.length > 0) {
+				await canvas.scene.deleteEmbeddedDocuments("Token", existingTokenIds);
+				ui.notifications.info(`Deleted ${existingTokenIds.length} expired summoned creature(s)`);
 			}
 		}
+		catch(err) {
+			console.error("shadowdark-extras | Error deleting expired summons:", err);
+		}
+	}
+}
+
+/**
+ * Setup hooks to delete expired summoned tokens.
+ *
+ * Three triggers, because a duration has to survive the encounter it was cast
+ * in: rounds advancing, world time advancing, and the combat going away.
+ */
+export function setupSummonExpiryHook() {
+	// Rounds advancing — the original trigger.
+	Hooks.on("updateCombat", async (combat, changed, options, userId) => {
+		if (!("round" in changed)) return;
+		await expireDueSummons({ round: combat.round });
 	});
 
+	// World time advancing, for summons conjured outside an encounter. Without
+	// this their duration was never checked at all and they stayed forever.
+	Hooks.on("updateWorldTime", async () => {
+		await expireDueSummons({ worldTime: game.time?.worldTime ?? 0 });
+	});
+
+	// The encounter ending strands anything still counting its rounds: that
+	// counter will never advance again. Re-base the rounds still owed onto world
+	// time so the duration continues rather than becoming permanent.
+	Hooks.on("deleteCombat", async combat => {
+		if (!game.user.isGM) return;
+		const sceneId = canvas.scene?.id;
+		if (!sceneId) return;
+
+		const expiryList = getSummonedTokensExpiry(sceneId);
+		if (!expiryList?.some(e => Number.isFinite(e.expiryRound))) return;
+
+		await saveSummonedTokensExpiry(sceneId, convertRoundExpiryToWorldTime(expiryList, {
+			round: combat?.round ?? 0,
+			worldTime: game.time?.worldTime ?? 0,
+		}));
+	});
 }
 
 /**
