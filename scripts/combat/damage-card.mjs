@@ -1053,7 +1053,7 @@ function attachDamageCardListeners(html, messageId) {
 				: null;
 
 			if (!casterToken) {
-				ui.notifications.warn("Could not find caster token for summoning");
+				console.debug(`${MODULE_ID} | Could not find caster token for summoning — skipping`);
 				$btn.prop("disabled", false);
 				$btn.data("summoning", false);
 				return;

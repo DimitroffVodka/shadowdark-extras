@@ -524,8 +524,22 @@ export async function injectEnhancedHeader(app, html, actor) {
 		if (game.combat) {
 			const combatant = game.combat.combatants.find(c => c.actorId === actor.id);
 			if (combatant) {
-				// Roll initiative for combat
-				await game.combat.rollInitiative(combatant.id, { updateTurn: false });
+				// Players can't call rollInitiative directly — it does a combatant.update()
+				// internally which requires OWNER permission on the combat.
+				if (game.user.isGM) {
+					await game.combat.rollInitiative(combatant.id, { updateTurn: false });
+				}
+				else {
+					const { getSocket } = await import("../shared/combat-socket.mjs");
+					const socket = getSocket();
+					if (socket) {
+						await socket.executeAsGM("rollInitiativeAsGM", {
+							combatId: game.combat.id,
+							combatantId: combatant.id,
+							options: { updateTurn: false },
+						});
+					}
+				}
 				return;
 			}
 		}

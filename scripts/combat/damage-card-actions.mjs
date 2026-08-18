@@ -696,7 +696,7 @@ async function spawnSummonedCreatures(
 		// Get the caster's token as the origin point
 		const casterToken = casterActor?.getActiveTokens()?.[0];
 		if (!casterToken) {
-			ui.notifications.warn("Could not find caster token on the scene");
+			console.debug(`${MODULE_ID} | Could not find caster token on the scene — skipping summon for ${casterActor?.name ?? "unknown"}`);
 			return;
 		}
 
@@ -774,6 +774,27 @@ async function spawnSummonedCreatures(
 			});
 		}
 
+		// Pre-grant OWNER permission on the world actors so portal-lib's internal
+		// worldActor.update() call during token creation succeeds for players.
+		// Without this, players who summon creatures imported by the GM hit a
+		// permission error inside portal-lib (the only update path it supports).
+		if (!game.user.isGM) {
+			const actorIds = new Set();
+			for (const profile of spawnProfiles) {
+				const resolved = fromUuidSync(profile.worldUuid);
+				if (resolved instanceof Actor && !resolved.pack) actorIds.add(resolved.id);
+			}
+			if (actorIds.size > 0) {
+				const socket = getSocket();
+				if (socket) {
+					await socket.executeAsGM("grantSummonOwnership", {
+						actorIds: [...actorIds],
+						userId: ownerUserId,
+					});
+				}
+			}
+		}
+
 		// Spawn — shows placement UI and creates the tokens on the scene
 		const creatures = await portal.spawn();
 
@@ -785,16 +806,29 @@ async function spawnSummonedCreatures(
 			// explicitly set). Updating delta.ownership via updateEmbeddedDocuments goes
 			// through server-side sanitization that requires a user-context Foundry doesn't
 			// provide in token batch-updates, causing a crash.
+			//
+			// Players who cast the spell may lack permission to update the world actor
+			// (only the GM typically owns compendium-imported creatures). The ownership
+			// grant is a convenience — the token is already placed — so we skip it
+			// silently when the caller can't write.
 			const actorIdsUpdated = new Set();
 			for (const token of creatures) {
 				const worldActor = game.actors.get(token.actorId);
 				if (!worldActor || actorIdsUpdated.has(worldActor.id)) continue;
-				await worldActor.update({
-					ownership: {
-						...worldActor.ownership,
-						[ownerUserId]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
-					},
-				});
+				try {
+					await worldActor.update({
+						ownership: {
+							...worldActor.ownership,
+							[ownerUserId]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
+						},
+					});
+				}
+				catch(err) {
+					console.warn(
+						`${MODULE_ID} | Could not grant summon ownership to user ${ownerUserId}:`,
+						err.message
+					);
+				}
 				actorIdsUpdated.add(worldActor.id);
 			}
 

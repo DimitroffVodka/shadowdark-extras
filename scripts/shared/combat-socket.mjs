@@ -1009,6 +1009,43 @@ export function setupCombatSocket() {
 		return combat.createEmbeddedDocuments("Combatant", combatants);
 	});
 
+	// Grant ownership of a world actor to a user so portal-lib's token creation
+	// can succeed — portal-lib calls worldActor.update() internally and players
+	// lack OWNER permission on compendium-imported creatures.
+	if (isFeatureEnabled(FEATURE_IDS.DAMAGE_CARDS)) socketlibSocket.register("grantSummonOwnership", async ({ actorIds, userId }) => {
+		for (const actorId of actorIds) {
+			const actor = game.actors.get(actorId);
+			if (!actor) continue;
+			try {
+				await actor.update({
+					ownership: {
+						...actor.ownership,
+						[userId]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
+					},
+				});
+			}
+			catch(err) {
+				console.warn(`${MODULE_ID} | grantSummonOwnership failed for actor ${actorId}:`, err.message);
+			}
+		}
+	});
+
+	// Roll initiative for a combatant via the GM — players lack permission to
+	// call combat.rollInitiative() because it internally does a combatant update.
+	if (isFeatureEnabled(FEATURE_IDS.DAMAGE_CARDS)) socketlibSocket.register("rollInitiativeAsGM", async ({ combatId, combatantId, options }) => {
+		const combat = game.combats.get(combatId);
+		if (!combat) {
+			console.warn(`${MODULE_ID} | rollInitiativeAsGM: combat not found`, combatId);
+			return;
+		}
+		try {
+			await combat.rollInitiative(combatantId, options);
+		}
+		catch(err) {
+			console.warn(`${MODULE_ID} | rollInitiativeAsGM failed:`, err.message);
+		}
+	});
+
 	return socketlibSocket;
 }
 

@@ -4,10 +4,10 @@
     "Hooks.once": 33,
     "Hooks.on": 232,
     "Hooks.off": 8,
-    "socket.register": 49,
+    "socket.register": 51,
     "libWrapper.register": 3,
     "socketlib.registerModule": 3,
-    "all": 328
+    "all": 330
   },
   "modules": {
     "AnimationEffectDedupSD.mjs": [
@@ -354,7 +354,9 @@
       "socket.register:updateItemFlagsAsGM",
       "socket.register:transferItemsAsGM",
       "socket.register:transferCoinsAsGM",
-      "socket.register:addSummonsToCombatViaGM"
+      "socket.register:addSummonsToCombatViaGM",
+      "socket.register:grantSummonOwnership",
+      "socket.register:rollInitiativeAsGM"
     ],
     "containers.mjs": [
       "Hooks.on:updateItem",
