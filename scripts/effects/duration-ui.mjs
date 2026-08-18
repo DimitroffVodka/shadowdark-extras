@@ -5,6 +5,7 @@
 
 import { MODULE_ID } from "./focus-constants.mjs";
 import { getSocket } from "../shared/combat-socket.mjs";
+import { describeDurationRemaining } from "../shared/duration-basis.mjs";
 
 export async function onDurationDamageApplyClick(event) {
 	const btn = event.target.closest(".sdx-duration-apply-btn");
@@ -87,7 +88,9 @@ export function buildDurationSpellsHtml(actor, activeDuration) {
 	let spellsHtml = "";
 
 	for (const duration of activeDuration) {
-		const remainingRounds = Math.max(0, duration.expiryRound - currentRound);
+		const remaining = describeDurationRemaining(duration, {
+			round: currentRound, worldTime: game.time?.worldTime ?? null,
+		});
 		const targetCount = duration.targets?.length || 0;
 		// Use instanceId if available, fallback to spellId
 		const spellInstanceId = duration.instanceId || duration.spellId;
@@ -131,7 +134,7 @@ export function buildDurationSpellsHtml(actor, activeDuration) {
 						<span class="sdx-duration-spell-name">${duration.spellName}</span>
 					</div>
 					<span class="sdx-duration-time" title="Remaining duration">
-						${remainingRounds} rnd${remainingRounds !== 1 ? "s" : ""}
+						${remaining}
 					</span>
 					<span class="sdx-focus-targets">
 						<i class="fas fa-bullseye"></i> ${targetCount}

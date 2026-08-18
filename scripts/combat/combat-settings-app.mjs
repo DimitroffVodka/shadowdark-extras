@@ -6,7 +6,8 @@
 
 import { getSocket } from "../shared/combat-socket.mjs";
 import { showScrollingText } from "../shared/scrolling-text.mjs";
-import { getSummonedTokensExpiry, saveSummonedTokensExpiry, partitionExpiredSummons, convertRoundExpiryToWorldTime } from "./damage-card.mjs";
+import { getSummonedTokensExpiry, saveSummonedTokensExpiry } from "./damage-card.mjs";
+import { partitionExpiredDurations, convertRoundExpiryToWorldTime, describeDurationRemaining } from "../shared/duration-basis.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -273,19 +274,6 @@ export const _itemGiveMessages = new Set();
 export const _coatingPoisonMessages = new Set();
 
 
-/** How much of its duration an entry has left, phrased for the status card. */
-function summonTimeRemaining(entry, { round, worldTime }) {
-	if (Number.isFinite(entry.expiryRound) && Number.isFinite(round)) {
-		const rounds = entry.expiryRound - round;
-		return `${rounds} round${rounds !== 1 ? "s" : ""} remaining`;
-	}
-	if (Number.isFinite(entry.expiryWorldTime) && Number.isFinite(worldTime)) {
-		const seconds = Math.max(0, entry.expiryWorldTime - worldTime);
-		return `${seconds} second${seconds !== 1 ? "s" : ""} remaining`;
-	}
-	return "duration unknown";
-}
-
 /**
  * Retire whichever summons are due, judged against the clock that just moved.
  *
@@ -303,7 +291,7 @@ async function expireDueSummons(now) {
 	const expiryList = getSummonedTokensExpiry(sceneId);
 	if (!expiryList || expiryList.length === 0) return;
 
-	const { expired, remaining } = partitionExpiredSummons(expiryList, now);
+	const { expired, remaining } = partitionExpiredDurations(expiryList, now);
 	if (expired.length === 0 && remaining.length === expiryList.length) {
 		// Nothing is due. Only speak up when something actually changed, so a
 		// world-time tick does not narrate every unchanged summon.
@@ -314,7 +302,7 @@ async function expireDueSummons(now) {
 
 	const messages = [
 		...expired.map(e => `<b>${e.spellName}</b> has expired!`),
-		...remaining.map(e => `<b>${e.spellName}</b>: ${summonTimeRemaining(e, now)}`),
+		...remaining.map(e => `<b>${e.spellName}</b>: ${describeDurationRemaining(e, now)} remaining`),
 	];
 	if (messages.length > 0) {
 		ChatMessage.create({

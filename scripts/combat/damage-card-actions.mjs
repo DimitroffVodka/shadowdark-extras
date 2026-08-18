@@ -5,6 +5,7 @@
 
 import { startDurationSpell } from "../effects/FocusSpellTrackerSD.mjs";
 import { getSocket } from "../shared/combat-socket.mjs";
+import { buildDurationExpiry } from "../shared/duration-basis.mjs";
 import {
 	buildMultipliersHtml,
 	buildTargetRollData,
@@ -58,92 +59,11 @@ async function saveSummonedTokensExpiry(sceneId, expiryList) {
 	}
 }
 
-/** Seconds in one combat round, as this world defines it. */
-function secondsPerRound() {
-	return CONFIG?.time?.roundTime || 6;
-}
-
-/**
- * When a summon should vanish, expressed in whichever clock is actually running.
- *
- * A duration in rounds only means something while rounds are being counted. Cast
- * outside combat there is no round counter, so the same duration is held against
- * world time instead — the basis focus spells and auras already use. Combat is
- * preferred when available because a round is the unit the spell is written in;
- * world time is the fallback, not the other way round.
- *
- * `combat.round` is `0` for an encounter that exists but has not begun, and a
- * spell cast then should last through round 1, so it reads as 1.
- *
- * @param {number} durationValue - duration in rounds
- * @param {{combat?: object|null, worldTime?: number}} context
- * @returns {{expiryRound: number}|{expiryWorldTime: number}}
- */
-export function buildSummonExpiry(durationValue, { combat = null, worldTime = 0 } = {}) {
-	if (combat) return { expiryRound: (combat.round || 1) + durationValue };
-	return { expiryWorldTime: worldTime + (durationValue * secondsPerRound()) };
-}
-
-/**
- * Whether an entry is due, judged against whichever clock just moved.
- *
- * An entry answers to one basis only: a round-based entry ignores world time
- * ticking past, and a world-time entry ignores rounds. Anything else would let
- * one clock expire a summon the other has not reached.
- *
- * @param {object} entry
- * @param {{round?: number|null, worldTime?: number|null}} now
- * @returns {boolean}
- */
-export function isSummonExpired(entry, { round = null, worldTime = null } = {}) {
-	if (!entry) return false;
-	if (Number.isFinite(entry.expiryRound)) {
-		return Number.isFinite(round) && round >= entry.expiryRound;
-	}
-	if (Number.isFinite(entry.expiryWorldTime)) {
-		return Number.isFinite(worldTime) && worldTime >= entry.expiryWorldTime;
-	}
-	return false;
-}
-
-/** Split a list into what is due now and what still stands. */
-export function partitionExpiredSummons(entries, now) {
-	const expired = [];
-	const remaining = [];
-	for (const entry of entries ?? []) {
-		(isSummonExpired(entry, now) ? expired : remaining).push(entry);
-	}
-	return { expired, remaining };
-}
-
-/**
- * Re-base round entries onto world time, for when the encounter they were
- * counting goes away.
- *
- * Ending a combat used to strand these: the round counter they referenced would
- * never advance again, so the summons became permanent. The rounds still owed
- * are converted at the world's own seconds-per-round, so a spell with two rounds
- * left keeps two rounds' worth of time rather than expiring instantly or never.
- *
- * @param {Array} entries
- * @param {{round: number, worldTime: number}} context
- * @returns {Array} entries with any round basis replaced by a world-time one
- */
-export function convertRoundExpiryToWorldTime(entries, { round = 0, worldTime = 0 } = {}) {
-	return (entries ?? []).map(entry => {
-		if (!Number.isFinite(entry?.expiryRound)) return entry;
-		const roundsLeft = Math.max(0, entry.expiryRound - round);
-		const rest = { ...entry };
-		delete rest.expiryRound;
-		return { ...rest, expiryWorldTime: worldTime + (roundsLeft * secondsPerRound()) };
-	});
-}
-
 /**
  * Add summoned tokens to expiry tracking (exported).
  *
  * `expiry` is either a round number (the long-standing shape) or an object
- * carrying whichever basis applies, as returned by `buildSummonExpiry`.
+ * carrying whichever basis applies, as returned by `buildDurationExpiry`.
  */
 async function trackSummonedTokensForExpiry(sceneId, tokenIds, expiry, spellName) {
 	const basis = typeof expiry === "number" ? { expiryRound: expiry } : (expiry ?? {});
@@ -923,7 +843,7 @@ async function spawnSummonedCreatures(
 				// whether or not anyone is counting rounds.
 				const shouldDelete = summoningConfig.deleteAtExpiry ?? true;
 				if (shouldDelete) {
-					const expiry = buildSummonExpiry(durationValue, {
+					const expiry = buildDurationExpiry(durationValue, {
 						combat: game.combat, worldTime: game.time?.worldTime ?? 0,
 					});
 					await trackSummonedTokensForExpiry(canvas.scene.id, tokenIds, expiry, item?.name || "Summoning");

@@ -1,6 +1,7 @@
 import { MODULE_ID, DURATION_SPELL_FLAG, SPELL_MODIFICATIONS_FLAG } from "./focus-constants.mjs";
 import { getSocket } from "../shared/combat-socket.mjs";
 import { buildDurationSpellsHtml, onDurationDamageApplyClick } from "./duration-ui.mjs";
+import { buildDurationExpiry, isDurationExpired } from "../shared/duration-basis.mjs";
 
 
 /**
@@ -19,18 +20,25 @@ export async function startDurationSpell(caster, spell, targetTokenIds = [], spe
 
 	console.log(`shadowdark-extras | Duration spell: ${spell.name}, value: ${durationValue}, type: ${durationType}`);
 
-	// Calculate expiry round
+	// Work out when this ends, against whichever clock is actually running.
+	//
+	// This used to read `game.combat?.round ?? 0` and always store a round, so a
+	// spell cast outside combat got an expiry round equal to just its duration —
+	// a number with no relation to when it was cast, which then fired partway
+	// through whatever encounter started next. It also disagreed with the
+	// summon-expiry path, which reads an unstarted encounter's round 0 as 1.
+	// Both now share one rule.
+	const roundsToLast = durationType === "turns"
+		? Math.ceil(durationValue / 10)   // Approximate
+		: durationValue;
+	const expiry = buildDurationExpiry(roundsToLast, {
+		combat: game.combat, worldTime: game.time?.worldTime ?? 0,
+	});
+	// Per-turn damage is inherently a combat loop, so its bookkeeping stays on
+	// rounds even when the duration itself is held in world time.
 	const currentRound = game.combat?.round ?? 0;
-	let expiryRound = currentRound;
 
-	if (durationType === "rounds") {
-		expiryRound = currentRound + durationValue;
-	}
-	else if (durationType === "turns") {
-		expiryRound = currentRound + Math.ceil(durationValue / 10); // Approximate
-	}
-
-	console.log(`shadowdark-extras | Duration spell tracking: current round ${currentRound}, expiry round ${expiryRound}`);
+	console.log(`shadowdark-extras | Duration spell tracking: ${spell.name}`, expiry);
 
 	// Build target info
 	const targets = targetTokenIds.map(tokenId => {
@@ -55,7 +63,7 @@ export async function startDurationSpell(caster, spell, targetTokenIds = [], spe
 		templateId: spellConfig.templateId || null, // Link to the specific template
 		summonedTokenIds: spellConfig.summonedTokenIds || [], // Track summoned tokens for cleanup
 		startRound: currentRound,
-		expiryRound: expiryRound,
+		...expiry,
 		durationValue: durationValue,
 		durationType: durationType,
 		targets: targets,
@@ -576,6 +584,36 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 let _lastDurationProcessKey = null;
 
 /**
+ * End duration spells whose world-time expiry has arrived.
+ *
+ * The combat handler below only runs on turn changes, so a spell held in world
+ * time — anything cast outside an encounter — was never checked at all. This is
+ * deliberately only the expiry half: per-turn damage and effect reapplication
+ * are turn-driven and have no meaning without an encounter.
+ */
+export async function handleDurationSpellWorldTimeUpdate() {
+	if (!game.user.isGM) return;
+
+	const worldTime = game.time?.worldTime ?? null;
+	if (!Number.isFinite(worldTime)) return;
+
+	for (const actor of game.actors) {
+		const activeDuration = actor.getFlag(MODULE_ID, DURATION_SPELL_FLAG) || [];
+		if (activeDuration.length === 0) continue;
+
+		// Round is deliberately absent here: a round-based entry must not be ended
+		// by world time passing, only by its own encounter advancing.
+		const expired = activeDuration.filter(d => isDurationExpired(d, { worldTime }));
+		if (expired.length === 0) continue;
+
+		for (const durationSpell of expired) {
+			console.log(`shadowdark-extras | Duration spell ${durationSpell.spellName} has expired (world time)`);
+			await endDurationSpell(actor.id, durationSpell.instanceId || durationSpell.spellId, "expired");
+		}
+	}
+}
+
+/**
  * Handle combat update - process duration spell per-turn damage and expiry
  */
 export async function handleDurationSpellCombatUpdate(combat, changed, options, userId) {
@@ -616,10 +654,13 @@ export async function handleDurationSpellCombatUpdate(combat, changed, options, 
 			// Use instanceId if available, fallback to spellId
 			const spellInstanceId = durationSpell.instanceId || durationSpell.spellId;
 
-			console.log(`shadowdark-extras | [DEBUG] Checking spell ${durationSpell.spellName}: currentRound=${currentRound}, expiryRound=${durationSpell.expiryRound}, shouldExpire=${currentRound >= durationSpell.expiryRound}`);
+			// One predicate for both clocks: a round entry ignores world time and a
+			// world-time entry ignores rounds, so neither ends the other early.
+			const due = isDurationExpired(durationSpell, {
+				round: currentRound, worldTime: game.time?.worldTime ?? null,
+			});
 
-			// Check for expiry - use >= so spell expires ON the expiry round, not after
-			if (currentRound >= durationSpell.expiryRound) {
+			if (due) {
 				console.log(`shadowdark-extras | Duration spell ${durationSpell.spellName} has expired`);
 				expiredSpellIds.push(spellInstanceId);
 				continue;

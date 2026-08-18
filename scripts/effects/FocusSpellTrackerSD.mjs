@@ -22,6 +22,7 @@ import {
 	registerSpellModification,
 	endDurationSpell,
 	handleDurationSpellCombatUpdate,
+	handleDurationSpellWorldTimeUpdate,
 	linkEffectToDurationSpell,
 	addTargetToDurationSpell,
 	removeTargetFromDurationSpell,
@@ -122,6 +123,10 @@ export function initFocusSpellTracker() {
 
 	// Hook into player sheet rendering to display wand uses next to wand names
 	Hooks.on("renderPlayerSheetSD", injectWandUsesDisplay);
+
+	// World time advancing, for durations held outside an encounter. Without
+	// this they were never checked and the spell ran forever.
+	Hooks.on("updateWorldTime", handleDurationSpellWorldTimeUpdate);
 
 	console.log("shadowdark-extras | Focus Spell Tracker initialized (using shared socket)");
 }
