@@ -530,6 +530,80 @@ async function _resolveActorForSummon(uuid) {
 }
 
 /**
+ * Build the combatant rows that put summoned tokens on the caster's initiative.
+ *
+ * Split out from the socket path so both the GM-local and via-GM routes agree on
+ * what "joins the encounter" means, rather than reimplementing it either side.
+ *
+ * @param {Combat} combat
+ * @param {string} casterActorId
+ * @param {string[]} tokenIds
+ * @returns {Array<object>} combatant creation data; empty when there is nothing to add
+ */
+export function buildSummonCombatantData(combat, casterActorId, tokenIds) {
+	if (!combat || !Array.isArray(tokenIds) || tokenIds.length === 0) return [];
+
+	const caster = combat.combatants.find(c => c.actorId === casterActorId);
+	// No caster in the encounter means no initiative to share. Adding the summons
+	// on a guessed value would place them somewhere the caster never acts, so
+	// leave them out and let the GM decide.
+	if (!caster) return [];
+
+	const already = new Set(combat.combatants.map(c => c.tokenId));
+	return tokenIds
+		.filter(tokenId => tokenId && !already.has(tokenId))
+		.map(tokenId => ({
+			tokenId,
+			sceneId: combat.scene?.id ?? canvas.scene?.id,
+			actorId: canvas.tokens.get(tokenId)?.actor?.id,
+			// Same value, not a fresh roll: the summons act when their summoner does.
+			initiative: caster.initiative,
+		}));
+}
+
+/**
+ * Add summoned tokens to the active encounter on the caster's initiative.
+ *
+ * Combatant creation is a GM-only write, and the caster is usually a player —
+ * this is the same client that just spawned the tokens. Route through the GM
+ * when we are not one, matching how the rest of this module reaches privileged
+ * writes.
+ *
+ * @param {Actor} casterActor
+ * @param {string[]} tokenIds
+ */
+async function addSummonsToCombat(casterActor, tokenIds) {
+	const combat = game.combat;
+	if (!combat || !casterActor?.id || !tokenIds?.length) return;
+
+	try {
+		if (!game.user.isGM) {
+			const socket = getSocket();
+			// Without a socket a player simply cannot write to the tracker. Say so
+			// rather than throwing a permission error from deep inside Foundry.
+			if (!socket) {
+				ui.notifications.warn("Summons could not join the encounter — no GM connection available.");
+				return;
+			}
+			await socket.executeAsGM("addSummonsToCombatViaGM", {
+				combatId: combat.id,
+				casterActorId: casterActor.id,
+				tokenIds,
+			});
+			return;
+		}
+
+		const combatants = buildSummonCombatantData(combat, casterActor.id, tokenIds);
+		if (combatants.length > 0) await combat.createEmbeddedDocuments("Combatant", combatants);
+	}
+	catch(err) {
+		// A summon that cannot join the tracker is still a summon on the canvas —
+		// never let this take down the rest of the spawn.
+		console.error(`${MODULE_ID} | Failed to add summons to combat:`, err);
+	}
+}
+
+/**
  * Ask which single creature to summon.
  *
  * Single-select rather than the effect dialog's checkboxes: this exists for
@@ -717,6 +791,12 @@ async function spawnSummonedCreatures(
 					},
 				});
 				actorIdsUpdated.add(worldActor.id);
+			}
+
+			// "The creature acts on your turn" — put the summons in the tracker on the
+			// caster's initiative rather than leaving the GM to add them by hand.
+			if (summoningConfig?.joinCombat ?? true) {
+				await addSummonsToCombat(casterActor, creatures.map(t => t.id));
 			}
 
 			// Duration tracking — run regardless of summoningConfig flags so that any

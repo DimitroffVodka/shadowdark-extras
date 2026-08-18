@@ -988,6 +988,27 @@ export function setupCombatSocket() {
 		}
 	});
 
+	// Summoned tokens join the encounter on their summoner's initiative. The
+	// caster is usually a player and combatant creation is GM-only, so the client
+	// that spawned the tokens hands the write over here.
+	//
+	// Appended rather than grouped with the other damage-card handlers on
+	// purpose: registration order is observable, and inserting mid-list would
+	// renumber every registration after it for no behavioural gain.
+	if (isFeatureEnabled(FEATURE_IDS.DAMAGE_CARDS)) socketlibSocket.register("addSummonsToCombatViaGM", async ({ combatId, casterActorId, tokenIds }) => {
+		const combat = game.combats.get(combatId);
+		if (!combat) {
+			console.warn(`${MODULE_ID} | addSummonsToCombatViaGM: combat not found`, combatId);
+			return;
+		}
+
+		const { buildSummonCombatantData } = await import("../combat/damage-card-actions.mjs");
+		const combatants = buildSummonCombatantData(combat, casterActorId, tokenIds);
+		if (combatants.length === 0) return;
+
+		return combat.createEmbeddedDocuments("Combatant", combatants);
+	});
+
 	return socketlibSocket;
 }
 

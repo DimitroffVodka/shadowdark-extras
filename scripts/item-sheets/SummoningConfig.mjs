@@ -48,6 +48,15 @@ export function generateSummoningConfigHTML(MODULE_ID, flags, summonsList, summo
 						</label>
 					</div>
 
+					<!-- Join the encounter on the caster's initiative -->
+					<div class="sdx-summoning-option" style="margin-top: 8px;">
+						<label class="sdx-checkbox-label" style="display: flex; align-items: center; gap: 6px;">
+							<input type="checkbox" name="flags.${MODULE_ID}.summoning.joinCombat"
+							       ${flags.joinCombat === false ? "" : "checked"} />
+							<span>Join combat on caster's initiative <i class="fas fa-question-circle sdx-help-icon" style="opacity: 0.6; font-size: 0.9em;" title="Add summoned tokens to the encounter with the same initiative as the caster, so they act on the summoner's turn.&#10;Only applies when a combat is running and the caster is already in it.&#10;Uncheck for summons that should roll their own initiative."></i></span>
+						</label>
+					</div>
+
 					<!-- Delete at expiry option -->
 					<div class="sdx-summoning-option" style="margin-top: 8px;">
 						<label class="sdx-checkbox-label" style="display: flex; align-items: center; gap: 6px;">
