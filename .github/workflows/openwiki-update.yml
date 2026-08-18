@@ -48,10 +48,13 @@ jobs:
       - name: Create OpenWiki update pull request
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
         with:
+          # AGENTS.md and CLAUDE.md are deliberately absent. OpenWiki regenerates
+          # both, but .gitignore excludes them as agent scratch, so naming them
+          # here only ever contributed paths this PR could not carry. Publishing
+          # them means dropping those .gitignore entries first — until then,
+          # re-adding them here changes nothing.
           add-paths: |
             openwiki
-            AGENTS.md
-            CLAUDE.md
             .github/workflows/openwiki-update.yml
           branch: openwiki/update
           commit-message: "docs: update OpenWiki"
