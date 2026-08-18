@@ -211,14 +211,14 @@ export function registerChatCardHooks({
 	});
 
 	if (damageCards || weaponBonuses || hideItemDescription) Hooks.on("renderChatMessageHTML", (message, html, context) => {
-		if (damageCards) {
-			try {
-				injectDamageCard(message, html, context);
-			}
-			catch(err) {
-				console.error(`${MODULE_ID} | Failed to inject damage card`, err);
-			}
-		}
+		// `injectDamageCard` is async, so the try/catch this used to sit in could
+		// never observe a throw inside it — the same hazard already documented for
+		// `processWeaponBonuses` below, which is why a null `message.author` surfaced
+		// as an unhandled rejection instead of the intended log line. Attach the
+		// handler to the promise.
+		if (damageCards) injectDamageCard(message, html, context).catch(err => {
+			console.error(`${MODULE_ID} | Failed to inject damage card`, err);
+		});
 
 		// Also process weapon bonuses for weapon attack messages.
 		// `processWeaponBonuses` is async, so a throw inside it becomes a rejected

@@ -28,7 +28,13 @@ export async function injectDamageCard(message, html, data) {
 
 	// Prevent duplicate injection for the same message
 	const messageKey = message.id;
-	const isAuthor = message.author.id === game.user.id;
+	// `message.author` resolves the stored author id against `game.users`, and is
+	// null when that id no longer names anyone — a player deleted from the world
+	// leaves their chat messages behind. Every render of such a message threw
+	// here, and because this function is async the caller's try/catch could not
+	// report it (see chat-card-hooks). An unresolvable author is necessarily not
+	// the current user, so `false` is the right answer rather than a crash.
+	const isAuthor = message.author?.id === game.user.id;
 
 	// Skip if the message is being deleted or closed
 	if (html.hasClass("deleting") || data?.canClose) {
@@ -298,7 +304,7 @@ export async function injectDamageCard(message, html, data) {
 	if (summoningConfig?.enabled && summoningProfiles.length > 0) {
 
 		// Only spawn for the user who created the message (the caster)
-		if (message.author.id !== game.user.id) {
+		if (message.author?.id !== game.user.id) {
 			// Don't return - still process other damage/effects for observers
 		}
 		else if (_spawnedMessages.has(message.id)) {
@@ -363,7 +369,7 @@ export async function injectDamageCard(message, html, data) {
 		&& itemGiveConfig?.profiles
 		&& itemGiveConfig.profiles.length > 0
 	) {
-		if (message.author.id === game.user.id && !_itemGiveMessages.has(message.id)) {
+		if (message.author?.id === game.user.id && !_itemGiveMessages.has(message.id)) {
 			let shouldGive = true;
 			// See the summoning gate above: NPC Special Attack / NPC Feature have no
 			// system-determined attack success, so they grant on use like Potion/Scroll.
@@ -394,7 +400,7 @@ export async function injectDamageCard(message, html, data) {
 	// Process coating poison for potions
 	const coatingPoisonConfig = item?.flags?.[MODULE_ID]?.coatingPoison;
 	if (coatingPoisonConfig?.enabled && itemType === "Potion") {
-		if (message.author.id !== game.user.id) {
+		if (message.author?.id !== game.user.id) {
 			// Don't process for other users
 		}
 		else if (_coatingPoisonMessages.has(message.id)) {

@@ -44,7 +44,7 @@ export async function resolveDamageCardTargets({
 	// Check if item has template targeting mode enabled
 	const targetingConfig = item?.flags?.[MODULE_ID]?.targeting;
 	let useTemplateTargeting = targetingConfig?.mode === "template"
-		&& message.author.id === game.user.id // Only for the caster
+		&& message.author?.id === game.user.id // Only for the caster; a deleted author is nobody
 		&& !_templatePlacedMessages.has(messageKey) // Use in-memory check
 		&& !message.flags?.[MODULE_ID]?.templatePlaced; // AND persistent check
 
