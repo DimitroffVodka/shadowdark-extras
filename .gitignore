@@ -22,8 +22,7 @@ CLAUDE.md
 *.tmp
 *.swp
 # Project-scope MCP config: per-machine server commands and paths, so it is
-# never the same file on two checkouts. Contrast openwiki/, which is also
-# generated but IS committed — the update workflow's add-paths expects it there.
+# never the same file on two checkouts.
 .mcp.json
 # Browser console dumps from playwright-mcp runs, one file per session.
 .playwright-mcp/
