@@ -681,6 +681,11 @@ async function showSummonSelectionDialog(profiles) {
 async function spawnSummonedCreatures(
 	casterActor, item, profiles, summoningConfig = {}, isCriticalSuccess = false
 ) {
+	// Captures the ids the pre-spawn ownership grant actually touched. Declared
+	// above the try so the function-level catch can revoke them too when the
+	// spawn THROWS (not just when it resolves empty) — a leak through the throw
+	// path would otherwise leave permanent OWNER on shared world actors.
+	let grantedActorIds = null;
 
 	try {
 		profiles = Array.isArray(profiles)
@@ -778,6 +783,16 @@ async function spawnSummonedCreatures(
 		// worldActor.update() call during token creation succeeds for players.
 		// Without this, players who summon creatures imported by the GM hit a
 		// permission error inside portal-lib (the only update path it supports).
+		//
+		// The grant targets game.user.id — portal-lib's worldActor.update() runs
+		// on the EXECUTING client, not on the user whose character points at the
+		// caster actor; for a co-owned caster those differ and granting to
+		// ownerUserId would leave the caster still blocked.
+		//
+		// The ids actually granted are captured into grantedActorIds (declared
+		// above the try) so a cancelled or failed spawn can revoke them: a player
+		// pressing Escape leaves the spawn call resolving empty and the permanent
+		// ownership grant behind on shared world actors.
 		if (!game.user.isGM) {
 			const actorIds = new Set();
 			for (const profile of spawnProfiles) {
@@ -787,9 +802,9 @@ async function spawnSummonedCreatures(
 			if (actorIds.size > 0) {
 				const socket = getSocket();
 				if (socket) {
-					await socket.executeAsGM("grantSummonOwnership", {
+					grantedActorIds = await socket.executeAsGM("grantSummonOwnership", {
 						actorIds: [...actorIds],
-						userId: ownerUserId,
+						userId: game.user.id,
 					});
 				}
 			}
@@ -887,10 +902,49 @@ async function spawnSummonedCreatures(
 			ui.notifications.info(`Summoned ${creatures.length} creature(s)`);
 		}
 		else {
+			// A cancelled or failed placement leaves the pre-spawn ownership
+			// grant in place on shared world actors. Undo it so the summoner
+			// does not keep permanent OWNER on creatures they never summoned.
+			// Best-effort: a revoke failure must not surface a misleading
+			// "Failed to summon creatures" error on a spawn the user cancelled.
+			if (grantedActorIds?.length) {
+				const socket = getSocket();
+				if (socket) {
+					try {
+						await socket.executeAsGM("revokeSummonOwnership", {
+							actorIds: grantedActorIds,
+							userId: game.user.id,
+						});
+					}
+					catch(err) {
+						console.warn(`${MODULE_ID} | Failed to revoke summon ownership after cancelled spawn:`, err);
+					}
+				}
+			}
 			ui.notifications.warn("No creatures were spawned - check that creature UUIDs are valid");
 		}
 	}
 	catch(err) {
+		// A throw after the pre-spawn grant (e.g. portal-lib errors mid token
+		// creation) leaks the ownership the same way a cancelled placement does —
+		// revoke it here too. Best-effort silent cleanup: the user must still see
+		// the summon error below. No-op for every pre-grant failure path (Portal
+		// undefined, no caster token, empty profiles) because grantedActorIds is
+		// still null there.
+		if (grantedActorIds?.length) {
+			const socket = getSocket();
+			if (socket) {
+				try {
+					await socket.executeAsGM("revokeSummonOwnership", {
+						actorIds: grantedActorIds,
+						userId: game.user.id,
+					});
+				}
+				catch(revokeErr) {
+					console.warn(`${MODULE_ID} | Failed to revoke summon ownership after spawn error:`, revokeErr);
+				}
+			}
+		}
 		console.error("shadowdark-extras | Error summoning creatures:", err);
 		ui.notifications.error(`Failed to summon creatures: ${err.message}`);
 	}

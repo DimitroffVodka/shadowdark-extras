@@ -302,7 +302,16 @@ export async function injectDamageCard(message, html, data) {
 	// Stored as a JSON string by the item sheet; readSummonProfiles is the one
 	// place that knows every shape it can arrive in.
 	const summoningProfiles = readSummonProfiles(summoningConfig);
-	if (summoningConfig?.enabled && summoningProfiles.length > 0) {
+	// Skip during the load-time chat re-render (game/canvas not yet ready): a
+	// historical summon card rendered lazily (scroll-back) after canvas-ready
+	// would re-run the full spawn — re-granting ownership, popping the
+	// placement UI, and re-summoning. The dedup set is in-memory, so only the
+	// ready guard keeps reloads clean (same reasoning as the item-give block).
+	if (
+		game.ready
+		&& summoningConfig?.enabled
+		&& summoningProfiles.length > 0
+	) {
 
 		// Only spawn for the user who created the message (the caster)
 		if (message.author?.id !== game.user.id) {

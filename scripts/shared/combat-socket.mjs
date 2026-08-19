@@ -992,10 +992,20 @@ export function setupCombatSocket() {
 	// caster is usually a player and combatant creation is GM-only, so the client
 	// that spawned the tokens hands the write over here.
 	//
+	// Reachable from addSummonsToCombat inside spawnSummonedCreatures, which the
+	// damage-card pipeline and the NPC-feature item-macro path both call — the
+	// gate must cover every flag those callers ship under, not just DAMAGE_CARDS
+	// (same rationale as grantSummonOwnership).
+	//
 	// Appended rather than grouped with the other damage-card handlers on
 	// purpose: registration order is observable, and inserting mid-list would
 	// renumber every registration after it for no behavioural gain.
-	if (isFeatureEnabled(FEATURE_IDS.DAMAGE_CARDS)) socketlibSocket.register("addSummonsToCombatViaGM", async ({ combatId, casterActorId, tokenIds }) => {
+	if (anyFeatureEnabled(
+		FEATURE_IDS.DAMAGE_CARDS,
+		FEATURE_IDS.WEAPON_BONUSES,
+		FEATURE_IDS.ITEM_MACROS,
+		FEATURE_IDS.ANIMATION_FX
+	)) socketlibSocket.register("addSummonsToCombatViaGM", async ({ combatId, casterActorId, tokenIds }) => {
 		const combat = game.combats.get(combatId);
 		if (!combat) {
 			console.warn(`${MODULE_ID} | addSummonsToCombatViaGM: combat not found`, combatId);
@@ -1012,10 +1022,25 @@ export function setupCombatSocket() {
 	// Grant ownership of a world actor to a user so portal-lib's token creation
 	// can succeed — portal-lib calls worldActor.update() internally and players
 	// lack OWNER permission on compendium-imported creatures.
-	if (isFeatureEnabled(FEATURE_IDS.DAMAGE_CARDS)) socketlibSocket.register("grantSummonOwnership", async ({ actorIds, userId }) => {
+	//
+	// Reachable from spawnSummonedCreatures (damage-card-actions.mjs), which the
+	// damage-card pipeline and the NPC-feature item-macro path both call, so the
+	// gate must cover every flag those callers ship under — not just DAMAGE_CARDS.
+	if (anyFeatureEnabled(
+		FEATURE_IDS.DAMAGE_CARDS,
+		FEATURE_IDS.WEAPON_BONUSES,
+		FEATURE_IDS.ITEM_MACROS,
+		FEATURE_IDS.ANIMATION_FX
+	)) socketlibSocket.register("grantSummonOwnership", async ({ actorIds, userId }) => {
+		// Returns the ids ownership was newly granted to. A spawn cancelled at
+		// the placement UI (portal.spawn() resolving empty) calls
+		// revokeSummonOwnership with exactly this list, so actors the user
+		// already owned are not stripped of a pre-existing grant.
+		const newlyGranted = [];
 		for (const actorId of actorIds) {
 			const actor = game.actors.get(actorId);
 			if (!actor) continue;
+			if (actor.ownership[userId] == null) newlyGranted.push(actorId);
 			try {
 				await actor.update({
 					ownership: {
@@ -1028,11 +1053,16 @@ export function setupCombatSocket() {
 				console.warn(`${MODULE_ID} | grantSummonOwnership failed for actor ${actorId}:`, err.message);
 			}
 		}
+		return newlyGranted;
 	});
 
 	// Roll initiative for a combatant via the GM — players lack permission to
 	// call combat.rollInitiative() because it internally does a combatant update.
-	if (isFeatureEnabled(FEATURE_IDS.DAMAGE_CARDS)) socketlibSocket.register("rollInitiativeAsGM", async ({ combatId, combatantId, options }) => {
+	// Only caller is the enhanced-header initiative click, so ENHANCED_HEADER
+	// alone must be enough to put the handler on the socket.
+	if (anyFeatureEnabled(
+		FEATURE_IDS.DAMAGE_CARDS, FEATURE_IDS.ENHANCED_HEADER
+	)) socketlibSocket.register("rollInitiativeAsGM", async ({ combatId, combatantId, options }) => {
 		const combat = game.combats.get(combatId);
 		if (!combat) {
 			console.warn(`${MODULE_ID} | rollInitiativeAsGM: combat not found`, combatId);
@@ -1043,6 +1073,31 @@ export function setupCombatSocket() {
 		}
 		catch(err) {
 			console.warn(`${MODULE_ID} | rollInitiativeAsGM failed:`, err.message);
+		}
+	});
+
+	// Undo grantSummonOwnership when a spawn is cancelled: portal.spawn()
+	// resolving empty (placement UI dismissed) leaves the pre-granted OWNER on
+	// shared world actors permanently. Deleting the key restores the actor's
+	// prior ownership rather than setting NONE, which would also strip the GM's
+	// implicit ownership. Gated identically to the grant handler.
+	if (anyFeatureEnabled(
+		FEATURE_IDS.DAMAGE_CARDS,
+		FEATURE_IDS.WEAPON_BONUSES,
+		FEATURE_IDS.ITEM_MACROS,
+		FEATURE_IDS.ANIMATION_FX
+	)) socketlibSocket.register("revokeSummonOwnership", async ({ actorIds, userId }) => {
+		for (const actorId of actorIds) {
+			const actor = game.actors.get(actorId);
+			if (!actor) continue;
+			try {
+				const ownership = { ...actor.ownership };
+				delete ownership[userId];
+				await actor.update({ ownership });
+			}
+			catch(err) {
+				console.warn(`${MODULE_ID} | revokeSummonOwnership failed for actor ${actorId}:`, err.message);
+			}
 		}
 	});
 

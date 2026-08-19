@@ -78,6 +78,7 @@ setupCombatSocket();
 
 const grantSummonOwnership = registrations.get("grantSummonOwnership");
 const rollInitiativeAsGM = registrations.get("rollInitiativeAsGM");
+const revokeSummonOwnership = registrations.get("revokeSummonOwnership");
 
 /** Actor double recording every update payload it is handed. */
 function makeActor(id, ownership, { rejectWith = null } = {}) {
@@ -157,6 +158,52 @@ test("grantSummonOwnership keeps granting after one actor's update is refused", 
 	assert.ok(warnings.some((line) => line.includes("grantSummonOwnership failed for actor goblin")));
 });
 
+test("grantSummonOwnership returns only the ids it newly granted", async () => {
+	// The caller uses the returned ids to revoke on a cancelled spawn. An actor
+	// the user already owned must NOT be included — revoking it would strip a
+	// grant that predates this summon.
+	actors.clear();
+	const goblin = makeActor("goblin", { default: 0 });
+	const wolf = makeActor("wolf", { default: 0, necro: 3 });
+	actors.set("goblin", goblin);
+	actors.set("wolf", wolf);
+
+	const granted = await grantSummonOwnership({ actorIds: ["goblin", "wolf"], userId: "necro" });
+
+	assert.deepEqual(granted, ["goblin"],
+		"only the actor without prior necro ownership counts as newly granted");
+});
+
+test("revokeSummonOwnership deletes the granted userId key, restoring prior ownership", async () => {
+	// Deleting the key is load-bearing: setting NONE would strip the GM's own
+	// ownership off a shared world actor.
+	actors.clear();
+	const zombie = makeActor("zombie", { default: 0, gmUser: 3, necro: 3 });
+	actors.set("zombie", zombie);
+
+	await revokeSummonOwnership({ actorIds: ["zombie"], userId: "necro" });
+
+	assert.deepEqual(zombie.updates, [{ ownership: { default: 0, gmUser: 3 } }],
+		"the key is deleted, not set to NONE, so the GM's ownership is untouched");
+});
+
+test("revokeSummonOwnership keeps going after a missing actor and a refused update", async () => {
+	// Same per-actor resilience as the grant handler: a deleted actor or a
+	// refused update must not cancel the revoke for the rest of the list.
+	actors.clear();
+	const goblin = makeActor("goblin", { default: 0, necro: 3 }, { rejectWith: "no permission" });
+	const wolf = makeActor("wolf", { default: 0, necro: 3 });
+	actors.set("goblin", goblin);
+	actors.set("wolf", wolf);
+
+	const warnings = await captureWarnings(() =>
+		revokeSummonOwnership({ actorIds: ["ghost", "goblin", "wolf"], userId: "necro" }));
+
+	assert.deepEqual(wolf.updates, [{ ownership: { default: 0 } }],
+		"a refusal on an earlier actor must not skip the next");
+	assert.ok(warnings.some((line) => line.includes("revokeSummonOwnership failed for actor goblin")));
+});
+
 test("rollInitiativeAsGM forwards the combatant and options to the combat", async () => {
 	combats.clear();
 	const calls = [];
@@ -221,6 +268,34 @@ test("the ownership grant is requested before portal.spawn(), not after it", () 
 	assert.ok(grantAt < spawnAt,
 		"grantSummonOwnership must be requested before portal.spawn(), or portal-lib's "
 		+ "own worldActor.update() fails for a player caster");
+});
+
+test("the pre-grant id capture is hoisted so a throwing spawn can revoke it", () => {
+	// The cancel path revokes ownership when portal.spawn() resolves empty; the
+	// THROW path (portal-lib error mid token creation) would leak the same
+	// grant if the function-level catch could not see grantedActorIds. It only
+	// can if the declaration sits ABOVE the try block, and the catch must
+	// revoke before it notifies — otherwise the user sees the error while the
+	// permanent OWNER grant survives.
+	const source = readFileSync(
+		new URL("../../scripts/combat/damage-card-actions.mjs", import.meta.url), "utf8");
+
+	const fnStart = source.indexOf("async function spawnSummonedCreatures");
+	assert.ok(fnStart !== -1, "spawnSummonedCreatures not found");
+
+	const fnHead = source.slice(fnStart, source.indexOf("try {", fnStart));
+	assert.ok(fnHead.includes("let grantedActorIds = null;"),
+		"grantedActorIds must be declared above the try block so the catch can see it");
+	assert.equal(
+		source.split("let grantedActorIds = null;").length - 1, 1,
+		"grantedActorIds must be declared exactly once (no leftover in-try duplicate)");
+
+	const errAt = source.indexOf("shadowdark-extras | Error summoning creatures:");
+	assert.ok(errAt !== -1, "the spawn catch block not found");
+	const catchStart = source.lastIndexOf("catch(err) {", errAt);
+	assert.ok(catchStart !== -1, "the spawn catch block not found");
+	assert.ok(source.slice(catchStart, errAt).includes("revokeSummonOwnership"),
+		"the catch block must revoke the pre-grant ownership before the error notification");
 });
 
 test("initiative rolls route through the GM only for players", () => {

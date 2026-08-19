@@ -709,7 +709,8 @@ Hooks.once("ready", async () => {
 		FEATURE_IDS.AURAS,
 		FEATURE_IDS.TRADING,
 		FEATURE_IDS.ITEM_MACROS,
-		FEATURE_IDS.PLAYER_TRANSFERS
+		FEATURE_IDS.PLAYER_TRANSFERS,
+		FEATURE_IDS.ENHANCED_HEADER
 	);
 	if (needsCombatSocket && typeof socketlib !== "undefined") {
 		setupCombatSocket();
