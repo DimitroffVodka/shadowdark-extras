@@ -6,7 +6,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-## [6.12.0] — 2026-08-18 — Player summon & initiative permissions, and the summon lifecycle
+## [6.12.0] — 2026-08-18 — Grouped placeable-note tray, player summon & initiative permissions, the summon lifecycle, and a Foundry 14 baseline
 
 ### Added
 
