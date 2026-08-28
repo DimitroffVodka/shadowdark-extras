@@ -1,4 +1,5 @@
 import { cache } from "../shared/SDXCache.mjs";
+import { readShippedManifest, writeShippedManifest } from "../shared/shipped-asset-cache.mjs";
 import { getDoorTiles } from "../dungeon/DungeonPainterSD.mjs";
 import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 // _formatLabel has a neutral leaf of its own: every tile store calls it, so it
@@ -280,7 +281,7 @@ export async function loadTileAssets() {
 
 	// Metadata cache
 	const metadataKey = "hex_tiles_metadata_default";
-	const cached = await cache.getMetadata(metadataKey);
+	const cached = await readShippedManifest(metadataKey);
 
 	if (cached) {
 		_tiles = cached;
@@ -311,7 +312,7 @@ export async function loadTileAssets() {
 				_chosenTiles.add(_tiles[0].path);
 			}
 
-			await cache.setMetadata(metadataKey, _tiles);
+			await writeShippedManifest(metadataKey, _tiles);
 		}
 		catch(err) {
 			console.error(`${MODULE_ID} | Failed to discover hex tiles:`, err);

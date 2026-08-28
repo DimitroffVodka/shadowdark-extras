@@ -15,6 +15,7 @@
 // working from the painter.
 
 import { cache } from "../shared/SDXCache.mjs";
+import { readShippedManifest, writeShippedManifest } from "../shared/shipped-asset-cache.mjs";
 import { _formatLabel } from "./hex-tile-labels.mjs";
 import { browseAssetsAsGM } from "./hex-asset-browser.mjs";
 
@@ -35,7 +36,7 @@ export async function loadSymbolTileAssets() {
 	_symbolTiles = [];
 
 	const metadataKey = "hex_tiles_metadata_symbol";
-	const cached = await cache.getMetadata(metadataKey);
+	const cached = await readShippedManifest(metadataKey);
 	if (cached) {
 		_symbolTiles = cached;
 		return;
@@ -84,7 +85,7 @@ export async function loadSymbolTileAssets() {
 		}
 
 		_symbolTiles.sort((a, b) => a.key.localeCompare(b.key));
-		await cache.setMetadata(metadataKey, _symbolTiles);
+		await writeShippedManifest(metadataKey, _symbolTiles);
 		console.log(`${MODULE_ID} | Loaded ${_symbolTiles.length} symbol tiles from ${subdirs.length} folders`);
 	}
 	catch(err) {

@@ -7,7 +7,7 @@
 // back under the same identifiers, and a leaf module is what keeps the
 // extraction provable (read-only ESM bindings forbid cross-module assignment).
 
-import { cache } from "../shared/SDXCache.mjs";
+import { readShippedManifest, writeShippedManifest } from "../shared/shipped-asset-cache.mjs";
 import { _formatLabel } from "./hex-tile-labels.mjs";
 import { browseAssetsAsGM } from "./hex-asset-browser.mjs";
 
@@ -27,7 +27,7 @@ export async function loadColoredTileAssets() {
 	_coloredTiles = [];
 
 	const metadataKey = "hex_tiles_metadata_colored";
-	const cached = await cache.getMetadata(metadataKey);
+	const cached = await readShippedManifest(metadataKey);
 	if (cached) {
 		_coloredTiles = cached;
 		return;
@@ -76,7 +76,7 @@ export async function loadColoredTileAssets() {
 		}
 
 		_coloredTiles.sort((a, b) => a.key.localeCompare(b.key));
-		await cache.setMetadata(metadataKey, _coloredTiles);
+		await writeShippedManifest(metadataKey, _coloredTiles);
 		console.log(`${MODULE_ID} | Loaded ${_coloredTiles.length} colored tiles from ${subdirs.length} folders`);
 	}
 	catch(err) {
