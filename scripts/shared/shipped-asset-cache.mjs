@@ -47,10 +47,15 @@ import { MODULE_ID } from "./module-id.mjs";
  * failure this module exists to prevent, and re-running a folder scan is cheap
  * next to handing the generator paths that 404.
  *
+ * Read through `globalThis` rather than the bare `game` binding, so that a
+ * caller running before Foundry has bound the global gets that null instead of
+ * a ReferenceError — an unresolvable version is precisely the case this is
+ * documented to answer.
+ *
  * @returns {string|null}
  */
 export function shippedAssetCacheVersion() {
-	const version = game.modules?.get(MODULE_ID)?.version;
+	const version = globalThis.game?.modules?.get?.(MODULE_ID)?.version;
 	return typeof version === "string" && version ? version : null;
 }
 

@@ -14,7 +14,7 @@ installMemoryIndexedDB();
 globalThis.game = { modules: { get: () => ({ version: "6.12.0" }) } };
 
 const { cache } = await import("../../scripts/shared/SDXCache.mjs");
-const { readShippedManifest, writeShippedManifest }
+const { readShippedManifest, writeShippedManifest, shippedAssetCacheVersion }
 	= await import("../../scripts/shared/shipped-asset-cache.mjs");
 
 // The dungeon painter's catalogue: four arrays under one key.
@@ -47,4 +47,21 @@ test("the dungeon painter's old hand-numbered envelope is still rejected", async
 test("an envelope with no entries forces a rescan", async () => {
 	await cache.setMetadata("empty_envelope_key", { version: "6.12.0" });
 	assert.equal(await readShippedManifest("empty_envelope_key"), null);
+});
+
+test("an unbound game global yields no version rather than throwing", async () => {
+	// hex-tile-cache-version covers a registry that answers with no version. This
+	// is the harder case: `game` itself not bound yet. Reading it through the bare
+	// binding would throw a ReferenceError, which the documented "or null when it
+	// cannot be determined" contract promises not to do.
+	const restore = globalThis.game;
+	delete globalThis.game;
+	try {
+		assert.equal(shippedAssetCacheVersion(), null);
+		assert.equal(await readShippedManifest("envelope_key"), null);
+		await assert.doesNotReject(() => writeShippedManifest("unbound_key", []));
+	}
+	finally {
+		globalThis.game = restore;
+	}
 });
