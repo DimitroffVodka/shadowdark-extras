@@ -6,6 +6,11 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Generating a hex map no longer fails with `Invalid Asset ... .png` for every hex.** The hex painter caches its catalogue of the tiles this module ships so that opening it does not re-walk some two hundred files on every boot, but that catalogue was stored in the browser with no version stamp and no expiry — once written it was returned forever and the folders were never scanned again. When the shipped art was converted from PNG to WebP, any browser that had opened the painter before the conversion kept a catalogue of `.png` paths whose files no longer existed, so the generator built tiles from dead paths and Foundry rejected each one. The giveaway was that Foundry's own file browser, which reads the real filesystem, showed the same tiles as `.webp`. Catalogues are now stamped with the module version, so a stale one is discarded and rescanned instead of trusted; the existing broken entry is repaired in place the first time the painter loads. Reinstalling the module could not fix this, because the stale catalogue lived in the browser rather than in the module's files or the world. The world-side half of the conversion was already handled by the existing WebP path migration, which rewrites stored paths in scenes, settings, and flags but never looked at the browser's cache.
+- **The dungeon painter's tile catalogue is now invalidated by a release too.** It cached the same way and had been repaired once by hand, with a version number written into the source that someone had to remember to increment. Nothing forced that, so the next change to the shipped dungeon art would have brought the same dead-path breakage back. It now carries the module version, like the hex catalogues.
+
 ## [6.12.0] — 2026-08-18 — Grouped placeable-note tray, player summon & initiative permissions, the summon lifecycle, and a Foundry 14 baseline
 
 ### Added

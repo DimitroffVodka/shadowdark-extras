@@ -2,60 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import "./helpers/foundry-loader.mjs";
+import { installMemoryIndexedDB } from "./helpers/indexeddb-harness.mjs";
 import { installCanvasGlobals, installDom } from "./helpers/pixi-harness.mjs";
 
 const METADATA_KEY = "dungeon_tiles_metadata";
 const FLOOR_FOLDER = "modules/shadowdark-extras/assets/Dungeon/floor_tiles";
 const LEGACY_FLOOR_PATH = `${FLOOR_FOLDER}/stone_floor_00.png`;
 const CURRENT_FLOOR_PATH = `${FLOOR_FOLDER}/stone_floor_00.webp`;
-
-function installMemoryIndexedDB() {
-	const stores = new Map();
-
-	function requestFor(action) {
-		const request = {};
-		queueMicrotask(() => {
-			try {
-				request.result = action();
-				request.onsuccess?.();
-			}
-			catch(error) {
-				request.error = error;
-				request.onerror?.();
-			}
-		});
-		return request;
-	}
-
-	globalThis.indexedDB = {
-		open() {
-			const request = {};
-			queueMicrotask(() => {
-				const db = {
-					objectStoreNames: { contains: name => stores.has(name) },
-					createObjectStore(name) {
-						stores.set(name, new Map());
-					},
-					transaction() {
-						return {
-							objectStore(name) {
-								const store = stores.get(name);
-								return {
-									get: key => requestFor(() => store.get(key)),
-									put: (value, key) => requestFor(() => store.set(key, value)),
-								};
-							},
-						};
-					},
-				};
-				const event = { target: { result: db } };
-				request.onupgradeneeded?.(event);
-				request.onsuccess?.(event);
-			});
-			return request;
-		},
-	};
-}
 
 installCanvasGlobals();
 installDom();
@@ -84,6 +37,15 @@ globalThis.foundry.applications = {
 };
 globalThis.foundry.canvas = { layers: { CanvasLayer: class {} } };
 globalThis.Hooks = { on() {}, once() {}, off() {}, callAll() {} };
+
+// A real world always has this module registered with a version, and the cache
+// is stamped with it. Tests that care about invalidation reassign this.
+let installedVersion = "6.12.0";
+globalThis.game.modules = {
+	get: id => (id === "shadowdark-extras"
+		? { active: true, version: installedVersion }
+		: { active: id === "socketlib" }),
+};
 
 const requestedImages = [];
 globalThis.fetch = async path => {
@@ -161,7 +123,6 @@ test("player replaces a legacy catalog with the current catalog received from th
 	browsedFolders.length = 0;
 	globalThis.game.user = { isGM: false };
 	globalThis.game.users = [{ isGM: true, active: true }];
-	globalThis.game.modules = { get: id => ({ active: id === "socketlib" }) };
 
 	let gmRequests = 0;
 	globalThis.socketlib = {
@@ -220,4 +181,38 @@ test("player replaces a legacy catalog with the current catalog received from th
 	assert.equal(painter.getSelectedFloorTile(), CURRENT_FLOOR_PATH);
 	assert.deepEqual(requestedImages, [CURRENT_FLOOR_PATH]);
 	assert.equal(gmRequests, 1, "repaired metadata should avoid a second GM request");
+});
+
+test("a module version bump invalidates the cached dungeon catalog", async () => {
+	// The GM cache-hit path always re-scans the (small) backgrounds folder, so
+	// only a scan of the floor folder distinguishes a rebuild from a cache hit.
+	function reloadAsGM() {
+		tileCatalog.setFloorTiles(null);
+		tileCatalog.setWallTiles(null);
+		tileCatalog.setDoorTiles(null);
+		tileCatalog.setBackgroundTiles(null);
+		painter.selectFloorTile(null);
+		painter.selectWallTile(null);
+		painter.selectDoorTile(null);
+		requestedImages.length = 0;
+		browsedFolders.length = 0;
+		globalThis.game.user = { isGM: true };
+		globalThis.game.users = [{ isGM: true, active: true }];
+		return painter.loadDungeonAssets();
+	}
+
+	await cache.setMetadata(METADATA_KEY, null);
+	await reloadAsGM();
+	assert.ok(browsedFolders.includes(FLOOR_FOLDER), "an empty cache should trigger a folder scan");
+
+	// Same version: the freshly written catalog is trusted, no floor re-scan.
+	await reloadAsGM();
+	assert.equal(painter.getSelectedFloorTile(), CURRENT_FLOOR_PATH);
+	assert.ok(!browsedFolders.includes(FLOOR_FOLDER), "an unchanged module version should reuse the cached catalog");
+
+	// Publishing a release must invalidate it without anyone bumping a constant.
+	installedVersion = "6.13.0";
+	await reloadAsGM();
+	assert.equal(painter.getSelectedFloorTile(), CURRENT_FLOOR_PATH);
+	assert.ok(browsedFolders.includes(FLOOR_FOLDER), "a module version bump should force a fresh folder scan");
 });
