@@ -1,4 +1,5 @@
 import { cache } from "../shared/SDXCache.mjs";
+import { readShippedManifest, writeShippedManifest } from "../shared/shipped-asset-cache.mjs";
 import { buildCaveLoops, generateCurvedWalls, generateCurvedWallVisuals } from "./DungeonCaveSD.mjs";
 import {
 	makeTopLeftTileTexture,
@@ -108,9 +109,6 @@ const WALL_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/wall_tiles`;
 const DOOR_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/door_tiles`;
 const BG_TILE_FOLDER = `modules/${MODULE_ID}/assets/Dungeon/backgrounds`;
 const DUNGEON_TILE_METADATA_KEY = "dungeon_tiles_metadata";
-// IndexedDB survives module upgrades. Bump this when shipped tile filenames or
-// the cached catalogue shape changes so every browser performs one fresh scan.
-const DUNGEON_TILE_CACHE_VERSION = 1;
 
 const GRID_SIZE = 100;
 const WALL_THICKNESS = 20;
@@ -211,19 +209,35 @@ export function canPlayerPaint() {
 }
 
 /**
+ * The four shipped tile catalogues as one payload, for the metadata cache.
+ *
+ * @returns {object} The floor, wall, door and background tile lists.
+ */
+function currentTileCatalog() {
+	return {
+		floorTiles: _floorTiles,
+		wallTiles: _wallTiles,
+		doorTiles: _doorTiles,
+		backgroundTiles: _backgroundTiles,
+	};
+}
+
+/**
  * Load dungeon tile assets
  */
 export async function loadDungeonAssets() {
 	if (_floorTiles) return;
 
-	// Try to load from cache first
-	const cachedMetadata = await cache.getMetadata(DUNGEON_TILE_METADATA_KEY);
+	// Try to load from cache first. A catalogue stamped with any other module
+	// version describes art this install no longer ships, so it is discarded and
+	// rebuilt below rather than trusted.
+	const cachedCatalog = await readShippedManifest(DUNGEON_TILE_METADATA_KEY);
 
-	if (cachedMetadata?.version === DUNGEON_TILE_CACHE_VERSION) {
-		setFloorTiles(cachedMetadata.floorTiles || []);
-		setWallTiles(cachedMetadata.wallTiles || []);
-		setDoorTiles(cachedMetadata.doorTiles || []);
-		setBackgroundTiles(cachedMetadata.backgroundTiles || []);
+	if (cachedCatalog) {
+		setFloorTiles(cachedCatalog.floorTiles || []);
+		setWallTiles(cachedCatalog.wallTiles || []);
+		setDoorTiles(cachedCatalog.doorTiles || []);
+		setBackgroundTiles(cachedCatalog.backgroundTiles || []);
 
 		// Always re-scan backgrounds from folder for GM (small folder, may have new images)
 		if (game.user.isGM) {
@@ -231,13 +245,7 @@ export async function loadDungeonAssets() {
 			if (freshBg.length !== _backgroundTiles.length
                 || freshBg.some((t, i) => t.path !== _backgroundTiles[i]?.path)) {
 				setBackgroundTiles(freshBg);
-				await cache.setMetadata(DUNGEON_TILE_METADATA_KEY, {
-					version: DUNGEON_TILE_CACHE_VERSION,
-					floorTiles: _floorTiles,
-					wallTiles: _wallTiles,
-					doorTiles: _doorTiles,
-					backgroundTiles: _backgroundTiles,
-				});
+				await writeShippedManifest(DUNGEON_TILE_METADATA_KEY, currentTileCatalog());
 			}
 		}
 	}
@@ -258,13 +266,7 @@ export async function loadDungeonAssets() {
 		setBackgroundTiles(await loadTilesFromFolder(BG_TILE_FOLDER, "background"));
 
 		// Save to cache
-		await cache.setMetadata(DUNGEON_TILE_METADATA_KEY, {
-			version: DUNGEON_TILE_CACHE_VERSION,
-			floorTiles: _floorTiles,
-			wallTiles: _wallTiles,
-			doorTiles: _doorTiles,
-			backgroundTiles: _backgroundTiles,
-		});
+		await writeShippedManifest(DUNGEON_TILE_METADATA_KEY, currentTileCatalog());
 	}
 	else {
 		// Players cannot browse module folders. Reject legacy metadata without
@@ -285,13 +287,7 @@ export async function loadDungeonAssets() {
 				setWallTiles(tileData.wallTiles || []);
 				setDoorTiles(tileData.doorTiles || []);
 				setBackgroundTiles(tileData.backgroundTiles || []);
-				await cache.setMetadata(DUNGEON_TILE_METADATA_KEY, {
-					version: DUNGEON_TILE_CACHE_VERSION,
-					floorTiles: _floorTiles,
-					wallTiles: _wallTiles,
-					doorTiles: _doorTiles,
-					backgroundTiles: _backgroundTiles,
-				});
+				await writeShippedManifest(DUNGEON_TILE_METADATA_KEY, currentTileCatalog());
 				console.log(`${MODULE_ID} | Received tile list from GM: ${_floorTiles.length} floor, ${_wallTiles.length} wall, ${_doorTiles.length} door tiles`);
 			}
 		}

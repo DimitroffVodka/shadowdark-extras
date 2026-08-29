@@ -25,8 +25,15 @@
  * constant would not have prevented this: the asset conversion was precisely
  * the commit that would have had to remember to bump it. DungeonPainterSD hit
  * the same bug and pinned a literal `DUNGEON_TILE_CACHE_VERSION = 1`, which
- * repaired the PNG damage but leaves the next asset change to break the same
- * way.
+ * repaired the PNG damage but left the next asset change to break the same way;
+ * it now stamps through here too.
+ *
+ * A catalogue is whatever its owner stores under one key: the hex painters keep
+ * a flat array of tiles, the dungeon painter an object holding four such arrays
+ * (floor, wall, door, background). The envelope therefore treats `entries` as
+ * opaque and never inspects its shape. What it does still reject is a *bare*
+ * payload — a legacy catalogue was written as an unwrapped array, so anything
+ * arriving without an envelope around it is stale by construction.
  */
 
 import { cache } from "./SDXCache.mjs";
@@ -51,7 +58,8 @@ export function shippedAssetCacheVersion() {
  * Read a catalogue, but only if it was written by the running module version.
  *
  * @param {string} key - IndexedDB metadata key.
- * @returns {Promise<Array|null>} The cached entries, or null to force a rescan.
+ * @returns {Promise<Array|object|null>} The cached catalogue, or null to force a
+ *   rescan.
  */
 export async function readShippedManifest(key) {
 	const version = shippedAssetCacheVersion();
@@ -63,7 +71,9 @@ export async function readShippedManifest(key) {
 	// than trusted - including the pre-WebP arrays this module exists to evict.
 	if (!cached || Array.isArray(cached) || cached.version !== version) return null;
 
-	return Array.isArray(cached.entries) ? cached.entries : null;
+	// `entries` is opaque: an array for the hex catalogues, an object of four
+	// arrays for the dungeon one. Only its absence forces a rescan.
+	return cached.entries ?? null;
 }
 
 /**
@@ -74,7 +84,7 @@ export async function readShippedManifest(key) {
  * replacement.
  *
  * @param {string} key - IndexedDB metadata key.
- * @param {Array} entries - Catalogue to store.
+ * @param {Array|object} entries - Catalogue to store; shape is the caller's.
  */
 export async function writeShippedManifest(key, entries) {
 	const version = shippedAssetCacheVersion();

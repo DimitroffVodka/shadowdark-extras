@@ -11,59 +11,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { installMemoryIndexedDB } from "./helpers/indexeddb-harness.mjs";
+
 const MODULE_PREFIX = "modules/shadowdark-extras/";
 const HEXES_FOLDER = `${MODULE_PREFIX}assets/Hexes`;
 const MOUNTAINS_FOLDER = `${HEXES_FOLDER}/Mountains`;
 const LEGACY_PATH = `${MOUNTAINS_FOLDER}/Hex - Mountains, medium (lush).png`;
 const CURRENT_PATH = `${MOUNTAINS_FOLDER}/Hex - Mountains, medium (lush).webp`;
-
-function installMemoryIndexedDB() {
-	const stores = new Map();
-
-	function requestFor(action) {
-		const request = {};
-		queueMicrotask(() => {
-			try {
-				request.result = action();
-				request.onsuccess?.();
-			}
-			catch(error) {
-				request.error = error;
-				request.onerror?.();
-			}
-		});
-		return request;
-	}
-
-	globalThis.indexedDB = {
-		open() {
-			const request = {};
-			queueMicrotask(() => {
-				const db = {
-					objectStoreNames: { contains: name => stores.has(name) },
-					createObjectStore(name) {
-						stores.set(name, new Map());
-					},
-					transaction() {
-						return {
-							objectStore(name) {
-								const store = stores.get(name);
-								return {
-									get: key => requestFor(() => store.get(key)),
-									put: (value, key) => requestFor(() => store.set(key, value)),
-								};
-							},
-						};
-					},
-				};
-				const event = { target: { result: db } };
-				request.onupgradeneeded?.(event);
-				request.onsuccess?.(event);
-			});
-			return request;
-		},
-	};
-}
 
 installMemoryIndexedDB();
 

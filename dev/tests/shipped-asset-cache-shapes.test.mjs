@@ -1,0 +1,50 @@
+// hex-tile-cache-version.test.mjs covers the stamping rules against the hex
+// catalogues, which are flat arrays. These cases cover only what generalizing
+// the envelope for the dungeon painter added: `entries` is opaque, so a
+// catalogue may be an object holding four arrays rather than one array, and the
+// envelope's own fields must not collide with the payload's.
+
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { installMemoryIndexedDB } from "./helpers/indexeddb-harness.mjs";
+
+installMemoryIndexedDB();
+
+globalThis.game = { modules: { get: () => ({ version: "6.12.0" }) } };
+
+const { cache } = await import("../../scripts/shared/SDXCache.mjs");
+const { readShippedManifest, writeShippedManifest }
+	= await import("../../scripts/shared/shipped-asset-cache.mjs");
+
+// The dungeon painter's catalogue: four arrays under one key.
+const DUNGEON_CATALOG = {
+	floorTiles: [{ key: "stone_floor_00", path: "modules/x/stone_floor_00.webp" }],
+	wallTiles: [],
+	doorTiles: [],
+	backgroundTiles: [],
+};
+
+test("an object catalogue round-trips as faithfully as an array one", async () => {
+	await writeShippedManifest("envelope_key", DUNGEON_CATALOG);
+	assert.deepEqual(await readShippedManifest("envelope_key"), DUNGEON_CATALOG);
+});
+
+test("a payload carrying its own version key is not shadowed by the stamp", async () => {
+	const payload = { version: "payload-owned", tiles: [] };
+	await writeShippedManifest("shadowed_key", payload);
+	assert.deepEqual(await readShippedManifest("shadowed_key"), payload);
+});
+
+test("the dungeon painter's old hand-numbered envelope is still rejected", async () => {
+	// What DUNGEON_TILE_CACHE_VERSION = 1 wrote: an envelope, but stamped with a
+	// literal rather than the module version, and with the arrays spread across
+	// it instead of nested under `entries`.
+	await cache.setMetadata("legacy_numbered_key", { version: 1, ...DUNGEON_CATALOG });
+	assert.equal(await readShippedManifest("legacy_numbered_key"), null);
+});
+
+test("an envelope with no entries forces a rescan", async () => {
+	await cache.setMetadata("empty_envelope_key", { version: "6.12.0" });
+	assert.equal(await readShippedManifest("empty_envelope_key"), null);
+});
