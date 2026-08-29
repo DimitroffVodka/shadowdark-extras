@@ -85,7 +85,9 @@ export async function loadSymbolTileAssets() {
 		}
 
 		_symbolTiles.sort((a, b) => a.key.localeCompare(b.key));
-		await writeShippedManifest(metadataKey, _symbolTiles);
+		await writeShippedManifest(metadataKey, _symbolTiles, {
+			isEmpty: entries => entries.length === 0,
+		});
 		console.log(`${MODULE_ID} | Loaded ${_symbolTiles.length} symbol tiles from ${subdirs.length} folders`);
 	}
 	catch(err) {

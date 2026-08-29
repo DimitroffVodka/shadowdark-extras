@@ -76,7 +76,9 @@ export async function loadColoredTileAssets() {
 		}
 
 		_coloredTiles.sort((a, b) => a.key.localeCompare(b.key));
-		await writeShippedManifest(metadataKey, _coloredTiles);
+		await writeShippedManifest(metadataKey, _coloredTiles, {
+			isEmpty: entries => entries.length === 0,
+		});
 		console.log(`${MODULE_ID} | Loaded ${_coloredTiles.length} colored tiles from ${subdirs.length} folders`);
 	}
 	catch(err) {

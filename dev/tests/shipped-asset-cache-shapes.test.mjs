@@ -26,13 +26,13 @@ const DUNGEON_CATALOG = {
 };
 
 test("an object catalogue round-trips as faithfully as an array one", async () => {
-	await writeShippedManifest("envelope_key", DUNGEON_CATALOG);
+	await writeShippedManifest("envelope_key", DUNGEON_CATALOG, { isEmpty: () => false });
 	assert.deepEqual(await readShippedManifest("envelope_key"), DUNGEON_CATALOG);
 });
 
 test("a payload carrying its own version key is not shadowed by the stamp", async () => {
 	const payload = { version: "payload-owned", tiles: [] };
-	await writeShippedManifest("shadowed_key", payload);
+	await writeShippedManifest("shadowed_key", payload, { isEmpty: () => false });
 	assert.deepEqual(await readShippedManifest("shadowed_key"), payload);
 });
 
@@ -49,6 +49,29 @@ test("an envelope with no entries forces a rescan", async () => {
 	assert.equal(await readShippedManifest("empty_envelope_key"), null);
 });
 
+test("an empty flat catalogue is not persisted", async () => {
+	await writeShippedManifest("empty_array_key", [], {
+		isEmpty: entries => entries.length === 0,
+	});
+
+	assert.equal(await readShippedManifest("empty_array_key"), null);
+});
+
+test("a dungeon catalogue with an empty shipped category is not persisted", async () => {
+	const emptyDungeonCatalog = {
+		floorTiles: [{ key: "stone_floor_00", path: "modules/x/stone_floor_00.webp" }],
+		wallTiles: [{ key: "stone_wall_00", path: "modules/x/stone_wall_00.webp" }],
+		doorTiles: [{ key: "stone_door_00", path: "modules/x/stone_door_00.webp" }],
+		backgroundTiles: [],
+	};
+
+	await writeShippedManifest("empty_dungeon_key", emptyDungeonCatalog, {
+		isEmpty: entries => Object.values(entries).some(tiles => tiles.length === 0),
+	});
+
+	assert.equal(await readShippedManifest("empty_dungeon_key"), null);
+});
+
 test("an unbound game global yields no version rather than throwing", async () => {
 	// hex-tile-cache-version covers a registry that answers with no version. This
 	// is the harder case: `game` itself not bound yet. Reading it through the bare
@@ -59,7 +82,9 @@ test("an unbound game global yields no version rather than throwing", async () =
 	try {
 		assert.equal(shippedAssetCacheVersion(), null);
 		assert.equal(await readShippedManifest("envelope_key"), null);
-		await assert.doesNotReject(() => writeShippedManifest("unbound_key", []));
+		await assert.doesNotReject(() => writeShippedManifest("unbound_key", [], {
+			isEmpty: entries => entries.length === 0,
+		}));
 	}
 	finally {
 		globalThis.game = restore;

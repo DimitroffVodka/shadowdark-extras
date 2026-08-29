@@ -312,7 +312,9 @@ export async function loadTileAssets() {
 				_chosenTiles.add(_tiles[0].path);
 			}
 
-			await writeShippedManifest(metadataKey, _tiles);
+			await writeShippedManifest(metadataKey, _tiles, {
+				isEmpty: entries => entries.length === 0,
+			});
 		}
 		catch(err) {
 			console.error(`${MODULE_ID} | Failed to discover hex tiles:`, err);

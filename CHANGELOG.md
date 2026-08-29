@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **An empty shipped-asset scan no longer stays empty until the next release.** A successful scan that found no files was cached as authoritative, so a partially installed module could leave the hex painter with no tiles and no reason to scan again. The dungeon path was broader: it turns a failed folder browse into an empty array before writing the combined catalogue, so one unavailable floor, wall, door, or background folder could make that partial result sticky too. Empty flat catalogues and dungeon catalogues missing any shipped category are no longer persisted; the next load retries the real folders.
+
 ## [6.12.1] — 2026-08-29 — Shipped-asset catalogues are invalidated by the release that changes them
 
 ### Fixed

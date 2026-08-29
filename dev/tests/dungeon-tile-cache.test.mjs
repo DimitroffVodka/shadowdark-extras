@@ -7,18 +7,33 @@ import { installCanvasGlobals, installDom } from "./helpers/pixi-harness.mjs";
 
 const METADATA_KEY = "dungeon_tiles_metadata";
 const FLOOR_FOLDER = "modules/shadowdark-extras/assets/Dungeon/floor_tiles";
+const WALL_FOLDER = "modules/shadowdark-extras/assets/Dungeon/wall_tiles";
+const DOOR_FOLDER = "modules/shadowdark-extras/assets/Dungeon/door_tiles";
+const BACKGROUND_FOLDER = "modules/shadowdark-extras/assets/Dungeon/backgrounds";
 const LEGACY_FLOOR_PATH = `${FLOOR_FOLDER}/stone_floor_00.png`;
 const CURRENT_FLOOR_PATH = `${FLOOR_FOLDER}/stone_floor_00.webp`;
+const CURRENT_WALL_PATH = `${WALL_FOLDER}/stone_wall_00.webp`;
+const CURRENT_DOOR_PATH = `${DOOR_FOLDER}/stone_door_00.webp`;
+const CURRENT_BACKGROUND_PATH = `${BACKGROUND_FOLDER}/stone_background_00.webp`;
 
 installCanvasGlobals();
 installDom();
 installMemoryIndexedDB();
 
 const browsedFolders = [];
+const unavailableFolders = new Set();
 class TestFilePicker {
 	static async browse(_source, folder) {
 		browsedFolders.push(folder);
-		return { files: folder === FLOOR_FOLDER ? [CURRENT_FLOOR_PATH] : [] };
+		if (unavailableFolders.has(folder)) throw new Error(`Unavailable: ${folder}`);
+		return {
+			files: {
+				[FLOOR_FOLDER]: [CURRENT_FLOOR_PATH],
+				[WALL_FOLDER]: [CURRENT_WALL_PATH],
+				[DOOR_FOLDER]: [CURRENT_DOOR_PATH],
+				[BACKGROUND_FOLDER]: [CURRENT_BACKGROUND_PATH],
+			}[folder] || [],
+		};
 	}
 }
 
@@ -74,7 +89,8 @@ test("legacy dungeon catalog is refreshed before image preloading", async () => 
 	for (let i = 0; i < 4; i++) await new Promise(resolve => setImmediate(resolve));
 
 	assert.equal(painter.getSelectedFloorTile(), CURRENT_FLOOR_PATH);
-	assert.deepEqual(requestedImages, [CURRENT_FLOOR_PATH]);
+	assert.ok(requestedImages.includes(CURRENT_FLOOR_PATH));
+	assert.ok(!requestedImages.includes(LEGACY_FLOOR_PATH));
 	assert.ok(browsedFolders.includes(FLOOR_FOLDER), "legacy metadata should trigger a fresh folder scan");
 });
 
@@ -138,9 +154,24 @@ test("player replaces a legacy catalog with the current catalog received from th
 						path: CURRENT_FLOOR_PATH,
 						type: "floor",
 					}],
-					wallTiles: [],
-					doorTiles: [],
-					backgroundTiles: [],
+					wallTiles: [{
+						key: "stone_wall_00",
+						label: "Stone Wall 00",
+						path: CURRENT_WALL_PATH,
+						type: "wall",
+					}],
+					doorTiles: [{
+						key: "stone_door_00",
+						label: "Stone Door 00",
+						path: CURRENT_DOOR_PATH,
+						type: "door",
+					}],
+					backgroundTiles: [{
+						key: "stone_background_00",
+						label: "Stone Background 00",
+						path: CURRENT_BACKGROUND_PATH,
+						type: "background",
+					}],
 				};
 			},
 		}),
@@ -179,7 +210,7 @@ test("player replaces a legacy catalog with the current catalog received from th
 	for (let i = 0; i < 4; i++) await new Promise(resolve => setImmediate(resolve));
 
 	assert.equal(painter.getSelectedFloorTile(), CURRENT_FLOOR_PATH);
-	assert.deepEqual(requestedImages, [CURRENT_FLOOR_PATH]);
+	assert.ok(requestedImages.includes(CURRENT_FLOOR_PATH));
 	assert.equal(gmRequests, 1, "repaired metadata should avoid a second GM request");
 });
 
@@ -215,4 +246,34 @@ test("a module version bump invalidates the cached dungeon catalog", async () =>
 	await reloadAsGM();
 	assert.equal(painter.getSelectedFloorTile(), CURRENT_FLOOR_PATH);
 	assert.ok(browsedFolders.includes(FLOOR_FOLDER), "a module version bump should force a fresh folder scan");
+});
+
+test("a failed non-floor scan is not cached and is retried", async () => {
+	function resetAsGM() {
+		tileCatalog.setFloorTiles(null);
+		tileCatalog.setWallTiles(null);
+		tileCatalog.setDoorTiles(null);
+		tileCatalog.setBackgroundTiles(null);
+		painter.selectFloorTile(null);
+		painter.selectWallTile(null);
+		painter.selectDoorTile(null);
+		globalThis.game.user = { isGM: true };
+		globalThis.game.users = [{ isGM: true, active: true }];
+		return painter.loadDungeonAssets();
+	}
+
+	await cache.setMetadata(METADATA_KEY, null);
+	unavailableFolders.add(WALL_FOLDER);
+	await resetAsGM();
+	assert.equal(await cache.getMetadata(METADATA_KEY), null);
+
+	unavailableFolders.delete(WALL_FOLDER);
+	browsedFolders.length = 0;
+	await resetAsGM();
+
+	assert.ok(browsedFolders.includes(WALL_FOLDER), "the failed wall folder should be retried");
+	assert.deepEqual(
+		(await cache.getMetadata(METADATA_KEY)).entries.wallTiles.map(tile => tile.path),
+		[CURRENT_WALL_PATH],
+	);
 });

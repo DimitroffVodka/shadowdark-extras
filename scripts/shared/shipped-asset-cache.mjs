@@ -31,9 +31,10 @@
  * A catalogue is whatever its owner stores under one key: the hex painters keep
  * a flat array of tiles, the dungeon painter an object holding four such arrays
  * (floor, wall, door, background). The envelope therefore treats `entries` as
- * opaque and never inspects its shape. What it does still reject is a *bare*
- * payload — a legacy catalogue was written as an unwrapped array, so anything
- * arriving without an envelope around it is stale by construction.
+ * opaque. Its owner supplies the predicate that decides whether a catalogue is
+ * empty and not worth persisting. What the envelope itself still rejects is a
+ * *bare* payload — a legacy catalogue was written as an unwrapped array, so
+ * anything arriving without an envelope around it is stale by construction.
  */
 
 import { cache } from "./SDXCache.mjs";
@@ -90,9 +91,16 @@ export async function readShippedManifest(key) {
  *
  * @param {string} key - IndexedDB metadata key.
  * @param {Array|object} entries - Catalogue to store; shape is the caller's.
+ * @param {object} options
+ * @param {(entries: Array|object) => boolean} options.isEmpty - The catalogue
+ *   owner's shape-aware emptiness predicate.
  */
-export async function writeShippedManifest(key, entries) {
+export async function writeShippedManifest(key, entries, options) {
+	if (typeof options?.isEmpty !== "function") {
+		throw new globalThis.TypeError("writeShippedManifest requires an isEmpty predicate");
+	}
+
 	const version = shippedAssetCacheVersion();
-	if (!version) return;
+	if (!version || options.isEmpty(entries)) return;
 	await cache.setMetadata(key, { version, entries });
 }

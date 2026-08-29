@@ -223,6 +223,23 @@ function currentTileCatalog() {
 }
 
 /**
+ * Whether a folder scan produced an incomplete shipped dungeon catalogue.
+ *
+ * Every category maps to a non-empty folder shipped by this module. Treat a
+ * missing category as non-cacheable because loadTilesFromFolder also returns
+ * an empty array when FilePicker fails; the next load should retry that scan.
+ *
+ * @param {object} catalog
+ * @returns {boolean}
+ */
+function isEmptyDungeonTileCatalog(catalog) {
+	return !catalog.floorTiles?.length
+		|| !catalog.wallTiles?.length
+		|| !catalog.doorTiles?.length
+		|| !catalog.backgroundTiles?.length;
+}
+
+/**
  * Load dungeon tile assets
  */
 export async function loadDungeonAssets() {
@@ -245,7 +262,9 @@ export async function loadDungeonAssets() {
 			if (freshBg.length !== _backgroundTiles.length
                 || freshBg.some((t, i) => t.path !== _backgroundTiles[i]?.path)) {
 				setBackgroundTiles(freshBg);
-				await writeShippedManifest(DUNGEON_TILE_METADATA_KEY, currentTileCatalog());
+				await writeShippedManifest(DUNGEON_TILE_METADATA_KEY, currentTileCatalog(), {
+					isEmpty: isEmptyDungeonTileCatalog,
+				});
 			}
 		}
 	}
@@ -266,7 +285,9 @@ export async function loadDungeonAssets() {
 		setBackgroundTiles(await loadTilesFromFolder(BG_TILE_FOLDER, "background"));
 
 		// Save to cache
-		await writeShippedManifest(DUNGEON_TILE_METADATA_KEY, currentTileCatalog());
+		await writeShippedManifest(DUNGEON_TILE_METADATA_KEY, currentTileCatalog(), {
+			isEmpty: isEmptyDungeonTileCatalog,
+		});
 	}
 	else {
 		// Players cannot browse module folders. Reject legacy metadata without
@@ -287,7 +308,9 @@ export async function loadDungeonAssets() {
 				setWallTiles(tileData.wallTiles || []);
 				setDoorTiles(tileData.doorTiles || []);
 				setBackgroundTiles(tileData.backgroundTiles || []);
-				await writeShippedManifest(DUNGEON_TILE_METADATA_KEY, currentTileCatalog());
+				await writeShippedManifest(DUNGEON_TILE_METADATA_KEY, currentTileCatalog(), {
+					isEmpty: isEmptyDungeonTileCatalog,
+				});
 				console.log(`${MODULE_ID} | Received tile list from GM: ${_floorTiles.length} floor, ${_wallTiles.length} wall, ${_doorTiles.length} door tiles`);
 			}
 		}
@@ -1833,4 +1856,3 @@ async function _gmRebuildWallsInternal(scene, wallTilePath, noWalls, preferredLe
 	const levelContext = resolveLevelContext(scene, preferredLevelId);
 	await rebuildWallsForLevel(scene, levelContext, { wallTilePath, noWalls, logPrefix: "[Socket] " });
 }
-
