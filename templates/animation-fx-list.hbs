@@ -82,7 +82,7 @@
 				</thead>
 				<tbody>
 					{{#each cat.presets as |p|}}
-					<tr data-key="{{p.key}}" data-category="{{cat.key}}">
+					<tr class="sdx-animfx-sprite-row" data-key="{{p.key}}" data-category="{{cat.key}}">
 						<td>
 							{{#if p.imgSrc}}
 							<img class="sdx-animfx-thumb sdx-animfx-thumb-img" src="{{p.imgSrc}}" alt="{{p.label}}" />
@@ -124,7 +124,7 @@
 						<th>File</th>
 						<th>Sound</th>
 						<th>Scale</th>
-						<th>Dur</th>
+						<th data-tooltip="0 = Auto (natural media length)">Dur (0=Auto)</th>
 						<th></th>
 					</tr>
 				</thead>
@@ -141,14 +141,16 @@
 						<td><input type="text" name="preset.{{cat.key}}.{{p.key}}.label" value="{{p.label}}" /></td>
 						<td><input type="text" name="preset.{{cat.key}}.{{p.key}}.patterns" value="{{p.patterns}}" placeholder="{{#if p.isDefault}}(fallback){{/if}}" {{#if p.isDefault}}disabled{{/if}} /></td>
 						<td>
-							<select name="preset.{{cat.key}}.{{p.key}}.type">
+							<select class="sdx-animfx-master-type" name="preset.{{cat.key}}.{{p.key}}.type">
 								<option value="projectile" {{#if p.typeProjectile}}selected{{/if}}>Projectile</option>
 								<option value="onToken" {{#if p.typeOnToken}}selected{{/if}}>On Token</option>
 								<option value="cone" {{#if p.typeCone}}selected{{/if}}>Cone</option>
 							</select>
 						</td>
 						<td>
-							<select name="preset.{{cat.key}}.{{p.key}}.target">
+							<select class="sdx-animfx-master-target" name="preset.{{cat.key}}.{{p.key}}.target"
+								data-on-token-target="{{#if p.targetSelf}}self{{else}}target{{/if}}"
+								{{#unless p.anchorEditable}}disabled data-tooltip="Projectile and cone effects always travel from Caster to Target"{{/unless}}>
 								<option value="target" {{#if p.targetTarget}}selected{{/if}}>Target</option>
 								<option value="self" {{#if p.targetSelf}}selected{{/if}}>Caster</option>
 							</select>
@@ -156,7 +158,7 @@
 						<td><input type="text" name="preset.{{cat.key}}.{{p.key}}.file" value="{{p.file}}" placeholder="jb2a.magic_missile" /></td>
 						<td><input type="text" name="preset.{{cat.key}}.{{p.key}}.sound" value="{{p.sound}}" placeholder="(none)" data-tooltip="Sound file path, e.g. modules/psfx/…ogg — blank = silent" /></td>
 						<td><input type="number" step="0.1" min="0" name="preset.{{cat.key}}.{{p.key}}.scale" value="{{p.scale}}" /></td>
-						<td><input type="number" step="50" min="0" name="preset.{{cat.key}}.{{p.key}}.duration" value="{{p.duration}}" /></td>
+						<td><input type="number" step="50" min="0" name="preset.{{cat.key}}.{{p.key}}.duration" value="{{p.duration}}" data-tooltip="0 = Auto (natural media length)" /></td>
 						<td style="white-space:nowrap">
 							<a class="sdx-animfx-preview" data-category="{{cat.key}}" data-key="{{p.key}}" data-tooltip="Play on canvas (shift = miss variant)"><i class="fas fa-play"></i></a>
 							{{#unless p.isDefault}}

@@ -65,7 +65,9 @@ function mergePresetFromForm(base, key, vals, isSprite = false) {
 			// existing value only when the field wasn't in the form at all.
 			sound: vals.sound !== undefined ? (vals.sound.trim() || undefined) : base.hit?.sound,
 			scale: Number(vals.scale) || base.hit?.scale || 1,
-			duration: parseInt(vals.duration, 10) || base.hit?.duration || 1500,
+			duration: vals.duration !== undefined
+				? Math.max(0, parseInt(vals.duration, 10) || 0)
+				: (base.hit?.duration ?? 0),
 		},
 	};
 }
@@ -166,12 +168,13 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 					typeProjectile: (p.type || "projectile") === "projectile",
 					typeOnToken: p.type === "onToken",
 					typeCone: p.type === "cone",
+					anchorEditable: p.type === "onToken",
 					targetTarget: (p.target || "target") === "target",
 					targetSelf: p.target === "self",
 					file: hit.file ?? "",
 					sound: hit.sound ?? "",
 					scale: hit.scale ?? 1,
-					duration: hit.duration ?? 1500,
+					duration: hit.duration ?? 0,
 				};
 			});
 			// _default first for readability
@@ -253,7 +256,7 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 						patterns: "",
 						type: "projectile",
 						target: "target",
-						hit: { file: "", scale: 1, duration: 1500 },
+						hit: { file: "", scale: 1, duration: 0 },
 					};
 				this.render();
 			});
@@ -288,6 +291,26 @@ export class AnimationFxListApp extends HandlebarsApplicationMixin(ApplicationV2
 				vid.replaceWith(ph);
 			});
 		});
+
+		const syncAnchorControl = row => {
+			const type = row.querySelector(".sdx-animfx-master-type");
+			const anchor = row.querySelector(".sdx-animfx-master-target");
+			if (!type || !anchor) return;
+			if (type.value === "onToken") {
+				anchor.disabled = false;
+				anchor.value = anchor.dataset.onTokenTarget || anchor.value || "target";
+				return;
+			}
+			if (!anchor.disabled) anchor.dataset.onTokenTarget = anchor.value || "target";
+			anchor.value = "target";
+			anchor.disabled = true;
+		};
+		root.querySelectorAll("tr[data-category]:not(.sdx-animfx-sprite-row)")
+			.forEach(row => {
+				syncAnchorControl(row);
+				row.querySelector(".sdx-animfx-master-type")
+					?.addEventListener("change", () => syncAnchorControl(row));
+			});
 
 		// Play a preset on the canvas from the selected token.
 		root.querySelectorAll(".sdx-animfx-preview").forEach(btn => {

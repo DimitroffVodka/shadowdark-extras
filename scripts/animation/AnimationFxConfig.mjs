@@ -30,7 +30,7 @@ function esc(v) {
 		.replace(/'/g, "&#39;");
 }
 
-export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
+export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null, { heading = "Animation FX" } = {}) {
 	if (!isFeatureEnabled(FEATURE_IDS.ANIMATION_ITEM_OVERRIDES)) return "";
 	const fx = flags.animationFx || {};
 	const stored = fx.preset || {};
@@ -55,8 +55,17 @@ export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
 	const file = shownHit.file ?? "";
 	const sound = shownHit.sound ?? "";
 	const scale = shownHit.scale ?? 1;
-	const duration = shownHit.duration ?? 1500;
+	const duration = shownHit.duration ?? 0;
 	const opacity = shown.opacity ?? 1;
+	const shownTint = (shown.tint && typeof shown.tint === "object") ? shown.tint : {};
+	const tintEnabled = !!shownTint.enabled;
+	const tintColor = shownTint.color || "#ffffff";
+	const tintContrast = shownTint.contrast ?? 0;
+	const tintSaturation = shownTint.saturation ?? 0;
+	const nativeColors = file ? AnimationFxSD.nativeColorVariants(file) : [];
+	const nativeColorOptions = nativeColors.map(color =>
+		`<option value="${esc(color.path)}" ${color.current ? "selected" : ""}>${esc(color.label)}</option>`
+	).join("");
 
 	// Values to restore into the fields when the override is switched back off.
 	const inhHit = inherited?.preset?.hit || {};
@@ -67,12 +76,17 @@ export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
 		`data-inh-type="${esc(inherited?.preset?.type ?? "projectile")}"`,
 		`data-inh-target="${esc(inherited?.preset?.target ?? "target")}"`,
 		`data-inh-scale="${esc(inhHit.scale ?? 1)}"`,
-		`data-inh-duration="${esc(inhHit.duration ?? 1500)}"`,
+		`data-inh-duration="${esc(inhHit.duration ?? 0)}"`,
 		`data-inh-opacity="${esc(inherited?.preset?.opacity ?? 1)}"`,
+		`data-inh-tint-enabled="${inherited?.preset?.tint?.enabled ? "true" : "false"}"`,
+		`data-inh-tint-color="${esc(inherited?.preset?.tint?.color ?? "#ffffff")}"`,
+		`data-inh-tint-contrast="${esc(inherited?.preset?.tint?.contrast ?? 0)}"`,
+		`data-inh-tint-saturation="${esc(inherited?.preset?.tint?.saturation ?? 0)}"`,
 	].join(" ");
 
 	const ro = enabled ? "" : "disabled";
 	const roClass = enabled ? "" : " sdx-animfx-readonly";
+	const tintRo = (!enabled || !tintEnabled) ? "disabled" : "";
 
 	const typeOpt = (v, label) =>
 		`<option value="${v}" ${type === v ? "selected" : ""}>${label}</option>`;
@@ -115,7 +129,7 @@ export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
 			<div class="header light">
 				<label class="sdx-section-label">
 					<i class="fas fa-wand-magic-sparkles"></i>
-					<span>Animation FX</span>
+					<span>${esc(heading)}</span>
 				</label>
 				${badge}
 				<label class="sdx-toggle-label sdx-animfx-enable-wrap">
@@ -141,6 +155,14 @@ export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
 						</div>
 					</div>
 
+					<div class="sdx-animfx-field grid-colspan-3 sdx-animfx-native-color-row" ${nativeColors.length ? "" : "hidden"}>
+						<label>Native JB2A Color</label>
+						<select class="sdx-animfx-native-color" ${ro}>
+							${nativeColorOptions}
+						</select>
+						<p class="notes">Installed, hand-rendered variants usually look cleaner than tinting.</p>
+					</div>
+
 					<div class="sdx-animfx-field grid-colspan-3">
 						<label>Sound (file path — blank = silent)</label>
 						<div class="sdx-animfx-file-row">
@@ -161,9 +183,10 @@ export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
 						</select>
 					</div>
 
-					<div class="sdx-animfx-field">
+					<div class="sdx-animfx-field sdx-animfx-anchor-field">
 						<label>Anchor</label>
-						<select class="sdx-animfx-target" ${ro}>
+						<select class="sdx-animfx-target" data-on-token-target="${esc(target)}" ${ro}
+							${type === "onToken" ? "" : "disabled data-tooltip=\"Projectile and cone effects always travel from Caster to Target\""}>
 							${targetOpt("target", "Target")}
 							${targetOpt("self", "Caster")}
 						</select>
@@ -175,7 +198,7 @@ export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
 					</div>
 
 					<div class="sdx-animfx-field">
-						<label>Duration (ms)</label>
+						<label>Duration (ms, 0 = Auto)</label>
 						<input type="number" step="50" min="0" class="sdx-animfx-duration" value="${esc(duration)}" ${ro} />
 					</div>
 
@@ -183,6 +206,32 @@ export function generateAnimationFxConfigHTML(MODULE_ID, flags, item = null) {
 						<label>Opacity</label>
 						<input type="number" step="0.05" min="0" max="1" class="sdx-animfx-opacity" value="${esc(opacity)}" ${ro} />
 					</div>
+
+					<fieldset class="sdx-animfx-tint grid-colspan-3">
+						<legend>Optional Color Tint</legend>
+						<label class="sdx-toggle-label">
+							<input type="checkbox" class="sdx-animfx-tint-enabled" ${tintEnabled ? "checked" : ""} ${ro} />
+							<span>Apply tint and color adjustments</span>
+						</label>
+						<div class="SD-grid sdx-animfx-tint-controls${tintEnabled ? "" : " sdx-animfx-readonly"}">
+							<div class="sdx-animfx-field">
+								<label>Color</label>
+								<div class="sdx-animfx-color-row">
+									<input type="color" class="sdx-animfx-tint-color" value="${esc(tintColor)}" ${tintRo} />
+									<input type="text" class="sdx-animfx-tint-color-text" value="${esc(tintColor)}" spellcheck="false" ${tintRo} />
+								</div>
+							</div>
+							<div class="sdx-animfx-field">
+								<label>Contrast</label>
+								<input type="number" step="0.05" min="-1" max="1" class="sdx-animfx-tint-contrast" value="${esc(tintContrast)}" ${tintRo} />
+							</div>
+							<div class="sdx-animfx-field">
+								<label>Saturation</label>
+								<input type="number" step="0.05" min="-1" max="1" class="sdx-animfx-tint-saturation" value="${esc(tintSaturation)}" ${tintRo} />
+							</div>
+						</div>
+						<p class="notes">Tint is off by default. Preview uses the same Sequencer playback path as an attack.</p>
+					</fieldset>
 				</div>
 			</div>
 		</div>

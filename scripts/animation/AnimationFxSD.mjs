@@ -19,10 +19,17 @@
  * throws out of the chat hook.
  */
 
-import { DEFAULT_WEAPON_PRESETS } from "./presets/weapon-animation-presets.mjs";
-import { DEFAULT_SPELL_PRESETS } from "./presets/spell-animation-presets.mjs";
-import { DEFAULT_NPC_ATTACK_PRESETS } from "./presets/npc-attack-presets.mjs";
+import { DEFAULT_WEAPON_PRESETS, LEGACY_WEAPON_PRESETS } from "./presets/weapon-animation-presets.mjs";
+import { DEFAULT_SPELL_PRESETS, LEGACY_SPELL_PRESETS } from "./presets/spell-animation-presets.mjs";
+import { DEFAULT_NPC_ATTACK_PRESETS, LEGACY_NPC_ATTACK_PRESETS } from "./presets/npc-attack-presets.mjs";
 import { DEFAULT_WEAPON_SPRITE_PRESETS } from "./presets/weapon-sprite-presets.mjs";
+import { applyAttackFxTint, resolveNativeColorVariants } from "./animation-fx-color.mjs";
+import {
+	ANIMATION_DURATION_DEFAULTS_VERSION,
+	applyAnimationDuration,
+	migrateLegacyAnimationDurations,
+} from "./animation-fx-duration.mjs";
+import { resolveAnimationPreviewTargets } from "./animation-fx-preview.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -36,6 +43,7 @@ const MODULE_ID = "shadowdark-extras";
  * Block schema: { file, scale, duration, offsetX?, sound? }
  */
 export const DEFAULT_ANIMATION_FX_CONFIG = {
+	_durationDefaultsVersion: ANIMATION_DURATION_DEFAULTS_VERSION,
 	spells: {
 		_default: {
 			label: "Generic Spell Bolt",
@@ -45,7 +53,7 @@ export const DEFAULT_ANIMATION_FX_CONFIG = {
 			hit: {
 				file: "jb2a.magic_missile",
 				scale: 1,
-				duration: 1500,
+				duration: 0,
 			},
 		},
 	},
@@ -58,7 +66,7 @@ export const DEFAULT_ANIMATION_FX_CONFIG = {
 			hit: {
 				file: "jb2a.greatsword.melee.standard.white",
 				scale: 1,
-				duration: 1000,
+				duration: 0,
 			},
 		},
 	},
@@ -181,6 +189,36 @@ export const AnimationFxSD = {
 		}
 		catch(e) {
 			console.error(`${MODULE_ID} | Animation FX auto-seed failed`, e);
+		}
+	},
+
+	/** Upgrade untouched old bundled durations to Auto (natural media length). */
+	async migrateDurationDefaultsIfNeeded() {
+		if (!game.user?.isGM) return;
+		const bundledConfig = {
+			spells: LEGACY_SPELL_PRESETS,
+			weapons: {
+				_default: {
+					...DEFAULT_ANIMATION_FX_CONFIG.weapons._default,
+					hit: { ...DEFAULT_ANIMATION_FX_CONFIG.weapons._default.hit, duration: 1500 },
+				},
+				...LEGACY_WEAPON_PRESETS,
+			},
+			npcActions: LEGACY_NPC_ATTACK_PRESETS,
+		};
+		const result = migrateLegacyAnimationDurations(this.getConfig(), bundledConfig);
+		if (!result.changed) return;
+		await this.setConfig(result.config);
+		console.log(`${MODULE_ID} | Animation FX durations upgraded to natural media length`);
+	},
+
+	async initializeDefaults() {
+		try {
+			await this.autoSeedIfNeeded();
+			await this.migrateDurationDefaultsIfNeeded();
+		}
+		catch(e) {
+			console.error(`${MODULE_ID} | Animation FX default initialization failed`, e);
 		}
 	},
 
@@ -523,6 +561,11 @@ export const AnimationFxSD = {
 		}
 	},
 
+	/** Native color variants installed beside a Sequencer database entry. */
+	nativeColorVariants(file) {
+		return resolveNativeColorVariants(file, globalThis.Sequencer?.Database);
+	},
+
 	/**
 	 * Play a preset on the canvas from the selected token, for UI preview.
 	 * Shared by the master list app and the per-item Activity panel.
@@ -543,25 +586,12 @@ export const AnimationFxSD = {
 			return false;
 		}
 
-		// projectile/cone need a distinct target, or stretchTo / the cone angle get
-		// zero-distance math. Fall back to a synthetic point east of the source.
-		let targets;
-		if (preset.type === "projectile" || preset.type === "cone") {
-			const controlled = canvas.tokens.controlled;
-			const userTarget = game.user.targets.first();
-			if (controlled.length >= 2) targets = [controlled[1]];
-			else if (userTarget && userTarget !== source) targets = [userTarget];
-			else targets = [{
-				x: source.x + (source.w ?? 0) + 400,
-				y: source.y,
-				w: 1,
-				h: source.h ?? 1,
-				id: "_preview_offset",
-			}];
-		}
-		else {
-			targets = [source];
-		}
+		const targets = resolveAnimationPreviewTargets(
+			preset,
+			source,
+			canvas.tokens.controlled,
+			game.user.targets.first()
+		);
 
 		try {
 			await this._play(preset, source, targets, outcome);
@@ -606,6 +636,11 @@ export const AnimationFxSD = {
 			await seq.play();
 		}
 		catch(e) { /* silent */ }
+	},
+
+	/** Apply the optional Automated-Animations-style tint controls. */
+	_applyTint(effect, preset) {
+		return applyAttackFxTint(effect, preset);
 	},
 
 	// ── Cone geometry ────────────────────────────────────────────────────────
@@ -713,7 +748,7 @@ export const AnimationFxSD = {
 			catch(e) { /* ignore */ }
 			try {
 				const seq = new Sequence(MODULE_ID);
-				seq.effect()
+				const effect = seq.effect()
 					.file(block.file)
 					.atLocation(sourceToken)
 					.scale((block.scale ?? 1) * globalScale)
@@ -722,6 +757,7 @@ export const AnimationFxSD = {
 					.opacity(opacity)
 					.persist()
 					.name(effectName);
+				this._applyTint(effect, preset);
 				await seq.play();
 				await this._playSound(block);
 			}
@@ -768,7 +804,7 @@ export const AnimationFxSD = {
 			let hardDuration;
 
 			if (preset.type === "projectile") {
-				hardDuration = block.duration || 1500;
+				hardDuration = Number(block.duration) || 0;
 				// Distance-aware Y scale so beams don't bloat at short range.
 				const baseScale = (block.scale ?? 1) * globalScale;
 				const sx = sourceToken.x + ((sourceToken.w ?? 0) / 2);
@@ -783,38 +819,42 @@ export const AnimationFxSD = {
 					.atLocation(sourceToken).stretchTo(target)
 					.scale({ y: scaleY })
 					.fadeIn(100).fadeOut(100).opacity(opacity)
-					.duration(hardDuration)
 					.name(safetyName);
 			}
 			else if (preset.type === "cone") {
-				hardDuration = block.duration ?? 1500;
+				hardDuration = Number(block.duration) || 0;
 				const angle = this._computeConeAngle(sourceToken, allTargets);
 				effect
 					.atLocation(sourceToken)
 					.rotate(-angle)
 					.scale((block.scale ?? 1) * globalScale)
 					.anchor({ x: 0, y: 0.5 })
-					.duration(hardDuration)
 					.fadeIn(fadeIn).fadeOut(fadeOut).opacity(opacity)
 					.name(safetyName);
 			}
 			else {
 				// onToken
-				hardDuration = block.duration ?? 800;
+				hardDuration = Number(block.duration) || 0;
 				const anchorToken = preset.target === "self" ? sourceToken : target;
 				effect
 					.atLocation(anchorToken)
 					.scale((block.scale ?? 1) * globalScale)
-					.fadeIn(fadeIn).fadeOut(fadeOut).duration(hardDuration).opacity(opacity)
+					.fadeIn(fadeIn).fadeOut(fadeOut).opacity(opacity)
 					.name(safetyName);
 				if (typeof block.offsetX === "number") effect.spriteOffset({ x: block.offsetX });
 			}
 
+			applyAnimationDuration(effect, hardDuration);
+			this._applyTint(effect, preset);
+
 			try {
 				await seq.play();
-				// Safety net: guarantee cleanup even for looped / endless webms.
-				const cleanupAfter = hardDuration + fadeOut + 200;
-				setTimeout(() => this._endEffectsSafe({ name: safetyName }), cleanupAfter);
+				// Explicit durations get a safety cleanup. Auto effects are owned by
+				// Sequencer and end when their media reaches its natural conclusion.
+				if (hardDuration > 0) {
+					const cleanupAfter = hardDuration + fadeOut + 200;
+					setTimeout(() => this._endEffectsSafe({ name: safetyName }), cleanupAfter);
+				}
 			}
 			catch(e) {
 				console.warn(`${MODULE_ID} | AnimationFx play failed:`, e);

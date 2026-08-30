@@ -197,7 +197,7 @@ export function injectWeaponBonusTab(app, html, item) {
 	// inject the animation button (it's a separate icon-only tab) and bail
 	// out of the SDX bonus content injection.
 	if ($nav.find('[data-tab="tab-bonuses"]').length) {
-		if (isFeatureEnabled(FEATURE_IDS.WEAPON_SPRITES)) injectWeaponAnimationButton(html, item);
+		injectWeaponAnimationButton(html, item);
 		return;
 	}
 
@@ -244,44 +244,66 @@ export function injectWeaponBonusTab(app, html, item) {
 		}
 	});
 
-	// Inject Animation button after the Bonuses tab
-	if (isFeatureEnabled(FEATURE_IDS.WEAPON_SPRITES)) injectWeaponAnimationButton(html, item);
+	// Preserve the standalone injector contract; the composition root also
+	// calls this when Weapon Bonuses is disabled.
+	injectWeaponAnimationButton(html, item);
+
 }
 
 /**
- * Inject the Animation button into weapon and shield item sheets
+ * Inject Attack FX / Equipped Sprite controls into supported item sheets.
  * @param {jQuery} html - The sheet HTML
  * @param {Item} item - The weapon or shield item
  */
 export function injectWeaponAnimationButton(html, item) {
-	// Find the nav tabs
 	const $nav = html.find('nav.SD-nav[data-group="primary"]');
 	if (!$nav.length) return;
 
-	// Check if button already exists
-	if ($nav.find(".sdx-weapon-animation-btn").length) return;
+	const buttons = [];
+	if (
+		(item.type === "Weapon" || item.type === "Spell")
+		&& isFeatureEnabled(FEATURE_IDS.ANIMATION_ITEM_OVERRIDES)
+		&& !$nav.find(".sdx-weapon-attack-fx-btn, .sdx-spell-attack-fx-btn").length
+	) {
+		const buttonClass = item.type === "Spell" ? "sdx-spell-attack-fx-btn" : "sdx-weapon-attack-fx-btn";
+		const buttonTitle = item.type === "Spell"
+			? game.i18n.localize("SHADOWDARK_EXTRAS.weaponAnimation.spellFxButton")
+			: game.i18n.localize("SHADOWDARK_EXTRAS.weaponAnimation.attackFxButton");
+		buttons.push(`<a class="sdx-weapon-visual-btn ${buttonClass} navigation-tab" data-item-uuid="${item.uuid}" title="${buttonTitle}"><i class="fas fa-wand-magic-sparkles"></i></a>`);
+	}
+	if (
+		(item.type === "Weapon" || item.type === "Armor")
+		&& isFeatureEnabled(FEATURE_IDS.WEAPON_SPRITES)
+		&& !$nav.find(".sdx-weapon-animation-btn").length
+	) {
+		buttons.push(`<a class="sdx-weapon-visual-btn sdx-weapon-animation-btn navigation-tab" data-item-uuid="${item.uuid}" title="${game.i18n.localize("SHADOWDARK_EXTRAS.weaponAnimation.equippedSpriteButton")}"><i class="fas fa-sword"></i></a>`);
+	}
+	if (!buttons.length) return;
 
-	// Add the Animation button after the Bonuses tab
-	const animationBtn = `<a class="sdx-weapon-animation-btn navigation-tab" title="${game.i18n.localize("SHADOWDARK_EXTRAS.weaponAnimation.button")}"><i class="fas fa-wand-magic-sparkles"></i></a>`;
 	const $bonusesTab = $nav.find('[data-tab="tab-bonuses"]');
 	if ($bonusesTab.length) {
-		$bonusesTab.after(animationBtn);
+		$bonusesTab.after(buttons.join(""));
 	}
 	else {
-		$nav.append(animationBtn);
+		$nav.append(buttons.join(""));
 	}
 
-	// Add click handler for the animation button
-	html.find(".sdx-weapon-animation-btn").on("click", async event => {
+	const itemButtonSelector = `[data-item-uuid="${item.uuid}"]`;
+	html.find(`.sdx-weapon-attack-fx-btn${itemButtonSelector}, .sdx-spell-attack-fx-btn${itemButtonSelector}`).on("click", async event => {
 		event.preventDefault();
 		event.stopPropagation();
+		const { openWeaponAttackFxConfig } = await import("../animation/WeaponAttackFxConfig.mjs");
+		openWeaponAttackFxConfig(item);
+	});
 
-		// Dynamic import to avoid circular dependency
+	html.find(`.sdx-weapon-animation-btn${itemButtonSelector}`).on("click", async event => {
+		event.preventDefault();
+		event.stopPropagation();
 		const { openWeaponAnimationConfig } = await import("../animation/WeaponAnimationConfig.mjs");
 		openWeaponAnimationConfig(item);
 	});
 
-	console.log(`${MODULE_ID} | Injected weapon animation button`);
+	console.log(`${MODULE_ID} | Injected weapon visual controls`);
 }
 
 /**

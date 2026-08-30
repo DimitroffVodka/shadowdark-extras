@@ -4,12 +4,16 @@
  */
 
 const MODULE_ID = "shadowdark-extras";
+const LIVE_PREVIEW_DEBOUNCE_MS = 75;
 
 // Use the Handlebars mixin for AppV2
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 // Import animation helpers
-import { scanItemImages, playWeaponAnimation, stopWeaponAnimation } from "./WeaponAnimationSD.mjs";
+import { scanItemImages, playWeaponAnimation } from "./WeaponAnimationSD.mjs";
+import { AnimationFxSD } from "./AnimationFxSD.mjs";
+import { resolveWeaponSpriteFormState } from "./weapon-sprite-form-state.mjs";
+import { toCssWeaponColorMatrix } from "./weapon-sprite-color.mjs";
 
 /**
  * Configuration dialog for weapon animations
@@ -34,6 +38,7 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 		actions: {
 			save: WeaponAnimationConfig.#onSave,
 			cancel: WeaponAnimationConfig.#onCancel,
+			useMaster: WeaponAnimationConfig.#onUseMaster,
 		},
 		tabGroups: {
 			primary: "general",
@@ -54,6 +59,13 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 		super(options);
 		this.item = options.item;
 		this._cachedImages = null;
+		this._configDirty = false;
+		this._spriteMode = "none";
+		this._inheritedConfig = null;
+		this._livePreviewRevision = 0;
+		this._livePreviewChain = Promise.resolve();
+		this._hasLivePreview = false;
+		this._previewFinalized = false;
 	}
 
 	get title() {
@@ -77,60 +89,13 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 	async _prepareContext(options) {
 		const context = await super._prepareContext(options);
 
-		// Get current config from item
-		const config = this.item.getFlag(MODULE_ID, "weaponAnimation") ?? {
-			enabled: false,
-			imagePath: "",
-			offsetX: 0.35,
-			offsetY: 0.1,
-			rotation: 0,
-			scale: 1.0,
-			animationType: "wobble",
-			flipX: false,
-			flipY: false,
-			filters: {
-				colorMatrix: {
-					hue: 0,
-					brightness: 1,
-					contrast: 1,
-					saturate: 0,
-				},
-				glow: {
-					enabled: false,
-					distance: 10,
-					outerStrength: 4,
-					innerStrength: 0,
-					color: "#ffffff",
-					quality: 0.1,
-					knockout: false,
-				},
-				dropShadow: {
-					enabled: false,
-					color: "#000000",
-					alpha: 0.5,
-					blur: 2,
-					distance: 5,
-					rotation: 45,
-				},
-			},
-		};
-
-		// Ensure defaults for new fields and filters
-		if (config.rotation === undefined) config.rotation = 0;
-		if (config.animationType === undefined) config.animationType = "wobble";
-		if (config.flipX === undefined) config.flipX = false;
-		if (config.flipY === undefined) config.flipY = false;
-
-		if (!config.filters) config.filters = {};
-		if (!config.filters.colorMatrix) {
-			config.filters.colorMatrix = { hue: 0, brightness: 1, contrast: 1, saturate: 0 };
-		}
-		if (!config.filters.glow) {
-			config.filters.glow = { enabled: false, distance: 10, outerStrength: 4, innerStrength: 0, color: "#ffffff", quality: 0.1, knockout: false };
-		}
-		if (!config.filters.dropShadow) {
-			config.filters.dropShadow = { enabled: false, color: "#000000", alpha: 0.5, blur: 2, distance: 5, rotation: 45 };
-		}
+		const storedConfig = this.item.getFlag(MODULE_ID, "weaponAnimation");
+		const inheritedConfig = AnimationFxSD.resolveWeaponSprite(this.item);
+		const spriteState = resolveWeaponSpriteFormState(storedConfig, inheritedConfig);
+		const config = spriteState.config;
+		this._spriteMode = spriteState.mode;
+		this._inheritedConfig = inheritedConfig;
+		this._configDirty = false;
 
 		// Get token data for accurate preview
 		let tokenImg = "icons/svg/mystery-man.svg";
@@ -184,6 +149,10 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 
 		context.item = this.item;
 		context.config = config;
+		context.spriteState = {
+			...spriteState,
+			inheritedLabel: inheritedConfig?.label || "master list",
+		};
 		context.tokenImg = tokenImg;
 		context.tokenRotation = tokenRotation;
 		context.tokenWidth = tokenWidth;
@@ -207,9 +176,11 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 		const inputs = html.querySelectorAll("input, select");
 		inputs.forEach(input => {
 			input.addEventListener("input", () => {
+				if (input.name && input.name !== "enabled") this._configDirty = true;
 				this._updatePreview(); this._scheduleLivePreview();
 			});
 			input.addEventListener("change", () => {
+				if (input.name && input.name !== "enabled") this._configDirty = true;
 				this._updatePreview(); this._scheduleLivePreview();
 			});
 		});
@@ -288,6 +259,7 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 		const thumbs = html.querySelectorAll(".weapon-image-thumb");
 		thumbs.forEach(thumb => {
 			thumb.addEventListener("click", () => {
+				this._configDirty = true;
 				// Remove previous selection
 				html.querySelectorAll(".weapon-image-thumb.selected").forEach(t => t.classList.remove("selected"));
 				thumb.classList.add("selected");
@@ -447,28 +419,47 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
      */
 	_scheduleLivePreview() {
 		clearTimeout(this._livePreviewTimer);
-		this._livePreviewTimer = setTimeout(() => this._livePreviewAnimation(), 350);
+		const revision = ++this._livePreviewRevision;
+		this._livePreviewTimer = setTimeout(() => {
+			this._livePreviewChain = this._livePreviewChain
+				.catch(error => console.warn(`${MODULE_ID} | Equipped Sprite preview failed:`, error))
+				.then(() => this._livePreviewAnimation(revision));
+		}, LIVE_PREVIEW_DEBOUNCE_MS);
 	}
 
-	async _livePreviewAnimation() {
+	async _livePreviewAnimation(revision) {
+		if (revision !== this._livePreviewRevision) return;
 		const actor = this.item?.parent;
 		if (!actor) return;
 
 		const config = this._readCurrentConfig();
-
-		// If disabled or no image, stop any running preview instead of playing a blank one
-		if (!config.enabled || !config.imagePath) {
-			const tokens = actor.getActiveTokens();
-			for (const token of tokens) {
-				await stopWeaponAnimation(token, this.item.id);
-			}
-			return;
-		}
-
 		const tokens = actor.getActiveTokens();
 		for (const token of tokens) {
-			await playWeaponAnimation(token, this.item, config);
+			if (revision !== this._livePreviewRevision) return;
+			await playWeaponAnimation(token, this.item, config, null, { preview: true });
+			this._hasLivePreview = true;
 		}
+	}
+
+	async _cancelLivePreview() {
+		clearTimeout(this._livePreviewTimer);
+		this._livePreviewRevision++;
+		await this._livePreviewChain.catch(error => {
+			console.warn(`${MODULE_ID} | Equipped Sprite preview cleanup failed:`, error);
+		});
+	}
+
+	async _onClose(options) {
+		await this._cancelLivePreview();
+		if (!this._previewFinalized && this._hasLivePreview) {
+			const actor = this.item?.parent;
+			if (actor) {
+				for (const token of actor.getActiveTokens()) {
+					await playWeaponAnimation(token, this.item);
+				}
+			}
+		}
+		return super._onClose(options);
 	}
 
 	_updatePreview() {
@@ -512,10 +503,12 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 		if (previewImg) {
 			previewImg.style.transform = `translate(${tx}px, ${ty}px) rotate(${rotation}deg) scale(${sx}, ${sy})`;
 
-			const hue = html.querySelector('input[name="filters.colorMatrix.hue"]')?.value ?? 0;
-			const brightness = html.querySelector('input[name="filters.colorMatrix.brightness"]')?.value ?? 1;
-			const contrast = html.querySelector('input[name="filters.colorMatrix.contrast"]')?.value ?? 1;
-			const saturate = parseFloat(html.querySelector('input[name="filters.colorMatrix.saturate"]')?.value ?? 0) + 1;
+			const colorMatrix = toCssWeaponColorMatrix({
+				hue: html.querySelector('input[name="filters.colorMatrix.hue"]')?.value,
+				brightness: html.querySelector('input[name="filters.colorMatrix.brightness"]')?.value,
+				contrast: html.querySelector('input[name="filters.colorMatrix.contrast"]')?.value,
+				saturate: html.querySelector('input[name="filters.colorMatrix.saturate"]')?.value,
+			});
 
 			const glowEnabled = html.querySelector('input[name="filters.glow.enabled"]')?.checked;
 			const glowSettings = html.querySelector(".glow-settings");
@@ -525,7 +518,7 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 			const dropShadowSettings = html.querySelector(".drop-shadow-settings");
 			if (dropShadowSettings) dropShadowSettings.style.display = dropShadowEnabled ? "block" : "none";
 
-			let filterStr = `hue-rotate(${hue}deg) brightness(${brightness}) contrast(${contrast}) saturate(${saturate})`;
+			let filterStr = `hue-rotate(${colorMatrix.hue}deg) brightness(${colorMatrix.brightness}) contrast(${colorMatrix.contrast}) saturate(${colorMatrix.saturate})`;
 			if (glowEnabled) {
 				const glowDistance = html.querySelector('input[name="filters.glow.distance"]')?.value ?? 10;
 				const glowColor = html.querySelector('input[name="filters.glow.color"]')?.value ?? "#ffffff";
@@ -553,13 +546,33 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 	}
 
 	static async #onSave(_event, _target) {
-		clearTimeout(this._livePreviewTimer);
+		await this._cancelLivePreview();
 
-		// Reuse _readCurrentConfig() — single source of truth for form → data mapping
 		const newConfig = this._readCurrentConfig();
-		const existingFlags = this.item.getFlag(MODULE_ID, "weaponAnimation") || {};
-		const merged = foundry.utils.mergeObject(existingFlags, newConfig, { inplace: false });
-		await this.item.setFlag(MODULE_ID, "weaponAnimation", merged);
+		if (!newConfig.enabled) {
+			const disabledConfig = this._spriteMode === "custom"
+				? { ...newConfig, enabled: false }
+				: { enabled: false };
+			await this.item.setFlag(MODULE_ID, "weaponAnimation", disabledConfig);
+		}
+		else if (
+			this._inheritedConfig
+			&& !this._configDirty
+			&& (this._spriteMode === "inherited" || this._spriteMode === "disabled")
+		) {
+			// Merely enabling an inherited preset should restore inheritance, not
+			// copy the master preset into a stale per-item override.
+			await this.item.unsetFlag(MODULE_ID, "weaponAnimation");
+		}
+		else {
+			if (!newConfig.imagePath) {
+				ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.weaponAnimation.imageRequired"));
+				return;
+			}
+			const existingFlags = this.item.getFlag(MODULE_ID, "weaponAnimation") || {};
+			const merged = foundry.utils.mergeObject(existingFlags, newConfig, { inplace: false });
+			await this.item.setFlag(MODULE_ID, "weaponAnimation", merged);
+		}
 
 		// Replay from the now-saved flag so the on-canvas animation is "official"
 		const actor = this.item?.parent;
@@ -569,12 +582,27 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 			}
 		}
 
+		this._previewFinalized = true;
 		ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.weaponAnimation.saved"));
 		this.close();
 	}
 
+	static async #onUseMaster(_event, _target) {
+		await this._cancelLivePreview();
+		await this.item.unsetFlag(MODULE_ID, "weaponAnimation");
+		const actor = this.item?.parent;
+		if (actor) {
+			for (const token of actor.getActiveTokens()) {
+				await playWeaponAnimation(token, this.item);
+			}
+		}
+		this._previewFinalized = true;
+		ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.weaponAnimation.usingMaster"));
+		this.close();
+	}
+
 	static async #onCancel(_event, _target) {
-		clearTimeout(this._livePreviewTimer);
+		await this._cancelLivePreview();
 
 		// Restore on-canvas animation to the last *saved* state (reads from flag, not form)
 		const actor = this.item?.parent;
@@ -583,6 +611,7 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 				await playWeaponAnimation(token, this.item);
 			}
 		}
+		this._previewFinalized = true;
 		this.close();
 	}
 }
