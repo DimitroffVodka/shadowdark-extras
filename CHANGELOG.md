@@ -6,6 +6,27 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [6.13.0] — 2026-08-29 — Item-level FX editing, dependable sprite previews, and natural animation timing
+
+### Added
+
+- **Weapon and Spell sheets now open their own Attack FX editor directly.** Each button is tied to the exact item whose sheet opened it, so several Weapon or Spell sheets can remain open without one editor changing another item. The editor preserves master-preset inheritance, shows the installed JB2A colour variants, and offers optional Sequencer tint, contrast, and saturation controls without requiring Automated Animations. Native JB2A colours remain the default.
+- **Equipped Sprites now have explicit inherited, custom, and disabled states.** Opening the editor shows the effective master values instead of an empty form, editing an inherited setup creates an item override, and *Use Master Preset* removes that override and resumes inheritance. Turning a custom sprite off keeps its image and transform/filter settings so turning it back on restores the same setup.
+
+### Changed
+
+- **Bundled Spell, Weapon, and NPC Attack FX now use each animation's natural media length.** `0` means Auto; a positive duration remains an explicit override. A selective, versioned migration updates only entries whose file and duration still match the former bundled defaults, including Generic Melee's shipped 1000 ms value. Custom files and custom durations are left alone.
+- **On-token previews now visibly honour Anchor → Caster or Target.** Target uses a targeted or second controlled token when one exists and safely falls back to the caster rather than empty canvas. Projectile and cone effects continue to use their fixed caster-to-target geometry instead of presenting Anchor as though it changed their path.
+- **Weapon Animation is now labelled Equipped Sprite** wherever the persistent token attachment is configured, keeping it distinct from transient Attack FX.
+- **Equipped Sprites render above scene lighting.** They now retain the same colour, contrast, transparency, and line detail shown by the editor instead of being washed out by the active scene ambience.
+
+### Fixed
+
+- **Unsaved Equipped Sprite previews are responsive, local, and cleanup-safe.** Changes are debounced at 75 ms and use a client-local temporary Sequencer effect rather than replacing the canonical persistent sprite. Save, Cancel, *Use Master Preset*, and the title-bar close button remove the temporary preview, restore the saved scene effect, and do not persist discarded form changes.
+- **CSS-style Equipped Sprite colour controls now translate correctly to Sequencer/PIXI.** In particular, the editor's neutral contrast value of `1` maps to Sequencer's neutral value of `0`, so saved scene sprites match the preview instead of appearing cyan-white or over-contrasted.
+- **Repeated item-sheet rendering no longer risks stacked visual-control handlers.** Attack FX, Spell FX, and Equipped Sprite bindings are UUID-scoped and idempotent, while disabled features remain absent from the sheet.
+- **Attack and Spell FX dialogs now localize their Close button** in English and Brazilian Portuguese.
+
 ## [6.12.2] — 2026-08-29 — Empty shipped-asset scans self-heal
 
 ### Fixed
