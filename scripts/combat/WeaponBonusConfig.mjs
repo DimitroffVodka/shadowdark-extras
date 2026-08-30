@@ -539,6 +539,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 	// Mode setting has never reached these dice — only the per-weapon override
 	// explodes them, and the system cannot double-apply on top.
 	const explodeOwnRolls = shouldExplodeOwnRoll(weapon);
+	const withMomentum = formula => (explodeOwnRolls ? applyExplodingAll(formula) : formula);
 
 	// Process damage bonuses array
 	const damageBonuses = flags.damageBonuses || [];
@@ -630,7 +631,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 		if (!part.formula) continue;
 
 		try {
-			const roll = new Roll(explodeOwnRolls ? applyExplodingAll(part.formula) : part.formula);
+			const roll = new Roll(withMomentum(part.formula));
 			await roll.evaluate();
 
 			// If this is a prompt bonus (added from dialog selection), set black dice appearance
@@ -741,9 +742,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 				const extraDiceFormula = `${criticalExtraDice}${dieType}`;
 				criticalExtraDiceFormula = extraDiceFormula; // Store for display
 				try {
-					const extraDiceRoll = new Roll(
-						explodeOwnRolls ? applyExplodingAll(extraDiceFormula) : extraDiceFormula
-					);
+					const extraDiceRoll = new Roll(withMomentum(extraDiceFormula));
 					await extraDiceRoll.evaluate();
 					criticalRolls.push(extraDiceRoll);
 					criticalBonus += extraDiceRoll.total;
@@ -783,9 +782,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 		// Roll extra critical damage formula (separate from extra dice)
 		if (criticalFormula) {
 			try {
-				const critRoll = new Roll(
-					explodeOwnRolls ? applyExplodingAll(criticalFormula) : criticalFormula
-				);
+				const critRoll = new Roll(withMomentum(criticalFormula));
 				await critRoll.evaluate();
 				criticalRolls.push(critRoll); // Store the roll
 				criticalBonus += critRoll.total;

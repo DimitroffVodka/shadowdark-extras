@@ -3,20 +3,23 @@ import test from "node:test";
 
 // Per-weapon Momentum — exploding damage dice for a single weapon (issue #134).
 //
-// The system ships a world-wide Momentum Mode setting whose `applyExploding`
-// rewrites only the FIRST dice term of a formula (its regex has no `g` flag),
-// so added bonus dice never explode. That is a system bug and is deliberately
-// NOT fixed here. What this module adds is a per-weapon override that explodes
-// the weapon's damage dice even when the world setting is off.
+// The system ships a world-wide Momentum Mode setting. Its `applyExploding`
+// explodes EVERY dice term of the formula it is handed (SD 4.0.6: the regex
+// carries `g`), but it only ever sees what reaches `shadowdark.dice.roll` —
+// damage bonuses this module rolls separately never pass through it. This
+// module adds a per-weapon override that explodes the weapon's damage dice even
+// when the world setting is off.
 //
 // The interesting behaviour is therefore not "does it append an x" but the two
 // collision rules:
 //
 //   1. A formula handed to the system's roll() must NOT be pre-exploded while
-//      the world setting is on, or the system's own pass rewrites `1d8x` into
-//      `1d8xx` — a second explode modifier, and inflated damage.
+//      the world setting is on. The system's pattern matches an already-
+//      exploding term as readily as a bare one, so it would turn `1d8x + 1d6x`
+//      into `1d8xx + 1d6xx` — a second explode modifier on every die.
 //   2. Rolls this module builds itself never reach the system's roll(), so the
-//      world setting is irrelevant to them and only the override applies.
+//      world setting can neither double-apply to them nor explode them at all,
+//      and only the override applies.
 
 let momentumSetting = false;
 let settingsThrow = false;
@@ -39,9 +42,14 @@ const {
 	weaponHasMomentum,
 } = await import("../../scripts/combat/weapon-momentum.mjs");
 
-/** The system's own applyExploding, copied verbatim, to test against. */
+/**
+ * The system's own applyExploding, copied verbatim from SD 4.0.6
+ * (src/dice/dice.mjs:47 and the compiled build Foundry loads). The `g` matters:
+ * without it this replica would understate what the system does to a formula
+ * that has already been exploded, which is the whole collision under test.
+ */
 function systemApplyExploding(formula) {
-	return formula.replace(/(\d*)d(\d+[a-z0-9]*)/i, match => `${match}x`);
+	return formula.replace(/(\d*)d(\d+[a-z0-9]*)/ig, match => `${match}x`);
 }
 
 const weapon = (weaponBonus) => ({ flags: { "shadowdark-extras": { weaponBonus } } });
@@ -53,15 +61,17 @@ test.beforeEach(() => {
 
 // --- applyExplodingAll --------------------------------------------------
 
-test("explodes every dice term, not just the first", () => {
-	// The exact case the system misses: base die plus an added bonus die.
+test("explodes every dice term", () => {
 	assert.equal(applyExplodingAll("1d8 + 1d6"), "1d8x + 1d6x");
-	assert.equal(systemApplyExploding("1d8 + 1d6"), "1d8x + 1d6", "system still only does the first");
+	// On a bare formula the system agrees; the two differ only on idempotence.
+	assert.equal(systemApplyExploding("1d8 + 1d6"), "1d8x + 1d6x");
 });
 
 test("is idempotent — an already-exploding term is left alone", () => {
 	assert.equal(applyExplodingAll("1d8x + 1d6x"), "1d8x + 1d6x");
 	assert.equal(applyExplodingAll(applyExplodingAll("1d8 + 1d6")), "1d8x + 1d6x");
+	// The system's is not idempotent — which is exactly the hazard being guarded.
+	assert.equal(systemApplyExploding("1d8x + 1d6x"), "1d8xx + 1d6xx");
 });
 
 test("explodes only the terms that are not already exploding", () => {
@@ -139,14 +149,16 @@ test("system formulas explode only while the world setting is off", () => {
 });
 
 test("pre-exploding while the world setting is on would double the modifier", () => {
-	// Demonstrates the collision the guard above exists to prevent.
+	// Demonstrates the collision the guard above exists to prevent: every die
+	// picks up a second explode modifier, not just the first.
 	const doubled = systemApplyExploding(applyExplodingAll("1d8 + 1d6"));
-	assert.equal(doubled, "1d8xx + 1d6x");
+	assert.equal(doubled, "1d8xx + 1d6xx");
 
-	// With the guard, the system is handed the untouched formula instead.
+	// With the guard, the system is handed the untouched formula and explodes
+	// the whole thing itself — base die and folded-in bonus alike.
 	momentumSetting = true;
 	assert.equal(shouldExplodeSystemFormula(weapon({ enabled: true, momentum: true })), false);
-	assert.equal(systemApplyExploding("1d8 + 1d6"), "1d8x + 1d6");
+	assert.equal(systemApplyExploding("1d8 + 1d6"), "1d8x + 1d6x");
 });
 
 test("a weapon without the override never explodes system formulas", () => {
