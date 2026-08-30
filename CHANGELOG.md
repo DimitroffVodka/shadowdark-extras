@@ -8,7 +8,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
-- **Per-weapon Momentum: exploding damage dice for a single weapon.** The Weapon **Bonuses** tab has a new *Exploding damage dice* toggle that overrides the Shadowdark system's world-wide Momentum Mode, so a custom exploding weapon works even when that setting is off. It explodes the weapon's base damage and its configured damage bonuses, including critical extra dice. When Momentum Mode is already on world-wide the system's own exploding stands and SDX does not add a second explode modifier on top. ([#134](https://github.com/DimitroffVodka/shadowdark-extras/issues/134))
+- **Per-weapon Momentum: exploding damage dice for a single weapon.** The Weapon **Bonuses** tab has a new *Exploding damage dice (Momentum)* toggle that overrides the Shadowdark system's world-wide Momentum Mode, so a custom exploding weapon works even when that setting is off. It explodes the weapon's base damage and its configured damage bonuses, including critical extra dice, and works independently of *Enable Weapon Bonuses* so a weapon that only wants exploding damage needs nothing else configured. When Momentum Mode is already on world-wide the system's own exploding stands and SDX does not add a second explode modifier on top. ([#134](https://github.com/DimitroffVodka/shadowdark-extras/issues/134))
 
 ## [6.13.0] — 2026-08-29 — Item-level FX editing, dependable sprite previews, and natural animation timing
 

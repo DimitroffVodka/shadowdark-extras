@@ -105,9 +105,14 @@ carry its own damage type. Promptable entries get chosen during the workflow.
 
 ### Momentum (exploding damage dice)
 
-Turn on **Exploding damage dice** to make this weapon's damage dice explode: a
-die that rolls its maximum is rolled again and the new result added. It applies
-to the weapon's base damage and to any damage bonuses configured on this tab.
+Turn on **Exploding damage dice (Momentum)** to make this weapon's damage dice
+explode: a die that rolls its maximum is rolled again and the new result added.
+It applies to the weapon's base damage and to any damage bonuses configured on
+this tab.
+
+This toggle sits beside **Enable Weapon Bonuses** and works independently of
+it, so a weapon that only wants exploding damage does not have to switch on the
+hit, damage, and critical bonus machinery it is not using.
 
 This is a per-weapon override of the Shadowdark system's world-wide **Momentum
 Mode** setting, so the weapon explodes even when that setting is off — which is

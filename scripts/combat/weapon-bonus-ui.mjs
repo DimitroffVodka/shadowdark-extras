@@ -391,20 +391,21 @@ function buildWeaponBonusTabHtml(flags, item) {
 						<input type="checkbox" class="sdx-weapon-bonus-enabled" ${enabled ? "checked" : ""} />
 						<span>Enable Weapon Bonuses</span>
 					</label>
+
+					<!--
+						Momentum is a peer of the master switch, not a child of it: a
+						weapon can explode without switching on the bonus machinery.
+						It must stay OUTSIDE .sdx-bonus-content, which greys out and
+						takes pointer-events: none when the master switch is off.
+					-->
+					<label class="sdx-toggle-label">
+						<input type="checkbox" class="sdx-weapon-momentum-enabled" ${momentum ? "checked" : ""} />
+						<span><i class="fas fa-dice-d6"></i> Exploding damage dice (Momentum)</span>
+					</label>
+					<p class="sdx-section-hint">A damage die rolling its maximum is rolled again and added. Overrides the system's world-wide Momentum Mode, so this weapon explodes even when that setting is off. Works independently of Enable Weapon Bonuses.</p>
 				</div>
 
 				<div class="sdx-bonus-content ${enabled ? "" : "sdx-disabled"}">
-					<!-- Momentum (exploding damage dice) -->
-					<fieldset class="sdx-bonus-fieldset sdx-momentum-fieldset">
-						<legend><i class="fas fa-dice-d6"></i> Momentum</legend>
-						<p class="sdx-section-hint">Explode this weapon's damage dice: a die rolling its maximum is rolled again and added. Overrides the system's world-wide Momentum Mode, so the weapon explodes even when that setting is off.</p>
-
-						<label class="sdx-toggle-label">
-							<input type="checkbox" class="sdx-weapon-momentum-enabled" ${momentum ? "checked" : ""} />
-							<span>Exploding damage dice</span>
-						</label>
-					</fieldset>
-
 					<!-- To Hit Bonuses Section -->
 					<fieldset class="sdx-bonus-fieldset sdx-hit-bonuses-fieldset">
 						<legend><i class="fas fa-bullseye"></i> To Hit Bonuses</legend>

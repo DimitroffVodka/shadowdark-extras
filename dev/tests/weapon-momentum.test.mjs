@@ -146,11 +146,15 @@ test("returns non-string and empty input unchanged", () => {
 
 // --- weaponHasMomentum --------------------------------------------------
 
-test("momentum requires both the master switch and the toggle", () => {
+test("momentum is independent of the weapon-bonus master switch", () => {
 	assert.equal(weaponHasMomentum(weapon({ enabled: true, momentum: true })), true);
 	assert.equal(weaponHasMomentum(weapon({ enabled: true, momentum: false })), false);
-	// A disabled weapon-bonus config is inert, not partially live.
-	assert.equal(weaponHasMomentum(weapon({ enabled: false, momentum: true })), false);
+	// #134 asks for exploding dice on "any weapon" — a weapon that wants only
+	// exploding damage should not have to switch on the bonus machinery. The
+	// checkbox lives outside the collapsible content to match.
+	assert.equal(weaponHasMomentum(weapon({ enabled: false, momentum: true })), true);
+	assert.equal(weaponHasMomentum(weapon({ momentum: true })), true);
+	assert.equal(weaponHasMomentum(weapon({ enabled: true })), false);
 });
 
 test("momentum is false for weapons with no config at all", () => {
@@ -207,6 +211,14 @@ test("a reroll after the world setting flips on does not double", () => {
 	momentumSetting = true;
 	assert.equal(shouldExplodeSystemFormula(explodingWeapon), false);
 	assert.equal(applyExplodingAll(first), first, "re-running the pass changes nothing");
+});
+
+test("a weapon with ONLY momentum set still explodes its base damage", () => {
+	// The case decoupling exists for: no hit/damage/critical bonuses configured,
+	// the master switch off, just an exploding weapon.
+	momentumSetting = false;
+	assert.equal(shouldExplodeSystemFormula(weapon({ momentum: true })), true);
+	assert.equal(shouldExplodeOwnRoll(weapon({ momentum: true })), true);
 });
 
 test("a weapon without the override never explodes system formulas", () => {

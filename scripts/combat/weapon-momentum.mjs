@@ -108,15 +108,18 @@ export function applyExplodingAll(formula) {
 /**
  * Whether this weapon carries the per-weapon momentum override.
  *
- * Gated on the weapon-bonus `enabled` master switch for the same reason every
- * other bonus on the tab is: a disabled config is inert, not partially live.
+ * Deliberately INDEPENDENT of the tab's `enabled` master switch, unlike every
+ * other setting stored beside it. #134 asks for exploding dice on "any weapon",
+ * and a weapon that only wants exploding damage has no reason to switch on the
+ * hit/damage/critical bonus machinery it is not using. The checkbox sits
+ * outside the collapsible bonus content to match, so nothing here fires from a
+ * control that looks greyed out.
  *
  * @param {Item} weapon - The weapon item.
  * @returns {boolean}
  */
 export function weaponHasMomentum(weapon) {
-	const flags = weapon?.flags?.[MODULE_ID]?.weaponBonus;
-	return !!(flags?.enabled && flags?.momentum);
+	return !!weapon?.flags?.[MODULE_ID]?.weaponBonus?.momentum;
 }
 
 /**
