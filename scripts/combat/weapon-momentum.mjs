@@ -11,11 +11,17 @@
  * existing `enabled` master switch, and the existing WEAPON_BONUSES feature
  * gate rather than introducing a parallel set of any of them.
  *
- * The system is left untouched. Its own `applyExploding` (SD 4.0.6) explodes
- * EVERY dice term of the formula it is handed — its regex carries `g`. What it
- * never sees is a damage bonus this module rolls separately, outside
- * `shadowdark.dice.roll`; that, not the regex, is why the world setting alone
- * does not reach every bonus die.
+ * The system is left untouched, and this module deliberately does not model
+ * what its `applyExploding` does to a formula. Stock SD 4.0.6 explodes only the
+ * FIRST dice term (its regex is `/i`), which is the bug behind the first half
+ * of #134; a one-character local patch to `/ig` makes it explode all of them,
+ * and such patched installs exist. Either way the rule here is the same: when
+ * Momentum Mode is on, the system owns that formula and this module keeps its
+ * hands off it. Nothing below depends on which variant is installed.
+ *
+ * What no variant of the system ever sees is a damage bonus this module rolls
+ * separately, outside `shadowdark.dice.roll`. That structural gap, not the
+ * regex, is why the world setting alone does not reach every bonus die.
  *
  * The two `shouldExplode*` predicates below exist so this override neither
  * duplicates nor collides with what the system does, and the split between
@@ -98,14 +104,13 @@ export function coreMomentumEnabled() {
  * Requires the world setting to be OFF. The system applies its own
  * `applyExploding` inside `roll()` AFTER this runs, and its pattern matches a
  * term that already explodes just as readily as a bare one — so pre-exploding
- * here would hand it `1d8x + 1d6x` and get back `1d8xx + 1d6xx`, a second
- * explode modifier on every die and inflated damage. When the world setting is
- * on the system already explodes this whole formula, bonuses included, so the
- * override has nothing to add.
+ * here would hand it `1d8x` and get back `1d8xx`, a second explode modifier and
+ * inflated damage. Both the stock and the patched system do this; they differ
+ * only in how many terms they double.
  *
  * Checking the setting rather than trying to predict the system's output is
- * what keeps this stable: it stays dormant whenever the system is doing the
- * work, without this module having to model how the system does it.
+ * what keeps this stable across both: it stays dormant whenever the system is
+ * doing the work, without this module having to model how the system does it.
  *
  * @param {Item} weapon - The weapon item.
  * @returns {boolean}

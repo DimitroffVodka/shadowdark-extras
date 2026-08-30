@@ -692,7 +692,10 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 	}
 
 	// Combine all applicable bonus formulas for display
-	const bonusFormula = applicableParts.map(p => p.formula).join(" + ");
+	// Exploded here too, so the formula the card shows is the one that was
+	// actually rolled — otherwise a momentum weapon displays "1d6" beside a
+	// result of 15 with nothing to explain it.
+	const bonusFormula = applicableParts.map(p => withMomentum(p.formula)).join(" + ");
 
 	// Handle critical bonuses
 	let criticalExtraDice = 0;
@@ -707,7 +710,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 			criticalExtraDice = parseInt(flags.criticalExtraDice) || 0;
 		}
 		if (evaluateRequirements(flags.criticalDamageRequirements || [], attacker, target)) {
-			criticalFormula = evaluateFormula(flags.criticalExtraDamage || "", attacker);
+			criticalFormula = withMomentum(evaluateFormula(flags.criticalExtraDamage || "", attacker));
 		}
 
 		// Roll extra critical dice based on weapon's base damage die
@@ -739,7 +742,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 					dieType = `d${dieType}`;
 				}
 
-				const extraDiceFormula = `${criticalExtraDice}${dieType}`;
+				const extraDiceFormula = withMomentum(`${criticalExtraDice}${dieType}`);
 				criticalExtraDiceFormula = extraDiceFormula; // Store for display
 				try {
 					const extraDiceRoll = new Roll(withMomentum(extraDiceFormula));

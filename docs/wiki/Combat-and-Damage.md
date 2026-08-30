@@ -113,10 +113,18 @@ This is a per-weapon override of the Shadowdark system's world-wide **Momentum
 Mode** setting, so the weapon explodes even when that setting is off — which is
 what building a single custom exploding weapon needs.
 
-When Momentum Mode *is* on world-wide, the system already explodes weapon
-damage and SDX leaves the roll alone rather than adding a second explode
-modifier on top. Separately rolled damage bonuses, which never pass through the
-system's roll pipeline, always follow this weapon's own toggle.
+When Momentum Mode *is* on world-wide, the system explodes the main damage roll
+itself and SDX leaves that roll alone rather than adding a second explode
+modifier on top. Note that the Shadowdark system explodes only the *first* die
+of that formula, so a bonus die folded into it does not explode from the
+world setting alone — that is the known system-side limitation this toggle does
+not attempt to fix.
+
+Damage bonuses that SDX rolls separately never pass through the system's roll
+pipeline at all, so they always follow this weapon's own toggle, whatever the
+world setting is. With Momentum Mode on and this toggle on, that means the main
+roll follows the system's rules while the separately rolled bonuses follow
+yours.
 
 ### Critical bonuses
 
