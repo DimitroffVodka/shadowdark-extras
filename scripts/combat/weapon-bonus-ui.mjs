@@ -127,6 +127,9 @@ async function saveWeaponBonusConfig(item, updates) {
 export function getDefaultWeaponBonusConfig() {
 	return {
 		enabled: false,
+		// Per-weapon exploding damage dice, overriding the system's world-wide
+		// Momentum Mode setting (issue #134)
+		momentum: false,
 		// Multiple to-hit bonuses with individual requirements
 		hitBonuses: [],
 		// Multiple damage bonuses with individual requirements
@@ -320,6 +323,7 @@ export function injectWeaponAnimationButton(html, item) {
  */
 function buildWeaponBonusTabHtml(flags, item) {
 	const enabled = flags.enabled || false;
+	const momentum = flags.momentum || false;
 	const criticalExtraDice = flags.criticalExtraDice || "";
 	const criticalExtraDamage = flags.criticalExtraDamage || "";
 	const criticalDiceRequirements = flags.criticalDiceRequirements || [];
@@ -390,6 +394,17 @@ function buildWeaponBonusTabHtml(flags, item) {
 				</div>
 
 				<div class="sdx-bonus-content ${enabled ? "" : "sdx-disabled"}">
+					<!-- Momentum (exploding damage dice) -->
+					<fieldset class="sdx-bonus-fieldset sdx-momentum-fieldset">
+						<legend><i class="fas fa-dice-d6"></i> Momentum</legend>
+						<p class="sdx-section-hint">Explode this weapon's damage dice: a die rolling its maximum is rolled again and added. Overrides the system's world-wide Momentum Mode, so the weapon explodes even when that setting is off.</p>
+
+						<label class="sdx-toggle-label">
+							<input type="checkbox" class="sdx-weapon-momentum-enabled" ${momentum ? "checked" : ""} />
+							<span>Exploding damage dice</span>
+						</label>
+					</fieldset>
+
 					<!-- To Hit Bonuses Section -->
 					<fieldset class="sdx-bonus-fieldset sdx-hit-bonuses-fieldset">
 						<legend><i class="fas fa-bullseye"></i> To Hit Bonuses</legend>
@@ -994,6 +1009,11 @@ function activateWeaponBonusListeners(html, app, item) {
 		}
 
 		await saveWeaponBonusConfig(item, { enabled });
+	});
+
+	// Momentum (exploding damage dice) toggle
+	$tab.find(".sdx-weapon-momentum-enabled").on("change", async function() {
+		await saveWeaponBonusConfig(item, { momentum: $(this).is(":checked") });
 	});
 
 	// Critical hit fields - debounced save

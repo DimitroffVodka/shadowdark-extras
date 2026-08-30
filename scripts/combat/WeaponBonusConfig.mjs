@@ -5,6 +5,7 @@
  */
 
 import { getEffectiveCreatureType } from "../npc/CreatureTypesApp.mjs";
+import { applyExplodingAll, shouldExplodeOwnRoll } from "./weapon-momentum.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -533,6 +534,12 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 		};
 	}
 
+	// Per-weapon momentum (issue #134). Every Roll below is built and evaluated
+	// here rather than by `shadowdark.dice.roll`, so the world-wide Momentum
+	// Mode setting has never reached these dice — only the per-weapon override
+	// explodes them, and the system cannot double-apply on top.
+	const explodeOwnRolls = shouldExplodeOwnRoll(weapon);
+
 	// Process damage bonuses array
 	const damageBonuses = flags.damageBonuses || [];
 	let applicableParts = [];
@@ -623,7 +630,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 		if (!part.formula) continue;
 
 		try {
-			const roll = new Roll(part.formula);
+			const roll = new Roll(explodeOwnRolls ? applyExplodingAll(part.formula) : part.formula);
 			await roll.evaluate();
 
 			// If this is a prompt bonus (added from dialog selection), set black dice appearance
@@ -734,7 +741,9 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 				const extraDiceFormula = `${criticalExtraDice}${dieType}`;
 				criticalExtraDiceFormula = extraDiceFormula; // Store for display
 				try {
-					const extraDiceRoll = new Roll(extraDiceFormula);
+					const extraDiceRoll = new Roll(
+						explodeOwnRolls ? applyExplodingAll(extraDiceFormula) : extraDiceFormula
+					);
 					await extraDiceRoll.evaluate();
 					criticalRolls.push(extraDiceRoll);
 					criticalBonus += extraDiceRoll.total;
@@ -774,7 +783,9 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 		// Roll extra critical damage formula (separate from extra dice)
 		if (criticalFormula) {
 			try {
-				const critRoll = new Roll(criticalFormula);
+				const critRoll = new Roll(
+					explodeOwnRolls ? applyExplodingAll(criticalFormula) : criticalFormula
+				);
 				await critRoll.evaluate();
 				criticalRolls.push(critRoll); // Store the roll
 				criticalBonus += critRoll.total;
