@@ -5,6 +5,8 @@
  */
 
 import { getEffectiveCreatureType } from "../npc/CreatureTypesApp.mjs";
+import { applyExplodingAll, shouldExplodeOwnRoll } from "./weapon-momentum.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -533,6 +535,19 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 		};
 	}
 
+	// Per-weapon momentum (issue #134). Every Roll below is built and evaluated
+	// here rather than by `shadowdark.dice.roll`, so the world-wide Momentum
+	// Mode setting has never reached these dice — only the per-weapon override
+	// explodes them, and the system cannot double-apply on top.
+	//
+	// Gated on the feature here, not only in roll-patches: this function still
+	// runs for an item that kept `weaponBonus.enabled` when Weapon Bonuses is
+	// disabled but Enhanced Damage Cards is not, and momentum must not be the
+	// one behaviour that leaks through a switched-off feature.
+	const explodeOwnRolls = isFeatureEnabled(FEATURE_IDS.WEAPON_BONUSES)
+		&& shouldExplodeOwnRoll(weapon);
+	const withMomentum = formula => (explodeOwnRolls ? applyExplodingAll(formula) : formula);
+
 	// Process damage bonuses array
 	const damageBonuses = flags.damageBonuses || [];
 	let applicableParts = [];
@@ -622,8 +637,12 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 	for (const part of applicableParts) {
 		if (!part.formula) continue;
 
+		// Resolved once so the roll, the damage component and the breakdown
+		// tooltip all report the same formula that was actually evaluated.
+		const partFormula = withMomentum(part.formula);
+
 		try {
-			const roll = new Roll(part.formula);
+			const roll = new Roll(partFormula);
 			await roll.evaluate();
 
 			// If this is a prompt bonus (added from dialog selection), set black dice appearance
@@ -646,7 +665,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 				amount: amount,
 				type: part.damageType || "standard",
 				label: part.label || "",
-				formula: part.formula,
+				formula: partFormula,
 			});
 
 
@@ -684,7 +703,10 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 	}
 
 	// Combine all applicable bonus formulas for display
-	const bonusFormula = applicableParts.map(p => p.formula).join(" + ");
+	// Exploded here too, so the formula the card shows is the one that was
+	// actually rolled — otherwise a momentum weapon displays "1d6" beside a
+	// result of 15 with nothing to explain it.
+	const bonusFormula = applicableParts.map(p => withMomentum(p.formula)).join(" + ");
 
 	// Handle critical bonuses
 	let criticalExtraDice = 0;
@@ -699,7 +721,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 			criticalExtraDice = parseInt(flags.criticalExtraDice) || 0;
 		}
 		if (evaluateRequirements(flags.criticalDamageRequirements || [], attacker, target)) {
-			criticalFormula = evaluateFormula(flags.criticalExtraDamage || "", attacker);
+			criticalFormula = withMomentum(evaluateFormula(flags.criticalExtraDamage || "", attacker));
 		}
 
 		// Roll extra critical dice based on weapon's base damage die
@@ -731,10 +753,10 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 					dieType = `d${dieType}`;
 				}
 
-				const extraDiceFormula = `${criticalExtraDice}${dieType}`;
+				const extraDiceFormula = withMomentum(`${criticalExtraDice}${dieType}`);
 				criticalExtraDiceFormula = extraDiceFormula; // Store for display
 				try {
-					const extraDiceRoll = new Roll(extraDiceFormula);
+					const extraDiceRoll = new Roll(withMomentum(extraDiceFormula));
 					await extraDiceRoll.evaluate();
 					criticalRolls.push(extraDiceRoll);
 					criticalBonus += extraDiceRoll.total;
@@ -774,7 +796,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 		// Roll extra critical damage formula (separate from extra dice)
 		if (criticalFormula) {
 			try {
-				const critRoll = new Roll(criticalFormula);
+				const critRoll = new Roll(withMomentum(criticalFormula));
 				await critRoll.evaluate();
 				criticalRolls.push(critRoll); // Store the roll
 				criticalBonus += critRoll.total;

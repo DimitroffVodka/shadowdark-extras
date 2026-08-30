@@ -127,6 +127,9 @@ async function saveWeaponBonusConfig(item, updates) {
 export function getDefaultWeaponBonusConfig() {
 	return {
 		enabled: false,
+		// Per-weapon exploding damage dice, overriding the system's world-wide
+		// Momentum Mode setting (issue #134)
+		momentum: false,
 		// Multiple to-hit bonuses with individual requirements
 		hitBonuses: [],
 		// Multiple damage bonuses with individual requirements
@@ -320,6 +323,7 @@ export function injectWeaponAnimationButton(html, item) {
  */
 function buildWeaponBonusTabHtml(flags, item) {
 	const enabled = flags.enabled || false;
+	const momentum = flags.momentum || false;
 	const criticalExtraDice = flags.criticalExtraDice || "";
 	const criticalExtraDamage = flags.criticalExtraDamage || "";
 	const criticalDiceRequirements = flags.criticalDiceRequirements || [];
@@ -387,6 +391,18 @@ function buildWeaponBonusTabHtml(flags, item) {
 						<input type="checkbox" class="sdx-weapon-bonus-enabled" ${enabled ? "checked" : ""} />
 						<span>Enable Weapon Bonuses</span>
 					</label>
+
+					<!--
+						Momentum is a peer of the master switch, not a child of it: a
+						weapon can explode without switching on the bonus machinery.
+						It must stay OUTSIDE .sdx-bonus-content, which greys out and
+						takes pointer-events: none when the master switch is off.
+					-->
+					<label class="sdx-toggle-label">
+						<input type="checkbox" class="sdx-weapon-momentum-enabled" ${momentum ? "checked" : ""} />
+						<span><i class="fas fa-dice-d6"></i> Exploding damage dice (Momentum)</span>
+					</label>
+					<p class="sdx-section-hint">A damage die rolling its maximum is rolled again and added. Overrides the system's world-wide Momentum Mode, so this weapon explodes even when that setting is off. Works independently of Enable Weapon Bonuses.</p>
 				</div>
 
 				<div class="sdx-bonus-content ${enabled ? "" : "sdx-disabled"}">
@@ -994,6 +1010,11 @@ function activateWeaponBonusListeners(html, app, item) {
 		}
 
 		await saveWeaponBonusConfig(item, { enabled });
+	});
+
+	// Momentum (exploding damage dice) toggle
+	$tab.find(".sdx-weapon-momentum-enabled").on("change", async function() {
+		await saveWeaponBonusConfig(item, { momentum: $(this).is(":checked") });
 	});
 
 	// Critical hit fields - debounced save

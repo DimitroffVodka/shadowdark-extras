@@ -103,6 +103,34 @@ the decision in the roll dialog for the user to make.
 Damage entries use the same formula and requirement model, and each one can
 carry its own damage type. Promptable entries get chosen during the workflow.
 
+### Momentum (exploding damage dice)
+
+Turn on **Exploding damage dice (Momentum)** to make this weapon's damage dice
+explode: a die that rolls its maximum is rolled again and the new result added.
+It applies to the weapon's base damage and to any damage bonuses configured on
+this tab.
+
+This toggle sits beside **Enable Weapon Bonuses** and works independently of
+it, so a weapon that only wants exploding damage does not have to switch on the
+hit, damage, and critical bonus machinery it is not using.
+
+This is a per-weapon override of the Shadowdark system's world-wide **Momentum
+Mode** setting, so the weapon explodes even when that setting is off — which is
+what building a single custom exploding weapon needs.
+
+When Momentum Mode *is* on world-wide, the system explodes the main damage roll
+itself and SDX leaves that roll alone rather than adding a second explode
+modifier on top. Note that the Shadowdark system explodes only the *first* die
+of that formula, so a bonus die folded into it does not explode from the
+world setting alone — that is the known system-side limitation this toggle does
+not attempt to fix.
+
+Damage bonuses that SDX rolls separately never pass through the system's roll
+pipeline at all, so they always follow this weapon's own toggle, whatever the
+world setting is. With Momentum Mode on and this toggle on, that means the main
+roll follows the system's rules while the separately rolled bonuses follow
+yours.
+
 ### Critical bonuses
 
 Configure extra dice, a formula, or both, contributing only on a critical hit.
