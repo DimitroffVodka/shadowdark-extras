@@ -64,6 +64,7 @@ export function resolveWeaponSpriteFormState(storedConfig, inheritedConfig) {
 		? storedConfig
 		: null;
 	const explicitlyDisabled = storedConfig?.enabled === false;
+	const disabledCustom = explicitlyDisabled && !!storedConfig?.imagePath;
 
 	let mode = "none";
 	let source = {};
@@ -86,8 +87,22 @@ export function resolveWeaponSpriteFormState(storedConfig, inheritedConfig) {
 	return {
 		mode,
 		config,
+		disabledCustom,
 		hasInherited: !!inherited,
 		inherited,
 		hasItemOverride: mode === "custom" || mode === "disabled",
 	};
+}
+
+/** Choose persistence without conflating disabled custom data with inheritance. */
+export function resolveWeaponSpriteSaveAction({ formEnabled, state, configDirty }) {
+	if (!formEnabled) {
+		return state.mode === "custom" || state.disabledCustom ? "save-full" : "save-disabled";
+	}
+	if (
+		state.hasInherited
+		&& !configDirty
+		&& (state.mode === "inherited" || (state.mode === "disabled" && !state.disabledCustom))
+	) return "unset";
+	return "save-full";
 }

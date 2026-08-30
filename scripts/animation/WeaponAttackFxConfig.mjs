@@ -37,11 +37,14 @@ export default class WeaponAttackFxConfig extends HandlebarsApplicationMixin(App
 		this.item = options.item;
 	}
 
-	get title() {
-		const heading = this.item?.type === "Spell"
+	get effectHeading() {
+		return this.item?.type === "Spell"
 			? game.i18n.localize("SHADOWDARK_EXTRAS.weaponAnimation.spellFxButton")
 			: game.i18n.localize("SHADOWDARK_EXTRAS.weaponAnimation.attackFxButton");
-		return `${heading}: ${this.item?.name ?? "Item"}`;
+	}
+
+	get title() {
+		return `${this.effectHeading}: ${this.item?.name ?? "Item"}`;
 	}
 
 	async _prepareContext(options) {
@@ -51,9 +54,7 @@ export default class WeaponAttackFxConfig extends HandlebarsApplicationMixin(App
 			this.item?.flags?.[MODULE_ID] ?? {},
 			this.item,
 			{
-				heading: this.item?.type === "Spell"
-					? game.i18n.localize("SHADOWDARK_EXTRAS.weaponAnimation.spellFxButton")
-					: game.i18n.localize("SHADOWDARK_EXTRAS.weaponAnimation.attackFxButton"),
+				heading: this.effectHeading,
 			}
 		);
 		return context;
@@ -64,9 +65,8 @@ export default class WeaponAttackFxConfig extends HandlebarsApplicationMixin(App
 		activateAnimationFxListeners($(this.element), this.item);
 	}
 
-	static #onClose(event, target) {
-		const app = this;
-		app.close();
+	static #onClose() {
+		this.close();
 	}
 }
 

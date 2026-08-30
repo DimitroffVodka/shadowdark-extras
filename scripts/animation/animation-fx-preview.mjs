@@ -12,6 +12,7 @@ export function resolveAnimationPreviewTargets(preset, source, controlled = [], 
 	));
 	if (secondControlled) return [secondControlled];
 	if (userTarget && userTarget !== source && userTarget.id !== source.id) return [userTarget];
+	if (preset?.type === "onToken") return [source];
 
 	return [{
 		x: source.x + (source.w ?? 0) + 400,

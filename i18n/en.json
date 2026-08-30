@@ -765,6 +765,7 @@
   "SHADOWDARK_EXTRAS.weaponAnimation.title_with_item": "Equipped Sprite: {item}",
   "SHADOWDARK_EXTRAS.weaponAnimation.enabled": "Show Equipped Sprite",
 	"SHADOWDARK_EXTRAS.weaponAnimation.attackFxButton": "Attack FX",
+	"SHADOWDARK_EXTRAS.weaponAnimation.close": "Close",
 	"SHADOWDARK_EXTRAS.weaponAnimation.spellFxButton": "Spell FX",
 	"SHADOWDARK_EXTRAS.weaponAnimation.equippedSpriteButton": "Equipped Sprite",
 	"SHADOWDARK_EXTRAS.weaponAnimation.inheritedFrom": "Inherited from",

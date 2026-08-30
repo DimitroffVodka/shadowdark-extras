@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { applyAttackFxTint, resolveNativeColorVariants } from "../../scripts/animation/animation-fx-color.mjs";
-import { resolveWeaponSpriteFormState } from "../../scripts/animation/weapon-sprite-form-state.mjs";
+import {
+	resolveWeaponSpriteFormState,
+	resolveWeaponSpriteSaveAction,
+} from "../../scripts/animation/weapon-sprite-form-state.mjs";
 
 const inherited = {
 	label: "Dagger Sprite",
@@ -38,6 +41,43 @@ test("an explicitly disabled equipped sprite still displays the inherited image 
 	assert.equal(state.config.imagePath, inherited.imagePath);
 	assert.equal(state.config.offsetX, inherited.offsetX);
 	assert.equal(state.hasInherited, true);
+	assert.equal(state.disabledCustom, false);
+});
+
+test("a disabled custom equipped sprite retains its custom data when saved or re-enabled", () => {
+	const state = resolveWeaponSpriteFormState({
+		enabled: false,
+		imagePath: "custom/disabled-sword.webp",
+		offsetX: -0.4,
+	}, inherited);
+
+	assert.equal(state.mode, "disabled");
+	assert.equal(state.disabledCustom, true);
+	assert.equal(state.config.imagePath, "custom/disabled-sword.webp");
+	assert.equal(resolveWeaponSpriteSaveAction({
+		formEnabled: false,
+		state,
+		configDirty: false,
+	}), "save-full");
+	assert.equal(resolveWeaponSpriteSaveAction({
+		formEnabled: true,
+		state,
+		configDirty: false,
+	}), "save-full");
+});
+
+test("an inherited equipped sprite disable can still restore inheritance", () => {
+	const state = resolveWeaponSpriteFormState({ enabled: false }, inherited);
+	assert.equal(resolveWeaponSpriteSaveAction({
+		formEnabled: false,
+		state,
+		configDirty: false,
+	}), "save-disabled");
+	assert.equal(resolveWeaponSpriteSaveAction({
+		formEnabled: true,
+		state,
+		configDirty: false,
+	}), "unset");
 });
 
 test("a custom equipped sprite wins over the inherited master preset", () => {
@@ -113,6 +153,17 @@ test("weapon sheets expose separate Attack FX and Equipped Sprite controls", () 
 	assert.match(source, /openWeaponAnimationConfig/);
 });
 
+test("item visual controls retain standalone injection and idempotent click handlers", () => {
+	const source = readFileSync(new URL("../../scripts/combat/weapon-bonus-ui.mjs", import.meta.url), "utf8");
+	const bonusStart = source.indexOf("export function injectWeaponBonusTab");
+	const controlsStart = source.indexOf("export function injectWeaponAnimationButton");
+	const bonusBody = source.slice(bonusStart, controlsStart);
+
+	assert.match(bonusBody, /injectWeaponAnimationButton/);
+	assert.match(source, /\.off\("click\.sdxItemVisuals"\)/);
+	assert.match(source, /\.on\("click\.sdxItemVisuals"/);
+});
+
 test("spell sheets expose the same direct per-item animation editor as weapons", () => {
 	const source = readFileSync(new URL("../../scripts/combat/weapon-bonus-ui.mjs", import.meta.url), "utf8");
 	const root = readFileSync(new URL("../../scripts/shadowdark-extras.mjs", import.meta.url), "utf8");
@@ -152,10 +203,13 @@ test("equipped-sprite previews stay local and have room outside the token bounds
 test("weapon Attack FX editor exposes native colors, tint controls, and canvas preview", () => {
 	const config = readFileSync(new URL("../../scripts/animation/AnimationFxConfig.mjs", import.meta.url), "utf8");
 	const dialog = readFileSync(new URL("../../scripts/animation/WeaponAttackFxConfig.mjs", import.meta.url), "utf8");
+	const template = readFileSync(new URL("../../templates/weapon-attack-fx-config.hbs", import.meta.url), "utf8");
 	assert.match(config, /Native JB2A Color/);
 	assert.match(config, /sdx-animfx-tint-enabled/);
 	assert.match(config, /sdx-animfx-tint-contrast/);
 	assert.match(config, /sdx-animfx-tint-saturation/);
 	assert.match(config, /sdx-animfx-preview/);
 	assert.match(dialog, /activateAnimationFxListeners/);
+	assert.match(template, /localize "SHADOWDARK_EXTRAS\.weaponAnimation\.close"/);
+	assert.doesNotMatch(template, />\s*Close\s*</);
 });

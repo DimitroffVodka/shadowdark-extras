@@ -27,6 +27,7 @@ import { applyAttackFxTint, resolveNativeColorVariants } from "./animation-fx-co
 import {
 	ANIMATION_DURATION_DEFAULTS_VERSION,
 	applyAnimationDuration,
+	getLegacyGenericWeaponPreset,
 	migrateLegacyAnimationDurations,
 } from "./animation-fx-duration.mjs";
 import { resolveAnimationPreviewTargets } from "./animation-fx-preview.mjs";
@@ -198,10 +199,9 @@ export const AnimationFxSD = {
 		const bundledConfig = {
 			spells: LEGACY_SPELL_PRESETS,
 			weapons: {
-				_default: {
-					...DEFAULT_ANIMATION_FX_CONFIG.weapons._default,
-					hit: { ...DEFAULT_ANIMATION_FX_CONFIG.weapons._default.hit, duration: 1500 },
-				},
+				_default: getLegacyGenericWeaponPreset(
+					DEFAULT_ANIMATION_FX_CONFIG.weapons._default
+				),
 				...LEGACY_WEAPON_PRESETS,
 			},
 			npcActions: LEGACY_NPC_ATTACK_PRESETS,

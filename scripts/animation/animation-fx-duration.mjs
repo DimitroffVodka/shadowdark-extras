@@ -1,4 +1,5 @@
-export const ANIMATION_DURATION_DEFAULTS_VERSION = 1;
+export const ANIMATION_DURATION_DEFAULTS_VERSION = 2;
+const LEGACY_GENERIC_WEAPON_DURATION_MS = 1000;
 
 function clone(value) {
 	return JSON.parse(JSON.stringify(value ?? {}));
@@ -23,6 +24,13 @@ export function withNaturalDurations(presets) {
 		if (preset?.hit) preset.hit.duration = 0;
 		if (preset?.miss) preset.miss.duration = 0;
 	}
+	return result;
+}
+
+/** Reconstruct the exact generic-melee default shipped before Auto durations. */
+export function getLegacyGenericWeaponPreset(preset) {
+	const result = clone(preset);
+	if (result.hit) result.hit.duration = LEGACY_GENERIC_WEAPON_DURATION_MS;
 	return result;
 }
 

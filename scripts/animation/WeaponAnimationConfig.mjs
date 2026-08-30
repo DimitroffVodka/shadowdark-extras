@@ -12,7 +12,10 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 // Import animation helpers
 import { scanItemImages, playWeaponAnimation } from "./WeaponAnimationSD.mjs";
 import { AnimationFxSD } from "./AnimationFxSD.mjs";
-import { resolveWeaponSpriteFormState } from "./weapon-sprite-form-state.mjs";
+import {
+	resolveWeaponSpriteFormState,
+	resolveWeaponSpriteSaveAction,
+} from "./weapon-sprite-form-state.mjs";
 import { toCssWeaponColorMatrix } from "./weapon-sprite-color.mjs";
 
 /**
@@ -60,8 +63,7 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 		this.item = options.item;
 		this._cachedImages = null;
 		this._configDirty = false;
-		this._spriteMode = "none";
-		this._inheritedConfig = null;
+		this._spriteState = null;
 		this._livePreviewRevision = 0;
 		this._livePreviewChain = Promise.resolve();
 		this._hasLivePreview = false;
@@ -93,8 +95,7 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 		const inheritedConfig = AnimationFxSD.resolveWeaponSprite(this.item);
 		const spriteState = resolveWeaponSpriteFormState(storedConfig, inheritedConfig);
 		const config = spriteState.config;
-		this._spriteMode = spriteState.mode;
-		this._inheritedConfig = inheritedConfig;
+		this._spriteState = spriteState;
 		this._configDirty = false;
 
 		// Get token data for accurate preview
@@ -549,23 +550,21 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 		await this._cancelLivePreview();
 
 		const newConfig = this._readCurrentConfig();
-		if (!newConfig.enabled) {
-			const disabledConfig = this._spriteMode === "custom"
-				? { ...newConfig, enabled: false }
-				: { enabled: false };
-			await this.item.setFlag(MODULE_ID, "weaponAnimation", disabledConfig);
+		const saveAction = resolveWeaponSpriteSaveAction({
+			formEnabled: newConfig.enabled,
+			state: this._spriteState,
+			configDirty: this._configDirty,
+		});
+		if (saveAction === "save-disabled") {
+			await this.item.setFlag(MODULE_ID, "weaponAnimation", { enabled: false });
 		}
-		else if (
-			this._inheritedConfig
-			&& !this._configDirty
-			&& (this._spriteMode === "inherited" || this._spriteMode === "disabled")
-		) {
+		else if (saveAction === "unset") {
 			// Merely enabling an inherited preset should restore inheritance, not
 			// copy the master preset into a stale per-item override.
 			await this.item.unsetFlag(MODULE_ID, "weaponAnimation");
 		}
 		else {
-			if (!newConfig.imagePath) {
+			if (newConfig.enabled && !newConfig.imagePath) {
 				ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.weaponAnimation.imageRequired"));
 				return;
 			}

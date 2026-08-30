@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
 	applyAnimationDuration,
+	getLegacyGenericWeaponPreset,
 	migrateLegacyAnimationDurations,
 } from "../../scripts/animation/animation-fx-duration.mjs";
 import { resolveAnimationPreviewTargets } from "../../scripts/animation/animation-fx-preview.mjs";
@@ -36,9 +37,15 @@ test("target-anchored preview uses another controlled token before a user target
 	);
 });
 
-test("target-anchored preview creates a distinct fallback point", () => {
-	const [fallback] = resolveAnimationPreviewTargets(
+test("target-anchored on-token preview falls back to the caster without another token", () => {
+	assert.deepEqual(resolveAnimationPreviewTargets(
 		{ type: "onToken", target: "target" }, source, [source], null,
+	), [source]);
+});
+
+test("projectile preview still creates a distinct fallback point", () => {
+	const [fallback] = resolveAnimationPreviewTargets(
+		{ type: "projectile", target: "target" }, source, [source], null,
 	);
 	assert.equal(fallback.id, "_preview_offset");
 	assert.notEqual(fallback.x, source.x);
@@ -99,6 +106,33 @@ test("legacy bundled durations migrate to Auto without replacing custom values",
 	assert.equal(result.config.weapons.longsword.hit.duration, 0);
 	assert.equal(result.config.spells.customized.hit.duration, 2222);
 	assert.equal(stored.spells.fireball.hit.duration, 1800, "does not mutate stored settings");
+});
+
+test("the shipped generic melee duration migrates from 1000ms to Auto", () => {
+	const bundled = {
+		spells: {},
+		weapons: {
+			_default: getLegacyGenericWeaponPreset({
+				type: "onToken",
+				hit: { file: "generic-melee.webm", duration: 0 },
+			}),
+		},
+		npcActions: {},
+	};
+	const stored = {
+		_durationDefaultsVersion: 1,
+		weapons: {
+			_default: {
+				type: "onToken",
+				hit: { file: "generic-melee.webm", duration: 1000 },
+			},
+		},
+	};
+
+	assert.equal(bundled.weapons._default.hit.duration, 1000);
+	const result = migrateLegacyAnimationDurations(stored, bundled);
+	assert.equal(result.config.weapons._default.hit.duration, 0);
+	assert.equal(result.config._durationDefaultsVersion, 2);
 });
 
 test("all bundled transient animation defaults use natural media duration", () => {
