@@ -13379,8 +13379,8 @@ body.sdx-dark-mode .shadowdark-extras .sdx-setting-header select {
    WEAPON ANIMATION CONFIG
    ============================================ */
 
-/* Animation button in weapon sheet nav */
-.sdx-weapon-animation-btn {
+/* Independent Attack FX / Equipped Sprite controls in weapon sheet nav. */
+.sdx-weapon-visual-btn {
     cursor: pointer;
     color: #9b8d6f;
     transition: all 0.2s;
@@ -13395,13 +13395,13 @@ body.sdx-dark-mode .shadowdark-extras .sdx-setting-header select {
     border-radius: 4px;
 }
 
-.sdx-weapon-animation-btn:hover {
+.sdx-weapon-visual-btn:hover {
     color: #c9aa58;
     background: rgba(255, 255, 255, 0.05);
     border-color: #c9aa58;
 }
 
-.sdx-weapon-animation-btn i {
+.sdx-weapon-visual-btn i {
     font-size: 14px;
     margin: 0 !important;
 }
@@ -13420,6 +13420,27 @@ body.sdx-dark-mode .shadowdark-extras .sdx-setting-header select {
     display: flex;
     flex-direction: column;
     gap: 12px;
+}
+
+.weapon-sprite-state {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid rgba(135, 120, 90, 0.45);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.12);
+    font-size: 12px;
+}
+
+.weapon-sprite-state-inherited { border-color: rgba(90, 160, 100, 0.65); }
+.weapon-sprite-state-custom { border-color: rgba(190, 140, 60, 0.75); }
+.weapon-sprite-state-disabled { border-color: rgba(180, 80, 80, 0.65); }
+
+.weapon-sprite-use-master {
+    flex: 0 0 auto;
+    width: auto;
 }
 
 .weapon-animation-config .form-group {
@@ -13465,26 +13486,55 @@ body.sdx-dark-mode .shadowdark-extras .sdx-setting-header select {
 }
 
 .weapon-preview-box {
-    width: 120px;
-    height: 120px;
+    width: 200px;
+    height: 200px;
     border: 2px dashed #444;
     border-radius: 8px;
-    background: #1a1a1a;
+    background-color: #1a1a1a;
+    background-image:
+        linear-gradient(45deg, #242424 25%, transparent 25%),
+        linear-gradient(-45deg, #242424 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #242424 75%),
+        linear-gradient(-45deg, transparent 75%, #242424 75%);
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    background-size: 16px 16px;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    position: relative;
+}
+
+.weapon-preview-token {
+    position: absolute;
+    top: 40px;
+    left: 40px;
+    width: 120px;
+    height: 120px;
+    border-radius: 8px;
+    background-position: center;
+    background-size: cover;
+    opacity: 0.65;
+    z-index: 1;
 }
 
 .weapon-preview-img {
-    max-width: 100%;
-    max-height: 100%;
+    position: absolute;
+    top: 40px;
+    left: 40px;
+    width: 120px;
+    height: 120px;
+    max-width: 120px;
+    max-height: 120px;
     object-fit: contain;
+    transform-origin: center;
+    z-index: 2;
 }
 
 .weapon-preview-placeholder {
     font-size: 48px;
     color: #444;
+    z-index: 3;
 }
 
 /* Slider controls */
@@ -19285,6 +19335,49 @@ footer.sdx-coords-footer {
     opacity: 0.6;
     background: rgba(0, 0, 0, 0.06);
     cursor: not-allowed;
+}
+
+.weapon-attack-fx-config .window-content {
+    overflow: hidden;
+}
+
+.weapon-attack-fx-config-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.weapon-attack-fx-config-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.weapon-attack-fx-config .form-footer {
+    flex: 0 0 auto;
+    padding-top: 8px;
+}
+
+.sdx-animation-fx-box .sdx-animfx-tint {
+    margin: 4px 0 0;
+    padding: 8px;
+    border: 1px solid rgba(135, 120, 90, 0.45);
+}
+
+.sdx-animation-fx-box .sdx-animfx-color-row {
+    display: flex;
+    gap: 6px;
+}
+
+.sdx-animation-fx-box .sdx-animfx-color-row input[type="color"] {
+    flex: 0 0 42px;
+}
+
+.sdx-animation-fx-box .sdx-animfx-color-row input[type="text"] {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 /* ============================================

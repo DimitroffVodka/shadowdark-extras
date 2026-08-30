@@ -28,7 +28,10 @@ globalThis.foundry = {
 };
 
 const { FEATURE_IDS } = await import("../../scripts/settings/feature-gates.mjs");
-const { injectWeaponBonusTab } = await import("../../scripts/combat/weapon-bonus-ui.mjs");
+const {
+	injectWeaponAnimationButton,
+	injectWeaponBonusTab,
+} = await import("../../scripts/combat/weapon-bonus-ui.mjs");
 
 class Query {
 	constructor(dom, selector, length = 1) {
@@ -61,6 +64,13 @@ class Query {
 		return this;
 	}
 
+	off(event) {
+		this.dom.bindings = this.dom.bindings.filter(binding => (
+			binding.selector !== this.selector || binding.event !== event
+		));
+		return this;
+	}
+
 	before(html) {
 		this.dom.fragments.push(String(html));
 		return this;
@@ -81,7 +91,7 @@ class Query {
 	}
 }
 
-function makeWeaponSheet({ nativeTab = false, disabled = [] } = {}) {
+function makeWeaponSheet({ nativeTab = false, disabled = [], reinject = false } = {}) {
 	disabledFeatureIds = disabled;
 	const dom = {
 		nativeTab,
@@ -96,12 +106,14 @@ function makeWeaponSheet({ nativeTab = false, disabled = [] } = {}) {
 		},
 	};
 	const item = {
+		uuid: "Item.test-weapon",
 		type: "Weapon",
 		flags: { [MODULE_ID]: { weaponBonus: { enabled: true, itemMacro: { triggers: [] } } } },
 		getFlag: () => "",
 	};
 
 	injectWeaponBonusTab({ _tabs: [] }, html, item);
+	if (reinject) injectWeaponAnimationButton(html, item);
 	return dom;
 }
 
@@ -144,6 +156,13 @@ test("enabled-by-default fallback weapon sheets retain animation and Item Macro 
 	assert.equal(hasBinding(dom, ".sdx-macro-run-as-gm"), true);
 	assert.equal(hasBinding(dom, ".sdx-item-macro-command"), true);
 	assert.equal(hasBinding(dom, ".sdx-macro-trigger-checkbox"), true);
+});
+
+test("repeated item visual injection retains one click handler per control", () => {
+	const dom = makeWeaponSheet({ nativeTab: true, reinject: true });
+	const visualBindings = dom.bindings.filter(binding => binding.event === "click.sdxItemVisuals");
+	assert.equal(visualBindings.filter(binding => binding.selector.includes("attack-fx-btn")).length, 1);
+	assert.equal(visualBindings.filter(binding => binding.selector.includes("animation-btn")).length, 1);
 });
 
 function splitExpression(expression) {

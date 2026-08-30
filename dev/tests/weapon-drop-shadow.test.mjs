@@ -63,6 +63,7 @@ class MockEffect {
 	spriteScale() { return this; }
 	filter() { return this; }
 	persist() { return this; }
+	aboveLighting() { return this; }
 	zIndex() { return this; }
 	loopProperty() { return this; }
 	animateProperty() { return this; }

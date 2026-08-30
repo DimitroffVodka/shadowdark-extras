@@ -18,12 +18,14 @@
  * null so Automated Animations (if installed) can still cover it.
  */
 
+import { withNaturalDurations } from "../animation-fx-duration.mjs";
+
 const C = "modules/JB2A_DnD5e/Library/Generic/Creature/";
 const U = "modules/JB2A_DnD5e/Library/Generic/Unarmed_Attacks/Unarmed_Strike/";
 const R = "modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Ranged/";
 const CONE = "modules/JB2A_DnD5e/Library/Generic/Template/Cone/Breath_Weapon/";
 
-export const DEFAULT_NPC_ATTACK_PRESETS = {
+export const LEGACY_NPC_ATTACK_PRESETS = {
 	bite: {
 		label: "Bite / Maw", patterns: "bite|maw|jaws|chomp|beak|devour",
 		type: "onToken", target: "target",
@@ -85,5 +87,7 @@ export const DEFAULT_NPC_ATTACK_PRESETS = {
 		hit: { file: `${CONE}BreathWeapon_Fire01_Regular_Orange_30ft_Cone_Burst_600x600.webm`, scale: 1, duration: 1500 },
 	},
 };
+
+export const DEFAULT_NPC_ATTACK_PRESETS = withNaturalDurations(LEGACY_NPC_ATTACK_PRESETS);
 
 export default DEFAULT_NPC_ATTACK_PRESETS;

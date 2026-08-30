@@ -562,7 +562,7 @@ function initializeFeatures() {
 	// never been seeded, so new worlds come up fully populated (GM-only,
 	// one-time, merge-not-overwrite — see AnimationFxSD.autoSeedIfNeeded).
 	if (featureEnabled(FEATURE_IDS.ANIMATION_FX)) {
-		Hooks.once("ready", () => AnimationFxSD.autoSeedIfNeeded());
+		Hooks.once("ready", () => AnimationFxSD.initializeDefaults());
 	}
 
 	// Patch CharacterGeneratorSD to show rolls in chat
@@ -1154,6 +1154,8 @@ if (anyFeatureEnabled(
 			if (featureEnabled(FEATURE_IDS.WEAPON_BONUSES)) {
 				injectWeaponBonusTab(app, html, item);
 			}
+			// Attack FX and Equipped Sprite are independent controls and gates.
+			injectWeaponAnimationButton(html, item);
 			if (featureEnabled(FEATURE_IDS.DAMAGE_TYPES)) {
 				injectWeaponDamageTypeDropdown(app, html, item);
 			}
@@ -1162,9 +1164,11 @@ if (anyFeatureEnabled(
 			}
 		}
 		else if (featureEnabled(FEATURE_IDS.WEAPON_SPRITES) && item?.type === "Armor") {
-			// For shields (Armor), just inject the animation button
+			// Shields expose only Equipped Sprite.
 			injectWeaponAnimationButton(html, item);
 		}
+		else if (item?.type === "Spell"
+			&& featureEnabled(FEATURE_IDS.ANIMATION_ITEM_OVERRIDES)) injectWeaponAnimationButton(html, item);
 	}
 	catch(err) {
 		console.error(`${MODULE_ID} | Failed to inject weapon bonus tab`, err);

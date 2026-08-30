@@ -16,7 +16,9 @@
  * inactive are skipped at play time by AnimationFxSD's missing-module guard.
  */
 
-export const DEFAULT_WEAPON_PRESETS = {
+import { withNaturalDurations } from "../animation-fx-duration.mjs";
+
+export const LEGACY_WEAPON_PRESETS = {
 	arbalest: {
 		label: "Arbalest",
 		patterns: "arbalest",
@@ -558,5 +560,7 @@ export const DEFAULT_WEAPON_PRESETS = {
 		},
 	},
 };
+
+export const DEFAULT_WEAPON_PRESETS = withNaturalDurations(LEGACY_WEAPON_PRESETS);
 
 export default DEFAULT_WEAPON_PRESETS;

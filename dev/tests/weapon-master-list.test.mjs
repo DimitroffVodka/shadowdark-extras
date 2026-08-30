@@ -76,6 +76,9 @@ class MockEffect {
 	spriteScale() { return this; }
 	filter() { return this; }
 	persist() { return this; }
+	temporary() { this._seq._temporary = true; return this; }
+	locally() { this._seq._local = true; return this; }
+	aboveLighting() { return this; }
 	zIndex() { return this; }
 	loopProperty() { return this; }
 }
@@ -88,7 +91,19 @@ class MockSequence {
 			const token = this._token;
 			const source = token.document?.uuid ?? `Scene.${globalThis.game.user.viewedScene ?? globalThis.canvas.scene.id}.Token.${token.id}`;
 			const sprite = { filters: [] };
-			const eff = { data: { name: this._name, source, _id: `play-${token.id}-${this._name}`, sceneId: globalThis.canvas.scene.id }, sprite, spriteContainer: sprite };
+			const eff = {
+				data: {
+					name: this._name,
+					source,
+					_id: `play-${token.id}-${this._name}`,
+					sceneId: globalThis.canvas.scene.id,
+					temporary: !!this._temporary,
+					local: !!this._local,
+				},
+				sprite,
+				spriteContainer: sprite,
+				visible: true,
+			};
 			globalThis.Sequencer.EffectManager.effects.push(eff);
 		}
 	}
@@ -100,12 +115,23 @@ globalThis.Sequencer = {
 		endEffects: async filter => { endEffectsCalls.push(filter); },
 		getEffects: () => [],
 		effects: [],
+		_removeEffect: async effect => {
+			const index = globalThis.Sequencer.EffectManager.effects.indexOf(effect);
+			if (index >= 0) globalThis.Sequencer.EffectManager.effects.splice(index, 1);
+		},
 	},
 };
 globalThis.PIXI = { filters: {} };
 globalThis.PIXI.filters.DropShadowFilter = class { constructor(o){ this.opts=o; } };
 
-const { playWeaponAnimation, hasWeaponAnimation, getResolvedWeaponAnimation, getEffectName, initWeaponAnimations } = await import("../../scripts/animation/WeaponAnimationSD.mjs");
+const {
+	playWeaponAnimation,
+	hasWeaponAnimation,
+	getResolvedWeaponAnimation,
+	getEffectName,
+	getPreviewEffectName,
+	initWeaponAnimations,
+} = await import("../../scripts/animation/WeaponAnimationSD.mjs");
 
 function reset() {
 	endEffectsCalls.length = 0;
@@ -202,6 +228,47 @@ test("weapon matching master-list animates on equip with no per-item flag; non-m
 	endEffectsCalls.length = 0;
 	await handler(sword, { system: { equipped: true } }, {}, "testUser");
 	assert.equal(globalThis.Sequencer.EffectManager.effects.length, 0, "bastard sword must not produce effect");
+});
+
+test("live preview is local and temporary without replacing the official effect", async () => {
+	reset();
+	seedDaggerPreset();
+	const dagger = makeItem("itemD", "Dagger", true, null);
+	const actor = makeActor("actor1", [dagger]);
+	const token = makeToken("tok1", actor);
+	const official = {
+		data: { name: getEffectName(dagger.id), source: token.document.uuid, _id: "official" },
+		visible: true,
+	};
+	globalThis.Sequencer.EffectManager.effects = [official];
+
+	await playWeaponAnimation(token, dagger, {
+		enabled: true,
+		imagePath: "modules/shadowdark-extras/assets/Weapons/preview.webp",
+		offsetX: -0.2,
+	}, null, { preview: true });
+
+	const preview = globalThis.Sequencer.EffectManager.effects.find(
+		effect => effect.data?.name === getPreviewEffectName(dagger.id),
+	);
+	assert.ok(preview, "preview effect should be created under its own name");
+	assert.equal(preview.data.temporary, true);
+	assert.equal(preview.data.local, true);
+	assert.equal(official.visible, false, "official effect should remain present but hidden locally");
+	assert.ok(!endEffectsCalls.some(call => call.name === getEffectName(dagger.id)));
+
+	await playWeaponAnimation(token, dagger, {
+		enabled: true,
+		imagePath: "modules/shadowdark-extras/assets/Weapons/replacement.webp",
+		offsetX: 0.4,
+	}, null, { preview: true });
+	assert.equal(
+		globalThis.Sequencer.EffectManager.effects.filter(
+			effect => effect.data?.name === getPreviewEffectName(dagger.id),
+		).length,
+		1,
+		"replacing a preview should remove the old local effect object",
+	);
 });
 
 test("unequip still stops unconditionally even when config from master list", async () => {

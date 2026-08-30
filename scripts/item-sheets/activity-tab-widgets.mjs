@@ -325,22 +325,30 @@ export function activateAnimationFxListeners(html, item) {
 	const $box = html.find(".sdx-animation-fx-box");
 	if (!$box.length) return;
 
-	const FIELDS = ".sdx-animfx-type, .sdx-animfx-target, .sdx-animfx-file, .sdx-animfx-sound, .sdx-animfx-scale, .sdx-animfx-duration, .sdx-animfx-opacity";
+	const TINT_FIELDS = ".sdx-animfx-tint-color, .sdx-animfx-tint-color-text, .sdx-animfx-tint-contrast, .sdx-animfx-tint-saturation";
+	const FIELDS = `.sdx-animfx-type, .sdx-animfx-target, .sdx-animfx-file, .sdx-animfx-native-color, .sdx-animfx-sound, .sdx-animfx-scale, .sdx-animfx-duration, .sdx-animfx-opacity, .sdx-animfx-tint-enabled, ${TINT_FIELDS}`;
 
 	/** Read the panel's current values as a master-list-shaped preset. */
 	function readPreset() {
 		const sound = ($box.find(".sdx-animfx-sound").val() || "").trim();
+		const duration = parseInt($box.find(".sdx-animfx-duration").val(), 10);
 		return {
 			label: item.name,
 			type: $box.find(".sdx-animfx-type").val() || "projectile",
 			target: $box.find(".sdx-animfx-target").val() || "target",
 			opacity: parseFloat($box.find(".sdx-animfx-opacity").val()) || 1,
+			tint: {
+				enabled: $box.find(".sdx-animfx-tint-enabled").prop("checked"),
+				color: ($box.find(".sdx-animfx-tint-color-text").val() || "#ffffff").trim(),
+				contrast: parseFloat($box.find(".sdx-animfx-tint-contrast").val()) || 0,
+				saturation: parseFloat($box.find(".sdx-animfx-tint-saturation").val()) || 0,
+			},
 			hit: {
 				file: ($box.find(".sdx-animfx-file").val() || "").trim(),
 				// Blank clears the sound rather than storing "".
 				...(sound ? { sound } : {}),
 				scale: parseFloat($box.find(".sdx-animfx-scale").val()) || 1,
-				duration: parseInt($box.find(".sdx-animfx-duration").val(), 10) || 1500,
+				duration: Number.isFinite(duration) ? Math.max(0, duration) : 0,
 			},
 		};
 	}
@@ -375,11 +383,63 @@ export function activateAnimationFxListeners(html, item) {
 		});
 	}
 
+	function syncTintControls() {
+		const overriding = $box.find(".sdx-animfx-enabled").prop("checked");
+		const tinting = $box.find(".sdx-animfx-tint-enabled").prop("checked");
+		$box.find(TINT_FIELDS).prop("disabled", !overriding || !tinting);
+		$box.find(".sdx-animfx-tint-controls").toggleClass("sdx-animfx-readonly", !tinting);
+	}
+
+	function syncAnchorControl() {
+		const overriding = $box.find(".sdx-animfx-enabled").prop("checked");
+		const $type = $box.find(".sdx-animfx-type");
+		const $anchor = $box.find(".sdx-animfx-target");
+		if ($type.val() === "onToken") {
+			$anchor.prop("disabled", !overriding);
+			if (overriding) $anchor.val($anchor.attr("data-on-token-target") || $anchor.val() || "target");
+			return;
+		}
+		if (!$anchor.prop("disabled")) $anchor.attr("data-on-token-target", $anchor.val() || "target");
+		$anchor.val("target").prop("disabled", true);
+	}
+
+	function refreshNativeColors(file) {
+		const variants = AnimationFxSD.nativeColorVariants(file);
+		const $row = $box.find(".sdx-animfx-native-color-row");
+		const $select = $box.find(".sdx-animfx-native-color").empty();
+		for (const variant of variants) {
+			$select.append($("<option>")
+				.val(variant.path)
+				.text(variant.label)
+				.prop("selected", variant.current));
+		}
+		$row.prop("hidden", variants.length === 0);
+	}
+
 	// NOTE: these must be bound *directly*, not delegated off $box. The Activity
 	// tab installs a blanket per-input `change` handler that calls
 	// stopPropagation() to suppress Foundry's form auto-submit (see
 	// enhanceSpellSheet), so nothing here ever bubbles to an ancestor. Handlers
 	// on the same node still all run.
+
+	// Keep compound controls synchronized before the shared persistence handler.
+	$box.find(".sdx-animfx-file").on("change", function() {
+		refreshNativeColors($(this).val());
+	});
+	$box.find(".sdx-animfx-native-color").on("change", function() {
+		$box.find(".sdx-animfx-file").val($(this).val());
+	});
+	$box.find(".sdx-animfx-tint-color").on("change", function() {
+		$box.find(".sdx-animfx-tint-color-text").val($(this).val());
+	});
+	$box.find(".sdx-animfx-tint-color-text").on("change", function() {
+		if (/^#[0-9a-f]{6}$/i.test($(this).val())) {
+			$box.find(".sdx-animfx-tint-color").val($(this).val());
+		}
+	});
+	$box.find(".sdx-animfx-tint-enabled").on("change", syncTintControls);
+	$box.find(".sdx-animfx-type").on("change", syncAnchorControl);
+	syncAnchorControl();
 
 	// Field edits only ever persist while the override is on — when it's off the
 	// panel is a read-only view of the master list and must not write to the item.
@@ -395,6 +455,8 @@ export function activateAnimationFxListeners(html, item) {
 		e.stopPropagation();
 		const on = $box.find(".sdx-animfx-enabled").prop("checked");
 		$box.find(FIELDS).prop("disabled", !on);
+		syncTintControls();
+		syncAnchorControl();
 		$box.find(".SD-grid").toggleClass("sdx-animfx-readonly", !on);
 		updateBadge(on);
 
@@ -409,8 +471,17 @@ export function activateAnimationFxListeners(html, item) {
 		$box.find(".sdx-animfx-type").val($box.attr("data-inh-type") || "projectile");
 		$box.find(".sdx-animfx-target").val($box.attr("data-inh-target") || "target");
 		$box.find(".sdx-animfx-scale").val($box.attr("data-inh-scale") || 1);
-		$box.find(".sdx-animfx-duration").val($box.attr("data-inh-duration") || 1500);
+		$box.find(".sdx-animfx-duration").val($box.attr("data-inh-duration") || 0);
 		$box.find(".sdx-animfx-opacity").val($box.attr("data-inh-opacity") || 1);
+		refreshNativeColors($box.attr("data-inh-file") || "");
+		const inheritedTint = $box.attr("data-inh-tint-enabled") === "true";
+		const inheritedColor = $box.attr("data-inh-tint-color") || "#ffffff";
+		$box.find(".sdx-animfx-tint-enabled").prop("checked", inheritedTint);
+		$box.find(".sdx-animfx-tint-color, .sdx-animfx-tint-color-text").val(inheritedColor);
+		$box.find(".sdx-animfx-tint-contrast").val($box.attr("data-inh-tint-contrast") || 0);
+		$box.find(".sdx-animfx-tint-saturation").val($box.attr("data-inh-tint-saturation") || 0);
+		syncTintControls();
+		syncAnchorControl();
 
 		const updateData = {};
 		updateData[`flags.${MODULE_ID}.-=animationFx`] = null;

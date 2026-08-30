@@ -10,6 +10,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
 import { AnimationFxSD } from "./AnimationFxSD.mjs";
 import { initAnimationEffectDedup } from "./AnimationEffectDedupSD.mjs";
 import { getTokensForActor } from "./token-resolution.mjs";
+import { toSequencerWeaponColorMatrix } from "./weapon-sprite-color.mjs";
 import { isItemPilesActor } from "../inventory/ItemPilesCompatSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -88,6 +89,17 @@ export function getEffectName(itemId) {
 }
 
 /**
+ * Local, unsaved preview effect name used by the configuration dialog.
+ * Keeping it distinct prevents live form edits from replacing or persisting
+ * the equipped item's official effect.
+ * @param {string} itemId - The weapon item ID
+ * @returns {string}
+ */
+export function getPreviewEffectName(itemId) {
+	return `${getEffectName(itemId)}-preview`;
+}
+
+/**
  * Legacy effect name for transition compatibility.
  * Existing persisted effects use `${MODULE_ID}-weapon-${tokenId}-${itemId}`.
  * New code must terminate both new and legacy names, each with `object`.
@@ -97,6 +109,37 @@ export function getEffectName(itemId) {
  */
 export function getLegacyEffectName(token, itemId) {
 	return `${MODULE_ID}-weapon-${token.id}-${itemId}`;
+}
+
+function getTokenSource(token) {
+	return token.document?.uuid
+		?? `Scene.${globalThis.game?.user?.viewedScene ?? globalThis.canvas?.scene?.id ?? ""}.Token.${token.id}`;
+}
+
+function setOfficialEffectVisibility(token, itemId, visible) {
+	const effectName = getEffectName(itemId);
+	const tokenSource = getTokenSource(token);
+	for (const effect of Sequencer.EffectManager.effects ?? []) {
+		if (effect.data?.name === effectName && effect.data?.source === tokenSource) {
+			effect.visible = visible;
+		}
+	}
+}
+
+async function stopLocalPreviewEffect(token, itemId) {
+	const effectManager = Sequencer.EffectManager;
+	const previewName = getPreviewEffectName(itemId);
+	const tokenSource = getTokenSource(token);
+	const previews = (effectManager.effects ?? []).filter(effect => (
+		effect.data?.name === previewName && effect.data?.source === tokenSource
+	));
+	await Promise.allSettled(previews.map(effect => {
+		if (effect.isDestroyed || effect.destroyed) return undefined;
+		if (typeof effectManager._removeEffect === "function") {
+			return effectManager._removeEffect(effect);
+		}
+		return effect.endEffect?.();
+	}));
 }
 
 /** Where the build-time manifest of the bundled weapon art lives. */
@@ -273,11 +316,13 @@ function getImageName(filePath) {
  * Play weapon animation on a token
  * @param {Token} token - The token to animate
  * @param {Item} item - The weapon item
- * @param {Object|null} configOverride - Optional config object for live preview (skips DB read)
+ * @param {Object|null} configOverride - Optional config object (skips DB read)
  * @param {string|null} userId - Origin user id for equip events; null = no origin gate (e.g. restore)
+ * @param {{preview?: boolean}} options - Playback options
  */
-export async function playWeaponAnimation(token, item, configOverride = null, userId = null) {
+export async function playWeaponAnimation(token, item, configOverride = null, userId = null, options = {}) {
 	if (!isEnabled()) return;
+	const isPreview = options.preview === true;
 
 	const deps = checkDependencies();
 	if (!deps.ready) {
@@ -291,7 +336,13 @@ export async function playWeaponAnimation(token, item, configOverride = null, us
 	// A configured weapon may keep its animation flag while stored, but it must
 	// never render as an attached/equipped sprite on the pile token.
 	if (isItemPilesActor(item?.parent ?? token?.actor)) {
-		await stopWeaponAnimation(token, item.id);
+		if (isPreview) {
+			await stopLocalPreviewEffect(token, item.id);
+			setOfficialEffectVisibility(token, item.id, false);
+		}
+		else {
+			await stopWeaponAnimation(token, item.id);
+		}
 		return;
 	}
 
@@ -304,7 +355,13 @@ export async function playWeaponAnimation(token, item, configOverride = null, us
 
 	const animConfig = getResolvedWeaponAnimation(item, configOverride);
 	if (!animConfig) {
-		await stopWeaponAnimation(token, item.id); // was animating, now disabled/no-match — terminate
+		if (isPreview) {
+			await stopLocalPreviewEffect(token, item.id);
+			setOfficialEffectVisibility(token, item.id, false);
+		}
+		else {
+			await stopWeaponAnimation(token, item.id); // was animating, now disabled/no-match — terminate
+		}
 		return;
 	}
 
@@ -313,15 +370,25 @@ export async function playWeaponAnimation(token, item, configOverride = null, us
 	// across clients. See #107/#102 ordering discussion.
 	if (userId !== null && userId !== game.user.id) return;
 
-	const effectName = getEffectName(item.id);
+	const officialEffectName = getEffectName(item.id);
+	const previewEffectName = getPreviewEffectName(item.id);
+	const effectName = isPreview ? previewEffectName : officialEffectName;
 	const legacyName = getLegacyEffectName(token, item.id);
 
-	// End any existing animation for this weapon — token-scoped via object (see #105).
-	// Must terminate both new and legacy names (see stopWeaponAnimation); anchored
-	// globs do not match the other scheme, and 22 legacy torch / 10 legacy weapon
-	// records exist in world 0100.
-	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
-	await Sequencer.EffectManager.endEffects({ name: legacyName, object: token });
+	if (isPreview) {
+		// Reveal the official sprite while replacing the prior preview so the token
+		// never flashes blank. Hide the official effect once its replacement is ready.
+		setOfficialEffectVisibility(token, item.id, true);
+		await stopLocalPreviewEffect(token, item.id);
+	}
+	else {
+		// Saved playback owns the canonical effect and always clears a local preview.
+		await stopLocalPreviewEffect(token, item.id);
+		await Promise.all([
+			Sequencer.EffectManager.endEffects({ name: officialEffectName, object: token }),
+			Sequencer.EffectManager.endEffects({ name: legacyName, object: token }),
+		]);
+	}
 
 	// Get token dimensions
 	const tokenWidth = token.document.width;
@@ -342,8 +409,8 @@ export async function playWeaponAnimation(token, item, configOverride = null, us
 		.atLocation(token)
 		.attachTo(token, { bindRotation: true, local: true, bindVisibility: true })
 		.scaleToObject(animConfig.scale ?? 1.0, { considerTokenScale: true })
-		.scaleIn(0, 300, { ease: "easeOutBack" })
-		.scaleOut(0, 200, { ease: "easeOutCubic" })
+		.scaleIn(0, isPreview ? 0 : 300, { ease: "easeOutBack" })
+		.scaleOut(0, isPreview ? 0 : 200, { ease: "easeOutCubic" })
 		.spriteOffset({
 			x: (animConfig.offsetX ?? 0.35) * tokenWidth,
 			y: (animConfig.offsetY ?? 0.1) * tokenWidth,
@@ -358,13 +425,7 @@ export async function playWeaponAnimation(token, item, configOverride = null, us
 
 	// Apply ColorMatrix filter if configured
 	if (animConfig.filters?.colorMatrix) {
-		const cm = animConfig.filters.colorMatrix;
-		effect.filter("ColorMatrix", {
-			hue: cm.hue ?? 0,
-			brightness: cm.brightness ?? 1,
-			contrast: cm.contrast ?? 1,
-			saturate: cm.saturate ?? 0,
-		});
+		effect.filter("ColorMatrix", toSequencerWeaponColorMatrix(animConfig.filters.colorMatrix));
 	}
 
 	// Apply Glow filter if enabled
@@ -391,8 +452,12 @@ export async function playWeaponAnimation(token, item, configOverride = null, us
 		});
 	}
 
-	effect.persist()
-		.zIndex(5);
+	effect.persist();
+	if (isPreview) effect.temporary().locally();
+	// Equipped art is UI-like token adornment. Keep it out of Foundry's scene
+	// ambience filter so the canvas matches the editor's color preview.
+	effect.aboveLighting(true);
+	effect.zIndex(isPreview ? 6 : 5);
 
 	// Apply selected animation type
 	const animType = animConfig.animationType ?? (animConfig.wobble !== false ? "wobble" : "none");
@@ -442,13 +507,13 @@ export async function playWeaponAnimation(token, item, configOverride = null, us
 	}
 
 	await seq.play();
+	if (isPreview) setOfficialEffectVisibility(token, item.id, false);
 
 	// Apply additional PIXI filters that Sequencer doesn't support natively
 	if (animConfig.filters?.dropShadow?.enabled) {
 		// Wait briefly for the effect to be fully initialized
 		await new Promise(resolve => setTimeout(resolve, 100));
 
-		const effectName = getEffectName(item.id);
 		// Token-scoped lookup must carry source identity — after #105 names collide
 		// across tokens sharing an item, so a name-only filter would match siblings.
 		// Filter by both name and source (token document UUID).
@@ -510,8 +575,11 @@ export async function stopWeaponAnimation(token, itemId) {
 	const effectName = getEffectName(itemId);
 	const legacyName = getLegacyEffectName(token, itemId);
 	// Transition compatibility: terminate both new and legacy names, each with object
-	await Sequencer.EffectManager.endEffects({ name: effectName, object: token });
-	await Sequencer.EffectManager.endEffects({ name: legacyName, object: token });
+	await stopLocalPreviewEffect(token, itemId);
+	await Promise.all([
+		Sequencer.EffectManager.endEffects({ name: effectName, object: token }),
+		Sequencer.EffectManager.endEffects({ name: legacyName, object: token }),
+	]);
 	console.log(`${MODULE_ID} | Stopped weapon animation: ${effectName} (and legacy ${legacyName})`);
 }
 

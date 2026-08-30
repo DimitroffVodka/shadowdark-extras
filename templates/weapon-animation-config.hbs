@@ -1,4 +1,23 @@
 <div class="weapon-animation-config-content">
+	<div class="weapon-sprite-state weapon-sprite-state-{{spriteState.mode}}">
+		{{#if (eq spriteState.mode "inherited")}}
+		<span><i class="fas fa-link"></i> {{localize "SHADOWDARK_EXTRAS.weaponAnimation.inheritedFrom"}}
+			<strong>{{spriteState.inheritedLabel}}</strong></span>
+		{{else if (eq spriteState.mode "custom")}}
+		<span><i class="fas fa-pen"></i> {{localize "SHADOWDARK_EXTRAS.weaponAnimation.customOverride"}}</span>
+		{{else if (eq spriteState.mode "disabled")}}
+		<span><i class="fas fa-ban"></i> {{localize "SHADOWDARK_EXTRAS.weaponAnimation.disabledForItem"}}</span>
+		{{else}}
+		<span><i class="fas fa-circle-minus"></i> {{localize "SHADOWDARK_EXTRAS.weaponAnimation.noSpritePreset"}}</span>
+		{{/if}}
+		{{#if spriteState.hasInherited}}
+			{{#if spriteState.hasItemOverride}}
+			<button type="button" data-action="useMaster" class="weapon-sprite-use-master">
+				<i class="fas fa-rotate-left"></i> {{localize "SHADOWDARK_EXTRAS.weaponAnimation.useMaster"}}
+			</button>
+			{{/if}}
+		{{/if}}
+	</div>
 	<div class="form-group">
 		<label>
 			<input type="checkbox" class="weapon-animation-enabled" {{#if config.enabled}}checked{{/if}}>
@@ -72,17 +91,16 @@
 
 				<div class="form-group weapon-preview-container">
 					<label>{{localize "SHADOWDARK_EXTRAS.weaponAnimation.preview"}}</label>
-					<div class="weapon-preview-box"
-						style="background-image: url('{{tokenImg}}'); background-size: cover; background-position: center; position: relative;">
+					<div class="weapon-preview-box">
+						<div class="weapon-preview-token" style="background-image: url('{{tokenImg}}');"></div>
 						{{#if config.imagePath}}
-						<img class="weapon-preview-img" src="{{config.imagePath}}" alt="Preview"
-							style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain;">
+						<img class="weapon-preview-img" src="{{config.imagePath}}" alt="Preview">
 						<div class="weapon-preview-placeholder" style="display: none;">
 							<i class="fas fa-sword"></i>
 						</div>
 						{{else}}
 						<img class="weapon-preview-img" src="" alt="Preview"
-							style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain;">
+							style="display: none;">
 						<div class="weapon-preview-placeholder">
 							<i class="fas fa-sword"></i>
 						</div>

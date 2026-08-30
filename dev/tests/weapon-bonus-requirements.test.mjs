@@ -127,6 +127,7 @@ function renderBonusesTab(weaponBonus) {
 	const makeQuery = (length) => ({
 		length,
 		find: (selector) => makeQuery(ABSENT.includes(selector) ? 0 : 1),
+		off: () => makeQuery(length),
 		on: () => makeQuery(length),
 		before: (html) => { fragments.push(String(html)); return makeQuery(length); },
 		after: (html) => { fragments.push(String(html)); return makeQuery(length); },
@@ -136,6 +137,7 @@ function renderBonusesTab(weaponBonus) {
 	const query = makeQuery(1);
 
 	const item = {
+		uuid: "Item.test-mace",
 		type: "Weapon",
 		name: "Mace",
 		flags: { "shadowdark-extras": { weaponBonus } },

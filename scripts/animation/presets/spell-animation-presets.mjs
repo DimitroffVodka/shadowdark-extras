@@ -15,7 +15,9 @@
  * generic `_default` or, if that is removed, to nothing.
  */
 
-export const DEFAULT_SPELL_PRESETS = {
+import { withNaturalDurations } from "../animation-fx-duration.mjs";
+
+export const LEGACY_SPELL_PRESETS = {
 	// ── generic fallback ─────────────────────────────────────────────────────
 	_default: {
 		label: "Generic Arcane Bolt", patterns: "",
@@ -229,5 +231,7 @@ export const DEFAULT_SPELL_PRESETS = {
 		hit: { file: "jb2a.detect_magic.circle.blue", scale: 1, duration: 1500 },
 	},
 };
+
+export const DEFAULT_SPELL_PRESETS = withNaturalDurations(LEGACY_SPELL_PRESETS);
 
 export default DEFAULT_SPELL_PRESETS;

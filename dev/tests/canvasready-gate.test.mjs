@@ -44,7 +44,7 @@ function installBaseWorld() {
 
 // Weapon mocks
 const endEffectsCallsWeapon = [];
-class MockEffectW { constructor(seq){ this._seq = seq; } name(v){ this._seq._name=v; return this; } file(){return this;} atLocation(t){ if(t?.id) this._seq._token=t; return this; } attachTo(t){ if(t?.id) this._seq._token=t; return this; } scaleToObject(){return this;} scaleIn(){return this;} scaleOut(){return this;} spriteOffset(){return this;} spriteRotation(){return this;} spriteScale(){return this;} filter(){return this;} persist(){return this;} zIndex(){return this;} loopProperty(){return this;} }
+class MockEffectW { constructor(seq){ this._seq = seq; } name(v){ this._seq._name=v; return this; } file(){return this;} atLocation(t){ if(t?.id) this._seq._token=t; return this; } attachTo(t){ if(t?.id) this._seq._token=t; return this; } scaleToObject(){return this;} scaleIn(){return this;} scaleOut(){return this;} spriteOffset(){return this;} spriteRotation(){return this;} spriteScale(){return this;} filter(){return this;} persist(){return this;} aboveLighting(){return this;} zIndex(){return this;} loopProperty(){return this;} }
 class MockSequenceW { constructor(){ this._name=null; this._token=null; } effect(){ const e=new MockEffectW(this); this._effect=e; return e; } async play(){ if(this._name && this._token){ const token=this._token; const source=token.document?.uuid ?? `Scene.${globalThis.game.user.viewedScene ?? globalThis.canvas.scene.id}.Token.${token.id}`; const sprite={filters:[]}; const eff={ data:{ name:this._name, source, _id:`play-${token.id}-${this._name}`, sceneId: globalThis.canvas.scene.id }, sprite, spriteContainer: sprite }; globalThis.Sequencer.EffectManager.effects.push(eff); }}}
 
 // Torch mocks (multi-layer)
@@ -417,7 +417,7 @@ test("overlapping sequencer ready events serialize — no interleaving, no winne
 	// Slow play to force interleaving: seq.play takes 60ms
 	const SlowSeq = class {
 		constructor(){ this._name=null; this._token=null; }
-		effect(){ const self=this; return { name(v){ self._name=v; return this; }, file(){return this;}, atLocation(t){ if(t?.id) self._token=t; return this;}, attachTo(t){ if(t?.id) self._token=t; return this;}, scaleToObject(){return this;}, scaleIn(){return this;}, scaleOut(){return this;}, spriteOffset(){return this;}, spriteRotation(){return this;}, spriteScale(){return this;}, filter(){return this;}, persist(){return this;}, zIndex(){return this;}, loopProperty(){return this;} };
+		effect(){ const self=this; return { name(v){ self._name=v; return this; }, file(){return this;}, atLocation(t){ if(t?.id) self._token=t; return this;}, attachTo(t){ if(t?.id) self._token=t; return this;}, scaleToObject(){return this;}, scaleIn(){return this;}, scaleOut(){return this;}, spriteOffset(){return this;}, spriteRotation(){return this;}, spriteScale(){return this;}, filter(){return this;}, persist(){return this;}, aboveLighting(){return this;}, zIndex(){return this;}, loopProperty(){return this;} };
 		}
 		async play(){ await new Promise(r=>setTimeout(r, 60)); if(this._name && this._token){ const token=this._token; const source=token.document?.uuid ?? `Scene.sceneA.Token.${token.id}`; const eff={ data:{ name:this._name, source, _id:`play-${token.id}-${this._name}-${Date.now()}` }, sprite:{filters:[]}, spriteContainer:{filters:[]} }; globalThis.Sequencer.EffectManager.effects.push(eff); }}
 	};
@@ -470,7 +470,7 @@ test("user equip play concurrent with restore — user's effect survives (restor
 	const restore = captured[captured.length-1];
 	const SlowSeq = class {
 		constructor(){ this._name=null; this._token=null; }
-		effect(){ const s=this; return { name(v){ s._name=v; return this; }, file(){return this;}, atLocation(t){ if(t?.id) s._token=t; return this;}, attachTo(t){ if(t?.id) s._token=t; return this;}, scaleToObject(){return this;}, scaleIn(){return this;}, scaleOut(){return this;}, spriteOffset(){return this;}, spriteRotation(){return this;}, spriteScale(){return this;}, filter(){return this;}, persist(){return this;}, zIndex(){return this;}, loopProperty(){return this;} };
+		effect(){ const s=this; return { name(v){ s._name=v; return this; }, file(){return this;}, atLocation(t){ if(t?.id) s._token=t; return this;}, attachTo(t){ if(t?.id) s._token=t; return this;}, scaleToObject(){return this;}, scaleIn(){return this;}, scaleOut(){return this;}, spriteOffset(){return this;}, spriteRotation(){return this;}, spriteScale(){return this;}, filter(){return this;}, persist(){return this;}, aboveLighting(){return this;}, zIndex(){return this;}, loopProperty(){return this;} };
 		}
 		async play(){ await new Promise(r=>setTimeout(r, 50)); if(this._name && this._token){ const tk=this._token; const src=tk.document?.uuid ?? `Scene.sceneA.Token.${tk.id}`; const eff={ data:{ name:this._name, source:src, _id:`play-${tk.id}-${this._name}-${Date.now()}` }, sprite:{filters:[]}, spriteContainer:{filters:[]} }; globalThis.Sequencer.EffectManager.effects.push(eff); }}
 	};
