@@ -6,6 +6,7 @@
 
 import { getEffectiveCreatureType } from "../npc/CreatureTypesApp.mjs";
 import { applyExplodingAll, shouldExplodeOwnRoll } from "./weapon-momentum.mjs";
+import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -538,7 +539,13 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 	// here rather than by `shadowdark.dice.roll`, so the world-wide Momentum
 	// Mode setting has never reached these dice — only the per-weapon override
 	// explodes them, and the system cannot double-apply on top.
-	const explodeOwnRolls = shouldExplodeOwnRoll(weapon);
+	//
+	// Gated on the feature here, not only in roll-patches: this function still
+	// runs for an item that kept `weaponBonus.enabled` when Weapon Bonuses is
+	// disabled but Enhanced Damage Cards is not, and momentum must not be the
+	// one behaviour that leaks through a switched-off feature.
+	const explodeOwnRolls = isFeatureEnabled(FEATURE_IDS.WEAPON_BONUSES)
+		&& shouldExplodeOwnRoll(weapon);
 	const withMomentum = formula => (explodeOwnRolls ? applyExplodingAll(formula) : formula);
 
 	// Process damage bonuses array
@@ -630,8 +637,12 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 	for (const part of applicableParts) {
 		if (!part.formula) continue;
 
+		// Resolved once so the roll, the damage component and the breakdown
+		// tooltip all report the same formula that was actually evaluated.
+		const partFormula = withMomentum(part.formula);
+
 		try {
-			const roll = new Roll(withMomentum(part.formula));
+			const roll = new Roll(partFormula);
 			await roll.evaluate();
 
 			// If this is a prompt bonus (added from dialog selection), set black dice appearance
@@ -654,7 +665,7 @@ export async function calculateWeaponBonusDamage(weapon, attacker, target, isCri
 				amount: amount,
 				type: part.damageType || "standard",
 				label: part.label || "",
-				formula: part.formula,
+				formula: partFormula,
 			});
 
 

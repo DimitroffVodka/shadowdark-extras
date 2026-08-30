@@ -101,13 +101,40 @@ test("preserves existing modifiers", () => {
 	assert.equal(applyExplodingAll("4d6kh3 + 1d4"), "4d6kh3x + 1d4x");
 });
 
+// The two modifier cases a substring search gets wrong in OPPOSITE directions.
+// Both are why the modifier string is tokenised rather than searched.
+
 test("the x inside `max` does not read as an explode modifier", () => {
 	// A naive /x/ test on the modifier string skips this term forever.
 	assert.equal(applyExplodingAll("1d6max3"), "1d6max3x");
+	assert.equal(applyExplodingAll("1d6min2"), "1d6min2x");
+});
+
+test("an x trailing another modifier IS an explode modifier", () => {
+	// The dangerous direction: a `(?:^|[^a-z])x` guard cannot see the x after
+	// `kh` and appends a second one, silently inflating damage.
+	assert.equal(applyExplodingAll("2d6khx"), "2d6khx");
+	assert.equal(applyExplodingAll("4d6kh3xo"), "4d6kh3xo");
 });
 
 test("`xo` (explode once) counts as already exploding", () => {
 	assert.equal(applyExplodingAll("1d8xo"), "1d8xo");
+	assert.equal(applyExplodingAll("1d8xo>4"), "1d8xo>4");
+});
+
+test("Fate dice are never exploded", () => {
+	// Max face is +1; exploding would re-roll about a third of the pool.
+	assert.equal(applyExplodingAll("4dF"), "4dF");
+	assert.equal(applyExplodingAll("4df"), "4df");
+});
+
+test("parenthesised faces still explode", () => {
+	assert.equal(applyExplodingAll("1d(6+2)"), "1d(6+2)x");
+});
+
+test("an unparseable modifier string is left alone rather than appended to", () => {
+	// Failing closed: under-exploding is visible, a stray second `x` is not.
+	assert.equal(applyExplodingAll("1d6zzz"), "1d6zzz");
 });
 
 test("returns non-string and empty input unchanged", () => {

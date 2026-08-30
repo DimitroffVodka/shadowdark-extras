@@ -32,21 +32,56 @@
 import { MODULE_ID } from "../shared/module-id.mjs";
 
 /**
- * A dice term (`2d6`, `d20`) plus any modifiers already attached to it.
- * Capturing the trailing modifiers is what makes the idempotence check below
- * possible; the system's equivalent pattern does not, and cannot skip a term
- * that already explodes.
+ * A dice term plus any modifiers already attached to it: an optional count, the
+ * `d`, then faces as a number (`2d6`), Fate's `F` (`4dF`), or a parenthesised
+ * expression (`1d(6+2)`). Capturing the trailing modifiers is what makes the
+ * idempotence check below possible.
  */
-const DICE_TERM = /(\d*)d(\d+)([a-z0-9!<>=]*)/gi;
+const DICE_TERM = /(\d*)d(\d+|F|\([^()]*\))([a-z0-9!<>=]*)/gi;
+
+/** Fate/Fudge faces, which this module never explodes — see below. */
+const FATE_FACES = /^F$/i;
 
 /**
- * True when a modifier string already carries Foundry's explode modifier.
+ * Foundry's die modifiers, longest and most specific first so that `max` is not
+ * read as `ma`, `xo` not as `x`, and `dh`/`dl`/`df` not as a bare `d`. Each may
+ * carry a comparison and/or a number: `kh1`, `r<3`, `xo>=5`.
  *
- * The `[^a-z]` guard is what keeps `max3` from reading as an explode on the
- * strength of the `x` in the middle of it; a real explode modifier is only ever
- * preceded by the faces, another modifier's digits, or nothing at all.
+ * Sticky, because the point is to walk a modifier string token by token rather
+ * than search it — searching is what makes the `x` in `max` look like an
+ * explode, and makes the `x` in `khx` invisible.
  */
-const EXPLODE_MODIFIER = /(?:^|[^a-z])x/i;
+const MODIFIER_TOKEN =
+	/(min|max|mi|ma|ms|rr|xo|kh|kl|dh|dl|df|cs|cf|ct|sf|x|r|k|d)([<>=]{0,2}\d*)/iy;
+
+/**
+ * Whether a term's modifier string already carries an explode modifier.
+ *
+ * Tokenising rather than substring-matching is what distinguishes the two cases
+ * a regex search gets wrong in opposite directions: `1d6max3` does NOT explode
+ * (the `x` belongs to `max`), and `2d6khx` DOES (the `x` trails `kh`, where a
+ * `[^a-z]` guard cannot see it). Getting the second wrong is the dangerous one
+ * — it appends a second modifier and silently inflates damage.
+ *
+ * @param {string} modifiers - The modifier text following a dice term.
+ * @returns {boolean}
+ */
+function alreadyExplodes(modifiers) {
+	if (!modifiers) return false;
+
+	MODIFIER_TOKEN.lastIndex = 0;
+	while (MODIFIER_TOKEN.lastIndex < modifiers.length) {
+		const match = MODIFIER_TOKEN.exec(modifiers);
+		// Unrecognised text: report it as already exploding so nothing is
+		// appended. Under-exploding is a visible no-op the user can see and
+		// report; appending to something this cannot parse risks a silent
+		// second explode modifier, which just inflates damage.
+		if (!match) return true;
+		const keyword = match[1].toLowerCase();
+		if (keyword === "x" || keyword === "xo") return true;
+	}
+	return false;
+}
 
 /**
  * Append Foundry's explode modifier to every dice term in a formula.
@@ -55,15 +90,19 @@ const EXPLODE_MODIFIER = /(?:^|[^a-z])x/i;
  * this twice — or over a formula the system has already rewritten — never
  * produces the double `1d8xx` that a naive append would.
  *
+ * Fate dice are deliberately skipped. Their maximum face is +1, so exploding
+ * them would re-roll roughly a third of the pool; no weapon means that.
+ *
  * @param {string} formula - A Foundry roll formula.
  * @returns {string} The formula with every dice term exploding.
  */
 export function applyExplodingAll(formula) {
 	if (typeof formula !== "string" || !formula) return formula;
 
-	return formula.replace(DICE_TERM, (match, _count, _faces, modifiers) => (
-		EXPLODE_MODIFIER.test(modifiers || "") ? match : `${match}x`
-	));
+	return formula.replace(DICE_TERM, (match, _count, faces, modifiers) => {
+		if (FATE_FACES.test(faces)) return match;
+		return alreadyExplodes(modifiers) ? match : `${match}x`;
+	});
 }
 
 /**
