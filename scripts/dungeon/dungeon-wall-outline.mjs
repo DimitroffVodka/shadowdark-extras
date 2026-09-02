@@ -488,3 +488,46 @@ export function findLooseWallEnds(walls, tolerance = 4) {
 	}
 	return loose;
 }
+
+/**
+ * Virtual segments closing the small gaps between loose wall ends.
+ *
+ * The outline tracer already bridges these; the flood fill did not, so on a
+ * hand-drawn map — caves especially, where a curve is dozens of short segments
+ * — a few pixels of daylight let the fill escape and the tool refused to work
+ * at all.
+ *
+ * These are NOT walls. Nothing is written to the scene; they exist only so the
+ * fill treats a gap the mapper clearly meant to be closed as closed.
+ *
+ * @param {Array<{c: number[]}>} walls
+ * @param {number} [tolerance] - endpoint merge distance
+ * @param {number} [maxDistance] - widest gap to close
+ * @returns {Array<number[]>} [x1,y1,x2,y2] segments
+ */
+export function findWallGapBridges(walls, tolerance = 4, maxDistance = 50) {
+	const nodes = buildGraph(walls, tolerance);
+	const loose = [...nodes.values()].filter(node => node.edges.length === 1);
+	const used = new Set();
+	const bridges = [];
+
+	for (const a of loose) {
+		if (used.has(a)) continue;
+		let best = null;
+		let bestDistance = maxDistance;
+		for (const b of loose) {
+			if (b === a || used.has(b)) continue;
+			const distance = Math.hypot(a.x - b.x, a.y - b.y);
+			if (distance <= bestDistance) {
+				best = b;
+				bestDistance = distance;
+			}
+		}
+		if (!best) continue;
+		used.add(a);
+		used.add(best);
+		bridges.push([a.x, a.y, best.x, best.y]);
+	}
+
+	return bridges;
+}

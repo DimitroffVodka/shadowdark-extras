@@ -21,6 +21,7 @@ import { recordDungeonAction } from "./dungeon-undo.mjs";
 import {
 	clipPolygonToRect,
 	findLooseWallEnds,
+	findWallGapBridges,
 	polygonArea,
 	pointInPolygon,
 	subtractRectFromPolygon,
@@ -95,23 +96,33 @@ function segmentsCross(a, b, c, d) {
  * fill now reads them directly. It is also deterministic, testable without a
  * canvas, and immune to the backend moving between Foundry versions.
  */
-function buildWallIndex(walls) {
+function buildWallIndex(walls, bridgeDistance = 0) {
 	const buckets = new Map();
-	for (const wall of walls) {
-		if (wall.door > 0) continue;
-		if (wall.move === 0) continue;
-		const [x1, y1, x2, y2] = wall.c;
-		const gx0 = Math.floor(Math.min(x1, x2) / WALL_INDEX_CELL);
-		const gx1 = Math.floor(Math.max(x1, x2) / WALL_INDEX_CELL);
-		const gy0 = Math.floor(Math.min(y1, y2) / WALL_INDEX_CELL);
-		const gy1 = Math.floor(Math.max(y1, y2) / WALL_INDEX_CELL);
+	const add = c => {
+		const gx0 = Math.floor(Math.min(c[0], c[2]) / WALL_INDEX_CELL);
+		const gx1 = Math.floor(Math.max(c[0], c[2]) / WALL_INDEX_CELL);
+		const gy0 = Math.floor(Math.min(c[1], c[3]) / WALL_INDEX_CELL);
+		const gy1 = Math.floor(Math.max(c[1], c[3]) / WALL_INDEX_CELL);
 		for (let gx = gx0; gx <= gx1; gx++) {
 			for (let gy = gy0; gy <= gy1; gy++) {
 				const key = `${gx},${gy}`;
 				if (!buckets.has(key)) buckets.set(key, []);
-				buckets.get(key).push(wall.c);
+				buckets.get(key).push(c);
 			}
 		}
+	};
+	for (const wall of walls) {
+		if (wall.door > 0) continue;
+		if (wall.move === 0) continue;
+		add(wall.c);
+	}
+
+	// Close the small gaps a hand-drawn map leaves. Without this a few pixels of
+	// daylight in a cave outline let the fill escape and the tool refused to
+	// work at all. Nothing is written to the scene — these exist only for the
+	// fill's own arithmetic.
+	if (bridgeDistance > 0) {
+		for (const c of findWallGapBridges([...walls], 4, bridgeDistance)) add(c);
 	}
 	return buckets;
 }
@@ -168,7 +179,8 @@ export function floodFillFromWalls(scene, seed, options = {}) {
 	const doors = scene.walls.filter(w => w.door > 0);
 	// Reused across the many fills findEnclosedAreas runs, so the index is built
 	// once per scan rather than once per area.
-	const index = options.wallIndex ?? buildWallIndex([...scene.walls]);
+	const index = options.wallIndex
+		?? buildWallIndex([...scene.walls], options.bridgeGaps ? size / 2 : 0);
 
 	const half = size / 2;
 	const centre = (gx, gy) => ({ x: (gx * size) + half, y: (gy * size) + half });
@@ -1202,6 +1214,10 @@ export async function bucketEraseAt(scene, point) {
 	const { cells, leaked } = floodFillFromWalls(scene, point, {
 		gridSize: size,
 		doorsBlock: true,
+		// Hand-drawn maps — caves especially, where a curve is dozens of short
+		// segments — leave a few pixels of daylight between chains. Without this
+		// the bucket escaped through them and refused to do anything at all.
+		bridgeGaps: true,
 	});
 
 	if (leaked) {

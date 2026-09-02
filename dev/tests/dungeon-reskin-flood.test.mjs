@@ -349,3 +349,41 @@ test("doorsBlock stops the fill at a doorway", () => {
 	assert.equal(stopped.cells.size, 9, "the bucket stops at it");
 	assert.equal(stopped.leaked, false, "and a door is a boundary, not a leak");
 });
+
+// Hand-drawn maps leave small gaps between wall chains — a cave outline is
+// dozens of short segments and they rarely meet exactly. A few pixels of
+// daylight let the fill escape, so the bucket refused to work at all on maps
+// that look perfectly closed. The tracer already bridged these; the fill did
+// not.
+test("the fill can bridge a gap too small to be a doorway", () => {
+	// The gap has to straddle the MIDPOINT of a cell edge to leak at all — the
+	// fill steps centre to centre, so a gap off to one side is stepped over.
+	// 40px centred on x=450 is a real leak and nothing like a doorway.
+	const broken = [
+		hWall(2, 5, 2), vWall(2, 2, 5), vWall(5, 2, 5),
+		{ c: [2 * GRID, 5 * GRID, 430, 5 * GRID], door: 0 },
+		{ c: [470, 5 * GRID, 5 * GRID, 5 * GRID], door: 0 },
+	];
+	installWalls(broken);
+
+	const escaped = floodFillFromWalls(sceneWith(broken), { x: 250, y: 250 });
+	const held = floodFillFromWalls(sceneWith(broken), { x: 250, y: 250 }, { bridgeGaps: true });
+
+	assert.equal(escaped.leaked, true, "without bridging the gap lets it out");
+	assert.equal(held.leaked, false, "with bridging the room holds");
+	assert.equal(held.cells.size, 9);
+});
+
+test("bridging does not seal a real doorway", () => {
+	// A 100px opening is a doorway, not a rounding error. Sealing it would
+	// invent a room the map does not have.
+	const open = [
+		hWall(2, 5, 2), vWall(2, 2, 5), vWall(5, 2, 5),
+		{ c: [2 * GRID, 5 * GRID, 4 * GRID, 5 * GRID], door: 0 },
+	];
+	installWalls(open);
+
+	const result = floodFillFromWalls(sceneWith(open), { x: 250, y: 250 }, { bridgeGaps: true });
+
+	assert.equal(result.leaked, true, "a real opening must stay open");
+});
