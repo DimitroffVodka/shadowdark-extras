@@ -131,6 +131,12 @@ duration, whether it triggers at turn start or turn end, any per-turn damage or
 healing, effect reapplication when that's needed, and manual versus automatic
 expiry.
 
+Which clock an entry answers to is decided when it is cast: rounds if an
+encounter is running, world time if not. Trackers report what is left in
+whichever unit applies rather than always in rounds. Per-turn damage is a combat
+loop either way, so its bookkeeping stays on rounds even when the duration
+itself is held in world time.
+
 Duration icons show up in the Token Toolbar when it's enabled, and their
 controls end the tracked instance.
 
@@ -142,6 +148,50 @@ lifecycle, and whether tokens delete themselves when the spell expires.
 Use a world or compendium actor with a stable UUID. Interactive placement leans
 on portal-lib and the current scene. Summoned-token cleanup reads the tracked
 spell and expiry state, so deleting that state by hand will orphan a token.
+
+Players can cast these themselves. The caster is granted ownership of the
+summoned actor for the length of the spawn and it is revoked again when the
+placement is cancelled or the spawn fails, so nobody keeps standing ownership of
+a shared world creature they never conjured.
+
+### Summoning several creatures
+
+**When several are listed** decides what a spell with more than one profile
+does.
+
+| Mode | Behavior |
+|---|---|
+| **Summon all** | Every profile is summoned together. The default. |
+| **Ask which one** | The caster picks a single creature |
+
+*Ask which one* is for a spell written as a choice rather than a pack.
+Shadowdark's Undeath reads "it rises as a zombie or skeleton" and caps you at
+one undead at a time, so configuring both profiles should offer the choice, not
+summon the pair. Cancelling the prompt summons nothing. With one profile listed
+the setting does nothing either way.
+
+### Joining the encounter
+
+**Join combat on caster's initiative** adds summoned tokens to the running
+encounter sharing the caster's initiative value, so they act on the summoner's
+turn. It is on by default.
+
+They share the value rather than rolling, which would scatter them across the
+round. It applies only while a combat is running and the caster is already in
+it, so a summon cast out of combat adds nothing, and re-casting will not produce
+a duplicate that acts twice. Uncheck it for summons that should roll their own
+initiative.
+
+### Duration outside combat
+
+A duration written in rounds only means something while rounds are being
+counted. Summons cast with no encounter running fall back to world time at your
+world's seconds-per-round, and ending a combat re-bases whatever rounds were
+still owed onto world time, so a spell with two rounds left keeps two rounds'
+worth of time instead of becoming permanent.
+
+An entry answers to one clock only. A round-based entry ignores world time
+ticking past, and a world-time entry ignores rounds.
 
 ## Item giving
 
@@ -178,7 +228,9 @@ payload. Otherwise the target takes it twice.
   Macro tabs.
 
 The Animation FX panel on Scroll and Wand Activity tabs gives you the same
-preview, sound, and override controls a Spell gets.
+preview, sound, and override controls a Spell gets. A Spell sheet also carries a
+**Spell FX** button in its tab row, opening the same editor bound to that one
+item. See [Animation FX](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Animation-FX).
 
 ## Medkit
 
@@ -206,6 +258,20 @@ the spell, or push the item through Medkit.
 
 **Run-as-GM affects the wrong token or none.** Keep the caster on a scene the GM
 client can resolve. Cross-scene placeables are deliberately never guessed at.
+
+**Casting a summon does nothing at all: no creature, no card, no error.** Update
+SDX. Current versions read the stored creature list in every shape it has been
+saved in, rather than treating the text form as an empty list. The NPC Feature
+summoning paths were affected the same way.
+
+**A player cannot summon, or cannot roll their own initiative.** Update SDX.
+Both need a document write players lack permission for, and current versions
+grant the caster temporary ownership for the spawn and route the initiative roll
+through the GM.
+
+**A summon outlives the fight it was cast in.** Update SDX. Durations now fall
+back to world time when no encounter is running, instead of waiting on a round
+counter that will never advance again.
 
 **Per-turn focus damage happens before the check.** Update SDX and refresh the
 owned spell. Current behavior applies it only after a successful native focus
