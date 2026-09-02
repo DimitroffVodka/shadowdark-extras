@@ -52,6 +52,14 @@ GMs keep the true display throughout. The Identify spell and the related API use
 that same native state, which avoids a second identification flag fighting the
 first.
 
+## Gems
+
+Gem items get a **quantity** field on their details tab, so five identical
+gems are one row rather than five.
+
+The Gem Bag picks up a matching quantity column, and its total value counts
+each stack rather than each row. Sell prices follow the same corrected total.
+
 ## Multi-select and bulk delete
 
 With the feature on, `Shift+Click` and `Ctrl+Click` select inventory rows and
@@ -108,6 +116,31 @@ The Player sheet's **+** coin button takes positive or negative adjustments.
 It's built for GM awards and quick corrections. Anything you want audited should
 go through a trade.
 
+## Ammunition
+
+Ranged weapons that could draw on more than one owned ammunition item prompt
+for which to consume, and remember the preferred choice. See
+[Character Sheets](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Character-Sheets).
+
+## Item Piles
+
+With Item Piles installed, three things need reconciling and SDX handles them.
+
+Shadowdark hides an unidentified item's real name in `system.identification.name`
+and shows a generic label instead. SDX adds that field to Item Piles' similarity
+comparison, so two different unidentified potions stay two items rather than
+merging into one stack.
+
+Weapons and Armor land in a pile unequipped. Equipped state belongs to a
+character, not to a heap of loot on the floor.
+
+SDX item configuration survives the move. Foundry and Shadowdark both build a
+new Item by copying a chosen subset of fields, and neither copies module flags,
+so spell damage, targeting, summoning, item-give, macros, aura and template
+effects, and unidentified state would otherwise be dropped in transit. The same
+preservation covers compendium drops and the scroll-to-spell **Learn Spell**
+path.
+
 ## Native item drops
 
 The module cooperates with Shadowdark's normal inventory and light-source
@@ -134,6 +167,15 @@ control. Check parent containers too if nesting is enabled.
 
 **Style is wrong for a magical container.** Compare the category priorities in
 the Inventory Styles editor.
+
+**An item lost its SDX configuration after moving.** Check that **Item Piles
+Compatibility** is enabled in the Feature Manager. It is what carries module
+flags across item creation, and without it a configured spell or macro item
+arrives stripped.
+
+**Two unidentified items merged into one stack.** Same toggle. Item Piles
+compares the public name, which Shadowdark makes generic for anything
+unidentified.
 
 ---
 
