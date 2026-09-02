@@ -179,88 +179,36 @@ test("a non-GM erases nothing", async () => {
 	assert.equal(scene.deleted.length, 0);
 });
 
-// Shift+CLICK deletes the patch of floor under the cursor. Deliberately NOT
-// wall-traced: an area filled WRONGLY is often not a room at all — it is rock,
-// or a region the fill merged across a gap — so working out "the room here" and
-// erasing that answers a different question than the one being asked. What is
-// being pointed at is the paint.
+// Shift+CLICK erases ONE SQUARE, by cutting it out. Deleting whole floor
+// shapes is the wrong model and was measured wrong on a real map: a corridor
+// network with no internal doors traces as a SINGLE shape, so a click meant to
+// clear one square took the entire network with it.
+//
+// Both gestures now cut. The only difference is the size of the box.
 
-const { eraseRoomAt } = await import("../../scripts/dungeon/dungeon-reskin.mjs");
+test("a one-square cut leaves the rest of a big shape", async () => {
+	// The corridor case: one shape covering a large snaking area, one square
+	// erased out of the middle of it.
+	const scene = sceneWith({
+		drawings: [floorShape("corridor", 0, 0, 1000, 1000)],
+	});
 
-function floorScene(drawings, tiles = []) {
-	drawings.get = id => drawings.find(d => d.id === id);
-	tiles.get = id => tiles.find(t => t.id === id);
-	return {
-		drawings, tiles,
-		grid: { size: 100 },
-		deleted: [],
-		async deleteEmbeddedDocuments(type, ids) {
-			this.deleted.push({ type, ids });
-			return ids;
-		},
-	};
-}
+	const removed = await eraseFloorRegion(scene, {
+		minX: 450, maxX: 550, minY: 450, maxY: 550,
+	});
 
-const poly = (id, x, y, w, h, flags) => doc({
-	id, x, y,
-	shape: { type: "p", points: [0, 0, w, 0, w, h, 0, h], width: w, height: h },
-	flags: { [MODULE_ID]: flags },
+	assert.equal(removed, 1, "the shape is replaced, not merely deleted");
+	assert.equal(scene.created.length, 1, "and its remainder comes back");
+	const pieces = scene.created[0].data;
+	assert.ok(pieces.length >= 3, `a hole in the middle leaves several pieces, got ${pieces.length}`);
 });
 
-test("clicking a wrongly-filled patch deletes that patch", async () => {
-	const scene = floorScene([
-		poly("bad", 100, 100, 400, 400, { dungeonFloorShape: true }),
-		poly("good", 900, 100, 400, 400, { dungeonFloorShape: true }),
-	]);
+test("erasing one square does not take the neighbouring floor", async () => {
+	const scene = sceneWith({
+		drawings: [floorShape("a", 0, 0, 200, 200), floorShape("b", 900, 900, 200, 200)],
+	});
 
-	const removed = await eraseRoomAt(scene, { x: 300, y: 300 });
+	await eraseFloorRegion(scene, { minX: 50, maxX: 150, minY: 50, maxY: 150 });
 
-	assert.equal(removed, 1);
-	assert.deepEqual(scene.deleted, [{ type: "Drawing", ids: ["bad"] }],
-		"the floor elsewhere is untouched");
-});
-
-test("no walls are needed — rock that got floored erases too", async () => {
-	// The whole point: the filled area need not be a room. There are no walls in
-	// this scene at all and the erase must still work.
-	const scene = floorScene([poly("rock", 0, 0, 300, 300, { dungeonFloorShape: true })]);
-
-	assert.equal(await eraseRoomAt(scene, { x: 150, y: 150 }), 1);
-});
-
-test("a patch painted on top wins over the floor beneath it", async () => {
-	const scene = floorScene([
-		poly("under", 0, 0, 1000, 1000, { dungeonFloorShape: true }),
-		poly("patch", 400, 400, 200, 200, { dungeonFloorShape: true }),
-	]);
-
-	await eraseRoomAt(scene, { x: 500, y: 500 });
-
-	assert.deepEqual(scene.deleted, [{ type: "Drawing", ids: ["patch"] }],
-		"deleting the sheet underneath would take the whole map");
-});
-
-test("wall art on the erased patch goes with it", async () => {
-	const scene = floorScene([
-		poly("floor", 0, 0, 400, 400, { dungeonFloorShape: true }),
-		doc({
-			id: "wall-in", x: 100, y: 190, shape: { type: "r", width: 100, height: 20 },
-			flags: { [MODULE_ID]: { dungeonWall: true } },
-		}),
-		doc({
-			id: "wall-out", x: 900, y: 190, shape: { type: "r", width: 100, height: 20 },
-			flags: { [MODULE_ID]: { dungeonWall: true } },
-		}),
-	]);
-
-	await eraseRoomAt(scene, { x: 200, y: 200 });
-
-	assert.deepEqual(scene.deleted[0].ids.sort(), ["floor", "wall-in"]);
-});
-
-test("clicking where there is no SDX floor does nothing", async () => {
-	const scene = floorScene([poly("floor", 0, 0, 200, 200, { dungeonFloorShape: true })]);
-
-	assert.equal(await eraseRoomAt(scene, { x: 900, y: 900 }), 0);
-	assert.equal(scene.deleted.length, 0);
+	assert.deepEqual(scene.deleted, [{ type: "Drawing", ids: ["a"] }]);
 });

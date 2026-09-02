@@ -95,7 +95,7 @@ import {
 // Reskin takes a seed click rather than a persistent mode: it is a one-shot
 // action, and a fourth mode tab would carry tile grids and hints it has no use
 // for. The tray arms it, the next canvas click consumes it.
-import { eraseFloorRegion, eraseRoomAt, paintRoomFloor, reskinScene } from "./dungeon-reskin.mjs";
+import { eraseFloorRegion, paintRoomFloor, reskinScene } from "./dungeon-reskin.mjs";
 import { registerWallPairCascade } from "./dungeon-wall-pairs.mjs";
 
 /**
@@ -765,14 +765,18 @@ function onPointerUp(event) {
 		// Shift erases, the same way it does in Rooms mode. Automatic room
 		// detection is wrong on some map somewhere, so an eraser the GM aims
 		// themselves is what makes a bad result recoverable by hand.
-		if (deleteMode && isClick) {
-			// Shift+click empties the room, mirroring what a plain click fills.
-			// A box is the wrong shape for a room: dragged over an L it either
-			// misses a leg or spills into the corridor next door.
-			eraseRoomAt(canvas.scene, endPos);
-		}
-		else if (deleteMode) {
-			eraseFloorRegion(canvas.scene, box);
+		if (deleteMode) {
+			// Both gestures CUT. Deleting whole floor shapes is the wrong model:
+			// a corridor network with no internal doors is a single shape, so a
+			// click meant to clear one square took the entire network with it.
+			// A click erases the square under the cursor; a drag erases the box.
+			const half = (canvas.scene?.grid?.size ?? 100) / 2;
+			eraseFloorRegion(canvas.scene, isClick
+				? {
+					minX: endPos.x - half, maxX: endPos.x + half,
+					minY: endPos.y - half, maxY: endPos.y + half,
+				}
+				: box);
 		}
 		else {
 			// Drag and click both fill the room under the cursor. There was a

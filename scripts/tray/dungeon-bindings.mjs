@@ -178,8 +178,8 @@ export const DungeonBindings = {
 				renderTray();
 				if (arming) {
 					ui.notifications.info(
-						"SDX | Click a room to floor it · Shift+click to empty it · "
-                        + "Shift+drag blanks a box. Press the button again to stop."
+						"SDX | Click a room to floor it · Shift+click erases a square · "
+                        + "Shift+drag erases a box. Press the button again to stop."
 					);
 				}
 			});
