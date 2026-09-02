@@ -396,10 +396,11 @@ function countUncovered(faces, points) {
  *        overstating rooms, and misses cells whose centres fall outside though
  *        part of the cell is in, understating them. On a real map the net was
  *        +5.6%.
- * @returns {{rooms: Array<{points: Array<{x,y}>, area: number}>, area: number,
- *           drift: number, unmatched: Array<{x,y}>}|null}
- *          null when nothing was traced or the area check failed, in which case
- *          the caller must fall back rather than paint an unverified shape.
+ * @returns {{rooms: Array<...>, area: number, drift: number,
+ *           unmatched: Array<{x,y}>, rejected: boolean}|null}
+ *          null only when NOTHING traced. A result that disagrees with the fill
+ *          comes back with rejected:true and its figures, so the caller can say
+ *          which stage disagreed instead of reporting a bare failure.
  *          `unmatched` lists centres no face covered — the caller must floor
  *          those some other way rather than leave them bare.
  */
@@ -452,13 +453,17 @@ export function traceRoomFaces(walls, cellCentres, options = {}) {
 	// returns SOME polygon. The fill established the region's size by a wholly
 	// independent route, so disagreement means the trace is not describing the
 	// region the user clicked in.
+	// A failed area check returns the numbers rather than null. "No floor" with
+	// no figures is undiagnosable — it cannot be told apart from "traced
+	// nothing", and the two have completely different causes.
 	let drift = 0;
+	let rejected = false;
 	if (expectedArea !== null && expectedArea > 0) {
 		drift = (area - expectedArea) / expectedArea;
-		if (Math.abs(drift) > areaTolerance) return null;
+		rejected = Math.abs(drift) > areaTolerance;
 	}
 
-	return { rooms, area, drift, unmatched, bridged };
+	return { rooms, area, drift, unmatched, bridged, rejected, expectedArea };
 }
 
 /**

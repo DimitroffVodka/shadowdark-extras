@@ -74,20 +74,60 @@ export function wallDrawingGeometry(c, texture) {
 // written, because painting the whole canvas is far worse than painting nothing.
 const MAX_CELLS = 20000;
 
+// Cell size of the wall index. Two grid squares: big enough that most lookups
+// touch one bucket, small enough that a bucket holds a handful of walls.
+const WALL_INDEX_CELL = 200;
+
+/** Do segments a-b and c-d properly cross? */
+function segmentsCross(a, b, c, d) {
+	const side = (p, q, r) => Math.sign(((q.y - p.y) * (r.x - q.x)) - ((q.x - p.x) * (r.y - q.y)));
+	return side(a, b, c) !== side(a, b, d) && side(c, d, a) !== side(c, d, b);
+}
+
 /**
- * Does a straight move from a to b cross a movement-blocking wall?
+ * Spatial index of the walls that block movement.
  *
- * Same backend chain the aura and pin code uses, with "move" in place of
- * "sight". If no backend answers, nothing blocks, the fill runs to the canvas
- * border and aborts as a leak — which is the safe direction to fail in.
+ * The fill used to ask Foundry's movement polygon backend. That backend answers
+ * from canvas.edges — canvas state, not scene state — and on a real scene it
+ * disagreed with the scene's own walls badly: the same 843 walls that this code
+ * resolves into 1 area of 1255 cells came back as 26 areas of 6474, most of the
+ * canvas. The wall documents are the authority on where the walls are, so the
+ * fill now reads them directly. It is also deterministic, testable without a
+ * canvas, and immune to the backend moving between Foundry versions.
  */
-function blocksMove(a, b) {
-	const backend = CONFIG.Canvas?.polygonBackends?.move;
-	if (backend?.testCollision) {
-		return backend.testCollision(a, b, { mode: "any", type: "move" });
+function buildWallIndex(walls) {
+	const buckets = new Map();
+	for (const wall of walls) {
+		if (wall.door > 0) continue;
+		if (wall.move === 0) continue;
+		const [x1, y1, x2, y2] = wall.c;
+		const gx0 = Math.floor(Math.min(x1, x2) / WALL_INDEX_CELL);
+		const gx1 = Math.floor(Math.max(x1, x2) / WALL_INDEX_CELL);
+		const gy0 = Math.floor(Math.min(y1, y2) / WALL_INDEX_CELL);
+		const gy1 = Math.floor(Math.max(y1, y2) / WALL_INDEX_CELL);
+		for (let gx = gx0; gx <= gx1; gx++) {
+			for (let gy = gy0; gy <= gy1; gy++) {
+				const key = `${gx},${gy}`;
+				if (!buckets.has(key)) buckets.set(key, []);
+				buckets.get(key).push(wall.c);
+			}
+		}
 	}
-	if (canvas.edges?.testCollision) {
-		return canvas.edges.testCollision(a, b, { mode: "any", type: "move" });
+	return buckets;
+}
+
+/** Does a straight move from a to b cross a movement-blocking wall? */
+function blocksMove(index, a, b) {
+	const gx0 = Math.floor(Math.min(a.x, b.x) / WALL_INDEX_CELL);
+	const gx1 = Math.floor(Math.max(a.x, b.x) / WALL_INDEX_CELL);
+	const gy0 = Math.floor(Math.min(a.y, b.y) / WALL_INDEX_CELL);
+	const gy1 = Math.floor(Math.max(a.y, b.y) / WALL_INDEX_CELL);
+	for (let gx = gx0; gx <= gx1; gx++) {
+		for (let gy = gy0; gy <= gy1; gy++) {
+			for (const c of index.get(`${gx},${gy}`) ?? []) {
+				if (segmentsCross(a, b, { x: c[0], y: c[1] }, { x: c[2], y: c[3] })) return true;
+			}
+		}
 	}
 	return false;
 }
@@ -103,9 +143,7 @@ function blocksMove(a, b) {
 function doorCrosses(doors, a, b) {
 	for (const door of doors) {
 		const [x1, y1, x2, y2] = door.c;
-		const from = { x: x1, y: y1 };
-		const to = { x: x2, y: y2 };
-		if (foundry.utils.lineSegmentIntersects(a, b, from, to)) return true;
+		if (segmentsCross(a, b, { x: x1, y: y1 }, { x: x2, y: y2 })) return true;
 	}
 	return false;
 }
@@ -128,6 +166,9 @@ export function floodFillFromWalls(scene, seed, options = {}) {
 	const cols = Math.ceil(scene.dimensions.width / size);
 	const rows = Math.ceil(scene.dimensions.height / size);
 	const doors = scene.walls.filter(w => w.door > 0);
+	// Reused across the many fills findEnclosedAreas runs, so the index is built
+	// once per scan rather than once per area.
+	const index = options.wallIndex ?? buildWallIndex([...scene.walls]);
 
 	const half = size / 2;
 	const centre = (gx, gy) => ({ x: (gx * size) + half, y: (gy * size) + half });
@@ -144,7 +185,7 @@ export function floodFillFromWalls(scene, seed, options = {}) {
 		if (edges.has(key)) return edges.get(key);
 		const a = centre(gx, gy);
 		const b = centre(ngx, ngy);
-		const ok = !blocksMove(a, b) || doorCrosses(doors, a, b);
+		const ok = !blocksMove(index, a, b) || doorCrosses(doors, a, b);
 		edges.set(key, ok);
 		return ok;
 	};
@@ -212,13 +253,15 @@ export function findEnclosedAreas(scene, size, minCells = 3) {
 	}
 	if (!Number.isFinite(minX)) return [];
 
+	const wallIndex = buildWallIndex([...scene.walls]);
 	const seen = new Set();
 	const areas = [];
 	for (let gx = Math.floor(minX / size); gx <= Math.floor(maxX / size); gx++) {
 		for (let gy = Math.floor(minY / size); gy <= Math.floor(maxY / size); gy++) {
 			if (seen.has(`${gx},${gy}`)) continue;
 			const seed = { x: (gx * size) + (size / 2), y: (gy * size) + (size / 2) };
-			const { cells, leaked } = floodFillFromWalls(scene, seed, { gridSize: size });
+			const filled = floodFillFromWalls(scene, seed, { gridSize: size, wallIndex });
+			const { cells, leaked } = filled;
 			for (const cell of cells) seen.add(cell);
 			if (leaked || cells.size < minCells) continue;
 			areas.push(cells);
@@ -402,12 +445,13 @@ export async function reskinScene(scene, deps) {
 		const [gx, gy] = key.split(",").map(Number);
 		return { x: (gx * size) + (size / 2), y: (gy * size) + (size / 2) };
 	});
-	const traced = traceRoomFaces([...scene.walls], centres, {
+	const attempt = traceRoomFaces([...scene.walls], centres, {
 		expectedArea: cells.size * size * size,
 		// Half a cell. Big enough for the gaps hand-drawn maps actually leave,
 		// small enough that it cannot bridge a doorway shut.
 		bridgeDistance: size / 2,
 	});
+	const traced = attempt && !attempt.rejected ? attempt : null;
 
 	// Cells the trace covered with a polygon. Anything left over still needs a
 	// floor: a region whose walls will not close (a cave outline missing by a
@@ -584,7 +628,11 @@ export async function reskinScene(scene, deps) {
 		: "";
 	const floorNote = traced
 		? `floor fitted to ${traced.rooms.length} room${traced.rooms.length === 1 ? "" : "s"}${gapNote}`
-		: "NO FLOOR — the walls don't close into rooms, so SDX can't tell rooms from rock";
+		: attempt
+			? `NO FLOOR — fitted ${attempt.rooms.length} rooms covering `
+                + `${Math.round(attempt.area / (size * size))} squares but the fill found `
+                + `${cells.size} (${(attempt.drift * 100).toFixed(0)}% apart, over the 25% limit)`
+			: `NO FLOOR — could not fit any room outline to ${cells.size} squares of fill`;
 	const report = `SDX | Reskinned — ${floorNote}, ${wallDrawings.length} walls skinned${diagonalNote}, `
         + `${deps.doorTilePath ? doorsToSkin.length : 0} doors. No walls were deleted.`;
 	if (traced) {

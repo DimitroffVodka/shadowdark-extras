@@ -91,13 +91,32 @@ test("the outer face is never chosen", () => {
 	assert.equal(Math.round(got.rooms[0].area), 160000, "not the outer face");
 });
 
-test("a trace that disagrees with the fill is refused", () => {
+test("a trace that disagrees with the fill is refused, WITH its numbers", () => {
 	// The fill claims ten times the area the walls enclose. Something is wrong,
-	// and painting an unverified polygon is worse than falling back to tiles.
+	// so the result must not be painted — but it comes back with its figures
+	// rather than as a bare null, because "no floor" with no numbers cannot be
+	// told apart from "traced nothing", and those have different causes.
 	const got = traceRoomFaces(squareRoom(), centres(150, 150, 450, 450), {
 		expectedArea: 1600000,
 	});
 
+	assert.equal(got.rejected, true, "the caller must not paint this");
+	assert.equal(Math.round(got.area), 160000, "and must be able to say what it traced");
+	assert.ok(got.drift < -0.25, `expected a large negative drift, got ${got.drift}`);
+});
+
+test("a trace that agrees is not flagged as rejected", () => {
+	const got = traceRoomFaces(squareRoom(), centres(150, 150, 450, 450), {
+		expectedArea: 160000,
+	});
+
+	assert.equal(got.rejected, false);
+});
+
+test("null still means nothing traced at all", () => {
+	// The two failures stay distinguishable: no faces is null, disagreement is
+	// a result carrying rejected:true.
+	const got = traceRoomFaces([wall(0, 0, 100, 0)], [{ x: 50, y: 50 }], { expectedArea: 10000 });
 	assert.equal(got, null);
 });
 

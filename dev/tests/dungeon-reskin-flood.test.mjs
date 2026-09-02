@@ -78,6 +78,37 @@ const {
 	wallDrawingGeometry,
 } = await import("../../scripts/dungeon/dungeon-reskin.mjs");
 
+// The fill reads the SCENE'S WALL DOCUMENTS, not Foundry's movement polygon
+// backend. That backend answers from canvas.edges — canvas state rather than
+// scene state — and on a real 843-wall scene it disagreed badly: the same walls
+// this code resolves into 1 area of 1255 cells came back as 26 areas of 6474,
+// nearly the whole canvas. Reading the documents is also what makes these tests
+// possible without a canvas at all.
+test("the fill ignores the collision backend and reads the walls", () => {
+	const walls = sealedRoom();
+	// A backend that claims nothing ever blocks. If the fill consulted it, the
+	// room would leak; it must not even be asked.
+	globalThis.CONFIG = {
+		Canvas: { polygonBackends: { move: { testCollision: () => false } } },
+	};
+
+	const result = floodFillFromWalls(sceneWith(walls), { x: 250, y: 250 });
+
+	assert.equal(result.leaked, false, "the scene's own walls must hold");
+	assert.equal(result.cells.size, 9);
+});
+
+test("a wall that does not block movement does not stop the fill", () => {
+	// move: 0 is a sight-only wall — a window or a visual divider. It is not a
+	// boundary for anything walking, so it must not bound a room either.
+	const walls = sealedRoom().map((w, i) => (i === 0 ? { ...w, move: 0 } : w));
+	installWalls(walls);
+
+	const result = floodFillFromWalls(sceneWith(walls), { x: 250, y: 250 });
+
+	assert.equal(result.leaked, true, "the fill escapes through the sight-only wall");
+});
+
 test("a sealed room floods to exactly its interior", () => {
 	installWalls(sealedRoom());
 	const result = floodFillFromWalls(sceneWith(sealedRoom()), { x: 250, y: 250 });
