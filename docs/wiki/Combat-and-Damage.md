@@ -107,23 +107,28 @@ carry its own damage type. Promptable entries get chosen during the workflow.
 
 Turn on **Exploding damage dice (Momentum)** to make this weapon's damage dice
 explode: a die that rolls its maximum is rolled again and the new result added.
-It applies to the weapon's base damage and to any damage bonuses configured on
-this tab.
+It covers the weapon's base damage, the damage bonuses configured on this tab,
+and the critical extra dice.
 
 This toggle sits beside **Enable Weapon Bonuses** and works independently of
 it, so a weapon that only wants exploding damage does not have to switch on the
-hit, damage, and critical bonus machinery it is not using.
+hit, damage, and critical bonus machinery it is not using. Both still live under
+**Weapon Bonuses** in the Feature Manager, so switching that feature off stops
+momentum along with everything else on the tab.
 
 This is a per-weapon override of the Shadowdark system's world-wide **Momentum
-Mode** setting, so the weapon explodes even when that setting is off — which is
-what building a single custom exploding weapon needs.
+Mode** setting. The weapon explodes even when that setting is off, which is what
+building a single custom exploding weapon needs.
+
+A formula that already explodes is left alone, so writing `1d6x` into a bonus
+yourself doesn't collect a second explode modifier.
 
 When Momentum Mode *is* on world-wide, the system explodes the main damage roll
 itself and SDX leaves that roll alone rather than adding a second explode
-modifier on top. Note that the Shadowdark system explodes only the *first* die
-of that formula, so a bonus die folded into it does not explode from the
-world setting alone — that is the known system-side limitation this toggle does
-not attempt to fix.
+modifier on top. Note that the stock Shadowdark system explodes only the *first*
+die of that formula, so a bonus die folded into it does not explode from the
+world setting alone. That is a known system-side limitation, and this toggle
+does not attempt to fix it.
 
 Damage bonuses that SDX rolls separately never pass through the system's roll
 pipeline at all, so they always follow this weapon's own toggle, whatever the
@@ -149,8 +154,15 @@ Bonus requirements can inspect combat context: target name, ancestry, creature
 type, current HP or HP percentage, and conditions or effects. Comparison
 operators cover equals, contains, starts with, and not-equal.
 
-Creature-type checks read the NPC's manual SDX type when one is set, then fall
-back to the bundled bestiary name map. See
+**Target Ancestry** applies to player characters only. Monsters have no
+ancestry, so it always resolves empty against them, and a requirement like
+"ancestry contains Undead" is not the way to write a bonus against undead. Use
+**Target Creature Type** for that. Ancestry itself reads every shape Shadowdark
+has stored it in: a 4.x document UUID, a bare name, or a pre-4.x object.
+
+**Target Creature Type** offers a dropdown of your configured types rather than
+free text that had to match exactly. Its checks read the NPC's manual SDX type
+when one is set, then fall back to the bundled bestiary name map. See
 [NPCs & Effects](https://github.com/DimitroffVodka/shadowdark-extras/wiki/NPCs-and-Effects).
 
 Test one requirement at a time before you start combining them. A bonus that
@@ -201,10 +213,21 @@ player spells.
 
 **Damage was applied twice.** Look for a second damage automation module and
 switch off one of the auto-apply paths. Check too whether an item macro is
-applying damage on top of its configured SDX damage.
+applying damage on top of its configured SDX damage. The system's own
+apply-damage buttons are no longer a cause: SDX fades them once it has applied
+the damage, and a stray click raises Shadowdark's reapply confirmation rather
+than landing the damage again.
 
 **Bonus never appears.** Strip its requirements, then add them back one at a
 time. Verify the target carries the SDX creature type you expected.
+
+**A bonus "vs Undead" never fires.** It is almost certainly written as an
+ancestry requirement. Ancestry is a player-character field, so it is empty on
+every monster. Rewrite it as **Target Creature Type**.
+
+**Damage cards throw on old messages.** Update SDX. Current versions treat a
+chat message whose author has been deleted from the world as "not the current
+user" instead of failing to read the missing author.
 
 **Block mode rejects a valid ranged attack.** Confirm the item range and the
 scene grid scale. Switch to Warn if your house distances don't map onto
