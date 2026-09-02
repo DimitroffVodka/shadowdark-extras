@@ -21,10 +21,10 @@ what features are switched on.
 | Tab | Who sees it | Purpose |
 |---|---|---|
 | **Token** | Players | The selected or owned character, HP, and sheet shortcut |
-| **Scenes** | GM | ToM scene/overlay cards, folders, editing, and broadcast |
+| **ToM** | GM | Theater of the Mind scene/overlay cards, folders, editing, and broadcast |
 | **Party** | Configurable | Player/NPC token cards, HP, selection, sheet access |
-| **Pins** | GM | Search, organize, edit, ping, and reveal journal pins |
-| **Notes** | Everyone with access | Notes attached to Tokens, Tiles, Walls, Lights, and Sounds |
+| **Pins** | GM | Search, organize, edit, ping, and reveal journal pins, plus **Add Pin** and the pin list |
+| **Notes** | Everyone with access | Notes grouped into Tokens, Actors, Tiles, Drawings, Walls, Lights, Sounds, and Regions |
 | **Hexes** | GM | Format and paint hex maps, POIs, and procedural terrain |
 | **Dungeons** | GM; opted-in players | Paint/generate dungeon floors, walls, doors, biomes, and decor |
 | **Decor** | GM | Place and manage decorative assets |
@@ -34,18 +34,32 @@ without touching anyone else's screen.
 
 ![The expanded SDX Tray in Party view with player and NPC cards](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/sdx-tray-party-view.webp)
 
+### Notes tab
+
+Placeable notes are collected under fixed group headings with a count on each,
+sorted naturally rather than by internal id. Counts are what the viewer is
+allowed to see, so a player's total won't betray something hidden from them.
+
+Tokens and Actors stay separate sources rather than being folded together.
+Drawings and Regions are labelled with their own text or name where they have
+one, falling back to coordinates only when they don't. Transient and rebuild
+sources that SDX owns for the session are left out.
+
+Which groups and rows you left expanded persists for the tray session.
+
 ## Tool rail
 
-The narrow button rail changes with your role and the active tab.
+The narrow button rail changes with your role and the active tab. Two things
+that look like rail tools are not: **Add Pin** and the pin list live inside the
+Pins tab, and video overlays are a collapsible section inside the ToM tab, with
+a count and a clear-all control.
 
 | Tool | Purpose |
 |---|---|
 | **Choose Party Leader** | Select the token that drives Marching Mode |
 | **Marching Mode** | Restrict movement to the leader/following workflow |
 | **Formation Spawner** | Place selected tokens in a chosen formation |
-| **Add Pin / Pin List** | Create and manage journal pins |
 | **Light Source Tracker** | Inspect and control active light sources |
-| **Video Overlays** | Manage ToM scene broadcasts when enabled |
 | **Carousing** | Open the shared carousing overlay |
 | **Drawing Tools** | Open the SDX sketch/symbol toolbar |
 | **Map Generators** | Open the six-generator Maphub launcher |
