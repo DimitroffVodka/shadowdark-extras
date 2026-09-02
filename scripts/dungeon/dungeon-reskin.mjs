@@ -656,7 +656,6 @@ export async function reskinScene(scene, deps) {
 	};
 }
 
-
 /**
  * A floor shape's polygon in scene coordinates.
  *
@@ -840,7 +839,6 @@ async function createFloorShape(scene, points, floorTilePath, sort = -10) {
 	return true;
 }
 
-
 /**
  * Delete SDX floor inside a box, so a bad result can be cleaned up by hand.
  *
@@ -1023,4 +1021,86 @@ export async function toggleWallGapMarkers(scene) {
         + "Join or extend the walls there, then press the button again to clear the markers."
 	);
 	return loose.length;
+}
+
+/**
+ * Delete the patch of SDX floor under the cursor.
+ *
+ * Deliberately NOT wall-traced. An area that got filled wrongly is often not a
+ * room at all — it is rock, or a region the fill merged across a gap — so
+ * working out "the room here" and erasing that is answering a different
+ * question than the one being asked. What the user is pointing at is the
+ * painted floor itself, so that is the unit that goes.
+ *
+ * Wall art and tiles sitting on that patch go with it, because "erase this"
+ * means the area comes out blank rather than half-dressed.
+ *
+ * @param {Scene} scene
+ * @param {{x: number, y: number}} point - canvas coordinates
+ * @returns {Promise<number>} pieces removed
+ */
+export async function eraseRoomAt(scene, point) {
+	if (!game.user.isGM) {
+		ui.notifications.warn("SDX | Erasing is GM-only.");
+		return 0;
+	}
+	if (!scene) return 0;
+
+	// Smallest wins, so a patch painted on top of a larger floor is the one that
+	// goes rather than everything beneath it.
+	let target = null;
+	let targetPolygon = null;
+	let targetArea = Infinity;
+	for (const drawing of scene.drawings) {
+		if (!drawing.flags?.[MODULE_ID]?.dungeonFloorShape) continue;
+		const polygon = floorPolygonOf(drawing);
+		if (!polygon || !pointInPolygon(point, polygon)) continue;
+		const area = polygonArea(polygon);
+		if (area < targetArea) {
+			target = drawing;
+			targetPolygon = polygon;
+			targetArea = area;
+		}
+	}
+
+	if (!target) {
+		ui.notifications.info("SDX | No SDX floor there. Click on the floor you want gone.");
+		return 0;
+	}
+
+	const size = scene.grid?.size || GRID_SIZE;
+	const inside = p => pointInPolygon(p, targetPolygon);
+	const drawingIds = [target.id];
+
+	for (const drawing of scene.drawings) {
+		if (drawing.id === target.id) continue;
+		const flags = drawing.flags?.[MODULE_ID];
+		if (!flags?.dungeonWall && !flags?.dungeonBackground) continue;
+		const centre = {
+			x: drawing.x + ((drawing.shape?.width ?? 0) / 2),
+			y: drawing.y + ((drawing.shape?.height ?? 0) / 2),
+		};
+		if (inside(centre)) drawingIds.push(drawing.id);
+	}
+
+	const tileIds = scene.tiles.filter(tile => {
+		const flags = tile.flags?.[MODULE_ID];
+		if (!flags?.dungeonFloor && !flags?.dungeonStairs
+            && !flags?.dungeonStairsDown && !flags?.dungeonClutter) return false;
+		return inside({ x: tile.x + (size / 2), y: tile.y + (size / 2) });
+	}).map(tile => tile.id);
+
+	recordDungeonAction("Erase floor", {
+		deleted: [
+			{ type: "Drawing", data: drawingIds.map(id => scene.drawings.get(id).toObject()) },
+			{ type: "Tile", data: tileIds.map(id => scene.tiles.get(id).toObject()) },
+		],
+	});
+
+	await scene.deleteEmbeddedDocuments("Drawing", drawingIds);
+	if (tileIds.length > 0) await scene.deleteEmbeddedDocuments("Tile", tileIds);
+
+	const total = drawingIds.length + tileIds.length;
+	ui.notifications.info(`SDX | Erased that floor — ${total} SDX piece${total === 1 ? "" : "s"}.`);
+	return total;
 }

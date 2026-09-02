@@ -95,7 +95,7 @@ import {
 // Reskin takes a seed click rather than a persistent mode: it is a one-shot
 // action, and a fourth mode tab would carry tile grids and hints it has no use
 // for. The tray arms it, the next canvas click consumes it.
-import { eraseFloorRegion, paintRoomFloor, reskinScene } from "./dungeon-reskin.mjs";
+import { eraseFloorRegion, eraseRoomAt, paintRoomFloor, reskinScene } from "./dungeon-reskin.mjs";
 import { registerWallPairCascade } from "./dungeon-wall-pairs.mjs";
 
 /**
@@ -765,10 +765,14 @@ function onPointerUp(event) {
 		// Shift erases, the same way it does in Rooms mode. Automatic room
 		// detection is wrong on some map somewhere, so an eraser the GM aims
 		// themselves is what makes a bad result recoverable by hand.
-		if (deleteMode) {
-			eraseFloorRegion(canvas.scene, isClick
-				? { minX: endPos.x - 1, maxX: endPos.x + 1, minY: endPos.y - 1, maxY: endPos.y + 1 }
-				: box);
+		if (deleteMode && isClick) {
+			// Shift+click empties the room, mirroring what a plain click fills.
+			// A box is the wrong shape for a room: dragged over an L it either
+			// misses a leg or spills into the corridor next door.
+			eraseRoomAt(canvas.scene, endPos);
+		}
+		else if (deleteMode) {
+			eraseFloorRegion(canvas.scene, box);
 		}
 		else {
 			// Drag and click both fill the room under the cursor. There was a

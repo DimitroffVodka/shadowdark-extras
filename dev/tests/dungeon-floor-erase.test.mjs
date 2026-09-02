@@ -178,3 +178,89 @@ test("a non-GM erases nothing", async () => {
 	assert.equal(removed, 0);
 	assert.equal(scene.deleted.length, 0);
 });
+
+// Shift+CLICK deletes the patch of floor under the cursor. Deliberately NOT
+// wall-traced: an area filled WRONGLY is often not a room at all — it is rock,
+// or a region the fill merged across a gap — so working out "the room here" and
+// erasing that answers a different question than the one being asked. What is
+// being pointed at is the paint.
+
+const { eraseRoomAt } = await import("../../scripts/dungeon/dungeon-reskin.mjs");
+
+function floorScene(drawings, tiles = []) {
+	drawings.get = id => drawings.find(d => d.id === id);
+	tiles.get = id => tiles.find(t => t.id === id);
+	return {
+		drawings, tiles,
+		grid: { size: 100 },
+		deleted: [],
+		async deleteEmbeddedDocuments(type, ids) {
+			this.deleted.push({ type, ids });
+			return ids;
+		},
+	};
+}
+
+const poly = (id, x, y, w, h, flags) => doc({
+	id, x, y,
+	shape: { type: "p", points: [0, 0, w, 0, w, h, 0, h], width: w, height: h },
+	flags: { [MODULE_ID]: flags },
+});
+
+test("clicking a wrongly-filled patch deletes that patch", async () => {
+	const scene = floorScene([
+		poly("bad", 100, 100, 400, 400, { dungeonFloorShape: true }),
+		poly("good", 900, 100, 400, 400, { dungeonFloorShape: true }),
+	]);
+
+	const removed = await eraseRoomAt(scene, { x: 300, y: 300 });
+
+	assert.equal(removed, 1);
+	assert.deepEqual(scene.deleted, [{ type: "Drawing", ids: ["bad"] }],
+		"the floor elsewhere is untouched");
+});
+
+test("no walls are needed — rock that got floored erases too", async () => {
+	// The whole point: the filled area need not be a room. There are no walls in
+	// this scene at all and the erase must still work.
+	const scene = floorScene([poly("rock", 0, 0, 300, 300, { dungeonFloorShape: true })]);
+
+	assert.equal(await eraseRoomAt(scene, { x: 150, y: 150 }), 1);
+});
+
+test("a patch painted on top wins over the floor beneath it", async () => {
+	const scene = floorScene([
+		poly("under", 0, 0, 1000, 1000, { dungeonFloorShape: true }),
+		poly("patch", 400, 400, 200, 200, { dungeonFloorShape: true }),
+	]);
+
+	await eraseRoomAt(scene, { x: 500, y: 500 });
+
+	assert.deepEqual(scene.deleted, [{ type: "Drawing", ids: ["patch"] }],
+		"deleting the sheet underneath would take the whole map");
+});
+
+test("wall art on the erased patch goes with it", async () => {
+	const scene = floorScene([
+		poly("floor", 0, 0, 400, 400, { dungeonFloorShape: true }),
+		doc({
+			id: "wall-in", x: 100, y: 190, shape: { type: "r", width: 100, height: 20 },
+			flags: { [MODULE_ID]: { dungeonWall: true } },
+		}),
+		doc({
+			id: "wall-out", x: 900, y: 190, shape: { type: "r", width: 100, height: 20 },
+			flags: { [MODULE_ID]: { dungeonWall: true } },
+		}),
+	]);
+
+	await eraseRoomAt(scene, { x: 200, y: 200 });
+
+	assert.deepEqual(scene.deleted[0].ids.sort(), ["floor", "wall-in"]);
+});
+
+test("clicking where there is no SDX floor does nothing", async () => {
+	const scene = floorScene([poly("floor", 0, 0, 200, 200, { dungeonFloorShape: true })]);
+
+	assert.equal(await eraseRoomAt(scene, { x: 900, y: 900 }), 0);
+	assert.equal(scene.deleted.length, 0);
+});
