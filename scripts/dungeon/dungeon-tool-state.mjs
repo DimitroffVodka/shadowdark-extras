@@ -20,11 +20,15 @@ export let _selectedIntWallTile = null; // Selected tile for interior wall place
 export let _selectedIntDoorTile = null; // Selected door tile for interior wall door cutting
 export let _selectedBackground = "none";
 
+// The valid modes, in the order the Dungeons tab renders its tabs — the Ctrl
+// shortcut cycles through them, so this order is user-visible.
+export const DUNGEON_MODES = ["tiles", "intwalls", "doors"];
+
 /**
  * Set dungeon mode
  */
 export function setDungeonMode(mode) {
-	if (mode === "tiles" || mode === "doors" || mode === "intwalls") {
+	if (DUNGEON_MODES.includes(mode)) {
 		_dungeonMode = mode;
 	}
 }
@@ -34,6 +38,14 @@ export function setDungeonMode(mode) {
  */
 export function getDungeonMode() {
 	return _dungeonMode;
+}
+
+/**
+ * The mode after `mode` in tab order, wrapping around. An unknown mode starts
+ * the cycle over at the first tab.
+ */
+export function nextDungeonMode(mode) {
+	return DUNGEON_MODES[(DUNGEON_MODES.indexOf(mode) + 1) % DUNGEON_MODES.length];
 }
 
 /**
