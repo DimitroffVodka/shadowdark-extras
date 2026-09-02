@@ -26,6 +26,7 @@ import {
 	pointInPolygon,
 	subtractRectFromPolygon,
 	traceRoomFaces,
+	traceWallFaces,
 } from "./dungeon-wall-outline.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -1187,17 +1188,18 @@ export async function eraseFloorCells(scene, cells, options = {}) {
 }
 
 /**
- * Paint-bucket erase: clear the contiguous floor the click sits in.
+ * Paint-bucket erase: clear the floor inside one walled area, and stop AT the
+ * walls.
  *
- * Bounded by walls AND doors. Doors are passable to the reskin's fill — one
- * click should reskin a whole connected dungeon — but a bucket is asked to
- * clear "this bit", so a doorway is where it stops. Without that, clicking a
- * corridor cleared every corridor joined to it, which is what "it did too much"
- * was about.
+ * Not cells. Erasing grid squares is what broke this: squares are axis-aligned
+ * and a cave wall is not, so a square-based cut eats floor past the wall line
+ * and leaves a stepped edge crossing it. Staying inside the walls is the whole
+ * requirement.
  *
- * Cells, not shapes. The floor under a click is often one shape covering a
- * whole corridor network, so the shape is the wrong unit; the contiguous
- * SPACE is the right one, and the shape gets cut to fit.
+ * So nothing is cut. The room is one face of the wall graph, and the floor that
+ * covers it also covers other faces; the shape is deleted and re-emitted as the
+ * faces it covered MINUS this one. Every piece written back is a traced face,
+ * so every edge is a wall by construction.
  *
  * @param {Scene} scene
  * @param {{x: number, y: number}} point - canvas coordinates
@@ -1211,23 +1213,86 @@ export async function bucketEraseAt(scene, point) {
 	if (!scene) return 0;
 
 	const size = scene.grid?.size || GRID_SIZE;
-	const { cells, leaked } = floodFillFromWalls(scene, point, {
-		gridSize: size,
-		doorsBlock: true,
-		// Hand-drawn maps — caves especially, where a curve is dozens of short
-		// segments — leave a few pixels of daylight between chains. Without this
-		// the bucket escaped through them and refused to do anything at all.
-		bridgeGaps: true,
-	});
+	const faces = traceWallFaces([...scene.walls], 4, size / 2)
+		.map(points => ({ points, area: polygonArea(points) }))
+		.filter(face => face.area > 0);
 
-	if (leaked) {
+	// The room clicked in: smallest face containing the point, so a room nested
+	// inside a larger area wins over its surroundings.
+	const room = faces
+		.filter(face => pointInPolygon(point, face.points))
+		.sort((a, b) => a.area - b.area)[0];
+
+	if (!room) {
 		ui.notifications.warn(
-			"SDX | That spot isn't closed in by walls, so there is no area to clear. "
-            + "Shift+drag a box instead, or check the Walls layer."
+			"SDX | No walled area there — the walls around that point don't close. "
+            + "Show Wall Gaps marks where."
 		);
 		return 0;
 	}
 
-	// Floor only. The walls are what defined the area being cleared.
-	return eraseFloorCells(scene, cells, { includeWallArt: false });
+	const removedIds = [];
+	const keptPieces = [];
+	for (const drawing of scene.drawings) {
+		if (!drawing.flags?.[MODULE_ID]?.dungeonFloorShape) continue;
+		const polygon = floorPolygonOf(drawing);
+		if (!polygon || !pointInPolygon(point, polygon)) continue;
+
+		removedIds.push(drawing.id);
+		const source = drawing.toObject();
+		const shapeArea = polygonArea(polygon);
+
+		// Every other face this floor covered goes back, unchanged.
+		for (const face of faces) {
+			if (face === room) continue;
+			if (face.area > shapeArea) continue;
+			let cx = 0;
+			let cy = 0;
+			for (const q of face.points) {
+				cx += q.x / face.points.length;
+				cy += q.y / face.points.length;
+			}
+			const centre = { x: cx, y: cy };
+			if (!pointInPolygon(centre, polygon)) continue;
+			if (pointInPolygon(centre, room.points)) continue;
+
+			let fx = Infinity;
+			let fy = Infinity;
+			for (const q of face.points) {
+				if (q.x < fx) fx = q.x;
+				if (q.y < fy) fy = q.y;
+			}
+			keptPieces.push({
+				...source,
+				_id: undefined,
+				x: fx,
+				y: fy,
+				shape: {
+					...source.shape,
+					type: "p",
+					points: face.points.flatMap(q => [q.x - fx, q.y - fy]),
+				},
+			});
+		}
+	}
+
+	if (removedIds.length === 0) {
+		ui.notifications.info("SDX | No SDX floor in that area.");
+		return 0;
+	}
+
+	recordDungeonAction("Erase area", {
+		deleted: [{ type: "Drawing", data: removedIds.map(id => scene.drawings.get(id).toObject()) }],
+	});
+
+	await scene.deleteEmbeddedDocuments("Drawing", removedIds);
+	if (keptPieces.length > 0) {
+		const restored = await scene.createEmbeddedDocuments("Drawing", keptPieces);
+		recordDungeonAction("Erase area", {
+			created: [{ type: "Drawing", ids: restored.map(d => d.id) }],
+		});
+	}
+
+	ui.notifications.info("SDX | Cleared that walled area.");
+	return removedIds.length;
 }
