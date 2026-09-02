@@ -212,3 +212,52 @@ test("erasing one square does not take the neighbouring floor", async () => {
 
 	assert.deepEqual(scene.deleted, [{ type: "Drawing", ids: ["a"] }]);
 });
+
+// A bucket clears the floor INSIDE a room, and the room still exists — so its
+// walls must survive. They would not by accident: wall art sits ON the boundary
+// of the flooded area, so its centre lands in a flooded square every time. That
+// is why the bucket has to opt OUT rather than the box opting in.
+
+const { eraseFloorCells } = await import("../../scripts/dungeon/dungeon-reskin.mjs");
+
+function cellScene(drawings, tiles = []) {
+	drawings.get = id => drawings.find(d => d.id === id);
+	tiles.get = id => tiles.find(t => t.id === id);
+	return {
+		drawings, tiles,
+		grid: { size: 100 },
+		deleted: [],
+		created: [],
+		async deleteEmbeddedDocuments(type, ids) {
+			this.deleted.push({ type, ids });
+			return ids;
+		},
+		async createEmbeddedDocuments(type, data) {
+			this.created.push({ type, data });
+			return data.map((d, i) => ({ ...d, id: `piece-${i}` }));
+		},
+	};
+}
+
+/** Wall art on the boundary of squares (0,0)-(1,1): centre lands inside them. */
+const boundaryWall = () => doc({
+	id: "wall", x: 0, y: 90,
+	shape: { type: "r", width: 200, height: 20 },
+	flags: { [MODULE_ID]: { dungeonWall: true } },
+});
+
+test("the bucket clears floor and leaves the walls standing", async () => {
+	const scene = cellScene([floorShape("floor", 0, 0, 200, 200), boundaryWall()]);
+
+	await eraseFloorCells(scene, new Set(["0,0", "1,0", "0,1", "1,1"]), { includeWallArt: false });
+
+	assert.deepEqual(scene.deleted[0].ids, ["floor"], "the wall art must survive");
+});
+
+test("the box eraser still blanks wall art when asked", async () => {
+	const scene = cellScene([floorShape("floor", 0, 0, 200, 200), boundaryWall()]);
+
+	await eraseFloorCells(scene, new Set(["0,0", "1,0", "0,1", "1,1"]), { includeWallArt: true });
+
+	assert.deepEqual(scene.deleted[0].ids.sort(), ["floor", "wall"]);
+});

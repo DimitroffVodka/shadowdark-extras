@@ -1047,7 +1047,7 @@ export async function toggleWallGapMarkers(scene) {
  * @param {Set<string>} cells - "gx,gy" keys the brush covered
  * @returns {Promise<number>} pieces removed
  */
-export async function eraseFloorCells(scene, cells) {
+export async function eraseFloorCells(scene, cells, options = {}) {
 	if (!game.user.isGM) {
 		ui.notifications.warn("SDX | Erasing is GM-only.");
 		return 0;
@@ -1125,14 +1125,20 @@ export async function eraseFloorCells(scene, cells) {
 		}
 	}
 
-	for (const drawing of scene.drawings) {
-		const flags = drawing.flags?.[MODULE_ID];
-		if (!flags?.dungeonWall && !flags?.dungeonBackground) continue;
-		const centre = {
-			x: drawing.x + ((drawing.shape?.width ?? 0) / 2),
-			y: drawing.y + ((drawing.shape?.height ?? 0) / 2),
-		};
-		if (covers(centre)) shapeIds.push(drawing.id);
+	// Wall art only goes when the caller asks for it. A bucket clears the floor
+	// INSIDE a room and the room still exists, so its walls must survive — and
+	// they would not by accident: wall art sits ON the boundary of the flooded
+	// area, so its centre lands in a flooded square every time.
+	if (options.includeWallArt) {
+		for (const drawing of scene.drawings) {
+			const flags = drawing.flags?.[MODULE_ID];
+			if (!flags?.dungeonWall && !flags?.dungeonBackground) continue;
+			const centre = {
+				x: drawing.x + ((drawing.shape?.width ?? 0) / 2),
+				y: drawing.y + ((drawing.shape?.height ?? 0) / 2),
+			};
+			if (covers(centre)) shapeIds.push(drawing.id);
+		}
 	}
 
 	const tileIds = scene.tiles.filter(tile => {
@@ -1206,5 +1212,6 @@ export async function bucketEraseAt(scene, point) {
 		return 0;
 	}
 
-	return eraseFloorCells(scene, cells);
+	// Floor only. The walls are what defined the area being cleared.
+	return eraseFloorCells(scene, cells, { includeWallArt: false });
 }
