@@ -160,7 +160,7 @@ Containers, trading, and display — 9 toggles, all independent.
 
 #### Effects & Spells
 
-Core spell/effect automation. Three toggles depend on the Spell Activity System.
+Core spell/effect automation. Two toggles here depend on the Spell Activity System — a third, **Spell Configuration Panels**, lives under [Item Automation](#item-automation).
 
 | Toggle | What it hides when off |
 |---|---|
