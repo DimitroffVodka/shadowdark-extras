@@ -25,7 +25,11 @@ With **Enable NPC Creature Type** on, NPC sheets show a type selector. Those
 types feed weapon bonus requirements, spell and effect gating, macros and API
 integrations, and plain GM reference at the table.
 
-Open **Manage Creature Types** to add your own choices.
+Open **Manage Creature Types** to add your own choices. On the weapon Bonuses
+tab the matching requirement is **Target Creature Type**, and it offers your
+configured types as a dropdown rather than free text that had to match exactly.
+That is the requirement to reach for when writing a bonus against undead;
+**Target Ancestry** is a player-character field and is empty on every monster.
 
 ![An NPC sheet with its creature type, attacks, and features visible](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/npc-creature-type-sheet.webp)
 
@@ -107,12 +111,40 @@ The module supports predefined advantages and disadvantages, spell-related
 modifiers, and special effects such as Glassbones where the pack includes them.
 Inspect an effect before you drop it on a homebrew actor.
 
+## Source requirements
+
+An effect can be made conditional on the state of whatever it came from.
+**Require equipped** keeps it active only while its parent item is equipped, and
+a source requirement expression tests the bearer, typically a string comparison
+against ancestry, class, background, or alignment.
+
+SDX drives the effect's disabled state to match, rechecking on effect changes,
+actor updates, sheet renders, and item transfers. An effect transferred from an
+item is resolved back to its source, so the source is what gets toggled and the
+change propagates.
+
+Turning off an effect whose requirement is met is treated as a deliberate
+choice and remembered. The reverse is not allowed: enabling an effect whose
+requirement is unmet reverts. That memory is cleared when you change the
+requirement or the item moves to a new actor, since the override belonged to the
+previous owner.
+
 ## Damage response
 
 Effects alter typed damage through resistance, immunity, or vulnerability. An
 effect can also be marked **break on damage**, ending it the next time the
 bearer loses HP. Item automation and the public API can both set and clear that
 marker.
+
+## Invisibility
+
+An invisibility effect hides the bearer's token and SDX keeps the two in step,
+restoring visibility when the effect is disabled or deleted, and when the
+Condition item carrying it is removed.
+
+Taking offensive action breaks it. Attacking or casting drops concealment
+automatically and announces it in chat, so nobody has to remember to clear the
+effect by hand.
 
 ## Auras
 
@@ -127,7 +159,12 @@ all shape who's inside. See
 
 **Creature-type bonus does not trigger.** Check the actor's effective type
 against the bonus operator and value. A renamed homebrew actor won't match the
-bundled map until you set a manual type.
+bundled map until you set a manual type. Check too that the requirement is
+**Target Creature Type** and not **Target Ancestry**, which monsters never have.
+
+**An effect will not stay enabled.** It probably carries a source requirement
+that is not met, or **Require equipped** while its item is unequipped. SDX
+reverts an enable in that state by design.
 
 **Mysterious mode turned off after reload.** Expected. It's an in-memory
 encounter mode.
