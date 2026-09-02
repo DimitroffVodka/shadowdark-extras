@@ -328,3 +328,24 @@ test("a door-less wall between the rooms keeps them separate", () => {
 	assert.equal(result.leaked, false);
 	assert.equal(result.cells.size, 9, "a solid divider must stop the fill at one room");
 });
+
+// A paint bucket stops at doorways. The reskin's fill deliberately crosses
+// doors — one run should cover a whole connected dungeon — but a bucket is
+// asked to clear "this bit", and crossing doors made a click on one corridor
+// clear every corridor joined to it.
+test("doorsBlock stops the fill at a doorway", () => {
+	const shared = [
+		hWall(2, 8, 2), hWall(2, 8, 5), vWall(2, 2, 5), vWall(8, 2, 5),
+		vWall(5, 2, 3), vWall(5, 4, 5),
+	];
+	const door = { c: [5 * GRID, 3 * GRID, 5 * GRID, 4 * GRID], door: 1 };
+	const walls = [...shared, door];
+	installWalls(walls);
+
+	const through = floodFillFromWalls(sceneWith(walls), { x: 250, y: 250 });
+	const stopped = floodFillFromWalls(sceneWith(walls), { x: 250, y: 250 }, { doorsBlock: true });
+
+	assert.equal(through.cells.size, 18, "the reskin's fill crosses the door");
+	assert.equal(stopped.cells.size, 9, "the bucket stops at it");
+	assert.equal(stopped.leaked, false, "and a door is a boundary, not a leak");
+});

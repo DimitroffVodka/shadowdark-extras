@@ -185,7 +185,14 @@ export function floodFillFromWalls(scene, seed, options = {}) {
 		if (edges.has(key)) return edges.get(key);
 		const a = centre(gx, gy);
 		const b = centre(ngx, ngy);
-		const ok = !blocksMove(index, a, b) || doorCrosses(doors, a, b);
+		// Doors are excluded from the wall index so they never block by default.
+		// A bucket needs them back: it is asked to clear "this bit", and a
+		// doorway is where that stops.
+		const wallBlocks = blocksMove(index, a, b);
+		const doorHere = doorCrosses(doors, a, b);
+		const ok = options.doorsBlock
+			? (!wallBlocks && !doorHere)
+			: (!wallBlocks || doorHere);
 		edges.set(key, ok);
 		return ok;
 	};
@@ -1023,3 +1030,181 @@ export async function toggleWallGapMarkers(scene) {
 	return loose.length;
 }
 
+
+/**
+ * Erase the floor under a freehand brush stroke.
+ *
+ * A dragged box assumes rooms are rectangles and they are not — sweeping one
+ * over a corridor bend either misses the turn or eats the wall beside it. This
+ * takes the SET OF SQUARES the cursor actually passed over, so the erased shape
+ * is whatever was drawn.
+ *
+ * Squares are merged into horizontal runs before cutting. A 40-square stroke is
+ * a handful of rectangles that way instead of 40, and each cut multiplies the
+ * pieces the shape is left in.
+ *
+ * @param {Scene} scene
+ * @param {Set<string>} cells - "gx,gy" keys the brush covered
+ * @returns {Promise<number>} pieces removed
+ */
+export async function eraseFloorCells(scene, cells) {
+	if (!game.user.isGM) {
+		ui.notifications.warn("SDX | Erasing is GM-only.");
+		return 0;
+	}
+	if (!scene || cells.size === 0) return 0;
+
+	const size = scene.grid?.size || GRID_SIZE;
+
+	// Merge each row of squares into runs, so the cut is a few wide rectangles
+	// rather than one per square.
+	const byRow = new Map();
+	for (const key of cells) {
+		const [gx, gy] = key.split(",").map(Number);
+		if (!byRow.has(gy)) byRow.set(gy, []);
+		byRow.get(gy).push(gx);
+	}
+	const rects = [];
+	for (const [gy, xs] of byRow) {
+		xs.sort((a, b) => a - b);
+		let runStart = xs[0];
+		let previous = xs[0];
+		for (let i = 1; i <= xs.length; i++) {
+			if (i < xs.length && xs[i] === previous + 1) {
+				previous = xs[i];
+				continue;
+			}
+			rects.push({
+				minX: runStart * size,
+				maxX: (previous + 1) * size,
+				minY: gy * size,
+				maxY: (gy + 1) * size,
+			});
+			runStart = xs[i];
+			previous = xs[i];
+		}
+	}
+
+	const covers = point => cells.has(`${Math.floor(point.x / size)},${Math.floor(point.y / size)}`);
+
+	const shapeIds = [];
+	const remainders = [];
+	for (const drawing of scene.drawings) {
+		if (!drawing.flags?.[MODULE_ID]?.dungeonFloorShape) continue;
+		const polygon = floorPolygonOf(drawing);
+		if (!polygon) continue;
+		if (!rects.some(rect => clipPolygonToRect(polygon, rect).length >= 3)) continue;
+
+		// Cut every run out in turn; each cut splits the pieces further.
+		let pieces = [polygon];
+		for (const rect of rects) {
+			pieces = pieces.flatMap(piece => subtractRectFromPolygon(piece, rect));
+			if (pieces.length === 0) break;
+		}
+
+		shapeIds.push(drawing.id);
+		const source = drawing.toObject();
+		for (const piece of pieces) {
+			let px = Infinity;
+			let py = Infinity;
+			for (const q of piece) {
+				if (q.x < px) px = q.x;
+				if (q.y < py) py = q.y;
+			}
+			remainders.push({
+				...source,
+				_id: undefined,
+				x: px,
+				y: py,
+				shape: {
+					...source.shape,
+					type: "p",
+					points: piece.flatMap(q => [q.x - px, q.y - py]),
+				},
+			});
+		}
+	}
+
+	for (const drawing of scene.drawings) {
+		const flags = drawing.flags?.[MODULE_ID];
+		if (!flags?.dungeonWall && !flags?.dungeonBackground) continue;
+		const centre = {
+			x: drawing.x + ((drawing.shape?.width ?? 0) / 2),
+			y: drawing.y + ((drawing.shape?.height ?? 0) / 2),
+		};
+		if (covers(centre)) shapeIds.push(drawing.id);
+	}
+
+	const tileIds = scene.tiles.filter(tile => {
+		const flags = tile.flags?.[MODULE_ID];
+		if (!flags?.dungeonFloor && !flags?.dungeonStairs
+            && !flags?.dungeonStairsDown && !flags?.dungeonClutter) return false;
+		return covers({ x: tile.x + (size / 2), y: tile.y + (size / 2) });
+	}).map(tile => tile.id);
+
+	if (shapeIds.length === 0 && tileIds.length === 0) {
+		ui.notifications.info("SDX | No SDX floor under that stroke.");
+		return 0;
+	}
+
+	recordDungeonAction("Erase floor", {
+		deleted: [
+			{ type: "Drawing", data: shapeIds.map(id => scene.drawings.get(id).toObject()) },
+			{ type: "Tile", data: tileIds.map(id => scene.tiles.get(id).toObject()) },
+		],
+	});
+
+	if (shapeIds.length > 0) await scene.deleteEmbeddedDocuments("Drawing", shapeIds);
+	if (tileIds.length > 0) await scene.deleteEmbeddedDocuments("Tile", tileIds);
+
+	if (remainders.length > 0) {
+		const restored = await scene.createEmbeddedDocuments("Drawing", remainders);
+		recordDungeonAction("Erase floor", {
+			created: [{ type: "Drawing", ids: restored.map(d => d.id) }],
+		});
+	}
+
+	ui.notifications.info(`SDX | Erased ${cells.size} square${cells.size === 1 ? "" : "s"}.`);
+	return shapeIds.length + tileIds.length;
+}
+
+/**
+ * Paint-bucket erase: clear the contiguous floor the click sits in.
+ *
+ * Bounded by walls AND doors. Doors are passable to the reskin's fill — one
+ * click should reskin a whole connected dungeon — but a bucket is asked to
+ * clear "this bit", so a doorway is where it stops. Without that, clicking a
+ * corridor cleared every corridor joined to it, which is what "it did too much"
+ * was about.
+ *
+ * Cells, not shapes. The floor under a click is often one shape covering a
+ * whole corridor network, so the shape is the wrong unit; the contiguous
+ * SPACE is the right one, and the shape gets cut to fit.
+ *
+ * @param {Scene} scene
+ * @param {{x: number, y: number}} point - canvas coordinates
+ * @returns {Promise<number>} pieces removed
+ */
+export async function bucketEraseAt(scene, point) {
+	if (!game.user.isGM) {
+		ui.notifications.warn("SDX | Erasing is GM-only.");
+		return 0;
+	}
+	if (!scene) return 0;
+
+	const size = scene.grid?.size || GRID_SIZE;
+	const { cells, leaked } = floodFillFromWalls(scene, point, {
+		gridSize: size,
+		doorsBlock: true,
+	});
+
+	if (leaked) {
+		ui.notifications.warn(
+			"SDX | That spot isn't closed in by walls, so there is no area to clear. "
+            + "Shift+drag a box instead, or check the Walls layer."
+		);
+		return 0;
+	}
+
+	return eraseFloorCells(scene, cells);
+}
