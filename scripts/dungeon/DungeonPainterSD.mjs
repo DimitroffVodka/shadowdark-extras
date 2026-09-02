@@ -95,7 +95,7 @@ import {
 // Reskin takes a seed click rather than a persistent mode: it is a one-shot
 // action, and a fourth mode tab would carry tile grids and hints it has no use
 // for. The tray arms it, the next canvas click consumes it.
-import { bucketEraseAt, eraseFloorCells, paintRoomFloor, reskinScene } from "./dungeon-reskin.mjs";
+import { bucketEraseAt, bucketFillAt, eraseFloorCells, reskinScene } from "./dungeon-reskin.mjs";
 import {
 	beginBrushStroke,
 	brushStrokeCells,
@@ -792,7 +792,8 @@ function onPointerUp(event) {
 			// was removed because the click path fills the walled area exactly,
 			// which is what a bucket does and what the box was working around.
 			// Accepting a drag here also means a shaky click still lands.
-			paintRoomFloor(canvas.scene, endPos, _selectedFloorTile);
+			bucketFillAt(canvas.scene, endPos, _selectedFloorTile)
+				.catch(err => ui.notifications.error(`SDX | Fill failed — ${err.message}`));
 		}
 		return;
 	}

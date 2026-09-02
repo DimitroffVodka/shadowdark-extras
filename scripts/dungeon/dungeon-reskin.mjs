@@ -26,7 +26,6 @@ import {
 	pointInPolygon,
 	subtractRectFromPolygon,
 	traceRoomFaces,
-	traceWallFaces,
 } from "./dungeon-wall-outline.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -75,6 +74,9 @@ export function wallDrawingGeometry(c, texture) {
 // cell cap and by the canvas border. Either one aborts before anything is
 // written, because painting the whole canvas is far worse than painting nothing.
 const MAX_CELLS = 20000;
+
+/** Documents per create call, matching the reskin's own batching. */
+const BUCKET_CHUNK = 100;
 
 // Cell size of the wall index. Two grid squares: big enough that most lookups
 // touch one bucket, small enough that a bucket holds a handful of walls.
@@ -1213,14 +1215,119 @@ export async function eraseFloorCells(scene, cells, options = {}) {
  * builds a DIFFERENT face graph than the one the floor shapes came from — on a
  * map that traced cleanly, the click then landed in no face at all.
  */
-function facesForErase(walls, size) {
-	const build = bridge => traceWallFaces(walls, 4, bridge)
-		.map(points => ({ points, area: polygonArea(points) }))
-		.filter(face => face.area > 0);
-	const plain = build(0);
-	return plain.length > 0 ? plain : build(size / 2);
+/**
+ * The squares a bucket click covers: a FLOOD FILL from the click, stopped by
+ * walls and doorways.
+ *
+ * A flood fill is not a polygon trace, and the difference is the entire point.
+ * A tracer has to prove the walls close into a loop before it will do anything,
+ * so on a map whose walls very nearly close it refuses and the click does
+ * nothing at all. A fill just spreads from where you clicked until something
+ * stops it. That is what a paint bucket is.
+ *
+ * Doors block, because a doorway is where "this bit of the map" ends.
+ *
+ * Gaps are NOT bridged. Bridging invents wall segments, and a fill run over
+ * invented walls describes a map that does not exist — which is how the eraser
+ * and the reskin came to disagree about where the rooms were. If the walls
+ * leak, say so and name the gap finder rather than quietly filling the map.
+ */
+function bucketCells(scene, point) {
+	const size = scene.grid?.size || GRID_SIZE;
+	const result = floodFillFromWalls(scene, point, { gridSize: size, doorsBlock: true });
+	if (result.leaked) {
+		ui.notifications.warn(
+			`SDX | The fill escaped after ${result.cells.size} squares — the walls have a gap `
+            + "somewhere around that area. Press Show Wall Gaps to mark it."
+		);
+		return null;
+	}
+	return result.cells;
 }
 
+/**
+ * Paint bucket. Floods the walled area under the click with the selected floor.
+ *
+ * Grid squares, not a traced outline: a fill knows which SQUARES it reached, and
+ * inventing a smooth polygon from them would be the tracer again by another
+ * name. The whole-map Reskin still traces and still gives curved edges — this is
+ * the tool for fixing the places it got wrong, where working beats pretty.
+ *
+ * @param {Scene} scene
+ * @param {{x: number, y: number}} point  where the GM clicked
+ * @param {string} floorTilePath          texture for the new floor
+ * @returns {Promise<number>} squares filled
+ */
+export async function bucketFillAt(scene, point, floorTilePath) {
+	if (!game.user.isGM) {
+		ui.notifications.warn("SDX | Painting floors is GM-only.");
+		return 0;
+	}
+	if (!scene) return 0;
+	if (!floorTilePath) {
+		ui.notifications.warn("SDX | Select a floor tile first.");
+		return 0;
+	}
+
+	const cells = bucketCells(scene, point);
+	if (!cells) return 0;
+
+	const size = scene.grid?.size || GRID_SIZE;
+	const levelContext = resolveLevelContext(scene);
+
+	// Squares that already carry SDX floor are skipped rather than stacked on,
+	// so clicking the same room twice does not double every document in it.
+	const occupied = new Set();
+	for (const tile of scene.tiles) {
+		if (!tile.flags?.[MODULE_ID]?.dungeonFloor) continue;
+		if (!documentMatchesLevel(tile, levelContext)) continue;
+		occupied.add(`${Math.floor(tile.x / size)},${Math.floor(tile.y / size)}`);
+	}
+
+	const toCreate = [];
+	for (const key of cells) {
+		if (occupied.has(key)) continue;
+		const [gx, gy] = key.split(",").map(Number);
+		toCreate.push(applySceneLevelData({
+			texture: makeTopLeftTileTexture(floorTilePath),
+			x: gx * size,
+			y: gy * size,
+			width: size,
+			height: size,
+			sort: 0,
+			// The same flags the reskin's own gap-patch tiles carry, so Clear, the
+			// eraser and Undo already know what these are.
+			flags: { [MODULE_ID]: { dungeonFloor: true, dungeonReskinFloor: true } },
+		}, "Tile", levelContext));
+	}
+
+	if (toCreate.length === 0) {
+		ui.notifications.info("SDX | That area already has an SDX floor.");
+		return 0;
+	}
+
+	const made = [];
+	for (let i = 0; i < toCreate.length; i += BUCKET_CHUNK) {
+		const batch = await scene.createEmbeddedDocuments("Tile", toCreate.slice(i, i + BUCKET_CHUNK));
+		made.push(...batch);
+	}
+
+	recordDungeonAction("Fill floor", { created: [{ type: "Tile", ids: made.map(t => t.id) }] });
+	ui.notifications.info(`SDX | Filled ${made.length} square${made.length === 1 ? "" : "s"}.`);
+	return made.length;
+}
+
+/**
+ * Erase bucket. Clears every SDX floor in the walled area under the click.
+ *
+ * Wall art stays: the room still exists, only its floor is going. Wall art sits
+ * ON the boundary of the filled area, so its centre lands in a filled square
+ * every time and would otherwise always be taken.
+ *
+ * @param {Scene} scene
+ * @param {{x: number, y: number}} point
+ * @returns {Promise<number>} documents removed
+ */
 export async function bucketEraseAt(scene, point) {
 	if (!game.user.isGM) {
 		ui.notifications.warn("SDX | Erasing is GM-only.");
@@ -1228,96 +1335,8 @@ export async function bucketEraseAt(scene, point) {
 	}
 	if (!scene) return 0;
 
-	// The shape under the cursor IS the answer. A reskin emits one drawing per
-	// traced room, so "erase here" is "drop what I clicked" — no geometry needed
-	// for the common case. Looking at the floors FIRST is the point: the trace
-	// used to run first and veto the whole operation.
-	const hits = [];
-	for (const drawing of scene.drawings) {
-		if (!drawing.flags?.[MODULE_ID]?.dungeonFloorShape) continue;
-		const polygon = floorPolygonOf(drawing);
-		if (!polygon || !pointInPolygon(point, polygon)) continue;
-		hits.push({ drawing, polygon, area: polygonArea(polygon) });
-	}
-	if (hits.length === 0) {
-		ui.notifications.info("SDX | No SDX floor there.");
-		return 0;
-	}
+	const cells = bucketCells(scene, point);
+	if (!cells) return 0;
 
-	const size = scene.grid?.size || GRID_SIZE;
-	const faces = facesForErase([...scene.walls], size);
-	const room = faces
-		.filter(face => pointInPolygon(point, face.points))
-		.sort((a, b) => a.area - b.area)[0];
-
-	// Tracing REFINES the erase, it never gates it. With no face we still clear
-	// something — one grid square, cut out — because "nothing happened" is the
-	// failure a GM cannot work around, while a single square is one more click.
-	if (!room) {
-		return eraseFloorRegion(scene, {
-			minX: point.x - size / 2,
-			maxX: point.x + size / 2,
-			minY: point.y - size / 2,
-			maxY: point.y + size / 2,
-		});
-	}
-
-	const removedIds = [];
-	const keptPieces = [];
-	for (const hit of hits) {
-		removedIds.push(hit.drawing.id);
-
-		// The shape is the room already: delete it whole rather than rebuilding
-		// an identical polygon. Only a shape spanning SEVERAL rooms — a painted
-		// corridor network with no internal doors — needs cutting apart.
-		if (hit.area <= room.area * 1.1) continue;
-
-		const source = hit.drawing.toObject();
-		for (const face of faces) {
-			if (face === room) continue;
-			if (face.area > hit.area) continue;
-			let cx = 0;
-			let cy = 0;
-			for (const q of face.points) {
-				cx += q.x / face.points.length;
-				cy += q.y / face.points.length;
-			}
-			const centre = { x: cx, y: cy };
-			if (!pointInPolygon(centre, hit.polygon)) continue;
-			if (pointInPolygon(centre, room.points)) continue;
-
-			let fx = Infinity;
-			let fy = Infinity;
-			for (const q of face.points) {
-				if (q.x < fx) fx = q.x;
-				if (q.y < fy) fy = q.y;
-			}
-			keptPieces.push({
-				...source,
-				_id: undefined,
-				x: fx,
-				y: fy,
-				shape: {
-					...source.shape,
-					type: "p",
-					points: face.points.flatMap(q => [q.x - fx, q.y - fy]),
-				},
-			});
-		}
-	}
-
-	recordDungeonAction("Erase area", {
-		deleted: [{ type: "Drawing", data: removedIds.map(id => scene.drawings.get(id).toObject()) }],
-	});
-
-	await scene.deleteEmbeddedDocuments("Drawing", removedIds);
-	if (keptPieces.length > 0) {
-		const restored = await scene.createEmbeddedDocuments("Drawing", keptPieces);
-		recordDungeonAction("Erase area", {
-			created: [{ type: "Drawing", ids: restored.map(d => d.id) }],
-		});
-	}
-
-	ui.notifications.info("SDX | Cleared that walled area.");
-	return removedIds.length;
+	return eraseFloorCells(scene, cells, { includeWallArt: false });
 }

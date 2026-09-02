@@ -262,68 +262,130 @@ test("the box eraser still blanks wall art when asked", async () => {
 	assert.deepEqual(scene.deleted[0].ids.sort(), ["floor", "wall"]);
 });
 
-// The bucket looked at the WALLS first and the floors second, and re-derived
-// rooms by a different route than the reskin used to lay them down: it bridged
-// loose wall ends unconditionally, where `traceRoomFaces` bridges only as a
-// repair. On a map that traced cleanly the two graphs disagree, the click lands
-// in no face, and the whole erase was vetoed — with the floor shape the GM was
-// pointing at sitting right there under the cursor.
-//
-// Floors first. Tracing refines the erase; it never gets to cancel it.
+// THE BUCKET IS A FLOOD FILL, not a polygon trace, and these tests exist to keep
+// it one. Every previous version traced the walls into room outlines first and
+// refused to act when they did not close into a loop — so on a map whose walls
+// very nearly close, the click did nothing at all and said nothing useful. A
+// fill spreads from where you clicked until a wall stops it. That is the tool
+// that was asked for.
 
-const { bucketEraseAt } = await import("../../scripts/dungeon/dungeon-reskin.mjs");
+const { bucketFillAt, bucketEraseAt } = await import("../../scripts/dungeon/dungeon-reskin.mjs");
 
-function bucketScene(drawings, walls = []) {
+const wall = (x0, y0, x1, y1, door = 0) => ({ c: [x0, y0, x1, y1], door, id: `w${x0}${y0}${x1}${y1}` });
+
+/** A 3x3-square room, walls flush to the outside of the squares. */
+function boxRoom() {
+	return [
+		wall(0, 0, 300, 0), wall(300, 0, 300, 300),
+		wall(300, 300, 0, 300), wall(0, 300, 0, 0),
+	];
+}
+
+function fillScene(walls, { drawings = [], tiles = [] } = {}) {
 	drawings.get = id => drawings.find(d => d.id === id);
-	const tiles = [];
-	tiles.get = () => undefined;
+	tiles.get = id => tiles.find(t => t.id === id);
+	walls.filter = Array.prototype.filter.bind(walls);
 	return {
-		drawings, tiles, walls,
+		walls, drawings, tiles,
 		grid: { size: 100 },
-		deleted: [],
+		dimensions: { width: 1000, height: 1000 },
 		created: [],
+		deleted: [],
+		async createEmbeddedDocuments(type, data) {
+			this.created.push({ type, data });
+			return data.map((d, i) => ({ ...d, id: `${type}-${this.created.length}-${i}` }));
+		},
 		async deleteEmbeddedDocuments(type, ids) {
 			this.deleted.push({ type, ids });
 			return ids;
 		},
-		async createEmbeddedDocuments(type, data) {
-			this.created.push({ type, data });
-			return data.map((d, i) => ({ ...d, id: `piece-${i}` }));
-		},
 	};
 }
 
-test("a click erases the floor even when the walls trace to nothing", async () => {
-	// No walls at all: the harshest version of "the trace disagrees".
-	const scene = bucketScene([floorShape("room", 0, 0, 300, 300)]);
+test("the bucket fills the walled area it was clicked in", async () => {
+	const scene = fillScene(boxRoom());
+
+	const filled = await bucketFillAt(scene, { x: 150, y: 150 }, "floor.webp");
+
+	assert.equal(filled, 9, "a 3x3 room is nine squares");
+	assert.equal(scene.created[0].type, "Tile");
+});
+
+test("the fill stops at the walls instead of covering the map", async () => {
+	// The scene is 10x10 squares. A fill that ignored the walls would make 100.
+	const scene = fillScene(boxRoom());
+
+	await bucketFillAt(scene, { x: 50, y: 50 }, "floor.webp");
+
+	const made = scene.created[0].data;
+	assert.ok(made.every(t => t.x < 300 && t.y < 300), "nothing outside the room");
+});
+
+test("a gap in the walls refuses rather than flooding the whole map", async () => {
+	// Walls that do not close: the fill escapes. Filling 100 squares and making
+	// the GM undo it is worse than saying which tool finds the gap.
+	const scene = fillScene([wall(0, 0, 300, 0), wall(300, 0, 300, 300)]);
+
+	const filled = await bucketFillAt(scene, { x: 150, y: 150 }, "floor.webp");
+
+	assert.equal(filled, 0);
+	assert.equal(scene.created.length, 0);
+});
+
+test("a door bounds the fill — a doorway is where the room ends", async () => {
+	const walls = boxRoom();
+	walls[1] = wall(300, 0, 300, 300, 1);          // east side is a door
+	walls.push(wall(300, 0, 600, 0), wall(600, 0, 600, 300), wall(600, 300, 300, 300));
+	const scene = fillScene(walls);
+
+	await bucketFillAt(scene, { x: 150, y: 150 }, "floor.webp");
+
+	const made = scene.created[0].data;
+	assert.ok(made.every(t => t.x < 300), "the fill must not cross into the next room");
+});
+
+test("filling the same room twice does not stack a second floor", async () => {
+	const existing = [];
+	for (let gx = 0; gx < 3; gx++) {
+		for (let gy = 0; gy < 3; gy++) {
+			existing.push(doc({
+				id: `t${gx}${gy}`, x: gx * 100, y: gy * 100,
+				flags: { [MODULE_ID]: { dungeonFloor: true } },
+			}));
+		}
+	}
+	const scene = fillScene(boxRoom(), { tiles: existing });
+
+	const filled = await bucketFillAt(scene, { x: 150, y: 150 }, "floor.webp");
+
+	assert.equal(filled, 0);
+	assert.equal(scene.created.length, 0);
+});
+
+test("the erase bucket clears the same area the fill would cover", async () => {
+	const tiles = [
+		doc({ id: "in", x: 100, y: 100, flags: { [MODULE_ID]: { dungeonFloor: true } } }),
+		doc({ id: "out", x: 700, y: 700, flags: { [MODULE_ID]: { dungeonFloor: true } } }),
+	];
+	const scene = fillScene(boxRoom(), { tiles });
 
 	const removed = await bucketEraseAt(scene, { x: 150, y: 150 });
 
-	assert.ok(removed > 0, "the click must clear something, not silently no-op");
-	assert.ok(scene.deleted.length > 0, "and it must reach the floor document");
+	assert.ok(removed > 0, "the click must clear something");
+	assert.deepEqual(scene.deleted, [{ type: "Tile", ids: ["in"] }], "and only inside the walls");
 });
 
-test("clicking off the floor still says so rather than erasing at random", async () => {
-	const scene = bucketScene([floorShape("room", 0, 0, 300, 300)]);
+test("erasing leaves the walls standing — only the floor goes", async () => {
+	const drawings = [doc({
+		id: "wallart", x: 0, y: 90,
+		shape: { type: "r", width: 300, height: 20 },
+		flags: { [MODULE_ID]: { dungeonWall: true } },
+	})];
+	const tiles = [doc({ id: "floor", x: 100, y: 100, flags: { [MODULE_ID]: { dungeonFloor: true } } })];
+	const scene = fillScene(boxRoom(), { drawings, tiles });
 
-	const removed = await bucketEraseAt(scene, { x: 5000, y: 5000 });
+	await bucketEraseAt(scene, { x: 150, y: 150 });
 
-	assert.equal(removed, 0);
-	assert.equal(scene.deleted.length, 0);
-});
-
-test("a room-sized shape is dropped whole, not rebuilt", async () => {
-	// The reskin emits one drawing per traced room, so the shape already IS the
-	// room. Re-emitting an identical polygon is churn the GM sees as a flicker.
-	const wall = (x0, y0, x1, y1) => ({ c: [x0, y0, x1, y1], door: 0 });
-	const scene = bucketScene(
-		[floorShape("room", 0, 0, 300, 300)],
-		[wall(0, 0, 300, 0), wall(300, 0, 300, 300), wall(300, 300, 0, 300), wall(0, 300, 0, 0)]
-	);
-
-	const removed = await bucketEraseAt(scene, { x: 150, y: 150 });
-
-	assert.equal(removed, 1);
-	assert.deepEqual(scene.deleted, [{ type: "Drawing", ids: ["room"] }]);
-	assert.equal(scene.created.length, 0, "nothing to put back — the shape was the room");
+	const gone = scene.deleted.flatMap(d => d.ids);
+	assert.ok(!gone.includes("wallart"), "wall art sits inside the filled squares but must survive");
 });

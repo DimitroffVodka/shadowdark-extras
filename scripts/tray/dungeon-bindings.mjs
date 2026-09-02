@@ -178,8 +178,9 @@ export const DungeonBindings = {
 				renderTray();
 				if (arming) {
 					ui.notifications.info(
-						"SDX | Click a room to floor it · Shift+click clears a walled area · "
-                        + "Shift+drag brushes floor away. Press the button again to stop."
+						"SDX | Paint bucket armed. Click floods the walled area with the selected "
+                        + "floor · Shift+click floods it away · Shift+drag erases freehand. "
+                        + "Press the button again to stop."
 					);
 				}
 			});
