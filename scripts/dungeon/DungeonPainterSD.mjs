@@ -53,6 +53,8 @@ import {
 	getSelectedIntDoorTile,
 	setDungeonBackground,
 	getDungeonBackground,
+	toggleDungeonSection,
+	isDungeonSectionCollapsed,
 } from "./dungeon-tool-state.mjs";
 
 // The tool-state helpers that were public on this module stay public: the tray
@@ -63,6 +65,7 @@ export {
 	setNoFoundryWalls, getNoFoundryWalls, setWallShadows, getWallShadows,
 	selectIntWallTile, getSelectedIntWallTile, selectIntDoorTile, getSelectedIntDoorTile,
 	setDungeonBackground, getDungeonBackground,
+	toggleDungeonSection, isDungeonSectionCollapsed,
 };
 
 // The tile catalogue (floor/wall/door/background tile arrays) now lives in
@@ -88,6 +91,12 @@ import {
 	handleIntWallClick,
 	handleIntWallDoorRemove,
 } from "./dungeon-interior-walls.mjs";
+
+// Reskin takes a seed click rather than a persistent mode: it is a one-shot
+// action, and a fourth mode tab would carry tile grids and hints it has no use
+// for. The tray arms it, the next canvas click consumes it.
+import { eraseFloorRegion, paintRoomFloor, reskinScene } from "./dungeon-reskin.mjs";
+import { registerWallPairCascade } from "./dungeon-wall-pairs.mjs";
 
 /**
  * SDX Dungeon Painter - Room/Dungeon mapping tool
@@ -131,6 +140,15 @@ export function registerDungeonPainterSettings() {
 		// Tray re-render on change is handled by the updateSetting hook in TraySD.mjs,
 		// which fires on every client (so players' trays refresh too).
 	});
+
+	// Deleting one half of a paired wall (the art Drawing or the collision Wall)
+	// takes the other with it. Registered here rather than in the composition
+	// root because scripts/shadowdark-extras.mjs sits at exactly 2000 physical
+	// lines, which is the split threshold dev/tests/phase5-metrics.test.mjs
+	// enforces — three more lines there fails the build. This function is the
+	// dungeon painter's init entry point and runs under the same feature gate,
+	// so the wiring stays with the feature that owns it.
+	registerWallPairCascade();
 }
 
 // State
@@ -519,6 +537,16 @@ export async function getDungeonPainterData() {
 		curvedWalls: _curvedWalls,
 		backgroundOptions,
 		selectedBackground: _selectedBackground,
+		// So the footer hints can describe the armed tool instead of the mode.
+		floorPaintArmed: _floorPaintArmed,
+		// Which tile sections are rolled up, so a re-render keeps them that way.
+		collapsed: {
+			floor: isDungeonSectionCollapsed("floor"),
+			wall: isDungeonSectionCollapsed("wall"),
+			intwall: isDungeonSectionCollapsed("intwall"),
+			intdoor: isDungeonSectionCollapsed("intdoor"),
+			door: isDungeonSectionCollapsed("door"),
+		},
 		canPlayerPaint: canPlayerPaint(),
 		isGMOnline: isGMOnline(),
 	};
@@ -578,7 +606,47 @@ export function isDungeonPainting() {
 export function cleanupDungeonPainting() {
 	_isDragging = false;
 	_dragStart = null;
+
+	_floorPaintArmed = false;
 	destroySelectionRect();
+}
+
+// The floor-paint bucket, which STAYS on across clicks: varying a hallway
+// from the rooms it joins means several clicks in a row, and re-arming between
+// each would be the whole cost of the tool.
+let _floorPaintArmed = false;
+
+/**
+ * Turn the room-floor paint bucket on or off.
+ * @param {boolean} value
+ */
+export function setFloorPaintArmed(value) {
+	_floorPaintArmed = !!value;
+}
+
+/**
+ * Is the floor-paint bucket active?
+ */
+export function isFloorPaintArmed() {
+	return _floorPaintArmed;
+}
+
+/**
+ * Reskin the whole scene with the current tile selections.
+ *
+ * There is no seed pick any more: the reskin finds every enclosed area on the
+ * map itself, so a click has nothing left to disambiguate. Assembling the deps
+ * belongs here because the tile selections are this module's state.
+ */
+export async function runSceneReskin() {
+	return reskinScene(canvas.scene, {
+		ensureBackgroundDrawing,
+		floorTilePath: _selectedFloorTile,
+		wallTilePath: _selectedWallTile,
+		doorTilePath: _selectedDoorTile,
+		backgroundSetting: _selectedBackground,
+		wallShadows: _wallShadows,
+	});
 }
 
 /**
@@ -618,8 +686,10 @@ function onPointerDown(event) {
 	const pos = event.data?.getLocalPosition(canvas.stage);
 	_dragStart = { x: pos.x, y: pos.y };
 
-	// Create selection rectangle for visual feedback
-	if (_dungeonMode === "tiles" || (_dungeonMode === "doors" && _isShiftHeld) || _dungeonMode === "intwalls") {
+	// Create selection rectangle for visual feedback. The floor bucket gets one
+	// too: it takes a drag to mean "paint this much of the room".
+	if (_floorPaintArmed
+        || _dungeonMode === "tiles" || (_dungeonMode === "doors" && _isShiftHeld) || _dungeonMode === "intwalls") {
 		createSelectionRect();
 	}
 }
@@ -633,8 +703,8 @@ function onPointerMove(event) {
 	// Safety check - make sure canvas is still valid
 	if (!canvas?.stage || !canvas?.interface) return;
 
-	// Only show rectangle in tiles mode or doors+shift (delete)
-	if (_dungeonMode === "tiles" || (_dungeonMode === "doors" && _isShiftHeld)) {
+	// Only show rectangle in tiles mode, doors+shift (delete), or the floor bucket
+	if (_floorPaintArmed || _dungeonMode === "tiles" || (_dungeonMode === "doors" && _isShiftHeld)) {
 		const pos = event.data?.getLocalPosition(canvas.stage);
 		if (pos) {
 			updateSelectionRect(_dragStart, pos, _isShiftHeld);
@@ -677,6 +747,39 @@ function onPointerUp(event) {
 	const dx = Math.abs(endPos.x - _dragStart.x);
 	const dy = Math.abs(endPos.y - _dragStart.y);
 	const isClick = dx < 10 && dy < 10;
+
+	// Sticky, and deliberately claims the gesture before the painting modes:
+	// while the bucket is on, a click means "this whole room" and a drag means
+	// "this much of it". The drag exists because a corridor network with no
+	// internal doors is a single room — clicking one corridor floors them all.
+	if (_floorPaintArmed) {
+		const origin = { x: _dragStart.x, y: _dragStart.y };
+		_dragStart = null;
+		const box = {
+			minX: Math.min(origin.x, endPos.x),
+			maxX: Math.max(origin.x, endPos.x),
+			minY: Math.min(origin.y, endPos.y),
+			maxY: Math.max(origin.y, endPos.y),
+		};
+
+		// Shift erases, the same way it does in Rooms mode. Automatic room
+		// detection is wrong on some map somewhere, so an eraser the GM aims
+		// themselves is what makes a bad result recoverable by hand.
+		if (deleteMode) {
+			eraseFloorRegion(canvas.scene, isClick
+				? { minX: endPos.x - 1, maxX: endPos.x + 1, minY: endPos.y - 1, maxY: endPos.y + 1 }
+				: box);
+		}
+		else {
+			// Drag and click both fill the room under the cursor. There was a
+			// separate drag-to-paint that clipped a room to the dragged box; it
+			// was removed because the click path fills the walled area exactly,
+			// which is what a bucket does and what the box was working around.
+			// Accepting a drag here also means a shaky click still lands.
+			paintRoomFloor(canvas.scene, endPos, _selectedFloorTile);
+		}
+		return;
+	}
 
 	if (_dungeonMode === "doors") {
 		if (isClick) {
@@ -1217,17 +1320,38 @@ async function rebuildWalls(scene) {
 	await rebuildWallsForLevel(scene, resolveLevelContext(scene), { noWalls: _noFoundryWalls });
 }
 
+/**
+ * The floor cells the wall rebuild derives its perimeter from.
+ *
+ * Reskinned floor is deliberately excluded. It came from a map that already has
+ * its own walls, so feeding it to the perimeter generator would wrap the whole
+ * reskinned region in a second, grid-stepped wall the moment anyone painted a
+ * single tile afterwards — reintroducing exactly the staircase the reskin exists
+ * to avoid, on top of walls that were already correct. Only hand-painted floor
+ * makes walls.
+ *
+ * @param {Scene} scene
+ * @param {object} levelContext
+ * @param {number} gridSize
+ * @returns {Set<string>} "gx,gy" cell keys
+ */
+export function collectPaintedFloors(scene, levelContext, gridSize) {
+	const floors = new Set();
+	for (const tile of scene.tiles) {
+		if (!tile.texture?.src?.includes("Dungeon/floor_tiles")) continue;
+		if (tile.flags?.[MODULE_ID]?.dungeonReskinFloor) continue;
+		if (!documentMatchesLevel(tile, levelContext)) continue;
+		floors.add(`${Math.floor(tile.x / gridSize)},${Math.floor(tile.y / gridSize)}`);
+	}
+	return floors;
+}
+
 async function rebuildWallsForLevel(scene, levelContext, { wallTilePath = null, noWalls = _noFoundryWalls, logPrefix = "" } = {}) {
 	if (!scene || !levelContext) return;
 
 	const gridSize = scene.grid?.size || canvas.grid?.size || GRID_SIZE;
 
-	const floors = new Set();
-	for (const tile of scene.tiles) {
-		if (!tile.texture?.src?.includes("Dungeon/floor_tiles")) continue;
-		if (!documentMatchesLevel(tile, levelContext)) continue;
-		floors.add(`${Math.floor(tile.x / gridSize)},${Math.floor(tile.y / gridSize)}`);
-	}
+	const floors = collectPaintedFloors(scene, levelContext, gridSize);
 
 	if (!noWalls) {
 		const wallsToDelete = scene.walls

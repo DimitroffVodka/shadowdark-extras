@@ -23,6 +23,7 @@ import {
 	applySceneLevelData,
 } from "./dungeon-level-context.mjs";
 import { _doorTiles } from "./dungeon-tile-catalog.mjs";
+import { findPairedWall, newWallPairId, withoutPairCascade } from "./dungeon-wall-pairs.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const WALL_THICKNESS = 20;
@@ -73,6 +74,9 @@ export async function handleIntWallDrag(startPos, endPos) {
 	const cx = (x1 + x2) / 2;
 	const cy = (y1 + y2) / 2;
 
+	// Same id on the art and the collision, so deleting either takes the other.
+	const pairId = newWallPairId();
+
 	const levelContext = getSceneLevelContext(scene);
 	const elevation = levelContext.elevation;
 	const wallHeightTop = levelContext.rangeTop;
@@ -95,7 +99,10 @@ export async function handleIntWallDrag(startPos, endPos) {
 		texture: _selectedIntWallTile,
 		elevation,
 		flags: {
-			[MODULE_ID]: { dungeonWall: true, dungeonIntWall: true, placeableNotesExcluded: true },
+			[MODULE_ID]: {
+				dungeonWall: true, dungeonIntWall: true, placeableNotesExcluded: true,
+				wallPairId: pairId,
+			},
 			levels: { rangeTop: wallHeightTop },
 		},
 	}, "Drawing", levelContext);
@@ -129,7 +136,7 @@ export async function handleIntWallDrag(startPos, endPos) {
 		const wallData = applySceneLevelData({
 			c: [x1, y1, x2, y2],
 			flags: {
-				[MODULE_ID]: { dungeonGenWall: true, dungeonIntWall: true },
+				[MODULE_ID]: { dungeonGenWall: true, dungeonIntWall: true, wallPairId: pairId },
 			},
 		}, "Wall", levelContext);
 		await scene.createEmbeddedDocuments("Wall", [wallData]);
@@ -237,25 +244,22 @@ export async function handleIntWallClick(clickPos) {
 		}
 	}
 
-	// Delete original int wall drawing
-	await scene.deleteEmbeddedDocuments("Drawing", [hitDrawing.id]);
-
-	// Find and delete the matching int wall Foundry wall
-	const wTol = 30;
-	const matchingWall = scene.walls.find(w => {
-		if (!w.flags?.[MODULE_ID]?.dungeonIntWall) return false;
-		if (w.door && w.door > 0) return false;
-		const [wx1, wy1, wx2, wy2] = w.c;
-		return (
-			(Math.abs(wx1 - p1x) < wTol && Math.abs(wy1 - p1y) < wTol
-             && Math.abs(wx2 - p2x) < wTol && Math.abs(wy2 - p2y) < wTol)
-            || (Math.abs(wx1 - p2x) < wTol && Math.abs(wy1 - p2y) < wTol
-             && Math.abs(wx2 - p1x) < wTol && Math.abs(wy2 - p1y) < wTol)
-		);
+	// Resolve the partner BEFORE deleting anything, then remove both together
+	// with the cascade suppressed. This path is replacing a wall with two
+	// shorter ones, not responding to a user deletion, so it must own the
+	// ordering rather than race the delete hook. findPairedWall reads the pair
+	// id when there is one and falls back to the endpoint match for walls drawn
+	// before pairing existed.
+	const matchingWall = findPairedWall(scene, hitDrawing, [
+		{ x: p1x, y: p1y },
+		{ x: p2x, y: p2y },
+	]);
+	await withoutPairCascade(async () => {
+		await scene.deleteEmbeddedDocuments("Drawing", [hitDrawing.id]);
+		if (matchingWall) {
+			await scene.deleteEmbeddedDocuments("Wall", [matchingWall.id]);
+		}
 	});
-	if (matchingWall) {
-		await scene.deleteEmbeddedDocuments("Wall", [matchingWall.id]);
-	}
 
 	const wallTexture = hitDrawing.texture || _selectedIntWallTile;
 	const baseDrawingData = applySceneLevelData({
@@ -275,11 +279,25 @@ export async function handleIntWallClick(clickPos) {
 	const drawingsToCreate = [];
 	const wallsToCreate = [];
 
+	// Each surviving stub is its own wall from here on, so each gets its own
+	// pair id rather than inheriting the split wall's.
+	const leftPairId = newWallPairId();
+	const rightPairId = newWallPairId();
+
+	/** baseDrawingData with a pair id merged into its module flags. */
+	const withPair = pairId => ({
+		...baseDrawingData,
+		flags: {
+			...baseDrawingData.flags,
+			[MODULE_ID]: { ...baseDrawingData.flags[MODULE_ID], wallPairId: pairId },
+		},
+	});
+
 	// Left wall segment
 	if (leftLen > 5) {
 		const midT_left = (-hw + tClamped - doorHalfWidth) / 2;
 		drawingsToCreate.push({
-			...baseDrawingData,
+			...withPair(leftPairId),
 			x: cx + midT_left * ux - leftLen / 2,
 			y: cy + midT_left * uy - WALL_THICKNESS / 2,
 			shape: { type: "r", width: leftLen, height: WALL_THICKNESS },
@@ -289,7 +307,7 @@ export async function handleIntWallClick(clickPos) {
 			wallsToCreate.push(applySceneLevelData({
 				c: [p1x, p1y, dsx, dsy],
 				flags: {
-					[MODULE_ID]: { dungeonGenWall: true, dungeonIntWall: true },
+					[MODULE_ID]: { dungeonGenWall: true, dungeonIntWall: true, wallPairId: leftPairId },
 				},
 			}, "Wall", levelContext));
 		}
@@ -299,7 +317,7 @@ export async function handleIntWallClick(clickPos) {
 	if (rightLen > 5) {
 		const midT_right = (tClamped + doorHalfWidth + hw) / 2;
 		drawingsToCreate.push({
-			...baseDrawingData,
+			...withPair(rightPairId),
 			x: cx + midT_right * ux - rightLen / 2,
 			y: cy + midT_right * uy - WALL_THICKNESS / 2,
 			shape: { type: "r", width: rightLen, height: WALL_THICKNESS },
@@ -309,7 +327,7 @@ export async function handleIntWallClick(clickPos) {
 			wallsToCreate.push(applySceneLevelData({
 				c: [dex, dey, p2x, p2y],
 				flags: {
-					[MODULE_ID]: { dungeonGenWall: true, dungeonIntWall: true },
+					[MODULE_ID]: { dungeonGenWall: true, dungeonIntWall: true, wallPairId: rightPairId },
 				},
 			}, "Wall", levelContext));
 		}
@@ -491,12 +509,20 @@ export async function handleIntWallDoorRemove(clickPos) {
 	if (leftWall)     wallsToDelete.push(leftWall.id);
 	if (rightWall)    wallsToDelete.push(rightWall.id);
 
-	if (drawingsToDelete.length > 0) {
-		await scene.deleteEmbeddedDocuments("Drawing", drawingsToDelete);
-	}
-	await scene.deleteEmbeddedDocuments("Wall", wallsToDelete);
+	// Suppressed: this path already pairs the stubs up itself and deletes both
+	// halves by id. Letting the cascade fire as well would delete the walls out
+	// from under wallsToDelete, which is holding ids collected a moment ago.
+	await withoutPairCascade(async () => {
+		if (drawingsToDelete.length > 0) {
+			await scene.deleteEmbeddedDocuments("Drawing", drawingsToDelete);
+		}
+		await scene.deleteEmbeddedDocuments("Wall", wallsToDelete);
+	});
 
 	if (mergedLength < 5) return;
+
+	// The merge produces one new wall, so one new pair.
+	const mergedPairId = newWallPairId();
 
 	// Recreate merged int wall drawing
 	const drawingData = applySceneLevelData({
@@ -513,7 +539,10 @@ export async function handleIntWallDoorRemove(clickPos) {
 		texture: wallTexture,
 		elevation,
 		flags: {
-			[MODULE_ID]: { dungeonWall: true, dungeonIntWall: true, placeableNotesExcluded: true },
+			[MODULE_ID]: {
+				dungeonWall: true, dungeonIntWall: true, placeableNotesExcluded: true,
+				wallPairId: mergedPairId,
+			},
 		},
 	}, "Drawing", levelContext);
 
@@ -539,7 +568,7 @@ export async function handleIntWallDoorRemove(clickPos) {
 		await scene.createEmbeddedDocuments("Wall", [applySceneLevelData({
 			c: [mergedStart.x, mergedStart.y, mergedEnd.x, mergedEnd.y],
 			flags: {
-				[MODULE_ID]: { dungeonGenWall: true, dungeonIntWall: true },
+				[MODULE_ID]: { dungeonGenWall: true, dungeonIntWall: true, wallPairId: mergedPairId },
 			},
 		}, "Wall", levelContext)]);
 	}

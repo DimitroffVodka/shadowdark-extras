@@ -4,8 +4,10 @@
 // Merged via Object.assign(TrayApp.prototype, DungeonBindings).
 
 import { flattenDungeonLevel, getDungeonFloorLevels, getFlattendDungeonLevels, unflattenTile } from "../canvas/TileFlattenSD.mjs";
-import { generateDungeon, generateRandomSeed, getGeneratorSeed, getGeneratorSettings, setGeneratorSeed, setGeneratorSettings, toggleGeneratorPanel } from "../dungeon/DungeonGeneratorSD.mjs";
-import { selectDoorTile, selectFloorTile, selectIntDoorTile, selectIntWallTile, selectWallTile, setCurvedWalls, setDungeonBackground, setDungeonMode, setNoFoundryWalls, setWallShadows } from "../dungeon/DungeonPainterSD.mjs";
+import { clearDungeonOnScene, generateDungeon, generateRandomSeed, getGeneratorSeed, getGeneratorSettings, setGeneratorSeed, setGeneratorSettings, toggleGeneratorPanel } from "../dungeon/DungeonGeneratorSD.mjs";
+import { toggleDungeonSection, isFloorPaintArmed, setFloorPaintArmed, runSceneReskin, selectDoorTile, selectFloorTile, selectIntDoorTile, selectIntWallTile, selectWallTile, setCurvedWalls, setDungeonBackground, setDungeonMode, setNoFoundryWalls, setWallShadows } from "../dungeon/DungeonPainterSD.mjs";
+import { toggleWallGapMarkers } from "../dungeon/dungeon-reskin.mjs";
+import { undoLastDungeonAction } from "../dungeon/dungeon-undo.mjs";
 import { renderTray } from "./TraySD.mjs";
 
 export const DungeonBindings = {
@@ -112,6 +114,18 @@ export const DungeonBindings = {
 			});
 		});
 
+		// Collapsible tile sections. The state lives in module scope, not on the
+		// element, because the tray re-renders constantly and a DOM-only class
+		// would be lost on the next unrelated change.
+		elem.querySelectorAll(".dungeon-section-label[data-dungeon-section]").forEach(headerEl => {
+			headerEl.addEventListener("click", e => {
+				e.preventDefault();
+				e.stopPropagation();
+				toggleDungeonSection(headerEl.dataset.dungeonSection);
+				renderTray();
+			});
+		});
+
 		// Dungeon "No Foundry Walls" toggle
 		const noWallsCheckbox = elem.querySelector(".dungeon-no-walls-checkbox");
 		if (noWallsCheckbox) {
@@ -136,6 +150,68 @@ export const DungeonBindings = {
 				setCurvedWalls(e.target.checked);
 			});
 		}
+
+		// Dungeon "Reskin With SDX Assets" button. A direct action, not a seed
+		// pick: the reskin finds every enclosed area on the map itself, so there
+		// is nothing left for a click to disambiguate.
+		elem.querySelector(".dungeon-reskin-btn")?.addEventListener("click", async e => {
+			e.preventDefault();
+			e.stopPropagation();
+			await runSceneReskin();
+			renderTray();
+		});
+
+		// Room floor paint bucket. Sticky rather than one-shot: re-arming between
+		// every room is the entire cost of a tool meant for several clicks.
+		const floorPaintBtn = elem.querySelector(".dungeon-floorpaint-btn");
+		if (floorPaintBtn) {
+			floorPaintBtn.classList.toggle("armed", isFloorPaintArmed());
+			floorPaintBtn.addEventListener("click", e => {
+				e.preventDefault();
+				e.stopPropagation();
+				const arming = !isFloorPaintArmed();
+				setFloorPaintArmed(arming);
+				// Re-render so the footer hints switch to describing this tool.
+				// Without it the panel keeps advertising Rooms-mode gestures while
+				// a different tool is live, which is how the eraser stayed
+				// invisible to the one person who needed it.
+				renderTray();
+				if (arming) {
+					ui.notifications.info(
+						"SDX | Click a room to floor it · Shift+drag to blank an area. "
+                        + "Press the button again to stop."
+					);
+				}
+			});
+		}
+
+		// Wall gap finder. The reskin can refuse because walls do not close, and
+		// "close the gaps" is unactionable on a map with hundreds of walls — this
+		// puts a marker on each one so there is something to actually go and fix.
+		elem.querySelector(".dungeon-gaps-btn")?.addEventListener("click", async e => {
+			e.preventDefault();
+			e.stopPropagation();
+			await toggleWallGapMarkers(canvas.scene);
+		});
+
+		// Undo. The dungeon tools are destructive and were, until now, one-way:
+		// the only recovery from a wrong action was Clear, which throws away
+		// everything rather than the mistake.
+		elem.querySelector(".dungeon-undo-btn")?.addEventListener("click", async e => {
+			e.preventDefault();
+			e.stopPropagation();
+			await undoLastDungeonAction(canvas.scene);
+			renderTray();
+		});
+
+		// Dungeon "Clear SDX Dungeon" button. Confirmation, counting and level
+		// scoping all live in clearDungeonOnScene — this only routes the click.
+		elem.querySelector(".dungeon-clear-btn")?.addEventListener("click", async e => {
+			e.preventDefault();
+			e.stopPropagation();
+			await clearDungeonOnScene(canvas.scene);
+			renderTray();
+		});
 
 		// Dungeon "Flatten Level" button
 		elem.querySelector(".dungeon-flatten-level-btn")?.addEventListener("click", async e => {

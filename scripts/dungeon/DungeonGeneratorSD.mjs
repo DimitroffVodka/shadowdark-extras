@@ -10,6 +10,7 @@ import { getSelectedFloorTile, getSelectedWallTile, getSelectedDoorTile, getCurr
 import { generateCaveLayout, buildCaveLoops, buildMixedLoops, generateCurvedWalls, generateCurvedWallVisuals, generateFringeCaves, rotjsLayout } from "./DungeonCaveSD.mjs";
 import { assignBiomes, buildCellFloorMap, placeBiomeProps, getEnabledBiomeKeys } from "./DungeonBiomesSD.mjs";
 import { createDungeonOccupancy, generateDungeonDecor } from "./DungeonDecorSD.mjs";
+import { withoutPairCascade } from "./dungeon-wall-pairs.mjs";
 
 const ROTJS_STYLES = ["maze", "rogue", "digger", "uniform"];
 
@@ -1089,13 +1090,52 @@ export function generateDoors(doorPositions, offset, wallThickness, doorTilePath
  * Supports both Foundry v14 native levels (levelId) and the Levels module (elevation).
  * If levelsActive is false and no levelId, clears all dungeon documents.
  */
-export async function clearSceneAtLevel(scene, levelContext, levelsActive) {
+/**
+ * The SDX-owned documents on a scene at one level, as id lists per type.
+ *
+ * Split out of clearSceneAtLevel so the Clear button can COUNT exactly what the
+ * clear will remove. A confirmation dialog for a destructive bulk action is only
+ * worth having if its numbers come from the same predicates as the deletion.
+ *
+ * @param {Scene} scene
+ * @param {object} levelContext
+ * @param {boolean} levelsActive
+ * @param {object} [options]
+ * @param {boolean} [options.includeBackground] - the SDX backdrop drawing is
+ *        excluded by default, because generation clears and then re-uses it
+ * @param {boolean} [options.includeAuthoredWalls] - interior and reskinned walls
+ *        are excluded by default; see the note below
+ * @returns {{tiles: string[], walls: string[], drawings: string[], lights: string[]}}
+ */
+export function collectDungeonDocuments(scene, levelContext, levelsActive, options = {}) {
+	// Authored walls — the free-angle ones drawn by hand with Int. Walls, and the
+	// ones a reskin drew along an existing map — are preserved by default, so
+	// generating over a level no longer silently destroys hand work. The painter's
+	// rebuild already spared them; this is the other half of that policy.
+	//
+	// Only the Clear button opts in, because there the user asked for removal
+	// explicitly and its dialog says what is going.
+	const keepAuthored = !options.includeAuthoredWalls;
+
 	const isDungeonTile = t => {
 		const f = t.flags?.[MODULE_ID];
 		return f?.dungeonFloor || f?.dungeonStairs || f?.dungeonStairsDown || f?.dungeonClutter;
 	};
-	const isDungeonWall = w => w.flags?.[MODULE_ID]?.dungeonGenWall;
-	const isDungeonDrawing = d => d.flags?.[MODULE_ID]?.dungeonWall;
+	const isDungeonWall = w => {
+		const f = w.flags?.[MODULE_ID];
+		if (!f?.dungeonGenWall) return false;
+		return !(keepAuthored && f?.dungeonIntWall);
+	};
+	const isDungeonDrawing = d => {
+		const f = d.flags?.[MODULE_ID];
+		if (options.includeBackground && f?.dungeonBackground) return true;
+		// A reskin's floor is a wall-shaped polygon rather than a grid of tiles.
+		// It is authored output like the reskin's wall art, so it is kept or
+		// removed by the same rule.
+		if (f?.dungeonFloorShape) return !keepAuthored;
+		if (!f?.dungeonWall) return false;
+		return !(keepAuthored && f?.dungeonIntWall);
+	};
 	const isDungeonLight = l => l.flags?.[MODULE_ID]?.dungeonDecorLight;
 
 	const matchesLevel = (doc, type) => {
@@ -1114,21 +1154,118 @@ export async function clearSceneAtLevel(scene, levelContext, levelsActive) {
 		}
 	};
 
-	// Tiles
-	const tileIds = scene.tiles.filter(t => isDungeonTile(t) && matchesLevel(t, "Tile")).map(t => t.id);
-	if (tileIds.length > 0) await scene.deleteEmbeddedDocuments("Tile", tileIds);
+	return {
+		tiles: scene.tiles.filter(t => isDungeonTile(t) && matchesLevel(t, "Tile")).map(t => t.id),
+		// Logical walls + doors
+		walls: scene.walls.filter(w => isDungeonWall(w) && matchesLevel(w, "Wall")).map(w => w.id),
+		// Wall visuals
+		drawings: scene.drawings.filter(d => isDungeonDrawing(d) && matchesLevel(d, "Drawing")).map(d => d.id),
+		// Generated decor lights
+		lights: scene.lights.filter(l => isDungeonLight(l) && matchesLevel(l, "AmbientLight")).map(l => l.id),
+	};
+}
 
-	// Walls (logical walls + doors)
-	const wallIds = scene.walls.filter(w => isDungeonWall(w) && matchesLevel(w, "Wall")).map(w => w.id);
-	if (wallIds.length > 0) await scene.deleteEmbeddedDocuments("Wall", wallIds);
+export async function clearSceneAtLevel(scene, levelContext, levelsActive, options = {}) {
+	const { tiles, walls, drawings, lights } =
+        collectDungeonDocuments(scene, levelContext, levelsActive, options);
 
-	// Drawings (wall visuals)
-	const drawingIds = scene.drawings.filter(d => isDungeonDrawing(d) && matchesLevel(d, "Drawing")).map(d => d.id);
-	if (drawingIds.length > 0) await scene.deleteEmbeddedDocuments("Drawing", drawingIds);
+	// Preserving hand work must not be silent. Left unsaid it just becomes stale
+	// geometry floating over a new layout that the user has to go hunting for.
+	if (!options.includeAuthoredWalls) {
+		const all = collectDungeonDocuments(scene, levelContext, levelsActive, {
+			...options,
+			includeAuthoredWalls: true,
+		});
+		const kept = all.drawings.length - drawings.length;
+		if (kept > 0) {
+			ui.notifications.info(
+				`SDX | Kept ${kept} hand-drawn wall${kept === 1 ? "" : "s"}. `
+                + "Clear SDX Dungeon removes them."
+			);
+		}
+	}
 
-	// Ambient lights (generated decor)
-	const lightIds = scene.lights.filter(l => isDungeonLight(l) && matchesLevel(l, "AmbientLight")).map(l => l.id);
-	if (lightIds.length > 0) await scene.deleteEmbeddedDocuments("AmbientLight", lightIds);
+	// Suppressed as a unit: this clear already removes both halves of every
+	// paired wall by id. Letting the wall-pair cascade fire as well would delete
+	// the drawings while `drawings` is still holding ids collected above.
+	await withoutPairCascade(async () => {
+		if (tiles.length > 0) await scene.deleteEmbeddedDocuments("Tile", tiles);
+		if (walls.length > 0) await scene.deleteEmbeddedDocuments("Wall", walls);
+		if (drawings.length > 0) await scene.deleteEmbeddedDocuments("Drawing", drawings);
+		if (lights.length > 0) await scene.deleteEmbeddedDocuments("AmbientLight", lights);
+	});
+}
+
+/**
+ * Remove every SDX dungeon document at the active level, after confirmation.
+ *
+ * Deliberately narrower than "undo": it removes what SDX put down and nothing
+ * else. On a reskinned map that means the floor tiles and wall art go while the
+ * map's own walls, doors, lights and notes stay, because SDX never created them.
+ *
+ * @param {Scene} scene
+ * @returns {Promise<object|null>} the removed counts, or null if cancelled
+ */
+export async function clearDungeonOnScene(scene) {
+	if (!game.user.isGM) {
+		ui.notifications.warn("SDX | Clearing the dungeon is GM-only.");
+		return null;
+	}
+	if (!scene) return null;
+
+	const levelsActive = game.modules.get("levels")?.active ?? false;
+	const levelContext = getSceneLevelContext(scene);
+	const scoped = levelsActive || !!levelContext.levelId;
+	// The one caller that removes hand-drawn walls too: the user asked for it by
+	// name, and the dialog below itemises what goes.
+	const options = { includeBackground: true, includeAuthoredWalls: true };
+	const counts = collectDungeonDocuments(scene, levelContext, scoped, options);
+	const total = counts.tiles.length + counts.walls.length
+        + counts.drawings.length + counts.lights.length;
+
+	if (total === 0) {
+		ui.notifications.info("SDX | No SDX dungeon content found on this scene at the current level.");
+		return null;
+	}
+
+	// Written by the reskin before it cleared the map's own art. Restoring it is
+	// what makes clearing a reskinned scene actually give the original map back,
+	// and it is the only reader this flag has.
+	const previousBackground = scene.getFlag(MODULE_ID, "reskinPreviousBackground");
+
+	const rows = [
+		["Floor, stair and clutter tiles", counts.tiles.length],
+		["Walls and doors", counts.walls.length],
+		["Wall art and backdrops", counts.drawings.length],
+		["Decor lights", counts.lights.length],
+	].filter(([, n]) => n > 0)
+		.map(([label, n]) => `<li>${label}: <strong>${n}</strong></li>`)
+		.join("");
+
+	const confirmed = await foundry.applications.api.DialogV2.confirm({
+		window: { title: "Clear SDX Dungeon" },
+		content: `<div style="padding:8px 0">
+			<p>Delete <strong>${total}</strong> SDX dungeon documents${scoped ? ` at level ${levelContext.elevation}` : ""}:</p>
+			<ul style="margin:8px 0 8px 18px">${rows}</ul>
+			<p>Anything SDX did not create is left alone — walls you drew yourself, tokens,
+			journal notes, and the lights and walls of a map you reskinned.</p>
+			${previousBackground ? "<p>The scene's original background image will be restored.</p>" : ""}
+		</div>`,
+		yes: { label: "Clear" },
+		no: { label: "Cancel" },
+		modal: true,
+	});
+	if (!confirmed) return null;
+
+	await clearSceneAtLevel(scene, levelContext, scoped, options);
+
+	if (previousBackground) {
+		await scene.update({ "background.src": previousBackground });
+		await scene.unsetFlag(MODULE_ID, "reskinPreviousBackground");
+	}
+
+	ui.notifications.info(`SDX | Cleared ${total} dungeon documents.`);
+	return counts;
 }
 
 export async function configureScene(scene) {

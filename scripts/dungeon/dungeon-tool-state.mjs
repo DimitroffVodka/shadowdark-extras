@@ -20,6 +20,27 @@ export let _selectedIntWallTile = null; // Selected tile for interior wall place
 export let _selectedIntDoorTile = null; // Selected door tile for interior wall door cutting
 export let _selectedBackground = "none";
 
+// Which tile sections are rolled up. Lives here rather than in the DOM because
+// the tray re-renders on almost every action — a class toggled on the element
+// would be lost the next time anything else changed.
+const _collapsedSections = new Set();
+
+/**
+ * Roll a tile section up or down.
+ * @param {string} key - "floor", "wall", "intwall", "intdoor" or "door"
+ */
+export function toggleDungeonSection(key) {
+	if (_collapsedSections.has(key)) _collapsedSections.delete(key);
+	else _collapsedSections.add(key);
+}
+
+/**
+ * Is this tile section rolled up?
+ */
+export function isDungeonSectionCollapsed(key) {
+	return _collapsedSections.has(key);
+}
+
 /**
  * Set dungeon mode
  */

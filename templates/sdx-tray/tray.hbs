@@ -1206,6 +1206,31 @@
                 </div>
                 {{/if}}
 
+                <!-- Reskin Button -->
+                <button class="dungeon-reskin-btn" title="Rebuild an existing map's rooms with the selected SDX floor and wall tiles">
+                    <i class="fas fa-fill-drip"></i> Reskin With SDX Assets
+                </button>
+
+                <!-- Room floor paint bucket -->
+                <button class="dungeon-floorpaint-btn" title="Click any walled room to floor it. Shift+Drag to blank an area. Stays on until you press it again.">
+                    <i class="fas fa-fill"></i> Paint / Erase Floor
+                </button>
+
+                <!-- Wall gap finder -->
+                <button class="dungeon-gaps-btn" title="Mark every wall end that connects to nothing — the places a floor fill escapes through. Press again to clear.">
+                    <i class="fas fa-crosshairs"></i> Show Wall Gaps
+                </button>
+
+                <!-- Undo Button -->
+                <button class="dungeon-undo-btn" title="Reverse the last SDX dungeon action on this scene. Lost when you reload.">
+                    <i class="fas fa-rotate-left"></i> Undo Last Change
+                </button>
+
+                <!-- Clear Button -->
+                <button class="dungeon-clear-btn" title="Delete every SDX dungeon tile, wall, wall drawing and decor light at this level">
+                    <i class="fas fa-trash"></i> Clear SDX Dungeon
+                </button>
+
                 <!-- Generator Button -->
                 <label class="dungeon-option-toggle dungeon-generator-toggle">
                     <span><i class="fas fa-magic"></i> Generator</span>
@@ -1370,9 +1395,9 @@
 
                     {{#if (eq dungeonMode 'intwalls')}}
                     <!-- Interior Wall Tiles -->
-                    <div class="dungeon-section-label"><i class="fas fa-border-style"></i> Interior Wall Tiles</div>
+                    <div class="dungeon-section-label{{#if collapsed.intwall}} collapsed{{/if}}" data-dungeon-section="intwall"><i class="fas fa-chevron-down dungeon-section-caret"></i><i class="fas fa-border-style"></i> Interior Wall Tiles</div>
                     {{#if hasWallTiles}}
-                    <div class="dungeon-tile-grid dungeon-intwall-grid">
+                    <div class="dungeon-tile-grid dungeon-intwall-grid{{#if collapsed.intwall}} collapsed{{/if}}">
                         {{#each intWallTiles}}
                         <div class="dungeon-tile-thumb dungeon-intwall-thumb {{#if this.active}}active{{/if}}"
                             data-dungeon-intwall="{{this.path}}" title="{{this.label}}">
@@ -1381,7 +1406,7 @@
                         {{/each}}
                     </div>
                     {{else}}
-                    <div class="dungeon-no-tiles dungeon-no-walls">
+                    <div class="dungeon-no-tiles dungeon-no-walls"{{#if collapsed.intwall}} collapsed{{/if}}>
                         <p><i class="fas fa-border-style"></i></p>
                         <p>No wall tiles found</p>
                         <p class="dungeon-hint">Add tiles to:<br><code>assets/Dungeon/wall_tiles/</code></p>
@@ -1389,9 +1414,9 @@
                     {{/if}}
 
                     <!-- Interior Door Tiles -->
-                    <div class="dungeon-section-label"><i class="fas fa-door-open"></i> Doors</div>
+                    <div class="dungeon-section-label{{#if collapsed.intdoor}} collapsed{{/if}}" data-dungeon-section="intdoor"><i class="fas fa-chevron-down dungeon-section-caret"></i><i class="fas fa-door-open"></i> Doors</div>
                     {{#if hasIntDoorTiles}}
-                    <div class="dungeon-tile-grid dungeon-door-grid">
+                    <div class="dungeon-tile-grid dungeon-door-grid{{#if collapsed.intdoor}} collapsed{{/if}}">
                         {{#each intDoorTiles}}
                         <div class="dungeon-tile-thumb dungeon-intdoor-thumb {{#if this.active}}active{{/if}}"
                             data-dungeon-intdoor="{{this.path}}" title="{{this.label}}">
@@ -1401,7 +1426,7 @@
                         {{/each}}
                     </div>
                     {{else}}
-                    <div class="dungeon-no-tiles">
+                    <div class="dungeon-no-tiles"{{#if collapsed.intdoor}} collapsed{{/if}}>
                         <p><i class="fas fa-door-open"></i></p>
                         <p>No door tiles found</p>
                         <p class="dungeon-hint">Add tiles to:<br><code>assets/Dungeon/door_tiles/</code></p>
@@ -1409,9 +1434,9 @@
                     {{/if}}
                     {{else if (eq dungeonMode 'tiles')}}
                     <!-- Floor Tiles -->
-                    <div class="dungeon-section-label"><i class="fas fa-th"></i> Floor Tiles</div>
+                    <div class="dungeon-section-label{{#if collapsed.floor}} collapsed{{/if}}" data-dungeon-section="floor"><i class="fas fa-chevron-down dungeon-section-caret"></i><i class="fas fa-th"></i> Floor Tiles</div>
                     {{#if hasFloorTiles}}
-                    <div class="dungeon-tile-grid">
+                    <div class="dungeon-tile-grid{{#if collapsed.floor}} collapsed{{/if}}">
                         {{#each floorTiles}}
                         <div class="dungeon-tile-thumb {{#if this.active}}active{{/if}}"
                             data-dungeon-tile="{{this.path}}" title="{{this.label}}">
@@ -1420,7 +1445,7 @@
                         {{/each}}
                     </div>
                     {{else}}
-                    <div class="dungeon-no-tiles">
+                    <div class="dungeon-no-tiles"{{#if collapsed.floor}} collapsed{{/if}}>
                         <p><i class="fas fa-dungeon"></i></p>
                         <p>No floor tiles found</p>
                         <p class="dungeon-hint">Add tiles to:<br><code>assets/Dungeon/floor_tiles/</code></p>
@@ -1428,9 +1453,9 @@
                     {{/if}}
 
                     <!-- Wall Tiles -->
-                    <div class="dungeon-section-label"><i class="fas fa-border-all"></i> Wall Tiles</div>
+                    <div class="dungeon-section-label{{#if collapsed.wall}} collapsed{{/if}}" data-dungeon-section="wall"><i class="fas fa-chevron-down dungeon-section-caret"></i><i class="fas fa-border-all"></i> Wall Tiles</div>
                     {{#if hasWallTiles}}
-                    <div class="dungeon-tile-grid dungeon-wall-grid">
+                    <div class="dungeon-tile-grid dungeon-wall-grid{{#if collapsed.wall}} collapsed{{/if}}">
                         {{#each wallTiles}}
                         <div class="dungeon-tile-thumb dungeon-wall-thumb {{#if this.active}}active{{/if}}"
                             data-dungeon-wall="{{this.path}}" title="{{this.label}}">
@@ -1439,7 +1464,7 @@
                         {{/each}}
                     </div>
                     {{else}}
-                    <div class="dungeon-no-tiles dungeon-no-walls">
+                    <div class="dungeon-no-tiles dungeon-no-walls"{{#if collapsed.wall}} collapsed{{/if}}>
                         <p><i class="fas fa-border-all"></i></p>
                         <p>No wall tiles found</p>
                         <p class="dungeon-hint">Add tiles to:<br><code>assets/Dungeon/wall_tiles/</code></p>
@@ -1447,8 +1472,9 @@
                     {{/if}}
                     {{else}}
                     <!-- Door Tiles -->
+                    <div class="dungeon-section-label{{#if collapsed.door}} collapsed{{/if}}" data-dungeon-section="door"><i class="fas fa-chevron-down dungeon-section-caret"></i><i class="fas fa-door-closed"></i> Door Tiles</div>
                     {{#if hasDoorTiles}}
-                    <div class="dungeon-tile-grid dungeon-door-grid">
+                    <div class="dungeon-tile-grid dungeon-door-grid{{#if collapsed.door}} collapsed{{/if}}">
                         {{#each doorTiles}}
                         <div class="dungeon-tile-thumb dungeon-door-thumb {{#if this.active}}active{{/if}}"
                             data-dungeon-door="{{this.path}}" title="{{this.label}}">
@@ -1458,7 +1484,7 @@
                         {{/each}}
                     </div>
                     {{else}}
-                    <div class="dungeon-no-tiles">
+                    <div class="dungeon-no-tiles"{{#if collapsed.door}} collapsed{{/if}}>
                         <p><i class="fas fa-door-open"></i></p>
                         <p>No door tiles found</p>
                         <p class="dungeon-hint">Add tiles to:<br><code>assets/Dungeon/door_tiles/</code></p>
@@ -1469,7 +1495,17 @@
 
                 <!-- Usage hints -->
                 <div class="tray-footer-message dungeon-hints">
-                    {{#if (eq dungeonMode 'tiles')}}
+                    {{#if floorPaintArmed}}
+                    <div class="dungeon-hint-row">
+                        <i class="fas fa-fill"></i> <span>Click</span> a room to floor it
+                    </div>
+                    <div class="dungeon-hint-row">
+                        <i class="fas fa-eraser"></i> <span>Shift+Drag</span> to blank an area
+                    </div>
+                    <div class="dungeon-hint-info">
+                        Undo Last Change reverses any of these
+                    </div>
+                    {{else if (eq dungeonMode 'tiles')}}
                     <div class="dungeon-hint-row">
                         <i class="fas fa-expand-arrows-alt"></i> <span>Drag</span> to fill rectangle
                     </div>
