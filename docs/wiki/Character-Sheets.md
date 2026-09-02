@@ -22,6 +22,11 @@ world default that covers every actor without a custom header.
 Clicking a supported value opens the normal SDX or Shadowdark adjustment
 workflow, so the header is a working control surface.
 
+The initiative die rolls into the current encounter when one is running, and
+plain Dexterity when it isn't. Players can use it themselves: rolling initiative
+writes to the combatant, which they don't own, so the roll is routed through the
+GM rather than refused.
+
 ![An enhanced Player sheet with portrait HP wave, summary header, and themed tabs](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/enhanced-character-sheet.webp)
 
 ## HP quick adjustment
@@ -39,6 +44,26 @@ and add ancestry-specific colors.
 
 Ships enabled, with a red wave. Pick a solid, high-contrast color when the
 portrait art underneath is busy.
+
+## Enhanced tabs
+
+**Enhanced Sheet Tabs** rebuilds six Player-sheet tabs: details, abilities,
+talents, inventory, spells, and effects. It also feeds the roll dialog, where a
+talent that grants advantage on a roll offers it there.
+
+Icons on these tabs carry state. The versatile-handedness fist and the equipped
+shield read differently depending on whether they are active, so switching a
+weapon to two-handed is visible on the row rather than only in the damage die.
+
+## Skills box
+
+A **Skills** box sits in the right column of the Abilities tab. Add a skill with
+a name and the ability its modifier comes from, and roll it from the sheet with
+advantage, a normal roll, or disadvantage, plus any bonus you enter at roll
+time.
+
+Skills are per actor and freeform. Shadowdark has no skill list of its own, so
+nothing here is validated against one.
 
 ## Sheet Style Editor
 
@@ -143,6 +168,13 @@ prompts for which to consume and remembers the preferred choice.
 
 Staff weapons can open **Staff Spells Configuration** to manage attached spells
 and restore their uses. Those stored spell UUIDs have to stay valid.
+
+## Character generation rolls
+
+**Character Generator** broadcasts Shadowdark's own character-generator rolls to
+chat, so the table sees the ability rolls as they happen instead of only the
+player driving the dialog. The generator itself is the system's; this changes
+who sees the dice.
 
 ## Party sheet
 
