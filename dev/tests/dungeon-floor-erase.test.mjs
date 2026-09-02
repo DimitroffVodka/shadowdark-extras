@@ -261,3 +261,69 @@ test("the box eraser still blanks wall art when asked", async () => {
 
 	assert.deepEqual(scene.deleted[0].ids.sort(), ["floor", "wall"]);
 });
+
+// The bucket looked at the WALLS first and the floors second, and re-derived
+// rooms by a different route than the reskin used to lay them down: it bridged
+// loose wall ends unconditionally, where `traceRoomFaces` bridges only as a
+// repair. On a map that traced cleanly the two graphs disagree, the click lands
+// in no face, and the whole erase was vetoed — with the floor shape the GM was
+// pointing at sitting right there under the cursor.
+//
+// Floors first. Tracing refines the erase; it never gets to cancel it.
+
+const { bucketEraseAt } = await import("../../scripts/dungeon/dungeon-reskin.mjs");
+
+function bucketScene(drawings, walls = []) {
+	drawings.get = id => drawings.find(d => d.id === id);
+	const tiles = [];
+	tiles.get = () => undefined;
+	return {
+		drawings, tiles, walls,
+		grid: { size: 100 },
+		deleted: [],
+		created: [],
+		async deleteEmbeddedDocuments(type, ids) {
+			this.deleted.push({ type, ids });
+			return ids;
+		},
+		async createEmbeddedDocuments(type, data) {
+			this.created.push({ type, data });
+			return data.map((d, i) => ({ ...d, id: `piece-${i}` }));
+		},
+	};
+}
+
+test("a click erases the floor even when the walls trace to nothing", async () => {
+	// No walls at all: the harshest version of "the trace disagrees".
+	const scene = bucketScene([floorShape("room", 0, 0, 300, 300)]);
+
+	const removed = await bucketEraseAt(scene, { x: 150, y: 150 });
+
+	assert.ok(removed > 0, "the click must clear something, not silently no-op");
+	assert.ok(scene.deleted.length > 0, "and it must reach the floor document");
+});
+
+test("clicking off the floor still says so rather than erasing at random", async () => {
+	const scene = bucketScene([floorShape("room", 0, 0, 300, 300)]);
+
+	const removed = await bucketEraseAt(scene, { x: 5000, y: 5000 });
+
+	assert.equal(removed, 0);
+	assert.equal(scene.deleted.length, 0);
+});
+
+test("a room-sized shape is dropped whole, not rebuilt", async () => {
+	// The reskin emits one drawing per traced room, so the shape already IS the
+	// room. Re-emitting an identical polygon is churn the GM sees as a flicker.
+	const wall = (x0, y0, x1, y1) => ({ c: [x0, y0, x1, y1], door: 0 });
+	const scene = bucketScene(
+		[floorShape("room", 0, 0, 300, 300)],
+		[wall(0, 0, 300, 0), wall(300, 0, 300, 300), wall(300, 300, 0, 300), wall(0, 300, 0, 0)]
+	);
+
+	const removed = await bucketEraseAt(scene, { x: 150, y: 150 });
+
+	assert.equal(removed, 1);
+	assert.deepEqual(scene.deleted, [{ type: "Drawing", ids: ["room"] }]);
+	assert.equal(scene.created.length, 0, "nothing to put back — the shape was the room");
+});

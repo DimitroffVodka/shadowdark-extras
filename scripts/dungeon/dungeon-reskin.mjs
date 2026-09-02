@@ -1205,6 +1205,22 @@ export async function eraseFloorCells(scene, cells, options = {}) {
  * @param {{x: number, y: number}} point - canvas coordinates
  * @returns {Promise<number>} pieces removed
  */
+/**
+ * Faces to erase against, derived the SAME way the floors were.
+ *
+ * `traceRoomFaces` tries the walls exactly as drawn and only bridges loose ends
+ * when that leaves cells bare. The eraser used to bridge unconditionally, which
+ * builds a DIFFERENT face graph than the one the floor shapes came from — on a
+ * map that traced cleanly, the click then landed in no face at all.
+ */
+function facesForErase(walls, size) {
+	const build = bridge => traceWallFaces(walls, 4, bridge)
+		.map(points => ({ points, area: polygonArea(points) }))
+		.filter(face => face.area > 0);
+	const plain = build(0);
+	return plain.length > 0 ? plain : build(size / 2);
+}
+
 export async function bucketEraseAt(scene, point) {
 	if (!game.user.isGM) {
 		ui.notifications.warn("SDX | Erasing is GM-only.");
@@ -1212,40 +1228,54 @@ export async function bucketEraseAt(scene, point) {
 	}
 	if (!scene) return 0;
 
-	const size = scene.grid?.size || GRID_SIZE;
-	const faces = traceWallFaces([...scene.walls], 4, size / 2)
-		.map(points => ({ points, area: polygonArea(points) }))
-		.filter(face => face.area > 0);
-
-	// The room clicked in: smallest face containing the point, so a room nested
-	// inside a larger area wins over its surroundings.
-	const room = faces
-		.filter(face => pointInPolygon(point, face.points))
-		.sort((a, b) => a.area - b.area)[0];
-
-	if (!room) {
-		ui.notifications.warn(
-			"SDX | No walled area there — the walls around that point don't close. "
-            + "Show Wall Gaps marks where."
-		);
-		return 0;
-	}
-
-	const removedIds = [];
-	const keptPieces = [];
+	// The shape under the cursor IS the answer. A reskin emits one drawing per
+	// traced room, so "erase here" is "drop what I clicked" — no geometry needed
+	// for the common case. Looking at the floors FIRST is the point: the trace
+	// used to run first and veto the whole operation.
+	const hits = [];
 	for (const drawing of scene.drawings) {
 		if (!drawing.flags?.[MODULE_ID]?.dungeonFloorShape) continue;
 		const polygon = floorPolygonOf(drawing);
 		if (!polygon || !pointInPolygon(point, polygon)) continue;
+		hits.push({ drawing, polygon, area: polygonArea(polygon) });
+	}
+	if (hits.length === 0) {
+		ui.notifications.info("SDX | No SDX floor there.");
+		return 0;
+	}
 
-		removedIds.push(drawing.id);
-		const source = drawing.toObject();
-		const shapeArea = polygonArea(polygon);
+	const size = scene.grid?.size || GRID_SIZE;
+	const faces = facesForErase([...scene.walls], size);
+	const room = faces
+		.filter(face => pointInPolygon(point, face.points))
+		.sort((a, b) => a.area - b.area)[0];
 
-		// Every other face this floor covered goes back, unchanged.
+	// Tracing REFINES the erase, it never gates it. With no face we still clear
+	// something — one grid square, cut out — because "nothing happened" is the
+	// failure a GM cannot work around, while a single square is one more click.
+	if (!room) {
+		return eraseFloorRegion(scene, {
+			minX: point.x - size / 2,
+			maxX: point.x + size / 2,
+			minY: point.y - size / 2,
+			maxY: point.y + size / 2,
+		});
+	}
+
+	const removedIds = [];
+	const keptPieces = [];
+	for (const hit of hits) {
+		removedIds.push(hit.drawing.id);
+
+		// The shape is the room already: delete it whole rather than rebuilding
+		// an identical polygon. Only a shape spanning SEVERAL rooms — a painted
+		// corridor network with no internal doors — needs cutting apart.
+		if (hit.area <= room.area * 1.1) continue;
+
+		const source = hit.drawing.toObject();
 		for (const face of faces) {
 			if (face === room) continue;
-			if (face.area > shapeArea) continue;
+			if (face.area > hit.area) continue;
 			let cx = 0;
 			let cy = 0;
 			for (const q of face.points) {
@@ -1253,7 +1283,7 @@ export async function bucketEraseAt(scene, point) {
 				cy += q.y / face.points.length;
 			}
 			const centre = { x: cx, y: cy };
-			if (!pointInPolygon(centre, polygon)) continue;
+			if (!pointInPolygon(centre, hit.polygon)) continue;
 			if (pointInPolygon(centre, room.points)) continue;
 
 			let fx = Infinity;
@@ -1274,11 +1304,6 @@ export async function bucketEraseAt(scene, point) {
 				},
 			});
 		}
-	}
-
-	if (removedIds.length === 0) {
-		ui.notifications.info("SDX | No SDX floor in that area.");
-		return 0;
 	}
 
 	recordDungeonAction("Erase area", {

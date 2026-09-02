@@ -776,7 +776,9 @@ function onPointerUp(event) {
 			// Bucket erase: clears the contiguous space the click is in, bounded
 			// by walls and doorways. Cells rather than shapes, because the floor
 			// under a click is often one shape covering a whole corridor network.
-			bucketEraseAt(canvas.scene, endPos);
+			// An un-awaited reject is invisible: the click silently does nothing.
+			bucketEraseAt(canvas.scene, endPos)
+				.catch(err => ui.notifications.error(`SDX | Erase failed — ${err.message}`));
 		}
 		else if (deleteMode) {
 			// Freehand: exactly the squares the cursor passed over. A dragged box
