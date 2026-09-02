@@ -17,7 +17,7 @@ Journal Pins are styled markers you drop on the canvas. Link one to a Journal or
 ## Where to find it
 
 - **SDX Tray → Pins tab** — the Pins icon on the left edge of the tray. This is the pin list, search, and folders. Only the GM sees the folder controls.
-- **Canvas — Add Pin** — the pushpin button in the tray handle rail. Click it, then click the map.
+- **Add Pin** — the pushpin button at the top of the Pins tab, beside **New Folder** and **Notes → Pins**. Click it, then click the map. It is not on the tray handle rail.
 - **Pin Style Editor** — right-click a pin → **Edit Style…**, the palette button in the list, or **Configure Settings → Pin Style Editor** (world defaults). In the demo all three open the same modal.
 - **Settings → Pixel Perfect** — two world toggles: **Enable Pixel perfect on Pins** and **Pin Pixel Perfect Alpha Threshold** (0–255).
 
@@ -105,6 +105,7 @@ A few things that surprise people:
 - A **World** folder's name and order appear on every scene, but the pins inside it do not move with it. A pin always belongs to exactly one scene.
 - Drag-reorder within a folder actually reorders the underlying `scene.flags["shadowdark-extras"]["journalPins"]` array so the list order sticks.
 - Search reaches into collapsed folders — matches show even when their folder is closed.
+- Names sort naturally, so `Room 2` comes before `Room 10` rather than after it. Both list paths agree on that ordering.
 
 ---
 
