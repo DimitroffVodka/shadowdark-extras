@@ -95,7 +95,13 @@ import {
 // Reskin takes a seed click rather than a persistent mode: it is a one-shot
 // action, and a fourth mode tab would carry tile grids and hints it has no use
 // for. The tray arms it, the next canvas click consumes it.
-import { bucketEraseAt, eraseFloorRegion, paintRoomFloor, reskinScene } from "./dungeon-reskin.mjs";
+import { bucketEraseAt, eraseFloorCells, paintRoomFloor, reskinScene } from "./dungeon-reskin.mjs";
+import {
+	beginBrushStroke,
+	brushStrokeCells,
+	clearBrushStroke,
+	extendBrushStroke,
+} from "./dungeon-erase-brush.mjs";
 import { registerWallPairCascade } from "./dungeon-wall-pairs.mjs";
 
 /**
@@ -686,6 +692,8 @@ function onPointerDown(event) {
 	const pos = event.data?.getLocalPosition(canvas.stage);
 	_dragStart = { x: pos.x, y: pos.y };
 
+	if (_floorPaintArmed && _isShiftHeld) beginBrushStroke(pos, canvas.scene?.grid?.size);
+
 	// Create selection rectangle for visual feedback. The floor bucket gets one
 	// too: it takes a drag to mean "paint this much of the room".
 	if (_floorPaintArmed
@@ -702,6 +710,12 @@ function onPointerMove(event) {
 
 	// Safety check - make sure canvas is still valid
 	if (!canvas?.stage || !canvas?.interface) return;
+
+	if (_floorPaintArmed && _isShiftHeld) {
+		const pos = event.data?.getLocalPosition(canvas.stage);
+		if (pos) extendBrushStroke(pos, canvas.scene?.grid?.size);
+		return;
+	}
 
 	// Only show rectangle in tiles mode, doors+shift (delete), or the floor bucket
 	if (_floorPaintArmed || _dungeonMode === "tiles" || (_dungeonMode === "doors" && _isShiftHeld)) {
@@ -753,14 +767,7 @@ function onPointerUp(event) {
 	// "this much of it". The drag exists because a corridor network with no
 	// internal doors is a single room — clicking one corridor floors them all.
 	if (_floorPaintArmed) {
-		const origin = { x: _dragStart.x, y: _dragStart.y };
 		_dragStart = null;
-		const box = {
-			minX: Math.min(origin.x, endPos.x),
-			maxX: Math.max(origin.x, endPos.x),
-			minY: Math.min(origin.y, endPos.y),
-			maxY: Math.max(origin.y, endPos.y),
-		};
 
 		// Shift erases, the same way it does in Rooms mode. Automatic room
 		// detection is wrong on some map somewhere, so an eraser the GM aims
@@ -772,7 +779,10 @@ function onPointerUp(event) {
 			bucketEraseAt(canvas.scene, endPos);
 		}
 		else if (deleteMode) {
-			eraseFloorRegion(canvas.scene, box);
+			// Freehand: exactly the squares the cursor passed over. A dragged box
+			// assumes rooms are rectangles, and on a cave map nothing is.
+			eraseFloorCells(canvas.scene, brushStrokeCells(), { includeWallArt: false });
+			clearBrushStroke();
 		}
 		else {
 			// Drag and click both fill the room under the cursor. There was a
