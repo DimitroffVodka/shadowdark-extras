@@ -335,3 +335,68 @@ test("a box that misses leaves the shape whole", () => {
 
 	assert.equal(totalArea(pieces), 100 * 100, "nothing was cut");
 });
+
+// outlineCells turns a fill's cells into the polygon a Drawing can hold. The
+// bucket fills at one-eighth of a square and outlines the result, so this is
+// what decides the shape of every bucket floor.
+
+const { outlineCells } = await import("../../scripts/dungeon/dungeon-wall-outline.mjs");
+
+const cellSet = (...keys) => new Set(keys);
+const sortedCorners = polygon => polygon.map(p => `${p.x},${p.y}`).sort();
+
+test("a block of cells outlines as its corners only", () => {
+	const cells = cellSet("0,0", "1,0", "2,0", "0,1", "1,1", "2,1");
+
+	const [polygon] = outlineCells(cells, 10);
+
+	assert.deepEqual(sortedCorners(polygon), ["0,0", "0,20", "30,0", "30,20"]);
+	assert.equal(polygonArea(polygon), 600);
+});
+
+test("an L-shape keeps its inner corner", () => {
+	const cells = cellSet("0,0", "1,0", "0,1");
+
+	const [polygon] = outlineCells(cells, 10);
+
+	assert.equal(polygon.length, 6);
+	assert.equal(polygonArea(polygon), 300);
+});
+
+test("a ring comes back as ONE polygon that leaves its hole uncovered", () => {
+	// 3x3 with the middle missing.
+	const cells = cellSet("0,0", "1,0", "2,0", "0,1", "2,1", "0,2", "1,2", "2,2");
+
+	const polygons = outlineCells(cells, 10);
+
+	assert.equal(polygons.length, 1, "the hole is cut into the outer loop, not returned separately");
+	const [polygon] = polygons;
+	assert.equal(polygonArea(polygon), 800, "eight cells of area, the hole subtracted");
+	assert.equal(pointInPolygon({ x: 15, y: 15 }, polygon), false, "the hole is outside");
+	assert.equal(pointInPolygon({ x: 5, y: 15 }, polygon), true, "the ring is inside");
+	assert.equal(pointInPolygon({ x: 25, y: 25 }, polygon), true);
+});
+
+test("two holes are both cut in", () => {
+	// 5x1 strip above, with two 1x1 holes under it enclosed by a 5x3 block.
+	const cells = new Set();
+	for (let x = 0; x < 5; x++) for (let y = 0; y < 3; y++) cells.add(`${x},${y}`);
+	cells.delete("1,1");
+	cells.delete("3,1");
+
+	const polygons = outlineCells(cells, 10);
+
+	assert.equal(polygons.length, 1);
+	assert.equal(polygonArea(polygons[0]), 1300);
+	assert.equal(pointInPolygon({ x: 15, y: 15 }, polygons[0]), false);
+	assert.equal(pointInPolygon({ x: 35, y: 15 }, polygons[0]), false);
+	assert.equal(pointInPolygon({ x: 25, y: 15 }, polygons[0]), true);
+});
+
+test("separate blocks are separate polygons", () => {
+	const cells = cellSet("0,0", "5,5");
+
+	const polygons = outlineCells(cells, 10);
+
+	assert.equal(polygons.length, 2);
+});

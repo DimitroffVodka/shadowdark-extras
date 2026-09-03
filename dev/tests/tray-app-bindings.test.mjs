@@ -71,6 +71,7 @@ const BINDINGS = [
 	".sdx-tray .dungeon-clear-btn :: click",
 	".sdx-tray .dungeon-curved-walls-checkbox :: change",
 	".sdx-tray .dungeon-flatten-level-btn :: click",
+	".sdx-tray .dungeon-flooreraser-btn :: click",
 	".sdx-tray .dungeon-floorpaint-btn :: click",
 	".sdx-tray .dungeon-gaps-btn :: click",
 	".sdx-tray .dungeon-generator-close :: click",

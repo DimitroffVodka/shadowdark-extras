@@ -329,17 +329,19 @@ the slowest part of the run.
 
 Fill one room at a time, with a different tile in each.
 
-Pick a floor tile, press **Paint / Erase Floor**, then work on the map:
+Pick a floor tile, press **Paint Floor**, then click inside a room: it gets the
+tile, fitted to its walls. Pick another tile, do another room.
+
+**Erase Floor** is its own button, no modifier key:
 
 | Gesture | Result |
 |---|---|
-| **Click** inside a room | That room gets the tile, fitted to its walls |
-| **Shift+Drag** a box | Everything SDX put in that box is removed |
+| **Click** inside a walled area | Its SDX floor is removed, stopping at the walls |
+| **Drag** | The squares the cursor passes over are cleared |
 
-Pick another tile, do another room. **Undo Last Change** reverses either.
-
-It stays on until you press it again, so you can work through a whole map without
-returning to the tray between rooms.
+**Undo Last Change** reverses any of these. Either tool stays on until you press
+it again, so you can work through a whole map without returning to the tray
+between rooms; pressing the other button switches tools.
 
 **You cannot paint past a wall.** SDX works out the room's shape from the walls
 and fills exactly that — there is no brush to keep inside the lines and no way to

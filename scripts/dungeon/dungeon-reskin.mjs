@@ -22,6 +22,7 @@ import {
 	clipPolygonToRect,
 	findLooseWallEnds,
 	findWallGapBridges,
+	outlineCells,
 	polygonArea,
 	pointInPolygon,
 	subtractRectFromPolygon,
@@ -46,19 +47,30 @@ const WALL_THICKNESS = 20;
  * Same construction the interior-wall tool uses — a rectangle rotated about its
  * centre, whose x/y is the top-left *before* rotation.
  *
+ * An end that meets another wall is extended by half the thickness, a square
+ * cap. Butt ends leave a notch on the outside of every bend, and on a cave
+ * drawn as dozens of 25px segments that reads as a ring of loose rectangles
+ * rather than a wall. Ends that meet nothing — a doorway's edge, a loose end —
+ * stay flush so the art never juts into an opening.
+ *
  * @param {number[]} c - the wall's [x1, y1, x2, y2]
  * @param {string} texture - wall tile path
+ * @param {number} [capStart] - pixels to extend past (x1, y1)
+ * @param {number} [capEnd] - pixels to extend past (x2, y2)
  * @returns {object|null} partial Drawing data, or null if the wall is too short
  */
-export function wallDrawingGeometry(c, texture) {
+export function wallDrawingGeometry(c, texture, capStart = 0, capEnd = 0) {
 	const [x1, y1, x2, y2] = c;
 	const dx = x2 - x1;
 	const dy = y2 - y1;
-	const length = Math.hypot(dx, dy);
-	if (length < 5) return null;
+	const wallLength = Math.hypot(dx, dy);
+	if (wallLength < 5) return null;
 
-	const cx = (x1 + x2) / 2;
-	const cy = (y1 + y2) / 2;
+	const ux = dx / wallLength;
+	const uy = dy / wallLength;
+	const length = wallLength + capStart + capEnd;
+	const cx = ((x1 - (ux * capStart)) + (x2 + (ux * capEnd))) / 2;
+	const cy = ((y1 - (uy * capStart)) + (y2 + (uy * capEnd))) / 2;
 
 	return {
 		x: cx - (length / 2),
@@ -74,9 +86,6 @@ export function wallDrawingGeometry(c, texture) {
 // cell cap and by the canvas border. Either one aborts before anything is
 // written, because painting the whole canvas is far worse than painting nothing.
 const MAX_CELLS = 20000;
-
-/** Documents per create call, matching the reskin's own batching. */
-const BUCKET_CHUNK = 100;
 
 // Cell size of the wall index. Two grid squares: big enough that most lookups
 // touch one bucket, small enough that a bucket holds a handful of walls.
@@ -170,6 +179,9 @@ function doorCrosses(doors, a, b) {
  * @param {object} [options]
  * @param {number} [options.gridSize]
  * @param {number} [options.maxCells]
+ * @param {(point: {x: number, y: number}) => boolean} [options.within] - only
+ *        cells whose sample point passes are entered; stepping elsewhere is a
+ *        stop, not a leak
  * @returns {{cells: Set<string>, leaked: boolean, reason: string|null}}
  *          cells are "gx,gy" keys in the same absolute grid space the painter
  *          places floor tiles in. `leaked` true means the result is unusable.
@@ -185,7 +197,12 @@ export function floodFillFromWalls(scene, seed, options = {}) {
 	const index = options.wallIndex
 		?? buildWallIndex([...scene.walls], options.bridgeGaps ? size / 2 : 0);
 
-	const half = size / 2;
+	// Sample points sit a hair off the cell centre. A wall vertex that lands
+	// exactly on a centre is on NEITHER side of it, and the crossing test then
+	// reports every step out of that cell as blocked — a false wall. Measured on
+	// a real cave: one such vertex cut a 435-square fill down to 84. Off-centre,
+	// every sample is on a definite side of every wall.
+	const half = (size / 2) + 0.1;
 	const centre = (gx, gy) => ({ x: (gx * size) + half, y: (gy * size) + half });
 
 	// ponytail: one testCollision per shared cell edge, memoised on a canonical
@@ -233,6 +250,7 @@ export function floodFillFromWalls(scene, seed, options = {}) {
 			// that simply had no padding. Only an unobstructed step off the canvas
 			// means the walls failed to hold.
 			if (!passable(gx, gy, ngx, ngy)) continue;
+			if (options.within && !options.within(centre(ngx, ngy))) continue;
 			if (ngx < 0 || ngy < 0 || ngx >= cols || ngy >= rows) {
 				leaked = true;
 				continue;
@@ -496,28 +514,7 @@ export async function reskinScene(scene, deps) {
 				if (p.x < minX) minX = p.x;
 				if (p.y < minY) minY = p.y;
 			}
-			return applySceneLevelData({
-				author: game.user.id,
-				x: minX,
-				y: minY,
-				shape: {
-					type: "p",
-					points: room.points.flatMap(p => [p.x - minX, p.y - minY]),
-				},
-				strokeWidth: 0,
-				strokeAlpha: 0,
-				fillType: 2,
-				fillColor: "#ffffff",
-				fillAlpha: 1.0,
-				texture: deps.floorTilePath,
-				elevation: levelContext.elevation,
-				sort: -10,
-				flags: {
-					// Not dungeonWall — the wall rebuild deletes those. Its own key
-					// so Clear can find it and nothing else touches it.
-					[MODULE_ID]: { dungeonFloorShape: true, placeableNotesExcluded: true },
-				},
-			}, "Drawing", levelContext);
+			return floorShapeData(room.points, { x: minX, y: minY }, deps.floorTilePath, levelContext, -10);
 		});
 		for (let i = 0; i < shapes.length; i += chunkSize) {
 			await scene.createEmbeddedDocuments("Drawing", shapes.slice(i, i + chunkSize));
@@ -575,8 +572,17 @@ export async function reskinScene(scene, deps) {
 	// Drawings layer removes the source wall with it, and vice versa.
 	const wallDrawings = [];
 	const wallPairUpdates = [];
+	// Ends that meet nothing stay flush; every other end gets a square cap so
+	// bends close instead of notching. Doors are not in the set, so an end at a
+	// doorway counts as loose and the art stops at the opening.
+	const looseEnds = findLooseWallEnds(wallsToSkin, 4);
+	const isLoose = (x, y) => looseEnds.some(p => Math.hypot(p.x - x, p.y - y) <= 4);
+	const cap = WALL_THICKNESS / 2;
 	for (const wall of wallsToSkin) {
-		const geometry = wallDrawingGeometry(wall.c, deps.wallTilePath);
+		const [x1, y1, x2, y2] = wall.c;
+		const geometry = wallDrawingGeometry(
+			wall.c, deps.wallTilePath, isLoose(x1, y1) ? 0 : cap, isLoose(x2, y2) ? 0 : cap
+		);
 		if (!geometry) continue;
 		const pairId = newWallPairId();
 		// Nested rather than a dotted "flags.<id>.wallPairId" path: an update
@@ -676,6 +682,38 @@ export async function reskinScene(scene, deps) {
 		doorsSkinned: doorsToSkin.length,
 		diagonals,
 	};
+}
+
+/**
+ * Drawing data for one SDX floor polygon.
+ *
+ * Points are stored relative to `origin`. The reskin uses each room's top-left;
+ * the bucket uses a grid-aligned corner, so the floor texture lines up with the
+ * grid and every piece of one fill shares the same tiling phase.
+ */
+function floorShapeData(points, origin, texture, levelContext, sort) {
+	return applySceneLevelData({
+		author: game.user.id,
+		x: origin.x,
+		y: origin.y,
+		shape: {
+			type: "p",
+			points: points.flatMap(p => [p.x - origin.x, p.y - origin.y]),
+		},
+		strokeWidth: 0,
+		strokeAlpha: 0,
+		fillType: 2,
+		fillColor: "#ffffff",
+		fillAlpha: 1.0,
+		texture,
+		elevation: levelContext.elevation,
+		sort,
+		flags: {
+			// Not dungeonWall — the wall rebuild deletes those. Its own key so
+			// Clear can find it and nothing else touches it.
+			[MODULE_ID]: { dungeonFloorShape: true, placeableNotesExcluded: true },
+		},
+	}, "Drawing", levelContext);
 }
 
 /**
@@ -1060,6 +1098,8 @@ export async function toggleWallGapMarkers(scene) {
  *
  * @param {Scene} scene
  * @param {Set<string>} cells - "gx,gy" keys the brush covered
+ * @param {object} [options]
+ * @param {boolean} [options.includeWallArt] - also remove wall art centred in the cells
  * @returns {Promise<number>} pieces removed
  */
 export async function eraseFloorCells(scene, cells, options = {}) {
@@ -1070,35 +1110,7 @@ export async function eraseFloorCells(scene, cells, options = {}) {
 	if (!scene || cells.size === 0) return 0;
 
 	const size = scene.grid?.size || GRID_SIZE;
-
-	// Merge each row of squares into runs, so the cut is a few wide rectangles
-	// rather than one per square.
-	const byRow = new Map();
-	for (const key of cells) {
-		const [gx, gy] = key.split(",").map(Number);
-		if (!byRow.has(gy)) byRow.set(gy, []);
-		byRow.get(gy).push(gx);
-	}
-	const rects = [];
-	for (const [gy, xs] of byRow) {
-		xs.sort((a, b) => a - b);
-		let runStart = xs[0];
-		let previous = xs[0];
-		for (let i = 1; i <= xs.length; i++) {
-			if (i < xs.length && xs[i] === previous + 1) {
-				previous = xs[i];
-				continue;
-			}
-			rects.push({
-				minX: runStart * size,
-				maxX: (previous + 1) * size,
-				minY: gy * size,
-				maxY: (gy + 1) * size,
-			});
-			runStart = xs[i];
-			previous = xs[i];
-		}
-	}
+	const rects = cellRects(cells, size);
 
 	const covers = point => cells.has(`${Math.floor(point.x / size)},${Math.floor(point.y / size)}`);
 
@@ -1126,17 +1138,7 @@ export async function eraseFloorCells(scene, cells, options = {}) {
 				if (q.x < px) px = q.x;
 				if (q.y < py) py = q.y;
 			}
-			remainders.push({
-				...source,
-				_id: undefined,
-				x: px,
-				y: py,
-				shape: {
-					...source.shape,
-					type: "p",
-					points: piece.flatMap(q => [q.x - px, q.y - py]),
-				},
-			});
+			remainders.push(floorPieceData(source, piece, px, py));
 		}
 	}
 
@@ -1156,37 +1158,88 @@ export async function eraseFloorCells(scene, cells, options = {}) {
 		}
 	}
 
-	const tileIds = scene.tiles.filter(tile => {
-		const flags = tile.flags?.[MODULE_ID];
-		if (!flags?.dungeonFloor && !flags?.dungeonStairs
-            && !flags?.dungeonStairsDown && !flags?.dungeonClutter) return false;
-		return covers({ x: tile.x + (size / 2), y: tile.y + (size / 2) });
-	}).map(tile => tile.id);
+	const tileIds = floorTileIds(scene, cells, size);
 
 	if (shapeIds.length === 0 && tileIds.length === 0) {
 		ui.notifications.info("SDX | No SDX floor under that stroke.");
 		return 0;
 	}
 
-	recordDungeonAction("Erase floor", {
-		deleted: [
-			{ type: "Drawing", data: shapeIds.map(id => scene.drawings.get(id).toObject()) },
-			{ type: "Tile", data: tileIds.map(id => scene.tiles.get(id).toObject()) },
-		],
-	});
-
-	if (shapeIds.length > 0) await scene.deleteEmbeddedDocuments("Drawing", shapeIds);
-	if (tileIds.length > 0) await scene.deleteEmbeddedDocuments("Tile", tileIds);
-
-	if (remainders.length > 0) {
-		const restored = await scene.createEmbeddedDocuments("Drawing", remainders);
-		recordDungeonAction("Erase floor", {
-			created: [{ type: "Drawing", ids: restored.map(d => d.id) }],
-		});
-	}
+	await replaceFloor(scene, "Erase floor", shapeIds, tileIds, remainders);
 
 	ui.notifications.info(`SDX | Erased ${cells.size} square${cells.size === 1 ? "" : "s"}.`);
 	return shapeIds.length + tileIds.length;
+}
+
+/**
+ * Row-run rectangles covering a set of "gx,gy" cells.
+ *
+ * Each row of squares is merged into runs, so a cut is a few wide rectangles
+ * rather than one per square — and each cut multiplies the pieces a shape is
+ * left in.
+ */
+function cellRects(cells, size) {
+	const byRow = new Map();
+	for (const key of cells) {
+		const [gx, gy] = key.split(",").map(Number);
+		if (!byRow.has(gy)) byRow.set(gy, []);
+		byRow.get(gy).push(gx);
+	}
+	const rects = [];
+	for (const [gy, xs] of byRow) {
+		xs.sort((a, b) => a - b);
+		let runStart = xs[0];
+		let previous = xs[0];
+		for (let i = 1; i <= xs.length; i++) {
+			if (i < xs.length && xs[i] === previous + 1) {
+				previous = xs[i];
+				continue;
+			}
+			rects.push({
+				minX: runStart * size,
+				maxX: (previous + 1) * size,
+				minY: gy * size,
+				maxY: (gy + 1) * size,
+			});
+			runStart = xs[i];
+			previous = xs[i];
+		}
+	}
+	return rects;
+}
+
+/** SDX floor, stair and clutter tiles whose centre sits in one of the cells. */
+function floorTileIds(scene, cells, size) {
+	return scene.tiles.filter(tile => {
+		const flags = tile.flags?.[MODULE_ID];
+		if (!flags?.dungeonFloor && !flags?.dungeonStairs
+            && !flags?.dungeonStairsDown && !flags?.dungeonClutter) return false;
+		return cells.has(`${Math.floor((tile.x + (size / 2)) / size)},${Math.floor((tile.y + (size / 2)) / size)}`);
+	}).map(tile => tile.id);
+}
+
+/**
+ * Delete floor documents and write their remainders back, as ONE undo entry.
+ *
+ * It used to be two — the deletion recorded first, the pieces after they had
+ * ids — so a single Undo removed the pieces and left the original floor gone
+ * until a second Undo. "One click to fix a mistake" is the whole point of the
+ * undo stack, so the entry is recorded once everything has happened.
+ */
+async function replaceFloor(scene, label, shapeIds, tileIds, remainders) {
+	const deleted = [
+		{ type: "Drawing", data: shapeIds.map(id => scene.drawings.get(id).toObject()) },
+		{ type: "Tile", data: tileIds.map(id => scene.tiles.get(id).toObject()) },
+	];
+	if (shapeIds.length > 0) await scene.deleteEmbeddedDocuments("Drawing", shapeIds);
+	if (tileIds.length > 0) await scene.deleteEmbeddedDocuments("Tile", tileIds);
+	const restored = remainders.length > 0
+		? await scene.createEmbeddedDocuments("Drawing", remainders)
+		: [];
+	recordDungeonAction(label, {
+		created: [{ type: "Drawing", ids: restored.map(d => d.id) }],
+		deleted,
+	});
 }
 
 /**
@@ -1234,7 +1287,30 @@ export async function eraseFloorCells(scene, cells, options = {}) {
  */
 function bucketCells(scene, point) {
 	const size = scene.grid?.size || GRID_SIZE;
-	const result = floodFillFromWalls(scene, point, { gridSize: size, doorsBlock: true });
+
+	// Seed from a cell centre on the CLICK'S side of the walls. In a cell a wall
+	// cuts through — every cell along a cave wall — the centre can sit in the
+	// rock while the click sits in the room, and a fill from that centre runs
+	// off outside and reports a gap the map does not have.
+	const walls = [...scene.walls];
+	const index = buildWallIndex(walls);
+	const doors = walls.filter(w => w.door > 0);
+	const half = (size / 2) + 0.1;
+	const gx = Math.floor(point.x / size);
+	const gy = Math.floor(point.y / size);
+	let seed = null;
+	for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+		const centre = { x: ((gx + dx) * size) + half, y: ((gy + dy) * size) + half };
+		if (blocksMove(index, point, centre) || doorCrosses(doors, point, centre)) continue;
+		seed = centre;
+		break;
+	}
+	if (!seed) {
+		ui.notifications.warn("SDX | No room to fill there — that spot is walled off on every side.");
+		return null;
+	}
+
+	const result = floodFillFromWalls(scene, seed, { gridSize: size, doorsBlock: true, wallIndex: index });
 	if (result.leaked) {
 		ui.notifications.warn(
 			`SDX | The fill escaped after ${result.cells.size} squares — the walls have a gap `
@@ -1242,16 +1318,100 @@ function bucketCells(scene, point) {
 		);
 		return null;
 	}
-	return result.cells;
+	return { cells: result.cells, seed };
+}
+
+// Sub-cells per grid square along each axis for the bucket's floor outline. The
+// floor is a fill at this resolution, so along a wall it steps by size/8 and
+// overhangs the wall line by at most size/8 * sqrt(2)/2 — under the 20px wall
+// art at any grid size of 100 or less. Square tiles overhung by half a cell and
+// poked their corners out past every curved wall.
+const FLOOR_STEPS = 8;
+
+/**
+ * The floor polygons for a bucket click, and the grid-aligned origin their
+ * points are stored from — shared by every piece of one fill, so the floor
+ * texture tiles in step with the grid instead of from an arbitrary corner.
+ *
+ * The coarse cells are the ones whose CENTRES are in the room; the room also
+ * runs on into the cells around them, up to the wall. So the fine fill may
+ * enter that one-cell ring — there the walls stop it, not the cells — and no
+ * further, so a gap the coarse fill stepped over cannot lead it off across the
+ * map. Without the ring, half of a one-square cave chamber came out bare.
+ *
+ * @param {Scene} scene
+ * @param {{x: number, y: number}} seed - a point on the room's side of its walls
+ * @param {Set<string>} cells - the coarse fill
+ * @param {number} size - grid size
+ * @returns {{origin: {x: number, y: number}, polygons: Array<Array<{x: number, y: number}>>}}
+ */
+function bucketFloorPolygons(scene, seed, cells, size) {
+	const step = size / FLOOR_STEPS;
+	const allowed = new Set();
+	for (const key of cells) {
+		const [gx, gy] = key.split(",").map(Number);
+		for (let dx = -1; dx <= 1; dx++) {
+			for (let dy = -1; dy <= 1; dy++) allowed.add(`${gx + dx},${gy + dy}`);
+		}
+	}
+	const fine = floodFillFromWalls(scene, seed, {
+		gridSize: step,
+		doorsBlock: true,
+		within: p => allowed.has(`${Math.floor(p.x / size)},${Math.floor(p.y / size)}`),
+		maxCells: (allowed.size * FLOOR_STEPS * FLOOR_STEPS) + 1,
+	});
+
+	let minGx = Infinity;
+	let minGy = Infinity;
+	for (const key of allowed) {
+		const [gx, gy] = key.split(",").map(Number);
+		if (gx < minGx) minGx = gx;
+		if (gy < minGy) minGy = gy;
+	}
+	return {
+		origin: { x: minGx * size, y: minGy * size },
+		polygons: outlineCells(fine.cells, step),
+		fine: fine.cells,
+		region: allowed,
+		step,
+	};
+}
+
+/** A piece of floor as Drawing data, keeping everything about `source` but its outline. */
+function floorPieceData(source, points, x, y) {
+	return {
+		...source,
+		_id: undefined,
+		x,
+		y,
+		shape: {
+			...source.shape,
+			type: "p",
+			points: points.flatMap(q => [q.x - x, q.y - y]),
+		},
+	};
+}
+
+/** Is this floor shape the one a bucket fill would lay from `origin` as `polygon`? */
+function sameOutline(drawing, origin, polygon) {
+	return Math.abs(drawing.x - origin.x) < 1 && Math.abs(drawing.y - origin.y) < 1
+		&& drawing.shape?.points?.length === polygon.length * 2
+		&& Math.abs(polygonArea(floorPolygonOf(drawing)) - polygonArea(polygon)) < 1;
 }
 
 /**
  * Paint bucket. Floods the walled area under the click with the selected floor.
  *
- * Grid squares, not a traced outline: a fill knows which SQUARES it reached, and
- * inventing a smooth polygon from them would be the tracer again by another
- * name. The whole-map Reskin still traces and still gives curved edges — this is
- * the tool for fixing the places it got wrong, where working beats pretty.
+ * Two fills, no tracer. The grid fill decides which SQUARES are the room —
+ * that is the robust part, and the eraser uses the same squares to take the
+ * floor back out. A second fill at one-eighth of a square, confined to those
+ * squares, gives the floor its edge: it hugs the walls to within a few pixels
+ * and cannot wander off through a gap the coarse fill stepped over, because it
+ * is never allowed outside the coarse fill's squares. The result is one polygon
+ * per room, holes and all, laid the way the reskin lays its traced rooms.
+ *
+ * Clicking a room that already has exactly this floor replaces it, so a second
+ * click (or a different tile) never stacks a second copy.
  *
  * @param {Scene} scene
  * @param {{x: number, y: number}} point  where the GM clicked
@@ -1269,56 +1429,47 @@ export async function bucketFillAt(scene, point, floorTilePath) {
 		return 0;
 	}
 
-	const cells = bucketCells(scene, point);
-	if (!cells) return 0;
+	const found = bucketCells(scene, point);
+	if (!found) return 0;
+	const { cells, seed } = found;
 
 	const size = scene.grid?.size || GRID_SIZE;
 	const levelContext = resolveLevelContext(scene);
 
-	// Squares that already carry SDX floor are skipped rather than stacked on,
-	// so clicking the same room twice does not double every document in it.
-	const occupied = new Set();
-	for (const tile of scene.tiles) {
-		if (!tile.flags?.[MODULE_ID]?.dungeonFloor) continue;
-		if (!documentMatchesLevel(tile, levelContext)) continue;
-		occupied.add(`${Math.floor(tile.x / size)},${Math.floor(tile.y / size)}`);
-	}
+	const { origin, polygons } = bucketFloorPolygons(scene, seed, cells, size);
+	// Sorted just above the reskin's rooms (-10), so a bucket fill over a traced
+	// floor shows, and still under wall art.
+	const shapes = polygons.map(points => floorShapeData(points, origin, floorTilePath, levelContext, -9));
+	if (shapes.length === 0) return 0;
 
-	const toCreate = [];
-	for (const key of cells) {
-		if (occupied.has(key)) continue;
-		const [gx, gy] = key.split(",").map(Number);
-		toCreate.push(applySceneLevelData({
-			texture: makeTopLeftTileTexture(floorTilePath),
-			x: gx * size,
-			y: gy * size,
-			width: size,
-			height: size,
-			sort: 0,
-			// The same flags the reskin's own gap-patch tiles carry, so Clear, the
-			// eraser and Undo already know what these are.
-			flags: { [MODULE_ID]: { dungeonFloor: true, dungeonReskinFloor: true } },
-		}, "Tile", levelContext));
-	}
+	// An existing floor with the same outline is this room's floor from an
+	// earlier click. Replace it rather than stacking on it.
+	const stale = scene.drawings.filter(d =>
+		d.flags?.[MODULE_ID]?.dungeonFloorShape && polygons.some(p => sameOutline(d, origin, p))
+	);
 
-	if (toCreate.length === 0) {
-		ui.notifications.info("SDX | That area already has an SDX floor.");
-		return 0;
-	}
+	if (stale.length > 0) await scene.deleteEmbeddedDocuments("Drawing", stale.map(d => d.id));
+	const made = await scene.createEmbeddedDocuments("Drawing", shapes);
 
-	const made = [];
-	for (let i = 0; i < toCreate.length; i += BUCKET_CHUNK) {
-		const batch = await scene.createEmbeddedDocuments("Tile", toCreate.slice(i, i + BUCKET_CHUNK));
-		made.push(...batch);
-	}
-
-	recordDungeonAction("Fill floor", { created: [{ type: "Tile", ids: made.map(t => t.id) }] });
-	ui.notifications.info(`SDX | Filled ${made.length} square${made.length === 1 ? "" : "s"}.`);
-	return made.length;
+	recordDungeonAction("Fill floor", {
+		created: [{ type: "Drawing", ids: made.map(d => d.id) }],
+		deleted: [{ type: "Drawing", data: stale.map(d => d.toObject()) }],
+	});
+	ui.notifications.info(`SDX | Floored ${cells.size} square${cells.size === 1 ? "" : "s"}.`);
+	return cells.size;
 }
 
 /**
- * Erase bucket. Clears every SDX floor in the walled area under the click.
+ * Erase bucket. Clears the SDX floor in the walled area under the click, and
+ * stops AT the walls.
+ *
+ * The room is derived exactly as the paint bucket derives it. A floor that IS
+ * that room — one the paint bucket laid — goes whole. Any other floor the room
+ * overlaps (a reskin's traced face, an older fragment) is cut: the room's
+ * squares and the ring around them are taken out of it, then the ring's floor
+ * that is NOT room is put back at the paint bucket's resolution. Cutting by
+ * squares alone was measured wrong on a real map: a pillar a third of a square
+ * across took a whole square of the cave floor with it, walls and all.
  *
  * Wall art stays: the room still exists, only its floor is going. Wall art sits
  * ON the boundary of the filled area, so its centre lands in a filled square
@@ -1335,8 +1486,80 @@ export async function bucketEraseAt(scene, point) {
 	}
 	if (!scene) return 0;
 
-	const cells = bucketCells(scene, point);
-	if (!cells) return 0;
+	const found = bucketCells(scene, point);
+	if (!found) return 0;
+	const { cells, seed } = found;
+	const size = scene.grid?.size || GRID_SIZE;
 
-	return eraseFloorCells(scene, cells, { includeWallArt: false });
+	const { origin, polygons, fine, region, step } = bucketFloorPolygons(scene, seed, cells, size);
+	const rects = cellRects(region, size);
+	const fineCentre = key => {
+		const [fx, fy] = key.split(",").map(Number);
+		return { x: (fx * step) + (step / 2), y: (fy * step) + (step / 2) };
+	};
+	// Fine cells of a coarse cell, as keys.
+	const fineKeysOf = key => {
+		const [gx, gy] = key.split(",").map(Number);
+		const keys = [];
+		for (let i = 0; i < FLOOR_STEPS; i++) {
+			for (let j = 0; j < FLOOR_STEPS; j++) keys.push(`${(gx * FLOOR_STEPS) + i},${(gy * FLOOR_STEPS) + j}`);
+		}
+		return keys;
+	};
+
+	const shapeIds = [];
+	const remainders = [];
+	for (const drawing of scene.drawings) {
+		if (!drawing.flags?.[MODULE_ID]?.dungeonFloorShape) continue;
+		const polygon = floorPolygonOf(drawing);
+		if (!polygon) continue;
+
+		if (polygons.some(p => sameOutline(drawing, origin, p))) {
+			shapeIds.push(drawing.id);
+			continue;
+		}
+
+		// Does the ROOM overlap this floor? Tested on the room's own fine cells,
+		// so a neighbour's floor across a shared wall is left alone even though
+		// the room's squares reach across that wall.
+		const touches = [...cells].some(key => fineKeysOf(key).some(fk => fine.has(fk) && pointInPolygon(fineCentre(fk), polygon)));
+		if (!touches) continue;
+
+		let pieces = [polygon];
+		for (const rect of rects) {
+			pieces = pieces.flatMap(piece => subtractRectFromPolygon(piece, rect));
+			if (pieces.length === 0) break;
+		}
+		const keep = new Set();
+		for (const key of region) {
+			for (const fk of fineKeysOf(key)) {
+				if (!fine.has(fk) && pointInPolygon(fineCentre(fk), polygon)) keep.add(fk);
+			}
+		}
+
+		shapeIds.push(drawing.id);
+		const source = drawing.toObject();
+		for (const piece of pieces) {
+			let px = Infinity;
+			let py = Infinity;
+			for (const q of piece) {
+				if (q.x < px) px = q.x;
+				if (q.y < py) py = q.y;
+			}
+			remainders.push(floorPieceData(source, piece, px, py));
+		}
+		for (const loop of outlineCells(keep, step)) {
+			if (polygonArea(loop) > step * step) remainders.push(floorPieceData(source, loop, origin.x, origin.y));
+		}
+	}
+
+	const tileIds = floorTileIds(scene, cells, size);
+	if (shapeIds.length === 0 && tileIds.length === 0) {
+		ui.notifications.info("SDX | No SDX floor in that area.");
+		return 0;
+	}
+
+	await replaceFloor(scene, "Erase floor", shapeIds, tileIds, remainders);
+	ui.notifications.info(`SDX | Erased the floor of ${cells.size} square${cells.size === 1 ? "" : "s"}.`);
+	return shapeIds.length + tileIds.length;
 }

@@ -3685,8 +3685,10 @@ body.sdx-tray-enabled #camera-views.vertical.left {
 }
 
 /* Paint bucket — green, and shares the reskin's armed pulse so an active tool is
-   obvious from the canvas. It stays on across clicks, so that matters more here. */
-.sdx-tray .dungeon-floorpaint-btn {
+   obvious from the canvas. It stays on across clicks, so that matters more here.
+   The eraser is the same button in red. */
+.sdx-tray .dungeon-floorpaint-btn,
+.sdx-tray .dungeon-flooreraser-btn {
     width: calc(100% - 16px);
     margin: 2px 8px;
     padding: 6px 8px;
@@ -3710,11 +3712,27 @@ body.sdx-tray-enabled #camera-views.vertical.left {
     background: rgba(74, 222, 128, 0.3);
 }
 
-.sdx-tray .dungeon-floorpaint-btn.armed {
+.sdx-tray .dungeon-floorpaint-btn.armed,
+.sdx-tray .dungeon-flooreraser-btn.armed {
     background: rgba(74, 222, 128, 0.45);
     border-color: rgba(74, 222, 128, 0.8);
     color: #fff;
     animation: sdx-reskin-pulse 1.2s ease-in-out infinite;
+}
+
+.sdx-tray .dungeon-flooreraser-btn {
+    background: rgba(248, 113, 113, 0.15);
+    border-color: rgba(248, 113, 113, 0.3);
+    color: #f87171;
+}
+
+.sdx-tray .dungeon-flooreraser-btn:hover {
+    background: rgba(248, 113, 113, 0.3);
+}
+
+.sdx-tray .dungeon-flooreraser-btn.armed {
+    background: rgba(248, 113, 113, 0.45);
+    border-color: rgba(248, 113, 113, 0.8);
 }
 
 /* The gap finder is a diagnostic, so it reads amber rather than action-blue. */

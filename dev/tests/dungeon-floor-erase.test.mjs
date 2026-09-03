@@ -297,9 +297,24 @@ function fillScene(walls, { drawings = [], tiles = [] } = {}) {
 		},
 		async deleteEmbeddedDocuments(type, ids) {
 			this.deleted.push({ type, ids });
+			// A real collection no longer holds a deleted document.
+			const collection = type === "Tile" ? tiles : drawings;
+			for (const id of ids) {
+				const at = collection.findIndex(d => d.id === id);
+				if (at >= 0) collection.splice(at, 1);
+			}
 			return ids;
 		},
 	};
+}
+
+/** A created floor polygon's vertices in scene coordinates. */
+function verticesOf(drawing) {
+	const out = [];
+	for (let i = 0; i < drawing.shape.points.length; i += 2) {
+		out.push({ x: drawing.x + drawing.shape.points[i], y: drawing.y + drawing.shape.points[i + 1] });
+	}
+	return out;
 }
 
 test("the bucket fills the walled area it was clicked in", async () => {
@@ -308,7 +323,19 @@ test("the bucket fills the walled area it was clicked in", async () => {
 	const filled = await bucketFillAt(scene, { x: 150, y: 150 }, "floor.webp");
 
 	assert.equal(filled, 9, "a 3x3 room is nine squares");
-	assert.equal(scene.created[0].type, "Tile");
+	// ONE polygon, not nine tiles: the floor is an outline that hugs the walls,
+	// so a room with a curved wall gets a curved floor rather than square
+	// corners poking out past it.
+	assert.equal(scene.created.length, 1);
+	assert.equal(scene.created[0].type, "Drawing");
+	assert.equal(scene.created[0].data.length, 1);
+	const floor = scene.created[0].data[0];
+	assert.equal(floor.flags["shadowdark-extras"].dungeonFloorShape, true);
+	assert.equal(floor.texture, "floor.webp");
+	// A square room outlines as exactly its four corners, whatever resolution
+	// the fill ran at.
+	const corners = verticesOf(floor).map(p => `${p.x},${p.y}`).sort();
+	assert.deepEqual(corners, ["0,0", "0,300", "300,0", "300,300"]);
 });
 
 test("the fill stops at the walls instead of covering the map", async () => {
@@ -318,7 +345,120 @@ test("the fill stops at the walls instead of covering the map", async () => {
 	await bucketFillAt(scene, { x: 50, y: 50 }, "floor.webp");
 
 	const made = scene.created[0].data;
-	assert.ok(made.every(t => t.x < 300 && t.y < 300), "nothing outside the room");
+	assert.ok(made.every(d => verticesOf(d).every(p => p.x <= 300 && p.y <= 300)), "nothing outside the room");
+});
+
+test("clicking the same room again replaces its floor instead of stacking one", async () => {
+	const scene = fillScene(boxRoom());
+	await bucketFillAt(scene, { x: 150, y: 150 }, "floor.webp");
+	const first = scene.created[0].data[0];
+	scene.drawings.push({
+		...first,
+		id: "first",
+		flags: first.flags,
+		toObject() { return { ...first }; },
+	});
+
+	await bucketFillAt(scene, { x: 150, y: 150 }, "other.webp");
+
+	assert.deepEqual(scene.deleted, [{ type: "Drawing", ids: ["first"] }], "the old floor goes");
+	assert.equal(scene.created.length, 2);
+	assert.equal(scene.created[1].data[0].texture, "other.webp");
+});
+
+test("a corridor fill does not floor the room it surrounds", async () => {
+	// A 5x5 square with a walled 1x1 room in the middle: the fill from a corner
+	// is the ring around it, and a Drawing polygon has no holes — so the ring
+	// must come back as ONE polygon that still leaves the middle uncovered.
+	const walls = [
+		wall(0, 0, 500, 0), wall(500, 0, 500, 500), wall(500, 500, 0, 500), wall(0, 500, 0, 0),
+		wall(200, 200, 300, 200), wall(300, 200, 300, 300), wall(300, 300, 200, 300), wall(200, 300, 200, 200),
+	];
+	const scene = fillScene(walls);
+
+	const filled = await bucketFillAt(scene, { x: 50, y: 50 }, "floor.webp");
+
+	assert.equal(filled, 24, "25 squares minus the room in the middle");
+	assert.equal(scene.created[0].data.length, 1, "one polygon");
+	const floor = scene.created[0].data[0];
+	const { pointInPolygon } = await import("../../scripts/dungeon/dungeon-wall-outline.mjs");
+	const polygon = verticesOf(floor);
+	assert.equal(pointInPolygon({ x: 250, y: 250 }, polygon), false, "the middle room is not floored");
+	assert.equal(pointInPolygon({ x: 50, y: 250 }, polygon), true, "the corridor beside it is");
+	assert.equal(pointInPolygon({ x: 250, y: 450 }, polygon), true, "and so is the corridor below");
+});
+
+test("the floor reaches the wall through cells whose centres are outside", async () => {
+	// A room 250 wide: the third column of cells is cut by the east wall, and
+	// its centres (x=250.1) are just outside. The floor still runs to the wall.
+	const walls = [wall(0, 0, 250, 0), wall(250, 0, 250, 300), wall(250, 300, 0, 300), wall(0, 300, 0, 0)];
+	const scene = fillScene(walls);
+
+	await bucketFillAt(scene, { x: 100, y: 150 }, "floor.webp");
+
+	const corners = verticesOf(scene.created[0].data[0]).map(p => `${p.x},${p.y}`).sort();
+	assert.deepEqual(corners, ["0,0", "0,300", "250,0", "250,300"]);
+});
+
+test("a click in a cell the wall cuts through fills the room, not the rock", async () => {
+	// Same room; the click lands at x=240, inside the room but in a cell whose
+	// centre is outside it. A fill seeded from that centre would run off across
+	// the map and report a gap.
+	const walls = [wall(0, 0, 250, 0), wall(250, 0, 250, 300), wall(250, 300, 0, 300), wall(0, 300, 0, 0)];
+	const scene = fillScene(walls);
+
+	const filled = await bucketFillAt(scene, { x: 240, y: 150 }, "floor.webp");
+
+	assert.equal(filled, 6, "two columns of centres are inside");
+	const corners = verticesOf(scene.created[0].data[0]).map(p => `${p.x},${p.y}`).sort();
+	assert.deepEqual(corners, ["0,0", "0,300", "250,0", "250,300"]);
+});
+
+test("the erase bucket takes a bucket-laid floor out whole", async () => {
+	// The floor runs past the coarse cells into the ring around them, so cutting
+	// by cells would leave slivers along the walls. Its own outline is
+	// recognised instead and the whole document goes.
+	const walls = [wall(0, 0, 250, 0), wall(250, 0, 250, 300), wall(250, 300, 0, 300), wall(0, 300, 0, 0)];
+	const scene = fillScene(walls);
+	await bucketFillAt(scene, { x: 100, y: 150 }, "floor.webp");
+	const laid = scene.created[0].data[0];
+	scene.drawings.push({ ...laid, id: "laid", toObject() { return { ...laid }; } });
+
+	const removed = await bucketEraseAt(scene, { x: 100, y: 150 });
+
+	assert.equal(removed, 1);
+	assert.deepEqual(scene.deleted, [{ type: "Drawing", ids: ["laid"] }]);
+	assert.equal(scene.created.length, 1, "nothing is written back — no remainder pieces");
+});
+
+test("erasing inside a small pillar cuts the pillar out, not the square around it", async () => {
+	// A 5x5 room with a big floor over it, and a walled pillar 40px across in
+	// the middle of one square. Erasing inside the pillar must leave the floor
+	// in the rest of that square — cutting the whole square took floor from
+	// outside the pillar's walls, which is what the user saw.
+	const walls = [
+		wall(0, 0, 500, 0), wall(500, 0, 500, 500), wall(500, 500, 0, 500), wall(0, 500, 0, 0),
+		wall(230, 230, 270, 230), wall(270, 230, 270, 270), wall(270, 270, 230, 270), wall(230, 270, 230, 230),
+	];
+	const big = doc({
+		id: "big", x: 0, y: 0, texture: "grey.webp", sort: -10,
+		shape: { type: "p", points: [0, 0, 500, 0, 500, 500, 0, 500] },
+		flags: { [MODULE_ID]: { dungeonFloorShape: true } },
+	});
+	const scene = fillScene(walls, { drawings: [big] });
+	const { pointInPolygon } = await import("../../scripts/dungeon/dungeon-wall-outline.mjs");
+
+	const removed = await bucketEraseAt(scene, { x: 250, y: 250 });
+
+	assert.equal(removed, 1, "the big floor is replaced");
+	assert.deepEqual(scene.deleted, [{ type: "Drawing", ids: ["big"] }]);
+	const pieces = scene.created.flatMap(c => c.data).map(verticesOf);
+	const covered = p => pieces.some(piece => pointInPolygon(p, piece));
+	assert.equal(covered({ x: 250, y: 250 }), false, "inside the pillar is bare");
+	assert.equal(covered({ x: 215, y: 250 }), true, "the same square outside the pillar keeps its floor");
+	assert.equal(covered({ x: 250, y: 290 }), true);
+	assert.equal(covered({ x: 50, y: 50 }), true, "and so does the rest of the room");
+	assert.ok(pieces.every(piece => piece.every(v => v.x >= 0 && v.x <= 500 && v.y >= 0 && v.y <= 500)), "nothing is written outside the room");
 });
 
 test("a gap in the walls refuses rather than flooding the whole map", async () => {
@@ -341,25 +481,7 @@ test("a door bounds the fill — a doorway is where the room ends", async () => 
 	await bucketFillAt(scene, { x: 150, y: 150 }, "floor.webp");
 
 	const made = scene.created[0].data;
-	assert.ok(made.every(t => t.x < 300), "the fill must not cross into the next room");
-});
-
-test("filling the same room twice does not stack a second floor", async () => {
-	const existing = [];
-	for (let gx = 0; gx < 3; gx++) {
-		for (let gy = 0; gy < 3; gy++) {
-			existing.push(doc({
-				id: `t${gx}${gy}`, x: gx * 100, y: gy * 100,
-				flags: { [MODULE_ID]: { dungeonFloor: true } },
-			}));
-		}
-	}
-	const scene = fillScene(boxRoom(), { tiles: existing });
-
-	const filled = await bucketFillAt(scene, { x: 150, y: 150 }, "floor.webp");
-
-	assert.equal(filled, 0);
-	assert.equal(scene.created.length, 0);
+	assert.ok(made.every(d => verticesOf(d).every(p => p.x <= 300)), "the fill must not cross into the next room");
 });
 
 test("the erase bucket clears the same area the fill would cover", async () => {

@@ -531,3 +531,109 @@ export function findWallGapBridges(walls, tolerance = 4, maxDistance = 50) {
 
 	return bridges;
 }
+
+/** Shoelace area with its sign kept: positive for clockwise on screen (y down). */
+function signedArea(points) {
+	let sum = 0;
+	for (let i = 0; i < points.length; i++) {
+		const a = points[i];
+		const b = points[(i + 1) % points.length];
+		sum += (a.x * b.y) - (b.x * a.y);
+	}
+	return sum / 2;
+}
+
+/**
+ * Outline a set of grid cells as polygons.
+ *
+ * Every 4-connected block of cells becomes ONE polygon: its outer boundary with
+ * each enclosed hole joined to it by a zero-width cut, the way earcut represents
+ * holes. A Drawing polygon cannot carry holes of its own, and a fill that floors
+ * the corridor around a room must not floor the room too — measured on a real
+ * cave map, one corridor fill enclosed two 110-square rooms.
+ *
+ * Vertices on straight runs are dropped, so a rectangle comes back as four
+ * points however many cells it took.
+ *
+ * @param {Set<string>} cells - "gx,gy" keys
+ * @param {number} cellSize - pixels per cell
+ * @returns {Array<Array<{x: number, y: number}>>} polygons, clockwise on screen
+ */
+export function outlineCells(cells, cellSize) {
+	const has = (x, y) => cells.has(`${x},${y}`);
+
+	// Directed boundary edges, clockwise around each cell. Keyed by start
+	// vertex; a vertex starts two edges where cells touch only at a corner.
+	const outgoing = new Map();
+	const add = (ax, ay, bx, by) => {
+		const key = `${ax},${ay}`;
+		if (!outgoing.has(key)) outgoing.set(key, []);
+		outgoing.get(key).push([bx, by]);
+	};
+	for (const key of cells) {
+		const [x, y] = key.split(",").map(Number);
+		if (!has(x, y - 1)) add(x, y, x + 1, y);
+		if (!has(x + 1, y)) add(x + 1, y, x + 1, y + 1);
+		if (!has(x, y + 1)) add(x + 1, y + 1, x, y + 1);
+		if (!has(x - 1, y)) add(x, y + 1, x, y);
+	}
+
+	const loops = [];
+	for (const [startKey, ends] of outgoing) {
+		while (ends.length > 0) {
+			const raw = [];
+			let key = startKey;
+			do {
+				const next = outgoing.get(key)?.pop();
+				if (!next) break;
+				raw.push(next);
+				key = `${next[0]},${next[1]}`;
+			} while (key !== startKey);
+			const points = raw
+				.filter((b, i) => {
+					const a = raw[(i + raw.length - 1) % raw.length];
+					const c = raw[(i + 1) % raw.length];
+					return ((b[0] - a[0]) * (c[1] - b[1])) - ((b[1] - a[1]) * (c[0] - b[0])) !== 0;
+				})
+				.map(([x, y]) => ({ x: x * cellSize, y: y * cellSize }));
+			if (points.length >= 3) loops.push({ points, area: signedArea(points) });
+		}
+	}
+
+	const outers = loops.filter(loop => loop.area > 0).map(loop => loop.points);
+	const topOf = points => points.reduce((t, p) => (p.y < t.y || (p.y === t.y && p.x < t.x) ? p : t));
+	const holes = loops.filter(loop => loop.area < 0)
+		.map(loop => loop.points)
+		.sort((a, b) => topOf(a).y - topOf(b).y);
+
+	// Cut each hole into the boundary directly above it. Holes go top-down, so
+	// the edge a cut lands on is always part of an outer polygon by the time it
+	// is looked for — possibly a hole already cut in, which is fine.
+	// The cut runs up the middle of a cell column, never through a vertex.
+	for (const hole of holes) {
+		const top = topOf(hole);
+		const cutX = top.x + (cellSize / 2);
+		let best = null;
+		for (const poly of outers) {
+			for (let i = 0; i < poly.length; i++) {
+				const a = poly[i];
+				const b = poly[(i + 1) % poly.length];
+				if (a.y !== b.y || a.y >= top.y) continue;
+				if (cutX <= Math.min(a.x, b.x) || cutX >= Math.max(a.x, b.x)) continue;
+				if (!best || a.y > best.y) best = { poly, i, y: a.y };
+			}
+		}
+		if (!best) continue;
+		const j = hole.findIndex((a, i) => {
+			const b = hole[(i + 1) % hole.length];
+			return a.y === top.y && b.y === top.y && cutX > Math.min(a.x, b.x) && cutX < Math.max(a.x, b.x);
+		});
+		if (j < 0) continue;
+		const gate = { x: cutX, y: best.y };
+		const mouth = { x: cutX, y: top.y };
+		const ring = [...hole.slice(j + 1), ...hole.slice(0, j + 1)];
+		best.poly.splice(best.i + 1, 0, gate, mouth, ...ring, mouth, gate);
+	}
+
+	return outers;
+}

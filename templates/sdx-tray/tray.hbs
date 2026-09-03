@@ -1211,9 +1211,12 @@
                     <i class="fas fa-fill-drip"></i> Reskin With SDX Assets
                 </button>
 
-                <!-- Room floor paint bucket -->
-                <button class="dungeon-floorpaint-btn" title="Paint bucket. Click floods the walled area under the cursor with the selected floor tile; Shift+Click floods it away again; Shift+Drag erases freehand. Fills in grid squares and stops at walls and doors. Stays on until you press it again.">
-                    <i class="fas fa-fill"></i> Paint / Erase Floor
+                <!-- Floor tools: paint bucket and eraser, one button each -->
+                <button class="dungeon-floorpaint-btn" title="Paint bucket. Click inside a walled area to floor it with the selected floor tile, fitted to the walls. Stops at walls and doors. Stays on until you press it again.">
+                    <i class="fas fa-fill"></i> Paint Floor
+                </button>
+                <button class="dungeon-flooreraser-btn" title="Floor eraser. Click inside a walled area to clear its SDX floor, stopping at the walls; drag to brush floor away square by square. Stays on until you press it again.">
+                    <i class="fas fa-eraser"></i> Erase Floor
                 </button>
 
                 <!-- Wall gap finder -->
@@ -1495,18 +1498,22 @@
 
                 <!-- Usage hints -->
                 <div class="tray-footer-message dungeon-hints">
-                    {{#if floorPaintArmed}}
+                    {{#if (eq floorTool 'fill')}}
                     <div class="dungeon-hint-row">
-                        <i class="fas fa-fill"></i> <span>Click</span> a room to floor it
-                    </div>
-                    <div class="dungeon-hint-row">
-                        <i class="fas fa-eraser"></i> <span>Shift+Click</span> to clear a walled area
-                    </div>
-                    <div class="dungeon-hint-row">
-                        <i class="fas fa-eraser"></i> <span>Shift+Drag</span> to brush floor away
+                        <i class="fas fa-fill"></i> <span>Click</span> inside a walled area to floor it
                     </div>
                     <div class="dungeon-hint-info">
-                        Undo Last Change reverses any of these
+                        Undo Last Change reverses it
+                    </div>
+                    {{else if (eq floorTool 'erase')}}
+                    <div class="dungeon-hint-row">
+                        <i class="fas fa-eraser"></i> <span>Click</span> inside a walled area to clear its floor
+                    </div>
+                    <div class="dungeon-hint-row">
+                        <i class="fas fa-eraser"></i> <span>Drag</span> to brush floor away
+                    </div>
+                    <div class="dungeon-hint-info">
+                        Undo Last Change reverses either
                     </div>
                     {{else if (eq dungeonMode 'tiles')}}
                     <div class="dungeon-hint-row">

@@ -544,7 +544,7 @@ export async function getDungeonPainterData() {
 		backgroundOptions,
 		selectedBackground: _selectedBackground,
 		// So the footer hints can describe the armed tool instead of the mode.
-		floorPaintArmed: _floorPaintArmed,
+		floorTool: _floorTool,
 		// Which tile sections are rolled up, so a re-render keeps them that way.
 		collapsed: {
 			floor: isDungeonSectionCollapsed("floor"),
@@ -613,28 +613,27 @@ export function cleanupDungeonPainting() {
 	_isDragging = false;
 	_dragStart = null;
 
-	_floorPaintArmed = false;
+	_floorTool = null;
 	destroySelectionRect();
 }
 
-// The floor-paint bucket, which STAYS on across clicks: varying a hallway
-// from the rooms it joins means several clicks in a row, and re-arming between
-// each would be the whole cost of the tool.
-let _floorPaintArmed = false;
+// The floor tools, which STAY on across clicks: varying a hallway from the
+// rooms it joins means several clicks in a row, and re-arming between each
+// would be the whole cost of the tool. Two buttons rather than one plus Shift:
+// a modifier key is a hidden mode, and the eraser went unfound behind it.
+let _floorTool = null;
 
 /**
- * Turn the room-floor paint bucket on or off.
- * @param {boolean} value
+ * Arm a floor tool, or disarm with null.
+ * @param {"fill"|"erase"|null} tool
  */
-export function setFloorPaintArmed(value) {
-	_floorPaintArmed = !!value;
+export function setFloorTool(tool) {
+	_floorTool = (tool === "fill" || tool === "erase") ? tool : null;
 }
 
-/**
- * Is the floor-paint bucket active?
- */
-export function isFloorPaintArmed() {
-	return _floorPaintArmed;
+/** The armed floor tool, or null. */
+export function getFloorTool() {
+	return _floorTool;
 }
 
 /**
@@ -692,11 +691,11 @@ function onPointerDown(event) {
 	const pos = event.data?.getLocalPosition(canvas.stage);
 	_dragStart = { x: pos.x, y: pos.y };
 
-	if (_floorPaintArmed && _isShiftHeld) beginBrushStroke(pos, canvas.scene?.grid?.size);
+	if (_floorTool === "erase") beginBrushStroke(pos, canvas.scene?.grid?.size);
 
-	// Create selection rectangle for visual feedback. The floor bucket gets one
-	// too: it takes a drag to mean "paint this much of the room".
-	if (_floorPaintArmed
+	// Create selection rectangle for visual feedback. The floor tools get one
+	// too, so a drag is visibly a drag.
+	if (_floorTool
         || _dungeonMode === "tiles" || (_dungeonMode === "doors" && _isShiftHeld) || _dungeonMode === "intwalls") {
 		createSelectionRect();
 	}
@@ -711,14 +710,14 @@ function onPointerMove(event) {
 	// Safety check - make sure canvas is still valid
 	if (!canvas?.stage || !canvas?.interface) return;
 
-	if (_floorPaintArmed && _isShiftHeld) {
+	if (_floorTool === "erase") {
 		const pos = event.data?.getLocalPosition(canvas.stage);
 		if (pos) extendBrushStroke(pos, canvas.scene?.grid?.size);
 		return;
 	}
 
 	// Only show rectangle in tiles mode, doors+shift (delete), or the floor bucket
-	if (_floorPaintArmed || _dungeonMode === "tiles" || (_dungeonMode === "doors" && _isShiftHeld)) {
+	if (_floorTool || _dungeonMode === "tiles" || (_dungeonMode === "doors" && _isShiftHeld)) {
 		const pos = event.data?.getLocalPosition(canvas.stage);
 		if (pos) {
 			updateSelectionRect(_dragStart, pos, _isShiftHeld);
@@ -762,39 +761,34 @@ function onPointerUp(event) {
 	const dy = Math.abs(endPos.y - _dragStart.y);
 	const isClick = dx < 10 && dy < 10;
 
-	// Sticky, and deliberately claims the gesture before the painting modes:
-	// while the bucket is on, a click means "this whole room" and a drag means
-	// "this much of it". The drag exists because a corridor network with no
-	// internal doors is a single room — clicking one corridor floors them all.
-	if (_floorPaintArmed) {
+	// Sticky, and deliberately claims the gesture before the painting modes.
+	// Automatic room detection is wrong on some map somewhere, so an eraser the
+	// GM aims themselves is what makes a bad result recoverable — and it is its
+	// own button, not a Shift variant nobody finds.
+	if (_floorTool === "erase") {
 		_dragStart = null;
-
-		// Shift erases, the same way it does in Rooms mode. Automatic room
-		// detection is wrong on some map somewhere, so an eraser the GM aims
-		// themselves is what makes a bad result recoverable by hand.
-		if (deleteMode && isClick) {
-			// Bucket erase: clears the contiguous space the click is in, bounded
-			// by walls and doorways. Cells rather than shapes, because the floor
-			// under a click is often one shape covering a whole corridor network.
-			// An un-awaited reject is invisible: the click silently does nothing.
+		if (isClick) {
+			// Bucket erase: the walled area under the click, bounded by walls and
+			// doorways. An un-awaited reject is invisible: the click silently
+			// does nothing.
 			bucketEraseAt(canvas.scene, endPos)
 				.catch(err => ui.notifications.error(`SDX | Erase failed — ${err.message}`));
 		}
-		else if (deleteMode) {
+		else {
 			// Freehand: exactly the squares the cursor passed over. A dragged box
 			// assumes rooms are rectangles, and on a cave map nothing is.
 			eraseFloorCells(canvas.scene, brushStrokeCells(), { includeWallArt: false });
 			clearBrushStroke();
 		}
-		else {
-			// Drag and click both fill the room under the cursor. There was a
-			// separate drag-to-paint that clipped a room to the dragged box; it
-			// was removed because the click path fills the walled area exactly,
-			// which is what a bucket does and what the box was working around.
-			// Accepting a drag here also means a shaky click still lands.
-			bucketFillAt(canvas.scene, endPos, _selectedFloorTile)
-				.catch(err => ui.notifications.error(`SDX | Fill failed — ${err.message}`));
-		}
+		return;
+	}
+	if (_floorTool === "fill") {
+		_dragStart = null;
+		// Drag and click both fill the room under the cursor, so a shaky click
+		// still lands. The click fills the walled area exactly, which is what
+		// the old drag-to-box was working around.
+		bucketFillAt(canvas.scene, endPos, _selectedFloorTile)
+			.catch(err => ui.notifications.error(`SDX | Fill failed — ${err.message}`));
 		return;
 	}
 

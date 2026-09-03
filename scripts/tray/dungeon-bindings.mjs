@@ -5,7 +5,7 @@
 
 import { flattenDungeonLevel, getDungeonFloorLevels, getFlattendDungeonLevels, unflattenTile } from "../canvas/TileFlattenSD.mjs";
 import { clearDungeonOnScene, generateDungeon, generateRandomSeed, getGeneratorSeed, getGeneratorSettings, setGeneratorSeed, setGeneratorSettings, toggleGeneratorPanel } from "../dungeon/DungeonGeneratorSD.mjs";
-import { toggleDungeonSection, isFloorPaintArmed, setFloorPaintArmed, runSceneReskin, selectDoorTile, selectFloorTile, selectIntDoorTile, selectIntWallTile, selectWallTile, setCurvedWalls, setDungeonBackground, setDungeonMode, setNoFoundryWalls, setWallShadows } from "../dungeon/DungeonPainterSD.mjs";
+import { toggleDungeonSection, getFloorTool, setFloorTool, runSceneReskin, selectDoorTile, selectFloorTile, selectIntDoorTile, selectIntWallTile, selectWallTile, setCurvedWalls, setDungeonBackground, setDungeonMode, setNoFoundryWalls, setWallShadows } from "../dungeon/DungeonPainterSD.mjs";
 import { toggleWallGapMarkers } from "../dungeon/dungeon-reskin.mjs";
 import { undoLastDungeonAction } from "../dungeon/dungeon-undo.mjs";
 import { renderTray } from "./TraySD.mjs";
@@ -161,27 +161,32 @@ export const DungeonBindings = {
 			renderTray();
 		});
 
-		// Room floor paint bucket. Sticky rather than one-shot: re-arming between
-		// every room is the entire cost of a tool meant for several clicks.
-		const floorPaintBtn = elem.querySelector(".dungeon-floorpaint-btn");
-		if (floorPaintBtn) {
-			floorPaintBtn.classList.toggle("armed", isFloorPaintArmed());
-			floorPaintBtn.addEventListener("click", e => {
+		// Floor tools, one button each. Sticky rather than one-shot: re-arming
+		// between every room is the entire cost of a tool meant for several
+		// clicks. Pressing the armed button disarms; pressing the other switches.
+		const floorButtons = {
+			fill: elem.querySelector(".dungeon-floorpaint-btn"),
+			erase: elem.querySelector(".dungeon-flooreraser-btn"),
+		};
+		for (const [tool, button] of Object.entries(floorButtons)) {
+			if (!button) continue;
+			button.classList.toggle("armed", getFloorTool() === tool);
+			button.addEventListener("click", e => {
 				e.preventDefault();
 				e.stopPropagation();
-				const arming = !isFloorPaintArmed();
-				setFloorPaintArmed(arming);
+				const arming = getFloorTool() !== tool;
+				setFloorTool(arming ? tool : null);
 				// Re-render so the footer hints switch to describing this tool.
 				// Without it the panel keeps advertising Rooms-mode gestures while
 				// a different tool is live, which is how the eraser stayed
 				// invisible to the one person who needed it.
 				renderTray();
 				if (arming) {
-					ui.notifications.info(
-						"SDX | Paint bucket armed. Click floods the walled area with the selected "
-                        + "floor · Shift+click floods it away · Shift+drag erases freehand. "
-                        + "Press the button again to stop."
-					);
+					ui.notifications.info(tool === "fill"
+						? "SDX | Paint bucket armed. Click inside a walled area to floor it with the "
+                            + "selected tile. Press the button again to stop."
+						: "SDX | Floor eraser armed. Click inside a walled area to clear its floor · "
+                            + "drag to brush floor away. Press the button again to stop.");
 				}
 			});
 		}

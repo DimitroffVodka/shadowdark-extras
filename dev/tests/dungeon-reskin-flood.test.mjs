@@ -387,3 +387,58 @@ test("bridging does not seal a real doorway", () => {
 
 	assert.equal(result.leaked, true, "a real opening must stay open");
 });
+
+test("a wall vertex sitting exactly on a cell centre is not a wall", () => {
+	// The east wall of a sealed room, drawn as two segments meeting at (500,
+	// 250) — the centre of cell (4,2)... which is OUTSIDE the room (x 200-500).
+	// The vertex must not stop the fill inside the room from reaching every
+	// cell, and must not let it out either. Measured on a real cave, one such
+	// vertex cut a 435-square fill down to 84.
+	const walls = [
+		hWall(2, 5, 2), hWall(2, 5, 5), vWall(2, 2, 5),
+		{ c: [500, 200, 500, 250], door: 0 }, { c: [500, 250, 500, 500], door: 0 },
+	];
+	installWalls(walls);
+
+	const result = floodFillFromWalls(sceneWith(walls), { x: 250, y: 250 });
+
+	assert.equal(result.leaked, false);
+	assert.equal(result.cells.size, 9);
+
+	// And a vertex on a centre INSIDE the room: an interior stub ending at
+	// (350, 350), the centre of cell (3,3). That cell is still floor.
+	const stubbed = [...sealedRoom(), { c: [300, 200, 350, 350], door: 0 }];
+	installWalls(stubbed);
+	const inner = floodFillFromWalls(sceneWith(stubbed), { x: 250, y: 250 });
+	assert.equal(inner.leaked, false);
+	assert.equal(inner.cells.size, 9, "the stub's end does not wall off its cell");
+});
+
+test("a fill can be confined to a region without that counting as a leak", () => {
+	// No walls at all, but only cells inside x<300,y<300 are allowed. The fill
+	// stops at the edge of that region and reports no leak — this is how the
+	// bucket's fine fill stays inside the coarse fill's squares.
+	installWalls([]);
+	const scene = sceneWith([]);
+
+	const result = floodFillFromWalls(scene, { x: 150, y: 150 }, {
+		within: p => p.x > 0 && p.y > 0 && p.x < 300 && p.y < 300,
+	});
+
+	assert.equal(result.leaked, false);
+	assert.equal(result.cells.size, 9);
+});
+
+test("a capped wall extends past its endpoint by the cap, along its own line", () => {
+	// Cap only the end: the start stays put, the end moves 10px further along
+	// the segment's direction.
+	const [a, b] = endpointsOf(wallDrawingGeometry([1000, 1000, 1300, 1400], "wall.webp", 0, 10));
+	assert.ok(Math.abs(a.x - 1000) < 0.001 && Math.abs(a.y - 1000) < 0.001, `start moved: ${JSON.stringify(a)}`);
+	assert.ok(Math.abs(b.x - 1306) < 0.001 && Math.abs(b.y - 1408) < 0.001, `end ${JSON.stringify(b)}`);
+
+	// Both capped: the drawing is 20px longer and still centred on the wall.
+	const both = wallDrawingGeometry([500, 500, 900, 500], "wall.webp", 10, 10);
+	assert.equal(both.shape.width, 420);
+	assert.equal(both.x, 490);
+	assert.equal(both.y, 490);
+});
