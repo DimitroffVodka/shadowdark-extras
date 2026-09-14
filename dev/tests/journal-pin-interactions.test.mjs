@@ -259,6 +259,65 @@ test("leaving hides the tooltip and animates back to rest", () => {
 	assert.deepEqual([scaleReset.vars.x, scaleReset.vars.y], [1.0, 1.0]);
 });
 
+// GSAP's PixiPlugin adds a ColorMatrixFilter for any pixi brightness/hue tween
+// and never removes it. Leave used to tween brightness on every pin, so each
+// pin ever hovered kept a filter pass per frame until reload (the FPS "leak").
+class ColorMatrixFilter {}
+class TmfxFilter extends ColorMatrixFilter {}
+
+function withColorMatrixFilter(fn) {
+	globalThis.PIXI.filters = { ColorMatrixFilter };
+	try {
+		fn();
+	}
+	finally {
+		delete globalThis.PIXI.filters;
+	}
+}
+
+test("leaving a pin no color tween touched starts no pixi color tween", () => {
+	const gsap = reset();
+	const pin = makePin({ style: { hoverAnimation: "highlight" } });
+
+	pin._onPointerLeave(makePointerEvent());
+
+	assert.ok(!gsap.of("to").some(c => c.target === pin && c.vars.pixi),
+		"a pixi tween would push a ColorMatrixFilter onto the pin");
+});
+
+test("leaving a brightened pin resets it, then drops only its plain color filter", () => {
+	withColorMatrixFilter(() => {
+		const gsap = reset();
+		const pin = makePin({ style: { hoverAnimation: "brightness" } });
+		const tmfx = new TmfxFilter();
+		pin.filters = [tmfx, new ColorMatrixFilter()];
+		pin._gsColorMatrixFilter = { brightness: 1.3, hue: 0 };
+
+		pin._onPointerLeave(makePointerEvent());
+		const colorReset = gsap.of("to").find(c => c.target === pin && c.vars.pixi);
+		assert.deepEqual(colorReset.vars.pixi, { brightness: 1, hue: 0 });
+		colorReset.vars.onComplete();
+
+		assert.deepEqual(pin.filters, [tmfx]);
+		assert.equal(pin._gsColorMatrixFilter, undefined);
+	});
+});
+
+test("a flash ping drops its color filter once the flash ends", () => {
+	withColorMatrixFilter(() => {
+		const gsap = reset();
+		const pin = makePin({ style: { pingAnimation: "flash" } });
+
+		pin.animatePing();
+		const flash = gsap.of("fromTo").find(c => c.target === pin);
+		pin.filters = [new ColorMatrixFilter()];
+		pin._gsColorMatrixFilter = { brightness: 1 };
+		flash.vars.onComplete();
+
+		assert.equal(pin.filters, null);
+	});
+});
+
 test("without gsap, leaving resets scale and rotation directly", () => {
 	reset();
 	env.setGsap(undefined);

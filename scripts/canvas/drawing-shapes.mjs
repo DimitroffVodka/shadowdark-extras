@@ -28,15 +28,6 @@ export const DrawingShapes = {
 		this._previewGraphics.clear();
 		const color = this._cssToPixi(this.state.brushSettings.color);
 		const pts = this.state.drawingPoints;
-		// Shadow
-		this._previewGraphics.lineStyle(this.state.brushSettings.size, 0x000000, 0.3);
-		if (pts.length > 0) {
-			this._previewGraphics.moveTo(sp.x + pts[0][0] + 2, sp.y + pts[0][1] + 2);
-			for (let i = 1; i < pts.length; i++) {
-				this._previewGraphics.lineTo(sp.x + pts[i][0] + 2, sp.y + pts[i][1] + 2);
-			}
-		}
-		// Main
 		this._drawLineWithStyle(
 			this._previewGraphics, pts, sp.x, sp.y, this.state.brushSettings.size, color, 1.0,
 			this.state.lineStyle
@@ -78,10 +69,6 @@ export const DrawingShapes = {
 		const color = this._cssToPixi(this.state.brushSettings.color);
 		const sw = this.state.brushSettings.size;
 		this._previewGraphics.clear();
-		this._previewGraphics.lineStyle(sw, 0x000000, 0.3);
-		this._drawLineWithStyle(
-			this._previewGraphics, pts, s.x + 2, s.y + 2, sw, 0x000000, 0.3, "solid"
-		);
 		this._drawLineWithStyle(
 			this._previewGraphics, pts, s.x, s.y, sw, color, 1.0, this.state.lineStyle
 		);
@@ -124,8 +111,6 @@ export const DrawingShapes = {
 		const color = this._cssToPixi(this.state.brushSettings.color);
 		const sw = this.state.brushSettings.size;
 		this._previewGraphics.clear();
-		this._previewGraphics.lineStyle(sw, 0x000000, 0.3);
-		this._drawBoxWithStyle(this._previewGraphics, s.x + 2, s.y + 2, w, h, "solid");
 		this._previewGraphics.lineStyle(sw, color, 1.0);
 		this._drawBoxWithStyle(this._previewGraphics, s.x, s.y, w, h, this.state.lineStyle);
 	},
@@ -165,8 +150,6 @@ export const DrawingShapes = {
 		const color = this._cssToPixi(this.state.brushSettings.color);
 		const sw = this.state.brushSettings.size;
 		this._previewGraphics.clear();
-		this._previewGraphics.lineStyle(sw, 0x000000, 0.3);
-		this._drawEllipseWithStyle(this._previewGraphics, s.x + 2, s.y + 2, w, h, "solid");
 		this._previewGraphics.lineStyle(sw, color, 1.0);
 		this._drawEllipseWithStyle(this._previewGraphics, s.x, s.y, w, h, this.state.lineStyle);
 	},
@@ -205,7 +188,7 @@ export const DrawingShapes = {
 		const half = sqSize / 2;
 		const pad = sqSize * 0.1;
 		this._drawSymbolShape(
-			g, this.state.stampStyle, wc.x, wc.y, half, pad, sw, color, 0.5, 0x000000, 0.15, 2
+			g, this.state.stampStyle, wc.x, wc.y, half, pad, sw, color, 0.5, 0x000000, 0, 0
 		);
 		g.alpha = this.state.opacity;
 		this.canvasLayer.addChild(g);
@@ -224,15 +207,6 @@ export const DrawingShapes = {
 		if (!this.canvasLayer) return;
 		const g = new PIXI.Graphics();
 		const color = this._cssToPixi(strokeColor);
-		// Shadow
-		g.lineStyle(strokeWidth, 0x000000, 0.3);
-		if (points.length > 0) {
-			g.moveTo(startX + points[0][0] + 2, startY + points[0][1] + 2);
-			for (let i = 1; i < points.length; i++) {
-				g.lineTo(startX + points[i][0] + 2, startY + points[i][1] + 2);
-			}
-		}
-		// Main
 		this._drawLineWithStyle(g, points, startX, startY, strokeWidth, color, 1.0, lineStyle);
 		g.alpha = this.state.opacity;
 		this.canvasLayer.addChild(g);
@@ -258,8 +232,6 @@ export const DrawingShapes = {
 		const color = this._cssToPixi(this.state.brushSettings.color);
 		const sw = this.state.brushSettings.size;
 		const ls = this.state.lineStyle;
-		g.lineStyle(sw, 0x000000, 0.3);
-		this._drawBoxWithStyle(g, startX + 2, startY + 2, w, h, "solid");
 		g.lineStyle(sw, color, 1.0);
 		this._drawBoxWithStyle(g, startX, startY, w, h, ls);
 		g.alpha = this.state.opacity;
@@ -288,8 +260,6 @@ export const DrawingShapes = {
 		const color = this._cssToPixi(this.state.brushSettings.color);
 		const sw = this.state.brushSettings.size;
 		const ls = this.state.lineStyle;
-		g.lineStyle(sw, 0x000000, 0.3);
-		this._drawEllipseWithStyle(g, startX + 2, startY + 2, w, h, "solid");
 		g.lineStyle(sw, color, 1.0);
 		this._drawEllipseWithStyle(g, startX, startY, w, h, ls);
 		g.alpha = this.state.opacity;
@@ -320,7 +290,7 @@ export const DrawingShapes = {
 		const color = this._cssToPixi(this.state.brushSettings.color);
 		const half = sqSize / 2;
 		const pad = sqSize * 0.1;
-		this._drawSymbolShape(g, symbolType, x, y, half, pad, sw, color, 1.0, 0x000000, 0.3, 2);
+		this._drawSymbolShape(g, symbolType, x, y, half, pad, sw, color, 1.0, 0x000000, 0, 0);
 		g.alpha = this.state.opacity;
 		this.canvasLayer.addChild(g);
 		const id = `symbol-${symbolType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;

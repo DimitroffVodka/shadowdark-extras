@@ -28,6 +28,7 @@ import {
 import {
 	attachPinListeners,
 	detachPinListeners,
+	dropColorFilter,
 	onPointerDown,
 	onPointerEnter,
 	onPointerLeave,
@@ -224,7 +225,10 @@ export class JournalPinGraphics extends PIXI.Container {
 		else if (pingAnim === "flash") {
 			gsap.fromTo(
 				this, { pixi: { brightness: 3 } },
-				{ pixi: { brightness: 1 }, duration: 1.0, ease: "power2.out" }
+				{
+					pixi: { brightness: 1 }, duration: 1.0, ease: "power2.out",
+					onComplete: () => dropColorFilter(this),
+				}
 			);
 			gsap.fromTo(this.scale,
 				{ x: 1.5, y: 1.5 },

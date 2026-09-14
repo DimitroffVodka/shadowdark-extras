@@ -107,7 +107,7 @@ import { initWeaponAnimations } from "./animation/WeaponAnimationSD.mjs";
 import { initLevelUpAnimations } from "./animation/LevelUpAnimationSD.mjs";
 import { initFocusSpellTracker, startDurationSpell, endDurationSpell, registerSpellModification, getActiveDurationSpells } from "./effects/FocusSpellTrackerSD.mjs";
 import { initBreakOnDamage, breakEffectOnDamage, clearBreakOnDamage, applySpellEffect } from "./effects/BreakOnDamageSD.mjs";
-import { injectCarousingButton, ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, migrateLegacyRenown } from "./party/carousing/CarousingSD.mjs";
+import { ensureCarousingJournal, ensureCarousingTablesJournal, initCarousingSocket, migrateLegacyRenown } from "./party/carousing/CarousingSD.mjs";
 import { migrateWebpAssetPaths, sweepWorldCompendiums } from "./shared/WebpMigrationSD.mjs";
 import { openCarousingOverlay, refreshCarousingOverlay } from "./party/carousing/CarousingOverlaySD.mjs";
 import { initTemplateEffects } from "./effects/TemplateEffectsSD.mjs";
@@ -129,6 +129,7 @@ import { initTray, registerPartyStatsSocket } from "./tray/TraySD.mjs";
 import { registerTrayAppHooks } from "./tray/TrayApp.mjs";
 import { initAppearanceSettings } from "./character-sheet/AppearanceSettingsSD.mjs";
 import { injectStaffSpellButton, injectStaffSpellsUI, injectWeaponSpellRechargeButtons, patchCanUseMagicItems, registerStaffSpellHooks } from "./item-sheets/staff-spells.mjs";
+import { injectGearUseButtons } from "./items/gear-activation.mjs";
 import { initJournalNarration } from "./journal/JournalNarrationSD.mjs";
 import { initMedkit, registerMedkitPack, unregisterMedkitPack, getMedkitPacks, scanWorldForUpdates, applyWorldMedkitUpdates, medkitScanWorld } from "./combat/MedkitSD.mjs";
 import { initLightTrackerApp } from "./canvas/LightTrackerAppSD.mjs";
@@ -962,6 +963,7 @@ if (anyFeatureEnabled(
 	if (featureEnabled(FEATURE_IDS.MAGIC_ITEM_SHEETS)) {
 		await injectStaffSpellsUI(app, html, data);
 		injectWeaponSpellRechargeButtons(app, html, app.actor);
+		injectGearUseButtons(app, html, app.actor);
 	}
 	if (featureEnabled(FEATURE_IDS.GEM_ENHANCEMENTS)) {
 		enhanceGemInventory(app, html, app.actor);
@@ -984,9 +986,6 @@ if (anyFeatureEnabled(
 	if (featureEnabled(FEATURE_IDS.QUICK_CONDITIONS)) {
 		await injectConditionsToggles(app, html, app.actor);
 	}
-	// if (!game.settings.get(MODULE_ID, "tray.enabled")) {
-	// 	await injectCarousingButton(app, html, app.actor);
-	// }
 	if (featureEnabled(FEATURE_IDS.ITEM_MACROS)) enableItemChatIcon(app, html);
 });
 
@@ -1169,6 +1168,8 @@ if (anyFeatureEnabled(
 		}
 		else if (item?.type === "Spell"
 			&& featureEnabled(FEATURE_IDS.ANIMATION_ITEM_OVERRIDES)) injectWeaponAnimationButton(html, item);
+		else if (item?.type === "Basic" && item.system?.light?.isSource
+			&& featureEnabled(FEATURE_IDS.TORCH_ANIMATIONS)) injectWeaponAnimationButton(html, item);
 	}
 	catch(err) {
 		console.error(`${MODULE_ID} | Failed to inject weapon bonus tab`, err);

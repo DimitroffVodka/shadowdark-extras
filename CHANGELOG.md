@@ -6,9 +6,18 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [6.14.0] — 2026-09-14 — Journal Pins hover leak fix, dungeon reskin and floor tools, per-item Torch Sprites, usable gear
+
+### Fixed
+
+- **Journal Pins no longer slow the canvas down the more pins you hover.** Moving the mouse off a pin attached an invisible colour filter to it that was never removed, so every pin hovered during a session kept costing render time until a reload. Pins now shed that filter as soon as their hover animation settles, and the *flash* ping does the same. Reported on Discord by Panicked Spathi.
+
 ### Added
 
-- **Per-weapon Momentum: exploding damage dice for a single weapon.** The Weapon **Bonuses** tab has a new *Exploding damage dice (Momentum)* toggle that overrides the Shadowdark system's world-wide Momentum Mode, so a custom exploding weapon works even when that setting is off. It explodes the weapon's base damage and its configured damage bonuses, including critical extra dice, and works independently of *Enable Weapon Bonuses* so a weapon that only wants exploding damage needs nothing else configured. When Momentum Mode is already on world-wide the system's own exploding stands and SDX does not add a second explode modifier on top. ([#134](https://github.com/DimitroffVodka/shadowdark-extras/issues/134))
+- **Dungeon reskin and floor tools.** The Dungeons tab can reskin an existing map with SDX assets: floors are traced from the scene's walls (one polygon per room, edge-exact at any angle, doors decide what counts as a room), with *Show Wall Gaps* marking every loose wall end so a failed trace can be repaired. *Paint Floor* is a bucket that retextures one room per click; *Erase Floor* is a bucket on click and a freehand brush on drag, both bounded by the walls. Undo and collapsible tile sections round out the tab. Still being refined — feedback welcome.
+- **Per-item Torch Sprites.** Light-source items get a sheet button and dialog to set the prop image, prop scale and offsets, and flame scale, offsets and rotation, with a live preview box showing the token, prop and the actual looping flame. Stored per item, so torches and lanterns can look different.
+- **Usable gear.** Basic items can be given an activation: a use control on the inventory row, an optional charge count, and a chat card shaped like a potion's, so the Activity tab's damage, effects, summoning, item-give and macros all work on a ring or a wand without a roll and without the item being consumed.
+- **Momentum now reaches every damage die.** The Weapon **Bonuses** tab has a new *Exploding damage dice (Momentum)* toggle for custom exploding weapons even when the world setting is off. It covers base damage, configured bonuses, and critical extra dice independently of *Enable Weapon Bonuses*. With world-wide Momentum enabled, SDX fills in the later dice terms missed by stock Shadowdark 4.0.6 and automatically stands down when the system provides the complete transform itself. ([#134](https://github.com/DimitroffVodka/shadowdark-extras/issues/134))
 
 ## [6.13.0] — 2026-08-29 — Item-level FX editing, dependable sprite previews, and natural animation timing
 

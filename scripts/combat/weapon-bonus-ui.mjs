@@ -255,7 +255,7 @@ export function injectWeaponBonusTab(app, html, item) {
 /**
  * Inject Attack FX / Equipped Sprite controls into supported item sheets.
  * @param {jQuery} html - The sheet HTML
- * @param {Item} item - The weapon, armor, or spell item
+ * @param {Item} item - The weapon, armor, spell, or light-source item
  */
 export function injectWeaponAnimationButton(html, item) {
 	const $nav = html.find('nav.SD-nav[data-group="primary"]');
@@ -265,6 +265,8 @@ export function injectWeaponAnimationButton(html, item) {
 		&& isFeatureEnabled(FEATURE_IDS.ANIMATION_ITEM_OVERRIDES);
 	const ownsEquippedSprite = ["Weapon", "Armor"].includes(item?.type)
 		&& isFeatureEnabled(FEATURE_IDS.WEAPON_SPRITES);
+	const ownsTorchSprite = item?.type === "Basic" && item.system?.light?.isSource
+		&& isFeatureEnabled(FEATURE_IDS.TORCH_ANIMATIONS);
 	const buttons = [];
 	if (
 		ownsAttackFx
@@ -281,6 +283,9 @@ export function injectWeaponAnimationButton(html, item) {
 		&& !$nav.find(".sdx-weapon-animation-btn").length
 	) {
 		buttons.push(`<a class="sdx-weapon-visual-btn sdx-weapon-animation-btn navigation-tab" data-item-uuid="${item.uuid}" title="${game.i18n.localize("SHADOWDARK_EXTRAS.weaponAnimation.equippedSpriteButton")}"><i class="fas fa-sword"></i></a>`);
+	}
+	if (ownsTorchSprite && !$nav.find(".sdx-torch-sprite-btn").length) {
+		buttons.push(`<a class="sdx-weapon-visual-btn sdx-torch-sprite-btn navigation-tab" data-item-uuid="${item.uuid}" title="${game.i18n.localize("SHADOWDARK_EXTRAS.torchSprite.button")}"><i class="fas fa-fire"></i></a>`);
 	}
 	if (buttons.length) {
 		const $bonusesTab = $nav.find('[data-tab="tab-bonuses"]');
@@ -312,6 +317,17 @@ export function injectWeaponAnimationButton(html, item) {
 				event.stopPropagation();
 				const { openWeaponAnimationConfig } = await import("../animation/WeaponAnimationConfig.mjs");
 				openWeaponAnimationConfig(item);
+			});
+	}
+
+	if (ownsTorchSprite) {
+		html.find(`.sdx-torch-sprite-btn${itemButtonSelector}`)
+			.off("click.sdxItemVisuals")
+			.on("click.sdxItemVisuals", async event => {
+				event.preventDefault();
+				event.stopPropagation();
+				const { openTorchSpriteConfig } = await import("../animation/TorchSpriteConfig.mjs");
+				openTorchSpriteConfig(item);
 			});
 	}
 

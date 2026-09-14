@@ -104,7 +104,7 @@ export function registerChatDispatch() {
 		if (!item) return;
 
 		// Only process spell-type items
-		const spellTypes = ["Spell", "Scroll", "Wand", "Potion", "NPC Spell"];
+		const spellTypes = ["Spell", "Scroll", "Wand", "Potion", "Basic", "NPC Spell"];
 		if (!spellTypes.includes(item.type)) return;
 
 		// Get the macro config
@@ -115,7 +115,7 @@ export function registerChatDispatch() {
 
 		// Determine success/failure from roll data
 		// Potions, Scrolls, Wands don't require a roll - they always succeed
-		const noRollNeeded = ["Potion", "Scroll", "Wand"].includes(item.type);
+		const noRollNeeded = ["Potion", "Scroll", "Wand", "Basic"].includes(item.type);
 		const hasVisibleRoll = rollOutcome.mainRoll && !rollOutcome.isMasked;
 		const isSuccess = noRollNeeded || (hasVisibleRoll && rollOutcome.isSuccess);
 		const isFailure = !noRollNeeded && hasVisibleRoll && !rollOutcome.isSuccess;

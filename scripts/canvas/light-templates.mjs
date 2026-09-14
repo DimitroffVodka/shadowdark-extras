@@ -337,6 +337,7 @@ export class LightTemplateEditor extends foundry.applications.api.HandlebarsAppl
 		}
 
 		await game.settings.set(MODULE_ID, "customLightTemplates", templates);
+		extendLightSources();
 
 		this.editData = null;
 		this.render({ force: true });
@@ -365,6 +366,29 @@ export function extendLightSources() {
 				: source.lang;
 
 			CONFIG.SHADOWDARK.LIGHT_SETTING_NAMES[key] = label;
+		}
+	}
+
+	extendLightTemplateChoices();
+}
+
+/**
+ * Teach the item DataModel that our custom keys are legal values.
+ *
+ * `system.light.template` is a StringField whose `choices` array is built from
+ * `Object.keys(CONFIG.SHADOWDARK.LIGHT_SETTING_NAMES)` when the system defines
+ * its schema — before any module's `ready`. Adding a key to CONFIG afterwards
+ * puts it in the dropdown but not in that snapshot, so picking it fails with
+ * "<key> is not a valid choice". StringField reads `this.choices` at validation
+ * time, so pushing onto the same array is enough; every item type that mixes in
+ * `lightSource()` gets its own array, hence the loop.
+ */
+function extendLightTemplateChoices() {
+	for (const model of Object.values(CONFIG.Item?.dataModels ?? {})) {
+		const field = model.schema?.get?.("light")?.get?.("template");
+		if (!Array.isArray(field?.choices)) continue;
+		for (const key of Object.keys(CONFIG.SHADOWDARK.LIGHT_SETTING_NAMES)) {
+			if (!field.choices.includes(key)) field.choices.push(key);
 		}
 	}
 }

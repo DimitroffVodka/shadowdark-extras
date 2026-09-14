@@ -23,8 +23,14 @@ globalThis.foundry = {
 		mergeObject: (base, overrides) => ({ ...base, ...overrides }),
 	},
 };
+let momentumSetting = false;
 globalThis.game = {
-	settings: { get: () => undefined, register: () => {} },
+	settings: {
+		get: (namespace, key) => (
+			namespace === "shadowdark" && key === "useMomentumMode" ? momentumSetting : undefined
+		),
+		register: () => {},
+	},
 	i18n: { localize: (key) => key },
 	user: { isGM: true },
 	dice3d: null,
@@ -176,6 +182,24 @@ test("multiple damage bonuses join into the preserved formula string", async () 
 	assert.equal(result.bonusParts.length, 2);
 	assert.equal(result.bonusParts[0].damageType, "cold");
 	assert.equal(result.bonusParts[1].damageType, "");
+});
+
+test("world Momentum reaches separately evaluated bonus and critical dice", async () => {
+	momentumSetting = true;
+	try {
+		const weapon = makeWeapon({
+			damageBonuses: [{ formula: "1d4", label: "Frost" }],
+			criticalExtraDice: 1,
+			criticalExtraDamage: "1d6",
+		});
+		const result = await calculateWeaponBonusDamage(weapon, makeAttacker(), makeTarget(), true);
+		assert.equal(result.bonusFormula, "1d4x");
+		assert.equal(result.criticalExtraDiceFormula, "1d6x");
+		assert.equal(result.criticalFormula, "1d6x");
+	}
+	finally {
+		momentumSetting = false;
+	}
 });
 
 test("formula variables are substituted through attacker roll data", async () => {

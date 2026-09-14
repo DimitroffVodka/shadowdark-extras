@@ -11,22 +11,11 @@
  * existing `enabled` master switch, and the existing WEAPON_BONUSES feature
  * gate rather than introducing a parallel set of any of them.
  *
- * The system is left untouched, and this module deliberately does not model
- * what its `applyExploding` does to a formula. Stock SD 4.0.6 explodes only the
- * FIRST dice term (its regex is `/i`), which is the bug behind the first half
- * of #134; a one-character local patch to `/ig` makes it explode all of them,
- * and such patched installs exist. Either way the rule here is the same: when
- * Momentum Mode is on, the system owns that formula and this module keeps its
- * hands off it. Nothing below depends on which variant is installed.
- *
- * What no variant of the system ever sees is a damage bonus this module rolls
- * separately, outside `shadowdark.dice.roll`. That structural gap, not the
- * regex, is why the world setting alone does not reach every bonus die.
- *
- * The two `shouldExplode*` predicates below exist so this override neither
- * duplicates nor collides with what the system does, and the split between
- * them follows exactly that line: formulas the system will roll, versus rolls
- * this module evaluates itself.
+ * Stock SD 4.0.6 explodes only the first dice term. At the roll-config seam we
+ * pre-explode only the later terms, then let the system add the first `x` as
+ * usual. A runtime probe leaves fixed/patched system versions untouched.
+ * Damage bonuses this module evaluates itself never enter the system's roll
+ * helper, so either the world setting or the per-weapon override applies there.
  */
 
 import { MODULE_ID } from "../shared/module-id.mjs";
@@ -106,6 +95,39 @@ export function applyExplodingAll(formula) {
 }
 
 /**
+ * Supplement stock Shadowdark's first-term-only Momentum transform.
+ *
+ * For an initial roll, only later terms are prepared because the system will
+ * append `x` to the first one. Rerolls skip the system transform, so every term
+ * is prepared here. A system version that already transforms every term is
+ * detected from its own helper and left alone.
+ *
+ * @param {string} formula - A Foundry roll formula.
+ * @param {boolean} reroll - Whether Shadowdark will skip its transforms.
+ * @returns {string}
+ */
+export function prepareCoreMomentumFormula(formula, reroll = false) {
+	if (!coreMomentumEnabled()) return formula;
+	if (reroll) return applyExplodingAll(formula);
+
+	const applyCore = globalThis.shadowdark?.dice?.applyExploding;
+	if (typeof applyCore !== "function") return formula;
+	try {
+		if (applyCore("1d4 + 1d6") !== "1d4x + 1d6") return formula;
+	}
+	catch{
+		return formula;
+	}
+
+	DICE_TERM.lastIndex = 0;
+	const first = DICE_TERM.exec(formula);
+	DICE_TERM.lastIndex = 0;
+	if (!first) return formula;
+	const boundary = first.index + first[0].length;
+	return formula.slice(0, boundary) + applyExplodingAll(formula.slice(boundary));
+}
+
+/**
  * Whether this weapon carries the per-weapon momentum override.
  *
  * Deliberately INDEPENDENT of the tab's `enabled` master switch, unlike every
@@ -150,9 +172,9 @@ export function coreMomentumEnabled() {
  * inflated damage. Both the stock and the patched system do this; they differ
  * only in how many terms they double.
  *
- * Checking the setting rather than trying to predict the system's output is
- * what keeps this stable across both: it stays dormant whenever the system is
- * doing the work, without this module having to model how the system does it.
+ * This predicate owns only the per-weapon full transform. World Momentum uses
+ * `prepareCoreMomentumFormula`, which can supplement later terms without
+ * pre-exploding the first one.
  *
  * @param {Item} weapon - The weapon item.
  * @returns {boolean}
@@ -162,17 +184,13 @@ export function shouldExplodeSystemFormula(weapon) {
 }
 
 /**
- * Whether to explode a Roll this module builds and evaluates ITSELF.
- *
- * No world-setting check, and it must stay that way. These Roll objects never
- * pass through `shadowdark.dice.roll()`, so the system can neither double-apply
- * to them nor explode them in the first place — a separately rolled bonus die
- * explodes only if this override says so, whatever the world setting is. Adding
- * the setting check here would silently un-explode them.
+ * Whether to explode a Roll this module builds and evaluates ITSELF. These
+ * rolls never pass through `shadowdark.dice.roll()`, so world Momentum must be
+ * applied here as well as the per-weapon override.
  *
  * @param {Item} weapon - The weapon item.
  * @returns {boolean}
  */
 export function shouldExplodeOwnRoll(weapon) {
-	return weaponHasMomentum(weapon);
+	return coreMomentumEnabled() || weaponHasMomentum(weapon);
 }

@@ -73,7 +73,7 @@ function makeActor({ advantage = [], actorDamageMultiplier = 0, weapon, ammo } =
 	return actor;
 }
 
-function installWorld(actor) {
+function installWorld(actor, { momentum = false } = {}) {
 	const hooks = new Map();
 	const previous = {
 		Hooks: globalThis.Hooks,
@@ -85,6 +85,11 @@ function installWorld(actor) {
 		once: () => {},
 	};
 	globalThis.game = {
+		settings: {
+			get: (namespace, key) => (
+				namespace === "shadowdark" && key === "useMomentumMode" ? momentum : undefined
+			),
+		},
 		actors: {
 			get: (id) => (id === actor.id ? actor : undefined),
 			[Symbol.iterator]: function* () {
@@ -107,11 +112,20 @@ function installWorld(actor) {
 }
 
 /** Stub the system dice module with a rollFromConfig recorder. */
-function installDice(recorder) {
+function installDice(recorder, {
+	applyExploding = formula => formula.replace(/(\d*)d(\d+[a-z0-9]*)/i, match => `${match}x`),
+} = {}) {
 	globalThis.shadowdark = {
 		dice: {
 			formatBonus: (bonus) => ` + ${String(bonus).trim().replace(/^\+/, "")}`,
+			applyExploding,
 			rollFromConfig: async (config) => {
+				if (
+					globalThis.game.settings.get("shadowdark", "useMomentumMode")
+					&& config.damageRoll?.formula && !config.damageRoll.reroll
+				) {
+					config.damageRoll.formula = applyExploding(config.damageRoll.formula);
+				}
 				recorder.push(config);
 			},
 		},
@@ -155,6 +169,28 @@ test("ammo hit and damage bonuses ride the roll config", async () => {
 		assert.ok(config.mainRoll.tooltips.includes("Ammunition"));
 		assert.ok(config.damageRoll.tooltips.includes("Ammunition (3)"));
 	} finally {
+		world.restore();
+		delete globalThis.shadowdark;
+	}
+});
+
+test("stock core Momentum explodes a damage bonus folded into the formula", async () => {
+	const weapon = makeWeapon();
+	weapon.flags["shadowdark-extras"].weaponBonus = {
+		enabled: true,
+		damageBonuses: [{ formula: "1d6", label: "Frost" }],
+	};
+	const actor = makeActor({ weapon });
+	const world = installWorld(actor, { momentum: true });
+	const rolled = [];
+	installDice(rolled);
+	try {
+		setupRollConfigPatches();
+		const config = await attackAndRoll(actor, { runHook: true, world });
+		assert.equal(rolled.length, 1);
+		assert.equal(config.damageRoll.formula, "1d8x + 1d6x");
+	}
+	finally {
 		world.restore();
 		delete globalThis.shadowdark;
 	}

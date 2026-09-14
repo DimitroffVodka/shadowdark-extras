@@ -35,6 +35,19 @@ function pointerButton(event) {
 	return originalEvent.button ?? 0;
 }
 
+/** GSAP's PixiPlugin puts a ColorMatrixFilter on the pin for any `pixi:
+ *  { brightness | hue }` tween and never takes it off. Left there it costs a
+ *  filter pass every frame, per pin, until reload — so drop it once the pin is
+ *  back at rest. Only the plain class goes; TMFX filters are subclasses. */
+export function dropColorFilter(pin) {
+	const CMF = PIXI.filters?.ColorMatrixFilter;
+	if (CMF && pin.filters) {
+		const kept = pin.filters.filter(f => f.constructor !== CMF);
+		pin.filters = kept.length ? kept : null;
+	}
+	delete pin._gsColorMatrixFilter;
+}
+
 function invalidatePlayerClick(pin = null) {
 	if (pin && playerClickState.press?.pin !== pin && playerClickState.lastPin !== pin) return;
 	const activePin = playerClickState.press?.pin;
@@ -213,10 +226,15 @@ export function onPointerLeave(pin, event) {
 
 		// Smooth reset
 		gsap.to(pin.scale, { x: 1.0, y: 1.0, duration: 0.3, ease: "power2.out" });
-		gsap.to(
-			pin,
-			{ rotation: 0, pixi: { brightness: 1, hue: 0 }, duration: 0.3, ease: "power2.out" }
-		);
+		gsap.to(pin, { rotation: 0, duration: 0.3, ease: "power2.out" });
+		// Only pins a brightness/hue tween actually touched carry a color filter.
+		// Tweening brightness on the rest would create one just to reset it.
+		if (pin._gsColorMatrixFilter) {
+			gsap.to(pin, {
+				pixi: { brightness: 1, hue: 0 }, duration: 0.3, ease: "power2.out",
+				onComplete: () => dropColorFilter(pin),
+			});
+		}
 	}
 	else {
 		pin.scale.set(1.0);

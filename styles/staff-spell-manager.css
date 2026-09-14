@@ -322,3 +322,27 @@
     color: #ff6666;
     vertical-align: middle;
 }
+
+/* Usable Basic ("gear") items — the inventory-row use control.
+   Lives here rather than in its own stylesheet because it is the same badge as
+   the staff-spell charge count above and would otherwise be a copy of it. */
+.sdx-use-gear-item {
+    color: #c9a227;
+}
+
+.sdx-use-gear-item.sdx-gear-depleted {
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+.sdx-gear-uses {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: rgba(100, 150, 255, 0.2);
+    border-radius: 4px;
+    margin-right: 4px;
+    white-space: nowrap;
+    vertical-align: middle;
+}

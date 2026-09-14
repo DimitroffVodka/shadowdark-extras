@@ -4,6 +4,7 @@
 import { generateSpellDamageConfigHTML } from "./SpellDamageConfig.mjs";
 import { generateSummoningConfigHTML } from "./SummoningConfig.mjs";
 import { generateItemGiveConfigHTML } from "./ItemGiveConfig.mjs";
+import { generateGearActivationConfigHTML } from "./GearActivationConfig.mjs";
 import { generateItemMacroConfigHTML } from "../item-macros/ItemMacroConfig.mjs";
 import { generateTemplateTargetingConfigHTML } from "./TemplateTargetingConfig.mjs";
 import { generateAnimationFxConfigHTML } from "../animation/AnimationFxConfig.mjs";
@@ -111,3 +112,35 @@ export function generateWandConfig(MODULE_ID, flags, effectsListHtml, effectsArr
 	return targetingConfig + damageConfig + summoningConfig + itemGiveConfig + itemMacroConfig + animationFxConfig;
 }
 
+
+/**
+ * Generate Basic ("gear") damage config.
+ *
+ * The same activity surface a Scroll gets — targeting, damage/heal, summoning,
+ * item-give, macro — fronted by the activation block that gives the item a use
+ * action in the first place. No Animation FX block: `AnimationFxSD` has no
+ * category for Basic items, so the config would render controls that never fire.
+ */
+export function generateBasicConfig(MODULE_ID, flags, effectsListHtml, effectsArray, effectsApplyToTarget, summonsList, summonProfilesArray, itemGiveList, itemGiveProfilesArray) {
+	const activationFlags = flags.gearActivation || { enabled: false };
+	const activationConfig = generateGearActivationConfigHTML(MODULE_ID, activationFlags);
+
+	const targetingConfig = generateTemplateTargetingConfigHTML(MODULE_ID, flags);
+
+	const damageConfig = generateSpellDamageConfigHTML(MODULE_ID, flags, effectsListHtml, effectsArray, effectsApplyToTarget, {
+		targetLabel: "TARGET",
+		showTargetOption: true,
+		requirementExamples: "@target.level < 3, @target.hp > 10, @level >= 5",
+		effectsRequirementExamples: "@target.level < 5, @target.hp < 20, @level >= 3",
+	});
+
+	const summoningFlags = flags.summoning || { enabled: false };
+	const summoningConfig = generateSummoningConfigHTML(MODULE_ID, summoningFlags, summonsList, summonProfilesArray);
+
+	const itemGiveFlags = flags.itemGive || { enabled: false };
+	const itemGiveConfig = generateItemGiveConfigHTML(MODULE_ID, itemGiveFlags, itemGiveList, itemGiveProfilesArray);
+
+	const itemMacroConfig = generateItemMacroConfigHTML(MODULE_ID, flags, "scroll");
+
+	return activationConfig + targetingConfig + damageConfig + summoningConfig + itemGiveConfig + itemMacroConfig;
+}

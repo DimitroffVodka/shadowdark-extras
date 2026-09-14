@@ -10,20 +10,12 @@ import test from "node:test";
 //     the bug behind the first half of #134;
 //   - a one-character local patch to `/ig` explodes all of them.
 //
-// This module must be correct on both, and does that by never modelling either:
-// when Momentum Mode is on, the system owns the formula and SDX keeps off it.
-// Both variants are replicated below purely to prove the guard holds for each.
+// This module must be correct on both: it supplements only stock's missing tail
+// terms and leaves the fixed variant alone.
 //
-// The interesting behaviour is therefore not "does it append an x" but the two
-// collision rules:
-//
-//   1. A formula handed to the system's roll() must NOT be pre-exploded while
-//      the world setting is on. Neither variant skips a term that already
-//      explodes, so both produce a doubled `1d8xx` — they differ only in how
-//      many terms they double.
-//   2. Rolls this module builds itself never reach the system's roll(), so the
-//      world setting can neither double-apply to them nor explode them at all,
-//      and only the override applies.
+// Two collision rules matter: only tail terms may be prepared before stock
+// Shadowdark runs, because pre-exploding the first gives `1d8xx`; rolls built
+// and evaluated by SDX need the complete world transform applied by SDX.
 
 let momentumSetting = false;
 let settingsThrow = false;
@@ -41,6 +33,7 @@ globalThis.game = {
 const {
 	applyExplodingAll,
 	coreMomentumEnabled,
+	prepareCoreMomentumFormula,
 	shouldExplodeOwnRoll,
 	shouldExplodeSystemFormula,
 	weaponHasMomentum,
@@ -59,11 +52,17 @@ const SYSTEM_VARIANTS = {
 	patched: formula => formula.replace(/(\d*)d(\d+[a-z0-9]*)/ig, match => `${match}x`),
 };
 
+let systemApplyExploding = SYSTEM_VARIANTS.stock;
+globalThis.shadowdark = {
+	dice: { applyExploding: formula => systemApplyExploding(formula) },
+};
+
 const weapon = (weaponBonus) => ({ flags: { "shadowdark-extras": { weaponBonus } } });
 
 test.beforeEach(() => {
 	momentumSetting = false;
 	settingsThrow = false;
+	systemApplyExploding = SYSTEM_VARIANTS.stock;
 });
 
 // --- applyExplodingAll --------------------------------------------------
@@ -174,6 +173,28 @@ test("core momentum reads the system setting and survives it being unregistered"
 	assert.equal(coreMomentumEnabled(), false, "an unregistered setting must not throw");
 });
 
+// --- prepareCoreMomentumFormula -----------------------------------------
+
+test("stock core Momentum gets every later dice term prepared", () => {
+	momentumSetting = true;
+	const prepared = prepareCoreMomentumFormula("1d8 + 1d6 + 1d4");
+	assert.equal(prepared, "1d8 + 1d6x + 1d4x");
+	assert.equal(SYSTEM_VARIANTS.stock(prepared), "1d8x + 1d6x + 1d4x");
+});
+
+test("a core helper that already explodes every term is left untouched", () => {
+	momentumSetting = true;
+	systemApplyExploding = SYSTEM_VARIANTS.patched;
+	const prepared = prepareCoreMomentumFormula("1d8 + 1d6");
+	assert.equal(prepared, "1d8 + 1d6");
+	assert.equal(SYSTEM_VARIANTS.patched(prepared), "1d8x + 1d6x");
+});
+
+test("core Momentum rerolls are fully prepared because the system skips transforms", () => {
+	momentumSetting = true;
+	assert.equal(prepareCoreMomentumFormula("1d8 + 1d6", true), "1d8x + 1d6x");
+});
+
 // --- shouldExplodeSystemFormula ----------------------------------------
 
 test("system formulas explode only while the world setting is off", () => {
@@ -238,7 +259,12 @@ test("self-built rolls explode on the override alone, whatever the world setting
 	assert.equal(shouldExplodeOwnRoll(explodingWeapon), true);
 });
 
-test("self-built rolls do not explode without the override", () => {
+test("world Momentum reaches self-built rolls without the weapon override", () => {
 	momentumSetting = true;
+	assert.equal(shouldExplodeOwnRoll(weapon({ enabled: true, momentum: false })), true);
+});
+
+test("self-built rolls do not explode when both Momentum controls are off", () => {
+	momentumSetting = false;
 	assert.equal(shouldExplodeOwnRoll(weapon({ enabled: true, momentum: false })), false);
 });

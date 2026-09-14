@@ -52,7 +52,7 @@ export async function resolveDamageCardTargets({
 	// Note: Potions and Scrolls don't have successful roll requirements (they always succeed when
 	// used)
 	// Wands DO have spell rolls, so they need the success check
-	if (useTemplateTargeting && !["Potion", "Scroll"].includes(itemType)) {
+	if (useTemplateTargeting && !["Potion", "Scroll", "Basic"].includes(itemType)) {
 		const templateOutcome = readSdRollOutcome(message);
 		if (templateOutcome.isMasked) {
 			useTemplateTargeting = false;   // private roll — don't show template prompt

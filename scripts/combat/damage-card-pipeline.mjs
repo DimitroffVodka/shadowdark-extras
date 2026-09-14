@@ -199,7 +199,7 @@ export async function injectDamageCard(message, html, data) {
 		}
 
 		// Check if this is a spell or potion type item with damage configuration or effects
-		if (item && ["Spell", "Scroll", "Wand", "NPC Spell", "Potion", "NPC Feature", "NPC Special Attack"].includes(item.type)) {
+		if (item && ["Spell", "Scroll", "Wand", "NPC Spell", "Potion", "Basic", "NPC Feature", "NPC Special Attack"].includes(item.type)) {
 			itemType = item.type; // Store item type for later checks
 
 			spellDamageConfig = item.flags?.["shadowdark-extras"]?.spellDamage;
@@ -330,7 +330,7 @@ export async function injectDamageCard(message, html, data) {
 			// readSdRollOutcome always reports isMasked/!isSuccess for them. Treat them
 			// like Potion/Scroll and summon on use. The author-only guard above
 			// (message.author.id === game.user.id) still prevents multi-client spawns.
-			if (!["Potion", "Scroll", "NPC Special Attack", "NPC Feature"].includes(itemType)) {
+			if (!["Potion", "Scroll", "Basic", "NPC Special Attack", "NPC Feature"].includes(itemType)) {
 				if (summonOutcome.isMasked) {
 					return;   // private roll — don't auto-spawn on non-recipient clients
 				}
@@ -373,7 +373,7 @@ export async function injectDamageCard(message, html, data) {
 			let shouldGive = true;
 			// See the summoning gate above: NPC Special Attack / NPC Feature have no
 			// system-determined attack success, so they grant on use like Potion/Scroll.
-			if (!["Potion", "Scroll", "NPC Special Attack", "NPC Feature"].includes(itemType)) {
+			if (!["Potion", "Scroll", "Basic", "NPC Special Attack", "NPC Feature"].includes(itemType)) {
 				const itemGiveOutcome = readSdRollOutcome(message);
 				if (itemGiveOutcome.isMasked) {
 					shouldGive = false;   // private roll — skip on non-recipient clients
@@ -665,7 +665,7 @@ export async function injectDamageCard(message, html, data) {
 	) {
 		// Check if the spell cast was successful (skip this check for potions, scrolls, wands, and
 		// NPC Features)
-		if (!["Potion", "Scroll", "Wand", "NPC Feature", "NPC Spell"].includes(itemType)) {
+		if (!["Potion", "Scroll", "Wand", "Basic", "NPC Feature", "NPC Spell"].includes(itemType)) {
 			const spellEffectsOutcome = readSdRollOutcome(message);
 			if (spellEffectsOutcome.isMasked) {
 				return;   // private roll — don't apply effects on non-recipient clients

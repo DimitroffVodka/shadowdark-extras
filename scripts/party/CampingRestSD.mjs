@@ -181,6 +181,18 @@ async function refreshRestResources(actor) {
 			continue;
 		}
 
+		// Usable gear (see items/gear-activation.mjs). Refilled but not counted:
+		// the summary template reports three categories and a fourth counter is
+		// not worth a template change — the item's own row shows its charges.
+		if (item.type === "Basic") {
+			const gear = item.getFlag(MODULE_ID, "gearActivation");
+			const gearMax = Math.max(0, Number(gear?.maxUses) || 0);
+			if (gear?.enabled && gearMax > 0 && Number(gear.uses ?? gearMax) < gearMax) {
+				updates.push({ _id: item.id, [`flags.${MODULE_ID}.gearActivation.uses`]: gearMax });
+			}
+			continue;
+		}
+
 		if (item.type === "Wand" && Array.isArray(item.system?.spells)) {
 			if (!item.system.spells.some(spell => spell.lost)) continue;
 			updates.push({

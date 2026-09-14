@@ -1,6 +1,6 @@
 import { MODULE_ID } from "../shared/module-id.mjs";
 import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
-import { generatePotionConfig } from "./ItemTypeConfigs.mjs";
+import { generateBasicConfig, generatePotionConfig } from "./ItemTypeConfigs.mjs";
 import { activateTemplateTargetingListeners } from "./TemplateTargetingConfig.mjs";
 import {
 	activateTemplateTokenMagicStackHandlers,
@@ -27,9 +27,36 @@ import {
  * The `SummoningConfig` / `ItemGiveConfig` imports stay dynamic, as they were in
  * the root; only their paths changed, since `./item-sheets/X` was relative to
  * the root and this module already lives in that folder.
+ *
+ * IT ALSO ENHANCES BASIC ("gear") ITEMS, which is why the name understates it.
+ * Everything between the type guard and the generator call is DOM-generic —
+ * `nav.SD-nav`, `tab-details` — and a Basic item is the one activity-capable
+ * type with no SDX AppV2 sheet of its own, so it takes this path and only this
+ * path. Widening the guard was a four-line change; a second 800-line enhancer
+ * differing in a guard, three defaults and one function call was not worth the
+ * duplication. `SHEET_PROFILES` below is the whole of the per-type difference.
  */
+
 /**
- * Enhance Potion item sheets with damage/heal and conditions UI
+ * Per-type difference between the sheets this enhancer serves. A potion applies
+ * to whoever drank it; a piece of gear is pointed at someone, so it defaults to
+ * targeting the way a Scroll does.
+ */
+const SHEET_PROFILES = {
+	Potion: {
+		generate: generatePotionConfig,
+		applyToTarget: false,
+		effectsApplyToTarget: false,
+	},
+	Basic: {
+		generate: generateBasicConfig,
+		applyToTarget: true,
+		effectsApplyToTarget: true,
+	},
+};
+
+/**
+ * Enhance Potion and Basic item sheets with damage/heal and conditions UI
  */
 export async function enhancePotionSheet(app, html) {
 	// Check if spell enhancement is enabled (reuse spell enhancement setting)
@@ -40,9 +67,10 @@ export async function enhancePotionSheet(app, html) {
 		return;
 	}
 
-	// Only enhance Potion items
+	// Only enhance the types this enhancer has a profile for
 	const item = app.item;
-	if (!item || item.type !== "Potion") return;
+	const profile = SHEET_PROFILES[item?.type];
+	if (!profile) return;
 
 
 	// Remove any existing damage/heal boxes to prevent duplicates
@@ -63,8 +91,8 @@ export async function enhancePotionSheet(app, html) {
 		damageRequirementFailAction: "zero", // "zero" or "half" - what to do when requirement fails
 		effectsRequirement: "", // Formula that must evaluate to true for effects to apply
 		effects: [], // Array of effect document UUIDs
-		applyToTarget: false, // potions apply to self (drinker) by default
-		effectsApplyToTarget: false, // potions apply effects to self by default
+		applyToTarget: profile.applyToTarget,
+		effectsApplyToTarget: profile.effectsApplyToTarget,
 	};
 
 	// Initialize summoning flags
@@ -123,6 +151,7 @@ export async function enhancePotionSheet(app, html) {
 		itemGive: itemGiveFlags,
 		itemMacro: itemMacroFlags,
 		auraEffects: auraEffectsFlags,
+		gearActivation: item.flags?.[MODULE_ID]?.gearActivation,
 	};
 
 	// Convert applyToTarget to boolean (in case it was stored as string)
@@ -196,7 +225,7 @@ export async function enhancePotionSheet(app, html) {
 	// Find the Activity tab content
 	const $activityTab = html.find('section.tab-activity[data-tab="tab-activity"]');
 	if (!$activityTab.length) {
-		console.warn(`${MODULE_ID} | Activity tab not found in potion sheet`);
+		console.warn(`${MODULE_ID} | Activity tab not found in ${item.type} sheet`);
 		return;
 	}
 
@@ -334,7 +363,7 @@ export async function enhancePotionSheet(app, html) {
 	}
 
 	// Build the damage/heal UI HTML using template
-	const damageHealHtml = generatePotionConfig(MODULE_ID, flags, effectsListHtml, effectsArray, effectsApplyToTarget, summonsList, summonProfilesArray, itemGiveList, itemGiveProfilesArray);
+	const damageHealHtml = profile.generate(MODULE_ID, flags, effectsListHtml, effectsArray, effectsApplyToTarget, summonsList, summonProfilesArray, itemGiveList, itemGiveProfilesArray);
 
 	// Insert into Activity tab
 	$activityTab.append(damageHealHtml);

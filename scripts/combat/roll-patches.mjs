@@ -8,6 +8,7 @@ import {
 import {
 	applyExplodingAll,
 	coreMomentumEnabled,
+	prepareCoreMomentumFormula,
 	shouldExplodeSystemFormula,
 } from "./weapon-momentum.mjs";
 import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
@@ -738,23 +739,25 @@ export function setupRollConfigPatches() {
 				) {
 					await applyAmmoBonuses(config);
 				}
-				// Per-weapon momentum (issue #134). This is the last point before
-				// the system's roll() runs, and by now the damage formula is
-				// final: the dialog hook has already folded in SDX bonuses and
-				// the ammo pass above has added its own, so exploding here
-				// reaches the bonus dice too and not just the weapon's base die.
-				// skipPrompt rolls, which never render a dialog, arrive here all
-				// the same.
-				// The `coreMomentumEnabled` pre-check only spares the weapon
-				// lookup on every damage roll in worlds that run Momentum Mode;
-				// shouldExplodeSystemFormula re-tests it and stays the authority.
-				if (
-					weaponBonusesEnabled && config.itemUuid && config.damageRoll?.formula
-					&& !coreMomentumEnabled()
-				) {
-					const momentumWeapon = await fromUuid(config.itemUuid);
-					if (shouldExplodeSystemFormula(momentumWeapon)) {
-						config.damageRoll.formula = applyExplodingAll(config.damageRoll.formula);
+				// Momentum (issue #134). The formula is final here, including SDX
+				// and ammunition bonuses. Stock Shadowdark only explodes its first
+				// dice term, so prepare the tail before handing it over; fixed
+				// system versions are detected and left alone. With world Momentum
+				// off, the per-weapon override still owns the full formula.
+				if (weaponBonusesEnabled && config.damageRoll?.formula) {
+					if (coreMomentumEnabled()) {
+						config.damageRoll.formula = prepareCoreMomentumFormula(
+							config.damageRoll.formula,
+							!!config.damageRoll.reroll
+						);
+					}
+					else if (config.itemUuid) {
+						const momentumWeapon = await fromUuid(config.itemUuid);
+						if (shouldExplodeSystemFormula(momentumWeapon)) {
+							config.damageRoll.formula = applyExplodingAll(
+								config.damageRoll.formula
+							);
+						}
 					}
 				}
 			}

@@ -33,13 +33,6 @@ export const DrawingSync = {
 		const g = new PIXI.Graphics();
 		const color = this._cssToPixi(data.strokeColor);
 		const sw = data.strokeWidth || 6;
-		g.lineStyle(sw, 0x000000, 0.3);
-		if (data.points.length > 0) {
-			g.moveTo(data.startX + data.points[0][0] + 2, data.startY + data.points[0][1] + 2);
-			for (let i = 1; i < data.points.length; i++) {
-				g.lineTo(data.startX + data.points[i][0] + 2, data.startY + data.points[i][1] + 2);
-			}
-		}
 		this._drawLineWithStyle(
 			g, data.points, data.startX, data.startY, sw, color, 1.0, data.lineStyle || "solid"
 		);
@@ -57,10 +50,6 @@ export const DrawingSync = {
 		const color = this._cssToPixi(data.strokeColor);
 		const sw = data.strokeWidth || 6;
 		const ls = data.lineStyle || "solid";
-		g.lineStyle(sw, 0x000000, 0.3);
-		this._drawBoxWithStyle(
-			g, data.startX + 2, data.startY + 2, data.width, data.height, "solid"
-		);
 		g.lineStyle(sw, color, 1.0);
 		this._drawBoxWithStyle(g, data.startX, data.startY, data.width, data.height, ls);
 		if (data.opacity !== undefined) g.alpha = data.opacity;
@@ -77,10 +66,6 @@ export const DrawingSync = {
 		const color = this._cssToPixi(data.strokeColor);
 		const sw = data.strokeWidth || 6;
 		const ls = data.lineStyle || "solid";
-		g.lineStyle(sw, 0x000000, 0.3);
-		this._drawEllipseWithStyle(
-			g, data.startX + 2, data.startY + 2, data.width, data.height, "solid"
-		);
 		g.lineStyle(sw, color, 1.0);
 		this._drawEllipseWithStyle(g, data.startX, data.startY, data.width, data.height, ls);
 		if (data.opacity !== undefined) g.alpha = data.opacity;
@@ -100,7 +85,7 @@ export const DrawingSync = {
 		const color = this._cssToPixi(data.strokeColor);
 		const half = sqSize / 2; const pad = sqSize * 0.1;
 		this._drawSymbolShape(
-			g, data.symbolType, data.x, data.y, half, pad, sw, color, 1.0, 0x000000, 0.3, 2
+			g, data.symbolType, data.x, data.y, half, pad, sw, color, 1.0, 0x000000, 0, 0
 		);
 		if (data.opacity !== undefined) g.alpha = data.opacity;
 		this.canvasLayer.addChild(g);

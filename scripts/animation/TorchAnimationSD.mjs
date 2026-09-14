@@ -67,9 +67,10 @@ function getLegacyEffectName(token, itemId) {
 /**
  * Get animation settings based on light source type
  * @param {Item} item - The light source item
+ * @param {object|null} override - Unsaved Torch Sprite dialog values (live preview)
  * @returns {object} - Animation configuration
  */
-function getAnimationConfig(item) {
+function getAnimationConfig(item, override = null) {
 	const lightTemplate = item.system?.light?.template?.toLowerCase() || "";
 	const itemName = item.name?.toLowerCase() || "";
 
@@ -150,6 +151,10 @@ function getAnimationConfig(item) {
 	}
 	catch(e) { /* keep hardcoded default */ }
 
+	// Per-item prop image and geometry from the Torch Sprite dialog, then the
+	// dialog's unsaved preview on top. The spell glow path ignores these fields.
+	Object.assign(config, item.getFlag?.(MODULE_ID, "torchSprite"), override);
+
 	return config;
 }
 
@@ -157,8 +162,9 @@ function getAnimationConfig(item) {
  * Play torch animation on a token
  * @param {Token} token - The token to animate
  * @param {Item} item - The light source item
+ * @param {object|null} override - Unsaved Torch Sprite dialog values (live preview)
  */
-async function playTorchAnimation(token, item) {
+async function playTorchAnimation(token, item, override = null) {
 	if (!isEnabled()) return;
 
 	const deps = checkDependencies();
@@ -174,7 +180,7 @@ async function playTorchAnimation(token, item) {
 
 	const effectName = getEffectName(item.id);
 	const legacyName = getLegacyEffectName(token, item.id);
-	const config = getAnimationConfig(item);
+	const config = getAnimationConfig(item, override);
 	const hasPatreon = game.modules.get("jb2a_patreon")?.active;
 
 	// End any existing animation for this light source (both base and _impact).
@@ -256,8 +262,9 @@ async function playTorchAnimation(token, item) {
 		return;
 	}
 
-	// Initial impact/ignition effect for physical light sources (only for patreon)
-	if (hasPatreon && config.impactFile) {
+	// Initial impact/ignition effect for physical light sources (only for patreon).
+	// Skipped for dialog previews, which replay on every slider move.
+	if (hasPatreon && config.impactFile && !override) {
 		seq.effect()
 			.name(`${effectName}_impact`)
 			.file(config.impactFile)
@@ -719,6 +726,7 @@ export function initTorchAnimations() {
 
 // Export functions for external use
 export {
+	getAnimationConfig,
 	playTorchAnimation,
 	stopTorchAnimation,
 	stopAllTorchAnimations,
