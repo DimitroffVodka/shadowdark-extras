@@ -396,7 +396,6 @@ function initializeEarlyFeatures() {
 
 initializeEarlyFeatures();
 
-
 // ============================================
 // UNIDENTIFIED ITEMS — thin wrappers to SD 4.x native identification
 // ============================================
