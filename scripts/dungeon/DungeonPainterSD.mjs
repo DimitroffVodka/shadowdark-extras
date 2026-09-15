@@ -40,6 +40,7 @@ import {
 	selectDoorTile,
 	setDungeonMode,
 	getDungeonMode,
+	nextDungeonMode,
 	getSelectedFloorTile,
 	getSelectedWallTile,
 	getSelectedDoorTile,
@@ -60,7 +61,7 @@ import {
 // The tool-state helpers that were public on this module stay public: the tray
 // and the dungeon generators import them from here.
 export {
-	setDungeonMode, getDungeonMode, selectFloorTile, getSelectedFloorTile,
+	setDungeonMode, getDungeonMode, nextDungeonMode, selectFloorTile, getSelectedFloorTile,
 	selectWallTile, getSelectedWallTile, selectDoorTile, getSelectedDoorTile,
 	setNoFoundryWalls, getNoFoundryWalls, setWallShadows, getWallShadows,
 	selectIntWallTile, getSelectedIntWallTile, selectIntDoorTile, getSelectedIntDoorTile,

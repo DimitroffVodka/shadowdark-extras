@@ -19,6 +19,7 @@ import {
 	isDungeonPainting,
 	setDungeonMode,
 	getDungeonMode,
+	nextDungeonMode,
 	cleanupDungeonPainting,
 	initDungeonSocket,
 	canPlayerPaint,
@@ -448,17 +449,17 @@ export function initTray() {
 		}
 	});
 
-	// Keyboard shortcut: Ctrl to toggle Tiles/Doors mode in Dungeons tab
+	// Keyboard shortcut: Ctrl cycles the Dungeons tab modes, in tab order.
 	document.addEventListener("keydown", event => {
-		// Only respond to Ctrl key without other modifiers
-		if (event.key !== "Control" || event.shiftKey || event.altKey) return;
+		// Only respond to Ctrl key without other modifiers. Held Ctrl
+		// auto-repeats keydown on Chromium, which would spin the cycle.
+		if (event.key !== "Control" || event.shiftKey || event.altKey || event.repeat) return;
 
 		// Only when in dungeons view and tray is expanded
 		if (_viewMode !== "dungeons" || !_trayApp?._isExpanded) return;
 
-		// Toggle mode
-		const currentMode = getDungeonMode();
-		setDungeonMode(currentMode === "tiles" ? "doors" : "tiles");
+		// Advance to the next mode
+		setDungeonMode(nextDungeonMode(getDungeonMode()));
 		renderTray();
 	});
 
