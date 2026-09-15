@@ -721,6 +721,20 @@ export function initTorchAnimations() {
 		}
 	});
 
+	// A light picked up off the scene (system pickupLightSourceFromScene) is
+	// created on the new owner already burning, so no updateItem flips it on.
+	Hooks.on("createItem", async (item, options, userId) => {
+		// Origin-gated like the updateItem play — the GM runs the pickup
+		if (userId !== game.user.id) return;
+		if (item.system?.light?.active !== true) return;
+		const actor = item.actor;
+		if (!actor) return;
+
+		for (const token of getTokensForActor(actor)) {
+			await playTorchAnimation(token, item);
+		}
+	});
+
 	console.log(`${MODULE_ID} | Torch animations initialized successfully`);
 }
 

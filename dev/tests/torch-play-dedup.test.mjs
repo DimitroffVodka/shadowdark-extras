@@ -248,6 +248,36 @@ test("torch playTorchAnimation dedup carries object for both base and _impact an
 	}
 });
 
+test("createItem hook plays the torch when a lit light is picked up onto an actor", async () => {
+	resetMocks();
+	installBaseWorld();
+	globalThis.Sequence = MockSequence;
+	const hooks = {};
+	const origHooks = globalThis.Hooks;
+	globalThis.Hooks = { on: (name, fn) => { hooks[name] = fn; }, once: () => {}, callAll: () => {} };
+	initTorchAnimations();
+	globalThis.Hooks = origHooks;
+
+	const token = makeToken("tokP");
+	const actor = { id: "actorP", isToken: false };
+	token.actor = actor;
+	token.document.actorLink = true;
+	globalThis.canvas.tokens.placeables = [token];
+	const item = { ...makeItem("itemP"), actor };
+	const played = () => globalThis.Sequencer.EffectManager.effects.filter(
+		e => e.data.name === getEffectName("itemP") && e.data.source === "Scene.sceneA.Token.tokP",
+	).length;
+
+	await hooks.createItem(item, {}, "someoneElse");
+	assert.equal(played(), 0, "only the creating client plays");
+
+	await hooks.createItem({ ...item, system: { light: { template: "torch", active: false } } }, {}, "testUser");
+	assert.equal(played(), 0, "an unlit light gets no sprite");
+
+	await hooks.createItem(item, {}, "testUser");
+	assert.equal(played(), 2, "picked-up lit torch plays both base layers on the new owner's token");
+});
+
 test("deleteToken hook ends every torch effect for the deleted token (source-verified)", async () => {
 	resetMocks();
 	installBaseWorld();
