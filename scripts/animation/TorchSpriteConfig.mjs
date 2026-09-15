@@ -99,9 +99,11 @@ export async function openTorchSpriteConfig(item) {
 		${sliders}`;
 
 	const result = await foundry.applications.api.DialogV2.wait({
+		classes: ["sdx-torch-sprite-config"],
 		window: {
 			title: game.i18n.format("SHADOWDARK_EXTRAS.torchSprite.title", { item: item.name }),
 			icon: "fas fa-fire",
+			resizable: true,
 		},
 		position: { width: 480 },
 		content,

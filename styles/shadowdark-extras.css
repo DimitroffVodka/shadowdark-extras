@@ -13425,10 +13425,37 @@ body.sdx-dark-mode .shadowdark-extras .sdx-setting-header select {
     font-family: "Old Newspaper Font";
 }
 
+/* #137: Foundry caps the window at the viewport and clips .window-content, so a
+   tall form (image browser open) hid Save. Scroll the settings, keep the footer. */
 .weapon-animation-config-content {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    flex: 1;
+    min-height: 0;
+}
+
+.weapon-animation-settings {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+/* #137: same for the Torch Sprite dialog — the buttons sit outside .dialog-content. */
+.sdx-torch-sprite-config .dialog-form {
+    flex: 1;
+    min-height: 0;
+}
+
+.sdx-torch-sprite-config .dialog-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    gap: 0.5rem;
+}
+
+.sdx-torch-sprite-config .form-group > label {
+    flex: 0 0 11rem;
 }
 
 .weapon-sprite-state {
