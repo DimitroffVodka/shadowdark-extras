@@ -36,6 +36,29 @@ function readForm(form) {
 	return config;
 }
 
+// The flame is drawn on the prop, but both are stored as token-relative offsets,
+// so prop edits must carry the flame along. The anchor is where the flame sits on
+// the prop, in prop-scale units; it only changes when the flame itself is edited,
+// so repeated prop drags don't accumulate slider rounding.
+const PROP_FIELDS = ["scale", "torchOffsetX", "torchOffsetY"];
+const FLAME_FIELDS = ["flameOffsetX", "flameOffsetY", "flameScale"];
+
+export function flameAnchor(c) {
+	return {
+		x: (c.flameOffsetX - c.torchOffsetX) / c.scale,
+		y: (c.flameOffsetY - c.torchOffsetY) / c.scale,
+		size: c.flameScale / c.scale,
+	};
+}
+
+export function carryFlame(c, anchor) {
+	return {
+		flameOffsetX: c.torchOffsetX + (anchor.x * c.scale),
+		flameOffsetY: c.torchOffsetY + (anchor.y * c.scale),
+		flameScale: anchor.size * c.scale,
+	};
+}
+
 /** Sequencer database path (e.g. "jb2a.flames.01.orange") → playable file, or null. */
 function resolveEffectFile(path) {
 	if (!path || path.includes("/")) return path || null;
@@ -114,7 +137,25 @@ export async function openTorchSpriteConfig(item) {
 		],
 		render: (_event, dialog) => {
 			const form = dialog.element.querySelector("form");
-			const onEdit = () => {
+			let anchor = flameAnchor(readForm(form));
+			let carrying = false;
+			const onEdit = event => {
+				// Setting a range-picker's value fires input + change; those are ours.
+				if (carrying) return;
+				const field = event.target.closest?.("range-picker")?.getAttribute("name");
+				if (PROP_FIELDS.includes(field)) {
+					carrying = true;
+					try {
+						const flame = carryFlame(readForm(form), anchor);
+						for (const [name, value] of Object.entries(flame)) {
+							form.elements[name].value = value;
+						}
+					}
+					finally {
+						carrying = false;
+					}
+				}
+				else if (FLAME_FIELDS.includes(field)) anchor = flameAnchor(readForm(form));
 				updatePreview(form, current.torchFile);
 				if (!isLit()) return;
 				clearTimeout(timer);
