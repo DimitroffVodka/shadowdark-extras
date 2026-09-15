@@ -6,6 +6,17 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [6.15.0] — 2026-09-15 — Lit lights change hands properly, Torch Sprite fixes, sprite windows fit the screen
+
+### Fixed
+
+- **Giving someone a lit light now gives them the light.** *Transfer to Player* moved a lit torch or lantern into the other character's inventory but left the light itself behind. The giver kept a light they could not put out, the receiver's item showed as lit but cast nothing, and the torch sprite stayed on the giver. Now the light, its sprite and the light tracker entry all move with the item. The receiver's own light goes out, since a character carries one, and the item keeps its remaining burn time. Giving away part of a lit stack sends unlit ones. ([#138](https://github.com/DimitroffVodka/shadowdark-extras/issues/138))
+- **A lit light picked up off the scene shows its torch sprite again.** The character got the light back but no sprite.
+- **The Torch Sprite dialog keeps the flame on the torch.** Moving or resizing the prop left the flame where it was; now the flame moves and scales with it. If the flame is near the edge of its own range, the prop slider stops where the flame would have to go past its limit. A torch whose prop was already moved keeps its old flame position until you touch a flame slider or press *Reset*.
+- **Sprite settings windows fit on smaller screens.** The Equipped Sprite and Torch Sprite windows now scroll and can be resized, and *Save* and *Cancel* stay visible even with the weapon image browser open. ([#137](https://github.com/DimitroffVodka/shadowdark-extras/issues/137))
+- **Momentum no longer explodes a die twice.** With world-wide Momentum on, a formula whose first die had a calculated face, like `1d(6+2) + 1d6`, skipped the first die and exploded the second one twice, which inflated damage. ([#134](https://github.com/DimitroffVodka/shadowdark-extras/issues/134))
+- **Ctrl in the Dungeons tab reaches Int. Walls.** Ctrl now cycles through Rooms, Doors and Int. Walls, as the tab's hint says. Before, it only switched between Rooms and Doors, and holding it down spun through the modes.
+
 ## [6.14.0] — 2026-09-14 — Journal Pins hover leak fix, dungeon reskin and floor tools, per-item Torch Sprites, usable gear
 
 ### Fixed
