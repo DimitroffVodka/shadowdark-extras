@@ -59,6 +59,32 @@ export function carryFlame(c, anchor) {
 	};
 }
 
+// A range-picker clamps to its bounds, so a carried flame past a slider's end
+// would land somewhere else on the prop. Stop the prop edit where the flame
+// reaches its limit instead. Each carried value is linear in the edited field;
+// the result is snapped inward to the prop slider's step, because the picker
+// rounds whatever it is given.
+export function fitProp(c, anchor, field) {
+	const [, min, max, step] = SLIDERS.find(([name]) => name === field);
+	const at = v => carryFlame({ ...c, [field]: v }, anchor);
+	const f0 = at(0);
+	const f1 = at(1);
+	let lo = min;
+	let hi = max;
+	for (const [name, fmin, fmax] of SLIDERS) {
+		if (!FLAME_FIELDS.includes(name)) continue;
+		const k = f1[name] - f0[name];
+		if (!k) continue;
+		const a = (fmin - f0[name]) / k;
+		const b = (fmax - f0[name]) / k;
+		lo = Math.max(lo, Math.min(a, b));
+		hi = Math.min(hi, Math.max(a, b));
+	}
+	if (c[field] > hi) return min + (Math.floor(((hi - min) / step) + 1e-9) * step);
+	if (c[field] < lo) return min + (Math.ceil(((lo - min) / step) - 1e-9) * step);
+	return c[field];
+}
+
 /** Sequencer database path (e.g. "jb2a.flames.01.orange") → playable file, or null. */
 function resolveEffectFile(path) {
 	if (!path || path.includes("/")) return path || null;
@@ -146,7 +172,10 @@ export async function openTorchSpriteConfig(item) {
 				if (PROP_FIELDS.includes(field)) {
 					carrying = true;
 					try {
-						const flame = carryFlame(readForm(form), anchor);
+						const c = readForm(form);
+						const fitted = fitProp(c, anchor, field);
+						if (fitted !== c[field]) form.elements[field].value = c[field] = fitted;
+						const flame = carryFlame(c, anchor);
 						for (const [name, value] of Object.entries(flame)) {
 							form.elements[name].value = value;
 						}
