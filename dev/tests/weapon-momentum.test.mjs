@@ -195,6 +195,18 @@ test("core Momentum rerolls are fully prepared because the system skips transfor
 	assert.equal(prepareCoreMomentumFormula("1d8 + 1d6", true), "1d8x + 1d6x");
 });
 
+test("the first term is the one the SYSTEM explodes, not the first term SDX parses", () => {
+	// Stock's pattern needs numeric faces, so it skips `1dF` and `1d(6+2)`.
+	// Marking those as first hands the system a pre-exploded `1d6x` → `1d6xx`.
+	momentumSetting = true;
+	for (const [formula, expected] of [
+		["1d(6+2) + 1d6", "1d(6+2)x + 1d6x"],
+		["1dF + 1d6 + 1d4", "1dF + 1d6x + 1d4x"],
+	]) {
+		assert.equal(SYSTEM_VARIANTS.stock(prepareCoreMomentumFormula(formula)), expected);
+	}
+});
+
 // --- shouldExplodeSystemFormula ----------------------------------------
 
 test("system formulas explode only while the world setting is off", () => {
