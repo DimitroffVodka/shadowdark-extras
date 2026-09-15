@@ -123,18 +123,17 @@ building a single custom exploding weapon needs.
 A formula that already explodes is left alone, so writing `1d6x` into a bonus
 yourself doesn't collect a second explode modifier.
 
-When Momentum Mode *is* on world-wide, the system explodes the main damage roll
-itself and SDX leaves that roll alone rather than adding a second explode
-modifier on top. Note that the stock Shadowdark system explodes only the *first*
-die of that formula, so a bonus die folded into it does not explode from the
-world setting alone. That is a known system-side limitation, and this toggle
-does not attempt to fix it.
+When Momentum Mode *is* on world-wide, every damage die explodes on every
+weapon, toggle or not. Stock Shadowdark 4.0.6 explodes only the *first* die of
+a damage formula, so SDX explodes the rest — bonus dice folded into the main
+roll included — and leaves the first to the system, so no die gets a second
+explode modifier. If a system update makes Shadowdark explode every die itself,
+SDX detects that and stands down. Damage bonuses that SDX rolls separately
+explode too.
 
-Damage bonuses that SDX rolls separately never pass through the system's roll
-pipeline at all, so they always follow this weapon's own toggle, whatever the
-world setting is. With Momentum Mode on and this toggle on, that means the main
-roll follows the system's rules while the separately rolled bonuses follow
-yours.
+The world-wide fix-up rides the **Weapon Bonuses** feature: with that feature
+switched off in the Feature Manager, Momentum Mode behaves exactly as the stock
+system does.
 
 ### Critical bonuses
 

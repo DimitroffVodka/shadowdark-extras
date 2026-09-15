@@ -95,12 +95,19 @@ export function applyExplodingAll(formula) {
 }
 
 /**
+ * Stock SD 4.0.6's own dice pattern, from its `applyExploding`. It needs
+ * numeric faces, so it skips `1dF` and `1d(6+2)` where DICE_TERM does not —
+ * the first term the system will explode must be found with this one.
+ */
+const SYSTEM_DICE_TERM = /(\d*)d(\d+[a-z0-9]*)/i;
+
+/**
  * Supplement stock Shadowdark's first-term-only Momentum transform.
  *
- * For an initial roll, only later terms are prepared because the system will
- * append `x` to the first one. Rerolls skip the system transform, so every term
- * is prepared here. A system version that already transforms every term is
- * detected from its own helper and left alone.
+ * For an initial roll, every term except the one the system will append `x` to
+ * is prepared here. Rerolls skip the system transform, so every term is
+ * prepared. A system version that already transforms every term is detected
+ * from its own helper and left alone.
  *
  * @param {string} formula - A Foundry roll formula.
  * @param {boolean} reroll - Whether Shadowdark will skip its transforms.
@@ -119,12 +126,12 @@ export function prepareCoreMomentumFormula(formula, reroll = false) {
 		return formula;
 	}
 
-	DICE_TERM.lastIndex = 0;
-	const first = DICE_TERM.exec(formula);
-	DICE_TERM.lastIndex = 0;
+	const first = SYSTEM_DICE_TERM.exec(formula);
 	if (!first) return formula;
-	const boundary = first.index + first[0].length;
-	return formula.slice(0, boundary) + applyExplodingAll(formula.slice(boundary));
+	const end = first.index + first[0].length;
+	return applyExplodingAll(formula.slice(0, first.index))
+		+ first[0]
+		+ applyExplodingAll(formula.slice(end));
 }
 
 /**

@@ -31,7 +31,7 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 			positioned: true,
 			title: "SHADOWDARK_EXTRAS.weaponAnimation.title",
 			icon: "fas fa-wand-magic-sparkles",
-			resizable: false,
+			resizable: true,
 			minimizable: false,
 		},
 		position: {
@@ -235,6 +235,7 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 			currentBtn.addEventListener("click", () => {
 				const isOpen = browserPanel.style.display !== "none";
 				browserPanel.style.display = isOpen ? "none" : "block";
+				this.setPosition();
 			});
 		}
 
@@ -253,6 +254,7 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 				toggle.classList.toggle("fa-chevron-down", !isExpanded);
 				icon.classList.toggle("fa-folder", isExpanded);
 				icon.classList.toggle("fa-folder-open", !isExpanded);
+				this.setPosition();
 			});
 		});
 
@@ -473,7 +475,12 @@ export default class WeaponAnimationConfig extends HandlebarsApplicationMixin(Ap
 		const settings = html.querySelector(".weapon-animation-settings");
 		const enabled = html.querySelector(".weapon-animation-enabled")?.checked;
 
-		if (settings) settings.style.display = enabled ? "block" : "none";
+		const display = enabled ? "block" : "none";
+		if (settings && settings.style.display !== display) {
+			settings.style.display = display;
+			// #137: the window grows in place; re-clamp so its bottom stays on screen.
+			this.setPosition();
+		}
 
 		const imagePath = html.querySelector(".weapon-image-select")?.value;
 		if (!imagePath || !enabled) {

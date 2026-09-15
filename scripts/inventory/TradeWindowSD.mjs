@@ -716,10 +716,13 @@ export async function nativeTransferItems(fromActor, toActor, transferList) {
 			console.warn(`${MODULE_ID} | nativeTransferItems: requested ${transferQty} of ${srcItem.name} but source has ${srcQty}; clamping`);
 		}
 		const actualTransfer = Math.min(transferQty, srcQty);
+		// A lit light goes with the whole item; a split stack keeps it on the source.
+		const movesLight = srcItem.isActiveLight() && actualTransfer >= srcQty;
 
-		// Try to merge into an existing stack on the target.
+		// Try to merge into an existing stack on the target. A lit light never
+		// merges: it keeps its own item and burn time.
 		const sourceUuid = srcItem._stats?.compendiumSource ?? srcItem.flags?.core?.sourceId ?? null;
-		const existingStack = toActor.items.find(it =>
+		const existingStack = !movesLight && toActor.items.find(it =>
 			it.type === srcItem.type
 			&& it.name === srcItem.name
 			&& (it._stats?.compendiumSource ?? it.flags?.core?.sourceId ?? null) === sourceUuid
@@ -733,8 +736,23 @@ export async function nativeTransferItems(fromActor, toActor, transferList) {
 			const data = srcItem.toObject();
 			data.system = data.system ?? {};
 			data.system.quantity = actualTransfer;
+			if (data.system.light && !movesLight) data.system.light.active = false;
 			delete data._id;
-			await toActor.createEmbeddedDocuments("Item", [data], opts);
+
+			// Hand the light over the way the system's sheet drop does (#138):
+			// put out the target's own light, then move the token light across.
+			// The torch sprite follows: createItem plays it on the target, and the
+			// source's dark token light stops it there.
+			if (movesLight) {
+				const lit = toActor.items.filter(it => it.isActiveLight())
+					.map(it => ({ "_id": it.id, "system.light.active": false }));
+				if (lit.length) await toActor.updateEmbeddedDocuments("Item", lit, opts);
+			}
+			const [created] = await toActor.createEmbeddedDocuments("Item", [data], opts);
+			if (movesLight && created) {
+				await fromActor.turnLightOff();
+				await toActor.turnLightOn(created.id);
+			}
 		}
 
 		// Reduce source — delete if we transferred everything, else decrement.
