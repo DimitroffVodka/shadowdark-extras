@@ -40,11 +40,22 @@ export const DrawingEntries = {
 		}
 	},
 
+	async undoLastMapPath() {
+		const entry = this._permanentDrawings.findLast(d =>
+			["road", "river", "mapNetwork"].includes(d.type));
+		if (!entry) {
+			ui.notifications.warn("No road or river to undo.");
+			return false;
+		}
+		await this.deleteAnyDrawing(entry.id);
+		return true;
+	},
+
 	_loadPermanentDrawings() {
 		// Destroy old permanent PIXI objects
 		this._permanentDrawings.forEach(d => {
 			if (d.graphics?.parent) {
-				d.graphics.parent.removeChild(d.graphics); d.graphics.destroy();
+				d.graphics.parent.removeChild(d.graphics); d.graphics.destroy({ children: true });
 			}
 		});
 		this._permanentDrawings = [];
@@ -63,7 +74,10 @@ export const DrawingEntries = {
 		if (this._permanentDrawings.some(d => d.id === data.drawingId)) return;
 		try {
 			let g;
-			if (data.symbolType) {
+			if (data.type === "mapNetwork" && data.networkPaths) {
+				g = this._createMapNetworkDisplay(data);
+			}
+			else if (data.symbolType) {
 				g = new PIXI.Graphics();
 				const sqSize = STAMP_SIZES[data.symbolSize] || STAMP_SIZES.medium;
 				const sw = sqSize * 0.30;
@@ -92,12 +106,11 @@ export const DrawingEntries = {
 				);
 			}
 			else if (data.startX !== undefined && data.points) {
-				g = new PIXI.Graphics();
 				const color = this._cssToPixi(data.strokeColor);
 				const sw = data.strokeWidth || 6;
-				this._drawLineWithStyle(
-					g, data.points, data.startX, data.startY, sw, color, 1.0,
-					data.lineStyle || "solid"
+				g = this._createLineDisplay(
+					data.points, data.startX, data.startY, sw, color, 1.0,
+					data.lineStyle || "solid", data.texturePath || null
 				);
 			}
 			if (g) {
@@ -114,6 +127,7 @@ export const DrawingEntries = {
 					createdAt: data.createdAt || Date.now(),
 					userId: data.userId,
 					userName: data.userName,
+					type: data.type,
 					hidden: data.hidden || false,
 					name: data.name || null,
 				});

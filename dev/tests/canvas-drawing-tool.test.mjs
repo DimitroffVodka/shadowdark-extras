@@ -36,8 +36,21 @@ function reset() {
 	tool._permanentDrawings = [];
 	tool._previewGraphics = null;
 	tool._previewSymbol = null;
+	tool._mapPathDragCell = null;
 	tool._resetDrawingState();
+	tool.state.drawingMode = "sketch";
+	tool.state.mapPathKind = null;
+	tool.state.mapPathTiles = { road: [], river: [] };
+	tool.state.mapPathBlockedEdges = { road: [], river: [] };
+	tool.state.mapPathTexture = null;
+	tool.state.mapPathRoadStyle = "cobble";
+	tool.state.mapPathRoadColor = "#D8C6A8";
+	tool.state.lineStyle = "solid";
+	tool.state.brushSettings = { size: 6, color: "rgba(0, 0, 0, 1.0)" };
+	tool.state.opacity = 1;
+	tool.state.permanentMode = false;
 	tool.state.timedEraseEnabled = false;
+	tool._mapPathPreviousState = null;
 	settings = new Map();
 	globalThis.game.user = { id: "user-1", isGM: true, color: null, name: "GM" };
 }
@@ -146,6 +159,7 @@ test("resetting clears every in-progress anchor, not just the flag", () => {
 	reset();
 	Object.assign(tool.state, {
 		isDrawing: true,
+		mapPathTiles: { road: [{ i: 2, j: 3 }], river: [{ i: 4, j: 5 }] },
 		drawingPoints: [[1, 2]],
 		drawingStartPoint: { x: 1, y: 2 },
 		boxStartPoint: { x: 3, y: 4 },
@@ -159,6 +173,7 @@ test("resetting clears every in-progress anchor, not just the flag", () => {
 	assert.deepEqual(tool.state, {
 		...tool.state,
 		isDrawing: false,
+		mapPathTiles: { road: [], river: [] },
 		drawingPoints: [],
 		drawingStartPoint: null,
 		boxStartPoint: null,
@@ -188,6 +203,239 @@ test("the settings setters write through to the drawing state", () => {
 	assert.equal(tool.state.brushSettings.color, "#123456");
 	assert.equal(tool.state.permanentMode, true);
 	assert.equal(tool.state.opacity, 0.4);
+});
+
+test("a tile can be designated as road, river, or both and explicitly removed", () => {
+	reset();
+	const original = {
+		grid: globalThis.canvas.grid,
+		Graphics: globalThis.PIXI.Graphics,
+		canvasLayer: tool._pixiContainer,
+		getWorldCoords: tool._getWorldCoords,
+		active: tool.active,
+		toggleActive: tool._toggleActive,
+		keyDown: tool._keyDown,
+		addEventListener: globalThis.canvas.app.view.addEventListener,
+		removeEventListener: globalThis.canvas.app.view.removeEventListener,
+	};
+	const listeners = {};
+	let nextCell = { i: 2, j: 3 };
+
+	try {
+		globalThis.PIXI.Graphics = class {
+			constructor() { return makeRecordingGraphics(); }
+		};
+		tool._pixiContainer = new StubContainer();
+		tool._getWorldCoords = () => ({ x: 1, y: 2 });
+		globalThis.canvas.grid = {
+			isHexagonal: true,
+			size: 100,
+			getOffset: () => nextCell,
+			getAdjacentOffsets: () => [],
+			getCenterPoint: ({ i, j }) => ({ x: j * 100, y: i * 100 }),
+		};
+		tool.setMapPathMode("road", {
+			strokeWidth: 15, roadColor: "#D8C6A8", texturePath: "cobble.webp",
+			roadStyle: "cobble",
+		});
+		tool._selectMapPathPoint({});
+		tool.setMapPathMode("river", { strokeWidth: 15 });
+		tool._selectMapPathPoint({});
+		assert.deepEqual(tool.state.mapPathTiles, {
+			road: [{ i: 2, j: 3 }], river: [{ i: 2, j: 3 }],
+		});
+
+		nextCell = { i: 4, j: 6 };
+		tool.setMapPathMode("both", { strokeWidth: 15 });
+		tool._selectMapPathPoint({});
+		assert.deepEqual(tool.state.mapPathTiles, {
+			road: [{ i: 2, j: 3 }, { i: 4, j: 6 }],
+			river: [{ i: 2, j: 3 }, { i: 4, j: 6 }],
+		});
+		tool._selectMapPathPoint({});
+		assert.deepEqual(tool.state.mapPathTiles, {
+			road: [{ i: 2, j: 3 }], river: [{ i: 2, j: 3 }],
+		});
+		assert.equal(tool._selectMapPathPoint({}, false, true), false);
+		nextCell = { i: 2, j: 3 };
+		globalThis.canvas.app.view.addEventListener = (type, listener) => {
+			listeners[type] = listener;
+		};
+		globalThis.canvas.app.view.removeEventListener = () => {};
+		tool.active = true;
+		tool._toggleActive = true;
+		tool._keyDown = false;
+		tool._mouseButtonDown = false;
+		tool._attachCanvasHandlers();
+		listeners.pointerdown({
+			button: 2, ctrlKey: false, altKey: false,
+			preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {},
+		});
+		assert.deepEqual(tool.state.mapPathTiles, { road: [], river: [] });
+	}
+	finally {
+		tool._detachCanvasHandlers();
+		tool.active = original.active;
+		tool._toggleActive = original.toggleActive;
+		tool._keyDown = original.keyDown;
+		globalThis.canvas.grid = original.grid;
+		globalThis.PIXI.Graphics = original.Graphics;
+		tool._pixiContainer = original.canvasLayer;
+		tool._getWorldCoords = original.getWorldCoords;
+		globalThis.canvas.app.view.addEventListener = original.addEventListener;
+		globalThis.canvas.app.view.removeEventListener = original.removeEventListener;
+	}
+});
+
+test("dragging designation fills every hex in the native direct path", () => {
+	reset();
+	const original = {
+		grid: globalThis.canvas.grid,
+		Graphics: globalThis.PIXI.Graphics,
+		canvasLayer: tool._pixiContainer,
+		getWorldCoords: tool._getWorldCoords,
+	};
+	let nextCell = { i: 0, j: 0 };
+	let directPathCalls = 0;
+	const path = [
+		{ i: 0, j: 0 }, { i: 0, j: 1 }, { i: 0, j: 2 }, { i: 0, j: 3 },
+	];
+
+	try {
+		globalThis.PIXI.Graphics = class {
+			constructor() { return makeRecordingGraphics(); }
+		};
+		tool._pixiContainer = new StubContainer();
+		tool._getWorldCoords = () => ({ x: 1, y: 2 });
+		globalThis.canvas.grid = {
+			isHexagonal: true,
+			size: 100,
+			getOffset: () => nextCell,
+			getDirectPath: ([start, end]) => {
+				directPathCalls++;
+				assert.deepEqual([start, end], [{ i: 0, j: 0 }, { i: 0, j: 3 }]);
+				return path;
+			},
+			getAdjacentOffsets: ({ j }) => path.filter(cell => Math.abs(cell.j - j) === 1),
+			getCenterPoint: ({ i, j }) => ({ x: j * 100, y: i * 100 }),
+		};
+		tool.setMapPathMode("road", { strokeWidth: 15, texturePath: null });
+		tool._selectMapPathPoint({});
+		nextCell = { i: 0, j: 3 };
+		tool._selectMapPathPoint({}, true);
+
+		assert.deepEqual(tool.state.mapPathTiles.road, path);
+		assert.equal(directPathCalls, 1);
+		tool._selectMapPathPoint({}, true);
+		assert.deepEqual(tool.state.mapPathTiles.road, path, "staying in one tile does not toggle it");
+	}
+	finally {
+		globalThis.canvas.grid = original.grid;
+		globalThis.PIXI.Graphics = original.Graphics;
+		tool._pixiContainer = original.canvasLayer;
+		tool._getWorldCoords = original.getWorldCoords;
+	}
+});
+
+test("Shift-click toggles an adjacency edge for both Road and River", () => {
+	reset();
+	const original = {
+		grid: globalThis.canvas.grid,
+		Graphics: globalThis.PIXI.Graphics,
+		canvasLayer: tool._pixiContainer,
+		getWorldCoords: tool._getWorldCoords,
+	};
+	const cells = [{ i: 0, j: 0 }, { i: 0, j: 1 }, { i: 1, j: 0 }];
+
+	try {
+		globalThis.PIXI.Graphics = class {
+			constructor() { return makeRecordingGraphics(); }
+		};
+		tool._pixiContainer = new StubContainer();
+		tool._getWorldCoords = () => ({ x: 50, y: 50 });
+		globalThis.canvas.grid = {
+			isHexagonal: true,
+			size: 100,
+			getAdjacentOffsets: ({ i, j }) => cells.filter(cell => cell.i !== i || cell.j !== j),
+			getCenterPoint: ({ i, j }) => ({ x: j * 100, y: i * 100 }),
+		};
+		tool.setMapPathMode("both", { strokeWidth: 15, texturePath: null });
+		tool.state.mapPathTiles = { road: [...cells], river: [...cells] };
+		tool._previewGraphics = new StubContainer();
+		tool._pixiContainer.addChild(tool._previewGraphics);
+
+		assert.equal(tool._selectMapPathPoint({ shiftKey: true }), true);
+		assert.deepEqual(tool.state.mapPathBlockedEdges, {
+			road: ["0:1|1:0"], river: ["0:1|1:0"],
+		});
+		assert.deepEqual(tool._getMapPathNetworks(), {
+			road: [[[100, 0], [0, 0], [0, 100]]],
+			river: [[[100, 0], [0, 0], [0, 100]]],
+		});
+		assert.ok(tool._previewGraphics.children.some(child => child.ops?.some(op =>
+			op[0] === "lineStyle" && op[2] === 0xD94848
+		)));
+
+		assert.equal(tool._selectMapPathPoint({ shiftKey: true }), true);
+		assert.deepEqual(tool.state.mapPathBlockedEdges, { road: [], river: [] });
+	}
+	finally {
+		globalThis.canvas.grid = original.grid;
+		globalThis.PIXI.Graphics = original.Graphics;
+		tool._pixiContainer = original.canvasLayer;
+		tool._getWorldCoords = original.getWorldCoords;
+	}
+});
+
+test("Create persists one network with nested forks and keeps designation mode active", () => {
+	reset();
+	const original = {
+		grid: globalThis.canvas.grid,
+		Graphics: globalThis.PIXI.Graphics,
+		canvasLayer: tool._pixiContainer,
+		createNetworkDrawing: tool._createMapNetworkDrawing,
+	};
+	const created = [];
+	const neighbors = {
+		"0:0": [{ i: 0, j: 1 }],
+		"0:1": [{ i: 0, j: 0 }, { i: 0, j: 2 }, { i: 1, j: 1 }],
+		"0:2": [{ i: 0, j: 1 }, { i: 0, j: 3 }, { i: 1, j: 2 }],
+		"0:3": [{ i: 0, j: 2 }],
+		"1:1": [{ i: 0, j: 1 }],
+		"1:2": [{ i: 0, j: 2 }],
+	};
+
+	try {
+		tool._pixiContainer = new StubContainer();
+		tool._createMapNetworkDrawing = data => created.push(data);
+		globalThis.canvas.grid = {
+			isHexagonal: true,
+			size: 100,
+			getAdjacentOffsets: ({ i, j }) => neighbors[`${i}:${j}`] || [],
+			getCenterPoint: ({ i, j }) => ({ x: j * 100, y: i * 100 }),
+		};
+		tool.setMapPathMode("road", {
+			strokeWidth: 15, roadColor: "#D8C6A8", texturePath: "cobble.webp",
+		});
+		tool.state.mapPathTiles.road = Object.keys(neighbors).map(key => {
+			const [i, j] = key.split(":").map(Number);
+			return { i, j };
+		});
+		assert.equal(tool.createMapPath(), true);
+		assert.equal(created.length, 1);
+		assert.equal(created[0].road.length, 5);
+		assert.deepEqual(created[0].river, []);
+		assert.deepEqual(tool.state.mapPathTiles, { road: [], river: [] });
+		assert.equal(tool.state.mapPathKind, "road");
+		assert.equal(tool.state.drawingMode, "mapPath");
+		assert.equal(tool.state.brushSettings.size, 15);
+	}
+	finally {
+		globalThis.canvas.grid = original.grid;
+		globalThis.PIXI.Graphics = original.Graphics;
+		tool._pixiContainer = original.canvasLayer;
+		tool._createMapNetworkDrawing = original.createNetworkDrawing;
+	}
 });
 
 // --- entry type inference ---------------------------------------------------

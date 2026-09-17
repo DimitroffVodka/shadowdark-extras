@@ -862,6 +862,64 @@
                     </div>
                 </div>
 
+                {{#if isGM}}
+                <section class="hex-path-section" aria-label="Roads and rivers">
+                    <div class="hex-path-heading">
+                        <span><i class="fas fa-route"></i> Roads & Rivers</span>
+                        <span class="hex-path-help"
+                            data-tooltip="Left-drag adds dots. Right-click removes one dot. Shift-click a preview link to toggle that connection. Create saves everything at once.">
+                            Drag adds; right-click removes; Shift-click links
+                        </span>
+                    </div>
+                    <div class="hex-path-modes">
+                        <button class="hex-path-mode-btn {{#if (eq hexPathKind 'road')}}active{{/if}}"
+                            data-path-kind="road"
+                            data-tooltip="Road mode: click or left-drag to mark road tiles; right-click removes one">
+                            <i class="fas fa-road"></i> Road
+                        </button>
+                        <button class="hex-path-mode-btn {{#if (eq hexPathKind 'river')}}active{{/if}}"
+                            data-path-kind="river"
+                            data-tooltip="River mode: click or left-drag to mark river tiles; right-click removes one">
+                            <i class="fas fa-water"></i> River
+                        </button>
+                        <button class="hex-path-mode-btn {{#if (eq hexPathKind 'both')}}active{{/if}}"
+                            data-path-kind="both"
+                            data-tooltip="Both mode: mark Road and River together; right-click removes both">
+                            <i class="fas fa-code-branch"></i> Both
+                        </button>
+                    </div>
+                    <select class="hex-path-style-select" aria-label="Road surface"
+                        data-tooltip="Choose the Road surface used when Create is pressed"
+                        {{#unless (or (eq hexPathKind 'road') (eq hexPathKind 'both'))}}disabled{{/unless}}>
+                        <option value="dirt" {{#if (eq hexRoadStyle 'dirt')}}selected{{/if}}>Dirt</option>
+                        <option value="cobble" {{#if (eq hexRoadStyle 'cobble')}}selected{{/if}}>Cobblestone</option>
+                        <option value="pavers" {{#if (eq hexRoadStyle 'pavers')}}selected{{/if}}>Pavers</option>
+                        <option value="stone" {{#if (eq hexRoadStyle 'stone')}}selected{{/if}}>Flagstone</option>
+                    </select>
+                    <div class="hex-path-width-row">
+                        <label for="hex-path-width">Width</label>
+                        <input id="hex-path-width" class="hex-path-width-input" type="range"
+                            min="8" max="60" step="1" value="{{hexPathWidth}}" aria-label="Path width"
+                            data-tooltip="Set Road and River width as a percentage of one hex">
+                        <output class="hex-path-width-value" for="hex-path-width">{{hexPathWidth}}%</output>
+                    </div>
+                    <div class="hex-path-actions">
+                        <button class="hex-path-create-btn"
+                            data-tooltip="Create one permanent, undoable network from the marked tiles">
+                            <i class="fas fa-check"></i> Create
+                        </button>
+                        <button class="hex-path-clear-btn"
+                            data-tooltip="Clear pending dots and link overrides without creating">
+                            <i class="fas fa-eraser"></i> Clear
+                        </button>
+                        <button class="hex-path-undo-btn"
+                            data-tooltip="Remove the last created Road or River network">
+                            <i class="fas fa-rotate-left"></i> Undo
+                        </button>
+                    </div>
+                </section>
+                {{/if}}
+
                 <!-- Tile Search Filter -->
                 <div class="hex-search-section">
                     <input type="text" class="hex-search-input" placeholder="Search tiles..."

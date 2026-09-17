@@ -5,6 +5,9 @@
 // Merged via Object.assign(SDXDrawingTool.prototype, DrawingShapes).
 
 import { STAMP_SIZES } from "./drawing-constants.mjs";
+import {
+	buildMapPathNetwork, mapPathCellKey, mapPathEdgeKey,
+} from "./drawing-geometry.mjs";
 
 export const DrawingShapes = {
 	_startSketch(e) {
@@ -89,6 +92,178 @@ export const DrawingShapes = {
 			this.state.lineStyle, "line"
 		);
 		this._resetDrawingState();
+	},
+
+	_selectMapPathPoint(e, addOnly = false, removeOnly = false) {
+		if (!this.canvasLayer) return false;
+		if (!canvas.grid?.isHexagonal) {
+			ui.notifications.warn("Roads and rivers require a hex grid.");
+			return false;
+		}
+		const wc = this._getWorldCoords(e);
+		const kinds = this.state.mapPathKind === "both"
+			? ["road", "river"] : [this.state.mapPathKind];
+		const shift = e.shiftKey ?? e.data?.originalEvent?.shiftKey ?? false;
+		if (shift && !removeOnly) {
+			this._mapPathDragCell = null;
+			return this._toggleMapPathEdgeAt(wc, kinds);
+		}
+		const cell = wc && canvas.grid.getOffset(wc);
+		if (!cell) return false;
+		const next = { i: cell.i, j: cell.j };
+		let cells = [next];
+		if (addOnly && this._mapPathDragCell
+			&& mapPathCellKey(this._mapPathDragCell) !== mapPathCellKey(next)
+			&& typeof canvas.grid.getDirectPath === "function") {
+			cells = canvas.grid.getDirectPath([this._mapPathDragCell, next]) || cells;
+		}
+		this._mapPathDragCell = removeOnly ? null : next;
+		const has = (kind, tile) => this.state.mapPathTiles[kind]
+			.some(selected => selected.i === tile.i && selected.j === tile.j);
+		let changed = false;
+		if (addOnly) {
+			for (const kind of kinds) {
+				for (const tile of cells) {
+					if (has(kind, tile)) continue;
+					this.state.mapPathTiles[kind].push({ i: tile.i, j: tile.j });
+					changed = true;
+				}
+			}
+		}
+		else {
+			const remove = removeOnly || kinds.every(kind => has(kind, next));
+			for (const kind of kinds) {
+				if (remove && has(kind, next)) {
+					this.state.mapPathTiles[kind] = this.state.mapPathTiles[kind]
+						.filter(tile => tile.i !== next.i || tile.j !== next.j);
+					const removedKey = mapPathCellKey(next);
+					this.state.mapPathBlockedEdges[kind] = this.state.mapPathBlockedEdges[kind]
+						.filter(edge => !edge.split("|").includes(removedKey));
+					changed = true;
+				}
+				else if (!removeOnly && !has(kind, next)) {
+					this.state.mapPathTiles[kind].push(next);
+					changed = true;
+				}
+			}
+		}
+		if (!changed) return false;
+		if (!this._previewGraphics) {
+			this._previewGraphics = new PIXI.Container();
+			this._previewGraphics.alpha = this.state.opacity;
+			this.canvasLayer.addChild(this._previewGraphics);
+		}
+		this._drawMapPathPreview();
+		return true;
+	},
+
+	_toggleMapPathEdgeAt(point, kinds) {
+		if (!point) return false;
+		let changed = false;
+		for (const kind of kinds) {
+			const tiles = this.state.mapPathTiles[kind];
+			const selected = new Set(tiles.map(mapPathCellKey));
+			const seen = new Set();
+			let nearest = null;
+			for (const tile of tiles) {
+				const start = canvas.grid.getCenterPoint(tile);
+				for (const neighbor of canvas.grid.getAdjacentOffsets(tile)) {
+					if (!selected.has(mapPathCellKey(neighbor))) continue;
+					const edge = mapPathEdgeKey(tile, neighbor);
+					if (seen.has(edge)) continue;
+					seen.add(edge);
+					const end = canvas.grid.getCenterPoint(neighbor);
+					const dx = end.x - start.x;
+					const dy = end.y - start.y;
+					const lengthSquared = (dx * dx) + (dy * dy);
+					const numerator = ((point.x - start.x) * dx) + ((point.y - start.y) * dy);
+					const t = lengthSquared
+						? Math.max(0, Math.min(1, numerator / lengthSquared)) : 0;
+					const x = start.x + (dx * t);
+					const y = start.y + (dy * t);
+					const distanceSquared = ((point.x - x) ** 2) + ((point.y - y) ** 2);
+					if (!nearest || distanceSquared < nearest.distanceSquared) {
+						nearest = { edge, distanceSquared };
+					}
+				}
+			}
+			const tolerance = Math.max(this.state.brushSettings.size, canvas.grid.size * 0.12);
+			if (!nearest || nearest.distanceSquared > tolerance ** 2) continue;
+			const blocked = this.state.mapPathBlockedEdges[kind];
+			const index = blocked.indexOf(nearest.edge);
+			if (index >= 0) blocked.splice(index, 1);
+			else blocked.push(nearest.edge);
+			changed = true;
+		}
+		if (changed) this._drawMapPathPreview();
+		return changed;
+	},
+
+	_getMapPathNetworks() {
+		return {
+			road: buildMapPathNetwork(
+				this.state.mapPathTiles.road, canvas.grid, this.state.mapPathBlockedEdges.road
+			),
+			river: buildMapPathNetwork(
+				this.state.mapPathTiles.river, canvas.grid, this.state.mapPathBlockedEdges.river
+			),
+		};
+	},
+
+	_drawMapPathPreview() {
+		if (!this._previewGraphics) return;
+		const preview = this._previewGraphics;
+		preview.removeChildren().forEach(child => child.destroy({ children: true }));
+		const networkPaths = this._getMapPathNetworks();
+		if (networkPaths.road.length || networkPaths.river.length) {
+			preview.addChild(this._createMapNetworkDisplay({
+				networkPaths, strokeWidth: this.state.brushSettings.size,
+				roadColor: this.state.mapPathRoadColor, riverColor: this.state.mapPathRiverColor,
+				texturePath: this.state.mapPathTexture,
+			}));
+		}
+		const blocked = new PIXI.Graphics();
+		for (const kind of ["road", "river"]) {
+			for (const edge of this.state.mapPathBlockedEdges[kind]) {
+				const [start, end] = edge.split("|").map(cellKey => {
+					const [i, j] = cellKey.split(":").map(Number);
+					return canvas.grid.getCenterPoint({ i, j });
+				});
+				this._drawLineWithStyle(
+					blocked, [[0, 0], [end.x - start.x, end.y - start.y]],
+					start.x, start.y, 3, 0xD94848, 0.9, "dashed"
+				);
+			}
+		}
+		preview.addChild(blocked);
+		const markers = new PIXI.Graphics();
+		for (const [kind, radius] of [["road", 0.14], ["river", 0.09]]) {
+			markers.lineStyle(3, this._cssToPixi(kind === "road"
+				? this.state.mapPathRoadColor : this.state.mapPathRiverColor), 1);
+			for (const tile of this.state.mapPathTiles[kind]) {
+				const center = canvas.grid.getCenterPoint(tile);
+				markers.drawCircle(center.x, center.y, canvas.grid.size * radius);
+			}
+		}
+		preview.addChild(markers);
+	},
+
+	createMapPath() {
+		const networkPaths = this._getMapPathNetworks();
+		if (!networkPaths.road.length && !networkPaths.river.length) {
+			ui.notifications.warn("Designate at least two adjacent Road or River tiles.");
+			return false;
+		}
+		this._createMapNetworkDrawing(networkPaths);
+		this._cancelMapPath();
+		return true;
+	},
+
+	_cancelMapPath() {
+		this._removePreview();
+		this._mapPathDragCell = null;
+		this.state.mapPathTiles = { road: [], river: [] };
+		this.state.mapPathBlockedEdges = { road: [], river: [] };
 	},
 
 	_startBox(e) {
@@ -205,25 +380,44 @@ export const DrawingShapes = {
 
 	_createPixiDrawing(startX, startY, points, strokeWidth, strokeColor, lineStyle, type) {
 		if (!this.canvasLayer) return;
-		const g = new PIXI.Graphics();
 		const color = this._cssToPixi(strokeColor);
-		this._drawLineWithStyle(g, points, startX, startY, strokeWidth, color, 1.0, lineStyle);
+		const texturePath = type === "road" ? this.state.mapPathTexture : null;
+		const g = this._createLineDisplay(
+			points, startX, startY, strokeWidth, color, 1.0, lineStyle, texturePath
+		);
 		g.alpha = this.state.opacity;
 		this.canvasLayer.addChild(g);
 		const id = `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 		const data = {
 			id, graphics: g, createdAt: Date.now(), expiresAt: this._getExpiration(),
 			userId: game.user.id, userName: game.user.name, startX, startY, points, strokeWidth,
-			strokeColor, lineStyle, type, opacity: this.state.opacity,
+			strokeColor, lineStyle, texturePath, type, opacity: this.state.opacity,
 		};
 		this._finalizeDrawing(
 			data,
 			{
 				drawingId: id, userId: game.user.id, userName: game.user.name, startX, startY,
-				points, strokeWidth, strokeColor, lineStyle, type, opacity: this.state.opacity,
+				points, strokeWidth, strokeColor, lineStyle, texturePath, type,
+				opacity: this.state.opacity,
 				createdAt: data.createdAt, expiresAt: data.expiresAt,
 			}
 		);
+	},
+
+	_createMapNetworkDrawing(networkPaths) {
+		if (!this.canvasLayer) return;
+		const id = `map-network-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		const payload = {
+			drawingId: id, userId: game.user.id, userName: game.user.name,
+			type: "mapNetwork", networkPaths, strokeWidth: this.state.brushSettings.size,
+			roadColor: this.state.mapPathRoadColor, riverColor: this.state.mapPathRiverColor,
+			texturePath: this.state.mapPathTexture, roadStyle: this.state.mapPathRoadStyle,
+			opacity: this.state.opacity, createdAt: Date.now(), expiresAt: this._getExpiration(),
+		};
+		const graphics = this._createMapNetworkDisplay(payload);
+		graphics.alpha = this.state.opacity;
+		this.canvasLayer.addChild(graphics);
+		this._finalizeDrawing({ ...payload, id, graphics }, payload);
 	},
 
 	_createBoxDrawing(startX, startY, w, h) {

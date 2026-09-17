@@ -30,11 +30,11 @@ export const DrawingSync = {
 	},
 
 	_createRemoteLine(data) {
-		const g = new PIXI.Graphics();
 		const color = this._cssToPixi(data.strokeColor);
 		const sw = data.strokeWidth || 6;
-		this._drawLineWithStyle(
-			g, data.points, data.startX, data.startY, sw, color, 1.0, data.lineStyle || "solid"
+		const g = this._createLineDisplay(
+			data.points, data.startX, data.startY, sw, color, 1.0,
+			data.lineStyle || "solid", data.texturePath || null
 		);
 		if (data.opacity !== undefined) g.alpha = data.opacity;
 		this.canvasLayer.addChild(g);

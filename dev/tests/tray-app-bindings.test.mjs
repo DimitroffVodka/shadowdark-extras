@@ -103,6 +103,12 @@ const BINDINGS = [
 	".sdx-tray .hex-gen-generate-btn :: click",
 	".sdx-tray .hex-gen-slider-row input[type='range'][0] :: input",
 	".sdx-tray .hex-generator-toggle-btn :: click",
+	".sdx-tray .hex-path-clear-btn :: click",
+	".sdx-tray .hex-path-create-btn :: click",
+	".sdx-tray .hex-path-mode-btn[0] :: click",
+	".sdx-tray .hex-path-style-select :: change",
+	".sdx-tray .hex-path-undo-btn :: click",
+	".sdx-tray .hex-path-width-input :: input",
 	".sdx-tray .hex-search-input :: input",
 	".sdx-tray .hex-slider-row input[type='range'][0] :: input",
 	".sdx-tray .hex-symbol-folder-header:not(.decor-folder-header)[0] :: click",
@@ -623,6 +629,7 @@ test("the render context carries the state the template branches on", async () =
 	assert.equal(context.pinSearchTerm, "");
 	assert.equal(context.poiScalePercent, Math.round(getPoiScale() * 100));
 	assert.equal(context.isHexagonal, true);
+	assert.equal(context.hexPathWidth, 15);
 	assert.ok(Array.isArray(context.tomScenes));
 	assert.ok(Array.isArray(context.tomFolders));
 });
