@@ -205,6 +205,65 @@ test("the settings setters write through to the drawing state", () => {
 	assert.equal(tool.state.opacity, 0.4);
 });
 
+test("cold textured roads skip rope geometry until the texture is decoded", () => {
+	reset();
+	const original = {
+		Graphics: globalThis.PIXI.Graphics,
+		Texture: globalThis.PIXI.Texture,
+		Rectangle: globalThis.PIXI.Rectangle,
+		Point: globalThis.PIXI.Point,
+		SimpleRope: globalThis.PIXI.SimpleRope,
+	};
+	const ropeScales = [];
+
+	try {
+		globalThis.PIXI.Graphics = class {
+			constructor() { return makeRecordingGraphics(); }
+		};
+		globalThis.PIXI.Texture = class {
+			constructor(baseTexture, frame) {
+				this.baseTexture = baseTexture;
+				this.frame = frame;
+			}
+
+			static from() {
+				return { width: 0, height: 0, baseTexture: {} };
+			}
+		};
+		globalThis.PIXI.Rectangle = class {
+			constructor(x, y, width, height) {
+				Object.assign(this, { x, y, width, height });
+			}
+		};
+		globalThis.PIXI.Point = class {
+			constructor(x, y) { Object.assign(this, { x, y }); }
+		};
+		globalThis.PIXI.SimpleRope = class extends StubContainer {
+			constructor(texture, points, scale) {
+				super();
+				ropeScales.push(scale);
+			}
+		};
+
+		const line = tool._createLineDisplay(
+			[[0, 0], [100, 0]], 0, 0, 15, 0xFFFFFF, 1, "road", "cold.webp"
+		);
+		const network = tool._createMapNetworkDisplay({
+			networkPaths: { road: [[[0, 0], [100, 0]]], river: [] },
+			strokeWidth: 15,
+			roadColor: "#FFFFFF",
+			texturePath: "cold.webp",
+		});
+
+		assert.deepEqual(ropeScales, []);
+		assert.ok(line.ops, "the solid/textured Graphics fallback remains visible");
+		assert.equal(network.children.length, 1, "the network contains only its Graphics fallback");
+	}
+	finally {
+		Object.assign(globalThis.PIXI, original);
+	}
+});
+
 test("a tile can be designated as road, river, or both and explicitly removed", () => {
 	reset();
 	const original = {

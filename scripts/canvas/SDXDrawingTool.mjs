@@ -510,6 +510,7 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 		try {
 			const source = PIXI.Texture.from(texturePath);
 			const size = Math.min(256, source.width, source.height);
+			if (!size) return graphics;
 			const texture = new PIXI.Texture(
 				source.baseTexture, new PIXI.Rectangle(0, 0, size, size)
 			);
@@ -554,6 +555,7 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 			try {
 				const source = PIXI.Texture.from(texturePath);
 				const size = Math.min(256, source.width, source.height);
+				if (!size) return;
 				const ropeTexture = new PIXI.Texture(
 					source.baseTexture, new PIXI.Rectangle(0, 0, size, size)
 				);
