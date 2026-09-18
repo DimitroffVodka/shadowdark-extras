@@ -31,7 +31,11 @@ globalThis.canvas.grid = { size: 100, isHexagonal: true };
 
 const { TrayApp } = await import("../../scripts/tray/TrayApp.mjs");
 const { getViewMode } = await import("../../scripts/tray/TraySD.mjs");
-const { getPoiMirror, getPoiScale } = await import("../../scripts/hex/HexPainterSD.mjs");
+const {
+	disablePainting, enablePainting, getPoiMirror, getPoiScale,
+} = await import("../../scripts/hex/HexPainterSD.mjs");
+const paintSession = await import("../../scripts/hex/hex-paint-session.mjs");
+const { sdxDrawingTool } = await import("../../scripts/canvas/SDXDrawingTool.mjs");
 const { PinPlacer } = await import("../../scripts/journal/JournalPinsSD.mjs");
 
 /**
@@ -209,6 +213,45 @@ test("the hex painter mixin is merged onto the prototype and binds too", () => {
 
 	assert.equal(typeof app._bindHexPainterEvents, "function");
 	assert.ok(dom.manifest().some(entry => entry.includes(".hex-format-btn")));
+});
+
+test("leaving path controls re-enables painting without stopping an ordinary drawing mode", () => {
+	const { dom } = render();
+	const original = {
+		active: sdxDrawingTool.active,
+		toggleActive: sdxDrawingTool._toggleActive,
+		keyDown: sdxDrawingTool._keyDown,
+		drawingMode: sdxDrawingTool.state.drawingMode,
+		previousState: sdxDrawingTool._mapPathPreviousState,
+		paintEnabled: paintSession._paintEnabled,
+		viewStyle: canvas.app.view.style,
+	};
+
+	try {
+		canvas.app.view.style = {};
+		sdxDrawingTool.active = true;
+		sdxDrawingTool._toggleActive = true;
+		sdxDrawingTool._keyDown = false;
+		sdxDrawingTool.state.drawingMode = "line";
+		sdxDrawingTool._mapPathPreviousState = null;
+		disablePainting();
+
+		dom.fire(".sdx-tray .hex-tile-tab[0]", "click");
+
+		assert.equal(paintSession._paintEnabled, true);
+		assert.equal(sdxDrawingTool.active, true);
+		assert.equal(sdxDrawingTool.state.drawingMode, "line");
+	}
+	finally {
+		canvas.app.view.style = original.viewStyle;
+		sdxDrawingTool.active = original.active;
+		sdxDrawingTool._toggleActive = original.toggleActive;
+		sdxDrawingTool._keyDown = original.keyDown;
+		sdxDrawingTool.state.drawingMode = original.drawingMode;
+		sdxDrawingTool._mapPathPreviousState = original.previousState;
+		if (original.paintEnabled) enablePainting();
+		else disablePainting();
+	}
 });
 
 test("a render with no tray element in the document binds nothing", () => {

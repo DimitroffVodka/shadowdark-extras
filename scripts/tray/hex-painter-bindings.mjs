@@ -27,10 +27,12 @@ const ROAD_STYLES = {
 	},
 };
 
+// Painting is disabled on entry to path mode and has no other owner that
+// re-enables it, so re-enable unconditionally — an earlier deactivate() can
+// leave path mode already torn down while painting is still off.
 function stopHexPathMode() {
-	if (!sdxDrawingTool.stopMapPathMode()) return false;
+	sdxDrawingTool.stopMapPathMode();
 	enablePainting();
-	return true;
 }
 
 function pathWidthFromPercent(percent) {

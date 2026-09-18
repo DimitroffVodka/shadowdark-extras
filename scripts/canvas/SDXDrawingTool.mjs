@@ -863,10 +863,12 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 	}
 
 	stopMapPathMode() {
-		if (this.state.drawingMode !== "mapPath") return false;
+		if (this.state.drawingMode !== "mapPath" && !this._mapPathPreviousState) return false;
 		this._cancelMapPath();
 		this.deactivate(false);
-		if (this.state.drawingMode === "mapPath") this._restoreMapPathState();
+		// deactivate() already restores when it observed mapPath mode; this
+		// catches the case where it ran earlier (Esc/hotkey) and left state saved.
+		if (this._mapPathPreviousState) this._restoreMapPathState();
 		return true;
 	}
 
