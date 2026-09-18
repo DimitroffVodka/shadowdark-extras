@@ -165,6 +165,11 @@ const result = await hex.buildHexcrawl({
 
 `grid` and `hexes` are required; `hexes: []` builds terrain only. All other
 dataset fields are optional. `cols` and `rows` are integer counts from 1–99.
+`rowsLowered` (optional, `rows` or `rows - 1`) is the row count of the columns
+Foundry shifts half a hex down: those columns end one row short on a print whose
+frame cuts the raised columns' first row in half, and the builder paints,
+records and accepts no number past it there. Which published columns they are
+follows `origin` and the flips. Send it only when it differs from `rows`.
 Distance defaults to 6, units to `"mi"`, terrain to `"forest"`, and all
 transforms to false. The scene uses SDX's native HEXODDQ grid at size 256.
 `terrainTile: { w, h }` overrides the ordinary terrain tile render size
@@ -175,6 +180,10 @@ module-relative asset.
 **Numbering:** leading digits are the published column; the final two digits
 are the row. Both start at 1. `1403` and `"1403"` mean column 14, row 3,
 Foundry offset `{ i: 2, j: 13 }` with no transforms. `"0102"` is also valid.
+`grid.origin: 0` is for maps that number their own first column and row 0: then
+columns run 0…`cols`-1 and rows 0…`rows`-1, `0000` is offset `{ i: 0, j: 0 }`, and
+every number is stored exactly as supplied. `origin` is `0` or `1` and defaults
+to `1`; a scene remembers it, so `upsertHexRecords` takes the same numbers.
 No per-hex `col`, `row`, `i`, `j` or coordinate-pair inputs are accepted.
 Numeric inputs must be integers; strings must contain exactly 3–4 digits,
 without whitespace. Out-of-bounds cells and duplicate keyed hexes are rejected.

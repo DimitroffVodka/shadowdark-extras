@@ -18,6 +18,8 @@
  *   name: "The Gloaming",
  *   grid: {
  *     cols: 17, rows: 11,            // published columns / rows, both start at 1
+ *     origin: 1,                     // 0 when the map's own first column/row is 0
+ *     rowsLowered: 11,               // optional; row count of the half-hex-shifted columns
  *     distance: 2, units: "mi",
  *     landscape: false,             // true transposes the published axes
  *     flipX: false, flipY: false    // mirror to match the printed map's handedness
@@ -159,6 +161,8 @@ export function hexNumToColRow(num) {
 function makeGeom(dataset, published = false) {
 	const pubCols = dataset.grid?.cols ?? 11;
 	const pubRows = dataset.grid?.rows ?? 17;
+	const origin = published ? (dataset.grid?.origin ?? 1) : 1;
+	const rowsLowered = published ? (dataset.grid?.rowsLowered ?? pubRows) : pubRows;
 	const landscape = !!dataset.grid?.landscape;
 	const flipX = !!dataset.grid?.flipX;
 	const flipY = !!dataset.grid?.flipY;
@@ -167,8 +171,8 @@ function makeGeom(dataset, published = false) {
 	const gridRows = landscape ? pubCols : pubRows; // Foundry rows    (y cells)
 
 	function offsetOf(col, row) {
-		const cx = published ? col - 1 : row - 1;
-		const ry = published ? row - 1 : col;
+		const cx = published ? col - origin : row - 1;
+		const ry = published ? row - origin : col;
 		let j; let i;
 		if (landscape) {
 			j = flipX ? (pubRows - 1 - ry) : ry;   // x runs along published rows
@@ -181,7 +185,16 @@ function makeGeom(dataset, published = false) {
 		return { i, j };
 	}
 
-	return { pubCols, pubRows, gridCols, gridRows, offsetOf, published };
+	// HEXODDQ shifts odd columns half a hex down (Foundry common/grid/hexagonal.mjs,
+	// getCenterPoint), so at the scene's maximum height those columns lose their
+	// last row. Which published column that is depends on origin and flips, so ask
+	// the mapping for the physical column instead of assuming a parity.
+	const inGrid = (col, row) => col >= origin && col < pubCols + origin
+		&& row >= origin && row < pubRows + origin
+		&& !(row >= rowsLowered + origin && offsetOf(col, row).j % 2 === 1);
+
+	return { pubCols, pubRows, gridCols, gridRows, origin, rowsLowered,
+		offsetOf, inGrid, published };
 }
 
 const offsetToHexKey = off => `${off.i}_${off.j}`;
@@ -195,20 +208,20 @@ function requireInput(condition, message) {
 	if (!condition) throw new Error(`SDX | Hexcrawl: ${message}`);
 }
 
-function validateHexNum(num, grid) {
+function validateHexNum(num, geom) {
 	requireInput((typeof num === "number" && Number.isSafeInteger(num))
 		|| (typeof num === "string" && /^\d{3,4}$/.test(num)), `invalid hex number ${num}`);
 	const { col, row } = hexNumToColRow(num);
-	requireInput(col >= 1 && col <= grid.cols && row >= 1 && row <= grid.rows, `hex ${num} is outside the published grid`);
+	requireInput(geom.inGrid(col, row), `hex ${num} is outside the published grid`);
 	return Number(num);
 }
 
-function validateRecords(records, grid, building = false) {
+function validateRecords(records, geom, building = false) {
 	requireInput(Array.isArray(records), "hexes/records must be an array");
 	const seen = new Set();
 	for (const hex of records) {
 		requireInput(hex && typeof hex === "object" && !Array.isArray(hex), "each hex must be an object");
-		const num = validateHexNum(hex.num, grid);
+		const num = validateHexNum(hex.num, geom);
 		requireInput(!seen.has(num), `duplicate hex ${hex.num}`);
 		seen.add(num);
 		for (const key of Object.keys(hex)) {
@@ -240,6 +253,10 @@ function validateDataset(dataset, opts) {
 	requireInput(opts && typeof opts === "object" && !Array.isArray(opts), "options must be an object");
 	const grid = dataset.grid;
 	requireInput(grid && [grid.cols, grid.rows].every(n => Number.isInteger(n) && n >= 1 && n <= 99), "grid cols/rows must be integers from 1 to 99");
+	requireInput(grid.origin === undefined || grid.origin === 0 || grid.origin === 1, "grid.origin must be 0 or 1");
+	const rowsLowered = grid.rowsLowered;
+	requireInput(rowsLowered === undefined || (Number.isInteger(rowsLowered)
+		&& [grid.rows, grid.rows - 1].includes(rowsLowered)), "grid.rowsLowered must be rows or rows-1");
 	for (const key of ["landscape", "flipX", "flipY"]) {
 		if (Object.hasOwn(grid, key)) requireInput(typeof grid[key] === "boolean", `grid.${key} must be boolean`);
 	}
@@ -251,14 +268,15 @@ function validateDataset(dataset, opts) {
 	for (const value of [dataset.featureIconSize, dataset.terrainTile?.w, dataset.terrainTile?.h]) {
 		requireInput(value === undefined || (Number.isFinite(value) && value > 0), "tile sizes must be positive");
 	}
-	validateRecords(dataset.hexes, grid, true);
+	const geom = makeGeom(dataset, true);
+	validateRecords(dataset.hexes, geom, true);
 	if (dataset.terrain !== undefined) {
 		requireInput(dataset.terrain && typeof dataset.terrain === "object", "terrain must be an object");
 		if (dataset.terrain.default !== undefined) requireInput(typeof dataset.terrain.default === "string", "default terrain must be text");
 		requireInput(Array.isArray(dataset.terrain.regions ?? []), "terrain.regions must be an array");
 		for (const region of dataset.terrain.regions ?? []) {
 			requireInput(region && typeof region.biome === "string" && Array.isArray(region.hexes), "regions need biome and hexes");
-			for (const num of region.hexes) validateHexNum(num, grid);
+			for (const num of region.hexes) validateHexNum(num, geom);
 		}
 	}
 	if (dataset.networks !== undefined) {
@@ -271,12 +289,12 @@ function validateDataset(dataset, opts) {
 		}
 		for (const kind of ["road", "river"]) {
 			requireInput(Array.isArray(networks[kind] ?? []), `${kind} must be a hex-number array`);
-			const cells = new Set((networks[kind] ?? []).map(num => validateHexNum(num, grid)));
+			const cells = new Set((networks[kind] ?? []).map(num => validateHexNum(num, geom)));
 			const edges = networks.blockedEdges?.[kind] ?? [];
 			requireInput(Array.isArray(edges), "blockedEdges must contain pair arrays");
 			for (const pair of edges) {
 				requireInput(Array.isArray(pair) && pair.length === 2, "blocked edge must be [num,num]");
-				const nums = pair.map(num => validateHexNum(num, grid));
+				const nums = pair.map(num => validateHexNum(num, geom));
 				requireInput(nums[0] !== nums[1] && nums.every(num => cells.has(num)), "blocked edge endpoints must belong to that network");
 			}
 		}
@@ -325,6 +343,8 @@ async function createHexScene(dataset, geom, { sceneName }) {
 						cols: geom.pubCols, rows: geom.pubRows,
 						landscape: !!dataset.grid.landscape,
 						flipX: !!dataset.grid.flipX, flipY: !!dataset.grid.flipY,
+						...(geom.origin === 1 ? {} : { origin: geom.origin }),
+						...(geom.rowsLowered === geom.pubRows ? {} : { rowsLowered: geom.rowsLowered }),
 					} } : {}),
 				},
 			},
@@ -368,8 +388,9 @@ async function paintTerrain(scene, dataset, geom, specials) {
 	const terrainMap = {}; // hexKey -> terrain label
 
 	for (let row = 0; row < geom.pubRows; row++) {
-		for (let col = 1; col <= geom.pubCols; col++) {
-			const num = geom.published ? (col * 100) + row + 1 : (row * 100) + col;
+		for (let col = geom.published ? geom.origin : 1; col <= geom.pubCols + geom.origin - 1; col++) {
+			const num = geom.published ? (col * 100) + row + geom.origin : (row * 100) + col;
+			if (geom.published && !geom.inGrid(col, row + geom.origin)) continue;
 			const biomeKey = (geom.published ? keyedTerrain.get(num) : undefined)
 				?? regionMap.get(num) ?? defaultBiome;
 			const biome = geom.published
@@ -504,8 +525,8 @@ export async function upsertHexRecords(sceneId, records) {
 	requireInput(scene, "scene not found");
 	const layout = scene.getFlag(MODULE_ID, "hexcrawl");
 	requireInput(layout?.version === 1 && layout.grid, "scene has no published layout; rebuild legacy scenes with api.hex.buildHexcrawl");
-	validateRecords(records, layout.grid);
 	const geom = makeGeom(layout, true);
+	validateRecords(records, geom);
 	const patches = {};
 	for (const hex of records) {
 		const { num, ...patch } = hex;

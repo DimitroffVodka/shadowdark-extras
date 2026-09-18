@@ -26,6 +26,15 @@ const fixture = {
 	networks: { river: [1402, 1403, 1404], road: [1402, 1403], blockedEdges: { river: [[1403, 1404]] } },
 	reference: { src: "icons/svg/castle.svg" },
 };
+// Invented fixture for the 0-based map numbering: hex 0000 is the map's own
+// first number, so it must land on Foundry offset {i:0,j:0}, and 0202 on {i:2,j:2}.
+const originFixture = {
+	name: "Origin zero",
+	grid: { cols: 3, rows: 3, origin: 0 },
+	terrain: { default: "grassland", regions: [{ biome: "forest", hexes: [0, 1, "0202"] }] },
+	hexes: [{ num: "0000", name: "First" }, { num: 202, name: "Last" }],
+	networks: { river: [0, 101, 202] },
+};
 let scenes;
 let writes;
 const grid = {
@@ -137,6 +146,7 @@ test("published transpose/flips persist for later num-only upserts; legacy root 
 test("rejects malformed input before creating/deleting scenes or partially upserting", async () => {
 	for (const alter of [
 		d => { d.grid.cols = -1; }, d => { d.grid.rows = Infinity; }, d => { d.grid.flipX = "false"; },
+		d => { d.grid.origin = 2; }, d => { d.grid.rowsLowered = 1; },
 		d => { d.hexes[0].num = "1e3"; }, d => { d.hexes[0].num = " 1402"; }, d => { d.hexes[0].num = 1501; },
 		d => { d.hexes[0].row = 2; }, d => { d.hexes[0].num = 1403; },
 		d => { d.networks.river.push(9901); }, d => { d.networks.blockedEdges.river = [[1403, 101]]; },
@@ -179,6 +189,43 @@ test("all shipped specials are catalogued and assigned once to explicit location
 	assert.equal(scenes.length, 1, "bad assignments are rejected before any world writes");
 	world.setGM(false);
 	await assert.rejects(getSpecialTiles(), /GM/);
+});
+
+test("origin 0 keeps the map's own 0-based numbers on the same cells", async () => {
+	const result = await builder.buildPublishedHexcrawl(originFixture, { view: false });
+	assert.deepEqual(result, { sceneId: "scene-1", sceneName: "Origin zero", terrainTiles: 9, featureTiles: 0, records: 2 });
+	const records = world.lastFlagValue()["scene-1"];
+	assert.equal(records["0_0"].name, "0000. First", "0000 sits at {i:0,j:0}");
+	assert.equal(records["2_2"].name, "202. Last", "0202 sits at {i:2,j:2}");
+	assert.equal(records["0_0"].terrain, "forest", "region hex 0");
+	assert.equal(records["1_0"].terrain, "forest", "region hex 1");
+	assert.equal(records["2_2"].terrain, "forest", "region hex \"0202\" is the same cell as num 202");
+	assert.equal(records["1_1"].terrain, "grassland");
+	assert.equal(scenes[0].getFlag(MODULE_ID, "hexcrawl").grid.origin, 0, "scene remembers its origin");
+	await builder.upsertHexRecords(result.sceneId, [{ num: 202, desc: "Revised." }]);
+	assert.equal(world.lastFlagValue()["scene-1"]["2_2"].notes[0].text, "Revised.");
+	await assert.rejects(
+		builder.buildPublishedHexcrawl({ ...originFixture, grid: { cols: 3, rows: 3 } }),
+		/outside the published grid/
+	);
+});
+
+test("rowsLowered stops the half-hex-shifted columns one row early", async () => {
+	const { sceneId, terrainTiles } = await builder.buildPublishedHexcrawl(
+		{ grid: { cols: 4, rows: 3, origin: 0, rowsLowered: 2 }, hexes: [] }, { view: false });
+	assert.equal(terrainTiles, 10, "odd columns 1 and 3 lose row 2");
+	const records = world.lastFlagValue()[sceneId];
+	assert.equal(records["2_1"], undefined);
+	assert.equal(records["2_3"], undefined);
+	assert.equal(records["2_0"].terrain, "forest");
+	assert.equal(records["2_2"].terrain, "forest");
+	assert.equal(records["1_2"].terrain, "forest", "even columns keep the last row");
+	await assert.rejects(
+		builder.buildPublishedHexcrawl({ grid: { cols: 4, rows: 3, origin: 0, rowsLowered: 2 }, hexes: [{ num: 102 }] }),
+		/outside the published grid/
+	);
+	const oneBased = await builder.buildPublishedHexcrawl({ grid: { cols: 4, rows: 3, rowsLowered: 2 }, hexes: [] }, { view: false });
+	assert.equal(oneBased.terrainTiles, 10, "origin 1 lowers the even published columns instead");
 });
 
 test("setup exposes the same guarded hex namespace on both surfaces and removes it when disabled", async () => {
