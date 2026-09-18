@@ -45,8 +45,11 @@ globalThis.game = {
 	messages: { get: () => null },
 };
 globalThis.ui = { notifications: { info: () => {}, warn: () => {}, error: () => {} } };
+globalThis.Actor = class {};
+globalThis.CONFIG = { time: { roundTime: 0, turnTime: 0 } };
 
 const { getSocket, setupCombatSocket } = await import("../../scripts/shared/combat-socket.mjs");
+const { applySpellEffect } = await import("../../scripts/effects/BreakOnDamageSD.mjs");
 let socketHarness;
 
 /** socketlib fake that records registerModule calls and registered handlers. */
@@ -56,6 +59,7 @@ function makeSocketlib() {
 		register(name, handler) {
 			registrations.set(name, handler);
 		},
+		executeAsGM: (name, data) => registrations.get(name)(data),
 	};
 	const calls = [];
 	const registerModule = (id) => {
@@ -147,6 +151,299 @@ test("applyTokenCondition writes Foundry v14 duration and start data", async () 
 		},
 	});
 	assert.deepEqual(created.system.duration, { value: "2", type: "rounds" });
+});
+
+test("applySpellEffect gives owners and non-owners identical canonical timing", async () => {
+	let created;
+	const actor = Object.assign(new Actor(), {
+		id: "target-actor",
+		createEmbeddedDocuments: async (_type, entries) => {
+			[created] = entries;
+			return [{ id: "created-effect" }];
+		},
+	});
+	globalThis.game.actors = { get: id => id === actor.id ? actor : null };
+	globalThis.game.time = { worldTime: 100 };
+	const source = { type: "Effect", effects: [{ duration: { rounds: 2 } }] };
+	globalThis.fromUuid = async () => ({ toObject: () => structuredClone(source) });
+	for (const combat of [null, { round: 0, started: false }, {
+		id: "combat-1", round: 3, turn: 1, started: true,
+		combatant: { id: "combatant-1", initiative: 14 },
+	}]) {
+		globalThis.game.combat = combat;
+		actor.isOwner = false;
+		assert.equal(await applySpellEffect(actor, "Compendium.test.effect"), "created-effect");
+		const socketData = structuredClone(created);
+		actor.isOwner = true;
+		assert.equal(await applySpellEffect(actor, "Compendium.test.effect"), "created-effect");
+		assert.deepEqual(created, socketData);
+		assert.deepEqual(created.effects[0].duration, combat?.started
+			? { value: 2, units: "rounds", expiry: "turnStart" }
+			: { value: 12, units: "seconds", expiry: null });
+		assert.equal(created.effects[0].start.time, 100);
+	}
+	assert.deepEqual(source.effects[0], { duration: { rounds: 2 } });
+});
+
+test("applyEffectToTarget resolves the cast instance first, then the newest spell id", async () => {
+	let created;
+	const target = {
+		createEmbeddedDocuments: async (_type, entries) => {
+			[created] = entries;
+			return [{ id: "created-effect" }];
+		},
+	};
+	const oldTiming = {
+		duration: { value: 5, units: "rounds", expiry: "turnStart" },
+		start: { time: 100, combat: "cast-combat", combatant: "caster-turn", initiative: 18, round: 2, turn: 1 },
+	};
+	const newTiming = {
+		duration: { value: 30, units: "seconds", expiry: null }, start: { time: 130 },
+	};
+	const casts = [
+		{ instanceId: "old-cast", spellId: "spell", effectTiming: oldTiming },
+		{ instanceId: "new-cast", spellId: "spell", effectTiming: newTiming },
+		{ instanceId: "collision", spellId: "old-cast", effectTiming: newTiming },
+	];
+	const savedCasts = structuredClone(casts);
+	globalThis.game.actors = { get: id => id === "caster" ? {
+		getFlag: (module, key) => {
+			assert.equal(module, "shadowdark-extras");
+			assert.equal(key, "activeDurationSpells");
+			return casts;
+		},
+	} : null };
+	globalThis.canvas.tokens.get = id => id === "synthetic-token" ? { actor: target } : null;
+	globalThis.game.combat = {
+		id: "later-combat", started: true, round: 9, turn: 4,
+		combatant: { id: "entrant-turn", initiative: 2 },
+	};
+	globalThis.game.time = { worldTime: 200 };
+	globalThis.fromUuid = async () => ({ toObject: () => ({
+		type: "Effect", effects: [{ duration: { rounds: 2 } }, {}],
+	}) });
+	const handler = socketHarness.registrations.get("applyEffectToTarget");
+	for (const [spellId, timing] of [["old-cast", oldTiming], ["new-cast", newTiming], ["spell", newTiming]]) {
+		assert.deepEqual(await handler({
+			targetTokenId: "synthetic-token", effectUuid: "Compendium.test.effect",
+			casterId: "caster", spellId, templateId: "area-template",
+			castTiming: { start: { time: 999 } }, // Caller timing must not be trusted.
+		}), { success: true, effectId: "created-effect" });
+		assert.deepEqual(created.effects[0].start, timing.start);
+		assert.deepEqual(created.effects[0].duration, timing === oldTiming
+			? { value: 2, units: "rounds", expiry: "turnStart" }
+			: { value: 12, units: "seconds", expiry: null });
+		assert.deepEqual(created.effects[1], timing);
+		assert.equal(created.flags["shadowdark-extras"].templateOrigin, "area-template");
+	}
+	assert.deepEqual(casts, savedCasts);
+});
+
+test("legacy casts reuse a linked Active Effect start when no cast snapshot exists", async () => {
+	let created;
+	const linkedEffect = {
+		duration: { value: 30, units: "seconds", expiry: null, remaining: 12 },
+		start: { time: 100 },
+	};
+	const target = {
+		items: { get: id => id === "existing-effect" ? { effects: [linkedEffect] } : null },
+		createEmbeddedDocuments: async (_type, entries) => {
+			[created] = entries;
+			return [{ id: "created-effect" }];
+		},
+	};
+	const legacyCast = {
+		instanceId: "legacy-cast", spellId: "spell", durationValue: 5, durationType: "rounds",
+		targetEffects: [{ targetTokenId: "existing-token", effectItemId: "existing-effect" }],
+	};
+	globalThis.game.actors = { get: id => id === "caster" ? { getFlag: () => [legacyCast] } : target };
+	globalThis.canvas.tokens.get = id => id === "existing-token" ? { actor: target } : null;
+	globalThis.game.combat = { id: "later-combat", started: true, round: 5, turn: 1 };
+	globalThis.game.time = { worldTime: 118 };
+	globalThis.fromUuid = async () => ({ toObject: () => ({ effects: [{ duration: { rounds: 2 } }, {}] }) });
+	assert.deepEqual(await socketHarness.registrations.get("applyEffectToTarget")({
+		targetActorId: "target", casterId: "caster", spellId: "legacy-cast", effectUuid: "Compendium.test.effect",
+	}), { success: true, effectId: "created-effect" });
+	assert.deepEqual(created.effects, [
+		{ duration: { value: 12, units: "seconds", expiry: null }, start: { time: 100 } },
+		{ duration: { value: 30, units: "seconds", expiry: null }, start: { time: 100 } },
+	]);
+});
+
+test("legacy casts without a recorded start leave expiry to the registry", async () => {
+	let created;
+	const legacyCast = { instanceId: "legacy-cast", spellId: "spell", expiryRound: 6, targetEffects: [] };
+	globalThis.game.actors = { get: id => id === "caster" ? { getFlag: () => [legacyCast] } : {
+		createEmbeddedDocuments: async (_type, entries) => {
+			[created] = entries;
+			return [{ id: "created-effect" }];
+		},
+	} };
+	globalThis.game.combat = { id: "combat", started: true, round: 5, turn: 1, combatant: { id: "entrant" } };
+	globalThis.game.time = { worldTime: 118 };
+	globalThis.fromUuid = async () => ({ toObject: () => ({ effects: [
+		{ duration: { rounds: 2 }, start: { time: 999 } }, {},
+	] }) });
+	assert.deepEqual(await socketHarness.registrations.get("applyEffectToTarget")({
+		targetActorId: "target", casterId: "caster", spellId: "legacy-cast", effectUuid: "Compendium.test.effect",
+	}), { success: true, effectId: "created-effect" });
+	assert.deepEqual(created.effects.map(effect => effect.start), [null, null], "do not fabricate a fresh core clock");
+	assert.equal(legacyCast.expiryRound, 6);
+});
+
+test("damage-card and area-entry effects retain the same cast anchor and duration override", async () => {
+	const timing = { duration: { value: 2, units: "rounds", expiry: "turnStart" },
+		start: { time: 100, combat: "combat", combatant: "caster-turn", round: 3, turn: 1 } };
+	let casts = [{ instanceId: "cast", spellId: "spell", effectTiming: timing, targets: [], targetEffects: [] }];
+	const caster = { id: "caster", getFlag: () => casts,
+		setFlag: async (_scope, _key, entries) => { casts = entries; } };
+	const created = [];
+	const target = { id: "target", items: { filter: () => [] },
+		createEmbeddedDocuments: async (_type, entries) => {
+			created.push(entries[0]); return [{ id: `effect-${created.length}` }];
+		} };
+	game.actors = { get: id => id === "caster" ? caster : target };
+	game.combat = { id: "combat", started: true, round: 4, turn: 0, combatant: { id: "other-turn" } };
+	canvas.tokens.get = () => ({ actor: target });
+	globalThis.fromUuid = async () => ({ toObject: () => ({ effects: [{ duration: { rounds: 2 } }] }) });
+	assert.equal(await socketHarness.registrations.get("applyTokenCondition")({
+		tokenId: "token", effectUuid: "Item.source", duration: { rounds: 5 },
+		spellInfo: { casterActorId: "caster", spellId: "spell" },
+	}), true);
+	assert.equal(await socketHarness.registrations.get("applyEffectToTarget")({
+		targetTokenId: "token", effectUuid: "Item.source", duration: { rounds: 5 },
+		casterId: "caster", spellId: "cast",
+	}).then(result => result.success), true);
+	for (const data of created) {
+		assert.deepEqual(data.effects[0].start, timing.start);
+		assert.equal(data.effects[0].duration.value, 5);
+	}
+	assert.equal(casts[0].targetEffects[0].effectItemId, "effect-1");
+});
+
+test("player and secondary-GM duration mutations reach only the authoritative GM queue", async () => {
+	const duration = await import("../../scripts/effects/duration-spell.mjs");
+	const gm = { id: "gm", isGM: true }, player = { id: "player", isGM: false };
+	const otherGM = { id: "other-gm", isGM: true }, stranger = { id: "stranger", isGM: false };
+	const requests = [];
+	const spell = { id: "spell", name: "Spell", system: { duration: { value: 2, type: "rounds" } } };
+	const caster = { id: "caster", uuid: "Actor.caster", name: "Caster", documentName: "Actor",
+		getFlag: () => [{ instanceId: "old", spellId: "spell", targets: [], targetEffects: [] }],
+		setFlag: () => { throw new Error("a non-authoritative client wrote the registry"); },
+		items: { get: () => spell, filter: () => [] },
+		testUserPermission: user => user.id === player.id };
+	game.users = { activeGM: gm, get: id => [gm, player, otherGM, stranger].find(user => user.id === id) };
+	game.actors = { get: () => caster, contents: [] };
+	game.combat = null;
+	game.time = { worldTime: 123 };
+	socketHarness.socket.executeAsUser = async (name, userId, data) => { requests.push({ name, userId, data }); return true; };
+	globalThis.Hooks = { callAll() {} };
+	globalThis.ChatMessage = { create: async () => {}, getSpeaker: () => ({}) };
+	for (const user of [player, otherGM]) {
+		game.user = user;
+		await duration.startDurationSpell(caster, spell);
+		await duration.endDurationSpell(caster.id, "old", "manual");
+		await duration.linkEffectToDurationSpell(caster, "old", "target", "token", "effect");
+		await duration.addTargetToDurationSpell(caster.id, "old", "token");
+		await duration.removeTargetFromDurationSpell(caster.id, "old", "token");
+	}
+	assert.equal(requests.length, 10);
+	assert.ok(requests.every(request => request.name === "durationSpellOperation" && request.userId === gm.id));
+	assert.deepEqual(requests.slice(0, 5).map(request => request.data.operation), ["append", "end", "link", "addTarget", "removeTarget"]);
+
+	// The player's stale view still contains "old"; the receiver only appends the
+	// new cast while its own expiry operation removes "old" through the SAME queue.
+	game.user = gm;
+	globalThis.fromUuid = async uuid => uuid === caster.uuid ? caster : null;
+	let saved = caster.getFlag();
+	caster.getFlag = () => saved;
+	caster.setFlag = async (_scope, _key, entries) => {
+		await Promise.resolve(); saved = structuredClone(entries);
+	};
+	const handler = socketHarness.registrations.get("durationSpellOperation");
+	assert.equal(typeof handler, "function");
+	const payload = requests[0].data;
+	await Promise.all([
+		handler.call({ socketdata: { userId: player.id } }, payload),
+		duration.endDurationSpell(caster.id, "old", "expired"),
+	]);
+	assert.equal(saved.length, 1);
+	assert.equal(saved[0].instanceId, payload.entry.instanceId);
+	assert.equal(saved[0].effectTiming.start.time, 123);
+	await assert.rejects(handler.call({ socketdata: { userId: stranger.id } }, payload), /authorized/i);
+	await assert.rejects(handler.call({}, payload), /authorized/i);
+	await assert.rejects(handler.call({ socketdata: { userId: player.id } }, { ...payload, operation: "invalid" }), /operation/i);
+	game.user = otherGM;
+	await assert.rejects(handler.call({ socketdata: { userId: player.id } }, payload), /active GM/i);
+	game.user = player;
+	game.users.activeGM = null;
+	await assert.rejects(duration.startDurationSpell(caster, spell), /active GM/i);
+	game.user = gm;
+	game.users.activeGM = gm;
+});
+
+test("duration relay resolves off-canvas targets and cleans the originating scene", async () => {
+	game.i18n.format = key => key;
+	const duration = await import("../../scripts/effects/duration-spell.mjs");
+	let casts = [];
+	const gm = { id: "gm", isGM: true }, sender = { id: "other-gm", isGM: true };
+	const caster = { id: "caster", uuid: "Actor.caster", name: "Caster", documentName: "Actor",
+		getFlag: () => casts, setFlag: async (_scope, _key, entries) => { casts = structuredClone(entries); },
+		items: { filter: () => [] } };
+	const items = new Map();
+	const target = { id: "npc", isToken: true, token: { id: "targetA" }, name: "Target A", items,
+		createEmbeddedDocuments: async (_type, data) => {
+			const item = { ...data[0], id: "effectA", delete: async () => { items.delete("effectA"); } };
+			items.set(item.id, item); return [item];
+		} };
+	const sceneA = { id: "sceneA", regions: new Map([["regionA", { id: "regionA" }]]),
+		tokens: new Map([["targetA", { id: "targetA", actor: target, name: "Target A" }], ["summonA", { id: "summonA" }]]),
+		deleteEmbeddedDocuments: async (type, ids) => { for (const id of ids) (type === "Region" ? sceneA.regions : sceneA.tokens).delete(id); } };
+	const sceneB = { id: "sceneB", tokens: new Map(), regions: new Map() };
+	game.user = sender;
+	game.users = { activeGM: gm, get: id => id === sender.id ? sender : gm };
+	game.actors = Object.assign([caster], { contents: [caster], get: id => id === caster.id ? caster : null });
+	game.scenes = new Map([[sceneA.id, sceneA], [sceneB.id, sceneB]]);
+	canvas.scene = sceneA;
+	canvas.tokens.get = id => sceneA.tokens.get(id);
+	let append;
+	socketHarness.socket.executeAsUser = async (_name, _user, data) => { append = data; return true; };
+	await duration.startDurationSpell(caster, { id: "spell", name: "Spell", system: { duration: { value: 2, type: "rounds" } } }, [], {
+		templateId: "regionA", summonedTokenIds: ["summonA"], effects: ["Item.source"],
+	});
+	assert.equal(append.entry.sceneId, sceneA.id);
+	game.user = gm;
+	canvas.scene = sceneB;
+	canvas.tokens.get = () => null;
+	globalThis.fromUuid = async uuid => uuid === caster.uuid ? caster : {
+		toObject: () => ({ type: "Effect", effects: [{ duration: { rounds: 2 } }] }),
+	};
+	const handler = socketHarness.registrations.get("durationSpellOperation");
+	const call = data => handler.call({ socketdata: { userId: sender.id } }, { casterUuid: caster.uuid, ...data });
+	await call(append);
+	const instanceId = casts[0].instanceId;
+	assert.equal(await call({ operation: "addTarget", instanceId, tokenId: "targetA" }), true);
+	assert.equal(items.size, 1, "the synthetic actor outside the GM canvas receives the effect");
+	assert.equal(await call({ operation: "removeTarget", instanceId, tokenId: "targetA" }), true);
+	assert.equal(items.size, 0);
+	assert.equal(await call({ operation: "addTarget", instanceId, tokenId: "targetA" }), true);
+	await call({ operation: "end", instanceId, reason: "manual" });
+	assert.equal(casts.length, 0);
+	assert.equal(items.size, 0);
+	assert.equal(sceneA.regions.size, 0);
+	assert.equal(sceneA.tokens.has("summonA"), false);
+	assert.equal(canvas.scene, sceneB, "the GM does not switch scenes");
+
+	// Older stored casts have no scene field; preserve the requesting client's
+	// scene on the relay instead of treating the elected GM's canvas as origin.
+	const legacy = { ...append.entry, instanceId: "legacy", targets: [], targetEffects: [] };
+	delete legacy.sceneId;
+	casts = [legacy];
+	sceneA.regions.set("regionA", { id: "regionA" });
+	assert.equal(await call({ operation: "addTarget", instanceId: "legacy", tokenId: "targetA", sceneId: sceneA.id }), true);
+	await call({ operation: "end", instanceId: "legacy", sceneId: sceneA.id });
+	assert.equal(items.size, 0);
+	assert.equal(sceneA.regions.size, 0);
 });
 
 test("message names and authority rules are preserved on the shared boundary", () => {

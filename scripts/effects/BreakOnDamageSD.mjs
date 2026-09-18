@@ -35,6 +35,7 @@
  */
 
 import { getSocket } from "../combat/CombatSettingsSD.mjs";
+import { applyEffectItemTiming } from "../shared/duration-basis.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const BREAK_FLAG = "breakOnDamage";      // flag key on the effect doc
@@ -129,7 +130,12 @@ export async function applySpellEffect(targetRef, effectUuid, { breakOnDamage = 
 			console.warn(`${MODULE_ID} | applySpellEffect: effect not found ${effectUuid}`);
 			return null;
 		}
-		const [doc] = await actor.createEmbeddedDocuments("Item", [src.toObject()]);
+		const effectItemData = src.toObject();
+		applyEffectItemTiming(effectItemData, {}, {
+			combat: game.combat,
+			worldTime: game.time?.worldTime ?? 0,
+		});
+		const [doc] = await actor.createEmbeddedDocuments("Item", [effectItemData]);
 		effectId = doc?.id ?? null;
 	}
 	else {

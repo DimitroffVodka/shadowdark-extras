@@ -32,7 +32,9 @@ function finiteNumber(value) {
  * Outside an encounter, rounds/turns become seconds because Shadowdark sets
  * both core combat time constants to zero.
  */
-export function buildActiveEffectTiming(duration = {}, { combat = null, worldTime = 0 } = {}) {
+export function buildActiveEffectTiming(duration = {}, {
+	combat = null, worldTime = 0, castTiming = null,
+} = {}) {
 	let value = null;
 	let units = null;
 
@@ -54,7 +56,9 @@ export function buildActiveEffectTiming(duration = {}, { combat = null, worldTim
 	}
 	if (value === null || !units) return null;
 
-	const inCombat = !!combat && (combat.started ?? (Number(combat.round) > 0));
+	// Late targets inherit the cast's clock, never the encounter they enter in.
+	const inCombat = castTiming ? !!castTiming.start?.combat
+		: !!combat && (combat.started ?? (Number(combat.round) > 0));
 	if (!inCombat && (units === "rounds" || units === "turns")) {
 		const unitSeconds = units === "turns"
 			? (CONFIG?.time?.turnTime || secondsPerRound())
@@ -64,8 +68,8 @@ export function buildActiveEffectTiming(duration = {}, { combat = null, worldTim
 	}
 
 	const startTime = finiteNumber(duration?.startTime) ?? finiteNumber(worldTime) ?? 0;
-	const start = { time: startTime };
-	if (inCombat) {
+	const start = castTiming ? { ...castTiming.start } : { time: startTime };
+	if (inCombat && !castTiming) {
 		start.combat = combat.id;
 		start.combatant = combat.combatant?.id ?? null;
 		start.initiative = finiteNumber(combat.combatant?.initiative);
@@ -84,19 +88,46 @@ export function buildActiveEffectTiming(duration = {}, { combat = null, worldTim
 	};
 }
 
-/** Apply canonical timing to every Active Effect nested in an Effect item. */
+/**
+ * Apply timing to each nested effect. castTiming pins the start without changing
+ * the effect's length; explicit null means a legacy cast has no recoverable start.
+ */
 export function applyEffectItemTiming(effectItemData, durationOverride = {}, context = {}) {
 	for (const effect of effectItemData?.effects ?? []) {
+		if (context.castTiming === null) {
+			effect.start = null; // Keep registry expiry authoritative; never restart a legacy cast.
+			continue;
+		}
 		const timing = buildActiveEffectTiming({
 			...(effect.duration ?? {}),
 			...durationOverride,
-		}, context);
-		if (timing) Object.assign(effect, timing);
+		}, context) ?? context.castTiming;
+		if (timing) Object.assign(effect, {
+			duration: { ...timing.duration },
+			start: { ...timing.start },
+		});
 	}
 	return effectItemData;
 }
 
-/** Resolve the first linked Active Effect whose duration Foundry is tracking. */
+/** Prefer the cast snapshot; recover legacy anchors from an already-linked effect. */
+export function getDurationSpellCastTiming(entry) {
+	if (entry?.effectTiming) return entry.effectTiming;
+	const effect = getDurationSpellActiveEffect(entry);
+	if (!effect) return null; // No recorded start: leave the legacy expiry fallback in charge.
+	return buildActiveEffectTiming({
+		value: entry.durationValue ?? effect.duration.value,
+		units: entry.durationType ?? effect.duration.units,
+	}, { castTiming: effect.toObject?.() ?? effect });
+}
+
+/** Resolve token documents off-canvas; a known scene must never fall back to another. */
+export function getDurationToken(tokenId, sceneId) {
+	return sceneId ? globalThis.game?.scenes?.get(sceneId)?.tokens?.get(tokenId)
+		: globalThis.canvas?.tokens?.get(tokenId);
+}
+
+/** Prefer a running linked effect; an elapsed sibling must not hide it. */
 export function getDurationSpellActiveEffect(durationEntry) {
 	function isCoreTracked(effect) {
 		if (!effect?.start || !Number.isFinite(effect?.duration?.remaining)) return false;
@@ -107,23 +138,24 @@ export function getDurationSpellActiveEffect(durationEntry) {
 		return !effect.duration.expiry || (!!effect.start.combat && !!effect.start.combatant);
 	}
 
+	let elapsed = null;
 	for (const link of durationEntry?.targetEffects ?? []) {
 		const tokenActor = link.targetTokenId
-			? globalThis.canvas?.tokens?.get(link.targetTokenId)?.actor
+			? getDurationToken(link.targetTokenId, durationEntry.sceneId)?.actor
 			: null;
 		const actor = tokenActor || globalThis.game?.actors?.get(link.targetActorId);
 		if (!actor) continue;
 
 		const directEffect = actor.effects?.get?.(link.effectItemId);
-		if (isCoreTracked(directEffect)) return directEffect;
-
 		const effectItem = actor.items?.get?.(link.effectItemId);
 		const effects = effectItem?.effects?.contents ?? effectItem?.effects ?? [];
-		const candidates = Array.from(effects);
-		const timed = candidates.find(isCoreTracked);
-		if (timed) return timed;
+		for (const effect of [directEffect, ...effects]) {
+			if (!isCoreTracked(effect)) continue;
+			if (!effect.duration.expired && effect.duration.remaining > 0) return effect;
+			elapsed ??= effect;
+		}
 	}
-	return null;
+	return elapsed;
 }
 
 /**
@@ -132,15 +164,16 @@ export function getDurationSpellActiveEffect(durationEntry) {
  * Combat is preferred when available because a round is the unit the duration is
  * written in; world time is the fallback, not the other way round.
  *
- * `combat.round` is `0` for an encounter that exists but has not begun, and
- * something cast then should last through round 1, so it reads as 1.
+ * An unstarted encounter has no running round clock, just like no encounter.
  *
  * @param {number} durationValue - duration in rounds
  * @param {{combat?: object|null, worldTime?: number}} context
  * @returns {{expiryRound: number}|{expiryWorldTime: number}}
  */
 export function buildDurationExpiry(durationValue, { combat = null, worldTime = 0 } = {}) {
-	if (combat) return { expiryRound: (combat.round || 1) + durationValue };
+	if (combat && (combat.started ?? (Number(combat.round) > 0))) {
+		return { expiryRound: combat.round + durationValue };
+	}
 	return { expiryWorldTime: worldTime + (durationValue * secondsPerRound()) };
 }
 

@@ -3,8 +3,9 @@
  * Handler names and payloads are compatibility surfaces for combat workflows.
  */
 
-import { endFocusSpell } from "../effects/FocusSpellTrackerSD.mjs";
-import { applyEffectItemTiming } from "./duration-basis.mjs";
+import { endFocusSpell, getActiveDurationSpells } from "../effects/FocusSpellTrackerSD.mjs";
+import { updateDurationSpells } from "../effects/duration-state.mjs";
+import { applyEffectItemTiming, getDurationSpellCastTiming, getDurationToken } from "./duration-basis.mjs";
 import { showScrollingText } from "./scrolling-text.mjs";
 import { FEATURE_IDS, isFeatureEnabled, anyFeatureEnabled } from "../settings/feature-gates.mjs";
 
@@ -319,7 +320,12 @@ export function setupCombatSocket() {
 	if (anyFeatureEnabled(
 		FEATURE_IDS.SPELL_ACTIVITY, FEATURE_IDS.PREDEFINED_EFFECTS, FEATURE_IDS.DAMAGE_CARDS
 	)) socketlibSocket.register("applyTokenCondition", async data => {
-		const token = canvas.tokens.get(data.tokenId);
+		const caster = data.spellInfo ? game.actors.get(data.spellInfo.casterActorId) : null;
+		const casts = caster ? getActiveDurationSpells(caster) : [];
+		const cast = casts.find(entry => entry.instanceId === data.spellInfo?.spellId)
+			?? casts.findLast(entry => entry.spellId === data.spellInfo?.spellId);
+		const sceneId = cast?.sceneId || data.sceneId;
+		const token = getDurationToken(data.tokenId, sceneId);
 		if (!token || !token.actor) {
 			console.warn("shadowdark-extras | Token not found for condition:", data.tokenId);
 			return false;
@@ -401,6 +407,7 @@ export function setupCombatSocket() {
 			applyEffectItemTiming(effectData, data.duration, {
 				combat: game.combat,
 				worldTime: game.time?.worldTime ?? 0,
+				castTiming: cast ? getDurationSpellCastTiming(cast) : undefined,
 			});
 
 			// Also apply duration to the item's system.duration if it exists
@@ -418,23 +425,16 @@ export function setupCombatSocket() {
 				const createdEffect = createdItems[0];
 				try {
 					// Import spell tracking functions
-					const { linkEffectToFocusSpell, startFocusSpellIfNeeded, linkEffectToDurationSpell, getActiveDurationSpells } = await import("../effects/FocusSpellTrackerSD.mjs");
+					const { linkEffectToFocusSpell, startFocusSpellIfNeeded, linkEffectToDurationSpell } = await import("../effects/FocusSpellTrackerSD.mjs");
 
-					// Check if this is a duration spell (non-focus)
-					const caster = game.actors.get(data.spellInfo.casterActorId);
-					const activeDuration = caster ? getActiveDurationSpells(caster) : [];
-					const isDurationSpell = activeDuration.some(
-						d => d.spellId === data.spellInfo.spellId
-					);
-
-					if (isDurationSpell) {
+					if (cast) {
 						// Link to duration spell
 						await linkEffectToDurationSpell(
 							data.spellInfo.casterActorId,
-							data.spellInfo.spellId,
-							token.actor.id,
+							cast.instanceId || cast.spellId,
+							token.actor,
 							data.tokenId,
-							createdEffect.id
+							createdEffect.id, sceneId
 						);
 					}
 					else {
@@ -470,16 +470,17 @@ export function setupCombatSocket() {
 	});
 
 	// Register socket handlers for focus/duration spell operations
-	if (isFeatureEnabled(FEATURE_IDS.FOCUS_TRACKER)) socketlibSocket.register("removeTargetEffect", async ({ targetActorId, targetTokenId, effectItemId }) => {
+	if (isFeatureEnabled(FEATURE_IDS.FOCUS_TRACKER)) socketlibSocket.register("removeTargetEffect", async ({ targetActorId, targetTokenId, effectItemId, sceneId }) => {
 		let targetActor = null;
 
-		// Try to get the actor from the token first (for unlinked tokens)
+		// Resolve synthetic actors even when the GM views another scene.
 		if (targetTokenId) {
-			const token = canvas.tokens?.get(targetTokenId);
+			const token = getDurationToken(targetTokenId, sceneId);
 			if (token?.actor) {
 				targetActor = token.actor;
 			}
 		}
+		if (sceneId && targetTokenId && !targetActor) return false;
 
 		// Fall back to game.actors
 		if (!targetActor) {
@@ -550,16 +551,22 @@ export function setupCombatSocket() {
 		return true;
 	});
 
-	if (isFeatureEnabled(FEATURE_IDS.TEMPLATE_EFFECTS)) socketlibSocket.register("applyEffectToTarget", async ({ targetActorId, targetTokenId, effectUuid, casterId, spellId, templateId }) => {
+	if (isFeatureEnabled(FEATURE_IDS.TEMPLATE_EFFECTS)) socketlibSocket.register("applyEffectToTarget", async ({ targetActorId, targetTokenId, effectUuid, duration = {}, casterId, spellId, templateId, sceneId }) => {
+		const caster = casterId ? game.actors.get(casterId) : null;
+		const casts = caster ? getActiveDurationSpells(caster) : [];
+		const cast = spellId ? (casts.find(entry => entry.instanceId === spellId)
+			?? casts.findLast(entry => entry.spellId === spellId)) : null;
+		sceneId = cast?.sceneId || sceneId;
 		let targetActor = null;
 
-		// Try to get the actor from the token first (for unlinked tokens)
+		// Resolve synthetic actors even when the GM views another scene.
 		if (targetTokenId) {
-			const token = canvas.tokens?.get(targetTokenId);
+			const token = getDurationToken(targetTokenId, sceneId);
 			if (token?.actor) {
 				targetActor = token.actor;
 			}
 		}
+		if (sceneId && targetTokenId && !targetActor) return { success: false, effectId: null };
 
 		// Fall back to game.actors
 		if (!targetActor) {
@@ -579,9 +586,10 @@ export function setupCombatSocket() {
 			}
 
 			const effectItemData = effectDoc.toObject();
-			applyEffectItemTiming(effectItemData, {}, {
+			applyEffectItemTiming(effectItemData, duration, {
 				combat: game.combat,
 				worldTime: game.time?.worldTime ?? 0,
+				castTiming: cast ? getDurationSpellCastTiming(cast) : undefined,
 			});
 
 			// Apply template origin if provided
@@ -612,8 +620,43 @@ export function setupCombatSocket() {
 		return true;
 	});
 
-	// --- Aura Socket Handlers ---
+	// Owners can request duration mutations, but only the elected GM writes the
+	// shared registry. Use socketlib's sender identity, never a payload user ID.
+	if (isFeatureEnabled(FEATURE_IDS.FOCUS_TRACKER)) socketlibSocket.register("durationSpellOperation", async function(data) {
+		if (!game.user?.isGM || game.users.activeGM?.id !== game.user.id) {
+			throw new Error("Duration operation requires the active GM");
+		}
+		const sender = game.users.get(this.socketdata?.userId);
+		const caster = typeof data?.casterUuid === "string" ? await fromUuid(data.casterUuid) : null;
+		if (!sender || caster?.documentName !== "Actor"
+			|| (!sender.isGM && !caster.testUserPermission(sender, "OWNER"))) {
+			throw new Error("Not authorized to update this caster's duration spells");
+		}
+		const duration = await import("../effects/duration-spell.mjs");
+		switch (data.operation) {
+			case "append": {
+				const entry = data.entry;
+				if (!entry?.instanceId || !entry.spellId || entry.casterId !== caster.id
+					|| !Array.isArray(entry.targets) || !Array.isArray(entry.targetEffects)) {
+					throw new Error("Invalid duration cast");
+				}
+				await updateDurationSpells(caster, entries => {
+					if (entries.some(cast => cast.instanceId === entry.instanceId)) return false;
+					entries.push(entry);
+				});
+				return true;
+			}
+			case "end": return duration.endDurationSpell(caster.id, data.instanceId, data.reason, data.sceneId);
+			case "link": return duration.linkEffectToDurationSpell(caster, data.instanceId,
+				getDurationToken(data.targetTokenId, data.sceneId)?.actor || data.targetActorId,
+				data.targetTokenId, data.effectItemId, data.sceneId);
+			case "addTarget": return duration.addTargetToDurationSpell(caster.id, data.instanceId, data.tokenId, data.sceneId);
+			case "removeTarget": return duration.removeTargetFromDurationSpell(caster.id, data.instanceId, data.tokenId, data.sceneId);
+			default: throw new Error("Unknown duration operation");
+		}
+	});
 
+	// --- Aura Socket Handlers ---
 	if (isFeatureEnabled(FEATURE_IDS.AURAS)) socketlibSocket.register("applyAuraEffectViaGM", async ({ sourceTokenId, targetTokenId, trigger, config, auraEffectId, auraEffectActorId }) => {
 		const sourceToken = canvas.tokens.get(sourceTokenId);
 		const targetToken = canvas.tokens.get(targetTokenId);

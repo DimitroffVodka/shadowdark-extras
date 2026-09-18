@@ -7,7 +7,8 @@
 import { getSocket } from "../shared/combat-socket.mjs";
 import { showScrollingText } from "../shared/scrolling-text.mjs";
 import { getSummonedTokensExpiry, saveSummonedTokensExpiry } from "./damage-card.mjs";
-import { partitionExpiredDurations, convertRoundExpiryToWorldTime, describeDurationRemaining } from "../shared/duration-basis.mjs";
+import { isDurationExpired, getDurationSpellActiveEffect, convertRoundExpiryToWorldTime, describeDurationRemaining } from "../shared/duration-basis.mjs";
+import { getActiveDurationSpells } from "../effects/duration-spell.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -284,6 +285,7 @@ export const _coatingPoisonMessages = new Set();
  */
 async function expireDueSummons(now) {
 	if (!game.user.isGM) return;
+	if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return;
 
 	const sceneId = canvas.scene?.id;
 	if (!sceneId) return;
@@ -291,18 +293,34 @@ async function expireDueSummons(now) {
 	const expiryList = getSummonedTokensExpiry(sceneId);
 	if (!expiryList || expiryList.length === 0) return;
 
-	const { expired, remaining } = partitionExpiredDurations(expiryList, now);
+	// A linked Effect item owns the cast lifetime, including its summoned tokens.
+	// Keep the old clock only for summons without a core-timed item.
+	const coreClocks = new Map();
+	for (const actor of game.actors ?? []) {
+		for (const cast of getActiveDurationSpells(actor)) {
+			const effect = getDurationSpellActiveEffect(cast);
+			if (effect?.parent?.type !== "Effect") continue;
+			for (const entry of expiryList) {
+				if (entry.tokenIds?.some(id => cast.summonedTokenIds?.includes(id))) {
+					coreClocks.set(entry, effect);
+				}
+			}
+		}
+	}
+	const expired = expiryList.filter(entry =>
+		!coreClocks.has(entry) && isDurationExpired(entry, now));
+	const remaining = expiryList.filter(entry => !expired.includes(entry));
 	if (expired.length === 0 && remaining.length === expiryList.length) {
 		// Nothing is due. Only speak up when something actually changed, so a
 		// world-time tick does not narrate every unchanged summon.
 		if (now.worldTime !== undefined && now.round === undefined) return;
 	}
 
-	await saveSummonedTokensExpiry(sceneId, remaining);
+	if (expired.length) await saveSummonedTokensExpiry(sceneId, remaining);
 
 	const messages = [
 		...expired.map(e => `<b>${e.spellName}</b> has expired!`),
-		...remaining.map(e => `<b>${e.spellName}</b>: ${describeDurationRemaining(e, now)} remaining`),
+		...remaining.map(e => `<b>${e.spellName}</b>: ${describeDurationRemaining(coreClocks.get(e) ?? e, now)} remaining`),
 	];
 	if (messages.length > 0) {
 		ChatMessage.create({
