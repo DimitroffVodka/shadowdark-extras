@@ -9,8 +9,11 @@ import {
 	drawBoxWithStyle,
 	drawEllipseWithStyle,
 	drawLineWithStyle,
+	drawNetworkWithStyle,
 	drawSymbolShape,
 	getHexClusterOutline,
+	meanderPathPoints,
+	smoothPathPoints,
 } from "./drawing-geometry.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -45,13 +48,22 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 		this._initialized = false;
 		this._highlightGraphics = null;
 		this._highlightPulse = null;
+		this._mapPathPreviousState = null;
+		this._mapPathDragCell = null;
 
 		// Drawing state
 		this.state = {
-			drawingMode: "sketch", // sketch | line | box | ellipse | stamp
+			drawingMode: "sketch", // sketch | line | box | ellipse | stamp | mapPath
+			mapPathKind: null,       // road | river | both
+			mapPathTiles: { road: [], river: [] },
+			mapPathBlockedEdges: { road: [], river: [] },
+			mapPathTexture: null,
+			mapPathRoadStyle: "cobble",
+			mapPathRoadColor: "#D8C6A8",
+			mapPathRiverColor: "#2D9CDB",
 			stampStyle: "plus",    // plus | x | dot | arrow | arrow-up | arrow-down | arrow-left | square
 			symbolSize: "medium",  // small | medium | large
-			lineStyle: "solid",    // solid | dotted | dashed
+			lineStyle: "solid",    // solid | dotted | dashed | river
 			brushSettings: { size: 6, color: COLORS.black },
 			opacity: 1.0,
 			permanentMode: false,
@@ -251,6 +263,9 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 		this._mouseButtonDown = false;
 		this._detachCanvasHandlers();
 		this._removePreviewSymbol();
+		const wasMapPath = this.state.drawingMode === "mapPath";
+		this._cancelMapPath();
+		if (wasMapPath) this._restoreMapPathState();
 		this._updateCursor();
 		if (this.state.isDrawing) this._cancelDrawing();
 		Hooks.callAll("sdxDrawingActiveChanged", false, keyBased);
@@ -307,6 +322,13 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 			if (!self.active) return;
 			// Track mouse button for toggle-mode click-drag gating.
 			if (e.button === 0) self._mouseButtonDown = true;
+			if (self.state.drawingMode === "mapPath") {
+				if ([0, 2].includes(e.button) && self._canDraw() && !e.ctrlKey && !e.altKey) {
+					e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+					self._selectMapPathPoint(e, false, e.button === 2);
+				}
+				return;
+			}
 			if (!self._isInputActive()) return;
 			if (self.state.drawingMode === "box" || self.state.drawingMode === "ellipse") {
 				e.preventDefault(); e.stopPropagation();
@@ -334,6 +356,19 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 
 		this._handlePointerMove = e => {
 			if (!self.active) return;
+			if (self.state.drawingMode === "mapPath") {
+				if (self._mouseButtonDown && !(e.buttons & 1)) {
+					self._mouseButtonDown = false;
+					self._mapPathDragCell = null;
+					return;
+				}
+				if (self._mouseButtonDown && self._mapPathDragCell && self._canDraw()
+					&& !e.shiftKey && !e.ctrlKey && !e.altKey) {
+					e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+					self._selectMapPathPoint(e, true);
+				}
+				return;
+			}
 			if (self._isInputActive()) {
 				const mode = self.state.drawingMode;
 				if (mode === "sketch") {
@@ -368,6 +403,11 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 			if (e.button === 0) self._mouseButtonDown = false;
 
 			const mode = self.state.drawingMode;
+			if (mode === "mapPath") {
+				self._mouseButtonDown = false;
+				self._mapPathDragCell = null;
+				e.preventDefault(); e.stopPropagation(); return;
+			}
 
 			// Toggle-mode click-drag: finish the stroke on mouse release.
 			if (self._toggleActive && !self._keyDown && self.state.isDrawing && wasMouseDown) {
@@ -389,6 +429,7 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 		canvas.app.view.addEventListener("pointerdown", this._handlePointerDown, true);
 		canvas.app.view.addEventListener("pointermove", this._handlePointerMove, true);
 		canvas.app.view.addEventListener("pointerup", this._handlePointerUp, true);
+		canvas.app.view.addEventListener("pointercancel", this._handlePointerUp, true);
 	}
 
 	_detachCanvasHandlers() {
@@ -404,6 +445,7 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 		}
 		if (this._handlePointerUp) {
 			v.removeEventListener("pointerup", this._handlePointerUp, true);
+			v.removeEventListener("pointercancel", this._handlePointerUp, true);
 			this._handlePointerUp = null;
 		}
 	}
@@ -438,8 +480,100 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 		return cssToPixiColor(css);
 	}
 
-	_drawLineWithStyle(g, pts, sx, sy, sw, color, alpha, style) {
-		drawLineWithStyle(g, pts, sx, sy, sw, color, alpha, style);
+	_drawLineWithStyle(g, pts, sx, sy, sw, color, alpha, style, texturePath = null) {
+		let texture = null;
+		let textureMatrix = null;
+		if (texturePath) {
+			try {
+				texture = PIXI.Texture.from(texturePath);
+				if (texture.baseTexture && PIXI.WRAP_MODES) {
+					texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
+				}
+				if (PIXI.Matrix) textureMatrix = new PIXI.Matrix().scale(0.05, 0.05);
+			}
+			catch{ /* solid road fallback */ }
+		}
+		drawLineWithStyle(g, pts, sx, sy, sw, color, alpha, style, texture, textureMatrix);
+	}
+
+	_createLineDisplay(pts, sx, sy, sw, color, alpha, style, texturePath = null) {
+		const pathPoints = style === "river" ? meanderPathPoints(pts) : pts;
+		const displayPoints = ["road", "river"].includes(style)
+			? smoothPathPoints(pathPoints)
+			: pathPoints;
+		const graphics = new PIXI.Graphics();
+		this._drawLineWithStyle(
+			graphics, displayPoints, sx, sy, sw, color, alpha, style, texturePath
+		);
+		if (style !== "road" || !texturePath || !PIXI.SimpleRope) return graphics;
+
+		try {
+			const source = PIXI.Texture.from(texturePath);
+			const size = Math.min(256, source.width, source.height);
+			if (!size) return graphics;
+			const texture = new PIXI.Texture(
+				source.baseTexture, new PIXI.Rectangle(0, 0, size, size)
+			);
+			const points = displayPoints.map(([x, y]) => new PIXI.Point(sx + x, sy + y));
+			const rope = new PIXI.SimpleRope(texture, points, sw / size);
+			rope.tint = color;
+			const container = new PIXI.Container();
+			container.addChild(graphics, rope);
+			return container;
+		}
+		catch{
+			return graphics;
+		}
+	}
+
+	_createMapNetworkDisplay(data) {
+		const root = new PIXI.Container();
+		const add = (paths, style, color, texturePath = null) => {
+			if (!paths?.length) return;
+			const displayPaths = paths.map(points => smoothPathPoints(
+				style === "river" ? meanderPathPoints(points) : points
+			));
+			const graphics = new PIXI.Graphics();
+			let texture = null;
+			let textureMatrix = null;
+			if (texturePath) {
+				try {
+					texture = PIXI.Texture.from(texturePath);
+					if (texture.baseTexture && PIXI.WRAP_MODES) {
+						texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
+					}
+					if (PIXI.Matrix) textureMatrix = new PIXI.Matrix().scale(0.05, 0.05);
+				}
+				catch{ /* solid road fallback */ }
+			}
+			drawNetworkWithStyle(
+				graphics, displayPaths, data.strokeWidth, this._cssToPixi(color), 1,
+				style, texture, textureMatrix
+			);
+			root.addChild(graphics);
+			if (style !== "road" || !texturePath || !PIXI.SimpleRope) return;
+			try {
+				const source = PIXI.Texture.from(texturePath);
+				const size = Math.min(256, source.width, source.height);
+				if (!size) return;
+				const ropeTexture = new PIXI.Texture(
+					source.baseTexture, new PIXI.Rectangle(0, 0, size, size)
+				);
+				for (const points of displayPaths) {
+					const rope = new PIXI.SimpleRope(
+						ropeTexture, points.map(([x, y]) => new PIXI.Point(x, y)),
+						data.strokeWidth / size
+					);
+					rope.tint = this._cssToPixi(color);
+					root.addChild(rope);
+				}
+			}
+			catch{ /* solid road fallback */ }
+		};
+		// Rivers go down first so a shared Road + River edge reads as a bridge.
+		add(data.networkPaths?.river, "river", data.riverColor || "#2D9CDB");
+		add(data.networkPaths?.road, "road", data.roadColor || "#D8C6A8", data.texturePath);
+		return root;
 	}
 
 	_drawBoxWithStyle(g, x, y, w, h, style) {
@@ -500,7 +634,7 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 			g.alpha = startAlpha * (1 - (1 - Math.pow(1 - p, 3)));
 			if (p < 1) requestAnimationFrame(animate);
 			else {
-				if (g.parent) g.parent.removeChild(g); g.destroy();
+				if (g.parent) g.parent.removeChild(g); g.destroy({ children: true });
 			}
 		};
 		requestAnimationFrame(animate);
@@ -644,14 +778,17 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 	_removePreview() {
 		if (this._previewGraphics?.parent) {
 			this._previewGraphics.parent.removeChild(this._previewGraphics);
-			this._previewGraphics.destroy();
+			this._previewGraphics.destroy({ children: true });
 			this._previewGraphics = null;
 		}
 	}
 
 	_cancelDrawing() {
 		this._removePreview();
+		this._mapPathDragCell = null;
 		this.state.isDrawing = false;
+		this.state.mapPathTiles = { road: [], river: [] };
+		this.state.mapPathBlockedEdges = { road: [], river: [] };
 		this.state.drawingPoints = [];
 		this.state.drawingStartPoint = null;
 		this.state.boxStartPoint = null;
@@ -661,7 +798,10 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 	}
 
 	_resetDrawingState() {
+		this._mapPathDragCell = null;
 		this.state.isDrawing = false;
+		this.state.mapPathTiles = { road: [], river: [] };
+		this.state.mapPathBlockedEdges = { road: [], river: [] };
 		this.state.drawingPoints = [];
 		this.state.drawingStartPoint = null;
 		this.state.boxStartPoint = null;
@@ -677,11 +817,87 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 	// ── Public setters (called by toolbar) ──────────────────────
 	setDrawingMode(mode) {
 		if (["sketch", "line", "box", "ellipse", "stamp"].includes(mode)) {
+			if (this.state.drawingMode === "mapPath") {
+				this._cancelMapPath();
+				this._restoreMapPathState();
+			}
 			this.state.drawingMode = mode; try {
 				game.settings.set(MODULE_ID, "drawing.toolbar.drawingMode", mode);
 			}
 			catch{ }
 		}
+	}
+
+	setMapPathMode(kind, {
+		strokeWidth, roadColor, riverColor, texturePath, roadStyle,
+	} = {}) {
+		if (!["road", "river", "both"].includes(kind)) return false;
+		if (this.state.isDrawing) this._cancelDrawing();
+		if (this.state.drawingMode !== "mapPath") {
+			this._mapPathPreviousState = {
+				drawingMode: this.state.drawingMode,
+				lineStyle: this.state.lineStyle,
+				brushSettings: { ...this.state.brushSettings },
+				opacity: this.state.opacity,
+				permanentMode: this.state.permanentMode,
+				timedEraseEnabled: this.state.timedEraseEnabled,
+			};
+		}
+		this.state.drawingMode = "mapPath";
+		this.state.mapPathKind = kind;
+		this.state.lineStyle = kind === "river" ? "river" : "road";
+		if (Number.isFinite(strokeWidth)) this.state.brushSettings.size = strokeWidth;
+		if (roadColor) this.state.mapPathRoadColor = roadColor;
+		if (riverColor) this.state.mapPathRiverColor = riverColor;
+		if (texturePath !== undefined) this.state.mapPathTexture = texturePath;
+		if (roadStyle) this.state.mapPathRoadStyle = roadStyle;
+		this.state.brushSettings.color = kind === "river"
+			? this.state.mapPathRiverColor : this.state.mapPathRoadColor;
+		this.state.opacity = 1;
+		this.state.permanentMode = true;
+		this.state.timedEraseEnabled = false;
+		if (this.state.mapPathTiles.road.length || this.state.mapPathTiles.river.length) {
+			this._drawMapPathPreview();
+		}
+		return true;
+	}
+
+	stopMapPathMode() {
+		if (this.state.drawingMode !== "mapPath" && !this._mapPathPreviousState) return false;
+		this._cancelMapPath();
+		this.deactivate(false);
+		// deactivate() already restores when it observed mapPath mode; this
+		// catches the case where it ran earlier (Esc/hotkey) and left state saved.
+		if (this._mapPathPreviousState) this._restoreMapPathState();
+		return true;
+	}
+
+	_restoreMapPathState() {
+		const previous = this._mapPathPreviousState;
+		this.state.drawingMode = previous?.drawingMode || "sketch";
+		this.state.lineStyle = previous?.lineStyle || "solid";
+		this.state.brushSettings = previous?.brushSettings || { size: 6, color: COLORS.black };
+		this.state.opacity = previous?.opacity ?? 1;
+		this.state.permanentMode = previous?.permanentMode ?? false;
+		this.state.timedEraseEnabled = previous?.timedEraseEnabled ?? false;
+		this.state.mapPathKind = null;
+		this._mapPathPreviousState = null;
+	}
+
+	clearMapPathSelection() {
+		this._cancelMapPath();
+	}
+
+	setMapPathWidth(width) {
+		const value = Number(width);
+		if (this.state.drawingMode !== "mapPath" || !Number.isFinite(value)) return false;
+		this.state.brushSettings.size = Math.max(
+			4, Math.min((canvas.grid?.size || 100) * 0.6, value)
+		);
+		if (this.state.mapPathTiles.road.length || this.state.mapPathTiles.river.length) {
+			this._drawMapPathPreview();
+		}
+		return true;
 	}
 
 	setStampStyle(style) {

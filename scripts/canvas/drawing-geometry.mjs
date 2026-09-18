@@ -20,8 +20,164 @@ export function cssToPixiColor(css) {
 	return 0x000000;
 }
 
-export function drawLineWithStyle(g, pts, sx, sy, sw, color, alpha, style) {
+export function meanderPathPoints(points, amplitude = 0.32) {
+	if (!Array.isArray(points) || points.length < 4) return points;
+	const meandered = points.map(([x, y]) => [x, y]);
+	let phase = 0;
+	for (let i = 1; i < points.length - 1; i++) {
+		const [x0, y0] = points[i - 1];
+		const [x1, y1] = points[i];
+		const [x2, y2] = points[i + 1];
+		const dx1 = x1 - x0; const dy1 = y1 - y0;
+		const dx2 = x2 - x1; const dy2 = y2 - y1;
+		const len1 = Math.hypot(dx1, dy1); const len2 = Math.hypot(dx2, dy2);
+		const cross = (dx1 * dy2) - (dy1 * dx2);
+		const dot = (dx1 * dx2) + (dy1 * dy2);
+		if (!len1 || !len2 || dot <= 0 || Math.abs(cross) > len1 * len2 * 0.01) {
+			phase = 0;
+			continue;
+		}
+		// ponytail: fixed bends; add handles only if per-bend control is needed.
+		const offset = Math.min(len1, len2) * amplitude * (phase++ % 2 ? -1 : 1);
+		meandered[i][0] += (-dy2 / len2) * offset;
+		meandered[i][1] += (dx2 / len2) * offset;
+	}
+	return meandered;
+}
+
+export function smoothPathPoints(points, passes = 2) {
+	if (!Array.isArray(points) || points.length < 3) return points;
+	let smoothed = points;
+	for (let pass = 0; pass < passes; pass++) {
+		const next = [smoothed[0]];
+		for (let i = 0; i < smoothed.length - 1; i++) {
+			const [x1, y1] = smoothed[i];
+			const [x2, y2] = smoothed[i + 1];
+			next.push(
+				[(x1 * 0.75) + (x2 * 0.25), (y1 * 0.75) + (y2 * 0.25)],
+				[(x1 * 0.25) + (x2 * 0.75), (y1 * 0.25) + (y2 * 0.75)]
+			);
+		}
+		next.push(smoothed.at(-1));
+		smoothed = next;
+	}
+	return smoothed;
+}
+
+export function mapPathCellKey(cell) {
+	return typeof cell === "string" ? cell : `${cell.i}:${cell.j}`;
+}
+
+export function mapPathEdgeKey(a, b) {
+	const aKey = mapPathCellKey(a);
+	const bKey = mapPathCellKey(b);
+	return aKey < bKey ? `${aKey}|${bKey}` : `${bKey}|${aKey}`;
+}
+
+export function buildMapPathNetwork(cells, grid, blockedEdges = []) {
+	if (!Array.isArray(cells) || cells.length < 2 || !grid) return [];
+	const blocked = new Set(blockedEdges);
+	const byKey = new Map(cells.map(cell => [mapPathCellKey(cell), { i: cell.i, j: cell.j }]));
+	const keys = [...byKey.keys()].sort();
+	const adjacent = new Map(keys.map(cellKey => {
+		const neighbors = grid.getAdjacentOffsets(byKey.get(cellKey))
+			.map(mapPathCellKey)
+			.filter(neighbor => byKey.has(neighbor)
+				&& !blocked.has(mapPathEdgeKey(cellKey, neighbor)))
+			.sort();
+		return [cellKey, neighbors];
+	}));
+	const visited = new Set();
+	const paths = [];
+
+	const walk = (start, first) => {
+		const path = [start];
+		let previous = start;
+		let current = first;
+		visited.add(mapPathEdgeKey(start, first));
+		path.push(first);
+		while (current !== start && adjacent.get(current).length === 2) {
+			let next = null;
+			for (const neighbor of adjacent.get(current)) {
+				if (neighbor !== previous && !visited.has(mapPathEdgeKey(current, neighbor))) {
+					next = neighbor;
+					break;
+				}
+			}
+			if (!next) break;
+			visited.add(mapPathEdgeKey(current, next));
+			path.push(next);
+			previous = current;
+			current = next;
+		}
+		return path.map(cellKey => {
+			const center = grid.getCenterPoint(byKey.get(cellKey));
+			return [center.x, center.y];
+		});
+	};
+
+	for (const cellKey of keys.filter(cellKey => adjacent.get(cellKey).length !== 2)) {
+		for (const neighbor of adjacent.get(cellKey)) {
+			if (!visited.has(mapPathEdgeKey(cellKey, neighbor))) {
+				paths.push(walk(cellKey, neighbor));
+			}
+		}
+	}
+	for (const cellKey of keys) {
+		for (const neighbor of adjacent.get(cellKey)) {
+			if (!visited.has(mapPathEdgeKey(cellKey, neighbor))) {
+				paths.push(walk(cellKey, neighbor));
+			}
+		}
+	}
+	return paths;
+}
+
+export function drawNetworkWithStyle(
+	g, paths, sw, color, alpha, style, texture = null, textureMatrix = null, sx = 0, sy = 0
+) {
+	const draw = () => {
+		for (const points of paths) {
+			if (!points?.length) continue;
+			g.moveTo(sx + points[0][0], sy + points[0][1]);
+			for (let i = 1; i < points.length; i++) {
+				g.lineTo(sx + points[i][0], sy + points[i][1]);
+			}
+		}
+	};
+	if (style === "road") {
+		g.lineStyle({
+			width: sw + Math.max(6, sw * 0.4), color: 0x382A20, alpha,
+			cap: "round", join: "round",
+		});
+		draw();
+		if (texture && typeof g.lineTextureStyle === "function") {
+			g.lineTextureStyle({
+				width: sw, texture, color, alpha, matrix: textureMatrix, cap: "round", join: "round",
+			});
+		}
+		else g.lineStyle({ width: sw, color, alpha, cap: "round", join: "round" });
+		draw();
+	}
+	else if (style === "river") {
+		g.lineStyle({
+			width: sw + Math.max(2, sw * 0.5), color: 0x183B4F, alpha,
+			cap: "round", join: "round",
+		});
+		draw();
+		g.lineStyle({ width: sw, color, alpha, cap: "round", join: "round" });
+		draw();
+	}
+}
+
+export function drawLineWithStyle(
+	g, pts, sx, sy, sw, color, alpha, style, texture = null, textureMatrix = null
+) {
 	if (!pts || pts.length === 0) return;
+	if (["road", "river"].includes(style)) {
+		drawNetworkWithStyle(g, [pts], sw, color, alpha, style, texture, textureMatrix, sx, sy);
+		return;
+	}
 	g.lineStyle(sw, color, alpha);
 	if (style === "solid") {
 		g.moveTo(sx + pts[0][0], sy + pts[0][1]);

@@ -8,6 +8,7 @@ import { checkPinVisibility } from "../journal/pin-manager.mjs";
 import { getPinJournalSubtitle } from "../journal/pin-access.mjs";
 import { buildPlaceableNoteIndex, usesCoordinateFallback } from "../journal/placeable-note-index.mjs";
 import { initSoloHexMode } from "../hex/SoloHexMode.mjs";
+import { sdxDrawingTool } from "../canvas/SDXDrawingTool.mjs";
 import { getHexPainterData, loadTileAssets, bindCanvasEvents, enablePainting, disablePainting, isPainting, setDecorMode, canUndoPoi, canRedoPoi } from "../hex/HexPainterSD.mjs";
 import {
 	getDungeonPainterData,
@@ -176,6 +177,11 @@ export function initTray() {
 		return;
 	}
 	registerTrayAppHooks();
+	if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) {
+		game.shadowdarkExtras = game.shadowdarkExtras || {};
+		game.shadowdarkExtras.drawingTool = sdxDrawingTool;
+		sdxDrawingTool.initialize();
+	}
 
 	// Add class to body to enable tray-specific CSS
 	document.body.classList.add("sdx-tray-enabled");
@@ -833,10 +839,14 @@ export async function setViewMode(mode) {
 	});
 	if (!modes.includes(mode)) mode = modes[0];
 	_viewMode = mode;
+	if (mode !== "hexes") game.shadowdarkExtras?.drawingTool?.stopMapPathMode?.();
 	// Toggle hex painting based on active tab
 	if (mode === "hexes") {
 		setDecorMode(false);
-		enablePainting();
+		const pathActive = game.shadowdarkExtras?.drawingTool?.active
+			&& game.shadowdarkExtras.drawingTool.state.drawingMode === "mapPath";
+		if (pathActive) disablePainting();
+		else enablePainting();
 		disableDungeonPainting();
 	}
 	else if (mode === "dungeons") {
@@ -1029,11 +1039,15 @@ export function cycleViewMode() {
 	// If current mode isn't in list (e.g. switched from player to GM view), start at 0
 	const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % modes.length;
 	_viewMode = modes[nextIndex];
+	if (_viewMode !== "hexes") game.shadowdarkExtras?.drawingTool?.stopMapPathMode?.();
 
 	// Toggle painting based on active tab
 	if (_viewMode === "hexes") {
 		setDecorMode(false);
-		enablePainting();
+		const pathActive = game.shadowdarkExtras?.drawingTool?.active
+			&& game.shadowdarkExtras.drawingTool.state.drawingMode === "mapPath";
+		if (pathActive) disablePainting();
+		else enablePainting();
 		disableDungeonPainting();
 	}
 	else if (_viewMode === "dungeons") {

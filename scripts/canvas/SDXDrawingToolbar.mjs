@@ -785,7 +785,7 @@ export class SDXDrawingToolbar {
 	}
 
 	_inspectorItemHtml(e) {
-		const icons = { sketch: "fa-pen-fancy", line: "fa-minus", box: "fa-vector-square", ellipse: "fa-circle", stamp: "fa-stamp", drawing: "fa-pencil" };
+		const icons = { sketch: "fa-pen-fancy", line: "fa-minus", box: "fa-vector-square", ellipse: "fa-circle", stamp: "fa-stamp", drawing: "fa-pencil", mapNetwork: "fa-route" };
 		const icon = icons[e.type] || icons.drawing;
 		const permBadge = e.permanent ? "<span class=\"sdx-dt-inspector-perm\" title=\"Permanent\"><i class=\"fa-solid fa-thumbtack\"></i></span>" : "";
 		const opStr = Math.round(e.opacity * 100);

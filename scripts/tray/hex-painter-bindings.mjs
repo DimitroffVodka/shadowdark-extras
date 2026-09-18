@@ -3,16 +3,132 @@
 // wiring the tray's hex-painter controls to HexPainterSD. Merged via
 // Object.assign(TrayApp.prototype, HexPainterBindings).
 
-import { setMapDimension, formatActiveScene, toggleTileSelection, clearTileSelection, setSearchFilter, toggleWaterEffect, toggleWindEffect, toggleFogAnimation, toggleTintEnabled, toggleBwEffect, setActiveTileTab, setCustomTileDimension, toggleColoredFolderCollapsed, toggleSymbolFolderCollapsed, enablePreview, disablePreview, getActiveTileTab, setDecorSearchFilter, toggleDecorFolderCollapsed, setDecorElevation, setDecorSort, appendCustomNavSegment, setCustomNavPath, reloadCustomTiles } from "../hex/HexPainterSD.mjs";
+import { setMapDimension, formatActiveScene, toggleTileSelection, clearTileSelection, setSearchFilter, toggleWaterEffect, toggleWindEffect, toggleFogAnimation, toggleTintEnabled, toggleBwEffect, setActiveTileTab, setCustomTileDimension, toggleColoredFolderCollapsed, toggleSymbolFolderCollapsed, enablePreview, disablePreview, enablePainting, disablePainting, getActiveTileTab, setDecorSearchFilter, toggleDecorFolderCollapsed, setDecorElevation, setDecorSort, appendCustomNavSegment, setCustomNavPath, reloadCustomTiles } from "../hex/HexPainterSD.mjs";
 import { flattenTiles } from "../canvas/TileFlattenSD.mjs";
+import { sdxDrawingTool } from "../canvas/SDXDrawingTool.mjs";
 import { generateHexMap, clearGeneratedTiles } from "../hex/HexGeneratorSD.mjs";
 import { renderTray } from "./TraySD.mjs";
 import { DecorImportApp } from "./decor-import.mjs";
 
 const MODULE_ID = "shadowdark-extras";
+const ROAD_STYLES = {
+	dirt: { color: "#9A6A3A", texturePath: null },
+	cobble: {
+		color: "#D8C6A8",
+		texturePath: "modules/shadowdark-extras/assets/Dungeon/floor_tiles/DQ_Floor_Cobble_01A.webp",
+	},
+	pavers: {
+		color: "#D0D0D0",
+		texturePath: "modules/shadowdark-extras/assets/Dungeon/floor_tiles/DQ_Floor_Cobble_02A_light.webp",
+	},
+	stone: {
+		color: "#C4BBA8",
+		texturePath: "modules/shadowdark-extras/assets/Dungeon/floor_tiles/DQ_Floor_Stone_27.webp",
+	},
+};
+
+// Painting is disabled on entry to path mode and has no other owner that
+// re-enables it, so re-enable unconditionally — an earlier deactivate() can
+// leave path mode already torn down while painting is still off.
+function stopHexPathMode() {
+	sdxDrawingTool.stopMapPathMode();
+	enablePainting();
+}
+
+function pathWidthFromPercent(percent) {
+	return Math.max(4, Math.round((canvas.grid?.size || 100) * percent / 100));
+}
+
+async function activateHexPath(kind, roadStyle = "cobble", widthPercent = 15) {
+	if (!game.user.isGM) return false;
+	if (!canvas.grid?.isHexagonal) {
+		ui.notifications.warn("Roads and rivers require a hex grid.");
+		return false;
+	}
+	const road = ROAD_STYLES[roadStyle] || ROAD_STYLES.cobble;
+	if (["road", "both"].includes(kind) && road.texturePath) {
+		try {
+			await foundry.canvas.loadTexture(road.texturePath);
+		}
+		catch{ /* draw the solid fallback */ }
+	}
+	disablePainting();
+	sdxDrawingTool.setMapPathMode(kind, {
+		strokeWidth: pathWidthFromPercent(widthPercent),
+		roadColor: road.color,
+		riverColor: "#2D9CDB",
+		texturePath: road.texturePath,
+		roadStyle,
+	});
+	if (sdxDrawingTool.activate(false)) return true;
+	enablePainting();
+	return false;
+}
 
 export const HexPainterBindings = {
 	_bindHexPainterEvents(elem) {
+		const widthInput = elem.querySelector(".hex-path-width-input");
+		const widthValue = elem.querySelector(".hex-path-width-value");
+		const widthPercent = () => Math.max(8, Math.min(60, Number(widthInput?.value) || 15));
+		const syncPathControls = () => {
+			const kind = sdxDrawingTool.state.drawingMode === "mapPath"
+				? sdxDrawingTool.state.mapPathKind : null;
+			elem.querySelectorAll(".hex-path-mode-btn").forEach(button => {
+				button.classList.toggle("active", button.dataset.pathKind === kind);
+			});
+			const styleSelect = elem.querySelector(".hex-path-style-select");
+			if (styleSelect) styleSelect.disabled = !["road", "both"].includes(kind);
+			const help = elem.querySelector(".hex-path-help");
+			if (help) help.textContent = "Drag adds; right-click removes; Shift-click links";
+		};
+
+		elem.querySelectorAll(".hex-path-mode-btn").forEach(button => {
+			button.addEventListener("click", async e => {
+				e.preventDefault();
+				if (sdxDrawingTool.state.drawingMode === "mapPath"
+					&& sdxDrawingTool.state.mapPathKind === button.dataset.pathKind) {
+					stopHexPathMode();
+					syncPathControls();
+					return;
+				}
+				const roadStyle = elem.querySelector(".hex-path-style-select")?.value || "cobble";
+				await activateHexPath(button.dataset.pathKind, roadStyle, widthPercent());
+				syncPathControls();
+			});
+		});
+
+		elem.querySelector(".hex-path-style-select")?.addEventListener("change", async e => {
+			const kind = sdxDrawingTool.state.mapPathKind;
+			if (!["road", "both"].includes(kind)) return;
+			await activateHexPath(kind, e.target.value, widthPercent());
+			syncPathControls();
+		});
+
+		widthInput?.addEventListener("input", e => {
+			const percent = Math.max(8, Math.min(60, Number(e.target.value) || 15));
+			if (widthValue) widthValue.textContent = `${percent}%`;
+			sdxDrawingTool.setMapPathWidth(pathWidthFromPercent(percent));
+		});
+
+		elem.querySelector(".hex-path-create-btn")?.addEventListener("click", e => {
+			e.preventDefault();
+			if (sdxDrawingTool.state.drawingMode !== "mapPath") {
+				ui.notifications.warn("Choose Road, River, or Both first.");
+				return;
+			}
+			if (sdxDrawingTool.createMapPath()) syncPathControls();
+		});
+
+		elem.querySelector(".hex-path-clear-btn")?.addEventListener("click", e => {
+			e.preventDefault();
+			sdxDrawingTool.clearMapPathSelection();
+		});
+
+		elem.querySelector(".hex-path-undo-btn")?.addEventListener("click", async e => {
+			e.preventDefault();
+			await sdxDrawingTool.undoLastMapPath();
+		});
+
 		// Format Map toggle
 		const formatBtn = elem.querySelector(".hex-format-btn");
 		const formatControls = elem.querySelector(".hex-format-controls");
@@ -142,6 +258,7 @@ export const HexPainterBindings = {
 		elem.querySelectorAll(".hex-tile-thumb:not(.decor-tile-thumb)").forEach(thumb => {
 			thumb.addEventListener("click", e => {
 				e.preventDefault();
+				stopHexPathMode();
 				const tilePath = thumb.dataset.tile;
 				if (!tilePath) return;
 
@@ -211,6 +328,7 @@ export const HexPainterBindings = {
 		elem.querySelectorAll(".hex-tile-tab").forEach(tab => {
 			tab.addEventListener("click", e => {
 				e.preventDefault();
+				stopHexPathMode();
 				const tabName = tab.dataset.tileTab;
 				if (!tabName) return;
 

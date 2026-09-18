@@ -11,6 +11,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { installCanvasGlobals, makeRecordingGraphics } from "./helpers/pixi-harness.mjs";
+import {
+	buildMapPathNetwork,
+	drawNetworkWithStyle,
+	meanderPathPoints,
+	smoothPathPoints,
+} from "../../scripts/canvas/drawing-geometry.mjs";
 
 installCanvasGlobals();
 // The hex outline reads grid metrics off the canvas; give it a known grid.
@@ -69,6 +75,114 @@ test("a solid stroke is one moveTo followed by a lineTo per point", () => {
 		["lineTo", 13, 7],
 		["lineTo", 23, 12],
 	]);
+});
+
+test("a river stroke draws dark banks beneath the blue channel", () => {
+	const rec = g();
+	tool._drawLineWithStyle(rec, [[0, 0], [10, 5]], 3, 7, 12, 0x4C93CC, 1, "river");
+
+	assert.deepEqual(rec.of("lineStyle"), [
+		["lineStyle", { width: 18, color: 0x183B4F, alpha: 1, cap: "round", join: "round" }],
+		["lineStyle", { width: 12, color: 0x4C93CC, alpha: 1, cap: "round", join: "round" }],
+	]);
+	assert.equal(rec.count("moveTo"), 2);
+	assert.equal(rec.count("lineTo"), 2);
+});
+
+test("a network draws every bank before any channel and needs no junction patch", () => {
+	const rec = g();
+	drawNetworkWithStyle(rec, [
+		[[0, 0], [10, 0]],
+		[[0, 0], [0, 10]],
+		[[0, 0], [-10, 0]],
+	], 12, 0x4C93CC, 1, "river");
+
+	assert.deepEqual(rec.of("lineStyle"), [
+		["lineStyle", { width: 18, color: 0x183B4F, alpha: 1, cap: "round", join: "round" }],
+		["lineStyle", { width: 12, color: 0x4C93CC, alpha: 1, cap: "round", join: "round" }],
+	]);
+	assert.deepEqual(rec.names().slice(0, 8), [
+		"lineStyle", "moveTo", "lineTo", "moveTo", "lineTo", "moveTo", "lineTo", "lineStyle",
+	]);
+	assert.equal(rec.count("drawCircle"), 0);
+});
+
+test("tile topology handles a fork that leads to another fork", () => {
+	const neighbors = {
+		"0:0": [{ i: 0, j: 1 }],
+		"0:1": [{ i: 0, j: 0 }, { i: 0, j: 2 }, { i: 1, j: 1 }],
+		"0:2": [{ i: 0, j: 1 }, { i: 0, j: 3 }, { i: 1, j: 2 }],
+		"0:3": [{ i: 0, j: 2 }],
+		"1:1": [{ i: 0, j: 1 }],
+		"1:2": [{ i: 0, j: 2 }],
+	};
+	const grid = {
+		getAdjacentOffsets: ({ i, j }) => neighbors[`${i}:${j}`] || [],
+		getCenterPoint: ({ i, j }) => ({ x: j * 100, y: i * 100 }),
+	};
+	const cells = Object.keys(neighbors).map(key => {
+		const [i, j] = key.split(":").map(Number);
+		return { i, j };
+	});
+
+	assert.deepEqual(buildMapPathNetwork(cells, grid), [
+		[[0, 0], [100, 0]],
+		[[100, 0], [200, 0]],
+		[[100, 0], [100, 100]],
+		[[200, 0], [300, 0]],
+		[[200, 0], [200, 100]],
+	]);
+});
+
+test("blocked adjacency keeps nearby routes from making an accidental loop", () => {
+	const cells = [{ i: 0, j: 0 }, { i: 0, j: 1 }, { i: 1, j: 0 }];
+	const grid = {
+		getAdjacentOffsets: ({ i, j }) => cells.filter(cell => cell.i !== i || cell.j !== j),
+		getCenterPoint: ({ i, j }) => ({ x: j * 100, y: i * 100 }),
+	};
+
+	assert.deepEqual(buildMapPathNetwork(cells, grid, ["0:1|1:0"]), [
+		[[100, 0], [0, 0], [0, 100]],
+	]);
+});
+
+test("a textured road draws a wide dark shoulder beneath its surface", () => {
+	const rec = g();
+	tool._drawLineWithStyle(
+		rec, [[0, 0], [10, 5]], 3, 7, 24, 0xD8C6A8, 1, "road", "cobble.webp"
+	);
+
+	assert.deepEqual(rec.of("lineStyle"), [["lineStyle", {
+		width: 33.6, color: 0x382A20, alpha: 1, cap: "round", join: "round",
+	}]]);
+	const textureStyle = rec.of("lineTextureStyle")[0][1];
+	assert.equal(textureStyle.width, 24);
+	assert.equal(textureStyle.color, 0xD8C6A8);
+	assert.equal(textureStyle.texture.source, "cobble.webp");
+	assert.equal(rec.count("moveTo"), 2);
+	assert.equal(rec.count("lineTo"), 2);
+});
+
+test("map-path smoothing rounds corners without moving the endpoints", () => {
+	const points = smoothPathPoints([[0, 0], [100, 0], [100, 100]]);
+
+	assert.deepEqual(points[0], [0, 0]);
+	assert.deepEqual(points.at(-1), [100, 100]);
+	assert.ok(points.length > 3);
+	assert.equal(points.some(([x, y]) => x === 100 && y === 0), false);
+});
+
+test("river meanders alternate across a long straight run without moving its ends", () => {
+	const points = meanderPathPoints([
+		[0, 0], [100, 0], [200, 0], [300, 0], [400, 0],
+	]);
+
+	assert.deepEqual(points, [
+		[0, 0], [100, 32], [200, -32], [300, 32], [400, 0],
+	]);
+	assert.deepEqual(meanderPathPoints([[0, 0], [100, 0], [200, 0]]), [
+		[0, 0], [100, 0], [200, 0],
+	], "short river sections stay direct");
 });
 
 test("points are offset by the start coordinates, not used raw", () => {

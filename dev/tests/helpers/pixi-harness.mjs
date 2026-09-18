@@ -86,10 +86,12 @@ export class StubContainer extends StubEmitter {
 		this.cullable = false;
 	}
 
-	addChild(child) {
-		child.parent = this;
-		this.children.push(child);
-		return child;
+	addChild(...children) {
+		for (const child of children) {
+			child.parent = this;
+			this.children.push(child);
+		}
+		return children[0];
 	}
 
 	removeChild(child) {
@@ -98,7 +100,15 @@ export class StubContainer extends StubEmitter {
 		return child;
 	}
 
-	destroy() {
+	removeChildren() {
+		const children = [...this.children];
+		for (const child of children) child.parent = null;
+		this.children = [];
+		return children;
+	}
+
+	destroy(options = {}) {
+		if (options.children) this.removeChildren().forEach(child => child.destroy?.(options));
 		this.destroyed = true;
 	}
 }
@@ -138,6 +148,7 @@ export function makeRecordingGraphics({ precision = 4 } = {}) {
 		of: name => ops.filter(op => op[0] === name),
 		reset: () => { ops.length = 0; },
 		lineStyle: record("lineStyle"),
+		lineTextureStyle: record("lineTextureStyle"),
 		beginFill: record("beginFill"),
 		endFill: record("endFill"),
 		moveTo: record("moveTo"),

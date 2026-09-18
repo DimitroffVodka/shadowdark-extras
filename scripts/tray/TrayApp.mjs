@@ -159,7 +159,10 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const viewMode = getViewMode();
 
 		if (this._isExpanded && viewMode === "hexes") {
-			enablePainting();
+			const pathActive = game.shadowdarkExtras?.drawingTool?.active
+				&& game.shadowdarkExtras.drawingTool.state.drawingMode === "mapPath";
+			if (pathActive) disablePainting();
+			else enablePainting();
 			disableDungeonPainting();
 			// Enable POI preview if on symbols tab
 			if (getActiveTileTab() === "symbols") {
@@ -178,6 +181,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			enableDungeonPainting();
 		}
 		else {
+			game.shadowdarkExtras?.drawingTool?.stopMapPathMode?.();
 			disablePainting();
 			disablePreview();
 			disableDungeonPainting();
@@ -271,6 +275,12 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			generatorSettings: features.dungeonPainter ? getGeneratorSettings() : {},
 			hexFogActive: features.hexFog ? isHexFogEnabled(canvas.scene?.id) : false,
 			isHexagonal: !!canvas?.grid?.isHexagonal,
+			hexPathKind: game.shadowdarkExtras?.drawingTool?.state.drawingMode === "mapPath"
+				? game.shadowdarkExtras.drawingTool.state.mapPathKind : null,
+			hexRoadStyle: game.shadowdarkExtras?.drawingTool?.state.mapPathRoadStyle || "cobble",
+			hexPathWidth: game.shadowdarkExtras?.drawingTool?.state.drawingMode === "mapPath"
+				? Math.round(game.shadowdarkExtras.drawingTool.state.brushSettings.size
+					/ (canvas.grid?.size || 100) * 100) : 15,
 			soloModeActive: features.hexSoloMode ? isSoloMode() : false,
 		};
 	}
