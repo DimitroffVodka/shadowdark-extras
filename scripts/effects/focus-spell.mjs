@@ -1,4 +1,5 @@
-import { MODULE_ID, FOCUS_SPELL_FLAG, DURATION_SPELL_FLAG, _endingFocusSpells } from "./focus-constants.mjs";
+import { MODULE_ID, FOCUS_SPELL_FLAG, _endingFocusSpells } from "./focus-constants.mjs";
+import { matchesDurationEffect, updateDurationSpells } from "./duration-state.mjs";
 import { linkEffectToDurationSpell, getSceneMeasuredTemplates } from "./duration-spell.mjs";
 import { renderFocusEndedChat, buildFocusSpellsHtml } from "./focus-ui.mjs";
 
@@ -195,6 +196,8 @@ export async function handleEffectCreated(item, options, userId) {
 	}
 
 	// Check if it's a duration spell being tracked
+	if (!game.user?.isGM) return;
+	if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return;
 	await linkEffectToDurationSpell(
 		sourceActor, sourceSpell.id, item.actor, targetToken?.id, item.id
 	);
@@ -227,27 +230,19 @@ export async function handleEffectDeleted(item, options, userId) {
 			}
 		}
 
-		// Check Duration Spells
-		const activeDuration = actor.getFlag(MODULE_ID, DURATION_SPELL_FLAG);
-		if (activeDuration && activeDuration.length > 0) {
+		// The active GM owns duration-registry cleanup on every client's hooks.
+		if (options?.sdxDurationExpiry) continue;
+		if (!game.user?.isGM) continue;
+		if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) continue;
+		await updateDurationSpells(actor, activeDuration => {
 			let updated = false;
-			for (const durationEntry of activeDuration) {
-				if (!durationEntry.targetEffects) continue;
-
-				const effectIndex = durationEntry.targetEffects.findIndex(
-					te => te.effectItemId === item.id && te.targetActorId === item.actor?.id
-				);
-
-				if (effectIndex >= 0) {
-					durationEntry.targetEffects.splice(effectIndex, 1);
-					updated = true;
-				}
+			for (const entry of activeDuration) {
+				const links = entry.targetEffects ?? [];
+				entry.targetEffects = links.filter(link => !matchesDurationEffect(link, item));
+				if (entry.targetEffects.length !== links.length) updated = true;
 			}
-
-			if (updated) {
-				await actor.setFlag(MODULE_ID, DURATION_SPELL_FLAG, activeDuration);
-			}
-		}
+			return updated;
+		});
 	}
 }
 
@@ -280,9 +275,9 @@ export async function handleTokenDeleted(tokenDoc, options, userId) {
 			}
 		}
 
-		// Check Duration Spells
-		const activeDuration = actor.getFlag(MODULE_ID, DURATION_SPELL_FLAG);
-		if (activeDuration && activeDuration.length > 0) {
+		if (!game.user?.isGM) continue;
+		if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) continue;
+		await updateDurationSpells(actor, activeDuration => {
 			let updated = false;
 			for (const durationEntry of activeDuration) {
 				// Clean up targetEffects
@@ -304,11 +299,8 @@ export async function handleTokenDeleted(tokenDoc, options, userId) {
 				}
 			}
 
-			if (updated) {
-				await actor.setFlag(MODULE_ID, DURATION_SPELL_FLAG, activeDuration);
-				console.log(`shadowdark-extras | Removed targets for deleted token ${deletedTokenId} from duration spells`);
-			}
-		}
+			return updated;
+		});
 	}
 }
 

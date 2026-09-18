@@ -21,6 +21,7 @@ import {
 	getActiveDurationSpells,
 	registerSpellModification,
 	endDurationSpell,
+	handleDurationEffectUpdate,
 	handleDurationSpellCombatUpdate,
 	handleDurationSpellWorldTimeUpdate,
 	linkEffectToDurationSpell,
@@ -89,6 +90,9 @@ export function initFocusSpellTracker() {
 
 	// Hook into effect deletion to clean up tracking
 	Hooks.on("deleteItem", handleEffectDeleted);
+
+	// Foundry v14 owns linked duration expiry; SDX owns the parent-item cleanup.
+	Hooks.on("updateActiveEffect", handleDurationEffectUpdate);
 
 	// Hook into token deletion to clean up focus tracking
 	Hooks.on("deleteToken", handleTokenDeleted);
