@@ -53,6 +53,7 @@ import { saveHexRecord, setHexTerrainBatch, mergeHexRecords } from "./HexTooltip
 import { buildMapPathNetwork, mapPathEdgeKey } from "../canvas/drawing-geometry.mjs";
 import { getSpecialTiles } from "./hex-special-tiles.mjs";
 import { getColoredTileDimensions } from "./hex-colored-tiles.mjs";
+import { importHexerMap, openHexerImportDialog } from "./HexerImporterSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -477,6 +478,7 @@ export function installHexcrawlApi(api, namespace, wrap) {
 	}
 	api.hex = namespace.hex = Object.fromEntries(Object.entries({
 		buildHexcrawl: buildPublishedHexcrawl, upsertHexRecords, getSpecialTiles,
+		importHexerMap, openHexerImportDialog,
 	}).map(([name, fn]) => [name, wrap(`hex.${name}`, fn)]));
 }
 

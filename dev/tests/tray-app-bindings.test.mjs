@@ -179,6 +179,7 @@ const BINDINGS = [
 	".sdx-tray .tray-handle-button-viewcycle :: click",
 	".sdx-tray .tray-tab-button[0] :: click",
 	`.sdx-tray [data-action="create-party-token"] :: click`,
+	`.sdx-tray [data-action="hex-import-hexer"] :: click`,
 	`.sdx-tray [data-action="select-party"] :: click`,
 	`.sdx-tray [data-action="toggle-npc-visibility"] :: click`,
 	".sdx-tray [data-action='create-folder'] :: click",

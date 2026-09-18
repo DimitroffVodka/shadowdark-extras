@@ -323,6 +323,67 @@ hidden notes control presentation, not confidentiality. Do not treat those
 flags as private storage for licensed text or GM secrets; keep truly private
 source data outside player-readable documents.
 
+## Hexer JSON imports
+
+GMs can use **Hexes → Import Hexer JSON** in the tray. The native file picker
+previews scene counts and conversion warnings before any world writes. It accepts
+schema-version-6 exports up to 20 MiB. No external service or dependency is needed.
+
+```js
+const hex = game.modules.get("shadowdark-extras").api.hex;
+const result = await hex.importHexerMap(parsedHexerJSON, {
+  sceneName: "Imported map", // optional; defaults to the export name
+  view: false               // default true; view first scene on this client only
+});
+// { scenes: [{ layer, sceneId, sceneName, terrainTiles, featureTiles, records }],
+//   warnings: ["..."] }
+// Or launch the same interactive file picker:
+await hex.openHexerImportDialog();
+```
+
+These GM-only methods require Hex Painter and reuse `hex.buildHexcrawl`.
+Every import creates new scenes; replacement/overwrite is intentionally not an
+option. All supported source data is validated before creating the first scene.
+A storage failure can leave partial scenes; completed scene IDs are included in
+the error. The interactive method returns `null` on cancellation/error.
+
+- **Coordinates:** Hexer's `q,r` are zero-based offset column/row. SDX mints
+  `num = (q + 1) * 100 + (r + 1)`. Width and height are limited to 1–99 by the
+  published-number API. Pointy odd-row maps use `landscape: true`: axes transpose
+  into flat-top odd columns, preserving adjacency. This is a **diagonal
+  reflection**, not strictly a quarter-turn rotation. Flat maps are not transposed.
+- **Layers:** each populated base layer (`surface`, `level_1`, `level_2`,
+  `level_3`) becomes a separate scene. Source "Underdark" is a UI label, not a
+  layer identifier. Detail-scale cells/entities are skipped with a warning.
+- **Terrain:** forest/dense-forest/jungle → forest; grassland/plains → plains;
+  hill → hills; mountain → mountains; marsh/bog → swamp; sea/lake/coast → water.
+  Other known equivalents use the same biome families. Unknown/custom types
+  retain their name as free-text terrain with the builder's fallback artwork.
+  Custom art/colors are not imported. Missing cells are filled with plains with
+  a warning. `hexSize` does not change SDX's fixed tile size or imply travel costs.
+- **POIs and regions:** POIs become names, typed features, and a shipped icon;
+  co-located POIs retain all labels/features but share one representative icon.
+  Region membership becomes `zone`; overlapping names are joined with ` / `.
+  Top-level Hexer notes are joined by hex and layer, retaining title/content as
+  HTML-escaped note text, not rendered Markdown. `dmOnly` notes stay hidden;
+  conditional discovery notes start hidden with a warning. When fog is enabled,
+  notes and POIs in hidden/partial cells also start hidden; reveal them in the
+  Hex Editor when appropriate. **Hidden is not confidential:**
+  the shared journal is observer-visible, as explained above.
+- **Networks:** normalized path x/y are already in units of `hexSize`, not raw
+  pixels to divide again. Straight control-point segments are clipped against
+  hex polygons, including intermediate cells and closed paths. Primary/secondary
+  (and road/trail) map to roads; water/river map to rivers. Explicit non-joins
+  prevent adjacent but unconnected routes merging. Off-map portions are clipped
+  with a warning; singleton paths produce no segment. Styling and smoothing are
+  not reproduced. Drawing Tools must be enabled to render saved networks.
+- **Fog:** visible/explored become `hexFogRevealed`; partial/hidden remain covered.
+  Intermediate source states are retained in hidden notes. `fogEnabled` is copied.
+- **Loss reporting:** per-edge restrictions and cell connections are retained in
+  hidden notes, not enforced for movement. Tokens, point-crawl data, unsupported
+  path types, and detail scales produce explicit warnings instead of disappearing
+  silently. Keep the original JSON; this is not a lossless round-trip editor.
+
 ## Regions and multi-level decor
 
 | Method | Permission |

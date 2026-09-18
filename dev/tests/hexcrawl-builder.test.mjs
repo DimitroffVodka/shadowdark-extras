@@ -192,11 +192,13 @@ test("setup exposes the same guarded hex namespace on both surfaces and removes 
 		assert.equal(typeof module.api.hex, enabled ? "object" : "undefined");
 		assert.equal(context.game.shadowdarkExtras?.hex, module.api.hex);
 		if (enabled) {
-			assert.deepEqual(Object.keys(module.api.hex).sort(), ["buildHexcrawl", "getSpecialTiles", "upsertHexRecords"]);
+			assert.deepEqual(Object.keys(module.api.hex).sort(), ["buildHexcrawl", "getSpecialTiles", "importHexerMap", "openHexerImportDialog", "upsertHexRecords"]);
 			context.game.user.isGM = false;
 			await assert.rejects(module.api.hex.buildHexcrawl(fixture), /requires GM permission/);
 			await assert.rejects(module.api.hex.upsertHexRecords("scene", []), /requires GM permission/);
 			await assert.rejects(module.api.hex.getSpecialTiles(), /requires GM permission/);
+			await assert.rejects(module.api.hex.importHexerMap({}), /requires GM permission/);
+			await assert.rejects(module.api.hex.openHexerImportDialog(), /requires GM permission/);
 		}
 	}
 });

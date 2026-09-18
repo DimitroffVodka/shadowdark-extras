@@ -121,6 +121,8 @@
       "hex": [
         "buildHexcrawl",
         "getSpecialTiles",
+        "importHexerMap",
+        "openHexerImportDialog",
         "upsertHexRecords"
       ],
       "dev": [

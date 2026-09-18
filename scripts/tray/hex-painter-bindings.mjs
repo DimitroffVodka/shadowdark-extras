@@ -67,6 +67,8 @@ async function activateHexPath(kind, roadStyle = "cobble", widthPercent = 15) {
 
 export const HexPainterBindings = {
 	_bindHexPainterEvents(elem) {
+		elem.querySelector('[data-action="hex-import-hexer"]')?.addEventListener("click", () =>
+			game.modules.get(MODULE_ID)?.api?.hex?.openHexerImportDialog());
 		const widthInput = elem.querySelector(".hex-path-width-input");
 		const widthValue = elem.querySelector(".hex-path-width-value");
 		const widthPercent = () => Math.max(8, Math.min(60, Number(widthInput?.value) || 15));
