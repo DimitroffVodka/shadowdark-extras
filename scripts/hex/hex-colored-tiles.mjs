@@ -15,6 +15,17 @@ const MODULE_ID = "shadowdark-extras";
 const COLORED_TILE_FOLDER = `modules/${MODULE_ID}/assets/Hexes`;
 const COLORED_HEX_TILE_W = 572;
 const COLORED_HEX_TILE_H = 500;
+const COLORED_TAG_ALIASES = [
+	["autumn", "autumn"], ["badland", "badlands"], ["bog", "bog"],
+	["coast", "coast"], ["conifer", "conifer"], ["damp", "damp"],
+	["deciduous", "deciduous"], ["desert", "desert"], ["forest", "forest"],
+	["hill", "hills"], ["ice", "ice"], ["lush", "lush"], ["mixed", "mixed"],
+	["mountain", "mountains"], ["ocean", "ocean"], ["plain", "plains"],
+	["rocky", "rocky"], ["snow", "snow"], ["swamp", "swamp"],
+	["tree", "trees"], ["urban", "urban"], ["vegetation", "vegetation"],
+	["volcano", "volcano"], ["water", "water"], ["wave", "waves"],
+	["wetland", "wetlands"],
+];
 
 // State
 export let _coloredTiles = null;    // Colored tiles from assets/Hexes
@@ -132,6 +143,16 @@ export function getColoredTileDimensions() {
  */
 export function getColoredTiles() {
 	return _coloredTiles || [];
+}
+
+export function getColoredTileTags(tile) {
+	const biome = String(tile?.biome || "").toLowerCase();
+	const text = `${biome} ${tile?.label || ""}`.toLowerCase();
+	const tags = new Set(biome ? [biome] : []);
+	for (const [needle, tag] of COLORED_TAG_ALIASES) {
+		if (text.includes(needle)) tags.add(tag);
+	}
+	return Array.from(tags).sort();
 }
 
 /**

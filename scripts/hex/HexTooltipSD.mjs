@@ -101,16 +101,28 @@ export async function setHexTerrain(sceneId, hexKey, terrain) {
  * @param {Object<string,string>} terrainMap  – { hexKey: terrainLabel, … }
  */
 export async function setHexTerrainBatch(sceneId, terrainMap) {
+	await mergeHexRecords(sceneId, Object.fromEntries(
+		Object.entries(terrainMap).map(([key, terrain]) => [key, { terrain }])
+	));
+}
+
+/** Merge a validated record batch in one journal write; omitted fields survive. */
+export async function mergeHexRecords(sceneId, records) {
 	const journal = await ensureHexJournal();
 	if (!journal) return;
 	const allData = loadAllHexDataSync();
 	if (!allData[sceneId]) allData[sceneId] = {};
 
-	for (const [hexKey, terrain] of Object.entries(terrainMap)) {
-		if (!allData[sceneId][hexKey]) {
-			allData[sceneId][hexKey] = DEFAULT_HEX_RECORD();
+	for (const [hexKey, patch] of Object.entries(records)) {
+		const { desc, ...fields } = foundry.utils.deepClone(patch);
+		const record = { ...(allData[sceneId][hexKey] ?? DEFAULT_HEX_RECORD()), ...fields };
+		if (desc !== undefined) {
+			// One importer-owned note: repeat imports update it, never erase GM notes.
+			const id = "hexcrawl-description";
+			record.notes = (record.notes ?? []).filter(note => note.id !== id);
+			if (desc) record.notes.push({ id, text: desc, visible: false });
 		}
-		allData[sceneId][hexKey].terrain = terrain;
+		allData[sceneId][hexKey] = record;
 	}
 
 	await journal.setFlag(MODULE_ID, "hexData", allData);

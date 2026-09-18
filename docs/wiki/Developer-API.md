@@ -116,11 +116,212 @@ The full orchestration contract lives in
 |---|---|---|
 | `generateHexMap(params)` | GM | Generate terrain on the formatted active Scene |
 | `clearGeneratedTiles(options)` | GM | Remove SDX-generated hex tiles |
-| `buildHexcrawl(dataset)` | GM | Build a keyed map from in-memory data |
-| `buildHexcrawlFromFile(path/options)` | GM | Build from a supported data file |
+| `hex.buildHexcrawl(dataset, options?)` | GM | Stable published-number dataset → painted Scene |
+| `hex.upsertHexRecords(sceneId, records)` | GM | Merge records without rebuilding or repainting |
+| `hex.getSpecialTiles()` | GM | Catalogue Specials for explicit, unique hex assignments |
+| `buildHexcrawl(dataset, options?)` | GM | Legacy layout; retained for existing macros |
+| `buildHexcrawlFromFile(relPath, options?)` | GM | Legacy dataset JSON, relative to the SDX module directory |
 
 `clearGeneratedTiles({ force: true })` skips its confirmation. Reach for that
 only inside an automation workflow that already confirmed with the user.
+
+### Stable hexcrawl dataset
+
+After `setup`, `game.shadowdarkExtras.hex` and
+`game.modules.get("shadowdark-extras").api.hex` are the **same namespace**.
+It is absent when Hex Painter is disabled. Feature-detect it; an importer can
+export this same dataset as JSON when SDX is unavailable. No book content is
+bundled or fetched by the builder.
+
+```js
+const hex = game.modules.get("shadowdark-extras")?.api?.hex;
+if (!game.user.isGM || !hex?.buildHexcrawl) return;
+
+const result = await hex.buildHexcrawl({
+  name: "Example frontier",
+  grid: {
+    cols: 14, rows: 4,
+    distance: 6, units: "mi",
+    landscape: false, flipX: false, flipY: false
+  },
+  terrain: {
+    default: "grassland",
+    regions: [{ biome: "forest", hexes: [1402, 1403] }]
+  },
+  hexes: [
+    { num: 1402, name: "Landing" },
+    { num: "1403", name: "Old tower", terrain: "forest",
+      icon: "icons/svg/castle.svg", desc: "An invented landmark.", zone: "North" },
+    { num: 1404, name: "Dunes", terrain: "desert" }
+  ],
+  networks: {
+    river: [1402, 1403, 1404],
+    road: [1402, 1403],
+    blockedEdges: { river: [[1403, 1404]] }
+  }
+}, { view: false });
+// { sceneId, sceneName, terrainTiles, featureTiles, records }
+```
+
+`grid` and `hexes` are required; `hexes: []` builds terrain only. All other
+dataset fields are optional. `cols` and `rows` are integer counts from 1–99.
+Distance defaults to 6, units to `"mi"`, terrain to `"forest"`, and all
+transforms to false. The scene uses SDX's native HEXODDQ grid at size 256.
+`terrainTile: { w, h }` overrides the ordinary terrain tile render size
+(default 296 × 256); `featureIconSize` defaults to 150. Sizes must be positive.
+Icons accept a Foundry asset URL/path; `assets/...` is shorthand for an SDX
+module-relative asset.
+
+**Numbering:** leading digits are the published column; the final two digits
+are the row. Both start at 1. `1403` and `"1403"` mean column 14, row 3,
+Foundry offset `{ i: 2, j: 13 }` with no transforms. `"0102"` is also valid.
+No per-hex `col`, `row`, `i`, `j` or coordinate-pair inputs are accepted.
+Numeric inputs must be integers; strings must contain exactly 3–4 digits,
+without whitespace. Out-of-bounds cells and duplicate keyed hexes are rejected.
+`landscape: true` transposes the axes; then `flipX` and `flipY` mirror the
+resulting scene axes. Transposing does not import a pointy-top grid.
+
+Options are `{ sceneName?, overwrite?: false, view?: true }`. By default the
+builder creates a new scene and views it on the calling client, **not** activates
+it for players. `view: false` leaves the current canvas untouched and needs no
+active canvas. `overwrite: true` deletes same-name scenes only after the new
+map has finished building; use it only after the GM has approved replacement.
+Validation errors reject before world writes. Foundry/storage failures reject
+and may leave a partial new scene; the old map is retained if building fails.
+
+### Terrain labels versus painted biomes
+
+The record retains the terrain text exactly as supplied. Painting chooses a
+biome case-insensitively: keyed `terrain` overrides the last matching region,
+which overrides the default. Unknown labels use the default biome, or forest
+if that is unknown too. An omitted keyed terrain does not erase its region's
+terrain record.
+
+| Imported terrain | Painted biome |
+|---|---|
+| forest, jungle | forest |
+| plains, grassland, path | plains |
+| hills, canyon | hills |
+| water, arctic sea, coast, lake, ocean, river | water |
+| mountains, mountain, deep tunnels, lava | mountains |
+| desert, salt flat | desert |
+| swamp | swamp |
+
+These are visual fallbacks, not an assertion that lava looks like mountains.
+They reuse existing SDX assets. Travel costs and hexes per day are not computed.
+
+### Roads and rivers
+
+`networks.road` and `networks.river` are published hex-number lists. List order
+does not determine connections: adjacent designated cells join, including
+forks and loops; duplicates are harmless and isolated cells draw no segment.
+Importers map the book's `path` overlay to `road`.
+
+`networks.blockedEdges` optionally supplies `{ road: [[num, num]], river: [...] }`.
+Both endpoints must belong to that kind's list. The pair suppresses only that
+connection; a non-adjacent pair has no effect. This reuses the same blocked-edge
+geometry as Shift-click in Roads & Rivers, rather than adding another network
+implementation. Without overrides, neighbouring rivers will join.
+
+Networks are saved as SDX permanent `mapNetwork` drawings and use the existing
+renderer, just like Create in Roads & Rivers. Their appearance requires Drawing
+Tools to be enabled. They are not native Foundry Drawing documents, and the
+saved result is geometry—not an editable copy of the pending designation dots.
+The summary's terrain/feature counts exclude networks and reference tiles.
+
+### Specials catalogue and unique locations
+
+```js
+const specials = await hex.getSpecialTiles();
+// [{ id, path, label, tags }, ...] — sorted by id
+const keep = specials.find(tile => tile.tags.includes("keep"));
+if (!keep) throw new Error("Required special is unavailable");
+
+const map = await hex.buildHexcrawl({
+  grid: { cols: 14, rows: 4 },
+  hexes: [{ num: 1403, special: keep.id, name: "Border keep" }]
+});
+```
+
+The catalogue includes every shipped tile in `assets/Hexes/Specials`, including
+variants. IDs are the exact asset paths returned by Foundry; pass them back
+unchanged. Labels and search tags are derived from filenames, not a visual
+classification or a claim about a book location.
+
+A `hexes[].special` assignment replaces that cell's ordinary terrain tile,
+using the same centered 572 × 500 render footprint as the colored-tile painter
+on the builder's 256 grid. It counts as terrain, not a small feature icon.
+The tile stores its published `hexNum`; the hex record uses the supplied name,
+or the catalogue label if omitted. Descriptions and terrain stay independent.
+
+Each catalogue ID may be assigned **once per dataset**, and each keyed number
+may occur once. Unknown specials or duplicate assignments fail before scene
+creation. Specials remain excluded from random biome selection; the importer
+or GM chooses their exact locations. `upsertHexRecords` does not move or replace
+special tiles. There is no new placement UI or automatic landmark allocation.
+
+### Updating records
+
+```js
+await hex.upsertHexRecords(result.sceneId, [
+  { num: 1403, desc: "Revised description.", terrain: "deep tunnels" },
+  { num: 1404, exploration: "mapped", rollTable: "RollTable.TABLE_ID",
+    rollTableChance: 25, rollTableFirstOnly: true }
+]);
+// { sceneId, records: 2 }
+```
+
+Omitted fields survive, including GM notes, discovery state and encounter
+links. The whole input batch is validated before its single journal write;
+await each mutation before sending the next. Accepted fields (also available
+in the build's `hexes` entries) are:
+
+- Text: `name`, `zone`, `terrain`, `travel`, `revealCells`, `rollTable`, `desc`.
+  Names are stored as `"num. name"`; an empty name becomes just the number.
+- Booleans: `cleared`, `claimed`, `rollTableFirstOnly`, `showToPlayers`.
+- `exploration`: `"unexplored"`, `"explored"`, or `"mapped"`.
+- `revealRadius`: integer ≥ −1; `rollTableChance`: number from 0–100.
+- `notes`: array of `{ id, text, visible }`.
+- `features`: array of `{ id, type, name, discovered, ... }`, using the Hex
+  Editor's existing feature shape; feature-specific fields are retained.
+
+Explicit `notes`/`features` arrays replace those arrays. `desc` updates a single
+importer-owned, hidden note without deleting other notes; repeating it does not
+duplicate the note, and `desc: ""` removes it. Updating terrain changes the
+record only, not the painted tile. New records start unexplored and not shown
+to players. Unmentioned cells and other scenes are unchanged.
+
+Upsert uses the scene's saved version-1 layout, so flips and transpose survive
+reloads and updates to an unviewed scene. It rejects legacy/manual scenes with
+no saved published layout rather than guessing where their records belong.
+The root-level builders preserve the old convention: `cols` counts the final
+digits starting at 1, `rows` counts the leading digits starting at 0, and
+`landscape` transposes those axes. Rebuild with `hex.buildHexcrawl` to adopt the
+new contract; existing flags and scene keys are never silently migrated.
+
+### Optional reference image — hidden is not private
+
+The map is painted SDX tiles on a blank scene. A publisher map is **never** set
+as its background. For manual corrections, add:
+
+```js
+reference: { src: "worlds/my-world/cropped-reference.webp" }
+```
+
+The builder creates a native Tile with `hidden: true`, `locked: true`, alpha
+0.5, above the painted map, stretched to the scene's N × M cell box. Supply
+an already-cropped/aligned image; non-regular print proportions are stretched
+to the regular grid. An importer that knows the crop geometry may instead
+pass explicit scene-pixel `x`, `y`, `width`, `height` for the **whole image's**
+precomputed placement. The builder does not detect a crop, rotate the image,
+or infer alignment. Unlock it to adjust it using native Tile controls.
+
+**Player clients receive hidden Tile documents, including the image URL.**
+Delete the reference Tile when corrections are complete. Likewise, SDX's
+existing `hexData` journal is observer-visible: `showToPlayers: false` and
+hidden notes control presentation, not confidentiality. Do not treat those
+flags as private storage for licensed text or GM secrets; keep truly private
+source data outside player-readable documents.
 
 ## Regions and multi-level decor
 

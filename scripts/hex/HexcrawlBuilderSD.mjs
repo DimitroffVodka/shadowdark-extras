@@ -17,12 +17,12 @@
  * {
  *   name: "The Gloaming",
  *   grid: {
- *     cols: 11, rows: 17,            // PUBLISHED columns (num%100) / rows (num/100)
+ *     cols: 17, rows: 11,            // published columns / rows, both start at 1
  *     distance: 2, units: "mi",
- *     landscape: true,              // transpose so the long (row) axis is horizontal
+ *     landscape: false,             // true transposes the published axes
  *     flipX: false, flipY: false    // mirror to match the printed map's handedness
  *   },
- *   terrainTile: { w: 572, h: 500 }, // render size for biome tiles (colored-set dims)
+ *   terrainTile: { w: 296, h: 256 }, // optional render size (default SDX tiles)
  *   featureIconSize: 150,
  *   terrain: {
  *     default: "forest",            // biome key (see BIOME_TILES)
@@ -31,17 +31,28 @@
  *   hexes: [
  *     { num: 102, name:"Shattered Tower", terrain:"Forest",
  *       icon:"assets/symbols/Details/Structures - Ruins (stone).webp",
- *       desc:"A crumbling keep …", zone:"The Gloaming" },
+ *       desc:"A crumbling keep …", zone:"The Gloaming",
+ *       special: "modules/shadowdark-extras/assets/Hexes/Specials/keep.webp" },
  *     …
- *   ]
+ *   ],
+ *   networks: { river: [1402,1403], road: [1403,1404],
+ *     blockedEdges: { river: [[1402,1403]] } }, // optional explicit non-joins
+ *   reference: { src: "worlds/my-world/reference.webp" } // optional tracing Tile
  * }
  *
- * Hex number → published cell:  col = num % 100,  row = floor(num / 100).
- * The geometry layer maps (col,row) → Foundry HEXODDQ offset {i,j}; see makeGeom.
+ * Stable api.hex contract: col = floor(num / 100), row = num % 100.
+ * With no transpose/flips, 1403 → offset {i:2,j:13}. Only num crosses the API.
+ * The root buildHexcrawl / buildHexcrawlFromFile retain the OLD dataset layout:
+ * their cols counts trailing digits (starting at 1), rows counts leading digits
+ * (starting at 0), and landscape transposes those legacy axes. Do not use them
+ * for new integrations. Persisted legacy scenes are never silently re-keyed.
  * ════════════════════════════════════════════════════════════════════════════
  */
 
-import { saveHexRecord, setHexTerrainBatch } from "./HexTooltipSD.mjs";
+import { saveHexRecord, setHexTerrainBatch, mergeHexRecords } from "./HexTooltipSD.mjs";
+import { buildMapPathNetwork, mapPathEdgeKey } from "../canvas/drawing-geometry.mjs";
+import { getSpecialTiles } from "./hex-special-tiles.mjs";
+import { getColoredTileDimensions } from "./hex-colored-tiles.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -60,6 +71,10 @@ const HEX_CELL_W = HEX_TILE_H * 2 / Math.sqrt(3); // ≈ 295.6
 // Biome key → SDX default hex tiles (assets/tiles/). First entry is the default;
 // the list gives deterministic per-cell variety.
 const BIOME_TILES = {
+	desert: {
+		terrain: "Desert",
+		paths: ["assets/tiles/hex-tile-desert1.webp", "assets/tiles/hex-tile-desert2.webp", "assets/tiles/hex-tile-desert3.webp"],
+	},
 	forest: {
 		terrain: "Forest",
 		paths: [
@@ -116,21 +131,33 @@ const BIOME_TILES = {
 
 const prefix = p => `modules/${MODULE_ID}/${p.replace(/^modules\/[^/]+\//, "")}`;
 
+// Preserve the imported terrain label; these fallbacks affect painting only.
+const TERRAIN_BIOMES = {
+	"arctic sea": "water", "canyon": "hills", "coast": "water", "deep tunnels": "mountains",
+	"grassland": "plains", "jungle": "forest", "lake": "water", "lava": "mountains",
+	"mountain": "mountains", "ocean": "water", "river": "water", "path": "plains", "salt flat": "desert",
+};
+const biomeFor = label => {
+	const key = label.toLowerCase().trim();
+	const biome = Object.hasOwn(TERRAIN_BIOMES, key) ? TERRAIN_BIOMES[key] : key;
+	return Object.hasOwn(BIOME_TILES, biome) ? BIOME_TILES[biome] : undefined;
+};
+
 // ── number / geometry helpers ───────────────────────────────────────────────
 
-/** Hex map number → { col, row }. e.g. 1403 → {col:3, row:14}; 102 → {col:2, row:1}. */
+/** Published hex number → { col, row }. 1403 → {col:14, row:3}. */
 export function hexNumToColRow(num) {
 	const n = Number(num);
-	return { col: n % 100, row: Math.floor(n / 100) };
+	return { col: Math.floor(n / 100), row: n % 100 };
 }
 
 /**
  * Build the layout geometry from dataset.grid. Maps published (col,row) to a
  * Foundry HEXODDQ offset {i,j}, optionally transposed (landscape) and mirrored.
  */
-function makeGeom(dataset) {
-	const pubCols = dataset.grid?.cols ?? 11;   // 01..pubCols
-	const pubRows = dataset.grid?.rows ?? 17;   // 00..pubRows-1
+function makeGeom(dataset, published = false) {
+	const pubCols = dataset.grid?.cols ?? 11;
+	const pubRows = dataset.grid?.rows ?? 17;
 	const landscape = !!dataset.grid?.landscape;
 	const flipX = !!dataset.grid?.flipX;
 	const flipY = !!dataset.grid?.flipY;
@@ -139,8 +166,8 @@ function makeGeom(dataset) {
 	const gridRows = landscape ? pubCols : pubRows; // Foundry rows    (y cells)
 
 	function offsetOf(col, row) {
-		const cx = col - 1;  // 0..pubCols-1
-		const ry = row;      // 0..pubRows-1
+		const cx = published ? col - 1 : row - 1;
+		const ry = published ? row - 1 : col;
 		let j; let i;
 		if (landscape) {
 			j = flipX ? (pubRows - 1 - ry) : ry;   // x runs along published rows
@@ -153,15 +180,118 @@ function makeGeom(dataset) {
 		return { i, j };
 	}
 
-	return { pubCols, pubRows, gridCols, gridRows, offsetOf };
+	return { pubCols, pubRows, gridCols, gridRows, offsetOf, published };
 }
 
 const offsetToHexKey = off => `${off.i}_${off.j}`;
 const variety = (i, j, len) => (len ? (Math.abs(i * 31 + j * 17) % len) : 0);
 
+const RECORD_STRINGS = ["name", "zone", "terrain", "travel", "revealCells", "rollTable", "desc"];
+const RECORD_BOOLEANS = ["cleared", "claimed", "rollTableFirstOnly", "showToPlayers"];
+const RECORD_FIELDS = [...RECORD_STRINGS, ...RECORD_BOOLEANS, "exploration", "revealRadius", "rollTableChance", "features", "notes"];
+
+function requireInput(condition, message) {
+	if (!condition) throw new Error(`SDX | Hexcrawl: ${message}`);
+}
+
+function validateHexNum(num, grid) {
+	requireInput((typeof num === "number" && Number.isSafeInteger(num))
+		|| (typeof num === "string" && /^\d{3,4}$/.test(num)), `invalid hex number ${num}`);
+	const { col, row } = hexNumToColRow(num);
+	requireInput(col >= 1 && col <= grid.cols && row >= 1 && row <= grid.rows, `hex ${num} is outside the published grid`);
+	return Number(num);
+}
+
+function validateRecords(records, grid, building = false) {
+	requireInput(Array.isArray(records), "hexes/records must be an array");
+	const seen = new Set();
+	for (const hex of records) {
+		requireInput(hex && typeof hex === "object" && !Array.isArray(hex), "each hex must be an object");
+		const num = validateHexNum(hex.num, grid);
+		requireInput(!seen.has(num), `duplicate hex ${hex.num}`);
+		seen.add(num);
+		for (const key of Object.keys(hex)) {
+			requireInput(key === "num" || RECORD_FIELDS.includes(key) || (building && ["icon", "special"].includes(key)), `unsupported hex field ${key}; identify cells by num only`);
+		}
+		for (const key of [...RECORD_STRINGS, ...(building ? ["icon", "special"] : [])]) {
+			if (Object.hasOwn(hex, key)) requireInput(typeof hex[key] === "string", `${key} must be text`);
+		}
+		for (const key of RECORD_BOOLEANS) {
+			if (Object.hasOwn(hex, key)) requireInput(typeof hex[key] === "boolean", `${key} must be boolean`);
+		}
+		if (Object.hasOwn(hex, "exploration")) requireInput(["unexplored", "explored", "mapped"].includes(hex.exploration), "invalid exploration state");
+		if (Object.hasOwn(hex, "revealRadius")) requireInput(Number.isInteger(hex.revealRadius) && hex.revealRadius >= -1, "invalid revealRadius");
+		if (Object.hasOwn(hex, "rollTableChance")) requireInput(Number.isFinite(hex.rollTableChance) && hex.rollTableChance >= 0 && hex.rollTableChance <= 100, "invalid rollTableChance");
+		for (const key of ["features", "notes"]) {
+			if (!Object.hasOwn(hex, key)) continue;
+			requireInput(Array.isArray(hex[key]), `${key} must be an array`);
+			for (const entry of hex[key]) {
+				requireInput(entry && typeof entry === "object" && !Array.isArray(entry) && typeof entry.id === "string", `${key} entries need an id`);
+				if (key === "notes") requireInput(typeof entry.text === "string" && typeof entry.visible === "boolean", "notes need text and visible");
+				else requireInput(typeof entry.type === "string" && typeof entry.name === "string" && typeof entry.discovered === "boolean", "features need type, name and discovered");
+			}
+		}
+	}
+}
+
+function validateDataset(dataset, opts) {
+	requireInput(dataset && typeof dataset === "object" && !Array.isArray(dataset), "dataset must be an object");
+	requireInput(opts && typeof opts === "object" && !Array.isArray(opts), "options must be an object");
+	const grid = dataset.grid;
+	requireInput(grid && [grid.cols, grid.rows].every(n => Number.isInteger(n) && n >= 1 && n <= 99), "grid cols/rows must be integers from 1 to 99");
+	for (const key of ["landscape", "flipX", "flipY"]) {
+		if (Object.hasOwn(grid, key)) requireInput(typeof grid[key] === "boolean", `grid.${key} must be boolean`);
+	}
+	if (Object.hasOwn(grid, "distance")) requireInput(Number.isFinite(grid.distance) && grid.distance > 0, "distance must be positive");
+	for (const value of [dataset.name, grid.units, opts.sceneName]) requireInput(value === undefined || typeof value === "string", "name/units must be text");
+	for (const key of ["view", "overwrite"]) {
+		if (Object.hasOwn(opts, key)) requireInput(typeof opts[key] === "boolean", `${key} must be boolean`);
+	}
+	for (const value of [dataset.featureIconSize, dataset.terrainTile?.w, dataset.terrainTile?.h]) {
+		requireInput(value === undefined || (Number.isFinite(value) && value > 0), "tile sizes must be positive");
+	}
+	validateRecords(dataset.hexes, grid, true);
+	if (dataset.terrain !== undefined) {
+		requireInput(dataset.terrain && typeof dataset.terrain === "object", "terrain must be an object");
+		if (dataset.terrain.default !== undefined) requireInput(typeof dataset.terrain.default === "string", "default terrain must be text");
+		requireInput(Array.isArray(dataset.terrain.regions ?? []), "terrain.regions must be an array");
+		for (const region of dataset.terrain.regions ?? []) {
+			requireInput(region && typeof region.biome === "string" && Array.isArray(region.hexes), "regions need biome and hexes");
+			for (const num of region.hexes) validateHexNum(num, grid);
+		}
+	}
+	if (dataset.networks !== undefined) {
+		const networks = dataset.networks;
+		requireInput(networks && typeof networks === "object" && !Array.isArray(networks), "networks must be an object");
+		for (const key of Object.keys(networks)) requireInput(["road", "river", "blockedEdges"].includes(key), `unsupported network ${key}`);
+		if (networks.blockedEdges !== undefined) {
+			requireInput(networks.blockedEdges && typeof networks.blockedEdges === "object" && !Array.isArray(networks.blockedEdges), "blockedEdges must be an object");
+			for (const key of Object.keys(networks.blockedEdges)) requireInput(["road", "river"].includes(key), `unsupported blockedEdges kind ${key}`);
+		}
+		for (const kind of ["road", "river"]) {
+			requireInput(Array.isArray(networks[kind] ?? []), `${kind} must be a hex-number array`);
+			const cells = new Set((networks[kind] ?? []).map(num => validateHexNum(num, grid)));
+			const edges = networks.blockedEdges?.[kind] ?? [];
+			requireInput(Array.isArray(edges), "blockedEdges must contain pair arrays");
+			for (const pair of edges) {
+				requireInput(Array.isArray(pair) && pair.length === 2, "blocked edge must be [num,num]");
+				const nums = pair.map(num => validateHexNum(num, grid));
+				requireInput(nums[0] !== nums[1] && nums.every(num => cells.has(num)), "blocked edge endpoints must belong to that network");
+			}
+		}
+	}
+	if (dataset.reference !== undefined) {
+		const ref = dataset.reference;
+		requireInput(ref && typeof ref.src === "string" && ref.src.length > 0, "reference needs src");
+		for (const key of ["x", "y", "width", "height"]) {
+			if (Object.hasOwn(ref, key)) requireInput(Number.isFinite(ref[key]) && (["x", "y"].includes(key) || ref[key] > 0), `invalid reference ${key}`);
+		}
+	}
+}
+
 // ── scene creation ──────────────────────────────────────────────────────────
 
-async function createHexScene(dataset, geom, { sceneName, overwrite }) {
+async function createHexScene(dataset, geom, { sceneName }) {
 	const name = sceneName || dataset.name || "Hexcrawl";
 
 	// Size to EXACTLY gridCols × gridRows cells with whole edge hexes (matches
@@ -172,10 +302,6 @@ async function createHexScene(dataset, geom, { sceneName, overwrite }) {
 	const pxW = Math.floor((geom.gridCols + (1 / 3)) * 0.75 * HEX_CELL_W);
 	const pxH = (geom.gridRows * HEX_TILE_H) - (HEX_TILE_H / 2);
 
-	if (overwrite) {
-		const existing = game.scenes.filter(s => s.name === name);
-		if (existing.length) await Scene.deleteDocuments(existing.map(s => s.id));
-	}
 
 	const [scene] = await Scene.createDocuments([{
 		name,
@@ -192,7 +318,14 @@ async function createHexScene(dataset, geom, { sceneName, overwrite }) {
 		flags: {
 			[MODULE_ID]: {
 				hexScene: true,
-				hexcrawl: { name: dataset.name ?? name, cols: geom.pubCols, rows: geom.pubRows },
+				hexcrawl: {
+					name: dataset.name ?? name, cols: geom.pubCols, rows: geom.pubRows,
+					...(geom.published ? { version: 1, grid: {
+						cols: geom.pubCols, rows: geom.pubRows,
+						landscape: !!dataset.grid.landscape,
+						flipX: !!dataset.grid.flipX, flipY: !!dataset.grid.flipY,
+					} } : {}),
+				},
 			},
 		},
 	}]);
@@ -205,7 +338,9 @@ async function viewSceneReady(scene) {
 		if (canvas.ready && canvas.scene?.id === scene.id && canvas.grid) break;
 		await new Promise(r => setTimeout(r, 100));
 	}
-	if (!canvas.grid) throw new Error("SDX Hexcrawl | canvas grid not ready after scene view");
+	if (!canvas.ready || canvas.scene?.id !== scene.id || !canvas.grid) {
+		throw new Error("SDX Hexcrawl | canvas grid not ready after scene view");
+	}
 }
 
 // ── terrain painting ────────────────────────────────────────────────────────
@@ -218,9 +353,13 @@ function buildRegionMap(dataset) {
 	return map;
 }
 
-async function paintTerrain(scene, dataset, geom) {
+async function paintTerrain(scene, dataset, geom, specials) {
 	const defaultBiome = dataset.terrain?.default ?? "forest";
 	const regionMap = buildRegionMap(dataset);
+	const keyedTerrain = new Map((dataset.hexes ?? [])
+		.filter(hex => hex.terrain).map(hex => [Number(hex.num), hex.terrain]));
+	const specialHexes = new Map((dataset.hexes ?? [])
+		.filter(hex => hex.special).map(hex => [Number(hex.num), specials.get(hex.special)]));
 	const tw = dataset.terrainTile?.w ?? TERRAIN_TILE_W;
 	const th = dataset.terrainTile?.h ?? TERRAIN_TILE_H;
 
@@ -229,23 +368,33 @@ async function paintTerrain(scene, dataset, geom) {
 
 	for (let row = 0; row < geom.pubRows; row++) {
 		for (let col = 1; col <= geom.pubCols; col++) {
-			const num = row * 100 + col;
-			const biomeKey = regionMap.get(num) ?? defaultBiome;
-			const biome = BIOME_TILES[biomeKey] ?? BIOME_TILES.forest;
-			const off = geom.offsetOf(col, row);
-			const center = canvas.grid.getCenterPoint(off);
-			const src = biome.paths[variety(off.i, off.j, biome.paths.length)];
+			const num = geom.published ? (col * 100) + row + 1 : (row * 100) + col;
+			const biomeKey = (geom.published ? keyedTerrain.get(num) : undefined)
+				?? regionMap.get(num) ?? defaultBiome;
+			const biome = geom.published
+				? (biomeFor(biomeKey) ?? biomeFor(defaultBiome) ?? BIOME_TILES.forest)
+				: (BIOME_TILES[biomeKey] ?? BIOME_TILES.forest);
+			const cell = hexNumToColRow(num);
+			const off = geom.offsetOf(cell.col, cell.row);
+			const center = scene.grid.getCenterPoint(off);
+			const special = specialHexes.get(num);
+			const src = special?.path ?? prefix(biome.paths[variety(off.i, off.j, biome.paths.length)]);
+			const { width, height } = special
+				? getColoredTileDimensions(HEX_TILE_H) : { width: tw, height: th };
 
 			tileData.push({
-				texture: { src: prefix(src), anchorX: 0, anchorY: 0 },
-				x: center.x - tw / 2,
-				y: center.y - th / 2,
-				width: tw,
-				height: th,
+				texture: { src, anchorX: 0, anchorY: 0 },
+				x: center.x - (width / 2),
+				y: center.y - (height / 2),
+				width,
+				height,
 				sort: Math.floor(center.y),
-				flags: { [MODULE_ID]: { painted: true, biome: biome.isWater ? "water" : undefined } },
+				flags: { [MODULE_ID]: {
+					painted: true, biome: biome.isWater ? "water" : undefined,
+					...(special ? { hexNum: num } : {}),
+				} },
 			});
-			terrainMap[offsetToHexKey(off)] = biome.terrain;
+			terrainMap[offsetToHexKey(off)] = geom.published ? biomeKey : biome.terrain;
 		}
 	}
 
@@ -262,9 +411,9 @@ async function placeFeatureIcons(scene, dataset, geom) {
 	for (const hex of dataset.hexes ?? []) {
 		if (!hex.icon) continue;
 		const { col, row } = hexNumToColRow(hex.num);
-		const center = canvas.grid.getCenterPoint(geom.offsetOf(col, row));
+		const center = scene.grid.getCenterPoint(geom.offsetOf(col, row));
 		tileData.push({
-			texture: { src: prefix(hex.icon), anchorX: 0, anchorY: 0 },
+			texture: { src: geom.published && !hex.icon.startsWith("assets/") ? hex.icon : prefix(hex.icon), anchorX: 0, anchorY: 0 },
 			x: center.x - iconSize / 2,
 			y: center.y - iconSize / 2,
 			width: iconSize,
@@ -302,7 +451,13 @@ function buildRecord(hex, dataset) {
 	};
 }
 
-async function writeHexRecords(scene, dataset, geom) {
+async function writeHexRecords(scene, dataset, geom, specials) {
+	if (geom.published) {
+		const records = dataset.hexes.map(({ icon: _icon, special, ...hex }) => ({
+			name: specials.get(special)?.label ?? "", zone: dataset.name ?? "", ...hex,
+		}));
+		return (await upsertHexRecords(scene.id, records)).records;
+	}
 	let count = 0;
 	for (const hex of dataset.hexes ?? []) {
 		const { col, row } = hexNumToColRow(hex.num);
@@ -313,6 +468,87 @@ async function writeHexRecords(scene, dataset, geom) {
 }
 
 // ── public entry point ──────────────────────────────────────────────────────
+
+/** Install after root API feature gates, sharing the same audited GM wrappers. */
+export function installHexcrawlApi(api, namespace, wrap) {
+	if (!api.buildHexcrawl) {
+		delete namespace.hex;
+		return;
+	}
+	api.hex = namespace.hex = Object.fromEntries(Object.entries({
+		buildHexcrawl: buildPublishedHexcrawl, upsertHexRecords, getSpecialTiles,
+	}).map(([name, fn]) => [name, wrap(`hex.${name}`, fn)]));
+}
+
+/** Stable api.hex entry point. Root buildHexcrawl remains the legacy adapter. */
+export async function buildPublishedHexcrawl(dataset, opts = {}) {
+	requireInput(game.user?.isGM, "requires GM permission");
+	validateDataset(dataset, opts);
+	const assigned = dataset.hexes.filter(hex => Object.hasOwn(hex, "special"));
+	const specials = new Map((assigned.length ? await getSpecialTiles() : []).map(tile => [tile.id, tile]));
+	const used = new Set();
+	for (const hex of assigned) {
+		requireInput(specials.has(hex.special), `unknown special ${hex.special}; use getSpecialTiles()`);
+		requireInput(!used.has(hex.special), `special ${hex.special} is assigned more than once`);
+		used.add(hex.special);
+	}
+	return buildScene(dataset, opts, makeGeom(dataset, true), specials);
+}
+
+/** Update records on a scene built with the stable API; does not repaint tiles. */
+export async function upsertHexRecords(sceneId, records) {
+	requireInput(game.user?.isGM, "requires GM permission");
+	const scene = game.scenes.get(sceneId);
+	requireInput(scene, "scene not found");
+	const layout = scene.getFlag(MODULE_ID, "hexcrawl");
+	requireInput(layout?.version === 1 && layout.grid, "scene has no published layout; rebuild legacy scenes with api.hex.buildHexcrawl");
+	validateRecords(records, layout.grid);
+	const geom = makeGeom(layout, true);
+	const patches = {};
+	for (const hex of records) {
+		const { num, ...patch } = hex;
+		const { col, row } = hexNumToColRow(num);
+		if (Object.hasOwn(patch, "name")) patch.name = patch.name ? `${num}. ${patch.name}` : String(num);
+		patches[offsetToHexKey(geom.offsetOf(col, row))] = patch;
+	}
+	if (records.length) await mergeHexRecords(sceneId, patches);
+	return { sceneId, records: records.length };
+}
+
+async function writeNetworks(scene, dataset, geom) {
+	if (!dataset.networks) return;
+	const offset = num => {
+		const { col, row } = hexNumToColRow(num);
+		return geom.offsetOf(col, row);
+	};
+	const networkPaths = {};
+	for (const kind of ["road", "river"]) {
+		const blocked = (dataset.networks.blockedEdges?.[kind] ?? [])
+			.map(([a, b]) => mapPathEdgeKey(offset(a), offset(b)));
+		networkPaths[kind] = buildMapPathNetwork(
+			(dataset.networks[kind] ?? []).map(offset), scene.grid, blocked
+		);
+	}
+	if (!networkPaths.road.length && !networkPaths.river.length) return;
+	// Use the same permanent payload/renderer as Road & River authoring, without
+	// borrowing the GM's interactive tool state or its fire-and-forget save path.
+	await scene.setFlag(MODULE_ID, "permanentDrawings", [{
+		drawingId: `map-network-${foundry.utils.randomID()}`, type: "mapNetwork", networkPaths,
+		userId: game.user.id, userName: game.user.name, permanent: true,
+		strokeWidth: HEX_TILE_H * 0.15, roadColor: "#D8C6A8", riverColor: "#2D9CDB",
+		texturePath: null, roadStyle: "solid", opacity: 1, createdAt: Date.now(), expiresAt: null,
+	}]);
+}
+
+async function placeReference(scene, reference) {
+	if (!reference) return;
+	await scene.createEmbeddedDocuments("Tile", [{
+		texture: { src: reference.src, anchorX: 0, anchorY: 0 },
+		x: reference.x ?? 0, y: reference.y ?? 0,
+		width: reference.width ?? scene.width, height: reference.height ?? scene.height,
+		hidden: true, locked: true, alpha: 0.5, sort: 1000000,
+	}]);
+}
 
 /**
  * Build a complete hexcrawl scene from a dataset object.
@@ -330,20 +566,32 @@ export async function buildHexcrawl(dataset, opts = {}) {
 		return null;
 	}
 
-	const geom = makeGeom(dataset);
-	ui.notifications?.info(`SDX | Building hexcrawl "${dataset.name ?? "Hexcrawl"}"…`);
-	const scene = await createHexScene(dataset, geom, opts);
-	await viewSceneReady(scene);
+	return buildScene(dataset, opts, makeGeom(dataset));
+}
 
-	const terrainTiles = await paintTerrain(scene, dataset, geom);
+async function buildScene(dataset, opts, geom, specials = new Map()) {
+	ui.notifications?.info(`SDX | Building hexcrawl "${dataset.name ?? "Hexcrawl"}"…`);
+	const replaced = opts.overwrite
+		? game.scenes.filter(s => s.name === (opts.sceneName || dataset.name || "Hexcrawl")).map(s => s.id)
+		: [];
+	const scene = await createHexScene(dataset, geom, opts);
+
+	const terrainTiles = await paintTerrain(scene, dataset, geom, specials);
 	const featureTiles = await placeFeatureIcons(scene, dataset, geom);
-	const records = await writeHexRecords(scene, dataset, geom);
+	const records = await writeHexRecords(scene, dataset, geom, specials);
+	if (geom.published) {
+		await writeNetworks(scene, dataset, geom);
+		await placeReference(scene, dataset.reference);
+	}
+	if (opts.view !== false) await viewSceneReady(scene);
+	// Do not destroy the previous map until its replacement has finished building.
+	if (replaced.length) await Scene.deleteDocuments(replaced);
 
 	// Tiles created on a freshly-viewed scene can leave their meshes parked at the
 	// origin until the Tiles layer is redrawn. Force a clean redraw so the map
 	// renders in place immediately after building.
 	try {
-		await canvas.tiles?.draw?.();
+		if (canvas.scene?.id === scene.id) await canvas.tiles?.draw?.();
 	}
 	catch(err) {
 		console.warn(`${MODULE_ID} | post-build tiles redraw failed`, err);
