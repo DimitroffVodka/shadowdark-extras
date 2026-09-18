@@ -1,7 +1,7 @@
 import { MODULE_ID, DURATION_SPELL_FLAG, SPELL_MODIFICATIONS_FLAG } from "./focus-constants.mjs";
 import { getSocket } from "../shared/combat-socket.mjs";
 import { buildDurationSpellsHtml, onDurationDamageApplyClick } from "./duration-ui.mjs";
-import { buildDurationExpiry, isDurationExpired } from "../shared/duration-basis.mjs";
+import { applyEffectItemTiming, buildDurationExpiry, getDurationSpellActiveEffect, isDurationExpired } from "../shared/duration-basis.mjs";
 
 
 /**
@@ -582,6 +582,59 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 
 // Track which combat state we've already processed for duration spells
 let _lastDurationProcessKey = null;
+const _endingCoreDurationSpells = new Set();
+
+function getCoreDurationEffect(durationEntry) {
+	const effect = getDurationSpellActiveEffect(durationEntry);
+	return effect?.parent?.type === "Effect" ? effect : null;
+}
+
+function usesCoreEffectExpiry(durationEntry) {
+	return !!getCoreDurationEffect(durationEntry);
+}
+
+function isCoreEffectExpiringNow(durationEntry, combat) {
+	const effect = getCoreDurationEffect(durationEntry);
+	if (!effect) return false;
+	const duration = effect.updateDuration?.({ combat }) ?? effect.duration;
+	return duration?.remaining <= 0
+		&& effect.isExpiryEvent?.("turnStart", { combat }) === true;
+}
+
+/** End a linked duration spell when Foundry marks its Active Effect expired. */
+export async function handleDurationEffectUpdate(effect, changes) {
+	if (changes?.duration?.expired !== true) return false;
+	if (!game.user?.isGM) return false;
+	if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return false;
+
+	const effectItem = effect?.parent;
+	const targetActor = effect?.actor || effectItem?.actor;
+	if (effectItem?.type !== "Effect" || !targetActor?.id) return false;
+
+	for (const caster of game.actors ?? []) {
+		const activeDuration = caster.getFlag(MODULE_ID, DURATION_SPELL_FLAG) || [];
+		const durationEntry = activeDuration.find(entry => entry.targetEffects?.some(link =>
+			link.effectItemId === effectItem.id
+			&& (!link.targetActorId || link.targetActorId === targetActor.id)
+		));
+		if (!durationEntry) continue;
+
+		const instanceId = durationEntry.instanceId || durationEntry.spellId;
+		const processKey = `${caster.id}:${instanceId}`;
+		if (_endingCoreDurationSpells.has(processKey)) return false;
+
+		_endingCoreDurationSpells.add(processKey);
+		try {
+			await endDurationSpell(caster.id, instanceId, "expired");
+			return true;
+		}
+		finally {
+			_endingCoreDurationSpells.delete(processKey);
+		}
+	}
+
+	return false;
+}
 
 /**
  * End duration spells whose world-time expiry has arrived.
@@ -603,7 +656,11 @@ export async function handleDurationSpellWorldTimeUpdate() {
 
 		// Round is deliberately absent here: a round-based entry must not be ended
 		// by world time passing, only by its own encounter advancing.
-		const expired = activeDuration.filter(d => isDurationExpired(d, { worldTime }));
+		// Linked effects use Foundry's Active Effect clock. The legacy clock is a
+		// fallback only for duration spells that have no Active Effect to observe.
+		const expired = activeDuration.filter(d =>
+			!usesCoreEffectExpiry(d) && isDurationExpired(d, { worldTime })
+		);
 		if (expired.length === 0) continue;
 
 		for (const durationSpell of expired) {
@@ -653,10 +710,13 @@ export async function handleDurationSpellCombatUpdate(combat, changed, options, 
 		for (const durationSpell of activeDuration) {
 			// Use instanceId if available, fallback to spellId
 			const spellInstanceId = durationSpell.instanceId || durationSpell.spellId;
+			// Core refresh and this hook are both asynchronous. Do not deal a final
+			// damage tick while core is marking the linked effect expired.
+			if (isCoreEffectExpiringNow(durationSpell, combat)) continue;
 
 			// One predicate for both clocks: a round entry ignores world time and a
 			// world-time entry ignores rounds, so neither ends the other early.
-			const due = isDurationExpired(durationSpell, {
+			const due = !usesCoreEffectExpiry(durationSpell) && isDurationExpired(durationSpell, {
 				round: currentRound, worldTime: game.time?.worldTime ?? null,
 			});
 
@@ -991,6 +1051,10 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
 					if (!effectDoc) continue;
 
 					const effectItemData = effectDoc.toObject();
+					applyEffectItemTiming(effectItemData, {}, {
+						combat: game.combat,
+						worldTime: game.time?.worldTime ?? 0,
+					});
 					const createdItems = await token.actor.createEmbeddedDocuments("Item", [effectItemData]);
 
 					if (createdItems.length > 0) {

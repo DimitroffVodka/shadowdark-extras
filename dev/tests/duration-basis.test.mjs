@@ -33,9 +33,80 @@ globalThis.Portal = class {};
 globalThis.CONFIG = { time: { roundTime: 6 } };   // Foundry's default: 6s per round
 
 const {
-	buildDurationExpiry, isDurationExpired, partitionExpiredDurations, convertRoundExpiryToWorldTime,
+	buildActiveEffectTiming, buildDurationExpiry, getDurationSpellActiveEffect, isDurationExpired, partitionExpiredDurations, convertRoundExpiryToWorldTime,
 	describeDurationRemaining,
 } = await import("../../scripts/shared/duration-basis.mjs");
+
+test("v14 combat timing uses an explicit turn-start expiry", () => {
+	globalThis.CONFIG.time = { roundTime: 0, turnTime: 0 };
+	assert.deepEqual(buildActiveEffectTiming({
+		rounds: 2,
+		startRound: 3,
+		startTurn: 4,
+		startTime: 90,
+	}, {
+		combat: {
+			id: "combat-1",
+			started: true,
+			round: 3,
+			turn: 4,
+			combatant: { id: "combatant-1", initiative: 12 },
+		},
+		worldTime: 100,
+	}), {
+		duration: { value: 2, units: "rounds", expiry: "turnStart" },
+		start: {
+			time: 90,
+			combat: "combat-1",
+			combatant: "combatant-1",
+			initiative: 12,
+			round: 3,
+			turn: 4,
+		},
+	});
+});
+
+test("linked duration lookup ignores effects core cannot track", () => {
+	const timed = {
+		start: { time: 100 },
+		duration: { units: "seconds", remaining: 12, label: "12 sec" },
+	};
+	const actor = {
+		items: { get: id => ({ effects: id === "timed" ? [timed] : [{ start: null, duration: { remaining: 2 } }] }) },
+		effects: { get: () => null },
+	};
+	globalThis.game.actors = { get: () => actor };
+
+	assert.equal(getDurationSpellActiveEffect({
+		targetEffects: [{ targetActorId: "actor", effectItemId: "timed" }],
+	}), timed);
+	assert.equal(getDurationSpellActiveEffect({
+		targetEffects: [{ targetActorId: "actor", effectItemId: "untimed" }],
+	}), null);
+
+	timed.start = { time: 100, combat: "combat" };
+	timed.duration = { units: "rounds", expiry: "turnStart", remaining: 4 };
+	assert.equal(getDurationSpellActiveEffect({
+		targetEffects: [{ targetActorId: "actor", effectItemId: "timed" }],
+	}), null);
+});
+
+test("round durations become seconds outside combat when roundTime is zero", () => {
+	globalThis.CONFIG.time = { roundTime: 0, turnTime: 0 };
+	assert.deepEqual(buildActiveEffectTiming({ rounds: 2 }, {
+		combat: null,
+		worldTime: 100,
+	}), {
+		duration: { value: 12, units: "seconds", expiry: null },
+		start: { time: 100 },
+	});
+});
+
+test("remaining text prefers Foundry's Active Effect label", () => {
+	assert.equal(describeDurationRemaining({
+		duration: { remaining: 1, label: "1 Round" },
+	}, { round: 99, worldTime: 999 }), "1 Round");
+});
 
 // ── choosing a basis ────────────────────────────────────────────────────────
 

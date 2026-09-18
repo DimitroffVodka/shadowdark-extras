@@ -47,6 +47,7 @@ globalThis.game = {
 globalThis.ui = { notifications: { info: () => {}, warn: () => {}, error: () => {} } };
 
 const { getSocket, setupCombatSocket } = await import("../../scripts/shared/combat-socket.mjs");
+let socketHarness;
 
 /** socketlib fake that records registerModule calls and registered handlers. */
 function makeSocketlib() {
@@ -79,6 +80,7 @@ test("socket lifecycle: missing socketlib, single registration, duplicate guard"
 
 	// 2. Present socketlib: one registerModule call, getSocket returns it.
 	const fake = makeSocketlib();
+	socketHarness = fake;
 	globalThis.socketlib = fake;
 
 	const first = setupCombatSocket();
@@ -95,6 +97,56 @@ test("socket lifecycle: missing socketlib, single registration, duplicate guard"
 	assert.equal(second, first);
 	assert.equal(third, first);
 	assert.equal(getSocket(), first);
+});
+
+test("applyTokenCondition writes Foundry v14 duration and start data", async () => {
+	let created;
+	const actor = {
+		id: "target-actor",
+		items: { filter: () => [] },
+		createEmbeddedDocuments: async (_type, entries) => {
+			[created] = entries;
+			return [{ id: "created-effect" }];
+		},
+	};
+	globalThis.canvas.tokens.get = id => id === "target-token" ? { actor } : null;
+	globalThis.game.combat = {
+		id: "combat-1",
+		started: true,
+		round: 3,
+		turn: 1,
+		combatant: { id: "combatant-1", initiative: 14 },
+	};
+	globalThis.game.time = { worldTime: 100 };
+	globalThis.fromUuid = async () => ({
+		name: "Slowed",
+		toObject: () => ({
+			name: "Slowed",
+			type: "Effect",
+			system: { duration: {} },
+			effects: [{ duration: { rounds: null, seconds: null } }],
+		}),
+	});
+
+	const handler = socketHarness.registrations.get("applyTokenCondition");
+	assert.ok(handler, "applyTokenCondition must be registered");
+	assert.equal(await handler({
+		tokenId: "target-token",
+		effectUuid: "Compendium.test.effect",
+		duration: { rounds: 2, seconds: null, startTime: 90 },
+	}), true);
+	assert.deepEqual(created.effects[0], {
+		duration: { value: 2, units: "rounds", expiry: "turnStart" },
+		start: {
+			time: 90,
+			combat: "combat-1",
+			combatant: "combatant-1",
+			initiative: 14,
+			round: 3,
+			turn: 1,
+		},
+	});
+	assert.deepEqual(created.system.duration, { value: "2", type: "rounds" });
 });
 
 test("message names and authority rules are preserved on the shared boundary", () => {

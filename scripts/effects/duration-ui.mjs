@@ -5,7 +5,7 @@
 
 import { MODULE_ID } from "./focus-constants.mjs";
 import { getSocket } from "../shared/combat-socket.mjs";
-import { describeDurationRemaining } from "../shared/duration-basis.mjs";
+import { describeDurationRemaining, getDurationSpellActiveEffect } from "../shared/duration-basis.mjs";
 
 export async function onDurationDamageApplyClick(event) {
 	const btn = event.target.closest(".sdx-duration-apply-btn");
@@ -88,7 +88,8 @@ export function buildDurationSpellsHtml(actor, activeDuration) {
 	let spellsHtml = "";
 
 	for (const duration of activeDuration) {
-		const remaining = describeDurationRemaining(duration, {
+		const activeEffect = getDurationSpellActiveEffect(duration);
+		const remaining = describeDurationRemaining(activeEffect || duration, {
 			round: currentRound, worldTime: game.time?.worldTime ?? null,
 		});
 		const targetCount = duration.targets?.length || 0;

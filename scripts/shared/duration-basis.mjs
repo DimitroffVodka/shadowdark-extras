@@ -19,6 +19,113 @@ export function secondsPerRound() {
 	return CONFIG?.time?.roundTime || 6;
 }
 
+function finiteNumber(value) {
+	if (value === null || value === undefined || value === "") return null;
+	const number = Number(value);
+	return Number.isFinite(number) ? number : null;
+}
+
+/**
+ * Translate Shadowdark's legacy effect duration fields to Foundry v14 data.
+ * Combat durations expire at the casting combatant's turn start. Capturing
+ * the current combatant gives every target in one application the same clock.
+ * Outside an encounter, rounds/turns become seconds because Shadowdark sets
+ * both core combat time constants to zero.
+ */
+export function buildActiveEffectTiming(duration = {}, { combat = null, worldTime = 0 } = {}) {
+	let value = null;
+	let units = null;
+
+	for (const [legacyField, legacyUnits] of [
+		["seconds", "seconds"],
+		["turns", "turns"],
+		["rounds", "rounds"],
+	]) {
+		const legacyValue = finiteNumber(duration?.[legacyField]);
+		if (legacyValue === null) continue;
+		value = legacyValue;
+		units = legacyUnits;
+		break;
+	}
+
+	if (value === null) {
+		value = finiteNumber(duration?.value);
+		units = typeof duration?.units === "string" ? duration.units : null;
+	}
+	if (value === null || !units) return null;
+
+	const inCombat = !!combat && (combat.started ?? (Number(combat.round) > 0));
+	if (!inCombat && (units === "rounds" || units === "turns")) {
+		const unitSeconds = units === "turns"
+			? (CONFIG?.time?.turnTime || secondsPerRound())
+			: secondsPerRound();
+		value *= unitSeconds;
+		units = "seconds";
+	}
+
+	const startTime = finiteNumber(duration?.startTime) ?? finiteNumber(worldTime) ?? 0;
+	const start = { time: startTime };
+	if (inCombat) {
+		start.combat = combat.id;
+		start.combatant = combat.combatant?.id ?? null;
+		start.initiative = finiteNumber(combat.combatant?.initiative);
+		start.round = finiteNumber(duration?.startRound) ?? combat.round;
+		start.turn = finiteNumber(duration?.startTurn) ?? combat.turn;
+	}
+
+	const combatUnits = units === "rounds" || units === "turns";
+	return {
+		duration: {
+			value,
+			units,
+			expiry: combatUnits ? (duration?.expiry || "turnStart") : null,
+		},
+		start,
+	};
+}
+
+/** Apply canonical timing to every Active Effect nested in an Effect item. */
+export function applyEffectItemTiming(effectItemData, durationOverride = {}, context = {}) {
+	for (const effect of effectItemData?.effects ?? []) {
+		const timing = buildActiveEffectTiming({
+			...(effect.duration ?? {}),
+			...durationOverride,
+		}, context);
+		if (timing) Object.assign(effect, timing);
+	}
+	return effectItemData;
+}
+
+/** Resolve the first linked Active Effect whose duration Foundry is tracking. */
+export function getDurationSpellActiveEffect(durationEntry) {
+	function isCoreTracked(effect) {
+		if (!effect?.start || !Number.isFinite(effect?.duration?.remaining)) return false;
+		const combatUnits = effect.duration.units === "rounds" || effect.duration.units === "turns";
+		if (!combatUnits) return Number.isFinite(effect.start.time);
+		// Core accepts a missing expiry event and checks it at every combat event.
+		// An explicit turn event, however, needs both documents to identify that turn.
+		return !effect.duration.expiry || (!!effect.start.combat && !!effect.start.combatant);
+	}
+
+	for (const link of durationEntry?.targetEffects ?? []) {
+		const tokenActor = link.targetTokenId
+			? globalThis.canvas?.tokens?.get(link.targetTokenId)?.actor
+			: null;
+		const actor = tokenActor || globalThis.game?.actors?.get(link.targetActorId);
+		if (!actor) continue;
+
+		const directEffect = actor.effects?.get?.(link.effectItemId);
+		if (isCoreTracked(directEffect)) return directEffect;
+
+		const effectItem = actor.items?.get?.(link.effectItemId);
+		const effects = effectItem?.effects?.contents ?? effectItem?.effects ?? [];
+		const candidates = Array.from(effects);
+		const timed = candidates.find(isCoreTracked);
+		if (timed) return timed;
+	}
+	return null;
+}
+
 /**
  * When something should end, expressed in whichever clock is running.
  *
@@ -98,6 +205,9 @@ export function convertRoundExpiryToWorldTime(entries, { round = 0, worldTime = 
  * @returns {string}
  */
 export function describeDurationRemaining(entry, { round = null, worldTime = null } = {}) {
+	const coreDuration = entry?.duration;
+	if (coreDuration?.label && coreDuration.label !== "None") return coreDuration.label;
+
 	if (Number.isFinite(entry?.expiryRound) && Number.isFinite(round)) {
 		const rounds = Math.max(0, entry.expiryRound - round);
 		return `${rounds} round${rounds !== 1 ? "s" : ""}`;

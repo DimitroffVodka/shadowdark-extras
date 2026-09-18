@@ -4,6 +4,7 @@
  */
 
 import { endFocusSpell } from "../effects/FocusSpellTrackerSD.mjs";
+import { applyEffectItemTiming } from "./duration-basis.mjs";
 import { showScrollingText } from "./scrolling-text.mjs";
 import { FEATURE_IDS, isFeatureEnabled, anyFeatureEnabled } from "../settings/feature-gates.mjs";
 
@@ -394,20 +395,17 @@ export function setupCombatSocket() {
 			// in the Effects and Conditions section with correct source attribution.
 			const effectData = effectDoc.toObject();
 
-			// Apply duration overrides to embedded effects if provided
-			if (data.duration && Object.keys(data.duration).length > 0 && effectData.effects) {
-				effectData.effects = effectData.effects.map(effect => {
-					// SD 4.x / Foundry v14: effect.duration may expose getter-only fields
-					// (e.g. `rounds`), so Object.assign onto it throws. Spread into a fresh
-					// plain object instead — reads via getter are fine, writes go to a new obj.
-					effect.duration = { ...(effect.duration ?? {}), ...data.duration };
-					return effect;
-				});
-			}
+			// Active Effects embedded in Effect items do not receive Actor#_preCreate,
+			// so write both halves of Foundry v14's duration model here. Combat-based
+			// effects end at the captured cast turn; out of combat they use seconds.
+			applyEffectItemTiming(effectData, data.duration, {
+				combat: game.combat,
+				worldTime: game.time?.worldTime ?? 0,
+			});
 
 			// Also apply duration to the item's system.duration if it exists
 			if (data.duration && effectData.system?.duration) {
-				if (data.duration.rounds) {
+				if (data.duration.rounds != null) {
 					effectData.system.duration.value = String(data.duration.rounds);
 					effectData.system.duration.type = "rounds";
 				}
@@ -581,6 +579,10 @@ export function setupCombatSocket() {
 			}
 
 			const effectItemData = effectDoc.toObject();
+			applyEffectItemTiming(effectItemData, {}, {
+				combat: game.combat,
+				worldTime: game.time?.worldTime ?? 0,
+			});
 
 			// Apply template origin if provided
 			if (templateId) {
