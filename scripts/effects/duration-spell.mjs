@@ -1,8 +1,9 @@
 import { MODULE_ID, DURATION_SPELL_FLAG, SPELL_MODIFICATIONS_FLAG } from "./focus-constants.mjs";
 import { getSocket } from "../shared/combat-socket.mjs";
 import { buildDurationSpellsHtml, onDurationDamageApplyClick } from "./duration-ui.mjs";
-import { buildDurationExpiry, isDurationExpired } from "../shared/duration-basis.mjs";
+import { buildDurationExpiry, hasLinkedDurationClock, isDurationExpired } from "../shared/duration-basis.mjs";
 
+const _durationExpiryQueues = new Map();
 
 /**
  * Start tracking a duration spell (non-focus spells with turn/round duration)
@@ -100,6 +101,88 @@ export async function startDurationSpell(caster, spell, targetTokenIds = [], spe
  */
 export function getActiveDurationSpells(actor) {
 	return actor.getFlag(MODULE_ID, DURATION_SPELL_FLAG) || [];
+}
+
+async function removeExpiredLinkedEffect(casterId, entryId, effectItemId, targetActorId) {
+	const caster = game.actors.get(casterId);
+	if (!caster) return;
+
+	let activeDuration = getActiveDurationSpells(caster);
+	let durationEntry = activeDuration.find(entry => entry.instanceId === entryId)
+		?? activeDuration.find(entry => entry.targetEffects?.some(targetEffect =>
+			targetEffect.effectItemId === effectItemId
+			&& (!targetEffect.targetActorId || targetEffect.targetActorId === targetActorId)
+		));
+	if (!durationEntry) return;
+
+	const targetEffect = durationEntry.targetEffects.find(ref =>
+		ref.effectItemId === effectItemId
+		&& (!ref.targetActorId || ref.targetActorId === targetActorId));
+	if (!targetEffect) return;
+
+	const targetActor = canvas.tokens?.get(targetEffect.targetTokenId)?.actor
+		?? game.actors.get(targetEffect.targetActorId);
+	const effectItem = targetActor?.items?.get(effectItemId);
+	if (effectItem) await effectItem.delete({ sdxDurationExpiry: true });
+
+	// Re-read after deleting the Item because other document hooks may have changed flags.
+	activeDuration = getActiveDurationSpells(caster);
+	durationEntry = activeDuration.find(entry => entry.instanceId === entryId)
+		?? activeDuration.find(entry => entry.targetEffects?.some(ref =>
+			ref.effectItemId === effectItemId
+			&& (!ref.targetActorId || ref.targetActorId === targetActorId)
+		));
+	if (!durationEntry) return;
+
+	durationEntry.targetEffects = durationEntry.targetEffects.filter(ref =>
+		ref.effectItemId !== effectItemId
+		|| (ref.targetActorId && ref.targetActorId !== targetActorId));
+	const stillTargeted = durationEntry.targetEffects.some(ref =>
+		(targetEffect.targetTokenId && ref.targetTokenId === targetEffect.targetTokenId)
+		|| (targetEffect.targetActorId && ref.targetActorId === targetEffect.targetActorId));
+	if (!stillTargeted) {
+		durationEntry.targets = durationEntry.targets?.filter(target =>
+			target.tokenId !== targetEffect.targetTokenId
+			&& target.actorId !== targetEffect.targetActorId) ?? [];
+	}
+
+	await caster.setFlag(MODULE_ID, DURATION_SPELL_FLAG, activeDuration);
+	if (durationEntry.targetEffects.length === 0) {
+		await endDurationSpell(caster.id, durationEntry.instanceId || durationEntry.spellId, "expired");
+	}
+}
+
+/** Delete only the Effect Item whose core Active Effect just expired. */
+export async function handleDurationEffectUpdate(effect, changes) {
+	if (changes.duration?.expired !== true) return;
+	if (!game.user.isGM || game.users.activeGM?.id !== game.user.id) return;
+	if (effect.parent?.documentName !== "Item") return; // Auras retain their existing lifecycle.
+
+	const effectItemId = effect.parent.id;
+	const targetActorId = effect.actor?.id ?? effect.parent.actor?.id;
+	for (const caster of game.actors) {
+		const activeDuration = getActiveDurationSpells(caster);
+		const durationEntry = activeDuration.find(entry => entry.targetEffects?.some(targetEffect =>
+			targetEffect.effectItemId === effectItemId
+			&& (!targetEffect.targetActorId || targetEffect.targetActorId === targetActorId)
+		));
+		if (!durationEntry) continue;
+
+		const entryId = durationEntry.instanceId ?? null;
+		const entryIndex = activeDuration.indexOf(durationEntry);
+		const key = `${caster.id}:${entryId ?? `legacy-${entryIndex}`}`;
+		const previous = _durationExpiryQueues.get(key) ?? Promise.resolve();
+		const task = previous.catch(() => {}).then(() =>
+			removeExpiredLinkedEffect(caster.id, entryId, effectItemId, targetActorId));
+		_durationExpiryQueues.set(key, task);
+		try {
+			await task;
+		}
+		finally {
+			if (_durationExpiryQueues.get(key) === task) _durationExpiryQueues.delete(key);
+		}
+		return;
+	}
 }
 
 
@@ -603,7 +686,9 @@ export async function handleDurationSpellWorldTimeUpdate() {
 
 		// Round is deliberately absent here: a round-based entry must not be ended
 		// by world time passing, only by its own encounter advancing.
-		const expired = activeDuration.filter(d => isDurationExpired(d, { worldTime }));
+		const expired = activeDuration.filter(d =>
+			!hasLinkedDurationClock(d) && isDurationExpired(d, { worldTime })
+		);
 		if (expired.length === 0) continue;
 
 		for (const durationSpell of expired) {
@@ -656,9 +741,10 @@ export async function handleDurationSpellCombatUpdate(combat, changed, options, 
 
 			// One predicate for both clocks: a round entry ignores world time and a
 			// world-time entry ignores rounds, so neither ends the other early.
-			const due = isDurationExpired(durationSpell, {
-				round: currentRound, worldTime: game.time?.worldTime ?? null,
-			});
+			const due = !hasLinkedDurationClock(durationSpell)
+				&& isDurationExpired(durationSpell, {
+					round: currentRound, worldTime: game.time?.worldTime ?? null,
+				});
 
 			if (due) {
 				console.log(`shadowdark-extras | Duration spell ${durationSpell.spellName} has expired`);

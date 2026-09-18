@@ -33,9 +33,125 @@ globalThis.Portal = class {};
 globalThis.CONFIG = { time: { roundTime: 6 } };   // Foundry's default: 6s per round
 
 const {
-	buildDurationExpiry, isDurationExpired, partitionExpiredDurations, convertRoundExpiryToWorldTime,
-	describeDurationRemaining,
+	buildActiveEffectTiming, buildDurationExpiry, isDurationExpired, partitionExpiredDurations,
+	convertRoundExpiryToWorldTime, describeDurationRemaining, getLinkedDurationEffect,
+	hasLinkedDurationClock,
 } = await import("../../scripts/shared/duration-basis.mjs");
+
+// ── Foundry v14 Active Effect timing ───────────────────────────────────────
+
+test("legacy round overrides become one explicit v14 combat clock", () => {
+	const combat = {
+		started: true,
+		id: "combat-1",
+		round: 3,
+		turn: 1,
+		combatant: { id: "combatant-1", initiative: 17 },
+	};
+	assert.deepEqual(
+		buildActiveEffectTiming({ rounds: 2 }, {}, { combat, worldTime: 1000 }),
+		{
+			duration: { value: 2, units: "rounds", expiry: "turnStart", expired: false },
+			start: {
+				time: 1000,
+				combat: "combat-1",
+				combatant: "combatant-1",
+				initiative: 17,
+				round: 3,
+				turn: 1,
+			},
+		}
+	);
+});
+
+test("round effects created outside combat use seconds because Shadowdark roundTime is zero", () => {
+	globalThis.CONFIG.time.roundTime = 0;
+	assert.deepEqual(
+		buildActiveEffectTiming({ rounds: 2 }, {}, { combat: null, worldTime: 1000 }),
+		{
+			duration: { value: 12, units: "seconds", expiry: "turnStart", expired: false },
+			start: { time: 1000 },
+		}
+	);
+	globalThis.CONFIG.time.roundTime = 6;
+});
+
+test("duration overrides beat source timing while blank overrides preserve it", () => {
+	const source = { value: 30, units: "seconds", expiry: null };
+	assert.deepEqual(
+		buildActiveEffectTiming({ turns: 4 }, source, { combat: { started: true, id: "c", round: 1, turn: 0 }, worldTime: 9 }).duration,
+		{ value: 4, units: "turns", expiry: "turnStart", expired: false }
+	);
+	assert.deepEqual(
+		buildActiveEffectTiming({}, source, { combat: null, worldTime: 9 }).duration,
+		{ value: 30, units: "seconds", expiry: null, expired: false }
+	);
+	assert.deepEqual(
+		buildActiveEffectTiming({}, { value: 2, units: "rounds", expiry: null }, {
+			combat: { started: true, id: "c", round: 1, turn: 0 }, worldTime: 9,
+		}).duration,
+		{ value: 2, units: "rounds", expiry: "turnStart", expired: false }
+	);
+	assert.equal(buildActiveEffectTiming({}, { value: null, units: "seconds", rounds: null }), null);
+	assert.deepEqual(
+		buildActiveEffectTiming({}, { value: 5, type: "rounds" }, {
+			combat: { id: "c", round: 1, turn: 0 }, worldTime: 9,
+		}).duration,
+		{ value: 5, units: "rounds", expiry: "turnStart", expired: false }
+	);
+	assert.equal(
+		buildActiveEffectTiming({}, { value: 1, type: "unlimited" }, {
+			combat: { id: "c", round: 1, turn: 0 }, worldTime: 9,
+		}),
+		null,
+		"unlimited Effect items must not inherit their embedded Active Effect's placeholder clock"
+	);
+});
+
+test("unstarted encounters still use combat timing", () => {
+	const timing = buildActiveEffectTiming({ rounds: 2 }, {}, {
+		combat: { started: false, id: "c", round: 0, turn: null }, worldTime: 9,
+	});
+	assert.equal(timing.duration.units, "rounds");
+	assert.equal(timing.start.combat, "c");
+});
+
+test("turns outside combat keep the tracker's ten-turn round conversion", () => {
+	const timing = buildActiveEffectTiming({ turns: 4 }, {}, { combat: null, worldTime: 9 });
+	assert.deepEqual(timing.duration,
+		{ value: 6, units: "seconds", expiry: "turnStart", expired: false });
+});
+
+test("linked duration displays read Foundry's prepared Active Effect clock", () => {
+	const activeEffect = {
+		active: true,
+		isExpiryTrackable: true,
+		start: { time: 1000 },
+		duration: { remaining: 1, label: "1 Round" },
+	};
+	const effectItem = { effects: [activeEffect] };
+	const target = {
+		items: { get: id => id === "effect-item" ? effectItem : null },
+		effects: { get: () => null },
+	};
+	globalThis.game.actors.get = id => id === "target" ? target : null;
+	globalThis.canvas = { tokens: { get: () => null } };
+	const entry = {
+		expiryRound: 99,
+		targetEffects: [{ targetActorId: "target", effectItemId: "effect-item" }],
+	};
+	assert.equal(getLinkedDurationEffect(entry), activeEffect);
+	assert.equal(hasLinkedDurationClock(entry), true);
+	assert.equal(describeDurationRemaining(entry, { round: 1 }), "1 Round");
+	activeEffect.duration.remaining = Infinity;
+	assert.equal(hasLinkedDurationClock(entry), false);
+	assert.equal(describeDurationRemaining(entry, { round: 1 }), "98 rounds");
+	target.items.get = () => null;
+	target.effects.get = id => id === "aura" ? activeEffect : null;
+	entry.targetEffects = [{ targetActorId: "target", effectItemId: "aura" }];
+	activeEffect.duration.remaining = 1;
+	assert.equal(hasLinkedDurationClock(entry), false, "auras retain their existing lifecycle");
+});
 
 // ── choosing a basis ────────────────────────────────────────────────────────
 

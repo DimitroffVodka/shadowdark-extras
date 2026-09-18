@@ -2,6 +2,7 @@
 
 import { TokenToolbarApp } from "./TokenToolbarApp.mjs";
 import { getActiveFocusSpells, getActiveDurationSpells, endFocusSpell, endDurationSpell } from "../effects/FocusSpellTrackerSD.mjs";
+import { describeDurationRemaining, getLinkedDurationEffect } from "../shared/duration-basis.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -398,10 +399,19 @@ function getDurationSpellIcons(actor) {
 	if (!durationSpells || durationSpells.length === 0) return [];
 
 	const currentRound = game.combat?.round ?? 0;
+	const worldTime = game.time?.worldTime ?? 0;
 
 	return durationSpells.map(spell => {
-		// Calculate remaining rounds
-		const remaining = spell.expiryRound - currentRound;
+		const linkedEffect = getLinkedDurationEffect(spell);
+		linkedEffect?.updateDuration?.();
+		const effectDuration = linkedEffect?.duration;
+		const remaining = Number.isFinite(effectDuration?.remaining)
+			? Math.max(0, effectDuration.remaining)
+			: Number.isFinite(spell.expiryRound)
+				? Math.max(0, spell.expiryRound - currentRound)
+				: Number.isFinite(spell.expiryWorldTime)
+					? Math.max(0, spell.expiryWorldTime - worldTime)
+					: null;
 
 		return {
 			instanceId: spell.instanceId,
@@ -410,7 +420,7 @@ function getDurationSpellIcons(actor) {
 			img: spell.spellImg || "icons/svg/mystery-man.svg",
 			isFocus: false,
 			duration: remaining,
-			durationLabel: `${remaining} ${spell.durationType || "rounds"}`,
+			durationLabel: describeDurationRemaining(spell, { round: currentRound, worldTime }),
 		};
 	});
 }

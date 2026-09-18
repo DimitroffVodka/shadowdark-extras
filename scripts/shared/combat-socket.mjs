@@ -5,6 +5,7 @@
 
 import { endFocusSpell } from "../effects/FocusSpellTrackerSD.mjs";
 import { showScrollingText } from "./scrolling-text.mjs";
+import { buildActiveEffectTiming } from "./duration-basis.mjs";
 import { FEATURE_IDS, isFeatureEnabled, anyFeatureEnabled } from "../settings/feature-gates.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -394,13 +395,19 @@ export function setupCombatSocket() {
 			// in the Effects and Conditions section with correct source attribution.
 			const effectData = effectDoc.toObject();
 
-			// Apply duration overrides to embedded effects if provided
-			if (data.duration && Object.keys(data.duration).length > 0 && effectData.effects) {
+			// Give every copied effect one explicit v14 clock. Round/turn effects end at
+			// turn start; outside combat they become seconds because SD's roundTime is 0.
+			if (effectData.effects) {
 				effectData.effects = effectData.effects.map(effect => {
-					// SD 4.x / Foundry v14: effect.duration may expose getter-only fields
-					// (e.g. `rounds`), so Object.assign onto it throws. Spread into a fresh
-					// plain object instead — reads via getter are fine, writes go to a new obj.
-					effect.duration = { ...(effect.duration ?? {}), ...data.duration };
+					const timing = buildActiveEffectTiming(
+						data.duration ?? {},
+						effectData.system?.duration ?? effect.duration ?? {},
+						{
+							combat: game.combat,
+							worldTime: game.time?.worldTime ?? 0,
+						}
+					);
+					if (timing) Object.assign(effect, timing);
 					return effect;
 				});
 			}

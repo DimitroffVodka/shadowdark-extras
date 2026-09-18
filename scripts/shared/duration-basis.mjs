@@ -19,6 +19,105 @@ export function secondsPerRound() {
 	return CONFIG?.time?.roundTime || 6;
 }
 
+function readDuration(data) {
+	if (!data) return null;
+	const value = data.value === null || data.value === undefined || data.value === ""
+		? null
+		: Number(data.value);
+	const units = data.units ?? data.type;
+	if (
+		value !== null && Number.isFinite(value) && value >= 0
+		&& ["seconds", "minutes", "hours", "days", "weeks", "years", "turns", "rounds"].includes(units)
+	) {
+		return { value, units };
+	}
+	for (const units of ["seconds", "turns", "rounds"]) {
+		if (data[units] === null || data[units] === undefined || data[units] === "") continue;
+		const legacyValue = Number(data[units]);
+		if (Number.isFinite(legacyValue) && legacyValue >= 0) return { value: legacyValue, units };
+	}
+	return null;
+}
+
+/**
+ * Convert SD's legacy duration override into one Foundry v14 duration and start.
+ * Combat durations expire at turn start, matching SDX auras. Outside combat,
+ * rounds/turns become seconds because Shadowdark sets both core time scales to 0.
+ */
+export function buildActiveEffectTiming(overrides = {}, source = {}, {
+	combat = null, worldTime = 0,
+} = {}) {
+	const overrideDuration = readDuration(overrides);
+	const selected = overrideDuration ?? readDuration(source);
+	if (!selected) return null;
+
+	const originalUnits = selected.units;
+	let { value, units } = selected;
+	const inCombat = !!combat;
+	if (!inCombat && units === "rounds") {
+		value *= secondsPerRound();
+		units = "seconds";
+	}
+	else if (!inCombat && units === "turns") {
+		value = Math.ceil(value / 10) * secondsPerRound();
+		units = "seconds";
+	}
+
+	const expirySource = overrideDuration ? overrides : source;
+	const expiry = expirySource.expiry
+		?? (["rounds", "turns"].includes(originalUnits) ? "turnStart" : null);
+	const hasStartTime = overrides.startTime !== null && overrides.startTime !== undefined
+		&& overrides.startTime !== "" && Number.isFinite(Number(overrides.startTime));
+	const time = hasStartTime ? Number(overrides.startTime) : worldTime;
+	const start = inCombat
+		? {
+			time,
+			combat: combat.id,
+			combatant: combat.combatant?.id ?? null,
+			initiative: combat.combatant?.initiative ?? null,
+			round: overrides.startRound !== null && overrides.startRound !== undefined
+				&& overrides.startRound !== "" && Number.isFinite(Number(overrides.startRound))
+				? Number(overrides.startRound) : combat.round,
+			turn: overrides.startTurn !== null && overrides.startTurn !== undefined
+				&& overrides.startTurn !== "" && Number.isFinite(Number(overrides.startTurn))
+				? Number(overrides.startTurn) : combat.turn,
+		}
+		: { time };
+
+	return { duration: { value, units, expiry, expired: false }, start };
+}
+
+function resolveLinkedEffects(targetEffect) {
+	const tokenActor = globalThis.canvas?.tokens?.get?.(targetEffect.targetTokenId)?.actor;
+	const actor = tokenActor ?? globalThis.game?.actors?.get?.(targetEffect.targetActorId);
+	if (!actor) return { effects: [], item: null };
+	const directEffect = actor.effects?.get?.(targetEffect.effectItemId);
+	if (directEffect) return { effects: [directEffect], item: null };
+	const item = actor.items?.get?.(targetEffect.effectItemId);
+	return { effects: [...(item?.effects?.contents ?? item?.effects ?? [])], item };
+}
+
+/** Resolve the first live Active Effect linked to a tracked duration spell. */
+export function getLinkedDurationEffect(entry) {
+	for (const targetEffect of entry?.targetEffects ?? []) {
+		const { effects } = resolveLinkedEffects(targetEffect);
+		const effect = effects.find(candidate => candidate.transfer) ?? effects[0];
+		if (effect) return effect;
+	}
+	return null;
+}
+
+/** Whether a linked Effect Item has a registry-trackable core expiry clock. */
+export function hasLinkedDurationClock(entry) {
+	return (entry?.targetEffects ?? []).some(targetEffect => {
+		const { effects, item } = resolveLinkedEffects(targetEffect);
+		if (!item) return false; // Auras keep their existing lifecycle.
+		return effects.some(effect => effect.duration?.expired === true
+			|| (effect.active !== false && effect.isExpiryTrackable !== false
+				&& effect.start?.time != null && Number.isFinite(effect.duration?.remaining)));
+	});
+}
+
 /**
  * When something should end, expressed in whichever clock is running.
  *
@@ -98,6 +197,13 @@ export function convertRoundExpiryToWorldTime(entries, { round = 0, worldTime = 
  * @returns {string}
  */
 export function describeDurationRemaining(entry, { round = null, worldTime = null } = {}) {
+	const activeEffect = getLinkedDurationEffect(entry);
+	activeEffect?.updateDuration?.();
+	const activeEffectDuration = activeEffect?.duration;
+	if (Number.isFinite(activeEffectDuration?.remaining)
+		&& typeof activeEffectDuration.label === "string" && activeEffectDuration.label) {
+		return activeEffectDuration.label;
+	}
 	if (Number.isFinite(entry?.expiryRound) && Number.isFinite(round)) {
 		const rounds = Math.max(0, entry.expiryRound - round);
 		return `${rounds} round${rounds !== 1 ? "s" : ""}`;

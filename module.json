@@ -3,7 +3,7 @@
   "title": "Shadowdark Extras",
   "version": "6.15.0",
   "compatibility": {
-    "minimum": "14",
+    "minimum": "14.361",
     "verified": "14"
   },
   "url": "https://github.com/DimitroffVodka/shadowdark-extras/wiki",

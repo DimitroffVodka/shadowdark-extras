@@ -227,6 +227,9 @@ export async function handleEffectDeleted(item, options, userId) {
 			}
 		}
 
+		// Core-expiry cleanup owns this unlink so concurrent hooks cannot overwrite it.
+		if (options?.sdxDurationExpiry) continue;
+
 		// Check Duration Spells
 		const activeDuration = actor.getFlag(MODULE_ID, DURATION_SPELL_FLAG);
 		if (activeDuration && activeDuration.length > 0) {
