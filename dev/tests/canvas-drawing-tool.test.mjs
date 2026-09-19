@@ -37,6 +37,7 @@ function reset() {
 	tool._previewGraphics = null;
 	tool._previewSymbol = null;
 	tool._mapPathDragCell = null;
+	tool._mapPathUndo = [];
 	tool._resetDrawingState();
 	tool.state.drawingMode = "sketch";
 	tool.state.mapPathKind = null;
@@ -446,7 +447,7 @@ test("Shift-click toggles an adjacency edge for both Road and River", () => {
 	}
 });
 
-test("Create persists one network with nested forks and keeps designation mode active", () => {
+test("Create persists one network with nested forks and keeps designation mode active", async () => {
 	reset();
 	const original = {
 		grid: globalThis.canvas.grid,
@@ -480,7 +481,7 @@ test("Create persists one network with nested forks and keeps designation mode a
 			const [i, j] = key.split(":").map(Number);
 			return { i, j };
 		});
-		assert.equal(tool.createMapPath(), true);
+		assert.equal(await tool.createMapPath(), true);
 		assert.equal(created.length, 1);
 		assert.equal(created[0].road.length, 5);
 		assert.deepEqual(created[0].river, []);
@@ -494,6 +495,45 @@ test("Create persists one network with nested forks and keeps designation mode a
 		globalThis.PIXI.Graphics = original.Graphics;
 		tool._pixiContainer = original.canvasLayer;
 		tool._createMapNetworkDrawing = original.createNetworkDrawing;
+	}
+});
+
+test("Undo removes only the latest Road/River network", async () => {
+	reset();
+	const original = {
+		getNetworks: tool._getMapPathNetworks,
+		createNetwork: tool._createMapNetworkDrawing,
+		deleteDrawing: tool.deleteAnyDrawing,
+		drawPreview: tool._drawMapPathPreview,
+		canvasLayer: tool._pixiContainer,
+	};
+	const deleted = [];
+	let created = 0;
+
+	try {
+		tool._pixiContainer = new StubContainer();
+		tool._getMapPathNetworks = () => ({ road: [[[0, 0], [100, 0]]], river: [] });
+		tool._createMapNetworkDrawing = async () => `map-network-${++created}`;
+		tool.deleteAnyDrawing = async id => deleted.push(id);
+		tool._drawMapPathPreview = () => {};
+		tool.state.mapPathTiles.road = [{ i: 0, j: 0 }, { i: 0, j: 1 }];
+		assert.equal(await tool.createMapPath(), true);
+		tool.state.mapPathTiles.road = [{ i: 1, j: 0 }, { i: 1, j: 1 }];
+		assert.equal(await tool.createMapPath(), true);
+
+		assert.equal(await tool.undoLastMapPath(), true);
+		assert.deepEqual(deleted, ["map-network-2"]);
+		assert.deepEqual(tool.state.mapPathTiles.road, [{ i: 1, j: 0 }, { i: 1, j: 1 }]);
+
+		assert.equal(await tool.undoLastMapPath(), true);
+		assert.deepEqual(deleted, ["map-network-2", "map-network-1"]);
+	}
+	finally {
+		tool._getMapPathNetworks = original.getNetworks;
+		tool._createMapNetworkDrawing = original.createNetwork;
+		tool.deleteAnyDrawing = original.deleteDrawing;
+		tool._drawMapPathPreview = original.drawPreview;
+		tool._pixiContainer = original.canvasLayer;
 	}
 });
 

@@ -1,10 +1,10 @@
 /**
- * TileFlattenSD — Flatten multiple selected tiles into a single tile.
+ * TileFlattenSD — Flatten multiple selected tiles into a single tile or scene background.
  * Adds a "Flatten" button to the Tile HUD when 2+ tiles are controlled.
  * Adds an "Unflatten" button to the Tile HUD for tiles created by this module.
  *
  * Capabilities:
- * - Flatten: Renders 2+ tiles to a single WebP image (max quality, 1:1 resolution).
+ * - Flatten: Renders 2+ tiles to a WebP image.
  * - Unflatten: Restores original tiles from data stored in the flattened tile's flags.
  */
 
@@ -12,6 +12,7 @@ const MODULE_ID = "shadowdark-extras";
 const FLATTEN_ACTION = "sdx-flatten-tiles";
 const UNFLATTEN_ACTION = "sdx-unflatten-tiles";
 const UPLOAD_DIR = "flattened-tiles";
+const HEX_BACKGROUND_MAX_SIZE = 8192;
 
 // ─── Utility helpers ─────────────────────────────────────────────────────────
 
@@ -100,10 +101,16 @@ function computeBounds(tiles) {
 	return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
+function getMaxTextureSize(renderer) {
+	const gl = renderer?.gl || renderer?.context?.gl;
+	return gl?.getParameter?.(gl.MAX_TEXTURE_SIZE) ?? HEX_BACKGROUND_MAX_SIZE;
+}
+
 // ─── Visibility isolation ────────────────────────────────────────────────────
 
-function isolateVisibility(docs, bounds) {
+function isolateVisibility(docs, bounds, mapPathIds = []) {
 	const selectedIds = new Set(docs.map(d => d.id).filter(Boolean));
+	const selectedPathIds = new Set(mapPathIds);
 	const hidden = [];
 
 	const hide = obj => {
@@ -113,6 +120,14 @@ function isolateVisibility(docs, bounds) {
 	};
 
 	const drawingsLayer = canvas?.drawings ?? null;
+	const drawingTool = game?.shadowdarkExtras?.drawingTool;
+	const pathLayer = drawingTool?.canvasLayer ?? null;
+	const selectedPathGraphics = new Set((drawingTool?._permanentDrawings ?? [])
+		.filter(drawing => selectedPathIds.has(drawing.id))
+		.map(drawing => drawing.graphics));
+	if (selectedPathGraphics.size !== selectedPathIds.size) {
+		throw new Error("Could not find every Road/River overlay to bake");
+	}
 
 	for (const p of (canvas?.tiles?.placeables ?? [])) {
 		const doc = p?.document;
@@ -153,7 +168,7 @@ function isolateVisibility(docs, bounds) {
 	const iface = canvas?.interface;
 	if (iface?.children) {
 		for (const child of iface.children) {
-			if (!child || child === drawingsLayer) continue;
+			if (!child || child === drawingsLayer || child === pathLayer) continue;
 			hide(child);
 		}
 	}
@@ -161,6 +176,9 @@ function isolateVisibility(docs, bounds) {
 		const doc = p?.document;
 		if (!doc || selectedIds.has(doc.id)) continue;
 		hide(p);
+	}
+	for (const child of (pathLayer?.children ?? [])) {
+		if (!selectedPathGraphics.has(child)) hide(child);
 	}
 
 	const hiddenFrames = [];
@@ -193,6 +211,10 @@ function isolateVisibility(docs, bounds) {
 	if (drawingsLayer && drawingsLayer.visible === false) {
 		hidden.push({ obj: drawingsLayer, visible: drawingsLayer.visible });
 		drawingsLayer.visible = true;
+	}
+	if (selectedPathGraphics.size && pathLayer?.visible === false) {
+		hidden.push({ obj: pathLayer, visible: pathLayer.visible });
+		pathLayer.visible = true;
 	}
 
 	for (const doc of docs) {
@@ -372,7 +394,7 @@ function cropTransparentBorders(canvasEl, bounds) {
 
 // ─── Rendering ───────────────────────────────────────────────────────────────
 
-async function renderTilesToCanvas(tiles, bounds) {
+async function renderTilesToCanvas(tiles, bounds, resolution = 1, mapPathIds = []) {
 	if (!canvas?.ready || !canvas.stage || !canvas.app?.renderer) {
 		throw new Error("Canvas not available");
 	}
@@ -380,13 +402,11 @@ async function renderTilesToCanvas(tiles, bounds) {
 	const renderer = canvas.app.renderer;
 	const stage = canvas.stage;
 	const primary = canvas.primary;
-	const resolution = 1;
 
 	const pixelWidth = Math.max(1, Math.round(bounds.width * resolution));
 	const pixelHeight = Math.max(1, Math.round(bounds.height * resolution));
 
-	const gl = renderer.gl || renderer.context?.gl;
-	const maxSize = gl?.getParameter?.(gl.MAX_TEXTURE_SIZE) ?? 4096;
+	const maxSize = getMaxTextureSize(renderer);
 	if (pixelWidth > maxSize || pixelHeight > maxSize) {
 		throw new Error(
 			`Flattened image (${pixelWidth}×${pixelHeight}px) exceeds GPU texture limit (${maxSize}px). `
@@ -394,7 +414,7 @@ async function renderTilesToCanvas(tiles, bounds) {
 		);
 	}
 
-	const restore = isolateVisibility(tiles, bounds);
+	const restore = isolateVisibility(tiles, bounds, mapPathIds);
 	const restorePrimary = patchPrimaryForTransparent(primary);
 
 	const origStage = {
@@ -582,7 +602,7 @@ async function saveAsWebP(canvasEl, quality = 1.0) {
 
 // --- FLATTEN ---
 
-async function createFlattenedTile(bounds, filePath, tiles) {
+async function createFlattenedTile(bounds, filePath, tiles, mapPaths = []) {
 	if (!canvas?.scene) throw new Error("Scene not available");
 
 	let elevation = 0;
@@ -596,6 +616,15 @@ async function createFlattenedTile(bounds, filePath, tiles) {
 		const data = t.toObject(false);
 		return { data };
 	});
+	const flattenFlags = {
+		flattenedTile: true,
+		originalTileCount: tiles.length,
+		flattenedAt: Date.now(),
+		originalPosition: { x: bounds.x, y: bounds.y },
+		// Store full tile data for unflattening
+		tiles: originalData,
+		mapPaths,
+	};
 
 	const tileData = {
 		texture: {
@@ -620,14 +649,7 @@ async function createFlattenedTile(bounds, filePath, tiles) {
 		locked: false,
 		occlusion: { mode: 0, alpha: 0 },
 		flags: {
-			[MODULE_ID]: {
-				flattenedTile: true,
-				originalTileCount: tiles.length,
-				flattenedAt: Date.now(),
-				originalPosition: { x: bounds.x, y: bounds.y },
-				// Store full tile data for unflattening
-				tiles: originalData,
-			},
+			[MODULE_ID]: flattenFlags,
 		},
 	};
 
@@ -645,7 +667,133 @@ async function deleteOriginalTiles(tiles) {
 	await canvas.scene.deleteEmbeddedDocuments("Tile", ids);
 }
 
-async function flattenTiles(tiles) {
+async function deleteMapPaths(mapPaths) {
+	if (!mapPaths.length) return;
+	const tool = game?.shadowdarkExtras?.drawingTool;
+	if (!tool?.deleteAnyDrawing) throw new Error("Road/River drawing tool is not available");
+	for (const path of mapPaths) await tool.deleteAnyDrawing(path.drawingId);
+	const deletedIds = new Set(mapPaths.map(path => path.drawingId));
+	const remaining = canvas.scene?.getFlag(MODULE_ID, "permanentDrawings") || [];
+	if (remaining.some(path => deletedIds.has(path.drawingId))) {
+		throw new Error("Could not remove the baked Road/River overlays");
+	}
+}
+
+async function flattenTilesToBackground(tiles, mapPaths = []) {
+	const scene = canvas?.scene;
+	const level = canvas?.level ?? scene?.levels?.contents?.[0];
+	if (!scene || !level) throw new Error("Scene level not available");
+	if (!tiles || tiles.length < 2) throw new Error("Need at least 2 tiles to flatten");
+
+	const bounds = { x: 0, y: 0, width: scene.width, height: scene.height };
+	const maxSize = Math.min(
+		HEX_BACKGROUND_MAX_SIZE,
+		getMaxTextureSize(canvas.app.renderer)
+	);
+	const resolution = Math.min(1, maxSize / Math.max(bounds.width, bounds.height));
+	const pixelWidth = Math.max(1, Math.round(bounds.width * resolution));
+	const pixelHeight = Math.max(1, Math.round(bounds.height * resolution));
+
+	ui.notifications.info(
+		`Baking ${tiles.length} tiles into a ${pixelWidth}×${pixelHeight} scene background…`
+	);
+	const pathIds = mapPaths.map(path => path.drawingId).filter(Boolean);
+	const result = await renderTilesToCanvas(tiles, bounds, resolution, pathIds);
+	if (!result?.canvas) throw new Error("Failed to render tiles");
+
+	const filePath = await saveAsWebP(result.canvas, 0.9);
+	try {
+		result.canvas.width = 0; result.canvas.height = 0;
+	}
+	catch(_) { }
+
+	const levelData = level.toObject(false);
+	await scene.setFlag(MODULE_ID, "flattenedHexBackground", {
+		flattenedAt: Date.now(),
+		levelId: level.id,
+		background: levelData.background,
+		textures: levelData.textures,
+		tiles: tiles.map(tile => tile.toObject(false)),
+		mapPaths,
+	});
+	await scene.updateEmbeddedDocuments("Level", [{
+		"_id": level.id,
+		"background.src": filePath,
+		"textures.anchorX": 0.5,
+		"textures.anchorY": 0.5,
+		"textures.offsetX": 0,
+		"textures.offsetY": 0,
+		"textures.fit": "fill",
+		"textures.scaleX": 1,
+		"textures.scaleY": 1,
+		"textures.rotation": 0,
+	}]);
+	await deleteMapPaths(mapPaths);
+	await deleteOriginalTiles(tiles);
+
+	ui.notifications.info(
+		`Baked ${tiles.length} tiles into one ${pixelWidth}×${pixelHeight} scene background.`
+	);
+}
+
+async function restoreHexBackground() {
+	const scene = canvas?.scene;
+	const backup = scene?.getFlag(MODULE_ID, "flattenedHexBackground");
+	if (!scene || !backup) throw new Error("No flattened hex background to restore");
+
+	const existingIds = new Set(scene.tiles.contents.map(tile => tile.id));
+	const missingTiles = (backup.tiles ?? [])
+		.filter(data => !existingIds.has(data._id))
+		.map(data => {
+			const restored = foundry.utils.deepClone(data);
+			delete restored._stats;
+			return restored;
+		});
+	if (missingTiles.length) {
+		await scene.createEmbeddedDocuments("Tile", missingTiles, { keepId: true });
+	}
+	if (backup.mapPaths?.length) {
+		const saved = scene.getFlag(MODULE_ID, "permanentDrawings") || [];
+		const savedIds = new Set(saved.map(path => path.drawingId));
+		const restored = backup.mapPaths.filter(path => !savedIds.has(path.drawingId));
+		if (restored.length) {
+			await scene.setFlag(MODULE_ID, "permanentDrawings", [...saved, ...restored]);
+			const tool = game?.shadowdarkExtras?.drawingTool;
+			for (const path of restored) {
+				tool?._renderPermanentEntry?.(path);
+				tool?._broadcast?.("sdx-drawing-created", path);
+			}
+		}
+	}
+
+	const level = scene.levels.get(backup.levelId) ?? scene.levels.contents[0];
+	if (!level) throw new Error("Original scene level not available");
+	await scene.updateEmbeddedDocuments("Level", [{
+		_id: level.id,
+		background: backup.background,
+		textures: backup.textures,
+	}]);
+	await scene.unsetFlag(MODULE_ID, "flattenedHexBackground");
+	ui.notifications.info(`Restored ${missingTiles.length} original hex tiles.`);
+}
+
+async function flattenTiles(tiles, { asBackground = false, mapPaths = [] } = {}) {
+	if (asBackground) {
+		try {
+			if (canvas.scene?.getFlag(MODULE_ID, "flattenedHexBackground")) {
+				await restoreHexBackground();
+			}
+			else {
+				await flattenTilesToBackground(tiles, mapPaths);
+			}
+		}
+		catch(error) {
+			console.error(`${MODULE_ID} | Hex background flatten failed:`, error);
+			ui.notifications.error(`Failed to flatten hex background: ${error.message}`);
+		}
+		return;
+	}
+
 	if (!tiles || tiles.length < 2) {
 		ui.notifications.warn("Select at least 2 tiles to flatten.");
 		return;
@@ -656,7 +804,8 @@ async function flattenTiles(tiles) {
 		const bounds = computeBounds(tiles);
 		if (!bounds) throw new Error("Could not compute tile bounds");
 
-		const result = await renderTilesToCanvas(tiles, bounds);
+		const pathIds = mapPaths.map(path => path.drawingId).filter(Boolean);
+		const result = await renderTilesToCanvas(tiles, bounds, 1, pathIds);
 		if (!result?.canvas) throw new Error("Failed to render tiles");
 
 		const cropped = cropTransparentBorders(result.canvas, bounds);
@@ -676,7 +825,8 @@ async function flattenTiles(tiles) {
 		catch(_) { }
 
 		ui.notifications.info("Creating flattened tile…");
-		await createFlattenedTile(cropped.bounds, filePath, tiles);
+		await createFlattenedTile(cropped.bounds, filePath, tiles, mapPaths);
+		await deleteMapPaths(mapPaths);
 		await deleteOriginalTiles(tiles);
 
 		ui.notifications.info(`Flattened ${tiles.length} tiles successfully!`);
@@ -694,7 +844,8 @@ async function unflattenTile(tileDoc) {
 	if (!tileDoc) return;
 
 	const flags = tileDoc.flags?.[MODULE_ID];
-	if (!flags?.flattenedTile || (!flags?.tiles?.length && !flags?.drawings?.length)) {
+	if (!flags?.flattenedTile
+		|| (!flags?.tiles?.length && !flags?.drawings?.length && !flags?.mapPaths?.length)) {
 		ui.notifications.warn("This tile does not contain stored tile data.");
 		return;
 	}
@@ -704,6 +855,7 @@ async function unflattenTile(tileDoc) {
 
 		const storedTiles = flags.tiles || [];
 		const storedDrawings = flags.drawings || [];
+		const storedMapPaths = flags.mapPaths || [];
 		const origin = flags.originalPosition || { x: tileDoc.x, y: tileDoc.y };
 
 		// Calculate offset if the flattened tile was moved
@@ -737,18 +889,31 @@ async function unflattenTile(tileDoc) {
 			if (data) toCreateDrawings.push(data);
 		}
 
-		if (!toCreateTiles.length && !toCreateDrawings.length) {
+		if (!toCreateTiles.length && !toCreateDrawings.length && !storedMapPaths.length) {
 			throw new Error("No valid data found to restore.");
 		}
 
 		// Create restored documents by type
 		if (toCreateTiles.length) await canvas.scene.createEmbeddedDocuments("Tile", toCreateTiles);
 		if (toCreateDrawings.length) await canvas.scene.createEmbeddedDocuments("Drawing", toCreateDrawings);
+		if (storedMapPaths.length) {
+			const saved = canvas.scene.getFlag(MODULE_ID, "permanentDrawings") || [];
+			const savedIds = new Set(saved.map(path => path.drawingId));
+			const restored = storedMapPaths.filter(path => !savedIds.has(path.drawingId));
+			if (restored.length) {
+				await canvas.scene.setFlag(MODULE_ID, "permanentDrawings", [...saved, ...restored]);
+				const tool = game?.shadowdarkExtras?.drawingTool;
+				for (const path of restored) {
+					tool?._renderPermanentEntry?.(path);
+					tool?._broadcast?.("sdx-drawing-created", path);
+				}
+			}
+		}
 
 		// Delete the flattened tile
 		await canvas.scene.deleteEmbeddedDocuments("Tile", [tileDoc.id]);
 
-		ui.notifications.info(`Restored ${toCreateTiles.length} tiles + ${toCreateDrawings.length} drawings successfully!`);
+		ui.notifications.info(`Restored ${toCreateTiles.length} tiles + ${toCreateDrawings.length + storedMapPaths.length} drawings successfully!`);
 
 	}
 	catch(error) {

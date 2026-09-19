@@ -50,6 +50,7 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 		this._highlightPulse = null;
 		this._mapPathPreviousState = null;
 		this._mapPathDragCell = null;
+		this._mapPathUndo = [];
 
 		// Drawing state
 		this.state = {
@@ -99,6 +100,7 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 			this._createCanvasLayer();
 			this._pixiDrawings = [];
 			this._lastDrawing = null;
+			this._mapPathUndo = [];
 			this._loadPermanentDrawings();
 		});
 
@@ -888,6 +890,12 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 	}
 
 	clearMapPathSelection() {
+		if (this.state.mapPathTiles.road.length
+			|| this.state.mapPathTiles.river.length
+			|| this.state.mapPathBlockedEdges.road.length
+			|| this.state.mapPathBlockedEdges.river.length) {
+			this._mapPathUndo.push({ type: "selection", selection: this._captureMapPathSelection() });
+		}
 		this._cancelMapPath();
 	}
 

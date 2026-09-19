@@ -112,13 +112,13 @@ export const HexPainterBindings = {
 			sdxDrawingTool.setMapPathWidth(pathWidthFromPercent(percent));
 		});
 
-		elem.querySelector(".hex-path-create-btn")?.addEventListener("click", e => {
+		elem.querySelector(".hex-path-create-btn")?.addEventListener("click", async e => {
 			e.preventDefault();
 			if (sdxDrawingTool.state.drawingMode !== "mapPath") {
 				ui.notifications.warn("Choose Road, River, or Both first.");
 				return;
 			}
-			if (sdxDrawingTool.createMapPath()) syncPathControls();
+			if (await sdxDrawingTool.createMapPath()) syncPathControls();
 		});
 
 		elem.querySelector(".hex-path-clear-btn")?.addEventListener("click", e => {
@@ -158,32 +158,53 @@ export const HexPainterBindings = {
 			await formatActiveScene();
 		});
 
-		// Flatten all tiles button
-		elem.querySelector(".hex-flatten-btn")?.addEventListener("click", async e => {
+		// Bake all hex tiles into one scene background; the same button restores them.
+		const flattenButton = elem.querySelector(".hex-flatten-btn");
+		const syncFlattenButton = () => {
+			if (!flattenButton) return;
+			const restoring = typeof canvas.scene?.getFlag === "function"
+				&& !!canvas.scene.getFlag(MODULE_ID, "flattenedHexBackground");
+			flattenButton.textContent = restoring ? "Restore Hexagons" : "Bake Map Background";
+			flattenButton.title = restoring
+				? "Restore the original hex tiles"
+				: "Replace the hex tiles with one optimized scene background";
+			flattenButton.dataset.tooltip = flattenButton.title;
+			flattenButton.setAttribute?.("aria-label", flattenButton.title);
+		};
+		syncFlattenButton();
+		flattenButton?.addEventListener("click", async e => {
 			e.preventDefault();
 			e.stopPropagation();
 
-			// Get all tiles on the scene
-			const allTiles = canvas?.tiles?.placeables || [];
-			if (allTiles.length < 2) {
+			const backup = typeof canvas.scene?.getFlag === "function"
+				? canvas.scene.getFlag(MODULE_ID, "flattenedHexBackground") : null;
+			const tileDocs = canvas.scene?.tiles?.contents ?? [];
+			const mapPaths = (typeof canvas.scene?.getFlag === "function"
+				? canvas.scene.getFlag(MODULE_ID, "permanentDrawings") || [] : [])
+				.filter(drawing => !drawing.hidden
+					&& ["road", "river", "mapNetwork"].includes(drawing.type));
+			if (!backup && tileDocs.length < 2) {
 				ui.notifications.warn("Need at least 2 tiles on the scene to flatten.");
 				return;
 			}
 
-			// Get all tile documents
-			const tileDocs = allTiles.map(p => p.document).filter(d => d);
-
-			// Ask for confirmation
 			const confirmed = await foundry.applications.api.DialogV2.confirm({
-				window: { title: "Flatten All Tiles" },
-				content: `<p>This will flatten all <strong>${tileDocs.length}</strong> tiles on the scene into a single image.</p><p>You can unflatten later from the Tile HUD.</p>`,
+				window: { title: backup ? "Restore Hexagons" : "Bake Map Background" },
+				content: backup
+					? `<p>Restore all <strong>${backup.tiles?.length ?? 0}</strong> original hex tiles and the previous scene background?</p>`
+					: `<p>Replace all <strong>${tileDocs.length}</strong> tiles${mapPaths.length ? ` and <strong>${mapPaths.length}</strong> road/river network${mapPaths.length === 1 ? "" : "s"}` : ""} with one optimized scene background?</p><p>Labels and other overlays remain live. You can restore the originals with this button.</p>`,
 				modal: true,
 			});
 
 			if (!confirmed) return;
-
-			// Call the flatten function
-			await flattenTiles(tileDocs);
+			flattenButton.disabled = true;
+			try {
+				await flattenTiles(tileDocs, { asBackground: true, mapPaths });
+				syncFlattenButton();
+			}
+			finally {
+				flattenButton.disabled = false;
+			}
 		});
 
 		// Search filter (client-side filtering without re-render)
