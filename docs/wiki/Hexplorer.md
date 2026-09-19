@@ -173,23 +173,44 @@ UUID first when nothing appears in chat.
 
 ## Generate content from a hex
 
-Right-click a cell as a GM to attach generated content to that record.
+These are the **GM-only right-click actions on the canvas**, not fields in the
+Edit Hex window. With Hexplorer enabled, right-click a hex and choose one of
+the four **Generate** actions. The final selection creates real Foundry
+documents; it is not a preview or a temporary roll.
 
-- **Generate Wilderness** asks for a biome, creates a wilderness Journal page,
-  and adds it as an undiscovered Journal feature.
-- **Generate Settlement** asks for a settlement type, creates the settlement's
-  Journal page and its generated people, locations, factions, quests, and map
-  data, then attaches the result to the hex.
-- **Generate Dungeon** asks for type and size, then creates one keyed dungeon
-  Journal page and attaches it.
-- **Generate Dungeon Map** creates a playable square-grid dungeon Scene,
-  Overview and room Journal pages, and numbered SDX Journal Pins that point to
-  those rooms. The Scene shortcut is GM-only; the overview can be discovered
-  normally through the hex.
+| Action | Picker sequence | What it creates | What returns to the source hex |
+| --- | --- | --- | --- |
+| **Generate Wilderness** | Choose a biome | One generated wilderness Journal page: regional name plus randomized biome encounters, landmarks, weather, and other Hexroll-derived material. | An undiscovered Journal feature. If the hex has no terrain yet, the selected biome also fills its terrain field. |
+| **Generate Settlement** | Choose **Village**, **Town**, or **City** | One generated settlement Journal page: ruler, locations, tavern, NPCs, relationships, quest hooks, and a settlement-event roll. | An undiscovered Journal feature plus its Maphub/Watabou map parameters. The eye beside the feature opens the generated settlement-map viewer; it does **not** create a Foundry Scene. |
+| **Generate Dungeon** | Choose **Temple**, **Tomb**, or **Dungeon**; then **Small** (4–6 rooms), **Medium** (7–10), or **Large** (11–15) | One keyed dungeon Journal page, including an uploaded schematic SVG where file upload is available, wandering-monster material, and room descriptions. | An undiscovered Journal feature. This is a keyed document, not a playable Scene. |
+| **Generate Dungeon Map** | Choose the same type and size | A new playable square-grid dungeon Scene with generated floors, walls, and doors; one Overview Journal page; one page per actual room; and numbered SDX Journal Pins linked to those room pages. | Two undiscovered features: the overview Journal link and a GM-only **(Map)** Scene shortcut. |
 
-Generated results are stored in a per-Scene Hexplorer Journal. They are not
-loose output: each generator adds a feature back to the source cell so you can
-find it again from that hex.
+### The important distinction: Dungeon vs. Dungeon Map
+
+**Generate Dungeon** makes a single written dungeon key. Its room connections
+and schematic are generated for the Journal page only.
+
+**Generate Dungeon Map** first builds actual room geometry on a new Foundry
+Scene, then writes the room key from that placed layout. The numbered room pins
+therefore match the rooms on the map. Use this option when the party needs to
+play on the dungeon in Foundry; use **Generate Dungeon** when a compact
+prep/reference page is enough.
+
+### What happens after generation
+
+1. Wilderness, Settlement, and Dungeon create or reuse a Journal named
+   `<Scene name> - Hexplorer` and add their generated page there. Dungeon Map
+   instead creates its own dungeon Journal as well as its Scene.
+2. SDX adds the generated result back to the same hex as an **undiscovered**
+   feature. Right-click that hex later to reopen it; the GM sees all generated
+   features, while players see only discovered Journal features.
+3. Generation does **not** reveal the result to players. Use the feature eye /
+   discovered control, **Show to Players**, and normal Journal permission when
+   you are ready to share it. The Dungeon Map Scene shortcut remains GM-only.
+
+Running an action again deliberately creates another page and another feature;
+it does not replace or reroll the prior result. Keep the result you want, or
+delete the unwanted generated page and its matching hex feature during prep.
 
 ---
 
