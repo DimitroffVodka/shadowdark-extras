@@ -250,6 +250,6 @@ The repository does not currently state one unambiguous repository-wide license:
 - Dungeon Mapper and Hexmapper are inspired by Hexlands and Instant Dungeons by [The Augur](https://www.patreon.com/cw/TheAugur).
 - Hexcrawl data uses material from [Hexroll](https://hexroll.app/), adapted and supplemented for SDX.
 - Realm, City, Village, Cave/Glade, Dungeon, and Dwelling generators are created by **Watabou**. The Medieval Fantasy City Generator is open source through [TownGeneratorOS](https://github.com/watabou/TownGeneratorOS) under GPL-3.0.
-- Some hex tiles and points of interest are from [2-Minute Tabletop](https://2minutetabletop.com/product/world-map-hex-tiles/) under CC BY-NC 4.0.
+- `assets/Hexes/Water/*.webp` is from [2-Minute Tabletop's World Map Hex Tiles](https://2minutetabletop.com/product/world-map-hex-tiles/) under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). The Arctic Sea, Lake, and River files in the adjacent `Water-*` folders are color adaptations: Arctic Sea is darkened and cool-blue tinted, Lake is lightened, and River is lightened further.
 - Some black-and-white points of interest are from [Cartography Assets](https://cartographyassets.com/assets/6626/gogotsmaps-black-and-white-assets/) under a CC BY-NC license.
 - Dyson-style dungeon assets are by Thomas Seliger; see [neovatar/dungeondraft-dysonesque](https://github.com/neovatar/dungeondraft-dysonesque).

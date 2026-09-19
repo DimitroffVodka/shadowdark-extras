@@ -10,6 +10,29 @@ installMemoryIndexedDB();
 const builder = await import("../../scripts/hex/HexcrawlBuilderSD.mjs");
 const { getSpecialTiles } = await import("../../scripts/hex/hex-special-tiles.mjs");
 const { getColoredTilesByBiome } = await import("../../scripts/hex/hex-colored-tiles.mjs");
+const { setActiveTileTab } = await import("../../scripts/hex/hex-tile-selection.mjs");
+const COLORED_FOLDER = "modules/shadowdark-extras/assets/Hexes";
+const VEGETATION_FOLDER = `${COLORED_FOLDER}/Vegetation`;
+const VEGETATION_TILE = `${VEGETATION_FOLDER}/forest.webp`;
+const VEGETATION_DENSE_TILE = `${VEGETATION_FOLDER}/trees2.webp`;
+const VEGETATION_SPARSE_TILE = `${VEGETATION_FOLDER}/Hex - Sparse Trees (lush) 1.webp`;
+const VEGETATION_HILL_TILE = `${VEGETATION_FOLDER}/Hex - Hills (lush) 1.webp`;
+const DESERT_FOLDER = `${COLORED_FOLDER}/Desert`;
+const DESERT_HILL_TILE = `${DESERT_FOLDER}/Hex - Hills (desert) 1.webp`;
+const DESERT_PLAIN_TILE = `${DESERT_FOLDER}/Hex - Plains (desert) 4.webp`;
+const MOUNTAINS_FOLDER = `${COLORED_FOLDER}/Mountains`;
+const MOUNTAIN_ROCKY_TILE = `${MOUNTAINS_FOLDER}/Hex - Mountains, low (rocky).webp`;
+const MOUNTAIN_LUSH_TILE = `${MOUNTAINS_FOLDER}/Hex - Mountains, low (lush).webp`;
+const MOUNTAIN_BRIDGE_TILE = `${MOUNTAINS_FOLDER}/Hex - Mountains, peak (bridge).webp`;
+const MOUNTAIN_SPIKES_TILE = `${MOUNTAINS_FOLDER}/mountains spikes.webp`;
+const WATER_FOLDER = `${COLORED_FOLDER}/Water`;
+const WATER_TILE = `${WATER_FOLDER}/ocean.webp`;
+const ARCTIC_FOLDER = `${COLORED_FOLDER}/Water-Arctic`;
+const ARCTIC_TILE = `${ARCTIC_FOLDER}/arctic.webp`;
+const LAKE_FOLDER = `${COLORED_FOLDER}/Water-Lake`;
+const LAKE_TILE = `${LAKE_FOLDER}/lake.webp`;
+const RIVER_FOLDER = `${COLORED_FOLDER}/Water-River`;
+const RIVER_TILE = `${RIVER_FOLDER}/river.webp`;
 const SPECIALS_FOLDER = "modules/shadowdark-extras/assets/Hexes/Specials";
 const MODULE_ID = "shadowdark-extras";
 // Invented fixture, no publisher content. The Enhancer's hexIdKey("1403")
@@ -50,8 +73,23 @@ test.beforeEach(() => {
 	game.user.id = "test-gm";
 	game.user.name = "Test GM";
 	game.modules = { get: () => ({ version: "hexcrawl-test" }) };
+	setActiveTileTab("default");
 	foundry.applications.apps.FilePicker.implementation = { async browse(_source, path) {
-		if (path.endsWith("/Hexes")) return { files: [], dirs: [SPECIALS_FOLDER] };
+		if (path === COLORED_FOLDER) return { files: [], dirs: [
+			VEGETATION_FOLDER, DESERT_FOLDER, MOUNTAINS_FOLDER, WATER_FOLDER,
+			ARCTIC_FOLDER, LAKE_FOLDER, RIVER_FOLDER, SPECIALS_FOLDER,
+		] };
+		if (path === VEGETATION_FOLDER) return { files: [
+			VEGETATION_HILL_TILE, VEGETATION_SPARSE_TILE, VEGETATION_TILE, VEGETATION_DENSE_TILE,
+		], dirs: [] };
+		if (path === DESERT_FOLDER) return { files: [DESERT_HILL_TILE, DESERT_PLAIN_TILE], dirs: [] };
+		if (path === MOUNTAINS_FOLDER) return { files: [
+			MOUNTAIN_ROCKY_TILE, MOUNTAIN_LUSH_TILE, MOUNTAIN_BRIDGE_TILE, MOUNTAIN_SPIKES_TILE,
+		], dirs: [] };
+		if (path === WATER_FOLDER) return { files: [WATER_TILE], dirs: [] };
+		if (path === ARCTIC_FOLDER) return { files: [ARCTIC_TILE], dirs: [] };
+		if (path === LAKE_FOLDER) return { files: [LAKE_TILE], dirs: [] };
+		if (path === RIVER_FOLDER) return { files: [RIVER_TILE], dirs: [] };
 		assert.equal(path, SPECIALS_FOLDER);
 		return { files: readdirSync(new URL("../../assets/Hexes/Specials/", import.meta.url))
 			.filter(name => name.endsWith(".webp")).map(name => `${path}/${name}`), dirs: [] };
@@ -125,6 +163,65 @@ test("published three-hex fixture builds tiles, records, reference and existing 
 	assert.equal(scene.tiles.length, 58, "upserts never rebuild tiles");
 });
 
+test("published builder follows the selected colored tile source and centers its footprint", async () => {
+	setActiveTileTab("colored");
+	await builder.buildPublishedHexcrawl({
+		grid: { cols: 1, rows: 2 }, terrain: { default: "forest" }, hexes: [],
+	}, { view: false });
+	const tiles = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted);
+	assert.ok(tiles.every(tile => [VEGETATION_TILE, VEGETATION_DENSE_TILE,
+		VEGETATION_SPARSE_TILE].includes(tile.texture.src)),
+	"forest terrain does not randomly select a hills tile from the same folder");
+	const [tile] = tiles;
+	assert.deepEqual([tile.width, tile.height], [572, 500]);
+	assert.deepEqual(
+		{ x: tile.x + tile.width / 2, y: tile.y + tile.height / 2 },
+		grid.getCenterPoint({ i: 0, j: 0 })
+	);
+});
+
+test("published colored water uses distinct ocean, arctic sea, lake and river palettes", async () => {
+	setActiveTileTab("colored");
+	await builder.buildPublishedHexcrawl({
+		grid: { cols: 4, rows: 1 },
+		terrain: { default: "ocean", regions: [
+			{ biome: "arctic sea", hexes: [101] },
+			{ biome: "lake", hexes: [201] },
+			{ biome: "river", hexes: [301] },
+		] },
+		hexes: [],
+	}, { view: false });
+	const tiles = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted);
+	assert.deepEqual(tiles.map(t => t.texture.src), [ARCTIC_TILE, LAKE_TILE, RIVER_TILE, WATER_TILE]);
+});
+
+test("published colored terrain uses exact legend pools", async () => {
+	setActiveTileTab("colored");
+	await builder.buildPublishedHexcrawl({
+		grid: { cols: 8, rows: 1 },
+		terrain: { default: "desert", regions: [
+			{ biome: "jungle", hexes: [101] },
+			{ biome: "canyon", hexes: [201] },
+			{ biome: "salt flat", hexes: [301] },
+			{ biome: "mountain", hexes: [401] },
+			{ biome: "deep tunnels", hexes: [501] },
+			{ biome: "volcano", hexes: [601] },
+			{ biome: "lava", hexes: [701] },
+		] },
+		hexes: [],
+	}, { view: false });
+	const paths = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted)
+		.map(t => t.texture.src);
+	assert.ok([VEGETATION_TILE, VEGETATION_DENSE_TILE].includes(paths[0]));
+	assert.equal(paths[1], DESERT_HILL_TILE);
+	assert.equal(paths[2], DESERT_PLAIN_TILE);
+	assert.ok([MOUNTAIN_ROCKY_TILE, MOUNTAIN_LUSH_TILE].includes(paths[3]));
+	assert.equal(paths[4], MOUNTAIN_ROCKY_TILE);
+	assert.match(paths[5], /\/Hex - Mountain[s]?, Volcano \(.+\) [12]\.webp$/);
+	assert.equal(paths[6], `${SPECIALS_FOLDER}/lava.webp`);
+	assert.ok([DESERT_HILL_TILE, DESERT_PLAIN_TILE].includes(paths[7]));
+});
+
 test("published transpose/flips persist for later num-only upserts; legacy root keeps its old layout", async () => {
 	for (const landscape of [false, true]) {
 		for (const flipX of [false, true]) {
@@ -146,7 +243,7 @@ test("published transpose/flips persist for later num-only upserts; legacy root 
 test("rejects malformed input before creating/deleting scenes or partially upserting", async () => {
 	for (const alter of [
 		d => { d.grid.cols = -1; }, d => { d.grid.rows = Infinity; }, d => { d.grid.flipX = "false"; },
-		d => { d.grid.origin = 2; }, d => { d.grid.rowsLowered = 1; },
+		d => { d.grid.origin = 2; }, d => { d.grid.firstRow = 3; }, d => { d.grid.rowsLowered = 1; },
 		d => { d.hexes[0].num = "1e3"; }, d => { d.hexes[0].num = " 1402"; }, d => { d.hexes[0].num = 1501; },
 		d => { d.hexes[0].row = 2; }, d => { d.hexes[0].num = 1403; },
 		d => { d.networks.river.push(9901); }, d => { d.networks.blockedEdges.river = [[1403, 101]]; },
@@ -167,14 +264,14 @@ test("rejects malformed input before creating/deleting scenes or partially upser
 	await assert.rejects(builder.upsertHexRecords(sceneId, [{ num: 1403 }]), /GM/);
 });
 
-test("all shipped specials are catalogued and assigned once to explicit locations, never random terrain", async () => {
+test("special catalogue stays exact, outside generic biome pools, and explicit locations win", async () => {
 	const catalog = await getSpecialTiles();
 	const shipped = readdirSync(new URL("../../assets/Hexes/Specials/", import.meta.url)).filter(name => name.endsWith(".webp"));
 	assert.equal(catalog.length, shipped.length);
 	assert.equal(new Set(catalog.map(t => t.id)).size, shipped.length);
 	assert.ok(catalog.every(t => t.tags.includes("specials") && t.path === t.id));
 	assert.ok(catalog.find(t => t.id.endsWith("/keep.webp")).tags.includes("keep"));
-	assert.equal(Object.values(getColoredTilesByBiome()).flat().length, 0, "specials are never random biome filler");
+	assert.equal(Object.values(getColoredTilesByBiome()).flat().some(path => path.startsWith(SPECIALS_FOLDER)), false, "specials are never random biome filler");
 	const id = `${SPECIALS_FOLDER}/keep.webp`;
 	const data = { grid: { cols: 14, rows: 4 }, hexes: [{ num: 1403, special: id }] };
 	const result = await builder.buildPublishedHexcrawl(data, { view: false });
@@ -228,6 +325,26 @@ test("rowsLowered stops the half-hex-shifted columns one row early", async () =>
 	assert.equal(oneBased.terrainTiles, 10, "origin 1 lowers the even published columns instead");
 });
 
+test("firstRow skips clipped cells at the top of raised columns without shifting valid numbers", async () => {
+	const data = {
+		grid: { cols: 3, rows: 3, origin: 0, firstRow: 1, rowsLowered: 2 },
+		hexes: [{ num: 1 }, { num: 100 }],
+	};
+	const { sceneId, terrainTiles } = await builder.buildPublishedHexcrawl(
+		data, { view: false });
+	assert.equal(terrainTiles, 6);
+	const records = world.lastFlagValue()[sceneId];
+	assert.equal(records["0_0"], undefined, "0000 is the clipped half-cell above the source map");
+	assert.equal(records["0_2"], undefined, "0200 is the other clipped raised-column cell");
+	assert.equal(records["1_0"].name, "1", "0001 stays at Foundry offset {i:1,j:0}");
+	assert.equal(records["0_1"].name, "100", "0100 stays at Foundry offset {i:0,j:1}");
+	assert.equal(scenes[0].getFlag(MODULE_ID, "hexcrawl").grid.firstRow, 1);
+	await assert.rejects(
+		builder.buildPublishedHexcrawl({ ...data, hexes: [{ num: 0 }] }),
+		/outside the published grid/
+	);
+});
+
 test("setup exposes the same guarded hex namespace on both surfaces and removes it when disabled", async () => {
 	const source = readFileSync(new URL("../../scripts/shadowdark-extras.mjs", import.meta.url), "utf8");
 	const setup = source.slice(source.indexOf('Hooks.on("setup", () => {'), source.indexOf('// PARTY TOKEN LIGHT SYNCHRONIZATION HOOKS'));
@@ -248,4 +365,66 @@ test("setup exposes the same guarded hex namespace on both surfaces and removes 
 			await assert.rejects(module.api.hex.openHexerImportDialog(), /requires GM permission/);
 		}
 	}
+});
+
+test("curated art paints an exact tile, may repeat, and never reaches the hex record", async () => {
+	setActiveTileTab("colored");
+	const result = await builder.buildPublishedHexcrawl({
+		name: "Curated",
+		grid: { cols: 4, rows: 1 },
+		terrain: { default: "desert" },
+		hexes: [
+			{ num: 101, name: "One", terrain: "desert", art: VEGETATION_TILE, icon: "icons/svg/castle.svg" },
+			{ num: 201, name: "Two", terrain: "desert", art: VEGETATION_TILE },
+			{ num: 301, name: "Three", terrain: "desert" },
+		],
+	}, { view: false });
+
+	const painted = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted);
+	const srcOf = num => painted.find(t => t.flags[MODULE_ID].hexNum === num)?.texture.src;
+	// Exact art wins over the terrain the hex also carries, and the SAME path
+	// is honoured on both hexes — a curated map reuses its art by design.
+	assert.equal(srcOf(101), VEGETATION_TILE);
+	assert.equal(srcOf(201), VEGETATION_TILE);
+	assert.notEqual(painted.find(t => !t.flags[MODULE_ID].hexNum).texture.src, VEGETATION_TILE, "a hex with no art is still painted from its terrain");
+	const [art] = painted.filter(t => t.texture.src === VEGETATION_TILE);
+	assert.deepEqual([art.width, art.height], [572, 500], "exact art uses the colored tile footprint");
+
+	// The icon overlay is unchanged and separate from the art underneath.
+	const icon = scenes[0].tiles.find(t => t.flags?.[MODULE_ID]?.hexcrawlFeature);
+	assert.equal(icon.texture.src, "icons/svg/castle.svg");
+	assert.equal(icon.flags[MODULE_ID].hexNum, 101);
+	assert.equal(result.featureTiles, 1);
+
+	// Nothing about painting survives into the persisted record.
+	const records = world.lastFlagValue()[result.sceneId];
+	for (const record of Object.values(records)) {
+		for (const key of ["art", "icon", "special"]) assert.ok(!(key in record), `${key} must not reach the hex record`);
+	}
+	assert.equal(records["0_1"].terrain, "desert");
+	assert.ok(scenes[0].tiles.every(t => !t.texture.src.includes("assets/tiles/")), "no legacy tiles folder is involved");
+});
+
+test("curated art does not depend on which tile source is selected", async () => {
+	// Art is the map author's decision; the tab only governs generic filler.
+	setActiveTileTab("default");
+	await builder.buildPublishedHexcrawl({
+		grid: { cols: 2, rows: 1 }, terrain: { default: "desert" },
+		hexes: [{ num: 101, art: VEGETATION_TILE }],
+	}, { view: false });
+	const painted = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted);
+	assert.equal(painted.find(t => t.flags[MODULE_ID].hexNum === 101).texture.src, VEGETATION_TILE);
+	assert.ok(painted.some(t => t.texture.src.includes("assets/tiles/")), "the default tab still fills with the legacy tiles");
+});
+
+test("art outside the shipped catalogue is refused before anything is written", async () => {
+	const data = { grid: { cols: 2, rows: 1 }, terrain: { default: "desert" }, hexes: [{ num: 101, art: VEGETATION_TILE }] };
+	await assert.rejects(builder.buildPublishedHexcrawl({ ...data, hexes: [{ num: 101, art: "https://example.invalid/tile.webp" }] }, { view: false }), /unknown art/);
+	await assert.rejects(builder.buildPublishedHexcrawl({ ...data, hexes: [{ num: 101, art: `${COLORED_FOLDER}/Vegetation/not-shipped.webp` }] }, { view: false }), /unknown art/);
+	assert.equal(scenes.length, 0, "bad art is rejected before any world writes");
+	// A URI-encoded path naming the same shipped tile is the same tile.
+	await builder.buildPublishedHexcrawl({ ...data, hexes: [{ num: 101, art: VEGETATION_SPARSE_TILE.replace(/ /g, "%20") }] }, { view: false });
+	assert.equal(scenes.length, 1);
+	// And art is not a record field: an upsert still refuses it.
+	await assert.rejects(builder.upsertHexRecords(scenes[0].id, [{ num: 101, art: VEGETATION_TILE }]), /unsupported hex field art/);
 });

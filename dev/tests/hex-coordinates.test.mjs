@@ -39,7 +39,16 @@ globalThis.foundry = {
 globalThis.Hooks = { on() {}, once() {}, off() {} };
 globalThis.canvas = null;
 
-const { formatHexCoord } = await import("../../scripts/hex/SDXCoordsSD.mjs");
+const { formatHexCoord, formatPublishedHexCoord } = await import(
+	"../../scripts/hex/SDXCoordsSD.mjs"
+);
+
+test("published labels use the generated map offset instead of the cropped zine column", () => {
+	assert.equal(formatPublishedHexCoord(
+		{ i: 26, j: 38 },
+		{ cols: 64, rows: 75, landscape: false, flipX: false, flipY: false, origin: 0 }
+	), "3826");
+});
 
 /**
  * Install a grid whose top-left scene corner sits at offset {i:0, j:0}, so a

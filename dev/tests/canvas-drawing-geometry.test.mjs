@@ -89,6 +89,19 @@ test("a river stroke draws dark banks beneath the blue channel", () => {
 	assert.equal(rec.count("lineTo"), 2);
 });
 
+test("a river can use a textured channel without losing its banks", () => {
+	const rec = g();
+	const texture = { id: "water" };
+	drawNetworkWithStyle(rec, [LINE], 12, 0x4C93CC, 1, "river", texture);
+
+	assert.equal(rec.count("lineStyle"), 1);
+	assert.deepEqual(rec.of("lineTextureStyle"), [["lineTextureStyle", {
+		width: 12, texture, color: 0x4C93CC, alpha: 1, matrix: null,
+		cap: "round", join: "round",
+	}]]);
+	assert.equal(rec.count("moveTo"), 2);
+});
+
 test("a network draws every bank before any channel and needs no junction patch", () => {
 	const rec = g();
 	drawNetworkWithStyle(rec, [

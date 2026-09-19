@@ -16,13 +16,13 @@ const COLORED_TILE_FOLDER = `modules/${MODULE_ID}/assets/Hexes`;
 const COLORED_HEX_TILE_W = 572;
 const COLORED_HEX_TILE_H = 500;
 const COLORED_TAG_ALIASES = [
-	["autumn", "autumn"], ["badland", "badlands"], ["bog", "bog"],
+	["arctic", "arctic"], ["autumn", "autumn"], ["badland", "badlands"], ["bog", "bog"],
 	["coast", "coast"], ["conifer", "conifer"], ["damp", "damp"],
 	["deciduous", "deciduous"], ["desert", "desert"], ["forest", "forest"],
 	["hill", "hills"], ["ice", "ice"], ["lush", "lush"], ["mixed", "mixed"],
-	["mountain", "mountains"], ["ocean", "ocean"], ["plain", "plains"],
+	["lake", "lake"], ["mountain", "mountains"], ["ocean", "ocean"], ["plain", "plains"],
 	["rocky", "rocky"], ["snow", "snow"], ["swamp", "swamp"],
-	["tree", "trees"], ["urban", "urban"], ["vegetation", "vegetation"],
+	["river", "river"], ["tree", "trees"], ["urban", "urban"], ["vegetation", "vegetation"],
 	["volcano", "volcano"], ["water", "water"], ["wave", "waves"],
 	["wetland", "wetlands"],
 ];
@@ -106,6 +106,9 @@ export function getColoredTilesByBiome() {
 
 	const byBiome = {
 		water: [],
+		"water-arctic": [],
+		"water-lake": [],
+		"water-river": [],
 		vegetation: [],  // Maps to forest/grassland
 		mountains: [],
 		desert: [],

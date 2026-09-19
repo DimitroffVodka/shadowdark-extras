@@ -165,7 +165,12 @@ export function drawNetworkWithStyle(
 			cap: "round", join: "round",
 		});
 		draw();
-		g.lineStyle({ width: sw, color, alpha, cap: "round", join: "round" });
+		if (texture && typeof g.lineTextureStyle === "function") {
+			g.lineTextureStyle({
+				width: sw, texture, color, alpha, matrix: textureMatrix, cap: "round", join: "round",
+			});
+		}
+		else g.lineStyle({ width: sw, color, alpha, cap: "round", join: "round" });
 		draw();
 	}
 }

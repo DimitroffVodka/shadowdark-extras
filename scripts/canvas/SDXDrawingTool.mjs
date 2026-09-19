@@ -571,7 +571,10 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 			catch{ /* solid road fallback */ }
 		};
 		// Rivers go down first so a shared Road + River edge reads as a bridge.
-		add(data.networkPaths?.river, "river", data.riverColor || "#2D9CDB");
+		add(
+			data.networkPaths?.river, "river", data.riverColor || "#2D9CDB",
+			data.riverTexturePath
+		);
 		add(data.networkPaths?.road, "road", data.roadColor || "#D8C6A8", data.texturePath);
 		return root;
 	}

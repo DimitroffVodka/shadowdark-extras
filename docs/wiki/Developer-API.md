@@ -165,6 +165,8 @@ const result = await hex.buildHexcrawl({
 
 `grid` and `hexes` are required; `hexes: []` builds terrain only. All other
 dataset fields are optional. `cols` and `rows` are integer counts from 1–99.
+`firstRow` is optional and is either `origin` or `origin + 1`. Use `origin + 1`
+when the printed frame clips the first half-cell from the raised columns.
 `rowsLowered` (optional, `rows` or `rows - 1`) is the row count of the columns
 Foundry shifts half a hex down: those columns end one row short on a print whose
 frame cuts the raised columns' first row in half, and the builder paints,
@@ -268,6 +270,37 @@ may occur once. Unknown specials or duplicate assignments fail before scene
 creation. Specials remain excluded from random biome selection; the importer
 or GM chooses their exact locations. `upsertHexRecords` does not move or replace
 special tiles. There is no new placement UI or automatic landmark allocation.
+
+### Curated tile art
+
+A hand-curated map decides which painted tile each hex gets, and that decision
+is not derivable from terrain. `hexes[].art` names the tile directly:
+
+```js
+const map = await hex.buildHexcrawl({
+  grid: { cols: 14, rows: 4 },
+  hexes: [
+    { num: 302, name: "Stone circle", terrain: "forest",
+      art: "modules/shadowdark-extras/assets/Hexes/Specials/stonecircle.webp",
+      icon: "modules/shadowdark-extras/assets/symbols/Symbols/Icon - Star.webp" },
+    { num: 907, name: "The second circle", terrain: "forest",
+      art: "modules/shadowdark-extras/assets/Hexes/Specials/stonecircle.webp" }
+  ]
+});
+```
+
+`art` is any tile in the colored catalogue (`getColoredTiles()`) — a terrain
+tile, a water tile or a Special — and it may be **reused on as many hexes as the
+curation says**, which is how it differs from `special`. It is painted at the
+same centred 572 × 500 footprint, it wins over `special` and over the terrain
+pools, and it is honoured whichever tile source is selected; generic filler
+still follows the selected source. Paths are compared with percent-encoding
+normalised, so an encoded path naming a shipped tile is that tile. Anything
+outside the catalogue — another module's asset, a remote URL, a file that has
+since been removed — is refused before the scene is created.
+
+`art` and `icon` describe painting only: like `special`, they are stripped
+before the hex record is written, and `upsertHexRecords` refuses them.
 
 ### Updating records
 

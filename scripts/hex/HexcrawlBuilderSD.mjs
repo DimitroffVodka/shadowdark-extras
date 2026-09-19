@@ -19,6 +19,7 @@
  *   grid: {
  *     cols: 17, rows: 11,            // published columns / rows, both start at 1
  *     origin: 1,                     // 0 when the map's own first column/row is 0
+ *     firstRow: 1,                   // optional; first row in the raised columns
  *     rowsLowered: 11,               // optional; row count of the half-hex-shifted columns
  *     distance: 2, units: "mi",
  *     landscape: false,             // true transposes the published axes
@@ -34,7 +35,8 @@
  *     { num: 102, name:"Shattered Tower", terrain:"Forest",
  *       icon:"assets/symbols/Details/Structures - Ruins (stone).webp",
  *       desc:"A crumbling keep …", zone:"The Gloaming",
- *       special: "modules/shadowdark-extras/assets/Hexes/Specials/keep.webp" },
+ *       special: "modules/shadowdark-extras/assets/Hexes/Specials/keep.webp",
+ *       art: "modules/shadowdark-extras/assets/Hexes/Vegetation/Hex - Forest.webp" },
  *     …
  *   ],
  *   networks: { river: [1402,1403], road: [1403,1404],
@@ -54,18 +56,16 @@
 import { saveHexRecord, setHexTerrainBatch, mergeHexRecords } from "./HexTooltipSD.mjs";
 import { buildMapPathNetwork, mapPathEdgeKey } from "../canvas/drawing-geometry.mjs";
 import { getSpecialTiles } from "./hex-special-tiles.mjs";
-import { getColoredTileDimensions } from "./hex-colored-tiles.mjs";
+import { getColoredTileDimensions, getColoredTiles, getColoredTilesByBiome, loadColoredTileAssets } from "./hex-colored-tiles.mjs";
+import { getActiveTileTab } from "./hex-tile-selection.mjs";
 import { importHexerMap, openHexerImportDialog } from "./HexerImporterSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
 // Hex grid cell geometry — grid.size = HEX_TILE_H so cells are 295.6 × 256.
 const HEX_TILE_H = 256;
-// Terrain biome tiles use SDX's DEFAULT hex tileset (assets/tiles/hex-tile-*.png),
-// which is authored to tessellate edge-to-edge at the base 296×256 cell size —
-// the exact set + size HexGeneratorSD paints with, so no gaps and a proven render
-// path. (The themed "colored" set under assets/Hexes/ needs different handling and
-// is not used here.)
+// Default terrain tiles tessellate at the base 296×256 cell size. Published
+// builds also follow the Hex Painter's Colored tab and reuse its larger footprint.
 const TERRAIN_TILE_W = 296;
 const TERRAIN_TILE_H = 256;
 // Column horizontal pitch for HEXODDQ is 0.75 × cell-width; cell-width ≈ H·2/√3.
@@ -76,10 +76,13 @@ const HEX_CELL_W = HEX_TILE_H * 2 / Math.sqrt(3); // ≈ 295.6
 const BIOME_TILES = {
 	desert: {
 		terrain: "Desert",
+		colored: "desert",
 		paths: ["assets/tiles/hex-tile-desert1.webp", "assets/tiles/hex-tile-desert2.webp", "assets/tiles/hex-tile-desert3.webp"],
 	},
 	forest: {
 		terrain: "Forest",
+		colored: "vegetation",
+		coloredIncludes: ["forest", "trees"],
 		paths: [
 			"assets/tiles/hex-tile-evergreen1.webp",
 			"assets/tiles/hex-tile-evergreen2.webp",
@@ -91,6 +94,8 @@ const BIOME_TILES = {
 	},
 	plains: {
 		terrain: "Plains",
+		colored: "vegetation",
+		coloredIncludes: ["plains"],
 		paths: [
 			"assets/tiles/hex-tile-grassland1.webp",
 			"assets/tiles/hex-tile-grassland2.webp",
@@ -99,6 +104,8 @@ const BIOME_TILES = {
 	},
 	hills: {
 		terrain: "Hills",
+		colored: "vegetation",
+		coloredIncludes: ["hills"],
 		paths: [
 			"assets/tiles/hex-tile-hills1.webp",
 			"assets/tiles/hex-tile-hills2.webp",
@@ -108,6 +115,7 @@ const BIOME_TILES = {
 	water: {
 		terrain: "Water",
 		isWater: true,
+		colored: "water",
 		paths: [
 			"assets/tiles/ocean.webp",
 			"assets/tiles/ocean2.webp",
@@ -116,6 +124,7 @@ const BIOME_TILES = {
 	},
 	swamp: {
 		terrain: "Swamp",
+		colored: "swamp",
 		paths: [
 			"assets/tiles/hex-tile-swamp1.webp",
 			"assets/tiles/hex-tile-swamp2.webp",
@@ -124,6 +133,7 @@ const BIOME_TILES = {
 	},
 	mountains: {
 		terrain: "Mountains",
+		colored: "mountains",
 		paths: [
 			"assets/tiles/hex-tile-mountains1.webp",
 			"assets/tiles/hex-tile-mountains2.webp",
@@ -139,6 +149,18 @@ const TERRAIN_BIOMES = {
 	"arctic sea": "water", "canyon": "hills", "coast": "water", "deep tunnels": "mountains",
 	"grassland": "plains", "jungle": "forest", "lake": "water", "lava": "mountains",
 	"mountain": "mountains", "ocean": "water", "river": "water", "path": "plains", "salt flat": "desert",
+};
+const TERRAIN_COLORED_RULES = {
+	"arctic sea": { pool: "water-arctic" },
+	canyon: { pool: "desert", include: ["hills"] },
+	"deep tunnels": { pool: "mountains", include: ["rocky"] },
+	jungle: { pool: "vegetation", include: ["forest", "/trees2.webp"] },
+	lake: { pool: "water-lake" },
+	lava: { pool: "specials", include: ["/lava.webp"] },
+	mountain: { pool: "mountains", exclude: ["bridge", "mountains spikes"] },
+	river: { pool: "water-river" },
+	"salt flat": { pool: "desert", include: ["plains"] },
+	volcano: { pool: "specials", include: ["volcano"] },
 };
 const biomeFor = label => {
 	const key = label.toLowerCase().trim();
@@ -162,6 +184,7 @@ function makeGeom(dataset, published = false) {
 	const pubCols = dataset.grid?.cols ?? 11;
 	const pubRows = dataset.grid?.rows ?? 17;
 	const origin = published ? (dataset.grid?.origin ?? 1) : 1;
+	const firstRow = published ? (dataset.grid?.firstRow ?? origin) : origin;
 	const rowsLowered = published ? (dataset.grid?.rowsLowered ?? pubRows) : pubRows;
 	const landscape = !!dataset.grid?.landscape;
 	const flipX = !!dataset.grid?.flipX;
@@ -190,10 +213,10 @@ function makeGeom(dataset, published = false) {
 	// last row. Which published column that is depends on origin and flips, so ask
 	// the mapping for the physical column instead of assuming a parity.
 	const inGrid = (col, row) => col >= origin && col < pubCols + origin
-		&& row >= origin && row < pubRows + origin
+		&& row >= (offsetOf(col, row).j % 2 === 1 ? origin : firstRow) && row < pubRows + origin
 		&& !(row >= rowsLowered + origin && offsetOf(col, row).j % 2 === 1);
 
-	return { pubCols, pubRows, gridCols, gridRows, origin, rowsLowered,
+	return { pubCols, pubRows, gridCols, gridRows, origin, firstRow, rowsLowered,
 		offsetOf, inGrid, published };
 }
 
@@ -203,6 +226,14 @@ const variety = (i, j, len) => (len ? (Math.abs(i * 31 + j * 17) % len) : 0);
 const RECORD_STRINGS = ["name", "zone", "terrain", "travel", "revealCells", "rollTable", "desc"];
 const RECORD_BOOLEANS = ["cleared", "claimed", "rollTableFirstOnly", "showToPlayers"];
 const RECORD_FIELDS = [...RECORD_STRINGS, ...RECORD_BOOLEANS, "exploration", "revealRadius", "rollTableChance", "features", "notes"];
+/**
+ * Fields a build accepts and a record never keeps: they say how a hex is
+ * PAINTED, not what it is. `special` names one of the Specials tiles and may be
+ * used once; `art` names any tile in the colored catalogue and may be reused
+ * across as many hexes as the map's own curation says, which is the whole point
+ * of it — a hand-curated map paints the same forest tile in fifty places.
+ */
+const BUILD_ONLY_FIELDS = ["icon", "special", "art"];
 
 function requireInput(condition, message) {
 	if (!condition) throw new Error(`SDX | Hexcrawl: ${message}`);
@@ -225,9 +256,9 @@ function validateRecords(records, geom, building = false) {
 		requireInput(!seen.has(num), `duplicate hex ${hex.num}`);
 		seen.add(num);
 		for (const key of Object.keys(hex)) {
-			requireInput(key === "num" || RECORD_FIELDS.includes(key) || (building && ["icon", "special"].includes(key)), `unsupported hex field ${key}; identify cells by num only`);
+			requireInput(key === "num" || RECORD_FIELDS.includes(key) || (building && BUILD_ONLY_FIELDS.includes(key)), `unsupported hex field ${key}; identify cells by num only`);
 		}
-		for (const key of [...RECORD_STRINGS, ...(building ? ["icon", "special"] : [])]) {
+		for (const key of [...RECORD_STRINGS, ...(building ? BUILD_ONLY_FIELDS : [])]) {
 			if (Object.hasOwn(hex, key)) requireInput(typeof hex[key] === "string", `${key} must be text`);
 		}
 		for (const key of RECORD_BOOLEANS) {
@@ -254,6 +285,8 @@ function validateDataset(dataset, opts) {
 	const grid = dataset.grid;
 	requireInput(grid && [grid.cols, grid.rows].every(n => Number.isInteger(n) && n >= 1 && n <= 99), "grid cols/rows must be integers from 1 to 99");
 	requireInput(grid.origin === undefined || grid.origin === 0 || grid.origin === 1, "grid.origin must be 0 or 1");
+	const origin = grid.origin ?? 1;
+	requireInput(grid.firstRow === undefined || [origin, origin + 1].includes(grid.firstRow), "grid.firstRow must be origin or origin+1");
 	const rowsLowered = grid.rowsLowered;
 	requireInput(rowsLowered === undefined || (Number.isInteger(rowsLowered)
 		&& [grid.rows, grid.rows - 1].includes(rowsLowered)), "grid.rowsLowered must be rows or rows-1");
@@ -344,6 +377,7 @@ async function createHexScene(dataset, geom, { sceneName }) {
 						landscape: !!dataset.grid.landscape,
 						flipX: !!dataset.grid.flipX, flipY: !!dataset.grid.flipY,
 						...(geom.origin === 1 ? {} : { origin: geom.origin }),
+						...(geom.firstRow === geom.origin ? {} : { firstRow: geom.firstRow }),
 						...(geom.rowsLowered === geom.pubRows ? {} : { rowsLowered: geom.rowsLowered }),
 					} } : {}),
 				},
@@ -381,8 +415,18 @@ async function paintTerrain(scene, dataset, geom, specials) {
 		.filter(hex => hex.terrain).map(hex => [Number(hex.num), hex.terrain]));
 	const specialHexes = new Map((dataset.hexes ?? [])
 		.filter(hex => hex.special).map(hex => [Number(hex.num), specials.get(hex.special)]));
+	// Curated art: an exact tile the map's author chose for that hex. It is the
+	// author's decision, so it outranks everything the builder would work out for
+	// itself, and it is honoured whichever tile tab happens to be open.
+	const artHexes = new Map((dataset.hexes ?? [])
+		.filter(hex => hex.art).map(hex => [Number(hex.num), hex.art]));
 	const tw = dataset.terrainTile?.w ?? TERRAIN_TILE_W;
 	const th = dataset.terrainTile?.h ?? TERRAIN_TILE_H;
+	let coloredByBiome = null;
+	if (geom.published && getActiveTileTab() === "colored") {
+		if (!getColoredTiles().length) await loadColoredTileAssets();
+		coloredByBiome = getColoredTilesByBiome();
+	}
 
 	const tileData = [];
 	const terrainMap = {}; // hexKey -> terrain label
@@ -400,8 +444,24 @@ async function paintTerrain(scene, dataset, geom, specials) {
 			const off = geom.offsetOf(cell.col, cell.row);
 			const center = scene.grid.getCenterPoint(off);
 			const special = specialHexes.get(num);
-			const src = special?.path ?? prefix(biome.paths[variety(off.i, off.j, biome.paths.length)]);
-			const { width, height } = special
+			const art = artHexes.get(num);
+			const coloredRule = TERRAIN_COLORED_RULES[String(biomeKey).trim().toLowerCase()];
+			let colored = [];
+			if (coloredByBiome) {
+				const candidates = coloredRule?.pool === "specials"
+					? getColoredTiles().filter(tile => tile.biome === "specials").map(tile => tile.path)
+					: (coloredByBiome[coloredRule?.pool ?? biome.colored] ?? []);
+				const includes = coloredRule?.include ?? biome.coloredIncludes;
+				colored = candidates.filter(path => {
+					const text = decodeURIComponent(path).toLowerCase();
+					return (!includes || includes.some(part => text.includes(part)))
+						&& !coloredRule?.exclude?.some(part => text.includes(part));
+				});
+			}
+			const coloredSrc = colored[variety(off.i, off.j, colored.length)];
+			const src = art ?? special?.path ?? coloredSrc
+				?? prefix(biome.paths[variety(off.i, off.j, biome.paths.length)]);
+			const { width, height } = art || special || coloredSrc
 				? getColoredTileDimensions(HEX_TILE_H) : { width: tw, height: th };
 
 			tileData.push({
@@ -413,7 +473,7 @@ async function paintTerrain(scene, dataset, geom, specials) {
 				sort: Math.floor(center.y),
 				flags: { [MODULE_ID]: {
 					painted: true, biome: biome.isWater ? "water" : undefined,
-					...(special ? { hexNum: num } : {}),
+					...(art || special ? { hexNum: num } : {}),
 				} },
 			});
 			terrainMap[offsetToHexKey(off)] = geom.published ? biomeKey : biome.terrain;
@@ -475,7 +535,7 @@ function buildRecord(hex, dataset) {
 
 async function writeHexRecords(scene, dataset, geom, specials) {
 	if (geom.published) {
-		const records = dataset.hexes.map(({ icon: _icon, special, ...hex }) => ({
+		const records = dataset.hexes.map(({ icon: _icon, art: _art, special, ...hex }) => ({
 			name: specials.get(special)?.label ?? "", zone: dataset.name ?? "", ...hex,
 		}));
 		return (await upsertHexRecords(scene.id, records)).records;
@@ -487,6 +547,34 @@ async function writeHexRecords(scene, dataset, geom, specials) {
 		count++;
 	}
 	return count;
+}
+
+/**
+ * Curated art must name a tile SDX actually ships. Anything else — a path into
+ * another module, a remote URL, a file that used to be there — would paint a
+ * broken texture on someone else's install, and the dataset comes from outside.
+ * Repeats are fine and expected; only membership is checked.
+ */
+export function coloredTileKey(path) {
+	let text = String(path ?? "");
+	try {
+		text = decodeURIComponent(text);
+	}
+	catch(_err) {
+		// Already decoded, or not valid percent-encoding; compare it as it is.
+	}
+	return text.replace(/^modules\/[^/]+\//, "").toLowerCase();
+}
+
+async function validateArt(dataset) {
+	const assigned = (dataset.hexes ?? []).filter(hex => Object.hasOwn(hex, "art"));
+	if (!assigned.length) return;
+	if (!getColoredTiles().length) await loadColoredTileAssets();
+	const catalogue = new Set(getColoredTiles().map(tile => coloredTileKey(tile.path)));
+	requireInput(catalogue.size, "no tile catalogue loaded; cannot check hex art");
+	for (const hex of assigned) {
+		requireInput(catalogue.has(coloredTileKey(hex.art)), `unknown art ${hex.art} on hex ${hex.num}; use a tile from getColoredTiles()`);
+	}
 }
 
 // ── public entry point ──────────────────────────────────────────────────────
@@ -515,6 +603,7 @@ export async function buildPublishedHexcrawl(dataset, opts = {}) {
 		requireInput(!used.has(hex.special), `special ${hex.special} is assigned more than once`);
 		used.add(hex.special);
 	}
+	await validateArt(dataset);
 	return buildScene(dataset, opts, makeGeom(dataset, true), specials);
 }
 
