@@ -55,7 +55,8 @@ a session actually calls for it.
 | Page | What it covers |
 |---|---|
 | [Map Generators](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Map-Generators) | Realm, city, village, cave/glade, dungeon, and dwelling generators with Foundry scene import |
-| [Hexcrawls & Dungeons](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Hexcrawls-and-Dungeons) | Hex formatting and painting, procedural terrain, POIs, fog, coordinates, dungeon painting, biomes, decor, and multi-level tools |
+| [Hexcrawls & Dungeons](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Hexcrawls-and-Dungeons) | Hex formatting and painting, procedural terrain, POIs, coordinates, dungeon painting, biomes, decor, and multi-level tools |
+| [Hexplorer](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Hexplorer) | Per-hex records, player discovery, generated wilderness and dungeons, Hex Fog controls, and solo exploration |
 | [Journal Tools & Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Tools-and-Pins) | Multi-page character notes, placeable notes, journal pins and folders, map-note conversion, and narration — see [Journal Pins](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Journal-Pins) ([live demo](https://dimitroffvodka.github.io/shadowdark-extras/docs/demo/journal-pins.html)) |
 | [Easy Reference](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Easy-Reference) | ProseMirror inserts for NPC cards, item cards, roll tables, checks, and dice |
 

@@ -62,70 +62,16 @@ repaint individual tiles later.
 
 ---
 
-## Hexplorer and keyed hex data
+## Hexplorer and hex exploration
 
-Enable **Hex Tooltip / Hexplorer** on a hexagonal scene. The Edit Hex dialog
-gives you two tabs.
+[**Hexplorer**](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Hexplorer)
+holds each cell's name, terrain, travel, notes, keyed locations, discovery, and
+exploration state. It also covers player visibility, Hex Fog exceptions,
+RollTables, generated wilderness and settlements, text dungeons, and playable
+dungeon maps with room-matched pins.
 
-### Details
-
-| Field | Purpose |
-|---|---|
-| Show to Players | Whole-record visibility |
-| Image | Hex illustration |
-| Hex Name / Zone / Zone Color | Region identity |
-| Terrain / Travel | Table-facing movement description |
-| Notes | Individual text rows with player visibility |
-| Features | Keyed locations with discovered state |
-
-### Exploration
-
-| Field | Purpose |
-|---|---|
-| Status | Unexplored/exploration progress |
-| Cleared / Claimed | Campaign state |
-| Reveal Radius | `-1` world default, `0` current cell, `1+` rings |
-| Reveal Cells | Extra comma-separated grid offsets; Alt-click can add |
-| RollTable UUID | Table rolled on entry/travel |
-| Chance | 1–100%; blank/default is always |
-| First Time Only | Prevent repeat entry rolls |
-
-Hex records belong to their scene and live in SDX's internal hex-data Journal.
-Leave that Journal alone.
-
-## Procedural hex content
-
-Hex context tools generate three things. Settlements arrive complete with named
-NPCs, shops, taverns, factions, relations, quests, and a Watabou map link plus
-configuration. The other two are text-only keyed dungeons and playable dungeon
-Scenes.
-
-Whatever you generate creates or updates Journal pages, adds a feature to the
-hex record, and registers the content so quests can cross-reference it.
-
-### Playable hex dungeon
-
-The playable flow asks for a dungeon type and size, then:
-
-1. Creates and views a new square-grid Scene.
-2. Runs the procedural dungeon geometry.
-3. Generates narrative rooms from the actual placed-room graph.
-4. Creates an Overview plus one Journal page per room.
-5. Places numbered SDX pins linked to those room pages.
-6. Records the Scene and Journal back on the source hex.
-7. Returns the GM to whichever Scene they were viewing before.
-
-Room text and map geometry come out of that with matching room counts and
-adjacency.
-
-## Hex Fog
-
-The fog tool hides and reveals exploration cells. Movement reveals one ring by
-default. Per-hex records can override that radius and name additional cells.
-
-Right-click the Hex Fog tool to pick optional shaders. **Enable Fog Effects** is
-off by default, and leaving the shaders off on low-power clients still gives you
-the underlying reveal system.
+Hex Fog and Solo Hex Mode are separate tray features that read these records.
+The Hexplorer page has the full GM workflow and the player-visibility rules.
 
 ## Coordinates
 
