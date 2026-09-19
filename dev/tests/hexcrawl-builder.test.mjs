@@ -414,7 +414,16 @@ test("curated art does not depend on which tile source is selected", async () =>
 	}, { view: false });
 	const painted = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted);
 	assert.equal(painted.find(t => t.flags[MODULE_ID].hexNum === 101).texture.src, VEGETATION_TILE);
-	assert.ok(painted.some(t => t.texture.src.includes("assets/tiles/")), "the default tab still fills with the legacy tiles");
+	// …and the filler around it follows the art rather than the tab: a curated
+	// map should not come out as hand-picked tiles marooned in the legacy set.
+	assert.ok(painted.every(t => !t.texture.src.includes("assets/tiles/")), "curated art pulls colored filler in with it");
+
+	// With no art in the dataset the tab still decides.
+	scenes.length = 0;
+	await builder.buildPublishedHexcrawl({
+		grid: { cols: 2, rows: 1 }, terrain: { default: "desert" }, hexes: [],
+	}, { view: false });
+	assert.ok(scenes[0].tiles.some(t => t.texture.src.includes("assets/tiles/")), "the default tab still fills with the legacy tiles");
 });
 
 test("art outside the shipped catalogue is refused before anything is written", async () => {

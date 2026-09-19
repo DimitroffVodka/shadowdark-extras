@@ -423,7 +423,11 @@ async function paintTerrain(scene, dataset, geom, specials) {
 	const tw = dataset.terrainTile?.w ?? TERRAIN_TILE_W;
 	const th = dataset.terrainTile?.h ?? TERRAIN_TILE_H;
 	let coloredByBiome = null;
-	if (geom.published && getActiveTileTab() === "colored") {
+	// A dataset that brings curated colored art gets colored filler around it,
+	// whichever tab is open. Otherwise a curated map comes out as 270 hand-picked
+	// tiles marooned in four thousand from the legacy flat set, which is how the
+	// first real build of one looked.
+	if (geom.published && (getActiveTileTab() === "colored" || artHexes.size)) {
 		if (!getColoredTiles().length) await loadColoredTileAssets();
 		coloredByBiome = getColoredTilesByBiome();
 	}
