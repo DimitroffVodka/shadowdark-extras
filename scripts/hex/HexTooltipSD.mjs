@@ -23,7 +23,7 @@ const EXPLORATION_OPTIONS = [
 	{ value: "mapped", label: "Mapped" },
 ];
 
-const ZONE_COLORS = [
+export const ZONE_COLORS = [
 	{ value: "", label: "Default", hex: "#00cc44" },
 	{ value: "#e74c3c", label: "Red", hex: "#e74c3c" },
 	{ value: "#e67e22", label: "Orange", hex: "#e67e22" },

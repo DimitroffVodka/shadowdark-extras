@@ -53,7 +53,7 @@
  * ════════════════════════════════════════════════════════════════════════════
  */
 
-import { saveHexRecord, setHexTerrainBatch, mergeHexRecords } from "./HexTooltipSD.mjs";
+import { saveHexRecord, setHexTerrainBatch, mergeHexRecords, ZONE_COLORS } from "./HexTooltipSD.mjs";
 import { buildMapPathNetwork, mapPathEdgeKey } from "../canvas/drawing-geometry.mjs";
 import { getSpecialTiles } from "./hex-special-tiles.mjs";
 import { getColoredTileDimensions, getColoredTiles, getColoredTilesByBiome, loadColoredTileAssets } from "./hex-colored-tiles.mjs";
@@ -223,7 +223,7 @@ function makeGeom(dataset, published = false) {
 const offsetToHexKey = off => `${off.i}_${off.j}`;
 const variety = (i, j, len) => (len ? (Math.abs(i * 31 + j * 17) % len) : 0);
 
-const RECORD_STRINGS = ["name", "zone", "terrain", "travel", "revealCells", "rollTable", "desc"];
+const RECORD_STRINGS = ["name", "zone", "zoneColor", "terrain", "travel", "revealCells", "rollTable", "desc"];
 const RECORD_BOOLEANS = ["cleared", "claimed", "rollTableFirstOnly", "showToPlayers"];
 const RECORD_FIELDS = [...RECORD_STRINGS, ...RECORD_BOOLEANS, "exploration", "revealRadius", "rollTableChance", "features", "notes"];
 /**
@@ -267,6 +267,11 @@ function validateRecords(records, geom, building = false) {
 		if (Object.hasOwn(hex, "exploration")) requireInput(["unexplored", "explored", "mapped"].includes(hex.exploration), "invalid exploration state");
 		if (Object.hasOwn(hex, "revealRadius")) requireInput(Number.isInteger(hex.revealRadius) && hex.revealRadius >= -1, "invalid revealRadius");
 		if (Object.hasOwn(hex, "rollTableChance")) requireInput(Number.isFinite(hex.rollTableChance) && hex.rollTableChance >= 0 && hex.rollTableChance <= 100, "invalid rollTableChance");
+		// A type check is not enough: the swatch picker used to be the only writer,
+		// so nothing downstream guards the value. HexTooltipSD's show-all-zones loop
+		// calls Color.from(record.zoneColor) with no try/catch, and one unparseable
+		// colour throws out of the loop and takes the whole scene's overlay with it.
+		if (Object.hasOwn(hex, "zoneColor")) requireInput(/^(#[0-9a-f]{6})?$/i.test(hex.zoneColor), "zoneColor must be empty or #rrggbb");
 		for (const key of ["features", "notes"]) {
 			if (!Object.hasOwn(hex, key)) continue;
 			requireInput(Array.isArray(hex[key]), `${key} must be an array`);
@@ -593,6 +598,11 @@ export function installHexcrawlApi(api, namespace, wrap) {
 		buildHexcrawl: buildPublishedHexcrawl, upsertHexRecords, getSpecialTiles,
 		importHexerMap, openHexerImportDialog,
 	}).map(([name, fn]) => [name, wrap(`hex.${name}`, fn)]));
+	// Deliberately outside the wrap above: it reads a constant, so gmOnly would
+	// hide the palette from a player-side overlay and audited would write a log
+	// line every time someone asked what colours exist. Copied per call so a
+	// consumer cannot reach in and restyle the editor's own swatches.
+	api.hex.getZoneColors = () => ZONE_COLORS.map(colour => ({ ...colour }));
 }
 
 /** Stable api.hex entry point. Root buildHexcrawl remains the legacy adapter. */

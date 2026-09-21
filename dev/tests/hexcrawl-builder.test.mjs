@@ -154,7 +154,17 @@ test("published three-hex fixture builds tiles, records, reference and existing 
 	await builder.upsertHexRecords(scene.id, [{ num: 1403, travel: "slow", exploration: "mapped", notes: [{ id: "gm", text: "Keep me", visible: false }] }]);
 	await builder.upsertHexRecords(scene.id, [{ num: 1403, desc: "Revised cellar." }, { num: 101, terrain: "unlisted terrain" }]);
 	await builder.upsertHexRecords(scene.id, [{ num: 1403, desc: "Revised cellar." }]);
+	await builder.upsertHexRecords(scene.id, [{ num: 1403, zoneColor: "#1e7e34" }, { num: 101, zoneColor: "" }]);
+	// Not paranoia: HexTooltipSD draws the show-all-zones overlay by calling
+	// Color.from on every record in a loop with no try/catch, so an unparseable
+	// colour from an API caller takes out the whole scene's overlay.
+	for (const bad of ["green", "#1e7e3", "#1e7e34ff", "1e7e34"]) {
+		await assert.rejects(builder.upsertHexRecords(scene.id, [{ num: 1403, zoneColor: bad }]),
+			/zoneColor must be empty or #rrggbb/, `rejects ${bad}`);
+	}
 	const updated = world.lastFlagValue()[scene.id];
+	assert.equal(updated["2_13"].zoneColor, "#1e7e34", "a rejected upsert leaves the good colour standing");
+	assert.equal(updated["0_0"].zoneColor, "");
 	assert.equal(updated["2_13"].terrain, "deep tunnels");
 	assert.equal(updated["2_13"].travel, "slow");
 	assert.equal(updated["2_13"].exploration, "mapped");
@@ -356,13 +366,19 @@ test("setup exposes the same guarded hex namespace on both surfaces and removes 
 		assert.equal(typeof module.api.hex, enabled ? "object" : "undefined");
 		assert.equal(context.game.shadowdarkExtras?.hex, module.api.hex);
 		if (enabled) {
-			assert.deepEqual(Object.keys(module.api.hex).sort(), ["buildHexcrawl", "getSpecialTiles", "importHexerMap", "openHexerImportDialog", "upsertHexRecords"]);
+			assert.deepEqual(Object.keys(module.api.hex).sort(), ["buildHexcrawl", "getSpecialTiles", "getZoneColors", "importHexerMap", "openHexerImportDialog", "upsertHexRecords"]);
 			context.game.user.isGM = false;
 			await assert.rejects(module.api.hex.buildHexcrawl(fixture), /requires GM permission/);
 			await assert.rejects(module.api.hex.upsertHexRecords("scene", []), /requires GM permission/);
 			await assert.rejects(module.api.hex.getSpecialTiles(), /requires GM permission/);
 			await assert.rejects(module.api.hex.importHexerMap({}), /requires GM permission/);
 			await assert.rejects(module.api.hex.openHexerImportDialog(), /requires GM permission/);
+			// The palette is the one entry deliberately outside the GM wrap: a
+			// player-side overlay has to be able to ask what the colours are.
+			const palette = module.api.hex.getZoneColors();
+			assert.ok(palette.some(colour => colour.value === "#1e7e34" && colour.label === "Forest"));
+			palette[0].label = "mutated";
+			assert.notEqual(module.api.hex.getZoneColors()[0].label, "mutated", "callers get a copy, not the editor's own swatches");
 		}
 	}
 });
