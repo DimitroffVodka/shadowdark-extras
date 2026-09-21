@@ -21,9 +21,9 @@ import {
 	getActiveDurationSpells,
 	registerSpellModification,
 	endDurationSpell,
+	handleDurationEffectUpdate,
 	handleDurationSpellCombatUpdate,
 	handleDurationSpellWorldTimeUpdate,
-	handleDurationEffectUpdate,
 	linkEffectToDurationSpell,
 	addTargetToDurationSpell,
 	removeTargetFromDurationSpell,
@@ -91,6 +91,9 @@ export function initFocusSpellTracker() {
 	// Hook into effect deletion to clean up tracking
 	Hooks.on("deleteItem", handleEffectDeleted);
 
+	// Foundry v14 owns linked duration expiry; SDX owns the parent-item cleanup.
+	Hooks.on("updateActiveEffect", handleDurationEffectUpdate);
+
 	// Hook into token deletion to clean up focus tracking
 	Hooks.on("deleteToken", handleTokenDeleted);
 
@@ -105,8 +108,6 @@ export function initFocusSpellTracker() {
 
 	// Hook into combat updates to process duration spells (per-turn damage, expiry)
 	Hooks.on("updateCombat", handleDurationSpellCombatUpdate);
-	// Foundry owns expiry; SDX owns deleting the linked Effect item and spell cleanup.
-	Hooks.on("updateActiveEffect", handleDurationEffectUpdate);
 
 	// Delegated click handler for focus roll ("Roll to maintain focus") buttons in chat.
 	// Delegation (vs. binding per-message inside renderChatMessageHTML) is required: a

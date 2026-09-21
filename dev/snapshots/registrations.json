@@ -4,10 +4,10 @@
     "Hooks.once": 33,
     "Hooks.on": 236,
     "Hooks.off": 8,
-    "socket.register": 52,
+    "socket.register": 53,
     "libWrapper.register": 3,
     "socketlib.registerModule": 3,
-    "all": 335
+    "all": 336
   },
   "modules": {
     "AnimationEffectDedupSD.mjs": [
@@ -55,12 +55,12 @@
       "Hooks.on:renderChatMessageHTML",
       "Hooks.on:createItem",
       "Hooks.on:deleteItem",
+      "Hooks.on:updateActiveEffect",
       "Hooks.on:deleteToken",
       "Hooks.on:renderPlayerSheetSD",
       "Hooks.on:renderPlayerSheetSD",
       "Hooks.on:updateCombat",
       "Hooks.on:updateCombat",
-      "Hooks.on:updateActiveEffect",
       "Hooks.on:renderChatMessageHTML",
       "Hooks.on:renderPlayerSheetSD",
       "Hooks.on:updateWorldTime"
@@ -337,6 +337,7 @@
       "socket.register:markBreakOnDamage",
       "socket.register:applyEffectToTarget",
       "socket.register:endFocusSpell",
+      "socket.register:durationSpellOperation",
       "socket.register:applyAuraEffectViaGM",
       "socket.register:removeAuraEffectViaGM",
       "socket.register:applyAuraConditionsViaGM",

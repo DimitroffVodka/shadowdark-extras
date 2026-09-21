@@ -33,124 +33,157 @@ globalThis.Portal = class {};
 globalThis.CONFIG = { time: { roundTime: 6 } };   // Foundry's default: 6s per round
 
 const {
-	buildActiveEffectTiming, buildDurationExpiry, isDurationExpired, partitionExpiredDurations,
-	convertRoundExpiryToWorldTime, describeDurationRemaining, getLinkedDurationEffect,
-	hasLinkedDurationClock,
+	applyEffectItemTiming, buildActiveEffectTiming, buildDurationExpiry, getDurationSpellActiveEffect, isDurationExpired, partitionExpiredDurations, convertRoundExpiryToWorldTime,
+	describeDurationRemaining, getDurationSpellCastTiming,
 } = await import("../../scripts/shared/duration-basis.mjs");
 
-// ── Foundry v14 Active Effect timing ───────────────────────────────────────
-
-test("legacy round overrides become one explicit v14 combat clock", () => {
-	const combat = {
-		started: true,
-		id: "combat-1",
-		round: 3,
-		turn: 1,
-		combatant: { id: "combatant-1", initiative: 17 },
-	};
-	assert.deepEqual(
-		buildActiveEffectTiming({ rounds: 2 }, {}, { combat, worldTime: 1000 }),
-		{
-			duration: { value: 2, units: "rounds", expiry: "turnStart", expired: false },
-			start: {
-				time: 1000,
-				combat: "combat-1",
-				combatant: "combatant-1",
-				initiative: 17,
-				round: 3,
-				turn: 1,
-			},
-		}
-	);
-});
-
-test("round effects created outside combat use seconds because Shadowdark roundTime is zero", () => {
-	globalThis.CONFIG.time.roundTime = 0;
-	assert.deepEqual(
-		buildActiveEffectTiming({ rounds: 2 }, {}, { combat: null, worldTime: 1000 }),
-		{
-			duration: { value: 12, units: "seconds", expiry: "turnStart", expired: false },
-			start: { time: 1000 },
-		}
-	);
-	globalThis.CONFIG.time.roundTime = 6;
-});
-
-test("duration overrides beat source timing while blank overrides preserve it", () => {
-	const source = { value: 30, units: "seconds", expiry: null };
-	assert.deepEqual(
-		buildActiveEffectTiming({ turns: 4 }, source, { combat: { started: true, id: "c", round: 1, turn: 0 }, worldTime: 9 }).duration,
-		{ value: 4, units: "turns", expiry: "turnStart", expired: false }
-	);
-	assert.deepEqual(
-		buildActiveEffectTiming({}, source, { combat: null, worldTime: 9 }).duration,
-		{ value: 30, units: "seconds", expiry: null, expired: false }
-	);
-	assert.deepEqual(
-		buildActiveEffectTiming({}, { value: 2, units: "rounds", expiry: null }, {
-			combat: { started: true, id: "c", round: 1, turn: 0 }, worldTime: 9,
-		}).duration,
-		{ value: 2, units: "rounds", expiry: "turnStart", expired: false }
-	);
-	assert.equal(buildActiveEffectTiming({}, { value: null, units: "seconds", rounds: null }), null);
-	assert.deepEqual(
-		buildActiveEffectTiming({}, { value: 5, type: "rounds" }, {
-			combat: { id: "c", round: 1, turn: 0 }, worldTime: 9,
-		}).duration,
-		{ value: 5, units: "rounds", expiry: "turnStart", expired: false }
-	);
-	assert.equal(
-		buildActiveEffectTiming({}, { value: 1, type: "unlimited" }, {
-			combat: { id: "c", round: 1, turn: 0 }, worldTime: 9,
-		}),
-		null,
-		"unlimited Effect items must not inherit their embedded Active Effect's placeholder clock"
-	);
-});
-
-test("unstarted encounters still use combat timing", () => {
-	const timing = buildActiveEffectTiming({ rounds: 2 }, {}, {
-		combat: { started: false, id: "c", round: 0, turn: null }, worldTime: 9,
+test("v14 combat timing uses an explicit turn-start expiry", () => {
+	globalThis.CONFIG.time = { roundTime: 0, turnTime: 0 };
+	assert.deepEqual(buildActiveEffectTiming({
+		rounds: 2,
+		startRound: 3,
+		startTurn: 4,
+		startTime: 90,
+	}, {
+		combat: {
+			id: "combat-1",
+			started: true,
+			round: 3,
+			turn: 4,
+			combatant: { id: "combatant-1", initiative: 12 },
+		},
+		worldTime: 100,
+	}), {
+		duration: { value: 2, units: "rounds", expiry: "turnStart" },
+		start: {
+			time: 90,
+			combat: "combat-1",
+			combatant: "combatant-1",
+			initiative: 12,
+			round: 3,
+			turn: 4,
+		},
 	});
-	assert.equal(timing.duration.units, "rounds");
-	assert.equal(timing.start.combat, "c");
 });
 
-test("turns outside combat keep the tracker's ten-turn round conversion", () => {
-	const timing = buildActiveEffectTiming({ turns: 4 }, {}, { combat: null, worldTime: 9 });
-	assert.deepEqual(timing.duration,
-		{ value: 6, units: "seconds", expiry: "turnStart", expired: false });
-});
-
-test("linked duration displays read Foundry's prepared Active Effect clock", () => {
-	const activeEffect = {
-		active: true,
-		isExpiryTrackable: true,
-		start: { time: 1000 },
-		duration: { remaining: 1, label: "1 Round" },
+test("linked duration lookup ignores effects core cannot track", () => {
+	const timed = {
+		start: { time: 100 },
+		duration: { units: "seconds", remaining: 12, label: "12 sec" },
 	};
-	const effectItem = { effects: [activeEffect] };
-	const target = {
-		items: { get: id => id === "effect-item" ? effectItem : null },
+	const actor = {
+		items: { get: id => ({ effects: id === "timed" ? [timed] : [{ start: null, duration: { remaining: 2 } }] }) },
 		effects: { get: () => null },
 	};
-	globalThis.game.actors.get = id => id === "target" ? target : null;
-	globalThis.canvas = { tokens: { get: () => null } };
-	const entry = {
-		expiryRound: 99,
-		targetEffects: [{ targetActorId: "target", effectItemId: "effect-item" }],
+	globalThis.game.actors = { get: () => actor };
+
+	assert.equal(getDurationSpellActiveEffect({
+		targetEffects: [{ targetActorId: "actor", effectItemId: "timed" }],
+	}), timed);
+	assert.equal(getDurationSpellActiveEffect({
+		targetEffects: [{ targetActorId: "actor", effectItemId: "untimed" }],
+	}), null);
+
+	timed.start = { time: 100, combat: "combat" };
+	timed.duration = { units: "rounds", expiry: "turnStart", remaining: 4 };
+	assert.equal(getDurationSpellActiveEffect({
+		targetEffects: [{ targetActorId: "actor", effectItemId: "timed" }],
+	}), null);
+});
+
+test("legacy cast recovery serializes the native combat reference", () => {
+	const start = { time: 100, combat: "combat", combatant: "caster", initiative: 18, round: 2, turn: 1 };
+	const effect = {
+		start: { ...start, combat: { id: "combat" } },
+		duration: { value: 2, units: "rounds", expiry: "turnStart", remaining: 1 },
+		toObject: () => ({ start, duration: { value: 2, units: "rounds", expiry: "turnStart" } }),
 	};
-	assert.equal(getLinkedDurationEffect(entry), activeEffect);
-	assert.equal(hasLinkedDurationClock(entry), true);
-	assert.equal(describeDurationRemaining(entry, { round: 1 }), "1 Round");
-	activeEffect.duration.remaining = Infinity;
-	assert.equal(hasLinkedDurationClock(entry), false);
-	assert.equal(describeDurationRemaining(entry, { round: 1 }), "98 rounds");
-	target.items.get = () => null;
-	target.effects.get = id => id === "aura" ? activeEffect : null;
-	entry.targetEffects = [{ targetActorId: "target", effectItemId: "aura" }];
-	activeEffect.duration.remaining = 1;
-	assert.equal(hasLinkedDurationClock(entry), false, "auras retain their existing lifecycle");
+	globalThis.game.actors = { get: () => ({ effects: { get: () => effect } }) };
+	assert.deepEqual(getDurationSpellCastTiming({
+		durationValue: 5, durationType: "rounds",
+		targetEffects: [{ targetActorId: "target", effectItemId: "effect" }],
+	}), { duration: { value: 5, units: "rounds", expiry: "turnStart" }, start });
+});
+
+test("round durations become seconds outside combat when roundTime is zero", () => {
+	globalThis.CONFIG.time = { roundTime: 0, turnTime: 0 };
+	assert.deepEqual(buildActiveEffectTiming({ rounds: 2 }, {
+		combat: null,
+		worldTime: 100,
+	}), {
+		duration: { value: 12, units: "seconds", expiry: null },
+		start: { time: 100 },
+	});
+});
+
+test("late effects keep the cast start and clock but retain their own duration length", () => {
+	globalThis.CONFIG.time = { roundTime: 0, turnTime: 0 };
+	const castCombat = {
+		id: "cast-combat", started: true, round: 2, turn: 1,
+		combatant: { id: "caster", initiative: 18 },
+	};
+	for (const combat of [null, { round: 0, started: false }, castCombat]) {
+		const castTiming = buildActiveEffectTiming({ rounds: 5 }, { combat, worldTime: 100 });
+		const savedTiming = structuredClone(castTiming);
+		const item = { effects: [
+			{ duration: { rounds: 2, startTime: 999, startRound: 9, startTurn: 9 } },
+			{ duration: { value: 8, units: "rounds", expiry: "turnEnd" } },
+			{ duration: { seconds: 15 } },
+			{ duration: { turns: 3 } },
+		] };
+		// A later entrant may be in another encounter (or no longer in combat).
+		for (const laterCombat of [null, {
+			id: "later-combat", started: true, round: 9, turn: 4,
+			combatant: { id: "entrant", initiative: 2 },
+		}]) {
+			const applied = structuredClone(item);
+			assert.equal(applyEffectItemTiming(applied, {}, {
+				combat: laterCombat, worldTime: 200, castTiming,
+			}), applied);
+			assert.deepEqual(applied.effects.map(effect => effect.start), item.effects.map(() => savedTiming.start));
+			assert.deepEqual(applied.effects.map(effect => effect.duration), combat?.started ? [
+				{ value: 2, units: "rounds", expiry: "turnStart" },
+				{ value: 8, units: "rounds", expiry: "turnEnd" },
+				{ value: 15, units: "seconds", expiry: null },
+				{ value: 3, units: "turns", expiry: "turnStart" },
+			] : [
+				{ value: 12, units: "seconds", expiry: null },
+				{ value: 48, units: "seconds", expiry: null },
+				{ value: 15, units: "seconds", expiry: null },
+				{ value: 18, units: "seconds", expiry: null },
+			]);
+			applied.effects[0].start.time = 999;
+			assert.deepEqual(castTiming, savedTiming, "effects must not mutate the stored cast start");
+			assert.deepEqual(applied.effects[1].start, savedTiming.start, "siblings need independent start objects");
+		}
+	}
+});
+
+test("blank-duration effects inherit cast timing without sharing mutable data", () => {
+	for (const castTiming of [
+		{ duration: { value: 30, units: "seconds", expiry: null }, start: { time: 100 } },
+		{
+			duration: { value: 5, units: "rounds", expiry: "turnStart" },
+			start: { time: 100, combat: "cast-combat", combatant: "caster", initiative: 18, round: 2, turn: 1 },
+		},
+	]) {
+		const savedTiming = structuredClone(castTiming);
+		const item = { effects: [{ duration: { value: null, units: null } }, {}] };
+		applyEffectItemTiming(item, {}, { castTiming, worldTime: 200 });
+		assert.deepEqual(item.effects, [savedTiming, savedTiming]);
+		item.effects[0].duration.value = 999;
+		item.effects[0].start.time = 999;
+		assert.deepEqual(castTiming, savedTiming);
+		assert.deepEqual(item.effects[1], savedTiming);
+	}
+	const untimed = { effects: [{}] };
+	assert.deepEqual(applyEffectItemTiming(untimed), { effects: [{}] });
+});
+
+test("remaining text prefers Foundry's Active Effect label", () => {
+	assert.equal(describeDurationRemaining({
+		duration: { remaining: 1, label: "1 Round" },
+	}, { round: 99, worldTime: 999 }), "1 Round");
 });
 
 // ── choosing a basis ────────────────────────────────────────────────────────
@@ -159,11 +192,15 @@ test("during an encounter the duration is held in rounds", () => {
 	assert.deepEqual(buildDurationExpiry(5, { combat: { round: 3 }, worldTime: 1000 }), { expiryRound: 8 });
 });
 
-test("an encounter that has not begun still counts round 1", () => {
-	// combat.round is 0 between "create encounter" and "begin combat". A spell
-	// cast then should last through round 1, so round 0 reads as 1 — this is the
-	// `|| 1` that the duration tracker's `?? 0` disagrees with.
-	assert.deepEqual(buildDurationExpiry(5, { combat: { round: 0 }, worldTime: 1000 }), { expiryRound: 6 });
+test("an unstarted encounter uses world time for both expiry and Active Effects", () => {
+	for (const combat of [{ round: 0 }, { round: 0, started: false }, { round: 3, started: false }]) {
+		const context = { combat, worldTime: 1000 };
+		assert.deepEqual(buildDurationExpiry(5, context), { expiryWorldTime: 1030 });
+		assert.deepEqual(buildActiveEffectTiming({ rounds: 5 }, context), {
+			duration: { value: 30, units: "seconds", expiry: null },
+			start: { time: 1000 },
+		});
+	}
 });
 
 test("outside an encounter the duration is held in world time", () => {

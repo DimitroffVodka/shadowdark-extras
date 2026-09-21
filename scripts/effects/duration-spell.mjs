@@ -1,9 +1,23 @@
 import { MODULE_ID, DURATION_SPELL_FLAG, SPELL_MODIFICATIONS_FLAG } from "./focus-constants.mjs";
+import { matchesDurationEffect, updateDurationSpells } from "./duration-state.mjs";
 import { getSocket } from "../shared/combat-socket.mjs";
 import { buildDurationSpellsHtml, onDurationDamageApplyClick } from "./duration-ui.mjs";
-import { buildDurationExpiry, hasLinkedDurationClock, isDurationExpired } from "../shared/duration-basis.mjs";
+import {
+	applyEffectItemTiming, buildActiveEffectTiming, buildDurationExpiry,
+	getDurationSpellActiveEffect, getDurationSpellCastTiming, getDurationToken, isDurationExpired,
+} from "../shared/duration-basis.mjs";
 
-const _durationExpiryQueues = new Map();
+// All clients share the active GM's registry queue; a browser-local lock cannot
+// serialize an owner's new cast against another client's core expiry hook.
+function relayDurationOperation(caster, operation, data) {
+	const gm = game.users?.activeGM;
+	if (game.user?.isGM && (!gm || gm.id === game.user.id)) return null;
+	const socket = getSocket();
+	if (!gm || !socket) throw new Error("Duration tracking requires an active GM and socketlib");
+	return socket.executeAsUser("durationSpellOperation", gm.id, {
+		casterUuid: caster.uuid, operation, ...data,
+	});
+}
 
 /**
  * Start tracking a duration spell (non-focus spells with turn/round duration)
@@ -61,9 +75,14 @@ export async function startDurationSpell(caster, spell, targetTokenIds = [], spe
 		spellImg: spell.img,
 		casterId: caster.id,
 		casterName: caster.name,
+		sceneId: canvas.scene?.id ?? null,
 		templateId: spellConfig.templateId || null, // Link to the specific template
 		summonedTokenIds: spellConfig.summonedTokenIds || [], // Track summoned tokens for cleanup
 		startRound: currentRound,
+		// Late arrivals retain this cast's clock even if combat starts meanwhile.
+		effectTiming: buildActiveEffectTiming({ value: durationValue, units: durationType }, {
+			combat: game.combat, worldTime: game.time?.worldTime ?? 0,
+		}),
 		...expiry,
 		durationValue: durationValue,
 		durationType: durationType,
@@ -78,13 +97,13 @@ export async function startDurationSpell(caster, spell, targetTokenIds = [], spe
 		processedTargetsThisRound: {}, // Track which targets have been processed this round
 	};
 
-	// Get current active duration spells
-	const currentDuration = caster.getFlag(MODULE_ID, DURATION_SPELL_FLAG) || [];
-
-	// Always add as a new instance (no longer check for existing same spell)
-	currentDuration.push(durationData);
-
-	await caster.setFlag(MODULE_ID, DURATION_SPELL_FLAG, currentDuration);
+	// Build the snapshot on the casting client so a GM viewing another encounter
+	// cannot replace the cast's original clock or target names.
+	const remote = relayDurationOperation(caster, "append", { entry: durationData });
+	if (remote) await remote;
+	else await updateDurationSpells(caster, entries => {
+		entries.push(durationData);
+	});
 
 	ui.notifications.info(`${spell.name} is being tracked (${durationValue} ${durationType})`);
 
@@ -101,88 +120,6 @@ export async function startDurationSpell(caster, spell, targetTokenIds = [], spe
  */
 export function getActiveDurationSpells(actor) {
 	return actor.getFlag(MODULE_ID, DURATION_SPELL_FLAG) || [];
-}
-
-async function removeExpiredLinkedEffect(casterId, entryId, effectItemId, targetActorId) {
-	const caster = game.actors.get(casterId);
-	if (!caster) return;
-
-	let activeDuration = getActiveDurationSpells(caster);
-	let durationEntry = activeDuration.find(entry => entry.instanceId === entryId)
-		?? activeDuration.find(entry => entry.targetEffects?.some(targetEffect =>
-			targetEffect.effectItemId === effectItemId
-			&& (!targetEffect.targetActorId || targetEffect.targetActorId === targetActorId)
-		));
-	if (!durationEntry) return;
-
-	const targetEffect = durationEntry.targetEffects.find(ref =>
-		ref.effectItemId === effectItemId
-		&& (!ref.targetActorId || ref.targetActorId === targetActorId));
-	if (!targetEffect) return;
-
-	const targetActor = canvas.tokens?.get(targetEffect.targetTokenId)?.actor
-		?? game.actors.get(targetEffect.targetActorId);
-	const effectItem = targetActor?.items?.get(effectItemId);
-	if (effectItem) await effectItem.delete({ sdxDurationExpiry: true });
-
-	// Re-read after deleting the Item because other document hooks may have changed flags.
-	activeDuration = getActiveDurationSpells(caster);
-	durationEntry = activeDuration.find(entry => entry.instanceId === entryId)
-		?? activeDuration.find(entry => entry.targetEffects?.some(ref =>
-			ref.effectItemId === effectItemId
-			&& (!ref.targetActorId || ref.targetActorId === targetActorId)
-		));
-	if (!durationEntry) return;
-
-	durationEntry.targetEffects = durationEntry.targetEffects.filter(ref =>
-		ref.effectItemId !== effectItemId
-		|| (ref.targetActorId && ref.targetActorId !== targetActorId));
-	const stillTargeted = durationEntry.targetEffects.some(ref =>
-		(targetEffect.targetTokenId && ref.targetTokenId === targetEffect.targetTokenId)
-		|| (targetEffect.targetActorId && ref.targetActorId === targetEffect.targetActorId));
-	if (!stillTargeted) {
-		durationEntry.targets = durationEntry.targets?.filter(target =>
-			target.tokenId !== targetEffect.targetTokenId
-			&& target.actorId !== targetEffect.targetActorId) ?? [];
-	}
-
-	await caster.setFlag(MODULE_ID, DURATION_SPELL_FLAG, activeDuration);
-	if (durationEntry.targetEffects.length === 0) {
-		await endDurationSpell(caster.id, durationEntry.instanceId || durationEntry.spellId, "expired");
-	}
-}
-
-/** Delete only the Effect Item whose core Active Effect just expired. */
-export async function handleDurationEffectUpdate(effect, changes) {
-	if (changes.duration?.expired !== true) return;
-	if (!game.user.isGM || game.users.activeGM?.id !== game.user.id) return;
-	if (effect.parent?.documentName !== "Item") return; // Auras retain their existing lifecycle.
-
-	const effectItemId = effect.parent.id;
-	const targetActorId = effect.actor?.id ?? effect.parent.actor?.id;
-	for (const caster of game.actors) {
-		const activeDuration = getActiveDurationSpells(caster);
-		const durationEntry = activeDuration.find(entry => entry.targetEffects?.some(targetEffect =>
-			targetEffect.effectItemId === effectItemId
-			&& (!targetEffect.targetActorId || targetEffect.targetActorId === targetActorId)
-		));
-		if (!durationEntry) continue;
-
-		const entryId = durationEntry.instanceId ?? null;
-		const entryIndex = activeDuration.indexOf(durationEntry);
-		const key = `${caster.id}:${entryId ?? `legacy-${entryIndex}`}`;
-		const previous = _durationExpiryQueues.get(key) ?? Promise.resolve();
-		const task = previous.catch(() => {}).then(() =>
-			removeExpiredLinkedEffect(caster.id, entryId, effectItemId, targetActorId));
-		_durationExpiryQueues.set(key, task);
-		try {
-			await task;
-		}
-		finally {
-			if (_durationExpiryQueues.get(key) === task) _durationExpiryQueues.delete(key);
-		}
-		return;
-	}
 }
 
 
@@ -396,22 +333,26 @@ async function revertSpellModifications(spellId, casterId) {
  * @param {string} instanceId - Unique instance ID (or spellId for backwards compatibility)
  * @param {string} reason - The reason for ending ("expired" or "manual")
  */
-export async function endDurationSpell(casterId, instanceId, reason = "expired") {
+export async function endDurationSpell(casterId, instanceId, reason = "expired", sceneId = canvas.scene?.id) {
 	console.warn(`shadowdark-extras | [ENTRY] endDurationSpell called with casterId=${casterId}, instanceId=${instanceId}, reason=${reason}`);
 
 	const caster = game.actors.get(casterId);
 	if (!caster) return;
+	const remote = relayDurationOperation(caster, "end", { instanceId, reason, sceneId });
+	if (remote) return remote;
 
-	const activeDuration = caster.getFlag(MODULE_ID, DURATION_SPELL_FLAG) || [];
-	// Find by instanceId first, fallback to spellId for backwards compatibility
-	let spellIndex = activeDuration.findIndex(d => d.instanceId === instanceId);
-	if (spellIndex < 0) {
-		spellIndex = activeDuration.findIndex(d => d.spellId === instanceId);
-	}
-
-	if (spellIndex < 0) return;
-
-	const durationEntry = activeDuration[spellIndex];
+	// Claim this cast before deleting documents. Delete hooks and other casts may
+	// write the same registry while cleanup awaits server round trips.
+	const durationEntry = await updateDurationSpells(caster, entries => {
+		const entry = entries.find(d => d.instanceId === instanceId)
+			?? entries.findLast(d => d.spellId === instanceId);
+		if (!entry) return false;
+		entries.splice(entries.indexOf(entry), 1);
+		return entry;
+	});
+	if (!durationEntry) return;
+	sceneId = durationEntry.sceneId || sceneId;
+	const scene = sceneId ? game.scenes?.get(sceneId) : canvas.scene;
 	console.log("shadowdark-extras | [DEBUG] Found duration entry:", durationEntry);
 
 	// Remove all effects applied to targets
@@ -431,6 +372,7 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 						targetActorId: targetEffect.targetActorId,
 						targetTokenId: targetEffect.targetTokenId,
 						effectItemId: targetEffect.effectItemId,
+						sceneId,
 					});
 					console.log("shadowdark-extras | Removed effect via socket");
 				}
@@ -440,7 +382,7 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 
 					// Try token first (for unlinked tokens)
 					if (targetEffect.targetTokenId) {
-						const token = canvas.tokens?.get(targetEffect.targetTokenId);
+						const token = getDurationToken(targetEffect.targetTokenId, sceneId);
 						if (token?.actor) {
 							targetActor = token.actor;
 						}
@@ -540,7 +482,6 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 	// Delete associated templates from the scene
 	// Use the stored templateId for precise 1:1 matching, fall back to name matching for old data
 	try {
-		const scene = canvas.scene;
 		if (scene) {
 			const templatesToDelete = [];
 
@@ -583,7 +524,6 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 	// Delete summoned tokens if this spell had any
 	if (durationEntry.summonedTokenIds && durationEntry.summonedTokenIds.length > 0) {
 		try {
-			const scene = canvas.scene;
 			if (scene && game.user.isGM) {
 				const tokensToDelete = durationEntry.summonedTokenIds.filter(tokenId => {
 					return scene.tokens.get(tokenId) !== undefined;
@@ -595,7 +535,8 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 				}
 
 				// Also remove from expiry tracking
-				const expiryList = scene.getFlag(MODULE_ID, "summonedTokensExpiry") || [];
+				const { getSummonedTokensExpiry, saveSummonedTokensExpiry } = await import("../combat/damage-card-actions.mjs");
+				const expiryList = getSummonedTokensExpiry(scene.id) || [];
 				const updatedExpiryList = expiryList.filter(entry => {
 					// Remove entries that match this spell's tokens
 					const hasMatchingToken = entry.tokenIds?.some(tokenId =>
@@ -605,7 +546,7 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 				});
 
 				if (updatedExpiryList.length !== expiryList.length) {
-					await scene.setFlag(MODULE_ID, "summonedTokensExpiry", updatedExpiryList);
+					await saveSummonedTokensExpiry(scene.id, updatedExpiryList);
 					console.log("shadowdark-extras | Removed summoned tokens from expiry tracking");
 				}
 			}
@@ -615,9 +556,6 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 		}
 	}
 
-	// Remove from tracking
-	activeDuration.splice(spellIndex, 1);
-	await caster.setFlag(MODULE_ID, DURATION_SPELL_FLAG, activeDuration);
 
 	// Post to chat. spellImg/spellName come from a player-owned, player-renameable
 	// spell item and render on every connected client, so escape both.
@@ -665,6 +603,76 @@ export async function endDurationSpell(casterId, instanceId, reason = "expired")
 
 // Track which combat state we've already processed for duration spells
 let _lastDurationProcessKey = null;
+const _expiringEffectItems = new WeakSet();
+
+function getCoreDurationEffect(durationEntry) {
+	const effect = getDurationSpellActiveEffect(durationEntry);
+	return effect?.parent?.type === "Effect" ? effect : null;
+}
+
+function usesCoreEffectExpiry(durationEntry) {
+	return !!getCoreDurationEffect(durationEntry);
+}
+
+function isCoreEffectExpiringNow(durationEntry, combat) {
+	const effect = getCoreDurationEffect(durationEntry);
+	if (!effect) return false;
+	const duration = effect.updateDuration?.({ combat }) ?? effect.duration;
+	return duration?.expired === true || (duration?.remaining <= 0
+		&& effect.isExpiryEvent?.("turnStart", { combat }) === true);
+}
+
+/** Expire one linked item; shared cast cleanup waits for its last linked item. */
+export async function handleDurationEffectUpdate(effect, changes) {
+	if (changes?.duration?.expired !== true) return false;
+	if (!game.user?.isGM) return false;
+	if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return false;
+
+	const effectItem = effect?.parent;
+	const targetActor = effect?.actor || effectItem?.actor;
+	if (effectItem?.type !== "Effect" || !targetActor?.id) return false;
+	// One item may contain several independently timed Active Effects.
+	if (Array.from(effectItem.effects ?? []).some(sibling => sibling !== effect
+		&& Number.isFinite(sibling.duration?.remaining) && !sibling.duration.expired)) return false;
+
+	if (_expiringEffectItems.has(effectItem)) return false;
+	const linked = Array.from(game.actors ?? []).flatMap(caster =>
+		getActiveDurationSpells(caster)
+			.filter(entry => entry.targetEffects?.some(link =>
+				matchesDurationEffect(link, effectItem)))
+			.map(entry => ({ caster, instanceId: entry.instanceId || entry.spellId })));
+	if (!linked.length) return false;
+
+	_expiringEffectItems.add(effectItem);
+	try {
+		// This handler owns the unlink; deleteItem hooks must not race it on other clients.
+		await effectItem.delete({ sdxDurationExpiry: true });
+		for (const { caster, instanceId } of linked) {
+			await updateDurationSpells(caster, entries => {
+				const entry = entries.find(d => (d.instanceId || d.spellId) === instanceId);
+				if (!entry) return false;
+				entry.targetEffects = (entry.targetEffects ?? []).filter(link =>
+					!matchesDurationEffect(link, effectItem));
+				// A target with another running item must retain its damage/UI entry.
+				entry.targets = (entry.targets ?? []).filter(target =>
+					(targetActor.isToken ? target.tokenId !== targetActor.token?.id
+						: target.actorId !== targetActor.id)
+					|| entry.targetEffects.some(link => target.tokenId
+						? link.targetTokenId === target.tokenId
+						: link.targetActorId === target.actorId));
+			});
+			const entry = getActiveDurationSpells(caster).find(d =>
+				(d.instanceId || d.spellId) === instanceId);
+			if (entry && !entry.targetEffects?.length) {
+				await endDurationSpell(caster.id, instanceId, "expired");
+			}
+		}
+		return true;
+	}
+	finally {
+		_expiringEffectItems.delete(effectItem);
+	}
+}
 
 /**
  * End duration spells whose world-time expiry has arrived.
@@ -676,6 +684,7 @@ let _lastDurationProcessKey = null;
  */
 export async function handleDurationSpellWorldTimeUpdate() {
 	if (!game.user.isGM) return;
+	if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return;
 
 	const worldTime = game.time?.worldTime ?? null;
 	if (!Number.isFinite(worldTime)) return;
@@ -686,8 +695,10 @@ export async function handleDurationSpellWorldTimeUpdate() {
 
 		// Round is deliberately absent here: a round-based entry must not be ended
 		// by world time passing, only by its own encounter advancing.
+		// Linked effects use Foundry's Active Effect clock. The legacy clock is a
+		// fallback only for duration spells that have no Active Effect to observe.
 		const expired = activeDuration.filter(d =>
-			!hasLinkedDurationClock(d) && isDurationExpired(d, { worldTime })
+			!usesCoreEffectExpiry(d) && isDurationExpired(d, { worldTime })
 		);
 		if (expired.length === 0) continue;
 
@@ -724,7 +735,7 @@ export async function handleDurationSpellCombatUpdate(combat, changed, options, 
 
 	// Process all actors with duration spells
 	for (const actor of game.actors) {
-		const activeDuration = actor.getFlag(MODULE_ID, DURATION_SPELL_FLAG) || [];
+		const activeDuration = foundry.utils.deepClone(getActiveDurationSpells(actor));
 		if (activeDuration.length === 0) continue;
 
 		console.log(`shadowdark-extras | [DEBUG] Actor ${actor.name} has ${activeDuration.length} duration spell(s):`,
@@ -741,10 +752,9 @@ export async function handleDurationSpellCombatUpdate(combat, changed, options, 
 
 			// One predicate for both clocks: a round entry ignores world time and a
 			// world-time entry ignores rounds, so neither ends the other early.
-			const due = !hasLinkedDurationClock(durationSpell)
-				&& isDurationExpired(durationSpell, {
-					round: currentRound, worldTime: game.time?.worldTime ?? null,
-				});
+			const due = !usesCoreEffectExpiry(durationSpell) && isDurationExpired(durationSpell, {
+				round: currentRound, worldTime: game.time?.worldTime ?? null,
+			});
 
 			if (due) {
 				console.log(`shadowdark-extras | Duration spell ${durationSpell.spellName} has expired`);
@@ -772,6 +782,15 @@ export async function handleDurationSpellCombatUpdate(combat, changed, options, 
 				);
 
 				if (targetEntry) {
+					// Core expiry and this hook overlap. Check this target's clock, not
+					// a still-running effect on another target of the same cast.
+					if (isCoreEffectExpiringNow({
+						sceneId: durationSpell.sceneId,
+						targetEffects: durationSpell.targetEffects?.filter(link =>
+							link.targetTokenId ? link.targetTokenId === currentTokenId
+								: link.targetActorId === currentActor.id),
+					}, combat)) continue;
+
 					// Check if we already processed this target this round
 					const targetKey = targetEntry.tokenId || targetEntry.actorId;
 					if (!durationSpell.processedTargetsThisRound[targetKey]) {
@@ -798,13 +817,23 @@ export async function handleDurationSpellCombatUpdate(combat, changed, options, 
 			await endDurationSpell(actor.id, spellInstanceId, "expired");
 		}
 
-		// Update the flag if needed (filter by instanceId or spellId)
+		// Merge only damage bookkeeping into live entries; cleanup may have removed
+		// casts or targets while a roll or HP update was awaiting the server.
 		if (needsUpdate) {
-			const updatedDuration = activeDuration.filter(d => {
-				const id = d.instanceId || d.spellId;
-				return !expiredSpellIds.includes(id);
+			await updateDurationSpells(actor, entries => {
+				for (const entry of entries) {
+					const processed = activeDuration.find(d =>
+						(d.instanceId || d.spellId) === (entry.instanceId || entry.spellId));
+					if (!processed?.perTurnDamage) continue;
+					if (processed.lastProcessedRound < entry.lastProcessedRound) continue;
+					const sameRound = processed.lastProcessedRound === entry.lastProcessedRound;
+					entry.processedTargetsThisRound = {
+						...(sameRound ? entry.processedTargetsThisRound : {}),
+						...processed.processedTargetsThisRound,
+					};
+					entry.lastProcessedRound = processed.lastProcessedRound;
+				}
 			});
-			await actor.setFlag(MODULE_ID, DURATION_SPELL_FLAG, updatedDuration);
 		}
 	}
 }
@@ -919,7 +948,7 @@ async function applyDurationSpellPerTurnDamage(durationSpell, targetActor, targe
  * @param {string} effectItemId - The effect item ID
  */
 export async function linkEffectToDurationSpell(casterActorOrId, instanceId, targetActorOrId,
-	targetTokenId, effectItemId) {
+	targetTokenId, effectItemId, sceneId = canvas.scene?.id) {
 	const caster = typeof casterActorOrId === "string" ? game.actors.get(casterActorOrId) : casterActorOrId;
 	if (!caster) {
 		console.warn("shadowdark-extras | Cannot link effect: caster not found");
@@ -927,66 +956,31 @@ export async function linkEffectToDurationSpell(casterActorOrId, instanceId, tar
 	}
 
 	const targetActor = typeof targetActorOrId === "string" ? game.actors.get(targetActorOrId) : targetActorOrId;
-
-	const activeDuration = caster.getFlag(MODULE_ID, DURATION_SPELL_FLAG) || [];
-	// Find by instanceId first, fallback to spellId for backwards compatibility
-	// Use findLast for spellId fallback to get the MOST RECENT instance (newest cast)
-	let durationEntry = activeDuration.find(d => d.instanceId === instanceId);
-	if (!durationEntry) {
-		// Find the most recent duration spell with this spellId
-		durationEntry = activeDuration.findLast(d => d.spellId === instanceId);
-	}
-
-	if (!durationEntry) {
-		console.log(`shadowdark-extras | Cannot link effect: spell ${instanceId} is not being tracked as duration spell`);
-		return false;
-	}
-
-	// Check if this effect is already linked
-	if (durationEntry.targetEffects.some(te => te.effectItemId === effectItemId)) {
-		console.log(`shadowdark-extras | Effect ${effectItemId} already linked to duration spell ${durationEntry.spellName}`);
-		return true;
-	}
-
-	// Resolve target name (prefer token name)
-	let targetName = targetActor?.name || "Unknown";
-	if (targetTokenId) {
-		const token = canvas.tokens?.get(targetTokenId);
-		if (token) targetName = token.name;
-	}
-	else if (targetActor?.token) {
-		targetName = targetActor.token.name;
-	}
-
-	// Add the effect to tracking
-	durationEntry.targetEffects.push({
-		targetActorId: targetActor?.id || null,
-		targetTokenId: targetTokenId,
-		effectItemId: effectItemId,
-		targetName: targetName,
+	const remote = relayDurationOperation(caster, "link", {
+		instanceId, targetActorId: targetActor?.id, targetTokenId, effectItemId, sceneId,
 	});
-
-	// Also add to main targets array if not already present (for UI display)
-	// We allow the caster to be a target for Duration spells (e.g. self-buffs like Mage Armor)
-	if (targetActor || targetTokenId) {
-		const targetAlreadyInList = durationEntry.targets.some(t =>
-			(t.actorId && t.actorId === targetActor?.id)
-			|| (t.tokenId && t.tokenId === targetTokenId)
-		);
-		if (!targetAlreadyInList) {
-			durationEntry.targets.push({
-				tokenId: targetTokenId || null,
-				actorId: targetActor?.id || null,
-				name: targetName,
+	if (remote) return remote;
+	return updateDurationSpells(caster, entries => {
+		// Legacy spell IDs identify the newest cast; instance IDs stay exact.
+		const entry = entries.find(d => d.instanceId === instanceId)
+			?? entries.findLast(d => d.spellId === instanceId);
+		if (!entry) return false;
+		if (entry.targetEffects.some(link => link.effectItemId === effectItemId
+			&& link.targetActorId === targetActor?.id
+			&& link.targetTokenId === targetTokenId)) return true;
+		const name = getDurationToken(targetTokenId, entry.sceneId || sceneId)?.name
+			?? targetActor?.token?.name ?? targetActor?.name ?? "Unknown";
+		entry.targetEffects.push({
+			targetActorId: targetActor?.id || null, targetTokenId, effectItemId, targetName: name,
+		});
+		if ((targetActor || targetTokenId) && !entry.targets.some(t => targetTokenId
+			? t.tokenId === targetTokenId : t.actorId === targetActor?.id)) {
+			entry.targets.push({
+				tokenId: targetTokenId || null, actorId: targetActor?.id || null, name,
 			});
-			console.log(`shadowdark-extras | Added target to duration spell targets: ${targetActor?.name || targetTokenId}`);
 		}
-	}
-
-	await caster.setFlag(MODULE_ID, DURATION_SPELL_FLAG, activeDuration);
-
-	console.log(`shadowdark-extras | Linked effect ${effectItemId} to duration spell ${durationEntry.spellName}`);
-	return true;
+		return true;
+	});
 }
 
 /**
@@ -997,28 +991,31 @@ export async function linkEffectToDurationSpell(casterActorOrId, instanceId, tar
  * @param {string} instanceId - Unique instance ID (or spellId for backwards compatibility)
  * @param {string} tokenId - The token ID to add
  */
-export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
+export async function addTargetToDurationSpell(casterId, instanceId, tokenId,
+	sceneId = canvas.scene?.id) {
 	const caster = game.actors.get(casterId);
 	if (!caster) {
 		console.warn(`shadowdark-extras | Cannot add target: caster ${casterId} not found`);
 		return false;
 	}
-
-	const token = canvas.tokens?.get(tokenId);
-	if (!token) {
-		console.warn(`shadowdark-extras | Cannot add target: token ${tokenId} not found`);
-		return false;
-	}
+	const remote = relayDurationOperation(caster, "addTarget", { instanceId, tokenId, sceneId });
+	if (remote) return remote;
 
 	const activeDuration = caster.getFlag(MODULE_ID, DURATION_SPELL_FLAG) || [];
 	// Find by instanceId first, fallback to spellId for backwards compatibility
 	let durationEntry = activeDuration.find(d => d.instanceId === instanceId);
 	if (!durationEntry) {
-		durationEntry = activeDuration.find(d => d.spellId === instanceId);
+		durationEntry = activeDuration.findLast(d => d.spellId === instanceId);
 	}
 
 	if (!durationEntry) {
 		console.warn(`shadowdark-extras | Cannot add target: spell ${instanceId} not being tracked`);
+		return false;
+	}
+	sceneId = durationEntry.sceneId || sceneId;
+	const token = getDurationToken(tokenId, sceneId);
+	if (!token) {
+		console.warn(`shadowdark-extras | Cannot add target: token ${tokenId} not found`);
 		return false;
 	}
 
@@ -1028,14 +1025,15 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
 		return false;
 	}
 
-	// Add the target
-	durationEntry.targets.push({
-		tokenId: tokenId,
-		actorId: token.actor?.id || null,
-		name: token.name || "Unknown",
+	const added = await updateDurationSpells(caster, entries => {
+		const entry = entries.find(d =>
+			(d.instanceId || d.spellId) === (durationEntry.instanceId || durationEntry.spellId));
+		if (!entry || entry.targets.some(t => t.tokenId === tokenId)) return false;
+		entry.sceneId ??= sceneId;
+		entry.targets.push({ tokenId, actorId: token.actor?.id || null, name: token.name || "Unknown" });
+		return true;
 	});
-
-	await caster.setFlag(MODULE_ID, DURATION_SPELL_FLAG, activeDuration);
+	if (!added) return false;
 
 	// Apply effects if the spell has any
 	if (durationEntry.effects && durationEntry.effects.length > 0) {
@@ -1054,6 +1052,7 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
 
 		for (const effectData of effects) {
 			const effectUuid = typeof effectData === "string" ? effectData : effectData.uuid;
+			const durationOverride = typeof effectData === "object" ? effectData.duration ?? {} : {};
 			try {
 				let createdEffectId = null;
 
@@ -1064,8 +1063,10 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
 						targetActorId: token.actor?.id,
 						targetTokenId: tokenId,
 						effectUuid: effectUuid,
+						duration: durationOverride,
 						casterId: casterId,
 						spellId: spellInstanceId,
+						sceneId,
 					});
 					if (result.success) {
 						createdEffectId = result.effectId;
@@ -1077,6 +1078,11 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
 					if (!effectDoc) continue;
 
 					const effectItemData = effectDoc.toObject();
+					applyEffectItemTiming(effectItemData, durationOverride, {
+						combat: game.combat,
+						worldTime: game.time?.worldTime ?? 0,
+						castTiming: getDurationSpellCastTiming(durationEntry),
+					});
 					const createdItems = await token.actor.createEmbeddedDocuments("Item", [effectItemData]);
 
 					if (createdItems.length > 0) {
@@ -1087,8 +1093,8 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
 				if (createdEffectId) {
 					// Link the effect to the duration spell using instanceId
 					await linkEffectToDurationSpell(
-						casterId, spellInstanceId, token.actor.id, tokenId,
-						createdEffectId);
+						casterId, spellInstanceId, token.actor, tokenId,
+						createdEffectId, sceneId);
 					console.log(`shadowdark-extras | Applied effect to new target ${token.name}`);
 				}
 			}
@@ -1134,24 +1140,28 @@ export async function addTargetToDurationSpell(casterId, instanceId, tokenId) {
  * @param {string} instanceId - Unique instance ID (or spellId for backwards compatibility)
  * @param {string} tokenId - The token ID to remove
  */
-export async function removeTargetFromDurationSpell(casterId, instanceId, tokenId) {
+export async function removeTargetFromDurationSpell(casterId, instanceId, tokenId,
+	sceneId = canvas.scene?.id) {
 	const caster = game.actors.get(casterId);
 	if (!caster) {
 		console.warn(`shadowdark-extras | Cannot remove target: caster ${casterId} not found`);
 		return false;
 	}
+	const remote = relayDurationOperation(caster, "removeTarget", { instanceId, tokenId, sceneId });
+	if (remote) return remote;
 
 	const activeDuration = caster.getFlag(MODULE_ID, DURATION_SPELL_FLAG) || [];
 	// Find by instanceId first, fallback to spellId for backwards compatibility
 	let durationEntry = activeDuration.find(d => d.instanceId === instanceId);
 	if (!durationEntry) {
-		durationEntry = activeDuration.find(d => d.spellId === instanceId);
+		durationEntry = activeDuration.findLast(d => d.spellId === instanceId);
 	}
 
 	if (!durationEntry) {
 		console.warn(`shadowdark-extras | Cannot remove target: spell ${instanceId} not being tracked`);
 		return false;
 	}
+	sceneId = durationEntry.sceneId || sceneId;
 
 	// Find and remove the target
 	const targetIndex = durationEntry.targets.findIndex(t => t.tokenId === tokenId);
@@ -1161,7 +1171,6 @@ export async function removeTargetFromDurationSpell(casterId, instanceId, tokenI
 	}
 
 	const removedTarget = durationEntry.targets[targetIndex];
-	durationEntry.targets.splice(targetIndex, 1);
 
 	// Remove any effects applied to this target
 	const effectsToRemove = durationEntry.targetEffects?.filter(
@@ -1177,13 +1186,14 @@ export async function removeTargetFromDurationSpell(casterId, instanceId, tokenI
 					targetActorId: targetEffect.targetActorId,
 					targetTokenId: targetEffect.targetTokenId,
 					effectItemId: targetEffect.effectItemId,
+					sceneId,
 				});
 				console.log(`shadowdark-extras | Removed effect via socket from ${removedTarget.name}`);
 			}
 			else {
 				// Fallback for GM or if socket not available
 				let targetActor = null;
-				const token = canvas.tokens?.get(tokenId);
+				const token = getDurationToken(tokenId, sceneId);
 				if (token?.actor) {
 					targetActor = token.actor;
 				}
@@ -1212,12 +1222,14 @@ export async function removeTargetFromDurationSpell(casterId, instanceId, tokenI
 		}
 	}
 
-	// Remove the effect references from tracking
-	durationEntry.targetEffects = durationEntry.targetEffects?.filter(
-		te => te.targetTokenId !== tokenId
-	) || [];
-
-	await caster.setFlag(MODULE_ID, DURATION_SPELL_FLAG, activeDuration);
+	await updateDurationSpells(caster, entries => {
+		const entry = entries.find(d =>
+			(d.instanceId || d.spellId) === (durationEntry.instanceId || durationEntry.spellId));
+		if (!entry) return false;
+		entry.targets = entry.targets.filter(t => t.tokenId !== tokenId);
+		entry.targetEffects = (entry.targetEffects ?? []).filter(link =>
+			link.targetTokenId !== tokenId);
+	});
 
 	ui.notifications.info(`Removed ${removedTarget.name} from ${durationEntry.spellName}`);
 	caster.sheet?.render(false);

@@ -498,74 +498,6 @@ test("duration lifecycle: startDurationSpell writes a new entry and endDurationS
 	assert.equal(durationSpell.getActiveDurationSpells(actor).length, 0);
 });
 
-test("duration lifecycle: each core expiry removes only its linked target effect", async () => {
-	const effectItemIds = ["effect-item-1", "effect-item-2", "effect-item-3"];
-	const instanceId = "spell-1-cast-1";
-	const caster = makeActorWithFlags({
-		activeDurationSpells: [{
-			instanceId,
-			spellId: "spell-1",
-			spellName: "Web",
-			spellImg: "web.png",
-			targets: [{ actorId: "target-1", tokenId: "token-1", name: "Target" }],
-			targetEffects: effectItemIds.map(effectItemId =>
-				({ targetActorId: "target-1", targetTokenId: "token-1", effectItemId })),
-			summonedTokenIds: [],
-		}],
-	});
-	let deleted = 0;
-	const effectItems = new Map(effectItemIds.map(id => [id, {
-		id,
-		name: "Web Effect",
-		delete: async () => { deleted++; effectItems.delete(id); },
-	}]));
-	const target = {
-		id: "target-1",
-		name: "Target",
-		items: {
-			get: id => effectItems.get(id),
-			filter: () => [],
-		},
-		effects: { get: () => null },
-	};
-	const actors = [caster, target];
-	actors.get = id => actors.find(actor => actor.id === id) || null;
-	actors.contents = actors;
-	globalThis.game = {
-		user: { id: "gm", isGM: true },
-		users: { activeGM: { id: "gm" } },
-		actors,
-		i18n: { format: key => key, localize: key => key },
-	};
-	globalThis.ui = { notifications: { info: () => {} } };
-	globalThis.ChatMessage = { create: async () => {}, getSpeaker: () => ({}) };
-	const { placeables } = makeCanvas();
-	placeables.push({ id: "token-1", actor: target, document: { actorLink: true } });
-
-	const activeEffect = id => ({
-		id: "active-effect-1",
-		actor: target,
-		parent: { id, documentName: "Item", actor: target },
-	});
-	await durationSpell.handleDurationEffectUpdate(activeEffect(effectItemIds[0]), { duration: { expired: false } });
-	assert.equal(deleted, 0, "ordinary duration refreshes are ignored");
-	await durationSpell.handleDurationEffectUpdate(activeEffect(effectItemIds[0]), { duration: { expired: true } });
-	assert.equal(deleted, 1);
-	assert.equal(durationSpell.getActiveDurationSpells(caster).length, 1);
-	assert.deepEqual(durationSpell.getActiveDurationSpells(caster)[0].targetEffects.map(ref => ref.effectItemId),
-		effectItemIds.slice(1));
-
-	await durationSpell.handleDurationEffectUpdate({
-		...activeEffect(effectItemIds[1]), parent: { id: effectItemIds[1], documentName: "Actor" },
-	}, { duration: { expired: true } });
-	assert.equal(deleted, 1, "direct aura Active Effects retain their existing lifecycle");
-
-	await Promise.all(effectItemIds.slice(1).map(id =>
-		durationSpell.handleDurationEffectUpdate(activeEffect(id), { duration: { expired: true } })));
-	assert.equal(deleted, 3, "simultaneous core expiries are serialized without dropping one");
-	assert.equal(durationSpell.getActiveDurationSpells(caster).length, 0);
-});
-
 test("duration lifecycle: a spell name carrying an attribute-breakout payload renders inert", async () => {
 	const actor = makeActorWithFlags();
 	const payload = 'x" onerror="alert(1)';
@@ -610,6 +542,178 @@ test("duration lifecycle: endDurationSpell with an unknown instance is a safe no
 	globalThis.ui = { notifications: { info: () => {} } };
 	await durationSpell.endDurationSpell(actor.id, "no-such-instance", "expired");
 	assert.equal(durationSpell.getActiveDurationSpells(actor).length, 0);
+});
+
+test("duration lifecycle: core expiry turn does not deal a final damage tick", async () => {
+	let rolls = 0;
+	globalThis.Roll = class Roll {
+		constructor() { rolls += 1; }
+	};
+	const target = makeActorWithFlags();
+	target.id = "target-expiry";
+	target.name = "Target";
+	const effectItem = { id: "effect-expiry", type: "Effect", actor: target };
+	const activeEffect = {
+		parent: effectItem,
+		actor: target,
+		start: { time: 100 },
+		duration: { remaining: 1 },
+		updateDuration: () => ({ remaining: 0 }),
+		isExpiryEvent: event => event === "turnStart",
+	};
+	effectItem.effects = [activeEffect];
+	target.items = { get: () => effectItem, filter: () => [], find: () => null };
+
+	const caster = makeActorWithFlags({
+		activeDurationSpells: [{
+			instanceId: "duration-expiry",
+			spellId: "spell-expiry",
+			spellName: "Cloud",
+			targets: [{ actorId: target.id, tokenId: null, name: target.name }],
+			targetEffects: [{ targetActorId: target.id, effectItemId: effectItem.id }],
+			perTurnDamage: "1",
+			lastProcessedRound: 2,
+			processedTargetsThisRound: {},
+		}],
+	});
+	const actors = [caster, target];
+	actors.get = id => actors.find(actor => actor.id === id) || null;
+	const combat = {
+		id: "combat-core-expiry",
+		round: 3,
+		turn: 0,
+		combatant: { actor: target, token: null },
+	};
+	globalThis.game = {
+		combat,
+		time: { worldTime: 100 },
+		user: { id: "gm", isGM: true },
+		users: { activeGM: { id: "gm" } },
+		actors,
+	};
+	makeCanvas();
+
+	await durationSpell.handleDurationSpellCombatUpdate(combat, { turn: 0 }, {}, "gm");
+	assert.equal(rolls, 0);
+});
+
+test("duration lifecycle: direct aura effects retain legacy tracker cleanup", async () => {
+	let auraDeletes = 0;
+	const target = makeActorWithFlags();
+	target.id = "target-aura";
+	const auraEffect = {
+		id: "aura-effect",
+		parent: target,
+		start: { time: 100, combat: "combat-aura-fallback", combatant: "target-combatant" },
+		duration: { units: "rounds", expiry: "turnStart", remaining: 0 },
+		delete: async () => { auraDeletes += 1; },
+	};
+	target.effects = { get: () => auraEffect };
+
+	const caster = makeActorWithFlags({
+		activeDurationSpells: [{
+			instanceId: "duration-aura",
+			spellId: "spell-aura",
+			spellName: "Aura",
+			expiryRound: 3,
+			targets: [{ actorId: target.id, tokenId: null, name: target.name }],
+			targetEffects: [{ targetActorId: target.id, effectItemId: auraEffect.id }],
+		}],
+	});
+	const actors = [caster, target];
+	actors.get = id => actors.find(actor => actor.id === id) || null;
+	actors.contents = actors;
+	const combat = {
+		id: "combat-aura-fallback",
+		round: 3,
+		turn: 0,
+		combatant: { actor: target, token: null },
+	};
+	globalThis.game = {
+		combat,
+		time: { worldTime: 100 },
+		user: { id: "gm", isGM: true },
+		users: { activeGM: { id: "gm" } },
+		actors,
+		i18n: { format: key => key, localize: key => key },
+	};
+	globalThis.ui = { notifications: { info: () => {} } };
+	globalThis.ChatMessage = { create: async () => {}, getSpeaker: () => ({}) };
+	makeCanvas();
+
+	await durationSpell.handleDurationSpellCombatUpdate(combat, { turn: 0 }, {}, "gm");
+	assert.equal(durationSpell.getActiveDurationSpells(caster).length, 0);
+	assert.equal(auraDeletes, 0, "the aura subsystem remains responsible for its Active Effect");
+});
+
+test("duration lifecycle: core expiry ends a linked spell once", async () => {
+	let deleteCount = 0;
+	let releaseDelete;
+	let reportDeleteStarted;
+	const deleteGate = new Promise(resolve => { releaseDelete = resolve; });
+	const deleteStarted = new Promise(resolve => { reportDeleteStarted = resolve; });
+	const target = makeActorWithFlags();
+	target.id = "target-1";
+	target.name = "Target";
+	const effectItem = {
+		id: "effect-item-1",
+		name: "Webbed",
+		type: "Effect",
+		actor: target,
+		delete: async () => {
+			deleteCount += 1;
+			reportDeleteStarted();
+			await deleteGate;
+		},
+	};
+	target.items = {
+		get: id => id === effectItem.id ? effectItem : null,
+		filter: () => [],
+		find: () => null,
+	};
+
+	const caster = makeActorWithFlags({
+		activeDurationSpells: [{
+			instanceId: "duration-1",
+			spellId: "spell-1",
+			spellName: "Web",
+			spellImg: "web.png",
+			targets: [{ actorId: target.id, tokenId: null, name: target.name }],
+			targetEffects: [{
+				targetActorId: target.id,
+				targetTokenId: null,
+				effectItemId: effectItem.id,
+				targetName: target.name,
+			}],
+		}],
+	});
+	const actors = [caster, target];
+	actors.get = id => actors.find(actor => actor.id === id) || null;
+	actors.contents = actors;
+	globalThis.game = {
+		combat: { round: 3 },
+		time: { worldTime: 100 },
+		user: { id: "gm", isGM: true },
+		users: { activeGM: { id: "gm" } },
+		actors,
+		i18n: { format: key => key, localize: key => key },
+	};
+	globalThis.ui = { notifications: { info: () => {} } };
+	globalThis.ChatMessage = { create: async () => {}, getSpeaker: () => ({}) };
+	makeCanvas();
+
+	const activeEffect = { parent: effectItem, actor: target };
+	const first = durationSpell.handleDurationEffectUpdate(activeEffect, {
+		duration: { expired: true },
+	});
+	await deleteStarted;
+	const second = durationSpell.handleDurationEffectUpdate(activeEffect, {
+		duration: { expired: true },
+	});
+	releaseDelete();
+	assert.deepEqual(await Promise.all([first, second]), [true, false]);
+	assert.equal(deleteCount, 1);
+	assert.equal(durationSpell.getActiveDurationSpells(caster).length, 0);
 });
 
 test("focus lifecycle: startFocusSpell registers the spell and endFocusSpell clears it", async () => {

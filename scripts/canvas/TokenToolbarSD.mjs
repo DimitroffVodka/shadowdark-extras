@@ -2,7 +2,7 @@
 
 import { TokenToolbarApp } from "./TokenToolbarApp.mjs";
 import { getActiveFocusSpells, getActiveDurationSpells, endFocusSpell, endDurationSpell } from "../effects/FocusSpellTrackerSD.mjs";
-import { describeDurationRemaining, getLinkedDurationEffect } from "../shared/duration-basis.mjs";
+import { describeDurationRemaining, getDurationSpellActiveEffect } from "../shared/duration-basis.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -399,19 +399,18 @@ function getDurationSpellIcons(actor) {
 	if (!durationSpells || durationSpells.length === 0) return [];
 
 	const currentRound = game.combat?.round ?? 0;
-	const worldTime = game.time?.worldTime ?? 0;
 
 	return durationSpells.map(spell => {
-		const linkedEffect = getLinkedDurationEffect(spell);
-		linkedEffect?.updateDuration?.();
-		const effectDuration = linkedEffect?.duration;
-		const remaining = Number.isFinite(effectDuration?.remaining)
-			? Math.max(0, effectDuration.remaining)
-			: Number.isFinite(spell.expiryRound)
-				? Math.max(0, spell.expiryRound - currentRound)
-				: Number.isFinite(spell.expiryWorldTime)
-					? Math.max(0, spell.expiryWorldTime - worldTime)
-					: null;
+		const activeEffect = getDurationSpellActiveEffect(spell);
+		const coreRemaining = activeEffect?.duration?.remaining;
+		const legacyRemaining = Number.isFinite(spell.expiryRound)
+			? spell.expiryRound - currentRound
+			: (Number.isFinite(spell.expiryWorldTime)
+				? spell.expiryWorldTime - (game.time?.worldTime ?? 0)
+				: null);
+		const remaining = Number.isFinite(coreRemaining)
+			? Math.max(0, Math.ceil(coreRemaining))
+			: (Number.isFinite(legacyRemaining) ? Math.max(0, Math.ceil(legacyRemaining)) : null);
 
 		return {
 			instanceId: spell.instanceId,
@@ -420,7 +419,10 @@ function getDurationSpellIcons(actor) {
 			img: spell.spellImg || "icons/svg/mystery-man.svg",
 			isFocus: false,
 			duration: remaining,
-			durationLabel: describeDurationRemaining(spell, { round: currentRound, worldTime }),
+			durationLabel: describeDurationRemaining(activeEffect || spell, {
+				round: currentRound,
+				worldTime: game.time?.worldTime ?? null,
+			}),
 		};
 	});
 }
