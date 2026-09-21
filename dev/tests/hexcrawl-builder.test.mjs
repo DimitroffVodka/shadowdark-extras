@@ -106,7 +106,20 @@ test.beforeEach(() => {
 					...structuredClone(source), id: `scene-${scenes.length + 1}`, grid, tiles: [],
 					getFlag: (scope, key) => scene.flags[scope]?.[key],
 					async setFlag(scope, key, value) { scene.flags[scope][key] = structuredClone(value); writes.push(key); },
-					async createEmbeddedDocuments(type, data) { assert.equal(type, "Tile"); scene.tiles.push(...data); return data; },
+					// Real Tile documents carry an id, and repaintHexTiles deletes by
+					// id; a stub that pushes the raw create data cannot model that.
+					async createEmbeddedDocuments(type, data) {
+						assert.equal(type, "Tile");
+						const docs = data.map((source, n) => ({ ...source, id: `tile-${scene.tiles.length + n + 1}` }));
+						scene.tiles.push(...docs);
+						return docs;
+					},
+					async deleteEmbeddedDocuments(type, ids) {
+						assert.equal(type, "Tile");
+						const removed = scene.tiles.filter(tile => ids.includes(tile.id));
+						scene.tiles = scene.tiles.filter(tile => !ids.includes(tile.id));
+						return removed;
+					},
 					async view() { canvas.scene = scene; },
 				};
 				scenes.push(scene);
@@ -366,7 +379,7 @@ test("setup exposes the same guarded hex namespace on both surfaces and removes 
 		assert.equal(typeof module.api.hex, enabled ? "object" : "undefined");
 		assert.equal(context.game.shadowdarkExtras?.hex, module.api.hex);
 		if (enabled) {
-			assert.deepEqual(Object.keys(module.api.hex).sort(), ["buildHexcrawl", "getSpecialTiles", "getZoneColors", "importHexerMap", "openHexerImportDialog", "upsertHexRecords"]);
+			assert.deepEqual(Object.keys(module.api.hex).sort(), ["buildHexcrawl", "getSpecialTiles", "getZoneColors", "importHexerMap", "openHexerImportDialog", "repaintHexTiles", "upsertHexRecords"]);
 			context.game.user.isGM = false;
 			await assert.rejects(module.api.hex.buildHexcrawl(fixture), /requires GM permission/);
 			await assert.rejects(module.api.hex.upsertHexRecords("scene", []), /requires GM permission/);
@@ -452,4 +465,55 @@ test("art outside the shipped catalogue is refused before anything is written", 
 	assert.equal(scenes.length, 1);
 	// And art is not a record field: an upsert still refuses it.
 	await assert.rejects(builder.upsertHexRecords(scenes[0].id, [{ num: 101, art: VEGETATION_TILE }]), /unsupported hex field art/);
+});
+
+test("repaint swaps a hex's tile art and leaves the rest of the scene standing", async () => {
+	const result = await builder.buildPublishedHexcrawl(structuredClone(fixture), { view: false });
+	const scene = scenes.find(s => s.id === result.sceneId);
+	const center = grid.getCenterPoint({ i: 2, j: 13 });
+	const paintedAt = () => scene.tiles.filter(t => t.flags?.[MODULE_ID]?.painted
+		&& Math.abs(t.x + (t.width / 2) - center.x) < 4
+		&& Math.abs(t.y + (t.height / 2) - center.y) < 4);
+
+	const before = paintedAt();
+	assert.equal(before.length, 1, "the build leaves one painted tile on the hex");
+	assert.match(before[0].texture.src, /hex-tile-mountains/, "1403 builds as mountains");
+	const features = () => scene.tiles.filter(t => t.flags?.[MODULE_ID]?.hexcrawlFeature).length;
+	const featuresBefore = features();
+	const totalBefore = scene.tiles.length;
+	const neighbour = scene.tiles.find(t => t.flags?.[MODULE_ID]?.painted
+		&& t.x + (t.width / 2) === grid.getCenterPoint({ i: 3, j: 13 }).x);
+
+	const out = await builder.repaintHexTiles(scene.id, [{ num: 1403, terrain: "desert" }]);
+	assert.deepEqual(out, { sceneId: scene.id, repainted: 1, removed: 1 });
+
+	const after = paintedAt();
+	assert.equal(after.length, 1, "no stacked leftover under the new tile");
+	assert.match(after[0].texture.src, /hex-tile-desert/, "the art follows the new terrain");
+	assert.equal(scene.tiles.length, totalBefore, "repaint is a swap, not a net add");
+	assert.equal(features(), featuresBefore, "the feature icon on the same hex survives");
+	assert.ok(scene.tiles.some(t => t.hidden && t.locked), "the reference underlay survives");
+	assert.ok(scene.tiles.some(t => t.id === neighbour.id), "a neighbouring hex is untouched");
+	assert.equal(world.lastFlagValue()[scene.id]["2_13"].terrain, "desert", "the record follows the art");
+});
+
+test("repaint refuses what it cannot paint, before touching the scene", async () => {
+	const result = await builder.buildPublishedHexcrawl(structuredClone(fixture), { view: false });
+	const scene = scenes.find(s => s.id === result.sceneId);
+	const tilesBefore = scene.tiles.length;
+
+	await assert.rejects(builder.repaintHexTiles(scene.id, [{ num: 1403 }]),
+		/needs a terrain to repaint/, "terrain is required, never guessed");
+	await assert.rejects(builder.repaintHexTiles(scene.id, [{ num: 1403, terrain: "desert", name: "nope" }]),
+		/unsupported repaint field name/, "record fields belong to upsertHexRecords");
+	await assert.rejects(builder.repaintHexTiles(scene.id, [{ num: 9999, terrain: "desert" }]),
+		/outside the published grid/);
+	await assert.rejects(builder.repaintHexTiles(scene.id, [
+		{ num: 1403, terrain: "desert" }, { num: 1403, terrain: "forest" },
+	]), /duplicate hex 1403/);
+	await assert.rejects(builder.repaintHexTiles(scene.id, [{ num: 1403, terrain: "desert", special: "not-a-real-special" }]),
+		/unknown special/, "an unknown special fails before any tile is deleted");
+
+	assert.equal(scene.tiles.length, tilesBefore, "every rejection leaves the scene exactly as it was");
+	assert.deepEqual(await builder.repaintHexTiles(scene.id, []), { sceneId: scene.id, repainted: 0, removed: 0 });
 });

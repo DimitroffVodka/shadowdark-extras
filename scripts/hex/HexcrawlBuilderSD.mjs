@@ -413,6 +413,51 @@ function buildRegionMap(dataset) {
 	return map;
 }
 
+/**
+ * The Tile document one hex gets.
+ *
+ * Extracted from paintTerrain's loop so repaintHexTiles selects tiles by
+ * EXACTLY the same rules. Two copies of this would drift the first time either
+ * side was touched, and the symptom would be a repainted hex that quietly does
+ * not match the same hex on a freshly built map.
+ *
+ * Precedence is the builder's, unchanged: curated `art` outranks a `special`,
+ * which outranks a colored-catalogue pick, which outranks the flat biome set.
+ */
+function hexTileData({ num, biome, biomeKey, center, off, coloredByBiome, tw, th, special, art }) {
+	const coloredRule = TERRAIN_COLORED_RULES[String(biomeKey).trim().toLowerCase()];
+	let colored = [];
+	if (coloredByBiome) {
+		const candidates = coloredRule?.pool === "specials"
+			? getColoredTiles().filter(tile => tile.biome === "specials").map(tile => tile.path)
+			: (coloredByBiome[coloredRule?.pool ?? biome.colored] ?? []);
+		const includes = coloredRule?.include ?? biome.coloredIncludes;
+		colored = candidates.filter(path => {
+			const text = decodeURIComponent(path).toLowerCase();
+			return (!includes || includes.some(part => text.includes(part)))
+				&& !coloredRule?.exclude?.some(part => text.includes(part));
+		});
+	}
+	const coloredSrc = colored[variety(off.i, off.j, colored.length)];
+	const src = art ?? special?.path ?? coloredSrc
+		?? prefix(biome.paths[variety(off.i, off.j, biome.paths.length)]);
+	const { width, height } = art || special || coloredSrc
+		? getColoredTileDimensions(HEX_TILE_H) : { width: tw, height: th };
+
+	return {
+		texture: { src, anchorX: 0, anchorY: 0 },
+		x: center.x - (width / 2),
+		y: center.y - (height / 2),
+		width,
+		height,
+		sort: Math.floor(center.y),
+		flags: { [MODULE_ID]: {
+			painted: true, biome: biome.isWater ? "water" : undefined,
+			...(art || special ? { hexNum: num } : {}),
+		} },
+	};
+}
+
 async function paintTerrain(scene, dataset, geom, specials) {
 	const defaultBiome = dataset.terrain?.default ?? "forest";
 	const regionMap = buildRegionMap(dataset);
@@ -452,39 +497,10 @@ async function paintTerrain(scene, dataset, geom, specials) {
 			const cell = hexNumToColRow(num);
 			const off = geom.offsetOf(cell.col, cell.row);
 			const center = scene.grid.getCenterPoint(off);
-			const special = specialHexes.get(num);
-			const art = artHexes.get(num);
-			const coloredRule = TERRAIN_COLORED_RULES[String(biomeKey).trim().toLowerCase()];
-			let colored = [];
-			if (coloredByBiome) {
-				const candidates = coloredRule?.pool === "specials"
-					? getColoredTiles().filter(tile => tile.biome === "specials").map(tile => tile.path)
-					: (coloredByBiome[coloredRule?.pool ?? biome.colored] ?? []);
-				const includes = coloredRule?.include ?? biome.coloredIncludes;
-				colored = candidates.filter(path => {
-					const text = decodeURIComponent(path).toLowerCase();
-					return (!includes || includes.some(part => text.includes(part)))
-						&& !coloredRule?.exclude?.some(part => text.includes(part));
-				});
-			}
-			const coloredSrc = colored[variety(off.i, off.j, colored.length)];
-			const src = art ?? special?.path ?? coloredSrc
-				?? prefix(biome.paths[variety(off.i, off.j, biome.paths.length)]);
-			const { width, height } = art || special || coloredSrc
-				? getColoredTileDimensions(HEX_TILE_H) : { width: tw, height: th };
-
-			tileData.push({
-				texture: { src, anchorX: 0, anchorY: 0 },
-				x: center.x - (width / 2),
-				y: center.y - (height / 2),
-				width,
-				height,
-				sort: Math.floor(center.y),
-				flags: { [MODULE_ID]: {
-					painted: true, biome: biome.isWater ? "water" : undefined,
-					...(art || special ? { hexNum: num } : {}),
-				} },
-			});
+			tileData.push(hexTileData({
+				num, biome, biomeKey, center, off, coloredByBiome, tw, th,
+				special: specialHexes.get(num), art: artHexes.get(num),
+			}));
 			terrainMap[offsetToHexKey(off)] = geom.published ? biomeKey : biome.terrain;
 		}
 	}
@@ -595,7 +611,7 @@ export function installHexcrawlApi(api, namespace, wrap) {
 		return;
 	}
 	api.hex = namespace.hex = Object.fromEntries(Object.entries({
-		buildHexcrawl: buildPublishedHexcrawl, upsertHexRecords, getSpecialTiles,
+		buildHexcrawl: buildPublishedHexcrawl, upsertHexRecords, repaintHexTiles, getSpecialTiles,
 		importHexerMap, openHexerImportDialog,
 	}).map(([name, fn]) => [name, wrap(`hex.${name}`, fn)]));
 	// Deliberately outside the wrap above: it reads a constant, so gmOnly would
@@ -639,6 +655,122 @@ export async function upsertHexRecords(sceneId, records) {
 	}
 	if (records.length) await mergeHexRecords(sceneId, patches);
 	return { sceneId, records: records.length };
+}
+
+/**
+ * Repaint the terrain tiles of named hexes on a scene the stable API built,
+ * leaving the rest of the scene — tokens, notes, pins, fog progress, networks —
+ * alone.
+ *
+ * WHY. buildHexcrawl is all-or-nothing: it makes a new scene and (with
+ * overwrite) deletes the old one, taking the table's progress with it.
+ * upsertHexRecords is the opposite and says so — it updates words and does not
+ * repaint. Correcting a mis-tagged hex on a map already in play had no path
+ * between those two, so the record said swamp while the art still showed
+ * forest.
+ *
+ * WHAT IT REPLACES. Every tile flagged `painted` whose centre sits on the hex.
+ * Terrain tiles carry no hex number (only curated art and specials do), so they
+ * are found by position — which is also the only method that works on scenes
+ * built before this function existed. Feature icons (`hexcrawlFeature`) and the
+ * reference underlay (no flags) are not `painted` and so are never touched.
+ *
+ * A hex hand-painted with the hex painter after the build IS replaced: the
+ * caller is asserting what that hex should look like.
+ *
+ * @param {string} sceneId
+ * @param {Array<{num:number, terrain?:string, art?:string, special?:string}>} hexes
+ * @returns {Promise<{sceneId:string, repainted:number, removed:number}>}
+ */
+export async function repaintHexTiles(sceneId, hexes) {
+	requireInput(game.user?.isGM, "requires GM permission");
+	const scene = game.scenes.get(sceneId);
+	requireInput(scene, "scene not found");
+	const layout = scene.getFlag(MODULE_ID, "hexcrawl");
+	requireInput(layout?.version === 1 && layout.grid, "scene has no published layout; rebuild legacy scenes with api.hex.buildHexcrawl");
+	requireInput(Array.isArray(hexes), "hexes must be an array");
+
+	const geom = makeGeom(layout, true);
+	const seen = new Set();
+	for (const hex of hexes) {
+		requireInput(hex && typeof hex === "object" && !Array.isArray(hex), "each hex must be an object");
+		const num = validateHexNum(hex.num, geom);
+		requireInput(!seen.has(num), `duplicate hex ${hex.num}`);
+		seen.add(num);
+		for (const key of Object.keys(hex)) {
+			requireInput(["num", "terrain", "art", "special"].includes(key), `unsupported repaint field ${key}; repaint takes terrain, art and special only`);
+		}
+		for (const key of ["terrain", "art", "special"]) {
+			if (Object.hasOwn(hex, key)) requireInput(typeof hex[key] === "string", `${key} must be text`);
+		}
+		// Required, not inferred. The stored record's terrain is only reachable
+		// through the journal loader, and guessing it wrong picks the tile from
+		// the wrong pool — a silently different-looking hex. The caller knows the
+		// terrain it is asserting; make it say so.
+		requireInput(hex.terrain, `hex ${hex.num} needs a terrain to repaint`);
+	}
+	if (!hexes.length) return { sceneId, repainted: 0, removed: 0 };
+
+	// Specials are a catalogue: resolve and check them before touching the scene,
+	// so an unknown id fails with nothing half-repainted.
+	const wantSpecials = hexes.filter(hex => hex.special);
+	const specials = new Map((wantSpecials.length ? await getSpecialTiles() : []).map(tile => [tile.id, tile]));
+	for (const hex of wantSpecials) {
+		requireInput(specials.has(hex.special), `unknown special ${hex.special}; use getSpecialTiles()`);
+	}
+	await validateArt({ hexes: hexes.filter(hex => hex.art) });
+
+	// Same rule paintTerrain uses, so a repainted hex matches the same hex on a
+	// freshly built map instead of jumping to the colored set on its own.
+	let coloredByBiome = null;
+	if (getActiveTileTab() === "colored" || hexes.some(hex => hex.art)) {
+		if (!getColoredTiles().length) await loadColoredTileAssets();
+		coloredByBiome = getColoredTilesByBiome();
+	}
+	const tw = TERRAIN_TILE_W;
+	const th = TERRAIN_TILE_H;
+
+	// A painted tile is anchored so its CENTRE is the hex centre, whatever its
+	// size, so compare centres rather than the stored x/y corner.
+	const painted = scene.tiles.filter(tile => tile.flags?.[MODULE_ID]?.painted);
+	const tolerance = Math.max(4, (scene.grid?.size ?? HEX_TILE_H) * 0.25);
+
+	const tileData = [];
+	const doomed = [];
+	const terrainMap = {};
+	for (const hex of hexes) {
+		const num = Number(hex.num);
+		const cell = hexNumToColRow(num);
+		const off = geom.offsetOf(cell.col, cell.row);
+		const center = scene.grid.getCenterPoint(off);
+		const biomeKey = hex.terrain;
+		const biome = biomeFor(biomeKey) ?? biomeFor(defaultBiome) ?? BIOME_TILES.forest;
+
+		for (const tile of painted) {
+			if (Math.abs(tile.x + (tile.width / 2) - center.x) > tolerance) continue;
+			if (Math.abs(tile.y + (tile.height / 2) - center.y) > tolerance) continue;
+			doomed.push(tile.id);
+		}
+		tileData.push(hexTileData({
+			num, biome, biomeKey, center, off, coloredByBiome, tw, th,
+			special: specials.get(hex.special), art: hex.art,
+		}));
+		terrainMap[offsetToHexKey(off)] = biomeKey;
+	}
+
+	// Delete first: leaving the old tile under the new one is the visible bug,
+	// and both orders lose the same work if the second call fails.
+	if (doomed.length) await scene.deleteEmbeddedDocuments("Tile", doomed);
+	const created = await scene.createEmbeddedDocuments("Tile", tileData);
+	if (Object.keys(terrainMap).length) await setHexTerrainBatch(sceneId, terrainMap);
+
+	try {
+		if (canvas.scene?.id === scene.id) await canvas.tiles?.draw?.();
+	}
+	catch(err) {
+		console.warn(`${MODULE_ID} | post-repaint tiles redraw failed`, err);
+	}
+	return { sceneId, repainted: created.length, removed: doomed.length };
 }
 
 async function writeNetworks(scene, dataset, geom) {
