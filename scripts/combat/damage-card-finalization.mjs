@@ -37,7 +37,8 @@ export async function finalizeDamageCard({
 	if (!hideDamageCardFromPlayer) {
 		attachDamageCardListeners(html, message.id);
 	}
-	else if (isSpellWithDamage || isSpellWithEffects || hasWeaponBonuses || allEffects.length > 0) {
+	else if (!message.flags?.shadowdark?.isMysterious
+		&& (isSpellWithDamage || isSpellWithEffects || hasWeaponBonuses || allEffects.length > 0)) {
 		// If damage card is hidden, show a minimal summary for both spells AND
 		// weapons (if they have bonuses)
 
