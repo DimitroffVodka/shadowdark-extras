@@ -88,7 +88,8 @@ export function initMysteriousCasting() {
             && !messageDoc.flags?.shadowdark?.rollConfig) return true;
 
 		// Skip ability check rolls — those should always be visible
-		if (content.includes("card-ability-roll")) return true;
+		if (content.includes("card-ability-roll")
+            || messageDoc.flags?.shadowdark?.rollConfig?.type === "check") return true;
 
 		// Get the actor from the speaker
 		const actorId = messageDoc.speaker?.actor;
@@ -110,10 +111,14 @@ export function initMysteriousCasting() {
 	Hooks.on("renderChatMessageHTML", (message, html) => {
 		if (game.user.isGM || !message.flags?.shadowdark?.isMysterious) return;
 
+		// SD 4.x says what the roll is; the content sniffing is for legacy cards.
 		const content = message.content ?? "";
-		const isAttack = content.includes("card-attack-roll")
-            || content.includes("card-damage-roll")
-            || !!readSdDamageRoll(message).roll;
+		const rollType = message.flags?.shadowdark?.rollConfig?.type;
+		const isAttack = rollType
+			? rollType === "attack"
+			: content.includes("card-attack-roll")
+                || content.includes("card-damage-roll")
+                || !!readSdDamageRoll(message).roll;
 		const mysteriousLabel = isAttack ? "Unknown Attack" : "Unknown Spell";
 		const mysteriousText = game.settings.get(MODULE_ID, "mysteriousCastingMessage");
 		const mysteriousIcon = "icons/magic/symbols/question-stone-yellow.webp";

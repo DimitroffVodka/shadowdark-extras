@@ -29,16 +29,16 @@ await clickToggle({ preventDefault() {}, stopPropagation() {} });
 
 const REAL_CARD = "<div class=\"dice-roll\">Fireball — DC 12, Success, 4d6</div>";
 
-function castMessage() {
+function castMessage({ rollType, rolls = [] } = {}) {
 	const msg = {
 		content: REAL_CARD,
 		flavor: "Fireball",
 		speaker: { actor: "npc-1" },
-		flags: {},
-		rolls: [],
+		flags: { shadowdark: rollType ? { rollConfig: { type: rollType } } : {} },
+		rolls,
 		updateSource(update) {
 			assert.deepEqual(Object.keys(update), ["flags.shadowdark.isMysterious"]);
-			this.flags.shadowdark = { isMysterious: update["flags.shadowdark.isMysterious"] };
+			this.flags.shadowdark.isMysterious = update["flags.shadowdark.isMysterious"];
 		},
 	};
 	game.user.isGM = true;
@@ -74,4 +74,19 @@ test("players see only the mask", () => {
 	assert.match(out.body, /The creature casts a mysterious spell/);
 	assert.doesNotMatch(out.body, /Fireball|DC 12|Success/);
 	assert.equal(out.flavor, "Unknown Spell");
+});
+
+test("SD 4.x ability checks stay visible", () => {
+	const msg = castMessage({ rollType: "check" });
+	assert.equal(msg.flags.shadowdark.isMysterious, undefined);
+});
+
+test("a damaging spell is still labelled a spell", () => {
+	const out = render(castMessage({ rollType: "spell", rolls: [{ options: { type: "damage" } }] }), false);
+	assert.equal(out.flavor, "Unknown Spell");
+});
+
+test("an attack is labelled an attack", () => {
+	const out = render(castMessage({ rollType: "attack" }), false);
+	assert.equal(out.flavor, "Unknown Attack");
 });
