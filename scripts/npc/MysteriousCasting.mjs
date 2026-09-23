@@ -41,7 +41,7 @@ export function initMysteriousCasting() {
 		const isActive = _mysteriousActors.has(baseId);
 		const activeClass = isActive ? "active" : "";
 		const tooltip = isActive
-			? "Mysterious Mode: ON — rolls will be hidden from players"
+			? "Mysterious Mode: ON — players see a masked card, you see the full one"
 			: "Mysterious Mode: OFF — rolls shown normally";
 
 		const $header = html.find(".SD-header");
@@ -88,7 +88,8 @@ export function initMysteriousCasting() {
             && !messageDoc.flags?.shadowdark?.rollConfig) return true;
 
 		// Skip ability check rolls — those should always be visible
-		if (content.includes("card-ability-roll")) return true;
+		if (content.includes("card-ability-roll")
+            || messageDoc.flags?.shadowdark?.rollConfig?.type === "check") return true;
 
 		// Get the actor from the speaker
 		const actorId = messageDoc.speaker?.actor;
@@ -97,47 +98,36 @@ export function initMysteriousCasting() {
 		// Check if mysterious mode is enabled for this actor
 		if (!_mysteriousActors.has(actorId)) return true;
 
-		// IT IS MYSTERIOUS!
-		const isAttack = content.includes("card-attack-roll")
-            || content.includes("card-damage-roll")
-            || !!readSdDamageRoll(messageDoc).roll;
-		const mysteriousLabel = isAttack ? "Unknown Attack" : "Unknown Spell";
+		// Flag only: the stored card stays whole, so the GM (and the GM-side card
+		// pipelines, which read content and flavor) see the real roll and effects.
+		// Players get the mask at render time below.
+		messageDoc.updateSource({ "flags.shadowdark.isMysterious": true });
+		return true;
+	});
 
+	// ── Mask the card for players; the GM keeps the full card ──
+	// ponytail: the real card still travels to player clients in the message
+	// data (as it always has); whisper a separate GM copy if that ever matters.
+	Hooks.on("renderChatMessageHTML", (message, html) => {
+		if (game.user.isGM || !message.flags?.shadowdark?.isMysterious) return;
+
+		// SD 4.x says what the roll is; the content sniffing is for legacy cards.
+		const content = message.content ?? "";
+		const rollType = message.flags?.shadowdark?.rollConfig?.type;
+		const isAttack = rollType
+			? rollType === "attack"
+			: content.includes("card-attack-roll")
+                || content.includes("card-damage-roll")
+                || !!readSdDamageRoll(message).roll;
+		const mysteriousLabel = isAttack ? "Unknown Attack" : "Unknown Spell";
 		const mysteriousText = game.settings.get(MODULE_ID, "mysteriousCastingMessage");
 		const mysteriousIcon = "icons/magic/symbols/question-stone-yellow.webp";
 
-		// Extract potential buttons from original content
-		let buttonsHtml = "";
-		const buttonsMatch = content.match(/<div class="[^"]*card-buttons[^"]*">[\s\S]*?<\/div>/i);
-		if (buttonsMatch) {
-			buttonsHtml = buttonsMatch[0];
-		}
-		else {
-			const actionButtons = content.match(
-				/<button\s+[^>]*data-action[^>]*>[\s\S]*?<\/button>/gi
-			);
-			if (actionButtons) {
-				buttonsHtml = `<div class="card-buttons">${actionButtons.join("")}</div>`;
-			}
-		}
-
-		// Preserve wrapper attributes (data-actor-id, data-item-id, etc.)
-		let wrapperAttributes = "";
-		const attributesMatch = content.match(/^<div\s+([^>]+)>/i);
-		if (attributesMatch) {
-			wrapperAttributes = attributesMatch[1];
-		}
-		else {
-			wrapperAttributes = `class="shadowdark chat-card item-card" data-actor-id="${actorId}"`;
-		}
-
-		// Hide original content from ".chat-card" selectors
-		const safeHiddenContent = content.replace(/class="([^"]*)"/, (match, classes) => {
-			return `class="${classes.replace(/chat-card/g, "hidden-content")}"`;
-		});
-
-		const newContent = `
-            <div ${wrapperAttributes}>
+		html.querySelector(".flavor-text")?.replaceChildren(mysteriousLabel);
+		const body = html.querySelector(".message-content");
+		if (!body) return;
+		body.innerHTML = `
+            <div class="shadowdark chat-card item-card">
                 <header class="card-header flexrow">
                     <img src="${foundry.utils.escapeHTML(mysteriousIcon)}" title="${foundry.utils.escapeHTML(mysteriousLabel)}" width="36" height="36"/>
                     <h3 class="item-name">${mysteriousLabel}</h3>
@@ -145,23 +135,7 @@ export function initMysteriousCasting() {
                 <div class="card-content">
                     <p><em>${mysteriousText}</em></p>
                 </div>
-                ${buttonsHtml}
-                <div style="display:none;">
-                    ${safeHiddenContent}
-                </div>
             </div>
         `;
-
-		const updateData = {
-			"content": newContent,
-			"flags.shadowdark.isMysterious": true,
-		};
-
-		if (messageDoc.flavor) {
-			updateData.flavor = mysteriousLabel;
-		}
-
-		messageDoc.updateSource(updateData);
-		return true;
 	});
 }

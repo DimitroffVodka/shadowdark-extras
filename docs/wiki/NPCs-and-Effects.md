@@ -72,8 +72,9 @@ See [Spell Automation](https://github.com/DimitroffVodka/shadowdark-extras/wiki/
 ## Mysterious Casting
 
 The GM sees a mask toggle in the NPC sheet header. Off, rolls and cards appear
-normally. On, public output gets replaced by the configured mysterious-casting
-text while the GM keeps every hidden detail.
+normally. On, players see the configured mysterious-casting text in place of the
+card, while the GM sees the full card in chat: the roll, success or failure,
+damage, and effects.
 
 That state lives in memory on purpose, which makes it a tactical reveal mode
 rather than permanent actor data. Toggle it again after a reload if you need it

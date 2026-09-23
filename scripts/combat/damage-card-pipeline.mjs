@@ -70,7 +70,11 @@ export async function injectDamageCard(message, html, data) {
 	// Check if player damage cards are enabled (for non-GMs)
 	// Note: We don't return early here - we still process templates, summoning, effects, etc.
 	// We just skip the damage card HTML injection at the end
-	const hideDamageCardFromPlayer = !game.user.isGM && !settings.showForPlayers;
+	// Mysterious Casting masks this card for players, so nothing of the real
+	// result (card, challenge, or the hidden-card summary) may land on it.
+	const isMaskedForPlayer = !game.user.isGM && !!message.flags?.shadowdark?.isMysterious;
+	const hideDamageCardFromPlayer = isMaskedForPlayer
+		|| (!game.user.isGM && !settings.showForPlayers);
 
 	// Note: hideDamageCardOnFailedAttack check is done later after item type is known (around line
 	// 1610)
@@ -1741,7 +1745,7 @@ export async function injectDamageCard(message, html, data) {
 		effectsChallengeResults
 	);
 	// Insert Challenge HTML at the TOP (before the dice roll)
-	if (challengeHtml) {
+	if (challengeHtml && !isMaskedForPlayer) {
 		const $diceRoll = html.find(".dice-roll, .card-damage-rolls").first();
 		if ($diceRoll.length) {
 			$diceRoll.before(challengeHtml);

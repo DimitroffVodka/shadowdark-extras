@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Mysterious Casting shows the GM the whole card.** With the mask on, players still see only the mysterious-casting text, but the GM now sees the real card in chat: the roll, success or failure, damage and effects. Before, the GM got the same masked card as the players and had to remember the target number and effects. The damage card, and the damage total shown when that card is hidden from players, are never added to a masked card on a player's screen.
+
 ## [6.15.0] — 2026-09-15 — Lit lights change hands properly, Torch Sprite fixes, sprite windows fit the screen
 
 ### Fixed
