@@ -288,8 +288,8 @@ export class SDXHexTooltip {
 
 		// Hex highlight layer
 		try {
-			if (canvas.grid.highlightLayers?.[this.#hlName]) canvas.grid.destroyHighlightLayer(this.#hlName);
-			canvas.grid.addHighlightLayer(this.#hlName);
+			if (canvas.interface.grid.highlightLayers?.[this.#hlName]) canvas.interface.grid.destroyHighlightLayer(this.#hlName);
+			canvas.interface.grid.addHighlightLayer(this.#hlName);
 		}
 		catch{
 			this.#hlName = null;
@@ -297,8 +297,8 @@ export class SDXHexTooltip {
 
 		// "Show all" highlight layer
 		try {
-			if (canvas.grid.highlightLayers?.[this.#hlAllName]) canvas.grid.destroyHighlightLayer(this.#hlAllName);
-			canvas.grid.addHighlightLayer(this.#hlAllName);
+			if (canvas.interface.grid.highlightLayers?.[this.#hlAllName]) canvas.interface.grid.destroyHighlightLayer(this.#hlAllName);
+			canvas.interface.grid.addHighlightLayer(this.#hlAllName);
 		}
 		catch{
 			this.#hlAllName = null;
@@ -371,11 +371,11 @@ export class SDXHexTooltip {
 		this.#closeContextMenu();
 		this.#hide();
 		if (this.#hlName) try {
-			canvas.grid.destroyHighlightLayer(this.#hlName);
+			canvas.interface.grid.destroyHighlightLayer(this.#hlName);
 		}
 		catch{ }
 		if (this.#hlAllName) try {
-			canvas.grid.destroyHighlightLayer(this.#hlAllName);
+			canvas.interface.grid.destroyHighlightLayer(this.#hlAllName);
 		}
 		catch{ }
 		this.#destroyMarkerLayer();
@@ -1332,7 +1332,7 @@ export class SDXHexTooltip {
 			canvas.interface.grid.clearHighlightLayer(this.#hlName);
 			const base = zoneColor ? Color.from(zoneColor) : Color.from("#00cc44");
 			const border = base.mix(Color.from("#000000"), 0.3);
-			canvas.grid.highlightPosition(this.#hlName, {
+			canvas.interface.grid.highlightPosition(this.#hlName, {
 				x: tl.x, y: tl.y,
 				color: base, alpha: 0.25,
 				border: border, borderAlpha: 1.0,
@@ -1379,7 +1379,7 @@ export class SDXHexTooltip {
 			const tl = canvas.grid.getTopLeftPoint({ i, j });
 			const base = record.zoneColor ? Color.from(record.zoneColor) : Color.from("#00cc44");
 			const border = base.mix(Color.from("#000000"), 0.3);
-			canvas.grid.highlightPosition(this.#hlAllName, {
+			canvas.interface.grid.highlightPosition(this.#hlAllName, {
 				x: tl.x, y: tl.y,
 				color: base, alpha: 0.25,
 				border: border, borderAlpha: 1.0,
