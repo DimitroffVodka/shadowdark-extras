@@ -188,8 +188,11 @@ rested camper instead:
   character with the Stout advantage (the system's HP-roll advantage key) rolls
   each die with advantage;
 - rolls `1d4` and regains that many lost spells. When more are lost than the
-  roll, the owning player picks which; if no player is connected, doesn't
-  answer within two minutes, or closes the dialog, the GM picks;
+  roll, whoever plays the character picks which: its assigned user (an
+  Assistant GM included), otherwise a connected player who owns it. If no one
+  is connected, or they close the dialog, the GM picks. If they haven't
+  answered within two minutes, the GM picks and they get a whisper that a late
+  pick won't count;
 - still refreshes class ability uses and wand spells in full, and clears
   Unconscious;
 - with Shadowdark Enhancer, heals 1 point of each damaged ability instead of all

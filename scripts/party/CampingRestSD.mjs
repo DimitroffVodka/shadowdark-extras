@@ -279,14 +279,24 @@ async function pickGrinderSpells(actor) {
 				`<div><label><input type="checkbox" name="${spell.id}"> ${escape(spell.name)}</label></div>`
 			).join("")}`,
 		};
-		const owners = game.users.filter(user =>
-			user.active && !user.isGM && actor.testUserPermission(user, "OWNER")
-		);
-		const player = owners.find(user => user.character?.id === actor.id) ?? owners[0];
+		// Whoever plays the character: its assigned user (an Assistant GM
+		// included), else a connected player who owns it.
+		const others = game.users.filter(user => user.active && !user.isSelf);
+		const player = others.find(user => user.character?.id === actor.id)
+			?? others.find(user => !user.isGM && actor.testUserPermission(user, "OWNER"));
 		if (player) {
 			picked = await player.query("dialog", { type: "input", config }, { timeout: GRINDER_PICK_TIMEOUT_MS })
-				.catch(error => {
+				.catch(async error => {
+					// Timed out or disconnected: the dialog may still be open for
+					// them, so say that the GM is picking and a late answer won't count.
 					console.warn(`${MODULE_ID} | ${player.name} did not pick Grinder spells; the GM picks`, error);
+					await ChatMessage.create({
+						content: game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.grinder_pick_late", {
+							user: escape(player.name),
+							actor: escape(actor.name),
+						}),
+						whisper: [player.id],
+					});
 					return null;
 				});
 		}
