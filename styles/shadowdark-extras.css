@@ -1785,6 +1785,63 @@
     line-height: 1.6;
 }
 
+/* Quests Tab and Quest Tracker (read from Shadowdark Enhancer, #150) */
+.shadowdark-extras-party .tab-quests .SD-box {
+    margin-bottom: 8px;
+}
+
+.shadowdark-extras-party .sdx-quest-list,
+.shadowdark-extras-party .sdx-rumor-list,
+.sdx-quest-tracker .sdx-qt-list {
+    list-style: none;
+    margin: 0;
+    padding: 6px 10px;
+}
+
+.shadowdark-extras-party .sdx-quest + .sdx-quest,
+.shadowdark-extras-party .sdx-rumor-list li + li,
+.sdx-quest-tracker .sdx-qt-quest + .sdx-qt-quest {
+    margin-top: 6px;
+}
+
+.shadowdark-extras-party .sdx-quest-name,
+.sdx-quest-tracker .sdx-qt-name {
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.shadowdark-extras-party .sdx-quest-objectives,
+.sdx-quest-tracker .sdx-qt-objectives {
+    list-style: none;
+    margin: 2px 0 0;
+    padding-left: 14px;
+}
+
+.shadowdark-extras-party .sdx-quest-objectives .done,
+.sdx-quest-tracker .sdx-qt-objectives .done {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+.shadowdark-extras-party .sdx-rumor-meta {
+    display: block;
+    color: var(--party-text-muted);
+    font-size: 0.85em;
+}
+
+.sdx-quest-tracker .window-content {
+    padding: 6px;
+}
+
+.sdx-quest-tracker .sdx-qt-party {
+    margin: 0 0 4px;
+}
+
+.sdx-quest-tracker .sdx-qt-empty {
+    font-style: italic;
+    margin: 0;
+}
+
 /* ============================================
    CONTAINER FREE CARRY CHECKBOX
    ============================================ */

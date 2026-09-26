@@ -46,6 +46,13 @@
 			{{localize "SHADOWDARK_EXTRAS.party.tab.travel"}}
 		</a>
 
+		{{#if questTab}}
+		<a class="navigation-tab" data-tab="tab-quests">
+			<i class="fas fa-scroll"></i>
+			{{localize "SHADOWDARK_EXTRAS.party.tab.quests"}}
+		</a>
+		{{/if}}
+
 		<a class="navigation-tab" data-tab="tab-description">
 			<i class="fas fa-book-open"></i>
 			{{localize "SHADOWDARK_EXTRAS.party.tab.description"}}
@@ -680,6 +687,56 @@
 				{{/each}}
 			</div>
 		</div>
+
+		{{#if questTab}}
+		<!-- QUESTS TAB (read-only, from Shadowdark Enhancer's quest log) -->
+		<div class="tab tab-quests" data-group="primary" data-tab="tab-quests">
+			{{#each questTab.groups}}
+			<div class="SD-box sdx-party-quests">
+				<div class="header">
+					<label>{{label}}</label>
+					<span>{{quests.length}}</span>
+				</div>
+				<ol class="content sdx-quest-list">
+					{{#each quests}}
+					<li class="sdx-quest" data-uuid="{{uuid}}">
+						<a class="sdx-quest-name" data-action="open-quest">{{name}}</a>
+						{{#if objectives.length}}
+						<ul class="sdx-quest-objectives">
+							{{#each objectives}}
+							<li class="{{#if done}}done{{/if}}">
+								<i class="far {{#if done}}fa-square-check{{else}}fa-square{{/if}}"></i> {{text}}
+							</li>
+							{{/each}}
+						</ul>
+						{{/if}}
+					</li>
+					{{/each}}
+				</ol>
+			</div>
+			{{else}}
+			<p class="empty-description">{{localize "SHADOWDARK_EXTRAS.party.quests.none"}}</p>
+			{{/each}}
+
+			{{#if questTab.rumors}}
+			<div class="SD-box sdx-party-rumors">
+				<div class="header">
+					<label>{{localize "SHADOWDARK_EXTRAS.party.quests.rumors"}}</label>
+				</div>
+				<ol class="content sdx-rumor-list">
+					{{#each questTab.rumors.list}}
+					<li>
+						<span class="sdx-rumor-text">{{text}}</span>
+						<span class="sdx-rumor-meta">{{region}}{{#if region}}{{#if date}} · {{/if}}{{/if}}{{date}}</span>
+					</li>
+					{{else}}
+					<li class="empty-description">{{localize "SHADOWDARK_EXTRAS.party.quests.no_rumors"}}</li>
+					{{/each}}
+				</ol>
+			</div>
+			{{/if}}
+		</div>
+		{{/if}}
 
 		<!-- DESCRIPTION TAB -->
 		<div class="tab tab-description" data-group="primary" data-tab="tab-description">

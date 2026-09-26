@@ -110,7 +110,25 @@ first. NPC entries carry spawn counts for encounter placement.
 | **Members** | Roster, HP/AC/level/slots/abilities/effects, place tokens, award XP/coins, sync light |
 | **Inventory** | Shared items and treasury, slot maximum, transfers, even coin division |
 | **Travel** | Assign camping tasks, resolve a complete rest, roll weather, and choose a travel speed |
+| **Quests** | The party's quests from Shadowdark Enhancer's quest log (only with Enhancer) |
 | **Description** | Shared party notes |
+
+### Quests and the quest tracker
+
+With Shadowdark Enhancer installed, the party sheet has a **Quests** tab. It
+lists the quests assigned to the party and the personal quests of its members,
+grouped as Available, Active, Completed and Failed, each with its objectives.
+Click a quest to open its journal entry. The GM also sees Hidden quests;
+players never do. The tab is read-only: quests are created, changed and paid
+out in Enhancer's Quest Log, and the tab follows those changes as they happen.
+When Enhancer keeps a rumor ledger, **Rumors heard** is listed under the
+quests, newest first.
+
+Each player can also turn on **Quest Tracker** in the module settings: a small
+movable panel with the party's Active quests and their objectives. It follows
+the party whose token is on the current scene, else the party the player's
+character is in. It is off by default. Without Enhancer there is no Quests
+tab and no tracker setting.
 
 ### Group actions
 

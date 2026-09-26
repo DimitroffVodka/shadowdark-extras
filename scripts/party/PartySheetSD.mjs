@@ -16,6 +16,7 @@ import { PartyInventory } from "./partyinventory.mjs";
 import { PartyRoster } from "./party-roster.mjs";
 import { PartyDropTransfer } from "./party-drop-transfer.mjs";
 import { PartyTokenPlacement } from "./party-token-placement.mjs";
+import { listParties, openQuest, partyMemberUuids, questTabData, registerPartyQuests } from "./party-quests.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -362,6 +363,9 @@ export default class PartySheetSD extends PartySheetMixinBase {
 			selected: speed.key === selectedSpeed,
 		}));
 
+		// Quests tab: null (no tab) unless Shadowdark Enhancer's quest log is there
+		context.questTab = await questTabData(this.actor);
+
 		return context;
 	}
 
@@ -518,6 +522,9 @@ export default class PartySheetSD extends PartySheetMixinBase {
 			this._onBeginCampingRest.bind(this)
 		);
 
+		// Quests tab: a quest opens its Shadowdark Enhancer journal entry
+		html.find("[data-action='open-quest']").click(this._onOpenQuest.bind(this));
+
 		// Travel Rolling
 
 		html.find(".sdx-task-dc").change(this._onChangeTravelDC.bind(this));
@@ -620,6 +627,15 @@ export default class PartySheetSD extends PartySheetMixinBase {
 				callback: element => this._onTransferItem(element),
 			},
 		];
+	}
+
+	/**
+	 * Open a quest's journal entry from the Quests tab
+	 * @param {Event} event
+	 */
+	async _onOpenQuest(event) {
+		event.preventDefault();
+		await openQuest(event.currentTarget.closest("[data-uuid]")?.dataset.uuid);
 	}
 
 	/**
@@ -786,6 +802,8 @@ export function registerPartyTravelSocket(socket) {
 // Token light synchronisation extracted to party-token-light.mjs (Phase 5.3
 // split). Re-exported so existing import sites keep resolving here.
 export { getBrightestPartyLight, syncPartyTokenLight } from "./party-token-light.mjs";
+// Party reads for the module API (api.party), kept with the quest views that use them.
+export { listParties, partyMemberUuids };
 
 /**
  * Find all parties that contain a given actor
@@ -827,6 +845,10 @@ export function getPartiesContainingActor(actor) {
  * `updateActor`, `updateItem` and `deleteItem` are each registered more than
  * once in the root, so the root calls this from the exact position these four
  * occupied and relative order is preserved by the call site (rule 2).
+ *
+ * Added after the move (#150): the re-render on Shadowdark Enhancer's
+ * questsChanged, and the quest tracker's setting and hooks. They ride on this
+ * call because the composition root is at its 2000-line split threshold.
  */
 export function registerPartySheetRerenderHooks() {
 	// Re-render party sheets when a member actor is updated
@@ -892,6 +914,17 @@ export function registerPartySheetRerenderHooks() {
 			}
 		}
 	});
+
+	// Re-render party sheets when Shadowdark Enhancer's quest log changes; the
+	// Quests tab reads it (#150). Fires on every client, so nothing is sent here.
+	Hooks.on("shadowdark-enhancer.questsChanged", () => {
+		for (const app of Object.values(ui.windows)) {
+			if (app instanceof PartySheetSD) app.render();
+		}
+	});
+
+	// The quest tracker's setting and its own re-render hooks (#150).
+	registerPartyQuests();
 }
 
 /**

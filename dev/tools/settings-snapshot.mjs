@@ -40,6 +40,8 @@ const VENDOR_TREE_EXCEPTIONS = ["scripts/maphub/OnePageParserSD.mjs"];
  */
 const OPTIONAL_MODULE_GATED = {
   autoanimations: ["aaAnimateOnSuccess", "aaAnimateSpellsWithoutTarget", "aaIntegration"],
+  // Registered at setup only when Enhancer's quest API is there (#150).
+  "shadowdark-enhancer": ["questTracker"],
 };
 
 export function collectSettingsKeys() {

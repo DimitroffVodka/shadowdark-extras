@@ -79,7 +79,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
  * their commit messages.
  */
 
-import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor, registerPartyTravelSocket, registerPartySheetRerenderHooks, isPartyActor, registerPartyCleanupHooks } from "./party/PartySheetSD.mjs";
+import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor, registerPartyTravelSocket, registerPartySheetRerenderHooks, isPartyActor, registerPartyCleanupHooks, listParties, partyMemberUuids } from "./party/PartySheetSD.mjs";
 import { initCarouselDrag } from "./canvas/carousel-drag.mjs";
 import { extendActorCreationDialog, wrapActorCreate } from "./party/party-creation.mjs";
 import { initializeTradeSocket, ensureTradeJournal } from "./inventory/TradeWindowSD.mjs";
@@ -1663,6 +1663,7 @@ Hooks.on("setup", () => {
 			showConditionsModal: audited("showConditionsModal", showConditionsModal),
 			getConditionsData: audited("getConditionsData", getConditionsData),
 
+			party: { list: listParties, members: partyMemberUuids }, // plain reads, no GM wrap
 			// --- Dungeon generator ---
 			generateDungeon: audited("generateDungeon", gmOnly("generateDungeon", generateDungeon)),
 			getGeneratorSettings: audited("getGeneratorSettings", getGeneratorSettings),
