@@ -240,6 +240,9 @@ RollTable. With no table set and an active Shadowdark Enhancer offering
 Only a GM can roll it; players see Enhancer's refusal. Clicking again while the
 weather still holds neither posts a card nor offers Predict. An accepted Predict
 rerolls through Enhancer, preserving the original roll's advantage.
+If the reroll succeeds but spending Predict cannot be confirmed, a persistent
+warning asks the GM to check the remaining uses and deduct that use if needed.
+Neither the reroll nor an uncertain consume write is retried automatically.
 
 Without that API, SDX uses its built-in Shadowdark `1d6` weather check. A custom
 table always wins; a missing or broken custom table keeps its existing warning
@@ -286,6 +289,8 @@ A persistent error and chat warning tell the GM to reconcile the unfinished food
 recovery or stat-damage steps manually. `fed` and `mountsFed` are reported only
 after the entire food-consumption plan has been confirmed; otherwise they are
 empty/zero, not guessed. A cleanup error never makes an applied rest retryable.
+Notification and chat failures cannot change a terminal result; chat is still
+attempted when the error notification fails.
 
 ---
 

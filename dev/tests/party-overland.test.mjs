@@ -196,6 +196,29 @@ test("Predict is consumed only after Enhancer confirms a successful reroll", asy
 	assert.deepEqual(calls, ["reroll", "consume"]);
 });
 
+test("failed Predict consumption after a confirmed reroll warns permanently without retrying", async t => {
+	let rolls = 0;
+	resetWorld({ active: true, enhancer: { overland: {
+		rollWeather: async () => { rolls++; return { ok: true, rolled: true }; },
+	} } });
+	foundry.applications.api.DialogV2.confirm = async () => true;
+	const sheet = makeTravelSheet({ uses: 2 });
+	let requests = 0;
+	sheet._requestPartyTravelMutation = async () => { requests++; return null; };
+	const notices = [];
+	t.mock.method(ui.notifications, "warn", (...args) => notices.push(args));
+	await sheet._onRollWeather(event);
+	assert.equal(rolls, 2, "one initial roll and one reroll, never replayed");
+	assert.equal(requests, 1, "do not retry an uncertain consume write");
+	assert.equal(sheet.actor.getFlag("shadowdark-extras", "campingWeatherReroll").uses, 2);
+	assert.deepEqual(notices, [["SHADOWDARK_EXTRAS.camping_rest.predict_consume_failed", { permanent: true }]]);
+	assert.equal(chatCards, 0);
+	// Legacy ordering has not drawn yet: do not claim that a reroll happened.
+	notices.length = 0;
+	await sheet._maybeUseWeatherPrediction(async () => assert.fail("legacy must not draw after failed consume"));
+	assert.deepEqual(notices, []);
+});
+
 test("a provider exception warns and never falls back to Extras weather", async () => {
 	resetWorld({
 		active: true,

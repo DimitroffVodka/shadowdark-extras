@@ -1091,7 +1091,12 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				const message = game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.partial_failure", {
 					message: error.message,
 				});
-				ui.notifications.error(message, { permanent: true });
+				try {
+					ui.notifications.error(message, { permanent: true });
+				}
+				catch(notificationError) {
+					console.error(`${MODULE_ID} | Could not notify camping failure`, notificationError);
+				}
 				try {
 					await ChatMessage.create({
 						speaker: ChatMessage.getSpeaker({ actor: this.partyActor }),
@@ -1121,9 +1126,14 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			}
 			catch(error) {
 				console.error(`${MODULE_ID} | Camping cleanup failed`, error);
-				ui.notifications.error(game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.cleanup_failed", {
-					message: error.message,
-				}), { permanent: true });
+				try {
+					ui.notifications.error(game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.cleanup_failed", {
+						message: error.message,
+					}), { permanent: true });
+				}
+				catch(notificationError) {
+					console.error(`${MODULE_ID} | Could not notify camping cleanup failure`, notificationError);
+				}
 			}
 		}
 	}

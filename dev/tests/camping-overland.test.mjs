@@ -213,6 +213,57 @@ test("provider failure after food and recovery is terminal, not a replayable can
 	assert.equal(cards.length, 1, "leave a persistent manual-recovery warning");
 });
 
+for (const failure of ["notification", "chat", "both"]) {
+	test(`partial camping stays terminal when ${failure} reporting fails`, async t => {
+		setup();
+		t.mock.method(console, "error", () => {});
+		const fed = actor("fed", 1);
+		const hungry = actor("hungry");
+		let recoveries = 0;
+		let notifications = 0;
+		const cards = [];
+		fed.update = async () => { recoveries++; };
+		ui.notifications.error = () => {
+			notifications++;
+			if (failure !== "chat") throw Error("notification failed");
+		};
+		globalThis.ChatMessage = { getSpeaker: () => ({}), create: async data => {
+			if (failure !== "notification") throw Error("chat failed");
+			cards.push(data);
+		} };
+		game.shadowdarkEnhancer.statDamage = { apply: async () => { throw Error("provider failed"); } };
+		let app;
+		t.mock.method(CampingRestApp.prototype, "render", function() { app = this; return this; });
+		t.mock.method(foundry.applications.api.DialogV2, "confirm", async () => true);
+		const pending = camping.openCampingRest({ party: actor("party"), members: [fed, hungry], advanceTime: false });
+		await app._confirmAndRun({ campers: [{ actor: fed }, { actor: hungry }], campfireMode: "none" });
+		assert.deepEqual(await pending, {
+			completed: true, partial: true, error: "provider failed",
+			fed: { fed: true, hungry: false }, mountsFed: 0,
+		});
+		assert.equal(fed.items.length, 0);
+		assert.equal(recoveries, 1);
+		assert.equal(notifications, 1);
+		assert.equal(cards.length, failure === "notification" ? 1 : 0);
+	});
+}
+
+test("cleanup reporting failure cannot replace a successful camping API result", async t => {
+	setup();
+	t.mock.method(console, "error", () => {});
+	ui.notifications.error = () => { throw Error("notification failed"); };
+	const pc = actor("pc", 1);
+	let app;
+	t.mock.method(CampingRestApp.prototype, "render", function() { app = this; return this; });
+	t.mock.method(foundry.applications.api.DialogV2, "confirm", async () => true);
+	const pending = camping.openCampingRest({ party: actor("party"), members: [pc], advanceTime: false });
+	app._postSummary = async () => {};
+	app.onCampfireChange = async () => { throw Error("cleanup failed"); };
+	await app._confirmAndRun({ campers: [{ actor: pc }], campfireMode: "none" });
+	assert.deepEqual(await pending, { completed: true, fed: { pc: true }, mountsFed: 0 });
+	assert.equal(pc.items.length, 0);
+});
+
 test("a missing or changed planned ration cancels before any food or recovery writes", async t => {
 	setup();
 	t.mock.method(console, "error", () => {});

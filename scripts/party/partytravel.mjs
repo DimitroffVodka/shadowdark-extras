@@ -434,7 +434,14 @@ export const PartyTravel = {
 				operation: "weatherPrediction",
 				action: "consume",
 			});
-			if (!result) return;
+			if (!result) {
+				if (consumeAfterDraw) {
+					ui.notifications.warn(game.i18n.localize(
+						"SHADOWDARK_EXTRAS.camping_rest.predict_consume_failed"
+					), { permanent: true });
+				}
+				return;
+			}
 			uses = result.uses;
 			if (!consumeAfterDraw && await drawWeather() === false) return;
 		}

@@ -1377,6 +1377,7 @@
   "SHADOWDARK_EXTRAS.camping_rest.benefit_predict": "Banked one reroll after tomorrow's weather is revealed.",
   "SHADOWDARK_EXTRAS.camping_rest.predict_title": "Use Predict?",
   "SHADOWDARK_EXTRAS.camping_rest.predict_prompt": "The weather has been revealed. Force a reroll? {count} prediction reroll(s) remain.",
+  "SHADOWDARK_EXTRAS.camping_rest.predict_consume_failed": "The weather was rerolled, but spending the Predict use could not be confirmed. The GM must check the party's remaining Predict uses and deduct this use if needed before rerolling again.",
   "SHADOWDARK_EXTRAS.camping_rest.summary_title": "Camping & Rest Summary",
   "SHADOWDARK_EXTRAS.camping_rest.summary_campfire": "Campfire established",
   "SHADOWDARK_EXTRAS.camping_rest.summary_no_campfire": "No campfire",
