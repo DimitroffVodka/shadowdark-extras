@@ -650,9 +650,10 @@ function _onUpdateScene(scene, changes) {
 let _revealQueue = Promise.resolve();
 
 function _onUpdateToken(tokenDoc, changes, options) {
-	if (!enabled) return;
-	if (!canvas.grid?.isHexagonal) return;
-	if (tokenDoc.parent?.id !== canvas.scene?.id) return;
+	const scene = tokenDoc.parent;
+	if (!scene?.getFlag(MODULE_ID, "hexFogEnabled")) return;
+	const grid = scene.grid;
+	if (!grid?.isHexagonal) return;
 	if (!game.user.isGM || (game.users.activeGM && game.users.activeGM.id !== game.user.id)) return;
 
 	const hasMove = ("x" in changes) || ("y" in changes)
@@ -660,7 +661,7 @@ function _onUpdateToken(tokenDoc, changes, options) {
 	if (!hasMove) return;
 
 	// Get all cells along the movement path
-	const pathCells = hexMovementPath(tokenDoc, options, canvas.grid);
+	const pathCells = hexMovementPath(tokenDoc, options, grid);
 	if (!pathCells.length) return;
 
 	// Origin cell key — skip it for roll tables (token is leaving, not entering)
@@ -671,12 +672,12 @@ function _onUpdateToken(tokenDoc, changes, options) {
 	const defaultRadius = game.settings.get(MODULE_ID, "hexFog.defaultRevealRadius") ?? 1;
 
 	// Load hex tooltip data for per-hex radius overrides
-	const hexData = _getHexSceneData(canvas.scene.id);
+	const hexData = _getHexSceneData(scene.id);
 	const conditions = readHexVisibility(game, tokenDoc, hexData);
 	const mountains = conditions ? mountainCells(hexData) : [];
 	const near = new Set();
 	const distant = new Set();
-	let enhanced = false;
+	const explicit = new Set();
 
 	// Collect cells to reveal: path cells + neighbors based on radius
 	const toReveal = new Set();
@@ -685,7 +686,7 @@ function _onUpdateToken(tokenDoc, changes, options) {
 	for (const cell of pathCells) {
 		const cellKey = `${cell.i}-${cell.j}`;
 		toReveal.add(cellKey);
-
+		if (conditions) near.add(cellKey);
 
 		// Check per-hex radius override (tooltip uses i_j format)
 		const tooltipKey = `${cell.i}_${cell.j}`;
@@ -695,9 +696,8 @@ function _onUpdateToken(tokenDoc, changes, options) {
 
 		// The leaving cell is already known; evaluate conditions on each entered cell.
 		const visibility = conditions && (tooltipKey !== originKey || pathCells.length === 1)
-			? visibleHexes(canvas.grid, cell, hexData, conditions, mountains) : null;
+			? visibleHexes(grid, cell, hexData, conditions, mountains) : null;
 		if (visibility) {
-			enhanced = true;
 			for (const key of visibility.near) {
 				near.add(key);
 				toReveal.add(key);
@@ -705,12 +705,12 @@ function _onUpdateToken(tokenDoc, changes, options) {
 			for (const key of visibility.distant) distant.add(key);
 		}
 		else if (radius > 0 && (!conditions || tooltipKey !== originKey || pathCells.length === 1)) {
-			_getNeighborsAtDepth(cell, radius, toReveal);
+			_getNeighborsAtDepth(grid, cell, radius, toReveal);
 		}
 
 		// Reveal Cells: extra cells listed in hex data
 		if (hexRecord?.revealCells) {
-			_parseRevealCells(hexRecord.revealCells, toReveal);
+			_parseRevealCells(hexRecord.revealCells, explicit);
 		}
 
 		// Collect cells that have roll tables (only cells being entered, not the origin)
@@ -719,13 +719,14 @@ function _onUpdateToken(tokenDoc, changes, options) {
 		}
 	}
 
-	const scene = canvas.scene;
+	for (const key of explicit) toReveal.add(key);
 	// Serialize persistence so rapid moves cannot demote a newly known mountain.
 	_revealQueue = _revealQueue.then(async () => {
 		const existing = scene.getFlag(MODULE_ID, "hexFogRevealed") || {};
 		const discovery = scene.getFlag(MODULE_ID, "hexFogDiscovery") || {};
-		// Explicit Reveal Cells and legacy reveals still disclose previously distant hexes.
-		for (const key of toReveal) if (enhanced || discovery[key]) near.add(key);
+		// GM-authored exceptions disclose; mixed fallback rings must not unlock keyed data.
+		for (const key of explicit) if (conditions || discovery[key]) near.add(key);
+		if (!conditions) for (const key of toReveal) if (discovery[key]) near.add(key);
 		const discoveryPatch = hexDiscoveryPatch(near, distant, existing, discovery, hexData);
 		const revealedPatch = {};
 		for (const key of [...toReveal, ...distant]) if (!existing[key]) revealedPatch[key] = true;
@@ -742,7 +743,7 @@ function _onUpdateToken(tokenDoc, changes, options) {
  * Get neighbors up to `depth` rings outward from a cell.
  * Adds all discovered keys to the provided Set.
  */
-function _getNeighborsAtDepth(center, depth, resultSet) {
+function _getNeighborsAtDepth(grid, center, depth, resultSet) {
 	let frontier = [center];
 	const visited = new Set([`${center.i}-${center.j}`]);
 
@@ -750,7 +751,7 @@ function _getNeighborsAtDepth(center, depth, resultSet) {
 		const nextFrontier = [];
 		for (const cell of frontier) {
 			try {
-				const neighbors = canvas.grid.getAdjacentOffsets(cell);
+				const neighbors = grid.getAdjacentOffsets(cell);
 				for (const n of neighbors) {
 					const key = `${n.i}-${n.j}`;
 					if (!visited.has(key)) {

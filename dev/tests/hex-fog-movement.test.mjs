@@ -198,6 +198,7 @@ async function prepare(records) {
 		return { i, j };
 	});
 	const installed = makeCanvas(pathCells);
+	scene.grid = installed.canvas.grid;
 	globalThis.canvas = installed.canvas;
 	onCanvasReady();
 	await tick();
@@ -286,7 +287,7 @@ test("a party NPC gets Enhancer mountain line of sight and terrain-only distant 
 	assert.equal(revealed["0-3"], true);
 });
 
-test("updateToken ignores an off-scene token and a non-active GM", async () => {
+test("updateToken ignores a disabled scene and a non-active GM", async () => {
 	await prepare(makeRecords(3));
 	const movement = partyToken(0, 2);
 
@@ -296,7 +297,7 @@ test("updateToken ignores an off-scene token and a non-active GM", async () => {
 	assert.deepEqual(scene.getFlag(MODULE_ID, "hexFogRevealed"), {});
 
 	globalThis.game.users.activeGM = globalThis.game.user;
-	const offScene = partyToken(0, 2, { parent: { id: "other-scene" } });
+	const offScene = partyToken(0, 2, { parent: { id: "other-scene", getFlag: () => false } });
 	onUpdateToken(offScene.token, { x: offScene.token.x, y: offScene.token.y }, offScene.options);
 	await tick();
 	assert.deepEqual(scene.getFlag(MODULE_ID, "hexFogRevealed"), {});
@@ -324,6 +325,38 @@ test("missing terrain and invalid weather time stay on legacy fog without discov
 		onUpdateToken(movement.token, { x: movement.token.x, y: movement.token.y }, movement.options);
 		await tick();
 		assert.deepEqual(scene.getFlag(MODULE_ID, "hexFogDiscovery"), {}, entry.label);
+	}
+});
+
+test("movement uses its own scene while the GM views an unrelated canvas", async () => {
+	await prepare(makeRecords(3));
+	const { token, options } = partyToken(0, 2);
+	Hooks.handlers("canvasTearDown").at(-1)();
+	globalThis.canvas = { scene: { id: "unrelated-scene" }, grid: { isHexagonal: false } };
+	onUpdateToken(token, { x: token.x }, options);
+	await tick();
+	assert.equal(scene.getFlag(MODULE_ID, "hexFogRevealed")["0-1"], true);
+	assert.equal(scene.getFlag(MODULE_ID, "hexFogDiscovery")["0-2"], "near");
+});
+
+test("mixed terrain fallback reveals fog without promoting its unobserved ring", async () => {
+	for (const [prior, explicit] of [[undefined, false], ["terrain", false], ["terrain", true]]) {
+		const records = makeRecords(7);
+		records["0_1"] = { revealRadius: 5 };
+		records["0_3"] = { terrain: "Mountain" };
+		records["0_5"] = { terrain: "Mountain", name: "Hidden peak", showToPlayers: false };
+		if (explicit) records["0_2"].revealCells = "0.5";
+		await prepare(records);
+		if (prior) await scene.setFlag(MODULE_ID, "hexFogDiscovery", { "0-5": prior });
+		const { token, options } = partyToken(0, 2);
+		onUpdateToken(token, { x: token.x }, options);
+		await tick();
+		assert.equal(scene.getFlag(MODULE_ID, "hexFogRevealed")["0-5"], true,
+			"legacy radius remains a fog exception on the terrain-less origin");
+		assert.equal(scene.getFlag(MODULE_ID, "hexFogDiscovery")["0-5"], explicit ? "near" : prior,
+			"only an explicit exception can unlock keyed information behind a mountain");
+		assert.equal(scene.getFlag(MODULE_ID, "hexFogDiscovery")["0-1"], "near",
+			"physically traversed cells are still discovered");
 	}
 });
 

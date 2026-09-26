@@ -167,6 +167,20 @@ individual hidden-note and undiscovered-feature switches still apply. Discovery
 persists after moving away or reloading. Already revealed or explored hexes are
 not retroactively hidden. The GM's card is unchanged.
 
+Fog painting changes the map cover, not knowledge: **Ctrl-drag reveal** does not
+promote a distant sighting to a known location, and **Shift-drag hide** does not
+erase a discovered name. Use **Show to Players** for ordinary record visibility;
+automatic discovery remains a separate override. To deliberately reset discovery
+for a scene, a GM can run `await canvas.scene.unsetFlag("shadowdark-extras", "hexFogDiscovery")`
+in a script macro on that scene. This resets all automatic disclosure there,
+without changing the fog or the records' own visibility switches. Party movement
+can discover those locations again.
+
+Movement is processed on the token's own scene, even while the active GM views
+another scene. A terrain-less hex's legacy fallback ring clears fog only; it
+does not unlock new keyed information. Traversed cells and explicit **Reveal
+Cells** still count as discoveries.
+
 This uses an additive Scene flag, `shadowdark-extras.hexFogDiscovery`, with
 `terrain` and `near` states; the existing `hexFogRevealed` format and fog drawing
 are unchanged. These are hover/UI disclosure rules, not a security boundary:

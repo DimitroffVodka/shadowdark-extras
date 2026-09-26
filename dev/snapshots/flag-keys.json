@@ -880,6 +880,7 @@
     "scripts/hex/SDXHexFogSD.mjs (api=getFlag scope=shadowdark-extras key=hexFogDiscovery receiver=scene)",
     "scripts/hex/SDXHexFogSD.mjs (api=getFlag scope=shadowdark-extras key=hexFogEffect receiver=scene)",
     "scripts/hex/SDXHexFogSD.mjs (api=getFlag scope=shadowdark-extras key=hexFogEnabled receiver=scene)",
+    "scripts/hex/SDXHexFogSD.mjs (api=getFlag scope=shadowdark-extras key=hexFogEnabled receiver=scene)",
     "scripts/hex/SDXHexFogSD.mjs (api=getFlag scope=shadowdark-extras key=hexFogRevealed receiver=canvas.scene)",
     "scripts/hex/SDXHexFogSD.mjs (api=getFlag scope=shadowdark-extras key=hexFogRevealed receiver=scene)",
     "scripts/hex/SDXHexFogSD.mjs (api=getFlag scope=shadowdark-extras key=hexFogRevealed receiver=scene)",
