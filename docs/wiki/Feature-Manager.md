@@ -42,7 +42,7 @@ Below that, two visible groups map directly to tray controls you can see:
 
 | Choice | Location | What it hides when off |
 |---|---|---|
-| **Scenes** | SDX Tray → Scenes tab | ToM scenes, player view, navigation, arena editor, and video overlays |
+| **ToM** | SDX Tray → ToM tab | ToM scenes, player view, navigation, arena editor, and video overlays |
 | **Party** | SDX Tray → Party tab | Roster, health cards, travel, camping, weather, and stat sync |
 | **Pins** | SDX Tray → Pins tab, Add Pin, and Pin List | Pin list, placement, canvas rendering, folders, and styles |
 | **Notes** | SDX Tray → Notes tab | Notes on Tokens, Actors, Tiles, Drawings, Walls, Lights, Sounds, and user-managed Regions; lifetime-owned transient/rebuild sources stay excluded |
@@ -50,7 +50,7 @@ Below that, two visible groups map directly to tray controls you can see:
 | **Dungeons** | SDX Tray → Dungeons tab | Dungeon painting, generation, biomes, levels, and tile flatten |
 | **Decor** | SDX Tray → Decor tab | Decor assets and POI transforms (needs Hexes) |
 
-![SDX Tray Tabs — Scenes, Party, Pins, Notes, Hexes, Dungeons, and Decor](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/feature-manager-visible-tabs.webp)
+![Feature Manager tray-tab choices](https://raw.githubusercontent.com/wiki/DimitroffVodka/shadowdark-extras/images/feature-manager-visible-tabs.webp)
 
 ### SDX Tray Tools
 
@@ -221,7 +221,7 @@ Leave these enabled unless you intend to turn off that underlying behavior. See 
 ## Options that change the path
 
 - **Enable All / Disable All** — global buttons at the top, and per-group **Enable all / Disable all** next to each heading, set every checkbox in that scope in one click.
-- **Partial / indeterminate** — a tray choice can be partially disabled (for example Dungeons bundles two features; Scenes bundles five). The checkbox shows an indeterminate state and the card reads *Some parts are currently disabled.*
+- **Partial / indeterminate** — a tray choice can be partially disabled (for example Dungeons bundles two features; ToM bundles five). The checkbox shows an indeterminate state and the card reads *Some parts are currently disabled.*
 - **Blocked by dependency** — some features need a parent. Decor needs Hexes; per-item animation overrides need Animation FX; template effects, auras, and spell config panels need the Spell Activity System. Disabling the parent disables the child and the card shows *Also blocked because … is disabled.* — the child checkbox stays off until the parent is back.
 - **Collapsed automation** — Advanced rows have no preview image and no tray location; they hide sheets, hooks, libWrapper patches, and sockets rather than a button.
 

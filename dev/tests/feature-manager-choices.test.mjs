@@ -26,7 +26,7 @@ test("the visible manager exposes one master plus 18 recognizable SDX Tray featu
 	assert.deepEqual(VISIBLE_FEATURE_GROUPS.map(group => group.name), ["SDX Tray Tabs", "SDX Tray Tools"]);
 	assert.deepEqual(VISIBLE_FEATURE_CHOICES.map(entry => entry.name), [
 		"SDX Tray",
-		"Scenes",
+		"ToM",
 		"Party",
 		"Pins",
 		"Notes",
@@ -47,7 +47,8 @@ test("the visible manager exposes one master plus 18 recognizable SDX Tray featu
 	]);
 });
 
-test("Scenes is one visible choice controlling the complete Theatre of the Mind runtime", () => {
+test("ToM is one visible choice controlling the complete Theatre of the Mind runtime", () => {
+	assert.equal(choice("scenes").location, "SDX Tray → ToM tab");
 	assert.deepEqual(choice("scenes").members, [
 		FEATURE_IDS.TOM_SCENES,
 		FEATURE_IDS.TOM_VIDEO_OVERLAYS,
@@ -59,7 +60,7 @@ test("Scenes is one visible choice controlling the complete Theatre of the Mind 
 	const unrelated = FEATURE_IDS.DAMAGE_CARDS;
 	const disabled = applyVisibleFeatureChoiceState([unrelated], "scenes", false);
 	assert.ok(choice("scenes").members.every(id => disabled.includes(id)));
-	assert.ok(disabled.includes(unrelated), "bundling Scenes must preserve unrelated state");
+	assert.ok(disabled.includes(unrelated), "bundling ToM must preserve unrelated state");
 
 	const enabled = applyVisibleFeatureChoiceState(disabled, "scenes", true);
 	assert.deepEqual(enabled, [unrelated]);

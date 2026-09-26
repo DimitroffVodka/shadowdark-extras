@@ -38,9 +38,9 @@ export const VISIBLE_FEATURE_CHOICES = Object.freeze([
 	choice(
 		"scenes",
 		"tabs",
-		"Scenes",
+		"ToM",
 		"Create, organize, edit, broadcast, and stop scenes, including the player view, navigation, arena editor, and video overlays.",
-		"SDX Tray → Scenes tab",
+		"SDX Tray → ToM tab",
 		"scenes",
 		[
 			FEATURE_IDS.TOM_SCENES,
