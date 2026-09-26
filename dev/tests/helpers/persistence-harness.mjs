@@ -44,6 +44,21 @@ function makeRecordingDocument(recorder, { id, name }) {
 			delete flags[`${scope}.${key}`];
 			recorder.flagWrites.push({ doc: name, op: "unset", scope, key });
 		},
+		// Only a ForcedDeletion of a key nested one level inside a flag is
+		// modelled (#168): setFlag merges, so that is the one way such a key
+		// leaves a document, and a stub that ignored it would pass a test the
+		// real world fails. Anything else is refused rather than guessed at.
+		update: async changes => {
+			for (const [path, value] of Object.entries(changes)) {
+				const match = /^flags\.([^.]+)\.([^.]+)\.([^.]+)$/.exec(path);
+				if (!match || !(value instanceof globalThis.foundry.data.operators.ForcedDeletion)) {
+					throw new Error(`recording document models only nested flag deletions: ${path}`);
+				}
+				const [, scope, key, sub] = match;
+				delete flags[`${scope}.${key}`]?.[sub];
+				recorder.flagWrites.push({ doc: name, op: "delete", scope, key, sub });
+			}
+		},
 	};
 }
 

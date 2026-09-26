@@ -293,6 +293,28 @@ test("rejects malformed input before creating/deleting scenes or partially upser
 	await assert.rejects(builder.upsertHexRecords(sceneId, [{ num: 1403 }]), /GM/);
 });
 
+test("overwrite prunes the replaced scene's hex records along with the scene (#168)", async () => {
+	const { deleteHexSceneData } = await import("../../scripts/hex/hex-record-prune.mjs");
+	const first = await builder.buildPublishedHexcrawl(fixture, { view: false });
+	const hexData = () => world.journals[0].getFlag(MODULE_ID, "hexData");
+	const built = Object.keys(hexData()[first.sceneId]).length;
+	assert.ok(built > 0);
+
+	const second = await builder.buildPublishedHexcrawl(fixture, { overwrite: true, view: false });
+	assert.notEqual(second.sceneId, first.sceneId);
+	assert.deepEqual(scenes.map(s => s.id), [second.sceneId], "the replaced scene is gone");
+	// The journal is shared by every hex scene, so the old key has to be removed
+	// by name; a rebuild that only wrote the new key left 4736 orphans in one world.
+	assert.deepEqual(Object.keys(hexData()), [second.sceneId], "and so are its records");
+	assert.equal(Object.keys(hexData()[second.sceneId]).length, built);
+
+	// Nothing left to prune means no write, so the deleteScene hook can repeat
+	// the overwrite path's call for the same scene without a second update.
+	world.clearRecords();
+	assert.equal(await deleteHexSceneData([first.sceneId, "never-built"]), 0);
+	assert.deepEqual(world.flagWrites(), []);
+});
+
 test("special catalogue stays exact, outside generic biome pools, and explicit locations win", async () => {
 	const catalog = await getSpecialTiles();
 	const shipped = readdirSync(new URL("../../assets/Hexes/Specials/", import.meta.url)).filter(name => name.endsWith(".webp"));

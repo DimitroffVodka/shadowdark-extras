@@ -331,7 +331,9 @@ deliberate world-data migration.
 <summary>Technical reference</summary>
 
 - Per-hex data is stored by Scene and hex offset in the internal
-  `__sdx_hex_data__` Journal under the `shadowdark-extras.hexData` flag.
+  `__sdx_hex_data__` Journal under the `shadowdark-extras.hexData` flag. A
+  Scene's records are removed when it is deleted, including the Scene an
+  overwrite build replaces.
 - The editor is `templates/sdx-hex-tooltip/hex-edit.hbs`; the data and canvas
   interactions are in `scripts/hex/HexTooltipSD.mjs`.
 - Hex Fog reads the same records in `scripts/hex/SDXHexFogSD.mjs`. Its direct
