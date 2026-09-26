@@ -35,6 +35,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- **Party sheet and Effects names.** The party sheet's slots gear icon showed a raw translation key as its tooltip; it now reads "Set max slots". The Silenced and Glassbones effects had no English name in the effect list. ([#169](https://github.com/DimitroffVodka/shadowdark-extras/issues/169))
 - **A deleted hex scene takes its hex records with it.** Deleting a hexcrawl scene, by hand or through an overwrite build, used to leave that scene's per-hex records in the shared hex data journal for good; one world held 4,736 of them. They are now removed with the scene. ([#168](https://github.com/DimitroffVodka/shadowdark-extras/issues/168))
 - **Roads and rivers stay behind vision and Hex Fog.** Players no longer see paths across unexplored parts of a map. Legacy road and river lines follow the same rule, and Bake Map Background includes them alongside newer networks so the baked map keeps its routes. ([#162](https://github.com/DimitroffVodka/shadowdark-extras/issues/162))
 - **Hex Fog follows the travelled path on Foundry v14.** Multi-hex movement now reads Foundry's movement origin and passed waypoints rather than mistaking the updated token position for its old one. Only the active GM persists reveals and entry-table rolls, using the token's own scene even while viewing another scene. Mixed terrain-data fallback rings clear fog without automatically revealing keyed information.
