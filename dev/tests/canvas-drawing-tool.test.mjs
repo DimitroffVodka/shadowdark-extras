@@ -788,3 +788,52 @@ test("cancelling a drawing clears the preview and the state together", () => {
 	assert.equal(tool.state.boxStartPoint, null);
 	assert.equal(tool._previewGraphics, null);
 });
+
+// The "art" style swaps the stroke for one hand-drawn piece per cell, and the
+// preview, the created drawing and the permanent re-render all go through
+// this one builder, so it is the seam that decides what every path looks like.
+test("the art style draws a network as chained hex sprites, rivers under roads", () => {
+	reset();
+	const original = { grid: globalThis.canvas.grid };
+	try {
+		const size = 100;
+		const w = size * 2 / Math.sqrt(3);
+		globalThis.canvas.grid = {
+			size, columns: true, isHexagonal: true,
+			getCenterPoint: ({ i, j }) => ({ x: (j * w * 0.75) + (w / 2), y: (i * size) + (size / 2) + (j % 2 ? size / 2 : 0) }),
+			getOffset(point) {
+				let best = null;
+				for (let i = 0; i < 4; i++) {
+					for (let j = 0; j < 4; j++) {
+						const c = this.getCenterPoint({ i, j });
+						const d = Math.hypot(c.x - point.x, c.y - point.y);
+						if (!best || d < best.d) best = { d, i, j };
+					}
+				}
+				return { i: best.i, j: best.j };
+			},
+		};
+		const at = (i, j) => { const c = globalThis.canvas.grid.getCenterPoint({ i, j }); return [c.x, c.y]; };
+		const network = tool._createMapNetworkDisplay({
+			roadStyle: "art",
+			networkPaths: { river: [[at(0, 0), at(1, 0), at(2, 0)]], road: [[at(1, 0), at(1, 1)]] },
+			strokeWidth: 15, roadColor: "#D8C6A8", riverColor: "#2D9CDB",
+		});
+
+		const sprites = network.children;
+		assert.equal(sprites.length, 5, "three river cells then two road cells");
+		assert.ok(sprites.slice(0, 3).every(s => s.texture.source.includes("Hex - River ")));
+		assert.ok(sprites.slice(3).every(s => s.texture.source.includes("Hex - Dirt Path ")));
+		for (const sprite of sprites) {
+			assert.deepEqual([sprite.anchor.x, sprite.anchor.y], [0.5, 0.5]);
+			assert.ok(Math.abs(sprite.height - (810 * size / 418)) < 1e-9, "sized so the art hex matches the grid hex");
+		}
+		const middle = sprites[1];
+		assert.deepEqual([middle.x, middle.y], at(1, 0), "sprites sit on the cell centre");
+		assert.match(middle.texture.source, /Hex - River (2|9) (N|NE|SE)\.webp$/,
+			"a straight N-S cell takes one of the straight pieces, in whichever turn");
+	}
+	finally {
+		globalThis.canvas.grid = original.grid;
+	}
+});

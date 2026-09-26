@@ -159,6 +159,35 @@ test("blocked adjacency keeps nearby routes from making an accidental loop", () 
 	]);
 });
 
+test("a river dead-ending beside water runs on through the shared edge", () => {
+	// 0:0 — 0:1 — 0:2 are the drawn river; 0:3 is ocean and was never selected.
+	const neighbors = {
+		"0:0": [{ i: 0, j: 1 }],
+		"0:1": [{ i: 0, j: 0 }, { i: 0, j: 2 }],
+		"0:2": [{ i: 0, j: 1 }, { i: 0, j: 3 }],
+	};
+	const grid = {
+		getAdjacentOffsets: ({ i, j }) => neighbors[`${i}:${j}`] || [],
+		getCenterPoint: ({ i, j }) => ({ x: j * 100, y: i * 100 }),
+	};
+	const cells = [{ i: 0, j: 0 }, { i: 0, j: 1 }, { i: 0, j: 2 }];
+	const isWater = ({ j }) => j === 3;
+
+	// Without the predicate the river still stops dead at the last tile centre.
+	assert.deepEqual(buildMapPathNetwork(cells, grid), [
+		[[0, 0], [100, 0], [200, 0]],
+	]);
+	// With it, the mouth carries 0.7 of a centre-to-centre span into the ocean —
+	// past the shared edge at 0.5. The landlocked end is left where it was.
+	assert.deepEqual(buildMapPathNetwork(cells, grid, [], isWater), [
+		[[0, 0], [100, 0], [200, 0], [270, 0]],
+	]);
+	// A tile the GM deliberately drew into the water is already its own mouth.
+	assert.deepEqual(buildMapPathNetwork(cells, grid, [], ({ j }) => j === 2), [
+		[[0, 0], [100, 0], [200, 0]],
+	]);
+});
+
 test("a textured road draws a wide dark shoulder beneath its surface", () => {
 	const rec = g();
 	tool._drawLineWithStyle(

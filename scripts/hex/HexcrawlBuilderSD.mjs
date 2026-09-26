@@ -55,9 +55,10 @@
 
 import { saveHexRecord, setHexTerrainBatch, mergeHexRecords, ZONE_COLORS } from "./HexTooltipSD.mjs";
 import { buildMapPathNetwork, mapPathEdgeKey } from "../canvas/drawing-geometry.mjs";
+import { ART_IMAGE, coastArtPlacements, coastCells } from "../canvas/map-network-art.mjs";
 import { getSpecialTiles } from "./hex-special-tiles.mjs";
 import { getColoredTileDimensions, getColoredTiles, getColoredTilesByBiome, loadColoredTileAssets } from "./hex-colored-tiles.mjs";
-import { getActiveTileTab } from "./hex-tile-selection.mjs";
+import { getHexRecordMap, getHexTerrainMap, getWaterHexKeys, isArcticTerrain, isWaterTerrain } from "./hex-water-terrain.mjs";
 import { importHexerMap, openHexerImportDialog } from "./HexerImporterSD.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -145,8 +146,10 @@ const BIOME_TILES = {
 const prefix = p => `modules/${MODULE_ID}/${p.replace(/^modules\/[^/]+\//, "")}`;
 
 // Preserve the imported terrain label; these fallbacks affect painting only.
+// "coast" is land on a shore, the same reading hex-water-terrain.mjs and the
+// Enhancer's tagger use: painting it as sea put a beach in open water.
 const TERRAIN_BIOMES = {
-	"arctic sea": "water", "canyon": "hills", "coast": "water", "deep tunnels": "mountains",
+	"arctic sea": "water", "canyon": "hills", "coast": "plains", "deep tunnels": "mountains",
 	"grassland": "plains", "jungle": "forest", "lake": "water", "lava": "mountains",
 	"mountain": "mountains", "ocean": "water", "river": "water", "path": "plains", "salt flat": "desert",
 };
@@ -167,6 +170,21 @@ const biomeFor = label => {
 	const biome = Object.hasOwn(TERRAIN_BIOMES, key) ? TERRAIN_BIOMES[key] : key;
 	return Object.hasOwn(BIOME_TILES, biome) ? BIOME_TILES[biome] : undefined;
 };
+
+// Settlement kinds a keyed hex's `features` may carry, and the Specials tiles
+// that paint them, as substrings of the lower-cased decoded path. Reused
+// freely, unlike a one-use `special`: thirty villages are thirty farmsteads.
+// Curated `art` and a `special` still outrank this; the terrain tile is what a
+// keyed hex with no settlement gets.
+const FEATURE_COLORED_RULES = {
+	city: ["city (lush)"], city_state: ["city (lush)"],
+	town: ["town (lush)", "modern town, inhabited"],
+	village: ["farm (lush)"],
+};
+const settlementOf = features => (Array.isArray(features) ? features : [])
+	.map(feature => String(feature?.type ?? "").toLowerCase())
+	.find(type => Object.hasOwn(FEATURE_COLORED_RULES, type));
+const specialsPool = () => getColoredTiles().filter(tile => tile.biome === "specials").map(tile => tile.path);
 
 // ── number / geometry helpers ───────────────────────────────────────────────
 
@@ -424,12 +442,12 @@ function buildRegionMap(dataset) {
  * Precedence is the builder's, unchanged: curated `art` outranks a `special`,
  * which outranks a colored-catalogue pick, which outranks the flat biome set.
  */
-function hexTileData({ num, biome, biomeKey, center, off, coloredByBiome, tw, th, special, art }) {
+function hexTileData({ num, biome, biomeKey, center, off, coloredByBiome, tw, th, special, art, feature }) {
 	const coloredRule = TERRAIN_COLORED_RULES[String(biomeKey).trim().toLowerCase()];
 	let colored = [];
 	if (coloredByBiome) {
 		const candidates = coloredRule?.pool === "specials"
-			? getColoredTiles().filter(tile => tile.biome === "specials").map(tile => tile.path)
+			? specialsPool()
 			: (coloredByBiome[coloredRule?.pool ?? biome.colored] ?? []);
 		const includes = coloredRule?.include ?? biome.coloredIncludes;
 		colored = candidates.filter(path => {
@@ -438,7 +456,15 @@ function hexTileData({ num, biome, biomeKey, center, off, coloredByBiome, tw, th
 				&& !coloredRule?.exclude?.some(part => text.includes(part));
 		});
 	}
-	const coloredSrc = colored[variety(off.i, off.j, colored.length)];
+	// A settlement paints as its Specials tile rather than its terrain.
+	const settlement = coloredByBiome && FEATURE_COLORED_RULES[feature]
+		? specialsPool().filter(path => {
+			const text = decodeURIComponent(path).toLowerCase();
+			return FEATURE_COLORED_RULES[feature].some(part => text.includes(part));
+		})
+		: [];
+	const pool = settlement.length ? settlement : colored;
+	const coloredSrc = pool[variety(off.i, off.j, pool.length)];
 	const src = art ?? special?.path ?? coloredSrc
 		?? prefix(biome.paths[variety(off.i, off.j, biome.paths.length)]);
 	const { width, height } = art || special || coloredSrc
@@ -453,7 +479,7 @@ function hexTileData({ num, biome, biomeKey, center, off, coloredByBiome, tw, th
 		sort: Math.floor(center.y),
 		flags: { [MODULE_ID]: {
 			painted: true, biome: biome.isWater ? "water" : undefined,
-			...(art || special ? { hexNum: num } : {}),
+			...(art || special || settlement.length ? { hexNum: num } : {}),
 		} },
 	};
 }
@@ -470,14 +496,17 @@ async function paintTerrain(scene, dataset, geom, specials) {
 	// itself, and it is honoured whichever tile tab happens to be open.
 	const artHexes = new Map((dataset.hexes ?? [])
 		.filter(hex => hex.art).map(hex => [Number(hex.num), hex.art]));
+	// Keyed settlements: the first city/town/village entry in a hex's features.
+	const settlementHexes = new Map((dataset.hexes ?? [])
+		.map(hex => [Number(hex.num), settlementOf(hex.features)]).filter(([, kind]) => kind));
 	const tw = dataset.terrainTile?.w ?? TERRAIN_TILE_W;
 	const th = dataset.terrainTile?.h ?? TERRAIN_TILE_H;
 	let coloredByBiome = null;
-	// A dataset that brings curated colored art gets colored filler around it,
-	// whichever tab is open. Otherwise a curated map comes out as 270 hand-picked
-	// tiles marooned in four thousand from the legacy flat set, which is how the
-	// first real build of one looked.
-	if (geom.published && (getActiveTileTab() === "colored" || artHexes.size)) {
+	// A published build always paints from the colored catalogue. It used to
+	// follow the Hex Painter's active tab, so the same hand-off came out in the
+	// flat black-and-white set whenever the tray happened to be on Default. The
+	// flat set is now the legacy (unpublished) builder's alone.
+	if (geom.published) {
 		if (!getColoredTiles().length) await loadColoredTileAssets();
 		coloredByBiome = getColoredTilesByBiome();
 	}
@@ -499,7 +528,7 @@ async function paintTerrain(scene, dataset, geom, specials) {
 			const center = scene.grid.getCenterPoint(off);
 			tileData.push(hexTileData({
 				num, biome, biomeKey, center, off, coloredByBiome, tw, th,
-				special: specialHexes.get(num), art: artHexes.get(num),
+				special: specialHexes.get(num), art: artHexes.get(num), feature: settlementHexes.get(num),
 			}));
 			terrainMap[offsetToHexKey(off)] = geom.published ? biomeKey : biome.terrain;
 		}
@@ -512,23 +541,109 @@ async function paintTerrain(scene, dataset, geom, specials) {
 
 // ── feature icons ───────────────────────────────────────────────────────────
 
+/**
+ * An icon's frame on the map, matching the GM's own reviewed renders: it keeps
+ * its aspect; one over 400 px on its long side is brought down to 380, one
+ * under 150 px is brought up to 220, both measured in the 932x810 hex canvas
+ * whose hex is 418 px tall, and the canvas then scales to the grid. A 26 px
+ * pin and a 932 px keep both land at a size that reads on a hex. When the
+ * texture cannot be measured (headless) the square box stands in.
+ */
+async function iconFrame(src, box) {
+	let width = 0;
+	let height = 0;
+	try {
+		const texture = await foundry.canvas.loadTexture(src);
+		width = texture?.width ?? 0;
+		height = texture?.height ?? 0;
+	}
+	catch(_err) { /* unmeasured: the box below */ }
+	if (!width || !height) return { width: box, height: box };
+	const longest = Math.max(width, height);
+	const canvasLongest = longest > 400 ? 380 : (longest < 150 ? 220 : longest);
+	const scale = (canvasLongest / longest) * (HEX_TILE_H / ART_IMAGE.hexHeight);
+	return { width: Math.round(width * scale), height: Math.round(height * scale) };
+}
+
 async function placeFeatureIcons(scene, dataset, geom) {
 	const iconSize = dataset.featureIconSize ?? 150;
+	const frames = new Map();
 	const tileData = [];
 	for (const hex of dataset.hexes ?? []) {
 		if (!hex.icon) continue;
 		const { col, row } = hexNumToColRow(hex.num);
 		const center = scene.grid.getCenterPoint(geom.offsetOf(col, row));
+		const src = geom.published && !hex.icon.startsWith("assets/") ? hex.icon : prefix(hex.icon);
+		if (!frames.has(src)) frames.set(src, await iconFrame(src, iconSize));
+		const { width, height } = frames.get(src);
 		tileData.push({
-			texture: { src: geom.published && !hex.icon.startsWith("assets/") ? hex.icon : prefix(hex.icon), anchorX: 0, anchorY: 0 },
-			x: center.x - iconSize / 2,
-			y: center.y - iconSize / 2,
-			width: iconSize,
-			height: iconSize,
+			texture: { src, anchorX: 0, anchorY: 0 },
+			x: center.x - (width / 2),
+			y: center.y - (height / 2),
+			width,
+			height,
 			sort: 20000 + Math.floor(center.y),
 			flags: { [MODULE_ID]: { hexcrawlFeature: true, hexNum: hex.num } },
 		});
 	}
+	if (!tileData.length) return 0;
+	const created = await scene.createEmbeddedDocuments("Tile", tileData);
+	return created.length;
+}
+
+// ── coasts ──────────────────────────────────────────────────────────────────
+
+// Above every terrain tile, whose sort is its own y, so a neighbour's seam
+// overlap never clips the beach; below the feature icons at 20000.
+const COAST_SORT = 10000;
+
+/**
+ * Beach tiles for the WATER hexes that touch land, read from the scene's own
+ * hex records, so they follow whatever terrain the build or a repaint wrote.
+ * Derived, not authored: a coast is a water edge with land across it, and the
+ * dataset carries no coast field (the Enhancer's tagger keeps its coast
+ * overlay to itself for the same reason).
+ *
+ * The beach sits on the water hex, not the land hex: the piece's straight
+ * side lies along the shared edge against the land tile and its wavy side is
+ * the waterline, so consecutive pieces join into one continuous shore. Put on
+ * the land hex the same art reads as sand wedges cut into the terrain, which
+ * is how the first build of this looked. Arctic water gets the ice shelf
+ * instead of sand.
+ *
+ * @param {Scene} scene
+ * @param {Set<string>|null} only  hex keys to line, or null for the whole scene
+ */
+function coastTileData(scene, only = null) {
+	const shore = { beach: [], ice: [] };
+	const land = new Set();
+	for (const [key, label] of getHexTerrainMap(scene.id)) {
+		if (!isWaterTerrain(label)) land.add(key);
+		else if (!only || only.has(key)) shore[isArcticTerrain(label) ? "ice" : "beach"].push(key);
+	}
+	const placements = Object.entries(shore).flatMap(([style, keys]) =>
+		coastArtPlacements(coastCells(keys, land, scene.grid), scene.grid, style));
+	return placements.map(piece => ({
+		// Foundry turns and mirrors a tile about its texture anchor and places
+		// that anchor at x,y. The terrain tiles anchor at 0,0 with x,y as their
+		// top-left corner, which is fine unturned; a turned beach anchored there
+		// swings a whole tile away from its hex. So anchor at the centre and put
+		// x,y ON the hex centre.
+		texture: { src: piece.src, anchorX: 0.5, anchorY: 0.5, scaleX: piece.mirror ? -1 : 1 },
+		x: piece.x,
+		y: piece.y,
+		width: piece.width,
+		height: piece.height,
+		rotation: piece.rotation * 180 / Math.PI,
+		sort: COAST_SORT + Math.floor(piece.y),
+		// The value names the hex the beach belongs to, so a repaint can find it
+		// without matching positions.
+		flags: { [MODULE_ID]: { coast: `${piece.i}_${piece.j}` } },
+	}));
+}
+
+async function placeCoasts(scene) {
+	const tileData = coastTileData(scene);
 	if (!tileData.length) return 0;
 	const created = await scene.createEmbeddedDocuments("Tile", tileData);
 	return created.length;
@@ -720,15 +835,15 @@ export async function repaintHexTiles(sceneId, hexes) {
 	}
 	await validateArt({ hexes: hexes.filter(hex => hex.art) });
 
-	// Same rule paintTerrain uses, so a repainted hex matches the same hex on a
-	// freshly built map instead of jumping to the colored set on its own.
-	let coloredByBiome = null;
-	if (getActiveTileTab() === "colored" || hexes.some(hex => hex.art)) {
-		if (!getColoredTiles().length) await loadColoredTileAssets();
-		coloredByBiome = getColoredTilesByBiome();
-	}
+	// Same rule paintTerrain uses for a published build: always the colored
+	// catalogue, so a repainted hex matches the same hex on a freshly built map.
+	if (!getColoredTiles().length) await loadColoredTileAssets();
+	const coloredByBiome = getColoredTilesByBiome();
 	const tw = TERRAIN_TILE_W;
 	const th = TERRAIN_TILE_H;
+	// A repaint says terrain, art and special only; the settlement a keyed hex
+	// carries lives in its record, so read it back rather than lose the tile.
+	const stored = getHexRecordMap(sceneId);
 
 	// A painted tile is anchored so its CENTRE is the hex centre, whatever its
 	// size, so compare centres rather than the stored x/y corner.
@@ -754,6 +869,7 @@ export async function repaintHexTiles(sceneId, hexes) {
 		tileData.push(hexTileData({
 			num, biome, biomeKey, center, off, coloredByBiome, tw, th,
 			special: specials.get(hex.special), art: hex.art,
+			feature: settlementOf(stored.get(offsetToHexKey(off))?.features),
 		}));
 		terrainMap[offsetToHexKey(off)] = biomeKey;
 	}
@@ -763,6 +879,20 @@ export async function repaintHexTiles(sceneId, hexes) {
 	if (doomed.length) await scene.deleteEmbeddedDocuments("Tile", doomed);
 	const created = await scene.createEmbeddedDocuments("Tile", tileData);
 	if (Object.keys(terrainMap).length) await setHexTerrainBatch(sceneId, terrainMap);
+
+	// A hex painted to or from water changes the shoreline of every hex around
+	// it, so the beaches on the repainted hexes and their neighbours are redone
+	// from the records just written.
+	const shore = new Set();
+	for (const hexKey of Object.keys(terrainMap)) {
+		shore.add(hexKey);
+		const [i, j] = hexKey.split("_").map(Number);
+		for (const neighbour of scene.grid.getAdjacentOffsets({ i, j })) shore.add(offsetToHexKey(neighbour));
+	}
+	const staleCoasts = scene.tiles.filter(tile => shore.has(tile.flags?.[MODULE_ID]?.coast)).map(tile => tile.id);
+	if (staleCoasts.length) await scene.deleteEmbeddedDocuments("Tile", staleCoasts);
+	const coasts = coastTileData(scene, shore);
+	if (coasts.length) await scene.createEmbeddedDocuments("Tile", coasts);
 
 	try {
 		if (canvas.scene?.id === scene.id) await canvas.tiles?.draw?.();
@@ -779,12 +909,28 @@ async function writeNetworks(scene, dataset, geom) {
 		const { col, row } = hexNumToColRow(num);
 		return geom.offsetOf(col, row);
 	};
+	// The interactive authoring path passes an isWater predicate so a river's
+	// dead end opens out into the adjacent sea rather than stopping at the last
+	// land hex's centre; this call did not, so every imported map's rivers ended
+	// a half-hex short of the shore. Records are written before this runs, so
+	// the scene's own terrain is already readable. Rivers only: a road has no
+	// business running into the sea.
+	const water = getWaterHexKeys(scene.id);
+	const isWater = water.size ? cell => water.has(`${cell.i}_${cell.j}`) : null;
 	const networkPaths = {};
 	for (const kind of ["road", "river"]) {
 		const blocked = (dataset.networks.blockedEdges?.[kind] ?? [])
 			.map(([a, b]) => mapPathEdgeKey(offset(a), offset(b)));
 		networkPaths[kind] = buildMapPathNetwork(
-			(dataset.networks[kind] ?? []).map(offset), scene.grid, blocked
+			(dataset.networks[kind] ?? []).map(offset), scene.grid, blocked,
+			kind === "river" ? isWater : null,
+			// An imported network is an AREA tag, not a drawn line: every hex an
+			// overlay marked as river is handed over, so neighbouring marked hexes
+			// form a mesh and three mutually adjacent ones close into a triangle.
+			// A watercourse is a tree - tributaries merge, they do not ring - so
+			// the imported side asks for a spanning forest. Interactive authoring
+			// still gets exact adjacency, where a deliberate loop is the GM's.
+			{ spanning: true },
 		);
 	}
 	if (!networkPaths.road.length && !networkPaths.river.length) return;
@@ -794,7 +940,8 @@ async function writeNetworks(scene, dataset, geom) {
 		drawingId: `map-network-${foundry.utils.randomID()}`, type: "mapNetwork", networkPaths,
 		userId: game.user.id, userName: game.user.name, permanent: true,
 		strokeWidth: HEX_TILE_H * 0.15, roadColor: "#D8C6A8", riverColor: "#2D9CDB",
-		texturePath: null, roadStyle: "solid", opacity: 1, createdAt: Date.now(), expiresAt: null,
+		// "art": the hand-drawn hex pieces, chained cell to cell, rather than a stroke.
+		texturePath: null, roadStyle: "art", opacity: 1, createdAt: Date.now(), expiresAt: null,
 	}]);
 }
 
@@ -837,6 +984,8 @@ async function buildScene(dataset, opts, geom, specials = new Map()) {
 	const terrainTiles = await paintTerrain(scene, dataset, geom, specials);
 	const featureTiles = await placeFeatureIcons(scene, dataset, geom);
 	const records = await writeHexRecords(scene, dataset, geom, specials);
+	// After the records: the coasts are read off the terrain just written.
+	await placeCoasts(scene);
 	if (geom.published) {
 		await writeNetworks(scene, dataset, geom);
 		await placeReference(scene, dataset.reference);

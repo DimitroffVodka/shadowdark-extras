@@ -15,6 +15,7 @@ import {
 	meanderPathPoints,
 	smoothPathPoints,
 } from "./drawing-geometry.mjs";
+import { mapNetworkArtPlacements } from "./map-network-art.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const SOCKET_NAME = "module.shadowdark-extras";
@@ -59,7 +60,7 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 			mapPathTiles: { road: [], river: [] },
 			mapPathBlockedEdges: { road: [], river: [] },
 			mapPathTexture: null,
-			mapPathRoadStyle: "cobble",
+			mapPathRoadStyle: "art",
 			mapPathRoadColor: "#D8C6A8",
 			mapPathRiverColor: "#2D9CDB",
 			stampStyle: "plus",    // plus | x | dot | arrow | arrow-up | arrow-down | arrow-left | square
@@ -530,6 +531,26 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 
 	_createMapNetworkDisplay(data) {
 		const root = new PIXI.Container();
+		// "art" draws each cell with the hand-drawn hex pieces instead of a
+		// stroke; the pieces chain edge to edge, so nothing is smoothed or
+		// meandered. Rivers go down first so a shared edge reads as a bridge.
+		if (data.roadStyle === "art" && canvas.grid?.isHexagonal) {
+			for (const kind of ["river", "road"]) {
+				const placements = mapNetworkArtPlacements(data.networkPaths?.[kind], canvas.grid, kind);
+				for (const piece of placements) {
+					const sprite = new PIXI.Sprite(PIXI.Texture.from(piece.src));
+					sprite.anchor.set(0.5, 0.5);
+					sprite.x = piece.x;
+					sprite.y = piece.y;
+					sprite.width = piece.width;
+					sprite.height = piece.height;
+					if (piece.mirror) sprite.scale.x = -sprite.scale.x;
+					sprite.rotation = piece.rotation;
+					root.addChild(sprite);
+				}
+			}
+			return root;
+		}
 		const add = (paths, style, color, texturePath = null) => {
 			if (!paths?.length) return;
 			const displayPaths = paths.map(points => smoothPathPoints(

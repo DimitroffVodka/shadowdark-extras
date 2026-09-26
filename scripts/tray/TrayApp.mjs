@@ -277,7 +277,7 @@ export class TrayApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			isHexagonal: !!canvas?.grid?.isHexagonal,
 			hexPathKind: game.shadowdarkExtras?.drawingTool?.state.drawingMode === "mapPath"
 				? game.shadowdarkExtras.drawingTool.state.mapPathKind : null,
-			hexRoadStyle: game.shadowdarkExtras?.drawingTool?.state.mapPathRoadStyle || "cobble",
+			hexRoadStyle: game.shadowdarkExtras?.drawingTool?.state.mapPathRoadStyle || "art",
 			hexPathWidth: game.shadowdarkExtras?.drawingTool?.state.drawingMode === "mapPath"
 				? Math.round(game.shadowdarkExtras.drawingTool.state.brushSettings.size
 					/ (canvas.grid?.size || 100) * 100) : 15,

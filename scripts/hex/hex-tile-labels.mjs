@@ -11,8 +11,19 @@
 // provable (read-only ESM bindings forbid cross-module assignment).
 
 export function _formatLabel(key) {
-	return key
+	let label = String(key);
+	try {
+		label = decodeURIComponent(label);
+	}
+	catch(_) {
+		// Keep malformed filenames usable instead of failing the whole asset scan.
+	}
+	label = label.replace(/^(flat\s+)?hex\s*-\s*/i, "$1");
+
+	return label
 		.split("-")
+		.map(w => w.trim())
+		.filter(Boolean)
 		.map(w => w.charAt(0).toUpperCase() + w.slice(1))
 		.join(" ");
 }

@@ -3,7 +3,7 @@
 // wiring the tray's hex-painter controls to HexPainterSD. Merged via
 // Object.assign(TrayApp.prototype, HexPainterBindings).
 
-import { setMapDimension, formatActiveScene, toggleTileSelection, clearTileSelection, setSearchFilter, toggleWaterEffect, toggleWindEffect, toggleFogAnimation, toggleTintEnabled, toggleBwEffect, setActiveTileTab, setCustomTileDimension, toggleColoredFolderCollapsed, toggleSymbolFolderCollapsed, enablePreview, disablePreview, enablePainting, disablePainting, getActiveTileTab, setDecorSearchFilter, toggleDecorFolderCollapsed, setDecorElevation, setDecorSort, appendCustomNavSegment, setCustomNavPath, reloadCustomTiles } from "../hex/HexPainterSD.mjs";
+import { setMapDimension, formatActiveScene, toggleTileSelection, clearTileSelection, setSearchFilter, toggleWaterEffect, toggleWindEffect, toggleFogAnimation, toggleTintEnabled, toggleBwEffect, setActiveTileTab, setCustomTileDimension, toggleSymbolFolderCollapsed, enablePreview, disablePreview, enablePainting, disablePainting, getActiveTileTab, setDecorSearchFilter, toggleDecorFolderCollapsed, setDecorElevation, setDecorSort, appendCustomNavSegment, setCustomNavPath, reloadCustomTiles, toggleColoredTagFilter, clearColoredTagFilters, selectFilteredColoredTiles } from "../hex/HexPainterSD.mjs";
 import { flattenTiles } from "../canvas/TileFlattenSD.mjs";
 import { sdxDrawingTool } from "../canvas/SDXDrawingTool.mjs";
 import { generateHexMap, clearGeneratedTiles } from "../hex/HexGeneratorSD.mjs";
@@ -12,6 +12,9 @@ import { DecorImportApp } from "./decor-import.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const ROAD_STYLES = {
+	// Hand-drawn hex pieces for both roads and rivers; the colour only feeds
+	// the pending-tile markers.
+	art: { color: "#D8C6A8", texturePath: null },
 	dirt: { color: "#9A6A3A", texturePath: null },
 	cobble: {
 		color: "#D8C6A8",
@@ -39,13 +42,13 @@ function pathWidthFromPercent(percent) {
 	return Math.max(4, Math.round((canvas.grid?.size || 100) * percent / 100));
 }
 
-async function activateHexPath(kind, roadStyle = "cobble", widthPercent = 15) {
+async function activateHexPath(kind, roadStyle = "art", widthPercent = 15) {
 	if (!game.user.isGM) return false;
 	if (!canvas.grid?.isHexagonal) {
 		ui.notifications.warn("Roads and rivers require a hex grid.");
 		return false;
 	}
-	const road = ROAD_STYLES[roadStyle] || ROAD_STYLES.cobble;
+	const road = ROAD_STYLES[roadStyle] || ROAD_STYLES.art;
 	if (["road", "both"].includes(kind) && road.texturePath) {
 		try {
 			await foundry.canvas.loadTexture(road.texturePath);
@@ -78,8 +81,10 @@ export const HexPainterBindings = {
 			elem.querySelectorAll(".hex-path-mode-btn").forEach(button => {
 				button.classList.toggle("active", button.dataset.pathKind === kind);
 			});
+			// The style applies to rivers too now that "art" exists, so it is live
+			// in every mode.
 			const styleSelect = elem.querySelector(".hex-path-style-select");
-			if (styleSelect) styleSelect.disabled = !["road", "both"].includes(kind);
+			if (styleSelect) styleSelect.disabled = !kind;
 			const help = elem.querySelector(".hex-path-help");
 			if (help) help.textContent = "Drag adds; right-click removes; Shift-click links";
 		};
@@ -93,7 +98,7 @@ export const HexPainterBindings = {
 					syncPathControls();
 					return;
 				}
-				const roadStyle = elem.querySelector(".hex-path-style-select")?.value || "cobble";
+				const roadStyle = elem.querySelector(".hex-path-style-select")?.value || "art";
 				await activateHexPath(button.dataset.pathKind, roadStyle, widthPercent());
 				syncPathControls();
 			});
@@ -101,7 +106,7 @@ export const HexPainterBindings = {
 
 		elem.querySelector(".hex-path-style-select")?.addEventListener("change", async e => {
 			const kind = sdxDrawingTool.state.mapPathKind;
-			if (!["road", "both"].includes(kind)) return;
+			if (!kind) return;
 			await activateHexPath(kind, e.target.value, widthPercent());
 			syncPathControls();
 		});
@@ -217,22 +222,6 @@ export const HexPainterBindings = {
 			tiles.forEach(tile => {
 				const label = tile.getAttribute("title").toLowerCase();
 				tile.style.display = label.includes(searchTerm) ? "" : "none";
-			});
-
-			// Filter colored tile folders: hide folders that have no visible tiles
-			elem.querySelectorAll(".hex-colored-folder").forEach(folder => {
-				const thumbs = folder.querySelectorAll(".hex-tile-thumb");
-				let visibleCount = 0;
-				thumbs.forEach(tile => {
-					const label = tile.getAttribute("title").toLowerCase();
-					const show = label.includes(searchTerm);
-					tile.style.display = show ? "" : "none";
-					if (show) visibleCount++;
-				});
-				folder.style.display = visibleCount > 0 ? "" : "none";
-				// Update count display
-				const countEl = folder.querySelector(".hex-folder-count");
-				if (countEl) countEl.textContent = `(${visibleCount})`;
 			});
 
 			// Filter symbol tile folders: hide folders that have no visible tiles
@@ -391,6 +380,24 @@ export const HexPainterBindings = {
 			});
 		});
 
+		elem.querySelectorAll("[data-colored-tag]").forEach(tagButton => {
+			tagButton.addEventListener("click", e => {
+				e.preventDefault();
+				const tag = tagButton.dataset.coloredTag;
+				if (tag) toggleColoredTagFilter(tag);
+				else clearColoredTagFilters();
+				clearTileSelection();
+				renderTray();
+			});
+		});
+
+		elem.querySelector(".hex-colored-wildcard-btn")?.addEventListener("click", e => {
+			e.preventDefault();
+			const count = selectFilteredColoredTiles();
+			if (count) ui.notifications.info(`Wildcarding ${count} matching tiles.`);
+			renderTray();
+		});
+
 		elem.querySelectorAll(".hex-custom-chip").forEach(chip => {
 			chip.addEventListener("click", e => {
 				e.preventDefault();
@@ -444,39 +451,6 @@ export const HexPainterBindings = {
 				const val = parseInt(e.target.value);
 				const axis = e.target.name === "custom-tile-width" ? "width" : "height";
 				setCustomTileDimension(axis, val);
-			});
-		});
-
-		// Colored tile folder toggle (expand/collapse)
-		elem.querySelectorAll(".hex-colored-folder-header").forEach(header => {
-			header.addEventListener("click", e => {
-				e.preventDefault();
-				const folderKey = header.dataset.folder;
-				if (!folderKey) return;
-
-				toggleColoredFolderCollapsed(folderKey);
-
-				// Toggle content visibility
-				const folderEl = header.closest(".hex-colored-folder");
-				const content = folderEl?.querySelector(".hex-colored-folder-content");
-				if (content) content.classList.toggle("hidden");
-
-				// Toggle chevron icon
-				const chevron = header.querySelector(".hex-folder-chevron");
-				if (chevron) {
-					chevron.classList.toggle("fa-caret-right");
-					chevron.classList.toggle("fa-caret-down");
-				}
-
-				// Toggle folder icon
-				const folderIcon = header.querySelector(".hex-folder-icon");
-				if (folderIcon) {
-					folderIcon.classList.toggle("fa-folder");
-					folderIcon.classList.toggle("fa-folder-open");
-				}
-
-				// Toggle header collapsed class
-				header.classList.toggle("collapsed");
 			});
 		});
 

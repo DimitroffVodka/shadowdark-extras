@@ -94,7 +94,7 @@ const BINDINGS = [
 	".sdx-tray .dungeon-wall-shadows-checkbox :: change",
 	".sdx-tray .hex-apply-btn :: click",
 	".sdx-tray .hex-bw-checkbox :: change",
-	".sdx-tray .hex-colored-folder-header[0] :: click",
+	".sdx-tray .hex-colored-wildcard-btn :: click",
 	".sdx-tray .hex-custom-breadcrumb-segment[0] :: click",
 	".sdx-tray .hex-custom-chip[0] :: click",
 	".sdx-tray .hex-custom-reload-btn[0] :: click",
@@ -192,6 +192,7 @@ const BINDINGS = [
 	".sdx-tray [data-action='tom-overlay-set'][0] :: click",
 	".sdx-tray [data-action='tom-overlay-toggle'][0] :: click",
 	".sdx-tray [data-action='tom-overlays-toggle'] :: click",
+	".sdx-tray [data-colored-tag][0] :: click",
 ];
 
 test("a render binds exactly this set of selectors and events", () => {

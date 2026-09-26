@@ -315,6 +315,8 @@ export function installCanvasGlobals({ isGM = true, gsap = makeGsapRecorder() } 
 				super();
 				this.texture = texture;
 				this.anchor = new Point(0, 0);
+				this.scale = new Point(1, 1);
+				this.rotation = 0;
 				this.width = 0;
 				this.height = 0;
 			}

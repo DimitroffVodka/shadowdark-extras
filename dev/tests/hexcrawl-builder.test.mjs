@@ -108,9 +108,13 @@ test.beforeEach(() => {
 					async setFlag(scope, key, value) { scene.flags[scope][key] = structuredClone(value); writes.push(key); },
 					// Real Tile documents carry an id, and repaintHexTiles deletes by
 					// id; a stub that pushes the raw create data cannot model that.
+					// Ids count up and are never reused: one based on the current
+					// tile count collides after a delete, and a later delete-by-id
+					// then takes the wrong tile with it.
+					tileSeq: 0,
 					async createEmbeddedDocuments(type, data) {
 						assert.equal(type, "Tile");
-						const docs = data.map((source, n) => ({ ...source, id: `tile-${scene.tiles.length + n + 1}` }));
+						const docs = data.map(source => ({ ...source, id: `tile-${++scene.tileSeq}` }));
 						scene.tiles.push(...docs);
 						return docs;
 					},
@@ -149,8 +153,9 @@ test("published three-hex fixture builds tiles, records, reference and existing 
 	assert.equal(records["1_13"].terrain, "arctic sea", "omitted keyed terrain keeps the region label");
 	assert.equal(records["0_0"].terrain, "grassland");
 	const tileAt = (i, j) => scene.tiles.find(t => t.flags?.[MODULE_ID]?.painted && t.x + t.width / 2 === grid.getCenterPoint({ i, j }).x && t.y + t.height / 2 === grid.getCenterPoint({ i, j }).y);
-	assert.match(tileAt(3, 13).texture.src, /hex-tile-desert/);
-	assert.match(tileAt(2, 13).texture.src, /hex-tile-mountains/);
+	// Published builds paint from the colored catalogue whatever tab the tray is on.
+	assert.match(tileAt(3, 13).texture.src, /\/Desert\//);
+	assert.equal(tileAt(2, 13).texture.src, MOUNTAIN_ROCKY_TILE, "deep tunnels take the rocky mountain");
 	assert.equal(tileAt(1, 13).flags[MODULE_ID].biome, "water");
 	const reference = scene.tiles.find(t => t.hidden);
 	assert.equal(reference.locked, true);
@@ -183,7 +188,7 @@ test("published three-hex fixture builds tiles, records, reference and existing 
 	assert.equal(updated["2_13"].exploration, "mapped");
 	assert.deepEqual(updated["2_13"].notes.map(n => n.text), ["Keep me", "Revised cellar."]);
 	assert.equal(updated["0_0"].terrain, "unlisted terrain");
-	assert.equal(scene.tiles.length, 58, "upserts never rebuild tiles");
+	assert.equal(scene.tiles.length, 60, "upserts never rebuild tiles (56 terrain, a feature, the reference, two beaches beside the arctic sea)");
 });
 
 test("published builder follows the selected colored tile source and centers its footprint", async () => {
@@ -447,12 +452,14 @@ test("curated art does not depend on which tile source is selected", async () =>
 	// map should not come out as hand-picked tiles marooned in the legacy set.
 	assert.ok(painted.every(t => !t.texture.src.includes("assets/tiles/")), "curated art pulls colored filler in with it");
 
-	// With no art in the dataset the tab still decides.
+	// With no art in the dataset a published build still paints from the
+	// colored catalogue: the tab used to decide, and the same hand-off came out
+	// black and white whenever the tray was on Default.
 	scenes.length = 0;
 	await builder.buildPublishedHexcrawl({
 		grid: { cols: 2, rows: 1 }, terrain: { default: "desert" }, hexes: [],
 	}, { view: false });
-	assert.ok(scenes[0].tiles.some(t => t.texture.src.includes("assets/tiles/")), "the default tab still fills with the legacy tiles");
+	assert.ok(scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted).every(t => t.texture.src.includes("/Desert/")), "the tab no longer decides the tile set");
 });
 
 test("art outside the shipped catalogue is refused before anything is written", async () => {
@@ -477,7 +484,7 @@ test("repaint swaps a hex's tile art and leaves the rest of the scene standing",
 
 	const before = paintedAt();
 	assert.equal(before.length, 1, "the build leaves one painted tile on the hex");
-	assert.match(before[0].texture.src, /hex-tile-mountains/, "1403 builds as mountains");
+	assert.match(before[0].texture.src, /\/Mountains\//, "1403 builds as mountains");
 	const features = () => scene.tiles.filter(t => t.flags?.[MODULE_ID]?.hexcrawlFeature).length;
 	const featuresBefore = features();
 	const totalBefore = scene.tiles.length;
@@ -489,7 +496,7 @@ test("repaint swaps a hex's tile art and leaves the rest of the scene standing",
 
 	const after = paintedAt();
 	assert.equal(after.length, 1, "no stacked leftover under the new tile");
-	assert.match(after[0].texture.src, /hex-tile-desert/, "the art follows the new terrain");
+	assert.match(after[0].texture.src, /\/Desert\//, "the art follows the new terrain");
 	assert.equal(scene.tiles.length, totalBefore, "repaint is a swap, not a net add");
 	assert.equal(features(), featuresBefore, "the feature icon on the same hex survives");
 	assert.ok(scene.tiles.some(t => t.hidden && t.locked), "the reference underlay survives");
@@ -516,4 +523,136 @@ test("repaint refuses what it cannot paint, before touching the scene", async ()
 
 	assert.equal(scene.tiles.length, tilesBefore, "every rejection leaves the scene exactly as it was");
 	assert.deepEqual(await builder.repaintHexTiles(scene.id, []), { sceneId: scene.id, repainted: 0, removed: 0 });
+});
+
+// Coasts are derived from the records, not carried by the dataset: a WATER hex
+// with land across an edge gets a beach tile along that edge (straight side to
+// the land, wavy waterline inside), and a repaint that moves the shoreline
+// redoes the beaches of the hex and its neighbours. The test grid's adjacency
+// is north/south only, so the shore is a column.
+test("a build lines the water hexes beside land with beaches, and a repaint moves them", async () => {
+	const data = {
+		grid: { cols: 1, rows: 3 },
+		terrain: { default: "forest", regions: [{ biome: "ocean", hexes: [102] }, { biome: "coast", hexes: [103] }] },
+		hexes: [],
+	};
+	const result = await builder.buildPublishedHexcrawl(data, { view: false });
+	const scene = scenes.find(s => s.id === result.sceneId);
+	const coasts = () => scene.tiles.filter(t => t.flags?.[MODULE_ID]?.coast);
+
+	assert.deepEqual(coasts().map(t => t.flags[MODULE_ID].coast), ["1_0", "1_0"], "the sea hex gets a beach on each of its two land-facing edges");
+	// A "coast" hex is land on a shore: it paints as land and the sea beside it
+	// gets the beach, rather than painting as sea with a beach in open water.
+	const coastHex = scene.tiles.find(t => t.flags?.[MODULE_ID]?.painted && t.y + (t.height / 2) === grid.getCenterPoint({ i: 2, j: 0 }).y);
+	assert.doesNotMatch(coastHex.texture.src, /ocean|water|waves/, "the coast hex itself is not painted as sea");
+	for (const tile of coasts()) {
+		assert.match(tile.texture.src, /symbols\/Coast\/Hex - Coast - Beach \(small\) (N|NW|S|SW)\.webp$/, "land across opposite edges is two small beaches");
+		assert.equal(tile.rotation % 60, 0, "flat-top art turns in 60° steps");
+		assert.ok([1, -1].includes(tile.texture.scaleX));
+		assert.ok(!tile.flags[MODULE_ID].painted, "a beach is not terrain, so the painter's swap rule leaves it alone");
+		const [i, j] = tile.flags[MODULE_ID].coast.split("_").map(Number);
+		const centre = grid.getCenterPoint({ i, j });
+		// Foundry places the texture anchor at x,y and turns the tile about it, so
+		// a turned beach has to anchor at its centre and sit ON the hex centre.
+		assert.deepEqual([tile.texture.anchorX, tile.texture.anchorY], [0.5, 0.5], "anchored at its centre");
+		assert.deepEqual({ x: tile.x, y: tile.y }, centre, "the anchor sits on the hex centre");
+		assert.ok(tile.sort > 10000, "sorted above every terrain tile");
+	}
+
+	// Drain the sea: the beaches go with it.
+	await builder.repaintHexTiles(scene.id, [{ num: 102, terrain: "forest" }]);
+	assert.deepEqual(coasts(), [], "no water left, no beaches left");
+
+	// Flood the top hex instead: it now faces land across its south edge only.
+	await builder.repaintHexTiles(scene.id, [{ num: 101, terrain: "ocean" }]);
+	assert.deepEqual(coasts().map(t => t.flags[MODULE_ID].coast), ["0_0"]);
+	assert.equal(coasts()[0].rotation % 360, 180, "a beach facing south is the north piece turned round");
+	assert.equal(scene.tiles.filter(t => t.flags?.[MODULE_ID]?.painted).length, 3, "the terrain tiles themselves are one per hex still");
+});
+
+// A keyed settlement paints as its Specials tile. The kind arrives as an
+// Extras `features` entry, which is a record field, so it survives a repaint
+// that only names the terrain: the builder reads the kind back off the record.
+test("a keyed town paints as a town tile and keeps it through a terrain repaint", async () => {
+	const data = {
+		grid: { cols: 2, rows: 1 }, terrain: { default: "forest" },
+		hexes: [
+			{ num: 101, name: "Low Town", features: [{ id: "settlement-101", type: "town", name: "Low Town", discovered: false }] },
+			{ num: 201, name: "A Cellar", features: [{ id: "keyed-201", type: "keyed_location", name: "A Cellar", discovered: false }] },
+		],
+	};
+	const result = await builder.buildPublishedHexcrawl(data, { view: false });
+	const scene = scenes.find(s => s.id === result.sceneId);
+	const paintedAt = (i, j) => scene.tiles.find(t => t.flags?.[MODULE_ID]?.painted
+		&& t.x + (t.width / 2) === grid.getCenterPoint({ i, j }).x && t.y + (t.height / 2) === grid.getCenterPoint({ i, j }).y);
+
+	const town = paintedAt(0, 0);
+	assert.match(decodeURIComponent(town.texture.src), /Specials\/Hex - Urban - (Town|Modern Town, inhabited)/, "a town is a Specials town tile");
+	assert.equal(town.flags[MODULE_ID].hexNum, 101, "a settlement tile carries its hex number like curated art");
+	assert.match(paintedAt(0, 1).texture.src, /\/Vegetation\//, "a plain keyed location keeps its terrain tile");
+	assert.deepEqual(world.lastFlagValue()[scene.id]["0_0"].features, data.hexes[0].features, "the settlement is on the record");
+
+	await builder.repaintHexTiles(scene.id, [{ num: 101, terrain: "desert" }]);
+	assert.match(decodeURIComponent(paintedAt(0, 0).texture.src), /Specials\/Hex - Urban - (Town|Modern Town, inhabited)/, "a terrain repaint does not lose the town");
+	assert.equal(world.lastFlagValue()[scene.id]["0_0"].terrain, "desert", "but the terrain word follows the repaint");
+});
+
+// Arctic water gets the ice shelf instead of sand, and a repaint that thaws it
+// swaps the shore along with the terrain.
+test("an arctic sea hex is lined with ice floats, and thawing it to ocean makes the shore sand", async () => {
+	const data = {
+		grid: { cols: 1, rows: 3 },
+		terrain: { default: "forest", regions: [{ biome: "arctic sea", hexes: [102] }] },
+		hexes: [],
+	};
+	const result = await builder.buildPublishedHexcrawl(data, { view: false });
+	const scene = scenes.find(s => s.id === result.sceneId);
+	const coasts = () => scene.tiles.filter(t => t.flags?.[MODULE_ID]?.coast);
+	assert.equal(coasts().length, 2);
+	for (const tile of coasts()) {
+		assert.match(decodeURIComponent(tile.texture.src), /Hexes\/Specials\/Hex - Coast - Ice Floats \(small\) N\.webp$/, "one land edge is one small shelf");
+		assert.equal(tile.flags[MODULE_ID].coast, "1_0", "on the arctic hex, facing the land");
+	}
+	await builder.repaintHexTiles(scene.id, [{ num: 102, terrain: "ocean" }]);
+	assert.equal(coasts().length, 2);
+	for (const tile of coasts()) assert.match(tile.texture.src, /symbols\/Coast\/Hex - Coast - Beach \(small\)/, "thawed water gets sand");
+});
+
+// Feature icons keep their own aspect and follow the GM's reviewed render
+// rule: a long side over 400 px comes down to 380, under 150 goes up to 220,
+// in the 932x810 hex canvas (hex 418 px tall), then scaled to the grid.
+test("feature icons are sized from their texture by the render rule, or the square box when unmeasured", async () => {
+	const sizes = { "icons/big.webp": [932, 810], "icons/pin.webp": [26, 24], "icons/mid.webp": [257, 188] };
+	const original = globalThis.foundry.canvas;
+	globalThis.foundry.canvas = { ...(original ?? {}), loadTexture: async src => {
+		const [width, height] = sizes[src] ?? [];
+		if (!width) throw new Error("no such texture");
+		return { width, height };
+	} };
+	try {
+		const data = {
+			grid: { cols: 4, rows: 1 }, terrain: { default: "forest" },
+			hexes: [
+				{ num: 101, icon: "icons/big.webp" }, { num: 201, icon: "icons/pin.webp" },
+				{ num: 301, icon: "icons/mid.webp" }, { num: 401, icon: "icons/unmeasured.webp" },
+			],
+		};
+		const result = await builder.buildPublishedHexcrawl(data, { view: false });
+		const scene = scenes.find(s => s.id === result.sceneId);
+		const icon = src => scene.tiles.find(t => t.flags?.[MODULE_ID]?.hexcrawlFeature && t.texture.src === src);
+		const toGrid = 256 / 418;
+		const big = icon("icons/big.webp");
+		assert.deepEqual([big.width, big.height], [Math.round(380 * toGrid), Math.round(810 * (380 / 932) * toGrid)], "a 932 px keep comes down to 380 in the canvas");
+		const pin = icon("icons/pin.webp");
+		assert.deepEqual([pin.width, pin.height], [Math.round(220 * toGrid), Math.round(24 * (220 / 26) * toGrid)], "a 26 px pin goes up to 220");
+		const mid = icon("icons/mid.webp");
+		assert.deepEqual([mid.width, mid.height], [Math.round(257 * toGrid), Math.round(188 * toGrid)], "a mid-size icon keeps its own size");
+		const unmeasured = icon("icons/unmeasured.webp");
+		assert.deepEqual([unmeasured.width, unmeasured.height], [150, 150], "an unmeasured icon gets the square box");
+		const centre = grid.getCenterPoint({ i: 0, j: 0 });
+		assert.deepEqual({ x: big.x + (big.width / 2), y: big.y + (big.height / 2) }, centre, "centred on its hex whatever its size");
+	}
+	finally {
+		globalThis.foundry.canvas = original;
+	}
 });

@@ -30,8 +30,9 @@ import {
 	getDDPackDecorAssets,
 	setDecorMode,
 } from "./hex-decor.mjs";
-import { _coloredTiles } from "./hex-colored-tiles.mjs";
+import { _coloredTiles, getColoredTileDimensions } from "./hex-colored-tiles.mjs";
 import { _customTiles, getCustomTilePlacement } from "./hex-custom-tiles.mjs";
+import { scaleHexTileDimensions } from "./hex-scene-format.mjs";
 import {
 	_waterEffect,
 	_windEffect,
@@ -57,8 +58,6 @@ import {
 const MODULE_ID = "shadowdark-extras";
 const HEX_TILE_W = 296;
 const HEX_TILE_H = 256;
-const COLORED_HEX_TILE_W = 572;
-const COLORED_HEX_TILE_H = 500;
 
 // Maps default-tile biome keys to user-friendly terrain labels
 const BIOME_TO_TERRAIN = {
@@ -311,8 +310,9 @@ export async function _stampAtPointer(ev, forceStamp = false) {
 		}
 	}
 	else if (isColoredTile) {
-		tw = COLORED_HEX_TILE_W;
-		th = COLORED_HEX_TILE_H;
+		const dimensions = getColoredTileDimensions();
+		tw = dimensions.width;
+		th = dimensions.height;
 	}
 	else if (isCustomTile) {
 		const placement = await getCustomTilePlacement(chosenTile, center, verticalNudge);
@@ -322,8 +322,9 @@ export async function _stampAtPointer(ev, forceStamp = false) {
 		ty = placement.y;
 	}
 	else {
-		tw = HEX_TILE_W;
-		th = HEX_TILE_H;
+		const dimensions = scaleHexTileDimensions(HEX_TILE_W, HEX_TILE_H);
+		tw = dimensions.width;
+		th = dimensions.height;
 	}
 
 	let tintData = undefined;

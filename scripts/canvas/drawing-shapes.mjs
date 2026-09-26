@@ -8,6 +8,7 @@ import { STAMP_SIZES } from "./drawing-constants.mjs";
 import {
 	buildMapPathNetwork, mapPathCellKey, mapPathEdgeKey,
 } from "./drawing-geometry.mjs";
+import { getWaterHexKeys } from "../hex/hex-water-terrain.mjs";
 
 export const DrawingShapes = {
 	_captureMapPathSelection() {
@@ -235,12 +236,17 @@ export const DrawingShapes = {
 	},
 
 	_getMapPathNetworks() {
+		// Rivers open out into an adjacent ocean, arctic sea, lake or river hex;
+		// roads have no business running into the water, so they get no outlet.
+		const water = getWaterHexKeys(canvas.scene?.id);
+		const isWater = water.size ? cell => water.has(`${cell.i}_${cell.j}`) : null;
 		return {
 			road: buildMapPathNetwork(
 				this.state.mapPathTiles.road, canvas.grid, this.state.mapPathBlockedEdges.road
 			),
 			river: buildMapPathNetwork(
-				this.state.mapPathTiles.river, canvas.grid, this.state.mapPathBlockedEdges.river
+				this.state.mapPathTiles.river, canvas.grid,
+				this.state.mapPathBlockedEdges.river, isWater
 			),
 		};
 	},
@@ -254,7 +260,7 @@ export const DrawingShapes = {
 			preview.addChild(this._createMapNetworkDisplay({
 				networkPaths, strokeWidth: this.state.brushSettings.size,
 				roadColor: this.state.mapPathRoadColor, riverColor: this.state.mapPathRiverColor,
-				texturePath: this.state.mapPathTexture,
+				texturePath: this.state.mapPathTexture, roadStyle: this.state.mapPathRoadStyle,
 			}));
 		}
 		const blocked = new PIXI.Graphics();

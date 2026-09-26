@@ -894,9 +894,10 @@
                             <i class="fas fa-code-branch"></i> Both
                         </button>
                     </div>
-                    <select class="hex-path-style-select" aria-label="Road surface"
-                        data-tooltip="Choose the Road surface used when Create is pressed"
-                        {{#unless (or (eq hexPathKind 'road') (eq hexPathKind 'both'))}}disabled{{/unless}}>
+                    <select class="hex-path-style-select" aria-label="Path style"
+                        data-tooltip="Hand-drawn hex art chains a piece per hex for Roads and Rivers; the surfaces stroke a Road instead"
+                        {{#unless hexPathKind}}disabled{{/unless}}>
+                        <option value="art" {{#if (eq hexRoadStyle 'art')}}selected{{/if}}>Hand-drawn art</option>
                         <option value="dirt" {{#if (eq hexRoadStyle 'dirt')}}selected{{/if}}>Dirt</option>
                         <option value="cobble" {{#if (eq hexRoadStyle 'cobble')}}selected{{/if}}>Cobblestone</option>
                         <option value="pavers" {{#if (eq hexRoadStyle 'pavers')}}selected{{/if}}>Pavers</option>
@@ -1078,36 +1079,42 @@
                         {{/each}}
                     </div>
 
-                    <!-- Colored Tiles Grid (folder-based) -->
+                    <!-- Colored Tiles Grid (tag-based) -->
                     <div class="hex-tile-colored-panel {{#unless (eq activeTileTab 'colored')}}hidden{{/unless}}"
                         data-tile-panel="colored">
-                        {{#if hexColoredFolders.length}}
-                        {{#each hexColoredFolders}}
-                        <div class="hex-colored-folder" data-folder="{{this.folder}}">
-                            <div class="hex-colored-folder-header {{#if this.collapsed}}collapsed{{/if}}"
-                                data-action="toggle-colored-folder" data-folder="{{this.folder}}">
-                                <i
-                                    class="fas {{#if this.collapsed}}fa-caret-right{{else}}fa-caret-down{{/if}} hex-folder-chevron"></i>
-                                <i
-                                    class="fas {{#if this.collapsed}}fa-folder{{else}}fa-folder-open{{/if}} hex-folder-icon"></i>
-                                <span class="hex-folder-name">{{this.label}}</span>
-                                <span class="hex-folder-count">({{this.tiles.length}})</span>
-                            </div>
-                            <div class="hex-tile-grid hex-colored-folder-content {{#if this.collapsed}}hidden{{/if}}">
-                                {{#each this.tiles}}
-                                <div class="hex-tile-thumb {{#if this.active}}active{{/if}}" data-tile="{{this.path}}"
-                                    title="{{this.label}}{{#if this.biome}} ({{this.biome}}){{/if}}">
-                                    <img src="{{this.src}}" alt="{{this.label}}" loading="lazy" />
-                                    <span class="hex-tile-label">{{this.label}}</span>
-                                </div>
-                                {{/each}}
-                            </div>
+                        {{#if hexColoredTags.length}}
+                        <div class="hex-custom-chip-row hex-colored-tag-row" aria-label="Colored tile tags">
+                            <button type="button" class="hex-custom-chip {{#unless hasColoredTagFilters}}active{{/unless}}"
+                                data-colored-tag="" aria-pressed="{{#unless hasColoredTagFilters}}true{{else}}false{{/unless}}">
+                                All
+                            </button>
+                            {{#each hexColoredTags}}
+                            <button type="button" class="hex-custom-chip {{#if this.active}}active{{/if}}"
+                                data-colored-tag="{{this.tag}}" aria-pressed="{{this.active}}">
+                                {{this.label}} <span class="hex-custom-chip-count">{{this.count}}</span>
+                            </button>
+                            {{/each}}
                         </div>
-                        {{/each}}
+                        <button type="button" class="hex-custom-chip hex-colored-wildcard-btn"
+                            title="Select every matching tile and choose one randomly for each painted hex">
+                            <i class="fas fa-shuffle"></i> Wildcard {{hexColoredTiles.length}} matches
+                        </button>
+                        {{/if}}
+                        {{#if hexColoredTiles.length}}
+                        <div class="hex-tile-grid hex-colored-tag-results">
+                            {{#each hexColoredTiles}}
+                            <div class="hex-tile-thumb {{#if this.active}}active{{/if}}" data-tile="{{this.path}}"
+                                title="{{this.label}}{{#if this.biome}} ({{this.biome}}){{/if}}">
+                                <img src="{{this.src}}" alt="{{this.label}}" loading="lazy" />
+                                <span class="hex-tile-label">{{this.label}}</span>
+                                {{#if this.biome}}<span class="hex-tile-biome">{{this.biome}}</span>{{/if}}
+                            </div>
+                            {{/each}}
+                        </div>
                         {{else}}
                         <div class="hex-no-custom-tiles">
                             <p><i class="fas fa-palette"></i></p>
-                            <p>No colored tiles found</p>
+                            <p>No colored tiles match these tags</p>
                         </div>
                         {{/if}}
                     </div>

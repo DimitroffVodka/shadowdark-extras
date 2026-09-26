@@ -12,6 +12,21 @@
 const MODULE_ID = "shadowdark-extras";
 const HEX_TILE_H = 256;
 
+/**
+ * Scale an SDX hex asset from its 256 px reference grid to the active scene.
+ */
+export function scaleHexTileDimensions(
+	width,
+	height,
+	gridSize = globalThis.canvas?.grid?.size ?? HEX_TILE_H
+) {
+	const scale = gridSize / HEX_TILE_H;
+	return {
+		width: Math.round(width * scale),
+		height: Math.round(height * scale),
+	};
+}
+
 // State
 export let _mapColumns = 15;
 export let _mapRows = 15;
