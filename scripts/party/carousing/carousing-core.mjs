@@ -501,6 +501,14 @@ export async function saveCarousingSession(session, { replaceResults = false } =
 			[`flags.${MODULE_ID}.carousingSession.results`]:
                 new foundry.data.operators.ForcedDeletion(),
 		});
+		// A new outing/receipt must not inherit a previous outing's actors or status.
+		for (const key of ["outing", "logMeta"]) {
+			if (Object.hasOwn(session, key)) {
+				await journal.update({
+					[`flags.${MODULE_ID}.carousingSession.${key}`]: new foundry.data.operators.ForcedDeletion(),
+				});
+			}
+		}
 	}
 	await journal.setFlag(MODULE_ID, "carousingSession", session);
 }

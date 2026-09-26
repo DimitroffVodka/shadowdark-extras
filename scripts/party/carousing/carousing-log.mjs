@@ -110,6 +110,13 @@ export async function writeCarousingLogPage(session) {
 	if (meta.holiday) {
 		header += `<p>${esc(game.i18n.format("SHADOWDARK_EXTRAS.carousing.holiday", { name: meta.holiday }))}</p>`;
 	}
+	if (meta.time) {
+		const key = meta.time.status === "advanced" ? "log_time" : "log_time_unconfirmed";
+		header += `<p>${esc(game.i18n.format(`SHADOWDARK_EXTRAS.carousing.${key}`, meta.time))}</p>`;
+	}
+	if (meta.redos) {
+		header += `<p>${esc(game.i18n.format("SHADOWDARK_EXTRAS.carousing.log_redos", { count: meta.redos }))}</p>`;
+	}
 
 	const content = `
         ${header}

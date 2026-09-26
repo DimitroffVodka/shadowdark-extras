@@ -33,6 +33,7 @@ import {
 	getCarousingWealthBaseMode,
 } from "./CarousingSD.mjs";
 import { setCarousingGarb, setCarousingSettlement } from "./carousing-core.mjs";
+import { canRedoCarousing } from "./carousing-outing.mjs";
 import {
 	SETTLEMENT_KINDS, clearCarousingPlaceCache, downtimeOpen, getEnhancer, holidayEffects,
 	holidayLines, resolveCarousingPlace, tierOverLimit,
@@ -245,7 +246,7 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		);
 		const selectedOverLimit = session.selectedTier !== null
 			&& tierOverLimit(activeTable.tiers[session.selectedTier], place.limit);
-		const canRoll = allConfirmed && allCanAfford && session.selectedTier !== null
+		const canRoll = session.phase !== "rolling" && allConfirmed && allCanAfford && session.selectedTier !== null
 			&& droppedParticipants.length > 0 && !selectedOverLimit;
 
 		const customTables = availableTables.map(t => ({
@@ -297,6 +298,8 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 			selectedTierBonus: selectedTierBonus,
 			phase: session.phase,
 			canRoll: canRoll,
+			canRedo: canRedoCarousing(session, droppedParticipants, carousingMode),
+			hasCompletedOuting: session.phase === "complete",
 			allConfirmed: allConfirmed,
 			selectedTableId: session.selectedTableId || "default",
 			customTables: customTables,
@@ -600,6 +603,13 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 			event.preventDefault();
 			if (!game.user.isGM) return;
 			await executeCarousingRolls();
+		});
+
+		// GM: replace this outing's rolls without paying or spending time again.
+		on('[data-action="redo-carousing"]', "click", async event => {
+			event.preventDefault();
+			if (!game.user.isGM) return;
+			await executeCarousingRolls({ redo: true });
 		});
 
 		// GM: Reset button
