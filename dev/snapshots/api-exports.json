@@ -48,13 +48,13 @@
     }
   },
   "moduleApi": {
-    "recordedAt": "2026-09-18",
+    "recordedAt": "2026-09-26",
     "foundry": "14.368",
     "system": "shadowdark 4.0.6",
     "manifestVersionOnDisk": "6.15.0",
     "versionReportedByFoundry": "6.15.0",
     "$versionNote": "Foundry reads module.json once at server start, so a browser reload still reports the pre-bump version. The API surface below was captured after a hard reload and is what the gate compares.",
-    "keyCount": 60,
+    "keyCount": 61,
     "keys": [
       "applyCleansingWeapon",
       "applyHolyWeapon",
@@ -93,6 +93,7 @@
       "medkitScanWorld",
       "migrateWebpAssetPaths",
       "openBiomeEditor",
+      "party",
       "placeChangeLevelRegion",
       "placeDungeonDecor",
       "placeDungeonSurface",
@@ -119,10 +120,14 @@
     ],
     "nested": {
       "hex": [
+        "adoptHexcrawl",
         "buildHexcrawl",
+        "getHexRecords",
         "getSpecialTiles",
+        "getZoneColors",
         "importHexerMap",
         "openHexerImportDialog",
+        "repaintHexTiles",
         "upsertHexRecords"
       ],
       "dev": [
@@ -145,6 +150,10 @@
         "layout",
         "mixedLayout",
         "traceBoundaryLoops"
+      ],
+      "party": [
+        "list",
+        "members"
       ]
     }
   }
