@@ -65,9 +65,10 @@ The **Details** tab is the normal place to prep a hex.
 
 ### Visibility
 
-**Show to Players** is the top-level gate. Without it, a player does not get a
-hover card or the cell marker, even if you have filled out every other field.
-GMs always see the full card.
+**Show to Players** normally controls the hover card and cell marker. The
+[Western Reaches visibility integration](#western-reaches-visibility) also
+reveals information automatically as the party approaches. GMs always see the
+full card.
 
 ### Image
 
@@ -136,6 +137,55 @@ Set **Status** to **Unexplored**, **Explored**, or **Mapped**.
 
 These are deliberate record fields. They do not apply a rules effect by
 themselves; use them to match the campaign's own exploration procedure.
+
+### Western Reaches visibility
+
+With Shadowdark Enhancer active, Hex Fog uses its visibility rules, current
+weather and each hex's terrain for **party tokens**. Configure all five
+visibility modifiers in Enhancer's Rules Data and roll the day's weather first.
+Missing rules, missing/expired weather, or a hex without usable terrain/time
+data keeps the normal reveal-radius behavior. Ordinary tokens keep that behavior
+too.
+
+For every hex the party enters, the near radius starts at one and adds the
+configured darkness, weather and terrain-elevation modifiers, to a minimum of
+zero. With the Western Reaches values, grassland at night has radius zero;
+a mountain in excellent weather has radius five. Elevations come only from
+Enhancer's editable terrain data. This radius replaces the default and per-hex
+radius while the integration is available; explicit **Reveal Cells** remain
+GM-authored exceptions.
+
+Only terrain `mountain` blocks a straight hex line. The first mountain is
+visible, but cells behind it are not—even when the party stands on a mountain.
+River, road, coast and other features never block sight. In daytime without a
+storm, mountains with clear sight lines are revealed at any distance.
+
+A newly sighted distant mountain's player card shows **terrain only**: no keyed
+name, notes, features, image, zone or Journal-link menu. Coming within the near
+radius with clear sight reveals its name, even if **Show to Players** is off;
+individual hidden-note and undiscovered-feature switches still apply. Discovery
+persists after moving away or reloading. Already revealed or explored hexes are
+not retroactively hidden. The GM's card is unchanged.
+
+Fog painting changes the map cover, not knowledge: **Ctrl-drag reveal** does not
+promote a distant sighting to a known location, and **Shift-drag hide** does not
+erase a discovered name. Use **Show to Players** for ordinary record visibility;
+automatic discovery remains a separate override. To deliberately reset discovery
+for a scene, a GM can run `await canvas.scene.unsetFlag("shadowdark-extras", "hexFogDiscovery")`
+in a script macro on that scene. This resets all automatic disclosure there,
+without changing the fog or the records' own visibility switches. Party movement
+can discover those locations again.
+
+Movement is processed on the token's own scene, even while the active GM views
+another scene. A terrain-less hex's legacy fallback ring clears fog only; it
+does not unlock new keyed information. Traversed cells and explicit **Reveal
+Cells** still count as discoveries.
+
+This uses an additive Scene flag, `shadowdark-extras.hexFogDiscovery`, with
+`terrain` and `near` states; the existing `hexFogRevealed` format and fog drawing
+are unchanged. These are hover/UI disclosure rules, not a security boundary:
+the shared hex journal remains player-readable, and labels or features baked
+into map artwork cannot be concealed separately.
 
 ### Per-hex fog reveal
 

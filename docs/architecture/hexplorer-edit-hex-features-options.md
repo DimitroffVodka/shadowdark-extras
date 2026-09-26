@@ -301,7 +301,7 @@ and per-feature discovery as separate decisions. It also says players receive
 discovered Journal links in the right-click menu. The implementation matches
 that wording for the menu but does not make the menu depend on `Show to Players`,
 so “hidden card” and “no discoverable Journal link” are not equivalent states.
-[`docs/wiki/Hexplorer.md:235-249`](../../docs/wiki/Hexplorer.md#L235-L249)
+[`Hexplorer: Sharing a hex with players`](../../docs/wiki/Hexplorer.md#sharing-a-hex-with-players)
 [`scripts/hex/HexTooltipSD.mjs:526-545`](../../scripts/hex/HexTooltipSD.mjs#L526-L545)
 [`scripts/hex/HexTooltipSD.mjs:603-614`](../../scripts/hex/HexTooltipSD.mjs#L603-L614)
 
@@ -367,7 +367,7 @@ right-click Journal behavior. [`docs/wiki/Hexplorer.md:102-116`](../../docs/wiki
 
 The same documentation distinguishes generator actions from Edit Hex fields:
 Wilderness, Settlement, Dungeon, and Dungeon Map are right-click actions, and
-Dungeon Map returns both a Journal link and a GM-only Scene shortcut. [`docs/wiki/Hexplorer.md:174-186`](../../docs/wiki/Hexplorer.md#L174-L186)
+Dungeon Map returns both a Journal link and a GM-only Scene shortcut. [`Hexplorer: Generate content from a hex`](../../docs/wiki/Hexplorer.md#generate-content-from-a-hex)
 
 The project's provenance note says SDX Hexplorer generator data is an adapted
 historical Hexroll 3 corpus, that current Hexroll 3 has materially diverged,
