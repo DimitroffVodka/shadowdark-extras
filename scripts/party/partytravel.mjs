@@ -7,6 +7,24 @@ import { buildTravelTaskRollData } from "../tray/SDXRollerData.mjs";
 import { SDXRollerApp } from "../tray/SDXRollerApp.mjs";
 
 const MODULE_ID = "shadowdark-extras";
+
+function getActiveEnhancerOverland() {
+	const g = globalThis.game;
+	try {
+		if (!g?.modules?.get?.("shadowdark-enhancer")?.active) return null;
+	}
+	catch{
+		return null;
+	}
+	return g.shadowdarkEnhancer?.overland ?? null;
+}
+
+function warnWeatherProvider(message) {
+	const fallback = game.i18n.localize(
+		"SHADOWDARK_EXTRAS.party.travel.weather_provider_failed"
+	);
+	ui.notifications.warn(message || fallback);
+}
 // Lazy accessor avoids the mixin<->class import cycle (Phase 5.1 split):
 // getCampingTasks lives in PartySheetSD, which imports this mixin.
 let _campingTasks = null;
@@ -330,6 +348,49 @@ export const PartyTravel = {
 				game.i18n.localize("SHADOWDARK_EXTRAS.party_weather.fallback_warning")
 			);
 		}
+		if (weatherTableUuid) {
+			await this._rollDefaultWeather();
+			await this._maybeUseWeatherPrediction(() => this._rollDefaultWeather());
+			return;
+		}
+
+		const overland = getActiveEnhancerOverland();
+		if (typeof overland?.rollWeather === "function") {
+			let reply;
+			try {
+				reply = await overland.rollWeather();
+			}
+			catch(error) {
+				console.error("Shadowdark Extras | Enhancer weather roll failed:", error);
+				warnWeatherProvider(error?.message || String(error));
+				return;
+			}
+
+			if (!reply?.ok) {
+				warnWeatherProvider(reply?.error);
+				return;
+			}
+			if (!reply.rolled) return;
+
+			await this._maybeUseWeatherPrediction(async () => {
+				let reroll;
+				try {
+					reroll = await overland.rollWeather({ reroll: true });
+				}
+				catch(error) {
+					console.error("Shadowdark Extras | Enhancer weather reroll failed:", error);
+					warnWeatherProvider(error?.message || String(error));
+					return false;
+				}
+
+				if (!reroll?.ok) {
+					warnWeatherProvider(reroll?.error);
+					return false;
+				}
+				return true;
+			});
+			return;
+		}
 
 		await this._rollDefaultWeather();
 		await this._maybeUseWeatherPrediction(() => this._rollDefaultWeather());
@@ -373,7 +434,8 @@ export const PartyTravel = {
 			});
 			if (!result) return;
 			uses = result.uses;
-			await drawWeather();
+			const drawResult = await drawWeather();
+			if (drawResult === false) return;
 		}
 	},
 

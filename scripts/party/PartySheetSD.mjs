@@ -20,6 +20,122 @@ import { listParties, openQuest, partyMemberUuids, questTabData, registerPartyQu
 
 const MODULE_ID = "shadowdark-extras";
 
+function activeOverlandApi() {
+	const g = globalThis.game;
+	if (typeof g?.modules?.get !== "function") return null;
+
+	let module;
+	try {
+		module = g.modules.get("shadowdark-enhancer");
+	}
+	catch{
+		return null;
+	}
+	if (!module?.active) return null;
+
+	const overland = g.shadowdarkEnhancer?.overland;
+	if (typeof overland?.state !== "function"
+		|| typeof overland?.isActive !== "function") return null;
+	return { g, overland };
+}
+
+function localizeOverlandValue(g, key, fallback) {
+	try {
+		const value = g.i18n?.localize?.(key);
+		if (value && value !== key) return value;
+	}
+	catch{
+		// Keep the API value visible when localization is unavailable.
+	}
+	return fallback;
+}
+
+function displayOverlandTime(g, timeApi, value, current = false) {
+	if (typeof timeApi?.format === "function") {
+		try {
+			const formatted = current ? timeApi.format() : timeApi.format(value);
+			if (formatted !== undefined && formatted !== null && formatted !== "") {
+				return String(formatted);
+			}
+		}
+		catch{
+			// Older Enhancer versions may expose no compatible formatter.
+		}
+	}
+
+	const fallback = current ? g.time?.worldTime : value;
+	return Number.isFinite(Number(fallback)) ? String(fallback) : "";
+}
+
+/**
+ * Read Shadowdark Enhancer's Overland state for the Party Travel tab.
+ *
+ * The provider is deliberately feature-checked per function: older or
+ * disabled Enhancer versions leave the existing Extras UI untouched.
+ * @returns {Object|null}
+ */
+export function getOverlandTravelState() {
+	const provider = activeOverlandApi();
+	if (!provider) return null;
+
+	let state;
+	let travelling;
+	try {
+		state = provider.overland.state();
+		travelling = provider.overland.isActive() === true;
+	}
+	catch(error) {
+		console.warn(`${MODULE_ID} | Could not read Enhancer Overland state`, error);
+		return null;
+	}
+	if (!state || typeof state !== "object" || Array.isArray(state)) return null;
+
+	const { g } = provider;
+	const timeApi = g.shadowdarkEnhancer?.time;
+	const weatherKind = state.weather?.kind ?? "";
+	const method = state.method ?? "";
+	const weatherFallback = weatherKind || "—";
+	const methodFallback = method || "—";
+	const weatherLabel = weatherKind
+		? localizeOverlandValue(
+			g,
+			`SHADOWDARK_EXTRAS.party.travel.state.weather.${weatherKind}`,
+			weatherFallback
+		)
+		: localizeOverlandValue(
+			g,
+			"SHADOWDARK_EXTRAS.party.travel.state.weather.none",
+			weatherFallback
+		);
+
+	return {
+		date: displayOverlandTime(g, timeApi, undefined, true),
+		weather: {
+			kind: weatherKind,
+			label: weatherLabel,
+			until: Number.isFinite(Number(state.weather?.until))
+				? displayOverlandTime(g, timeApi, state.weather.until)
+				: "",
+		},
+		hexesLeft: Number.isFinite(Number(state.hexesLeft))
+			? Number(state.hexesLeft)
+			: "—",
+		budget: Number.isFinite(Number(state.budget))
+			? Number(state.budget)
+			: "—",
+		method,
+		methodLabel: method
+			? localizeOverlandValue(
+				g,
+				`SHADOWDARK_EXTRAS.party.travel.state.method.${method}`,
+				methodFallback
+			)
+			: methodFallback,
+		pushed: state.pushed === true,
+		travelling,
+	};
+}
+
 /**
  * Get the configured camping/travel tasks
  * @returns {Array} Array of task objects with key, name, abilities, campfire, and bannerImage
@@ -362,6 +478,7 @@ export default class PartySheetSD extends PartySheetMixinBase {
 			...speed,
 			selected: speed.key === selectedSpeed,
 		}));
+		context.overlandState = getOverlandTravelState();
 
 		// Quests tab: null (no tab) unless Shadowdark Enhancer's quest log is there
 		context.questTab = await questTabData(this.actor);
@@ -918,6 +1035,14 @@ export function registerPartySheetRerenderHooks() {
 	// Re-render party sheets when Shadowdark Enhancer's quest log changes; the
 	// Quests tab reads it (#150). Fires on every client, so nothing is sent here.
 	Hooks.on("shadowdark-enhancer.questsChanged", () => {
+		for (const app of Object.values(ui.windows)) {
+			if (app instanceof PartySheetSD) app.render();
+		}
+	});
+
+	// Re-render party sheets when Shadowdark Enhancer's Overland state changes.
+	// Fires on every client, so the Travel tab remains a read-only view here.
+	Hooks.on("shadowdark-enhancer.overlandChanged", () => {
 		for (const app of Object.values(ui.windows)) {
 			if (app instanceof PartySheetSD) app.render();
 		}

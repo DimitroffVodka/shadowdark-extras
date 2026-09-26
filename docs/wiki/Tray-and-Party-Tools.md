@@ -235,8 +235,15 @@ works as on any rest.
 The **Weather** button draws the Party's configured RollTable. Pick that table
 with the adjacent gear button (GM only) or through **Configure Weather Table**
 in module settings, which will accept any available world or compendium
-RollTable. Leave it unset, or point it at a table that has gone missing, and SDX
-falls back to its built-in Shadowdark `1d6` weather check.
+RollTable. With no table set and an active Shadowdark Enhancer offering
+`overland.rollWeather`, the button uses Enhancer's stored weather and chat card.
+Only a GM can roll it; players see Enhancer's refusal. Clicking again while the
+weather still holds neither posts a card nor offers Predict. An accepted Predict
+rerolls through Enhancer, preserving the original roll's advantage.
+
+Without that API, SDX uses its built-in Shadowdark `1d6` weather check. A custom
+table always wins; a missing or broken custom table keeps its existing warning
+and built-in fallback rather than switching to Enhancer.
 
 The selector only chooses a table. Edit the entries themselves through Foundry's
 normal RollTable sheet. Read-only compendium tables need to be imported or
@@ -246,6 +253,28 @@ weather result appears.
 
 Player-triggered Predict consumption goes through the same validation, written
 by the active GM.
+
+### Overland travel and camping
+
+With Shadowdark Enhancer's Overland API active, the Travel tab replaces the speed
+selector with a read-only travel status: today's date, weather and its expiry,
+hexes left and budget, travel method, and whether the party pushed. It remains
+visible between trips and updates when Enhancer's travel state changes. The old
+speed selection stays stored and returns when the integration is unavailable.
+
+Enhancer hands its camp to `game.modules.get("shadowdark-extras").api.camping.open`.
+This GM-only entry point opens the same camping window, with the travel day's
+members and Pushed boxes prefilled. A harsh climate raises Hunt to DC 18; harsh
+storms block it. Campers need the full requested meal (one or two pooled rations)
+or eat none. Mounts eat afterward, drawing from the party stash before member
+leftovers. Unfed campers take 1 CON stat damage when Enhancer provides that API;
+unfed mounts receive no automatic penalty.
+
+The caller can lock clock advancement off, as Enhancer does because it owns the
+travel clock. The promise resolves after the rest summary and cleanup, returning
+`{ completed: true, fed: { [actorId]: boolean }, mountsFed }`. Closing or declining
+returns `{ completed: false, fed: {}, mountsFed: 0 }`. These options do not change
+the Party sheet's own **Begin rest** rules or its default clock checkbox.
 
 ---
 
