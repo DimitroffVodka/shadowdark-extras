@@ -2,12 +2,12 @@
   "$comment": "Static registration call-site inventory. Keyed by module basename so it survives feature-folder moves. Order within each module and the root's register/init invocation order are contracts; runtime firing behaviour is proved by the smoke matrix, not by this file. Regenerate only with a reviewed reason: npm run snapshot:registrations -- --write",
   "totals": {
     "Hooks.once": 35,
-    "Hooks.on": 246,
+    "Hooks.on": 247,
     "Hooks.off": 9,
     "socket.register": 53,
     "libWrapper.register": 3,
     "socketlib.registerModule": 3,
-    "all": 349
+    "all": 350
   },
   "modules": {
     "AnimationEffectDedupSD.mjs": [
@@ -394,6 +394,9 @@
     ],
     "freyas-omen.mjs": [
       "Hooks.on:renderChatMessageHTML"
+    ],
+    "hex-record-prune.mjs": [
+      "Hooks.on:deleteScene"
     ],
     "hex-tile-clamp.mjs": [
       "libWrapper.register:<dynamic>"

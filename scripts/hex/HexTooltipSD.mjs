@@ -12,6 +12,7 @@ import { formatHexCoord } from "./SDXCoordsSD.mjs";
 import { registerContentRegistrySetting, registerContent } from "./ContentRegistry.mjs";
 import { MaphubViewerApp } from "../MaphubViewerApp.mjs";
 import { playerHexRecord } from "./hex-visibility.mjs";
+import { registerHexRecordPrune } from "./hex-record-prune.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -1887,6 +1888,7 @@ export function initHexTooltip() {
 	registerSettlementHooks();
 	// The bootstrap invokes this during Foundry's init phase.
 	registerContentRegistrySetting();
+	registerHexRecordPrune();
 
 	// Must wait for "ready" — game.socket is undefined before that hook fires
 	Hooks.once("ready", () => {

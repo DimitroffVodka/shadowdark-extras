@@ -131,10 +131,6 @@
         "repaintHexTiles",
         "upsertHexRecords"
       ],
-      "party": [
-        "list",
-        "members"
-      ],
       "camping": [
         "open"
       ],
@@ -158,6 +154,10 @@
         "layout",
         "mixedLayout",
         "traceBoundaryLoops"
+      ],
+      "party": [
+        "list",
+        "members"
       ]
     }
   }

@@ -293,6 +293,66 @@ test("rejects malformed input before creating/deleting scenes or partially upser
 	await assert.rejects(builder.upsertHexRecords(sceneId, [{ num: 1403 }]), /GM/);
 });
 
+test("overwrite prunes the replaced scene's hex records along with the scene (#168)", async () => {
+	const { deleteHexSceneData } = await import("../../scripts/hex/hex-record-prune.mjs");
+	const first = await builder.buildPublishedHexcrawl(fixture, { view: false });
+	const hexData = () => world.journals[0].getFlag(MODULE_ID, "hexData");
+	const built = Object.keys(hexData()[first.sceneId]).length;
+	assert.ok(built > 0);
+
+	const second = await builder.buildPublishedHexcrawl(fixture, { overwrite: true, view: false });
+	assert.notEqual(second.sceneId, first.sceneId);
+	assert.deepEqual(scenes.map(s => s.id), [second.sceneId], "the replaced scene is gone");
+	// The journal is shared by every hex scene, so the old key has to be removed
+	// by name; a rebuild that only wrote the new key left 4736 orphans in one world.
+	assert.deepEqual(Object.keys(hexData()), [second.sceneId], "and so are its records");
+	assert.equal(Object.keys(hexData()[second.sceneId]).length, built);
+
+	// Nothing left to prune means no write, so the deleteScene hook can repeat
+	// the overwrite path's call for the same scene without a second update.
+	world.clearRecords();
+	assert.equal(await deleteHexSceneData([first.sceneId, "never-built"]), 0);
+	assert.deepEqual(world.flagWrites(), []);
+});
+
+test("a scene still in the world keeps its records, whatever asked (#168)", async () => {
+	const { deleteHexSceneData } = await import("../../scripts/hex/hex-record-prune.mjs");
+	const { sceneId } = await builder.buildPublishedHexcrawl(fixture, { view: false });
+	world.clearRecords();
+	// deleteScene fires for a compendium copy too, and an export keeps the live scene's id.
+	assert.equal(await deleteHexSceneData([sceneId]), 0);
+	assert.deepEqual(world.flagWrites(), []);
+	assert.ok(world.journals[0].getFlag(MODULE_ID, "hexData")[sceneId]);
+});
+
+test("the deleteScene hook registers once and prunes on the active GM only (#168)", async () => {
+	const handlers = [];
+	const on = Hooks.on;
+	const users = game.users;
+	Hooks.on = (name, fn) => { if (name === "deleteScene") handlers.push(fn); };
+	try {
+		// A fresh module instance, so this test sees its own registration.
+		const { registerHexRecordPrune } = await import("../../scripts/hex/hex-record-prune.mjs?hook-test");
+		registerHexRecordPrune();
+		registerHexRecordPrune();
+		assert.equal(handlers.length, 1, "registered once, whichever feature asks first");
+		const { sceneId } = await builder.buildPublishedHexcrawl(fixture, { view: false });
+		const hexData = () => world.journals[0].getFlag(MODULE_ID, "hexData");
+		scenes = [];
+		game.users = { activeGM: { id: "another-gm" } };
+		handlers[0]({ id: sceneId });
+		await new Promise(resolve => setTimeout(resolve, 0));
+		assert.ok(hexData()[sceneId], "another GM's client leaves it to the active GM");
+		game.users = { activeGM: { id: game.user.id } };
+		handlers[0]({ id: sceneId });
+		await new Promise(resolve => setTimeout(resolve, 0));
+		assert.equal(hexData()[sceneId], undefined, "the active GM prunes it");
+	} finally {
+		Hooks.on = on;
+		game.users = users;
+	}
+});
+
 test("special catalogue stays exact, outside generic biome pools, and explicit locations win", async () => {
 	const catalog = await getSpecialTiles();
 	const shipped = readdirSync(new URL("../../assets/Hexes/Specials/", import.meta.url)).filter(name => name.endsWith(".webp"));

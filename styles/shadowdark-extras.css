@@ -1798,6 +1798,13 @@
     padding: 6px 10px;
 }
 
+/* The sheet is dark; without this the lists inherit the system's dark ink (#167). */
+.shadowdark-extras-party .sdx-quest-list,
+.shadowdark-extras-party .sdx-rumor-list,
+.shadowdark-extras-party .sdx-quest-name {
+    color: var(--party-text);
+}
+
 .shadowdark-extras-party .sdx-quest + .sdx-quest,
 .shadowdark-extras-party .sdx-rumor-list li + li,
 .sdx-quest-tracker .sdx-qt-quest + .sdx-qt-quest {
