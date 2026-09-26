@@ -67,6 +67,36 @@ Gear with no recorded value contributes zero. When a gear-based loss exceeds the
 character's coins, SDX creates or increases a zero-slot **Carousing Debt** item
 carrying the exact unpaid amount and its history.
 
+## Settlements, holidays and the two-week rule
+
+**Settlement.** The GM controls have a **Settlement** choice: village, town,
+city, city-state or none. It starts as the settlement on the party token's hex
+(the scene you are viewing, else the active scene), and you can change it; Reset
+puts it back. Tiers that cost more than the settlement's limit are disabled,
+and the limit is shown beside the choice. The limits come from Shadowdark
+Enhancer's rules data when it has them (its Rules data import reads them from
+your own GM Guide), and otherwise from the four **Configure Settings → Shadowdark
+Extras → Carousing Limit** fields. Those start empty, and an empty limit means no
+limit, so type in the values from your book to use them.
+
+**Holidays.** With Shadowdark Enhancer, a holiday that falls today
+in the party's settlement shows on the overlay, and its rules apply when you
+roll: the event-roll bonus in both modes, and, in Expanded mode, the benefit
+bonus, benefit advantage and extra benefit or mishap roll. Its 1-in-N chances
+are rolled for each character. Each card gets the holiday's garb questions;
+tick the ones that are true for that character. A required garb left unticked
+keeps that character out, so the holiday doesn't apply to them. Enhancer only
+knows the holidays once you import them (Importer Hub → Tools → Chapter to
+journal → *Cursed Scroll 6: the City of Masks holidays*); until then the
+overlay says so.
+
+**Downtime.** Carousing won't open or roll while a Shadowdark Enhancer downtime
+session is open.
+
+**Once every two weeks.** When you roll, SDX checks the Carousing Log. If a
+character caroused less than 14 real days ago, it names them and asks whether to
+go ahead. Sessions logged before this check existed aren't counted.
+
 ## Applying Original-mode outcomes
 
 Original results can carry XP, Luck, a percentage wealth loss, a Renown change,

@@ -12155,6 +12155,53 @@ body.sdx-dark-mode .shadowdark-extras .sdx-setting-header select {
     margin-right: 8px;
 }
 
+/* Settlement limit and holidays (#151) */
+.sdx-carousing-limit {
+    white-space: nowrap;
+    color: #d4af37;
+}
+
+.sdx-carousing-settlement-source,
+.sdx-carousing-holiday-hint {
+    margin: -6px 0 10px;
+    font-size: 0.85em;
+    color: #999;
+}
+
+.sdx-carousing-over-limit,
+.sdx-carousing-garb-out {
+    margin-bottom: 10px;
+    color: #ff9800;
+    font-size: 0.9em;
+}
+
+.sdx-carousing-holiday-line {
+    margin-left: 12px;
+    font-size: 0.85em;
+}
+
+.sdx-carousing-holiday-box .sdx-carousing-holiday-hint {
+    margin: 4px 0 0;
+}
+
+.sdx-carousing-garb {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.8em;
+    color: #ccc;
+}
+
+.sdx-carousing-garb-question {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.sdx-carousing-garb-out {
+    margin: 2px 0 0;
+}
+
 /* ============================================
    PLAYER DROPBOXES - VERTICAL PORTRAIT CARDS
    ============================================ */

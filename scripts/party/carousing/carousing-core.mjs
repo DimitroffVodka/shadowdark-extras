@@ -603,6 +603,37 @@ export async function setPlayerModifier(userId, type, value) {
 }
 
 /**
+ * Set the settlement kind being caroused in (GM only). null goes back to the
+ * party hex's settlement. Kept on the session, so a reset clears it.
+ * @param {string|null} kind a settlement kind, "none", or null
+ */
+export async function setCarousingSettlement(kind) {
+	if (!game.user.isGM) return;
+	const journal = getCarousingJournal();
+	if (!journal) return;
+	await journal.update({
+		[`flags.${MODULE_ID}.carousingSession.settlement`]:
+			kind ?? new foundry.data.operators.ForcedDeletion(),
+	});
+}
+
+/**
+ * Record the GM's answer to a holiday garb question for one participant.
+ * @param {string} participantId
+ * @param {string} garbKey the question's key, from Enhancer's holiday
+ * @param {boolean} yes
+ */
+export async function setCarousingGarb(participantId, garbKey, yes) {
+	if (!game.user.isGM) return;
+	const journal = getCarousingJournal();
+	if (!journal) return;
+	await journal.update({
+		[`flags.${MODULE_ID}.carousingSession.garb.${participantId}.${garbKey}`]:
+			yes ? true : new foundry.data.operators.ForcedDeletion(),
+	});
+}
+
+/**
  * Add a GM-managed participant (offline/unassigned actor)
  */
 export async function addGmParticipant(actorId) {
@@ -642,6 +673,7 @@ export async function removeGmParticipant(actorId) {
 		[`${base}.confirmations.${participantId}`]: new foundry.data.operators.ForcedDeletion(),
 		[`${base}.results.${participantId}`]: new foundry.data.operators.ForcedDeletion(),
 		[`${base}.modifiers.${participantId}`]: new foundry.data.operators.ForcedDeletion(),
+		[`${base}.garb.${participantId}`]: new foundry.data.operators.ForcedDeletion(),
 	});
 	// Dynamic import breaks the core<->SD cycle (Phase 5.1 split)
 	const { rerenderPlayerSheets } = await import("./CarousingSD.mjs");

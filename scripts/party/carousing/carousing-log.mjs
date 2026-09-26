@@ -104,9 +104,12 @@ export async function writeCarousingLogPage(session) {
         </tr>`;
 	}).join("");
 
-	const header = meta.tierDescription
+	let header = meta.tierDescription
 		? `<p><em>${esc(meta.tierDescription)}</em><br>${esc(String(meta.tierCost ?? 0))} GP total — ${esc(String(meta.costPerPerson ?? 0))} GP each</p>`
 		: "";
+	if (meta.holiday) {
+		header += `<p>${esc(game.i18n.format("SHADOWDARK_EXTRAS.carousing.holiday", { name: meta.holiday }))}</p>`;
+	}
 
 	const content = `
         ${header}
@@ -120,18 +123,41 @@ export async function writeCarousingLogPage(session) {
 		date: meta.date || new Date().toLocaleString(),
 	});
 
+	// Who caroused, for the two-week warning (see carousingLogEntries).
+	const actorIds = Object.keys(session.results)
+		.map(pid => getParticipantActor(pid)?.id).filter(Boolean);
+
 	const existing = journal.pages.find(p => p.getFlag(MODULE_ID, "logId") === session.logId);
 	if (existing) {
-		await existing.update({ "text.content": content });
+		await existing.update({
+			"text.content": content,
+			[`flags.${MODULE_ID}.actorIds`]: actorIds,
+		});
 	}
 	else {
 		await JournalEntryPage.create({
 			name: title,
 			type: "text",
 			text: { content, format: CONST.JOURNAL_ENTRY_PAGE_FORMATS.HTML },
-			flags: { [MODULE_ID]: { logId: session.logId } },
+			flags: { [MODULE_ID]: { logId: session.logId, actorIds } },
 		}, { parent: journal });
 	}
+}
+
+/**
+ * One entry per logged carousing session: who caroused and when the page was
+ * created. Pages written before #151 carry no actor ids and are skipped.
+ * @param {string} [excludeLogId] the session being rolled again, if any
+ * @returns {{actorIds: string[], at: number}[]}
+ */
+export function carousingLogEntries(excludeLogId) {
+	const journal = game.journal.find(j => j.getFlag(MODULE_ID, "isCarousingLog"));
+	return (journal?.pages?.contents ?? [])
+		.filter(page => !excludeLogId || page.getFlag(MODULE_ID, "logId") !== excludeLogId)
+		.map(page => ({
+			actorIds: page.getFlag(MODULE_ID, "actorIds") ?? [],
+			at: page._stats?.createdTime,
+		}));
 }
 
 /** Open the carousing log journal, creating it if this world has none yet. */

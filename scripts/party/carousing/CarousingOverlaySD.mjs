@@ -32,6 +32,11 @@ import {
 	openCarousingLog,
 	getCarousingWealthBaseMode,
 } from "./CarousingSD.mjs";
+import { setCarousingGarb, setCarousingSettlement } from "./carousing-core.mjs";
+import {
+	SETTLEMENT_KINDS, downtimeOpen, getEnhancer, holidayEffects, holidayLines,
+	resolveCarousingPlace, tierOverLimit,
+} from "./carousing-rules.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -120,6 +125,12 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
      * Open the carousing overlay
      */
 	static async open() {
+		// Carousing never overlaps a Shadowdark Enhancer downtime session.
+		if (await downtimeOpen(getEnhancer())) {
+			ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.downtime_open"));
+			return null;
+		}
+
 		const instance = CarousingOverlaySD.getInstance();
 
 		// Auto-assign character for current user if they have one and haven't dropped yet
@@ -197,8 +208,12 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 			activeTable = getCarousingTableById(session.selectedTableId);
 		}
 
+		// Where the party carouses: the settlement's limit and today's holiday.
+		const place = await resolveCarousingPlace(session);
+		const holiday = place.holiday;
+
 		// Get ALL participants (Online + GM added)
-		const participants = this._getParticipants(session, activeTable);
+		const participants = this._getParticipants(session, activeTable, holiday);
 
 		// Calculate split cost based on ALL dropped participants
 		const participantCount = participants.filter(p => p.hasDrop).length;
@@ -224,8 +239,10 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 		const allCanAfford = droppedParticipants.length > 0 && droppedParticipants.every(
 			p => p.canAfford
 		);
+		const selectedOverLimit = session.selectedTier !== null
+			&& tierOverLimit(activeTable.tiers[session.selectedTier], place.limit);
 		const canRoll = allConfirmed && allCanAfford && session.selectedTier !== null
-			&& droppedParticipants.length > 0;
+			&& droppedParticipants.length > 0 && !selectedOverLimit;
 
 		const customTables = availableTables.map(t => ({
 			...t,
@@ -236,6 +253,8 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 			index: i,
 			label: tier.name || `Tier ${i + 1} (${tier.cost} GP, +${tier.bonus})`,
 			selected: session.selectedTier === i,
+			// Above the settlement's limit: shown, but not offered.
+			disabled: tierOverLimit(tier, place.limit),
 		})).filter((_, i) => {
 			// Filter out empty tiers
 			const tier = activeTable.tiers[i];
@@ -290,14 +309,55 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 			wealthBaseLabel: game.i18n.localize(getCarousingWealthBaseMode() === "coinsAndGear"
 				? "SHADOWDARK_EXTRAS.carousing.wealth_base_gear"
 				: "SHADOWDARK_EXTRAS.carousing.wealth_base_coins"),
+			...this._getPlaceContext(place, carousingMode),
+			overLimitText: selectedOverLimit
+				? game.i18n.format("SHADOWDARK_EXTRAS.carousing.tier_over_limit", { limit: place.limit })
+				: "",
 		};
 
 	}
 
 	/**
+	 * The settlement select, its limit, and today's holiday, for the template.
+	 */
+	_getPlaceContext(place, carousingMode) {
+		const t = key => game.i18n.localize(`SHADOWDARK_EXTRAS.carousing.${key}`);
+		const { holiday } = place;
+		const carousing = holiday?.carousing ?? {};
+		return {
+			settlementOptions: [...SETTLEMENT_KINDS, "none"].map(kind => ({
+				value: kind,
+				label: t(`settlement_${kind}`),
+				selected: kind === place.kind,
+			})),
+			settlementFromMap: !place.chosen && place.fromMap
+				? game.i18n.format("SHADOWDARK_EXTRAS.carousing.settlement_from_map", {
+					name: place.fromMap.name || t(`settlement_${place.fromMap.kind}`),
+				})
+				: "",
+			limitLabel: Number.isFinite(place.limit)
+				? game.i18n.format("SHADOWDARK_EXTRAS.carousing.limit", { limit: place.limit })
+				: t("limit_none"),
+			holiday: holiday
+				? {
+					title: game.i18n.format("SHADOWDARK_EXTRAS.carousing.holiday", { name: holiday.name }),
+					lines: holidayLines(holiday),
+					// Original mode has no d100 tables for these to touch.
+					expandedOnly: carousingMode !== "expanded" && !!(
+						carousing.benefitBonus || carousing.benefitAdvantage
+						|| carousing.extraBenefit || carousing.extraMishap
+					),
+				}
+				: null,
+			// Enhancer has holidays, but the GM has not imported the journal yet.
+			holidayImportHint: game.user.isGM && place.holidaysImported === false,
+		};
+	}
+
+	/**
      * Get participants with their carousing data
      */
-	_getParticipants(session, activeTable) {
+	_getParticipants(session, activeTable, holiday = null) {
 		const participants = getCarousingParticipants();
 
 		// Get owned actors for character selection (used by players)
@@ -313,9 +373,25 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 			const pId = p.participantId;
 			const playerMods = session.modifiers?.[pId] || {};
 
+			// Today's holiday for this character: the GM's garb answers and the
+			// event-roll bonus they come to.
+			const answers = session.garb?.[pId] ?? {};
+			const effects = holidayEffects(holiday, answers);
+
 			return {
 				...p,
 				...this._getApplyInfo(p),
+				totalBonus: p.totalBonus + (effects?.eventBonus || 0),
+				garb: (holiday?.garb ?? []).map(question => ({
+					key: question.key,
+					label: question.label,
+					checked: answers[question.key] === true,
+				})),
+				notAdmitted: effects && !effects.admitted
+					? game.i18n.format("SHADOWDARK_EXTRAS.carousing.holiday_not_admitted", {
+						name: holiday.name,
+					})
+					: "",
 				modifiers: {
 					outcome: playerMods.outcome || "",
 					benefits: playerMods.benefits || "",
@@ -482,6 +558,20 @@ export default class CarousingOverlaySD extends HandlebarsApplicationMixin(Appli
 				const mod = await import("./CarousingTablesApp.mjs");
 				mod.openCarousingTablesEditor();
 			}
+		});
+
+		// GM: the settlement being caroused in. Its limit disables dearer tiers.
+		on('[data-action="select-settlement"]', "change", async event => {
+			if (!game.user.isGM) return;
+			await setCarousingSettlement(event.target.value || null);
+		});
+
+		// GM: answer a holiday garb question for one character
+		on('[data-action="holiday-garb"]', "change", async event => {
+			if (!game.user.isGM) return;
+			const pId = event.target.closest("[data-participant-id]")?.dataset.participantId;
+			if (!pId) return;
+			await setCarousingGarb(pId, event.target.dataset.garbKey, event.target.checked);
 		});
 
 		// GM: Tier selection
