@@ -54,6 +54,7 @@
  */
 
 import { saveHexRecord, setHexTerrainBatch, mergeHexRecords, ZONE_COLORS } from "./HexTooltipSD.mjs";
+import { deleteHexSceneData, registerHexRecordPrune } from "./hex-record-prune.mjs";
 import { buildMapPathNetwork, mapPathEdgeKey } from "../canvas/drawing-geometry.mjs";
 import { ART_IMAGE, coastArtPlacements, coastCells } from "../canvas/map-network-art.mjs";
 import { getSpecialTiles } from "./hex-special-tiles.mjs";
@@ -752,6 +753,8 @@ export function installHexcrawlApi(api, namespace, wrap) {
 		delete namespace.hex;
 		return;
 	}
+	// The painter writes records without the tooltip feature, so it prunes them too (#168).
+	registerHexRecordPrune();
 	api.hex = namespace.hex = Object.fromEntries(Object.entries({
 		buildHexcrawl: buildPublishedHexcrawl, adoptHexcrawl, upsertHexRecords, getHexRecords, repaintHexTiles,
 		getSpecialTiles, importHexerMap, openHexerImportDialog,
@@ -1132,7 +1135,11 @@ async function buildScene(dataset, opts, geom, specials = new Map()) {
 	}
 	if (opts.view !== false) await viewSceneReady(scene);
 	// Do not destroy the previous map until its replacement has finished building.
-	if (replaced.length) await Scene.deleteDocuments(replaced);
+	if (replaced.length) {
+		await Scene.deleteDocuments(replaced);
+		// Their per-hex records live in the shared journal, not on the scene (#168).
+		await deleteHexSceneData(replaced);
+	}
 
 	// Tiles created on a freshly-viewed scene can leave their meshes parked at the
 	// origin until the Tiles layer is redrawn. Force a clean redraw so the map
