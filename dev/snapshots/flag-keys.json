@@ -863,6 +863,7 @@
     "scripts/hex/HexcrawlBuilderSD.mjs (api=getFlag scope=shadowdark-extras key=hexcrawl receiver=scene)",
     "scripts/hex/HexcrawlBuilderSD.mjs (api=getFlag scope=shadowdark-extras key=hexcrawl receiver=scene)",
     "scripts/hex/HexcrawlBuilderSD.mjs (api=getFlag scope=shadowdark-extras key=hexcrawl receiver=scene)",
+    "scripts/hex/HexcrawlBuilderSD.mjs (api=getFlag scope=shadowdark-extras key=hexcrawl receiver=scene)",
     "scripts/hex/HexcrawlBuilderSD.mjs (api=setFlag scope=shadowdark-extras key=hexcrawl receiver=scene)",
     "scripts/hex/HexcrawlBuilderSD.mjs (api=setFlag scope=shadowdark-extras key=permanentDrawings receiver=scene)",
     "scripts/hex/SDXCoordsSD.mjs (api=getFlag scope=shadowdark-extras key=hexcrawl receiver=canvas.scene)",

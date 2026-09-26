@@ -53,6 +53,25 @@ const FEATURE_TYPES = [
 	"fort", "cave", "road", "hazard", "resource", "other", "journal",
 ];
 
+/** A feature type as a label: "city_state" reads "City state". */
+const typeLabel = type => type.charAt(0).toUpperCase() + type.slice(1).replaceAll("_", " ");
+
+/**
+ * The Hex Editor's type dropdown for one feature. A type the list doesn't
+ * know, such as the river, path and coast Shadowdark Enhancer sends or a
+ * settlement kind, gets its own selected option, so saving the hex keeps it
+ * instead of falling back to the first option, "dungeon" (#157).
+ * @param {string} selected  the feature's stored type
+ * @returns {string} <option> HTML
+ */
+export function featureTypeOptions(selected) {
+	const types = FEATURE_TYPES.includes(selected) ? FEATURE_TYPES : [...FEATURE_TYPES, selected];
+	return types.map(t => {
+		const label = foundry.utils.escapeHTML(typeLabel(t));
+		return `<option value="${foundry.utils.escapeHTML(t)}"${selected === t ? " selected" : ""}>${label}</option>`;
+	}).join("");
+}
+
 // ─── Data Layer ───────────────────────────────────────────────────────────────
 
 async function ensureHexJournal() {
@@ -158,7 +177,7 @@ function featureLabel(f) {
 		const p = f.pageId ? j.pages.get(f.pageId) : null;
 		return f.name || (p ? p.name : j.name);
 	}
-	return f.name || (f.type.charAt(0).toUpperCase() + f.type.slice(1));
+	return f.name || typeLabel(f.type);
 }
 
 // ─── Tooltip HTML Builder ─────────────────────────────────────────────────────
@@ -1694,10 +1713,7 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const discovered = feature?.discovered ?? false;
 		const isJournal = type === "journal";
 
-		const typeOpts = FEATURE_TYPES.map(t => {
-			const label = t.charAt(0).toUpperCase() + t.slice(1);
-			return `<option value="${t}"${type === t ? " selected" : ""}>${label}</option>`;
-		}).join("");
+		const typeOpts = featureTypeOptions(type);
 
 		// Build journal list (exclude internal SDX journals)
 		const journals = game.journal
