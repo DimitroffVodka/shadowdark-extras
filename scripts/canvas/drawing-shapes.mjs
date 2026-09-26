@@ -8,8 +8,39 @@ import { STAMP_SIZES } from "./drawing-constants.mjs";
 import {
 	buildMapPathNetwork, mapPathCellKey, mapPathEdgeKey,
 } from "./drawing-geometry.mjs";
+import { getWaterHexKeys } from "../hex/hex-water-terrain.mjs";
 
 export const DrawingShapes = {
+	_captureMapPathSelection() {
+		return {
+			tiles: {
+				road: this.state.mapPathTiles.road.map(tile => ({ ...tile })),
+				river: this.state.mapPathTiles.river.map(tile => ({ ...tile })),
+			},
+			blockedEdges: {
+				road: [...this.state.mapPathBlockedEdges.road],
+				river: [...this.state.mapPathBlockedEdges.river],
+			},
+		};
+	},
+
+	_restoreMapPathSelection(selection) {
+		this._cancelMapPath();
+		this.state.mapPathTiles = {
+			road: selection.tiles.road.map(tile => ({ ...tile })),
+			river: selection.tiles.river.map(tile => ({ ...tile })),
+		};
+		this.state.mapPathBlockedEdges = {
+			road: [...selection.blockedEdges.road],
+			river: [...selection.blockedEdges.river],
+		};
+		if (!this.state.mapPathTiles.road.length && !this.state.mapPathTiles.river.length) return;
+		this._previewGraphics = new PIXI.Container();
+		this._previewGraphics.alpha = this.state.opacity;
+		this.canvasLayer.addChild(this._previewGraphics);
+		this._drawMapPathPreview();
+	},
+
 	_startSketch(e) {
 		const wc = this._getWorldCoords(e);
 		if (!wc || !this.canvasLayer) return;
@@ -106,7 +137,10 @@ export const DrawingShapes = {
 		const shift = e.shiftKey ?? e.data?.originalEvent?.shiftKey ?? false;
 		if (shift && !removeOnly) {
 			this._mapPathDragCell = null;
-			return this._toggleMapPathEdgeAt(wc, kinds);
+			const selection = this._captureMapPathSelection();
+			const changed = this._toggleMapPathEdgeAt(wc, kinds);
+			if (changed) this._mapPathUndo.push({ type: "selection", selection });
+			return changed;
 		}
 		const cell = wc && canvas.grid.getOffset(wc);
 		if (!cell) return false;
@@ -118,6 +152,7 @@ export const DrawingShapes = {
 			cells = canvas.grid.getDirectPath([this._mapPathDragCell, next]) || cells;
 		}
 		this._mapPathDragCell = removeOnly ? null : next;
+		const selection = addOnly ? null : this._captureMapPathSelection();
 		const has = (kind, tile) => this.state.mapPathTiles[kind]
 			.some(selected => selected.i === tile.i && selected.j === tile.j);
 		let changed = false;
@@ -148,6 +183,7 @@ export const DrawingShapes = {
 			}
 		}
 		if (!changed) return false;
+		if (selection) this._mapPathUndo.push({ type: "selection", selection });
 		if (!this._previewGraphics) {
 			this._previewGraphics = new PIXI.Container();
 			this._previewGraphics.alpha = this.state.opacity;
@@ -200,12 +236,17 @@ export const DrawingShapes = {
 	},
 
 	_getMapPathNetworks() {
+		// Rivers open out into an adjacent ocean, arctic sea, lake or river hex;
+		// roads have no business running into the water, so they get no outlet.
+		const water = getWaterHexKeys(canvas.scene?.id);
+		const isWater = water.size ? cell => water.has(`${cell.i}_${cell.j}`) : null;
 		return {
 			road: buildMapPathNetwork(
 				this.state.mapPathTiles.road, canvas.grid, this.state.mapPathBlockedEdges.road
 			),
 			river: buildMapPathNetwork(
-				this.state.mapPathTiles.river, canvas.grid, this.state.mapPathBlockedEdges.river
+				this.state.mapPathTiles.river, canvas.grid,
+				this.state.mapPathBlockedEdges.river, isWater
 			),
 		};
 	},
@@ -219,7 +260,7 @@ export const DrawingShapes = {
 			preview.addChild(this._createMapNetworkDisplay({
 				networkPaths, strokeWidth: this.state.brushSettings.size,
 				roadColor: this.state.mapPathRoadColor, riverColor: this.state.mapPathRiverColor,
-				texturePath: this.state.mapPathTexture,
+				texturePath: this.state.mapPathTexture, roadStyle: this.state.mapPathRoadStyle,
 			}));
 		}
 		const blocked = new PIXI.Graphics();
@@ -248,13 +289,16 @@ export const DrawingShapes = {
 		preview.addChild(markers);
 	},
 
-	createMapPath() {
+	async createMapPath() {
 		const networkPaths = this._getMapPathNetworks();
 		if (!networkPaths.road.length && !networkPaths.river.length) {
 			ui.notifications.warn("Designate at least two adjacent Road or River tiles.");
 			return false;
 		}
-		this._createMapNetworkDrawing(networkPaths);
+		const selection = this._captureMapPathSelection();
+		const id = await this._createMapNetworkDrawing(networkPaths);
+		if (!id) return false;
+		this._mapPathUndo.push({ type: "create", id, selection });
 		this._cancelMapPath();
 		return true;
 	},
@@ -404,7 +448,7 @@ export const DrawingShapes = {
 		);
 	},
 
-	_createMapNetworkDrawing(networkPaths) {
+	async _createMapNetworkDrawing(networkPaths) {
 		if (!this.canvasLayer) return;
 		const id = `map-network-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 		const payload = {
@@ -417,7 +461,8 @@ export const DrawingShapes = {
 		const graphics = this._createMapNetworkDisplay(payload);
 		graphics.alpha = this.state.opacity;
 		this.canvasLayer.addChild(graphics);
-		this._finalizeDrawing({ ...payload, id, graphics }, payload);
+		await this._finalizeDrawing({ ...payload, id, graphics }, payload);
+		return id;
 	},
 
 	_createBoxDrawing(startX, startY, w, h) {

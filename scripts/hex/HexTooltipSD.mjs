@@ -23,19 +23,29 @@ const EXPLORATION_OPTIONS = [
 	{ value: "mapped", label: "Mapped" },
 ];
 
-const ZONE_COLORS = [
+export const ZONE_COLORS = [
 	{ value: "", label: "Default", hex: "#00cc44" },
 	{ value: "#e74c3c", label: "Red", hex: "#e74c3c" },
 	{ value: "#e67e22", label: "Orange", hex: "#e67e22" },
 	{ value: "#f1c40f", label: "Yellow", hex: "#f1c40f" },
+	{ value: "#8bc34a", label: "Lime", hex: "#8bc34a" },
+	{ value: "#2ecc71", label: "Green", hex: "#2ecc71" },
+	{ value: "#1e7e34", label: "Forest", hex: "#1e7e34" },
+	{ value: "#808000", label: "Olive", hex: "#808000" },
 	{ value: "#1abc9c", label: "Teal", hex: "#1abc9c" },
+	{ value: "#00bcd4", label: "Cyan", hex: "#00bcd4" },
 	{ value: "#3498db", label: "Blue", hex: "#3498db" },
+	{ value: "#1f3a93", label: "Navy", hex: "#1f3a93" },
 	{ value: "#9b59b6", label: "Purple", hex: "#9b59b6" },
+	{ value: "#c9a7eb", label: "Lavender", hex: "#c9a7eb" },
 	{ value: "#e91e9b", label: "Pink", hex: "#e91e9b" },
+	{ value: "#7b241c", label: "Maroon", hex: "#7b241c" },
+	{ value: "#d4b483", label: "Sand", hex: "#d4b483" },
+	{ value: "#8b6914", label: "Brown", hex: "#8b6914" },
 	{ value: "#ecf0f1", label: "White", hex: "#ecf0f1" },
 	{ value: "#95a5a6", label: "Gray", hex: "#95a5a6" },
-	{ value: "#8b6914", label: "Brown", hex: "#8b6914" },
 	{ value: "#2c3e50", label: "Dark", hex: "#2c3e50" },
+	{ value: "#111111", label: "Black", hex: "#111111" },
 ];
 
 const FEATURE_TYPES = [
@@ -101,16 +111,28 @@ export async function setHexTerrain(sceneId, hexKey, terrain) {
  * @param {Object<string,string>} terrainMap  – { hexKey: terrainLabel, … }
  */
 export async function setHexTerrainBatch(sceneId, terrainMap) {
+	await mergeHexRecords(sceneId, Object.fromEntries(
+		Object.entries(terrainMap).map(([key, terrain]) => [key, { terrain }])
+	));
+}
+
+/** Merge a validated record batch in one journal write; omitted fields survive. */
+export async function mergeHexRecords(sceneId, records) {
 	const journal = await ensureHexJournal();
 	if (!journal) return;
 	const allData = loadAllHexDataSync();
 	if (!allData[sceneId]) allData[sceneId] = {};
 
-	for (const [hexKey, terrain] of Object.entries(terrainMap)) {
-		if (!allData[sceneId][hexKey]) {
-			allData[sceneId][hexKey] = DEFAULT_HEX_RECORD();
+	for (const [hexKey, patch] of Object.entries(records)) {
+		const { desc, ...fields } = foundry.utils.deepClone(patch);
+		const record = { ...(allData[sceneId][hexKey] ?? DEFAULT_HEX_RECORD()), ...fields };
+		if (desc !== undefined) {
+			// One importer-owned note: repeat imports update it, never erase GM notes.
+			const id = "hexcrawl-description";
+			record.notes = (record.notes ?? []).filter(note => note.id !== id);
+			if (desc) record.notes.push({ id, text: desc, visible: false });
 		}
-		allData[sceneId][hexKey].terrain = terrain;
+		allData[sceneId][hexKey] = record;
 	}
 
 	await journal.setFlag(MODULE_ID, "hexData", allData);
@@ -276,8 +298,8 @@ export class SDXHexTooltip {
 
 		// Hex highlight layer
 		try {
-			if (canvas.grid.highlightLayers?.[this.#hlName]) canvas.grid.destroyHighlightLayer(this.#hlName);
-			canvas.grid.addHighlightLayer(this.#hlName);
+			if (canvas.interface.grid.highlightLayers?.[this.#hlName]) canvas.interface.grid.destroyHighlightLayer(this.#hlName);
+			canvas.interface.grid.addHighlightLayer(this.#hlName);
 		}
 		catch{
 			this.#hlName = null;
@@ -285,8 +307,8 @@ export class SDXHexTooltip {
 
 		// "Show all" highlight layer
 		try {
-			if (canvas.grid.highlightLayers?.[this.#hlAllName]) canvas.grid.destroyHighlightLayer(this.#hlAllName);
-			canvas.grid.addHighlightLayer(this.#hlAllName);
+			if (canvas.interface.grid.highlightLayers?.[this.#hlAllName]) canvas.interface.grid.destroyHighlightLayer(this.#hlAllName);
+			canvas.interface.grid.addHighlightLayer(this.#hlAllName);
 		}
 		catch{
 			this.#hlAllName = null;
@@ -359,11 +381,11 @@ export class SDXHexTooltip {
 		this.#closeContextMenu();
 		this.#hide();
 		if (this.#hlName) try {
-			canvas.grid.destroyHighlightLayer(this.#hlName);
+			canvas.interface.grid.destroyHighlightLayer(this.#hlName);
 		}
 		catch{ }
 		if (this.#hlAllName) try {
-			canvas.grid.destroyHighlightLayer(this.#hlAllName);
+			canvas.interface.grid.destroyHighlightLayer(this.#hlAllName);
 		}
 		catch{ }
 		this.#destroyMarkerLayer();
@@ -1320,7 +1342,7 @@ export class SDXHexTooltip {
 			canvas.interface.grid.clearHighlightLayer(this.#hlName);
 			const base = zoneColor ? Color.from(zoneColor) : Color.from("#00cc44");
 			const border = base.mix(Color.from("#000000"), 0.3);
-			canvas.grid.highlightPosition(this.#hlName, {
+			canvas.interface.grid.highlightPosition(this.#hlName, {
 				x: tl.x, y: tl.y,
 				color: base, alpha: 0.25,
 				border: border, borderAlpha: 1.0,
@@ -1367,7 +1389,7 @@ export class SDXHexTooltip {
 			const tl = canvas.grid.getTopLeftPoint({ i, j });
 			const base = record.zoneColor ? Color.from(record.zoneColor) : Color.from("#00cc44");
 			const border = base.mix(Color.from("#000000"), 0.3);
-			canvas.grid.highlightPosition(this.#hlAllName, {
+			canvas.interface.grid.highlightPosition(this.#hlAllName, {
 				x: tl.x, y: tl.y,
 				color: base, alpha: 0.25,
 				border: border, borderAlpha: 1.0,
@@ -1579,6 +1601,14 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			el.querySelectorAll(".sdx-hex-color-swatch").forEach(s => s.classList.remove("active"));
 			swatch.classList.add("active");
 			el.querySelector(".sdx-hex-color-swatches").dataset.selected = swatch.dataset.color;
+			const custom = el.querySelector(".sdx-hex-color-custom");
+			if (custom && swatch.dataset.color) custom.value = swatch.dataset.color;
+		});
+
+		// Custom zone color picker — any colour beyond the presets
+		el.querySelector(".sdx-hex-color-custom")?.addEventListener("input", e => {
+			el.querySelectorAll(".sdx-hex-color-swatch").forEach(s => s.classList.remove("active"));
+			el.querySelector(".sdx-hex-color-swatches").dataset.selected = e.target.value;
 		});
 
 		// Alt+click on canvas to add hex to Reveal Cells

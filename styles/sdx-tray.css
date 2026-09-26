@@ -4721,6 +4721,16 @@ body.sdx-tray-enabled #camera-views.vertical.left {
     border-color: rgba(159, 146, 117, 0.55);
 }
 
+.sdx-tray .hex-custom-chip.active {
+    background: rgba(200, 162, 232, 0.25);
+    border-color: #c8a2e8;
+    color: #fff;
+}
+
+.sdx-tray .hex-colored-wildcard-btn {
+    margin: 0 2px 6px;
+}
+
 .sdx-tray .hex-custom-chip-count {
     color: rgba(232, 220, 200, 0.45);
     font-size: 0.85em;

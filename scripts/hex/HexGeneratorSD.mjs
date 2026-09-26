@@ -10,6 +10,7 @@
 
 import { setGenerating, isWaterEffect, isBwEffect, getCustomTilesByBiome, getCustomTileDimensions, getCustomTilePlacement, getColoredTilesByBiome, getColoredTileDimensions, isTintEnabled, getActiveTileTab } from "./HexPainterSD.mjs";
 import { setHexTerrainBatch } from "./HexTooltipSD.mjs";
+import { scaleHexTileDimensions } from "./hex-scene-format.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const TILE_FOLDER = `modules/${MODULE_ID}/assets/tiles`;
@@ -399,8 +400,9 @@ export async function generateHexMap(params = {}) {
 
 	// Get tile data based on active tab
 	let tilesByBiome = null;
-	let tileW = HEX_TILE_W;
-	let tileH = HEX_TILE_H;
+	const defaultTileDimensions = scaleHexTileDimensions(HEX_TILE_W, HEX_TILE_H);
+	let tileW = defaultTileDimensions.width;
+	let tileH = defaultTileDimensions.height;
 	let tileModeName = "";
 
 	if (useColored) {
@@ -432,8 +434,8 @@ export async function generateHexMap(params = {}) {
 
 	// Always use the default hex tile dimensions for grid calculation
 	// because the scene was formatted with those dimensions
-	const gridTileW = HEX_TILE_W;
-	const gridTileH = HEX_TILE_H;
+	const gridTileW = defaultTileDimensions.width;
+	const gridTileH = defaultTileDimensions.height;
 
 	// Calculate how many hex columns/rows fit based on the SCENE grid
 	// Add extra buffer when custom/colored tiles are larger to ensure full coverage

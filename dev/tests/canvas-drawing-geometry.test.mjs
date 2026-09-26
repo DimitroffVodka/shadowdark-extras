@@ -89,6 +89,19 @@ test("a river stroke draws dark banks beneath the blue channel", () => {
 	assert.equal(rec.count("lineTo"), 2);
 });
 
+test("a river can use a textured channel without losing its banks", () => {
+	const rec = g();
+	const texture = { id: "water" };
+	drawNetworkWithStyle(rec, [LINE], 12, 0x4C93CC, 1, "river", texture);
+
+	assert.equal(rec.count("lineStyle"), 1);
+	assert.deepEqual(rec.of("lineTextureStyle"), [["lineTextureStyle", {
+		width: 12, texture, color: 0x4C93CC, alpha: 1, matrix: null,
+		cap: "round", join: "round",
+	}]]);
+	assert.equal(rec.count("moveTo"), 2);
+});
+
 test("a network draws every bank before any channel and needs no junction patch", () => {
 	const rec = g();
 	drawNetworkWithStyle(rec, [
@@ -144,6 +157,57 @@ test("blocked adjacency keeps nearby routes from making an accidental loop", () 
 	assert.deepEqual(buildMapPathNetwork(cells, grid, ["0:1|1:0"]), [
 		[[100, 0], [0, 0], [0, 100]],
 	]);
+});
+
+test("a river dead-ending beside water runs on through the shared edge", () => {
+	// 0:0 — 0:1 — 0:2 are the drawn river; 0:3 is ocean and was never selected.
+	const neighbors = {
+		"0:0": [{ i: 0, j: 1 }],
+		"0:1": [{ i: 0, j: 0 }, { i: 0, j: 2 }],
+		"0:2": [{ i: 0, j: 1 }, { i: 0, j: 3 }],
+	};
+	const grid = {
+		getAdjacentOffsets: ({ i, j }) => neighbors[`${i}:${j}`] || [],
+		getCenterPoint: ({ i, j }) => ({ x: j * 100, y: i * 100 }),
+	};
+	const cells = [{ i: 0, j: 0 }, { i: 0, j: 1 }, { i: 0, j: 2 }];
+	const isWater = ({ j }) => j === 3;
+
+	// Without the predicate the river still stops dead at the last tile centre.
+	assert.deepEqual(buildMapPathNetwork(cells, grid), [
+		[[0, 0], [100, 0], [200, 0]],
+	]);
+	// With it, the mouth carries 0.7 of a centre-to-centre span into the ocean —
+	// past the shared edge at 0.5. The landlocked end is left where it was.
+	assert.deepEqual(buildMapPathNetwork(cells, grid, [], isWater), [
+		[[0, 0], [100, 0], [200, 0], [270, 0]],
+	]);
+	// A tile the GM deliberately drew into the water is already its own mouth.
+	assert.deepEqual(buildMapPathNetwork(cells, grid, [], ({ j }) => j === 2), [
+		[[0, 0], [100, 0], [200, 0]],
+	]);
+});
+
+test("a junction beside water is not a dead end and grows no mouth", () => {
+	// 0:1 is a junction of three branches (0:0, 1:1, 0:2) and borders ocean at
+	// 1:0, which nobody selected. The branch ends 0:0, 1:1 and 0:2 are inland.
+	const neighbors = {
+		"0:0": [{ i: 0, j: 1 }],
+		"0:1": [{ i: 0, j: 0 }, { i: 1, j: 1 }, { i: 0, j: 2 }, { i: 1, j: 0 }],
+		"1:1": [{ i: 0, j: 1 }],
+		"0:2": [{ i: 0, j: 1 }],
+	};
+	const grid = {
+		getAdjacentOffsets: ({ i, j }) => neighbors[`${i}:${j}`] || [],
+		getCenterPoint: ({ i, j }) => ({ x: j * 100, y: i * 100 }),
+	};
+	const cells = [{ i: 0, j: 0 }, { i: 0, j: 1 }, { i: 1, j: 1 }, { i: 0, j: 2 }];
+	const isWater = ({ i, j }) => i === 1 && j === 0;
+	const paths = buildMapPathNetwork(cells, grid, [], isWater);
+	assert.equal(paths.length, 3, "one path per branch");
+	const inWater = paths.flat().filter(([x, y]) => y > 0 && x < 100);
+	assert.deepEqual(inWater, [], "no branch runs into the ocean beside the junction");
+	assert.deepEqual(paths.map(path => path.length), [2, 2, 2], "each branch is just its two centres");
 });
 
 test("a textured road draws a wide dark shoulder beneath its surface", () => {

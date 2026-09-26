@@ -102,6 +102,11 @@ import {
 	getColoredTiles,
 	getColoredTilesByBiome,
 	getColoredTileDimensions,
+	getColoredTileTags,
+	getColoredTagOptions,
+	getColoredTagFilters,
+	toggleColoredTagFilter,
+	clearColoredTagFilters,
 	toggleColoredFolderCollapsed,
 } from "./hex-colored-tiles.mjs";
 
@@ -109,6 +114,8 @@ import {
 // generator, solo mode and the tray import them from here.
 export {
 	getColoredTiles, getColoredTilesByBiome, getColoredTileDimensions,
+	getColoredTileTags, getColoredTagOptions, getColoredTagFilters,
+	toggleColoredTagFilter, clearColoredTagFilters,
 	toggleColoredFolderCollapsed,
 };
 
@@ -260,8 +267,6 @@ export {
 
 const MODULE_ID = "shadowdark-extras";
 const TILE_FOLDER = `modules/${MODULE_ID}/assets/tiles`;
-const COLORED_HEX_TILE_W = 572;
-const COLORED_HEX_TILE_H = 500;
 
 // Biome subdirectories for colored tiles (from assets/Hexes)
 const COLORED_BIOME_SUBDIRS = ["Water", "Vegetation", "Mountains", "Desert", "swamp", "Badlands", "snow", "Specials"];
@@ -337,8 +342,16 @@ export async function loadTileAssets() {
  */
 export function getFilteredColoredTiles() {
 	if (!_coloredTiles) return [];
-	if (!_searchFilter) return _coloredTiles;
-	return _coloredTiles.filter(t => t.label.toLowerCase().includes(_searchFilter));
+	let tiles = _coloredTiles;
+	if (_searchFilter) tiles = tiles.filter(t => t.label.toLowerCase().includes(_searchFilter));
+	const tags = getColoredTagFilters();
+	if (tags.length) {
+		tiles = tiles.filter(tile => {
+			const tileTags = getColoredTileTags(tile);
+			return tags.every(tag => tileTags.includes(tag));
+		});
+	}
+	return tiles;
 }
 
 /**
@@ -467,6 +480,7 @@ export async function getDecorTileFolders() {
 }
 
 export async function getHexPainterData() {
+	const coloredTileDimensions = getColoredTileDimensions();
 	if (!_tiles) return {
 		hexTiles: [],
 		hexCustomTiles: [],
@@ -479,12 +493,13 @@ export async function getHexPainterData() {
 		useCustomForGeneration: _useCustomForGeneration,
 		customTileWidth: _customTileWidth,
 		customTileHeight: _customTileHeight,
-		coloredTileWidth: COLORED_HEX_TILE_W,
-		coloredTileHeight: COLORED_HEX_TILE_H,
+		coloredTileWidth: coloredTileDimensions.width,
+		coloredTileHeight: coloredTileDimensions.height,
 		hasCustomTiles: false,
 		hasColoredTiles: false,
 		hasSymbolTiles: false,
-		hexColoredFolders: [],
+		hexColoredTags: [],
+		hasColoredTagFilters: false,
 		hexSymbolFolders: [],
 		waterEffect: _waterEffect,
 		windEffect: _windEffect,
@@ -538,7 +553,9 @@ export async function getHexPainterData() {
 		path: t.path,
 		active: _chosenTiles.has(t.path),
 		biome: t.biome,
+		tags: getColoredTileTags(t),
 	})));
+	const hexColoredTags = getColoredTagOptions();
 
 	// Filter symbol tiles (exclude dysonstyle - those are in the Decor tab)
 	const filteredSymbolTiles = getFilteredSymbolTiles(["dysonstyle"]);
@@ -550,9 +567,6 @@ export async function getHexPainterData() {
 		category: t.category,
 	})));
 
-	// Build colored tile folders
-	const hexColoredFolders = await getColoredTileFolders();
-
 	// Build symbol tile folders
 	const hexSymbolFolders = await getSymbolTileFolders();
 
@@ -563,8 +577,9 @@ export async function getHexPainterData() {
 		hexTiles,
 		hexCustomTiles,
 		hexColoredTiles,
+		hexColoredTags,
+		hasColoredTagFilters: getColoredTagFilters().length > 0,
 		hexSymbolTiles,
-		hexColoredFolders,
 		hexSymbolFolders,
 		hexColumns: _mapColumns,
 		hexRows: _mapRows,
@@ -573,8 +588,8 @@ export async function getHexPainterData() {
 		useCustomForGeneration: _useCustomForGeneration,
 		customTileWidth: _customTileWidth,
 		customTileHeight: _customTileHeight,
-		coloredTileWidth: COLORED_HEX_TILE_W,
-		coloredTileHeight: COLORED_HEX_TILE_H,
+		coloredTileWidth: coloredTileDimensions.width,
+		coloredTileHeight: coloredTileDimensions.height,
 		hasCustomTiles: (_customTiles && _customTiles.length > 0),
 		hasColoredTiles: (_coloredTiles && _coloredTiles.length > 0),
 		hasSymbolTiles: (_symbolTiles && _symbolTiles.length > 0),
@@ -666,6 +681,12 @@ export function toggleTileSelection(tilePath) {
 export function clearTileSelection() {
 	_chosenTiles.clear();
 	destroyPreview();
+}
+
+export function selectFilteredColoredTiles() {
+	clearTileSelection();
+	for (const tile of getFilteredColoredTiles()) _chosenTiles.add(tile.path);
+	return _chosenTiles.size;
 }
 
 export function getFilteredTiles() {

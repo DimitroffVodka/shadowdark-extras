@@ -15,6 +15,7 @@ import {
 	meanderPathPoints,
 	smoothPathPoints,
 } from "./drawing-geometry.mjs";
+import { mapNetworkArtPlacements } from "./map-network-art.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const SOCKET_NAME = "module.shadowdark-extras";
@@ -50,6 +51,7 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 		this._highlightPulse = null;
 		this._mapPathPreviousState = null;
 		this._mapPathDragCell = null;
+		this._mapPathUndo = [];
 
 		// Drawing state
 		this.state = {
@@ -58,7 +60,7 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 			mapPathTiles: { road: [], river: [] },
 			mapPathBlockedEdges: { road: [], river: [] },
 			mapPathTexture: null,
-			mapPathRoadStyle: "cobble",
+			mapPathRoadStyle: "art",
 			mapPathRoadColor: "#D8C6A8",
 			mapPathRiverColor: "#2D9CDB",
 			stampStyle: "plus",    // plus | x | dot | arrow | arrow-up | arrow-down | arrow-left | square
@@ -99,6 +101,7 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 			this._createCanvasLayer();
 			this._pixiDrawings = [];
 			this._lastDrawing = null;
+			this._mapPathUndo = [];
 			this._loadPermanentDrawings();
 		});
 
@@ -528,6 +531,26 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 
 	_createMapNetworkDisplay(data) {
 		const root = new PIXI.Container();
+		// "art" draws each cell with the hand-drawn hex pieces instead of a
+		// stroke; the pieces chain edge to edge, so nothing is smoothed or
+		// meandered. Rivers go down first so a shared edge reads as a bridge.
+		if (data.roadStyle === "art" && canvas.grid?.isHexagonal) {
+			for (const kind of ["river", "road"]) {
+				const placements = mapNetworkArtPlacements(data.networkPaths?.[kind], canvas.grid, kind);
+				for (const piece of placements) {
+					const sprite = new PIXI.Sprite(PIXI.Texture.from(piece.src));
+					sprite.anchor.set(0.5, 0.5);
+					sprite.x = piece.x;
+					sprite.y = piece.y;
+					sprite.width = piece.width;
+					sprite.height = piece.height;
+					if (piece.mirror) sprite.scale.x = -sprite.scale.x;
+					sprite.rotation = piece.rotation;
+					root.addChild(sprite);
+				}
+			}
+			return root;
+		}
 		const add = (paths, style, color, texturePath = null) => {
 			if (!paths?.length) return;
 			const displayPaths = paths.map(points => smoothPathPoints(
@@ -571,7 +594,10 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 			catch{ /* solid road fallback */ }
 		};
 		// Rivers go down first so a shared Road + River edge reads as a bridge.
-		add(data.networkPaths?.river, "river", data.riverColor || "#2D9CDB");
+		add(
+			data.networkPaths?.river, "river", data.riverColor || "#2D9CDB",
+			data.riverTexturePath
+		);
 		add(data.networkPaths?.road, "road", data.roadColor || "#D8C6A8", data.texturePath);
 		return root;
 	}
@@ -885,6 +911,12 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 	}
 
 	clearMapPathSelection() {
+		if (this.state.mapPathTiles.road.length
+			|| this.state.mapPathTiles.river.length
+			|| this.state.mapPathBlockedEdges.road.length
+			|| this.state.mapPathBlockedEdges.river.length) {
+			this._mapPathUndo.push({ type: "selection", selection: this._captureMapPathSelection() });
+		}
 		this._cancelMapPath();
 	}
 

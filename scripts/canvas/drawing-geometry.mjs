@@ -74,7 +74,22 @@ export function mapPathEdgeKey(a, b) {
 	return aKey < bKey ? `${aKey}|${bKey}` : `${bKey}|${aKey}`;
 }
 
-export function buildMapPathNetwork(cells, grid, blockedEdges = []) {
+// How far past its own centre a river runs to meet an adjacent water hex, as a
+// fraction of the centre-to-centre span. 0.5 is exactly the shared edge; the
+// remainder is the mouth opening into the ocean, lake or sea.
+// ponytail: one fixed reach; make it an option only if per-outlet control is asked for.
+const WATER_OUTLET_REACH = 0.7;
+
+/**
+ * @param {Array<{i:number,j:number}>} cells    selected path tiles
+ * @param {object} grid                         canvas.grid
+ * @param {string[]} [blockedEdges]             edge keys the path may not cross
+ * @param {(cell: {i:number,j:number}) => boolean} [isWater]
+ *   When given, a path that dead-ends on a tile touching a water hex is carried
+ *   out through that shared edge instead of stopping at the tile's centre —
+ *   which is what left drawn rivers hanging short of the coastline.
+ */
+export function buildMapPathNetwork(cells, grid, blockedEdges = [], isWater = null, options = {}) {
 	if (!Array.isArray(cells) || cells.length < 2 || !grid) return [];
 	const blocked = new Set(blockedEdges);
 	const byKey = new Map(cells.map(cell => [mapPathCellKey(cell), { i: cell.i, j: cell.j }]));
@@ -87,8 +102,73 @@ export function buildMapPathNetwork(cells, grid, blockedEdges = []) {
 			.sort();
 		return [cellKey, neighbors];
 	}));
+	// `spanning`: keep only a spanning forest of the adjacency, so no cycle
+	// survives. Drawn networks are a line the GM picked cell by cell, and a ring
+	// there is deliberate. An IMPORTED network is an area tag — every hex an
+	// overlay marked river is handed over at once — so neighbouring marked hexes
+	// wire up into a mesh and any three mutually adjacent ones close into a
+	// triangle, which is what a tagged map renders as today. A watercourse is a
+	// tree: tributaries merge, they do not ring. Breadth-first from each unseen
+	// cell keeps the shortest route to every hex and drops the edge that would
+	// close a loop.
+	if (options.spanning) {
+		const keep = new Set();
+		const reached = new Set();
+		for (const root of keys) {
+			if (reached.has(root)) continue;
+			reached.add(root);
+			const queue = [root];
+			while (queue.length) {
+				const current = queue.shift();
+				for (const neighbor of adjacent.get(current)) {
+					if (reached.has(neighbor)) continue;
+					reached.add(neighbor);
+					keep.add(mapPathEdgeKey(current, neighbor));
+					queue.push(neighbor);
+				}
+			}
+		}
+		for (const [cellKey, neighbors] of adjacent) {
+			adjacent.set(cellKey, neighbors.filter(
+				neighbor => keep.has(mapPathEdgeKey(cellKey, neighbor)),
+			));
+		}
+	}
+
 	const visited = new Set();
 	const paths = [];
+
+	// The water neighbour a dead end drains into: of the adjacent water hexes
+	// that are not themselves part of the path, the one lying most nearly
+	// straight ahead, so the river keeps its heading into the shore rather than
+	// forking sideways. Null when the end tile is already water or has no
+	// water neighbour.
+	const outletPoint = (endKey, priorKey) => {
+		const cell = byKey.get(endKey);
+		if (!isWater || isWater(cell)) return null;
+		// Only a true dead end opens out. walk() also ends paths at junctions,
+		// and a junction beside water would otherwise sprout a mouth from every
+		// path that meets there.
+		if (adjacent.get(endKey).length !== 1) return null;
+		const from = grid.getCenterPoint(cell);
+		const prior = grid.getCenterPoint(byKey.get(priorKey));
+		const headingX = from.x - prior.x;
+		const headingY = from.y - prior.y;
+		let best = null;
+		for (const neighbor of grid.getAdjacentOffsets(cell)) {
+			if (byKey.has(mapPathCellKey(neighbor)) || !isWater(neighbor)) continue;
+			const to = grid.getCenterPoint(neighbor);
+			const dx = to.x - from.x;
+			const dy = to.y - from.y;
+			const alignment = (dx * headingX) + (dy * headingY);
+			if (!best || alignment > best.alignment) best = { alignment, dx, dy };
+		}
+		if (!best) return null;
+		return [
+			from.x + (best.dx * WATER_OUTLET_REACH),
+			from.y + (best.dy * WATER_OUTLET_REACH),
+		];
+	};
 
 	const walk = (start, first) => {
 		const path = [start];
@@ -110,10 +190,17 @@ export function buildMapPathNetwork(cells, grid, blockedEdges = []) {
 			previous = current;
 			current = next;
 		}
-		return path.map(cellKey => {
+		const points = path.map(cellKey => {
 			const center = grid.getCenterPoint(byKey.get(cellKey));
 			return [center.x, center.y];
 		});
+		// A ring has no dead end to open out, so it gets no mouth.
+		if (path.at(0) === path.at(-1)) return points;
+		const tail = outletPoint(path.at(-1), path.at(-2));
+		if (tail) points.push(tail);
+		const head = outletPoint(path.at(0), path.at(1));
+		if (head) points.unshift(head);
+		return points;
 	};
 
 	for (const cellKey of keys.filter(cellKey => adjacent.get(cellKey).length !== 2)) {
@@ -165,7 +252,12 @@ export function drawNetworkWithStyle(
 			cap: "round", join: "round",
 		});
 		draw();
-		g.lineStyle({ width: sw, color, alpha, cap: "round", join: "round" });
+		if (texture && typeof g.lineTextureStyle === "function") {
+			g.lineTextureStyle({
+				width: sw, texture, color, alpha, matrix: textureMatrix, cap: "round", join: "round",
+			});
+		}
+		else g.lineStyle({ width: sw, color, alpha, cap: "round", join: "round" });
 		draw();
 	}
 }

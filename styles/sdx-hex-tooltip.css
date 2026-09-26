@@ -390,6 +390,25 @@
     box-shadow: 0 0 6px rgba(232, 213, 160, 0.5);
 }
 
+.sdx-hex-color-custom {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 2px dashed rgba(255, 255, 255, 0.4);
+    border-radius: 3px;
+    background: none;
+    cursor: pointer;
+}
+
+.sdx-hex-color-custom::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.sdx-hex-color-custom::-webkit-color-swatch {
+    border: none;
+    border-radius: 1px;
+}
+
 .sdx-hex-edit-hint {
     font-size: 0.72em;
     color: rgba(255, 255, 255, 0.35);

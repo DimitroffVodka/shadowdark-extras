@@ -17,7 +17,7 @@ const MODULE_PREFIX = "modules/shadowdark-extras/";
 const HEXES_FOLDER = `${MODULE_PREFIX}assets/Hexes`;
 const MOUNTAINS_FOLDER = `${HEXES_FOLDER}/Mountains`;
 const LEGACY_PATH = `${MOUNTAINS_FOLDER}/Hex - Mountains, medium (lush).png`;
-const CURRENT_PATH = `${MOUNTAINS_FOLDER}/Hex - Mountains, medium (lush).webp`;
+const CURRENT_PATH = `${MOUNTAINS_FOLDER}/Hex%20-%20Mountains,%20medium%20(lush).webp`;
 
 installMemoryIndexedDB();
 
@@ -44,8 +44,37 @@ globalThis.foundry = {
 const { cache } = await import("../../scripts/shared/SDXCache.mjs");
 const { readShippedManifest } = await import("../../scripts/shared/shipped-asset-cache.mjs");
 const colored = await import("../../scripts/hex/hex-colored-tiles.mjs");
+const dimensions = await import("../../scripts/hex/hex-scene-format.mjs");
 
 const METADATA_KEY = "hex_tiles_metadata_colored";
+
+test("built-in hex tiles scale with the active scene grid", () => {
+	assert.deepEqual(dimensions.scaleHexTileDimensions(296, 256, 256), {
+		width: 296,
+		height: 256,
+	});
+	assert.deepEqual(dimensions.scaleHexTileDimensions(296, 256, 128), {
+		width: 148,
+		height: 128,
+	});
+	assert.deepEqual(colored.getColoredTileDimensions(256), { width: 572, height: 500 });
+	assert.deepEqual(colored.getColoredTileDimensions(128), { width: 286, height: 250 });
+});
+
+test("colored tile tags combine biome and terrain for wildcard sets", () => {
+	assert.deepEqual(
+		colored.getColoredTileTags({ biome: "vegetation", label: "Hills (lush) 2" }),
+		["hills", "lush", "vegetation"]
+	);
+	assert.deepEqual(
+		colored.getColoredTileTags({ biome: "desert", label: "Hills (desert) 3" }),
+		["desert", "hills"]
+	);
+	assert.deepEqual(
+		colored.getColoredTileTags({ biome: "autumn", label: "Autumnbog" }),
+		["autumn", "bog"]
+	);
+});
 
 test("a legacy unstamped catalogue is evicted, not served", async () => {
 	// Exactly what a pre-conversion browser profile holds: a bare array, no
@@ -63,6 +92,7 @@ test("a legacy unstamped catalogue is evicted, not served", async () => {
 
 	const paths = colored.getColoredTiles().map(t => t.path);
 	assert.deepEqual(paths, [CURRENT_PATH], "legacy .png path was served from cache");
+	assert.deepEqual(colored.getColoredTiles().map(t => t.label), ["Mountains, medium (lush)"]);
 	assert.ok(browsedFolders.includes(HEXES_FOLDER), "legacy catalogue should force a rescan");
 
 	// The poisoned entry must be overwritten in place, not left beside its

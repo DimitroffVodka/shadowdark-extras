@@ -178,6 +178,25 @@ Two cases are not covered by test discovery and need explicit invocation. A gree
 | `dev/tests/shadowdarkling-roller-regressions.mjs` (no `.test.` in the name) | `npm run test:roller` |
 | `dev/tests/quench/webp-migration.batch.mjs` | In a live Foundry world via Quench; record the result manually. |
 
+## `npm test` repairs module.json first
+
+`pretest` runs `dev/tools/restore-foundry-manifest.mjs`, so **`npm test` may
+change `module.json` in your working tree** before a single test runs. That is
+deliberate.
+
+`~/FoundryV14/Data/modules/shadowdark-extras` is a symlink to this checkout, so
+loading a world makes Foundry normalise the manifest and write it back here:
+`compatibility.minimum` `"14.361"` -> `"14"`, empty `folders`/`flags` containers
+added, trailing newline stripped. The first of those fails
+`dev/tests/module-compatibility.test.mjs`, which pins 14.361 because issue #140
+needs the v14.361 Active Effect duration fixes. Nobody edited the manifest — the
+running game did — and it recurs on every world load.
+
+The repair restores `module.json` from HEAD **only** when every difference
+matches that signature. A version bump, a new pack, or a deliberate change to a
+different minimum is reported and left alone, so it cannot eat real work. Run it
+by hand with `npm run fix:manifest`.
+
 ## Release-check runtime
 
 `npm run release:check` is a release gate, and a failed run is never waived on

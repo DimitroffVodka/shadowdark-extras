@@ -10,15 +10,28 @@
 import { readShippedManifest, writeShippedManifest } from "../shared/shipped-asset-cache.mjs";
 import { _formatLabel } from "./hex-tile-labels.mjs";
 import { browseAssetsAsGM } from "./hex-asset-browser.mjs";
+import { scaleHexTileDimensions } from "./hex-scene-format.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const COLORED_TILE_FOLDER = `modules/${MODULE_ID}/assets/Hexes`;
 const COLORED_HEX_TILE_W = 572;
 const COLORED_HEX_TILE_H = 500;
+const COLORED_TAG_ALIASES = [
+	["arctic", "arctic"], ["autumn", "autumn"], ["badland", "badlands"], ["bog", "bog"],
+	["coast", "coast"], ["conifer", "conifer"], ["damp", "damp"],
+	["deciduous", "deciduous"], ["desert", "desert"], ["forest", "forest"],
+	["hill", "hills"], ["ice", "ice"], ["lush", "lush"], ["mixed", "mixed"],
+	["lake", "lake"], ["mountain", "mountains"], ["ocean", "ocean"], ["plain", "plains"],
+	["rocky", "rocky"], ["snow", "snow"], ["swamp", "swamp"],
+	["river", "river"], ["tree", "trees"], ["urban", "urban"], ["vegetation", "vegetation"],
+	["volcano", "volcano"], ["water", "water"], ["wave", "waves"],
+	["wetland", "wetlands"],
+];
 
 // State
 export let _coloredTiles = null;    // Colored tiles from assets/Hexes
 export let _coloredFoldersCollapsed = {}; // Track collapsed state of colored tile folders
+export const _coloredTagFilters = new Set();
 
 /**
  * Load colored tiles from assets/Hexes folder (inside the module)
@@ -95,6 +108,9 @@ export function getColoredTilesByBiome() {
 
 	const byBiome = {
 		water: [],
+		"water-arctic": [],
+		"water-lake": [],
+		"water-river": [],
 		vegetation: [],  // Maps to forest/grassland
 		mountains: [],
 		desert: [],
@@ -121,10 +137,10 @@ export function getColoredTilesByBiome() {
 }
 
 /**
- * Get colored tile dimensions (fixed size)
+ * Get colored tile dimensions scaled to the active scene grid.
  */
-export function getColoredTileDimensions() {
-	return { width: COLORED_HEX_TILE_W, height: COLORED_HEX_TILE_H };
+export function getColoredTileDimensions(gridSize) {
+	return scaleHexTileDimensions(COLORED_HEX_TILE_W, COLORED_HEX_TILE_H, gridSize);
 }
 
 /**
@@ -132,6 +148,42 @@ export function getColoredTileDimensions() {
  */
 export function getColoredTiles() {
 	return _coloredTiles || [];
+}
+
+export function getColoredTileTags(tile) {
+	const biome = String(tile?.biome || "").toLowerCase();
+	const text = `${biome} ${tile?.label || ""}`.toLowerCase();
+	const tags = new Set(biome ? [biome] : []);
+	for (const [needle, tag] of COLORED_TAG_ALIASES) {
+		if (text.includes(needle)) tags.add(tag);
+	}
+	return Array.from(tags).sort();
+}
+
+export function getColoredTagOptions() {
+	const counts = new Map();
+	for (const tile of getColoredTiles()) {
+		for (const tag of getColoredTileTags(tile)) counts.set(tag, (counts.get(tag) || 0) + 1);
+	}
+	return Array.from(counts, ([tag, count]) => ({
+		tag,
+		label: tag.charAt(0).toUpperCase() + tag.slice(1),
+		count,
+		active: _coloredTagFilters.has(tag),
+	})).sort((a, b) => a.label.localeCompare(b.label));
+}
+
+export function getColoredTagFilters() {
+	return Array.from(_coloredTagFilters);
+}
+
+export function toggleColoredTagFilter(tag) {
+	if (_coloredTagFilters.has(tag)) _coloredTagFilters.delete(tag);
+	else _coloredTagFilters.add(tag);
+}
+
+export function clearColoredTagFilters() {
+	_coloredTagFilters.clear();
 }
 
 /**

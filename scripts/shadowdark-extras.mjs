@@ -207,7 +207,7 @@ import { generateCaveLayout, buildCaveLoops, traceBoundaryLoops } from "./dungeo
 import { assignBiomes, buildCellFloorMap, getBiomeDefs, getCustomBiomes, setCustomBiome, removeCustomBiome, resetCustomBiomes, getEnabledBiomeKeys, getDisabledBiomes, setBiomeEnabled, registerDungeonBiomeSettings } from "./dungeon/DungeonBiomesSD.mjs";
 import { openBiomeEditor, registerBiomeEditorDelegation } from "./dungeon/BiomeEditorSD.mjs";
 import { generateHexMap, clearGeneratedTiles } from "./hex/HexGeneratorSD.mjs";
-import { buildHexcrawl, buildHexcrawlFromFile } from "./hex/HexcrawlBuilderSD.mjs";
+import { buildHexcrawl, buildHexcrawlFromFile, installHexcrawlApi } from "./hex/HexcrawlBuilderSD.mjs";
 import { getSceneLevelContext, applySceneLevelData, getDungeonBackground, registerDungeonPainterSettings } from "./dungeon/DungeonPainterSD.mjs";
 import { placeChangeLevelRegion, placeDungeonSurface, placeDungeonDecor } from "./dungeon/DungeonRegionsSD.mjs";
 import { registerSettings, setupSettingsOrganization } from "./settings/module-settings.mjs";
@@ -1594,10 +1594,7 @@ SDX.dev = {
 	},
 };
 
-// ============================================
-// MODULE API
-// Export functions for use in item macros
-// ============================================
+// Module API for macros and integrations; hex namespace wiring lives with its builder.
 
 Hooks.on("setup", () => {
 	const module = game.modules.get("shadowdark-extras");
@@ -1730,6 +1727,8 @@ Hooks.on("setup", () => {
 		removeApi(FEATURE_IDS.QUICK_CONDITIONS, ["showConditionsModal", "getConditionsData"]);
 		removeApi(FEATURE_IDS.DUNGEON_PAINTER, ["generateDungeon", "getGeneratorSettings", "setGeneratorSettings", "generateRandomSeed", "buildHexDungeonScene", "getBiomeDefinitions", "getCustomBiomes", "setCustomBiome", "removeCustomBiome", "resetCustomBiomes", "getEnabledBiomeKeys", "getDisabledBiomes", "setBiomeEnabled", "openBiomeEditor", "placeChangeLevelRegion", "placeDungeonSurface", "placeDungeonDecor", "internal"]);
 		removeApi(FEATURE_IDS.HEX_PAINTER, ["generateHexMap", "clearGeneratedTiles", "buildHexcrawl", "buildHexcrawlFromFile"]);
+		installHexcrawlApi(module.api, game.shadowdarkExtras ??= {},
+			(name, fn) => audited(name, gmOnly(name, fn)));
 	}
 });
 

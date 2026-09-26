@@ -17,7 +17,7 @@ export const DrawingEntries = {
 			this._lastPermanentDrawing = localData;
 			broadcastPayload.permanent = true;
 			this._broadcast("sdx-drawing-created", broadcastPayload);
-			this._savePermanentToScene(broadcastPayload);
+			return this._savePermanentToScene(broadcastPayload);
 		}
 		else {
 			this._pixiDrawings.push(localData);
@@ -41,13 +41,13 @@ export const DrawingEntries = {
 	},
 
 	async undoLastMapPath() {
-		const entry = this._permanentDrawings.findLast(d =>
-			["road", "river", "mapNetwork"].includes(d.type));
-		if (!entry) {
-			ui.notifications.warn("No road or river to undo.");
+		const action = this._mapPathUndo.pop();
+		if (!action) {
+			ui.notifications.warn("No Road or River action to undo.");
 			return false;
 		}
-		await this.deleteAnyDrawing(entry.id);
+		if (action.type === "create") await this.deleteAnyDrawing(action.id);
+		this._restoreMapPathSelection(action.selection);
 		return true;
 	},
 
