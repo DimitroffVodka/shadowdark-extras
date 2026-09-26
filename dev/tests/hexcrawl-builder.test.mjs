@@ -473,6 +473,18 @@ test("getHexRecords reads records back by published number, as copies, and tells
 	one[202].features.pop();
 	assert.deepEqual(builder.getHexRecords(print.id, [202])[202].features, [river, town], "changing the result leaves the store alone");
 
+	// A record read back and written again unchanged keeps one number prefix.
+	const { 1: first } = builder.getHexRecords(print.id);
+	await builder.upsertHexRecords(print.id, [{ num: 1, ...first }, { num: 202, name: "202" }, { num: 101, name: "0101. Ford" }]);
+	let names = builder.getHexRecords(print.id);
+	assert.equal(names[1].name, "1. First");
+	assert.equal(names[202].name, "202", "an unnamed hex's bare number stays bare");
+	assert.equal(names[101].name, "101. Ford", "a zero-padded prefix is the same number");
+	await builder.upsertHexRecords(print.id, [{ num: 1, name: "10. Downs" }, { num: 2, name: "2011 Road" }]);
+	names = builder.getHexRecords(print.id);
+	assert.equal(names[1].name, "1. 10. Downs", "another number is part of the name");
+	assert.equal(names[2].name, "2. 2011 Road");
+
 	assert.throws(() => builder.getHexRecords(print.id, [909]), /outside the published grid/);
 	assert.throws(() => builder.getHexRecords(print.id, 202), /nums must be an array/);
 	assert.throws(() => builder.getHexRecords("missing"), /scene not found/);
@@ -494,6 +506,7 @@ test("the Hex Editor keeps a feature type it does not list, so a save round-trip
 		assert.equal(count(html), count(known) + 1, "one extra option for the unknown type");
 	}
 	assert.match(featureTypeOptions("river"), /<option value="river" selected>River<\/option>/);
+	assert.match(featureTypeOptions("city_state"), /<option value="city_state" selected>City state<\/option>/);
 	assert.doesNotMatch(featureTypeOptions("\"><b>x"), /<b>/, "an outside type is escaped");
 });
 

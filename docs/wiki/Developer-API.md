@@ -329,6 +329,9 @@ in the build's `hexes` entries) are:
 
 - Text: `name`, `zone`, `terrain`, `travel`, `revealCells`, `rollTable`, `desc`.
   Names are stored as `"num. name"`; an empty name becomes just the number.
+  A name that already starts with the hex's own number (`"2849. The Gate"`,
+  `"2849"`, or zero-padded `"0101. Ford"` on hex 101) is not prefixed again,
+  so a name read back with `getHexRecords` can be sent back unchanged.
 - Booleans: `cleared`, `claimed`, `rollTableFirstOnly`, `showToPlayers`.
 - `exploration`: `"unexplored"`, `"explored"`, or `"mapped"`.
 - `revealRadius`: integer ≥ −1; `rollTableChance`: number from 0–100.
@@ -397,6 +400,10 @@ const records = await hex.getHexRecords(sceneId, [2849]);
   records gives `{}`; a scene with no published layout, or only a legacy one,
   gives `null`.
 - The records are copies: changing the result never changes what is stored.
+- `name` comes back as stored, with its `"num. "` prefix. Sending it back to
+  `upsertHexRecords` keeps a single prefix.
+- Send back only the fields you mean to change. A record the Hex Editor saved
+  also carries `image`, which `upsertHexRecords` does not take.
 - Records the Hex Editor added on cells outside the published grid have no
   number and are not returned.
 

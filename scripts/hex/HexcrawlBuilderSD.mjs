@@ -793,7 +793,13 @@ export async function upsertHexRecords(sceneId, records) {
 	for (const hex of records) {
 		const { num, ...patch } = hex;
 		const { col, row } = hexNumToColRow(num);
-		if (Object.hasOwn(patch, "name")) patch.name = patch.name ? `${num}. ${patch.name}` : String(num);
+		if (Object.hasOwn(patch, "name")) {
+			// A name that already carries this hex's number, such as one read back
+			// with getHexRecords ("2849. The Gate", or "2849" for an unnamed hex),
+			// keeps one prefix rather than gaining a second.
+			const bare = patch.name.replace(new RegExp(`^0*${Number(num)}(\\.\\s*|$)`), "");
+			patch.name = bare ? `${num}. ${bare}` : String(num);
+		}
 		patches[offsetToHexKey(geom.offsetOf(col, row))] = patch;
 	}
 	if (records.length) await mergeHexRecords(sceneId, patches);
