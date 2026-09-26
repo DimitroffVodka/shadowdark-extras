@@ -302,10 +302,8 @@ function validateRecords(records, geom, building = false) {
 	}
 }
 
-function validateDataset(dataset, opts) {
-	requireInput(dataset && typeof dataset === "object" && !Array.isArray(dataset), "dataset must be an object");
-	requireInput(opts && typeof opts === "object" && !Array.isArray(opts), "options must be an object");
-	const grid = dataset.grid;
+/** A published grid, as a build or an adoption takes it. */
+function validateGrid(grid) {
 	requireInput(grid && [grid.cols, grid.rows].every(n => Number.isInteger(n) && n >= 1 && n <= 99), "grid cols/rows must be integers from 1 to 99");
 	requireInput(grid.origin === undefined || grid.origin === 0 || grid.origin === 1, "grid.origin must be 0 or 1");
 	const origin = grid.origin ?? 1;
@@ -317,6 +315,29 @@ function validateDataset(dataset, opts) {
 		if (Object.hasOwn(grid, key)) requireInput(typeof grid[key] === "boolean", `grid.${key} must be boolean`);
 	}
 	if (Object.hasOwn(grid, "distance")) requireInput(Number.isFinite(grid.distance) && grid.distance > 0, "distance must be positive");
+}
+
+/**
+ * The `grid` a version-1 layout flag stores: what makeGeom needs to map a
+ * published number to a cell again, with the defaults left out. One writer for
+ * builds and adoptions, so an adopted scene's flag compares equal to a built one.
+ */
+function layoutGrid(geom, grid) {
+	return {
+		cols: geom.pubCols, rows: geom.pubRows,
+		landscape: !!grid.landscape,
+		flipX: !!grid.flipX, flipY: !!grid.flipY,
+		...(geom.origin === 1 ? {} : { origin: geom.origin }),
+		...(geom.firstRow === geom.origin ? {} : { firstRow: geom.firstRow }),
+		...(geom.rowsLowered === geom.pubRows ? {} : { rowsLowered: geom.rowsLowered }),
+	};
+}
+
+function validateDataset(dataset, opts) {
+	requireInput(dataset && typeof dataset === "object" && !Array.isArray(dataset), "dataset must be an object");
+	requireInput(opts && typeof opts === "object" && !Array.isArray(opts), "options must be an object");
+	const grid = dataset.grid;
+	validateGrid(grid);
 	for (const value of [dataset.name, grid.units, opts.sceneName]) requireInput(value === undefined || typeof value === "string", "name/units must be text");
 	for (const key of ["view", "overwrite"]) {
 		if (Object.hasOwn(opts, key)) requireInput(typeof opts[key] === "boolean", `${key} must be boolean`);
@@ -395,14 +416,7 @@ async function createHexScene(dataset, geom, { sceneName }) {
 				hexScene: true,
 				hexcrawl: {
 					name: dataset.name ?? name, cols: geom.pubCols, rows: geom.pubRows,
-					...(geom.published ? { version: 1, grid: {
-						cols: geom.pubCols, rows: geom.pubRows,
-						landscape: !!dataset.grid.landscape,
-						flipX: !!dataset.grid.flipX, flipY: !!dataset.grid.flipY,
-						...(geom.origin === 1 ? {} : { origin: geom.origin }),
-						...(geom.firstRow === geom.origin ? {} : { firstRow: geom.firstRow }),
-						...(geom.rowsLowered === geom.pubRows ? {} : { rowsLowered: geom.rowsLowered }),
-					} } : {}),
+					...(geom.published ? { version: 1, grid: layoutGrid(geom, dataset.grid) } : {}),
 				},
 			},
 		},
@@ -726,7 +740,7 @@ export function installHexcrawlApi(api, namespace, wrap) {
 		return;
 	}
 	api.hex = namespace.hex = Object.fromEntries(Object.entries({
-		buildHexcrawl: buildPublishedHexcrawl, upsertHexRecords, repaintHexTiles, getSpecialTiles,
+		buildHexcrawl: buildPublishedHexcrawl, adoptHexcrawl, upsertHexRecords, repaintHexTiles, getSpecialTiles,
 		importHexerMap, openHexerImportDialog,
 	}).map(([name, fn]) => [name, wrap(`hex.${name}`, fn)]));
 	// Deliberately outside the wrap above: it reads a constant, so gmOnly would
@@ -758,7 +772,7 @@ export async function upsertHexRecords(sceneId, records) {
 	const scene = game.scenes.get(sceneId);
 	requireInput(scene, "scene not found");
 	const layout = scene.getFlag(MODULE_ID, "hexcrawl");
-	requireInput(layout?.version === 1 && layout.grid, "scene has no published layout; rebuild legacy scenes with api.hex.buildHexcrawl");
+	requireInput(layout?.version === 1 && layout.grid, "scene has no published layout; build it with api.hex.buildHexcrawl, or give an existing map one with api.hex.adoptHexcrawl");
 	const geom = makeGeom(layout, true);
 	validateRecords(records, geom);
 	const patches = {};
@@ -770,6 +784,71 @@ export async function upsertHexRecords(sceneId, records) {
 	}
 	if (records.length) await mergeHexRecords(sceneId, patches);
 	return { sceneId, records: records.length };
+}
+
+/**
+ * Give a scene the GM already has, such as a publisher's printed map, the
+ * version-1 layout a build writes, so upsertHexRecords, the tooltip, the hex
+ * explorer and the coordinate labels work on it.
+ *
+ * WHY. Only buildHexcrawl wrote the layout flag, and only on a scene it made,
+ * so records could never reach a map that already existed, even one whose
+ * grid matched a built scene cell for cell. The flag is this module's own;
+ * another module writing it to get past the check above would be a contract
+ * nobody could change.
+ *
+ * WHAT IT WRITES. The layout flag and nothing else: no tiles, records, notes
+ * or background changes, and not `hexScene`, which opens the painter's
+ * terrain tabs and would invite painting over the print. Published hex 0000
+ * (or 0101, with origin 1) must sit on Foundry offset {i:0, j:0}, the scene's
+ * top-left cell, and every published cell's centre must land on the scene.
+ *
+ * Adopting again with the same grid changes nothing; a scene that already has
+ * a different layout, legacy or published, is refused.
+ *
+ * @param {string} sceneId
+ * @param {{name?:string, grid:object}} opts  grid takes the same fields and
+ *   checks as buildHexcrawl's
+ * @returns {Promise<{sceneId:string, adopted:boolean}>}  adopted is false for a no-op
+ */
+export async function adoptHexcrawl(sceneId, opts = {}) {
+	requireInput(game.user?.isGM, "requires GM permission");
+	requireInput(opts && typeof opts === "object" && !Array.isArray(opts), "options must be an object");
+	requireInput(opts.name === undefined || typeof opts.name === "string", "name must be text");
+	validateGrid(opts.grid);
+	const scene = game.scenes.get(sceneId);
+	requireInput(scene, "scene not found");
+	const geom = makeGeom({ grid: opts.grid }, true);
+	const grid = layoutGrid(geom, opts.grid);
+
+	// Settled before the geometry checks: a scene that already carries this
+	// layout, built or adopted, has nothing left to prove.
+	const existing = scene.getFlag(MODULE_ID, "hexcrawl");
+	if (existing) {
+		const stored = existing.version === 1 && existing.grid
+			? JSON.stringify(layoutGrid(makeGeom(existing, true), existing.grid)) : null;
+		const same = stored === JSON.stringify(grid);
+		requireInput(same, "scene already has a different hexcrawl layout");
+		return { sceneId, adopted: false };
+	}
+
+	requireInput(scene.grid?.type === CONST.GRID_TYPES.HEXODDQ, "scene grid must be hexagonal columns with odd columns shifted down (HEXODDQ)");
+	const { sceneX, sceneY, sceneWidth, sceneHeight } = scene.dimensions;
+	for (let col = geom.origin; col < geom.pubCols + geom.origin; col++) {
+		for (let row = geom.origin; row < geom.pubRows + geom.origin; row++) {
+			if (!geom.inGrid(col, row)) continue;
+			const { x, y } = scene.grid.getCenterPoint(geom.offsetOf(col, row));
+			const onScene = x >= sceneX && x <= sceneX + sceneWidth
+				&& y >= sceneY && y <= sceneY + sceneHeight;
+			requireInput(onScene,
+				`hex ${String((col * 100) + row).padStart(4, "0")} falls outside the scene; the first published hex must be the scene's top-left cell`);
+		}
+	}
+
+	await scene.setFlag(MODULE_ID, "hexcrawl", {
+		name: opts.name ?? scene.name, cols: geom.pubCols, rows: geom.pubRows, version: 1, grid,
+	});
+	return { sceneId, adopted: true };
 }
 
 /**

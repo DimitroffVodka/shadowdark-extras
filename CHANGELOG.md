@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- **Hexcrawl data on a map you already have.** `game.shadowdarkExtras.hex.adoptHexcrawl(sceneId, { grid })` gives an existing scene, such as a publisher's printed map, the layout a built hexcrawl carries. Hex records, the hover tooltip, the hex explorer, fog and coordinates then work on the print itself, with nothing painted over it. Shadowdark Enhancer uses it to send its hex data to the map a GM already plays on. ([#147](https://github.com/DimitroffVodka/shadowdark-extras/issues/147))
+
 ## [6.15.0] — 2026-09-15 — Lit lights change hands properly, Torch Sprite fixes, sprite windows fit the screen
 
 ### Fixed

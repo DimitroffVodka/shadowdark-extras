@@ -117,6 +117,7 @@ The full orchestration contract lives in
 | `generateHexMap(params)` | GM | Generate terrain on the formatted active Scene |
 | `clearGeneratedTiles(options)` | GM | Remove SDX-generated hex tiles |
 | `hex.buildHexcrawl(dataset, options?)` | GM | Stable published-number dataset → painted Scene |
+| `hex.adoptHexcrawl(sceneId, { name?, grid })` | GM | Give an existing map scene the published layout, painting nothing |
 | `hex.upsertHexRecords(sceneId, records)` | GM | Merge records without rebuilding or repainting |
 | `hex.getSpecialTiles()` | GM | Catalogue Specials for explicit, unique hex assignments |
 | `buildHexcrawl(dataset, options?)` | GM | Legacy layout; retained for existing macros |
@@ -335,11 +336,41 @@ to players. Unmentioned cells and other scenes are unchanged.
 
 Upsert uses the scene's saved version-1 layout, so flips and transpose survive
 reloads and updates to an unviewed scene. It rejects legacy/manual scenes with
-no saved published layout rather than guessing where their records belong.
+no saved published layout rather than guessing where their records belong; an
+existing map gets one from `hex.adoptHexcrawl` (next section).
 The root-level builders preserve the old convention: `cols` counts the final
 digits starting at 1, `rows` counts the leading digits starting at 0, and
 `landscape` transposes those axes. Rebuild with `hex.buildHexcrawl` to adopt the
 new contract; existing flags and scene keys are never silently migrated.
+
+### Adopting an existing map
+
+A GM who already has the map, such as a publisher's print on a scene of its
+own, can give that scene the layout a build writes instead of building a new
+one. Then `upsertHexRecords`, the hover tooltip, the hex explorer, fog and the
+coordinate labels all work on it:
+
+```js
+await hex.adoptHexcrawl(sceneId, {
+  name: "Western Reaches",   // optional; defaults to the scene's name
+  grid: { cols: 64, rows: 75, origin: 0, firstRow: 1, rowsLowered: 74 }
+});
+// { sceneId, adopted: true }
+await hex.upsertHexRecords(sceneId, [{ num: 2849, name: "The Gate", terrain: "mountain" }]);
+```
+
+- `grid` takes the same fields and checks as the build's `grid` (`cols`, `rows`,
+  `origin`, `firstRow`, `rowsLowered`, `landscape`, `flipX`, `flipY`).
+- The scene's grid must be `HEXODDQ`, and the map's first hex (`0000`, or `0101`
+  with origin 1) must be the scene's top-left cell, Foundry offset `{ i: 0, j: 0 }`.
+  Every published cell's centre must land on the scene. Anything else is refused
+  before a write.
+- Only the layout flag is written. Background, tiles, notes, drawings, tokens
+  and hex records are untouched, nothing is painted, and the scene is not marked
+  as a painter hex scene, so the Hex Painter's terrain tabs stay closed on it.
+- Adopting again with the same grid is a no-op and returns `adopted: false`, as
+  does adopting a scene built with that grid. A scene that already has a
+  different layout, published or legacy, is refused.
 
 ### Optional reference image — hidden is not private
 

@@ -373,6 +373,82 @@ test("firstRow skips clipped cells at the top of raised columns without shifting
 	);
 });
 
+// A scene the GM already has, e.g. a publisher's printed map: a HEXODDQ grid
+// (the shared stub's geometry), no tiles, no hexcrawl flag.
+function printScene({ type = CONST.GRID_TYPES.HEXODDQ, width = 600, height = 770, x = 0, y = 0, flags = {} } = {}) {
+	const scene = {
+		id: `print-${scenes.length + 1}`, name: "Printed map", flags: structuredClone(flags), tiles: [],
+		grid: { ...grid, type }, dimensions: { sceneX: x, sceneY: y, sceneWidth: width, sceneHeight: height },
+		getFlag: (scope, key) => scene.flags[scope]?.[key],
+		async setFlag(scope, key, value) { (scene.flags[scope] ??= {})[key] = structuredClone(value); writes.push(key); },
+	};
+	scenes.push(scene);
+	return scene;
+}
+const PRINT_GRID = { cols: 3, rows: 3, origin: 0, firstRow: 1, rowsLowered: 2 };
+
+test("adopting a scene writes the layout a build writes, paints nothing, and records land on the printed numbers", async () => {
+	await builder.buildPublishedHexcrawl({ grid: PRINT_GRID, hexes: [] }, { view: false });
+	const built = scenes[0].getFlag(MODULE_ID, "hexcrawl");
+	const print = printScene();
+	writes.length = 0;
+	assert.deepEqual(await builder.adoptHexcrawl(print.id, { name: "Western Reaches", grid: PRINT_GRID }), { sceneId: print.id, adopted: true });
+	const layout = print.getFlag(MODULE_ID, "hexcrawl");
+	assert.deepEqual(layout.grid, built.grid, "same flag shape as a built scene");
+	assert.equal(layout.version, 1);
+	assert.equal(layout.name, "Western Reaches");
+	assert.deepEqual(writes, ["hexcrawl"], "the layout flag is the only write");
+	assert.equal(print.getFlag(MODULE_ID, "hexScene"), undefined, "the painter's terrain tabs stay closed on a print");
+	assert.equal(print.tiles.length, 0);
+
+	await builder.upsertHexRecords(print.id, [{ num: 1, name: "First" }, { num: 202, name: "Last" }]);
+	const records = world.lastFlagValue()[print.id];
+	assert.equal(records["1_0"].name, "1. First", "0001 is Foundry offset {i:1,j:0}, as on a built scene");
+	assert.equal(records["2_2"].name, "202. Last");
+	assert.equal(Object.keys(records).length, 2, "only the upserted hexes get records");
+
+	const unnamed = printScene();
+	await builder.adoptHexcrawl(unnamed.id, { grid: PRINT_GRID });
+	assert.equal(unnamed.getFlag(MODULE_ID, "hexcrawl").name, "Printed map", "name defaults to the scene's");
+});
+
+test("adopting again with the same grid is a no-op; a different or legacy layout is refused", async () => {
+	const print = printScene();
+	await builder.adoptHexcrawl(print.id, { grid: PRINT_GRID });
+	writes.length = 0;
+	const spelledOut = { ...PRINT_GRID, landscape: false, flipX: false, flipY: false };
+	assert.deepEqual(await builder.adoptHexcrawl(print.id, { grid: spelledOut }), { sceneId: print.id, adopted: false });
+	await assert.rejects(builder.adoptHexcrawl(print.id, { grid: { cols: 3, rows: 3, origin: 0 } }), /different hexcrawl layout/);
+	assert.deepEqual(writes, []);
+	assert.deepEqual(print.getFlag(MODULE_ID, "hexcrawl").grid, { cols: 3, rows: 3, landscape: false, flipX: false, flipY: false, origin: 0, firstRow: 1, rowsLowered: 2 });
+
+	const legacy = printScene({ flags: { [MODULE_ID]: { hexcrawl: { name: "Old", cols: 3, rows: 3 } } } });
+	await assert.rejects(builder.adoptHexcrawl(legacy.id, { grid: { cols: 3, rows: 3 } }), /different hexcrawl layout/);
+	const { sceneId } = await builder.buildPublishedHexcrawl({ grid: PRINT_GRID, hexes: [] }, { view: false });
+	assert.equal((await builder.adoptHexcrawl(sceneId, { grid: PRINT_GRID })).adopted, false, "a built scene already has this layout");
+});
+
+test("adoption refuses a scene it cannot number, before writing anything", async () => {
+	const plain = { cols: 3, rows: 3, origin: 0 };
+	const square = printScene({ type: 1 });
+	const short = printScene({ height: 700 });
+	const padded = printScene({ x: 300 });
+	const fits = printScene();
+	writes.length = 0;
+	await assert.rejects(builder.adoptHexcrawl("missing", { grid: plain }), /scene not found/);
+	await assert.rejects(builder.adoptHexcrawl(square.id, { grid: plain }), /HEXODDQ/);
+	await assert.rejects(builder.adoptHexcrawl(short.id, { grid: plain }), /hex 0102 falls outside the scene/, "the lowered column's last row is off the bottom");
+	await assert.rejects(builder.adoptHexcrawl(padded.id, { grid: plain }), /hex 0000 falls outside the scene/, "0000 must be the top-left cell");
+	await assert.rejects(builder.adoptHexcrawl(fits.id, { grid: { cols: 0, rows: 3 } }), /cols\/rows/);
+	await assert.rejects(builder.adoptHexcrawl(fits.id, { grid: { ...plain, rowsLowered: 1 } }), /rowsLowered/);
+	await assert.rejects(builder.adoptHexcrawl(fits.id, { name: 7, grid: plain }), /name must be text/);
+	await assert.rejects(builder.adoptHexcrawl(fits.id), /cols\/rows/, "a grid is required");
+	world.setGM(false);
+	await assert.rejects(builder.adoptHexcrawl(fits.id, { grid: plain }), /GM/);
+	assert.deepEqual(writes, []);
+	for (const scene of [square, short, padded, fits]) assert.equal(scene.getFlag(MODULE_ID, "hexcrawl"), undefined);
+});
+
 test("setup exposes the same guarded hex namespace on both surfaces and removes it when disabled", async () => {
 	const source = readFileSync(new URL("../../scripts/shadowdark-extras.mjs", import.meta.url), "utf8");
 	const setup = source.slice(source.indexOf('Hooks.on("setup", () => {'), source.indexOf('// PARTY TOKEN LIGHT SYNCHRONIZATION HOOKS'));
@@ -384,9 +460,10 @@ test("setup exposes the same guarded hex namespace on both surfaces and removes 
 		assert.equal(typeof module.api.hex, enabled ? "object" : "undefined");
 		assert.equal(context.game.shadowdarkExtras?.hex, module.api.hex);
 		if (enabled) {
-			assert.deepEqual(Object.keys(module.api.hex).sort(), ["buildHexcrawl", "getSpecialTiles", "getZoneColors", "importHexerMap", "openHexerImportDialog", "repaintHexTiles", "upsertHexRecords"]);
+			assert.deepEqual(Object.keys(module.api.hex).sort(), ["adoptHexcrawl", "buildHexcrawl", "getSpecialTiles", "getZoneColors", "importHexerMap", "openHexerImportDialog", "repaintHexTiles", "upsertHexRecords"]);
 			context.game.user.isGM = false;
 			await assert.rejects(module.api.hex.buildHexcrawl(fixture), /requires GM permission/);
+			await assert.rejects(module.api.hex.adoptHexcrawl("scene", { grid: { cols: 1, rows: 1 } }), /requires GM permission/);
 			await assert.rejects(module.api.hex.upsertHexRecords("scene", []), /requires GM permission/);
 			await assert.rejects(module.api.hex.getSpecialTiles(), /requires GM permission/);
 			await assert.rejects(module.api.hex.importHexerMap({}), /requires GM permission/);
