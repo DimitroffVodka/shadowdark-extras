@@ -319,7 +319,15 @@ export function setupCombatSocket() {
 	// handler, and the .some() defect above masked its absence from the list.
 	if (anyFeatureEnabled(
 		FEATURE_IDS.SPELL_ACTIVITY, FEATURE_IDS.PREDEFINED_EFFECTS, FEATURE_IDS.DAMAGE_CARDS
-	)) socketlibSocket.register("applyTokenCondition", async data => {
+	)) socketlibSocket.register("applyTokenCondition", async function(data) {
+		// The payload is the sender's word; the sender is socketlib's. A player
+		// may only apply effects from an attacker they own (#148 review).
+		const sender = game.users.get(this?.socketdata?.userId);
+		const attacker = game.actors.get(data?.casterActorId || data?.spellInfo?.casterActorId);
+		if (!sender || (!sender.isGM && !attacker?.testUserPermission(sender, "OWNER"))) {
+			console.warn("shadowdark-extras | applyTokenCondition: refused, the sender does not own the attacker");
+			return false;
+		}
 		const caster = data.spellInfo ? game.actors.get(data.spellInfo.casterActorId) : null;
 		const casts = caster ? getActiveDurationSpells(caster) : [];
 		const cast = casts.find(entry => entry.instanceId === data.spellInfo?.spellId)
@@ -351,9 +359,24 @@ export function setupCombatSocket() {
 			// the actor, but Enhancer's stat damage reads actor.effects and would
 			// never see or heal it (#148).
 			if (effectDoc.documentName === "ActiveEffect") {
+				// Spells take Effect items only: a bare effect would skip the
+				// same-spell replacement and focus/duration linking below.
+				if (data.spellInfo) return false;
+				// A player applies library effects, or ones on the attacker's own
+				// items; never an effect lifted from some other actor.
+				const fromLibrary = effectDoc.pack === `${MODULE_ID}.pack-sdxeffects`;
+				const onAttackerItem = effectDoc.parent?.documentName === "Item"
+					&& !!attacker && effectDoc.parent.parent?.id === attacker.id;
+				if (!sender.isGM && !fromLibrary && !onAttackerItem) {
+					console.warn("shadowdark-extras | applyTokenCondition: refused a bare effect from outside the library");
+					return false;
+				}
 				const actor = token.actor;
 				if (data.cumulative === false) {
-					const ids = actor.effects.filter(e => e.name === effectDoc.name).map(e => e.id);
+					// Stat damage always adds: a non-cumulative hit must not wipe it.
+					const ids = actor.effects
+						.filter(e => e.name === effectDoc.name && !e.flags?.["shadowdark-enhancer"]?.statDamage)
+						.map(e => e.id);
 					if (ids.length) await actor.deleteEmbeddedDocuments("ActiveEffect", ids);
 				}
 				const effectData = effectDoc.toObject();

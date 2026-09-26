@@ -455,9 +455,12 @@ export default class NPCFeatureSheetSD extends HandlebarsApplicationMixin(Docume
 			}
 
 			// Check valid type
-			// A bare ActiveEffect (the SDX Effects library) is applied to the target as is.
+			// A bare ActiveEffect (the SDX Effects library) is applied to the target
+			// as is. Not on an NPC Spell: spell effects need focus/duration linking,
+			// which only the Effect-item path does.
 			const validTypes = ["Effect", "Condition", "NPC Feature"];
-			if (doc.documentName !== "ActiveEffect" && !validTypes.includes(doc.type)) {
+			const bareEffect = doc.documentName === "ActiveEffect" && this.item.type !== "NPC Spell";
+			if (!bareEffect && !validTypes.includes(doc.type)) {
 				ui.notifications.warn(
 					"Only Effect, Condition, or NPC Feature items can be dropped here"
 				);

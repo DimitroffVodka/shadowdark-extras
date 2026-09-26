@@ -114,9 +114,11 @@ Inspect an effect before you drop it on a homebrew actor.
 
 **Stat damage.** *STR damage*, *DEX damage*, *CON damage*, *INT damage*, *WIS
 damage* and *CHA damage* each take 1 point off that ability until healed. Drop
-one on a character, or into a weapon's on-hit effects or an NPC Activity so a
-homebrew monster deals it on a hit; drop it twice for 2 points. With Shadowdark
-Enhancer installed they are its tracked stat damage, which a rest heals.
+one on a character, or into a weapon's on-hit effects or an NPC Feature or
+Special Attack Activity so a homebrew monster deals it on a hit; drop it twice
+for 2 points. Spell and NPC Spell slots take Effect items only. With Shadowdark
+Enhancer installed they are its tracked stat damage, so whatever heals Enhancer's
+stat damage heals them, such as its API or a camping rest that calls it.
 Without it, nothing heals them automatically: delete the effect.
 
 ## Source requirements

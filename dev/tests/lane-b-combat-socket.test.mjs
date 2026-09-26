@@ -43,6 +43,7 @@ globalThis.game = {
 	i18n: { localize: (key) => key },
 	user: { isGM: true },
 	messages: { get: () => null },
+	actors: { get: () => null },
 };
 globalThis.ui = { notifications: { info: () => {}, warn: () => {}, error: () => {} } };
 globalThis.Actor = class {};
@@ -51,6 +52,12 @@ globalThis.CONFIG = { time: { roundTime: 0, turnTime: 0 } };
 const { getSocket, setupCombatSocket } = await import("../../scripts/shared/combat-socket.mjs");
 const { applySpellEffect } = await import("../../scripts/effects/BreakOnDamageSD.mjs");
 let socketHarness;
+
+/** socketlib's `this` for a handler call sent by a GM; installs that GM in game.users. */
+function fromGM() {
+	globalThis.game.users = { get: id => id === "gm" ? { id: "gm", isGM: true } : null };
+	return { socketdata: { userId: "gm" } };
+}
 
 /** socketlib fake that records registerModule calls and registered handlers. */
 function makeSocketlib() {
@@ -134,7 +141,7 @@ test("applyTokenCondition writes Foundry v14 duration and start data", async () 
 
 	const handler = socketHarness.registrations.get("applyTokenCondition");
 	assert.ok(handler, "applyTokenCondition must be registered");
-	assert.equal(await handler({
+	assert.equal(await handler.call(fromGM(), {
 		tokenId: "target-token",
 		effectUuid: "Compendium.test.effect",
 		duration: { rounds: 2, seconds: null, startTime: 90 },
@@ -158,7 +165,11 @@ test("applyTokenCondition puts a bare ActiveEffect on the actor, flags intact (#
 	const actor = {
 		id: "target-actor",
 		items: { filter: () => [] },
-		effects: [{ id: "old", name: "STR damage" }, { id: "other", name: "Blessed" }],
+		effects: [
+			{ id: "old", name: "STR damage" },
+			{ id: "sd", name: "STR damage", flags: { "shadowdark-enhancer": { statDamage: { ability: "str" } } } },
+			{ id: "other", name: "Blessed" },
+		],
 		createEmbeddedDocuments: async (type, entries) => (calls.push(["create", type, entries]), [{ id: "new" }]),
 		deleteEmbeddedDocuments: async (type, ids) => (calls.push(["delete", type, ids]), []),
 	};
@@ -172,7 +183,7 @@ test("applyTokenCondition puts a bare ActiveEffect on the actor, flags intact (#
 	});
 	const handler = socketHarness.registrations.get("applyTokenCondition");
 
-	assert.equal(await handler({ tokenId: "target-token", effectUuid: "Compendium.x.ActiveEffect.y" }), true);
+	assert.equal(await handler.call(fromGM(), { tokenId: "target-token", effectUuid: "Compendium.x.ActiveEffect.y" }), true);
 	assert.equal(calls.length, 1, "cumulative by default: two hits make two effects");
 	const [op, type, [created]] = calls[0];
 	assert.equal(op, "create");
@@ -181,9 +192,52 @@ test("applyTokenCondition puts a bare ActiveEffect on the actor, flags intact (#
 	assert.equal(created.start, undefined, "no duration: lasts until healed");
 
 	calls.length = 0;
-	await handler({ tokenId: "target-token", effectUuid: "Compendium.x.ActiveEffect.y", cumulative: false });
+	await handler.call(fromGM(), { tokenId: "target-token", effectUuid: "Compendium.x.ActiveEffect.y", cumulative: false });
 	assert.deepEqual(calls.map(c => c.slice(0, 2)), [["delete", "ActiveEffect"], ["create", "ActiveEffect"]]);
-	assert.deepEqual(calls[0][2], ["old"], "non-cumulative replaces only the same-named effect");
+	assert.deepEqual(calls[0][2], ["old"], "non-cumulative replaces the same-named effect, never stat damage");
+});
+
+test("applyTokenCondition trusts socketlib's sender and limits a player's bare effects (#148)", async () => {
+	const created = [];
+	const target = {
+		id: "victim",
+		items: { filter: () => [] },
+		effects: [],
+		createEmbeddedDocuments: async (type, entries) => (created.push(type), [{ id: "new" }]),
+		deleteEmbeddedDocuments: async () => [],
+	};
+	const pc = { id: "pc", getFlag: () => [], testUserPermission: user => user.id === "player" };
+	const npc = { id: "npc", getFlag: () => [], testUserPermission: () => false };
+	globalThis.canvas.tokens.get = () => ({ actor: target });
+	globalThis.game.combat = null;
+	globalThis.game.actors = { get: id => ({ pc, npc })[id] ?? null };
+	globalThis.game.users = { get: id => id === "player" ? { id: "player", isGM: false } : null };
+	const asPlayer = { socketdata: { userId: "player" } };
+	const bare = extra => async () => ({
+		documentName: "ActiveEffect", name: "CON damage", toObject: () => ({ name: "CON damage" }), ...extra,
+	});
+	const library = bare({ pack: "shadowdark-extras.pack-sdxeffects" });
+	const handler = socketHarness.registrations.get("applyTokenCondition");
+	const apply = (self, extra) => handler.call(self, { tokenId: "t", effectUuid: "e", ...extra });
+
+	globalThis.fromUuid = library;
+	assert.equal(await apply(undefined, { casterActorId: "pc" }), false, "no socketlib sender");
+	assert.equal(await apply(asPlayer, { casterActorId: "npc" }), false, "an attacker the player does not own");
+	assert.equal(await apply(asPlayer, {}), false, "no attacker");
+	globalThis.fromUuid = async () => ({ name: "Slowed", toObject: () => ({ effects: [] }) });
+	assert.equal(await apply(asPlayer, { casterActorId: "npc" }), false, "the Effect item path checks too");
+	assert.deepEqual(created, []);
+
+	globalThis.fromUuid = library;
+	assert.equal(await apply(asPlayer, { casterActorId: "pc" }), true, "a library effect from their own attacker");
+	globalThis.fromUuid = bare({ parent: { documentName: "Item", parent: { id: "pc" } } });
+	assert.equal(await apply(asPlayer, { casterActorId: "pc" }), true, "an effect on the attacker's own item");
+	globalThis.fromUuid = bare({ parent: { documentName: "Actor", id: "npc" } });
+	assert.equal(await apply(asPlayer, { casterActorId: "pc" }), false, "never an effect lifted from another actor");
+	globalThis.fromUuid = library;
+	assert.equal(await apply(asPlayer, { spellInfo: { casterActorId: "pc", spellId: "s" } }), false,
+		"a spell never applies a bare effect: it would skip focus and duration linking");
+	assert.deepEqual(created, ["ActiveEffect", "ActiveEffect"]);
 });
 
 test("applySpellEffect gives owners and non-owners identical canonical timing", async () => {
@@ -339,7 +393,7 @@ test("damage-card and area-entry effects retain the same cast anchor and duratio
 	game.combat = { id: "combat", started: true, round: 4, turn: 0, combatant: { id: "other-turn" } };
 	canvas.tokens.get = () => ({ actor: target });
 	globalThis.fromUuid = async () => ({ toObject: () => ({ effects: [{ duration: { rounds: 2 } }] }) });
-	assert.equal(await socketHarness.registrations.get("applyTokenCondition")({
+	assert.equal(await socketHarness.registrations.get("applyTokenCondition").call(fromGM(), {
 		tokenId: "token", effectUuid: "Item.source", duration: { rounds: 5 },
 		spellInfo: { casterActorId: "caster", spellId: "spell" },
 	}), true);
