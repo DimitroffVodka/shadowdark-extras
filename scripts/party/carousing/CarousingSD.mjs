@@ -36,14 +36,18 @@ import {
 	getParticipantActor,
 } from "./carousing-notes.mjs";
 import {
-	normalizeCarousingLogResults, openCarousingLog, writeCarousingLogPage,
+	carousingLogEntries, normalizeCarousingLogResults, openCarousingLog, writeCarousingLogPage,
 } from "./carousing-log.mjs";
 import {
 	broadcastRollAnnouncement, initCarousingSocket, injectCarousingButton, rerenderPlayerSheets,
 	showDSNRoll,
 } from "./carousing-ui.mjs";
+import {
+	d100Formula, downtimeOpen, getEnhancer, holidayEffects, holidayLines, passCarousingTime,
+	recentCarousers, resolveCarousingPlace, tierOverLimit,
+} from "./carousing-rules.mjs";
 
-import { MODULE_ID, getCarousingMode, getActiveCarousingTiers, getExpandedOutcome, getExpandedBenefit, getExpandedMishap, getDefaultExpandedData, getExpandedCarousingTables, saveExpandedCarousingTables, getExpandedCarousingData, saveExpandedCarousingData, refreshLinkedCarousingTables, initCarousing, getCarousingJournal, getCarousingTablesJournal, ensureCarousingJournal, ensureCarousingTablesJournal, getCustomCarousingTables, saveCustomCarousingTables, getCarousingTableById, getCarousingGmActors, getCarousingDrops, saveCarousingDrops, getCarousingSession, saveCarousingSession, setCarousingDrop, setCarousingTier, setCarousingTable, setPlayerConfirmation, setPlayerModifier, addGmParticipant, removeGmParticipant, resetCarousingSession, addCarousingResult, removeCarousingResult, pruneOfflineCarousingData } from "./carousing-core.mjs";
+import { MODULE_ID, clampToOutcomeRows, getCarousingMode, getActiveCarousingTiers, getExpandedOutcome, getExpandedBenefit, getExpandedMishap, getDefaultExpandedData, getExpandedCarousingTables, saveExpandedCarousingTables, getExpandedCarousingData, saveExpandedCarousingData, refreshLinkedCarousingTables, initCarousing, getCarousingJournal, getCarousingTablesJournal, ensureCarousingJournal, ensureCarousingTablesJournal, getCustomCarousingTables, saveCustomCarousingTables, getCarousingTableById, getCarousingGmActors, getCarousingDrops, saveCarousingDrops, getCarousingSession, saveCarousingSession, setCarousingDrop, setCarousingTier, setCarousingTable, setPlayerConfirmation, setPlayerModifier, addGmParticipant, removeGmParticipant, resetCarousingSession, addCarousingResult, removeCarousingResult, pruneOfflineCarousingData } from "./carousing-core.mjs";
 
 /**
  * Get online players and GM-added actors with their carousing data
@@ -196,14 +200,15 @@ function getParticipants() {
  * @param {"benefit"|"mishap"} type - the table to roll on first
  * @param {number} outcomeModifier - the outcome row's d100 modifier
  * @param {object} playerMods - per-player custom modifiers ({benefits, mishaps})
+ * @param {object|null} [holiday] - holidayEffects() for this character
  * @returns {Promise<{type: string, diceRoll: number, modifier: number, finalRoll: number,
  * description: string}>}
  */
-export async function rollExpandedD100(type, outcomeModifier, playerMods = {}) {
+export async function rollExpandedD100(type, outcomeModifier, playerMods = {}, holiday = null) {
 	let result = null;
 	for (let hop = 0; hop < 4; hop++) {
 		const extra = playerMods[type === "benefit" ? "benefits" : "mishaps"];
-		const roll = await new Roll(`1d100${extra ? ` + ${extra}` : ""}`).evaluate();
+		const roll = await new Roll(d100Formula(type, extra, holiday)).evaluate();
 		await showDSNRoll(roll, type);
 
 		const diceRoll = roll.total;
@@ -228,7 +233,7 @@ export async function rollExpandedD100(type, outcomeModifier, playerMods = {}) {
  * Execute expanded carousing rolls for all participants
  * Uses d8 for outcome table, then d100 for benefits/mishaps
  */
-async function executeExpandedCarousingRolls(session, tier, participants) {
+async function executeExpandedCarousingRolls(session, tier, participants, holiday) {
 	const results = {};
 	const chatContent = [];
 
@@ -240,6 +245,7 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
         <div class="sdx-carousing-header">
             <h2><i class="fas fa-beer"></i> Carousing <span class="sdx-carousing-mode-tag">Expanded</span></h2>
             <div class="sdx-carousing-cost"><strong>Total Cost:</strong> ${tier.cost} GP (${costPerPerson} GP each for ${participantCount} participant${participantCount > 1 ? "s" : ""})</div>
+            ${holidayChatHeader(holiday)}
         </div>
     `);
 
@@ -253,6 +259,10 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
 		// Deduct shared cost from each participant
 		await deductCoins(actor, costPerPerson);
 
+		// Today's holiday, as this character's garb answers leave it
+		const effects = holidayEffects(holiday, session.garb?.[participant.participantId]);
+		const holidayBonus = effects?.eventBonus || 0;
+
 		// Get actor's renown bonus for the carousing event roll
 		const renown = getActorRenown(actor);
 		const renownBonus = getRenownBonus(renown);
@@ -262,7 +272,9 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
 		const outcomeMod = playerMods.outcome ? ` + ${playerMods.outcome}` : "";
 
 		// Roll 1d8 + tier bonus + renown bonus + custom modifier for outcome table
-		const outcomeRoll = await new Roll(`1d8 + ${tier.bonus} + ${renownBonus}${outcomeMod}`).evaluate();
+		const outcomeRoll = await new Roll(
+			`1d8 + ${tier.bonus} + ${renownBonus}${outcomeMod}${holidayBonus ? signedTerm(holidayBonus) : ""}`
+		).evaluate();
 
 		// Show 3D dice animation with black dice for outcome
 		await showDSNRoll(outcomeRoll, "outcome");
@@ -280,15 +292,17 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
 		// may land in the opposite list from the one that triggered it.
 		const benefitResults = [];
 		const mishapResults = [];
-		for (let i = 0; i < outcome.benefits; i++) {
-			const r = await rollExpandedD100("benefit", outcome.modifier, playerMods);
+		const benefitRolls = outcome.benefits + (effects?.extraBenefit ? 1 : 0);
+		const mishapRolls = outcome.mishaps + (effects?.extraMishap ? 1 : 0);
+		for (let i = 0; i < benefitRolls; i++) {
+			const r = await rollExpandedD100("benefit", outcome.modifier, playerMods, effects);
 			r.renownDelta = await applyRenownDelta(
 				actor, parseRenownDelta(r.description), r.description
 			);
 			(r.type === "benefit" ? benefitResults : mishapResults).push(r);
 		}
-		for (let i = 0; i < outcome.mishaps; i++) {
-			const r = await rollExpandedD100("mishap", outcome.modifier, playerMods);
+		for (let i = 0; i < mishapRolls; i++) {
+			const r = await rollExpandedD100("mishap", outcome.modifier, playerMods, effects);
 			r.renownDelta = await applyRenownDelta(
 				actor, parseRenownDelta(r.description), r.description
 			);
@@ -323,7 +337,11 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
 		if (playerMods.outcome) {
 			outcomeFormula += ` <span class="sdx-roll-custom-mod">+ ${playerMods.outcome}</span>`;
 		}
+		if (holidayBonus) {
+			outcomeFormula += ` <span class="sdx-roll-holiday">${signedTerm(holidayBonus).trim()}</span>`;
+		}
 		outcomeFormula += ` = <strong>${outcomeTotal}</strong>`;
+		const holidayNotes = holidayChatNotes(holiday, effects, await rollHolidayChances(effects));
 
 		// Build chat content for this player
 		// Read visibility settings
@@ -344,7 +362,7 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
                         </div>
                     </div>
                     <div class="sdx-xp-badge">+${outcome.xp} XP</div>
-                </div>`;
+                </div>${holidayNotes}`;
 
 		// Add benefits
 		if (benefitResults.length > 0) {
@@ -405,10 +423,12 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
 		tierDescription: tier.description || "",
 		tierCost: tier.cost || 0,
 		costPerPerson,
+		holiday: holiday?.name || "",
 	};
 	await applyExpandedCarousingNotes(session);
 	await saveCarousingSession(session, { replaceResults: true });
 	await writeCarousingLogPage(session);
+	await passCarousingTime(tier);
 
 	// Send chat message
 	await ChatMessage.create({
@@ -420,14 +440,88 @@ async function executeExpandedCarousingRolls(session, tier, participants) {
 }
 
 // ============================================
+// HOLIDAYS AND THE TWO-WEEK WARNING (#151)
+// ============================================
+
+/** " + n" or " - n": a signed term for a roll formula. */
+function signedTerm(n) {
+	return n < 0 ? ` - ${-n}` : ` + ${n}`;
+}
+
+/** Roll a holiday's 1-in-N chances for one character; the labels that came up. */
+async function rollHolidayChances(effects) {
+	const hits = [];
+	for (const chance of effects?.chances ?? []) {
+		const oneIn = Math.floor(Number(chance.oneIn));
+		if (!(oneIn >= 1)) continue;
+		const roll = await new Roll(`1d${oneIn}`).evaluate();
+		if (roll.total === 1) hits.push(chance.label);
+	}
+	return hits;
+}
+
+/** The chat card's line naming today's holiday and what it does. */
+function holidayChatHeader(holiday) {
+	if (!holiday) return "";
+	const esc = foundry.utils.escapeHTML ?? Handlebars.Utils.escapeExpression;
+	const title = game.i18n.format("SHADOWDARK_EXTRAS.carousing.holiday", { name: holiday.name });
+	const lines = holidayLines(holiday).map(esc).join(" · ");
+	return `<div class="sdx-carousing-holiday"><i class="fas fa-masks-theater"></i> <strong>${esc(title)}</strong>${lines ? ` — ${lines}` : ""}</div>`;
+}
+
+/** What the holiday did to one character: kept out, garb notes, chances that came up. */
+function holidayChatNotes(holiday, effects, hits) {
+	if (!holiday || !effects) return "";
+	const esc = foundry.utils.escapeHTML ?? Handlebars.Utils.escapeExpression;
+	const lines = [];
+	if (!effects.admitted) {
+		lines.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.holiday_not_admitted", {
+			name: holiday.name,
+		}));
+	}
+	lines.push(...effects.notes);
+	for (const label of hits) {
+		lines.push(game.i18n.format("SHADOWDARK_EXTRAS.carousing.holiday_chance_hit", { label }));
+	}
+	return lines.map(line => `<div class="sdx-carousing-holiday-note"><i class="fas fa-masks-theater"></i> ${esc(line)}</div>`).join("");
+}
+
+/**
+ * GMWR p.34: carouse once every two weeks of real time. Lists the characters
+ * the carousing log shows carousing less than 14 days ago and lets the GM go
+ * on anyway. A warning, never a block.
+ * @returns {Promise<boolean>} true to roll
+ */
+async function confirmRecentCarousers(participants) {
+	const recent = recentCarousers(
+		carousingLogEntries(),
+		participants.map(p => p.droppedActor?.id).filter(Boolean)
+	);
+	if (!recent.length) return true;
+	const esc = foundry.utils.escapeHTML ?? Handlebars.Utils.escapeExpression;
+	const rows = recent.map(({ actorId, daysAgo }) => `<li>${esc(game.i18n.format(
+		"SHADOWDARK_EXTRAS.carousing.recent_row",
+		{ name: game.actors.get(actorId)?.name ?? "?", days: daysAgo }
+	))}</li>`).join("");
+	return (await foundry.applications.api.DialogV2.confirm({
+		window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.recent_title") },
+		content: `<p>${esc(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.recent_intro"))}</p><ul>${rows}</ul>`,
+		yes: { label: game.i18n.localize("SHADOWDARK_EXTRAS.carousing.recent_continue") },
+		rejectClose: false,
+	})) === true;
+}
+
+// ============================================
 // ROLL AND OUTCOME LOGIC
 // ============================================
 
 /**
  * Get outcome for a roll result from a given outcomes array
  * Handles new format: roll can be "1", "2", "14+" etc.
+ * A total outside the table's rows counts as its nearest row.
  */
-function getOutcome(rollTotal, outcomes) {
+export function getOutcome(rollTotal, outcomes) {
+	rollTotal = clampToOutcomeRows(rollTotal, outcomes);
 	for (const outcome of outcomes) {
 		const rollStr = String(outcome.roll || "");
 
@@ -500,13 +594,32 @@ export async function executeCarousingRolls() {
 		return;
 	}
 
+	// Carousing never overlaps a Shadowdark Enhancer downtime session.
+	if (await downtimeOpen(getEnhancer())) {
+		ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.downtime_open"));
+		return;
+	}
+
+	// The settlement's limit, and today's holiday there, as of this roll.
+	const place = await resolveCarousingPlace(session);
+	if (tierOverLimit(tier, place.limit)) {
+		ui.notifications.warn(game.i18n.format(
+			"SHADOWDARK_EXTRAS.carousing.tier_over_limit", { limit: place.limit }
+		));
+		return;
+	}
+	const holiday = place.holiday;
+
+	// Once every two weeks of real time: a warning the GM may overrule.
+	if (!(await confirmRecentCarousers(participants))) return;
+
 	// Set phase to rolling
 	session.phase = "rolling";
 	session.results = {};
 
 	// Branch based on carousing mode
 	if (mode === "expanded") {
-		await executeExpandedCarousingRolls(session, tier, participants);
+		await executeExpandedCarousingRolls(session, tier, participants, holiday);
 		return;
 	}
 
@@ -523,6 +636,7 @@ export async function executeCarousingRolls() {
         <div class="sdx-carousing-header">
             <h2><i class="fas fa-beer"></i> Carousing <span class="sdx-carousing-mode-tag">Original</span></h2>
             <div class="sdx-carousing-cost"><strong>Total Cost:</strong> ${tier.cost} GP (${costPerPerson} GP each for ${participantCount} participant${participantCount > 1 ? "s" : ""})</div>
+            ${holidayChatHeader(holiday)}
         </div>
     `);
 
@@ -540,8 +654,14 @@ export async function executeCarousingRolls() {
 		const playerMods = session.modifiers?.[participant.participantId] || {};
 		const outcomeMod = playerMods.outcome ? ` + ${playerMods.outcome}` : "";
 
-		// Roll 1d8 + bonus + custom modifier
-		const roll = await new Roll(`1d8 + ${tier.bonus}${outcomeMod}`).evaluate();
+		// Today's holiday, as this character's garb answers leave it. Original
+		// mode has no d100 tables, so only its event-roll bonus applies.
+		const effects = holidayEffects(holiday, session.garb?.[participant.participantId]);
+		const holidayBonus = effects?.eventBonus || 0;
+		const holidayTerm = holidayBonus ? signedTerm(holidayBonus) : "";
+
+		// Roll 1d8 + bonus + custom modifier + holiday
+		const roll = await new Roll(`1d8 + ${tier.bonus}${outcomeMod}${holidayTerm}`).evaluate();
 
 		// Show 3D dice animation with black dice for outcome
 		await showDSNRoll(roll, "outcome");
@@ -585,10 +705,11 @@ export async function executeCarousingRolls() {
                         <strong class="sdx-player-name">${participant.isGmManaged ? participant.droppedActorName : participant.name}</strong>
                         <div class="sdx-outcome-roll">
                             <span class="sdx-roll-label">Roll:</span>
-                            <span class="sdx-roll-formula">${diceResult} + ${tier.bonus}${playerMods.outcome ? ` + ${playerMods.outcome}` : ""} = <strong>${rollTotal}</strong></span>
+                            <span class="sdx-roll-formula">${diceResult} + ${tier.bonus}${playerMods.outcome ? ` + ${playerMods.outcome}` : ""}${holidayTerm} = <strong>${rollTotal}</strong></span>
                         </div>
                     </div>
                 </div>
+                ${holidayChatNotes(holiday, effects, await rollHolidayChances(effects))}
                 ${descHtml}
                 ${benefitHtml}
             </div>
@@ -605,9 +726,11 @@ export async function executeCarousingRolls() {
 		tierDescription: tier.description || "",
 		tierCost: tier.cost || 0,
 		costPerPerson,
+		holiday: holiday?.name || "",
 	};
 	await saveCarousingSession(session, { replaceResults: true });
 	await writeCarousingLogPage(session);
+	await passCarousingTime(tier);
 
 	// Send chat message
 	await ChatMessage.create({

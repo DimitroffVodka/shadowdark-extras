@@ -327,7 +327,17 @@ export function installCanvasGlobals({ isGM = true, gsap = makeGsapRecorder() } 
 
 	globalThis.foundry = {
 		// v14+ deletion sentinel, used by unsetFlag instead of the legacy "-=" key.
-		data: { operators: { ForcedDeletion: class ForcedDeletion {} } },
+		data: {
+			operators: { ForcedDeletion: class ForcedDeletion {} },
+			// Settings typed with a DataField (the carousing limits) construct one.
+			fields: {
+				NumberField: class NumberField {
+					constructor(options = {}) {
+						this.options = options;
+					}
+				},
+			},
+		},
 		utils: {
 			// Foundry's Collection is a Map with lookup helpers; stores built at
 			// module load construct one, so it has to be a real constructor.

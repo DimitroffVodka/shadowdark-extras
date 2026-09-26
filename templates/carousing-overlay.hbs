@@ -54,15 +54,29 @@
                     </button>
                 </div>
 
+                <div class="sdx-carousing-tier-select sdx-carousing-settlement-select">
+                    <label>{{localize "SHADOWDARK_EXTRAS.carousing.settlement"}}:</label>
+                    <select data-action="select-settlement">
+                        {{#each settlementOptions}}
+                        <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+                        {{/each}}
+                    </select>
+                    <span class="sdx-carousing-limit"><i class="fas fa-coins"></i> {{limitLabel}}</span>
+                </div>
+
                 <div class="sdx-carousing-tier-select">
                     <label>{{localize "SHADOWDARK_EXTRAS.carousing.select_tier"}}:</label>
                     <select data-action="select-tier">
                         <option value="">-- {{localize "SHADOWDARK_EXTRAS.carousing.choose_tier"}} --</option>
                         {{#each tierOptions}}
-                        <option value="{{this.index}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+                        <option value="{{this.index}}" {{#if this.selected}}selected{{/if}} {{#if
+                            this.disabled}}disabled{{/if}}>{{this.label}}</option>
                         {{/each}}
                     </select>
                 </div>
+                {{#if overLimitText}}
+                <div class="sdx-carousing-over-limit"><i class="fas fa-exclamation-triangle"></i> {{overLimitText}}</div>
+                {{/if}}
 
                 {{#if (gt participantCount 0)}}
                 <div class="sdx-carousing-gm-status">
@@ -89,6 +103,20 @@
                         <i class="fas fa-book"></i> {{localize "SHADOWDARK_EXTRAS.carousing.log_open"}}
                     </button>
                 </div>
+            </div>
+            {{/if}}
+
+            {{#if holiday}}
+            <div class="sdx-carousing-cost-info sdx-carousing-holiday-box">
+                <i class="fas fa-masks-theater"></i> <strong>{{holiday.title}}</strong>
+                {{#each holiday.lines}}<span class="sdx-carousing-holiday-line">{{this}}</span>{{/each}}
+                {{#if holiday.expandedOnly}}
+                <div class="sdx-carousing-holiday-hint">{{localize "SHADOWDARK_EXTRAS.carousing.holiday_expanded_only"}}</div>
+                {{/if}}
+            </div>
+            {{else if holidayImportHint}}
+            <div class="sdx-carousing-holiday-hint">
+                <i class="fas fa-masks-theater"></i> {{localize "SHADOWDARK_EXTRAS.carousing.holiday_import_hint"}}
             </div>
             {{/if}}
 
@@ -360,6 +388,26 @@
                                     {{this.modifiers.outcome}}</span>{{/if}}{{else}}+{{this.renown}}{{/if}}
                             </span>
                         </div>
+                        {{/if}}
+
+                        {{!-- Holiday garb questions: the GM answers them for this character --}}
+                        {{#if this.hasDrop}}
+                        {{#unless this.result}}
+                        {{#if this.garb.length}}
+                        <div class="sdx-carousing-garb">
+                            {{#each this.garb}}
+                            <label class="sdx-carousing-garb-question">
+                                <input type="checkbox" data-action="holiday-garb" data-garb-key="{{this.key}}"
+                                    {{checked this.checked}} {{#unless @root.isGM}}disabled{{/unless}}>
+                                {{this.label}}
+                            </label>
+                            {{/each}}
+                            {{#if this.notAdmitted}}
+                            <div class="sdx-carousing-garb-out">{{this.notAdmitted}}</div>
+                            {{/if}}
+                        </div>
+                        {{/if}}
+                        {{/unless}}
                         {{/if}}
 
                         {{!-- Flip button (only if has result) --}}
