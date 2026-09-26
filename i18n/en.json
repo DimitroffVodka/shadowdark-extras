@@ -661,6 +661,7 @@
   "SHADOWDARK_EXTRAS.carousing.settlement_city_state": "City-State",
   "SHADOWDARK_EXTRAS.carousing.settlement_none": "None (no limit)",
   "SHADOWDARK_EXTRAS.carousing.settlement_from_map": "From the party's hex: {name}",
+  "SHADOWDARK_EXTRAS.carousing.settlement_map_none": "no settlement",
   "SHADOWDARK_EXTRAS.carousing.limit": "Limit: {limit} gp",
   "SHADOWDARK_EXTRAS.carousing.limit_none": "No limit",
   "SHADOWDARK_EXTRAS.carousing.tier_over_limit": "This tier costs more than the settlement's {limit} gp limit. Choose a cheaper tier or another settlement.",

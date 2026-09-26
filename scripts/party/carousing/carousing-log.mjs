@@ -147,13 +147,16 @@ export async function writeCarousingLogPage(session) {
 /**
  * One entry per logged carousing session: who caroused and when the page was
  * created. Pages written before #151 carry no actor ids and are skipped.
- * @param {string} [excludeLogId] the session being rolled again, if any
+ *
+ * Every page counts, including the one whose logId the live session still
+ * holds: that id is the PREVIOUS roll's (a new one is made only after a roll,
+ * and choosing a tier does not clear it), so skipping it hid the very session
+ * the warning is for. A true re-roll warns "0 days ago", which is right.
  * @returns {{actorIds: string[], at: number}[]}
  */
-export function carousingLogEntries(excludeLogId) {
+export function carousingLogEntries() {
 	const journal = game.journal.find(j => j.getFlag(MODULE_ID, "isCarousingLog"));
 	return (journal?.pages?.contents ?? [])
-		.filter(page => !excludeLogId || page.getFlag(MODULE_ID, "logId") !== excludeLogId)
 		.map(page => ({
 			actorIds: page.getFlag(MODULE_ID, "actorIds") ?? [],
 			at: page._stats?.createdTime,

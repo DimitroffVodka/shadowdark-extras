@@ -216,10 +216,12 @@ function localLimits() {
 }
 
 /**
- * The settlement in the hex under the party token: on the scene the user is
- * viewing, else on the active scene. Only hex scenes have hex records.
+ * The hex under the party token, on the scene the user is viewing, else on
+ * the active scene (only hex scenes have hex records): a key naming that hex,
+ * and the settlement its record holds.
+ * @returns {{key: string, settlement: object|null}|null}
  */
-function partySettlement() {
+function partyHex() {
 	const scenes = new Set([globalThis.canvas?.scene, globalThis.game?.scenes?.active]);
 	for (const scene of scenes) {
 		if (!scene?.grid?.isHexagonal) continue;
@@ -228,9 +230,41 @@ function partySettlement() {
 		);
 		if (!token) continue;
 		const { i, j } = scene.grid.getOffset(token.getCenterPoint());
-		return settlementOf(getHexRecordMap(scene.id).get(`${i}_${j}`));
+		const hexKey = `${i}_${j}`;
+		return {
+			key: `${scene.id}/${hexKey}`,
+			settlement: settlementOf(getHexRecordMap(scene.id).get(hexKey)),
+		};
 	}
 	return null;
+}
+
+/**
+ * The last holiday lookup: {key, holiday, holidaysImported}. The overlay
+ * renders on every session change on every client, and Enhancer's lookup
+ * reads a compendium, so it is asked again only when the party's hex, its
+ * settlement or the world's day changes, or the window is reopened.
+ */
+let holidayCache = null;
+
+/** Forget the cached holiday lookup (the carousing window calls it on open). */
+export function clearCarousingPlaceCache() {
+	holidayCache = null;
+}
+
+/** Today's holiday at a place, and whether Enhancer has any holidays imported. */
+async function lookupHoliday(holidays, place) {
+	try {
+		const holiday = (await holidays.today({ place }))?.[0] ?? null;
+		const holidaysImported = !holiday && typeof holidays.list === "function"
+			? (await holidays.list()).length > 0
+			: null;
+		return { holiday, holidaysImported };
+	}
+	catch(err) {
+		console.warn(`${MODULE_ID} | carousing: could not read Enhancer's holidays`, err);
+		return { holiday: null, holidaysImported: null };
+	}
 }
 
 /**
@@ -241,7 +275,8 @@ function partySettlement() {
  */
 export async function resolveCarousingPlace(session) {
 	const enhancer = getEnhancer();
-	const fromMap = partySettlement();
+	const hex = partyHex();
+	const fromMap = hex?.settlement ?? null;
 	const chosen = SETTLEMENT_KINDS.includes(session?.settlement) || session?.settlement === "none"
 		? session.settlement : null;
 	const kind = chosen ?? fromMap?.kind ?? "none";
@@ -251,15 +286,12 @@ export async function resolveCarousingPlace(session) {
 	let holidaysImported = null;
 	const holidays = enhancer?.holidays;
 	if (fromMap?.place && typeof holidays?.today === "function") {
-		try {
-			holiday = (await holidays.today({ place: fromMap.place }))?.[0] ?? null;
-			if (!holiday && typeof holidays.list === "function") {
-				holidaysImported = (await holidays.list()).length > 0;
-			}
+		const date = globalThis.game?.time?.components;
+		const key = `${hex.key}|${fromMap.place}|${date?.year}:${date?.day}`;
+		if (holidayCache?.key !== key) {
+			holidayCache = { key, ...(await lookupHoliday(holidays, fromMap.place)) };
 		}
-		catch(err) {
-			console.warn(`${MODULE_ID} | carousing: could not read Enhancer's holidays`, err);
-		}
+		({ holiday, holidaysImported } = holidayCache);
 	}
 	return { kind, chosen: chosen !== null, fromMap, limit, holiday, holidaysImported };
 }

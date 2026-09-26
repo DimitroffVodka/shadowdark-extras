@@ -158,3 +158,128 @@ test("the two-week warning names who caroused less than 14 real days ago", () =>
 	]);
 	assert.deepEqual(recentCarousers([], ["a"], now), []);
 });
+
+// ── Review fixes on PR #159 ────────────────────────────────────────────────
+
+globalThis.CONST ??= {
+	TABLE_RESULT_TYPES: { TEXT: "text", DOCUMENT: "document" },
+	USER_ROLES: {},
+	DOCUMENT_OWNERSHIP_LEVELS: { NONE: 0 },
+};
+const { clampToOutcomeRows, expandedOutcomeFor } = await import(
+	"../../scripts/party/carousing/carousing-core.mjs"
+);
+const { getOutcome } = await import("../../scripts/party/carousing/CarousingSD.mjs");
+const { carousingLogEntries } = await import("../../scripts/party/carousing/carousing-log.mjs");
+const { clearCarousingPlaceCache, resolveCarousingPlace } = await import(
+	"../../scripts/party/carousing/carousing-rules.mjs"
+);
+
+// Invented rows; `xp` only tells them apart.
+const expandedRows = count => Array.from({ length: count }, (_, i) => ({ roll: i + 1, xp: i + 1 }));
+
+test("Expanded: a total below the first row gets the first row, not the best", () => {
+	const rows = expandedRows(25);
+	assert.equal(expandedOutcomeFor(0, rows).roll, 1);
+	assert.equal(expandedOutcomeFor(-3, rows).roll, 1);
+	assert.equal(expandedOutcomeFor(7, rows).roll, 7);
+	assert.equal(expandedOutcomeFor(40, rows).roll, 25);
+	// a shorter table tops out at its own last row
+	assert.equal(expandedOutcomeFor(23, expandedRows(20)).roll, 20);
+});
+
+test("Original: a total below the first row gets the first row; above, the top row", () => {
+	const rows = [
+		{ roll: "1", description: "worst" }, { roll: "2", description: "two" },
+		{ roll: "3", description: "three" }, { roll: "4+", description: "best" },
+	];
+	assert.equal(getOutcome(0, rows).description, "worst");
+	assert.equal(getOutcome(-2, rows).description, "worst");
+	assert.equal(getOutcome(3, rows).description, "three");
+	assert.equal(getOutcome(9, rows).description, "best");
+	const closed = [{ roll: "1", description: "one" }, { roll: "2", description: "two" }];
+	assert.equal(getOutcome(8, closed).description, "two");
+	assert.equal(clampToOutcomeRows(5, []), 5);
+});
+
+// Foundry stand-ins for the log journal, the hex journal and Enhancer.
+const NOW = Date.UTC(2026, 8, 26, 12);
+const logPages = [];
+const logJournal = {
+	name: "Carousing Log",
+	getFlag: (scope, key) => key === "isCarousingLog",
+	pages: { get contents() { return logPages; } },
+};
+const hexRecords = {
+	"3_4": { features: [{ id: "settlement-712", type: "town", name: "Hollowmere" }] },
+	"5_4": { features: [{ id: "settlement-914", type: "village", name: "Dunwold" }] },
+};
+const hexJournal = {
+	name: "__sdx_hex_data__",
+	getFlag: (scope, key) => (key === "hexData" ? { s1: hexRecords } : undefined),
+};
+const party = { i: 3, j: 4 };
+const scene = {
+	id: "s1",
+	grid: { isHexagonal: true, getOffset: () => ({ ...party }) },
+	tokens: [{
+		actor: { type: "NPC", getFlag: (scope, key) => key === "isParty" },
+		getCenterPoint: () => ({ x: 0, y: 0 }),
+	}],
+};
+const calls = { today: 0, list: 0 };
+const worldDay = { year: 3, day: 40 };
+globalThis.game = {
+	modules: { get: id => (id === "shadowdark-enhancer" ? { active: true } : undefined) },
+	shadowdarkEnhancer: {
+		holidays: {
+			today: async () => { calls.today++; return []; },
+			list: async () => { calls.list++; return [lanternFair]; },
+		},
+	},
+	settings: { get: () => { throw new Error("not registered"); } },
+	scenes: { active: scene },
+	time: { components: worldDay },
+	journal: { find: predicate => [hexJournal, logJournal].find(predicate) },
+};
+
+test("the warning counts the session the live carouse last rolled", () => {
+	// This page's logId is still session.logId until the next roll makes a new
+	// one; excluding it hid a party that caroused 5 days ago without a Reset.
+	logPages.push({
+		getFlag: (scope, key) => ({ logId: "last-roll", actorIds: ["a"] })[key],
+		_stats: { createdTime: NOW - 5 * DAY },
+	});
+	assert.deepEqual(recentCarousers(carousingLogEntries(), ["a"], NOW), [
+		{ actorId: "a", daysAgo: 5 },
+	]);
+});
+
+test("the holiday lookup is cached per hex and world day, and reset on open", async () => {
+	clearCarousingPlaceCache();
+	const first = await resolveCarousingPlace({});
+	assert.equal(first.kind, "town");
+	assert.equal(first.chosen, false);
+	assert.equal(first.fromMap.place, "settlement-712");
+	assert.equal(first.limit, Infinity);
+	assert.equal(first.holidaysImported, true);
+	assert.deepEqual(calls, { today: 1, list: 1 });
+
+	// Another render, and the GM's own choice: no new lookup
+	const chosen = await resolveCarousingPlace({ settlement: "city" });
+	assert.equal(chosen.kind, "city");
+	assert.equal(chosen.chosen, true);
+	assert.deepEqual(calls, { today: 1, list: 1 });
+
+	worldDay.day = 41;
+	await resolveCarousingPlace({});
+	assert.deepEqual(calls, { today: 2, list: 2 });
+
+	party.i = 5;
+	assert.equal((await resolveCarousingPlace({})).kind, "village");
+	assert.deepEqual(calls, { today: 3, list: 3 });
+
+	clearCarousingPlaceCache();
+	await resolveCarousingPlace({});
+	assert.deepEqual(calls, { today: 4, list: 4 });
+});

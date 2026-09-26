@@ -160,13 +160,29 @@ export function getActiveCarousingTiers() {
 }
 
 /**
+ * Move a roll total into the range an outcome table's rows cover. A negative
+ * modifier (a GM modifier, a holiday garb answer) can take a d8 total below
+ * the lowest row, and a total that matched nothing used to fall through to the
+ * last row: the best outcome. Rows are numbered ("3") or open-ended ("14+").
+ */
+export function clampToOutcomeRows(total, outcomes) {
+	const rolls = (outcomes ?? []).map(o => parseInt(o?.roll)).filter(Number.isFinite);
+	if (!rolls.length) return total;
+	return Math.min(Math.max(total, Math.min(...rolls)), Math.max(...rolls));
+}
+
+/** The Expanded outcome row for a d8 total. */
+export function expandedOutcomeFor(rollTotal, outcomes) {
+	const capped = clampToOutcomeRows(rollTotal, outcomes);
+	return outcomes.find(o => Number(o.roll) === capped) || outcomes[outcomes.length - 1];
+}
+
+/**
  * Get expanded outcome based on d8 roll (uses editable data)
  */
 export function getExpandedOutcome(rollTotal) {
 	const data = getExpandedCarousingData();
-	const outcomes = data.outcomes || EXPANDED_OUTCOME_TABLE;
-	const capped = Math.min(rollTotal, 25);
-	return outcomes.find(o => o.roll === capped) || outcomes[outcomes.length - 1];
+	return expandedOutcomeFor(rollTotal, data.outcomes || EXPANDED_OUTCOME_TABLE);
 }
 
 /**
@@ -505,6 +521,8 @@ export async function setCarousingDrop(userId, actorId) {
 		// Always clear confirmation and results when the actor changes or is removed
 		[`${base}.confirmations.${userId}`]: new foundry.data.operators.ForcedDeletion(),
 		[`${base}.results.${userId}`]: new foundry.data.operators.ForcedDeletion(),
+		// Holiday garb answers describe the old character, not the new one
+		[`${base}.garb.${userId}`]: new foundry.data.operators.ForcedDeletion(),
 	};
 
 	if (actorId) {

@@ -47,7 +47,7 @@ import {
 	recentCarousers, resolveCarousingPlace, tierOverLimit,
 } from "./carousing-rules.mjs";
 
-import { MODULE_ID, getCarousingMode, getActiveCarousingTiers, getExpandedOutcome, getExpandedBenefit, getExpandedMishap, getDefaultExpandedData, getExpandedCarousingTables, saveExpandedCarousingTables, getExpandedCarousingData, saveExpandedCarousingData, refreshLinkedCarousingTables, initCarousing, getCarousingJournal, getCarousingTablesJournal, ensureCarousingJournal, ensureCarousingTablesJournal, getCustomCarousingTables, saveCustomCarousingTables, getCarousingTableById, getCarousingGmActors, getCarousingDrops, saveCarousingDrops, getCarousingSession, saveCarousingSession, setCarousingDrop, setCarousingTier, setCarousingTable, setPlayerConfirmation, setPlayerModifier, addGmParticipant, removeGmParticipant, resetCarousingSession, addCarousingResult, removeCarousingResult, pruneOfflineCarousingData } from "./carousing-core.mjs";
+import { MODULE_ID, clampToOutcomeRows, getCarousingMode, getActiveCarousingTiers, getExpandedOutcome, getExpandedBenefit, getExpandedMishap, getDefaultExpandedData, getExpandedCarousingTables, saveExpandedCarousingTables, getExpandedCarousingData, saveExpandedCarousingData, refreshLinkedCarousingTables, initCarousing, getCarousingJournal, getCarousingTablesJournal, ensureCarousingJournal, ensureCarousingTablesJournal, getCustomCarousingTables, saveCustomCarousingTables, getCarousingTableById, getCarousingGmActors, getCarousingDrops, saveCarousingDrops, getCarousingSession, saveCarousingSession, setCarousingDrop, setCarousingTier, setCarousingTable, setPlayerConfirmation, setPlayerModifier, addGmParticipant, removeGmParticipant, resetCarousingSession, addCarousingResult, removeCarousingResult, pruneOfflineCarousingData } from "./carousing-core.mjs";
 
 /**
  * Get online players and GM-added actors with their carousing data
@@ -492,9 +492,9 @@ function holidayChatNotes(holiday, effects, hits) {
  * on anyway. A warning, never a block.
  * @returns {Promise<boolean>} true to roll
  */
-async function confirmRecentCarousers(participants, currentLogId) {
+async function confirmRecentCarousers(participants) {
 	const recent = recentCarousers(
-		carousingLogEntries(currentLogId),
+		carousingLogEntries(),
 		participants.map(p => p.droppedActor?.id).filter(Boolean)
 	);
 	if (!recent.length) return true;
@@ -518,8 +518,10 @@ async function confirmRecentCarousers(participants, currentLogId) {
 /**
  * Get outcome for a roll result from a given outcomes array
  * Handles new format: roll can be "1", "2", "14+" etc.
+ * A total outside the table's rows counts as its nearest row.
  */
-function getOutcome(rollTotal, outcomes) {
+export function getOutcome(rollTotal, outcomes) {
+	rollTotal = clampToOutcomeRows(rollTotal, outcomes);
 	for (const outcome of outcomes) {
 		const rollStr = String(outcome.roll || "");
 
@@ -609,7 +611,7 @@ export async function executeCarousingRolls() {
 	const holiday = place.holiday;
 
 	// Once every two weeks of real time: a warning the GM may overrule.
-	if (!(await confirmRecentCarousers(participants, session.logId))) return;
+	if (!(await confirmRecentCarousers(participants))) return;
 
 	// Set phase to rolling
 	session.phase = "rolling";

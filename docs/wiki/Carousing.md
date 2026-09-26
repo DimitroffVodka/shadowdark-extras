@@ -71,9 +71,9 @@ carrying the exact unpaid amount and its history.
 
 **Settlement.** The GM controls have a **Settlement** choice: village, town,
 city, city-state or none. It starts as the settlement on the party token's hex
-(the scene you are viewing, else the active scene), and you can change it; Reset
-puts it back. Tiers that cost more than the settlement's limit are disabled,
-and the limit is shown beside the choice. The limits come from Shadowdark
+(the scene you are viewing, else the active scene), and you can change it;
+**From the party's hex** goes back to the map. Tiers that cost more than the
+settlement's limit are disabled, and the limit is shown beside the choice. The limits come from Shadowdark
 Enhancer's rules data when it has them (its Rules data import reads them from
 your own GM Guide), and otherwise from the four **Configure Settings → Shadowdark
 Extras → Carousing Limit** fields. Those start empty, and an empty limit means no
