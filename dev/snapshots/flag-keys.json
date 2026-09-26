@@ -1175,6 +1175,7 @@
     "scripts/party/party-drop-transfer.mjs (api=setFlag scope=MODULE_ID key=members receiver=this.actor)",
     "scripts/party/party-drop-transfer.mjs (api=setFlag scope=MODULE_ID key=members receiver=this.actor)",
     "scripts/party/party-drop-transfer.mjs (api=setFlag scope=MODULE_ID key=members receiver=this.actor)",
+    "scripts/party/party-quests.mjs (api=getFlag scope=shadowdark-extras key=members receiver=party)",
     "scripts/party/party-token-light.mjs (api=getFlag scope=MODULE_ID key=members receiver=partyActor)",
     "scripts/party/party-token-light.mjs (api=getFlag scope=MODULE_ID key=members receiver=partyActor)",
     "scripts/party/party-token-placement.mjs (api=setFlag scope=core key=sourceId receiver=imported)",

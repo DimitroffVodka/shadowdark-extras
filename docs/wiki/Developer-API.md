@@ -29,6 +29,15 @@ audited in the console along with their caller.
 Importing internal source modules directly to sidestep the wrapper is
 unsupported, and it will break on you.
 
+## Parties
+
+Plain reads, open to players, not audited:
+
+| Method | Purpose |
+|---|---|
+| `party.list()` | Every party actor in the world (an NPC flagged `isParty`) |
+| `party.members(party)` | A party's members as actor UUIDs; takes the party actor, its UUID or its world id. A stored world id resolves to its actor's UUID and is left out when that actor is gone; a stored compendium UUID passes through as it is. `[]` for anything that is not a party |
+
 ## Creature types
 
 | Method | Purpose |

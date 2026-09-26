@@ -111,6 +111,7 @@
     "pinStyleDefaults",
     "pixelPerfectPins",
     "pixelPerfectPinsAlpha",
+    "questTracker",
     "sdBoxBorderSlice",
     "sdBoxBorderStyle",
     "sdBoxBorderTransparencyWidth",
@@ -171,6 +172,9 @@
       "aaAnimateOnSuccess",
       "aaAnimateSpellsWithoutTarget",
       "aaIntegration"
+    ],
+    "shadowdark-enhancer": [
+      "questTracker"
     ]
   },
   "dynamicSites": [

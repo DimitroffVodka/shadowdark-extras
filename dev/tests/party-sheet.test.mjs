@@ -89,6 +89,7 @@ const ROUTING = [
 	"[data-action='npc-count-decrement'] :: click -> bound _onNpcCountDecrement",
 	"[data-action='npc-count-increment'] :: click -> bound _onNpcCountIncrement",
 	"[data-action='open-member'] :: click -> bound _onOpenMember",
+	"[data-action='open-quest'] :: click -> bound _onOpenQuest",
 	"[data-action='place-members'] :: click -> bound _onPlaceMembers",
 	"[data-action='recall-members'] :: click -> bound _onRecallMembers",
 	"[data-action='remove-member'] :: click -> bound _onRemoveMember",
