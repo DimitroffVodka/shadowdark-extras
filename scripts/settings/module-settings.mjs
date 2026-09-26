@@ -175,6 +175,8 @@ export const SETTING_OWNERS = Object.freeze({
 	travelSpeedsMenu: owners(FEATURE_IDS.PARTY_MANAGEMENT),
 	partyWeatherTableUuid: owners(FEATURE_IDS.PARTY_MANAGEMENT),
 	partyWeatherTableMenu: owners(FEATURE_IDS.PARTY_MANAGEMENT),
+	grinderMode: owners(FEATURE_IDS.PARTY_MANAGEMENT),
+	grinderHitDice: owners(FEATURE_IDS.PARTY_MANAGEMENT),
 	...Object.fromEntries([
 		"showNpcCards",
 		"showItemCards",
@@ -1167,6 +1169,28 @@ export function registerSettings() {
 		config: false,
 		default: null,
 		type: Object,
+	});
+
+	// Grinder Mode for the camping rest (core rulebook p.111, #149). Shadowdark
+	// Enhancer's Modes of Play window renders these two keys in place, and its
+	// tests pin them: do not rename.
+	if (settingOwnerEnabled("grinderMode")) game.settings.register(MODULE_ID, "grinderMode", {
+		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.grinder_mode.name"),
+		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.grinder_mode.hint"),
+		scope: "world",
+		config: true,
+		default: false,
+		type: Boolean,
+	});
+
+	if (settingOwnerEnabled("grinderHitDice")) game.settings.register(MODULE_ID, "grinderHitDice", {
+		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.grinder_hit_dice.name"),
+		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.grinder_hit_dice.hint"),
+		scope: "world",
+		config: true,
+		default: 1,
+		type: Number,
+		choices: { 1: "1", 2: "2", 3: "3", 4: "4" },
 	});
 
 	// ═══════════════════════════════════════════════════════════════

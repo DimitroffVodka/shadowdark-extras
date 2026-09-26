@@ -389,6 +389,11 @@ test("camping procedure applies supplies, recovery, and tangible task outcomes",
 	assert.match(source, /applyConsumption\(finalRationPlan\.entries/);
 	assert.match(source, /"system\.attributes\.hp\.value": hpMax/);
 	assert.match(source, /refreshRestResources\(actor\)/);
+	// Grinder Mode (#149): only the picked spells come back, and every rest
+	// heals stat damage through Enhancer (1 per ability on Grinder).
+	assert.match(source, /refreshRestResources\(actor, regain\)/);
+	assert.match(source, /healStatDamage\(actor, Boolean\(grinder\)\)/);
+	assert.match(source, /"system\.roll\.hp\.advantage"/);
 	assert.match(source, /actorRollModes/);
 	assert.match(source, /case "craft"/);
 	assert.match(source, /case "entertain"/);

@@ -380,6 +380,13 @@ headers the module injects.
 | **Show Mishaps to Players** | World | on | no | Mishap-description visibility |
 | **Carousing Wealth Base** | World | coins only | no | Percentage losses from coins only, or coins plus valued gear |
 
+### Camping & Rest
+
+| Setting | Scope | Default | Reload | What it does |
+|---|---|---|---|---|
+| **Grinder Mode** (`grinderMode`) | World | off | no | The camping rest follows Grinder Mode (core rulebook p. 111): class hit dice for HP, `1d4` lost spells regained. See [Tray and Party Tools](https://github.com/DimitroffVodka/shadowdark-extras/wiki/Tray-and-Party-Tools#complete-camping-and-rest) |
+| **Grinder hit dice** (`grinderHitDice`) | World | 1 | no | 1 to 4 class hit dice per Grinder rest; shown only while Grinder Mode is on |
+
 ### NPC Features
 
 | Setting | Scope | Default | Reload | What it does |
