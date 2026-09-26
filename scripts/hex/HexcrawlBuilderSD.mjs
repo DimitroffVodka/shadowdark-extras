@@ -753,8 +753,8 @@ export function installHexcrawlApi(api, namespace, wrap) {
 		return;
 	}
 	api.hex = namespace.hex = Object.fromEntries(Object.entries({
-		buildHexcrawl: buildPublishedHexcrawl, adoptHexcrawl, upsertHexRecords, repaintHexTiles, getSpecialTiles,
-		importHexerMap, openHexerImportDialog,
+		buildHexcrawl: buildPublishedHexcrawl, adoptHexcrawl, upsertHexRecords, getHexRecords, repaintHexTiles,
+		getSpecialTiles, importHexerMap, openHexerImportDialog,
 	}).map(([name, fn]) => [name, wrap(`hex.${name}`, fn)]));
 	// Deliberately outside the wrap above: it reads a constant, so gmOnly would
 	// hide the palette from a player-side overlay and audited would write a log
@@ -793,11 +793,55 @@ export async function upsertHexRecords(sceneId, records) {
 	for (const hex of records) {
 		const { num, ...patch } = hex;
 		const { col, row } = hexNumToColRow(num);
-		if (Object.hasOwn(patch, "name")) patch.name = patch.name ? `${num}. ${patch.name}` : String(num);
+		if (Object.hasOwn(patch, "name")) {
+			// A name that already carries this hex's number, such as one read back
+			// with getHexRecords ("2849. The Gate", or "2849" for an unnamed hex),
+			// keeps one prefix rather than gaining a second.
+			const bare = patch.name.replace(new RegExp(`^0*${Number(num)}(\\.\\s*|$)`), "");
+			patch.name = bare ? `${num}. ${bare}` : String(num);
+		}
 		patches[offsetToHexKey(geom.offsetOf(col, row))] = patch;
 	}
 	if (records.length) await mergeHexRecords(sceneId, patches);
 	return { sceneId, records: records.length };
+}
+
+/**
+ * Read a scene's hex records by published number, the same `num`
+ * upsertHexRecords takes, so a caller can merge into what is stored (a
+ * settlement's `discovered`, a feature the GM added here) before it writes
+ * whole `features` lists back. Copies: changing the result never changes the
+ * store.
+ *
+ * @param {string} sceneId
+ * @param {Array<number|string>} [nums]  only these hexes; omitted means all
+ * @returns {Object<number, object>|null}  null when the scene has no published
+ *   layout; {} when it has one and no records. Hexes with no record are absent.
+ */
+export function getHexRecords(sceneId, nums) {
+	const scene = game.scenes.get(sceneId);
+	requireInput(scene, "scene not found");
+	const layout = scene.getFlag(MODULE_ID, "hexcrawl");
+	if (!(layout?.version === 1 && layout.grid)) return null;
+	const geom = makeGeom(layout, true);
+	requireInput(nums === undefined || Array.isArray(nums), "nums must be an array");
+	let wanted = nums?.map(num => validateHexNum(num, geom));
+	if (!wanted) {
+		wanted = [];
+		for (let col = geom.origin; col < geom.pubCols + geom.origin; col++) {
+			for (let row = geom.origin; row < geom.pubRows + geom.origin; row++) {
+				if (geom.inGrid(col, row)) wanted.push((col * 100) + row);
+			}
+		}
+	}
+	const stored = getHexRecordMap(sceneId);
+	const out = {};
+	for (const num of wanted) {
+		const { col, row } = hexNumToColRow(num);
+		const record = stored.get(offsetToHexKey(geom.offsetOf(col, row)));
+		if (record) out[num] = foundry.utils.deepClone(record);
+	}
+	return out;
 }
 
 /**

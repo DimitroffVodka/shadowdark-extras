@@ -1,0 +1,41 @@
+name: CHA damage
+img: icons/svg/downgrade.svg
+transfer: false
+system:
+  changes:
+    - key: system.abilities.cha.value
+      value: -1
+      priority: 20
+      type: add
+      phase: initial
+_id: cSFeMShV3FItza3l
+type: base
+disabled: false
+start: null
+duration:
+  value: null
+  units: seconds
+  expiry: null
+  expired: false
+description: ''
+origin: null
+tint: '#ffffff'
+statuses: []
+showIcon: 1
+folder: null
+sort: 0
+flags:
+  shadowdark-enhancer:
+    statDamage:
+      ability: cha
+_stats:
+  coreVersion: '14.361'
+  systemId: shadowdark
+  systemVersion: 4.0.4
+  createdTime: 1790400527758
+  modifiedTime: 1790400527758
+  lastModifiedBy: null
+  compendiumSource: null
+  duplicateSource: null
+  exportSource: null
+_key: '!effects!cSFeMShV3FItza3l'

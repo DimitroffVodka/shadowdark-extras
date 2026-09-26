@@ -943,6 +943,7 @@ function attachDamageCardListeners(html, messageId) {
 								duration: duration,
 								spellInfo: spellInfo,  // Pass spell info for focus tracking
 								cumulative: effectCumulative,  // Pass cumulative flag
+								casterActorId,  // The GM checks the sender owns it
 							});
 
 							if (success === true) {

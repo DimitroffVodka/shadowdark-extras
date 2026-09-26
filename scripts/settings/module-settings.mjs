@@ -136,6 +136,10 @@ export const SETTING_OWNERS = Object.freeze({
 	carousingShowBenefitsToPlayers: owners(FEATURE_IDS.CAROUSING),
 	carousingShowMishapsToPlayers: owners(FEATURE_IDS.CAROUSING),
 	carousingWealthBase: owners(FEATURE_IDS.CAROUSING),
+	carousingLimitVillage: owners(FEATURE_IDS.CAROUSING),
+	carousingLimitTown: owners(FEATURE_IDS.CAROUSING),
+	carousingLimitCity: owners(FEATURE_IDS.CAROUSING),
+	carousingLimitCityState: owners(FEATURE_IDS.CAROUSING),
 	carousingTablesMenu: owners(FEATURE_IDS.CAROUSING),
 	expandedCarousingData: owners(FEATURE_IDS.CAROUSING),
 	enableNpcInventory: owners(FEATURE_IDS.NPC_INVENTORY),
@@ -175,6 +179,8 @@ export const SETTING_OWNERS = Object.freeze({
 	travelSpeedsMenu: owners(FEATURE_IDS.PARTY_MANAGEMENT),
 	partyWeatherTableUuid: owners(FEATURE_IDS.PARTY_MANAGEMENT),
 	partyWeatherTableMenu: owners(FEATURE_IDS.PARTY_MANAGEMENT),
+	grinderMode: owners(FEATURE_IDS.PARTY_MANAGEMENT),
+	grinderHitDice: owners(FEATURE_IDS.PARTY_MANAGEMENT),
 	...Object.fromEntries([
 		"showNpcCards",
 		"showItemCards",
@@ -1139,6 +1145,25 @@ export function registerSettings() {
 		},
 	});
 
+	// Carousing - the most a carousing event may cost in each kind of
+	// settlement, used when Shadowdark Enhancer's rules data does not set one.
+	// Empty means no limit. They ship empty: the book's values reach a world
+	// through Enhancer's Rules data import, or the GM types them in.
+	const carousingLimit = kind => ({
+		name: game.i18n.format("SHADOWDARK_EXTRAS.settings.carousing_limit.name", {
+			settlement: game.i18n.localize(`SHADOWDARK_EXTRAS.carousing.settlement_${kind}`),
+		}),
+		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.carousing_limit.hint"),
+		scope: "world",
+		config: true,
+		default: null,
+		type: new foundry.data.fields.NumberField({ nullable: true, min: 0, integer: true }),
+	});
+	if (settingOwnerEnabled("carousingLimitVillage")) game.settings.register(MODULE_ID, "carousingLimitVillage", carousingLimit("village"));
+	if (settingOwnerEnabled("carousingLimitTown")) game.settings.register(MODULE_ID, "carousingLimitTown", carousingLimit("town"));
+	if (settingOwnerEnabled("carousingLimitCity")) game.settings.register(MODULE_ID, "carousingLimitCity", carousingLimit("city"));
+	if (settingOwnerEnabled("carousingLimitCityState")) game.settings.register(MODULE_ID, "carousingLimitCityState", carousingLimit("city_state"));
+
 	// Carousing Tables Editor Menu Button
 	// Opens a single editor that hosts both modes via an in-window Original/Expanded
 	// switch. It opens on the mode currently selected in the Carousing Mode setting.
@@ -1167,6 +1192,28 @@ export function registerSettings() {
 		config: false,
 		default: null,
 		type: Object,
+	});
+
+	// Grinder Mode for the camping rest (core rulebook p.111, #149). Shadowdark
+	// Enhancer's Modes of Play window renders these two keys in place, and its
+	// tests pin them: do not rename.
+	if (settingOwnerEnabled("grinderMode")) game.settings.register(MODULE_ID, "grinderMode", {
+		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.grinder_mode.name"),
+		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.grinder_mode.hint"),
+		scope: "world",
+		config: true,
+		default: false,
+		type: Boolean,
+	});
+
+	if (settingOwnerEnabled("grinderHitDice")) game.settings.register(MODULE_ID, "grinderHitDice", {
+		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.grinder_hit_dice.name"),
+		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.grinder_hit_dice.hint"),
+		scope: "world",
+		config: true,
+		default: 1,
+		type: Number,
+		choices: { 1: "1", 2: "2", 3: "3", 4: "4" },
 	});
 
 	// ═══════════════════════════════════════════════════════════════
