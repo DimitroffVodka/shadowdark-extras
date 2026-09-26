@@ -10,6 +10,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 - **Hexcrawl data on a map you already have.** `game.shadowdarkExtras.hex.adoptHexcrawl(sceneId, { grid })` gives an existing scene, such as a publisher's printed map, the layout a built hexcrawl carries. Hex records, the hover tooltip, the hex explorer, fog and coordinates then work on the print itself, with nothing painted over it. Shadowdark Enhancer uses it to send its hex data to the map a GM already plays on. ([#147](https://github.com/DimitroffVodka/shadowdark-extras/issues/147))
 
+### Changed
+
+- **Mysterious Casting shows the GM the whole card.** With the mask on, players still see only the mysterious-casting text, but the GM now sees the real card in chat: the roll, success or failure, damage and effects. Before, the GM got the same masked card as the players and had to remember the target number and effects. The damage card, and the damage total shown when that card is hidden from players, are never added to a masked card on a player's screen.
+
 ## [6.15.0] — 2026-09-15 — Lit lights change hands properly, Torch Sprite fixes, sprite windows fit the screen
 
 ### Fixed
