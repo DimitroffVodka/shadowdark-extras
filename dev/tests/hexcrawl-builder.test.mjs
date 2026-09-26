@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import vm from "node:vm";
 import { installPersistenceGlobals } from "./helpers/persistence-harness.mjs";
 import { installMemoryIndexedDB } from "./helpers/indexeddb-harness.mjs";
+import { escapeHTML } from "./helpers/escape-html.mjs";
 
 const world = installPersistenceGlobals();
 installMemoryIndexedDB();
@@ -449,6 +450,66 @@ test("adoption refuses a scene it cannot number, before writing anything", async
 	for (const scene of [square, short, padded, fits]) assert.equal(scene.getFlag(MODULE_ID, "hexcrawl"), undefined);
 });
 
+test("getHexRecords reads records back by published number, as copies, and tells no layout from no records", async () => {
+	const print = printScene();
+	assert.equal(builder.getHexRecords(print.id), null, "no layout");
+	await builder.adoptHexcrawl(print.id, { grid: PRINT_GRID });
+	assert.deepEqual(builder.getHexRecords(print.id), {}, "a layout, no records");
+
+	const river = { id: "river-202", type: "river", name: "River", discovered: true };
+	const town = { id: "town-1", type: "town", name: "Ashford", discovered: false };
+	await builder.upsertHexRecords(print.id, [
+		{ num: 1, name: "First", terrain: "forest" },
+		{ num: 202, terrain: "forest", features: [river, town] },
+	]);
+	const all = builder.getHexRecords(print.id);
+	assert.deepEqual(Object.keys(all).sort(), ["1", "202"], "keyed by published number, not by Foundry offset");
+	assert.equal(all[1].name, "1. First");
+
+	const one = builder.getHexRecords(print.id, ["0202", 101]);
+	assert.deepEqual(Object.keys(one), ["202"], "only the asked hexes, and a hex with no record is absent");
+	assert.deepEqual(one[202].features, [river, town], "the same features the store holds");
+	one[202].features[0].type = "dungeon";
+	one[202].features.pop();
+	assert.deepEqual(builder.getHexRecords(print.id, [202])[202].features, [river, town], "changing the result leaves the store alone");
+
+	// A record read back and written again unchanged keeps one number prefix.
+	const { 1: first } = builder.getHexRecords(print.id);
+	await builder.upsertHexRecords(print.id, [{ num: 1, ...first }, { num: 202, name: "202" }, { num: 101, name: "0101. Ford" }]);
+	let names = builder.getHexRecords(print.id);
+	assert.equal(names[1].name, "1. First");
+	assert.equal(names[202].name, "202", "an unnamed hex's bare number stays bare");
+	assert.equal(names[101].name, "101. Ford", "a zero-padded prefix is the same number");
+	await builder.upsertHexRecords(print.id, [{ num: 1, name: "10. Downs" }, { num: 2, name: "2011 Road" }]);
+	names = builder.getHexRecords(print.id);
+	assert.equal(names[1].name, "1. 10. Downs", "another number is part of the name");
+	assert.equal(names[2].name, "2. 2011 Road");
+
+	assert.throws(() => builder.getHexRecords(print.id, [909]), /outside the published grid/);
+	assert.throws(() => builder.getHexRecords(print.id, 202), /nums must be an array/);
+	assert.throws(() => builder.getHexRecords("missing"), /scene not found/);
+	const legacy = printScene({ flags: { [MODULE_ID]: { hexcrawl: { name: "Old", cols: 3, rows: 3 } } } });
+	assert.equal(builder.getHexRecords(legacy.id), null, "a legacy layout has no published numbers");
+});
+
+test("the Hex Editor keeps a feature type it does not list, so a save round-trips it", async () => {
+	const { featureTypeOptions } = await import("../../scripts/hex/HexTooltipSD.mjs");
+	foundry.utils.escapeHTML ??= escapeHTML;
+	const selected = html => [...html.matchAll(/<option value="([^"]*)" selected>/g)].map(m => m[1]);
+	const count = html => html.match(/<option /g).length;
+
+	const known = featureTypeOptions("cave");
+	assert.deepEqual(selected(known), ["cave"]);
+	for (const type of ["river", "path", "coast", "town"]) {
+		const html = featureTypeOptions(type);
+		assert.deepEqual(selected(html), [type], `${type} stays selected rather than falling back to dungeon`);
+		assert.equal(count(html), count(known) + 1, "one extra option for the unknown type");
+	}
+	assert.match(featureTypeOptions("river"), /<option value="river" selected>River<\/option>/);
+	assert.match(featureTypeOptions("city_state"), /<option value="city_state" selected>City state<\/option>/);
+	assert.doesNotMatch(featureTypeOptions("\"><b>x"), /<b>/, "an outside type is escaped");
+});
+
 test("setup exposes the same guarded hex namespace on both surfaces and removes it when disabled", async () => {
 	const source = readFileSync(new URL("../../scripts/shadowdark-extras.mjs", import.meta.url), "utf8");
 	const setup = source.slice(source.indexOf('Hooks.on("setup", () => {'), source.indexOf('// PARTY TOKEN LIGHT SYNCHRONIZATION HOOKS'));
@@ -460,9 +521,10 @@ test("setup exposes the same guarded hex namespace on both surfaces and removes 
 		assert.equal(typeof module.api.hex, enabled ? "object" : "undefined");
 		assert.equal(context.game.shadowdarkExtras?.hex, module.api.hex);
 		if (enabled) {
-			assert.deepEqual(Object.keys(module.api.hex).sort(), ["adoptHexcrawl", "buildHexcrawl", "getSpecialTiles", "getZoneColors", "importHexerMap", "openHexerImportDialog", "repaintHexTiles", "upsertHexRecords"]);
+			assert.deepEqual(Object.keys(module.api.hex).sort(), ["adoptHexcrawl", "buildHexcrawl", "getHexRecords", "getSpecialTiles", "getZoneColors", "importHexerMap", "openHexerImportDialog", "repaintHexTiles", "upsertHexRecords"]);
 			context.game.user.isGM = false;
 			await assert.rejects(module.api.hex.buildHexcrawl(fixture), /requires GM permission/);
+			await assert.rejects(module.api.hex.getHexRecords("scene"), /requires GM permission/);
 			await assert.rejects(module.api.hex.adoptHexcrawl("scene", { grid: { cols: 1, rows: 1 } }), /requires GM permission/);
 			await assert.rejects(module.api.hex.upsertHexRecords("scene", []), /requires GM permission/);
 			await assert.rejects(module.api.hex.getSpecialTiles(), /requires GM permission/);

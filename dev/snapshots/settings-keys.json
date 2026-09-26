@@ -90,6 +90,8 @@
     "enableWeaponAnimations",
     "enhanceSpells",
     "expandedCarousingData",
+    "grinderHitDice",
+    "grinderMode",
     "hexFog.defaultRevealRadius",
     "hexPainter.customTileHeight",
     "hexPainter.customTileWidth",
