@@ -81,6 +81,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
 
 import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor, registerPartyTravelSocket, registerPartySheetRerenderHooks, isPartyActor, registerPartyCleanupHooks, listParties, partyMemberUuids } from "./party/PartySheetSD.mjs";
 import { initCarouselDrag } from "./canvas/carousel-drag.mjs";
+import { openCampingRest } from "./party/CampingRestSD.mjs";
 import { extendActorCreationDialog, wrapActorCreate } from "./party/party-creation.mjs";
 import { initializeTradeSocket, ensureTradeJournal } from "./inventory/TradeWindowSD.mjs";
 import { setupCombatSocket, setupScrollingCombatText } from "./combat/CombatSettingsSD.mjs";
@@ -1595,7 +1596,6 @@ SDX.dev = {
 };
 
 // Module API for macros and integrations; hex namespace wiring lives with its builder.
-
 Hooks.on("setup", () => {
 	const module = game.modules.get("shadowdark-extras");
 	if (module) {
@@ -1662,8 +1662,8 @@ Hooks.on("setup", () => {
 			getActiveDurationSpells: audited("getActiveDurationSpells", getActiveDurationSpells),
 			showConditionsModal: audited("showConditionsModal", showConditionsModal),
 			getConditionsData: audited("getConditionsData", getConditionsData),
-
 			party: { list: listParties, members: partyMemberUuids }, // plain reads, no GM wrap
+			camping: { open: audited("camping.open", openCampingRest) }, // warns and returns a canceled reply for players
 			// --- Dungeon generator ---
 			generateDungeon: audited("generateDungeon", gmOnly("generateDungeon", generateDungeon)),
 			getGeneratorSettings: audited("getGeneratorSettings", getGeneratorSettings),
@@ -1709,7 +1709,6 @@ Hooks.on("setup", () => {
 				buildCellFloorMap: buildCellFloorMap,
 			},
 		};
-
 		// One owner or several: a key survives while ANY owner is still enabled, so
 		// a shared API is not torn out from under a feature that never depended on
 		// the one being disabled.
@@ -1721,6 +1720,7 @@ Hooks.on("setup", () => {
 		// "dev" deliberately absent: SDX.dev.castSpell calls the SYSTEM's
 		// actor.system.castSpell, so gating it here only broke the headless probe.
 		removeApi(FEATURE_IDS.SPELL_ACTIVITY, ["templates", "applySpellEffect"]);
+		removeApi(FEATURE_IDS.PARTY_MANAGEMENT, ["camping"]);
 		removeApi([FEATURE_IDS.SPELL_ACTIVITY, FEATURE_IDS.ITEM_MACROS], ["startDurationSpell", "endDurationSpell", "registerSpellModification", "getActiveDurationSpells"]);
 		removeApi(FEATURE_IDS.NPC_CREATURE_TYPES, ["getCreatureType", "getMappedCreatureType"]);
 		removeApi(FEATURE_IDS.BREAK_ON_DAMAGE, ["breakEffectOnDamage", "clearBreakOnDamage"]);

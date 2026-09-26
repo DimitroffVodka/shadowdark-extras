@@ -90,6 +90,22 @@
     cursor: not-allowed;
 }
 
+.shadowdark-extras-party .sdx-overland-state .content {
+    display: grid;
+    gap: 6px;
+    color: #e0e0e0;
+}
+
+.shadowdark-extras-party .sdx-overland-state-row {
+    display: grid;
+    grid-template-columns: 90px minmax(0, 1fr);
+    gap: 10px;
+}
+
+.shadowdark-extras-party .sdx-overland-state .hint {
+    color: #c9c2b2;
+}
+
 .sdx-camping-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

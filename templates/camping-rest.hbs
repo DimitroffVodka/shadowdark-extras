@@ -120,9 +120,14 @@
 					</div>
 
 					<label class="sdx-rest-contextual sdx-rest-inline-check {{#unless member.isHunt}}sdx-hidden{{/unless}}" data-for-task="hunt">
-						<input type="checkbox" class="sdx-rest-pushed">
+						<input type="checkbox" class="sdx-rest-pushed" {{#if member.pushed}}checked{{/if}}>
 						<span>{{localize "SHADOWDARK_EXTRAS.camping_rest.pushed_today"}}</span>
 					</label>
+					{{#if ../huntBlocked}}
+					<p class="sdx-rest-contextual {{#unless member.isHunt}}sdx-hidden{{/unless}}" data-for-task="hunt">
+						{{localize "SHADOWDARK_EXTRAS.camping_rest.hunt_blocked_weather"}}
+					</p>
+					{{/if}}
 				</div>
 			</div>
 			{{/each}}
@@ -139,7 +144,7 @@
 			</span>
 		</label>
 		<label>
-			<input type="checkbox" name="advanceTime" checked>
+			<input type="checkbox" name="advanceTime" {{#if advanceTime}}checked{{/if}} {{#if advanceTimeLocked}}disabled{{/if}}>
 			<span>
 				<strong>{{localize "SHADOWDARK_EXTRAS.camping_rest.advance_time"}}</strong>
 				<small>{{localize "SHADOWDARK_EXTRAS.camping_rest.advance_time_hint"}}</small>

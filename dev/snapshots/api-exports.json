@@ -54,7 +54,7 @@
     "manifestVersionOnDisk": "6.15.0",
     "versionReportedByFoundry": "6.15.0",
     "$versionNote": "Foundry reads module.json once at server start, so a browser reload still reports the pre-bump version. The API surface below was captured after a hard reload and is what the gate compares.",
-    "keyCount": 61,
+    "keyCount": 62,
     "keys": [
       "applyCleansingWeapon",
       "applyHolyWeapon",
@@ -67,6 +67,7 @@
       "buildHexDungeonScene",
       "buildHexcrawl",
       "buildHexcrawlFromFile",
+      "camping",
       "clearBreakOnDamage",
       "clearGeneratedTiles",
       "dev",
@@ -129,6 +130,9 @@
         "openHexerImportDialog",
         "repaintHexTiles",
         "upsertHexRecords"
+      ],
+      "camping": [
+        "open"
       ],
       "dev": [
         "castSpell"

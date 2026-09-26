@@ -564,6 +564,7 @@
 					</button>
 					{{/if}}
 
+					{{#unless overlandState}}
 					<div class="sdx-travel-speed-selector">
 						<label for="travel-speed">
 							<i class="fas fa-running"></i>
@@ -576,6 +577,7 @@
 							{{/each}}
 						</select>
 					</div>
+					{{/unless}}
 
 
 					{{#if owner}}
@@ -586,6 +588,43 @@
 					{{/if}}
 				</div>
 			</div>
+
+			{{#if overlandState}}
+			<div class="sdx-overland-state SD-box">
+				<div class="header">
+					<label>{{localize "SHADOWDARK_EXTRAS.party.travel.state.title"}}</label>
+					<span>{{#if overlandState.travelling}}{{localize
+						"SHADOWDARK_EXTRAS.party.travel.state.travelling"}}{{else}}{{localize
+						"SHADOWDARK_EXTRAS.party.travel.state.not_travelling"}}{{/if}}</span>
+				</div>
+				<div class="content sdx-overland-state-grid">
+					<div class="sdx-overland-state-row">
+						<span class="label">{{localize "SHADOWDARK_EXTRAS.party.travel.state.date"}}</span>
+						<span>{{overlandState.date}}</span>
+					</div>
+					<div class="sdx-overland-state-row">
+						<span class="label">{{localize "SHADOWDARK_EXTRAS.party.travel.state.weather_label"}}</span>
+						<span>{{overlandState.weather.label}}{{#if overlandState.weather.until}}
+							<span class="hint">({{localize "SHADOWDARK_EXTRAS.party.travel.state.until"}}
+								{{overlandState.weather.until}})</span>{{/if}}</span>
+					</div>
+					<div class="sdx-overland-state-row">
+						<span class="label">{{localize "SHADOWDARK_EXTRAS.party.travel.state.hexes"}}</span>
+						<span>{{overlandState.hexesLeft}} / {{overlandState.budget}}</span>
+					</div>
+					<div class="sdx-overland-state-row">
+						<span class="label">{{localize "SHADOWDARK_EXTRAS.party.travel.state.method_label"}}</span>
+						<span>{{overlandState.methodLabel}}</span>
+					</div>
+					{{#if overlandState.pushed}}
+					<div class="sdx-overland-state-row">
+						<span class="label">{{localize "SHADOWDARK_EXTRAS.party.travel.state.pushed"}}</span>
+						<span>{{localize "SHADOWDARK_EXTRAS.party.travel.state.yes"}}</span>
+					</div>
+					{{/if}}
+				</div>
+			</div>
+			{{/if}}
 
 			<div class="sdx-camping-rules">
 				<p>
