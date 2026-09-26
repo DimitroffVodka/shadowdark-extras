@@ -15,6 +15,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 - **Beaches and ice along the coast.** A hexcrawl built from a dataset lines every water hex beside land with beach pieces, and arctic sea with ice floats. Repainting a hex moves them to match.
 - **A hexcrawl API.** `game.shadowdarkExtras.hex` builds a painted hexcrawl scene from a dataset keyed by the map's own printed hex numbers, including maps numbered from 0000, a clipped first row, or columns that end a row short. It also updates hex records without rebuilding (`upsertHexRecords`), repaints named hexes (`repaintHexTiles`), and lists the Specials tiles (`getSpecialTiles`) and zone colours (`getZoneColors`). A keyed village, town, city or city-state paints as its settlement tile, a hex can name its exact tile art, and `networks.spanning` keeps an area-derived river network from closing into loops. See the Developer API page. Shadowdark Enhancer's Hex Tagger uses it to hand its hex data over.
 - **Hexcrawl data on a map you already have.** `game.shadowdarkExtras.hex.adoptHexcrawl(sceneId, { grid })` gives an existing scene, such as a publisher's printed map, the layout a built hexcrawl carries. Hex records, the hover tooltip, the hex explorer, fog and coordinates then work on the print itself, with nothing painted over it. Shadowdark Enhancer uses it to send its hex data to the map a GM already plays on. ([#147](https://github.com/DimitroffVodka/shadowdark-extras/issues/147))
+- **Read hex records back.** `game.shadowdarkExtras.hex.getHexRecords(sceneId, nums?)` returns a scene's hex records as copies, keyed by the map's own hex numbers, so Shadowdark Enhancer can merge into what a hex already holds instead of reading Extras' storage. ([#157](https://github.com/DimitroffVodka/shadowdark-extras/issues/157))
 - **More zone colours, and any colour.** The Hex Editor's zone swatches add Lime, Green, Forest, Olive, Cyan, Navy, Lavender, Maroon, Sand and Black, and a colour picker next to them sets any colour beyond those.
 
 ### Changed
@@ -26,6 +27,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- **The Hex Editor keeps river, path, coast and settlement features.** Saving a hex turned any feature type the editor did not list, such as the river, path and coast Shadowdark Enhancer sends, into "Dungeon", which players then saw on the map. The editor now keeps the type as it is. ([#157](https://github.com/DimitroffVodka/shadowdark-extras/issues/157))
 - **Hex highlights and zone colours show again on Foundry v14.** The hover highlight and the Alt show-all-zones overlay called a grid method v14 no longer provides, so every highlight silently drew nothing, on every scene.
 
 ## [6.15.0] — 2026-09-15 — Lit lights change hands properly, Torch Sprite fixes, sprite windows fit the screen

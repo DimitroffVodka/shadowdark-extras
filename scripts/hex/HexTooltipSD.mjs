@@ -53,6 +53,22 @@ const FEATURE_TYPES = [
 	"fort", "cave", "road", "hazard", "resource", "other", "journal",
 ];
 
+/**
+ * The Hex Editor's type dropdown for one feature. A type the list doesn't
+ * know, such as the river, path and coast Shadowdark Enhancer sends or a
+ * settlement kind, gets its own selected option, so saving the hex keeps it
+ * instead of falling back to the first option, "dungeon" (#157).
+ * @param {string} selected  the feature's stored type
+ * @returns {string} <option> HTML
+ */
+export function featureTypeOptions(selected) {
+	const types = FEATURE_TYPES.includes(selected) ? FEATURE_TYPES : [...FEATURE_TYPES, selected];
+	return types.map(t => {
+		const label = foundry.utils.escapeHTML(t.charAt(0).toUpperCase() + t.slice(1));
+		return `<option value="${foundry.utils.escapeHTML(t)}"${selected === t ? " selected" : ""}>${label}</option>`;
+	}).join("");
+}
+
 // ─── Data Layer ───────────────────────────────────────────────────────────────
 
 async function ensureHexJournal() {
@@ -1694,10 +1710,7 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const discovered = feature?.discovered ?? false;
 		const isJournal = type === "journal";
 
-		const typeOpts = FEATURE_TYPES.map(t => {
-			const label = t.charAt(0).toUpperCase() + t.slice(1);
-			return `<option value="${t}"${type === t ? " selected" : ""}>${label}</option>`;
-		}).join("");
+		const typeOpts = featureTypeOptions(type);
 
 		// Build journal list (exclude internal SDX journals)
 		const journals = game.journal

@@ -119,6 +119,7 @@ The full orchestration contract lives in
 | `hex.buildHexcrawl(dataset, options?)` | GM | Stable published-number dataset → painted Scene |
 | `hex.adoptHexcrawl(sceneId, { name?, grid })` | GM | Give an existing map scene the published layout, painting nothing |
 | `hex.upsertHexRecords(sceneId, records)` | GM | Merge records without rebuilding or repainting |
+| `hex.getHexRecords(sceneId, nums?)` | GM | Read records back by published hex number |
 | `hex.getSpecialTiles()` | GM | Catalogue Specials for explicit, unique hex assignments |
 | `buildHexcrawl(dataset, options?)` | GM | Legacy layout; retained for existing macros |
 | `buildHexcrawlFromFile(relPath, options?)` | GM | Legacy dataset JSON, relative to the SDX module directory |
@@ -378,6 +379,26 @@ await hex.upsertHexRecords(sceneId, [{ num: 2849, name: "The Gate", terrain: "mo
 - Adopting again with the same grid is a no-op and returns `adopted: false`, as
   does adopting a scene built with that grid. A scene that already has a
   different layout, published or legacy, is refused.
+
+### Reading records back
+
+`upsertHexRecords` replaces a hex's whole `features` and `notes` lists, so a
+caller that only owns some of the entries reads first and merges by `id`:
+
+```js
+const records = await hex.getHexRecords(sceneId, [2849]);
+// { 2849: { name, terrain, features: [...], notes: [...], ... } }
+```
+
+- Keyed by published hex number, the same `num` `upsertHexRecords` takes,
+  through the scene's saved layout. `nums` is optional and limits the result;
+  a number outside the published grid is refused like an upsert's.
+- A hex with no record is absent. A scene with a published layout and no
+  records gives `{}`; a scene with no published layout, or only a legacy one,
+  gives `null`.
+- The records are copies: changing the result never changes what is stored.
+- Records the Hex Editor added on cells outside the published grid have no
+  number and are not returned.
 
 ### Optional reference image — hidden is not private
 
