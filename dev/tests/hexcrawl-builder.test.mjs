@@ -315,6 +315,44 @@ test("overwrite prunes the replaced scene's hex records along with the scene (#1
 	assert.deepEqual(world.flagWrites(), []);
 });
 
+test("a scene still in the world keeps its records, whatever asked (#168)", async () => {
+	const { deleteHexSceneData } = await import("../../scripts/hex/hex-record-prune.mjs");
+	const { sceneId } = await builder.buildPublishedHexcrawl(fixture, { view: false });
+	world.clearRecords();
+	// deleteScene fires for a compendium copy too, and an export keeps the live scene's id.
+	assert.equal(await deleteHexSceneData([sceneId]), 0);
+	assert.deepEqual(world.flagWrites(), []);
+	assert.ok(world.journals[0].getFlag(MODULE_ID, "hexData")[sceneId]);
+});
+
+test("the deleteScene hook registers once and prunes on the active GM only (#168)", async () => {
+	const handlers = [];
+	const on = Hooks.on;
+	const users = game.users;
+	Hooks.on = (name, fn) => { if (name === "deleteScene") handlers.push(fn); };
+	try {
+		// A fresh module instance, so this test sees its own registration.
+		const { registerHexRecordPrune } = await import("../../scripts/hex/hex-record-prune.mjs?hook-test");
+		registerHexRecordPrune();
+		registerHexRecordPrune();
+		assert.equal(handlers.length, 1, "registered once, whichever feature asks first");
+		const { sceneId } = await builder.buildPublishedHexcrawl(fixture, { view: false });
+		const hexData = () => world.journals[0].getFlag(MODULE_ID, "hexData");
+		scenes = [];
+		game.users = { activeGM: { id: "another-gm" } };
+		handlers[0]({ id: sceneId });
+		await new Promise(resolve => setTimeout(resolve, 0));
+		assert.ok(hexData()[sceneId], "another GM's client leaves it to the active GM");
+		game.users = { activeGM: { id: game.user.id } };
+		handlers[0]({ id: sceneId });
+		await new Promise(resolve => setTimeout(resolve, 0));
+		assert.equal(hexData()[sceneId], undefined, "the active GM prunes it");
+	} finally {
+		Hooks.on = on;
+		game.users = users;
+	}
+});
+
 test("special catalogue stays exact, outside generic biome pools, and explicit locations win", async () => {
 	const catalog = await getSpecialTiles();
 	const shipped = readdirSync(new URL("../../assets/Hexes/Specials/", import.meta.url)).filter(name => name.endsWith(".webp"));

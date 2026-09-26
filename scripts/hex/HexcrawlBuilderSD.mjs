@@ -54,7 +54,7 @@
  */
 
 import { saveHexRecord, setHexTerrainBatch, mergeHexRecords, ZONE_COLORS } from "./HexTooltipSD.mjs";
-import { deleteHexSceneData } from "./hex-record-prune.mjs";
+import { deleteHexSceneData, registerHexRecordPrune } from "./hex-record-prune.mjs";
 import { buildMapPathNetwork, mapPathEdgeKey } from "../canvas/drawing-geometry.mjs";
 import { ART_IMAGE, coastArtPlacements, coastCells } from "../canvas/map-network-art.mjs";
 import { getSpecialTiles } from "./hex-special-tiles.mjs";
@@ -753,6 +753,8 @@ export function installHexcrawlApi(api, namespace, wrap) {
 		delete namespace.hex;
 		return;
 	}
+	// The painter writes records without the tooltip feature, so it prunes them too (#168).
+	registerHexRecordPrune();
 	api.hex = namespace.hex = Object.fromEntries(Object.entries({
 		buildHexcrawl: buildPublishedHexcrawl, adoptHexcrawl, upsertHexRecords, getHexRecords, repaintHexTiles,
 		getSpecialTiles, importHexerMap, openHexerImportDialog,
