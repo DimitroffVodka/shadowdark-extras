@@ -49,6 +49,8 @@
                         data-color="{{this.value}}" title="{{this.label}}"
                         style="background:{{this.hex}}"></button>
                     {{/each}}
+                    <input type="color" class="sdx-hex-color-custom" title="Custom colour"
+                        value="{{#if record.zoneColor}}{{record.zoneColor}}{{else}}#00cc44{{/if}}">
                 </div>
             </div>
             <div class="sdx-hex-edit-field-row">

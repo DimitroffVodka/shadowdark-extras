@@ -28,14 +28,24 @@ export const ZONE_COLORS = [
 	{ value: "#e74c3c", label: "Red", hex: "#e74c3c" },
 	{ value: "#e67e22", label: "Orange", hex: "#e67e22" },
 	{ value: "#f1c40f", label: "Yellow", hex: "#f1c40f" },
+	{ value: "#8bc34a", label: "Lime", hex: "#8bc34a" },
+	{ value: "#2ecc71", label: "Green", hex: "#2ecc71" },
+	{ value: "#1e7e34", label: "Forest", hex: "#1e7e34" },
+	{ value: "#808000", label: "Olive", hex: "#808000" },
 	{ value: "#1abc9c", label: "Teal", hex: "#1abc9c" },
+	{ value: "#00bcd4", label: "Cyan", hex: "#00bcd4" },
 	{ value: "#3498db", label: "Blue", hex: "#3498db" },
+	{ value: "#1f3a93", label: "Navy", hex: "#1f3a93" },
 	{ value: "#9b59b6", label: "Purple", hex: "#9b59b6" },
+	{ value: "#c9a7eb", label: "Lavender", hex: "#c9a7eb" },
 	{ value: "#e91e9b", label: "Pink", hex: "#e91e9b" },
+	{ value: "#7b241c", label: "Maroon", hex: "#7b241c" },
+	{ value: "#d4b483", label: "Sand", hex: "#d4b483" },
+	{ value: "#8b6914", label: "Brown", hex: "#8b6914" },
 	{ value: "#ecf0f1", label: "White", hex: "#ecf0f1" },
 	{ value: "#95a5a6", label: "Gray", hex: "#95a5a6" },
-	{ value: "#8b6914", label: "Brown", hex: "#8b6914" },
 	{ value: "#2c3e50", label: "Dark", hex: "#2c3e50" },
+	{ value: "#111111", label: "Black", hex: "#111111" },
 ];
 
 const FEATURE_TYPES = [
@@ -1591,6 +1601,14 @@ class HexEditApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			el.querySelectorAll(".sdx-hex-color-swatch").forEach(s => s.classList.remove("active"));
 			swatch.classList.add("active");
 			el.querySelector(".sdx-hex-color-swatches").dataset.selected = swatch.dataset.color;
+			const custom = el.querySelector(".sdx-hex-color-custom");
+			if (custom && swatch.dataset.color) custom.value = swatch.dataset.color;
+		});
+
+		// Custom zone color picker — any colour beyond the presets
+		el.querySelector(".sdx-hex-color-custom")?.addEventListener("input", e => {
+			el.querySelectorAll(".sdx-hex-color-swatch").forEach(s => s.classList.remove("active"));
+			el.querySelector(".sdx-hex-color-swatches").dataset.selected = e.target.value;
 		});
 
 		// Alt+click on canvas to add hex to Reveal Cells
