@@ -193,6 +193,18 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 		return this._pixiContainer;
 	}
 
+	_addDrawingGraphic(data, graphic) {
+		if (data.type === "mapNetwork" || ["road", "river"].includes(data.lineStyle)) {
+			// Primary is vision-masked and sits beneath Hex Fog; interface is neither.
+			if (!canvas.primary) return false;
+			graphic.sortLayer = canvas.primary.constructor.SORT_LAYERS.DRAWINGS;
+			graphic.zIndex = 0;
+			canvas.primary.addChild(graphic);
+		}
+		else this.canvasLayer.addChild(graphic);
+		return true;
+	}
+
 	// ── Socket ──────────────────────────────────────────────────
 	_registerSocketHandlers() {
 		game.socket.on(SOCKET_NAME, payload => {

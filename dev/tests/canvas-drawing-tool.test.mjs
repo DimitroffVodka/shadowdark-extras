@@ -708,6 +708,65 @@ test("a payload with no drawing id is dropped rather than half-drawn", () => {
 	assert.deepEqual(calls, []);
 });
 
+test("permanent map paths render under vision and hex fog, other drawings stay above", () => {
+	reset();
+	class Primary extends StubContainer { static SORT_LAYERS = { DRAWINGS: 600 }; }
+	const primary = new Primary();
+	const previousPrimary = globalThis.canvas.primary;
+	const previousNetwork = tool._createMapNetworkDisplay;
+	const previousLine = tool._createLineDisplay;
+	globalThis.canvas.primary = primary;
+	tool._pixiContainer = new StubContainer();
+	const make = (id, options) => {
+		const graphic = new StubContainer();
+		tool._createMapNetworkDisplay = () => graphic;
+		tool._createLineDisplay = () => graphic;
+		tool._renderPermanentEntry({ drawingId: id, strokeColor: "#ffffff", ...options });
+		return graphic;
+	};
+	try {
+		const network = make("network", { type: "mapNetwork", networkPaths: {} });
+		const legacy = make("legacy", { lineStyle: "river", startX: 0, startY: 0, points: [[0, 0], [1, 1]] });
+		const ordinary = make("ordinary", { lineStyle: "solid", startX: 0, startY: 0, points: [[0, 0], [1, 1]] });
+		assert.deepEqual(primary.children, [network, legacy]);
+		assert.equal(network.sortLayer, 600);
+		assert.equal(legacy.sortLayer, 600);
+		assert.deepEqual(tool.canvasLayer.children, [ordinary]);
+	}
+	finally {
+		globalThis.canvas.primary = previousPrimary;
+		tool._createMapNetworkDisplay = previousNetwork;
+		tool._createLineDisplay = previousLine;
+	}
+});
+
+test("a newly authored network also enters primary before persistence", async () => {
+	reset();
+	class Primary extends StubContainer { static SORT_LAYERS = { DRAWINGS: 600 }; }
+	const primary = new Primary();
+	const previousPrimary = globalThis.canvas.primary;
+	const previousNetwork = tool._createMapNetworkDisplay;
+	const previousFinalize = tool._finalizeDrawing;
+	globalThis.canvas.primary = primary;
+	tool._pixiContainer = new StubContainer();
+	const graphic = new StubContainer();
+	tool._createMapNetworkDisplay = () => graphic;
+	let persisted;
+	tool._finalizeDrawing = (local, payload) => { persisted = { local, payload }; };
+	try {
+		const id = await tool._createMapNetworkDrawing({ road: [], river: [] });
+		assert.equal(persisted.payload.drawingId, id);
+		assert.equal(persisted.local.graphics, graphic);
+		assert.deepEqual(primary.children, [graphic]);
+		assert.deepEqual(tool.canvasLayer.children, []);
+	}
+	finally {
+		globalThis.canvas.primary = previousPrimary;
+		tool._createMapNetworkDisplay = previousNetwork;
+		tool._finalizeDrawing = previousFinalize;
+	}
+});
+
 // --- world coordinates ------------------------------------------------------
 
 test("a pointer event is converted through the canvas stage, not the window", () => {

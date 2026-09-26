@@ -145,6 +145,7 @@ function isolateVisibility(docs, bounds, mapPathIds = []) {
 	if (primary?.children) {
 		for (const child of primary.children) {
 			if (!child) continue;
+			if (selectedPathGraphics.has(child)) continue;
 			const childDoc = child?.document || child?.tile?.document;
 			if (childDoc && selectedIds.has(childDoc.id)) continue;
 			const parentPlaceable = child?.object;

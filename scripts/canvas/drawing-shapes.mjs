@@ -460,7 +460,10 @@ export const DrawingShapes = {
 		};
 		const graphics = this._createMapNetworkDisplay(payload);
 		graphics.alpha = this.state.opacity;
-		this.canvasLayer.addChild(graphics);
+		if (!this._addDrawingGraphic(payload, graphics)) {
+			graphics.destroy({ children: true });
+			return;
+		}
 		await this._finalizeDrawing({ ...payload, id, graphics }, payload);
 		return id;
 	},

@@ -119,7 +119,10 @@ export const DrawingEntries = {
 				if (data.hidden && !game.user.isGM) {
 					g.visible = false;
 				}
-				this.canvasLayer.addChild(g);
+				if (!this._addDrawingGraphic(data, g)) {
+					g.destroy({ children: true });
+					return;
+				}
 				this._permanentDrawings.push({
 					id: data.drawingId,
 					graphics: g,
