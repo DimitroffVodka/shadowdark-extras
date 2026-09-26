@@ -75,6 +75,71 @@ export function calculateCookBonusHp(currentHp, maxHp, amount = 2) {
 }
 
 /**
+ * Grinder Mode HP roll (core rulebook p.111): `count` class hit dice, each with
+ * advantage for a Stout character. `die` is the class's `system.hitPoints`,
+ * such as "d8"; null when there is no die to roll.
+ * @param {string} die
+ * @param {number} count 1-4, the Grinder hit dice setting
+ * @param {boolean} advantage
+ * @returns {?string}
+ */
+export function grinderHpFormula(die, count = 1, advantage = false) {
+	const faces = /d(\d+)/i.exec(String(die ?? ""))?.[1];
+	if (!faces) return null;
+	const n = Math.min(4, Math.max(1, Number.parseInt(count, 10) || 1));
+	return advantage
+		? Array.from({ length: n }, () => `2d${faces}kh`).join(" + ")
+		: `${n}d${faces}`;
+}
+
+/**
+ * Grinder HP: current plus the roll, capped at maximum. HP already above
+ * maximum is kept, as Cook does.
+ * @param {number} currentHp
+ * @param {number} maxHp
+ * @param {number} rolled
+ * @returns {number}
+ */
+export function calculateGrinderHp(currentHp, maxHp, rolled) {
+	const current = Math.max(0, Number(currentHp) || 0);
+	const maximum = Math.max(0, Number(maxHp) || 0);
+	return Math.max(current, Math.min(maximum, current + Math.max(0, Number(rolled) || 0)));
+}
+
+/**
+ * The lost spells a Grinder rest regains. With no more lost than the 1d4 roll
+ * there is nothing to choose; otherwise the ticked ones from the pick dialog's
+ * form data, at most `count`, in list order.
+ * @param {{id:string}[]} lost
+ * @param {number} count the 1d4 roll
+ * @param {?Object<string, boolean>} picked
+ * @returns {{id:string}[]}
+ */
+export function pickRegainedSpells(lost = [], count = 0, picked = null) {
+	if (lost.length <= count) return lost;
+	return lost.filter(spell => picked?.[spell.id]).slice(0, count);
+}
+
+/**
+ * Heal stat damage through Shadowdark Enhancer's API when it is installed
+ * (shadowdark-extras#149): all of it on a normal rest, 1 point per damaged
+ * ability on a Grinder rest. Without Enhancer there is nothing tracked, so
+ * nothing to do. Reached through `globalThis` so node:test can import this file.
+ * @param {Actor} actor
+ * @param {boolean} grinder
+ */
+export async function healStatDamage(actor, grinder = false) {
+	const statDamage = globalThis.game?.shadowdarkEnhancer?.statDamage;
+	if (typeof statDamage?.heal !== "function") return;
+	try {
+		await (grinder ? statDamage.heal(actor, { perAbility: 1 }) : statDamage.heal(actor));
+	}
+	catch(error) {
+		console.warn("shadowdark-extras | Shadowdark Enhancer could not heal stat damage", error);
+	}
+}
+
+/**
  * Pick the configured ability for one task/member selection.
  * @param {Object} task
  * @param {number|string} selectedIndex

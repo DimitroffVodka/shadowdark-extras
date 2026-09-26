@@ -1334,7 +1334,7 @@ function activateWeaponBonusListeners(html, app, item) {
 		$(this).removeClass("sdx-drag-over");
 
 		const data = TextEditor.getDragEventData(e.originalEvent);
-		if (data?.type !== "Item") {
+		if (data?.type !== "Item" && data?.type !== "ActiveEffect") {
 			ui.notifications.warn("Only items can be dropped here");
 			return;
 		}
@@ -1346,8 +1346,10 @@ function activateWeaponBonusListeners(html, app, item) {
 		}
 
 		// Only accept Effect, Condition, or NPC Feature items
+		// A bare ActiveEffect (the SDX Effects library) is applied to the target as is.
 		const validTypes = ["Effect", "Condition", "NPC Feature"];
-		if (!validTypes.includes(droppedItem.type) && droppedItem.system?.category !== "effect") {
+		if (droppedItem.documentName !== "ActiveEffect"
+			&& !validTypes.includes(droppedItem.type) && droppedItem.system?.category !== "effect") {
 			ui.notifications.warn("Only Effect, Condition, or NPC Feature items can be dropped here");
 			return;
 		}
