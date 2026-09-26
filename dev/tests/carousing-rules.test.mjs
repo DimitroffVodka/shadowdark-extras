@@ -170,7 +170,9 @@ const { clampToOutcomeRows, expandedOutcomeFor } = await import(
 	"../../scripts/party/carousing/carousing-core.mjs"
 );
 const { getOutcome } = await import("../../scripts/party/carousing/CarousingSD.mjs");
-const { carousingLogEntries } = await import("../../scripts/party/carousing/carousing-log.mjs");
+const { carousingLogEntries, writeCarousingLogPage } = await import(
+	"../../scripts/party/carousing/carousing-log.mjs"
+);
 const { clearCarousingPlaceCache, resolveCarousingPlace } = await import(
 	"../../scripts/party/carousing/carousing-rules.mjs"
 );
@@ -208,7 +210,10 @@ const logPages = [];
 const logJournal = {
 	name: "Carousing Log",
 	getFlag: (scope, key) => key === "isCarousingLog",
-	pages: { get contents() { return logPages; } },
+	pages: {
+		get contents() { return logPages; },
+		find: predicate => logPages.find(predicate),
+	},
 };
 const hexRecords = {
 	"3_4": { features: [{ id: "settlement-712", type: "town", name: "Hollowmere" }] },
@@ -282,4 +287,47 @@ test("the holiday lookup is cached per hex and world day, and reset on open", as
 	clearCarousingPlaceCache();
 	await resolveCarousingPlace({});
 	assert.deepEqual(calls, { today: 4, list: 4 });
+});
+
+test("a log page keeps everyone who caroused, even after one is removed", async () => {
+	// What writeCarousingLogPage needs beyond the stand-ins above.
+	globalThis.CONST.JOURNAL_ENTRY_PAGE_FORMATS = { HTML: 1 };
+	globalThis.Handlebars = { Utils: { escapeExpression: text => String(text) } };
+	globalThis.JournalEntryPage = {
+		create: async ({ flags }) => {
+			const page = {
+				flags: { ...flags["shadowdark-extras"] },
+				_stats: { createdTime: Date.now() },
+				getFlag(scope, key) { return this.flags[key]; },
+				async update(changes) {
+					for (const [path, value] of Object.entries(changes)) {
+						if (path.startsWith("flags.shadowdark-extras.")) this.flags[path.split(".").pop()] = value;
+					}
+				},
+			};
+			logPages.push(page);
+			return page;
+		},
+	};
+	Object.assign(globalThis.game, {
+		user: { isGM: true },
+		actors: { get: id => ({ id, name: `Actor ${id}` }) },
+		i18n: { localize: key => key, format: key => key },
+	});
+
+	// Roll with A and B, then the GM removes B, which deletes B's result.
+	const session = {
+		logId: "roll-ab", logMeta: {},
+		results: { "actor-A": { roll: 5 }, "actor-B": { roll: 3 } },
+	};
+	await writeCarousingLogPage(session);
+	delete session.results["actor-B"];
+	// Applying A's outcome (or opening the log) rewrites the same page.
+	await writeCarousingLogPage(session);
+
+	const page = logPages.find(p => p.getFlag("shadowdark-extras", "logId") === "roll-ab");
+	assert.deepEqual(page.flags.actorIds, ["A", "B"]);
+	assert.deepEqual(
+		recentCarousers(carousingLogEntries(), ["B"], Date.now()).map(r => r.actorId), ["B"]
+	);
 });

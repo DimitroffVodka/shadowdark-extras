@@ -129,9 +129,13 @@ export async function writeCarousingLogPage(session) {
 
 	const existing = journal.pages.find(p => p.getFlag(MODULE_ID, "logId") === session.logId);
 	if (existing) {
+		// Attendance only grows for a logId. Removing a participant after the
+		// roll clears their session result, not the fact that they caroused, and
+		// dropping them here would skip their next two-week warning.
+		const attended = new Set([...(existing.getFlag(MODULE_ID, "actorIds") ?? []), ...actorIds]);
 		await existing.update({
 			"text.content": content,
-			[`flags.${MODULE_ID}.actorIds`]: actorIds,
+			[`flags.${MODULE_ID}.actorIds`]: [...attended],
 		});
 	}
 	else {
