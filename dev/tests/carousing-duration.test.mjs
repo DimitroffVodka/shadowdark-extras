@@ -25,6 +25,13 @@ test("carousing advances once by the tier bonus in days without Enhancer", async
 	assert.deepEqual(advances, [3 * DAY]);
 });
 
+test("the holiday's event bonus extends the outing, with a one-day minimum", async t => {
+	const advances = world(t);
+	await passCarousingTime({ bonus: 3 }, { carousing: { eventBonus: 1 } });
+	await passCarousingTime({ bonus: 0 }, { carousing: { eventBonus: -2 } });
+	assert.deepEqual(advances, [4 * DAY, DAY]);
+});
+
 test("carousing lasts at least one day, including missing or invalid tier bonuses", async t => {
 	const advances = world(t);
 	for (const bonus of [0, -2, undefined, NaN, Infinity, "bad"]) {

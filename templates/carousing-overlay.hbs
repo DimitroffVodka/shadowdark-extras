@@ -94,15 +94,23 @@
                 <div class="sdx-carousing-gm-buttons">
                     <button type="button" class="sdx-carousing-roll-btn" data-action="roll-carousing" {{#unless
                         canRoll}}disabled{{/unless}}>
-                        <i class="fas fa-dice-d20"></i> {{localize "SHADOWDARK_EXTRAS.carousing.roll"}}
+                        <i class="fas fa-dice-d20"></i> {{#if hasCompletedOuting}}{{localize "SHADOWDARK_EXTRAS.carousing.carouse_again"}}{{else}}{{localize "SHADOWDARK_EXTRAS.carousing.roll"}}{{/if}}
                     </button>
-                    <button type="button" class="sdx-carousing-reset-btn" data-action="reset-carousing">
+                    {{#if hasCompletedOuting}}
+                    <button type="button" data-action="redo-carousing" title="{{localize 'SHADOWDARK_EXTRAS.carousing.redo_hint'}}" {{#unless canRedo}}disabled{{/unless}}>
+                        <i class="fas fa-rotate-right"></i> {{localize "SHADOWDARK_EXTRAS.carousing.redo"}}
+                    </button>
+                    {{/if}}
+                    <button type="button" class="sdx-carousing-reset-btn" data-action="reset-carousing" title="{{localize 'SHADOWDARK_EXTRAS.carousing.reset_hint'}}">
                         <i class="fas fa-undo"></i> {{localize "SHADOWDARK_EXTRAS.carousing.reset"}}
                     </button>
                     <button type="button" class="sdx-carousing-log-btn" data-action="open-carousing-log">
                         <i class="fas fa-book"></i> {{localize "SHADOWDARK_EXTRAS.carousing.log_open"}}
                     </button>
                 </div>
+                {{#if hasCompletedOuting}}
+                <p>{{localize "SHADOWDARK_EXTRAS.carousing.outing_hint"}}</p>
+                {{/if}}
             </div>
             {{/if}}
 

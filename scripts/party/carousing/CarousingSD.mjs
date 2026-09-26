@@ -32,7 +32,7 @@ import {
 	migrateLegacyRenown, parseRenownDelta,
 } from "./carousing-renown.mjs";
 import {
-	appendCarousingNote, applyExpandedCarousingNotes, buildExpandedCarousingNote,
+	appendCarousingNote, buildExpandedCarousingNote,
 	getParticipantActor,
 } from "./carousing-notes.mjs";
 import {
@@ -43,9 +43,12 @@ import {
 	showDSNRoll,
 } from "./carousing-ui.mjs";
 import {
-	d100Formula, downtimeOpen, getEnhancer, holidayEffects, holidayLines, passCarousingTime,
+	d100Formula, downtimeOpen, getEnhancer, holidayEffects, holidayLines,
 	recentCarousers, resolveCarousingPlace, tierOverLimit,
 } from "./carousing-rules.mjs";
+import {
+	canRedoCarousing, captureCarousingActors, finishCarousingOuting, restoreCarousingActors,
+} from "./carousing-outing.mjs";
 
 import { MODULE_ID, clampToOutcomeRows, getCarousingMode, getActiveCarousingTiers, getExpandedOutcome, getExpandedBenefit, getExpandedMishap, getDefaultExpandedData, getExpandedCarousingTables, saveExpandedCarousingTables, getExpandedCarousingData, saveExpandedCarousingData, refreshLinkedCarousingTables, initCarousing, getCarousingJournal, getCarousingTablesJournal, ensureCarousingJournal, ensureCarousingTablesJournal, getCustomCarousingTables, saveCustomCarousingTables, getCarousingTableById, getCarousingGmActors, getCarousingDrops, saveCarousingDrops, getCarousingSession, saveCarousingSession, setCarousingDrop, setCarousingTier, setCarousingTable, setPlayerConfirmation, setPlayerModifier, addGmParticipant, removeGmParticipant, resetCarousingSession, addCarousingResult, removeCarousingResult, pruneOfflineCarousingData } from "./carousing-core.mjs";
 
@@ -233,7 +236,7 @@ export async function rollExpandedD100(type, outcomeModifier, playerMods = {}, h
  * Execute expanded carousing rolls for all participants
  * Uses d8 for outcome table, then d100 for benefits/mishaps
  */
-async function executeExpandedCarousingRolls(session, tier, participants, holiday) {
+async function executeExpandedCarousingRolls(session, tier, participants, holiday, redo) {
 	const results = {};
 	const chatContent = [];
 
@@ -257,7 +260,7 @@ async function executeExpandedCarousingRolls(session, tier, participants, holida
 		broadcastRollAnnouncement(participant.droppedActorName || actor.name);
 
 		// Deduct shared cost from each participant
-		await deductCoins(actor, costPerPerson);
+		if (!redo) await deductCoins(actor, costPerPerson);
 
 		// Today's holiday, as this character's garb answers leave it
 		const effects = holidayEffects(holiday, session.garb?.[participant.participantId]);
@@ -414,21 +417,10 @@ async function executeExpandedCarousingRolls(session, tier, participants, holida
 		chatContent.push(playerContent);
 	}
 
-	// Save results and create a stable journal-page key for this session.
+	// Redo replaces this outing's results, not its payment, clock or log identity.
 	session.results = results;
 	session.phase = "complete";
-	session.logId = foundry.utils.randomID();
-	session.logMeta = {
-		date: new Date().toLocaleString(),
-		tierDescription: tier.description || "",
-		tierCost: tier.cost || 0,
-		costPerPerson,
-		holiday: holiday?.name || "",
-	};
-	await applyExpandedCarousingNotes(session);
-	await saveCarousingSession(session, { replaceResults: true });
-	await writeCarousingLogPage(session);
-	await passCarousingTime(tier);
+	await finishCarousingOuting(session, tier, holiday, participants, redo);
 
 	// Send chat message
 	await ChatMessage.create({
@@ -547,7 +539,20 @@ export function getOutcome(rollTotal, outcomes) {
 /**
  * Execute carousing rolls for all participants (GM only)
  */
-export async function executeCarousingRolls() {
+let carousingRollInProgress = false;
+
+export async function executeCarousingRolls({ redo = false } = {}) {
+	if (!game.user.isGM || carousingRollInProgress) return;
+	carousingRollInProgress = true;
+	try {
+		return await rollCarousing(redo);
+	}
+	finally {
+		carousingRollInProgress = false;
+	}
+}
+
+async function rollCarousing(redo) {
 	if (!game.user.isGM) return;
 
 	const journal = getCarousingJournal();
@@ -559,7 +564,8 @@ export async function executeCarousingRolls() {
 	// Pull fresh data from any linked Foundry RollTables before rolling
 	await refreshLinkedCarousingTables();
 
-	const session = getCarousingSession();
+	const session = structuredClone(getCarousingSession());
+	if (session.phase === "rolling") return;
 
 	// Get the correct table based on mode
 	const mode = getCarousingMode();
@@ -572,19 +578,23 @@ export async function executeCarousingRolls() {
 		return;
 	}
 
-	const tier = activeTable.tiers[session.selectedTier];
+	const tier = redo ? session.outing?.tier : activeTable.tiers[session.selectedTier];
 	const participants = getParticipants();
+	if (redo && !canRedoCarousing(session, participants, mode)) {
+		ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.redo_unavailable"));
+		return;
+	}
 
 	// Check all participants are confirmed
 	const unconfirmed = participants.filter(p => !p.isConfirmed);
-	if (unconfirmed.length > 0) {
+	if (!redo && unconfirmed.length > 0) {
 		ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.not_all_confirmed"));
 		return;
 	}
 
 	// Check all participants can afford
 	const cantAfford = participants.filter(p => !p.canAfford);
-	if (cantAfford.length > 0) {
+	if (!redo && cantAfford.length > 0) {
 		ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.some_cannot_afford"));
 		return;
 	}
@@ -595,14 +605,14 @@ export async function executeCarousingRolls() {
 	}
 
 	// Carousing never overlaps a Shadowdark Enhancer downtime session.
-	if (await downtimeOpen(getEnhancer())) {
+	if (!redo && await downtimeOpen(getEnhancer())) {
 		ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.carousing.downtime_open"));
 		return;
 	}
 
 	// The settlement's limit, and today's holiday there, as of this roll.
-	const place = await resolveCarousingPlace(session);
-	if (tierOverLimit(tier, place.limit)) {
+	const place = redo ? { holiday: session.outing.holiday } : await resolveCarousingPlace(session);
+	if (!redo && tierOverLimit(tier, place.limit)) {
 		ui.notifications.warn(game.i18n.format(
 			"SHADOWDARK_EXTRAS.carousing.tier_over_limit", { limit: place.limit }
 		));
@@ -611,15 +621,25 @@ export async function executeCarousingRolls() {
 	const holiday = place.holiday;
 
 	// Once every two weeks of real time: a warning the GM may overrule.
-	if (!(await confirmRecentCarousers(participants))) return;
+	if (!redo && !(await confirmRecentCarousers(participants))) return;
+	if (redo) {
+		if (!await restoreCarousingActors(session, participants)) return;
+	}
+	else {
+		session.outing = {
+			mode, tier: structuredClone(tier), holiday: structuredClone(holiday),
+			before: captureCarousingActors(participants),
+		};
+	}
 
 	// Set phase to rolling
 	session.phase = "rolling";
 	session.results = {};
+	await saveCarousingSession(session, { replaceResults: true });
 
 	// Branch based on carousing mode
 	if (mode === "expanded") {
-		await executeExpandedCarousingRolls(session, tier, participants, holiday);
+		await executeExpandedCarousingRolls(session, tier, participants, holiday, redo);
 		return;
 	}
 
@@ -648,7 +668,7 @@ export async function executeCarousingRolls() {
 		broadcastRollAnnouncement(participant.droppedActorName || actor.name);
 
 		// Deduct shared cost from each participant
-		await deductCoins(actor, costPerPerson);
+		if (!redo) await deductCoins(actor, costPerPerson);
 
 		// Get custom GM modifiers for this player
 		const playerMods = session.modifiers?.[participant.participantId] || {};
@@ -716,21 +736,10 @@ export async function executeCarousingRolls() {
         `);
 	}
 
-	// Save results. A fresh logId per roll gives the log journal a stable key
-	// to create-or-update against, so re-rolling never duplicates a page.
+	// A new outing gets a new log page; Redo updates the same page.
 	session.results = results;
 	session.phase = "complete";
-	session.logId = foundry.utils.randomID();
-	session.logMeta = {
-		date: new Date().toLocaleString(),
-		tierDescription: tier.description || "",
-		tierCost: tier.cost || 0,
-		costPerPerson,
-		holiday: holiday?.name || "",
-	};
-	await saveCarousingSession(session, { replaceResults: true });
-	await writeCarousingLogPage(session);
-	await passCarousingTime(tier);
+	await finishCarousingOuting(session, tier, holiday, participants, redo);
 
 	// Send chat message
 	await ChatMessage.create({
