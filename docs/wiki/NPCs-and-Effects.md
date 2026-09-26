@@ -112,6 +112,13 @@ The module supports predefined advantages and disadvantages, spell-related
 modifiers, and special effects such as Glassbones where the pack includes them.
 Inspect an effect before you drop it on a homebrew actor.
 
+**Stat damage.** *STR damage*, *DEX damage*, *CON damage*, *INT damage*, *WIS
+damage* and *CHA damage* each take 1 point off that ability until healed. Drop
+one on a character, or into a weapon's on-hit effects or an NPC Activity so a
+homebrew monster deals it on a hit; drop it twice for 2 points. With Shadowdark
+Enhancer installed they are its tracked stat damage, which a rest heals.
+Without it, nothing heals them automatically: delete the effect.
+
 ## Source requirements
 
 An effect can be made conditional on the state of whatever it came from.

@@ -340,6 +340,28 @@ export function setupCombatSocket() {
 				return false;
 			}
 
+			const timing = {
+				combat: game.combat,
+				worldTime: game.time?.worldTime ?? 0,
+				castTiming: cast ? getDurationSpellCastTiming(cast) : undefined,
+			};
+
+			// A bare ActiveEffect (the SDX Effects library) goes onto the actor
+			// itself, flags intact. Wrapped in an Effect item it would still change
+			// the actor, but Enhancer's stat damage reads actor.effects and would
+			// never see or heal it (#148).
+			if (effectDoc.documentName === "ActiveEffect") {
+				const actor = token.actor;
+				if (data.cumulative === false) {
+					const ids = actor.effects.filter(e => e.name === effectDoc.name).map(e => e.id);
+					if (ids.length) await actor.deleteEmbeddedDocuments("ActiveEffect", ids);
+				}
+				const effectData = effectDoc.toObject();
+				applyEffectItemTiming({ effects: [effectData] }, data.duration, timing);
+				await actor.createEmbeddedDocuments("ActiveEffect", [effectData]);
+				return true;
+			}
+
 			// Check if this is a non-cumulative effect and target already has it
 			// Default to cumulative=true for backward compatibility
 			const isCumulative = data.cumulative !== false;
@@ -404,11 +426,7 @@ export function setupCombatSocket() {
 			// Active Effects embedded in Effect items do not receive Actor#_preCreate,
 			// so write both halves of Foundry v14's duration model here. Combat-based
 			// effects end at the captured cast turn; out of combat they use seconds.
-			applyEffectItemTiming(effectData, data.duration, {
-				combat: game.combat,
-				worldTime: game.time?.worldTime ?? 0,
-				castTiming: cast ? getDurationSpellCastTiming(cast) : undefined,
-			});
+			applyEffectItemTiming(effectData, data.duration, timing);
 
 			// Also apply duration to the item's system.duration if it exists
 			if (data.duration && effectData.system?.duration) {

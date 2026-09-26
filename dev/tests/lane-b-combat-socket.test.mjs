@@ -153,6 +153,39 @@ test("applyTokenCondition writes Foundry v14 duration and start data", async () 
 	assert.deepEqual(created.system.duration, { value: "2", type: "rounds" });
 });
 
+test("applyTokenCondition puts a bare ActiveEffect on the actor, flags intact (#148)", async () => {
+	const calls = [];
+	const actor = {
+		id: "target-actor",
+		items: { filter: () => [] },
+		effects: [{ id: "old", name: "STR damage" }, { id: "other", name: "Blessed" }],
+		createEmbeddedDocuments: async (type, entries) => (calls.push(["create", type, entries]), [{ id: "new" }]),
+		deleteEmbeddedDocuments: async (type, ids) => (calls.push(["delete", type, ids]), []),
+	};
+	globalThis.canvas.tokens.get = id => id === "target-token" ? { actor } : null;
+	globalThis.game.combat = null;
+	const flags = { "shadowdark-enhancer": { statDamage: { ability: "str" } } };
+	globalThis.fromUuid = async () => ({
+		documentName: "ActiveEffect",
+		name: "STR damage",
+		toObject: () => ({ name: "STR damage", duration: { value: null, units: "seconds" }, flags: structuredClone(flags) }),
+	});
+	const handler = socketHarness.registrations.get("applyTokenCondition");
+
+	assert.equal(await handler({ tokenId: "target-token", effectUuid: "Compendium.x.ActiveEffect.y" }), true);
+	assert.equal(calls.length, 1, "cumulative by default: two hits make two effects");
+	const [op, type, [created]] = calls[0];
+	assert.equal(op, "create");
+	assert.equal(type, "ActiveEffect", "not wrapped in an Effect item");
+	assert.deepEqual(created.flags, flags);
+	assert.equal(created.start, undefined, "no duration: lasts until healed");
+
+	calls.length = 0;
+	await handler({ tokenId: "target-token", effectUuid: "Compendium.x.ActiveEffect.y", cumulative: false });
+	assert.deepEqual(calls.map(c => c.slice(0, 2)), [["delete", "ActiveEffect"], ["create", "ActiveEffect"]]);
+	assert.deepEqual(calls[0][2], ["old"], "non-cumulative replaces only the same-named effect");
+});
+
 test("applySpellEffect gives owners and non-owners identical canonical timing", async () => {
 	let created;
 	const actor = Object.assign(new Actor(), {
