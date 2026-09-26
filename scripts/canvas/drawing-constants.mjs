@@ -25,3 +25,7 @@ export const COLORS = {
 
 // ─── Stamp sizes (px square) ────────────────────────────────────
 export const STAMP_SIZES = { small: 40, medium: 80, large: 140 };
+
+// Network drawings and legacy road/river lines share fog and bake behavior.
+export const isMapPathDrawing = drawing => ["mapNetwork", "road", "river"].includes(drawing.type)
+	|| ["road", "river"].includes(drawing.lineStyle);

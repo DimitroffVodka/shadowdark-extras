@@ -37,7 +37,10 @@ export const DrawingSync = {
 			data.lineStyle || "solid", data.texturePath || null
 		);
 		if (data.opacity !== undefined) g.alpha = data.opacity;
-		this.canvasLayer.addChild(g);
+		if (!this._addDrawingGraphic(data, g)) {
+			g.destroy({ children: true });
+			return;
+		}
 		this._pixiDrawings.push({
 			id: data.drawingId, graphics: g, createdAt: data.createdAt || Date.now(),
 			expiresAt: data.expiresAt, userId: data.userId, userName: data.userName,

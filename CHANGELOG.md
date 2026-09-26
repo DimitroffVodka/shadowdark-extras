@@ -32,6 +32,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- **Roads and rivers stay behind vision and Hex Fog.** Players no longer see paths across unexplored parts of a map. Legacy road and river lines follow the same rule, and Bake Map Background includes them alongside newer networks so the baked map keeps its routes. ([#162](https://github.com/DimitroffVodka/shadowdark-extras/issues/162))
 - **The Hex Editor keeps river, path, coast and settlement features.** Saving a hex turned any feature type the editor did not list, such as the river, path and coast Shadowdark Enhancer sends, into "Dungeon", which players then saw on the map. The editor now keeps the type as it is. ([#157](https://github.com/DimitroffVodka/shadowdark-extras/issues/157))
 - **Hex highlights and zone colours show again on Foundry v14.** The hover highlight and the Alt show-all-zones overlay called a grid method v14 no longer provides, so every highlight silently drew nothing, on every scene.
 

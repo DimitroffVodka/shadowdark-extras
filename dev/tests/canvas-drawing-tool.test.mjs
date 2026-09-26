@@ -29,6 +29,7 @@ globalThis.game.settings = {
 };
 
 const { sdxDrawingTool: tool } = await import("../../scripts/canvas/SDXDrawingTool.mjs");
+const drawingConstants = await import("../../scripts/canvas/drawing-constants.mjs");
 
 /** Put the tool back to a known state between tests. */
 function reset() {
@@ -706,6 +707,143 @@ test("a payload with no drawing id is dropped rather than half-drawn", () => {
 	});
 
 	assert.deepEqual(calls, []);
+});
+
+test("map path selection includes legacy line styles and types", () => {
+	const isMapPath = drawingConstants.isMapPathDrawing;
+	assert.equal(typeof isMapPath, "function");
+	for (const drawing of [
+		{ type: "mapNetwork" }, { type: "road" }, { type: "river" },
+		{ type: "line", lineStyle: "road" }, { type: "line", lineStyle: "river" },
+	]) assert.equal(isMapPath(drawing), true);
+	assert.equal(isMapPath({ type: "line", lineStyle: "solid" }), false);
+	assert.equal(isMapPath({ type: "box" }), false);
+});
+
+test("a remote legacy river line is rendered beneath fog", () => {
+	reset();
+	class Primary extends StubContainer { static SORT_LAYERS = { DRAWINGS: 600 }; }
+	const original = {
+		primary: globalThis.canvas.primary,
+		container: tool._pixiContainer,
+		createLine: tool._createLineDisplay,
+		scheduleCleanup: tool._scheduleCleanup,
+	};
+	const primary = new Primary();
+	const graphic = new StubContainer();
+	globalThis.canvas.primary = primary;
+	tool._pixiContainer = new StubContainer();
+	tool._createLineDisplay = () => graphic;
+	tool._scheduleCleanup = () => {};
+	try {
+		tool._createRemoteLine({
+			drawingId: "legacy-river", lineStyle: "river", strokeColor: "#ffffff",
+			startX: 0, startY: 0, points: [[0, 0], [1, 1]],
+		});
+		assert.deepEqual(primary.children, [graphic]);
+		assert.deepEqual(tool.canvasLayer.children, []);
+		assert.equal(graphic.sortLayer, 600);
+	}
+	finally {
+		globalThis.canvas.primary = original.primary;
+		tool._pixiContainer = original.container;
+		tool._createLineDisplay = original.createLine;
+		tool._scheduleCleanup = original.scheduleCleanup;
+	}
+});
+
+test("a newly authored legacy road line is rendered beneath fog", () => {
+	reset();
+	class Primary extends StubContainer { static SORT_LAYERS = { DRAWINGS: 600 }; }
+	const original = {
+		primary: globalThis.canvas.primary,
+		container: tool._pixiContainer,
+		createLine: tool._createLineDisplay,
+		finalize: tool._finalizeDrawing,
+	};
+	const primary = new Primary();
+	const graphic = new StubContainer();
+	globalThis.canvas.primary = primary;
+	tool._pixiContainer = new StubContainer();
+	tool._createLineDisplay = () => graphic;
+	let saved;
+	tool._finalizeDrawing = (local, payload) => { saved = { local, payload }; };
+	try {
+		tool._createPixiDrawing(0, 0, [[0, 0], [1, 1]], 6, "#ffffff", "road", "line");
+		assert.deepEqual(primary.children, [graphic]);
+		assert.deepEqual(tool.canvasLayer.children, []);
+		assert.equal(graphic.sortLayer, 600);
+		assert.equal(saved.payload.lineStyle, "road");
+	}
+	finally {
+		globalThis.canvas.primary = original.primary;
+		tool._pixiContainer = original.container;
+		tool._createLineDisplay = original.createLine;
+		tool._finalizeDrawing = original.finalize;
+	}
+});
+
+test("permanent map paths render under vision and hex fog, other drawings stay above", () => {
+	reset();
+	class Primary extends StubContainer { static SORT_LAYERS = { DRAWINGS: 600 }; }
+	const primary = new Primary();
+	const previousPrimary = globalThis.canvas.primary;
+	const previousContainer = tool._pixiContainer;
+	const previousNetwork = tool._createMapNetworkDisplay;
+	const previousLine = tool._createLineDisplay;
+	globalThis.canvas.primary = primary;
+	tool._pixiContainer = new StubContainer();
+	const make = (id, options) => {
+		const graphic = new StubContainer();
+		tool._createMapNetworkDisplay = () => graphic;
+		tool._createLineDisplay = () => graphic;
+		tool._renderPermanentEntry({ drawingId: id, strokeColor: "#ffffff", ...options });
+		return graphic;
+	};
+	try {
+		const network = make("network", { type: "mapNetwork", networkPaths: {} });
+		const legacy = make("legacy", { lineStyle: "river", startX: 0, startY: 0, points: [[0, 0], [1, 1]] });
+		const ordinary = make("ordinary", { lineStyle: "solid", startX: 0, startY: 0, points: [[0, 0], [1, 1]] });
+		assert.deepEqual(primary.children, [network, legacy]);
+		assert.equal(network.sortLayer, 600);
+		assert.equal(legacy.sortLayer, 600);
+		assert.deepEqual(tool.canvasLayer.children, [ordinary]);
+	}
+	finally {
+		globalThis.canvas.primary = previousPrimary;
+		tool._pixiContainer = previousContainer;
+		tool._createMapNetworkDisplay = previousNetwork;
+		tool._createLineDisplay = previousLine;
+	}
+});
+
+test("a newly authored network also enters primary before persistence", async () => {
+	reset();
+	class Primary extends StubContainer { static SORT_LAYERS = { DRAWINGS: 600 }; }
+	const primary = new Primary();
+	const previousPrimary = globalThis.canvas.primary;
+	const previousContainer = tool._pixiContainer;
+	const previousNetwork = tool._createMapNetworkDisplay;
+	const previousFinalize = tool._finalizeDrawing;
+	globalThis.canvas.primary = primary;
+	tool._pixiContainer = new StubContainer();
+	const graphic = new StubContainer();
+	tool._createMapNetworkDisplay = () => graphic;
+	let persisted;
+	tool._finalizeDrawing = (local, payload) => { persisted = { local, payload }; };
+	try {
+		const id = await tool._createMapNetworkDrawing({ road: [], river: [] });
+		assert.equal(persisted.payload.drawingId, id);
+		assert.equal(persisted.local.graphics, graphic);
+		assert.deepEqual(primary.children, [graphic]);
+		assert.deepEqual(tool.canvasLayer.children, []);
+	}
+	finally {
+		globalThis.canvas.primary = previousPrimary;
+		tool._pixiContainer = previousContainer;
+		tool._createMapNetworkDisplay = previousNetwork;
+		tool._finalizeDrawing = previousFinalize;
+	}
 });
 
 // --- world coordinates ------------------------------------------------------

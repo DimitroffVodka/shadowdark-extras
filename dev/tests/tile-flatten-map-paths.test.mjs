@@ -61,8 +61,9 @@ const opaqueCanvas = (width, height) => ({
 
 const pathGraphics = new StubContainer();
 const otherGraphics = new StubContainer();
+const unrelatedPrimary = new StubContainer();
 const pathLayer = new StubContainer();
-pathLayer.addChild(pathGraphics, otherGraphics);
+pathLayer.addChild(otherGraphics);
 const drawingsLayer = new StubContainer();
 drawingsLayer.placeables = [];
 const unrelatedInterface = new StubContainer();
@@ -76,6 +77,7 @@ const renderer = {
 		renderStates.push({
 			path: pathGraphics.visible,
 			other: otherGraphics.visible,
+			primaryOther: unrelatedPrimary.visible,
 			interface: unrelatedInterface.visible,
 		});
 	},
@@ -160,7 +162,7 @@ globalThis.canvas = {
 	},
 	app: { renderer },
 	primary: {
-		children: [],
+		children: [pathGraphics, unrelatedPrimary],
 		displayed: true,
 		sprite: { visible: true, renderable: true },
 		clearColor: [0, 0, 0, 1],
@@ -185,8 +187,9 @@ test("Flatten Map bakes only selected Roads/Rivers and restores them on unflatte
 	try {
 		await flattenTiles(tiles, { mapPaths: [mapPath] });
 		assert.deepEqual(notifications.error, []);
-		assert.deepEqual(renderStates, [{ path: true, other: false, interface: false }]);
+		assert.deepEqual(renderStates, [{ path: true, other: false, primaryOther: false, interface: false }]);
 		assert.equal(otherGraphics.visible, true, "temporary visibility is restored");
+		assert.equal(unrelatedPrimary.visible, true, "other primary art is restored");
 		assert.equal(unrelatedInterface.visible, true, "other interface layers are restored");
 		assert.deepEqual(created[0].flags[MODULE_ID].mapPaths, [mapPath]);
 		assert.deepEqual(deletedPaths, [mapPath.drawingId]);
