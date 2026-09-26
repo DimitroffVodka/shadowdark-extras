@@ -8,11 +8,25 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **Roads and rivers on hex maps.** The Hex Painter's Roads & Rivers mode draws Road, River or Both across a hex map. Left-drag adds hexes, filling in any the drag skipped; right-click removes one; Shift-click between two hexes blocks or restores the link between them. **Create** saves the whole network, forks, loops and separate systems included, with roads drawn over rivers, and **Undo** takes it back. ([#143](https://github.com/DimitroffVodka/shadowdark-extras/pull/143))
+- **Hand-drawn road and river art.** Roads & Rivers has a new default style, *Hand-drawn art*, which lays the module's own hex path pieces cell to cell, turned to fit each hex, instead of drawing a stroke. It works for rivers as well as roads, and a river that stops beside water runs on into it.
+- **Bake Map Background.** The Hex Painter can bake a painted map's tiles, roads and rivers into one scene background image, scaled down to fit your graphics card when the map is very large, so the scene carries one image instead of thousands of tiles. On a baked map the same button restores the tiles.
+- **Import Hexer JSON.** **Hexes → Import Hexer JSON** builds a painted hexcrawl scene from a Hexer v6 map: its terrain, roads and rivers. What Shadowdark Extras has no equivalent for, such as partial fog and per-edge restrictions, is kept in each hex's GM notes.
+- **Beaches and ice along the coast.** A hexcrawl built from a dataset lines every water hex beside land with beach pieces, and arctic sea with ice floats. Repainting a hex moves them to match.
+- **A hexcrawl API.** `game.shadowdarkExtras.hex` builds a painted hexcrawl scene from a dataset keyed by the map's own printed hex numbers, including maps numbered from 0000, a clipped first row, or columns that end a row short. It also updates hex records without rebuilding (`upsertHexRecords`), repaints named hexes (`repaintHexTiles`), and lists the Specials tiles (`getSpecialTiles`) and zone colours (`getZoneColors`). A keyed village, town, city or city-state paints as its settlement tile, a hex can name its exact tile art, and `networks.spanning` keeps an area-derived river network from closing into loops. See the Developer API page. Shadowdark Enhancer's Hex Tagger uses it to hand its hex data over.
 - **Hexcrawl data on a map you already have.** `game.shadowdarkExtras.hex.adoptHexcrawl(sceneId, { grid })` gives an existing scene, such as a publisher's printed map, the layout a built hexcrawl carries. Hex records, the hover tooltip, the hex explorer, fog and coordinates then work on the print itself, with nothing painted over it. Shadowdark Enhancer uses it to send its hex data to the map a GM already plays on. ([#147](https://github.com/DimitroffVodka/shadowdark-extras/issues/147))
+- **More zone colours, and any colour.** The Hex Editor's zone swatches add Lime, Green, Forest, Olive, Cyan, Navy, Lavender, Maroon, Sand and Black, and a colour picker next to them sets any colour beyond those.
 
 ### Changed
 
 - **Mysterious Casting shows the GM the whole card.** With the mask on, players still see only the mysterious-casting text, but the GM now sees the real card in chat: the roll, success or failure, damage and effects. Before, the GM got the same masked card as the players and had to remember the target number and effects. The damage card, and the damage total shown when that card is hidden from players, are never added to a masked card on a player's screen.
+- **Effect durations end the way Foundry ends them.** Timed effects now use Foundry v14's own duration and expiry. In combat an effect ends at the start of the turn it should, and outside combat it ends by world time, instead of by the module's own count. Damage over time still ticks once per turn, with no extra tick when the effect expires. The minimum Foundry version is now 14.361. ([#140](https://github.com/DimitroffVodka/shadowdark-extras/issues/140))
+- **The Colored tab filters by tag instead of by folder.** Pick one or more tags, such as *hills* and *lush*, to narrow the tiles, and use the wildcard button to select every matching tile, so painting picks among them.
+- **Hex tiles fit the scene's grid.** Built-in and colored hex tiles now scale to the scene's grid size instead of assuming a 256 px grid, so a map formatted at another size no longer gets tiles that are too large or too small.
+
+### Fixed
+
+- **Hex highlights and zone colours show again on Foundry v14.** The hover highlight and the Alt show-all-zones overlay called a grid method v14 no longer provides, so every highlight silently drew nothing, on every scene.
 
 ## [6.15.0] — 2026-09-15 — Lit lights change hands properly, Torch Sprite fixes, sprite windows fit the screen
 
