@@ -2,8 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // party-quests.mjs defines its tracker window at load, so ApplicationV2 has to
-// exist before the import.
-globalThis.foundry = { applications: { api: { ApplicationV2: class {} } }, utils: {} };
+// exist before the import. Its render only counts.
+const renders = [];
+globalThis.foundry = { applications: { api: { ApplicationV2: class {
+	render(options) {
+		renders.push(options);
+		this.rendered = true;
+	}
+} } }, utils: {} };
 const hooks = [];
 globalThis.Hooks = {
 	on: (event, fn) => hooks.push({ event, fn, once: false }),
@@ -148,4 +154,27 @@ test("the tracker setting exists only when Enhancer's quest log does, per user a
 		const [{ scope, key, config }] = registered;
 		assert.deepEqual([scope, key, config.scope, config.default, config.config], [MODULE_ID, "questTracker", "user", false, true]);
 	}
+});
+
+test("the open tracker refreshes when a party's roster or this user's character changes, and not otherwise", () => {
+	hooks.length = 0;
+	pq.registerPartyQuests();
+	world([], { sde: { quests: fakeQuests([]) } });
+	let config;
+	game.settings = { register: (_scope, _key, value) => { config = value; } };
+	hooks.find(h => h.event === "setup").fn();
+	config.onChange(true);
+	const fire = (event, ...args) => hooks.filter(h => h.event === event).forEach(h => h.fn(...args));
+
+	const opened = renders.length;
+	fire("updateActor", {}, { system: { attributes: { hp: { value: 3 } } } });
+	fire("updateActor", {}, { flags: { [MODULE_ID]: { travelSpeed: "fast" } } });
+	fire("updateUser", { isSelf: false }, { character: "someone-else" });
+	fire("updateUser", { isSelf: true }, { color: "#ffffff" });
+	assert.equal(renders.length, opened, "unrelated actor and user updates leave the tracker alone");
+
+	fire("updateActor", {}, { flags: { [MODULE_ID]: { members: ["ash"] } } });
+	fire("updateActor", {}, { flags: { [MODULE_ID]: { isParty: true } } });
+	fire("updateUser", { isSelf: true }, { character: "ash" });
+	assert.equal(renders.length, opened + 3);
 });

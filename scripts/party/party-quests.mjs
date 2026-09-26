@@ -226,4 +226,13 @@ export function registerPartyQuests() {
 	Hooks.on("canvasReady", refreshTracker);
 	Hooks.on("createToken", refreshTracker);
 	Hooks.on("deleteToken", refreshTracker);
+	// Which party the tracker follows also depends on a party's roster and on
+	// the character this user plays.
+	Hooks.on("updateActor", (_actor, changes) => {
+		const flags = changes?.flags?.[MODULE_ID];
+		if (flags && ("members" in flags || "isParty" in flags)) refreshTracker();
+	});
+	Hooks.on("updateUser", (user, changes) => {
+		if (user?.isSelf && changes && "character" in changes) refreshTracker();
+	});
 }
