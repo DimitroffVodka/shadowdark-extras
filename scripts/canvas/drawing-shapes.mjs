@@ -430,13 +430,16 @@ export const DrawingShapes = {
 			points, startX, startY, strokeWidth, color, 1.0, lineStyle, texturePath
 		);
 		g.alpha = this.state.opacity;
-		this.canvasLayer.addChild(g);
 		const id = `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 		const data = {
 			id, graphics: g, createdAt: Date.now(), expiresAt: this._getExpiration(),
 			userId: game.user.id, userName: game.user.name, startX, startY, points, strokeWidth,
 			strokeColor, lineStyle, texturePath, type, opacity: this.state.opacity,
 		};
+		if (!this._addDrawingGraphic(data, g)) {
+			g.destroy({ children: true });
+			return;
+		}
 		this._finalizeDrawing(
 			data,
 			{

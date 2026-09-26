@@ -5,6 +5,7 @@
 
 import { setMapDimension, formatActiveScene, toggleTileSelection, clearTileSelection, setSearchFilter, toggleWaterEffect, toggleWindEffect, toggleFogAnimation, toggleTintEnabled, toggleBwEffect, setActiveTileTab, setCustomTileDimension, toggleSymbolFolderCollapsed, enablePreview, disablePreview, enablePainting, disablePainting, getActiveTileTab, setDecorSearchFilter, toggleDecorFolderCollapsed, setDecorElevation, setDecorSort, appendCustomNavSegment, setCustomNavPath, reloadCustomTiles, toggleColoredTagFilter, clearColoredTagFilters, selectFilteredColoredTiles } from "../hex/HexPainterSD.mjs";
 import { flattenTiles } from "../canvas/TileFlattenSD.mjs";
+import { isMapPathDrawing } from "../canvas/drawing-constants.mjs";
 import { sdxDrawingTool } from "../canvas/SDXDrawingTool.mjs";
 import { generateHexMap, clearGeneratedTiles } from "../hex/HexGeneratorSD.mjs";
 import { renderTray } from "./TraySD.mjs";
@@ -186,8 +187,7 @@ export const HexPainterBindings = {
 			const tileDocs = canvas.scene?.tiles?.contents ?? [];
 			const mapPaths = (typeof canvas.scene?.getFlag === "function"
 				? canvas.scene.getFlag(MODULE_ID, "permanentDrawings") || [] : [])
-				.filter(drawing => !drawing.hidden
-					&& ["road", "river", "mapNetwork"].includes(drawing.type));
+				.filter(drawing => !drawing.hidden && isMapPathDrawing(drawing));
 			if (!backup && tileDocs.length < 2) {
 				ui.notifications.warn("Need at least 2 tiles on the scene to flatten.");
 				return;

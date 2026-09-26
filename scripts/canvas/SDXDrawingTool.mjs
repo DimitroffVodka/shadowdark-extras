@@ -20,7 +20,7 @@ import { mapNetworkArtPlacements } from "./map-network-art.mjs";
 const MODULE_ID = "shadowdark-extras";
 const SOCKET_NAME = "module.shadowdark-extras";
 
-import { COLORS, STAMP_SIZES } from "./drawing-constants.mjs";
+import { COLORS, STAMP_SIZES, isMapPathDrawing } from "./drawing-constants.mjs";
 import { DrawingShapes } from "./drawing-shapes.mjs";
 import { DrawingSync } from "./drawing-sync.mjs";
 import { DrawingEntries } from "./drawing-entries.mjs";
@@ -194,8 +194,8 @@ class SDXDrawingTool extends SDXDrawingToolMixinBase {
 	}
 
 	_addDrawingGraphic(data, graphic) {
-		if (data.type === "mapNetwork" || ["road", "river"].includes(data.lineStyle)) {
-			// Primary is vision-masked and sits beneath Hex Fog; interface is neither.
+		if (isMapPathDrawing(data)) {
+			// Primary sits beneath vision and Hex Fog; interface sits above both.
 			if (!canvas.primary) return false;
 			graphic.sortLayer = canvas.primary.constructor.SORT_LAYERS.DRAWINGS;
 			graphic.zIndex = 0;
