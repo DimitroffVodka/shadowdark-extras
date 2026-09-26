@@ -11,6 +11,7 @@ import { buildHexDungeonScene } from "./HexDungeonBridgeSD.mjs";
 import { formatHexCoord } from "./SDXCoordsSD.mjs";
 import { registerContentRegistrySetting, registerContent } from "./ContentRegistry.mjs";
 import { MaphubViewerApp } from "../MaphubViewerApp.mjs";
+import { playerHexRecord } from "./hex-visibility.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -182,6 +183,11 @@ function featureLabel(f) {
 
 // ─── Tooltip HTML Builder ─────────────────────────────────────────────────────
 
+function recordForUser(hexKey, record) {
+	const discovery = canvas.scene?.getFlag(MODULE_ID, "hexFogDiscovery")?.[hexKey.replace("_", "-")];
+	return playerHexRecord(record, discovery, game.user.isGM);
+}
+
 function buildTooltipHtml(hexKey, record, isGM) {
 	const r = record ?? {};
 	const name = r.name ?? "";
@@ -205,7 +211,7 @@ function buildTooltipHtml(hexKey, record, isGM) {
 	if (name) html += `<div class="sdx-hex-tt-head"><span class="sdx-hex-tt-name">${hiddenIcon}${name}</span></div>`;
 
 	// Exploration badge
-	html += `<div class="sdx-hex-tt-badge sdx-hex-badge-${exploration}">${exploLabel.toUpperCase()}</div>`;
+	if (!r.terrainOnly) html += `<div class="sdx-hex-tt-badge sdx-hex-badge-${exploration}">${exploLabel.toUpperCase()}</div>`;
 
 	// Data rows
 	const rows = [];
@@ -297,6 +303,8 @@ export class SDXHexTooltip {
 
 	#onKeyUpRef = null;
 
+	#onSceneRef = null;
+
 	constructor() {
 		// All users (GMs and Players) now start with tooltips disabled by default
 		this.#enabled = false;
@@ -362,6 +370,14 @@ export class SDXHexTooltip {
 			if (this.#enabled) this.#drawMarkers();
 		};
 		Hooks.on("updateJournalEntry", this.#onJournalRef);
+		this.#onSceneRef = scene => {
+			if (scene.id !== canvas.scene?.id || !this.#enabled) return;
+			this.#closeContextMenu();
+			if (this.#lastKey) this.#show(this.#lastKey, this.#allData[scene.id]?.[this.#lastKey]);
+			this.#drawMarkers();
+			if (this.#altHeld) this.#drawAllHighlights();
+		};
+		Hooks.on("updateScene", this.#onSceneRef);
 	}
 
 	get enabled() {
@@ -410,6 +426,7 @@ export class SDXHexTooltip {
 		this.#destroyMarkerLayer();
 		this.#markerLayer = null;
 		if (this.#onJournalRef) Hooks.off("updateJournalEntry", this.#onJournalRef);
+		if (this.#onSceneRef) Hooks.off("updateScene", this.#onSceneRef);
 		this.#tooltipEl?.remove();
 		this.#tooltipEl = null;
 		this.#imgTooltipEl?.remove();
@@ -502,7 +519,8 @@ export class SDXHexTooltip {
 		const cornerX = hexW * 0.25;
 		const cornerY = hexH * 0.28;
 
-		for (const [hexKey, record] of Object.entries(hexes)) {
+		for (const [hexKey, rawRecord] of Object.entries(hexes)) {
+			const record = recordForUser(hexKey, rawRecord);
 			if (!isGM && !record.showToPlayers) continue;
 			const [i, j] = hexKey.split("_").map(Number);
 			if (!Number.isFinite(i) || !Number.isFinite(j)) continue;
@@ -515,7 +533,7 @@ export class SDXHexTooltip {
 			if (record?.claimed) {
 				this.#drawMarker(center.x - sideX, center.y, radius, 0x2dd4bf);
 			}
-			if (record?.showToPlayers) {
+			if (record?.showToPlayers && !record.terrainOnly) {
 				this.#drawMarker(center.x + cornerX, center.y + cornerY, radius, 0x22c55e);
 			}
 		}
@@ -545,7 +563,7 @@ export class SDXHexTooltip {
 		const hexKey = `${offset.i}_${offset.j}`;
 		const isGM = game.user.isGM;
 		const sceneId = canvas.scene?.id;
-		const record = this.#allData[sceneId]?.[hexKey] ?? null;
+		const record = recordForUser(hexKey, this.#allData[sceneId]?.[hexKey] ?? null);
 
 		this.#drawHighlight(offset, record?.zoneColor);
 		const canShow = isGM || record?.showToPlayers;
@@ -616,7 +634,7 @@ export class SDXHexTooltip {
 		this.#closeContextMenu();
 
 		const sceneId = canvas.scene?.id;
-		const record = this.#allData[sceneId]?.[hexKey] ?? null;
+		const record = recordForUser(hexKey, this.#allData[sceneId]?.[hexKey] ?? null);
 		const isGM = game.user.isGM;
 
 		// Collect journal features — GM sees all, players see only discovered
@@ -1327,6 +1345,11 @@ export class SDXHexTooltip {
 
 	#show(hexKey, record) {
 		if (!this.#tooltipEl) return;
+		record = recordForUser(hexKey, record);
+		if (!game.user.isGM && !record?.showToPlayers) {
+			this.#hide();
+			return;
+		}
 		this.#tooltipEl.innerHTML = buildTooltipHtml(hexKey, record, game.user.isGM);
 		this.#tooltipEl.style.display = "block";
 
@@ -1402,7 +1425,8 @@ export class SDXHexTooltip {
 		const hexes = this.#allData[sceneId];
 		if (!hexes) return;
 		const isGM = game.user.isGM;
-		for (const [hexKey, record] of Object.entries(hexes)) {
+		for (const [hexKey, rawRecord] of Object.entries(hexes)) {
+			const record = recordForUser(hexKey, rawRecord);
 			if (!isGM && !record.showToPlayers) continue;
 			const [i, j] = hexKey.split("_").map(Number);
 			const tl = canvas.grid.getTopLeftPoint({ i, j });
