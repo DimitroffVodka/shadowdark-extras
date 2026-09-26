@@ -166,16 +166,25 @@ export function recentCarousers(
 }
 
 /**
- * SEAM — carousing duration (#151, item 3). Not built yet.
- *
- * A carouse takes days equal to its event bonus, minimum 1 (GMWR p.34), and
- * resolving it should move the world clock that far: through Enhancer's
- * `time.advanceOffDuty(seconds, { reason: "carousing" })` when it exists,
- * else `game.time.advance`. That waits on Enhancer's Overland time API
- * (Enhancer #198, draft PR #222). Called once a carouse's rolls are saved.
+ * Advance once after the session's rolls are saved, in either carousing mode.
+ * Duration is the tier's event bonus in days, minimum 1 (GMWR p.34), not a
+ * participant's renown, holiday or other roll modifiers.
+ * Enhancer puts out carried lights and marks the jump as off duty. Only use
+ * the plain clock when that feature is absent: falling back after a refusal
+ * or error could burn the party's lights or advance an uncertain move twice.
  * @param {{bonus?: number}} tier the tier that was caroused
  */
-export async function passCarousingTime(tier) {}
+export async function passCarousingTime(tier) {
+	if (!globalThis.game?.user?.isGM) return;
+	const bonus = Number(tier?.bonus);
+	const days = Number.isFinite(bonus) ? Math.max(1, bonus) : 1;
+	const seconds = days * 86400;
+	const time = getEnhancer()?.time;
+	if (typeof time?.advanceOffDuty === "function") {
+		return time.advanceOffDuty(seconds, { reason: "carousing" });
+	}
+	return globalThis.game.time.advance(seconds);
+}
 
 // ── Foundry-bound ───────────────────────────────────────────────────────────
 
