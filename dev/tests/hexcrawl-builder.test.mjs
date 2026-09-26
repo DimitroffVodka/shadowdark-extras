@@ -551,6 +551,22 @@ test("art outside the shipped catalogue is refused before anything is written", 
 	await assert.rejects(builder.upsertHexRecords(scenes[0].id, [{ num: 101, art: VEGETATION_TILE }]), /unsupported hex field art/);
 });
 
+test("accepted art paints from the catalogue's own path, not the caller's spelling of it", async () => {
+	// Membership is matched without the module or case, so a path naming another
+	// module or shouting the file name passes; painting it as given was a broken
+	// texture, and on a case-sensitive host a missing file.
+	const loose = "modules/not-extras/assets/hexes/vegetation/FOREST.webp";
+	const input = { grid: { cols: 2, rows: 1 }, terrain: { default: "desert" }, hexes: [{ num: 101, terrain: "desert", art: loose }] };
+	const original = structuredClone(input);
+	const { sceneId } = await builder.buildPublishedHexcrawl(input, { view: false });
+	assert.deepEqual(input, original, "the caller's dataset is not rewritten");
+	const scene = scenes.find(s => s.id === sceneId);
+	const art = () => scene.tiles.find(t => t.flags?.[MODULE_ID]?.hexNum === 101)?.texture.src;
+	assert.equal(art(), VEGETATION_TILE);
+	await builder.repaintHexTiles(sceneId, [{ num: 101, terrain: "desert", art: loose }]);
+	assert.equal(art(), VEGETATION_TILE, "a repaint resolves it the same way");
+});
+
 test("repaint swaps a hex's tile art and leaves the rest of the scene standing", async () => {
 	const result = await builder.buildPublishedHexcrawl(structuredClone(fixture), { view: false });
 	const scene = scenes.find(s => s.id === result.sceneId);
@@ -579,6 +595,42 @@ test("repaint swaps a hex's tile art and leaves the rest of the scene standing",
 	assert.ok(scene.tiles.some(t => t.hidden && t.locked), "the reference underlay survives");
 	assert.ok(scene.tiles.some(t => t.id === neighbour.id), "a neighbouring hex is untouched");
 	assert.equal(world.lastFlagValue()[scene.id]["2_13"].terrain, "desert", "the record follows the art");
+});
+
+test("repaint paints a terrain with no painted biome from its own rule instead of throwing", async () => {
+	// "volcano" is in no BIOME_TILES entry: the repaint used to fall back through
+	// a variable that only exists inside the build, and threw a ReferenceError.
+	const result = await builder.buildPublishedHexcrawl(structuredClone(fixture), { view: false });
+	const scene = scenes.find(s => s.id === result.sceneId);
+	const center = grid.getCenterPoint({ i: 2, j: 13 });
+	const out = await builder.repaintHexTiles(scene.id, [{ num: 1403, terrain: "volcano" }]);
+	assert.deepEqual(out, { sceneId: scene.id, repainted: 1, removed: 1 });
+	const tile = scene.tiles.find(t => t.flags?.[MODULE_ID]?.painted
+		&& Math.abs(t.x + (t.width / 2) - center.x) < 4 && Math.abs(t.y + (t.height / 2) - center.y) < 4);
+	assert.match(decodeURIComponent(tile.texture.src), /\/Specials\/.*volcano/i, "the volcano rule's Specials tile");
+	assert.equal(world.lastFlagValue()[scene.id]["2_13"].terrain, "volcano");
+});
+
+test("a listed loop stays closed unless the dataset asks for a spanning forest", async () => {
+	// The shared stub only links a column's cells; three mutually adjacent cells
+	// need the real odd-q neighbours. 0000, 0001 and 0100 are one triangle.
+	const adjacency = grid.getAdjacentOffsets;
+	grid.getAdjacentOffsets = ({ i, j }) => (j % 2
+		? [[i - 1, j], [i + 1, j], [i, j - 1], [i + 1, j - 1], [i, j + 1], [i + 1, j + 1]]
+		: [[i - 1, j], [i + 1, j], [i - 1, j - 1], [i, j - 1], [i - 1, j + 1], [i, j + 1]]).map(([a, b]) => ({ i: a, j: b }));
+	try {
+		const edges = async networks => {
+			const { sceneId } = await builder.buildPublishedHexcrawl({ grid: { cols: 2, rows: 2, origin: 0 }, hexes: [], networks }, { view: false });
+			const road = scenes.find(s => s.id === sceneId).getFlag(MODULE_ID, "permanentDrawings")[0].networkPaths.road;
+			return road.reduce((n, path) => n + path.length - 1, 0);
+		};
+		assert.equal(await edges({ road: [0, 1, 100] }), 3, "a closed road (a Hexer closed path) keeps all three links");
+		assert.equal(await edges({ road: [0, 1, 100], spanning: true }), 2, "an area-derived network drops the one link that closes the loop");
+		await assert.rejects(builder.buildPublishedHexcrawl({ grid: { cols: 2, rows: 2, origin: 0 }, hexes: [], networks: { road: [0], spanning: "yes" } }),
+			/networks.spanning must be boolean/);
+	} finally {
+		grid.getAdjacentOffsets = adjacency;
+	}
 });
 
 test("repaint refuses what it cannot paint, before touching the scene", async () => {

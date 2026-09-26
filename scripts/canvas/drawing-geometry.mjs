@@ -146,6 +146,10 @@ export function buildMapPathNetwork(cells, grid, blockedEdges = [], isWater = nu
 	const outletPoint = (endKey, priorKey) => {
 		const cell = byKey.get(endKey);
 		if (!isWater || isWater(cell)) return null;
+		// Only a true dead end opens out. walk() also ends paths at junctions,
+		// and a junction beside water would otherwise sprout a mouth from every
+		// path that meets there.
+		if (adjacent.get(endKey).length !== 1) return null;
 		const from = grid.getCenterPoint(cell);
 		const prior = grid.getCenterPoint(byKey.get(priorKey));
 		const headingX = from.x - prior.x;

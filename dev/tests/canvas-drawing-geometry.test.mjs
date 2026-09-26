@@ -188,6 +188,28 @@ test("a river dead-ending beside water runs on through the shared edge", () => {
 	]);
 });
 
+test("a junction beside water is not a dead end and grows no mouth", () => {
+	// 0:1 is a junction of three branches (0:0, 1:1, 0:2) and borders ocean at
+	// 1:0, which nobody selected. The branch ends 0:0, 1:1 and 0:2 are inland.
+	const neighbors = {
+		"0:0": [{ i: 0, j: 1 }],
+		"0:1": [{ i: 0, j: 0 }, { i: 1, j: 1 }, { i: 0, j: 2 }, { i: 1, j: 0 }],
+		"1:1": [{ i: 0, j: 1 }],
+		"0:2": [{ i: 0, j: 1 }],
+	};
+	const grid = {
+		getAdjacentOffsets: ({ i, j }) => neighbors[`${i}:${j}`] || [],
+		getCenterPoint: ({ i, j }) => ({ x: j * 100, y: i * 100 }),
+	};
+	const cells = [{ i: 0, j: 0 }, { i: 0, j: 1 }, { i: 1, j: 1 }, { i: 0, j: 2 }];
+	const isWater = ({ i, j }) => i === 1 && j === 0;
+	const paths = buildMapPathNetwork(cells, grid, [], isWater);
+	assert.equal(paths.length, 3, "one path per branch");
+	const inWater = paths.flat().filter(([x, y]) => y > 0 && x < 100);
+	assert.deepEqual(inWater, [], "no branch runs into the ocean beside the junction");
+	assert.deepEqual(paths.map(path => path.length), [2, 2, 2], "each branch is just its two centres");
+});
+
 test("a textured road draws a wide dark shoulder beneath its surface", () => {
 	const rec = g();
 	tool._drawLineWithStyle(

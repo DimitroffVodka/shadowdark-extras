@@ -685,7 +685,14 @@ async function flattenTilesToBackground(tiles, mapPaths = []) {
 	if (!scene || !level) throw new Error("Scene level not available");
 	if (!tiles || tiles.length < 2) throw new Error("Need at least 2 tiles to flatten");
 
-	const bounds = { x: 0, y: 0, width: scene.width, height: scene.height };
+	// Foundry lays the background over the scene rectangle, which starts after
+	// the padding and any grid shift, not at canvas 0,0. Capture that same
+	// rectangle, or the baked map sits offset from the grid and tokens and loses
+	// its far edges.
+	const dims = scene.dimensions;
+	const bounds = dims && Number.isFinite(dims.sceneWidth)
+		? { x: dims.sceneX, y: dims.sceneY, width: dims.sceneWidth, height: dims.sceneHeight }
+		: { x: 0, y: 0, width: scene.width, height: scene.height };
 	const maxSize = Math.min(
 		HEX_BACKGROUND_MAX_SIZE,
 		getMaxTextureSize(canvas.app.renderer)

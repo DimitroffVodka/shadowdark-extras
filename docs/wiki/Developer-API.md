@@ -235,6 +235,13 @@ connection; a non-adjacent pair has no effect. This reuses the same blocked-edge
 geometry as Shift-click in Roads & Rivers, rather than adding another network
 implementation. Without overrides, neighbouring rivers will join.
 
+`networks.spanning: true` keeps only a spanning forest of each kind: every
+listed cell stays, and just enough connections are dropped that nothing closes
+a loop. Use it for networks derived from areas, where every hex an overlay
+marks is listed and three mutually adjacent marked hexes would otherwise join
+into a triangle. It is off by default, so a loop you list or import on purpose
+(a Hexer closed path) stays closed.
+
 Networks are saved as SDX permanent `mapNetwork` drawings and use the existing
 renderer, just like Create in Roads & Rivers. Their appearance requires Drawing
 Tools to be enabled. They are not native Foundry Drawing documents, and the

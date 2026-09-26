@@ -212,3 +212,34 @@ test("oversized hex maps bake into one downscaled reversible scene background", 
 	assert.deepEqual(levelUpdates[1].background, { src: null });
 	assert.equal(flags.flattenedHexBackground, undefined);
 });
+
+test("the bake captures the scene rectangle, not canvas 0,0, on a padded or shifted scene", async () => {
+	// A scene whose map starts 391 px right and 186 px down of the canvas
+	// origin: padding, or a grid shift like the Western Reaches print's.
+	scene.dimensions = { sceneX: 391, sceneY: 186, sceneWidth: 14262, sceneHeight: 19072 };
+	const positions = [];
+	const render = renderer.render;
+	renderer.render = function (stage, options) {
+		positions.push([canvas.stage.position.x, canvas.stage.position.y]);
+		return render.call(this, stage, options);
+	};
+	const originalSetTimeout = globalThis.setTimeout;
+	globalThis.setTimeout = callback => {
+		callback();
+		return 1;
+	};
+	try {
+		await flattenTiles(originalTiles, { asBackground: true });
+	}
+	finally {
+		globalThis.setTimeout = originalSetTimeout;
+		renderer.render = render;
+		delete scene.dimensions;
+	}
+	const resolution = 8192 / 19072;
+	assert.equal(positions.length, 1);
+	assert.ok(Math.abs(positions[0][0] + (391 * resolution)) < 1e-6, "the capture window starts at sceneX");
+	assert.ok(Math.abs(positions[0][1] + (186 * resolution)) < 1e-6, "and at sceneY");
+	assert.deepEqual(renderedSizes.at(-1), [6126, 8192], "the same size as the scene rectangle");
+	await flattenTiles([], { asBackground: true });
+});

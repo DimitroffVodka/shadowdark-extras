@@ -359,7 +359,8 @@ function validateDataset(dataset, opts) {
 	if (dataset.networks !== undefined) {
 		const networks = dataset.networks;
 		requireInput(networks && typeof networks === "object" && !Array.isArray(networks), "networks must be an object");
-		for (const key of Object.keys(networks)) requireInput(["road", "river", "blockedEdges"].includes(key), `unsupported network ${key}`);
+		for (const key of Object.keys(networks)) requireInput(["road", "river", "blockedEdges", "spanning"].includes(key), `unsupported network ${key}`);
+		requireInput(networks.spanning === undefined || typeof networks.spanning === "boolean", "networks.spanning must be boolean");
 		if (networks.blockedEdges !== undefined) {
 			requireInput(networks.blockedEdges && typeof networks.blockedEdges === "object" && !Array.isArray(networks.blockedEdges), "blockedEdges must be an object");
 			for (const key of Object.keys(networks.blockedEdges)) requireInput(["road", "river"].includes(key), `unsupported blockedEdges kind ${key}`);
@@ -720,15 +721,27 @@ export function coloredTileKey(path) {
 	return text.replace(/^modules\/[^/]+\//, "").toLowerCase();
 }
 
-async function validateArt(dataset) {
-	const assigned = (dataset.hexes ?? []).filter(hex => Object.hasOwn(hex, "art"));
-	if (!assigned.length) return;
+/**
+ * Check every hex's `art` against the catalogue and hand back the hexes with
+ * each art path swapped for the catalogue's own. Membership is matched loosely
+ * (any module prefix, any case, encoded or not), so the path painted has to be
+ * the catalogue's: the caller's spelling of another module, or its casing,
+ * would otherwise reach texture.src and paint a broken texture, on a
+ * case-sensitive host above all. New objects; the caller's hexes are untouched.
+ * @param {object[]} hexes
+ * @returns {Promise<object[]>}
+ */
+async function resolveArt(hexes = []) {
+	if (!hexes.some(hex => Object.hasOwn(hex, "art"))) return hexes;
 	if (!getColoredTiles().length) await loadColoredTileAssets();
-	const catalogue = new Set(getColoredTiles().map(tile => coloredTileKey(tile.path)));
+	const catalogue = new Map(getColoredTiles().map(tile => [coloredTileKey(tile.path), tile.path]));
 	requireInput(catalogue.size, "no tile catalogue loaded; cannot check hex art");
-	for (const hex of assigned) {
-		requireInput(catalogue.has(coloredTileKey(hex.art)), `unknown art ${hex.art} on hex ${hex.num}; use a tile from getColoredTiles()`);
-	}
+	return hexes.map(hex => {
+		if (!Object.hasOwn(hex, "art")) return hex;
+		const path = catalogue.get(coloredTileKey(hex.art));
+		requireInput(path, `unknown art ${hex.art} on hex ${hex.num}; use a tile from getColoredTiles()`);
+		return { ...hex, art: path };
+	});
 }
 
 // ── public entry point ──────────────────────────────────────────────────────
@@ -762,8 +775,9 @@ export async function buildPublishedHexcrawl(dataset, opts = {}) {
 		requireInput(!used.has(hex.special), `special ${hex.special} is assigned more than once`);
 		used.add(hex.special);
 	}
-	await validateArt(dataset);
-	return buildScene(dataset, opts, makeGeom(dataset, true), specials);
+	const hexes = await resolveArt(dataset.hexes);
+	const resolved = hexes === dataset.hexes ? dataset : { ...dataset, hexes };
+	return buildScene(resolved, opts, makeGeom(resolved, true), specials);
 }
 
 /** Update records on a scene built with the stable API; does not repaint tiles. */
@@ -912,7 +926,7 @@ export async function repaintHexTiles(sceneId, hexes) {
 	for (const hex of wantSpecials) {
 		requireInput(specials.has(hex.special), `unknown special ${hex.special}; use getSpecialTiles()`);
 	}
-	await validateArt({ hexes: hexes.filter(hex => hex.art) });
+	hexes = await resolveArt(hexes);
 
 	// Same rule paintTerrain uses for a published build: always the colored
 	// catalogue, so a repainted hex matches the same hex on a freshly built map.
@@ -938,7 +952,10 @@ export async function repaintHexTiles(sceneId, hexes) {
 		const off = geom.offsetOf(cell.col, cell.row);
 		const center = scene.grid.getCenterPoint(off);
 		const biomeKey = hex.terrain;
-		const biome = biomeFor(biomeKey) ?? biomeFor(defaultBiome) ?? BIOME_TILES.forest;
+		// A repaint has no dataset default; a label with no painted biome (volcano,
+		// which paints from Specials) falls back like the build's would. The biome
+		// only supplies the flat tiles; hexTileData picks the colored pool itself.
+		const biome = biomeFor(biomeKey) ?? BIOME_TILES.forest;
 
 		for (const tile of painted) {
 			if (Math.abs(tile.x + (tile.width / 2) - center.x) > tolerance) continue;
@@ -1003,13 +1020,13 @@ async function writeNetworks(scene, dataset, geom) {
 		networkPaths[kind] = buildMapPathNetwork(
 			(dataset.networks[kind] ?? []).map(offset), scene.grid, blocked,
 			kind === "river" ? isWater : null,
-			// An imported network is an AREA tag, not a drawn line: every hex an
-			// overlay marked as river is handed over, so neighbouring marked hexes
-			// form a mesh and three mutually adjacent ones close into a triangle.
-			// A watercourse is a tree - tributaries merge, they do not ring - so
-			// the imported side asks for a spanning forest. Interactive authoring
-			// still gets exact adjacency, where a deliberate loop is the GM's.
-			{ spanning: true },
+			// Opt-in: an AREA-derived network (every hex an overlay marked as river
+			// handed over) forms a mesh, and three mutually adjacent marked hexes
+			// close into a triangle; a watercourse is a tree, so that caller asks
+			// for a spanning forest. A drawn line is not an area: a Hexer import
+			// keeps a closed path closed on purpose, and pruning it would open the
+			// loop, so without the flag adjacency is exact, as the API documents.
+			{ spanning: dataset.networks.spanning === true },
 		);
 	}
 	if (!networkPaths.road.length && !networkPaths.river.length) return;
