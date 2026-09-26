@@ -16,6 +16,10 @@ import {
 	planStackConsumption,
 	qualifiesForRest,
 	calculateCookBonusHp,
+	calculateGrinderHp,
+	grinderHpFormula,
+	healStatDamage,
+	pickRegainedSpells,
 } from "./CampingRestData.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -24,6 +28,8 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 const RATION_PATTERN = /^rations?$/i;
 const TORCH_PATTERN = TORCH_NAME_PATTERN;
 const CAMPFIRE_FLAG = "campingCampfire";
+// ponytail: how long a player gets to pick Grinder spells before the GM picks.
+const GRINDER_PICK_TIMEOUT_MS = 2 * 60 * 1000;
 
 function memberKey(actor) {
 	return actor.uuid?.startsWith("Compendium.") ? actor.uuid : actor.id;
@@ -147,7 +153,12 @@ async function addGear(actor, name, quantity, { ammunition = false } = {}) {
 	return created;
 }
 
-async function refreshRestResources(actor) {
+/**
+ * @param {Actor} actor
+ * @param {?Set<string>} regainSpells Grinder Mode: only these lost spells come
+ *   back. Null, a normal rest, regains them all.
+ */
+async function refreshRestResources(actor, regainSpells = null) {
 	const updates = [];
 	let spells = 0;
 	let abilities = 0;
@@ -155,6 +166,7 @@ async function refreshRestResources(actor) {
 
 	for (const item of actor.items) {
 		if (item.type === "Spell" && item.system?.lost) {
+			if (regainSpells && !regainSpells.has(item.id)) continue;
 			updates.push({ "_id": item.id, "system.lost": false });
 			spells++;
 			continue;
@@ -208,6 +220,86 @@ async function refreshRestResources(actor) {
 
 	if (updates.length) await actor.updateEmbeddedDocuments("Item", updates);
 	return { spells, abilities, wands };
+}
+
+/** Grinder Mode settings (core rulebook p.111), or null when it is off. */
+function getGrinderSettings() {
+	if (!game.settings.get(MODULE_ID, "grinderMode")) return null;
+	return { hitDice: Number(game.settings.get(MODULE_ID, "grinderHitDice")) || 1 };
+}
+
+/**
+ * Grinder HP: current plus N class hit dice, capped at maximum. The system
+ * reads Stout as the `system.roll.hp.advantage` key, so this does too.
+ * @returns {Promise<?{formula:string,total:number}>} null without a class die
+ */
+async function rollGrinderHp(actor, hitDice) {
+	const actorClass = await actor.system?.getClass?.();
+	const advantage = Number(
+		actor.system?._getActiveEffectKeys?.("system.roll.hp.advantage", 0)?.value
+	) > 0;
+	const formula = grinderHpFormula(actorClass?.system?.hitPoints, hitDice, advantage);
+	if (!formula) return null;
+	const roll = await new Roll(formula).evaluate();
+	await roll.toMessage({
+		speaker: ChatMessage.getSpeaker({ actor }),
+		flavor: game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.grinder_hp_flavor", { actor: actor.name }),
+	});
+	const hp = Number(actor.system?.attributes?.hp?.value ?? 0);
+	const hpMax = Number(actor.system?.attributes?.hp?.max ?? hp);
+	await actor.update({ "system.attributes.hp.value": calculateGrinderHp(hp, hpMax, roll.total) });
+	return { formula, total: roll.total };
+}
+
+/**
+ * Grinder lost spells: roll 1d4, and the owning player picks that many to
+ * regain. A player who is not connected, or does not answer, leaves the pick
+ * to the GM running the rest.
+ * @returns {Promise<?{ids:Set<string>, roll:number, lost:number, names:string[]}>}
+ *   null when nothing was lost
+ */
+async function pickGrinderSpells(actor) {
+	const lost = actor.items.filter(item => item.type === "Spell" && item.system?.lost);
+	if (!lost.length) return null;
+	const roll = await new Roll("1d4").evaluate();
+	await roll.toMessage({
+		speaker: ChatMessage.getSpeaker({ actor }),
+		flavor: game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.grinder_spells_flavor", { actor: actor.name }),
+	});
+
+	let picked = null;
+	if (lost.length > roll.total) {
+		const escape = foundry.utils.escapeHTML;
+		const config = {
+			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.grinder_pick_title") },
+			content: `<p>${game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.grinder_pick_prompt", {
+				actor: escape(actor.name),
+				count: roll.total,
+			})}</p>${lost.map(spell =>
+				`<div><label><input type="checkbox" name="${spell.id}"> ${escape(spell.name)}</label></div>`
+			).join("")}`,
+		};
+		const owners = game.users.filter(user =>
+			user.active && !user.isGM && actor.testUserPermission(user, "OWNER")
+		);
+		const player = owners.find(user => user.character?.id === actor.id) ?? owners[0];
+		if (player) {
+			picked = await player.query("dialog", { type: "input", config }, { timeout: GRINDER_PICK_TIMEOUT_MS })
+				.catch(error => {
+					console.warn(`${MODULE_ID} | ${player.name} did not pick Grinder spells; the GM picks`, error);
+					return null;
+				});
+		}
+		picked ??= await foundry.applications.api.DialogV2.input(config);
+	}
+
+	const regained = pickRegainedSpells(lost, roll.total, picked);
+	return {
+		ids: new Set(regained.map(spell => spell.id)),
+		roll: roll.total,
+		lost: lost.length,
+		names: regained.map(spell => spell.name),
+	};
 }
 
 async function grantLuck(actor) {
@@ -750,6 +842,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 			const successfulCook = [...taskResults.values()]
 				.some(result => result.task.key === "cook" && result.success);
+			const grinder = getGrinderSettings();
 
 			for (const camper of plan.campers) {
 				const actor = camper.actor;
@@ -768,10 +861,30 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				const benefits = [];
 
 				if (rested) {
-					const hpMax = Number(actor.system?.attributes?.hp?.max ?? hpBefore);
-					await actor.update({ "system.attributes.hp.value": hpMax });
-					resourceSummary = await refreshRestResources(actor);
-					benefits.push(game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.benefit_full_rest"));
+					if (grinder) {
+						const hp = await rollGrinderHp(actor, grinder.hitDice);
+						const spells = await pickGrinderSpells(actor);
+						const regain = spells?.ids ?? new Set();
+						resourceSummary = await refreshRestResources(actor, regain);
+						benefits.push(hp
+							? game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.benefit_grinder_rest", hp)
+							: game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.benefit_grinder_no_hit_die"));
+						if (spells) {
+							benefits.push(game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.benefit_grinder_spells", {
+								roll: spells.roll,
+								count: spells.names.length,
+								lost: spells.lost,
+								spells: spells.names.join(", ") || "—",
+							}));
+						}
+					}
+					else {
+						const hpMax = Number(actor.system?.attributes?.hp?.max ?? hpBefore);
+						await actor.update({ "system.attributes.hp.value": hpMax });
+						resourceSummary = await refreshRestResources(actor);
+						benefits.push(game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.benefit_full_rest"));
+					}
+					await healStatDamage(actor, Boolean(grinder));
 					if (actor.statuses?.has("unconscious")) {
 						await actor.toggleStatusEffect("unconscious", { active: false });
 					}

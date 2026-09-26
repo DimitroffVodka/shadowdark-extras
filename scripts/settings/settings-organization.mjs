@@ -80,6 +80,24 @@ export function setupSettingsOrganization() {
 			"fas fa-beer-mug-empty"
 		);
 
+		// Camping & Rest - Grinder Mode
+		insertHeaderBefore(
+			'[name="shadowdark-extras.grinderMode"]',
+			game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.title"),
+			"fas fa-campground"
+		);
+
+		// Grinder hit dice only means something while Grinder Mode is on.
+		const grinder = sdxSection.find('[name="shadowdark-extras.grinderMode"]')[0];
+		const hitDice = sdxSection.find('[name="shadowdark-extras.grinderHitDice"]').closest(".form-group")[0];
+		if (grinder && hitDice) {
+			const follow = () => {
+				hitDice.style.display = grinder.checked ? "" : "none";
+			};
+			grinder.addEventListener("change", follow);
+			follow();
+		}
+
 		// 6. NPC FEATURES - First is NPC Inventory
 		insertHeaderBefore(
 			'[name="shadowdark-extras.enableNpcInventory"]',

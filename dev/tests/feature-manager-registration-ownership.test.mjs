@@ -190,6 +190,21 @@ test("registerSettings registers exactly the mapped settings and menus when all 
 	}
 });
 
+test("Grinder Mode settings keep the keys and shape Shadowdark Enhancer renders (#149)", () => {
+	registerModuleSettings();
+	const config = key => settingRegistrations.find(r => r.namespace === "shadowdark-extras" && r.key === key)?.config;
+	const mode = config("grinderMode");
+	assert.equal(mode?.type, Boolean);
+	assert.equal(mode.default, false);
+	assert.equal(mode.scope, "world");
+	assert.equal(mode.config, true);
+	const hitDice = config("grinderHitDice");
+	assert.equal(hitDice?.type, Number);
+	assert.equal(hitDice.default, 1);
+	assert.equal(hitDice.scope, "world");
+	assert.deepEqual(Object.keys(hitDice.choices), ["1", "2", "3", "4"]);
+});
+
 test("ownership matrix disables single-owner registrations and preserves shared registrations", () => {
 	for (const [key, featureIds] of Object.entries(SETTING_OWNERS)) {
 		if (featureIds === null) continue;

@@ -177,7 +177,26 @@ and the Party-token light are both cleaned up.
 A successful full rest restores HP to maximum, refreshes lost spells, expended
 class abilities, and lost wand spells, and clears Unconscious. It costs a
 ration. On an interrupted rest, a camper also needs a successful interruption
-check unless their Bed Down task succeeded.
+check unless their Bed Down task succeeded. With Shadowdark Enhancer installed,
+it also heals all stat damage.
+
+**Grinder Mode** (core rulebook p. 111) is a world setting under Configure
+Settings, next to **Grinder hit dice** (1 to 4, default 1). With it on, a
+rested camper instead:
+
+- adds a roll of that many class hit dice to current HP, up to maximum. A
+  character with the Stout advantage (the system's HP-roll advantage key) rolls
+  each die with advantage;
+- rolls `1d4` and regains that many lost spells. When more are lost than the
+  roll, the owning player picks which; if no player is connected, doesn't
+  answer within two minutes, or closes the dialog, the GM picks;
+- still refreshes class ability uses and wand spells in full, and clears
+  Unconscious;
+- with Shadowdark Enhancer, heals 1 point of each damaged ability instead of all
+  of it.
+
+The summary card shows the HP roll and which spells came back. Cook's +2 HP
+works as on any rest.
 
 | Task | Automated result on success |
 |---|---|
