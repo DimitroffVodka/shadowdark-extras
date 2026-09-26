@@ -84,6 +84,29 @@ test("API opens the existing app and resolves on close; player is warned without
 	assert.equal(warnings.length, 1);
 });
 
+test("render rejection settles the camping API instead of leaving a pending handoff", async t => {
+	setup();
+	t.mock.method(console, "error", () => {});
+	const failure = Promise.reject(Error("render boom"));
+	failure.catch(() => {});
+	t.mock.method(CampingRestApp.prototype, "render", () => failure);
+	const pending = camping.openCampingRest({ party: actor("party"), members: [actor("pc")] });
+	await new Promise(resolve => setImmediate(resolve));
+	assert.deepEqual(await Promise.race([pending, Promise.resolve("pending")]), empty);
+});
+
+test("confirmation rejection settles and closes the API window", async t => {
+	setup();
+	t.mock.method(console, "error", () => {});
+	let app;
+	t.mock.method(CampingRestApp.prototype, "render", function() { app = this; return this; });
+	t.mock.method(foundry.applications.api.DialogV2, "confirm", async () => { throw Error("dialog boom"); });
+	const pending = camping.openCampingRest({ party: actor("party"), members: [actor("pc")] });
+	await app._confirmAndRun({ campers: [], campfireMode: "none" });
+	assert.deepEqual(await Promise.race([pending, Promise.resolve("pending")]), empty);
+	assert.equal(app._closed, true);
+});
+
 test("declined confirmation settles API and cannot be resumed in the orphan window", async t => {
 	setup();
 	let app;
@@ -170,16 +193,82 @@ test("harsh storms and pushed campers never dispatch Hunt, and summary explains 
 	}
 });
 
-test("starvation respects absent, older and disabled Enhancer; a throw does not report completion", async t => {
+test("provider failure after food and recovery is terminal, not a replayable cancellation", async t => {
 	setup();
 	t.mock.method(console, "error", () => {});
-	for (const provider of [undefined, {}, { statDamage: {} }, { statDamage: { apply: async () => { throw Error("refused"); } } }]) {
+	const fed = actor("fed", 1);
+	const hungry = actor("hungry");
+	let recoveries = 0;
+	fed.update = async () => { recoveries++; };
+	const cards = [];
+	globalThis.ChatMessage = { getSpeaker: () => ({}), create: async data => cards.push(data) };
+	game.shadowdarkEnhancer.statDamage = { apply: async () => { throw Error("provider failed"); } };
+	const app = new CampingRestApp(actor("party"), [fed, hungry], { onComplete() {} });
+	const reply = await app._runProcedure({ campers: [{ actor: fed }, { actor: hungry }], campfireMode: "none" });
+	assert.equal(fed.items.length, 0);
+	assert.equal(recoveries, 1);
+	assert.equal(reply?.completed, true, "Enhancer must not replay a partially applied camp");
+	assert.equal(reply.partial, true);
+	assert.deepEqual(reply.fed, { fed: true, hungry: false });
+	assert.equal(cards.length, 1, "leave a persistent manual-recovery warning");
+});
+
+test("a missing or changed planned ration cancels before any food or recovery writes", async t => {
+	setup();
+	t.mock.method(console, "error", () => {});
+	for (const change of [pc => pc.items.splice(0), pc => { pc.items[0].system.quantity = 1; }]) {
+		const pc = actor("pc", 2);
+		let writes = 0;
+		pc.update = pc.updateEmbeddedDocuments = pc.deleteEmbeddedDocuments = async () => { writes++; };
+		const app = new CampingRestApp(actor("party"), [pc], { rationsEach: 2, onComplete() {} });
+		const build = app._buildRationPlan.bind(app);
+		app._buildRationPlan = campers => { const plan = build(campers); change(pc); return plan; };
+		app._postSummary = async () => assert.fail("must not grant rest from stale food");
+		const reply = await app._runProcedure({ campers: [{ actor: pc }], campfireMode: "none" });
+		assert.notEqual(reply?.completed, true);
+		assert.equal(writes, 0);
+	}
+});
+
+test("unconfirmed inventory writes never grant rest or report a camper fed", async t => {
+	setup();
+	t.mock.method(console, "error", () => {});
+	globalThis.ChatMessage = { getSpeaker: () => ({}), create: async () => {} };
+	const pc = actor("pc", 2);
+	pc.updateEmbeddedDocuments = async () => [];
+	pc.update = async () => assert.fail("no recovery without verified food consumption");
+	const app = new CampingRestApp(actor("party"), [pc], { onComplete() {} });
+	app._postSummary = async () => assert.fail("no successful summary");
+	const reply = await app._runProcedure({ campers: [{ actor: pc }], campfireMode: "none" });
+	assert.equal(reply?.partial, true);
+	assert.equal(reply.completed, true, "uncertain writes must not be automatically replayed");
+	assert.deepEqual(reply.fed, {});
+	assert.equal(pc.items[0].system.quantity, 2);
+});
+
+test("cleanup rejection does not turn an applied rest into a replayable cancellation", async t => {
+	setup();
+	t.mock.method(console, "error", () => {});
+	const pc = actor("pc", 1);
+	const app = new CampingRestApp(actor("party"), [pc], {
+		onComplete() {}, onCampfireChange: async () => { throw Error("cleanup boom"); },
+	});
+	app._postSummary = async () => {};
+	const reply = await app._runProcedure({ campers: [{ actor: pc }], campfireMode: "none" });
+	assert.equal(reply.completed, true);
+	assert.equal(reply.fed.pc, true);
+});
+
+test("starvation respects absent, older and disabled Enhancer", async t => {
+	setup();
+	t.mock.method(console, "error", () => {});
+	for (const provider of [undefined, {}, { statDamage: {} }]) {
 		game.shadowdarkEnhancer = provider;
 		const pc = actor("pc");
 		const app = new CampingRestApp(actor("party"), [pc], { onComplete() {} });
 		app._postSummary = async () => {};
 		const reply = await app._runProcedure({ campers: [{ actor: pc, taskKey: "" }], campfireMode: "none" });
-		assert.equal(reply?.completed, provider?.statDamage?.apply ? undefined : true);
+		assert.equal(reply?.completed, true);
 	}
 	game.modules.get("shadowdark-enhancer").active = false;
 	game.shadowdarkEnhancer = { statDamage: { apply: async () => assert.fail("disabled") } };

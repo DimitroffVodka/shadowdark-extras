@@ -276,6 +276,17 @@ travel clock. The promise resolves after the rest summary and cleanup, returning
 returns `{ completed: false, fed: {}, mountsFed: 0 }`. These options do not change
 the Party sheet's own **Begin rest** rules or its default clock checkbox.
 
+If opening or confirming the window fails, the handoff settles as canceled.
+Supplies are rechecked before consumption and read back before granting recovery.
+If a failure occurs after supplies or benefits may already have changed, the API
+returns `{ completed: true, partial: true, error, fed, mountsFed }` to prevent
+Enhancer from repeating the camp and charging food or applying benefits twice.
+Here `completed` means the handoff is terminal, **not that every step succeeded**.
+A persistent error and chat warning tell the GM to reconcile the unfinished food,
+recovery or stat-damage steps manually. `fed` and `mountsFed` are reported only
+after the entire food-consumption plan has been confirmed; otherwise they are
+empty/zero, not guessed. A cleanup error never makes an applied rest retryable.
+
 ---
 
 ## Marching Mode

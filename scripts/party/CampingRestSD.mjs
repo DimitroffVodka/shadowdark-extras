@@ -77,28 +77,46 @@ function mergeConsumptionEntries(entries = []) {
 	return [...merged.values()];
 }
 
-async function applyConsumption(entries, actorMap) {
+async function applyConsumption(entries, actorMap, beforeWrite = () => {}) {
 	const grouped = new Map();
+	const validate = entry => {
+		const actor = actorMap.get(entry.ownerId) ?? game.actors.get(entry.ownerId);
+		const item = actor?.items.get(entry.itemId);
+		if (!item || Number(item.system?.quantity) !== entry.before) {
+			throw new Error(game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.supplies_changed"));
+		}
+		return actor;
+	};
 	for (const entry of mergeConsumptionEntries(entries)) {
+		validate(entry);
 		if (!grouped.has(entry.ownerId)) grouped.set(entry.ownerId, []);
 		grouped.get(entry.ownerId).push(entry);
 	}
 
 	for (const [ownerId, ownerEntries] of grouped) {
 		const actor = actorMap.get(ownerId) ?? game.actors.get(ownerId);
-		if (!actor) continue;
 
 		const updates = [];
 		const deletes = [];
 		for (const entry of ownerEntries) {
+			validate(entry);
 			const item = actor.items.get(entry.itemId);
-			if (!item) continue;
 			const nextQuantity = Math.max(0, Number(item.system?.quantity ?? 0) - entry.amount);
 			if (nextQuantity === 0) deletes.push(item.id);
 			else updates.push({ "_id": item.id, "system.quantity": nextQuantity });
 		}
+		beforeWrite();
 		if (updates.length) await actor.updateEmbeddedDocuments("Item", updates);
-		if (deletes.length) await actor.deleteEmbeddedDocuments("Item", deletes);
+		if (deletes.length) {
+			for (const entry of ownerEntries.filter(entry => entry.after === 0)) validate(entry);
+			await actor.deleteEmbeddedDocuments("Item", deletes);
+		}
+		for (const entry of ownerEntries) {
+			const item = actor.items.get(entry.itemId);
+			if (entry.after === 0 ? item : Number(item?.system?.quantity) !== entry.after) {
+				throw new Error(game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.supplies_unconfirmed"));
+			}
+		}
 	}
 }
 
@@ -473,8 +491,25 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 	static show(partyActor, members, options = {}) {
 		const app = new CampingRestApp(partyActor, members, options);
-		app.render({ force: true });
+		Promise.resolve(app.render({ force: true })).catch(error => app._cancelOnError(error));
 		return app;
+	}
+
+	async _cancelOnError(error) {
+		this._closed = true;
+		console.error(`${MODULE_ID} | Could not open or confirm camping rest`, error);
+		ui.notifications.error(game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.failed", {
+			message: error.message,
+		}));
+		try {
+			await this.close();
+		}
+		catch(closeError) {
+			console.error(`${MODULE_ID} | Could not close failed camping rest`, closeError);
+		}
+		finally {
+			this._complete();
+		}
 	}
 
 	_complete(reply = { completed: false, fed: {}, mountsFed: 0 }) {
@@ -483,9 +518,13 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	}
 
 	async close(options = {}) {
-		await super.close(options);
 		this._closed = true;
-		if (!this._running) this._complete();
+		try {
+			await super.close(options);
+		}
+		finally {
+			if (!this._running) this._complete();
+		}
 	}
 
 	async _prepareContext() {
@@ -690,6 +729,9 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			await this.close();
 			this._complete(await this._runProcedure(plan));
 		}
+		catch(error) {
+			await this._cancelOnError(error);
+		}
 		finally {
 			if (this._running) this._complete();
 			this._running = false;
@@ -808,6 +850,8 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		let campfire = null;
 		let campfireEstablished = false;
 		let canceled = false;
+		let effectsStarted = false;
+		let appliedRations = null;
 
 		try {
 			if (plan.campfireMode === "torches") {
@@ -895,7 +939,9 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				...plan.campers.map(camper => [camper.actor.id, camper.actor]),
 			]);
 			if (plan.campfireMode === "torches") {
-				await applyConsumption(plan.torchPlan.entries, actorMap);
+				await applyConsumption(plan.torchPlan.entries, actorMap, () => {
+					effectsStarted = true;
+				});
 			}
 
 			const summary = [];
@@ -903,6 +949,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			for (const camper of plan.campers) {
 				const taskResult = taskResults.get(camper.actor.id);
 				if (!taskResult?.success || taskResult.task.key !== "hunt") continue;
+				effectsStarted = true;
 				taskBenefitsByActor.set(
 					camper.actor.id,
 					await this._applyTaskBenefit(camper, taskResult, plan)
@@ -912,11 +959,15 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			// A successful Hunt happens before the normal rest procedure, so
 			// rations found by the hunters are available to hungry campers.
 			const finalRationPlan = this._buildRationPlan(plan.campers);
-			await applyConsumption(finalRationPlan.entries, actorMap);
+			await applyConsumption(finalRationPlan.entries, actorMap, () => {
+				effectsStarted = true;
+			});
+			appliedRations = finalRationPlan;
 
 			// Advance to the end of the rest before granting the final recovery
 			// and Cook HP benefit.
 			if (plan.advanceTime && !this.advanceTimeLocked) {
+				effectsStarted = true;
 				await game.time.advance(REST_DURATION_SECONDS);
 			}
 
@@ -926,6 +977,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 			for (const camper of plan.campers) {
 				const actor = camper.actor;
+				effectsStarted = true;
 				const taskResult = taskResults.get(actor.id);
 				const hasRation = finalRationPlan.rationByActor.get(actor.id) ?? false;
 				if (!hasRation && this._overland && game.modules.get("shadowdark-enhancer")?.active) {
@@ -1034,6 +1086,27 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		}
 		catch(error) {
 			console.error(`${MODULE_ID} | Camping rest procedure failed`, error);
+			if (this._overland && effectsStarted) {
+				// Enhancer retries completed:false. Never replay uncertain document writes.
+				const message = game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.partial_failure", {
+					message: error.message,
+				});
+				ui.notifications.error(message, { permanent: true });
+				try {
+					await ChatMessage.create({
+						speaker: ChatMessage.getSpeaker({ actor: this.partyActor }),
+						content: `<p>${foundry.utils.escapeHTML(message)}</p>`,
+					});
+				}
+				catch(chatError) {
+					console.error(`${MODULE_ID} | Could not post camping failure`, chatError);
+				}
+				return {
+					completed: true, partial: true, error: error.message,
+					fed: appliedRations ? Object.fromEntries(appliedRations.rationByActor) : {},
+					mountsFed: appliedRations?.mountsFed ?? 0,
+				};
+			}
 			ui.notifications.error(
 				game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.failed", {
 					message: error.message,
@@ -1041,9 +1114,17 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			);
 		}
 		finally {
-			await removeCampfire(this.partyActor, campfire);
-			await this.onCampfireChange?.();
-			this.partyActor.sheet?.render(false);
+			try {
+				await removeCampfire(this.partyActor, campfire);
+				await this.onCampfireChange?.();
+				await this.partyActor.sheet?.render(false);
+			}
+			catch(error) {
+				console.error(`${MODULE_ID} | Camping cleanup failed`, error);
+				ui.notifications.error(game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.cleanup_failed", {
+					message: error.message,
+				}), { permanent: true });
+			}
 		}
 	}
 

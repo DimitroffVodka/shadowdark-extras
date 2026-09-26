@@ -388,7 +388,7 @@ export const PartyTravel = {
 					return false;
 				}
 				return true;
-			});
+			}, { consumeAfterDraw: true });
 			return;
 		}
 
@@ -401,7 +401,7 @@ export const PartyTravel = {
 	 * Accepting redraws immediately; declining accepts the current weather.
 	 * @param {Function} drawWeather
 	 */
-	async _maybeUseWeatherPrediction(drawWeather) {
+	async _maybeUseWeatherPrediction(drawWeather, { consumeAfterDraw = false } = {}) {
 		const prediction = this.actor.getFlag(MODULE_ID, "campingWeatherReroll");
 		let uses = Math.max(0, Number(prediction?.uses ?? (prediction ? 1 : 0)));
 		if (!uses) return;
@@ -428,14 +428,15 @@ export const PartyTravel = {
 				return;
 			}
 
+			// Enhancer can refuse a reroll: only spend Predict after it confirms the roll.
+			if (consumeAfterDraw && await drawWeather() === false) return;
 			const result = await this._requestPartyTravelMutation({
 				operation: "weatherPrediction",
 				action: "consume",
 			});
 			if (!result) return;
 			uses = result.uses;
-			const drawResult = await drawWeather();
-			if (drawResult === false) return;
+			if (!consumeAfterDraw && await drawWeather() === false) return;
 		}
 	},
 

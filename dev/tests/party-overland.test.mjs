@@ -169,10 +169,31 @@ test("an accepted Predict calls Enhancer with reroll and stops on reroll refusal
 	await sheet._onRollWeather(event);
 
 	assert.deepEqual(calls, [[], [{ reroll: true }]]);
-	assert.deepEqual(requests, [{ operation: "weatherPrediction", action: "consume" }]);
+	assert.deepEqual(requests, [], "a refused reroll must not consume Predict");
 	assert.deepEqual(warnings, ["The active GM refused the reroll."]);
 	assert.equal(legacyRolls, 0);
 	assert.equal(chatCards, 0);
+});
+
+test("Predict is consumed only after Enhancer confirms a successful reroll", async () => {
+	let release;
+	const drawn = new Promise(resolve => { release = resolve; });
+	const calls = [];
+	resetWorld({ active: true, enhancer: { overland: {
+		rollWeather: async options => {
+			if (options?.reroll) { calls.push("reroll"); await drawn; }
+			return { ok: true, rolled: true };
+		},
+	} } });
+	foundry.applications.api.DialogV2.confirm = async () => true;
+	const sheet = makeTravelSheet({ uses: 1 });
+	sheet._requestPartyTravelMutation = async () => { calls.push("consume"); return { ok: true, uses: 0 }; };
+	const pending = sheet._onRollWeather(event);
+	await new Promise(resolve => setImmediate(resolve));
+	assert.deepEqual(calls, ["reroll"]);
+	release();
+	await pending;
+	assert.deepEqual(calls, ["reroll", "consume"]);
 });
 
 test("a provider exception warns and never falls back to Extras weather", async () => {
