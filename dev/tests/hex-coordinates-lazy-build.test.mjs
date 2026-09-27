@@ -69,6 +69,7 @@ function makeStyle() {
 }
 
 let canvasReadyHook = null;
+let canvasPanHook = null;
 let sceneFlag = DISPLAY_STATES.HIDDEN;
 let clickListeners = 0;
 
@@ -93,7 +94,10 @@ globalThis.foundry = {
 };
 globalThis.CONFIG = { canvasTextStyle: makeStyle() };
 globalThis.Hooks = {
-	on(event, fn) { if (event === "canvasReady") canvasReadyHook = fn; },
+	on(event, fn) {
+		if (event === "canvasReady") canvasReadyHook = fn;
+		if (event === "canvasPan") canvasPanHook = fn;
+	},
 	once() {}, off() {},
 };
 globalThis.document = { fonts: { load: () => Promise.resolve() } };
@@ -128,7 +132,7 @@ async function useScene(state) {
 			setFlag: (scope, key, value) => { sceneFlag = value; return Promise.resolve(); },
 		},
 		controls: new StubContainer(),
-		stage: { addListener: () => { clickListeners += 1; } },
+		stage: { scale: { x: 1 }, addListener: () => { clickListeners += 1; } },
 		grid: {
 			isSquare: true, isHexagonal: false, columns: false, even: false,
 			sizeX: 100, sizeY: 100,
@@ -270,4 +274,25 @@ test("the persisted flag still advances through every state", async () => {
 	assert.equal(sceneFlag, DISPLAY_STATES.ZINE);
 	coords.toggle();
 	assert.equal(sceneFlag, DISPLAY_STATES.HIDDEN);
+});
+
+test("zooming out hides unreadable cells before rendering without changing play-zoom labels", async () => {
+	for (const state of [DISPLAY_STATES.CELL, DISPLAY_STATES.ZINE]) {
+		await useScene(state);
+		const built = textsBuilt.length;
+		assert.equal(typeof canvasPanHook, "function");
+		const { cell, zine } = containers();
+		const cells = state === DISPLAY_STATES.CELL ? cell : zine.children.find(c => c instanceof StubContainer);
+		assert.ok(cells);
+		assert.notEqual(cells.renderable, false);
+		canvas.stage.scale.x = 0.1;
+		canvasPanHook(canvas);
+		assert.equal(cells.renderable, false, "no cell textures are submitted at map overview zoom");
+		if (state === DISPLAY_STATES.ZINE) assert.equal(zine.visible, true, "margin labels remain available");
+		canvas.stage.scale.x = 1;
+		canvasPanHook(canvas);
+		assert.equal(cells.renderable, true);
+		assert.equal(textsBuilt.length, built, "zoom does not recreate labels");
+		assert.ok(textsBuilt.every(t => t.resolution === 4), "play-zoom appearance is unchanged");
+	}
 });

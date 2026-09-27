@@ -57,21 +57,32 @@ scene.update = data => {
 	return run;
 };
 
+let polygonDraws = 0;
+let geometryClears = 0;
 class RecordingGraphics {
 	constructor() {
 		this.filters = [];
 		this.destroyed = false;
 		this.fills = [];
+		this.children = [];
+		this.visible = true;
+		this.tint = 0xffffff;
 	}
 
-	clear() { this.fills = []; return this; }
+	clear() { geometryClears++; this.fills = []; return this; }
+	addChild(child) { this.children.push(child); return child; }
+	get renderedFills() {
+		return [...this.fills.map(c => c & this.tint), ...this.children.flatMap(c => c.renderedFills)];
+	}
 	lineStyle() { return this; }
 	beginFill(color) { this.fills.push(color); return this; }
-	drawPolygon() { return this; }
+	beginTextureFill(options) { this.textureFill = options; return this; }
+	drawPolygon() { polygonDraws++; return this; }
 	endFill() { return this; }
-	destroy() { this.destroyed = true; }
+	destroy() { this.destroyed = true; this.children.forEach(c => c.destroy()); }
 }
 globalThis.PIXI.Graphics = RecordingGraphics;
+globalThis.PIXI.LegacyGraphics = RecordingGraphics;
 
 globalThis.game.user = { id: "gm", isGM: true };
 globalThis.game.users = { activeGM: globalThis.game.user };
@@ -243,7 +254,7 @@ for (const isGM of [false, true]) {
 		let mask;
 		const refreshes = [];
 		canvas.masks.vision.addChild = graphics => { mask = graphics; };
-		canvas.perception.update = options => refreshes.push({ options, fills: [...mask.fills] });
+		canvas.perception.update = options => refreshes.push({ options, fills: mask.renderedFills });
 		onCanvasReady();
 		refreshes.length = 0;
 
@@ -282,6 +293,131 @@ test("fog initialization refreshes vision, but token-vision-off scenes do not", 
 		await scene.setFlag(MODULE_ID, "hexFogRevealed", { "0-1": true });
 		onUpdateScene(scene, { flags: { [MODULE_ID]: { hexFogRevealed: { "0-1": true } } } });
 		assert.deepEqual(refreshes, tokenVision ? [{ refreshVision: true }] : []);
+	}
+});
+
+test("a reveal changes fog and mask without rebuilding polygon geometry", async () => {
+	await prepare(makeRecords(3));
+	scene.tokenVision = true;
+	let overlay;
+	let mask;
+	const refreshes = [];
+	canvas.interface.addChildAt = graphics => { overlay = graphics; };
+	canvas.masks.vision.addChild = graphics => { mask = graphics; };
+	canvas.perception.update = options => refreshes.push(options);
+	onCanvasReady();
+	polygonDraws = geometryClears = 0;
+	refreshes.length = 0;
+	await scene.setFlag(MODULE_ID, "hexFogRevealed", { "0-1": true });
+	onUpdateScene(scene, { flags: { [MODULE_ID]: { hexFogRevealed: { "0-1": true } } } });
+	assert.equal(polygonDraws, 0, "reuse existing fog and mask polygons");
+	assert.equal(geometryClears, 0, "do not clear unchanged geometry");
+	assert.equal(overlay.children[1].visible, false);
+	assert.equal(mask.renderedFills[1], 0xffffff);
+	assert.equal(mask.renderedFills[2], 0x000000);
+	assert.deepEqual(refreshes, [{ refreshVision: true }]);
+	refreshes.length = 0;
+	onUpdateScene(scene, { flags: { [MODULE_ID]: { hexRolledCells: {} } } });
+	assert.equal(polygonDraws, 0);
+	assert.equal(geometryClears, 0);
+	assert.deepEqual(refreshes, [], "unrelated flags do not invalidate the cached mask");
+	await scene.setFlag(MODULE_ID, "hexFogRevealed", { "0-1": false });
+	onUpdateScene(scene, { "flags.shadowdark-extras.hexFogRevealed.0-1": false });
+	assert.equal(overlay.children[1].visible, true);
+	assert.equal(mask.renderedFills[1], 0x000000);
+	assert.equal(polygonDraws, 0);
+	assert.deepEqual(refreshes, [{ refreshVision: true }]);
+	Hooks.handlers("canvasTearDown").at(-1)();
+	assert.ok(overlay.children.every(c => c.destroyed));
+	assert.ok(mask.children.every(c => c.destroyed));
+});
+
+test("journal exploration and real paint handlers update retained cells and refresh the mask once", async () => {
+	await prepare(makeRecords(5));
+	scene.tokenVision = true;
+	let overlay;
+	let mask;
+	const handlers = new Map();
+	const refreshes = [];
+	canvas.stage.on = (name, fn) => handlers.set(name, fn);
+	canvas.interface.addChildAt = graphics => { overlay = graphics; };
+	canvas.masks.vision.addChild = graphics => { mask = graphics; };
+	canvas.perception.update = options => refreshes.push(options);
+	onCanvasReady();
+	polygonDraws = geometryClears = 0;
+	refreshes.length = 0;
+	const journal = game.journal.find(j => j.name === HEX_JOURNAL_NAME);
+	const records = makeRecords(5);
+	records["0_2"].exploration = "mapped";
+	await journal.setFlag(MODULE_ID, "hexData", { [scene.id]: records });
+	Hooks.handlers("updateJournalEntry").at(-1)(journal);
+	assert.equal(mask.renderedFills[2], 0xffffff);
+	assert.equal(overlay.children[2].visible, false);
+	assert.deepEqual(refreshes, [{ refreshVision: true }]);
+	refreshes.length = 0;
+	Hooks.handlers("updateJournalEntry").at(-1)(journal);
+	assert.deepEqual(refreshes, [], "unchanged journal data does not invalidate vision");
+
+	const oldDocument = globalThis.document;
+	globalThis.document = { elementFromPoint: () => ({ tagName: "CANVAS" }) };
+	try {
+		const event = { ctrlKey: true, getLocalPosition: () => ({ x: 400, y: 0 }) };
+		handlers.get("mousedown")(event);
+		assert.equal(overlay.children[4].visible, false);
+		assert.equal(mask.renderedFills[4], 0xffffff);
+		assert.deepEqual(refreshes, [{ refreshVision: true }]);
+		handlers.get("mouseup")();
+		await tick();
+		refreshes.length = 0;
+		handlers.get("mousedown")({ ...event, ctrlKey: false, shiftKey: true });
+		assert.equal(overlay.children[4].visible, true);
+		assert.equal(mask.renderedFills[4], 0x000000);
+		assert.deepEqual(refreshes, [{ refreshVision: true }]);
+		handlers.get("mouseup")();
+		await tick();
+		assert.equal(scene.getFlag(MODULE_ID, "hexFogRevealed")["0-4"], false);
+		assert.equal(polygonDraws, 0);
+		assert.equal(geometryClears, 0);
+	}
+	finally {
+		if (oldDocument === undefined) delete globalThis.document;
+		else globalThis.document = oldDocument;
+	}
+});
+
+test("loading an overlay image preserves world alignment and retained reveal geometry", async () => {
+	await prepare(makeRecords(2));
+	const oldLoader = globalThis.loadTexture;
+	const oldMatrix = PIXI.Matrix;
+	let overlay;
+	const texture = { valid: true, width: 600, height: 50 };
+	globalThis.loadTexture = async () => texture;
+	PIXI.Matrix = class {
+		translate(x, y) { this.translation = [x, y]; return this; }
+		scale(x, y) { this.scaling = [x, y]; return this; }
+	};
+	try {
+		canvas.dimensions = { sceneX: 10, sceneY: 20, sceneWidth: 1200, sceneHeight: 100 };
+		canvas.interface.addChildAt = graphics => { overlay = graphics; };
+		scene.fog.overlay = "owned-test-overlay.webp";
+		onCanvasReady();
+		await tick();
+		const fill = overlay.children[0].textureFill;
+		assert.equal(fill.texture, texture);
+		assert.equal(fill.alpha, 0.5);
+		assert.deepEqual(fill.matrix.translation, [-10, -20]);
+		assert.deepEqual(fill.matrix.scaling, [0.5, 0.5]);
+		polygonDraws = geometryClears = 0;
+		await scene.setFlag(MODULE_ID, "hexFogRevealed", { "0-1": true });
+		onUpdateScene(scene, { flags: { [MODULE_ID]: { hexFogRevealed: { "0-1": true } } } });
+		assert.equal(overlay.children[1].visible, false);
+		assert.equal(overlay.children[2].textureFill.texture, texture);
+		assert.equal(polygonDraws, 0);
+		assert.equal(geometryClears, 0);
+	}
+	finally {
+		globalThis.loadTexture = oldLoader;
+		PIXI.Matrix = oldMatrix;
 	}
 });
 

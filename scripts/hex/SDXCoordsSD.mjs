@@ -83,6 +83,8 @@ class SDXCoord {
 
 	#zineContainer;
 
+	#zineCells;
+
 	// Label sets are built on first display, not on construction. A scene that
 	// never turns coordinates on builds nothing; the states are mutually
 	// exclusive, so a scene that does turn them on builds one set, not three.
@@ -406,7 +408,17 @@ class SDXCoord {
 
 	_renderZineLabels() {
 		this._renderMarginLabels(this.#zineContainer, "zine");
-		this._renderCellLabels(this.#zineContainer, "zine");
+		this.#zineCells = this.#zineContainer.addChild(new PIXI.Container());
+		this._renderCellLabels(this.#zineCells, "zine");
+	}
+
+	updateZoom() {
+		// Below eight screen pixels the cell text is unreadable. Do not submit
+		// thousands of previously off-screen text textures on the first zoom-out.
+		const readable = this._size * Math.max(10, this._cellFontScale) / 100
+			* (canvas.stage.scale?.x ?? 1) >= 8;
+		this.#cellContainer.renderable = readable;
+		if (this.#zineCells) this.#zineCells.renderable = readable;
 	}
 
 	// ---- Click Coordinate ----
@@ -480,6 +492,7 @@ class SDXCoord {
 		this.#zineContainer.visible = false;
 
 		this._ensureBuilt(state);
+		this.updateZoom();
 
 		switch (state) {
 			case DISPLAY_STATES.MARGIN:
@@ -560,6 +573,7 @@ export function initSDXCoords() {
 			window.SDXCoordinates = new SDXCoord();
 		}
 	});
+	Hooks.on("canvasPan", () => window.SDXCoordinates?.updateZoom());
 }
 
 /**
