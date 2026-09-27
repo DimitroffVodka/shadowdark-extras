@@ -5,6 +5,7 @@ import { installCanvasGlobals, installDom, makeGsapRecorder, StubContainer } fro
 import { installAppGlobals, makeSelectorDom } from "./helpers/dom-harness.mjs";
 
 installCanvasGlobals();
+globalThis.PIXI.LegacyGraphics = globalThis.PIXI.Graphics;
 installDom();
 
 StubContainer.prototype.removeChildren = function() {

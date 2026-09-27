@@ -42,6 +42,21 @@ class StubText {
 	destroy() {}
 }
 
+/** Cell labels: glyphs from an installed BitmapFont, no texture of their own. */
+class StubBitmapText extends StubText {
+	constructor(label, options) {
+		super(label);
+		this.options = options;
+	}
+}
+
+/** Every BitmapFont.from() call since the last useScene(), by name. */
+let fontsInstalled = [];
+
+/** What PIXI.TextMetrics reports for every label. */
+const metrics = (width, height) => ({ width, height, lineHeight: height + 3, fontProperties: { fontSize: height } });
+let measured = metrics(10, 10);
+
 class StubContainer {
 	constructor() {
 		this.children = [];
@@ -63,16 +78,30 @@ class StubContainer {
 function makeStyle() {
 	return {
 		fill: "#fff", fontFamily: "Signika-Bold", fontSize: 50,
-		stroke: "#000", strokeThickness: 3,
+		stroke: "#000", strokeThickness: 3, padding: 1,
 		clone() { return makeStyle(); },
 	};
 }
 
 let canvasReadyHook = null;
+let canvasPanHook = null;
 let sceneFlag = DISPLAY_STATES.HIDDEN;
 let clickListeners = 0;
 
-globalThis.PIXI = { Container: StubContainer };
+globalThis.PIXI = {
+	Container: StubContainer,
+	BitmapText: StubBitmapText,
+	BitmapFont: {
+		available: {},
+		from(name) { this.available[name] = {}; fontsInstalled.push(name); },
+		uninstall(name) {
+			if (!this.available[name]) throw new Error(`No font found named '${name}'`);
+			delete this.available[name];
+		},
+	},
+	TextMetrics: { measureText: () => measured },
+	Rectangle: class { constructor(x, y, width, height) { Object.assign(this, { x, y, width, height }); } },
+};
 globalThis.game = {
 	version: "13",
 	settings: {
@@ -93,7 +122,10 @@ globalThis.foundry = {
 };
 globalThis.CONFIG = { canvasTextStyle: makeStyle() };
 globalThis.Hooks = {
-	on(event, fn) { if (event === "canvasReady") canvasReadyHook = fn; },
+	on(event, fn) {
+		if (event === "canvasReady") canvasReadyHook = fn;
+		if (event === "canvasPan") canvasPanHook = fn;
+	},
 	once() {}, off() {},
 };
 globalThis.document = { fonts: { load: () => Promise.resolve() } };
@@ -128,7 +160,7 @@ async function useScene(state) {
 			setFlag: (scope, key, value) => { sceneFlag = value; return Promise.resolve(); },
 		},
 		controls: new StubContainer(),
-		stage: { addListener: () => { clickListeners += 1; } },
+		stage: { scale: { x: 1 }, addListener: () => { clickListeners += 1; } },
 		grid: {
 			isSquare: true, isHexagonal: false, columns: false, even: false,
 			sizeX: 100, sizeY: 100,
@@ -140,6 +172,8 @@ async function useScene(state) {
 	};
 
 	textsBuilt = [];
+	fontsInstalled = [];
+	measured = metrics(10, 10);
 	await canvasReadyHook();
 	return globalThis.window.SDXCoordinates;
 }
@@ -190,6 +224,54 @@ test("a scene stored as MARGIN builds only the margin labels, on load", async ()
 	assert.equal(cell.children.length, 0, "the cell set is not built");
 	assert.equal(zine.children.length, 0, "the zine set is not built");
 	assert.deepEqual([margin.visible, cell.visible, zine.visible], [true, false, false]);
+});
+
+test("zoom only gates drawing the cell set; it never builds or rebuilds labels", async () => {
+	const coords = await useScene(DISPLAY_STATES.HIDDEN);
+	canvas.stage.scale.x = 0.05;
+	coords._applyState(DISPLAY_STATES.CELL);
+	const { cell } = containers();
+	const count = textsBuilt.length;
+	assert.ok(count > 0, "the set builds when shown, even zoomed out");
+	assert.equal(cell.renderable, false, "but unreadable cells are not drawn");
+	canvas.stage.scale.x = 1;
+	canvasPanHook();
+	assert.equal(cell.renderable, true);
+	assert.equal(textsBuilt.length, count);
+});
+
+test("cell labels draw from one glyph atlas, placed where their PreciseText drew", async () => {
+	const coords = await useScene(DISPLAY_STATES.HIDDEN);
+	Object.assign(canvas.grid, { isSquare: false, isHexagonal: true, columns: true });
+	measured = metrics(37.3, 45.2);
+	coords._applyState(DISPLAY_STATES.CELL);
+	coords._applyState(DISPLAY_STATES.ZINE);
+
+	const labels = textsBuilt.filter(t => t instanceof StubBitmapText);
+	assert.ok(labels.length > 0);
+	assert.deepEqual(fontsInstalled, [`${MODULE_ID}.coords`], "cell and zine labels share one atlas");
+	assert.ok(labels.every(t => t.options.fontName === fontsInstalled[0]));
+	// PreciseText reported ceil(37.3 + 2 * padding) - 2 * padding = 38 wide, so
+	// it was centred 19 left of the hex middle; it also centred its line in the
+	// 3-taller line height, which BitmapText must copy.
+	assert.ok(labels.every(t => t._pos.x % 100 === 50 - 19 && t._pos.y % 100 === 1.5));
+
+	const { cell } = containers();
+	const column = cell.children[0];
+	assert.equal(column.cullable, true, "off-screen columns skip drawing");
+	for (const t of column.children) {
+		const { x, y, width, height } = column.cullArea;
+		assert.ok(t._pos.x > x && t._pos.x + 38 < x + width && t._pos.y > y && t._pos.y + 46 < y + height);
+	}
+});
+
+test("the next canvas uninstalls the glyph atlas", async () => {
+	await useScene(DISPLAY_STATES.CELL);
+	assert.ok(PIXI.BitmapFont.available[`${MODULE_ID}.coords`]);
+	sceneFlag = DISPLAY_STATES.HIDDEN;
+	await canvasReadyHook();
+	assert.equal(PIXI.BitmapFont.available[`${MODULE_ID}.coords`], undefined);
+	await canvasReadyHook(); // an overlay that never drew cells has nothing to uninstall
 });
 
 test("a scene stored as CELL builds only the cell labels, on load", async () => {
@@ -270,4 +352,26 @@ test("the persisted flag still advances through every state", async () => {
 	assert.equal(sceneFlag, DISPLAY_STATES.ZINE);
 	coords.toggle();
 	assert.equal(sceneFlag, DISPLAY_STATES.HIDDEN);
+});
+
+test("zooming out hides unreadable cells before rendering without changing play-zoom labels", async () => {
+	for (const state of [DISPLAY_STATES.CELL, DISPLAY_STATES.ZINE]) {
+		await useScene(state);
+		const built = textsBuilt.length;
+		assert.equal(typeof canvasPanHook, "function");
+		const { cell, zine } = containers();
+		const cells = state === DISPLAY_STATES.CELL ? cell : zine.children.find(c => c instanceof StubContainer);
+		assert.ok(cells);
+		assert.notEqual(cells.renderable, false);
+		canvas.stage.scale.x = 0.1;
+		canvasPanHook(canvas);
+		assert.equal(cells.renderable, false, "no cell textures are submitted at map overview zoom");
+		if (state === DISPLAY_STATES.ZINE) assert.equal(zine.visible, true, "margin labels remain available");
+		canvas.stage.scale.x = 1;
+		canvasPanHook(canvas);
+		assert.equal(cells.renderable, true);
+		assert.equal(textsBuilt.length, built, "zoom does not recreate labels");
+		const margins = textsBuilt.filter(t => !(t instanceof StubBitmapText));
+		assert.ok(margins.every(t => t.resolution === 4), "margin labels stay PreciseText");
+	}
 });

@@ -164,6 +164,7 @@ import { registerAppV2HeaderBridge } from "./shared/appv2-header-bridge.mjs";
 import { initSDXCoords } from "./hex/SDXCoordsSD.mjs";
 import { initHexTooltip } from "./hex/HexTooltipSD.mjs";
 import { initHexFog } from "./hex/SDXHexFogSD.mjs";
+import { initHexArtResidency } from "./hex/hex-art-residency.mjs";
 import { registerMaphubHooks } from "./MaphubSD.mjs";
 import { initUnidentifiedGMDisplay } from "./inventory/UnidentifiedDisplaySD.mjs";
 import { initTemplateElevationBadge } from "./effects/TemplateElevationBadgeSD.mjs";
@@ -248,6 +249,7 @@ if (featureEnabled(FEATURE_IDS.JOURNAL_PINS)) {
 if (featureEnabled(FEATURE_IDS.COORDINATES)) initSDXCoords();
 if (featureEnabled(FEATURE_IDS.HEX_TOOLTIP)) initHexTooltip();
 if (featureEnabled(FEATURE_IDS.HEX_FOG)) initHexFog();
+if (featureEnabled(FEATURE_IDS.HEX_PAINTER)) initHexArtResidency();
 if (featureEnabled(FEATURE_IDS.MAP_GENERATORS)) registerMaphubHooks();
 if (featureEnabled(FEATURE_IDS.UNIDENTIFIED_ITEMS)) initUnidentifiedGMDisplay();
 if (featureEnabled(FEATURE_IDS.TEMPLATE_EFFECTS)) initTemplateElevationBadge();
@@ -401,7 +403,6 @@ initializeEarlyFeatures();
 // UNIDENTIFIED ITEMS — thin wrappers to SD 4.x native identification
 // ============================================
 
-
 // ============================================
 // BASIC ITEM CONTAINERS (non-invasive)
 // ============================================
@@ -409,7 +410,6 @@ initializeEarlyFeatures();
 // and the two container hooks. These twelve functions called eight of those
 // directly, so co-locating them turns eight cross-module imports into local
 // calls; four are imported back because the sheet dispatchers below use them.
-
 
 // The four small tab enhancers moved to character-sheet/enhanced-tabs.mjs,
 // together in one module because they are 12, 10, 12 and 9 lines. The
