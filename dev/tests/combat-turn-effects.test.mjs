@@ -79,6 +79,8 @@ for (const kind of ["Aura", "Template"]) {
 		f.combat.previous = { round: 3, turn: 0, combatantId: "Y" };
 		f.combat.current.combatantId = "X";
 		f.combat.combatant = f.combatants[0];
+		// Enhancer restores the captured pre-round state for the core replay.
+		f.combat.previous = { round: 2, turn: 2, combatantId: "Z" };
 		await f.event("end", "Z", { round: 2, turn: 2 });
 		await f.event("start", "X");
 		assert.deepEqual(f.calls, [expected("Z", "End"), expected("X", "Start")]);
@@ -100,6 +102,53 @@ for (const kind of ["Aura", "Template"]) {
 		await f.event("start", "X");
 		assert.deepEqual(f.calls.at(-1), expected("X", "Start"));
 		assert.equal(f.calls.length, 4);
+	});
+
+	for (const priorTurnStarted of [false, true]) {
+		test(`${kind}: reorder is effect-neutral (prior turn observed: ${priorTurnStarted})`, async () => {
+			const f = fixture(kind);
+			if (priorTurnStarted) await f.event("start", "X");
+			f.calls.length = 0;
+			f.combat.previous = { round: 2, turn: 2, combatantId: "X" };
+			f.combat.current = { round: 2, turn: 2, combatantId: "Y" };
+			// Core dispatches both callbacks at the same coordinates, without updateCombat.
+			await f.event("end", "X");
+			await f.event("start", "Y");
+			assert.deepEqual(f.calls, []);
+			assert.equal(f.originals.length, priorTurnStarted ? 3 : 2, "do not suppress the core wrapper chain");
+		});
+	}
+
+	test(`${kind}: adding the first combatant to a started empty combat is effect-neutral`, async () => {
+		const f = fixture(kind);
+		f.combat.previous = { round: 2, turn: 2, combatantId: null };
+		await f.event("start", "X");
+		assert.deepEqual(f.calls, []);
+	});
+
+	test(`${kind}: reorder classification survives an awaited upstream wrapper`, async () => {
+		const f = fixture(kind);
+		f.combat.previous = { round: 2, turn: 2, combatantId: "X" };
+		const pending = f.event("start", "Y");
+		f.combat.previous = { round: 1, turn: 2, combatantId: "Z" };
+		f.combat.round = 3;
+		await pending;
+		assert.deepEqual(f.calls, []);
+	});
+
+	test(`${kind}: advancement after a reorder and rewind still applies effects`, async () => {
+		const f = fixture(kind);
+		f.combat.previous = { round: 2, turn: 2, combatantId: "X" };
+		await f.event("end", "X");
+		await f.event("start", "Y");
+		f.combat.turn = 0;
+		await f.update({ turn: 0 }); // Foundry emits no turn callbacks on rewind.
+		f.combat.previous = { round: 2, turn: 0, combatantId: "X" };
+		f.combat.turn = 1;
+		await f.update({ turn: 1 });
+		await f.event("end", "X", { turn: 0 });
+		await f.event("start", "Y");
+		assert.deepEqual(f.calls, [expected("X", "End"), expected("Y", "Start")]);
 	});
 
 	test(`${kind}: skipped events and non-active GMs do not apply, but original wrappers still run`, async () => {
@@ -149,7 +198,8 @@ for (const kind of ["Aura", "Template"]) {
 		try {
 			await f.event("end", "X", { round: 2 });
 			await f.event("start", "X");
-			assert.deepEqual(f.calls, []);
+			assert.deepEqual(f.calls, kind === "Aura" ? [expected("X", "End")] : [],
+				"aura expiry must allow the old-round end, but not an expired-round start");
 		} finally { release(); await maintenance; }
 	});
 

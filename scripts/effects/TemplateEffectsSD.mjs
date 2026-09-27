@@ -101,8 +101,12 @@ export function initTemplateEffects() {
 		const original = proto[method];
 		proto[method] = async function(combatant, context) {
 			const expiryRound = this.round;
+			// Combatant edits also dispatch turn events, without advancing time.
+			// Snapshot before any upstream await can change the combat's state.
+			const reordered = context?.round === this.round && context?.turn === this.turn
+				&& context?.round === this.previous?.round && context?.turn === this.previous?.turn;
 			await original.call(this, combatant, context);
-			if (!game.user.isActiveGM || context?.skipped || !canvas?.ready) return;
+			if (!game.user.isActiveGM || context?.skipped || reordered || !canvas?.ready) return;
 			try {
 				await processTemplateTurnEffects(combatant?.token, trigger, expiryRound);
 			}

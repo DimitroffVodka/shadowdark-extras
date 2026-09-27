@@ -117,9 +117,14 @@ export function initAuraEffects() {
 	for (const [method, trigger] of [["_onStartTurn", "turnStart"], ["_onEndTurn", "turnEnd"]]) {
 		const original = proto[method];
 		proto[method] = async function(combatant, context) {
-			const expiryRound = this.round;
+			const expiryRound = context?.round ?? this.round;
+			// Combatant edits also dispatch turn events, without advancing time.
+			// Snapshot before any upstream await can change the combat's state.
+			const reordered = context?.round === this.round && context?.turn === this.turn
+				&& context?.round === this.previous?.round && context?.turn === this.previous?.turn;
 			await original.call(this, combatant, context);
-			if (!game.user.isActiveGM || context?.skipped || !isCanvasAvailable()) return;
+			if (!game.user.isActiveGM || context?.skipped || reordered
+				|| !isCanvasAvailable()) return;
 			try {
 				await processAuraTurnEffects(combatant, trigger, expiryRound);
 			}
@@ -568,7 +573,7 @@ async function expireAuras(combat) {
  * Process only the turn event supplied by Foundry, never mutable combat state.
  * @param {Combatant} combatant - The combatant whose turn started or ended
  * @param {string} trigger - 'turnStart' or 'turnEnd'
- * @param {number} expiryRound - The combat's round before awaiting other wrappers
+ * @param {number} expiryRound - The event's round, captured before awaiting other wrappers
  */
 async function processAuraTurnEffects(combatant, trigger, expiryRound) {
 	// updateCombat deletes expired auras asynchronously. Do not hit again while
@@ -581,7 +586,7 @@ async function processAuraTurnEffects(combatant, trigger, expiryRound) {
 	if (trigger === "turnEnd") {
 		const prevCombatant = combatant;
 		const prevToken = prevCombatant?.token ? canvas.tokens.get(prevCombatant.token.id) : null;
-		console.log(`shadowdark-extras | handleCombatUpdate: turnEnd for prevToken=${prevToken?.name}`);
+		console.log(`shadowdark-extras | processAuraTurnEffects: turnEnd for prevToken=${prevToken?.name}`);
 		if (prevToken) {
 			for (const { effect, token: sourceToken, config } of auras) {
 				// Case 1: Source Turn End - prev combatant IS the aura source
@@ -591,7 +596,7 @@ async function processAuraTurnEffects(combatant, trigger, expiryRound) {
                     || config.effectsTriggers?.onSourceTurnEnd
                     || config.macroTriggers?.onSourceTurnEnd;
 				if (sourceToken.id === prevToken.id && hasSourceTurnEnd) {
-					console.log("shadowdark-extras | handleCombatUpdate: Source Turn End - checking all tokens in aura");
+					console.log("shadowdark-extras | processAuraTurnEffects: Source Turn End - checking all tokens in aura");
 					for (const targetToken of canvas.tokens.placeables) {
 						if (targetToken.id === sourceToken.id && !config.includeSelf) continue;
 						if (!targetToken.actor) continue;
@@ -605,7 +610,7 @@ async function processAuraTurnEffects(combatant, trigger, expiryRound) {
 							continue;
 						}
 
-						console.log(`shadowdark-extras | handleCombatUpdate: Source Turn End applying to ${targetToken.name}`);
+						console.log(`shadowdark-extras | processAuraTurnEffects: Source Turn End applying to ${targetToken.name}`);
 						await applyAuraEffect(sourceToken, targetToken, "sourceTurnEnd", config, effect);
 					}
 				}
@@ -617,20 +622,20 @@ async function processAuraTurnEffects(combatant, trigger, expiryRound) {
                     || config.effectsTriggers?.onTargetTurnEnd
                     || config.macroTriggers?.onTargetTurnEnd;
 				if (hasTargetTurnEnd) {
-					console.log(`shadowdark-extras | handleCombatUpdate: Checking Target Turn End for ${prevToken.name} in ${effect.name}`);
+					console.log(`shadowdark-extras | processAuraTurnEffects: Checking Target Turn End for ${prevToken.name} in ${effect.name}`);
 					if (sourceToken.id === prevToken.id && !config.includeSelf) {
-						console.log("shadowdark-extras | handleCombatUpdate: Target Turn End skipped (self)");
+						console.log("shadowdark-extras | processAuraTurnEffects: Target Turn End skipped (self)");
 						continue;
 					}
 					const inAura = isTokenInAura(sourceToken, prevToken, config.radius);
-					console.log(`shadowdark-extras | handleCombatUpdate: Target Turn End inAura=${inAura}`);
+					console.log(`shadowdark-extras | processAuraTurnEffects: Target Turn End inAura=${inAura}`);
 					if (!inAura) continue;
 					if (!checkDisposition(sourceToken, prevToken, config.disposition)) continue;
 					if (config.checkVisibility && !checkAuraVisibility(sourceToken, prevToken)) {
 						continue;
 					}
 
-					console.log(`shadowdark-extras | handleCombatUpdate: Target Turn End applying to ${prevToken.name}`);
+					console.log(`shadowdark-extras | processAuraTurnEffects: Target Turn End applying to ${prevToken.name}`);
 					await applyAuraEffect(sourceToken, prevToken, "targetTurnEnd", config, effect);
 				}
 			}
@@ -650,7 +655,7 @@ async function processAuraTurnEffects(combatant, trigger, expiryRound) {
             || config.effectsTriggers?.onSourceTurnStart
             || config.macroTriggers?.onSourceTurnStart;
 		if (sourceToken.id === currentToken.id && hasSourceTurnStart) {
-			console.log("shadowdark-extras | handleCombatUpdate: Source Turn Start - checking all tokens in aura");
+			console.log("shadowdark-extras | processAuraTurnEffects: Source Turn Start - checking all tokens in aura");
 			for (const targetToken of canvas.tokens.placeables) {
 				if (targetToken.id === sourceToken.id && !config.includeSelf) continue;
 				if (!targetToken.actor) continue;
@@ -665,7 +670,7 @@ async function processAuraTurnEffects(combatant, trigger, expiryRound) {
 				if (_auraAffectedThisTurn.has(key)) continue;
 				_auraAffectedThisTurn.set(key, true);
 
-				console.log(`shadowdark-extras | handleCombatUpdate: Source Turn Start applying to ${targetToken.name}`);
+				console.log(`shadowdark-extras | processAuraTurnEffects: Source Turn Start applying to ${targetToken.name}`);
 				await applyAuraEffect(sourceToken, targetToken, "sourceTurnStart", config, effect);
 			}
 		}
@@ -687,7 +692,7 @@ async function processAuraTurnEffects(combatant, trigger, expiryRound) {
 			if (_auraAffectedThisTurn.has(key)) continue;
 			_auraAffectedThisTurn.set(key, true);
 
-			console.log(`shadowdark-extras | handleCombatUpdate: Target Turn Start applying to ${currentToken.name}`);
+			console.log(`shadowdark-extras | processAuraTurnEffects: Target Turn Start applying to ${currentToken.name}`);
 			await applyAuraEffect(sourceToken, currentToken, "targetTurnStart", config, effect);
 		}
 	}
