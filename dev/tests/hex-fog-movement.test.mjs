@@ -64,12 +64,13 @@ class RecordingGraphics {
 		this.filters = [];
 		this.destroyed = false;
 		this.fills = [];
+		this.polygons = [];
 		this.children = [];
 		this.visible = true;
 		this.tint = 0xffffff;
 	}
 
-	clear() { geometryClears++; this.fills = []; return this; }
+	clear() { geometryClears++; this.fills = []; this.polygons = []; return this; }
 	addChild(child) { this.children.push(child); return child; }
 	get renderedFills() {
 		return [...this.fills.map(c => c & this.tint), ...this.children.flatMap(c => c.renderedFills)];
@@ -77,7 +78,7 @@ class RecordingGraphics {
 	lineStyle() { return this; }
 	beginFill(color) { this.fills.push(color); return this; }
 	beginTextureFill(options) { this.textureFill = options; return this; }
-	drawPolygon() { polygonDraws++; return this; }
+	drawPolygon(shape) { polygonDraws++; this.polygons.push(shape); return this; }
 	endFill() { return this; }
 	destroy() { this.destroyed = true; this.children.forEach(c => c.destroy()); }
 }
@@ -152,7 +153,7 @@ function makeCanvas(pathCells) {
 		isHexagonal: true,
 		sizeX: 100,
 		sizeY: 100,
-		getShape: () => [],
+		getShape: () => [{ x: 0, y: 0 }],
 		getAdjacentOffsets: ({ i, j }) => [{ i, j: j - 1 }, { i, j: j + 1 }],
 		getCenterPoint: ({ i, j }) => ({ x: j * 100, y: i * 100 }),
 		getOffset: ({ x, y }) => ({ i: Math.floor(y / 100), j: Math.floor(x / 100) }),
@@ -296,9 +297,10 @@ test("fog initialization refreshes vision, but token-vision-off scenes do not", 
 	}
 });
 
-test("a reveal changes fog and mask without rebuilding polygon geometry", async () => {
+test("a reveal rebuilds only its fog and mask row, not the rest of the map", async () => {
 	await prepare(makeRecords(3));
 	scene.tokenVision = true;
+	scene.dimensions.rows = 3;
 	let overlay;
 	let mask;
 	const refreshes = [];
@@ -309,23 +311,28 @@ test("a reveal changes fog and mask without rebuilding polygon geometry", async 
 	polygonDraws = geometryClears = 0;
 	refreshes.length = 0;
 	await scene.setFlag(MODULE_ID, "hexFogRevealed", { "0-1": true });
+	const unchangedOverlay = overlay.children[1].polygons;
+	const unchangedMask = mask.children[1].polygons;
 	onUpdateScene(scene, { flags: { [MODULE_ID]: { hexFogRevealed: { "0-1": true } } } });
-	assert.equal(polygonDraws, 0, "reuse existing fog and mask polygons");
-	assert.equal(geometryClears, 0, "do not clear unchanged geometry");
-	assert.equal(overlay.children[1].visible, false);
+	assert.equal(polygonDraws, scene.dimensions.columns * 2 - 1);
+	assert.equal(geometryClears, 2, "only the changed row's overlay and mask");
+	assert.equal(overlay.children[1].polygons, unchangedOverlay);
+	assert.equal(mask.children[1].polygons, unchangedMask);
+	assert.equal(overlay.children[0].polygons.some(p => p[0].x === 100), false);
 	assert.equal(mask.renderedFills[1], 0xffffff);
 	assert.equal(mask.renderedFills[2], 0x000000);
 	assert.deepEqual(refreshes, [{ refreshVision: true }]);
 	refreshes.length = 0;
+	polygonDraws = geometryClears = 0;
 	onUpdateScene(scene, { flags: { [MODULE_ID]: { hexRolledCells: {} } } });
 	assert.equal(polygonDraws, 0);
 	assert.equal(geometryClears, 0);
 	assert.deepEqual(refreshes, [], "unrelated flags do not invalidate the cached mask");
 	await scene.setFlag(MODULE_ID, "hexFogRevealed", { "0-1": false });
 	onUpdateScene(scene, { "flags.shadowdark-extras.hexFogRevealed.0-1": false });
-	assert.equal(overlay.children[1].visible, true);
+	assert.equal(overlay.children[0].polygons.some(p => p[0].x === 100), true);
 	assert.equal(mask.renderedFills[1], 0x000000);
-	assert.equal(polygonDraws, 0);
+	assert.equal(polygonDraws, scene.dimensions.columns * 2);
 	assert.deepEqual(refreshes, [{ refreshVision: true }]);
 	Hooks.handlers("canvasTearDown").at(-1)();
 	assert.ok(overlay.children.every(c => c.destroyed));
@@ -352,7 +359,7 @@ test("journal exploration and real paint handlers update retained cells and refr
 	await journal.setFlag(MODULE_ID, "hexData", { [scene.id]: records });
 	Hooks.handlers("updateJournalEntry").at(-1)(journal);
 	assert.equal(mask.renderedFills[2], 0xffffff);
-	assert.equal(overlay.children[2].visible, false);
+	assert.equal(overlay.children[0].polygons.some(p => p[0].x === 200), false);
 	assert.deepEqual(refreshes, [{ refreshVision: true }]);
 	refreshes.length = 0;
 	Hooks.handlers("updateJournalEntry").at(-1)(journal);
@@ -363,21 +370,20 @@ test("journal exploration and real paint handlers update retained cells and refr
 	try {
 		const event = { ctrlKey: true, getLocalPosition: () => ({ x: 400, y: 0 }) };
 		handlers.get("mousedown")(event);
-		assert.equal(overlay.children[4].visible, false);
+		assert.equal(overlay.children[0].polygons.some(p => p[0].x === 400), false);
 		assert.equal(mask.renderedFills[4], 0xffffff);
 		assert.deepEqual(refreshes, [{ refreshVision: true }]);
 		handlers.get("mouseup")();
 		await tick();
 		refreshes.length = 0;
 		handlers.get("mousedown")({ ...event, ctrlKey: false, shiftKey: true });
-		assert.equal(overlay.children[4].visible, true);
+		assert.equal(overlay.children[0].polygons.some(p => p[0].x === 400), true);
 		assert.equal(mask.renderedFills[4], 0x000000);
 		assert.deepEqual(refreshes, [{ refreshVision: true }]);
 		handlers.get("mouseup")();
 		await tick();
 		assert.equal(scene.getFlag(MODULE_ID, "hexFogRevealed")["0-4"], false);
-		assert.equal(polygonDraws, 0);
-		assert.equal(geometryClears, 0);
+		assert.equal(geometryClears, 6, "journal change and two paint changes redraw one row each");
 	}
 	finally {
 		if (oldDocument === undefined) delete globalThis.document;
@@ -410,10 +416,9 @@ test("loading an overlay image preserves world alignment and retained reveal geo
 		polygonDraws = geometryClears = 0;
 		await scene.setFlag(MODULE_ID, "hexFogRevealed", { "0-1": true });
 		onUpdateScene(scene, { flags: { [MODULE_ID]: { hexFogRevealed: { "0-1": true } } } });
-		assert.equal(overlay.children[1].visible, false);
-		assert.equal(overlay.children[2].textureFill.texture, texture);
-		assert.equal(polygonDraws, 0);
-		assert.equal(geometryClears, 0);
+		assert.equal(overlay.children[0].polygons.some(p => p[0].x === 100), false);
+		assert.equal(overlay.children[0].textureFill.texture, texture);
+		assert.equal(geometryClears, scene.tokenVision ? 2 : 1);
 	}
 	finally {
 		globalThis.loadTexture = oldLoader;

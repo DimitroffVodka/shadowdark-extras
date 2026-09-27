@@ -413,10 +413,16 @@ class SDXCoord {
 	}
 
 	updateZoom() {
-		// Below eight screen pixels the cell text is unreadable. Do not submit
-		// thousands of previously off-screen text textures on the first zoom-out.
+		// Below eight screen pixels the cell text is unreadable. Defer building
+		// the cell set until it can actually be seen; this avoids thousands of
+		// resolution-4 text textures during the initial map overview.
 		const readable = this._size * Math.max(10, this._cellFontScale) / 100
 			* (canvas.stage.scale?.x ?? 1) >= 8;
+		const state = this.#state ?? this._readSceneState();
+		if (state === DISPLAY_STATES.MARGIN || state === DISPLAY_STATES.ZINE
+			|| (readable && state === DISPLAY_STATES.CELL)) {
+			this._ensureBuilt(state);
+		}
 		this.#cellContainer.renderable = readable;
 		if (this.#zineCells) this.#zineCells.renderable = readable;
 	}
@@ -490,8 +496,8 @@ class SDXCoord {
 		this.#marginContainer.visible = false;
 		this.#cellContainer.visible = false;
 		this.#zineContainer.visible = false;
+		this.#state = state;
 
-		this._ensureBuilt(state);
 		this.updateZoom();
 
 		switch (state) {

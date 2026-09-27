@@ -516,6 +516,7 @@ void main() {
 let fog = null;
 let fogMask = null;
 const _fogCells = new Map();
+let _fogRows = [];
 let _fogStyle = null;
 let enabled = false;
 let _onDownRef = null;
@@ -857,7 +858,7 @@ function _getExploredHexKeys(sceneId) {
 function _initFog() {
 	if (fog) return;
 
-	fog = new PIXI.Graphics();
+	fog = new PIXI.LegacyGraphics();
 	fog.eventMode = "none";
 	fog.sdxHexFog = true;
 	// Add fog as the first child of canvas.interface — not vision-masked,
@@ -866,7 +867,8 @@ function _initFog() {
 
 	// Vision mask — only if scene has token vision enabled
 	if (canvas.scene.tokenVision) {
-		fogMask = new PIXI.Graphics();
+		fogMask = new PIXI.LegacyGraphics();
+		fogMask.eventMode = "none";
 		canvas.masks.vision.addChild(fogMask);
 	}
 
@@ -920,6 +922,7 @@ function _destroyFog() {
 	_fogOverlayTexture = null;
 	_fogOverlayPath = null;
 	_fogCells.clear();
+	_fogRows = [];
 	_fogStyle = null;
 	if (fog) {
 		fog.destroy({ children: true });
@@ -1041,6 +1044,42 @@ function _removeFogShader() {
 	_activeFilter = null;
 }
 
+function _redrawFogRow(rowIndex, alpha, unexploredColor, texture, texMatrix) {
+	const row = _fogRows[rowIndex];
+	if (!row) return;
+	const overlay = row.overlay;
+	overlay.clear();
+	if (texture?.valid) {
+		overlay.lineStyle(0);
+		overlay.beginTextureFill({ texture, alpha, matrix: texMatrix });
+	}
+	else {
+		overlay.lineStyle(alpha, unexploredColor, alpha);
+		overlay.beginFill(unexploredColor, alpha);
+	}
+	let fogged = 0;
+	for (let j = 0; j < canvas.scene.dimensions.columns; j++) {
+		const cell = _fogCells.get(`${rowIndex}-${j}`);
+		if (!cell || cell.revealed) continue;
+		overlay.drawPolygon(cell.shape);
+		fogged += 1;
+	}
+	overlay.endFill();
+	overlay.visible = fogged > 0;
+}
+
+function _redrawFogMaskRow(rowIndex) {
+	const row = _fogRows[rowIndex];
+	const mask = row?.mask;
+	if (!mask) return;
+	mask.clear();
+	for (let j = 0; j < canvas.scene.dimensions.columns; j++) {
+		const cell = _fogCells.get(`${rowIndex}-${j}`);
+		if (cell) mask.beginFill(cell.revealed ? 0xffffff : 0x000000, 1)
+			.drawPolygon(cell.shape).endFill();
+	}
+}
+
 function _drawFog() {
 	if (!fog) return;
 	if (!canvas.grid?.isHexagonal) return;
@@ -1052,15 +1091,55 @@ function _drawFog() {
 	const unexploredColor = scene.fog?.colors?.unexplored?.css || "#000000";
 
 
-	// Geometry lives for the canvas lifetime. Reveals change visibility/tint,
-	// not thousands of polygons and their GPU buffers on every movement.
+	// Keep one graphics batch per row. A reveal only rebuilds the
+	// affected row (at most the map width), rather than thousands of polygons
+	// in both the fog overlay and the cached vision mask.
 	const styleChanged = !_fogStyle || _fogStyle.alpha !== alpha
 		|| _fogStyle.color !== unexploredColor || _fogStyle.texture !== _fogOverlayTexture;
 	_fogStyle = { alpha, color: unexploredColor, texture: _fogOverlayTexture };
 
-	// Compute texture matrix if fog overlay image is set on the scene
+	const firstBuild = !_fogRows.length;
+	if (firstBuild) {
+		const cellShape = canvas.grid.getShape();
+		for (let i = 0; i < scene.dimensions.rows; i++) {
+			const overlay = fog.addChild(new PIXI.LegacyGraphics());
+			overlay.eventMode = "none";
+			const mask = fogMask?.addChild(new PIXI.LegacyGraphics());
+			if (mask) mask.eventMode = "none";
+			_fogRows.push({ overlay, mask });
+			for (let j = 0; j < scene.dimensions.columns; j++) {
+				const center = canvas.grid.getCenterPoint({ i, j });
+				const shape = cellShape.map(p => ({ x: p.x + center.x, y: p.y + center.y }));
+				_fogCells.set(`${i}-${j}`, { row: i, shape, revealed: undefined });
+			}
+		}
+	}
+
+	const overlayRows = new Set();
+	const maskRows = new Set();
+	if (styleChanged || firstBuild) {
+		for (let i = 0; i < _fogRows.length; i++) overlayRows.add(i);
+	}
+	if (firstBuild && fogMask) {
+		for (let i = 0; i < _fogRows.length; i++) maskRows.add(i);
+	}
+
+	let maskChanged = firstBuild && !!fogMask;
+	for (const [key, cell] of _fogCells) {
+		const isRevealed = Boolean((key in _paintOverlay)
+			? _paintOverlay[key] : (revealed[key] || exploredKeys.has(key)));
+		if (cell.revealed === isRevealed) continue;
+		cell.revealed = isRevealed;
+		overlayRows.add(cell.row);
+		if (fogMask) {
+			maskRows.add(cell.row);
+			maskChanged = true;
+		}
+	}
+
+	// Compute texture matrix if fog overlay image is set on the scene.
 	let texMatrix = null;
-	if (styleChanged && _fogOverlayTexture?.valid) {
+	if (_fogOverlayTexture?.valid) {
 		const dims = canvas.dimensions;
 		const sx = dims.sceneX ?? 0;
 		const sy = dims.sceneY ?? 0;
@@ -1074,53 +1153,11 @@ function _drawFog() {
 		);
 	}
 
-	if (!_fogCells.size) {
-		const cellShape = canvas.grid.getShape();
-		for (let i = 0; i < scene.dimensions.rows; i++) {
-			for (let j = 0; j < scene.dimensions.columns; j++) {
-				const center = canvas.grid.getCenterPoint({ i, j });
-				const shape = cellShape.map(p => ({ x: p.x + center.x, y: p.y + center.y }));
-				// Foundry's smooth Graphics do not batch. LegacyGraphics batches
-				// these small polygons, as it does for Foundry's own vision shapes.
-				const overlay = fog.addChild(new PIXI.LegacyGraphics());
-				overlay.eventMode = "none";
-				const mask = fogMask?.addChild(new PIXI.LegacyGraphics());
-				if (mask) {
-					mask.eventMode = "none";
-					mask.beginFill(0xffffff, 1).drawPolygon(shape).endFill();
-				}
-				_fogCells.set(`${i}-${j}`, { overlay, mask, shape });
-			}
-		}
-	}
+	for (const row of overlayRows) _redrawFogRow(row, alpha, unexploredColor, _fogOverlayTexture, texMatrix);
+	for (const row of maskRows) _redrawFogMaskRow(row);
 
-	let maskChanged = false;
-	for (const [key, cell] of _fogCells) {
-		if (styleChanged) {
-			const graphic = cell.overlay;
-			graphic.clear();
-			if (texMatrix) {
-				graphic.lineStyle(0);
-				graphic.beginTextureFill({ texture: _fogOverlayTexture, alpha, matrix: texMatrix });
-			}
-			else {
-				graphic.lineStyle(alpha, unexploredColor, alpha);
-				graphic.beginFill(unexploredColor, alpha);
-			}
-			graphic.drawPolygon(cell.shape).endFill();
-		}
-		const isRevealed = Boolean((key in _paintOverlay)
-			? _paintOverlay[key] : (revealed[key] || exploredKeys.has(key)));
-		if (cell.revealed !== isRevealed) {
-			cell.overlay.visible = !isRevealed;
-			if (cell.mask) {
-				cell.mask.tint = isRevealed ? 0xffffff : 0x000000;
-				maskChanged = true;
-			}
-			cell.revealed = isRevealed;
-		}
-	}
-	// The vision mask is cached; redraw it even after movement animation ends.
+	// The vision mask is cached; invalidate it after changing only the rows that
+	// contain changed cells.
 	if (maskChanged) canvas.perception.update({ refreshVision: true });
 	_updateFogPinVisibility();
 }

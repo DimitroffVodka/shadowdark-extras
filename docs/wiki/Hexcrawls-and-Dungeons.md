@@ -79,7 +79,8 @@ The globe tool cycles four coordinate display states: hidden, margin and axis
 labels, labels in cells, and Shadowdark zine mode.
 
 Cell labels hide when their font size falls below eight screen pixels as you
-zoom out, and return when you zoom in. Margin labels stay visible in their
+zoom out, and return when you zoom in. In cell-only mode, labels are not built
+until the zoom makes them readable. Margin labels stay visible in their
 display modes; the coordinate format and play-zoom appearance do not change.
 
 **Configure Coordinates** controls fonts, colors, outline, opacity, label size,

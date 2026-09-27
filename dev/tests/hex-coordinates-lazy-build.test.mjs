@@ -196,6 +196,19 @@ test("a scene stored as MARGIN builds only the margin labels, on load", async ()
 	assert.deepEqual([margin.visible, cell.visible, zine.visible], [true, false, false]);
 });
 
+test("overview cell labels defer construction until the zoom is readable", async () => {
+	const coords = await useScene(DISPLAY_STATES.HIDDEN);
+	canvas.stage.scale.x = 0.05;
+	coords._applyState(DISPLAY_STATES.CELL);
+	assert.equal(textsBuilt.length, 0);
+	canvas.stage.scale.x = 1;
+	canvasPanHook();
+	assert.ok(textsBuilt.length > 0);
+	const count = textsBuilt.length;
+	canvasPanHook();
+	assert.equal(textsBuilt.length, count);
+});
+
 test("a scene stored as CELL builds only the cell labels, on load", async () => {
 	await useScene(DISPLAY_STATES.CELL);
 
