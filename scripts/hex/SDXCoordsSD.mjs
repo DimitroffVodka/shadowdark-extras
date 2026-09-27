@@ -85,6 +85,8 @@ class SDXCoord {
 
 	#zineCells;
 
+	#cellFont;
+
 	// Label sets are built on first display, not on construction. A scene that
 	// never turns coordinates on builds nothing; the states are mutually
 	// exclusive, so a scene that does turn them on builds one set, not three.
@@ -351,17 +353,48 @@ class SDXCoord {
 		} while (pos[1] + text.height < this._rect.bottom);
 	}
 
+	/**
+	 * Install the glyph atlas every cell label draws from (#178). A PreciseText
+	 * per cell gave a big map ~4,700 canvases and GPU textures, about 1 GB at
+	 * resolution 4, and PIXI re-uploaded them in one frame after its texture GC
+	 * had unloaded them. An atlas is one texture, drawn with the same style.
+	 *
+	 * @param {PIXI.TextStyle} style - The cell label style
+	 * @returns {string} The installed BitmapFont name
+	 */
+	_cellFont(style) {
+		if (this.#cellFont) return this.#cellFont;
+		const name = `${MODULE_ID}.coords`;
+		if (PIXI.BitmapFont.available[name]) PIXI.BitmapFont.uninstall(name);
+		PIXI.BitmapFont.from(name, style, {
+			chars: [["0", "9"], ["A", "Z"]],
+			// PreciseText's resolution, unless a huge font would outgrow a page.
+			resolution: Math.min(4, 1024 / (style.fontSize * 1.5)),
+			textureWidth: 2048,
+			textureHeight: 1024,
+		});
+		this.#cellFont = name;
+		return name;
+	}
+
 	_renderCellLabels(container = this.#cellContainer, style = "standard") {
-		const PT = getPreciseText();
 		const cellStyle = this._style.clone();
 		const fontScale = Math.max(10, this._cellFontScale) / 100;
 		cellStyle.fontSize = this._size * fontScale;
+		const font = { fontName: this._cellFont(cellStyle), fontSize: cellStyle.fontSize };
+		const pad = cellStyle.padding;
+		// PreciseText centres its line in the line height; BitmapText does not.
+		const { lineHeight, fontProperties } = PIXI.TextMetrics.measureText("0", cellStyle);
+		const shift = Math.max(0, (lineHeight - fontProperties.fontSize) / 2);
 
 		let c = 0;
 		let pos = [this._rect.x, this._rect.y];
 		do {
 			const absCol = c + this._col0;
 			const adjCol = this._adjustCol(c);
+			// A cullable container per column, so only on-screen columns draw.
+			const column = new PIXI.Container();
+			const bounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
 			let r = 0;
 			do {
 				const tl = canvas.grid.getTopLeftPoint({ i: r + this._row0, j: c + this._col0 });
@@ -386,22 +419,35 @@ class SDXCoord {
 						{ i: r + this._row0, j: c + this._col0 }, this._publishedLayout
 					)
 					: this._formatCellLabel(adjRow, adjCol, style);
-				const text = new PT(label, cellStyle);
-				text.resolution = 4;
-				text.alpha = this._cellAlpha;
+				// PreciseText's width and height for this label, measured without
+				// drawing it.
+				const metrics = PIXI.TextMetrics.measureText(label, cellStyle);
+				const width = Math.ceil(Math.max(1, metrics.width) + (pad * 2)) - (pad * 2);
+				const height = Math.ceil(Math.max(1, metrics.height) + (pad * 2)) - (pad * 2);
 
 				if (canvas.grid.isHexagonal) {
-					pos[0] += this._cellWidth / 2 - text.width / 2;
-					if (!canvas.grid.columns) pos[1] += text.height / 3;
+					pos[0] += this._cellWidth / 2 - width / 2;
+					if (!canvas.grid.columns) pos[1] += height / 3;
 				}
 
 				if (this._rect.contains(pos[0], pos[1])) {
-					text.position.set(pos[0], pos[1]);
-					container.addChild(text);
+					const text = column.addChild(new PIXI.BitmapText(label, font));
+					text.position.set(pos[0], pos[1] + shift);
+					text.alpha = this._cellAlpha;
+					bounds.left = Math.min(bounds.left, pos[0] - pad);
+					bounds.top = Math.min(bounds.top, pos[1] - pad);
+					bounds.right = Math.max(bounds.right, pos[0] + width + pad);
+					bounds.bottom = Math.max(bounds.bottom, pos[1] + shift + height + pad);
 				}
 
 				r += 1;
 			} while (pos[1] < this._rect.bottom);
+			if (column.children.length) {
+				column.cullable = true;
+				column.cullArea = new PIXI.Rectangle(bounds.left, bounds.top,
+					bounds.right - bounds.left, bounds.bottom - bounds.top);
+				container.addChild(column);
+			}
 			c += 1;
 		} while (pos[0] < this._rect.right);
 	}
@@ -413,16 +459,9 @@ class SDXCoord {
 	}
 
 	updateZoom() {
-		// Below eight screen pixels the cell text is unreadable. Defer building
-		// the cell set until it can actually be seen; this avoids thousands of
-		// resolution-4 text textures during the initial map overview.
+		// Cell text under eight screen pixels is unreadable; skip drawing it.
 		const readable = this._size * Math.max(10, this._cellFontScale) / 100
 			* (canvas.stage.scale?.x ?? 1) >= 8;
-		const state = this.#state ?? this._readSceneState();
-		if (state === DISPLAY_STATES.MARGIN || state === DISPLAY_STATES.ZINE
-			|| (readable && state === DISPLAY_STATES.CELL)) {
-			this._ensureBuilt(state);
-		}
 		this.#cellContainer.renderable = readable;
 		if (this.#zineCells) this.#zineCells.renderable = readable;
 	}
@@ -496,8 +535,8 @@ class SDXCoord {
 		this.#marginContainer.visible = false;
 		this.#cellContainer.visible = false;
 		this.#zineContainer.visible = false;
-		this.#state = state;
 
+		this._ensureBuilt(state);
 		this.updateZoom();
 
 		switch (state) {
@@ -549,6 +588,7 @@ class SDXCoord {
 		this.#marginContainer.visible = false;
 		this.#cellContainer.visible = false;
 		this.#zineContainer.visible = false;
+		if (PIXI.BitmapFont.available[this.#cellFont]) PIXI.BitmapFont.uninstall(this.#cellFont);
 	}
 
 	static get isSupported() {

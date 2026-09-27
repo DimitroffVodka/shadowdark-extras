@@ -1153,7 +1153,9 @@ function _drawFog() {
 		);
 	}
 
-	for (const row of overlayRows) _redrawFogRow(row, alpha, unexploredColor, _fogOverlayTexture, texMatrix);
+	for (const row of overlayRows) {
+		_redrawFogRow(row, alpha, unexploredColor, _fogOverlayTexture, texMatrix);
+	}
 	for (const row of maskRows) _redrawFogMaskRow(row);
 
 	// The vision mask is cached; invalidate it after changing only the rows that
