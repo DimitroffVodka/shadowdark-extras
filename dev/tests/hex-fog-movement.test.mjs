@@ -61,11 +61,12 @@ class RecordingGraphics {
 	constructor() {
 		this.filters = [];
 		this.destroyed = false;
+		this.fills = [];
 	}
 
-	clear() { return this; }
+	clear() { this.fills = []; return this; }
 	lineStyle() { return this; }
-	beginFill() { return this; }
+	beginFill(color) { this.fills.push(color); return this; }
 	drawPolygon() { return this; }
 	endFill() { return this; }
 	destroy() { this.destroyed = true; }
@@ -97,6 +98,7 @@ const { initHexFog } = await import("../../scripts/hex/SDXHexFogSD.mjs");
 initHexFog();
 const onCanvasReady = Hooks.handlers("canvasReady").at(-1);
 const onUpdateToken = Hooks.handlers("updateToken").at(-1);
+const onUpdateScene = Hooks.handlers("updateScene").at(-1);
 
 function tick() {
 	return new Promise(resolve => setImmediate(resolve));
@@ -232,6 +234,55 @@ function partyToken(from, to, { id = "party", actor, parent = scene } = {}) {
 test("initHexFog wires a real updateToken hook", () => {
 	assert.equal(typeof onCanvasReady, "function", "canvasReady hook is registered");
 	assert.equal(typeof onUpdateToken, "function", "updateToken hook is registered");
+});
+
+for (const isGM of [false, true]) {
+	test(`late movement reveal refreshes the completed vision mask for ${isGM ? "GM" : "player"}`, async () => {
+		await prepare(makeRecords(3));
+		scene.tokenVision = true;
+		let mask;
+		const refreshes = [];
+		canvas.masks.vision.addChild = graphics => { mask = graphics; };
+		canvas.perception.update = options => refreshes.push({ options, fills: [...mask.fills] });
+		onCanvasReady();
+		refreshes.length = 0;
+
+		// Hold the GM's reveal write until movement has finished, then deliver
+		// updateScene as Foundry does on each receiving client. No animation or
+		// token-selection refresh is available to hide the missing invalidation.
+		const gate = blockNextSceneUpdate();
+		try {
+			const { token, options } = partyToken(0, 1);
+			onUpdateToken(token, { x: token.x }, options);
+			await waitForSceneUpdateCount(1);
+			assert.equal(refreshes.length, 0);
+			gate.release();
+			await waitForSceneUpdates(1);
+			game.user.isGM = isGM;
+			onUpdateScene(scene, sceneUpdateCalls[0]);
+			assert.equal(scene.getFlag(MODULE_ID, "hexFogRevealed")["0-1"], true);
+			assert.deepEqual(refreshes, [{
+				options: { refreshVision: true },
+				fills: [0xffffff, 0xffffff, 0xffffff, ...Array(9).fill(0x000000)],
+			}], "invalidate once, after drawing the newly revealed hexes");
+		}
+		finally { gate.release(); }
+	});
+}
+
+test("fog initialization refreshes vision, but token-vision-off scenes do not", async () => {
+	for (const tokenVision of [true, false]) {
+		await prepare(makeRecords(1));
+		scene.tokenVision = tokenVision;
+		const refreshes = [];
+		canvas.perception.update = options => refreshes.push(options);
+		onCanvasReady();
+		assert.deepEqual(refreshes, tokenVision ? [{ refreshVision: true }] : []);
+		refreshes.length = 0;
+		await scene.setFlag(MODULE_ID, "hexFogRevealed", { "0-1": true });
+		onUpdateScene(scene, { flags: { [MODULE_ID]: { hexFogRevealed: { "0-1": true } } } });
+		assert.deepEqual(refreshes, tokenVision ? [{ refreshVision: true }] : []);
+	}
 });
 
 test("the real updateToken hook follows _movement when _source is already the destination", async () => {
