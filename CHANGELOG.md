@@ -36,6 +36,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- **Aura and template turns follow Chaos initiative.** Turn-start and turn-end effects now use Foundry's active-GM turn events, so a Chaos reroll triggers the new top combatant rather than the old one. Skipped turns remain ignored; round expiry and movement triggers are unchanged. ([#174](https://github.com/DimitroffVodka/shadowdark-extras/issues/174))
 - **Hex Fog reveals show while a token stays selected.** Redrawing the hex vision mask now refreshes Foundry's cached vision on every client, so a party's one-hex move no longer leaves newly revealed hexes black for players or a GM with a selected token. Scenes without token vision keep their existing fog drawing. ([#176](https://github.com/DimitroffVodka/shadowdark-extras/issues/176))
 - **Party sheet and Effects names.** The party sheet's slots gear icon showed a raw translation key as its tooltip; it now reads "Set max slots". The Silenced and Glassbones effects had no English name in the effect list. ([#169](https://github.com/DimitroffVodka/shadowdark-extras/issues/169))
 - **A deleted hex scene takes its hex records with it.** Deleting a hexcrawl scene, by hand or through an overwrite build, used to leave that scene's per-hex records in the shared hex data journal for good; one world held 4,736 of them. They are now removed with the scene. ([#168](https://github.com/DimitroffVodka/shadowdark-extras/issues/168))

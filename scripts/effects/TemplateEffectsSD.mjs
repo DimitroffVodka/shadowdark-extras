@@ -95,7 +95,25 @@ export function initTemplateEffects() {
 	};
 	Hooks.on("deleteMeasuredTemplate", doc => _onDeleteTemplate(doc));
 
-	// Clear per-turn tracking and process turn-based effects when combat advances
+	// Foundry supplies the actual turn, including Enhancer's post-reroll replay.
+	const proto = CONFIG.Combat.documentClass.prototype;
+	for (const [method, trigger] of [["_onStartTurn", "turnStart"], ["_onEndTurn", "turnEnd"]]) {
+		const original = proto[method];
+		proto[method] = async function(combatant, context) {
+			const expiryRound = this.round;
+			await original.call(this, combatant, context);
+			if (!game.user.isActiveGM || context?.skipped || !canvas?.ready) return;
+			try {
+				await processTemplateTurnEffects(combatant?.token, trigger, expiryRound);
+			}
+			catch(error) {
+				// One failed effect must not abort Foundry's remaining turn events.
+				console.error(`${MODULE_ID} | Template ${trigger} failed`, error);
+			}
+		};
+	}
+
+	// Keep tracking resets and round-based expiry on updateCombat.
 	Hooks.on("updateCombat", async (combat, changes, options, userId) => {
 		// Clear tracking on any turn change
 		if (changes.turn !== undefined || changes.round !== undefined) {
@@ -158,21 +176,6 @@ export function initTemplateEffects() {
 			}
 		}
 
-		// Process turn end for previous combatant
-		if (combat.previous?.combatantId) {
-			const prevCombatant = combat.combatants.get(combat.previous.combatantId);
-			if (prevCombatant?.token) {
-				await processTemplateTurnEffects(prevCombatant.token, "turnEnd");
-			}
-		}
-
-		// Process turn start for current combatant
-		if (combat.current?.combatantId) {
-			const currentCombatant = combat.combatants.get(combat.current.combatantId);
-			if (currentCombatant?.token) {
-				await processTemplateTurnEffects(currentCombatant.token, "turnStart");
-			}
-		}
 	});
 
 	// Hook for chat message buttons (Roll Save, Apply Damage)
@@ -317,11 +320,12 @@ export function initTemplateEffects() {
 
 /**
  * Process template effects for combat turn changes
- * Call this from the updateCombat hook in CombatSettingsSD.mjs
+ * Called by the wrapped Foundry combat turn events.
  * @param {TokenDocument} tokenDoc - The token whose turn it is
  * @param {string} trigger - 'turnStart' or 'turnEnd'
+ * @param {number|null} expiryRound - The combat's round before awaiting other wrappers
  */
-export async function processTemplateTurnEffects(tokenDoc, trigger) {
+export async function processTemplateTurnEffects(tokenDoc, trigger, expiryRound = null) {
 	if (!tokenDoc || !game.user.isGM) return;
 
 	const token = tokenDoc.object || canvas.tokens?.get(tokenDoc.id);
@@ -330,6 +334,9 @@ export async function processTemplateTurnEffects(tokenDoc, trigger) {
 	const templates = getTemplatesContainingToken(token);
 
 	for (const templateDoc of templates) {
+		// updateCombat owns deletion, but its async write may still be in flight.
+		const expiry = templateDoc.flags?.[MODULE_ID]?.templateExpiry;
+		if (expiryRound !== null && expiry && expiry.expiryRound < expiryRound) continue;
 		const config = templateDoc.flags?.[MODULE_ID]?.templateEffects;
 		if (!config?.enabled) continue;
 
