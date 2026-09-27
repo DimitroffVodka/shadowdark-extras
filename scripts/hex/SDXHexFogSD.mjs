@@ -988,7 +988,6 @@ function _paintHex(key) {
 		_paintOverlay[key] = false;
 	}
 	_drawFog();
-	canvas.perception.update({ refreshVision: true });
 }
 
 // ─── Fog Shader Effects ──────────────────────────────────────────────
@@ -1133,6 +1132,8 @@ function _drawFogMask(revealed, exploredKeys, rows, cols, cellShape) {
 			fogMask.endFill();
 		}
 	}
+	// The vision mask is cached; redraw it even after movement animation ends.
+	canvas.perception.update({ refreshVision: true });
 }
 
 /**
