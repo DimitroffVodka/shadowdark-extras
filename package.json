@@ -6,6 +6,8 @@
   "scripts": {
     "verify": "bash verify.sh",
     "verify:strict": "bash verify.sh --strict",
+    "wiki:sync": "node dev/tools/sync-wiki.mjs",
+    "wiki:check": "node dev/tools/sync-wiki.mjs --check",
     "test": "node --test \"dev/tests/*.test.mjs\"",
     "test:roller": "node dev/tests/shadowdarkling-roller-regressions.mjs",
     "test:all": "npm run test && npm run test:roller",
