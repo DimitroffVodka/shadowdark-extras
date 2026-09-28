@@ -7,7 +7,6 @@
  */
 
 import { getTravelActivities } from "./TravelActivitiesSettingsSD.mjs";
-import { isPrimaryGmSession } from "../shared/gm-session.mjs";
 import { buildTravelTaskRollData } from "../tray/SDXRollerData.mjs";
 import { SDXRollerApp } from "../tray/SDXRollerApp.mjs";
 import {
@@ -443,8 +442,24 @@ export async function openCampingRest({
 	});
 }
 
-/** Each party's dawn while it runs, by actor id (#186). */
+/** Each party's dawn while it runs in this tab, by actor id (#186). */
 const dawnsInFlight = new Map();
+
+/**
+ * The rest a deferred camp leaves for the dawn (#186): one disabled ActiveEffect
+ * on the party, its id fixed so there is never a second. The dawn claims it by
+ * deleting it. Foundry's server runs a database's writes one at a time and won't
+ * delete what is gone, so of any tabs or GMs asking at once, one gets it back.
+ */
+const PENDING_REST_ID = "sdxCampingRest00";
+
+function storePendingRest(party, record) {
+	return party.createEmbeddedDocuments("ActiveEffect", [{
+		_id: PENDING_REST_ID, name: game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.pending_rest"),
+		img: "icons/environment/wilderness/camp-improvised.webp", disabled: true,
+		flags: { [MODULE_ID]: { campingPendingRest: record } },
+	}], { keepId: true });
+}
 
 /**
  * Overland's dawn after a camp opened with `deferRest` (#186): the interrupted
@@ -457,10 +472,7 @@ export async function finishCampingRest({ party, interrupted = false } = {}) {
 		return { completed: false };
 	}
 	if (!party?.id) return { completed: false, nothingPending: true };
-	// One tab finishes a rest: the active GM's working one (gm-session.mjs), even when that GM is
-	// signed in twice. Its in-flight map is then the only claim, so no rest is granted twice
-	// (#187 review). Enhancer's Overland calls this from that tab.
-	if (game.users?.activeGM && !isPrimaryGmSession()) {
+	if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) {
 		ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.dawn_active_gm"));
 		return { completed: false, notActiveGM: true };
 	}
@@ -468,10 +480,20 @@ export async function finishCampingRest({ party, interrupted = false } = {}) {
 	const running = dawnsInFlight.get(party.id);
 	if (running) return running;
 	const dawn = (async () => {
-		const pending = party.getFlag?.(MODULE_ID, "campingPendingRest");
+		if (!party.effects?.has(PENDING_REST_ID)) return { completed: false, nothingPending: true };
+		// Claimed before any roll, by the one caller whose delete the server carries out.
+		let claimed;
+		try {
+			[claimed] = await party.deleteEmbeddedDocuments("ActiveEffect", [PENDING_REST_ID]);
+		}
+		catch(error) {
+			// Gone: another tab or GM claimed it first. Still here: this delete failed; try again.
+			return party.effects.has(PENDING_REST_ID)
+				? { completed: false, error: error.message }
+				: { completed: false, nothingPending: true };
+		}
+		const pending = claimed?.getFlag(MODULE_ID, "campingPendingRest");
 		if (!pending?.campers?.length) return { completed: false, nothingPending: true };
-		// Claimed before any roll: another client reading the flag now finds nothing to finish.
-		await party.unsetFlag(MODULE_ID, "campingPendingRest");
 		const app = new CampingRestApp(party, [], {
 			harsh: pending.harsh === true, stormy: pending.huntBlocked === true,
 			onComplete: () => {},
@@ -1257,11 +1279,17 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 	}
 
-	/** What the dawn needs (#186): each camper's pick, roll and meal, and the fire. */
+	/**
+	 * What the dawn needs (#186): each camper's pick, roll and meal, and the
+	 * fire. It replaces any rest still waiting.
+	 */
 	async _savePendingRest(
 		plan, taskResults, taskBenefitsByActor, rationPlan, campfireEstablished
 	) {
-		await this.partyActor.setFlag(MODULE_ID, "campingPendingRest", {
+		if (this.partyActor.effects.has(PENDING_REST_ID)) {
+			await this.partyActor.deleteEmbeddedDocuments("ActiveEffect", [PENDING_REST_ID]);
+		}
+		await storePendingRest(this.partyActor, {
 			campfireEstablished, campfireMode: plan.campfireMode,
 			harsh: this.harsh, huntBlocked: this.huntBlocked,
 			campers: plan.campers.map(camper => {
@@ -1313,12 +1341,12 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		catch(error) {
 			// Nothing is applied yet: the rest goes back for another try (#187 review).
 			console.error(`${MODULE_ID} | Camping dawn checks failed`, error);
-			await this.partyActor.setFlag(MODULE_ID, "campingPendingRest", pending);
+			await storePendingRest(this.partyActor, pending);
 			return { completed: false, error: error.message };
 		}
 		if (!interruptionResults) {
 			// Canceled before anything was applied: the rest goes back, for another try.
-			await this.partyActor.setFlag(MODULE_ID, "campingPendingRest", pending);
+			await storePendingRest(this.partyActor, pending);
 			return { completed: false };
 		}
 		try {

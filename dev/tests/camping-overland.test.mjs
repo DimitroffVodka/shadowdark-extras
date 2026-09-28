@@ -329,19 +329,33 @@ test("starvation respects absent, older and disabled Enhancer", async t => {
 	assert.equal((await app._runProcedure({ campers: [{ actor: pc, taskKey: "" }], campfireMode: "none" })).completed, true);
 });
 
-function flagged(id) {
+/** The one ActiveEffect a deferred camp leaves on the party for the dawn (#186). */
+const REST = "sdxCampingRest00";
+
+/** A party whose effects work like Foundry's: a fixed id is created once, and what is gone can't be deleted. */
+function camped(id) {
 	const party = actor(id);
-	const flags = {};
-	party.getFlag = (_scope, key) => flags[key];
-	party.setFlag = async (_scope, key, value) => { flags[key] = structuredClone(value); };
-	party.unsetFlag = async (_scope, key) => { delete flags[key]; };
-	return { party, flags };
+	party.effects = new Map();
+	party.createEmbeddedDocuments = async (_type, data) => data.map(entry => {
+		if (party.effects.has(entry._id)) throw new Error(`The _id [${entry._id}] already exists`);
+		const doc = { ...structuredClone(entry), getFlag: (scope, key) => doc.flags?.[scope]?.[key] };
+		party.effects.set(doc._id, doc);
+		return doc;
+	});
+	party.deleteEmbeddedDocuments = async (_type, ids) => ids.map(id => {
+		const doc = party.effects.get(id);
+		if (!doc) throw new Error(`ActiveEffect "${id}" does not exist!`);
+		party.effects.delete(id);
+		return doc;
+	});
+	const pending = () => party.effects.get(REST)?.getFlag("shadowdark-extras", "campingPendingRest");
+	return { party, pending };
 }
 
 test("a deferred camp rolls the tasks and eats, then stores the rest for the dawn (#186)", async () => {
 	setup();
-	const { party, flags } = flagged("party");
-	const pc = actor("pc", 1);
+	const { party, pending } = camped("party");
+	const pc = actor("pc", 2);
 	game.actors = new Map([["pc", pc]]);
 	const app = new CampingRestApp(party, [pc], { deferRest: true, onComplete: () => {} });
 	app._rollTaskGroup = async () => ({ dc: 12, result: { results: { "Actor.pc": 15 } } });
@@ -349,22 +363,28 @@ test("a deferred camp rolls the tasks and eats, then stores the rest for the daw
 	app._postSummary = async () => assert.fail("no summary at camp");
 	const reply = await app._runProcedure({ campers: [{ actor: pc, taskKey: "battenDown" }], campfireMode: "none", torchPlan: { complete: false } });
 	assert.deepEqual(reply, { completed: true, pending: true, fed: { pc: true }, mountsFed: 0 });
-	assert.equal(pc.items.length, 0, "its one ration eaten at camp");
-	const [stored] = flags.campingPendingRest.campers;
+	assert.equal(pc.items[0].system.quantity, 1, "one ration eaten at camp");
+	const [stored] = pending().campers;
 	assert.deepEqual([stored.actorId, stored.result, stored.ate], ["pc", { taskKey: "battenDown", value: 15, success: true }, true]);
+	assert.equal(party.effects.get(REST).disabled, true, "kept as a disabled effect, never applied");
+	await app._runProcedure({ campers: [{ actor: pc, taskKey: "" }], campfireMode: "none", torchPlan: { complete: false } });
+	assert.deepEqual([party.effects.size, pending().campers[0].result], [1, null], "another camp replaces the waiting rest");
 });
+
+/** Leave the party a rest for these campers to finish at dawn, as a deferred camp does. */
+function keepRest(party, campers) {
+	return party.createEmbeddedDocuments("ActiveEffect", [{ _id: REST, flags: { "shadowdark-extras": { campingPendingRest: {
+		campfireEstablished: false, campfireMode: "none", harsh: false, huntBlocked: false, campers,
+	} } } }]);
+}
+const camper = (actorId, ate, result = null) => ({ actorId, taskKey: result?.taskKey ?? "", result, ate, benefits: null });
 
 test("the dawn rolls CON only for who ate and failed Bed Down when interrupted, then rests (#186)", async () => {
 	setup();
-	const { party, flags } = flagged("party");
+	const { party } = camped("party");
 	const [a, b, c] = [actor("a"), actor("b"), actor("c")];
 	game.actors = new Map([["a", a], ["b", b], ["c", c]]);
-	const camper = (actorId, result, ate) => ({ actorId, taskKey: result?.taskKey ?? "", result, ate, benefits: null });
-	flags.campingPendingRest = { campfireEstablished: false, campfireMode: "none", harsh: false, huntBlocked: false, campers: [
-		camper("a", { taskKey: "battenDown", value: 15, success: true }, true),
-		camper("b", null, true),
-		camper("c", null, false),
-	] };
+	await keepRest(party, [camper("a", true, { taskKey: "battenDown", value: 15, success: true }), camper("b", true), camper("c", false)]);
 	let rolled = null;
 	let posted = null;
 	const original = CampingRestApp.prototype._rollInterruptionChecks;
@@ -379,7 +399,7 @@ test("the dawn rolls CON only for who ate and failed Bed Down when interrupted, 
 		assert.deepEqual(rolled, ["b"], "Bed Down's success skips the check, and c, who didn't eat, has no rest to keep");
 		assert.deepEqual(reply, { completed: true, rested: { a: true, b: true, c: false } }, "c didn't eat: no rest");
 		assert.equal(posted.interrupted, true);
-		assert.equal(flags.campingPendingRest, undefined, "cleared");
+		assert.equal(party.effects.size, 0, "claimed");
 		assert.deepEqual(await camping.finishCampingRest({ party }), { completed: false, nothingPending: true }, "nothing left pending");
 	}
 	finally {
@@ -388,17 +408,12 @@ test("the dawn rolls CON only for who ate and failed Bed Down when interrupted, 
 	}
 });
 
-function pendingRest(flags, campers) {
-	flags.campingPendingRest = { campfireEstablished: false, campfireMode: "none", harsh: false, huntBlocked: false, campers:
-		campers.map(([actorId, ate]) => ({ actorId, taskKey: "", result: null, ate, benefits: null })) };
-}
-
 test("two dawns at once for one party roll the CON checks and grant the rest once (#186)", async () => {
 	setup();
-	const { party, flags } = flagged("party");
+	const { party } = camped("party");
 	const a = actor("a");
 	game.actors = new Map([["a", a]]);
-	pendingRest(flags, [["a", true]]);
+	await keepRest(party, [camper("a", true)]);
 	let release;
 	const gate = new Promise(resolve => { release = resolve; });
 	let dispatched = 0;
@@ -411,7 +426,7 @@ test("two dawns at once for one party roll the CON checks and grant the rest onc
 		const first = camping.finishCampingRest({ party, interrupted: true });
 		const second = camping.finishCampingRest({ party, interrupted: true });
 		await new Promise(resolve => setImmediate(resolve));
-		assert.equal(flags.campingPendingRest, undefined, "claimed before the roll");
+		assert.equal(party.effects.size, 0, "claimed before the roll");
 		release();
 		const replies = await Promise.all([first, second]);
 		assert.deepEqual(replies[0], { completed: true, rested: { a: true } });
@@ -426,10 +441,10 @@ test("two dawns at once for one party roll the CON checks and grant the rest onc
 
 test("canceled dawn checks put the rest back; a failure while applying it is final and reported (#186)", async () => {
 	setup();
-	const { party, flags } = flagged("party");
+	const { party, pending } = camped("party");
 	const [a, b] = [actor("a"), actor("b")];
 	game.actors = new Map([["a", a], ["b", b]]);
-	pendingRest(flags, [["a", true], ["b", true]]);
+	await keepRest(party, [camper("a", true), camper("b", true)]);
 	const original = CampingRestApp.prototype._rollInterruptionChecks;
 	const originalPost = CampingRestApp.prototype._postSummary;
 	const errors = [];
@@ -439,14 +454,14 @@ test("canceled dawn checks put the rest back; a failure while applying it is fin
 	try {
 		CampingRestApp.prototype._rollInterruptionChecks = async () => ({ canceled: true });
 		assert.deepEqual(await camping.finishCampingRest({ party, interrupted: true }), { completed: false });
-		assert.equal(flags.campingPendingRest.campers.length, 2, "put back for another try");
+		assert.equal(pending().campers.length, 2, "put back for another try");
 
 		CampingRestApp.prototype._rollInterruptionChecks = async () => ({ results: { "Actor.a": 15, "Actor.b": 15 } });
 		CampingRestApp.prototype._postSummary = async () => assert.fail("no summary after a failure");
 		b.update = async () => { throw new Error("write failed"); };
 		const reply = await camping.finishCampingRest({ party, interrupted: true });
 		assert.deepEqual(reply, { completed: true, partial: true, error: "write failed", rested: {} }, "final: Overland moves on");
-		assert.equal(flags.campingPendingRest, undefined, "never replayed");
+		assert.equal(party.effects.size, 0, "never replayed");
 		assert.equal(errors.length, 1);
 		assert.equal(chat.length, 1);
 		assert.deepEqual(await camping.finishCampingRest({ party, interrupted: true }), { completed: false, nothingPending: true });
@@ -475,17 +490,17 @@ test("the torch question gives the party's unlit torches (#186)", async t => {
 
 test("a CON check that throws puts the rest back, and a retry finishes it (#187 review)", async () => {
 	setup();
-	const { party, flags } = flagged("party");
+	const { party, pending } = camped("party");
 	const a = actor("a");
 	game.actors = new Map([["a", a]]);
-	pendingRest(flags, [["a", true]]);
+	await keepRest(party, [camper("a", true)]);
 	const original = CampingRestApp.prototype._rollInterruptionChecks;
 	const originalPost = CampingRestApp.prototype._postSummary;
 	CampingRestApp.prototype._postSummary = async () => {};
 	try {
 		CampingRestApp.prototype._rollInterruptionChecks = async () => { throw new Error("roll service failed"); };
 		assert.deepEqual(await camping.finishCampingRest({ party, interrupted: true }), { completed: false, error: "roll service failed" });
-		assert.equal(flags.campingPendingRest.campers.length, 1, "put back, not lost");
+		assert.equal(pending().campers.length, 1, "put back, not lost");
 		CampingRestApp.prototype._rollInterruptionChecks = async () => ({ results: { "Actor.a": 15 } });
 		assert.deepEqual(await camping.finishCampingRest({ party, interrupted: true }), { completed: true, rested: { a: true } });
 	}
@@ -495,39 +510,69 @@ test("a CON check that throws puts the rest back, and a retry finishes it (#187 
 	}
 });
 
+test("a claim whose delete fails leaves the rest for another try (#187 review)", async () => {
+	setup();
+	const { party, pending } = camped("party");
+	await keepRest(party, [camper("a", true)]);
+	party.deleteEmbeddedDocuments = async () => { throw new Error("connection lost"); };
+	assert.deepEqual(await camping.finishCampingRest({ party, interrupted: true }), { completed: false, error: "connection lost" });
+	assert.equal(pending().campers.length, 1, "still waiting");
+});
+
 test("only the active GM finishes a rest; another GM's call leaves it pending (#187 review)", async () => {
 	const warnings = setup();
-	const { party, flags } = flagged("party");
-	pendingRest(flags, [["a", true]]);
+	const { party, pending } = camped("party");
+	await keepRest(party, [camper("a", true)]);
 	game.user = { id: "gm2", isGM: true };
 	game.users = { activeGM: { id: "gm1" } };
 	assert.deepEqual(await camping.finishCampingRest({ party, interrupted: true }), { completed: false, notActiveGM: true });
-	assert.equal(flags.campingPendingRest.campers.length, 1);
+	assert.equal(pending().campers.length, 1);
 	assert.deepEqual(warnings, ["SHADOWDARK_EXTRAS.camping_rest.dawn_active_gm"]);
 });
 
-test("of one GM's several tabs, the one signed in longest works (#187 review)", async () => {
-	const { isPrimarySession } = await import("../../scripts/shared/gm-session.mjs");
-	const others = new Map([["b", { since: 200, seen: 1000 }]]);
-	assert.equal(isPrimarySession({ sid: "a", since: 100 }, others, 1000), true, "signed in first");
-	assert.equal(isPrimarySession({ sid: "c", since: 300 }, others, 1000), false, "a later tab defers");
-	assert.equal(isPrimarySession({ sid: "c", since: 300 }, others, 21000), true, "until the first goes quiet");
-	assert.equal(isPrimarySession({ sid: "a", since: 200 }, others, 1000), true, "the same moment: the lower socket id");
-});
+/**
+ * One party on a Foundry v14 server, as every tab reaches it. A dawn's write waits for `release`,
+ * so each tab asks before hearing of the other's; then the server runs the writes one at a time:
+ * deleting a document that is gone fails, while unsetting a flag always succeeds.
+ */
+function serverParty() {
+	const { party } = camped("party");
+	const flags = {};
+	let release;
+	const held = new Promise(resolve => { release = resolve; });
+	party.getFlag = (_scope, key) => flags[key];
+	party.setFlag = async (_scope, key, value) => { flags[key] = structuredClone(value); };
+	party.unsetFlag = async (_scope, key) => { await held; delete flags[key]; };
+	const serverDelete = party.deleteEmbeddedDocuments;
+	party.deleteEmbeddedDocuments = async (type, ids) => {
+		for (const id of ids) if (!party.effects.has(id)) throw new Error(`"${id}" does not exist`);   // this tab's copy
+		await held;
+		return serverDelete(type, ids);   // the server's
+	};
+	return { party, release };
+}
 
-// Last in the file: it leaves this client's tab registry holding an earlier tab of the same GM.
-test("a second tab of the active GM doesn't finish a rest: the record stays for the first (#187 review)", async () => {
-	const warnings = setup();
-	const { party, flags } = flagged("party");
-	pendingRest(flags, [["a", true]]);
-	const handlers = [];
-	game.user = { id: "gm1", isGM: true };
-	game.users = { activeGM: { id: "gm1" } };
-	game.socket = { id: "tab-b", emit() {}, on: (_channel, fn) => handlers.push(fn) };
-	const { registerGmSessions } = await import("../../scripts/shared/gm-session.mjs");
-	registerGmSessions();
-	for (const fn of handlers) fn({ type: "sdxGmSession", userId: "gm1", sid: "tab-a", since: 0 });   // signed in before this tab
-	assert.deepEqual(await camping.finishCampingRest({ party, interrupted: true }), { completed: false, notActiveGM: true });
-	assert.equal(flags.campingPendingRest.campers.length, 1, "left for the first tab");
-	assert.deepEqual(warnings, ["SHADOWDARK_EXTRAS.camping_rest.dawn_active_gm"]);
+test("two tabs of the active GM finish one rest at once, before either hears of the other: it is granted once (#187 review)", async () => {
+	setup();
+	game.user = { id: "gm", isGM: true };
+	game.users = { activeGM: { id: "gm" } };
+	const { party, release } = serverParty();
+	const pc = actor("pc", 1);
+	game.actors = new Map([["pc", pc]]);
+	const camp = new CampingRestApp(party, [pc], { deferRest: true, onComplete: () => {} });
+	assert.equal((await camp._runProcedure({ campers: [{ actor: pc, taskKey: "" }], campfireMode: "none", torchPlan: { complete: false } })).pending, true);
+	const counts = { checks: 0, recoveries: 0, summaries: 0 };
+	pc.update = async data => { if ("system.attributes.hp.value" in data) counts.recoveries++; };
+	const tabs = [await import("../../scripts/party/CampingRestSD.mjs?tab-1"), await import("../../scripts/party/CampingRestSD.mjs?tab-2")];
+	for (const { CampingRestApp: App } of tabs) {
+		App.prototype._rollInterruptionChecks = async () => { counts.checks++; return { results: { "Actor.pc": 15 } }; };
+		App.prototype._postSummary = async () => { counts.summaries++; };
+	}
+	const dawns = tabs.map(tab => tab.finishCampingRest({ party, interrupted: true }));
+	await new Promise(resolve => setImmediate(resolve));
+	release();
+	const replies = await Promise.all(dawns);
+	assert.deepEqual(counts, { checks: 1, recoveries: 1, summaries: 1 });
+	assert.deepEqual(replies.filter(reply => reply.completed), [{ completed: true, rested: { pc: true } }]);
+	assert.deepEqual(replies.filter(reply => !reply.completed), [{ completed: false, nothingPending: true }], "the other tab finds it taken");
 });
