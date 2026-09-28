@@ -424,7 +424,7 @@ function getAssignedTaskKey(actor, assignments) {
 /** Open the normal camping window, resolving only after completion or cancellation. */
 export async function openCampingRest({
 	party, members = [], mounts = 0, pushed = false, harsh = false,
-	stormy = false, rationsEach = 1, advanceTime = true,
+	stormy = false, rationsEach = 1, advanceTime = true, deferRest = false,
 } = {}) {
 	if (!game.user.isGM) {
 		ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.gm_only"));
@@ -436,16 +436,34 @@ export async function openCampingRest({
 	}
 	return new Promise(resolve => {
 		CampingRestApp.show(party, members, {
-			mounts, pushed, harsh, stormy, rationsEach, advanceTime,
+			mounts, pushed, harsh, stormy, rationsEach, advanceTime, deferRest,
 			onComplete: resolve,
 		});
 	});
 }
 
+/**
+ * Overland's dawn after a camp opened with `deferRest` (#186): the interrupted
+ * rest's CON checks, then the rest's benefits. `{completed:false}` when no
+ * rest is pending, or the checks were canceled.
+ */
+export async function finishCampingRest({ party, interrupted = false } = {}) {
+	if (!game.user.isGM) {
+		ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.gm_only"));
+		return { completed: false };
+	}
+	const pending = party?.getFlag?.(MODULE_ID, "campingPendingRest");
+	if (!pending?.campers?.length) return { completed: false };
+	const app = new CampingRestApp(party, [], {
+		harsh: pending.harsh === true, stormy: pending.huntBlocked === true, onComplete: () => {},
+	});
+	return app._runDawn(pending, interrupted === true);
+}
+
 export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	constructor(partyActor, members, {
 		onCampfireChange = null, onComplete = null, mounts = 0, pushed = false,
-		harsh = false, stormy = false, rationsEach = 1, advanceTime = true,
+		harsh = false, stormy = false, rationsEach = 1, advanceTime = true, deferRest = false,
 	} = {}) {
 		super({});
 		this.partyActor = partyActor;
@@ -459,6 +477,8 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		this.huntBlocked = harsh && stormy;
 		this.rationsEach = rationsEach;
 		this.advanceTimeLocked = advanceTime === false;
+		// Overland's camp (#186): the tasks and rations now, the rest at dawn (finishCampingRest).
+		this.deferRest = deferRest === true;
 		this._closed = false;
 		this._confirming = false;
 		this._running = false;
@@ -578,6 +598,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		return {
 			members,
 			huntBlocked: this.huntBlocked,
+			deferRest: this.deferRest,
 			advanceTime: !this.advanceTimeLocked,
 			advanceTimeLocked: this.advanceTimeLocked,
 			totalRations: itemQuantity(this.partyActor, RATION_PATTERN)
@@ -849,6 +870,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const taskResults = new Map();
 		let campfire = null;
 		let campfireEstablished = false;
+		let askedTorches = false;
 		let canceled = false;
 		let effectsStarted = false;
 		let appliedRations = null;
@@ -874,6 +896,17 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			);
 
 			for (const group of taskGroups) {
+				// Overland's camp (#186): no fire after Firewood? Torches, before a starred task.
+				if (this.deferRest && !campfireEstablished && !askedTorches
+					&& group.task.campfire) {
+					askedTorches = true;
+					if (await this._askTorches(plan, taskGroups)) {
+						plan.campfireMode = "torches";
+						campfire = await createCampfire(this.partyActor);
+						campfireEstablished = true;
+						await this.onCampfireChange?.();
+					}
+				}
 				const { dc, result } = await this._rollTaskGroup(
 					group.task,
 					group.campers,
@@ -911,27 +944,12 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				return;
 			}
 
-			const interruptionResults = new Map();
-			if (plan.interrupted) {
-				const checks = plan.campers.filter(camper => {
-					const taskResult = taskResults.get(camper.actor.id);
-					return !(taskResult?.task?.key === "battenDown" && taskResult.success);
-				});
-				if (checks.length) {
-					const result = await this._rollInterruptionChecks(checks);
-					if (result?.canceled) {
-						ui.notifications.warn(
-							game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.canceled")
-						);
-						return;
-					}
-					for (const camper of checks) {
-						interruptionResults.set(
-							camper.actor.id,
-							Number(result?.results?.[camper.actor.uuid]) >= 12
-						);
-					}
-				}
+			const interruptionResults = await this._interruptions(plan, taskResults);
+			if (!interruptionResults) {
+				ui.notifications.warn(
+					game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.canceled")
+				);
+				return;
 			}
 
 			const actorMap = new Map([
@@ -944,7 +962,6 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				});
 			}
 
-			const summary = [];
 			const taskBenefitsByActor = new Map();
 			for (const camper of plan.campers) {
 				const taskResult = taskResults.get(camper.actor.id);
@@ -964,6 +981,19 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			});
 			appliedRations = finalRationPlan;
 
+			if (this.deferRest) {
+				effectsStarted = true;
+				await this._savePendingRest(
+					plan, taskResults, taskBenefitsByActor, finalRationPlan, campfireEstablished
+				);
+				ui.notifications.info(game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.camp_done"));
+				return {
+					completed: true, pending: true,
+					fed: Object.fromEntries(finalRationPlan.rationByActor),
+					mountsFed: finalRationPlan.mountsFed,
+				};
+			}
+
 			// Advance to the end of the rest before granting the final recovery
 			// and Cook HP benefit.
 			if (plan.advanceTime && !this.advanceTimeLocked) {
@@ -971,99 +1001,12 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				await game.time.advance(REST_DURATION_SECONDS);
 			}
 
-			const successfulCook = [...taskResults.values()]
-				.some(result => result.task.key === "cook" && result.success);
-			const grinder = getGrinderSettings();
-
-			for (const camper of plan.campers) {
-				const actor = camper.actor;
-				effectsStarted = true;
-				const taskResult = taskResults.get(actor.id);
-				const hasRation = finalRationPlan.rationByActor.get(actor.id) ?? false;
-				if (!hasRation && this._overland && game.modules.get("shadowdark-enhancer")?.active) {
-					const statDamage = game.shadowdarkEnhancer?.statDamage;
-					if (typeof statDamage?.apply === "function") await statDamage.apply(actor, "con", 1);
+			const summary = await this._restBenefits(
+				plan, tasks, taskResults, taskBenefitsByActor, finalRationPlan.rationByActor,
+				interruptionResults, () => {
+					effectsStarted = true;
 				}
-				const bedDownSucceeded = taskResult?.task?.key === "battenDown"
-					&& taskResult.success;
-				const rested = qualifiesForRest({
-					hasRation,
-					interrupted: plan.interrupted,
-					bedDownSucceeded,
-					interruptionCheckSucceeded: interruptionResults.get(actor.id) ?? false,
-				});
-				const hpBefore = Number(actor.system?.attributes?.hp?.value ?? 0);
-				let resourceSummary = { spells: 0, abilities: 0, wands: 0 };
-				const benefits = [];
-
-				if (rested) {
-					if (grinder) {
-						const hp = await rollGrinderHp(actor, grinder.hitDice);
-						const spells = await pickGrinderSpells(actor);
-						const regain = spells?.ids ?? new Set();
-						resourceSummary = await refreshRestResources(actor, regain);
-						benefits.push(hp
-							? game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.benefit_grinder_rest", hp)
-							: game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.benefit_grinder_no_hit_die"));
-						if (spells) {
-							benefits.push(game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.benefit_grinder_spells", {
-								roll: spells.roll,
-								count: spells.names.length,
-								lost: spells.lost,
-								spells: spells.names.join(", ") || "—",
-							}));
-						}
-					}
-					else {
-						const hpMax = Number(actor.system?.attributes?.hp?.max ?? hpBefore);
-						await actor.update({ "system.attributes.hp.value": hpMax });
-						resourceSummary = await refreshRestResources(actor);
-						benefits.push(game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.benefit_full_rest"));
-					}
-					await healStatDamage(actor, Boolean(grinder));
-					if (actor.statuses?.has("unconscious")) {
-						await actor.toggleStatusEffect("unconscious", { active: false });
-					}
-				}
-
-				if (taskResult?.success) {
-					const taskBenefits = taskBenefitsByActor.get(actor.id)
-						?? await this._applyTaskBenefit(camper, taskResult, plan);
-					benefits.push(...taskBenefits);
-				}
-				else if (camper.taskKey === "hunt" && (camper.pushed || this.huntBlocked)) {
-					benefits.push(
-						game.i18n.localize(this.huntBlocked
-							? "SHADOWDARK_EXTRAS.camping_rest.hunt_blocked_weather"
-							: "SHADOWDARK_EXTRAS.camping_rest.hunt_blocked")
-					);
-				}
-
-				if (successfulCook && hasRation) {
-					await grantCampingHp(actor, 2);
-					benefits.push(
-						game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.benefit_cook")
-					);
-				}
-
-				summary.push({
-					name: actor.name,
-					img: actor.img,
-					taskName: taskResult?.task?.name ?? (
-						camper.taskKey === "hunt" && (camper.pushed || this.huntBlocked)
-							? tasks.find(task => task.key === "hunt")?.name : "—"
-					),
-					taskValue: Number.isFinite(taskResult?.value) ? taskResult.value : null,
-					taskSuccess: taskResult?.success ?? false,
-					hasTaskResult: Boolean(taskResult),
-					hasRation,
-					rested,
-					hpBefore,
-					hpAfter: Number(actor.system?.attributes?.hp?.value ?? hpBefore),
-					resourceSummary,
-					benefits,
-				});
-			}
+			);
 
 			await this._postSummary({
 				summary,
@@ -1136,6 +1079,212 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Who rolls CON after an interrupted rest: each camper but a Bed Down
+	 * success. The DC 12 results by actor id, or null if canceled.
+	 */
+	async _interruptions(plan, taskResults) {
+		const results = new Map();
+		if (!plan.interrupted) return results;
+		const checks = plan.campers.filter(camper => {
+			const taskResult = taskResults.get(camper.actor.id);
+			return !(taskResult?.task?.key === "battenDown" && taskResult.success);
+		});
+		if (!checks.length) return results;
+		const result = await this._rollInterruptionChecks(checks);
+		if (result?.canceled) return null;
+		for (const camper of checks) {
+			results.set(camper.actor.id, Number(result?.results?.[camper.actor.uuid]) >= 12);
+		}
+		return results;
+	}
+
+	/** The rest's benefits for each camper, then their task's and Cook's; the summary rows. */
+	async _restBenefits(
+		plan, tasks, taskResults, taskBenefitsByActor, rationByActor, interruptionResults,
+		started = () => {}
+	) {
+		const summary = [];
+		const successfulCook = [...taskResults.values()]
+			.some(result => result.task.key === "cook" && result.success);
+		const grinder = getGrinderSettings();
+
+		for (const camper of plan.campers) {
+			const actor = camper.actor;
+			started();
+			const taskResult = taskResults.get(actor.id);
+			const hasRation = rationByActor.get(actor.id) ?? false;
+			if (!hasRation && this._overland && game.modules.get("shadowdark-enhancer")?.active) {
+				const statDamage = game.shadowdarkEnhancer?.statDamage;
+				if (typeof statDamage?.apply === "function") await statDamage.apply(actor, "con", 1);
+			}
+			const bedDownSucceeded = taskResult?.task?.key === "battenDown"
+				&& taskResult.success;
+			const rested = qualifiesForRest({
+				hasRation,
+				interrupted: plan.interrupted,
+				bedDownSucceeded,
+				interruptionCheckSucceeded: interruptionResults.get(actor.id) ?? false,
+			});
+			const hpBefore = Number(actor.system?.attributes?.hp?.value ?? 0);
+			let resourceSummary = { spells: 0, abilities: 0, wands: 0 };
+			const benefits = [];
+
+			if (rested) {
+				if (grinder) {
+					const hp = await rollGrinderHp(actor, grinder.hitDice);
+					const spells = await pickGrinderSpells(actor);
+					const regain = spells?.ids ?? new Set();
+					resourceSummary = await refreshRestResources(actor, regain);
+					benefits.push(hp
+						? game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.benefit_grinder_rest", hp)
+						: game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.benefit_grinder_no_hit_die"));
+					if (spells) {
+						benefits.push(game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.benefit_grinder_spells", {
+							roll: spells.roll,
+							count: spells.names.length,
+							lost: spells.lost,
+							spells: spells.names.join(", ") || "—",
+						}));
+					}
+				}
+				else {
+					const hpMax = Number(actor.system?.attributes?.hp?.max ?? hpBefore);
+					await actor.update({ "system.attributes.hp.value": hpMax });
+					resourceSummary = await refreshRestResources(actor);
+					benefits.push(game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.benefit_full_rest"));
+				}
+				await healStatDamage(actor, Boolean(grinder));
+				if (actor.statuses?.has("unconscious")) {
+					await actor.toggleStatusEffect("unconscious", { active: false });
+				}
+			}
+
+			if (taskResult?.success) {
+				const taskBenefits = taskBenefitsByActor.get(actor.id)
+					?? await this._applyTaskBenefit(camper, taskResult, plan);
+				benefits.push(...taskBenefits);
+			}
+			else if (camper.taskKey === "hunt" && (camper.pushed || this.huntBlocked)) {
+				benefits.push(
+					game.i18n.localize(this.huntBlocked
+						? "SHADOWDARK_EXTRAS.camping_rest.hunt_blocked_weather"
+						: "SHADOWDARK_EXTRAS.camping_rest.hunt_blocked")
+				);
+			}
+
+			if (successfulCook && hasRation) {
+				await grantCampingHp(actor, 2);
+				benefits.push(
+					game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.benefit_cook")
+				);
+			}
+
+			summary.push({
+				actorId: actor.id,
+				name: actor.name,
+				img: actor.img,
+				taskName: taskResult?.task?.name ?? (
+					camper.taskKey === "hunt" && (camper.pushed || this.huntBlocked)
+						? tasks.find(task => task.key === "hunt")?.name : "—"
+				),
+				taskValue: Number.isFinite(taskResult?.value) ? taskResult.value : null,
+				taskSuccess: taskResult?.success ?? false,
+				hasTaskResult: Boolean(taskResult),
+				hasRation,
+				rested,
+				hpBefore,
+				hpAfter: Number(actor.system?.attributes?.hp?.value ?? hpBefore),
+				resourceSummary,
+				benefits,
+			});
+		}
+		return summary;
+	}
+
+	/**
+	 * Burn torches for a campfire before the starred tasks (#186)? The GM
+	 * answers for the party, told who would roll with disadvantage without one.
+	 */
+	async _askTorches(plan, taskGroups) {
+		if (!plan.torchPlan?.complete) return false;
+		const tasks = taskGroups.filter(group => group.task.campfire)
+			.flatMap(group => group.campers.map(camper => `${camper.actor.name} (${group.task.name})`));
+		return foundry.applications.api.DialogV2.confirm({
+			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.torches_title") },
+			content: `<p>${foundry.utils.escapeHTML(game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.torches_question", {
+				count: CAMPFIRE_TORCH_COST, tasks: tasks.join(", "),
+			}))}</p>`,
+			yes: { label: game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.torches_burn", { count: CAMPFIRE_TORCH_COST }) },
+			no: { label: game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.torches_none") },
+			rejectClose: false,
+		});
+	}
+
+	/** What the dawn needs (#186): each camper's pick, roll and meal, and the fire. */
+	async _savePendingRest(
+		plan, taskResults, taskBenefitsByActor, rationPlan, campfireEstablished
+	) {
+		await this.partyActor.setFlag(MODULE_ID, "campingPendingRest", {
+			campfireEstablished, campfireMode: plan.campfireMode,
+			harsh: this.harsh, huntBlocked: this.huntBlocked,
+			campers: plan.campers.map(camper => {
+				const taskResult = taskResults.get(camper.actor.id);
+				return {
+					actorId: camper.actor.id, taskKey: camper.taskKey ?? "", craftChoice: camper.craftChoice,
+					repairItemId: camper.repairItemId, entertainTargetId: camper.entertainTargetId,
+					watchHalf: camper.watchHalf, pushed: camper.pushed === true,
+					result: taskResult ? {
+						taskKey: taskResult.task.key,
+						value: Number.isFinite(taskResult.value) ? taskResult.value : null,
+						success: taskResult.success,
+					} : null,
+					ate: rationPlan.rationByActor.get(camper.actor.id) ?? false,
+					benefits: taskBenefitsByActor.get(camper.actor.id) ?? null,
+				};
+			}),
+		});
+	}
+
+	/** Overland's dawn (#186): the interrupted rest's CON checks, then the rest. */
+	async _runDawn(pending, interrupted) {
+		const tasks = getTravelActivities();
+		const campers = pending.campers
+			.map(camper => ({ ...camper, actor: game.actors.get(camper.actorId) }))
+			.filter(camper => camper.actor);
+		const plan = { campers, campfireMode: pending.campfireMode, interrupted };
+		const taskResults = new Map();
+		for (const camper of campers) {
+			const task = camper.result && tasks.find(entry => entry.key === camper.result.taskKey);
+			if (!task) continue;
+			taskResults.set(camper.actor.id, {
+				task,
+				value: camper.result.value ?? Number.NaN,
+				success: camper.result.success === true,
+			});
+		}
+		const interruptionResults = await this._interruptions(plan, taskResults);
+		// Canceled: the rest stays pending, for another try.
+		if (!interruptionResults) return { completed: false };
+		// Cleared before the benefits: a failure part way must not replay them.
+		await this.partyActor.unsetFlag(MODULE_ID, "campingPendingRest");
+		const summary = await this._restBenefits(
+			plan, tasks, taskResults,
+			new Map(campers.filter(camper => Array.isArray(camper.benefits))
+				.map(camper => [camper.actor.id, camper.benefits])),
+			new Map(campers.map(camper => [camper.actor.id, camper.ate === true])),
+			interruptionResults
+		);
+		await this._postSummary({
+			summary, interrupted, advancedTime: false,
+			campfireEstablished: pending.campfireEstablished === true,
+			campfireMode: pending.campfireMode,
+			torchesConsumed: pending.campfireMode === "torches" ? CAMPFIRE_TORCH_COST : 0,
+		});
+		const rested = Object.fromEntries(summary.map(row => [row.actorId, row.rested]));
+		return { completed: true, rested };
 	}
 
 	async _applyTaskBenefit(camper, taskResult, plan) {

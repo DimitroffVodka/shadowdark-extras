@@ -328,3 +328,62 @@ test("starvation respects absent, older and disabled Enhancer", async t => {
 	app._postSummary = async () => {};
 	assert.equal((await app._runProcedure({ campers: [{ actor: pc, taskKey: "" }], campfireMode: "none" })).completed, true);
 });
+
+function flagged(id) {
+	const party = actor(id);
+	const flags = {};
+	party.getFlag = (_scope, key) => flags[key];
+	party.setFlag = async (_scope, key, value) => { flags[key] = structuredClone(value); };
+	party.unsetFlag = async (_scope, key) => { delete flags[key]; };
+	return { party, flags };
+}
+
+test("a deferred camp rolls the tasks and eats, then stores the rest for the dawn (#186)", async () => {
+	setup();
+	const { party, flags } = flagged("party");
+	const pc = actor("pc", 1);
+	game.actors = new Map([["pc", pc]]);
+	const app = new CampingRestApp(party, [pc], { deferRest: true, onComplete: () => {} });
+	app._rollTaskGroup = async () => ({ dc: 12, result: { results: { "Actor.pc": 15 } } });
+	app._rollInterruptionChecks = async () => assert.fail("no CON checks at camp");
+	app._postSummary = async () => assert.fail("no summary at camp");
+	const reply = await app._runProcedure({ campers: [{ actor: pc, taskKey: "battenDown" }], campfireMode: "none", torchPlan: { complete: false } });
+	assert.deepEqual(reply, { completed: true, pending: true, fed: { pc: true }, mountsFed: 0 });
+	assert.equal(pc.items.length, 0, "its one ration eaten at camp");
+	const [stored] = flags.campingPendingRest.campers;
+	assert.deepEqual([stored.actorId, stored.result, stored.ate], ["pc", { taskKey: "battenDown", value: 15, success: true }, true]);
+});
+
+test("the dawn rolls CON only for who ate and failed Bed Down when interrupted, then rests (#186)", async () => {
+	setup();
+	const { party, flags } = flagged("party");
+	const [a, b, c] = [actor("a"), actor("b"), actor("c")];
+	game.actors = new Map([["a", a], ["b", b], ["c", c]]);
+	const camper = (actorId, result, ate) => ({ actorId, taskKey: result?.taskKey ?? "", result, ate, benefits: null });
+	flags.campingPendingRest = { campfireEstablished: false, campfireMode: "none", harsh: false, huntBlocked: false, campers: [
+		camper("a", { taskKey: "battenDown", value: 15, success: true }, true),
+		camper("b", null, true),
+		camper("c", null, false),
+	] };
+	let rolled = null;
+	let posted = null;
+	const original = CampingRestApp.prototype._rollInterruptionChecks;
+	const originalPost = CampingRestApp.prototype._postSummary;
+	CampingRestApp.prototype._rollInterruptionChecks = async function(campers) {
+		rolled = campers.map(entry => entry.actor.id);
+		return { results: { "Actor.b": 14, "Actor.c": 3 } };
+	};
+	CampingRestApp.prototype._postSummary = async data => { posted = data; };
+	try {
+		const reply = await camping.finishCampingRest({ party, interrupted: true });
+		assert.deepEqual(rolled, ["b", "c"], "Bed Down's success skips the check");
+		assert.deepEqual(reply, { completed: true, rested: { a: true, b: true, c: false } }, "c didn't eat: no rest");
+		assert.equal(posted.interrupted, true);
+		assert.equal(flags.campingPendingRest, undefined, "cleared");
+		assert.deepEqual(await camping.finishCampingRest({ party }), { completed: false }, "nothing left pending");
+	}
+	finally {
+		CampingRestApp.prototype._rollInterruptionChecks = original;
+		CampingRestApp.prototype._postSummary = originalPost;
+	}
+});
