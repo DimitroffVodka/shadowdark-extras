@@ -1404,6 +1404,7 @@
   "SDX.hexBake.sceneName": "{name} (baked)",
   "SDX.hexBake.done": "Baked {name} into {copy}: {pieces} map pieces in {seconds} s.",
   "SDX.hexBake.nothing": "{name} has no map tiles to bake.",
+  "SDX.hexBake.unsupported": "Only a hex map with one level can be baked; {name} isn't one.",
   "SDX.hexBake.busy": "A map is already baking. Wait for it to finish.",
   "SDX.hexBake.noCanvas": "Baking a map needs the game canvas, which is turned off in this browser.",
   "SDX.hexBake.failed": "Baking {name} failed: {error}. Pieces saved so far are in {path}."

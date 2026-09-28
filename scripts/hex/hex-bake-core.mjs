@@ -12,6 +12,15 @@
 export const isKeyedTile = tile => tile.flags?.["shadowdark-extras"]?.hexNum !== undefined;
 
 /**
+ * Whether a scene can be baked: a hex map with Tiles, on one level. The bake is
+ * one ground image drawn on every level, so a Tile kept to one level would show
+ * on all of them.
+ * @param {{grid?:{isHexagonal?:boolean}, levels?:{size:number}, tiles?:{size:number}}} scene
+ */
+export const bakeable = scene => !!scene?.grid?.isHexagonal && ((scene.levels?.size ?? 1) <= 1)
+	&& (scene.tiles?.size > 0);
+
+/**
  * The levels of a pyramid over a `width` × `height` picture: full size, then
  * halved (rounding up) until a level fits in one piece.
  * @returns {Array<{width:number, height:number, cols:number, rows:number}>}
@@ -173,19 +182,39 @@ export function mipChain(pixels, size) {
 }
 
 /**
+ * Where a Tile's rectangle centres. A v14 Tile's x and y are its anchor point,
+ * which the rectangle turns about, as Foundry's RectangleShapeData places it.
+ * @param {{x:number, y:number, width:number, height:number, rotation?:number,
+ *   texture?:{anchorX?:number, anchorY?:number}}} tile
+ * @returns {{x:number, y:number}}
+ */
+export function tileCentre({ x, y, width, height, rotation = 0, texture = {} }) {
+	const dx = (0.5 - (texture.anchorX ?? 0.5)) * width;
+	const dy = (0.5 - (texture.anchorY ?? 0.5)) * height;
+	const a = rotation * Math.PI / 180;
+	return { x: x + (dx * Math.cos(a)) - (dy * Math.sin(a)), y: y + (dx * Math.sin(a)) + (dy * Math.cos(a)) };
+}
+
+/**
  * The keyed sprites of a baked scene, by hex offset "i-j" (the key the fog uses).
- * @param {Array<object>} tiles  keyed tile data (x, y, width, height, sort, elevation,
- *   texture.src, flags)
+ * Each keeps what the Tile's mesh shows: its anchor, turn, fit, scale (and
+ * mirror), tint and alpha, so the sprite looks as the Tile did.
+ * @param {Array<object>} tiles  keyed tile data, as TileDocument#toObject gives it
  * @param {(point:{x:number, y:number}) => {i:number, j:number}} offsetOf  grid.getOffset
  * @returns {Object<string, Array<{src:string, x:number, y:number, width:number, height:number,
- *   sort:number, elevation:number, num:number}>>}
+ *   anchorX:number, anchorY:number, rotation:number, fit:string, scaleX:number, scaleY:number,
+ *   tint:string, alpha:number, sort:number, elevation:number, num:number}>>}
  */
 export function keyedEntries(tiles, offsetOf) {
 	const out = {};
 	for (const tile of tiles) {
-		const { i, j } = offsetOf({ x: tile.x + (tile.width / 2), y: tile.y + (tile.height / 2) });
+		const { i, j } = offsetOf(tileCentre(tile));
+		const t = tile.texture ?? {};
 		(out[`${i}-${j}`] ??= []).push({
-			src: tile.texture.src, x: tile.x, y: tile.y, width: tile.width, height: tile.height,
+			src: t.src, x: tile.x, y: tile.y, width: tile.width, height: tile.height,
+			anchorX: t.anchorX ?? 0.5, anchorY: t.anchorY ?? 0.5, rotation: tile.rotation ?? 0,
+			fit: t.fit ?? "fill", scaleX: t.scaleX ?? 1, scaleY: t.scaleY ?? 1,
+			tint: t.tint ?? "#ffffff", alpha: tile.alpha ?? 1,
 			sort: tile.sort ?? 0, elevation: tile.elevation ?? 0,
 			num: tile.flags["shadowdark-extras"].hexNum,
 		});

@@ -20,7 +20,7 @@ import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
 import { HEX_JOURNAL_NAME } from "./HexTooltipSD.mjs";
 import { getHexRecordMap } from "./hex-water-terrain.mjs";
 import {
-	keyedSpriteView, pieceFrame, pieceSize, piecesInView, pyramidLevel, transcodeTarget,
+	bakeable, keyedSpriteView, pieceFrame, pieceSize, piecesInView, pyramidLevel, transcodeTarget,
 } from "./hex-bake-core.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -237,10 +237,14 @@ async function draw() {
 			if (!texture) continue;
 			const mesh = new PrimarySpriteMesh({ texture, name: `${MODULE_ID}.keyed.${key}` });
 			canvas.primary.addChild(mesh);
-			mesh.anchor.set(0.5, 0.5);
-			mesh.position.set(e.x + (e.width / 2), e.y + (e.height / 2));
-			mesh.width = e.width;
-			mesh.height = e.height;
+			// As Tile#_refreshSize and _refreshMesh place a Tile's mesh. A bake from
+			// before these fields kept only the top-left corner and the size.
+			mesh.resize(e.width, e.height, { fit: e.fit ?? "fill", scaleX: e.scaleX ?? 1, scaleY: e.scaleY ?? 1 });
+			mesh.anchor.set(e.anchorX ?? 0, e.anchorY ?? 0);
+			mesh.position.set(e.x, e.y);
+			mesh.angle = e.rotation ?? 0;
+			mesh.tint = foundry.utils.Color.from(e.tint ?? "#ffffff");
+			mesh.unoccludedAlpha = e.alpha ?? 1;
 			mesh.elevation = e.elevation;
 			mesh.sortLayer = TILES;
 			mesh.sort = e.sort;
@@ -257,7 +261,7 @@ const sceneOf = li => game.scenes.get((li instanceof HTMLElement ? li : li?.[0])
 
 /**
  * Baked scenes get the pyramid manager and their keyed sprites; the GM gets
- * "Bake map for play" on scenes with Tiles.
+ * "Bake map for play" on a hex map with Tiles and one level.
  */
 export function registerBakedScenes() {
 	const manage = scene => {
@@ -301,7 +305,7 @@ export function registerBakedScenes() {
 		args.find(a => Array.isArray(a))?.push({
 			label: "SDX.hexBake.menu",
 			icon: "<i class=\"fa-solid fa-layer-group\"></i>",
-			visible: li => game.user.isGM && !!sceneOf(li)?.tiles.size,
+			visible: li => game.user.isGM && bakeable(sceneOf(li)),
 			// Loaded on use: players never need the baker.
 			onClick: async (_event, li) => (await import("./hex-bake.mjs")).bakeScene(sceneOf(li)),
 		});

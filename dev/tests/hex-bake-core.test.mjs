@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+	bakeable,
 	fitScale,
 	isKeyedTile,
 	keyedEntries,
@@ -9,10 +10,11 @@ import {
 	mipChain,
 	padPiece,
 	pieceFrame,
-	pieceSize,
 	piecesInView,
+	pieceSize,
 	pyramidLevel,
 	pyramidLevels,
+	tileCentre,
 	transcodeTarget,
 } from "../../scripts/hex/hex-bake-core.mjs";
 
@@ -126,8 +128,36 @@ test("isKeyedTile and keyedEntries: keyed art is what carries hexNum, grouped by
 	assert.deepEqual(Object.keys(entries), ["1-2"]);
 	assert.deepEqual(entries["1-2"].map(e => e.src), ["keep.webp", "icon.webp"]);
 	assert.deepEqual(entries["1-2"][0], {
-		src: "keep.webp", x: 200, y: 110, width: 100, height: 80, sort: 150, elevation: 0, num: 1203,
+		src: "keep.webp", x: 200, y: 110, width: 100, height: 80,
+		anchorX: 0.5, anchorY: 0.5, rotation: 0, fit: "fill", scaleX: 1, scaleY: 1, tint: "#ffffff", alpha: 1,
+		sort: 150, elevation: 0, num: 1203,
 	});
+});
+
+test("keyedEntries: a keyed Tile's anchor, turn, fit, scale, tint and alpha go with it, and its hex is under its centre", () => {
+	const t = {
+		...tile(250, 100, { painted: true, hexNum: 0 }), rotation: 90, alpha: 0.6,
+		texture: { src: "odd.webp", anchorX: 0, anchorY: 0, fit: "contain", scaleX: -1, scaleY: 2, tint: "#ff0000" },
+	};
+	// Turned 90 degrees about its top-left corner: the 100 x 80 box spans x 170-250, y 100-200.
+	const c = tileCentre(t);
+	assert.ok(Math.abs(c.x - 210) < 1e-9 && Math.abs(c.y - 150) < 1e-9);
+	const [e] = keyedEntries([t], offsetOf)["1-2"];
+	assert.deepEqual(
+		[e.anchorX, e.anchorY, e.rotation, e.fit, e.scaleX, e.scaleY, e.tint, e.alpha],
+		[0, 0, 90, "contain", -1, 2, "#ff0000", 0.6],
+	);
+	// Anchored in the middle (v14's default), x and y are the centre.
+	assert.deepEqual(tileCentre({ x: 50, y: 60, width: 100, height: 80, texture: { anchorX: 0.5, anchorY: 0.5 } }), { x: 50, y: 60 });
+});
+
+test("bakeable: a hex map with Tiles on one level; not a square grid, an empty map or a multi-level scene", () => {
+	const scene = (over = {}) => ({ grid: { isHexagonal: true }, levels: { size: 1 }, tiles: { size: 3 }, ...over });
+	assert.equal(bakeable(scene()), true);
+	assert.equal(bakeable(scene({ levels: { size: 2 } })), false, "one ground image would show every level's art on all");
+	assert.equal(bakeable(scene({ grid: { isHexagonal: false } })), false);
+	assert.equal(bakeable(scene({ tiles: { size: 0 } })), false);
+	assert.equal(bakeable(undefined), false);
 });
 
 test("keyedSpriteView: players see a hex's keyed art once the fog shows it, and not from afar", () => {

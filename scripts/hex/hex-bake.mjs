@@ -21,7 +21,7 @@ import { getHexRecordMap } from "./hex-water-terrain.mjs";
 import { mergeHexRecords } from "./HexTooltipSD.mjs";
 import { KEYED_FLAG, PYRAMID_FLAG } from "./hex-baked-scene.mjs";
 import {
-	fitScale, isKeyedTile, keyedEntries, mipChain, padPiece, pieceSize, pyramidLevels,
+	bakeable, fitScale, isKeyedTile, keyedEntries, mipChain, padPiece, pieceSize, pyramidLevels,
 } from "./hex-bake-core.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -45,6 +45,10 @@ export async function bakeScene(source) {
 	const say = (key, data) => game.i18n.format(key, { name: source.name, ...data });
 	if (baking) {
 		ui.notifications.warn(say("SDX.hexBake.busy"));
+		return;
+	}
+	if (!bakeable(source)) {
+		ui.notifications.warn(say("SDX.hexBake.unsupported"));
 		return;
 	}
 	const renderer = canvas.app?.renderer;
