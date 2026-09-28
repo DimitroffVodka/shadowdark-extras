@@ -354,7 +354,7 @@ async function _applyEnhancementFlags(item, compendiumItem, compendiumUuid) {
 
 	const unset = {};
 	for (const key of ENHANCEMENT_FLAG_KEYS) {
-		if (item.flags?.[MODULE_ID]?.[key] !== undefined) unset[`flags.${MODULE_ID}.-=${key}`] = null;
+		if (item.flags?.[MODULE_ID]?.[key] !== undefined) unset[`flags.${MODULE_ID}.${key}`] = new foundry.data.operators.ForcedDeletion();
 	}
 	if (!foundry.utils.isEmpty(unset)) await item.update(unset);
 
