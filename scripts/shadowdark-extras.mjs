@@ -81,7 +81,7 @@ const FilePicker = foundry.applications.apps.FilePicker?.implementation ?? globa
 
 import PartySheetSD, { syncPartyTokenLight, getPartiesContainingActor, registerPartyTravelSocket, registerPartySheetRerenderHooks, isPartyActor, registerPartyCleanupHooks, listParties, partyMemberUuids } from "./party/PartySheetSD.mjs";
 import { initCarouselDrag } from "./canvas/carousel-drag.mjs";
-import { openCampingRest } from "./party/CampingRestSD.mjs";
+import { finishCampingRest, openCampingRest } from "./party/CampingRestSD.mjs";
 import { extendActorCreationDialog, wrapActorCreate } from "./party/party-creation.mjs";
 import { initializeTradeSocket, ensureTradeJournal } from "./inventory/TradeWindowSD.mjs";
 import { setupCombatSocket, setupScrollingCombatText } from "./combat/CombatSettingsSD.mjs";
@@ -1663,7 +1663,7 @@ Hooks.on("setup", () => {
 			showConditionsModal: audited("showConditionsModal", showConditionsModal),
 			getConditionsData: audited("getConditionsData", getConditionsData),
 			party: { list: listParties, members: partyMemberUuids }, // plain reads, no GM wrap
-			camping: { open: audited("camping.open", openCampingRest) }, // warns and returns a canceled reply for players
+			camping: { open: audited("camping.open", openCampingRest), dawn: audited("camping.dawn", finishCampingRest) }, // warns and returns a canceled reply for players
 			// --- Dungeon generator ---
 			generateDungeon: audited("generateDungeon", gmOnly("generateDungeon", generateDungeon)),
 			getGeneratorSettings: audited("getGeneratorSettings", getGeneratorSettings),

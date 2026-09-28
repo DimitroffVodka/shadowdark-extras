@@ -1,4 +1,5 @@
 <div class="sdx-camping-rest">
+	{{#unless deferRest}}
 	<section class="sdx-rest-section">
 		<h2><i class="fas fa-fire"></i> {{localize "SHADOWDARK_EXTRAS.camping_rest.campfire_heading"}}</h2>
 		<div class="sdx-rest-campfire-options">
@@ -27,6 +28,7 @@
 			</label>
 		</div>
 	</section>
+	{{/unless}}
 
 	<section class="sdx-rest-section sdx-rest-members-section">
 		<div class="sdx-rest-section-heading">
@@ -136,6 +138,7 @@
 
 	<section class="sdx-rest-section sdx-rest-options">
 		<h2><i class="fas fa-moon"></i> {{localize "SHADOWDARK_EXTRAS.camping_rest.rest_heading"}}</h2>
+		{{#unless deferRest}}
 		<label>
 			<input type="checkbox" name="interrupted">
 			<span>
@@ -143,6 +146,7 @@
 				<small>{{localize "SHADOWDARK_EXTRAS.camping_rest.interrupted_hint"}}</small>
 			</span>
 		</label>
+		{{/unless}}
 		<label>
 			<input type="checkbox" name="advanceTime" {{#if advanceTime}}checked{{/if}} {{#if advanceTimeLocked}}disabled{{/if}}>
 			<span>
