@@ -376,14 +376,99 @@ test("the dawn rolls CON only for who ate and failed Bed Down when interrupted, 
 	CampingRestApp.prototype._postSummary = async data => { posted = data; };
 	try {
 		const reply = await camping.finishCampingRest({ party, interrupted: true });
-		assert.deepEqual(rolled, ["b", "c"], "Bed Down's success skips the check");
+		assert.deepEqual(rolled, ["b"], "Bed Down's success skips the check, and c, who didn't eat, has no rest to keep");
 		assert.deepEqual(reply, { completed: true, rested: { a: true, b: true, c: false } }, "c didn't eat: no rest");
 		assert.equal(posted.interrupted, true);
 		assert.equal(flags.campingPendingRest, undefined, "cleared");
-		assert.deepEqual(await camping.finishCampingRest({ party }), { completed: false }, "nothing left pending");
+		assert.deepEqual(await camping.finishCampingRest({ party }), { completed: false, nothingPending: true }, "nothing left pending");
 	}
 	finally {
 		CampingRestApp.prototype._rollInterruptionChecks = original;
 		CampingRestApp.prototype._postSummary = originalPost;
 	}
+});
+
+function pendingRest(flags, campers) {
+	flags.campingPendingRest = { campfireEstablished: false, campfireMode: "none", harsh: false, huntBlocked: false, campers:
+		campers.map(([actorId, ate]) => ({ actorId, taskKey: "", result: null, ate, benefits: null })) };
+}
+
+test("two dawns at once for one party roll the CON checks and grant the rest once (#186)", async () => {
+	setup();
+	const { party, flags } = flagged("party");
+	const a = actor("a");
+	game.actors = new Map([["a", a]]);
+	pendingRest(flags, [["a", true]]);
+	let release;
+	const gate = new Promise(resolve => { release = resolve; });
+	let dispatched = 0;
+	let posted = 0;
+	const original = CampingRestApp.prototype._rollInterruptionChecks;
+	const originalPost = CampingRestApp.prototype._postSummary;
+	CampingRestApp.prototype._rollInterruptionChecks = async function() { dispatched++; await gate; return { results: { "Actor.a": 15 } }; };
+	CampingRestApp.prototype._postSummary = async () => { posted++; };
+	try {
+		const first = camping.finishCampingRest({ party, interrupted: true });
+		const second = camping.finishCampingRest({ party, interrupted: true });
+		await new Promise(resolve => setImmediate(resolve));
+		assert.equal(flags.campingPendingRest, undefined, "claimed before the roll");
+		release();
+		const replies = await Promise.all([first, second]);
+		assert.deepEqual(replies[0], { completed: true, rested: { a: true } });
+		assert.deepEqual(replies[1], replies[0], "the second call shares the first dawn");
+		assert.deepEqual([dispatched, posted], [1, 1]);
+	}
+	finally {
+		CampingRestApp.prototype._rollInterruptionChecks = original;
+		CampingRestApp.prototype._postSummary = originalPost;
+	}
+});
+
+test("canceled dawn checks put the rest back; a failure while applying it is final and reported (#186)", async () => {
+	setup();
+	const { party, flags } = flagged("party");
+	const [a, b] = [actor("a"), actor("b")];
+	game.actors = new Map([["a", a], ["b", b]]);
+	pendingRest(flags, [["a", true], ["b", true]]);
+	const original = CampingRestApp.prototype._rollInterruptionChecks;
+	const originalPost = CampingRestApp.prototype._postSummary;
+	const errors = [];
+	const chat = [];
+	ui.notifications.error = message => errors.push(message);
+	globalThis.ChatMessage = { create: async data => { chat.push(data.content); }, getSpeaker: () => ({}) };
+	try {
+		CampingRestApp.prototype._rollInterruptionChecks = async () => ({ canceled: true });
+		assert.deepEqual(await camping.finishCampingRest({ party, interrupted: true }), { completed: false });
+		assert.equal(flags.campingPendingRest.campers.length, 2, "put back for another try");
+
+		CampingRestApp.prototype._rollInterruptionChecks = async () => ({ results: { "Actor.a": 15, "Actor.b": 15 } });
+		CampingRestApp.prototype._postSummary = async () => assert.fail("no summary after a failure");
+		b.update = async () => { throw new Error("write failed"); };
+		const reply = await camping.finishCampingRest({ party, interrupted: true });
+		assert.deepEqual(reply, { completed: true, partial: true, error: "write failed", rested: {} }, "final: Overland moves on");
+		assert.equal(flags.campingPendingRest, undefined, "never replayed");
+		assert.equal(errors.length, 1);
+		assert.equal(chat.length, 1);
+		assert.deepEqual(await camping.finishCampingRest({ party, interrupted: true }), { completed: false, nothingPending: true });
+	}
+	finally {
+		CampingRestApp.prototype._rollInterruptionChecks = original;
+		CampingRestApp.prototype._postSummary = originalPost;
+	}
+});
+
+test("the torch question gives the party's unlit torches (#186)", async t => {
+	setup();
+	const torch = (id, quantity, active = false) => ({ id, name: "Torch", system: { quantity, light: { active } } });
+	const party = actor("party");
+	party.items.push(torch("t1", 2));
+	const pc = actor("pc");
+	pc.items.push(torch("t2", 3), torch("t3", 1, true));
+	let data;
+	game.i18n.format = (key, values) => { if (key.endsWith("torches_question")) data = values; return key; };
+	t.mock.method(foundry.applications.api.DialogV2, "confirm", async () => true);
+	const app = new CampingRestApp(party, [pc], { deferRest: true, onComplete: () => {} });
+	const groups = [{ task: { key: "cook", name: "Cook", campfire: true }, campers: [{ actor: pc }] }];
+	assert.equal(await app._askTorches({ campers: [{ actor: pc }], torchPlan: { complete: true } }, groups), true);
+	assert.deepEqual([data.count, data.total, data.tasks], [3, 5, "pc (Cook)"], "the lit torch doesn't count");
 });

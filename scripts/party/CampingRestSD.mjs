@@ -442,6 +442,9 @@ export async function openCampingRest({
 	});
 }
 
+/** Each party's dawn while it runs, by actor id (#186). */
+const dawnsInFlight = new Map();
+
 /**
  * Overland's dawn after a camp opened with `deferRest` (#186): the interrupted
  * rest's CON checks, then the rest's benefits. `{completed:false}` when no
@@ -452,13 +455,30 @@ export async function finishCampingRest({ party, interrupted = false } = {}) {
 		ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.gm_only"));
 		return { completed: false };
 	}
-	const pending = party?.getFlag?.(MODULE_ID, "campingPendingRest");
-	if (!pending?.campers?.length) return { completed: false };
-	const app = new CampingRestApp(party, [], {
-		harsh: pending.harsh === true, stormy: pending.huntBlocked === true, onComplete: () => {},
-	});
-	return app._runDawn(pending, interrupted === true);
+	if (!party?.id) return { completed: false, nothingPending: true };
+	// A second call while this party's dawn runs gets the same reply, never a second rest.
+	const running = dawnsInFlight.get(party.id);
+	if (running) return running;
+	const dawn = (async () => {
+		const pending = party.getFlag?.(MODULE_ID, "campingPendingRest");
+		if (!pending?.campers?.length) return { completed: false, nothingPending: true };
+		// Claimed before any roll: another client reading the flag now finds nothing to finish.
+		await party.unsetFlag(MODULE_ID, "campingPendingRest");
+		const app = new CampingRestApp(party, [], {
+			harsh: pending.harsh === true, stormy: pending.huntBlocked === true,
+			onComplete: () => {},
+		});
+		return app._runDawn(pending, interrupted === true);
+	})();
+	dawnsInFlight.set(party.id, dawn);
+	try {
+		return await dawn;
+	}
+	finally {
+		dawnsInFlight.delete(party.id);
+	}
 }
+
 
 export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	constructor(partyActor, members, {
@@ -1214,10 +1234,14 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (!plan.torchPlan?.complete) return false;
 		const tasks = taskGroups.filter(group => group.task.campfire)
 			.flatMap(group => group.campers.map(camper => `${camper.actor.name} (${group.task.name})`));
+		const total = getItemStacks(
+			[this.partyActor, ...plan.campers.map(camper => camper.actor)], TORCH_PATTERN,
+			{ inactiveLightsOnly: true }
+		).reduce((sum, stack) => sum + stack.quantity, 0);
 		return foundry.applications.api.DialogV2.confirm({
 			window: { title: game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.torches_title") },
 			content: `<p>${foundry.utils.escapeHTML(game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.torches_question", {
-				count: CAMPFIRE_TORCH_COST, tasks: tasks.join(", "),
+				count: CAMPFIRE_TORCH_COST, total, tasks: tasks.join(", "),
 			}))}</p>`,
 			yes: { label: game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.torches_burn", { count: CAMPFIRE_TORCH_COST }) },
 			no: { label: game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.torches_none") },
@@ -1250,7 +1274,11 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		});
 	}
 
-	/** Overland's dawn (#186): the interrupted rest's CON checks, then the rest. */
+	/**
+	 * Overland's dawn (#186): the interrupted rest's CON checks, then the rest.
+	 * `pending` was claimed off the party by finishCampingRest: checks that are
+	 * canceled put it back; a failure once the rest is being applied is final.
+	 */
 	async _runDawn(pending, interrupted) {
 		const tasks = getTravelActivities();
 		const campers = pending.campers
@@ -1267,26 +1295,50 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				success: camper.result.success === true,
 			});
 		}
-		const interruptionResults = await this._interruptions(plan, taskResults);
-		// Canceled: the rest stays pending, for another try.
-		if (!interruptionResults) return { completed: false };
-		// Cleared before the benefits: a failure part way must not replay them.
-		await this.partyActor.unsetFlag(MODULE_ID, "campingPendingRest");
-		const summary = await this._restBenefits(
-			plan, tasks, taskResults,
-			new Map(campers.filter(camper => Array.isArray(camper.benefits))
-				.map(camper => [camper.actor.id, camper.benefits])),
-			new Map(campers.map(camper => [camper.actor.id, camper.ate === true])),
-			interruptionResults
+		// Only who ate can still benefit from the rest (GMWR p. 44), so only they roll CON.
+		const interruptionResults = await this._interruptions(
+			{ ...plan, campers: campers.filter(camper => camper.ate === true) }, taskResults
 		);
-		await this._postSummary({
-			summary, interrupted, advancedTime: false,
-			campfireEstablished: pending.campfireEstablished === true,
-			campfireMode: pending.campfireMode,
-			torchesConsumed: pending.campfireMode === "torches" ? CAMPFIRE_TORCH_COST : 0,
-		});
-		const rested = Object.fromEntries(summary.map(row => [row.actorId, row.rested]));
-		return { completed: true, rested };
+		if (!interruptionResults) {
+			// Canceled before anything was applied: the rest goes back, for another try.
+			await this.partyActor.setFlag(MODULE_ID, "campingPendingRest", pending);
+			return { completed: false };
+		}
+		try {
+			const summary = await this._restBenefits(
+				plan, tasks, taskResults,
+				new Map(campers.filter(camper => Array.isArray(camper.benefits))
+					.map(camper => [camper.actor.id, camper.benefits])),
+				new Map(campers.map(camper => [camper.actor.id, camper.ate === true])),
+				interruptionResults
+			);
+			await this._postSummary({
+				summary, interrupted, advancedTime: false,
+				campfireEstablished: pending.campfireEstablished === true,
+				campfireMode: pending.campfireMode,
+				torchesConsumed: pending.campfireMode === "torches" ? CAMPFIRE_TORCH_COST : 0,
+			});
+			const rested = Object.fromEntries(summary.map(row => [row.actorId, row.rested]));
+			return { completed: true, rested };
+		}
+		catch(error) {
+			// Part of the rest may be applied: never replay it. Tell the GM; Overland moves on.
+			console.error(`${MODULE_ID} | Camping dawn failed`, error);
+			const message = game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.partial_failure", {
+				message: error.message,
+			});
+			try {
+				ui.notifications.error(message, { permanent: true });
+				await ChatMessage.create({
+					speaker: ChatMessage.getSpeaker({ actor: this.partyActor }),
+					content: `<p>${foundry.utils.escapeHTML(message)}</p>`,
+				});
+			}
+			catch(reportError) {
+				console.error(`${MODULE_ID} | Could not report the camping dawn failure`, reportError);
+			}
+			return { completed: true, partial: true, error: error.message, rested: {} };
+		}
 	}
 
 	async _applyTaskBenefit(camper, taskResult, plan) {
