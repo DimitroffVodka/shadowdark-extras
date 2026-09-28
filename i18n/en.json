@@ -1398,5 +1398,13 @@
   "SDX.pinStyleEditor.browseIconShapes": "Browse Icons",
   "SDX.pinStyleEditor.iconShapeTint": "Icon Tint",
   "SDX.pinStyleEditor.clearIconShape": "Clear",
-  "SDX.pinStyleEditor.iconShapeNone": "— None —"
+  "SDX.pinStyleEditor.iconShapeNone": "— None —",
+  "SDX.hexBake.menu": "Bake map for play",
+  "SDX.hexBake.progress": "Baking {name}: {done} of {total} map pieces",
+  "SDX.hexBake.sceneName": "{name} (baked)",
+  "SDX.hexBake.done": "Baked {name} into {copy}: {pieces} map pieces in {seconds} s.",
+  "SDX.hexBake.nothing": "{name} has no map tiles to bake.",
+  "SDX.hexBake.busy": "A map is already baking. Wait for it to finish.",
+  "SDX.hexBake.noCanvas": "Baking a map needs the game canvas, which is turned off in this browser.",
+  "SDX.hexBake.failed": "Baking {name} failed: {error}. Pieces saved so far are in {path}."
 }

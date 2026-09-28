@@ -1,7 +1,7 @@
 {
-  "$comment": "Accepted unbound identifiers. The gate blocks anything NEW, not the absolute count — resolving every identifier without a scope-accurate parser leaves a residue of nested declarations and unlisted globals. New entries almost always mean an extraction left a dangling reference. Regenerate only with a reviewed reason: npm run gate:bindings -- --write. NOTE: --write rebuilds from the current tree and DISCARDS orphaned entries, which is why accepted findings are added by hand instead. See $notes for the ones that are real defects rather than scanner residue.",
+  "$comment": "Accepted unbound identifiers. The gate blocks anything NEW, not the absolute count \u2014 resolving every identifier without a scope-accurate parser leaves a residue of nested declarations and unlisted globals. New entries almost always mean an extraction left a dangling reference. Regenerate only with a reviewed reason: npm run gate:bindings -- --write. NOTE: --write rebuilds from the current tree and DISCARDS orphaned entries, which is why accepted findings are added by hand instead. See $notes for the ones that are real defects rather than scanner residue.",
   "$notes": {},
-  "total": 111,
+  "total": 119,
   "byFile": {
     "scripts/MaphubViewerApp.mjs": [
       "CONST"
@@ -111,6 +111,18 @@
     ],
     "scripts/hex/SDXHexFogSD.mjs": [
       "loadTexture"
+    ],
+    "scripts/hex/hex-bake-worker.js": [
+      "createKtxModule"
+    ],
+    "scripts/hex/hex-baked-scene.mjs": [
+      "load",
+      "place",
+      "pump",
+      "schedule",
+      "sweep",
+      "update",
+      "url"
     ],
     "scripts/inventory/TradeWindowSD.mjs": [
       "CONST"
