@@ -459,7 +459,7 @@ async function syncContainerPackedItems(containerItem) {
 	// Clear the unpacked flag on the current container since we just synced
 	if (containerItem.getFlag(MODULE_ID, "containerUnpacked")) {
 		await containerItem.update({
-			[`flags.${MODULE_ID}.-=containerUnpacked`]: null,
+			[`flags.${MODULE_ID}.containerUnpacked`]: new foundry.data.operators.ForcedDeletion(),
 		}, { sdxInternal: true });
 	}
 }
