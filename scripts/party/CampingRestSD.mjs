@@ -732,7 +732,9 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 					<li>${game.i18n.format("SHADOWDARK_EXTRAS.camping_rest.confirm_rations", {
 		count: (plan.campers.length + this.mounts) * this.rationsEach,
 	})}</li>
-					<li>${game.i18n.localize(`SHADOWDARK_EXTRAS.camping_rest.campfire_${plan.campfireMode}`)}</li>
+					${this.deferRest ? "" : `<li>${game.i18n.localize(
+		`SHADOWDARK_EXTRAS.camping_rest.campfire_${plan.campfireMode}`
+	)}</li>`}
 				</ul>
 			`;
 			const confirmed = await foundry.applications.api.DialogV2.confirm({
