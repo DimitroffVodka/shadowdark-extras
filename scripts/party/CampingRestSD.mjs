@@ -7,6 +7,7 @@
  */
 
 import { getTravelActivities } from "./TravelActivitiesSettingsSD.mjs";
+import { isPrimaryGmSession } from "../shared/gm-session.mjs";
 import { buildTravelTaskRollData } from "../tray/SDXRollerData.mjs";
 import { SDXRollerApp } from "../tray/SDXRollerApp.mjs";
 import {
@@ -456,9 +457,10 @@ export async function finishCampingRest({ party, interrupted = false } = {}) {
 		return { completed: false };
 	}
 	if (!party?.id) return { completed: false, nothingPending: true };
-	// One client finishes a rest: the active GM's. Its in-flight map is then the only claim, so two
-	// GMs can't both grant it (#187 review). Enhancer's Overland calls this from the active GM.
-	if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) {
+	// One tab finishes a rest: the active GM's working one (gm-session.mjs), even when that GM is
+	// signed in twice. Its in-flight map is then the only claim, so no rest is granted twice
+	// (#187 review). Enhancer's Overland calls this from that tab.
+	if (game.users?.activeGM && !isPrimaryGmSession()) {
 		ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.dawn_active_gm"));
 		return { completed: false, notActiveGM: true };
 	}

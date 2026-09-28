@@ -505,3 +505,29 @@ test("only the active GM finishes a rest; another GM's call leaves it pending (#
 	assert.equal(flags.campingPendingRest.campers.length, 1);
 	assert.deepEqual(warnings, ["SHADOWDARK_EXTRAS.camping_rest.dawn_active_gm"]);
 });
+
+test("of one GM's several tabs, the one signed in longest works (#187 review)", async () => {
+	const { isPrimarySession } = await import("../../scripts/shared/gm-session.mjs");
+	const others = new Map([["b", { since: 200, seen: 1000 }]]);
+	assert.equal(isPrimarySession({ sid: "a", since: 100 }, others, 1000), true, "signed in first");
+	assert.equal(isPrimarySession({ sid: "c", since: 300 }, others, 1000), false, "a later tab defers");
+	assert.equal(isPrimarySession({ sid: "c", since: 300 }, others, 21000), true, "until the first goes quiet");
+	assert.equal(isPrimarySession({ sid: "a", since: 200 }, others, 1000), true, "the same moment: the lower socket id");
+});
+
+// Last in the file: it leaves this client's tab registry holding an earlier tab of the same GM.
+test("a second tab of the active GM doesn't finish a rest: the record stays for the first (#187 review)", async () => {
+	const warnings = setup();
+	const { party, flags } = flagged("party");
+	pendingRest(flags, [["a", true]]);
+	const handlers = [];
+	game.user = { id: "gm1", isGM: true };
+	game.users = { activeGM: { id: "gm1" } };
+	game.socket = { id: "tab-b", emit() {}, on: (_channel, fn) => handlers.push(fn) };
+	const { registerGmSessions } = await import("../../scripts/shared/gm-session.mjs");
+	registerGmSessions();
+	for (const fn of handlers) fn({ type: "sdxGmSession", userId: "gm1", sid: "tab-a", since: 0 });   // signed in before this tab
+	assert.deepEqual(await camping.finishCampingRest({ party, interrupted: true }), { completed: false, notActiveGM: true });
+	assert.equal(flags.campingPendingRest.campers.length, 1, "left for the first tab");
+	assert.deepEqual(warnings, ["SHADOWDARK_EXTRAS.camping_rest.dawn_active_gm"]);
+});
