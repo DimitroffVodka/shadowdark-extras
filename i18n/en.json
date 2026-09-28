@@ -1349,6 +1349,7 @@
   "SHADOWDARK_EXTRAS.camping_rest.confirm_title": "Begin Camping?",
   "SHADOWDARK_EXTRAS.camping_rest.confirm_content": "Resolve camping for {count} characters?",
   "SHADOWDARK_EXTRAS.camping_rest.confirm_rations": "Up to {count} pooled rations will be consumed.",
+  "SHADOWDARK_EXTRAS.camping_rest.dawn_active_gm": "Only the active GM finishes a camp's rest.",
   "SHADOWDARK_EXTRAS.camping_rest.camp_done": "Camp is made: the tasks are rolled and the rations eaten. The rest comes at dawn.",
   "SHADOWDARK_EXTRAS.camping_rest.torches_title": "No campfire yet",
   "SHADOWDARK_EXTRAS.camping_rest.torches_question": "Burn {count} of the party's {total} torches for a campfire before the other tasks? Without one, these roll with disadvantage: {tasks}.",

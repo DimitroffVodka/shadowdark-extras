@@ -472,3 +472,36 @@ test("the torch question gives the party's unlit torches (#186)", async t => {
 	assert.equal(await app._askTorches({ campers: [{ actor: pc }], torchPlan: { complete: true } }, groups), true);
 	assert.deepEqual([data.count, data.total, data.tasks], [3, 5, "pc (Cook)"], "the lit torch doesn't count");
 });
+
+test("a CON check that throws puts the rest back, and a retry finishes it (#187 review)", async () => {
+	setup();
+	const { party, flags } = flagged("party");
+	const a = actor("a");
+	game.actors = new Map([["a", a]]);
+	pendingRest(flags, [["a", true]]);
+	const original = CampingRestApp.prototype._rollInterruptionChecks;
+	const originalPost = CampingRestApp.prototype._postSummary;
+	CampingRestApp.prototype._postSummary = async () => {};
+	try {
+		CampingRestApp.prototype._rollInterruptionChecks = async () => { throw new Error("roll service failed"); };
+		assert.deepEqual(await camping.finishCampingRest({ party, interrupted: true }), { completed: false, error: "roll service failed" });
+		assert.equal(flags.campingPendingRest.campers.length, 1, "put back, not lost");
+		CampingRestApp.prototype._rollInterruptionChecks = async () => ({ results: { "Actor.a": 15 } });
+		assert.deepEqual(await camping.finishCampingRest({ party, interrupted: true }), { completed: true, rested: { a: true } });
+	}
+	finally {
+		CampingRestApp.prototype._rollInterruptionChecks = original;
+		CampingRestApp.prototype._postSummary = originalPost;
+	}
+});
+
+test("only the active GM finishes a rest; another GM's call leaves it pending (#187 review)", async () => {
+	const warnings = setup();
+	const { party, flags } = flagged("party");
+	pendingRest(flags, [["a", true]]);
+	game.user = { id: "gm2", isGM: true };
+	game.users = { activeGM: { id: "gm1" } };
+	assert.deepEqual(await camping.finishCampingRest({ party, interrupted: true }), { completed: false, notActiveGM: true });
+	assert.equal(flags.campingPendingRest.campers.length, 1);
+	assert.deepEqual(warnings, ["SHADOWDARK_EXTRAS.camping_rest.dawn_active_gm"]);
+});

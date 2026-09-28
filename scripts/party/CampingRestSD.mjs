@@ -456,6 +456,12 @@ export async function finishCampingRest({ party, interrupted = false } = {}) {
 		return { completed: false };
 	}
 	if (!party?.id) return { completed: false, nothingPending: true };
+	// One client finishes a rest: the active GM's. Its in-flight map is then the only claim, so two
+	// GMs can't both grant it (#187 review). Enhancer's Overland calls this from the active GM.
+	if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) {
+		ui.notifications.warn(game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.dawn_active_gm"));
+		return { completed: false, notActiveGM: true };
+	}
 	// A second call while this party's dawn runs gets the same reply, never a second rest.
 	const running = dawnsInFlight.get(party.id);
 	if (running) return running;
@@ -1296,9 +1302,18 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			});
 		}
 		// Only who ate can still benefit from the rest (GMWR p. 44), so only they roll CON.
-		const interruptionResults = await this._interruptions(
-			{ ...plan, campers: campers.filter(camper => camper.ate === true) }, taskResults
-		);
+		let interruptionResults;
+		try {
+			interruptionResults = await this._interruptions(
+				{ ...plan, campers: campers.filter(camper => camper.ate === true) }, taskResults
+			);
+		}
+		catch(error) {
+			// Nothing is applied yet: the rest goes back for another try (#187 review).
+			console.error(`${MODULE_ID} | Camping dawn checks failed`, error);
+			await this.partyActor.setFlag(MODULE_ID, "campingPendingRest", pending);
+			return { completed: false, error: error.message };
+		}
 		if (!interruptionResults) {
 			// Canceled before anything was applied: the rest goes back, for another try.
 			await this.partyActor.setFlag(MODULE_ID, "campingPendingRest", pending);

@@ -1139,6 +1139,7 @@
     "scripts/party/CampingRestSD.mjs (api=getFlag scope=shadowdark-extras key=travelSelections receiver=this.partyActor)",
     "scripts/party/CampingRestSD.mjs (api=setFlag scope=shadowdark-extras key=campingPendingRest receiver=this.partyActor)",
     "scripts/party/CampingRestSD.mjs (api=setFlag scope=shadowdark-extras key=campingPendingRest receiver=this.partyActor)",
+    "scripts/party/CampingRestSD.mjs (api=setFlag scope=shadowdark-extras key=campingPendingRest receiver=this.partyActor)",
     "scripts/party/CampingRestSD.mjs (api=setFlag scope=shadowdark-extras key=campingWeatherReroll receiver=this.partyActor)",
     "scripts/party/CampingRestSD.mjs (api=setFlag scope=shadowdark-extras key=travelAssignments receiver=this.partyActor)",
     "scripts/party/CampingRestSD.mjs (api=setFlag scope=shadowdark-extras key=travelSelections receiver=this.partyActor)",
