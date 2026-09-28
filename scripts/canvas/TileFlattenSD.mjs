@@ -1046,6 +1046,9 @@ export function registerTileFlattenHooks() {
 			console.error(`${MODULE_ID} | TileHUD flatten button error:`, error);
 		}
 	});
+	// Baked hex maps are this feature's successor for whole maps: their drawing and bake menu.
+	// Loaded on demand, so the Node tests that import this file never load canvas classes.
+	import("../hex/hex-baked-scene.mjs").then(m => m.registerBakedScenes());
 }
 
 // ─── Dungeon Level Flatten/Unflatten ─────────────────────────────────────────
