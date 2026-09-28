@@ -484,7 +484,7 @@ export function activateAnimationFxListeners(html, item) {
 		syncAnchorControl();
 
 		const updateData = {};
-		updateData[`flags.${MODULE_ID}.-=animationFx`] = null;
+		updateData[`flags.${MODULE_ID}.animationFx`] = new foundry.data.operators.ForcedDeletion();
 		item.update(updateData, { render: false }).catch(err => {
 			console.error(`${MODULE_ID} | Failed to clear animationFx:`, err);
 		});

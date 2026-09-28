@@ -536,10 +536,12 @@ export class FilterSelector extends HandlebarsApplicationMixin(ApplicationV2) {
 				const tm = change.flags?.tokenmagic;
 				if (!tm) return;
 
-				if ("-=filters" in tm) {
+				// Foundry 14 hands hooks a removal as a ForcedDeletion under the key
+				// itself, never a "-=filters" key.
+				if (tm.filters instanceof foundry.data.operators.ForcedDeletion) {
 					this.render({ parts: ["header", "filters"] });
 				}
-				else if (tm.filters) {
+				else if (Array.isArray(tm.filters)) {
 					const renderFieldsChanged = this._paramArrayCompare(
 						this._paramArray,
 						tm.filters.map(f => f.tmFilters.tmParams)
