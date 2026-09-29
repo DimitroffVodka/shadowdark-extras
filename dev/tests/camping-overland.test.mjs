@@ -170,6 +170,7 @@ test("harsh Hunt uses DC 18 but leaves other tasks and legacy DCs alone", async 
 	const party = actor("party");
 	party.getFlag = (_scope, key) => key === "travelDCs" ? { hunt: 9, cook: 15 } : undefined;
 	const pc = actor("pc");
+	game.settings = { get: (_module, key) => key === "campingRollMode" ? "cinematic" : undefined };
 	t.mock.method(SDXRollerApp, "dispatchGroupRoll", async () => ({ results: {} }));
 	const campers = [{ actor: pc, abilityIndex: 0 }];
 	const hunt = { key: "hunt", name: "Hunt", abilities: ["WIS"] };

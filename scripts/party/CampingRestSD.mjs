@@ -9,10 +9,13 @@
 import { getTravelActivities } from "./TravelActivitiesSettingsSD.mjs";
 import { buildTravelTaskRollData } from "../tray/SDXRollerData.mjs";
 import { SDXRollerApp } from "../tray/SDXRollerApp.mjs";
+import { rollGroupInstant } from "../tray/SDXRollerInstant.mjs";
 import {
 	CAMPFIRE_TORCH_COST,
 	REST_DURATION_SECONDS,
 	TORCH_NAME_PATTERN,
+	campingTaskDc,
+	describeCampingTask,
 	planStackConsumption,
 	qualifiesForRest,
 	calculateCookBonusHp,
@@ -601,6 +604,9 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const tasks = getTravelActivities();
 		const assignments = this.partyActor.getFlag(MODULE_ID, "travelAssignments") ?? {};
 		const selections = this.partyActor.getFlag(MODULE_ID, "travelSelections") ?? {};
+		// What the task lines under each Task select read as the selects change.
+		this._tasks = new Map(tasks.map(task => [task.key, task]));
+		this._travelDCs = this.partyActor.getFlag(MODULE_ID, "travelDCs") ?? {};
 		const allTargets = this.members.map(actor => ({
 			id: actor.id,
 			name: actor.name,
@@ -668,6 +674,14 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		for (const select of this.element.querySelectorAll(".sdx-rest-task-select")) {
 			select.addEventListener("change", event => this._updateTaskRow(event.currentTarget));
 		}
+		for (const select of this.element.querySelectorAll(".sdx-rest-ability-select")) {
+			select.addEventListener("change", event =>
+				this._refreshTaskInfo(event.currentTarget.closest(".sdx-rest-member")));
+		}
+		for (const radio of this.element.querySelectorAll('input[name="campfireMode"]')) {
+			radio.addEventListener("change", () => this._refreshTaskInfo());
+		}
+		this._refreshTaskInfo();
 		for (const checkbox of this.element.querySelectorAll(".sdx-rest-participating")) {
 			checkbox.addEventListener("change", event => {
 				event.currentTarget.closest(".sdx-rest-member")
@@ -696,6 +710,31 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 		for (const contextual of row.querySelectorAll("[data-for-task]")) {
 			contextual.classList.toggle("sdx-hidden", contextual.dataset.forTask !== taskKey);
+		}
+		this._refreshTaskInfo(row);
+	}
+
+	/**
+	 * Under each Task select, say what the task does and what it rolls (#197).
+	 * A campfire task carries the disadvantage note until torches are chosen:
+	 * a Firewood success or the dawn's torch question can still light one.
+	 * @param {?HTMLElement} row One camper's row, or every row
+	 */
+	_refreshTaskInfo(row = null) {
+		const lit = this.element.querySelector('input[name="campfireMode"]:checked')?.value === "torches";
+		for (const member of row ? [row] : this.element.querySelectorAll(".sdx-rest-member")) {
+			const info = member.querySelector(".sdx-rest-task-info");
+			const task = this._tasks.get(member.querySelector(".sdx-rest-task-select")?.value);
+			const shown = task && describeCampingTask({
+				task,
+				abilityIndex: member.querySelector(".sdx-rest-ability-select")?.value,
+				dc: campingTaskDc(task, this._travelDCs, this.harsh),
+				campfire: lit,
+				disadvantageNote: game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.task_disadvantage"),
+			});
+			info.classList.toggle("sdx-hidden", !shown);
+			info.querySelector(".sdx-rest-task-description").textContent = shown?.description ?? "";
+			info.querySelector(".sdx-rest-task-line").textContent = shown?.line ?? "";
 		}
 	}
 
@@ -835,20 +874,29 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		await this.partyActor.setFlag(MODULE_ID, "travelSelections", selections);
 	}
 
+	/**
+	 * Roll a group's checks: in one pass by default, or, when the world asks for
+	 * `campingRollMode: "cinematic"`, in the tray's full-screen overlay (#197).
+	 */
+	_dispatchRoll(rollData) {
+		return game.settings.get(MODULE_ID, "campingRollMode") === "cinematic"
+			? SDXRollerApp.dispatchGroupRoll(rollData)
+			: rollGroupInstant(rollData);
+	}
+
 	async _rollTaskGroup(task, campers, campfireEstablished) {
 		const actors = campers.map(camper => camper.actor);
 		const selections = Object.fromEntries(
 			campers.map(camper => [memberKey(camper.actor), camper.abilityIndex])
 		);
-		const dcs = this.partyActor.getFlag(MODULE_ID, "travelDCs") ?? {};
-		const dc = this.harsh && task.key === "hunt" ? 18 : Number(dcs[task.key] ?? 12);
+		const dc = campingTaskDc(task, this.partyActor.getFlag(MODULE_ID, "travelDCs"), this.harsh);
 		const rollData = buildTravelTaskRollData(task, actors, selections, dc);
 		if (task.campfire && !campfireEstablished) {
 			rollData.actorRollModes = Object.fromEntries(
 				actors.map(actor => [actor.uuid, "disadvantage"])
 			);
 		}
-		const result = await SDXRollerApp.dispatchGroupRoll(rollData);
+		const result = await this._dispatchRoll(rollData);
 		return { dc, result };
 	}
 
@@ -868,7 +916,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const actors = campers.map(camper => camper.actor);
 		const selections = Object.fromEntries(campers.map(camper => [memberKey(camper.actor), 0]));
 		const rollData = buildTravelTaskRollData(task, actors, selections, 12);
-		return SDXRollerApp.dispatchGroupRoll(rollData);
+		return this._dispatchRoll(rollData);
 	}
 
 	_buildRationPlan(campers) {
@@ -1053,6 +1101,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				await game.time.advance(REST_DURATION_SECONDS);
 			}
 
+			plan.campfireEstablished = campfireEstablished;
 			const summary = await this._restBenefits(
 				plan, tasks, taskResults, taskBenefitsByActor, finalRationPlan.rationByActor,
 				interruptionResults, () => {
@@ -1167,6 +1216,8 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			const actor = camper.actor;
 			started();
 			const taskResult = taskResults.get(actor.id);
+			const taskInfo = taskResult
+				&& this._describeRolledTask(taskResult.task, actor, plan.campfireEstablished);
 			const hasRation = rationByActor.get(actor.id) ?? false;
 			if (!hasRation && this._overland && game.modules.get("shadowdark-enhancer")?.active) {
 				const statDamage = game.shadowdarkEnhancer?.statDamage;
@@ -1245,6 +1296,8 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				taskValue: Number.isFinite(taskResult?.value) ? taskResult.value : null,
 				taskSuccess: taskResult?.success ?? false,
 				hasTaskResult: Boolean(taskResult),
+				taskLine: taskInfo?.line ?? "",
+				taskDescription: taskInfo?.description ?? "",
 				hasRation,
 				rested,
 				hpBefore,
@@ -1254,6 +1307,18 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			});
 		}
 		return summary;
+	}
+
+	/** A rolled task's description and `WIS · DC 12` line, for the summary (#197). */
+	_describeRolledTask(task, actor, campfire) {
+		const selections = this.partyActor.getFlag(MODULE_ID, "travelSelections") ?? {};
+		return describeCampingTask({
+			task,
+			abilityIndex: selections[task.key]?.[memberKey(actor)],
+			dc: campingTaskDc(task, this.partyActor.getFlag(MODULE_ID, "travelDCs"), this.harsh),
+			campfire,
+			disadvantageNote: game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.task_disadvantage_rolled"),
+		});
 	}
 
 	/**
@@ -1320,7 +1385,10 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const campers = pending.campers
 			.map(camper => ({ ...camper, actor: game.actors.get(camper.actorId) }))
 			.filter(camper => camper.actor);
-		const plan = { campers, campfireMode: pending.campfireMode, interrupted };
+		const plan = {
+			campers, campfireMode: pending.campfireMode,
+			campfireEstablished: pending.campfireEstablished === true, interrupted,
+		};
 		const taskResults = new Map();
 		for (const camper of campers) {
 			const task = camper.result && tasks.find(entry => entry.key === camper.result.taskKey);

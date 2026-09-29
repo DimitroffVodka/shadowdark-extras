@@ -171,12 +171,18 @@ lives in **Configure Travel Speeds**.
 The GM clicks **Begin Rest** on the Travel tab to run the whole procedure:
 
 1. Choose the participating campers, task and ability for each, and any
-   task-specific choice.
+   task-specific choice. Under each Task select the window shows what the task
+   does, its own description as set in Configure Travel Activities, and one line
+   of what it rolls, such as `WIS · DC 12`. The line follows the Task and Ability
+   selects. It reads `DC 18` for Hunt on a harsh day, and says when a starred
+   task rolls at disadvantage until there is a campfire.
 2. Light a campfire with three pooled unused torches, assign someone to gather
    Firewood, or go without a fire.
-3. Resolve each occupied task as one grouped SDX roll. Firewood goes first when
-   the campfire needs it.
-4. Resolve the extra checks for an interrupted rest when you've selected that.
+3. Roll each occupied task's group in one pass, with no overlay, and post one
+   chat card per task with the DC and every camper's total. Firewood goes first
+   when the campfire needs it.
+4. Roll the extra checks for an interrupted rest the same way when you've
+   selected that.
 5. Apply successful Hunt results before checking the party's food, then consume
    one ration per eligible camper.
 6. Optionally advance world time eight hours, apply rest recovery and task
@@ -186,6 +192,13 @@ Torch spending is deterministic. Unused torches in Party inventory go first,
 then camper inventories in the order the planner shows them. Torches already
 burning are left alone. Rations come out of each camper's own inventory first,
 then Party inventory, then another camper's pooled supply.
+
+**Camp rolls** is a world setting under Configure Settings. **Instant**, the
+default, rolls the camp as above. **Cinematic** opens the full-screen roll
+overlay for each task in turn, and for the dawn's interruption checks, and each
+character's tile is clicked to roll. The camp's order, DCs and results are the
+same either way, and the totals mean the same thing: both modes build each
+check through the same code.
 
 With no campfire, tasks marked with the flame icon roll at disadvantage during
 the complete procedure. A successful Firewood check gets the fire going before

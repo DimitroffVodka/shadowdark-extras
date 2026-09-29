@@ -413,7 +413,7 @@ test("SDX overlay applies configured banner art and labels actor-specific abilit
 		"utf8"
 	);
 
-	assert.match(source, /getSdxActorAbility\(this\.rollData, uuid\)/);
+	assert.match(source, /buildSdxCheck\(\s*this\.rollData, uuid/);
 	assert.match(source, /allDone && this\._isAuthorityClient\(\)/);
 	assert.match(source, /if \(!this\._isAuthorityClient\(\)\) return/);
 	assert.match(source, /this\.rollData\.bannerImage/);

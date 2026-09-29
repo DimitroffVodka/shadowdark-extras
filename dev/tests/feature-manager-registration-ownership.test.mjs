@@ -205,6 +205,16 @@ test("Grinder Mode settings keep the keys and shape Shadowdark Enhancer renders 
 	assert.deepEqual(Object.keys(hitDice.choices), ["1", "2", "3", "4"]);
 });
 
+test("Camp rolls default to instant, world scoped, with the cinematic overlay as the other choice (#197)", () => {
+	registerModuleSettings();
+	const config = settingRegistrations.find(r => r.namespace === "shadowdark-extras" && r.key === "campingRollMode")?.config;
+	assert.equal(config?.type, String);
+	assert.equal(config.default, "instant");
+	assert.equal(config.scope, "world");
+	assert.equal(config.config, true);
+	assert.deepEqual(Object.keys(config.choices), ["instant", "cinematic"]);
+});
+
 test("ownership matrix disables single-owner registrations and preserves shared registrations", () => {
 	for (const [key, featureIds] of Object.entries(SETTING_OWNERS)) {
 		if (featureIds === null) continue;
