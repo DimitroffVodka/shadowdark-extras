@@ -106,7 +106,7 @@ globalThis.game.shadowdarkEnhancer = {
 	overland: { state: () => ({ weather: { kind: "fair", until: 100 } }) },
 };
 
-const { initHexFog } = await import("../../scripts/hex/SDXHexFogSD.mjs");
+const { initHexFog, installHexFogApi, isPointRevealed, revealFrom } = await import("../../scripts/hex/SDXHexFogSD.mjs");
 initHexFog();
 const onCanvasReady = Hooks.handlers("canvasReady").at(-1);
 const onUpdateToken = Hooks.handlers("updateToken").at(-1);
@@ -165,7 +165,7 @@ function makeCanvas(pathCells) {
 			const startJ = Math.round((start.x - 50) / 100);
 			const endJ = Math.round((end.x - 50) / 100);
 			return startJ === endJ
-				? [pathCells.at(-1)]
+				? [{ i: 0, j: startJ }]
 				: line({ i: 0, j: startJ }, { i: 0, j: endJ });
 		},
 	};
@@ -577,4 +577,148 @@ test("rapid movement writes serialize and preserve additive discovery", async ()
 		nextUpdateGate = null;
 		await tick();
 	}
+});
+
+// ── api.hex: revealFrom, isPositionRevealed, setFogEnabled, isFogEnabled (#185) ──
+
+function stand(at) {
+	const { token } = partyToken(at, at);
+	scene.tokens = new Map([[token.id, token]]);
+	return token;
+}
+
+function withRules(patch, weather, run) {
+	const rules = globalThis.game.shadowdarkEnhancer.rules.visibility;
+	globalThis.game.shadowdarkEnhancer.rules.visibility = () => ({ ...rules(), ...patch });
+	globalThis.game.shadowdarkEnhancer.overland.state = () => ({ weather: { kind: weather, until: 100 } });
+	return run().finally(() => { globalThis.game.shadowdarkEnhancer.rules.visibility = rules; });
+}
+
+const revealedKeys = () => Object.keys(scene.getFlag(MODULE_ID, "hexFogRevealed")).sort();
+
+test("revealFrom at dawn adds an excellent day's second ring with no move", async () => {
+	await prepare(makeRecords(7));
+	const token = stand(3);
+	const fair = await revealFrom(scene.id, token.id);
+	assert.deepEqual(fair, { radius: 1, near: ["0-3", "0-2", "0-4"], distant: [] });
+	assert.deepEqual(revealedKeys(), ["0-2", "0-3", "0-4"]);
+
+	await withRules({ excellent: 1 }, "excellent", async () => {
+		const excellent = await revealFrom(scene.id, token.id);
+		assert.equal(excellent.radius, 2);
+		assert.deepEqual(excellent.near.sort(), ["0-1", "0-2", "0-3", "0-4", "0-5"]);
+	});
+	assert.deepEqual(revealedKeys(), ["0-1", "0-2", "0-3", "0-4", "0-5"]);
+	assert.equal(scene.getFlag(MODULE_ID, "hexFogDiscovery")["0-1"], "near");
+});
+
+test("revealFrom in a storm adds nothing and removes nothing", async () => {
+	await prepare(makeRecords(7));
+	const token = stand(3);
+	await revealFrom(scene.id, token.id);
+	const before = structuredClone(scene.getFlag(MODULE_ID, "hexFogRevealed"));
+	const writes = sceneUpdateCalls.length;
+
+	await withRules({ stormy: -1 }, "stormy", async () => {
+		const storm = await revealFrom(scene.id, token.id);
+		assert.deepEqual(storm, { radius: 0, near: ["0-3"], distant: [] });
+	});
+	assert.deepEqual(scene.getFlag(MODULE_ID, "hexFogRevealed"), before);
+	assert.equal(sceneUpdateCalls.length, writes, "a smaller ring writes nothing");
+});
+
+test("revealFrom rolls no table and waits behind an earlier reveal", async () => {
+	const records = makeRecords(7);
+	records["0_5"].rollTable = "some-table";
+	await prepare(records);
+	const token = stand(5);
+	const gate = blockNextSceneUpdate();
+	try {
+		const moved = partyToken(0, 2);
+		onUpdateToken(moved.token, { x: moved.token.x }, moved.options);
+		await waitForSceneUpdateCount(1);
+		let settled = false;
+		const pending = revealFrom(scene.id, token.id).then(result => { settled = true; return result; });
+		await tick();
+		assert.equal(settled, false, "queued behind the move's write");
+		gate.release();
+		assert.equal((await pending).radius, 1);
+		assert.equal(scene.getFlag(MODULE_ID, "hexRolledCells"), undefined);
+	}
+	finally { gate.release(); }
+});
+
+test("revealFrom is null, and writes nothing, when the hex rules do not apply", async () => {
+	await prepare(makeRecords(3));
+	const token = stand(1);
+
+	globalThis.game.shadowdarkEnhancer.overland.state = () => ({ weather: { kind: "fair", until: 9 } });
+	assert.equal(await revealFrom(scene.id, token.id), null, "no live weather");
+	globalThis.game.shadowdarkEnhancer.overland.state = () => ({ weather: { kind: "fair", until: 100 } });
+
+	assert.equal(await revealFrom(scene.id, "gone"), null, "no such token");
+	assert.equal(await revealFrom("gone", token.id), null, "no such scene");
+	scene.grid.isHexagonal = false;
+	assert.equal(await revealFrom(scene.id, token.id), null, "not a hex grid");
+	scene.grid.isHexagonal = true;
+	await scene.setFlag(MODULE_ID, "hexFogEnabled", false);
+	assert.equal(await revealFrom(scene.id, token.id), null, "fog off");
+	assert.equal(sceneUpdateCalls.length, 0);
+});
+
+test("isPositionRevealed answers for the given scene: fog off, hidden, revealed, explored, never throws", async () => {
+	await prepare({ ...makeRecords(3), "0_2": { terrain: "Forest", exploration: "mapped" } });
+	await scene.setFlag(MODULE_ID, "hexFogRevealed", { "0-1": true });
+	globalThis.game.user.isGM = false;
+	globalThis.canvas = { scene: { id: "unrelated-scene" } };
+	const at = j => ({ x: j * 100 + 50, y: 50 });
+
+	assert.equal(isPointRevealed(scene, at(0)), false, "unexplored hex, while another scene is viewed");
+	assert.equal(isPointRevealed(scene, at(1)), true, "revealed hex");
+	assert.equal(isPointRevealed(scene, at(2)), true, "explored hex");
+	assert.equal(isPointRevealed(scene, { x: 350, y: 50 }), false, "a hex with no record is hidden too");
+	scene.grid.isHexagonal = false;
+	assert.equal(isPointRevealed(scene, at(0)), true, "not a hex grid");
+	scene.grid.isHexagonal = true;
+	await scene.setFlag(MODULE_ID, "hexFogEnabled", false);
+	assert.equal(isPointRevealed(scene, at(0)), true, "fog off");
+	assert.equal(isPointRevealed(null, at(0)), true);
+	assert.equal(isPointRevealed({ getFlag() { throw new Error("boom"); } }, at(0)), true);
+});
+
+test("installHexFogApi shares api.hex, keeps reads outside the GM wrap, and setFogEnabled is GM-only", async () => {
+	await prepare(makeRecords(3));
+	const wrapped = [];
+	const wrap = (name, fn) => async (...args) => {
+		if (!game.user.isGM) throw new Error(`${name}: requires GM permission`);
+		wrapped.push(name);
+		return fn(...args);
+	};
+	const api = {};
+	globalThis.game.shadowdarkExtras = undefined;
+	installHexFogApi(api, wrap);
+	assert.equal(api.hex, globalThis.game.shadowdarkExtras.hex);
+	assert.deepEqual(Object.keys(api.hex).sort(), ["isFogEnabled", "isPositionRevealed", "revealFrom", "setFogEnabled"]);
+
+	const painter = { buildHexcrawl() {} };
+	installHexFogApi({ hex: painter }, wrap);
+	assert.equal(typeof painter.buildHexcrawl, "function", "adds to the Hex Painter's namespace");
+
+	await scene.setFlag(MODULE_ID, "hexFogEnabled", false);
+	for (const isGM of [true, false]) {
+		globalThis.game.user.isGM = isGM;
+		assert.equal(api.hex.isFogEnabled(scene.id), false);
+	}
+	assert.equal(api.hex.isPositionRevealed(scene, { x: 50, y: 50 }), true, "fog off, a player");
+	await assert.rejects(api.hex.setFogEnabled(scene.id, true), /requires GM permission/);
+	await assert.rejects(api.hex.revealFrom(scene.id, "x"), /requires GM permission/);
+	assert.equal(api.hex.isFogEnabled(scene.id), false);
+
+	globalThis.game.user.isGM = true;
+	assert.equal(await api.hex.setFogEnabled(scene.id, true), true);
+	for (const isGM of [true, false]) {
+		globalThis.game.user.isGM = isGM;
+		assert.equal(api.hex.isFogEnabled(scene.id), true);
+	}
+	assert.equal(api.hex.isPositionRevealed(scene, { x: 50, y: 50 }), false, "fog on, unexplored, a player");
 });

@@ -536,15 +536,31 @@ export function isHexFogEnabled(sceneId) {
 	return !!scene?.getFlag(MODULE_ID, "hexFogEnabled");
 }
 
+/**
+ * Whether the hex under `point` (scene pixels) is shown on `scene`. True when the
+ * scene's hex fog is off or its grid is not hexagonal. Any user, any scene, and
+ * it never throws: an unreadable scene reads as revealed, so it hides nothing.
+ */
+export function isPointRevealed(scene, point) {
+	try {
+		const viewed = scene === canvas?.scene;
+		const grid = viewed ? canvas.grid : scene?.grid;
+		if (!scene?.getFlag(MODULE_ID, "hexFogEnabled") || !grid?.isHexagonal) return true;
+		const offset = grid.getOffset(point);
+		const key = `${offset.i}-${offset.j}`;
+		if ((scene.getFlag(MODULE_ID, "hexFogRevealed") || {})[key]) return true;
+		if (viewed && key in _paintOverlay) return _paintOverlay[key];
+		// One record, not _getExploredHexKeys: token visibility asks this per token.
+		const exploration = _getHexSceneData(scene.id)?.[`${offset.i}_${offset.j}`]?.exploration;
+		return exploration === "explored" || exploration === "mapped";
+	}
+	catch{
+		return true;
+	}
+}
+
 export function isPositionRevealed(x, y) {
-	if (!enabled || !canvas.grid?.isHexagonal) return true;
-	const offset = canvas.grid.getOffset({ x, y });
-	const key = `${offset.i}-${offset.j}`;
-	const revealed = canvas.scene.getFlag(MODULE_ID, "hexFogRevealed") || {};
-	if (revealed[key]) return true;
-	if (key in _paintOverlay) return _paintOverlay[key];
-	const exploredKeys = _getExploredHexKeys(canvas.scene.id);
-	return exploredKeys.has(key);
+	return isPointRevealed(canvas.scene, { x, y });
 }
 
 export async function setHexFogEnabled(sceneId, val) {
@@ -662,10 +678,19 @@ function _onUpdateToken(tokenDoc, changes, options) {
 		|| options?._movement?.[tokenDoc.id]?.passed?.waypoints?.length;
 	if (!hasMove) return;
 
-	// Get all cells along the movement path
 	const pathCells = hexMovementPath(tokenDoc, options, grid);
 	if (!pathCells.length) return;
+	_revealAlong(scene, tokenDoc, pathCells);
+}
 
+/**
+ * The reveal pass for the cells `pathCells` a token travelled, queued behind any
+ * earlier one. Returns what the pass shows around the token, and `done`, which
+ * settles when it is stored. With `rulesOnly`, null when the hex rules do not
+ * apply (readHexVisibility), so nothing is revealed.
+ */
+function _revealAlong(scene, tokenDoc, pathCells, rulesOnly = false) {
+	const grid = scene.grid;
 	// Origin cell key — skip it for roll tables (token is leaving, not entering)
 	const originOffset = pathCells[0];
 	const originKey = `${originOffset.i}_${originOffset.j}`;
@@ -676,6 +701,7 @@ function _onUpdateToken(tokenDoc, changes, options) {
 	// Load hex tooltip data for per-hex radius overrides
 	const hexData = _getHexSceneData(scene.id);
 	const conditions = readHexVisibility(game, tokenDoc, hexData);
+	if (rulesOnly && !conditions) return null;
 	const mountains = conditions ? mountainCells(hexData) : [];
 	const near = new Set();
 	const distant = new Set();
@@ -685,6 +711,7 @@ function _onUpdateToken(tokenDoc, changes, options) {
 	const toReveal = new Set();
 	const rollTableCells = [];  // track cells with roll tables
 
+	let radiusSeen = defaultRadius;
 	for (const cell of pathCells) {
 		const cellKey = `${cell.i}-${cell.j}`;
 		toReveal.add(cellKey);
@@ -700,6 +727,7 @@ function _onUpdateToken(tokenDoc, changes, options) {
 		const visibility = conditions && (tooltipKey !== originKey || pathCells.length === 1)
 			? visibleHexes(grid, cell, hexData, conditions, mountains) : null;
 		if (visibility) {
+			radiusSeen = visibility.radius;
 			for (const key of visibility.near) {
 				near.add(key);
 				toReveal.add(key);
@@ -723,7 +751,7 @@ function _onUpdateToken(tokenDoc, changes, options) {
 
 	for (const key of explicit) toReveal.add(key);
 	// Serialize persistence so rapid moves cannot demote a newly known mountain.
-	_revealQueue = _revealQueue.then(async () => {
+	const done = _revealQueue = _revealQueue.then(async () => {
 		const existing = scene.getFlag(MODULE_ID, "hexFogRevealed") || {};
 		const discovery = scene.getFlag(MODULE_ID, "hexFogDiscovery") || {};
 		// GM-authored exceptions disclose; mixed fallback rings must not unlock keyed data.
@@ -739,6 +767,34 @@ function _onUpdateToken(tokenDoc, changes, options) {
 		if (Object.keys(flags).length) await scene.update({ flags: { [MODULE_ID]: flags } });
 		if (rollTableCells.length) await _processRollTables(scene, rollTableCells);
 	}).catch(err => console.error(`${MODULE_ID} | Hex fog reveal failed:`, err));
+	return { radius: radiusSeen, near: [...near], distant: [...distant], done };
+}
+
+/**
+ * Reveal around a token where it stands now, as if it had just moved there:
+ * the same pass as a move, without the roll tables. Resolves once stored, with
+ * {radius, near, distant} ("i-j" fog keys), or null when hex fog is off, the
+ * grid is not hexagonal, the token is gone, or the hex rules do not apply.
+ */
+export async function revealFrom(sceneId, tokenId) {
+	const scene = game.scenes.get(sceneId);
+	const token = scene?.tokens.get(tokenId);
+	if (!token || !scene.getFlag(MODULE_ID, "hexFogEnabled") || !scene.grid?.isHexagonal) return null;
+	const cells = hexMovementPath(token, null, scene.grid);
+	const pass = cells.length ? _revealAlong(scene, token, cells, true) : null;
+	if (!pass) return null;
+	await pass.done;
+	return { radius: pass.radius, near: pass.near, distant: pass.distant };
+}
+
+/** Install api.hex's fog calls; the namespace is shared with the Hex Painter's. */
+export function installHexFogApi(api, wrap) {
+	const hex = api.hex ??= (game.shadowdarkExtras ??= {}).hex ??= {};
+	// Reads stay outside the GM wrap: a player's token visibility asks them per token.
+	hex.isPositionRevealed = isPointRevealed;
+	hex.isFogEnabled = isHexFogEnabled;
+	hex.revealFrom = wrap("hex.revealFrom", revealFrom);
+	hex.setFogEnabled = wrap("hex.setFogEnabled", setHexFogEnabled);
 }
 
 /**

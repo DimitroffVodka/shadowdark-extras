@@ -130,6 +130,10 @@ The full orchestration contract lives in
 | `hex.upsertHexRecords(sceneId, records)` | GM | Merge records without rebuilding or repainting |
 | `hex.getHexRecords(sceneId, nums?)` | GM | Read records back by published hex number |
 | `hex.getSpecialTiles()` | GM | Catalogue Specials for explicit, unique hex assignments |
+| `hex.isPositionRevealed(scene, point)` | Read-only | Whether Hex Fog shows the hex under `point` on `scene` |
+| `hex.revealFrom(sceneId, tokenId)` | GM | Reveal around a token where it stands, as a move would |
+| `hex.setFogEnabled(sceneId, on)` | GM | Turn a scene's Hex Fog on or off |
+| `hex.isFogEnabled(sceneId)` | Read-only | Whether a scene's Hex Fog is on |
 | `buildHexcrawl(dataset, options?)` | GM | Legacy layout; retained for existing macros |
 | `buildHexcrawlFromFile(relPath, options?)` | GM | Legacy dataset JSON, relative to the SDX module directory |
 
@@ -140,7 +144,8 @@ only inside an automation workflow that already confirmed with the user.
 
 After `setup`, `game.shadowdarkExtras.hex` and
 `game.modules.get("shadowdark-extras").api.hex` are the **same namespace**.
-It is absent when Hex Painter is disabled. Feature-detect it; an importer can
+It holds the builder calls when Hex Painter is enabled and the fog calls below
+when Hex Fog is; it is absent when both are disabled. Feature-detect each call; an importer can
 export this same dataset as JSON when SDX is unavailable. No book content is
 bundled or fetched by the builder.
 
@@ -415,6 +420,31 @@ const records = await hex.getHexRecords(sceneId, [2849]);
   also carries `image`, which `upsertHexRecords` does not take.
 - Records the Hex Editor added on cells outside the published grid have no
   number and are not returned.
+
+### Hex Fog
+
+```js
+const hex = game.modules.get("shadowdark-extras")?.api?.hex;
+if (hex?.isPositionRevealed?.(scene, token.center) === false) { /* keep it hidden */ }
+const seen = await hex?.revealFrom?.(scene.id, partyToken.id);
+// { radius, near: ["0-3", ...], distant: [...] } or null
+```
+
+- `isPositionRevealed(scene, point)` is synchronous, for any user, and takes
+  `point` as `{ x, y }` in scene pixels. It is true when the scene's fog is
+  off or its grid is not hexagonal; otherwise it says whether the hex under
+  `point` is revealed or explored. It answers for the `scene` given, not only
+  the one being viewed, and never throws: a scene it cannot read counts as
+  revealed.
+- `revealFrom(sceneId, tokenId)` runs the reveal a move runs, for the token's
+  current hex and the current conditions, without a move and without the hex's
+  roll table. It waits its turn behind other reveals and only adds: a storm's
+  smaller ring removes nothing already shown. It resolves to `{ radius, near,
+  distant }`, hex keys as `"i-j"`, or `null` when the fog is off, the grid is
+  not hexagonal, the token is gone, or the Western Reaches visibility rules do
+  not apply (see Hexplorer). Call it at dawn once the day's weather is known.
+- `setFogEnabled(sceneId, on)` and `isFogEnabled(sceneId)` write and read the
+  scene's Hex Fog switch. Reading is synchronous, for any user.
 
 ### Optional reference image — hidden is not private
 

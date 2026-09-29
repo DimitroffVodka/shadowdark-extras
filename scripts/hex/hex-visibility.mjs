@@ -93,7 +93,7 @@ export function visibleHexes(grid, origin, records, conditions, mountains) {
 		const key = keyOf(mountain);
 		if (!near.has(key) && hasHexSight(grid, origin, mountain, blockers)) distant.add(key);
 	}
-	return { near, distant };
+	return { near, distant, radius };
 }
 
 /** Additive discovery: never demote known hexes or retroactively hide legacy/explored records. */
