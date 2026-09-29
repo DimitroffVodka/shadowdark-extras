@@ -87,6 +87,15 @@ function getEdgeToEdgeDistance(token1, token2) {
  * Setup consolidated patches for ActorSD.prototype.rollAttack (and data models)
  * Covers: Target required, Range check, and Ammunition selection.
  */
+/**
+ * The id the wrapped rollAttack passes on: NpcSD's needs the attack's bare
+ * embedded id, PlayerSD's a UUID. The model decides, not the type string:
+ * Enhancer's mount and warband sub-types are NpcSD too (#184).
+ */
+export function attackForwardId(actor, item, itemId, weaponUuid) {
+	return actor?.system?.isNPC ? (item?.id ?? itemId) : weaponUuid;
+}
+
 export function setupRollAttackPatches() {
 	const damageCardsEnabled = isFeatureEnabled(FEATURE_IDS.DAMAGE_CARDS);
 	const ammunitionEnabled = isFeatureEnabled(FEATURE_IDS.AMMUNITION);
@@ -121,7 +130,7 @@ export function setupRollAttackPatches() {
 			// undefined → "invalid attack ID" → the card never posts (silently breaking
 			// every NPC attack, special attack, and downstream summon/effect handling).
 			// Forward whichever identifier the target model expects.
-			const forwardId = (actor?.type === "NPC") ? (item?.id ?? itemId) : weaponUuid;
+			const forwardId = attackForwardId(actor, item, itemId, weaponUuid);
 
 			if (options._sdxChecked) return originalRollAttack.call(this, forwardId, options);
 			options._sdxChecked = true;
