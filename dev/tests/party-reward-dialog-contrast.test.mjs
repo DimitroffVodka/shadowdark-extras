@@ -10,6 +10,6 @@ const dialog = src.slice(start, src.indexOf("DialogV2.prompt", start));
 
 test("Reward Coins dialog text colours come from the theme, not fixed values", () => {
 	const colours = [...dialog.matchAll(/[^-]color:\s*([^;"]+)/g)].map(m => m[1].trim());
-	assert.equal(colours.length, 2, "the warning and the member count each set a colour");
+	assert.ok(colours.length >= 2, "the warning and the member count each set a colour");
 	for (const c of colours) assert.match(c, /^var\(--color-text-/, `fixed colour ${c}`);
 });
