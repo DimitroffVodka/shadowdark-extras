@@ -230,7 +230,7 @@ export const PartyXp = {
 		// Dialog content with clear warning that coins go to EACH member
 		const content = `
 			<form class="reward-coins-form">
-				<p style="color: #1f1f1fff; font-weight: bold; text-align: center; margin-bottom: 10px; padding: 8px; background: rgba(201, 169, 97, 0.1); border-radius: 4px;">
+				<p style="color: var(--color-text-primary); font-weight: bold; text-align: center; margin-bottom: 10px; padding: 8px; background: rgba(201, 169, 97, 0.1); border-radius: 4px;">
 					<i class="fas fa-info-circle"></i>
 					${game.i18n.localize("SHADOWDARK_EXTRAS.party.reward_coins_warning")}
 				</p>
@@ -246,7 +246,7 @@ export const PartyXp = {
 					<label>${cpLabel}</label>
 					<input type="number" name="cp" value="0" min="0" />
 				</div>
-				<p style="font-size: 0.85em; color: #272727ff; text-align: center; margin-top: 10px;">
+				<p style="font-size: 0.85em; color: var(--color-text-secondary); text-align: center; margin-top: 10px;">
 					${game.i18n.format("SHADOWDARK_EXTRAS.party.reward_coins_members", { count: members.length })}
 				</p>
 			</form>
