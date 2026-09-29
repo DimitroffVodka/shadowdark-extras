@@ -122,7 +122,7 @@ Click a quest to open its journal entry. The GM also sees Hidden quests;
 players never do. The tab is read-only: quests are created, changed and paid
 out in Enhancer's Quest Log, and the tab follows those changes as they happen.
 When Enhancer keeps a rumor ledger, **Rumors heard** is listed under the
-quests, newest first.
+quests, newest first, and it updates as rumors are given.
 
 Each player can also turn on **Quest Tracker** in the module settings: a small
 movable panel with the party's Active quests and their objectives. It follows
