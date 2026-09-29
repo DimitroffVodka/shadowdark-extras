@@ -1040,6 +1040,15 @@ export function registerPartySheetRerenderHooks() {
 		}
 	});
 
+	// Re-render party sheets when Shadowdark Enhancer's Rumors Heard ledger
+	// changes; the Quests tab reads it (#183). Fires on every client, so nothing
+	// is sent here. An Enhancer without the hook never fires it.
+	Hooks.on("shadowdark-enhancer.rumorsChanged", () => {
+		for (const app of Object.values(ui.windows)) {
+			if (app instanceof PartySheetSD) app.render();
+		}
+	});
+
 	// Re-render party sheets when Shadowdark Enhancer's Overland state changes.
 	// Fires on every client, so the Travel tab remains a read-only view here.
 	Hooks.on("shadowdark-enhancer.overlandChanged", () => {

@@ -403,6 +403,25 @@ test("party sheets re-render on the Enhancer Overland hook", () => {
 	assert.equal(otherRenders, 0);
 });
 
+test("party sheets re-render on the Enhancer rumorsChanged hook", () => {
+	registerPartySheetRerenderHooks();
+	const hook = hooks.find(entry => entry.name === "shadowdark-enhancer.rumorsChanged");
+	assert.ok(hook, "rumors refresh hook is registered");
+	let partyRenders = 0;
+	let otherRenders = 0;
+	const party = Object.create(PartySheetSD.prototype);
+	party.render = () => { partyRenders++; };
+	globalThis.ui.windows = {
+		party,
+		other: { render: () => { otherRenders++; } },
+	};
+
+	hook.fn({ ids: ["page1"] });
+
+	assert.equal(partyRenders, 1);
+	assert.equal(otherRenders, 0);
+});
+
 test("the Travel template hides only speed and renders the read-only state", () => {
 	const template = readFileSync(new URL("../../templates/party.hbs", import.meta.url), "utf8");
 	const source = readFileSync(new URL("../../scripts/party/PartySheetSD.mjs", import.meta.url), "utf8");
