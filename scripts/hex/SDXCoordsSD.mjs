@@ -34,6 +34,34 @@ export function formatPublishedHexCoord(offset, layout) {
 }
 
 /**
+ * The Shadowdark Enhancer's hex numbers for a scene its Hex Tagger has numbered (#195),
+ * as a function from a Foundry offset to a number, null in the frame around the map.
+ * Null for the whole scene when the Enhancer is absent, older than 1.26.0, or has not
+ * numbered it, so the caller keeps its own labels.
+ */
+function enhancerNumbers(scene) {
+	const hexMaps = game.shadowdarkEnhancer?.hexMaps;
+	if (typeof hexMaps?.hasNumbering !== "function" || typeof hexMaps.numberAt !== "function") return null;
+	if (!hexMaps.hasNumbering(scene)) return null;
+	return offset => {
+		const num = hexMaps.numberAt(offset, scene);
+		return Number.isInteger(num) ? num : null;
+	};
+}
+
+/** A Zine hex ID from the Enhancer's number: column then row, 1403 for column 14, row 03. */
+const zineNumber = num => String(num).padStart(3, "0");
+
+/** The first non-null of `count` numbers, walking away from a scene corner; null if all are. */
+function firstNumber(count, numberAt) {
+	for (let n = 0; n < count; n += 1) {
+		const num = numberAt(n);
+		if (num !== null) return num;
+	}
+	return null;
+}
+
+/**
  * Get the correct PreciseText class for the current Foundry version
  */
 function getPreciseText() {
@@ -280,6 +308,52 @@ class SDXCoord {
 		return col;
 	}
 
+	// ---- Enhancer Numbering (#195) ----
+
+	/**
+	 * The Enhancer's numbers for the Zine labels of this scene, or null to use the
+	 * published layout or the guessed axes. Asked afresh, since the GM can renumber.
+	 */
+	_zineNumbers() {
+		return this._publishedLayout ? null : enhancerNumbers(canvas.scene);
+	}
+
+	/**
+	 * The Zine axes from the Enhancer's numbers: a heading over each Foundry column and beside
+	 * each Foundry row that has a numbered cell, none over the frame. They sit over their own
+	 * column as a published layout's do, not shifted and staggered like the guessed axes.
+	 */
+	_renderNumberedAxes(container, numbers) {
+		const PT = getPreciseText();
+		const heading = (label, x, y) => {
+			const text = container.addChild(new PT(label, this._style));
+			text.resolution = 4;
+			text.anchor.set(0.5);
+			text.position.set(x, y);
+		};
+		const { rows, columns } = canvas.dimensions;
+
+		for (let c = 0; c < columns; c += 1) {
+			const j = c + this._col0;
+			const x = canvas.grid.getTopLeftPoint({ i: this._row0, j }).x + (this._cellWidth / 2);
+			if (x > this._rect.right) break;
+			const num = firstNumber(rows, n => numbers({ i: this._row0 + n, j }));
+			if (num === null || x < this._rect.left) continue;
+			const y = this._rect.top - this._marginOffset - (this._size / 4);
+			heading(zineNumber(Math.floor(num / 100) * 100), x, y);
+		}
+
+		for (let r = 0; r < rows; r += 1) {
+			const i = r + this._row0;
+			const y = canvas.grid.getTopLeftPoint({ i, j: this._col0 }).y + (this._cellHeight / 2);
+			if (y > this._rect.bottom) break;
+			const num = firstNumber(columns, n => numbers({ i, j: this._col0 + n }));
+			if (num === null || y < this._rect.top) continue;
+			const x = this._rect.left - this._marginOffset - (this._size / 4);
+			heading(String(num % 100).padStart(2, "0"), x, y);
+		}
+	}
+
 	// ---- Rendering ----
 
 	_renderMarginLabels(container = this.#marginContainer, style = "standard") {
@@ -377,7 +451,7 @@ class SDXCoord {
 		return name;
 	}
 
-	_renderCellLabels(container = this.#cellContainer, style = "standard") {
+	_renderCellLabels(container = this.#cellContainer, style = "standard", numbers = null) {
 		const cellStyle = this._style.clone();
 		const fontScale = Math.max(10, this._cellFontScale) / 100;
 		cellStyle.fontSize = this._size * fontScale;
@@ -400,25 +474,30 @@ class SDXCoord {
 				const tl = canvas.grid.getTopLeftPoint({ i: r + this._row0, j: c + this._col0 });
 				pos = [tl.x, tl.y];
 
+				// The Enhancer's numbers say which cells are frame; the guesses below
+				// (a half hex on top, a cropped edge column) only stand in without it.
+				const num = numbers?.({ i: r + this._row0, j: c + this._col0 });
 				const adjRow = this._adjustRow(r, absCol);
-				if (adjRow < 0) {
+				if (numbers ? num === null : adjRow < 0) {
 					r += 1; continue;
 				}
 
 				// In zine mode the cropped/partial edge column is not numbered
 				// (its zine column would be -1); skip it to match the shifted axis.
-				if (style === "zine" && !this._publishedLayout && this._zineColumn(adjCol) < 0) {
+				if (style === "zine" && !this._publishedLayout && !numbers && this._zineColumn(adjCol) < 0) {
 					r += 1; continue;
 				}
 				if (style !== "zine" && this._standardColumn(adjCol) < 0) {
 					r += 1; continue;
 				}
 
-				const label = style === "zine" && this._publishedLayout
-					? formatPublishedHexCoord(
-						{ i: r + this._row0, j: c + this._col0 }, this._publishedLayout
-					)
-					: this._formatCellLabel(adjRow, adjCol, style);
+				const label = numbers
+					? zineNumber(num)
+					: (style === "zine" && this._publishedLayout
+						? formatPublishedHexCoord(
+							{ i: r + this._row0, j: c + this._col0 }, this._publishedLayout
+						)
+						: this._formatCellLabel(adjRow, adjCol, style));
 				// PreciseText's width and height for this label, measured without
 				// drawing it.
 				const metrics = PIXI.TextMetrics.measureText(label, cellStyle);
@@ -453,9 +532,22 @@ class SDXCoord {
 	}
 
 	_renderZineLabels() {
-		this._renderMarginLabels(this.#zineContainer, "zine");
+		const numbers = this._zineNumbers();
+		if (numbers) this._renderNumberedAxes(this.#zineContainer, numbers);
+		else this._renderMarginLabels(this.#zineContainer, "zine");
 		this.#zineCells = this.#zineContainer.addChild(new PIXI.Container());
-		this._renderCellLabels(this.#zineCells, "zine");
+		this._renderCellLabels(this.#zineCells, "zine", numbers);
+	}
+
+	/**
+	 * Draw the Zine labels again after the Enhancer's numbering changed under them (#195).
+	 * A set that was never built has nothing to redraw; it reads the numbering when it is.
+	 */
+	rebuildZine() {
+		if (!this.#built.delete(DISPLAY_STATES.ZINE)) return;
+		for (const child of this.#zineContainer.removeChildren()) child.destroy({ children: true });
+		this.#zineCells = null;
+		this._applyState(this._readSceneState());
 	}
 
 	updateZoom() {
@@ -486,9 +578,14 @@ class SDXCoord {
 		const row = this._adjustRow(offset.i - this._row0, offset.j);
 		const col = this._adjustCol(offset.j - this._col0);
 		const style = this._readSceneState() === DISPLAY_STATES.ZINE ? "zine" : "standard";
-		const label = style === "zine" && this._publishedLayout
-			? formatPublishedHexCoord(offset, this._publishedLayout)
-			: this._formatCellLabel(row, col, style);
+		const numbers = style === "zine" ? this._zineNumbers() : null;
+		const num = numbers?.(offset);
+		if (numbers && num === null) return;
+		const label = numbers
+			? zineNumber(num)
+			: (style === "zine" && this._publishedLayout
+				? formatPublishedHexCoord(offset, this._publishedLayout)
+				: this._formatCellLabel(row, col, style));
 		const text = new PT(label, this._style);
 		text.resolution = 4;
 		text.anchor.set(0.2);
@@ -620,6 +717,13 @@ export function initSDXCoords() {
 		}
 	});
 	Hooks.on("canvasPan", () => window.SDXCoordinates?.updateZoom());
+	// The GM moves the Enhancer's anchor hex in its Hex Tagger and looks at the overlay (#195).
+	Hooks.on("updateScene", (scene, changes) => {
+		if (scene.id !== canvas.scene?.id) return;
+		if (foundry.utils.hasProperty(changes, "flags.shadowdark-enhancer.hexTags.origin")) {
+			window.SDXCoordinates?.rebuildZine();
+		}
+	});
 }
 
 /**
