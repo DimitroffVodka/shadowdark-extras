@@ -298,11 +298,12 @@ function getActiveEffects(actor) {
  * @param {Actor} actor - The actor
  * @returns {Array} Array of equipped item data objects
  */
-function getEquippedItems(actor) {
+export function getEquippedItems(actor) {
 	if (!actor?.items) return [];
 
 	const items = [];
-	const isNPC = actor.type === "NPC";
+	// The model decides, not the type string: Enhancer's mount and warband are NpcSD too (#184).
+	const isNPC = actor.system?.isNPC === true;
 
 	// NPC item types that should always be shown
 	const npcItemTypes = ["NPC Attack", "NPC Special Attack", "NPC Feature"];

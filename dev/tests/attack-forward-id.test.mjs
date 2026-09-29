@@ -29,3 +29,16 @@ test("a player character still gets the UUID", () => {
 test("without the item, the NPC path falls back to the id it was given", () => {
 	assert.equal(attackForwardId({ system: { isNPC: true } }, null, "raw", "raw"), "raw");
 });
+
+// #184: the token toolbar lists an NPC-model actor's NPC Attacks, whatever its type string.
+const { getEquippedItems } = await import("../../scripts/canvas/TokenToolbarSD.mjs");
+test("the token toolbar lists NPC attacks for a mount and a warband, and equipped gear for a player", () => {
+	const items = [
+		{ id: "a1", name: "Bite", type: "NPC Attack", system: { damage: { value: "1d6" }, attack: { num: "1" } } },
+		{ id: "w1", name: "Sword", type: "Weapon", system: { equipped: true, damage: {} } },
+	];
+	for (const type of ["NPC", "shadowdark-enhancer.mount", "shadowdark-enhancer.warband"]) {
+		assert.deepEqual(getEquippedItems({ type, system: { isNPC: true }, items }).map(i => i.id), ["a1"], type);
+	}
+	assert.deepEqual(getEquippedItems({ type: "Player", system: { isNPC: false }, items }).map(i => i.id), ["w1"]);
+});
