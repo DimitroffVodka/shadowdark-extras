@@ -163,7 +163,7 @@ import { SDXRollerApp } from "./tray/SDXRollerApp.mjs";
 import { registerAppV2HeaderBridge } from "./shared/appv2-header-bridge.mjs";
 import { initSDXCoords } from "./hex/SDXCoordsSD.mjs";
 import { initHexTooltip } from "./hex/HexTooltipSD.mjs";
-import { initHexFog } from "./hex/SDXHexFogSD.mjs";
+import { initHexFog, installHexFogApi } from "./hex/SDXHexFogSD.mjs";
 import { initHexArtResidency } from "./hex/hex-art-residency.mjs";
 import { registerMaphubHooks } from "./MaphubSD.mjs";
 import { initUnidentifiedGMDisplay } from "./inventory/UnidentifiedDisplaySD.mjs";
@@ -414,7 +414,6 @@ initializeEarlyFeatures();
 // The four small tab enhancers moved to character-sheet/enhanced-tabs.mjs,
 // together in one module because they are 12, 10, 12 and 9 lines. The
 // actor-sheet dispatcher below still calls all four.
-
 
 // ============================================
 // PARTY FUNCTIONS
@@ -1728,8 +1727,9 @@ Hooks.on("setup", () => {
 		removeApi(FEATURE_IDS.QUICK_CONDITIONS, ["showConditionsModal", "getConditionsData"]);
 		removeApi(FEATURE_IDS.DUNGEON_PAINTER, ["generateDungeon", "getGeneratorSettings", "setGeneratorSettings", "generateRandomSeed", "buildHexDungeonScene", "getBiomeDefinitions", "getCustomBiomes", "setCustomBiome", "removeCustomBiome", "resetCustomBiomes", "getEnabledBiomeKeys", "getDisabledBiomes", "setBiomeEnabled", "openBiomeEditor", "placeChangeLevelRegion", "placeDungeonSurface", "placeDungeonDecor", "internal"]);
 		removeApi(FEATURE_IDS.HEX_PAINTER, ["generateHexMap", "clearGeneratedTiles", "buildHexcrawl", "buildHexcrawlFromFile"]);
-		installHexcrawlApi(module.api, game.shadowdarkExtras ??= {},
-			(name, fn) => audited(name, gmOnly(name, fn)));
+		const wrapGM = (name, fn) => audited(name, gmOnly(name, fn));
+		installHexcrawlApi(module.api, game.shadowdarkExtras ??= {}, wrapGM);
+		if (featureEnabled(FEATURE_IDS.HEX_FOG)) installHexFogApi(module.api, wrapGM);
 	}
 });
 
