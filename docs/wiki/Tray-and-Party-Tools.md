@@ -89,6 +89,17 @@ SDX also adds **Party** to the Create Actor type list. Internally it's a flagged
 NPC wearing a dedicated Party sheet, which keeps it compatible with the
 Shadowdark actor model while adding group behavior on top.
 
+The Party sheet uses Foundry's ApplicationV2 framework. Its **⋯** header menu
+contains sheet and ownership configuration, token configuration, and optional
+**Medkit** and **Notes** tools. The GM's sheet padlock remains in the header.
+Existing Party actors do not need to be recreated or change their sheet selection.
+
+Changing the Party requires **Owner** permission on the Party actor. Owning a
+character in its roster alone does not allow travel edits, drops onto the Party
+or weather changes. Read-only viewers keep those controls disabled; the GM
+relay checks Party ownership too. Existing member-ownership checks still apply
+to player travel choices.
+
 Create one from the Actors sidebar:
 
 1. Click **Create Actor**.

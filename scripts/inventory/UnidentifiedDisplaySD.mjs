@@ -13,6 +13,7 @@ import { isUnidentified } from "../shared/sd4Compat.mjs";
 
 export function initUnidentifiedGMDisplay() {
 	Hooks.on("renderActorSheet", _patchActorSheet);
+	Hooks.on("renderPartySheetSD", _patchActorSheet);
 	Hooks.on("renderItemDirectory", _patchItemDirectory);
 	Hooks.on("renderCompendiumDirectory", _patchCompendiumDirectory);
 	Hooks.on("renderCompendium", _patchCompendiumDirectory); // v12 compat alias

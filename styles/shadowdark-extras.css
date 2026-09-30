@@ -515,7 +515,16 @@
     min-height: 610px;
 }
 
-.shadowdark-extras-party form {
+.shadowdark-extras-party .window-content {
+    padding: 0;
+    gap: 0;
+    min-height: 0;
+}
+
+.shadowdark-extras-party [data-application-part="party"] {
+    flex: 1;
+    min-height: 0;
+    position: relative;
     background: var(--party-bg-dark);
     gap: 0;
 }
@@ -530,8 +539,8 @@
 }
 
 /* Force compact layout - kill all flex grow on header/nav */
-.shadowdark-extras-party form.flexcol>header,
-.shadowdark-extras-party form.flexcol>nav {
+.shadowdark-extras-party [data-application-part="party"]>header,
+.shadowdark-extras-party [data-application-part="party"]>nav {
     flex: 0 0 auto !important;
 }
 
@@ -586,6 +595,8 @@
 }
 
 .shadowdark-extras-party .party-title input {
+    height: auto;
+    line-height: 1.2;
     font-size: 28px;
     font-weight: bold;
     color: var(--party-text);
@@ -631,17 +642,29 @@
     background: linear-gradient(180deg, #0d0d0d 0%, #000000 100%);
     border-bottom: 1px solid var(--party-border);
     flex: 0 0 auto !important;
-    min-height: unset !important;
-    height: 40px;
+    min-height: 40px !important;
+    height: auto;
     margin: 0px;
     padding: 0 10px;
     display: flex;
     align-items: stretch;
+    gap: 0;
+    line-height: normal;
+    border-top: none;
     position: relative;
     z-index: 1;
 }
 
 .shadowdark-extras-party .SD-nav .navigation-tab {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: auto;
+    margin: 0;
+    line-height: 1;
+    white-space: nowrap;
     color: var(--party-text-muted);
     padding: 7px 4px;
     font-size: 1.3em;
@@ -669,7 +692,7 @@
 }
 
 .shadowdark-extras-party .SD-nav .navigation-tab i {
-    margin-right: 8px;
+    margin-right: 0;
     font-size: 0.9em;
 }
 
@@ -677,6 +700,8 @@
 .shadowdark-extras-party .SD-content-body {
     background: var(--party-bg-medium);
     padding: 15px;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 /* ============================================
@@ -811,22 +836,22 @@
 }
 
 /* Nav styling when party has custom header background */
-.shadowdark-extras-party form:has(.sdx-party-header-bg-extension) .SD-nav {
+.shadowdark-extras-party [data-application-part="party"]:has(.sdx-party-header-bg-extension) .SD-nav {
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(2px);
 }
 
-.shadowdark-extras-party form:has(.sdx-party-header-bg-extension) .SD-nav .navigation-tab {
+.shadowdark-extras-party [data-application-part="party"]:has(.sdx-party-header-bg-extension) .SD-nav .navigation-tab {
     color: #ccc;
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
 }
 
-.shadowdark-extras-party form:has(.sdx-party-header-bg-extension) .SD-nav .navigation-tab:hover {
+.shadowdark-extras-party [data-application-part="party"]:has(.sdx-party-header-bg-extension) .SD-nav .navigation-tab:hover {
     color: #fff;
     text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
 }
 
-.shadowdark-extras-party form:has(.sdx-party-header-bg-extension) .SD-nav .navigation-tab.active {
+.shadowdark-extras-party [data-application-part="party"]:has(.sdx-party-header-bg-extension) .SD-nav .navigation-tab.active {
     color: #fff;
     text-shadow: 0 0 10px rgb(255 255 255 / 80%);
 }
@@ -957,6 +982,11 @@
 }
 
 .shadowdark-extras-party .party-actions button {
+    display: block;
+    flex: 1;
+    height: auto;
+    line-height: 1.5;
+    white-space: normal;
     padding: 1px 16px;
     background: var(--party-bg-light);
     color: var(--party-text);

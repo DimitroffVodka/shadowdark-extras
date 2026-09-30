@@ -52,9 +52,10 @@ export const PartyTravel = {
 
 	/**
 	 * Execute Party travel writes locally for a GM, or route them to the active
-	 * GM for a player who normally cannot update the Party actor itself.
+	 * GM for a player who owns the Party actor. Member ownership alone is insufficient.
 	 */
 	async _requestPartyTravelMutation(request) {
+		if (!this.actor.isOwner) return null;
 		try {
 			if (game.user.isGM) {
 				// Dynamic import breaks the mixin<->class cycle (Phase 5.1 split)
@@ -110,7 +111,7 @@ export const PartyTravel = {
 					{ message: error?.message || String(error) }
 				)
 			);
-			this.render(false);
+			this.render();
 			return null;
 		}
 	},
@@ -325,6 +326,7 @@ export const PartyTravel = {
 	 */
 	async _onRollWeather(event) {
 		event.preventDefault();
+		if (!this.actor.isOwner) return;
 
 		const weatherTableUuid = getPartyWeatherTableUuid();
 		if (weatherTableUuid) {

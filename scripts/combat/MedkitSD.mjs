@@ -540,6 +540,15 @@ export function initMedkit() {
 			onclick: () => new MedkitApp({ document: sheet.actor }).render(true),
 		});
 	});
+	Hooks.on("getHeaderControlsPartySheetSD", (sheet, controls) => {
+		if (!sheet.actor.isOwner || !game.settings.get(MODULE_ID, "showMedkitIcon")) return;
+		controls.unshift({
+			label: "Medkit",
+			action: "sdx-medkit",
+			icon: "fas fa-kit-medical",
+			onClick: () => new MedkitApp({ document: sheet.actor }).render({ force: true }),
+		});
+	});
 }
 
 export class MedkitApp extends HandlebarsApplicationMixin(ApplicationV2) {

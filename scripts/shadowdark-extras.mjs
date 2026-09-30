@@ -1045,17 +1045,17 @@ if (featureEnabled(FEATURE_IDS.NPC_CREATURE_TYPES)) Hooks.on("renderNpcSheetSD",
 });
 
 // Apply inventory styles to Party sheets
-if (featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) Hooks.on("renderActorSheet", (app, html, data) => {
+if (featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) Hooks.on("renderPartySheetSD", (app, html, data) => {
 	if (!featureEnabled(FEATURE_IDS.PARTY_MANAGEMENT)) return;
 	// Only handle Party sheets
 	if (!(app instanceof PartySheetSD)) return;
 	if (!isPartyActor(app.actor)) return;
 
 	if (featureEnabled(FEATURE_IDS.INVENTORY_STYLING)) {
-		applyInventoryStylesToSheet(html, app.actor);
+		applyInventoryStylesToSheet($(html), app.actor);
 	}
 	if (featureEnabled(FEATURE_IDS.SHEET_STYLING)) {
-		injectPartyHeaderCustomization(app, html, app.actor);
+		injectPartyHeaderCustomization(app, $(html), app.actor);
 	}
 });
 
@@ -1766,7 +1766,7 @@ if (featureEnabled(FEATURE_IDS.LIGHT_TRACKER)) Hooks.on("updateActor", async (ac
 });
 
 // Sync party light when party sheet is rendered (delayed to ensure canvas is ready)
-if (featureEnabled(FEATURE_IDS.LIGHT_TRACKER)) Hooks.on("renderActorSheet", async (app, html, data) => {
+if (featureEnabled(FEATURE_IDS.LIGHT_TRACKER)) Hooks.on("renderPartySheetSD", async (app, html, data) => {
 	if (!featureEnabled(FEATURE_IDS.LIGHT_TRACKER)) return;
 	// Check if this actor has party members (indicates it's a party)
 	const hasMembers = app.actor.getFlag(MODULE_ID, "members");

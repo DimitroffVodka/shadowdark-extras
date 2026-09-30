@@ -150,7 +150,7 @@ export const PartyXp = {
 		const value = String(event.currentTarget.value ?? "");
 		await this._setNpcSpawnFormula(memberKey, value);
 		// Normalize UI in case of invalid input
-		this.render(false);
+		this.render();
 	},
 
 	/**

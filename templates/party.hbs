@@ -1,8 +1,8 @@
-<form class="{{cssClass}} flexcol" autocomplete="off" data-tokenizer-skip="true">
+<div class="{{cssClass}} flexcol" data-tokenizer-skip="true">
 	{{!-- Background extension element for custom header backgrounds --}}
 
 	<header class="party-header SD-header">
-		<img class="party-portrait portrait" src="{{ actor.img }}" data-edit="img" data-tooltip="{{ actor.name }}"
+		<img class="party-portrait portrait" src="{{ actor.img }}" data-action="editImage" data-edit="img" data-tooltip="{{ actor.name }}"
 			height="50" width="50" />
 		<div class="party-header-content">
 			<div class="party-title">
@@ -30,30 +30,30 @@
 		</div>
 	</header>
 
-	<nav class="SD-nav flex0" data-group="primary">
-		<a class="navigation-tab active" data-tab="tab-members">
+	<nav class="SD-nav tabs flex0" data-group="primary">
+		<a class="navigation-tab {{tabs.tab-members.cssClass}}" data-action="tab" data-group="primary" data-tab="tab-members">
 			<i class="fas fa-users"></i>
 			{{localize "SHADOWDARK_EXTRAS.party.tab.members"}}
 		</a>
 
-		<a class="navigation-tab" data-tab="tab-inventory">
+		<a class="navigation-tab {{tabs.tab-inventory.cssClass}}" data-action="tab" data-group="primary" data-tab="tab-inventory">
 			<i class="fas fa-box"></i>
 			{{localize "SHADOWDARK_EXTRAS.party.tab.inventory"}}
 		</a>
 
-		<a class="navigation-tab" data-tab="tab-travel">
+		<a class="navigation-tab {{tabs.tab-travel.cssClass}}" data-action="tab" data-group="primary" data-tab="tab-travel">
 			<i class="fas fa-campground"></i>
 			{{localize "SHADOWDARK_EXTRAS.party.tab.travel"}}
 		</a>
 
 		{{#if questTab}}
-		<a class="navigation-tab" data-tab="tab-quests">
+		<a class="navigation-tab {{tabs.tab-quests.cssClass}}" data-action="tab" data-group="primary" data-tab="tab-quests">
 			<i class="fas fa-scroll"></i>
 			{{localize "SHADOWDARK_EXTRAS.party.tab.quests"}}
 		</a>
 		{{/if}}
 
-		<a class="navigation-tab" data-tab="tab-description">
+		<a class="navigation-tab {{tabs.tab-description.cssClass}}" data-action="tab" data-group="primary" data-tab="tab-description">
 			<i class="fas fa-book-open"></i>
 			{{localize "SHADOWDARK_EXTRAS.party.tab.description"}}
 		</a>
@@ -62,7 +62,7 @@
 	<section class="SD-content-body flex1">
 
 		<!-- MEMBERS TAB -->
-		<div class="tab tab-members active" data-group="primary" data-tab="tab-members">
+		<div class="tab tab-members {{tabs.tab-members.cssClass}}" data-group="primary" data-tab="tab-members">
 			<div class="party-actions">
 				{{#if isGM}}
 				<button type="button" data-action="place-members"
@@ -357,7 +357,7 @@
 		</div>
 
 		<!-- INVENTORY TAB -->
-		<div class="tab tab-inventory" data-group="primary" data-tab="tab-inventory">
+		<div class="tab tab-inventory {{tabs.tab-inventory.cssClass}}" data-group="primary" data-tab="tab-inventory">
 			<div class="inventory-grid">
 				<div class="inventory-main">
 					<!-- Carried Items -->
@@ -542,7 +542,7 @@
 		</div>
 
 		<!-- TRAVEL TAB -->
-		<div class="tab tab-travel" data-group="primary" data-tab="tab-travel">
+		<div class="tab tab-travel {{tabs.tab-travel.cssClass}}" data-group="primary" data-tab="tab-travel">
 			<div class="sdx-travel-header">
 				<div class="sdx-travel-actions toolbar">
 					<button type="button" class="sdx-travel-reset" data-action="roll-weather"
@@ -570,7 +570,7 @@
 							<i class="fas fa-running"></i>
 							{{localize "SHADOWDARK_EXTRAS.party.travel.speed"}}:
 						</label>
-						<select id="travel-speed" name="travelSpeed" data-action="change-travel-speed" {{#unless
+						<select id="travel-speed" data-action="change-travel-speed" {{#unless
 							owner}}disabled{{/unless}}>
 							{{#each travelSpeeds as |speed|}}
 							<option value="{{speed.key}}" {{#if speed.selected}}selected{{/if}}>{{speed.name}}</option>
@@ -728,7 +728,7 @@
 
 		{{#if questTab}}
 		<!-- QUESTS TAB (read-only, from Shadowdark Enhancer's quest log) -->
-		<div class="tab tab-quests" data-group="primary" data-tab="tab-quests">
+		<div class="tab tab-quests {{tabs.tab-quests.cssClass}}" data-group="primary" data-tab="tab-quests">
 			{{#each questTab.groups}}
 			<div class="SD-box sdx-party-quests">
 				<div class="header">
@@ -777,7 +777,7 @@
 		{{/if}}
 
 		<!-- DESCRIPTION TAB -->
-		<div class="tab tab-description" data-group="primary" data-tab="tab-description">
+		<div class="tab tab-description {{tabs.tab-description.cssClass}}" data-group="primary" data-tab="tab-description">
 			<div class="SD-box description-box">
 				<div class="header">
 					<label>{{localize "SHADOWDARK_EXTRAS.party.description"}}</label>
@@ -799,4 +799,4 @@
 		</div>
 
 	</section>
-</form>
+</div>

@@ -159,9 +159,11 @@ async function getPartyMemberActor(memberKey) {
 
 /**
  * Party Sheet
- * Extends the base ActorSheet to provide party management functionality
+ * Extends ActorSheetV2 to provide party management functionality
  */
-class PartySheetMixinBase extends (foundry.appv1?.sheets?.ActorSheet || ActorSheet) {}
+class PartySheetMixinBase extends foundry.applications.api.HandlebarsApplicationMixin(
+	foundry.applications.sheets.ActorSheetV2
+) {}
 Object.assign(
 	PartySheetMixinBase.prototype,
 	PartyTravel,
@@ -197,6 +199,10 @@ export default class PartySheetSD extends PartySheetMixinBase {
 			throw new Error("Invalid Party actor");
 		}
 		if (!requestingUser) throw new Error("Unknown requesting user");
+		if (!requestingUser.isGM
+			&& !partyActor.testUserPermission?.(requestingUser, "OWNER")) {
+			throw new Error("Not authorized to change this Party");
+		}
 
 		const storedMemberKeys = partyActor.getFlag(MODULE_ID, "members");
 		const memberKeys = Array.isArray(storedMemberKeys)
@@ -311,29 +317,32 @@ export default class PartySheetSD extends PartySheetMixinBase {
 	}
 
 	/** @inheritdoc */
-	static get defaultOptions() {
-		return foundry.utils.mergeObject(super.defaultOptions, {
-			classes: ["shadowdark", "sheet", "party", "shadowdark-extras-party"],
-			width: 750,
-			height: 650,
-			resizable: true,
-			tabs: [
-				{
-					navSelector: ".SD-nav",
-					contentSelector: ".SD-content-body",
-					initial: "tab-members",
-				},
-			],
-			dragDrop: [
-				{ dragSelector: ".item-list .item, .member, .sdx-task-member", dropSelector: null },
-			],
-		});
-	}
+	static DEFAULT_OPTIONS = {
+		classes: ["shadowdark", "sheet", "party", "shadowdark-extras-party"],
+		position: { width: 750, height: 650 },
+		window: { resizable: true },
+		form: { submitOnChange: true, closeOnSubmit: false },
+	};
 
-	/** @inheritdoc */
-	get template() {
-		return `modules/${MODULE_ID}/templates/party.hbs`;
-	}
+	static PARTS = {
+		party: {
+			template: `modules/${MODULE_ID}/templates/party.hbs`,
+			scrollable: [".SD-content-body"],
+		},
+	};
+
+	static TABS = {
+		primary: {
+			initial: "tab-members",
+			tabs: [
+				{ id: "tab-members" },
+				{ id: "tab-inventory" },
+				{ id: "tab-travel" },
+				{ id: "tab-quests" },
+				{ id: "tab-description" },
+			],
+		},
+	};
 
 	/** @inheritdoc */
 	get title() {
@@ -420,8 +429,10 @@ export default class PartySheetSD extends PartySheetMixinBase {
 	}
 
 	/** @inheritdoc */
-	async getData(options) {
-		const context = await super.getData(options);
+	async _prepareContext(options) {
+		const context = await super._prepareContext(options);
+		context.actor = this.actor;
+		context.system = this.actor.system;
 
 		context.config = CONFIG.SHADOWDARK;
 		context.cssClass = this.actor.isOwner ? "editable" : "locked";
@@ -482,6 +493,10 @@ export default class PartySheetSD extends PartySheetMixinBase {
 
 		// Quests tab: null (no tab) unless Shadowdark Enhancer's quest log is there
 		context.questTab = await questTabData(this.actor);
+		if (!context.questTab && this.tabGroups.primary === "tab-quests") {
+			this.tabGroups.primary = "tab-members";
+			context.tabs = this._prepareTabs("primary");
+		}
 
 		return context;
 	}
@@ -570,83 +585,96 @@ export default class PartySheetSD extends PartySheetMixinBase {
 			});
 	}
 
-	activateListeners(html) {
-		super.activateListeners(html);
+	async _onRender(context, options) {
+		this._dragDrop.dragSelector = ".item-list .item, .member, .sdx-task-member";
+		await super._onRender(context, options);
+		if (options.parts && !options.parts.includes("party")) return;
+		const element = this.parts.party;
+		const on = (selector, type, handler) => {
+			for (const control of element.querySelectorAll(selector)) {
+				control.addEventListener(type, handler);
+			}
+		};
 
 		// Member interactions
-		html.find("[data-action='open-member']").click(this._onOpenMember.bind(this));
-		html.find("[data-action='remove-member']").click(this._onRemoveMember.bind(this));
-		html.find("[data-action='place-members']").click(this._onPlaceMembers.bind(this));
-		html.find("[data-action='recall-members']").click(this._onRecallMembers.bind(this));
-		html.find("[data-action='reward-xp']").click(this._onRewardXp.bind(this));
-		html.find("[data-action='reward-coins']").click(this._onRewardCoins.bind(this));
-		html.find("[data-action='sync-lights']").click(this._onSyncLights.bind(this));
-		html.find("[data-action='roll-weather']").click(this._onRollWeather.bind(this));
-		html.find("[data-action='configure-weather']").click(this._onConfigureWeather.bind(this));
-		html.find("[data-action='change-travel-speed']").change(
+		on("[data-action='open-member']", "click", this._onOpenMember.bind(this));
+		on("[data-action='remove-member']", "click", this._onRemoveMember.bind(this));
+		on("[data-action='place-members']", "click", this._onPlaceMembers.bind(this));
+		on("[data-action='recall-members']", "click", this._onRecallMembers.bind(this));
+		on("[data-action='reward-xp']", "click", this._onRewardXp.bind(this));
+		on("[data-action='reward-coins']", "click", this._onRewardCoins.bind(this));
+		on("[data-action='sync-lights']", "click", this._onSyncLights.bind(this));
+		on("[data-action='roll-weather']", "click", this._onRollWeather.bind(this));
+		on("[data-action='configure-weather']", "click", this._onConfigureWeather.bind(this));
+		on("[data-action='change-travel-speed']", "change",
 			this._onChangeTravelSpeed.bind(this)
 		);
 
 		// XP controls
-		html.find("[data-action='xp-increment']").click(this._onXpIncrement.bind(this));
-		html.find("[data-action='xp-decrement']").click(this._onXpDecrement.bind(this));
+		on("[data-action='xp-increment']", "click", this._onXpIncrement.bind(this));
+		on("[data-action='xp-decrement']", "click", this._onXpDecrement.bind(this));
 
 		// NPC spawn count controls
-		html.find("[data-action='npc-count-increment']").click(
+		on("[data-action='npc-count-increment']", "click",
 			this._onNpcCountIncrement.bind(this)
 		);
-		html.find("[data-action='npc-count-decrement']").click(
+		on("[data-action='npc-count-decrement']", "click",
 			this._onNpcCountDecrement.bind(this)
 		);
-		html.find("[data-action='npc-count-change']").change(this._onNpcCountChange.bind(this));
+		on("[data-action='npc-count-change']", "change", this._onNpcCountChange.bind(this));
 
 		// Inventory interactions
-		html.find("[data-action='create-item']").click(this._onCreateItem.bind(this));
-		html.find("[data-action='configure-party-slots']").click(
+		on("[data-action='create-item']", "click", this._onCreateItem.bind(this));
+		on("[data-action='configure-party-slots']", "click",
 			this._onConfigurePartySlots.bind(this)
 		);
-		html.find("[data-action='item-increment']").click(this._onItemIncrement.bind(this));
-		html.find("[data-action='item-decrement']").click(this._onItemDecrement.bind(this));
-		html.find("[data-action='toggle-light']").click(this._onToggleLightSource.bind(this));
-		html.find(".item-image").click(this._onItemChat.bind(this));
-		html.find(".item-name[data-action='show-details']").click(
+		on("[data-action='item-increment']", "click", this._onItemIncrement.bind(this));
+		on("[data-action='item-decrement']", "click", this._onItemDecrement.bind(this));
+		on("[data-action='toggle-light']", "click", this._onToggleLightSource.bind(this));
+		on(".item-image", "click", this._onItemChat.bind(this));
+		on(".item-name[data-action='show-details']", "click",
 			event => shadowdark.utils.toggleItemDetails(event.currentTarget)
 		);
 
 		// Item context menu
-		this._itemContextMenu(html.get(0));
+		this._itemContextMenu(element);
 
 		// Coin inputs
-		html.find(".coin-value").change(this._onCoinChange.bind(this));
-		html.find("[data-action='add-coins']").click(this._onAddCoins.bind(this));
-		html.find("[data-action='divide-coins']").click(this._onDivideCoins.bind(this));
+		on(".coin-value", "change", this._onCoinChange.bind(this));
+		on("[data-action='add-coins']", "click", this._onAddCoins.bind(this));
+		on("[data-action='divide-coins']", "click", this._onDivideCoins.bind(this));
 
 		// Description editing
-		html.find("[data-action='edit-description']").click(this._onEditDescription.bind(this));
+		on("[data-action='edit-description']", "click", this._onEditDescription.bind(this));
 
 		// Travel Tab interactions
-		html.find("[data-action='reset-travel']").click(this._onResetTravel.bind(this));
-		html.find("[data-action='remove-travel-member']").click(
+		on("[data-action='reset-travel']", "click", this._onResetTravel.bind(this));
+		on("[data-action='remove-travel-member']", "click",
 			this._onRemoveTravelMember.bind(this)
 		);
-		html.find("[data-action='select-travel-task']").change(
+		on("[data-action='select-travel-task']", "change",
 			this._onSelectTravelTask.bind(this)
 		);
-		html.find("[data-action='select-travel-ability']").change(
+		on("[data-action='select-travel-ability']", "change",
 			this._onSelectTravelAbility.bind(this)
 		);
-		html.find("[data-action='begin-camping-rest']").click(
+		on("[data-action='begin-camping-rest']", "click",
 			this._onBeginCampingRest.bind(this)
 		);
 
 		// Quests tab: a quest opens its Shadowdark Enhancer journal entry
-		html.find("[data-action='open-quest']").click(this._onOpenQuest.bind(this));
+		on("[data-action='open-quest']", "click", this._onOpenQuest.bind(this));
 
 		// Travel Rolling
 
-		html.find(".sdx-task-dc").change(this._onChangeTravelDC.bind(this));
-		html.find(".sdx-task-header").click(this._onRollTravelTask.bind(this));
-		html.find(".sdx-task-member").contextmenu(this._onToggleTravelAbility.bind(this));
+		on(".sdx-task-dc", "change", this._onChangeTravelDC.bind(this));
+		on(".sdx-task-header", "click", this._onRollTravelTask.bind(this));
+		on(".sdx-task-member", "contextmenu", this._onToggleTravelAbility.bind(this));
+	}
+
+	/** Custom controls write flags or use the GM relay; only name is a document field. */
+	_onChangeForm(formConfig, event) {
+		if (event.target.name === "name") return super._onChangeForm(formConfig, event);
 	}
 
 	async _onConfigurePartySlots(event) {
@@ -719,29 +747,29 @@ export default class PartySheetSD extends PartySheetMixinBase {
 	_getItemContextOptions() {
 		return [
 			{
-				name: game.i18n.localize("SHADOWDARK.sheet.general.item_edit.title"),
+				label: game.i18n.localize("SHADOWDARK.sheet.general.item_edit.title"),
 				icon: '<i class="fas fa-edit"></i>',
-				condition: () => this.actor.isOwner,
-				callback: element => {
+				visible: () => this.actor.isOwner,
+				onClick: (event, element) => {
 					const itemId = element.dataset.itemId;
 					const item = this.actor.items.get(itemId);
 					return item?.sheet.render(true);
 				},
 			},
 			{
-				name: game.i18n.localize("SHADOWDARK.sheet.general.item_delete.title"),
+				label: game.i18n.localize("SHADOWDARK.sheet.general.item_delete.title"),
 				icon: '<i class="fas fa-trash"></i>',
-				condition: () => this.actor.isOwner,
-				callback: element => {
+				visible: () => this.actor.isOwner,
+				onClick: (event, element) => {
 					const itemId = element.dataset.itemId;
 					this.actor.deleteEmbeddedDocuments("Item", [itemId]);
 				},
 			},
 			{
-				name: game.i18n.localize("SHADOWDARK_EXTRAS.party.transfer_to_member"),
+				label: game.i18n.localize("SHADOWDARK_EXTRAS.party.transfer_to_member"),
 				icon: '<i class="fas fa-share"></i>',
-				condition: () => this.actor.isOwner && this.members.length > 0,
-				callback: element => this._onTransferItem(element),
+				visible: () => this.actor.isOwner && this.members.length > 0,
+				onClick: (event, element) => this._onTransferItem(element),
 			},
 		];
 	}
@@ -879,9 +907,8 @@ export default class PartySheetSD extends PartySheetMixinBase {
  * @param {object} socket - The module's socketlib socket.
  */
 export function registerPartyTravelSocket(socket) {
-	// Player-facing Party task selectors write to a GM-owned Party actor.
-	// Route those writes through the active GM while preserving ownership
-	// checks against the user who actually sent the request.
+	// Route Party owners' task choices through the GM, checking both Party
+	// and member ownership against the user who actually sent the request.
 	socket.register(
 		"sdxMutatePartyTravel",
 		async function(partyUuid, request) {
@@ -974,7 +1001,7 @@ export function registerPartySheetRerenderHooks() {
 		if (actor.type !== "Player") return;
 
 		// Find all open party sheets that contain this actor as a member
-		for (const app of Object.values(ui.windows)) {
+		for (const app of foundry.applications.instances.values()) {
 			if (app instanceof PartySheetSD) {
 				const memberIds = app.memberIds;
 				if (memberIds.includes(actor.id)) {
@@ -990,7 +1017,7 @@ export function registerPartySheetRerenderHooks() {
 		if (!actor || actor.type !== "Player") return;
 
 		// Find all open party sheets that contain this actor as a member
-		for (const app of Object.values(ui.windows)) {
+		for (const app of foundry.applications.instances.values()) {
 			if (app instanceof PartySheetSD) {
 				const memberIds = app.memberIds;
 				if (memberIds.includes(actor.id)) {
@@ -1006,7 +1033,7 @@ export function registerPartySheetRerenderHooks() {
 		if (!actor || actor.type !== "Player") return;
 
 		// Find all open party sheets that contain this actor as a member
-		for (const app of Object.values(ui.windows)) {
+		for (const app of foundry.applications.instances.values()) {
 			if (app instanceof PartySheetSD) {
 				const memberIds = app.memberIds;
 				if (memberIds.includes(actor.id)) {
@@ -1022,7 +1049,7 @@ export function registerPartySheetRerenderHooks() {
 		if (!actor || actor.type !== "Player") return;
 
 		// Find all open party sheets that contain this actor as a member
-		for (const app of Object.values(ui.windows)) {
+		for (const app of foundry.applications.instances.values()) {
 			if (app instanceof PartySheetSD) {
 				const memberIds = app.memberIds;
 				if (memberIds.includes(actor.id)) {
@@ -1035,7 +1062,7 @@ export function registerPartySheetRerenderHooks() {
 	// Re-render party sheets when Shadowdark Enhancer's quest log changes; the
 	// Quests tab reads it (#150). Fires on every client, so nothing is sent here.
 	Hooks.on("shadowdark-enhancer.questsChanged", () => {
-		for (const app of Object.values(ui.windows)) {
+		for (const app of foundry.applications.instances.values()) {
 			if (app instanceof PartySheetSD) app.render();
 		}
 	});
@@ -1044,7 +1071,7 @@ export function registerPartySheetRerenderHooks() {
 	// changes; the Quests tab reads it (#183). Fires on every client, so nothing
 	// is sent here. An Enhancer without the hook never fires it.
 	Hooks.on("shadowdark-enhancer.rumorsChanged", () => {
-		for (const app of Object.values(ui.windows)) {
+		for (const app of foundry.applications.instances.values()) {
 			if (app instanceof PartySheetSD) app.render();
 		}
 	});
@@ -1052,7 +1079,7 @@ export function registerPartySheetRerenderHooks() {
 	// Re-render party sheets when Shadowdark Enhancer's Overland state changes.
 	// Fires on every client, so the Travel tab remains a read-only view here.
 	Hooks.on("shadowdark-enhancer.overlandChanged", () => {
-		for (const app of Object.values(ui.windows)) {
+		for (const app of foundry.applications.instances.values()) {
 			if (app instanceof PartySheetSD) app.render();
 		}
 	});

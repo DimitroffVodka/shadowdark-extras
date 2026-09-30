@@ -735,6 +735,12 @@ function applyInventoryStyles() {
 			}
 		}
 	}
+	// PartySheetSD is now registered in the V2 instance map, not ui.windows.
+	for (const app of foundry.applications.instances.values()) {
+		if (isPartyActor(app.actor) && app.element) {
+			applyInventoryStylesToSheet($(app.element), app.actor);
+		}
+	}
 }
 
 /**

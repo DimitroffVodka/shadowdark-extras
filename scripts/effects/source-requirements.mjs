@@ -378,6 +378,11 @@ export function registerSourceRequirementHooks() {
 			await checkEffectRequirements(actor);
 		}, 100);
 	});
+	Hooks.on("renderPartySheetSD", app => {
+		setTimeout(async () => {
+			await checkEffectRequirements(app.actor);
+		}, 100);
+	});
 
 	/**
 	 * Hook to check requirements when an item is added to an actor

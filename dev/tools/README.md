@@ -178,6 +178,33 @@ Two cases are not covered by test discovery and need explicit invocation. A gree
 | `dev/tests/shadowdarkling-roller-regressions.mjs` (no `.test.` in the name) | `npm run test:roller` |
 | `dev/tests/quench/webp-migration.batch.mjs` | In a live Foundry world via Quench; record the result manually. |
 
+### Party sheet browser layout regression
+
+`dev/tests/party-sheet-layout.browser.mjs` needs a real rendered v14 sheet;
+Node and CI do not run it. After changing Party markup or CSS, open a Party
+sheet and run this in that Foundry tab's browser console (or a targeted MCP
+evaluation). The server must serve the candidate module and browser-test file:
+
+```js
+const { verifyPartySheetLayout } = await import(
+  "/modules/shadowdark-extras/dev/tests/party-sheet-layout.browser.mjs"
+);
+const sheet = [...foundry.applications.instances.values()].find(
+  app => app.constructor.name === "PartySheetSD" && app.rendered
+);
+if (!sheet) throw new Error("Open a Party sheet before running the layout check");
+console.log(await verifyPartySheetLayout(sheet));
+```
+
+It checks text containment, tab/content separation, horizontal overflow and
+equal-height action tiles on every available tab at 680, 750 and 1200px.
+With the Enhancer Quests tab present, expect `passed: 15`; without it, expect
+`passed: 12`. An assertion throws on failure. Record the result, candidate SHA,
+Foundry version and GM/player role. The check temporarily resizes the sheet
+and changes tabs, restoring the original position and active tab in `finally`;
+it does not change actor data. Hard-refresh your own review tab after deploying
+new CSS/JS so this tests the candidate rather than cached assets.
+
 ## `npm test` repairs module.json first
 
 `pretest` runs `dev/tools/restore-foundry-manifest.mjs`, so **`npm test` may

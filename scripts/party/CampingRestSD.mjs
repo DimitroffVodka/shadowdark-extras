@@ -1157,7 +1157,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			try {
 				await removeCampfire(this.partyActor, campfire);
 				await this.onCampfireChange?.();
-				await this.partyActor.sheet?.render(false);
+				await this.partyActor.sheet?.render();
 			}
 			catch(error) {
 				console.error(`${MODULE_ID} | Camping cleanup failed`, error);
