@@ -1012,6 +1012,8 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						task: group.task,
 						value,
 						success: Number.isFinite(value) && value >= dc,
+						abilityIndex: camper.abilityIndex,
+						dc,
 					});
 				}
 
@@ -1206,7 +1208,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 			started();
 			const taskResult = taskResults.get(actor.id);
 			const taskInfo = taskResult
-				&& this._describeRolledTask(taskResult.task, actor, plan.campfireEstablished);
+				&& this._describeRolledTask(taskResult, actor, plan.campfireEstablished);
 			const hasRation = rationByActor.get(actor.id) ?? false;
 			if (!hasRation && this._overland && game.modules.get("shadowdark-enhancer")?.active) {
 				const statDamage = game.shadowdarkEnhancer?.statDamage;
@@ -1298,13 +1300,17 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		return summary;
 	}
 
-	/** A rolled task's description and `WIS · DC 12` line, for the summary (#197). */
-	_describeRolledTask(task, actor, campfire) {
+	/**
+	 * A rolled task's description and `WIS · DC 12` line, for the summary (#197):
+	 * the ability and DC it was rolled with, or the party's current ones for a
+	 * rest saved before they were kept.
+	 */
+	_describeRolledTask({ task, abilityIndex, dc }, actor, campfire) {
 		const selections = this.partyActor.getFlag(MODULE_ID, "travelSelections") ?? {};
 		return describeCampingTask({
 			task,
-			abilityIndex: selections[task.key]?.[memberKey(actor)],
-			dc: campingTaskDc(task, this.partyActor.getFlag(MODULE_ID, "travelDCs"), this.harsh),
+			abilityIndex: abilityIndex ?? selections[task.key]?.[memberKey(actor)],
+			dc: dc ?? campingTaskDc(task, this.partyActor.getFlag(MODULE_ID, "travelDCs"), this.harsh),
 			campfire,
 			disadvantageNote: game.i18n.localize("SHADOWDARK_EXTRAS.camping_rest.task_disadvantage_rolled"),
 		});
@@ -1356,6 +1362,8 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 						taskKey: taskResult.task.key,
 						value: Number.isFinite(taskResult.value) ? taskResult.value : null,
 						success: taskResult.success,
+						abilityIndex: taskResult.abilityIndex ?? null,
+						dc: taskResult.dc ?? null,
 					} : null,
 					ate: rationPlan.rationByActor.get(camper.actor.id) ?? false,
 					benefits: taskBenefitsByActor.get(camper.actor.id) ?? null,
@@ -1386,6 +1394,8 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				task,
 				value: camper.result.value ?? Number.NaN,
 				success: camper.result.success === true,
+				abilityIndex: camper.result.abilityIndex ?? undefined,
+				dc: camper.result.dc ?? undefined,
 			});
 		}
 		// Only who ate can still benefit from the rest (GMWR p. 44), so only they roll CON.
