@@ -89,6 +89,15 @@ Zine mode uses staggered `000/100/200` column headings with two-digit rows, and
 skips the cropped edge column on hex-column maps. That's built to match printed
 zine keys.
 
+On a scene that Shadowdark Enhancer's Hex Tagger has numbered, such as one made
+with **Hex map from image**, Zine mode writes the Tagger's own number on every
+hex instead of guessing one, so the map, the Tagger and the keyed-hex journal
+pages agree. The frame around the map gets no label, and the headings and the
+modifier-click label come from the same numbers. Change the anchor hex in the
+Tagger and the Zine labels redraw with no reload. Scenes built from a published
+layout, scenes the Enhancer hasn't numbered, and games without the Enhancer (or
+before its 1.26.0) keep the layout above.
+
 ## Solo Hex Mode
 
 The compass tool switches on the module's solo exploration flow for supported
