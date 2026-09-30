@@ -843,7 +843,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 			contestants: contestEntries,
 		};
 
-		const html = await renderTemplate(
+		const html = await foundry.applications.handlebars.renderTemplate(
 			`modules/${MODULE_ID}/templates/sdx-roller-recap.hbs`,
 			templateData
 		);
