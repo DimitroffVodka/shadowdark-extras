@@ -24,6 +24,7 @@ class ActorSheetV2 extends foundry.applications.api.ApplicationV2 {
 
 	get actor() { return this.document; }
 	get isEditable() { return this.actor?.isOwner === true; }
+	_canDragDrop() { return this.isEditable; }
 	_prepareTabs(group) {
 		return Object.fromEntries(this.constructor.TABS[group].tabs.map(({ id }) => {
 			const active = this.tabGroups[group] === id;
@@ -209,15 +210,13 @@ test("only the native name field autosubmits, not treasury or relayed travel con
 	assert.deepEqual(sheet.formChanges, ["name"]);
 });
 
-test("read-only Party forms retain owned-member travel choices and Weather only", () => {
-	const selector = "[data-action='select-travel-task'], [data-action='select-travel-ability']";
+test("read-only Party forms keep travel choices and Weather disabled", () => {
 	const listenerDom = makeSelectorDom({ lists: {
-		"input, select, button": [{ name: "name" }],
-		[selector]: [
+		"input, select, button": [
+			{ name: "name" },
 			{ dataset: { action: "select-travel-task", memberId: "mine" } },
 			{ dataset: { action: "select-travel-ability", memberId: "mine", taskKey: "hunt" } },
-			{ dataset: { action: "select-travel-ability", memberId: "mine", taskKey: "" } },
-			{ dataset: { action: "select-travel-task", memberId: "theirs" } },
+			{ dataset: { action: "roll-weather" } },
 		],
 	} });
 	globalThis.game.user = { isGM: false };
@@ -225,18 +224,17 @@ test("read-only Party forms retain owned-member travel choices and Weather only"
 	const sheet = makeSheet(makeActor({ isOwner: false }));
 	sheet.element = listenerDom.document;
 	sheet._toggleDisabled(true);
-	assert.equal(listenerDom.document.querySelectorAll("input, select, button")[0].disabled, true);
-	assert.deepEqual(listenerDom.document.querySelectorAll(selector).map(el => el.disabled), [false, false, true, true]);
-	assert.equal(listenerDom.document.querySelector("[data-action='roll-weather']").disabled, false);
+	assert.equal(PartySheetSD.prototype._toggleDisabled, ActorSheetV2.prototype._toggleDisabled);
+	assert.ok(listenerDom.document.querySelectorAll("input, select, button").every(el => el.disabled));
 });
 
-test("V2 drop permission retains owned-member travel without Party ownership", () => {
+test("V2 drop permission requires Party ownership even for an owned member", () => {
 	globalThis.game.user = { isGM: false };
 	globalThis.game.actors = new Map([["mine", makeActor()], ["theirs", makeActor({ isOwner: false })]]);
 	const sheet = makeSheet(makeActor({ isOwner: false, flags: { members: ["mine"] } }));
-	assert.equal(sheet._canDragDrop(), true);
-	Object.defineProperty(sheet, "actor", { value: makeActor({ isOwner: false, flags: { members: ["theirs"] } }) });
 	assert.equal(sheet._canDragDrop(), false);
+	Object.defineProperty(sheet, "actor", { value: makeActor({ isOwner: true }) });
+	assert.equal(sheet._canDragDrop(), true);
 });
 
 test("native rendering keeps all roster, item and travel drag sources", async () => {
@@ -620,7 +618,7 @@ test("a GM may move any member, present in the world or not", () => {
 });
 
 test("a player may move only the members they own", () => {
-	const sheet = makeSheet();
+	const sheet = makeSheet(makeActor());
 	globalThis.game.user = { isGM: false, id: "p1" };
 	globalThis.game.actors = new Map([
 		["mine", makeActor({ id: "mine", isOwner: true })],
@@ -631,6 +629,8 @@ test("a player may move only the members they own", () => {
 	assert.equal(sheet._canUserMoveMember({ id: "theirs" }), false);
 	assert.equal(sheet._canUserMoveMember({ id: "missing" }), false);
 	assert.equal(sheet._canUserMoveMember(null), false);
+	Object.defineProperty(sheet, "actor", { value: makeActor({ isOwner: false }) });
+	assert.equal(sheet._canUserMoveMember({ id: "mine" }), false);
 });
 
 // --- party membership -------------------------------------------------------
@@ -782,11 +782,13 @@ test("an Effect item lights just as a Basic one does", async () => {
 const gm = { id: "gm", isGM: true };
 const player = { id: "p1", isGM: false };
 
-function travelParty({ members = ["hero"], assignments = {}, selections = {} } = {}) {
+function travelParty({ members = ["hero"], assignments = {}, selections = {},
+	owners = ["p1"] } = {}) {
 	const updates = [];
 	const actor = makeActor({
 		id: "party",
 		type: "NPC",
+		owners,
 		flags: {
 			isParty: true,
 			members,
@@ -848,7 +850,7 @@ test("a player cannot move a member they do not own", async () => {
 	assert.deepEqual(party.updates, [], "nothing was written");
 });
 
-test("a player may move a member they own", async () => {
+test("a Party owner may move a member they also own", async () => {
 	const party = travelParty({ members: ["hero"] });
 	globalThis.game.actors = new Map([["hero", makeActor({ id: "hero", owners: ["p1"] })]]);
 
@@ -860,6 +862,58 @@ test("a player may move a member they own", async () => {
 
 	assert.deepEqual(result, { ok: true });
 	assert.equal(party.updates.length, 1);
+});
+
+test("member ownership alone cannot authorize any Party travel mutation", async () => {
+	globalThis.game.actors = new Map([["hero", makeActor({ id: "hero", owners: ["p1"] })]]);
+	for (const request of [
+		{ operation: "selectTask", memberId: "hero", taskKey: "hunt" },
+		{ operation: "selectAbility", memberId: "hero", taskKey: "hunt", abilityIndex: 0 },
+		{ operation: "weatherPrediction", action: "consume" },
+		{ operation: "weatherPrediction", action: "clear" },
+	]) {
+		const party = travelParty({ owners: [], assignments: { hero: "hunt" } });
+		await party.setFlag(MODULE_ID, "campingWeatherReroll", { uses: 1 });
+		await assert.rejects(
+			() => PartySheetSD.applyPartyTravelMutation(party, request, player),
+			/Not authorized to change this Party/,
+		);
+		assert.deepEqual(party.updates, [], "no Party data was written");
+	}
+});
+
+test("a non-owner cannot send Party travel requests to the GM", async () => {
+	const sheet = makeSheet(makeActor({ isOwner: false }));
+	const previous = game.modules;
+	let sent = 0;
+	game.modules = new Map([[MODULE_ID, { socket: { executeAsGM: async () => {
+		sent++;
+		return { ok: true };
+	} } }]]);
+	game.user = player;
+	try {
+		assert.equal(await sheet._requestPartyTravelMutation({ operation: "selectTask" }), null);
+		assert.equal(sent, 0);
+	}
+	finally { game.modules = previous; }
+});
+
+test("a direct travel drop cannot bypass Party ownership", async () => {
+	const sheet = makeSheet(makeActor({ isOwner: false, flags: { members: ["hero"] } }));
+	let assigned = 0;
+	sheet._assignMemberToTask = async () => { assigned++; };
+	uuidTable = new Map([["Actor.hero", makeActor({ id: "hero" })]]);
+	const editor = foundry.applications.ux.TextEditor.implementation;
+	const previous = editor.getDragEventData;
+	editor.getDragEventData = () => ({ type: "Actor", uuid: "Actor.hero" });
+	try {
+		await sheet._onDrop({
+			preventDefault() {},
+			target: { closest: () => ({ dataset: { taskKey: "hunt" } }) },
+		});
+		assert.equal(assigned, 0);
+	}
+	finally { editor.getDragEventData = previous; }
 });
 
 // A compendium member key contains dots, which Foundry would read as a nested

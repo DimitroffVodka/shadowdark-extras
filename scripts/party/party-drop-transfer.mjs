@@ -32,7 +32,7 @@ export const PartyDropTransfer = {
 	 */
 	_canUserMoveMember(memberData) {
 		if (game.user.isGM) return true;
-		if (!memberData) return false;
+		if (!this.actor?.isOwner || !memberData) return false;
 		// Check if user owns the actor
 		const actor = game.actors.get(memberData.id);
 		return actor?.isOwner ?? false;
@@ -63,6 +63,7 @@ export const PartyDropTransfer = {
 
 	/** @inheritdoc */
 	async _onDrop(event) {
+		if (!this.actor.isOwner) return false;
 		const uxTextEditor = foundry?.applications?.ux?.TextEditor?.implementation;
 		const getDragEventData = uxTextEditor?.getDragEventData ?? TextEditor.getDragEventData;
 		const data = getDragEventData(event);

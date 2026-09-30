@@ -199,6 +199,10 @@ export default class PartySheetSD extends PartySheetMixinBase {
 			throw new Error("Invalid Party actor");
 		}
 		if (!requestingUser) throw new Error("Unknown requesting user");
+		if (!requestingUser.isGM
+			&& !partyActor.testUserPermission?.(requestingUser, "OWNER")) {
+			throw new Error("Not authorized to change this Party");
+		}
 
 		const storedMemberKeys = partyActor.getFlag(MODULE_ID, "members");
 		const memberKeys = Array.isArray(storedMemberKeys)
@@ -673,23 +677,6 @@ export default class PartySheetSD extends PartySheetMixinBase {
 		if (event.target.name === "name") return super._onChangeForm(formConfig, event);
 	}
 
-	/** Read-only Party access must not disable an owned character's relayed travel choices. */
-	_toggleDisabled(disabled) {
-		super._toggleDisabled(disabled);
-		if (!disabled) return;
-		for (const select of this.element.querySelectorAll("[data-action='select-travel-task'], [data-action='select-travel-ability']")) {
-			select.disabled = !this._canUserMoveMember({ id: select.dataset.memberId })
-				|| (select.dataset.action === "select-travel-ability" && !select.dataset.taskKey);
-		}
-		const weather = this.element.querySelector("[data-action='roll-weather']");
-		if (weather) weather.disabled = false;
-	}
-
-	/** Travel drops are validated and relayed independently of Party ownership. */
-	_canDragDrop() {
-		return this.isEditable || this.members.some(member => member.isOwner);
-	}
-
 	async _onConfigurePartySlots(event) {
 		event.preventDefault();
 		if (!this.actor.isOwner) return;
@@ -920,9 +907,8 @@ export default class PartySheetSD extends PartySheetMixinBase {
  * @param {object} socket - The module's socketlib socket.
  */
 export function registerPartyTravelSocket(socket) {
-	// Player-facing Party task selectors write to a GM-owned Party actor.
-	// Route those writes through the active GM while preserving ownership
-	// checks against the user who actually sent the request.
+	// Route Party owners' task choices through the GM, checking both Party
+	// and member ownership against the user who actually sent the request.
 	socket.register(
 		"sdxMutatePartyTravel",
 		async function(partyUuid, request) {

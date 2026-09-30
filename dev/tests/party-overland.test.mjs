@@ -65,6 +65,7 @@ function makeTravelSheet(prediction = undefined) {
 	]);
 	const sheet = { ...PartyTravel };
 	sheet.actor = {
+		isOwner: true,
 		getFlag: (_scope, key) => flags.get(key),
 	};
 	return sheet;
@@ -73,6 +74,21 @@ function makeTravelSheet(prediction = undefined) {
 const event = { preventDefault() {} };
 
 // --- weather delegation -----------------------------------------------------
+
+test("a Party non-owner cannot invoke weather providers or rolls", async () => {
+	let providerCalls = 0;
+	resetWorld({ active: true, enhancer: { overland: {
+		rollWeather: async () => { providerCalls++; return { ok: true, rolled: true }; },
+	} } });
+	const sheet = makeTravelSheet();
+	sheet.actor.isOwner = false;
+	let legacyRolls = 0;
+	sheet._rollDefaultWeather = async () => { legacyRolls++; };
+	await sheet._onRollWeather(event);
+	assert.equal(providerCalls, 0);
+	assert.equal(legacyRolls, 0);
+	assert.equal(chatCards, 0);
+});
 
 test("active Enhancer owns weather rolls and Extras posts no duplicate card", async () => {
 	resetWorld({
