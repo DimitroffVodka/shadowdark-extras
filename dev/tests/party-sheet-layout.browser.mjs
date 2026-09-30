@@ -1,5 +1,6 @@
 // Browser-only regression; run in a v14 client with a rendered PartySheetSD.
-// Invoke verifyPartySheetLayout(sheet). Node mocks cannot prove CSS geometry.
+// Invocation: dev/tools/README.md#party-sheet-browser-layout-regression.
+// Node mocks cannot prove CSS geometry.
 export async function verifyPartySheetLayout(sheet) {
 	const originalPosition = { ...sheet.position };
 	const originalTab = sheet.tabGroups.primary;
