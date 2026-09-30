@@ -181,6 +181,7 @@ export const SETTING_OWNERS = Object.freeze({
 	partyWeatherTableMenu: owners(FEATURE_IDS.PARTY_MANAGEMENT),
 	grinderMode: owners(FEATURE_IDS.PARTY_MANAGEMENT),
 	grinderHitDice: owners(FEATURE_IDS.PARTY_MANAGEMENT),
+	campingRollMode: owners(FEATURE_IDS.PARTY_MANAGEMENT),
 	...Object.fromEntries([
 		"showNpcCards",
 		"showItemCards",
@@ -1214,6 +1215,21 @@ export function registerSettings() {
 		default: 1,
 		type: Number,
 		choices: { 1: "1", 2: "2", 3: "3", 4: "4" },
+	});
+
+	// How the camp's task and dawn checks are rolled (#197): all at once, or in
+	// the tray's cinematic overlay, one task after another.
+	if (settingOwnerEnabled("campingRollMode")) game.settings.register(MODULE_ID, "campingRollMode", {
+		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.camping_roll_mode.name"),
+		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.camping_roll_mode.hint"),
+		scope: "world",
+		config: true,
+		default: "instant",
+		type: String,
+		choices: {
+			instant: game.i18n.localize("SHADOWDARK_EXTRAS.settings.camping_roll_mode.instant"),
+			cinematic: game.i18n.localize("SHADOWDARK_EXTRAS.settings.camping_roll_mode.cinematic"),
+		},
 	});
 
 	// ═══════════════════════════════════════════════════════════════

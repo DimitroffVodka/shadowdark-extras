@@ -7,6 +7,8 @@
  */
 
 import {
+	buildSdxCheck,
+	buildSdxRecapDice,
 	getSdxActorAbility,
 	isSdxRollAuthority,
 } from "./SDXRollerData.mjs";
@@ -539,19 +541,9 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 		// Toggle spinner state
 		this._broadcastToggle({ uuid, rolling: true });
 
-		const abilityId = getSdxActorAbility(this.rollData, uuid);
-		const isNone = abilityId === "none";
-		const mod = isNone ? 0 : (actor.system?.abilities?.[abilityId]?.mod ?? 0);
-
-		// Build roll formula based on advantage/disadvantage
-		let formula = isNone ? "1d20" : "1d20 + @mod";
-		let rollMode = "normal";
-		if (hasAdv) {
-			formula = isNone ? "2d20kh" : "2d20kh + @mod"; rollMode = "advantage";
-		}
-		else if (hasDis) {
-			formula = isNone ? "2d20kl" : "2d20kl + @mod"; rollMode = "disadvantage";
-		}
+		const { abilityId, isNone, mod, formula, rollMode } = buildSdxCheck(
+			this.rollData, uuid, actor, hasAdv ? "advantage" : hasDis ? "disadvantage" : "normal"
+		);
 
 		const roll = new Roll(formula, { mod });
 		await roll.evaluate();
@@ -811,20 +803,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 			: this.rollData.dc;
 
 		const hasDC = Number.isFinite(dc) && dc > 0;
-		const buildDice = r => {
-			const dice = r.diceResults ?? [];
-			const mode = r.rollMode ?? "normal";
-			if (dice.length <= 1 || mode === "normal") return dice.map(v => ({ value: v, css: "" }));
-			const kept = mode === "advantage" ? Math.max(...dice) : Math.min(...dice);
-			let marked = false;
-			return dice.map(v => {
-				if (!marked && v === kept) {
-					marked = true;
-					return { value: v, css: mode === "advantage" ? "sdx-die-adv" : "sdx-die-dis" };
-				}
-				return { value: v, css: "sdx-die-dropped" };
-			});
-		};
+		const buildDice = r => buildSdxRecapDice(r.diceResults, r.rollMode);
 		const entries = this.actors.map(a => {
 			const r = this._rolls[a.uuid] ?? {};
 			return {
@@ -864,7 +843,7 @@ export class SDXRollerOverlay extends HandlebarsApplicationMixin(ApplicationV2) 
 			contestants: contestEntries,
 		};
 
-		const html = await renderTemplate(
+		const html = await foundry.applications.handlebars.renderTemplate(
 			`modules/${MODULE_ID}/templates/sdx-roller-recap.hbs`,
 			templateData
 		);

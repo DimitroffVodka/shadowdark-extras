@@ -150,3 +150,37 @@ export function getCampingAbility(task = {}, selectedIndex = 0) {
 	const index = Number.parseInt(selectedIndex, 10);
 	return abilities[index] ?? abilities[0] ?? "none";
 }
+
+/**
+ * The DC a task is rolled against: the party's own, or 18 for Hunt on a harsh day.
+ * @param {Object} task
+ * @param {Object<string, number>} travelDCs The party's `travelDCs` flag
+ * @param {boolean} harsh
+ * @returns {number}
+ */
+export function campingTaskDc(task = {}, travelDCs = {}, harsh = false) {
+	return harsh && task.key === "hunt" ? 18 : Number(travelDCs?.[task.key] ?? 12);
+}
+
+/**
+ * What a task rolls, for the camp window and the summary: the activity's own
+ * description and one line, `WIS · DC 12`, with the note appended for a task
+ * that needs a campfire while there is none.
+ * @param {Object} params
+ * @param {Object} params.task
+ * @param {number|string} params.abilityIndex The camper's Ability select
+ * @param {number} params.dc
+ * @param {boolean} params.campfire Whether a campfire is established
+ * @param {string} params.disadvantageNote Already localized
+ * @returns {{description:string, line:string, disadvantage:boolean}}
+ */
+export function describeCampingTask({ task, abilityIndex = 0, dc = 12, campfire = false, disadvantageNote = "" }) {
+	const ability = getCampingAbility(task, abilityIndex);
+	const disadvantage = Boolean(task?.campfire) && !campfire;
+	const line = [
+		ability === "none" ? "" : String(ability).toUpperCase(),
+		`DC ${dc}`,
+		disadvantage ? disadvantageNote : "",
+	].filter(Boolean).join(" · ");
+	return { description: String(task?.description ?? "").trim(), line, disadvantage };
+}
