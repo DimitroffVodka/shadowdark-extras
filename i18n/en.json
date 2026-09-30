@@ -663,7 +663,7 @@
   "SHADOWDARK_EXTRAS.settings.grinder_hit_dice.name": "Grinder hit dice",
   "SHADOWDARK_EXTRAS.settings.grinder_hit_dice.hint": "How many class hit dice each camper rolls for HP on a Grinder rest.",
   "SHADOWDARK_EXTRAS.settings.camping_roll_mode.name": "Camp rolls",
-  "SHADOWDARK_EXTRAS.settings.camping_roll_mode.hint": "How the camping tasks and the dawn's CON checks are rolled. Instant rolls every camper's check at once and posts one chat card per task. Cinematic opens the full-screen roll overlay for each task in turn.",
+  "SHADOWDARK_EXTRAS.settings.camping_roll_mode.hint": "How the camping tasks, the dawn's CON checks and a Party sheet task roll are rolled. Instant rolls every character's check at once and posts one chat card per task. Cinematic opens the full-screen SDX roll overlay for each task in turn. The SDX Roller window always uses the overlay.",
   "SHADOWDARK_EXTRAS.settings.camping_roll_mode.instant": "Instant",
   "SHADOWDARK_EXTRAS.settings.camping_roll_mode.cinematic": "Cinematic",
   "SHADOWDARK_EXTRAS.settings.carousing_show_benefits.name": "Show Benefit Descriptions to Players",

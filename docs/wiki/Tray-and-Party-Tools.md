@@ -156,11 +156,13 @@ Party actor itself never needs player ownership. That path wants an active GM
 and SocketLib. Several characters can work the same task, and the GM can set a
 separate DC per task. The default is 12.
 
-Click a task header for an isolated task roll. That opens the cinematic SDX
-Roller for the assigned characters without touching camping supplies, rest
-recovery, or task rewards. The activity's configured banner image shows up in
-the roll overlay and the recap. Camping tasks launch from the Party sheet, which
-is where the assigned actors, abilities, DC, and rest context come from.
+Click a task header for an isolated task roll. The GM's click rolls the assigned
+characters at once and posts one chat card, without touching camping supplies,
+rest recovery, or task rewards (the **Camp rolls** setting below can bring back
+the cinematic SDX Roller overlay, which shows the activity's configured banner
+image; a player's click always opens the overlay, so they roll their own tile).
+Camping tasks launch from the Party sheet, which is where the assigned actors,
+abilities, DC, and rest context come from.
 
 Task names, allowed abilities, descriptions, campfire requirements, and banner
 art are all editable through **Configure Travel Activities**. The speed list
@@ -194,9 +196,10 @@ burning are left alone. Rations come out of each camper's own inventory first,
 then Party inventory, then another camper's pooled supply.
 
 **Camp rolls** is a world setting under Configure Settings. **Instant**, the
-default, rolls the camp as above. **Cinematic** opens the full-screen roll
-overlay for each task in turn, and for the dawn's interruption checks, and each
-character's tile is clicked to roll. The camp's order, DCs and results are the
+default, rolls the camp as above, and a Party sheet task header the same way.
+**Cinematic** opens the full-screen roll overlay for each task in turn, and for
+the dawn's interruption checks, and each character's tile is clicked to roll.
+The SDX Roller window always uses the overlay. The camp's order, DCs and results are the
 same either way, and the totals mean the same thing: both modes build each
 check through the same code.
 

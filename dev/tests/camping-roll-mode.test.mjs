@@ -12,7 +12,7 @@ installCanvasGlobals();
 installAppGlobals({ dom: makeSelectorDom() });
 const { CampingRestApp } = await import("../../scripts/party/CampingRestSD.mjs");
 const { SDXRollerApp } = await import("../../scripts/tray/SDXRollerApp.mjs");
-const { rollGroupInstant } = await import("../../scripts/tray/SDXRollerInstant.mjs");
+const { rollGroupInstant, rollTaskGroup } = await import("../../scripts/tray/SDXRollerInstant.mjs");
 
 const task = key => DEFAULT_TRAVEL_ACTIVITIES.find(entry => entry.key === key);
 const NOTE = "no fire";
@@ -346,4 +346,23 @@ test("dawn's CON checks are instant too, in the shape the dawn already reads", a
 	assert.deepEqual(result, { results: { "Actor.a": 13, "Actor.b": 6 }, canceled: false });
 	assert.equal(rolls.length, 2);
 	assert.equal(messages.length, 1);
+});
+
+test("a task group rolls instantly on a GM's client unless the world asks for cinematic; a player's click keeps the overlay", async t => {
+	const opened = [];
+	t.mock.method(SDXRollerApp, "dispatchGroupRoll", async rollData => { opened.push(rollData); return { results: {}, canceled: false }; });
+	const savedLookup = globalThis.fromUuidSync;
+	globalThis.fromUuidSync = () => null;
+	t.after(() => { globalThis.fromUuidSync = savedLookup; });
+	const rollData = { actors: ["Actor.a"], contestants: [], ability: "str", dc: 12 };
+	const roll = async (mode, isGM) => {
+		game.settings = { get: () => mode };
+		game.user = { isGM };
+		await rollTaskGroup(rollData);
+		return opened.length;
+	};
+	assert.equal(await roll(undefined, true), 0, "default: no overlay");
+	assert.equal(await roll("instant", true), 0);
+	assert.equal(await roll("cinematic", true), 1, "cinematic: the overlay");
+	assert.equal(await roll("instant", false), 2, "a player rolls their own tile");
 });

@@ -5,6 +5,7 @@
  */
 
 import { buildSdxCheck, buildSdxRecapDice } from "./SDXRollerData.mjs";
+import { SDXRollerApp } from "./SDXRollerApp.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -69,4 +70,19 @@ export async function rollGroupInstant(rollData) {
 		});
 	}
 	return { results, canceled: false };
+}
+
+/**
+ * A camp task's group roll, from the camp or the Party sheet's task header: in
+ * one pass on the GM's client, or, when the world asks for
+ * `campingRollMode: "cinematic"`, in the SDX Roller's overlay. A player who
+ * clicks a task header rolls their own tile in the overlay, as before.
+ * @param {Object} rollData
+ * @returns {Promise<{results: Object<string, number>, canceled: boolean}>}
+ */
+export function rollTaskGroup(rollData) {
+	const cinematic = game.settings.get(MODULE_ID, "campingRollMode") === "cinematic";
+	return cinematic || !game.user.isGM
+		? SDXRollerApp.dispatchGroupRoll(rollData)
+		: rollGroupInstant(rollData);
 }

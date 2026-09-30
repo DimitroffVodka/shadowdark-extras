@@ -363,7 +363,7 @@ test("Party sheet routes player travel writes through its GM socket", () => {
 	// dispatch + executeAsGM) moved to partytravel.mjs; the GM-side handler
 	// (registerPartyTravelSocket) stayed in PartySheetSD.mjs. Assert both.
 	assert.match(travelSource, /buildTravelTaskRollData\(/);
-	assert.match(travelSource, /SDXRollerApp\.dispatchGroupRoll\(rollData\)/);
+	assert.match(travelSource, /rollTaskGroup\(rollData\)/);
 	assert.match(travelSource, /executeAsGM\(\s*"sdxMutatePartyTravel"/);
 
 	// The GM-side handler moved out of the composition root in Phase 3, so both

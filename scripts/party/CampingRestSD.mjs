@@ -8,8 +8,7 @@
 
 import { getTravelActivities } from "./TravelActivitiesSettingsSD.mjs";
 import { buildTravelTaskRollData } from "../tray/SDXRollerData.mjs";
-import { SDXRollerApp } from "../tray/SDXRollerApp.mjs";
-import { rollGroupInstant } from "../tray/SDXRollerInstant.mjs";
+import { rollTaskGroup } from "../tray/SDXRollerInstant.mjs";
 import {
 	CAMPFIRE_TORCH_COST,
 	REST_DURATION_SECONDS,
@@ -874,16 +873,6 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		await this.partyActor.setFlag(MODULE_ID, "travelSelections", selections);
 	}
 
-	/**
-	 * Roll a group's checks: in one pass by default, or, when the world asks for
-	 * `campingRollMode: "cinematic"`, in the tray's full-screen overlay (#197).
-	 */
-	_dispatchRoll(rollData) {
-		return game.settings.get(MODULE_ID, "campingRollMode") === "cinematic"
-			? SDXRollerApp.dispatchGroupRoll(rollData)
-			: rollGroupInstant(rollData);
-	}
-
 	async _rollTaskGroup(task, campers, campfireEstablished) {
 		const actors = campers.map(camper => camper.actor);
 		const selections = Object.fromEntries(
@@ -896,7 +885,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 				actors.map(actor => [actor.uuid, "disadvantage"])
 			);
 		}
-		const result = await this._dispatchRoll(rollData);
+		const result = await rollTaskGroup(rollData);
 		return { dc, result };
 	}
 
@@ -916,7 +905,7 @@ export class CampingRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		const actors = campers.map(camper => camper.actor);
 		const selections = Object.fromEntries(campers.map(camper => [memberKey(camper.actor), 0]));
 		const rollData = buildTravelTaskRollData(task, actors, selections, 12);
-		return this._dispatchRoll(rollData);
+		return rollTaskGroup(rollData);
 	}
 
 	_buildRationPlan(campers) {
