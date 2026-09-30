@@ -4,7 +4,7 @@
 import { CampingRestApp } from "./CampingRestSD.mjs";
 import { PartyWeatherSettingsApp, getConfiguredPartyWeatherTable, getPartyWeatherTableUuid } from "./PartyWeatherSettingsSD.mjs";
 import { buildTravelTaskRollData } from "../tray/SDXRollerData.mjs";
-import { SDXRollerApp } from "../tray/SDXRollerApp.mjs";
+import { rollTaskGroup } from "../tray/SDXRollerInstant.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -316,7 +316,7 @@ export const PartyTravel = {
 			selections[taskKey] ?? {},
 			dc
 		);
-		SDXRollerApp.dispatchGroupRoll(rollData);
+		await rollTaskGroup(rollData);
 	},
 
 	/**

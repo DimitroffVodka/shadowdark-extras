@@ -54,6 +54,8 @@
 			<div class="sdx-camping-summary-task">
 				<strong>{{entry.taskName}}</strong>: {{entry.taskValue}}
 				<i class="fas {{#if entry.taskSuccess}}fa-check success{{else}}fa-xmark failure{{/if}}"></i>
+				{{#if entry.taskLine}}<small class="sdx-camping-summary-task-line">{{entry.taskLine}}</small>{{/if}}
+				{{#if entry.taskDescription}}<small class="sdx-camping-summary-task-description">{{entry.taskDescription}}</small>{{/if}}
 			</div>
 			{{/if}}
 			{{#if entry.benefits.length}}

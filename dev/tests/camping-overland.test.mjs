@@ -170,6 +170,7 @@ test("harsh Hunt uses DC 18 but leaves other tasks and legacy DCs alone", async 
 	const party = actor("party");
 	party.getFlag = (_scope, key) => key === "travelDCs" ? { hunt: 9, cook: 15 } : undefined;
 	const pc = actor("pc");
+	game.settings = { get: (_module, key) => key === "campingRollMode" ? "cinematic" : undefined };
 	t.mock.method(SDXRollerApp, "dispatchGroupRoll", async () => ({ results: {} }));
 	const campers = [{ actor: pc, abilityIndex: 0 }];
 	const hunt = { key: "hunt", name: "Hunt", abilities: ["WIS"] };
@@ -365,10 +366,43 @@ test("a deferred camp rolls the tasks and eats, then stores the rest for the daw
 	assert.deepEqual(reply, { completed: true, pending: true, fed: { pc: true }, mountsFed: 0 });
 	assert.equal(pc.items[0].system.quantity, 1, "one ration eaten at camp");
 	const [stored] = pending().campers;
-	assert.deepEqual([stored.actorId, stored.result, stored.ate], ["pc", { taskKey: "battenDown", value: 15, success: true }, true]);
+	assert.deepEqual([stored.actorId, stored.result, stored.ate], ["pc", { taskKey: "battenDown", value: 15, success: true, abilityIndex: null, dc: 12 }, true]);
 	assert.equal(party.effects.get(REST).disabled, true, "kept as a disabled effect, never applied");
 	await app._runProcedure({ campers: [{ actor: pc, taskKey: "" }], campfireMode: "none", torchPlan: { complete: false } });
 	assert.deepEqual([party.effects.size, pending().campers[0].result], [1, null], "another camp replaces the waiting rest");
+});
+
+test("the dawn summary shows the ability and DC the camp rolled, not the party's edited ones (#198 review)", async () => {
+	setup();
+	const { party } = camped("party");
+	const pc = actor("pc", 2);
+	game.actors = new Map([["pc", pc]]);
+	const flags = {};
+	party.getFlag = (_scope, key) => flags[key];
+	const app = new CampingRestApp(party, [pc], { deferRest: true, onComplete: () => {} });
+	app._rollTaskGroup = async () => ({ dc: 12, result: { results: { "Actor.pc": 11 } } });
+	await app._runProcedure({ campers: [{ actor: pc, taskKey: "battenDown", abilityIndex: 0 }], campfireMode: "none", torchPlan: { complete: false } });
+	flags.travelSelections = { battenDown: { pc: 1 } };
+	flags.travelDCs = { battenDown: 8 };
+	let posted = null;
+	const originalPost = CampingRestApp.prototype._postSummary;
+	CampingRestApp.prototype._postSummary = async data => { posted = data; };
+	try {
+		await camping.finishCampingRest({ party });
+		const [row] = posted.summary;
+		assert.deepEqual([row.taskLine, row.taskValue, row.taskSuccess], ["WIS · DC 12 · SHADOWDARK_EXTRAS.camping_rest.task_disadvantage_rolled", 11, false]);
+	}
+	finally {
+		CampingRestApp.prototype._postSummary = originalPost;
+	}
+});
+
+test("a rest saved before the rolled ability and DC were kept reads the party's current ones (#198 review)", () => {
+	const party = actor("party");
+	party.getFlag = (_scope, key) => ({ travelSelections: { battenDown: { pc: 1 } }, travelDCs: { battenDown: 8 } })[key];
+	const app = new CampingRestApp(party, []);
+	const battenDown = { key: "battenDown", abilities: ["WIS", "CON"], campfire: false, description: "" };
+	assert.equal(app._describeRolledTask({ task: battenDown }, actor("pc"), true).line, "CON · DC 8");
 });
 
 /** Leave the party a rest for these campers to finish at dawn, as a deferred camp does. */
