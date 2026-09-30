@@ -483,7 +483,9 @@ export function getCarousingSession() {
 	const defaultSession = { selectedTableId: "default", selectedTier: null, confirmations: {}, phase: "setup", results: {}, modifiers: {} };
 	if (!journal) return defaultSession;
 	const session = journal.getFlag(MODULE_ID, "carousingSession") || defaultSession;
-	if (!session.modifiers) session.modifiers = {};
+	// A session can be stored with keys missing, e.g. by a single modifier written
+	// before any full session was saved, so callers can rely on every key.
+	for (const [key, value] of Object.entries(defaultSession)) session[key] ??= value;
 	return session;
 }
 
