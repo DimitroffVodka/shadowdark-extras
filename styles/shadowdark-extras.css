@@ -595,6 +595,8 @@
 }
 
 .shadowdark-extras-party .party-title input {
+    height: auto;
+    line-height: 1.2;
     font-size: 28px;
     font-weight: bold;
     color: var(--party-text);
@@ -640,17 +642,29 @@
     background: linear-gradient(180deg, #0d0d0d 0%, #000000 100%);
     border-bottom: 1px solid var(--party-border);
     flex: 0 0 auto !important;
-    min-height: unset !important;
-    height: 40px;
+    min-height: 40px !important;
+    height: auto;
     margin: 0px;
     padding: 0 10px;
     display: flex;
     align-items: stretch;
+    gap: 0;
+    line-height: normal;
+    border-top: none;
     position: relative;
     z-index: 1;
 }
 
 .shadowdark-extras-party .SD-nav .navigation-tab {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: auto;
+    margin: 0;
+    line-height: 1;
+    white-space: nowrap;
     color: var(--party-text-muted);
     padding: 7px 4px;
     font-size: 1.3em;
@@ -678,7 +692,7 @@
 }
 
 .shadowdark-extras-party .SD-nav .navigation-tab i {
-    margin-right: 8px;
+    margin-right: 0;
     font-size: 0.9em;
 }
 
@@ -968,6 +982,11 @@
 }
 
 .shadowdark-extras-party .party-actions button {
+    display: block;
+    flex: 1;
+    height: auto;
+    line-height: 1.5;
+    white-space: normal;
     padding: 1px 16px;
     background: var(--party-bg-light);
     color: var(--party-text);
