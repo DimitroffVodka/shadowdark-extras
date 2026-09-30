@@ -10,7 +10,7 @@ import { getMaskedItemName, isItemUnidentified } from "./party-unidentified.mjs"
 /**
  * The prototype these overrides fall back to.
  *
- * These methods override ActorSheet's drag/drop entry points and used to call
+ * These methods override ActorSheetV2's drag/drop entry points and used to call
  * `super` from inside the class body. They are now object-literal methods
  * merged onto the prototype with Object.assign, and `super` in an object
  * literal resolves against that literal's prototype — Object.prototype — not
@@ -18,10 +18,10 @@ import { getMaskedItemName, isItemUnidentified } from "./party-unidentified.mjs"
  *
  * Resolved at call time, not at module load, because `foundry` does not exist
  * when this module is imported under node:test. The expression is the same one
- * PartySheetSD extends.
+ * PartySheetSD extends. V2 drop handlers receive resolved Documents.
  */
 function baseSheetPrototype() {
-	return (foundry.appv1?.sheets?.ActorSheet ?? ActorSheet).prototype;
+	return foundry.applications.sheets.ActorSheetV2.prototype;
 }
 
 export const PartyDropTransfer = {
@@ -195,10 +195,8 @@ export const PartyDropTransfer = {
 	 * Handle dropping an actor onto the party sheet
 	 * @inheritdoc
 	 */
-	async _onDropActor(event, data) {
+	async _onDropActor(event, actor) {
 		if (!this.actor.isOwner) return false;
-
-		const actor = await fromUuid(data.uuid);
 		if (!actor) return false;
 
 		// Only allow Player and NPC type actors
@@ -240,10 +238,8 @@ export const PartyDropTransfer = {
 	 * Handle dropping an item onto the party sheet
 	 * @inheritdoc
 	 */
-	async _onDropItem(event, data) {
+	async _onDropItem(event, item) {
 		if (!this.actor.isOwner) return false;
-
-		const item = await fromUuid(data.uuid);
 		if (!item) return false;
 
 		// Check if item is being dropped on a member (for transfer)
@@ -271,7 +267,17 @@ export const PartyDropTransfer = {
 		}
 
 		// Standard item drop to party inventory
-		return baseSheetPrototype()._onDropItem.call(this, event, data);
+		return baseSheetPrototype()._onDropItem.call(this, event, item);
+	},
+
+	/** ActorSheetV2 has no folder import; retain the V1 bulk Item drop behavior. */
+	async _onDropFolder(event, folder) {
+		if (!this.actor.isOwner || folder.type !== "Item") return [];
+		const itemData = await Promise.all(folder.contents.map(async item => {
+			if (typeof item.toObject !== "function") item = await fromUuid(item.uuid);
+			return item.toObject();
+		}));
+		return this.actor.createEmbeddedDocuments("Item", itemData);
 	},
 
 	_isContainerItem(item) {

@@ -221,7 +221,7 @@ export class TravelSpeedsSettingsApp extends HandlebarsApplicationMixin(Applicat
 		// Refresh any open party sheets to show changes
 		for (const app of foundry.applications.instances.values()) {
 			if (app.constructor.name === "PartySheetSD") {
-				app.render(false);
+				app.render();
 			}
 		}
 	}

@@ -1,27 +1,47 @@
-// Characterization tests for PartySheetSD, captured BEFORE it is split.
-//
-// The sheet is 1,918 lines. Unlike TrayApp its weight is not one giant method
-// but thirty-eight of them, so what has to be pinned before anything moves is
-// different: the routing table activateListeners builds, and the arithmetic
-// and authorization the methods actually perform.
-//
-// PartySheetSD is an AppV1 ActorSheet, so it binds through jQuery —
-// html.find(sel).click(fn) — and makeJquery records those the same way
-// makeSelectorDom records addEventListener. Because every handler is passed as
-// `this._onFoo.bind(this)`, the recorded function's name carries the method it
-// routes to, which makes the manifest a selector -> event -> method table
-// rather than just a list of wired selectors.
+// Party sheet routing, mechanics and ApplicationV2 lifecycle contracts.
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import "./helpers/foundry-loader.mjs";
 import { installCanvasGlobals } from "./helpers/pixi-harness.mjs";
-import { installAppGlobals, makeSelectorDom, makeJquery } from "./helpers/dom-harness.mjs";
+import { installAppGlobals, makeSelectorDom } from "./helpers/dom-harness.mjs";
 
 const dom = makeSelectorDom();
 installCanvasGlobals();
-installAppGlobals({ dom });
+const { hooks } = installAppGlobals({ dom });
+
+// Narrow stand-in for the v14.368 ActorSheetV2 seams used here. Actor is a
+// getter, tabs live on tabGroups, and _onDropItem receives a Document, not V1
+// drag data. This is contract proof, not Foundry rendering or validation.
+class ActorSheetV2 extends foundry.applications.api.ApplicationV2 {
+	constructor(options) {
+		super(options);
+		this.document = options.document;
+		this.tabGroups = { primary: this.constructor.TABS?.primary.initial };
+	}
+
+	get actor() { return this.document; }
+	get isEditable() { return this.actor?.isOwner === true; }
+	_prepareTabs(group) {
+		return Object.fromEntries(this.constructor.TABS[group].tabs.map(({ id }) => {
+			const active = this.tabGroups[group] === id;
+			return [id, { id, group, active, cssClass: active ? "active" : "" }];
+		}));
+	}
+	async _prepareContext() { return { document: this.document, tabs: this._prepareTabs("primary") }; }
+	async _onRender() {
+		this.baseRenders = (this.baseRenders ?? 0) + 1;
+		if (!this.isEditable) this._toggleDisabled(true);
+		this._dragDrop.bind(this.element);
+	}
+	_toggleDisabled(disabled) {
+		for (const control of this.element.querySelectorAll("input, select, button")) control.disabled = disabled;
+	}
+	_onChangeForm(config, event) { this.formChanges = [...this.formChanges ?? [], event.target.name]; }
+}
+foundry.applications.sheets.ActorSheetV2 = ActorSheetV2;
 globalThis.game.settings = { get: () => undefined, set: async () => {}, register() {} };
 globalThis.game.actors = new Map();
 globalThis.game.users = new Map();
@@ -41,7 +61,10 @@ const { getBrightestPartyLight, getPartiesContainingActor, isPartyActor } = modu
 /** A sheet with no Foundry construction behind it — methods only. */
 function makeSheet(actor = null) {
 	const sheet = Object.create(PartySheetSD.prototype);
-	sheet.actor = actor;
+	Object.defineProperty(sheet, "actor", { value: actor, configurable: true });
+	sheet.document = actor;
+	sheet.tabGroups = { primary: "tab-members" };
+	sheet._dragDrop = { bind() {}, dragSelector: ".draggable" };
 	return sheet;
 }
 
@@ -67,7 +90,7 @@ function makeActor({ id = "a1", name = id, type = "Player", flags = {}, items = 
 
 // --- the routing table ------------------------------------------------------
 
-// Every binding activateListeners makes, as selector :: event -> method.
+// Every native binding _onRender makes, as selector :: event -> method.
 const ROUTING = [
 	".coin-value :: change -> bound _onCoinChange",
 	".item-image :: click -> bound _onItemChat",
@@ -106,26 +129,28 @@ const ROUTING = [
 	"[data-action='xp-increment'] :: click -> bound _onXpIncrement",
 ];
 
-function bind() {
-	const listenerDom = makeSelectorDom();
-	const sheet = makeSheet();
+async function bind() {
+	const listenerDom = makeSelectorDom({ seedAll: true });
+	const sheet = makeSheet(makeActor());
 	const contextMenus = [];
 	sheet._itemContextMenu = element => contextMenus.push(element);
-	sheet.activateListeners(makeJquery(listenerDom));
+	sheet.element = listenerDom.document;
+	sheet.parts = { party: listenerDom.document };
+	await sheet._onRender({}, {});
 	return { sheet, dom: listenerDom, contextMenus };
 }
 
-test("activateListeners wires exactly this selector, event and method table", () => {
-	const { dom: bound } = bind();
+test("_onRender wires exactly the original selector, event and method table", async () => {
+	const { dom: bound } = await bind();
 
 	const routes = bound.bindings
-		.map(b => `${b.selector} :: ${b.event} -> ${b.handler.name || "(anonymous)"}`)
+		.map(b => `${b.selector.replace(/\[0\]$/, "")} :: ${b.event} -> ${b.handler.name || "(anonymous)"}`)
 		.sort();
 	assert.deepEqual(routes, ROUTING);
 });
 
-test("every routed method exists on the prototype, mixins included", () => {
-	const { dom: bound } = bind();
+test("every routed method exists on the prototype, mixins included", async () => {
+	const { dom: bound } = await bind();
 
 	for (const binding of bound.bindings) {
 		const method = binding.handler.name.replace(/^bound /, "");
@@ -143,14 +168,96 @@ test("the three Phase 5.1 mixins are merged onto the prototype", () => {
 	}
 });
 
-test("the item context menu is built against the raw element, not the jQuery wrapper", () => {
-	const { contextMenus } = bind();
+test("the item context menu is built against the replaced native part", async () => {
+	const { contextMenus } = await bind();
 
 	assert.equal(contextMenus.length, 1);
 	assert.equal(typeof contextMenus[0].querySelector, "function");
 });
 
 // --- party token recall -----------------------------------------------------
+
+test("PartySheetSD uses ActorSheetV2 with the existing identity and native form options", () => {
+	const actor = makeActor({ name: "The Company", flags: { isParty: true } });
+	const sheet = new PartySheetSD({ document: actor });
+	assert.ok(sheet instanceof ActorSheetV2, "must not construct a V1 ActorSheet");
+	assert.equal(sheet.constructor.name, "PartySheetSD");
+	assert.equal(sheet.actor, actor);
+	assert.equal(sheet.title, actor.name);
+	assert.equal(PartySheetSD.DEFAULT_OPTIONS.form.submitOnChange, true);
+	assert.equal(PartySheetSD.DEFAULT_OPTIONS.form.closeOnSubmit, false);
+	assert.equal(PartySheetSD.PARTS.party.template, "modules/shadowdark-extras/templates/party.hbs");
+});
+
+test("the template is one non-form part with V2 tabs and native portrait editing", () => {
+	const template = readFileSync(new URL("../../templates/party.hbs", import.meta.url), "utf8");
+	assert.doesNotMatch(template, /<\/?form\b/, "ActorSheetV2 supplies the outer form");
+	assert.match(template, /<nav class="SD-nav tabs flex0"/);
+	assert.match(template, /data-action="editImage"[^>]*data-edit="img"/);
+	assert.doesNotMatch(template, /name="travelSpeed"/, "custom travel selectors must not submit actor schema fields");
+	for (const id of ["members", "inventory", "travel", "quests", "description"]) {
+		assert.match(template, new RegExp(`data-action="tab" data-group="primary" data-tab="tab-${id}"`));
+		assert.ok(template.split(`tabs.tab-${id}.cssClass`).length >= 3, `${id} preserves the active nav and body on re-render`);
+	}
+});
+
+test("only the native name field autosubmits, not treasury or relayed travel controls", () => {
+	const sheet = makeSheet(makeActor());
+	for (const name of ["name", "", "travelSpeed"]) {
+		sheet._onChangeForm({}, { target: { name } });
+	}
+	assert.deepEqual(sheet.formChanges, ["name"]);
+});
+
+test("read-only Party forms retain owned-member travel choices and Weather only", () => {
+	const selector = "[data-action='select-travel-task'], [data-action='select-travel-ability']";
+	const listenerDom = makeSelectorDom({ lists: {
+		"input, select, button": [{ name: "name" }],
+		[selector]: [
+			{ dataset: { action: "select-travel-task", memberId: "mine" } },
+			{ dataset: { action: "select-travel-ability", memberId: "mine", taskKey: "hunt" } },
+			{ dataset: { action: "select-travel-ability", memberId: "mine", taskKey: "" } },
+			{ dataset: { action: "select-travel-task", memberId: "theirs" } },
+		],
+	} });
+	globalThis.game.user = { isGM: false };
+	globalThis.game.actors = new Map([["mine", makeActor()], ["theirs", makeActor({ isOwner: false })]]);
+	const sheet = makeSheet(makeActor({ isOwner: false }));
+	sheet.element = listenerDom.document;
+	sheet._toggleDisabled(true);
+	assert.equal(listenerDom.document.querySelectorAll("input, select, button")[0].disabled, true);
+	assert.deepEqual(listenerDom.document.querySelectorAll(selector).map(el => el.disabled), [false, false, true, true]);
+	assert.equal(listenerDom.document.querySelector("[data-action='roll-weather']").disabled, false);
+});
+
+test("V2 drop permission retains owned-member travel without Party ownership", () => {
+	globalThis.game.user = { isGM: false };
+	globalThis.game.actors = new Map([["mine", makeActor()], ["theirs", makeActor({ isOwner: false })]]);
+	const sheet = makeSheet(makeActor({ isOwner: false, flags: { members: ["mine"] } }));
+	assert.equal(sheet._canDragDrop(), true);
+	Object.defineProperty(sheet, "actor", { value: makeActor({ isOwner: false, flags: { members: ["theirs"] } }) });
+	assert.equal(sheet._canDragDrop(), false);
+});
+
+test("native rendering keeps all roster, item and travel drag sources", async () => {
+	const { sheet } = await bind();
+	assert.equal(sheet.baseRenders, 1, "the core lifecycle must still bind DragDrop");
+	assert.equal(sheet._dragDrop.dragSelector, ".item-list .item, .member, .sdx-task-member");
+});
+
+test("member and Enhancer changes find V2 instances rather than ui.windows", () => {
+	module.registerPartySheetRerenderHooks();
+	const sheet = makeSheet(makeActor({ flags: { members: ["hero"] } }));
+	let renders = 0;
+	sheet.render = () => { renders++; };
+	globalThis.ui.windows = {};
+	foundry.applications.instances = new Map([["party", sheet], ["other", { render() { throw new Error("unrelated app rendered"); } }]]);
+	for (const name of ["updateActor", "updateItem", "createItem", "deleteItem", "shadowdark-enhancer.questsChanged", "shadowdark-enhancer.rumorsChanged", "shadowdark-enhancer.overlandChanged"]) {
+		const actor = makeActor({ id: "hero" });
+		hooks.find(entry => entry.name === name).fn(name.endsWith("Item") ? { parent: actor } : actor);
+	}
+	assert.equal(renders, 7);
+});
 
 test("recall removes every Player-member token while leaving NPC and Party tokens", async () => {
 	const player = makeActor({ id: "hero", type: "Player" });
@@ -816,6 +923,60 @@ test("clearing a task deletes every selection and sets none", async () => {
 });
 
 // --- delegation to the base sheet -------------------------------------------
+
+test("a roster or travel portrait still drags the Actor UUID to the canvas", () => {
+	const sheet = makeSheet(makeActor());
+	for (const selector of [".member", ".sdx-task-member"]) {
+		const row = { dataset: { uuid: "Actor.hero" } };
+		const data = [];
+		sheet._onDragStart({
+			currentTarget: { classList: { contains: () => false }, closest: key => key === selector ? row : null },
+			dataTransfer: { setData: (type, value) => data.push([type, JSON.parse(value)]) },
+		});
+		assert.deepEqual(data, [["text/plain", { type: "Actor", uuid: "Actor.hero" }]]);
+	}
+});
+
+test("V2 Item Documents still transfer to an owned member and move only from Party inventory", async () => {
+	const actor = makeActor();
+	const member = makeActor({ id: "hero" });
+	uuidTable = new Map([[member.uuid, member]]);
+	const sheet = makeSheet(actor);
+	const transfers = [];
+	sheet._transferItemToActor = async (...args) => transfers.push(args);
+	const event = { target: { closest: () => ({ dataset: { uuid: member.uuid } }) } };
+	for (const parent of [actor, null]) {
+		const item = { name: "Rope", parent };
+		assert.equal(await sheet._onDropItem(event, item), true);
+		assert.deepEqual(transfers.at(-1), [item, member, { move: parent === actor }]);
+	}
+	const readonly = makeSheet(makeActor({ isOwner: false }));
+	assert.equal(await readonly._onDropItem(event, { name: "Rope" }), false);
+});
+
+test("V2 Actor Documents still add roster members and enforce Party ownership", async () => {
+	const party = makeActor({ type: "NPC", flags: { members: [] } });
+	const sheet = makeSheet(party);
+	const member = makeActor({ id: "hero" });
+	assert.equal(await sheet._onDropActor({}, member), true);
+	assert.deepEqual(party.getFlag(MODULE_ID, "members"), ["hero"]);
+	assert.equal(await makeSheet(makeActor({ isOwner: false }))._onDropActor({}, member), false);
+});
+
+test("Item folder drops retain V1 bulk inventory creation instead of the V2 no-op", async () => {
+	const actor = makeActor();
+	const created = [];
+	actor.createEmbeddedDocuments = async (...args) => { created.push(args); return args[1]; };
+	const sheet = makeSheet(actor);
+	const data = { name: "Rope", type: "Basic" };
+	const item = { toObject: () => data };
+	uuidTable = new Map([["Compendium.items.rope", item]]);
+	const folder = { type: "Item", contents: [item, { uuid: "Compendium.items.rope" }] };
+	assert.deepEqual(await sheet._onDropFolder({}, folder), [data, data]);
+	assert.deepEqual(created, [["Item", [data, data]]]);
+	assert.deepEqual(await sheet._onDropFolder({}, { type: "Actor" }), []);
+	assert.deepEqual(await makeSheet(makeActor({ isOwner: false }))._onDropFolder({}, folder), []);
+});
 //
 // These three methods override ActorSheet's drag/drop entry points and end in
 // a fallback to the base implementation. Inside the class body that was
@@ -844,8 +1005,8 @@ function makeDelegatingSheet() {
 			return "base drop item";
 		},
 	};
-	const saved = { appv1: globalThis.foundry.appv1 };
-	globalThis.foundry.appv1 = { sheets: { ActorSheet: { prototype: base } } };
+	const saved = Object.fromEntries(Object.keys(base).map(key => [key, ActorSheetV2.prototype[key]]));
+	Object.assign(ActorSheetV2.prototype, base);
 	// foundry.applications is a vivifying proxy, so assigning the whole branch
 	// is shadowed by its overrides; set the leaf directly instead.
 	globalThis.foundry.applications.ux.TextEditor.implementation.getDragEventData =
@@ -855,7 +1016,7 @@ function makeDelegatingSheet() {
 		sheet,
 		reached,
 		restore: () => {
-			globalThis.foundry.appv1 = saved.appv1;
+			Object.assign(ActorSheetV2.prototype, saved);
 			delete globalThis.foundry.applications.ux.TextEditor.implementation.getDragEventData;
 		},
 	};
@@ -896,11 +1057,11 @@ test("an item dropped outside a member row falls back to the base sheet", async 
 	try {
 		uuidTable = new Map([["Item.x", { name: "Rope", parent: null }]]);
 		const event = { target: { closest: () => null } };
-		const data = { type: "Item", uuid: "Item.x" };
+		const data = uuidTable.get("Item.x");
 
 		assert.equal(await sheet._onDropItem(event, data), "base drop item");
 		assert.deepEqual(reached.map(r => r[0]), ["_onDropItem"]);
-		assert.deepEqual(reached[0][2], data, "the payload is forwarded, not dropped");
+		assert.equal(reached[0][2], data, "the resolved Item Document is forwarded, not V1 drag data");
 	}
 	finally {
 		restore();

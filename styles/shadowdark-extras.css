@@ -515,7 +515,16 @@
     min-height: 610px;
 }
 
-.shadowdark-extras-party form {
+.shadowdark-extras-party .window-content {
+    padding: 0;
+    gap: 0;
+    min-height: 0;
+}
+
+.shadowdark-extras-party [data-application-part="party"] {
+    flex: 1;
+    min-height: 0;
+    position: relative;
     background: var(--party-bg-dark);
     gap: 0;
 }
@@ -530,8 +539,8 @@
 }
 
 /* Force compact layout - kill all flex grow on header/nav */
-.shadowdark-extras-party form.flexcol>header,
-.shadowdark-extras-party form.flexcol>nav {
+.shadowdark-extras-party [data-application-part="party"]>header,
+.shadowdark-extras-party [data-application-part="party"]>nav {
     flex: 0 0 auto !important;
 }
 
@@ -677,6 +686,8 @@
 .shadowdark-extras-party .SD-content-body {
     background: var(--party-bg-medium);
     padding: 15px;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 /* ============================================
@@ -811,22 +822,22 @@
 }
 
 /* Nav styling when party has custom header background */
-.shadowdark-extras-party form:has(.sdx-party-header-bg-extension) .SD-nav {
+.shadowdark-extras-party [data-application-part="party"]:has(.sdx-party-header-bg-extension) .SD-nav {
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(2px);
 }
 
-.shadowdark-extras-party form:has(.sdx-party-header-bg-extension) .SD-nav .navigation-tab {
+.shadowdark-extras-party [data-application-part="party"]:has(.sdx-party-header-bg-extension) .SD-nav .navigation-tab {
     color: #ccc;
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
 }
 
-.shadowdark-extras-party form:has(.sdx-party-header-bg-extension) .SD-nav .navigation-tab:hover {
+.shadowdark-extras-party [data-application-part="party"]:has(.sdx-party-header-bg-extension) .SD-nav .navigation-tab:hover {
     color: #fff;
     text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
 }
 
-.shadowdark-extras-party form:has(.sdx-party-header-bg-extension) .SD-nav .navigation-tab.active {
+.shadowdark-extras-party [data-application-part="party"]:has(.sdx-party-header-bg-extension) .SD-nav .navigation-tab.active {
     color: #fff;
     text-shadow: 0 0 10px rgb(255 255 255 / 80%);
 }

@@ -110,7 +110,7 @@ export const PartyTravel = {
 					{ message: error?.message || String(error) }
 				)
 			);
-			this.render(false);
+			this.render();
 			return null;
 		}
 	},

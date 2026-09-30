@@ -2,12 +2,12 @@
   "$comment": "Static registration call-site inventory. Keyed by module basename so it survives feature-folder moves. Order within each module and the root's register/init invocation order are contracts; runtime firing behaviour is proved by the smoke matrix, not by this file. Regenerate only with a reviewed reason: npm run snapshot:registrations -- --write",
   "totals": {
     "Hooks.once": 36,
-    "Hooks.on": 257,
+    "Hooks.on": 261,
     "Hooks.off": 9,
     "socket.register": 53,
     "libWrapper.register": 3,
     "socketlib.registerModule": 3,
-    "all": 361
+    "all": 365
   },
   "modules": {
     "AnimationEffectDedupSD.mjs": [
@@ -125,7 +125,8 @@
       "Hooks.on:renderSidebar"
     ],
     "MedkitSD.mjs": [
-      "Hooks.on:getActorSheetHeaderButtons"
+      "Hooks.on:getActorSheetHeaderButtons",
+      "Hooks.on:getHeaderControlsPartySheetSD"
     ],
     "MysteriousCasting.mjs": [
       "Hooks.on:renderNpcSheetSD",
@@ -178,6 +179,7 @@
     ],
     "SheetLockManager.mjs": [
       "Hooks.on:renderActorSheet",
+      "Hooks.on:renderPartySheetSD",
       "Hooks.on:renderApplication",
       "Hooks.on:preUpdateActor",
       "Hooks.on:preCreateItem",
@@ -279,6 +281,7 @@
     ],
     "UnidentifiedDisplaySD.mjs": [
       "Hooks.on:renderActorSheet",
+      "Hooks.on:renderPartySheetSD",
       "Hooks.on:renderItemDirectory",
       "Hooks.on:renderCompendiumDirectory",
       "Hooks.on:renderCompendium",
@@ -487,7 +490,7 @@
       "Hooks.on:renderPlayerSheetSD",
       "Hooks.on:renderNpcSheetSD",
       "Hooks.on:renderNpcSheetSD",
-      "Hooks.on:renderActorSheet",
+      "Hooks.on:renderPartySheetSD",
       "Hooks.on:renderItemSheet",
       "Hooks.on:preUpdateItem",
       "Hooks.on:preUpdateActor",
@@ -498,7 +501,7 @@
       "Hooks.on:setup",
       "Hooks.on:updateItem",
       "Hooks.on:updateActor",
-      "Hooks.on:renderActorSheet",
+      "Hooks.on:renderPartySheetSD",
       "Hooks.on:createToken",
       "Hooks.on:renderApplication",
       "Hooks.once:ready",
@@ -517,6 +520,7 @@
       "Hooks.on:createActiveEffect",
       "Hooks.on:updateActor",
       "Hooks.on:renderActorSheet",
+      "Hooks.on:renderPartySheetSD",
       "Hooks.on:createItem"
     ],
     "spell-item-macros.mjs": [

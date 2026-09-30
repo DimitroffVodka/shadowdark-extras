@@ -25,6 +25,7 @@ export default class SheetLockManager {
 
 		// Register Hooks
 		Hooks.on("renderActorSheet", this._onRenderActorSheet.bind(this));
+		Hooks.on("renderPartySheetSD", this._onRenderActorSheet.bind(this));
 		Hooks.on("renderApplication", this._onRenderApplication.bind(this));
 		Hooks.on("preUpdateActor", this._onPreUpdateActor.bind(this));
 		Hooks.on("preCreateItem", this._onPreCreateItem.bind(this));
@@ -60,13 +61,14 @@ export default class SheetLockManager {
 
 	static _onRenderActorSheet(app, html, data) {
 		if (!app.actor || !app.actor.isOwner) return;
+		html = $(html);
 
 		// 1. Inject or Update Lock Toggle (GM Only)
 		if (game.user.isGM) {
 			this._injectLockToggle(app, html);
 		}
 
-		const root = html.closest(".window-app");
+		const root = html.closest(".window-app, .application");
 		const config = this.getConfig();
 
 		// 2. Apply or Remove Lock UI (Everyone)
@@ -130,7 +132,7 @@ export default class SheetLockManager {
 		// We need to use CAPTURE phase to intercept the event before Foundry's own listeners (which usually sit on the list container) see it.
 		// jQuery's .on() does not support capture. We must use native addEventListener.
 
-		const rootElement = html.closest(".window-app")[0];
+		const rootElement = html.closest(".window-app, .application")[0];
 		if (!rootElement) return;
 
 		// Remove old listener if exists to prevent duplicates
@@ -236,8 +238,8 @@ export default class SheetLockManager {
 
 
 	static _injectLockToggle(app, html) {
-		const header = html.closest(".window-app").find(".window-header .window-title");
-		let toggleBtn = html.closest(".window-app").find(".sdx-sheet-lock-toggle");
+		const header = html.closest(".window-app, .application").find(".window-header .window-title");
+		let toggleBtn = html.closest(".window-app, .application").find(".sdx-sheet-lock-toggle");
 
 		const isLocked = this.isLocked(app.actor);
 		const iconClass = isLocked ? "fas fa-lock" : "fas fa-lock-open";

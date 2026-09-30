@@ -811,7 +811,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 	$header.append($settingsMenu);
 
 	// Use a unique namespace for this app instance to avoid conflicts
-	const eventNS = `.sdxPartyHeaderMenu${app.appId}`;
+	const eventNS = `.sdxPartyHeaderMenu${app.id}`;
 
 	// Clean up any existing handlers first (in case of re-render)
 	$(document).off(eventNS);
@@ -849,7 +849,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 			callback: async path => {
 				await actor.setFlag(MODULE_ID, "partyHeaderBackground", path);
 				// Force sheet re-render to apply the background properly
-				app.render(false);
+				app.render();
 			},
 		});
 		fp.render(true);
@@ -868,7 +868,7 @@ export function injectPartyHeaderCustomization(app, html, actor) {
 		await actor.unsetFlag(MODULE_ID, "partyHeaderBackground");
 
 		// Force sheet re-render
-		app.render(false);
+		app.render();
 	});
 
 	// Portrait click to launch tokenizer (if vtta-tokenizer module is active)
@@ -958,9 +958,8 @@ function applyPartyHeaderBackground(html, actor) {
 		}
 	}
 
-	// Find the form - html might BE the form or contain it
-	let $form = html.is("form") ? html : html.find("form").first();
-	if (!$form.length) $form = html.closest("form");
+	// The V2 form includes the window frame; keep the background inside its part.
+	const $form = html.find('[data-application-part="party"]').first();
 	if (!$form.length) return;
 
 	const $header = $form.find(".party-header.SD-header").first();

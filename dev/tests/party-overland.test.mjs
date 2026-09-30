@@ -392,10 +392,10 @@ test("party sheets re-render on the Enhancer Overland hook", () => {
 	let otherRenders = 0;
 	const party = Object.create(PartySheetSD.prototype);
 	party.render = () => { partyRenders++; };
-	globalThis.ui.windows = {
-		party,
-		other: { render: () => { otherRenders++; } },
-	};
+	foundry.applications.instances = new Map([
+		["party", party],
+		["other", { render: () => { otherRenders++; } }],
+	]);
 
 	hook.fn();
 
@@ -411,10 +411,10 @@ test("party sheets re-render on the Enhancer rumorsChanged hook", () => {
 	let otherRenders = 0;
 	const party = Object.create(PartySheetSD.prototype);
 	party.render = () => { partyRenders++; };
-	globalThis.ui.windows = {
-		party,
-		other: { render: () => { otherRenders++; } },
-	};
+	foundry.applications.instances = new Map([
+		["party", party],
+		["other", { render: () => { otherRenders++; } }],
+	]);
 
 	hook.fn({ ids: ["page1"] });
 
