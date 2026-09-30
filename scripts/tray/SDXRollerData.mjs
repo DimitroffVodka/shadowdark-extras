@@ -46,6 +46,43 @@ export function isSdxRollAuthority(rollData = {}, clientId = "") {
 }
 
 /**
+ * The check one actor rolls in a group roll: their ability modifier, the
+ * formula and the mode. The overlay and the instant roller both build it here,
+ * so a total means the same thing in either.
+ * @param {Object} rollData
+ * @param {string} uuid The actor's UUID, the key of `actorAbilities`
+ * @param {{system?: Object}} actor
+ * @param {"normal"|"advantage"|"disadvantage"} mode
+ * @returns {{abilityId:string, isNone:boolean, mod:number, formula:string, rollMode:string}}
+ */
+export function buildSdxCheck(rollData, uuid, actor, mode = "normal") {
+	const abilityId = getSdxActorAbility(rollData, uuid);
+	const isNone = abilityId === "none";
+	const mod = isNone ? 0 : (actor.system?.abilities?.[abilityId]?.mod ?? 0);
+	const die = mode === "advantage" ? "2d20kh" : mode === "disadvantage" ? "2d20kl" : "1d20";
+	return { abilityId, isNone, mod, formula: isNone ? die : `${die} + @mod`, rollMode: mode };
+}
+
+/**
+ * The dice of one roll for the recap card: the kept die marked, the others dimmed.
+ * @param {number[]} dice
+ * @param {string} mode
+ * @returns {{value:number, css:string}[]}
+ */
+export function buildSdxRecapDice(dice = [], mode = "normal") {
+	if (dice.length <= 1 || mode === "normal") return dice.map(v => ({ value: v, css: "" }));
+	const kept = mode === "advantage" ? Math.max(...dice) : Math.min(...dice);
+	let marked = false;
+	return dice.map(v => {
+		if (!marked && v === kept) {
+			marked = true;
+			return { value: v, css: mode === "advantage" ? "sdx-die-adv" : "sdx-die-dis" };
+		}
+		return { value: v, css: "sdx-die-dropped" };
+	});
+}
+
+/**
  * Build a cinematic SDX roll payload for one configured Party travel task.
  * @param {Object} task
  * @param {Actor[]} actors
