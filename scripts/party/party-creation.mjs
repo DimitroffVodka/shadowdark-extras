@@ -60,9 +60,19 @@ export function extendActorCreationDialog() {
 }
 
 /**
+ * True when the Shadowdark Enhancer is active and carries its own native Party,
+ * so it owns the "Party" entry and this module stays out of the dialog.
+ */
+export function enhancerOwnsParty(g = globalThis.game) {
+	return !!g?.modules?.get("shadowdark-enhancer")?.active && !!g.shadowdarkEnhancer?.party;
+}
+
+/**
  * Add the Party option to a type select if it's in a Create Actor dialog
  */
 function addPartyOptionToSelect(html) {
+	if (enhancerOwnsParty()) return;
+
 	// Convert to jQuery if needed
 	const $html = html instanceof jQuery ? html : $(html);
 
