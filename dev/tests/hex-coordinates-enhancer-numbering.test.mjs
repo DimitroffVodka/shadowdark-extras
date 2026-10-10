@@ -447,3 +447,23 @@ test("the lettered styles ignore the Enhancer", async () => {
 		assert.equal(hexMaps.calls.length, 0);
 	}
 });
+
+// --- the Enhancer's own labels win where they are showing ---------------------
+
+test("this overlay stays off where the Enhancer shows its own labels, and only there", async () => {
+	const realGet = globalThis.game.settings.get;
+	const setting = value => {
+		globalThis.game.settings.get = (scope, key) => (scope === "shadowdark-enhancer" && key === "showHexCoordinates"
+			? value : realGet(scope, key));
+	};
+	try {
+		setting(true);
+		assert.equal(await useScene({ enhancer: { hexMaps: hexMapsStub() } }), null, "numbered, Enhancer labels on: nothing here");
+		setting(false);
+		assert.ok(await useScene({ enhancer: { hexMaps: hexMapsStub() } }), "numbered, Enhancer labels off: unchanged");
+		setting(true);
+		const unnumbered = { ...hexMapsStub(), hasNumbering: () => false };
+		assert.ok(await useScene({ enhancer: { hexMaps: unnumbered } }), "a scene the Enhancer has not numbered keeps this overlay");
+		assert.ok(await useScene({ enhancer: undefined }), "no Enhancer: unchanged");
+	} finally { globalThis.game.settings.get = realGet; }
+});

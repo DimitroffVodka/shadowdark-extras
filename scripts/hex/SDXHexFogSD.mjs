@@ -2,6 +2,7 @@
 
 import { JournalPinRenderer } from "../journal/JournalPinsSD.mjs";
 import { readHexVisibility, hexMovementPath, mountainCells, visibleHexes, hexDiscoveryPatch } from "./hex-visibility.mjs";
+import { enhancerOwns } from "../settings/enhancer-defer.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const HEX_JOURNAL_NAME = "__sdx_hex_data__";
@@ -533,7 +534,8 @@ let _fogOverlayPath = null;
 export function isHexFogEnabled(sceneId) {
 	if (!sceneId) return false;
 	const scene = game.scenes.get(sceneId);
-	return !!scene?.getFlag(MODULE_ID, "hexFogEnabled");
+	// The Enhancer's native fog owns an adopted scene; this one draws and writes nothing there.
+	return !!scene?.getFlag(MODULE_ID, "hexFogEnabled") && !enhancerOwns("hex.fog", scene);
 }
 
 /**
@@ -545,7 +547,8 @@ export function isPointRevealed(scene, point) {
 	try {
 		const viewed = scene === canvas?.scene;
 		const grid = viewed ? canvas.grid : scene?.grid;
-		if (!scene?.getFlag(MODULE_ID, "hexFogEnabled") || !grid?.isHexagonal) return true;
+		if (!scene?.getFlag(MODULE_ID, "hexFogEnabled") || enhancerOwns("hex.fog", scene)) return true;
+		if (!grid?.isHexagonal) return true;
 		const offset = grid.getOffset(point);
 		const key = `${offset.i}-${offset.j}`;
 		if ((scene.getFlag(MODULE_ID, "hexFogRevealed") || {})[key]) return true;
@@ -634,8 +637,11 @@ function _onCanvasTearDown() {
 function _onUpdateScene(scene, changes) {
 	if (scene.id !== canvas.scene?.id) return;
 
+	// The Enhancer's adoption writes its own flags: that is when it takes the fog over or hands it back.
 	const hasOurFlags = changes?.flags?.[MODULE_ID] !== undefined
-		|| Object.keys(changes).some(k => k.startsWith(`flags.${MODULE_ID}`));
+		|| changes?.flags?.["shadowdark-enhancer"] !== undefined
+		|| Object.keys(changes).some(k => k.startsWith(`flags.${MODULE_ID}`)
+			|| k.startsWith("flags.shadowdark-enhancer"));
 	if (!hasOurFlags) return;
 
 	const newEnabled = isHexFogEnabled(scene.id);
@@ -669,7 +675,7 @@ let _revealQueue = Promise.resolve();
 
 function _onUpdateToken(tokenDoc, changes, options) {
 	const scene = tokenDoc.parent;
-	if (!scene?.getFlag(MODULE_ID, "hexFogEnabled")) return;
+	if (!scene?.getFlag(MODULE_ID, "hexFogEnabled") || enhancerOwns("hex.fog", scene)) return;
 	const grid = scene.grid;
 	if (!grid?.isHexagonal) return;
 	if (!game.user.isGM || (game.users.activeGM && game.users.activeGM.id !== game.user.id)) return;

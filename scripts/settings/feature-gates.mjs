@@ -1,4 +1,5 @@
 import { MODULE_ID } from "../shared/module-id.mjs";
+import { enhancerActive } from "./enhancer-defer.mjs";
 
 export const FEATURE_SETTING_KEY = "disabledFeatures";
 
@@ -232,6 +233,10 @@ export function getFeatureState(
 	if (!definition) throw new Error(`${MODULE_ID} | Unknown feature id: ${featureId}`);
 	const disabled = new Set(normalizeDisabledFeatureIds(disabledFeatureIds));
 	if (disabled.has(featureId)) return { enabled: false, reason: "disabled", blockedBy: null };
+	// The Enhancer's native Carousing replaces this one while the Enhancer is installed.
+	if (featureId === FEATURE_IDS.CAROUSING && enhancerActive()) {
+		return { enabled: false, reason: "enhancer", blockedBy: null };
+	}
 	if (trail.has(featureId)) throw new Error(`${MODULE_ID} | Circular feature dependency at ${featureId}`);
 
 	const nextTrail = new Set(trail).add(featureId);

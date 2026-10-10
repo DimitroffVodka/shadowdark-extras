@@ -13,6 +13,7 @@ import { registerContentRegistrySetting, registerContent } from "./ContentRegist
 import { MaphubViewerApp } from "../MaphubViewerApp.mjs";
 import { playerHexRecord } from "./hex-visibility.mjs";
 import { registerHexRecordPrune } from "./hex-record-prune.mjs";
+import { enhancerOwns } from "../settings/enhancer-defer.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -542,6 +543,12 @@ export class SDXHexTooltip {
 
 	#onMouseMove(event) {
 		if (!this.#enabled) return;
+		// Hex Data (the Enhancer) draws the hover card on a scene it owns.
+		if (enhancerOwns("hex.tooltip")) {
+			this.#clearHighlight();
+			this.#hide();
+			return;
+		}
 
 		const clientX = event.client?.x ?? 0;
 		const clientY = event.client?.y ?? 0;
@@ -591,7 +598,7 @@ export class SDXHexTooltip {
 	}
 
 	#onMouseDown(event) {
-		if (!this.#enabled || !game.user.isGM) return;
+		if (!this.#enabled || !game.user.isGM || enhancerOwns("hex.tooltip")) return;
 
 		const clientX = event.client?.x ?? 0;
 		const clientY = event.client?.y ?? 0;
