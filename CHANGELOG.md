@@ -47,6 +47,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- **Pin Style Editor animation options can be translated.** The hover, ping and bring animation selects looked up their option names (None, Scale, Pulse, Shake, Brightness, Color Cycle, Ripple and Flash) by their English text, so no language file could translate them. They now read from `SDX.pinStyleEditor.animation*` keys; the English wording is unchanged. ([#213](https://github.com/DimitroffVodka/shadowdark-extras/pull/213))
 - **Party sheet level, ability and item tooltips.** The level stat and the six ability chips on the party sheet showed a raw translation key as their tooltip; they now read "Level" and "Strength" through "Charisma". The item picture in the shared inventory and treasure lists had the same fault and now reads "Post item to chat". ([#211](https://github.com/DimitroffVodka/shadowdark-extras/pull/211))
 - **The Carousing window opens when the saved session lacks keys.** A session stored without its `confirmations` (a player modifier written before any full session was saved leaves one) threw `session.confirmations is undefined` while the tray opened the Carousing overlay. The session now fills in every key it lacks, keeping the ones it has.
 - **The SDX Roller's end-of-roll chat recap no longer logs a deprecation warning.** It called the global `renderTemplate`, which Foundry 14 warns about and removes in Foundry 15. It now calls `foundry.applications.handlebars.renderTemplate` like the rest of the module. The recap card is unchanged.
