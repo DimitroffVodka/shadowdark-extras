@@ -14,11 +14,11 @@ const DISPLAY_STATES = {
 };
 
 /**
- * Convert a generated hexcrawl's Foundry offset back to its published hex ID.
- * Null for a cell the layout does not number: the whole row above a print
+ * The published column and row of a generated hexcrawl's Foundry offset, or
+ * null for a cell the layout does not number: the whole row above a print
  * that sits one row down (layout.topRows).
  */
-export function formatPublishedHexCoord(offset, layout) {
+function publishedParts(offset, layout) {
 	if (!layout || !Number.isInteger(offset?.i) || !Number.isInteger(offset?.j)) return null;
 	const cols = Number(layout.cols);
 	const rows = Number(layout.rows);
@@ -35,7 +35,26 @@ export function formatPublishedHexCoord(offset, layout) {
 		col = (layout.flipX ? cols - 1 - offset.j : offset.j) + origin;
 		row = (layout.flipY ? rows - 1 - i : i) + origin;
 	}
-	return String((col * 100) + row).padStart(3, "0");
+	return { col, row };
+}
+
+/** Convert a generated hexcrawl's Foundry offset back to its published hex ID. */
+export function formatPublishedHexCoord(offset, layout) {
+	const parts = publishedParts(offset, layout);
+	return parts && String((parts.col * 100) + parts.row).padStart(3, "0");
+}
+
+/**
+ * The Zine margin heading over a Foundry column ("top") or beside a Foundry row
+ * ("left"): the published coordinate that changes along that axis, columns in
+ * hundreds and rows in two digits. A landscape layout is transposed, so its
+ * Foundry columns carry published rows and its Foundry rows carry columns (#212).
+ */
+export function formatPublishedAxisLabel(offset, layout, axis) {
+	const parts = publishedParts(offset, layout);
+	if (!parts) return null;
+	const showsColumn = (axis === "top") !== !!layout.landscape;
+	return showsColumn ? String(parts.col * 100).padStart(3, "0") : String(parts.row).padStart(2, "0");
 }
 
 /**
@@ -371,9 +390,9 @@ class SDXCoord {
 		do {
 			const adjCol = this._adjustCol(c);
 			label = style === "zine" && this._publishedLayout
-				? String(Math.floor(Number(formatPublishedHexCoord(
-					{ i: topRow, j: c + this._col0 }, this._publishedLayout
-				)) / 100) * 100).padStart(3, "0")
+				? formatPublishedAxisLabel(
+					{ i: topRow, j: c + this._col0 }, this._publishedLayout, "top"
+				) ?? ""
 				: this._formatColumnHeader(adjCol, style);
 			text = new PT(label, this._style);
 			text.resolution = 4;
@@ -413,9 +432,9 @@ class SDXCoord {
 		do {
 			const adjRow = this._adjustRow(r);
 			label = style === "zine" && this._publishedLayout
-				? formatPublishedHexCoord(
-					{ i: r + this._row0, j: this._col0 }, this._publishedLayout
-				)?.slice(-2) ?? ""
+				? formatPublishedAxisLabel(
+					{ i: r + this._row0, j: this._col0 }, this._publishedLayout, "left"
+				) ?? ""
 				: (style === "zine" ? String(zineRow + 1).padStart(2, "0")
 					: this._formatRowHeader(adjRow, style));
 			text = new PT(label, this._style);

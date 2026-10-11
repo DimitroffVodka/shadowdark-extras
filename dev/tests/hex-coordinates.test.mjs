@@ -39,7 +39,7 @@ globalThis.foundry = {
 globalThis.Hooks = { on() {}, once() {}, off() {} };
 globalThis.canvas = null;
 
-const { formatHexCoord, formatPublishedHexCoord } = await import(
+const { formatHexCoord, formatPublishedHexCoord, formatPublishedAxisLabel } = await import(
 	"../../scripts/hex/SDXCoordsSD.mjs"
 );
 
@@ -58,6 +58,49 @@ test("topRows 1 numbers from the second Foundry row and leaves the row above the
 	assert.equal(formatPublishedHexCoord({ i: 0, j: 7 }, layout), null);
 	assert.equal(formatPublishedHexCoord({ i: 1, j: 0 }, { ...layout, flipY: true }), "009", "the row is shifted after the flip");
 	assert.equal(formatPublishedHexCoord({ i: 4, j: 1 }, { ...layout, topRows: undefined }), "104", "no topRows reads as before");
+});
+
+test("a landscape layout's margin headings count the coordinate that changes along each axis (#212)", () => {
+	const portrait = { cols: 11, rows: 10, origin: 0, landscape: false, flipX: false, flipY: false };
+	const along = (layout, axis, count) => Array.from({ length: count }, (_, n) => formatPublishedAxisLabel(
+		axis === "top" ? { i: 0, j: n } : { i: n, j: 0 }, layout, axis));
+	assert.deepEqual(along(portrait, "top", 4), ["000", "100", "200", "300"]);
+	assert.deepEqual(along(portrait, "left", 4), ["00", "01", "02", "03"]);
+
+	const landscape = { ...portrait, landscape: true };
+	assert.deepEqual(along(landscape, "top", 4), ["00", "01", "02", "03"], "Foundry columns carry published rows");
+	assert.deepEqual(along(landscape, "left", 4), ["000", "100", "200", "300"], "Foundry rows carry published columns");
+	assert.deepEqual(along({ ...landscape, flipX: true }, "top", 2), ["09", "08"]);
+	assert.deepEqual(along({ ...landscape, flipY: true }, "left", 2), ["1000", "900"]);
+
+	const down = { ...landscape, topRows: 1 };
+	assert.equal(formatPublishedAxisLabel({ i: 0, j: 0 }, down, "left"), null, "the row above the print has no heading");
+	assert.equal(formatPublishedAxisLabel({ i: 1, j: 0 }, down, "left"), "000");
+	assert.equal(formatPublishedAxisLabel({ i: 0, j: 0 }, null, "top"), null);
+});
+
+test("a margin heading never varies across the axis it sits on and agrees with every cell's label (#212)", () => {
+	for (const landscape of [false, true]) {
+		for (const flipX of [false, true]) {
+			for (const flipY of [false, true]) {
+				for (const topRows of [0, 1]) {
+					const layout = { cols: 5, rows: 4, origin: 0, landscape, flipX, flipY, topRows };
+					const across = landscape ? layout.rows : layout.cols;
+					const down = landscape ? layout.cols : layout.rows;
+					const label = JSON.stringify({ landscape, flipX, flipY, topRows });
+					for (let i = topRows; i < topRows + down; i += 1) {
+						for (let j = 0; j < across; j += 1) {
+							const cell = formatPublishedHexCoord({ i, j }, layout);
+							const column = `${cell.slice(0, -2)}00`;
+							const row = cell.slice(-2);
+							assert.equal(formatPublishedAxisLabel({ i, j }, layout, "top"), landscape ? row : column, `top ${label} ${i},${j}`);
+							assert.equal(formatPublishedAxisLabel({ i, j }, layout, "left"), landscape ? column : row, `left ${label} ${i},${j}`);
+						}
+					}
+				}
+			}
+		}
+	}
 });
 
 /**
