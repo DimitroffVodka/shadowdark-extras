@@ -22,7 +22,7 @@
 					<i class="fas fa-shield-alt"></i>
 					<span>{{partyStats.avgAc}}</span>
 				</div>
-				<div class="party-stat" data-tooltip="{{localize 'SHADOWDARK.sheet.player.level.label'}}">
+				<div class="party-stat" data-tooltip="{{localize 'SHADOWDARK.sheet.actor.level'}}">
 					<i class="fas fa-star"></i>
 					<span>{{partyStats.avgLevel}}</span>
 				</div>
@@ -178,27 +178,27 @@
 								{{/unless}}
 							</div>
 							<div class="member-abilities">
-								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability.str.long'}}">
+								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability_strength'}}">
 									<span class="label">STR</span>
 									<span class="mod">{{numberSigned member.abilities.str}}</span>
 								</div>
-								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability.dex.long'}}">
+								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability_dexterity'}}">
 									<span class="label">DEX</span>
 									<span class="mod">{{numberSigned member.abilities.dex}}</span>
 								</div>
-								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability.con.long'}}">
+								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability_constitution'}}">
 									<span class="label">CON</span>
 									<span class="mod">{{numberSigned member.abilities.con}}</span>
 								</div>
-								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability.int.long'}}">
+								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability_intelligence'}}">
 									<span class="label">INT</span>
 									<span class="mod">{{numberSigned member.abilities.int}}</span>
 								</div>
-								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability.wis.long'}}">
+								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability_wisdom'}}">
 									<span class="label">WIS</span>
 									<span class="mod">{{numberSigned member.abilities.wis}}</span>
 								</div>
-								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability.cha.long'}}">
+								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability_charisma'}}">
 									<span class="label">CHA</span>
 									<span class="mod">{{numberSigned member.abilities.cha}}</span>
 								</div>
@@ -309,27 +309,27 @@
 								{{/unless}}
 							</div>
 							<div class="member-abilities">
-								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability.str.long'}}">
+								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability_strength'}}">
 									<span class="label">STR</span>
 									<span class="mod">{{numberSigned member.abilities.str}}</span>
 								</div>
-								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability.dex.long'}}">
+								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability_dexterity'}}">
 									<span class="label">DEX</span>
 									<span class="mod">{{numberSigned member.abilities.dex}}</span>
 								</div>
-								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability.con.long'}}">
+								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability_constitution'}}">
 									<span class="label">CON</span>
 									<span class="mod">{{numberSigned member.abilities.con}}</span>
 								</div>
-								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability.int.long'}}">
+								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability_intelligence'}}">
 									<span class="label">INT</span>
 									<span class="mod">{{numberSigned member.abilities.int}}</span>
 								</div>
-								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability.wis.long'}}">
+								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability_wisdom'}}">
 									<span class="label">WIS</span>
 									<span class="mod">{{numberSigned member.abilities.wis}}</span>
 								</div>
-								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability.cha.long'}}">
+								<div class="ability" data-tooltip="{{localize 'SHADOWDARK.ability_charisma'}}">
 									<span class="label">CHA</span>
 									<span class="mod">{{numberSigned member.abilities.cha}}</span>
 								</div>
@@ -397,7 +397,7 @@
 								{{#each inventory.items as |item|}}
 								<li class="item" data-item-id="{{item._id}}" data-uuid="{{item.uuid}}">
 									<div class="item-image" style="background-image: url({{item.img}})"
-										data-tooltip="{{localize 'SHADOWDARK.inventory.tooltip.item_chat'}}">
+										data-tooltip="{{localize 'SHADOWDARK_EXTRAS.party.item_chat'}}">
 										<i class="fas fa-comment fa-lg"></i>
 									</div>
 									<a class="item-name" data-action="show-details">
@@ -470,7 +470,7 @@
 								{{#each inventory.treasure as |item|}}
 								<li class="item" data-item-id="{{item._id}}" data-uuid="{{item.uuid}}">
 									<div class="item-image" style="background-image: url({{item.img}})"
-										data-tooltip="{{localize 'SHADOWDARK.inventory.tooltip.item_chat'}}">
+										data-tooltip="{{localize 'SHADOWDARK_EXTRAS.party.item_chat'}}">
 										<i class="fas fa-comment fa-lg"></i>
 									</div>
 									<a class="item-name" data-action="show-details">
