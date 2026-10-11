@@ -1,6 +1,7 @@
 import { MODULE_ID, DURATION_SPELL_FLAG, SPELL_MODIFICATIONS_FLAG } from "./focus-constants.mjs";
 import { matchesDurationEffect, updateDurationSpells } from "./duration-state.mjs";
 import { getSocket } from "../shared/combat-socket.mjs";
+import { applyDamageWithTempHp } from "../shared/apply-damage-with-temp-hp.mjs";
 import { buildDurationSpellsHtml, onDurationDamageApplyClick } from "./duration-ui.mjs";
 import {
 	applyEffectItemTiming, buildActiveEffectTiming, buildDurationExpiry,
@@ -915,7 +916,7 @@ async function applyDurationSpellPerTurnDamage(durationSpell, targetActor, targe
 
 		// Apply damage if auto-apply is enabled
 		if (autoApplyDamage) {
-			await token.actor.applyDamage(damage);
+			await applyDamageWithTempHp(token.actor, damage);
 			console.log(`shadowdark-extras | Auto-applied ${damage} ${damageType} damage to ${targetActor.name} from ${durationSpell.spellName}`);
 		}
 		else {

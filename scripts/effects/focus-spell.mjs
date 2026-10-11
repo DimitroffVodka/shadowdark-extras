@@ -2,6 +2,7 @@ import { MODULE_ID, FOCUS_SPELL_FLAG, _endingFocusSpells } from "./focus-constan
 import { matchesDurationEffect, updateDurationSpells } from "./duration-state.mjs";
 import { linkEffectToDurationSpell, getSceneMeasuredTemplates } from "./duration-spell.mjs";
 import { renderFocusEndedChat, buildFocusSpellsHtml } from "./focus-ui.mjs";
+import { applyDamageWithTempHp } from "../shared/apply-damage-with-temp-hp.mjs";
 
 export async function startFocusSpell(actor, spell, perTurnConfig = null) {
 	// Cache spell data so focus checks still roll if the item is deleted (e.g. scrolls)
@@ -459,8 +460,9 @@ async function applyFocusSpellPerTurnDamage(focusSpell, targetActor, targetToken
 
 		// Auto-apply if enabled
 		if (autoApplyDamage && game.user.isGM) {
-			// applyDamage takes damage as a positive amount: healing is negative.
-			await token.actor.applyDamage(isHealing ? -damage : damage);
+			// Healing is negative damage and never spends the pool.
+			await applyDamageWithTempHp(token.actor, isHealing ? -damage : damage,
+				token.actor.system.attributes.hp.max);
 		}
 
 		// Create chat message

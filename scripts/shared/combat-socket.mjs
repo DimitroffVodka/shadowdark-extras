@@ -7,6 +7,7 @@ import { endFocusSpell, getActiveDurationSpells } from "../effects/FocusSpellTra
 import { updateDurationSpells } from "../effects/duration-state.mjs";
 import { applyEffectItemTiming, getDurationSpellCastTiming, getDurationToken } from "./duration-basis.mjs";
 import { showScrollingText } from "./scrolling-text.mjs";
+import { applyDamageWithTempHp } from "./apply-damage-with-temp-hp.mjs";
 import { FEATURE_IDS, isFeatureEnabled, anyFeatureEnabled } from "../settings/feature-gates.mjs";
 
 const MODULE_ID = "shadowdark-extras";
@@ -276,12 +277,11 @@ export function setupCombatSocket() {
 				}
 			}
 
-			// Negative damage means healing.
-			// The system's own applyDamage owns the clamp, the defeat marking and the
-			// seam a module that fronts HP (Shadowdark Enhancer's temporary hit
-			// points) wraps to spend its pool before the hit reaches HP (#215).
+			// Keep the HP write awaited; the system's applyDamage does not return it.
 			const isFinalHealing = isHealing || finalDamage < 0;
-			await token.actor.applyDamage(isFinalHealing ? -Math.abs(finalDamage) : finalDamage);
+			await applyDamageWithTempHp(token.actor,
+				isFinalHealing ? -Math.abs(finalDamage) : finalDamage,
+				token.actor.system?.attributes?.hp?.max ?? 0);
 
 			// Scrolling combat text is now handled by the updateActor/updateToken hooks
 			// so we don't need to call it here anymore

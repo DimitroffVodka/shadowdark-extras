@@ -5,6 +5,7 @@
 // via a dynamic import (syncAuraTrackerTarget) exactly as the original.
 
 import { MODULE_ID } from "./aura-constants.mjs";
+import { applyDamageWithTempHp } from "../shared/apply-damage-with-temp-hp.mjs";
 import { getSocket } from "../combat/CombatSettingsSD.mjs";
 import { isCanvasAvailable } from "./aura-geometry.mjs";
 import {
@@ -341,11 +342,9 @@ export async function applyAuraDamage(token, config, savedSuccessfully) {
 		damage = Math.floor(damage / 2);
 	}
 
-	// Apply to HP through the system's own applyDamage: it owns the clamp, the
-	// defeat marking and the seam a module that fronts HP (Shadowdark Enhancer's
-	// temporary hit points) wraps to spend its pool first (#215).
+	// Spend an optional temporary HP pool before the awaited HP write.
 	try {
-		await actor.applyDamage(damage);
+		await applyDamageWithTempHp(actor, damage);
 	}
 	catch(err) {
 		console.error("shadowdark-extras | applyAuraDamage: Error updating HP:", err);

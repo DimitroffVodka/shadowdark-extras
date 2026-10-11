@@ -8,7 +8,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
-- **Damage Extras applies is spent from a pool of temporary hit points first.** The damage card's Apply Damage button, auto-applied ones included, and aura, template, duration-spell and focus-spell ticks worked out HP themselves and wrote `system.attributes.hp.value`, which skipped the system's own `applyDamage` and with it any pool sitting in front of HP, such as the Shadowdark Enhancer's. They now hand their final number, after resistance, immunity and Glassbones, to that method, so the pool is charged before HP and only the overflow reaches it; healing goes through it as a negative amount and never touches a pool, and defeat at 0 HP comes from the same place as every other apply. With no pool in play, every path lands on the same HP as before. ([#215](https://github.com/DimitroffVodka/shadowdark-extras/issues/215))
+- **Damage applied by Extras spends temporary HP first.** The damage card's Apply Damage button, auto-applied ones included, and aura, template, duration-spell and focus-spell ticks previously wrote HP without spending a pool in front of it, such as the Shadowdark Enhancer's. They now spend the final damage (after resistance, immunity and Glassbones) through the Enhancer's optional pool API, then await any HP overflow write. Healing never touches the pool. Without the Enhancer, each path retains its original HP clamp and awaited write. ([#215](https://github.com/DimitroffVodka/shadowdark-extras/issues/215))
 
 ## [6.16.0] — 2026-10-11 — Hexcrawl maps and Hexer import, Enhancer-driven camps and carousing, party quests, V2 party sheets
 

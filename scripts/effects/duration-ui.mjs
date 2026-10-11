@@ -5,6 +5,7 @@
 
 import { MODULE_ID } from "./focus-constants.mjs";
 import { getSocket } from "../shared/combat-socket.mjs";
+import { applyDamageWithTempHp } from "../shared/apply-damage-with-temp-hp.mjs";
 import { describeDurationRemaining, getDurationSpellActiveEffect } from "../shared/duration-basis.mjs";
 
 export async function onDurationDamageApplyClick(event) {
@@ -60,7 +61,7 @@ export async function onDurationDamageApplyClick(event) {
 				return;
 			}
 
-			await token.actor.applyDamage(damage);
+			await applyDamageWithTempHp(token.actor, damage);
 		}
 
 		// Update the button to show it was applied

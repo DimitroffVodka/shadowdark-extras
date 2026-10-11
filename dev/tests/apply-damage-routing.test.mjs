@@ -2,23 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { escapeHTML } from "./helpers/escape-html.mjs";
 
-// Damage routing (#215): the damage this module applies itself — the damage card's
-// Apply Damage button (and its auto-apply), aura ticks, template hits, and duration
-// and focus spell ticks — is handed to the system's own `ActorSD#applyDamage` as its
-// final number (after resistance, immunity and Glassbones) instead of writing
-// `system.attributes.hp.value` directly. That method is the seam a pool of temporary
-// hit points in front of HP wraps (Shadowdark Enhancer keeps its pool by wrapping the
-// prototype method), so the pool is spent before HP. Healing travels as a negative
-// amount, which never reaches a pool.
-//
-// `makeActor` models both collaborators exactly as they are written elsewhere:
-//   * shadowdark-enhancer `scripts/shared/temp-hp.mjs` `damageThroughPool`: spend the
-//     pool for a positive amount, stop when nothing is left, otherwise hand the
-//     remainder to the system's method with multiplier 1;
-//   * shadowdark `systems/shadowdark/src/documents/ActorSD.mjs` `applyDamage`:
-//     `Math.clamp(current - amount, 0, max)`, then `_setDefeated()` at 0 HP.
-// Against the pre-change module the same drives record a direct HP write and leave
-// the pool full, which is the regression this file pins.
+// Damage routing (#215): each path spends an optional Enhancer pool before its
+// awaited HP update. Shadowdark's applyDamage does NOT await/return its update;
+// awaiting it would acknowledge a card before HP persists (including on failure).
+// With no Enhancer the original direct update and clamp still apply.
 
 globalThis.window = globalThis;
 globalThis.foundry = {
@@ -51,6 +38,15 @@ globalThis.game = {
 	user: { id: "gm", isGM: true },
 	messages: { get: () => null },
 	actors: { get: () => null, contents: [] },
+	shadowdarkEnhancer: {
+		tempHp: {
+			of: actor => actor.pool,
+			set: async (actor, value) => {
+				actor.applied.push(actor.pool - value);
+				actor.pool = value;
+			},
+		},
+	},
 };
 globalThis.ChatMessage = { create: async () => {}, getSpeaker: () => ({}) };
 
@@ -82,7 +78,7 @@ const applyCardDamage = registrations.get("applyTokenDamage");
 assert.ok(applyCardDamage, "the damage card's apply handler must be registered");
 
 /** A target with a pool of temporary hit points in front of HP. */
-function makeActor({ hp = 3, max = 3, pool = 0, flags = {} } = {}) {
+function makeActor({ hp = 3, max = 3, pool = 0, flags = {}, write } = {}) {
 	return {
 		id: "target-actor",
 		name: "Target",
@@ -97,24 +93,16 @@ function makeActor({ hp = 3, max = 3, pool = 0, flags = {} } = {}) {
 		getFlag: (_module, key) => flags[key],
 		async update(changes) {
 			this.writes.push(changes);
+			if (write) await write();
 			const value = changes["system.attributes.hp.value"];
-			if (value !== undefined) this.hp.value = value;
+			if (value !== undefined) {
+				if (value === 0 && this.hp.value !== 0) this.defeats += 1; // updateActor hook
+				this.hp.value = value;
+			}
 			return this;
 		},
-		/** The Enhancer's pool wrapper around the system's own applyDamage. */
-		async applyDamage(damage, multiplier = 1) {
-			let amount = Math.floor(parseInt(damage) * multiplier);
-			this.applied.push(amount);
-			if (amount > 0 && this.pool > 0) {
-				const absorbed = Math.min(this.pool, amount);
-				this.pool -= absorbed;
-				amount -= absorbed;
-				if (amount === 0) return;
-			}
-			// Core's Math.clamp, spelled out because plain Node has no such extension.
-			const newHp = Math.min(this.hp.max, Math.max(0, this.hp.value - amount));
-			await this.update({ "system.attributes.hp.value": newHp });
-			if (newHp === 0 && multiplier === 1) this.defeats += 1;
+		async applyDamage() {
+			throw new Error("Do not call the system's fire-and-forget applyDamage");
 		},
 	};
 }
@@ -129,11 +117,11 @@ function place(...tokens) {
 	globalThis.canvas.tokens.get = id => byId.get(id) ?? null;
 }
 
-test("the damage card spends the temp HP pool through the system's applyDamage", async () => {
+test("the damage card spends the temp HP pool before writing HP", async () => {
 	const absorbed = makeActor({ pool: 2 });
 	place(makeToken("target-token", absorbed));
 	assert.equal(await applyCardDamage({ tokenId: "target-token", damage: 2, damageType: "damage" }), true);
-	assert.deepEqual(absorbed.applied, [2], "the card hands the final number to applyDamage");
+	assert.deepEqual(absorbed.applied, [2], "the pool spends the hit first");
 	assert.equal(absorbed.pool, 0, "the pool is spent first");
 	assert.equal(absorbed.hp.value, 3, "nothing is left to reach HP");
 	assert.deepEqual(absorbed.writes, [], "no HP write of the module's own");
@@ -141,37 +129,37 @@ test("the damage card spends the temp HP pool through the system's applyDamage",
 	const overflow = makeActor({ pool: 2 });
 	place(makeToken("target-token", overflow));
 	assert.equal(await applyCardDamage({ tokenId: "target-token", damage: 5, damageType: "damage" }), true);
-	assert.deepEqual(overflow.applied, [5]);
+	assert.deepEqual(overflow.applied, [2]);
 	assert.equal(overflow.pool, 0);
 	assert.equal(overflow.hp.value, 0, "the overflow past the pool reaches HP");
-	assert.equal(overflow.defeats, 1, "defeat at 0 HP comes from the system's own apply");
+	assert.equal(overflow.defeats, 1, "the existing updateActor hook marks defeat once");
 
 	const healed = makeActor({ hp: 1, pool: 2 });
 	place(makeToken("target-token", healed));
 	assert.equal(await applyCardDamage({
 		tokenId: "target-token", damage: 3, isHealing: true, damageType: "damage",
 	}), true);
-	assert.deepEqual(healed.applied, [-3], "healing travels as a negative amount");
+	assert.deepEqual(healed.applied, [], "healing never spends a pool");
 	assert.equal(healed.pool, 2, "healing never touches the pool");
 	assert.equal(healed.hp.value, 3);
 });
 
 test("the card hands over the resisted, glassboned number, not the rolled one", async () => {
-	const resistant = makeActor({ pool: 2, flags: { "resistance.fire": true } });
+	const resistant = makeActor({ pool: 3, flags: { "resistance.fire": true } });
 	place(makeToken("target-token", resistant));
 	await applyCardDamage({
 		tokenId: "target-token", damage: 4, damageType: "fire",
 		damageComponents: [{ amount: 4, type: "fire" }],
 	});
 	assert.deepEqual(resistant.applied, [2], "resistance halves before the pool sees the hit");
-	assert.equal(resistant.pool, 0);
+	assert.equal(resistant.pool, 1);
 
-	const glassboned = makeActor({ pool: 2, flags: { glassbones: true } });
+	const glassboned = makeActor({ pool: 5, flags: { glassbones: true } });
 	place(makeToken("target-token", glassboned));
 	await applyCardDamage({ tokenId: "target-token", damage: 2, damageType: "damage" });
 	assert.deepEqual(glassboned.applied, [4], "Glassbones doubles before the pool sees the hit");
-	assert.equal(glassboned.pool, 0);
-	assert.equal(glassboned.hp.value, 1);
+	assert.equal(glassboned.pool, 1);
+	assert.equal(glassboned.hp.value, 3);
 });
 
 test("an aura tick spends the temp HP pool", async () => {
@@ -189,7 +177,7 @@ test("an aura tick spends the temp HP pool", async () => {
 	const saved = makeActor();
 	place(makeToken("target-token", saved));
 	assert.equal(await applyAuraDamage(makeToken("target-token", saved), config, true), 2);
-	assert.deepEqual(saved.applied, [2], "the halved damage is what reaches applyDamage");
+	assert.deepEqual(saved.applied, [], "without a pool the halved damage reaches HP");
 	assert.equal(saved.hp.value, 1);
 });
 
@@ -200,7 +188,7 @@ test("a template hit spends the temp HP pool", async () => {
 	place(token);
 	const result = await applyTemplateDamage({ id: "template-1" }, token, { damage: { formula: "1d6" } }, false);
 	assert.equal(result.damage, 3);
-	assert.deepEqual(actor.applied, [3]);
+	assert.deepEqual(actor.applied, [2]);
 	assert.equal(actor.pool, 0);
 	assert.equal(actor.hp.value, 2);
 });
@@ -242,7 +230,7 @@ test("a duration spell's per-turn tick spends the temp HP pool", async () => {
 		"gm",
 	);
 
-	assert.deepEqual(target.applied, [2], "the tick's damage reached applyDamage");
+	assert.deepEqual(target.applied, [2], "the tick spends the pool before HP");
 	assert.equal(target.pool, 0);
 	assert.equal(target.hp.value, 3);
 	assert.equal(flags.activeDurationSpells[0].processedTargetsThisRound[token.id], true);
@@ -299,7 +287,75 @@ test("a focus spell's per-turn tick spends the pool, and its healing does not", 
 		damageType: "healing",
 		targetEffects: [{ targetTokenId: healedToken.id, targetActorId: healed.id }],
 	});
-	assert.deepEqual(healed.applied, [-2], "healing travels as a negative amount");
+	assert.deepEqual(healed.applied, [], "healing does not spend the pool");
 	assert.equal(healed.pool, 2, "healing leaves the pool alone");
 	assert.equal(healed.hp.value, 3);
+});
+
+test("without the Enhancer, damage and healing keep the direct awaited update", async () => {
+	const enhancer = game.shadowdarkEnhancer;
+	game.shadowdarkEnhancer = undefined;
+	try {
+		const actor = makeActor({ hp: 3, max: 3 });
+		place(makeToken("target-token", actor));
+		assert.equal(await applyCardDamage({ tokenId: "target-token", damage: 5 }), true);
+		assert.equal(actor.hp.value, 0);
+		assert.equal(actor.defeats, 1);
+		assert.equal(await applyCardDamage({ tokenId: "target-token", damage: 6, isHealing: true }), true);
+		assert.equal(actor.hp.value, 3, "healing is capped at max HP");
+		assert.deepEqual(actor.applied, [], "the system applyDamage signature is not required, even at the 3.0.0 floor");
+	}
+	finally {
+		game.shadowdarkEnhancer = enhancer;
+	}
+});
+
+test("the card waits for the HP write, then uses the updated HP for the next hit", async () => {
+	let release;
+	const held = new Promise(resolve => { release = resolve; });
+	let writes = 0;
+	const actor = makeActor({ write: () => ++writes === 1 ? held : undefined });
+	place(makeToken("target-token", actor));
+	const first = applyCardDamage({ tokenId: "target-token", damage: 1 });
+	await Promise.resolve();
+	assert.equal(await Promise.race([first.then(() => "settled"), Promise.resolve("pending")]), "pending");
+	assert.equal(actor.hp.value, 3, "the first write is still pending");
+	release();
+	assert.equal(await first, true);
+	assert.equal(actor.hp.value, 2);
+	assert.equal(await applyCardDamage({ tokenId: "target-token", damage: 1 }), true);
+	assert.equal(actor.hp.value, 1);
+});
+
+test("the card rejects a failed HP write rather than marking the hit applied", async () => {
+	const actor = makeActor({ write: () => Promise.reject(new Error("write failed")) });
+	place(makeToken("target-token", actor));
+	const log = console.error;
+	console.error = () => {};
+	try {
+		assert.equal(await applyCardDamage({ tokenId: "target-token", damage: 1 }), false);
+		assert.equal(actor.hp.value, 3);
+	}
+	finally {
+		console.error = log;
+	}
+});
+
+test("a failed pool write does not advance to HP or acknowledge success", async () => {
+	const original = game.shadowdarkEnhancer.tempHp.set;
+	game.shadowdarkEnhancer.tempHp.set = () => Promise.reject(new Error("pool write failed"));
+	const log = console.error;
+	console.error = () => {};
+	try {
+		const actor = makeActor({ pool: 2 });
+		place(makeToken("target-token", actor));
+		assert.equal(await applyCardDamage({ tokenId: "target-token", damage: 5 }), false);
+		assert.equal(actor.hp.value, 3);
+		assert.equal(actor.pool, 2);
+		assert.deepEqual(actor.writes, []);
+	}
+	finally {
+		game.shadowdarkEnhancer.tempHp.set = original;
+		console.error = log;
+	}
 });
