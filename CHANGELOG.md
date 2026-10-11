@@ -6,6 +6,8 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [6.16.0] — 2026-10-11 — Hexcrawl maps and Hexer import, Enhancer-driven camps and carousing, party quests, V2 party sheets
+
 ### Added
 
 - **A published hex layout can start one row down.** `grid.topRows` (`0` or `1`) keeps one whole Foundry row above a print whose first row is full hexes, so the raised columns' first hex is no longer half off the scene. `adoptHexcrawl` and `buildHexcrawl` take it, every published number maps through it, and Zine coordinates leave the row above unlabelled. A grid key Extras does not know is now refused instead of silently dropped, and `api.hex.gridFields` lists the keys this build accepts so a caller can check before sending `topRows`. A layout stored without it reads, writes and labels exactly as before. ([#202](https://github.com/DimitroffVodka/shadowdark-extras/issues/202))
