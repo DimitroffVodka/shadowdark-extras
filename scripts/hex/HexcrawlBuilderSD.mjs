@@ -175,10 +175,11 @@ const TERRAIN_COLORED_RULES = {
 	"desert": { pool: "desert", exclude: DRAW_EXCLUDES.desert },
 	lake: { pool: "water-lake" },
 	// The hand-picked lava art has its own folder; the Specials lava tiles stand in
-	// until a cached catalogue has it.
+	// until a cached catalogue has it. Specials/lava.webp is a volcano, so it is
+	// not in this set.
 	lava: {
 		pool: "lava fields", include: ["lava"],
-		fallback: { pool: "specials", include: ["/lava.webp", "lava field"] },
+		fallback: { pool: "specials", include: ["lava field"] },
 	},
 	mountain: { pool: "mountains", exclude: DRAW_EXCLUDES.mountains },
 	river: { pool: "water-river" },

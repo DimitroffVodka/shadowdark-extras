@@ -346,7 +346,7 @@ test("lava falls back to the Specials lava tiles while the cached catalogue has 
 		await builder.buildPublishedHexcrawl({ grid: { cols: 4, rows: 1 }, terrain: { default: "lava" }, hexes: [] }, { view: false });
 		const painted = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted).map(t => t.texture.src);
 		assert.equal(painted.length, 4);
-		assert.ok(painted.every(src => /\/(lava\.webp|Hex - Lava Field \d\.webp)$/.test(src)), "fallback is the Specials lava set");
+		assert.ok(painted.every(src => /\/Hex - Lava Field \d\.webp$/.test(src)), "fallback is the Specials lava set, without the lava.webp volcano");
 	}
 	finally {
 		lavaFieldsShipped = true;

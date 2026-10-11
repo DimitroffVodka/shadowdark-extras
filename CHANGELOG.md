@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A volcano no longer paints as lava.** Terrain `lava` could fall back to `Specials/lava.webp`, which is a volcano, while a cached tile catalogue predates the Lava Fields folder. The fallback is now only the three `Hex - Lava Field` Specials tiles. Hexes already painted with it keep it until they are repainted.
+
 ## [6.16.1] — 2026-10-11 — Damage spends temporary HP first
 
 6.16.0 was published as a pre-release and held back, so this is the first release that carries everything in it. Read the [6.16.0 notes](https://github.com/DimitroffVodka/shadowdark-extras/releases/tag/v6.16.0) for what changed since 6.15.0.
