@@ -50,9 +50,6 @@ export function setupCombatSocket() {
 		}
 
 		try {
-			const currentHp = token.actor.system?.attributes?.hp?.value ?? 0;
-			const maxHp = token.actor.system?.attributes?.hp?.max ?? 0;
-
 			// Check for Glassbones effect (double damage)
 			const hasGlassbones = token.actor.getFlag("shadowdark-extras", "glassbones");
 
@@ -279,18 +276,12 @@ export function setupCombatSocket() {
 				}
 			}
 
-			// Negative damage means healing
-			// For healing: add the absolute value, for damage: subtract
-			// Use the calculated isHealing flag or check final damage
+			// Negative damage means healing.
+			// The system's own applyDamage owns the clamp, the defeat marking and the
+			// seam a module that fronts HP (Shadowdark Enhancer's temporary hit
+			// points) wraps to spend its pool before the hit reaches HP (#215).
 			const isFinalHealing = isHealing || finalDamage < 0;
-			const hpChange = isFinalHealing ? Math.abs(finalDamage) : -finalDamage;
-
-			const newHp = Math.max(0, Math.min(maxHp, currentHp + hpChange));
-
-
-			await token.actor.update({
-				"system.attributes.hp.value": newHp,
-			});
+			await token.actor.applyDamage(isFinalHealing ? -Math.abs(finalDamage) : finalDamage);
 
 			// Scrolling combat text is now handled by the updateActor/updateToken hooks
 			// so we don't need to call it here anymore

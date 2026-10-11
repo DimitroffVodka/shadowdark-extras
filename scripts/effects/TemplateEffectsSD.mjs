@@ -295,9 +295,7 @@ export function initTemplateEffects() {
 						return;
 					}
 
-					const currentHp = actor.system?.attributes?.hp?.value ?? 0;
-					const newHp = Math.max(0, currentHp - damage);
-					await actor.update({ "system.attributes.hp.value": newHp });
+					await actor.applyDamage(damage);
 
 					// Update button to show applied
 					btn.classList.add("sdx-applied");

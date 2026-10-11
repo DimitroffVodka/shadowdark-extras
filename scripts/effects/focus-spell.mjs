@@ -459,13 +459,8 @@ async function applyFocusSpellPerTurnDamage(focusSpell, targetActor, targetToken
 
 		// Auto-apply if enabled
 		if (autoApplyDamage && game.user.isGM) {
-			const currentHP = token.actor.system.attributes.hp.value;
-			const maxHP = token.actor.system.attributes.hp.max;
-			const newHP = isHealing
-				? Math.min(maxHP, currentHP + damage)
-				: Math.max(0, currentHP - damage);
-
-			await token.actor.update({ "system.attributes.hp.value": newHP });
+			// applyDamage takes damage as a positive amount: healing is negative.
+			await token.actor.applyDamage(isHealing ? -damage : damage);
 		}
 
 		// Create chat message

@@ -341,13 +341,11 @@ export async function applyAuraDamage(token, config, savedSuccessfully) {
 		damage = Math.floor(damage / 2);
 	}
 
-	// Apply to HP
-	const currentHp = actor.system?.attributes?.hp?.value ?? 0;
-	const newHp = Math.max(0, currentHp - damage);
-
-
+	// Apply to HP through the system's own applyDamage: it owns the clamp, the
+	// defeat marking and the seam a module that fronts HP (Shadowdark Enhancer's
+	// temporary hit points) wraps to spend its pool first (#215).
 	try {
-		await actor.update({ "system.attributes.hp.value": newHp });
+		await actor.applyDamage(damage);
 	}
 	catch(err) {
 		console.error("shadowdark-extras | applyAuraDamage: Error updating HP:", err);

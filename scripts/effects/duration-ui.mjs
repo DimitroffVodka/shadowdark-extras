@@ -60,9 +60,7 @@ export async function onDurationDamageApplyClick(event) {
 				return;
 			}
 
-			const currentHp = token.actor.system.attributes.hp.value;
-			const newHp = Math.max(0, currentHp - damage);
-			await token.actor.update({ "system.attributes.hp.value": newHp });
+			await token.actor.applyDamage(damage);
 		}
 
 		// Update the button to show it was applied

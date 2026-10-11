@@ -301,10 +301,8 @@ export async function applyTemplateDamage(templateDoc, token, config, savedSucce
 		damage = Math.floor(damage / 2);
 	}
 
-	// Apply damage to token
-	const currentHP = actor.system?.attributes?.hp?.value ?? 0;
-	const newHP = Math.max(0, currentHP - damage);
-	await actor.update({ "system.attributes.hp.value": newHP });
+	// Apply damage to token through the system's own applyDamage, as the aura does.
+	await actor.applyDamage(damage);
 
 	console.log(`shadowdark-extras | Applied ${damage} damage to ${token.name} from template`);
 

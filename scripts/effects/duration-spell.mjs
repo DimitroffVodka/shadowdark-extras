@@ -915,9 +915,7 @@ async function applyDurationSpellPerTurnDamage(durationSpell, targetActor, targe
 
 		// Apply damage if auto-apply is enabled
 		if (autoApplyDamage) {
-			const currentHp = token.actor.system.attributes.hp.value;
-			const newHp = Math.max(0, currentHp - damage);
-			await token.actor.update({ "system.attributes.hp.value": newHp });
+			await token.actor.applyDamage(damage);
 			console.log(`shadowdark-extras | Auto-applied ${damage} ${damageType} damage to ${targetActor.name} from ${durationSpell.spellName}`);
 		}
 		else {
