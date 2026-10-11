@@ -7,6 +7,7 @@
 
 const MODULE_ID = "shadowdark-extras";
 import { applyTemplateConditions } from "./template-conditions.mjs";
+import { applyDamageWithTempHp } from "../shared/apply-damage-with-temp-hp.mjs";
 
 export async function applyTemplateEffect(templateDoc, token, trigger) {
 	const config = templateDoc.flags?.[MODULE_ID]?.templateEffects;
@@ -301,10 +302,8 @@ export async function applyTemplateDamage(templateDoc, token, config, savedSucce
 		damage = Math.floor(damage / 2);
 	}
 
-	// Apply damage to token
-	const currentHP = actor.system?.attributes?.hp?.value ?? 0;
-	const newHP = Math.max(0, currentHP - damage);
-	await actor.update({ "system.attributes.hp.value": newHP });
+	// Spend the optional temporary HP pool before the awaited HP write.
+	await applyDamageWithTempHp(actor, damage);
 
 	console.log(`shadowdark-extras | Applied ${damage} damage to ${token.name} from template`);
 

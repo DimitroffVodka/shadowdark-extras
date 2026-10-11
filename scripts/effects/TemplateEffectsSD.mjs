@@ -23,6 +23,7 @@ const _creationEffectsProcessed = new Set();
 import { getTokensInTemplate, getTemplatesContainingToken, getTemplatesContainingPoint } from "./template-geometry.mjs";
 import { rollTemplateSave, applyTemplateEffect } from "./template-application.mjs";
 import { removeTemplateEffects } from "./template-conditions.mjs";
+import { applyDamageWithTempHp } from "../shared/apply-damage-with-temp-hp.mjs";
 
 export function initTemplateEffects() {
 	console.log("shadowdark-extras | Initializing Template Effects System");
@@ -295,9 +296,7 @@ export function initTemplateEffects() {
 						return;
 					}
 
-					const currentHp = actor.system?.attributes?.hp?.value ?? 0;
-					const newHp = Math.max(0, currentHp - damage);
-					await actor.update({ "system.attributes.hp.value": newHp });
+					await applyDamageWithTempHp(actor, damage);
 
 					// Update button to show applied
 					btn.classList.add("sdx-applied");
