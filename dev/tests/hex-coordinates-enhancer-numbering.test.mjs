@@ -447,3 +447,102 @@ test("the lettered styles ignore the Enhancer", async () => {
 		assert.equal(hexMaps.calls.length, 0);
 	}
 });
+
+// --- the Enhancer's own labels win where they are showing ---------------------
+
+test("this overlay stays off where the Enhancer shows its own labels, and only there", async () => {
+	const realGet = globalThis.game.settings.get;
+	const setting = value => {
+		globalThis.game.settings.get = (scope, key) => (scope === "shadowdark-enhancer" && key === "showHexCoordinates"
+			? value : realGet(scope, key));
+	};
+	try {
+		setting(true);
+		assert.equal(await useScene({ enhancer: { hexMaps: hexMapsStub() } }), null, "numbered, Enhancer labels on: nothing here");
+		setting(false);
+		assert.ok(await useScene({ enhancer: { hexMaps: hexMapsStub() } }), "numbered, Enhancer labels off: unchanged");
+		setting(true);
+		const unnumbered = { ...hexMapsStub(), hasNumbering: () => false };
+		assert.ok(await useScene({ enhancer: { hexMaps: unnumbered } }), "a scene the Enhancer has not numbered keeps this overlay");
+		assert.ok(await useScene({ enhancer: undefined }), "no Enhancer: unchanged");
+	} finally { globalThis.game.settings.get = realGet; }
+});
+
+// showHexCoordinates is user-scoped: core writes it as a Setting document, so the flip arrives as
+// createSetting / updateSetting and never as clientSettingChanged (client scope only).
+test("flipping the Enhancer's switch re-mounts this overlay with no reload, for this user's row only", async () => {
+	const realGet = globalThis.game.settings.get;
+	const realUser = globalThis.game.user;
+	let shown = true;
+	globalThis.game.settings.get = (scope, key) => (scope === "shadowdark-enhancer" && key === "showHexCoordinates"
+		? shown : realGet(scope, key));
+	globalThis.game.user = { isGM: true, id: "me" };
+	const row = (user, key = "shadowdark-enhancer.showHexCoordinates") => ({ key, user });
+	const settle = () => new Promise(resolve => setImmediate(resolve));
+	try {
+		assert.equal(await useScene({ enhancer: { hexMaps: hexMapsStub() } }), null, "Enhancer labels on: nothing here");
+		globalThis.canvas.ready = true;
+
+		shown = false;
+		hooks.updateSetting(row("someone-else"));
+		await settle();
+		assert.equal(window.SDXCoordinates, null, "another user's row does not re-mount");
+		hooks.updateSetting(row("me", "shadowdark-enhancer.somethingElse"));
+		await settle();
+		assert.equal(window.SDXCoordinates, null, "another key does not re-mount");
+
+		hooks.updateSetting(row("me"));
+		await settle();
+		assert.ok(window.SDXCoordinates, "switched off: this overlay comes back");
+
+		shown = true;
+		hooks.createSetting(row("me"));
+		await settle();
+		assert.equal(window.SDXCoordinates, null, "switched on, first write of the row: this overlay steps aside");
+	} finally {
+		globalThis.game.settings.get = realGet;
+		globalThis.game.user = realUser;
+	}
+});
+
+// mountCoords awaits the font before building the overlay. A second mount that starts inside that
+// window (a scene draw and the Enhancer's switch flipping together) must not leave two overlays
+// in canvas.controls with only one reachable to finalize.
+test("overlapping mounts leave exactly one overlay, whichever font load resolves first", async () => {
+	const realLoad = globalThis.document.fonts.load;
+	const realGet = globalThis.game.settings.get;
+	const realUser = globalThis.game.user;
+	globalThis.game.settings.get = (scope, key) => (scope === "shadowdark-enhancer" && key === "showHexCoordinates"
+		? false : realGet(scope, key));
+	globalThis.game.user = { isGM: true, id: "me" };
+	const pending = [];
+	globalThis.document.fonts.load = () => new Promise(resolve => pending.push(resolve));
+	const settle = () => new Promise(resolve => setImmediate(resolve));
+	try {
+		for (const order of [[1, 0], [0, 1]]) {
+			pending.length = 0;
+			// useScene awaits canvasReady, which waits on the font: resolve it, then overlap two more.
+			const scene = useScene({ enhancer: { hexMaps: hexMapsStub() } });
+			await settle();
+			pending.shift()();
+			await scene;
+			globalThis.canvas.ready = true;
+			const before = canvas.controls.children.length;
+
+			const first = hooks.canvasReady();
+			hooks.updateSetting({ key: "shadowdark-enhancer.showHexCoordinates", user: "me" });
+			await settle();
+			assert.equal(pending.length, 2, "both mounts are waiting on the font");
+			for (const index of order) pending[index]();
+			await first;
+			await settle();
+
+			assert.ok(window.SDXCoordinates, "an overlay is mounted");
+			assert.equal(canvas.controls.children.length, before, `one overlay's containers, resolved ${order}`);
+		}
+	} finally {
+		globalThis.document.fonts.load = realLoad;
+		globalThis.game.settings.get = realGet;
+		globalThis.game.user = realUser;
+	}
+});

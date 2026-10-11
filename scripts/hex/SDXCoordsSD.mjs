@@ -698,24 +698,48 @@ class SDXCoord {
 /**
  * Initialize SDX Coords hooks. Call from shadowdark-extras.mjs.
  */
+/**
+ * The Enhancer is showing its own hex labels on this scene for this user: a scene it has
+ * numbered, with its "Show hex coordinates" switched on. Then this overlay stays off, so there
+ * is never a second set. With the switch off this overlay is untouched, Zine axes from the
+ * Enhancer's numbers included (#195).
+ */
+function enhancerDrawsCoords(scene) {
+	if (!enhancerNumbers(scene)) return false;
+	try {
+		return game.settings.get("shadowdark-enhancer", "showHexCoordinates") === true;
+	}
+	catch{
+		return false;
+	}
+}
+
+let latestMount = 0;
+
+async function mountCoords() {
+	const mount = ++latestMount;
+	if (window.SDXCoordinates) {
+		window.SDXCoordinates.finalize();
+		window.SDXCoordinates = null;
+	}
+	if (SDXCoord.isSupported && !enhancerDrawsCoords(canvas.scene)) {
+		// Preload the chosen font so PIXI canvas 2D text can use it
+		const settings = getSettings();
+		const fontFamily = settings.fontFamily || "Signika-Bold";
+		try {
+			await document.fonts.load(`16px "${fontFamily}"`);
+		}
+		catch{ /* font may not exist, PIXI will use fallback */ }
+		// A newer mount started while the font loaded and owns the overlay; building a second
+		// one here would orphan the first in canvas.controls, with nothing left to finalize it.
+		if (mount !== latestMount) return;
+		window.SDXCoordinates = new SDXCoord();
+	}
+}
+
 export function initSDXCoords() {
 	// Canvas ready — create/destroy coordinate overlay
-	Hooks.on("canvasReady", async () => {
-		if (window.SDXCoordinates) {
-			window.SDXCoordinates.finalize();
-			window.SDXCoordinates = null;
-		}
-		if (SDXCoord.isSupported) {
-			// Preload the chosen font so PIXI canvas 2D text can use it
-			const settings = getSettings();
-			const fontFamily = settings.fontFamily || "Signika-Bold";
-			try {
-				await document.fonts.load(`16px "${fontFamily}"`);
-			}
-			catch{ /* font may not exist, PIXI will use fallback */ }
-			window.SDXCoordinates = new SDXCoord();
-		}
-	});
+	Hooks.on("canvasReady", mountCoords);
 	Hooks.on("canvasPan", () => window.SDXCoordinates?.updateZoom());
 	// The GM moves the Enhancer's anchor hex in its Hex Tagger and looks at the overlay (#195).
 	Hooks.on("updateScene", (scene, changes) => {
@@ -724,6 +748,15 @@ export function initSDXCoords() {
 			window.SDXCoordinates?.rebuildZine();
 		}
 	});
+	// The user flips the Enhancer's switch: one set of labels either way, no reload. The setting
+	// is user-scoped, so core writes it as a Setting document (clientSettingChanged only fires
+	// for client scope); `setting.user` is the owner's id, and only this user's row counts.
+	const onEnhancerCoordsSwitch = setting => {
+		if (setting.key === "shadowdark-enhancer.showHexCoordinates"
+			&& setting.user === game.user.id && canvas?.ready) mountCoords();
+	};
+	Hooks.on("createSetting", onEnhancerCoordsSwitch);
+	Hooks.on("updateSetting", onEnhancerCoordsSwitch);
 }
 
 /**

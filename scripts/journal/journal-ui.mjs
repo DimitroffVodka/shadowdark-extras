@@ -27,6 +27,7 @@
 
 import { HEX_JOURNAL_NAME } from "../hex/HexTooltipSD.mjs";
 import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
+import { enhancerActive } from "../settings/enhancer-defer.mjs";
 
 const TRADE_JOURNAL_NAME = "__sdx_trade_sync__"; // Must match TradeWindowSD.mjs
 const CAROUSING_JOURNAL_NAME = "__sdx_carousing_sync__"; // Must match CarousingSD.mjs
@@ -91,7 +92,9 @@ let journalHeadingsHooksRegistered = false;
 export function registerJournalUIHooks() {
 	const hiddenJournalNames = [];
 	if (isFeatureEnabled(FEATURE_IDS.TRADING)) hiddenJournalNames.push(TRADE_JOURNAL_NAME);
-	if (isFeatureEnabled(FEATURE_IDS.CAROUSING)) {
+	// Deferring to the Enhancer turns the feature off, not its journals: they are this module's
+	// own stores and stay out of every user's directory.
+	if (isFeatureEnabled(FEATURE_IDS.CAROUSING) || enhancerActive()) {
 		hiddenJournalNames.push(CAROUSING_JOURNAL_NAME, CAROUSING_TABLES_JOURNAL_NAME);
 	}
 	if (isFeatureEnabled(FEATURE_IDS.HEX_TOOLTIP)) hiddenJournalNames.push(HEX_JOURNAL_NAME);
