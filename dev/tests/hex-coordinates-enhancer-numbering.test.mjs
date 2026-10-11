@@ -435,6 +435,29 @@ test("a scene with a published layout is labelled from it, and the Enhancer is n
 	assert.equal(hexMaps.calls.length, 0);
 });
 
+test("a published layout one row down (topRows) labels from the second row and leaves the row above blank (#202)", async () => {
+	const layout = { cols: 17, rows: 11, landscape: false, flipX: false, flipY: false, origin: 0, topRows: 1 };
+	await useScene({ enhancer: { hexMaps: hexMapsStub() }, layout });
+	const zine = readZine();
+
+	assert.equal(zine.labelled.get("1,0"), "000", "the first printed hex is Foundry row 1");
+	assert.equal(zine.labelled.get("2,1"), "101");
+	assert.equal([...zine.labelled.keys()].some(key => key.startsWith("0,")), false, "row 0 is above the print");
+	assert.equal(topAxis(zine).get(0), "000", "column headers read from the first printed row, not the blank one");
+	assert.equal(topAxis(zine).get(1), "100");
+	assert.equal(leftAxis(zine).get(0), "", "no number on the blank row");
+	assert.equal(leftAxis(zine).get(1), "00");
+
+	const click = (x, y) => {
+		canvas.mousePosition = { x, y };
+		textsBuilt = [];
+		clickHandler({});
+		return textsBuilt.map(t => t.label);
+	};
+	assert.deepEqual(click(150, 250), ["101"]);
+	assert.deepEqual(click(50, 50), [], "nothing over the row above the print");
+});
+
 test("the lettered styles ignore the Enhancer", async () => {
 	for (const state of [DISPLAY_STATES.MARGIN, DISPLAY_STATES.CELL]) {
 		await useScene({ state, enhancer: undefined });

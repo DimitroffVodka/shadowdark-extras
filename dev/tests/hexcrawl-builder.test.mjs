@@ -701,6 +701,59 @@ test("adoption refuses a scene it cannot number, before writing anything", async
 	for (const scene of [square, short, padded, fits]) assert.equal(scene.getFlag(MODULE_ID, "hexcrawl"), undefined);
 });
 
+test("topRows keeps one whole Foundry row above the print: adoption, records and the stored layout (#202)", async () => {
+	const grid = { cols: 11, rows: 10, origin: 0, topRows: 1 };
+	const print = printScene({ width: 2400, height: 2900 });
+	assert.deepEqual(await builder.adoptHexcrawl(print.id, { grid }), { sceneId: print.id, adopted: true });
+	assert.deepEqual(print.getFlag(MODULE_ID, "hexcrawl").grid,
+		{ cols: 11, rows: 10, landscape: false, flipX: false, flipY: false, origin: 0, topRows: 1 });
+
+	await builder.upsertHexRecords(print.id, [{ num: 0, name: "A" }, { num: 103, name: "B" }]);
+	assert.deepEqual(Object.keys(world.lastFlagValue()[print.id]).sort(), ["1_0", "4_1"]);
+	assert.deepEqual(Object.keys(builder.getHexRecords(print.id)).sort(), ["0", "103"]);
+
+	writes.length = 0;
+	assert.deepEqual(await builder.adoptHexcrawl(print.id, { grid }), { sceneId: print.id, adopted: false });
+	await assert.rejects(builder.adoptHexcrawl(print.id, { grid: { cols: 11, rows: 10, origin: 0 } }), /different hexcrawl layout/);
+	assert.deepEqual(writes, []);
+});
+
+test("topRows 0 is the layout an older build stored; any other value or an unknown grid key is refused (#202)", async () => {
+	const zero = printScene();
+	await builder.adoptHexcrawl(zero.id, { grid: { ...PRINT_GRID, topRows: 0 } });
+	assert.equal(Object.hasOwn(zero.getFlag(MODULE_ID, "hexcrawl").grid, "topRows"), false, "a zero is not stored");
+	assert.equal((await builder.adoptHexcrawl(zero.id, { grid: PRINT_GRID })).adopted, false, "so it is the same layout as none");
+
+	const fits = printScene();
+	writes.length = 0;
+	for (const bad of [{ topRows: 2 }, { topRows: -1 }, { topRows: "1" }, { topRows: 0.5 }, { foo: true }]) {
+		await assert.rejects(builder.adoptHexcrawl(fits.id, { grid: { ...PRINT_GRID, ...bad } }), /topRows|not a grid field/);
+	}
+	await assert.rejects(builder.buildPublishedHexcrawl({ grid: { ...PRINT_GRID, foo: 1 }, hexes: [] }), /grid\.foo is not a grid field/);
+	assert.deepEqual(writes, []);
+	assert.equal(fits.getFlag(MODULE_ID, "hexcrawl"), undefined);
+});
+
+test("adopting with topRows checks the shifted cells against the scene (#202)", async () => {
+	const tight = printScene();
+	await assert.rejects(
+		builder.adoptHexcrawl(tight.id, { grid: { ...PRINT_GRID, topRows: 1 } }),
+		/hex 0002 falls outside the scene; the first published hex must be one row below the scene's top-left cell, and the scene one row taller than the print/
+	);
+	assert.equal(tight.getFlag(MODULE_ID, "hexcrawl"), undefined);
+});
+
+test("a build honours topRows: the scene is one row taller and the first hex sits one row down (#202)", async () => {
+	const data = { grid: { cols: 2, rows: 2 }, hexes: [{ num: 101 }] };
+	await builder.buildPublishedHexcrawl(data, { view: false });
+	await builder.buildPublishedHexcrawl({ ...data, grid: { ...data.grid, topRows: 1 } }, { view: false });
+	const [plain, lowered] = scenes;
+	assert.equal(lowered.height - plain.height, 256, "one more whole row");
+	assert.deepEqual(Object.keys(world.lastFlagValue()[plain.id]).sort(), ["0_0", "0_1", "1_0", "1_1"]);
+	assert.deepEqual(Object.keys(world.lastFlagValue()[lowered.id]).sort(), ["1_0", "1_1", "2_0", "2_1"], "every cell one row down");
+	assert.equal(lowered.getFlag(MODULE_ID, "hexcrawl").grid.topRows, 1);
+});
+
 test("getHexRecords reads records back by published number, as copies, and tells no layout from no records", async () => {
 	const print = printScene();
 	assert.equal(builder.getHexRecords(print.id), null, "no layout");
@@ -772,7 +825,7 @@ test("setup exposes the same guarded hex namespace on both surfaces and removes 
 		assert.equal(typeof module.api.hex, enabled ? "object" : "undefined");
 		assert.equal(context.game.shadowdarkExtras?.hex, module.api.hex);
 		if (enabled) {
-			assert.deepEqual(Object.keys(module.api.hex).sort(), ["adoptHexcrawl", "buildHexcrawl", "getHexRecords", "getSpecialTiles", "getZoneColors", "importHexerMap", "openHexerImportDialog", "repaintHexTiles", "upsertHexRecords"]);
+			assert.deepEqual(Object.keys(module.api.hex).sort(), ["adoptHexcrawl", "buildHexcrawl", "getHexRecords", "getSpecialTiles", "getZoneColors", "gridFields", "importHexerMap", "openHexerImportDialog", "repaintHexTiles", "upsertHexRecords"]);
 			context.game.user.isGM = false;
 			await assert.rejects(module.api.hex.buildHexcrawl(fixture), /requires GM permission/);
 			await assert.rejects(module.api.hex.getHexRecords("scene"), /requires GM permission/);
@@ -787,6 +840,9 @@ test("setup exposes the same guarded hex namespace on both surfaces and removes 
 			assert.ok(palette.some(colour => colour.value === "#1e7e34" && colour.label === "Forest"));
 			palette[0].label = "mutated";
 			assert.notEqual(module.api.hex.getZoneColors()[0].label, "mutated", "callers get a copy, not the editor's own swatches");
+			// Also outside the wrap: a caller checks it before it knows it may send anything.
+			assert.ok(module.api.hex.gridFields.includes("topRows"));
+			assert.ok(Object.isFrozen(module.api.hex.gridFields));
 		}
 	}
 });

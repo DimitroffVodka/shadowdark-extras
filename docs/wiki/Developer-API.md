@@ -188,6 +188,13 @@ Foundry shifts half a hex down: those columns end one row short on a print whose
 frame cuts the raised columns' first row in half, and the builder paints,
 records and accepts no number past it there. Which published columns they are
 follows `origin` and the flips. Send it only when it differs from `rows`.
+`topRows` (optional, `0` or `1`) keeps that many whole Foundry rows above the
+print's first row, for a print whose first row is full hexes: without it the
+raised columns' first hex sits half off the scene. It applies after the flips,
+a build makes the scene one row taller, and the row above carries no number or
+label. A `grid` key outside `api.hex.gridFields` is refused, not ignored, and a
+build that lacks `"topRows"` in that list would store the layout without it and
+put every record a row off, so check the list before sending it.
 Distance defaults to 6, units to `"mi"`, terrain to `"forest"`, and all
 transforms to false. The scene uses SDX's native HEXODDQ grid at size 256.
 `terrainTile: { w, h }` overrides the ordinary terrain tile render size
@@ -390,9 +397,10 @@ await hex.upsertHexRecords(sceneId, [{ num: 2849, name: "The Gate", terrain: "mo
 ```
 
 - `grid` takes the same fields and checks as the build's `grid` (`cols`, `rows`,
-  `origin`, `firstRow`, `rowsLowered`, `landscape`, `flipX`, `flipY`).
+  `origin`, `firstRow`, `rowsLowered`, `landscape`, `flipX`, `flipY`, `topRows`).
 - The scene's grid must be `HEXODDQ`, and the map's first hex (`0000`, or `0101`
-  with origin 1) must be the scene's top-left cell, Foundry offset `{ i: 0, j: 0 }`.
+  with origin 1) must be the scene's top-left cell, Foundry offset `{ i: 0, j: 0 }`
+  (`{ i: 1, j: 0 }` with `topRows: 1`).
   Every published cell's centre must land on the scene. Anything else is refused
   before a write.
 - Only the layout flag is written. Background, tiles, notes, drawings, tokens

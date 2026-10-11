@@ -13,22 +13,27 @@ const DISPLAY_STATES = {
 	ZINE: 4,
 };
 
-/** Convert a generated hexcrawl's Foundry offset back to its published hex ID. */
+/**
+ * Convert a generated hexcrawl's Foundry offset back to its published hex ID.
+ * Null for a cell the layout does not number: the whole row above a print
+ * that sits one row down (layout.topRows).
+ */
 export function formatPublishedHexCoord(offset, layout) {
 	if (!layout || !Number.isInteger(offset?.i) || !Number.isInteger(offset?.j)) return null;
 	const cols = Number(layout.cols);
 	const rows = Number(layout.rows);
 	const origin = layout.origin === 0 ? 0 : 1;
-	if (!Number.isInteger(cols) || !Number.isInteger(rows)) return null;
+	const i = offset.i - (layout.topRows === 1 ? 1 : 0);
+	if (i < 0 || !Number.isInteger(cols) || !Number.isInteger(rows)) return null;
 	let col;
 	let row;
 	if (layout.landscape) {
-		col = (layout.flipY ? cols - 1 - offset.i : offset.i) + origin;
+		col = (layout.flipY ? cols - 1 - i : i) + origin;
 		row = (layout.flipX ? rows - 1 - offset.j : offset.j) + origin;
 	}
 	else {
 		col = (layout.flipX ? cols - 1 - offset.j : offset.j) + origin;
-		row = (layout.flipY ? rows - 1 - offset.i : offset.i) + origin;
+		row = (layout.flipY ? rows - 1 - i : i) + origin;
 	}
 	return String((col * 100) + row).padStart(3, "0");
 }
@@ -360,13 +365,14 @@ class SDXCoord {
 		const PT = getPreciseText();
 		let pos; let label; let text;
 
-		// Column headers (top)
+		// Column headers (top), read from the first numbered row, not a blank one above the print.
+		const topRow = Math.max(this._row0, this._publishedLayout?.topRows ?? 0);
 		let c = 0;
 		do {
 			const adjCol = this._adjustCol(c);
 			label = style === "zine" && this._publishedLayout
 				? String(Math.floor(Number(formatPublishedHexCoord(
-					{ i: this._row0, j: c + this._col0 }, this._publishedLayout
+					{ i: topRow, j: c + this._col0 }, this._publishedLayout
 				)) / 100) * 100).padStart(3, "0")
 				: this._formatColumnHeader(adjCol, style);
 			text = new PT(label, this._style);
@@ -409,7 +415,7 @@ class SDXCoord {
 			label = style === "zine" && this._publishedLayout
 				? formatPublishedHexCoord(
 					{ i: r + this._row0, j: this._col0 }, this._publishedLayout
-				).slice(-2)
+				)?.slice(-2) ?? ""
 				: (style === "zine" ? String(zineRow + 1).padStart(2, "0")
 					: this._formatRowHeader(adjRow, style));
 			text = new PT(label, this._style);
@@ -498,6 +504,10 @@ class SDXCoord {
 							{ i: r + this._row0, j: c + this._col0 }, this._publishedLayout
 						)
 						: this._formatCellLabel(adjRow, adjCol, style));
+				// A row above a print that sits one row down (topRows) has no number.
+				if (label === null) {
+					r += 1; continue;
+				}
 				// PreciseText's width and height for this label, measured without
 				// drawing it.
 				const metrics = PIXI.TextMetrics.measureText(label, cellStyle);
@@ -586,6 +596,7 @@ class SDXCoord {
 			: (style === "zine" && this._publishedLayout
 				? formatPublishedHexCoord(offset, this._publishedLayout)
 				: this._formatCellLabel(row, col, style));
+		if (label === null) return;
 		const text = new PT(label, this._style);
 		text.resolution = 4;
 		text.anchor.set(0.2);
