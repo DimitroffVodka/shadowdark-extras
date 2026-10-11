@@ -60,7 +60,7 @@ import { deleteHexSceneData, registerHexRecordPrune } from "./hex-record-prune.m
 import { buildMapPathNetwork, mapPathEdgeKey } from "../canvas/drawing-geometry.mjs";
 import { ART_IMAGE, coastArtPlacements, coastCells } from "../canvas/map-network-art.mjs";
 import { getSpecialTiles } from "./hex-special-tiles.mjs";
-import { getColoredTileDimensions, getColoredTiles, getColoredTilesByBiome, loadColoredTileAssets } from "./hex-colored-tiles.mjs";
+import { DRAW_EXCLUDES, getColoredTileDimensions, getColoredTiles, getColoredTilesByBiome, loadColoredTileAssets } from "./hex-colored-tiles.mjs";
 import { getHexRecordMap, getHexTerrainMap, getWaterHexKeys, isArcticTerrain, isWaterTerrain } from "./hex-water-terrain.mjs";
 import { importHexerMap, openHexerImportDialog } from "./HexerImporterSD.mjs";
 
@@ -163,11 +163,11 @@ const TERRAIN_COLORED_RULES = {
 	// biome the canyon label maps to, which no Canyons tile name contains.
 	canyon: { pool: "canyons", include: ["canyon"], fallback: { pool: "desert", include: ["hills"] } },
 	"deep tunnels": { pool: "mountains", include: ["rocky"] },
-	// "(dark)" is the weak recolour; it ships for hand-picked art, not the pool.
-	// Not bare "dark": every path contains "shadowdark-extras".
+	// DRAW_EXCLUDES keeps the weak "(dark)" recolour out of the pool, as it does
+	// for Solo Hex Mode; hand-picked art can still name it.
 	// The fallback keeps jungle on forest art while a cached catalogue predates
 	// the Jungle folder (the catalogue is re-scanned on the next module version).
-	jungle: { pool: "jungle", include: ["jungle"], exclude: ["(dark)"],
+	jungle: { pool: "jungle", include: ["jungle"], exclude: DRAW_EXCLUDES.jungle,
 		fallback: { pool: "vegetation", include: ["forest", "/trees2.webp"] } },
 	// Salt-flat art has its own folder now; a catalogue cached before that move
 	// still lists it under Desert, so plain desert keeps leaving it out or

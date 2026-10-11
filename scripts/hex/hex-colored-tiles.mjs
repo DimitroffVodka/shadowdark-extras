@@ -147,6 +147,26 @@ export function getColoredTilesByBiome() {
 	return byBiome;
 }
 
+// Parts of a path a random draw leaves out of a folder. "(dark)" is the weak
+// jungle recolour: it ships for hand-picked art, not for the pool. Not bare
+// "dark": every path contains "shadowdark-extras".
+export const DRAW_EXCLUDES = { jungle: ["(dark)"] };
+
+/**
+ * The tiles a random draw may take from `folder` of getColoredTilesByBiome().
+ * Hand-picked art still reaches the excluded tiles; this only keeps them out
+ * of the generators and the builder's terrain pools.
+ */
+export function drawPool(byBiome, folder) {
+	const excluded = DRAW_EXCLUDES[folder];
+	const pool = byBiome[folder] ?? [];
+	if (!excluded) return pool;
+	return pool.filter(path => {
+		const text = decodeURIComponent(path).toLowerCase();
+		return !excluded.some(part => text.includes(part));
+	});
+}
+
 /**
  * Get colored tile dimensions scaled to the active scene grid.
  */
