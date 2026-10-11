@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [6.16.1] — 2026-10-11 — Damage spends temporary HP first
+
+6.16.0 was published as a pre-release and held back, so this is the first release that carries everything in it. Read the [6.16.0 notes](https://github.com/DimitroffVodka/shadowdark-extras/releases/tag/v6.16.0) for what changed since 6.15.0.
+
 ### Fixed
 
 - **Damage applied by Extras spends temporary HP first.** The damage card's Apply Damage button, auto-applied ones included, and aura, template, duration-spell and focus-spell ticks previously wrote HP without spending a pool in front of it, such as the Shadowdark Enhancer's. They now spend the final damage (after resistance, immunity and Glassbones) through the Enhancer's optional pool API, then await any HP overflow write. Healing never touches the pool. Without the Enhancer, each path retains its original HP clamp and awaited write. ([#215](https://github.com/DimitroffVodka/shadowdark-extras/issues/215))
