@@ -325,6 +325,11 @@ since been removed — is refused before the scene is created.
 `art` and `icon` describe painting only: like `special`, they are stripped
 before the hex record is written, and `upsertHexRecords` refuses them.
 
+`journal: { entryId, pageId }` names the journal page a keyed hex opens. The
+build places a map note on that hex's centre for each page the world holds; a
+page it does not hold is left out, not pinned dangling. It is build-only in the
+same way, and the summary gains `journalNotes` when any note was made.
+
 ### Updating records
 
 ```js
