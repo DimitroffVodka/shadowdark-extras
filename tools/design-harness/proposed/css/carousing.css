@@ -1,0 +1,54 @@
+/* Carousing proposal, second pass — one card skeleton with a status chip, calmer gold, legible micro-text. */
+.sdx-carousing-overlay-app .sdx-carousing-overlay-header h1 { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.sdx-carousing-overlay-app .sdx-carousing-mode-btn, .sdx-carousing-overlay-app .sdx-mode-btn { min-height: 26px; padding: 3px 12px; font-size: 11.5px; }
+.sdx-carousing-overlay-app .sdx-mode-btn.active { background: var(--sp-gold); color: #141414; font-weight: 700; border-color: var(--sp-gold); }
+.sdx-carousing-overlay-app .sdx-mode-btn:not(.active) { background: none; border: 1px solid var(--sp-line); color: var(--sp-dim); }
+
+/* GM controls: labeled groups, calm buttons */
+.sdx-carousing-overlay-app .sdx-carousing-gm-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 10px 16px; }
+.sdx-carousing-overlay-app .sdx-carousing-gm-controls label { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--sp-faint); }
+.sdx-carousing-overlay-app .sdx-carousing-gm-controls select { min-width: 150px; }
+.sdx-carousing-overlay-app .sdx-carousing-edit-tables-btn { background: none; border: 1px solid var(--sp-line); color: var(--sp-dim); font-size: 11.5px; padding: 3px 10px; }
+.sdx-carousing-overlay-app .sdx-carousing-edit-tables-btn:hover { border-color: var(--sp-gold); color: var(--sp-text); }
+.sdx-carousing-overlay-app .sdx-carousing-limit { font-size: 12px; color: var(--sp-gold-text); }
+.sdx-carousing-overlay-app .sdx-carousing-gm-buttons { display: flex; gap: 8px; }
+.sdx-carousing-overlay-app .sdx-carousing-gm-buttons button { min-height: 28px; padding: 3px 14px; font-size: 12px; }
+.sdx-carousing-overlay-app .sdx-carousing-roll-btn { font-weight: 700; }
+
+/* description + cost strip */
+.sdx-carousing-overlay-app .sdx-carousing-description-box p { font-size: 13px; font-style: italic; color: var(--sp-dim); }
+.sdx-carousing-overlay-app .sdx-carousing-cost-info { font-size: 13px; }
+.sdx-carousing-overlay-app .sdx-carousing-cost-info strong { color: var(--sp-gold-text); font-size: 14px; }
+.sdx-carousing-overlay-app .sdx-wealth-base-tag { color: var(--sp-dim); border-color: var(--sp-line); border-radius: 2px; font-size: 11px; }
+
+/* one card skeleton */
+.sdx-carousing-overlay-app .sdx-carousing-overlay-players { align-items: stretch; gap: 16px; }
+.sdx-carousing-overlay-app .sdx-carousing-overlay-card { display: flex; flex-direction: column; background: #1e1e1e;
+  border: 1px solid var(--sp-line-soft); border-radius: 8px; overflow: hidden; }
+.sdx-carousing-overlay-app .sdx-carousing-card-header { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 7px 12px; background: #191919; border-bottom: 2px solid var(--sp-line); }
+.sdx-carousing-overlay-app .sdx-carousing-player-name { font-size: 13.5px; font-weight: 700; color: var(--sp-text); }
+.sdx-carousing-overlay-app .sdx-carousing-player-name i { color: var(--sp-gold); margin-right: 4px; }
+.sdx-carousing-overlay-app .sdx-carousing-flip-container { flex: 1 1 auto; height: auto; min-height: 180px; }
+
+.sdx-carousing-overlay-app .sdx-carousing-result-badge { display: inline-flex; align-items: baseline; gap: 8px; padding: 3px 10px;
+  background: #141414; border: 1px solid var(--sp-gold); border-radius: 2px; }
+.sdx-carousing-overlay-app .sdx-carousing-roll-result { font-size: 16px; font-weight: 700; color: var(--sp-gold-text); }
+.sdx-carousing-overlay-app .sdx-carousing-xp-result { font-size: 11.5px; color: var(--sp-dim); }
+
+.sdx-carousing-overlay-app .sdx-carousing-card-footer { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 10px;
+  background: #191919; border-top: 1px solid var(--sp-line-soft); }
+.sdx-carousing-overlay-app .sdx-carousing-card-stats { display: flex; justify-content: space-between; font-size: 12.5px; }
+.sdx-carousing-overlay-app .sdx-carousing-card-gp { color: var(--sp-gold-text); }
+.sdx-carousing-overlay-app .sdx-carousing-card-bonus { color: var(--sp-dim); }
+.sdx-carousing-overlay-app .sdx-carousing-applied-badge { border-radius: 2px; }
+.sdx-carousing-overlay-app .sdx-carousing-card-buttons button { min-height: 28px; padding: 3px 12px; font-size: 12px; }
+.sdx-carousing-overlay-app .sdx-carousing-confirm-btn { font-weight: 700; }
+
+/* offline actors */
+.sdx-carousing-overlay-app .sdx-carousing-available-actors h3 { font-size: 13px; color: var(--sp-dim); }
+.sdx-carousing-overlay-app .sdx-available-actor-item { border: 1px solid var(--sp-line-soft); border-radius: 6px; }
+.sdx-carousing-overlay-app .sdx-available-actor-item:hover { border-color: var(--sp-gold); }
+.sdx-carousing-overlay-app .sdx-add-result-btn,
+.sdx-carousing-overlay-app .sdx-remove-result-btn { min-width: 22px; min-height: 22px; display: inline-flex;
+    align-items: center; justify-content: center; }

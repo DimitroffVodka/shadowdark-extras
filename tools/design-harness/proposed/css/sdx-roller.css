@@ -1,0 +1,44 @@
+/* SDX Roller proposal, second pass — a finished tool, not a wireframe.
+   Sections with clear headings, a real switch look, filled primary Roll. */
+.sdx-roller-window .window-content { padding: 12px 14px; }
+.sdx-roller-window .sdx-roller-section { margin-bottom: 12px; }
+.sdx-roller-window .sdx-roller-heading { display: block; font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--sp-dim); margin-bottom: 6px; }
+.sdx-roller-window .sdx-roller-hint { font-size: 11px; color: var(--sp-faint); margin: -3px 0 7px; }
+.sdx-roller-window .sdx-roller-filter-input { width: 100%; margin-bottom: 8px; padding: 4px 8px; }
+.sdx-roller-window .sdx-roller-portraits { flex-wrap: wrap; justify-content: center; gap: 8px;
+  background: var(--sp-surface-2); border: 1px solid var(--sp-line-soft); border-radius: 6px; padding: 10px; }
+.sdx-roller-window .sdx-roller-actor-portrait { width: 52px; height: 52px; border: 2px solid var(--sp-line);
+  border-radius: 50%; }
+.sdx-roller-window .sdx-roller-actor-portrait:hover { border-color: var(--sp-gold); }
+
+.sdx-roller-window .sdx-roller-participants-list { display: flex; flex-direction: column; gap: 4px; }
+.sdx-roller-window .sdx-roller-participant-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px;
+  background: var(--sp-surface); border: 1px solid var(--sp-line-soft); border-radius: 4px; }
+.sdx-roller-window .sdx-roller-participant-name { flex: 1; font-size: 13px; color: var(--sp-text); }
+.sdx-roller-window .sdx-roller-participant-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sp-gold); }
+.sdx-roller-window .sdx-roller-participant-row.contestant-row .sdx-roller-participant-dot { background: var(--sp-danger-text); }
+.sdx-roller-window .sdx-roller-remove-participant { min-width: 24px; min-height: 24px; display: inline-flex;
+  align-items: center; justify-content: center; background: none; border: 1px solid transparent; border-radius: 4px;
+  color: var(--sp-faint); font-size: 15px; }
+.sdx-roller-window .sdx-roller-remove-participant:hover { border-color: var(--sp-line); color: #fff; }
+.sdx-roller-window .sdx-roller-vs-divider { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.sdx-roller-window .sdx-roller-vs-divider hr { flex: 1; border: 0; border-top: 1px solid var(--sp-line-soft); }
+.sdx-roller-window .sdx-roller-vs-divider span { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sp-faint); }
+
+.sdx-roller-window .sdx-roller-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.sdx-roller-window .sdx-roller-row-label { min-width: 96px; font-size: 12px; font-weight: 600; color: var(--sp-dim); }
+.sdx-roller-window .sdx-roller-ability-select, .sdx-roller-window .sdx-roller-dc-input { flex: 1; }
+.sdx-roller-window .sdx-roller-dc-input { max-width: 72px; }
+.sdx-roller-window .sdx-roller-toggle { flex: 0 0 auto; width: 36px; height: 20px; border-radius: 10px;
+  background: #3d3d3d; border: 1px solid var(--sp-line); position: relative; padding: 0; margin-right: 16px; }
+.sdx-roller-window .sdx-roller-toggle .sdx-toggle-knob { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+  border-radius: 50%; background: #cfcfcf; transition: all 0.15s ease; }
+.sdx-roller-window .sdx-roller-toggle.active { background: var(--sp-gold); border-color: var(--sp-gold); }
+.sdx-roller-window .sdx-roller-toggle.active .sdx-toggle-knob { left: 18px; background: #141414; }
+.sdx-roller-window .sdx-roller-label-input { width: 100%; padding: 4px 8px; }
+.sdx-roller-window .sdx-roller-actions { display: flex; gap: 8px; margin-top: 12px; }
+.sdx-roller-window .sdx-roller-actions button { flex: 1; min-height: 30px; font-size: 12.5px; }
+.sdx-roller-window .sdx-roller-btn-roll { font-weight: 700; }
+.sdx-roller-window .sdx-roller-btn-cancel { background: none; border: 1px solid var(--sp-line); color: var(--sp-dim); }
+.sdx-roller-window .sdx-roller-btn-cancel:hover { color: #fff; border-color: var(--sp-dim); }

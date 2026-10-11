@@ -1,0 +1,63 @@
+/* Party sheet proposal, second pass — a headline strip, a clear tab bar, a compact toolbar,
+   and member rows that read as cards instead of a slab. */
+.shadowdark-extras-party .window-content { padding: 0; }
+.shadowdark-extras-party .party-header { display: flex; align-items: center; gap: 14px; padding: 14px 16px 12px; }
+.shadowdark-extras-party .party-header .party-portrait { width: 56px; height: 56px; border-radius: 6px; border: 1px solid var(--sp-line); object-fit: cover; }
+.shadowdark-extras-party .party-header-content { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.shadowdark-extras-party .party-title { flex: 1; min-width: 0; }
+.shadowdark-extras-party .party-title input { width: 100%; font-size: 21px; font-weight: 700; font-family: inherit;
+  background: none; border: none; border-bottom: 1px solid transparent; color: var(--sp-text); padding: 2px 0; }
+.shadowdark-extras-party .party-title input:hover, .shadowdark-extras-party .party-title input:focus { border-bottom-color: var(--sp-line); outline: none; }
+.shadowdark-extras-party .party-summary { display: flex; gap: 8px; }
+.shadowdark-extras-party .party-stat { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 66px;
+  background: var(--sp-surface-2); border: 1px solid var(--sp-line-soft); border-radius: 4px; padding: 6px 10px; }
+.shadowdark-extras-party .party-stat i { color: var(--sp-gold); font-size: 12px; }
+.shadowdark-extras-party .party-stat .val { font-size: 15px; font-weight: 700; color: var(--sp-text); line-height: 1.15; }
+.shadowdark-extras-party .party-stat .lbl { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--sp-faint); }
+
+.shadowdark-extras-party .SD-nav { display: flex; gap: 2px; border-bottom: 1px solid var(--sp-line-soft); padding: 0 12px; }
+.shadowdark-extras-party .SD-nav .navigation-tab { flex: 0 1 auto; display: flex; align-items: center; gap: 7px;
+  padding: 9px 14px; font-size: 12.5px; color: var(--sp-dim); border-bottom: 2px solid transparent; }
+.shadowdark-extras-party .SD-nav .navigation-tab:hover { color: #fff; }
+.shadowdark-extras-party .SD-nav .navigation-tab.active { color: var(--sp-gold-text); border-bottom-color: var(--sp-gold); font-weight: 600; }
+
+.shadowdark-extras-party .party-actions { display: flex; gap: 6px; padding: 10px 16px 2px; }
+.shadowdark-extras-party .party-actions button { padding: 4px 10px; font-size: 11.5px; white-space: nowrap; min-height: 26px;
+  background: none; border: 1px solid var(--sp-line); color: var(--sp-dim); }
+.shadowdark-extras-party .party-actions button:hover { border-color: var(--sp-gold); color: var(--sp-text); }
+.shadowdark-extras-party .party-actions button i { color: var(--sp-gold); margin-right: 5px; }
+
+.shadowdark-extras-party .players-list, .shadowdark-extras-party .npcs-list { display: flex; flex-direction: column; gap: 8px; padding: 10px 16px; }
+.shadowdark-extras-party .member { display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+  background: var(--sp-surface-2); border: 1px solid var(--sp-line-soft); border-radius: 6px; }
+.shadowdark-extras-party .member:hover { border-color: var(--sp-line); }
+.shadowdark-extras-party .member-portrait img { width: 44px; height: 44px; border-radius: 6px; border: 1px solid var(--sp-line); object-fit: cover; }
+.shadowdark-extras-party .member-info { flex: 1; min-width: 0; display: flex; flex-direction: row; align-items: center; gap: 18px; }
+.shadowdark-extras-party .member-header { display: flex; flex-direction: column; gap: 1px; min-width: 150px; }
+.shadowdark-extras-party .member-name { font-size: 13.5px; font-weight: 700; color: var(--sp-text); cursor: pointer; }
+.shadowdark-extras-party .member-name:hover { color: var(--sp-gold-text); }
+.shadowdark-extras-party .member-class { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--sp-faint); }
+.shadowdark-extras-party .member-stats { display: flex; flex-direction: row; align-items: flex-start; gap: 14px; flex: 1; justify-content: flex-end; }
+.shadowdark-extras-party .member-stats .stat { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 46px; }
+.shadowdark-extras-party .member-stats .stat .label { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--sp-faint); }
+.shadowdark-extras-party .member-stats .stat .value { font-size: 13px; font-weight: 600; color: var(--sp-text); }
+.shadowdark-extras-party .member-stats .stat.hp { min-width: 96px; }
+.shadowdark-extras-party .member-stats .hp-bar { flex: 0 0 auto; width: 90px; min-width: 90px; height: 4px; border-radius: 2px; background: #333; margin-top: 3px; overflow: hidden; }
+.shadowdark-extras-party .member-stats .hp-fill { height: 100%; background: var(--sp-danger); border-radius: 2px; }
+.shadowdark-extras-party .member-abilities { display: grid; grid-template-columns: repeat(6, 34px); justify-content: end; gap: 4px; }
+.shadowdark-extras-party .member-abilities .ability { display: flex; flex-direction: column; align-items: center; min-width: 0;
+  padding: 3px 6px; background: var(--sp-surface); border: 1px solid var(--sp-line-soft); border-radius: 4px; }
+.shadowdark-extras-party .member-abilities .ability .label { font-size: 10px; letter-spacing: 0.04em; color: var(--sp-faint); text-transform: uppercase; font-weight: 600; }
+.shadowdark-extras-party .member-abilities .ability .mod { font-size: 13px; font-weight: 700; color: var(--sp-text); }
+.shadowdark-extras-party .member-effects { display: flex; gap: 3px; }
+.shadowdark-extras-party .member-effects .effect-icon { width: 22px; height: 22px; border-radius: 3px; overflow: hidden;
+  border: 1px solid var(--sp-line-soft); opacity: 0.85; }
+.shadowdark-extras-party .member-effects .effect-icon img { width: 100%; height: 100%; object-fit: cover; }
+.shadowdark-extras-party .npc-count { display: flex; align-items: center; gap: 3px; margin-top: 4px; }
+.shadowdark-extras-party .npc-count-btn { min-width: 24px; min-height: 24px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--sp-surface); border: 1px solid var(--sp-line); border-radius: 4px; color: var(--sp-dim); }
+.shadowdark-extras-party .npc-count-input { min-width: 36px; height: 24px; text-align: center; }
+.shadowdark-extras-party .party-separator { display: flex; align-items: center; gap: 10px; padding: 2px 16px; }
+.shadowdark-extras-party .party-separator hr { flex: 1; border: 0; border-top: 1px solid var(--sp-line-soft); }
+.shadowdark-extras-party .party-separator span { color: var(--sp-faint); font-size: 12px; }
+.shadowdark-extras-party .member-stats .stat.hp .hp-bar { flex: none; width: 90px; height: 4px; }
