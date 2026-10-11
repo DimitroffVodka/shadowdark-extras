@@ -652,15 +652,9 @@ function initializeFeatures() {
 
 initializeFeatures();
 
-// Journal chrome: hide the internal sync journals, add the headings toggle
-if (anyFeatureEnabled(
-	FEATURE_IDS.JOURNAL_NOTES,
-	FEATURE_IDS.TRADING,
-	FEATURE_IDS.CAROUSING,
-	FEATURE_IDS.HEX_TOOLTIP
-)) {
-	registerJournalUIHooks();
-}
+// Journal chrome: hide the internal sync journals, add the headings toggle. Unconditional: it
+// checks each feature itself, and the carousing journals stay hidden while the Enhancer defers.
+registerJournalUIHooks();
 
 // Setup after Shadowdark system is ready
 Hooks.once("ready", async () => {

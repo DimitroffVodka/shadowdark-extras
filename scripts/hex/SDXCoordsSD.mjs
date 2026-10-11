@@ -742,10 +742,15 @@ export function initSDXCoords() {
 			window.SDXCoordinates?.rebuildZine();
 		}
 	});
-	// The user flips the Enhancer's switch: one set of labels either way, no reload.
-	Hooks.on("clientSettingChanged", key => {
-		if (key === "shadowdark-enhancer.showHexCoordinates" && canvas?.ready) mountCoords();
-	});
+	// The user flips the Enhancer's switch: one set of labels either way, no reload. The setting
+	// is user-scoped, so core writes it as a Setting document (clientSettingChanged only fires
+	// for client scope); `setting.user` is the owner's id, and only this user's row counts.
+	const onEnhancerCoordsSwitch = setting => {
+		if (setting.key === "shadowdark-enhancer.showHexCoordinates"
+			&& setting.user === game.user.id && canvas?.ready) mountCoords();
+	};
+	Hooks.on("createSetting", onEnhancerCoordsSwitch);
+	Hooks.on("updateSetting", onEnhancerCoordsSwitch);
 }
 
 /**

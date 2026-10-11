@@ -467,3 +467,40 @@ test("this overlay stays off where the Enhancer shows its own labels, and only t
 		assert.ok(await useScene({ enhancer: undefined }), "no Enhancer: unchanged");
 	} finally { globalThis.game.settings.get = realGet; }
 });
+
+// showHexCoordinates is user-scoped: core writes it as a Setting document, so the flip arrives as
+// createSetting / updateSetting and never as clientSettingChanged (client scope only).
+test("flipping the Enhancer's switch re-mounts this overlay with no reload, for this user's row only", async () => {
+	const realGet = globalThis.game.settings.get;
+	const realUser = globalThis.game.user;
+	let shown = true;
+	globalThis.game.settings.get = (scope, key) => (scope === "shadowdark-enhancer" && key === "showHexCoordinates"
+		? shown : realGet(scope, key));
+	globalThis.game.user = { isGM: true, id: "me" };
+	const row = (user, key = "shadowdark-enhancer.showHexCoordinates") => ({ key, user });
+	const settle = () => new Promise(resolve => setImmediate(resolve));
+	try {
+		assert.equal(await useScene({ enhancer: { hexMaps: hexMapsStub() } }), null, "Enhancer labels on: nothing here");
+		globalThis.canvas.ready = true;
+
+		shown = false;
+		hooks.updateSetting(row("someone-else"));
+		await settle();
+		assert.equal(window.SDXCoordinates, null, "another user's row does not re-mount");
+		hooks.updateSetting(row("me", "shadowdark-enhancer.somethingElse"));
+		await settle();
+		assert.equal(window.SDXCoordinates, null, "another key does not re-mount");
+
+		hooks.updateSetting(row("me"));
+		await settle();
+		assert.ok(window.SDXCoordinates, "switched off: this overlay comes back");
+
+		shown = true;
+		hooks.createSetting(row("me"));
+		await settle();
+		assert.equal(window.SDXCoordinates, null, "switched on, first write of the row: this overlay steps aside");
+	} finally {
+		globalThis.game.settings.get = realGet;
+		globalThis.game.user = realUser;
+	}
+});
