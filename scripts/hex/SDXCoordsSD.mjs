@@ -714,7 +714,10 @@ function enhancerDrawsCoords(scene) {
 	}
 }
 
+let latestMount = 0;
+
 async function mountCoords() {
+	const mount = ++latestMount;
 	if (window.SDXCoordinates) {
 		window.SDXCoordinates.finalize();
 		window.SDXCoordinates = null;
@@ -727,6 +730,9 @@ async function mountCoords() {
 			await document.fonts.load(`16px "${fontFamily}"`);
 		}
 		catch{ /* font may not exist, PIXI will use fallback */ }
+		// A newer mount started while the font loaded and owns the overlay; building a second
+		// one here would orphan the first in canvas.controls, with nothing left to finalize it.
+		if (mount !== latestMount) return;
 		window.SDXCoordinates = new SDXCoord();
 	}
 }

@@ -504,3 +504,45 @@ test("flipping the Enhancer's switch re-mounts this overlay with no reload, for 
 		globalThis.game.user = realUser;
 	}
 });
+
+// mountCoords awaits the font before building the overlay. A second mount that starts inside that
+// window (a scene draw and the Enhancer's switch flipping together) must not leave two overlays
+// in canvas.controls with only one reachable to finalize.
+test("overlapping mounts leave exactly one overlay, whichever font load resolves first", async () => {
+	const realLoad = globalThis.document.fonts.load;
+	const realGet = globalThis.game.settings.get;
+	const realUser = globalThis.game.user;
+	globalThis.game.settings.get = (scope, key) => (scope === "shadowdark-enhancer" && key === "showHexCoordinates"
+		? false : realGet(scope, key));
+	globalThis.game.user = { isGM: true, id: "me" };
+	const pending = [];
+	globalThis.document.fonts.load = () => new Promise(resolve => pending.push(resolve));
+	const settle = () => new Promise(resolve => setImmediate(resolve));
+	try {
+		for (const order of [[1, 0], [0, 1]]) {
+			pending.length = 0;
+			// useScene awaits canvasReady, which waits on the font: resolve it, then overlap two more.
+			const scene = useScene({ enhancer: { hexMaps: hexMapsStub() } });
+			await settle();
+			pending.shift()();
+			await scene;
+			globalThis.canvas.ready = true;
+			const before = canvas.controls.children.length;
+
+			const first = hooks.canvasReady();
+			hooks.updateSetting({ key: "shadowdark-enhancer.showHexCoordinates", user: "me" });
+			await settle();
+			assert.equal(pending.length, 2, "both mounts are waiting on the font");
+			for (const index of order) pending[index]();
+			await first;
+			await settle();
+
+			assert.ok(window.SDXCoordinates, "an overlay is mounted");
+			assert.equal(canvas.controls.children.length, before, `one overlay's containers, resolved ${order}`);
+		}
+	} finally {
+		globalThis.document.fonts.load = realLoad;
+		globalThis.game.settings.get = realGet;
+		globalThis.game.user = realUser;
+	}
+});
