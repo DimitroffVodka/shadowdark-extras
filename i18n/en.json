@@ -218,6 +218,7 @@
   "SHADOWDARK_EXTRAS.party.coins_added": "Added {coins} to party treasury",
   "SHADOWDARK_EXTRAS.coins_updated": "Coins updated: {coins}",
   "SHADOWDARK_EXTRAS.party.toggle_light_source": "Toggle Light Source",
+  "SHADOWDARK_EXTRAS.party.item_chat": "Post item to chat",
   "SHADOWDARK_EXTRAS.party.no_items": "No items in party inventory",
   "SHADOWDARK_EXTRAS.party.create_item": "Create new item",
   "SHADOWDARK_EXTRAS.party.divide_coins": "Divide to PCs",

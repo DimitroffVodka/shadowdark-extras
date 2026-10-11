@@ -50,6 +50,16 @@ test("published labels use the generated map offset instead of the cropped zine 
 	), "3826");
 });
 
+test("topRows 1 numbers from the second Foundry row and leaves the row above the print unlabelled (#202)", () => {
+	const layout = { cols: 11, rows: 10, landscape: false, flipX: false, flipY: false, origin: 0, topRows: 1 };
+	assert.equal(formatPublishedHexCoord({ i: 1, j: 0 }, layout), "000");
+	assert.equal(formatPublishedHexCoord({ i: 4, j: 1 }, layout), "103");
+	assert.equal(formatPublishedHexCoord({ i: 0, j: 0 }, layout), null);
+	assert.equal(formatPublishedHexCoord({ i: 0, j: 7 }, layout), null);
+	assert.equal(formatPublishedHexCoord({ i: 1, j: 0 }, { ...layout, flipY: true }), "009", "the row is shifted after the flip");
+	assert.equal(formatPublishedHexCoord({ i: 4, j: 1 }, { ...layout, topRows: undefined }), "104", "no topRows reads as before");
+});
+
 /**
  * Install a grid whose top-left scene corner sits at offset {i:0, j:0}, so a
  * label reflects the offset passed in rather than an arbitrary scene origin.

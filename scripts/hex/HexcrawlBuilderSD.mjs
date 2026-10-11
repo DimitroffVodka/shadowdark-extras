@@ -24,7 +24,8 @@
  *     rowsLowered: 11,               // optional; row count of the half-hex-shifted columns
  *     distance: 2, units: "mi",
  *     landscape: false,             // true transposes the published axes
- *     flipX: false, flipY: false    // mirror to match the printed map's handedness
+ *     flipX: false, flipY: false,   // mirror to match the printed map's handedness
+ *     topRows: 0                    // 1: one whole Foundry row above the print, after any flip
  *   },
  *   terrainTile: { w: 296, h: 256 }, // optional render size (default SDX tiles)
  *   featureIconSize: 150,
@@ -60,7 +61,7 @@ import { deleteHexSceneData, registerHexRecordPrune } from "./hex-record-prune.m
 import { buildMapPathNetwork, mapPathEdgeKey } from "../canvas/drawing-geometry.mjs";
 import { ART_IMAGE, coastArtPlacements, coastCells } from "../canvas/map-network-art.mjs";
 import { getSpecialTiles } from "./hex-special-tiles.mjs";
-import { getColoredTileDimensions, getColoredTiles, getColoredTilesByBiome, loadColoredTileAssets } from "./hex-colored-tiles.mjs";
+import { DRAW_EXCLUDES, getColoredTileDimensions, getColoredTiles, getColoredTilesByBiome, loadColoredTileAssets } from "./hex-colored-tiles.mjs";
 import { getHexRecordMap, getHexTerrainMap, getWaterHexKeys, isArcticTerrain, isWaterTerrain } from "./hex-water-terrain.mjs";
 import { importHexerMap, openHexerImportDialog } from "./HexerImporterSD.mjs";
 
@@ -163,16 +164,15 @@ const TERRAIN_COLORED_RULES = {
 	// biome the canyon label maps to, which no Canyons tile name contains.
 	canyon: { pool: "canyons", include: ["canyon"], fallback: { pool: "desert", include: ["hills"] } },
 	"deep tunnels": { pool: "mountains", include: ["rocky"] },
-	// "(dark)" is the weak recolour; it ships for hand-picked art, not the pool.
-	// Not bare "dark": every path contains "shadowdark-extras".
+	// DRAW_EXCLUDES keeps the weak "(dark)" recolour out of the pool, as it does
+	// for Solo Hex Mode; hand-picked art can still name it.
 	// The fallback keeps jungle on forest art while a cached catalogue predates
 	// the Jungle folder (the catalogue is re-scanned on the next module version).
-	jungle: { pool: "jungle", include: ["jungle"], exclude: ["(dark)"],
+	jungle: { pool: "jungle", include: ["jungle"], exclude: DRAW_EXCLUDES.jungle,
 		fallback: { pool: "vegetation", include: ["forest", "/trees2.webp"] } },
-	// Salt-flat art has its own folder now; a catalogue cached before that move
-	// still lists it under Desert, so plain desert keeps leaving it out or
-	// ordinary dunes would paint white pans.
-	"desert": { pool: "desert", exclude: ["salt flat"] },
+	// Salt-flat art has its own folder; plain desert never paints it, so ordinary
+	// dunes do not turn into white pans.
+	"desert": { pool: "desert", exclude: DRAW_EXCLUDES.desert },
 	lake: { pool: "water-lake" },
 	// The hand-picked lava art has its own folder; the Specials lava tiles stand in
 	// until a cached catalogue has it.
@@ -180,7 +180,7 @@ const TERRAIN_COLORED_RULES = {
 		pool: "lava fields", include: ["lava"],
 		fallback: { pool: "specials", include: ["/lava.webp", "lava field"] },
 	},
-	mountain: { pool: "mountains", exclude: ["bridge", "mountains spikes"] },
+	mountain: { pool: "mountains", exclude: DRAW_EXCLUDES.mountains },
 	river: { pool: "water-river" },
 	// Falls back to plain desert art while a cached catalogue predates the Salt Flats folder.
 	"salt flat": { pool: "salt flats", fallback: { pool: "desert", include: ["plains"] } },
@@ -228,9 +228,11 @@ function makeGeom(dataset, published = false) {
 	const landscape = !!dataset.grid?.landscape;
 	const flipX = !!dataset.grid?.flipX;
 	const flipY = !!dataset.grid?.flipY;
+	// Whole Foundry rows above the print's first row, applied after the flips.
+	const topRows = published ? (dataset.grid?.topRows ?? 0) : 0;
 
 	const gridCols = landscape ? pubRows : pubCols; // Foundry columns (x cells)
-	const gridRows = landscape ? pubCols : pubRows; // Foundry rows    (y cells)
+	const gridRows = (landscape ? pubCols : pubRows) + topRows; // Foundry rows (y cells)
 
 	function offsetOf(col, row) {
 		const cx = published ? col - origin : row - 1;
@@ -244,7 +246,7 @@ function makeGeom(dataset, published = false) {
 			j = flipX ? (pubCols - 1 - cx) : cx;
 			i = flipY ? (pubRows - 1 - ry) : ry;
 		}
-		return { i, j };
+		return { i: i + topRows, j };
 	}
 
 	// HEXODDQ shifts odd columns half a hex down (Foundry common/grid/hexagonal.mjs,
@@ -255,7 +257,7 @@ function makeGeom(dataset, published = false) {
 		&& row >= (offsetOf(col, row).j % 2 === 1 ? origin : firstRow) && row < pubRows + origin
 		&& !(row >= rowsLowered + origin && offsetOf(col, row).j % 2 === 1);
 
-	return { pubCols, pubRows, gridCols, gridRows, origin, firstRow, rowsLowered,
+	return { pubCols, pubRows, gridCols, gridRows, origin, firstRow, rowsLowered, topRows,
 		offsetOf, inGrid, published };
 }
 
@@ -333,9 +335,18 @@ function validateRecords(records, geom, building = false) {
 	}
 }
 
+/**
+ * Every key a published grid may carry; api.hex.gridFields is this list. A key outside it is
+ * refused, not dropped, so a field a newer caller sends fails loudly here instead of the layout
+ * being stored without it and every record landing a row off.
+ */
+const GRID_FIELDS = Object.freeze(["cols", "rows", "origin", "firstRow", "rowsLowered",
+	"landscape", "flipX", "flipY", "distance", "units", "topRows"]);
+
 /** A published grid, as a build or an adoption takes it. */
 function validateGrid(grid) {
 	requireInput(grid && [grid.cols, grid.rows].every(n => Number.isInteger(n) && n >= 1 && n <= 99), "grid cols/rows must be integers from 1 to 99");
+	for (const key of Object.keys(grid)) requireInput(GRID_FIELDS.includes(key), `grid.${key} is not a grid field`);
 	requireInput(grid.origin === undefined || grid.origin === 0 || grid.origin === 1, "grid.origin must be 0 or 1");
 	const origin = grid.origin ?? 1;
 	requireInput(grid.firstRow === undefined || [origin, origin + 1].includes(grid.firstRow), "grid.firstRow must be origin or origin+1");
@@ -346,6 +357,7 @@ function validateGrid(grid) {
 		if (Object.hasOwn(grid, key)) requireInput(typeof grid[key] === "boolean", `grid.${key} must be boolean`);
 	}
 	if (Object.hasOwn(grid, "distance")) requireInput(Number.isFinite(grid.distance) && grid.distance > 0, "distance must be positive");
+	if (Object.hasOwn(grid, "topRows")) requireInput(grid.topRows === 0 || grid.topRows === 1, "grid.topRows must be 0 or 1");
 }
 
 /**
@@ -361,6 +373,7 @@ function layoutGrid(geom, grid) {
 		...(geom.origin === 1 ? {} : { origin: geom.origin }),
 		...(geom.firstRow === geom.origin ? {} : { firstRow: geom.firstRow }),
 		...(geom.rowsLowered === geom.pubRows ? {} : { rowsLowered: geom.rowsLowered }),
+		...(geom.topRows ? { topRows: geom.topRows } : {}),
 	};
 }
 
@@ -833,6 +846,9 @@ export function installHexcrawlApi(api, namespace, wrap) {
 	// line every time someone asked what colours exist. Copied per call so a
 	// consumer cannot reach in and restyle the editor's own swatches.
 	api.hex.getZoneColors = () => ZONE_COLORS.map(colour => ({ ...colour }));
+	// Which grid keys this build accepts, so a caller can check before sending a newer one:
+	// an older build stores the layout without it and puts every record a row off.
+	api.hex.gridFields = GRID_FIELDS;
 }
 
 /** Stable api.hex entry point. Root buildHexcrawl remains the legacy adapter. */
@@ -931,7 +947,8 @@ export function getHexRecords(sceneId, nums) {
  * or background changes, and not `hexScene`, which opens the painter's
  * terrain tabs and would invite painting over the print. Published hex 0000
  * (or 0101, with origin 1) must sit on Foundry offset {i:0, j:0}, the scene's
- * top-left cell, and every published cell's centre must land on the scene.
+ * top-left cell ({i:1, j:0} with grid.topRows 1), and every published cell's
+ * centre must land on the scene.
  *
  * Adopting again with the same grid changes nothing; a scene that already has
  * a different layout, legacy or published, is refused.
@@ -964,6 +981,10 @@ export async function adoptHexcrawl(sceneId, opts = {}) {
 
 	requireInput(scene.grid?.type === CONST.GRID_TYPES.HEXODDQ, "scene grid must be hexagonal columns with odd columns shifted down (HEXODDQ)");
 	const { sceneX, sceneY, sceneWidth, sceneHeight } = scene.dimensions;
+	// Either edge can fail, so say both: where the first hex goes, and the room under it.
+	const where = geom.topRows
+		? "one row below the scene's top-left cell, and the scene one row taller than the print"
+		: "the scene's top-left cell";
 	for (let col = geom.origin; col < geom.pubCols + geom.origin; col++) {
 		for (let row = geom.origin; row < geom.pubRows + geom.origin; row++) {
 			if (!geom.inGrid(col, row)) continue;
@@ -971,7 +992,7 @@ export async function adoptHexcrawl(sceneId, opts = {}) {
 			const onScene = x >= sceneX && x <= sceneX + sceneWidth
 				&& y >= sceneY && y <= sceneY + sceneHeight;
 			requireInput(onScene,
-				`hex ${String((col * 100) + row).padStart(4, "0")} falls outside the scene; the first published hex must be the scene's top-left cell`);
+				`hex ${String((col * 100) + row).padStart(4, "0")} falls outside the scene; the first published hex must be ${where}`);
 		}
 	}
 
