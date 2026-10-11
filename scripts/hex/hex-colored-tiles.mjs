@@ -147,15 +147,21 @@ export function getColoredTilesByBiome() {
 	return byBiome;
 }
 
-// Parts of a path a random draw leaves out of a folder. "(dark)" is the weak
-// jungle recolour: it ships for hand-picked art, not for the pool. Not bare
-// "dark": every path contains "shadowdark-extras".
-export const DRAW_EXCLUDES = { jungle: ["(dark)"] };
+// Parts of a path a random draw leaves out of a folder, keyed by the folder's
+// bucket in getColoredTilesByBiome(). "(dark)" is the weak jungle recolour: it
+// ships for hand-picked art, not for the pool. Not bare "dark": every path
+// contains "shadowdark-extras". "salt flat" keeps salt-flat art, which has its
+// own Salt Flats folder, out of the desert pool.
+export const DRAW_EXCLUDES = {
+	jungle: ["(dark)"],
+	desert: ["salt flat"],
+	mountains: ["bridge", "mountains spikes"],
+};
 
 /**
  * The tiles a random draw may take from `folder` of getColoredTilesByBiome().
  * Hand-picked art still reaches the excluded tiles; this only keeps them out
- * of the generators and the builder's terrain pools.
+ * of Solo Hex Mode and the builder's terrain pools.
  */
 export function drawPool(byBiome, folder) {
 	const excluded = DRAW_EXCLUDES[folder];

@@ -21,7 +21,7 @@ const VEGETATION_HILL_TILE = `${VEGETATION_FOLDER}/Hex - Hills (lush) 1.webp`;
 const DESERT_FOLDER = `${COLORED_FOLDER}/Desert`;
 const DESERT_HILL_TILE = `${DESERT_FOLDER}/Hex - Hills (desert) 1.webp`;
 const DESERT_PLAIN_TILE = `${DESERT_FOLDER}/Hex - Plains (desert) 4.webp`;
-// A catalogue cached before the Salt Flats folder still lists salt-flat art under Desert.
+// A salt-flat-named file in the Desert folder: the pool the desert rule must filter.
 const DESERT_SALT_FLAT_TILE = `${DESERT_FOLDER}/Hex - Salt Flat (old).webp`;
 const SALT_FLATS_FOLDER = `${COLORED_FOLDER}/Salt Flats`;
 const SALT_FLAT_TILES = [1, 2].map(n => `${SALT_FLATS_FOLDER}/Hex - Salt Flat ${n}.webp`);
@@ -374,6 +374,15 @@ test("a random draw skips the dark jungle recolour, encoded or not, and leaves o
 	assert.deepEqual(drawPool(byBiome, "jungle"), [JUNGLE_TILE]);
 	assert.deepEqual(drawPool(byBiome, "desert"), [DESERT_PLAIN_TILE]);
 	assert.deepEqual(drawPool(byBiome, "swamp"), []);
+});
+
+test("a random draw keeps salt-flat art out of desert and the builder's mountain exclusions out of mountains", () => {
+	const byBiome = {
+		desert: [DESERT_PLAIN_TILE, DESERT_SALT_FLAT_TILE],
+		mountains: [MOUNTAIN_ROCKY_TILE, MOUNTAIN_BRIDGE_TILE, MOUNTAIN_SPIKES_TILE],
+	};
+	assert.deepEqual(drawPool(byBiome, "desert"), [DESERT_PLAIN_TILE]);
+	assert.deepEqual(drawPool(byBiome, "mountains"), [MOUNTAIN_ROCKY_TILE]);
 });
 
 test("jungle falls back to forest art while the cached catalogue has no Jungle folder", async () => {
