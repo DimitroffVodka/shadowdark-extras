@@ -6,6 +6,8 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [6.17.0] — 2026-10-11 — A volcano no longer paints as lava
+
 ### Fixed
 
 - **A volcano no longer paints as lava.** Terrain `lava` could fall back to `Specials/lava.webp`, which is a volcano, while a cached tile catalogue predates the Lava Fields folder. The fallback is now only the three `Hex - Lava Field` Specials tiles. Hexes already painted with it keep it until they are repainted.
