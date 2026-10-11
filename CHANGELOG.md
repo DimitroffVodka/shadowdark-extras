@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Painted beaches follow a hex's coast feature.** A water hex beside land kept its beach whatever the hex records said, so a coast mark added or removed on a hex — the Enhancer's Hex Tagger writes a `coast` feature per land hex beside water — changed the tooltip pill and nothing on the map. While any record carries a coast feature, beach and ice pieces are laid only on the water/land pairs it picks out, with a mark on either side of the pair counting; a scene whose records carry none keeps the terrain-derived shore, so maps built without the Enhancer are unchanged. A new call, `game.shadowdarkExtras.hex.repaintCoasts(sceneId, nums?)`, removes the beaches of the named hexes' shores and lays them again from the current records (the whole scene when `nums` is omitted), and `repaintHexTiles` redoes the beaches it already touches by the same rule. ([#219](https://github.com/DimitroffVodka/shadowdark-extras/issues/219))
+
 ## [6.17.0] — 2026-10-11 — A volcano no longer paints as lava
 
 ### Fixed
