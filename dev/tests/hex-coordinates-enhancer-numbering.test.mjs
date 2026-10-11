@@ -458,6 +458,28 @@ test("a published layout one row down (topRows) labels from the second row and l
 	assert.deepEqual(click(50, 50), [], "nothing over the row above the print");
 });
 
+test("a landscape published layout puts rows on the top axis and columns down the left (#212)", async () => {
+	// Foundry columns carry published rows (18) and Foundry rows carry published columns (13).
+	const layout = { cols: 13, rows: 18, landscape: true, flipX: false, flipY: false, origin: 0 };
+	await useScene({ enhancer: { hexMaps: hexMapsStub() }, layout });
+	let zine = readZine();
+
+	assert.deepEqual([0, 1, 2, 5].map(j => topAxis(zine).get(j)), ["00", "01", "02", "05"]);
+	assert.deepEqual([0, 1, 2, 3].map(i => leftAxis(zine).get(i)), ["000", "100", "200", "300"]);
+	assert.equal(zine.labelled.get("2,3"), "203", "a cell keeps its own number");
+
+	await useScene({ enhancer: { hexMaps: hexMapsStub() }, layout: { ...layout, flipX: true, flipY: true } });
+	zine = readZine();
+	assert.equal(topAxis(zine).get(0), "17", "mirrored along Foundry x");
+	assert.equal(leftAxis(zine).get(0), "1200", "mirrored down Foundry y");
+
+	await useScene({ enhancer: { hexMaps: hexMapsStub() }, layout: { ...layout, cols: 12, topRows: 1 } });
+	zine = readZine();
+	assert.equal(leftAxis(zine).get(0), "", "no heading beside the row above the print");
+	assert.equal(leftAxis(zine).get(1), "000");
+	assert.equal(topAxis(zine).get(0), "00");
+});
+
 test("the lettered styles ignore the Enhancer", async () => {
 	for (const state of [DISPLAY_STATES.MARGIN, DISPLAY_STATES.CELL]) {
 		await useScene({ state, enhancer: undefined });
