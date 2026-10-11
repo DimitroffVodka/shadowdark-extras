@@ -717,7 +717,7 @@ test("adopting with topRows checks the shifted cells against the scene (#202)", 
 	const tight = printScene();
 	await assert.rejects(
 		builder.adoptHexcrawl(tight.id, { grid: { ...PRINT_GRID, topRows: 1 } }),
-		/hex 0002 falls outside the scene; the first published hex must be one row below/
+		/hex 0002 falls outside the scene; the first published hex must be one row below the scene's top-left cell, and the scene one row taller than the print/
 	);
 	assert.equal(tight.getFlag(MODULE_ID, "hexcrawl"), undefined);
 });

@@ -982,6 +982,10 @@ export async function adoptHexcrawl(sceneId, opts = {}) {
 
 	requireInput(scene.grid?.type === CONST.GRID_TYPES.HEXODDQ, "scene grid must be hexagonal columns with odd columns shifted down (HEXODDQ)");
 	const { sceneX, sceneY, sceneWidth, sceneHeight } = scene.dimensions;
+	// Either edge can fail, so say both: where the first hex goes, and the room under it.
+	const where = geom.topRows
+		? "one row below the scene's top-left cell, and the scene one row taller than the print"
+		: "the scene's top-left cell";
 	for (let col = geom.origin; col < geom.pubCols + geom.origin; col++) {
 		for (let row = geom.origin; row < geom.pubRows + geom.origin; row++) {
 			if (!geom.inGrid(col, row)) continue;
@@ -989,7 +993,7 @@ export async function adoptHexcrawl(sceneId, opts = {}) {
 			const onScene = x >= sceneX && x <= sceneX + sceneWidth
 				&& y >= sceneY && y <= sceneY + sceneHeight;
 			requireInput(onScene,
-				`hex ${String((col * 100) + row).padStart(4, "0")} falls outside the scene; the first published hex must be ${geom.topRows ? "one row below the scene's top-left cell" : "the scene's top-left cell"}`);
+				`hex ${String((col * 100) + row).padStart(4, "0")} falls outside the scene; the first published hex must be ${where}`);
 		}
 	}
 
