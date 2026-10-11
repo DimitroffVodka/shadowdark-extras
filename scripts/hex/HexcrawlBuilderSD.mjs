@@ -24,7 +24,8 @@
  *     rowsLowered: 11,               // optional; row count of the half-hex-shifted columns
  *     distance: 2, units: "mi",
  *     landscape: false,             // true transposes the published axes
- *     flipX: false, flipY: false    // mirror to match the printed map's handedness
+ *     flipX: false, flipY: false,   // mirror to match the printed map's handedness
+ *     topRows: 0                    // 1: one whole Foundry row above the print, after any flip
  *   },
  *   terrainTile: { w: 296, h: 256 }, // optional render size (default SDX tiles)
  *   featureIconSize: 150,
@@ -228,9 +229,11 @@ function makeGeom(dataset, published = false) {
 	const landscape = !!dataset.grid?.landscape;
 	const flipX = !!dataset.grid?.flipX;
 	const flipY = !!dataset.grid?.flipY;
+	// Whole Foundry rows above the print's first row, applied after the flips.
+	const topRows = published ? (dataset.grid?.topRows ?? 0) : 0;
 
 	const gridCols = landscape ? pubRows : pubCols; // Foundry columns (x cells)
-	const gridRows = landscape ? pubCols : pubRows; // Foundry rows    (y cells)
+	const gridRows = (landscape ? pubCols : pubRows) + topRows; // Foundry rows (y cells)
 
 	function offsetOf(col, row) {
 		const cx = published ? col - origin : row - 1;
@@ -244,7 +247,7 @@ function makeGeom(dataset, published = false) {
 			j = flipX ? (pubCols - 1 - cx) : cx;
 			i = flipY ? (pubRows - 1 - ry) : ry;
 		}
-		return { i, j };
+		return { i: i + topRows, j };
 	}
 
 	// HEXODDQ shifts odd columns half a hex down (Foundry common/grid/hexagonal.mjs,
@@ -255,7 +258,7 @@ function makeGeom(dataset, published = false) {
 		&& row >= (offsetOf(col, row).j % 2 === 1 ? origin : firstRow) && row < pubRows + origin
 		&& !(row >= rowsLowered + origin && offsetOf(col, row).j % 2 === 1);
 
-	return { pubCols, pubRows, gridCols, gridRows, origin, firstRow, rowsLowered,
+	return { pubCols, pubRows, gridCols, gridRows, origin, firstRow, rowsLowered, topRows,
 		offsetOf, inGrid, published };
 }
 
@@ -333,9 +336,18 @@ function validateRecords(records, geom, building = false) {
 	}
 }
 
+/**
+ * Every key a published grid may carry; api.hex.gridFields is this list. A key outside it is
+ * refused, not dropped, so a field a newer caller sends fails loudly here instead of the layout
+ * being stored without it and every record landing a row off.
+ */
+const GRID_FIELDS = Object.freeze(["cols", "rows", "origin", "firstRow", "rowsLowered",
+	"landscape", "flipX", "flipY", "distance", "units", "topRows"]);
+
 /** A published grid, as a build or an adoption takes it. */
 function validateGrid(grid) {
 	requireInput(grid && [grid.cols, grid.rows].every(n => Number.isInteger(n) && n >= 1 && n <= 99), "grid cols/rows must be integers from 1 to 99");
+	for (const key of Object.keys(grid)) requireInput(GRID_FIELDS.includes(key), `grid.${key} is not a grid field`);
 	requireInput(grid.origin === undefined || grid.origin === 0 || grid.origin === 1, "grid.origin must be 0 or 1");
 	const origin = grid.origin ?? 1;
 	requireInput(grid.firstRow === undefined || [origin, origin + 1].includes(grid.firstRow), "grid.firstRow must be origin or origin+1");
@@ -346,6 +358,7 @@ function validateGrid(grid) {
 		if (Object.hasOwn(grid, key)) requireInput(typeof grid[key] === "boolean", `grid.${key} must be boolean`);
 	}
 	if (Object.hasOwn(grid, "distance")) requireInput(Number.isFinite(grid.distance) && grid.distance > 0, "distance must be positive");
+	if (Object.hasOwn(grid, "topRows")) requireInput(grid.topRows === 0 || grid.topRows === 1, "grid.topRows must be 0 or 1");
 }
 
 /**
@@ -361,6 +374,7 @@ function layoutGrid(geom, grid) {
 		...(geom.origin === 1 ? {} : { origin: geom.origin }),
 		...(geom.firstRow === geom.origin ? {} : { firstRow: geom.firstRow }),
 		...(geom.rowsLowered === geom.pubRows ? {} : { rowsLowered: geom.rowsLowered }),
+		...(geom.topRows ? { topRows: geom.topRows } : {}),
 	};
 }
 
@@ -833,6 +847,9 @@ export function installHexcrawlApi(api, namespace, wrap) {
 	// line every time someone asked what colours exist. Copied per call so a
 	// consumer cannot reach in and restyle the editor's own swatches.
 	api.hex.getZoneColors = () => ZONE_COLORS.map(colour => ({ ...colour }));
+	// Which grid keys this build accepts, so a caller can check before sending a newer one:
+	// an older build stores the layout without it and puts every record a row off.
+	api.hex.gridFields = GRID_FIELDS;
 }
 
 /** Stable api.hex entry point. Root buildHexcrawl remains the legacy adapter. */
@@ -931,7 +948,8 @@ export function getHexRecords(sceneId, nums) {
  * or background changes, and not `hexScene`, which opens the painter's
  * terrain tabs and would invite painting over the print. Published hex 0000
  * (or 0101, with origin 1) must sit on Foundry offset {i:0, j:0}, the scene's
- * top-left cell, and every published cell's centre must land on the scene.
+ * top-left cell ({i:1, j:0} with grid.topRows 1), and every published cell's
+ * centre must land on the scene.
  *
  * Adopting again with the same grid changes nothing; a scene that already has
  * a different layout, legacy or published, is refused.
@@ -971,7 +989,7 @@ export async function adoptHexcrawl(sceneId, opts = {}) {
 			const onScene = x >= sceneX && x <= sceneX + sceneWidth
 				&& y >= sceneY && y <= sceneY + sceneHeight;
 			requireInput(onScene,
-				`hex ${String((col * 100) + row).padStart(4, "0")} falls outside the scene; the first published hex must be the scene's top-left cell`);
+				`hex ${String((col * 100) + row).padStart(4, "0")} falls outside the scene; the first published hex must be ${geom.topRows ? "one row below the scene's top-left cell" : "the scene's top-left cell"}`);
 		}
 	}
 
