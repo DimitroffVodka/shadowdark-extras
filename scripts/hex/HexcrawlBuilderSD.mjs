@@ -60,7 +60,7 @@ import { deleteHexSceneData, registerHexRecordPrune } from "./hex-record-prune.m
 import { buildMapPathNetwork, mapPathEdgeKey } from "../canvas/drawing-geometry.mjs";
 import { ART_IMAGE, coastArtPlacements, coastCells } from "../canvas/map-network-art.mjs";
 import { getSpecialTiles } from "./hex-special-tiles.mjs";
-import { getColoredTileDimensions, getColoredTiles, getColoredTilesByBiome, loadColoredTileAssets } from "./hex-colored-tiles.mjs";
+import { DRAW_EXCLUDES, getColoredTileDimensions, getColoredTiles, getColoredTilesByBiome, loadColoredTileAssets } from "./hex-colored-tiles.mjs";
 import { getHexRecordMap, getHexTerrainMap, getWaterHexKeys, isArcticTerrain, isWaterTerrain } from "./hex-water-terrain.mjs";
 import { importHexerMap, openHexerImportDialog } from "./HexerImporterSD.mjs";
 
@@ -163,16 +163,15 @@ const TERRAIN_COLORED_RULES = {
 	// biome the canyon label maps to, which no Canyons tile name contains.
 	canyon: { pool: "canyons", include: ["canyon"], fallback: { pool: "desert", include: ["hills"] } },
 	"deep tunnels": { pool: "mountains", include: ["rocky"] },
-	// "(dark)" is the weak recolour; it ships for hand-picked art, not the pool.
-	// Not bare "dark": every path contains "shadowdark-extras".
+	// DRAW_EXCLUDES keeps the weak "(dark)" recolour out of the pool, as it does
+	// for Solo Hex Mode; hand-picked art can still name it.
 	// The fallback keeps jungle on forest art while a cached catalogue predates
 	// the Jungle folder (the catalogue is re-scanned on the next module version).
-	jungle: { pool: "jungle", include: ["jungle"], exclude: ["(dark)"],
+	jungle: { pool: "jungle", include: ["jungle"], exclude: DRAW_EXCLUDES.jungle,
 		fallback: { pool: "vegetation", include: ["forest", "/trees2.webp"] } },
-	// Salt-flat art has its own folder now; a catalogue cached before that move
-	// still lists it under Desert, so plain desert keeps leaving it out or
-	// ordinary dunes would paint white pans.
-	"desert": { pool: "desert", exclude: ["salt flat"] },
+	// Salt-flat art has its own folder; plain desert never paints it, so ordinary
+	// dunes do not turn into white pans.
+	"desert": { pool: "desert", exclude: DRAW_EXCLUDES.desert },
 	lake: { pool: "water-lake" },
 	// The hand-picked lava art has its own folder; the Specials lava tiles stand in
 	// until a cached catalogue has it.
@@ -180,7 +179,7 @@ const TERRAIN_COLORED_RULES = {
 		pool: "lava fields", include: ["lava"],
 		fallback: { pool: "specials", include: ["/lava.webp", "lava field"] },
 	},
-	mountain: { pool: "mountains", exclude: ["bridge", "mountains spikes"] },
+	mountain: { pool: "mountains", exclude: DRAW_EXCLUDES.mountains },
 	river: { pool: "water-river" },
 	// Falls back to plain desert art while a cached catalogue predates the Salt Flats folder.
 	"salt flat": { pool: "salt flats", fallback: { pool: "desert", include: ["plains"] } },
