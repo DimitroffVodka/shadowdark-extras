@@ -10,7 +10,7 @@ const world = installPersistenceGlobals();
 installMemoryIndexedDB();
 const builder = await import("../../scripts/hex/HexcrawlBuilderSD.mjs");
 const { getSpecialTiles } = await import("../../scripts/hex/hex-special-tiles.mjs");
-const { getColoredTilesByBiome } = await import("../../scripts/hex/hex-colored-tiles.mjs");
+const { getColoredTilesByBiome, loadColoredTileAssets } = await import("../../scripts/hex/hex-colored-tiles.mjs");
 const { setActiveTileTab } = await import("../../scripts/hex/hex-tile-selection.mjs");
 const COLORED_FOLDER = "modules/shadowdark-extras/assets/Hexes";
 const VEGETATION_FOLDER = `${COLORED_FOLDER}/Vegetation`;
@@ -21,6 +21,12 @@ const VEGETATION_HILL_TILE = `${VEGETATION_FOLDER}/Hex - Hills (lush) 1.webp`;
 const DESERT_FOLDER = `${COLORED_FOLDER}/Desert`;
 const DESERT_HILL_TILE = `${DESERT_FOLDER}/Hex - Hills (desert) 1.webp`;
 const DESERT_PLAIN_TILE = `${DESERT_FOLDER}/Hex - Plains (desert) 4.webp`;
+const SALT_FLATS_FOLDER = `${COLORED_FOLDER}/Salt Flats`;
+const SALT_FLAT_TILES = [1, 2].map(n => `${SALT_FLATS_FOLDER}/Hex - Salt Flat ${n}.webp`);
+const LAVA_FIELDS_FOLDER = `${COLORED_FOLDER}/Lava Fields`;
+const LAVA_TILES = ["A 1", "A 2", "B"].map(n => `${LAVA_FIELDS_FOLDER}/Hex - Lava Field lava ${n}.webp`);
+const CANYONS_FOLDER = `${COLORED_FOLDER}/Canyons`;
+const CANYON_TILES = [1, 2].map(n => `${CANYONS_FOLDER}/Hex - Canyon ${n}.webp`);
 const MOUNTAINS_FOLDER = `${COLORED_FOLDER}/Mountains`;
 const MOUNTAIN_ROCKY_TILE = `${MOUNTAINS_FOLDER}/Hex - Mountains, low (rocky).webp`;
 const MOUNTAIN_LUSH_TILE = `${MOUNTAINS_FOLDER}/Hex - Mountains, low (lush).webp`;
@@ -35,6 +41,14 @@ const LAKE_TILE = `${LAKE_FOLDER}/lake.webp`;
 const RIVER_FOLDER = `${COLORED_FOLDER}/Water-River`;
 const RIVER_TILE = `${RIVER_FOLDER}/river.webp`;
 const SPECIALS_FOLDER = "modules/shadowdark-extras/assets/Hexes/Specials";
+const JUNGLE_FOLDER = `${COLORED_FOLDER}/Jungle`;
+const JUNGLE_TILE = `${JUNGLE_FOLDER}/Hex - Jungle 1.webp`;
+const JUNGLE_HILLS_TILE = `${JUNGLE_FOLDER}/Hex - Jungle Hills 1.webp`;
+const JUNGLE_DARK_TILE = `${JUNGLE_FOLDER}/Hex - Jungle (dark).webp`;
+let jungleFolderShipped = true;
+let saltFlatShipped = true;
+let canyonsShipped = true;
+let lavaFieldsShipped = true;
 const MODULE_ID = "shadowdark-extras";
 // Invented fixture, no publisher content. The Enhancer's hexIdKey("1403")
 // is "14,3": one-based column 14 / row 3 => Foundry offset {i:2,j:13}.
@@ -67,6 +81,10 @@ const grid = {
 };
 
 test.beforeEach(() => {
+	jungleFolderShipped = true;
+	saltFlatShipped = true;
+	canyonsShipped = true;
+	lavaFieldsShipped = true;
 	world.reset();
 	world.setGM(true);
 	scenes = [];
@@ -79,7 +97,15 @@ test.beforeEach(() => {
 		if (path === COLORED_FOLDER) return { files: [], dirs: [
 			VEGETATION_FOLDER, DESERT_FOLDER, MOUNTAINS_FOLDER, WATER_FOLDER,
 			ARCTIC_FOLDER, LAKE_FOLDER, RIVER_FOLDER, SPECIALS_FOLDER,
+			...(jungleFolderShipped ? [JUNGLE_FOLDER] : []),
+			...(saltFlatShipped ? [SALT_FLATS_FOLDER] : []),
+			...(canyonsShipped ? [CANYONS_FOLDER] : []),
+			...(lavaFieldsShipped ? [LAVA_FIELDS_FOLDER] : []),
 		] };
+		if (path === LAVA_FIELDS_FOLDER) return { files: LAVA_TILES, dirs: [] };
+		if (path === SALT_FLATS_FOLDER) return { files: SALT_FLAT_TILES, dirs: [] };
+		if (path === CANYONS_FOLDER) return { files: CANYON_TILES, dirs: [] };
+		if (path === JUNGLE_FOLDER) return { files: [JUNGLE_TILE, JUNGLE_HILLS_TILE, JUNGLE_DARK_TILE], dirs: [] };
 		if (path === VEGETATION_FOLDER) return { files: [
 			VEGETATION_HILL_TILE, VEGETATION_SPARSE_TILE, VEGETATION_TILE, VEGETATION_DENSE_TILE,
 		], dirs: [] };
@@ -113,7 +139,13 @@ test.beforeEach(() => {
 					// tile count collides after a delete, and a later delete-by-id
 					// then takes the wrong tile with it.
 					tileSeq: 0,
+					notes: [],
 					async createEmbeddedDocuments(type, data) {
+						if (type === "Note") {
+							const docs = data.map(source => ({ ...source, id: `note-${scene.notes.length + 1}` }));
+							scene.notes.push(...docs);
+							return docs;
+						}
 						assert.equal(type, "Tile");
 						const docs = data.map(source => ({ ...source, id: `tile-${++scene.tileSeq}` }));
 						scene.tiles.push(...docs);
@@ -241,14 +273,152 @@ test("published colored terrain uses exact legend pools", async () => {
 	}, { view: false });
 	const paths = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted)
 		.map(t => t.texture.src);
-	assert.ok([VEGETATION_TILE, VEGETATION_DENSE_TILE].includes(paths[0]));
-	assert.equal(paths[1], DESERT_HILL_TILE);
-	assert.equal(paths[2], DESERT_PLAIN_TILE);
+	assert.ok([JUNGLE_TILE, JUNGLE_HILLS_TILE].includes(paths[0]));
+	assert.ok(CANYON_TILES.includes(paths[1]), "canyon paints from the Canyons folder");
+	assert.ok(SALT_FLAT_TILES.includes(paths[2]), "salt flat paints from the Salt Flats folder");
 	assert.ok([MOUNTAIN_ROCKY_TILE, MOUNTAIN_LUSH_TILE].includes(paths[3]));
 	assert.equal(paths[4], MOUNTAIN_ROCKY_TILE);
 	assert.match(paths[5], /\/Hex - Mountain[s]?, Volcano \(.+\) [12]\.webp$/);
-	assert.equal(paths[6], `${SPECIALS_FOLDER}/lava.webp`);
+	assert.ok(LAVA_TILES.includes(paths[6]), "lava paints from the Lava Fields folder");
 	assert.ok([DESERT_HILL_TILE, DESERT_PLAIN_TILE].includes(paths[7]));
+});
+
+test("salt flat paints only salt-flat art and ordinary desert never does", async () => {
+	setActiveTileTab("colored");
+	const regionHexes = [101, 102, 103, 104, 201, 202, 203, 204];
+	await builder.buildPublishedHexcrawl({
+		grid: { cols: 2, rows: 4 },
+		terrain: { default: "desert", regions: [{ biome: "salt flat", hexes: regionHexes }] },
+		hexes: [],
+	}, { view: false });
+	const painted = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted).map(t => t.texture.src);
+	assert.equal(painted.length, 8);
+	assert.ok(painted.every(src => SALT_FLAT_TILES.includes(src)), "every salt flat hex uses a Salt Flat tile");
+	assert.equal(new Set(painted).size, 2, "both Salt Flat tiles appear across a region");
+
+	scenes.length = 0;
+	await builder.buildPublishedHexcrawl({ grid: { cols: 4, rows: 4 }, terrain: { default: "desert" }, hexes: [] }, { view: false });
+	const desert = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted).map(t => t.texture.src);
+	assert.equal(desert.length, 16);
+	assert.ok(desert.every(src => !SALT_FLAT_TILES.includes(src)), "plain desert leaves the salt flats out");
+});
+
+test("salt flat falls back to desert plains while the cached catalogue has no Salt Flat tiles", async () => {
+	saltFlatShipped = false;
+	await loadColoredTileAssets({ rescan: true });
+	try {
+		setActiveTileTab("colored");
+		await builder.buildPublishedHexcrawl({ grid: { cols: 1, rows: 1 }, terrain: { default: "salt flat" }, hexes: [] }, { view: false });
+		const [src] = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted).map(t => t.texture.src);
+		assert.equal(src, DESERT_PLAIN_TILE);
+	}
+	finally {
+		saltFlatShipped = true;
+		await loadColoredTileAssets({ rescan: true });
+	}
+});
+
+test("canyon falls back to desert hills while the cached catalogue has no Canyons folder", async () => {
+	canyonsShipped = false;
+	await loadColoredTileAssets({ rescan: true });
+	try {
+		setActiveTileTab("colored");
+		await builder.buildPublishedHexcrawl({ grid: { cols: 1, rows: 1 }, terrain: { default: "canyon" }, hexes: [] }, { view: false });
+		const [src] = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted).map(t => t.texture.src);
+		assert.equal(src, DESERT_HILL_TILE);
+	}
+	finally {
+		canyonsShipped = true;
+		await loadColoredTileAssets({ rescan: true });
+	}
+});
+
+test("lava falls back to the Specials lava tiles while the cached catalogue has no Lava Fields folder", async () => {
+	lavaFieldsShipped = false;
+	await loadColoredTileAssets({ rescan: true });
+	try {
+		setActiveTileTab("colored");
+		await builder.buildPublishedHexcrawl({ grid: { cols: 4, rows: 1 }, terrain: { default: "lava" }, hexes: [] }, { view: false });
+		const painted = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted).map(t => t.texture.src);
+		assert.equal(painted.length, 4);
+		assert.ok(painted.every(src => /\/(lava\.webp|Hex - Lava Field \d\.webp)$/.test(src)), "fallback is the Specials lava set");
+	}
+	finally {
+		lavaFieldsShipped = true;
+		await loadColoredTileAssets({ rescan: true });
+	}
+});
+
+test("jungle paints only from the Jungle folder and never from the dark recolour", async () => {
+	setActiveTileTab("colored");
+	await builder.buildPublishedHexcrawl({
+		grid: { cols: 6, rows: 2 },
+		terrain: { default: "desert", regions: [{ biome: "jungle", hexes: [101, 102, 201, 202, 301, 302, 401, 402, 501, 502, 601, 602] }] },
+		hexes: [],
+	}, { view: false });
+	const paths = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted).map(t => t.texture.src);
+	assert.equal(paths.length, 12);
+	assert.ok(paths.every(path => [JUNGLE_TILE, JUNGLE_HILLS_TILE].includes(path)), "jungle uses only the pool tiles");
+	assert.equal(new Set(paths).size, 2, "both pool tiles appear across a region");
+	assert.equal(getColoredTilesByBiome().vegetation.includes(JUNGLE_TILE), false, "forest and plains never draw jungle tiles");
+	assert.ok(getColoredTilesByBiome().jungle.includes(JUNGLE_DARK_TILE), "the dark tile stays available as hand-picked art");
+});
+
+test("jungle falls back to forest art while the cached catalogue has no Jungle folder", async () => {
+	jungleFolderShipped = false;
+	await loadColoredTileAssets({ rescan: true }); // the catalogue as an older version cached it
+	try {
+		setActiveTileTab("colored");
+		await builder.buildPublishedHexcrawl({
+			grid: { cols: 1, rows: 1 }, terrain: { default: "jungle" }, hexes: [],
+		}, { view: false });
+		const [src] = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted).map(t => t.texture.src);
+		assert.ok([VEGETATION_TILE, VEGETATION_DENSE_TILE].includes(src));
+	}
+	finally {
+		jungleFolderShipped = true;
+		await loadColoredTileAssets({ rescan: true });
+	}
+});
+
+test("a hex that names a journal page gets a map note, and a page the world lacks gets none", async () => {
+	// game.journal is the harness's array (the hex store finds its journal with
+	// .find), so add `get` to it rather than replace the collection.
+	game.journal.get = id => (id === "crawl1" ? { pages: { has: pageId => pageId === "pageA" } } : undefined);
+	try {
+		await builder.buildPublishedHexcrawl({
+			...fixture,
+			hexes: [
+				{ num: 1402, name: "Landing", journal: { entryId: "crawl1", pageId: "pageA" } },
+				{ num: 1403, name: "Test tower", journal: { entryId: "crawl1", pageId: "gone" } },
+				{ num: 1404, journal: { entryId: "elsewhere", pageId: "pageA" } },
+			],
+		}, { view: false });
+		const scene = scenes[0];
+		assert.equal(scene.notes.length, 1, "only the page the world holds becomes a note");
+		const [note] = scene.notes;
+		assert.deepEqual({ entryId: note.entryId, pageId: note.pageId, text: note.text }, { entryId: "crawl1", pageId: "pageA", text: "1402. Landing" });
+		assert.deepEqual({ x: note.x, y: note.y }, (({ x, y }) => ({ x: Math.round(x), y: Math.round(y) }))(grid.getCenterPoint({ i: 1, j: 13 })));
+		assert.deepEqual(note.flags[MODULE_ID].hexJournal, { num: 1402 });
+		assert.equal(world.lastFlagValue()[scene.id]["1_13"].journal, undefined, "the page reference is build-only, not stored on the record");
+	}
+	finally {
+		delete game.journal.get;
+	}
+});
+
+test("a build with no journal references makes no notes and the summary keeps its shape", async () => {
+	const result = await builder.buildPublishedHexcrawl(fixture, { view: false });
+	assert.equal(scenes[0].notes.length, 0);
+	assert.equal("journalNotes" in result, false);
+});
+
+test("journal must be an entryId and pageId, and only a build accepts it", async () => {
+	for (const journal of ["page", { entryId: "a" }, { entryId: 1, pageId: "b" }, ["a", "b"]]) {
+		await assert.rejects(builder.buildPublishedHexcrawl({ ...fixture, hexes: [{ num: 1402, journal }] }, { view: false }), /journal needs an entryId and a pageId/);
+	}
+	const built = (await builder.buildPublishedHexcrawl(fixture, { view: false })).sceneId;
+	await assert.rejects(builder.upsertHexRecords(built, [{ num: 1402, journal: { entryId: "a", pageId: "b" } }]), /unsupported hex field journal/);
 });
 
 test("published transpose/flips persist for later num-only upserts; legacy root keeps its old layout", async () => {
@@ -659,6 +829,21 @@ test("curated art does not depend on which tile source is selected", async () =>
 		grid: { cols: 2, rows: 1 }, terrain: { default: "desert" }, hexes: [],
 	}, { view: false });
 	assert.ok(scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted).every(t => t.texture.src.includes("/Desert/")), "the tab no longer decides the tile set");
+});
+
+test("art added after the catalogue was cached is found by a rescan", async () => {
+	const added = `${DESERT_FOLDER}/Hex - Salt Flat (added).webp`;
+	const data = { grid: { cols: 2, rows: 1 }, terrain: { default: "desert" } };
+	await builder.buildPublishedHexcrawl({ ...data, hexes: [] }, { view: false }); // caches the catalogue
+	const browse = foundry.applications.apps.FilePicker.implementation.browse;
+	foundry.applications.apps.FilePicker.implementation.browse = async (source, path) => {
+		const listing = await browse(source, path);
+		return path === DESERT_FOLDER ? { ...listing, files: [...listing.files, added] } : listing;
+	};
+	scenes.length = 0;
+	await builder.buildPublishedHexcrawl({ ...data, hexes: [{ num: 101, art: added }] }, { view: false });
+	const painted = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted);
+	assert.equal(painted.find(t => t.flags[MODULE_ID].hexNum === 101).texture.src, added);
 });
 
 test("art outside the shipped catalogue is refused before anything is written", async () => {

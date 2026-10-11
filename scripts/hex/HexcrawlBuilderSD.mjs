@@ -9,7 +9,8 @@
  *   1. a Scene formatted as a hex grid sized to the dataset,
  *   2. SDX biome tiles painted across the grid (default + region overrides),
  *   3. a feature-icon tile centred on each keyed hex,
- *   4. a per-hex record (name / terrain / notes) in `__sdx_hex_data__`.
+ *   4. a per-hex record (name / terrain / notes) in `__sdx_hex_data__`,
+ *   5. a map note on each hex whose dataset entry names a journal page.
  *
  * RollTables / encounter linking are handled separately (Pass B).
  *
@@ -36,7 +37,8 @@
  *       icon:"assets/symbols/Details/Structures - Ruins (stone).webp",
  *       desc:"A crumbling keep …", zone:"The Gloaming",
  *       special: "modules/shadowdark-extras/assets/Hexes/Specials/keep.webp",
- *       art: "modules/shadowdark-extras/assets/Hexes/Vegetation/Hex - Forest.webp" },
+ *       art: "modules/shadowdark-extras/assets/Hexes/Vegetation/Hex - Forest.webp",
+ *       journal: { entryId: "…", pageId: "…" } },  // optional; becomes a map note on the hex
  *     …
  *   ],
  *   networks: { river: [1402,1403], road: [1403,1404],
@@ -156,14 +158,32 @@ const TERRAIN_BIOMES = {
 };
 const TERRAIN_COLORED_RULES = {
 	"arctic sea": { pool: "water-arctic" },
-	canyon: { pool: "desert", include: ["hills"] },
+	// Falls back to desert hills while a cached catalogue predates the Canyons folder.
+	// `include` is explicit: without one the rule would inherit "hills" from the
+	// biome the canyon label maps to, which no Canyons tile name contains.
+	canyon: { pool: "canyons", include: ["canyon"], fallback: { pool: "desert", include: ["hills"] } },
 	"deep tunnels": { pool: "mountains", include: ["rocky"] },
-	jungle: { pool: "vegetation", include: ["forest", "/trees2.webp"] },
+	// "(dark)" is the weak recolour; it ships for hand-picked art, not the pool.
+	// Not bare "dark": every path contains "shadowdark-extras".
+	// The fallback keeps jungle on forest art while a cached catalogue predates
+	// the Jungle folder (the catalogue is re-scanned on the next module version).
+	jungle: { pool: "jungle", include: ["jungle"], exclude: ["(dark)"],
+		fallback: { pool: "vegetation", include: ["forest", "/trees2.webp"] } },
+	// Salt-flat art has its own folder now; a catalogue cached before that move
+	// still lists it under Desert, so plain desert keeps leaving it out or
+	// ordinary dunes would paint white pans.
+	"desert": { pool: "desert", exclude: ["salt flat"] },
 	lake: { pool: "water-lake" },
-	lava: { pool: "specials", include: ["/lava.webp"] },
+	// The hand-picked lava art has its own folder; the Specials lava tiles stand in
+	// until a cached catalogue has it.
+	lava: {
+		pool: "lava fields", include: ["lava"],
+		fallback: { pool: "specials", include: ["/lava.webp", "lava field"] },
+	},
 	mountain: { pool: "mountains", exclude: ["bridge", "mountains spikes"] },
 	river: { pool: "water-river" },
-	"salt flat": { pool: "desert", include: ["plains"] },
+	// Falls back to plain desert art while a cached catalogue predates the Salt Flats folder.
+	"salt flat": { pool: "salt flats", fallback: { pool: "desert", include: ["plains"] } },
 	volcano: { pool: "specials", include: ["volcano"] },
 };
 const biomeFor = label => {
@@ -253,6 +273,11 @@ const RECORD_FIELDS = [...RECORD_STRINGS, ...RECORD_BOOLEANS, "exploration", "re
  * of it — a hand-curated map paints the same forest tile in fifty places.
  */
 const BUILD_ONLY_FIELDS = ["icon", "special", "art"];
+/**
+ * The journal page a keyed hex opens, `{ entryId, pageId }`. Build-only like
+ * the fields above, but an object, so it is checked on its own.
+ */
+const JOURNAL_FIELD = "journal";
 
 function requireInput(condition, message) {
 	if (!condition) throw new Error(`SDX | Hexcrawl: ${message}`);
@@ -275,13 +300,18 @@ function validateRecords(records, geom, building = false) {
 		requireInput(!seen.has(num), `duplicate hex ${hex.num}`);
 		seen.add(num);
 		for (const key of Object.keys(hex)) {
-			requireInput(key === "num" || RECORD_FIELDS.includes(key) || (building && BUILD_ONLY_FIELDS.includes(key)), `unsupported hex field ${key}; identify cells by num only`);
+			requireInput(key === "num" || RECORD_FIELDS.includes(key) || (building && [...BUILD_ONLY_FIELDS, JOURNAL_FIELD].includes(key)), `unsupported hex field ${key}; identify cells by num only`);
 		}
 		for (const key of [...RECORD_STRINGS, ...(building ? BUILD_ONLY_FIELDS : [])]) {
 			if (Object.hasOwn(hex, key)) requireInput(typeof hex[key] === "string", `${key} must be text`);
 		}
 		for (const key of RECORD_BOOLEANS) {
 			if (Object.hasOwn(hex, key)) requireInput(typeof hex[key] === "boolean", `${key} must be boolean`);
+		}
+		if (Object.hasOwn(hex, JOURNAL_FIELD)) {
+			const ref = hex[JOURNAL_FIELD];
+			requireInput(ref && typeof ref === "object" && !Array.isArray(ref)
+				&& typeof ref.entryId === "string" && typeof ref.pageId === "string", "journal needs an entryId and a pageId");
 		}
 		if (Object.hasOwn(hex, "exploration")) requireInput(["unexplored", "explored", "mapped"].includes(hex.exploration), "invalid exploration state");
 		if (Object.hasOwn(hex, "revealRadius")) requireInput(Number.isInteger(hex.revealRadius) && hex.revealRadius >= -1, "invalid revealRadius");
@@ -462,15 +492,19 @@ function hexTileData({ num, biome, biomeKey, center, off, coloredByBiome, tw, th
 	const coloredRule = TERRAIN_COLORED_RULES[String(biomeKey).trim().toLowerCase()];
 	let colored = [];
 	if (coloredByBiome) {
-		const candidates = coloredRule?.pool === "specials"
-			? specialsPool()
-			: (coloredByBiome[coloredRule?.pool ?? biome.colored] ?? []);
-		const includes = coloredRule?.include ?? biome.coloredIncludes;
-		colored = candidates.filter(path => {
-			const text = decodeURIComponent(path).toLowerCase();
-			return (!includes || includes.some(part => text.includes(part)))
-				&& !coloredRule?.exclude?.some(part => text.includes(part));
-		});
+		const pick = (rule, fallbackPool, fallbackIncludes) => {
+			const candidates = rule?.pool === "specials"
+				? specialsPool()
+				: (coloredByBiome[rule?.pool ?? fallbackPool] ?? []);
+			const includes = rule?.include ?? fallbackIncludes;
+			return candidates.filter(path => {
+				const text = decodeURIComponent(path).toLowerCase();
+				return (!includes || includes.some(part => text.includes(part)))
+					&& !rule?.exclude?.some(part => text.includes(part));
+			});
+		};
+		colored = pick(coloredRule, biome.colored, biome.coloredIncludes);
+		if (!colored.length && coloredRule?.fallback) colored = pick(coloredRule.fallback);
 	}
 	// A settlement paints as its Specials tile rather than its terrain.
 	const settlement = coloredByBiome && FEATURE_COLORED_RULES[feature]
@@ -607,6 +641,34 @@ async function placeFeatureIcons(scene, dataset, geom) {
 	return created.length;
 }
 
+// ── journal notes ───────────────────────────────────────────────────────────
+
+/**
+ * A map note on each hex whose dataset entry names a journal page, so a
+ * colored map opens the book's entry from the hex the way its tagged print
+ * scene does. A page the world does not hold is left out rather than pinned
+ * dangling: a Note with no entry draws and opens nothing.
+ */
+async function placeJournalNotes(scene, dataset, geom) {
+	const iconSize = Math.max(24, Math.round((scene.grid?.size ?? HEX_TILE_H) * 0.3));
+	const data = [];
+	for (const hex of dataset.hexes ?? []) {
+		const ref = hex.journal;
+		if (!ref || !game.journal?.get(ref.entryId)?.pages?.has(ref.pageId)) continue;
+		const { col, row } = hexNumToColRow(hex.num);
+		const center = scene.grid.getCenterPoint(geom.offsetOf(col, row));
+		data.push({
+			entryId: ref.entryId, pageId: ref.pageId,
+			x: Math.round(center.x), y: Math.round(center.y),
+			text: hex.name ? `${hex.num}. ${hex.name}` : String(hex.num),
+			iconSize, texture: { src: "icons/svg/book.svg" },
+			flags: { [MODULE_ID]: { hexJournal: { num: Number(hex.num) } } },
+		});
+	}
+	if (!data.length) return 0;
+	return (await scene.createEmbeddedDocuments("Note", data)).length;
+}
+
 // ── coasts ──────────────────────────────────────────────────────────────────
 
 // Above every terrain tile, whose sort is its own y, so a neighbour's seam
@@ -691,7 +753,7 @@ function buildRecord(hex, dataset) {
 
 async function writeHexRecords(scene, dataset, geom, specials) {
 	if (geom.published) {
-		const records = dataset.hexes.map(({ icon: _icon, art: _art, special, ...hex }) => ({
+		const records = dataset.hexes.map(({ icon: _icon, art: _art, journal: _journal, special, ...hex }) => ({
 			name: specials.get(special)?.label ?? "", zone: dataset.name ?? "", ...hex,
 		}));
 		return (await upsertHexRecords(scene.id, records)).records;
@@ -735,7 +797,14 @@ export function coloredTileKey(path) {
 async function resolveArt(hexes = []) {
 	if (!hexes.some(hex => Object.hasOwn(hex, "art"))) return hexes;
 	if (!getColoredTiles().length) await loadColoredTileAssets();
-	const catalogue = new Map(getColoredTiles().map(tile => [coloredTileKey(tile.path), tile.path]));
+	const catalogueOf = () => new Map(getColoredTiles().map(tile => [coloredTileKey(tile.path), tile.path]));
+	let catalogue = catalogueOf();
+	// The catalogue is cached per module version, so art a GM added since then
+	// is missing from it. Walk the folders once before calling any art unknown.
+	if (hexes.some(hex => Object.hasOwn(hex, "art") && !catalogue.has(coloredTileKey(hex.art)))) {
+		await loadColoredTileAssets({ rescan: true });
+		catalogue = catalogueOf();
+	}
 	requireInput(catalogue.size, "no tile catalogue loaded; cannot check hex art");
 	return hexes.map(hex => {
 		if (!Object.hasOwn(hex, "art")) return hex;
@@ -1102,7 +1171,8 @@ async function placeReference(scene, reference) {
  * Build a complete hexcrawl scene from a dataset object.
  * @param {object} dataset  see DATASET SHAPE at top of file
  * @param {object} [opts]   { sceneName?, overwrite? }
- * @returns {Promise<object>} summary { sceneId, sceneName, terrainTiles, featureTiles, records }
+ * @returns {Promise<object>} summary { sceneId, sceneName, terrainTiles, featureTiles, records,
+ *   journalNotes? } — journalNotes only when a hex's journal page became a map note
  */
 export async function buildHexcrawl(dataset, opts = {}) {
 	if (!game.user?.isGM) {
@@ -1127,6 +1197,7 @@ async function buildScene(dataset, opts, geom, specials = new Map()) {
 	const terrainTiles = await paintTerrain(scene, dataset, geom, specials);
 	const featureTiles = await placeFeatureIcons(scene, dataset, geom);
 	const records = await writeHexRecords(scene, dataset, geom, specials);
+	const journalNotes = geom.published ? await placeJournalNotes(scene, dataset, geom) : 0;
 	// After the records: the coasts are read off the terrain just written.
 	await placeCoasts(scene);
 	if (geom.published) {
@@ -1151,7 +1222,8 @@ async function buildScene(dataset, opts, geom, specials = new Map()) {
 		console.warn(`${MODULE_ID} | post-build tiles redraw failed`, err);
 	}
 
-	const summary = { sceneId: scene.id, sceneName: scene.name, terrainTiles, featureTiles, records };
+	const summary = { sceneId: scene.id, sceneName: scene.name, terrainTiles, featureTiles, records,
+		...(journalNotes ? { journalNotes } : {}) };
 	ui.notifications?.info(
 		`SDX | Hexcrawl built: ${terrainTiles} terrain, ${featureTiles} features, ${records} keyed hexes.`
 	);

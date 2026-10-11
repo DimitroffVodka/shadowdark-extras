@@ -14,6 +14,8 @@ import { scaleHexTileDimensions } from "./hex-scene-format.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const COLORED_TILE_FOLDER = `modules/${MODULE_ID}/assets/Hexes`;
+// Retired art parked beside the live folders; it is gitignored and never shipped.
+const ARCHIVE_BIOME = "archive";
 const COLORED_HEX_TILE_W = 572;
 const COLORED_HEX_TILE_H = 500;
 const COLORED_TAG_ALIASES = [
@@ -35,14 +37,16 @@ export const _coloredTagFilters = new Set();
 
 /**
  * Load colored tiles from assets/Hexes folder (inside the module)
+ * @param {{rescan?: boolean}} [options] rescan: walk the folders even when this
+ *   version's catalogue is cached, for art added since it was written.
  */
-export async function loadColoredTileAssets() {
+export async function loadColoredTileAssets({ rescan = false } = {}) {
 	_coloredTiles = [];
 
 	const metadataKey = "hex_tiles_metadata_colored";
-	const cached = await readShippedManifest(metadataKey);
+	const cached = rescan ? null : await readShippedManifest(metadataKey);
 	if (cached) {
-		_coloredTiles = cached;
+		_coloredTiles = cached.filter(tile => tile.biome !== ARCHIVE_BIOME);
 		return;
 	}
 
@@ -67,6 +71,7 @@ export async function loadColoredTileAssets() {
 		const subdirs = mainListing.dirs || [];
 		for (const dirPath of subdirs) {
 			const biome = dirPath.split("/").pop();
+			if (biome.toLowerCase() === ARCHIVE_BIOME) continue;
 			try {
 				const biomeListing = await browseAssetsAsGM("data", dirPath);
 				if (!biomeListing) continue;
@@ -112,6 +117,12 @@ export function getColoredTilesByBiome() {
 		"water-lake": [],
 		"water-river": [],
 		vegetation: [],  // Maps to forest/grassland
+		jungle: [],      // Palm-only tiles; kept out of vegetation so forest/plains never draw them
+		// Hand-picked hex art with its own folder; kept out of `other`, which every
+		// biome without a folder of its own draws from at random.
+		"lava fields": [],
+		"salt flats": [],
+		canyons: [],
 		mountains: [],
 		desert: [],
 		swamp: [],

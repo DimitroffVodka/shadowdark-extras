@@ -18,6 +18,8 @@ const HEXES_FOLDER = `${MODULE_PREFIX}assets/Hexes`;
 const MOUNTAINS_FOLDER = `${HEXES_FOLDER}/Mountains`;
 const LEGACY_PATH = `${MOUNTAINS_FOLDER}/Hex - Mountains, medium (lush).png`;
 const CURRENT_PATH = `${MOUNTAINS_FOLDER}/Hex%20-%20Mountains,%20medium%20(lush).webp`;
+const ARCHIVE_FOLDER = `${HEXES_FOLDER}/Archive`;
+const ARCHIVED_PATH = `${ARCHIVE_FOLDER}/Flat%20Hex%20-%20Anvil%20Rock.webp`;
 
 installMemoryIndexedDB();
 
@@ -25,8 +27,9 @@ const browsedFolders = [];
 class TestFilePicker {
 	static async browse(_source, folder) {
 		browsedFolders.push(folder);
-		if (folder === HEXES_FOLDER) return { files: [], dirs: [MOUNTAINS_FOLDER] };
+		if (folder === HEXES_FOLDER) return { files: [], dirs: [MOUNTAINS_FOLDER, ARCHIVE_FOLDER] };
 		if (folder === MOUNTAINS_FOLDER) return { files: [CURRENT_PATH], dirs: [] };
+		if (folder === ARCHIVE_FOLDER) return { files: [ARCHIVED_PATH], dirs: [] };
 		return { files: [], dirs: [] };
 	}
 }
@@ -120,6 +123,32 @@ test("shipping a new module version invalidates the catalogue", async () => {
 
 	assert.ok(browsedFolders.includes(HEXES_FOLDER), "a version bump should force a rescan");
 	assert.equal((await cache.getMetadata(METADATA_KEY)).version, "6.13.0");
+});
+
+test("the Archive folder is neither scanned nor served from a cached catalogue", async () => {
+	browsedFolders.length = 0;
+	await colored.loadColoredTileAssets({ rescan: true });
+	assert.ok(!browsedFolders.includes(ARCHIVE_FOLDER), "Archive was walked");
+	assert.deepEqual(colored.getColoredTiles().map(t => t.path), [CURRENT_PATH]);
+
+	// A catalogue cached while Archive/ existed must not resurrect it.
+	const entry = { key: "k", label: "k", path: ARCHIVED_PATH, isColored: true, biome: "archive" };
+	await cache.setMetadata(METADATA_KEY, { version: moduleVersion, entries: [entry] });
+	await colored.loadColoredTileAssets();
+	assert.deepEqual(colored.getColoredTiles(), []);
+});
+
+test("hand-picked art folders keep their own bucket instead of spilling into other", async () => {
+	const tile = (biome, name) => ({ key: name, label: name, path: `${HEXES_FOLDER}/${name}.webp`, isColored: true, biome });
+	await cache.setMetadata(METADATA_KEY, { version: moduleVersion, entries: [
+		tile("lava fields", "lava a"), tile("salt flats", "salt a"), tile("canyons", "canyon a"), tile("autumn", "bog"),
+	] });
+	await colored.loadColoredTileAssets();
+	const byBiome = colored.getColoredTilesByBiome();
+	assert.equal(byBiome["lava fields"].length, 1);
+	assert.equal(byBiome["salt flats"].length, 1);
+	assert.equal(byBiome.canyons.length, 1);
+	assert.deepEqual(byBiome.other, [`${HEXES_FOLDER}/bog.webp`], "only unmapped terrain folders reach other");
 });
 
 test("an undeterminable module version disables the cache rather than guessing", async () => {

@@ -79,7 +79,7 @@ const BIOME_TO_TILE_FOLDER = {
 	plains: "vegetation",
 	forest: "vegetation",
 	desert: "desert",
-	jungle: "vegetation",
+	jungle: "jungle",
 	mountains: "mountains",
 };
 
@@ -249,6 +249,10 @@ async function placeTileForBiome(offset, biomeKey) {
 
 	if (tilesByBiome[folder]?.length > 0) {
 		tilePath = pickRandom(tilesByBiome[folder]);
+	}
+	else if (folder === "jungle" && tilesByBiome.vegetation?.length > 0) {
+		// A catalogue cached before the Jungle folder existed has no jungle tiles.
+		tilePath = pickRandom(tilesByBiome.vegetation);
 	}
 	else if (tilesByBiome.other?.length > 0) {
 		tilePath = pickRandom(tilesByBiome.other);
