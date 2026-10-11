@@ -17,7 +17,9 @@
 //   Pins       pins
 //   Notes      notes
 //   Hexes      hexes  hexes-colored  hexes-custom  hexes-poi
-//   Decor      decor
+//              hexes-custom lists this module's own assets/Hexes/Autumn as a stand-in: the live Custom
+//              tab reads a runtime data/hexes scan, which a repo fixture cannot reproduce.
+//   Decor      decor  (the module tracks one image in assets/Dungeon/decor, so that section shows one tile)
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -132,7 +134,7 @@ const hexData = (tab) => {
     hexColoredTiles: tiles("tiles", 8, { biome: "Forest" }),
     customTileWidth: 200, customTileHeight: 173, customNavPath: [], customNavBreadcrumb: [{ label: "hexes", segments: [] }],
     customNavChips: [{ name: "Regions", label: "Regions", count: 12 }, { name: "Autumn", label: "Autumn", count: 9 }],
-    hexCustomTiles: tiles("Hexes/Regions", 6, { biome: "Region" }),
+    hexCustomTiles: tiles("Hexes/Autumn", 6, { biome: "Autumn" }),
     hexSymbolFolders: symbolDirs.map((d, i) => ({ folder: d, label: d, collapsed: i > 0, tiles: tiles(`symbols/${d}`, 6, { category: d }) })),
   };
 };

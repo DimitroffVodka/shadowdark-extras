@@ -23,7 +23,9 @@ export function proposed(current, map = {}, opts = {}) {
   };
   const extra = (Array.isArray(opts.extraCss) ? opts.extraCss : [opts.extraCss])
     .filter(Boolean).map((f) => fs.readFileSync(path.join(ROOT, f), "utf8")).join("\n");
-  const base = { ...swap(current), classes: opts.classes ?? current.classes, css: extra,
+  // Append to the fixture's own css: the tray's docking sheet must survive a proposal.
+  const base = { ...swap(current), classes: opts.classes ?? current.classes,
+    css: [current.css, extra].filter(Boolean).join("\n"),
     ...(opts.width ? { width: opts.width } : {}), ...(opts.title ? { title: opts.title } : {}) };
   if (current.build) base.build = (s) => withShim(swap({ ...current.build(s) }));
   return withShim(base);
