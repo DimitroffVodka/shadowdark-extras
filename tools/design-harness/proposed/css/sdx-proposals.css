@@ -1,0 +1,49 @@
+/* Shared proposal look for the SDX windows (harness only; nothing here ships).
+   Structure, type roles and shape rules follow docs/design-contract.md applied to SDX's own
+   black/gold identity: one type scale, readable minimums, square status chips, 28px buttons with
+   one primary per screen, cards on the page instead of loose text. Tokens switch nothing — SDX
+   ships no light theme in these windows yet, so the palette is fixed here and reviewable. */
+:is(.sdx-medkit-window, .shadowdark-extras-party, .sdx-roller-window, .sdx-camping-rest-app, .sdx-carousing-overlay-app) {
+  --sp-text: #e9e7e2;
+  --sp-dim: #b9b9b9;
+  --sp-faint: #8f8f8f;
+  --sp-gold: #c9a227;
+  --sp-gold-text: #e0c25a;
+  --sp-surface: #232323;
+  --sp-surface-2: #1c1c1c;
+  --sp-line: #3a3a3a;
+  --sp-line-soft: #303030;
+  --sp-danger: #9d2a3a;
+  --sp-danger-text: #d4757f;
+  --sp-radius: 4px;
+}
+/* One type scale: titles 17, lead 14, body 13, micro 11.5 (never smaller). */
+:is(.sdx-medkit-window, .shadowdark-extras-party, .sdx-roller-window, .sdx-camping-rest-app, .sdx-carousing-overlay-app) :is(p, span, label, small, div) { }
+/* Shape rules: buttons ≥26px radius 4; icon buttons ≥24; inputs 28-30; square chips (2px). */
+:is(.sdx-medkit-window, .shadowdark-extras-party, .sdx-roller-window, .sdx-camping-rest-app, .sdx-carousing-overlay-app) button {
+  border-radius: var(--sp-radius);
+  min-height: 26px;
+  font-size: 12px;
+}
+:is(.sdx-medkit-window, .shadowdark-extras-party, .sdx-roller-window, .sdx-camping-rest-app, .sdx-carousing-overlay-app) input[type="text"],
+:is(.sdx-medkit-window, .shadowdark-extras-party, .sdx-roller-window, .sdx-camping-rest-app, .sdx-carousing-overlay-app) input[type="number"],
+:is(.sdx-medkit-window, .shadowdark-extras-party, .sdx-roller-window, .sdx-camping-rest-app, .sdx-carousing-overlay-app) select {
+  min-height: 28px;
+  border-radius: var(--sp-radius);
+  background: var(--sp-surface-2);
+  border: 1px solid var(--sp-line);
+  color: var(--sp-text);
+}
+/* Square status chips, 2px radius, tiny caps. */
+:is(.sdx-medkit-window, .shadowdark-extras-party, .sdx-roller-window, .sdx-camping-rest-app, .sdx-carousing-overlay-app) .sdxp-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border: 1px solid var(--sp-line); border-radius: 2px;
+  font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--sp-dim);
+}
+:is(.sdx-medkit-window, .shadowdark-extras-party, .sdx-roller-window, .sdx-camping-rest-app, .sdx-carousing-overlay-app) .sdxp-chip.gold { border-color: var(--sp-gold); color: var(--sp-gold-text); }
+:is(.sdx-medkit-window, .shadowdark-extras-party, .sdx-roller-window, .sdx-camping-rest-app, .sdx-carousing-overlay-app) .sdxp-chip.green { border-color: #5c8a52; color: #bde3a8; }
+/* Filled gold primary, ghost secondary. One primary per screen. */
+:is(.sdx-medkit-window, .sdx-roller-window, .sdx-camping-rest-app) button.primary {
+  background: var(--sp-gold); border: 1px solid var(--sp-gold); color: #141414; font-weight: 700;
+}
+:is(.sdx-medkit-window, .sdx-roller-window, .sdx-camping-rest-app) button.primary:hover { background: #dbb638; }

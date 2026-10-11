@@ -1,0 +1,52 @@
+/* Camping & Rest proposal, second pass — full names, a calm control grid, card rows, one primary. */
+.sdx-camping-rest-app .window-content { padding: 12px 14px; }
+.sdx-camping-rest-app .sdx-rest-section { background: var(--sp-surface-2); border: 1px solid var(--sp-line-soft);
+  border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+.sdx-camping-rest-app .sdx-rest-section h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px;
+  font-size: 13.5px; font-weight: 700; letter-spacing: 0.02em; color: var(--sp-text); }
+.sdx-camping-rest-app .sdx-rest-section h2 i { color: var(--sp-gold); font-size: 13px; }
+.sdx-camping-rest-app .sdx-rest-section-heading { display: flex; align-items: baseline; justify-content: space-between; }
+.sdx-camping-rest-app .sdx-rest-section-heading span { font-size: 11.5px; color: var(--sp-dim); }
+
+/* campfire choice cards */
+.sdx-camping-rest-app .sdx-rest-campfire-options { display: flex; gap: 8px; }
+.sdx-camping-rest-app .sdx-rest-choice { flex: 1; display: flex; gap: 9px; padding: 9px 11px; background: var(--sp-surface);
+  border: 1px solid var(--sp-line-soft); border-radius: 6px; cursor: pointer; }
+.sdx-camping-rest-app .sdx-rest-choice:has(input:checked) { border-color: var(--sp-gold); background: #262218; }
+.sdx-camping-rest-app .sdx-rest-choice input { accent-color: var(--sp-gold); margin-top: 2px; }
+.sdx-camping-rest-app .sdx-rest-choice strong { display: block; font-size: 12.5px; font-weight: 600; color: var(--sp-text); }
+.sdx-camping-rest-app .sdx-rest-choice small { display: block; margin-top: 2px; font-size: 11px; line-height: 1.35; color: var(--sp-dim); }
+
+/* member cards */
+.sdx-camping-rest-app .sdx-rest-members { display: flex; flex-direction: column; gap: 8px; }
+.sdx-camping-rest-app .sdx-rest-member { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(330px, 1.6fr);
+  gap: 12px; align-items: start; padding: 10px 12px; background: var(--sp-surface); border: 1px solid var(--sp-line-soft); border-radius: 6px; }
+.sdx-camping-rest-app .sdx-rest-member-identity { display: grid; grid-template-columns: auto 42px minmax(0, 1fr); align-items: center; gap: 9px; }
+.sdx-camping-rest-app .sdx-rest-member-identity input { accent-color: var(--sp-gold); }
+.sdx-camping-rest-app .sdx-rest-member-identity img { width: 42px; height: 42px; border-radius: 6px; border: 1px solid var(--sp-line-soft); object-fit: cover; }
+.sdx-camping-rest-app .sdx-rest-member-identity strong { display: block; font-size: 13.5px; font-weight: 700; color: var(--sp-text);
+  white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
+.sdx-camping-rest-app .sdx-rest-member-identity small { display: block; margin-top: 2px; font-size: 11.5px; color: var(--sp-dim); }
+.sdx-camping-rest-app .sdx-rest-member-controls { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(106px, auto); gap: 8px; align-items: end; }
+.sdx-camping-rest-app .sdx-rest-member-controls label, .sdx-camping-rest-app .sdx-rest-contextual label { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sdx-camping-rest-app .sdx-rest-member-controls label > span, .sdx-camping-rest-app .sdx-rest-contextual label > span {
+  font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--sp-faint); }
+.sdx-camping-rest-app .sdx-rest-member-controls select, .sdx-camping-rest-app .sdx-rest-contextual select { height: 30px; }
+.sdx-camping-rest-app .sdx-rest-contextual { margin-top: 6px; }
+.sdx-camping-rest-app .sdx-rest-inline-check { flex-direction: row; align-items: center; gap: 7px; }
+.sdx-camping-rest-app .sdx-rest-inline-check input { accent-color: var(--sp-gold); }
+
+/* rest options */
+.sdx-camping-rest-app .sdx-rest-options label { display: flex; align-items: flex-start; justify-content: flex-start; gap: 9px; padding: 8px 10px;
+  background: var(--sp-surface); border: 1px solid var(--sp-line-soft); border-radius: 6px; margin-bottom: 6px; }
+.sdx-camping-rest-app .sdx-rest-options label:has(input:checked) { border-color: var(--sp-line); }
+.sdx-camping-rest-app .sdx-rest-options input { accent-color: var(--sp-gold); margin-top: 2px; }
+.sdx-camping-rest-app .sdx-rest-options label > span { flex: 1; }
+.sdx-camping-rest-app .sdx-rest-options strong { display: block; font-size: 12.5px; font-weight: 600; color: var(--sp-text); }
+.sdx-camping-rest-app .sdx-rest-options small { display: block; margin-top: 2px; font-size: 11px; color: var(--sp-dim); line-height: 1.35; }
+
+/* footer */
+.sdx-camping-rest-app .sdx-rest-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 4px 2px 2px; }
+.sdx-camping-rest-app .sdx-rest-footer button { min-height: 30px; padding: 4px 16px; font-size: 12.5px; }
+.sdx-camping-rest-app .sdx-rest-footer button:not(.primary) { background: none; border: 1px solid var(--sp-line); color: var(--sp-dim); }
+.sdx-camping-rest-app .sdx-rest-footer button:not(.primary):hover { color: #fff; border-color: var(--sp-dim); }

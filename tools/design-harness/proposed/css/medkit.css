@@ -1,0 +1,31 @@
+/* Medkit proposal, second pass — designed, not just de-flawed.
+   Section cards with real headers, item rows with a clear name/meta hierarchy, one primary action. */
+.sdx-medkit-window .window-content { padding: 12px 14px 14px; }
+.sdx-medkit-window .sdx-medkit-header { margin-bottom: 12px; }
+.sdx-medkit-window .sdx-medkit-header .header-title { display: flex; align-items: center; gap: 10px; }
+.sdx-medkit-window .sdx-medkit-header .header-title i { color: var(--sp-gold); font-size: 18px; }
+.sdx-medkit-window .sdx-medkit-header h2 { margin: 0; font-size: 19px; font-weight: 700; color: var(--sp-text); }
+.sdx-medkit-window .sdx-medkit-header .header-desc { margin: 4px 0 0; font-size: 12px; color: var(--sp-dim); }
+
+.sdx-medkit-window .sdx-medkit-section { background: var(--sp-surface-2); border: 1px solid var(--sp-line-soft);
+  border-left: 3px solid var(--sp-line); border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+.sdx-medkit-window .sdx-medkit-section.warning { border-left-color: var(--sp-gold); }
+.sdx-medkit-window .sdx-medkit-section.info { border-left-color: #8f8f8f; }
+.sdx-medkit-window .sdx-medkit-section .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sdx-medkit-window .sdx-medkit-section h3 { margin: 0; font-size: 13.5px; font-weight: 700; letter-spacing: 0.02em; color: var(--sp-text); }
+.sdx-medkit-window .sdx-medkit-section.warning h3 i { color: var(--sp-gold-text); }
+.sdx-medkit-window .sdx-medkit-section.info h3 i { color: #b9b9b9; }
+
+.sdx-medkit-window .sdx-medkit-list { display: flex; flex-direction: column; gap: 6px; }
+.sdx-medkit-window .sdx-medkit-item { display: flex; align-items: center; gap: 10px; background: var(--sp-surface);
+  border: 1px solid var(--sp-line-soft); border-radius: 4px; padding: 7px 9px; }
+.sdx-medkit-window .sdx-medkit-item img { width: 32px; height: 32px; border-radius: 4px; object-fit: cover; }
+.sdx-medkit-window .sdx-medkit-item-details { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.sdx-medkit-window .sdx-medkit-item .name { font-size: 13px; font-weight: 600; color: var(--sp-text); }
+.sdx-medkit-window .sdx-medkit-status-text { color: var(--sp-gold-text); font-size: 11.5px; }
+.sdx-medkit-window .sdx-medkit-source-note { color: var(--sp-faint); font-size: 11px; }
+.sdx-medkit-window .sdx-medkit-update-btn { background: none; border: 1px solid var(--sp-line);
+  color: var(--sp-dim); padding: 3px 11px; font-size: 11.5px; }
+.sdx-medkit-window .sdx-medkit-update-btn:hover { border-color: var(--sp-gold); color: var(--sp-text); }
+.sdx-medkit-window .sdx-medkit-update-all-btn { padding: 4px 13px; font-size: 12px; }
+.sdx-medkit-window .sdx-medkit-status { color: #b9b9b9; font-size: 14px; }

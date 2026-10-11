@@ -69,3 +69,6 @@ coverage.lcov
 
 # debate-review transcripts (local, contains full diffs + model output)
 .debate-review/
+
+# Retired hex art parked in the live folder; the colored-tile loader skips it too.
+assets/Hexes/Archive/

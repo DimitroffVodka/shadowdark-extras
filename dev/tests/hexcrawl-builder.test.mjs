@@ -10,7 +10,7 @@ const world = installPersistenceGlobals();
 installMemoryIndexedDB();
 const builder = await import("../../scripts/hex/HexcrawlBuilderSD.mjs");
 const { getSpecialTiles } = await import("../../scripts/hex/hex-special-tiles.mjs");
-const { getColoredTilesByBiome, loadColoredTileAssets } = await import("../../scripts/hex/hex-colored-tiles.mjs");
+const { drawPool, getColoredTilesByBiome, loadColoredTileAssets } = await import("../../scripts/hex/hex-colored-tiles.mjs");
 const { setActiveTileTab } = await import("../../scripts/hex/hex-tile-selection.mjs");
 const COLORED_FOLDER = "modules/shadowdark-extras/assets/Hexes";
 const VEGETATION_FOLDER = `${COLORED_FOLDER}/Vegetation`;
@@ -21,6 +21,8 @@ const VEGETATION_HILL_TILE = `${VEGETATION_FOLDER}/Hex - Hills (lush) 1.webp`;
 const DESERT_FOLDER = `${COLORED_FOLDER}/Desert`;
 const DESERT_HILL_TILE = `${DESERT_FOLDER}/Hex - Hills (desert) 1.webp`;
 const DESERT_PLAIN_TILE = `${DESERT_FOLDER}/Hex - Plains (desert) 4.webp`;
+// A salt-flat-named file in the Desert folder: the pool the desert rule must filter.
+const DESERT_SALT_FLAT_TILE = `${DESERT_FOLDER}/Hex - Salt Flat (old).webp`;
 const SALT_FLATS_FOLDER = `${COLORED_FOLDER}/Salt Flats`;
 const SALT_FLAT_TILES = [1, 2].map(n => `${SALT_FLATS_FOLDER}/Hex - Salt Flat ${n}.webp`);
 const LAVA_FIELDS_FOLDER = `${COLORED_FOLDER}/Lava Fields`;
@@ -109,7 +111,9 @@ test.beforeEach(() => {
 		if (path === VEGETATION_FOLDER) return { files: [
 			VEGETATION_HILL_TILE, VEGETATION_SPARSE_TILE, VEGETATION_TILE, VEGETATION_DENSE_TILE,
 		], dirs: [] };
-		if (path === DESERT_FOLDER) return { files: [DESERT_HILL_TILE, DESERT_PLAIN_TILE], dirs: [] };
+		if (path === DESERT_FOLDER) return { files: [
+			DESERT_HILL_TILE, DESERT_PLAIN_TILE, DESERT_SALT_FLAT_TILE,
+		], dirs: [] };
 		if (path === MOUNTAINS_FOLDER) return { files: [
 			MOUNTAIN_ROCKY_TILE, MOUNTAIN_LUSH_TILE, MOUNTAIN_BRIDGE_TILE, MOUNTAIN_SPIKES_TILE,
 		], dirs: [] };
@@ -300,7 +304,8 @@ test("salt flat paints only salt-flat art and ordinary desert never does", async
 	await builder.buildPublishedHexcrawl({ grid: { cols: 4, rows: 4 }, terrain: { default: "desert" }, hexes: [] }, { view: false });
 	const desert = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted).map(t => t.texture.src);
 	assert.equal(desert.length, 16);
-	assert.ok(desert.every(src => !SALT_FLAT_TILES.includes(src)), "plain desert leaves the salt flats out");
+	assert.ok(getColoredTilesByBiome().desert.includes(DESERT_SALT_FLAT_TILE), "the salt-flat tile is in the desert pool the rule must filter");
+	assert.ok(desert.every(src => ![...SALT_FLAT_TILES, DESERT_SALT_FLAT_TILE].includes(src)), "plain desert leaves the salt flats out");
 });
 
 test("salt flat falls back to desert plains while the cached catalogue has no Salt Flat tiles", async () => {
@@ -362,6 +367,22 @@ test("jungle paints only from the Jungle folder and never from the dark recolour
 	assert.equal(new Set(paths).size, 2, "both pool tiles appear across a region");
 	assert.equal(getColoredTilesByBiome().vegetation.includes(JUNGLE_TILE), false, "forest and plains never draw jungle tiles");
 	assert.ok(getColoredTilesByBiome().jungle.includes(JUNGLE_DARK_TILE), "the dark tile stays available as hand-picked art");
+});
+
+test("a random draw skips the dark jungle recolour, encoded or not, and leaves other folders whole", () => {
+	const byBiome = { jungle: [JUNGLE_TILE, JUNGLE_DARK_TILE, encodeURI(JUNGLE_DARK_TILE)], desert: [DESERT_PLAIN_TILE] };
+	assert.deepEqual(drawPool(byBiome, "jungle"), [JUNGLE_TILE]);
+	assert.deepEqual(drawPool(byBiome, "desert"), [DESERT_PLAIN_TILE]);
+	assert.deepEqual(drawPool(byBiome, "swamp"), []);
+});
+
+test("a random draw keeps salt-flat art out of desert and the builder's mountain exclusions out of mountains", () => {
+	const byBiome = {
+		desert: [DESERT_PLAIN_TILE, DESERT_SALT_FLAT_TILE],
+		mountains: [MOUNTAIN_ROCKY_TILE, MOUNTAIN_BRIDGE_TILE, MOUNTAIN_SPIKES_TILE],
+	};
+	assert.deepEqual(drawPool(byBiome, "desert"), [DESERT_PLAIN_TILE]);
+	assert.deepEqual(drawPool(byBiome, "mountains"), [MOUNTAIN_ROCKY_TILE]);
 });
 
 test("jungle falls back to forest art while the cached catalogue has no Jungle folder", async () => {

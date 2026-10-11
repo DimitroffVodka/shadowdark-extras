@@ -12,6 +12,7 @@
  */
 
 import { getColoredTilesByBiome, getColoredTileDimensions } from "./HexPainterSD.mjs";
+import { drawPool } from "./hex-colored-tiles.mjs";
 import { generateHexHtml } from "./HexContentGenerator.mjs";
 import { saveHexRecord, HEX_JOURNAL_NAME } from "./HexTooltipSD.mjs";
 import { registerContent } from "./ContentRegistry.mjs";
@@ -247,8 +248,9 @@ async function placeTileForBiome(offset, biomeKey) {
 	const folder = BIOME_TO_TILE_FOLDER[biomeKey] ?? "vegetation";
 	let tilePath = null;
 
-	if (tilesByBiome[folder]?.length > 0) {
-		tilePath = pickRandom(tilesByBiome[folder]);
+	const pool = drawPool(tilesByBiome, folder);
+	if (pool.length > 0) {
+		tilePath = pickRandom(pool);
 	}
 	else if (folder === "jungle" && tilesByBiome.vegetation?.length > 0) {
 		// A catalogue cached before the Jungle folder existed has no jungle tiles.
