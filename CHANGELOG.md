@@ -13,6 +13,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- **Baking right after Restore Hexagons no longer captures blank tiles.** Restored tiles' textures resolve asynchronously, and a bake that rendered before they landed wrote a flat, empty background. The bake now preloads the scene's distinct tile texture sources — one load per file, through the same cache the sprites use — before it renders.
 - **Curated tile art from a published dataset is no longer refused as unknown on a CDN-hosted world, The Forge included.** A CDN host's FilePicker lists a module's files as absolute asset URLs (`https://assets.forge-vtt.com/<id>/modules/shadowdark-extras/…`) while a dataset names the same tile module-relative, so catalogue membership missed and `buildHexcrawl` (and a repaint) failed the whole map with *unknown art …; use a tile from getColoredTiles()* on every curated hex even though the tile ships. The key now ignores the asset-URL prefix the same way it already ignored the module prefix.
 
 ## [6.17.0] — 2026-10-11 — A volcano no longer paints as lava

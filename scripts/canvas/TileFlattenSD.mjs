@@ -566,6 +566,19 @@ async function renderTilesToCanvas(tiles, bounds, resolution = 1, mapPathIds = [
 		throw new Error("Canvas not available");
 	}
 
+	// Tile sprite textures resolve asynchronously; rendering before they land
+	// captures a blank canvas — Restore Hexagons, then Bake straight away is
+	// the easy way to hit it. Preload the distinct sources through the same
+	// cache the sprites use, so the render always has real pixels to draw.
+	const sources = new Set(
+		tiles
+			.map(tile => tile.texture?.src ?? tile.document?.texture?.src)
+			.filter(src => typeof src === "string" && src),
+	);
+	if (sources.size > 0 && foundry.canvas?.loadTexture) {
+		await Promise.allSettled([...sources].map(src => foundry.canvas.loadTexture(src)));
+	}
+
 	const renderer = canvas.app.renderer;
 	const stage = canvas.stage;
 	const primary = canvas.primary;

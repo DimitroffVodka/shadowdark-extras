@@ -279,6 +279,42 @@ test("the bake quality setting picks the long side, capped by the renderer", asy
 	assert.deepEqual(notifications.error, []);
 });
 
+test("the bake preloads distinct tile textures before rendering", async () => {
+	const order = [];
+	originalTiles[0].texture = { src: "tile-a.webp" };
+	originalTiles[1].texture = { src: "tile-a.webp" }; // the same file twice — one preload
+	globalThis.foundry.canvas = {
+		loadTexture: async src => {
+			order.push(`preload:${src}`);
+			return {};
+		},
+	};
+	const render = renderer.render;
+	renderer.render = (stage, options) => {
+		order.push("render");
+		return render.call(renderer, stage, options);
+	};
+	const originalSetTimeout = globalThis.setTimeout;
+	globalThis.setTimeout = callback => {
+		callback();
+		return 1;
+	};
+	try {
+		await flattenTiles(originalTiles, { asBackground: true });
+	}
+	finally {
+		globalThis.setTimeout = originalSetTimeout;
+		renderer.render = render;
+		delete globalThis.foundry.canvas;
+		delete originalTiles[0].texture;
+		delete originalTiles[1].texture;
+		await flattenTiles([], { asBackground: true });
+	}
+	assert.equal(order[0], "preload:tile-a.webp", "the distinct source is loaded before the render");
+	assert.ok(order.lastIndexOf("preload:tile-a.webp") < order.indexOf("render"), "and nothing renders before it resolves");
+	assert.equal(order.filter(entry => entry === "preload:tile-a.webp").length, 1, "loaded once per file, not per tile");
+});
+
 test("the plan estimates the bake's webp size from the measured bakes", () => {
 	const plan = hexBackgroundBakePlan({ width: 14262, height: 19072 }, renderer, "medium");
 	assert.deepEqual([plan.pixelWidth, plan.pixelHeight], [6126, 8192]);
