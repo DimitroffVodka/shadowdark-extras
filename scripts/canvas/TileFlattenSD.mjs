@@ -14,6 +14,7 @@ const MODULE_ID = "shadowdark-extras";
 const FLATTEN_ACTION = "sdx-flatten-tiles";
 const UNFLATTEN_ACTION = "sdx-unflatten-tiles";
 const UPLOAD_DIR = "flattened-tiles";
+const EXPORT_DIR = "map-exports";
 const HEX_BACKGROUND_MAX_SIZE = 8192;
 
 // ─── Utility helpers ─────────────────────────────────────────────────────────
@@ -521,6 +522,10 @@ function isolateVisibility(docs, bounds, mapPathIds = []) {
 	const iGridVis = iGrid?.visible ?? null;
 	if (iGrid) iGrid.visible = false;
 
+	// canvas.effects is the environment group — the darkness, coloration and
+	// illumination overlays. Hiding it is what keeps every capture (bake and
+	// export alike) at full light: the image shows the art, never the scene's
+	// current time of day or any light sources.
 	const effects = canvas?.effects;
 	const effectsVis = effects?.visible ?? null;
 	if (effects) effects.visible = false;
@@ -878,10 +883,10 @@ async function ensureDir(dir) {
 	}
 }
 
-async function saveAsWebP(canvasEl, quality = 1.0, suffix = "", onEncoded = null) {
+async function saveAsWebP(canvasEl, quality = 1.0, suffix = "", onEncoded = null, dir = UPLOAD_DIR, prefix = "flatten") {
 	if (!canvasEl) throw new Error("No canvas to save");
 
-	await ensureDir(UPLOAD_DIR);
+	await ensureDir(dir);
 
 	const blob = await new Promise(resolve => {
 		if (canvasEl.toBlob) {
@@ -907,17 +912,17 @@ async function saveAsWebP(canvasEl, quality = 1.0, suffix = "", onEncoded = null
 
 	const timestamp = Date.now();
 	const sceneId = canvas?.scene?.id || "unknown";
-	const filename = `flatten-${sceneId}-${timestamp}${suffix}.webp`;
+	const filename = `${prefix}-${sceneId}-${timestamp}${suffix}.webp`;
 	const file = new File([blob], filename, { type: "image/webp" });
 
 	const FP = foundry.applications.apps.FilePicker.implementation;
-	const result = await FP.upload("data", UPLOAD_DIR, file, {}, { notify: false });
+	const result = await FP.upload("data", dir, file, {}, { notify: false });
 
 	let path = "";
 	if (typeof result?.url === "string") path = result.url;
 	else if (typeof result?.path === "string") path = result.path;
 	else if (typeof result === "string") path = result;
-	if (!path) path = `${UPLOAD_DIR}/${filename}`;
+	if (!path) path = `${dir}/${filename}`;
 
 	await new Promise(r => {
 		setTimeout(r, 200);
@@ -1191,6 +1196,102 @@ async function bakePiecesToTiles({ level, tiles, mapPaths, pathIds, plan, progre
 	const totalBytes = uploaded.reduce((sum, piece) => sum + piece.bytes, 0);
 	ui.notifications.info(
 		`Baked ${tiles.length} tiles into ${pieces.count} scene images (full resolution ${plan.pixelWidth}×${plan.pixelHeight}, ${bakeLevel} quality, ${formatBytes(totalBytes)} total).`
+	);
+}
+
+/**
+ * Hand a server-side image to the browser as a download — the file also lands
+ * in the user's downloads folder, so a hosted world exports to local disk the
+ * same way a self-hosted one does. Falls back to opening the file in a tab.
+ */
+async function downloadMapImage(src, filename) {
+	if (typeof document === "undefined" || typeof window === "undefined") return false;
+	try {
+		const response = await fetch(src);
+		if (!response.ok) throw new Error(`HTTP ${response.status}`);
+		const blob = await response.blob();
+		foundry.utils.saveDataToFile(blob, blob.type || "image/webp", filename);
+		return true;
+	}
+	catch(error) {
+		console.warn(`${MODULE_ID} | Export download failed for ${filename}:`, error);
+		window.open?.(src, "_blank");
+		return false;
+	}
+}
+
+/**
+ * Render the scene's map to image files and hand them to the browser as
+ * downloads. Nothing about the scene changes — no tiles, no background, no
+ * flags. A scene that is already flattened exports the files it is showing
+ * instead of re-rendering: same picture, no work.
+ */
+export async function exportHexMap({ quality = null } = {}) {
+	const scene = canvas?.scene;
+	if (!scene) throw new Error("No scene to export");
+	const flag = scene.getFlag(MODULE_ID, "flattenedHexBackground");
+
+	if (flag) {
+		const level = scene.levels.get(flag.levelId) ?? scene.levels.contents[0];
+		const sources = (flag.pieces?.length
+			? flag.pieces.map(piece => piece.src)
+			: [level?.background?.src])
+			.filter(src => typeof src === "string" && src);
+		if (!sources.length) throw new Error("No baked image to export");
+		for (const src of sources) {
+			await downloadMapImage(src, src.split("/").pop());
+		}
+		ui.notifications.info(`Exported ${sources.length} map image${sources.length === 1 ? "" : "s"} — check your downloads.`);
+		return;
+	}
+
+	const tiles = scene.tiles.contents;
+	if (tiles.length < 2) throw new Error("Need at least 2 tiles to export");
+	const plan = hexBackgroundBakePlan(scene, canvas.app.renderer, quality);
+	const { bounds, resolution, quality: exportLevel, pieces } = plan;
+	const rects = planPieceRects(plan);
+	const progress = createBakeProgress("Exporting map image", rects.length * 100);
+	const saved = [];
+	try {
+		for (const [index, rect] of rects.entries()) {
+			const label = rects.length > 1 ? `piece ${index + 1} of ${rects.length}` : "the map";
+			const pieceBounds = {
+				x: bounds.x + rect.px / resolution,
+				y: bounds.y + rect.py / resolution,
+				width: rect.pw / resolution,
+				height: rect.ph / resolution,
+			};
+
+			progress.begin(`Rendering ${label}`, 35);
+			const result = await renderTilesToCanvas(tiles, pieceBounds, resolution, [], progress);
+			if (!result?.canvas) throw new Error("Failed to render the map image");
+			progress.complete();
+
+			progress.begin(`Encoding ${label} — the longest step`, 50);
+			const suffix = rects.length > 1 ? `-${index + 1}of${rects.length}` : "";
+			const file = await saveAsWebP(result.canvas, 0.9, suffix, null, EXPORT_DIR, "map-export");
+			try {
+				result.canvas.width = 0; result.canvas.height = 0;
+			}
+			catch(_) { }
+			progress.complete();
+
+			progress.begin(`Downloading ${label}`, 15);
+			const filename = file.path.split("/").pop();
+			await downloadMapImage(file.path, filename);
+			progress.complete();
+			saved.push({ filename, bytes: file.bytes ?? 0 });
+		}
+	}
+	finally {
+		progress.finish();
+	}
+
+	const totalBytes = saved.reduce((sum, file) => sum + file.bytes, 0);
+	ui.notifications.info(
+		pieces.count > 1
+			? `Exported ${saved.length} map images (full resolution ${plan.pixelWidth}×${plan.pixelHeight}, ${exportLevel} quality, ${formatBytes(totalBytes)} total) — check your downloads.`
+			: `Exported the map image (${plan.pixelWidth}×${plan.pixelHeight}, ${plan.scalePercent}% of full size, ${exportLevel} quality, ${formatBytes(totalBytes)}) — check your downloads.`
 	);
 }
 

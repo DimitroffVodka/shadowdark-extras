@@ -23,9 +23,9 @@ globalThis.foundry.applications = {
 			implementation: {
 				async browse() {},
 				async createDirectory() {},
-				async upload(_source, _directory, file) {
+				async upload(_source, directory, file) {
 					uploads.push(file.name);
-					return { path: `flattened-tiles/${file.name}` };
+					return { path: `${directory}/${file.name}` };
 				},
 			},
 		},
@@ -119,6 +119,9 @@ const levelData = {
 };
 const level = {
 	id: levelData._id,
+	get background() {
+		return levelData.background;
+	},
 	toObject() {
 		return structuredClone(levelData);
 	},
@@ -184,7 +187,7 @@ globalThis.canvas = {
 	effects: { visible: true },
 };
 
-const { flattenTiles, formatBytes, hexBackgroundBakePlan, measureTileLoad } = await import("../../scripts/canvas/TileFlattenSD.mjs");
+const { exportHexMap, flattenTiles, formatBytes, hexBackgroundBakePlan, measureTileLoad } = await import("../../scripts/canvas/TileFlattenSD.mjs");
 
 test("oversized hex maps bake into one downscaled reversible scene background", async () => {
 	const originalSetTimeout = globalThis.setTimeout;
@@ -449,5 +452,57 @@ test("an unmeasurable tile file leaves the total unknown rather than guessed", a
 	}
 	finally {
 		globalThis.fetch = previousFetch;
+	}
+});
+
+test("export renders the map at full size without touching the scene", async () => {
+	created.length = 0;
+	deleted.length = 0;
+	levelUpdates.length = 0;
+	renderedSizes.length = 0;
+	uploads.length = 0;
+
+	await exportHexMap({ quality: "max" });
+
+	assert.deepEqual(renderedSizes, [[14262, 9536], [14262, 9536]], "full resolution, split into the same two pieces a Max bake uses");
+	assert.equal(uploads.length, 2, "one file per piece");
+	assert.ok(uploads.every(name => name.startsWith("map-export-")), `all files are export files: ${uploads.join(", ")}`);
+	assert.equal(created.length, 0, "no piece tiles are created");
+	assert.equal(deleted.length, 0, "nothing is deleted");
+	assert.equal(levelUpdates.length, 0, "the level background is untouched");
+	assert.equal(flags.flattenedHexBackground, undefined, "no flatten flag is written");
+});
+
+test("an already-flattened scene exports the files it is showing instead of re-rendering", async () => {
+	renderedSizes.length = 0;
+	uploads.length = 0;
+
+	try {
+		// Two pieces: the piece files themselves are the export.
+		flags.flattenedHexBackground = {
+			flattenedAt: 1,
+			levelId: "level-1",
+			tiles: [],
+			mapPaths: [],
+			pieces: [
+				{ _id: "p1", src: "flattened-tiles/flatten-large-map-1-1of2.webp" },
+				{ _id: "p2", src: "flattened-tiles/flatten-large-map-1-2of2.webp" },
+			],
+		};
+		await exportHexMap({});
+		assert.equal(renderedSizes.length, 0, "no re-render for pieces");
+		assert.equal(uploads.length, 0, "no re-upload for pieces");
+
+		// One image: the level background is the export.
+		delete flags.flattenedHexBackground;
+		levelData.background.src = "flattened-tiles/flatten-large-map-single.webp";
+		flags.flattenedHexBackground = { flattenedAt: 1, levelId: "level-1", tiles: [], mapPaths: [] };
+		await exportHexMap({});
+		assert.equal(renderedSizes.length, 0, "no re-render for a single background");
+		assert.equal(uploads.length, 0, "no re-upload for a single background");
+	}
+	finally {
+		delete flags.flattenedHexBackground;
+		levelData.background.src = null;
 	}
 });

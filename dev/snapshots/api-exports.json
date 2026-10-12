@@ -30,6 +30,7 @@
     },
     "TileFlattenSD.mjs": {
       "names": [
+        "exportHexMap",
         "flattenDungeonLevel",
         "flattenTiles",
         "formatBytes",
