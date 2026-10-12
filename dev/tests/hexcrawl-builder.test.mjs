@@ -825,12 +825,13 @@ test("setup exposes the same guarded hex namespace on both surfaces and removes 
 		assert.equal(typeof module.api.hex, enabled ? "object" : "undefined");
 		assert.equal(context.game.shadowdarkExtras?.hex, module.api.hex);
 		if (enabled) {
-			assert.deepEqual(Object.keys(module.api.hex).sort(), ["adoptHexcrawl", "buildHexcrawl", "getHexRecords", "getSpecialTiles", "getZoneColors", "gridFields", "importHexerMap", "openHexerImportDialog", "repaintHexTiles", "upsertHexRecords"]);
+			assert.deepEqual(Object.keys(module.api.hex).sort(), ["adoptHexcrawl", "buildHexcrawl", "getHexRecords", "getSpecialTiles", "getZoneColors", "gridFields", "importHexerMap", "openHexerImportDialog", "repaintCoasts", "repaintHexTiles", "upsertHexRecords"]);
 			context.game.user.isGM = false;
 			await assert.rejects(module.api.hex.buildHexcrawl(fixture), /requires GM permission/);
 			await assert.rejects(module.api.hex.getHexRecords("scene"), /requires GM permission/);
 			await assert.rejects(module.api.hex.adoptHexcrawl("scene", { grid: { cols: 1, rows: 1 } }), /requires GM permission/);
 			await assert.rejects(module.api.hex.upsertHexRecords("scene", []), /requires GM permission/);
+			await assert.rejects(module.api.hex.repaintCoasts("scene"), /requires GM permission/);
 			await assert.rejects(module.api.hex.getSpecialTiles(), /requires GM permission/);
 			await assert.rejects(module.api.hex.importHexerMap({}), /requires GM permission/);
 			await assert.rejects(module.api.hex.openHexerImportDialog(), /requires GM permission/);
@@ -1038,11 +1039,12 @@ test("repaint refuses what it cannot paint, before touching the scene", async ()
 	assert.deepEqual(await builder.repaintHexTiles(scene.id, []), { sceneId: scene.id, repainted: 0, removed: 0 });
 });
 
-// Coasts are derived from the records, not carried by the dataset: a WATER hex
-// with land across an edge gets a beach tile along that edge (straight side to
-// the land, wavy waterline inside), and a repaint that moves the shoreline
-// redoes the beaches of the hex and its neighbours. The test grid's adjacency
-// is north/south only, so the shore is a column.
+// Coasts are derived from the records unless they carry a coast feature (the
+// marked-shore tests below): a WATER hex with land across an edge gets a beach
+// tile along that edge (straight side to the land, wavy waterline inside), and
+// a repaint that moves the shoreline redoes the beaches of the hex and its
+// neighbours. The test grid's adjacency is north/south only, so the shore is a
+// column.
 test("a build lines the water hexes beside land with beaches, and a repaint moves them", async () => {
 	const data = {
 		grid: { cols: 1, rows: 3 },
@@ -1129,6 +1131,98 @@ test("an arctic sea hex is lined with ice floats, and thawing it to ocean makes 
 	await builder.repaintHexTiles(scene.id, [{ num: 102, terrain: "ocean" }]);
 	assert.equal(coasts().length, 2);
 	for (const tile of coasts()) assert.match(tile.texture.src, /symbols\/Coast\/Hex - Coast - Beach \(small\)/, "thawed water gets sand");
+});
+
+// The GM's coast marks — a `coast` feature on the hex record, which the
+// Enhancer's Hex Tagger writes per land hex beside water — pick which
+// water/land pairs get beaches while at least one record carries one. A scene
+// whose records carry none keeps the terrain-derived shore, so worlds built
+// without the Enhancer paint exactly as before.
+test("a coast feature picks which water/land pairs get beaches, and a scene without one keeps the derived shore", async () => {
+	const build = async hexes => {
+		const result = await builder.buildPublishedHexcrawl({
+			grid: { cols: 1, rows: 3 },
+			terrain: { default: "forest", regions: [{ biome: "ocean", hexes: [102] }] },
+			hexes,
+		}, { view: false });
+		const scene = scenes.find(s => s.id === result.sceneId);
+		return scene.tiles.filter(t => t.flags?.[MODULE_ID]?.coast);
+	};
+
+	// No record carries a coast feature: the sea hex keeps the shore across
+	// both land edges, exactly as it did before the marks were read.
+	assert.deepEqual((await build([])).map(t => t.flags[MODULE_ID].coast), ["1_0", "1_0"],
+		"no marks anywhere: today's derived shore");
+
+	// Only the land hex south of the sea (103) is marked: the north pair,
+	// with no mark on either side, gets nothing.
+	const marked = await build([{ num: 103, name: "Shore camp",
+		features: [{ id: "coast-103", type: "coast", name: "", discovered: true }] }]);
+	assert.deepEqual(marked.map(t => t.flags[MODULE_ID].coast), ["1_0"],
+		"only the pair the mark picks out keeps a beach");
+	assert.equal(Math.round(marked[0].rotation) % 360, 300, "the strip lies along the south edge, toward the marked land hex");
+});
+
+// repaintCoasts brings a painted shore back to the current records: it takes
+// the marked hexes' pieces away and lays them again, so a mark added or
+// removed in the tagger reaches a map already in play. Only coast tiles move.
+test("repaintCoasts re-lays a hex's beaches from its record, repeatably, and an unmarked hex keeps none", async () => {
+	const data = {
+		grid: { cols: 1, rows: 3 },
+		terrain: { default: "forest", regions: [{ biome: "ocean", hexes: [102] }] },
+		hexes: [{ num: 103, name: "Shore camp",
+			features: [{ id: "coast-103", type: "coast", name: "", discovered: true }] }],
+	};
+	const { sceneId } = await builder.buildPublishedHexcrawl(data, { view: false });
+	const scene = scenes.find(s => s.id === sceneId);
+	const coasts = () => scene.tiles.filter(t => t.flags?.[MODULE_ID]?.coast);
+	const coastState = () => coasts().map(t => ({ flag: t.flags[MODULE_ID].coast, src: t.texture.src, x: t.x, y: t.y, rotation: t.rotation }));
+	const terrainState = () => scene.tiles.filter(t => t.flags?.[MODULE_ID]?.painted)
+		.map(t => ({ id: t.id, x: t.x, y: t.y, src: t.texture.src }));
+
+	assert.deepEqual(coastState().map(t => t.flag), ["1_0"], "the build laid the marked shore");
+	const terrainBefore = terrainState();
+
+	// The second call undoes the first's placement exactly: removed equals
+	// what the previous call placed, placed is the same count, tile set equal.
+	const first = await builder.repaintCoasts(sceneId, [103]);
+	assert.deepEqual(first, { sceneId, removed: 1, placed: 1 }, "the first call replaces the build's piece");
+	const laid = coastState();
+	const second = await builder.repaintCoasts(sceneId, [103]);
+	assert.deepEqual(second, { sceneId, removed: 1, placed: 1 }, "the second call returns removed equal to what the first placed");
+	assert.deepEqual(coastState(), laid, "and the tile set is unchanged");
+	assert.deepEqual(terrainState(), terrainBefore, "no terrain tile moved: same ids, same positions");
+
+	// The GM unmarks the hex in the tagger: its beaches go, and nothing else.
+	await builder.upsertHexRecords(sceneId, [{ num: 103, features: [] }]);
+	assert.deepEqual(await builder.repaintCoasts(sceneId, [103]), { sceneId, removed: 1, placed: 0 });
+	assert.deepEqual(coasts(), [], "the last mark's beaches are gone");
+	assert.deepEqual(terrainState(), terrainBefore, "still no terrain tile moved");
+
+	// Omitting the numbers redoes the whole scene; the mark is back on.
+	await builder.upsertHexRecords(sceneId, [{ num: 103, features: [{ id: "coast-103", type: "coast", name: "", discovered: true }] }]);
+	assert.deepEqual(await builder.repaintCoasts(sceneId), { sceneId, removed: 0, placed: 1 });
+	assert.deepEqual(coastState().map(t => t.flag), ["1_0"]);
+});
+
+test("repaintCoasts refuses what it cannot redo, before touching the scene", async () => {
+	const result = await builder.buildPublishedHexcrawl(structuredClone(fixture), { view: false });
+	const scene = scenes.find(s => s.id === result.sceneId);
+	const tilesBefore = scene.tiles.length;
+
+	await assert.rejects(builder.repaintCoasts("missing"), /scene not found/);
+	await assert.rejects(builder.repaintCoasts(scene.id, "1402"), /nums must be an array/);
+	await assert.rejects(builder.repaintCoasts(scene.id, [9999]), /outside the published grid/);
+	await assert.rejects(builder.repaintCoasts(scene.id, [1402, 1402]), /duplicate hex 1402/);
+	const [bare] = await Scene.createDocuments([{ name: "Bare scene", flags: {} }]);
+	await assert.rejects(builder.repaintCoasts(bare.id, []), /scene has no published layout/);
+	assert.equal(scene.tiles.length, tilesBefore, "every rejection leaves the scene exactly as it was");
+
+	world.setGM(false);
+	await assert.rejects(builder.repaintCoasts(scene.id, []), /requires GM permission/);
+	world.setGM(true);
+	assert.deepEqual(await builder.repaintCoasts(scene.id, []), { sceneId: scene.id, removed: 0, placed: 0 },
+		"an empty list redoes nothing");
 });
 
 // Feature icons keep their own aspect and follow the GM's reviewed render

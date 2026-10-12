@@ -690,11 +690,42 @@ async function placeJournalNotes(scene, dataset, geom) {
 const COAST_SORT = 10000;
 
 /**
+ * The hex keys whose record's `features` carry a coast entry. These are the
+ * GM's coast marks — Shadowdark Enhancer's Hex Tagger writes one per land hex
+ * beside water — and they steer the beaches, so a mark added or removed in
+ * the tagger has something on the map to move.
+ */
+function coastFeatureKeys(sceneId) {
+	const marked = new Set();
+	for (const [hexKey, record] of getHexRecordMap(sceneId)) {
+		if (!Array.isArray(record.features)) continue;
+		if (record.features.some(feature => String(feature?.type ?? "").toLowerCase() === "coast")) marked.add(hexKey);
+	}
+	return marked;
+}
+
+/**
+ * The edge filter a scene's coast marks impose, or null when its records carry
+ * none: with no marks anywhere the scene is untagged and its shores stay
+ * terrain-derived, as every scene built before the marks existed. A pair is
+ * kept when either side of it carries a feature, because the mark may sit on
+ * the water hex or on the land hex.
+ */
+function coastEdgeFilter(sceneId) {
+	const marked = coastFeatureKeys(sceneId);
+	if (!marked.size) return null;
+	return (waterKey, landKey) => marked.has(waterKey) || marked.has(landKey);
+}
+
+/**
  * Beach tiles for the WATER hexes that touch land, read from the scene's own
  * hex records, so they follow whatever terrain the build or a repaint wrote.
- * Derived, not authored: a coast is a water edge with land across it, and the
- * dataset carries no coast field (the Enhancer's tagger keeps its coast
- * overlay to itself for the same reason).
+ *
+ * The shore is derived from the records unless they carry coast features: the
+ * GM's marks pick the pairs (see coastEdgeFilter), and while at least one
+ * record carries one, a pair with no mark on either side gets no piece. That
+ * is what lets a mark added or removed reach a painted map; a scene nothing
+ * has tagged keeps the derived shore it always had.
  *
  * The beach sits on the water hex, not the land hex: the piece's straight
  * side lies along the shared edge against the land tile and its wavy side is
@@ -705,8 +736,10 @@ const COAST_SORT = 10000;
  *
  * @param {Scene} scene
  * @param {Set<string>|null} only  hex keys to line, or null for the whole scene
+ * @param {((waterKey:string, landKey:string) => boolean)|null} keepAcross
+ *   an edge filter from coastEdgeFilter, or null for the derived shore
  */
-function coastTileData(scene, only = null) {
+function coastTileData(scene, only = null, keepAcross = null) {
 	const shore = { beach: [], ice: [] };
 	const land = new Set();
 	for (const [key, label] of getHexTerrainMap(scene.id)) {
@@ -714,7 +747,7 @@ function coastTileData(scene, only = null) {
 		else if (!only || only.has(key)) shore[isArcticTerrain(label) ? "ice" : "beach"].push(key);
 	}
 	const placements = Object.entries(shore).flatMap(([style, keys]) =>
-		coastArtPlacements(coastCells(keys, land, scene.grid), scene.grid, style));
+		coastArtPlacements(coastCells(keys, land, scene.grid, keepAcross), scene.grid, style));
 	return placements.map(piece => ({
 		// Foundry turns and mirrors a tile about its texture anchor and places
 		// that anchor at x,y. The terrain tiles anchor at 0,0 with x,y as their
@@ -735,7 +768,7 @@ function coastTileData(scene, only = null) {
 }
 
 async function placeCoasts(scene) {
-	const tileData = coastTileData(scene);
+	const tileData = coastTileData(scene, null, coastEdgeFilter(scene.id));
 	if (!tileData.length) return 0;
 	const created = await scene.createEmbeddedDocuments("Tile", tileData);
 	return created.length;
@@ -845,7 +878,7 @@ export function installHexcrawlApi(api, namespace, wrap) {
 	// The painter writes records without the tooltip feature, so it prunes them too (#168).
 	registerHexRecordPrune();
 	api.hex = namespace.hex = Object.fromEntries(Object.entries({
-		buildHexcrawl: buildPublishedHexcrawl, adoptHexcrawl, upsertHexRecords, getHexRecords, repaintHexTiles,
+		buildHexcrawl: buildPublishedHexcrawl, adoptHexcrawl, upsertHexRecords, getHexRecords, repaintHexTiles, repaintCoasts,
 		getSpecialTiles, importHexerMap, openHexerImportDialog,
 	}).map(([name, fn]) => [name, wrap(`hex.${name}`, fn)]));
 	// Deliberately outside the wrap above: it reads a constant, so gmOnly would
@@ -1131,7 +1164,7 @@ export async function repaintHexTiles(sceneId, hexes) {
 	}
 	const staleCoasts = scene.tiles.filter(tile => shore.has(tile.flags?.[MODULE_ID]?.coast)).map(tile => tile.id);
 	if (staleCoasts.length) await scene.deleteEmbeddedDocuments("Tile", staleCoasts);
-	const coasts = coastTileData(scene, shore);
+	const coasts = coastTileData(scene, shore, coastEdgeFilter(scene.id));
 	if (coasts.length) await scene.createEmbeddedDocuments("Tile", coasts);
 
 	try {
@@ -1141,6 +1174,78 @@ export async function repaintHexTiles(sceneId, hexes) {
 		console.warn(`${MODULE_ID} | post-repaint tiles redraw failed`, err);
 	}
 	return { sceneId, repainted: created.length, removed: doomed.length };
+}
+
+/**
+ * Re-lay the painted beaches of named hexes from the scene's current records,
+ * so a coast mark a GM has just added or removed on a map already in play
+ * reaches it. Shadowdark Enhancer's Update painted map calls it for the hexes
+ * whose coast changed; a terrain repaint of a shoreline already redoes its
+ * beaches by the same rule.
+ *
+ * WHERE "THE SHORES OF A HEX" REACHES. The hex itself and every neighbour: a
+ * water hex's pieces are flagged with its key, and a mark added to a land hex
+ * moves the pieces of the water beside it, so both must be in scope. This is
+ * the set repaintHexTiles redraws when the terrain under one hex moves.
+ *
+ * LAID STRICTLY FROM THE COAST FEATURES. Unlike a build, which hands a scene
+ * that carries no coast feature at all back to the terrain (see
+ * coastTileData), this call makes the painted shore match the marks: removing
+ * a scene's last mark removes the beaches the marks had chosen rather than
+ * deriving them from the terrain again, and a scene with no marks gets none.
+ *
+ * Only the coast-flagged tiles are touched: terrain, art, feature icons and
+ * the reference underlay keep their documents exactly as they were.
+ *
+ * GM only, like repaintHexTiles. Throws for an unknown scene, a scene without
+ * the published layout (rebuild it first), or a number outside the grid.
+ *
+ * @param {string} sceneId
+ * @param {Array<number|string>} [nums]  published hex numbers whose shores to
+ *   redo; omitted redoes the whole scene
+ * @returns {Promise<{sceneId:string, removed:number, placed:number}>}
+ */
+export async function repaintCoasts(sceneId, nums) {
+	requireInput(game.user?.isGM, "requires GM permission");
+	const scene = game.scenes.get(sceneId);
+	requireInput(scene, "scene not found");
+	const layout = scene.getFlag(MODULE_ID, "hexcrawl");
+	requireInput(layout?.version === 1 && layout.grid, "scene has no published layout; rebuild legacy scenes with api.hex.buildHexcrawl");
+	requireInput(nums === undefined || Array.isArray(nums), "nums must be an array");
+
+	const geom = makeGeom(layout, true);
+	let shore = null; // null = the whole scene
+	if (nums !== undefined) {
+		shore = new Set();
+		const seen = new Set();
+		for (const num of nums) {
+			const wanted = validateHexNum(num, geom);
+			requireInput(!seen.has(wanted), `duplicate hex ${num}`);
+			seen.add(wanted);
+			const { col, row } = hexNumToColRow(wanted);
+			const off = geom.offsetOf(col, row);
+			shore.add(offsetToHexKey(off));
+			for (const neighbour of scene.grid.getAdjacentOffsets(off)) shore.add(offsetToHexKey(neighbour));
+		}
+		if (!shore.size) return { sceneId, removed: 0, placed: 0 };
+	}
+
+	// A beach's flag names the water hex it belongs to, so a shore is found by
+	// its keys rather than by matching tile positions.
+	const flagged = scene.tiles.filter(tile => tile.flags?.[MODULE_ID]?.coast);
+	const stale = shore ? flagged.filter(tile => shore.has(tile.flags[MODULE_ID].coast)) : flagged;
+	if (stale.length) await scene.deleteEmbeddedDocuments("Tile", stale.map(tile => tile.id));
+	const marked = coastFeatureKeys(sceneId);
+	const coasts = coastTileData(scene, shore, (waterKey, landKey) => marked.has(waterKey) || marked.has(landKey));
+	if (coasts.length) await scene.createEmbeddedDocuments("Tile", coasts);
+
+	try {
+		if (canvas.scene?.id === scene.id) await canvas.tiles?.draw?.();
+	}
+	catch(err) {
+		console.warn(`${MODULE_ID} | post-repaint tiles redraw failed`, err);
+	}
+	return { sceneId, removed: stale.length, placed: coasts.length };
 }
 
 async function writeNetworks(scene, dataset, geom) {

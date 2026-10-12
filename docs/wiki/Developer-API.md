@@ -129,6 +129,7 @@ The full orchestration contract lives in
 | `hex.adoptHexcrawl(sceneId, { name?, grid })` | GM | Give an existing map scene the published layout, painting nothing |
 | `hex.upsertHexRecords(sceneId, records)` | GM | Merge records without rebuilding or repainting |
 | `hex.getHexRecords(sceneId, nums?)` | GM | Read records back by published hex number |
+| `hex.repaintCoasts(sceneId, nums?)` | GM | Re-lay the painted beaches of named hexes from their coast features |
 | `hex.getSpecialTiles()` | GM | Catalogue Specials for explicit, unique hex assignments |
 | `hex.isPositionRevealed(scene, point)` | Read-only | Whether Hex Fog shows the hex under `point` on `scene` |
 | `hex.revealFrom(sceneId, tokenId)` | GM | Reveal around a token where it stands, as a move would |
@@ -139,6 +140,17 @@ The full orchestration contract lives in
 
 `clearGeneratedTiles({ force: true })` skips its confirmation. Reach for that
 only inside an automation workflow that already confirmed with the user.
+
+`repaintCoasts(sceneId, nums?)` removes the beach tiles of the named hexes'
+shores — each hex and its neighbours — and lays them again from the scene's
+current records; omit `nums` to redo the whole scene. While any record
+carries a `coast` feature (the Hex Tagger writes one per land hex beside
+water), the painted shore follows the marks: a piece is laid only on a
+water/land pair with the feature on one side, so a mark added or removed in
+the tagger reaches a map already in play. A scene with no coast feature at
+all keeps its terrain-derived shore when it is built or a hex is repainted;
+`repaintCoasts` lays from the features alone, so it leaves a scene with no
+marks without beaches.
 
 ### Stable hexcrawl dataset
 

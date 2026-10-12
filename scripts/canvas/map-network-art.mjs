@@ -220,13 +220,16 @@ export function mapNetworkCellEdges(paths, grid) {
 /**
  * Of the `shoreKeys` cells, those with an `acrossKeys` cell over at least one
  * edge, each with those edges. The builder lines water hexes (shore) along the
- * edges that face land (across).
+ * edges that face land (across). An optional `keepAcross(shoreKey, acrossKey)`
+ * predicate drops a pair outright; the builder passes one to line only the
+ * pairs a coast feature marks.
  * @param {Iterable<string>} shoreKeys  hex keys "i_j" of the cells to line
  * @param {Set<string>} acrossKeys      hex keys of the cells on the other side
  * @param {object} grid                 scene.grid: getAdjacentOffsets, getCenterPoint, columns
+ * @param {(shoreKey:string, acrossKey:string) => boolean} [keepAcross]
  * @returns {Array<{i:number, j:number, x:number, y:number, edges:number[]}>}
  */
-export function coastCells(shoreKeys, acrossKeys, grid) {
+export function coastCells(shoreKeys, acrossKeys, grid, keepAcross = null) {
 	if (!grid?.getAdjacentOffsets || !grid.getCenterPoint) return [];
 	const cells = [];
 	for (const key of shoreKeys) {
@@ -235,7 +238,9 @@ export function coastCells(shoreKeys, acrossKeys, grid) {
 		const centre = grid.getCenterPoint({ i, j });
 		const edges = new Set();
 		for (const neighbour of grid.getAdjacentOffsets({ i, j })) {
-			if (!acrossKeys.has(`${neighbour.i}_${neighbour.j}`)) continue;
+			const across = `${neighbour.i}_${neighbour.j}`;
+			if (!acrossKeys.has(across)) continue;
+			if (keepAcross && !keepAcross(key, across)) continue;
 			edges.add(hexEdgeIndex(centre, grid.getCenterPoint(neighbour), grid));
 		}
 		if (edges.size) cells.push({ i, j, x: centre.x, y: centre.y, edges: [...edges].sort() });
