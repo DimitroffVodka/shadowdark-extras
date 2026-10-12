@@ -141,6 +141,16 @@ function bakeQuality() {
  */
 const BAKE_BYTES_PER_PIXEL = 0.25;
 
+/**
+ * The pixel ceiling a bake holds itself under, because the browser's webp
+ * encoder gives out well before the GPU does: the map's 12252x16384 (201 MP)
+ * bake died in toBlob with a null blob after about two and a half minutes,
+ * while a 151 MP canvas encodes in ~6 s and the shipped 50 MP bakes are
+ * long-proven. 120 MP encodes in ~5 s and keeps a margin under the observed
+ * failure, so "max" clamps here instead of walking off the cliff.
+ */
+const BAKE_MAX_PIXELS = 120_000_000;
+
 /** "12.1 MB" / "860 KB" — for dialog and notification copy. */
 export function formatBytes(bytes) {
 	if (!Number.isFinite(bytes)) return "?";
@@ -170,7 +180,9 @@ export function hexBackgroundBakePlan(scene, renderer, quality = null) {
 	const wanted = quality ?? bakeQuality();
 	const level = Object.hasOwn(HEX_BAKE_QUALITY, wanted) ? wanted : "medium";
 	const maxSize = Math.min(HEX_BAKE_QUALITY[level], getMaxTextureSize(renderer));
-	const resolution = Math.min(1, maxSize / Math.max(bounds.width, bounds.height));
+	const levelResolution = Math.min(1, maxSize / Math.max(bounds.width, bounds.height));
+	const pixelBudget = Math.sqrt(BAKE_MAX_PIXELS / Math.max(1, bounds.width * bounds.height));
+	const resolution = Math.min(levelResolution, pixelBudget);
 	const pixelWidth = Math.max(1, Math.round(bounds.width * resolution));
 	const pixelHeight = Math.max(1, Math.round(bounds.height * resolution));
 	return {
@@ -181,6 +193,7 @@ export function hexBackgroundBakePlan(scene, renderer, quality = null) {
 		pixelHeight,
 		scalePercent: Math.round(resolution * 100),
 		estimatedBytes: Math.round(pixelWidth * pixelHeight * BAKE_BYTES_PER_PIXEL),
+		encodeLimited: pixelBudget < levelResolution,
 	};
 }
 
@@ -725,7 +738,7 @@ async function saveAsWebP(canvasEl, quality = 1.0) {
 		}
 	});
 
-	if (!blob) throw new Error("Failed to create WebP blob");
+	if (!blob) throw new Error(`Failed to create WebP blob (${canvasEl.width}×${canvasEl.height})`);
 
 	const timestamp = Date.now();
 	const sceneId = canvas?.scene?.id || "unknown";
@@ -835,16 +848,22 @@ async function flattenTilesToBackground(tiles, mapPaths = []) {
 	if (!tiles || tiles.length < 2) throw new Error("Need at least 2 tiles to flatten");
 
 	const plan = hexBackgroundBakePlan(scene, canvas.app.renderer);
-	const { bounds, resolution, pixelWidth, pixelHeight, quality, scalePercent } = plan;
+	const { bounds, resolution, pixelWidth, pixelHeight, quality, scalePercent, encodeLimited } = plan;
 
 	ui.notifications.info(
-		`Baking ${tiles.length} tiles into a ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${quality} quality)…`
+		`Baking ${tiles.length} tiles into a ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${quality} quality${encodeLimited ? ", capped by the webp encoder" : ""})…`
 	);
 	const pathIds = mapPaths.map(path => path.drawingId).filter(Boolean);
 	const result = await renderTilesToCanvas(tiles, bounds, resolution, pathIds);
 	if (!result?.canvas) throw new Error("Failed to render tiles");
 
-	const saved = await saveAsWebP(result.canvas, 0.9);
+	let saved;
+	try {
+		saved = await saveAsWebP(result.canvas, 0.9);
+	}
+	catch(error) {
+		throw new Error(`${error.message} — try a lower Hex bake quality.`);
+	}
 	const filePath = saved.path;
 	try {
 		result.canvas.width = 0; result.canvas.height = 0;
@@ -876,7 +895,7 @@ async function flattenTilesToBackground(tiles, mapPaths = []) {
 	await deleteOriginalTiles(tiles);
 
 	ui.notifications.info(
-		`Baked ${tiles.length} tiles into one ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${quality} quality, ${formatBytes(saved.bytes)}).`
+		`Baked ${tiles.length} tiles into one ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${quality} quality${encodeLimited ? ", capped by the webp encoder" : ""}, ${formatBytes(saved.bytes)}).`
 	);
 }
 

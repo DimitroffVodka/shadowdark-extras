@@ -205,7 +205,7 @@ export const HexPainterBindings = {
 					window: { title: backup ? "Restore Hexagons" : "Bake Map Background" },
 					content: backup
 						? `<p>Restore all <strong>${backup.tiles?.length ?? 0}</strong> original hex tiles and the previous scene background?</p>`
-						: `<p>Replace all <strong>${tileDocs.length}</strong> tiles${mapPaths.length ? ` and <strong>${mapPaths.length}</strong> road/river network${mapPaths.length === 1 ? "" : "s"}` : ""} with one optimized scene background?</p>${tileLoad}<p>The bake is <strong>${plan.pixelWidth}×${plan.pixelHeight}</strong> (${plan.scalePercent}% of full size, ${plan.quality} quality) — roughly <strong>${formatBytes(plan.estimatedBytes)}</strong>. Labels and other overlays remain live. You can restore the originals with this button.</p>`,
+						: `<p>Replace all <strong>${tileDocs.length}</strong> tiles${mapPaths.length ? ` and <strong>${mapPaths.length}</strong> road/river network${mapPaths.length === 1 ? "" : "s"}` : ""} with one optimized scene background?</p>${tileLoad}<p>The bake is <strong>${plan.pixelWidth}×${plan.pixelHeight}</strong> (${plan.scalePercent}% of full size, ${plan.quality} quality${plan.encodeLimited ? ", capped by the webp encoder" : ""}) — roughly <strong>${formatBytes(plan.estimatedBytes)}</strong>. Labels and other overlays remain live. You can restore the originals with this button.</p>`,
 					modal: true,
 				});
 
