@@ -1151,7 +1151,10 @@ async function bakePiecesToTiles({ level, tiles, mapPaths, pathIds, plan, progre
 
 	progress?.begin("Replacing the tiles", 10);
 	const created = await scene.createEmbeddedDocuments("Tile", uploaded.map(piece => ({
-		texture: { src: piece.src },
+		// Foundry's Tile texture anchor defaults to centered (0.5, 0.5); a piece
+		// must draw from its exact top-left scene position or it lands half a
+		// tile up and half the scene to the left.
+		texture: { src: piece.src, anchorX: 0, anchorY: 0 },
 		x: piece.x,
 		y: piece.y,
 		width: piece.width,
