@@ -269,7 +269,7 @@ test("the bake quality setting picks the long side, capped by the renderer", asy
 		await bakeAt("high");
 		assert.deepEqual(renderedSizes.at(-1), [9189, 12288]);
 		await bakeAt("max");
-		assert.deepEqual(renderedSizes.at(-1), [9473, 12668], "max clamps under the webp encoder's ceiling");
+		assert.deepEqual(renderedSizes.at(-1), [10591, 14163], "max clamps under the encoder ceiling");
 		await bakeAt("bogus");
 		assert.deepEqual(renderedSizes.at(-1), [6126, 8192], "an unknown level falls back to the old cap");
 	}
@@ -292,11 +292,11 @@ test("the plan estimates the bake's webp size from the measured bakes", () => {
 	assert.equal(formatBytes(12_702_218), "12.1 MB");
 	assert.equal(formatBytes(880 * 1024), "880 KB");
 
-	// Max would be 12252x16384 (201 MP) on this map, where the real bake died
-	// in the browser's webp encoder; it must clamp to the 120 MP ceiling.
+	// Max would be 12252x16384 (201 MP) on this map, past what the browsers'
+	// webp encoders handle under load; it must clamp to the 150 MP ceiling.
 	const maxPlan = hexBackgroundBakePlan({ width: 14262, height: 19072 }, renderer, "max");
 	assert.equal(maxPlan.encodeLimited, true);
-	assert.deepEqual([maxPlan.pixelWidth, maxPlan.pixelHeight], [9473, 12668]);
+	assert.deepEqual([maxPlan.pixelWidth, maxPlan.pixelHeight], [10591, 14163]);
 });
 
 test("the tile load measurement sums distinct files once each", async () => {

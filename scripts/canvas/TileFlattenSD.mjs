@@ -142,14 +142,19 @@ function bakeQuality() {
 const BAKE_BYTES_PER_PIXEL = 0.25;
 
 /**
- * The pixel ceiling a bake holds itself under, because the browser's webp
- * encoder gives out well before the GPU does: the map's 12252x16384 (201 MP)
- * bake died in toBlob with a null blob after about two and a half minutes,
- * while a 151 MP canvas encodes in ~6 s and the shipped 50 MP bakes are
- * long-proven. 120 MP encodes in ~5 s and keeps a margin under the observed
- * failure, so "max" clamps here instead of walking off the cliff.
+ * The pixel ceiling a bake holds itself under — the browsers' webp encoders
+ * give out before the GPUs do, and not at one documented size. Measured on
+ * this map's art: Firefox refused a 201 MP canvas-to-webp outright (null in
+ * ~1 s, even on a fresh process) while it encodes 150-175 MP in ~6 s; Chromium
+ * has no hard wall (a fresh tab encodes even 201 MP in ~6.5 s) but failed the
+ * 201 MP bake after ~2.5 minutes of trying when the GM's tab was already
+ * holding the map's tile textures — resource pressure, not a limit. 150 MP was
+ * then measured through the worst case that matters, a loaded client encoding
+ * the real map: clean, ~48 s for the encode alone. 150 keeps a real margin
+ * under Firefox's wall and under Chromium's loaded-tab failure, so "max"
+ * clamps here instead of walking off the cliff.
  */
-const BAKE_MAX_PIXELS = 120_000_000;
+const BAKE_MAX_PIXELS = 150_000_000;
 
 /** "12.1 MB" / "860 KB" — for dialog and notification copy. */
 export function formatBytes(bytes) {
