@@ -336,10 +336,11 @@ tile, a water tile or a Special — and it may be **reused on as many hexes as t
 curation says**, which is how it differs from `special`. It is painted at the
 same centred 572 × 500 footprint, it wins over `special` and over the terrain
 pools, and it is honoured whichever tile source is selected; generic filler
-still follows the selected source. Paths are compared with percent-encoding
-normalised, so an encoded path naming a shipped tile is that tile. Anything
-outside the catalogue — another module's asset, a remote URL, a file that has
-since been removed — is refused before the scene is created.
+still follows the selected source. Membership ignores the prefix —
+percent-encoding, the module id, and the absolute asset URL a CDN host such as
+The Forge lists are normalised away — so a path whose tail names a shipped
+tile is that tile. Anything naming no shipped tile — a file that has since
+been removed, say — is refused before the scene is created.
 
 `art` and `icon` describe painting only: like `special`, they are stripped
 before the hex record is written, and `upsertHexRecords` refuses them.

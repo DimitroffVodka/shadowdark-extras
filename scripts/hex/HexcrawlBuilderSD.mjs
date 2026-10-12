@@ -816,9 +816,10 @@ async function writeHexRecords(scene, dataset, geom, specials) {
 
 /**
  * Curated art must name a tile SDX actually ships. Anything else — a path into
- * another module, a remote URL, a file that used to be there — would paint a
- * broken texture on someone else's install, and the dataset comes from outside.
- * Repeats are fine and expected; only membership is checked.
+ * another module, a URL whose tail names no shipped tile, a file that used to
+ * be there — would paint a broken texture on someone else's install, and the
+ * dataset comes from outside. Repeats are fine and expected; only membership
+ * is checked.
  */
 export function coloredTileKey(path) {
 	let text = String(path ?? "");
@@ -828,7 +829,12 @@ export function coloredTileKey(path) {
 	catch(_err) {
 		// Already decoded, or not valid percent-encoding; compare it as it is.
 	}
-	return text.replace(/^modules\/[^/]+\//, "").toLowerCase();
+	// Catalogue and caller can spell the same tile differently: SDX stores
+	// what its host's FilePicker listed, and a CDN host (The Forge) lists
+	// files as absolute asset URLs — "https://assets.forge-vtt.com/<id>/
+	// modules/shadowdark-extras/assets/…" — while a published dataset names
+	// the tile module-relative. Key both by what follows "modules/<module>/".
+	return text.replace(/^(?:.*?\/)?modules\/[^/]+\//i, "").toLowerCase();
 }
 
 /**
