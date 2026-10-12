@@ -187,7 +187,22 @@ export function hexBackgroundBakePlan(scene, renderer, quality = null) {
 	const maxSize = Math.min(HEX_BAKE_QUALITY[level], getMaxTextureSize(renderer));
 	const levelResolution = Math.min(1, maxSize / Math.max(bounds.width, bounds.height));
 	const pixelBudget = Math.sqrt(BAKE_MAX_PIXELS / Math.max(1, bounds.width * bounds.height));
-	const resolution = Math.min(levelResolution, pixelBudget);
+
+	// Max bakes at full resolution and splits into as many pieces as the walls
+	// require — every piece under the encoder ceiling and under the renderer's
+	// 16384 px texture side. The other levels are one image by definition.
+	let cols = 1;
+	let rows = 1;
+	if (level === "max") {
+		const maxTexture = getMaxTextureSize(renderer);
+		while (Math.ceil(bounds.width / cols) > maxTexture) cols += 1;
+		while (Math.ceil(bounds.height / rows) > maxTexture) rows += 1;
+		while ((bounds.width / cols) * (bounds.height / rows) > BAKE_MAX_PIXELS) {
+			if (bounds.width / cols >= bounds.height / rows) cols += 1;
+			else rows += 1;
+		}
+	}
+	const resolution = level === "max" ? 1 : Math.min(levelResolution, pixelBudget);
 	const pixelWidth = Math.max(1, Math.round(bounds.width * resolution));
 	const pixelHeight = Math.max(1, Math.round(bounds.height * resolution));
 	return {
@@ -198,8 +213,33 @@ export function hexBackgroundBakePlan(scene, renderer, quality = null) {
 		pixelHeight,
 		scalePercent: Math.round(resolution * 100),
 		estimatedBytes: Math.round(pixelWidth * pixelHeight * BAKE_BYTES_PER_PIXEL),
-		encodeLimited: pixelBudget < levelResolution,
+		encodeLimited: level === "max" ? false : pixelBudget < levelResolution,
+		pieces: { cols, rows, count: cols * rows },
 	};
+}
+
+/**
+ * The plan's piece rectangles, in baked-image pixel space. Pieces split evenly
+ * with the remainder left to the last column and row.
+ */
+function planPieceRects(plan) {
+	const { pixelWidth, pixelHeight, pieces } = plan;
+	const baseWidth = Math.ceil(pixelWidth / pieces.cols);
+	const baseHeight = Math.ceil(pixelHeight / pieces.rows);
+	const rects = [];
+	for (let row = 0; row < pieces.rows; row += 1) {
+		for (let col = 0; col < pieces.cols; col += 1) {
+			const px = col * baseWidth;
+			const py = row * baseHeight;
+			rects.push({
+				px,
+				py,
+				pw: Math.min(baseWidth, pixelWidth - px),
+				ph: Math.min(baseHeight, pixelHeight - py),
+			});
+		}
+	}
+	return rects.filter(rect => rect.pw > 0 && rect.ph > 0);
 }
 
 /**
@@ -733,7 +773,7 @@ async function ensureDir(dir) {
 	}
 }
 
-async function saveAsWebP(canvasEl, quality = 1.0) {
+async function saveAsWebP(canvasEl, quality = 1.0, suffix = "") {
 	if (!canvasEl) throw new Error("No canvas to save");
 
 	await ensureDir(UPLOAD_DIR);
@@ -760,7 +800,7 @@ async function saveAsWebP(canvasEl, quality = 1.0) {
 
 	const timestamp = Date.now();
 	const sceneId = canvas?.scene?.id || "unknown";
-	const filename = `flatten-${sceneId}-${timestamp}.webp`;
+	const filename = `flatten-${sceneId}-${timestamp}${suffix}.webp`;
 	const file = new File([blob], filename, { type: "image/webp" });
 
 	const FP = foundry.applications.apps.FilePicker.implementation;
@@ -866,12 +906,21 @@ async function flattenTilesToBackground(tiles, mapPaths = [], quality = null) {
 	if (!tiles || tiles.length < 2) throw new Error("Need at least 2 tiles to flatten");
 
 	const plan = hexBackgroundBakePlan(scene, canvas.app.renderer, quality);
-	const { bounds, resolution, pixelWidth, pixelHeight, quality: bakeLevel, scalePercent, encodeLimited } = plan;
+	const { bounds, resolution, pixelWidth, pixelHeight, quality: bakeLevel, scalePercent, encodeLimited, pieces } = plan;
 
 	ui.notifications.info(
-		`Baking ${tiles.length} tiles into a ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${bakeLevel} quality${encodeLimited ? ", capped by the webp encoder" : ""})…`
+		pieces.count > 1
+			? `Baking ${tiles.length} tiles into ${pieces.count} images covering ${pixelWidth}×${pixelHeight} at full resolution (${bakeLevel} quality)…`
+			: `Baking ${tiles.length} tiles into a ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${bakeLevel} quality${encodeLimited ? ", capped by the webp encoder" : ""})…`
 	);
 	const pathIds = mapPaths.map(path => path.drawingId).filter(Boolean);
+
+	if (pieces.count > 1) {
+		await bakePiecesToTiles({ level, tiles, mapPaths, pathIds, plan });
+		await rememberBakeQuality(quality);
+		return;
+	}
+
 	const result = await renderTilesToCanvas(tiles, bounds, resolution, pathIds);
 	if (!result?.canvas) throw new Error("Failed to render tiles");
 
@@ -912,16 +961,98 @@ async function flattenTilesToBackground(tiles, mapPaths = [], quality = null) {
 	await deleteMapPaths(mapPaths);
 	await deleteOriginalTiles(tiles);
 
-	// Remember an explicitly picked level so the next bake dialog offers it.
-	if (quality) {
-		try {
-			await game.settings.set(MODULE_ID, "hexPainter.bakeQuality", quality);
-		}
-		catch(_) { }
-	}
+	await rememberBakeQuality(quality);
 
 	ui.notifications.info(
 		`Baked ${tiles.length} tiles into one ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${bakeLevel} quality${encodeLimited ? ", capped by the webp encoder" : ""}, ${formatBytes(saved.bytes)}).`
+	);
+}
+
+/** Remember an explicitly picked level so the next bake dialog offers it. */
+async function rememberBakeQuality(quality) {
+	if (!quality) return;
+	try {
+		await game.settings.set(MODULE_ID, "hexPainter.bakeQuality", quality);
+	}
+	catch(_) { }
+}
+
+/**
+ * Max-level bake for maps too big for one image: renders and uploads every
+ * piece at full resolution, then replaces the tiles with one positioned image
+ * tile per piece — recorded in the flatten flag so Restore takes them away
+ * again. The level's own background is untouched.
+ */
+async function bakePiecesToTiles({ level, tiles, mapPaths, pathIds, plan }) {
+	const scene = canvas?.scene;
+	const { bounds, resolution, quality: bakeLevel, pieces } = plan;
+	const uploaded = [];
+
+	for (const [index, rect] of planPieceRects(plan).entries()) {
+		const pieceBounds = {
+			x: bounds.x + rect.px / resolution,
+			y: bounds.y + rect.py / resolution,
+			width: rect.pw / resolution,
+			height: rect.ph / resolution,
+		};
+		const result = await renderTilesToCanvas(tiles, pieceBounds, resolution, pathIds);
+		if (!result?.canvas) throw new Error("Failed to render a bake piece");
+
+		let saved;
+		try {
+			saved = await saveAsWebP(result.canvas, 0.9, `-${index + 1}of${pieces.count}`);
+		}
+		catch(error) {
+			throw new Error(`${error.message} — try a lower Hex bake quality.`);
+		}
+		try {
+			result.canvas.width = 0; result.canvas.height = 0;
+		}
+		catch(_) { }
+
+		uploaded.push({
+			src: saved.path,
+			bytes: saved.bytes ?? 0,
+			x: Math.round(bounds.x + rect.px / resolution),
+			y: Math.round(bounds.y + rect.py / resolution),
+			width: Math.round(rect.pw / resolution),
+			height: Math.round(rect.ph / resolution),
+		});
+	}
+
+	const created = await scene.createEmbeddedDocuments("Tile", uploaded.map(piece => ({
+		texture: { src: piece.src },
+		x: piece.x,
+		y: piece.y,
+		width: piece.width,
+		height: piece.height,
+		rotation: 0,
+		elevation: 0,
+		hidden: false,
+		flags: { [MODULE_ID]: { bakedPiece: true } },
+	})));
+
+	await scene.setFlag(MODULE_ID, "flattenedHexBackground", {
+		flattenedAt: Date.now(),
+		levelId: level.id,
+		tiles: tiles.map(tile => (tile.toObject ? tile.toObject(false) : foundry.utils.deepClone(tile))),
+		mapPaths,
+		pieces: created.map((doc, index) => ({
+			_id: doc.id,
+			src: uploaded[index].src,
+			x: uploaded[index].x,
+			y: uploaded[index].y,
+			width: uploaded[index].width,
+			height: uploaded[index].height,
+		})),
+	});
+
+	await deleteMapPaths(mapPaths);
+	await deleteOriginalTiles(tiles);
+
+	const totalBytes = uploaded.reduce((sum, piece) => sum + piece.bytes, 0);
+	ui.notifications.info(
+		`Baked ${tiles.length} tiles into ${pieces.count} scene images (full resolution ${plan.pixelWidth}×${plan.pixelHeight}, ${bakeLevel} quality, ${formatBytes(totalBytes)} total).`
 	);
 }
 
@@ -931,6 +1062,15 @@ async function restoreHexBackground() {
 	if (!scene || !backup) throw new Error("No flattened hex background to restore");
 
 	const existingIds = new Set(scene.tiles.contents.map(tile => tile.id));
+
+	// A pieces bake replaced the tiles with image tiles; take those away first.
+	const pieceIds = (backup.pieces ?? [])
+		.map(piece => piece._id)
+		.filter(id => existingIds.has(id));
+	if (pieceIds.length) {
+		await scene.deleteEmbeddedDocuments("Tile", pieceIds);
+	}
+
 	const missingTiles = (backup.tiles ?? [])
 		.filter(data => !existingIds.has(data._id))
 		.map(data => {
@@ -955,13 +1095,17 @@ async function restoreHexBackground() {
 		}
 	}
 
-	const level = scene.levels.get(backup.levelId) ?? scene.levels.contents[0];
-	if (!level) throw new Error("Original scene level not available");
-	await scene.updateEmbeddedDocuments("Level", [{
-		_id: level.id,
-		background: backup.background,
-		textures: backup.textures,
-	}]);
+	// A pieces bake never touched the level background, so only the
+	// background-swap flavour of the bake restores it here.
+	if (!backup.pieces) {
+		const level = scene.levels.get(backup.levelId) ?? scene.levels.contents[0];
+		if (!level) throw new Error("Original scene level not available");
+		await scene.updateEmbeddedDocuments("Level", [{
+			_id: level.id,
+			background: backup.background,
+			textures: backup.textures,
+		}]);
+	}
 	await scene.unsetFlag(MODULE_ID, "flattenedHexBackground");
 	ui.notifications.info(`Restored ${missingTiles.length} original hex tiles.`);
 }

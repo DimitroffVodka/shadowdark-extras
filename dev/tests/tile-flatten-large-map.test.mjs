@@ -145,10 +145,11 @@ const scene = {
 	},
 	async createEmbeddedDocuments(type, data, options) {
 		assert.equal(type, "Tile");
-		assert.deepEqual(options, { keepId: true });
-		created.push(...structuredClone(data));
-		this.tiles.contents.push(...data.map(entry => ({ ...entry, id: entry._id })));
-		return data;
+		if (options !== undefined) assert.deepEqual(options, { keepId: true });
+		const docs = data.map((entry, index) => ({ ...entry, id: entry._id ?? `baked-${created.length}-${index}` }));
+		created.push(...structuredClone(docs));
+		this.tiles.contents.push(...docs);
+		return docs;
 	},
 	async deleteEmbeddedDocuments(type, ids) {
 		assert.equal(type, "Tile");
@@ -269,7 +270,7 @@ test("the bake quality setting picks the long side, capped by the renderer", asy
 		await bakeAt("high");
 		assert.deepEqual(renderedSizes.at(-1), [9189, 12288]);
 		await bakeAt("max");
-		assert.deepEqual(renderedSizes.at(-1), [10591, 14163], "max clamps under the encoder ceiling");
+		assert.deepEqual(renderedSizes.slice(-2), [[14262, 9536], [14262, 9536]], "max bakes full resolution in two pieces");
 		await bakeAt("bogus");
 		assert.deepEqual(renderedSizes.at(-1), [6126, 8192], "an unknown level falls back to the old cap");
 	}
@@ -342,6 +343,43 @@ test("the dialog's explicit quality beats the remembered last choice", async () 
 	}
 });
 
+test("a max bake splits an oversized map into image tiles and restores them", async () => {
+	created.length = 0;
+	deleted.length = 0;
+	uploads.length = 0;
+	renderedSizes.length = 0;
+	const originalSetTimeout = globalThis.setTimeout;
+	globalThis.setTimeout = callback => {
+		callback();
+		return 1;
+	};
+	try {
+		await flattenTiles(originalTiles, { asBackground: true, quality: "max" });
+
+		assert.deepEqual(renderedSizes, [[14262, 9536], [14262, 9536]], "one full-resolution render per piece");
+		assert.equal(uploads.length, 2, "one upload per piece");
+		assert.equal(created.length, 2, "one image tile per piece");
+		assert.deepEqual(
+			created.map(tile => [tile.x, tile.y, tile.width, tile.height]),
+			[[0, 0, 14262, 9536], [0, 9536, 14262, 9536]],
+		);
+		assert.deepEqual(created[0].flags, { "shadowdark-extras": { bakedPiece: true } });
+		assert.deepEqual(deleted.at(-1), ["left", "right"], "the original tiles are gone");
+		assert.equal(flags.flattenedHexBackground.pieces.length, 2);
+		assert.equal(flags.flattenedHexBackground.pieces[0]._id, created[0].id);
+
+		await flattenTiles([], { asBackground: true });
+		assert.deepEqual(deleted.at(-1), [created[0].id, created[1].id], "restore takes the pieces away");
+		assert.equal(flags.flattenedHexBackground, undefined);
+		assert.ok(scene.tiles.contents.some(tile => tile.id === "left"), "and the originals are back");
+		assert.ok(scene.tiles.contents.some(tile => tile.id === "right"));
+	}
+	finally {
+		globalThis.setTimeout = originalSetTimeout;
+		if (flags.flattenedHexBackground) await flattenTiles([], { asBackground: true });
+	}
+});
+
 test("the plan estimates the bake's webp size from the measured bakes", () => {
 	const plan = hexBackgroundBakePlan({ width: 14262, height: 19072 }, renderer, "medium");
 	assert.deepEqual([plan.pixelWidth, plan.pixelHeight], [6126, 8192]);
@@ -355,11 +393,22 @@ test("the plan estimates the bake's webp size from the measured bakes", () => {
 	assert.equal(formatBytes(12_702_218), "12.1 MB");
 	assert.equal(formatBytes(880 * 1024), "880 KB");
 
-	// Max would be 12252x16384 (201 MP) on this map, past what the browsers'
-	// webp encoders handle under load; it must clamp to the 150 MP ceiling.
+	// Max no longer clamps: it bakes the whole map at full resolution, split
+	// into pieces that each stay under both walls (150 MP and 16384 px).
 	const maxPlan = hexBackgroundBakePlan({ width: 14262, height: 19072 }, renderer, "max");
-	assert.equal(maxPlan.encodeLimited, true);
-	assert.deepEqual([maxPlan.pixelWidth, maxPlan.pixelHeight], [10591, 14163]);
+	assert.equal(maxPlan.encodeLimited, false);
+	assert.equal(maxPlan.scalePercent, 100);
+	assert.deepEqual([maxPlan.pixelWidth, maxPlan.pixelHeight], [14262, 19072]);
+	assert.deepEqual(maxPlan.pieces, { cols: 1, rows: 2, count: 2 });
+});
+
+test("max sizes its piece grid to the encoder and texture walls", () => {
+	const small = hexBackgroundBakePlan({ width: 10477, height: 14009 }, renderer, "max");
+	assert.deepEqual(small.pieces, { cols: 1, rows: 1, count: 1 }, "a map under both walls stays one image");
+	assert.equal(small.scalePercent, 100);
+
+	const tall = hexBackgroundBakePlan({ width: 15000, height: 30000 }, renderer, "max");
+	assert.deepEqual(tall.pieces, { cols: 2, rows: 2, count: 4 }, "splits until every piece is under 150 MP and 16384 px");
 });
 
 test("the tile load measurement sums distinct files once each", async () => {

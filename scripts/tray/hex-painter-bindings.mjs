@@ -173,7 +173,7 @@ export const HexPainterBindings = {
 			flattenButton.textContent = restoring ? "Restore Hexagons" : "Bake Map Background";
 			flattenButton.title = restoring
 				? "Restore the original hex tiles"
-				: "Replace the hex tiles with one optimized scene background";
+				: "Replace the hex tiles with optimized scene images";
 			flattenButton.dataset.tooltip = flattenButton.title;
 			flattenButton.setAttribute?.("aria-label", flattenButton.title);
 		};
@@ -221,8 +221,12 @@ export const HexPainterBindings = {
 				const options = levels.map(level => {
 					const plan = hexBackgroundBakePlan(canvas.scene, canvas.app?.renderer, level);
 					const label = level[0].toUpperCase() + level.slice(1);
+					const checked = level === lastChoice ? " checked" : "";
+					if (plan.pieces.count > 1) {
+						return `<p><label><input type="radio" name="quality" value="${level}"${checked}> <strong>${label}</strong> — full resolution (${plan.pixelWidth}×${plan.pixelHeight} total) as ${plan.pieces.count} images, roughly ${formatBytes(plan.estimatedBytes)}</label></p>`;
+					}
 					const cap = plan.encodeLimited ? ", capped by the webp encoder" : "";
-					return `<p><label><input type="radio" name="quality" value="${level}"${level === lastChoice ? " checked" : ""}> <strong>${label}</strong> — ${plan.pixelWidth}×${plan.pixelHeight}, ${plan.scalePercent}% of full size${cap}, roughly ${formatBytes(plan.estimatedBytes)}</label></p>`;
+					return `<p><label><input type="radio" name="quality" value="${level}"${checked}> <strong>${label}</strong> — ${plan.pixelWidth}×${plan.pixelHeight}, ${plan.scalePercent}% of full size${cap}, roughly ${formatBytes(plan.estimatedBytes)}</label></p>`;
 				}).join("");
 				const quality = await foundry.applications.api.DialogV2.wait({
 					window: { title: "Bake Map Background" },
