@@ -163,6 +163,118 @@ export function formatBytes(bytes) {
 	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** The distinct texture source files a set of tiles draws from. */
+function tileTextureSources(tiles) {
+	return new Set(
+		tiles
+			.map(tile => tile.texture?.src ?? tile.document?.texture?.src)
+			.filter(src => typeof src === "string" && src),
+	);
+}
+
+/**
+ * Load the tiles' distinct texture sources through the same cache the sprites
+ * use — one load per file — so a render never draws a not-yet-loaded texture.
+ * With a progress tracker the file count is reported live while it runs.
+ */
+async function preloadTileTextures(tiles, progress = null) {
+	const sources = [...tileTextureSources(tiles)];
+	if (!sources.length) return;
+	if (!foundry.canvas?.loadTexture) {
+		progress?.detail?.(`${sources.length} texture files`);
+		return;
+	}
+	let loaded = 0;
+	progress?.detail?.(`0 of ${sources.length} texture files loaded`);
+	await Promise.allSettled(sources.map(async src => {
+		try {
+			await foundry.canvas.loadTexture(src);
+		}
+		catch(_) { }
+		finally {
+			loaded += 1;
+			progress?.detail?.(`${loaded} of ${sources.length} texture files loaded`);
+		}
+	}));
+}
+
+/** "1:26" — elapsed time for the bake progress card. */
+function formatElapsed(ms) {
+	const seconds = Math.floor(ms / 1000);
+	return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/**
+ * A persistent progress card for a bake. The browser reports no progress for
+ * its own encode, so the bar only advances when a real step finishes — which
+ * would leave it completely still during the long encode, looking frozen.
+ * Hence the ticking elapsed clock and the current step in words: those are
+ * the proof of life, and the bar moves as the finished parts complete.
+ */
+function createBakeProgress(title, totalWeight) {
+	const noop = { begin() {}, detail() {}, complete() {}, advance() {}, finish() {} };
+	if (typeof document === "undefined" || !document.body) return noop;
+
+	const wrap = document.createElement("div");
+	wrap.className = "sdx-bake-progress";
+	const heading = document.createElement("strong");
+	heading.textContent = title;
+	const stage = document.createElement("div");
+	stage.className = "sdx-bake-progress-stage";
+	const track = document.createElement("div");
+	track.className = "sdx-bake-progress-track";
+	const fill = document.createElement("div");
+	fill.className = "sdx-bake-progress-fill";
+	track.append(fill);
+	const meta = document.createElement("div");
+	meta.className = "sdx-bake-progress-meta";
+	wrap.append(heading, stage, track, meta);
+	document.body.append(wrap);
+
+	const started = Date.now();
+	let doneWeight = 0;
+	let stepWeight = 0;
+	let stageText = "Starting…";
+	let detailText = "";
+	const percent = () => (totalWeight > 0 ? Math.min(100, (doneWeight / totalWeight) * 100) : 0);
+	const paint = () => {
+		stage.textContent = stageText;
+		fill.style.width = `${percent()}%`;
+		meta.textContent = `${Math.round(percent())}% · ${formatElapsed(Date.now() - started)}${detailText ? ` · ${detailText}` : ""}`;
+	};
+	const timer = setInterval(paint, 1000);
+	paint();
+
+	return {
+		begin(label, weight = 0) {
+			stageText = label;
+			stepWeight = weight;
+			detailText = "";
+			paint();
+		},
+		detail(text) {
+			detailText = text;
+			paint();
+		},
+		complete() {
+			doneWeight += stepWeight;
+			stepWeight = 0;
+			paint();
+		},
+		advance(label, weight = 0) {
+			doneWeight += stepWeight;
+			stageText = label;
+			stepWeight = weight;
+			detailText = "";
+			paint();
+		},
+		finish() {
+			clearInterval(timer);
+			wrap.remove();
+		},
+	};
+}
+
 /**
  * Plan a hex background bake: the scene rectangle it captures, the resolution
  * the stage renders at, and the pixel size of the image it produces, with its
@@ -601,7 +713,7 @@ function cropTransparentBorders(canvasEl, bounds) {
 
 // ─── Rendering ───────────────────────────────────────────────────────────────
 
-async function renderTilesToCanvas(tiles, bounds, resolution = 1, mapPathIds = []) {
+async function renderTilesToCanvas(tiles, bounds, resolution = 1, mapPathIds = [], progress = null) {
 	if (!canvas?.ready || !canvas.stage || !canvas.app?.renderer) {
 		throw new Error("Canvas not available");
 	}
@@ -610,14 +722,7 @@ async function renderTilesToCanvas(tiles, bounds, resolution = 1, mapPathIds = [
 	// captures a blank canvas — Restore Hexagons, then Bake straight away is
 	// the easy way to hit it. Preload the distinct sources through the same
 	// cache the sprites use, so the render always has real pixels to draw.
-	const sources = new Set(
-		tiles
-			.map(tile => tile.texture?.src ?? tile.document?.texture?.src)
-			.filter(src => typeof src === "string" && src),
-	);
-	if (sources.size > 0 && foundry.canvas?.loadTexture) {
-		await Promise.allSettled([...sources].map(src => foundry.canvas.loadTexture(src)));
-	}
+	await preloadTileTextures(tiles, progress);
 
 	const renderer = canvas.app.renderer;
 	const stage = canvas.stage;
@@ -773,7 +878,7 @@ async function ensureDir(dir) {
 	}
 }
 
-async function saveAsWebP(canvasEl, quality = 1.0, suffix = "") {
+async function saveAsWebP(canvasEl, quality = 1.0, suffix = "", onEncoded = null) {
 	if (!canvasEl) throw new Error("No canvas to save");
 
 	await ensureDir(UPLOAD_DIR);
@@ -797,6 +902,8 @@ async function saveAsWebP(canvasEl, quality = 1.0, suffix = "") {
 	});
 
 	if (!blob) throw new Error(`Failed to create WebP blob (${canvasEl.width}×${canvasEl.height})`);
+
+	onEncoded?.();
 
 	const timestamp = Date.now();
 	const sceneId = canvas?.scene?.id || "unknown";
@@ -916,56 +1023,74 @@ async function flattenTilesToBackground(tiles, mapPaths = [], quality = null) {
 	const pathIds = mapPaths.map(path => path.drawingId).filter(Boolean);
 
 	if (pieces.count > 1) {
-		await bakePiecesToTiles({ level, tiles, mapPaths, pathIds, plan });
+		const progress = createBakeProgress("Baking map background", pieces.count * 100 + 10);
+		try {
+			await bakePiecesToTiles({ level, tiles, mapPaths, pathIds, plan, progress });
+		}
+		finally {
+			progress.finish();
+		}
 		await rememberBakeQuality(quality);
 		return;
 	}
 
-	const result = await renderTilesToCanvas(tiles, bounds, resolution, pathIds);
-	if (!result?.canvas) throw new Error("Failed to render tiles");
-
-	let saved;
+	const progress = createBakeProgress("Baking map background", 100);
 	try {
-		saved = await saveAsWebP(result.canvas, 0.9);
-	}
-	catch(error) {
-		throw new Error(`${error.message} — try a lower Hex bake quality.`);
-	}
-	const filePath = saved.path;
-	try {
-		result.canvas.width = 0; result.canvas.height = 0;
-	}
-	catch(_) { }
+		progress.begin("Rendering the map", 40);
+		const result = await renderTilesToCanvas(tiles, bounds, resolution, pathIds, progress);
+		if (!result?.canvas) throw new Error("Failed to render tiles");
+		progress.complete();
 
-	const levelData = level.toObject(false);
-	await scene.setFlag(MODULE_ID, "flattenedHexBackground", {
-		flattenedAt: Date.now(),
-		levelId: level.id,
-		background: levelData.background,
-		textures: levelData.textures,
-		tiles: tiles.map(tile => tile.toObject(false)),
-		mapPaths,
-	});
-	await scene.updateEmbeddedDocuments("Level", [{
-		"_id": level.id,
-		"background.src": filePath,
-		"textures.anchorX": 0.5,
-		"textures.anchorY": 0.5,
-		"textures.offsetX": 0,
-		"textures.offsetY": 0,
-		"textures.fit": "fill",
-		"textures.scaleX": 1,
-		"textures.scaleY": 1,
-		"textures.rotation": 0,
-	}]);
-	await deleteMapPaths(mapPaths);
-	await deleteOriginalTiles(tiles);
+		progress.begin("Encoding the image — the longest step", 50);
+		let saved;
+		try {
+			saved = await saveAsWebP(result.canvas, 0.9, "", () => progress.advance("Saving to the server", 5));
+		}
+		catch(error) {
+			throw new Error(`${error.message} — try a lower Hex bake quality.`);
+		}
+		progress.complete();
+		const filePath = saved.path;
+		try {
+			result.canvas.width = 0; result.canvas.height = 0;
+		}
+		catch(_) { }
 
-	await rememberBakeQuality(quality);
+		progress.begin("Replacing the tiles", 5);
+		const levelData = level.toObject(false);
+		await scene.setFlag(MODULE_ID, "flattenedHexBackground", {
+			flattenedAt: Date.now(),
+			levelId: level.id,
+			background: levelData.background,
+			textures: levelData.textures,
+			tiles: tiles.map(tile => tile.toObject(false)),
+			mapPaths,
+		});
+		await scene.updateEmbeddedDocuments("Level", [{
+			"_id": level.id,
+			"background.src": filePath,
+			"textures.anchorX": 0.5,
+			"textures.anchorY": 0.5,
+			"textures.offsetX": 0,
+			"textures.offsetY": 0,
+			"textures.fit": "fill",
+			"textures.scaleX": 1,
+			"textures.scaleY": 1,
+			"textures.rotation": 0,
+		}]);
+		await deleteMapPaths(mapPaths);
+		await deleteOriginalTiles(tiles);
+		progress.complete();
 
-	ui.notifications.info(
-		`Baked ${tiles.length} tiles into one ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${bakeLevel} quality${encodeLimited ? ", capped by the webp encoder" : ""}, ${formatBytes(saved.bytes)}).`
-	);
+		await rememberBakeQuality(quality);
+
+		ui.notifications.info(
+			`Baked ${tiles.length} tiles into one ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${bakeLevel} quality${encodeLimited ? ", capped by the webp encoder" : ""}, ${formatBytes(saved.bytes)}).`
+		);
+	}
+	finally {
+		progress.finish();
+	}
 }
 
 /** Remember an explicitly picked level so the next bake dialog offers it. */
@@ -983,7 +1108,7 @@ async function rememberBakeQuality(quality) {
  * tile per piece — recorded in the flatten flag so Restore takes them away
  * again. The level's own background is untouched.
  */
-async function bakePiecesToTiles({ level, tiles, mapPaths, pathIds, plan }) {
+async function bakePiecesToTiles({ level, tiles, mapPaths, pathIds, plan, progress }) {
 	const scene = canvas?.scene;
 	const { bounds, resolution, quality: bakeLevel, pieces } = plan;
 	const uploaded = [];
@@ -995,16 +1120,20 @@ async function bakePiecesToTiles({ level, tiles, mapPaths, pathIds, plan }) {
 			width: rect.pw / resolution,
 			height: rect.ph / resolution,
 		};
-		const result = await renderTilesToCanvas(tiles, pieceBounds, resolution, pathIds);
+		progress?.begin(`Rendering piece ${index + 1} of ${pieces.count}`, 35);
+		const result = await renderTilesToCanvas(tiles, pieceBounds, resolution, pathIds, progress);
 		if (!result?.canvas) throw new Error("Failed to render a bake piece");
+		progress?.complete();
 
+		progress?.begin(`Encoding piece ${index + 1} of ${pieces.count} — the longest step`, 55);
 		let saved;
 		try {
-			saved = await saveAsWebP(result.canvas, 0.9, `-${index + 1}of${pieces.count}`);
+			saved = await saveAsWebP(result.canvas, 0.9, `-${index + 1}of${pieces.count}`, () => progress?.advance(`Saving piece ${index + 1} of ${pieces.count} to the server`, 10));
 		}
 		catch(error) {
 			throw new Error(`${error.message} — try a lower Hex bake quality.`);
 		}
+		progress?.complete();
 		try {
 			result.canvas.width = 0; result.canvas.height = 0;
 		}
@@ -1020,6 +1149,7 @@ async function bakePiecesToTiles({ level, tiles, mapPaths, pathIds, plan }) {
 		});
 	}
 
+	progress?.begin("Replacing the tiles", 10);
 	const created = await scene.createEmbeddedDocuments("Tile", uploaded.map(piece => ({
 		texture: { src: piece.src },
 		x: piece.x,
@@ -1049,6 +1179,7 @@ async function bakePiecesToTiles({ level, tiles, mapPaths, pathIds, plan }) {
 
 	await deleteMapPaths(mapPaths);
 	await deleteOriginalTiles(tiles);
+	progress?.complete();
 
 	const totalBytes = uploaded.reduce((sum, piece) => sum + piece.bytes, 0);
 	ui.notifications.info(

@@ -4735,3 +4735,52 @@ body.sdx-tray-enabled #camera-views.vertical.left {
     color: rgba(232, 220, 200, 0.45);
     font-size: 0.85em;
 }
+
+/* Bake Map Background progress card — a persistent, non-interactive readout
+   while a bake runs (TileFlattenSD). The bar only advances on completed
+   steps; the ticking clock is the proof the bake is alive. */
+.sdx-bake-progress {
+	position: fixed;
+	right: 1rem;
+	bottom: 6rem;
+	z-index: 70;
+	width: 280px;
+	padding: 0.6rem 0.75rem;
+	background: rgba(20, 20, 24, 0.95);
+	border: 1px solid var(--color-border-light-2, #6f6f6f);
+	border-radius: 6px;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+	color: var(--color-text-light-highlight, #eee);
+	font-size: var(--font-size-12, 12px);
+	pointer-events: none;
+}
+
+.sdx-bake-progress strong {
+	display: block;
+	font-size: var(--font-size-13, 13px);
+	margin-bottom: 0.35rem;
+}
+
+.sdx-bake-progress-stage {
+	margin-bottom: 0.35rem;
+}
+
+.sdx-bake-progress-track {
+	height: 8px;
+	background: rgba(255, 255, 255, 0.15);
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.sdx-bake-progress-fill {
+	height: 100%;
+	width: 0;
+	background: var(--color-warm-2, #c9593f);
+	transition: width 0.4s ease;
+}
+
+.sdx-bake-progress-meta {
+	margin-top: 0.35rem;
+	opacity: 0.8;
+	font-variant-numeric: tabular-nums;
+}
