@@ -1227,7 +1227,7 @@ async function downloadMapImage(src, filename) {
  * instead of re-rendering: same picture, no work.
  */
 export async function exportHexMap({ quality = null } = {}) {
-	const scene = canvas?.scene;
+	const scene = canvas?.scene ?? game.scenes?.viewed ?? null;
 	if (!scene) throw new Error("No scene to export");
 	const flag = scene.getFlag(MODULE_ID, "flattenedHexBackground");
 
