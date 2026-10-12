@@ -521,3 +521,255 @@ test("an already-flattened scene exports the files it is showing instead of re-r
 		levelData.background.src = null;
 	}
 });
+
+test("a refused image upload fails the export instead of inventing a path", async () => {
+	const picker = globalThis.foundry.applications.apps.FilePicker.implementation;
+	const upload = picker.upload;
+	notifications.info.length = 0;
+	try {
+		picker.upload = async () => false;
+		await assert.rejects(
+			() => exportHexMap({ quality: "medium" }),
+			/The server refused the image upload/,
+		);
+
+		// Piece 1 uploads, piece 2 is refused: the report must say that piece
+		// 1 is already on disk, not lose it behind a bare failure.
+		let calls = 0;
+		picker.upload = async (_source, directory, file) => {
+			calls += 1;
+			if (calls === 2) return false;
+			uploads.push(file.name);
+			return { path: `${directory}/${file.name}` };
+		};
+		await assert.rejects(
+			() => exportHexMap({ quality: "max" }),
+			/1 of 2 images already exported to map-exports\//,
+		);
+	}
+	finally {
+		picker.upload = upload;
+	}
+	assert.ok(!notifications.info.some(message => message.includes("Exported")), "nothing announced a success");
+});
+
+test("a failed flatten-flag write takes the new piece tiles back out", async () => {
+	created.length = 0;
+	deleted.length = 0;
+	uploads.length = 0;
+	notifications.error.length = 0;
+	const setFlag = scene.setFlag;
+	const originalSetTimeout = globalThis.setTimeout;
+	globalThis.setTimeout = callback => {
+		callback();
+		return 1;
+	};
+	try {
+		scene.setFlag = async () => {
+			throw new Error("write refused");
+		};
+		await flattenTiles(originalTiles, { asBackground: true, quality: "max" });
+	}
+	finally {
+		scene.setFlag = setFlag;
+		globalThis.setTimeout = originalSetTimeout;
+	}
+
+	assert.equal(created.length, 2, "the pieces were created before the flag write");
+	const pieceIds = created.map(tile => tile.id);
+	assert.deepEqual(deleted.at(-1), pieceIds, "and taken back out when the write failed");
+	assert.equal(flags.flattenedHexBackground, undefined, "no half-baked state to trap the GM in");
+	assert.ok(pieceIds.every(id => !scene.tiles.contents.some(tile => tile.id === id)), "no orphan pieces on the scene");
+	assert.deepEqual(scene.tiles.contents.map(tile => tile.id), ["left", "right"], "the originals are untouched");
+	assert.match(notifications.error.at(-1), /Failed to flatten hex background: write refused/);
+});
+
+test("a failed Restore keeps the pieces until the originals are back", async () => {
+	created.length = 0;
+	deleted.length = 0;
+	uploads.length = 0;
+	notifications.error.length = 0;
+	const originalSetTimeout = globalThis.setTimeout;
+	globalThis.setTimeout = callback => {
+		callback();
+		return 1;
+	};
+	try {
+		await flattenTiles(originalTiles, { asBackground: true, quality: "max" });
+		const pieceIds = created.map(tile => tile.id);
+		deleted.length = 0;
+
+		const create = scene.createEmbeddedDocuments;
+		scene.createEmbeddedDocuments = async () => {
+			throw new Error("create refused");
+		};
+		try {
+			await flattenTiles([], { asBackground: true });
+		}
+		finally {
+			scene.createEmbeddedDocuments = create;
+		}
+
+		assert.equal(deleted.length, 0, "nothing is removed before the originals exist");
+		assert.ok(pieceIds.every(id => scene.tiles.contents.some(tile => tile.id === id)), "the pieces are still the rendered map");
+		assert.ok(flags.flattenedHexBackground, "the flag stays, so the Restore can be retried");
+		assert.match(notifications.error.at(-1), /Failed to flatten hex background: create refused/);
+
+		await flattenTiles([], { asBackground: true });
+		assert.ok(!scene.tiles.contents.some(tile => pieceIds.includes(tile.id)), "the retry takes the pieces away");
+		assert.deepEqual(scene.tiles.contents.map(tile => tile.id), ["left", "right"], "and the originals are back");
+		assert.equal(flags.flattenedHexBackground, undefined);
+	}
+	finally {
+		globalThis.setTimeout = originalSetTimeout;
+		if (flags.flattenedHexBackground) await flattenTiles([], { asBackground: true });
+	}
+});
+
+test("a hidden tile stays hidden and out of the exported image", async () => {
+	const third = makeTile("third", 14262, 10);
+	const savedContents = scene.tiles.contents;
+	const savedPlaceables = canvas.tiles.placeables;
+	scene.tiles.contents = [...originalTiles, third];
+	canvas.tiles.placeables = [...originalTiles.map(doc => doc.object), third.object];
+	originalTiles[0].texture = { src: "left.webp" };
+	originalTiles[1].hidden = true;
+	originalTiles[1].object.visible = false;
+	originalTiles[1].object.sprite.visible = false;
+	originalTiles[1].texture = { src: "right.webp" };
+	third.texture = { src: "third.webp" };
+	const loads = [];
+	globalThis.foundry.canvas = {
+		loadTexture: async src => {
+			loads.push(src);
+			return {};
+		},
+	};
+	const seen = [];
+	const render = renderer.render;
+	renderer.render = function (stage, options) {
+		seen.push(originalTiles[1].object.visible);
+		return render.call(this, stage, options);
+	};
+	renderedSizes.length = 0;
+	let after = null;
+	try {
+		await exportHexMap({ quality: "medium" });
+		after = {
+			visible: originalTiles[1].object.visible,
+			sprite: originalTiles[1].object.sprite.visible,
+		};
+	}
+	finally {
+		renderer.render = render;
+		delete globalThis.foundry.canvas;
+		delete originalTiles[0].texture;
+		delete originalTiles[1].texture;
+		delete third.texture;
+		delete originalTiles[1].hidden;
+		originalTiles[1].object.visible = true;
+		originalTiles[1].object.sprite.visible = true;
+		scene.tiles.contents = savedContents;
+		canvas.tiles.placeables = savedPlaceables;
+	}
+
+	assert.deepEqual(renderedSizes, [[6126, 8192]], "the export ran");
+	assert.deepEqual(loads.sort(), ["left.webp", "third.webp"], "the hidden tile's art is not even loaded");
+	assert.deepEqual(seen, [false], "and the hidden tile was never forced into the render");
+	assert.deepEqual(after, { visible: false, sprite: false }, "it is still hidden afterwards");
+});
+
+test("the export draws the road and river overlays a bake would draw", async () => {
+	const roadGraphic = { visible: true };
+	const riverGraphic = { visible: true };
+	const pathLayer = { children: [roadGraphic, riverGraphic], visible: true };
+	globalThis.game.shadowdarkExtras = {
+		drawingTool: {
+			canvasLayer: pathLayer,
+			_permanentDrawings: [
+				{ id: "road-1", graphics: roadGraphic },
+				{ id: "river-1", graphics: riverGraphic },
+			],
+		},
+	};
+	flags.permanentDrawings = [
+		{ drawingId: "road-1", type: "road" },
+		{ drawingId: "river-1", type: "river", hidden: true },
+	];
+	const seen = [];
+	const render = renderer.render;
+	renderer.render = function (stage, options) {
+		seen.push([roadGraphic.visible, riverGraphic.visible]);
+		return render.call(this, stage, options);
+	};
+	renderedSizes.length = 0;
+	try {
+		await exportHexMap({ quality: "medium" });
+	}
+	finally {
+		renderer.render = render;
+		delete globalThis.game.shadowdarkExtras;
+		delete flags.permanentDrawings;
+	}
+
+	assert.deepEqual(renderedSizes, [[6126, 8192]]);
+	assert.deepEqual(seen, [[true, false]], "the visible road is captured, the hidden river is not");
+	assert.equal(roadGraphic.visible, true, "and both graphics are put back as they were");
+	assert.equal(riverGraphic.visible, true);
+});
+
+test("a scene's ambience filter is off for the capture and back on afterwards", async () => {
+	const ambience = { enabled: true };
+	canvas.primary._ambienceFilter = ambience;
+	const seen = [];
+	const render = renderer.render;
+	renderer.render = function (stage, options) {
+		seen.push(ambience.enabled);
+		return render.call(this, stage, options);
+	};
+	try {
+		await exportHexMap({ quality: "medium" });
+	}
+	finally {
+		renderer.render = render;
+		delete canvas.primary._ambienceFilter;
+	}
+
+	assert.deepEqual(seen, [false], "a full-light capture cannot carry the scene's ambience tint");
+	assert.equal(ambience.enabled, true, "and the filter is restored");
+});
+
+test("the flattened shortcut names the file location and the multi-file caveat", async () => {
+	notifications.info.length = 0;
+	const savedContents = scene.tiles.contents;
+	flags.flattenedHexBackground = {
+		flattenedAt: 1,
+		levelId: "level-1",
+		tiles: [],
+		mapPaths: [],
+		pieces: [
+			{ _id: "p1", src: "flattened-tiles/flatten-large-map-1-1of2.webp" },
+			{ _id: "p2", src: "flattened-tiles/flatten-large-map-1-2of2.webp" },
+		],
+	};
+	try {
+		// The scene still shows exactly the two baked pieces.
+		scene.tiles.contents = [{ id: "p1" }, { id: "p2" }];
+		await exportHexMap({});
+		const exported = notifications.info.at(-1);
+		assert.match(exported, /Exported 2 map images/);
+		assert.match(exported, /flattened-tiles\//, "the files live in the bake's own folder, not map-exports/");
+		assert.match(exported, /only the first file/, "a multi-file shortcut warns like the dialog does");
+		assert.doesNotMatch(exported, /changed since the bake/);
+
+		// A tile added after the bake means the files are no longer the whole
+		// of what the scene shows; the report must not call them the map.
+		scene.tiles.contents = [{ id: "p1" }, { id: "p2" }, { id: "late-tile" }];
+		await exportHexMap({});
+		assert.match(notifications.info.at(-1), /changed since the bake/);
+	}
+	finally {
+		scene.tiles.contents = savedContents;
+		delete flags.flattenedHexBackground;
+	}
+});

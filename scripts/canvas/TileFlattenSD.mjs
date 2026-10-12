@@ -9,6 +9,7 @@
  */
 
 import { cache } from "../shared/SDXCache.mjs";
+import { isMapPathDrawing } from "./drawing-constants.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 const FLATTEN_ACTION = "sdx-flatten-tiles";
@@ -445,7 +446,7 @@ function isolateVisibility(docs, bounds, mapPathIds = []) {
 		.filter(drawing => selectedPathIds.has(drawing.id))
 		.map(drawing => drawing.graphics));
 	if (selectedPathGraphics.size !== selectedPathIds.size) {
-		throw new Error("Could not find every Road/River overlay to bake");
+		throw new Error("Could not find every Road/River overlay to capture");
 	}
 
 	for (const p of (canvas?.tiles?.placeables ?? [])) {
@@ -530,6 +531,15 @@ function isolateVisibility(docs, bounds, mapPathIds = []) {
 	const effectsVis = effects?.visible ?? null;
 	if (effects) effects.visible = false;
 
+	// Foundry v14 also binds an ambience filter directly to the primary group
+	// and enables it whenever the scene's ambience is non-neutral
+	// (groups/environment.mjs#configureAmbienceFilter) — hiding canvas.effects
+	// alone would leave that tint on a capture of an ambience-tinted scene, so
+	// neutralize it too and put it back afterwards.
+	const ambience = canvas?.primary?._ambienceFilter;
+	const ambienceOn = typeof ambience?.enabled === "boolean" ? ambience.enabled : null;
+	if (ambienceOn !== null) ambience.enabled = false;
+
 	// Keep the drawings layer itself visible (its non-selected children are
 	// already hidden above) so selected wall drawings render into the bake.
 	if (drawingsLayer && drawingsLayer.visible === false) {
@@ -541,23 +551,34 @@ function isolateVisibility(docs, bounds, mapPathIds = []) {
 		pathLayer.visible = true;
 	}
 
+	// The capture needs the selected tiles drawn even when a placeable or its
+	// sprite was mid-toggle; record every value touched so the restore closure
+	// can put it back — a hidden tile left hidden, not left visible.
+	const forced = [];
+	const force = obj => {
+		if (!obj) return;
+		forced.push({ obj, visible: obj.visible, renderable: obj.renderable });
+		obj.visible = true;
+		if (obj.renderable !== undefined) obj.renderable = true;
+	};
 	for (const doc of docs) {
 		const p = doc?.object;
-		if (p) {
-			p.visible = true;
-			if (p.renderable !== undefined) p.renderable = true;
-			const visual = p.sprite || p.mesh;
-			if (visual) {
-				visual.visible = true;
-				if (visual.renderable !== undefined) visual.renderable = true;
-			}
-		}
+		if (!p) continue;
+		force(p);
+		force(p.sprite || p.mesh);
 	}
 
 	return () => {
 		for (const { obj, visible } of hidden) {
 			try {
 				obj.visible = visible;
+			}
+			catch(_) { }
+		}
+		for (const { obj, visible, renderable } of forced) {
+			try {
+				obj.visible = visible;
+				if (renderable !== undefined) obj.renderable = renderable;
 			}
 			catch(_) { }
 		}
@@ -570,6 +591,12 @@ function isolateVisibility(docs, bounds, mapPathIds = []) {
 		if (gridVis !== null && grid) grid.visible = gridVis;
 		if (iGridVis !== null && iGrid) iGrid.visible = iGridVis;
 		if (effectsVis !== null && effects) effects.visible = effectsVis;
+		if (ambienceOn !== null && ambience) {
+			try {
+				ambience.enabled = ambienceOn;
+			}
+			catch(_) { }
+		}
 	};
 }
 
@@ -918,11 +945,15 @@ async function saveAsWebP(canvasEl, quality = 1.0, suffix = "", onEncoded = null
 	const FP = foundry.applications.apps.FilePicker.implementation;
 	const result = await FP.upload("data", dir, file, {}, { notify: false });
 
+	// v14's FilePicker.upload answers false (a server-reported error),
+	// undefined (no path in the response) or {} (a thrown request) when it
+	// refuses the upload — file-picker.mjs#upload. Inventing the path here
+	// would announce a save for a file the server never took.
 	let path = "";
 	if (typeof result?.url === "string") path = result.url;
 	else if (typeof result?.path === "string") path = result.path;
 	else if (typeof result === "string") path = result;
-	if (!path) path = `${dir}/${filename}`;
+	if (!path) throw new Error(`The server refused the image upload (${dir}/${filename})`);
 
 	await new Promise(r => {
 		setTimeout(r, 200);
@@ -1187,6 +1218,20 @@ async function bakePiecesToTiles({ level, tiles, mapPaths, pathIds, plan, progre
 			width: uploaded[index].width,
 			height: uploaded[index].height,
 		})),
+	}).catch(async error => {
+		// The pieces are on the scene but nothing records them: without the
+		// flag there is no Restore route, so a failed write would leave the
+		// map doubled with no way back. Take the new pieces out again.
+		const ids = created.map(doc => doc.id).filter(Boolean);
+		if (ids.length) {
+			try {
+				await scene.deleteEmbeddedDocuments("Tile", ids);
+			}
+			catch(_) {
+				// The flag failure is the error worth reporting.
+			}
+		}
+		throw error;
 	});
 
 	await deleteMapPaths(mapPaths);
@@ -1223,8 +1268,10 @@ async function downloadMapImage(src, filename) {
 /**
  * Render the scene's map to image files and hand them to the browser as
  * downloads. Nothing about the scene changes — no tiles, no background, no
- * flags. A scene that is already flattened exports the files it is showing
- * instead of re-rendering: same picture, no work.
+ * flags, and a tile the GM has hidden stays hidden and out of the image. The
+ * visible Road/River overlays are drawn in, exactly as a bake would draw them.
+ * A scene that is already flattened exports the files it is showing instead of
+ * re-rendering: same picture, no work.
  */
 export async function exportHexMap({ quality = null } = {}) {
 	const scene = canvas?.scene ?? game.scenes?.viewed ?? game.scenes?.active ?? null;
@@ -1233,23 +1280,60 @@ export async function exportHexMap({ quality = null } = {}) {
 
 	if (flag) {
 		const level = scene.levels.get(flag.levelId) ?? scene.levels.contents[0];
-		const sources = (flag.pieces?.length
-			? flag.pieces.map(piece => piece.src)
+		const pieces = flag.pieces?.length ? flag.pieces : null;
+		const sources = (pieces
+			? pieces.map(piece => piece.src)
 			: [level?.background?.src])
 			.filter(src => typeof src === "string" && src);
 		if (!sources.length) throw new Error("No baked image to export");
+
+		// The shortcut hands back the files the bake wrote — it cannot see a
+		// tile the GM added afterwards. Only call them the current map when
+		// the scene still shows exactly those files.
+		const sceneTiles = scene.tiles?.contents ?? [];
+		const currentIds = new Set(sceneTiles.map(tile => tile.id));
+		const matches = pieces
+			? sceneTiles.length === pieces.length
+				&& pieces.every(piece => currentIds.has(piece._id))
+			: sceneTiles.length === 0;
+
+		const handed = [];
 		for (const src of sources) {
-			await downloadMapImage(src, src.split("/").pop());
+			handed.push(await downloadMapImage(src, src.split("/").pop()));
 		}
-		ui.notifications.info(`Exported ${sources.length} map image${sources.length === 1 ? "" : "s"} — check your downloads.`);
+		const canDownload = typeof document !== "undefined" && typeof window !== "undefined";
+		const downloaded = handed.filter(Boolean).length;
+		const delivery = !canDownload
+			? "the files are on the server"
+			: downloaded === sources.length
+				? "check your downloads"
+				: `${downloaded} of ${sources.length} downloaded — the rest are on the server`;
+		const notes = [`saved under ${UPLOAD_DIR}/ in the data folder`];
+		if (sources.length > 1) notes.push("some browsers auto-download only the first file");
+		if (!matches) notes.push("the scene has changed since the bake, so these are the original bake's files, not the current tiles");
+		ui.notifications.info(
+			`Exported ${sources.length} map image${sources.length === 1 ? "" : "s"} — ${delivery} (${notes.join("; ")}).`
+		);
 		return;
 	}
 
-	const tiles = scene.tiles.contents;
+	// A hidden tile is not part of what the scene shows, and the export
+	// promises to change nothing: leave it out of the capture instead of
+	// forcing it into view.
+	const tiles = scene.tiles.contents.filter(tile => !tile.hidden
+		&& tile.object?.visible !== false);
 	if (tiles.length < 2) throw new Error("Need at least 2 tiles to export");
 	const plan = hexBackgroundBakePlan(scene, canvas.app.renderer, quality);
 	const { bounds, resolution, quality: exportLevel, pieces } = plan;
 	const rects = planPieceRects(plan);
+
+	// The bake draws the scene's visible Road/River overlays into its image;
+	// the export is the preview of that bake, so it passes the same IDs —
+	// an empty list hides the path graphics and the export loses its roads.
+	const mapPaths = (scene.getFlag(MODULE_ID, "permanentDrawings") || [])
+		.filter(drawing => !drawing.hidden && isMapPathDrawing(drawing));
+	const pathIds = mapPaths.map(path => path.drawingId).filter(Boolean);
+
 	const progress = createBakeProgress("Exporting map image", rects.length * 100);
 	const saved = [];
 	try {
@@ -1263,13 +1347,25 @@ export async function exportHexMap({ quality = null } = {}) {
 			};
 
 			progress.begin(`Rendering ${label}`, 35);
-			const result = await renderTilesToCanvas(tiles, pieceBounds, resolution, [], progress);
+			const result = await renderTilesToCanvas(
+				tiles, pieceBounds, resolution, pathIds, progress,
+			);
 			if (!result?.canvas) throw new Error("Failed to render the map image");
 			progress.complete();
 
 			progress.begin(`Encoding ${label} — the longest step`, 50);
 			const suffix = rects.length > 1 ? `-${index + 1}of${rects.length}` : "";
-			const file = await saveAsWebP(result.canvas, 0.9, suffix, null, EXPORT_DIR, "map-export");
+			let file;
+			try {
+				file = await saveAsWebP(result.canvas, 0.9, suffix, null, EXPORT_DIR, "map-export");
+			}
+			catch(error) {
+				// An unconfirmed upload must not read as a success, and
+				// pieces already written must not vanish from the report.
+				throw new Error(saved.length
+					? `${error.message} — ${saved.length} of ${rects.length} image${rects.length === 1 ? "" : "s"} already exported to ${EXPORT_DIR}/.`
+					: error.message);
+			}
 			try {
 				result.canvas.width = 0; result.canvas.height = 0;
 			}
@@ -1278,9 +1374,9 @@ export async function exportHexMap({ quality = null } = {}) {
 
 			progress.begin(`Downloading ${label}`, 15);
 			const filename = file.path.split("/").pop();
-			await downloadMapImage(file.path, filename);
+			const downloaded = await downloadMapImage(file.path, filename);
 			progress.complete();
-			saved.push({ filename, bytes: file.bytes ?? 0 });
+			saved.push({ filename, bytes: file.bytes ?? 0, downloaded });
 		}
 	}
 	finally {
@@ -1288,10 +1384,14 @@ export async function exportHexMap({ quality = null } = {}) {
 	}
 
 	const totalBytes = saved.reduce((sum, file) => sum + file.bytes, 0);
+	const downloaded = saved.filter(file => file.downloaded).length;
+	const delivery = downloaded === saved.length
+		? "check your downloads"
+		: `${downloaded} of ${saved.length} downloaded — every file is also saved under ${EXPORT_DIR}/ in the data folder`;
 	ui.notifications.info(
 		pieces.count > 1
-			? `Exported ${saved.length} map images (full resolution ${plan.pixelWidth}×${plan.pixelHeight}, ${exportLevel} quality, ${formatBytes(totalBytes)} total) — check your downloads.`
-			: `Exported the map image (${plan.pixelWidth}×${plan.pixelHeight}, ${plan.scalePercent}% of full size, ${exportLevel} quality, ${formatBytes(totalBytes)}) — check your downloads.`
+			? `Exported ${saved.length} map images (full resolution ${plan.pixelWidth}×${plan.pixelHeight}, ${exportLevel} quality, ${formatBytes(totalBytes)} total) — ${delivery}.`
+			: `Exported the map image (${plan.pixelWidth}×${plan.pixelHeight}, ${plan.scalePercent}% of full size, ${exportLevel} quality, ${formatBytes(totalBytes)}) — ${delivery}.`
 	);
 }
 
@@ -1302,14 +1402,10 @@ async function restoreHexBackground() {
 
 	const existingIds = new Set(scene.tiles.contents.map(tile => tile.id));
 
-	// A pieces bake replaced the tiles with image tiles; take those away first.
-	const pieceIds = (backup.pieces ?? [])
-		.map(piece => piece._id)
-		.filter(id => existingIds.has(id));
-	if (pieceIds.length) {
-		await scene.deleteEmbeddedDocuments("Tile", pieceIds);
-	}
-
+	// Create the originals BEFORE taking the pieces away: the pieces are the
+	// only rendered map until that create succeeds, so a failure must not
+	// leave the scene with neither. The flag stays set until every step is
+	// through, which is what makes a failed Restore retryable.
 	const missingTiles = (backup.tiles ?? [])
 		.filter(data => !existingIds.has(data._id))
 		.map(data => {
@@ -1319,6 +1415,15 @@ async function restoreHexBackground() {
 		});
 	if (missingTiles.length) {
 		await scene.createEmbeddedDocuments("Tile", missingTiles, { keepId: true });
+	}
+
+	// Only now is the map guaranteed to be drawn again; a pieces bake replaced
+	// the tiles with image tiles, so take those away.
+	const pieceIds = (backup.pieces ?? [])
+		.map(piece => piece._id)
+		.filter(id => existingIds.has(id));
+	if (pieceIds.length) {
+		await scene.deleteEmbeddedDocuments("Tile", pieceIds);
 	}
 	if (backup.mapPaths?.length) {
 		const saved = scene.getFlag(MODULE_ID, "permanentDrawings") || [];

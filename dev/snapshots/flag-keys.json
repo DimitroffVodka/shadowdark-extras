@@ -678,6 +678,7 @@
     "scripts/canvas/TileFlattenSD.mjs (api=getFlag scope=shadowdark-extras key=permanentDrawings receiver=canvas.scene)",
     "scripts/canvas/TileFlattenSD.mjs (api=getFlag scope=shadowdark-extras key=permanentDrawings receiver=canvas.scene)",
     "scripts/canvas/TileFlattenSD.mjs (api=getFlag scope=shadowdark-extras key=permanentDrawings receiver=scene)",
+    "scripts/canvas/TileFlattenSD.mjs (api=getFlag scope=shadowdark-extras key=permanentDrawings receiver=scene)",
     "scripts/canvas/TileFlattenSD.mjs (api=setFlag scope=shadowdark-extras key=flattenedHexBackground receiver=scene)",
     "scripts/canvas/TileFlattenSD.mjs (api=setFlag scope=shadowdark-extras key=flattenedHexBackground receiver=scene)",
     "scripts/canvas/TileFlattenSD.mjs (api=setFlag scope=shadowdark-extras key=permanentDrawings receiver=canvas.scene)",
