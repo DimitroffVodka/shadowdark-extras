@@ -1162,6 +1162,10 @@ async function bakePiecesToTiles({ level, tiles, mapPaths, pathIds, plan, progre
 		rotation: 0,
 		elevation: 0,
 		hidden: false,
+		// A baked piece is the whole map's picture cut up; a nudge breaks the
+		// seam. Lock it so canvas drags can't move it — Restore deletes the
+		// document regardless, and the lock is removable in the tile config.
+		locked: true,
 		flags: { [MODULE_ID]: { bakedPiece: true } },
 	})));
 

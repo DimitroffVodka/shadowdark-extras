@@ -367,6 +367,7 @@ test("a max bake splits an oversized map into image tiles and restores them", as
 		assert.equal(created[0].texture.anchorX, 0, "top-left anchored — the Tile default (0.5, 0.5) shifts every piece half a tile");
 		assert.equal(created[0].texture.anchorY, 0);
 		assert.equal(created[1].texture.anchorX, 0);
+		assert.equal(created[0].locked, true, "pieces are locked so a canvas drag cannot break the seam");
 		assert.deepEqual(deleted.at(-1), ["left", "right"], "the original tiles are gone");
 		assert.equal(flags.flattenedHexBackground.pieces.length, 2);
 		assert.equal(flags.flattenedHexBackground.pieces[0]._id, created[0].id);
