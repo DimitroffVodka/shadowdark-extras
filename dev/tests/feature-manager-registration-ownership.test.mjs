@@ -270,8 +270,8 @@ test("enabled tray setting owners preserve the established keys, defaults, and o
 	assert.equal(settingRegistrations.find(r => r.key === "hexPainter.poiScale").config.default, 0.5);
 	const bakeQuality = settingRegistrations.find(r => r.key === "hexPainter.bakeQuality");
 	assert.equal(bakeQuality.config.default, "medium");
-	assert.equal(bakeQuality.config.scope, "world");
-	assert.deepEqual(Object.keys(bakeQuality.config.choices), ["low", "medium", "high", "max"]);
+	assert.equal(bakeQuality.config.scope, "client", "a per-user memory, not a world setting");
+	assert.equal(bakeQuality.config.config, false, "the bake dialog asks; it is not a config-menu setting");
 	assert.equal(settingRegistrations.find(r => r.key === "settlement.useLocalMaphub").config.default, false);
 });
 

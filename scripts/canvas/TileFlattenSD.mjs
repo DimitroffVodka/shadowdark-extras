@@ -120,8 +120,8 @@ const HEX_BAKE_QUALITY = Object.freeze({
 	max: Number.POSITIVE_INFINITY,
 });
 
-/** The bake quality stored in settings, or "medium" — the old hard cap — when
- *  no setting surface is reachable. */
+/** The bake level remembered from the last dialog pick, or "medium" (the
+ *  previous fixed cap) when nothing is stored or no settings surface is up. */
 function bakeQuality() {
 	try {
 		const value = game.settings.get(MODULE_ID, "hexPainter.bakeQuality");
@@ -859,17 +859,17 @@ async function deleteMapPaths(mapPaths) {
 	}
 }
 
-async function flattenTilesToBackground(tiles, mapPaths = []) {
+async function flattenTilesToBackground(tiles, mapPaths = [], quality = null) {
 	const scene = canvas?.scene;
 	const level = canvas?.level ?? scene?.levels?.contents?.[0];
 	if (!scene || !level) throw new Error("Scene level not available");
 	if (!tiles || tiles.length < 2) throw new Error("Need at least 2 tiles to flatten");
 
-	const plan = hexBackgroundBakePlan(scene, canvas.app.renderer);
-	const { bounds, resolution, pixelWidth, pixelHeight, quality, scalePercent, encodeLimited } = plan;
+	const plan = hexBackgroundBakePlan(scene, canvas.app.renderer, quality);
+	const { bounds, resolution, pixelWidth, pixelHeight, quality: bakeLevel, scalePercent, encodeLimited } = plan;
 
 	ui.notifications.info(
-		`Baking ${tiles.length} tiles into a ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${quality} quality${encodeLimited ? ", capped by the webp encoder" : ""})…`
+		`Baking ${tiles.length} tiles into a ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${bakeLevel} quality${encodeLimited ? ", capped by the webp encoder" : ""})…`
 	);
 	const pathIds = mapPaths.map(path => path.drawingId).filter(Boolean);
 	const result = await renderTilesToCanvas(tiles, bounds, resolution, pathIds);
@@ -912,8 +912,16 @@ async function flattenTilesToBackground(tiles, mapPaths = []) {
 	await deleteMapPaths(mapPaths);
 	await deleteOriginalTiles(tiles);
 
+	// Remember an explicitly picked level so the next bake dialog offers it.
+	if (quality) {
+		try {
+			await game.settings.set(MODULE_ID, "hexPainter.bakeQuality", quality);
+		}
+		catch(_) { }
+	}
+
 	ui.notifications.info(
-		`Baked ${tiles.length} tiles into one ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${quality} quality${encodeLimited ? ", capped by the webp encoder" : ""}, ${formatBytes(saved.bytes)}).`
+		`Baked ${tiles.length} tiles into one ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${bakeLevel} quality${encodeLimited ? ", capped by the webp encoder" : ""}, ${formatBytes(saved.bytes)}).`
 	);
 }
 
@@ -958,14 +966,14 @@ async function restoreHexBackground() {
 	ui.notifications.info(`Restored ${missingTiles.length} original hex tiles.`);
 }
 
-async function flattenTiles(tiles, { asBackground = false, mapPaths = [] } = {}) {
+async function flattenTiles(tiles, { asBackground = false, mapPaths = [], quality = null } = {}) {
 	if (asBackground) {
 		try {
 			if (canvas.scene?.getFlag(MODULE_ID, "flattenedHexBackground")) {
 				await restoreHexBackground();
 			}
 			else {
-				await flattenTilesToBackground(tiles, mapPaths);
+				await flattenTilesToBackground(tiles, mapPaths, quality);
 			}
 		}
 		catch(error) {

@@ -565,18 +565,12 @@ export function registerTraySettings() {
 		default: 0.5,
 	});
 
+	// Not a user-facing setting: the bake dialog asks per map, and this key
+	// only remembers the GM's last choice to default the next dialog.
 	if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) game.settings.register(MODULE_ID, "hexPainter.bakeQuality", {
-		name: "Hex bake quality",
-		hint: "How sharp Bake Map Background bakes a hex map: the baked image's longest side is 4096 px (Low), 8192 (Medium), 12288 (High), or the graphics card's own limit (Max) — never past full size, so a map already under the chosen cap bakes at native resolution. Higher levels keep more detail when zoomed in, at the cost of a larger file.",
-		scope: "world",
-		config: true,
+		scope: "client",
+		config: false,
 		type: String,
-		choices: {
-			low: "Low (4096 px)",
-			medium: "Medium (8192 px)",
-			high: "High (12288 px)",
-			max: "Max (graphics card limit)",
-		},
 		default: "medium",
 	});
 

@@ -195,22 +195,47 @@ export const HexPainterBindings = {
 
 			flattenButton.disabled = true;
 			try {
-				const plan = hexBackgroundBakePlan(canvas.scene, canvas.app?.renderer);
 				const load = backup ? null : await measureTileLoad(tileDocs);
 				const tileLoad = !load ? ""
 					: load.bytes === null
 						? `<p>This scene's <strong>${load.files}</strong> tile image${load.files === 1 ? "" : "s"} load today.</p>`
 						: `<p>This scene's ${load.files} tile images load <strong>${formatBytes(load.bytes)}</strong> today.</p>`;
-				const confirmed = await foundry.applications.api.DialogV2.confirm({
-					window: { title: backup ? "Restore Hexagons" : "Bake Map Background" },
-					content: backup
-						? `<p>Restore all <strong>${backup.tiles?.length ?? 0}</strong> original hex tiles and the previous scene background?</p>`
-						: `<p>Replace all <strong>${tileDocs.length}</strong> tiles${mapPaths.length ? ` and <strong>${mapPaths.length}</strong> road/river network${mapPaths.length === 1 ? "" : "s"}` : ""} with one optimized scene background?</p>${tileLoad}<p>The bake is <strong>${plan.pixelWidth}×${plan.pixelHeight}</strong> (${plan.scalePercent}% of full size, ${plan.quality} quality${plan.encodeLimited ? ", capped by the webp encoder" : ""}) — roughly <strong>${formatBytes(plan.estimatedBytes)}</strong>. Labels and other overlays remain live. You can restore the originals with this button.</p>`,
+
+				if (backup) {
+					const confirmed = await foundry.applications.api.DialogV2.confirm({
+						window: { title: "Restore Hexagons" },
+						content: `<p>Restore all <strong>${backup.tiles?.length ?? 0}</strong> original hex tiles and the previous scene background?</p>`,
+						modal: true,
+					});
+					if (!confirmed) return;
+					await flattenTiles([], { asBackground: true });
+					syncFlattenButton();
+					return;
+				}
+
+				// Every level is priced before the pick, so the size/detail trade is
+				// made here, per map, instead of configured once and forgotten.
+				const levels = ["low", "medium", "high", "max"];
+				const stored = game.settings.get(MODULE_ID, "hexPainter.bakeQuality");
+				const lastChoice = levels.includes(stored) ? stored : "medium";
+				const options = levels.map(level => {
+					const plan = hexBackgroundBakePlan(canvas.scene, canvas.app?.renderer, level);
+					const label = level[0].toUpperCase() + level.slice(1);
+					const cap = plan.encodeLimited ? ", capped by the webp encoder" : "";
+					return `<p><label><input type="radio" name="quality" value="${level}"${level === lastChoice ? " checked" : ""}> <strong>${label}</strong> — ${plan.pixelWidth}×${plan.pixelHeight}, ${plan.scalePercent}% of full size${cap}, roughly ${formatBytes(plan.estimatedBytes)}</label></p>`;
+				}).join("");
+				const quality = await foundry.applications.api.DialogV2.wait({
+					window: { title: "Bake Map Background" },
+					content: `<p>Replace all <strong>${tileDocs.length}</strong> tiles${mapPaths.length ? ` and <strong>${mapPaths.length}</strong> road/river network${mapPaths.length === 1 ? "" : "s"}` : ""} with one optimized scene background?</p>${tileLoad}<p><strong>Bake quality</strong> — your pick is remembered for the next bake:</p>${options}<p>Labels and other overlays remain live. You can restore the originals with this button.</p>`,
+					buttons: [
+						{ action: "bake", label: "Bake", default: true, callback: (_event, button) => button.form.elements.quality.value },
+						{ action: "cancel", label: "Cancel", callback: () => null },
+					],
 					modal: true,
 				});
 
-				if (!confirmed) return;
-				await flattenTiles(tileDocs, { asBackground: true, mapPaths });
+				if (!quality) return;
+				await flattenTiles(tileDocs, { asBackground: true, mapPaths, quality });
 				syncFlattenButton();
 			}
 			finally {

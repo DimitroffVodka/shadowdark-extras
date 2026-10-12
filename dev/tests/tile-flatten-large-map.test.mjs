@@ -315,6 +315,33 @@ test("the bake preloads distinct tile textures before rendering", async () => {
 	assert.equal(order.filter(entry => entry === "preload:tile-a.webp").length, 1, "loaded once per file, not per tile");
 });
 
+test("the dialog's explicit quality beats the remembered last choice", async () => {
+	const previousGet = game.settings.get;
+	const previousSet = game.settings.set;
+	const remembered = [];
+	game.settings.get = (_namespace, key) => key === "hexPainter.bakeQuality" ? "low" : undefined;
+	game.settings.set = async (_namespace, key, value) => {
+		if (key === "hexPainter.bakeQuality") remembered.push(value);
+	};
+	const originalSetTimeout = globalThis.setTimeout;
+	globalThis.setTimeout = callback => {
+		callback();
+		return 1;
+	};
+	try {
+		renderedSizes.length = 0;
+		await flattenTiles(originalTiles, { asBackground: true, quality: "high" });
+		assert.deepEqual(renderedSizes.at(-1), [9189, 12288], "the picked level, not the remembered one");
+		assert.deepEqual(remembered, ["high"], "and the pick is remembered for the next dialog");
+	}
+	finally {
+		globalThis.setTimeout = originalSetTimeout;
+		game.settings.get = previousGet;
+		game.settings.set = previousSet;
+		await flattenTiles([], { asBackground: true });
+	}
+});
+
 test("the plan estimates the bake's webp size from the measured bakes", () => {
 	const plan = hexBackgroundBakePlan({ width: 14262, height: 19072 }, renderer, "medium");
 	assert.deepEqual([plan.pixelWidth, plan.pixelHeight], [6126, 8192]);
