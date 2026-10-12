@@ -8,6 +8,8 @@
  * - Unflatten: Restores original tiles from data stored in the flattened tile's flags.
  */
 
+import { cache } from "../shared/SDXCache.mjs";
+
 const MODULE_ID = "shadowdark-extras";
 const FLATTEN_ACTION = "sdx-flatten-tiles";
 const UNFLATTEN_ACTION = "sdx-unflatten-tiles";
@@ -104,6 +106,152 @@ function computeBounds(tiles) {
 function getMaxTextureSize(renderer) {
 	const gl = renderer?.gl || renderer?.context?.gl;
 	return gl?.getParameter?.(gl.MAX_TEXTURE_SIZE) ?? HEX_BACKGROUND_MAX_SIZE;
+}
+
+/**
+ * The quality levels of a hex background bake, as the longest side the baked
+ * image may have. A bake never upscales past full size, so a map under the
+ * chosen level's cap bakes at native resolution.
+ */
+const HEX_BAKE_QUALITY = Object.freeze({
+	low: 4096,
+	medium: 8192,
+	high: 12288,
+	max: Number.POSITIVE_INFINITY,
+});
+
+/** The bake quality stored in settings, or "medium" — the old hard cap — when
+ *  no setting surface is reachable. */
+function bakeQuality() {
+	try {
+		const value = game.settings.get(MODULE_ID, "hexPainter.bakeQuality");
+		return typeof value === "string" && Object.hasOwn(HEX_BAKE_QUALITY, value) ? value : "medium";
+	}
+	catch(_) {
+		return "medium";
+	}
+}
+
+/**
+ * A hex background bake's compressed size, estimated from its pixels. The
+ * three real 6126x8192 bakes of the Western Reaches map (quality 0.9) came out
+ * at 12.3, 12.7 and 13.0 MB — 0.245 to 0.258 bytes per pixel; 0.25 lands
+ * within a few percent of those, and the estimate is labelled "roughly"
+ * wherever it is shown, because other art compresses differently.
+ */
+const BAKE_BYTES_PER_PIXEL = 0.25;
+
+/** "12.1 MB" / "860 KB" — for dialog and notification copy. */
+export function formatBytes(bytes) {
+	if (!Number.isFinite(bytes)) return "?";
+	if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Plan a hex background bake: the scene rectangle it captures, the resolution
+ * the stage renders at, and the pixel size of the image it produces, with its
+ * estimated webp size. The level's cap and the renderer's own texture limit
+ * bound the longest side.
+ *
+ * @param {Scene} scene
+ * @param {Renderer} renderer
+ * @param {string} [quality]  a HEX_BAKE_QUALITY key; read from settings when omitted
+ */
+export function hexBackgroundBakePlan(scene, renderer, quality = null) {
+	// Foundry lays the background over the scene rectangle, which starts after
+	// the padding and any grid shift, not at canvas 0,0. Capture that same
+	// rectangle, or the baked map sits offset from the grid and tokens and loses
+	// its far edges.
+	const dims = scene?.dimensions;
+	const bounds = dims && Number.isFinite(dims.sceneWidth)
+		? { x: dims.sceneX, y: dims.sceneY, width: dims.sceneWidth, height: dims.sceneHeight }
+		: { x: 0, y: 0, width: scene?.width ?? 0, height: scene?.height ?? 0 };
+	const wanted = quality ?? bakeQuality();
+	const level = Object.hasOwn(HEX_BAKE_QUALITY, wanted) ? wanted : "medium";
+	const maxSize = Math.min(HEX_BAKE_QUALITY[level], getMaxTextureSize(renderer));
+	const resolution = Math.min(1, maxSize / Math.max(bounds.width, bounds.height));
+	const pixelWidth = Math.max(1, Math.round(bounds.width * resolution));
+	const pixelHeight = Math.max(1, Math.round(bounds.height * resolution));
+	return {
+		bounds,
+		quality: level,
+		resolution,
+		pixelWidth,
+		pixelHeight,
+		scalePercent: Math.round(resolution * 100),
+		estimatedBytes: Math.round(pixelWidth * pixelHeight * BAKE_BYTES_PER_PIXEL),
+	};
+}
+
+/**
+ * What the scene's tiles load today: the number of distinct texture files and
+ * their total bytes, heads-only and memoized across sessions. A file that
+ * cannot be measured — an offline host, a host that sends no content-length —
+ * leaves the total null, and callers report the count alone rather than a
+ * guessed size.
+ *
+ * @param {Iterable<{texture?:{src?:string}}>} tiles
+ * @returns {Promise<{files:number, bytes:number|null}>}
+ */
+export async function measureTileLoad(tiles) {
+	const srcs = new Set();
+	for (const tile of tiles ?? []) {
+		const src = tile?.texture?.src;
+		if (src) srcs.add(src);
+	}
+	if (!srcs.size) return { files: 0, bytes: 0 };
+
+	const queue = [...srcs];
+	let bytes = 0;
+	let measured = 0;
+	const worker = async () => {
+		while (queue.length) {
+			const size = await tileFileBytes(queue.pop());
+			if (size !== null) {
+				bytes += size;
+				measured++;
+			}
+		}
+	};
+	await Promise.all(Array.from({ length: Math.min(10, srcs.size) }, worker));
+	return { files: srcs.size, bytes: measured === srcs.size ? bytes : null };
+}
+
+/** One texture file's byte size from a HEAD request, memoized across sessions.
+ *  A host that cannot be measured once is remembered as such (-1), so a
+ *  dialog never pays the failed requests twice. */
+async function tileFileBytes(src) {
+	const key = `tileBytes:${src}`;
+	try {
+		const cached = await cache.getMetadata(key);
+		if (typeof cached === "number") return cached >= 0 ? cached : null;
+	}
+	catch(_) {
+		// No cache surface (harness, or IndexedDB unavailable): measure anyway.
+	}
+	try {
+		const response = await fetch(src, { method: "HEAD" });
+		if (!response.ok) return null;
+		const length = Number(response.headers.get("content-length"));
+		if (!Number.isFinite(length) || length <= 0) return null;
+		try {
+			await cache.setMetadata(key, length);
+		}
+		catch(_) {
+			// A cache write failing is not the measurement failing.
+		}
+		return length;
+	}
+	catch(_) {
+		try {
+			await cache.setMetadata(key, -1);
+		}
+		catch(_) {
+			// Nothing to remember it with.
+		}
+		return null;
+	}
 }
 
 // ─── Visibility isolation ────────────────────────────────────────────────────
@@ -596,7 +744,7 @@ async function saveAsWebP(canvasEl, quality = 1.0) {
 	await new Promise(r => {
 		setTimeout(r, 200);
 	});
-	return path;
+	return { path, bytes: blob.size };
 }
 
 // ─── Tile Actions ────────────────────────────────────────────────────────────
@@ -686,30 +834,18 @@ async function flattenTilesToBackground(tiles, mapPaths = []) {
 	if (!scene || !level) throw new Error("Scene level not available");
 	if (!tiles || tiles.length < 2) throw new Error("Need at least 2 tiles to flatten");
 
-	// Foundry lays the background over the scene rectangle, which starts after
-	// the padding and any grid shift, not at canvas 0,0. Capture that same
-	// rectangle, or the baked map sits offset from the grid and tokens and loses
-	// its far edges.
-	const dims = scene.dimensions;
-	const bounds = dims && Number.isFinite(dims.sceneWidth)
-		? { x: dims.sceneX, y: dims.sceneY, width: dims.sceneWidth, height: dims.sceneHeight }
-		: { x: 0, y: 0, width: scene.width, height: scene.height };
-	const maxSize = Math.min(
-		HEX_BACKGROUND_MAX_SIZE,
-		getMaxTextureSize(canvas.app.renderer)
-	);
-	const resolution = Math.min(1, maxSize / Math.max(bounds.width, bounds.height));
-	const pixelWidth = Math.max(1, Math.round(bounds.width * resolution));
-	const pixelHeight = Math.max(1, Math.round(bounds.height * resolution));
+	const plan = hexBackgroundBakePlan(scene, canvas.app.renderer);
+	const { bounds, resolution, pixelWidth, pixelHeight, quality, scalePercent } = plan;
 
 	ui.notifications.info(
-		`Baking ${tiles.length} tiles into a ${pixelWidth}×${pixelHeight} scene background…`
+		`Baking ${tiles.length} tiles into a ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${quality} quality)…`
 	);
 	const pathIds = mapPaths.map(path => path.drawingId).filter(Boolean);
 	const result = await renderTilesToCanvas(tiles, bounds, resolution, pathIds);
 	if (!result?.canvas) throw new Error("Failed to render tiles");
 
-	const filePath = await saveAsWebP(result.canvas, 0.9);
+	const saved = await saveAsWebP(result.canvas, 0.9);
+	const filePath = saved.path;
 	try {
 		result.canvas.width = 0; result.canvas.height = 0;
 	}
@@ -740,7 +876,7 @@ async function flattenTilesToBackground(tiles, mapPaths = []) {
 	await deleteOriginalTiles(tiles);
 
 	ui.notifications.info(
-		`Baked ${tiles.length} tiles into one ${pixelWidth}×${pixelHeight} scene background.`
+		`Baked ${tiles.length} tiles into one ${pixelWidth}×${pixelHeight} scene background (${scalePercent}% of full size, ${quality} quality, ${formatBytes(saved.bytes)}).`
 	);
 }
 
@@ -825,7 +961,7 @@ async function flattenTiles(tiles, { asBackground = false, mapPaths = [] } = {})
 		}
 
 		ui.notifications.info("Saving flattened image…");
-		const filePath = await saveAsWebP(cropped.canvas, 1.0);
+		const { path: filePath } = await saveAsWebP(cropped.canvas, 1.0);
 
 		try {
 			cropped.canvas.width = 0; cropped.canvas.height = 0;
@@ -1156,7 +1292,7 @@ export async function flattenDungeonLevel(elevation, options = {}) {
 		}
 
 		ui.notifications.info("Saving flattened image…");
-		const filePath = await saveAsWebP(cropped.canvas, 1.0);
+		const { path: filePath } = await saveAsWebP(cropped.canvas, 1.0);
 		try {
 			cropped.canvas.width = 0; cropped.canvas.height = 0;
 		}

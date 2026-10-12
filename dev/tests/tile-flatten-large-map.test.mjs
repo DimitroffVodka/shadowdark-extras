@@ -183,7 +183,7 @@ globalThis.canvas = {
 	effects: { visible: true },
 };
 
-const { flattenTiles } = await import("../../scripts/canvas/TileFlattenSD.mjs");
+const { flattenTiles, formatBytes, hexBackgroundBakePlan, measureTileLoad } = await import("../../scripts/canvas/TileFlattenSD.mjs");
 
 test("oversized hex maps bake into one downscaled reversible scene background", async () => {
 	const originalSetTimeout = globalThis.setTimeout;
@@ -242,4 +242,89 @@ test("the bake captures the scene rectangle, not canvas 0,0, on a padded or shif
 	assert.ok(Math.abs(positions[0][1] + (186 * resolution)) < 1e-6, "and at sceneY");
 	assert.deepEqual(renderedSizes.at(-1), [6126, 8192], "the same size as the scene rectangle");
 	await flattenTiles([], { asBackground: true });
+});
+
+test("the bake quality setting picks the long side, capped by the renderer", async () => {
+	const previousGet = game.settings.get;
+	const bakeAt = async level => {
+		game.settings.get = (_namespace, key) => key === "hexPainter.bakeQuality" ? level : undefined;
+		const originalSetTimeout = globalThis.setTimeout;
+		globalThis.setTimeout = callback => {
+			callback();
+			return 1;
+		};
+		try {
+			await flattenTiles(originalTiles, { asBackground: true });
+		}
+		finally {
+			globalThis.setTimeout = originalSetTimeout;
+		}
+		await flattenTiles([], { asBackground: true });
+	};
+
+	try {
+		renderedSizes.length = 0;
+		await bakeAt("low");
+		assert.deepEqual(renderedSizes.at(-1), [3063, 4096]);
+		await bakeAt("high");
+		assert.deepEqual(renderedSizes.at(-1), [9189, 12288]);
+		await bakeAt("max");
+		assert.deepEqual(renderedSizes.at(-1), [12252, 16384], "max bakes at the renderer's own limit");
+		await bakeAt("bogus");
+		assert.deepEqual(renderedSizes.at(-1), [6126, 8192], "an unknown level falls back to the old cap");
+	}
+	finally {
+		game.settings.get = previousGet;
+	}
+	assert.deepEqual(notifications.error, []);
+});
+
+test("the plan estimates the bake's webp size from the measured bakes", () => {
+	const plan = hexBackgroundBakePlan({ width: 14262, height: 19072 }, renderer, "medium");
+	assert.deepEqual([plan.pixelWidth, plan.pixelHeight], [6126, 8192]);
+	// The map's three real 6126x8192 flattens were 12.3, 12.7 and 13.0 MB;
+	// the estimate must land within a "roughly" distance of the middle one.
+	assert.ok(
+		Math.abs(plan.estimatedBytes - 12_702_218) < 1_200_000,
+		`estimate ${plan.estimatedBytes} is not near the real bakes`,
+	);
+	assert.equal(formatBytes(12_702_218), "12.1 MB");
+	assert.equal(formatBytes(880 * 1024), "880 KB");
+});
+
+test("the tile load measurement sums distinct files once each", async () => {
+	const requested = [];
+	const previousFetch = globalThis.fetch;
+	globalThis.fetch = async (src, options) => {
+		requested.push([src, options?.method]);
+		return { ok: true, headers: { get: name => name === "content-length" ? "1024" : null } };
+	};
+	try {
+		const load = await measureTileLoad([
+			{ texture: { src: "a.webp" } },
+			{ texture: { src: "a.webp" } },
+			{ texture: { src: "b.webp" } },
+			{},
+		]);
+		assert.deepEqual(load, { files: 2, bytes: 2048 });
+		assert.equal(requested.length, 2, "each distinct file is asked once");
+		assert.ok(requested.every(([, method]) => method === "HEAD"));
+	}
+	finally {
+		globalThis.fetch = previousFetch;
+	}
+});
+
+test("an unmeasurable tile file leaves the total unknown rather than guessed", async () => {
+	const previousFetch = globalThis.fetch;
+	globalThis.fetch = async () => {
+		throw new Error("blocked");
+	};
+	try {
+		const load = await measureTileLoad([{ texture: { src: "x.webp" } }]);
+		assert.deepEqual(load, { files: 1, bytes: null });
+	}
+	finally {
+		globalThis.fetch = previousFetch;
+	}
 });

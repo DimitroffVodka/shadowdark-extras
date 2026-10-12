@@ -4,7 +4,7 @@
 // Object.assign(TrayApp.prototype, HexPainterBindings).
 
 import { setMapDimension, formatActiveScene, toggleTileSelection, clearTileSelection, setSearchFilter, toggleWaterEffect, toggleWindEffect, toggleFogAnimation, toggleTintEnabled, toggleBwEffect, setActiveTileTab, setCustomTileDimension, toggleSymbolFolderCollapsed, enablePreview, disablePreview, enablePainting, disablePainting, getActiveTileTab, setDecorSearchFilter, toggleDecorFolderCollapsed, setDecorElevation, setDecorSort, appendCustomNavSegment, setCustomNavPath, reloadCustomTiles, toggleColoredTagFilter, clearColoredTagFilters, selectFilteredColoredTiles } from "../hex/HexPainterSD.mjs";
-import { flattenTiles } from "../canvas/TileFlattenSD.mjs";
+import { flattenTiles, formatBytes, hexBackgroundBakePlan, measureTileLoad } from "../canvas/TileFlattenSD.mjs";
 import { isMapPathDrawing } from "../canvas/drawing-constants.mjs";
 import { sdxDrawingTool } from "../canvas/SDXDrawingTool.mjs";
 import { generateHexMap, clearGeneratedTiles } from "../hex/HexGeneratorSD.mjs";
@@ -193,17 +193,23 @@ export const HexPainterBindings = {
 				return;
 			}
 
-			const confirmed = await foundry.applications.api.DialogV2.confirm({
-				window: { title: backup ? "Restore Hexagons" : "Bake Map Background" },
-				content: backup
-					? `<p>Restore all <strong>${backup.tiles?.length ?? 0}</strong> original hex tiles and the previous scene background?</p>`
-					: `<p>Replace all <strong>${tileDocs.length}</strong> tiles${mapPaths.length ? ` and <strong>${mapPaths.length}</strong> road/river network${mapPaths.length === 1 ? "" : "s"}` : ""} with one optimized scene background?</p><p>Labels and other overlays remain live. You can restore the originals with this button.</p>`,
-				modal: true,
-			});
-
-			if (!confirmed) return;
 			flattenButton.disabled = true;
 			try {
+				const plan = hexBackgroundBakePlan(canvas.scene, canvas.app?.renderer);
+				const load = backup ? null : await measureTileLoad(tileDocs);
+				const tileLoad = !load ? ""
+					: load.bytes === null
+						? `<p>This scene's <strong>${load.files}</strong> tile image${load.files === 1 ? "" : "s"} load today.</p>`
+						: `<p>This scene's ${load.files} tile images load <strong>${formatBytes(load.bytes)}</strong> today.</p>`;
+				const confirmed = await foundry.applications.api.DialogV2.confirm({
+					window: { title: backup ? "Restore Hexagons" : "Bake Map Background" },
+					content: backup
+						? `<p>Restore all <strong>${backup.tiles?.length ?? 0}</strong> original hex tiles and the previous scene background?</p>`
+						: `<p>Replace all <strong>${tileDocs.length}</strong> tiles${mapPaths.length ? ` and <strong>${mapPaths.length}</strong> road/river network${mapPaths.length === 1 ? "" : "s"}` : ""} with one optimized scene background?</p>${tileLoad}<p>The bake is <strong>${plan.pixelWidth}×${plan.pixelHeight}</strong> (${plan.scalePercent}% of full size, ${plan.quality} quality) — roughly <strong>${formatBytes(plan.estimatedBytes)}</strong>. Labels and other overlays remain live. You can restore the originals with this button.</p>`,
+					modal: true,
+				});
+
+				if (!confirmed) return;
 				await flattenTiles(tileDocs, { asBackground: true, mapPaths });
 				syncFlattenButton();
 			}

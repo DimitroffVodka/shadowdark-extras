@@ -126,6 +126,7 @@ const HEX_KEYS = [
 	"hexPainter.customTileWidth",
 	"hexPainter.customTileHeight",
 	"hexPainter.poiScale",
+	"hexPainter.bakeQuality",
 ];
 const MAP_GENERATOR_KEYS = ["settlement.useLocalMaphub"];
 const MENU_KEYS = new Set([
@@ -267,6 +268,10 @@ test("enabled tray setting owners preserve the established keys, defaults, and o
 	assert.equal(settingRegistrations.find(r => r.key === "hexPainter.customTileWidth").config.default, 296);
 	assert.equal(settingRegistrations.find(r => r.key === "hexPainter.customTileHeight").config.default, 256);
 	assert.equal(settingRegistrations.find(r => r.key === "hexPainter.poiScale").config.default, 0.5);
+	const bakeQuality = settingRegistrations.find(r => r.key === "hexPainter.bakeQuality");
+	assert.equal(bakeQuality.config.default, "medium");
+	assert.equal(bakeQuality.config.scope, "world");
+	assert.deepEqual(Object.keys(bakeQuality.config.choices), ["low", "medium", "high", "max"]);
 	assert.equal(settingRegistrations.find(r => r.key === "settlement.useLocalMaphub").config.default, false);
 });
 

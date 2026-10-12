@@ -6,6 +6,11 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- **A bake says what it weighs, before and after.** The *Bake Map Background* dialog now reports both sides of the change: what the scene's tiles load today — the distinct texture files, counted, with their total bytes measured by HEAD requests and cached across sessions — and what the bake will replace them with, estimated from measured flattens (0.25 bytes per pixel at quality 0.9 tracks the Western Reaches map's real 12.3–13.0 MB bakes within a few percent). The completion notification then reports the file's actual size. A host that answers no content-length gets the file count alone — the dialog never guesses a total.
+- **The hex background bake can trade size for detail.** *Bake Map Background* honors a new world setting, **Hex bake quality**. Low, Medium (the default, the previous 8192 px cap), High and Max bound the baked image's longest side at 4096, 8192 or 12288 px, or at the renderer's own texture limit (16384 px on most cards) — whichever is smaller, and never past full size, so a map already under the chosen cap bakes at native resolution. The confirm dialog and the progress notification state the size the bake will produce and its scale against the full map (e.g. `6126×8192 — 43% of full size`), so a large map's downscale is visible before and during the bake instead of discovered on the canvas. Everything else about the bake and its Restore is unchanged.
+
 ## [6.17.1] — 2026-10-11 — Curated art resolves on The Forge; beaches follow coast features
 
 ### Fixed
