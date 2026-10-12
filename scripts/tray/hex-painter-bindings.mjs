@@ -278,7 +278,7 @@ export const HexPainterBindings = {
 				}
 				const quality = await foundry.applications.api.DialogV2.wait({
 					window: { title: "Export Map Image" },
-					content: `<p>Render this scene's map to image files and download them? <strong>Nothing on the scene changes</strong> — the tiles stay exactly as they are.</p><p><strong>Image quality</strong> — priced the same as a bake:</p>${buildQualityOptionsHtml(rememberedBakeQuality())}`,
+					content: `<p>Render this scene's map to image files and download them? <strong>Nothing on the scene changes</strong> — the tiles stay exactly as they are.</p><p><strong>Image quality</strong> — priced the same as a bake:</p>${buildQualityOptionsHtml(rememberedBakeQuality())}<p class="notes">Each export is also saved under map-exports/ in the data folder, so a missed download is never lost. A full-resolution (Max) export is several files, and some browsers only auto-download the first.</p>`,
 					buttons: [
 						{ action: "export", label: "Export", default: true, callback: (_event, button) => button.form.elements.quality.value },
 						{ action: "cancel", label: "Cancel", callback: () => null },
