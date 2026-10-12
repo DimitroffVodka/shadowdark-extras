@@ -204,6 +204,7 @@ export const SETTING_OWNERS = Object.freeze({
 	"hexPainter.customTileWidth": owners(FEATURE_IDS.HEX_PAINTER),
 	"hexPainter.customTileHeight": owners(FEATURE_IDS.HEX_PAINTER),
 	"hexPainter.poiScale": owners(FEATURE_IDS.HEX_PAINTER),
+	"hexPainter.bakeQuality": owners(FEATURE_IDS.HEX_PAINTER),
 	"settlement.useLocalMaphub": owners(FEATURE_IDS.MAP_GENERATORS),
 	pinStyleDefaults: owners(FEATURE_IDS.JOURNAL_PINS),
 	pinStyleEditorMenu: owners(FEATURE_IDS.JOURNAL_PINS),

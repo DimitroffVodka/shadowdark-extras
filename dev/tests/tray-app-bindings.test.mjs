@@ -100,6 +100,7 @@ const BINDINGS = [
 	".sdx-tray .hex-custom-reload-btn[0] :: click",
 	".sdx-tray .hex-custom-size-input[0] :: change",
 	".sdx-tray .hex-custom-up-btn[0] :: click",
+	".sdx-tray .hex-export-btn :: click",
 	".sdx-tray .hex-flatten-btn :: click",
 	".sdx-tray .hex-fog-checkbox :: change",
 	".sdx-tray .hex-format-btn :: click",
