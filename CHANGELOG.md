@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Curated tile art from a published dataset is no longer refused as unknown on a CDN-hosted world, The Forge included.** A CDN host's FilePicker lists a module's files as absolute asset URLs (`https://assets.forge-vtt.com/<id>/modules/shadowdark-extras/…`) while a dataset names the same tile module-relative, so catalogue membership missed and `buildHexcrawl` (and a repaint) failed the whole map with *unknown art …; use a tile from getColoredTiles()* on every curated hex even though the tile ships. The key now ignores the asset-URL prefix the same way it already ignored the module prefix.
+
 ## [6.17.0] — 2026-10-11 — A volcano no longer paints as lava
 
 ### Fixed
