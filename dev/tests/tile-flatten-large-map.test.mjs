@@ -501,10 +501,11 @@ test("an already-flattened scene exports the files it is showing instead of re-r
 		assert.equal(renderedSizes.length, 0, "no re-render for a single background");
 		assert.equal(uploads.length, 0, "no re-upload for a single background");
 
-		// A canvas-less client has no canvas.scene: the viewed scene stands in.
+		// A canvas-less client has no canvas.scene and no viewed scene: the
+		// active scene stands in (canvas.scene null, viewed null, active set).
 		const savedCanvas = globalThis.canvas;
 		const savedGame = globalThis.game;
-		globalThis.game = { scenes: { viewed: scene, get: () => scene } };
+		globalThis.game = { scenes: { viewed: null, active: scene, get: () => scene } };
 		globalThis.canvas = { ...savedCanvas, scene: undefined };
 		try {
 			await exportHexMap({});
