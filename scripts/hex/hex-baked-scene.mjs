@@ -10,20 +10,23 @@
  *
  * Its keyed locations are sprites (the KEYED_FLAG), built on every client
  * straight into canvas.primary, which is all a Tile's picture is underneath.
- * Each client shows them by the hex fog, so showing writes nothing.
+ * Each client shows them by the hex fog, so showing writes nothing. Where the
+ * Enhancer owns the scene's fog, its disclosure answers; elsewhere Extras' own does.
  *
  * Registered by Tile Flatten (TileFlattenSD registerTileFlattenHooks), whose
  * feature gate covers baked maps too: a bake is its successor for whole maps.
  */
 
 import { FEATURE_IDS, isFeatureEnabled } from "../settings/feature-gates.mjs";
+import { enhancerDisclosed, enhancerOwns } from "../settings/enhancer-defer.mjs";
 import { HEX_JOURNAL_NAME } from "./HexTooltipSD.mjs";
 import { getHexRecordMap } from "./hex-water-terrain.mjs";
 import {
-	bakeable, keyedSpriteView, pieceFrame, pieceSize, piecesInView, pyramidLevel, transcodeTarget,
+	bakeable, keyedOffset, keyedSpriteView, pieceFrame, pieceSize, piecesInView, pyramidLevel, transcodeTarget,
 } from "./hex-bake-core.mjs";
 
 const MODULE_ID = "shadowdark-extras";
+const ENHANCER_ID = "shadowdark-enhancer";
 /** Scene flag: { base: the pieces' folder under the data root, meta: see hex-bake-core.mjs }. */
 export const PYRAMID_FLAG = "bakedPyramid";
 /** Scene flag: the keyed sprites by hex offset (keyedEntries in hex-bake-core.mjs). */
@@ -199,22 +202,48 @@ function exploredKeys(sceneId) {
 	return keys;
 }
 
+/**
+ * What answers for a scene's keyed sprites: `on` (is there fog), and per hex key "i-j" whether the
+ * fog `shown` it and what it `discovery` says. On a scene the Enhancer owns its "location"
+ * disclosure is the whole answer, so the art appears once the party has been to the hex, as its
+ * pins do; Extras writes no fog there, so its own flags would only go stale (enhancer#490).
+ */
+export function keyedFog(scene) {
+	if (enhancerOwns("hex.fog", scene)) {
+		return { on: true, shown: key => enhancerDisclosed(scene, keyedOffset(key)), discovery: () => undefined };
+	}
+	const flags = scene.flags[MODULE_ID] ?? {};
+	const on = isFeatureEnabled(FEATURE_IDS.HEX_FOG) && !!flags.hexFogEnabled;
+	const explored = on ? exploredKeys(scene.id) : new Set();
+	return {
+		on,
+		shown: key => (flags.hexFogRevealed?.[key] === true) || explored.has(key),
+		discovery: key => flags.hexFogDiscovery?.[key],
+	};
+}
+
 function refresh() {
 	if (!drawn.length) return;
-	const scene = canvas.scene;
-	const flags = scene.flags[MODULE_ID] ?? {};
-	const fogOn = isFeatureEnabled(FEATURE_IDS.HEX_FOG) && !!flags.hexFogEnabled;
-	const explored = fogOn ? exploredKeys(scene.id) : new Set();
+	const fog = keyedFog(canvas.scene);
 	for (const { key, mesh } of drawn) {
 		const view = keyedSpriteView({
 			isGM: game.user.isGM,
-			fogOn,
-			shown: (flags.hexFogRevealed?.[key] === true) || explored.has(key),
-			discovery: flags.hexFogDiscovery?.[key],
+			fogOn: fog.on,
+			shown: fog.shown(key),
+			discovery: fog.discovery(key),
 		});
 		mesh.visible = view.visible;
 		mesh.alpha = view.alpha;
 	}
+}
+
+/** One refresh on the next frame for every Enhancer change that asked: a reveal writes two journals. */
+let refreshFrame = null;
+function refreshSoon() {
+	refreshFrame ??= requestAnimationFrame(() => {
+		refreshFrame = null;
+		refresh();
+	});
 }
 
 async function draw() {
@@ -309,6 +338,19 @@ export function registerBakedScenes() {
 			// Loaded on use: players never need the baker.
 			onClick: async (_event, li) => (await import("./hex-bake.mjs")).bakeScene(sceneOf(li)),
 		});
+	});
+
+	// The Enhancer's fog changed. Its hook fires once per redraw (shadowdark-enhancer#490).
+	Hooks.on("shadowdark-enhancer.hexFogChanged", refreshSoon);
+	// ponytail: until that hook is in the Enhancer's minimum supported version, its fog shows only in
+	// the documents it redraws from: its record journals and its scene flags. Delete these then.
+	const enhancerWrote = document => {
+		if (document?.flags?.[ENHANCER_ID]) refreshSoon();
+	};
+	Hooks.on("createJournalEntry", enhancerWrote);
+	Hooks.on("updateJournalEntry", enhancerWrote);
+	Hooks.on("updateScene", (scene, changed) => {
+		if ((scene === canvas.scene) && changed.flags?.[ENHANCER_ID]) refreshSoon();
 	});
 
 	// ...and even drawn: a baked scene already on screen needs drawing again, with its pyramid.
