@@ -43,6 +43,7 @@ test("every showItemCard call site is guarded by try/catch (loud failure)", () =
 		"scripts/canvas/TokenToolbarApp.mjs": 3,
 		"scripts/macros/shapechanger.mjs": 3,
 		"scripts/party/partyinventory.mjs": 1,
+		"scripts/item-macros/npc-feature-macros.mjs": 2, // 1 call + 1 comment mention
 	};
 	let total = 0;
 	for (const [file, expectedCount] of Object.entries(expected)) {
@@ -52,7 +53,7 @@ test("every showItemCard call site is guarded by try/catch (loud failure)", () =
 		assert.ok(source.includes("showItemCard failed"), `${file} must catch showItemCard errors`);
 		total += callCount;
 	}
-	assert.equal(total, 8, "one card entry point, used at every former displayCard site");
+	assert.equal(total, 10, "one card entry point, used at every former displayCard site");
 });
 
 test("roll-fallback card sites are else-guarded (no duplicate card after a successful roll)", () => {

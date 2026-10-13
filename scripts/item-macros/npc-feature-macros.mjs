@@ -330,8 +330,8 @@ async function processNPCFeatureItemGive(item, actor, token, targetToken, target
  */
 export function registerNPCFeatureItemMacros() {
 	// SD 4.x may not provide Item#rollItem/displayCard for NPC Features/Spells/
-	// Special Attacks. Install a small rollItem path so sheet/tool callers can run
-	// their configured macros + activities on use.
+	// Special Attacks. Install a small rollItem path so sheet/tool callers get the
+	// item card and run their configured macros + activities on use.
 	Hooks.once("ready", () => {
 		// Wait a short time to ensure the system is fully loaded
 		setTimeout(() => {
@@ -348,12 +348,24 @@ export function registerNPCFeatureItemMacros() {
 			itemDocClass.prototype.rollItem = async function(...args) {
 				// Call the original (possibly already-wrapped) rollItem first, when
 				// the current Shadowdark system version provides one.
-				const result = typeof originalRollItem === "function"
+				const hasOriginal = typeof originalRollItem === "function";
+				const result = hasOriginal
 					? await originalRollItem.apply(this, args)
 					: null;
 
 				// Only process NPC Features, NPC Spells, and NPC Special Attacks.
 				if (this.type === "NPC Feature" || this.type === "NPC Spell" || this.type === "NPC Special Attack") {
+					// SD 4.0.6 has no rollItem, so nothing above posted the card; this
+					// wrapper is then the only thing a sheet or toolbar click reaches.
+					if (!hasOriginal) {
+						try {
+							await shadowdark.chat.showItemCard(this.uuid);
+						}
+						catch(err) {
+							console.error(`${MODULE_ID} | showItemCard failed:`, err);
+						}
+					}
+
 					try {
 						const actor = this.actor;
 						const selectedTokens = canvas.tokens?.controlled || [];
