@@ -6,6 +6,7 @@ import {
 	fitScale,
 	isKeyedTile,
 	keyedEntries,
+	keyedOffset,
 	keyedSpriteView,
 	mipChain,
 	padPiece,
@@ -158,6 +159,14 @@ test("bakeable: a hex map with Tiles on one level; not a square grid, an empty m
 	assert.equal(bakeable(scene({ grid: { isHexagonal: false } })), false);
 	assert.equal(bakeable(scene({ tiles: { size: 0 } })), false);
 	assert.equal(bakeable(undefined), false);
+});
+
+test("keyedOffset: reads back the offset keyedEntries keyed a sprite by", () => {
+	assert.deepEqual(keyedOffset("3-5"), { i: 3, j: 5 });
+	assert.deepEqual(keyedOffset("-1-4"), { i: -1, j: 4 });
+	assert.deepEqual(keyedOffset("0--2"), { i: 0, j: -2 });
+	assert.equal(keyedOffset("3_5"), null);
+	assert.equal(keyedOffset(undefined), null);
 });
 
 test("keyedSpriteView: players see a hex's keyed art once the fog shows it, and not from afar", () => {

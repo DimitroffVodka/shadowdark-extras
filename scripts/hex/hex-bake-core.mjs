@@ -222,6 +222,12 @@ export function keyedEntries(tiles, offsetOf) {
 	return out;
 }
 
+/** The offset a keyedEntries key names, or null for a key that is not one. */
+export function keyedOffset(key) {
+	const m = /^(-?\d+)-(-?\d+)$/.exec(key);
+	return m ? { i: Number(m[1]), j: Number(m[2]) } : null;
+}
+
 /**
  * How one keyed sprite shows on this client. A player sees a hex's points of
  * interest once the fog shows the hex (revealed, or explored or mapped in its
