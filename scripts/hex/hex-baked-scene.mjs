@@ -13,6 +13,10 @@
  * Each client shows them by the hex fog, so showing writes nothing. Where the
  * Enhancer owns the scene's fog, its disclosure answers; elsewhere Extras' own does.
  *
+ * Where the Enhancer draws a baked map itself (owns "hex.baked", API 1.31.0) and
+ * holds its fog, this stands down: it takes the manager slot and draws the
+ * sprites, clipped to their hexes, so a scene is never drawn twice.
+ *
  * Registered by Tile Flatten (TileFlattenSD registerTileFlattenHooks), whose
  * feature gate covers baked maps too: a bake is its successor for whole maps.
  */
@@ -185,6 +189,12 @@ class PyramidManager extends foundry.canvas.SceneManager {
 
 // ─── Keyed sprites ───────────────────────────────────────────────────────────
 
+/**
+ * The Enhancer draws this map: it says so, and it holds the fog its sprites follow. Without
+ * its fog Extras' own flags decide which locations show, and only this renderer reads them.
+ */
+const enhancerDraws = scene => enhancerOwns("hex.baked", scene) && enhancerOwns("hex.fog", scene);
+
 /** This canvas's keyed sprites and the hex each belongs to. */
 let drawn = [];
 /** Bumped per draw and teardown, so a slow texture load adds nothing to a newer canvas. */
@@ -250,6 +260,8 @@ async function draw() {
 	for (const { mesh } of drawn) if (!mesh.destroyed) mesh.destroy();
 	drawn = [];
 	const run = ++generation;
+	// The Enhancer draws these sprites itself, clipped to their hexes: here too they would double.
+	if (enhancerDraws(canvas.scene)) return;
 	const flag = canvas.scene?.getFlag(MODULE_ID, KEYED_FLAG);
 	const entries = Object.entries(flag ?? {});
 	if (!entries.length) return;
@@ -295,7 +307,10 @@ const sceneOf = li => game.scenes.get((li instanceof HTMLElement ? li : li?.[0])
 export function registerBakedScenes() {
 	const manage = scene => {
 		const managed = CONFIG.Canvas.managedScenes;
-		if (scene.getFlag(MODULE_ID, PYRAMID_FLAG)) managed[scene.id] = PyramidManager;
+		// Where the Enhancer draws a baked map itself, the slot is left to it.
+		if (scene.getFlag(MODULE_ID, PYRAMID_FLAG) && !enhancerDraws(scene)) {
+			managed[scene.id] = PyramidManager;
+		}
 		else if (managed[scene.id] === PyramidManager) delete managed[scene.id];
 	};
 	// Tile Flatten loads this file on demand, so the world may be set up already.
