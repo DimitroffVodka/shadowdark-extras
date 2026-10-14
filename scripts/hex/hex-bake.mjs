@@ -11,7 +11,9 @@
  * the world folder, and a new "(baked)" copy of the scene draws them, with its
  * keyed art as sprites, its hex records copied, and none of the Tiles it
  * replaced. The source scene is only read, so the painted map stays editable:
- * bake it again after changes.
+ * bake it again after changes. The one exception is the Enhancer's plain
+ * ground under keyed hexes, made on the source for the bake and taken away
+ * after it (enhancer-defer.mjs layKeyedGround).
  *
  * Unlike Tile Flatten's hex background (one WebP of at most 8192 px, in
  * place), the pyramid keeps full resolution and loads only what is on screen.
@@ -20,6 +22,7 @@
 import { getHexRecordMap } from "./hex-water-terrain.mjs";
 import { mergeHexRecords } from "./HexTooltipSD.mjs";
 import { KEYED_FLAG, PYRAMID_FLAG } from "./hex-baked-scene.mjs";
+import { layKeyedGround } from "../settings/enhancer-defer.mjs";
 import {
 	bakeable, fitScale, isKeyedTile, keyedEntries, mipChain, padPiece, pieceSize, pyramidLevels,
 } from "./hex-bake-core.mjs";
@@ -56,15 +59,36 @@ export async function bakeScene(source) {
 		ui.notifications.error(say("SDX.hexBake.noCanvas"));
 		return;
 	}
+	baking = true;
+	const keyed = source.tiles.filter(t => !t.hidden && isKeyedTile(t));
+	// The Enhancer's plain ground goes under each keyed hex first, or a hidden one bakes as a hole.
+	const laid = await layKeyedGround(source, keyed.length);
+	if (laid.error) {
+		ui.notifications.warn(say("SDX.hexBake.groundFailed", { error: laid.error.message }));
+	}
+	else if (laid.unfilled.length) {
+		ui.notifications.warn(say("SDX.hexBake.groundUnfilled", { count: laid.unfilled.length }));
+	}
+	try {
+		return await bakeGround(source, renderer, keyed, say);
+	}
+	finally {
+		// Ground the Enhancer's own Bake map laid is left for it to take away.
+		const stuck = await laid.remove();
+		if (stuck) ui.notifications.warn(say("SDX.hexBake.groundStuck", { error: stuck.message }));
+		baking = false;
+	}
+}
+
+/** The bake over the Tiles `source` has now: its ground by piece, its keyed art as sprites. */
+async function bakeGround(source, renderer, keyed, say) {
 	const ground = source.tiles.filter(isGround)
 		.sort((a, b) => (a.elevation - b.elevation) || (a.sort - b.sort));
 	if (!ground.length) {
 		ui.notifications.warn(say("SDX.hexBake.nothing"));
 		return;
 	}
-	const keyed = source.tiles.filter(t => !t.hidden && isKeyedTile(t));
 
-	baking = true;
 	const started = performance.now();
 	const id = foundry.utils.randomID();
 	const base = `worlds/${game.world.id}/baked-maps/${id}`;
@@ -134,7 +158,6 @@ export async function bakeScene(source) {
 		stage.destroy({ children: true });
 		target.destroy(true);
 		for (const src of srcs) foundry.canvas.TextureLoader.unpinSource(src);
-		baking = false;
 	}
 }
 

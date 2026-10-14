@@ -1429,5 +1429,8 @@
   "SDX.hexBake.unsupported": "Only a hex map with one level can be baked; {name} isn't one.",
   "SDX.hexBake.busy": "A map is already baking. Wait for it to finish.",
   "SDX.hexBake.noCanvas": "Baking a map needs the game canvas, which is turned off in this browser.",
-  "SDX.hexBake.failed": "Baking {name} failed: {error}. Pieces saved so far are in {path}."
+  "SDX.hexBake.failed": "Baking {name} failed: {error}. Pieces saved so far are in {path}.",
+  "SDX.hexBake.groundFailed": "{name}: the Enhancer could not lay ground under the keyed hexes ({error}). Baking without it, so each keyed hex will be a hole.",
+  "SDX.hexBake.groundUnfilled": "{name}: {count} keyed hexes have no ground to copy and will bake as holes.",
+  "SDX.hexBake.groundStuck": "{name}: the temporary ground under the keyed hexes could not be removed ({error}). Run game.shadowdarkEnhancer.hexMaps.removeKeyedGround on the scene."
 }
