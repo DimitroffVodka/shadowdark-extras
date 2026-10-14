@@ -290,11 +290,14 @@ const variety = (i, j, len) => (len ? (Math.abs(i * 31 + j * 17) % len) : 0);
  * like a hand of cards rather than drawn with replacement.
  *
  * @param {string[]} pool  catalogue paths the hex's terrain may draw from
- * @param {{saved?: string, avoid: Set<string>, used: Map<string, number>}} deal
- *   `avoid` and `used` are keyed by coloredTileKey
+ * @param {{saved?: string, pinned?: boolean, avoid: Set<string>, used: Map<string, number>}} deal
+ *   `avoid` and `used` are keyed by coloredTileKey; `pinned` keeps `saved` even
+ *   when this pool does not hold it
  * @returns {string|undefined} one path of `pool`
  */
-function dealTile(pool, { saved, avoid, used }) {
+function dealTile(pool, { saved, pinned = false, avoid, used }) {
+	// A tile the GM picked by hand stays whatever the terrain's own pool says.
+	if (saved && pinned) return saved;
 	if (!pool.length) return undefined;
 	if (saved) {
 		const key = coloredTileKey(saved);
@@ -321,13 +324,23 @@ function readPaintLayout(scene) {
 	return layout;
 }
 
-/** Saved as the distinct files plus one index per hex, so a 4,800-hex map stays near 50 KB. */
-async function writePaintLayout(scene, layout) {
+/** The hexes whose saved tile the GM chose by hand, as a Set of published numbers. */
+function readPaintPins(scene) {
+	const stored = scene?.getFlag?.(MODULE_ID, "paintLayout");
+	return new Set(Array.isArray(stored?.pinned) ? stored.pinned.map(Number).filter(Number.isInteger) : []);
+}
+
+/**
+ * Saved as the distinct files plus one index per hex, so a 4,800-hex map stays
+ * near 50 KB; `pinned` lists the hexes whose tile was chosen by hand.
+ */
+async function writePaintLayout(scene, layout, pins = new Set()) {
 	if (!layout.size) return;
 	const files = [...new Set(layout.values())];
 	const at = new Map(files.map((file, index) => [file, index]));
 	const picks = Object.fromEntries([...layout].map(([num, file]) => [num, at.get(file)]));
-	await scene.setFlag(MODULE_ID, "paintLayout", { version: 1, files, picks });
+	// A merge keeps what it is not told about, so an unpinned hex has to be absent from a list that is replaced whole.
+	await scene.setFlag(MODULE_ID, "paintLayout", { version: 1, files, picks, pinned: [...pins].sort((a, b) => a - b) });
 }
 
 /**
@@ -575,6 +588,29 @@ function buildRegionMap(dataset) {
 }
 
 /**
+ * The catalogue paths a terrain draws its tile from: its own rule's pool, else
+ * the rule's fallback, else the biome's folder. Shared by the build, the
+ * repaint and getTilePool, so what a GM is offered is what a deal can draw.
+ */
+function coloredPoolFor(biomeKey, biome, coloredByBiome) {
+	const coloredRule = TERRAIN_COLORED_RULES[String(biomeKey).trim().toLowerCase()];
+	const pick = (rule, fallbackPool, fallbackIncludes) => {
+		const candidates = rule?.pool === "specials"
+			? specialsPool()
+			: (coloredByBiome[rule?.pool ?? fallbackPool] ?? []);
+		const includes = rule?.include ?? fallbackIncludes;
+		return candidates.filter(path => {
+			const text = decodeURIComponent(path).toLowerCase();
+			return (!includes || includes.some(part => text.includes(part)))
+				&& !rule?.exclude?.some(part => text.includes(part));
+		});
+	};
+	let colored = pick(coloredRule, biome.colored, biome.coloredIncludes);
+	if (!colored.length && coloredRule?.fallback) colored = pick(coloredRule.fallback);
+	return colored;
+}
+
+/**
  * The Tile document one hex gets.
  *
  * Extracted from paintTerrain's loop so repaintHexTiles selects tiles by
@@ -594,23 +630,7 @@ function buildRegionMap(dataset) {
  *   or the flat set, which are not dealt
  */
 function hexTileData({ num, biome, biomeKey, center, off, coloredByBiome, tw, th, special, art, feature, choose }) {
-	const coloredRule = TERRAIN_COLORED_RULES[String(biomeKey).trim().toLowerCase()];
-	let colored = [];
-	if (coloredByBiome) {
-		const pick = (rule, fallbackPool, fallbackIncludes) => {
-			const candidates = rule?.pool === "specials"
-				? specialsPool()
-				: (coloredByBiome[rule?.pool ?? fallbackPool] ?? []);
-			const includes = rule?.include ?? fallbackIncludes;
-			return candidates.filter(path => {
-				const text = decodeURIComponent(path).toLowerCase();
-				return (!includes || includes.some(part => text.includes(part)))
-					&& !rule?.exclude?.some(part => text.includes(part));
-			});
-		};
-		colored = pick(coloredRule, biome.colored, biome.coloredIncludes);
-		if (!colored.length && coloredRule?.fallback) colored = pick(coloredRule.fallback);
-	}
+	const colored = coloredByBiome ? coloredPoolFor(biomeKey, biome, coloredByBiome) : [];
 	// A settlement paints as its Specials tile rather than its terrain.
 	const settlement = coloredByBiome && FEATURE_COLORED_RULES[feature]
 		? specialsPool().filter(path => {
@@ -646,7 +666,7 @@ function hexTileData({ num, biome, biomeKey, center, off, coloredByBiome, tw, th
  * @param {Map<number, string>} [layout]  tiles to put back, by published number
  *   (a saved deal being replayed); a hex it does not cover is dealt anew
  */
-async function paintTerrain(scene, dataset, geom, specials, layout = new Map()) {
+async function paintTerrain(scene, dataset, geom, specials, layout = new Map(), pins = new Set()) {
 	const defaultBiome = dataset.terrain?.default ?? "forest";
 	const regionMap = buildRegionMap(dataset);
 	const keyedTerrain = new Map((dataset.hexes ?? [])
@@ -701,7 +721,7 @@ async function paintTerrain(scene, dataset, geom, specials, layout = new Map()) 
 			const { tile, picked } = hexTileData({
 				num, biome, biomeKey, center, off, coloredByBiome, tw, th,
 				special: specialHexes.get(num), art: artHexes.get(num), feature: settlementHexes.get(num),
-				choose: coloredByBiome ? pool => dealTile(pool, { saved: dealt.get(num), avoid, used }) : undefined,
+				choose: coloredByBiome ? pool => dealTile(pool, { saved: dealt.get(num), pinned: pins.has(num), avoid, used }) : undefined,
 			});
 			tileData.push(tile);
 			if (picked) {
@@ -716,7 +736,7 @@ async function paintTerrain(scene, dataset, geom, specials, layout = new Map()) 
 
 	const created = await scene.createEmbeddedDocuments("Tile", tileData);
 	await setHexTerrainBatch(scene.id, terrainMap);
-	await writePaintLayout(scene, dealt);
+	await writePaintLayout(scene, dealt, pins);
 	return created.length;
 }
 
@@ -996,7 +1016,7 @@ export function installHexcrawlApi(api, namespace, wrap) {
 	registerHexRecordPrune();
 	api.hex = namespace.hex = Object.fromEntries(Object.entries({
 		buildHexcrawl: buildPublishedHexcrawl, adoptHexcrawl, upsertHexRecords, getHexRecords, repaintHexTiles, repaintCoasts,
-		getPaintLayout,
+		getPaintLayout, getTilePool,
 		getSpecialTiles, importHexerMap, openHexerImportDialog,
 	}).map(([name, fn]) => [name, wrap(`hex.${name}`, fn)]));
 	// Deliberately outside the wrap above: it reads a constant, so gmOnly would
@@ -1206,12 +1226,14 @@ export async function repaintHexTiles(sceneId, hexes) {
 		requireInput(!seen.has(num), `duplicate hex ${hex.num}`);
 		seen.add(num);
 		for (const key of Object.keys(hex)) {
-			requireInput(["num", "terrain", "art", "special", "reshuffle"].includes(key), `unsupported repaint field ${key}; repaint takes terrain, art, special and reshuffle only`);
+			requireInput(["num", "terrain", "art", "special", "tile", "reshuffle"].includes(key), `unsupported repaint field ${key}; repaint takes terrain, art, special, tile and reshuffle only`);
 		}
-		for (const key of ["terrain", "art", "special"]) {
+		for (const key of ["terrain", "art", "special", "tile"]) {
 			if (Object.hasOwn(hex, key)) requireInput(typeof hex[key] === "string", `${key} must be text`);
 		}
 		if (Object.hasOwn(hex, "reshuffle")) requireInput(typeof hex.reshuffle === "boolean", "reshuffle must be boolean");
+		requireInput(!(hex.tile && (hex.art || hex.special)), `hex ${hex.num}: tile cannot be combined with art or special`);
+		requireInput(!(hex.tile && hex.reshuffle), `hex ${hex.num}: tile names the tile, so there is nothing to reshuffle`);
 		// Required, not inferred. The stored record's terrain is only reachable
 		// through the journal loader, and guessing it wrong picks the tile from
 		// the wrong pool — a silently different-looking hex. The caller knows the
@@ -1233,6 +1255,19 @@ export async function repaintHexTiles(sceneId, hexes) {
 	// catalogue, so a repainted hex matches the same hex on a freshly built map.
 	if (!getColoredTiles().length) await loadColoredTileAssets();
 	const coloredByBiome = getColoredTilesByBiome();
+	// A tile named by hand is any catalogue tile (another terrain's included: a
+	// GM may want desert hills on a grassland hex), but never a location's own
+	// numbered picture. Checked here, before anything is touched.
+	if (hexes.some(hex => hex.tile)) {
+		const catalogue = new Map(getColoredTiles().map(tile => [coloredTileKey(tile.path), tile.path]));
+		hexes = hexes.map(hex => {
+			if (!hex.tile) return hex;
+			const path = catalogue.get(coloredTileKey(hex.tile));
+			requireInput(path, `unknown tile ${hex.tile} on hex ${hex.num}; use a tile from getTilePool()`);
+			requireInput(!KEYED_SPECIAL.test(decodeURIComponent(path)), `${hex.tile} on hex ${hex.num} is one location's own picture; name it as art`);
+			return { ...hex, tile: path };
+		});
+	}
 	const tw = TERRAIN_TILE_W;
 	const th = TERRAIN_TILE_H;
 	// A repaint says terrain, art and special only; the settlement a keyed hex
@@ -1266,6 +1301,7 @@ export async function repaintHexTiles(sceneId, hexes) {
 	// What the scene was dealt before: kept for a hex whose terrain still draws
 	// it, and the tally that keeps a pool even.
 	const deal = readPaintLayout(scene);
+	const pins = readPaintPins(scene);
 	const used = new Map();
 	for (const path of deal.values()) used.set(coloredTileKey(path), (used.get(coloredTileKey(path)) ?? 0) + 1);
 	const placed = new Map(); // hexKey -> coloredTileKey, for hexes dealt in this call
@@ -1286,15 +1322,23 @@ export async function repaintHexTiles(sceneId, hexes) {
 			const point = scene.grid.getCenterPoint(next);
 			for (const tile of standing) if (sits(tile, point)) avoid.add(coloredTileKey(tile.texture.src));
 		}
-		// A reshuffle asks for a different tile, so the one it has is out too.
+		// A reshuffle asks for a different tile, so the one it has is out too. A tile
+		// named by hand is pinned: it outlives a repaint of the same terrain, and
+		// ends when the terrain moves or a reshuffle is asked for.
 		const own = deal.get(num);
+		const was = stored.get(offsetToHexKey(off))?.terrain;
+		const moved = was && String(was).trim().toLowerCase() !== String(biomeKey).trim().toLowerCase();
+		let saved = own;
+		if (hex.tile) { saved = hex.tile; pins.add(num); }
+		else if (hex.reshuffle || (moved && pins.has(num))) { saved = undefined; pins.delete(num); }
 		if (hex.reshuffle && own) avoid.add(coloredTileKey(own));
+		const pinned = pins.has(num);
 		const { tile, picked } = hexTileData({
 			num, biome, biomeKey, center, off, coloredByBiome, tw, th,
 			special: specials.get(hex.special), art: hex.art,
 			feature: settlementOf(stored.get(offsetToHexKey(off))?.features),
 			choose: coloredByBiome
-				? pool => dealTile(pool, { saved: hex.reshuffle ? undefined : own, avoid, used })
+				? pool => dealTile(pool, { saved, pinned, avoid, used })
 				: undefined,
 		});
 		tileData.push(tile);
@@ -1312,7 +1356,7 @@ export async function repaintHexTiles(sceneId, hexes) {
 	if (doomed.length) await scene.deleteEmbeddedDocuments("Tile", doomed);
 	const created = await scene.createEmbeddedDocuments("Tile", tileData);
 	if (Object.keys(terrainMap).length) await setHexTerrainBatch(sceneId, terrainMap);
-	await writePaintLayout(scene, deal);
+	await writePaintLayout(scene, deal, pins);
 
 	// A hex painted to or from water changes the shoreline of every hex around
 	// it, so the beaches on the repainted hexes and their neighbours are redone
@@ -1335,6 +1379,22 @@ export async function repaintHexTiles(sceneId, hexes) {
 		console.warn(`${MODULE_ID} | post-repaint tiles redraw failed`, err);
 	}
 	return { sceneId, repainted: created.length, removed: doomed.length };
+}
+
+/**
+ * The tiles a terrain can be dealt, as catalogue paths: what a hex of that
+ * terrain draws from, for a picker that lets a GM choose one by sight.
+ * Also what `tile` on a repaint entry will accept without being "another
+ * terrain's tile".
+ * @param {string} terrain  a terrain word, as a hex record or a dataset names it
+ * @returns {Promise<string[]>}
+ */
+export async function getTilePool(terrain) {
+	requireInput(game.user?.isGM, "requires GM permission");
+	requireInput(typeof terrain === "string" && terrain.trim(), "terrain must be text");
+	if (!getColoredTiles().length) await loadColoredTileAssets();
+	const biome = biomeFor(terrain) ?? BIOME_TILES.forest;
+	return [...coloredPoolFor(terrain, biome, getColoredTilesByBiome())];
 }
 
 /**
@@ -1488,12 +1548,14 @@ async function buildScene(dataset, opts, geom, specials = new Map()) {
 		: [];
 	// The picture to put back: an explicit `layout`, else the scene this build
 	// replaces (read before it goes), unless the caller asked for a fresh deal.
+	const from = !opts.reshuffle && !opts.layout && replaced.length ? game.scenes.get(replaced[0]) : null;
 	const layout = opts.reshuffle ? new Map()
 		: opts.layout ? new Map(Object.entries(opts.layout).map(([num, path]) => [Number(num), path]))
-			: (replaced.length ? readPaintLayout(game.scenes.get(replaced[0])) : new Map());
+			: readPaintLayout(from);
+	const pins = readPaintPins(from);
 	const scene = await createHexScene(dataset, geom, opts);
 
-	const terrainTiles = await paintTerrain(scene, dataset, geom, specials, layout);
+	const terrainTiles = await paintTerrain(scene, dataset, geom, specials, layout, pins);
 	const featureTiles = await placeFeatureIcons(scene, dataset, geom);
 	const records = await writeHexRecords(scene, dataset, geom, specials);
 	const journalNotes = geom.published ? await placeJournalNotes(scene, dataset, geom) : 0;

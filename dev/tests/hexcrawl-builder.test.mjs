@@ -833,7 +833,7 @@ test("setup exposes the same guarded hex namespace on both surfaces and removes 
 		assert.equal(typeof module.api.hex, enabled ? "object" : "undefined");
 		assert.equal(context.game.shadowdarkExtras?.hex, module.api.hex);
 		if (enabled) {
-			assert.deepEqual(Object.keys(module.api.hex).sort(), ["adoptHexcrawl", "buildHexcrawl", "getHexRecords", "getPaintLayout", "getSpecialTiles", "getZoneColors", "gridFields", "importHexerMap", "openHexerImportDialog", "repaintCoasts", "repaintHexTiles", "upsertHexRecords"]);
+			assert.deepEqual(Object.keys(module.api.hex).sort(), ["adoptHexcrawl", "buildHexcrawl", "getHexRecords", "getPaintLayout", "getSpecialTiles", "getTilePool", "getZoneColors", "gridFields", "importHexerMap", "openHexerImportDialog", "repaintCoasts", "repaintHexTiles", "upsertHexRecords"]);
 			context.game.user.isGM = false;
 			await assert.rejects(module.api.hex.buildHexcrawl(fixture), /requires GM permission/);
 			await assert.rejects(module.api.hex.getHexRecords("scene"), /requires GM permission/);
@@ -1414,4 +1414,81 @@ test("a terrain rule never paints another location's numbered picture", async ()
 	const srcs = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted).map(t => decodeURIComponent(t.texture.src));
 	assert.equal(srcs.length, 400);
 	assert.ok(srcs.every(src => /\/Hex - Mountains?, Volcano /.test(src)), "volcano paints only the generic volcano tiles");
+});
+
+// ── choosing a tile by hand ─────────────────────────────────────────────────
+
+test("getTilePool lists what a terrain is dealt, and a salt flat pool holds no desert tile", async () => {
+	await withRichDesert(async () => {
+		const desert = await builder.getTilePool("desert");
+		assert.ok(desert.includes(DESERT_HILL_TILE) && desert.includes(DESERT_PLAIN_TILE));
+		assert.equal(desert.length, 10, "two shipped plains and hills plus the eight extras, salt-flat art left out");
+		assert.ok(!desert.includes(DESERT_SALT_FLAT_TILE));
+		assert.deepEqual([...await builder.getTilePool("salt flat")].sort(), [...SALT_FLAT_TILES].sort());
+		await assert.rejects(builder.getTilePool(""), /terrain must be text/);
+		const copy = await builder.getTilePool("desert");
+		copy.length = 0;
+		assert.equal((await builder.getTilePool("desert")).length, 10, "a copy: changing it changes nothing");
+	});
+});
+
+test("a hex can be set to one exact tile, which stays ground, is saved, and survives a repaint of the same terrain", async () => {
+	await withRichDesert(async () => {
+		const { sceneId } = await builder.buildPublishedHexcrawl({ grid: { cols: 5, rows: 5 }, terrain: { default: "desert" }, hexes: [] }, { view: false });
+		const scene = scenes.find(s => s.id === sceneId);
+		const tileAt = () => scene.tiles.find(t => t.flags?.[MODULE_ID]?.painted
+			&& Math.abs(t.x + (t.width / 2) - grid.getCenterPoint({ i: 2, j: 2 }).x) < 4
+			&& Math.abs(t.y + (t.height / 2) - grid.getCenterPoint({ i: 2, j: 2 }).y) < 4);
+		const wanted = (await builder.getTilePool("desert")).find(path => path !== tileAt().texture.src);
+
+		const out = await builder.repaintHexTiles(sceneId, [{ num: 303, terrain: "desert", tile: wanted }]);
+		assert.deepEqual(out, { sceneId, repainted: 1, removed: 1 });
+		assert.equal(tileAt().texture.src, wanted, "exactly that tile");
+		assert.equal(tileAt().flags[MODULE_ID].hexNum, undefined, "still ground: a hexNum tile is keyed art to a bake");
+		assert.equal(builder.getPaintLayout(sceneId)[303], wanted, "and saved in the deal");
+
+		await builder.repaintHexTiles(sceneId, [{ num: 303, terrain: "desert" }]);
+		assert.equal(tileAt().texture.src, wanted, "a plain repaint of the same terrain keeps it");
+	});
+});
+
+test("a tile from another terrain is accepted and pinned: it outlives a repaint, and ends with a terrain move or a reshuffle", async () => {
+	await withRichDesert(async () => {
+		const { sceneId } = await builder.buildPublishedHexcrawl({ grid: { cols: 5, rows: 5 }, terrain: { default: "desert" }, hexes: [] }, { view: false });
+		const scene = scenes.find(s => s.id === sceneId);
+		const srcAt = () => paintedByOffset(scene).get("2_2");
+		const mountain = (await builder.getTilePool("mountain"))[0];
+
+		await builder.repaintHexTiles(sceneId, [{ num: 303, terrain: "desert", tile: mountain }]);
+		assert.equal(srcAt(), mountain, "a mountain tile on a desert hex, by choice");
+		assert.deepEqual(scene.getFlag(MODULE_ID, "paintLayout").pinned, [303]);
+
+		await builder.repaintHexTiles(sceneId, [{ num: 303, terrain: "desert" }]);
+		assert.equal(srcAt(), mountain, "a repaint of the same terrain leaves a pinned tile");
+
+		await builder.repaintHexTiles(sceneId, [{ num: 303, terrain: "desert", reshuffle: true }]);
+		assert.notEqual(srcAt(), mountain, "a reshuffle takes the pin off and deals from the terrain's own pool");
+		assert.match(srcAt(), /\/Desert\//);
+		assert.deepEqual(scene.getFlag(MODULE_ID, "paintLayout").pinned, []);
+
+		await builder.repaintHexTiles(sceneId, [{ num: 303, terrain: "desert", tile: mountain }]);
+		await builder.repaintHexTiles(sceneId, [{ num: 303, terrain: "swamp" }]);
+		assert.notEqual(srcAt(), mountain, "a terrain move ends the pin");
+		assert.deepEqual(scene.getFlag(MODULE_ID, "paintLayout").pinned, []);
+	});
+});
+
+test("a named tile is checked before anything is touched", async () => {
+	await withRichDesert(async () => {
+		const { sceneId } = await builder.buildPublishedHexcrawl({ grid: { cols: 3, rows: 3 }, terrain: { default: "desert" }, hexes: [] }, { view: false });
+		const scene = scenes.find(s => s.id === sceneId);
+		const before = JSON.stringify(scene.tiles.map(t => [t.id, t.texture.src]));
+		const refuse = (hex, pattern) => assert.rejects(builder.repaintHexTiles(sceneId, [hex]), pattern);
+		await refuse({ num: 202, terrain: "desert", tile: `${DESERT_FOLDER}/nothing.webp` }, /unknown tile/);
+		await refuse({ num: 202, terrain: "desert", tile: 5 }, /tile must be text/);
+		await refuse({ num: 202, terrain: "desert", tile: DESERT_PLAIN_TILE, art: DESERT_HILL_TILE }, /tile cannot be combined with art or special/);
+		await refuse({ num: 202, terrain: "desert", tile: DESERT_PLAIN_TILE, reshuffle: true }, /nothing to reshuffle/);
+		await refuse({ num: 202, terrain: "desert", tile: `${SPECIALS_FOLDER}/657_Extinct_Volcano.webp` }, /one location's own picture/);
+		assert.equal(JSON.stringify(scene.tiles.map(t => [t.id, t.texture.src])), before, "no tile was touched");
+	});
 });
