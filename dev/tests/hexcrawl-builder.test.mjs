@@ -833,7 +833,7 @@ test("setup exposes the same guarded hex namespace on both surfaces and removes 
 		assert.equal(typeof module.api.hex, enabled ? "object" : "undefined");
 		assert.equal(context.game.shadowdarkExtras?.hex, module.api.hex);
 		if (enabled) {
-			assert.deepEqual(Object.keys(module.api.hex).sort(), ["adoptHexcrawl", "buildHexcrawl", "getHexRecords", "getPaintLayout", "getSpecialTiles", "getTilePool", "getZoneColors", "gridFields", "importHexerMap", "openHexerImportDialog", "repaintCoasts", "repaintHexTiles", "upsertHexRecords"]);
+			assert.deepEqual(Object.keys(module.api.hex).sort(), ["adoptHexcrawl", "bakeMap", "buildHexcrawl", "getHexRecords", "getPaintLayout", "getSpecialTiles", "getTilePool", "getZoneColors", "gridFields", "importHexerMap", "openHexerImportDialog", "repaintCoasts", "repaintHexTiles", "upsertHexRecords"]);
 			context.game.user.isGM = false;
 			await assert.rejects(module.api.hex.buildHexcrawl(fixture), /requires GM permission/);
 			await assert.rejects(module.api.hex.getHexRecords("scene"), /requires GM permission/);
@@ -1491,4 +1491,15 @@ test("a named tile is checked before anything is touched", async () => {
 		await refuse({ num: 202, terrain: "desert", tile: `${SPECIALS_FOLDER}/657_Extinct_Volcano.webp` }, /one location's own picture/);
 		assert.equal(JSON.stringify(scene.tiles.map(t => [t.id, t.texture.src])), before, "no tile was touched");
 	});
+});
+
+test("bakeMap refuses a missing scene and a non-GM before it loads the baker", async () => {
+	await assert.rejects(builder.bakeMap("no-such-scene"), /scene not found/);
+	game.user.isGM = false;
+	try {
+		await assert.rejects(builder.bakeMap("anything"), /requires GM permission/);
+	}
+	finally {
+		game.user.isGM = true;
+	}
 });

@@ -126,6 +126,7 @@
     "nested": {
       "hex": [
         "adoptHexcrawl",
+        "bakeMap",
         "buildHexcrawl",
         "getHexRecords",
         "getPaintLayout",

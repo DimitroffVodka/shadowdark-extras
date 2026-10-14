@@ -132,6 +132,7 @@ The full orchestration contract lives in
 | `hex.repaintCoasts(sceneId, nums?)` | GM | Re-lay the painted beaches of named hexes from their coast features |
 | `hex.repaintHexTiles(sceneId, hexes)` | GM | Repaint named hexes' terrain tiles, keeping each hex's saved tile unless its terrain moved or `reshuffle` is set |
 | `hex.getPaintLayout(sceneId)` | GM | The tile each hex was dealt, by published number, to hand a later build as `layout` |
+| `hex.bakeMap(sceneId)` | GM | Bake a painted map into a new scene for play (what the sidebar's "Bake map for play" does, without needing Tile Flatten); returns `{ sceneId, name }` |
 | `hex.getTilePool(terrain)` | GM | The catalogue tiles a terrain is dealt, for a picker; a repaint entry's `tile` takes any of them |
 | `hex.getSpecialTiles()` | GM | Catalogue Specials for explicit, unique hex assignments |
 | `hex.isPositionRevealed(scene, point)` | Read-only | Whether Hex Fog shows the hex under `point` on `scene` |

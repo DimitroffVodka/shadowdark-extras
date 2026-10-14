@@ -1016,7 +1016,7 @@ export function installHexcrawlApi(api, namespace, wrap) {
 	registerHexRecordPrune();
 	api.hex = namespace.hex = Object.fromEntries(Object.entries({
 		buildHexcrawl: buildPublishedHexcrawl, adoptHexcrawl, upsertHexRecords, getHexRecords, repaintHexTiles, repaintCoasts,
-		getPaintLayout, getTilePool,
+		getPaintLayout, getTilePool, bakeMap,
 		getSpecialTiles, importHexerMap, openHexerImportDialog,
 	}).map(([name, fn]) => [name, wrap(`hex.${name}`, fn)]));
 	// Deliberately outside the wrap above: it reads a constant, so gmOnly would
@@ -1379,6 +1379,25 @@ export async function repaintHexTiles(sceneId, hexes) {
 		console.warn(`${MODULE_ID} | post-repaint tiles redraw failed`, err);
 	}
 	return { sceneId, repainted: created.length, removed: doomed.length };
+}
+
+/**
+ * Bake a painted map into a new scene for play: its ground becomes a pyramid of
+ * image pieces, its keyed art sprites. The same call as the Scenes sidebar's
+ * "Bake map for play", which only shows while Tile Flatten is on; this one does
+ * not depend on that. GM only, in a client with a GPU (the tab the GM is using).
+ * Takes about a minute; the source is only read, so the painted map stays editable.
+ * @param {string} sceneId  the painted scene to bake
+ * @returns {Promise<{sceneId:string, name:string}|null>}  the new scene, or null
+ *   when the bake could not run (a notification says why)
+ */
+export async function bakeMap(sceneId) {
+	requireInput(game.user?.isGM, "requires GM permission");
+	const scene = game.scenes.get(sceneId);
+	requireInput(scene, "scene not found");
+	const { bakeScene } = await import("./hex-bake.mjs");
+	const copy = await bakeScene(scene);
+	return copy ? { sceneId: copy.id, name: copy.name } : null;
 }
 
 /**
