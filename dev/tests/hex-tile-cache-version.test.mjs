@@ -142,11 +142,14 @@ test("hand-picked art folders keep their own bucket instead of spilling into oth
 	const tile = (biome, name) => ({ key: name, label: name, path: `${HEXES_FOLDER}/${name}.webp`, isColored: true, biome });
 	await cache.setMetadata(METADATA_KEY, { version: moduleVersion, entries: [
 		tile("lava fields", "lava a"), tile("salt flats", "salt a"), tile("canyons", "canyon a"), tile("autumn", "bog"),
+		// How those two folders arrive from a scan of the real tree: FilePicker
+		// encodes the folder in the path, and the biome is read from it.
+		tile("salt%20flats", "salt b"), tile("lava%20fields", "lava b"),
 	] });
 	await colored.loadColoredTileAssets();
 	const byBiome = colored.getColoredTilesByBiome();
-	assert.equal(byBiome["lava fields"].length, 1);
-	assert.equal(byBiome["salt flats"].length, 1);
+	assert.equal(byBiome["lava fields"].length, 2);
+	assert.equal(byBiome["salt flats"].length, 2);
 	assert.equal(byBiome.canyons.length, 1);
 	assert.deepEqual(byBiome.other, [`${HEXES_FOLDER}/bog.webp`], "only unmapped terrain folders reach other");
 });

@@ -23,10 +23,15 @@ const DESERT_HILL_TILE = `${DESERT_FOLDER}/Hex - Hills (desert) 1.webp`;
 const DESERT_PLAIN_TILE = `${DESERT_FOLDER}/Hex - Plains (desert) 4.webp`;
 // A salt-flat-named file in the Desert folder: the pool the desert rule must filter.
 const DESERT_SALT_FLAT_TILE = `${DESERT_FOLDER}/Hex - Salt Flat (old).webp`;
-const SALT_FLATS_FOLDER = `${COLORED_FOLDER}/Salt Flats`;
-const SALT_FLAT_TILES = [1, 2].map(n => `${SALT_FLATS_FOLDER}/Hex - Salt Flat ${n}.webp`);
-const LAVA_FIELDS_FOLDER = `${COLORED_FOLDER}/Lava Fields`;
-const LAVA_TILES = ["A 1", "A 2", "B"].map(n => `${LAVA_FIELDS_FOLDER}/Hex - Lava Field lava ${n}.webp`);
+// Foundry's FilePicker lists percent-encoded paths, so a real listing hands the
+// loader "Salt%20Flats" / "Lava%20Fields". The folder name is what keys a pool,
+// and a fixture that spells it plainly cannot see the two disagree. Only the
+// folder is encoded here: the file part never reaches the pool-keying path, and
+// leaving it plain keeps the expected-src assertions readable.
+const SALT_FLATS_DIR = `${COLORED_FOLDER}/Salt%20Flats`;
+const SALT_FLAT_TILES = [1, 2].map(n => `${SALT_FLATS_DIR}/Hex - Salt Flat ${n}.webp`);
+const LAVA_FIELDS_DIR = `${COLORED_FOLDER}/Lava%20Fields`;
+const LAVA_TILES = ["A 1", "A 2", "B"].map(n => `${LAVA_FIELDS_DIR}/Hex - Lava Field lava ${n}.webp`);
 const CANYONS_FOLDER = `${COLORED_FOLDER}/Canyons`;
 const CANYON_TILES = [1, 2].map(n => `${CANYONS_FOLDER}/Hex - Canyon ${n}.webp`);
 const MOUNTAINS_FOLDER = `${COLORED_FOLDER}/Mountains`;
@@ -100,12 +105,12 @@ test.beforeEach(() => {
 			VEGETATION_FOLDER, DESERT_FOLDER, MOUNTAINS_FOLDER, WATER_FOLDER,
 			ARCTIC_FOLDER, LAKE_FOLDER, RIVER_FOLDER, SPECIALS_FOLDER,
 			...(jungleFolderShipped ? [JUNGLE_FOLDER] : []),
-			...(saltFlatShipped ? [SALT_FLATS_FOLDER] : []),
+			...(saltFlatShipped ? [SALT_FLATS_DIR] : []),
 			...(canyonsShipped ? [CANYONS_FOLDER] : []),
-			...(lavaFieldsShipped ? [LAVA_FIELDS_FOLDER] : []),
+			...(lavaFieldsShipped ? [LAVA_FIELDS_DIR] : []),
 		] };
-		if (path === LAVA_FIELDS_FOLDER) return { files: LAVA_TILES, dirs: [] };
-		if (path === SALT_FLATS_FOLDER) return { files: SALT_FLAT_TILES, dirs: [] };
+		if (path === LAVA_FIELDS_DIR) return { files: LAVA_TILES, dirs: [] };
+		if (path === SALT_FLATS_DIR) return { files: SALT_FLAT_TILES, dirs: [] };
 		if (path === CANYONS_FOLDER) return { files: CANYON_TILES, dirs: [] };
 		if (path === JUNGLE_FOLDER) return { files: [JUNGLE_TILE, JUNGLE_HILLS_TILE, JUNGLE_DARK_TILE], dirs: [] };
 		if (path === VEGETATION_FOLDER) return { files: [
