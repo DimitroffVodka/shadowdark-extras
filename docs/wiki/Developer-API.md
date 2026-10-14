@@ -130,6 +130,8 @@ The full orchestration contract lives in
 | `hex.upsertHexRecords(sceneId, records)` | GM | Merge records without rebuilding or repainting |
 | `hex.getHexRecords(sceneId, nums?)` | GM | Read records back by published hex number |
 | `hex.repaintCoasts(sceneId, nums?)` | GM | Re-lay the painted beaches of named hexes from their coast features |
+| `hex.repaintHexTiles(sceneId, hexes)` | GM | Repaint named hexes' terrain tiles, keeping each hex's saved tile unless its terrain moved or `reshuffle` is set |
+| `hex.getPaintLayout(sceneId)` | GM | The tile each hex was dealt, by published number, to hand a later build as `layout` |
 | `hex.getSpecialTiles()` | GM | Catalogue Specials for explicit, unique hex assignments |
 | `hex.isPositionRevealed(scene, point)` | Read-only | Whether Hex Fog shows the hex under `point` on `scene` |
 | `hex.revealFrom(sceneId, tokenId)` | GM | Reveal around a token where it stands, as a move would |
@@ -140,6 +142,19 @@ The full orchestration contract lives in
 
 `clearGeneratedTiles({ force: true })` skips its confirmation. Reach for that
 only inside an automation workflow that already confirmed with the user.
+
+A painted terrain tile is **dealt, not computed**: each hex draws at random from
+its terrain's pool, never the tile of a hex that touches it (when the pool has
+another) and the least-used tiles first, so a pool is spread like a hand of
+cards. What was drawn is saved on the scene (`getPaintLayout` reads it as
+`{ [publishedNumber]: tilePath }`), and that is what makes a rebuild or a
+repaint repeatable: `repaintHexTiles` leaves a hex on its saved tile while its
+terrain still draws from it, and takes another when the terrain moves or the
+hex entry carries `reshuffle: true`. `buildHexcrawl` over a scene of the same
+name (`overwrite: true`) carries the replaced scene's deal; pass
+`layout: hex.getPaintLayout(oldSceneId)` to repeat a picture on a differently
+named scene, or `reshuffle: true` to deal afresh. Curated `art`, a `special` and
+a keyed settlement's tile are not dealt and are not part of the layout.
 
 `repaintCoasts(sceneId, nums?)` removes the beach tiles of the named hexes'
 shores — each hex and its neighbours — and lays them again from the scene's

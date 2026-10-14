@@ -128,6 +128,7 @@
         "adoptHexcrawl",
         "buildHexcrawl",
         "getHexRecords",
+        "getPaintLayout",
         "getSpecialTiles",
         "getZoneColors",
         "importHexerMap",
