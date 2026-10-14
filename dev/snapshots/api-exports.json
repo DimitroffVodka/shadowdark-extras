@@ -126,9 +126,12 @@
     "nested": {
       "hex": [
         "adoptHexcrawl",
+        "bakeMap",
         "buildHexcrawl",
         "getHexRecords",
+        "getPaintLayout",
         "getSpecialTiles",
+        "getTilePool",
         "getZoneColors",
         "importHexerMap",
         "openHexerImportDialog",

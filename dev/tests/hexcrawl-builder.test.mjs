@@ -56,6 +56,8 @@ let jungleFolderShipped = true;
 let saltFlatShipped = true;
 let canyonsShipped = true;
 let lavaFieldsShipped = true;
+// Extra files in the Desert folder, for the tests that need a pool wide enough to deal.
+let extraDesertTiles = [];
 const MODULE_ID = "shadowdark-extras";
 // Invented fixture, no publisher content. The Enhancer's hexIdKey("1403")
 // is "14,3": one-based column 14 / row 3 => Foundry offset {i:2,j:13}.
@@ -92,6 +94,7 @@ test.beforeEach(() => {
 	saltFlatShipped = true;
 	canyonsShipped = true;
 	lavaFieldsShipped = true;
+	extraDesertTiles = [];
 	world.reset();
 	world.setGM(true);
 	scenes = [];
@@ -117,7 +120,7 @@ test.beforeEach(() => {
 			VEGETATION_HILL_TILE, VEGETATION_SPARSE_TILE, VEGETATION_TILE, VEGETATION_DENSE_TILE,
 		], dirs: [] };
 		if (path === DESERT_FOLDER) return { files: [
-			DESERT_HILL_TILE, DESERT_PLAIN_TILE, DESERT_SALT_FLAT_TILE,
+			DESERT_HILL_TILE, DESERT_PLAIN_TILE, DESERT_SALT_FLAT_TILE, ...extraDesertTiles,
 		], dirs: [] };
 		if (path === MOUNTAINS_FOLDER) return { files: [
 			MOUNTAIN_ROCKY_TILE, MOUNTAIN_LUSH_TILE, MOUNTAIN_BRIDGE_TILE, MOUNTAIN_SPIKES_TILE,
@@ -830,7 +833,7 @@ test("setup exposes the same guarded hex namespace on both surfaces and removes 
 		assert.equal(typeof module.api.hex, enabled ? "object" : "undefined");
 		assert.equal(context.game.shadowdarkExtras?.hex, module.api.hex);
 		if (enabled) {
-			assert.deepEqual(Object.keys(module.api.hex).sort(), ["adoptHexcrawl", "buildHexcrawl", "getHexRecords", "getSpecialTiles", "getZoneColors", "gridFields", "importHexerMap", "openHexerImportDialog", "repaintCoasts", "repaintHexTiles", "upsertHexRecords"]);
+			assert.deepEqual(Object.keys(module.api.hex).sort(), ["adoptHexcrawl", "bakeMap", "buildHexcrawl", "getHexRecords", "getPaintLayout", "getSpecialTiles", "getTilePool", "getZoneColors", "gridFields", "importHexerMap", "openHexerImportDialog", "repaintCoasts", "repaintHexTiles", "upsertHexRecords"]);
 			context.game.user.isGM = false;
 			await assert.rejects(module.api.hex.buildHexcrawl(fixture), /requires GM permission/);
 			await assert.rejects(module.api.hex.getHexRecords("scene"), /requires GM permission/);
@@ -1292,4 +1295,211 @@ test("a catalogue listed as absolute asset URLs still matches module-relative ar
 	const painted = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted);
 	assert.equal(painted.find(t => t.flags[MODULE_ID].hexNum === 101).texture.src, asListed(DESERT_PLAIN_TILE),
 		"the painted tile is the catalogue's own path, the URL the host listed");
+});
+
+// ── the deal: random, never a twin beside it, and saved ─────────────────────
+
+// Real odd-q neighbours; the shared grid stub only links a column's cells.
+const ODDQ_NEIGHBOURS = ({ i, j }) => (j % 2
+	? [[i - 1, j], [i + 1, j], [i, j - 1], [i + 1, j - 1], [i, j + 1], [i + 1, j + 1]]
+	: [[i - 1, j], [i + 1, j], [i - 1, j - 1], [i, j - 1], [i - 1, j + 1], [i, j + 1]]).map(([a, b]) => ({ i: a, j: b }));
+
+/** Run `body` with a ten-tile desert pool and real neighbours, then put both back. */
+async function withRichDesert(body) {
+	const adjacency = grid.getAdjacentOffsets;
+	grid.getAdjacentOffsets = ODDQ_NEIGHBOURS;
+	extraDesertTiles = Array.from({ length: 8 }, (_, n) => `${DESERT_FOLDER}/Hex - Plains (desert) x${n + 1}.webp`);
+	await loadColoredTileAssets({ rescan: true });
+	setActiveTileTab("colored");
+	try {
+		await body();
+	}
+	finally {
+		grid.getAdjacentOffsets = adjacency;
+		extraDesertTiles = [];
+		await loadColoredTileAssets({ rescan: true });
+	}
+}
+
+/** "i_j" -> src of the painted terrain tile on that cell, read back from where the stub put it. */
+function paintedByOffset(scene) {
+	const at = new Map();
+	for (const tile of scene.tiles.filter(t => t.flags?.[MODULE_ID]?.painted)) {
+		const x = tile.x + (tile.width / 2);
+		const y = tile.y + (tile.height / 2);
+		const j = Math.round((x - 148) / 222);
+		const i = Math.round((y - 128 - (j % 2 ? 128 : 0)) / 256);
+		at.set(`${i}_${j}`, tile.texture.src);
+	}
+	return at;
+}
+
+test("a build deals tiles at random, never the same on two touching hexes, and saves the deal", async () => {
+	await withRichDesert(async () => {
+		const { sceneId } = await builder.buildPublishedHexcrawl({ grid: { cols: 8, rows: 8 }, terrain: { default: "desert" }, hexes: [] }, { view: false });
+		const scene = scenes.find(s => s.id === sceneId);
+		const at = paintedByOffset(scene);
+		assert.equal(at.size, 64);
+		for (const [key, src] of at) {
+			const [i, j] = key.split("_").map(Number);
+			for (const next of ODDQ_NEIGHBOURS({ i, j })) {
+				assert.notEqual(at.get(`${next.i}_${next.j}`), src, `${key} and ${next.i}_${next.j} touch and share a tile`);
+			}
+		}
+		assert.ok(new Set(at.values()).size >= 8, "a ten-tile pool is used widely, not two tiles in turn");
+
+		const saved = builder.getPaintLayout(sceneId);
+		assert.equal(Object.keys(saved).length, 64, "every dealt hex is saved");
+		assert.equal(saved[101], at.get("0_0"), "by published number, as the path the tile paints from");
+
+		const other = await builder.buildPublishedHexcrawl({ grid: { cols: 8, rows: 8 }, terrain: { default: "desert" }, hexes: [] }, { view: false });
+		assert.notDeepEqual(builder.getPaintLayout(other.sceneId), saved, "a second map is dealt its own picture");
+	});
+});
+
+test("a saved deal repaints the same picture on a new scene, and over its own name unless reshuffled", async () => {
+	await withRichDesert(async () => {
+		const dataset = () => ({ name: "Deal", grid: { cols: 6, rows: 6 }, terrain: { default: "desert" }, hexes: [] });
+		const first = await builder.buildPublishedHexcrawl(dataset(), { view: false });
+		const picture = id => [...paintedByOffset(scenes.find(s => s.id === id))].sort().join("|");
+		const original = picture(first.sceneId);
+
+		const replay = await builder.buildPublishedHexcrawl(dataset(), { view: false, layout: builder.getPaintLayout(first.sceneId) });
+		assert.equal(picture(replay.sceneId), original, "a layout handed in is put back as it was");
+
+		const over = await builder.buildPublishedHexcrawl(dataset(), { view: false, overwrite: true });
+		assert.equal(picture(over.sceneId), original, "an overwrite carries the replaced scene's deal");
+
+		const again = await builder.buildPublishedHexcrawl(dataset(), { view: false, overwrite: true, reshuffle: true });
+		assert.notEqual(picture(again.sceneId), original, "a reshuffle deals afresh");
+
+		await assert.rejects(builder.buildPublishedHexcrawl(dataset(), { view: false, layout: "no" }), /layout must map hex numbers to tile paths/);
+		await assert.rejects(builder.buildPublishedHexcrawl(dataset(), { view: false, reshuffle: "yes" }), /reshuffle must be boolean/);
+	});
+});
+
+test("a repaint keeps the saved tile while the terrain stands, and deals anew when asked or when the terrain moves", async () => {
+	await withRichDesert(async () => {
+		const { sceneId } = await builder.buildPublishedHexcrawl({ grid: { cols: 5, rows: 5 }, terrain: { default: "desert" }, hexes: [] }, { view: false });
+		const scene = scenes.find(s => s.id === sceneId);
+		const hex = { key: "2_2", num: 303 };
+		const srcAt = () => paintedByOffset(scene).get(hex.key);
+		const before = srcAt();
+
+		await builder.repaintHexTiles(sceneId, [{ num: hex.num, terrain: "desert" }]);
+		assert.equal(srcAt(), before, "same terrain, same tile");
+
+		await builder.repaintHexTiles(sceneId, [{ num: hex.num, terrain: "desert", reshuffle: true }]);
+		const dealt = srcAt();
+		assert.notEqual(dealt, before, "a reshuffle takes another tile");
+		const at = paintedByOffset(scene);
+		for (const next of ODDQ_NEIGHBOURS({ i: 2, j: 2 })) {
+			assert.notEqual(at.get(`${next.i}_${next.j}`), dealt, "and not the tile of a hex that touches it");
+		}
+		assert.equal(builder.getPaintLayout(sceneId)[hex.num], dealt, "the new tile is the saved one");
+
+		await builder.repaintHexTiles(sceneId, [{ num: hex.num, terrain: "mountain" }]);
+		assert.match(srcAt(), /\/Mountains\//, "a new terrain draws from its own pool");
+		assert.equal(builder.getPaintLayout(sceneId)[hex.num], srcAt());
+
+		await assert.rejects(builder.repaintHexTiles(sceneId, [{ num: hex.num, terrain: "desert", reshuffle: "yes" }]), /reshuffle must be boolean/);
+	});
+});
+
+test("a terrain rule never paints another location's numbered picture", async () => {
+	setActiveTileTab("colored");
+	// 657_Extinct_Volcano.webp is hex 657's own illustration and shares a word
+	// with the volcano rule; one tile in thirteen of the rule's pool.
+	await builder.buildPublishedHexcrawl({ grid: { cols: 20, rows: 20 }, terrain: { default: "volcano" }, hexes: [] }, { view: false });
+	const srcs = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted).map(t => decodeURIComponent(t.texture.src));
+	assert.equal(srcs.length, 400);
+	assert.ok(srcs.every(src => /\/Hex - Mountains?, Volcano /.test(src)), "volcano paints only the generic volcano tiles");
+});
+
+// ── choosing a tile by hand ─────────────────────────────────────────────────
+
+test("getTilePool lists what a terrain is dealt, and a salt flat pool holds no desert tile", async () => {
+	await withRichDesert(async () => {
+		const desert = await builder.getTilePool("desert");
+		assert.ok(desert.includes(DESERT_HILL_TILE) && desert.includes(DESERT_PLAIN_TILE));
+		assert.equal(desert.length, 10, "two shipped plains and hills plus the eight extras, salt-flat art left out");
+		assert.ok(!desert.includes(DESERT_SALT_FLAT_TILE));
+		assert.deepEqual([...await builder.getTilePool("salt flat")].sort(), [...SALT_FLAT_TILES].sort());
+		await assert.rejects(builder.getTilePool(""), /terrain must be text/);
+		const copy = await builder.getTilePool("desert");
+		copy.length = 0;
+		assert.equal((await builder.getTilePool("desert")).length, 10, "a copy: changing it changes nothing");
+	});
+});
+
+test("a hex can be set to one exact tile, which stays ground, is saved, and survives a repaint of the same terrain", async () => {
+	await withRichDesert(async () => {
+		const { sceneId } = await builder.buildPublishedHexcrawl({ grid: { cols: 5, rows: 5 }, terrain: { default: "desert" }, hexes: [] }, { view: false });
+		const scene = scenes.find(s => s.id === sceneId);
+		const tileAt = () => scene.tiles.find(t => t.flags?.[MODULE_ID]?.painted
+			&& Math.abs(t.x + (t.width / 2) - grid.getCenterPoint({ i: 2, j: 2 }).x) < 4
+			&& Math.abs(t.y + (t.height / 2) - grid.getCenterPoint({ i: 2, j: 2 }).y) < 4);
+		const wanted = (await builder.getTilePool("desert")).find(path => path !== tileAt().texture.src);
+
+		const out = await builder.repaintHexTiles(sceneId, [{ num: 303, terrain: "desert", tile: wanted }]);
+		assert.deepEqual(out, { sceneId, repainted: 1, removed: 1 });
+		assert.equal(tileAt().texture.src, wanted, "exactly that tile");
+		assert.equal(tileAt().flags[MODULE_ID].hexNum, undefined, "still ground: a hexNum tile is keyed art to a bake");
+		assert.equal(builder.getPaintLayout(sceneId)[303], wanted, "and saved in the deal");
+
+		await builder.repaintHexTiles(sceneId, [{ num: 303, terrain: "desert" }]);
+		assert.equal(tileAt().texture.src, wanted, "a plain repaint of the same terrain keeps it");
+	});
+});
+
+test("a tile from another terrain is accepted and pinned: it outlives a repaint, and ends with a terrain move or a reshuffle", async () => {
+	await withRichDesert(async () => {
+		const { sceneId } = await builder.buildPublishedHexcrawl({ grid: { cols: 5, rows: 5 }, terrain: { default: "desert" }, hexes: [] }, { view: false });
+		const scene = scenes.find(s => s.id === sceneId);
+		const srcAt = () => paintedByOffset(scene).get("2_2");
+		const mountain = (await builder.getTilePool("mountain"))[0];
+
+		await builder.repaintHexTiles(sceneId, [{ num: 303, terrain: "desert", tile: mountain }]);
+		assert.equal(srcAt(), mountain, "a mountain tile on a desert hex, by choice");
+		assert.deepEqual(scene.getFlag(MODULE_ID, "paintLayout").pinned, [303]);
+
+		await builder.repaintHexTiles(sceneId, [{ num: 303, terrain: "desert" }]);
+		assert.equal(srcAt(), mountain, "a repaint of the same terrain leaves a pinned tile");
+
+		await builder.repaintHexTiles(sceneId, [{ num: 303, terrain: "desert", reshuffle: true }]);
+		assert.notEqual(srcAt(), mountain, "a reshuffle takes the pin off and deals from the terrain's own pool");
+		assert.match(srcAt(), /\/Desert\//);
+		assert.deepEqual(scene.getFlag(MODULE_ID, "paintLayout").pinned, []);
+
+		await builder.repaintHexTiles(sceneId, [{ num: 303, terrain: "desert", tile: mountain }]);
+		await builder.repaintHexTiles(sceneId, [{ num: 303, terrain: "swamp" }]);
+		assert.notEqual(srcAt(), mountain, "a terrain move ends the pin");
+		assert.deepEqual(scene.getFlag(MODULE_ID, "paintLayout").pinned, []);
+	});
+});
+
+test("a named tile is checked before anything is touched", async () => {
+	await withRichDesert(async () => {
+		const { sceneId } = await builder.buildPublishedHexcrawl({ grid: { cols: 3, rows: 3 }, terrain: { default: "desert" }, hexes: [] }, { view: false });
+		const scene = scenes.find(s => s.id === sceneId);
+		const before = JSON.stringify(scene.tiles.map(t => [t.id, t.texture.src]));
+		const refuse = (hex, pattern) => assert.rejects(builder.repaintHexTiles(sceneId, [hex]), pattern);
+		await refuse({ num: 202, terrain: "desert", tile: `${DESERT_FOLDER}/nothing.webp` }, /unknown tile/);
+		await refuse({ num: 202, terrain: "desert", tile: 5 }, /tile must be text/);
+		await refuse({ num: 202, terrain: "desert", tile: DESERT_PLAIN_TILE, art: DESERT_HILL_TILE }, /tile cannot be combined with art or special/);
+		await refuse({ num: 202, terrain: "desert", tile: DESERT_PLAIN_TILE, reshuffle: true }, /nothing to reshuffle/);
+		await refuse({ num: 202, terrain: "desert", tile: `${SPECIALS_FOLDER}/657_Extinct_Volcano.webp` }, /one location's own picture/);
+		assert.equal(JSON.stringify(scene.tiles.map(t => [t.id, t.texture.src])), before, "no tile was touched");
+	});
+});
+
+test("bakeMap refuses a missing scene and a non-GM before it loads the baker", async () => {
+	await assert.rejects(builder.bakeMap("no-such-scene"), /scene not found/);
+	game.user.isGM = false;
+	try {
+		await assert.rejects(builder.bakeMap("anything"), /requires GM permission/);
+	}
+	finally {
+		game.user.isGM = true;
+	}
 });
