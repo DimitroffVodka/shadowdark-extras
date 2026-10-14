@@ -314,7 +314,7 @@ function dealTile(pool, { saved, pinned = false, avoid, used }) {
 
 /** A scene's saved deal as Map(published num -> catalogue path); empty when it has none. */
 function readPaintLayout(scene) {
-	const stored = scene?.getFlag?.(MODULE_ID, "paintLayout");
+	const stored = scene?.getFlag(MODULE_ID, "paintLayout");
 	const layout = new Map();
 	if (stored?.version !== 1 || !Array.isArray(stored.files) || !stored.picks) return layout;
 	for (const [num, index] of Object.entries(stored.picks)) {
@@ -326,7 +326,7 @@ function readPaintLayout(scene) {
 
 /** The hexes whose saved tile the GM chose by hand, as a Set of published numbers. */
 function readPaintPins(scene) {
-	const stored = scene?.getFlag?.(MODULE_ID, "paintLayout");
+	const stored = scene?.getFlag(MODULE_ID, "paintLayout");
 	return new Set(Array.isArray(stored?.pinned) ? stored.pinned.map(Number).filter(Number.isInteger) : []);
 }
 
@@ -1318,7 +1318,10 @@ export async function repaintHexTiles(sceneId, hexes) {
 		const avoid = new Set();
 		for (const next of scene.grid.getAdjacentOffsets(off)) {
 			const hexKey = offsetToHexKey(next);
-			if (placed.has(hexKey)) { avoid.add(placed.get(hexKey)); continue; }
+			if (placed.has(hexKey)) {
+				avoid.add(placed.get(hexKey));
+				continue;
+			}
 			const point = scene.grid.getCenterPoint(next);
 			for (const tile of standing) if (sits(tile, point)) avoid.add(coloredTileKey(tile.texture.src));
 		}
@@ -1329,8 +1332,14 @@ export async function repaintHexTiles(sceneId, hexes) {
 		const was = stored.get(offsetToHexKey(off))?.terrain;
 		const moved = was && String(was).trim().toLowerCase() !== String(biomeKey).trim().toLowerCase();
 		let saved = own;
-		if (hex.tile) { saved = hex.tile; pins.add(num); }
-		else if (hex.reshuffle || (moved && pins.has(num))) { saved = undefined; pins.delete(num); }
+		if (hex.tile) {
+			saved = hex.tile;
+			pins.add(num);
+		}
+		else if (hex.reshuffle || (moved && pins.has(num))) {
+			saved = undefined;
+			pins.delete(num);
+		}
 		if (hex.reshuffle && own) avoid.add(coloredTileKey(own));
 		const pinned = pins.has(num);
 		const { tile, picked } = hexTileData({

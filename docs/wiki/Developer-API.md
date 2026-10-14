@@ -155,8 +155,9 @@ terrain still draws from it, and takes another when the terrain moves or the
 hex entry carries `reshuffle: true`. `buildHexcrawl` over a scene of the same
 name (`overwrite: true`) carries the replaced scene's deal; pass
 `layout: hex.getPaintLayout(oldSceneId)` to repeat a picture on a differently
-named scene, or `reshuffle: true` to deal afresh. Curated `art`, a `special` and
-a keyed settlement's tile are not dealt and are not part of the layout.
+named scene, or `reshuffle: true` to deal afresh. A replayed `layout` repeats the picks only: tiles pinned by hand
+(below) are carried by `overwrite: true`, not by `layout`. Curated `art` and a
+`special` are not dealt and are not part of the layout; a keyed settlement's tile is.
 
 A GM can also **choose** a hex's tile: a repaint entry `{ num, terrain, tile }` sets it
 to that exact catalogue tile, which stays ground (unlike `art`, it does not mark the
