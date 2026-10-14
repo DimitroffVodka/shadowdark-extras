@@ -63,8 +63,12 @@ export async function loadColoredTileAssets({ rescan = false } = {}) {
 		// running module version, so it goes on being served: decoding on the
 		// way out repairs a world that already scanned those two folders,
 		// instead of waiting for the next release to invalidate the catalogue.
+		// The scan lower-cases after decoding, so this read does too: a cached
+		// name keys exactly as a fresh scan of the same folder would.
 		_coloredTiles = cached.filter(tile => tile.biome !== ARCHIVE_BIOME)
-			.map(tile => (tile.biome ? { ...tile, biome: decodeBiome(tile.biome) } : tile));
+			.map(tile => (tile.biome
+				? { ...tile, biome: decodeBiome(tile.biome).toLowerCase() }
+				: tile));
 		return;
 	}
 

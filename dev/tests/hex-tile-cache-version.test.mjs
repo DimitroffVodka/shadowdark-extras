@@ -154,6 +154,19 @@ test("hand-picked art folders keep their own bucket instead of spilling into oth
 	assert.deepEqual(byBiome.other, [`${HEXES_FOLDER}/bog.webp`], "only unmapped terrain folders reach other");
 });
 
+test("a cached biome is decoded and lower-cased the way a fresh scan keys it", async () => {
+	// Before this fix the scan lower-cased the raw listing name, so a catalogue
+	// it wrote holds a non-ASCII capital's escapes lower-cased but the letter
+	// still encoded — "caf%c3%89" for the folder "Caf%C3%89". Decoding alone
+	// keys it "cafÉ"; a fresh scan keys the same folder "café".
+	const tile = (biome, name) => ({ key: name, label: name, path: `${HEXES_FOLDER}/${name}.webp`, isColored: true, biome });
+	await cache.setMetadata(METADATA_KEY, { version: moduleVersion, entries: [
+		tile("caf%c3%89", "cafe a"),
+	] });
+	await colored.loadColoredTileAssets();
+	assert.deepEqual(colored.getColoredTiles().map(t => t.biome), ["café"]);
+});
+
 test("a folder name with a stray percent sign loads as written instead of aborting the catalogue", async () => {
 	// decodeURIComponent throws on "100% rock". One odd folder name must not take
 	// the whole cached catalogue down with it, nor stop its neighbours decoding.
