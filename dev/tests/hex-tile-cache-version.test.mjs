@@ -154,6 +154,19 @@ test("hand-picked art folders keep their own bucket instead of spilling into oth
 	assert.deepEqual(byBiome.other, [`${HEXES_FOLDER}/bog.webp`], "only unmapped terrain folders reach other");
 });
 
+test("a folder name with a stray percent sign loads as written instead of aborting the catalogue", async () => {
+	// decodeURIComponent throws on "100% rock". One odd folder name must not take
+	// the whole cached catalogue down with it, nor stop its neighbours decoding.
+	const tile = (biome, name) => ({ key: name, label: name, path: `${HEXES_FOLDER}/${name}.webp`, isColored: true, biome });
+	await cache.setMetadata(METADATA_KEY, { version: moduleVersion, entries: [
+		tile("100% rock", "rock a"), tile("salt%20flats", "salt a"),
+	] });
+	await assert.doesNotReject(colored.loadColoredTileAssets());
+	const byBiome = colored.getColoredTilesByBiome();
+	assert.equal(byBiome["salt flats"].length, 1, "a well-formed neighbour still decodes");
+	assert.deepEqual(byBiome.other, [`${HEXES_FOLDER}/rock a.webp`], "the odd folder is kept, under its own name");
+});
+
 test("an undeterminable module version disables the cache rather than guessing", async () => {
 	const restore = globalThis.game.modules.get;
 	globalThis.game.modules.get = () => undefined;

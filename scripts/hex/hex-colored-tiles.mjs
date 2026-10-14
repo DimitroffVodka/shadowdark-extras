@@ -16,6 +16,18 @@ const MODULE_ID = "shadowdark-extras";
 const COLORED_TILE_FOLDER = `modules/${MODULE_ID}/assets/Hexes`;
 // Retired art parked beside the live folders; it is gitignored and never shipped.
 const ARCHIVE_BIOME = "archive";
+
+// A folder name comes from a FilePicker listing, and decodeURIComponent throws on
+// a stray "%". One odd name must not abort the whole catalogue load.
+function decodeBiome(name) {
+	try {
+		return decodeURIComponent(name);
+	}
+	catch(err) {
+		return name;
+	}
+}
+
 const COLORED_HEX_TILE_W = 572;
 const COLORED_HEX_TILE_H = 500;
 const COLORED_TAG_ALIASES = [
@@ -52,7 +64,7 @@ export async function loadColoredTileAssets({ rescan = false } = {}) {
 		// way out repairs a world that already scanned those two folders,
 		// instead of waiting for the next release to invalidate the catalogue.
 		_coloredTiles = cached.filter(tile => tile.biome !== ARCHIVE_BIOME)
-			.map(tile => (tile.biome ? { ...tile, biome: decodeURIComponent(tile.biome) } : tile));
+			.map(tile => (tile.biome ? { ...tile, biome: decodeBiome(tile.biome) } : tile));
 		return;
 	}
 
@@ -82,7 +94,7 @@ export async function loadColoredTileAssets({ rescan = false } = {}) {
 			// folder spills into `other` — the pool every biome without a folder
 			// of its own draws from at random — and the folder's own rule finds an
 			// empty pool and always falls through to its fallback.
-			const biome = decodeURIComponent(dirPath.split("/").pop());
+			const biome = decodeBiome(dirPath.split("/").pop());
 			if (biome.toLowerCase() === ARCHIVE_BIOME) continue;
 			try {
 				const biomeListing = await browseAssetsAsGM("data", dirPath);
