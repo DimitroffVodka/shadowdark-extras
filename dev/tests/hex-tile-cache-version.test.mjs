@@ -142,13 +142,42 @@ test("hand-picked art folders keep their own bucket instead of spilling into oth
 	const tile = (biome, name) => ({ key: name, label: name, path: `${HEXES_FOLDER}/${name}.webp`, isColored: true, biome });
 	await cache.setMetadata(METADATA_KEY, { version: moduleVersion, entries: [
 		tile("lava fields", "lava a"), tile("salt flats", "salt a"), tile("canyons", "canyon a"), tile("autumn", "bog"),
+		// How those two folders arrive from a scan of the real tree: FilePicker
+		// encodes the folder in the path, and the biome is read from it.
+		tile("salt%20flats", "salt b"), tile("lava%20fields", "lava b"),
 	] });
 	await colored.loadColoredTileAssets();
 	const byBiome = colored.getColoredTilesByBiome();
-	assert.equal(byBiome["lava fields"].length, 1);
-	assert.equal(byBiome["salt flats"].length, 1);
+	assert.equal(byBiome["lava fields"].length, 2);
+	assert.equal(byBiome["salt flats"].length, 2);
 	assert.equal(byBiome.canyons.length, 1);
 	assert.deepEqual(byBiome.other, [`${HEXES_FOLDER}/bog.webp`], "only unmapped terrain folders reach other");
+});
+
+test("a cached biome is decoded and lower-cased the way a fresh scan keys it", async () => {
+	// Before this fix the scan lower-cased the raw listing name, so a catalogue
+	// it wrote holds a non-ASCII capital's escapes lower-cased but the letter
+	// still encoded — "caf%c3%89" for the folder "Caf%C3%89". Decoding alone
+	// keys it "cafÉ"; a fresh scan keys the same folder "café".
+	const tile = (biome, name) => ({ key: name, label: name, path: `${HEXES_FOLDER}/${name}.webp`, isColored: true, biome });
+	await cache.setMetadata(METADATA_KEY, { version: moduleVersion, entries: [
+		tile("caf%c3%89", "cafe a"),
+	] });
+	await colored.loadColoredTileAssets();
+	assert.deepEqual(colored.getColoredTiles().map(t => t.biome), ["café"]);
+});
+
+test("a folder name with a stray percent sign loads as written instead of aborting the catalogue", async () => {
+	// decodeURIComponent throws on "100% rock". One odd folder name must not take
+	// the whole cached catalogue down with it, nor stop its neighbours decoding.
+	const tile = (biome, name) => ({ key: name, label: name, path: `${HEXES_FOLDER}/${name}.webp`, isColored: true, biome });
+	await cache.setMetadata(METADATA_KEY, { version: moduleVersion, entries: [
+		tile("100% rock", "rock a"), tile("salt%20flats", "salt a"),
+	] });
+	await assert.doesNotReject(colored.loadColoredTileAssets());
+	const byBiome = colored.getColoredTilesByBiome();
+	assert.equal(byBiome["salt flats"].length, 1, "a well-formed neighbour still decodes");
+	assert.deepEqual(byBiome.other, [`${HEXES_FOLDER}/rock a.webp`], "the odd folder is kept, under its own name");
 });
 
 test("an undeterminable module version disables the cache rather than guessing", async () => {
