@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [6.18.1] — 2026-10-14 — A hidden location no longer bakes as a hole
+
+6.18.0 was cut before the ground fill and the Enhancer hand-off below landed, so this is the first release that carries them. Read the [6.18.0 notes](https://github.com/DimitroffVodka/shadowdark-extras/releases/tag/v6.18.0) for what else changed since 6.17.1. Both changes act only with the Shadowdark Enhancer at API 1.31.0 or later; without it, a bake and a baked map are exactly as in 6.18.0.
+
 ### Changed
 
 - **A baked map is drawn by the Shadowdark Enhancer where the Enhancer can draw it.** From Enhancer API 1.31.0, which reports that it owns baked maps, Extras no longer takes the scene's manager slot or draws its keyed locations where the Enhancer also runs the scene's fog: the Enhancer draws the same ground and the same sprites, each location clipped to its own hex so its raised edge no longer hangs over the hex south of it. *Bake map for play* and the baked scene's flags are unchanged. With no Enhancer, one older than API 1.31.0, or a scene whose fog is Extras' own, Extras draws the map exactly as before.
