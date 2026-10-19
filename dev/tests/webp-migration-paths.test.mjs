@@ -165,14 +165,6 @@ const KEPT_AS_IS = [
 	"assets/Dungeon/backgrounds/lined-paper.png",
 	"assets/Dungeon/backgrounds/old_map.png",
 	"assets/Tom/banner_tom.png",
-	"assets/Tom/femalewarrior/angry.jpg",
-	"assets/Tom/femalewarrior/happy.jpg",
-	"assets/Tom/femalewarrior/normal.jpg",
-	"assets/Tom/femalewarrior/surprised.jpg",
-	"assets/Tom/wizardmale/angry.jpg",
-	"assets/Tom/wizardmale/happy.jpg",
-	"assets/Tom/wizardmale/normal.jpg",
-	"assets/Tom/wizardmale/worried.jpg",
 ];
 
 test("assets intentionally kept as PNG/JPG still exist on disk", () => {
