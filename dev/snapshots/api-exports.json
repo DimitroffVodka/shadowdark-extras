@@ -30,11 +30,15 @@
     },
     "TileFlattenSD.mjs": {
       "names": [
+        "exportHexMap",
         "flattenDungeonLevel",
         "flattenTiles",
+        "formatBytes",
         "getDungeonFloorLevels",
         "getDungeonVisualDocs",
         "getFlattendDungeonLevels",
+        "hexBackgroundBakePlan",
+        "measureTileLoad",
         "registerTileFlattenHooks",
         "unflattenTile"
       ]

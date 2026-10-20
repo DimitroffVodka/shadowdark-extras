@@ -23,10 +23,15 @@ const DESERT_HILL_TILE = `${DESERT_FOLDER}/Hex - Hills (desert) 1.webp`;
 const DESERT_PLAIN_TILE = `${DESERT_FOLDER}/Hex - Plains (desert) 4.webp`;
 // A salt-flat-named file in the Desert folder: the pool the desert rule must filter.
 const DESERT_SALT_FLAT_TILE = `${DESERT_FOLDER}/Hex - Salt Flat (old).webp`;
-const SALT_FLATS_FOLDER = `${COLORED_FOLDER}/Salt Flats`;
-const SALT_FLAT_TILES = [1, 2].map(n => `${SALT_FLATS_FOLDER}/Hex - Salt Flat ${n}.webp`);
-const LAVA_FIELDS_FOLDER = `${COLORED_FOLDER}/Lava Fields`;
-const LAVA_TILES = ["A 1", "A 2", "B"].map(n => `${LAVA_FIELDS_FOLDER}/Hex - Lava Field lava ${n}.webp`);
+// Foundry's FilePicker lists percent-encoded paths, so a real listing hands the
+// loader "Salt%20Flats" / "Lava%20Fields". The folder name is what keys a pool,
+// and a fixture that spells it plainly cannot see the two disagree. Only the
+// folder is encoded here: the file part never reaches the pool-keying path, and
+// leaving it plain keeps the expected-src assertions readable.
+const SALT_FLATS_DIR = `${COLORED_FOLDER}/Salt%20Flats`;
+const SALT_FLAT_TILES = [1, 2].map(n => `${SALT_FLATS_DIR}/Hex - Salt Flat ${n}.webp`);
+const LAVA_FIELDS_DIR = `${COLORED_FOLDER}/Lava%20Fields`;
+const LAVA_TILES = ["A 1", "A 2", "B"].map(n => `${LAVA_FIELDS_DIR}/Hex - Lava Field lava ${n}.webp`);
 const CANYONS_FOLDER = `${COLORED_FOLDER}/Canyons`;
 const CANYON_TILES = [1, 2].map(n => `${CANYONS_FOLDER}/Hex - Canyon ${n}.webp`);
 const MOUNTAINS_FOLDER = `${COLORED_FOLDER}/Mountains`;
@@ -100,12 +105,12 @@ test.beforeEach(() => {
 			VEGETATION_FOLDER, DESERT_FOLDER, MOUNTAINS_FOLDER, WATER_FOLDER,
 			ARCTIC_FOLDER, LAKE_FOLDER, RIVER_FOLDER, SPECIALS_FOLDER,
 			...(jungleFolderShipped ? [JUNGLE_FOLDER] : []),
-			...(saltFlatShipped ? [SALT_FLATS_FOLDER] : []),
+			...(saltFlatShipped ? [SALT_FLATS_DIR] : []),
 			...(canyonsShipped ? [CANYONS_FOLDER] : []),
-			...(lavaFieldsShipped ? [LAVA_FIELDS_FOLDER] : []),
+			...(lavaFieldsShipped ? [LAVA_FIELDS_DIR] : []),
 		] };
-		if (path === LAVA_FIELDS_FOLDER) return { files: LAVA_TILES, dirs: [] };
-		if (path === SALT_FLATS_FOLDER) return { files: SALT_FLAT_TILES, dirs: [] };
+		if (path === LAVA_FIELDS_DIR) return { files: LAVA_TILES, dirs: [] };
+		if (path === SALT_FLATS_DIR) return { files: SALT_FLAT_TILES, dirs: [] };
 		if (path === CANYONS_FOLDER) return { files: CANYON_TILES, dirs: [] };
 		if (path === JUNGLE_FOLDER) return { files: [JUNGLE_TILE, JUNGLE_HILLS_TILE, JUNGLE_DARK_TILE], dirs: [] };
 		if (path === VEGETATION_FOLDER) return { files: [
@@ -1168,4 +1173,29 @@ test("feature icons are sized from their texture by the render rule, or the squa
 	finally {
 		globalThis.foundry.canvas = original;
 	}
+});
+
+// A CDN host (The Forge) lists a module's files as full asset URLs while a
+// published dataset names the same tiles module-relative. The catalogue holds
+// what the host listed, so membership must read the two spellings as one tile;
+// before the URL prefix was stripped from the key, the build was refused as
+// "unknown art" on every curated hex.
+test("a catalogue listed as absolute asset URLs still matches module-relative art", async () => {
+	const CDN = "https://assets.forge-vtt.com/698377973fe387c3d58b3ea3";
+	const asListed = path => `${CDN}/${path}`;
+	const browse = foundry.applications.apps.FilePicker.implementation.browse;
+	foundry.applications.apps.FilePicker.implementation.browse = async (source, path) => {
+		const listing = await browse(source, path);
+		return { ...listing, files: (listing.files || []).map(asListed) };
+	};
+	// Forced, because the catalogue the other tests cached is spelled the old way.
+	await loadColoredTileAssets({ rescan: true });
+
+	await builder.buildPublishedHexcrawl({
+		grid: { cols: 2, rows: 1 }, terrain: { default: "desert" },
+		hexes: [{ num: 101, art: DESERT_PLAIN_TILE }],
+	}, { view: false });
+	const painted = scenes[0].tiles.filter(t => t.flags?.[MODULE_ID]?.painted);
+	assert.equal(painted.find(t => t.flags[MODULE_ID].hexNum === 101).texture.src, asListed(DESERT_PLAIN_TILE),
+		"the painted tile is the catalogue's own path, the URL the host listed");
 });

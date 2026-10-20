@@ -46,7 +46,13 @@ export async function loadColoredTileAssets({ rescan = false } = {}) {
 	const metadataKey = "hex_tiles_metadata_colored";
 	const cached = rescan ? null : await readShippedManifest(metadataKey);
 	if (cached) {
-		_coloredTiles = cached.filter(tile => tile.biome !== ARCHIVE_BIOME);
+		// A catalogue written before the scan decoded the biome below holds
+		// "salt%20flats" and "lava%20fields". The cache is stamped with the
+		// running module version, so it goes on being served: decoding on the
+		// way out repairs a world that already scanned those two folders,
+		// instead of waiting for the next release to invalidate the catalogue.
+		_coloredTiles = cached.filter(tile => tile.biome !== ARCHIVE_BIOME)
+			.map(tile => (tile.biome ? { ...tile, biome: decodeURIComponent(tile.biome) } : tile));
 		return;
 	}
 
@@ -70,7 +76,13 @@ export async function loadColoredTileAssets({ rescan = false } = {}) {
 		// Dynamically discover and load tiles from all subdirectories
 		const subdirs = mainListing.dirs || [];
 		for (const dirPath of subdirs) {
-			const biome = dirPath.split("/").pop();
+			// FilePicker lists percent-encoded paths, so the Salt Flats folder
+			// arrives as "Salt%20Flats". getColoredTilesByBiome() keys its pools
+			// by the plain words, so an encoded biome matches no pool at all: the
+			// folder spills into `other` — the pool every biome without a folder
+			// of its own draws from at random — and the folder's own rule finds an
+			// empty pool and always falls through to its fallback.
+			const biome = decodeURIComponent(dirPath.split("/").pop());
 			if (biome.toLowerCase() === ARCHIVE_BIOME) continue;
 			try {
 				const biomeListing = await browseAssetsAsGM("data", dirPath);

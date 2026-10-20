@@ -72,3 +72,6 @@ coverage.lcov
 
 # Retired hex art parked in the live folder; the colored-tile loader skips it too.
 assets/Hexes/Archive/
+
+# Retired Tom overlay video originals (pre-slimming encodes), parked in the live folder.
+assets/Tom/Archive/

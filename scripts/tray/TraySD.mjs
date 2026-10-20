@@ -565,6 +565,15 @@ export function registerTraySettings() {
 		default: 0.5,
 	});
 
+	// Not a user-facing setting: the bake dialog asks per map, and this key
+	// only remembers the GM's last choice to default the next dialog.
+	if (isFeatureEnabled(FEATURE_IDS.HEX_PAINTER)) game.settings.register(MODULE_ID, "hexPainter.bakeQuality", {
+		scope: "client",
+		config: false,
+		type: String,
+		default: "medium",
+	});
+
 	if (isFeatureEnabled(FEATURE_IDS.MAP_GENERATORS)) game.settings.register(MODULE_ID, "settlement.useLocalMaphub", {
 		name: "Settlement Maps: Use Local Maphub",
 		hint: "Load settlement map visuals from the locally-built maphub files (scripts/maphub/) instead of watabou.github.io. Enables offline use. Requires building and copying maphub files first — see module README.",

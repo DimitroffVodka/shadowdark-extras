@@ -23,9 +23,9 @@ globalThis.foundry.applications = {
 			implementation: {
 				async browse() {},
 				async createDirectory() {},
-				async upload(_source, _directory, file) {
+				async upload(_source, directory, file) {
 					uploads.push(file.name);
-					return { path: `flattened-tiles/${file.name}` };
+					return { path: `${directory}/${file.name}` };
 				},
 			},
 		},
@@ -119,6 +119,9 @@ const levelData = {
 };
 const level = {
 	id: levelData._id,
+	get background() {
+		return levelData.background;
+	},
 	toObject() {
 		return structuredClone(levelData);
 	},
@@ -145,10 +148,11 @@ const scene = {
 	},
 	async createEmbeddedDocuments(type, data, options) {
 		assert.equal(type, "Tile");
-		assert.deepEqual(options, { keepId: true });
-		created.push(...structuredClone(data));
-		this.tiles.contents.push(...data.map(entry => ({ ...entry, id: entry._id })));
-		return data;
+		if (options !== undefined) assert.deepEqual(options, { keepId: true });
+		const docs = data.map((entry, index) => ({ ...entry, id: entry._id ?? `baked-${created.length}-${index}` }));
+		created.push(...structuredClone(docs));
+		this.tiles.contents.push(...docs);
+		return docs;
 	},
 	async deleteEmbeddedDocuments(type, ids) {
 		assert.equal(type, "Tile");
@@ -183,7 +187,7 @@ globalThis.canvas = {
 	effects: { visible: true },
 };
 
-const { flattenTiles } = await import("../../scripts/canvas/TileFlattenSD.mjs");
+const { exportHexMap, flattenTiles, formatBytes, hexBackgroundBakePlan, measureTileLoad } = await import("../../scripts/canvas/TileFlattenSD.mjs");
 
 test("oversized hex maps bake into one downscaled reversible scene background", async () => {
 	const originalSetTimeout = globalThis.setTimeout;
@@ -242,4 +246,263 @@ test("the bake captures the scene rectangle, not canvas 0,0, on a padded or shif
 	assert.ok(Math.abs(positions[0][1] + (186 * resolution)) < 1e-6, "and at sceneY");
 	assert.deepEqual(renderedSizes.at(-1), [6126, 8192], "the same size as the scene rectangle");
 	await flattenTiles([], { asBackground: true });
+});
+
+test("the bake quality setting picks the long side, capped by the renderer", async () => {
+	const previousGet = game.settings.get;
+	const bakeAt = async level => {
+		game.settings.get = (_namespace, key) => key === "hexPainter.bakeQuality" ? level : undefined;
+		const originalSetTimeout = globalThis.setTimeout;
+		globalThis.setTimeout = callback => {
+			callback();
+			return 1;
+		};
+		try {
+			await flattenTiles(originalTiles, { asBackground: true });
+		}
+		finally {
+			globalThis.setTimeout = originalSetTimeout;
+		}
+		await flattenTiles([], { asBackground: true });
+	};
+
+	try {
+		renderedSizes.length = 0;
+		await bakeAt("low");
+		assert.deepEqual(renderedSizes.at(-1), [3063, 4096]);
+		await bakeAt("high");
+		assert.deepEqual(renderedSizes.at(-1), [9189, 12288]);
+		await bakeAt("max");
+		assert.deepEqual(renderedSizes.slice(-2), [[14262, 9536], [14262, 9536]], "max bakes full resolution in two pieces");
+		await bakeAt("bogus");
+		assert.deepEqual(renderedSizes.at(-1), [6126, 8192], "an unknown level falls back to the old cap");
+	}
+	finally {
+		game.settings.get = previousGet;
+	}
+	assert.deepEqual(notifications.error, []);
+});
+
+test("the bake preloads distinct tile textures before rendering", async () => {
+	const order = [];
+	originalTiles[0].texture = { src: "tile-a.webp" };
+	originalTiles[1].texture = { src: "tile-a.webp" }; // the same file twice — one preload
+	globalThis.foundry.canvas = {
+		loadTexture: async src => {
+			order.push(`preload:${src}`);
+			return {};
+		},
+	};
+	const render = renderer.render;
+	renderer.render = (stage, options) => {
+		order.push("render");
+		return render.call(renderer, stage, options);
+	};
+	const originalSetTimeout = globalThis.setTimeout;
+	globalThis.setTimeout = callback => {
+		callback();
+		return 1;
+	};
+	try {
+		await flattenTiles(originalTiles, { asBackground: true });
+	}
+	finally {
+		globalThis.setTimeout = originalSetTimeout;
+		renderer.render = render;
+		delete globalThis.foundry.canvas;
+		delete originalTiles[0].texture;
+		delete originalTiles[1].texture;
+		await flattenTiles([], { asBackground: true });
+	}
+	assert.equal(order[0], "preload:tile-a.webp", "the distinct source is loaded before the render");
+	assert.ok(order.lastIndexOf("preload:tile-a.webp") < order.indexOf("render"), "and nothing renders before it resolves");
+	assert.equal(order.filter(entry => entry === "preload:tile-a.webp").length, 1, "loaded once per file, not per tile");
+});
+
+test("the dialog's explicit quality beats the remembered last choice", async () => {
+	const previousGet = game.settings.get;
+	const previousSet = game.settings.set;
+	const remembered = [];
+	game.settings.get = (_namespace, key) => key === "hexPainter.bakeQuality" ? "low" : undefined;
+	game.settings.set = async (_namespace, key, value) => {
+		if (key === "hexPainter.bakeQuality") remembered.push(value);
+	};
+	const originalSetTimeout = globalThis.setTimeout;
+	globalThis.setTimeout = callback => {
+		callback();
+		return 1;
+	};
+	try {
+		renderedSizes.length = 0;
+		await flattenTiles(originalTiles, { asBackground: true, quality: "high" });
+		assert.deepEqual(renderedSizes.at(-1), [9189, 12288], "the picked level, not the remembered one");
+		assert.deepEqual(remembered, ["high"], "and the pick is remembered for the next dialog");
+	}
+	finally {
+		globalThis.setTimeout = originalSetTimeout;
+		game.settings.get = previousGet;
+		game.settings.set = previousSet;
+		await flattenTiles([], { asBackground: true });
+	}
+});
+
+test("a max bake splits an oversized map into image tiles and restores them", async () => {
+	created.length = 0;
+	deleted.length = 0;
+	uploads.length = 0;
+	renderedSizes.length = 0;
+	const originalSetTimeout = globalThis.setTimeout;
+	globalThis.setTimeout = callback => {
+		callback();
+		return 1;
+	};
+	try {
+		await flattenTiles(originalTiles, { asBackground: true, quality: "max" });
+
+		assert.deepEqual(renderedSizes, [[14262, 9536], [14262, 9536]], "one full-resolution render per piece");
+		assert.equal(uploads.length, 2, "one upload per piece");
+		assert.equal(created.length, 2, "one image tile per piece");
+		assert.deepEqual(
+			created.map(tile => [tile.x, tile.y, tile.width, tile.height]),
+			[[0, 0, 14262, 9536], [0, 9536, 14262, 9536]],
+		);
+		assert.deepEqual(created[0].flags, { "shadowdark-extras": { bakedPiece: true } });
+		assert.equal(created[0].texture.anchorX, 0, "top-left anchored — the Tile default (0.5, 0.5) shifts every piece half a tile");
+		assert.equal(created[0].texture.anchorY, 0);
+		assert.equal(created[1].texture.anchorX, 0);
+		assert.equal(created[0].locked, true, "pieces are locked so a canvas drag cannot break the seam");
+		assert.deepEqual(deleted.at(-1), ["left", "right"], "the original tiles are gone");
+		assert.equal(flags.flattenedHexBackground.pieces.length, 2);
+		assert.equal(flags.flattenedHexBackground.pieces[0]._id, created[0].id);
+
+		await flattenTiles([], { asBackground: true });
+		assert.deepEqual(deleted.at(-1), [created[0].id, created[1].id], "restore takes the pieces away");
+		assert.equal(flags.flattenedHexBackground, undefined);
+		assert.ok(scene.tiles.contents.some(tile => tile.id === "left"), "and the originals are back");
+		assert.ok(scene.tiles.contents.some(tile => tile.id === "right"));
+	}
+	finally {
+		globalThis.setTimeout = originalSetTimeout;
+		if (flags.flattenedHexBackground) await flattenTiles([], { asBackground: true });
+	}
+});
+
+test("the plan estimates the bake's webp size from the measured bakes", () => {
+	const plan = hexBackgroundBakePlan({ width: 14262, height: 19072 }, renderer, "medium");
+	assert.deepEqual([plan.pixelWidth, plan.pixelHeight], [6126, 8192]);
+	assert.equal(plan.encodeLimited, false, "medium sits under the encoder ceiling");
+	// The map's three real 6126x8192 flattens were 12.3, 12.7 and 13.0 MB;
+	// the estimate must land within a "roughly" distance of the middle one.
+	assert.ok(
+		Math.abs(plan.estimatedBytes - 12_702_218) < 1_200_000,
+		`estimate ${plan.estimatedBytes} is not near the real bakes`,
+	);
+	assert.equal(formatBytes(12_702_218), "12.1 MB");
+	assert.equal(formatBytes(880 * 1024), "880 KB");
+
+	// Max no longer clamps: it bakes the whole map at full resolution, split
+	// into pieces that each stay under both walls (150 MP and 16384 px).
+	const maxPlan = hexBackgroundBakePlan({ width: 14262, height: 19072 }, renderer, "max");
+	assert.equal(maxPlan.encodeLimited, false);
+	assert.equal(maxPlan.scalePercent, 100);
+	assert.deepEqual([maxPlan.pixelWidth, maxPlan.pixelHeight], [14262, 19072]);
+	assert.deepEqual(maxPlan.pieces, { cols: 1, rows: 2, count: 2 });
+});
+
+test("max sizes its piece grid to the encoder and texture walls", () => {
+	const small = hexBackgroundBakePlan({ width: 10477, height: 14009 }, renderer, "max");
+	assert.deepEqual(small.pieces, { cols: 1, rows: 1, count: 1 }, "a map under both walls stays one image");
+	assert.equal(small.scalePercent, 100);
+
+	const tall = hexBackgroundBakePlan({ width: 15000, height: 30000 }, renderer, "max");
+	assert.deepEqual(tall.pieces, { cols: 2, rows: 2, count: 4 }, "splits until every piece is under 150 MP and 16384 px");
+});
+
+test("the tile load measurement sums distinct files once each", async () => {
+	const requested = [];
+	const previousFetch = globalThis.fetch;
+	globalThis.fetch = async (src, options) => {
+		requested.push([src, options?.method]);
+		return { ok: true, headers: { get: name => name === "content-length" ? "1024" : null } };
+	};
+	try {
+		const load = await measureTileLoad([
+			{ texture: { src: "a.webp" } },
+			{ texture: { src: "a.webp" } },
+			{ texture: { src: "b.webp" } },
+			{},
+		]);
+		assert.deepEqual(load, { files: 2, bytes: 2048 });
+		assert.equal(requested.length, 2, "each distinct file is asked once");
+		assert.ok(requested.every(([, method]) => method === "HEAD"));
+	}
+	finally {
+		globalThis.fetch = previousFetch;
+	}
+});
+
+test("an unmeasurable tile file leaves the total unknown rather than guessed", async () => {
+	const previousFetch = globalThis.fetch;
+	globalThis.fetch = async () => {
+		throw new Error("blocked");
+	};
+	try {
+		const load = await measureTileLoad([{ texture: { src: "x.webp" } }]);
+		assert.deepEqual(load, { files: 1, bytes: null });
+	}
+	finally {
+		globalThis.fetch = previousFetch;
+	}
+});
+
+test("export renders the map at full size without touching the scene", async () => {
+	created.length = 0;
+	deleted.length = 0;
+	levelUpdates.length = 0;
+	renderedSizes.length = 0;
+	uploads.length = 0;
+
+	await exportHexMap({ quality: "max" });
+
+	assert.deepEqual(renderedSizes, [[14262, 9536], [14262, 9536]], "full resolution, split into the same two pieces a Max bake uses");
+	assert.equal(uploads.length, 2, "one file per piece");
+	assert.ok(uploads.every(name => name.startsWith("map-export-")), `all files are export files: ${uploads.join(", ")}`);
+	assert.equal(created.length, 0, "no piece tiles are created");
+	assert.equal(deleted.length, 0, "nothing is deleted");
+	assert.equal(levelUpdates.length, 0, "the level background is untouched");
+	assert.equal(flags.flattenedHexBackground, undefined, "no flatten flag is written");
+});
+
+test("an already-flattened scene exports the files it is showing instead of re-rendering", async () => {
+	renderedSizes.length = 0;
+	uploads.length = 0;
+
+	try {
+		// Two pieces: the piece files themselves are the export.
+		flags.flattenedHexBackground = {
+			flattenedAt: 1,
+			levelId: "level-1",
+			tiles: [],
+			mapPaths: [],
+			pieces: [
+				{ _id: "p1", src: "flattened-tiles/flatten-large-map-1-1of2.webp" },
+				{ _id: "p2", src: "flattened-tiles/flatten-large-map-1-2of2.webp" },
+			],
+		};
+		await exportHexMap({});
+		assert.equal(renderedSizes.length, 0, "no re-render for pieces");
+		assert.equal(uploads.length, 0, "no re-upload for pieces");
+
+		// One image: the level background is the export.
+		delete flags.flattenedHexBackground;
+		levelData.background.src = "flattened-tiles/flatten-large-map-single.webp";
+		flags.flattenedHexBackground = { flattenedAt: 1, levelId: "level-1", tiles: [], mapPaths: [] };
+		await exportHexMap({});
+		assert.equal(renderedSizes.length, 0, "no re-render for a single background");
+		assert.equal(uploads.length, 0, "no re-upload for a single background");
+	}
+	finally {
+		delete flags.flattenedHexBackground;
+		levelData.background.src = null;
+	}
 });

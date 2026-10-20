@@ -94,6 +94,7 @@
     "grinderHitDice",
     "grinderMode",
     "hexFog.defaultRevealRadius",
+    "hexPainter.bakeQuality",
     "hexPainter.customTileHeight",
     "hexPainter.customTileWidth",
     "hexPainter.poiScale",
@@ -185,12 +186,12 @@
     ]
   },
   "dynamicSites": [
-    "scripts/animation/AnimationFxSD.mjs:123",
+    "scripts/animation/AnimationFxSD.mjs:132",
     "scripts/combat/FormationSpawnerSD.mjs:83",
     "scripts/combat/MarchingModeSD.mjs:57",
     "scripts/combat/MarchingModeSD.mjs:70",
-    "scripts/dungeon/DungeonMultiLevelSD.mjs:825",
-    "scripts/dungeon/DungeonPainterSD.mjs:122",
+    "scripts/dungeon/DungeonMultiLevelSD.mjs:857",
+    "scripts/dungeon/DungeonPainterSD.mjs:140",
     "scripts/hex/ContentRegistry.mjs:17",
     "scripts/journal/easy-reference/EasyReferenceMenu.mjs:327",
     "scripts/party/PartyWeatherSettingsSD.mjs:168",

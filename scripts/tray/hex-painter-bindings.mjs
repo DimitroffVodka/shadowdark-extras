@@ -4,7 +4,7 @@
 // Object.assign(TrayApp.prototype, HexPainterBindings).
 
 import { setMapDimension, formatActiveScene, toggleTileSelection, clearTileSelection, setSearchFilter, toggleWaterEffect, toggleWindEffect, toggleFogAnimation, toggleTintEnabled, toggleBwEffect, setActiveTileTab, setCustomTileDimension, toggleSymbolFolderCollapsed, enablePreview, disablePreview, enablePainting, disablePainting, getActiveTileTab, setDecorSearchFilter, toggleDecorFolderCollapsed, setDecorElevation, setDecorSort, appendCustomNavSegment, setCustomNavPath, reloadCustomTiles, toggleColoredTagFilter, clearColoredTagFilters, selectFilteredColoredTiles } from "../hex/HexPainterSD.mjs";
-import { flattenTiles } from "../canvas/TileFlattenSD.mjs";
+import { exportHexMap, flattenTiles, formatBytes, hexBackgroundBakePlan, measureTileLoad } from "../canvas/TileFlattenSD.mjs";
 import { isMapPathDrawing } from "../canvas/drawing-constants.mjs";
 import { sdxDrawingTool } from "../canvas/SDXDrawingTool.mjs";
 import { generateHexMap, clearGeneratedTiles } from "../hex/HexGeneratorSD.mjs";
@@ -12,6 +12,26 @@ import { renderTray } from "./TraySD.mjs";
 import { DecorImportApp } from "./decor-import.mjs";
 
 const MODULE_ID = "shadowdark-extras";
+
+/** The remembered bake level, or "medium" when nothing valid is stored. */
+function rememberedBakeQuality() {
+	const stored = game.settings.get(MODULE_ID, "hexPainter.bakeQuality");
+	return ["low", "medium", "high", "max"].includes(stored) ? stored : "medium";
+}
+
+/** The priced quality radios, shared by the bake and export dialogs. */
+function buildQualityOptionsHtml(lastChoice) {
+	return ["low", "medium", "high", "max"].map(level => {
+		const plan = hexBackgroundBakePlan(canvas.scene, canvas.app?.renderer, level);
+		const label = level[0].toUpperCase() + level.slice(1);
+		const checked = level === lastChoice ? " checked" : "";
+		if (plan.pieces.count > 1) {
+			return `<p><label><input type="radio" name="quality" value="${level}"${checked}> <strong>${label}</strong> — full resolution (${plan.pixelWidth}×${plan.pixelHeight} total) as ${plan.pieces.count} images, roughly ${formatBytes(plan.estimatedBytes)}</label></p>`;
+		}
+		const cap = plan.encodeLimited ? ", capped by the webp encoder" : "";
+		return `<p><label><input type="radio" name="quality" value="${level}"${checked}> <strong>${label}</strong> — ${plan.pixelWidth}×${plan.pixelHeight}, ${plan.scalePercent}% of full size${cap}, roughly ${formatBytes(plan.estimatedBytes)}</label></p>`;
+	}).join("");
+}
 const ROAD_STYLES = {
 	// Hand-drawn hex pieces for both roads and rivers; the colour only feeds
 	// the pending-tile markers.
@@ -173,7 +193,7 @@ export const HexPainterBindings = {
 			flattenButton.textContent = restoring ? "Restore Hexagons" : "Bake Map Background";
 			flattenButton.title = restoring
 				? "Restore the original hex tiles"
-				: "Replace the hex tiles with one optimized scene background";
+				: "Replace the hex tiles with optimized scene images";
 			flattenButton.dataset.tooltip = flattenButton.title;
 			flattenButton.setAttribute?.("aria-label", flattenButton.title);
 		};
@@ -193,22 +213,87 @@ export const HexPainterBindings = {
 				return;
 			}
 
-			const confirmed = await foundry.applications.api.DialogV2.confirm({
-				window: { title: backup ? "Restore Hexagons" : "Bake Map Background" },
-				content: backup
-					? `<p>Restore all <strong>${backup.tiles?.length ?? 0}</strong> original hex tiles and the previous scene background?</p>`
-					: `<p>Replace all <strong>${tileDocs.length}</strong> tiles${mapPaths.length ? ` and <strong>${mapPaths.length}</strong> road/river network${mapPaths.length === 1 ? "" : "s"}` : ""} with one optimized scene background?</p><p>Labels and other overlays remain live. You can restore the originals with this button.</p>`,
-				modal: true,
-			});
-
-			if (!confirmed) return;
 			flattenButton.disabled = true;
 			try {
-				await flattenTiles(tileDocs, { asBackground: true, mapPaths });
+				const load = backup ? null : await measureTileLoad(tileDocs);
+				const tileLoad = !load ? ""
+					: load.bytes === null
+						? `<p>This scene's <strong>${load.files}</strong> tile image${load.files === 1 ? "" : "s"} load today.</p>`
+						: `<p>This scene's ${load.files} tile images load <strong>${formatBytes(load.bytes)}</strong> today.</p>`;
+
+				if (backup) {
+					const confirmed = await foundry.applications.api.DialogV2.confirm({
+						window: { title: "Restore Hexagons" },
+						content: `<p>Restore all <strong>${backup.tiles?.length ?? 0}</strong> original hex tiles and the previous scene background?</p>`,
+						modal: true,
+					});
+					if (!confirmed) return;
+					await flattenTiles([], { asBackground: true });
+					syncFlattenButton();
+					return;
+				}
+
+				// Every level is priced before the pick, so the size/detail trade is
+				// made here, per map, instead of configured once and forgotten.
+				const options = buildQualityOptionsHtml(rememberedBakeQuality());
+				const quality = await foundry.applications.api.DialogV2.wait({
+					window: { title: "Bake Map Background" },
+					content: `<p>Replace all <strong>${tileDocs.length}</strong> tiles${mapPaths.length ? ` and <strong>${mapPaths.length}</strong> road/river network${mapPaths.length === 1 ? "" : "s"}` : ""} with one optimized scene background?</p>${tileLoad}<p><strong>Bake quality</strong> — your pick is remembered for the next bake:</p>${options}<p>Labels and other overlays remain live. You can restore the originals with this button.</p>`,
+					buttons: [
+						{ action: "bake", label: "Bake", default: true, callback: (_event, button) => button.form.elements.quality.value },
+						{ action: "cancel", label: "Cancel", callback: () => null },
+					],
+					modal: true,
+				});
+
+				if (!quality) return;
+				await flattenTiles(tileDocs, { asBackground: true, mapPaths, quality });
 				syncFlattenButton();
 			}
 			finally {
 				flattenButton.disabled = false;
+			}
+		});
+
+		// Export the scene's map to image files — nothing on the scene changes.
+		const exportButton = elem.querySelector(".hex-export-btn");
+		exportButton?.addEventListener("click", async e => {
+			e.preventDefault();
+			e.stopPropagation();
+
+			exportButton.disabled = true;
+			try {
+				const backed = typeof canvas.scene?.getFlag === "function"
+					&& !!canvas.scene.getFlag(MODULE_ID, "flattenedHexBackground");
+				if (backed) {
+					// Already flattened: the files exist; hand them over as-is.
+					await exportHexMap({});
+					return;
+				}
+
+				const tileDocs = canvas.scene?.tiles?.contents ?? [];
+				if (tileDocs.length < 2) {
+					ui.notifications.warn("Need at least 2 tiles on the scene to export.");
+					return;
+				}
+				const quality = await foundry.applications.api.DialogV2.wait({
+					window: { title: "Export Map Image" },
+					content: `<p>Render this scene's map to image files and download them? <strong>Nothing on the scene changes</strong> — the tiles stay exactly as they are.</p><p><strong>Image quality</strong> — priced the same as a bake:</p>${buildQualityOptionsHtml(rememberedBakeQuality())}`,
+					buttons: [
+						{ action: "export", label: "Export", default: true, callback: (_event, button) => button.form.elements.quality.value },
+						{ action: "cancel", label: "Cancel", callback: () => null },
+					],
+					modal: true,
+				});
+				if (!quality) return;
+				await exportHexMap({ quality });
+			}
+			catch (error) {
+				console.error(`${MODULE_ID} | Map export failed:`, error);
+				ui.notifications.error(`Failed to export the map: ${error.message}`);
+			}
+			finally {
+				exportButton.disabled = false;
 			}
 		});
 
