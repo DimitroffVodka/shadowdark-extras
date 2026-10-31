@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Steps aside for Shadowdark Animations.** While that module is active, Extras leaves it Animation FX, per-item overrides, torch animations, level-up animations, weapon and shield sprites and the Automated Animations integration. It reads your Extras settings and item choices, so nothing needs setting up, and turning it off puts Extras back as it was. Worlds without it see no change.
+
 ## [6.18.1] — 2026-10-14 — A hidden location no longer bakes as a hole
 
 6.18.0 was cut before the ground fill and the Enhancer hand-off below landed, so this is the first release that carries them. Read the [6.18.0 notes](https://github.com/DimitroffVodka/shadowdark-extras/releases/tag/v6.18.0) for what else changed since 6.17.1. Both changes act only with the Shadowdark Enhancer at API 1.31.0 or later; without it, a bake and a baked map are exactly as in 6.18.0.
