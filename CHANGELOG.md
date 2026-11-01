@@ -6,6 +6,8 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [6.18.2] — 2026-11-01 — Steps aside for Shadowdark Animations
+
 ### Changed
 
 - **Steps aside for Shadowdark Animations.** While that module is active, Extras leaves it Animation FX, per-item overrides, torch animations, level-up animations, weapon and shield sprites and the Automated Animations integration. It reads your Extras settings and item choices, so nothing needs setting up, and turning it off puts Extras back as it was. Worlds without it see no change.
