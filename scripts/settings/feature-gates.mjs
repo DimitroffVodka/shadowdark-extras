@@ -209,6 +209,17 @@ export const FEATURE_CATALOG = Object.freeze([
 
 const FEATURES_BY_ID = new Map(FEATURE_CATALOG.map(entry => [entry.id, entry]));
 
+// Shadowdark Animations runs these while it is active, reading what this module saved.
+const ANIMATIONS_MODULE_FEATURES = new Set([
+	FEATURE_IDS.ANIMATION_FX,
+	FEATURE_IDS.ANIMATION_ITEM_OVERRIDES,
+	FEATURE_IDS.TORCH_ANIMATIONS,
+	FEATURE_IDS.LEVEL_UP_ANIMATIONS,
+	FEATURE_IDS.WEAPON_SPRITES,
+	FEATURE_IDS.AUTOMATED_ANIMATIONS,
+]);
+const animationsModuleActive = () => globalThis.game?.modules?.get?.("shadowdark-animations")?.active === true;
+
 export function normalizeDisabledFeatureIds(value) {
 	if (!Array.isArray(value)) return [];
 	const selected = new Set(value.filter(id => FEATURES_BY_ID.has(id)));
@@ -236,6 +247,9 @@ export function getFeatureState(
 	// The Enhancer's native Carousing replaces this one while the Enhancer is installed.
 	if (featureId === FEATURE_IDS.CAROUSING && enhancerActive()) {
 		return { enabled: false, reason: "enhancer", blockedBy: null };
+	}
+	if (ANIMATIONS_MODULE_FEATURES.has(featureId) && animationsModuleActive()) {
+		return { enabled: false, reason: "animations", blockedBy: null };
 	}
 	if (trail.has(featureId)) throw new Error(`${MODULE_ID} | Circular feature dependency at ${featureId}`);
 
