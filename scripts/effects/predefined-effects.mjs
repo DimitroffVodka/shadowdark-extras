@@ -379,6 +379,12 @@ export function registerPredefinedEffects() {
 			mode: "CONST.ACTIVE_EFFECT_MODES.OVERRIDE",
 		};
 
+		// SD 4.1.0 builds the change from `type` and ignores `mode`; Foundry v14 then
+		// defaults the missing type to "add". `mode` stays for SD 4.0.x.
+		for (const effect of Object.values(abilityAdvantageEffects)) {
+			effect.type ??= effect.mode.endsWith("OVERRIDE") ? "override" : "add";
+		}
+
 		// Merge ability advantage effects into the system's predefined effects
 		Object.assign(CONFIG.SHADOWDARK.PREDEFINED_EFFECTS, abilityAdvantageEffects);
 

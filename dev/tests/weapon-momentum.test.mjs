@@ -220,6 +220,13 @@ test("system formulas explode only while the world setting is off", () => {
 	assert.equal(shouldExplodeSystemFormula(explodingWeapon), false);
 });
 
+test("system formulas are left alone when SD 4.1.0's explode-damage-die key will explode them", () => {
+	const explodingWeapon = weapon({ enabled: true, momentum: true });
+	momentumSetting = false;
+	assert.equal(shouldExplodeSystemFormula(explodingWeapon, { explode: false }), true);
+	assert.equal(shouldExplodeSystemFormula(explodingWeapon, { explode: true }), false);
+});
+
 test("pre-exploding while the world setting is on doubles the modifier — on BOTH variants", () => {
 	// The collision the guard exists to prevent. It is present either way, so
 	// the guard cannot be relaxed by assuming a particular system build.

@@ -6,6 +6,14 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Works with Shadowdark 4.1.0.**
+  - Extras' preset effects (resistance, immunity, damage dice, silenced and the rest) are created as overrides again instead of adds.
+  - Lighting a torch from the party sheet lights the party token instead of setting it to zero, and the party token keeps its torch flicker.
+  - A weapon with both Extras' Momentum and the system's new exploding-damage effect no longer explodes twice.
+  - NPCs with the new Double Close move show it by name in the journal display.
+
 ## [6.18.2] — 2026-11-01 — Steps aside for Shadowdark Animations
 
 ### Changed

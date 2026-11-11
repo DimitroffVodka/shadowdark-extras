@@ -183,11 +183,15 @@ export function coreMomentumEnabled() {
  * `prepareCoreMomentumFormula`, which can supplement later terms without
  * pre-exploding the first one.
  *
+ * The same collision applies to SD 4.1.0's `explode-damage-die` effect key,
+ * which sets `damageRoll.explode` and makes `roll()` explode every term.
+ *
  * @param {Item} weapon - The weapon item.
+ * @param {object} [damageRoll] - The damage roll config the system will roll.
  * @returns {boolean}
  */
-export function shouldExplodeSystemFormula(weapon) {
-	return weaponHasMomentum(weapon) && !coreMomentumEnabled();
+export function shouldExplodeSystemFormula(weapon, damageRoll) {
+	return weaponHasMomentum(weapon) && !coreMomentumEnabled() && !damageRoll?.explode;
 }
 
 /**
