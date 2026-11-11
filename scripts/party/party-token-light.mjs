@@ -1,7 +1,7 @@
 // Party token light synchronisation — extracted from
-// scripts/party/PartySheetSD.mjs (Phase 5.3 split). Two plain functions: the
-// search for the brightest active light across the party and its members, and
-// the token update that mirrors it onto every party token on the scene.
+// scripts/party/PartySheetSD.mjs (Phase 5.3 split). Plain functions: the light
+// one item gives, the search for the brightest active light across the party
+// and its members, and the token update that mirrors it onto every party token.
 //
 // PartySheetSD re-exports both, so the composition root and the travel and
 // inventory mixins keep importing them from where they always did.
@@ -12,6 +12,51 @@ import { getCustomLightSources } from "../canvas/light-templates.mjs";
 // ============================================
 // PARTY TOKEN LIGHT SYNCHRONIZATION
 // ============================================
+
+/**
+ * The token light an active light-source item gives, or null when unknown.
+ *
+ * An SDX custom template wins, as in its turnLightOn patch. SD 4.1.0 keeps the
+ * light on the item and deleted map-light-sources.json, so its items are built
+ * the way its ActorSD.turnLightOn builds them; SD 4.0.x still reads the file.
+ *
+ * @param {Item} item - A Basic or Effect light-source item.
+ * @returns {Promise<Object|null>} Token light data.
+ */
+export async function resolveItemLight(item) {
+	const light = item?.system?.light ?? {};
+	const custom = light.template && getCustomLightSources()[light.template]?.light;
+	if (custom) return custom;
+
+	if (typeof light.bright === "number") {
+		return {
+			alpha: 0.2,
+			angle: 360,
+			animation: { intensity: 1, reverse: false, speed: 1, type: light.animation || null },
+			attenuation: 0.5,
+			bright: light.bright,
+			color: light.color || null,
+			coloration: 1,
+			contrast: 0,
+			darkness: { max: 1, min: 0 },
+			dim: light.dim,
+			luminosity: 0.5,
+			saturation: 0,
+			shadows: 0,
+		};
+	}
+
+	try {
+		const mappings = await foundry.utils.fetchJsonWithTimeout(
+			"systems/shadowdark/assets/mappings/map-light-sources.json"
+		);
+		return mappings[light.template]?.light ?? null;
+	}
+	catch(e) {
+		console.warn(`${MODULE_ID} | Failed to load light mappings:`, e);
+		return null;
+	}
+}
 
 /**
  * Get the brightest light source from all party members
@@ -55,23 +100,10 @@ export async function getBrightestPartyLight(partyActor) {
 
 			if (isLightSource && isActive) {
 
-				// Load Shadowdark's official light source mappings
-				const templateName = item.system.light.template;
-				let lightTemplate = null;
+				let lightTemplate = await resolveItemLight(item);
 
-				try {
-					const lightSources = await foundry.utils.fetchJsonWithTimeout(
-						"systems/shadowdark/assets/mappings/map-light-sources.json"
-					);
-					lightTemplate = lightSources[templateName]?.light;
-				}
-				catch(e) {
-					console.warn(`${MODULE_ID} | Failed to load light mappings:`, e);
-				}
-
-				// If template not found in JSON, use fallback values
+				// SD 4.0.x with no mapping file: values matching its old mappings
 				if (!lightTemplate) {
-					// Fallback values matching Shadowdark's actual light mappings
 					const FALLBACK_TEMPLATES = {
 						torch: { bright: 5, dim: 30, color: "#d1c846", alpha: 0.2, angle: 360 },
 						lantern: { bright: 15, dim: 60, color: "#d1c846", alpha: 0.2, angle: 360 },
@@ -80,14 +112,7 @@ export async function getBrightestPartyLight(partyActor) {
 							bright: 60, dim: 0, color: null, alpha: 0.2, angle: 360,
 						},
 					};
-
-					// Merge custom templates
-					const customSources = getCustomLightSources();
-					for (const [key, source] of Object.entries(customSources)) {
-						FALLBACK_TEMPLATES[key] = source.light;
-					}
-
-					lightTemplate = FALLBACK_TEMPLATES[templateName];
+					lightTemplate = FALLBACK_TEMPLATES[item.system.light.template];
 				}
 
 				// Get bright and dim from the template or item

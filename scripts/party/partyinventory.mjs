@@ -2,6 +2,7 @@
 // (Phase 5.1 split). Prototype mixin merged via Object.assign.
 
 import { isItemUnidentified, getMaskedItemName } from "./party-unidentified.mjs";
+import { resolveItemLight } from "./party-token-light.mjs";
 
 const MODULE_ID = "shadowdark-extras";
 
@@ -403,19 +404,7 @@ export const PartyInventory = {
 		let lightData;
 
 		if (active) {
-			// Get the light settings from the mapping
-			try {
-				const lightSources = await foundry.utils.fetchJsonWithTimeout(
-					"systems/shadowdark/assets/mappings/map-light-sources.json"
-				);
-				lightData = lightSources[item.system.light.template]?.light ?? {
-					dim: 0, bright: 0,
-				};
-			}
-			catch(e) {
-				console.warn("Failed to load light source mappings:", e);
-				lightData = { dim: 0, bright: 0 };
-			}
+			lightData = (await resolveItemLight(item)) ?? { dim: 0, bright: 0 };
 		}
 		else {
 			lightData = { dim: 0, bright: 0 };

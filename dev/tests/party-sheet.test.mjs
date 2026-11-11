@@ -744,14 +744,17 @@ test("the brightest source wins, with dim breaking a tie", async () => {
 	assert.equal(tie.dim, 40, "equal bright, so the wider dim radius wins");
 });
 
-test("an unknown template falls back to the item's own light values", async () => {
+test("an SD 4.1.0 item's own light values are used, as its turnLightOn uses them", async () => {
+	// 4.1.0 stores bright/dim/color/animation on the item and builds the rest
+	// (angle 360 included) itself; there is no per-item angle.
 	const light = await getBrightestPartyLight(lightParty([
-		lightItem("Weird", "no-such-template", { extra: { bright: 7, dim: 9, angle: 90 } }),
+		lightItem("Weird", "", { extra: { bright: 7, dim: 9, animation: "torch" } }),
 	]));
 
 	assert.equal(light.bright, 7);
 	assert.equal(light.dim, 9);
-	assert.equal(light.angle, 90);
+	assert.equal(light.angle, 360);
+	assert.equal(light.animation.type, "torch");
 });
 
 test("the party actor's own items count, so a campfire lights the party token", async () => {

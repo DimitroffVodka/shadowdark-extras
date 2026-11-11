@@ -762,7 +762,7 @@ export function setupRollConfigPatches() {
 					}
 					else if (config.itemUuid) {
 						const momentumWeapon = await fromUuid(config.itemUuid);
-						if (shouldExplodeSystemFormula(momentumWeapon)) {
+						if (shouldExplodeSystemFormula(momentumWeapon, config.damageRoll)) {
 							config.damageRoll.formula = applyExplodingAll(
 								config.damageRoll.formula
 							);

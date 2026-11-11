@@ -116,6 +116,7 @@ function getLocalizedMove(moveKey) {
 	const moveLabels = {
 		none: game.i18n.localize("SHADOWDARK.npc_move.none") || "None",
 		close: game.i18n.localize("SHADOWDARK.npc_move.close") || "Close",
+		doubleClose: game.i18n.localize("SHADOWDARK.npc_move.double_close") || "Double Close",
 		near: game.i18n.localize("SHADOWDARK.npc_move.near") || "Near",
 		doubleNear: game.i18n.localize("SHADOWDARK.range.double_near") || "Double Near",
 		tripleNear: game.i18n.localize("SHADOWDARK.npc_move.triple_near") || "Triple Near",
