@@ -6,9 +6,11 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [6.18.3] — 2026-11-11 — Works with Shadowdark 4.1.0
+
 ### Fixed
 
-- **Works with Shadowdark 4.1.0.**
+- **Works with Shadowdark 4.1.0.** Shadowdark 4.1.0 is now the verified system version.
   - Extras' preset effects (resistance, immunity, damage dice, silenced and the rest) are created as overrides again instead of adds.
   - Lighting a torch from the party sheet lights the party token instead of setting it to zero, and the party token keeps its torch flicker.
   - A weapon with both Extras' Momentum and the system's new exploding-damage effect no longer explodes twice.
@@ -17,6 +19,7 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 ### Changed
 
 - **With Shadowdark Enhancer active, Extras no longer adds a second "Party" to the Create Actor dialog.** The Enhancer has its own Party, so the dialog offers one. Extras on its own, or next to an Enhancer without a native Party, still offers it, and Parties already made keep their sheet. The "Create Party from selected tokens" button in the tray is unchanged.
+- **Three duplicate tiles leave the Hex Painter palette.** Blank2, a second Blank and "Desert1 - Copy" (the same image as Desert1) are gone, along with one unused image, 0.32 MB in all. A scene painted with one of those three tiles shows it as missing; repaint those hexes with Blank or Desert1.
 
 ## [6.18.1] — 2026-10-14 — A hidden location no longer bakes as a hole
 
