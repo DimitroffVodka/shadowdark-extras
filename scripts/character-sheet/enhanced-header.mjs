@@ -107,6 +107,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 	// Get wave color based on ancestry settings (pass resolved ancestryName)
 	const hpWaveColor = getHpWaveColor(actor, ancestryName);
 	const hpWavesEnabled = isHpWavesEnabled();
+	const hpClickAdjust = game.settings.get(MODULE_ID, "hpClickAdjust");
 
 	// Build abilities HTML
 	let abilitiesHtml = "";
@@ -170,7 +171,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 			<div class="sdx-portrait-container">
 				<img class="sdx-portrait" src="${escapedActorImg}" data-edit="img" data-tooltip="${escapedActorName}" />
 				${hpWavesHtml}
-				<div class="sdx-hp-bar-container" data-tooltip="${HP_QUICK_ADJUST_TOOLTIP}">
+				<div class="sdx-hp-bar-container"${hpClickAdjust ? ` data-tooltip="${HP_QUICK_ADJUST_TOOLTIP}"` : ""}>
 					<div class="sdx-hp-bar" style="width: ${hpPercent}%; background-color: ${hpColor};"></div>
 					<div class="sdx-hp-text">
 						<span class="sdx-hp-value" data-field="hp-value">${hp.value}</span>
@@ -361,7 +362,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 		openHpInput();
 	});
 
-	$enhancedContent.find(".sdx-hp-bar-container").on("click", async e => {
+	if (hpClickAdjust) $enhancedContent.find(".sdx-hp-bar-container").on("click", async e => {
 		if (!actor.isOwner) return;
 		if ($(e.target).is("input, textarea, select, button, a") || $(e.target).closest(".sdx-hp-value").length) return;
 		e.preventDefault();
@@ -369,7 +370,7 @@ export async function injectEnhancedHeader(app, html, actor) {
 		applyHpQuickAdjust(actor, -1, $sheet);
 	});
 
-	$enhancedContent.find(".sdx-hp-bar-container").on("contextmenu", async e => {
+	if (hpClickAdjust) $enhancedContent.find(".sdx-hp-bar-container").on("contextmenu", async e => {
 		if (!actor.isOwner) return;
 		if ($(e.target).is("input, textarea, select, button, a")) return;
 		e.preventDefault();

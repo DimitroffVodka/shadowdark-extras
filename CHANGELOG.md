@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- **Turn off click-to-adjust HP.** A new per-player setting, *Click HP to Adjust*, stops left-click (-1) and right-click (+1) on the sheet's HP bar or box from changing HP. Clicking the number to type a value still works. On by default, so nothing changes until a player turns it off.
+
 ## [6.18.3] — 2026-11-11 — Works with Shadowdark 4.1.0
 
 ### Fixed

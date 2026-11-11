@@ -98,6 +98,7 @@
     "hexPainter.customTileHeight",
     "hexPainter.customTileWidth",
     "hexPainter.poiScale",
+    "hpClickAdjust",
     "hpWavesSettings",
     "initModColor",
     "inventoryStyles",

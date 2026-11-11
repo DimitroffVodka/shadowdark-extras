@@ -11,6 +11,8 @@
   "SHADOWDARK_EXTRAS.macro.created": "Macro criada: {name}",
   "SHADOWDARK_EXTRAS.settings.enable_enhanced_header.name": "Habilitar Cabeçalho Aprimorado",
   "SHADOWDARK_EXTRAS.settings.enable_enhanced_header.hint": "Substitui o cabeçalho padrão da ficha de jogador por um cabeçalho interativo mostrando barra de PV, CA, atributos, sorte, XP e nível",
+  "SHADOWDARK_EXTRAS.settings.hp_click_adjust.name": "Clicar nos PV para Ajustar",
+  "SHADOWDARK_EXTRAS.settings.hp_click_adjust.hint": "Clique esquerdo na barra ou caixa de PV da ficha para -1 PV, clique direito para +1 PV. Desative para evitar que cliques acidentais alterem os PV; clicar no número ainda permite digitar um valor. Vale só para você.",
   "SHADOWDARK_EXTRAS.settings.enable_default_header_bg.name": "Habilitar Fundo Padrão do Cabeçalho",
   "SHADOWDARK_EXTRAS.settings.enable_default_header_bg.hint": "Usa uma imagem de fundo padrão para todas as fichas de ator que não têm um fundo personalizado definido",
   "SHADOWDARK_EXTRAS.settings.default_header_bg_path.name": "Imagem de Fundo Padrão do Cabeçalho",
