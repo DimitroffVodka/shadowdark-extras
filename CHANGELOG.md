@@ -14,6 +14,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
   - A weapon with both Extras' Momentum and the system's new exploding-damage effect no longer explodes twice.
   - NPCs with the new Double Close move show it by name in the journal display.
 
+### Changed
+
+- **With Shadowdark Enhancer active, Extras no longer adds a second "Party" to the Create Actor dialog.** The Enhancer has its own Party, so the dialog offers one. Extras on its own, or next to an Enhancer without a native Party, still offers it, and Parties already made keep their sheet. The "Create Party from selected tokens" button in the tray is unchanged.
+
 ## [6.18.2] — 2026-11-01 — Steps aside for Shadowdark Animations
 
 ### Changed
