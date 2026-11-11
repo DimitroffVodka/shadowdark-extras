@@ -14,6 +14,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
   - A weapon with both Extras' Momentum and the system's new exploding-damage effect no longer explodes twice.
   - NPCs with the new Double Close move show it by name in the journal display.
 
+### Changed
+
+- **With Shadowdark Enhancer active, Extras no longer adds a second "Party" to the Create Actor dialog.** The Enhancer has its own Party, so the dialog offers one. Extras on its own, or next to an Enhancer without a native Party, still offers it, and Parties already made keep their sheet. The "Create Party from selected tokens" button in the tray is unchanged.
+
 ## [6.18.1] — 2026-10-14 — A hidden location no longer bakes as a hole
 
 6.18.0 was cut before the ground fill and the Enhancer hand-off below landed, so this is the first release that carries them. Read the [6.18.0 notes](https://github.com/DimitroffVodka/shadowdark-extras/releases/tag/v6.18.0) for what else changed since 6.17.1. Both changes act only with the Shadowdark Enhancer at API 1.31.0 or later; without it, a bake and a baked map are exactly as in 6.18.0.
