@@ -71,6 +71,7 @@ export const SETTING_OWNERS = Object.freeze({
 	showMedkitIcon: owners(FEATURE_IDS.MEDKIT),
 	medkitWorldScanMenu: owners(FEATURE_IDS.MEDKIT),
 	enableEnhancedHeader: owners(FEATURE_IDS.ENHANCED_HEADER),
+	hpClickAdjust: owners(FEATURE_IDS.ENHANCED_HEADER),
 	enableNpcPlayerTheme: owners(FEATURE_IDS.SHEET_STYLING),
 	enableDefaultHeaderBg: owners(FEATURE_IDS.ENHANCED_HEADER),
 	defaultHeaderBgPath: owners(FEATURE_IDS.ENHANCED_HEADER),
@@ -463,6 +464,21 @@ export function registerSettings() {
 		default: true,
 		type: Boolean,
 		requiresReload: true,
+	});
+
+	// Per player: some find the click/right-click HP nudge on the sheet gets in the way.
+	if (settingOwnerEnabled("hpClickAdjust")) game.settings.register(MODULE_ID, "hpClickAdjust", {
+		name: game.i18n.localize("SHADOWDARK_EXTRAS.settings.hp_click_adjust.name"),
+		hint: game.i18n.localize("SHADOWDARK_EXTRAS.settings.hp_click_adjust.hint"),
+		scope: "client",
+		config: true,
+		default: true,
+		type: Boolean,
+		onChange: () => {
+			for (const app of Object.values(ui.windows ?? {})) {
+				if (app.actor?.type === "Player" || app.actor?.type === "NPC") app.render(false);
+			}
+		},
 	});
 
 	if (settingOwnerEnabled("enableNpcPlayerTheme")) game.settings.register(MODULE_ID, "enableNpcPlayerTheme", {

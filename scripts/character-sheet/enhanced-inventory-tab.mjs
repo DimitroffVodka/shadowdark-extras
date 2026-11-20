@@ -23,6 +23,8 @@
  * that — a dependency scan over function names alone had missed the const.
  */
 
+import { MODULE_ID } from "../shared/module-id.mjs";
+
 
 // ============================================
 // ENHANCED INVENTORY TAB
@@ -194,6 +196,8 @@ export function attachNativeHpQuickControls(app, html, actor) {
 
 	const $hpBox = $hpInput.closest(".SD-box");
 	if (!$hpBox.length) return;
+
+	if (!game.settings.get(MODULE_ID, "hpClickAdjust")) return;
 
 	$hpBox.attr("data-tooltip", HP_QUICK_ADJUST_TOOLTIP);
 	$hpBox.css("cursor", "pointer");

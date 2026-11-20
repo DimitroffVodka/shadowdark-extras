@@ -55,6 +55,8 @@
   "SHADOWDARK_EXTRAS.save": "Save Settings",
   "SHADOWDARK_EXTRAS.settings.enable_enhanced_header.name": "Enable Enhanced Header",
   "SHADOWDARK_EXTRAS.settings.enable_enhanced_header.hint": "Replace the default player sheet header with an interactive header showing HP bar, AC, abilities, luck, XP, and level",
+  "SHADOWDARK_EXTRAS.settings.hp_click_adjust.name": "Click HP to Adjust",
+  "SHADOWDARK_EXTRAS.settings.hp_click_adjust.hint": "Left-click the HP bar or box on a sheet for -1 HP, right-click for +1 HP. Turn off to stop stray clicks changing HP; clicking the number still lets you type a value. Applies to you only.",
   "SHADOWDARK_EXTRAS.settings.enable_npc_player_theme.name": "Match NPC Sheet Theme to Player Sheets",
   "SHADOWDARK_EXTRAS.settings.enable_npc_player_theme.hint": "Apply the Shadowdark Extras player-sheet frame, header, tab, and panel styling to NPC actor sheets without replacing the NPC sheet layout.",
   "SHADOWDARK_EXTRAS.settings.enable_default_header_bg.name": "Enable Default Header Background",

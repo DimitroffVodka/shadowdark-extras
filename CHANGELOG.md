@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- **Turn off click-to-adjust HP.** A new per-player setting, *Click HP to Adjust*, stops left-click (-1) and right-click (+1) on the sheet's HP bar or box from changing HP. Clicking the number to type a value still works. On by default, so nothing changes until a player turns it off.
+
 ## [7.0.0] — 2026-11-20 — Updates reach worlds on 6.90 again
 
 ### Changed
