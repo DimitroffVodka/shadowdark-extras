@@ -6,6 +6,10 @@ Format based loosely on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+- **The version jumps to 7.0.0 so everyone still on 6.90 gets updates again.** An old build was numbered 6.90, and Foundry reads 6.90 as newer than 6.18.3, so worlds that installed it were never offered a later release. On Shadowdark 4.x that build breaks monster attacks clicked from the Shadowdark Enhancer crawl strip ("Action failed"). 7.0.0 is above 6.90, so Check for Updates offers it again. Nothing else changes with the number.
+
 ## [6.18.3] — 2026-11-11 — Works with Shadowdark 4.1.0
 
 ### Fixed
