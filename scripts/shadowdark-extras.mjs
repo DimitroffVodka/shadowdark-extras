@@ -1345,6 +1345,14 @@ if (featureEnabled(FEATURE_IDS.INVISIBILITY)) registerInvisibilityHooks();
 // module.zip, so a released install has nothing to import - stay silent there
 // rather than logging a spurious registration failure.
 Hooks.on("quenchReady", async quench => {
+	// Probe over the socket first: importing a missing file makes the browser log
+	// a 404/MIME error per batch that the catches below cannot suppress.
+	try {
+		await FilePicker.browse("data", `modules/${MODULE_ID}/dev/tests/quench`);
+	}
+	catch(e) {
+		return; // Packaged install (or a user without file-browse permission).
+	}
 	try {
 		const { registerWebpMigrationBatch } = await import("../dev/tests/quench/webp-migration.batch.mjs");
 		registerWebpMigrationBatch(quench);
